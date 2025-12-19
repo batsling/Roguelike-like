@@ -53,51 +53,12 @@ function getGameConnections(gameName) {
 
 // ===== NODE CREATION =====
 
-async function addNode(name, cls, x, y) {
+function addNode(name, cls, x, y) {
   const d = document.createElement('div');
   d.className = `node ${cls}`;
   d.style.left = x + 'px';
   d.style.top = y + 'px';
-
-  // Try to get game cover from IGDB
-  const game = games.find(g => g.name === name);
-  const coverUrl = await fetchGameCover(name, game?.year);
-
-  if (coverUrl) {
-    // Create cover image
-    const img = document.createElement('img');
-    img.src = coverUrl;
-    img.alt = name;
-    img.style.cssText = `
-      width: 100%;
-      height: 120px;
-      object-fit: cover;
-      border-radius: 8px 8px 0 0;
-      display: block;
-    `;
-
-    // Create name label
-    const label = document.createElement('div');
-    label.textContent = name;
-    label.style.cssText = `
-      padding: 8px;
-      font-size: 12px;
-      text-align: center;
-      background: rgba(0, 0, 0, 0.7);
-      border-radius: 0 0 8px 8px;
-      line-height: 1.2;
-      max-height: 40px;
-      overflow: hidden;
-    `;
-
-    d.appendChild(img);
-    d.appendChild(label);
-    d.style.padding = '0';
-    d.style.overflow = 'hidden';
-  } else {
-    // Fallback to text-only
-    d.textContent = name;
-  }
+  d.textContent = name;
 
   d.onmouseenter = e => showTooltip(e, name);
   d.onmousemove = e => moveTooltip(e);
@@ -227,7 +188,7 @@ function clearChoices() {
   }
 }
 
-async function spawnChoices() {
+function spawnChoices() {
   clearChoices();
 
   // Get all connected games
@@ -243,8 +204,7 @@ async function spawnChoices() {
   const sx = 450 - ((opts.length - 1) * 220) / 2;
   const currentNode = document.querySelector('.node.current');
 
-  for (let i = 0; i < opts.length; i++) {
-    const g = opts[i];
+  opts.forEach((g, i) => {
     const nx = sx + i * 220;
     const ny = gameState.currentY + 160;
 
@@ -277,7 +237,7 @@ async function spawnChoices() {
       encounterColor = 'gold';
     }
 
-    const n = await addNode(g, 'choice', nx, ny);
+    const n = addNode(g, 'choice', nx, ny);
 
     // Check if this is the amulet game
     const isAmuletGame = (g === gameState.amuletGame.name);
@@ -320,12 +280,12 @@ async function spawnChoices() {
     }
 
     n.onclick = () => advance(g, nx, ny, encounterType);
-  }
+  });
 }
 
 // ===== GAME ADVANCEMENT =====
 
-async function advance(game, x, y, encounterType) {
+function advance(game, x, y, encounterType) {
   clearChoices();
   const current = document.querySelector('.node.current');
   if (current) {
@@ -333,7 +293,7 @@ async function advance(game, x, y, encounterType) {
     current.classList.add('past');
   }
 
-  const n = await addNode(game, 'current', x, y);
+  const n = addNode(game, 'current', x, y);
   gameState.currentGame = game;
   gameState.visitedGames.push(game);
   gameState.currentY = y;
@@ -398,7 +358,7 @@ function showFinish(node) {
 
 // ===== STATE RENDERING =====
 
-async function renderGameState() {
+function renderGameState() {
   // Clear previous content
   pathContainer.innerHTML = '';
   linesSvg.innerHTML = '';
@@ -426,11 +386,10 @@ async function renderGameState() {
 
   console.log('Rendering games:', gameState.visitedGames);
 
-  for (let index = 0; index < gameState.visitedGames.length; index++) {
-    const gameName = gameState.visitedGames[index];
+  gameState.visitedGames.forEach((gameName, index) => {
     const isLast = index === gameState.visitedGames.length - 1;
     const cls = isLast ? 'current' : 'past';
-    const node = await addNode(gameName, cls, cx, currentY);
+    const node = addNode(gameName, cls, cx, currentY);
     nodes.push(node);
 
     if (isLast) {
@@ -459,7 +418,7 @@ async function renderGameState() {
     }
 
     currentY += 160;
-  }
+  });
 
   // Draw lines between consecutive nodes
   for (let i = 0; i < nodes.length - 1; i++) {

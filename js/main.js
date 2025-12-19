@@ -187,75 +187,6 @@ document.getElementById('toggleTutorial')?.addEventListener('click', () => {
   }
 });
 
-document.getElementById('toggleIGDB')?.addEventListener('click', () => {
-  const igdbConfig = document.getElementById('igdbConfig');
-  if (igdbConfig.style.display === 'none') {
-    igdbConfig.style.display = 'block';
-    // Load existing credentials
-    const clientId = localStorage.getItem('igdb_client_id') || '';
-    const clientSecret = localStorage.getItem('igdb_client_secret') || '';
-    document.getElementById('igdb-client-id').value = clientId;
-    document.getElementById('igdb-client-secret').value = clientSecret;
-  } else {
-    igdbConfig.style.display = 'none';
-  }
-});
-
-document.getElementById('save-igdb-credentials')?.addEventListener('click', () => {
-  const clientId = document.getElementById('igdb-client-id').value.trim();
-  const clientSecret = document.getElementById('igdb-client-secret').value.trim();
-  const statusDiv = document.getElementById('igdb-status');
-
-  if (!clientId || !clientSecret) {
-    statusDiv.style.display = 'block';
-    statusDiv.style.background = '#ffebee';
-    statusDiv.style.color = '#c62828';
-    statusDiv.textContent = '❌ Please enter both Client ID and Client Secret';
-    return;
-  }
-
-  setIGDBCredentials(clientId, clientSecret);
-
-  statusDiv.style.display = 'block';
-  statusDiv.style.background = '#e8f5e9';
-  statusDiv.style.color = '#2e7d32';
-  statusDiv.textContent = '✅ Credentials saved! Game covers will now load automatically.';
-});
-
-document.getElementById('test-igdb-connection')?.addEventListener('click', async () => {
-  const statusDiv = document.getElementById('igdb-status');
-  statusDiv.style.display = 'block';
-  statusDiv.style.background = '#e3f2fd';
-  statusDiv.style.color = '#1565c0';
-  statusDiv.textContent = '🔄 Testing connection...';
-
-  try {
-    const token = await getIGDBAccessToken();
-    if (token) {
-      statusDiv.style.background = '#e8f5e9';
-      statusDiv.style.color = '#2e7d32';
-      statusDiv.textContent = '✅ Connection successful! IGDB API is working.';
-    } else {
-      statusDiv.style.background = '#ffebee';
-      statusDiv.style.color = '#c62828';
-      statusDiv.textContent = '❌ Connection failed. Please check your credentials.';
-    }
-  } catch (error) {
-    statusDiv.style.background = '#ffebee';
-    statusDiv.style.color = '#c62828';
-    statusDiv.textContent = `❌ Error: ${error.message}`;
-  }
-});
-
-document.getElementById('clear-cover-cache')?.addEventListener('click', () => {
-  clearCoverCache();
-  const statusDiv = document.getElementById('igdb-status');
-  statusDiv.style.display = 'block';
-  statusDiv.style.background = '#e8f5e9';
-  statusDiv.style.color = '#2e7d32';
-  statusDiv.textContent = '✅ Cover cache cleared! Covers will be re-fetched from IGDB.';
-});
-
 document.getElementById('clearAllData')?.addEventListener('click', () => {
   if (confirm('This will delete ALL saved games and reset the app. Are you sure?')) {
     localStorage.clear();
@@ -697,7 +628,143 @@ function enableButtons() {
   }
 }
 
+// ===== MODAL FUNCTIONS =====
+
+function createGameModal(content) {
+  const existingModal = document.getElementById('game-modal');
+  if (existingModal) existingModal.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'game-modal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s;
+  `;
+
+  const modalContent = document.createElement('div');
+  modalContent.className = 'modal-content';
+  modalContent.style.cssText = `
+    background: #1e1e1e;
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    color: white;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  `;
+
+  modalContent.innerHTML = content;
+  modal.appendChild(modalContent);
+  document.body.appendChild(modal);
+
+  return modal;
+}
+
+function closeGameModal() {
+  const modal = document.getElementById('game-modal');
+  if (modal) {
+    modal.style.animation = 'fadeOut 0.3s';
+    setTimeout(() => modal.remove(), 300);
+  }
+}
+
+function showItemChoiceModal() {
+  if (items.length === 0) {
+    // If no items, just spawn choices
+    setTimeout(() => spawnChoices(), 300);
+    return;
+  }
+
+  const choices = [];
+  for (let i = 0; i < 2; i++) {
+    const rarityRoll = Math.random() * 100;
+    let targetRarity = rarityRoll <= 50 ? 'common' : rarityRoll <= 85 ? 'uncommon' : 'rare';
+
+    const rarityItems = items.filter(item => item.rarity === targetRarity);
+    if (rarityItems.length > 0) {
+      const randomIndex = Math.floor(Math.random() * rarityItems.length);
+      choices.push(rarityItems[randomIndex]);
+    } else {
+      const randomIndex = Math.floor(Math.random() * items.length);
+      choices.push(items[randomIndex]);
+    }
+  }
+
+  let itemsHTML = '<div style="display: flex; gap: 20px; margin-top: 20px; justify-content: center;">';
+
+  choices.forEach((item, index) => {
+    const rarityColor = item.rarity === 'common' ? '#aaa' : item.rarity === 'uncommon' ? '#4CAF50' : '#9b59b6';
+
+    itemsHTML += `
+      <div class="item-choice-card" data-index="${index}" style="
+        flex: 1;
+        max-width: 250px;
+        padding: 20px;
+        background: #2d2d2d;
+        border: 3px solid ${rarityColor};
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: center;
+      ">
+        <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">${item.name}</div>
+        <div style="color: ${rarityColor}; font-size: 14px; margin-bottom: 15px;">${item.rarity}</div>
+        <div style="color: #ccc; font-size: 14px; line-height: 1.5;">${item.description}</div>
+        <div style="color: #888; font-size: 12px; margin-top: 10px; font-style: italic;">${item.type}</div>
+      </div>
+    `;
+  });
+
+  itemsHTML += '</div>';
+  itemsHTML += '<p style="text-align: center; color: #888; margin-top: 20px; font-size: 14px;">Click an item to choose it</p>';
+
+  createGameModal(`
+    <div>
+      <h2 style="color: #f39c12; margin-top: 0; text-align: center;">🎁 Choose Your Reward!</h2>
+      <p style="text-align: center; color: #aaa;">Select one item to add to your inventory</p>
+      ${itemsHTML}
+    </div>
+  `);
+
+  document.querySelectorAll('.item-choice-card').forEach(card => {
+    card.onmouseenter = (e) => {
+      e.currentTarget.style.transform = 'translateY(-5px) scale(1.05)';
+      e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+    };
+    card.onmouseleave = (e) => {
+      e.currentTarget.style.transform = '';
+      e.currentTarget.style.boxShadow = '';
+    };
+    card.onclick = (e) => {
+      const itemIndex = parseInt(e.currentTarget.dataset.index);
+      const item = choices[itemIndex];
+
+      inventory.push(item);
+      gameState.inventory = [...inventory];
+      updateInventory();
+
+      closeGameModal();
+
+      // Now spawn the next choices
+      setTimeout(() => spawnChoices(), 300);
+    };
+  });
+}
+
 // Export to global scope
 window.loadState = loadState;
 window.saveCurrentGame = saveCurrentGame;
 window.loadSavedGame = loadSavedGame;
+window.createGameModal = createGameModal;
+window.closeGameModal = closeGameModal;
+window.showItemChoiceModal = showItemChoiceModal;

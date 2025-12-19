@@ -78,48 +78,6 @@
       <p style="color: #888; font-size: 14px; margin-top: 20px; font-style: italic;">💡 Tip: Build up health and items during exploration before grabbing the Amulet!</p>
     </div>
     <input type="file" id="excelFile" accept=".xlsx, .xls">
-
-    <!-- IGDB Configuration -->
-    <div style="margin-top: 20px;">
-      <button id="toggleIGDB" style="background: #9146FF;">🎮 Configure Game Covers (IGDB)</button>
-      <div id="igdbConfig" style="display: none; text-align: left; max-width: 800px; margin: 20px auto; padding: 20px; background: #f9f9f9; border-radius: 8px; border: 2px solid #ddd;">
-        <h3 style="color: #333; margin-top: 0;">🎮 IGDB API Configuration</h3>
-        <p style="color: #666; line-height: 1.6;">To show game cover images instead of just game names, you need to configure IGDB API credentials.</p>
-
-        <h4 style="color: #9146FF; margin-top: 20px;">📋 Setup Instructions:</h4>
-        <ol style="color: #666; line-height: 1.8;">
-          <li>Create a Twitch account at <a href="https://www.twitch.tv/signup" target="_blank">twitch.tv/signup</a></li>
-          <li>Register an application at <a href="https://dev.twitch.tv/console/apps" target="_blank">Twitch Developer Console</a></li>
-          <li>Set OAuth Redirect URL to: <code>http://localhost</code></li>
-          <li>Copy your <strong>Client ID</strong> and <strong>Client Secret</strong></li>
-          <li>Paste them below and click "Save Credentials"</li>
-        </ol>
-
-        <div style="margin-top: 20px;">
-          <label style="display: block; margin-bottom: 10px; color: #333; font-weight: bold;">
-            Client ID:
-            <input type="text" id="igdb-client-id" placeholder="Enter your Twitch Client ID" style="display: block; width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
-          </label>
-
-          <label style="display: block; margin-bottom: 10px; color: #333; font-weight: bold;">
-            Client Secret:
-            <input type="password" id="igdb-client-secret" placeholder="Enter your Twitch Client Secret" style="display: block; width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
-          </label>
-
-          <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button id="save-igdb-credentials" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">Save Credentials</button>
-            <button id="test-igdb-connection" style="padding: 10px 20px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">Test Connection</button>
-            <button id="clear-cover-cache" style="padding: 10px 20px; background: #ff9800; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear Cache</button>
-          </div>
-
-          <div id="igdb-status" style="margin-top: 15px; padding: 10px; border-radius: 4px; display: none;"></div>
-        </div>
-
-        <p style="color: #888; font-size: 14px; margin-top: 20px; font-style: italic;">
-          ⚠️ Note: Your credentials are stored locally in your browser. They are never sent to any server except IGDB's API.
-        </p>
-      </div>
-    </div>
   </div>
 
     <!-- True Gameplay Section -->
@@ -522,7 +480,6 @@
 
   <!-- Load JavaScript modules in order -->
   <script src="js/data.js"></script>
-  <script src="js/igdb.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/combat.js"></script>
   <script src="js/events.js"></script>
