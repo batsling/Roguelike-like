@@ -201,12 +201,14 @@ function spawnChoices() {
   const shuffled = [...gamesToChooseFrom].sort(() => Math.random() - 0.5);
   const opts = shuffled.slice(0, Math.min(3, shuffled.length));
 
-  const sx = 450 - ((opts.length - 1) * 220) / 2;
+  // Increased spacing to prevent overlap (280px apart)
+  const spacing = 280;
+  const sx = 450 - ((opts.length - 1) * spacing) / 2;
   const currentNode = document.querySelector('.node.current');
 
   opts.forEach((g, i) => {
-    const nx = sx + i * 220;
-    const ny = gameState.currentY + 160;
+    const nx = sx + i * spacing;
+    const ny = gameState.currentY + 180;
 
     // Determine encounter type
     const encounterRoll = Math.random() * 100;
@@ -286,11 +288,18 @@ function spawnChoices() {
 // ===== GAME ADVANCEMENT =====
 
 function advance(game, x, y, encounterType) {
+  // Get current player icon position before clearing choices
+  const oldPlayerIcon = document.getElementById('player-icon');
+  let startY = gameState.currentY || 120;
+
   clearChoices();
   const current = document.querySelector('.node.current');
   if (current) {
     current.classList.remove('current');
     current.classList.add('past');
+    // Remove old player icon
+    const oldIcon = current.querySelector('#player-icon');
+    if (oldIcon) oldIcon.remove();
   }
 
   const n = addNode(game, 'current', x, y);
@@ -299,6 +308,34 @@ function advance(game, x, y, encounterType) {
   gameState.currentY = y;
 
   document.getElementById('distance-display').textContent = `Target: ${gameState.amuletGame.name} — ${bfs(game, gameState.amuletGame.name)} steps away`;
+
+  // Add player icon with animation
+  if (gameState.character && PLAYER_CHARACTERS[gameState.character]) {
+    const playerIcon = document.createElement('img');
+    playerIcon.src = PLAYER_CHARACTERS[gameState.character].icon;
+    playerIcon.id = 'player-icon';
+
+    // Start from old position for animation
+    playerIcon.style.cssText = `
+      position: absolute;
+      top: ${startY - y - 55}px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 48px;
+      height: 48px;
+      image-rendering: pixelated;
+      z-index: 100;
+      pointer-events: none;
+      transition: top 0.6s ease-in-out;
+    `;
+    n.appendChild(playerIcon);
+
+    // Trigger animation after a brief delay
+    setTimeout(() => {
+      playerIcon.style.top = '-55px';
+      playerIcon.style.animation = 'playerPulse 2s infinite';
+    }, 50);
+  }
 
   // Check if reached amulet game
   if (game === gameState.amuletGame.name) {
@@ -322,7 +359,14 @@ function advance(game, x, y, encounterType) {
   }
 
   showFinish(n);
-  viewport.scrollTop = y - 200;
+
+  // Smooth scroll to new position
+  setTimeout(() => {
+    viewport.scrollTo({
+      top: y - 200,
+      behavior: 'smooth'
+    });
+  }, 100);
 
   // Save game (function in main.js)
   if (typeof saveCurrentGame === 'function') {
@@ -335,6 +379,11 @@ function showFinish(node) {
   b.className = 'finish';
   b.textContent = 'Finished';
   b.onclick = () => {
+    // Disable button immediately to prevent multiple clicks
+    b.disabled = true;
+    b.style.opacity = '0.5';
+    b.style.cursor = 'not-allowed';
+
     // Show item choice modal first
     if (typeof showItemChoiceModal === 'function') {
       showItemChoiceModal();

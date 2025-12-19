@@ -628,6 +628,18 @@ function enableButtons() {
   }
 }
 
+// ===== HELPER FUNCTIONS =====
+
+function getStatColor(stat) {
+  switch(stat) {
+    case 'Strength': return '#ff4444';
+    case 'Charisma': return '#9b59b6';
+    case 'Intelligence': return '#3498db';
+    case 'Dexterity': return '#4CAF50';
+    default: return '#fff';
+  }
+}
+
 // ===== MODAL FUNCTIONS =====
 
 function createGameModal(content) {
@@ -676,6 +688,260 @@ function closeGameModal() {
     modal.style.animation = 'fadeOut 0.3s';
     setTimeout(() => modal.remove(), 300);
   }
+}
+
+function showCombatModal() {
+  if (enemies.length === 0) return;
+
+  const stats = ['Strength', 'Charisma', 'Intelligence', 'Dexterity'];
+  const randomStat = stats[Math.floor(Math.random() * stats.length)];
+
+  let powerText = 'Low';
+  if (gameState.beatenGames.length >= 9) {
+    powerText = 'High';
+  } else if (gameState.beatenGames.length >= 4) {
+    powerText = 'Medium';
+  }
+
+  const matchingEnemies = enemies.filter(enemy =>
+    enemy.powerLevel === powerText && enemy.stat === randomStat
+  );
+
+  if (matchingEnemies.length === 0) return;
+
+  const randomIndex = Math.floor(Math.random() * matchingEnemies.length);
+  const enemy = matchingEnemies[randomIndex];
+
+  createGameModal(`
+    <div style="text-align: center;">
+      <h2 style="color: #ff4444; margin-top: 0;">Combat Encounter!</h2>
+      <h3>${enemy.name}</h3>
+      <p style="color: #888;">From: ${enemy.game}</p>
+      ${enemy.imageUrl ? `<img src="${enemy.imageUrl}" style="max-width: 200px; max-height: 200px; image-rendering: pixelated; margin: 10px auto; display: block;" alt="${enemy.name}">` : ''}
+      <p style="font-size: 18px; margin: 20px 0;">
+        <span style="color: ${getStatColor(enemy.stat)};">${enemy.stat}</span> Check:
+        <strong>${enemy.rollCheck}+</strong>
+      </p>
+      <button id="roll-combat-btn" style="padding: 15px 30px; font-size: 18px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; margin: 10px;">
+        Roll D20
+      </button>
+      <div id="combat-result" style="margin-top: 20px; font-size: 16px;"></div>
+    </div>
+  `);
+
+  document.getElementById('roll-combat-btn').onclick = () => {
+    const roll = Math.floor(Math.random() * 20) + 1;
+    const success = roll >= enemy.rollCheck;
+
+    let resultHTML = `<p style="font-size: 24px; font-weight: bold;">Rolled: ${roll}</p>`;
+
+    if (success) {
+      const goldMatch = enemy.successReward.match(/(\d+) Gold/);
+      if (goldMatch) {
+        const goldAmount = parseInt(goldMatch[1]);
+        gold += goldAmount;
+        gameState.gold = gold;
+        updateTopBar();
+      }
+      resultHTML += `<p style="color: #4CAF50; font-weight: bold;">SUCCESS!</p>
+                    <p>${enemy.successReward}</p>`;
+    } else {
+      const healthMatch = enemy.failureConsequence.match(/(\d+) health/);
+      if (healthMatch) {
+        const healthLoss = parseInt(healthMatch[1]);
+        health = Math.max(0, health - healthLoss);
+        gameState.health = health;
+        updateHealthDisplay();
+      }
+
+      const matchingCurses = curses.filter(curse =>
+        curse.powerLevel === powerText && curse.stat === randomStat
+      );
+      let failureText = enemy.failureConsequence;
+      if (matchingCurses.length > 0) {
+        const randomCurseIndex = Math.floor(Math.random() * matchingCurses.length);
+        const selectedCurse = matchingCurses[randomCurseIndex];
+        failureText = `Lose ${healthMatch ? healthMatch[1] : 2} health and gain ${selectedCurse.name} (${selectedCurse.duration})`;
+      }
+
+      resultHTML += `<p style="color: #ff4444; font-weight: bold;">FAILURE!</p>
+                    <p>${failureText}</p>`;
+    }
+
+    resultHTML += `<button onclick="closeGameModal()" style="padding: 10px 20px; margin-top: 20px; background: #666; border: none; border-radius: 6px; color: white; cursor: pointer;">Continue</button>`;
+
+    document.getElementById('combat-result').innerHTML = resultHTML;
+    document.getElementById('roll-combat-btn').disabled = true;
+
+    encounterHistory.push({
+      type: 'combat',
+      enemy: enemy.name,
+      outcome: success ? 'Victory' : 'Defeat',
+      timestamp: new Date().toLocaleString()
+    });
+    updateEncounterHistory();
+    saveCurrentGame();
+  };
+}
+
+function showEventModal() {
+  if (events.length === 0) return;
+
+  const randomIndex = Math.floor(Math.random() * events.length);
+  const event = events[randomIndex];
+
+  let optionsHTML = '<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">';
+
+  event.options.forEach((option, index) => {
+    const optionType = detectOptionType(option);
+    const borderColor = optionType === 'attack' ? '#e74c3c' :
+                       optionType === 'explore' ? '#3498db' :
+                       optionType === 'talk' ? '#2ecc71' : '#f39c12';
+
+    optionsHTML += `
+      <button class="event-modal-option" data-index="${index}" style="
+        padding: 12px 20px;
+        background: #2d2d2d;
+        border: 2px solid ${borderColor};
+        border-left: 6px solid ${borderColor};
+        border-radius: 6px;
+        color: white;
+        cursor: pointer;
+        text-align: left;
+        transition: all 0.2s;
+      ">${option}</button>
+    `;
+  });
+
+  optionsHTML += '</div>';
+
+  createGameModal(`
+    <div>
+      <h2 style="color: #9b59b6; margin-top: 0;">Event Encounter!</h2>
+      <h3>${event.name}</h3>
+      <p>${event.description}</p>
+      ${optionsHTML}
+    </div>
+  `);
+
+  document.querySelectorAll('.event-modal-option').forEach(btn => {
+    btn.onmouseenter = (e) => {
+      e.target.style.transform = 'translateX(5px)';
+      e.target.style.background = '#3d3d3d';
+    };
+    btn.onmouseleave = (e) => {
+      e.target.style.transform = '';
+      e.target.style.background = '#2d2d2d';
+    };
+    btn.onclick = (e) => {
+      const optionIndex = e.target.dataset.index;
+      handleEventChoice(event, event.options[optionIndex]);
+    };
+  });
+}
+
+function handleEventChoice(event, option) {
+  encounterHistory.push({
+    type: 'event',
+    name: event.name,
+    option: option,
+    timestamp: new Date().toLocaleString()
+  });
+  updateEncounterHistory();
+
+  const modal = document.getElementById('game-modal');
+  if (modal) {
+    modal.querySelector('.modal-content').innerHTML = `
+      <div style="text-align: center;">
+        <h2 style="color: #4CAF50; margin-top: 0;">Choice Made</h2>
+        <p style="font-size: 18px;">${option}</p>
+        <p style="color: #888; margin-top: 20px;">The consequences of your choice unfold...</p>
+        <button onclick="closeGameModal()" style="padding: 10px 20px; margin-top: 20px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer;">Continue</button>
+      </div>
+    `;
+  }
+  saveCurrentGame();
+}
+
+function showShopModal() {
+  if (items.length === 0) return;
+
+  const shopItems = [];
+  for (let i = 0; i < 3; i++) {
+    const rarityRoll = Math.random() * 100;
+    let targetRarity = rarityRoll <= 50 ? 'common' : rarityRoll <= 85 ? 'uncommon' : 'rare';
+
+    const rarityItems = items.filter(item => item.rarity === targetRarity);
+    if (rarityItems.length > 0) {
+      const randomIndex = Math.floor(Math.random() * rarityItems.length);
+      shopItems.push(rarityItems[randomIndex]);
+    }
+  }
+
+  let itemsHTML = '<div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">';
+
+  shopItems.forEach((item, index) => {
+    const price = item.rarity === 'common' ? 10 : item.rarity === 'uncommon' ? 25 : 50;
+    const rarityColor = item.rarity === 'common' ? '#aaa' : item.rarity === 'uncommon' ? '#4CAF50' : '#9b59b6';
+
+    itemsHTML += `
+      <div style="padding: 15px; background: #2d2d2d; border-radius: 8px; border: 2px solid ${rarityColor};">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong style="font-size: 18px;">${item.name}</strong>
+          <span style="color: ${rarityColor}; font-size: 14px;">${item.rarity}</span>
+        </div>
+        <p style="color: #ccc; margin: 10px 0;">${item.description}</p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+          <span style="color: gold; font-weight: bold;">${price} Gold</span>
+          <button class="shop-buy-btn" data-index="${index}" data-price="${price}" style="
+            padding: 8px 16px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+          " ${gold < price ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+            ${gold >= price ? 'Buy' : 'Too Expensive'}
+          </button>
+        </div>
+      </div>
+    `;
+  });
+
+  itemsHTML += '</div>';
+
+  createGameModal(`
+    <div>
+      <h2 style="color: gold; margin-top: 0;">Shop Encounter!</h2>
+      <p style="text-align: center;">A mysterious merchant appears...</p>
+      <p style="text-align: center; color: gold; font-weight: bold;">Your Gold: ${gold}</p>
+      ${itemsHTML}
+      <button onclick="closeGameModal()" style="width: 100%; padding: 12px; margin-top: 20px; background: #666; border: none; border-radius: 6px; color: white; cursor: pointer;">Leave Shop</button>
+    </div>
+  `);
+
+  document.querySelectorAll('.shop-buy-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      const itemIndex = parseInt(e.target.dataset.index);
+      const price = parseInt(e.target.dataset.price);
+      const item = shopItems[itemIndex];
+
+      if (gold >= price) {
+        gold -= price;
+        gameState.gold = gold;
+        inventory.push(item);
+        gameState.inventory = [...inventory];
+        updateTopBar();
+        updateInventory();
+
+        e.target.textContent = 'Purchased!';
+        e.target.disabled = true;
+        e.target.style.background = '#666';
+
+        saveCurrentGame();
+      }
+    };
+  });
 }
 
 function showItemChoiceModal() {
@@ -767,4 +1033,8 @@ window.saveCurrentGame = saveCurrentGame;
 window.loadSavedGame = loadSavedGame;
 window.createGameModal = createGameModal;
 window.closeGameModal = closeGameModal;
+window.showCombatModal = showCombatModal;
+window.showEventModal = showEventModal;
+window.showShopModal = showShopModal;
+window.handleEventChoice = handleEventChoice;
 window.showItemChoiceModal = showItemChoiceModal;
