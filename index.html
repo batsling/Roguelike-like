@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roguelike-Like</title>
+  <!-- External CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- Top Bar -->
+  <div id="top-bar">
+    <div>
+      Gold: <span id="gold-total">0</span>
+      <button id="decrease-gold">-5</button>
+      <button id="increase-gold">+5</button>
+      Rations: <span id="rations-total">10</span>
+      <button id="decrease-rations">-</button>
+      <button id="increase-rations">+</button>
+    </div>
+    <h1>Roguelike-Like</h1>
+    <div class="health-container">
+      <div>
+        <button id="decrease-health">-</button>
+        <button id="increase-health">+</button>
+      </div>
+      <div class="health-display">
+        <div id="health-display">10/10</div>
+        <div class="health-bar-container">
+          <div id="health-bar" class="health-bar"></div>
+        </div>
+      </div>
+      <div class="max-health-controls">
+        <button id="decrease-max-health">-</button>
+        <button id="increase-max-health">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Container -->
+  <div class="main-container">
+    <!-- Header Section -->
+  <div class="header-section">
+    <h2>The Search for the Amulet of Nivlac</h2>
+    <div>
+      <button id="toggleTutorial" style="background: #2196F3;">📖 How to Play</button>
+      <button id="clearAllData" style="background: #ff4444;">🗑️ Clear All Data</button>
+    </div>
+    <div id="tutorial" style="display: none; text-align: left; max-width: 800px; margin: 20px auto; padding: 20px; background: #f9f9f9; border-radius: 8px; border: 2px solid #ddd;">
+      <h3 style="color: #333; margin-top: 0;">🎮 How to Play</h3>
+
+      <p style="color: #666; line-height: 1.6;"><strong>Goal:</strong> Enter the Dungeon of Roguelikes, grab the Amulet of Nivlac, and escape without dying.</p>
+
+      <h4 style="color: #4CAF50; margin-top: 20px;">🗺️ Exploration Phase</h4>
+      <ul style="color: #666; line-height: 1.8;">
+        <li>Navigate a map of roguelikes connected through inspiration</li>
+        <li>Move one game at a time across the map</li>
+        <li>After beating a game, you get a <strong>random item choice</strong></li>
+        <li>Then you trigger the space's <strong>Encounter</strong>:
+          <ul style="margin-top: 5px;">
+            <li><span style="color: red;">!</span> = <strong>Enemy Combat</strong> (dice roll using your stats)</li>
+            <li><span style="color: purple;">?</span> = <strong>Event</strong> (story choice)</li>
+            <li><span style="color: gold;">$</span> = <strong>Shop</strong> (buy items with gold)</li>
+          </ul>
+        </li>
+        <li>The encounter type is shown as an icon in the top-right of each space</li>
+        <li>Find the game marked with <span style="color: gold;">🏺</span> - that's where the Amulet is!</li>
+      </ul>
+
+      <h4 style="color: #ff4444; margin-top: 20px;">🏃 Escape Phase</h4>
+      <ul style="color: #666; line-height: 1.8;">
+        <li>Once you beat the Amulet game, you enter the Escape Phase</li>
+        <li>Choose <strong>3 games you've already beaten</strong> to replay</li>
+        <li>Each game you complete costs <strong>2 health</strong></li>
+        <li>Complete all 3 without dying to escape with the Amulet!</li>
+      </ul>
+
+      <p style="color: #888; font-size: 14px; margin-top: 20px; font-style: italic;">💡 Tip: Build up health and items during exploration before grabbing the Amulet!</p>
+    </div>
+    <input type="file" id="excelFile" accept=".xlsx, .xls">
+  </div>
+
+    <!-- True Gameplay Section -->
+    <div id="true-gameplay">
+      <h2 style="text-align: center; color: gold; margin-bottom: 20px;">True Gameplay Mode</h2>
+
+      <!-- Game Screen -->
+      <div id="game-screen">
+
+        <!-- Main Menu Screen (initial state) -->
+        <div id="main-menu">
+          <h1 style="font-size: 48px; color: gold; margin-bottom: 40px; text-shadow: 0 0 20px rgba(255,215,0,0.5);">Roguelike-Like</h1>
+          <div style="display: flex; flex-direction: column; gap: 20px; width: 300px;">
+            <button id="new-game-btn" disabled style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #4CAF50, #2E7D32); border: none; border-radius: 8px; color: white; cursor: pointer;">Start Run</button>
+            <div style="position: relative;">
+              <button id="continue-btn" style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #2196F3, #0D47A1); border: none; border-radius: 8px; color: white; cursor: pointer; width: 100%;">Continue</button>
+              <div id="save-list">
+                <!-- Save slots will be populated here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dungeon Path Screen -->
+        <div id="dungeon-screen" style="display: none; height: 100%; position: relative;">
+
+          <!-- ADD THIS STATS PANEL -->
+          <div id="game-stats">
+            <h3>📊 Stats</h3>
+
+            <!-- Core Stats -->
+            <div class="stat-section">
+              <div class="stat-item">
+                <span class="stat-label">Health:</span>
+                <span class="stat-value health" id="stats-health">10/10</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Gold:</span>
+                <span class="stat-value gold" id="stats-gold">0</span>
+              </div>
+            </div>
+
+            <!-- Combat Stats -->
+            <div class="stat-section">
+              <h4 style="margin: 10px 0 5px 0; font-size: 14px; color: #888; border-bottom: 1px solid #444; padding-bottom: 5px;">Combat</h4>
+              <div class="stat-item">
+                <span class="stat-label" style="color: #ff4444;">Strength:</span>
+                <span class="stat-value" id="stats-strength">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label" style="color: #4CAF50;">Dexterity:</span>
+                <span class="stat-value" id="stats-dexterity">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label" style="color: #3498db;">Intelligence:</span>
+                <span class="stat-value" id="stats-intelligence">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label" style="color: #9b59b6;">Charisma:</span>
+                <span class="stat-value" id="stats-charisma">0</span>
+              </div>
+            </div>
+
+            <!-- Progress Stats -->
+            <div class="stat-section">
+              <h4 style="margin: 10px 0 5px 0; font-size: 14px; color: #888; border-bottom: 1px solid #444; padding-bottom: 5px;">Progress</h4>
+              <div class="stat-item">
+                <span class="stat-label">Items:</span>
+                <span class="stat-value items" id="stats-items">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Games:</span>
+                <span class="stat-value" id="stats-games">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Distance:</span>
+                <span class="stat-value" id="stats-distance">∞</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Items Panel -->
+          <div id="game-items">
+            <h3>🎒 Inventory</h3>
+            <div id="game-items-list">
+              <div class="empty-inventory">No items yet</div>
+            </div>
+          </div>
+
+          <!-- HUD -->
+          <div id="game-hud">
+            <div>
+              <span>Health: </span>
+              <span id="game-health" style="color: #ff4444;">10/10</span>
+              <span style="margin-left: 20px;">Gold: </span>
+              <span id="game-gold" style="color: gold;">0</span>
+            </div>
+            <div id="distance-display"></div>
+            <button id="return-menu" style="padding: 5px 15px; background: #555; border: none; border-radius: 4px; color: white; cursor: pointer;">Menu</button>
+          </div>
+
+          <!-- Path Viewport -->
+          <div id="path-viewport">
+            <div id="path-container" style="min-height: 2000px; position: relative;">
+              <svg id="connection-lines" style="position: absolute; top: 0; left: 0; width: 100%; height: 2000px; pointer-events: none;"></svg>
+              <!-- Nodes will be added here dynamically -->
+            </div>
+          </div>
+
+          <!-- Target Display -->
+          <div id="target" style="padding: 14px; background: linear-gradient(#111, #181818); border-top: 2px solid #444; text-align: center; font-size: .95rem;">
+            <strong>Final Goal:</strong> <span id="target-game">Slay the Spire</span> (far below)
+          </div>
+
+          <!-- Tooltip -->
+          <div id="game-tooltip" class="tooltip"></div>
+        </div>
+      </div>
+
+      <!-- Save Name Input Modal -->
+      <!-- Character Selection & Run Naming Modal -->
+      <div id="save-modal">
+        <div style="background: #2d2d2d; padding: 30px; border-radius: 12px; width: 500px; max-height: 90vh; overflow-y: auto;">
+          <h3 style="margin-top: 0; color: gold; text-align: center;">Start New Run</h3>
+
+          <h4 style="color: #aaa; margin: 20px 0 10px 0;">Choose Your Character</h4>
+          <div id="character-selection" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+            <!-- Characters will be populated here -->
+          </div>
+
+          <h4 style="color: #aaa; margin: 20px 0 10px 0;">Name This Run</h4>
+          <input type="text" id="save-name-input" placeholder="Enter run name" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #555; border-radius: 6px; background: #1a1a1a; color: white;">
+
+          <div style="display: flex; gap: 10px;">
+            <button id="confirm-save" style="flex: 1; padding: 10px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer;">Start Run</button>
+            <button id="cancel-save" style="flex: 1; padding: 10px; background: #f44336; border: none; border-radius: 6px; color: white; cursor: pointer;">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+    <!-- Three Column Layout -->
+    <div class="three-column-layout">
+      <!-- Left Column - Games -->
+      <div class="column">
+        <div class="column-header">Games</div>
+
+        <!-- Start/Amulet Game Selection -->
+        <div class="section">
+          <label for="startGameSelect">Select Start Game:</label>
+          <select id="startGameSelect" disabled>
+            <option value="">-- Select a Start Game --</option>
+          </select>
+          <br>
+          <label for="amuletGameSelect">Select Amulet Game:</label>
+          <select id="amuletGameSelect" disabled>
+            <option value="">-- Select an Amulet Game --</option>
+          </select>
+          <br>
+          <button id="pickRandomGames" disabled>Get Start and Amulet Games</button>
+          <div id="output" class="output-area"></div>
+        </div>
+
+        <!-- Connected Games Finder -->
+        <div class="section">
+          <h3>Find Adjacent Games</h3>
+          <label for="gameSelect">Select Your Current Game:</label>
+          <select id="gameSelect" disabled>
+            <option value="">-- Select a Game --</option>
+          </select>
+          <br>
+          <label for="numConnectedGames">Number of Games to Show:</label>
+          <input type="number" id="numConnectedGames" value="3" min="1" max="10">
+          <button id="pickConnectedGames" disabled>Pick Connected Games</button>
+          <div id="output2" class="output-area"></div>
+        </div>
+
+        <!-- Random Game Generator -->
+        <div class="section">
+          <h3>Find Random Games</h3>
+          <label for="decadeSelect">Decade:</label>
+          <select id="decadeSelect" disabled>
+            <option value="">-- Select a Decade --</option>
+          </select>
+          <br>
+          <label for="yearSelect">Exact Year:</label>
+          <select id="yearSelect" disabled>
+            <option value="">-- Select a Year --</option>
+          </select>
+          <br>
+          <label for="typeSelect">Game Type:</label>
+          <select id="typeSelect" disabled>
+            <option value="">-- Select a Type --</option>
+          </select>
+          <br>
+          <label for="excludeGameSelect">Exclude Games:</label>
+          <select id="excludeGameSelect" disabled>
+            <option value="">-- Select a Game to Exclude --</option>
+          </select>
+          <button id="addExcludedGame" disabled>Exclude Game</button>
+          <div class="excluded-games-list" id="excludedGamesList"></div>
+          <button id="generateRandomGame" disabled>Generate Random Game</button>
+          <div id="output4" class="output-area"></div>
+        </div>
+
+        <!-- Escape Phase -->
+        <div class="section">
+          <h3>Escape Phase</h3>
+          <label for="beatenGameSelect">Add a Beaten Game:</label>
+          <select id="beatenGameSelect" disabled>
+            <option value="">-- Select a Game --</option>
+          </select>
+          <button id="addBeatenGame" disabled>Add to Beaten Games</button>
+
+          <h4>Beaten Games</h4>
+          <div id="beatenGamesList"></div>
+
+          <label for="selectGameForEscape">Select a Game for Escape:</label>
+          <select id="selectGameForEscape" disabled>
+            <option value="">-- Select a Game --</option>
+          </select>
+          <button id="addGameForEscape" disabled>Add to Escape Games</button>
+          <button id="randomSelectForPhase2" disabled>Randomly Select One Game</button>
+
+          <h4>Selected Games for Escape</h4>
+          <div id="selectedGames" class="selected-games"></div>
+        </div>
+      </div>
+
+      <!-- Middle Column - Items -->
+      <div class="column">
+        <div class="column-header">Items</div>
+
+        <!-- Item Selection -->
+        <div class="section">
+          <label for="itemSelect">Select an Item:</label>
+          <select id="itemSelect" disabled>
+            <option value="">-- Select an Item --</option>
+          </select>
+          <div class="button-group">
+            <button id="giveSelectedItem" disabled>Give Selected Item</button>
+            <button id="pickRandomItem" disabled>Get Random Item</button>
+          </div>
+          <div class="button-group">
+            <button id="pickRandomChoice" disabled>Random Item Choice</button>
+            <input type="number" id="choiceCount" value="2" min="1" max="5" style="width: 40px;">
+          </div>
+          <div id="output3" class="output-area"></div>
+          <div id="itemChoices"></div>
+        </div>
+
+        <!-- Item Removal -->
+        <div class="section">
+          <label for="removeItemSelect">Select Item to Remove:</label>
+          <select id="removeItemSelect" disabled>
+            <option value="">-- Select an Item --</option>
+          </select>
+          <div class="button-group">
+            <button id="removeSelectedItem" disabled>Remove Selected Item</button>
+            <button id="removeRandomItem" disabled>Remove Random Item</button>
+          </div>
+          <div id="removedItemOutput" class="output-area" style="display: none;"></div>
+        </div>
+
+        <!-- Inventory -->
+        <div class="section">
+          <h3>Inventory</h3>
+          <div id="inventory"></div>
+        </div>
+      </div>
+
+      <!-- Right Column - Encounters -->
+      <div class="column">
+        <div class="column-header">Encounters</div>
+
+        <!-- Combat Section -->
+        <div class="section">
+          <h3>Combat</h3>
+          <div class="combat-selector">
+            <select id="statSelect" disabled>
+              <option value="">-- Select Stat --</option>
+              <option value="Strength" class="strength">Strength</option>
+              <option value="Charisma" class="charisma">Charisma</option>
+              <option value="Intelligence" class="intelligence">Intelligence</option>
+              <option value="Dexterity" class="dexterity">Dexterity</option>
+            </select>
+
+            <select id="powerSelect" disabled>
+              <option value="">-- Select Power --</option>
+              <option value="1">Low (0-3 Games Beaten)</option>
+              <option value="2">Medium (4-8 Games Beaten)</option>
+              <option value="3">High (9+ Games Beaten)</option>
+            </select>
+
+            <button id="generateEnemy" disabled>Generate Enemy</button>
+          </div>
+
+          <div id="enemyDisplay" class="enemy-display" style="display: none;">
+            <h4 id="enemyName"></h4>
+            <div id="enemyGame" style="font-size: 0.9em;"></div>
+            <img id="enemyImage" class="enemy-image" src="" alt="Enemy Image">
+            <div class="roll-section">
+              <span>Roll Check: <span id="rollCheckValue"></span></span>
+              <button class="d20-button" id="rollD20">D20</button>
+              <span id="rollResult"></span>
+            </div>
+            <div class="outcome-section">
+              <div id="successOutcome" class="outcome-button success-outcome"></div>
+              <div id="failureOutcome" class="outcome-button failure-outcome"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Event Check Section -->
+        <div class="section">
+          <h3>Encounter Check</h3>
+          <div class="button-group">
+            <button id="checkEvent" disabled>Random Encounter</button>
+          </div>
+          <div id="eventResult" class="output-area"></div>
+        </div>
+
+        <!-- Encounter History Section -->
+        <div class="section">
+          <h3>Encounter History</h3>
+          <div id="encounterHistory"></div>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- Map Viewer -->
+    <div id="map-container">
+      <h2>Game Map</h2>
+      <div id="map-controls">
+        <input type="file" id="svgInput" accept=".svg" />
+        <button id="markBtn">Mark Games</button>
+        <button id="saveBtn">Save Marked SVG</button>
+        <button id="resetBtn">Reset View</button>
+        <button id="debugBtn">Toggle Debug Highlights</button>
+        <div id="zoom-slider-container">
+          <button id="zoomOut">-</button>
+          <input type="range" id="zoom-slider" min="10" max="500" value="100">
+          <span id="zoom-value">100%</span>
+          <button id="zoomIn">+</button>
+        </div>
+        <button id="panBtn">Pan Mode</button>
+        <button id="addMarkersBtn">Add Player/Amulet Markers</button>
+      </div>
+
+      <div id="svg-container">
+        <div id="svg-viewport"></div>
+      </div>
+
+      <div id="zoom-info">Zoom: 100%</div>
+      <p id="boxCount">Games marked: 0</p>
+      <p id="map-status">Ready to process SVG</p>
+    </div>
+
+    <!-- Pact of Punishment -->
+    <div id="pact-of-punishment">
+      <h2>Pact of Punishment</h2>
+      <label for="completions">Number of Times Beaten:</label>
+      <input type="number" id="completions" min="0" value="0">
+      <button id="calculateRoguePoints">Calculate Rogue Points</button>
+      <div id="rogue-points-display"></div>
+      <h3>Conditions</h3>
+      <div class="pact-condition">
+        <span>Start with less health (1 Rogue Point per health lost)</span>
+        <button id="lessHealth-minus">-</button>
+        <span id="lessHealth-count">0</span>
+        <button id="lessHealth-plus">+</button>
+      </div>
+      <div class="pact-condition">
+        <span>Require more games to escape (2 Rogue Point per extra game)</span>
+        <button id="moreGames-minus">-</button>
+        <span id="moreGames-count">0</span>
+        <button id="moreGames-plus">+</button>
+      </div>
+      <div class="pact-condition">
+        <span>Randomly select one required game (2 Rogue Point per random game)</span>
+        <button id="randomGame-minus">-</button>
+        <span id="randomGame-count">0</span>
+        <button id="randomGame-plus">+</button>
+      </div>
+      <div class="pact-condition">
+        <span>Add a "Challenge Run" (3 Rogue Point per challenge run)</span>
+        <button id="challengeRun-minus">-</button>
+        <span id="challengeRun-count">0</span>
+        <button id="challengeRun-plus">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Box Zoom -->
+  <div id="box-zoom-popup" class="box-zoom-popup"></div>
+
+  <!-- Include SheetJS library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- Load JavaScript modules in order -->
+  <script src="js/data.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/combat.js"></script>
+  <script src="js/events.js"></script>
+  <script src="js/gameplay.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
