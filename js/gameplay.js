@@ -53,12 +53,51 @@ function getGameConnections(gameName) {
 
 // ===== NODE CREATION =====
 
-function addNode(name, cls, x, y) {
+async function addNode(name, cls, x, y) {
   const d = document.createElement('div');
   d.className = `node ${cls}`;
   d.style.left = x + 'px';
   d.style.top = y + 'px';
-  d.textContent = name;
+
+  // Try to get game cover from IGDB
+  const game = games.find(g => g.name === name);
+  const coverUrl = await fetchGameCover(name, game?.year);
+
+  if (coverUrl) {
+    // Create cover image
+    const img = document.createElement('img');
+    img.src = coverUrl;
+    img.alt = name;
+    img.style.cssText = `
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 8px 8px 0 0;
+      display: block;
+    `;
+
+    // Create name label
+    const label = document.createElement('div');
+    label.textContent = name;
+    label.style.cssText = `
+      padding: 8px;
+      font-size: 12px;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 0 0 8px 8px;
+      line-height: 1.2;
+      max-height: 40px;
+      overflow: hidden;
+    `;
+
+    d.appendChild(img);
+    d.appendChild(label);
+    d.style.padding = '0';
+    d.style.overflow = 'hidden';
+  } else {
+    // Fallback to text-only
+    d.textContent = name;
+  }
 
   d.onmouseenter = e => showTooltip(e, name);
   d.onmousemove = e => moveTooltip(e);
@@ -188,7 +227,7 @@ function clearChoices() {
   }
 }
 
-function spawnChoices() {
+async function spawnChoices() {
   clearChoices();
 
   // Get all connected games
@@ -204,7 +243,8 @@ function spawnChoices() {
   const sx = 450 - ((opts.length - 1) * 220) / 2;
   const currentNode = document.querySelector('.node.current');
 
-  opts.forEach((g, i) => {
+  for (let i = 0; i < opts.length; i++) {
+    const g = opts[i];
     const nx = sx + i * 220;
     const ny = gameState.currentY + 160;
 
@@ -237,7 +277,7 @@ function spawnChoices() {
       encounterColor = 'gold';
     }
 
-    const n = addNode(g, 'choice', nx, ny);
+    const n = await addNode(g, 'choice', nx, ny);
 
     // Check if this is the amulet game
     const isAmuletGame = (g === gameState.amuletGame.name);
@@ -280,12 +320,12 @@ function spawnChoices() {
     }
 
     n.onclick = () => advance(g, nx, ny, encounterType);
-  });
+  }
 }
 
 // ===== GAME ADVANCEMENT =====
 
-function advance(game, x, y, encounterType) {
+async function advance(game, x, y, encounterType) {
   clearChoices();
   const current = document.querySelector('.node.current');
   if (current) {
@@ -293,7 +333,7 @@ function advance(game, x, y, encounterType) {
     current.classList.add('past');
   }
 
-  const n = addNode(game, 'current', x, y);
+  const n = await addNode(game, 'current', x, y);
   gameState.currentGame = game;
   gameState.visitedGames.push(game);
   gameState.currentY = y;
@@ -340,12 +380,25 @@ function showFinish(node) {
       showItemChoiceModal();
     }
   };
+
+  // Prevent button from triggering tooltip events
+  b.onmouseenter = (e) => {
+    hideTooltip();
+    e.stopPropagation();
+  };
+  b.onmousemove = (e) => {
+    e.stopPropagation();
+  };
+  b.onmouseleave = (e) => {
+    e.stopPropagation();
+  };
+
   node.appendChild(b);
 }
 
 // ===== STATE RENDERING =====
 
-function renderGameState() {
+async function renderGameState() {
   // Clear previous content
   pathContainer.innerHTML = '';
   linesSvg.innerHTML = '';
@@ -373,24 +426,25 @@ function renderGameState() {
 
   console.log('Rendering games:', gameState.visitedGames);
 
-  gameState.visitedGames.forEach((gameName, index) => {
+  for (let index = 0; index < gameState.visitedGames.length; index++) {
+    const gameName = gameState.visitedGames[index];
     const isLast = index === gameState.visitedGames.length - 1;
     const cls = isLast ? 'current' : 'past';
-    const node = addNode(gameName, cls, cx, currentY);
+    const node = await addNode(gameName, cls, cx, currentY);
     nodes.push(node);
 
     if (isLast) {
       gameState.currentY = currentY;
       showFinish(node);
 
-      // Add player icon on current node
+      // Add player icon on current node (above the box)
       if (gameState.character && PLAYER_CHARACTERS[gameState.character]) {
         const playerIcon = document.createElement('img');
         playerIcon.src = PLAYER_CHARACTERS[gameState.character].icon;
         playerIcon.id = 'player-icon';
         playerIcon.style.cssText = `
           position: absolute;
-          bottom: -40px;
+          top: -55px;
           left: 50%;
           transform: translateX(-50%);
           width: 48px;
@@ -398,13 +452,14 @@ function renderGameState() {
           image-rendering: pixelated;
           z-index: 100;
           animation: playerPulse 2s infinite;
+          pointer-events: none;
         `;
         node.appendChild(playerIcon);
       }
     }
 
     currentY += 160;
-  });
+  }
 
   // Draw lines between consecutive nodes
   for (let i = 0; i < nodes.length - 1; i++) {

@@ -187,6 +187,75 @@ document.getElementById('toggleTutorial')?.addEventListener('click', () => {
   }
 });
 
+document.getElementById('toggleIGDB')?.addEventListener('click', () => {
+  const igdbConfig = document.getElementById('igdbConfig');
+  if (igdbConfig.style.display === 'none') {
+    igdbConfig.style.display = 'block';
+    // Load existing credentials
+    const clientId = localStorage.getItem('igdb_client_id') || '';
+    const clientSecret = localStorage.getItem('igdb_client_secret') || '';
+    document.getElementById('igdb-client-id').value = clientId;
+    document.getElementById('igdb-client-secret').value = clientSecret;
+  } else {
+    igdbConfig.style.display = 'none';
+  }
+});
+
+document.getElementById('save-igdb-credentials')?.addEventListener('click', () => {
+  const clientId = document.getElementById('igdb-client-id').value.trim();
+  const clientSecret = document.getElementById('igdb-client-secret').value.trim();
+  const statusDiv = document.getElementById('igdb-status');
+
+  if (!clientId || !clientSecret) {
+    statusDiv.style.display = 'block';
+    statusDiv.style.background = '#ffebee';
+    statusDiv.style.color = '#c62828';
+    statusDiv.textContent = '❌ Please enter both Client ID and Client Secret';
+    return;
+  }
+
+  setIGDBCredentials(clientId, clientSecret);
+
+  statusDiv.style.display = 'block';
+  statusDiv.style.background = '#e8f5e9';
+  statusDiv.style.color = '#2e7d32';
+  statusDiv.textContent = '✅ Credentials saved! Game covers will now load automatically.';
+});
+
+document.getElementById('test-igdb-connection')?.addEventListener('click', async () => {
+  const statusDiv = document.getElementById('igdb-status');
+  statusDiv.style.display = 'block';
+  statusDiv.style.background = '#e3f2fd';
+  statusDiv.style.color = '#1565c0';
+  statusDiv.textContent = '🔄 Testing connection...';
+
+  try {
+    const token = await getIGDBAccessToken();
+    if (token) {
+      statusDiv.style.background = '#e8f5e9';
+      statusDiv.style.color = '#2e7d32';
+      statusDiv.textContent = '✅ Connection successful! IGDB API is working.';
+    } else {
+      statusDiv.style.background = '#ffebee';
+      statusDiv.style.color = '#c62828';
+      statusDiv.textContent = '❌ Connection failed. Please check your credentials.';
+    }
+  } catch (error) {
+    statusDiv.style.background = '#ffebee';
+    statusDiv.style.color = '#c62828';
+    statusDiv.textContent = `❌ Error: ${error.message}`;
+  }
+});
+
+document.getElementById('clear-cover-cache')?.addEventListener('click', () => {
+  clearCoverCache();
+  const statusDiv = document.getElementById('igdb-status');
+  statusDiv.style.display = 'block';
+  statusDiv.style.background = '#e8f5e9';
+  statusDiv.style.color = '#2e7d32';
+  statusDiv.textContent = '✅ Cover cache cleared! Covers will be re-fetched from IGDB.';
+});
+
 document.getElementById('clearAllData')?.addEventListener('click', () => {
   if (confirm('This will delete ALL saved games and reset the app. Are you sure?')) {
     localStorage.clear();
