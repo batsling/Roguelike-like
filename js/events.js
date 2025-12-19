@@ -1,0 +1,206 @@
+// ===== EVENTS.JS - Random Events, Shops, and Encounters =====
+//
+// This module handles:
+// - Random event selection
+// - Event option detection and handling
+// - Shop mechanics
+// - Event outcomes and consequences
+
+// ===== EVENT DETECTION =====
+
+function detectOptionType(optionText) {
+  const text = optionText.toLowerCase();
+  if (text.includes('attack') || text.includes('fight')) return 'attack';
+  if (text.includes('look') || text.includes('search') || text.includes('explore')) return 'explore';
+  if (text.includes('talk') || text.includes('ask') || text.includes('speak')) return 'talk';
+  if (text.includes('use') || text.includes('item')) return 'item';
+  if (text.includes('buy') || text.includes('purchase')) return 'shop';
+  if (text.includes('pray') || text.includes('bless')) return 'shrine';
+  return 'default';
+}
+
+// ===== EVENT OUTCOME GENERATION =====
+
+function getOptionOutcomeText(option) {
+  const text = option.toLowerCase();
+
+  // Combat options
+  if (text.includes('attack') || text.includes('fight') || text.includes('smash')) {
+    return "The enemy recoils from your strike!";
+  }
+
+  // Talk/Charisma options
+  if (text.includes('talk') || text.includes('ask') || text.includes('persuade')) {
+    return "The conversation yields useful information.";
+  }
+
+  // Search/Explore options
+  if (text.includes('search') || text.includes('look') || text.includes('explore')) {
+    return "Your careful investigation reveals hidden secrets.";
+  }
+
+  // Item usage
+  if (text.includes('use') || text.includes('consume')) {
+    return "The item's magic surges through you.";
+  }
+
+  // Shop/Purchase
+  if (text.includes('buy') || text.includes('purchase')) {
+    return "A fair trade is made.";
+  }
+
+  // Prayer/Shrine
+  if (text.includes('pray') || text.includes('offer')) {
+    return "Your devotion is recognized.";
+  }
+
+  // Disarm/Dexterity
+  if (text.includes('disarm') || text.includes('carefully')) {
+    return "Your nimble fingers make quick work of the mechanism.";
+  }
+
+  // Decline/Leave
+  if (text.includes('decline') || text.includes('leave') || text.includes('walk away')) {
+    return "Sometimes discretion is the better part of valor.";
+  }
+
+  // Default
+  return "Your actions have consequences...";
+}
+
+// ===== EVENT OPTION HANDLING =====
+
+function selectEncounterOption(eventIndex, optionIndex) {
+  const event = events[eventIndex];
+  const option = event.options[optionIndex];
+
+  // Visual feedback
+  const optionElement = document.querySelectorAll('.event-option')[optionIndex];
+  if (optionElement) {
+    optionElement.style.backgroundColor = '#d0d0d0';
+    setTimeout(() => {
+      optionElement.style.backgroundColor = '';
+    }, 200);
+  }
+
+  // Parse option for rewards/consequences
+  const goldMatch = option.match(/(\d+) gold/i);
+  if (goldMatch) {
+    const amount = parseInt(goldMatch[1]);
+    if (option.toLowerCase().includes('lose')) {
+      gold = Math.max(0, gold - amount);
+    } else {
+      gold += amount;
+    }
+    updateTopBar();
+  }
+
+  // Health changes
+  const healthMatch = option.match(/([+-]?\d+) health/i);
+  if (healthMatch) {
+    const amount = parseInt(healthMatch[1]);
+    if (amount > 0 || option.toLowerCase().includes('heal')) {
+      health = Math.min(maxHealth, health + Math.abs(amount));
+    } else {
+      health = Math.max(0, health - Math.abs(amount));
+    }
+    updateHealthDisplay();
+  }
+
+  // Max health changes
+  if (option.toLowerCase().includes('max health')) {
+    const maxHealthMatch = option.match(/([+-]?\d+) max health/i);
+    if (maxHealthMatch) {
+      const amount = parseInt(maxHealthMatch[1]);
+      maxHealth += amount;
+      if (health > maxHealth) health = maxHealth;
+      updateHealthDisplay();
+    }
+  }
+
+  // Stat bonuses
+  const statMatch = option.match(/(strength|dexterity|intelligence|charisma)/i);
+  if (statMatch && option.match(/\+\d+/)) {
+    const stat = statMatch[1];
+    const bonus = parseInt(option.match(/\+(\d+)/)[1]);
+    applyStatBonus(stat, bonus);
+  }
+
+  // Record in history
+  encounterHistory.push({
+    type: 'event',
+    name: event.name,
+    option: option,
+    timestamp: new Date().toLocaleString()
+  });
+
+  updateEncounterHistory();
+
+  // Display outcome
+  document.getElementById('eventResult').innerHTML = `
+    <h4>${event.name}</h4>
+    <p>You chose: <strong>${option}</strong></p>
+    <p>${getOptionOutcomeText(option)}</p>
+  `;
+}
+
+// ===== SHOP MECHANICS =====
+
+function displayShop() {
+  const shopItems = items.filter(item => {
+    // Shop has a mix of rarities with appropriate prices
+    return true; // All items can appear in shops
+  });
+
+  const shopSelection = [];
+  const numItems = 3;
+
+  for (let i = 0; i < numItems; i++) {
+    const rarityRoll = Math.random() * 100;
+    let targetRarity;
+
+    if (rarityRoll <= 60) {
+      targetRarity = 'common';
+    } else if (rarityRoll <= 90) {
+      targetRarity = 'uncommon';
+    } else {
+      targetRarity = 'rare';
+    }
+
+    const rarityItems = shopItems.filter(item => item.rarity === targetRarity);
+    if (rarityItems.length > 0) {
+      const randomItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
+
+      // Price based on rarity
+      let price;
+      switch(targetRarity) {
+        case 'common': price = 10; break;
+        case 'uncommon': price = 25; break;
+        case 'rare': price = 50; break;
+        default: price = 10;
+      }
+
+      shopSelection.push({ ...randomItem, price });
+    }
+  }
+
+  return shopSelection;
+}
+
+function purchaseItem(item, price) {
+  if (gold >= price) {
+    gold -= price;
+    inventory.push(item);
+    updateTopBar();
+    updateInventory();
+    return true;
+  }
+  return false;
+}
+
+// Export to global scope
+window.detectOptionType = detectOptionType;
+window.getOptionOutcomeText = getOptionOutcomeText;
+window.selectEncounterOption = selectEncounterOption;
+window.displayShop = displayShop;
+window.purchaseItem = purchaseItem;
