@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Goblin Scout",
+    "powerLevel": "1",
+    "game": "Rogue",
+    "stat": "Dexterity",
+    "rollCheck": 8,
+    "successReward": "+5 gold",
+    "failureConsequence": "-2 health",
+    "imageUrl": "https://i.imgur.com/placeholder.png"
+  },
+  {
+    "name": "Bandit Leader",
+    "powerLevel": "1",
+    "game": "NetHack",
+    "stat": "Strength",
+    "rollCheck": 10,
+    "successReward": "+10 gold, common item",
+    "failureConsequence": "-3 health",
+    "imageUrl": "https://i.imgur.com/placeholder.png"
+  },
+  {
+    "name": "Dark Wizard",
+    "powerLevel": "2",
+    "game": "Dungeon Crawl Stone Soup",
+    "stat": "Intelligence",
+    "rollCheck": 12,
+    "successReward": "Uncommon magic item",
+    "failureConsequence": "-4 health, cursed",
+    "imageUrl": "https://i.imgur.com/placeholder.png"
+  },
+  {
+    "name": "Elite Guard",
+    "powerLevel": "2",
+    "game": "Brogue",
+    "stat": "Strength",
+    "rollCheck": 14,
+    "successReward": "+15 gold, uncommon weapon",
+    "failureConsequence": "-5 health",
+    "imageUrl": "https://i.imgur.com/placeholder.png"
+  },
+  {
+    "name": "Dragon",
+    "powerLevel": "3",
+    "game": "Slay the Spire",
+    "stat": "Strength",
+    "rollCheck": 16,
+    "successReward": "Rare item, +20 gold",
+    "failureConsequence": "-8 health",
+    "imageUrl": "https://i.imgur.com/placeholder.png"
+  },
+  {
+    "name": "Lich King",
+    "powerLevel": "3",
+    "game": "Tales of Maj'Eyal",
+    "stat": "Intelligence",
+    "rollCheck": 18,
+    "successReward": "Rare artifact, +3 to chosen stat",
+    "failureConsequence": "-10 health, max health -2",
+    "imageUrl": "https://i.imgur.com/placeholder.png"
+  }
+]

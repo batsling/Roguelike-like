@@ -1,0 +1,56 @@
+[
+  {
+    "name": "Health Potion",
+    "rarity": "common",
+    "type": "consumable",
+    "description": "Restores 5 health"
+  },
+  {
+    "name": "Gold Coin Pouch",
+    "rarity": "common",
+    "type": "currency",
+    "description": "Contains 10 gold"
+  },
+  {
+    "name": "Rusty Sword",
+    "rarity": "common",
+    "type": "weapon",
+    "description": "+1 Strength in combat"
+  },
+  {
+    "name": "Leather Armor",
+    "rarity": "uncommon",
+    "type": "armor",
+    "description": "+1 to all combat stats"
+  },
+  {
+    "name": "Magic Scroll",
+    "rarity": "uncommon",
+    "type": "spell",
+    "description": "+2 Intelligence"
+  },
+  {
+    "name": "Lucky Charm",
+    "rarity": "uncommon",
+    "type": "trinket",
+    "description": "+1 to all dice rolls"
+  },
+  {
+    "name": "Dragon Scale Armor",
+    "rarity": "rare",
+    "type": "armor",
+    "description": "+2 Strength, +1 Dexterity"
+  },
+  {
+    "name": "Ancient Tome",
+    "rarity": "rare",
+    "type": "artifact",
+    "description": "+3 Intelligence"
+  },
+  {
+    "name": "Crown of Kings",
+    "rarity": "rare",
+    "type": "artifact",
+    "description": "+2 Charisma, +10 max health"
+  }
+]

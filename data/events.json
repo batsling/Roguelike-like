@@ -1,0 +1,52 @@
+[
+  {
+    "name": "Mysterious Merchant",
+    "description": "You encounter a hooded merchant offering strange wares.",
+    "options": [
+      "Buy a health potion (10 gold)",
+      "Buy a mystery item (20 gold)",
+      "Rob the merchant (Charisma check)",
+      "Walk away"
+    ]
+  },
+  {
+    "name": "Ancient Shrine",
+    "description": "You discover an ancient shrine glowing with power.",
+    "options": [
+      "Pray for strength (+2 Strength)",
+      "Pray for wisdom (+2 Intelligence)",
+      "Offer gold for blessing (20 gold for +5 max health)",
+      "Leave it alone"
+    ]
+  },
+  {
+    "name": "Trapped Chest",
+    "description": "A treasure chest sits in the middle of the room. It might be trapped.",
+    "options": [
+      "Carefully disarm (Dexterity check)",
+      "Smash it open (Strength check)",
+      "Use magic to open (Intelligence check)",
+      "Leave it"
+    ]
+  },
+  {
+    "name": "Wandering Healer",
+    "description": "A kind healer offers their services.",
+    "options": [
+      "Full heal (30 gold)",
+      "Small heal (+5 health, 10 gold)",
+      "Learn healing skill (+1 max health, 15 gold)",
+      "Decline"
+    ]
+  },
+  {
+    "name": "Cursed Altar",
+    "description": "A dark altar radiates malevolent energy. Risk and reward await.",
+    "options": [
+      "Take the cursed item (rare item + curse)",
+      "Destroy the altar (10 gold reward)",
+      "Study the curse (gain knowledge)",
+      "Flee"
+    ]
+  }
+]

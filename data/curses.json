@@ -1,0 +1,37 @@
+[
+  {
+    "name": "Weakness Curse",
+    "stat": "Strength",
+    "powerLevel": "1",
+    "duration": "3 encounters",
+    "description": "-2 Strength for 3 encounters"
+  },
+  {
+    "name": "Clumsiness Curse",
+    "stat": "Dexterity",
+    "powerLevel": "1",
+    "duration": "3 encounters",
+    "description": "-2 Dexterity for 3 encounters"
+  },
+  {
+    "name": "Mind Fog",
+    "stat": "Intelligence",
+    "powerLevel": "2",
+    "duration": "5 encounters",
+    "description": "-3 Intelligence for 5 encounters"
+  },
+  {
+    "name": "Social Anxiety",
+    "stat": "Charisma",
+    "powerLevel": "2",
+    "duration": "5 encounters",
+    "description": "-3 Charisma for 5 encounters"
+  },
+  {
+    "name": "Corruption",
+    "stat": "All",
+    "powerLevel": "3",
+    "duration": "permanent",
+    "description": "-1 to all stats, can only be removed at a shrine"
+  }
+]
