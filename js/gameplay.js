@@ -116,8 +116,9 @@ function drawArrowLine(fromNode, toNode) {
   l.setAttribute('y1', y1);
   l.setAttribute('x2', x2);
   l.setAttribute('y2', y2);
-  l.setAttribute('stroke', '#4CAF50');
-  l.setAttribute('stroke-width', '3');
+  l.setAttribute('stroke', 'gold');
+  l.setAttribute('stroke-width', '4');
+  l.setAttribute('opacity', '0.8');
   l.setAttribute('marker-end', 'url(#arrowhead)');
   linesSvg.appendChild(l);
 
@@ -137,9 +138,9 @@ function drawPastLine(fromNode, toNode) {
   l.setAttribute('y1', r1.bottom - pr.top);
   l.setAttribute('x2', r2.left + r2.width / 2 - pr.left);
   l.setAttribute('y2', r2.top - pr.top);
-  l.setAttribute('stroke', '#555');
-  l.setAttribute('stroke-width', '2');
-  l.setAttribute('opacity', '0.5');
+  l.setAttribute('stroke', '#aaa');
+  l.setAttribute('stroke-width', '3');
+  l.setAttribute('opacity', '0.6');
   linesSvg.appendChild(l);
 }
 
@@ -156,7 +157,7 @@ function createArrowheadMarker() {
 
   const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   polygon.setAttribute('points', '0 0, 10 3, 0 6');
-  polygon.setAttribute('fill', '#4CAF50');
+  polygon.setAttribute('fill', 'gold');
 
   marker.appendChild(polygon);
   defs.appendChild(marker);

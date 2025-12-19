@@ -712,16 +712,33 @@ function showCombatModal() {
   const randomIndex = Math.floor(Math.random() * matchingEnemies.length);
   const enemy = matchingEnemies[randomIndex];
 
+  // Get player's stat value for this check
+  let playerStatValue = 0;
+  switch(enemy.stat) {
+    case 'Strength': playerStatValue = strength; break;
+    case 'Dexterity': playerStatValue = dexterity; break;
+    case 'Intelligence': playerStatValue = intelligence; break;
+    case 'Charisma': playerStatValue = charisma; break;
+  }
+
   createGameModal(`
     <div style="text-align: center;">
       <h2 style="color: #ff4444; margin-top: 0;">Combat Encounter!</h2>
       <h3>${enemy.name}</h3>
       <p style="color: #888;">From: ${enemy.game}</p>
       ${enemy.imageUrl ? `<img src="${enemy.imageUrl}" style="max-width: 200px; max-height: 200px; image-rendering: pixelated; margin: 10px auto; display: block;" alt="${enemy.name}">` : ''}
-      <p style="font-size: 18px; margin: 20px 0;">
-        <span style="color: ${getStatColor(enemy.stat)};">${enemy.stat}</span> Check:
-        <strong>${enemy.rollCheck}+</strong>
-      </p>
+      <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 15px 0;">
+        <p style="font-size: 18px; margin: 5px 0;">
+          <span style="color: ${getStatColor(enemy.stat)};">${enemy.stat}</span> Check:
+          <strong>Roll ${enemy.rollCheck}+</strong>
+        </p>
+        <p style="font-size: 16px; margin: 5px 0; color: #aaa;">
+          Your ${enemy.stat}: <strong style="color: ${getStatColor(enemy.stat)};">+${playerStatValue}</strong>
+        </p>
+        <p style="font-size: 14px; margin: 5px 0; color: #888;">
+          (D20 + ${playerStatValue} must be ≥ ${enemy.rollCheck})
+        </p>
+      </div>
       <button id="roll-combat-btn" style="padding: 15px 30px; font-size: 18px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; margin: 10px;">
         Roll D20
       </button>
@@ -730,10 +747,17 @@ function showCombatModal() {
   `);
 
   document.getElementById('roll-combat-btn').onclick = () => {
-    const roll = Math.floor(Math.random() * 20) + 1;
-    const success = roll >= enemy.rollCheck;
+    const diceRoll = Math.floor(Math.random() * 20) + 1;
+    const totalRoll = diceRoll + playerStatValue;
+    const success = totalRoll >= enemy.rollCheck;
 
-    let resultHTML = `<p style="font-size: 24px; font-weight: bold;">Rolled: ${roll}</p>`;
+    let resultHTML = `
+      <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 10px 0;">
+        <p style="font-size: 20px; font-weight: bold;">Dice: ${diceRoll}</p>
+        <p style="font-size: 16px; color: ${getStatColor(enemy.stat)};">+ ${enemy.stat} Bonus: ${playerStatValue}</p>
+        <p style="font-size: 24px; font-weight: bold; margin-top: 10px; color: gold;">Total: ${totalRoll}</p>
+      </div>
+    `;
 
     if (success) {
       const goldMatch = enemy.successReward.match(/(\d+) Gold/);

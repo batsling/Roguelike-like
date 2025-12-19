@@ -534,11 +534,15 @@ scroll-behavior: smooth;
   padding: 16px 28px;
   border-radius: 14px;
   font-weight: 600;
-  white-space: nowrap;
+  white-space: normal;
+  max-width: 220px;
+  min-width: 120px;
   text-align: center;
   cursor: default;
   z-index: 2;
   transition: all 0.2s ease;
+  line-height: 1.3;
+  word-wrap: break-word;
 }
 
 .node:hover {
