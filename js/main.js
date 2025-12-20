@@ -391,11 +391,6 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     renderGameState();
   }
 
-  // Spawn initial choices
-  if (typeof spawnChoices === 'function') {
-    spawnChoices();
-  }
-
   saveCurrentGame();
   updateSaveList();
 });
@@ -1064,6 +1059,307 @@ function showItemChoiceModal() {
       setTimeout(() => spawnChoices(), 300);
     };
   });
+}
+
+// ===== ESCAPE PHASE =====
+
+function startEscapePhase() {
+  gameState.escapePhase = true;
+  gameState.escapeGames = [];
+  gameState.escapeProgress = 0;
+
+  // Get unique visited games (excluding the amulet game itself)
+  const visitedGames = [...new Set(gameState.visitedGames)].filter(g => g !== gameState.amuletGame.name);
+
+  let selectionHTML = '<div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-top: 20px;">';
+
+  visitedGames.forEach((gameName, index) => {
+    selectionHTML += `
+      <div class="escape-game-option" data-game="${gameName}" style="
+        position: relative;
+        width: 150px;
+        padding: 15px;
+        background: #2d2d2d;
+        border: 3px solid #666;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.2s;
+      ">
+        <div class="selection-number" style="
+          position: absolute;
+          top: -10px;
+          right: -10px;
+          width: 30px;
+          height: 30px;
+          background: gold;
+          color: #000;
+          border-radius: 50%;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          font-size: 16px;
+          border: 2px solid #000;
+        "></div>
+        <div style="font-weight: bold; margin-bottom: 5px;">${gameName}</div>
+        <div style="font-size: 11px; color: #888;">Click to select</div>
+      </div>
+    `;
+  });
+
+  selectionHTML += '</div>';
+  selectionHTML += '<div style="text-align: center; margin-top: 20px; color: #aaa;">Select 3 games to escape through</div>';
+  selectionHTML += '<div id="escape-selected-count" style="text-align: center; margin-top: 10px; font-weight: bold; color: gold;">0 / 3 selected</div>';
+  selectionHTML += '<button id="start-escape-btn" disabled style="margin-top: 20px; padding: 12px 30px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; opacity: 0.5;">Begin Escape</button>';
+
+  createGameModal(`
+    <div>
+      <h2 style="color: gold; margin-top: 0; text-align: center;">🏺 Amulet Acquired!</h2>
+      <p style="text-align: center; color: #aaa;">Choose 3 games from your journey to replay as you escape the dungeon.</p>
+      <p style="text-align: center; color: #ff4444; font-size: 14px;">Each game will cost 2 health to complete!</p>
+      ${selectionHTML}
+    </div>
+  `);
+
+  const selectedGames = [];
+
+  document.querySelectorAll('.escape-game-option').forEach(option => {
+    option.onclick = () => {
+      const gameName = option.dataset.game;
+      const numberDiv = option.querySelector('.selection-number');
+      const selectedIndex = selectedGames.indexOf(gameName);
+
+      if (selectedIndex !== -1) {
+        // Deselect
+        selectedGames.splice(selectedIndex, 1);
+        option.style.border = '3px solid #666';
+        numberDiv.style.display = 'none';
+
+        // Update numbers for remaining selections
+        selectedGames.forEach((g, i) => {
+          const opt = document.querySelector(`.escape-game-option[data-game="${g}"]`);
+          opt.querySelector('.selection-number').textContent = i + 1;
+        });
+      } else if (selectedGames.length < 3) {
+        // Select
+        selectedGames.push(gameName);
+        option.style.border = '3px solid gold';
+        numberDiv.style.display = 'flex';
+        numberDiv.textContent = selectedGames.length;
+      }
+
+      // Update count display
+      document.getElementById('escape-selected-count').textContent = `${selectedGames.length} / 3 selected`;
+
+      // Enable/disable start button
+      const startBtn = document.getElementById('start-escape-btn');
+      if (selectedGames.length === 3) {
+        startBtn.disabled = false;
+        startBtn.style.opacity = '1';
+        startBtn.style.cursor = 'pointer';
+      } else {
+        startBtn.disabled = true;
+        startBtn.style.opacity = '0.5';
+        startBtn.style.cursor = 'not-allowed';
+      }
+    };
+  });
+
+  document.getElementById('start-escape-btn').onclick = () => {
+    gameState.escapeGames = [...selectedGames];
+    closeGameModal();
+    showEscapeVisualization();
+  };
+}
+
+function showEscapeVisualization() {
+  // Hide the main dungeon view and show escape view
+  document.getElementById('path-viewport').style.display = 'none';
+  document.getElementById('game-hud').style.display = 'none';
+  document.getElementById('target').style.display = 'none';
+
+  // Create escape visualization container
+  const escapeContainer = document.createElement('div');
+  escapeContainer.id = 'escape-container';
+  escapeContainer.style.cssText = `
+    padding: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 80px;
+    min-height: 400px;
+    position: relative;
+  `;
+
+  // Player icon (left side)
+  const playerDiv = document.createElement('div');
+  playerDiv.style.cssText = 'text-align: center;';
+  playerDiv.innerHTML = `
+    <img src="${PLAYER_CHARACTERS[gameState.character].icon}" style="width: 64px; height: 64px; image-rendering: pixelated;">
+    <div style="font-size: 12px; color: #aaa; margin-top: 5px;">You</div>
+  `;
+  escapeContainer.appendChild(playerDiv);
+
+  // Escape games
+  gameState.escapeGames.forEach((gameName, index) => {
+    const gameDiv = document.createElement('div');
+    gameDiv.className = 'escape-game-node';
+    gameDiv.dataset.index = index;
+    gameDiv.style.cssText = `
+      text-align: center;
+      position: relative;
+    `;
+
+    const status = index < gameState.escapeProgress ? 'completed' : index === gameState.escapeProgress ? 'current' : 'upcoming';
+
+    const gameBox = document.createElement('div');
+    gameBox.style.cssText = `
+      padding: 20px;
+      background: ${status === 'completed' ? '#2b2b2b' : status === 'current' ? 'linear-gradient(145deg, #5a4720, #3f3215)' : '#1a1a1a'};
+      border: 3px solid ${status === 'completed' ? '#555' : status === 'current' ? 'gold' : '#444'};
+      border-radius: 12px;
+      min-width: 120px;
+      opacity: ${status === 'completed' ? '0.6' : '1'};
+    `;
+    gameBox.textContent = gameName;
+    gameDiv.appendChild(gameBox);
+
+    if (status === 'current') {
+      const finishBtn = document.createElement('button');
+      finishBtn.className = 'escape-finish-btn';
+      finishBtn.textContent = 'Finished';
+      finishBtn.style.cssText = `
+        margin-top: 10px;
+        padding: 10px 20px;
+        background: #4CAF50;
+        border: none;
+        border-radius: 6px;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+      `;
+      finishBtn.onclick = () => completeEscapeGame(index);
+      gameDiv.appendChild(finishBtn);
+    }
+
+    escapeContainer.appendChild(gameDiv);
+  });
+
+  // Dungeon Exit
+  const exitDiv = document.createElement('div');
+  exitDiv.style.cssText = 'text-align: center;';
+  exitDiv.innerHTML = `
+    <div style="
+      padding: 30px;
+      background: linear-gradient(145deg, #4CAF50, #2E7D32);
+      border: 3px solid #4CAF50;
+      border-radius: 12px;
+      font-weight: bold;
+      font-size: 18px;
+      color: white;
+    ">🚪 EXIT</div>
+    <div style="font-size: 12px; color: #aaa; margin-top: 5px;">Freedom</div>
+  `;
+  escapeContainer.appendChild(exitDiv);
+
+  const dungeonScreen = document.getElementById('dungeon-screen');
+  dungeonScreen.appendChild(escapeContainer);
+}
+
+function completeEscapeGame(index) {
+  // Deduct 2 health
+  health = Math.max(0, health - 2);
+  gameState.health = health;
+  updateHealthDisplay();
+  updateGameStats();
+
+  // Check if player died
+  if (health <= 0) {
+    createGameModal(`
+      <div style="text-align: center;">
+        <h2 style="color: #ff4444;">You Have Perished!</h2>
+        <p>You ran out of health during your escape...</p>
+        <p style="color: gold;">You made it ${gameState.escapeProgress} / ${gameState.escapeGames.length} of the way out with the amulet.</p>
+        <button onclick="closeGameModal(); location.reload();" style="margin-top: 20px; padding: 12px 30px; background: #666; border: none; border-radius: 6px; color: white; cursor: pointer;">Return to Menu</button>
+      </div>
+    `);
+    return;
+  }
+
+  // Progress to next game
+  gameState.escapeProgress++;
+
+  // Remove current button
+  const currentNode = document.querySelector(`.escape-game-node[data-index="${index}"]`);
+  const btn = currentNode.querySelector('.escape-finish-btn');
+  if (btn) btn.remove();
+
+  // Mark as completed
+  const gameBox = currentNode.querySelector('div');
+  gameBox.style.background = '#2b2b2b';
+  gameBox.style.border = '3px solid #555';
+  gameBox.style.opacity = '0.6';
+
+  // Check if all games completed
+  if (gameState.escapeProgress >= gameState.escapeGames.length) {
+    // Victory!
+    setTimeout(() => showVictoryScreen(), 500);
+  } else {
+    // Show button on next game
+    const nextNode = document.querySelector(`.escape-game-node[data-index="${gameState.escapeProgress}"]`);
+    const nextBox = nextNode.querySelector('div');
+    nextBox.style.background = 'linear-gradient(145deg, #5a4720, #3f3215)';
+    nextBox.style.border = '3px solid gold';
+
+    const finishBtn = document.createElement('button');
+    finishBtn.className = 'escape-finish-btn';
+    finishBtn.textContent = 'Finished';
+    finishBtn.style.cssText = `
+      margin-top: 10px;
+      padding: 10px 20px;
+      background: #4CAF50;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    `;
+    finishBtn.onclick = () => completeEscapeGame(gameState.escapeProgress);
+    nextNode.appendChild(finishBtn);
+  }
+
+  saveCurrentGame();
+}
+
+function showVictoryScreen() {
+  const uniqueBeaten = new Set(gameState.beatenGames || beatenGames);
+
+  createGameModal(`
+    <div style="text-align: center;">
+      <h1 style="color: gold; font-size: 48px; margin: 20px 0;">🏆 VICTORY! 🏆</h1>
+      <h2 style="color: #4CAF50;">You Escaped with the Amulet of Nivlac!</h2>
+
+      <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; margin: 30px 0;">
+        <h3 style="margin-top: 0; color: #888;">Final Stats</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left; max-width: 400px; margin: 0 auto;">
+          <div><strong>Health:</strong></div><div>${health} / ${maxHealth}</div>
+          <div><strong>Gold:</strong></div><div style="color: gold;">${gold}</div>
+          <div><strong>Unique Games Beaten:</strong></div><div>${uniqueBeaten.size}</div>
+          <div><strong>Total Distance:</strong></div><div>${gameState.visitedGames.length}</div>
+          <div><strong>Items Collected:</strong></div><div>${inventory.length}</div>
+          <div><strong>Character:</strong></div><div>${PLAYER_CHARACTERS[gameState.character].name}</div>
+        </div>
+      </div>
+
+      <div style="background: rgba(255,215,0,0.1); padding: 15px; border-radius: 8px; border: 2px solid gold; margin: 20px 0;">
+        <h4 style="margin: 0; color: gold;">Unlocks</h4>
+        <p style="color: #aaa; font-size: 14px; margin: 10px 0;">No unlocks available yet - feature coming soon!</p>
+      </div>
+
+      <button onclick="location.reload();" style="margin-top: 20px; padding: 15px 40px; background: linear-gradient(145deg, #4CAF50, #2E7D32); border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; font-size: 16px;">Return to Main Menu</button>
+    </div>
+  `);
 }
 
 // Export to global scope

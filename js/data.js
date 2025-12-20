@@ -14,6 +14,7 @@ let strength = 0;
 let dexterity = 0;
 let intelligence = 0;
 let charisma = 0;
+let luck = 0;
 let roguePoints = 0;
 let pactConditions = {
   lessHealth: 0,

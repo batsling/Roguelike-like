@@ -339,27 +339,24 @@ function advance(game, x, y, encounterType) {
   }
 
   // Check if reached amulet game
-  if (game === gameState.amuletGame.name) {
-    // Beat the amulet game - enter escape phase
-    if (typeof startEscapePhase === 'function') {
-      startEscapePhase();
+  const isAmuletGame = game === gameState.amuletGame.name;
+
+  if (!isAmuletGame) {
+    // Store the encounter type for later
+    gameState.nextEncounterType = encounterType;
+
+    // Trigger encounter based on type (these functions are in main.js)
+    if (encounterType === 'combat' && typeof showCombatModal === 'function') {
+      showCombatModal();
+    } else if (encounterType === 'event' && typeof showEventModal === 'function') {
+      showEventModal();
+    } else if (encounterType === 'shop' && typeof showShopModal === 'function') {
+      showShopModal();
     }
-    return;
   }
 
-  // Store the encounter type for later
-  gameState.nextEncounterType = encounterType;
-
-  // Trigger encounter based on type (these functions are in main.js)
-  if (encounterType === 'combat' && typeof showCombatModal === 'function') {
-    showCombatModal();
-  } else if (encounterType === 'event' && typeof showEventModal === 'function') {
-    showEventModal();
-  } else if (encounterType === 'shop' && typeof showShopModal === 'function') {
-    showShopModal();
-  }
-
-  showFinish(n);
+  // Always show Finished button (including for amulet game)
+  showFinish(n, isAmuletGame);
 
   // Smooth scroll to new position
   setTimeout(() => {
@@ -375,19 +372,34 @@ function advance(game, x, y, encounterType) {
   }
 }
 
-function showFinish(node) {
+function showFinish(node, isAmuletGame = false) {
   const b = document.createElement('button');
   b.className = 'finish';
   b.textContent = 'Finished';
+
+  if (isAmuletGame) {
+    b.textContent = 'Take Amulet & Escape!';
+    b.style.background = 'linear-gradient(145deg, gold, #cc9900)';
+    b.style.color = '#000';
+    b.style.fontWeight = 'bold';
+  }
+
   b.onclick = () => {
     // Disable button immediately to prevent multiple clicks
     b.disabled = true;
     b.style.opacity = '0.5';
     b.style.cursor = 'not-allowed';
 
-    // Show item choice modal first
-    if (typeof showItemChoiceModal === 'function') {
-      showItemChoiceModal();
+    if (isAmuletGame) {
+      // Start escape phase
+      if (typeof startEscapePhase === 'function') {
+        startEscapePhase();
+      }
+    } else {
+      // Show item choice modal first
+      if (typeof showItemChoiceModal === 'function') {
+        showItemChoiceModal();
+      }
     }
   };
 

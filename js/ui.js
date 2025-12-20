@@ -188,6 +188,7 @@ function updateGameStats() {
   const statsDexterity = document.getElementById('stats-dexterity');
   const statsIntelligence = document.getElementById('stats-intelligence');
   const statsCharisma = document.getElementById('stats-charisma');
+  const statsLuck = document.getElementById('stats-luck');
   const statsItems = document.getElementById('stats-items');
   const statsGames = document.getElementById('stats-games');
   const statsDistance = document.getElementById('stats-distance');
@@ -198,6 +199,7 @@ function updateGameStats() {
   if (statsDexterity) statsDexterity.textContent = dexterity;
   if (statsIntelligence) statsIntelligence.textContent = intelligence;
   if (statsCharisma) statsCharisma.textContent = charisma;
+  if (statsLuck) statsLuck.textContent = luck;
   if (statsItems) statsItems.textContent = inventory.length;
 
   // Games = unique games beaten
