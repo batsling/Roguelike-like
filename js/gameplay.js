@@ -412,6 +412,11 @@ function showFinish(node, isAmuletGame = false) {
     b.style.opacity = '0.5';
     b.style.cursor = 'not-allowed';
 
+    // Mark this game as finished
+    if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
+      markGameFinished(gameState.currentGame);
+    }
+
     if (isAmuletGame) {
       // Start escape phase
       if (typeof startEscapePhase === 'function') {

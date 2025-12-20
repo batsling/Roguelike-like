@@ -57,13 +57,17 @@ function updateInventory() {
     if (inventory.length === 0) {
       gameItemsList.innerHTML = '<div class="empty-inventory">No items yet</div>';
     } else {
-      gameItemsList.innerHTML = inventory.map(item => `
-        <div class="item-display ${item.rarity}">
-          <div class="item-name">${item.name}</div>
-          <div class="item-rarity">${item.rarity}</div>
-          <div class="item-description">${item.description}</div>
-        </div>
-      `).join('');
+      gameItemsList.innerHTML = inventory.map(item => {
+        const imageUrl = item.image && item.image.trim() !== ''
+          ? item.image
+          : 'https://via.placeholder.com/75?text=%3F'; // Question mark placeholder
+
+        return `
+          <div class="item-display-image" title="${item.name}&#10;${item.game ? item.game + ' - ' : ''}${item.type}&#10;${item.description}">
+            <img src="${imageUrl}" alt="${item.name}" style="width: 75px; height: 75px; object-fit: cover; border-radius: 6px; display: block;">
+          </div>
+        `;
+      }).join('');
     }
   }
 }
@@ -202,10 +206,10 @@ function updateGameStats() {
   if (statsLuck) statsLuck.textContent = luck;
   if (statsItems) statsItems.textContent = inventory.length;
 
-  // Games = unique games beaten (unique count from visited games)
+  // Games = unique games finished in this run
   if (statsGames) {
-    const uniqueBeaten = new Set(gameState.visitedGames || []);
-    statsGames.textContent = uniqueBeaten.size;
+    const finishedCount = gameState.finishedGames?.length || 0;
+    statsGames.textContent = finishedCount;
   }
 
   // Distance = total games played (including replays)

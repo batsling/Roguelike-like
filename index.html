@@ -31,44 +31,6 @@
           </div>
         </div>
 
-        <!-- Tutorial Section -->
-        <div id="tutorial" style="display: none; text-align: left; max-width: 700px; margin: 0 auto 30px auto; padding: 20px; background: rgba(0,0,0,0.5); border-radius: 8px; border: 2px solid gold; color: #eee;">
-          <h3 style="color: gold; margin-top: 0;">🎮 How to Play</h3>
-
-          <p style="color: #ccc; line-height: 1.6;"><strong>Goal:</strong> Enter the Dungeon of Roguelikes, grab the Amulet of Nivlac, and escape without dying.</p>
-
-          <h4 style="color: #4CAF50; margin-top: 20px;">🗺️ Exploration Phase</h4>
-          <ul style="color: #bbb; line-height: 1.8;">
-            <li>Navigate a map of roguelikes connected through inspiration</li>
-            <li>Move one game at a time across the map</li>
-            <li>After beating a game, you get a <strong>random item choice</strong></li>
-            <li>Then you trigger the space's <strong>Encounter</strong>:
-              <ul style="margin-top: 5px;">
-                <li><span style="color: red;">!</span> = <strong>Enemy Combat</strong> (dice roll using your stats)</li>
-                <li><span style="color: purple;">?</span> = <strong>Event</strong> (story choice)</li>
-                <li><span style="color: gold;">$</span> = <strong>Shop</strong> (buy items with gold)</li>
-              </ul>
-            </li>
-            <li>The encounter type is shown as an icon in the top-right of each space</li>
-            <li>Find the game marked with <span style="color: gold;">🏺</span> - that's where the Amulet is!</li>
-          </ul>
-
-          <h4 style="color: #ff4444; margin-top: 20px;">🏃 Escape Phase</h4>
-          <ul style="color: #bbb; line-height: 1.8;">
-            <li>Once you beat the Amulet game, you enter the Escape Phase</li>
-            <li>Choose <strong>3 games you've already beaten</strong> to replay</li>
-            <li>For each game, you'll see two buttons:
-              <ul style="margin-top: 5px;">
-                <li><strong>Lost Run</strong> - Click this each time you lose a run while playing that game (<strong>-1 health per loss</strong>)</li>
-                <li><strong>Finished</strong> - Click this when you beat the game to progress to the next one</li>
-              </ul>
-            </li>
-            <li>Complete all 3 games without your health reaching 0 to escape with the Amulet!</li>
-          </ul>
-
-          <p style="color: #888; font-size: 14px; margin-top: 20px; font-style: italic;">💡 Tip: Build up health and items during exploration before grabbing the Amulet!</p>
-        </div>
-
         <!-- Menu Buttons -->
         <div style="display: flex; flex-direction: column; gap: 20px; width: 300px;">
           <button id="new-game-btn" disabled style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #4CAF50, #2E7D32); border: none; border-radius: 8px; color: white; cursor: pointer;">Start Run</button>
@@ -208,6 +170,48 @@
             <button id="confirm-save" style="flex: 1; padding: 10px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer;">Start Run</button>
             <button id="cancel-save" style="flex: 1; padding: 10px; background: #f44336; border: none; border-radius: 6px; color: white; cursor: pointer;">Cancel</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Tutorial Modal -->
+      <div id="tutorial-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+        <div style="background: #1a1a1a; padding: 30px; border-radius: 12px; max-width: 700px; max-height: 90vh; overflow-y: auto; border: 3px solid gold; position: relative;">
+          <button id="close-tutorial" style="position: absolute; top: 10px; right: 10px; background: #ff4444; border: none; border-radius: 4px; color: white; cursor: pointer; padding: 8px 12px; font-weight: bold;">✕</button>
+
+          <h3 style="color: gold; margin-top: 0; text-align: center;">🎮 How to Play</h3>
+
+          <p style="color: #ccc; line-height: 1.6;"><strong>Goal:</strong> Enter the Dungeon of Roguelikes, grab the Amulet of Nivlac, and escape without dying.</p>
+
+          <h4 style="color: #4CAF50; margin-top: 20px;">🗺️ Exploration Phase</h4>
+          <ul style="color: #bbb; line-height: 1.8;">
+            <li>Navigate a map of roguelikes connected through inspiration</li>
+            <li>Move one game at a time across the map</li>
+            <li>After beating a game, you get a <strong>random item choice</strong></li>
+            <li>Then you trigger the space's <strong>Encounter</strong>:
+              <ul style="margin-top: 5px;">
+                <li><span style="color: red;">!</span> = <strong>Enemy Combat</strong> (dice roll using your stats)</li>
+                <li><span style="color: purple;">?</span> = <strong>Event</strong> (story choice)</li>
+                <li><span style="color: gold;">$</span> = <strong>Shop</strong> (buy items with gold)</li>
+              </ul>
+            </li>
+            <li>The encounter type is shown as an icon in the top-right of each space</li>
+            <li>Find the game marked with <span style="color: gold;">🏺</span> - that's where the Amulet is!</li>
+          </ul>
+
+          <h4 style="color: #ff4444; margin-top: 20px;">🏃 Escape Phase</h4>
+          <ul style="color: #bbb; line-height: 1.8;">
+            <li>Once you beat the Amulet game, you enter the Escape Phase</li>
+            <li>Choose <strong>3 games you've already beaten</strong> to replay</li>
+            <li>For each game, you'll see two buttons:
+              <ul style="margin-top: 5px;">
+                <li><strong>Lost Run</strong> - Click this each time you lose a run while playing that game (<strong>-1 health per loss</strong>)</li>
+                <li><strong>Finished</strong> - Click this when you beat the game to progress to the next one</li>
+              </ul>
+            </li>
+            <li>Complete all 3 games without your health reaching 0 to escape with the Amulet!</li>
+          </ul>
+
+          <p style="color: #888; font-size: 14px; margin-top: 20px; font-style: italic;">💡 Tip: Build up health and items during exploration before grabbing the Amulet!</p>
         </div>
       </div>
 

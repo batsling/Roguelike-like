@@ -179,11 +179,17 @@ function loadSavedGame(saveName) {
 // ===== TUTORIAL AND UI CONTROLS =====
 
 document.getElementById('toggleTutorial')?.addEventListener('click', () => {
-  const tutorial = document.getElementById('tutorial');
-  if (tutorial.style.display === 'none') {
-    tutorial.style.display = 'block';
-  } else {
-    tutorial.style.display = 'none';
+  document.getElementById('tutorial-modal').style.display = 'flex';
+});
+
+document.getElementById('close-tutorial')?.addEventListener('click', () => {
+  document.getElementById('tutorial-modal').style.display = 'none';
+});
+
+// Close tutorial modal when clicking outside
+document.getElementById('tutorial-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'tutorial-modal') {
+    document.getElementById('tutorial-modal').style.display = 'none';
   }
 });
 
@@ -290,6 +296,7 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   gameState = {
     currentGame: start.name,
     visitedGames: [start.name],
+    finishedGames: [], // Track unique games finished in this run
     saveName: saveName,
     gameStarted: true,
     health: health,
@@ -377,7 +384,9 @@ document.getElementById('excelFile')?.addEventListener('change', function(event)
         name: String(row[0]),
         rarity: String(row[1]).toLowerCase(),
         type: String(row[3]).trim(),
-        description: String(row[4])
+        description: String(row[4]),
+        image: row[5] ? String(row[5]).trim() : '', // Column 6: Image URL
+        game: row[6] ? String(row[6]).trim() : ''   // Column 7: Game name
       }));
 
       if (workbook.SheetNames.length > 3) {
@@ -685,14 +694,15 @@ function showCombatModal() {
           (D20 + ${playerStatValue} must be ≥ ${enemy.rollCheck})
         </p>
       </div>
-      <button id="roll-combat-btn" style="padding: 20px 40px; font-size: 20px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; margin: 15px auto; display: block; min-width: 180px; font-weight: bold;">
+      <button id="roll-combat-btn" style="padding: 20px 40px; font-size: 20px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; margin: 15px auto; display: block; min-width: 180px; font-weight: bold; position: relative; z-index: 10;">
         Roll D20
       </button>
       <div id="combat-result" style="margin-top: 20px; font-size: 16px;"></div>
     </div>
   `);
 
-  document.getElementById('roll-combat-btn').onclick = () => {
+  const rollBtn = document.getElementById('roll-combat-btn');
+  rollBtn.addEventListener('click', function handleRoll() {
     const diceRoll = Math.floor(Math.random() * 20) + 1;
     const totalRoll = diceRoll + playerStatValue;
     const success = totalRoll >= enemy.rollCheck;
@@ -741,7 +751,10 @@ function showCombatModal() {
     resultHTML += `<button onclick="closeGameModal()" style="padding: 10px 20px; margin-top: 20px; background: #666; border: none; border-radius: 6px; color: white; cursor: pointer;">Continue</button>`;
 
     document.getElementById('combat-result').innerHTML = resultHTML;
-    document.getElementById('roll-combat-btn').disabled = true;
+    rollBtn.disabled = true;
+    rollBtn.style.opacity = '0.5';
+    rollBtn.style.cursor = 'not-allowed';
+    rollBtn.removeEventListener('click', handleRoll);
 
     encounterHistory.push({
       type: 'combat',
@@ -751,7 +764,7 @@ function showCombatModal() {
     });
     updateEncounterHistory();
     saveCurrentGame();
-  };
+  });
 }
 
 function showEventModal() {
@@ -1518,6 +1531,20 @@ function showRunHistory() {
   createGameModal(historyHTML);
 }
 
+function markGameFinished(gameName) {
+  if (!gameState.finishedGames) {
+    gameState.finishedGames = [];
+  }
+
+  // Only add if not already in finishedGames array
+  if (!gameState.finishedGames.includes(gameName)) {
+    gameState.finishedGames.push(gameName);
+    console.log(`Game finished: ${gameName}. Total unique finished: ${gameState.finishedGames.length}`);
+    updateGameStats();
+    saveCurrentGame();
+  }
+}
+
 // Export to global scope
 window.loadState = loadState;
 window.saveCurrentGame = saveCurrentGame;
@@ -1529,3 +1556,4 @@ window.showEventModal = showEventModal;
 window.showShopModal = showShopModal;
 window.handleEventChoice = handleEventChoice;
 window.showItemChoiceModal = showItemChoiceModal;
+window.markGameFinished = markGameFinished;
