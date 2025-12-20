@@ -11,101 +11,79 @@
   <!-- Top Bar -->
   <div id="top-bar">
     <h1>Roguelike-Like</h1>
-    <div style="display: flex; gap: 30px; align-items: center;">
-      <!-- Gold Controls -->
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-weight: bold;">Gold:</span>
-        <button id="decrease-gold" style="padding: 5px 10px;">-5</button>
-        <span id="gold-total" style="min-width: 40px; text-align: center; font-size: 18px; font-weight: bold; color: gold;">0</span>
-        <button id="increase-gold" style="padding: 5px 10px;">+5</button>
-      </div>
-      <!-- Health Controls -->
-      <div class="health-container">
-        <div>
-          <button id="decrease-health">-</button>
-          <button id="increase-health">+</button>
-        </div>
-        <div class="health-display">
-          <div id="health-display">10/10</div>
-          <div class="health-bar-container">
-            <div id="health-bar" class="health-bar"></div>
-          </div>
-        </div>
-        <div class="max-health-controls">
-          <button id="decrease-max-health">-</button>
-          <button id="increase-max-health">+</button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- Main Content Container -->
   <div class="main-container">
-    <!-- Header Section -->
-  <div class="header-section">
-    <h2>The Search for the Amulet of Nivlac</h2>
-    <div>
-      <button id="toggleTutorial" style="background: #2196F3;">📖 How to Play</button>
-      <button id="clearAllData" style="background: #ff4444;">🗑️ Clear All Data</button>
-    </div>
-    <div id="tutorial" style="display: none; text-align: left; max-width: 800px; margin: 20px auto; padding: 20px; background: #f9f9f9; border-radius: 8px; border: 2px solid #ddd;">
-      <h3 style="color: #333; margin-top: 0;">🎮 How to Play</h3>
+    <!-- Game Screen -->
+    <div id="game-screen">
 
-      <p style="color: #666; line-height: 1.6;"><strong>Goal:</strong> Enter the Dungeon of Roguelikes, grab the Amulet of Nivlac, and escape without dying.</p>
+      <!-- Main Menu Screen (initial state) -->
+      <div id="main-menu">
+        <h1 style="font-size: 48px; color: gold; margin-bottom: 30px; text-shadow: 0 0 20px rgba(255,215,0,0.5);">The Search for the Amulet of Nivlac</h1>
 
-      <h4 style="color: #4CAF50; margin-top: 20px;">🗺️ Exploration Phase</h4>
-      <ul style="color: #666; line-height: 1.8;">
-        <li>Navigate a map of roguelikes connected through inspiration</li>
-        <li>Move one game at a time across the map</li>
-        <li>After beating a game, you get a <strong>random item choice</strong></li>
-        <li>Then you trigger the space's <strong>Encounter</strong>:
-          <ul style="margin-top: 5px;">
-            <li><span style="color: red;">!</span> = <strong>Enemy Combat</strong> (dice roll using your stats)</li>
-            <li><span style="color: purple;">?</span> = <strong>Event</strong> (story choice)</li>
-            <li><span style="color: gold;">$</span> = <strong>Shop</strong> (buy items with gold)</li>
-          </ul>
-        </li>
-        <li>The encounter type is shown as an icon in the top-right of each space</li>
-        <li>Find the game marked with <span style="color: gold;">🏺</span> - that's where the Amulet is!</li>
-      </ul>
-
-      <h4 style="color: #ff4444; margin-top: 20px;">🏃 Escape Phase</h4>
-      <ul style="color: #666; line-height: 1.8;">
-        <li>Once you beat the Amulet game, you enter the Escape Phase</li>
-        <li>Choose <strong>3 games you've already beaten</strong> to replay</li>
-        <li>Each game you complete costs <strong>2 health</strong></li>
-        <li>Complete all 3 without dying to escape with the Amulet!</li>
-      </ul>
-
-      <p style="color: #888; font-size: 14px; margin-top: 20px; font-style: italic;">💡 Tip: Build up health and items during exploration before grabbing the Amulet!</p>
-    </div>
-    <input type="file" id="excelFile" accept=".xlsx, .xls">
-  </div>
-
-    <!-- True Gameplay Section -->
-    <div id="true-gameplay">
-      <h2 style="text-align: center; color: gold; margin-bottom: 20px;">True Gameplay Mode</h2>
-
-      <!-- Game Screen -->
-      <div id="game-screen">
-
-        <!-- Main Menu Screen (initial state) -->
-        <div id="main-menu">
-          <h1 style="font-size: 48px; color: gold; margin-bottom: 40px; text-shadow: 0 0 20px rgba(255,215,0,0.5);">Roguelike-Like</h1>
-          <div style="display: flex; flex-direction: column; gap: 20px; width: 300px;">
-            <button id="new-game-btn" disabled style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #4CAF50, #2E7D32); border: none; border-radius: 8px; color: white; cursor: pointer;">Start Run</button>
-            <div style="position: relative;">
-              <button id="continue-btn" style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #2196F3, #0D47A1); border: none; border-radius: 8px; color: white; cursor: pointer; width: 100%;">Continue</button>
-              <div id="save-list">
-                <!-- Save slots will be populated here -->
-              </div>
-            </div>
-            <button id="run-history-btn" style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #9b59b6, #7d3c98); border: none; border-radius: 8px; color: white; cursor: pointer;">Run History</button>
+        <!-- Game Controls -->
+        <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; align-items: center;">
+          <input type="file" id="excelFile" accept=".xlsx, .xls" style="padding: 10px; background: white; border: 2px solid gold; border-radius: 8px; cursor: pointer;">
+          <div style="display: flex; gap: 15px;">
+            <button id="toggleTutorial" style="padding: 10px 20px; background: #2196F3; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">📖 How to Play</button>
+            <button id="clearAllData" style="padding: 10px 20px; background: #ff4444; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">🗑️ Clear All Data</button>
           </div>
         </div>
 
-        <!-- Dungeon Path Screen -->
-        <div id="dungeon-screen" style="display: none;">
+        <!-- Tutorial Section -->
+        <div id="tutorial" style="display: none; text-align: left; max-width: 700px; margin: 0 auto 30px auto; padding: 20px; background: rgba(0,0,0,0.5); border-radius: 8px; border: 2px solid gold; color: #eee;">
+          <h3 style="color: gold; margin-top: 0;">🎮 How to Play</h3>
+
+          <p style="color: #ccc; line-height: 1.6;"><strong>Goal:</strong> Enter the Dungeon of Roguelikes, grab the Amulet of Nivlac, and escape without dying.</p>
+
+          <h4 style="color: #4CAF50; margin-top: 20px;">🗺️ Exploration Phase</h4>
+          <ul style="color: #bbb; line-height: 1.8;">
+            <li>Navigate a map of roguelikes connected through inspiration</li>
+            <li>Move one game at a time across the map</li>
+            <li>After beating a game, you get a <strong>random item choice</strong></li>
+            <li>Then you trigger the space's <strong>Encounter</strong>:
+              <ul style="margin-top: 5px;">
+                <li><span style="color: red;">!</span> = <strong>Enemy Combat</strong> (dice roll using your stats)</li>
+                <li><span style="color: purple;">?</span> = <strong>Event</strong> (story choice)</li>
+                <li><span style="color: gold;">$</span> = <strong>Shop</strong> (buy items with gold)</li>
+              </ul>
+            </li>
+            <li>The encounter type is shown as an icon in the top-right of each space</li>
+            <li>Find the game marked with <span style="color: gold;">🏺</span> - that's where the Amulet is!</li>
+          </ul>
+
+          <h4 style="color: #ff4444; margin-top: 20px;">🏃 Escape Phase</h4>
+          <ul style="color: #bbb; line-height: 1.8;">
+            <li>Once you beat the Amulet game, you enter the Escape Phase</li>
+            <li>Choose <strong>3 games you've already beaten</strong> to replay</li>
+            <li>For each game, you'll see two buttons:
+              <ul style="margin-top: 5px;">
+                <li><strong>Lost Run</strong> - Click this each time you lose a run while playing that game (<strong>-1 health per loss</strong>)</li>
+                <li><strong>Finished</strong> - Click this when you beat the game to progress to the next one</li>
+              </ul>
+            </li>
+            <li>Complete all 3 games without your health reaching 0 to escape with the Amulet!</li>
+          </ul>
+
+          <p style="color: #888; font-size: 14px; margin-top: 20px; font-style: italic;">💡 Tip: Build up health and items during exploration before grabbing the Amulet!</p>
+        </div>
+
+        <!-- Menu Buttons -->
+        <div style="display: flex; flex-direction: column; gap: 20px; width: 300px;">
+          <button id="new-game-btn" disabled style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #4CAF50, #2E7D32); border: none; border-radius: 8px; color: white; cursor: pointer;">Start Run</button>
+          <div style="position: relative;">
+            <button id="continue-btn" style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #2196F3, #0D47A1); border: none; border-radius: 8px; color: white; cursor: pointer; width: 100%;">Continue</button>
+            <div id="save-list">
+              <!-- Save slots will be populated here -->
+            </div>
+          </div>
+          <button id="run-history-btn" style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #9b59b6, #7d3c98); border: none; border-radius: 8px; color: white; cursor: pointer;">Run History</button>
+        </div>
+      </div>
+
+      <!-- Dungeon Path Screen -->
+      <div id="dungeon-screen" style="display: none;">
 
           <!-- Left Sidebar: Stats Panel -->
           <div id="game-stats">

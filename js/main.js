@@ -162,7 +162,7 @@ function loadSavedGame(saveName) {
 
   // Show dungeon screen
   document.getElementById('main-menu').style.display = 'none';
-  document.getElementById('dungeon-screen').style.display = 'block';
+  document.getElementById('dungeon-screen').style.display = 'flex';
 
   // Render the game state
   if (typeof renderGameState === 'function') {
@@ -191,74 +191,6 @@ document.getElementById('clearAllData')?.addEventListener('click', () => {
   if (confirm('This will delete ALL saved games and reset the app. Are you sure?')) {
     localStorage.clear();
     location.reload();
-  }
-});
-
-// ===== TOP BAR EVENT LISTENERS =====
-
-document.getElementById('increase-gold')?.addEventListener('click', () => {
-  gold += 5;
-  gameState.gold = gold;
-  updateTopBar();
-  updateGameStats();
-  saveCurrentGame();
-});
-
-document.getElementById('decrease-gold')?.addEventListener('click', () => {
-  if (gold >= 5) {
-    gold -= 5;
-  } else {
-    gold = 0;
-  }
-  gameState.gold = gold;
-  updateTopBar();
-  updateGameStats();
-  saveCurrentGame();
-});
-
-document.getElementById('increase-health')?.addEventListener('click', () => {
-  if (health < maxHealth) {
-    health++;
-    gameState.health = health;
-    updateHealthDisplay();
-    updateGameStats();
-    saveCurrentGame();
-  }
-});
-
-document.getElementById('decrease-health')?.addEventListener('click', () => {
-  if (health > 0) {
-    health--;
-    gameState.health = health;
-    updateHealthDisplay();
-    updateGameStats();
-    saveCurrentGame();
-  }
-});
-
-document.getElementById('increase-max-health')?.addEventListener('click', () => {
-  maxHealth++;
-  if (health > maxHealth) {
-    health = maxHealth;
-  }
-  gameState.health = health;
-  gameState.maxHealth = maxHealth;
-  updateHealthDisplay();
-  updateGameStats();
-  saveCurrentGame();
-});
-
-document.getElementById('decrease-max-health')?.addEventListener('click', () => {
-  if (maxHealth > 1) {
-    maxHealth--;
-    if (health > maxHealth) {
-      health = maxHealth;
-    }
-    gameState.health = health;
-    gameState.maxHealth = maxHealth;
-    updateHealthDisplay();
-    updateGameStats();
-    saveCurrentGame();
   }
 });
 
@@ -384,7 +316,7 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   // Hide modal and menu
   document.getElementById('save-modal').style.display = 'none';
   document.getElementById('main-menu').style.display = 'none';
-  document.getElementById('dungeon-screen').style.display = 'block';
+  document.getElementById('dungeon-screen').style.display = 'flex';
 
   // Render initial game state
   if (typeof renderGameState === 'function') {
