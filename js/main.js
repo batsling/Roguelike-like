@@ -400,6 +400,10 @@ document.getElementById('continue-btn')?.addEventListener('click', () => {
   saveList.style.display = saveList.style.display === 'block' ? 'none' : 'block';
 });
 
+document.getElementById('run-history-btn')?.addEventListener('click', () => {
+  showRunHistory();
+});
+
 document.getElementById('return-menu')?.addEventListener('click', () => {
   if (confirm('Return to main menu? (Game will be saved)')) {
     saveCurrentGame();
@@ -749,7 +753,7 @@ function showCombatModal() {
           (D20 + ${playerStatValue} must be ≥ ${enemy.rollCheck})
         </p>
       </div>
-      <button id="roll-combat-btn" style="padding: 15px 30px; font-size: 18px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; margin: 10px;">
+      <button id="roll-combat-btn" style="padding: 20px 40px; font-size: 20px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; margin: 15px auto; display: block; min-width: 180px; font-weight: bold;">
         Roll D20
       </button>
       <div id="combat-result" style="margin-top: 20px; font-size: 16px;"></div>
@@ -1179,6 +1183,11 @@ function showEscapeVisualization() {
   document.getElementById('game-hud').style.display = 'none';
   document.getElementById('target').style.display = 'none';
 
+  // Initialize lost run trackers
+  if (!gameState.escapeLostRuns) {
+    gameState.escapeLostRuns = [0, 0, 0];
+  }
+
   // Create escape visualization container
   const escapeContainer = document.createElement('div');
   escapeContainer.id = 'escape-container';
@@ -1192,11 +1201,25 @@ function showEscapeVisualization() {
     position: relative;
   `;
 
-  // Player icon (left side)
+  // Player icon (left side) - will be moved dynamically
+  const playerIcon = document.createElement('img');
+  playerIcon.id = 'escape-player-icon';
+  playerIcon.src = PLAYER_CHARACTERS[gameState.character].icon;
+  playerIcon.style.cssText = `
+    position: absolute;
+    width: 64px;
+    height: 64px;
+    image-rendering: pixelated;
+    transition: all 0.5s ease;
+    z-index: 100;
+  `;
+  escapeContainer.appendChild(playerIcon);
+
   const playerDiv = document.createElement('div');
-  playerDiv.style.cssText = 'text-align: center;';
+  playerDiv.id = 'escape-player-position';
+  playerDiv.style.cssText = 'text-align: center; position: relative;';
   playerDiv.innerHTML = `
-    <img src="${PLAYER_CHARACTERS[gameState.character].icon}" style="width: 64px; height: 64px; image-rendering: pixelated;">
+    <div style="width: 64px; height: 64px;"></div>
     <div style="font-size: 12px; color: #aaa; margin-top: 5px;">You</div>
   `;
   escapeContainer.appendChild(playerDiv);
@@ -1226,11 +1249,37 @@ function showEscapeVisualization() {
     gameDiv.appendChild(gameBox);
 
     if (status === 'current') {
+      // Lost runs counter
+      const lostRunsDiv = document.createElement('div');
+      lostRunsDiv.id = `lost-runs-${index}`;
+      lostRunsDiv.style.cssText = 'margin-top: 8px; font-size: 12px; color: #ff4444;';
+      lostRunsDiv.textContent = `Lost Runs: ${gameState.escapeLostRuns[index]}`;
+      gameDiv.appendChild(lostRunsDiv);
+
+      // Lost Run button
+      const lostRunBtn = document.createElement('button');
+      lostRunBtn.className = 'escape-lost-run-btn';
+      lostRunBtn.textContent = 'Lost Run (-1 HP)';
+      lostRunBtn.style.cssText = `
+        margin-top: 10px;
+        padding: 8px 16px;
+        background: #ff4444;
+        border: none;
+        border-radius: 6px;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 13px;
+      `;
+      lostRunBtn.onclick = () => recordLostRun(index);
+      gameDiv.appendChild(lostRunBtn);
+
+      // Finished button
       const finishBtn = document.createElement('button');
       finishBtn.className = 'escape-finish-btn';
       finishBtn.textContent = 'Finished';
       finishBtn.style.cssText = `
-        margin-top: 10px;
+        margin-top: 8px;
         padding: 10px 20px;
         background: #4CAF50;
         border: none;
@@ -1265,14 +1314,50 @@ function showEscapeVisualization() {
 
   const dungeonScreen = document.getElementById('dungeon-screen');
   dungeonScreen.appendChild(escapeContainer);
+
+  // Position player icon initially
+  setTimeout(() => updatePlayerIconPosition(), 100);
 }
 
-function completeEscapeGame(index) {
-  // Deduct 2 health
-  health = Math.max(0, health - 2);
+function updatePlayerIconPosition() {
+  const playerIcon = document.getElementById('escape-player-icon');
+  if (!playerIcon) return;
+
+  let targetElement;
+  if (gameState.escapeProgress >= gameState.escapeGames.length) {
+    // Player has completed all games, position at exit
+    targetElement = document.querySelector('#escape-container > div:last-child');
+  } else if (gameState.escapeProgress === 0) {
+    // Position at starting point
+    targetElement = document.getElementById('escape-player-position');
+  } else {
+    // Position at current game
+    targetElement = document.querySelector(`.escape-game-node[data-index="${gameState.escapeProgress}"]`);
+  }
+
+  if (targetElement) {
+    const rect = targetElement.getBoundingClientRect();
+    const containerRect = document.getElementById('escape-container').getBoundingClientRect();
+    playerIcon.style.left = (rect.left - containerRect.left + rect.width / 2 - 32) + 'px';
+    playerIcon.style.top = (rect.top - containerRect.top - 70) + 'px';
+  }
+}
+
+function recordLostRun(index) {
+  // Increment lost run counter
+  gameState.escapeLostRuns[index]++;
+
+  // Deduct 1 health
+  health = Math.max(0, health - 1);
   gameState.health = health;
   updateHealthDisplay();
   updateGameStats();
+
+  // Update the lost runs display
+  const lostRunsDiv = document.getElementById(`lost-runs-${index}`);
+  if (lostRunsDiv) {
+    lostRunsDiv.textContent = `Lost Runs: ${gameState.escapeLostRuns[index]}`;
+  }
 
   // Check if player died
   if (health <= 0) {
@@ -1287,13 +1372,21 @@ function completeEscapeGame(index) {
     return;
   }
 
+  saveCurrentGame();
+}
+
+function completeEscapeGame(index) {
   // Progress to next game
   gameState.escapeProgress++;
 
-  // Remove current button
+  // Remove current buttons and counter
   const currentNode = document.querySelector(`.escape-game-node[data-index="${index}"]`);
-  const btn = currentNode.querySelector('.escape-finish-btn');
-  if (btn) btn.remove();
+  const lostRunBtn = currentNode.querySelector('.escape-lost-run-btn');
+  const finishBtn = currentNode.querySelector('.escape-finish-btn');
+  const lostRunsDiv = currentNode.querySelector(`#lost-runs-${index}`);
+  if (lostRunBtn) lostRunBtn.remove();
+  if (finishBtn) finishBtn.remove();
+  if (lostRunsDiv) lostRunsDiv.remove();
 
   // Mark as completed
   const gameBox = currentNode.querySelector('div');
@@ -1303,20 +1396,48 @@ function completeEscapeGame(index) {
 
   // Check if all games completed
   if (gameState.escapeProgress >= gameState.escapeGames.length) {
+    // Move player to exit
+    setTimeout(() => updatePlayerIconPosition(), 100);
     // Victory!
-    setTimeout(() => showVictoryScreen(), 500);
+    setTimeout(() => showVictoryScreen(), 800);
   } else {
-    // Show button on next game
+    // Show buttons on next game
     const nextNode = document.querySelector(`.escape-game-node[data-index="${gameState.escapeProgress}"]`);
     const nextBox = nextNode.querySelector('div');
     nextBox.style.background = 'linear-gradient(145deg, #5a4720, #3f3215)';
     nextBox.style.border = '3px solid gold';
 
-    const finishBtn = document.createElement('button');
-    finishBtn.className = 'escape-finish-btn';
-    finishBtn.textContent = 'Finished';
-    finishBtn.style.cssText = `
+    // Lost runs counter
+    const nextLostRunsDiv = document.createElement('div');
+    nextLostRunsDiv.id = `lost-runs-${gameState.escapeProgress}`;
+    nextLostRunsDiv.style.cssText = 'margin-top: 8px; font-size: 12px; color: #ff4444;';
+    nextLostRunsDiv.textContent = `Lost Runs: ${gameState.escapeLostRuns[gameState.escapeProgress]}`;
+    nextNode.appendChild(nextLostRunsDiv);
+
+    // Lost Run button
+    const nextLostRunBtn = document.createElement('button');
+    nextLostRunBtn.className = 'escape-lost-run-btn';
+    nextLostRunBtn.textContent = 'Lost Run (-1 HP)';
+    nextLostRunBtn.style.cssText = `
       margin-top: 10px;
+      padding: 8px 16px;
+      background: #ff4444;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 13px;
+    `;
+    nextLostRunBtn.onclick = () => recordLostRun(gameState.escapeProgress);
+    nextNode.appendChild(nextLostRunBtn);
+
+    // Finished button
+    const nextFinishBtn = document.createElement('button');
+    nextFinishBtn.className = 'escape-finish-btn';
+    nextFinishBtn.textContent = 'Finished';
+    nextFinishBtn.style.cssText = `
+      margin-top: 8px;
       padding: 10px 20px;
       background: #4CAF50;
       border: none;
@@ -1325,15 +1446,44 @@ function completeEscapeGame(index) {
       cursor: pointer;
       font-weight: bold;
     `;
-    finishBtn.onclick = () => completeEscapeGame(gameState.escapeProgress);
-    nextNode.appendChild(finishBtn);
+    nextFinishBtn.onclick = () => completeEscapeGame(gameState.escapeProgress);
+    nextNode.appendChild(nextFinishBtn);
+
+    // Move player to next game
+    setTimeout(() => updatePlayerIconPosition(), 100);
   }
 
   saveCurrentGame();
 }
 
 function showVictoryScreen() {
-  const uniqueBeaten = new Set(gameState.beatenGames || beatenGames);
+  const uniqueBeaten = new Set(gameState.visitedGames || []);
+
+  // Save run to history
+  saveRunToHistory({
+    date: new Date().toISOString(),
+    character: PLAYER_CHARACTERS[gameState.character].name,
+    health: health,
+    maxHealth: maxHealth,
+    gold: gold,
+    uniqueGames: uniqueBeaten.size,
+    totalDistance: gameState.visitedGames.length,
+    items: inventory.length,
+    startGame: gameState.startGame.name,
+    amuletGame: gameState.amuletGame.name,
+    escapeLostRuns: gameState.escapeLostRuns,
+    strength: strength,
+    dexterity: dexterity,
+    intelligence: intelligence,
+    charisma: charisma,
+    luck: luck
+  });
+
+  // Delete the current save since run is complete
+  if (gameState.saveName && gameSaves[gameState.saveName]) {
+    delete gameSaves[gameState.saveName];
+    localStorage.setItem('gameSaves', JSON.stringify(gameSaves));
+  }
 
   createGameModal(`
     <div style="text-align: center;">
@@ -1360,6 +1510,80 @@ function showVictoryScreen() {
       <button onclick="location.reload();" style="margin-top: 20px; padding: 15px 40px; background: linear-gradient(145deg, #4CAF50, #2E7D32); border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; font-size: 16px;">Return to Main Menu</button>
     </div>
   `);
+}
+
+function saveRunToHistory(runData) {
+  const history = JSON.parse(localStorage.getItem('runHistory') || '[]');
+  history.unshift(runData); // Add to beginning
+
+  // Keep only last 50 runs
+  if (history.length > 50) {
+    history.length = 50;
+  }
+
+  localStorage.setItem('runHistory', JSON.stringify(history));
+}
+
+function showRunHistory() {
+  const history = JSON.parse(localStorage.getItem('runHistory') || '[]');
+
+  if (history.length === 0) {
+    createGameModal(`
+      <div style="text-align: center; padding: 20px;">
+        <h2 style="color: #888;">No Completed Runs</h2>
+        <p style="color: #aaa;">Complete a run to see your history here!</p>
+        <button onclick="closeGameModal();" style="margin-top: 20px; padding: 10px 30px; background: #666; border: none; border-radius: 6px; color: white; cursor: pointer;">Close</button>
+      </div>
+    `);
+    return;
+  }
+
+  let historyHTML = `
+    <div style="max-height: 70vh; overflow-y: auto;">
+      <h2 style="color: gold; margin-top: 0; text-align: center;">🏆 Victory History</h2>
+      <p style="text-align: center; color: #aaa; margin-bottom: 20px;">Your ${history.length} most recent victorious runs</p>
+  `;
+
+  history.forEach((run, index) => {
+    const date = new Date(run.date);
+    const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    const lostRuns = run.escapeLostRuns ? run.escapeLostRuns.reduce((a, b) => a + b, 0) : 0;
+
+    historyHTML += `
+      <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid gold;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong style="color: gold; font-size: 16px;">Run #${index + 1}</strong>
+          <span style="color: #888; font-size: 12px;">${dateStr}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px;">
+          <div><strong>Character:</strong></div><div>${run.character}</div>
+          <div><strong>Health:</strong></div><div style="color: #ff4444;">${run.health} / ${run.maxHealth}</div>
+          <div><strong>Gold:</strong></div><div style="color: gold;">${run.gold}</div>
+          <div><strong>Unique Games:</strong></div><div>${run.uniqueGames}</div>
+          <div><strong>Total Distance:</strong></div><div>${run.totalDistance}</div>
+          <div><strong>Items:</strong></div><div>${run.items}</div>
+          <div><strong>Strength:</strong></div><div>${run.strength}</div>
+          <div><strong>Dexterity:</strong></div><div>${run.dexterity}</div>
+          <div><strong>Intelligence:</strong></div><div>${run.intelligence}</div>
+          <div><strong>Charisma:</strong></div><div>${run.charisma}</div>
+          <div><strong>Luck:</strong></div><div>${run.luck}</div>
+          <div><strong>Lost Runs (Escape):</strong></div><div style="color: #ff4444;">${lostRuns}</div>
+        </div>
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444; font-size: 12px; color: #aaa;">
+          <div><strong>Route:</strong> ${run.startGame} → ${run.amuletGame}</div>
+        </div>
+      </div>
+    `;
+  });
+
+  historyHTML += `
+    </div>
+    <div style="text-align: center; margin-top: 20px; padding-top: 15px; border-top: 2px solid #444;">
+      <button onclick="closeGameModal();" style="padding: 10px 30px; background: linear-gradient(145deg, #9b59b6, #7d3c98); border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>
+    </div>
+  `;
+
+  createGameModal(historyHTML);
 }
 
 // Export to global scope

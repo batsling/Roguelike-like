@@ -74,12 +74,34 @@ function showTooltip(e, name) {
   const game = games.find(g => g.name === name);
   if (!game) return;
 
-  const connections = getGameConnections(name);
+  // Separate influences and influenced by
+  const influences = []; // Games this game influenced
+  const influencedBy = []; // Games that influenced this game
+
+  connections.forEach(connection => {
+    if (connection.influencer === name) {
+      influences.push(connection.influencee);
+    }
+    if (connection.influencee === name) {
+      influencedBy.push(connection.influencer);
+    }
+  });
+
+  let connectionsHTML = '';
+  if (influencedBy.length > 0) {
+    connectionsHTML += `<div style="margin-top: 8px;"><strong style="color: #4CAF50;">Influenced By:</strong>${influencedBy.map(g => `<div>${g} → ${name}</div>`).join('')}</div>`;
+  }
+  if (influences.length > 0) {
+    connectionsHTML += `<div style="margin-top: 8px;"><strong style="color: #9b59b6;">Influences:</strong>${influences.map(g => `<div>${name} → ${g}</div>`).join('')}</div>`;
+  }
+  if (influencedBy.length === 0 && influences.length === 0) {
+    connectionsHTML = '<div style="margin-top: 8px; color: #888;">No connections</div>';
+  }
 
   tooltip.innerHTML = `<h4>${name}</h4>
     <div>Release Year: ${game.year || '—'}</div>
     <div>Type: ${game.type || '—'}</div>
-    <div class="mini-map"><strong>Connections</strong>${connections.map(g => `<div>${name} → ${g}</div>`).join('')}</div>`;
+    <div class="mini-map">${connectionsHTML}</div>`;
   tooltip.style.opacity = 1;
   tooltip.style.display = 'block';
   moveTooltip(e);

@@ -202,9 +202,9 @@ function updateGameStats() {
   if (statsLuck) statsLuck.textContent = luck;
   if (statsItems) statsItems.textContent = inventory.length;
 
-  // Games = unique games beaten
+  // Games = unique games beaten (unique count from visited games)
   if (statsGames) {
-    const uniqueBeaten = new Set(gameState.beatenGames || beatenGames);
+    const uniqueBeaten = new Set(gameState.visitedGames || []);
     statsGames.textContent = uniqueBeaten.size;
   }
 

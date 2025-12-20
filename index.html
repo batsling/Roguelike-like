@@ -100,13 +100,14 @@
                 <!-- Save slots will be populated here -->
               </div>
             </div>
+            <button id="run-history-btn" style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #9b59b6, #7d3c98); border: none; border-radius: 8px; color: white; cursor: pointer;">Run History</button>
           </div>
         </div>
 
         <!-- Dungeon Path Screen -->
-        <div id="dungeon-screen" style="display: none; height: 100%; position: relative;">
+        <div id="dungeon-screen" style="display: none;">
 
-          <!-- ADD THIS STATS PANEL -->
+          <!-- Left Sidebar: Stats Panel -->
           <div id="game-stats">
             <h3>📊 Stats</h3>
 
@@ -170,37 +171,40 @@
             </div>
           </div>
 
-          <!-- Items Panel -->
+          <!-- Center: Game View -->
+          <div id="path-viewport-container">
+            <!-- HUD -->
+            <div id="game-hud">
+              <div>
+                <span>Health: </span>
+                <span id="game-health" style="color: #ff4444;">10/10</span>
+                <span style="margin-left: 20px;">Gold: </span>
+                <span id="game-gold" style="color: gold;">0</span>
+              </div>
+              <div id="distance-display"></div>
+              <button id="return-menu" style="padding: 5px 15px; background: #555; border: none; border-radius: 4px; color: white; cursor: pointer;">Menu</button>
+            </div>
+
+            <!-- Path Viewport -->
+            <div id="path-viewport">
+              <div id="path-container" style="min-height: 2000px; position: relative;">
+                <svg id="connection-lines" style="position: absolute; top: 0; left: 0; width: 100%; height: 2000px; pointer-events: none;"></svg>
+                <!-- Nodes will be added here dynamically -->
+              </div>
+            </div>
+
+            <!-- Target Display -->
+            <div id="target" style="padding: 14px; background: linear-gradient(#111, #181818); border-top: 2px solid #444; text-align: center; font-size: .95rem;">
+              <strong>Final Goal:</strong> <span id="target-game">Slay the Spire</span> (far below)
+            </div>
+          </div>
+
+          <!-- Right Sidebar: Items Panel -->
           <div id="game-items">
             <h3>🎒 Inventory</h3>
             <div id="game-items-list">
               <div class="empty-inventory">No items yet</div>
             </div>
-          </div>
-
-          <!-- HUD -->
-          <div id="game-hud">
-            <div>
-              <span>Health: </span>
-              <span id="game-health" style="color: #ff4444;">10/10</span>
-              <span style="margin-left: 20px;">Gold: </span>
-              <span id="game-gold" style="color: gold;">0</span>
-            </div>
-            <div id="distance-display"></div>
-            <button id="return-menu" style="padding: 5px 15px; background: #555; border: none; border-radius: 4px; color: white; cursor: pointer;">Menu</button>
-          </div>
-
-          <!-- Path Viewport -->
-          <div id="path-viewport">
-            <div id="path-container" style="min-height: 2000px; position: relative;">
-              <svg id="connection-lines" style="position: absolute; top: 0; left: 0; width: 100%; height: 2000px; pointer-events: none;"></svg>
-              <!-- Nodes will be added here dynamically -->
-            </div>
-          </div>
-
-          <!-- Target Display -->
-          <div id="target" style="padding: 14px; background: linear-gradient(#111, #181818); border-top: 2px solid #444; text-align: center; font-size: .95rem;">
-            <strong>Final Goal:</strong> <span id="target-game">Slay the Spire</span> (far below)
           </div>
 
           <!-- Tooltip -->
