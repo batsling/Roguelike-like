@@ -196,19 +196,12 @@ document.getElementById('clearAllData')?.addEventListener('click', () => {
 
 // ===== TOP BAR EVENT LISTENERS =====
 
-document.getElementById('increase-rations')?.addEventListener('click', () => {
-  rations++;
-  updateTopBar();
-});
-
-document.getElementById('decrease-rations')?.addEventListener('click', () => {
-  if (rations > 0) rations--;
-  updateTopBar();
-});
-
 document.getElementById('increase-gold')?.addEventListener('click', () => {
   gold += 5;
+  gameState.gold = gold;
   updateTopBar();
+  updateGameStats();
+  saveCurrentGame();
 });
 
 document.getElementById('decrease-gold')?.addEventListener('click', () => {
@@ -217,20 +210,29 @@ document.getElementById('decrease-gold')?.addEventListener('click', () => {
   } else {
     gold = 0;
   }
+  gameState.gold = gold;
   updateTopBar();
+  updateGameStats();
+  saveCurrentGame();
 });
 
 document.getElementById('increase-health')?.addEventListener('click', () => {
   if (health < maxHealth) {
     health++;
+    gameState.health = health;
     updateHealthDisplay();
+    updateGameStats();
+    saveCurrentGame();
   }
 });
 
 document.getElementById('decrease-health')?.addEventListener('click', () => {
   if (health > 0) {
     health--;
+    gameState.health = health;
     updateHealthDisplay();
+    updateGameStats();
+    saveCurrentGame();
   }
 });
 
@@ -239,7 +241,11 @@ document.getElementById('increase-max-health')?.addEventListener('click', () => 
   if (health > maxHealth) {
     health = maxHealth;
   }
+  gameState.health = health;
+  gameState.maxHealth = maxHealth;
   updateHealthDisplay();
+  updateGameStats();
+  saveCurrentGame();
 });
 
 document.getElementById('decrease-max-health')?.addEventListener('click', () => {
@@ -248,7 +254,11 @@ document.getElementById('decrease-max-health')?.addEventListener('click', () => 
     if (health > maxHealth) {
       health = maxHealth;
     }
+    gameState.health = health;
+    gameState.maxHealth = maxHealth;
     updateHealthDisplay();
+    updateGameStats();
+    saveCurrentGame();
   }
 });
 
@@ -379,6 +389,11 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   // Render initial game state
   if (typeof renderGameState === 'function') {
     renderGameState();
+  }
+
+  // Spawn initial choices
+  if (typeof spawnChoices === 'function') {
+    spawnChoices();
   }
 
   saveCurrentGame();
@@ -668,8 +683,8 @@ function createGameModal(content) {
     background: #1e1e1e;
     padding: 30px;
     border-radius: 12px;
-    max-width: 600px;
-    max-height: 80vh;
+    max-width: 800px;
+    max-height: 90vh;
     overflow-y: auto;
     color: white;
     box-shadow: 0 10px 40px rgba(0,0,0,0.5);

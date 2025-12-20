@@ -10,29 +10,31 @@
 <body>
   <!-- Top Bar -->
   <div id="top-bar">
-    <div>
-      Gold: <span id="gold-total">0</span>
-      <button id="decrease-gold">-5</button>
-      <button id="increase-gold">+5</button>
-      Rations: <span id="rations-total">10</span>
-      <button id="decrease-rations">-</button>
-      <button id="increase-rations">+</button>
-    </div>
     <h1>Roguelike-Like</h1>
-    <div class="health-container">
-      <div>
-        <button id="decrease-health">-</button>
-        <button id="increase-health">+</button>
+    <div style="display: flex; gap: 30px; align-items: center;">
+      <!-- Gold Controls -->
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-weight: bold;">Gold:</span>
+        <button id="decrease-gold" style="padding: 5px 10px;">-5</button>
+        <span id="gold-total" style="min-width: 40px; text-align: center; font-size: 18px; font-weight: bold; color: gold;">0</span>
+        <button id="increase-gold" style="padding: 5px 10px;">+5</button>
       </div>
-      <div class="health-display">
-        <div id="health-display">10/10</div>
-        <div class="health-bar-container">
-          <div id="health-bar" class="health-bar"></div>
+      <!-- Health Controls -->
+      <div class="health-container">
+        <div>
+          <button id="decrease-health">-</button>
+          <button id="increase-health">+</button>
         </div>
-      </div>
-      <div class="max-health-controls">
-        <button id="decrease-max-health">-</button>
-        <button id="increase-max-health">+</button>
+        <div class="health-display">
+          <div id="health-display">10/10</div>
+          <div class="health-bar-container">
+            <div id="health-bar" class="health-bar"></div>
+          </div>
+        </div>
+        <div class="max-health-controls">
+          <button id="decrease-max-health">-</button>
+          <button id="increase-max-health">+</button>
+        </div>
       </div>
     </div>
   </div>

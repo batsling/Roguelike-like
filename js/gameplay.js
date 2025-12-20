@@ -202,14 +202,14 @@ function spawnChoices() {
   const shuffled = [...gamesToChooseFrom].sort(() => Math.random() - 0.5);
   const opts = shuffled.slice(0, Math.min(3, shuffled.length));
 
-  // Increased spacing to prevent overlap (280px apart)
-  const spacing = 280;
+  // Increased spacing to prevent overlap with icons (320px apart)
+  const spacing = 320;
   const sx = 450 - ((opts.length - 1) * spacing) / 2;
   const currentNode = document.querySelector('.node.current');
 
   opts.forEach((g, i) => {
     const nx = sx + i * spacing;
-    const ny = gameState.currentY + 180;
+    const ny = gameState.currentY + 200;
 
     // Determine encounter type
     const encounterRoll = Math.random() * 100;

@@ -528,6 +528,17 @@ scroll-behavior: smooth;
   padding-bottom: 100px;
 }
 
+#connection-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 3000px;
+  pointer-events: none;
+  z-index: 1;
+}
+
 /* Path node styles */
 .node {
   position: absolute;

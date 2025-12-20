@@ -199,7 +199,17 @@ function updateGameStats() {
   if (statsIntelligence) statsIntelligence.textContent = intelligence;
   if (statsCharisma) statsCharisma.textContent = charisma;
   if (statsItems) statsItems.textContent = inventory.length;
-  if (statsGames) statsGames.textContent = gameState.beatenGames?.length || beatenGames.length;
+
+  // Games = unique games beaten
+  if (statsGames) {
+    const uniqueBeaten = new Set(gameState.beatenGames || beatenGames);
+    statsGames.textContent = uniqueBeaten.size;
+  }
+
+  // Distance = total games played (including replays)
+  if (statsDistance) {
+    statsDistance.textContent = gameState.visitedGames?.length || 0;
+  }
 }
 
 // ===== SAVE/LOAD LIST =====
