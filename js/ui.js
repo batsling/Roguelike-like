@@ -74,6 +74,9 @@ function updateInventory() {
       }).join('');
     }
   }
+
+  // Update stats panel
+  updateGameStats();
 }
 
 // ===== GAME LISTS =====
@@ -208,6 +211,16 @@ function updateGameStats() {
 
   if (statsHealth) statsHealth.textContent = `${health}/${maxHealth}`;
   if (statsGold) statsGold.textContent = gold;
+
+  // Update character info
+  const characterIcon = document.getElementById('character-icon');
+  const characterName = document.getElementById('character-name');
+  if (gameState && gameState.character && PLAYER_CHARACTERS[gameState.character]) {
+    const character = PLAYER_CHARACTERS[gameState.character];
+    if (characterIcon) characterIcon.src = character.icon;
+    if (characterName) characterName.textContent = character.name;
+  }
+
   if (statsStrength) statsStrength.textContent = strength;
   if (statsDexterity) statsDexterity.textContent = dexterity;
   if (statsIntelligence) statsIntelligence.textContent = intelligence;

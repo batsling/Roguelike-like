@@ -306,9 +306,106 @@ function spawnChoices() {
 
     n.onclick = () => advance(g, nx, ny, encounterType);
   });
+
+  // Add Dash and Reroll buttons during choice selection
+  addDashRerollButtons();
 }
 
 // ===== ABILITY BUTTONS =====
+
+// Add floating Dash and Reroll buttons during game choice selection
+function addDashRerollButtons() {
+  // Remove old buttons if they exist
+  const oldDash = document.querySelector('.floating-dash-btn');
+  const oldReroll = document.querySelector('.floating-reroll-btn');
+  if (oldDash) oldDash.remove();
+  if (oldReroll) oldReroll.remove();
+
+  const viewport = document.getElementById('game-viewport');
+  if (!viewport) return;
+
+  // Add Dash button (floating, left side of viewport)
+  if (dash > 0 || true) {  // Always show, but gray out if dash === 0
+    const dashBtn = document.createElement('button');
+    dashBtn.className = 'floating-dash-btn';
+    dashBtn.textContent = '⚡ Dash';
+    dashBtn.disabled = dash === 0;
+    dashBtn.style.cssText = `
+      position: fixed;
+      left: 260px;
+      top: 120px;
+      padding: 12px 24px;
+      background: ${dash > 0 ? '#66ddff' : '#555'};
+      border: 2px solid ${dash > 0 ? '#88eeff' : '#666'};
+      border-radius: 8px;
+      color: ${dash > 0 ? '#000' : '#888'};
+      cursor: ${dash > 0 ? 'pointer' : 'not-allowed'};
+      font-weight: bold;
+      font-size: 15px;
+      opacity: ${dash > 0 ? '1' : '0.5'};
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+    if (dash > 0) {
+      dashBtn.onclick = () => showDashModal();
+      dashBtn.onmouseenter = () => {
+        if (dash > 0) dashBtn.style.background = '#88eeff';
+      };
+      dashBtn.onmouseleave = () => {
+        if (dash > 0) dashBtn.style.background = '#66ddff';
+      };
+    }
+    viewport.appendChild(dashBtn);
+  }
+
+  // Add Reroll button (floating, right side of viewport)
+  if (reroll > 0 || true) {  // Always show, but gray out if reroll === 0
+    const rerollBtn = document.createElement('button');
+    rerollBtn.className = 'floating-reroll-btn';
+    rerollBtn.textContent = '🔄 Reroll';
+    rerollBtn.disabled = reroll === 0;
+    rerollBtn.style.cssText = `
+      position: fixed;
+      right: 20px;
+      top: 120px;
+      padding: 12px 24px;
+      background: ${reroll > 0 ? '#ffcc66' : '#555'};
+      border: 2px solid ${reroll > 0 ? '#ffdd77' : '#666'};
+      border-radius: 8px;
+      color: ${reroll > 0 ? '#333' : '#888'};
+      cursor: ${reroll > 0 ? 'pointer' : 'not-allowed'};
+      font-weight: bold;
+      font-size: 15px;
+      opacity: ${reroll > 0 ? '1' : '0.5'};
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+    if (reroll > 0) {
+      rerollBtn.onclick = () => {
+        if (confirm('Reroll the current choices?')) {
+          useReroll();
+        }
+      };
+      rerollBtn.onmouseenter = () => {
+        if (reroll > 0) rerollBtn.style.background = '#ffdd77';
+      };
+      rerollBtn.onmouseleave = () => {
+        if (reroll > 0) rerollBtn.style.background = '#ffcc66';
+      };
+    }
+    viewport.appendChild(rerollBtn);
+  }
+}
+
+// Remove floating Dash/Reroll buttons (called when choice is made)
+function removeDashRerollButtons() {
+  const dashBtn = document.querySelector('.floating-dash-btn');
+  const rerollBtn = document.querySelector('.floating-reroll-btn');
+  if (dashBtn) dashBtn.remove();
+  if (rerollBtn) rerollBtn.remove();
+}
+
+// ===== OLD ABILITY BUTTONS (DEPRECATED) =====
 
 function addAbilityButtons(node) {
   // Add Dash button (left side)
@@ -424,6 +521,9 @@ function addAbilityButtons(node) {
 // ===== GAME ADVANCEMENT =====
 
 function advance(game, x, y, encounterType) {
+  // Remove floating Dash/Reroll buttons from choice screen
+  removeDashRerollButtons();
+
   // Get current player icon position before clearing choices
   const oldPlayerIcon = document.getElementById('player-icon');
   let startY = gameState.currentY || 120;
@@ -500,9 +600,6 @@ function advance(game, x, y, encounterType) {
   // Always show Finished button (including for amulet game)
   showFinish(n, isAmuletGame);
 
-  // Add ability buttons to the new current node
-  addAbilityButtons(n);
-
   // Smooth scroll to new position
   setTimeout(() => {
     viewport.scrollTo({
@@ -566,6 +663,44 @@ function showFinish(node, isAmuletGame = false) {
   };
 
   node.appendChild(b);
+
+  // Add Skip button to the left of Finished button
+  if (skip > 0 || true) {  // Always show, but gray out if skip === 0
+    const skipBtn = document.createElement('button');
+    skipBtn.className = 'ability-skip-btn';
+    skipBtn.textContent = '⏭ Skip';
+    skipBtn.disabled = skip === 0;
+    skipBtn.style.cssText = `
+      position: absolute;
+      left: -70px;
+      bottom: -50px;
+      padding: 8px 16px;
+      background: ${skip > 0 ? '#ff9966' : '#555'};
+      border: 2px solid ${skip > 0 ? '#ffaa77' : '#666'};
+      border-radius: 8px;
+      color: ${skip > 0 ? '#fff' : '#888'};
+      cursor: ${skip > 0 ? 'pointer' : 'not-allowed'};
+      font-weight: bold;
+      font-size: 13px;
+      opacity: ${skip > 0 ? '1' : '0.5'};
+      z-index: 10;
+    `;
+    if (skip > 0) {
+      skipBtn.onclick = () => {
+        if (confirm('Skip this game and move to the next choice?')) {
+          useSkip();
+        }
+      };
+      skipBtn.onmouseenter = () => {
+        if (skip > 0) skipBtn.style.background = '#ffaa77';
+        hideTooltip();
+      };
+      skipBtn.onmouseleave = () => {
+        if (skip > 0) skipBtn.style.background = '#ff9966';
+      };
+    }
+    node.appendChild(skipBtn);
+  }
 }
 
 // ===== STATE RENDERING =====

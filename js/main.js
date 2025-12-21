@@ -953,7 +953,10 @@ function showItemChoiceModal() {
   const choices = [];
   const maxAttempts = 100; // Prevent infinite loop
 
-  for (let i = 0; i < 2; i++) {
+  // Number of item choices = 2 + discovery stat
+  const numChoices = 2 + discovery;
+
+  for (let i = 0; i < numChoices; i++) {
     let attempts = 0;
     let selectedItem = null;
 

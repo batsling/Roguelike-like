@@ -93,10 +93,64 @@ async function loadCharacters() {
     // Fallback to default characters
     PLAYER_CHARACTERS = {
       "rogue": {
-        name: "The Rogue",
+        name: "Rodney",
         icon: "https://i.imgur.com/4foPqje.png",
-        startingStats: { strength: 0, dexterity: 2, intelligence: 1, charisma: 0 },
+        startingStats: {
+          strength: 0,
+          dexterity: 2,
+          intelligence: 1,
+          charisma: 0,
+          reroll: 1,
+          dash: 1,
+          skip: 1,
+          discovery: 0
+        },
         description: "Swift and cunning, favors dexterity"
+      },
+      "warrior": {
+        name: "The Warrior",
+        icon: "https://i.imgur.com/4foPqje.png",
+        startingStats: {
+          strength: 2,
+          dexterity: 0,
+          intelligence: 0,
+          charisma: 1,
+          reroll: 0,
+          dash: 1,
+          skip: 0,
+          discovery: 0
+        },
+        description: "Strong and brave, favors strength"
+      },
+      "mage": {
+        name: "The Mage",
+        icon: "https://i.imgur.com/4foPqje.png",
+        startingStats: {
+          strength: 0,
+          dexterity: 0,
+          intelligence: 2,
+          charisma: 1,
+          reroll: 1,
+          dash: 0,
+          skip: 0,
+          discovery: 1
+        },
+        description: "Wise and mystical, favors intelligence"
+      },
+      "bard": {
+        name: "The Bard",
+        icon: "https://i.imgur.com/4foPqje.png",
+        startingStats: {
+          strength: 0,
+          dexterity: 1,
+          intelligence: 0,
+          charisma: 2,
+          reroll: 0,
+          dash: 1,
+          skip: 1,
+          discovery: 0
+        },
+        description: "Charming and persuasive, favors charisma"
       }
     };
   }
