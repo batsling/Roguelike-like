@@ -1020,11 +1020,31 @@ function showItemChoiceModal() {
   itemsHTML += '</div>';
   itemsHTML += '<p style="text-align: center; color: #888; margin-top: 20px; font-size: 14px;">Click an item to choose it</p>';
 
+  // Add Reroll button
+  const rerollButtonHTML = `
+    <div style="text-align: center; margin-top: 20px;">
+      <button id="item-reroll-btn" ${reroll === 0 ? 'disabled' : ''} style="
+        padding: 10px 24px;
+        background: ${reroll > 0 ? '#ffcc66' : '#555'};
+        border: 2px solid ${reroll > 0 ? '#ffdd77' : '#666'};
+        border-radius: 8px;
+        color: ${reroll > 0 ? '#333' : '#888'};
+        cursor: ${reroll > 0 ? 'pointer' : 'not-allowed'};
+        font-weight: bold;
+        font-size: 14px;
+        opacity: ${reroll > 0 ? '1' : '0.5'};
+      ">
+        🔄 Reroll Items (${reroll})
+      </button>
+    </div>
+  `;
+
   createGameModal(`
     <div>
       <h2 style="color: #f39c12; margin-top: 0; text-align: center;">🎁 Choose Your Reward!</h2>
       <p style="text-align: center; color: #aaa;">Select one item to add to your inventory</p>
       ${itemsHTML}
+      ${rerollButtonHTML}
     </div>
   `);
 

@@ -763,8 +763,8 @@ function renderGameState() {
         node.appendChild(playerIcon);
       }
 
-      // Add ability buttons (Dash, Skip, Reroll)
-      addAbilityButtons(node);
+      // Dash/Reroll buttons are only shown during game choice selection (via spawnChoices)
+      // Skip button is shown with Finished button (via showFinish)
     }
 
     currentY += 160;
@@ -867,16 +867,16 @@ function useSkip() {
 
   skip--;
 
-  // Track the skipped game
+  // Track the skipped game (but DON'T mark as finished)
   if (gameState.currentGame && !gameState.skippedGames.includes(gameState.currentGame)) {
     gameState.skippedGames.push(gameState.currentGame);
   }
 
+  // Spawn game choices directly (no item modal, no finish)
   clearChoices();
   spawnChoices();
   updateGameStats();
   saveCurrentGame();
-  renderGameState();
 }
 
 function useReroll() {
