@@ -1,62 +1,122 @@
 [
   {
-    "name": "Goblin Scout",
-    "powerLevel": "1",
+    "name": "Cultist",
+    "powerLevel": "Low",
+    "game": "Slay the Spire",
+    "stat": "Charisma",
+    "roll": 5,
+    "successTrigger": "Gain 5 Gold",
+    "failureTrigger": "Low Curse",
+    "image": "https://i.imgur.com/ajKKRcC.png"
+  },
+  {
+    "name": "Snecko",
+    "powerLevel": "Medium",
+    "game": "Slay the Spire",
+    "stat": "Charisma",
+    "roll": 10,
+    "successTrigger": "Gain 10 Gold",
+    "failureTrigger": "Medium Curse",
+    "image": "https://i.imgur.com/RK1NDba.png"
+  },
+  {
+    "name": "Transient",
+    "powerLevel": "High",
+    "game": "Slay the Spire",
+    "stat": "Charisma",
+    "roll": 15,
+    "successTrigger": "Gain 15 Gold",
+    "failureTrigger": "High Curse",
+    "image": "https://i.imgur.com/0cXmirR.png"
+  },
+  {
+    "name": "Hobgoblin",
+    "powerLevel": "Low",
     "game": "Rogue",
     "stat": "Dexterity",
-    "rollCheck": 8,
-    "successReward": "+5 gold",
-    "failureConsequence": "-2 health",
-    "imageUrl": "https://i.imgur.com/placeholder.png"
+    "roll": 5,
+    "successTrigger": "Gain 5 Gold",
+    "failureTrigger": "Low Curse",
+    "image": "https://i.imgur.com/A2PsbKv.png"
   },
   {
-    "name": "Bandit Leader",
-    "powerLevel": "1",
-    "game": "NetHack",
-    "stat": "Strength",
-    "rollCheck": 10,
-    "successReward": "+10 gold, common item",
-    "failureConsequence": "-3 health",
-    "imageUrl": "https://i.imgur.com/placeholder.png"
-  },
-  {
-    "name": "Dark Wizard",
-    "powerLevel": "2",
-    "game": "Dungeon Crawl Stone Soup",
-    "stat": "Intelligence",
-    "rollCheck": 12,
-    "successReward": "Uncommon magic item",
-    "failureConsequence": "-4 health, cursed",
-    "imageUrl": "https://i.imgur.com/placeholder.png"
-  },
-  {
-    "name": "Elite Guard",
-    "powerLevel": "2",
-    "game": "Brogue",
-    "stat": "Strength",
-    "rollCheck": 14,
-    "successReward": "+15 gold, uncommon weapon",
-    "failureConsequence": "-5 health",
-    "imageUrl": "https://i.imgur.com/placeholder.png"
+    "name": "Troll",
+    "powerLevel": "Medium",
+    "game": "Rogue",
+    "stat": "Dexterity",
+    "roll": 10,
+    "successTrigger": "Gain 10 Gold",
+    "failureTrigger": "Medium Curse",
+    "image": "https://i.imgur.com/UEmw7K9.png"
   },
   {
     "name": "Dragon",
-    "powerLevel": "3",
-    "game": "Slay the Spire",
-    "stat": "Strength",
-    "rollCheck": 16,
-    "successReward": "Rare item, +20 gold",
-    "failureConsequence": "-8 health",
-    "imageUrl": "https://i.imgur.com/placeholder.png"
+    "powerLevel": "High",
+    "game": "Rogue",
+    "stat": "Dexterity",
+    "roll": 15,
+    "successTrigger": "Gain 15 Gold",
+    "failureTrigger": "High Curse",
+    "image": "https://i.imgur.com/qyX0nMf.png"
   },
   {
-    "name": "Lich King",
-    "powerLevel": "3",
-    "game": "Tales of Maj'Eyal",
+    "name": "Mung",
+    "powerLevel": "Low",
+    "game": "Brutal Orchestra",
     "stat": "Intelligence",
-    "rollCheck": 18,
-    "successReward": "Rare artifact, +3 to chosen stat",
-    "failureConsequence": "-10 health, max health -2",
-    "imageUrl": "https://i.imgur.com/placeholder.png"
+    "roll": 5,
+    "successTrigger": "Gain 5 Gold",
+    "failureTrigger": "Low Curse",
+    "image": "https://i.imgur.com/kfbSTv7.png"
+  },
+  {
+    "name": "Revola",
+    "powerLevel": "Medium",
+    "game": "Brutal Orchestra",
+    "stat": "Intelligence",
+    "roll": 10,
+    "successTrigger": "Gain 10 Gold",
+    "failureTrigger": "Medium Curse",
+    "image": "https://i.imgur.com/Db74QnA.png"
+  },
+  {
+    "name": "Skinning Homunculus",
+    "powerLevel": "High",
+    "game": "Brutal Orchestra",
+    "stat": "Intelligence",
+    "roll": 15,
+    "successTrigger": "Gain 15 Gold",
+    "failureTrigger": "High Curse",
+    "image": "https://i.imgur.com/0ZzNMlg.png"
+  },
+  {
+    "name": "Gaper",
+    "powerLevel": "Low",
+    "game": "The Binding of Isaac",
+    "stat": "Strength",
+    "roll": 5,
+    "successTrigger": "Gain 5 Gold",
+    "failureTrigger": "Low Curse",
+    "image": "https://i.imgur.com/GHYsk65.png"
+  },
+  {
+    "name": "Double Vis",
+    "powerLevel": "Medium",
+    "game": "The Binding of Isaac",
+    "stat": "Strength",
+    "roll": 10,
+    "successTrigger": "Gain 10 Gold",
+    "failureTrigger": "Medium Curse",
+    "image": "https://i.imgur.com/LLdb6OR.png"
+  },
+  {
+    "name": "Tainted Pooter",
+    "powerLevel": "High",
+    "game": "The Binding of Isaac",
+    "stat": "Strength",
+    "roll": 15,
+    "successTrigger": "Gain 15 Gold",
+    "failureTrigger": "High Curse",
+    "image": "https://i.imgur.com/IsLNEDt.png"
   }
 ]

@@ -98,6 +98,36 @@ function updateInventory() {
   updateGameStats();
 }
 
+// ===== CURSES DISPLAY =====
+
+function updateCursesDisplay() {
+  const cursesList = document.getElementById('game-curses-list');
+  if (!cursesList) return;
+
+  // Get active curses from game state
+  const activeCurses = gameState.activeCurses || [];
+
+  if (activeCurses.length === 0) {
+    cursesList.innerHTML = '<div class="empty-curses" style="color: #888; font-style: italic; padding: 10px; text-align: center;">No active curses</div>';
+  } else {
+    cursesList.innerHTML = activeCurses.map((curse, idx) => {
+      return `
+        <div class="curse-display" style="
+          background: rgba(255, 102, 102, 0.1);
+          border: 1px solid #ff6666;
+          border-radius: 6px;
+          padding: 8px;
+          margin: 5px 0;
+        ">
+          <div style="color: #ff9999; font-weight: bold; font-size: 14px;">${curse.name}</div>
+          <div style="color: #cc8888; font-size: 12px; margin-top: 4px;">${curse.description}</div>
+          <div style="color: #aa7777; font-size: 11px; margin-top: 4px; font-style: italic;">Duration: ${curse.duration}</div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
 // ===== GAME LISTS =====
 
 function updateExcludedGamesList() {
@@ -336,6 +366,7 @@ function updateSaveList() {
 window.updateTopBar = updateTopBar;
 window.updateHealthDisplay = updateHealthDisplay;
 window.updateInventory = updateInventory;
+window.updateCursesDisplay = updateCursesDisplay;
 window.updateExcludedGamesList = updateExcludedGamesList;
 window.updateBeatenGamesList = updateBeatenGamesList;
 window.updateSelectedGamesDisplay = updateSelectedGamesDisplay;

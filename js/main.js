@@ -179,6 +179,7 @@ function loadSavedGame(saveName) {
 
   updateTopBar();
   updateInventory();
+  updateCursesDisplay();
   updateGameStats();
 
   console.log('Game loaded:', saveName);
@@ -305,7 +306,7 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   skip = character.startingStats.skip || 0;
   discovery = character.startingStats.discovery || 0;
 
-  // Clear inventory for new run
+  // Clear inventory and curses for new run
   inventory = [];
 
   gameState = {
@@ -319,6 +320,8 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     maxHealth: maxHealth,
     gold: gold,
     inventory: [],
+    activeCurses: [], // Clear curses for new run
+    cursesTracker: {}, // Clear curse tracking for new run
     beatenGames: [...beatenGames],
     startGame: start,
     amuletGame: amulet,
@@ -777,14 +780,38 @@ function showCombatModal() {
         updateHealthDisplay();
       }
 
+      // Apply curse based on enemy's failure trigger
       const matchingCurses = curses.filter(curse =>
-        curse.powerLevel === powerText && curse.stat === randomStat
+        curse.power === powerText && curse.stat === enemy.stat
       );
       let failureText = enemy.failureConsequence;
       if (matchingCurses.length > 0) {
         const randomCurseIndex = Math.floor(Math.random() * matchingCurses.length);
         const selectedCurse = matchingCurses[randomCurseIndex];
-        failureText = `Lose ${healthMatch ? healthMatch[1] : 2} health and gain ${selectedCurse.name} (${selectedCurse.duration})`;
+
+        // Add curse to active curses if not already present
+        if (!gameState.activeCurses) {
+          gameState.activeCurses = [];
+        }
+
+        // Check if curse is already active
+        const alreadyHasCurse = gameState.activeCurses.some(c => c.name === selectedCurse.name);
+        if (!alreadyHasCurse) {
+          gameState.activeCurses.push({
+            name: selectedCurse.name,
+            stat: selectedCurse.stat,
+            power: selectedCurse.power,
+            duration: selectedCurse.duration,
+            description: selectedCurse.description
+          });
+
+          // Update curses display
+          if (typeof updateCursesDisplay === 'function') {
+            updateCursesDisplay();
+          }
+        }
+
+        failureText = `Lose ${healthMatch ? healthMatch[1] : 2} health and gain ${selectedCurse.name}!`;
       }
 
       resultHTML += `<p style="color: #ff4444; font-weight: bold;">FAILURE!</p>
@@ -1640,8 +1667,79 @@ function markGameFinished(gameName) {
   if (!gameState.finishedGames.includes(gameName)) {
     gameState.finishedGames.push(gameName);
     console.log(`Game finished: ${gameName}. Total unique finished: ${gameState.finishedGames.length}`);
+
+    // Check and update curse durations
+    checkCurseDurations('game_beaten');
+
     updateGameStats();
     saveCurrentGame();
+  }
+}
+
+// Check and remove curses based on their duration conditions
+function checkCurseDurations(trigger) {
+  if (!gameState.activeCurses || gameState.activeCurses.length === 0) return;
+  if (!gameState.cursesTracker) {
+    gameState.cursesTracker = {};
+  }
+
+  const cursesToRemove = [];
+
+  gameState.activeCurses.forEach((curse, index) => {
+    // Initialize tracker for this curse if it doesn't exist
+    if (!gameState.cursesTracker[curse.name]) {
+      gameState.cursesTracker[curse.name] = {
+        gamesBeaten: 0,
+        spacesChosen: 0,
+        combatsLost: 0,
+        diceRolled: 0
+      };
+    }
+
+    const tracker = gameState.cursesTracker[curse.name];
+
+    // Update trackers based on trigger
+    if (trigger === 'game_beaten') {
+      tracker.gamesBeaten++;
+    } else if (trigger === 'space_chosen') {
+      tracker.spacesChosen++;
+    } else if (trigger === 'combat_lost') {
+      tracker.combatsLost++;
+    } else if (trigger === 'dice_rolled') {
+      tracker.diceRolled++;
+    }
+
+    // Check if curse should be removed
+    let shouldRemove = false;
+    const duration = curse.duration.toLowerCase();
+
+    // Parse duration and check conditions
+    if (duration.includes('until') && duration.includes('game')) {
+      const match = duration.match(/(\d+)\s+game/);
+      if (match) {
+        const required = parseInt(match[1]);
+        if (tracker.gamesBeaten >= required) {
+          shouldRemove = true;
+        }
+      }
+    }
+
+    if (shouldRemove) {
+      cursesToRemove.push(index);
+      console.log(`Curse removed: ${curse.name}`);
+    }
+  });
+
+  // Remove expired curses (iterate backwards to avoid index issues)
+  for (let i = cursesToRemove.length - 1; i >= 0; i--) {
+    const curseToRemove = gameState.activeCurses[cursesToRemove[i]];
+    delete gameState.cursesTracker[curseToRemove.name];
+    gameState.activeCurses.splice(cursesToRemove[i], 1);
+  }
+
+  // Update display if any curses were removed
+  if (cursesToRemove.length > 0 && typeof updateCursesDisplay === 'function') {
+    updateCursesDisplay();
   }
 }
 
@@ -1657,3 +1755,4 @@ window.showShopModal = showShopModal;
 window.handleEventChoice = handleEventChoice;
 window.showItemChoiceModal = showItemChoiceModal;
 window.markGameFinished = markGameFinished;
+window.checkCurseDurations = checkCurseDurations;

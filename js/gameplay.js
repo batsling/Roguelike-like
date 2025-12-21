@@ -313,37 +313,39 @@ function spawnChoices() {
 
 // ===== ABILITY BUTTONS =====
 
-// Add floating Dash and Reroll buttons during game choice selection
+// Add Dash and Reroll buttons attached to current game node during choice selection
 function addDashRerollButtons() {
   // Remove old buttons if they exist
-  const oldDash = document.querySelector('.floating-dash-btn');
-  const oldReroll = document.querySelector('.floating-reroll-btn');
+  const oldDash = document.querySelector('.node-dash-btn');
+  const oldReroll = document.querySelector('.node-reroll-btn');
   if (oldDash) oldDash.remove();
   if (oldReroll) oldReroll.remove();
 
-  const viewport = document.getElementById('path-viewport');
-  if (!viewport) return;
+  // Find the current game node
+  const currentNode = document.querySelector('.node.current');
+  if (!currentNode) return;
 
-  // Add Dash button (floating, left side of viewport)
+  // Add Dash button (left side of current node)
   if (dash > 0 || true) {  // Always show, but gray out if dash === 0
     const dashBtn = document.createElement('button');
-    dashBtn.className = 'floating-dash-btn';
+    dashBtn.className = 'node-dash-btn';
     dashBtn.textContent = '⚡ Dash';
     dashBtn.disabled = dash === 0;
     dashBtn.style.cssText = `
-      position: fixed;
-      left: 260px;
-      top: 120px;
-      padding: 12px 24px;
+      position: absolute;
+      left: -140px;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 10px 20px;
       background: ${dash > 0 ? '#66ddff' : '#555'};
       border: 2px solid ${dash > 0 ? '#88eeff' : '#666'};
       border-radius: 8px;
       color: ${dash > 0 ? '#000' : '#888'};
       cursor: ${dash > 0 ? 'pointer' : 'not-allowed'};
       font-weight: bold;
-      font-size: 15px;
+      font-size: 14px;
       opacity: ${dash > 0 ? '1' : '0.5'};
-      z-index: 1000;
+      z-index: 10;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     `;
     if (dash > 0) {
@@ -355,29 +357,30 @@ function addDashRerollButtons() {
         if (dash > 0) dashBtn.style.background = '#66ddff';
       };
     }
-    viewport.appendChild(dashBtn);
+    currentNode.appendChild(dashBtn);
   }
 
-  // Add Reroll button (floating, right side of viewport)
+  // Add Reroll button (right side of current node)
   if (reroll > 0 || true) {  // Always show, but gray out if reroll === 0
     const rerollBtn = document.createElement('button');
-    rerollBtn.className = 'floating-reroll-btn';
+    rerollBtn.className = 'node-reroll-btn';
     rerollBtn.textContent = '🔄 Reroll';
     rerollBtn.disabled = reroll === 0;
     rerollBtn.style.cssText = `
-      position: fixed;
-      right: 20px;
-      top: 120px;
-      padding: 12px 24px;
+      position: absolute;
+      right: -140px;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 10px 20px;
       background: ${reroll > 0 ? '#ffcc66' : '#555'};
       border: 2px solid ${reroll > 0 ? '#ffdd77' : '#666'};
       border-radius: 8px;
       color: ${reroll > 0 ? '#333' : '#888'};
       cursor: ${reroll > 0 ? 'pointer' : 'not-allowed'};
       font-weight: bold;
-      font-size: 15px;
+      font-size: 14px;
       opacity: ${reroll > 0 ? '1' : '0.5'};
-      z-index: 1000;
+      z-index: 10;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     `;
     if (reroll > 0) {
@@ -393,14 +396,14 @@ function addDashRerollButtons() {
         if (reroll > 0) rerollBtn.style.background = '#ffcc66';
       };
     }
-    viewport.appendChild(rerollBtn);
+    currentNode.appendChild(rerollBtn);
   }
 }
 
-// Remove floating Dash/Reroll buttons (called when choice is made)
+// Remove Dash/Reroll buttons (called when choice is made)
 function removeDashRerollButtons() {
-  const dashBtn = document.querySelector('.floating-dash-btn');
-  const rerollBtn = document.querySelector('.floating-reroll-btn');
+  const dashBtn = document.querySelector('.node-dash-btn');
+  const rerollBtn = document.querySelector('.node-reroll-btn');
   if (dashBtn) dashBtn.remove();
   if (rerollBtn) rerollBtn.remove();
 }
@@ -540,9 +543,13 @@ function advance(game, x, y, encounterType) {
     const oldSkipBtn = current.querySelector('.ability-skip-btn');
     const oldRerollBtn = current.querySelector('.ability-reroll-btn');
     const oldDashBtn = current.querySelector('.ability-dash-btn');
+    const oldNodeDash = current.querySelector('.node-dash-btn');
+    const oldNodeReroll = current.querySelector('.node-reroll-btn');
     if (oldSkipBtn) oldSkipBtn.remove();
     if (oldRerollBtn) oldRerollBtn.remove();
     if (oldDashBtn) oldDashBtn.remove();
+    if (oldNodeDash) oldNodeDash.remove();
+    if (oldNodeReroll) oldNodeReroll.remove();
   }
 
   const n = addNode(game, 'current', x, y);

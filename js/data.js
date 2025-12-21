@@ -65,6 +65,8 @@ let gameState = {
   gold: 0,
   rations: 10,
   inventory: [],
+  activeCurses: [], // Track active curses on player
+  cursesTracker: {}, // Track curse progress (e.g., games beaten, spaces chosen)
   beatenGames: [],
   finishedGames: [], // Games completed (beaten)
   skippedGames: [], // Games skipped
