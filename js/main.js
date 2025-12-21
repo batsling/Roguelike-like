@@ -168,13 +168,33 @@ function loadSavedGame(saveName) {
   skip = save.skip || 0;
   discovery = save.discovery || 0;
 
+  // Clean up any escape container
+  const escapeContainer = document.getElementById('escape-container');
+  if (escapeContainer) {
+    escapeContainer.remove();
+  }
+
   // Show dungeon screen
   document.getElementById('main-menu').style.display = 'none';
   document.getElementById('dungeon-screen').style.display = 'flex';
 
-  // Render the game state
-  if (typeof renderGameState === 'function') {
-    renderGameState();
+  // Show or hide elements based on escape phase
+  if (gameState.escapePhase) {
+    // In escape phase - show escape visualization
+    document.getElementById('path-viewport').style.display = 'none';
+    document.getElementById('game-hud').style.display = 'none';
+    document.getElementById('target').style.display = 'none';
+    showEscapeVisualization();
+  } else {
+    // Normal game - show path viewport
+    document.getElementById('path-viewport').style.display = 'block';
+    document.getElementById('game-hud').style.display = 'block';
+    document.getElementById('target').style.display = 'block';
+
+    // Render the game state
+    if (typeof renderGameState === 'function') {
+      renderGameState();
+    }
   }
 
   updateTopBar();
@@ -339,10 +359,21 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   startGame = start;
   amuletGame = amulet;
 
+  // Clean up any escape container from previous run
+  const escapeContainer = document.getElementById('escape-container');
+  if (escapeContainer) {
+    escapeContainer.remove();
+  }
+
   // Hide modal and menu
   document.getElementById('save-modal').style.display = 'none';
   document.getElementById('main-menu').style.display = 'none';
   document.getElementById('dungeon-screen').style.display = 'flex';
+
+  // Show the normal game elements
+  document.getElementById('path-viewport').style.display = 'block';
+  document.getElementById('game-hud').style.display = 'block';
+  document.getElementById('target').style.display = 'block';
 
   // Render initial game state
   if (typeof renderGameState === 'function') {
@@ -1192,7 +1223,7 @@ function startEscapePhase() {
     <div>
       <h2 style="color: gold; margin-top: 0; text-align: center;">🏺 Amulet Acquired!</h2>
       <p style="text-align: center; color: #aaa;">Choose 3 games from your journey to replay as you escape the dungeon.</p>
-      <p style="text-align: center; color: #ff4444; font-size: 14px;">Each game will cost 2 health to complete!</p>
+      <p style="text-align: center; color: #ff4444; font-size: 14px;">Each lost run costs 1 health. Survive to complete your escape!</p>
       ${selectionHTML}
     </div>
   `);
@@ -1243,12 +1274,27 @@ function startEscapePhase() {
 
   document.getElementById('start-escape-btn').onclick = () => {
     gameState.escapeGames = [...selectedGames];
+    gameState.escapePhase = true;
+    gameState.escapeProgress = 0;
+    if (!gameState.escapeLostRuns) {
+      gameState.escapeLostRuns = [0, 0, 0];
+    }
     closeGameModal();
-    showEscapeVisualization();
+    setTimeout(() => showEscapeVisualization(), 100);
   };
 }
 
 function showEscapeVisualization() {
+  // Remove any existing escape container
+  const existingContainer = document.getElementById('escape-container');
+  if (existingContainer) {
+    existingContainer.remove();
+  }
+
+  // Ensure dungeon screen is visible
+  const dungeonScreen = document.getElementById('dungeon-screen');
+  dungeonScreen.style.display = 'flex';
+
   // Hide the main dungeon view and show escape view
   document.getElementById('path-viewport').style.display = 'none';
   document.getElementById('game-hud').style.display = 'none';

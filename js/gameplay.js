@@ -639,6 +639,15 @@ function showFinish(node, isAmuletGame = false) {
     b.style.opacity = '0.5';
     b.style.cursor = 'not-allowed';
 
+    // Grey out the Skip button when Finished is pressed
+    const skipBtn = node.querySelector('.ability-skip-btn');
+    if (skipBtn) {
+      skipBtn.disabled = true;
+      skipBtn.style.opacity = '0.5';
+      skipBtn.style.cursor = 'not-allowed';
+      skipBtn.style.background = '#555';
+    }
+
     // Mark this game as finished
     if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
       markGameFinished(gameState.currentGame);
