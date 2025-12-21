@@ -136,7 +136,11 @@ function saveCurrentGame() {
     strength: strength,
     dexterity: dexterity,
     intelligence: intelligence,
-    charisma: charisma
+    charisma: charisma,
+    reroll: reroll,
+    dash: dash,
+    skip: skip,
+    discovery: discovery
   };
 
   localStorage.setItem('roguelikeGameSaves', JSON.stringify(gameSaves));
@@ -159,6 +163,10 @@ function loadSavedGame(saveName) {
   dexterity = save.dexterity || 0;
   intelligence = save.intelligence || 0;
   charisma = save.charisma || 0;
+  reroll = save.reroll || 0;
+  dash = save.dash || 0;
+  skip = save.skip || 0;
+  discovery = save.discovery || 0;
 
   // Show dungeon screen
   document.getElementById('main-menu').style.display = 'none';

@@ -781,6 +781,31 @@ text, path, line, g {
   color: #88ff88;
 }
 
+#game-stats .stat-tooltip {
+  cursor: help;
+  position: relative;
+}
+
+#game-stats .stat-tooltip:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 10px;
+  padding: 8px 12px;
+  background: #2a2420;
+  color: #e6d5b8;
+  border: 2px solid #cc6600;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: normal;
+  width: 200px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+  pointer-events: none;
+}
+
     /* Game Items Sidebar */
 #game-items {
   width: 270px;
@@ -886,6 +911,10 @@ text, path, line, g {
 .item-display-image:hover img {
   border-color: #ffcc66;
   box-shadow: 0 0 12px rgba(255, 204, 102, 0.4);
+}
+
+.item-display-image img.image-error {
+  border-color: #ff6644;
 }
 @keyframes fadeIn {
   from { opacity: 0; }

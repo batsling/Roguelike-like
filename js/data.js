@@ -16,6 +16,10 @@ let intelligence = 0;
 let charisma = 0;
 let luck = 0;
 let roguePoints = 0;
+let reroll = 0;
+let dash = 0;
+let skip = 0;
+let discovery = 0;
 let pactConditions = {
   lessHealth: 0,
   moreGames: 0,

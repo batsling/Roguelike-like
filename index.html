@@ -65,22 +65,43 @@
 
             <!-- Combat Stats -->
             <div class="stat-section">
-              <h4 style="margin: 10px 0 5px 0; font-size: 14px; color: #888; border-bottom: 1px solid #444; padding-bottom: 5px;">Combat</h4>
-              <div class="stat-item">
-                <span class="stat-label" style="color: #ff4444;">Strength:</span>
+              <h4 style="margin: 10px 0 5px 0; font-size: 14px; color: #b8a890; border-bottom: 1px solid #4a4440; padding-bottom: 5px;">Combat</h4>
+              <div class="stat-item stat-tooltip" data-tooltip="Used for Action game checks. Determines success in combat encounters.">
+                <span class="stat-label" style="color: #ff6644;">Strength:</span>
                 <span class="stat-value" id="stats-strength">0</span>
               </div>
-              <div class="stat-item">
-                <span class="stat-label" style="color: #4CAF50;">Dexterity:</span>
+              <div class="stat-item stat-tooltip" data-tooltip="Used for Traditional game checks. Determines success in precision-based encounters.">
+                <span class="stat-label" style="color: #88ff88;">Dexterity:</span>
                 <span class="stat-value" id="stats-dexterity">0</span>
               </div>
-              <div class="stat-item">
-                <span class="stat-label" style="color: #3498db;">Intelligence:</span>
+              <div class="stat-item stat-tooltip" data-tooltip="Used for Strategy game checks. Determines success in tactical encounters.">
+                <span class="stat-label" style="color: #66ccff;">Intelligence:</span>
                 <span class="stat-value" id="stats-intelligence">0</span>
               </div>
-              <div class="stat-item">
-                <span class="stat-label" style="color: #9b59b6;">Charisma:</span>
+              <div class="stat-item stat-tooltip" data-tooltip="Used for Deckbuilder game checks. Determines success in card-based encounters.">
+                <span class="stat-label" style="color: #cc66ff;">Charisma:</span>
                 <span class="stat-value" id="stats-charisma">0</span>
+              </div>
+            </div>
+
+            <!-- Ability Stats -->
+            <div class="stat-section">
+              <h4 style="margin: 10px 0 5px 0; font-size: 14px; color: #b8a890; border-bottom: 1px solid #4a4440; padding-bottom: 5px;">Abilities</h4>
+              <div class="stat-item stat-tooltip" data-tooltip="Reroll the current game or item choices.">
+                <span class="stat-label" style="color: #ffcc66;">Reroll:</span>
+                <span class="stat-value" id="stats-reroll">0</span>
+              </div>
+              <div class="stat-item stat-tooltip" data-tooltip="Dash to any connected game node.">
+                <span class="stat-label" style="color: #66ddff;">Dash:</span>
+                <span class="stat-value" id="stats-dash">0</span>
+              </div>
+              <div class="stat-item stat-tooltip" data-tooltip="Skip the current game without playing it.">
+                <span class="stat-label" style="color: #ff9966;">Skip:</span>
+                <span class="stat-value" id="stats-skip">0</span>
+              </div>
+              <div class="stat-item stat-tooltip" data-tooltip="Reveals hidden information about the path ahead.">
+                <span class="stat-label" style="color: #99ff99;">Discovery:</span>
+                <span class="stat-value" id="stats-discovery">0</span>
               </div>
             </div>
 
@@ -115,11 +136,11 @@
           <div id="path-viewport-container">
             <!-- HUD -->
             <div id="game-hud">
-              <div>
-                <span>Health: </span>
-                <span id="game-health" style="color: #ff4444;">10/10</span>
-                <span style="margin-left: 20px;">Gold: </span>
-                <span id="game-gold" style="color: gold;">0</span>
+              <div style="font-size: 16px; font-weight: bold;">
+                <span style="color: #e6d5b8;">Health: </span>
+                <span id="game-health" style="color: #ff8866; font-size: 18px;">10/10</span>
+                <span style="margin-left: 20px; color: #e6d5b8;">Gold: </span>
+                <span id="game-gold" style="color: #ffdd77; font-size: 18px;">0</span>
               </div>
               <div id="distance-display"></div>
               <button id="return-menu" style="padding: 5px 15px; background: #555; border: none; border-radius: 4px; color: white; cursor: pointer;">Menu</button>

@@ -62,18 +62,13 @@ function updateInventory() {
           ? item.image
           : 'https://via.placeholder.com/75?text=%3F'; // Question mark placeholder
 
-        // Log for debugging
-        if (idx === 0) {
-          console.log('First item in inventory:', item);
-          console.log('Image URL:', imageUrl);
-        }
-
         return `
           <div class="item-display-image" title="${item.name}&#10;${item.game ? item.game + ' - ' : ''}${item.type}&#10;${item.description}">
             <img src="${imageUrl}"
                  alt="${item.name}"
+                 loading="lazy"
                  style="width: 75px; height: 75px; object-fit: cover; border-radius: 6px; display: block;"
-                 onerror="this.src='https://via.placeholder.com/75?text=%3F'; this.style.border='2px solid #ff4444';">
+                 onerror="if(this.src!=='https://via.placeholder.com/75?text=%3F'){this.src='https://via.placeholder.com/75?text=%3F';this.classList.add('image-error');}">
           </div>
         `;
       }).join('');
@@ -201,6 +196,10 @@ function updateGameStats() {
   const statsDexterity = document.getElementById('stats-dexterity');
   const statsIntelligence = document.getElementById('stats-intelligence');
   const statsCharisma = document.getElementById('stats-charisma');
+  const statsReroll = document.getElementById('stats-reroll');
+  const statsDash = document.getElementById('stats-dash');
+  const statsSkip = document.getElementById('stats-skip');
+  const statsDiscovery = document.getElementById('stats-discovery');
   const statsLuck = document.getElementById('stats-luck');
   const statsItems = document.getElementById('stats-items');
   const statsGames = document.getElementById('stats-games');
@@ -212,6 +211,10 @@ function updateGameStats() {
   if (statsDexterity) statsDexterity.textContent = dexterity;
   if (statsIntelligence) statsIntelligence.textContent = intelligence;
   if (statsCharisma) statsCharisma.textContent = charisma;
+  if (statsReroll) statsReroll.textContent = reroll;
+  if (statsDash) statsDash.textContent = dash;
+  if (statsSkip) statsSkip.textContent = skip;
+  if (statsDiscovery) statsDiscovery.textContent = discovery;
   if (statsLuck) statsLuck.textContent = luck;
   if (statsItems) statsItems.textContent = inventory.length;
 
