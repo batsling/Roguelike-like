@@ -504,6 +504,80 @@ function renderGameState() {
         `;
         node.appendChild(playerIcon);
       }
+
+      // Add Skip button (left side)
+      if (skip > 0 || true) {  // Always show, but gray out if skip === 0
+        const skipBtn = document.createElement('button');
+        skipBtn.textContent = '⏭ Skip';
+        skipBtn.disabled = skip === 0;
+        skipBtn.style.cssText = `
+          position: absolute;
+          left: -140px;
+          top: 50%;
+          transform: translateY(-50%);
+          padding: 10px 20px;
+          background: ${skip > 0 ? '#ff9966' : '#555'};
+          border: 2px solid ${skip > 0 ? '#ffaa77' : '#666'};
+          border-radius: 8px;
+          color: ${skip > 0 ? '#fff' : '#888'};
+          cursor: ${skip > 0 ? 'pointer' : 'not-allowed'};
+          font-weight: bold;
+          font-size: 14px;
+          opacity: ${skip > 0 ? '1' : '0.5'};
+          z-index: 10;
+        `;
+        if (skip > 0) {
+          skipBtn.onclick = () => {
+            if (confirm('Skip this game and move to the next choice?')) {
+              useSkip();
+            }
+          };
+          skipBtn.onmouseenter = () => {
+            if (skip > 0) skipBtn.style.background = '#ffaa77';
+          };
+          skipBtn.onmouseleave = () => {
+            if (skip > 0) skipBtn.style.background = '#ff9966';
+          };
+        }
+        node.appendChild(skipBtn);
+      }
+
+      // Add Reroll button (right side)
+      if (reroll > 0 || true) {  // Always show, but gray out if reroll === 0
+        const rerollBtn = document.createElement('button');
+        rerollBtn.textContent = '🔄 Reroll';
+        rerollBtn.disabled = reroll === 0;
+        rerollBtn.style.cssText = `
+          position: absolute;
+          right: -140px;
+          top: 50%;
+          transform: translateY(-50%);
+          padding: 10px 20px;
+          background: ${reroll > 0 ? '#ffcc66' : '#555'};
+          border: 2px solid ${reroll > 0 ? '#ffdd77' : '#666'};
+          border-radius: 8px;
+          color: ${reroll > 0 ? '#333' : '#888'};
+          cursor: ${reroll > 0 ? 'pointer' : 'not-allowed'};
+          font-weight: bold;
+          font-size: 14px;
+          opacity: ${reroll > 0 ? '1' : '0.5'};
+          z-index: 10;
+        `;
+        if (reroll > 0) {
+          rerollBtn.onclick = () => {
+            if (confirm('Reroll the current choices?')) {
+              useReroll();
+            }
+          };
+          rerollBtn.onmouseenter = () => {
+            if (reroll > 0) rerollBtn.style.background = '#ffdd77';
+          };
+          rerollBtn.onmouseleave = () => {
+            if (reroll > 0) rerollBtn.style.background = '#ffcc66';
+          };
+        }
+        node.appendChild(rerollBtn);
+      }
     }
 
     currentY += 160;
@@ -516,6 +590,29 @@ function renderGameState() {
 
   // Update stats panel
   updateGameStats();
+}
+
+// ===== ABILITY FUNCTIONS =====
+
+function useSkip() {
+  if (skip <= 0) return;
+
+  skip--;
+  clearChoices();
+  spawnChoices();
+  updateGameStats();
+  saveCurrentGame();
+  renderGameState();
+}
+
+function useReroll() {
+  if (reroll <= 0) return;
+
+  reroll--;
+  clearChoices();
+  spawnChoices();
+  updateGameStats();
+  saveCurrentGame();
 }
 
 // Export to global scope
@@ -533,3 +630,5 @@ window.spawnChoices = spawnChoices;
 window.advance = advance;
 window.showFinish = showFinish;
 window.renderGameState = renderGameState;
+window.useSkip = useSkip;
+window.useReroll = useReroll;

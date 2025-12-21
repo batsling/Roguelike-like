@@ -300,6 +300,10 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   dexterity = character.startingStats.dexterity;
   intelligence = character.startingStats.intelligence;
   charisma = character.startingStats.charisma;
+  reroll = character.startingStats.reroll || 0;
+  dash = character.startingStats.dash || 0;
+  skip = character.startingStats.skip || 0;
+  discovery = character.startingStats.discovery || 0;
 
   gameState = {
     currentGame: start.name,
