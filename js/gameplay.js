@@ -321,7 +321,7 @@ function addDashRerollButtons() {
   if (oldDash) oldDash.remove();
   if (oldReroll) oldReroll.remove();
 
-  const viewport = document.getElementById('game-viewport');
+  const viewport = document.getElementById('path-viewport');
   if (!viewport) return;
 
   // Add Dash button (floating, left side of viewport)
@@ -664,41 +664,53 @@ function showFinish(node, isAmuletGame = false) {
 
   node.appendChild(b);
 
-  // Add Skip button to the left of Finished button
-  if (skip > 0 || true) {  // Always show, but gray out if skip === 0
+  // Add Skip button to the left of Finished button (only if skip > 0)
+  if (skip > 0) {
     const skipBtn = document.createElement('button');
     skipBtn.className = 'ability-skip-btn';
     skipBtn.textContent = '⏭ Skip';
-    skipBtn.disabled = skip === 0;
+    skipBtn.disabled = false;
     skipBtn.style.cssText = `
       position: absolute;
       left: -70px;
       bottom: -50px;
       padding: 8px 16px;
-      background: ${skip > 0 ? '#ff9966' : '#555'};
-      border: 2px solid ${skip > 0 ? '#ffaa77' : '#666'};
+      background: #ff9966;
+      border: 2px solid #ffaa77;
       border-radius: 8px;
-      color: ${skip > 0 ? '#fff' : '#888'};
-      cursor: ${skip > 0 ? 'pointer' : 'not-allowed'};
+      color: #fff;
+      cursor: pointer;
       font-weight: bold;
       font-size: 13px;
-      opacity: ${skip > 0 ? '1' : '0.5'};
+      opacity: 1;
       z-index: 10;
     `;
-    if (skip > 0) {
-      skipBtn.onclick = () => {
-        if (confirm('Skip this game and move to the next choice?')) {
-          useSkip();
+    skipBtn.onclick = () => {
+      if (confirm('Skip this game and move to the next choice?')) {
+        // Disable the Finished button after skipping
+        const finishedBtn = node.querySelector('.finish');
+        if (finishedBtn) {
+          finishedBtn.disabled = true;
+          finishedBtn.style.opacity = '0.5';
+          finishedBtn.style.cursor = 'not-allowed';
+          finishedBtn.style.background = '#555';
         }
-      };
-      skipBtn.onmouseenter = () => {
-        if (skip > 0) skipBtn.style.background = '#ffaa77';
-        hideTooltip();
-      };
-      skipBtn.onmouseleave = () => {
-        if (skip > 0) skipBtn.style.background = '#ff9966';
-      };
-    }
+        // Disable the Skip button itself
+        skipBtn.disabled = true;
+        skipBtn.style.opacity = '0.5';
+        skipBtn.style.cursor = 'not-allowed';
+        skipBtn.style.background = '#555';
+
+        useSkip();
+      }
+    };
+    skipBtn.onmouseenter = () => {
+      skipBtn.style.background = '#ffaa77';
+      hideTooltip();
+    };
+    skipBtn.onmouseleave = () => {
+      skipBtn.style.background = '#ff9966';
+    };
     node.appendChild(skipBtn);
   }
 }
