@@ -57,14 +57,23 @@ function updateInventory() {
     if (inventory.length === 0) {
       gameItemsList.innerHTML = '<div class="empty-inventory">No items yet</div>';
     } else {
-      gameItemsList.innerHTML = inventory.map(item => {
+      gameItemsList.innerHTML = inventory.map((item, idx) => {
         const imageUrl = item.image && item.image.trim() !== ''
           ? item.image
           : 'https://via.placeholder.com/75?text=%3F'; // Question mark placeholder
 
+        // Log for debugging
+        if (idx === 0) {
+          console.log('First item in inventory:', item);
+          console.log('Image URL:', imageUrl);
+        }
+
         return `
           <div class="item-display-image" title="${item.name}&#10;${item.game ? item.game + ' - ' : ''}${item.type}&#10;${item.description}">
-            <img src="${imageUrl}" alt="${item.name}" style="width: 75px; height: 75px; object-fit: cover; border-radius: 6px; display: block;">
+            <img src="${imageUrl}"
+                 alt="${item.name}"
+                 style="width: 75px; height: 75px; object-fit: cover; border-radius: 6px; display: block;"
+                 onerror="this.src='https://via.placeholder.com/75?text=%3F'; this.style.border='2px solid #ff4444';">
           </div>
         `;
       }).join('');
@@ -228,24 +237,41 @@ function updateSaveList() {
 
   for (const [saveName, save] of Object.entries(gameSaves)) {
     const saveItem = document.createElement('div');
-    saveItem.style.cssText = 'padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #444;';
+    saveItem.style.cssText = 'padding: 10px 15px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center;';
 
     const characterName = PLAYER_CHARACTERS[save.character]?.name || 'Unknown';
-    saveItem.innerHTML = `
+
+    const infoDiv = document.createElement('div');
+    infoDiv.style.cssText = 'cursor: pointer; flex: 1;';
+    infoDiv.innerHTML = `
       <div style="font-weight: bold; color: white;">${saveName}</div>
       <div style="font-size: 11px; color: #888;">
         ${characterName} | Health: ${save.health}/${save.maxHealth} | Gold: ${save.gold} | Games: ${save.beatenGames?.length || 0}
       </div>
     `;
 
-    saveItem.onclick = () => {
+    infoDiv.onclick = () => {
       loadSavedGame(saveName);
       saveList.style.display = 'none';
     };
 
-    saveItem.onmouseenter = (e) => { e.target.style.background = '#3d3d3d'; };
-    saveItem.onmouseleave = (e) => { e.target.style.background = ''; };
+    infoDiv.onmouseenter = () => { saveItem.style.background = '#3d3d3d'; };
+    infoDiv.onmouseleave = () => { saveItem.style.background = ''; };
 
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '✕';
+    deleteBtn.style.cssText = 'background: #ff4444; border: none; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-left: 10px;';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (confirm(`Delete save "${saveName}"?`)) {
+        delete gameSaves[saveName];
+        localStorage.setItem('gameSaves', JSON.stringify(gameSaves));
+        updateSaveList();
+      }
+    };
+
+    saveItem.appendChild(infoDiv);
+    saveItem.appendChild(deleteBtn);
     saveList.appendChild(saveItem);
   }
 

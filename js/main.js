@@ -935,17 +935,37 @@ function showItemChoiceModal() {
   }
 
   const choices = [];
-  for (let i = 0; i < 2; i++) {
-    const rarityRoll = Math.random() * 100;
-    let targetRarity = rarityRoll <= 50 ? 'common' : rarityRoll <= 85 ? 'uncommon' : 'rare';
+  const maxAttempts = 100; // Prevent infinite loop
 
-    const rarityItems = items.filter(item => item.rarity === targetRarity);
-    if (rarityItems.length > 0) {
-      const randomIndex = Math.floor(Math.random() * rarityItems.length);
-      choices.push(rarityItems[randomIndex]);
-    } else {
-      const randomIndex = Math.floor(Math.random() * items.length);
-      choices.push(items[randomIndex]);
+  for (let i = 0; i < 2; i++) {
+    let attempts = 0;
+    let selectedItem = null;
+
+    while (attempts < maxAttempts) {
+      const rarityRoll = Math.random() * 100;
+      let targetRarity = rarityRoll <= 50 ? 'common' : rarityRoll <= 85 ? 'uncommon' : 'rare';
+
+      const rarityItems = items.filter(item => item.rarity === targetRarity);
+      if (rarityItems.length > 0) {
+        const randomIndex = Math.floor(Math.random() * rarityItems.length);
+        selectedItem = rarityItems[randomIndex];
+      } else {
+        const randomIndex = Math.floor(Math.random() * items.length);
+        selectedItem = items[randomIndex];
+      }
+
+      // Check if this item is already in choices
+      if (!choices.find(c => c.name === selectedItem.name)) {
+        choices.push(selectedItem);
+        break;
+      }
+
+      attempts++;
+    }
+
+    // If we couldn't find a unique item after max attempts, just add it anyway
+    if (attempts >= maxAttempts && selectedItem) {
+      choices.push(selectedItem);
     }
   }
 

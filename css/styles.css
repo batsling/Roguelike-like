@@ -668,8 +668,10 @@ text, path, line, g {
   background: #2d2d2d;
   border-radius: 8px;
   margin-top: 5px;
-  overflow: hidden;
+  max-height: 400px;
+  overflow-y: auto;
   z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
 
     /* Game Stats Sidebar */
