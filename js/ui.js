@@ -200,6 +200,7 @@ function updateGameStats() {
   const statsDash = document.getElementById('stats-dash');
   const statsSkip = document.getElementById('stats-skip');
   const statsDiscovery = document.getElementById('stats-discovery');
+  const statsFoV = document.getElementById('stats-fov');
   const statsLuck = document.getElementById('stats-luck');
   const statsItems = document.getElementById('stats-items');
   const statsGames = document.getElementById('stats-games');
@@ -215,6 +216,7 @@ function updateGameStats() {
   if (statsDash) statsDash.textContent = dash;
   if (statsSkip) statsSkip.textContent = skip;
   if (statsDiscovery) statsDiscovery.textContent = discovery;
+  if (statsFoV) statsFoV.textContent = fov;
   if (statsLuck) statsLuck.textContent = luck;
   if (statsItems) statsItems.textContent = inventory.length;
 

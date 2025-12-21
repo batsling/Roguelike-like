@@ -1,6 +1,6 @@
 {
   "rogue": {
-    "name": "The Rogue",
+    "name": "Rodney",
     "icon": "https://i.imgur.com/4foPqje.png",
     "startingStats": {
       "strength": 0,
@@ -8,7 +8,7 @@
       "intelligence": 1,
       "charisma": 0,
       "reroll": 1,
-      "dash": 0,
+      "dash": 1,
       "skip": 1,
       "discovery": 0
     },

@@ -788,10 +788,8 @@ text, path, line, g {
 
 #game-stats .stat-tooltip:hover::after {
   content: attr(data-tooltip);
-  position: absolute;
-  left: calc(100% + 10px);
-  top: 50%;
-  transform: translateY(-50%);
+  position: fixed;
+  left: 240px;
   padding: 8px 12px;
   background: #2a2420;
   color: #e6d5b8;
@@ -800,7 +798,7 @@ text, path, line, g {
   font-size: 12px;
   white-space: normal;
   width: 220px;
-  z-index: 10001;
+  z-index: 99999;
   box-shadow: 0 4px 12px rgba(0,0,0,0.8);
   pointer-events: none;
   line-height: 1.4;

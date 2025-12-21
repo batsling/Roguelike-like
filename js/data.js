@@ -20,6 +20,7 @@ let reroll = 0;
 let dash = 0;
 let skip = 0;
 let discovery = 0;
+let fov = 3; // Field of View - number of game choices shown
 let pactConditions = {
   lessHealth: 0,
   moreGames: 0,
