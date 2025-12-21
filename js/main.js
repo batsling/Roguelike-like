@@ -312,6 +312,7 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     currentGame: start.name,
     visitedGames: [start.name],
     finishedGames: [], // Track unique games finished in this run
+    skippedGames: [], // Track games skipped in this run
     saveName: saveName,
     gameStarted: true,
     health: health,
@@ -667,10 +668,12 @@ function showCombatModal() {
   const stats = ['Strength', 'Charisma', 'Intelligence', 'Dexterity'];
   const randomStat = stats[Math.floor(Math.random() * stats.length)];
 
+  // Difficulty scales with distance (visitedGames.length)
+  const distance = gameState.visitedGames?.length || 0;
   let powerText = 'Low';
-  if (gameState.beatenGames.length >= 9) {
+  if (distance >= 10) {
     powerText = 'High';
-  } else if (gameState.beatenGames.length >= 4) {
+  } else if (distance >= 5) {
     powerText = 'Medium';
   }
 
@@ -953,8 +956,8 @@ function showItemChoiceModal() {
   const choices = [];
   const maxAttempts = 100; // Prevent infinite loop
 
-  // Number of item choices = 2 + discovery stat
-  const numChoices = 2 + discovery;
+  // Number of item choices = discovery stat
+  const numChoices = discovery;
 
   for (let i = 0; i < numChoices; i++) {
     let attempts = 0;

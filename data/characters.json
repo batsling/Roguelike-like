@@ -10,7 +10,7 @@
       "reroll": 1,
       "dash": 1,
       "skip": 1,
-      "discovery": 0
+      "discovery": 2
     },
     "description": "Swift and cunning, favors dexterity"
   },
@@ -25,7 +25,7 @@
       "reroll": 0,
       "dash": 1,
       "skip": 0,
-      "discovery": 0
+      "discovery": 2
     },
     "description": "Strong and brave, favors strength"
   },
@@ -40,7 +40,7 @@
       "reroll": 1,
       "dash": 0,
       "skip": 0,
-      "discovery": 1
+      "discovery": 3
     },
     "description": "Wise and mystical, favors intelligence"
   },
@@ -55,7 +55,7 @@
       "reroll": 0,
       "dash": 1,
       "skip": 1,
-      "discovery": 0
+      "discovery": 2
     },
     "description": "Charming and persuasive, favors charisma"
   }

@@ -19,7 +19,7 @@ let roguePoints = 0;
 let reroll = 0;
 let dash = 0;
 let skip = 0;
-let discovery = 0;
+let discovery = 2; // Number of item choices when collecting rewards
 let fov = 3; // Field of View - number of game choices shown
 let pactConditions = {
   lessHealth: 0,
@@ -66,6 +66,8 @@ let gameState = {
   rations: 10,
   inventory: [],
   beatenGames: [],
+  finishedGames: [], // Games completed (beaten)
+  skippedGames: [], // Games skipped
   startGame: null,
   amuletGame: null,
   currentY: 120,
@@ -103,7 +105,7 @@ async function loadCharacters() {
           reroll: 1,
           dash: 1,
           skip: 1,
-          discovery: 0
+          discovery: 2
         },
         description: "Swift and cunning, favors dexterity"
       },
@@ -118,7 +120,7 @@ async function loadCharacters() {
           reroll: 0,
           dash: 1,
           skip: 0,
-          discovery: 0
+          discovery: 2
         },
         description: "Strong and brave, favors strength"
       },
@@ -133,7 +135,7 @@ async function loadCharacters() {
           reroll: 1,
           dash: 0,
           skip: 0,
-          discovery: 1
+          discovery: 3
         },
         description: "Wise and mystical, favors intelligence"
       },
@@ -148,7 +150,7 @@ async function loadCharacters() {
           reroll: 0,
           dash: 1,
           skip: 1,
-          discovery: 0
+          discovery: 2
         },
         description: "Charming and persuasive, favors charisma"
       }

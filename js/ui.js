@@ -207,6 +207,7 @@ function updateGameStats() {
   const statsLuck = document.getElementById('stats-luck');
   const statsItems = document.getElementById('stats-items');
   const statsGames = document.getElementById('stats-games');
+  const statsSkippedGames = document.getElementById('stats-skipped');
   const statsDistance = document.getElementById('stats-distance');
 
   if (statsHealth) statsHealth.textContent = `${health}/${maxHealth}`;
@@ -233,10 +234,16 @@ function updateGameStats() {
   if (statsLuck) statsLuck.textContent = luck;
   if (statsItems) statsItems.textContent = inventory.length;
 
-  // Games = unique games finished in this run
+  // Games Beaten = unique games finished in this run
   if (statsGames) {
     const finishedCount = gameState.finishedGames?.length || 0;
     statsGames.textContent = finishedCount;
+  }
+
+  // Games Skipped = games skipped in this run
+  if (statsSkippedGames) {
+    const skippedCount = gameState.skippedGames?.length || 0;
+    statsSkippedGames.textContent = skippedCount;
   }
 
   // Distance = total games played (including replays)

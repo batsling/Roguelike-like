@@ -866,6 +866,12 @@ function useSkip() {
   if (skip <= 0) return;
 
   skip--;
+
+  // Track the skipped game
+  if (gameState.currentGame && !gameState.skippedGames.includes(gameState.currentGame)) {
+    gameState.skippedGames.push(gameState.currentGame);
+  }
+
   clearChoices();
   spawnChoices();
   updateGameStats();
