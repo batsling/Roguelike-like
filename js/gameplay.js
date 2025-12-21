@@ -308,6 +308,119 @@ function spawnChoices() {
   });
 }
 
+// ===== ABILITY BUTTONS =====
+
+function addAbilityButtons(node) {
+  // Add Dash button (left side)
+  if (dash > 0 || true) {  // Always show, but gray out if dash === 0
+    const dashBtn = document.createElement('button');
+    dashBtn.className = 'ability-dash-btn';
+    dashBtn.textContent = '⚡ Dash';
+    dashBtn.disabled = dash === 0;
+    dashBtn.style.cssText = `
+      position: absolute;
+      left: -140px;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 10px 20px;
+      background: ${dash > 0 ? '#66ddff' : '#555'};
+      border: 2px solid ${dash > 0 ? '#88eeff' : '#666'};
+      border-radius: 8px;
+      color: ${dash > 0 ? '#000' : '#888'};
+      cursor: ${dash > 0 ? 'pointer' : 'not-allowed'};
+      font-weight: bold;
+      font-size: 14px;
+      opacity: ${dash > 0 ? '1' : '0.5'};
+      z-index: 10;
+    `;
+    if (dash > 0) {
+      dashBtn.onclick = () => showDashModal();
+      dashBtn.onmouseenter = () => {
+        if (dash > 0) dashBtn.style.background = '#88eeff';
+      };
+      dashBtn.onmouseleave = () => {
+        if (dash > 0) dashBtn.style.background = '#66ddff';
+      };
+    }
+    node.appendChild(dashBtn);
+  }
+
+  // Add Skip button (bottom left of node, left of Finished button)
+  if (skip > 0 || true) {  // Always show, but gray out if skip === 0
+    const skipBtn = document.createElement('button');
+    skipBtn.className = 'ability-skip-btn';
+    skipBtn.textContent = '⏭ Skip';
+    skipBtn.disabled = skip === 0;
+    skipBtn.style.cssText = `
+      position: absolute;
+      left: -70px;
+      bottom: -50px;
+      padding: 8px 16px;
+      background: ${skip > 0 ? '#ff9966' : '#555'};
+      border: 2px solid ${skip > 0 ? '#ffaa77' : '#666'};
+      border-radius: 8px;
+      color: ${skip > 0 ? '#fff' : '#888'};
+      cursor: ${skip > 0 ? 'pointer' : 'not-allowed'};
+      font-weight: bold;
+      font-size: 13px;
+      opacity: ${skip > 0 ? '1' : '0.5'};
+      z-index: 10;
+    `;
+    if (skip > 0) {
+      skipBtn.onclick = () => {
+        if (confirm('Skip this game and move to the next choice?')) {
+          useSkip();
+        }
+      };
+      skipBtn.onmouseenter = () => {
+        if (skip > 0) skipBtn.style.background = '#ffaa77';
+      };
+      skipBtn.onmouseleave = () => {
+        if (skip > 0) skipBtn.style.background = '#ff9966';
+      };
+    }
+    node.appendChild(skipBtn);
+  }
+
+  // Add Reroll button (right side)
+  if (reroll > 0 || true) {  // Always show, but gray out if reroll === 0
+    const rerollBtn = document.createElement('button');
+    rerollBtn.className = 'ability-reroll-btn';
+    rerollBtn.textContent = '🔄 Reroll';
+    rerollBtn.disabled = reroll === 0;
+    rerollBtn.style.cssText = `
+      position: absolute;
+      right: -140px;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 10px 20px;
+      background: ${reroll > 0 ? '#ffcc66' : '#555'};
+      border: 2px solid ${reroll > 0 ? '#ffdd77' : '#666'};
+      border-radius: 8px;
+      color: ${reroll > 0 ? '#333' : '#888'};
+      cursor: ${reroll > 0 ? 'pointer' : 'not-allowed'};
+      font-weight: bold;
+      font-size: 14px;
+      opacity: ${reroll > 0 ? '1' : '0.5'};
+      z-index: 10;
+    `;
+    if (reroll > 0) {
+      rerollBtn.onclick = () => {
+        if (confirm('Reroll the current choices?')) {
+          useReroll();
+        }
+      };
+      rerollBtn.onmouseenter = () => {
+        if (reroll > 0) rerollBtn.style.background = '#ffdd77';
+      };
+      rerollBtn.onmouseleave = () => {
+        if (reroll > 0) rerollBtn.style.background = '#ffcc66';
+      };
+    }
+    node.appendChild(rerollBtn);
+  }
+}
+
 // ===== GAME ADVANCEMENT =====
 
 function advance(game, x, y, encounterType) {
@@ -323,6 +436,13 @@ function advance(game, x, y, encounterType) {
     // Remove old player icon
     const oldIcon = current.querySelector('#player-icon');
     if (oldIcon) oldIcon.remove();
+    // Remove old ability buttons
+    const oldSkipBtn = current.querySelector('.ability-skip-btn');
+    const oldRerollBtn = current.querySelector('.ability-reroll-btn');
+    const oldDashBtn = current.querySelector('.ability-dash-btn');
+    if (oldSkipBtn) oldSkipBtn.remove();
+    if (oldRerollBtn) oldRerollBtn.remove();
+    if (oldDashBtn) oldDashBtn.remove();
   }
 
   const n = addNode(game, 'current', x, y);
@@ -379,6 +499,9 @@ function advance(game, x, y, encounterType) {
 
   // Always show Finished button (including for amulet game)
   showFinish(n, isAmuletGame);
+
+  // Add ability buttons to the new current node
+  addAbilityButtons(n);
 
   // Smooth scroll to new position
   setTimeout(() => {
@@ -505,79 +628,8 @@ function renderGameState() {
         node.appendChild(playerIcon);
       }
 
-      // Add Skip button (left side)
-      if (skip > 0 || true) {  // Always show, but gray out if skip === 0
-        const skipBtn = document.createElement('button');
-        skipBtn.textContent = '⏭ Skip';
-        skipBtn.disabled = skip === 0;
-        skipBtn.style.cssText = `
-          position: absolute;
-          left: -140px;
-          top: 50%;
-          transform: translateY(-50%);
-          padding: 10px 20px;
-          background: ${skip > 0 ? '#ff9966' : '#555'};
-          border: 2px solid ${skip > 0 ? '#ffaa77' : '#666'};
-          border-radius: 8px;
-          color: ${skip > 0 ? '#fff' : '#888'};
-          cursor: ${skip > 0 ? 'pointer' : 'not-allowed'};
-          font-weight: bold;
-          font-size: 14px;
-          opacity: ${skip > 0 ? '1' : '0.5'};
-          z-index: 10;
-        `;
-        if (skip > 0) {
-          skipBtn.onclick = () => {
-            if (confirm('Skip this game and move to the next choice?')) {
-              useSkip();
-            }
-          };
-          skipBtn.onmouseenter = () => {
-            if (skip > 0) skipBtn.style.background = '#ffaa77';
-          };
-          skipBtn.onmouseleave = () => {
-            if (skip > 0) skipBtn.style.background = '#ff9966';
-          };
-        }
-        node.appendChild(skipBtn);
-      }
-
-      // Add Reroll button (right side)
-      if (reroll > 0 || true) {  // Always show, but gray out if reroll === 0
-        const rerollBtn = document.createElement('button');
-        rerollBtn.textContent = '🔄 Reroll';
-        rerollBtn.disabled = reroll === 0;
-        rerollBtn.style.cssText = `
-          position: absolute;
-          right: -140px;
-          top: 50%;
-          transform: translateY(-50%);
-          padding: 10px 20px;
-          background: ${reroll > 0 ? '#ffcc66' : '#555'};
-          border: 2px solid ${reroll > 0 ? '#ffdd77' : '#666'};
-          border-radius: 8px;
-          color: ${reroll > 0 ? '#333' : '#888'};
-          cursor: ${reroll > 0 ? 'pointer' : 'not-allowed'};
-          font-weight: bold;
-          font-size: 14px;
-          opacity: ${reroll > 0 ? '1' : '0.5'};
-          z-index: 10;
-        `;
-        if (reroll > 0) {
-          rerollBtn.onclick = () => {
-            if (confirm('Reroll the current choices?')) {
-              useReroll();
-            }
-          };
-          rerollBtn.onmouseenter = () => {
-            if (reroll > 0) rerollBtn.style.background = '#ffdd77';
-          };
-          rerollBtn.onmouseleave = () => {
-            if (reroll > 0) rerollBtn.style.background = '#ffcc66';
-          };
-        }
-        node.appendChild(rerollBtn);
-      }
+      // Add ability buttons (Dash, Skip, Reroll)
+      addAbilityButtons(node);
     }
 
     currentY += 160;
@@ -590,6 +642,87 @@ function renderGameState() {
 
   // Update stats panel
   updateGameStats();
+}
+
+// ===== DASH MODAL =====
+
+function showDashModal() {
+  if (dash <= 0) return;
+
+  const connections = getGameConnections(gameState.currentGame);
+
+  if (connections.length === 0) {
+    alert('No connected games available!');
+    return;
+  }
+
+  const gamesHTML = connections.map((game, index) => `
+    <div class="dash-game-option" data-game="${game}" style="
+      padding: 12px 15px;
+      margin: 8px 0;
+      background: #3a3430;
+      border: 2px solid #4a4440;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #e6d5b8;
+      font-size: 14px;
+    ">
+      ${index + 1}. ${game}
+    </div>
+  `).join('');
+
+  const modal = createGameModal(`
+    <div style="text-align: center;">
+      <h2 style="color: #66ddff; margin-top: 0;">⚡ Dash to Game</h2>
+      <p style="color: #e6d5b8;">Select a connected game to dash to (${connections.length} available)</p>
+      <div style="max-height: 400px; overflow-y: auto; margin: 20px 0;">
+        ${gamesHTML}
+      </div>
+      <button onclick="closeGameModal()" style="margin-top: 10px; padding: 10px 20px; background: #555; border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: bold;">
+        Cancel
+      </button>
+    </div>
+  `);
+
+  // Add click handlers to game options
+  document.querySelectorAll('.dash-game-option').forEach(option => {
+    option.onmouseenter = (e) => {
+      e.target.style.background = '#4a4440';
+      e.target.style.borderColor = '#66ddff';
+    };
+    option.onmouseleave = (e) => {
+      e.target.style.background = '#3a3430';
+      e.target.style.borderColor = '#4a4440';
+    };
+    option.onclick = (e) => {
+      const selectedGame = e.target.dataset.game;
+      useDash(selectedGame);
+      closeGameModal();
+    };
+  });
+}
+
+function useDash(targetGame) {
+  if (dash <= 0) return;
+
+  dash--;
+
+  // Clear current choices
+  clearChoices();
+
+  // Calculate new position (keep same Y level, centered)
+  const y = gameState.currentY;
+  const x = 450;
+
+  // Trigger the encounter for this game
+  const encounterType = ['combat', 'event', 'shop'][Math.floor(Math.random() * 3)];
+
+  // Advance to the selected game
+  advance(targetGame, x, y + 160, encounterType);
+
+  updateGameStats();
+  saveCurrentGame();
 }
 
 // ===== ABILITY FUNCTIONS =====
@@ -630,5 +763,8 @@ window.spawnChoices = spawnChoices;
 window.advance = advance;
 window.showFinish = showFinish;
 window.renderGameState = renderGameState;
+window.addAbilityButtons = addAbilityButtons;
+window.showDashModal = showDashModal;
+window.useDash = useDash;
 window.useSkip = useSkip;
 window.useReroll = useReroll;
