@@ -241,9 +241,9 @@ document.getElementById('new-game-btn')?.addEventListener('click', () => {
 
     charDiv.onclick = () => {
       document.querySelectorAll('.character-option').forEach(opt => {
-        opt.style.border = '3px solid #555';
+        opt.style.border = '3px solid #4a4440';
       });
-      charDiv.style.border = '3px solid gold';
+      charDiv.style.border = '3px solid #ffcc66';
       selectedCharacter = id;
     };
 
@@ -609,7 +609,7 @@ function createGameModal(content) {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0,0,0,0.9);
+    background: rgba(0,0,0,0.95);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -620,14 +620,15 @@ function createGameModal(content) {
   const modalContent = document.createElement('div');
   modalContent.className = 'modal-content';
   modalContent.style.cssText = `
-    background: #1e1e1e;
+    background: #2a2420;
     padding: 30px;
     border-radius: 12px;
     max-width: 800px;
     max-height: 90vh;
     overflow-y: auto;
-    color: white;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    color: #e6d5b8;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    border: 2px solid #cc6600;
   `;
 
   modalContent.innerHTML = content;
@@ -810,11 +811,11 @@ function showEventModal() {
   document.querySelectorAll('.event-modal-option').forEach(btn => {
     btn.onmouseenter = (e) => {
       e.target.style.transform = 'translateX(5px)';
-      e.target.style.background = '#3d3d3d';
+      e.target.style.background = '#4a4440';
     };
     btn.onmouseleave = (e) => {
       e.target.style.transform = '';
-      e.target.style.background = '#2d2d2d';
+      e.target.style.background = '#3a3430';
     };
     btn.onclick = (e) => {
       const optionIndex = e.target.dataset.index;
@@ -919,7 +920,7 @@ function showShopModal() {
 
         e.target.textContent = 'Purchased!';
         e.target.disabled = true;
-        e.target.style.background = '#666';
+        e.target.style.background = '#555';
 
         saveCurrentGame();
       }
@@ -1008,7 +1009,7 @@ function showItemChoiceModal() {
   document.querySelectorAll('.item-choice-card').forEach(card => {
     card.onmouseenter = (e) => {
       e.currentTarget.style.transform = 'translateY(-5px) scale(1.05)';
-      e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      e.currentTarget.style.boxShadow = '0 10px 30px rgba(204, 102, 0, 0.4)';
     };
     card.onmouseleave = (e) => {
       e.currentTarget.style.transform = '';
@@ -1102,7 +1103,7 @@ function startEscapePhase() {
       if (selectedIndex !== -1) {
         // Deselect
         selectedGames.splice(selectedIndex, 1);
-        option.style.border = '3px solid #666';
+        option.style.border = '3px solid #4a4440';
         numberDiv.style.display = 'none';
 
         // Update numbers for remaining selections
@@ -1113,7 +1114,7 @@ function startEscapePhase() {
       } else if (selectedGames.length < 3) {
         // Select
         selectedGames.push(gameName);
-        option.style.border = '3px solid gold';
+        option.style.border = '3px solid #ffcc66';
         numberDiv.style.display = 'flex';
         numberDiv.textContent = selectedGames.length;
       }
@@ -1204,11 +1205,12 @@ function showEscapeVisualization() {
     const gameBox = document.createElement('div');
     gameBox.style.cssText = `
       padding: 20px;
-      background: ${status === 'completed' ? '#2b2b2b' : status === 'current' ? 'linear-gradient(145deg, #5a4720, #3f3215)' : '#1a1a1a'};
-      border: 3px solid ${status === 'completed' ? '#555' : status === 'current' ? 'gold' : '#444'};
+      background: ${status === 'completed' ? '#2a2420' : status === 'current' ? 'linear-gradient(145deg, #5a4720, #3f3215)' : '#1a1410'};
+      border: 3px solid ${status === 'completed' ? '#4a4440' : status === 'current' ? '#ffcc66' : '#4a4440'};
       border-radius: 12px;
       min-width: 120px;
       opacity: ${status === 'completed' ? '0.6' : '1'};
+      color: ${status === 'current' ? '#ffcc66' : '#b8a890'};
     `;
     gameBox.textContent = gameName;
     gameDiv.appendChild(gameBox);
@@ -1217,7 +1219,7 @@ function showEscapeVisualization() {
       // Lost runs counter
       const lostRunsDiv = document.createElement('div');
       lostRunsDiv.id = `lost-runs-${index}`;
-      lostRunsDiv.style.cssText = 'margin-top: 8px; font-size: 12px; color: #ff4444;';
+      lostRunsDiv.style.cssText = 'margin-top: 8px; font-size: 12px; color: #ff6644;';
       lostRunsDiv.textContent = `Lost Runs: ${gameState.escapeLostRuns[index]}`;
       gameDiv.appendChild(lostRunsDiv);
 
@@ -1228,7 +1230,7 @@ function showEscapeVisualization() {
       lostRunBtn.style.cssText = `
         margin-top: 10px;
         padding: 8px 16px;
-        background: #ff4444;
+        background: #ff6644;
         border: none;
         border-radius: 6px;
         color: white;
@@ -1246,8 +1248,8 @@ function showEscapeVisualization() {
       finishBtn.style.cssText = `
         margin-top: 8px;
         padding: 10px 20px;
-        background: #4CAF50;
-        border: none;
+        background: #cc6600;
+        border: 1px solid #ff8800;
         border-radius: 6px;
         color: white;
         cursor: pointer;
@@ -1355,8 +1357,8 @@ function completeEscapeGame(index) {
 
   // Mark as completed
   const gameBox = currentNode.querySelector('div');
-  gameBox.style.background = '#2b2b2b';
-  gameBox.style.border = '3px solid #555';
+  gameBox.style.background = '#2a2420';
+  gameBox.style.border = '3px solid #4a4440';
   gameBox.style.opacity = '0.6';
 
   // Check if all games completed
@@ -1370,12 +1372,12 @@ function completeEscapeGame(index) {
     const nextNode = document.querySelector(`.escape-game-node[data-index="${gameState.escapeProgress}"]`);
     const nextBox = nextNode.querySelector('div');
     nextBox.style.background = 'linear-gradient(145deg, #5a4720, #3f3215)';
-    nextBox.style.border = '3px solid gold';
+    nextBox.style.border = '3px solid #ffcc66';
 
     // Lost runs counter
     const nextLostRunsDiv = document.createElement('div');
     nextLostRunsDiv.id = `lost-runs-${gameState.escapeProgress}`;
-    nextLostRunsDiv.style.cssText = 'margin-top: 8px; font-size: 12px; color: #ff4444;';
+    nextLostRunsDiv.style.cssText = 'margin-top: 8px; font-size: 12px; color: #ff6644;';
     nextLostRunsDiv.textContent = `Lost Runs: ${gameState.escapeLostRuns[gameState.escapeProgress]}`;
     nextNode.appendChild(nextLostRunsDiv);
 
@@ -1386,7 +1388,7 @@ function completeEscapeGame(index) {
     nextLostRunBtn.style.cssText = `
       margin-top: 10px;
       padding: 8px 16px;
-      background: #ff4444;
+      background: #ff6644;
       border: none;
       border-radius: 6px;
       color: white;
@@ -1404,8 +1406,8 @@ function completeEscapeGame(index) {
     nextFinishBtn.style.cssText = `
       margin-top: 8px;
       padding: 10px 20px;
-      background: #4CAF50;
-      border: none;
+      background: #cc6600;
+      border: 1px solid #ff8800;
       border-radius: 6px;
       color: white;
       cursor: pointer;

@@ -237,15 +237,15 @@ function updateSaveList() {
 
   for (const [saveName, save] of Object.entries(gameSaves)) {
     const saveItem = document.createElement('div');
-    saveItem.style.cssText = 'padding: 10px 15px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center;';
+    saveItem.style.cssText = 'padding: 10px 15px; border-bottom: 1px solid #4a4440; display: flex; justify-content: space-between; align-items: center;';
 
     const characterName = PLAYER_CHARACTERS[save.character]?.name || 'Unknown';
 
     const infoDiv = document.createElement('div');
     infoDiv.style.cssText = 'cursor: pointer; flex: 1;';
     infoDiv.innerHTML = `
-      <div style="font-weight: bold; color: white;">${saveName}</div>
-      <div style="font-size: 11px; color: #888;">
+      <div style="font-weight: bold; color: #ffcc66;">${saveName}</div>
+      <div style="font-size: 11px; color: #b8a890;">
         ${characterName} | Health: ${save.health}/${save.maxHealth} | Gold: ${save.gold} | Games: ${save.beatenGames?.length || 0}
       </div>
     `;
@@ -255,12 +255,12 @@ function updateSaveList() {
       saveList.style.display = 'none';
     };
 
-    infoDiv.onmouseenter = () => { saveItem.style.background = '#3d3d3d'; };
+    infoDiv.onmouseenter = () => { saveItem.style.background = '#3a3430'; };
     infoDiv.onmouseleave = () => { saveItem.style.background = ''; };
 
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = '✕';
-    deleteBtn.style.cssText = 'background: #ff4444; border: none; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-left: 10px;';
+    deleteBtn.style.cssText = 'background: #ff6644; border: none; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-left: 10px;';
     deleteBtn.onclick = (e) => {
       e.stopPropagation();
       if (confirm(`Delete save "${saveName}"?`)) {
@@ -276,7 +276,7 @@ function updateSaveList() {
   }
 
   const deleteBtn = document.createElement('div');
-  deleteBtn.style.cssText = 'padding: 10px 15px; cursor: pointer; color: #ff4444; text-align: center;';
+  deleteBtn.style.cssText = 'padding: 10px 15px; cursor: pointer; color: #ff6644; text-align: center; border-top: 1px solid #4a4440;';
   deleteBtn.textContent = 'Delete All Saves';
   deleteBtn.onclick = () => {
     if (confirm('Delete all saved games?')) {
