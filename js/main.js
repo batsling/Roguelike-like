@@ -421,32 +421,32 @@ document.getElementById('excelFile')?.addEventListener('change', function(event)
     const reader = new FileReader();
     reader.onload = function(e) {
       const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
+      const workbook = XLSX.read(data, { type: 'array', cellFormula: false, cellDates: true });
 
       const gamesSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const gamesData = XLSX.utils.sheet_to_json(gamesSheet, { header: 1 });
-      games = gamesData.slice(1).map(row => ({
+      const gamesData = XLSX.utils.sheet_to_json(gamesSheet, { header: 1, raw: false });
+      games = gamesData.slice(1).filter(row => row[0]).map(row => ({
         name: String(row[0]),
-        year: parseInt(row[1]),
-        type: String(row[2]),
-        connected: String(row[3]).toUpperCase() === "TRUE",
-        influenced: String(row[4]).toUpperCase() === "TRUE"
+        year: parseInt(row[1]) || 0,
+        type: String(row[2] || 'Unknown'),
+        connected: row[3] === true || row[3] === 'TRUE' || row[3] === 'true' || String(row[3]).toUpperCase() === 'TRUE',
+        influenced: row[4] === true || row[4] === 'TRUE' || row[4] === 'true' || String(row[4]).toUpperCase() === 'TRUE'
       }));
 
       const connectionsSheet = workbook.Sheets[workbook.SheetNames[1]];
       const connectionsData = XLSX.utils.sheet_to_json(connectionsSheet, { header: 1 });
-      connections = connectionsData.slice(1).map(row => ({
+      connections = connectionsData.slice(1).filter(row => row[0] && row[1]).map(row => ({
         influencer: String(row[0]),
         influencee: String(row[1])
       }));
 
       const itemsSheet = workbook.Sheets[workbook.SheetNames[2]];
       const itemsData = XLSX.utils.sheet_to_json(itemsSheet, { header: 1 });
-      items = itemsData.slice(1).map(row => ({
+      items = itemsData.slice(1).filter(row => row[0]).map(row => ({
         name: String(row[0]),
-        rarity: String(row[1]).toLowerCase(),
-        type: String(row[3]).trim(),
-        description: String(row[4]),
+        rarity: String(row[1] || 'common').toLowerCase(),
+        type: String(row[3] || '').trim(),
+        description: String(row[4] || ''),
         image: row[5] ? String(row[5]).trim() : '', // Column 6: Image URL
         game: row[6] ? String(row[6]).trim() : ''   // Column 7: Game name
       }));
@@ -454,9 +454,9 @@ document.getElementById('excelFile')?.addEventListener('change', function(event)
       if (workbook.SheetNames.length > 3) {
         const eventsSheet = workbook.Sheets[workbook.SheetNames[3]];
         const eventsData = XLSX.utils.sheet_to_json(eventsSheet, { header: 1 });
-        events = eventsData.slice(1).map(row => ({
+        events = eventsData.slice(1).filter(row => row[0]).map(row => ({
           name: String(row[0]),
-          description: String(row[1]),
+          description: String(row[1] || ''),
           options: [
             String(row[2] || ""),
             String(row[3] || ""),
@@ -469,27 +469,27 @@ document.getElementById('excelFile')?.addEventListener('change', function(event)
       if (workbook.SheetNames.length > 4) {
         const enemiesSheet = workbook.Sheets[workbook.SheetNames[4]];
         const enemiesData = XLSX.utils.sheet_to_json(enemiesSheet, { header: 1 });
-        enemies = enemiesData.slice(1).map(row => ({
+        enemies = enemiesData.slice(1).filter(row => row[0]).map(row => ({
           name: String(row[0]),
-          powerLevel: String(row[1]),
-          game: String(row[2]),
-          stat: String(row[3]),
-          rollCheck: parseInt(row[4]),
-          successReward: String(row[5]),
-          failureConsequence: String(row[6]),
-          imageUrl: String(row[7])
+          powerLevel: String(row[1] || 'Low'),
+          game: String(row[2] || ''),
+          stat: String(row[3] || 'Strength'),
+          rollCheck: parseInt(row[4]) || 5,
+          successReward: String(row[5] || 'Gain 5 Gold'),
+          failureConsequence: String(row[6] || 'Lose 2 health'),
+          imageUrl: String(row[7] || '')
         }));
       }
 
       if (workbook.SheetNames.length > 5) {
         const cursesSheet = workbook.Sheets[workbook.SheetNames[5]];
         const cursesData = XLSX.utils.sheet_to_json(cursesSheet, { header: 1 });
-        curses = cursesData.slice(1).map(row => ({
+        curses = cursesData.slice(1).filter(row => row[0]).map(row => ({
           name: String(row[0]),
-          stat: String(row[1]),
-          powerLevel: String(row[2]),
-          duration: String(row[3]),
-          description: String(row[4])
+          stat: String(row[1] || 'Strength'),
+          power: String(row[2] || 'Low'),
+          duration: String(row[3] || ''),
+          description: String(row[4] || '')
         }));
       }
 
@@ -498,7 +498,16 @@ document.getElementById('excelFile')?.addEventListener('change', function(event)
       populateItemSelects();
       enableButtons();
 
-      console.log('Excel data loaded successfully. Games:', games.length, 'Items:', items.length);
+      console.log('Excel data loaded successfully!');
+      console.log('- Games:', games.length);
+      console.log('- Connections:', connections.length);
+      console.log('- Items:', items.length);
+      console.log('- Events:', events.length);
+      console.log('- Enemies:', enemies.length);
+      console.log('- Curses:', curses.length);
+
+      // Show success message
+      alert(`Excel file loaded successfully!\n\nGames: ${games.length}\nConnections: ${connections.length}\nItems: ${items.length}\nEnemies: ${enemies.length}\nCurses: ${curses.length}\n\nYou can now start a new run!`);
 
       try {
         updateSaveList();
