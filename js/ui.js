@@ -10,15 +10,34 @@
 // ===== TOP BAR UPDATES =====
 
 function updateTopBar() {
-  document.getElementById('rations-total').textContent = rations;
-  document.getElementById('gold-total').textContent = gold;
-  updateHealthDisplay();
+  // Update floating HUD (now at bottom of screen)
+  const gameHealth = document.getElementById('game-health');
+  const gameGold = document.getElementById('game-gold');
+
+  if (gameHealth) {
+    gameHealth.textContent = `${health}/${maxHealth}`;
+  }
+
+  if (gameGold) {
+    gameGold.textContent = gold;
+  }
+
+  // Update stats panel health/gold if they exist
+  const statsHealth = document.getElementById('stats-health');
+  const statsGold = document.getElementById('stats-gold');
+
+  if (statsHealth) {
+    statsHealth.textContent = `${health}/${maxHealth}`;
+  }
+
+  if (statsGold) {
+    statsGold.textContent = gold;
+  }
 }
 
 function updateHealthDisplay() {
-  document.getElementById('health-display').textContent = `${health}/${maxHealth}`;
-  const healthPercentage = (health / maxHealth) * 100;
-  document.getElementById('health-bar').style.width = `calc(${healthPercentage}% + 1px)`;
+  // Legacy function - now handled by updateTopBar
+  updateTopBar();
 }
 
 // ===== INVENTORY DISPLAY =====
