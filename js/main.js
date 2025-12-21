@@ -367,6 +367,18 @@ document.getElementById('return-menu')?.addEventListener('click', () => {
   }
 });
 
+// Top bar menu button (same functionality)
+document.getElementById('return-menu-top')?.addEventListener('click', () => {
+  // Only show if in dungeon screen
+  if (document.getElementById('dungeon-screen').style.display !== 'none') {
+    if (confirm('Return to main menu? (Game will be saved)')) {
+      saveCurrentGame();
+      document.getElementById('dungeon-screen').style.display = 'none';
+      document.getElementById('main-menu').style.display = 'flex';
+    }
+  }
+});
+
 // ===== EXCEL FILE UPLOAD =====
 
 document.getElementById('excelFile')?.addEventListener('change', function(event) {
@@ -665,8 +677,20 @@ function closeGameModal() {
 function showCombatModal() {
   if (enemies.length === 0) return;
 
-  const stats = ['Strength', 'Charisma', 'Intelligence', 'Dexterity'];
-  const randomStat = stats[Math.floor(Math.random() * stats.length)];
+  // Determine stat based on current game type
+  const currentGameObj = games.find(g => g.name === gameState.currentGame);
+  let requiredStat = 'Strength'; // Default
+
+  if (currentGameObj) {
+    const gameType = currentGameObj.type.toLowerCase();
+    switch(gameType) {
+      case 'action': requiredStat = 'Strength'; break;
+      case 'deckbuilding': requiredStat = 'Charisma'; break;
+      case 'strategy': requiredStat = 'Intelligence'; break;
+      case 'traditional': requiredStat = 'Dexterity'; break;
+      default: requiredStat = 'Strength';
+    }
+  }
 
   // Difficulty scales with distance (visitedGames.length)
   const distance = gameState.visitedGames?.length || 0;
@@ -678,7 +702,7 @@ function showCombatModal() {
   }
 
   const matchingEnemies = enemies.filter(enemy =>
-    enemy.powerLevel === powerText && enemy.stat === randomStat
+    enemy.powerLevel === powerText && enemy.stat === requiredStat
   );
 
   if (matchingEnemies.length === 0) return;
@@ -1071,6 +1095,18 @@ function showItemChoiceModal() {
       setTimeout(() => spawnChoices(), 300);
     };
   });
+
+  // Add reroll button event listener
+  const itemRerollBtn = document.getElementById('item-reroll-btn');
+  if (itemRerollBtn && reroll > 0) {
+    itemRerollBtn.onclick = () => {
+      if (confirm('Reroll item choices?')) {
+        reroll--;
+        closeGameModal();
+        setTimeout(() => showItemChoiceModal(), 100);
+      }
+    };
+  }
 }
 
 // ===== ESCAPE PHASE =====

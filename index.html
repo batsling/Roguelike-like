@@ -10,6 +10,7 @@
 <body>
   <!-- Top Bar -->
   <div id="top-bar">
+    <button id="return-menu-top" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; margin-right: 20px;">📋 Menu</button>
     <h1>Roguelike-Like</h1>
   </div>
 
@@ -148,23 +149,24 @@
 
           <!-- Center: Game View -->
           <div id="path-viewport-container">
-            <!-- HUD -->
-            <div id="game-hud">
-              <div style="font-size: 16px; font-weight: bold;">
-                <span style="color: #e6d5b8;">Health: </span>
-                <span id="game-health" style="color: #ff8866; font-size: 18px;">10/10</span>
-                <span style="margin-left: 20px; color: #e6d5b8;">Gold: </span>
-                <span id="game-gold" style="color: #ffdd77; font-size: 18px;">0</span>
-              </div>
-              <div id="distance-display"></div>
-              <button id="return-menu" style="padding: 5px 15px; background: #555; border: none; border-radius: 4px; color: white; cursor: pointer;">Menu</button>
-            </div>
-
             <!-- Path Viewport -->
             <div id="path-viewport">
               <div id="path-container" style="min-height: 2000px; position: relative;">
                 <svg id="connection-lines" style="position: absolute; top: 0; left: 0; width: 100%; height: 2000px; pointer-events: none;"></svg>
                 <!-- Nodes will be added here dynamically -->
+              </div>
+
+              <!-- Floating Bottom HUD -->
+              <div id="floating-hud" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(24, 24, 24, 0.95); border: 2px solid #cc6600; border-radius: 12px; padding: 12px 24px; display: flex; gap: 30px; align-items: center; z-index: 1000; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px);">
+                <div style="font-size: 16px; font-weight: bold;">
+                  <span style="color: #e6d5b8;">Health: </span>
+                  <span id="game-health" style="color: #ff8866; font-size: 18px;">10/10</span>
+                </div>
+                <div style="font-size: 16px; font-weight: bold;">
+                  <span style="color: #e6d5b8;">Gold: </span>
+                  <span id="game-gold" style="color: #ffdd77; font-size: 18px;">0</span>
+                </div>
+                <div id="distance-display" style="font-size: 14px; color: #b8a890;"></div>
               </div>
             </div>
 

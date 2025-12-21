@@ -6,9 +6,9 @@
   width: 100%;
   background: #1a1a1a;
   color: #ffcc66;
-  padding: 10px;
+  padding: 10px 20px;
   display: flex;
-  justify-content: space-around;
+  justify-content: center;
   align-items: center;
   z-index: 1000;
   border-bottom: 2px solid #cc6600;
@@ -29,6 +29,8 @@
   font-size: 1.5em;
   margin: 0;
   color: #ffcc66;
+  flex: 1;
+  text-align: center;
 }
 
 /* Health Bar Styles */
