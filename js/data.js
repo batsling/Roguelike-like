@@ -254,11 +254,6 @@ async function initializeData() {
   await loadEvents();
   await loadCurses();
 
-  // Enable the start button after data is loaded
-  if (typeof enableButtons === 'function') {
-    enableButtons();
-  }
-
   console.log('All data loaded successfully!');
   console.log('- Games:', games.length);
   console.log('- Connections:', connections.length);
@@ -266,6 +261,16 @@ async function initializeData() {
   console.log('- Events:', events.length);
   console.log('- Enemies:', enemies.length);
   console.log('- Curses:', curses.length);
+
+  // Populate UI dropdowns if function is available
+  setTimeout(() => {
+    if (typeof populateGameSelects === 'function') {
+      populateGameSelects();
+    }
+    if (typeof populateItemSelects === 'function') {
+      populateItemSelects();
+    }
+  }, 100);
 }
 
 // Call initialization when page loads
