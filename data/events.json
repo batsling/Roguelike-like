@@ -1,52 +1,38 @@
 [
   {
-    "name": "Mysterious Merchant",
-    "description": "You encounter a hooded merchant offering strange wares.",
+    "name": "Primordial Teleporter",
+    "description": "You come across an ancient teleporter. Do you activate it?",
     "options": [
-      "Buy a health potion (10 gold)",
-      "Buy a mystery item (20 gold)",
-      "Rob the merchant (Charisma check)",
-      "Walk away"
+      "Enter the teleporter (teleport to a random action roguelike)",
+      "Interact with the teleporter, then enter it (teleport back to the starting position and gain X rations where X is the amount of games you've beaten)",
+      "Do nothing"
     ]
   },
   {
-    "name": "Ancient Shrine",
-    "description": "You discover an ancient shrine glowing with power.",
+    "name": "Deal with the Devil",
+    "description": "You enter a room devoid of light with a large statue of Satan standing above 3 different floating question marks. Do you take them?",
     "options": [
-      "Pray for strength (+2 Strength)",
-      "Pray for wisdom (+2 Intelligence)",
-      "Offer gold for blessing (20 gold for +5 max health)",
-      "Leave it alone"
+      "Grab one question mark (Get one random item and lose one health)",
+      "Grab two question marks (Get two random items and lose two health)",
+      "Grab three question mark (Get three random items and lose three health)",
+      "Do nothing"
     ]
   },
   {
-    "name": "Trapped Chest",
-    "description": "A treasure chest sits in the middle of the room. It might be trapped.",
+    "name": "The Colloseum",
+    "description": "You wake up in the center of a roaring arena, and must survive as long as you can. You must fight off an enemy and then are given the choice to escape or double down. (Teleport to an action game off of the map and beat it. You get the item reward, but not the event trigger) ",
     "options": [
-      "Carefully disarm (Dexterity check)",
-      "Smash it open (Strength check)",
-      "Use magic to open (Intelligence check)",
-      "Leave it"
+      "Escape the arena (Teleport back to the spot you were on before)",
+      "Challenge the Champion (You have three attempts to beat the game you are currently on, if you succeed gain 2 random items, if you fail lose 3 health)"
     ]
   },
   {
-    "name": "Wandering Healer",
-    "description": "A kind healer offers their services.",
+    "name": "A Wild Muncher Appears",
+    "description": "You come across a green chest that looks hungry. Should you feed it?",
     "options": [
-      "Full heal (30 gold)",
-      "Small heal (+5 health, 10 gold)",
-      "Learn healing skill (+1 max health, 15 gold)",
-      "Decline"
-    ]
-  },
-  {
-    "name": "Cursed Altar",
-    "description": "A dark altar radiates malevolent energy. Risk and reward await.",
-    "options": [
-      "Take the cursed item (rare item + curse)",
-      "Destroy the altar (10 gold reward)",
-      "Study the curse (gain knowledge)",
-      "Flee"
+      "Feed it four items (discard four items and get two random new ones)",
+      "Feed it two items (discard 2 items and get one random new one)",
+      "Leave it hungry (Do Nothing)"
     ]
   }
 ]

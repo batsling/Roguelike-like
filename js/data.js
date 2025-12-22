@@ -86,6 +86,34 @@ let PLAYER_CHARACTERS = {};
 
 // ===== DATA LOADING =====
 
+// Load games from JSON
+async function loadGames() {
+  try {
+    const response = await fetch('data/games.json');
+    const jsonGames = await response.json();
+    if (games.length === 0) { // Only use if no data loaded
+      games = jsonGames;
+      console.log('Games loaded from JSON:', games.length);
+    }
+  } catch (error) {
+    console.error('Error loading games.json:', error);
+  }
+}
+
+// Load connections from JSON
+async function loadConnections() {
+  try {
+    const response = await fetch('data/connections.json');
+    const jsonConnections = await response.json();
+    if (connections.length === 0) { // Only use if no data loaded
+      connections = jsonConnections;
+      console.log('Connections loaded from JSON:', connections.length);
+    }
+  } catch (error) {
+    console.error('Error loading connections.json:', error);
+  }
+}
+
 // Load character data from JSON
 async function loadCharacters() {
   try {
@@ -219,11 +247,25 @@ async function loadCurses() {
 // Initialize all data
 async function initializeData() {
   await loadCharacters();
-  // These are optional - Excel can override them
+  await loadGames();
+  await loadConnections();
   await loadItems();
   await loadEnemies();
   await loadEvents();
   await loadCurses();
+
+  // Enable the start button after data is loaded
+  if (typeof enableButtons === 'function') {
+    enableButtons();
+  }
+
+  console.log('All data loaded successfully!');
+  console.log('- Games:', games.length);
+  console.log('- Connections:', connections.length);
+  console.log('- Items:', items.length);
+  console.log('- Events:', events.length);
+  console.log('- Enemies:', enemies.length);
+  console.log('- Curses:', curses.length);
 }
 
 // Call initialization when page loads

@@ -24,17 +24,14 @@
         <h1 style="font-size: 48px; color: gold; margin-bottom: 30px; text-shadow: 0 0 20px rgba(255,215,0,0.5);">The Search for the Amulet of Nivlac</h1>
 
         <!-- Game Controls -->
-        <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; align-items: center;">
-          <input type="file" id="excelFile" accept=".xlsx, .xls" style="padding: 10px; background: white; border: 2px solid gold; border-radius: 8px; cursor: pointer;">
-          <div style="display: flex; gap: 15px;">
-            <button id="toggleTutorial" style="padding: 10px 20px; background: #2196F3; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">📖 How to Play</button>
-            <button id="clearAllData" style="padding: 10px 20px; background: #ff4444; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">🗑️ Clear All Data</button>
-          </div>
+        <div style="display: flex; gap: 15px; margin-bottom: 30px; justify-content: center;">
+          <button id="toggleTutorial" style="padding: 10px 20px; background: #2196F3; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">📖 How to Play</button>
+          <button id="clearAllData" style="padding: 10px 20px; background: #ff4444; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">🗑️ Clear All Data</button>
         </div>
 
         <!-- Menu Buttons -->
         <div style="display: flex; flex-direction: column; gap: 20px; width: 300px;">
-          <button id="new-game-btn" disabled style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #4CAF50, #2E7D32); border: none; border-radius: 8px; color: white; cursor: pointer;">Start Run</button>
+          <button id="new-game-btn" style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #4CAF50, #2E7D32); border: none; border-radius: 8px; color: white; cursor: pointer;">Start Run</button>
           <div style="position: relative;">
             <button id="continue-btn" style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #2196F3, #0D47A1); border: none; border-radius: 8px; color: white; cursor: pointer; width: 100%;">Continue</button>
             <div id="save-list">
@@ -516,9 +513,6 @@
 
   <!-- Box Zoom -->
   <div id="box-zoom-popup" class="box-zoom-popup"></div>
-
-  <!-- Include SheetJS library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <!-- Load JavaScript modules in order -->
   <script src="js/data.js"></script>
