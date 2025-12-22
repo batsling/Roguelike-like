@@ -85,174 +85,45 @@ var gameSaves = JSON.parse(localStorage.getItem('roguelikeGameSaves') || '{}');
 var PLAYER_CHARACTERS = {};
 
 // ===== DATA LOADING =====
+// Data is now loaded directly from embedded JavaScript files (no CORS issues!)
 
-// Load games from JSON
-async function loadGames() {
-  try {
-    const response = await fetch('data/games.json');
-    const jsonGames = await response.json();
-    if (games.length === 0) { // Only use if no data loaded
-      games = jsonGames;
-      console.log('Games loaded from JSON:', games.length);
-    }
-  } catch (error) {
-    console.error('Error loading games.json:', error);
-  }
-}
-
-// Load connections from JSON
-async function loadConnections() {
-  try {
-    const response = await fetch('data/connections.json');
-    const jsonConnections = await response.json();
-    if (connections.length === 0) { // Only use if no data loaded
-      connections = jsonConnections;
-      console.log('Connections loaded from JSON:', connections.length);
-    }
-  } catch (error) {
-    console.error('Error loading connections.json:', error);
-  }
-}
-
-// Load character data from JSON
-async function loadCharacters() {
-  try {
-    const response = await fetch('data/characters.json');
-    PLAYER_CHARACTERS = await response.json();
+// Load data from embedded variables
+function initializeData() {
+  // Load from embedded data variables (defined in *-data.js files)
+  if (typeof CHARACTERS_DATA !== 'undefined') {
+    PLAYER_CHARACTERS = CHARACTERS_DATA;
     console.log('Characters loaded:', Object.keys(PLAYER_CHARACTERS).length);
-  } catch (error) {
-    console.error('Error loading characters:', error);
-    // Fallback to default characters
-    PLAYER_CHARACTERS = {
-      "rogue": {
-        name: "Rodney",
-        icon: "https://i.imgur.com/4foPqje.png",
-        startingStats: {
-          strength: 0,
-          dexterity: 2,
-          intelligence: 1,
-          charisma: 0,
-          reroll: 1,
-          dash: 1,
-          skip: 1,
-          discovery: 2
-        },
-        description: "Swift and cunning, favors dexterity"
-      },
-      "warrior": {
-        name: "The Warrior",
-        icon: "https://i.imgur.com/4foPqje.png",
-        startingStats: {
-          strength: 2,
-          dexterity: 0,
-          intelligence: 0,
-          charisma: 1,
-          reroll: 0,
-          dash: 1,
-          skip: 0,
-          discovery: 2
-        },
-        description: "Strong and brave, favors strength"
-      },
-      "mage": {
-        name: "The Mage",
-        icon: "https://i.imgur.com/4foPqje.png",
-        startingStats: {
-          strength: 0,
-          dexterity: 0,
-          intelligence: 2,
-          charisma: 1,
-          reroll: 1,
-          dash: 0,
-          skip: 0,
-          discovery: 3
-        },
-        description: "Wise and mystical, favors intelligence"
-      },
-      "bard": {
-        name: "The Bard",
-        icon: "https://i.imgur.com/4foPqje.png",
-        startingStats: {
-          strength: 0,
-          dexterity: 1,
-          intelligence: 0,
-          charisma: 2,
-          reroll: 0,
-          dash: 1,
-          skip: 1,
-          discovery: 2
-        },
-        description: "Charming and persuasive, favors charisma"
-      }
-    };
   }
-}
 
-// Load items from JSON (optional - can still use Excel)
-async function loadItems() {
-  try {
-    const response = await fetch('data/items.json');
-    const jsonItems = await response.json();
-    if (items.length === 0) { // Only use if no Excel data loaded
-      items = jsonItems;
-      console.log('Items loaded from JSON:', items.length);
-    }
-  } catch (error) {
-    console.log('No items.json found or error loading:', error.message);
+  if (typeof GAMES_DATA !== 'undefined') {
+    games = GAMES_DATA;
+    console.log('Games loaded:', games.length);
   }
-}
 
-// Load enemies from JSON (optional - can still use Excel)
-async function loadEnemies() {
-  try {
-    const response = await fetch('data/enemies.json');
-    const jsonEnemies = await response.json();
-    if (enemies.length === 0) {
-      enemies = jsonEnemies;
-      console.log('Enemies loaded from JSON:', enemies.length);
-    }
-  } catch (error) {
-    console.log('No enemies.json found or error loading:', error.message);
+  if (typeof CONNECTIONS_DATA !== 'undefined') {
+    connections = CONNECTIONS_DATA;
+    console.log('Connections loaded:', connections.length);
   }
-}
 
-// Load events from JSON (optional - can still use Excel)
-async function loadEvents() {
-  try {
-    const response = await fetch('data/events.json');
-    const jsonEvents = await response.json();
-    if (events.length === 0) {
-      events = jsonEvents;
-      console.log('Events loaded from JSON:', events.length);
-    }
-  } catch (error) {
-    console.log('No events.json found or error loading:', error.message);
+  if (typeof ITEMS_DATA !== 'undefined') {
+    items = ITEMS_DATA;
+    console.log('Items loaded:', items.length);
   }
-}
 
-// Load curses from JSON (optional - can still use Excel)
-async function loadCurses() {
-  try {
-    const response = await fetch('data/curses.json');
-    const jsonCurses = await response.json();
-    if (curses.length === 0) {
-      curses = jsonCurses;
-      console.log('Curses loaded from JSON:', curses.length);
-    }
-  } catch (error) {
-    console.log('No curses.json found or error loading:', error.message);
+  if (typeof ENEMIES_DATA !== 'undefined') {
+    enemies = ENEMIES_DATA;
+    console.log('Enemies loaded:', enemies.length);
   }
-}
 
-// Initialize all data
-async function initializeData() {
-  await loadCharacters();
-  await loadGames();
-  await loadConnections();
-  await loadItems();
-  await loadEnemies();
-  await loadEvents();
-  await loadCurses();
+  if (typeof EVENTS_DATA !== 'undefined') {
+    events = EVENTS_DATA;
+    console.log('Events loaded:', events.length);
+  }
+
+  if (typeof CURSES_DATA !== 'undefined') {
+    curses = CURSES_DATA;
+    console.log('Curses loaded:', curses.length);
+  }
 
   console.log('All data loaded successfully!');
   console.log('- Games:', games.length);

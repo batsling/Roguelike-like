@@ -515,6 +515,16 @@
   <div id="box-zoom-popup" class="box-zoom-popup"></div>
 
   <!-- Load JavaScript modules in order -->
+  <!-- Load embedded data first (no CORS issues) -->
+  <script src="characters-data.js"></script>
+  <script src="games-data.js"></script>
+  <script src="connections-data.js"></script>
+  <script src="items-data.js"></script>
+  <script src="enemies-data.js"></script>
+  <script src="events-data.js"></script>
+  <script src="curses-data.js"></script>
+
+  <!-- Load game logic -->
   <script src="js/data.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/combat.js"></script>
