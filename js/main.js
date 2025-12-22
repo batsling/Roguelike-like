@@ -1336,8 +1336,7 @@ function showEscapeVisualization() {
   `;
   escapeContainer.appendChild(exitDiv);
 
-  const dungeonScreen = document.getElementById('dungeon-screen');
-  dungeonScreen.appendChild(escapeContainer);
+  document.getElementById('dungeon-screen').appendChild(escapeContainer);
 
   // Position player icon initially
   setTimeout(() => updatePlayerIconPosition(), 100);
