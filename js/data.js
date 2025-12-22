@@ -89,49 +89,67 @@ var PLAYER_CHARACTERS = {};
 
 // Load data from embedded variables
 function initializeData() {
+  console.log('=== INITIALIZING DATA ===');
+  console.log('Checking for data variables...');
+
   // Load from embedded data variables (defined in *-data.js files)
   if (typeof CHARACTERS_DATA !== 'undefined') {
     PLAYER_CHARACTERS = CHARACTERS_DATA;
-    console.log('Characters loaded:', Object.keys(PLAYER_CHARACTERS).length);
+    console.log('✓ Characters loaded:', Object.keys(PLAYER_CHARACTERS).length);
+  } else {
+    console.error('✗ CHARACTERS_DATA not found!');
   }
 
   if (typeof GAMES_DATA !== 'undefined') {
     games = GAMES_DATA;
-    console.log('Games loaded:', games.length);
+    console.log('✓ Games loaded:', games.length);
+  } else {
+    console.error('✗ GAMES_DATA not found!');
   }
 
   if (typeof CONNECTIONS_DATA !== 'undefined') {
     connections = CONNECTIONS_DATA;
-    console.log('Connections loaded:', connections.length);
+    console.log('✓ Connections loaded:', connections.length);
+  } else {
+    console.error('✗ CONNECTIONS_DATA not found!');
   }
 
   if (typeof ITEMS_DATA !== 'undefined') {
     items = ITEMS_DATA;
-    console.log('Items loaded:', items.length);
+    console.log('✓ Items loaded:', items.length);
+  } else {
+    console.error('✗ ITEMS_DATA not found!');
   }
 
   if (typeof ENEMIES_DATA !== 'undefined') {
     enemies = ENEMIES_DATA;
-    console.log('Enemies loaded:', enemies.length);
+    console.log('✓ Enemies loaded:', enemies.length);
+  } else {
+    console.error('✗ ENEMIES_DATA not found!');
   }
 
   if (typeof EVENTS_DATA !== 'undefined') {
     events = EVENTS_DATA;
-    console.log('Events loaded:', events.length);
+    console.log('✓ Events loaded:', events.length);
+  } else {
+    console.error('✗ EVENTS_DATA not found!');
   }
 
   if (typeof CURSES_DATA !== 'undefined') {
     curses = CURSES_DATA;
-    console.log('Curses loaded:', curses.length);
+    console.log('✓ Curses loaded:', curses.length);
+  } else {
+    console.error('✗ CURSES_DATA not found!');
   }
 
-  console.log('All data loaded successfully!');
-  console.log('- Games:', games.length);
-  console.log('- Connections:', connections.length);
-  console.log('- Items:', items.length);
-  console.log('- Events:', events.length);
-  console.log('- Enemies:', enemies.length);
-  console.log('- Curses:', curses.length);
+  console.log('=== DATA SUMMARY ===');
+  console.log('Games:', games.length);
+  console.log('Connections:', connections.length);
+  console.log('Items:', items.length);
+  console.log('Events:', events.length);
+  console.log('Enemies:', enemies.length);
+  console.log('Curses:', curses.length);
+  console.log('Characters:', Object.keys(PLAYER_CHARACTERS).length);
 
   // Populate UI dropdowns if function is available
   setTimeout(() => {

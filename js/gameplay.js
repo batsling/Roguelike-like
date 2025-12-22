@@ -734,15 +734,23 @@ function showFinish(node, isAmuletGame = false) {
 // ===== STATE RENDERING =====
 
 function renderGameState() {
+  console.log('=== RENDERING GAME STATE ===');
+
   // Clear previous content
   pathContainer.innerHTML = '';
   linesSvg.innerHTML = '';
 
   // Make sure we have a valid game state
   if (!gameState.currentGame || !gameState.amuletGame) {
-    console.error('Invalid game state', gameState);
+    console.error('Invalid game state!', gameState);
     return;
   }
+
+  console.log('Current game:', gameState.currentGame);
+  console.log('Amulet game:', gameState.amuletGame);
+  console.log('Visited games:', gameState.visitedGames);
+  console.log('Character:', gameState.character);
+  console.log('PLAYER_CHARACTERS available?', Object.keys(PLAYER_CHARACTERS).length);
 
   // Update HUD
   document.getElementById('game-health').textContent = `${health}/${maxHealth}`;
@@ -759,7 +767,7 @@ function renderGameState() {
   let currentY = 120;
   const nodes = [];
 
-  console.log('Rendering games:', gameState.visitedGames);
+  console.log('Creating nodes for', gameState.visitedGames.length, 'games');
 
   gameState.visitedGames.forEach((gameName, index) => {
     const isLast = index === gameState.visitedGames.length - 1;

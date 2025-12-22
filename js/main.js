@@ -232,7 +232,10 @@ document.getElementById('clearAllData')?.addEventListener('click', () => {
 // ===== GAME STATE MANAGEMENT =====
 
 document.getElementById('new-game-btn')?.addEventListener('click', () => {
-  console.log('Start Run button clicked. games.length:', games.length);
+  console.log('=== START RUN CLICKED ===');
+  console.log('games.length:', games.length);
+  console.log('PLAYER_CHARACTERS keys:', Object.keys(PLAYER_CHARACTERS));
+
   if (games.length === 0) {
     alert('Game data is still loading... Please wait a moment and try again.');
     return;
@@ -242,7 +245,10 @@ document.getElementById('new-game-btn')?.addEventListener('click', () => {
   const charSelection = document.getElementById('character-selection');
   charSelection.innerHTML = '';
 
+  console.log('Populating character selection...');
   for (const [id, char] of Object.entries(PLAYER_CHARACTERS)) {
+    console.log(`  - Adding character: ${id} (${char.name})`);
+
     const charDiv = document.createElement('div');
     charDiv.className = 'character-option';
     charDiv.dataset.charId = id;
@@ -316,7 +322,18 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   const amulet = candidates[Math.floor(Math.random() * candidates.length)];
 
   // Initialize game state with character
+  console.log('=== INITIALIZING NEW GAME ===');
+  console.log('Selected character:', selectedCharacter);
+  console.log('Character exists in PLAYER_CHARACTERS?', selectedCharacter in PLAYER_CHARACTERS);
+
   const character = PLAYER_CHARACTERS[selectedCharacter];
+  if (!character) {
+    console.error('ERROR: Character not found!', selectedCharacter);
+    alert('Error: Character data not found. Please try again.');
+    return;
+  }
+
+  console.log('Character data:', character);
   strength = character.startingStats.strength;
   dexterity = character.startingStats.dexterity;
   intelligence = character.startingStats.intelligence;
