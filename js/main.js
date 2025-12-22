@@ -182,13 +182,11 @@ function loadSavedGame(saveName) {
   if (gameState.escapePhase) {
     // In escape phase - show escape visualization
     document.getElementById('path-viewport').style.display = 'none';
-    document.getElementById('game-hud').style.display = 'none';
     document.getElementById('target').style.display = 'none';
     showEscapeVisualization();
   } else {
     // Normal game - show path viewport
     document.getElementById('path-viewport').style.display = 'block';
-    document.getElementById('game-hud').style.display = 'block';
     document.getElementById('target').style.display = 'block';
 
     // Render the game state
@@ -389,7 +387,7 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
 
   // Show the normal game elements
   document.getElementById('path-viewport').style.display = 'block';
-  document.getElementById('game-hud').style.display = 'block';
+  // Note: floating-hud is always visible, no need to show/hide
   document.getElementById('target').style.display = 'block';
 
   // Render initial game state
@@ -1220,7 +1218,6 @@ function showEscapeVisualization() {
 
   // Hide the main dungeon view and show escape view
   document.getElementById('path-viewport').style.display = 'none';
-  document.getElementById('game-hud').style.display = 'none';
   document.getElementById('target').style.display = 'none';
 
   // Initialize lost run trackers
