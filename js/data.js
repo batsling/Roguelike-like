@@ -1,60 +1,60 @@
 // ===== STATE VARIABLES =====
-let games = [];
-let connections = [];
-let items = [];
-let inventory = [];
-let beatenGames = [];
-let selectedPhase2Games = [];
-let excludedGames = [];
-let rations = 10;
-let gold = 0;
-let health = 10;
-let maxHealth = 10;
-let strength = 0;
-let dexterity = 0;
-let intelligence = 0;
-let charisma = 0;
-let luck = 0;
-let roguePoints = 0;
-let reroll = 0;
-let dash = 0;
-let skip = 0;
-let discovery = 2; // Number of item choices when collecting rewards
-let fov = 3; // Field of View - number of game choices shown
-let pactConditions = {
+var games = [];
+var connections = [];
+var items = [];
+var inventory = [];
+var beatenGames = [];
+var selectedPhase2Games = [];
+var excludedGames = [];
+var rations = 10;
+var gold = 0;
+var health = 10;
+var maxHealth = 10;
+var strength = 0;
+var dexterity = 0;
+var intelligence = 0;
+var charisma = 0;
+var luck = 0;
+var roguePoints = 0;
+var reroll = 0;
+var dash = 0;
+var skip = 0;
+var discovery = 2; // Number of item choices when collecting rewards
+var fov = 3; // Field of View - number of game choices shown
+var pactConditions = {
   lessHealth: 0,
   moreGames: 0,
   randomGame: 0,
   challengeRun: 0,
 };
-let startGame = null;
-let amuletGame = null;
-let events = [];
-let enemies = [];
-let curses = [];
-let encounterHistory = [];
+var startGame = null;
+var amuletGame = null;
+var events = [];
+var enemies = [];
+var curses = [];
+var encounterHistory = [];
 
 // Map Viewer State Variables
-let scale = 1;
-let translateX = 0;
-let translateY = 0;
-let isPanning = false;
-let startX, startY;
-let originalSvgWidth = 0;
-let originalSvgHeight = 0;
-let markedSvg = null;
-let debugMode = false;
-let playerMarker = null;
-let amuletMarker = null;
-const playerImageUrl = 'https://i.imgur.com/4foPqje.png';
-const amuletImageUrl = 'https://i.imgur.com/kXiZwZX.png';
+var scale = 1;
+var translateX = 0;
+var translateY = 0;
+var isPanning = false;
+var startX, startY;
+var originalSvgWidth = 0;
+var originalSvgHeight = 0;
+var markedSvg = null;
+var debugMode = false;
+var playerMarker = null;
+var amuletMarker = null;
+var playerImageUrl = 'https://i.imgur.com/4foPqje.png';
+var amuletImageUrl = 'https://i.imgur.com/kXiZwZX.png';
 
 // Current combat state
-let currentEnemy = null;
-let currentRoll = null;
+var currentEnemy = null;
+var currentRoll = null;
 
 // ===== GAME STATE =====
-let gameState = {
+var gameState = {
   currentGame: null,
   visitedGames: [],
   availableChoices: [],
@@ -79,10 +79,10 @@ let gameState = {
   escapeProgress: 0
 };
 
-let gameSaves = JSON.parse(localStorage.getItem('roguelikeGameSaves') || '{}');
+var gameSaves = JSON.parse(localStorage.getItem('roguelikeGameSaves') || '{}');
 
 // ===== CHARACTER DATA =====
-let PLAYER_CHARACTERS = {};
+var PLAYER_CHARACTERS = {};
 
 // ===== DATA LOADING =====
 
