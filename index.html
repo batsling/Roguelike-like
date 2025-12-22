@@ -266,16 +266,16 @@
         <!-- Start/Amulet Game Selection -->
         <div class="section">
           <label for="startGameSelect">Select Start Game:</label>
-          <select id="startGameSelect" disabled>
+          <select id="startGameSelect">
             <option value="">-- Select a Start Game --</option>
           </select>
           <br>
           <label for="amuletGameSelect">Select Amulet Game:</label>
-          <select id="amuletGameSelect" disabled>
+          <select id="amuletGameSelect">
             <option value="">-- Select an Amulet Game --</option>
           </select>
           <br>
-          <button id="pickRandomGames" disabled>Get Start and Amulet Games</button>
+          <button id="pickRandomGames">Get Start and Amulet Games</button>
           <div id="output" class="output-area"></div>
         </div>
 
@@ -283,13 +283,13 @@
         <div class="section">
           <h3>Find Adjacent Games</h3>
           <label for="gameSelect">Select Your Current Game:</label>
-          <select id="gameSelect" disabled>
+          <select id="gameSelect">
             <option value="">-- Select a Game --</option>
           </select>
           <br>
           <label for="numConnectedGames">Number of Games to Show:</label>
           <input type="number" id="numConnectedGames" value="3" min="1" max="10">
-          <button id="pickConnectedGames" disabled>Pick Connected Games</button>
+          <button id="pickConnectedGames">Pick Connected Games</button>
           <div id="output2" class="output-area"></div>
         </div>
 
@@ -297,27 +297,27 @@
         <div class="section">
           <h3>Find Random Games</h3>
           <label for="decadeSelect">Decade:</label>
-          <select id="decadeSelect" disabled>
+          <select id="decadeSelect">
             <option value="">-- Select a Decade --</option>
           </select>
           <br>
           <label for="yearSelect">Exact Year:</label>
-          <select id="yearSelect" disabled>
+          <select id="yearSelect">
             <option value="">-- Select a Year --</option>
           </select>
           <br>
           <label for="typeSelect">Game Type:</label>
-          <select id="typeSelect" disabled>
+          <select id="typeSelect">
             <option value="">-- Select a Type --</option>
           </select>
           <br>
           <label for="excludeGameSelect">Exclude Games:</label>
-          <select id="excludeGameSelect" disabled>
+          <select id="excludeGameSelect">
             <option value="">-- Select a Game to Exclude --</option>
           </select>
-          <button id="addExcludedGame" disabled>Exclude Game</button>
+          <button id="addExcludedGame">Exclude Game</button>
           <div class="excluded-games-list" id="excludedGamesList"></div>
-          <button id="generateRandomGame" disabled>Generate Random Game</button>
+          <button id="generateRandomGame">Generate Random Game</button>
           <div id="output4" class="output-area"></div>
         </div>
 
@@ -325,20 +325,20 @@
         <div class="section">
           <h3>Escape Phase</h3>
           <label for="beatenGameSelect">Add a Beaten Game:</label>
-          <select id="beatenGameSelect" disabled>
+          <select id="beatenGameSelect">
             <option value="">-- Select a Game --</option>
           </select>
-          <button id="addBeatenGame" disabled>Add to Beaten Games</button>
+          <button id="addBeatenGame">Add to Beaten Games</button>
 
           <h4>Beaten Games</h4>
           <div id="beatenGamesList"></div>
 
           <label for="selectGameForEscape">Select a Game for Escape:</label>
-          <select id="selectGameForEscape" disabled>
+          <select id="selectGameForEscape">
             <option value="">-- Select a Game --</option>
           </select>
-          <button id="addGameForEscape" disabled>Add to Escape Games</button>
-          <button id="randomSelectForPhase2" disabled>Randomly Select One Game</button>
+          <button id="addGameForEscape">Add to Escape Games</button>
+          <button id="randomSelectForPhase2">Randomly Select One Game</button>
 
           <h4>Selected Games for Escape</h4>
           <div id="selectedGames" class="selected-games"></div>
@@ -352,15 +352,15 @@
         <!-- Item Selection -->
         <div class="section">
           <label for="itemSelect">Select an Item:</label>
-          <select id="itemSelect" disabled>
+          <select id="itemSelect">
             <option value="">-- Select an Item --</option>
           </select>
           <div class="button-group">
-            <button id="giveSelectedItem" disabled>Give Selected Item</button>
-            <button id="pickRandomItem" disabled>Get Random Item</button>
+            <button id="giveSelectedItem">Give Selected Item</button>
+            <button id="pickRandomItem">Get Random Item</button>
           </div>
           <div class="button-group">
-            <button id="pickRandomChoice" disabled>Random Item Choice</button>
+            <button id="pickRandomChoice">Random Item Choice</button>
             <input type="number" id="choiceCount" value="2" min="1" max="5" style="width: 40px;">
           </div>
           <div id="output3" class="output-area"></div>
@@ -370,12 +370,12 @@
         <!-- Item Removal -->
         <div class="section">
           <label for="removeItemSelect">Select Item to Remove:</label>
-          <select id="removeItemSelect" disabled>
+          <select id="removeItemSelect">
             <option value="">-- Select an Item --</option>
           </select>
           <div class="button-group">
-            <button id="removeSelectedItem" disabled>Remove Selected Item</button>
-            <button id="removeRandomItem" disabled>Remove Random Item</button>
+            <button id="removeSelectedItem">Remove Selected Item</button>
+            <button id="removeRandomItem">Remove Random Item</button>
           </div>
           <div id="removedItemOutput" class="output-area" style="display: none;"></div>
         </div>
@@ -395,7 +395,7 @@
         <div class="section">
           <h3>Combat</h3>
           <div class="combat-selector">
-            <select id="statSelect" disabled>
+            <select id="statSelect">
               <option value="">-- Select Stat --</option>
               <option value="Strength" class="strength">Strength</option>
               <option value="Charisma" class="charisma">Charisma</option>
@@ -403,14 +403,14 @@
               <option value="Dexterity" class="dexterity">Dexterity</option>
             </select>
 
-            <select id="powerSelect" disabled>
+            <select id="powerSelect">
               <option value="">-- Select Power --</option>
               <option value="1">Low (0-3 Games Beaten)</option>
               <option value="2">Medium (4-8 Games Beaten)</option>
               <option value="3">High (9+ Games Beaten)</option>
             </select>
 
-            <button id="generateEnemy" disabled>Generate Enemy</button>
+            <button id="generateEnemy">Generate Enemy</button>
           </div>
 
           <div id="enemyDisplay" class="enemy-display" style="display: none;">
@@ -433,7 +433,7 @@
         <div class="section">
           <h3>Encounter Check</h3>
           <div class="button-group">
-            <button id="checkEvent" disabled>Random Encounter</button>
+            <button id="checkEvent">Random Encounter</button>
           </div>
           <div id="eventResult" class="output-area"></div>
         </div>
