@@ -49,7 +49,7 @@ var ITEMS_DATA = [
   {
     "name": "D6",
     "rarity": "common",
-    "type": "Usable",
+    "type": "Passive",
     "description": "Gain +1 Reroll",
     "image": "https://imgur.com/a38hVSs",
     "game": "The Binding of Isaac",
