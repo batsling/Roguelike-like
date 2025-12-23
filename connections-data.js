@@ -2204,6 +2204,10 @@ var CONNECTIONS_DATA = [
     "influencee": "Lost Flame"
   },
   {
+    "influencer": "The Binding of Isaac",
+    "influencee": "The Legend of Bumbo"
+  },
+  {
     "influencer": "The Legend of Bumbo",
     "influencee": "Brutal Orchestra"
   },

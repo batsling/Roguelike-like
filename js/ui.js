@@ -94,7 +94,7 @@ function updateInventory() {
             <img src="${imageUrl}"
                  alt="${item.name}"
                  loading="lazy"
-                 style="width: 75px; height: 75px; object-fit: cover; border-radius: 6px; display: block;"
+                 style="width: 75px; height: 75px; object-fit: contain; border-radius: 6px; display: block; background: #1a1a1a; padding: 2px;"
                  onerror="if(this.src!=='https://via.placeholder.com/75?text=%3F'){this.src='https://via.placeholder.com/75?text=%3F';this.classList.add('image-error');}">
           </div>
         `;

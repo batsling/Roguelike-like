@@ -5,7 +5,10 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +1 Dash",
     "image": "https://imgur.com/xHGuThN",
-    "game": "Gungeon"
+    "game": "Gungeon",
+    "tags": [
+      "wearable"
+    ]
   },
   {
     "name": "Campfire",
@@ -13,7 +16,8 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +3 Intelligence, but -1 Dexterity",
     "image": "https://imgur.com/7PwYlLV",
-    "game": "Brotato"
+    "game": "Brotato",
+    "tags": []
   },
   {
     "name": "Charm of the Vampire",
@@ -21,7 +25,8 @@ var ITEMS_DATA = [
     "type": "Triggered",
     "description": "When you defeat an enemy, 50% chance to Heal +1 Health",
     "image": "https://imgur.com/kHsgAAB",
-    "game": "Isaac"
+    "game": "Isaac",
+    "tags": []
   },
   {
     "name": "Cursed Slash",
@@ -29,7 +34,8 @@ var ITEMS_DATA = [
     "type": "Triggered",
     "description": "Lose half of your max health. When you beat a game, Heal +1 Health",
     "image": "https://imgur.com/vuYYwHg",
-    "game": "Hades"
+    "game": "Hades",
+    "tags": []
   },
   {
     "name": "Cut Through Fate",
@@ -37,7 +43,8 @@ var ITEMS_DATA = [
     "type": "Usable",
     "description": "During game selection, use to see each of those game's next selection options",
     "image": "https://imgur.com/0Xl0rkM",
-    "game": "Slay the Spire"
+    "game": "Slay the Spire",
+    "tags": []
   },
   {
     "name": "D6",
@@ -45,7 +52,8 @@ var ITEMS_DATA = [
     "type": "Usable",
     "description": "Gain +1 Reroll",
     "image": "https://imgur.com/a38hVSs",
-    "game": "Isaac"
+    "game": "Isaac",
+    "tags": []
   },
   {
     "name": "Empty Tome",
@@ -53,7 +61,8 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +2 Intelligence",
     "image": "https://imgur.com/1Yg6lUW",
-    "game": "Vampire Survivors"
+    "game": "Vampire Survivors",
+    "tags": []
   },
   {
     "name": "Hollow Heart",
@@ -61,7 +70,8 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +2 Max Health",
     "image": "https://imgur.com/7ZFcskE",
-    "game": "Vampire Survivors"
+    "game": "Vampire Survivors",
+    "tags": []
   },
   {
     "name": "Bowler Hat",
@@ -69,7 +79,10 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +3 Charisma, but -1 Dexterity",
     "image": "https://imgur.com/WQA1brB",
-    "game": "Brotato"
+    "game": "Brotato",
+    "tags": [
+      "wearable"
+    ]
   },
   {
     "name": "Lucky Toe",
@@ -77,7 +90,8 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +1 Luck",
     "image": "https://imgur.com/XkprgSn",
-    "game": "Isaac"
+    "game": "Isaac",
+    "tags": []
   },
   {
     "name": "Lunch",
@@ -85,7 +99,10 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +1 Max Health and +3 Health",
     "image": "https://imgur.com/ZfpzXcZ",
-    "game": "Isaac"
+    "game": "Isaac",
+    "tags": [
+      "food"
+    ]
   },
   {
     "name": "More Options",
@@ -93,7 +110,8 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +1 Field of View, get an extra option in the space choice",
     "image": "https://imgur.com/hiX14wX",
-    "game": "Isaac"
+    "game": "Isaac",
+    "tags": []
   },
   {
     "name": "Oddly Smooth Stone",
@@ -101,7 +119,8 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +2 Dexterity",
     "image": "https://imgur.com/mHg7pUP",
-    "game": "Slay the Spire"
+    "game": "Slay the Spire",
+    "tags": []
   },
   {
     "name": "Panda",
@@ -109,7 +128,8 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +5 Max Health and +2 Luck, but -1 Strength",
     "image": "https://imgur.com/xSDhE5U",
-    "game": "Brotato"
+    "game": "Brotato",
+    "tags": []
   },
   {
     "name": "Poop",
@@ -117,7 +137,8 @@ var ITEMS_DATA = [
     "type": "Usable",
     "description": "Poop on the current space, this space will not show up on the space choice in the future unless it's the only option (very stinky) ",
     "image": "https://imgur.com/fru3Gyw",
-    "game": "Isaac"
+    "game": "Isaac",
+    "tags": []
   },
   {
     "name": "Ride the Bus",
@@ -125,7 +146,8 @@ var ITEMS_DATA = [
     "type": "Usable",
     "description": "Teleport to a random Deckbuilder space",
     "image": "https://imgur.com/wS3xMss",
-    "game": "Balatro"
+    "game": "Balatro",
+    "tags": []
   },
   {
     "name": "Scroll of Teleportation ",
@@ -133,7 +155,8 @@ var ITEMS_DATA = [
     "type": "Usable",
     "description": "Teleport to a random space",
     "image": "https://imgur.com/RETSDm3",
-    "game": "Rogue"
+    "game": "Rogue",
+    "tags": []
   },
   {
     "name": "Sunglasses",
@@ -141,7 +164,10 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +2 Charisma",
     "image": "https://imgur.com/99fmzLa",
-    "game": "Gungeon"
+    "game": "Gungeon",
+    "tags": [
+      "wearable"
+    ]
   },
   {
     "name": "Vajra",
@@ -149,7 +175,8 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +2 Strength",
     "image": "https://imgur.com/htl7FIW",
-    "game": "Slay the Spire"
+    "game": "Slay the Spire",
+    "tags": []
   },
   {
     "name": "Ventricle Razor",
@@ -157,7 +184,8 @@ var ITEMS_DATA = [
     "type": "Usable",
     "description": "On the first use, create a portal. On second use, return to the space you created the portal on",
     "image": "https://imgur.com/FxQnJNs",
-    "game": "Isaac"
+    "game": "Isaac",
+    "tags": []
   },
   {
     "name": "Wheat",
@@ -165,7 +193,10 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +3 Strength, but -1 Intelligence",
     "image": "https://imgur.com/mRtclGk",
-    "game": "Brotato"
+    "game": "Brotato",
+    "tags": [
+      "food"
+    ]
   },
   {
     "name": "Winged Boots",
@@ -173,7 +204,10 @@ var ITEMS_DATA = [
     "type": "Usable",
     "description": "Move to a space of your choice in the same year you are on",
     "image": "https://imgur.com/xTULxCS",
-    "game": "Slay the Spire"
+    "game": "Slay the Spire",
+    "tags": [
+      "wearable"
+    ]
   },
   {
     "name": "Wings",
@@ -181,6 +215,7 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +3 Dexterity, but -1  Intelligence",
     "image": "https://imgur.com/lh7ebwI",
-    "game": "Brotato"
+    "game": "Brotato",
+    "tags": []
   }
 ];
