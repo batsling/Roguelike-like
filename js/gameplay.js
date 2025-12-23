@@ -40,14 +40,22 @@ function bfs(start, goal) {
 
 function getGameConnections(gameName) {
   const connected = [];
-  connections.forEach(connection => {
-    if (connection.influencer === gameName) {
-      connected.push(connection.influencee);
-    }
-    if (connection.influencee === gameName) {
-      connected.push(connection.influencer);
+
+  // Find the game object
+  const game = games.find(g => g.name === gameName);
+
+  if (game && game.gamesInfluenced) {
+    // Add all games this game influences
+    connected.push(...game.gamesInfluenced);
+  }
+
+  // Find all games that influence this game
+  games.forEach(g => {
+    if (g.gamesInfluenced && g.gamesInfluenced.includes(gameName)) {
+      connected.push(g.name);
     }
   });
+
   return [...new Set(connected)]; // Remove duplicates
 }
 
@@ -75,15 +83,13 @@ function showTooltip(e, name) {
   if (!game) return;
 
   // Separate influences and influenced by
-  const influences = []; // Games this game influenced
+  const influences = game.gamesInfluenced || []; // Games this game influenced
   const influencedBy = []; // Games that influenced this game
 
-  connections.forEach(connection => {
-    if (connection.influencer === name) {
-      influences.push(connection.influencee);
-    }
-    if (connection.influencee === name) {
-      influencedBy.push(connection.influencer);
+  // Find all games that influence this game
+  games.forEach(g => {
+    if (g.gamesInfluenced && g.gamesInfluenced.includes(name)) {
+      influencedBy.push(g.name);
     }
   });
 

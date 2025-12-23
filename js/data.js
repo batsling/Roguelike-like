@@ -1,6 +1,5 @@
 // ===== STATE VARIABLES =====
 var games = [];
-var connections = [];
 var items = [];
 var inventory = [];
 var beatenGames = [];
@@ -103,15 +102,11 @@ function initializeData() {
   if (typeof GAMES_DATA !== 'undefined') {
     games = GAMES_DATA;
     console.log('✓ Games loaded:', games.length);
+    // Count total connections embedded in games
+    const totalConnections = games.reduce((sum, game) => sum + (game.gamesInfluenced ? game.gamesInfluenced.length : 0), 0);
+    console.log('✓ Connections embedded in games:', totalConnections);
   } else {
     console.error('✗ GAMES_DATA not found!');
-  }
-
-  if (typeof CONNECTIONS_DATA !== 'undefined') {
-    connections = CONNECTIONS_DATA;
-    console.log('✓ Connections loaded:', connections.length);
-  } else {
-    console.error('✗ CONNECTIONS_DATA not found!');
   }
 
   if (typeof ITEMS_DATA !== 'undefined') {
@@ -144,7 +139,6 @@ function initializeData() {
 
   console.log('=== DATA SUMMARY ===');
   console.log('Games:', games.length);
-  console.log('Connections:', connections.length);
   console.log('Items:', items.length);
   console.log('Events:', events.length);
   console.log('Enemies:', enemies.length);
