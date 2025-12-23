@@ -1748,6 +1748,17 @@ var GAMES_DATA = [
     "gamesInfluenced": []
   },
   {
+    "name": "Fairy Tail: Dungeons",
+    "year": 2024,
+    "type": "Action",
+    "connected": false,
+    "influenced": false,
+    "tags": [
+      "anime"
+    ],
+    "gamesInfluenced": []
+  },
+  {
     "name": "Fatal Labyrinth",
     "year": 1990,
     "type": "Traditional",
