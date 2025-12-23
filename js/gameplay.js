@@ -104,10 +104,33 @@ function showTooltip(e, name) {
     connectionsHTML = '<div style="margin-top: 8px; color: #888;">No connections</div>';
   }
 
+  // Build tags HTML
+  let tagsHTML = '';
+  if (game.tags && game.tags.length > 0) {
+    tagsHTML = `
+      <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
+        <div style="font-size: 11px; color: #888; margin-bottom: 4px;">Tags:</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+          ${game.tags.map(tag => `
+            <span style="
+              font-size: 10px;
+              padding: 2px 6px;
+              background: rgba(100, 100, 100, 0.3);
+              border: 1px solid rgba(150, 150, 150, 0.4);
+              border-radius: 3px;
+              color: #aaa;
+            ">${tag}</span>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
   tooltip.innerHTML = `<h4>${name}</h4>
     <div>Release Year: ${game.year || '—'}</div>
     <div>Type: ${game.type || '—'}</div>
-    <div class="mini-map">${connectionsHTML}</div>`;
+    <div class="mini-map">${connectionsHTML}</div>
+    ${tagsHTML}`;
   tooltip.style.opacity = 1;
   tooltip.style.display = 'block';
   moveTooltip(e);

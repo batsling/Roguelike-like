@@ -934,10 +934,7 @@ function showShopModal() {
       if (gold >= price) {
         gold -= price;
         gameState.gold = gold;
-        inventory.push(item);
-        gameState.inventory = [...inventory];
-        updateTopBar();
-        updateInventory();
+        acquireItem(item);
 
         e.target.textContent = 'Purchased!';
         e.target.disabled = true;
@@ -1064,9 +1061,7 @@ function showItemChoiceModal() {
       const itemIndex = parseInt(e.currentTarget.dataset.index);
       const item = choices[itemIndex];
 
-      inventory.push(item);
-      gameState.inventory = [...inventory];
-      updateInventory();
+      acquireItem(item);
 
       closeGameModal();
 

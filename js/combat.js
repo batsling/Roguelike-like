@@ -120,8 +120,7 @@ function giveRandomItem(rarity) {
   if (rarityItems.length > 0) {
     const randomIndex = Math.floor(Math.random() * rarityItems.length);
     const item = rarityItems[randomIndex];
-    inventory.push(item);
-    updateInventory();
+    acquireItem(item);
   }
 }
 

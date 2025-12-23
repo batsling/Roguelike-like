@@ -182,9 +182,8 @@ function displayShop() {
 function purchaseItem(item, price) {
   if (gold >= price) {
     gold -= price;
-    inventory.push(item);
-    updateTopBar();
-    updateInventory();
+    gameState.gold = gold;
+    acquireItem(item);
     return true;
   }
   return false;

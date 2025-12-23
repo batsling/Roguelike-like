@@ -90,7 +90,7 @@ function updateInventory() {
         }
 
         return `
-          <div class="item-display-image" title="${item.name}&#10;${item.game ? item.game + ' - ' : ''}${item.type}&#10;${item.description}">
+          <div class="item-display-image" data-item-index="${idx}">
             <img src="${imageUrl}"
                  alt="${item.name}"
                  loading="lazy"
@@ -99,6 +99,14 @@ function updateInventory() {
           </div>
         `;
       }).join('');
+
+      // Add tooltip event listeners after rendering
+      const itemDivs = gameItemsList.querySelectorAll('.item-display-image');
+      itemDivs.forEach((div, idx) => {
+        div.onmouseenter = e => showItemTooltip(e, inventory[idx]);
+        div.onmousemove = e => moveItemTooltip(e);
+        div.onmouseleave = hideItemTooltip;
+      });
     }
   }
 
@@ -368,6 +376,88 @@ function updateSaveList() {
     }
   };
   saveList.appendChild(deleteBtn);
+}
+
+// ===== ITEM TOOLTIPS =====
+
+let itemTooltip;
+
+function initItemTooltip() {
+  if (!itemTooltip) {
+    itemTooltip = document.getElementById('item-tooltip');
+  }
+  return itemTooltip;
+}
+
+function showItemTooltip(e, item) {
+  const tooltip = initItemTooltip();
+  if (!tooltip || !item) return;
+
+  // Get rarity color
+  const rarityColors = {
+    common: '#ffffff',
+    uncommon: '#4CAF50',
+    rare: '#2196F3',
+    epic: '#9b59b6',
+    legendary: '#ff9800'
+  };
+  const rarityColor = rarityColors[item.rarity] || '#ffffff';
+
+  // Build tags HTML
+  let tagsHTML = '';
+  if (item.tags && item.tags.length > 0) {
+    tagsHTML = `
+      <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
+        <div style="font-size: 11px; color: #888; margin-bottom: 4px;">Tags:</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+          ${item.tags.map(tag => `
+            <span style="
+              font-size: 10px;
+              padding: 2px 6px;
+              background: rgba(100, 100, 100, 0.3);
+              border: 1px solid rgba(150, 150, 150, 0.4);
+              border-radius: 3px;
+              color: #aaa;
+            ">${tag}</span>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  tooltip.innerHTML = `
+    <h4 style="margin: 0 0 8px 0; color: ${rarityColor};">${item.name}</h4>
+    <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
+      ${item.game ? `<div>From: ${item.game}</div>` : ''}
+      <div>${item.rarity} ${item.type}</div>
+    </div>
+    <div style="font-size: 13px; color: #e0d0b0; line-height: 1.4;">
+      ${item.description}
+    </div>
+    ${tagsHTML}
+  `;
+
+  tooltip.style.opacity = 1;
+  tooltip.style.display = 'block';
+  moveItemTooltip(e);
+}
+
+function moveItemTooltip(e) {
+  const tooltip = initItemTooltip();
+  if (!tooltip) return;
+
+  tooltip.style.left = e.clientX + 14 + 'px';
+  tooltip.style.top = e.clientY + 14 + 'px';
+}
+
+function hideItemTooltip() {
+  const tooltip = initItemTooltip();
+  if (!tooltip) return;
+
+  tooltip.style.opacity = 0;
+  setTimeout(() => {
+    tooltip.style.display = 'none';
+  }, 150);
 }
 
 // Export functions to global scope for backwards compatibility

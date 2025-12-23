@@ -5,7 +5,7 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +1 Dash",
     "image": "https://imgur.com/xHGuThN",
-    "game": "Gungeon",
+    "game": "Enter the Gungeon",
     "tags": [
       "wearable"
     ]
@@ -25,7 +25,7 @@ var ITEMS_DATA = [
     "type": "Triggered",
     "description": "When you defeat an enemy, 50% chance to Heal +1 Health",
     "image": "https://imgur.com/kHsgAAB",
-    "game": "Isaac",
+    "game": "The Binding of Isaac",
     "tags": []
   },
   {
@@ -52,7 +52,7 @@ var ITEMS_DATA = [
     "type": "Usable",
     "description": "Gain +1 Reroll",
     "image": "https://imgur.com/a38hVSs",
-    "game": "Isaac",
+    "game": "The Binding of Isaac",
     "tags": []
   },
   {
@@ -90,7 +90,7 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +1 Luck",
     "image": "https://imgur.com/XkprgSn",
-    "game": "Isaac",
+    "game": "The Binding of Isaac",
     "tags": []
   },
   {
@@ -99,7 +99,7 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +1 Max Health and +3 Health",
     "image": "https://imgur.com/ZfpzXcZ",
-    "game": "Isaac",
+    "game": "The Binding of Isaac",
     "tags": [
       "food"
     ]
@@ -110,7 +110,7 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +1 Field of View, get an extra option in the space choice",
     "image": "https://imgur.com/hiX14wX",
-    "game": "Isaac",
+    "game": "The Binding of Isaac",
     "tags": []
   },
   {
@@ -137,7 +137,7 @@ var ITEMS_DATA = [
     "type": "Usable",
     "description": "Poop on the current space, this space will not show up on the space choice in the future unless it's the only option (very stinky) ",
     "image": "https://imgur.com/fru3Gyw",
-    "game": "Isaac",
+    "game": "The Binding of Isaac",
     "tags": []
   },
   {
@@ -164,7 +164,7 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +2 Charisma",
     "image": "https://imgur.com/99fmzLa",
-    "game": "Gungeon",
+    "game": "Enter the Gungeon",
     "tags": [
       "wearable"
     ]
@@ -184,7 +184,7 @@ var ITEMS_DATA = [
     "type": "Usable",
     "description": "On the first use, create a portal. On second use, return to the space you created the portal on",
     "image": "https://imgur.com/FxQnJNs",
-    "game": "Isaac",
+    "game": "The Binding of Isaac",
     "tags": []
   },
   {
