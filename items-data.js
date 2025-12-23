@@ -68,7 +68,7 @@ var ITEMS_DATA = [
     "name": "Hollow Heart",
     "rarity": "common",
     "type": "Passive",
-    "description": "Gain +2 Max Health",
+    "description": "Gain +2 Max Health and Heal +2 Health",
     "image": "https://imgur.com/7ZFcskE",
     "game": "Vampire Survivors",
     "tags": []
@@ -126,7 +126,7 @@ var ITEMS_DATA = [
     "name": "Panda",
     "rarity": "rare",
     "type": "Passive",
-    "description": "Gain +5 Max Health and +2 Luck, but -1 Strength",
+    "description": "Gain +5 Max Health and Heal +5 Health, +2 Luck, but -1 Strength",
     "image": "https://imgur.com/xSDhE5U",
     "game": "Brotato",
     "tags": []

@@ -380,14 +380,23 @@ function addDashRerollButtons() {
       z-index: 10;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     `;
+
+    // Prevent tooltip from showing when hovering over button
+    dashBtn.onmouseenter = (e) => {
+      e.stopPropagation();
+      hideTooltip();
+      if (dash > 0) dashBtn.style.background = '#88eeff';
+    };
+    dashBtn.onmousemove = (e) => {
+      e.stopPropagation();
+    };
+    dashBtn.onmouseleave = (e) => {
+      e.stopPropagation();
+      if (dash > 0) dashBtn.style.background = '#66ddff';
+    };
+
     if (dash > 0) {
       dashBtn.onclick = () => showDashModal();
-      dashBtn.onmouseenter = () => {
-        if (dash > 0) dashBtn.style.background = '#88eeff';
-      };
-      dashBtn.onmouseleave = () => {
-        if (dash > 0) dashBtn.style.background = '#66ddff';
-      };
     }
     currentNode.appendChild(dashBtn);
   }
@@ -415,17 +424,26 @@ function addDashRerollButtons() {
       z-index: 10;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     `;
+
+    // Prevent tooltip from showing when hovering over button
+    rerollBtn.onmouseenter = (e) => {
+      e.stopPropagation();
+      hideTooltip();
+      if (reroll > 0) rerollBtn.style.background = '#ffdd77';
+    };
+    rerollBtn.onmousemove = (e) => {
+      e.stopPropagation();
+    };
+    rerollBtn.onmouseleave = (e) => {
+      e.stopPropagation();
+      if (reroll > 0) rerollBtn.style.background = '#ffcc66';
+    };
+
     if (reroll > 0) {
       rerollBtn.onclick = () => {
         if (confirm('Reroll the current choices?')) {
           useReroll();
         }
-      };
-      rerollBtn.onmouseenter = () => {
-        if (reroll > 0) rerollBtn.style.background = '#ffdd77';
-      };
-      rerollBtn.onmouseleave = () => {
-        if (reroll > 0) rerollBtn.style.background = '#ffcc66';
       };
     }
     currentNode.appendChild(rerollBtn);

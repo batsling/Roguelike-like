@@ -73,7 +73,9 @@ const ITEM_EFFECTS = {
   "Hollow Heart": {
     onAcquire: () => {
       maxHealth += 2;
+      health += 2; // Heal for the same amount as max health gained
       gameState.maxHealth = maxHealth;
+      gameState.health = health;
     }
   },
 
@@ -125,9 +127,11 @@ const ITEM_EFFECTS = {
   "Panda": {
     onAcquire: () => {
       maxHealth += 5;
+      health += 5; // Heal for the same amount as max health gained
       luck += 2;
       strength -= 1;
       gameState.maxHealth = maxHealth;
+      gameState.health = health;
       gameState.luck = luck;
       gameState.strength = strength;
     }

@@ -94,46 +94,69 @@ function updateInventory() {
         const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
 
         return `
-          <div class="item-display-container" data-item-index="${idx}" style="position: relative; display: inline-block;">
-            <div class="item-display-image" style="cursor: pointer;">
+          <div class="item-display-container" data-item-index="${idx}" style="
+            position: relative;
+            display: inline-block;
+            transition: transform 0.2s ease;
+          ">
+            <div class="item-display-image" style="
+              cursor: pointer;
+              position: relative;
+            ">
               <img src="${imageUrl}"
                    alt="${item.name}"
                    loading="lazy"
                    style="width: 75px; height: 75px; object-fit: contain; border-radius: 6px; display: block; background: #1a1a1a; padding: 2px;"
                    onerror="if(this.src!=='https://via.placeholder.com/75?text=%3F'){this.src='https://via.placeholder.com/75?text=%3F';this.classList.add('image-error');}">
+              ${isUsable ? `
+                <button class="item-use-button"
+                        data-item-index="${idx}"
+                        style="
+                          position: absolute;
+                          bottom: 2px;
+                          left: 2px;
+                          right: 2px;
+                          padding: 2px 4px;
+                          font-size: 10px;
+                          background: ${canUse ? '#4CAF50' : '#555'};
+                          color: ${canUse ? 'white' : '#888'};
+                          border: 1px solid ${canUse ? '#2E7D32' : '#333'};
+                          border-radius: 3px;
+                          cursor: ${canUse ? 'pointer' : 'not-allowed'};
+                          font-weight: bold;
+                          text-transform: uppercase;
+                          z-index: 10;
+                        "
+                        ${!canUse ? 'disabled' : ''}>
+                  Use
+                </button>
+              ` : ''}
             </div>
-            ${isUsable ? `
-              <button class="item-use-button"
-                      data-item-index="${idx}"
-                      style="
-                        position: absolute;
-                        bottom: 2px;
-                        left: 2px;
-                        right: 2px;
-                        padding: 2px 4px;
-                        font-size: 10px;
-                        background: ${canUse ? '#4CAF50' : '#555'};
-                        color: ${canUse ? 'white' : '#888'};
-                        border: 1px solid ${canUse ? '#2E7D32' : '#333'};
-                        border-radius: 3px;
-                        cursor: ${canUse ? 'pointer' : 'not-allowed'};
-                        font-weight: bold;
-                        text-transform: uppercase;
-                      "
-                      ${!canUse ? 'disabled' : ''}>
-                Use
-              </button>
-            ` : ''}
           </div>
         `;
       }).join('');
 
-      // Add tooltip event listeners after rendering
-      const itemDivs = gameItemsList.querySelectorAll('.item-display-image');
-      itemDivs.forEach((div, idx) => {
-        div.onmouseenter = e => showItemTooltip(e, inventory[idx]);
-        div.onmousemove = e => moveItemTooltip(e);
-        div.onmouseleave = hideItemTooltip;
+      // Add tooltip and hover effect event listeners after rendering
+      const itemContainers = gameItemsList.querySelectorAll('.item-display-container');
+      itemContainers.forEach((container, idx) => {
+        const div = container.querySelector('.item-display-image');
+
+        // Add hover scale effect
+        container.onmouseenter = e => {
+          container.style.transform = 'scale(1.1)';
+          container.style.zIndex = '100';
+          showItemTooltip(e, inventory[idx]);
+        };
+
+        container.onmousemove = e => {
+          moveItemTooltip(e);
+        };
+
+        container.onmouseleave = e => {
+          container.style.transform = '';
+          container.style.zIndex = '';
+          hideItemTooltip();
+        };
       });
 
       // Add use button event listeners
@@ -433,6 +456,12 @@ function showItemTooltip(e, item) {
   const tooltip = initItemTooltip();
   if (!tooltip || !item) return;
 
+  // Clear any pending hide timeout when showing
+  if (itemTooltipHideTimeout) {
+    clearTimeout(itemTooltipHideTimeout);
+    itemTooltipHideTimeout = null;
+  }
+
   // Get rarity color
   const rarityColors = {
     common: '#ffffff',
@@ -465,11 +494,14 @@ function showItemTooltip(e, item) {
     `;
   }
 
+  // Capitalize rarity
+  const capitalizedRarity = item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1);
+
   tooltip.innerHTML = `
     <h4 style="margin: 0 0 8px 0; color: ${rarityColor};">${item.name}</h4>
     <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
       ${item.game ? `<div>From: ${item.game}</div>` : ''}
-      <div>${item.rarity} ${item.type}</div>
+      <div>${capitalizedRarity} ${item.type}</div>
     </div>
     <div style="font-size: 13px; color: #e0d0b0; line-height: 1.4;">
       ${item.description}
@@ -507,13 +539,21 @@ function moveItemTooltip(e) {
   tooltip.style.top = top + 'px';
 }
 
+let itemTooltipHideTimeout = null;
+
 function hideItemTooltip() {
   const tooltip = initItemTooltip();
   if (!tooltip) return;
 
+  // Clear any pending hide timeout
+  if (itemTooltipHideTimeout) {
+    clearTimeout(itemTooltipHideTimeout);
+  }
+
   tooltip.style.opacity = 0;
-  setTimeout(() => {
+  itemTooltipHideTimeout = setTimeout(() => {
     tooltip.style.display = 'none';
+    itemTooltipHideTimeout = null;
   }, 150);
 }
 
