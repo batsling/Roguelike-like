@@ -164,3 +164,105 @@ function initializeData() {
 
 // Call initialization when page loads
 initializeData();
+
+// ===== LUCK SYSTEM =====
+
+/**
+ * Calculate rarity weights based on luck stat
+ * Base weights: Common 70, Uncommon 20, Rare 10
+ * Each point of Luck: Common -3, Uncommon +2, Rare +1
+ * @param {number} luckValue - The player's luck stat
+ * @returns {Object} Weights for each rarity tier
+ */
+function calculateRarityWeights(luckValue) {
+  const baseWeights = {
+    common: 70,
+    uncommon: 20,
+    rare: 10
+  };
+
+  const luckModifiers = {
+    common: -3,
+    uncommon: 2,
+    rare: 1
+  };
+
+  const weights = {
+    common: Math.max(1, baseWeights.common + (luckModifiers.common * luckValue)),
+    uncommon: baseWeights.uncommon + (luckModifiers.uncommon * luckValue),
+    rare: baseWeights.rare + (luckModifiers.rare * luckValue)
+  };
+
+  // Ensure no negative weights
+  weights.common = Math.max(1, weights.common);
+  weights.uncommon = Math.max(0, weights.uncommon);
+  weights.rare = Math.max(0, weights.rare);
+
+  return weights;
+}
+
+/**
+ * Select a random rarity based on weighted probabilities
+ * @param {number} luckValue - The player's luck stat (defaults to global luck variable)
+ * @returns {string} Selected rarity ('common', 'uncommon', or 'rare')
+ */
+function selectRandomRarity(luckValue = luck) {
+  const weights = calculateRarityWeights(luckValue);
+  const totalWeight = weights.common + weights.uncommon + weights.rare;
+
+  const roll = Math.random() * totalWeight;
+
+  if (roll < weights.common) {
+    return 'common';
+  } else if (roll < weights.common + weights.uncommon) {
+    return 'uncommon';
+  } else {
+    return 'rare';
+  }
+}
+
+/**
+ * Roll a D20 with luck modifier
+ * @param {number} luckBonus - Additional luck bonus (defaults to global luck variable)
+ * @returns {Object} Object containing rawRoll, luckBonus, and total
+ */
+function rollD20WithLuck(luckBonus = luck) {
+  const rawRoll = Math.floor(Math.random() * 20) + 1;
+  const total = rawRoll + luckBonus;
+
+  return {
+    rawRoll: rawRoll,
+    luckBonus: luckBonus,
+    total: total
+  };
+}
+
+/**
+ * Calculate proc chance with luck modifier
+ * Each point of luck adds 5% to the base proc chance
+ * @param {number} baseChance - Base proc chance as a percentage (0-100)
+ * @param {number} luckValue - The player's luck stat (defaults to global luck variable)
+ * @returns {number} Modified proc chance (capped at 100)
+ */
+function calculateProcChance(baseChance, luckValue = luck) {
+  const modifiedChance = baseChance + (luckValue * 5);
+  return Math.min(100, modifiedChance);
+}
+
+/**
+ * Check if a proc triggers based on base chance and luck
+ * @param {number} baseChance - Base proc chance as a percentage (0-100)
+ * @param {number} luckValue - The player's luck stat (defaults to global luck variable)
+ * @returns {boolean} True if proc triggers
+ */
+function checkProc(baseChance, luckValue = luck) {
+  const finalChance = calculateProcChance(baseChance, luckValue);
+  return Math.random() * 100 < finalChance;
+}
+
+// Export luck system functions to global scope
+window.calculateRarityWeights = calculateRarityWeights;
+window.selectRandomRarity = selectRandomRarity;
+window.rollD20WithLuck = rollD20WithLuck;
+window.calculateProcChance = calculateProcChance;
+window.checkProc = checkProc;

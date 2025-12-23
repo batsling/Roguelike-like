@@ -77,9 +77,17 @@ function updateInventory() {
       gameItemsList.innerHTML = '<div class="empty-inventory">No items yet</div>';
     } else {
       gameItemsList.innerHTML = inventory.map((item, idx) => {
-        const imageUrl = item.image && item.image.trim() !== ''
+        let imageUrl = item.image && item.image.trim() !== ''
           ? item.image
           : 'https://via.placeholder.com/75?text=%3F'; // Question mark placeholder
+
+        // Fix imgur URLs - convert https://imgur.com/ID to https://i.imgur.com/ID.png
+        if (imageUrl.includes('imgur.com/') && !imageUrl.includes('i.imgur.com')) {
+          imageUrl = imageUrl.replace('imgur.com/', 'i.imgur.com/');
+          if (!imageUrl.match(/\.(png|jpg|jpeg|gif)$/i)) {
+            imageUrl += '.png';
+          }
+        }
 
         return `
           <div class="item-display-image" title="${item.name}&#10;${item.game ? item.game + ' - ' : ''}${item.type}&#10;${item.description}">

@@ -156,16 +156,8 @@ function displayShop() {
   const numItems = 3;
 
   for (let i = 0; i < numItems; i++) {
-    const rarityRoll = Math.random() * 100;
-    let targetRarity;
-
-    if (rarityRoll <= 60) {
-      targetRarity = 'common';
-    } else if (rarityRoll <= 90) {
-      targetRarity = 'uncommon';
-    } else {
-      targetRarity = 'rare';
-    }
+    // Use luck-based rarity selection
+    const targetRarity = selectRandomRarity();
 
     const rarityItems = shopItems.filter(item => item.rarity === targetRarity);
     if (rarityItems.length > 0) {

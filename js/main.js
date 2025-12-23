@@ -873,8 +873,8 @@ function showShopModal() {
 
   const shopItems = [];
   for (let i = 0; i < 3; i++) {
-    const rarityRoll = Math.random() * 100;
-    let targetRarity = rarityRoll <= 50 ? 'common' : rarityRoll <= 85 ? 'uncommon' : 'rare';
+    // Use luck-based rarity selection
+    const targetRarity = selectRandomRarity();
 
     const rarityItems = items.filter(item => item.rarity === targetRarity);
     if (rarityItems.length > 0) {
@@ -967,8 +967,8 @@ function showItemChoiceModal() {
     let selectedItem = null;
 
     while (attempts < maxAttempts) {
-      const rarityRoll = Math.random() * 100;
-      let targetRarity = rarityRoll <= 50 ? 'common' : rarityRoll <= 85 ? 'uncommon' : 'rare';
+      // Use luck-based rarity selection
+      const targetRarity = selectRandomRarity();
 
       const rarityItems = items.filter(item => item.rarity === targetRarity);
       if (rarityItems.length > 0) {
@@ -1350,7 +1350,14 @@ function showEscapeVisualization() {
   `;
   escapeContainer.appendChild(exitDiv);
 
-  document.getElementById('dungeon-screen').appendChild(escapeContainer);
+  // Append to the main path viewport container instead of dungeon-screen
+  const pathViewportContainer = document.getElementById('path-viewport-container');
+  if (pathViewportContainer) {
+    pathViewportContainer.appendChild(escapeContainer);
+  } else {
+    // Fallback to dungeon-screen if container not found
+    document.getElementById('dungeon-screen').appendChild(escapeContainer);
+  }
 
   // Position player icon initially
   setTimeout(() => updatePlayerIconPosition(), 100);
