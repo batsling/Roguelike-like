@@ -59,6 +59,7 @@ var gameState = {
   availableChoices: [],
   saveName: '',
   gameStarted: false,
+  phase: null, // Track current phase: 'selection', 'combat', 'event', 'shop', 'escape'
   health: 10,
   maxHealth: 10,
   gold: 0,

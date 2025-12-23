@@ -97,7 +97,7 @@ var ITEMS_DATA = [
     "name": "Lunch",
     "rarity": "common",
     "type": "Passive",
-    "description": "Gain +1 Max Health and +3 Health",
+    "description": "Gain +1 Max Health and Heal +1 Health",
     "image": "https://imgur.com/ZfpzXcZ",
     "game": "The Binding of Isaac",
     "tags": [

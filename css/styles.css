@@ -663,7 +663,7 @@ text, path, line, g {
   box-shadow: 0 6px 20px rgba(255, 136, 0, 0.5);
 }
 
-#game-tooltip {
+#game-tooltip, #item-tooltip {
   position: fixed;
   background: #2a2420;
   border: 2px solid #cc6600;

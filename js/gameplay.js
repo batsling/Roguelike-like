@@ -243,6 +243,9 @@ function clearChoices() {
 function spawnChoices() {
   clearChoices();
 
+  // Set phase to selection
+  gameState.phase = 'selection';
+
   // Get all connected games
   const allConnections = getGameConnections(gameState.currentGame);
 

@@ -632,6 +632,10 @@ function closeGameModal() {
 function showCombatModal() {
   if (enemies.length === 0) return;
 
+  // Set phase to combat
+  gameState.phase = 'combat';
+  updateInventory(); // Refresh item UI to update usable item buttons
+
   // Determine stat based on current game type
   const currentGameObj = games.find(g => g.name === gameState.currentGame);
   let requiredStat = 'Strength'; // Default
@@ -792,6 +796,10 @@ function showCombatModal() {
 function showEventModal() {
   if (events.length === 0) return;
 
+  // Set phase to event
+  gameState.phase = 'event';
+  updateInventory(); // Refresh item UI to update usable item buttons
+
   const randomIndex = Math.floor(Math.random() * events.length);
   const event = events[randomIndex];
 
@@ -870,6 +878,10 @@ function handleEventChoice(event, option) {
 
 function showShopModal() {
   if (items.length === 0) return;
+
+  // Set phase to shop
+  gameState.phase = 'shop';
+  updateInventory(); // Refresh item UI to update usable item buttons
 
   const shopItems = [];
   for (let i = 0; i < 3; i++) {
@@ -1087,6 +1099,7 @@ function showItemChoiceModal() {
 
 function startEscapePhase() {
   gameState.escapePhase = true;
+  gameState.phase = 'escape';
   gameState.escapeGames = [];
   gameState.escapeProgress = 0;
 

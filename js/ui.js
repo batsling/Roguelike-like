@@ -89,13 +89,41 @@ function updateInventory() {
           }
         }
 
+        // Check if this is a usable item
+        const isUsable = item.type === 'Usable';
+        const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
+
         return `
-          <div class="item-display-image" data-item-index="${idx}">
-            <img src="${imageUrl}"
-                 alt="${item.name}"
-                 loading="lazy"
-                 style="width: 75px; height: 75px; object-fit: contain; border-radius: 6px; display: block; background: #1a1a1a; padding: 2px;"
-                 onerror="if(this.src!=='https://via.placeholder.com/75?text=%3F'){this.src='https://via.placeholder.com/75?text=%3F';this.classList.add('image-error');}">
+          <div class="item-display-container" data-item-index="${idx}" style="position: relative; display: inline-block;">
+            <div class="item-display-image" style="cursor: pointer;">
+              <img src="${imageUrl}"
+                   alt="${item.name}"
+                   loading="lazy"
+                   style="width: 75px; height: 75px; object-fit: contain; border-radius: 6px; display: block; background: #1a1a1a; padding: 2px;"
+                   onerror="if(this.src!=='https://via.placeholder.com/75?text=%3F'){this.src='https://via.placeholder.com/75?text=%3F';this.classList.add('image-error');}">
+            </div>
+            ${isUsable ? `
+              <button class="item-use-button"
+                      data-item-index="${idx}"
+                      style="
+                        position: absolute;
+                        bottom: 2px;
+                        left: 2px;
+                        right: 2px;
+                        padding: 2px 4px;
+                        font-size: 10px;
+                        background: ${canUse ? '#4CAF50' : '#555'};
+                        color: ${canUse ? 'white' : '#888'};
+                        border: 1px solid ${canUse ? '#2E7D32' : '#333'};
+                        border-radius: 3px;
+                        cursor: ${canUse ? 'pointer' : 'not-allowed'};
+                        font-weight: bold;
+                        text-transform: uppercase;
+                      "
+                      ${!canUse ? 'disabled' : ''}>
+                Use
+              </button>
+            ` : ''}
           </div>
         `;
       }).join('');
@@ -106,6 +134,18 @@ function updateInventory() {
         div.onmouseenter = e => showItemTooltip(e, inventory[idx]);
         div.onmousemove = e => moveItemTooltip(e);
         div.onmouseleave = hideItemTooltip;
+      });
+
+      // Add use button event listeners
+      const useButtons = gameItemsList.querySelectorAll('.item-use-button');
+      useButtons.forEach((button) => {
+        button.onclick = (e) => {
+          e.stopPropagation(); // Prevent triggering tooltip
+          const itemIndex = parseInt(button.dataset.itemIndex);
+          if (typeof useItem === 'function') {
+            useItem(itemIndex);
+          }
+        };
       });
     }
   }
@@ -446,8 +486,25 @@ function moveItemTooltip(e) {
   const tooltip = initItemTooltip();
   if (!tooltip) return;
 
-  tooltip.style.left = e.clientX + 14 + 'px';
-  tooltip.style.top = e.clientY + 14 + 'px';
+  // Position tooltip to the right of the cursor, with boundary checks
+  let left = e.clientX + 14;
+  let top = e.clientY + 14;
+
+  // Check if tooltip would go off screen on the right
+  const tooltipWidth = 280; // Match CSS width
+  const tooltipHeight = tooltip.offsetHeight || 200; // Estimate if not rendered
+
+  if (left + tooltipWidth > window.innerWidth) {
+    left = e.clientX - tooltipWidth - 14; // Position to the left instead
+  }
+
+  // Check if tooltip would go off screen on the bottom
+  if (top + tooltipHeight > window.innerHeight) {
+    top = window.innerHeight - tooltipHeight - 10;
+  }
+
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
 }
 
 function hideItemTooltip() {

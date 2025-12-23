@@ -36,7 +36,7 @@ const ITEM_EFFECTS = {
   "Lunch": {
     onAcquire: () => {
       maxHealth += 1;
-      health += 3;
+      health += 1; // Heal for the same amount as max health gained
       gameState.maxHealth = maxHealth;
       gameState.health = health;
     }
@@ -131,6 +131,30 @@ const ITEM_EFFECTS = {
       gameState.luck = luck;
       gameState.strength = strength;
     }
+  },
+
+  // ===== USABLE ITEMS =====
+
+  "Scroll of Teleportation": {
+    canUse: () => {
+      // Can only use during game selection phase
+      return gameState.phase === 'selection';
+    },
+    onUse: () => {
+      // Teleport to a random connected game
+      teleportToRandomGame();
+    }
+  },
+
+  "Ride the Bus": {
+    canUse: () => {
+      // Can only use during game selection phase
+      return gameState.phase === 'selection';
+    },
+    onUse: () => {
+      // Teleport to a random Deckbuilder game
+      teleportToRandomDeckbuilder();
+    }
   }
 };
 
@@ -204,9 +228,111 @@ function hasItemEffects(itemName) {
   return ITEM_EFFECTS.hasOwnProperty(itemName);
 }
 
+// ===== USABLE ITEMS SYSTEM =====
+
+/**
+ * Check if an item can be used right now
+ * @param {Object} item - The item to check
+ * @returns {boolean} True if the item can be used
+ */
+function canUseItem(item) {
+  if (!item || item.type !== 'Usable') return false;
+
+  const effects = ITEM_EFFECTS[item.name];
+  if (!effects || !effects.canUse) return false;
+
+  return effects.canUse();
+}
+
+/**
+ * Use an item from inventory
+ * @param {number} itemIndex - Index of item in inventory
+ */
+function useItem(itemIndex) {
+  if (itemIndex < 0 || itemIndex >= inventory.length) {
+    console.error('Invalid item index:', itemIndex);
+    return;
+  }
+
+  const item = inventory[itemIndex];
+  if (item.type !== 'Usable') {
+    console.warn('Item is not usable:', item.name);
+    return;
+  }
+
+  if (!canUseItem(item)) {
+    console.warn('Cannot use item right now:', item.name);
+    return;
+  }
+
+  const effects = ITEM_EFFECTS[item.name];
+  if (effects && effects.onUse) {
+    console.log(`Using item: ${item.name}`);
+    effects.onUse();
+
+    // Remove item from inventory after use
+    inventory.splice(itemIndex, 1);
+    gameState.inventory = [...inventory];
+
+    // Update UI
+    updateInventory();
+
+    console.log(`Used and removed: ${item.name}`);
+  }
+}
+
+/**
+ * Teleport to a random connected game
+ */
+function teleportToRandomGame() {
+  // Get all connected games
+  const connectedGames = games.filter(g => g.connected === true);
+
+  if (connectedGames.length === 0) {
+    console.error('No connected games available!');
+    return;
+  }
+
+  // Pick a random connected game
+  const randomGame = connectedGames[Math.floor(Math.random() * connectedGames.length)];
+
+  console.log(`Teleporting to: ${randomGame.name}`);
+
+  // Clear current choices and advance to the selected game
+  clearChoices();
+  advanceGame(randomGame.name);
+}
+
+/**
+ * Teleport to a random Deckbuilder game
+ */
+function teleportToRandomDeckbuilder() {
+  // Get all connected Deckbuilder games
+  const deckbuilderGames = games.filter(g => g.connected === true && g.type === 'Deckbuilder');
+
+  if (deckbuilderGames.length === 0) {
+    console.error('No connected Deckbuilder games available!');
+    alert('No Deckbuilder games available to teleport to!');
+    return;
+  }
+
+  // Pick a random Deckbuilder game
+  const randomGame = deckbuilderGames[Math.floor(Math.random() * deckbuilderGames.length)];
+
+  console.log(`Riding the bus to: ${randomGame.name}`);
+
+  // Clear current choices and advance to the selected game
+  clearChoices();
+  advanceGame(randomGame.name);
+}
+
 // Export functions to global scope
 window.applyItemEffects = applyItemEffects;
 window.acquireItem = acquireItem;
 window.getItemByName = getItemByName;
 window.hasItemEffects = hasItemEffects;
+window.canUseItem = canUseItem;
+window.useItem = useItem;
+window.teleportToRandomGame = teleportToRandomGame;
+window.teleportToRandomDeckbuilder = teleportToRandomDeckbuilder;
 window.ITEM_EFFECTS = ITEM_EFFECTS;
