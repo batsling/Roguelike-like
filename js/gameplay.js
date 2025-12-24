@@ -265,7 +265,8 @@ function spawnChoices() {
   const opts = shuffled.slice(0, Math.min(numChoices, shuffled.length));
 
   // Dynamic spacing based on number of choices
-  const spacing = Math.min(320, 800 / opts.length); // Adjust spacing for more choices
+  // Ensure minimum spacing of 240px (220px max node width + 20px gap)
+  const spacing = Math.max(240, Math.min(320, 800 / opts.length));
   const sx = 450 - ((opts.length - 1) * spacing) / 2;
   const currentNode = document.querySelector('.node.current');
 
@@ -339,12 +340,19 @@ function spawnChoices() {
     // Store encounter type on the node
     n.dataset.encounterType = encounterType;
 
-    // Draw arrow line from current to this choice
-    if (currentNode) {
-      drawArrowLine(currentNode, n);
-    }
-
     n.onclick = () => advance(g, nx, ny, encounterType);
+  });
+
+  // Draw arrows after all nodes are added and browser has laid them out
+  requestAnimationFrame(() => {
+    const currentNode = document.querySelector('.node.current');
+    const choiceNodes = document.querySelectorAll('.node.choice');
+
+    if (currentNode) {
+      choiceNodes.forEach(choiceNode => {
+        drawArrowLine(currentNode, choiceNode);
+      });
+    }
   });
 
   // Add Dash and Reroll buttons during choice selection

@@ -41,6 +41,7 @@ function applyCombatOutcome(success) {
     if (healthMatch) {
       const healthLoss = parseInt(healthMatch[1]);
       health = Math.max(0, health - healthLoss);
+      gameState.health = health;
       updateHealthDisplay();
     }
 

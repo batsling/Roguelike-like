@@ -150,7 +150,7 @@ var ITEMS_DATA = [
     "tags": []
   },
   {
-    "name": "Scroll of Teleportation ",
+    "name": "Scroll of Teleportation",
     "rarity": "common",
     "type": "Usable",
     "description": "Teleport to a random space",

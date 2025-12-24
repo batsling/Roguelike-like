@@ -36,7 +36,7 @@ const ITEM_EFFECTS = {
   "Lunch": {
     onAcquire: () => {
       maxHealth += 1;
-      health += 4; // Heal for 1 from max health increase + 3 additional = 4 total
+      health = Math.min(health + 4, maxHealth); // Cap health to max health
       gameState.maxHealth = maxHealth;
       gameState.health = health;
     }
@@ -73,7 +73,7 @@ const ITEM_EFFECTS = {
   "Hollow Heart": {
     onAcquire: () => {
       maxHealth += 2;
-      health += 2; // Heal for the same amount as max health gained
+      health = Math.min(health + 2, maxHealth); // Cap health to max health
       gameState.maxHealth = maxHealth;
       gameState.health = health;
     }
@@ -127,7 +127,7 @@ const ITEM_EFFECTS = {
   "Panda": {
     onAcquire: () => {
       maxHealth += 5;
-      health += 5; // Heal for the same amount as max health gained
+      health = Math.min(health + 5, maxHealth); // Cap health to max health
       luck += 2;
       strength -= 1;
       gameState.maxHealth = maxHealth;
@@ -311,8 +311,8 @@ function teleportToRandomGame() {
  * Teleport to a random Deckbuilder game
  */
 function teleportToRandomDeckbuilder() {
-  // Get all connected Deckbuilder games
-  const deckbuilderGames = games.filter(g => g.connected === true && g.type === 'Deckbuilder');
+  // Get all connected Deckbuilding games
+  const deckbuilderGames = games.filter(g => g.connected === true && g.type === 'Deckbuilding');
 
   if (deckbuilderGames.length === 0) {
     console.error('No connected Deckbuilder games available!');

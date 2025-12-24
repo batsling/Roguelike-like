@@ -1077,6 +1077,12 @@ function showItemChoiceModal() {
 
       closeGameModal();
 
+      // Set phase to selection so usable items become enabled
+      gameState.phase = 'selection';
+      if (typeof updateInventory === 'function') {
+        updateInventory();
+      }
+
       // Now spawn the next choices
       setTimeout(() => spawnChoices(), 300);
     };
