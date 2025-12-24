@@ -931,7 +931,10 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": true,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [
+      "BPM: Bullets Per Minute",
+      "Shogun Showdown"
+    ]
   },
   {
     "name": "Cult of the Lamb",
@@ -3030,7 +3033,8 @@ var GAMES_DATA = [
       "Ragnarok",
       "Spelunky Classic",
       "Strange Adventures in Infinite Space",
-      "Iter Vehemens Ad Necem"
+      "Iter Vehemens Ad Necem",
+      "Lost Flame"
     ]
   },
   {
@@ -3780,7 +3784,9 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": true,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [
+      "Dicefolk"
+    ]
   },
   {
     "name": "Roll",
@@ -4630,7 +4636,6 @@ var GAMES_DATA = [
       "Noobs Are Coming",
       "Has-Been Heroes",
       "Lost Flame",
-      "The Legend of Bumbo"
     ]
   },
   {
@@ -4705,7 +4710,9 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": true,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [
+      "Brutal Orchestra"
+    ]
   },
   {
     "name": "The Nightmare of Druaga",
