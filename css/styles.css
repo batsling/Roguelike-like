@@ -584,7 +584,11 @@ text, path, line, g {
   height: 100%;
   min-height: 3000px;
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;
+}
+
+.choice-arrow {
+  filter: drop-shadow(0 0 4px rgba(255, 221, 0, 0.6));
 }
 
 /* Path node styles */

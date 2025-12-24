@@ -36,7 +36,7 @@ const ITEM_EFFECTS = {
   "Lunch": {
     onAcquire: () => {
       maxHealth += 1;
-      health += 1; // Heal for the same amount as max health gained
+      health += 4; // Heal for 1 from max health increase + 3 additional = 4 total
       gameState.maxHealth = maxHealth;
       gameState.health = health;
     }

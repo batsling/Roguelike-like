@@ -167,10 +167,12 @@ function drawArrowLine(fromNode, toNode) {
   l.setAttribute('y1', y1);
   l.setAttribute('x2', x2);
   l.setAttribute('y2', y2);
-  l.setAttribute('stroke', 'gold');
-  l.setAttribute('stroke-width', '4');
-  l.setAttribute('opacity', '0.8');
+  l.setAttribute('stroke', '#ffdd00');
+  l.setAttribute('stroke-width', '6');
+  l.setAttribute('opacity', '1');
+  l.setAttribute('stroke-dasharray', '8,4');
   l.setAttribute('marker-end', 'url(#arrowhead)');
+  l.classList.add('choice-arrow');
   linesSvg.appendChild(l);
 
   // Create arrowhead marker if it doesn't exist
@@ -208,7 +210,7 @@ function createArrowheadMarker() {
 
   const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   polygon.setAttribute('points', '0 0, 10 3, 0 6');
-  polygon.setAttribute('fill', 'gold');
+  polygon.setAttribute('fill', '#ffdd00');
 
   marker.appendChild(polygon);
   defs.appendChild(marker);
@@ -246,18 +248,24 @@ function spawnChoices() {
   // Set phase to selection
   gameState.phase = 'selection';
 
+  // Update inventory to refresh usable item buttons
+  if (typeof updateInventory === 'function') {
+    updateInventory();
+  }
+
   // Get all connected games
   const allConnections = getGameConnections(gameState.currentGame);
 
   // Allow all connections (games can be repeated)
   const gamesToChooseFrom = allConnections;
 
-  // Randomly shuffle and take 3
+  // Randomly shuffle and take fov number of choices
   const shuffled = [...gamesToChooseFrom].sort(() => Math.random() - 0.5);
-  const opts = shuffled.slice(0, Math.min(3, shuffled.length));
+  const numChoices = Math.max(1, fov || 3); // Use fov stat, default to 3
+  const opts = shuffled.slice(0, Math.min(numChoices, shuffled.length));
 
-  // Increased spacing to prevent overlap with icons (320px apart)
-  const spacing = 320;
+  // Dynamic spacing based on number of choices
+  const spacing = Math.min(320, 800 / opts.length); // Adjust spacing for more choices
   const sx = 450 - ((opts.length - 1) * spacing) / 2;
   const currentNode = document.querySelector('.node.current');
 
@@ -657,12 +665,20 @@ function advance(game, x, y, encounterType) {
   // Always show Finished button (including for amulet game)
   showFinish(n, isAmuletGame);
 
-  // Smooth scroll to new position
+  // Scroll to keep node vertically centered in viewport
   setTimeout(() => {
-    viewport.scrollTo({
-      top: y - 200,
-      behavior: 'smooth'
-    });
+    if (viewport && n) {
+      const viewportRect = viewport.getBoundingClientRect();
+      const viewportCenter = viewportRect.height / 2;
+
+      // Center the node vertically - keep current node in middle of screen
+      const targetY = y - viewportCenter + 50; // 50px offset for node height
+
+      viewport.scrollTo({
+        top: targetY,
+        behavior: 'smooth'
+      });
+    }
   }, 100);
 
   // Save game (function in main.js)

@@ -498,7 +498,7 @@ function showItemTooltip(e, item) {
   const capitalizedRarity = item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1);
 
   tooltip.innerHTML = `
-    <h4 style="margin: 0 0 8px 0; color: ${rarityColor};">${item.name}</h4>
+    <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 18px;">${item.name}</h4>
     <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
       ${item.game ? `<div>From: ${item.game}</div>` : ''}
       <div>${capitalizedRarity} ${item.type}</div>
