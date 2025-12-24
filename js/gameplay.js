@@ -151,6 +151,11 @@ function hideTooltip() {
 // ===== LINE DRAWING =====
 
 function drawArrowLine(fromNode, toNode) {
+  // Create arrowhead marker if it doesn't exist
+  if (!document.getElementById('arrowhead')) {
+    createArrowheadMarker();
+  }
+
   const r1 = fromNode.getBoundingClientRect();
   const r2 = toNode.getBoundingClientRect();
   const pr = pathContainer.getBoundingClientRect();
@@ -168,17 +173,14 @@ function drawArrowLine(fromNode, toNode) {
   l.setAttribute('x2', x2);
   l.setAttribute('y2', y2);
   l.setAttribute('stroke', '#ffdd00');
-  l.setAttribute('stroke-width', '6');
+  l.setAttribute('stroke-width', '8');
   l.setAttribute('opacity', '1');
-  l.setAttribute('stroke-dasharray', '8,4');
+  l.setAttribute('stroke-dasharray', '10,5');
   l.setAttribute('marker-end', 'url(#arrowhead)');
   l.classList.add('choice-arrow');
   linesSvg.appendChild(l);
 
-  // Create arrowhead marker if it doesn't exist
-  if (!document.getElementById('arrowhead')) {
-    createArrowheadMarker();
-  }
+  console.log(`Arrow drawn from (${x1}, ${y1}) to (${x2}, ${y2})`);
 }
 
 function drawPastLine(fromNode, toNode) {
@@ -201,20 +203,24 @@ function createArrowheadMarker() {
   const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
   const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
   marker.setAttribute('id', 'arrowhead');
-  marker.setAttribute('markerWidth', '10');
-  marker.setAttribute('markerHeight', '10');
-  marker.setAttribute('refX', '9');
-  marker.setAttribute('refY', '3');
+  marker.setAttribute('markerWidth', '12');
+  marker.setAttribute('markerHeight', '12');
+  marker.setAttribute('refX', '10');
+  marker.setAttribute('refY', '5');
   marker.setAttribute('orient', 'auto');
   marker.setAttribute('markerUnits', 'strokeWidth');
 
   const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-  polygon.setAttribute('points', '0 0, 10 3, 0 6');
+  polygon.setAttribute('points', '0 0, 12 5, 0 10');
   polygon.setAttribute('fill', '#ffdd00');
+  polygon.setAttribute('stroke', '#ffdd00');
+  polygon.setAttribute('stroke-width', '1');
 
   marker.appendChild(polygon);
   defs.appendChild(marker);
   linesSvg.appendChild(defs);
+
+  console.log('Arrowhead marker created');
 }
 
 // ===== CHOICE MANAGEMENT =====
@@ -348,10 +354,14 @@ function spawnChoices() {
     const currentNode = document.querySelector('.node.current');
     const choiceNodes = document.querySelectorAll('.node.choice');
 
+    console.log(`Drawing arrows: current node exists = ${!!currentNode}, choice nodes = ${choiceNodes.length}`);
+
     if (currentNode) {
       choiceNodes.forEach(choiceNode => {
         drawArrowLine(currentNode, choiceNode);
       });
+    } else {
+      console.warn('No current node found to draw arrows from!');
     }
   });
 

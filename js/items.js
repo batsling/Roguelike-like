@@ -302,9 +302,24 @@ function teleportToRandomGame() {
 
   console.log(`Teleporting to: ${randomGame.name}`);
 
-  // Clear current choices and advance to the selected game
-  clearChoices();
-  advanceGame(randomGame.name);
+  // Generate position and encounter type
+  const x = 450; // Center position
+  const y = gameState.currentY + 200;
+
+  // Determine encounter type (same logic as spawnChoices)
+  const encounterRoll = Math.random() * 100;
+  let encounterType;
+
+  if (encounterRoll < 75) {
+    encounterType = 'combat';
+  } else if (encounterRoll < 90) {
+    encounterType = 'event';
+  } else {
+    encounterType = 'shop';
+  }
+
+  // Advance to the selected game
+  advance(randomGame.name, x, y, encounterType);
 }
 
 /**
@@ -325,9 +340,24 @@ function teleportToRandomDeckbuilder() {
 
   console.log(`Riding the bus to: ${randomGame.name}`);
 
-  // Clear current choices and advance to the selected game
-  clearChoices();
-  advanceGame(randomGame.name);
+  // Generate position and encounter type
+  const x = 450; // Center position
+  const y = gameState.currentY + 200;
+
+  // Determine encounter type (same logic as spawnChoices)
+  const encounterRoll = Math.random() * 100;
+  let encounterType;
+
+  if (encounterRoll < 75) {
+    encounterType = 'combat';
+  } else if (encounterRoll < 90) {
+    encounterType = 'event';
+  } else {
+    encounterType = 'shop';
+  }
+
+  // Advance to the selected game
+  advance(randomGame.name, x, y, encounterType);
 }
 
 // Export functions to global scope
