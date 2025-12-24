@@ -153,16 +153,20 @@ function updateInventory() {
 
       // Usable items section
       if (usableItems.length > 0) {
-        html += '<div style="margin-bottom: 16px;"><h3 style="color: #4CAF50; font-size: 14px; margin: 8px 0; text-transform: uppercase; border-bottom: 2px solid #4CAF50; padding-bottom: 4px;">Usable Items</h3>';
+        html += '<div style="margin-bottom: 16px;">';
+        html += '<h3 style="color: #4CAF50; font-size: 14px; margin: 8px 0; text-transform: uppercase; border-bottom: 2px solid #4CAF50; padding-bottom: 4px;">Usable Items</h3>';
+        html += '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">';
         html += usableItems.map(renderItem).join('');
-        html += '</div>';
+        html += '</div></div>';
       }
 
       // Passive items section
       if (passiveItems.length > 0) {
-        html += '<div style="margin-bottom: 16px;"><h3 style="color: #cc6600; font-size: 14px; margin: 8px 0; text-transform: uppercase; border-bottom: 2px solid #cc6600; padding-bottom: 4px;">Passive Items</h3>';
+        html += '<div style="margin-bottom: 16px;">';
+        html += '<h3 style="color: #cc6600; font-size: 14px; margin: 8px 0; text-transform: uppercase; border-bottom: 2px solid #cc6600; padding-bottom: 4px;">Passive Items</h3>';
+        html += '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">';
         html += passiveItems.map(renderItem).join('');
-        html += '</div>';
+        html += '</div></div>';
       }
 
       gameItemsList.innerHTML = html;

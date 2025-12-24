@@ -728,19 +728,23 @@ function showCombatModal() {
       resultHTML += `<p style="color: #4CAF50; font-weight: bold;">SUCCESS!</p>
                     <p>${enemy.successReward}</p>`;
     } else {
-      const healthMatch = enemy.failureConsequence.match(/(\d+) health/);
-      if (healthMatch) {
-        const healthLoss = parseInt(healthMatch[1]);
-        health = Math.max(0, health - healthLoss);
-        gameState.health = health;
-        updateHealthDisplay();
+      // Damage based on difficulty level
+      let healthLoss = 1; // Low difficulty
+      if (powerText === 'Medium') {
+        healthLoss = 2;
+      } else if (powerText === 'High') {
+        healthLoss = 3;
       }
+
+      health = Math.max(0, health - healthLoss);
+      gameState.health = health;
+      updateHealthDisplay();
 
       // Apply curse based on enemy's failure trigger
       const matchingCurses = curses.filter(curse =>
         curse.power === powerText && curse.stat === enemy.stat
       );
-      let failureText = enemy.failureConsequence;
+      let failureText = `Lose ${healthLoss} health`;
       if (matchingCurses.length > 0) {
         const randomCurseIndex = Math.floor(Math.random() * matchingCurses.length);
         const selectedCurse = matchingCurses[randomCurseIndex];

@@ -271,8 +271,13 @@ function spawnChoices() {
   const opts = shuffled.slice(0, Math.min(numChoices, shuffled.length));
 
   // Dynamic spacing based on number of choices
-  // Ensure minimum spacing of 240px (220px max node width + 20px gap)
-  const spacing = Math.max(240, Math.min(320, 800 / opts.length));
+  // Node max width = 220px + 56px padding + 6px border = ~282px
+  // Use minimum spacing of 300px to ensure no overlap even with long names
+  const minSpacing = 300;
+  const maxSpacing = 400;
+  const availableWidth = 1000; // Available horizontal space
+  const calculatedSpacing = availableWidth / opts.length;
+  const spacing = Math.max(minSpacing, Math.min(maxSpacing, calculatedSpacing));
   const sx = 450 - ((opts.length - 1) * spacing) / 2;
   const currentNode = document.querySelector('.node.current');
 
