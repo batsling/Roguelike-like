@@ -286,21 +286,38 @@ function useItem(itemIndex) {
 }
 
 /**
- * Teleport to a random connected game
+ * Teleport to a random connected game of a specific type
+ * @param {string|null} gameType - The type of game to teleport to (e.g., 'Deckbuilding', 'Action', 'Traditional', 'Strategy')
+ *                                  If null or undefined, teleports to any connected game
+ * @returns {boolean} - Returns true if teleport was successful, false otherwise
  */
-function teleportToRandomGame() {
-  // Get all connected games
-  const connectedGames = games.filter(g => g.connected === true);
-
-  if (connectedGames.length === 0) {
-    console.error('No connected games available!');
-    return;
+function teleportToRandomGameOfType(gameType = null) {
+  // Filter connected games, optionally by type
+  let filteredGames;
+  if (gameType) {
+    filteredGames = games.filter(g => g.connected === true && g.type === gameType);
+    console.log(`Looking for connected ${gameType} games...`);
+  } else {
+    filteredGames = games.filter(g => g.connected === true);
+    console.log('Looking for any connected games...');
   }
 
-  // Pick a random connected game
-  const randomGame = connectedGames[Math.floor(Math.random() * connectedGames.length)];
+  if (filteredGames.length === 0) {
+    const errorMsg = gameType
+      ? `No connected ${gameType} games available!`
+      : 'No connected games available!';
+    console.error(errorMsg);
+    alert(errorMsg);
+    return false;
+  }
 
-  console.log(`Teleporting to: ${randomGame.name}`);
+  // Pick a random game from filtered list
+  const randomGame = filteredGames[Math.floor(Math.random() * filteredGames.length)];
+
+  const teleportMsg = gameType
+    ? `Teleporting to ${gameType} game: ${randomGame.name}`
+    : `Teleporting to: ${randomGame.name}`;
+  console.log(teleportMsg);
 
   // Generate position and encounter type
   const x = 450; // Center position
@@ -320,44 +337,21 @@ function teleportToRandomGame() {
 
   // Advance to the selected game
   advance(randomGame.name, x, y, encounterType);
+  return true;
 }
 
 /**
- * Teleport to a random Deckbuilder game
+ * Teleport to a random connected game (any type)
+ */
+function teleportToRandomGame() {
+  return teleportToRandomGameOfType(null);
+}
+
+/**
+ * Teleport to a random Deckbuilding game
  */
 function teleportToRandomDeckbuilder() {
-  // Get all connected Deckbuilding games
-  const deckbuilderGames = games.filter(g => g.connected === true && g.type === 'Deckbuilding');
-
-  if (deckbuilderGames.length === 0) {
-    console.error('No connected Deckbuilder games available!');
-    alert('No Deckbuilder games available to teleport to!');
-    return;
-  }
-
-  // Pick a random Deckbuilder game
-  const randomGame = deckbuilderGames[Math.floor(Math.random() * deckbuilderGames.length)];
-
-  console.log(`Riding the bus to: ${randomGame.name}`);
-
-  // Generate position and encounter type
-  const x = 450; // Center position
-  const y = gameState.currentY + 200;
-
-  // Determine encounter type (same logic as spawnChoices)
-  const encounterRoll = Math.random() * 100;
-  let encounterType;
-
-  if (encounterRoll < 75) {
-    encounterType = 'combat';
-  } else if (encounterRoll < 90) {
-    encounterType = 'event';
-  } else {
-    encounterType = 'shop';
-  }
-
-  // Advance to the selected game
-  advance(randomGame.name, x, y, encounterType);
+  return teleportToRandomGameOfType('Deckbuilding');
 }
 
 // Export functions to global scope
@@ -367,6 +361,7 @@ window.getItemByName = getItemByName;
 window.hasItemEffects = hasItemEffects;
 window.canUseItem = canUseItem;
 window.useItem = useItem;
+window.teleportToRandomGameOfType = teleportToRandomGameOfType; // Main teleport function
 window.teleportToRandomGame = teleportToRandomGame;
 window.teleportToRandomDeckbuilder = teleportToRandomDeckbuilder;
 window.ITEM_EFFECTS = ITEM_EFFECTS;

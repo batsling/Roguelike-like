@@ -76,23 +76,15 @@ function updateInventory() {
     if (inventory.length === 0) {
       gameItemsList.innerHTML = '<div class="empty-inventory">No items yet</div>';
     } else {
-      // Separate usable and passive items
-      const usableItems = [];
-      const passiveItems = [];
+      // Sort inventory: usable items first, then passive items
+      const sortedInventory = [...inventory].map((item, idx) => ({ item, idx }))
+        .sort((a, b) => {
+          const aIsUsable = a.item.type === 'Usable' ? 0 : 1;
+          const bIsUsable = b.item.type === 'Usable' ? 0 : 1;
+          return aIsUsable - bIsUsable;
+        });
 
-      inventory.forEach((item, idx) => {
-        if (item.type === 'Usable') {
-          usableItems.push({ item, idx });
-        } else {
-          passiveItems.push({ item, idx });
-        }
-      });
-
-      // Build HTML with sections
-      let html = '';
-
-      // Helper function to render item
-      const renderItem = ({ item, idx }) => {
+      gameItemsList.innerHTML = sortedInventory.map(({ item, idx }) => {
         let imageUrl = item.image && item.image.trim() !== ''
           ? item.image
           : 'https://via.placeholder.com/75?text=%3F';
@@ -149,27 +141,7 @@ function updateInventory() {
             </div>
           </div>
         `;
-      };
-
-      // Usable items section
-      if (usableItems.length > 0) {
-        html += '<div style="margin-bottom: 16px;">';
-        html += '<h3 style="color: #4CAF50; font-size: 14px; margin: 8px 0; text-transform: uppercase; border-bottom: 2px solid #4CAF50; padding-bottom: 4px;">Usable Items</h3>';
-        html += '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">';
-        html += usableItems.map(renderItem).join('');
-        html += '</div></div>';
-      }
-
-      // Passive items section
-      if (passiveItems.length > 0) {
-        html += '<div style="margin-bottom: 16px;">';
-        html += '<h3 style="color: #cc6600; font-size: 14px; margin: 8px 0; text-transform: uppercase; border-bottom: 2px solid #cc6600; padding-bottom: 4px;">Passive Items</h3>';
-        html += '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">';
-        html += passiveItems.map(renderItem).join('');
-        html += '</div></div>';
-      }
-
-      gameItemsList.innerHTML = html;
+      }).join('');
 
       // Add tooltip and hover effect event listeners after rendering
       const itemContainers = gameItemsList.querySelectorAll('.item-display-container');
