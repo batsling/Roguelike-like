@@ -37,12 +37,18 @@ function applyCombatOutcome(success) {
   } else {
     // Parse and apply failure consequences
     const failureText = document.getElementById('failureOutcome').textContent;
+    console.log('Combat failure - parsing text:', failureText);
+
     const healthMatch = failureText.match(/(\d+) health/i);
     if (healthMatch) {
       const healthLoss = parseInt(healthMatch[1]);
+      const oldHealth = health;
       health = Math.max(0, health - healthLoss);
       gameState.health = health;
+      console.log(`Health loss: ${healthLoss}, Old health: ${oldHealth}, New health: ${health}`);
       updateHealthDisplay();
+    } else {
+      console.warn('No health loss found in failure text:', failureText);
     }
 
     const goldMatch = failureText.match(/lose (\d+) gold/i);
@@ -67,6 +73,11 @@ function applyCombatOutcome(success) {
 
   updateEncounterHistory();
   document.getElementById('enemyDisplay').style.display = 'none';
+
+  // Save game state after combat
+  if (typeof saveCurrentGame === 'function') {
+    saveCurrentGame();
+  }
 
   if (health <= 0) {
     alert('You have been defeated! Game Over.');

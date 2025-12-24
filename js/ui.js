@@ -76,12 +76,28 @@ function updateInventory() {
     if (inventory.length === 0) {
       gameItemsList.innerHTML = '<div class="empty-inventory">No items yet</div>';
     } else {
-      gameItemsList.innerHTML = inventory.map((item, idx) => {
+      // Separate usable and passive items
+      const usableItems = [];
+      const passiveItems = [];
+
+      inventory.forEach((item, idx) => {
+        if (item.type === 'Usable') {
+          usableItems.push({ item, idx });
+        } else {
+          passiveItems.push({ item, idx });
+        }
+      });
+
+      // Build HTML with sections
+      let html = '';
+
+      // Helper function to render item
+      const renderItem = ({ item, idx }) => {
         let imageUrl = item.image && item.image.trim() !== ''
           ? item.image
-          : 'https://via.placeholder.com/75?text=%3F'; // Question mark placeholder
+          : 'https://via.placeholder.com/75?text=%3F';
 
-        // Fix imgur URLs - convert https://imgur.com/ID to https://i.imgur.com/ID.png
+        // Fix imgur URLs
         if (imageUrl.includes('imgur.com/') && !imageUrl.includes('i.imgur.com')) {
           imageUrl = imageUrl.replace('imgur.com/', 'i.imgur.com/');
           if (!imageUrl.match(/\.(png|jpg|jpeg|gif)$/i)) {
@@ -89,7 +105,6 @@ function updateInventory() {
           }
         }
 
-        // Check if this is a usable item
         const isUsable = item.type === 'Usable';
         const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
 
@@ -134,18 +149,35 @@ function updateInventory() {
             </div>
           </div>
         `;
-      }).join('');
+      };
+
+      // Usable items section
+      if (usableItems.length > 0) {
+        html += '<div style="margin-bottom: 16px;"><h3 style="color: #4CAF50; font-size: 14px; margin: 8px 0; text-transform: uppercase; border-bottom: 2px solid #4CAF50; padding-bottom: 4px;">Usable Items</h3>';
+        html += usableItems.map(renderItem).join('');
+        html += '</div>';
+      }
+
+      // Passive items section
+      if (passiveItems.length > 0) {
+        html += '<div style="margin-bottom: 16px;"><h3 style="color: #cc6600; font-size: 14px; margin: 8px 0; text-transform: uppercase; border-bottom: 2px solid #cc6600; padding-bottom: 4px;">Passive Items</h3>';
+        html += passiveItems.map(renderItem).join('');
+        html += '</div>';
+      }
+
+      gameItemsList.innerHTML = html;
 
       // Add tooltip and hover effect event listeners after rendering
       const itemContainers = gameItemsList.querySelectorAll('.item-display-container');
-      itemContainers.forEach((container, idx) => {
+      itemContainers.forEach((container) => {
+        const itemIdx = parseInt(container.dataset.itemIndex);
         const div = container.querySelector('.item-display-image');
 
         // Add hover scale effect
         container.onmouseenter = e => {
           container.style.transform = 'scale(1.1)';
           container.style.zIndex = '100';
-          showItemTooltip(e, inventory[idx]);
+          showItemTooltip(e, inventory[itemIdx]);
         };
 
         container.onmousemove = e => {
