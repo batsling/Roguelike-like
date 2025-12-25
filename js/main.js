@@ -730,6 +730,12 @@ function showCombatModal() {
         gameState.gold = gold;
         updateTopBar();
       }
+
+      // Trigger onEnemyDefeated effects for triggered items
+      if (typeof triggerOnEnemyDefeated === 'function') {
+        triggerOnEnemyDefeated();
+      }
+
       resultHTML += `<p style="color: #4CAF50; font-weight: bold;">SUCCESS!</p>
                     <p>${enemy.successReward}</p>`;
     } else {
@@ -744,6 +750,62 @@ function showCombatModal() {
       health = Math.max(0, health - healthLoss);
       gameState.health = health;
       updateHealthDisplay();
+
+      // Check for death
+      if (health <= 0) {
+        setTimeout(() => {
+          createGameModal(`
+            <div style="text-align: center;">
+              <h1 style="color: #ff4444; font-size: 48px; margin: 20px 0;">💀 YOU ARE DEAD</h1>
+              <p style="color: #aaa; font-size: 18px; margin: 20px 0;">Your journey has come to an end...</p>
+              <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
+                <button id="death-home-btn" style="
+                  padding: 12px 24px;
+                  background: #444;
+                  border: 2px solid #666;
+                  border-radius: 8px;
+                  color: white;
+                  cursor: pointer;
+                  font-weight: bold;
+                  font-size: 16px;
+                  transition: all 0.2s;
+                " onmouseover="this.style.background='#555'" onmouseout="this.style.background='#444'">
+                  🏠 Home
+                </button>
+                <button id="death-retry-btn" style="
+                  padding: 12px 24px;
+                  background: #d32f2f;
+                  border: 2px solid #f44336;
+                  border-radius: 8px;
+                  color: white;
+                  cursor: pointer;
+                  font-weight: bold;
+                  font-size: 16px;
+                  transition: all 0.2s;
+                " onmouseover="this.style.background='#e53935'" onmouseout="this.style.background='#d32f2f'">
+                  🔄 Try Again
+                </button>
+              </div>
+            </div>
+          `);
+
+          document.getElementById('death-home-btn').onclick = () => {
+            closeGameModal();
+            document.getElementById('dungeon-screen').style.display = 'none';
+            document.getElementById('main-menu').style.display = 'flex';
+          };
+
+          document.getElementById('death-retry-btn').onclick = () => {
+            closeGameModal();
+            document.getElementById('dungeon-screen').style.display = 'none';
+            document.getElementById('main-menu').style.display = 'flex';
+            setTimeout(() => {
+              document.getElementById('new-game-btn')?.click();
+            }, 100);
+          };
+        }, 300);
+        return; // Exit the function early to prevent showing combat results
+      }
 
       // Apply curse based on enemy's failure trigger
       const matchingCurses = curses.filter(curse =>
@@ -776,7 +838,7 @@ function showCombatModal() {
           }
         }
 
-        failureText = `Lose ${healthMatch ? healthMatch[1] : 2} health and gain ${selectedCurse.name}!`;
+        failureText = `Lose ${healthLoss} health and gain ${selectedCurse.name}!`;
       }
 
       resultHTML += `<p style="color: #ff4444; font-weight: bold;">FAILURE!</p>
@@ -1012,7 +1074,7 @@ function showItemChoiceModal() {
     }
   }
 
-  let itemsHTML = '<div style="display: flex; gap: 20px; margin-top: 20px; justify-content: center;">';
+  let itemsHTML = '<div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; justify-content: center;">';
 
   choices.forEach((item, index) => {
     const rarityColor = item.rarity === 'common' ? '#aaa' : item.rarity === 'uncommon' ? '#4CAF50' : '#9b59b6';
@@ -1043,7 +1105,7 @@ function showItemChoiceModal() {
 
   // Add Reroll and Skip buttons
   const rerollButtonHTML = `
-    <div style="text-align: center; margin-top: 20px; display: flex; gap: 15px; justify-content: center;">
+    <div style="text-align: center; margin-top: 20px; display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
       <button id="item-reroll-btn" ${reroll === 0 ? 'disabled' : ''} style="
         padding: 10px 24px;
         background: ${reroll > 0 ? '#ffcc66' : '#555'};

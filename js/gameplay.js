@@ -137,8 +137,37 @@ function showTooltip(e, name) {
 }
 
 function moveTooltip(e) {
-  tooltip.style.left = e.clientX + 14 + 'px';
-  tooltip.style.top = e.clientY + 14 + 'px';
+  const offset = 14;
+  const tooltipRect = tooltip.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  // Calculate initial position
+  let left = e.clientX + offset;
+  let top = e.clientY + offset;
+
+  // Check if tooltip would go off the right edge
+  if (left + tooltipRect.width > viewportWidth) {
+    left = e.clientX - tooltipRect.width - offset;
+  }
+
+  // Check if tooltip would go off the left edge
+  if (left < 0) {
+    left = offset;
+  }
+
+  // Check if tooltip would go off the bottom edge
+  if (top + tooltipRect.height > viewportHeight) {
+    top = e.clientY - tooltipRect.height - offset;
+  }
+
+  // Check if tooltip would go off the top edge
+  if (top < 0) {
+    top = offset;
+  }
+
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
 }
 
 function hideTooltip() {

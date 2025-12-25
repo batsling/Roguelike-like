@@ -32,7 +32,7 @@ var ITEMS_DATA = [
     "name": "Cursed Slash",
     "rarity": "rare",
     "type": "Triggered",
-    "description": "Lose half of your max health. When you beat a game, Heal +1 Health",
+    "description": "Lose half of your max health. When you defeat an enemy, Heal +1 Health",
     "image": "https://imgur.com/vuYYwHg",
     "game": "Hades",
     "tags": []

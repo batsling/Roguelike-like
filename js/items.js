@@ -137,6 +137,132 @@ const ITEM_EFFECTS = {
     }
   },
 
+  // ===== TRIGGERED ITEMS =====
+
+  "Charm of the Vampire": {
+    onAcquire: () => {
+      // No immediate effect on acquire
+      console.log('Acquired Charm of the Vampire - will trigger on enemy defeats');
+    },
+    onEnemyDefeated: () => {
+      // 50% base chance + (5% * luck)
+      const baseChance = 0.50;
+      const luckBonus = (luck || 0) * 0.05;
+      const totalChance = baseChance + luckBonus;
+
+      const roll = Math.random();
+      console.log(`Charm of the Vampire: rolled ${roll.toFixed(2)} vs ${totalChance.toFixed(2)} chance`);
+
+      if (roll < totalChance) {
+        // Heal +1 health (can't exceed max health)
+        const oldHealth = health;
+        health = Math.min(health + 1, maxHealth);
+        gameState.health = health;
+
+        if (health > oldHealth) {
+          console.log(`Charm of the Vampire: Healed +1 health (${oldHealth} → ${health})`);
+          if (typeof updateHealthDisplay === 'function') {
+            updateHealthDisplay();
+          }
+          if (typeof updateTopBar === 'function') {
+            updateTopBar();
+          }
+          // Show notification
+          if (typeof createGameModal !== 'undefined') {
+            setTimeout(() => {
+              const notification = document.createElement('div');
+              notification.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(76, 175, 80, 0.9);
+                color: white;
+                padding: 20px 40px;
+                border-radius: 12px;
+                font-size: 18px;
+                font-weight: bold;
+                z-index: 10001;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+                animation: fadeIn 0.3s;
+              `;
+              notification.textContent = '🧛 Charm of the Vampire: +1 Health!';
+              document.body.appendChild(notification);
+              setTimeout(() => {
+                notification.style.animation = 'fadeOut 0.3s';
+                setTimeout(() => notification.remove(), 300);
+              }, 1500);
+            }, 100);
+          }
+        }
+      }
+    }
+  },
+
+  "Cursed Slash": {
+    onAcquire: () => {
+      // Lose half of max health (rounded down)
+      const healthLoss = Math.floor(maxHealth / 2);
+      maxHealth -= healthLoss;
+      health = Math.max(0, health - healthLoss); // Lose current health too
+
+      gameState.maxHealth = maxHealth;
+      gameState.health = health;
+
+      console.log(`Cursed Slash: Lost ${healthLoss} max health and current health`);
+
+      if (typeof updateHealthDisplay === 'function') {
+        updateHealthDisplay();
+      }
+      if (typeof updateTopBar === 'function') {
+        updateTopBar();
+      }
+    },
+    onEnemyDefeated: () => {
+      // Always heal +1 health when defeating an enemy
+      const oldHealth = health;
+      health = Math.min(health + 1, maxHealth);
+      gameState.health = health;
+
+      if (health > oldHealth) {
+        console.log(`Cursed Slash: Healed +1 health (${oldHealth} → ${health})`);
+        if (typeof updateHealthDisplay === 'function') {
+          updateHealthDisplay();
+        }
+        if (typeof updateTopBar === 'function') {
+          updateTopBar();
+        }
+        // Show notification
+        if (typeof createGameModal !== 'undefined') {
+          setTimeout(() => {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+              position: fixed;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              background: rgba(156, 39, 176, 0.9);
+              color: white;
+              padding: 20px 40px;
+              border-radius: 12px;
+              font-size: 18px;
+              font-weight: bold;
+              z-index: 10001;
+              box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+              animation: fadeIn 0.3s;
+            `;
+            notification.textContent = '⚔️ Cursed Slash: +1 Health!';
+            document.body.appendChild(notification);
+            setTimeout(() => {
+              notification.style.animation = 'fadeOut 0.3s';
+              setTimeout(() => notification.remove(), 300);
+            }, 1500);
+          }, 100);
+        }
+      }
+    }
+  },
+
   // ===== USABLE ITEMS =====
 
   "Scroll of Teleportation": {
@@ -525,6 +651,29 @@ function selectedTeleport(options = {}) {
   return true;
 }
 
+/**
+ * Trigger onEnemyDefeated effects for all items in inventory that have this trigger
+ * Call this function when the player successfully defeats an enemy
+ */
+function triggerOnEnemyDefeated() {
+  if (!inventory || inventory.length === 0) {
+    return;
+  }
+
+  console.log('Triggering onEnemyDefeated effects...');
+
+  // Check each item in inventory for onEnemyDefeated trigger
+  inventory.forEach(item => {
+    if (!item || !item.name) return;
+
+    const itemEffects = ITEM_EFFECTS[item.name];
+    if (itemEffects && typeof itemEffects.onEnemyDefeated === 'function') {
+      console.log(`Triggering ${item.name} onEnemyDefeated effect`);
+      itemEffects.onEnemyDefeated();
+    }
+  });
+}
+
 // Export functions to global scope
 window.applyItemEffects = applyItemEffects;
 window.acquireItem = acquireItem;
@@ -536,4 +685,5 @@ window.teleportToRandomGameOfType = teleportToRandomGameOfType; // Random telepo
 window.selectedTeleport = selectedTeleport; // Selected teleport with filters
 window.teleportToRandomGame = teleportToRandomGame;
 window.teleportToRandomDeckbuilder = teleportToRandomDeckbuilder;
+window.triggerOnEnemyDefeated = triggerOnEnemyDefeated; // Trigger onEnemyDefeated effects
 window.ITEM_EFFECTS = ITEM_EFFECTS;
