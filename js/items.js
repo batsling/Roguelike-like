@@ -366,6 +366,7 @@ const ITEM_EFFECTS = {
   },
 
   "Ventricle Razor": {
+    uses: 2, // Can create 2 portals
     canUse: () => {
       // Can use anytime
       return true;
@@ -473,17 +474,27 @@ function applyItemEffects(item) {
 function acquireItem(item) {
   if (!item) return;
 
+  // Create a copy of the item to track uses
+  const itemCopy = { ...item };
+
+  // Initialize uses for Usable items
+  if (itemCopy.type === 'Usable') {
+    const effects = ITEM_EFFECTS[itemCopy.name];
+    // Default to 1 use, or use the value from ITEM_EFFECTS
+    itemCopy.uses = (effects && effects.uses) || 1;
+  }
+
   // Add to inventory
-  inventory.push(item);
+  inventory.push(itemCopy);
   gameState.inventory = [...inventory];
 
-  // Apply item effects
-  applyItemEffects(item);
+  // Apply item effects (for Passive and Triggered items)
+  applyItemEffects(itemCopy);
 
   // Update UI
   updateInventory();
 
-  console.log(`Acquired: ${item.name}`);
+  console.log(`Acquired: ${itemCopy.name}${itemCopy.uses ? ` (${itemCopy.uses} uses)` : ''}`);
 }
 
 // ===== HELPER FUNCTIONS =====
@@ -545,17 +556,23 @@ function useItem(itemIndex) {
 
   const effects = ITEM_EFFECTS[item.name];
   if (effects && effects.onUse) {
-    console.log(`Using item: ${item.name}`);
+    console.log(`Using item: ${item.name} (${item.uses || 1} uses remaining)`);
     effects.onUse();
 
-    // Remove item from inventory after use
-    inventory.splice(itemIndex, 1);
-    gameState.inventory = [...inventory];
+    // Decrement uses
+    if (item.uses && item.uses > 1) {
+      item.uses--;
+      gameState.inventory = [...inventory];
+      console.log(`${item.name} used. ${item.uses} uses remaining.`);
+    } else {
+      // Remove item from inventory when uses reach 0
+      inventory.splice(itemIndex, 1);
+      gameState.inventory = [...inventory];
+      console.log(`Used and removed: ${item.name}`);
+    }
 
     // Update UI
     updateInventory();
-
-    console.log(`Used and removed: ${item.name}`);
   }
 }
 

@@ -135,7 +135,7 @@ function updateInventory() {
                           z-index: 10;
                         "
                         ${!canUse ? 'disabled' : ''}>
-                  Use
+                  Use${item.uses && item.uses > 1 ? ` x${item.uses}` : ''}
                 </button>
               ` : ''}
             </div>

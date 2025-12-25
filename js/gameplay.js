@@ -80,6 +80,7 @@ function addNode(name, cls, x, y) {
         display: flex;
         gap: 2px;
         z-index: 100;
+        pointer-events: none;
       `;
 
       statuses.forEach((status) => {
