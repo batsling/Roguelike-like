@@ -2,9 +2,11 @@
 
 ## Table of Contents
 - [Items System](#items-system)
+- [Game Status Effects](#game-status-effects)
 - [Events System](#events-system)
 - [Teleport System](#teleport-system)
 - [Combat System](#combat-system)
+- [Recent Updates](#recent-updates)
 
 ---
 
@@ -18,7 +20,7 @@ All items are defined in the `items` array in `games-data.js` with the following
 {
   name: "Item Name",
   rarity: "common" | "uncommon" | "rare",
-  type: "Passive" | "Usable",
+  type: "Passive" | "Usable" | "Triggered",
   description: "What the item does"
 }
 ```
@@ -27,6 +29,7 @@ All items are defined in the `items` array in `games-data.js` with the following
 
 - **Passive**: Items that apply effects when acquired and remain in inventory
 - **Usable**: Items that can be activated during specific game phases
+- **Triggered**: Items that activate automatically when specific conditions are met (e.g., defeating an enemy)
 
 ### Creating Item Effects
 
@@ -49,6 +52,16 @@ const ITEM_EFFECTS = {
     // For usable items - runs when player uses the item
     onUse: () => {
       teleportToRandomGame();
+    },
+
+    // For usable items - number of times item can be used (default: 1)
+    uses: 2,
+
+    // For triggered items - runs when player defeats an enemy
+    onEnemyDefeated: () => {
+      // Triggered effect logic
+      health = Math.min(health + 1, maxHealth);
+      gameState.health = health;
     }
   }
 }
@@ -169,6 +182,59 @@ const ITEM_EFFECTS = {
 }
 ```
 
+**Multi-Use Items**:
+```javascript
+"Ventricle Razor": {
+  uses: 2, // Can be used twice before being removed from inventory
+  canUse: () => {
+    return true; // Can use anytime
+  },
+  onUse: () => {
+    // Apply portal status to current game
+    addGameStatus(gameState.currentGame, 'portal', '🌀');
+  }
+}
+```
+
+### Triggered Item Examples
+
+**Items that trigger on enemy defeats**:
+
+```javascript
+"Charm of the Vampire": {
+  onAcquire: () => {
+    console.log('Acquired Charm of the Vampire');
+  },
+  onEnemyDefeated: () => {
+    // 50% base chance + (5% * luck) to heal
+    const baseChance = 0.50;
+    const luckBonus = (luck || 0) * 0.05;
+    const totalChance = baseChance + luckBonus;
+
+    if (Math.random() < totalChance) {
+      health = Math.min(health + 1, maxHealth);
+      gameState.health = health;
+    }
+  }
+},
+
+"Cursed Slash": {
+  onAcquire: () => {
+    // Lose half of max health immediately
+    const healthLoss = Math.floor(maxHealth / 2);
+    maxHealth -= healthLoss;
+    health = Math.max(0, health - healthLoss);
+    gameState.maxHealth = maxHealth;
+    gameState.health = health;
+  },
+  onEnemyDefeated: () => {
+    // Always heal +1 health when defeating an enemy
+    health = Math.min(health + 1, maxHealth);
+    gameState.health = health;
+  }
+}
+```
+
 ### Available Stats
 
 - `strength` - Combat stat
@@ -191,6 +257,89 @@ Items can check `gameState.phase` to determine usability:
 - `'event'` - Player is in an event
 - `'shop'` - Player is in the shop
 - `'escape'` - Player is in the escape sequence (has amulet)
+
+---
+
+## Game Status Effects
+
+### Overview
+
+Game status effects are persistent markers that can be applied to games. Status icons appear on game nodes (current, past, and choice nodes) and modify how games behave in selections.
+
+### Status Effect Functions
+
+```javascript
+// Add a status effect to a game
+addGameStatus(gameName, statusName, icon)
+
+// Remove a status effect from a game
+removeGameStatus(gameName, statusName)
+
+// Check if a game has a specific status
+hasGameStatus(gameName, statusName)
+
+// Get all statuses for a game
+getGameStatuses(gameName)
+
+// Get all games with a specific status
+getGamesWithStatus(statusName)
+```
+
+### Status Effect Items
+
+**The Poop** - Applies "stinky" status:
+```javascript
+"The Poop": {
+  canUse: () => true,
+  onUse: () => {
+    // Apply stinky status to current game
+    addGameStatus(gameState.currentGame, 'stinky', '💩');
+
+    // Refresh current node to show icon immediately
+    const currentNode = document.querySelector('.node.current');
+    if (currentNode) {
+      updateNodeStatusIcons(currentNode);
+    }
+  }
+}
+```
+
+**Effect**: Stinky games are deprioritized in game selections (appear last in the shuffled list).
+
+**Ventricle Razor** - Applies "portal" status:
+```javascript
+"Ventricle Razor": {
+  uses: 2, // Can create 2 portals
+  canUse: () => true,
+  onUse: () => {
+    // Apply portal status to current game
+    addGameStatus(gameState.currentGame, 'portal', '🌀');
+
+    // Refresh current node to show icon immediately
+    const currentNode = document.querySelector('.node.current');
+    if (currentNode) {
+      updateNodeStatusIcons(currentNode);
+    }
+  }
+}
+```
+
+**Effect**: When standing on a portal game, all other portal games appear as extra choices (creates instant long-distance connections). Maximum 2 portals can exist at once.
+
+### Status Icon Display
+
+- Status icons appear in the **top-left corner** of game nodes
+- Icons use `pointer-events: none` so tooltips work normally
+- Icons appear on **all node types**: current, past, choice, and selection
+- Multiple status effects stack horizontally
+- Icons auto-refresh when status is applied via `updateNodeStatusIcons()`
+
+### Implementation Notes
+
+- Status effects are stored in `gameState.gameStatusEffects` as `{ gameName: [{ name, icon }, ...] }`
+- Stinky games are filtered separately and added to the end of choices
+- Portal games are added to choices when player is on a portal-marked game
+- Status icons persist across game sessions when saved
 
 ---
 
