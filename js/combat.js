@@ -80,7 +80,54 @@ function applyCombatOutcome(success) {
   }
 
   if (health <= 0) {
-    alert('You have been defeated! Game Over.');
+    // Show death screen with options
+    setTimeout(() => {
+      createGameModal(`
+        <div style="text-align: center;">
+          <h1 style="color: #ff4444; font-size: 48px; margin: 20px 0;">💀 YOU ARE DEAD</h1>
+          <p style="color: #aaa; font-size: 18px; margin: 20px 0;">Your journey has come to an end...</p>
+          <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
+            <button id="death-home-btn" style="
+              padding: 15px 30px;
+              font-size: 18px;
+              background: linear-gradient(145deg, #666, #444);
+              border: 2px solid #888;
+              border-radius: 8px;
+              color: white;
+              cursor: pointer;
+              font-weight: bold;
+            ">🏠 Home</button>
+            <button id="death-retry-btn" style="
+              padding: 15px 30px;
+              font-size: 18px;
+              background: linear-gradient(145deg, #4CAF50, #2E7D32);
+              border: 2px solid #66BB6A;
+              border-radius: 8px;
+              color: white;
+              cursor: pointer;
+              font-weight: bold;
+            ">🔄 Try Again</button>
+          </div>
+        </div>
+      `);
+
+      // Add event listeners
+      document.getElementById('death-home-btn').onclick = () => {
+        closeGameModal();
+        document.getElementById('dungeon-screen').style.display = 'none';
+        document.getElementById('main-menu').style.display = 'flex';
+      };
+
+      document.getElementById('death-retry-btn').onclick = () => {
+        closeGameModal();
+        document.getElementById('dungeon-screen').style.display = 'none';
+        document.getElementById('main-menu').style.display = 'flex';
+        // Trigger new game button click
+        setTimeout(() => {
+          document.getElementById('new-game-btn')?.click();
+        }, 100);
+      };
+    }, 300);
   }
 }
 

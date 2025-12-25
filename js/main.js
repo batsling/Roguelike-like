@@ -341,6 +341,11 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   skip = character.startingStats.skip || 0;
   discovery = character.startingStats.discovery || 0;
 
+  // Reset health and gold for new run
+  health = 10;
+  maxHealth = 10;
+  gold = 0;
+
   // Clear inventory and curses for new run
   inventory = [];
 
@@ -1036,9 +1041,9 @@ function showItemChoiceModal() {
   itemsHTML += '</div>';
   itemsHTML += '<p style="text-align: center; color: #888; margin-top: 20px; font-size: 14px;">Click an item to choose it</p>';
 
-  // Add Reroll button
+  // Add Reroll and Skip buttons
   const rerollButtonHTML = `
-    <div style="text-align: center; margin-top: 20px;">
+    <div style="text-align: center; margin-top: 20px; display: flex; gap: 15px; justify-content: center;">
       <button id="item-reroll-btn" ${reroll === 0 ? 'disabled' : ''} style="
         padding: 10px 24px;
         background: ${reroll > 0 ? '#ffcc66' : '#555'};
@@ -1052,7 +1057,20 @@ function showItemChoiceModal() {
       ">
         🔄 Reroll Items (${reroll})
       </button>
+      <button id="item-skip-btn" style="
+        padding: 10px 24px;
+        background: #666;
+        border: 2px solid #888;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 14px;
+      ">
+        ⏭️ Skip (No Item)
+      </button>
     </div>
+    <p style="text-align: center; color: #888; margin-top: 10px; font-size: 12px;">Note: Skip does not use your Skip ability</p>
   `;
 
   createGameModal(`
@@ -1101,6 +1119,23 @@ function showItemChoiceModal() {
         closeGameModal();
         setTimeout(() => showItemChoiceModal(), 100);
       }
+    };
+  }
+
+  // Add skip button event listener
+  const itemSkipBtn = document.getElementById('item-skip-btn');
+  if (itemSkipBtn) {
+    itemSkipBtn.onclick = () => {
+      closeGameModal();
+
+      // Set phase to selection so usable items become enabled
+      gameState.phase = 'selection';
+      if (typeof updateInventory === 'function') {
+        updateInventory();
+      }
+
+      // Spawn choices without acquiring an item
+      setTimeout(() => spawnChoices(), 300);
     };
   }
 }
@@ -1425,12 +1460,52 @@ function recordLostRun(index) {
   if (health <= 0) {
     createGameModal(`
       <div style="text-align: center;">
-        <h2 style="color: #ff4444;">You Have Perished!</h2>
-        <p>You ran out of health during your escape...</p>
-        <p style="color: gold;">You made it ${gameState.escapeProgress} / ${gameState.escapeGames.length} of the way out with the amulet.</p>
-        <button onclick="closeGameModal(); location.reload();" style="margin-top: 20px; padding: 12px 30px; background: #666; border: none; border-radius: 6px; color: white; cursor: pointer;">Return to Menu</button>
+        <h1 style="color: #ff4444; font-size: 48px; margin: 20px 0;">💀 YOU ARE DEAD</h1>
+        <p style="color: #aaa; font-size: 18px; margin: 10px 0;">You ran out of health during your escape...</p>
+        <p style="color: gold; font-size: 16px; margin: 20px 0;">You made it ${gameState.escapeProgress} / ${gameState.escapeGames.length} of the way out with the amulet.</p>
+        <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
+          <button id="escape-death-home-btn" style="
+            padding: 15px 30px;
+            font-size: 18px;
+            background: linear-gradient(145deg, #666, #444);
+            border: 2px solid #888;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+          ">🏠 Home</button>
+          <button id="escape-death-retry-btn" style="
+            padding: 15px 30px;
+            font-size: 18px;
+            background: linear-gradient(145deg, #4CAF50, #2E7D32);
+            border: 2px solid #66BB6A;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+          ">🔄 Try Again</button>
+        </div>
       </div>
     `);
+
+    // Add event listeners
+    setTimeout(() => {
+      document.getElementById('escape-death-home-btn').onclick = () => {
+        closeGameModal();
+        document.getElementById('dungeon-screen').style.display = 'none';
+        document.getElementById('main-menu').style.display = 'flex';
+      };
+
+      document.getElementById('escape-death-retry-btn').onclick = () => {
+        closeGameModal();
+        document.getElementById('dungeon-screen').style.display = 'none';
+        document.getElementById('main-menu').style.display = 'flex';
+        // Trigger new game button click
+        setTimeout(() => {
+          document.getElementById('new-game-btn')?.click();
+        }, 100);
+      };
+    }, 100);
     return;
   }
 
