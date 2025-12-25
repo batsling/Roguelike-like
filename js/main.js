@@ -341,10 +341,33 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   skip = character.startingStats.skip || 0;
   discovery = character.startingStats.discovery || 0;
 
+  // Check for Curse of Devotion before resetting
+  let devotionDamage = 0;
+  if (gameState && gameState.activeCurses && gameState.activeCurses.length > 0) {
+    gameState.activeCurses.forEach(curse => {
+      if (curse.name.toLowerCase().includes('devotion')) {
+        // Calculate damage based on curse power
+        if (curse.name.includes(' I')) {
+          devotionDamage += 1;
+        } else if (curse.name.includes(' II')) {
+          devotionDamage += 2;
+        } else if (curse.name.includes(' III')) {
+          devotionDamage += 3;
+        }
+      }
+    });
+  }
+
   // Reset health and gold for new run
   health = 10;
   maxHealth = 10;
   gold = 0;
+
+  // Apply Curse of Devotion damage after resetting health
+  if (devotionDamage > 0) {
+    health = Math.max(0, health - devotionDamage);
+    alert(`Curse of Devotion: Resetting your run cost you ${devotionDamage} health! Starting with ${health}/${maxHealth} health.`);
+  }
 
   // Clear inventory and curses for new run
   inventory = [];
@@ -1220,6 +1243,37 @@ function showItemChoiceModal() {
   const itemSkipBtn = document.getElementById('item-skip-btn');
   if (itemSkipBtn) {
     itemSkipBtn.onclick = () => {
+      // Check for Curse of Greed
+      if (gameState && gameState.activeCurses && gameState.activeCurses.length > 0) {
+        gameState.activeCurses.forEach(curse => {
+          if (curse.name.toLowerCase().includes('greed')) {
+            let damage = 0;
+            if (curse.name.includes(' I')) {
+              damage = 1;
+            } else if (curse.name.includes(' II')) {
+              damage = 1;
+            } else if (curse.name.includes(' III')) {
+              damage = 2;
+            }
+
+            if (damage > 0) {
+              health = Math.max(0, health - damage);
+              gameState.health = health;
+              if (typeof updateTopBar === 'function') {
+                updateTopBar();
+              }
+              alert(`Curse of Greed: Skipping the item cost you ${damage} health!`);
+
+              // Check for death
+              if (health <= 0 && typeof handleDeath === 'function') {
+                handleDeath();
+                return;
+              }
+            }
+          }
+        });
+      }
+
       closeGameModal();
 
       // Set phase to selection so usable items become enabled

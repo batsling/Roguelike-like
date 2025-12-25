@@ -826,6 +826,11 @@ function showFinish(node, isAmuletGame = false) {
   }
 
   b.onclick = () => {
+    // Check curse requirements before finishing
+    if (!checkCurseRequirements()) {
+      return; // Don't finish if curse requirements aren't met
+    }
+
     // Disable button immediately to prevent multiple clicks
     b.disabled = true;
     b.style.opacity = '0.5';
@@ -844,6 +849,9 @@ function showFinish(node, isAmuletGame = false) {
     if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
       markGameFinished(gameState.currentGame);
     }
+
+    // Process curses on game completion
+    processCursesOnGameFinish();
 
     if (isAmuletGame) {
       // Start escape phase
@@ -970,6 +978,9 @@ function renderGameState() {
     if (isLast) {
       gameState.currentY = currentY;
       showFinish(node);
+
+      // Show in-game curses panel if there are active curses
+      showInGameCursesPanel(node);
 
       // Add player icon on current node (above the box)
       if (gameState.character && PLAYER_CHARACTERS[gameState.character]) {
@@ -1178,6 +1189,327 @@ function updateNodeStatusIcons(node = null) {
   });
 }
 
+// ===== IN-GAME CURSES SYSTEM =====
+
+function showInGameCursesPanel(node) {
+  // Get active curses that need in-game interaction
+  if (!gameState || !gameState.activeCurses || gameState.activeCurses.length === 0) {
+    return; // No curses to show
+  }
+
+  const inGameCurses = gameState.activeCurses.filter(curse => {
+    const curseName = curse.name.toLowerCase();
+    return curseName.includes('haste') ||
+           curseName.includes('impulse') ||
+           curseName.includes('devotion') ||
+           curseName.includes('blindness') ||
+           curseName.includes('hubris');
+  });
+
+  if (inGameCurses.length === 0) {
+    return; // No in-game curses
+  }
+
+  // Create curses panel
+  const cursesPanel = document.createElement('div');
+  cursesPanel.className = 'ingame-curses-panel';
+  cursesPanel.style.cssText = `
+    position: absolute;
+    left: 250px;
+    top: 0px;
+    width: 300px;
+    background: rgba(40, 20, 20, 0.95);
+    border: 2px solid #aa4444;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    z-index: 15;
+  `;
+
+  let panelHTML = `<h3 style="margin: 0 0 10px 0; color: #ff6666; font-size: 16px; border-bottom: 2px solid #aa4444; padding-bottom: 8px;">⚠️ Active Curses</h3>`;
+
+  inGameCurses.forEach(curse => {
+    const curseName = curse.name.toLowerCase();
+    const curseData = CURSES_DATA ? CURSES_DATA.find(c => c.name === curse.name) : null;
+    const description = curseData ? curseData.description : curse.description || '';
+
+    panelHTML += `
+      <div style="margin-bottom: 12px; padding: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 4px; border-left: 3px solid #ff4444;">
+        <div style="font-weight: bold; color: #ffaa66; font-size: 13px; margin-bottom: 4px;">${curse.name}</div>
+        <div style="font-size: 11px; color: #cccccc; margin-bottom: 6px;">${description}</div>
+    `;
+
+    // Add specific curse UI elements
+    if (curseName.includes('haste')) {
+      // Show timer
+      if (!gameState.curseTimers) gameState.curseTimers = {};
+      if (!gameState.curseTimers[curse.name]) {
+        gameState.curseTimers[curse.name] = Date.now();
+      }
+
+      const timeLimit = curseName.includes(' i') ? 4 * 60 * 60 * 1000 : // 4 hours
+                       curseName.includes(' ii') ? 3 * 60 * 60 * 1000 : // 3 hours
+                       2 * 60 * 60 * 1000; // 2 hours
+
+      panelHTML += `<div id="haste-timer-${curse.name.replace(/\s+/g, '-')}" style="font-size: 12px; color: #ffdd66; font-weight: bold;">⏱ Time remaining: Calculating...</div>`;
+    }
+
+    if (curseName.includes('impulse')) {
+      panelHTML += `<div style="font-size: 11px; color: #ff8866;">💢 Remember: Take the topmost/leftmost option!</div>`;
+    }
+
+    if (curseName.includes('blindness')) {
+      panelHTML += `<div style="font-size: 11px; color: #88aaff;">🎲 Use random selection for character/loadout</div>`;
+    }
+
+    if (curseName.includes('hubris')) {
+      const difficultyIncreases = curseName.includes(' iii') ? 3 :
+                                  curseName.includes(' ii') ? 2 : 1;
+
+      if (!gameState.curseProgress) gameState.curseProgress = {};
+      if (!gameState.curseProgress[curse.name]) {
+        gameState.curseProgress[curse.name] = { difficulty: 0 };
+      }
+
+      const current = gameState.curseProgress[curse.name].difficulty || 0;
+      panelHTML += `
+        <div style="font-size: 11px; color: #ffaa44;">
+          ⚔️ Difficulty increased: ${current}/${difficultyIncreases}
+        </div>
+        ${current < difficultyIncreases ? `
+          <button id="hubris-confirm-${curse.name.replace(/\s+/g, '-')}" style="
+            margin-top: 6px;
+            padding: 4px 10px;
+            background: #ff6644;
+            border: 1px solid #ff8866;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+          ">Confirm Difficulty Raised</button>
+        ` : ''}
+      `;
+    }
+
+    if (curseName.includes('devotion')) {
+      panelHTML += `<div style="font-size: 11px; color: #ff6666;">💀 Restarting run will cause damage!</div>`;
+    }
+
+    panelHTML += `</div>`;
+  });
+
+  cursesPanel.innerHTML = panelHTML;
+  node.appendChild(cursesPanel);
+
+  // Add event listeners for hubris buttons
+  inGameCurses.forEach(curse => {
+    const curseName = curse.name.toLowerCase();
+    if (curseName.includes('hubris')) {
+      const btnId = `hubris-confirm-${curse.name.replace(/\s+/g, '-')}`;
+      const btn = document.getElementById(btnId);
+      if (btn) {
+        btn.onclick = () => {
+          if (!gameState.curseProgress) gameState.curseProgress = {};
+          if (!gameState.curseProgress[curse.name]) {
+            gameState.curseProgress[curse.name] = { difficulty: 0 };
+          }
+          gameState.curseProgress[curse.name].difficulty++;
+          showInGameCursesPanel(node); // Refresh panel
+        };
+      }
+    }
+  });
+
+  // Update haste timers every second
+  const hasteTimer = setInterval(() => {
+    inGameCurses.forEach(curse => {
+      const curseName = curse.name.toLowerCase();
+      if (curseName.includes('haste')) {
+        const timerId = `haste-timer-${curse.name.replace(/\s+/g, '-')}`;
+        const timerEl = document.getElementById(timerId);
+
+        if (timerEl && gameState.curseTimers && gameState.curseTimers[curse.name]) {
+          const startTime = gameState.curseTimers[curse.name];
+          const timeLimit = curseName.includes(' i') ? 4 * 60 * 60 * 1000 :
+                           curseName.includes(' ii') ? 3 * 60 * 60 * 1000 :
+                           2 * 60 * 60 * 1000;
+
+          const elapsed = Date.now() - startTime;
+          const remaining = Math.max(0, timeLimit - elapsed);
+
+          const hours = Math.floor(remaining / (60 * 60 * 1000));
+          const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+          const seconds = Math.floor((remaining % (60 * 1000)) / 1000);
+
+          timerEl.textContent = `⏱ Time remaining: ${hours}h ${minutes}m ${seconds}s`;
+
+          if (remaining <= 0) {
+            // Time's up! Apply damage
+            const damage = curseName.includes(' iii') ? 2 : 1;
+            health = Math.max(0, health - damage);
+            gameState.health = health;
+            if (typeof updateTopBar === 'function') {
+              updateTopBar();
+            }
+            alert(`Curse of Haste: Time's up! You lost ${damage} health.`);
+
+            // Remove this curse
+            gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== curse.name);
+            delete gameState.curseTimers[curse.name];
+            clearInterval(hasteTimer);
+
+            // Check for death
+            if (health <= 0 && typeof handleDeath === 'function') {
+              handleDeath();
+            }
+          }
+        }
+      }
+    });
+  }, 1000);
+
+  // Store timer ID to clear later
+  if (!gameState.curseIntervals) gameState.curseIntervals = [];
+  gameState.curseIntervals.push(hasteTimer);
+}
+
+function checkCurseRequirements() {
+  // Check if all curse requirements are met before allowing game completion
+  if (!gameState || !gameState.activeCurses || gameState.activeCurses.length === 0) {
+    return true; // No curses, can finish
+  }
+
+  for (const curse of gameState.activeCurses) {
+    const curseName = curse.name.toLowerCase();
+
+    // Check Hubris curse
+    if (curseName.includes('hubris')) {
+      const requiredIncreases = curseName.includes(' iii') ? 3 :
+                               curseName.includes(' ii') ? 2 : 1;
+
+      const currentIncreases = gameState.curseProgress && gameState.curseProgress[curse.name]
+        ? gameState.curseProgress[curse.name].difficulty || 0
+        : 0;
+
+      if (currentIncreases < requiredIncreases) {
+        alert(`Curse of Hubris: You must raise the difficulty ${requiredIncreases} times before finishing!`);
+        return false;
+      }
+    }
+
+    // Check Haste curse
+    if (curseName.includes('haste') && gameState.curseTimers && gameState.curseTimers[curse.name]) {
+      const startTime = gameState.curseTimers[curse.name];
+      const timeLimit = curseName.includes(' i') ? 4 * 60 * 60 * 1000 :
+                       curseName.includes(' ii') ? 3 * 60 * 60 * 1000 :
+                       2 * 60 * 60 * 1000;
+
+      const elapsed = Date.now() - startTime;
+      if (elapsed > timeLimit) {
+        const damage = curseName.includes(' iii') ? 2 : 1;
+        health = Math.max(0, health - damage);
+        gameState.health = health;
+        if (typeof updateTopBar === 'function') {
+          updateTopBar();
+        }
+        alert(`Curse of Haste: Time expired! You lost ${damage} health.`);
+
+        if (health <= 0 && typeof handleDeath === 'function') {
+          handleDeath();
+          return false;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
+function processCursesOnGameFinish() {
+  // Process curses when a game is successfully finished
+  if (!gameState || !gameState.activeCurses || gameState.activeCurses.length === 0) {
+    return;
+  }
+
+  const cursesToRemove = [];
+
+  gameState.activeCurses.forEach(curse => {
+    const curseName = curse.name.toLowerCase();
+
+    // Update curse progress tracking
+    if (!gameState.cursesTracker) gameState.cursesTracker = {};
+    if (!gameState.cursesTracker[curse.name]) {
+      gameState.cursesTracker[curse.name] = {
+        gamesBeaten: 0,
+        spacesChosen: 0,
+        combatsLost: 0,
+        diceRolled: 0
+      };
+    }
+
+    const tracker = gameState.cursesTracker[curse.name];
+    tracker.gamesBeaten++;
+
+    // Check if curse should be removed based on duration
+    const curseData = CURSES_DATA ? CURSES_DATA.find(c => c.name === curse.name) : null;
+    if (curseData) {
+      const duration = curseData.duration.toLowerCase();
+
+      if (duration.includes('until') && duration.includes('game')) {
+        const matches = duration.match(/(\d+)\s+game/i);
+        const requiredGames = matches ? parseInt(matches[1]) : 1;
+
+        if (tracker.gamesBeaten >= requiredGames) {
+          cursesToRemove.push(curse.name);
+          console.log(`Curse ${curse.name} expired after ${tracker.gamesBeaten} games`);
+        }
+      }
+
+      // Special handling for "w/ Effect" curses
+      if (duration.includes('w/ effect') || duration.includes('w/ Effect')) {
+        // Check if the required effect was applied (e.g., hubris difficulty increases)
+        if (gameState.curseProgress && gameState.curseProgress[curse.name]) {
+          const requiredIncreases = curseName.includes(' iii') ? 3 :
+                                   curseName.includes(' ii') ? 2 : 1;
+          const currentIncreases = gameState.curseProgress[curse.name].difficulty || 0;
+
+          if (currentIncreases >= requiredIncreases) {
+            cursesToRemove.push(curse.name);
+            console.log(`Curse ${curse.name} expired after effect completion`);
+          }
+        }
+      }
+    }
+
+    // Clear haste timers for completed games
+    if (curseName.includes('haste') && gameState.curseTimers) {
+      delete gameState.curseTimers[curse.name];
+    }
+
+    // Clear hubris progress for completed games
+    if (curseName.includes('hubris') && gameState.curseProgress) {
+      delete gameState.curseProgress[curse.name];
+    }
+  });
+
+  // Remove expired curses
+  cursesToRemove.forEach(curseName => {
+    gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== curseName);
+  });
+
+  // Update curses display
+  if (typeof updateCursesDisplay === 'function') {
+    updateCursesDisplay();
+  }
+
+  // Clear any running curse timers
+  if (gameState.curseIntervals) {
+    gameState.curseIntervals.forEach(interval => clearInterval(interval));
+    gameState.curseIntervals = [];
+  }
+}
+
 // Export to global scope
 window.initGameplayDOM = initGameplayDOM;
 window.bfs = bfs;
@@ -1189,6 +1521,9 @@ window.hideTooltip = hideTooltip;
 window.drawArrowLine = drawArrowLine;
 window.drawPastLine = drawPastLine;
 window.clearChoices = clearChoices;
+window.showInGameCursesPanel = showInGameCursesPanel;
+window.checkCurseRequirements = checkCurseRequirements;
+window.processCursesOnGameFinish = processCursesOnGameFinish;
 window.spawnChoices = spawnChoices;
 window.advance = advance;
 window.showFinish = showFinish;
