@@ -132,10 +132,10 @@ var ITEMS_DATA = [
     "tags": []
   },
   {
-    "name": "Poop",
+    "name": "The Poop",
     "rarity": "common",
     "type": "Usable",
-    "description": "Poop on the current space, this space will not show up on the space choice in the future unless it's the only option (very stinky) ",
+    "description": "Apply the Stinky status to the current game. Stinky games are the least prioritized in game selections.",
     "image": "https://imgur.com/fru3Gyw",
     "game": "The Binding of Isaac",
     "tags": []

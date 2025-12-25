@@ -373,7 +373,8 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     charisma: charisma,
     escapePhase: false,
     escapeGames: [],
-    escapeProgress: 0
+    escapeProgress: 0,
+    gameStatusEffects: {} // Map of game names to arrays of status effects
   };
 
   startGame = start;
@@ -1882,6 +1883,117 @@ function checkCurseDurations(trigger) {
   }
 }
 
+// ===== GAME STATUS EFFECTS SYSTEM =====
+
+/**
+ * Add a status effect to a game
+ * @param {string} gameName - Name of the game
+ * @param {string} statusName - Name of the status effect (e.g. 'stinky', 'portal')
+ * @param {string} icon - Emoji icon for the status
+ */
+function addGameStatus(gameName, statusName, icon = '❓') {
+  if (!gameState.gameStatusEffects) {
+    gameState.gameStatusEffects = {};
+  }
+
+  if (!gameState.gameStatusEffects[gameName]) {
+    gameState.gameStatusEffects[gameName] = [];
+  }
+
+  // Check if status already exists
+  const existing = gameState.gameStatusEffects[gameName].find(s => s.name === statusName);
+  if (existing) {
+    console.log(`Status ${statusName} already exists on ${gameName}`);
+    return;
+  }
+
+  gameState.gameStatusEffects[gameName].push({
+    name: statusName,
+    icon: icon
+  });
+
+  console.log(`Added status ${statusName} to ${gameName}`);
+
+  // Refresh the display if we're looking at this game
+  if (typeof updateGameDisplay === 'function') {
+    updateGameDisplay();
+  }
+}
+
+/**
+ * Remove a status effect from a game
+ * @param {string} gameName - Name of the game
+ * @param {string} statusName - Name of the status effect to remove
+ */
+function removeGameStatus(gameName, statusName) {
+  if (!gameState.gameStatusEffects || !gameState.gameStatusEffects[gameName]) {
+    return;
+  }
+
+  const index = gameState.gameStatusEffects[gameName].findIndex(s => s.name === statusName);
+  if (index !== -1) {
+    gameState.gameStatusEffects[gameName].splice(index, 1);
+    console.log(`Removed status ${statusName} from ${gameName}`);
+
+    // Clean up empty arrays
+    if (gameState.gameStatusEffects[gameName].length === 0) {
+      delete gameState.gameStatusEffects[gameName];
+    }
+
+    // Refresh the display
+    if (typeof updateGameDisplay === 'function') {
+      updateGameDisplay();
+    }
+  }
+}
+
+/**
+ * Check if a game has a specific status effect
+ * @param {string} gameName - Name of the game
+ * @param {string} statusName - Name of the status effect
+ * @returns {boolean} - True if the game has the status
+ */
+function hasGameStatus(gameName, statusName) {
+  if (!gameState.gameStatusEffects || !gameState.gameStatusEffects[gameName]) {
+    return false;
+  }
+
+  return gameState.gameStatusEffects[gameName].some(s => s.name === statusName);
+}
+
+/**
+ * Get all status effects for a game
+ * @param {string} gameName - Name of the game
+ * @returns {Array} - Array of status objects
+ */
+function getGameStatuses(gameName) {
+  if (!gameState.gameStatusEffects || !gameState.gameStatusEffects[gameName]) {
+    return [];
+  }
+
+  return gameState.gameStatusEffects[gameName];
+}
+
+/**
+ * Get all games with a specific status
+ * @param {string} statusName - Name of the status effect
+ * @returns {Array} - Array of game names
+ */
+function getGamesWithStatus(statusName) {
+  if (!gameState.gameStatusEffects) {
+    return [];
+  }
+
+  const gamesWithStatus = [];
+  for (const [gameName, statuses] of Object.entries(gameState.gameStatusEffects)) {
+    if (statuses.some(s => s.name === statusName)) {
+      gamesWithStatus.push(gameName);
+    }
+  }
+
+  return gamesWithStatus;
+}
+
 // Export to global scope
 window.loadState = loadState;
 window.saveCurrentGame = saveCurrentGame;
@@ -1895,3 +2007,8 @@ window.handleEventChoice = handleEventChoice;
 window.showItemChoiceModal = showItemChoiceModal;
 window.markGameFinished = markGameFinished;
 window.checkCurseDurations = checkCurseDurations;
+window.addGameStatus = addGameStatus;
+window.removeGameStatus = removeGameStatus;
+window.hasGameStatus = hasGameStatus;
+window.getGameStatuses = getGameStatuses;
+window.getGamesWithStatus = getGamesWithStatus;

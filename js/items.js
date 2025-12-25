@@ -311,6 +311,128 @@ const ITEM_EFFECTS = {
         title: `Choose Your Destination (${currentYear})`
       });
     }
+  },
+
+  "The Poop": {
+    canUse: () => {
+      // Can use anytime (though most useful during selection)
+      return true;
+    },
+    onUse: () => {
+      const currentGame = gameState.currentGame;
+      if (!currentGame) {
+        alert('No current game to apply status to!');
+        return;
+      }
+
+      // Check if already has stinky status
+      if (typeof hasGameStatus === 'function' && hasGameStatus(currentGame, 'stinky')) {
+        alert(`${currentGame} is already stinky!`);
+        return;
+      }
+
+      // Add stinky status to current game
+      if (typeof addGameStatus === 'function') {
+        addGameStatus(currentGame, 'stinky', '💩');
+        console.log(`Applied stinky status to ${currentGame}`);
+
+        // Show notification
+        setTimeout(() => {
+          const notification = document.createElement('div');
+          notification.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(139, 69, 19, 0.95);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 10001;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+          `;
+          notification.textContent = `💩 ${currentGame} is now STINKY!`;
+          document.body.appendChild(notification);
+          setTimeout(() => {
+            notification.style.animation = 'fadeOut 0.3s';
+            setTimeout(() => notification.remove(), 300);
+          }, 2000);
+        }, 100);
+      }
+    }
+  },
+
+  "Ventricle Razor": {
+    canUse: () => {
+      // Can use anytime
+      return true;
+    },
+    onUse: () => {
+      const currentGame = gameState.currentGame;
+      if (!currentGame) {
+        alert('No current game to apply status to!');
+        return;
+      }
+
+      // Check if already has portal status
+      if (typeof hasGameStatus === 'function' && hasGameStatus(currentGame, 'portal')) {
+        alert(`${currentGame} already has a portal!`);
+        return;
+      }
+
+      // Check how many portals exist
+      const existingPortals = typeof getGamesWithStatus === 'function'
+        ? getGamesWithStatus('portal')
+        : [];
+
+      if (existingPortals.length >= 2) {
+        alert('Maximum of 2 portals can exist at once!');
+        return;
+      }
+
+      // Add portal status to current game
+      if (typeof addGameStatus === 'function') {
+        addGameStatus(currentGame, 'portal', '🌀');
+        console.log(`Applied portal status to ${currentGame}`);
+
+        // Show notification
+        setTimeout(() => {
+          const notification = document.createElement('div');
+          notification.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(75, 0, 130, 0.95);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 10001;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+          `;
+          notification.textContent = `🌀 Portal created at ${currentGame}!`;
+          document.body.appendChild(notification);
+          setTimeout(() => {
+            notification.style.animation = 'fadeOut 0.3s';
+            setTimeout(() => notification.remove(), 300);
+          }, 2000);
+        }, 100);
+
+        // Refresh the game view to add portal connections
+        if (existingPortals.length === 1) {
+          // Two portals now exist, refresh choices if we're in selection phase
+          if (gameState.phase === 'selection' && typeof spawnChoices === 'function') {
+            setTimeout(() => spawnChoices(), 500);
+          }
+        }
+      }
+    }
   }
 };
 

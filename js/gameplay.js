@@ -68,6 +68,43 @@ function addNode(name, cls, x, y) {
   d.style.top = y + 'px';
   d.textContent = name;
 
+  // Add status effect icons if the game has any
+  if (typeof getGameStatuses === 'function') {
+    const statuses = getGameStatuses(name);
+    if (statuses && statuses.length > 0) {
+      const statusContainer = document.createElement('div');
+      statusContainer.style.cssText = `
+        position: absolute;
+        top: -8px;
+        left: -8px;
+        display: flex;
+        gap: 2px;
+        z-index: 100;
+      `;
+
+      statuses.forEach((status) => {
+        const statusIcon = document.createElement('span');
+        statusIcon.textContent = status.icon;
+        statusIcon.title = status.name;
+        statusIcon.style.cssText = `
+          width: 20px;
+          height: 20px;
+          background: rgba(0, 0, 0, 0.8);
+          border: 2px solid #cc6600;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        `;
+        statusContainer.appendChild(statusIcon);
+      });
+
+      d.appendChild(statusContainer);
+    }
+  }
+
   d.onmouseenter = e => showTooltip(e, name);
   d.onmousemove = e => moveTooltip(e);
   d.onmouseleave = hideTooltip;
@@ -291,11 +328,37 @@ function spawnChoices() {
   // Get all connected games
   const allConnections = getGameConnections(gameState.currentGame);
 
-  // Allow all connections (games can be repeated)
-  const gamesToChooseFrom = allConnections;
+  // Add portal games if current game has a portal
+  let gamesToChooseFrom = [...allConnections];
+  if (typeof hasGameStatus === 'function' && hasGameStatus(gameState.currentGame, 'portal')) {
+    // Get all other portal games
+    const portalGames = typeof getGamesWithStatus === 'function'
+      ? getGamesWithStatus('portal').filter(g => g !== gameState.currentGame)
+      : [];
 
-  // Randomly shuffle and take fov number of choices
-  const shuffled = [...gamesToChooseFrom].sort(() => Math.random() - 0.5);
+    if (portalGames.length > 0) {
+      console.log(`Adding portal connections: ${portalGames.join(', ')}`);
+      gamesToChooseFrom = [...gamesToChooseFrom, ...portalGames];
+    }
+  }
+
+  // Separate stinky and non-stinky games
+  const nonStinkyGames = gamesToChooseFrom.filter(g =>
+    typeof hasGameStatus !== 'function' || !hasGameStatus(g, 'stinky')
+  );
+  const stinkyGames = gamesToChooseFrom.filter(g =>
+    typeof hasGameStatus === 'function' && hasGameStatus(g, 'stinky')
+  );
+
+  // Shuffle non-stinky games
+  const shuffledNonStinky = [...nonStinkyGames].sort(() => Math.random() - 0.5);
+
+  // Shuffle stinky games
+  const shuffledStinky = [...stinkyGames].sort(() => Math.random() - 0.5);
+
+  // Combine: non-stinky first, then stinky (deprioritized)
+  const shuffled = [...shuffledNonStinky, ...shuffledStinky];
+
   const numChoices = Math.max(1, fov || 3); // Use fov stat, default to 3
   const opts = shuffled.slice(0, Math.min(numChoices, shuffled.length));
 
