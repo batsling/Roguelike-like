@@ -80,6 +80,12 @@ function applyCombatOutcome(success) {
   }
 
   if (health <= 0) {
+    // Clear items and curses immediately on death
+    inventory = [];
+    if (gameState.activeCurses) {
+      gameState.activeCurses = [];
+    }
+
     // Show death screen with options
     setTimeout(() => {
       createGameModal(`

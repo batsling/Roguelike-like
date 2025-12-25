@@ -753,6 +753,12 @@ function showCombatModal() {
 
       // Check for death
       if (health <= 0) {
+        // Clear items and curses immediately on death
+        inventory = [];
+        if (gameState.activeCurses) {
+          gameState.activeCurses = [];
+        }
+
         setTimeout(() => {
           createGameModal(`
             <div style="text-align: center;">
@@ -1520,6 +1526,12 @@ function recordLostRun(index) {
 
   // Check if player died
   if (health <= 0) {
+    // Clear items and curses immediately on death
+    inventory = [];
+    if (gameState.activeCurses) {
+      gameState.activeCurses = [];
+    }
+
     createGameModal(`
       <div style="text-align: center;">
         <h1 style="color: #ff4444; font-size: 48px; margin: 20px 0;">💀 YOU ARE DEAD</h1>

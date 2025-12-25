@@ -299,20 +299,29 @@ function spawnChoices() {
   const numChoices = Math.max(1, fov || 3); // Use fov stat, default to 3
   const opts = shuffled.slice(0, Math.min(numChoices, shuffled.length));
 
-  // Dynamic spacing based on number of choices
+  // Dynamic positioning based on number of choices
   // Node max width = 220px + 56px padding + 6px border = ~282px
   // Use minimum spacing of 300px to ensure no overlap even with long names
-  const minSpacing = 300;
-  const maxSpacing = 400;
-  const availableWidth = 1000; // Available horizontal space
-  const calculatedSpacing = availableWidth / opts.length;
-  const spacing = Math.max(minSpacing, Math.min(maxSpacing, calculatedSpacing));
-  const sx = 450 - ((opts.length - 1) * spacing) / 2;
+  const nodeSpacing = 300;
+  const maxPerRow = 4; // Maximum nodes per row
+  const rowSpacing = 150; // Vertical spacing between rows
+  const baseY = gameState.currentY + 200;
+
+  // Calculate rows and positioning
+  const numRows = Math.ceil(opts.length / maxPerRow);
   const currentNode = document.querySelector('.node.current');
 
   opts.forEach((g, i) => {
-    const nx = sx + i * spacing;
-    const ny = gameState.currentY + 200;
+    const row = Math.floor(i / maxPerRow);
+    const posInRow = i % maxPerRow;
+    const nodesInThisRow = Math.min(maxPerRow, opts.length - row * maxPerRow);
+
+    // Center each row horizontally
+    const rowWidth = (nodesInThisRow - 1) * nodeSpacing;
+    const startX = 450 - rowWidth / 2;
+
+    const nx = startX + posInRow * nodeSpacing;
+    const ny = baseY + row * rowSpacing;
 
     // Determine encounter type
     const encounterRoll = Math.random() * 100;
