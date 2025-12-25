@@ -962,14 +962,39 @@ function showShopModal() {
   updateInventory(); // Refresh item UI to update usable item buttons
 
   const shopItems = [];
-  for (let i = 0; i < 3; i++) {
-    // Use luck-based rarity selection
-    const targetRarity = selectRandomRarity();
+  const maxAttempts = 100; // Prevent infinite loop
 
-    const rarityItems = items.filter(item => item.rarity === targetRarity);
-    if (rarityItems.length > 0) {
-      const randomIndex = Math.floor(Math.random() * rarityItems.length);
-      shopItems.push(rarityItems[randomIndex]);
+  for (let i = 0; i < 3; i++) {
+    let attempts = 0;
+    let selectedItem = null;
+
+    while (attempts < maxAttempts) {
+      // Use luck-based rarity selection
+      const targetRarity = selectRandomRarity();
+
+      const rarityItems = items.filter(item => item.rarity === targetRarity);
+      if (rarityItems.length > 0) {
+        const randomIndex = Math.floor(Math.random() * rarityItems.length);
+        selectedItem = rarityItems[randomIndex];
+      } else {
+        // Fallback to any item if no items of target rarity
+        const randomIndex = Math.floor(Math.random() * items.length);
+        selectedItem = items[randomIndex];
+      }
+
+      // Check if this item is already in shop
+      if (!shopItems.find(shopItem => shopItem.name === selectedItem.name)) {
+        shopItems.push(selectedItem);
+        break;
+      }
+
+      attempts++;
+    }
+
+    // If we couldn't find a unique item after max attempts, just add it anyway
+    // (This should rarely happen unless there are very few items)
+    if (attempts >= maxAttempts && selectedItem) {
+      shopItems.push(selectedItem);
     }
   }
 
