@@ -336,6 +336,14 @@ const ITEM_EFFECTS = {
         addGameStatus(currentGame, 'stinky', '💩');
         console.log(`Applied stinky status to ${currentGame}`);
 
+        // Refresh current node to show status icon
+        if (typeof updateNodeStatusIcons === 'function') {
+          const currentNode = document.querySelector('.node.current');
+          if (currentNode) {
+            updateNodeStatusIcons(currentNode);
+          }
+        }
+
         // Show notification
         setTimeout(() => {
           const notification = document.createElement('div');
@@ -398,6 +406,14 @@ const ITEM_EFFECTS = {
       if (typeof addGameStatus === 'function') {
         addGameStatus(currentGame, 'portal', '🌀');
         console.log(`Applied portal status to ${currentGame}`);
+
+        // Refresh current node to show status icon
+        if (typeof updateNodeStatusIcons === 'function') {
+          const currentNode = document.querySelector('.node.current');
+          if (currentNode) {
+            updateNodeStatusIcons(currentNode);
+          }
+        }
 
         // Show notification
         setTimeout(() => {

@@ -38,15 +38,6 @@ var ITEMS_DATA = [
     "tags": []
   },
   {
-    "name": "Cut Through Fate",
-    "rarity": "common",
-    "type": "Usable",
-    "description": "During game selection, use to see each of those game's next selection options",
-    "image": "https://imgur.com/0Xl0rkM",
-    "game": "Slay the Spire",
-    "tags": []
-  },
-  {
     "name": "D6",
     "rarity": "common",
     "type": "Passive",

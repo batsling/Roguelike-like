@@ -73,6 +73,7 @@ function addNode(name, cls, x, y) {
     const statuses = getGameStatuses(name);
     if (statuses && statuses.length > 0) {
       const statusContainer = document.createElement('div');
+      statusContainer.className = 'status-icon-container';
       statusContainer.style.cssText = `
         position: absolute;
         top: -8px;
@@ -1116,6 +1117,67 @@ function useReroll() {
   saveCurrentGame();
 }
 
+// ===== STATUS ICON REFRESH =====
+
+/**
+ * Update status icons on a specific node or all nodes
+ * @param {HTMLElement|null} node - Specific node to update, or null to update all nodes
+ */
+function updateNodeStatusIcons(node = null) {
+  const nodesToUpdate = node ? [node] : document.querySelectorAll('.node');
+
+  nodesToUpdate.forEach(nodeEl => {
+    // Get the game name from the node's text content
+    const gameName = nodeEl.textContent.replace(/[^\w\s:'-]/g, '').trim();
+
+    // Remove existing status container
+    const existingContainer = nodeEl.querySelector('.status-icon-container');
+    if (existingContainer) {
+      existingContainer.remove();
+    }
+
+    // Add new status icons if the game has any
+    if (typeof getGameStatuses === 'function') {
+      const statuses = getGameStatuses(gameName);
+      if (statuses && statuses.length > 0) {
+        const statusContainer = document.createElement('div');
+        statusContainer.className = 'status-icon-container';
+        statusContainer.style.cssText = `
+          position: absolute;
+          top: -8px;
+          left: -8px;
+          display: flex;
+          gap: 2px;
+          z-index: 100;
+          pointer-events: none;
+        `;
+
+        statuses.forEach((status) => {
+          const statusIcon = document.createElement('span');
+          statusIcon.textContent = status.icon;
+          statusIcon.title = status.name;
+          statusIcon.style.cssText = `
+            width: 20px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #cc6600;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+          `;
+          statusContainer.appendChild(statusIcon);
+        });
+
+        // Insert at the beginning of the node
+        nodeEl.insertBefore(statusContainer, nodeEl.firstChild);
+      }
+    }
+  });
+}
+
 // Export to global scope
 window.initGameplayDOM = initGameplayDOM;
 window.bfs = bfs;
@@ -1136,3 +1198,4 @@ window.showDashModal = showDashModal;
 window.useDash = useDash;
 window.useSkip = useSkip;
 window.useReroll = useReroll;
+window.updateNodeStatusIcons = updateNodeStatusIcons;
