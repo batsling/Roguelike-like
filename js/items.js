@@ -159,6 +159,32 @@ const ITEM_EFFECTS = {
       // Teleport to a random Deckbuilder game
       teleportToRandomDeckbuilder();
     }
+  },
+
+  "Winged Boots": {
+    canUse: () => {
+      // Can only use during game selection phase
+      return gameState.phase === 'selection';
+    },
+    onUse: () => {
+      // Get current game's year
+      const currentGameObj = games.find(g => g.name === gameState.currentGame);
+      if (!currentGameObj) {
+        console.error('Current game not found!');
+        alert('Cannot determine current location!');
+        return;
+      }
+
+      const currentYear = currentGameObj.year;
+      console.log(`Using Winged Boots - Current year: ${currentYear}`);
+
+      // Show selection of 3 games from the same year
+      selectedTeleport({
+        numChoices: 3,
+        year: currentYear,
+        title: `Choose Your Destination (${currentYear})`
+      });
+    }
   }
 };
 
@@ -354,6 +380,151 @@ function teleportToRandomDeckbuilder() {
   return teleportToRandomGameOfType('Deckbuilding');
 }
 
+/**
+ * Show a selection popup and teleport to the chosen game
+ * @param {Object} options - Filter and display options
+ * @param {number} options.numChoices - Number of games to show (default: 3)
+ * @param {number|null} options.year - Filter by specific year (optional)
+ * @param {string|null} options.type - Filter by game type (optional)
+ * @param {Array<string>|null} options.tags - Filter by tags (optional, matches ANY tag)
+ * @param {string} options.title - Title for the selection modal (default: "Choose Your Destination")
+ * @returns {boolean} - Returns true if teleport was initiated, false otherwise
+ */
+function selectedTeleport(options = {}) {
+  const {
+    numChoices = 3,
+    year = null,
+    type = null,
+    tags = null,
+    title = "Choose Your Destination"
+  } = options;
+
+  // Start with connected games only
+  let filteredGames = games.filter(g => g.connected === true);
+
+  // Apply year filter
+  if (year !== null) {
+    filteredGames = filteredGames.filter(g => g.year === year);
+  }
+
+  // Apply type filter
+  if (type !== null) {
+    filteredGames = filteredGames.filter(g => g.type === type);
+  }
+
+  // Apply tags filter (matches if game has ANY of the specified tags)
+  if (tags !== null && Array.isArray(tags) && tags.length > 0) {
+    filteredGames = filteredGames.filter(g =>
+      g.tags && Array.isArray(g.tags) && tags.some(tag => g.tags.includes(tag))
+    );
+  }
+
+  // Check if we have enough games
+  if (filteredGames.length === 0) {
+    alert('No games match your criteria!');
+    return false;
+  }
+
+  // Randomly select games from filtered list
+  const shuffled = [...filteredGames].sort(() => Math.random() - 0.5);
+  const selectedGames = shuffled.slice(0, Math.min(numChoices, shuffled.length));
+
+  // Build filter description for subtitle
+  let filterDesc = [];
+  if (year !== null) filterDesc.push(`Year: ${year}`);
+  if (type !== null) filterDesc.push(`Type: ${type}`);
+  if (tags !== null && tags.length > 0) filterDesc.push(`Tags: ${tags.join(', ')}`);
+  const subtitle = filterDesc.length > 0 ? filterDesc.join(' • ') : 'Connected Games';
+
+  // Create the modal HTML
+  const gamesHTML = selectedGames.map(game => `
+    <div class="teleport-choice" data-game-name="${game.name}" style="
+      background: linear-gradient(145deg, #3a3430, #2a2420);
+      border: 2px solid #cc6600;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 10px 0;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    ">
+      <h3 style="color: #f39c12; margin: 0 0 10px 0; font-size: 18px;">${game.name}</h3>
+      <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 10px;">
+        <span style="color: #888; font-size: 14px;">📅 ${game.year}</span>
+        <span style="color: #4a9eff; font-size: 14px;">🎮 ${game.type}</span>
+      </div>
+      ${game.tags && game.tags.length > 0 ? `
+        <div style="color: #999; font-size: 12px; margin-top: 8px;">
+          🏷️ ${game.tags.join(', ')}
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+
+  // Show modal using createGameModal
+  if (typeof createGameModal === 'function') {
+    createGameModal(`
+      <div style="text-align: center;">
+        <h2 style="color: #f39c12; margin-top: 0;">${title}</h2>
+        <p style="color: #888; margin-bottom: 20px; font-size: 14px;">${subtitle}</p>
+        <div style="max-height: 400px; overflow-y: auto;">
+          ${gamesHTML}
+        </div>
+      </div>
+    `);
+
+    // Add click handlers to teleport choices
+    document.querySelectorAll('.teleport-choice').forEach(choice => {
+      choice.onmouseenter = () => {
+        choice.style.background = 'linear-gradient(145deg, #cc6600, #aa5500)';
+        choice.style.borderColor = '#ff8800';
+        choice.style.transform = 'translateY(-2px)';
+        choice.style.boxShadow = '0 4px 12px rgba(204, 102, 0, 0.4)';
+      };
+      choice.onmouseleave = () => {
+        choice.style.background = 'linear-gradient(145deg, #3a3430, #2a2420)';
+        choice.style.borderColor = '#cc6600';
+        choice.style.transform = '';
+        choice.style.boxShadow = '';
+      };
+      choice.onclick = () => {
+        const gameName = choice.dataset.gameName;
+        console.log(`Player selected: ${gameName}`);
+
+        // Close modal
+        if (typeof closeGameModal === 'function') {
+          closeGameModal();
+        }
+
+        // Teleport to selected game
+        const selectedGame = games.find(g => g.name === gameName);
+        if (selectedGame) {
+          const x = 450;
+          const y = gameState.currentY + 200;
+
+          // Determine encounter type
+          const encounterRoll = Math.random() * 100;
+          let encounterType;
+          if (encounterRoll < 75) {
+            encounterType = 'combat';
+          } else if (encounterRoll < 90) {
+            encounterType = 'event';
+          } else {
+            encounterType = 'shop';
+          }
+
+          advance(selectedGame.name, x, y, encounterType);
+        }
+      };
+    });
+  } else {
+    console.error('createGameModal function not found!');
+    return false;
+  }
+
+  return true;
+}
+
 // Export functions to global scope
 window.applyItemEffects = applyItemEffects;
 window.acquireItem = acquireItem;
@@ -361,7 +532,8 @@ window.getItemByName = getItemByName;
 window.hasItemEffects = hasItemEffects;
 window.canUseItem = canUseItem;
 window.useItem = useItem;
-window.teleportToRandomGameOfType = teleportToRandomGameOfType; // Main teleport function
+window.teleportToRandomGameOfType = teleportToRandomGameOfType; // Random teleport by type
+window.selectedTeleport = selectedTeleport; // Selected teleport with filters
 window.teleportToRandomGame = teleportToRandomGame;
 window.teleportToRandomDeckbuilder = teleportToRandomDeckbuilder;
 window.ITEM_EFFECTS = ITEM_EFFECTS;
