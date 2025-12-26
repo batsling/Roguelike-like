@@ -192,22 +192,22 @@ var CURSES_DATA = [
     "name": "Curse of Vulnerability I",
     "stat": "Strength",
     "power": "Low",
-    "duration": "Until 1 Encounter Finished",
-    "description": "If you were to get a curse, increase it's power once if possible"
+    "duration": "Until 1 Curse Obtained",
+    "description": "The next curse you obtain is added twice"
   },
   {
-    "name": "Curse of Vulnerability III",
+    "name": "Curse of Vulnerability II",
     "stat": "Strength",
     "power": "Medium",
-    "duration": "Until 2 Encounters Finished",
-    "description": "If you were to get a curse, increase it's power once if possible"
+    "duration": "Until 2 Curses Obtained",
+    "description": "The next 2 curses you obtain are added twice"
   },
   {
     "name": "Curse of Vulnerability III",
     "stat": "Strength",
     "power": "High",
-    "duration": "Until 3 Encounters Finished",
-    "description": "If you were to get a curse, increase it's power once if possible"
+    "duration": "Until 3 Curses Obtained",
+    "description": "The next 3 curses you obtain are added twice"
   },
   {
     "name": "Curse of Weakness I",

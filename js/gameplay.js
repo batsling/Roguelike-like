@@ -363,12 +363,18 @@ function spawnChoices() {
 
   let baseFov = fov || 3;
 
-  // Check for Curse of Shroud (lower FoV)
+  // Check for Curse of Shroud (lower FoV) - handle stacking
   if (gameState && gameState.activeCurses) {
-    const shroudCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('shroud'));
-    if (shroudCurse) {
-      // Lower FoV by 1
+    const shroudCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('shroud'));
+
+    // Apply FoV reduction for each shroud curse
+    shroudCurses.forEach(shroudCurse => {
       baseFov = Math.max(1, baseFov - 1);
+    });
+
+    // Process the first shroud curse for tracking and removal
+    if (shroudCurses.length > 0) {
+      const shroudCurse = shroudCurses[0];
 
       // Track how many times we've used this curse
       if (!gameState.shroudUses) {
@@ -386,12 +392,18 @@ function spawnChoices() {
       // Increment uses
       gameState.shroudUses[shroudCurse.name]++;
 
-      // Remove curse if we've used all charges
+      // Remove this specific curse instance if we've used all charges
       if (gameState.shroudUses[shroudCurse.name] >= maxUses) {
-        gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== shroudCurse.name);
+        const curseIndex = gameState.activeCurses.indexOf(shroudCurse);
+        if (curseIndex !== -1) {
+          gameState.activeCurses.splice(curseIndex, 1);
+        }
         delete gameState.shroudUses[shroudCurse.name];
         if (typeof updateCursesDisplay === 'function') {
           updateCursesDisplay();
+        }
+        if (typeof updateActiveCursesList === 'function') {
+          updateActiveCursesList();
         }
       }
     }

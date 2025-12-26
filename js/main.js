@@ -1048,16 +1048,19 @@ function showShopModal(purchasedIndices = []) {
 
   const shopItems = gameState.currentShopItems;
 
-  // Check for Curse of Frugality
+  // Check for Curse of Frugality - handle stacking
   let frugalityModifier = 0;
   let hasFrugality = false;
   if (gameState && gameState.activeCurses) {
-    const frugalityCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('frugality'));
-    if (frugalityCurse) {
+    const frugalityCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('frugality'));
+    if (frugalityCurses.length > 0) {
       hasFrugality = true;
-      if (frugalityCurse.power === 'Low') frugalityModifier = 5;
-      else if (frugalityCurse.power === 'Medium') frugalityModifier = 10;
-      else if (frugalityCurse.power === 'High') frugalityModifier = 15;
+      // Sum all frugality penalties
+      frugalityCurses.forEach(curse => {
+        if (curse.power === 'Low') frugalityModifier += 5;
+        else if (curse.power === 'Medium') frugalityModifier += 10;
+        else if (curse.power === 'High') frugalityModifier += 15;
+      });
     }
   }
 
@@ -1131,18 +1134,22 @@ function showShopModal(purchasedIndices = []) {
         // Track purchased items
         purchasedIndices.push(itemIndex);
 
-        // Check for Curse of Frugality and remove it after first purchase
+        // Check for Curse of Frugality and remove only ONE after first purchase
         let curseWasRemoved = false;
         if (gameState && gameState.activeCurses) {
-          const frugalityCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('frugality'));
-          if (frugalityCurse) {
-            gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== frugalityCurse.name);
-            curseWasRemoved = true;
-            if (typeof updateCursesDisplay === 'function') {
-              updateCursesDisplay();
-            }
-            if (typeof updateActiveCursesList === 'function') {
-              updateActiveCursesList();
+          const frugalityCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('frugality'));
+          if (frugalityCurses.length > 0) {
+            // Remove only the first frugality curse
+            const curseIndex = gameState.activeCurses.indexOf(frugalityCurses[0]);
+            if (curseIndex !== -1) {
+              gameState.activeCurses.splice(curseIndex, 1);
+              curseWasRemoved = true;
+              if (typeof updateCursesDisplay === 'function') {
+                updateCursesDisplay();
+              }
+              if (typeof updateActiveCursesList === 'function') {
+                updateActiveCursesList();
+              }
             }
           }
         }
@@ -1963,50 +1970,60 @@ function addCurse(curseToAdd) {
     gameState.activeCurses = [];
   }
 
-  let cursePower = curseToAdd.power;
-
-  // Check for Curse of Vulnerability (increase curse power)
-  const vulnerabilityCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('vulnerability'));
-  if (vulnerabilityCurse) {
-    // Track how many times we've increased power
-    if (!gameState.vulnerabilityUses) {
-      gameState.vulnerabilityUses = {};
-    }
-    if (!gameState.vulnerabilityUses[vulnerabilityCurse.name]) {
-      gameState.vulnerabilityUses[vulnerabilityCurse.name] = 0;
-    }
-
-    // Determine max uses based on power
-    let maxUses = 1;
-    if (vulnerabilityCurse.power === 'Medium') maxUses = 2;
-    else if (vulnerabilityCurse.power === 'High') maxUses = 3;
-
-    // If we haven't exceeded max uses, increase power
-    if (gameState.vulnerabilityUses[vulnerabilityCurse.name] < maxUses) {
-      if (cursePower === 'Low') {
-        cursePower = 'Medium';
-      } else if (cursePower === 'Medium') {
-        cursePower = 'High';
-      }
-      // High stays High (can't go higher)
-
-      gameState.vulnerabilityUses[vulnerabilityCurse.name]++;
-
-      // Remove curse if we've used all charges
-      if (gameState.vulnerabilityUses[vulnerabilityCurse.name] >= maxUses) {
-        gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== vulnerabilityCurse.name);
-        delete gameState.vulnerabilityUses[vulnerabilityCurse.name];
-      }
-    }
-  }
-
+  // Add the base curse
   gameState.activeCurses.push({
     name: curseToAdd.name,
     stat: curseToAdd.stat,
-    power: cursePower,
+    power: curseToAdd.power,
     duration: curseToAdd.duration,
     description: curseToAdd.description
   });
+
+  // Check for Curse of Vulnerability (add duplicate curses)
+  const vulnerabilityCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('vulnerability'));
+  if (vulnerabilityCurses.length > 0) {
+    // Track uses for each vulnerability curse
+    if (!gameState.vulnerabilityUses) {
+      gameState.vulnerabilityUses = {};
+    }
+
+    // Process first available vulnerability curse that has uses left
+    for (const vulnerabilityCurse of vulnerabilityCurses) {
+      if (!gameState.vulnerabilityUses[vulnerabilityCurse.name]) {
+        gameState.vulnerabilityUses[vulnerabilityCurse.name] = 0;
+      }
+
+      // Determine max uses based on power
+      let maxUses = 1;
+      if (vulnerabilityCurse.power === 'Medium') maxUses = 2;
+      else if (vulnerabilityCurse.power === 'High') maxUses = 3;
+
+      // If this vulnerability curse still has uses, add a duplicate of the incoming curse
+      if (gameState.vulnerabilityUses[vulnerabilityCurse.name] < maxUses) {
+        gameState.activeCurses.push({
+          name: curseToAdd.name,
+          stat: curseToAdd.stat,
+          power: curseToAdd.power,
+          duration: curseToAdd.duration,
+          description: curseToAdd.description
+        });
+
+        gameState.vulnerabilityUses[vulnerabilityCurse.name]++;
+
+        // Remove curse if we've used all charges
+        if (gameState.vulnerabilityUses[vulnerabilityCurse.name] >= maxUses) {
+          const indexToRemove = gameState.activeCurses.indexOf(vulnerabilityCurse);
+          if (indexToRemove !== -1) {
+            gameState.activeCurses.splice(indexToRemove, 1);
+          }
+          delete gameState.vulnerabilityUses[vulnerabilityCurse.name];
+        }
+
+        // Only use one vulnerability curse per incoming curse
+        break;
+      }
+    }
+  }
 
   // Update curses display
   if (typeof updateCursesDisplay === 'function') {

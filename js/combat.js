@@ -145,10 +145,12 @@ function rollD20() {
     let cursePenalty = 0;
     let curseMessages = [];
 
-    // Check for Curse of Weakness (subtract from roll)
+    // Check for Curse of Weakness (subtract from roll) - handle stacking
     if (gameState && gameState.activeCurses) {
-      const weaknessCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('weakness'));
-      if (weaknessCurse) {
+      const weaknessCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('weakness'));
+      if (weaknessCurses.length > 0) {
+        // Use only the first weakness curse and remove it
+        const weaknessCurse = weaknessCurses[0];
         let penalty = 0;
         if (weaknessCurse.power === 'Low') penalty = 2;
         else if (weaknessCurse.power === 'Medium') penalty = 3;
@@ -157,8 +159,10 @@ function rollD20() {
         cursePenalty = penalty;
         curseMessages.push(`Curse of Weakness: -${penalty}`);
 
-        // Remove curse after this roll
-        gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== weaknessCurse.name);
+        // Remove this specific curse instance after this roll
+        const curseIndex = gameState.activeCurses.indexOf(weaknessCurse);
+        gameState.activeCurses.splice(curseIndex, 1);
+
         if (typeof updateCursesDisplay === 'function') {
           updateCursesDisplay();
         }
@@ -168,25 +172,30 @@ function rollD20() {
       }
     }
 
-    // Check for Curse of Failure (damage on rolling 1)
+    // Check for Curse of Failure (damage on rolling 1) - handle stacking
     if (currentRoll === 1 && gameState && gameState.activeCurses) {
-      const failureCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('failure'));
-      if (failureCurse) {
-        let damage = 0;
-        if (failureCurse.power === 'Low') damage = 2;
-        else if (failureCurse.power === 'Medium') damage = 3;
-        else if (failureCurse.power === 'High') damage = 4;
+      const failureCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('failure'));
+      if (failureCurses.length > 0) {
+        // Trigger all failure curses if rolled a 1
+        let totalDamage = 0;
+        failureCurses.forEach(failureCurse => {
+          let damage = 0;
+          if (failureCurse.power === 'Low') damage = 2;
+          else if (failureCurse.power === 'Medium') damage = 3;
+          else if (failureCurse.power === 'High') damage = 4;
+          totalDamage += damage;
+        });
 
-        health = Math.max(0, health - damage);
+        health = Math.max(0, health - totalDamage);
         gameState.health = health;
         if (typeof updateTopBar === 'function') {
           updateTopBar();
         }
 
-        curseMessages.push(`Curse of Failure: -${damage} HP!`);
+        curseMessages.push(`Curse of Failure (×${failureCurses.length}): -${totalDamage} HP!`);
 
-        // Remove curse after triggering
-        gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== failureCurse.name);
+        // Remove all failure curses after triggering
+        gameState.activeCurses = gameState.activeCurses.filter(c => !c.name.toLowerCase().includes('failure'));
         if (typeof updateCursesDisplay === 'function') {
           updateCursesDisplay();
         }
@@ -217,11 +226,11 @@ function rollD20() {
     const success = totalRoll >= check;
 
     let resultText = `Rolled: ${currentRoll}`;
-    if (cursePenalty > 0) {
-      resultText += ` - ${cursePenalty} (curse)`;
-    }
     if (modifier !== 0) {
       resultText += ` + ${modifier} (${stat})`;
+    }
+    if (cursePenalty > 0) {
+      resultText += ` - ${cursePenalty} (Weakness)`;
     }
     if (cursePenalty > 0 || modifier !== 0) {
       resultText += ` = ${totalRoll}`;

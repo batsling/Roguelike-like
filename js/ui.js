@@ -200,7 +200,7 @@ function getCurseRemainingText(curse) {
     return 'On natural 1';
   }
 
-  // Curse of Vulnerability - shows remaining upgrades
+  // Curse of Vulnerability - shows remaining curse duplications
   if (curseName.includes('vulnerability')) {
     if (!gameState.vulnerabilityUses) gameState.vulnerabilityUses = {};
     const used = gameState.vulnerabilityUses[curse.name] || 0;
@@ -208,7 +208,7 @@ function getCurseRemainingText(curse) {
     if (curse.power === 'Medium') maxUses = 2;
     else if (curse.power === 'High') maxUses = 3;
     const remaining = maxUses - used;
-    return `${remaining}/${maxUses} upgrades left`;
+    return `${remaining}/${maxUses} Curses Obtained left`;
   }
 
   // Curse of Shroud - shows remaining game selections
@@ -412,13 +412,13 @@ function updateGameStats() {
   if (statsSkip) statsSkip.textContent = skip;
   if (statsDiscovery) statsDiscovery.textContent = discovery;
 
-  // Check for Curse of Shroud (temporary FoV reduction)
+  // Check for Curse of Shroud (temporary FoV reduction) - handle stacking
   if (statsFoV) {
-    let displayFoV = fov;
-    const shroudCurse = gameState?.activeCurses?.find(c => c.name.toLowerCase().includes('shroud'));
-    if (shroudCurse) {
-      const effectiveFoV = Math.max(1, fov - 1);
-      statsFoV.textContent = `${effectiveFoV} (${fov}-1)`;
+    const shroudCurses = gameState?.activeCurses?.filter(c => c.name.toLowerCase().includes('shroud')) || [];
+    if (shroudCurses.length > 0) {
+      const penalty = shroudCurses.length;
+      const effectiveFoV = Math.max(1, fov - penalty);
+      statsFoV.textContent = `${effectiveFoV} (${fov}-${penalty})`;
     } else {
       statsFoV.textContent = fov;
     }
