@@ -379,15 +379,37 @@
           </div>
 
           <div id="enemyDisplay" class="enemy-display" style="display: none;">
-            <h4 id="enemyName"></h4>
-            <div id="enemyGame" style="font-size: 0.9em;"></div>
-            <img id="enemyImage" class="enemy-image" src="" alt="Enemy Image">
-            <div class="roll-section">
-              <span>Roll Check: <span id="rollCheckValue"></span></span>
-              <button class="d20-button" id="rollD20">D20</button>
-              <span id="rollResult"></span>
+            <div style="text-align: center; margin-bottom: 15px;">
+              <h4 id="enemyName" style="margin: 0 0 8px 0; color: #ff6644; font-size: 20px;"></h4>
+              <div id="enemyGame" style="font-size: 0.9em; color: #b8a890;"></div>
             </div>
-            <div class="outcome-section">
+
+            <img id="enemyImage" class="enemy-image" src="" alt="Enemy Image">
+
+            <div class="roll-section" style="margin-top: 20px;">
+              <div style="text-align: center; margin-bottom: 15px;">
+                <div style="color: #b8a890; font-size: 14px; margin-bottom: 8px;">Roll Check</div>
+                <div id="rollCheckValue" style="font-size: 24px; font-weight: bold; color: #ffcc66;"></div>
+              </div>
+
+              <div style="display: flex; justify-content: center; margin-bottom: 15px;">
+                <button class="d20-button" id="rollD20">D20</button>
+              </div>
+
+              <div id="rollResult" style="
+                min-height: 40px;
+                text-align: center;
+                font-size: 15px;
+                color: #e6d5b8;
+                white-space: pre-line;
+                line-height: 1.6;
+                padding: 10px;
+                background: rgba(0,0,0,0.3);
+                border-radius: 6px;
+              "></div>
+            </div>
+
+            <div class="outcome-section" style="margin-top: 20px;">
               <div id="successOutcome" class="outcome-button success-outcome"></div>
               <div id="failureOutcome" class="outcome-button failure-outcome"></div>
             </div>

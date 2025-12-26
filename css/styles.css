@@ -295,28 +295,28 @@ h3, h4 {
   border-radius: 4px;
 }
 .roll-section {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   margin: 10px 0;
 }
 .d20-button {
-  background: #cc6600;
+  background: linear-gradient(145deg, #cc6600, #ff8800);
   color: white;
-  border: 2px solid #ff8800;
+  border: 3px solid #ffaa33;
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  font-size: 1.2em;
+  width: 70px;
+  height: 70px;
+  font-size: 1.5em;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(204, 102, 0, 0.4);
 }
 .d20-button:hover {
-  background: #ff8800;
-  box-shadow: 0 0 12px rgba(255, 136, 0, 0.6);
+  background: linear-gradient(145deg, #ff8800, #ffaa33);
+  box-shadow: 0 6px 20px rgba(255, 136, 0, 0.8);
+  transform: scale(1.1);
 }
 .outcome-section {
   display: flex;

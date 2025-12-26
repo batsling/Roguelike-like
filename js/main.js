@@ -999,22 +999,24 @@ function handleEventChoice(event, option) {
   saveCurrentGame();
 }
 
-function showShopModal() {
+function showShopModal(purchasedIndices = []) {
   if (items.length === 0) return;
 
   // Set phase to shop
   gameState.phase = 'shop';
   updateInventory(); // Refresh item UI to update usable item buttons
 
-  const shopItems = [];
-  const maxAttempts = 100; // Prevent infinite loop
+  // Store shop items in gameState if not already present (first time opening shop)
+  if (!gameState.currentShopItems) {
+    gameState.currentShopItems = [];
+    const maxAttempts = 100; // Prevent infinite loop
 
-  for (let i = 0; i < 3; i++) {
-    let attempts = 0;
-    let selectedItem = null;
+    for (let i = 0; i < 3; i++) {
+      let attempts = 0;
+      let selectedItem = null;
 
-    while (attempts < maxAttempts) {
-      // Use luck-based rarity selection
+      while (attempts < maxAttempts) {
+        // Use luck-based rarity selection
       const targetRarity = selectRandomRarity();
 
       const rarityItems = items.filter(item => item.rarity === targetRarity);
@@ -1027,21 +1029,24 @@ function showShopModal() {
         selectedItem = items[randomIndex];
       }
 
-      // Check if this item is already in shop
-      if (!shopItems.find(shopItem => shopItem.name === selectedItem.name)) {
-        shopItems.push(selectedItem);
-        break;
+        // Check if this item is already in shop
+        if (!gameState.currentShopItems.find(shopItem => shopItem.name === selectedItem.name)) {
+          gameState.currentShopItems.push(selectedItem);
+          break;
+        }
+
+        attempts++;
       }
 
-      attempts++;
-    }
-
-    // If we couldn't find a unique item after max attempts, just add it anyway
-    // (This should rarely happen unless there are very few items)
-    if (attempts >= maxAttempts && selectedItem) {
-      shopItems.push(selectedItem);
+      // If we couldn't find a unique item after max attempts, just add it anyway
+      // (This should rarely happen unless there are very few items)
+      if (attempts >= maxAttempts && selectedItem) {
+        gameState.currentShopItems.push(selectedItem);
+      }
     }
   }
+
+  const shopItems = gameState.currentShopItems;
 
   // Check for Curse of Frugality
   let frugalityModifier = 0;
@@ -1059,6 +1064,7 @@ function showShopModal() {
   let itemsHTML = '<div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">';
 
   shopItems.forEach((item, index) => {
+    const isPurchased = purchasedIndices.includes(index);
     const basePrice = item.rarity === 'common' ? 10 : item.rarity === 'uncommon' ? 25 : 50;
     const price = basePrice + frugalityModifier;
     const rarityColor = item.rarity === 'common' ? '#aaa' : item.rarity === 'uncommon' ? '#4CAF50' : '#9b59b6';
@@ -1086,13 +1092,13 @@ function showShopModal() {
           ${priceDisplay}
           <button class="shop-buy-btn" data-index="${index}" data-price="${price}" style="
             padding: 8px 16px;
-            background: #4CAF50;
+            background: ${isPurchased ? '#555' : '#4CAF50'};
             border: none;
             border-radius: 6px;
             color: white;
-            cursor: pointer;
-          " ${gold < price ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
-            ${gold >= price ? 'Buy' : 'Too Expensive'}
+            cursor: ${isPurchased ? 'not-allowed' : 'pointer'};
+          " ${gold < price || isPurchased ? 'disabled' : ''}>
+            ${isPurchased ? 'Purchased!' : (gold >= price ? 'Buy' : 'Too Expensive')}
           </button>
         </div>
       </div>
@@ -1122,26 +1128,54 @@ function showShopModal() {
         gameState.gold = gold;
         acquireItem(item);
 
-        // Remove Curse of Frugality after purchase
+        // Track purchased items
+        purchasedIndices.push(itemIndex);
+
+        // Check for Curse of Frugality and remove it after first purchase
+        let curseWasRemoved = false;
         if (gameState && gameState.activeCurses) {
           const frugalityCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('frugality'));
           if (frugalityCurse) {
             gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== frugalityCurse.name);
+            curseWasRemoved = true;
             if (typeof updateCursesDisplay === 'function') {
               updateCursesDisplay();
+            }
+            if (typeof updateActiveCursesList === 'function') {
+              updateActiveCursesList();
             }
           }
         }
 
-        e.target.textContent = 'Purchased!';
-        e.target.disabled = true;
-        e.target.style.background = '#555';
-
         saveCurrentGame();
+
+        // If curse was removed, refresh the shop to show normal prices
+        if (curseWasRemoved) {
+          setTimeout(() => {
+            showShopModal(purchasedIndices);
+          }, 100);
+        } else {
+          // Otherwise just update button state
+          e.target.textContent = 'Purchased!';
+          e.target.disabled = true;
+          e.target.style.background = '#555';
+        }
       }
     };
   });
 }
+
+// Clear shop items when closing shop modal
+const originalCloseGameModal = window.closeGameModal;
+window.closeGameModal = function() {
+  if (gameState.phase === 'shop') {
+    delete gameState.currentShopItems;
+    gameState.phase = null;
+  }
+  if (typeof originalCloseGameModal === 'function') {
+    originalCloseGameModal();
+  }
+};
 
 function showItemChoiceModal() {
   if (items.length === 0) {
@@ -1927,12 +1961,6 @@ function markGameFinished(gameName) {
 function addCurse(curseToAdd) {
   if (!gameState.activeCurses) {
     gameState.activeCurses = [];
-  }
-
-  // Check if curse is already active
-  const alreadyHasCurse = gameState.activeCurses.some(c => c.name === curseToAdd.name);
-  if (alreadyHasCurse) {
-    return false; // Don't add duplicate
   }
 
   let cursePower = curseToAdd.power;
