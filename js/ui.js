@@ -230,9 +230,10 @@ function getCurseRemainingText(curse) {
     const match = duration.match(/(\d+)\s+game/i);
     if (match) {
       const requiredGames = parseInt(match[1]);
-      // Get current progress from tracker
+      // Get current progress from tracker (use curse ID for accurate tracking of duplicates)
       if (!gameState.cursesTracker) gameState.cursesTracker = {};
-      const tracker = gameState.cursesTracker[curse.name] || { gamesBeaten: 0 };
+      const trackerId = curse.id || curse.name; // Fallback to name for old saves
+      const tracker = gameState.cursesTracker[trackerId] || { gamesBeaten: 0 };
       const currentGames = tracker.gamesBeaten || 0;
       return `${currentGames}/${requiredGames} games beaten`;
     }

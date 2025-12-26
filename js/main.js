@@ -2270,9 +2270,16 @@ function getCurseMaxUses(power) {
   return 1; // Low
 }
 
-// Helper function to create curse object
+// Helper function to create curse object with unique ID
 function createCurseObject(curseTemplate) {
+  // Generate unique ID for this curse instance
+  if (!gameState.curseIdCounter) {
+    gameState.curseIdCounter = 0;
+  }
+  const curseId = `${curseTemplate.name}_${gameState.curseIdCounter++}`;
+
   return {
+    id: curseId,
     name: curseTemplate.name,
     stat: curseTemplate.stat,
     power: curseTemplate.power,
@@ -2347,9 +2354,12 @@ function checkCurseDurations(trigger) {
   const cursesToRemove = [];
 
   gameState.activeCurses.forEach((curse, index) => {
+    // Use curse ID for tracking (ensures each instance tracks independently)
+    const trackerId = curse.id || curse.name; // Fallback to name for old saves
+
     // Initialize tracker for this curse if it doesn't exist
-    if (!gameState.cursesTracker[curse.name]) {
-      gameState.cursesTracker[curse.name] = {
+    if (!gameState.cursesTracker[trackerId]) {
+      gameState.cursesTracker[trackerId] = {
         gamesBeaten: 0,
         spacesChosen: 0,
         combatsLost: 0,
@@ -2357,7 +2367,7 @@ function checkCurseDurations(trigger) {
       };
     }
 
-    const tracker = gameState.cursesTracker[curse.name];
+    const tracker = gameState.cursesTracker[trackerId];
 
     // Update trackers based on trigger
     if (trigger === 'game_beaten') {
@@ -2387,14 +2397,15 @@ function checkCurseDurations(trigger) {
 
     if (shouldRemove) {
       cursesToRemove.push(index);
-      console.log(`Curse removed: ${curse.name}`);
+      console.log(`Curse removed: ${curse.name} (ID: ${trackerId})`);
     }
   });
 
   // Remove expired curses (iterate backwards to avoid index issues)
   for (let i = cursesToRemove.length - 1; i >= 0; i--) {
     const curseToRemove = gameState.activeCurses[cursesToRemove[i]];
-    delete gameState.cursesTracker[curseToRemove.name];
+    const trackerId = curseToRemove.id || curseToRemove.name;
+    delete gameState.cursesTracker[trackerId];
     gameState.activeCurses.splice(cursesToRemove[i], 1);
   }
 
