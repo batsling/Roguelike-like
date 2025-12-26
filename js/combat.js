@@ -7,6 +7,25 @@
 // - Stat checks and modifiers
 // - Rewards and consequences
 
+// ===== HELPER FUNCTIONS =====
+
+// Calculate damage based on curse power level
+function getCurseDamage(power) {
+  if (power === 'High') return 4;
+  if (power === 'Medium') return 3;
+  return 2; // Low
+}
+
+// Update both curse display systems
+function updateCurseDisplays() {
+  if (typeof updateCursesDisplay === 'function') {
+    updateCursesDisplay();
+  }
+  if (typeof updateActiveCursesList === 'function') {
+    updateActiveCursesList();
+  }
+}
+
 // ===== COMBAT OUTCOME APPLICATION =====
 
 function applyCombatOutcome(success) {
@@ -146,51 +165,32 @@ function rollD20() {
     let curseMessages = [];
 
     // Check for Curse of Weakness (subtract from roll) - handle stacking
-    if (gameState && gameState.activeCurses) {
+    if (gameState?.activeCurses) {
       const weaknessCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('weakness'));
       if (weaknessCurses.length > 0) {
         // Use only the first weakness curse and remove it
         const weaknessCurse = weaknessCurses[0];
-        let penalty = 0;
-        if (weaknessCurse.power === 'Low') penalty = 2;
-        else if (weaknessCurse.power === 'Medium') penalty = 3;
-        else if (weaknessCurse.power === 'High') penalty = 4;
+        const penalty = getCurseDamage(weaknessCurse.power);
 
         cursePenalty = penalty;
         curseMessages.push(`Curse of Weakness: -${penalty}`);
 
         // Remove this specific curse instance after this roll
-        const curseIndex = gameState.activeCurses.indexOf(weaknessCurse);
-        gameState.activeCurses.splice(curseIndex, 1);
-
-        if (typeof updateCursesDisplay === 'function') {
-          updateCursesDisplay();
-        }
-        if (typeof updateActiveCursesList === 'function') {
-          updateActiveCursesList();
-        }
+        gameState.activeCurses.splice(gameState.activeCurses.indexOf(weaknessCurse), 1);
+        updateCurseDisplays();
       }
     }
 
     // Check for Curse of Failure (damage on rolling 1) - handle stacking
-    if (currentRoll === 1 && gameState && gameState.activeCurses) {
+    if (currentRoll === 1 && gameState?.activeCurses) {
       const failureCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('failure'));
       if (failureCurses.length > 0) {
-        // Trigger all failure curses if rolled a 1
-        let totalDamage = 0;
-        failureCurses.forEach(failureCurse => {
-          let damage = 0;
-          if (failureCurse.power === 'Low') damage = 2;
-          else if (failureCurse.power === 'Medium') damage = 3;
-          else if (failureCurse.power === 'High') damage = 4;
-          totalDamage += damage;
-        });
+        // Trigger all failure curses - sum total damage
+        const totalDamage = failureCurses.reduce((sum, curse) => sum + getCurseDamage(curse.power), 0);
 
         health = Math.max(0, health - totalDamage);
         gameState.health = health;
-        if (typeof updateTopBar === 'function') {
-          updateTopBar();
-        }
+        if (typeof updateTopBar === 'function') updateTopBar();
 
         curseMessages.push(`Curse of Failure (×${failureCurses.length}): -${totalDamage} HP!`);
 
@@ -222,12 +222,7 @@ function rollD20() {
 
         // Remove all failure curses after triggering
         gameState.activeCurses = gameState.activeCurses.filter(c => !c.name.toLowerCase().includes('failure'));
-        if (typeof updateCursesDisplay === 'function') {
-          updateCursesDisplay();
-        }
-        if (typeof updateActiveCursesList === 'function') {
-          updateActiveCursesList();
-        }
+        updateCurseDisplays();
 
         // Check for death
         if (health <= 0 && typeof handleDeath === 'function') {
@@ -237,16 +232,8 @@ function rollD20() {
     }
 
     // Apply stat modifiers
-    let modifier = 0;
     const stat = currentEnemy.stat;
-
-    switch(stat) {
-      case 'Strength': modifier = strength; break;
-      case 'Dexterity': modifier = dexterity; break;
-      case 'Intelligence': modifier = intelligence; break;
-      case 'Charisma': modifier = charisma; break;
-    }
-
+    const modifier = getStatModifier(stat);
     const totalRoll = currentRoll + modifier - cursePenalty;
     const check = currentEnemy.rollCheck;
     const success = totalRoll >= check;
