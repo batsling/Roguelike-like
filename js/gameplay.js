@@ -361,7 +361,43 @@ function spawnChoices() {
   // Combine: non-stinky first, then stinky (deprioritized)
   const shuffled = [...shuffledNonStinky, ...shuffledStinky];
 
-  const numChoices = Math.max(1, fov || 3); // Use fov stat, default to 3
+  let baseFov = fov || 3;
+
+  // Check for Curse of Shroud (lower FoV)
+  if (gameState && gameState.activeCurses) {
+    const shroudCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('shroud'));
+    if (shroudCurse) {
+      // Lower FoV by 1
+      baseFov = Math.max(1, baseFov - 1);
+
+      // Track how many times we've used this curse
+      if (!gameState.shroudUses) {
+        gameState.shroudUses = {};
+      }
+      if (!gameState.shroudUses[shroudCurse.name]) {
+        gameState.shroudUses[shroudCurse.name] = 0;
+      }
+
+      // Determine max uses based on power
+      let maxUses = 1;
+      if (shroudCurse.power === 'Medium') maxUses = 2;
+      else if (shroudCurse.power === 'High') maxUses = 3;
+
+      // Increment uses
+      gameState.shroudUses[shroudCurse.name]++;
+
+      // Remove curse if we've used all charges
+      if (gameState.shroudUses[shroudCurse.name] >= maxUses) {
+        gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== shroudCurse.name);
+        delete gameState.shroudUses[shroudCurse.name];
+        if (typeof updateCursesDisplay === 'function') {
+          updateCursesDisplay();
+        }
+      }
+    }
+  }
+
+  const numChoices = Math.max(1, baseFov); // Use fov stat, default to 3
   const opts = shuffled.slice(0, Math.min(numChoices, shuffled.length));
 
   // Dynamic positioning based on number of choices

@@ -157,6 +157,9 @@ function initializeData() {
     if (typeof populateCurseSelects === 'function') {
       populateCurseSelects();
     }
+    if (typeof populateEnemySelect === 'function') {
+      populateEnemySelect();
+    }
     if (typeof updateActiveCursesList === 'function') {
       updateActiveCursesList();
     }

@@ -142,6 +142,58 @@ function applyCombatOutcome(success) {
 function rollD20() {
   if (currentEnemy) {
     currentRoll = Math.floor(Math.random() * 20) + 1;
+    let cursePenalty = 0;
+    let curseMessages = [];
+
+    // Check for Curse of Weakness (subtract from roll)
+    if (gameState && gameState.activeCurses) {
+      const weaknessCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('weakness'));
+      if (weaknessCurse) {
+        let penalty = 0;
+        if (weaknessCurse.power === 'Low') penalty = 2;
+        else if (weaknessCurse.power === 'Medium') penalty = 3;
+        else if (weaknessCurse.power === 'High') penalty = 4;
+
+        cursePenalty = penalty;
+        curseMessages.push(`Curse of Weakness: -${penalty}`);
+
+        // Remove curse after this roll
+        gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== weaknessCurse.name);
+        if (typeof updateCursesDisplay === 'function') {
+          updateCursesDisplay();
+        }
+      }
+    }
+
+    // Check for Curse of Failure (damage on rolling 1)
+    if (currentRoll === 1 && gameState && gameState.activeCurses) {
+      const failureCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('failure'));
+      if (failureCurse) {
+        let damage = 0;
+        if (failureCurse.power === 'Low') damage = 2;
+        else if (failureCurse.power === 'Medium') damage = 3;
+        else if (failureCurse.power === 'High') damage = 4;
+
+        health = Math.max(0, health - damage);
+        gameState.health = health;
+        if (typeof updateTopBar === 'function') {
+          updateTopBar();
+        }
+
+        curseMessages.push(`Curse of Failure: -${damage} HP!`);
+
+        // Remove curse after triggering
+        gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== failureCurse.name);
+        if (typeof updateCursesDisplay === 'function') {
+          updateCursesDisplay();
+        }
+
+        // Check for death
+        if (health <= 0 && typeof handleDeath === 'function') {
+          setTimeout(() => handleDeath(), 500);
+        }
+      }
+    }
 
     // Apply stat modifiers
     let modifier = 0;
@@ -154,13 +206,19 @@ function rollD20() {
       case 'Charisma': modifier = charisma; break;
     }
 
-    const totalRoll = currentRoll + modifier;
+    const totalRoll = currentRoll + modifier - cursePenalty;
     const check = currentEnemy.rollCheck;
     const success = totalRoll >= check;
 
     let resultText = `Rolled: ${currentRoll}`;
+    if (cursePenalty > 0) {
+      resultText += ` - ${cursePenalty} (curse)`;
+    }
     if (modifier !== 0) {
-      resultText += ` + ${modifier} (${stat}) = ${totalRoll}`;
+      resultText += ` + ${modifier} (${stat})`;
+    }
+    if (cursePenalty > 0 || modifier !== 0) {
+      resultText += ` = ${totalRoll}`;
     }
     resultText += ` vs DC ${check}`;
 
@@ -170,6 +228,11 @@ function rollD20() {
     } else {
       resultText += ' ✗ FAILURE';
       document.getElementById('rollResult').style.color = '#ff4444';
+    }
+
+    // Add curse messages
+    if (curseMessages.length > 0) {
+      resultText += '\n' + curseMessages.join(', ');
     }
 
     document.getElementById('rollResult').textContent = resultText;

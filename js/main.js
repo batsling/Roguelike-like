@@ -564,6 +564,20 @@ function populateCurseSelects() {
   }
 }
 
+function populateEnemySelect() {
+  const enemySelect = document.getElementById('specificEnemySelect');
+  if (enemySelect && typeof enemies !== 'undefined' && enemies.length > 0) {
+    enemySelect.innerHTML = '<option value="">-- Select Specific Enemy --</option>';
+    enemies.forEach((enemy, index) => {
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = `${enemy.name} (${enemy.game}) - ${enemy.stat} ${enemy.power}`;
+      enemySelect.appendChild(option);
+    });
+    enemySelect.disabled = false;
+  }
+}
+
 function updateActiveCursesList() {
   const activeCursesList = document.getElementById('activeCursesList');
   const removeCurseSelect = document.getElementById('removeCurseSelect');
@@ -881,10 +895,47 @@ function showCombatModal() {
         // Check if curse is already active
         const alreadyHasCurse = gameState.activeCurses.some(c => c.name === selectedCurse.name);
         if (!alreadyHasCurse) {
+          let cursePower = selectedCurse.power;
+
+          // Check for Curse of Vulnerability (increase curse power)
+          const vulnerabilityCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('vulnerability'));
+          if (vulnerabilityCurse) {
+            // Track how many times we've increased power
+            if (!gameState.vulnerabilityUses) {
+              gameState.vulnerabilityUses = {};
+            }
+            if (!gameState.vulnerabilityUses[vulnerabilityCurse.name]) {
+              gameState.vulnerabilityUses[vulnerabilityCurse.name] = 0;
+            }
+
+            // Determine max uses based on power
+            let maxUses = 1;
+            if (vulnerabilityCurse.power === 'Medium') maxUses = 2;
+            else if (vulnerabilityCurse.power === 'High') maxUses = 3;
+
+            // If we haven't exceeded max uses, increase power
+            if (gameState.vulnerabilityUses[vulnerabilityCurse.name] < maxUses) {
+              if (cursePower === 'Low') {
+                cursePower = 'Medium';
+              } else if (cursePower === 'Medium') {
+                cursePower = 'High';
+              }
+              // High stays High (can't go higher)
+
+              gameState.vulnerabilityUses[vulnerabilityCurse.name]++;
+
+              // Remove curse if we've used all charges
+              if (gameState.vulnerabilityUses[vulnerabilityCurse.name] >= maxUses) {
+                gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== vulnerabilityCurse.name);
+                delete gameState.vulnerabilityUses[vulnerabilityCurse.name];
+              }
+            }
+          }
+
           gameState.activeCurses.push({
             name: selectedCurse.name,
             stat: selectedCurse.stat,
-            power: selectedCurse.power,
+            power: cursePower,
             duration: selectedCurse.duration,
             description: selectedCurse.description
           });
@@ -1048,11 +1099,37 @@ function showShopModal() {
     }
   }
 
+  // Check for Curse of Frugality
+  let frugalityModifier = 0;
+  let hasFrugality = false;
+  if (gameState && gameState.activeCurses) {
+    const frugalityCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('frugality'));
+    if (frugalityCurse) {
+      hasFrugality = true;
+      if (frugalityCurse.power === 'Low') frugalityModifier = 5;
+      else if (frugalityCurse.power === 'Medium') frugalityModifier = 10;
+      else if (frugalityCurse.power === 'High') frugalityModifier = 15;
+    }
+  }
+
   let itemsHTML = '<div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">';
 
   shopItems.forEach((item, index) => {
-    const price = item.rarity === 'common' ? 10 : item.rarity === 'uncommon' ? 25 : 50;
+    const basePrice = item.rarity === 'common' ? 10 : item.rarity === 'uncommon' ? 25 : 50;
+    const price = basePrice + frugalityModifier;
     const rarityColor = item.rarity === 'common' ? '#aaa' : item.rarity === 'uncommon' ? '#4CAF50' : '#9b59b6';
+
+    let priceDisplay = '';
+    if (hasFrugality) {
+      priceDisplay = `
+        <span style="color: gold; font-weight: bold;">
+          <span style="text-decoration: line-through; color: #888; margin-right: 8px;">${basePrice}</span>
+          ${price} Gold
+        </span>
+      `;
+    } else {
+      priceDisplay = `<span style="color: gold; font-weight: bold;">${price} Gold</span>`;
+    }
 
     itemsHTML += `
       <div style="padding: 15px; background: #2d2d2d; border-radius: 8px; border: 2px solid ${rarityColor};">
@@ -1062,7 +1139,7 @@ function showShopModal() {
         </div>
         <p style="color: #ccc; margin: 10px 0;">${item.description}</p>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-          <span style="color: gold; font-weight: bold;">${price} Gold</span>
+          ${priceDisplay}
           <button class="shop-buy-btn" data-index="${index}" data-price="${price}" style="
             padding: 8px 16px;
             background: #4CAF50;
@@ -1100,6 +1177,17 @@ function showShopModal() {
         gold -= price;
         gameState.gold = gold;
         acquireItem(item);
+
+        // Remove Curse of Frugality after purchase
+        if (gameState && gameState.activeCurses) {
+          const frugalityCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('frugality'));
+          if (frugalityCurse) {
+            gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== frugalityCurse.name);
+            if (typeof updateCursesDisplay === 'function') {
+              updateCursesDisplay();
+            }
+          }
+        }
 
         e.target.textContent = 'Purchased!';
         e.target.disabled = true;
@@ -2071,6 +2159,103 @@ function getGamesWithStatus(statusName) {
 
 // ===== DEV TOOLS EVENT LISTENERS =====
 
+// Item Add/Remove
+document.getElementById('giveSelectedItem')?.addEventListener('click', () => {
+  const itemSelect = document.getElementById('itemSelect');
+  const itemName = itemSelect?.value;
+
+  if (!itemName) {
+    alert('Please select an item');
+    return;
+  }
+
+  const item = items.find(i => i.name === itemName);
+  if (!item) {
+    alert('Item not found');
+    return;
+  }
+
+  if (typeof acquireItem === 'function') {
+    acquireItem(item);
+  }
+
+  const output = document.getElementById('output3');
+  if (output) {
+    output.textContent = `Added: ${itemName}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+});
+
+document.getElementById('pickRandomItem')?.addEventListener('click', () => {
+  if (!items || items.length === 0) {
+    alert('No items available');
+    return;
+  }
+
+  const randomItem = items[Math.floor(Math.random() * items.length)];
+
+  if (typeof acquireItem === 'function') {
+    acquireItem(randomItem);
+  }
+
+  const output = document.getElementById('output3');
+  if (output) {
+    output.textContent = `Added: ${randomItem.name}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+});
+
+document.getElementById('removeSelectedItem')?.addEventListener('click', () => {
+  const removeItemSelect = document.getElementById('removeItemSelect');
+  const itemIndex = parseInt(removeItemSelect?.value);
+
+  if (isNaN(itemIndex) || itemIndex < 0) {
+    alert('Please select an item to remove');
+    return;
+  }
+
+  if (!inventory || itemIndex >= inventory.length) {
+    alert('Invalid item selection');
+    return;
+  }
+
+  const removed = inventory.splice(itemIndex, 1)[0];
+
+  if (typeof updateInventory === 'function') {
+    updateInventory();
+  }
+
+  const output = document.getElementById('removedItemOutput');
+  if (output) {
+    output.textContent = `Removed: ${removed.name}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+});
+
+document.getElementById('removeRandomItem')?.addEventListener('click', () => {
+  if (!inventory || inventory.length === 0) {
+    alert('No items to remove');
+    return;
+  }
+
+  const randomIndex = Math.floor(Math.random() * inventory.length);
+  const removed = inventory.splice(randomIndex, 1)[0];
+
+  if (typeof updateInventory === 'function') {
+    updateInventory();
+  }
+
+  const output = document.getElementById('removedItemOutput');
+  if (output) {
+    output.textContent = `Removed: ${removed.name}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+});
+
 // Curse Add/Remove
 document.getElementById('addSelectedCurse')?.addEventListener('click', () => {
   const curseSelect = document.getElementById('curseSelect');
@@ -2205,6 +2390,35 @@ document.getElementById('triggerItemChoice')?.addEventListener('click', () => {
     showItemChoiceModal();
   } else {
     alert('Item choice system not available');
+  }
+});
+
+// Specific Enemy Selection
+document.getElementById('triggerSpecificEnemy')?.addEventListener('click', () => {
+  const enemySelect = document.getElementById('specificEnemySelect');
+  const enemyIndex = parseInt(enemySelect?.value);
+
+  if (isNaN(enemyIndex) || enemyIndex < 0) {
+    alert('Please select an enemy');
+    return;
+  }
+
+  if (!enemies || enemyIndex >= enemies.length) {
+    alert('Invalid enemy selection');
+    return;
+  }
+
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first');
+    return;
+  }
+
+  const enemy = enemies[enemyIndex];
+
+  if (typeof showCombatModal === 'function') {
+    showCombatModal(enemy);
+  } else {
+    alert('Combat system not available');
   }
 });
 
