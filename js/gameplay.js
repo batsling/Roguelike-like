@@ -385,9 +385,7 @@ function spawnChoices() {
       }
 
       // Determine max uses based on power
-      let maxUses = 1;
-      if (shroudCurse.power === 'Medium') maxUses = 2;
-      else if (shroudCurse.power === 'High') maxUses = 3;
+      const maxUses = typeof getCurseMaxUses === 'function' ? getCurseMaxUses(shroudCurse.power) : (shroudCurse.power === 'High' ? 3 : shroudCurse.power === 'Medium' ? 2 : 1);
 
       // Increment uses
       gameState.shroudUses[shroudCurse.name]++;

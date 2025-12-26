@@ -2060,6 +2060,24 @@ function markGameFinished(gameName) {
   }
 }
 
+// Helper function to get max uses based on curse power level
+function getCurseMaxUses(power) {
+  if (power === 'High') return 3;
+  if (power === 'Medium') return 2;
+  return 1; // Low
+}
+
+// Helper function to create curse object
+function createCurseObject(curseTemplate) {
+  return {
+    name: curseTemplate.name,
+    stat: curseTemplate.stat,
+    power: curseTemplate.power,
+    duration: curseTemplate.duration,
+    description: curseTemplate.description
+  };
+}
+
 // Add a curse to active curses, processing Curse of Vulnerability if present
 function addCurse(curseToAdd) {
   if (!gameState.activeCurses) {
@@ -2067,13 +2085,7 @@ function addCurse(curseToAdd) {
   }
 
   // Add the base curse
-  gameState.activeCurses.push({
-    name: curseToAdd.name,
-    stat: curseToAdd.stat,
-    power: curseToAdd.power,
-    duration: curseToAdd.duration,
-    description: curseToAdd.description
-  });
+  gameState.activeCurses.push(createCurseObject(curseToAdd));
 
   // Check for Curse of Vulnerability (add duplicate curses)
   const vulnerabilityCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('vulnerability'));
@@ -2089,21 +2101,11 @@ function addCurse(curseToAdd) {
         gameState.vulnerabilityUses[vulnerabilityCurse.name] = 0;
       }
 
-      // Determine max uses based on power
-      let maxUses = 1;
-      if (vulnerabilityCurse.power === 'Medium') maxUses = 2;
-      else if (vulnerabilityCurse.power === 'High') maxUses = 3;
+      const maxUses = getCurseMaxUses(vulnerabilityCurse.power);
 
       // If this vulnerability curse still has uses, add a duplicate of the incoming curse
       if (gameState.vulnerabilityUses[vulnerabilityCurse.name] < maxUses) {
-        gameState.activeCurses.push({
-          name: curseToAdd.name,
-          stat: curseToAdd.stat,
-          power: curseToAdd.power,
-          duration: curseToAdd.duration,
-          description: curseToAdd.description
-        });
-
+        gameState.activeCurses.push(createCurseObject(curseToAdd));
         gameState.vulnerabilityUses[vulnerabilityCurse.name]++;
 
         // Remove curse if we've used all charges
@@ -2580,4 +2582,5 @@ window.hasGameStatus = hasGameStatus;
 window.getGameStatuses = getGameStatuses;
 window.updateActiveCursesList = updateActiveCursesList;
 window.addCurse = addCurse;
+window.getCurseMaxUses = getCurseMaxUses;
 window.getGamesWithStatus = getGamesWithStatus;

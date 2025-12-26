@@ -204,9 +204,7 @@ function getCurseRemainingText(curse) {
   if (curseName.includes('vulnerability')) {
     if (!gameState.vulnerabilityUses) gameState.vulnerabilityUses = {};
     const used = gameState.vulnerabilityUses[curse.name] || 0;
-    let maxUses = 1;
-    if (curse.power === 'Medium') maxUses = 2;
-    else if (curse.power === 'High') maxUses = 3;
+    const maxUses = typeof getCurseMaxUses === 'function' ? getCurseMaxUses(curse.power) : (curse.power === 'High' ? 3 : curse.power === 'Medium' ? 2 : 1);
     const remaining = maxUses - used;
     return `${remaining}/${maxUses} Curses Obtained left`;
   }
@@ -215,9 +213,7 @@ function getCurseRemainingText(curse) {
   if (curseName.includes('shroud')) {
     if (!gameState.shroudUses) gameState.shroudUses = {};
     const used = gameState.shroudUses[curse.name] || 0;
-    let maxUses = 1;
-    if (curse.power === 'Medium') maxUses = 2;
-    else if (curse.power === 'High') maxUses = 3;
+    const maxUses = typeof getCurseMaxUses === 'function' ? getCurseMaxUses(curse.power) : (curse.power === 'High' ? 3 : curse.power === 'Medium' ? 2 : 1);
     const remaining = maxUses - used;
     return `${remaining}/${maxUses} selections left`;
   }
