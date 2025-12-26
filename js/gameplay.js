@@ -18,6 +18,65 @@ function initGameplayDOM() {
   viewport = document.getElementById('path-viewport');
 }
 
+// ===== HELPER FUNCTIONS =====
+
+// Get games that influence the specified game
+function getInfluencedByGames(gameName) {
+  return games
+    .filter(g => g.gamesInfluenced?.includes(gameName))
+    .map(g => g.name);
+}
+
+// Create status icon container for a game node
+function createStatusIconContainer(gameName) {
+  if (typeof getGameStatuses !== 'function') return null;
+  const statuses = getGameStatuses(gameName);
+  if (!statuses || statuses.length === 0) return null;
+
+  const container = document.createElement('div');
+  container.className = 'status-icon-container';
+  container.style.cssText = `
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    display: flex;
+    gap: 2px;
+    z-index: 100;
+    pointer-events: none;
+  `;
+
+  statuses.forEach((status) => {
+    const icon = document.createElement('span');
+    icon.textContent = status.icon;
+    icon.title = status.name;
+    icon.style.cssText = `
+      width: 20px;
+      height: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid #cc6600;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    `;
+    container.appendChild(icon);
+  });
+
+  return container;
+}
+
+// Fisher-Yates shuffle algorithm (unbiased)
+function shuffleArray(arr) {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 // ===== PATHFINDING =====
 
 function bfs(start, goal) {
@@ -44,17 +103,13 @@ function getGameConnections(gameName) {
   // Find the game object
   const game = games.find(g => g.name === gameName);
 
-  if (game && game.gamesInfluenced) {
+  if (game?.gamesInfluenced) {
     // Add all games this game influences
     connected.push(...game.gamesInfluenced);
   }
 
   // Find all games that influence this game
-  games.forEach(g => {
-    if (g.gamesInfluenced && g.gamesInfluenced.includes(gameName)) {
-      connected.push(g.name);
-    }
-  });
+  connected.push(...getInfluencedByGames(gameName));
 
   return [...new Set(connected)]; // Remove duplicates
 }
@@ -69,42 +124,9 @@ function addNode(name, cls, x, y) {
   d.textContent = name;
 
   // Add status effect icons if the game has any
-  if (typeof getGameStatuses === 'function') {
-    const statuses = getGameStatuses(name);
-    if (statuses && statuses.length > 0) {
-      const statusContainer = document.createElement('div');
-      statusContainer.className = 'status-icon-container';
-      statusContainer.style.cssText = `
-        position: absolute;
-        top: -8px;
-        left: -8px;
-        display: flex;
-        gap: 2px;
-        z-index: 100;
-        pointer-events: none;
-      `;
-
-      statuses.forEach((status) => {
-        const statusIcon = document.createElement('span');
-        statusIcon.textContent = status.icon;
-        statusIcon.title = status.name;
-        statusIcon.style.cssText = `
-          width: 20px;
-          height: 20px;
-          background: rgba(0, 0, 0, 0.8);
-          border: 2px solid #cc6600;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 12px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        `;
-        statusContainer.appendChild(statusIcon);
-      });
-
-      d.appendChild(statusContainer);
-    }
+  const statusContainer = createStatusIconContainer(name);
+  if (statusContainer) {
+    d.appendChild(statusContainer);
   }
 
   d.onmouseenter = e => showTooltip(e, name);
@@ -122,15 +144,8 @@ function showTooltip(e, name) {
   if (!game) return;
 
   // Separate influences and influenced by
-  const influences = game.gamesInfluenced || []; // Games this game influenced
-  const influencedBy = []; // Games that influenced this game
-
-  // Find all games that influence this game
-  games.forEach(g => {
-    if (g.gamesInfluenced && g.gamesInfluenced.includes(name)) {
-      influencedBy.push(g.name);
-    }
-  });
+  const influences = game.gamesInfluenced ?? []; // Games this game influenced
+  const influencedBy = getInfluencedByGames(name); // Games that influenced this game
 
   let connectionsHTML = '';
   if (influencedBy.length > 0) {
@@ -353,10 +368,10 @@ function spawnChoices() {
   );
 
   // Shuffle non-stinky games
-  const shuffledNonStinky = [...nonStinkyGames].sort(() => Math.random() - 0.5);
+  const shuffledNonStinky = shuffleArray(nonStinkyGames);
 
   // Shuffle stinky games
-  const shuffledStinky = [...stinkyGames].sort(() => Math.random() - 0.5);
+  const shuffledStinky = shuffleArray(stinkyGames);
 
   // Combine: non-stinky first, then stinky (deprioritized)
   const shuffled = [...shuffledNonStinky, ...shuffledStinky];
@@ -537,8 +552,8 @@ function addDashRerollButtons() {
   const currentNode = document.querySelector('.node.current');
   if (!currentNode) return;
 
-  // Add Dash button (left side of current node)
-  if (dash > 0 || true) {  // Always show, but gray out if dash === 0
+  // Add Dash button (left side of current node) - always shown, grayed out if dash === 0
+  if (true) {
     const dashBtn = document.createElement('button');
     dashBtn.className = 'node-dash-btn';
     dashBtn.textContent = '⚡ Dash';
@@ -581,8 +596,8 @@ function addDashRerollButtons() {
     currentNode.appendChild(dashBtn);
   }
 
-  // Add Reroll button (right side of current node)
-  if (reroll > 0 || true) {  // Always show, but gray out if reroll === 0
+  // Add Reroll button (right side of current node) - always shown, grayed out if reroll === 0
+  if (true) {
     const rerollBtn = document.createElement('button');
     rerollBtn.className = 'node-reroll-btn';
     rerollBtn.textContent = '🔄 Reroll';
@@ -636,119 +651,6 @@ function removeDashRerollButtons() {
   const rerollBtn = document.querySelector('.node-reroll-btn');
   if (dashBtn) dashBtn.remove();
   if (rerollBtn) rerollBtn.remove();
-}
-
-// ===== OLD ABILITY BUTTONS (DEPRECATED) =====
-
-function addAbilityButtons(node) {
-  // Add Dash button (left side)
-  if (dash > 0 || true) {  // Always show, but gray out if dash === 0
-    const dashBtn = document.createElement('button');
-    dashBtn.className = 'ability-dash-btn';
-    dashBtn.textContent = '⚡ Dash';
-    dashBtn.disabled = dash === 0;
-    dashBtn.style.cssText = `
-      position: absolute;
-      left: -140px;
-      top: 50%;
-      transform: translateY(-50%);
-      padding: 10px 20px;
-      background: ${dash > 0 ? '#66ddff' : '#555'};
-      border: 2px solid ${dash > 0 ? '#88eeff' : '#666'};
-      border-radius: 8px;
-      color: ${dash > 0 ? '#000' : '#888'};
-      cursor: ${dash > 0 ? 'pointer' : 'not-allowed'};
-      font-weight: bold;
-      font-size: 14px;
-      opacity: ${dash > 0 ? '1' : '0.5'};
-      z-index: 10;
-    `;
-    if (dash > 0) {
-      dashBtn.onclick = () => showDashModal();
-      dashBtn.onmouseenter = () => {
-        if (dash > 0) dashBtn.style.background = '#88eeff';
-      };
-      dashBtn.onmouseleave = () => {
-        if (dash > 0) dashBtn.style.background = '#66ddff';
-      };
-    }
-    node.appendChild(dashBtn);
-  }
-
-  // Add Skip button (bottom left of node, left of Finished button)
-  if (skip > 0 || true) {  // Always show, but gray out if skip === 0
-    const skipBtn = document.createElement('button');
-    skipBtn.className = 'ability-skip-btn';
-    skipBtn.textContent = '⏭ Skip';
-    skipBtn.disabled = skip === 0;
-    skipBtn.style.cssText = `
-      position: absolute;
-      left: -70px;
-      bottom: -50px;
-      padding: 8px 16px;
-      background: ${skip > 0 ? '#ff9966' : '#555'};
-      border: 2px solid ${skip > 0 ? '#ffaa77' : '#666'};
-      border-radius: 8px;
-      color: ${skip > 0 ? '#fff' : '#888'};
-      cursor: ${skip > 0 ? 'pointer' : 'not-allowed'};
-      font-weight: bold;
-      font-size: 13px;
-      opacity: ${skip > 0 ? '1' : '0.5'};
-      z-index: 10;
-    `;
-    if (skip > 0) {
-      skipBtn.onclick = () => {
-        if (confirm('Skip this game and move to the next choice?')) {
-          useSkip();
-        }
-      };
-      skipBtn.onmouseenter = () => {
-        if (skip > 0) skipBtn.style.background = '#ffaa77';
-      };
-      skipBtn.onmouseleave = () => {
-        if (skip > 0) skipBtn.style.background = '#ff9966';
-      };
-    }
-    node.appendChild(skipBtn);
-  }
-
-  // Add Reroll button (right side)
-  if (reroll > 0 || true) {  // Always show, but gray out if reroll === 0
-    const rerollBtn = document.createElement('button');
-    rerollBtn.className = 'ability-reroll-btn';
-    rerollBtn.textContent = '🔄 Reroll';
-    rerollBtn.disabled = reroll === 0;
-    rerollBtn.style.cssText = `
-      position: absolute;
-      right: -140px;
-      top: 50%;
-      transform: translateY(-50%);
-      padding: 10px 20px;
-      background: ${reroll > 0 ? '#ffcc66' : '#555'};
-      border: 2px solid ${reroll > 0 ? '#ffdd77' : '#666'};
-      border-radius: 8px;
-      color: ${reroll > 0 ? '#333' : '#888'};
-      cursor: ${reroll > 0 ? 'pointer' : 'not-allowed'};
-      font-weight: bold;
-      font-size: 14px;
-      opacity: ${reroll > 0 ? '1' : '0.5'};
-      z-index: 10;
-    `;
-    if (reroll > 0) {
-      rerollBtn.onclick = () => {
-        if (confirm('Reroll the current choices?')) {
-          useReroll();
-        }
-      };
-      rerollBtn.onmouseenter = () => {
-        if (reroll > 0) rerollBtn.style.background = '#ffdd77';
-      };
-      rerollBtn.onmouseleave = () => {
-        if (reroll > 0) rerollBtn.style.background = '#ffcc66';
-      };
-    }
-    node.appendChild(rerollBtn);
-  }
 }
 
 // ===== GAME ADVANCEMENT =====
@@ -1183,43 +1085,10 @@ function updateNodeStatusIcons(node = null) {
     }
 
     // Add new status icons if the game has any
-    if (typeof getGameStatuses === 'function') {
-      const statuses = getGameStatuses(gameName);
-      if (statuses && statuses.length > 0) {
-        const statusContainer = document.createElement('div');
-        statusContainer.className = 'status-icon-container';
-        statusContainer.style.cssText = `
-          position: absolute;
-          top: -8px;
-          left: -8px;
-          display: flex;
-          gap: 2px;
-          z-index: 100;
-          pointer-events: none;
-        `;
-
-        statuses.forEach((status) => {
-          const statusIcon = document.createElement('span');
-          statusIcon.textContent = status.icon;
-          statusIcon.title = status.name;
-          statusIcon.style.cssText = `
-            width: 20px;
-            height: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            border: 2px solid #cc6600;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-          `;
-          statusContainer.appendChild(statusIcon);
-        });
-
-        // Insert at the beginning of the node
-        nodeEl.insertBefore(statusContainer, nodeEl.firstChild);
-      }
+    const statusContainer = createStatusIconContainer(gameName);
+    if (statusContainer) {
+      // Insert at the beginning of the node
+      nodeEl.insertBefore(statusContainer, nodeEl.firstChild);
     }
   });
 }
