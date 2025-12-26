@@ -271,18 +271,18 @@ function createArrowheadMarker() {
   const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
   const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
   marker.setAttribute('id', 'arrowhead');
-  marker.setAttribute('markerWidth', '12');
-  marker.setAttribute('markerHeight', '12');
-  marker.setAttribute('refX', '10');
-  marker.setAttribute('refY', '5');
+  marker.setAttribute('markerWidth', '20');
+  marker.setAttribute('markerHeight', '20');
+  marker.setAttribute('refX', '18');
+  marker.setAttribute('refY', '10');
   marker.setAttribute('orient', 'auto');
-  marker.setAttribute('markerUnits', 'strokeWidth');
+  marker.setAttribute('markerUnits', 'userSpaceOnUse');
+  marker.setAttribute('viewBox', '0 0 20 20');
 
   const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-  polygon.setAttribute('points', '0 0, 12 5, 0 10');
+  polygon.setAttribute('points', '0 0, 20 10, 0 20, 4 10');
   polygon.setAttribute('fill', '#ffdd00');
-  polygon.setAttribute('stroke', '#ffdd00');
-  polygon.setAttribute('stroke-width', '1');
+  polygon.setAttribute('stroke', 'none');
 
   marker.appendChild(polygon);
   defs.appendChild(marker);

@@ -194,6 +194,32 @@ function rollD20() {
 
         curseMessages.push(`Curse of Failure (×${failureCurses.length}): -${totalDamage} HP!`);
 
+        // Show popup notification for Curse of Failure damage
+        setTimeout(() => {
+          if (typeof createGameModal === 'function') {
+            createGameModal(`
+              <div style="text-align: center;">
+                <h2 style="color: #ff4444; margin-top: 0; font-size: 32px;">😱 Curse of Failure!</h2>
+                <p style="font-size: 18px; color: #ff8888;">You rolled a natural 1!</p>
+                <p style="font-size: 24px; font-weight: bold; color: #ff6666; margin: 20px 0;">
+                  -${totalDamage} HP
+                </p>
+                ${failureCurses.length > 1 ? `<p style="color: #cc8888; font-size: 14px;">${failureCurses.length} curses triggered</p>` : ''}
+                <button onclick="closeGameModal()" style="
+                  padding: 10px 30px;
+                  margin-top: 20px;
+                  background: #ff4444;
+                  border: none;
+                  border-radius: 6px;
+                  color: white;
+                  cursor: pointer;
+                  font-weight: bold;
+                ">Continue</button>
+              </div>
+            `);
+          }
+        }, 500);
+
         // Remove all failure curses after triggering
         gameState.activeCurses = gameState.activeCurses.filter(c => !c.name.toLowerCase().includes('failure'));
         if (typeof updateCursesDisplay === 'function') {

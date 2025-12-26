@@ -776,14 +776,110 @@ function showCombatModal() {
   const rollBtn = document.getElementById('roll-combat-btn');
   rollBtn.addEventListener('click', function handleRoll() {
     const diceRoll = Math.floor(Math.random() * 20) + 1;
-    const totalRoll = diceRoll + playerStatValue;
+    let cursePenalty = 0;
+    let curseMessages = [];
+
+    // Check for Curse of Weakness (subtract from roll) - handle stacking
+    if (gameState && gameState.activeCurses) {
+      const weaknessCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('weakness'));
+      if (weaknessCurses.length > 0) {
+        // Use only the first weakness curse and remove it
+        const weaknessCurse = weaknessCurses[0];
+        let penalty = 0;
+        if (weaknessCurse.power === 'Low') penalty = 2;
+        else if (weaknessCurse.power === 'Medium') penalty = 3;
+        else if (weaknessCurse.power === 'High') penalty = 4;
+
+        cursePenalty = penalty;
+        curseMessages.push(`Curse of Weakness: -${penalty}`);
+
+        // Remove this specific curse instance after this roll
+        const curseIndex = gameState.activeCurses.indexOf(weaknessCurse);
+        gameState.activeCurses.splice(curseIndex, 1);
+
+        if (typeof updateCursesDisplay === 'function') {
+          updateCursesDisplay();
+        }
+        if (typeof updateActiveCursesList === 'function') {
+          updateActiveCursesList();
+        }
+      }
+    }
+
+    // Check for Curse of Failure (damage on rolling 1) - handle stacking
+    if (diceRoll === 1 && gameState && gameState.activeCurses) {
+      const failureCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('failure'));
+      if (failureCurses.length > 0) {
+        // Trigger all failure curses if rolled a 1
+        let totalDamage = 0;
+        failureCurses.forEach(failureCurse => {
+          let damage = 0;
+          if (failureCurse.power === 'Low') damage = 2;
+          else if (failureCurse.power === 'Medium') damage = 3;
+          else if (failureCurse.power === 'High') damage = 4;
+          totalDamage += damage;
+        });
+
+        health = Math.max(0, health - totalDamage);
+        gameState.health = health;
+        if (typeof updateTopBar === 'function') {
+          updateTopBar();
+        }
+
+        curseMessages.push(`Curse of Failure (×${failureCurses.length}): -${totalDamage} HP!`);
+
+        // Show popup notification for Curse of Failure damage
+        setTimeout(() => {
+          if (typeof createGameModal === 'function') {
+            createGameModal(`
+              <div style="text-align: center;">
+                <h2 style="color: #ff4444; margin-top: 0; font-size: 32px;">😱 Curse of Failure!</h2>
+                <p style="font-size: 18px; color: #ff8888;">You rolled a natural 1!</p>
+                <p style="font-size: 24px; font-weight: bold; color: #ff6666; margin: 20px 0;">
+                  -${totalDamage} HP
+                </p>
+                ${failureCurses.length > 1 ? `<p style="color: #cc8888; font-size: 14px;">${failureCurses.length} curses triggered</p>` : ''}
+                <button onclick="closeGameModal()" style="
+                  padding: 10px 30px;
+                  margin-top: 20px;
+                  background: #ff4444;
+                  border: none;
+                  border-radius: 6px;
+                  color: white;
+                  cursor: pointer;
+                  font-weight: bold;
+                ">Continue</button>
+              </div>
+            `);
+          }
+        }, 500);
+
+        // Remove all failure curses after triggering
+        gameState.activeCurses = gameState.activeCurses.filter(c => !c.name.toLowerCase().includes('failure'));
+        if (typeof updateCursesDisplay === 'function') {
+          updateCursesDisplay();
+        }
+        if (typeof updateActiveCursesList === 'function') {
+          updateActiveCursesList();
+        }
+
+        // Check for death
+        if (health <= 0) {
+          // Will be handled by the death check below
+        }
+      }
+    }
+
+    const totalRoll = diceRoll + playerStatValue - cursePenalty;
     const success = totalRoll >= enemy.rollCheck;
 
     let resultHTML = `
       <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 10px 0;">
         <p style="font-size: 20px; font-weight: bold;">Dice: ${diceRoll}</p>
         <p style="font-size: 16px; color: ${getStatColor(enemy.stat)};">+ ${enemy.stat} Bonus: ${playerStatValue}</p>
+        ${cursePenalty > 0 ? `<p style="font-size: 16px; color: #ff6666;">- Weakness Penalty: ${cursePenalty}</p>` : ''}
         <p style="font-size: 24px; font-weight: bold; margin-top: 10px; color: gold;">Total: ${totalRoll}</p>
+        ${curseMessages.length > 0 ? `<p style="font-size: 14px; color: #ff8888; margin-top: 10px;">${curseMessages.join('<br>')}</p>` : ''}
       </div>
     `;
 
@@ -2482,4 +2578,6 @@ window.addGameStatus = addGameStatus;
 window.removeGameStatus = removeGameStatus;
 window.hasGameStatus = hasGameStatus;
 window.getGameStatuses = getGameStatuses;
+window.updateActiveCursesList = updateActiveCursesList;
+window.addCurse = addCurse;
 window.getGamesWithStatus = getGamesWithStatus;
