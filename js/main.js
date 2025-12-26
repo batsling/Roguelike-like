@@ -2056,9 +2056,6 @@ function markGameFinished(gameName) {
     // Check and update curse durations
     checkCurseDurations('game_beaten');
 
-    // Check for curses that need verification
-    showCurseVerificationModal();
-
     updateGameStats();
     saveCurrentGame();
   }
@@ -2068,9 +2065,13 @@ function markGameFinished(gameName) {
 
 /**
  * Show curse verification modal for curses that require manual verification
+ * @param {Function} onComplete - Callback to run after all verifications are done
  */
-function showCurseVerificationModal() {
-  if (!gameState.activeCurses || gameState.activeCurses.length === 0) return;
+function showCurseVerificationModal(onComplete) {
+  if (!gameState.activeCurses || gameState.activeCurses.length === 0) {
+    if (onComplete) onComplete();
+    return;
+  }
 
   // Get curses that need verification
   const cursesToVerify = gameState.activeCurses.filter(curse =>
@@ -2083,20 +2084,25 @@ function showCurseVerificationModal() {
     curse.name.toLowerCase().includes('hubris')
   );
 
-  if (cursesToVerify.length === 0) return;
+  if (cursesToVerify.length === 0) {
+    if (onComplete) onComplete();
+    return;
+  }
 
   // Show verification modal for each curse type
-  verifyCurse(cursesToVerify, 0);
+  verifyCurse(cursesToVerify, 0, onComplete);
 }
 
 /**
  * Recursively verify curses one at a time
+ * @param {Function} onAllComplete - Callback to run after all verifications are done
  */
-function verifyCurse(cursesToVerify, index) {
+function verifyCurse(cursesToVerify, index, onAllComplete) {
   if (index >= cursesToVerify.length) {
     // All curses verified, update displays
     updateCurseUI();
     saveCurrentGame();
+    if (onAllComplete) onAllComplete();
     return;
   }
 
@@ -2105,11 +2111,11 @@ function verifyCurse(cursesToVerify, index) {
   // Handle different curse types
   if (curse.name.toLowerCase().includes('devotion')) {
     verifyDevotionCurse(curse, () => {
-      verifyCurse(cursesToVerify, index + 1);
+      verifyCurse(cursesToVerify, index + 1, onAllComplete);
     });
   } else {
     // Skip to next curse for now (implement other curses later)
-    verifyCurse(cursesToVerify, index + 1);
+    verifyCurse(cursesToVerify, index + 1, onAllComplete);
   }
 }
 
@@ -2122,7 +2128,7 @@ function verifyDevotionCurse(curse, onComplete) {
   createGameModal(`
     <div style="text-align: center;">
       <h2 style="color: #ff4444; margin-top: 0; font-size: 28px;">😈 Curse Verification</h2>
-      <h3 style="color: #ffaa44; margin: 10px 0;">Curse of Devotion</h3>
+      <h3 style="color: #ffaa44; margin: 10px 0;">${curse.name}</h3>
       <p style="color: #aaa; font-size: 14px; margin: 10px 0;">${curse.description}</p>
 
       <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; margin: 20px 0;">

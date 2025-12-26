@@ -252,19 +252,43 @@ function updateCursesDisplay() {
   if (activeCurses.length === 0) {
     cursesList.innerHTML = '<div class="empty-curses" style="color: #888; font-style: italic; padding: 10px; text-align: center;">No active curses</div>';
   } else {
-    cursesList.innerHTML = activeCurses.map((curse, idx) => {
+    // Separate curses into manual and automatic
+    const manualCurses = activeCurses.filter(curse =>
+      curse.name.toLowerCase().includes('devotion') ||
+      curse.name.toLowerCase().includes('greed') ||
+      curse.name.toLowerCase().includes('impulse') ||
+      curse.name.toLowerCase().includes('clacking') ||
+      curse.name.toLowerCase().includes('haste') ||
+      curse.name.toLowerCase().includes('blindness') ||
+      curse.name.toLowerCase().includes('hubris')
+    );
+    const automaticCurses = activeCurses.filter(curse => !manualCurses.includes(curse));
+
+    // Display manual curses first (orange), then automatic curses (red)
+    const sortedCurses = [...manualCurses, ...automaticCurses];
+
+    cursesList.innerHTML = sortedCurses.map((curse, idx) => {
       const remainingText = getCurseRemainingText(curse);
+      const isManual = manualCurses.includes(curse);
+
+      // Different colors for manual vs automatic curses
+      const bgColor = isManual ? 'rgba(255, 170, 68, 0.1)' : 'rgba(255, 102, 102, 0.1)';
+      const borderColor = isManual ? '#ffaa44' : '#ff6666';
+      const titleColor = isManual ? '#ffbb66' : '#ff9999';
+      const descColor = isManual ? '#ccaa88' : '#cc8888';
+      const remainingColor = isManual ? '#aa9977' : '#aa7777';
+
       return `
         <div class="curse-display" style="
-          background: rgba(255, 102, 102, 0.1);
-          border: 1px solid #ff6666;
+          background: ${bgColor};
+          border: 1px solid ${borderColor};
           border-radius: 6px;
           padding: 8px;
           margin: 5px 0;
         ">
-          <div style="color: #ff9999; font-weight: bold; font-size: 14px;">${curse.name}</div>
-          <div style="color: #cc8888; font-size: 12px; margin-top: 4px;">${curse.description}</div>
-          <div style="color: #aa7777; font-size: 11px; margin-top: 4px; font-style: italic;">Remaining: ${remainingText}</div>
+          <div style="color: ${titleColor}; font-weight: bold; font-size: 14px;">${curse.name}</div>
+          <div style="color: ${descColor}; font-size: 12px; margin-top: 4px;">${curse.description}</div>
+          <div style="color: ${remainingColor}; font-size: 11px; margin-top: 4px; font-style: italic;">Remaining: ${remainingText}</div>
         </div>
       `;
     }).join('');
@@ -272,42 +296,11 @@ function updateCursesDisplay() {
 }
 
 function updateVerificationCursesDisplay() {
+  // Manual curses are now shown in the main curses display (orange-styled, above automatic curses)
+  // This function is kept for backwards compatibility but no longer needed
   const verificationSection = document.getElementById('verification-curses');
-  const verificationList = document.getElementById('verification-curses-list');
-  if (!verificationSection || !verificationList) return;
-
-  // Get active curses that need verification
-  const activeCurses = gameState.activeCurses || [];
-  const verificationCurses = activeCurses.filter(curse =>
-    curse.name.toLowerCase().includes('devotion') ||
-    curse.name.toLowerCase().includes('greed') ||
-    curse.name.toLowerCase().includes('impulse') ||
-    curse.name.toLowerCase().includes('clacking') ||
-    curse.name.toLowerCase().includes('haste') ||
-    curse.name.toLowerCase().includes('blindness') ||
-    curse.name.toLowerCase().includes('hubris')
-  );
-
-  if (verificationCurses.length === 0) {
+  if (verificationSection) {
     verificationSection.style.display = 'none';
-  } else {
-    verificationSection.style.display = 'block';
-    verificationList.innerHTML = verificationCurses.map((curse, idx) => {
-      const remainingText = getCurseRemainingText(curse);
-      return `
-        <div class="curse-display" style="
-          background: rgba(255, 170, 68, 0.1);
-          border: 1px solid #ffaa44;
-          border-radius: 6px;
-          padding: 8px;
-          margin: 5px 0;
-        ">
-          <div style="color: #ffbb66; font-weight: bold; font-size: 14px;">${curse.name}</div>
-          <div style="color: #ccaa88; font-size: 12px; margin-top: 4px;">${curse.description}</div>
-          <div style="color: #aa9977; font-size: 11px; margin-top: 4px; font-style: italic;">Remaining: ${remainingText}</div>
-        </div>
-      `;
-    }).join('');
   }
 }
 

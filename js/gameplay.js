@@ -804,9 +804,19 @@ function showFinish(node, isAmuletGame = false) {
         startEscapePhase();
       }
     } else {
-      // Show item choice modal first
-      if (typeof showItemChoiceModal === 'function') {
-        showItemChoiceModal();
+      // Show curse verification first, then item choice modal
+      if (typeof showCurseVerificationModal === 'function') {
+        showCurseVerificationModal(() => {
+          // After verification, show item choice
+          if (typeof showItemChoiceModal === 'function') {
+            showItemChoiceModal();
+          }
+        });
+      } else {
+        // Fallback if verification not available
+        if (typeof showItemChoiceModal === 'function') {
+          showItemChoiceModal();
+        }
       }
     }
   };
