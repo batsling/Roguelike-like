@@ -975,6 +975,15 @@ function showCombatModal() {
           };
 
           document.getElementById('death-retry-btn').onclick = () => {
+            // Clear UI immediately to prevent flash
+            inventory = [];
+            if (gameState.activeCurses) {
+              gameState.activeCurses = [];
+            }
+            updateInventory?.();
+            updateCursesDisplay?.();
+            updateActiveCursesList?.();
+
             closeGameModal();
             document.getElementById('dungeon-screen').style.display = 'none';
             document.getElementById('main-menu').style.display = 'flex';
@@ -1817,6 +1826,15 @@ function recordLostRun(index) {
       };
 
       document.getElementById('escape-death-retry-btn').onclick = () => {
+        // Clear UI immediately to prevent flash
+        inventory = [];
+        if (gameState.activeCurses) {
+          gameState.activeCurses = [];
+        }
+        updateInventory?.();
+        updateCursesDisplay?.();
+        updateActiveCursesList?.();
+
         closeGameModal();
         document.getElementById('dungeon-screen').style.display = 'none';
         document.getElementById('main-menu').style.display = 'flex';
@@ -2133,8 +2151,24 @@ function verifyDevotionCurse(curse, onComplete) {
 
       <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; margin: 20px 0;">
         <p style="font-size: 18px; margin-bottom: 15px;">Did you reset any runs during this game?</p>
-        <div style="display: flex; gap: 15px; justify-content: center;">
-          <button id="devotion-yes" style="
+        <p style="font-size: 14px; color: #ff8888; margin-bottom: 15px;">Penalty: ${damage} HP per reset</p>
+
+        <div style="margin: 20px 0;">
+          <label style="font-size: 14px; color: #ccc; display: block; margin-bottom: 8px;">Number of resets:</label>
+          <input type="number" id="reset-count-input" min="0" value="0" style="
+            padding: 12px;
+            font-size: 18px;
+            width: 100px;
+            text-align: center;
+            background: #333;
+            border: 2px solid #666;
+            border-radius: 6px;
+            color: white;
+          ">
+        </div>
+
+        <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
+          <button id="devotion-submit" style="
             padding: 15px 30px;
             background: #d32f2f;
             border: 2px solid #f44336;
@@ -2143,131 +2177,53 @@ function verifyDevotionCurse(curse, onComplete) {
             cursor: pointer;
             font-weight: bold;
             font-size: 16px;
-          ">Yes</button>
-          <button id="devotion-no" style="
-            padding: 15px 30px;
-            background: #4CAF50;
-            border: 2px solid #66BB6A;
-            border-radius: 8px;
-            color: white;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 16px;
-          ">No</button>
+          ">Confirm</button>
         </div>
       </div>
     </div>
   `);
 
-  document.getElementById('devotion-yes').onclick = () => {
+  // Focus the input for easier typing
+  setTimeout(() => {
+    document.getElementById('reset-count-input')?.focus();
+  }, 100);
+
+  document.getElementById('devotion-submit').onclick = () => {
+    const resetCount = parseInt(document.getElementById('reset-count-input').value) || 0;
+    const totalDamage = resetCount * damage;
+
     closeGameModal();
-    askDevotionResetCount(curse, damage, onComplete);
-  };
 
-  document.getElementById('devotion-no').onclick = () => {
-    closeGameModal();
-    onComplete();
-  };
-}
-
-/**
- * Ask how many times player reset during the game
- */
-function askDevotionResetCount(curse, damagePerReset, onComplete) {
-  createGameModal(`
-    <div style="text-align: center;">
-      <h2 style="color: #ff4444; margin-top: 0; font-size: 28px;">😈 Curse of Devotion</h2>
-      <p style="color: #aaa; font-size: 16px; margin: 15px 0;">How many times did you reset a run?</p>
-
-      <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <input type="number" id="reset-count" min="0" value="1" style="
-          padding: 12px;
-          font-size: 18px;
-          width: 100px;
-          text-align: center;
-          background: #333;
-          border: 2px solid #666;
-          border-radius: 6px;
-          color: white;
-        ">
-        <p style="font-size: 14px; color: #ff8888; margin-top: 15px;">
-          Damage: ${damagePerReset} HP per reset
-        </p>
-      </div>
-
-      <button id="apply-devotion" style="
-        padding: 15px 40px;
-        background: #d32f2f;
-        border: 2px solid #f44336;
-        border-radius: 8px;
-        color: white;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 16px;
-      ">Apply Penalty</button>
-    </div>
-  `);
-
-  document.getElementById('apply-devotion').onclick = () => {
-    const resetCount = parseInt(document.getElementById('reset-count').value) || 0;
-    const totalDamage = resetCount * damagePerReset;
-
+    // Apply damage silently
     if (totalDamage > 0) {
       health = Math.max(0, health - totalDamage);
       gameState.health = health;
       updateTopBar?.();
 
-      // Show damage notification
-      closeGameModal();
-      setTimeout(() => {
-        createGameModal(`
-          <div style="text-align: center;">
-            <h2 style="color: #ff4444; margin-top: 0; font-size: 32px;">😱 Curse of Devotion</h2>
-            <p style="font-size: 18px; color: #ff8888;">You reset ${resetCount} run${resetCount !== 1 ? 's' : ''}</p>
-            <p style="font-size: 32px; font-weight: bold; color: #ff6666; margin: 20px 0;">
-              -${totalDamage} HP
-            </p>
-            <button onclick="closeGameModal()" style="
-              padding: 12px 30px;
-              background: #d32f2f;
-              border: none;
-              border-radius: 6px;
-              color: white;
-              cursor: pointer;
-              font-weight: bold;
-            ">Continue</button>
-          </div>
-        `);
-
-        // Check for death
-        if (health <= 0) {
-          setTimeout(() => {
-            closeGameModal();
-            // Trigger death screen
-            inventory = [];
-            if (gameState.activeCurses) {
-              gameState.activeCurses = [];
-            }
-            setTimeout(() => showDeathScreen(), 500);
-          }, 2000);
-        } else {
-          setTimeout(() => {
-            closeGameModal();
-            onComplete();
-          }, 2000);
+      // Check for death
+      if (health <= 0) {
+        // Trigger death screen
+        inventory = [];
+        if (gameState.activeCurses) {
+          gameState.activeCurses = [];
         }
-      }, 100);
-    } else {
-      closeGameModal();
-      onComplete();
+        updateInventory?.();
+        updateCursesDisplay?.();
+        updateActiveCursesList?.();
+        showDeathScreen(`You succumbed to the ${curse.name}!`, 'curse');
+        return; // Don't call onComplete if player died
+      }
     }
+
+    // Continue to next curse or item choice
+    onComplete();
   };
 }
 
 /**
  * Show death screen after curse damage
  */
-function showDeathScreen() {
+function showDeathScreen(message = 'You have perished!', source = 'curse') {
   createGameModal(`
     <div style="text-align: center;">
       <h1 style="color: #ff4444; font-size: 48px; margin: 20px 0;">💀 YOU ARE DEAD</h1>

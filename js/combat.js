@@ -144,6 +144,15 @@ function applyCombatOutcome(success) {
       };
 
       document.getElementById('death-retry-btn').onclick = () => {
+        // Clear UI immediately to prevent flash
+        inventory = [];
+        if (gameState.activeCurses) {
+          gameState.activeCurses = [];
+        }
+        updateInventory?.();
+        updateCursesDisplay?.();
+        updateActiveCursesList?.();
+
         closeGameModal();
         document.getElementById('dungeon-screen').style.display = 'none';
         document.getElementById('main-menu').style.display = 'flex';
