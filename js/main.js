@@ -8,6 +8,37 @@
 // - Tutorial and UI controls
 // - Integration of all other modules
 
+// ===== HELPER FUNCTIONS =====
+
+// Get curses by type from active curses
+function getCursesByType(curseType) {
+  return gameState?.activeCurses?.filter(c =>
+    c.name.toLowerCase().includes(curseType.toLowerCase())
+  ) || [];
+}
+
+// Get numeric value for curse power level
+function getPowerValue(power, scale = { Low: 1, Medium: 2, High: 3 }) {
+  return scale[power] || 0;
+}
+
+// Get player stat value by name
+function getPlayerStat(statName) {
+  const stats = {
+    Strength: strength,
+    Dexterity: dexterity,
+    Intelligence: intelligence,
+    Charisma: charisma
+  };
+  return stats[statName] || 0;
+}
+
+// Consolidate curse display updates
+function updateCurseUI() {
+  updateCursesDisplay?.();
+  updateActiveCursesList?.();
+}
+
 // ===== INITIALIZATION =====
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -41,18 +72,18 @@ function loadState() {
   if (savedState) {
     const state = JSON.parse(savedState);
     rations = state.rations;
-    gold = state.gold || 0;
+    gold = state.gold ?? 0;
     health = state.health;
-    maxHealth = state.maxHealth || 10;
+    maxHealth = state.maxHealth ?? 10;
     inventory = state.inventory;
     beatenGames = state.beatenGames;
     selectedPhase2Games = state.selectedPhase2Games;
-    excludedGames = state.excludedGames || [];
+    excludedGames = state.excludedGames ?? [];
     roguePoints = state.roguePoints;
     pactConditions = state.pactConditions;
     startGame = state.startGame;
     amuletGame = state.amuletGame;
-    encounterHistory = state.encounterHistory || [];
+    encounterHistory = state.encounterHistory ?? [];
     markedSvg = state.markedSvg;
 
     if (state.markedSvg) {
@@ -740,13 +771,7 @@ function showCombatModal() {
   const enemy = matchingEnemies[randomIndex];
 
   // Get player's stat value for this check
-  let playerStatValue = 0;
-  switch(enemy.stat) {
-    case 'Strength': playerStatValue = strength; break;
-    case 'Dexterity': playerStatValue = dexterity; break;
-    case 'Intelligence': playerStatValue = intelligence; break;
-    case 'Charisma': playerStatValue = charisma; break;
-  }
+  const playerStatValue = getPlayerStat(enemy.stat);
 
   createGameModal(`
     <div style="text-align: center;">
@@ -780,88 +805,62 @@ function showCombatModal() {
     let curseMessages = [];
 
     // Check for Curse of Weakness (subtract from roll) - handle stacking
-    if (gameState && gameState.activeCurses) {
-      const weaknessCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('weakness'));
-      if (weaknessCurses.length > 0) {
-        // Use only the first weakness curse and remove it
-        const weaknessCurse = weaknessCurses[0];
-        let penalty = 0;
-        if (weaknessCurse.power === 'Low') penalty = 2;
-        else if (weaknessCurse.power === 'Medium') penalty = 3;
-        else if (weaknessCurse.power === 'High') penalty = 4;
+    const weaknessCurses = getCursesByType('weakness');
+    if (weaknessCurses.length > 0) {
+      // Use only the first weakness curse and remove it
+      const weaknessCurse = weaknessCurses[0];
+      const penalty = getPowerValue(weaknessCurse.power, { Low: 2, Medium: 3, High: 4 });
 
-        cursePenalty = penalty;
-        curseMessages.push(`Curse of Weakness: -${penalty}`);
+      cursePenalty = penalty;
+      curseMessages.push(`Curse of Weakness: -${penalty}`);
 
-        // Remove this specific curse instance after this roll
-        const curseIndex = gameState.activeCurses.indexOf(weaknessCurse);
-        gameState.activeCurses.splice(curseIndex, 1);
-
-        if (typeof updateCursesDisplay === 'function') {
-          updateCursesDisplay();
-        }
-        if (typeof updateActiveCursesList === 'function') {
-          updateActiveCursesList();
-        }
-      }
+      // Remove this specific curse instance after this roll
+      gameState.activeCurses.splice(gameState.activeCurses.indexOf(weaknessCurse), 1);
+      updateCurseUI();
     }
 
     // Check for Curse of Failure (damage on rolling 1) - handle stacking
-    if (diceRoll === 1 && gameState && gameState.activeCurses) {
-      const failureCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('failure'));
+    if (diceRoll === 1) {
+      const failureCurses = getCursesByType('failure');
       if (failureCurses.length > 0) {
         // Trigger all failure curses if rolled a 1
-        let totalDamage = 0;
-        failureCurses.forEach(failureCurse => {
-          let damage = 0;
-          if (failureCurse.power === 'Low') damage = 2;
-          else if (failureCurse.power === 'Medium') damage = 3;
-          else if (failureCurse.power === 'High') damage = 4;
-          totalDamage += damage;
-        });
+        const totalDamage = failureCurses.reduce((sum, curse) =>
+          sum + getPowerValue(curse.power, { Low: 2, Medium: 3, High: 4 }), 0
+        );
 
         health = Math.max(0, health - totalDamage);
         gameState.health = health;
-        if (typeof updateTopBar === 'function') {
-          updateTopBar();
-        }
+        updateTopBar?.();
 
         curseMessages.push(`Curse of Failure (×${failureCurses.length}): -${totalDamage} HP!`);
 
         // Show popup notification for Curse of Failure damage
         setTimeout(() => {
-          if (typeof createGameModal === 'function') {
-            createGameModal(`
-              <div style="text-align: center;">
-                <h2 style="color: #ff4444; margin-top: 0; font-size: 32px;">😱 Curse of Failure!</h2>
-                <p style="font-size: 18px; color: #ff8888;">You rolled a natural 1!</p>
-                <p style="font-size: 24px; font-weight: bold; color: #ff6666; margin: 20px 0;">
-                  -${totalDamage} HP
-                </p>
-                ${failureCurses.length > 1 ? `<p style="color: #cc8888; font-size: 14px;">${failureCurses.length} curses triggered</p>` : ''}
-                <button onclick="closeGameModal()" style="
-                  padding: 10px 30px;
-                  margin-top: 20px;
-                  background: #ff4444;
-                  border: none;
-                  border-radius: 6px;
-                  color: white;
-                  cursor: pointer;
-                  font-weight: bold;
-                ">Continue</button>
-              </div>
-            `);
-          }
+          createGameModal?.(`
+            <div style="text-align: center;">
+              <h2 style="color: #ff4444; margin-top: 0; font-size: 32px;">😱 Curse of Failure!</h2>
+              <p style="font-size: 18px; color: #ff8888;">You rolled a natural 1!</p>
+              <p style="font-size: 24px; font-weight: bold; color: #ff6666; margin: 20px 0;">
+                -${totalDamage} HP
+              </p>
+              ${failureCurses.length > 1 ? `<p style="color: #cc8888; font-size: 14px;">${failureCurses.length} curses triggered</p>` : ''}
+              <button onclick="closeGameModal()" style="
+                padding: 10px 30px;
+                margin-top: 20px;
+                background: #ff4444;
+                border: none;
+                border-radius: 6px;
+                color: white;
+                cursor: pointer;
+                font-weight: bold;
+              ">Continue</button>
+            </div>
+          `);
         }, 500);
 
         // Remove all failure curses after triggering
         gameState.activeCurses = gameState.activeCurses.filter(c => !c.name.toLowerCase().includes('failure'));
-        if (typeof updateCursesDisplay === 'function') {
-          updateCursesDisplay();
-        }
-        if (typeof updateActiveCursesList === 'function') {
-          updateActiveCursesList();
-        }
+        updateCurseUI();
 
         // Check for death
         if (health <= 0) {
@@ -1145,20 +1144,11 @@ function showShopModal(purchasedIndices = []) {
   const shopItems = gameState.currentShopItems;
 
   // Check for Curse of Frugality - handle stacking
-  let frugalityModifier = 0;
-  let hasFrugality = false;
-  if (gameState && gameState.activeCurses) {
-    const frugalityCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('frugality'));
-    if (frugalityCurses.length > 0) {
-      hasFrugality = true;
-      // Sum all frugality penalties
-      frugalityCurses.forEach(curse => {
-        if (curse.power === 'Low') frugalityModifier += 5;
-        else if (curse.power === 'Medium') frugalityModifier += 10;
-        else if (curse.power === 'High') frugalityModifier += 15;
-      });
-    }
-  }
+  const frugalityCurses = getCursesByType('frugality');
+  const frugalityModifier = frugalityCurses.reduce((sum, curse) =>
+    sum + getPowerValue(curse.power, { Low: 5, Medium: 10, High: 15 }), 0
+  );
+  const hasFrugality = frugalityCurses.length > 0;
 
   let itemsHTML = '<div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">';
 
@@ -1232,21 +1222,14 @@ function showShopModal(purchasedIndices = []) {
 
         // Check for Curse of Frugality and remove only ONE after first purchase
         let curseWasRemoved = false;
-        if (gameState && gameState.activeCurses) {
-          const frugalityCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('frugality'));
-          if (frugalityCurses.length > 0) {
-            // Remove only the first frugality curse
-            const curseIndex = gameState.activeCurses.indexOf(frugalityCurses[0]);
-            if (curseIndex !== -1) {
-              gameState.activeCurses.splice(curseIndex, 1);
-              curseWasRemoved = true;
-              if (typeof updateCursesDisplay === 'function') {
-                updateCursesDisplay();
-              }
-              if (typeof updateActiveCursesList === 'function') {
-                updateActiveCursesList();
-              }
-            }
+        const frugalityCurses = getCursesByType('frugality');
+        if (frugalityCurses.length > 0) {
+          // Remove only the first frugality curse
+          const curseIndex = gameState.activeCurses.indexOf(frugalityCurses[0]);
+          if (curseIndex !== -1) {
+            gameState.activeCurses.splice(curseIndex, 1);
+            curseWasRemoved = true;
+            updateCurseUI();
           }
         }
 
@@ -2088,7 +2071,7 @@ function addCurse(curseToAdd) {
   gameState.activeCurses.push(createCurseObject(curseToAdd));
 
   // Check for Curse of Vulnerability (add duplicate curses)
-  const vulnerabilityCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('vulnerability'));
+  const vulnerabilityCurses = getCursesByType('vulnerability');
   if (vulnerabilityCurses.length > 0) {
     // Track uses for each vulnerability curse
     if (!gameState.vulnerabilityUses) {
