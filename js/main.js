@@ -2107,58 +2107,47 @@ function showCurseVerificationModal(onComplete) {
     return;
   }
 
-  // Show verification modal for each curse type
-  verifyCurse(cursesToVerify, 0, onComplete);
+  // Show combined verification modal for all curses at once
+  verifyCursesCombined(cursesToVerify, onComplete);
 }
 
 /**
- * Recursively verify curses one at a time
- * @param {Function} onAllComplete - Callback to run after all verifications are done
+ * Verify all manual curses in a single combined modal
+ * @param {Function} onComplete - Callback to run after verification is done
  */
-function verifyCurse(cursesToVerify, index, onAllComplete) {
-  if (index >= cursesToVerify.length) {
-    // All curses verified, update displays
-    updateCurseUI();
-    saveCurrentGame();
-    if (onAllComplete) onAllComplete();
-    return;
-  }
+function verifyCursesCombined(cursesToVerify, onComplete) {
+  // Group curses by type
+  const devotionCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('devotion'));
+  // TODO: Add other curse types here as they're implemented
+  // const greedCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('greed'));
 
-  const curse = cursesToVerify[index];
-
-  // Handle different curse types
-  if (curse.name.toLowerCase().includes('devotion')) {
-    verifyDevotionCurse(curse, () => {
-      verifyCurse(cursesToVerify, index + 1, onAllComplete);
-    });
-  } else {
-    // Skip to next curse for now (implement other curses later)
-    verifyCurse(cursesToVerify, index + 1, onAllComplete);
-  }
-}
-
-/**
- * Verify Curse of Devotion (reset tracking)
- */
-function verifyDevotionCurse(curse, onComplete) {
-  const damage = getPowerValue(curse.power, { Low: 1, Medium: 2, High: 3 });
-
-  createGameModal(`
+  // Build the modal HTML
+  let modalHTML = `
     <div style="text-align: center;">
       <h2 style="color: #ff4444; margin-top: 0; font-size: 28px;">😈 Curse Verification</h2>
-      <h3 style="color: #ffaa44; margin: 10px 0;">${curse.name}</h3>
-      <p style="color: #aaa; font-size: 14px; margin: 10px 0;">${curse.description}</p>
+      <p style="color: #aaa; font-size: 14px; margin: 10px 0;">Answer honestly for each curse you have active</p>
+  `;
 
-      <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <p style="font-size: 18px; margin-bottom: 15px;">Did you reset any runs during this game?</p>
-        <p style="font-size: 14px; color: #ff8888; margin-bottom: 15px;">Penalty: ${damage} HP per reset</p>
+  // Add Devotion section if there are any Devotion curses
+  if (devotionCurses.length > 0) {
+    const totalDevotionDamage = devotionCurses.reduce((sum, curse) => {
+      return sum + getPowerValue(curse.power, { Low: 1, Medium: 2, High: 3 });
+    }, 0);
 
-        <div style="margin: 20px 0;">
-          <label style="font-size: 14px; color: #ccc; display: block; margin-bottom: 8px;">Number of resets:</label>
-          <input type="number" id="reset-count-input" min="0" value="0" style="
-            padding: 12px;
-            font-size: 18px;
-            width: 100px;
+    modalHTML += `
+      <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 8px; padding: 15px; margin: 20px 0;">
+        <h3 style="color: #ffbb66; margin: 0 0 10px 0; font-size: 18px;">Curse of Devotion</h3>
+        <div style="color: #ccaa88; font-size: 13px; margin-bottom: 10px;">
+          ${devotionCurses.map(c => c.name).join(', ')}
+        </div>
+        <p style="font-size: 16px; margin: 10px 0; color: #ddd;">Did you reset any runs during this game?</p>
+        <p style="font-size: 13px; color: #ff8888; margin: 10px 0;">Combined Penalty: ${totalDevotionDamage} HP per reset</p>
+        <div style="margin: 15px 0;">
+          <label style="font-size: 13px; color: #ccc; display: block; margin-bottom: 8px;">Number of resets:</label>
+          <input type="number" id="devotion-reset-count" min="0" value="0" style="
+            padding: 10px;
+            font-size: 16px;
+            width: 80px;
             text-align: center;
             background: #333;
             border: 2px solid #666;
@@ -2166,35 +2155,53 @@ function verifyDevotionCurse(curse, onComplete) {
             color: white;
           ">
         </div>
-
-        <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
-          <button id="devotion-submit" style="
-            padding: 15px 30px;
-            background: #d32f2f;
-            border: 2px solid #f44336;
-            border-radius: 8px;
-            color: white;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 16px;
-          ">Confirm</button>
-        </div>
       </div>
-    </div>
-  `);
+    `;
+  }
 
-  // Focus the input for easier typing
+  // TODO: Add sections for other curse types here
+  // if (greedCurses.length > 0) { ... }
+
+  modalHTML += `
+      <button id="verify-all-submit" style="
+        padding: 15px 40px;
+        background: #d32f2f;
+        border: 2px solid #f44336;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+        margin-top: 10px;
+      ">Confirm All</button>
+    </div>
+  `;
+
+  createGameModal(modalHTML);
+
+  // Focus first input
   setTimeout(() => {
-    document.getElementById('reset-count-input')?.focus();
+    document.getElementById('devotion-reset-count')?.focus();
   }, 100);
 
-  document.getElementById('devotion-submit').onclick = () => {
-    const resetCount = parseInt(document.getElementById('reset-count-input').value) || 0;
-    const totalDamage = resetCount * damage;
+  // Handle submission
+  document.getElementById('verify-all-submit').onclick = () => {
+    let totalDamage = 0;
+
+    // Process Devotion curses
+    if (devotionCurses.length > 0) {
+      const resetCount = parseInt(document.getElementById('devotion-reset-count').value) || 0;
+      const devotionDamagePerReset = devotionCurses.reduce((sum, curse) => {
+        return sum + getPowerValue(curse.power, { Low: 1, Medium: 2, High: 3 });
+      }, 0);
+      totalDamage += resetCount * devotionDamagePerReset;
+    }
+
+    // TODO: Process other curse types here
 
     closeGameModal();
 
-    // Apply damage silently
+    // Apply total damage silently
     if (totalDamage > 0) {
       health = Math.max(0, health - totalDamage);
       gameState.health = health;
@@ -2210,13 +2217,15 @@ function verifyDevotionCurse(curse, onComplete) {
         updateInventory?.();
         updateCursesDisplay?.();
         updateActiveCursesList?.();
-        showDeathScreen(`You succumbed to the ${curse.name}!`, 'curse');
+        showDeathScreen('You succumbed to your curses!', 'curse');
         return; // Don't call onComplete if player died
       }
     }
 
-    // Continue to next curse or item choice
-    onComplete();
+    // Update UI and continue
+    updateCurseUI();
+    saveCurrentGame();
+    if (onComplete) onComplete();
   };
 }
 

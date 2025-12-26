@@ -793,27 +793,33 @@ function showFinish(node, isAmuletGame = false) {
       skipBtn.style.background = '#555';
     }
 
-    // Mark this game as finished
-    if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
-      markGameFinished(gameState.currentGame);
-    }
-
     if (isAmuletGame) {
+      // Mark game as finished first
+      if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
+        markGameFinished(gameState.currentGame);
+      }
       // Start escape phase
       if (typeof startEscapePhase === 'function') {
         startEscapePhase();
       }
     } else {
-      // Show curse verification first, then item choice modal
+      // Show curse verification FIRST (before marking game finished), then mark finished, then item choice
       if (typeof showCurseVerificationModal === 'function') {
         showCurseVerificationModal(() => {
-          // After verification, show item choice
+          // After verification, mark game as finished
+          if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
+            markGameFinished(gameState.currentGame);
+          }
+          // Then show item choice
           if (typeof showItemChoiceModal === 'function') {
             showItemChoiceModal();
           }
         });
       } else {
         // Fallback if verification not available
+        if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
+          markGameFinished(gameState.currentGame);
+        }
         if (typeof showItemChoiceModal === 'function') {
           showItemChoiceModal();
         }
