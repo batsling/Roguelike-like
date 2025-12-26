@@ -223,6 +223,21 @@ function getCurseRemainingText(curse) {
     return 'Next purchase';
   }
 
+  // Manual curses that track games beaten (Devotion, Greed, Impulse, etc.)
+  const duration = curse.duration || '';
+  if (duration.toLowerCase().includes('until') && duration.toLowerCase().includes('game')) {
+    // Parse the required number of games from duration (e.g., "Until 2 Games Beaten" -> 2)
+    const match = duration.match(/(\d+)\s+game/i);
+    if (match) {
+      const requiredGames = parseInt(match[1]);
+      // Get current progress from tracker
+      if (!gameState.cursesTracker) gameState.cursesTracker = {};
+      const tracker = gameState.cursesTracker[curse.name] || { gamesBeaten: 0 };
+      const currentGames = tracker.gamesBeaten || 0;
+      return `${currentGames}/${requiredGames} games beaten`;
+    }
+  }
+
   // Default - show duration string
   return curse.duration;
 }

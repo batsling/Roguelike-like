@@ -739,6 +739,11 @@ function advance(game, x, y, encounterType) {
   // Always show Finished button (including for amulet game)
   showFinish(n, isAmuletGame);
 
+  // Update verification curses display when entering gameplay phase
+  if (typeof updateVerificationCursesDisplay === 'function') {
+    updateVerificationCursesDisplay();
+  }
+
   // Scroll to keep node vertically centered in viewport
   setTimeout(() => {
     if (viewport && n) {
