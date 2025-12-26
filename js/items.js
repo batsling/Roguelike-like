@@ -5,6 +5,63 @@
 // - Modular item effects for easy extension
 // - Item stat modifications
 
+// ===== HELPER FUNCTIONS =====
+
+// Create and display a notification popup
+function createNotification(text, bgColor = '#8B4513', emoji = '') {
+  const notification = document.createElement('div');
+  notification.textContent = `${emoji} ${text}`;
+  notification.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 30px 50px;
+    background: ${bgColor};
+    color: white;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    font-size: 24px;
+    font-weight: bold;
+    z-index: 10000;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+  `;
+  document.body.appendChild(notification);
+
+  setTimeout(() => notification.style.opacity = '1', 10);
+  setTimeout(() => notification.style.opacity = '0', 1500);
+  setTimeout(() => notification.remove(), 1800);
+}
+
+// Update a stat and sync it with gameState
+function updateStat(statName, change) {
+  const statMap = {
+    strength: () => { strength += change; gameState.strength = strength; },
+    dexterity: () => { dexterity += change; gameState.dexterity = dexterity; },
+    intelligence: () => { intelligence += change; gameState.intelligence = intelligence; },
+    charisma: () => { charisma += change; gameState.charisma = charisma; },
+    dash: () => { dash += change; gameState.dash = dash; },
+    reroll: () => { reroll += change; gameState.reroll = reroll; },
+    skip: () => { skip += change; gameState.skip = skip; },
+    discovery: () => { discovery += change; gameState.discovery = discovery; },
+    fov: () => { fov += change; gameState.fov = fov; }
+  };
+
+  statMap[statName]?.();
+  if (typeof updateGameStats === 'function') updateGameStats();
+}
+
+// Determine encounter type based on weighted roll
+function determineEncounterType() {
+  const encounterRoll = Math.random() * 100;
+  if (encounterRoll < 75) return 'combat';
+  if (encounterRoll < 90) return 'event';
+  return 'shop';
+}
+
 // ===== ITEM EFFECTS REGISTRY =====
 // Define all item effects here for easy maintenance and extension
 
@@ -168,32 +225,9 @@ const ITEM_EFFECTS = {
             updateTopBar();
           }
           // Show notification
-          if (typeof createGameModal !== 'undefined') {
-            setTimeout(() => {
-              const notification = document.createElement('div');
-              notification.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: rgba(76, 175, 80, 0.9);
-                color: white;
-                padding: 20px 40px;
-                border-radius: 12px;
-                font-size: 18px;
-                font-weight: bold;
-                z-index: 10001;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-                animation: fadeIn 0.3s;
-              `;
-              notification.textContent = '🧛 Charm of the Vampire: +1 Health!';
-              document.body.appendChild(notification);
-              setTimeout(() => {
-                notification.style.animation = 'fadeOut 0.3s';
-                setTimeout(() => notification.remove(), 300);
-              }, 1500);
-            }, 100);
-          }
+          setTimeout(() => {
+            createNotification('Charm of the Vampire: +1 Health!', 'rgba(76, 175, 80, 0.9)', '🧛');
+          }, 100);
         }
       }
     }
@@ -233,32 +267,9 @@ const ITEM_EFFECTS = {
           updateTopBar();
         }
         // Show notification
-        if (typeof createGameModal !== 'undefined') {
-          setTimeout(() => {
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-              position: fixed;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
-              background: rgba(156, 39, 176, 0.9);
-              color: white;
-              padding: 20px 40px;
-              border-radius: 12px;
-              font-size: 18px;
-              font-weight: bold;
-              z-index: 10001;
-              box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-              animation: fadeIn 0.3s;
-            `;
-            notification.textContent = '⚔️ Cursed Slash: +1 Health!';
-            document.body.appendChild(notification);
-            setTimeout(() => {
-              notification.style.animation = 'fadeOut 0.3s';
-              setTimeout(() => notification.remove(), 300);
-            }, 1500);
-          }, 100);
-        }
+        setTimeout(() => {
+          createNotification('Cursed Slash: +1 Health!', 'rgba(156, 39, 176, 0.9)', '⚔️');
+        }, 100);
       }
     }
   },
@@ -346,28 +357,7 @@ const ITEM_EFFECTS = {
 
         // Show notification
         setTimeout(() => {
-          const notification = document.createElement('div');
-          notification.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(139, 69, 19, 0.95);
-            color: white;
-            padding: 20px 40px;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            z-index: 10001;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            animation: fadeIn 0.3s;
-          `;
-          notification.textContent = `💩 ${currentGame} is now STINKY!`;
-          document.body.appendChild(notification);
-          setTimeout(() => {
-            notification.style.animation = 'fadeOut 0.3s';
-            setTimeout(() => notification.remove(), 300);
-          }, 2000);
+          createNotification(`${currentGame} is now STINKY!`, 'rgba(139, 69, 19, 0.95)', '💩');
         }, 100);
       }
     }
@@ -417,28 +407,7 @@ const ITEM_EFFECTS = {
 
         // Show notification
         setTimeout(() => {
-          const notification = document.createElement('div');
-          notification.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(75, 0, 130, 0.95);
-            color: white;
-            padding: 20px 40px;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            z-index: 10001;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            animation: fadeIn 0.3s;
-          `;
-          notification.textContent = `🌀 Portal created at ${currentGame}!`;
-          document.body.appendChild(notification);
-          setTimeout(() => {
-            notification.style.animation = 'fadeOut 0.3s';
-            setTimeout(() => notification.remove(), 300);
-          }, 2000);
+          createNotification(`Portal created at ${currentGame}!`, 'rgba(75, 0, 130, 0.95)', '🌀');
         }, 100);
 
         // Refresh the game view to add portal connections
@@ -631,16 +600,7 @@ function teleportToRandomGameOfType(gameType = null) {
   const y = gameState.currentY + 200;
 
   // Determine encounter type (same logic as spawnChoices)
-  const encounterRoll = Math.random() * 100;
-  let encounterType;
-
-  if (encounterRoll < 75) {
-    encounterType = 'combat';
-  } else if (encounterRoll < 90) {
-    encounterType = 'event';
-  } else {
-    encounterType = 'shop';
-  }
+  const encounterType = determineEncounterType();
 
   // Advance to the selected game
   advance(randomGame.name, x, y, encounterType);
@@ -784,15 +744,7 @@ function selectedTeleport(options = {}) {
           const y = gameState.currentY + 200;
 
           // Determine encounter type
-          const encounterRoll = Math.random() * 100;
-          let encounterType;
-          if (encounterRoll < 75) {
-            encounterType = 'combat';
-          } else if (encounterRoll < 90) {
-            encounterType = 'event';
-          } else {
-            encounterType = 'shop';
-          }
+          const encounterType = determineEncounterType();
 
           advance(selectedGame.name, x, y, encounterType);
         }
