@@ -256,6 +256,46 @@ function updateCursesDisplay() {
   }
 }
 
+function updateVerificationCursesDisplay() {
+  const verificationSection = document.getElementById('verification-curses');
+  const verificationList = document.getElementById('verification-curses-list');
+  if (!verificationSection || !verificationList) return;
+
+  // Get active curses that need verification
+  const activeCurses = gameState.activeCurses || [];
+  const verificationCurses = activeCurses.filter(curse =>
+    curse.name.toLowerCase().includes('devotion') ||
+    curse.name.toLowerCase().includes('greed') ||
+    curse.name.toLowerCase().includes('impulse') ||
+    curse.name.toLowerCase().includes('clacking') ||
+    curse.name.toLowerCase().includes('haste') ||
+    curse.name.toLowerCase().includes('blindness') ||
+    curse.name.toLowerCase().includes('hubris')
+  );
+
+  if (verificationCurses.length === 0) {
+    verificationSection.style.display = 'none';
+  } else {
+    verificationSection.style.display = 'block';
+    verificationList.innerHTML = verificationCurses.map((curse, idx) => {
+      const remainingText = getCurseRemainingText(curse);
+      return `
+        <div class="curse-display" style="
+          background: rgba(255, 170, 68, 0.1);
+          border: 1px solid #ffaa44;
+          border-radius: 6px;
+          padding: 8px;
+          margin: 5px 0;
+        ">
+          <div style="color: #ffbb66; font-weight: bold; font-size: 14px;">${curse.name}</div>
+          <div style="color: #ccaa88; font-size: 12px; margin-top: 4px;">${curse.description}</div>
+          <div style="color: #aa9977; font-size: 11px; margin-top: 4px; font-style: italic;">Remaining: ${remainingText}</div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
 // ===== GAME LISTS =====
 
 function updateExcludedGamesList() {
@@ -623,6 +663,7 @@ window.updateTopBar = updateTopBar;
 window.updateHealthDisplay = updateHealthDisplay;
 window.updateInventory = updateInventory;
 window.updateCursesDisplay = updateCursesDisplay;
+window.updateVerificationCursesDisplay = updateVerificationCursesDisplay;
 window.updateExcludedGamesList = updateExcludedGamesList;
 window.updateBeatenGamesList = updateBeatenGamesList;
 window.updateSelectedGamesDisplay = updateSelectedGamesDisplay;
