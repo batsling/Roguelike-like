@@ -14,7 +14,7 @@ var CURSES_DATA = [
     "description": "Every time you reset a run, lose 2 health"
   },
   {
-    "name": "Curse of Devotion II",
+    "name": "Curse of Devotion III",
     "stat": "Charisma",
     "power": "High",
     "duration": "Until 2 Games Beaten",
