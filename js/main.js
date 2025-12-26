@@ -840,6 +840,9 @@ function showCombatModal() {
             <div style="text-align: center;">
               <h2 style="color: #ff4444; margin-top: 0; font-size: 32px;">😱 Curse of Failure!</h2>
               <p style="font-size: 18px; color: #ff8888;">You rolled a natural 1!</p>
+              <p style="font-size: 20px; font-weight: bold; color: #ff0000; margin: 15px 0;">
+                ⚠️ CRITICAL FAILURE - Combat Auto-Lost!
+              </p>
               <p style="font-size: 24px; font-weight: bold; color: #ff6666; margin: 20px 0;">
                 -${totalDamage} HP
               </p>
@@ -870,7 +873,10 @@ function showCombatModal() {
     }
 
     const totalRoll = diceRoll + playerStatValue - cursePenalty;
-    const success = totalRoll >= enemy.rollCheck;
+
+    // Curse of Failure causes critical fail - auto-lose combat
+    const criticalFail = diceRoll === 1 && getCursesByType('failure').length > 0;
+    const success = criticalFail ? false : (totalRoll >= enemy.rollCheck);
 
     let resultHTML = `
       <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 10px 0;">
@@ -878,6 +884,7 @@ function showCombatModal() {
         <p style="font-size: 16px; color: ${getStatColor(enemy.stat)};">+ ${enemy.stat} Bonus: ${playerStatValue}</p>
         ${cursePenalty > 0 ? `<p style="font-size: 16px; color: #ff6666;">- Weakness Penalty: ${cursePenalty}</p>` : ''}
         <p style="font-size: 24px; font-weight: bold; margin-top: 10px; color: gold;">Total: ${totalRoll}</p>
+        ${criticalFail ? `<p style="font-size: 18px; font-weight: bold; color: #ff0000; margin-top: 10px;">⚠️ CRITICAL FAILURE!</p>` : ''}
         ${curseMessages.length > 0 ? `<p style="font-size: 14px; color: #ff8888; margin-top: 10px;">${curseMessages.join('<br>')}</p>` : ''}
       </div>
     `;
@@ -957,6 +964,11 @@ function showCombatModal() {
 
           document.getElementById('death-home-btn').onclick = () => {
             closeGameModal();
+            // Update UI to reflect cleared items and curses
+            updateInventory?.();
+            updateCursesDisplay?.();
+            updateActiveCursesList?.();
+            updateGameStats?.();
             document.getElementById('dungeon-screen').style.display = 'none';
             document.getElementById('main-menu').style.display = 'flex';
           };
@@ -1794,6 +1806,11 @@ function recordLostRun(index) {
     setTimeout(() => {
       document.getElementById('escape-death-home-btn').onclick = () => {
         closeGameModal();
+        // Update UI to reflect cleared items and curses
+        updateInventory?.();
+        updateCursesDisplay?.();
+        updateActiveCursesList?.();
+        updateGameStats?.();
         document.getElementById('dungeon-screen').style.display = 'none';
         document.getElementById('main-menu').style.display = 'flex';
       };

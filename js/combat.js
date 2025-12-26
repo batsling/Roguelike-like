@@ -201,6 +201,9 @@ function rollD20() {
               <div style="text-align: center;">
                 <h2 style="color: #ff4444; margin-top: 0; font-size: 32px;">😱 Curse of Failure!</h2>
                 <p style="font-size: 18px; color: #ff8888;">You rolled a natural 1!</p>
+                <p style="font-size: 20px; font-weight: bold; color: #ff0000; margin: 15px 0;">
+                  ⚠️ CRITICAL FAILURE - Combat Auto-Lost!
+                </p>
                 <p style="font-size: 24px; font-weight: bold; color: #ff6666; margin: 20px 0;">
                   -${totalDamage} HP
                 </p>
@@ -236,7 +239,10 @@ function rollD20() {
     const modifier = getStatModifier(stat);
     const totalRoll = currentRoll + modifier - cursePenalty;
     const check = currentEnemy.rollCheck;
-    const success = totalRoll >= check;
+
+    // Curse of Failure causes critical fail - auto-lose combat
+    const criticalFail = currentRoll === 1 && gameState?.activeCurses?.some(c => c.name.toLowerCase().includes('failure'));
+    const success = criticalFail ? false : (totalRoll >= check);
 
     let resultText = `Rolled: ${currentRoll}`;
     if (modifier !== 0) {
@@ -250,7 +256,10 @@ function rollD20() {
     }
     resultText += ` vs DC ${check}`;
 
-    if (success) {
+    if (criticalFail) {
+      resultText += ' ✗ CRITICAL FAILURE';
+      document.getElementById('rollResult').style.color = '#ff0000';
+    } else if (success) {
       resultText += ' ✓ SUCCESS';
       document.getElementById('rollResult').style.color = '#4CAF50';
     } else {
