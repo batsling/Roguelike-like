@@ -1,13 +1,181 @@
 # Roguelike Game Documentation
 
 ## Table of Contents
+- [Overview](#overview)
+- [Recent Updates](#recent-updates)
+- [Curse System](#curse-system)
 - [Items System](#items-system)
 - [Game Status Effects](#game-status-effects)
 - [Events System](#events-system)
-- [Teleport System](#teleport-system)
 - [Combat System](#combat-system)
+- [Teleport System](#teleport-system)
 - [Developer Tools](#developer-tools)
-- [Recent Updates](#recent-updates)
+- [Code Optimization](#code-optimization)
+- [Creating New Content](#creating-new-content)
+- [Common Issues](#common-issues)
+
+---
+
+## Overview
+
+A roguelike game where players navigate through a graph of connected video games, encountering combat, events, and shops. The game features a comprehensive curse system, item effects, and dynamic gameplay mechanics.
+
+**Key Features:**
+- D20-based combat and event resolution
+- 5 unique curse types with stacking mechanics
+- Extensive item system (passive, usable, and triggered)
+- Game status effects (portals, stinky games)
+- Escape sequence after finding the amulet
+- Save/load system with multiple save slots
+- Comprehensive developer tools
+
+---
+
+## Recent Updates
+
+### Version 2.0 - Curse System & Optimization (December 2024)
+
+**New Curse System:**
+- **5 Curse Types**: Failure, Weakness, Vulnerability, Shroud, and Frugality
+- **Stacking Mechanics**: Multiple instances of the same curse stack for increased effect
+- **Power Levels**: Each curse has Low/Medium/High power affecting intensity
+- **Visual Indicators**: Curses display in both game panel and dev tools
+- **Critical Failure**: Curse of Failure now auto-loses combat on natural 1
+
+**Code Optimizations:**
+- ~360+ lines of code removed across 4 major files
+- Added helper functions to eliminate duplication
+- Modern JavaScript patterns (optional chaining, nullish coalescing, reduce)
+- Fisher-Yates shuffle algorithm for better randomization
+- Improved maintainability and performance
+
+**Bug Fixes:**
+- Fixed UI not clearing items/curses when returning to menu after death
+- SVG arrows now properly visible on game paths
+- Curse displays properly sync between game panel and dev tools
+
+---
+
+## Curse System
+
+### Overview
+
+Curses are negative status effects that persist across encounters and modify gameplay. They are gained by failing combat or through specific items, and are consumed when triggered.
+
+### Curse Types
+
+#### 1. **Curse of Failure** 😱
+- **Trigger**: Rolling a natural 1 (d20 = 1) in combat
+- **Effect**:
+  - Deals damage based on power level (Low: 2 HP, Medium: 3 HP, High: 4 HP)
+  - **CRITICAL FAILURE**: Auto-loses combat regardless of total roll
+  - Shows dramatic popup notification
+  - All Failure curses trigger simultaneously and stack damage
+- **Removal**: Consumed when triggered (all instances removed at once)
+- **Stack Behavior**: Multiple Failure curses deal combined damage
+
+**Example**: Rolling a 1 with 2 Medium Failure curses → Take 6 damage + auto-lose combat
+
+---
+
+#### 2. **Curse of Weakness** 💪
+- **Trigger**: Any combat roll (main combat or dev tools)
+- **Effect**:
+  - Subtracts from combat roll (Low: -2, Medium: -3, High: -4)
+  - Shows as "- Weakness Penalty: X" in combat results
+  - Only ONE Weakness curse consumed per combat
+- **Removal**: Consumed on first combat roll
+- **Stack Behavior**: First curse is consumed, others remain for future combats
+
+**Example**: Rolling 15 + 4 Strength - 3 Weakness = 16 total (then Weakness curse is removed)
+
+---
+
+#### 3. **Curse of Vulnerability** 🎯
+- **Trigger**: When receiving any new curse
+- **Effect**:
+  - Duplicates the incoming curse
+  - Limited uses based on power (Low: 1, Medium: 2, High: 3)
+  - Automatically removed when uses exhausted
+- **Removal**: After triggering set number of times
+- **Stack Behavior**: Multiple Vulnerability curses can each duplicate incoming curses
+
+**Example**: Gaining a Failure curse with active Medium Vulnerability → Receive 2 Failure curses instead
+
+---
+
+#### 4. **Curse of Shroud** 🌫️
+- **Trigger**: During game choice spawning
+- **Effect**:
+  - Hides one game choice from the player
+  - Always leaves at least one choice visible
+  - Limited uses based on power (Low: 1, Medium: 2, High: 3)
+  - Automatically removed when uses exhausted
+- **Removal**: Consumed each time choices are spawned
+- **Stack Behavior**: Multiple Shroud curses can hide multiple choices
+
+**Example**: Normal 3 choices with one Shroud curse → Only 2 choices shown
+
+---
+
+#### 5. **Curse of Frugality** 💰
+- **Trigger**: When purchasing items in the shop
+- **Effect**:
+  - Increases all shop prices (Low: +5g, Medium: +10g, High: +15g)
+  - Shows strikethrough of original price
+  - ONE curse removed after first purchase
+- **Removal**: Consumed on first shop purchase
+- **Stack Behavior**: All Frugality curses add to price, but only first is consumed
+
+**Example**: Shop with 2 Medium Frugality curses → All items cost +20g (both curses shown), first purchase removes one curse
+
+---
+
+### Curse UI Display
+
+**Game Panel (Right Sidebar):**
+- Shows active curses with name, stat, and power
+- Updates in real-time when curses are added/removed
+- Displays in format: "Curse Name (Stat-Power)"
+
+**Dev Tools:**
+- Separate "Active Curses" panel showing all curses
+- Add/remove curses for testing
+- Real-time synchronization with game panel
+
+**Combat Screen:**
+- Weakness penalty shown as "- Weakness Penalty: X"
+- Failure triggers show "CRITICAL FAILURE" in red
+- Curse messages displayed after roll results
+
+---
+
+### Curse Power Levels
+
+| Power | Failure Damage | Weakness Penalty | Vulnerability Uses | Shroud Uses | Frugality Cost |
+|-------|---------------|------------------|-------------------|-------------|----------------|
+| Low   | 2 HP          | -2               | 1                 | 1           | +5 gold        |
+| Medium| 3 HP          | -3               | 2                 | 2           | +10 gold       |
+| High  | 4 HP          | -4               | 3                 | 3           | +15 gold       |
+
+---
+
+### Curse Management
+
+**Gaining Curses:**
+- Fail combat encounters (curse matches enemy stat)
+- Use the Cursed Goblet item (+1 random curse)
+- Dev tools for testing
+
+**Removing Curses:**
+- Use the Lucky Toe item (consume for +1 luck)
+- Curses self-remove when triggered/consumed
+- Dev tools "Clear All Curses" button
+
+**Stack Behavior:**
+- Same curse type can stack multiple times
+- Each instance tracks its own power level
+- Removal behavior varies by curse type (see individual descriptions)
 
 ---
 
@@ -41,8 +209,7 @@ const ITEM_EFFECTS = {
   "Item Name": {
     // For passive items - runs once when acquired
     onAcquire: () => {
-      strength += 2;
-      gameState.strength = strength;
+      updateStat('strength', 2); // Uses helper function
     },
 
     // For usable items - check if item can be used
@@ -60,7 +227,6 @@ const ITEM_EFFECTS = {
 
     // For triggered items - runs when player defeats an enemy
     onEnemyDefeated: () => {
-      // Triggered effect logic
       health = Math.min(health + 1, maxHealth);
       gameState.health = health;
     }
@@ -68,172 +234,19 @@ const ITEM_EFFECTS = {
 }
 ```
 
-### Passive Item Examples
+### Helper Functions
 
-**Stat Boost Items** (add stats when acquired):
-```javascript
-"Sunglasses": {
-  onAcquire: () => {
-    charisma += 2;
-    gameState.charisma = charisma;
-  }
-}
-```
-
-**Health Items** (add max health and heal):
-```javascript
-"Hollow Heart": {
-  onAcquire: () => {
-    maxHealth += 2;
-    health = Math.min(health + 2, maxHealth); // Cap health to max
-    gameState.maxHealth = maxHealth;
-    gameState.health = health;
-  }
-}
-```
-
-**Items with Tradeoffs** (positive and negative effects):
-```javascript
-"Bowler Hat": {
-  onAcquire: () => {
-    charisma += 3;
-    dexterity -= 1;
-    gameState.charisma = charisma;
-    gameState.dexterity = dexterity;
-  }
-}
-```
-
-**Special Stat Items**:
-```javascript
-"Ballistic Boots": {
-  onAcquire: () => {
-    dash += 1;  // Increases movement options
-    gameState.dash = dash;
-  }
-},
-"More Options": {
-  onAcquire: () => {
-    fov += 1;  // Increases field of view (more game choices)
-    gameState.fov = fov;
-  }
-},
-"Lucky Toe": {
-  onAcquire: () => {
-    luck += 1;  // Improves shop prices and rewards
-    gameState.luck = luck;
-  }
-},
-"D6": {
-  onAcquire: () => {
-    reroll += 1;  // Adds item reroll charge
-    gameState.reroll = reroll;
-  }
-}
-```
-
-### Usable Item Examples
-
-**Basic Teleport**:
-```javascript
-"Scroll of Teleportation": {
-  canUse: () => {
-    return gameState.phase === 'selection';
-  },
-  onUse: () => {
-    teleportToRandomGame();  // Teleports to any connected game
-  }
-}
-```
-
-**Filtered Teleport**:
-```javascript
-"Ride the Bus": {
-  canUse: () => {
-    return gameState.phase === 'selection';
-  },
-  onUse: () => {
-    teleportToRandomDeckbuilder();  // Teleports to Deckbuilding game
-  }
-}
-```
-
-**Player-Choice Teleport**:
-```javascript
-"Winged Boots": {
-  canUse: () => {
-    return gameState.phase === 'selection';
-  },
-  onUse: () => {
-    const currentGameObj = games.find(g => g.name === gameState.currentGame);
-    if (!currentGameObj) {
-      alert('Cannot determine current location!');
-      return;
-    }
-
-    const currentYear = currentGameObj.year;
-
-    // Show selection of 3 games from the same year
-    selectedTeleport({
-      numChoices: 3,
-      year: currentYear,
-      title: `Choose Your Destination (${currentYear})`
-    });
-  }
-}
-```
-
-**Multi-Use Items**:
-```javascript
-"Ventricle Razor": {
-  uses: 2, // Can be used twice before being removed from inventory
-  canUse: () => {
-    return true; // Can use anytime
-  },
-  onUse: () => {
-    // Apply portal status to current game
-    addGameStatus(gameState.currentGame, 'portal', '🌀');
-  }
-}
-```
-
-### Triggered Item Examples
-
-**Items that trigger on enemy defeats**:
+**Modern item system includes:**
 
 ```javascript
-"Charm of the Vampire": {
-  onAcquire: () => {
-    console.log('Acquired Charm of the Vampire');
-  },
-  onEnemyDefeated: () => {
-    // 50% base chance + (5% * luck) to heal
-    const baseChance = 0.50;
-    const luckBonus = (luck || 0) * 0.05;
-    const totalChance = baseChance + luckBonus;
+// Update a stat and sync with gameState
+updateStat('strength', 2);  // Adds 2 strength
 
-    if (Math.random() < totalChance) {
-      health = Math.min(health + 1, maxHealth);
-      gameState.health = health;
-    }
-  }
-},
+// Display notification popup
+createNotification('Found treasure!', '#4CAF50', '✨');
 
-"Cursed Slash": {
-  onAcquire: () => {
-    // Lose half of max health immediately
-    const healthLoss = Math.floor(maxHealth / 2);
-    maxHealth -= healthLoss;
-    health = Math.max(0, health - healthLoss);
-    gameState.maxHealth = maxHealth;
-    gameState.health = health;
-  },
-  onEnemyDefeated: () => {
-    // Always heal +1 health when defeating an enemy
-    health = Math.min(health + 1, maxHealth);
-    gameState.health = health;
-  }
-}
+// Determine random encounter type (75% combat, 15% event, 10% shop)
+const encounterType = determineEncounterType();
 ```
 
 ### Available Stats
@@ -249,6 +262,8 @@ const ITEM_EFFECTS = {
 - `fov` - Field of view (number of game choices shown)
 - `luck` - Affects shop prices and rewards
 - `reroll` - Number of item reroll charges
+- `skip` - Number of skip charges
+- `discovery` - Number of discovery charges (extra item choices)
 
 ### Game Phases
 
@@ -286,61 +301,18 @@ getGameStatuses(gameName)
 getGamesWithStatus(statusName)
 ```
 
-### Status Effect Items
+### Built-in Status Effects
 
-**The Poop** - Applies "stinky" status:
-```javascript
-"The Poop": {
-  canUse: () => true,
-  onUse: () => {
-    // Apply stinky status to current game
-    addGameStatus(gameState.currentGame, 'stinky', '💩');
+**The Poop (Stinky) 💩**
+- Effect: Game is deprioritized in selections (appears last)
+- Applied via: The Poop item
+- Visual: 💩 icon on game node
 
-    // Refresh current node to show icon immediately
-    const currentNode = document.querySelector('.node.current');
-    if (currentNode) {
-      updateNodeStatusIcons(currentNode);
-    }
-  }
-}
-```
-
-**Effect**: Stinky games are deprioritized in game selections (appear last in the shuffled list).
-
-**Ventricle Razor** - Applies "portal" status:
-```javascript
-"Ventricle Razor": {
-  uses: 2, // Can create 2 portals
-  canUse: () => true,
-  onUse: () => {
-    // Apply portal status to current game
-    addGameStatus(gameState.currentGame, 'portal', '🌀');
-
-    // Refresh current node to show icon immediately
-    const currentNode = document.querySelector('.node.current');
-    if (currentNode) {
-      updateNodeStatusIcons(currentNode);
-    }
-  }
-}
-```
-
-**Effect**: When standing on a portal game, all other portal games appear as extra choices (creates instant long-distance connections). Maximum 2 portals can exist at once.
-
-### Status Icon Display
-
-- Status icons appear in the **top-left corner** of game nodes
-- Icons use `pointer-events: none` so tooltips work normally
-- Icons appear on **all node types**: current, past, choice, and selection
-- Multiple status effects stack horizontally
-- Icons auto-refresh when status is applied via `updateNodeStatusIcons()`
-
-### Implementation Notes
-
-- Status effects are stored in `gameState.gameStatusEffects` as `{ gameName: [{ name, icon }, ...] }`
-- Stinky games are filtered separately and added to the end of choices
-- Portal games are added to choices when player is on a portal-marked game
-- Status icons persist across game sessions when saved
+**Ventricle Razor (Portal) 🌀**
+- Effect: Creates instant connections between portal-marked games
+- Applied via: Ventricle Razor item (max 2 portals)
+- Visual: 🌀 icon on game node
+- When standing on a portal, all other portals appear as choices
 
 ---
 
@@ -355,12 +327,8 @@ Events are defined in `events-data.js` and follow this structure:
   description: "Event description",
   stat: "Strength" | "Dexterity" | "Intelligence" | "Charisma",
   rollCheck: 10,  // DC (Difficulty Check) for the roll
-
-  // Rewards for success
   successReward: "10 gold",  // or "common item", "uncommon item", "rare item"
-
-  // Consequences for failure
-  failureConsequence: "Lose 1 health",  // or "Lose 5 gold"
+  failureConsequence: "Lose 1 health"
 }
 ```
 
@@ -371,29 +339,34 @@ Event difficulty determines the DC (roll check needed):
 - **Medium**: DC 13-16 (moderate checks)
 - **High**: DC 17-20 (harder checks)
 
-### Event Outcomes
+---
 
-**Success Rewards**:
-- Gold: `"10 gold"`, `"20 gold"`, etc.
-- Items: `"common item"`, `"uncommon item"`, `"rare item"`
-- Can combine: `"15 gold and common item"`
+## Combat System
 
-**Failure Consequences**:
-- Health loss: `"Lose 1 health"`, `"Lose 2 health"`, etc.
-- Gold loss: `"Lose 5 gold"`, `"Lose 10 gold"`, etc.
+### Combat Flow
 
-### Event Rolling
+1. Enemy appears with stat check requirement (Strength/Dex/Int/Cha)
+2. Player rolls 1d20 + relevant stat modifier
+3. **Curse of Weakness** applies penalty if active
+4. **Curse of Failure** triggers on natural 1 (auto-lose + damage)
+5. Compare total to enemy's DC (rollCheck)
+6. If success: Player gets reward
+7. If failure: Player takes damage based on difficulty
 
-Events use D20 + stat modifier vs DC:
-```
-Roll = 1d20 + stat modifier
-Success if Roll >= DC
-```
+### Combat Damage
 
-Example:
-- Event requires Strength check DC 12
-- Player rolls 8, has Strength +4
-- Total = 8 + 4 = 12 (Success!)
+Combat damage is determined by enemy power level:
+- **Low**: 1 damage on failure
+- **Medium**: 2 damage on failure
+- **High**: 3 damage on failure
+
+### Critical Failure
+
+Rolling a natural 1 (d20 = 1) with active Curse of Failure:
+- Shows "⚠️ CRITICAL FAILURE" message
+- Combat is automatically lost (regardless of total roll)
+- All Failure curses trigger for combined damage
+- All Failure curses are removed after triggering
 
 ---
 
@@ -408,371 +381,197 @@ teleportToRandomGameOfType(gameType)
 **Parameters**:
 - `gameType` (string|null): Filter by game type, or `null` for any game
 
-**Game Types**:
-- `'Deckbuilding'`
-- `'Action'`
-- `'Traditional'`
-- `'Strategy'`
-- `null` (any type)
-
-**Example Usage**:
-```javascript
-// Teleport to any connected game
-teleportToRandomGameOfType(null);
-teleportToRandomGame();  // Shorthand
-
-// Teleport to a Deckbuilding game
-teleportToRandomGameOfType('Deckbuilding');
-teleportToRandomDeckbuilder();  // Shorthand
-```
-
 **Behavior**:
 - Only teleports to games with `connected: true`
+- Generates random encounter type via `determineEncounterType()`
 - Shows error if no matching games found
-- Generates random encounter type (75% combat, 15% event, 10% shop)
-- Advances player to the selected game
 
 ### Selected Teleport (Player Choice)
 
 ```javascript
-selectedTeleport(options)
-```
-
-**Parameters**:
-```javascript
-{
-  numChoices: 3,              // How many games to show (default: 3)
-  year: 2020,                 // Filter by year (optional)
-  type: 'Deckbuilding',       // Filter by type (optional)
-  tags: ['roguelike', 'rpg'], // Filter by tags - matches ANY tag (optional)
-  title: "Choose Your Destination"  // Modal title (default shown)
-}
-```
-
-**Example Usage**:
-
-Show 3 games from 2020:
-```javascript
 selectedTeleport({
   numChoices: 3,
   year: 2020,
-  title: "Choose a Game from 2020"
-});
-```
-
-Show 5 Deckbuilding games:
-```javascript
-selectedTeleport({
-  numChoices: 5,
   type: 'Deckbuilding',
-  title: "Choose a Deckbuilder"
-});
-```
-
-Show games with specific tags:
-```javascript
-selectedTeleport({
-  numChoices: 4,
-  tags: ['roguelike', 'turn-based'],
-  title: "Choose a Roguelike"
-});
-```
-
-Combine multiple filters:
-```javascript
-selectedTeleport({
-  numChoices: 3,
-  year: 2018,
-  type: 'Action',
   tags: ['roguelike'],
-  title: "Choose a 2018 Action Roguelike"
-});
+  title: "Choose Your Destination"
+})
 ```
 
-**Behavior**:
-- Always filters to `connected: true` games first
-- Shows modal with clickable game cards
-- Displays game name, year, type, and tags
-- Player clicks to teleport to chosen game
-- Returns `false` if no games match criteria
-- If fewer games exist than `numChoices`, shows all matching games
-
-**Filter Logic**:
-- `year`: Exact match (`game.year === year`)
-- `type`: Exact match (`game.type === type`)
-- `tags`: Matches if game has ANY of the specified tags (OR logic)
+All parameters are optional except for defining at least one filter.
 
 ---
 
-## Combat System
+## Developer Tools
 
-### Enemy Structure
+The game includes comprehensive dev tools at the bottom of the page:
 
-Enemies are defined in `enemies-data.js`:
+### Items Dev Tools (📦)
+- Add specific or random items
+- Remove items from inventory
+- View current inventory
 
-```javascript
-{
-  name: "Enemy Name",
-  power: "Low" | "Medium" | "High",
-  stat: "Strength" | "Dexterity" | "Intelligence" | "Charisma",
-  rollCheck: 12,  // DC for the combat check
-  successReward: "10 gold",
-  failureTrigger: "Lose 2 health"  // Now auto-calculated, just template text
-}
-```
+### Curses Dev Tools (😈)
+- Add specific curses (by type, stat, power)
+- Add random curses
+- Remove individual or all curses
+- View active curses with full details
 
-### Combat Difficulty and Damage
+### Encounters Dev Tools (⚔️)
+- Trigger combat (specific stat/power)
+- Trigger random events
+- Quick actions: Shop, Item Choice
+- View encounter history
 
-Combat damage is determined by enemy power level:
-- **Low**: 1 damage on failure
-- **Medium**: 2 damage on failure
-- **High**: 3 damage on failure
-
-### Combat Flow
-
-1. Enemy appears with stat check requirement
-2. Player rolls 1d20 + relevant stat modifier
-3. Compare total to enemy's DC (rollCheck)
-4. If success: Player gets reward
-5. If failure: Player takes damage based on difficulty
-
-### Curses
-
-When failing combat, player may gain a curse:
-- Curses match the failed enemy's stat and power level
-- Curses apply -1 penalty to specific stat checks
-- Example: "Curse of Weakness (Strength-Medium)" = -1 to Medium Strength checks
+### Usage Tips
+- Dev tools require an active run for most features
+- Changes affect active game state
+- Use for testing balance and edge cases
+- Curse testing helps verify UI synchronization
 
 ---
 
-## Game Data Structure
+## Code Optimization
 
-### Games (games-data.js)
+### Recent Performance Improvements
 
-```javascript
-{
-  name: "Game Name",
-  year: 2020,
-  type: "Deckbuilding" | "Action" | "Traditional" | "Strategy",
-  tags: ["roguelike", "turn-based"],  // Optional
-  connected: true,  // Can player reach this game?
-  connections: ["Other Game 1", "Other Game 2"]  // Games this connects to
-}
-```
+**Helper Functions Added:**
+- `getCursesByType()` - Unified curse filtering
+- `getPowerValue()` - Centralized power level conversions
+- `getPlayerStat()` - Simplified stat lookups
+- `updateCurseUI()` - Consolidated display updates
+- `createNotification()` - Reusable notification system
+- `determineEncounterType()` - Standard encounter generation
+- `shuffleArray()` - Fisher-Yates shuffle (better randomization)
 
-**Important**: Only games with `connected: true` can be visited by the player.
+**Code Reduction:**
+- ~360 lines removed across 4 files
+- Eliminated duplicate notification blocks (4 instances)
+- Consolidated curse filtering (6 instances)
+- Removed deprecated functions (110+ lines)
 
-### Connection Rules
+**Modern JavaScript Patterns:**
+- Optional chaining (`?.`) for safer null checks
+- Nullish coalescing (`??`) for better defaults
+- Array methods (reduce, filter, map) over forEach
+- Template literals for cleaner string building
 
-- Connections are directional (A → B doesn't mean B → A)
-- Total connections in game: 635
-- Connected games form the playable graph
-- Unconnected games exist but can't be reached
+**Algorithm Improvements:**
+- Fisher-Yates shuffle replaces biased `.sort()` method
+- Better randomization distribution
+- Improved status icon management
 
 ---
 
 ## Creating New Content
 
+### Adding a New Curse-Related Item
+
+```javascript
+// In games-data.js
+{
+  name: "Cursed Goblet",
+  rarity: "rare",
+  type: "Usable",
+  description: "Gain a random curse for power"
+}
+
+// In js/items.js
+"Cursed Goblet": {
+  canUse: () => true,
+  onUse: () => {
+    // Get random curse type
+    const curseTypes = ['failure', 'weakness', 'vulnerability', 'shroud', 'frugality'];
+    const randomType = curseTypes[Math.floor(Math.random() * curseTypes.length)];
+
+    // Find matching curse template
+    const matchingCurses = curses.filter(c =>
+      c.name.toLowerCase().includes(randomType)
+    );
+
+    if (matchingCurses.length > 0) {
+      const curse = matchingCurses[Math.floor(Math.random() * matchingCurses.length)];
+      addCurse(curse);
+    }
+  }
+}
+```
+
 ### Adding a New Passive Item
 
-1. Add item to `items` array in `games-data.js`:
 ```javascript
+// In games-data.js
 {
   name: "Ring of Power",
   rarity: "rare",
   type: "Passive",
   description: "+3 Strength, +3 Intelligence"
 }
-```
 
-2. Add effects to `ITEM_EFFECTS` in `js/items.js`:
-```javascript
+// In js/items.js
 "Ring of Power": {
   onAcquire: () => {
-    strength += 3;
-    intelligence += 3;
-    gameState.strength = strength;
-    gameState.intelligence = intelligence;
+    updateStat('strength', 3);
+    updateStat('intelligence', 3);
   }
 }
 ```
-
-3. Update UI displays (automatically handled by `updateGameStats()`)
-
-### Adding a New Usable Item
-
-1. Add item to `items` array in `games-data.js`:
-```javascript
-{
-  name: "Magic Compass",
-  rarity: "uncommon",
-  type: "Usable",
-  description: "Teleport to any game from the 1980s"
-}
-```
-
-2. Add effects to `ITEM_EFFECTS` in `js/items.js`:
-```javascript
-"Magic Compass": {
-  canUse: () => {
-    return gameState.phase === 'selection';
-  },
-  onUse: () => {
-    selectedTeleport({
-      numChoices: 5,
-      year: 1980,
-      title: "Choose a Classic (1980s)"
-    });
-  }
-}
-```
-
-### Adding a New Event
-
-Add to `events` array in `events-data.js`:
-```javascript
-{
-  name: "Ancient Puzzle",
-  power: "Medium",
-  description: "You find an ancient puzzle mechanism...",
-  stat: "Intelligence",
-  rollCheck: 14,
-  successReward: "uncommon item",
-  failureConsequence: "Lose 2 health"
-}
-```
-
-### Adding a New Enemy
-
-Add to `enemies` array in `enemies-data.js`:
-```javascript
-{
-  name: "Shadow Assassin",
-  power: "High",
-  stat: "Dexterity",
-  rollCheck: 18,
-  successReward: "20 gold and rare item",
-  failureTrigger: "Lose 3 health"  // Auto-calculated based on power
-}
-```
-
----
-
-## Tips and Best Practices
-
-### Item Balance
-- Common items: +1 to single stat or small effect
-- Uncommon items: +2 to single stat or moderate effect
-- Rare items: +3 to stat, or multiple effects, or powerful usable abilities
-- Items with tradeoffs: +3 to one stat, -1 to another
-
-### Event Balance
-- Low difficulty: DC 8-12, small rewards/consequences
-- Medium difficulty: DC 13-16, moderate rewards/consequences
-- High difficulty: DC 17-20, large rewards/consequences
-
-### Teleport Items
-- Random teleports: Good for common/uncommon items
-- Filtered teleports: Good for uncommon items
-- Player-choice teleports: Good for rare items (more control = more valuable)
-
-### Testing
-- Use browser console to test functions:
-  ```javascript
-  teleportToRandomGame()
-  selectedTeleport({ numChoices: 3, year: 2020 })
-  acquireItem(getItemByName("Winged Boots"))
-  useItem(0)  // Use first item in inventory
-  ```
-
----
-
-## Developer Tools
-
-The game includes a comprehensive dev tools section at the bottom of the page for testing and debugging. This section is divided into three columns:
-
-### Items Dev Tools (📦)
-
-**Add Item**:
-- Select a specific item from the dropdown to add it to your inventory
-- Click "Add Random Item" to get a random item
-- Useful for testing item effects and interactions
-
-**Remove Item**:
-- Select an item from your current inventory to remove it
-- Click "Remove Random Item" to remove a random item
-- Use this to test edge cases and clean up inventory
-
-**Current Inventory**:
-- Displays all items currently in the player's inventory
-- Auto-updates when items are added or removed
-
-### Curses Dev Tools (😈)
-
-**Add Curse**:
-- Select a specific curse from the dropdown (shows curse name, stat, and power level)
-- Click "Add Selected Curse" to add it to the active curses list
-- Click "Add Random Curse" for a random curse
-- Great for testing curse mechanics without failing combat
-
-**Remove Curse**:
-- Select a curse from active curses to remove it
-- Click "Clear All Curses" to remove all curses at once
-- Useful for resetting curse state during testing
-
-**Active Curses**:
-- Shows all currently active curses with their details
-- Auto-updates when curses are added or removed
-- Curses shown here will also appear in the right sidebar during gameplay
-
-### Encounters Dev Tools (⚔️)
-
-**Trigger Combat**:
-- Select stat (Strength/Dexterity/Intelligence/Charisma) and power level (Low/Medium/High)
-- Click "Start Combat" to immediately trigger a combat encounter
-- Bypasses normal encounter randomization for specific testing scenarios
-
-**Trigger Event**:
-- Click "Random Event" to trigger a random event encounter
-- Uses the same 15% event spawn logic but triggered on demand
-
-**Quick Actions**:
-- **Trigger Shop**: Immediately opens the shop modal (requires active run)
-- **Trigger Item Choice**: Opens the item reward selection modal (requires active run)
-- Perfect for testing shop mechanics and item choices without playing through a game
-
-**Recent Encounters**:
-- Shows history of recent combat and event encounters
-- Helps track testing progress
-
-### Usage Tips
-
-1. **Testing Items**: Add items to test their effects, then remove them to reset
-2. **Testing Curses**: Add curses to see how they appear in the UI and affect gameplay
-3. **Testing Combat**: Trigger specific stat/power combats to test difficulty balance
-4. **Testing Rewards**: Use Quick Actions to test shop and item reward systems repeatedly
-
-### Important Notes
-
-- Dev tools require an active run to work properly (except for basic add/remove functions)
-- Changes made with dev tools affect the active game state but won't persist across browser reloads unless saved
-- Use the dev tools to quickly iterate on balance and test edge cases
 
 ---
 
 ## Common Issues
 
+### Curse UI Not Syncing
+- Ensure `updateCurseUI()` is called after curse changes
+- Check that both `updateCursesDisplay` and `updateActiveCursesList` are exported
+- Verify gameState.activeCurses exists
+
 ### Item Effects Not Working
 - Check that item name in `ITEM_EFFECTS` exactly matches name in `items` array
-- Verify you're updating both the global variable AND `gameState.variableName`
-- Call `updateGameStats()` and `updateTopBar()` after stat changes
+- Use `updateStat()` helper for stat modifications
+- Call appropriate update functions after changes
+
+### Combat Critical Failure Not Triggering
+- Verify Curse of Failure is in active curses
+- Check that d20 roll = 1 (not total roll)
+- Ensure `getCursesByType('failure')` returns curses
 
 ### Teleport Not Working
 - Verify target games have `connected: true`
-- Check that filters aren't too restrictive (no matching games)
+- Check filter criteria aren't too restrictive
 - Ensure `gameState.phase === 'selection'` for usable items
 
-### Events Not Triggering
-- Events have 15% spawn chance (75% combat, 10% shop, 15% event)
-- Check that events exist in `events-data.js`
-- Verify event structure matches required format
+---
+
+## Tips and Best Practices
+
+### Curse Balance
+- Failure: High risk, high impact (can end runs)
+- Weakness: Consistent penalty, stackable
+- Vulnerability: Exponential growth if not managed
+- Shroud: Reduces player agency (annoying but not deadly)
+- Frugality: Economic pressure (delays progress)
+
+### Item Balance
+- Common items: +1 to single stat or small effect
+- Uncommon items: +2 to single stat or moderate effect
+- Rare items: +3 to stat, multiple effects, or powerful abilities
+- Items with tradeoffs: +3 to one stat, -1 to another
+
+### Testing with Dev Tools
+```javascript
+// Test curse stacking
+addCurse(getCurseByName("Curse of Failure (Strength-Medium)"))
+addCurse(getCurseByName("Curse of Failure (Strength-High)"))
+
+// Test critical failure
+// Set health high, add failures, trigger combat with Strength stat
+
+// Test Vulnerability cascade
+addCurse(getCurseByName("Curse of Vulnerability (Any-High)"))
+// Then fail a combat to see duplication
+```
+
+---
+
+**For more information, check the inline code documentation in `/js/` files.**
