@@ -6,6 +6,7 @@
 - [Events System](#events-system)
 - [Teleport System](#teleport-system)
 - [Combat System](#combat-system)
+- [Developer Tools](#developer-tools)
 - [Recent Updates](#recent-updates)
 
 ---
@@ -683,6 +684,79 @@ Add to `enemies` array in `enemies-data.js`:
   acquireItem(getItemByName("Winged Boots"))
   useItem(0)  // Use first item in inventory
   ```
+
+---
+
+## Developer Tools
+
+The game includes a comprehensive dev tools section at the bottom of the page for testing and debugging. This section is divided into three columns:
+
+### Items Dev Tools (📦)
+
+**Add Item**:
+- Select a specific item from the dropdown to add it to your inventory
+- Click "Add Random Item" to get a random item
+- Useful for testing item effects and interactions
+
+**Remove Item**:
+- Select an item from your current inventory to remove it
+- Click "Remove Random Item" to remove a random item
+- Use this to test edge cases and clean up inventory
+
+**Current Inventory**:
+- Displays all items currently in the player's inventory
+- Auto-updates when items are added or removed
+
+### Curses Dev Tools (😈)
+
+**Add Curse**:
+- Select a specific curse from the dropdown (shows curse name, stat, and power level)
+- Click "Add Selected Curse" to add it to the active curses list
+- Click "Add Random Curse" for a random curse
+- Great for testing curse mechanics without failing combat
+
+**Remove Curse**:
+- Select a curse from active curses to remove it
+- Click "Clear All Curses" to remove all curses at once
+- Useful for resetting curse state during testing
+
+**Active Curses**:
+- Shows all currently active curses with their details
+- Auto-updates when curses are added or removed
+- Curses shown here will also appear in the right sidebar during gameplay
+
+### Encounters Dev Tools (⚔️)
+
+**Trigger Combat**:
+- Select stat (Strength/Dexterity/Intelligence/Charisma) and power level (Low/Medium/High)
+- Click "Start Combat" to immediately trigger a combat encounter
+- Bypasses normal encounter randomization for specific testing scenarios
+
+**Trigger Event**:
+- Click "Random Event" to trigger a random event encounter
+- Uses the same 15% event spawn logic but triggered on demand
+
+**Quick Actions**:
+- **Trigger Shop**: Immediately opens the shop modal (requires active run)
+- **Trigger Item Choice**: Opens the item reward selection modal (requires active run)
+- Perfect for testing shop mechanics and item choices without playing through a game
+
+**Recent Encounters**:
+- Shows history of recent combat and event encounters
+- Helps track testing progress
+
+### Usage Tips
+
+1. **Testing Items**: Add items to test their effects, then remove them to reset
+2. **Testing Curses**: Add curses to see how they appear in the UI and affect gameplay
+3. **Testing Combat**: Trigger specific stat/power combats to test difficulty balance
+4. **Testing Rewards**: Use Quick Actions to test shop and item reward systems repeatedly
+
+### Important Notes
+
+- Dev tools require an active run to work properly (except for basic add/remove functions)
+- Changes made with dev tools affect the active game state but won't persist across browser reloads unless saved
+- Use the dev tools to quickly iterate on balance and test edge cases
 
 ---
 

@@ -341,33 +341,10 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   skip = character.startingStats.skip || 0;
   discovery = character.startingStats.discovery || 0;
 
-  // Check for Curse of Devotion before resetting
-  let devotionDamage = 0;
-  if (gameState && gameState.activeCurses && gameState.activeCurses.length > 0) {
-    gameState.activeCurses.forEach(curse => {
-      if (curse.name.toLowerCase().includes('devotion')) {
-        // Calculate damage based on curse power
-        if (curse.name.includes(' I')) {
-          devotionDamage += 1;
-        } else if (curse.name.includes(' II')) {
-          devotionDamage += 2;
-        } else if (curse.name.includes(' III')) {
-          devotionDamage += 3;
-        }
-      }
-    });
-  }
-
   // Reset health and gold for new run
   health = 10;
   maxHealth = 10;
   gold = 0;
-
-  // Apply Curse of Devotion damage after resetting health
-  if (devotionDamage > 0) {
-    health = Math.max(0, health - devotionDamage);
-    alert(`Curse of Devotion: Resetting your run cost you ${devotionDamage} health! Starting with ${health}/${maxHealth} health.`);
-  }
 
   // Clear inventory and curses for new run
   inventory = [];
@@ -570,6 +547,56 @@ function populateItemSelects() {
       itemSelect.appendChild(option);
     });
     itemSelect.disabled = false;
+  }
+}
+
+function populateCurseSelects() {
+  const curseSelect = document.getElementById('curseSelect');
+  if (curseSelect && typeof CURSES_DATA !== 'undefined') {
+    curseSelect.innerHTML = '<option value="">-- Select a Curse --</option>';
+    CURSES_DATA.forEach(curse => {
+      const option = document.createElement('option');
+      option.value = curse.name;
+      option.textContent = `${curse.name} - ${curse.stat} ${curse.power}`;
+      curseSelect.appendChild(option);
+    });
+    curseSelect.disabled = false;
+  }
+}
+
+function updateActiveCursesList() {
+  const activeCursesList = document.getElementById('activeCursesList');
+  const removeCurseSelect = document.getElementById('removeCurseSelect');
+
+  if (!activeCursesList) return;
+
+  if (!gameState || !gameState.activeCurses || gameState.activeCurses.length === 0) {
+    activeCursesList.innerHTML = '<div style="color: #888; font-style: italic; text-align: center; padding: 20px;">No active curses</div>';
+    if (removeCurseSelect) {
+      removeCurseSelect.innerHTML = '<option value="">-- Select a Curse --</option>';
+      removeCurseSelect.disabled = true;
+    }
+    return;
+  }
+
+  // Update active curses list
+  activeCursesList.innerHTML = gameState.activeCurses.map((curse, index) => `
+    <div style="padding: 10px; margin-bottom: 8px; background: rgba(255, 68, 68, 0.1); border-left: 3px solid #ff4444; border-radius: 4px;">
+      <strong style="color: #ffaa66;">${curse.name}</strong><br>
+      <small style="color: #aaa;">${curse.stat} - ${curse.power}</small>
+    </div>
+  `).join('');
+
+  // Update remove curse select
+  if (removeCurseSelect) {
+    removeCurseSelect.innerHTML = '<option value="">-- Select a Curse --</option>';
+    gameState.activeCurses.forEach((curse, index) => {
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = curse.name;
+      removeCurseSelect.appendChild(option);
+    });
+    removeCurseSelect.disabled = false;
   }
 }
 
@@ -1243,37 +1270,6 @@ function showItemChoiceModal() {
   const itemSkipBtn = document.getElementById('item-skip-btn');
   if (itemSkipBtn) {
     itemSkipBtn.onclick = () => {
-      // Check for Curse of Greed
-      if (gameState && gameState.activeCurses && gameState.activeCurses.length > 0) {
-        gameState.activeCurses.forEach(curse => {
-          if (curse.name.toLowerCase().includes('greed')) {
-            let damage = 0;
-            if (curse.name.includes(' I')) {
-              damage = 1;
-            } else if (curse.name.includes(' II')) {
-              damage = 1;
-            } else if (curse.name.includes(' III')) {
-              damage = 2;
-            }
-
-            if (damage > 0) {
-              health = Math.max(0, health - damage);
-              gameState.health = health;
-              if (typeof updateTopBar === 'function') {
-                updateTopBar();
-              }
-              alert(`Curse of Greed: Skipping the item cost you ${damage} health!`);
-
-              // Check for death
-              if (health <= 0 && typeof handleDeath === 'function') {
-                handleDeath();
-                return;
-              }
-            }
-          }
-        });
-      }
-
       closeGameModal();
 
       // Set phase to selection so usable items become enabled
@@ -2072,6 +2068,145 @@ function getGamesWithStatus(statusName) {
 
   return gamesWithStatus;
 }
+
+// ===== DEV TOOLS EVENT LISTENERS =====
+
+// Curse Add/Remove
+document.getElementById('addSelectedCurse')?.addEventListener('click', () => {
+  const curseSelect = document.getElementById('curseSelect');
+  const curseName = curseSelect?.value;
+
+  if (!curseName) {
+    alert('Please select a curse');
+    return;
+  }
+
+  const curseData = CURSES_DATA.find(c => c.name === curseName);
+  if (!curseData) {
+    alert('Curse not found');
+    return;
+  }
+
+  if (!gameState.activeCurses) {
+    gameState.activeCurses = [];
+  }
+
+  gameState.activeCurses.push(curseData);
+  updateActiveCursesList();
+  if (typeof updateCursesDisplay === 'function') {
+    updateCursesDisplay();
+  }
+
+  const output = document.getElementById('curseAddOutput');
+  if (output) {
+    output.textContent = `Added: ${curseName}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+});
+
+document.getElementById('addRandomCurse')?.addEventListener('click', () => {
+  if (!CURSES_DATA || CURSES_DATA.length === 0) {
+    alert('No curses available');
+    return;
+  }
+
+  const randomCurse = CURSES_DATA[Math.floor(Math.random() * CURSES_DATA.length)];
+
+  if (!gameState.activeCurses) {
+    gameState.activeCurses = [];
+  }
+
+  gameState.activeCurses.push(randomCurse);
+  updateActiveCursesList();
+  if (typeof updateCursesDisplay === 'function') {
+    updateCursesDisplay();
+  }
+
+  const output = document.getElementById('curseAddOutput');
+  if (output) {
+    output.textContent = `Added: ${randomCurse.name}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+});
+
+document.getElementById('removeSelectedCurse')?.addEventListener('click', () => {
+  const removeCurseSelect = document.getElementById('removeCurseSelect');
+  const curseIndex = parseInt(removeCurseSelect?.value);
+
+  if (isNaN(curseIndex) || curseIndex < 0) {
+    alert('Please select a curse to remove');
+    return;
+  }
+
+  if (!gameState.activeCurses || curseIndex >= gameState.activeCurses.length) {
+    alert('Invalid curse selection');
+    return;
+  }
+
+  const removed = gameState.activeCurses.splice(curseIndex, 1)[0];
+  updateActiveCursesList();
+  if (typeof updateCursesDisplay === 'function') {
+    updateCursesDisplay();
+  }
+
+  const output = document.getElementById('curseRemoveOutput');
+  if (output) {
+    output.textContent = `Removed: ${removed.name}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+});
+
+document.getElementById('clearAllCurses')?.addEventListener('click', () => {
+  if (!gameState.activeCurses || gameState.activeCurses.length === 0) {
+    alert('No curses to clear');
+    return;
+  }
+
+  if (confirm('Remove all curses?')) {
+    gameState.activeCurses = [];
+    updateActiveCursesList();
+    if (typeof updateCursesDisplay === 'function') {
+      updateCursesDisplay();
+    }
+
+    const output = document.getElementById('curseRemoveOutput');
+    if (output) {
+      output.textContent = 'All curses cleared';
+      output.style.display = 'block';
+      setTimeout(() => { output.style.display = 'none'; }, 2000);
+    }
+  }
+});
+
+// Quick Actions
+document.getElementById('triggerShop')?.addEventListener('click', () => {
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first');
+    return;
+  }
+
+  if (typeof showShopModal === 'function') {
+    showShopModal();
+  } else {
+    alert('Shop system not available');
+  }
+});
+
+document.getElementById('triggerItemChoice')?.addEventListener('click', () => {
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first');
+    return;
+  }
+
+  if (typeof showItemChoiceModal === 'function') {
+    showItemChoiceModal();
+  } else {
+    alert('Item choice system not available');
+  }
+});
 
 // Export to global scope
 window.loadState = loadState;

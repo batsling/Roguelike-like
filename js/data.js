@@ -154,6 +154,12 @@ function initializeData() {
     if (typeof populateItemSelects === 'function') {
       populateItemSelects();
     }
+    if (typeof populateCurseSelects === 'function') {
+      populateCurseSelects();
+    }
+    if (typeof updateActiveCursesList === 'function') {
+      updateActiveCursesList();
+    }
   }, 100);
 }
 

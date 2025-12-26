@@ -258,118 +258,33 @@
         </div>
       </div>
 
-    <!-- Three Column Layout -->
+    <!-- Dev Tools Section -->
     <div class="three-column-layout">
-      <!-- Left Column - Games -->
-      <div class="column">
-        <div class="column-header">Games</div>
-
-        <!-- Start/Amulet Game Selection -->
-        <div class="section">
-          <label for="startGameSelect">Select Start Game:</label>
-          <select id="startGameSelect">
-            <option value="">-- Select a Start Game --</option>
-          </select>
-          <br>
-          <label for="amuletGameSelect">Select Amulet Game:</label>
-          <select id="amuletGameSelect">
-            <option value="">-- Select an Amulet Game --</option>
-          </select>
-          <br>
-          <button id="pickRandomGames">Get Start and Amulet Games</button>
-          <div id="output" class="output-area"></div>
-        </div>
-
-        <!-- Connected Games Finder -->
-        <div class="section">
-          <h3>Find Adjacent Games</h3>
-          <label for="gameSelect">Select Your Current Game:</label>
-          <select id="gameSelect">
-            <option value="">-- Select a Game --</option>
-          </select>
-          <br>
-          <label for="numConnectedGames">Number of Games to Show:</label>
-          <input type="number" id="numConnectedGames" value="3" min="1" max="10">
-          <button id="pickConnectedGames">Pick Connected Games</button>
-          <div id="output2" class="output-area"></div>
-        </div>
-
-        <!-- Random Game Generator -->
-        <div class="section">
-          <h3>Find Random Games</h3>
-          <label for="decadeSelect">Decade:</label>
-          <select id="decadeSelect">
-            <option value="">-- Select a Decade --</option>
-          </select>
-          <br>
-          <label for="yearSelect">Exact Year:</label>
-          <select id="yearSelect">
-            <option value="">-- Select a Year --</option>
-          </select>
-          <br>
-          <label for="typeSelect">Game Type:</label>
-          <select id="typeSelect">
-            <option value="">-- Select a Type --</option>
-          </select>
-          <br>
-          <label for="excludeGameSelect">Exclude Games:</label>
-          <select id="excludeGameSelect">
-            <option value="">-- Select a Game to Exclude --</option>
-          </select>
-          <button id="addExcludedGame">Exclude Game</button>
-          <div class="excluded-games-list" id="excludedGamesList"></div>
-          <button id="generateRandomGame">Generate Random Game</button>
-          <div id="output4" class="output-area"></div>
-        </div>
-
-        <!-- Escape Phase -->
-        <div class="section">
-          <h3>Escape Phase</h3>
-          <label for="beatenGameSelect">Add a Beaten Game:</label>
-          <select id="beatenGameSelect">
-            <option value="">-- Select a Game --</option>
-          </select>
-          <button id="addBeatenGame">Add to Beaten Games</button>
-
-          <h4>Beaten Games</h4>
-          <div id="beatenGamesList"></div>
-
-          <label for="selectGameForEscape">Select a Game for Escape:</label>
-          <select id="selectGameForEscape">
-            <option value="">-- Select a Game --</option>
-          </select>
-          <button id="addGameForEscape">Add to Escape Games</button>
-          <button id="randomSelectForPhase2">Randomly Select One Game</button>
-
-          <h4>Selected Games for Escape</h4>
-          <div id="selectedGames" class="selected-games"></div>
-        </div>
+      <div class="column-header" style="grid-column: 1 / -1; text-align: center; font-size: 24px; background: linear-gradient(145deg, #444, #333); border-bottom: 3px solid #666;">
+        🛠️ Developer Tools
       </div>
 
-      <!-- Middle Column - Items -->
+      <!-- Items Dev Tools -->
       <div class="column">
-        <div class="column-header">Items</div>
+        <div class="column-header">📦 Items</div>
 
-        <!-- Item Selection -->
+        <!-- Add Item -->
         <div class="section">
+          <h3>Add Item</h3>
           <label for="itemSelect">Select an Item:</label>
           <select id="itemSelect">
             <option value="">-- Select an Item --</option>
           </select>
           <div class="button-group">
-            <button id="giveSelectedItem">Give Selected Item</button>
-            <button id="pickRandomItem">Get Random Item</button>
-          </div>
-          <div class="button-group">
-            <button id="pickRandomChoice">Random Item Choice</button>
-            <input type="number" id="choiceCount" value="2" min="1" max="5" style="width: 40px;">
+            <button id="giveSelectedItem">Add Selected Item</button>
+            <button id="pickRandomItem">Add Random Item</button>
           </div>
           <div id="output3" class="output-area"></div>
-          <div id="itemChoices"></div>
         </div>
 
-        <!-- Item Removal -->
+        <!-- Remove Item -->
         <div class="section">
+          <h3>Remove Item</h3>
           <label for="removeItemSelect">Select Item to Remove:</label>
           <select id="removeItemSelect">
             <option value="">-- Select an Item --</option>
@@ -381,20 +296,61 @@
           <div id="removedItemOutput" class="output-area" style="display: none;"></div>
         </div>
 
-        <!-- Inventory -->
+        <!-- Current Inventory -->
         <div class="section">
-          <h3>Inventory</h3>
-          <div id="inventory"></div>
+          <h3>Current Inventory</h3>
+          <div id="inventory" style="max-height: 300px; overflow-y: auto;"></div>
         </div>
       </div>
 
-      <!-- Right Column - Encounters -->
+      <!-- Curses Dev Tools -->
       <div class="column">
-        <div class="column-header">Encounters</div>
+        <div class="column-header">😈 Curses</div>
 
-        <!-- Combat Section -->
+        <!-- Add Curse -->
         <div class="section">
-          <h3>Combat</h3>
+          <h3>Add Curse</h3>
+          <label for="curseSelect">Select a Curse:</label>
+          <select id="curseSelect" style="width: 100%; margin-bottom: 10px;">
+            <option value="">-- Select a Curse --</option>
+          </select>
+          <div class="button-group">
+            <button id="addSelectedCurse">Add Selected Curse</button>
+            <button id="addRandomCurse">Add Random Curse</button>
+          </div>
+          <div id="curseAddOutput" class="output-area"></div>
+        </div>
+
+        <!-- Remove Curse -->
+        <div class="section">
+          <h3>Remove Curse</h3>
+          <label for="removeCurseSelect">Select Curse to Remove:</label>
+          <select id="removeCurseSelect" style="width: 100%; margin-bottom: 10px;">
+            <option value="">-- Select a Curse --</option>
+          </select>
+          <div class="button-group">
+            <button id="removeSelectedCurse">Remove Selected Curse</button>
+            <button id="clearAllCurses">Clear All Curses</button>
+          </div>
+          <div id="curseRemoveOutput" class="output-area"></div>
+        </div>
+
+        <!-- Active Curses List -->
+        <div class="section">
+          <h3>Active Curses</h3>
+          <div id="activeCursesList" style="max-height: 300px; overflow-y: auto;">
+            <div style="color: #888; font-style: italic; text-align: center; padding: 20px;">No active curses</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Encounters Dev Tools -->
+      <div class="column">
+        <div class="column-header">⚔️ Encounters</div>
+
+        <!-- Trigger Combat -->
+        <div class="section">
+          <h3>Trigger Combat</h3>
           <div class="combat-selector">
             <select id="statSelect">
               <option value="">-- Select Stat --</option>
@@ -406,12 +362,12 @@
 
             <select id="powerSelect">
               <option value="">-- Select Power --</option>
-              <option value="1">Low (0-3 Games Beaten)</option>
-              <option value="2">Medium (4-8 Games Beaten)</option>
-              <option value="3">High (9+ Games Beaten)</option>
+              <option value="1">Low</option>
+              <option value="2">Medium</option>
+              <option value="3">High</option>
             </select>
 
-            <button id="generateEnemy">Generate Enemy</button>
+            <button id="generateEnemy">Start Combat</button>
           </div>
 
           <div id="enemyDisplay" class="enemy-display" style="display: none;">
@@ -430,19 +386,28 @@
           </div>
         </div>
 
-        <!-- Event Check Section -->
+        <!-- Trigger Event -->
         <div class="section">
-          <h3>Encounter Check</h3>
+          <h3>Trigger Event</h3>
           <div class="button-group">
-            <button id="checkEvent">Random Encounter</button>
+            <button id="checkEvent">Random Event</button>
           </div>
           <div id="eventResult" class="output-area"></div>
         </div>
 
-        <!-- Encounter History Section -->
+        <!-- Trigger Specific Encounter -->
         <div class="section">
-          <h3>Encounter History</h3>
-          <div id="encounterHistory"></div>
+          <h3>Quick Actions</h3>
+          <div class="button-group">
+            <button id="triggerShop" style="background: #4CAF50;">Trigger Shop</button>
+            <button id="triggerItemChoice" style="background: #2196F3;">Trigger Item Choice</button>
+          </div>
+        </div>
+
+        <!-- Encounter History -->
+        <div class="section">
+          <h3>Recent Encounters</h3>
+          <div id="encounterHistory" style="max-height: 200px; overflow-y: auto;"></div>
         </div>
       </div>
     </div>
