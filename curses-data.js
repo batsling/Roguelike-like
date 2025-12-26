@@ -129,43 +129,43 @@ var CURSES_DATA = [
     "name": "Curse of Frugality I",
     "stat": "Intelligence",
     "power": "Low",
-    "duration": "Until 1 Game Beaten",
-    "description": "When you buy something from a shop, lose 5 Gold"
+    "duration": "Until Next Purchase",
+    "description": "Shop items cost 5 more gold"
   },
   {
     "name": "Curse of Frugality II",
     "stat": "Intelligence",
     "power": "Medium",
-    "duration": "Until 1 Game Beaten",
-    "description": "When you buy something from a shop, lose 10 Gold"
+    "duration": "Until Next Purchase",
+    "description": "Shop items cost 10 more gold"
   },
   {
     "name": "Curse of Frugality III",
     "stat": "Intelligence",
     "power": "High",
-    "duration": "Until 1 Game Beaten",
-    "description": "When you buy something from a shop, lose 15 Gold"
+    "duration": "Until Next Purchase",
+    "description": "Shop items cost 15 more gold"
   },
   {
-    "name": "Curse of Less Options I",
+    "name": "Curse of Shroud I",
     "stat": "Intelligence",
     "power": "Low",
-    "duration": "Until 1 Space Choice Chosen",
-    "description": "Space Choices contain one less option"
+    "duration": "1 Game Selection",
+    "description": "Lower FoV by 1 for the next game selection"
   },
   {
-    "name": "Curse of Less Options II",
+    "name": "Curse of Shroud II",
     "stat": "Intelligence",
     "power": "Medium",
-    "duration": "Until 2 Space Choice Chosen",
-    "description": "Space Choices contain one less option"
+    "duration": "2 Game Selections",
+    "description": "Lower FoV by 1 for the next 2 game selections"
   },
   {
-    "name": "Curse of Less Options III",
+    "name": "Curse of Shroud III",
     "stat": "Intelligence",
     "power": "High",
-    "duration": "Until 2 Space Choices Chosen",
-    "description": "Space Choices contain two less options"
+    "duration": "3 Game Selections",
+    "description": "Lower FoV by 1 for the next 3 game selections"
   },
   {
     "name": "Curse of Hubris I",

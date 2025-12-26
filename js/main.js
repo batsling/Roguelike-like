@@ -887,64 +887,8 @@ function showCombatModal() {
         const randomCurseIndex = Math.floor(Math.random() * matchingCurses.length);
         const selectedCurse = matchingCurses[randomCurseIndex];
 
-        // Add curse to active curses if not already present
-        if (!gameState.activeCurses) {
-          gameState.activeCurses = [];
-        }
-
-        // Check if curse is already active
-        const alreadyHasCurse = gameState.activeCurses.some(c => c.name === selectedCurse.name);
-        if (!alreadyHasCurse) {
-          let cursePower = selectedCurse.power;
-
-          // Check for Curse of Vulnerability (increase curse power)
-          const vulnerabilityCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('vulnerability'));
-          if (vulnerabilityCurse) {
-            // Track how many times we've increased power
-            if (!gameState.vulnerabilityUses) {
-              gameState.vulnerabilityUses = {};
-            }
-            if (!gameState.vulnerabilityUses[vulnerabilityCurse.name]) {
-              gameState.vulnerabilityUses[vulnerabilityCurse.name] = 0;
-            }
-
-            // Determine max uses based on power
-            let maxUses = 1;
-            if (vulnerabilityCurse.power === 'Medium') maxUses = 2;
-            else if (vulnerabilityCurse.power === 'High') maxUses = 3;
-
-            // If we haven't exceeded max uses, increase power
-            if (gameState.vulnerabilityUses[vulnerabilityCurse.name] < maxUses) {
-              if (cursePower === 'Low') {
-                cursePower = 'Medium';
-              } else if (cursePower === 'Medium') {
-                cursePower = 'High';
-              }
-              // High stays High (can't go higher)
-
-              gameState.vulnerabilityUses[vulnerabilityCurse.name]++;
-
-              // Remove curse if we've used all charges
-              if (gameState.vulnerabilityUses[vulnerabilityCurse.name] >= maxUses) {
-                gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== vulnerabilityCurse.name);
-                delete gameState.vulnerabilityUses[vulnerabilityCurse.name];
-              }
-            }
-          }
-
-          gameState.activeCurses.push({
-            name: selectedCurse.name,
-            stat: selectedCurse.stat,
-            power: cursePower,
-            duration: selectedCurse.duration,
-            description: selectedCurse.description
-          });
-
-          // Update curses display
-          if (typeof updateCursesDisplay === 'function') {
-            updateCursesDisplay();
-          }
-        }
+        // Add curse using helper function (handles Curse of Vulnerability)
+        addCurse(selectedCurse);
 
         failureText = `Lose ${healthLoss} health and gain ${selectedCurse.name}!`;
       }
@@ -1979,6 +1923,74 @@ function markGameFinished(gameName) {
   }
 }
 
+// Add a curse to active curses, processing Curse of Vulnerability if present
+function addCurse(curseToAdd) {
+  if (!gameState.activeCurses) {
+    gameState.activeCurses = [];
+  }
+
+  // Check if curse is already active
+  const alreadyHasCurse = gameState.activeCurses.some(c => c.name === curseToAdd.name);
+  if (alreadyHasCurse) {
+    return false; // Don't add duplicate
+  }
+
+  let cursePower = curseToAdd.power;
+
+  // Check for Curse of Vulnerability (increase curse power)
+  const vulnerabilityCurse = gameState.activeCurses.find(c => c.name.toLowerCase().includes('vulnerability'));
+  if (vulnerabilityCurse) {
+    // Track how many times we've increased power
+    if (!gameState.vulnerabilityUses) {
+      gameState.vulnerabilityUses = {};
+    }
+    if (!gameState.vulnerabilityUses[vulnerabilityCurse.name]) {
+      gameState.vulnerabilityUses[vulnerabilityCurse.name] = 0;
+    }
+
+    // Determine max uses based on power
+    let maxUses = 1;
+    if (vulnerabilityCurse.power === 'Medium') maxUses = 2;
+    else if (vulnerabilityCurse.power === 'High') maxUses = 3;
+
+    // If we haven't exceeded max uses, increase power
+    if (gameState.vulnerabilityUses[vulnerabilityCurse.name] < maxUses) {
+      if (cursePower === 'Low') {
+        cursePower = 'Medium';
+      } else if (cursePower === 'Medium') {
+        cursePower = 'High';
+      }
+      // High stays High (can't go higher)
+
+      gameState.vulnerabilityUses[vulnerabilityCurse.name]++;
+
+      // Remove curse if we've used all charges
+      if (gameState.vulnerabilityUses[vulnerabilityCurse.name] >= maxUses) {
+        gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== vulnerabilityCurse.name);
+        delete gameState.vulnerabilityUses[vulnerabilityCurse.name];
+      }
+    }
+  }
+
+  gameState.activeCurses.push({
+    name: curseToAdd.name,
+    stat: curseToAdd.stat,
+    power: cursePower,
+    duration: curseToAdd.duration,
+    description: curseToAdd.description
+  });
+
+  // Update curses display
+  if (typeof updateCursesDisplay === 'function') {
+    updateCursesDisplay();
+  }
+  if (typeof updateActiveCursesList === 'function') {
+    updateActiveCursesList();
+  }
+
+  return true;
+}
+
 // Check and remove curses based on their duration conditions
 function checkCurseDurations(trigger) {
   if (!gameState.activeCurses || gameState.activeCurses.length === 0) return;
@@ -2272,19 +2284,12 @@ document.getElementById('addSelectedCurse')?.addEventListener('click', () => {
     return;
   }
 
-  if (!gameState.activeCurses) {
-    gameState.activeCurses = [];
-  }
-
-  gameState.activeCurses.push(curseData);
-  updateActiveCursesList();
-  if (typeof updateCursesDisplay === 'function') {
-    updateCursesDisplay();
-  }
+  // Use addCurse helper to handle Vulnerability
+  const added = addCurse(curseData);
 
   const output = document.getElementById('curseAddOutput');
   if (output) {
-    output.textContent = `Added: ${curseName}`;
+    output.textContent = added ? `Added: ${curseName}` : `Curse already active: ${curseName}`;
     output.style.display = 'block';
     setTimeout(() => { output.style.display = 'none'; }, 2000);
   }
@@ -2298,19 +2303,12 @@ document.getElementById('addRandomCurse')?.addEventListener('click', () => {
 
   const randomCurse = CURSES_DATA[Math.floor(Math.random() * CURSES_DATA.length)];
 
-  if (!gameState.activeCurses) {
-    gameState.activeCurses = [];
-  }
-
-  gameState.activeCurses.push(randomCurse);
-  updateActiveCursesList();
-  if (typeof updateCursesDisplay === 'function') {
-    updateCursesDisplay();
-  }
+  // Use addCurse helper to handle Vulnerability
+  const added = addCurse(randomCurse);
 
   const output = document.getElementById('curseAddOutput');
   if (output) {
-    output.textContent = `Added: ${randomCurse.name}`;
+    output.textContent = added ? `Added: ${randomCurse.name}` : `Curse already active: ${randomCurse.name}`;
     output.style.display = 'block';
     setTimeout(() => { output.style.display = 'none'; }, 2000);
   }

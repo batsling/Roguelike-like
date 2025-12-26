@@ -162,6 +162,9 @@ function rollD20() {
         if (typeof updateCursesDisplay === 'function') {
           updateCursesDisplay();
         }
+        if (typeof updateActiveCursesList === 'function') {
+          updateActiveCursesList();
+        }
       }
     }
 
@@ -186,6 +189,9 @@ function rollD20() {
         gameState.activeCurses = gameState.activeCurses.filter(c => c.name !== failureCurse.name);
         if (typeof updateCursesDisplay === 'function') {
           updateCursesDisplay();
+        }
+        if (typeof updateActiveCursesList === 'function') {
+          updateActiveCursesList();
         }
 
         // Check for death

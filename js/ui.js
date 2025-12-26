@@ -187,6 +187,50 @@ function updateInventory() {
 
 // ===== CURSES DISPLAY =====
 
+function getCurseRemainingText(curse) {
+  const curseName = curse.name.toLowerCase();
+
+  // Curse of Weakness - shows "Next roll"
+  if (curseName.includes('weakness')) {
+    return 'Next roll';
+  }
+
+  // Curse of Failure - shows "On natural 1"
+  if (curseName.includes('failure')) {
+    return 'On natural 1';
+  }
+
+  // Curse of Vulnerability - shows remaining upgrades
+  if (curseName.includes('vulnerability')) {
+    if (!gameState.vulnerabilityUses) gameState.vulnerabilityUses = {};
+    const used = gameState.vulnerabilityUses[curse.name] || 0;
+    let maxUses = 1;
+    if (curse.power === 'Medium') maxUses = 2;
+    else if (curse.power === 'High') maxUses = 3;
+    const remaining = maxUses - used;
+    return `${remaining}/${maxUses} upgrades left`;
+  }
+
+  // Curse of Shroud - shows remaining game selections
+  if (curseName.includes('shroud')) {
+    if (!gameState.shroudUses) gameState.shroudUses = {};
+    const used = gameState.shroudUses[curse.name] || 0;
+    let maxUses = 1;
+    if (curse.power === 'Medium') maxUses = 2;
+    else if (curse.power === 'High') maxUses = 3;
+    const remaining = maxUses - used;
+    return `${remaining}/${maxUses} selections left`;
+  }
+
+  // Curse of Frugality - shows "Next purchase"
+  if (curseName.includes('frugality')) {
+    return 'Next purchase';
+  }
+
+  // Default - show duration string
+  return curse.duration;
+}
+
 function updateCursesDisplay() {
   const cursesList = document.getElementById('game-curses-list');
   if (!cursesList) return;
@@ -198,6 +242,7 @@ function updateCursesDisplay() {
     cursesList.innerHTML = '<div class="empty-curses" style="color: #888; font-style: italic; padding: 10px; text-align: center;">No active curses</div>';
   } else {
     cursesList.innerHTML = activeCurses.map((curse, idx) => {
+      const remainingText = getCurseRemainingText(curse);
       return `
         <div class="curse-display" style="
           background: rgba(255, 102, 102, 0.1);
@@ -208,7 +253,7 @@ function updateCursesDisplay() {
         ">
           <div style="color: #ff9999; font-weight: bold; font-size: 14px;">${curse.name}</div>
           <div style="color: #cc8888; font-size: 12px; margin-top: 4px;">${curse.description}</div>
-          <div style="color: #aa7777; font-size: 11px; margin-top: 4px; font-style: italic;">Duration: ${curse.duration}</div>
+          <div style="color: #aa7777; font-size: 11px; margin-top: 4px; font-style: italic;">Remaining: ${remainingText}</div>
         </div>
       `;
     }).join('');
@@ -366,7 +411,19 @@ function updateGameStats() {
   if (statsDash) statsDash.textContent = dash;
   if (statsSkip) statsSkip.textContent = skip;
   if (statsDiscovery) statsDiscovery.textContent = discovery;
-  if (statsFoV) statsFoV.textContent = fov;
+
+  // Check for Curse of Shroud (temporary FoV reduction)
+  if (statsFoV) {
+    let displayFoV = fov;
+    const shroudCurse = gameState?.activeCurses?.find(c => c.name.toLowerCase().includes('shroud'));
+    if (shroudCurse) {
+      const effectiveFoV = Math.max(1, fov - 1);
+      statsFoV.textContent = `${effectiveFoV} (${fov}-1)`;
+    } else {
+      statsFoV.textContent = fov;
+    }
+  }
+
   if (statsLuck) statsLuck.textContent = luck;
   if (statsItems) statsItems.textContent = inventory.length;
 
