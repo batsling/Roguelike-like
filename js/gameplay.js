@@ -201,9 +201,21 @@ function moveTooltip(e) {
   let left = e.clientX + offset;
   let top = e.clientY + offset;
 
+  // Check if tooltip is too tall for viewport - make it wider to reduce height
+  if (tooltipRect.height > viewportHeight - topBarHeight - 40) {
+    tooltip.style.width = 'auto';
+    tooltip.style.maxWidth = '500px';
+  } else {
+    tooltip.style.width = '280px';
+    tooltip.style.maxWidth = '280px';
+  }
+
+  // Re-get rect after potential width change
+  const updatedRect = tooltip.getBoundingClientRect();
+
   // Check if tooltip would go off the right edge
-  if (left + tooltipRect.width > viewportWidth) {
-    left = e.clientX - tooltipRect.width - offset;
+  if (left + updatedRect.width > viewportWidth) {
+    left = e.clientX - updatedRect.width - offset;
   }
 
   // Check if tooltip would go off the left edge
@@ -212,13 +224,23 @@ function moveTooltip(e) {
   }
 
   // Check if tooltip would go off the bottom edge
-  if (top + tooltipRect.height > viewportHeight) {
-    top = e.clientY - tooltipRect.height - offset;
+  if (top + updatedRect.height > viewportHeight) {
+    top = e.clientY - updatedRect.height - offset;
   }
 
   // Check if tooltip would go under the top bar
   if (top < topBarHeight) {
     top = topBarHeight + offset;
+  }
+
+  // Final safety check - add max-height and scroll if still too tall
+  const maxHeight = viewportHeight - topBarHeight - 20;
+  if (updatedRect.height > maxHeight) {
+    tooltip.style.maxHeight = maxHeight + 'px';
+    tooltip.style.overflowY = 'auto';
+  } else {
+    tooltip.style.maxHeight = 'none';
+    tooltip.style.overflowY = 'visible';
   }
 
   tooltip.style.left = left + 'px';

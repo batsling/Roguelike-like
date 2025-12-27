@@ -237,13 +237,19 @@ const ITEM_EFFECTS = {
     onAcquire: () => {
       // Lose half of max health (rounded down)
       const healthLoss = Math.floor(maxHealth / 2);
+      const oldMaxHealth = maxHealth;
+      const oldHealth = health;
+
       maxHealth -= healthLoss;
-      health = Math.max(0, health - healthLoss); // Lose current health too
+      // Cap current health to new max, but don't reduce it otherwise
+      health = Math.min(health, maxHealth);
+      // Ensure player doesn't die (minimum 1 HP)
+      health = Math.max(1, health);
 
       gameState.maxHealth = maxHealth;
       gameState.health = health;
 
-      console.log(`Cursed Slash: Lost ${healthLoss} max health and current health`);
+      console.log(`Cursed Slash: Max health ${oldMaxHealth} → ${maxHealth}, Current health ${oldHealth} → ${health}`);
 
       if (typeof updateHealthDisplay === 'function') {
         updateHealthDisplay();

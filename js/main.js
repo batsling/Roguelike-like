@@ -2415,8 +2415,10 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
       if (hubrisHigh.length > 0) {
         const highRadio = document.querySelector('input[name="hubris-high-check"]:checked');
         const didImplement = highRadio && highRadio.value === 'yes';
+        console.log(`Hubris III verification: Found ${hubrisHigh.length} curses, didImplement=${didImplement}`);
         if (didImplement) {
           hubrisHigh.forEach(curse => {
+            console.log(`Adding Hubris III to restrictionCursesProcessed: ${curse.name} (ID: ${curse.id})`);
             gameState.restrictionCursesProcessed.push(curse.id);
           });
         }
@@ -2660,9 +2662,14 @@ function checkCurseDurations(trigger) {
 
       if (isRestrictionCurse) {
         // Only increment if player confirmed they implemented it
-        if (gameState.restrictionCursesProcessed &&
-            gameState.restrictionCursesProcessed.includes(trackerId)) {
+        const wasProcessed = gameState.restrictionCursesProcessed &&
+                            gameState.restrictionCursesProcessed.includes(trackerId);
 
+        if (isHubris) {
+          console.log(`Hubris check: ${curse.name} (ID: ${trackerId}), wasProcessed=${wasProcessed}, restrictionCursesProcessed=${JSON.stringify(gameState.restrictionCursesProcessed)}`);
+        }
+
+        if (wasProcessed) {
           // Blindness: Only increment highest tier curse, only once per trigger
           if (isBlindness && !blindnessProcessed) {
             blindnessProcessed = true;
@@ -2684,7 +2691,11 @@ function checkCurseDurations(trigger) {
             }
           } else if (!isBlindness) {
             // Hubris and other restriction curses increment individually
+            const oldValue = tracker.gamesBeaten;
             tracker.gamesBeaten++;
+            if (isHubris) {
+              console.log(`Hubris incremented: ${curse.name} ${oldValue} → ${tracker.gamesBeaten}`);
+            }
           }
         }
       } else {
