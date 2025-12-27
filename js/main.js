@@ -2400,9 +2400,21 @@ function addCurse(curseToAdd) {
   if (!gameState.activeCurses) {
     gameState.activeCurses = [];
   }
+  if (!gameState.cursesTracker) {
+    gameState.cursesTracker = {};
+  }
 
   // Add the base curse
-  gameState.activeCurses.push(createCurseObject(curseToAdd));
+  const newCurse = createCurseObject(curseToAdd);
+  gameState.activeCurses.push(newCurse);
+
+  // Initialize tracker for this curse
+  gameState.cursesTracker[newCurse.id] = {
+    gamesBeaten: 0,
+    spacesChosen: 0,
+    combatsLost: 0,
+    diceRolled: 0
+  };
 
   // Check for Curse of Vulnerability (add duplicate curses)
   const vulnerabilityCurses = getCursesByType('vulnerability');
@@ -2422,7 +2434,17 @@ function addCurse(curseToAdd) {
 
       // If this vulnerability curse still has uses, add a duplicate of the incoming curse
       if (gameState.vulnerabilityUses[vulnerabilityCurse.name] < maxUses) {
-        gameState.activeCurses.push(createCurseObject(curseToAdd));
+        const duplicateCurse = createCurseObject(curseToAdd);
+        gameState.activeCurses.push(duplicateCurse);
+
+        // Initialize tracker for duplicate curse
+        gameState.cursesTracker[duplicateCurse.id] = {
+          gamesBeaten: 0,
+          spacesChosen: 0,
+          combatsLost: 0,
+          diceRolled: 0
+        };
+
         gameState.vulnerabilityUses[vulnerabilityCurse.name]++;
 
         // Remove curse if we've used all charges
