@@ -63,27 +63,6 @@ var CURSES_DATA = [
     "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the  cursor is set to, lose 3 health"
   },
   {
-    "name": "Curse of Clacking I",
-    "stat": "Dexterity",
-    "power": "Low",
-    "duration": "Until 1 Game Beaten",
-    "description": "You may not use a controller"
-  },
-  {
-    "name": "Curse of Clacking II",
-    "stat": "Dexterity",
-    "power": "Medium",
-    "duration": "Until 2 Games Beaten",
-    "description": "You may not use a controller"
-  },
-  {
-    "name": "Curse of Clacking III",
-    "stat": "Dexterity",
-    "power": "High",
-    "duration": "Until 3 Games Beaten",
-    "description": "You may not use a controller"
-  },
-  {
     "name": "Curse of Haste I",
     "stat": "Dexterity",
     "power": "Low",

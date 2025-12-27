@@ -2096,12 +2096,11 @@ function showCurseVerificationModal(onComplete) {
     return;
   }
 
-  // Get curses that need verification
+  // Get curses that need verification (manual and restriction curses)
   const cursesToVerify = gameState.activeCurses.filter(curse =>
     curse.name.toLowerCase().includes('devotion') ||
     curse.name.toLowerCase().includes('greed') ||
     curse.name.toLowerCase().includes('impulse') ||
-    curse.name.toLowerCase().includes('clacking') ||
     curse.name.toLowerCase().includes('haste') ||
     curse.name.toLowerCase().includes('blindness') ||
     curse.name.toLowerCase().includes('hubris')
@@ -2122,6 +2121,8 @@ function showCurseVerificationModal(onComplete) {
  */
 function verifyCursesCombined(cursesToVerify, onComplete) {
   // Group curses by type
+  const blindnessCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('blindness'));
+  const hubrisCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('hubris'));
   const devotionCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('devotion'));
   const greedCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('greed'));
   const impulseCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('impulse'));
@@ -2133,6 +2134,52 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
       <h2 style="color: #ff4444; margin-top: 0; font-size: 24px;">😈 Curse Verification</h2>
       <p style="color: #aaa; font-size: 12px; margin: 5px 0;">Answer honestly for each curse you have active</p>
   `;
+
+  // Add Blindness section (restriction curse - purple)
+  if (blindnessCurses.length > 0) {
+    modalHTML += `
+      <div style="background: rgba(170, 102, 255, 0.1); border: 1px solid #aa66ff; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #bb99ff; margin: 0 0 5px 0; font-size: 15px;">🎲 Blindness</h3>
+        <div style="color: #aa88cc; font-size: 11px; margin-bottom: 5px;">
+          ${blindnessCurses.map(c => c.name).join(', ')}
+        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Randomly choose character/loadout?</p>
+        <div style="margin-top: 5px;">
+          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+            <input type="radio" name="blindness-check" value="yes" checked style="margin-right: 5px;">Yes, did it
+          </label>
+          <label style="font-size: 12px; color: #ccc;">
+            <input type="radio" name="blindness-check" value="no" style="margin-right: 5px;">No/Not possible
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
+  // Add Hubris section (restriction curse - purple)
+  if (hubrisCurses.length > 0) {
+    // Get the highest difficulty requirement
+    const difficultyIncreases = hubrisCurses.some(c => c.power === 'High') ? '3 times' :
+                                 hubrisCurses.some(c => c.power === 'Medium') ? '2 times' : 'once';
+
+    modalHTML += `
+      <div style="background: rgba(170, 102, 255, 0.1); border: 1px solid #aa66ff; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #bb99ff; margin: 0 0 5px 0; font-size: 15px;">💪 Hubris</h3>
+        <div style="color: #aa88cc; font-size: 11px; margin-bottom: 5px;">
+          ${hubrisCurses.map(c => c.name).join(', ')}
+        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Raise difficulty ${difficultyIncreases}?</p>
+        <div style="margin-top: 5px;">
+          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+            <input type="radio" name="hubris-check" value="yes" checked style="margin-right: 5px;">Yes, did it
+          </label>
+          <label style="font-size: 12px; color: #ccc;">
+            <input type="radio" name="hubris-check" value="no" style="margin-right: 5px;">No/Not possible
+          </label>
+        </div>
+      </div>
+    `;
+  }
 
   // Add Devotion section if there are any Devotion curses
   if (devotionCurses.length > 0) {
@@ -2271,6 +2318,37 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
   // Handle submission
   document.getElementById('verify-all-submit').onclick = () => {
     let totalDamage = 0;
+
+    // Track which restriction curses should increment
+    // (We'll mark them manually here, then skip them in checkCurseDurations)
+    if (!gameState.restrictionCursesProcessed) {
+      gameState.restrictionCursesProcessed = [];
+    }
+    gameState.restrictionCursesProcessed = [];
+
+    // Process Blindness restriction curses
+    if (blindnessCurses.length > 0) {
+      const blindnessRadio = document.querySelector('input[name="blindness-check"]:checked');
+      const didImplement = blindnessRadio && blindnessRadio.value === 'yes';
+      if (didImplement) {
+        // Mark these curses as should increment
+        blindnessCurses.forEach(curse => {
+          gameState.restrictionCursesProcessed.push(curse.id);
+        });
+      }
+    }
+
+    // Process Hubris restriction curses
+    if (hubrisCurses.length > 0) {
+      const hubrisRadio = document.querySelector('input[name="hubris-check"]:checked');
+      const didImplement = hubrisRadio && hubrisRadio.value === 'yes';
+      if (didImplement) {
+        // Mark these curses as should increment
+        hubrisCurses.forEach(curse => {
+          gameState.restrictionCursesProcessed.push(curse.id);
+        });
+      }
+    }
 
     // Process Devotion curses
     if (devotionCurses.length > 0) {
@@ -2500,7 +2578,20 @@ function checkCurseDurations(trigger) {
 
     // Update trackers based on trigger
     if (trigger === 'game_beaten') {
-      tracker.gamesBeaten++;
+      // Check if this is a restriction curse
+      const isRestrictionCurse = curse.name.toLowerCase().includes('blindness') ||
+                                 curse.name.toLowerCase().includes('hubris');
+
+      if (isRestrictionCurse) {
+        // Only increment if player confirmed they implemented it
+        if (gameState.restrictionCursesProcessed &&
+            gameState.restrictionCursesProcessed.includes(trackerId)) {
+          tracker.gamesBeaten++;
+        }
+      } else {
+        // Regular curses always increment
+        tracker.gamesBeaten++;
+      }
     } else if (trigger === 'space_chosen') {
       tracker.spacesChosen++;
     } else if (trigger === 'combat_lost') {

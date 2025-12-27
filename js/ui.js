@@ -253,31 +253,41 @@ function updateCursesDisplay() {
   if (activeCurses.length === 0) {
     cursesList.innerHTML = '<div class="empty-curses" style="color: #888; font-style: italic; padding: 10px; text-align: center;">No active curses</div>';
   } else {
-    // Separate curses into manual and automatic
+    // Separate curses into restriction, manual, and automatic
+    const restrictionCurses = activeCurses.filter(curse =>
+      curse.name.toLowerCase().includes('blindness') ||
+      curse.name.toLowerCase().includes('hubris')
+    );
     const manualCurses = activeCurses.filter(curse =>
       curse.name.toLowerCase().includes('devotion') ||
       curse.name.toLowerCase().includes('greed') ||
       curse.name.toLowerCase().includes('impulse') ||
-      curse.name.toLowerCase().includes('clacking') ||
-      curse.name.toLowerCase().includes('haste') ||
-      curse.name.toLowerCase().includes('blindness') ||
-      curse.name.toLowerCase().includes('hubris')
+      curse.name.toLowerCase().includes('haste')
     );
-    const automaticCurses = activeCurses.filter(curse => !manualCurses.includes(curse));
+    const automaticCurses = activeCurses.filter(curse =>
+      !restrictionCurses.includes(curse) && !manualCurses.includes(curse)
+    );
 
-    // Display manual curses first (orange), then automatic curses (red)
-    const sortedCurses = [...manualCurses, ...automaticCurses];
+    // Display restriction (purple) first, then manual (orange), then automatic (red)
+    const sortedCurses = [...restrictionCurses, ...manualCurses, ...automaticCurses];
 
     cursesList.innerHTML = sortedCurses.map((curse, idx) => {
       const remainingText = getCurseRemainingText(curse);
+      const isRestriction = restrictionCurses.includes(curse);
       const isManual = manualCurses.includes(curse);
 
-      // Different colors for manual vs automatic curses
-      const bgColor = isManual ? 'rgba(255, 170, 68, 0.1)' : 'rgba(255, 102, 102, 0.1)';
-      const borderColor = isManual ? '#ffaa44' : '#ff6666';
-      const titleColor = isManual ? '#ffbb66' : '#ff9999';
-      const descColor = isManual ? '#ccaa88' : '#cc8888';
-      const remainingColor = isManual ? '#aa9977' : '#aa7777';
+      // Different colors for restriction vs manual vs automatic curses
+      const bgColor = isRestriction ? 'rgba(170, 102, 255, 0.1)' :
+                      isManual ? 'rgba(255, 170, 68, 0.1)' :
+                      'rgba(255, 102, 102, 0.1)';
+      const borderColor = isRestriction ? '#aa66ff' :
+                         isManual ? '#ffaa44' : '#ff6666';
+      const titleColor = isRestriction ? '#bb99ff' :
+                        isManual ? '#ffbb66' : '#ff9999';
+      const descColor = isRestriction ? '#aa88cc' :
+                       isManual ? '#ccaa88' : '#cc8888';
+      const remainingColor = isRestriction ? '#9977aa' :
+                            isManual ? '#aa9977' : '#aa7777';
 
       return `
         <div class="curse-display" style="
