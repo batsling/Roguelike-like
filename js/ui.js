@@ -231,25 +231,6 @@ function getCurseRemainingText(curse) {
     if (match) {
       const requiredGames = parseInt(match[1]);
 
-      // Special handling for Blindness - show combined total across all Blindness curses
-      if (curseName.includes('blindness')) {
-        const blindnessCurses = (gameState.activeCurses || []).filter(c => c.name.toLowerCase().includes('blindness'));
-        let totalRequired = 0;
-        blindnessCurses.forEach(c => {
-          const cDuration = c.duration.toLowerCase();
-          const cMatch = cDuration.match(/(\d+)\s+game/);
-          if (cMatch) {
-            totalRequired += parseInt(cMatch[1]);
-          }
-        });
-        // Use any Blindness tracker for current progress (they all sync)
-        if (!gameState.cursesTracker) gameState.cursesTracker = {};
-        const trackerId = curse.id || curse.name;
-        const tracker = gameState.cursesTracker[trackerId] || { gamesBeaten: 0 };
-        const currentGames = tracker.gamesBeaten || 0;
-        return `${currentGames}/${totalRequired} games beaten`;
-      }
-
       // Get current progress from tracker (use curse ID for accurate tracking of duplicates)
       if (!gameState.cursesTracker) gameState.cursesTracker = {};
       const trackerId = curse.id || curse.name; // Fallback to name for old saves

@@ -2631,6 +2631,9 @@ function checkCurseDurations(trigger) {
 
   const cursesToRemove = [];
 
+  // Track whether we've processed Blindness in this call to avoid double-incrementing
+  let blindnessProcessed = false;
+
   gameState.activeCurses.forEach((curse, index) => {
     // Use curse ID for tracking (ensures each instance tracks independently)
     const trackerId = curse.id || curse.name; // Fallback to name for old saves
@@ -2658,18 +2661,26 @@ function checkCurseDurations(trigger) {
         if (gameState.restrictionCursesProcessed &&
             gameState.restrictionCursesProcessed.includes(trackerId)) {
 
-          // Blindness uses combined tracker - increment all Blindness curses together
-          if (isBlindness) {
-            // Find all Blindness curses and increment their trackers
-            gameState.activeCurses.forEach(c => {
-              if (c.name.toLowerCase().includes('blindness')) {
-                const cTrackerId = c.id || c.name;
-                if (gameState.cursesTracker[cTrackerId]) {
-                  gameState.cursesTracker[cTrackerId].gamesBeaten++;
-                }
+          // Blindness: Only increment highest tier curse, only once per trigger
+          if (isBlindness && !blindnessProcessed) {
+            blindnessProcessed = true;
+
+            // Find all Blindness curses
+            const allBlindness = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('blindness'));
+
+            // Sort by power (High > Medium > Low)
+            const powerOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+            allBlindness.sort((a, b) => (powerOrder[b.power] || 0) - (powerOrder[a.power] || 0));
+
+            // Increment only the highest tier Blindness
+            if (allBlindness.length > 0) {
+              const highestBlindness = allBlindness[0];
+              const highestTrackerId = highestBlindness.id || highestBlindness.name;
+              if (gameState.cursesTracker[highestTrackerId]) {
+                gameState.cursesTracker[highestTrackerId].gamesBeaten++;
               }
-            });
-          } else {
+            }
+          } else if (!isBlindness) {
             // Hubris and other restriction curses increment individually
             tracker.gamesBeaten++;
           }
@@ -2706,32 +2717,6 @@ function checkCurseDurations(trigger) {
       console.log(`Curse removed: ${curse.name} (ID: ${trackerId})`);
     }
   });
-
-  // Special handling for Blindness - all Blindness curses share combined duration
-  const blindnessCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('blindness'));
-  if (blindnessCurses.length > 0 && trigger === 'game_beaten') {
-    // Calculate total required games across all Blindness curses
-    let totalRequired = 0;
-    blindnessCurses.forEach(c => {
-      const duration = c.duration.toLowerCase();
-      const match = duration.match(/(\d+)\s+game/);
-      if (match) {
-        totalRequired += parseInt(match[1]);
-      }
-    });
-
-    // Check if any Blindness curse has reached the total
-    const anyBlindnessTracker = gameState.cursesTracker[blindnessCurses[0].id || blindnessCurses[0].name];
-    if (anyBlindnessTracker && anyBlindnessTracker.gamesBeaten >= totalRequired) {
-      // Remove ALL Blindness curses
-      gameState.activeCurses.forEach((curse, index) => {
-        if (curse.name.toLowerCase().includes('blindness') && !cursesToRemove.includes(index)) {
-          cursesToRemove.push(index);
-          console.log(`Curse removed (Blindness combined): ${curse.name} (ID: ${curse.id || curse.name})`);
-        }
-      });
-    }
-  }
 
   // Remove expired curses (iterate backwards to avoid index issues)
   for (let i = cursesToRemove.length - 1; i >= 0; i--) {
