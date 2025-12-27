@@ -2074,6 +2074,11 @@ function markGameFinished(gameName) {
     // Check and update curse durations
     checkCurseDurations('game_beaten');
 
+    // Update curse UI to reflect new progress
+    if (typeof updateCurseUI === 'function') {
+      updateCurseUI();
+    }
+
     updateGameStats();
     saveCurrentGame();
   }
@@ -2222,9 +2227,7 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
       }
     }
 
-    // Update UI and continue
-    updateCurseUI();
-    saveCurrentGame();
+    // Continue to mark game as finished (which will update curse UI after incrementing trackers)
     if (onComplete) onComplete();
   };
 }
