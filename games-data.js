@@ -56,6 +56,15 @@ var GAMES_DATA = [
     "gamesInfluenced": []
   },
   {
+    "name": "Abandoned Archive",
+    "year": 2025,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+   {
     "name": "Absolum",
     "year": 2025,
     "type": "Action",
@@ -1686,6 +1695,7 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
+      "Abandoned Archive",
       "AK-xolotl",
       "Beyond the Long Night",
       "Brutal Orchestra",
@@ -5257,6 +5267,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [
+      "Abandoned Archive",
       "Astral Ascent",
       "Putrid Shot Ultra",
       "Wizard of Legend 2"
