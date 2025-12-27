@@ -88,14 +88,14 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Low",
     "duration": "Until 1 Game Beaten",
-    "description": "If you don't beat the next game within 4 hours, lose 1 Health"
+    "description": "If you don't beat the next game within 4 hours, lose 2 Health"
   },
   {
     "name": "Curse of Haste II",
     "stat": "Dexterity",
     "power": "Medium",
     "duration": "Until 1 Game Beaten",
-    "description": "If you don't beat the next game within 3 hours, lose 1 Health"
+    "description": "If you don't beat the next game within 3 hours, lose 2 Health"
   },
   {
     "name": "Curse of Haste III",

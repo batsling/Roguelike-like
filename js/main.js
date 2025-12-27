@@ -694,7 +694,7 @@ function createGameModal(content) {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0,0,0,0.95);
+    background: rgba(0,0,0,0.5);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -2124,14 +2124,14 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
   // Group curses by type
   const devotionCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('devotion'));
   const greedCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('greed'));
-  // TODO: Add other curse types here as they're implemented
-  // const impulseCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('impulse'));
+  const impulseCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('impulse'));
+  const hasteCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('haste'));
 
-  // Build the modal HTML
+  // Build the modal HTML with compact styling
   let modalHTML = `
     <div style="text-align: center;">
-      <h2 style="color: #ff4444; margin-top: 0; font-size: 28px;">😈 Curse Verification</h2>
-      <p style="color: #aaa; font-size: 14px; margin: 10px 0;">Answer honestly for each curse you have active</p>
+      <h2 style="color: #ff4444; margin-top: 0; font-size: 24px;">😈 Curse Verification</h2>
+      <p style="color: #aaa; font-size: 12px; margin: 5px 0;">Answer honestly for each curse you have active</p>
   `;
 
   // Add Devotion section if there are any Devotion curses
@@ -2141,26 +2141,23 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
     }, 0);
 
     modalHTML += `
-      <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 8px; padding: 15px; margin: 20px 0;">
-        <h3 style="color: #ffbb66; margin: 0 0 10px 0; font-size: 18px;">⛓️ Curse of Devotion</h3>
-        <div style="color: #ccaa88; font-size: 13px; margin-bottom: 10px;">
+      <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #ffbb66; margin: 0 0 5px 0; font-size: 15px;">⛓️ Devotion</h3>
+        <div style="color: #ccaa88; font-size: 11px; margin-bottom: 5px;">
           ${devotionCurses.map(c => c.name).join(', ')}
         </div>
-        <p style="font-size: 16px; margin: 10px 0; color: #ddd;">Did you reset any runs during this game?</p>
-        <p style="font-size: 13px; color: #ff8888; margin: 10px 0;">Combined Penalty: ${totalDevotionDamage} HP per reset</p>
-        <div style="margin: 15px 0;">
-          <label style="font-size: 13px; color: #ccc; display: block; margin-bottom: 8px;">Number of resets:</label>
-          <input type="number" id="devotion-reset-count" min="0" value="0" style="
-            padding: 10px;
-            font-size: 16px;
-            width: 80px;
-            text-align: center;
-            background: #333;
-            border: 2px solid #666;
-            border-radius: 6px;
-            color: white;
-          ">
-        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Reset any runs? Penalty: ${totalDevotionDamage} HP/reset</p>
+        <input type="number" id="devotion-reset-count" min="0" value="0" style="
+          padding: 6px;
+          font-size: 14px;
+          width: 60px;
+          text-align: center;
+          background: #333;
+          border: 2px solid #666;
+          border-radius: 4px;
+          color: white;
+          margin-top: 5px;
+        ">
       </div>
     `;
   }
@@ -2172,32 +2169,79 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
     }, 0);
 
     modalHTML += `
-      <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 8px; padding: 15px; margin: 20px 0;">
-        <h3 style="color: #ffbb66; margin: 0 0 10px 0; font-size: 18px;">💰 Curse of Greed</h3>
-        <div style="color: #ccaa88; font-size: 13px; margin-bottom: 10px;">
+      <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #ffbb66; margin: 0 0 5px 0; font-size: 15px;">💰 Greed</h3>
+        <div style="color: #ccaa88; font-size: 11px; margin-bottom: 5px;">
           ${greedCurses.map(c => c.name).join(', ')}
         </div>
-        <p style="font-size: 16px; margin: 10px 0; color: #ddd;">Did you skip any item or upgrade choices during this game?</p>
-        <p style="font-size: 13px; color: #ff8888; margin: 10px 0;">Combined Penalty: ${totalGreedDamage} HP per skip</p>
-        <div style="margin: 15px 0;">
-          <label style="font-size: 13px; color: #ccc; display: block; margin-bottom: 8px;">Number of skips:</label>
-          <input type="number" id="greed-skip-count" min="0" value="0" style="
-            padding: 10px;
-            font-size: 16px;
-            width: 80px;
-            text-align: center;
-            background: #333;
-            border: 2px solid #666;
-            border-radius: 6px;
-            color: white;
-          ">
-        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Skip item/upgrade choices? Penalty: ${totalGreedDamage} HP/skip</p>
+        <input type="number" id="greed-skip-count" min="0" value="0" style="
+          padding: 6px;
+          font-size: 14px;
+          width: 60px;
+          text-align: center;
+          background: #333;
+          border: 2px solid #666;
+          border-radius: 4px;
+          color: white;
+          margin-top: 5px;
+        ">
       </div>
     `;
   }
 
-  // TODO: Add sections for other curse types here
-  // if (impulseCurses.length > 0) { ... }
+  // Add Impulse section if there are any Impulse curses
+  if (impulseCurses.length > 0) {
+    const totalImpulseDamage = impulseCurses.reduce((sum, curse) => {
+      return sum + getPowerValue(curse.power, { Low: 1, Medium: 2, High: 3 });
+    }, 0);
+
+    modalHTML += `
+      <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #ffbb66; margin: 0 0 5px 0; font-size: 15px;">⚡ Impulse</h3>
+        <div style="color: #ccaa88; font-size: 11px; margin-bottom: 5px;">
+          ${impulseCurses.map(c => c.name).join(', ')}
+        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Pick non-topmost/leftmost choices? Penalty: ${totalImpulseDamage} HP/bad pick</p>
+        <input type="number" id="impulse-bad-pick-count" min="0" value="0" style="
+          padding: 6px;
+          font-size: 14px;
+          width: 60px;
+          text-align: center;
+          background: #333;
+          border: 2px solid #666;
+          border-radius: 4px;
+          color: white;
+          margin-top: 5px;
+        ">
+      </div>
+    `;
+  }
+
+  // Add Haste section if there are any Haste curses
+  if (hasteCurses.length > 0) {
+    // Get the time limit based on lowest tier (most lenient)
+    const timeLimit = hasteCurses.some(c => c.power === 'Low') ? 4 :
+                      hasteCurses.some(c => c.power === 'Medium') ? 3 : 2;
+
+    modalHTML += `
+      <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #ffbb66; margin: 0 0 5px 0; font-size: 15px;">⏱️ Haste</h3>
+        <div style="color: #ccaa88; font-size: 11px; margin-bottom: 5px;">
+          ${hasteCurses.map(c => c.name).join(', ')}
+        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Beat game within ${timeLimit} hours? Penalty: 2 HP if failed</p>
+        <div style="margin-top: 5px;">
+          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+            <input type="radio" name="haste-check" value="yes" checked style="margin-right: 5px;">Yes
+          </label>
+          <label style="font-size: 12px; color: #ccc;">
+            <input type="radio" name="haste-check" value="no" style="margin-right: 5px;">No
+          </label>
+        </div>
+      </div>
+    `;
+  }
 
   modalHTML += `
       <button id="verify-all-submit" style="
@@ -2218,7 +2262,9 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
 
   // Focus first available input
   setTimeout(() => {
-    const firstInput = document.getElementById('devotion-reset-count') || document.getElementById('greed-skip-count');
+    const firstInput = document.getElementById('devotion-reset-count') ||
+                       document.getElementById('greed-skip-count') ||
+                       document.getElementById('impulse-bad-pick-count');
     firstInput?.focus();
   }, 100);
 
@@ -2244,7 +2290,23 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
       totalDamage += skipCount * greedDamagePerSkip;
     }
 
-    // TODO: Process other curse types here
+    // Process Impulse curses
+    if (impulseCurses.length > 0) {
+      const badPickCount = parseInt(document.getElementById('impulse-bad-pick-count').value) || 0;
+      const impulseDamagePerPick = impulseCurses.reduce((sum, curse) => {
+        return sum + getPowerValue(curse.power, { Low: 1, Medium: 2, High: 3 });
+      }, 0);
+      totalDamage += badPickCount * impulseDamagePerPick;
+    }
+
+    // Process Haste curses (flat 2 damage if failed)
+    if (hasteCurses.length > 0) {
+      const hasteRadio = document.querySelector('input[name="haste-check"]:checked');
+      const beatInTime = hasteRadio && hasteRadio.value === 'yes';
+      if (!beatInTime) {
+        totalDamage += 2; // Haste always deals 2 damage if failed
+      }
+    }
 
     closeGameModal();
 
