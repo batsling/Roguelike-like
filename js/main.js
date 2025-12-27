@@ -2156,29 +2156,73 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
     `;
   }
 
-  // Add Hubris section (restriction curse - purple)
+  // Add Hubris sections (restriction curse - purple) - one per tier
   if (hubrisCurses.length > 0) {
-    // Get the highest difficulty requirement
-    const difficultyIncreases = hubrisCurses.some(c => c.power === 'High') ? '3 times' :
-                                 hubrisCurses.some(c => c.power === 'Medium') ? '2 times' : 'once';
+    // Group Hubris by tier
+    const hubrisLow = hubrisCurses.filter(c => c.power === 'Low');
+    const hubrisMed = hubrisCurses.filter(c => c.power === 'Medium');
+    const hubrisHigh = hubrisCurses.filter(c => c.power === 'High');
 
-    modalHTML += `
-      <div style="background: rgba(170, 102, 255, 0.1); border: 1px solid #aa66ff; border-radius: 6px; padding: 10px; margin: 8px 0;">
-        <h3 style="color: #bb99ff; margin: 0 0 5px 0; font-size: 15px;">💪 Hubris</h3>
-        <div style="color: #aa88cc; font-size: 11px; margin-bottom: 5px;">
-          ${hubrisCurses.map(c => c.name).join(', ')}
+    // Add section for each tier that exists
+    if (hubrisLow.length > 0) {
+      modalHTML += `
+        <div style="background: rgba(170, 102, 255, 0.1); border: 1px solid #aa66ff; border-radius: 6px; padding: 10px; margin: 8px 0;">
+          <h3 style="color: #bb99ff; margin: 0 0 5px 0; font-size: 15px;">💪 Hubris I</h3>
+          <div style="color: #aa88cc; font-size: 11px; margin-bottom: 5px;">
+            ${hubrisLow.map(c => c.name).join(', ')}
+          </div>
+          <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Raise difficulty once?</p>
+          <div style="margin-top: 5px;">
+            <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+              <input type="radio" name="hubris-low-check" value="yes" checked style="margin-right: 5px;">Yes, did it
+            </label>
+            <label style="font-size: 12px; color: #ccc;">
+              <input type="radio" name="hubris-low-check" value="no" style="margin-right: 5px;">No/Not possible
+            </label>
+          </div>
         </div>
-        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Raise difficulty ${difficultyIncreases}?</p>
-        <div style="margin-top: 5px;">
-          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
-            <input type="radio" name="hubris-check" value="yes" checked style="margin-right: 5px;">Yes, did it
-          </label>
-          <label style="font-size: 12px; color: #ccc;">
-            <input type="radio" name="hubris-check" value="no" style="margin-right: 5px;">No/Not possible
-          </label>
+      `;
+    }
+
+    if (hubrisMed.length > 0) {
+      modalHTML += `
+        <div style="background: rgba(170, 102, 255, 0.1); border: 1px solid #aa66ff; border-radius: 6px; padding: 10px; margin: 8px 0;">
+          <h3 style="color: #bb99ff; margin: 0 0 5px 0; font-size: 15px;">💪 Hubris II</h3>
+          <div style="color: #aa88cc; font-size: 11px; margin-bottom: 5px;">
+            ${hubrisMed.map(c => c.name).join(', ')}
+          </div>
+          <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Raise difficulty twice?</p>
+          <div style="margin-top: 5px;">
+            <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+              <input type="radio" name="hubris-med-check" value="yes" checked style="margin-right: 5px;">Yes, did it
+            </label>
+            <label style="font-size: 12px; color: #ccc;">
+              <input type="radio" name="hubris-med-check" value="no" style="margin-right: 5px;">No/Not possible
+            </label>
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    }
+
+    if (hubrisHigh.length > 0) {
+      modalHTML += `
+        <div style="background: rgba(170, 102, 255, 0.1); border: 1px solid #aa66ff; border-radius: 6px; padding: 10px; margin: 8px 0;">
+          <h3 style="color: #bb99ff; margin: 0 0 5px 0; font-size: 15px;">💪 Hubris III</h3>
+          <div style="color: #aa88cc; font-size: 11px; margin-bottom: 5px;">
+            ${hubrisHigh.map(c => c.name).join(', ')}
+          </div>
+          <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Raise difficulty thrice?</p>
+          <div style="margin-top: 5px;">
+            <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+              <input type="radio" name="hubris-high-check" value="yes" checked style="margin-right: 5px;">Yes, did it
+            </label>
+            <label style="font-size: 12px; color: #ccc;">
+              <input type="radio" name="hubris-high-check" value="no" style="margin-right: 5px;">No/Not possible
+            </label>
+          </div>
+        </div>
+      `;
+    }
   }
 
   // Add Devotion section if there are any Devotion curses
@@ -2338,15 +2382,42 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
       }
     }
 
-    // Process Hubris restriction curses
+    // Process Hubris restriction curses by tier
     if (hubrisCurses.length > 0) {
-      const hubrisRadio = document.querySelector('input[name="hubris-check"]:checked');
-      const didImplement = hubrisRadio && hubrisRadio.value === 'yes';
-      if (didImplement) {
-        // Mark these curses as should increment
-        hubrisCurses.forEach(curse => {
-          gameState.restrictionCursesProcessed.push(curse.id);
-        });
+      // Group by tier
+      const hubrisLow = hubrisCurses.filter(c => c.power === 'Low');
+      const hubrisMed = hubrisCurses.filter(c => c.power === 'Medium');
+      const hubrisHigh = hubrisCurses.filter(c => c.power === 'High');
+
+      // Process each tier separately
+      if (hubrisLow.length > 0) {
+        const lowRadio = document.querySelector('input[name="hubris-low-check"]:checked');
+        const didImplement = lowRadio && lowRadio.value === 'yes';
+        if (didImplement) {
+          hubrisLow.forEach(curse => {
+            gameState.restrictionCursesProcessed.push(curse.id);
+          });
+        }
+      }
+
+      if (hubrisMed.length > 0) {
+        const medRadio = document.querySelector('input[name="hubris-med-check"]:checked');
+        const didImplement = medRadio && medRadio.value === 'yes';
+        if (didImplement) {
+          hubrisMed.forEach(curse => {
+            gameState.restrictionCursesProcessed.push(curse.id);
+          });
+        }
+      }
+
+      if (hubrisHigh.length > 0) {
+        const highRadio = document.querySelector('input[name="hubris-high-check"]:checked');
+        const didImplement = highRadio && highRadio.value === 'yes';
+        if (didImplement) {
+          hubrisHigh.forEach(curse => {
+            gameState.restrictionCursesProcessed.push(curse.id);
+          });
+        }
       }
     }
 
@@ -2578,15 +2649,30 @@ function checkCurseDurations(trigger) {
 
     // Update trackers based on trigger
     if (trigger === 'game_beaten') {
-      // Check if this is a restriction curse
-      const isRestrictionCurse = curse.name.toLowerCase().includes('blindness') ||
-                                 curse.name.toLowerCase().includes('hubris');
+      const isBlindness = curse.name.toLowerCase().includes('blindness');
+      const isHubris = curse.name.toLowerCase().includes('hubris');
+      const isRestrictionCurse = isBlindness || isHubris;
 
       if (isRestrictionCurse) {
         // Only increment if player confirmed they implemented it
         if (gameState.restrictionCursesProcessed &&
             gameState.restrictionCursesProcessed.includes(trackerId)) {
-          tracker.gamesBeaten++;
+
+          // Blindness uses combined tracker - increment all Blindness curses together
+          if (isBlindness) {
+            // Find all Blindness curses and increment their trackers
+            gameState.activeCurses.forEach(c => {
+              if (c.name.toLowerCase().includes('blindness')) {
+                const cTrackerId = c.id || c.name;
+                if (gameState.cursesTracker[cTrackerId]) {
+                  gameState.cursesTracker[cTrackerId].gamesBeaten++;
+                }
+              }
+            });
+          } else {
+            // Hubris and other restriction curses increment individually
+            tracker.gamesBeaten++;
+          }
         }
       } else {
         // Regular curses always increment
@@ -2620,6 +2706,32 @@ function checkCurseDurations(trigger) {
       console.log(`Curse removed: ${curse.name} (ID: ${trackerId})`);
     }
   });
+
+  // Special handling for Blindness - all Blindness curses share combined duration
+  const blindnessCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('blindness'));
+  if (blindnessCurses.length > 0 && trigger === 'game_beaten') {
+    // Calculate total required games across all Blindness curses
+    let totalRequired = 0;
+    blindnessCurses.forEach(c => {
+      const duration = c.duration.toLowerCase();
+      const match = duration.match(/(\d+)\s+game/);
+      if (match) {
+        totalRequired += parseInt(match[1]);
+      }
+    });
+
+    // Check if any Blindness curse has reached the total
+    const anyBlindnessTracker = gameState.cursesTracker[blindnessCurses[0].id || blindnessCurses[0].name];
+    if (anyBlindnessTracker && anyBlindnessTracker.gamesBeaten >= totalRequired) {
+      // Remove ALL Blindness curses
+      gameState.activeCurses.forEach((curse, index) => {
+        if (curse.name.toLowerCase().includes('blindness') && !cursesToRemove.includes(index)) {
+          cursesToRemove.push(index);
+          console.log(`Curse removed (Blindness combined): ${curse.name} (ID: ${curse.id || curse.name})`);
+        }
+      });
+    }
+  }
 
   // Remove expired curses (iterate backwards to avoid index issues)
   for (let i = cursesToRemove.length - 1; i >= 0; i--) {
