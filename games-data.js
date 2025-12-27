@@ -4396,6 +4396,15 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": []
   },
+    {
+    "name": "Stick It to the Stickman",
+    "year": 2025,
+    "type": "Action",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": []
+  },
   {
     "name": "Stoneshard",
     "year": 2020,
@@ -5084,7 +5093,8 @@ var GAMES_DATA = [
       "Sodaman",
       "Desktop Survivors 98",
       "Night Swarm",
-      "I Am Legion: Stand Survivors"
+      "I Am Legion: Stand Survivors",
+      "Yet Another Zombie Survivors"
     ]
   },
   {
@@ -5221,6 +5231,15 @@ var GAMES_DATA = [
       "Infinite Space III: Sea of Stars"
     ]
   },
+    {
+    "name": "White Knuckle",
+    "year": 2025,
+    "type": "Action",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": []
+  },
   {
     "name": "Wild Bastards",
     "year": 2024,
@@ -5304,6 +5323,15 @@ var GAMES_DATA = [
     "name": "Words Can Kill",
     "year": 2022,
     "type": "Deckbuilding",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+    {
+    "name": "Yet Another Zombie Survivors",
+    "year": 2023,
+    "type": "Action",
     "connected": true,
     "influenced": true,
     "tags": [],
