@@ -753,12 +753,14 @@ function showCombatModal() {
     }
   }
 
-  // Difficulty scales with distance (visitedGames.length)
-  const distance = gameState.visitedGames?.length || 0;
+  // Difficulty scales with number of games beaten
+  const gamesBeaten = gameState.finishedGames?.length || 0;
   let powerText = 'Low';
-  if (distance >= 10) {
+  if (gamesBeaten >= 15) {
     powerText = 'High';
-  } else if (distance >= 5) {
+  } else if (gamesBeaten >= 10) {
+    powerText = 'High';
+  } else if (gamesBeaten >= 5) {
     powerText = 'Medium';
   }
 

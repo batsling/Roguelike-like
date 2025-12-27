@@ -195,6 +195,7 @@ function moveTooltip(e) {
   const tooltipRect = tooltip.getBoundingClientRect();
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
+  const topBarHeight = 60; // Height of the fixed top bar
 
   // Calculate initial position
   let left = e.clientX + offset;
@@ -215,9 +216,9 @@ function moveTooltip(e) {
     top = e.clientY - tooltipRect.height - offset;
   }
 
-  // Check if tooltip would go off the top edge
-  if (top < 0) {
-    top = offset;
+  // Check if tooltip would go under the top bar
+  if (top < topBarHeight) {
+    top = topBarHeight + offset;
   }
 
   tooltip.style.left = left + 'px';

@@ -22,16 +22,57 @@ A roguelike game where players navigate through a graph of connected video games
 
 **Key Features:**
 - D20-based combat and event resolution
-- 5 unique curse types with stacking mechanics
+- 11 unique curse types across 3 categories (Restriction, Manual, Automatic)
+- Player-verified curse tracking system with combined verification modal
 - Extensive item system (passive, usable, and triggered)
 - Game status effects (portals, stinky games)
 - Escape sequence after finding the amulet
 - Save/load system with multiple save slots
 - Comprehensive developer tools
+- Dynamic difficulty scaling based on progress
 
 ---
 
 ## Recent Updates
+
+### Version 3.0 - Manual & Restriction Curses (December 2024)
+
+**New Curse Categories:**
+- **Restriction Curses** (Purple): Must implement specific restrictions (Blindness, Hubris)
+- **Manual Curses** (Orange): Player-verified actions (Devotion, Greed, Impulse, Haste)
+- **Automatic Curses** (Red): Original automatic curses (Failure, Weakness, Vulnerability, Shroud, Frugality)
+
+**Curse Verification System:**
+- Combined verification modal after beating each game
+- Conditional tracking for restriction curses (only count if possible to implement)
+- Player-reported tracking for manual curses (resets, skips, time limits, etc.)
+- Unique curse ID system for independent tracking of duplicate curses
+
+**New Manual Curses:**
+- **Devotion**: Lose HP for each run reset
+- **Greed**: Lose HP for skipping items/upgrades in-game
+- **Impulse**: Lose HP for not choosing topmost/leftmost options
+- **Haste**: Lose HP if game not beaten within time limit
+
+**New Restriction Curses:**
+- **Blindness**: Must randomly choose character/loadout (highest tier ticks first)
+- **Hubris**: Must raise difficulty (tracked separately by tier)
+
+**Difficulty Scaling:**
+- Difficulty now based on games beaten (not distance traveled)
+- Low (0-4 games), Medium (5-9 games), High (10+ games)
+
+**UI Improvements:**
+- Game hover tooltips use horizontal space for long connection lists
+- Tooltips respect top bar boundaries (no more clipping)
+- Three-category curse display with color-coding
+- Higher tier curses displayed above lower tiers within same category
+
+**Bug Fixes:**
+- Fixed curse tracking not incrementing after first game
+- Fixed Blindness curses incrementing multiple times per game
+- Fixed curse progress display showing 0/X instead of updating
+- Fixed curses taking extra turn to expire when added mid-game
 
 ### Version 2.0 - Curse System & Optimization (December 2024)
 
@@ -131,6 +172,108 @@ Curses are negative status effects that persist across encounters and modify gam
 
 ---
 
+#### 6. **Curse of Devotion** 🙏
+- **Category**: Manual (Player-verified)
+- **Trigger**: After beating a game (verification modal)
+- **Effect**:
+  - Player reports how many times they reset the run
+  - Deals damage per reset (Low: 1 HP, Medium: 2 HP, High: 3 HP)
+  - Lasts for 2 games beaten
+- **Removal**: After completing duration requirement
+- **Stack Behavior**: Multiple Devotion curses combine damage
+
+**Example**: With Devotion II, resetting 3 times and beating the game → Take 6 damage (3 resets × 2 HP)
+
+---
+
+#### 7. **Curse of Greed** 💎
+- **Category**: Manual (Player-verified)
+- **Trigger**: After beating a game (verification modal)
+- **Effect**:
+  - Player reports how many items/upgrades they skipped in-game
+  - Deals damage per skip (Low: 1 HP, Medium: 2 HP, High: 3 HP)
+  - Lasts for 2 games beaten
+- **Removal**: After completing duration requirement
+- **Stack Behavior**: Multiple Greed curses combine damage
+
+---
+
+#### 8. **Curse of Impulse** ⚡
+- **Category**: Manual (Player-verified)
+- **Trigger**: After beating a game (verification modal)
+- **Effect**:
+  - Player reports how many times they didn't pick topmost/leftmost option
+  - Deals damage per bad pick (Low: 1 HP, Medium: 2 HP, High: 3 HP)
+  - Lasts for 1 game beaten
+- **Removal**: After completing duration requirement
+- **Stack Behavior**: Multiple Impulse curses combine damage
+
+---
+
+#### 9. **Curse of Haste** ⏱️
+- **Category**: Manual (Player-verified)
+- **Trigger**: After beating a game (verification modal)
+- **Effect**:
+  - Player confirms if they beat the game within time limit
+  - Time limits: 4 hours (Low), 3 hours (Medium), 2 hours (High)
+  - Deals 2 HP damage if time limit exceeded
+  - Lasts for 1 game beaten
+- **Removal**: After completing duration requirement
+- **Stack Behavior**: Multiple Haste curses combine damage
+
+---
+
+#### 10. **Curse of Blindness** 🎲
+- **Category**: Restriction (Conditional tracking)
+- **Trigger**: After beating a game (verification modal)
+- **Effect**:
+  - Must randomly choose character/loadout at game start
+  - Player confirms "Yes, did it" or "No/Not possible"
+  - Only ticks down if implemented
+  - Lasts for 1/2/3 games (Low/Medium/High)
+- **Removal**: After completing duration requirement
+- **Special**: When multiple Blindness curses exist, only highest tier increments at a time
+
+**Example**: Blindness I (1 game) + Blindness III (3 games) → Blindness III ticks to 3/3 first, then Blindness I ticks to 1/1
+
+---
+
+#### 11. **Curse of Hubris** 💪
+- **Category**: Restriction (Conditional tracking)
+- **Trigger**: After beating a game (verification modal)
+- **Effect**:
+  - Must raise difficulty once/twice/thrice (Low/Medium/High)
+  - Player confirms "Yes, did it" or "No/Not possible"
+  - Only ticks down if implemented
+  - Lasts for 1 game beaten
+- **Removal**: After completing duration requirement
+- **Special**: Different tiers tracked separately (can answer differently for each tier)
+
+**Example**: Can say "Yes" for Hubris I (raised once) but "No" for Hubris III (couldn't raise thrice) in same game
+
+---
+
+### Curse Verification Modal
+
+After beating each game, a combined verification modal appears showing all active manual and restriction curses:
+
+**Restriction Curses (Purple):**
+- "Did you implement [restriction]?"
+- Options: "Yes, did it" or "No/Not possible"
+- Only increments if player confirms "Yes"
+
+**Manual Curses (Orange):**
+- Input fields for player-reported values (resets, skips, etc.)
+- Always increments regardless of value
+- Damage calculated based on reported numbers
+
+**Order of Display:**
+- Restriction curses first (Blindness, Hubris by tier)
+- Manual curses second (Devotion, Greed, Impulse, Haste)
+- Within each category, higher tiers displayed above lower tiers
+
+---
+
 ### Curse UI Display
 
 **Game Panel (Right Sidebar):**
@@ -152,11 +295,29 @@ Curses are negative status effects that persist across encounters and modify gam
 
 ### Curse Power Levels
 
-| Power | Failure Damage | Weakness Penalty | Vulnerability Uses | Shroud Uses | Frugality Cost |
-|-------|---------------|------------------|-------------------|-------------|----------------|
-| Low   | 2 HP          | -2               | 1                 | 1           | +5 gold        |
-| Medium| 3 HP          | -3               | 2                 | 2           | +10 gold       |
-| High  | 4 HP          | -4               | 3                 | 3           | +15 gold       |
+#### Automatic Curses
+
+| Power  | Failure | Weakness | Vulnerability | Shroud | Frugality |
+|--------|---------|----------|---------------|--------|-----------|
+| Low    | 2 HP    | -2 roll  | 1 use         | 1 use  | +5 gold   |
+| Medium | 3 HP    | -3 roll  | 2 uses        | 2 uses | +10 gold  |
+| High   | 4 HP    | -4 roll  | 3 uses        | 3 uses | +15 gold  |
+
+#### Manual Curses
+
+| Power  | Devotion (per reset) | Greed (per skip) | Impulse (per bad pick) | Haste (time limit) |
+|--------|---------------------|------------------|------------------------|-------------------|
+| Low    | 1 HP, 2 games       | 1 HP, 2 games    | 1 HP, 1 game          | 4 hours, 2 HP     |
+| Medium | 2 HP, 2 games       | 2 HP, 2 games    | 2 HP, 1 game          | 3 hours, 2 HP     |
+| High   | 3 HP, 2 games       | 3 HP, 2 games    | 3 HP, 1 game          | 2 hours, 2 HP     |
+
+#### Restriction Curses
+
+| Power  | Blindness (duration) | Hubris (difficulty raises) |
+|--------|---------------------|---------------------------|
+| Low    | 1 game              | 1 raise, 1 game           |
+| Medium | 2 games             | 2 raises, 1 game          |
+| High   | 3 games             | 3 raises, 1 game          |
 
 ---
 
