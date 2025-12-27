@@ -2123,8 +2123,9 @@ function showCurseVerificationModal(onComplete) {
 function verifyCursesCombined(cursesToVerify, onComplete) {
   // Group curses by type
   const devotionCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('devotion'));
+  const greedCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('greed'));
   // TODO: Add other curse types here as they're implemented
-  // const greedCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('greed'));
+  // const impulseCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('impulse'));
 
   // Build the modal HTML
   let modalHTML = `
@@ -2141,7 +2142,7 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
 
     modalHTML += `
       <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 8px; padding: 15px; margin: 20px 0;">
-        <h3 style="color: #ffbb66; margin: 0 0 10px 0; font-size: 18px;">Curse of Devotion</h3>
+        <h3 style="color: #ffbb66; margin: 0 0 10px 0; font-size: 18px;">⛓️ Curse of Devotion</h3>
         <div style="color: #ccaa88; font-size: 13px; margin-bottom: 10px;">
           ${devotionCurses.map(c => c.name).join(', ')}
         </div>
@@ -2164,8 +2165,39 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
     `;
   }
 
+  // Add Greed section if there are any Greed curses
+  if (greedCurses.length > 0) {
+    const totalGreedDamage = greedCurses.reduce((sum, curse) => {
+      return sum + getPowerValue(curse.power, { Low: 1, Medium: 2, High: 3 });
+    }, 0);
+
+    modalHTML += `
+      <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 8px; padding: 15px; margin: 20px 0;">
+        <h3 style="color: #ffbb66; margin: 0 0 10px 0; font-size: 18px;">💰 Curse of Greed</h3>
+        <div style="color: #ccaa88; font-size: 13px; margin-bottom: 10px;">
+          ${greedCurses.map(c => c.name).join(', ')}
+        </div>
+        <p style="font-size: 16px; margin: 10px 0; color: #ddd;">Did you skip any item or upgrade choices during this game?</p>
+        <p style="font-size: 13px; color: #ff8888; margin: 10px 0;">Combined Penalty: ${totalGreedDamage} HP per skip</p>
+        <div style="margin: 15px 0;">
+          <label style="font-size: 13px; color: #ccc; display: block; margin-bottom: 8px;">Number of skips:</label>
+          <input type="number" id="greed-skip-count" min="0" value="0" style="
+            padding: 10px;
+            font-size: 16px;
+            width: 80px;
+            text-align: center;
+            background: #333;
+            border: 2px solid #666;
+            border-radius: 6px;
+            color: white;
+          ">
+        </div>
+      </div>
+    `;
+  }
+
   // TODO: Add sections for other curse types here
-  // if (greedCurses.length > 0) { ... }
+  // if (impulseCurses.length > 0) { ... }
 
   modalHTML += `
       <button id="verify-all-submit" style="
@@ -2184,9 +2216,10 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
 
   createGameModal(modalHTML);
 
-  // Focus first input
+  // Focus first available input
   setTimeout(() => {
-    document.getElementById('devotion-reset-count')?.focus();
+    const firstInput = document.getElementById('devotion-reset-count') || document.getElementById('greed-skip-count');
+    firstInput?.focus();
   }, 100);
 
   // Handle submission
@@ -2200,6 +2233,15 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
         return sum + getPowerValue(curse.power, { Low: 1, Medium: 2, High: 3 });
       }, 0);
       totalDamage += resetCount * devotionDamagePerReset;
+    }
+
+    // Process Greed curses
+    if (greedCurses.length > 0) {
+      const skipCount = parseInt(document.getElementById('greed-skip-count').value) || 0;
+      const greedDamagePerSkip = greedCurses.reduce((sum, curse) => {
+        return sum + getPowerValue(curse.power, { Low: 1, Medium: 2, High: 3 });
+      }, 0);
+      totalDamage += skipCount * greedDamagePerSkip;
     }
 
     // TODO: Process other curse types here

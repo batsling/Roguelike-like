@@ -24,7 +24,7 @@ var CURSES_DATA = [
     "name": "Curse of Greed I",
     "stat": "Charisma",
     "power": "Low",
-    "duration": "Until 1 Game Beaten",
+    "duration": "Until 2 Games Beaten",
     "description": "Every time you skip an upgrade/item choice, lose 1 health"
   },
   {
@@ -32,14 +32,14 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
-    "description": "Every time you skip an upgrade/item choice, lose 1 health"
+    "description": "Every time you skip an upgrade/item choice, lose 2 health"
   },
   {
     "name": "Curse of Greed III",
     "stat": "Charisma",
     "power": "High",
     "duration": "Until 2 Games Beaten",
-    "description": "Every time you skip an upgrade/item choice, lose 2 health"
+    "description": "Every time you skip an upgrade/item choice, lose 3 health"
   },
   {
     "name": "Curse of Impulse I",
