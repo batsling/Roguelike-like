@@ -1870,6 +1870,15 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": []
   },
+    {
+    "name": "Forestrike",
+    "year": 2025,
+    "type": "Strategy",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": []
+  },
   {
     "name": "Forward: Escape the Fold",
     "year": 2022,
