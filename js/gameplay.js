@@ -835,18 +835,26 @@ function showFinish(node, isAmuletGame = false) {
           }
 
           // Check if we're in the middle of the Colosseum event
-          if (gameState.colosseumState && gameState.colosseumState.stage === 'initial') {
-            // Update state to show choices
-            gameState.colosseumState.stage = 'choice';
-
-            // Show Colosseum event modal instead of item choice
-            if (typeof showColosseumChoices === 'function') {
-              showColosseumChoices();
+          if (gameState.colosseumState && gameState.colosseumState.stage === 'first_fight') {
+            // Show item choice first, then Colosseum choices
+            if (typeof showItemChoiceModal === 'function') {
+              showItemChoiceModal(() => {
+                // After item selection, update stage and show Colosseum choices
+                gameState.colosseumState.stage = 'choice';
+                if (typeof showColosseumChoices === 'function') {
+                  showColosseumChoices();
+                }
+              });
             }
           } else if (gameState.colosseumState && gameState.colosseumState.stage === 'champion') {
-            // Player is attempting the champion fight
-            if (typeof handleChampionResult === 'function') {
-              handleChampionResult();
+            // Show item choice first, then ask about attempts
+            if (typeof showItemChoiceModal === 'function') {
+              showItemChoiceModal(() => {
+                // After item selection, ask if it took 3 or less attempts
+                if (typeof handleChampionResult === 'function') {
+                  handleChampionResult();
+                }
+              });
             }
           } else {
             // Normal flow - show item choice
@@ -862,18 +870,26 @@ function showFinish(node, isAmuletGame = false) {
         }
 
         // Check if we're in the middle of the Colosseum event
-        if (gameState.colosseumState && gameState.colosseumState.stage === 'initial') {
-          // Update state to show choices
-          gameState.colosseumState.stage = 'choice';
-
-          // Show Colosseum event modal instead of item choice
-          if (typeof showColosseumChoices === 'function') {
-            showColosseumChoices();
+        if (gameState.colosseumState && gameState.colosseumState.stage === 'first_fight') {
+          // Show item choice first, then Colosseum choices
+          if (typeof showItemChoiceModal === 'function') {
+            showItemChoiceModal(() => {
+              // After item selection, update stage and show Colosseum choices
+              gameState.colosseumState.stage = 'choice';
+              if (typeof showColosseumChoices === 'function') {
+                showColosseumChoices();
+              }
+            });
           }
         } else if (gameState.colosseumState && gameState.colosseumState.stage === 'champion') {
-          // Player is attempting the champion fight
-          if (typeof handleChampionResult === 'function') {
-            handleChampionResult();
+          // Show item choice first, then ask about attempts
+          if (typeof showItemChoiceModal === 'function') {
+            showItemChoiceModal(() => {
+              // After item selection, ask if it took 3 or less attempts
+              if (typeof handleChampionResult === 'function') {
+                handleChampionResult();
+              }
+            });
           }
         } else {
           // Normal flow - show item choice

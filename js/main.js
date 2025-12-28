@@ -1454,19 +1454,41 @@ function removeItemAndReverseStats(index) {
 
 function handleColosseum(optionIndex) {
   if (!gameState.colosseumState) {
-    // First time - teleport to action game
+    // First time - show initial popup
     gameState.colosseumState = {
       stage: 'initial',
       returnGame: gameState.currentGame
     };
 
-    closeGameModal();
-
-    // Teleport to random action game (off map - we'll use connected:true for now)
-    teleportToRandomGameOfType('Action');
-
-    // We need to show colosseum choices after the player beats the game
-    // This will be handled by checking colosseumState in the finished button handler
+    // Show popup with description and continue button
+    createGameModal(`
+      <div style="text-align: center;">
+        <h2 style="color: #ff9900; margin-top: 0;">⚔️ The Colosseum</h2>
+        <p style="color: #aaa; margin: 15px 0; font-size: 16px; line-height: 1.6;">
+          You wake up in the center of a roaring arena, and must survive as long as you can.
+          You must fight off an enemy and then are given the choice to escape or double down.
+        </p>
+        <p style="color: #888; margin: 10px 0; font-size: 14px; font-style: italic;">
+          (Teleport to an action game off of the map and beat it.)
+        </p>
+        <button
+          onclick="startColosseumFirstFight()"
+          style="
+            padding: 15px 30px;
+            margin: 20px 10px;
+            background: #4CAF50;
+            border: 2px solid #5cb85c;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+          "
+        >
+          Continue
+        </button>
+      </div>
+    `);
   } else if (gameState.colosseumState.stage === 'choice') {
     // Player is making choice after beating first game
     if (optionIndex === 0) {
@@ -1484,14 +1506,12 @@ function handleColosseum(optionIndex) {
         advance(returnGame.name, x, y, encounterType);
       }
     } else if (optionIndex === 1) {
-      // Challenge the Champion
+      // Challenge the Champion - teleport to another unconnected game
       gameState.colosseumState.stage = 'champion';
-      gameState.colosseumState.attempts = 3;
-      gameState.colosseumState.attemptsUsed = 0;
 
       closeGameModal();
 
-      // Teleport to unconnected game (for now, any game)
+      // Teleport to unconnected game
       const unconnectedGames = games.filter(g => !g.connected);
       if (unconnectedGames.length > 0) {
         const randomGame = unconnectedGames[Math.floor(Math.random() * unconnectedGames.length)];
@@ -1504,6 +1524,26 @@ function handleColosseum(optionIndex) {
         delete gameState.colosseumState;
       }
     }
+  }
+}
+
+function startColosseumFirstFight() {
+  // Update stage
+  gameState.colosseumState.stage = 'first_fight';
+
+  closeGameModal();
+
+  // Teleport to random game with connected = false
+  const unconnectedGames = games.filter(g => !g.connected);
+  if (unconnectedGames.length > 0) {
+    const randomGame = unconnectedGames[Math.floor(Math.random() * unconnectedGames.length)];
+    const x = 450;
+    const y = gameState.currentY + 200;
+    const encounterType = determineEncounterType();
+    advance(randomGame.name, x, y, encounterType);
+  } else {
+    createNotification('No arena game available!', '#ff4444', '⚠️');
+    delete gameState.colosseumState;
   }
 }
 
@@ -1551,23 +1591,18 @@ function showColosseumChoices() {
 }
 
 function handleChampionResult() {
-  // Player beat the champion game - increment attempts
-  gameState.colosseumState.attemptsUsed++;
-  const remainingAttempts = gameState.colosseumState.attempts - gameState.colosseumState.attemptsUsed;
-
-  if (remainingAttempts > 0) {
-    // Still has attempts - ask if they want to try again or claim victory
-    createGameModal(`
-      <div style="text-align: center;">
-        <h2 style="color: #4CAF50; margin-top: 0;">🏆 Champion Defeated!</h2>
-        <p style="color: #aaa; margin: 15px 0; font-size: 16px;">You've beaten the champion game!</p>
-        <p style="color: #ffaa00; margin: 10px 0;">Attempts used: ${gameState.colosseumState.attemptsUsed}/${gameState.colosseumState.attempts}</p>
-        <p style="color: #888; font-size: 14px;">You succeeded! You will receive 2 random items.</p>
+  // Player beat the champion game - ask if it took 3 or less attempts
+  createGameModal(`
+    <div style="text-align: center;">
+      <h2 style="color: #ff9900; margin-top: 0;">⚔️ Champion Challenge Complete!</h2>
+      <p style="color: #aaa; margin: 15px 0; font-size: 16px;">You've beaten the champion game!</p>
+      <p style="color: #ffaa00; margin: 15px 0; font-size: 16px; font-weight: bold;">Did it take you three or less attempts?</p>
+      <div style="margin-top: 25px;">
         <button
           onclick="completeChampionSuccess()"
           style="
             padding: 15px 30px;
-            margin: 20px 10px;
+            margin: 10px;
             background: #4CAF50;
             border: 2px solid #5cb85c;
             border-radius: 8px;
@@ -1577,22 +1612,13 @@ function handleChampionResult() {
             font-weight: bold;
           "
         >
-          Claim Victory!
+          Yes (Gain 2 Random Items)
         </button>
-      </div>
-    `);
-  } else {
-    // Used all 3 attempts - failed
-    createGameModal(`
-      <div style="text-align: center;">
-        <h2 style="color: #ff4444; margin-top: 0;">💀 Out of Attempts</h2>
-        <p style="color: #aaa; margin: 15px 0; font-size: 16px;">You've used all ${gameState.colosseumState.attempts} attempts.</p>
-        <p style="color: #ff6666; font-size: 14px;">You failed the challenge. Lose 3 health.</p>
         <button
           onclick="completeChampionFailure()"
           style="
             padding: 15px 30px;
-            margin: 20px 10px;
+            margin: 10px;
             background: #ff4444;
             border: 2px solid #ff6666;
             border-radius: 8px;
@@ -1602,11 +1628,11 @@ function handleChampionResult() {
             font-weight: bold;
           "
         >
-          Accept Defeat
+          No (Lose 3 Health)
         </button>
       </div>
-    `);
-  }
+    </div>
+  `);
 }
 
 function completeChampionSuccess() {
@@ -1835,10 +1861,14 @@ window.closeGameModal = function() {
   }
 };
 
-function showItemChoiceModal() {
+function showItemChoiceModal(onComplete) {
   if (items.length === 0) {
-    // If no items, just spawn choices
-    setTimeout(() => spawnChoices(), 300);
+    // If no items, just spawn choices or call callback
+    if (onComplete) {
+      setTimeout(() => onComplete(), 300);
+    } else {
+      setTimeout(() => spawnChoices(), 300);
+    }
     return;
   }
 
@@ -1973,8 +2003,12 @@ function showItemChoiceModal() {
         updateInventory();
       }
 
-      // Now spawn the next choices
-      setTimeout(() => spawnChoices(), 300);
+      // Now spawn the next choices or call callback
+      if (onComplete) {
+        setTimeout(() => onComplete(), 300);
+      } else {
+        setTimeout(() => spawnChoices(), 300);
+      }
     };
   });
 
@@ -1985,7 +2019,7 @@ function showItemChoiceModal() {
       if (confirm('Reroll item choices?')) {
         reroll--;
         closeGameModal();
-        setTimeout(() => showItemChoiceModal(), 100);
+        setTimeout(() => showItemChoiceModal(onComplete), 100);
       }
     };
   }
@@ -2002,8 +2036,12 @@ function showItemChoiceModal() {
         updateInventory();
       }
 
-      // Spawn choices without acquiring an item
-      setTimeout(() => spawnChoices(), 300);
+      // Spawn choices without acquiring an item or call callback
+      if (onComplete) {
+        setTimeout(() => onComplete(), 300);
+      } else {
+        setTimeout(() => spawnChoices(), 300);
+      }
     };
   }
 }
@@ -3678,6 +3716,7 @@ window.getCurseMaxUses = getCurseMaxUses;
 window.getGamesWithStatus = getGamesWithStatus;
 // Event handlers
 window.handleStoneGolemResult = handleStoneGolemResult;
+window.startColosseumFirstFight = startColosseumFirstFight;
 window.showColosseumChoices = showColosseumChoices;
 window.handleChampionResult = handleChampionResult;
 window.completeChampionSuccess = completeChampionSuccess;
