@@ -1104,18 +1104,566 @@ function handleEventChoice(event, option) {
   });
   updateEncounterHistory();
 
-  const modal = document.getElementById('game-modal');
-  if (modal) {
-    modal.querySelector('.modal-content').innerHTML = `
-      <div style="text-align: center;">
-        <h2 style="color: #4CAF50; margin-top: 0;">Choice Made</h2>
-        <p style="font-size: 18px;">${option}</p>
-        <p style="color: #888; margin-top: 20px;">The consequences of your choice unfold...</p>
-        <button onclick="closeGameModal()" style="padding: 10px 20px; margin-top: 20px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer;">Continue</button>
-      </div>
-    `;
+  // Get option index
+  const optionIndex = event.options.indexOf(option);
+
+  // Handle each event specifically
+  if (event.name === "Primordial Teleporter") {
+    handlePrimordialTeleporter(optionIndex);
+  } else if (event.name === "A Wild Muncher Appears") {
+    handleWildMuncher(optionIndex);
+  } else if (event.name === "The Colosseum") {
+    handleColosseum(optionIndex);
+  } else {
+    // Default behavior for unknown events
+    closeGameModal();
   }
+
   saveCurrentGame();
+}
+
+// ===== EVENT HANDLERS =====
+
+function handlePrimordialTeleporter(optionIndex) {
+  if (optionIndex === 0) {
+    // Enter the teleporter - teleport to random action roguelike
+    closeGameModal();
+    teleportToRandomGameOfType('Action');
+  } else if (optionIndex === 1) {
+    // Interact with teleporter, then enter - teleport to starting game and decrease difficulty
+    closeGameModal();
+    // Find the starting game
+    const startingGame = games.find(g => g.name === gameState.startGame);
+    if (startingGame) {
+      // Teleport to starting game
+      const x = 450;
+      const y = gameState.currentY + 200;
+      const encounterType = determineEncounterType();
+      advance(startingGame.name, x, y, encounterType);
+    }
+    // Note: "decrease difficulty by 3" is handled by modifying finishedGames count temporarily
+    // We'll subtract 3 from the games beaten to reduce difficulty
+    if (gameState.finishedGames && gameState.finishedGames.length >= 3) {
+      gameState.finishedGames = gameState.finishedGames.slice(0, -3);
+    } else {
+      gameState.finishedGames = [];
+    }
+  } else if (optionIndex === 2) {
+    // Fight off the Stone Golems - 3 consecutive combats
+    gameState.stoneGolemFightsRemaining = 3;
+    closeGameModal();
+    triggerStoneGolemFight();
+  }
+}
+
+function triggerStoneGolemFight() {
+  if (gameState.stoneGolemFightsRemaining <= 0) {
+    // All fights complete
+    delete gameState.stoneGolemFightsRemaining;
+    createNotification('Defeated all Stone Golems!', '#4CAF50', '⚔️');
+    return;
+  }
+
+  // Find Stone Golem enemy (use current difficulty)
+  const gamesBeaten = gameState.finishedGames?.length || 0;
+  let powerText = 'Low';
+  if (gamesBeaten >= 10) {
+    powerText = 'High';
+  } else if (gamesBeaten >= 5) {
+    powerText = 'Medium';
+  }
+
+  const stoneGolem = enemies.find(e => e.name === 'Stone Golem' && e.powerLevel === powerText);
+  if (!stoneGolem) {
+    console.error('Stone Golem enemy not found!');
+    delete gameState.stoneGolemFightsRemaining;
+    return;
+  }
+
+  // Trigger combat with Stone Golem
+  const playerStatValue = getPlayerStat(stoneGolem.stat);
+
+  createGameModal(`
+    <div style="text-align: center;">
+      <h2 style="color: #ff4444; margin-top: 0;">Stone Golem Fight ${4 - gameState.stoneGolemFightsRemaining}/3</h2>
+      <h3>${stoneGolem.name}</h3>
+      <p style="color: #888;">Ancient guardian of the teleporter</p>
+      <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 15px 0;">
+        <p style="font-size: 18px; margin: 5px 0;">
+          <span style="color: ${getStatColor(stoneGolem.stat)};">${stoneGolem.stat}</span> Check:
+          <strong>Roll ${stoneGolem.rollCheck}+</strong>
+        </p>
+        <p style="font-size: 16px; margin: 5px 0; color: #aaa;">
+          Your ${stoneGolem.stat}: <strong style="color: ${getStatColor(stoneGolem.stat)};">+${playerStatValue}</strong>
+        </p>
+      </div>
+      <button id="roll-stone-golem-btn" style="padding: 20px 40px; font-size: 20px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; margin: 15px auto; display: block; font-weight: bold;">
+        Roll D20
+      </button>
+      <div id="stone-golem-result" style="margin-top: 20px; font-size: 16px;"></div>
+    </div>
+  `);
+
+  document.getElementById('roll-stone-golem-btn').onclick = () => {
+    const roll = Math.floor(Math.random() * 20) + 1;
+    const total = roll + playerStatValue;
+    const success = total >= stoneGolem.rollCheck;
+
+    document.getElementById('stone-golem-result').innerHTML = `
+      <p style="font-size: 20px; color: ${success ? '#4CAF50' : '#ff4444'};">
+        Rolled: ${roll} + ${playerStatValue} = ${total} ${success ? '✓ SUCCESS' : '✗ FAILURE'}
+      </p>
+      <button onclick="handleStoneGolemResult(${success})" style="padding: 10px 20px; margin-top: 20px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer;">Continue</button>
+    `;
+  };
+}
+
+function handleStoneGolemResult(success) {
+  gameState.stoneGolemFightsRemaining--;
+
+  if (!success) {
+    // Failed - take 2 damage
+    health = Math.max(0, health - 2);
+    gameState.health = health;
+    updateHealthDisplay();
+    updateTopBar();
+  }
+
+  if (gameState.stoneGolemFightsRemaining > 0) {
+    // More fights remaining
+    triggerStoneGolemFight();
+  } else {
+    // All fights complete
+    delete gameState.stoneGolemFightsRemaining;
+    closeGameModal();
+    createNotification(success ? 'Defeated all Stone Golems!' : 'Survived the Stone Golems!', '#4CAF50', '⚔️');
+  }
+}
+
+function handleWildMuncher(optionIndex) {
+  if (optionIndex === 0) {
+    // Feed it four items
+    if (inventory.length < 4) {
+      createGameModal(`
+        <div style="text-align: center;">
+          <h2 style="color: #ff4444; margin-top: 0;">Not Enough Items</h2>
+          <p>You need at least 4 items to feed the Muncher!</p>
+          <button onclick="closeGameModal()" style="padding: 10px 20px; margin-top: 20px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer;">Continue</button>
+        </div>
+      `);
+      return;
+    }
+
+    // Show item selection modal for 4 items → 2 items
+    showItemSelectionForMuncher(4, 2);
+  } else if (optionIndex === 1) {
+    // Feed it two items
+    if (inventory.length < 2) {
+      createGameModal(`
+        <div style="text-align: center;">
+          <h2 style="color: #ff4444; margin-top: 0;">Not Enough Items</h2>
+          <p>You need at least 2 items to feed the Muncher!</p>
+          <button onclick="closeGameModal()" style="padding: 10px 20px; margin-top: 20px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer;">Continue</button>
+        </div>
+      `);
+      return;
+    }
+
+    // Show item selection modal for 2 items → 1 item
+    showItemSelectionForMuncher(2, 1);
+  } else {
+    // Leave it hungry - do nothing
+    closeGameModal();
+    createNotification('You left the Muncher hungry...', '#888', '👀');
+  }
+}
+
+function showItemSelectionForMuncher(itemsToFeed, itemsToReceive) {
+  const itemsHTML = inventory.map((item, index) => `
+    <div class="muncher-item" data-index="${index}" style="
+      padding: 10px;
+      margin: 5px 0;
+      background: #3a3430;
+      border: 2px solid #666;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    ">
+      <strong>${item.name}</strong> (${item.rarity})
+    </div>
+  `).join('');
+
+  createGameModal(`
+    <div style="text-align: center;">
+      <h2 style="color: #4CAF50; margin-top: 0;">Feed the Muncher</h2>
+      <p>Select ${itemsToFeed} items to feed to the Muncher. You'll get ${itemsToReceive} random item${itemsToReceive > 1 ? 's' : ''} in return.</p>
+      <div id="muncher-selection" style="margin: 20px 0; max-height: 300px; overflow-y: auto;">
+        ${itemsHTML}
+      </div>
+      <p id="muncher-count" style="color: #aaa; font-size: 14px;">Selected: 0/${itemsToFeed}</p>
+      <button id="muncher-confirm" disabled style="padding: 10px 20px; background: #666; border: none; border-radius: 6px; color: white; cursor: not-allowed;">Confirm</button>
+    </div>
+  `);
+
+  let selectedIndices = [];
+
+  document.querySelectorAll('.muncher-item').forEach(div => {
+    div.onclick = () => {
+      const index = parseInt(div.dataset.index);
+
+      if (selectedIndices.includes(index)) {
+        // Deselect
+        selectedIndices = selectedIndices.filter(i => i !== index);
+        div.style.borderColor = '#666';
+        div.style.background = '#3a3430';
+      } else if (selectedIndices.length < itemsToFeed) {
+        // Select
+        selectedIndices.push(index);
+        div.style.borderColor = '#4CAF50';
+        div.style.background = '#2a4430';
+      }
+
+      document.getElementById('muncher-count').textContent = `Selected: ${selectedIndices.length}/${itemsToFeed}`;
+
+      const confirmBtn = document.getElementById('muncher-confirm');
+      if (selectedIndices.length === itemsToFeed) {
+        confirmBtn.disabled = false;
+        confirmBtn.style.background = '#4CAF50';
+        confirmBtn.style.cursor = 'pointer';
+      } else {
+        confirmBtn.disabled = true;
+        confirmBtn.style.background = '#666';
+        confirmBtn.style.cursor = 'not-allowed';
+      }
+    };
+  });
+
+  document.getElementById('muncher-confirm').onclick = () => {
+    feedMuncher(selectedIndices, itemsToReceive);
+  };
+}
+
+function feedMuncher(indices, itemsToReceive) {
+  // Get the items being fed
+  const fedItems = indices.map(i => inventory[i]);
+
+  // Determine rarity logic based on items fed
+  const rarityOrder = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
+
+  let targetRarities = [];
+
+  if (itemsToReceive === 2) {
+    // 4 items → 2 items: correlating rarity (randomly pick from fed items' rarities)
+    // Get all fed rarities and pick randomly for each new item
+    const fedRarities = fedItems.map(item => item.rarity);
+    targetRarities = [
+      fedRarities[Math.floor(Math.random() * fedRarities.length)],
+      fedRarities[Math.floor(Math.random() * fedRarities.length)]
+    ];
+  } else if (itemsToReceive === 1) {
+    // 2 items → 1 item: least rare item discarded
+    const fedRarities = fedItems.map(item => item.rarity);
+    // Find the least rare (lowest in rarityOrder)
+    const leastRare = fedRarities.reduce((least, current) => {
+      const leastIndex = rarityOrder.indexOf(least);
+      const currentIndex = rarityOrder.indexOf(current);
+      return currentIndex < leastIndex ? current : least;
+    });
+    targetRarities = [leastRare];
+  }
+
+  // Remove items (in reverse order to maintain indices)
+  indices.sort((a, b) => b - a);
+  indices.forEach(index => {
+    removeItemAndReverseStats(index);
+  });
+
+  // Give random items of target rarities
+  targetRarities.forEach(targetRarity => {
+    const rarityItems = items.filter(item => item.rarity === targetRarity);
+    if (rarityItems.length > 0) {
+      const randomItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
+      acquireItem(randomItem);
+    }
+  });
+
+  closeGameModal();
+  const rarityText = targetRarities.length > 1
+    ? `${targetRarities.length} items (${targetRarities.join(', ')})`
+    : `a ${targetRarities[0]} item`;
+  createNotification(`Fed the Muncher! Received ${rarityText}!`, '#4CAF50', '🎁');
+}
+
+function removeItemAndReverseStats(index) {
+  const item = inventory[index];
+
+  // Reverse item effects (but NOT reroll, dash, skip)
+  if (ITEM_EFFECTS && ITEM_EFFECTS[item.name] && ITEM_EFFECTS[item.name].onAcquire) {
+    // We need to reverse the stat changes
+    // This is tricky - we need to know what the item did originally
+    // For now, we'll handle common patterns
+
+    // Check if item modifies stats by parsing description
+    const desc = item.description.toLowerCase();
+
+    // Pattern: "+X Stat"
+    const statMatches = [
+      { pattern: /\+(\d+)\s+strength/i, stat: 'strength' },
+      { pattern: /\+(\d+)\s+dexterity/i, stat: 'dexterity' },
+      { pattern: /\+(\d+)\s+intelligence/i, stat: 'intelligence' },
+      { pattern: /\+(\d+)\s+charisma/i, stat: 'charisma' },
+      { pattern: /\+(\d+)\s+luck/i, stat: 'luck' },
+      { pattern: /\+(\d+)\s+health/i, stat: 'maxHealth' },
+      { pattern: /\+(\d+)\s+max health/i, stat: 'maxHealth' },
+      { pattern: /\+(\d+)\s+gold/i, stat: 'gold' },
+      { pattern: /\+(\d+)\s+discovery/i, stat: 'discovery' },
+      { pattern: /\+(\d+)\s+fov/i, stat: 'fov' }
+    ];
+
+    statMatches.forEach(({ pattern, stat }) => {
+      const match = desc.match(pattern);
+      if (match) {
+        const value = parseInt(match[1]);
+        // Reverse the stat change (but skip reroll, dash, skip)
+        if (stat !== 'reroll' && stat !== 'dash' && stat !== 'skip') {
+          if (stat === 'maxHealth') {
+            maxHealth = Math.max(1, maxHealth - value);
+            health = Math.min(health, maxHealth); // Cap current health
+            gameState.maxHealth = maxHealth;
+            gameState.health = health;
+            updateHealthDisplay();
+          } else if (stat === 'gold') {
+            gold = Math.max(0, gold - value);
+            gameState.gold = gold;
+            updateTopBar();
+          } else {
+            // Regular stats
+            window[stat] = Math.max(0, window[stat] - value);
+            gameState[stat] = window[stat];
+          }
+        }
+      }
+    });
+  }
+
+  // Remove from inventory
+  inventory.splice(index, 1);
+  gameState.inventory = inventory;
+  updateInventory();
+}
+
+function handleColosseum(optionIndex) {
+  if (!gameState.colosseumState) {
+    // First time - teleport to action game
+    gameState.colosseumState = {
+      stage: 'initial',
+      returnGame: gameState.currentGame
+    };
+
+    closeGameModal();
+
+    // Teleport to random action game (off map - we'll use connected:true for now)
+    teleportToRandomGameOfType('Action');
+
+    // We need to show colosseum choices after the player beats the game
+    // This will be handled by checking colosseumState in the finished button handler
+  } else if (gameState.colosseumState.stage === 'choice') {
+    // Player is making choice after beating first game
+    if (optionIndex === 0) {
+      // Escape the arena - teleport back
+      const returnGameName = gameState.colosseumState.returnGame;
+      const returnGame = games.find(g => g.name === returnGameName);
+
+      delete gameState.colosseumState;
+      closeGameModal();
+
+      if (returnGame) {
+        const x = 450;
+        const y = gameState.currentY + 200;
+        const encounterType = determineEncounterType();
+        advance(returnGame.name, x, y, encounterType);
+      }
+    } else if (optionIndex === 1) {
+      // Challenge the Champion
+      gameState.colosseumState.stage = 'champion';
+      gameState.colosseumState.attempts = 3;
+      gameState.colosseumState.attemptsUsed = 0;
+
+      closeGameModal();
+
+      // Teleport to unconnected game (for now, any game)
+      const unconnectedGames = games.filter(g => !g.connected);
+      if (unconnectedGames.length > 0) {
+        const randomGame = unconnectedGames[Math.floor(Math.random() * unconnectedGames.length)];
+        const x = 450;
+        const y = gameState.currentY + 200;
+        const encounterType = determineEncounterType();
+        advance(randomGame.name, x, y, encounterType);
+      } else {
+        createNotification('No champion available!', '#ff4444', '⚠️');
+        delete gameState.colosseumState;
+      }
+    }
+  }
+}
+
+function showColosseumChoices() {
+  // Find the Colosseum event
+  const colosseumEvent = EVENTS_DATA.find(e => e.name === 'The Colosseum');
+  if (!colosseumEvent) {
+    console.error('Colosseum event not found!');
+    return;
+  }
+
+  // Build the options HTML
+  const optionsHTML = colosseumEvent.options.map((opt, i) => `
+    <button
+      onclick="handleEventChoice(${JSON.stringify(colosseumEvent).replace(/"/g, '&quot;')}, '${opt}')"
+      style="
+        padding: 15px 25px;
+        margin: 10px 5px;
+        background: #4CAF50;
+        border: 2px solid #5cb85c;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+        transition: all 0.2s;
+      "
+      onmouseover="this.style.background='#5cb85c'; this.style.transform='scale(1.05)';"
+      onmouseout="this.style.background='#4CAF50'; this.style.transform='scale(1)';"
+    >
+      ${opt}
+    </button>
+  `).join('');
+
+  createGameModal(`
+    <div style="text-align: center;">
+      <h2 style="color: #ff9900; margin-top: 0;">⚔️ ${colosseumEvent.name}</h2>
+      <p style="color: #aaa; margin: 15px 0; font-size: 16px;">${colosseumEvent.description}</p>
+      <p style="color: #4CAF50; margin: 15px 0; font-size: 14px;">You survived the first battle! What will you do?</p>
+      <div style="margin-top: 25px;">
+        ${optionsHTML}
+      </div>
+    </div>
+  `);
+}
+
+function handleChampionResult() {
+  // Player beat the champion game - increment attempts
+  gameState.colosseumState.attemptsUsed++;
+  const remainingAttempts = gameState.colosseumState.attempts - gameState.colosseumState.attemptsUsed;
+
+  if (remainingAttempts > 0) {
+    // Still has attempts - ask if they want to try again or claim victory
+    createGameModal(`
+      <div style="text-align: center;">
+        <h2 style="color: #4CAF50; margin-top: 0;">🏆 Champion Defeated!</h2>
+        <p style="color: #aaa; margin: 15px 0; font-size: 16px;">You've beaten the champion game!</p>
+        <p style="color: #ffaa00; margin: 10px 0;">Attempts used: ${gameState.colosseumState.attemptsUsed}/${gameState.colosseumState.attempts}</p>
+        <p style="color: #888; font-size: 14px;">You succeeded! You will receive 2 random items.</p>
+        <button
+          onclick="completeChampionSuccess()"
+          style="
+            padding: 15px 30px;
+            margin: 20px 10px;
+            background: #4CAF50;
+            border: 2px solid #5cb85c;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+          "
+        >
+          Claim Victory!
+        </button>
+      </div>
+    `);
+  } else {
+    // Used all 3 attempts - failed
+    createGameModal(`
+      <div style="text-align: center;">
+        <h2 style="color: #ff4444; margin-top: 0;">💀 Out of Attempts</h2>
+        <p style="color: #aaa; margin: 15px 0; font-size: 16px;">You've used all ${gameState.colosseumState.attempts} attempts.</p>
+        <p style="color: #ff6666; font-size: 14px;">You failed the challenge. Lose 3 health.</p>
+        <button
+          onclick="completeChampionFailure()"
+          style="
+            padding: 15px 30px;
+            margin: 20px 10px;
+            background: #ff4444;
+            border: 2px solid #ff6666;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+          "
+        >
+          Accept Defeat
+        </button>
+      </div>
+    `);
+  }
+}
+
+function completeChampionSuccess() {
+  // Give 2 random items
+  for (let i = 0; i < 2; i++) {
+    const randomItem = items[Math.floor(Math.random() * items.length)];
+    acquireItem(randomItem);
+  }
+
+  createNotification('Received 2 random items!', '#4CAF50', '🎁');
+
+  // Teleport back to return game
+  const returnGameName = gameState.colosseumState.returnGame;
+  const returnGame = games.find(g => g.name === returnGameName);
+
+  delete gameState.colosseumState;
+  closeGameModal();
+
+  if (returnGame) {
+    const x = 450;
+    const y = gameState.currentY + 200;
+    const encounterType = determineEncounterType();
+    advance(returnGame.name, x, y, encounterType);
+  }
+}
+
+function completeChampionFailure() {
+  // Lose 3 health
+  health = Math.max(0, health - 3);
+  gameState.health = health;
+  updateHealthDisplay();
+  updateTopBar();
+
+  createNotification('Lost 3 health from failed challenge!', '#ff4444', '💔');
+
+  // Teleport back to return game
+  const returnGameName = gameState.colosseumState.returnGame;
+  const returnGame = games.find(g => g.name === returnGameName);
+
+  delete gameState.colosseumState;
+  closeGameModal();
+
+  if (returnGame) {
+    const x = 450;
+    const y = gameState.currentY + 200;
+    const encounterType = determineEncounterType();
+    advance(returnGame.name, x, y, encounterType);
+  }
+
+  // Check if player died
+  if (health <= 0) {
+    setTimeout(() => {
+      if (typeof triggerDeath === 'function') {
+        triggerDeath();
+      }
+    }, 1000);
+  }
 }
 
 function showShopModal(purchasedIndices = []) {
@@ -3128,3 +3676,9 @@ window.updateActiveCursesList = updateActiveCursesList;
 window.addCurse = addCurse;
 window.getCurseMaxUses = getCurseMaxUses;
 window.getGamesWithStatus = getGamesWithStatus;
+// Event handlers
+window.handleStoneGolemResult = handleStoneGolemResult;
+window.showColosseumChoices = showColosseumChoices;
+window.handleChampionResult = handleChampionResult;
+window.completeChampionSuccess = completeChampionSuccess;
+window.completeChampionFailure = completeChampionFailure;

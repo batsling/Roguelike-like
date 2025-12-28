@@ -833,9 +833,26 @@ function showFinish(node, isAmuletGame = false) {
           if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
             markGameFinished(gameState.currentGame);
           }
-          // Then show item choice
-          if (typeof showItemChoiceModal === 'function') {
-            showItemChoiceModal();
+
+          // Check if we're in the middle of the Colosseum event
+          if (gameState.colosseumState && gameState.colosseumState.stage === 'initial') {
+            // Update state to show choices
+            gameState.colosseumState.stage = 'choice';
+
+            // Show Colosseum event modal instead of item choice
+            if (typeof showColosseumChoices === 'function') {
+              showColosseumChoices();
+            }
+          } else if (gameState.colosseumState && gameState.colosseumState.stage === 'champion') {
+            // Player is attempting the champion fight
+            if (typeof handleChampionResult === 'function') {
+              handleChampionResult();
+            }
+          } else {
+            // Normal flow - show item choice
+            if (typeof showItemChoiceModal === 'function') {
+              showItemChoiceModal();
+            }
           }
         });
       } else {
@@ -843,8 +860,26 @@ function showFinish(node, isAmuletGame = false) {
         if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
           markGameFinished(gameState.currentGame);
         }
-        if (typeof showItemChoiceModal === 'function') {
-          showItemChoiceModal();
+
+        // Check if we're in the middle of the Colosseum event
+        if (gameState.colosseumState && gameState.colosseumState.stage === 'initial') {
+          // Update state to show choices
+          gameState.colosseumState.stage = 'choice';
+
+          // Show Colosseum event modal instead of item choice
+          if (typeof showColosseumChoices === 'function') {
+            showColosseumChoices();
+          }
+        } else if (gameState.colosseumState && gameState.colosseumState.stage === 'champion') {
+          // Player is attempting the champion fight
+          if (typeof handleChampionResult === 'function') {
+            handleChampionResult();
+          }
+        } else {
+          // Normal flow - show item choice
+          if (typeof showItemChoiceModal === 'function') {
+            showItemChoiceModal();
+          }
         }
       }
     }
