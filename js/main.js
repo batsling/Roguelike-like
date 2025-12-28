@@ -1132,21 +1132,19 @@ function handlePrimordialTeleporter(optionIndex) {
   } else if (optionIndex === 1) {
     // Interact with teleporter, then enter - teleport to starting game and decrease difficulty
     closeGameModal();
-    // Find the starting game
-    const startingGame = games.find(g => g.name === gameState.startGame);
-    if (startingGame) {
-      // Teleport to starting game
-      const x = 450;
-      const y = gameState.currentY + 200;
-      const encounterType = determineEncounterType();
-      advance(startingGame.name, x, y, encounterType);
-    }
-    // Note: "decrease difficulty by 3" is handled by modifying finishedGames count temporarily
-    // We'll subtract 3 from the games beaten to reduce difficulty
+
+    // Decrease difficulty by 3 games
     if (gameState.finishedGames && gameState.finishedGames.length >= 3) {
       gameState.finishedGames = gameState.finishedGames.slice(0, -3);
     } else {
       gameState.finishedGames = [];
+    }
+
+    // Teleport to starting game (gameState.startGame is already the game object)
+    if (gameState.startGame) {
+      const x = 450;
+      const y = gameState.currentY + 200;
+      advance(gameState.startGame.name, x, y, null); // Pass null to skip encounter
     }
   } else if (optionIndex === 2) {
     // Fight off the Stone Golems - 3 consecutive combats
@@ -1492,7 +1490,7 @@ function handleColosseum(optionIndex) {
   } else if (gameState.colosseumState.stage === 'choice') {
     // Player is making choice after beating first game
     if (optionIndex === 0) {
-      // Escape the arena - teleport back
+      // Escape the arena - teleport back without triggering encounter
       const returnGameName = gameState.colosseumState.returnGame;
       const returnGame = games.find(g => g.name === returnGameName);
 
@@ -1502,11 +1500,10 @@ function handleColosseum(optionIndex) {
       if (returnGame) {
         const x = 450;
         const y = gameState.currentY + 200;
-        const encounterType = determineEncounterType();
-        advance(returnGame.name, x, y, encounterType);
+        advance(returnGame.name, x, y, null); // Pass null to skip encounter
       }
     } else if (optionIndex === 1) {
-      // Challenge the Champion - teleport to another unconnected game
+      // Challenge the Champion - teleport to another unconnected game without triggering encounter
       gameState.colosseumState.stage = 'champion';
 
       closeGameModal();
@@ -1517,8 +1514,7 @@ function handleColosseum(optionIndex) {
         const randomGame = unconnectedGames[Math.floor(Math.random() * unconnectedGames.length)];
         const x = 450;
         const y = gameState.currentY + 200;
-        const encounterType = determineEncounterType();
-        advance(randomGame.name, x, y, encounterType);
+        advance(randomGame.name, x, y, null); // Pass null to skip encounter
       } else {
         createNotification('No champion available!', '#ff4444', '⚠️');
         delete gameState.colosseumState;
@@ -1533,14 +1529,13 @@ function startColosseumFirstFight() {
 
   closeGameModal();
 
-  // Teleport to random game with connected = false
+  // Teleport to random game with connected = false without triggering encounter
   const unconnectedGames = games.filter(g => !g.connected);
   if (unconnectedGames.length > 0) {
     const randomGame = unconnectedGames[Math.floor(Math.random() * unconnectedGames.length)];
     const x = 450;
     const y = gameState.currentY + 200;
-    const encounterType = determineEncounterType();
-    advance(randomGame.name, x, y, encounterType);
+    advance(randomGame.name, x, y, null); // Pass null to skip encounter
   } else {
     createNotification('No arena game available!', '#ff4444', '⚠️');
     delete gameState.colosseumState;
@@ -1636,15 +1631,24 @@ function handleChampionResult() {
 }
 
 function completeChampionSuccess() {
-  // Give 2 random items
+  // Give 2 items using luck-based rarity selection
   for (let i = 0; i < 2; i++) {
-    const randomItem = items[Math.floor(Math.random() * items.length)];
-    acquireItem(randomItem);
+    const targetRarity = selectRandomRarity();
+    const rarityItems = items.filter(item => item.rarity === targetRarity);
+
+    if (rarityItems.length > 0) {
+      const randomItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
+      acquireItem(randomItem);
+    } else {
+      // Fallback to any random item if no items of target rarity exist
+      const randomItem = items[Math.floor(Math.random() * items.length)];
+      acquireItem(randomItem);
+    }
   }
 
   createNotification('Received 2 random items!', '#4CAF50', '🎁');
 
-  // Teleport back to return game
+  // Teleport back to return game without triggering an encounter
   const returnGameName = gameState.colosseumState.returnGame;
   const returnGame = games.find(g => g.name === returnGameName);
 
@@ -1654,8 +1658,7 @@ function completeChampionSuccess() {
   if (returnGame) {
     const x = 450;
     const y = gameState.currentY + 200;
-    const encounterType = determineEncounterType();
-    advance(returnGame.name, x, y, encounterType);
+    advance(returnGame.name, x, y, null); // Pass null to skip encounter
   }
 }
 
@@ -1668,7 +1671,7 @@ function completeChampionFailure() {
 
   createNotification('Lost 3 health from failed challenge!', '#ff4444', '💔');
 
-  // Teleport back to return game
+  // Teleport back to return game without triggering an encounter
   const returnGameName = gameState.colosseumState.returnGame;
   const returnGame = games.find(g => g.name === returnGameName);
 
@@ -1678,8 +1681,7 @@ function completeChampionFailure() {
   if (returnGame) {
     const x = 450;
     const y = gameState.currentY + 200;
-    const encounterType = determineEncounterType();
-    advance(returnGame.name, x, y, encounterType);
+    advance(returnGame.name, x, y, null); // Pass null to skip encounter
   }
 
   // Check if player died
