@@ -1183,9 +1183,10 @@ function triggerStoneGolemFight() {
 
   createGameModal(`
     <div style="text-align: center;">
-      <h2 style="color: #ff4444; margin-top: 0;">Stone Golem Fight ${4 - gameState.stoneGolemFightsRemaining}/3</h2>
-      <h3>${stoneGolem.name}</h3>
-      <p style="color: #888;">Ancient guardian of the teleporter</p>
+      <h2 style="color: #ff4444; margin-top: 0;">Combat Encounter!</h2>
+      <h3>${stoneGolem.name} (${4 - gameState.stoneGolemFightsRemaining}/3)</h3>
+      <p style="color: #888;">From: ${stoneGolem.game}</p>
+      ${stoneGolem.imageUrl ? `<img src="${stoneGolem.imageUrl}" style="max-width: 200px; max-height: 200px; image-rendering: pixelated; margin: 10px auto; display: block;" alt="${stoneGolem.name}">` : ''}
       <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 15px 0;">
         <p style="font-size: 18px; margin: 5px 0;">
           <span style="color: ${getStatColor(stoneGolem.stat)};">${stoneGolem.stat}</span> Check:
@@ -1194,8 +1195,11 @@ function triggerStoneGolemFight() {
         <p style="font-size: 16px; margin: 5px 0; color: #aaa;">
           Your ${stoneGolem.stat}: <strong style="color: ${getStatColor(stoneGolem.stat)};">+${playerStatValue}</strong>
         </p>
+        <p style="font-size: 14px; margin: 5px 0; color: #888;">
+          (D20 + ${playerStatValue} must be ≥ ${stoneGolem.rollCheck})
+        </p>
       </div>
-      <button id="roll-stone-golem-btn" style="padding: 20px 40px; font-size: 20px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; margin: 15px auto; display: block; font-weight: bold;">
+      <button id="roll-stone-golem-btn" style="padding: 20px 40px; font-size: 20px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; margin: 15px auto; display: block; min-width: 180px; font-weight: bold; position: relative; z-index: 10;">
         Roll D20
       </button>
       <div id="stone-golem-result" style="margin-top: 20px; font-size: 16px;"></div>
