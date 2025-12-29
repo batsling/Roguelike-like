@@ -1124,6 +1124,8 @@ function handleEventChoice(event, option) {
 
 // ===== EVENT HANDLERS =====
 
+// ----- Primordial Teleporter Event -----
+
 function handlePrimordialTeleporter(optionIndex) {
   if (optionIndex === 0) {
     // Enter the teleporter - teleport to random action roguelike
@@ -1233,6 +1235,8 @@ function handleStoneGolemResult(success) {
     createNotification(success ? 'Defeated all Stone Golems!' : 'Survived the Stone Golems!', '#4CAF50', '⚔️');
   }
 }
+
+// ----- Wild Muncher Event -----
 
 function handleWildMuncher(optionIndex) {
   if (optionIndex === 0) {
@@ -1445,6 +1449,8 @@ function removeItemAndReverseStats(index) {
   gameState.inventory = inventory;
   updateInventory();
 }
+
+// ----- Colosseum Event -----
 
 function handleColosseum(optionIndex) {
   if (!gameState.colosseumState) {
