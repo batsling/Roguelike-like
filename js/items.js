@@ -601,15 +601,12 @@ function teleportToRandomGameOfType(gameType = null) {
     : `Teleporting to: ${randomGame.name}`;
   console.log(teleportMsg);
 
-  // Generate position and encounter type
+  // Generate position
   const x = 450; // Center position
   const y = gameState.currentY + 200;
 
-  // Determine encounter type (same logic as spawnChoices)
-  const encounterType = determineEncounterType();
-
-  // Advance to the selected game
-  advance(randomGame.name, x, y, encounterType);
+  // Advance to the selected game without triggering an encounter
+  advance(randomGame.name, x, y, null);
   return true;
 }
 
@@ -743,16 +740,13 @@ function selectedTeleport(options = {}) {
           closeGameModal();
         }
 
-        // Teleport to selected game
+        // Teleport to selected game without triggering an encounter
         const selectedGame = games.find(g => g.name === gameName);
         if (selectedGame) {
           const x = 450;
           const y = gameState.currentY + 200;
 
-          // Determine encounter type
-          const encounterType = determineEncounterType();
-
-          advance(selectedGame.name, x, y, encounterType);
+          advance(selectedGame.name, x, y, null);
         }
       };
     });

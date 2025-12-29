@@ -19,10 +19,9 @@ var EVENTS_DATA = [
   },
   {
     "name": "The Colosseum",
-    "description": "You wake up in the center of a roaring arena, and must survive as long as you can.",
+    "description": "You wake up in the center of a roaring arena, and must survive as long as you can. You must fight off an enemy and then are given the choice to escape or double down.",
     "options": [
-      "Escape the arena",
-      "Challenge the Champion"
+      "Continue"
     ]
   }
 ];

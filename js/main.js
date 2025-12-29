@@ -1299,7 +1299,10 @@ function showItemSelectionForMuncher(itemsToFeed, itemsToReceive) {
         ${itemsHTML}
       </div>
       <p id="muncher-count" style="color: #aaa; font-size: 14px;">Selected: 0/${itemsToFeed}</p>
-      <button id="muncher-confirm" disabled style="padding: 10px 20px; background: #666; border: none; border-radius: 6px; color: white; cursor: not-allowed;">Confirm</button>
+      <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+        <button id="muncher-back" style="padding: 10px 20px; background: #666; border: none; border-radius: 6px; color: white; cursor: pointer;">Back</button>
+        <button id="muncher-confirm" disabled style="padding: 10px 20px; background: #666; border: none; border-radius: 6px; color: white; cursor: not-allowed;">Confirm</button>
+      </div>
     </div>
   `);
 
@@ -1338,6 +1341,11 @@ function showItemSelectionForMuncher(itemsToFeed, itemsToReceive) {
 
   document.getElementById('muncher-confirm').onclick = () => {
     feedMuncher(selectedIndices, itemsToReceive);
+  };
+
+  document.getElementById('muncher-back').onclick = () => {
+    closeGameModal();
+    showEventModal(); // Return to the event choice screen
   };
 }
 
@@ -1396,11 +1404,10 @@ function removeItemAndReverseStats(index) {
   const item = inventory[index];
 
   // Reverse item effects (but NOT reroll, dash, skip)
+  // NOTE: This parses the item description to determine what stats to reverse
+  // For health items, we reduce max health and cap current health to prevent death
+  // If an item gave "+5 Health", we treat it as max health for reversal purposes
   if (ITEM_EFFECTS && ITEM_EFFECTS[item.name] && ITEM_EFFECTS[item.name].onAcquire) {
-    // We need to reverse the stat changes
-    // This is tricky - we need to know what the item did originally
-    // For now, we'll handle common patterns
-
     // Check if item modifies stats by parsing description
     const desc = item.description.toLowerCase();
 
@@ -1454,41 +1461,25 @@ function removeItemAndReverseStats(index) {
 
 function handleColosseum(optionIndex) {
   if (!gameState.colosseumState) {
-    // First time - show initial popup
+    // First time - start the first fight immediately
     gameState.colosseumState = {
-      stage: 'initial',
+      stage: 'first_fight',
       returnGame: gameState.currentGame
     };
 
-    // Show popup with description and continue button
-    createGameModal(`
-      <div style="text-align: center;">
-        <h2 style="color: #ff9900; margin-top: 0;">⚔️ The Colosseum</h2>
-        <p style="color: #aaa; margin: 15px 0; font-size: 16px; line-height: 1.6;">
-          You wake up in the center of a roaring arena, and must survive as long as you can.
-          You must fight off an enemy and then are given the choice to escape or double down.
-        </p>
-        <p style="color: #888; margin: 10px 0; font-size: 14px; font-style: italic;">
-          (Teleport to an action game off of the map and beat it.)
-        </p>
-        <button
-          onclick="startColosseumFirstFight()"
-          style="
-            padding: 15px 30px;
-            margin: 20px 10px;
-            background: #4CAF50;
-            border: 2px solid #5cb85c;
-            border-radius: 8px;
-            color: white;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-          "
-        >
-          Continue
-        </button>
-      </div>
-    `);
+    closeGameModal();
+
+    // Teleport to random game with connected = false without triggering encounter
+    const unconnectedGames = games.filter(g => !g.connected);
+    if (unconnectedGames.length > 0) {
+      const randomGame = unconnectedGames[Math.floor(Math.random() * unconnectedGames.length)];
+      const x = 450;
+      const y = gameState.currentY + 200;
+      advance(randomGame.name, x, y, null); // Pass null to skip encounter
+    } else {
+      createNotification('No arena game available!', '#ff4444', '⚠️');
+      delete gameState.colosseumState;
+    }
   } else if (gameState.colosseumState.stage === 'choice') {
     // Player is making choice after beating first game
     if (optionIndex === 0) {
@@ -1522,25 +1513,6 @@ function handleColosseum(optionIndex) {
         delete gameState.colosseumState;
       }
     }
-  }
-}
-
-function startColosseumFirstFight() {
-  // Update stage
-  gameState.colosseumState.stage = 'first_fight';
-
-  closeGameModal();
-
-  // Teleport to random game with connected = false without triggering encounter
-  const unconnectedGames = games.filter(g => !g.connected);
-  if (unconnectedGames.length > 0) {
-    const randomGame = unconnectedGames[Math.floor(Math.random() * unconnectedGames.length)];
-    const x = 450;
-    const y = gameState.currentY + 200;
-    advance(randomGame.name, x, y, null); // Pass null to skip encounter
-  } else {
-    createNotification('No arena game available!', '#ff4444', '⚠️');
-    delete gameState.colosseumState;
   }
 }
 
@@ -3720,7 +3692,6 @@ window.getCurseMaxUses = getCurseMaxUses;
 window.getGamesWithStatus = getGamesWithStatus;
 // Event handlers
 window.handleStoneGolemResult = handleStoneGolemResult;
-window.startColosseumFirstFight = startColosseumFirstFight;
 window.showColosseumChoices = showColosseumChoices;
 window.handleChampionResult = handleChampionResult;
 window.completeChampionSuccess = completeChampionSuccess;
