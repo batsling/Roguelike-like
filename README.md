@@ -479,26 +479,560 @@ getGamesWithStatus(statusName)
 
 ## Events System
 
+### Overview
+
+Events are special encounters that offer meaningful choices and can lead to teleportation, item trading, or combat scenarios. The event system features a requirement system, multi-stage event flows, and integration with the generic combat system.
+
+**Key Features:**
+- Event requirement validation (inventory checks, etc.)
+- Multi-stage events with state tracking
+- Generic combat integration for event-triggered fights
+- Teleportation without encounter triggers
+- Player choice modals with detailed option descriptions
+
+---
+
+### Event Structure
+
 Events are defined in `events-data.js` and follow this structure:
 
 ```javascript
 {
   name: "Event Name",
-  power: "Low" | "Medium" | "High",
-  description: "Event description",
-  stat: "Strength" | "Dexterity" | "Intelligence" | "Charisma",
-  rollCheck: 10,  // DC (Difficulty Check) for the roll
-  successReward: "10 gold",  // or "common item", "uncommon item", "rare item"
-  failureConsequence: "Lose 1 health"
+  description: "Event description shown to player",
+  options: [
+    "Option 1 (Details about what happens)",
+    "Option 2 (Details about what happens)",
+    "Option 3 (Details about what happens)"
+  ],
+  requirement: {
+    type: "minItems",  // Requirement type
+    value: 4           // Requirement threshold
+  } // or null for no requirements
 }
 ```
 
+### Event Requirements
+
+Events can specify requirements that must be met before appearing:
+
+**Supported Requirement Types:**
+- `minItems`: Player must have at least X items in inventory
+
+**Example:**
+```javascript
+requirement: {
+  type: "minItems",
+  value: 4
+}
+```
+
+**Implementation:**
+The `checkEventRequirement()` function validates requirements before showing events:
+```javascript
+function checkEventRequirement(event) {
+  if (!event.requirement) return true;
+
+  switch (event.requirement.type) {
+    case 'minItems':
+      return inventory.length >= event.requirement.value;
+    default:
+      return true;
+  }
+}
+```
+
+**To Add New Requirement Types:**
+1. Add new case to `checkEventRequirement()` in `js/main.js`
+2. Define requirement in event's `requirement` object
+
+---
+
+### Built-in Events
+
+#### 1. **Primordial Teleporter** 🌀
+
+An ancient teleporter guarded by Stone Golems that offers three distinct paths.
+
+**Options:**
+1. **Enter the teleporter** (Teleport to random Action game)
+   - Immediately teleports to a random Action-type game
+   - No encounter triggers on arrival
+   - Quick escape option
+
+2. **Interact with the teleporter, then enter it** (Go back 3 difficulty, teleport to starting game)
+   - Reduces difficulty by removing 3 finished games from progress
+   - Teleports back to your starting game
+   - Useful for reducing difficulty when struggling
+
+3. **Fight off the Stone Golems** (Fight 3 Stone Golems in a row)
+   - Triggers 3 consecutive Stone Golem fights
+   - Each fight uses the generic combat system
+   - Success: Gain 10 gold per fight
+   - Failure: Take 2 damage per fight
+   - Cursed Slash properly triggers on victories
+
+**Implementation Details:**
+```javascript
+handlePrimordialTeleporter(optionIndex) {
+  if (optionIndex === 0) {
+    // Random Action game teleport
+    teleportToRandomGameOfType('Action');
+  } else if (optionIndex === 1) {
+    // Reduce difficulty + return to start
+    gameState.finishedGames = gameState.finishedGames.slice(0, -3);
+    advance(gameState.startGame.name, x, y, null);
+  } else if (optionIndex === 2) {
+    // 3 Stone Golem fights
+    gameState.stoneGolemFightsRemaining = 3;
+    triggerStoneGolemFight();
+  }
+}
+```
+
+---
+
+#### 2. **A Wild Muncher Appears** 🟢
+
+A hungry green chest that trades items for luck-based rewards.
+
+**Requirements:**
+- Requires 4+ items in inventory to appear
+
+**Options:**
+1. **Feed it four items** (Trade 4 items for 2 items based on luck)
+   - Player selects 4 items from inventory
+   - Receives 2 items with rarity based on luck stat
+   - Higher luck = better chance at rare items
+
+2. **Feed it two items** (Trade 2 items for 1 item based on luck)
+   - Player selects 2 items from inventory
+   - Receives 1 item with rarity based on luck stat
+   - Lower investment, lower reward
+
+3. **Leave it hungry**
+   - No trade occurs
+   - Exit event with no changes
+
+**Item Selection:**
+- Modal shows all inventory items
+- Click to select/deselect items
+- Confirm button activates when exact count selected
+- Back button returns to event choices
+
+**Rarity Calculation:**
+```javascript
+function selectRandomRarity() {
+  const roll = Math.random() * 100;
+  const luckBonus = luck * 2; // Each luck point = 2% bonus
+
+  if (roll < 10 + luckBonus) return 'Legendary';
+  if (roll < 25 + luckBonus) return 'Epic';
+  if (roll < 50 + luckBonus) return 'Rare';
+  if (roll < 75) return 'Uncommon';
+  return 'Common';
+}
+```
+
+**Implementation Details:**
+```javascript
+handleWildMuncher(optionIndex) {
+  if (optionIndex === 0) {
+    showItemSelectionForMuncher(4, 2); // Trade 4 for 2
+  } else if (optionIndex === 1) {
+    showItemSelectionForMuncher(2, 1); // Trade 2 for 1
+  } else {
+    closeGameModal(); // Leave hungry
+  }
+}
+```
+
+---
+
+#### 3. **The Colosseum** ⚔️
+
+A roaring arena that tests player skill through consecutive battles.
+
+**Stage 1: Initial Encounter**
+- Player is teleported to random unconnected Action game
+- Must beat the game to proceed
+- No encounter triggers on teleportation
+
+**Stage 2: The Choice** (After first victory)
+- **Escape the arena** (Return to original game)
+  - Safe exit with guaranteed item from victory
+  - Returns to game where event was triggered
+
+- **Challenge the Champion** (Fight another action game not connected to the rest of the map)
+  - Teleports to another random unconnected Action game
+  - Must beat the game, then verify attempts
+
+**Stage 3: Champion Verification** (If challenged)
+- Modal asks: "Did it take you three or less attempts?"
+- **Yes**: Receive 2 luck-based random items
+- **No**: Lose 3 health
+- Returns to original game after resolution
+
+**State Management:**
+```javascript
+gameState.colosseumState = {
+  stage: 'first_fight' | 'choice' | 'champion',
+  returnGame: gameName // Original game to return to
+}
+```
+
+**Flow Diagram:**
+```
+Event Trigger → First Fight → Beat Game → Item Choice →
+  ↓
+Show Choices Modal → Escape (return) OR Challenge Champion →
+  ↓
+Champion Fight → Beat Game → Item Choice → Attempts Verification →
+  ↓
+Rewards/Penalty → Return to Original Game
+```
+
+**Implementation Details:**
+```javascript
+handleColosseum(optionIndex) {
+  if (!gameState.colosseumState) {
+    // First encounter - start first fight
+    gameState.colosseumState = {
+      stage: 'first_fight',
+      returnGame: gameState.currentGame
+    };
+    // Teleport to unconnected game
+    const unconnectedGames = games.filter(g =>
+      !g.connected || g.name === gameState.amuletGame?.name
+    );
+    advance(randomGame.name, x, y, null);
+  } else if (gameState.colosseumState.stage === 'choice') {
+    if (optionIndex === 0) {
+      // Escape - return to original game
+      advance(returnGame.name, x, y, null);
+      delete gameState.colosseumState;
+    } else if (optionIndex === 1) {
+      // Challenge champion
+      gameState.colosseumState.stage = 'champion';
+      // Teleport to another unconnected game
+    }
+  }
+}
+```
+
+---
+
+### Generic Combat System
+
+The event system includes a reusable combat function for event-triggered fights:
+
+```javascript
+triggerCombat(enemy, onSuccess, onFailure, powerLevel)
+```
+
+**Parameters:**
+- `enemy` (object): Enemy data with name, stat, rollCheck, successReward, etc.
+- `onSuccess` (function|null): Callback when player wins combat
+- `onFailure` (function|null): Callback when player loses combat
+- `powerLevel` (string): 'Low', 'Medium', or 'High' for damage scaling
+
+**Features:**
+- Full integration with Cursed Slash and other triggered items
+- Consistent UI with regular combat encounters
+- Customizable success/failure behaviors
+- Automatic reward processing for gold
+
+**Example Usage:**
+```javascript
+const stoneGolem = enemies.find(e => e.name === 'Stone Golem');
+
+triggerCombat(
+  stoneGolem,
+  () => {
+    // Custom success behavior
+    createNotification('Victory!', '#4CAF50', '⚔️');
+    triggerNextFight();
+  },
+  () => {
+    // Custom failure behavior
+    createNotification('Defeated...', '#ff4444', '💀');
+    returnToEvent();
+  },
+  'Medium'
+);
+```
+
+**Combat Result Handling:**
+```javascript
+function handleGenericCombatResult(success, powerLevel) {
+  if (success) {
+    // Trigger item effects (e.g., Cursed Slash healing)
+    triggerOnEnemyDefeated();
+    // Apply rewards
+    // Call custom success callback
+  } else {
+    // Apply damage based on power level
+    const damage = powerLevel === 'Low' ? 1 :
+                   powerLevel === 'Medium' ? 2 : 3;
+    health = Math.max(0, health - damage);
+    // Call custom failure callback
+  }
+}
+```
+
+---
+
+### Event Flow Management
+
+**Event Modal Display:**
+```javascript
+showEventModal(specificEvent)
+```
+- Displays event choices to player
+- Validates requirements before showing events
+- Stores current event in `gameState.currentEvent`
+- Filters available events based on requirements
+
+**Event Choice Handling:**
+```javascript
+handleEventChoice(event, option)
+```
+- Routes to specific event handler based on event name
+- Records choice in encounter history
+- Calls appropriate handler function
+
+**Multi-Stage Events:**
+Events can track state across multiple game completions using `gameState`:
+```javascript
+// Example: Colosseum tracking
+gameState.colosseumState = {
+  stage: 'first_fight',
+  returnGame: 'Starting Game Name'
+}
+
+// Check state in finished button handler
+if (gameState.colosseumState?.stage === 'first_fight') {
+  // Show item choice, then Colosseum choices
+  showItemChoiceModal(() => {
+    gameState.colosseumState.stage = 'choice';
+    showColosseumChoices();
+  });
+}
+```
+
+**Teleportation Without Encounters:**
+All event teleportations pass `null` as encounterType to skip combat/shop/event:
+```javascript
+advance(gameName, x, y, null); // null = skip encounter
+```
+
+---
+
+### Creating New Events
+
+**Step 1: Define Event Data**
+
+Add event to `events-data.js`:
+```javascript
+{
+  name: "Mysterious Merchant",
+  description: "A hooded figure offers strange wares...",
+  options: [
+    "Buy random item (10 gold)",
+    "Sell an item (5 gold)",
+    "Ignore merchant"
+  ],
+  requirement: {
+    type: "minGold",
+    value: 10
+  }
+}
+```
+
+**Step 2: Add Requirement Validation** (if needed)
+
+Update `checkEventRequirement()` in `js/main.js`:
+```javascript
+case 'minGold':
+  return gold >= event.requirement.value;
+```
+
+**Step 3: Create Event Handler**
+
+Add handler function in `js/main.js`:
+```javascript
+function handleMysteriousMerchant(optionIndex) {
+  if (optionIndex === 0) {
+    // Buy item
+    if (gold >= 10) {
+      gold -= 10;
+      const randomItem = items[Math.floor(Math.random() * items.length)];
+      acquireItem(randomItem);
+      closeGameModal();
+    }
+  } else if (optionIndex === 1) {
+    // Sell item
+    showItemSelectionModal((selectedIndex) => {
+      removeItem(selectedIndex);
+      gold += 5;
+      closeGameModal();
+    });
+  } else {
+    // Ignore
+    closeGameModal();
+  }
+}
+```
+
+**Step 4: Register Handler**
+
+Add to `handleEventChoice()` in `js/main.js`:
+```javascript
+if (event.name === "Mysterious Merchant") {
+  handleMysteriousMerchant(optionIndex);
+}
+```
+
+**Step 5: Export Functions** (if needed)
+
+Add to window exports at bottom of `js/main.js`:
+```javascript
+window.handleMysteriousMerchant = handleMysteriousMerchant;
+```
+
+---
+
+### Event System Functions Reference
+
+**Core Functions:**
+```javascript
+// Show event modal to player
+showEventModal(specificEvent)
+
+// Handle player's event choice
+handleEventChoice(event, option)
+
+// Check if event requirements are met
+checkEventRequirement(event)
+
+// Generic combat for events
+triggerCombat(enemy, onSuccess, onFailure, powerLevel)
+
+// Handle combat results
+handleGenericCombatResult(success, powerLevel)
+```
+
+**Event-Specific Handlers:**
+```javascript
+// Primordial Teleporter
+handlePrimordialTeleporter(optionIndex)
+triggerStoneGolemFight()
+handleStoneGolemResult(success)
+
+// Wild Muncher
+handleWildMuncher(optionIndex)
+showItemSelectionForMuncher(itemsToFeed, itemsToReceive)
+feedMuncher(indices, itemsToReceive)
+
+// Colosseum
+handleColosseum(optionIndex)
+showColosseumChoices()
+handleChampionResult()
+completeChampionSuccess()
+completeChampionFailure()
+```
+
+**Helper Functions:**
+```javascript
+// Remove item and reverse its stat effects
+removeItemAndReverseStats(index)
+
+// Select rarity based on luck stat
+selectRandomRarity()
+
+// Teleport without triggering encounters
+advance(gameName, x, y, null)
+```
+
+---
+
+### Event Requirements System
+
+**Built-in Requirement Types:**
+
+| Type | Description | Check |
+|------|-------------|-------|
+| `minItems` | Minimum inventory items | `inventory.length >= value` |
+
+**Example Requirement:**
+```javascript
+requirement: {
+  type: "minItems",
+  value: 4
+}
+```
+
+**Custom Requirements:**
+To add new requirement types, extend `checkEventRequirement()`:
+
+```javascript
+function checkEventRequirement(event) {
+  if (!event.requirement) return true;
+
+  switch (event.requirement.type) {
+    case 'minItems':
+      return inventory.length >= event.requirement.value;
+    case 'minGold':
+      return gold >= event.requirement.value;
+    case 'hasItem':
+      return inventory.some(item => item.name === event.requirement.value);
+    case 'minDifficulty':
+      return gameState.finishedGames?.length >= event.requirement.value;
+    default:
+      return true;
+  }
+}
+```
+
+---
+
+### Event Best Practices
+
+**Event Design:**
+- Provide meaningful choices with clear consequences
+- Include parenthetical details in option text
+- Consider risk/reward balance
+- Test multi-stage event flows thoroughly
+
+**State Management:**
+- Use `gameState` for persistent event data
+- Clean up state after event completion
+- Verify state exists before accessing properties
+
+**Teleportation:**
+- Always pass `null` as encounterType for event teleports
+- Track return location for multi-stage events
+- Use unconnected games for special encounters
+
+**Combat Integration:**
+- Use `triggerCombat()` for consistent behavior
+- Include `triggerOnEnemyDefeated()` in success handlers
+- Provide custom callbacks for event-specific logic
+
+**UI/UX:**
+- Add Back buttons for item selection modals
+- Show detailed consequences in option text
+- Provide clear success/failure feedback
+- Update progress indicators (difficulty, distance)
+
+---
+
 ### Event Difficulty
 
-Event difficulty determines the DC (roll check needed):
-- **Low**: DC 8-12 (easier checks)
-- **Medium**: DC 13-16 (moderate checks)
-- **High**: DC 17-20 (harder checks)
+For events that use stat checks (via generic combat):
+- **Low**: DC 8-12, 1 damage on failure
+- **Medium**: DC 13-16, 2 damage on failure
+- **High**: DC 17-20, 3 damage on failure
 
 ---
 
