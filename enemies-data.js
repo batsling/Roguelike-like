@@ -121,32 +121,12 @@ var ENEMIES_DATA = [
   },
   {
     "name": "Stone Golem",
-    "powerLevel": "Low",
-    "game": "Roguelike-Like",
-    "stat": "Strength",
-    "rollCheck": 5,
-    "successReward": "Gain 5 Gold",
-    "failureConsequence": "Low Curse",
-    "imageUrl": ""
-  },
-  {
-    "name": "Stone Golem",
     "powerLevel": "Medium",
-    "game": "Roguelike-Like",
+    "game": "Risk of Rain",
     "stat": "Strength",
     "rollCheck": 10,
     "successReward": "Gain 10 Gold",
     "failureConsequence": "Medium Curse",
-    "imageUrl": ""
+    "imageUrl": "https://imgur.com/AeB1zxt.png"
   },
-  {
-    "name": "Stone Golem",
-    "powerLevel": "High",
-    "game": "Roguelike-Like",
-    "stat": "Strength",
-    "rollCheck": 15,
-    "successReward": "Gain 15 Gold",
-    "failureConsequence": "High Curse",
-    "imageUrl": ""
-  }
 ];
