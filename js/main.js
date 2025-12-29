@@ -1162,6 +1162,119 @@ function handleEventChoice(event, option) {
 
 // ===== EVENT HANDLERS =====
 
+// ----- Generic Combat Function -----
+// This function can be called from anywhere to trigger a combat encounter
+// Usage: triggerCombat(enemyObject, onSuccessCallback, onFailureCallback, powerLevel)
+function triggerCombat(enemy, onSuccess = null, onFailure = null, powerLevel = 'Medium') {
+  if (!enemy) {
+    console.error('triggerCombat: No enemy provided');
+    return;
+  }
+
+  // Get player's stat value for this check
+  const playerStatValue = getPlayerStat(enemy.stat);
+
+  createGameModal(`
+    <div style="text-align: center;">
+      <h2 style="color: #ff4444; margin-top: 0;">Combat Encounter!</h2>
+      <h3>${enemy.name}</h3>
+      <p style="color: #888;">From: ${enemy.game || 'Unknown'}</p>
+      ${enemy.imageUrl ? `<img src="${enemy.imageUrl}" style="max-width: 200px; max-height: 200px; image-rendering: pixelated; margin: 10px auto; display: block;" alt="${enemy.name}">` : ''}
+      <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 15px 0;">
+        <p style="font-size: 18px; margin: 5px 0;">
+          <span style="color: ${getStatColor(enemy.stat)};">${enemy.stat}</span> Check:
+          <strong>Roll ${enemy.rollCheck}+</strong>
+        </p>
+        <p style="font-size: 16px; margin: 5px 0; color: #aaa;">
+          Your ${enemy.stat}: <strong style="color: ${getStatColor(enemy.stat)};">${playerStatValue >= 0 ? '+' : ''}${playerStatValue}</strong>
+        </p>
+        <p style="font-size: 14px; margin: 5px 0; color: #888;">
+          (D20 + ${playerStatValue} must be ≥ ${enemy.rollCheck})
+        </p>
+      </div>
+      <button id="roll-generic-combat-btn" style="padding: 20px 40px; font-size: 20px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; margin: 15px auto; display: block; min-width: 180px; font-weight: bold; position: relative; z-index: 10;">
+        Roll D20
+      </button>
+      <div id="generic-combat-result" style="margin-top: 20px; font-size: 16px;"></div>
+    </div>
+  `);
+
+  document.getElementById('roll-generic-combat-btn').onclick = () => {
+    const roll = Math.floor(Math.random() * 20) + 1;
+    const total = roll + playerStatValue;
+    const success = total >= enemy.rollCheck;
+
+    document.getElementById('generic-combat-result').innerHTML = `
+      <p style="font-size: 20px; color: ${success ? '#4CAF50' : '#ff4444'};">
+        Rolled: ${roll} + ${playerStatValue} = ${total} ${success ? '✓ SUCCESS' : '✗ FAILURE'}
+      </p>
+      <button onclick="handleGenericCombatResult(${success}, '${powerLevel}')" style="padding: 10px 20px; margin-top: 20px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer;">Continue</button>
+    `;
+
+    // Store callbacks for the result handler
+    window._genericCombatCallbacks = {
+      success: onSuccess,
+      failure: onFailure,
+      enemy: enemy
+    };
+  };
+}
+
+function handleGenericCombatResult(success, powerLevel) {
+  const callbacks = window._genericCombatCallbacks || {};
+  const enemy = callbacks.enemy;
+
+  if (success) {
+    // Trigger onEnemyDefeated effects for triggered items (like Cursed Slash)
+    if (typeof triggerOnEnemyDefeated === 'function') {
+      triggerOnEnemyDefeated();
+    }
+
+    // Apply success rewards if specified
+    if (enemy && enemy.successReward) {
+      const goldMatch = enemy.successReward.match(/(\d+) Gold/);
+      if (goldMatch) {
+        const goldAmount = parseInt(goldMatch[1]);
+        gold += goldAmount;
+        gameState.gold = gold;
+        updateTopBar();
+      }
+    }
+
+    // Call custom success callback
+    if (callbacks.success) {
+      closeGameModal();
+      callbacks.success();
+    } else {
+      closeGameModal();
+    }
+  } else {
+    // Failed - take damage based on power level
+    let healthLoss = 1; // Low difficulty
+    if (powerLevel === 'Medium') {
+      healthLoss = 2;
+    } else if (powerLevel === 'High') {
+      healthLoss = 3;
+    }
+
+    health = Math.max(0, health - healthLoss);
+    gameState.health = health;
+    updateHealthDisplay();
+    updateTopBar();
+
+    // Call custom failure callback
+    if (callbacks.failure) {
+      closeGameModal();
+      callbacks.failure();
+    } else {
+      closeGameModal();
+    }
+  }
+
+  // Clean up callbacks
+  delete window._genericCombatCallbacks;
+}
+
 // ----- Primordial Teleporter Event -----
 
 function handlePrimordialTeleporter(optionIndex) {
@@ -1255,7 +1368,12 @@ function triggerStoneGolemFight() {
 function handleStoneGolemResult(success) {
   gameState.stoneGolemFightsRemaining--;
 
-  if (!success) {
+  if (success) {
+    // Trigger onEnemyDefeated effects for triggered items (like Cursed Slash)
+    if (typeof triggerOnEnemyDefeated === 'function') {
+      triggerOnEnemyDefeated();
+    }
+  } else {
     // Failed - take 2 damage
     health = Math.max(0, health - 2);
     gameState.health = health;
@@ -1442,6 +1560,31 @@ function feedMuncher(indices, itemsToReceive) {
 function removeItemAndReverseStats(index) {
   const item = inventory[index];
 
+  // Special handling for Cursed Slash - restore the max health it took
+  if (item.name === 'Cursed Slash') {
+    const oldMaxHealth = maxHealth;
+    const oldHealth = health;
+
+    // Restore max health (reverse the halving by doubling)
+    maxHealth = maxHealth * 2;
+
+    // Restore current health proportionally (same proportion as before)
+    health = Math.min(maxHealth, health * 2);
+
+    gameState.maxHealth = maxHealth;
+    gameState.health = health;
+    updateHealthDisplay();
+    updateTopBar();
+
+    console.log(`Cursed Slash removed: Max health ${oldMaxHealth} → ${maxHealth}, Current health ${oldHealth} → ${health}`);
+
+    // Remove from inventory and return early
+    inventory.splice(index, 1);
+    gameState.inventory = inventory;
+    updateInventory();
+    return;
+  }
+
   // Reverse item effects (but NOT reroll, dash, skip)
   // NOTE: This parses the item description to determine what stats to reverse
   // For health items, we reduce max health and cap current health to prevent death
@@ -1556,43 +1699,50 @@ function handleColosseum(optionIndex) {
 }
 
 function showColosseumChoices() {
-  // Find the Colosseum event
-  const colosseumEvent = EVENTS_DATA.find(e => e.name === 'The Colosseum');
-  if (!colosseumEvent) {
-    console.error('Colosseum event not found!');
-    return;
-  }
-
-  // Build the options HTML
-  const optionsHTML = colosseumEvent.options.map((opt, i) => `
-    <button
-      onclick="handleEventChoice(${JSON.stringify(colosseumEvent).replace(/"/g, '&quot;')}, '${opt}')"
-      style="
-        padding: 15px 25px;
-        margin: 10px 5px;
-        background: #4CAF50;
-        border: 2px solid #5cb85c;
-        border-radius: 8px;
-        color: white;
-        cursor: pointer;
-        font-size: 16px;
-        font-weight: bold;
-        transition: all 0.2s;
-      "
-      onmouseover="this.style.background='#5cb85c'; this.style.transform='scale(1.05)';"
-      onmouseout="this.style.background='#4CAF50'; this.style.transform='scale(1)';"
-    >
-      ${opt}
-    </button>
-  `).join('');
-
+  // Show the two choices after completing first fight: Escape or Challenge Champion
   createGameModal(`
     <div style="text-align: center;">
-      <h2 style="color: #ff9900; margin-top: 0;">⚔️ ${colosseumEvent.name}</h2>
-      <p style="color: #aaa; margin: 15px 0; font-size: 16px;">${colosseumEvent.description}</p>
-      <p style="color: #4CAF50; margin: 15px 0; font-size: 14px;">You survived the first battle! What will you do?</p>
-      <div style="margin-top: 25px;">
-        ${optionsHTML}
+      <h2 style="color: #ff9900; margin-top: 0;">⚔️ The Colosseum</h2>
+      <p style="color: #4CAF50; margin: 15px 0; font-size: 16px; font-weight: bold;">You survived the first battle! What will you do?</p>
+      <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; align-items: center;">
+        <button
+          onclick="handleColosseum(0)"
+          style="
+            padding: 15px 25px;
+            min-width: 300px;
+            background: #4a90e2;
+            border: 2px solid #5ca4f2;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.2s;
+          "
+          onmouseover="this.style.background='#5ca4f2'; this.style.transform='scale(1.05)';"
+          onmouseout="this.style.background='#4a90e2'; this.style.transform='scale(1)';"
+        >
+          Escape the arena (Return to original game)
+        </button>
+        <button
+          onclick="handleColosseum(1)"
+          style="
+            padding: 15px 25px;
+            min-width: 300px;
+            background: #ff6600;
+            border: 2px solid #ff8833;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.2s;
+          "
+          onmouseover="this.style.background='#ff8833'; this.style.transform='scale(1.05)';"
+          onmouseout="this.style.background='#ff6600'; this.style.transform='scale(1)';"
+        >
+          Challenge the Champion (Fight another arena game for rewards)
+        </button>
       </div>
     </div>
   `);
@@ -3731,6 +3881,8 @@ window.getCurseMaxUses = getCurseMaxUses;
 window.getGamesWithStatus = getGamesWithStatus;
 // Event handlers
 window.handleStoneGolemResult = handleStoneGolemResult;
+window.triggerCombat = triggerCombat;
+window.handleGenericCombatResult = handleGenericCombatResult;
 window.showColosseumChoices = showColosseumChoices;
 window.handleChampionResult = handleChampionResult;
 window.completeChampionSuccess = completeChampionSuccess;

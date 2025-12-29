@@ -149,10 +149,10 @@ function showTooltip(e, name) {
 
   let connectionsHTML = '';
   if (influencedBy.length > 0) {
-    connectionsHTML += `<div style="margin-top: 8px;"><strong style="color: #4CAF50;">Influenced By:</strong><div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">${influencedBy.map(g => `<span style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); padding: 2px 6px; border-radius: 3px; font-size: 11px;">${g} → ${name}</span>`).join('')}</div></div>`;
+    connectionsHTML += `<div style="margin-top: 8px;"><strong style="color: #4CAF50;">Influenced By:</strong><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">${influencedBy.map(g => `<span style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${g} → ${name}</span>`).join('')}</div></div>`;
   }
   if (influences.length > 0) {
-    connectionsHTML += `<div style="margin-top: 8px;"><strong style="color: #9b59b6;">Influences:</strong><div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">${influences.map(g => `<span style="background: rgba(155, 89, 182, 0.1); border: 1px solid rgba(155, 89, 182, 0.3); padding: 2px 6px; border-radius: 3px; font-size: 11px;">${name} → ${g}</span>`).join('')}</div></div>`;
+    connectionsHTML += `<div style="margin-top: 8px;"><strong style="color: #9b59b6;">Influences:</strong><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">${influences.map(g => `<span style="background: rgba(155, 89, 182, 0.1); border: 1px solid rgba(155, 89, 182, 0.3); padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${name} → ${g}</span>`).join('')}</div></div>`;
   }
   if (influencedBy.length === 0 && influences.length === 0) {
     connectionsHTML = '<div style="margin-top: 8px; color: #888;">No connections</div>';
@@ -721,7 +721,9 @@ function advance(game, x, y, encounterType) {
   gameState.visitedGames.push(game);
   gameState.currentY = y;
 
-  document.getElementById('distance-display').textContent = `Target: ${gameState.amuletGame.name} — ${bfs(game, gameState.amuletGame.name)} steps away`;
+  const distance = bfs(game, gameState.amuletGame.name);
+  const difficulty = gameState.finishedGames?.length || 0;
+  document.getElementById('distance-display').textContent = `Target: ${gameState.amuletGame.name} — ${distance} steps away | Difficulty: ${difficulty}`;
 
   // Add player icon with animation
   if (gameState.character && PLAYER_CHARACTERS[gameState.character]) {
@@ -1001,7 +1003,8 @@ function renderGameState() {
   document.getElementById('game-gold').textContent = gold;
 
   const distance = bfs(gameState.currentGame, gameState.amuletGame.name);
-  document.getElementById('distance-display').textContent = `Target: ${gameState.amuletGame.name} — ${distance} steps away`;
+  const difficulty = gameState.finishedGames?.length || 0;
+  document.getElementById('distance-display').textContent = `Target: ${gameState.amuletGame.name} — ${distance} steps away | Difficulty: ${difficulty}`;
 
   // Recreate arrowhead marker
   createArrowheadMarker();
