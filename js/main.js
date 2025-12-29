@@ -788,7 +788,7 @@ function showCombatModal() {
           <strong>Roll ${enemy.rollCheck}+</strong>
         </p>
         <p style="font-size: 16px; margin: 5px 0; color: #aaa;">
-          Your ${enemy.stat}: <strong style="color: ${getStatColor(enemy.stat)};">+${playerStatValue}</strong>
+          Your ${enemy.stat}: <strong style="color: ${getStatColor(enemy.stat)};">${playerStatValue >= 0 ? '+' : ''}${playerStatValue}</strong>
         </p>
         <p style="font-size: 14px; margin: 5px 0; color: #888;">
           (D20 + ${playerStatValue} must be ≥ ${enemy.rollCheck})
@@ -1035,15 +1035,53 @@ function showCombatModal() {
   });
 }
 
-function showEventModal() {
+// Check if an event's requirement is met
+function checkEventRequirement(event) {
+  if (!event.requirement) return true; // No requirement means always available
+
+  switch (event.requirement.type) {
+    case 'minItems':
+      return inventory.length >= event.requirement.value;
+    // Add more requirement types here as needed
+    default:
+      return true;
+  }
+}
+
+function showEventModal(specificEvent = null) {
   if (events.length === 0) return;
 
   // Set phase to event
   gameState.phase = 'event';
   updateInventory(); // Refresh item UI to update usable item buttons
 
-  const randomIndex = Math.floor(Math.random() * events.length);
-  const event = events[randomIndex];
+  // Use specific event if provided, otherwise random from available events
+  let event;
+  if (specificEvent) {
+    event = events.find(e => e.name === specificEvent);
+    if (!event) {
+      // Fallback to random if specific event not found
+      const availableEvents = events.filter(e => checkEventRequirement(e));
+      if (availableEvents.length === 0) {
+        console.warn('No events available that meet requirements');
+        return;
+      }
+      const randomIndex = Math.floor(Math.random() * availableEvents.length);
+      event = availableEvents[randomIndex];
+    }
+  } else {
+    // Filter events by requirements
+    const availableEvents = events.filter(e => checkEventRequirement(e));
+    if (availableEvents.length === 0) {
+      console.warn('No events available that meet requirements');
+      return;
+    }
+    const randomIndex = Math.floor(Math.random() * availableEvents.length);
+    event = availableEvents[randomIndex];
+  }
+
+  // Store current event in gameState so we can return to it
+  gameState.currentEvent = event.name;
 
   let optionsHTML = '<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">';
 
@@ -1187,7 +1225,7 @@ function triggerStoneGolemFight() {
           <strong>Roll ${stoneGolem.rollCheck}+</strong>
         </p>
         <p style="font-size: 16px; margin: 5px 0; color: #aaa;">
-          Your ${stoneGolem.stat}: <strong style="color: ${getStatColor(stoneGolem.stat)};">+${playerStatValue}</strong>
+          Your ${stoneGolem.stat}: <strong style="color: ${getStatColor(stoneGolem.stat)};">${playerStatValue >= 0 ? '+' : ''}${playerStatValue}</strong>
         </p>
         <p style="font-size: 14px; margin: 5px 0; color: #888;">
           (D20 + ${playerStatValue} must be ≥ ${stoneGolem.rollCheck})
@@ -1345,7 +1383,8 @@ function showItemSelectionForMuncher(itemsToFeed, itemsToReceive) {
 
   document.getElementById('muncher-back').onclick = () => {
     closeGameModal();
-    showEventModal(); // Return to the event choice screen
+    // Return to the specific event that was showing
+    showEventModal(gameState.currentEvent || 'A Wild Muncher Appears');
   };
 }
 
@@ -1469,8 +1508,8 @@ function handleColosseum(optionIndex) {
 
     closeGameModal();
 
-    // Teleport to random game with connected = false without triggering encounter
-    const unconnectedGames = games.filter(g => !g.connected);
+    // Teleport to random game with connected = false (or amulet game) without triggering encounter
+    const unconnectedGames = games.filter(g => !g.connected || g.name === gameState.amuletGame?.name);
     if (unconnectedGames.length > 0) {
       const randomGame = unconnectedGames[Math.floor(Math.random() * unconnectedGames.length)];
       const x = 450;
@@ -1501,8 +1540,8 @@ function handleColosseum(optionIndex) {
 
       closeGameModal();
 
-      // Teleport to unconnected game
-      const unconnectedGames = games.filter(g => !g.connected);
+      // Teleport to unconnected game (or amulet game)
+      const unconnectedGames = games.filter(g => !g.connected || g.name === gameState.amuletGame?.name);
       if (unconnectedGames.length > 0) {
         const randomGame = unconnectedGames[Math.floor(Math.random() * unconnectedGames.length)];
         const x = 450;

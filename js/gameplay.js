@@ -476,6 +476,9 @@ function spawnChoices() {
     const encounterRoll = Math.random() * 100;
     let encounterType, encounterIcon, encounterColor;
 
+    // Check distance (finished games) for shop availability
+    const distance = gameState.finishedGames ? gameState.finishedGames.length : 0;
+
     if (encounterRoll < 75) {
       encounterType = 'combat';
       encounterIcon = '!';
@@ -495,10 +498,16 @@ function spawnChoices() {
       encounterType = 'event';
       encounterIcon = '?';
       encounterColor = 'purple';
-    } else {
+    } else if (distance >= 4) {
+      // Shops only spawn at distance >= 4
       encounterType = 'shop';
       encounterIcon = '$';
       encounterColor = 'gold';
+    } else {
+      // Not far enough for shops, default to event
+      encounterType = 'event';
+      encounterIcon = '?';
+      encounterColor = 'purple';
     }
 
     const n = addNode(g, 'choice', nx, ny);

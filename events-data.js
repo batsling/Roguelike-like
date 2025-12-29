@@ -6,7 +6,8 @@ var EVENTS_DATA = [
       "Enter the teleporter",
       "Interact with the teleporter, then enter it",
       "Fight off the Stone Golems"
-    ]
+    ],
+    "requirement": null
   },
   {
     "name": "A Wild Muncher Appears",
@@ -15,13 +16,18 @@ var EVENTS_DATA = [
       "Feed it four items",
       "Feed it two items",
       "Leave it hungry"
-    ]
+    ],
+    "requirement": {
+      "type": "minItems",
+      "value": 4
+    }
   },
   {
     "name": "The Colosseum",
     "description": "You wake up in the center of a roaring arena, and must survive as long as you can. You must fight off an enemy and then are given the choice to escape or double down.",
     "options": [
       "Continue"
-    ]
+    ],
+    "requirement": null
   }
 ];
