@@ -39,7 +39,7 @@ var ITEMS_DATA = [
   },
   {
     "name": "D6",
-    "rarity": "common",
+    "rarity": "uncommon",
     "type": "Passive",
     "description": "Gain +1 Reroll",
     "image": "https://imgur.com/a38hVSs",
