@@ -149,10 +149,10 @@ function showTooltip(e, name) {
 
   let connectionsHTML = '';
   if (influencedBy.length > 0) {
-    connectionsHTML += `<div style="margin-top: 8px;"><strong style="color: #4CAF50;">Influenced By:</strong><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">${influencedBy.map(g => `<span style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${g} → ${name}</span>`).join('')}</div></div>`;
+    connectionsHTML += `<div style="margin-top: 8px;"><strong style="color: #4CAF50;">Influenced By:</strong><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">${influencedBy.map(g => `<span style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); padding: 2px 6px; border-radius: 3px; font-size: 10px; word-wrap: break-word; line-height: 1.3;">${g} → ${name}</span>`).join('')}</div></div>`;
   }
   if (influences.length > 0) {
-    connectionsHTML += `<div style="margin-top: 8px;"><strong style="color: #9b59b6;">Influences:</strong><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">${influences.map(g => `<span style="background: rgba(155, 89, 182, 0.1); border: 1px solid rgba(155, 89, 182, 0.3); padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${name} → ${g}</span>`).join('')}</div></div>`;
+    connectionsHTML += `<div style="margin-top: 8px;"><strong style="color: #9b59b6;">Influences:</strong><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">${influences.map(g => `<span style="background: rgba(155, 89, 182, 0.1); border: 1px solid rgba(155, 89, 182, 0.3); padding: 2px 6px; border-radius: 3px; font-size: 10px; word-wrap: break-word; line-height: 1.3;">${name} → ${g}</span>`).join('')}</div></div>`;
   }
   if (influencedBy.length === 0 && influences.length === 0) {
     connectionsHTML = '<div style="margin-top: 8px; color: #888;">No connections</div>';
@@ -206,8 +206,8 @@ function moveTooltip(e) {
     tooltip.style.width = 'auto';
     tooltip.style.maxWidth = '500px';
   } else {
-    tooltip.style.width = '280px';
-    tooltip.style.maxWidth = '280px';
+    tooltip.style.width = '350px';
+    tooltip.style.maxWidth = '350px';
   }
 
   // Re-get rect after potential width change

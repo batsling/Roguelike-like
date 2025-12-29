@@ -465,6 +465,7 @@ function updateGameStats() {
   const statsGames = document.getElementById('stats-games');
   const statsSkippedGames = document.getElementById('stats-skipped');
   const statsDistance = document.getElementById('stats-distance');
+  const statsDifficulty = document.getElementById('stats-difficulty');
 
   if (statsHealth) statsHealth.textContent = `${health}/${maxHealth}`;
   if (statsGold) statsGold.textContent = gold;
@@ -517,6 +518,12 @@ function updateGameStats() {
   // Distance = total games played (including replays)
   if (statsDistance) {
     statsDistance.textContent = gameState.visitedGames?.length || 0;
+  }
+
+  // Difficulty = unique games finished (matches difficulty in progress bar)
+  if (statsDifficulty) {
+    const difficulty = gameState.finishedGames?.length || 0;
+    statsDifficulty.textContent = difficulty;
   }
 }
 

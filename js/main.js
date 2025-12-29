@@ -1734,14 +1734,18 @@ function showColosseumChoices() {
             border-radius: 8px;
             color: white;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             transition: all 0.2s;
+            line-height: 1.4;
           "
           onmouseover="this.style.background='#ff8833'; this.style.transform='scale(1.05)';"
           onmouseout="this.style.background='#ff6600'; this.style.transform='scale(1)';"
         >
-          Challenge the Champion (Fight another arena game for rewards)
+          Challenge the Champion<br>
+          <span style="font-size: 12px; font-weight: normal; opacity: 0.9;">
+            (Fight another action game not connected to the rest of the map. If you beat it within 3 attempts gain two random items, if not you lose 3 health)
+          </span>
         </button>
       </div>
     </div>
