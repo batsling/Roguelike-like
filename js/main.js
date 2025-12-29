@@ -1162,16 +1162,8 @@ function triggerStoneGolemFight() {
     return;
   }
 
-  // Find Stone Golem enemy (use current difficulty)
-  const gamesBeaten = gameState.finishedGames?.length || 0;
-  let powerText = 'Low';
-  if (gamesBeaten >= 10) {
-    powerText = 'High';
-  } else if (gamesBeaten >= 5) {
-    powerText = 'Medium';
-  }
-
-  const stoneGolem = enemies.find(e => e.name === 'Stone Golem' && e.powerLevel === powerText);
+  // Find the Stone Golem enemy
+  const stoneGolem = enemies.find(e => e.name === 'Stone Golem');
   if (!stoneGolem) {
     console.error('Stone Golem enemy not found!');
     delete gameState.stoneGolemFightsRemaining;
