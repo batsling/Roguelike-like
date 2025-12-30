@@ -388,7 +388,17 @@ function drawArrowLine(fromNode, toNode) {
   l.classList.add('choice-arrow');
   linesSvg.appendChild(l);
 
-  console.log(`Arrow drawn from (${x1}, ${y1}) to (${x2}, ${y2})`);
+  console.log(`✅ Choice arrow drawn from (${x1}, ${y1}) to (${x2}, ${y2})`);
+  console.log(`   SVG element:`, linesSvg);
+  console.log(`   SVG rect:`, linesSvg.getBoundingClientRect());
+  console.log(`   Line added to SVG, total lines now:`, linesSvg.children.length);
+  console.log(`   SVG computed styles:`, {
+    display: window.getComputedStyle(linesSvg).display,
+    visibility: window.getComputedStyle(linesSvg).visibility,
+    opacity: window.getComputedStyle(linesSvg).opacity,
+    zIndex: window.getComputedStyle(linesSvg).zIndex,
+    position: window.getComputedStyle(linesSvg).position
+  });
 }
 
 function drawPastLine(fromNode, toNode) {
@@ -511,18 +521,46 @@ function drawAllGameConnections() {
         l.setAttribute('y1', y1);
         l.setAttribute('x2', x2);
         l.setAttribute('y2', y2);
-        l.setAttribute('stroke', '#444');
-        l.setAttribute('stroke-width', '2');
-        l.setAttribute('opacity', '0.3');
+        // TEMPORARY: Use bright red for debugging visibility
+        l.setAttribute('stroke', '#FF0000');
+        l.setAttribute('stroke-width', '4');
+        l.setAttribute('opacity', '1');
         l.setAttribute('marker-end', 'url(#arrowhead-small)');
         l.classList.add('background-connection');
-        linesSvg.insertBefore(l, linesSvg.firstChild); // Add to back
+        linesSvg.appendChild(l); // Add to front for testing
         connectionsDrawn++;
+
+        console.log(`    ✅ Line element created and added to SVG:`, l);
+        console.log(`    SVG current children count:`, linesSvg.children.length);
+        console.log(`    SVG dimensions:`, {
+          width: linesSvg.getAttribute('width'),
+          height: linesSvg.getAttribute('height'),
+          style: linesSvg.style.cssText
+        });
+        console.log(`    SVG bounding rect:`, linesSvg.getBoundingClientRect());
+        console.log(`    SVG z-index:`, window.getComputedStyle(linesSvg).zIndex);
+        console.log(`    SVG pointer-events:`, window.getComputedStyle(linesSvg).pointerEvents);
       });
     }
   });
 
   console.log(`=== Summary: Drew ${connectionsDrawn} connections, skipped ${connectionsSkipped} ===`);
+
+  // DEBUGGING: Draw a test line to verify SVG is working
+  if (linesSvg) {
+    const testLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    testLine.setAttribute('x1', '0');
+    testLine.setAttribute('y1', '0');
+    testLine.setAttribute('x2', '500');
+    testLine.setAttribute('y2', '500');
+    testLine.setAttribute('stroke', '#00FF00'); // Bright green
+    testLine.setAttribute('stroke-width', '10');
+    testLine.setAttribute('opacity', '1');
+    testLine.setAttribute('id', 'test-line-diagonal');
+    linesSvg.appendChild(testLine);
+    console.log('🧪 TEST: Added bright green diagonal test line from (0,0) to (500,500)');
+    console.log('   If you see a green diagonal line, SVG is working!');
+  }
 }
 
 function createArrowheadMarker() {
