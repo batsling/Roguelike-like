@@ -26,8 +26,13 @@ function initGameplayDOM() {
   // Create SVG with proper namespace
   linesSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   linesSvg.setAttribute('id', 'connection-lines');
-  linesSvg.setAttribute('width', '100%');
+
+  // CRITICAL: Use pixel values, not percentages, for SVG dimensions
+  // Percentage widths don't work reliably on absolutely positioned SVGs
+  const parentWidth = pathContainer.offsetWidth || 2000;
+  linesSvg.setAttribute('width', parentWidth);
   linesSvg.setAttribute('height', '3000');
+
   linesSvg.style.position = 'absolute';
   linesSvg.style.top = '0';
   linesSvg.style.left = '0';
@@ -38,7 +43,8 @@ function initGameplayDOM() {
   pathContainer.insertBefore(linesSvg, pathContainer.firstChild);
 
   console.log('✅ SVG recreated with proper namespace');
-  console.log('   Dimensions:', linesSvg.getBoundingClientRect());
+  console.log(`   Set dimensions: ${parentWidth}x3000`);
+  console.log('   Actual dimensions:', linesSvg.getBoundingClientRect());
   console.log('   Parent dimensions:', pathContainer.getBoundingClientRect());
 }
 
