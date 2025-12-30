@@ -556,8 +556,12 @@ function drawAllGameConnections() {
 
     const svgRect = linesSvg.getBoundingClientRect();
     console.log('🧪 TEST: Added bright green diagonal test line from (0,0) to (500,500)');
-    console.log(`   SVG is ${svgRect.width.toFixed(0)}x${svgRect.height.toFixed(0)}px - viewBox removed, using pixel coordinates`);
-    console.log('   ✅ Lines should now be visible!');
+    console.log(`   SVG dimensions: ${svgRect.width.toFixed(0)}x${svgRect.height.toFixed(0)}px`);
+    if (svgRect.width > 0 && svgRect.height > 0) {
+      console.log('   ✅ SVG has proper dimensions - lines should be visible!');
+    } else {
+      console.log('   ❌ SVG has zero dimensions - this is why lines are not visible!');
+    }
   }
 }
 
