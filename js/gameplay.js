@@ -555,12 +555,18 @@ function drawAllGameConnections() {
     linesSvg.appendChild(testLine);
 
     const svgRect = linesSvg.getBoundingClientRect();
+    const computedStyle = window.getComputedStyle(linesSvg);
     console.log('🧪 TEST: Added bright green diagonal test line from (0,0) to (500,500)');
-    console.log(`   SVG dimensions: ${svgRect.width.toFixed(0)}x${svgRect.height.toFixed(0)}px`);
+    console.log(`   SVG getBoundingClientRect: ${svgRect.width.toFixed(0)}x${svgRect.height.toFixed(0)}px`);
+    console.log(`   SVG computed height: ${computedStyle.height}`);
+    console.log(`   SVG computed width: ${computedStyle.width}`);
+    console.log(`   SVG computed display: ${computedStyle.display}`);
+    console.log(`   SVG offsetWidth x offsetHeight: ${linesSvg.offsetWidth}x${linesSvg.offsetHeight}px`);
     if (svgRect.width > 0 && svgRect.height > 0) {
       console.log('   ✅ SVG has proper dimensions - lines should be visible!');
     } else {
-      console.log('   ❌ SVG has zero dimensions - this is why lines are not visible!');
+      console.log('   ❌ SVG has zero dimensions - checking why...');
+      console.log(`   Parent container: ${pathContainer.offsetWidth}x${pathContainer.offsetHeight}px`);
     }
   }
 }
