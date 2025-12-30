@@ -12,45 +12,14 @@
 let pathContainer, linesSvg, tooltip, viewport;
 
 function initGameplayDOM() {
-  console.log('🔄 initGameplayDOM v3.0 - CACHE BUSTER');
+  console.log('🎨 initGameplayDOM v4.0 - HTML/CSS ARROWS');
 
   pathContainer = document.getElementById('path-container');
-  linesSvg = document.getElementById('connection-lines');
+  linesSvg = document.getElementById('connection-lines'); // Keep reference for legacy, but won't use
   tooltip = document.getElementById('game-tooltip');
   viewport = document.getElementById('path-viewport');
 
-  // NUCLEAR OPTION: Set SVG dimensions multiple ways to force rendering
-  if (linesSvg) {
-    const parentWidth = pathContainer.offsetWidth || 1343;
-
-    // Set via attributes
-    linesSvg.setAttribute('width', parentWidth);
-    linesSvg.setAttribute('height', '3000');
-
-    // Set via CSS properties
-    linesSvg.style.width = parentWidth + 'px';
-    linesSvg.style.height = '3000px';
-    linesSvg.style.position = 'absolute';
-    linesSvg.style.top = '0';
-    linesSvg.style.left = '0';
-    linesSvg.style.pointerEvents = 'none';
-    linesSvg.style.zIndex = '1';
-    linesSvg.style.display = 'block';
-
-    setTimeout(() => {
-      const rect = linesSvg.getBoundingClientRect();
-      console.log(`🎨 SVG FINAL CHECK [v3.0]: ${Math.round(rect.width)}x${Math.round(rect.height)}px`);
-
-      if (rect.width > 0 && rect.height > 0) {
-        console.log('   🎉🎉🎉 SUCCESS! SVG visible!');
-      } else {
-        console.error('   💀 STILL ZERO! Browser cache is completely broken.');
-        console.error('   Try: DevTools → Application → Clear Storage → Clear site data');
-      }
-    }, 100);
-  } else {
-    console.error('❌ SVG element not found!');
-  }
+  console.log('✅ DOM initialized - using HTML/CSS arrows instead of SVG');
 }
 
 // ===== HELPER FUNCTIONS =====
@@ -391,14 +360,53 @@ function hideTooltip() {
   }, 150);
 }
 
-// ===== LINE DRAWING =====
+// ===== LINE DRAWING (HTML/CSS) =====
 
-function drawArrowLine(fromNode, toNode) {
-  // Create arrowhead marker if it doesn't exist
-  if (!document.getElementById('arrowhead')) {
-    createArrowheadMarker();
+// Helper: Create an HTML/CSS arrow from one point to another
+function createCSSArrow(x1, y1, x2, y2, color, width, dashed = false, className = '') {
+  const arrow = document.createElement('div');
+  arrow.className = `css-arrow ${className}`;
+
+  // Calculate distance and angle
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+  // Position and style the arrow
+  arrow.style.position = 'absolute';
+  arrow.style.left = x1 + 'px';
+  arrow.style.top = y1 + 'px';
+  arrow.style.width = length + 'px';
+  arrow.style.height = width + 'px';
+  arrow.style.backgroundColor = color;
+  arrow.style.transformOrigin = '0 50%';
+  arrow.style.transform = `rotate(${angle}deg)`;
+  arrow.style.pointerEvents = 'none';
+  arrow.style.zIndex = '1';
+
+  if (dashed) {
+    arrow.style.backgroundImage = `repeating-linear-gradient(90deg, ${color} 0px, ${color} 10px, transparent 10px, transparent 15px)`;
+    arrow.style.backgroundColor = 'transparent';
   }
 
+  // Add arrowhead using ::after (via inline style won't work, so we'll add a child element)
+  const arrowhead = document.createElement('div');
+  arrowhead.style.position = 'absolute';
+  arrowhead.style.right = '-10px';
+  arrowhead.style.top = '50%';
+  arrowhead.style.width = '0';
+  arrowhead.style.height = '0';
+  arrowhead.style.borderLeft = '10px solid ' + color;
+  arrowhead.style.borderTop = '8px solid transparent';
+  arrowhead.style.borderBottom = '8px solid transparent';
+  arrowhead.style.transform = 'translateY(-50%)';
+  arrow.appendChild(arrowhead);
+
+  return arrow;
+}
+
+function drawArrowLine(fromNode, toNode) {
   const r1 = fromNode.getBoundingClientRect();
   const r2 = toNode.getBoundingClientRect();
   const pr = pathContainer.getBoundingClientRect();
@@ -409,31 +417,11 @@ function drawArrowLine(fromNode, toNode) {
   const x2 = r2.left + r2.width / 2 - pr.left;   // Center X of target
   const y2 = r2.top - pr.top;                     // Top of target
 
-  // Create the line
-  const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  l.setAttribute('x1', x1);
-  l.setAttribute('y1', y1);
-  l.setAttribute('x2', x2);
-  l.setAttribute('y2', y2);
-  l.setAttribute('stroke', '#ffdd00');
-  l.setAttribute('stroke-width', '8');
-  l.setAttribute('opacity', '1');
-  l.setAttribute('stroke-dasharray', '10,5');
-  l.setAttribute('marker-end', 'url(#arrowhead)');
-  l.classList.add('choice-arrow');
-  linesSvg.appendChild(l);
+  // Create HTML/CSS arrow
+  const arrow = createCSSArrow(x1, y1, x2, y2, '#ffdd00', 8, true, 'choice-arrow');
+  pathContainer.appendChild(arrow);
 
   console.log(`✅ Choice arrow drawn from (${x1}, ${y1}) to (${x2}, ${y2})`);
-  console.log(`   SVG element:`, linesSvg);
-  console.log(`   SVG rect:`, linesSvg.getBoundingClientRect());
-  console.log(`   Line added to SVG, total lines now:`, linesSvg.children.length);
-  console.log(`   SVG computed styles:`, {
-    display: window.getComputedStyle(linesSvg).display,
-    visibility: window.getComputedStyle(linesSvg).visibility,
-    opacity: window.getComputedStyle(linesSvg).opacity,
-    zIndex: window.getComputedStyle(linesSvg).zIndex,
-    position: window.getComputedStyle(linesSvg).position
-  });
 }
 
 function drawPastLine(fromNode, toNode) {
@@ -441,57 +429,24 @@ function drawPastLine(fromNode, toNode) {
   const r2 = toNode.getBoundingClientRect();
   const pr = pathContainer.getBoundingClientRect();
 
-  const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  l.setAttribute('x1', r1.left + r1.width / 2 - pr.left);
-  l.setAttribute('y1', r1.bottom - pr.top);
-  l.setAttribute('x2', r2.left + r2.width / 2 - pr.left);
-  l.setAttribute('y2', r2.top - pr.top);
-  l.setAttribute('stroke', '#aaa');
-  l.setAttribute('stroke-width', '3');
-  l.setAttribute('opacity', '0.6');
-  linesSvg.appendChild(l);
+  const x1 = r1.left + r1.width / 2 - pr.left;
+  const y1 = r1.bottom - pr.top;
+  const x2 = r2.left + r2.width / 2 - pr.left;
+  const y2 = r2.top - pr.top;
+
+  // Create HTML/CSS arrow for past connections
+  const arrow = createCSSArrow(x1, y1, x2, y2, '#aaa', 3, false, 'past-arrow');
+  arrow.style.opacity = '0.6';
+  pathContainer.appendChild(arrow);
 }
 
 // Draw all game influence connections as light background arrows
 function drawAllGameConnections() {
-  console.log('=== drawAllGameConnections() called ===');
-  console.log('linesSvg element:', linesSvg);
-  console.log('pathContainer element:', pathContainer);
-  console.log('games array length:', games?.length);
-
-  if (!linesSvg) {
-    console.error('linesSvg is not defined!');
-    return;
-  }
+  console.log('=== drawAllGameConnections() called (HTML/CSS arrows) ===');
 
   if (!pathContainer) {
     console.error('pathContainer is not defined!');
     return;
-  }
-
-  // Create arrowhead marker if it doesn't exist
-  if (!document.getElementById('arrowhead-small')) {
-    console.log('Creating arrowhead-small marker');
-    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
-    marker.setAttribute('id', 'arrowhead-small');
-    marker.setAttribute('markerWidth', '10');
-    marker.setAttribute('markerHeight', '10');
-    marker.setAttribute('refX', '9');
-    marker.setAttribute('refY', '5');
-    marker.setAttribute('orient', 'auto');
-    marker.setAttribute('markerUnits', 'userSpaceOnUse');
-    marker.setAttribute('viewBox', '0 0 10 10');
-
-    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    polygon.setAttribute('points', '0,0 10,5 0,10');
-    polygon.setAttribute('fill', '#444');
-    marker.appendChild(polygon);
-    defs.appendChild(marker);
-    linesSvg.appendChild(defs);
-    console.log('arrowhead-small marker created');
-  } else {
-    console.log('arrowhead-small marker already exists');
   }
 
   // Get all visible game nodes
@@ -505,9 +460,6 @@ function drawAllGameConnections() {
     const gameName = node.dataset.gameName;
     if (gameName) {
       nodeMap.set(gameName, node);
-      console.log('  Mapped node:', gameName);
-    } else {
-      console.warn('  Node missing data-game-name attribute:', node.textContent);
     }
   });
 
@@ -515,16 +467,12 @@ function drawAllGameConnections() {
 
   // Draw connections for games that have influence relationships
   let connectionsDrawn = 0;
-  let connectionsSkipped = 0;
 
   games.forEach(game => {
     if (game.gamesInfluenced && game.gamesInfluenced.length > 0) {
-      console.log(`Game "${game.name}" influences:`, game.gamesInfluenced);
       const fromNode = nodeMap.get(game.name);
 
       if (!fromNode) {
-        console.log(`  ❌ Source node not found for "${game.name}"`);
-        connectionsSkipped++;
         return;
       }
 
@@ -532,12 +480,8 @@ function drawAllGameConnections() {
         const toNode = nodeMap.get(influencedGame);
 
         if (!toNode) {
-          console.log(`  ❌ Target node not found for "${influencedGame}"`);
-          connectionsSkipped++;
           return;
         }
-
-        console.log(`  ✓ Drawing arrow: "${game.name}" → "${influencedGame}"`);
 
         // Draw a subtle background arrow
         const r1 = fromNode.getBoundingClientRect();
@@ -549,80 +493,17 @@ function drawAllGameConnections() {
         const x2 = r2.left + r2.width / 2 - pr.left;
         const y2 = r2.top - pr.top;
 
-        console.log(`    Coordinates: (${x1}, ${y1}) → (${x2}, ${y2})`);
-
-        const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        l.setAttribute('x1', x1);
-        l.setAttribute('y1', y1);
-        l.setAttribute('x2', x2);
-        l.setAttribute('y2', y2);
-        // TEMPORARY: Use bright red for debugging visibility
-        l.setAttribute('stroke', '#FF0000');
-        l.setAttribute('stroke-width', '4');
-        l.setAttribute('opacity', '1');
-        l.setAttribute('marker-end', 'url(#arrowhead-small)');
-        l.classList.add('background-connection');
-        linesSvg.appendChild(l); // Add to front for testing
+        // Create subtle gray background arrow
+        const arrow = createCSSArrow(x1, y1, x2, y2, 'rgba(100, 100, 100, 0.3)', 2, false, 'background-connection');
+        pathContainer.appendChild(arrow);
         connectionsDrawn++;
 
-        console.log(`    ✅ Line element created and added to SVG`);
-        console.log(`    SVG children count:`, linesSvg.children.length);
-        const svgRect = linesSvg.getBoundingClientRect();
-        console.log(`    SVG rendered size: ${svgRect.width}x${svgRect.height}px`);
-        console.log(`    Path container size: ${pr.width}x${pr.height}px`);
+        console.log(`  ✓ Arrow: "${game.name}" → "${influencedGame}"`);
       });
     }
   });
 
-  console.log(`=== Summary: Drew ${connectionsDrawn} connections, skipped ${connectionsSkipped} ===`);
-
-  // DEBUGGING: Draw a test line to verify SVG is working
-  if (linesSvg) {
-    const testLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    testLine.setAttribute('x1', '0');
-    testLine.setAttribute('y1', '0');
-    testLine.setAttribute('x2', '500');
-    testLine.setAttribute('y2', '500');
-    testLine.setAttribute('stroke', '#00FF00'); // Bright green
-    testLine.setAttribute('stroke-width', '10');
-    testLine.setAttribute('opacity', '1');
-    testLine.setAttribute('id', 'test-line-diagonal');
-    linesSvg.appendChild(testLine);
-
-    const svgRect = linesSvg.getBoundingClientRect();
-    console.log('🧪 TEST: Added bright green diagonal test line from (0,0) to (500,500)');
-    console.log(`   SVG dimensions: ${Math.round(svgRect.width)}x${Math.round(svgRect.height)}px`);
-    if (svgRect.width > 0 && svgRect.height > 0) {
-      console.log('   ✅ SVG has proper dimensions - GREEN LINE SHOULD BE VISIBLE!');
-    } else {
-      console.log('   ❌ SVG still has zero dimensions');
-      console.log(`   Parent: ${pathContainer.offsetWidth}x${pathContainer.offsetHeight}px`);
-    }
-  }
-}
-
-function createArrowheadMarker() {
-  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-  const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
-  marker.setAttribute('id', 'arrowhead');
-  marker.setAttribute('markerWidth', '20');
-  marker.setAttribute('markerHeight', '20');
-  marker.setAttribute('refX', '18');
-  marker.setAttribute('refY', '10');
-  marker.setAttribute('orient', 'auto');
-  marker.setAttribute('markerUnits', 'userSpaceOnUse');
-  marker.setAttribute('viewBox', '0 0 20 20');
-
-  const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-  polygon.setAttribute('points', '0 0, 20 10, 0 20, 4 10');
-  polygon.setAttribute('fill', '#ffdd00');
-  polygon.setAttribute('stroke', 'none');
-
-  marker.appendChild(polygon);
-  defs.appendChild(marker);
-  linesSvg.appendChild(defs);
-
-  console.log('Arrowhead marker created');
+  console.log(`=== Drew ${connectionsDrawn} background connection arrows ===`);
 }
 
 // ===== CHOICE MANAGEMENT =====
@@ -631,11 +512,8 @@ function clearChoices() {
   // Remove choice nodes
   document.querySelectorAll('.node.choice').forEach(n => n.remove());
 
-  // Clear all lines
-  while (linesSvg.lastChild) linesSvg.removeChild(linesSvg.lastChild);
-
-  // Recreate arrowhead marker
-  createArrowheadMarker();
+  // Clear all CSS arrows
+  document.querySelectorAll('.css-arrow').forEach(arrow => arrow.remove());
 
   // Redraw past path
   const pastNodes = document.querySelectorAll('.node.past');
@@ -1308,9 +1186,6 @@ function renderGameState() {
   const distance = bfs(gameState.currentGame, gameState.amuletGame.name);
   const difficulty = gameState.finishedGames?.length || 0;
   document.getElementById('distance-display').textContent = `Target: ${gameState.amuletGame.name} — ${distance} steps away | Difficulty: ${difficulty}`;
-
-  // Recreate arrowhead marker
-  createArrowheadMarker();
 
   // Reconstruct the path from visited games
   const cx = 450;
