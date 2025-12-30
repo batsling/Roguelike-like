@@ -104,15 +104,21 @@ function bfsPath(start, goal) {
 
   while (queue.length > 0) {
     const [node, path] = queue.shift();
-    if (node === goal) return path;
 
-    getGameConnections(node).forEach(neighbor => {
+    if (node === goal) {
+      return path;
+    }
+
+    const connections = getGameConnections(node);
+
+    connections.forEach(neighbor => {
       if (!visited.has(neighbor)) {
         visited.add(neighbor);
         queue.push([neighbor, [...path, neighbor]]);
       }
     });
   }
+
   return null; // No path found
 }
 
@@ -322,6 +328,74 @@ function drawPastLine(fromNode, toNode) {
   l.setAttribute('stroke-width', '3');
   l.setAttribute('opacity', '0.6');
   linesSvg.appendChild(l);
+}
+
+// Draw all game influence connections as light background arrows
+function drawAllGameConnections() {
+  // Create arrowhead marker if it doesn't exist
+  if (!document.getElementById('arrowhead-small')) {
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+    marker.setAttribute('id', 'arrowhead-small');
+    marker.setAttribute('markerWidth', '10');
+    marker.setAttribute('markerHeight', '10');
+    marker.setAttribute('refX', '9');
+    marker.setAttribute('refY', '5');
+    marker.setAttribute('orient', 'auto');
+    marker.setAttribute('markerUnits', 'userSpaceOnUse');
+    marker.setAttribute('viewBox', '0 0 10 10');
+
+    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    polygon.setAttribute('points', '0,0 10,5 0,10');
+    polygon.setAttribute('fill', '#444');
+    marker.appendChild(polygon);
+    defs.appendChild(marker);
+    linesSvg.appendChild(defs);
+  }
+
+  // Get all visible game nodes
+  const allNodes = document.querySelectorAll('.node');
+  const nodeMap = new Map();
+
+  allNodes.forEach(node => {
+    const gameName = node.textContent.replace(/[^\w\s\-':]/g, '').trim();
+    nodeMap.set(gameName, node);
+  });
+
+  // Draw connections for games that have influence relationships
+  games.forEach(game => {
+    if (game.gamesInfluenced && game.gamesInfluenced.length > 0) {
+      const fromNode = nodeMap.get(game.name);
+      if (!fromNode) return;
+
+      game.gamesInfluenced.forEach(influencedGame => {
+        const toNode = nodeMap.get(influencedGame);
+        if (!toNode) return;
+
+        // Draw a subtle background arrow
+        const r1 = fromNode.getBoundingClientRect();
+        const r2 = toNode.getBoundingClientRect();
+        const pr = pathContainer.getBoundingClientRect();
+
+        const x1 = r1.left + r1.width / 2 - pr.left;
+        const y1 = r1.bottom - pr.top;
+        const x2 = r2.left + r2.width / 2 - pr.left;
+        const y2 = r2.top - pr.top;
+
+        const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        l.setAttribute('x1', x1);
+        l.setAttribute('y1', y1);
+        l.setAttribute('x2', x2);
+        l.setAttribute('y2', y2);
+        l.setAttribute('stroke', '#444');
+        l.setAttribute('stroke-width', '2');
+        l.setAttribute('opacity', '0.3');
+        l.setAttribute('marker-end', 'url(#arrowhead-small)');
+        l.classList.add('background-connection');
+        linesSvg.insertBefore(l, linesSvg.firstChild); // Add to back
+      });
+    }
+  });
 }
 
 function createArrowheadMarker() {
@@ -571,6 +645,10 @@ function spawnChoices() {
 
   // Draw arrows after all nodes are added and browser has laid them out
   requestAnimationFrame(() => {
+    // Draw background connection arrows first
+    drawAllGameConnections();
+
+    // Then draw choice arrows on top
     const currentNode = document.querySelector('.node.current');
     const choiceNodes = document.querySelectorAll('.node.choice');
 
@@ -1076,6 +1154,11 @@ function renderGameState() {
   for (let i = 0; i < nodes.length - 1; i++) {
     drawPastLine(nodes[i], nodes[i + 1]);
   }
+
+  // Draw all game connections as background arrows
+  requestAnimationFrame(() => {
+    drawAllGameConnections();
+  });
 
   // Update stats panel
   updateGameStats();

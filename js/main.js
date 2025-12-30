@@ -725,6 +725,12 @@ function createGameModal(content) {
 
 // Show map modal with optimal path to amulet game
 function showMapModal() {
+  // Validate game state
+  if (!gameState || !gameState.currentGame || !gameState.amuletGame) {
+    createGameModal('<div style="text-align: center;"><h2>Map Not Available</h2><p>Game state not properly initialized.</p><button onclick="closeGameModal()" style="padding: 10px 20px; margin-top: 20px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer;">Close</button></div>');
+    return;
+  }
+
   const currentGame = gameState.currentGame.name;
   const amuletGame = gameState.amuletGame.name;
 
@@ -735,7 +741,9 @@ function showMapModal() {
   mapHTML += '<h2 style="color: gold; margin-bottom: 20px;">🗺️ Optimal Path to Amulet</h2>';
 
   if (!path || path.length === 0) {
-    mapHTML += '<p style="color: #888;">No path available</p>';
+    mapHTML += '<p style="color: #888;">No path found</p>';
+    mapHTML += `<p style="color: #666; font-size: 12px; margin-top: 10px;">From: ${currentGame}<br>To: ${amuletGame}</p>`;
+    mapHTML += '<p style="color: #888; font-size: 11px; margin-top: 10px;">The games may not be connected,<br>or you may be at an isolated node.</p>';
   } else {
     mapHTML += '<div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">';
 
@@ -817,9 +825,7 @@ function showCombatModal() {
   // Difficulty scales with number of games beaten
   const gamesBeaten = gameState.finishedGames?.length || 0;
   let powerText = 'Low';
-  if (gamesBeaten >= 15) {
-    powerText = 'High';
-  } else if (gamesBeaten >= 10) {
+  if (gamesBeaten >= 10) {
     powerText = 'High';
   } else if (gamesBeaten >= 5) {
     powerText = 'Medium';
