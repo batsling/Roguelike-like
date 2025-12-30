@@ -727,15 +727,28 @@ function createGameModal(content) {
 function showMapModal() {
   // Validate game state
   if (!gameState || !gameState.currentGame || !gameState.amuletGame) {
+    console.error('Map modal validation failed:', {
+      hasGameState: !!gameState,
+      hasCurrentGame: !!gameState?.currentGame,
+      hasAmuletGame: !!gameState?.amuletGame,
+      currentGame: gameState?.currentGame,
+      amuletGame: gameState?.amuletGame
+    });
     createGameModal('<div style="text-align: center;"><h2>Map Not Available</h2><p>Game state not properly initialized.</p><button onclick="closeGameModal()" style="padding: 10px 20px; margin-top: 20px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer;">Close</button></div>');
     return;
   }
 
-  const currentGame = gameState.currentGame.name;
-  const amuletGame = gameState.amuletGame.name;
+  // currentGame is already a string (game name), not an object
+  // amuletGame might be a string or an object depending on how it was set
+  const currentGame = typeof gameState.currentGame === 'string' ? gameState.currentGame : gameState.currentGame.name;
+  const amuletGame = typeof gameState.amuletGame === 'string' ? gameState.amuletGame : gameState.amuletGame.name;
+
+  console.log('Map modal - Current game:', currentGame, 'Amulet game:', amuletGame);
 
   // Get the optimal path using BFS
   const path = bfsPath(currentGame, amuletGame);
+
+  console.log('Path found:', path);
 
   let mapHTML = '<div style="text-align: center;">';
   mapHTML += '<h2 style="color: gold; margin-bottom: 20px;">🗺️ Optimal Path to Amulet</h2>';

@@ -332,8 +332,24 @@ function drawPastLine(fromNode, toNode) {
 
 // Draw all game influence connections as light background arrows
 function drawAllGameConnections() {
+  console.log('=== drawAllGameConnections() called ===');
+  console.log('linesSvg element:', linesSvg);
+  console.log('pathContainer element:', pathContainer);
+  console.log('games array length:', games?.length);
+
+  if (!linesSvg) {
+    console.error('linesSvg is not defined!');
+    return;
+  }
+
+  if (!pathContainer) {
+    console.error('pathContainer is not defined!');
+    return;
+  }
+
   // Create arrowhead marker if it doesn't exist
   if (!document.getElementById('arrowhead-small')) {
+    console.log('Creating arrowhead-small marker');
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
     const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
     marker.setAttribute('id', 'arrowhead-small');
@@ -351,26 +367,50 @@ function drawAllGameConnections() {
     marker.appendChild(polygon);
     defs.appendChild(marker);
     linesSvg.appendChild(defs);
+    console.log('arrowhead-small marker created');
+  } else {
+    console.log('arrowhead-small marker already exists');
   }
 
   // Get all visible game nodes
   const allNodes = document.querySelectorAll('.node');
+  console.log('Found', allNodes.length, 'node elements on screen');
+
   const nodeMap = new Map();
 
   allNodes.forEach(node => {
     const gameName = node.textContent.replace(/[^\w\s\-':]/g, '').trim();
     nodeMap.set(gameName, node);
+    console.log('  Mapped node:', gameName);
   });
 
+  console.log('Total nodes mapped:', nodeMap.size);
+
   // Draw connections for games that have influence relationships
+  let connectionsDrawn = 0;
+  let connectionsSkipped = 0;
+
   games.forEach(game => {
     if (game.gamesInfluenced && game.gamesInfluenced.length > 0) {
+      console.log(`Game "${game.name}" influences:`, game.gamesInfluenced);
       const fromNode = nodeMap.get(game.name);
-      if (!fromNode) return;
+
+      if (!fromNode) {
+        console.log(`  ❌ Source node not found for "${game.name}"`);
+        connectionsSkipped++;
+        return;
+      }
 
       game.gamesInfluenced.forEach(influencedGame => {
         const toNode = nodeMap.get(influencedGame);
-        if (!toNode) return;
+
+        if (!toNode) {
+          console.log(`  ❌ Target node not found for "${influencedGame}"`);
+          connectionsSkipped++;
+          return;
+        }
+
+        console.log(`  ✓ Drawing arrow: "${game.name}" → "${influencedGame}"`);
 
         // Draw a subtle background arrow
         const r1 = fromNode.getBoundingClientRect();
@@ -381,6 +421,8 @@ function drawAllGameConnections() {
         const y1 = r1.bottom - pr.top;
         const x2 = r2.left + r2.width / 2 - pr.left;
         const y2 = r2.top - pr.top;
+
+        console.log(`    Coordinates: (${x1}, ${y1}) → (${x2}, ${y2})`);
 
         const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         l.setAttribute('x1', x1);
@@ -393,9 +435,12 @@ function drawAllGameConnections() {
         l.setAttribute('marker-end', 'url(#arrowhead-small)');
         l.classList.add('background-connection');
         linesSvg.insertBefore(l, linesSvg.firstChild); // Add to back
+        connectionsDrawn++;
       });
     }
   });
+
+  console.log(`=== Summary: Drew ${connectionsDrawn} connections, skipped ${connectionsSkipped} ===`);
 }
 
 function createArrowheadMarker() {
@@ -645,7 +690,10 @@ function spawnChoices() {
 
   // Draw arrows after all nodes are added and browser has laid them out
   requestAnimationFrame(() => {
+    console.log('🎯 spawnChoices: requestAnimationFrame callback executing');
+
     // Draw background connection arrows first
+    console.log('🎯 spawnChoices: About to call drawAllGameConnections()');
     drawAllGameConnections();
 
     // Then draw choice arrows on top
@@ -1157,6 +1205,8 @@ function renderGameState() {
 
   // Draw all game connections as background arrows
   requestAnimationFrame(() => {
+    console.log('🎯 render: requestAnimationFrame callback executing');
+    console.log('🎯 render: About to call drawAllGameConnections()');
     drawAllGameConnections();
   });
 
