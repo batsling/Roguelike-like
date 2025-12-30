@@ -373,11 +373,15 @@ function createCSSArrow(x1, y1, x2, y2, color, width, dashed = false, className 
   const length = Math.sqrt(dx * dx + dy * dy);
   const angle = Math.atan2(dy, dx) * (180 / Math.PI);
 
+  // Shorten the line so the tip ends exactly at the target point
+  const arrowheadSize = 10;
+  const shortenedLength = length - arrowheadSize;
+
   // Position and style the arrow
   arrow.style.position = 'absolute';
   arrow.style.left = x1 + 'px';
   arrow.style.top = y1 + 'px';
-  arrow.style.width = length + 'px';
+  arrow.style.width = shortenedLength + 'px';
   arrow.style.height = width + 'px';
   arrow.style.backgroundColor = color;
   arrow.style.transformOrigin = '0 50%';
@@ -390,16 +394,16 @@ function createCSSArrow(x1, y1, x2, y2, color, width, dashed = false, className 
     arrow.style.backgroundColor = 'transparent';
   }
 
-  // Add arrowhead using ::after (via inline style won't work, so we'll add a child element)
+  // Add arrowhead at the end of the line (100% position)
   const arrowhead = document.createElement('div');
   arrowhead.style.position = 'absolute';
-  arrowhead.style.right = '-10px';
+  arrowhead.style.left = '100%'; // Position at the end of the arrow
   arrowhead.style.top = '50%';
   arrowhead.style.width = '0';
   arrowhead.style.height = '0';
-  arrowhead.style.borderLeft = '10px solid ' + color;
-  arrowhead.style.borderTop = '8px solid transparent';
-  arrowhead.style.borderBottom = '8px solid transparent';
+  arrowhead.style.borderLeft = arrowheadSize + 'px solid ' + color;
+  arrowhead.style.borderTop = (arrowheadSize * 0.8) + 'px solid transparent';
+  arrowhead.style.borderBottom = (arrowheadSize * 0.8) + 'px solid transparent';
   arrowhead.style.transform = 'translateY(-50%)';
   arrow.appendChild(arrowhead);
 
@@ -483,15 +487,15 @@ function drawAllGameConnections() {
           return;
         }
 
-        // Draw a subtle background arrow
+        // Draw a subtle background arrow (pointing FROM influenced game TO influencing game - upward)
         const r1 = fromNode.getBoundingClientRect();
         const r2 = toNode.getBoundingClientRect();
         const pr = pathContainer.getBoundingClientRect();
 
-        const x1 = r1.left + r1.width / 2 - pr.left;
-        const y1 = r1.bottom - pr.top;
-        const x2 = r2.left + r2.width / 2 - pr.left;
-        const y2 = r2.top - pr.top;
+        const x1 = r2.left + r2.width / 2 - pr.left;  // Start from influenced game (bottom)
+        const y1 = r2.bottom - pr.top;
+        const x2 = r1.left + r1.width / 2 - pr.left;  // Point to influencing game (top)
+        const y2 = r1.top - pr.top;
 
         // Create subtle gray background arrow
         const arrow = createCSSArrow(x1, y1, x2, y2, 'rgba(100, 100, 100, 0.3)', 2, false, 'background-connection');
