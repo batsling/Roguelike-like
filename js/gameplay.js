@@ -530,16 +530,11 @@ function drawAllGameConnections() {
         linesSvg.appendChild(l); // Add to front for testing
         connectionsDrawn++;
 
-        console.log(`    ✅ Line element created and added to SVG:`, l);
-        console.log(`    SVG current children count:`, linesSvg.children.length);
-        console.log(`    SVG dimensions:`, {
-          width: linesSvg.getAttribute('width'),
-          height: linesSvg.getAttribute('height'),
-          style: linesSvg.style.cssText
-        });
-        console.log(`    SVG bounding rect:`, linesSvg.getBoundingClientRect());
-        console.log(`    SVG z-index:`, window.getComputedStyle(linesSvg).zIndex);
-        console.log(`    SVG pointer-events:`, window.getComputedStyle(linesSvg).pointerEvents);
+        console.log(`    ✅ Line element created and added to SVG`);
+        console.log(`    SVG children count:`, linesSvg.children.length);
+        const svgRect = linesSvg.getBoundingClientRect();
+        console.log(`    SVG rendered size: ${svgRect.width}x${svgRect.height}px`);
+        console.log(`    Path container size: ${pr.width}x${pr.height}px`);
       });
     }
   });
@@ -558,8 +553,11 @@ function drawAllGameConnections() {
     testLine.setAttribute('opacity', '1');
     testLine.setAttribute('id', 'test-line-diagonal');
     linesSvg.appendChild(testLine);
+
+    const svgRect = linesSvg.getBoundingClientRect();
     console.log('🧪 TEST: Added bright green diagonal test line from (0,0) to (500,500)');
-    console.log('   If you see a green diagonal line, SVG is working!');
+    console.log(`   SVG is ${svgRect.width.toFixed(0)}x${svgRect.height.toFixed(0)}px - viewBox removed, using pixel coordinates`);
+    console.log('   ✅ Lines should now be visible!');
   }
 }
 
