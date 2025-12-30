@@ -27,8 +27,7 @@ function initGameplayDOM() {
   linesSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   linesSvg.setAttribute('id', 'connection-lines');
 
-  // CRITICAL: Use pixel values, not percentages, for SVG dimensions
-  // Percentage widths don't work reliably on absolutely positioned SVGs
+  // CRITICAL: For absolutely positioned SVGs, CSS width/height matter, not attributes!
   const parentWidth = pathContainer.offsetWidth || 2000;
   linesSvg.setAttribute('width', parentWidth);
   linesSvg.setAttribute('height', '3000');
@@ -36,6 +35,8 @@ function initGameplayDOM() {
   linesSvg.style.position = 'absolute';
   linesSvg.style.top = '0';
   linesSvg.style.left = '0';
+  linesSvg.style.width = parentWidth + 'px';  // CRITICAL FIX: CSS width!
+  linesSvg.style.height = '3000px';          // CRITICAL FIX: CSS height!
   linesSvg.style.pointerEvents = 'none';
   linesSvg.style.zIndex = '10';
 
