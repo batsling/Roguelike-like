@@ -13,19 +13,33 @@ let pathContainer, linesSvg, tooltip, viewport;
 
 function initGameplayDOM() {
   pathContainer = document.getElementById('path-container');
-  linesSvg = document.getElementById('connection-lines');
   tooltip = document.getElementById('game-tooltip');
   viewport = document.getElementById('path-viewport');
 
-  // CRITICAL: Ensure SVG has explicit dimensions set programmatically
-  if (linesSvg) {
-    linesSvg.setAttribute('width', '100%');
-    linesSvg.setAttribute('height', '3000');
-    console.log('✅ SVG dimensions set programmatically:', {
-      width: linesSvg.getAttribute('width'),
-      height: linesSvg.getAttribute('height')
-    });
+  // CRITICAL FIX: Recreate SVG with proper namespace
+  // The HTML SVG element wasn't created with proper namespace, causing rendering issues
+  const oldSvg = document.getElementById('connection-lines');
+  if (oldSvg) {
+    oldSvg.remove();
   }
+
+  // Create SVG with proper namespace
+  linesSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  linesSvg.setAttribute('id', 'connection-lines');
+  linesSvg.setAttribute('width', '100%');
+  linesSvg.setAttribute('height', '3000');
+  linesSvg.style.position = 'absolute';
+  linesSvg.style.top = '0';
+  linesSvg.style.left = '0';
+  linesSvg.style.pointerEvents = 'none';
+  linesSvg.style.zIndex = '10';
+
+  // Insert at the beginning of path-container so it's behind nodes
+  pathContainer.insertBefore(linesSvg, pathContainer.firstChild);
+
+  console.log('✅ SVG recreated with proper namespace');
+  console.log('   Dimensions:', linesSvg.getBoundingClientRect());
+  console.log('   Parent dimensions:', pathContainer.getBoundingClientRect());
 }
 
 // ===== HELPER FUNCTIONS =====
@@ -565,18 +579,13 @@ function drawAllGameConnections() {
     linesSvg.appendChild(testLine);
 
     const svgRect = linesSvg.getBoundingClientRect();
-    const computedStyle = window.getComputedStyle(linesSvg);
     console.log('🧪 TEST: Added bright green diagonal test line from (0,0) to (500,500)');
-    console.log(`   SVG getBoundingClientRect: ${svgRect.width.toFixed(0)}x${svgRect.height.toFixed(0)}px`);
-    console.log(`   SVG computed height: ${computedStyle.height}`);
-    console.log(`   SVG computed width: ${computedStyle.width}`);
-    console.log(`   SVG computed display: ${computedStyle.display}`);
-    console.log(`   SVG offsetWidth x offsetHeight: ${linesSvg.offsetWidth}x${linesSvg.offsetHeight}px`);
+    console.log(`   SVG dimensions: ${Math.round(svgRect.width)}x${Math.round(svgRect.height)}px`);
     if (svgRect.width > 0 && svgRect.height > 0) {
-      console.log('   ✅ SVG has proper dimensions - lines should be visible!');
+      console.log('   ✅ SVG has proper dimensions - GREEN LINE SHOULD BE VISIBLE!');
     } else {
-      console.log('   ❌ SVG has zero dimensions - checking why...');
-      console.log(`   Parent container: ${pathContainer.offsetWidth}x${pathContainer.offsetHeight}px`);
+      console.log('   ❌ SVG still has zero dimensions');
+      console.log(`   Parent: ${pathContainer.offsetWidth}x${pathContainer.offsetHeight}px`);
     }
   }
 }
