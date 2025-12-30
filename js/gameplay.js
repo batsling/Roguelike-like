@@ -222,6 +222,9 @@ function addNode(name, cls, x, y) {
   d.style.top = y + 'px';
   d.textContent = name;
 
+  // Store game name as data attribute for easy access (without button/status text)
+  d.dataset.gameName = name;
+
   // Add status effect icons if the game has any
   const statusContainer = createStatusIconContainer(name);
   if (statusContainer) {
@@ -453,9 +456,14 @@ function drawAllGameConnections() {
   const nodeMap = new Map();
 
   allNodes.forEach(node => {
-    const gameName = node.textContent.replace(/[^\w\s\-':]/g, '').trim();
-    nodeMap.set(gameName, node);
-    console.log('  Mapped node:', gameName);
+    // Use data attribute to get clean game name (without button/status text)
+    const gameName = node.dataset.gameName;
+    if (gameName) {
+      nodeMap.set(gameName, node);
+      console.log('  Mapped node:', gameName);
+    } else {
+      console.warn('  Node missing data-game-name attribute:', node.textContent);
+    }
   });
 
   console.log('Total nodes mapped:', nodeMap.size);
