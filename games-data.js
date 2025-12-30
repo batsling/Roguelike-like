@@ -232,6 +232,15 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": []
   },
+    {
+    "name": "Asterogues",
+    "year": 2023,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": []
+  },
   {
     "name": "Astral Ascent",
     "year": 2022,
@@ -944,6 +953,15 @@ var GAMES_DATA = [
       "BPM: Bullets Per Minute",
       "Shogun Showdown"
     ]
+  },
+    {
+    "name": "Cube Chaos",
+    "year": 2023,
+    "type": "Deckbuilding",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": []
   },
   {
     "name": "Cult of the Lamb",
@@ -1710,7 +1728,8 @@ var GAMES_DATA = [
       "TombStar",
       "Escape The Mad Empire",
       "Sephiria",
-      "The Unliving"
+      "The Unliving",
+      "Asterogues"
     ]
   },
   {
@@ -1757,6 +1776,15 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+  {
+    "name": "Facehand",
+    "year": 2024,
+    "type": "Deckbuilding",
+    "connected": false,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1846,6 +1874,15 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+    {
+    "name": "Footgun: Underground",
+    "year": 2024,
+    "type": "Action",
+    "connected": false,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2812,12 +2849,30 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": []
   },
+   {
+    "name": "Mimic Logic",
+    "year": 2024,
+    "type": "Strategy",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": []
+  },
   {
     "name": "Mistrogue: Mist and the Living Dungeons",
     "year": 2023,
     "type": "Action",
     "connected": true,
     "influenced": true,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+  {
+    "name": "Monmusu Gladiator",
+    "year": 2021,
+    "type": "Deckbuilding",
+    "connected": false,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4152,7 +4207,8 @@ var GAMES_DATA = [
       "Breach Wanderers",
       "Dicealot",
       "Vivid Knight",
-      "Deck of Haunts"
+      "Deck of Haunts",
+      "Monmusu Gladiator"
     ]
   },
   {
@@ -4464,7 +4520,8 @@ var GAMES_DATA = [
       "Kādomon: Hyper Auto Battlers",
       "Knightica",
       "Nubby's Number Factory",
-      "Merge Maestro"
+      "Merge Maestro",
+      "Facehand"
     ]
   },
   {
@@ -4664,6 +4721,7 @@ var GAMES_DATA = [
       "Noobs Are Coming",
       "Has-Been Heroes",
       "Lost Flame",
+      "Asterogues"
     ]
   },
   {
