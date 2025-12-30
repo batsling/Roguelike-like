@@ -122,6 +122,80 @@ function bfsPath(start, goal) {
   return null; // No path found
 }
 
+// Find all games that are on any shortest path from start to goal
+// Returns a map of distance -> array of games at that distance
+function findAllShortestPaths(start, goal) {
+  // First, run BFS from start to get distances from start
+  const distFromStart = new Map();
+  const queueStart = [[start, 0]];
+  const visitedStart = new Set([start]);
+  distFromStart.set(start, 0);
+
+  while (queueStart.length > 0) {
+    const [node, dist] = queueStart.shift();
+
+    getGameConnections(node).forEach(neighbor => {
+      if (!visitedStart.has(neighbor)) {
+        visitedStart.add(neighbor);
+        distFromStart.set(neighbor, dist + 1);
+        queueStart.push([neighbor, dist + 1]);
+      }
+    });
+  }
+
+  // Check if goal is reachable
+  if (!distFromStart.has(goal)) {
+    return null;
+  }
+
+  const shortestDist = distFromStart.get(goal);
+
+  // Now run BFS backwards from goal to get distances to goal
+  const distToGoal = new Map();
+  const queueGoal = [[goal, 0]];
+  const visitedGoal = new Set([goal]);
+  distToGoal.set(goal, 0);
+
+  while (queueGoal.length > 0) {
+    const [node, dist] = queueGoal.shift();
+
+    // Get reverse connections (games that connect TO this node)
+    const reverseConnections = getInfluencedByGames(node);
+    // Also check games that this node connects to (bidirectional)
+    const game = games.find(g => g.name === node);
+    if (game?.gamesInfluenced) {
+      reverseConnections.push(...game.gamesInfluenced);
+    }
+
+    [...new Set(reverseConnections)].forEach(neighbor => {
+      if (!visitedGoal.has(neighbor)) {
+        visitedGoal.add(neighbor);
+        distToGoal.set(neighbor, dist + 1);
+        queueGoal.push([neighbor, dist + 1]);
+      }
+    });
+  }
+
+  // Find all games on shortest paths
+  // A game is on a shortest path if distFromStart[game] + distToGoal[game] = shortestDist
+  const pathGames = new Map(); // distance from start -> array of games
+
+  distFromStart.forEach((distFrom, gameName) => {
+    const distTo = distToGoal.get(gameName);
+    if (distTo !== undefined && distFrom + distTo === shortestDist) {
+      if (!pathGames.has(distFrom)) {
+        pathGames.set(distFrom, []);
+      }
+      pathGames.get(distFrom).push(gameName);
+    }
+  });
+
+  return {
+    layers: pathGames,
+    totalDistance: shortestDist
+  };
+}
+
 function getGameConnections(gameName) {
   const connected = [];
 

@@ -723,7 +723,7 @@ function createGameModal(content) {
   return modal;
 }
 
-// Show map modal with optimal path to amulet game
+// Show map modal with all shortest paths to amulet game
 function showMapModal() {
   // Validate game state
   if (!gameState || !gameState.currentGame || !gameState.amuletGame) {
@@ -745,64 +745,222 @@ function showMapModal() {
 
   console.log('Map modal - Current game:', currentGame, 'Amulet game:', amuletGame);
 
-  // Get the optimal path using BFS
-  const path = bfsPath(currentGame, amuletGame);
+  // Get all shortest paths
+  const pathData = findAllShortestPaths(currentGame, amuletGame);
 
-  console.log('Path found:', path);
+  console.log('Path data:', pathData);
 
   let mapHTML = '<div style="text-align: center;">';
-  mapHTML += '<h2 style="color: gold; margin-bottom: 20px;">🗺️ Optimal Path to Amulet</h2>';
+  mapHTML += '<h2 style="color: gold; margin-bottom: 20px;">🗺️ Map to Amulet</h2>';
 
-  if (!path || path.length === 0) {
+  if (!pathData) {
     mapHTML += '<p style="color: #888;">No path found</p>';
     mapHTML += `<p style="color: #666; font-size: 12px; margin-top: 10px;">From: ${currentGame}<br>To: ${amuletGame}</p>`;
     mapHTML += '<p style="color: #888; font-size: 11px; margin-top: 10px;">The games may not be connected,<br>or you may be at an isolated node.</p>';
   } else {
-    mapHTML += '<div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">';
+    // Add past games to the visualization
+    const visitedGames = gameState.visitedGames || [];
+    const pastGames = visitedGames.filter(g => g !== currentGame);
 
-    path.forEach((gameName, index) => {
-      // Game box
-      const isCurrentGame = gameName === currentGame;
-      const isAmuletGame = gameName === amuletGame;
+    // Create container with relative positioning for SVG overlay
+    mapHTML += '<div style="position: relative; padding: 20px; min-width: 800px; min-height: 400px;">';
 
-      let boxColor = '#4a4440';
-      if (isCurrentGame) boxColor = '#2196F3';
-      if (isAmuletGame) boxColor = '#cc6600';
+    // SVG for arrows
+    mapHTML += '<svg id="map-arrows" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></svg>';
 
-      mapHTML += `
-        <div class="map-game-box" style="
-          background: ${boxColor};
-          border: 2px solid ${isAmuletGame ? 'gold' : '#cc6600'};
-          border-radius: 8px;
-          padding: 12px 24px;
-          min-width: 250px;
-          text-align: center;
-          font-weight: bold;
-          color: ${isCurrentGame ? 'white' : '#e6d5b8'};
-          box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-        ">
-          ${isCurrentGame ? '📍 ' : ''}${gameName}${isAmuletGame ? ' 🏆' : ''}
-        </div>
-      `;
+    // Container for game boxes
+    mapHTML += '<div style="position: relative; z-index: 2;">';
 
-      // Arrow (except after the last game)
-      if (index < path.length - 1) {
+    // Show past games first
+    if (pastGames.length > 0) {
+      mapHTML += '<div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #555;">';
+      mapHTML += '<h3 style="color: #888; font-size: 14px; margin-bottom: 15px;">Past Journey</h3>';
+      mapHTML += '<div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">';
+
+      pastGames.forEach((gameName, index) => {
         mapHTML += `
-          <div style="font-size: 24px; color: #888; margin: -5px 0;">
-            ↓
+          <div style="
+            background: #3a3a3a;
+            border: 2px solid #555;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 12px;
+            color: #888;
+          ">
+            ${index + 1}. ${gameName}
           </div>
         `;
-      }
+        if (index < pastGames.length - 1) {
+          mapHTML += '<div style="color: #555;">↓</div>';
+        }
+      });
+
+      mapHTML += '</div></div>';
+    }
+
+    // Build the layered path visualization
+    const boxWidth = 180;
+    const boxHeight = 50;
+    const horizontalGap = 40;
+    const verticalGap = 80;
+    const gamePositions = new Map(); // game name -> {x, y}
+
+    let currentY = pastGames.length > 0 ? 50 : 20;
+
+    // Iterate through each layer (distance from start)
+    const layers = Array.from(pathData.layers.keys()).sort((a, b) => a - b);
+
+    layers.forEach((distance, layerIndex) => {
+      const gamesAtLayer = pathData.layers.get(distance);
+      const numGames = gamesAtLayer.length;
+
+      // Calculate total width needed for this layer
+      const totalWidth = numGames * boxWidth + (numGames - 1) * horizontalGap;
+      let startX = -totalWidth / 2;
+
+      mapHTML += `<div style="display: flex; justify-content: center; align-items: center; margin-bottom: ${verticalGap}px; position: relative;">`;
+
+      gamesAtLayer.forEach((gameName, index) => {
+        const isCurrentGame = gameName === currentGame;
+        const isAmuletGame = gameName === amuletGame;
+        const isPastGame = pastGames.includes(gameName);
+
+        let boxColor = '#4a4440';
+        let borderColor = '#cc6600';
+        if (isCurrentGame) {
+          boxColor = '#2196F3';
+          borderColor = '#4CAF50';
+        }
+        if (isAmuletGame) {
+          boxColor = '#cc6600';
+          borderColor = 'gold';
+        }
+        if (isPastGame) {
+          boxColor = '#3a3a3a';
+          borderColor = '#555';
+        }
+
+        const x = startX + index * (boxWidth + horizontalGap);
+        gamePositions.set(gameName, { x, y: currentY, layer: distance });
+
+        mapHTML += `
+          <div class="map-game-box-${gameName.replace(/\s+/g, '-')}" data-game="${gameName}" style="
+            background: ${boxColor};
+            border: 2px solid ${borderColor};
+            border-radius: 8px;
+            padding: 12px 16px;
+            width: ${boxWidth}px;
+            min-height: ${boxHeight}px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: bold;
+            font-size: 13px;
+            color: ${isCurrentGame ? 'white' : (isPastGame ? '#888' : '#e6d5b8')};
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            margin: 0 ${horizontalGap / 2}px;
+          ">
+            ${isCurrentGame ? '📍 ' : ''}${gameName}${isAmuletGame ? ' 🏆' : ''}
+          </div>
+        `;
+      });
+
+      mapHTML += '</div>';
+      currentY += boxHeight + verticalGap;
     });
 
-    mapHTML += '</div>';
-    mapHTML += `<p style="margin-top: 20px; color: #888; font-size: 14px;">Distance: ${path.length - 1} step${path.length - 1 !== 1 ? 's' : ''}</p>`;
+    mapHTML += '</div>'; // Close game boxes container
+    mapHTML += '</div>'; // Close relative container
+    mapHTML += `<p style="margin-top: 20px; color: #888; font-size: 14px;">Shortest Distance: ${pathData.totalDistance} step${pathData.totalDistance !== 1 ? 's' : ''}</p>`;
   }
 
   mapHTML += '<button onclick="closeGameModal()" style="margin-top: 20px; padding: 10px 30px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>';
   mapHTML += '</div>';
 
   createGameModal(mapHTML);
+
+  // Draw arrows after modal is rendered
+  if (pathData) {
+    setTimeout(() => drawMapArrows(pathData, currentGame, amuletGame), 50);
+  }
+}
+
+// Draw arrows between games on the map
+function drawMapArrows(pathData, currentGame, amuletGame) {
+  const svg = document.getElementById('map-arrows');
+  if (!svg) return;
+
+  // Create arrowhead marker
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+  marker.setAttribute('id', 'map-arrowhead');
+  marker.setAttribute('markerWidth', '10');
+  marker.setAttribute('markerHeight', '10');
+  marker.setAttribute('refX', '9');
+  marker.setAttribute('refY', '5');
+  marker.setAttribute('orient', 'auto');
+  marker.setAttribute('markerUnits', 'userSpaceOnUse');
+
+  const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  polygon.setAttribute('points', '0,0 10,5 0,10');
+  polygon.setAttribute('fill', '#888');
+  marker.appendChild(polygon);
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+
+  // Get all game boxes
+  const gameBoxes = document.querySelectorAll('[data-game]');
+  const boxPositions = new Map();
+
+  gameBoxes.forEach(box => {
+    const gameName = box.getAttribute('data-game');
+    const rect = box.getBoundingClientRect();
+    const svgRect = svg.getBoundingClientRect();
+
+    boxPositions.set(gameName, {
+      x: rect.left - svgRect.left + rect.width / 2,
+      y: rect.top - svgRect.top + rect.height / 2,
+      bottom: rect.bottom - svgRect.top,
+      top: rect.top - svgRect.top
+    });
+  });
+
+  // Draw arrows between connected games on shortest paths
+  const layers = Array.from(pathData.layers.keys()).sort((a, b) => a - b);
+
+  layers.forEach((distance, layerIndex) => {
+    if (layerIndex === layers.length - 1) return; // Skip last layer (no arrows from it)
+
+    const gamesAtLayer = pathData.layers.get(distance);
+    const nextLayer = pathData.layers.get(layers[layerIndex + 1]);
+
+    gamesAtLayer.forEach(fromGame => {
+      const fromPos = boxPositions.get(fromGame);
+      if (!fromPos) return;
+
+      // Find all games in next layer that this game connects to
+      const connections = getGameConnections(fromGame);
+
+      connections.forEach(toGame => {
+        if (nextLayer.includes(toGame)) {
+          const toPos = boxPositions.get(toGame);
+          if (!toPos) return;
+
+          // Draw arrow
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', fromPos.x);
+          line.setAttribute('y1', fromPos.bottom);
+          line.setAttribute('x2', toPos.x);
+          line.setAttribute('y2', toPos.top);
+          line.setAttribute('stroke', '#888');
+          line.setAttribute('stroke-width', '2');
+          line.setAttribute('marker-end', 'url(#map-arrowhead)');
+          svg.appendChild(line);
+        }
+      });
+    });
+  });
 }
 
 function closeGameModal() {
