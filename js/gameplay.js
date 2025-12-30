@@ -12,33 +12,44 @@
 let pathContainer, linesSvg, tooltip, viewport;
 
 function initGameplayDOM() {
+  console.log('🔄 initGameplayDOM v3.0 - CACHE BUSTER');
+
   pathContainer = document.getElementById('path-container');
   linesSvg = document.getElementById('connection-lines');
   tooltip = document.getElementById('game-tooltip');
   viewport = document.getElementById('path-viewport');
 
-  // FORCE SVG dimensions via JavaScript (bypass HTML cache)
+  // NUCLEAR OPTION: Set SVG dimensions multiple ways to force rendering
   if (linesSvg) {
-    // Force explicit dimensions to work around browser caching
-    linesSvg.style.width = '100%';
+    const parentWidth = pathContainer.offsetWidth || 1343;
+
+    // Set via attributes
+    linesSvg.setAttribute('width', parentWidth);
+    linesSvg.setAttribute('height', '3000');
+
+    // Set via CSS properties
+    linesSvg.style.width = parentWidth + 'px';
     linesSvg.style.height = '3000px';
     linesSvg.style.position = 'absolute';
     linesSvg.style.top = '0';
     linesSvg.style.left = '0';
     linesSvg.style.pointerEvents = 'none';
     linesSvg.style.zIndex = '1';
+    linesSvg.style.display = 'block';
 
-    const rect = linesSvg.getBoundingClientRect();
-    console.log('✅ SVG initialized [FORCED via JS to bypass cache]');
-    console.log(`   SVG dimensions: ${Math.round(rect.width)}x${Math.round(rect.height)}px`);
+    setTimeout(() => {
+      const rect = linesSvg.getBoundingClientRect();
+      console.log(`🎨 SVG FINAL CHECK [v3.0]: ${Math.round(rect.width)}x${Math.round(rect.height)}px`);
 
-    if (rect.width > 0 && rect.height > 0) {
-      console.log('   ✅✅✅ SVG HAS DIMENSIONS! Arrows will be visible!');
-    } else {
-      console.log('   ❌ Still zero - this should not happen!');
-    }
+      if (rect.width > 0 && rect.height > 0) {
+        console.log('   🎉🎉🎉 SUCCESS! SVG visible!');
+      } else {
+        console.error('   💀 STILL ZERO! Browser cache is completely broken.');
+        console.error('   Try: DevTools → Application → Clear Storage → Clear site data');
+      }
+    }, 100);
   } else {
-    console.error('❌ connection-lines SVG not found in HTML!');
+    console.error('❌ SVG element not found!');
   }
 }
 
