@@ -17,16 +17,25 @@ function initGameplayDOM() {
   tooltip = document.getElementById('game-tooltip');
   viewport = document.getElementById('path-viewport');
 
-  // Verify SVG exists and has dimensions (matching map approach)
+  // FORCE SVG dimensions via JavaScript (bypass HTML cache)
   if (linesSvg) {
+    // Force explicit dimensions to work around browser caching
+    linesSvg.style.width = '100%';
+    linesSvg.style.height = '3000px';
+    linesSvg.style.position = 'absolute';
+    linesSvg.style.top = '0';
+    linesSvg.style.left = '0';
+    linesSvg.style.pointerEvents = 'none';
+    linesSvg.style.zIndex = '1';
+
     const rect = linesSvg.getBoundingClientRect();
-    console.log('✅ SVG initialized (map-style HTML approach)');
+    console.log('✅ SVG initialized [FORCED via JS to bypass cache]');
     console.log(`   SVG dimensions: ${Math.round(rect.width)}x${Math.round(rect.height)}px`);
 
     if (rect.width > 0 && rect.height > 0) {
-      console.log('   ✅ SVG ready for drawing arrows!');
+      console.log('   ✅✅✅ SVG HAS DIMENSIONS! Arrows will be visible!');
     } else {
-      console.log('   ⚠️  SVG dimensions are zero - container needs sizing');
+      console.log('   ❌ Still zero - this should not happen!');
     }
   } else {
     console.error('❌ connection-lines SVG not found in HTML!');
