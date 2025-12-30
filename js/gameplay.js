@@ -383,11 +383,11 @@ function drawArrowLine(fromNode, toNode) {
   const r2 = toNode.getBoundingClientRect();
   const pr = pathContainer.getBoundingClientRect();
 
-  // Calculate start and end points
-  const x1 = r1.left + r1.width / 2 - pr.left;
-  const y1 = r1.bottom - pr.top;
-  const x2 = r2.left + r2.width / 2 - pr.left;
-  const y2 = r2.top - pr.top;
+  // Calculate start and end points - BOTTOM MIDDLE to TOP MIDDLE
+  const x1 = r1.left + r1.width / 2 - pr.left;  // Center X of source
+  const y1 = r1.bottom - pr.top;                 // Bottom of source
+  const x2 = r2.left + r2.width / 2 - pr.left;   // Center X of target
+  const y2 = r2.top - pr.top;                     // Top of target
 
   // Create the line
   const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
