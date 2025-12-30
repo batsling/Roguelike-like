@@ -43,10 +43,19 @@ function initGameplayDOM() {
   // Insert at the beginning of path-container so it's behind nodes
   pathContainer.insertBefore(linesSvg, pathContainer.firstChild);
 
-  console.log('✅ SVG recreated with proper namespace');
-  console.log(`   Set dimensions: ${parentWidth}x3000`);
-  console.log('   Actual dimensions:', linesSvg.getBoundingClientRect());
-  console.log('   Parent dimensions:', pathContainer.getBoundingClientRect());
+  console.log('✅ SVG recreated [v2.0] with proper namespace and CSS dimensions');
+  console.log(`   Target dimensions: ${parentWidth}px x 3000px`);
+  console.log(`   style.width set to: ${linesSvg.style.width}`);
+  console.log(`   style.height set to: ${linesSvg.style.height}`);
+
+  const rect = linesSvg.getBoundingClientRect();
+  console.log(`   Actual rendered size: ${Math.round(rect.width)}x${Math.round(rect.height)}px`);
+
+  if (rect.width > 0 && rect.height > 0) {
+    console.log('   ✅✅✅ SUCCESS! SVG has real dimensions - arrows should be visible!');
+  } else {
+    console.log('   ❌ STILL ZERO! Check browser cache - do HARD REFRESH (Ctrl+Shift+R)');
+  }
 }
 
 // ===== HELPER FUNCTIONS =====

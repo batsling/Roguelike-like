@@ -566,7 +566,7 @@ text, path, line, g {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible; /* CHANGED: Don't clip SVG arrows */
 }
 
 #path-container {
@@ -577,11 +577,10 @@ text, path, line, g {
 }
 
 #connection-lines {
+  /* Dimensions set via JavaScript in initGameplayDOM() */
   position: absolute !important;
   top: 0 !important;
   left: 0 !important;
-  width: 100% !important;
-  height: 3000px !important;
   pointer-events: none !important;
   z-index: 10 !important;
   display: block !important;
