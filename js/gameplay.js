@@ -1437,7 +1437,10 @@ function updateNodeStatusIcons(node = null) {
 // Export to global scope
 window.initGameplayDOM = initGameplayDOM;
 window.bfs = bfs;
+window.bfsPath = bfsPath;
+window.findAllShortestPaths = findAllShortestPaths;
 window.getGameConnections = getGameConnections;
+window.getInfluencedByGames = getInfluencedByGames;
 window.addNode = addNode;
 window.showTooltip = showTooltip;
 window.moveTooltip = moveTooltip;

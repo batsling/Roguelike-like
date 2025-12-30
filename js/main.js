@@ -763,7 +763,8 @@ function showMapModal() {
     const pastGames = visitedGames.filter(g => g !== currentGame);
 
     // Create container with relative positioning for SVG overlay
-    mapHTML += '<div style="position: relative; padding: 20px; min-width: 800px; min-height: 400px;">';
+    // Zoom out to 0.8 scale to show more of the map
+    mapHTML += '<div style="position: relative; padding: 20px; min-width: 800px; min-height: 400px; transform: scale(0.8); transform-origin: top center;">';
 
     // SVG for arrows
     mapHTML += '<svg id="map-arrows" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></svg>';
@@ -844,7 +845,11 @@ function showMapModal() {
         gamePositions.set(gameName, { x, y: currentY, layer: distance });
 
         mapHTML += `
-          <div class="map-game-box-${gameName.replace(/\s+/g, '-')}" data-game="${gameName}" style="
+          <div class="map-game-box-${gameName.replace(/\s+/g, '-')}" data-game="${gameName}"
+               onmouseenter="showMapTooltip(event, '${gameName.replace(/'/g, "\\'")}')"
+               onmousemove="moveMapTooltip(event)"
+               onmouseleave="hideMapTooltip()"
+               style="
             background: ${boxColor};
             border: 2px solid ${borderColor};
             border-radius: 8px;
@@ -860,6 +865,7 @@ function showMapModal() {
             color: ${isCurrentGame ? 'white' : (isPastGame ? '#888' : '#e6d5b8')};
             box-shadow: 0 4px 8px rgba(0,0,0,0.4);
             margin: 0 ${horizontalGap / 2}px;
+            cursor: pointer;
           ">
             ${isCurrentGame ? '📍 ' : ''}${gameName}${isAmuletGame ? ' 🏆' : ''}
           </div>
@@ -872,6 +878,10 @@ function showMapModal() {
 
     mapHTML += '</div>'; // Close game boxes container
     mapHTML += '</div>'; // Close relative container
+
+    // Add tooltip for hover
+    mapHTML += '<div id="map-tooltip" style="display: none; position: absolute; background: rgba(30, 30, 30, 0.95); border: 2px solid #cc6600; border-radius: 6px; padding: 10px; z-index: 10000; pointer-events: none; max-width: 350px; font-size: 11px; line-height: 1.4;"></div>';
+
     mapHTML += `<p style="margin-top: 20px; color: #888; font-size: 14px;">Shortest Distance: ${pathData.totalDistance} step${pathData.totalDistance !== 1 ? 's' : ''}</p>`;
   }
 
@@ -961,6 +971,105 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
       });
     });
   });
+}
+
+// Map tooltip functions
+function showMapTooltip(e, gameName) {
+  const game = games.find(g => g.name === gameName);
+  if (!game) return;
+
+  const tooltip = document.getElementById('map-tooltip');
+  if (!tooltip) return;
+
+  // Build connections HTML
+  const influences = game.gamesInfluenced ?? [];
+  const influencedBy = getInfluencedByGames(gameName);
+
+  let connectionsHTML = '';
+  if (influencedBy.length > 0) {
+    connectionsHTML += `<div style="margin-top: 8px;"><strong style="color: #4CAF50;">Influenced By:</strong><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">${influencedBy.map(g => `<span style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); padding: 2px 6px; border-radius: 3px; font-size: 10px; word-wrap: break-word; line-height: 1.3;">${g} → ${gameName}</span>`).join('')}</div></div>`;
+  }
+  if (influences.length > 0) {
+    connectionsHTML += `<div style="margin-top: 8px;"><strong style="color: #9b59b6;">Influences:</strong><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">${influences.map(g => `<span style="background: rgba(155, 89, 182, 0.1); border: 1px solid rgba(155, 89, 182, 0.3); padding: 2px 6px; border-radius: 3px; font-size: 10px; word-wrap: break-word; line-height: 1.3;">${gameName} → ${g}</span>`).join('')}</div></div>`;
+  }
+  if (influencedBy.length === 0 && influences.length === 0) {
+    connectionsHTML = '<div style="margin-top: 8px; color: #888;">No connections</div>';
+  }
+
+  // Build tags HTML
+  let tagsHTML = '';
+  if (game.tags && game.tags.length > 0) {
+    tagsHTML = `
+      <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
+        <div style="font-size: 11px; color: #888; margin-bottom: 4px;">Tags:</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+          ${game.tags.map(tag => `
+            <span style="
+              font-size: 10px;
+              padding: 2px 6px;
+              background: rgba(100, 100, 100, 0.3);
+              border: 1px solid rgba(150, 150, 150, 0.4);
+              border-radius: 3px;
+              color: #aaa;
+            ">${tag}</span>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  tooltip.innerHTML = `<h4 style="margin: 0 0 8px 0; color: #e6d5b8;">${gameName}</h4>
+    <div>Release Year: ${game.year || '—'}</div>
+    <div>Type: ${game.type || '—'}</div>
+    <div class="mini-map">${connectionsHTML}</div>
+    ${tagsHTML}`;
+
+  tooltip.style.display = 'block';
+  moveMapTooltip(e);
+}
+
+function moveMapTooltip(e) {
+  const tooltip = document.getElementById('map-tooltip');
+  if (!tooltip) return;
+
+  const offset = 14;
+  const tooltipRect = tooltip.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  // Calculate initial position
+  let left = e.clientX + offset;
+  let top = e.clientY + offset;
+
+  // Check if tooltip would go off the right edge
+  if (left + tooltipRect.width > viewportWidth) {
+    left = e.clientX - tooltipRect.width - offset;
+  }
+
+  // Check if tooltip would go off the bottom edge
+  if (top + tooltipRect.height > viewportHeight) {
+    top = e.clientY - tooltipRect.height - offset;
+  }
+
+  // Keep tooltip on screen (left edge)
+  if (left < 0) {
+    left = offset;
+  }
+
+  // Keep tooltip on screen (top edge)
+  if (top < 0) {
+    top = offset;
+  }
+
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
+}
+
+function hideMapTooltip() {
+  const tooltip = document.getElementById('map-tooltip');
+  if (tooltip) {
+    tooltip.style.display = 'none';
+  }
 }
 
 function closeGameModal() {
@@ -4129,3 +4238,8 @@ window.showColosseumChoices = showColosseumChoices;
 window.handleChampionResult = handleChampionResult;
 window.completeChampionSuccess = completeChampionSuccess;
 window.completeChampionFailure = completeChampionFailure;
+window.showMapModal = showMapModal;
+window.showMapTooltip = showMapTooltip;
+window.moveMapTooltip = moveMapTooltip;
+window.hideMapTooltip = hideMapTooltip;
+window.drawMapArrows = drawMapArrows;
