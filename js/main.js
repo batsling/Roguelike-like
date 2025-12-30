@@ -763,8 +763,7 @@ function showMapModal() {
     const pastGames = visitedGames.filter(g => g !== currentGame);
 
     // Create container with relative positioning for SVG overlay
-    // Zoom out to 0.8 scale to show more of the map
-    mapHTML += '<div style="position: relative; padding: 20px; min-width: 800px; min-height: 400px; transform: scale(0.8); transform-origin: top center;">';
+    mapHTML += '<div style="position: relative; padding: 20px; min-width: 800px; min-height: 400px;">';
 
     // SVG for arrows
     mapHTML += '<svg id="map-arrows" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></svg>';
