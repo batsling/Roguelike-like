@@ -97,6 +97,25 @@ function bfs(start, goal) {
   return '∞';
 }
 
+// BFS that returns the actual path (array of game names) from start to goal
+function bfsPath(start, goal) {
+  const queue = [[start, [start]]]; // [current node, path to this node]
+  const visited = new Set([start]);
+
+  while (queue.length > 0) {
+    const [node, path] = queue.shift();
+    if (node === goal) return path;
+
+    getGameConnections(node).forEach(neighbor => {
+      if (!visited.has(neighbor)) {
+        visited.add(neighbor);
+        queue.push([neighbor, [...path, neighbor]]);
+      }
+    });
+  }
+  return null; // No path found
+}
+
 function getGameConnections(gameName) {
   const connected = [];
 

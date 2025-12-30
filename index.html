@@ -179,7 +179,10 @@
 
           <!-- Right Sidebar: Items Panel -->
           <div id="game-items">
-            <h3>🎒 Inventory</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <h3 style="margin: 0;">🎒 Inventory</h3>
+              <button id="map-btn" onclick="showMapModal()" style="padding: 6px 12px; background: #2196F3; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">🗺️ Map</button>
+            </div>
             <div id="game-items-list">
               <div class="empty-inventory">No items yet</div>
             </div>

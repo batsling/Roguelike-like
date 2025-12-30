@@ -723,6 +723,67 @@ function createGameModal(content) {
   return modal;
 }
 
+// Show map modal with optimal path to amulet game
+function showMapModal() {
+  const currentGame = gameState.currentGame.name;
+  const amuletGame = gameState.amuletGame.name;
+
+  // Get the optimal path using BFS
+  const path = bfsPath(currentGame, amuletGame);
+
+  let mapHTML = '<div style="text-align: center;">';
+  mapHTML += '<h2 style="color: gold; margin-bottom: 20px;">🗺️ Optimal Path to Amulet</h2>';
+
+  if (!path || path.length === 0) {
+    mapHTML += '<p style="color: #888;">No path available</p>';
+  } else {
+    mapHTML += '<div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">';
+
+    path.forEach((gameName, index) => {
+      // Game box
+      const isCurrentGame = gameName === currentGame;
+      const isAmuletGame = gameName === amuletGame;
+
+      let boxColor = '#4a4440';
+      if (isCurrentGame) boxColor = '#2196F3';
+      if (isAmuletGame) boxColor = '#cc6600';
+
+      mapHTML += `
+        <div class="map-game-box" style="
+          background: ${boxColor};
+          border: 2px solid ${isAmuletGame ? 'gold' : '#cc6600'};
+          border-radius: 8px;
+          padding: 12px 24px;
+          min-width: 250px;
+          text-align: center;
+          font-weight: bold;
+          color: ${isCurrentGame ? 'white' : '#e6d5b8'};
+          box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        ">
+          ${isCurrentGame ? '📍 ' : ''}${gameName}${isAmuletGame ? ' 🏆' : ''}
+        </div>
+      `;
+
+      // Arrow (except after the last game)
+      if (index < path.length - 1) {
+        mapHTML += `
+          <div style="font-size: 24px; color: #888; margin: -5px 0;">
+            ↓
+          </div>
+        `;
+      }
+    });
+
+    mapHTML += '</div>';
+    mapHTML += `<p style="margin-top: 20px; color: #888; font-size: 14px;">Distance: ${path.length - 1} step${path.length - 1 !== 1 ? 's' : ''}</p>`;
+  }
+
+  mapHTML += '<button onclick="closeGameModal()" style="margin-top: 20px; padding: 10px 30px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>';
+  mapHTML += '</div>';
+
+  createGameModal(mapHTML);
+}
+
 function closeGameModal() {
   const modal = document.getElementById('game-modal');
   if (modal) {
