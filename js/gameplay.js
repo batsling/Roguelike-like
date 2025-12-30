@@ -16,6 +16,16 @@ function initGameplayDOM() {
   linesSvg = document.getElementById('connection-lines');
   tooltip = document.getElementById('game-tooltip');
   viewport = document.getElementById('path-viewport');
+
+  // CRITICAL: Ensure SVG has explicit dimensions set programmatically
+  if (linesSvg) {
+    linesSvg.setAttribute('width', '100%');
+    linesSvg.setAttribute('height', '3000');
+    console.log('✅ SVG dimensions set programmatically:', {
+      width: linesSvg.getAttribute('width'),
+      height: linesSvg.getAttribute('height')
+    });
+  }
 }
 
 // ===== HELPER FUNCTIONS =====
