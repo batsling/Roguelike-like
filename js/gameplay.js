@@ -196,7 +196,100 @@ function findAllShortestPaths(start, goal) {
 
   return {
     layers: pathGames,
-    totalDistance: shortestDist
+    totalDistance: shortestDist,
+    shortestDistance: shortestDist
+  };
+}
+
+// Find all games within a certain distance from start to goal
+// maxDistance: show paths up to this distance (inclusive)
+// Returns both shortest paths and paths up to maxDistance
+function findPathsUpToDistance(start, goal, maxDistance) {
+  // First, get the shortest paths
+  const shortestPathData = findAllShortestPaths(start, goal);
+  if (!shortestPathData) return null;
+
+  const shortestDist = shortestPathData.shortestDistance;
+
+  // If maxDistance is less than shortest, just return shortest
+  if (maxDistance < shortestDist) {
+    maxDistance = shortestDist;
+  }
+
+  // Run BFS from start to get all distances
+  const distFromStart = new Map();
+  const queueStart = [[start, 0]];
+  const visitedStart = new Set([start]);
+  distFromStart.set(start, 0);
+
+  while (queueStart.length > 0) {
+    const [node, dist] = queueStart.shift();
+
+    getGameConnections(node).forEach(neighbor => {
+      if (!visitedStart.has(neighbor)) {
+        visitedStart.add(neighbor);
+        distFromStart.set(neighbor, dist + 1);
+        queueStart.push([neighbor, dist + 1]);
+      }
+    });
+  }
+
+  // Run BFS backwards from goal
+  const distToGoal = new Map();
+  const queueGoal = [[goal, 0]];
+  const visitedGoal = new Set([goal]);
+  distToGoal.set(goal, 0);
+
+  while (queueGoal.length > 0) {
+    const [node, dist] = queueGoal.shift();
+
+    const reverseConnections = getInfluencedByGames(node);
+    const game = games.find(g => g.name === node);
+    if (game?.gamesInfluenced) {
+      reverseConnections.push(...game.gamesInfluenced);
+    }
+
+    [...new Set(reverseConnections)].forEach(neighbor => {
+      if (!visitedGoal.has(neighbor)) {
+        visitedGoal.add(neighbor);
+        distToGoal.set(neighbor, dist + 1);
+        queueGoal.push([neighbor, dist + 1]);
+      }
+    });
+  }
+
+  // Find all games on paths up to maxDistance
+  const pathGames = new Map(); // distance from start -> array of games
+  const shortestPathGames = new Set(); // track which games are on shortest path
+
+  distFromStart.forEach((distFrom, gameName) => {
+    const distTo = distToGoal.get(gameName);
+    if (distTo !== undefined) {
+      const totalDist = distFrom + distTo;
+
+      // Mark games on shortest path
+      if (totalDist === shortestDist) {
+        shortestPathGames.add(gameName);
+      }
+
+      // Include games on paths up to maxDistance
+      if (totalDist <= maxDistance) {
+        if (!pathGames.has(distFrom)) {
+          pathGames.set(distFrom, []);
+        }
+        pathGames.get(distFrom).push({
+          name: gameName,
+          isOnShortestPath: totalDist === shortestDist
+        });
+      }
+    }
+  });
+
+  return {
+    layers: pathGames,
+    totalDistance: maxDistance,
+    shortestDistance: shortestDist,
+    shortestPathGames: shortestPathGames
   };
 }
 
@@ -732,11 +825,10 @@ function spawnChoices() {
   requestAnimationFrame(() => {
     console.log('🎯 spawnChoices: requestAnimationFrame callback executing');
 
-    // Draw background connection arrows first
-    console.log('🎯 spawnChoices: About to call drawAllGameConnections()');
-    drawAllGameConnections();
+    // Background connection arrows removed - they look off-putting in game screen
+    // (They can be shown in map view instead if needed)
 
-    // Then draw choice arrows on top
+    // Draw choice arrows
     const currentNode = document.querySelector('.node.current');
     const choiceNodes = document.querySelectorAll('.node.choice');
 
@@ -1002,6 +1094,7 @@ function showFinish(node, isAmuletGame = false) {
     b.disabled = true;
     b.style.opacity = '0.5';
     b.style.cursor = 'not-allowed';
+    b.style.zIndex = '10'; // Ensure z-index stays above arrows even when disabled
 
     // Grey out the Skip button when Finished is pressed
     const skipBtn = node.querySelector('.ability-skip-btn');
@@ -1141,12 +1234,14 @@ function showFinish(node, isAmuletGame = false) {
           finishedBtn.style.opacity = '0.5';
           finishedBtn.style.cursor = 'not-allowed';
           finishedBtn.style.background = '#555';
+          finishedBtn.style.zIndex = '10'; // Ensure z-index stays above arrows
         }
         // Disable the Skip button itself
         skipBtn.disabled = true;
         skipBtn.style.opacity = '0.5';
         skipBtn.style.cursor = 'not-allowed';
         skipBtn.style.background = '#555';
+        skipBtn.style.zIndex = '10'; // Ensure z-index stays above arrows
 
         useSkip();
       }
@@ -1240,12 +1335,7 @@ function renderGameState() {
     drawPastLine(nodes[i], nodes[i + 1]);
   }
 
-  // Draw all game connections as background arrows
-  requestAnimationFrame(() => {
-    console.log('🎯 render: requestAnimationFrame callback executing');
-    console.log('🎯 render: About to call drawAllGameConnections()');
-    drawAllGameConnections();
-  });
+  // Background connection arrows removed from game screen (looks off-putting)
 
   // Update stats panel
   updateGameStats();
