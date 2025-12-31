@@ -1013,13 +1013,18 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
 
   // Build a flat map of all games in all layers for quick lookup
   const allGamesInMap = new Map();
+  const gameDistances = new Map(); // Track which distance each game is at
   layers.forEach(distance => {
     const gamesAtLayer = pathData.layers.get(distance);
     gamesAtLayer.forEach(gameData => {
       const gameName = gameData.name || gameData;
       allGamesInMap.set(gameName, gameData);
+      gameDistances.set(gameName, distance);
     });
   });
+
+  // Track drawn arrows to avoid duplicates
+  const drawnArrows = new Set();
 
   layers.forEach((distance, layerIndex) => {
     const gamesAtLayer = pathData.layers.get(distance);
@@ -1029,6 +1034,7 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
       // Handle both old format (string) and new format (object with name/isOnShortestPath)
       const fromGame = fromGameData.name || fromGameData;
       const fromIsOnShortestPath = fromGameData.isOnShortestPath !== undefined ? fromGameData.isOnShortestPath : true;
+      const fromDistance = distance;
 
       const fromPos = boxPositions.get(fromGame);
       if (!fromPos) {
@@ -1041,10 +1047,25 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
       console.log(`  "${fromGame}" connections:`, connections);
 
       connections.forEach(toGame => {
-        // Check if toGame exists in ANY layer on the map (not just the next layer)
+        // Check if toGame exists in ANY layer on the map
         const toGameData = allGamesInMap.get(toGame);
 
         if (toGameData) {
+          const toDistance = gameDistances.get(toGame);
+
+          // Only draw arrows going FORWARD (downward - from lower distance to higher distance)
+          // This prevents bidirectional arrows and ensures arrows go top-to-bottom
+          if (toDistance <= fromDistance) {
+            return; // Skip backwards or same-level connections
+          }
+
+          // Create unique key for this arrow
+          const arrowKey = `${fromGame}->${toGame}`;
+          if (drawnArrows.has(arrowKey)) {
+            return; // Already drawn this arrow
+          }
+          drawnArrows.add(arrowKey);
+
           const toPos = boxPositions.get(toGame);
           if (!toPos) {
             console.log(`    ❌ No position for target "${toGame}"`);
@@ -1055,7 +1076,7 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
           const toIsOnShortestPath = toGameData.isOnShortestPath !== undefined ? toGameData.isOnShortestPath : true;
           const isShortestPathArrow = fromIsOnShortestPath && toIsOnShortestPath;
 
-          // Draw arrow (highlight shortest path arrows)
+          // Draw arrow from BOTTOM of source to TOP of target (always downward)
           const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
           line.setAttribute('x1', fromPos.x);
           line.setAttribute('y1', fromPos.bottom);
@@ -1067,7 +1088,7 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
           line.setAttribute('marker-end', 'url(#map-arrowhead)');
           svg.appendChild(line);
           arrowsDrawn++;
-          console.log(`    ✅ Drew arrow: "${fromGame}" → "${toGame}" (${isShortestPathArrow ? 'GREEN' : 'GRAY'})`);
+          console.log(`    ✅ Drew arrow: "${fromGame}" (dist ${fromDistance}) → "${toGame}" (dist ${toDistance}) (${isShortestPathArrow ? 'GREEN' : 'GRAY'})`);
         }
       });
     });
