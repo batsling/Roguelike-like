@@ -999,7 +999,51 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
   const layers = Array.from(reorganizedLayers.keys()).sort((a, b) => a - b).filter(layer => reorganizedLayers.get(layer).length > 0);
 
   layers.forEach((distance, layerIndex) => {
-    const gamesAtLayer = reorganizedLayers.get(distance);
+    let gamesAtLayer = reorganizedLayers.get(distance);
+
+    // Sort games so bidirectional pairs are adjacent (no games between them)
+    const sortedGames = [];
+    const processedGames = new Set();
+    const bidirectionalPairsInLayer = [];
+
+    // Find bidirectional pairs in this layer
+    for (let i = 0; i < gamesAtLayer.length; i++) {
+      const game1Data = gamesAtLayer[i];
+      const game1 = game1Data.name || game1Data;
+
+      if (processedGames.has(game1)) continue;
+
+      const connections1 = getGameConnections(game1);
+      let foundPair = false;
+
+      for (let j = i + 1; j < gamesAtLayer.length; j++) {
+        const game2Data = gamesAtLayer[j];
+        const game2 = game2Data.name || game2Data;
+
+        if (processedGames.has(game2)) continue;
+
+        const connections2 = getGameConnections(game2);
+
+        // Check if they connect to each other
+        if (connections1.includes(game2) && connections2.includes(game1)) {
+          // Bidirectional pair found - add them together
+          sortedGames.push(game1Data);
+          sortedGames.push(game2Data);
+          processedGames.add(game1);
+          processedGames.add(game2);
+          bidirectionalPairsInLayer.push([game1, game2]);
+          foundPair = true;
+          break;
+        }
+      }
+
+      if (!foundPair) {
+        sortedGames.push(game1Data);
+        processedGames.add(game1);
+      }
+    }
+
+    gamesAtLayer = sortedGames;
     const numGames = gamesAtLayer.length;
 
     // Calculate total width needed for this layer
@@ -1118,15 +1162,12 @@ function showMapModal() {
   } else {
     const shortestDist = shortestPathData.shortestDistance;
 
-    // Add path view buttons
+    // Show shortest path info
     mapHTML += '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; display: flex; justify-content: center; align-items: center; gap: 15px;">';
-    mapHTML += '<span style="color: #e6d5b8; font-weight: bold;">View:</span>';
-    mapHTML += `<button id="shortest-btn" style="padding: 8px 20px; background: #4CAF50; color: white; border: 2px solid #45a049; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;">Shortest Path</button>`;
-    mapHTML += `<button id="more-paths-btn" style="padding: 8px 20px; background: #3a3a3a; color: #e6d5b8; border: 2px solid #cc6600; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;">More Paths</button>`;
-    mapHTML += `<span id="path-info-label" style="color: #888; font-size: 12px;">Shortest: ${shortestDist} steps</span>`;
+    mapHTML += `<span style="color: #e6d5b8; font-weight: bold;">Shortest Path: ${shortestDist} steps</span>`;
     mapHTML += '</div>';
 
-    // Start with shortest distance view
+    // Show shortest distance view only
     mapHTML += '<div id="map-view-container">';
     mapHTML += generateMapView(currentGame, amuletGame, shortestDist);
     mapHTML += '</div>';
@@ -1136,70 +1177,12 @@ function showMapModal() {
 
     createGameModal(mapHTML);
 
-    // Draw arrows after modal is rendered (starting with shortest distance)
+    // Draw arrows after modal is rendered
     const initialPathData = findPathsUpToDistance(currentGame, amuletGame, shortestDist);
     setTimeout(() => {
       const { gameToLayer } = reorganizeMapLayers(initialPathData);
       drawMapArrows(initialPathData, currentGame, amuletGame, gameToLayer);
     }, 100);
-
-    // Track current view state
-    let currentViewDistance = shortestDist;
-
-    // Function to update the map view
-    function updateMapView(distance) {
-      currentViewDistance = distance;
-      const mapContainer = document.getElementById('map-view-container');
-      if (mapContainer) {
-        mapContainer.innerHTML = generateMapView(currentGame, amuletGame, distance);
-        const newPathData = findPathsUpToDistance(currentGame, amuletGame, distance);
-        setTimeout(() => {
-          const { gameToLayer } = reorganizeMapLayers(newPathData);
-          drawMapArrows(newPathData, currentGame, amuletGame, gameToLayer);
-        }, 100);
-      }
-
-      // Update button styles and label
-      const shortestBtn = document.getElementById('shortest-btn');
-      const morePathsBtn = document.getElementById('more-paths-btn');
-      const pathInfoLabel = document.getElementById('path-info-label');
-
-      if (shortestBtn && morePathsBtn) {
-        if (distance === shortestDist) {
-          shortestBtn.style.background = '#4CAF50';
-          shortestBtn.style.border = '2px solid #45a049';
-          morePathsBtn.style.background = '#3a3a3a';
-          morePathsBtn.style.border = '2px solid #cc6600';
-          if (pathInfoLabel) {
-            pathInfoLabel.textContent = `Shortest: ${shortestDist} steps`;
-          }
-        } else {
-          shortestBtn.style.background = '#3a3a3a';
-          shortestBtn.style.border = '2px solid #cc6600';
-          morePathsBtn.style.background = '#4CAF50';
-          morePathsBtn.style.border = '2px solid #45a049';
-          if (pathInfoLabel) {
-            pathInfoLabel.textContent = `More Paths: ${distance} steps`;
-          }
-        }
-      }
-    }
-
-    // Add event listeners to buttons
-    const shortestBtn = document.getElementById('shortest-btn');
-    const morePathsBtn = document.getElementById('more-paths-btn');
-
-    if (shortestBtn) {
-      shortestBtn.addEventListener('click', () => {
-        updateMapView(shortestDist);
-      });
-    }
-
-    if (morePathsBtn) {
-      morePathsBtn.addEventListener('click', () => {
-        updateMapView(shortestDist + 1);
-      });
-    }
   }
 }
 
@@ -1222,7 +1205,7 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
   // Create arrowhead markers
   const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
 
-  // Standard arrowhead for regular arrows
+  // Right-pointing arrowhead (for marker-end)
   const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
   marker.setAttribute('id', 'map-arrowhead');
   marker.setAttribute('markerWidth', '10');
@@ -1237,7 +1220,22 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
   marker.appendChild(polygon);
   defs.appendChild(marker);
 
-  // Gray arrowhead for non-shortest path arrows
+  // Left-pointing arrowhead (for marker-start)
+  const markerLeft = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+  markerLeft.setAttribute('id', 'map-arrowhead-left');
+  markerLeft.setAttribute('markerWidth', '10');
+  markerLeft.setAttribute('markerHeight', '10');
+  markerLeft.setAttribute('refX', '1');
+  markerLeft.setAttribute('refY', '5');
+  markerLeft.setAttribute('orient', 'auto');
+  markerLeft.setAttribute('markerUnits', 'userSpaceOnUse');
+  const polygonLeft = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  polygonLeft.setAttribute('points', '10,0 0,5 10,10');
+  polygonLeft.setAttribute('fill', '#4CAF50');
+  markerLeft.appendChild(polygonLeft);
+  defs.appendChild(markerLeft);
+
+  // Gray arrowheads
   const markerGray = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
   markerGray.setAttribute('id', 'map-arrowhead-gray');
   markerGray.setAttribute('markerWidth', '10');
@@ -1251,6 +1249,20 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
   polygonGray.setAttribute('fill', '#888');
   markerGray.appendChild(polygonGray);
   defs.appendChild(markerGray);
+
+  const markerGrayLeft = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+  markerGrayLeft.setAttribute('id', 'map-arrowhead-gray-left');
+  markerGrayLeft.setAttribute('markerWidth', '10');
+  markerGrayLeft.setAttribute('markerHeight', '10');
+  markerGrayLeft.setAttribute('refX', '1');
+  markerGrayLeft.setAttribute('refY', '5');
+  markerGrayLeft.setAttribute('orient', 'auto');
+  markerGrayLeft.setAttribute('markerUnits', 'userSpaceOnUse');
+  const polygonGrayLeft = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  polygonGrayLeft.setAttribute('points', '10,0 0,5 10,10');
+  polygonGrayLeft.setAttribute('fill', '#888');
+  markerGrayLeft.appendChild(polygonGrayLeft);
+  defs.appendChild(markerGrayLeft);
 
   svg.appendChild(defs);
 
@@ -1385,7 +1397,7 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
         line.setAttribute('stroke', isOnShortestPath ? '#4CAF50' : '#888');
         line.setAttribute('stroke-width', isOnShortestPath ? '3' : '2');
         line.setAttribute('opacity', isOnShortestPath ? '0.8' : '0.4');
-        line.setAttribute('marker-start', isOnShortestPath ? 'url(#map-arrowhead)' : 'url(#map-arrowhead-gray)');
+        line.setAttribute('marker-start', isOnShortestPath ? 'url(#map-arrowhead-left)' : 'url(#map-arrowhead-gray-left)');
         line.setAttribute('marker-end', isOnShortestPath ? 'url(#map-arrowhead)' : 'url(#map-arrowhead-gray)');
         svg.appendChild(line);
         arrowsDrawn++;
@@ -1458,88 +1470,24 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
     });
   });
 
-  // Detect arrow collisions and apply horizontal curve offsets
-  const arrowOffsets = new Map(); // Track horizontal offset for each arrow
-
-  arrowsToDrawData.forEach((arrow, index) => {
-    let offset = 0;
-    const arrowKey = `${arrow.fromGame}->${arrow.toGame}`;
-
-    // Check against all other arrows for potential overlap
-    arrowsToDrawData.forEach((otherArrow, otherIndex) => {
-      if (index === otherIndex) return;
-
-      const otherKey = `${otherArrow.fromGame}->${otherArrow.toGame}`;
-
-      // Check if arrows would cross (different start/end but similar x-ranges)
-      const arrow1Left = Math.min(arrow.fromPos.x, arrow.toPos.x);
-      const arrow1Right = Math.max(arrow.fromPos.x, arrow.toPos.x);
-      const arrow2Left = Math.min(otherArrow.fromPos.x, otherArrow.toPos.x);
-      const arrow2Right = Math.max(otherArrow.fromPos.x, otherArrow.toPos.x);
-
-      // Check if x-ranges overlap
-      const xOverlap = arrow1Left < arrow2Right && arrow2Left < arrow1Right;
-
-      // Check if arrows span overlapping y-ranges
-      const arrow1Top = Math.min(arrow.fromPos.bottom, arrow.toPos.top);
-      const arrow1Bottom = Math.max(arrow.fromPos.bottom, arrow.toPos.top);
-      const arrow2Top = Math.min(otherArrow.fromPos.bottom, otherArrow.toPos.top);
-      const arrow2Bottom = Math.max(otherArrow.fromPos.bottom, otherArrow.toPos.top);
-      const yOverlap = arrow1Top < arrow2Bottom && arrow2Top < arrow1Bottom;
-
-      if (xOverlap && yOverlap) {
-        // Arrows would overlap, apply offset
-        // Offset based on index to ensure consistency
-        const offsetDirection = index % 2 === 0 ? 1 : -1;
-        const offsetAmount = Math.floor(index / 2) * 40;
-        offset = offsetDirection * offsetAmount;
-      }
-    });
-
-    arrowOffsets.set(arrowKey, offset);
-  });
-
-  // Draw all arrows with curve offsets to avoid overlaps
+  // Third pass: draw straight vertical arrows for cross-layer connections
   arrowsToDrawData.forEach(arrow => {
-    const arrowKey = `${arrow.fromGame}->${arrow.toGame}`;
-    const offset = arrowOffsets.get(arrowKey) || 0;
-
     const x1 = arrow.fromPos.x;
     const y1 = arrow.fromPos.bottom;
     const x2 = arrow.toPos.x;
     const y2 = arrow.toPos.top;
 
-    // Calculate control points for bezier curve
-    const midY = (y1 + y2) / 2;
-
-    // If there's an offset or the arrow is long, use a curved path
-    if (Math.abs(offset) > 0 || Math.abs(y2 - y1) > 150) {
-      // Create a curved path using quadratic bezier
-      const controlX = (x1 + x2) / 2 + offset;
-      const controlY = midY;
-
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      const pathData = `M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`;
-      path.setAttribute('d', pathData);
-      path.setAttribute('stroke', arrow.isShortestPathArrow ? '#4CAF50' : '#888');
-      path.setAttribute('stroke-width', arrow.isShortestPathArrow ? '3' : '2');
-      path.setAttribute('fill', 'none');
-      path.setAttribute('opacity', arrow.isShortestPathArrow ? '0.8' : '0.4');
-      path.setAttribute('marker-end', arrow.isShortestPathArrow ? 'url(#map-arrowhead)' : 'url(#map-arrowhead-gray)');
-      svg.appendChild(path);
-    } else {
-      // Use straight line for simple short connections
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', x1);
-      line.setAttribute('y1', y1);
-      line.setAttribute('x2', x2);
-      line.setAttribute('y2', y2);
-      line.setAttribute('stroke', arrow.isShortestPathArrow ? '#4CAF50' : '#888');
-      line.setAttribute('stroke-width', arrow.isShortestPathArrow ? '3' : '2');
-      line.setAttribute('opacity', arrow.isShortestPathArrow ? '0.8' : '0.4');
-      line.setAttribute('marker-end', arrow.isShortestPathArrow ? 'url(#map-arrowhead)' : 'url(#map-arrowhead-gray)');
-      svg.appendChild(line);
-    }
+    // Use straight line for all connections
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1);
+    line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2);
+    line.setAttribute('y2', y2);
+    line.setAttribute('stroke', arrow.isShortestPathArrow ? '#4CAF50' : '#888');
+    line.setAttribute('stroke-width', arrow.isShortestPathArrow ? '3' : '2');
+    line.setAttribute('opacity', arrow.isShortestPathArrow ? '0.8' : '0.4');
+    line.setAttribute('marker-end', arrow.isShortestPathArrow ? 'url(#map-arrowhead)' : 'url(#map-arrowhead-gray)');
+    svg.appendChild(line);
 
     arrowsDrawn++;
     console.log(`    ✅ Drew arrow: "${arrow.fromGame}" (dist ${arrow.fromDistance}) → "${arrow.toGame}" (dist ${arrow.toDistance}) (${arrow.isShortestPathArrow ? 'GREEN' : 'GRAY'})`);
