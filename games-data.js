@@ -3610,6 +3610,17 @@ var GAMES_DATA = [
     "gamesInfluenced": []
   },
   {
+    "name": "Realm of the Mad God",
+    "year": 2010,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [
+      "Talented"
+    ]
+  },
+  {
     "name": "Repetendium",
     "year": 2022,
     "type": "Action",
@@ -4592,6 +4603,15 @@ var GAMES_DATA = [
     ]
   },
   {
+    "name": "Talented",
+    "year": 2023,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+  {
     "name": "Tales of Maj'Eyal",
     "year": 1998,
     "type": "Traditional",
@@ -4721,7 +4741,8 @@ var GAMES_DATA = [
       "Noobs Are Coming",
       "Has-Been Heroes",
       "Lost Flame",
-      "Asterogues"
+      "Asterogues",
+      "Talented"
     ]
   },
   {
