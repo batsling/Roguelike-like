@@ -2087,6 +2087,15 @@ var GAMES_DATA = [
     "gamesInfluenced": []
   },
   {
+    "name": "Greedland",
+    "year": 2023,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+  {
     "name": "Griftlands",
     "year": 2020,
     "type": "Deckbuilding",
@@ -5182,7 +5191,8 @@ var GAMES_DATA = [
       "Desktop Survivors 98",
       "Night Swarm",
       "I Am Legion: Stand Survivors",
-      "Yet Another Zombie Survivors"
+      "Yet Another Zombie Survivors",
+      "Greedland"
     ]
   },
   {
