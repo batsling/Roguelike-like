@@ -735,13 +735,13 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
   let html = '';
 
   // Create container with relative positioning for SVG overlay
-  html += '<div style="position: relative; padding: 20px; width: 100%; min-height: 400px; overflow: auto;">';
+  html += '<div style="position: relative; padding: 40px; width: 100%; min-height: 400px; overflow-x: auto; overflow-y: visible;">';
 
-  // SVG for arrows
-  html += '<svg id="map-arrows" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></svg>';
+  // SVG for arrows - make it large enough to contain all arrows
+  html += '<svg id="map-arrows" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible;"></svg>';
 
   // Container for game boxes
-  html += '<div style="position: relative; z-index: 2;">';
+  html += '<div style="position: relative; z-index: 2; display: inline-block; min-width: 100%;">';
 
   // Show past games first
   if (pastGames.length > 0) {
@@ -788,7 +788,7 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
     // Calculate total width needed for this layer
     const totalWidth = numGames * boxWidth + (numGames - 1) * horizontalGap;
 
-    html += `<div style="display: flex; justify-content: center; align-items: center; margin-bottom: ${verticalGap}px; position: relative;">`;
+    html += `<div style="display: flex; justify-content: center; align-items: center; margin-bottom: ${verticalGap}px; position: relative; min-width: fit-content;">`;
 
     gamesAtLayer.forEach((gameData, index) => {
       // gameData is now {name, isOnShortestPath}
@@ -964,6 +964,11 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
   // Clear existing arrows
   svg.innerHTML = '';
 
+  // Get parent dimensions and set SVG to fill it completely
+  const parentRect = svg.parentElement.getBoundingClientRect();
+  svg.setAttribute('width', parentRect.width);
+  svg.setAttribute('height', Math.max(parentRect.height, 2000)); // Ensure enough height
+
   // Create arrowhead marker
   const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
   const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
@@ -983,6 +988,7 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
   svg.appendChild(defs);
 
   console.log('Drawing map arrows, pathData:', pathData);
+  console.log('SVG dimensions set to:', parentRect.width, 'x', Math.max(parentRect.height, 2000));
 
   // Get all game boxes
   const gameBoxes = document.querySelectorAll('[data-game]');
@@ -1053,11 +1059,11 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
         if (toGameData) {
           const toDistance = gameDistances.get(toGame);
 
-          // CRITICAL: Only draw arrows that represent valid forward progress
-          // The target must be exactly 1 step further from start than the source
-          // This prevents backtracking (e.g., A->B->A->C) and ensures only valid paths
-          if (toDistance !== fromDistance + 1) {
-            return; // Skip if not a valid forward step (exactly distance + 1)
+          // Only draw arrows that represent forward progress toward the goal
+          // Target must be further from start than source (prevents backtracking)
+          // This allows connections across layers when needed for valid paths
+          if (toDistance <= fromDistance) {
+            return; // Skip backwards or same-level connections
           }
 
           // Create unique key for this arrow
