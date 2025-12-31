@@ -741,44 +741,66 @@ function reorganizeMapLayers(pathData) {
     });
   });
 
-  // Now reorganize: push down games that have multiple incoming connections from the same layer
+  // Now reorganize: push down games that have multiple incoming connections
+  // We check from ALL previous layers, not just adjacent ones
   let changed = true;
-  let maxIterations = 10;
+  let maxIterations = 20; // Increase iterations to handle complex graphs
   while (changed && maxIterations > 0) {
     changed = false;
     maxIterations--;
 
     const layerKeys = Array.from(reorganizedLayers.keys()).sort((a, b) => a - b);
 
-    for (let i = 0; i < layerKeys.length - 1; i++) {
+    // For each layer, count ALL incoming connections to each game from ALL previous layers
+    for (let i = 0; i < layerKeys.length; i++) {
       const currentLayer = layerKeys[i];
       const gamesAtCurrentLayer = reorganizedLayers.get(currentLayer);
 
-      // Count incoming connections to each game from this layer
+      // Count incoming connections from ALL previous layers
       const incomingConnectionsCount = new Map();
+      const incomingSourceLayers = new Map(); // Track which layers connect to each game
 
-      gamesAtCurrentLayer.forEach(gameData => {
-        const gameName = gameData.name || gameData;
-        const connections = getGameConnections(gameName);
+      // Check all layers before this one
+      for (let j = 0; j < i; j++) {
+        const sourceLayer = layerKeys[j];
+        const gamesAtSourceLayer = reorganizedLayers.get(sourceLayer);
 
-        connections.forEach(targetGame => {
-          const targetLayer = gameToLayer.get(targetGame);
-          // Only count connections to games in layers below this one
-          if (targetLayer !== undefined && targetLayer > currentLayer) {
-            const count = incomingConnectionsCount.get(targetGame) || 0;
-            incomingConnectionsCount.set(targetGame, count + 1);
-          }
+        gamesAtSourceLayer.forEach(gameData => {
+          const gameName = gameData.name || gameData;
+          const connections = getGameConnections(gameName);
+
+          connections.forEach(targetGame => {
+            const targetLayer = gameToLayer.get(targetGame);
+            // Only count if target is in the current layer we're analyzing
+            if (targetLayer === currentLayer) {
+              const count = incomingConnectionsCount.get(targetGame) || 0;
+              incomingConnectionsCount.set(targetGame, count + 1);
+
+              if (!incomingSourceLayers.has(targetGame)) {
+                incomingSourceLayers.set(targetGame, new Set());
+              }
+              incomingSourceLayers.get(targetGame).add(sourceLayer);
+            }
+          });
         });
-      });
+      }
 
-      // Push down games with multiple incoming connections from this layer
-      incomingConnectionsCount.forEach((count, targetGame) => {
+      // Push down games with multiple incoming connections
+      // Sort by connection count (most connections first) to handle bottlenecks first
+      const sortedTargets = Array.from(incomingConnectionsCount.entries())
+        .sort((a, b) => b[1] - a[1]);
+
+      sortedTargets.forEach(([targetGame, count]) => {
         if (count > 1) {
           const currentTargetLayer = gameToLayer.get(targetGame);
+
+          // Push down only 1 layer at a time for more gradual spreading
           const nextLayer = currentTargetLayer + 1;
 
-          // Only push down if there's room (not past the max distance)
-          if (nextLayer <= originalLayers[originalLayers.length - 1]) {
+          // Find the maximum layer we can use
+          const maxLayer = Math.max(...originalLayers) + 15; // Allow creating new layers
+
+          if (nextLayer <= maxLayer) {
             // Remove from current layer
             const currentLayerGames = reorganizedLayers.get(currentTargetLayer);
             const gameData = currentLayerGames.find(g => (g.name || g) === targetGame);
@@ -822,7 +844,7 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
   html += '<svg id="map-arrows" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible;"></svg>';
 
   // Container for game boxes
-  html += '<div style="position: relative; z-index: 2; display: inline-block; min-width: 100%;">';
+  html += '<div style="position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; width: 100%;">';
 
   // Show past games first
   if (pastGames.length > 0) {
@@ -872,7 +894,7 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
     // Calculate total width needed for this layer
     const totalWidth = numGames * boxWidth + (numGames - 1) * horizontalGap;
 
-    html += `<div style="display: flex; justify-content: center; align-items: center; margin-bottom: ${verticalGap}px; position: relative; min-width: fit-content;">`;
+    html += `<div style="display: flex; justify-content: center; align-items: center; margin-bottom: ${verticalGap}px; position: relative; width: 100%; flex-wrap: nowrap; gap: ${horizontalGap}px;">`;
 
     gamesAtLayer.forEach((gameData, index) => {
       // gameData is now {name, isOnShortestPath}
@@ -921,7 +943,6 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
           font-size: 13px;
           color: ${isCurrentGame ? 'white' : (isPastGame || !isOnShortestPath ? '#888' : '#e6d5b8')};
           box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-          margin: 0 ${horizontalGap / 2}px;
           cursor: pointer;
           opacity: ${!isOnShortestPath && !isCurrentGame && !isAmuletGame ? '0.5' : '1'};
         ">
