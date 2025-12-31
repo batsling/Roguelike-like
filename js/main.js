@@ -834,10 +834,12 @@ function applyHorizontalOffsets(reorganizedLayers, gameToLayer, pathData) {
   // Get all layers sorted
   const layerKeys = Array.from(reorganizedLayers.keys()).sort((a, b) => a - b);
 
-  // For each layer, check if arrows from previous layers would cross through games
+  // For each layer, count how many arrows pass through it
+  const layerCrossingCounts = new Map();
+
   for (let i = 0; i < layerKeys.length; i++) {
     const currentLayer = layerKeys[i];
-    const gamesAtCurrentLayer = reorganizedLayers.get(currentLayer);
+    let crossingCount = 0;
 
     // Check all layers before this one for crossing arrows
     for (let j = 0; j < i; j++) {
@@ -853,18 +855,44 @@ function applyHorizontalOffsets(reorganizedLayers, gameToLayer, pathData) {
 
           // If arrow skips over current layer (sourceLayer < currentLayer < targetLayer)
           if (targetLayer > currentLayer && sourceLayer < currentLayer) {
-            // This arrow crosses through the current layer
-            // Apply offsets to games in current layer to spread them out
-            gamesAtCurrentLayer.forEach((gameData, index) => {
-              const gameName = gameData.name || gameData;
-              if (!gameOffsets.has(gameName)) {
-                // Alternate offsets: left, right, left, right
-                const offset = index % 2 === 0 ? -100 * Math.floor(index / 2) : 100 * Math.ceil(index / 2);
-                gameOffsets.set(gameName, offset);
-              }
-            });
+            crossingCount++;
           }
         });
+      });
+    }
+
+    layerCrossingCounts.set(currentLayer, crossingCount);
+  }
+
+  // Apply offsets based on crossing counts and layer size
+  for (let i = 0; i < layerKeys.length; i++) {
+    const currentLayer = layerKeys[i];
+    const gamesAtCurrentLayer = reorganizedLayers.get(currentLayer);
+    const crossingCount = layerCrossingCounts.get(currentLayer) || 0;
+    const numGames = gamesAtCurrentLayer.length;
+
+    // Apply offsets if there are crossings OR if there are many games in this layer
+    if (crossingCount > 0 || numGames > 3) {
+      gamesAtCurrentLayer.forEach((gameData, index) => {
+        const gameName = gameData.name || gameData;
+
+        // Calculate offset based on position and number of games
+        // Spread out more when there are more games or more crossings
+        const spreadFactor = Math.max(50, 30 * Math.ceil(numGames / 3));
+
+        // Alternate offsets: left, right, left, right
+        // Center game stays at 0 if odd number of games
+        if (numGames % 2 === 1 && index === Math.floor(numGames / 2)) {
+          gameOffsets.set(gameName, 0);
+        } else if (index < Math.floor(numGames / 2)) {
+          // Left side
+          const leftIndex = Math.floor(numGames / 2) - index;
+          gameOffsets.set(gameName, -spreadFactor * leftIndex);
+        } else {
+          // Right side
+          const rightIndex = index - Math.floor(numGames / 2);
+          gameOffsets.set(gameName, spreadFactor * rightIndex);
+        }
       });
     }
   }
@@ -911,13 +939,13 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
   let html = '';
 
   // Create container with relative positioning for SVG overlay
-  html += '<div style="position: relative; padding: 40px; width: 100%; min-height: 400px; overflow-x: auto; overflow-y: visible;">';
+  html += '<div style="position: relative; padding: 60px 80px; width: 100%; min-height: 400px; overflow-x: auto; overflow-y: visible;">';
 
   // SVG for arrows - make it large enough to contain all arrows
   html += '<svg id="map-arrows" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible;"></svg>';
 
-  // Container for game boxes
-  html += '<div style="position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; width: 100%;">';
+  // Container for game boxes - extra wide to accommodate horizontal offsets
+  html += '<div style="position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; width: 100%; min-width: 1200px;">';
 
   // Show past games first
   if (pastGames.length > 0) {
@@ -1086,20 +1114,12 @@ function showMapModal() {
   } else {
     const shortestDist = shortestPathData.shortestDistance;
 
-    // Add distance selector
-    mapHTML += '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px;">';
-    mapHTML += '<label style="color: #e6d5b8; font-weight: bold; margin-right: 10px;">View paths up to distance:</label>';
-    mapHTML += '<select id="distance-selector" style="padding: 5px 10px; background: #3a3a3a; color: #e6d5b8; border: 1px solid #cc6600; border-radius: 4px; cursor: pointer;">';
-
-    // Create options from shortest distance to shortest + 3
-    for (let i = shortestDist; i <= shortestDist + 3; i++) {
-      const selected = i === shortestDist ? 'selected' : '';
-      const label = i === shortestDist ? `${i} (Shortest)` : `${i}`;
-      mapHTML += `<option value="${i}" ${selected}>${label}</option>`;
-    }
-
-    mapHTML += '</select>';
-    mapHTML += `<span style="margin-left: 15px; color: #888; font-size: 12px;">Shortest path: ${shortestDist} steps</span>`;
+    // Add path view buttons
+    mapHTML += '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; display: flex; justify-content: center; align-items: center; gap: 15px;">';
+    mapHTML += '<span style="color: #e6d5b8; font-weight: bold;">View:</span>';
+    mapHTML += `<button id="shortest-btn" style="padding: 8px 20px; background: #4CAF50; color: white; border: 2px solid #45a049; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;">Shortest Path</button>`;
+    mapHTML += `<button id="more-paths-btn" style="padding: 8px 20px; background: #3a3a3a; color: #e6d5b8; border: 2px solid #cc6600; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;">More Paths</button>`;
+    mapHTML += `<span style="color: #888; font-size: 12px;">Shortest: ${shortestDist} steps</span>`;
     mapHTML += '</div>';
 
     // Start with shortest distance view
@@ -1119,27 +1139,53 @@ function showMapModal() {
       drawMapArrows(initialPathData, currentGame, amuletGame, gameToLayer);
     }, 100);
 
-    // Add event listener to distance selector
-    const selector = document.getElementById('distance-selector');
-    if (selector) {
-      selector.addEventListener('change', (e) => {
-        const selectedDistance = parseInt(e.target.value);
-        console.log('Distance selector changed to:', selectedDistance);
-        // Regenerate map view with new distance
-        const mapContainer = document.getElementById('map-view-container');
-        if (mapContainer) {
-          console.log('Map container found, updating innerHTML');
-          mapContainer.innerHTML = generateMapView(currentGame, amuletGame, selectedDistance);
-          // Redraw arrows after DOM updates
-          const newPathData = findPathsUpToDistance(currentGame, amuletGame, selectedDistance);
-          setTimeout(() => {
-            console.log('Attempting to draw arrows for distance:', selectedDistance);
-            const { gameToLayer } = reorganizeMapLayers(newPathData);
-            drawMapArrows(newPathData, currentGame, amuletGame, gameToLayer);
-          }, 100);
+    // Track current view state
+    let currentViewDistance = shortestDist;
+
+    // Function to update the map view
+    function updateMapView(distance) {
+      currentViewDistance = distance;
+      const mapContainer = document.getElementById('map-view-container');
+      if (mapContainer) {
+        mapContainer.innerHTML = generateMapView(currentGame, amuletGame, distance);
+        const newPathData = findPathsUpToDistance(currentGame, amuletGame, distance);
+        setTimeout(() => {
+          const { gameToLayer } = reorganizeMapLayers(newPathData);
+          drawMapArrows(newPathData, currentGame, amuletGame, gameToLayer);
+        }, 100);
+      }
+
+      // Update button styles
+      const shortestBtn = document.getElementById('shortest-btn');
+      const morePathsBtn = document.getElementById('more-paths-btn');
+      if (shortestBtn && morePathsBtn) {
+        if (distance === shortestDist) {
+          shortestBtn.style.background = '#4CAF50';
+          shortestBtn.style.border = '2px solid #45a049';
+          morePathsBtn.style.background = '#3a3a3a';
+          morePathsBtn.style.border = '2px solid #cc6600';
         } else {
-          console.error('Map container not found!');
+          shortestBtn.style.background = '#3a3a3a';
+          shortestBtn.style.border = '2px solid #cc6600';
+          morePathsBtn.style.background = '#4CAF50';
+          morePathsBtn.style.border = '2px solid #45a049';
         }
+      }
+    }
+
+    // Add event listeners to buttons
+    const shortestBtn = document.getElementById('shortest-btn');
+    const morePathsBtn = document.getElementById('more-paths-btn');
+
+    if (shortestBtn) {
+      shortestBtn.addEventListener('click', () => {
+        updateMapView(shortestDist);
+      });
+    }
+
+    if (morePathsBtn) {
+      morePathsBtn.addEventListener('click', () => {
+        updateMapView(shortestDist + 1);
       });
     }
   }
