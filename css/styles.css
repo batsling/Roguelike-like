@@ -652,12 +652,25 @@ text, path, line, g {
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 6px 14px rgba(0,0,0,.4);
-  z-index: 10;
+  z-index: 10 !important;
+}
+
+.finish:disabled {
+  z-index: 10 !important;
 }
 
 .finish:hover {
   background: #ff8800;
   box-shadow: 0 6px 20px rgba(255, 136, 0, 0.5);
+}
+
+.ability-skip-btn {
+  z-index: 10 !important;
+}
+
+.node-dash-btn,
+.node-reroll-btn {
+  z-index: 10 !important;
 }
 
 #game-tooltip, #item-tooltip {

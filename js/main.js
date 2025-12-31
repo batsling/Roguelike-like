@@ -988,6 +988,7 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
 
   // Get all game boxes
   const gameBoxes = document.querySelectorAll('[data-game]');
+  console.log('Found game boxes:', gameBoxes.length);
   const boxPositions = new Map();
 
   gameBoxes.forEach(box => {
@@ -1001,16 +1002,23 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
       bottom: rect.bottom - svgRect.top,
       top: rect.top - svgRect.top
     });
+    console.log(`  Box "${gameName}": (${rect.left - svgRect.left + rect.width / 2}, ${rect.top - svgRect.top})`);
   });
+
+  console.log('Total box positions mapped:', boxPositions.size);
 
   // Draw arrows between connected games
   const layers = Array.from(pathData.layers.keys()).sort((a, b) => a - b);
+  console.log('Number of layers:', layers.length);
+
+  let arrowsDrawn = 0;
 
   layers.forEach((distance, layerIndex) => {
     if (layerIndex === layers.length - 1) return; // Skip last layer (no arrows from it)
 
     const gamesAtLayer = pathData.layers.get(distance);
     const nextLayer = pathData.layers.get(layers[layerIndex + 1]);
+    console.log(`Layer ${layerIndex} (distance ${distance}): ${gamesAtLayer.length} games`);
 
     gamesAtLayer.forEach(fromGameData => {
       // Handle both old format (string) and new format (object with name/isOnShortestPath)
@@ -1018,10 +1026,14 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
       const fromIsOnShortestPath = fromGameData.isOnShortestPath !== undefined ? fromGameData.isOnShortestPath : true;
 
       const fromPos = boxPositions.get(fromGame);
-      if (!fromPos) return;
+      if (!fromPos) {
+        console.log(`  ❌ No position for "${fromGame}"`);
+        return;
+      }
 
       // Find all games in next layer that this game connects to
       const connections = getGameConnections(fromGame);
+      console.log(`  "${fromGame}" connections:`, connections);
 
       connections.forEach(toGame => {
         // Check if toGame exists in next layer
@@ -1029,7 +1041,10 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
 
         if (toGameExists) {
           const toPos = boxPositions.get(toGame);
-          if (!toPos) return;
+          if (!toPos) {
+            console.log(`    ❌ No position for target "${toGame}"`);
+            return;
+          }
 
           // Check if this connection is on the shortest path
           const toGameData = nextLayer.find(g => (g.name || g) === toGame);
@@ -1047,10 +1062,14 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
           line.setAttribute('opacity', isShortestPathArrow ? '0.8' : '0.4');
           line.setAttribute('marker-end', 'url(#map-arrowhead)');
           svg.appendChild(line);
+          arrowsDrawn++;
+          console.log(`    ✅ Drew arrow: "${fromGame}" → "${toGame}" (${isShortestPathArrow ? 'GREEN' : 'GRAY'})`);
         }
       });
     });
   });
+
+  console.log(`✅ Total arrows drawn: ${arrowsDrawn}`);
 }
 
 // Map tooltip functions
