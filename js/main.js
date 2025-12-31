@@ -918,17 +918,15 @@ function showMapModal() {
     mapHTML += '<div id="map-view-container">';
     mapHTML += generateMapView(currentGame, amuletGame, shortestDist);
     mapHTML += '</div>';
-  }
 
-  mapHTML += '<button onclick="closeGameModal()" style="margin-top: 20px; padding: 10px 30px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>';
-  mapHTML += '</div>';
+    mapHTML += '<button onclick="closeGameModal()" style="margin-top: 20px; padding: 10px 30px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>';
+    mapHTML += '</div>';
 
-  createGameModal(mapHTML);
+    createGameModal(mapHTML);
 
-  // Draw arrows after modal is rendered (starting with shortest distance)
-  if (shortestPathData) {
+    // Draw arrows after modal is rendered (starting with shortest distance)
     const initialPathData = findPathsUpToDistance(currentGame, amuletGame, shortestDist);
-    setTimeout(() => drawMapArrows(initialPathData, currentGame, amuletGame), 50);
+    setTimeout(() => drawMapArrows(initialPathData, currentGame, amuletGame), 100);
 
     // Add event listener to distance selector
     const selector = document.getElementById('distance-selector');
