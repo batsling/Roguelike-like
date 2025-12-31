@@ -827,6 +827,79 @@ function reorganizeMapLayers(pathData) {
   return { reorganizedLayers, gameToLayer };
 }
 
+// Apply horizontal offsets to games to avoid arrow-box collisions
+function applyHorizontalOffsets(reorganizedLayers, gameToLayer, pathData) {
+  const gameOffsets = new Map(); // Track horizontal offsets for each game
+
+  // Get all layers sorted
+  const layerKeys = Array.from(reorganizedLayers.keys()).sort((a, b) => a - b);
+
+  // For each layer, check if arrows from previous layers would cross through games
+  for (let i = 0; i < layerKeys.length; i++) {
+    const currentLayer = layerKeys[i];
+    const gamesAtCurrentLayer = reorganizedLayers.get(currentLayer);
+
+    // Check all layers before this one for crossing arrows
+    for (let j = 0; j < i; j++) {
+      const sourceLayer = layerKeys[j];
+      const gamesAtSourceLayer = reorganizedLayers.get(sourceLayer);
+
+      gamesAtSourceLayer.forEach(sourceGameData => {
+        const sourceGame = sourceGameData.name || sourceGameData;
+        const connections = getGameConnections(sourceGame);
+
+        connections.forEach(targetGame => {
+          const targetLayer = gameToLayer.get(targetGame);
+
+          // If arrow skips over current layer (sourceLayer < currentLayer < targetLayer)
+          if (targetLayer > currentLayer && sourceLayer < currentLayer) {
+            // This arrow crosses through the current layer
+            // Apply offsets to games in current layer to spread them out
+            gamesAtCurrentLayer.forEach((gameData, index) => {
+              const gameName = gameData.name || gameData;
+              if (!gameOffsets.has(gameName)) {
+                // Alternate offsets: left, right, left, right
+                const offset = index % 2 === 0 ? -100 * Math.floor(index / 2) : 100 * Math.ceil(index / 2);
+                gameOffsets.set(gameName, offset);
+              }
+            });
+          }
+        });
+      });
+    }
+  }
+
+  return gameOffsets;
+}
+
+// Ensure amulet game is at the deepest layer
+function pushAmuletToBottom(reorganizedLayers, gameToLayer, amuletGame) {
+  const amuletLayer = gameToLayer.get(amuletGame);
+  if (amuletLayer !== undefined) {
+    const maxLayer = Math.max(...Array.from(gameToLayer.values()));
+
+    // If amulet is not already at the deepest layer, move it there
+    if (amuletLayer < maxLayer) {
+      const currentLayerGames = reorganizedLayers.get(amuletLayer);
+      const amuletData = currentLayerGames.find(g => (g.name || g) === amuletGame);
+
+      if (amuletData) {
+        // Remove from current layer
+        const index = currentLayerGames.indexOf(amuletData);
+        currentLayerGames.splice(index, 1);
+
+        // Add to deepest layer
+        const newLayer = maxLayer + 1;
+        if (!reorganizedLayers.has(newLayer)) {
+          reorganizedLayers.set(newLayer, []);
+        }
+        reorganizedLayers.get(newLayer).push(amuletData);
+        gameToLayer.set(amuletGame, newLayer);
+      }
+    }
+  }
+}
+
 // Generate map visualization HTML for given distance
 function generateMapView(currentGame, amuletGame, maxDistance) {
   const pathData = findPathsUpToDistance(currentGame, amuletGame, maxDistance);
@@ -884,6 +957,12 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
   // Reorganize layers to avoid arrow crossings
   const { reorganizedLayers, gameToLayer } = reorganizeMapLayers(pathData);
 
+  // Ensure amulet game is at the bottom
+  pushAmuletToBottom(reorganizedLayers, gameToLayer, amuletGame);
+
+  // Apply horizontal offsets to avoid arrow-box collisions
+  const gameOffsets = applyHorizontalOffsets(reorganizedLayers, gameToLayer, pathData);
+
   // Iterate through reorganized layers
   const layers = Array.from(reorganizedLayers.keys()).sort((a, b) => a - b).filter(layer => reorganizedLayers.get(layer).length > 0);
 
@@ -923,6 +1002,9 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
         borderColor = '#444';
       }
 
+      // Get horizontal offset for this game (if any)
+      const horizontalOffset = gameOffsets.get(gameName) || 0;
+
       html += `
         <div class="map-game-box-${gameName.replace(/\s+/g, '-')}" data-game="${gameName}"
              onmouseenter="showMapTooltip(event, '${gameName.replace(/'/g, "\\'")}')"
@@ -945,6 +1027,7 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
           box-shadow: 0 4px 8px rgba(0,0,0,0.4);
           cursor: pointer;
           opacity: ${!isOnShortestPath && !isCurrentGame && !isAmuletGame ? '0.5' : '1'};
+          transform: translateX(${horizontalOffset}px);
         ">
           ${isCurrentGame ? '📍 ' : ''}${gameName}${isAmuletGame ? ' 🏆' : ''}${isOnShortestPath && !isCurrentGame && !isAmuletGame ? ' ⭐' : ''}
         </div>
