@@ -975,10 +975,14 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
   }
 
   // Build the layered path visualization
-  const boxWidth = 180;
-  const boxHeight = 50;
-  const horizontalGap = 40;
-  const verticalGap = 80;
+  // Shrink boxes significantly and adjust spacing based on view type
+  const shortestDistance = pathData.shortestDistance;
+  const isMorePathsView = maxDistance > shortestDistance;
+
+  const boxWidth = 120;  // Reduced from 180
+  const boxHeight = 35;  // Reduced from 50
+  const horizontalGap = 30;  // Reduced from 40
+  const verticalGap = isMorePathsView ? 120 : 80;  // More vertical space for complex view
 
   let currentY = pastGames.length > 0 ? 50 : 20;
 
@@ -1041,8 +1045,8 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
              style="
           background: ${boxColor};
           border: 2px solid ${borderColor};
-          border-radius: 8px;
-          padding: 12px 16px;
+          border-radius: 6px;
+          padding: 6px 10px;
           width: ${boxWidth}px;
           min-height: ${boxHeight}px;
           display: flex;
@@ -1050,9 +1054,9 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
           justify-content: center;
           text-align: center;
           font-weight: bold;
-          font-size: 13px;
+          font-size: 11px;
           color: ${isCurrentGame ? 'white' : (isPastGame || !isOnShortestPath ? '#888' : '#e6d5b8')};
-          box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+          box-shadow: 0 3px 6px rgba(0,0,0,0.3);
           cursor: pointer;
           opacity: ${!isOnShortestPath && !isCurrentGame && !isAmuletGame ? '0.5' : '1'};
           transform: translateX(${horizontalOffset}px);
@@ -1119,7 +1123,7 @@ function showMapModal() {
     mapHTML += '<span style="color: #e6d5b8; font-weight: bold;">View:</span>';
     mapHTML += `<button id="shortest-btn" style="padding: 8px 20px; background: #4CAF50; color: white; border: 2px solid #45a049; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;">Shortest Path</button>`;
     mapHTML += `<button id="more-paths-btn" style="padding: 8px 20px; background: #3a3a3a; color: #e6d5b8; border: 2px solid #cc6600; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;">More Paths</button>`;
-    mapHTML += `<span style="color: #888; font-size: 12px;">Shortest: ${shortestDist} steps</span>`;
+    mapHTML += `<span id="path-info-label" style="color: #888; font-size: 12px;">Shortest: ${shortestDist} steps</span>`;
     mapHTML += '</div>';
 
     // Start with shortest distance view
@@ -1155,20 +1159,28 @@ function showMapModal() {
         }, 100);
       }
 
-      // Update button styles
+      // Update button styles and label
       const shortestBtn = document.getElementById('shortest-btn');
       const morePathsBtn = document.getElementById('more-paths-btn');
+      const pathInfoLabel = document.getElementById('path-info-label');
+
       if (shortestBtn && morePathsBtn) {
         if (distance === shortestDist) {
           shortestBtn.style.background = '#4CAF50';
           shortestBtn.style.border = '2px solid #45a049';
           morePathsBtn.style.background = '#3a3a3a';
           morePathsBtn.style.border = '2px solid #cc6600';
+          if (pathInfoLabel) {
+            pathInfoLabel.textContent = `Shortest: ${shortestDist} steps`;
+          }
         } else {
           shortestBtn.style.background = '#3a3a3a';
           shortestBtn.style.border = '2px solid #cc6600';
           morePathsBtn.style.background = '#4CAF50';
           morePathsBtn.style.border = '2px solid #45a049';
+          if (pathInfoLabel) {
+            pathInfoLabel.textContent = `More Paths: ${distance} steps`;
+          }
         }
       }
     }
@@ -1207,8 +1219,10 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
   svg.setAttribute('width', parentRect.width);
   svg.setAttribute('height', Math.max(parentRect.height, 2000)); // Ensure enough height
 
-  // Create arrowhead marker
+  // Create arrowhead markers
   const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+
+  // Standard arrowhead for regular arrows
   const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
   marker.setAttribute('id', 'map-arrowhead');
   marker.setAttribute('markerWidth', '10');
@@ -1217,12 +1231,27 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
   marker.setAttribute('refY', '5');
   marker.setAttribute('orient', 'auto');
   marker.setAttribute('markerUnits', 'userSpaceOnUse');
-
   const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   polygon.setAttribute('points', '0,0 10,5 0,10');
   polygon.setAttribute('fill', '#4CAF50');
   marker.appendChild(polygon);
   defs.appendChild(marker);
+
+  // Gray arrowhead for non-shortest path arrows
+  const markerGray = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+  markerGray.setAttribute('id', 'map-arrowhead-gray');
+  markerGray.setAttribute('markerWidth', '10');
+  markerGray.setAttribute('markerHeight', '10');
+  markerGray.setAttribute('refX', '9');
+  markerGray.setAttribute('refY', '5');
+  markerGray.setAttribute('orient', 'auto');
+  markerGray.setAttribute('markerUnits', 'userSpaceOnUse');
+  const polygonGray = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  polygonGray.setAttribute('points', '0,0 10,5 0,10');
+  polygonGray.setAttribute('fill', '#888');
+  markerGray.appendChild(polygonGray);
+  defs.appendChild(markerGray);
+
   svg.appendChild(defs);
 
   console.log('Drawing map arrows, pathData:', pathData);
@@ -1287,7 +1316,88 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
 
   // Track drawn arrows to avoid duplicates
   const drawnArrows = new Set();
+  const bidirectionalPairs = new Set(); // Track bidirectional same-layer connections
 
+  // First pass: identify bidirectional same-layer connections
+  layers.forEach(distance => {
+    const gamesAtLayer = pathData.layers.get(distance);
+
+    gamesAtLayer.forEach(gameData1 => {
+      const game1 = gameData1.name || gameData1;
+      const connections1 = getGameConnections(game1);
+
+      gamesAtLayer.forEach(gameData2 => {
+        const game2 = gameData2.name || gameData2;
+        if (game1 === game2) return;
+
+        const connections2 = getGameConnections(game2);
+
+        // Check if game1 -> game2 AND game2 -> game1
+        if (connections1.includes(game2) && connections2.includes(game1)) {
+          // Create a canonical key (sorted alphabetically)
+          const pairKey = [game1, game2].sort().join('<->');
+          bidirectionalPairs.add(pairKey);
+        }
+      });
+    });
+  });
+
+  // Second pass: draw horizontal double-headed arrows for bidirectional same-layer connections
+  bidirectionalPairs.forEach(pairKey => {
+    const [game1, game2] = pairKey.split('<->');
+    const pos1 = boxPositions.get(game1);
+    const pos2 = boxPositions.get(game2);
+
+    if (pos1 && pos2) {
+      const game1Data = allGamesInMap.get(game1);
+      const game2Data = allGamesInMap.get(game2);
+      const isOnShortestPath = (game1Data?.isOnShortestPath ?? true) && (game2Data?.isOnShortestPath ?? true);
+
+      // Determine which side is closer (left edge of right box to right edge of left box)
+      const leftGame = pos1.x < pos2.x ? game1 : game2;
+      const rightGame = pos1.x < pos2.x ? game2 : game1;
+      const leftPos = pos1.x < pos2.x ? pos1 : pos2;
+      const rightPos = pos1.x < pos2.x ? pos2 : pos1;
+
+      // Get the box elements to find actual edges
+      const leftBox = document.querySelector(`[data-game="${leftGame}"]`);
+      const rightBox = document.querySelector(`[data-game="${rightGame}"]`);
+
+      if (leftBox && rightBox) {
+        const svgRect = svg.getBoundingClientRect();
+        const leftBoxRect = leftBox.getBoundingClientRect();
+        const rightBoxRect = rightBox.getBoundingClientRect();
+
+        // Right edge of left box
+        const x1 = leftBoxRect.right - svgRect.left;
+        const y1 = leftPos.y;
+
+        // Left edge of right box
+        const x2 = rightBoxRect.left - svgRect.left;
+        const y2 = rightPos.y;
+
+        // Draw horizontal line with arrows on both ends
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x1);
+        line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2);
+        line.setAttribute('y2', y2);
+        line.setAttribute('stroke', isOnShortestPath ? '#4CAF50' : '#888');
+        line.setAttribute('stroke-width', isOnShortestPath ? '3' : '2');
+        line.setAttribute('opacity', isOnShortestPath ? '0.8' : '0.4');
+        line.setAttribute('marker-start', isOnShortestPath ? 'url(#map-arrowhead)' : 'url(#map-arrowhead-gray)');
+        line.setAttribute('marker-end', isOnShortestPath ? 'url(#map-arrowhead)' : 'url(#map-arrowhead-gray)');
+        svg.appendChild(line);
+        arrowsDrawn++;
+
+        // Mark both directions as drawn
+        drawnArrows.add(`${game1}->${game2}`);
+        drawnArrows.add(`${game2}->${game1}`);
+      }
+    }
+  });
+
+  // Third pass: draw vertical arrows for cross-layer connections
   layers.forEach((distance, layerIndex) => {
     const gamesAtLayer = pathData.layers.get(distance);
     console.log(`Layer ${layerIndex} (distance ${distance}): ${gamesAtLayer.length} games`);
@@ -1317,7 +1427,6 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
 
           // Only draw arrows that represent forward progress toward the goal
           // Target must be further from start than source (prevents backtracking)
-          // This allows connections across layers when needed for valid paths
           if (toDistance <= fromDistance) {
             return; // Skip backwards or same-level connections
           }
@@ -1348,7 +1457,7 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
           line.setAttribute('stroke', isShortestPathArrow ? '#4CAF50' : '#888');
           line.setAttribute('stroke-width', isShortestPathArrow ? '3' : '2');
           line.setAttribute('opacity', isShortestPathArrow ? '0.8' : '0.4');
-          line.setAttribute('marker-end', 'url(#map-arrowhead)');
+          line.setAttribute('marker-end', isShortestPathArrow ? 'url(#map-arrowhead)' : 'url(#map-arrowhead-gray)');
           svg.appendChild(line);
           arrowsDrawn++;
           console.log(`    ✅ Drew arrow: "${fromGame}" (dist ${fromDistance}) → "${toGame}" (dist ${toDistance}) (${isShortestPathArrow ? 'GREEN' : 'GRAY'})`);
