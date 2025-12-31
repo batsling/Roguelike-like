@@ -1011,11 +1011,18 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
 
   let arrowsDrawn = 0;
 
-  layers.forEach((distance, layerIndex) => {
-    if (layerIndex === layers.length - 1) return; // Skip last layer (no arrows from it)
-
+  // Build a flat map of all games in all layers for quick lookup
+  const allGamesInMap = new Map();
+  layers.forEach(distance => {
     const gamesAtLayer = pathData.layers.get(distance);
-    const nextLayer = pathData.layers.get(layers[layerIndex + 1]);
+    gamesAtLayer.forEach(gameData => {
+      const gameName = gameData.name || gameData;
+      allGamesInMap.set(gameName, gameData);
+    });
+  });
+
+  layers.forEach((distance, layerIndex) => {
+    const gamesAtLayer = pathData.layers.get(distance);
     console.log(`Layer ${layerIndex} (distance ${distance}): ${gamesAtLayer.length} games`);
 
     gamesAtLayer.forEach(fromGameData => {
@@ -1029,15 +1036,15 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
         return;
       }
 
-      // Find all games in next layer that this game connects to
+      // Find all games that this game connects to
       const connections = getGameConnections(fromGame);
       console.log(`  "${fromGame}" connections:`, connections);
 
       connections.forEach(toGame => {
-        // Check if toGame exists in next layer
-        const toGameExists = nextLayer.some(g => (g.name || g) === toGame);
+        // Check if toGame exists in ANY layer on the map (not just the next layer)
+        const toGameData = allGamesInMap.get(toGame);
 
-        if (toGameExists) {
+        if (toGameData) {
           const toPos = boxPositions.get(toGame);
           if (!toPos) {
             console.log(`    ❌ No position for target "${toGame}"`);
@@ -1045,8 +1052,7 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
           }
 
           // Check if this connection is on the shortest path
-          const toGameData = nextLayer.find(g => (g.name || g) === toGame);
-          const toIsOnShortestPath = toGameData && toGameData.isOnShortestPath !== undefined ? toGameData.isOnShortestPath : true;
+          const toIsOnShortestPath = toGameData.isOnShortestPath !== undefined ? toGameData.isOnShortestPath : true;
           const isShortestPathArrow = fromIsOnShortestPath && toIsOnShortestPath;
 
           // Draw arrow (highlight shortest path arrows)
