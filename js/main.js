@@ -1397,13 +1397,14 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
     }
   });
 
-  // Third pass: draw vertical arrows for cross-layer connections
+  // Third pass: collect all vertical arrows for cross-layer connections
+  const arrowsToDrawData = [];
+
   layers.forEach((distance, layerIndex) => {
     const gamesAtLayer = pathData.layers.get(distance);
     console.log(`Layer ${layerIndex} (distance ${distance}): ${gamesAtLayer.length} games`);
 
     gamesAtLayer.forEach(fromGameData => {
-      // Handle both old format (string) and new format (object with name/isOnShortestPath)
       const fromGame = fromGameData.name || fromGameData;
       const fromIsOnShortestPath = fromGameData.isOnShortestPath !== undefined ? fromGameData.isOnShortestPath : true;
       const fromDistance = distance;
@@ -1414,24 +1415,19 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
         return;
       }
 
-      // Find all games that this game connects to
       const connections = getGameConnections(fromGame);
       console.log(`  "${fromGame}" connections:`, connections);
 
       connections.forEach(toGame => {
-        // Check if toGame exists in ANY layer on the map
         const toGameData = allGamesInMap.get(toGame);
 
         if (toGameData) {
           const toDistance = gameDistances.get(toGame);
 
-          // Only draw arrows that represent forward progress toward the goal
-          // Target must be further from start than source (prevents backtracking)
           if (toDistance <= fromDistance) {
             return; // Skip backwards or same-level connections
           }
 
-          // Create unique key for this arrow
           const arrowKey = `${fromGame}->${toGame}`;
           if (drawnArrows.has(arrowKey)) {
             return; // Already drawn this arrow
@@ -1444,26 +1440,109 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
             return;
           }
 
-          // Check if this connection is on the shortest path
           const toIsOnShortestPath = toGameData.isOnShortestPath !== undefined ? toGameData.isOnShortestPath : true;
           const isShortestPathArrow = fromIsOnShortestPath && toIsOnShortestPath;
 
-          // Draw arrow from BOTTOM of source to TOP of target (always downward)
-          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          line.setAttribute('x1', fromPos.x);
-          line.setAttribute('y1', fromPos.bottom);
-          line.setAttribute('x2', toPos.x);
-          line.setAttribute('y2', toPos.top);
-          line.setAttribute('stroke', isShortestPathArrow ? '#4CAF50' : '#888');
-          line.setAttribute('stroke-width', isShortestPathArrow ? '3' : '2');
-          line.setAttribute('opacity', isShortestPathArrow ? '0.8' : '0.4');
-          line.setAttribute('marker-end', isShortestPathArrow ? 'url(#map-arrowhead)' : 'url(#map-arrowhead-gray)');
-          svg.appendChild(line);
-          arrowsDrawn++;
-          console.log(`    ✅ Drew arrow: "${fromGame}" (dist ${fromDistance}) → "${toGame}" (dist ${toDistance}) (${isShortestPathArrow ? 'GREEN' : 'GRAY'})`);
+          // Store arrow data for later drawing with collision avoidance
+          arrowsToDrawData.push({
+            fromGame,
+            toGame,
+            fromPos,
+            toPos,
+            fromDistance,
+            toDistance,
+            isShortestPathArrow
+          });
         }
       });
     });
+  });
+
+  // Detect arrow collisions and apply horizontal curve offsets
+  const arrowOffsets = new Map(); // Track horizontal offset for each arrow
+
+  arrowsToDrawData.forEach((arrow, index) => {
+    let offset = 0;
+    const arrowKey = `${arrow.fromGame}->${arrow.toGame}`;
+
+    // Check against all other arrows for potential overlap
+    arrowsToDrawData.forEach((otherArrow, otherIndex) => {
+      if (index === otherIndex) return;
+
+      const otherKey = `${otherArrow.fromGame}->${otherArrow.toGame}`;
+
+      // Check if arrows would cross (different start/end but similar x-ranges)
+      const arrow1Left = Math.min(arrow.fromPos.x, arrow.toPos.x);
+      const arrow1Right = Math.max(arrow.fromPos.x, arrow.toPos.x);
+      const arrow2Left = Math.min(otherArrow.fromPos.x, otherArrow.toPos.x);
+      const arrow2Right = Math.max(otherArrow.fromPos.x, otherArrow.toPos.x);
+
+      // Check if x-ranges overlap
+      const xOverlap = arrow1Left < arrow2Right && arrow2Left < arrow1Right;
+
+      // Check if arrows span overlapping y-ranges
+      const arrow1Top = Math.min(arrow.fromPos.bottom, arrow.toPos.top);
+      const arrow1Bottom = Math.max(arrow.fromPos.bottom, arrow.toPos.top);
+      const arrow2Top = Math.min(otherArrow.fromPos.bottom, otherArrow.toPos.top);
+      const arrow2Bottom = Math.max(otherArrow.fromPos.bottom, otherArrow.toPos.top);
+      const yOverlap = arrow1Top < arrow2Bottom && arrow2Top < arrow1Bottom;
+
+      if (xOverlap && yOverlap) {
+        // Arrows would overlap, apply offset
+        // Offset based on index to ensure consistency
+        const offsetDirection = index % 2 === 0 ? 1 : -1;
+        const offsetAmount = Math.floor(index / 2) * 40;
+        offset = offsetDirection * offsetAmount;
+      }
+    });
+
+    arrowOffsets.set(arrowKey, offset);
+  });
+
+  // Draw all arrows with curve offsets to avoid overlaps
+  arrowsToDrawData.forEach(arrow => {
+    const arrowKey = `${arrow.fromGame}->${arrow.toGame}`;
+    const offset = arrowOffsets.get(arrowKey) || 0;
+
+    const x1 = arrow.fromPos.x;
+    const y1 = arrow.fromPos.bottom;
+    const x2 = arrow.toPos.x;
+    const y2 = arrow.toPos.top;
+
+    // Calculate control points for bezier curve
+    const midY = (y1 + y2) / 2;
+
+    // If there's an offset or the arrow is long, use a curved path
+    if (Math.abs(offset) > 0 || Math.abs(y2 - y1) > 150) {
+      // Create a curved path using quadratic bezier
+      const controlX = (x1 + x2) / 2 + offset;
+      const controlY = midY;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const pathData = `M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`;
+      path.setAttribute('d', pathData);
+      path.setAttribute('stroke', arrow.isShortestPathArrow ? '#4CAF50' : '#888');
+      path.setAttribute('stroke-width', arrow.isShortestPathArrow ? '3' : '2');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('opacity', arrow.isShortestPathArrow ? '0.8' : '0.4');
+      path.setAttribute('marker-end', arrow.isShortestPathArrow ? 'url(#map-arrowhead)' : 'url(#map-arrowhead-gray)');
+      svg.appendChild(path);
+    } else {
+      // Use straight line for simple short connections
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', x1);
+      line.setAttribute('y1', y1);
+      line.setAttribute('x2', x2);
+      line.setAttribute('y2', y2);
+      line.setAttribute('stroke', arrow.isShortestPathArrow ? '#4CAF50' : '#888');
+      line.setAttribute('stroke-width', arrow.isShortestPathArrow ? '3' : '2');
+      line.setAttribute('opacity', arrow.isShortestPathArrow ? '0.8' : '0.4');
+      line.setAttribute('marker-end', arrow.isShortestPathArrow ? 'url(#map-arrowhead)' : 'url(#map-arrowhead-gray)');
+      svg.appendChild(line);
+    }
+
+    arrowsDrawn++;
+    console.log(`    ✅ Drew arrow: "${arrow.fromGame}" (dist ${arrow.fromDistance}) → "${arrow.toGame}" (dist ${arrow.toDistance}) (${arrow.isShortestPathArrow ? 'GREEN' : 'GRAY'})`);
   });
 
   console.log(`✅ Total arrows drawn: ${arrowsDrawn}`);
