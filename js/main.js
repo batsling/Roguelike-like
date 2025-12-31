@@ -724,6 +724,87 @@ function createGameModal(content) {
   return modal;
 }
 
+// Reorganize layers to avoid arrow crossings
+// Returns { reorganizedLayers: Map, gameToLayer: Map }
+function reorganizeMapLayers(pathData) {
+  const reorganizedLayers = new Map();
+  const gameToLayer = new Map();
+
+  // First, copy all games to their initial layers
+  const originalLayers = Array.from(pathData.layers.keys()).sort((a, b) => a - b);
+  originalLayers.forEach(distance => {
+    const gamesAtLayer = pathData.layers.get(distance);
+    reorganizedLayers.set(distance, [...gamesAtLayer]);
+    gamesAtLayer.forEach(gameData => {
+      const gameName = gameData.name || gameData;
+      gameToLayer.set(gameName, distance);
+    });
+  });
+
+  // Now reorganize: push down games that have multiple incoming connections from the same layer
+  let changed = true;
+  let maxIterations = 10;
+  while (changed && maxIterations > 0) {
+    changed = false;
+    maxIterations--;
+
+    const layerKeys = Array.from(reorganizedLayers.keys()).sort((a, b) => a - b);
+
+    for (let i = 0; i < layerKeys.length - 1; i++) {
+      const currentLayer = layerKeys[i];
+      const gamesAtCurrentLayer = reorganizedLayers.get(currentLayer);
+
+      // Count incoming connections to each game from this layer
+      const incomingConnectionsCount = new Map();
+
+      gamesAtCurrentLayer.forEach(gameData => {
+        const gameName = gameData.name || gameData;
+        const connections = getGameConnections(gameName);
+
+        connections.forEach(targetGame => {
+          const targetLayer = gameToLayer.get(targetGame);
+          // Only count connections to games in layers below this one
+          if (targetLayer !== undefined && targetLayer > currentLayer) {
+            const count = incomingConnectionsCount.get(targetGame) || 0;
+            incomingConnectionsCount.set(targetGame, count + 1);
+          }
+        });
+      });
+
+      // Push down games with multiple incoming connections from this layer
+      incomingConnectionsCount.forEach((count, targetGame) => {
+        if (count > 1) {
+          const currentTargetLayer = gameToLayer.get(targetGame);
+          const nextLayer = currentTargetLayer + 1;
+
+          // Only push down if there's room (not past the max distance)
+          if (nextLayer <= originalLayers[originalLayers.length - 1]) {
+            // Remove from current layer
+            const currentLayerGames = reorganizedLayers.get(currentTargetLayer);
+            const gameData = currentLayerGames.find(g => (g.name || g) === targetGame);
+            if (gameData) {
+              const index = currentLayerGames.indexOf(gameData);
+              currentLayerGames.splice(index, 1);
+
+              // Add to next layer
+              if (!reorganizedLayers.has(nextLayer)) {
+                reorganizedLayers.set(nextLayer, []);
+              }
+              reorganizedLayers.get(nextLayer).push(gameData);
+
+              // Update tracking
+              gameToLayer.set(targetGame, nextLayer);
+              changed = true;
+            }
+          }
+        }
+      });
+    }
+  }
+
+  return { reorganizedLayers, gameToLayer };
+}
+
 // Generate map visualization HTML for given distance
 function generateMapView(currentGame, amuletGame, maxDistance) {
   const pathData = findPathsUpToDistance(currentGame, amuletGame, maxDistance);
@@ -778,11 +859,14 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
 
   let currentY = pastGames.length > 0 ? 50 : 20;
 
-  // Iterate through each layer (distance from start)
-  const layers = Array.from(pathData.layers.keys()).sort((a, b) => a - b);
+  // Reorganize layers to avoid arrow crossings
+  const { reorganizedLayers, gameToLayer } = reorganizeMapLayers(pathData);
+
+  // Iterate through reorganized layers
+  const layers = Array.from(reorganizedLayers.keys()).sort((a, b) => a - b).filter(layer => reorganizedLayers.get(layer).length > 0);
 
   layers.forEach((distance, layerIndex) => {
-    const gamesAtLayer = pathData.layers.get(distance);
+    const gamesAtLayer = reorganizedLayers.get(distance);
     const numGames = gamesAtLayer.length;
 
     // Calculate total width needed for this layer
@@ -926,7 +1010,10 @@ function showMapModal() {
 
     // Draw arrows after modal is rendered (starting with shortest distance)
     const initialPathData = findPathsUpToDistance(currentGame, amuletGame, shortestDist);
-    setTimeout(() => drawMapArrows(initialPathData, currentGame, amuletGame), 100);
+    setTimeout(() => {
+      const { gameToLayer } = reorganizeMapLayers(initialPathData);
+      drawMapArrows(initialPathData, currentGame, amuletGame, gameToLayer);
+    }, 100);
 
     // Add event listener to distance selector
     const selector = document.getElementById('distance-selector');
@@ -943,7 +1030,8 @@ function showMapModal() {
           const newPathData = findPathsUpToDistance(currentGame, amuletGame, selectedDistance);
           setTimeout(() => {
             console.log('Attempting to draw arrows for distance:', selectedDistance);
-            drawMapArrows(newPathData, currentGame, amuletGame);
+            const { gameToLayer } = reorganizeMapLayers(newPathData);
+            drawMapArrows(newPathData, currentGame, amuletGame, gameToLayer);
           }, 100);
         } else {
           console.error('Map container not found!');
@@ -954,7 +1042,7 @@ function showMapModal() {
 }
 
 // Draw arrows between games on the map
-function drawMapArrows(pathData, currentGame, amuletGame) {
+function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
   const svg = document.getElementById('map-arrows');
   if (!svg) {
     console.error('SVG element not found!');
@@ -1020,14 +1108,32 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
   // Build a flat map of all games in all layers for quick lookup
   const allGamesInMap = new Map();
   const gameDistances = new Map(); // Track which distance each game is at
-  layers.forEach(distance => {
-    const gamesAtLayer = pathData.layers.get(distance);
-    gamesAtLayer.forEach(gameData => {
-      const gameName = gameData.name || gameData;
-      allGamesInMap.set(gameName, gameData);
+
+  // If reorganized layer data is provided, use it; otherwise use original pathData
+  if (gameToLayer) {
+    // Use the reorganized layer positions
+    gameToLayer.forEach((distance, gameName) => {
       gameDistances.set(gameName, distance);
     });
-  });
+    // Still need to populate allGamesInMap from pathData
+    layers.forEach(distance => {
+      const gamesAtLayer = pathData.layers.get(distance);
+      gamesAtLayer.forEach(gameData => {
+        const gameName = gameData.name || gameData;
+        allGamesInMap.set(gameName, gameData);
+      });
+    });
+  } else {
+    // Use original pathData
+    layers.forEach(distance => {
+      const gamesAtLayer = pathData.layers.get(distance);
+      gamesAtLayer.forEach(gameData => {
+        const gameName = gameData.name || gameData;
+        allGamesInMap.set(gameName, gameData);
+        gameDistances.set(gameName, distance);
+      });
+    });
+  }
 
   // Track drawn arrows to avoid duplicates
   const drawnArrows = new Set();
