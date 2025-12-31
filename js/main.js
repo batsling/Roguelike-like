@@ -732,7 +732,7 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
   const visitedGames = gameState.visitedGames || [];
   const pastGames = visitedGames.filter(g => g !== currentGame);
 
-  let html = '<div id="map-view-container">';
+  let html = '';
 
   // Create container with relative positioning for SVG overlay
   html += '<div style="position: relative; padding: 20px; width: 100%; min-height: 400px; overflow: auto;">';
@@ -858,8 +858,6 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
 
   html += `<p style="margin-top: 20px; color: #888; font-size: 14px;">Viewing paths up to ${maxDistance} step${maxDistance !== 1 ? 's' : ''} | Shortest: ${pathData.shortestDistance} step${pathData.shortestDistance !== 1 ? 's' : ''}</p>`;
 
-  html += '</div>'; // Close map-view-container
-
   return html;
 }
 
@@ -917,7 +915,9 @@ function showMapModal() {
     mapHTML += '</div>';
 
     // Start with shortest distance view
+    mapHTML += '<div id="map-view-container">';
     mapHTML += generateMapView(currentGame, amuletGame, shortestDist);
+    mapHTML += '</div>';
   }
 
   mapHTML += '<button onclick="closeGameModal()" style="margin-top: 20px; padding: 10px 30px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>';
@@ -935,13 +935,20 @@ function showMapModal() {
     if (selector) {
       selector.addEventListener('change', (e) => {
         const selectedDistance = parseInt(e.target.value);
+        console.log('Distance selector changed to:', selectedDistance);
         // Regenerate map view with new distance
         const mapContainer = document.getElementById('map-view-container');
         if (mapContainer) {
+          console.log('Map container found, updating innerHTML');
           mapContainer.innerHTML = generateMapView(currentGame, amuletGame, selectedDistance);
-          // Redraw arrows
+          // Redraw arrows after DOM updates
           const newPathData = findPathsUpToDistance(currentGame, amuletGame, selectedDistance);
-          setTimeout(() => drawMapArrows(newPathData, currentGame, amuletGame), 50);
+          setTimeout(() => {
+            console.log('Attempting to draw arrows for distance:', selectedDistance);
+            drawMapArrows(newPathData, currentGame, amuletGame);
+          }, 100);
+        } else {
+          console.error('Map container not found!');
         }
       });
     }
@@ -951,7 +958,13 @@ function showMapModal() {
 // Draw arrows between games on the map
 function drawMapArrows(pathData, currentGame, amuletGame) {
   const svg = document.getElementById('map-arrows');
-  if (!svg) return;
+  if (!svg) {
+    console.error('SVG element not found!');
+    return;
+  }
+
+  // Clear existing arrows
+  svg.innerHTML = '';
 
   // Create arrowhead marker
   const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
@@ -966,10 +979,12 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
 
   const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   polygon.setAttribute('points', '0,0 10,5 0,10');
-  polygon.setAttribute('fill', '#888');
+  polygon.setAttribute('fill', '#4CAF50');
   marker.appendChild(polygon);
   defs.appendChild(marker);
   svg.appendChild(defs);
+
+  console.log('Drawing map arrows, pathData:', pathData);
 
   // Get all game boxes
   const gameBoxes = document.querySelectorAll('[data-game]');
