@@ -1053,10 +1053,11 @@ function drawMapArrows(pathData, currentGame, amuletGame) {
         if (toGameData) {
           const toDistance = gameDistances.get(toGame);
 
-          // Only draw arrows going FORWARD (downward - from lower distance to higher distance)
-          // This prevents bidirectional arrows and ensures arrows go top-to-bottom
-          if (toDistance <= fromDistance) {
-            return; // Skip backwards or same-level connections
+          // CRITICAL: Only draw arrows that represent valid forward progress
+          // The target must be exactly 1 step further from start than the source
+          // This prevents backtracking (e.g., A->B->A->C) and ensures only valid paths
+          if (toDistance !== fromDistance + 1) {
+            return; // Skip if not a valid forward step (exactly distance + 1)
           }
 
           // Create unique key for this arrow
