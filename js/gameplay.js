@@ -480,7 +480,7 @@ function createCSSArrow(x1, y1, x2, y2, color, width, dashed = false, className 
   arrow.style.transformOrigin = '0 50%';
   arrow.style.transform = `rotate(${angle}deg)`;
   arrow.style.pointerEvents = 'none';
-  arrow.style.zIndex = '1';
+  arrow.style.zIndex = '0';
 
   if (dashed) {
     arrow.style.backgroundImage = `repeating-linear-gradient(90deg, ${color} 0px, ${color} 10px, transparent 10px, transparent 15px)`;
@@ -609,8 +609,8 @@ function clearChoices() {
   // Remove choice nodes
   document.querySelectorAll('.node.choice').forEach(n => n.remove());
 
-  // Clear all CSS arrows
-  document.querySelectorAll('.css-arrow').forEach(arrow => arrow.remove());
+  // Clear CSS arrows EXCEPT background connection arrows
+  document.querySelectorAll('.css-arrow:not(.background-connection)').forEach(arrow => arrow.remove());
 
   // Redraw past path
   const pastNodes = document.querySelectorAll('.node.past');
@@ -825,8 +825,8 @@ function spawnChoices() {
   requestAnimationFrame(() => {
     console.log('🎯 spawnChoices: requestAnimationFrame callback executing');
 
-    // Background connection arrows removed - they look off-putting in game screen
-    // (They can be shown in map view instead if needed)
+    // Draw background connection arrows (gray) for all game connections
+    drawAllGameConnections();
 
     // Draw choice arrows
     const currentNode = document.querySelector('.node.current');
@@ -1070,6 +1070,11 @@ function advance(game, x, y, encounterType) {
       });
     }
   }, 100);
+
+  // Draw background connection arrows after node is added
+  requestAnimationFrame(() => {
+    drawAllGameConnections();
+  });
 
   // Save game (function in main.js)
   if (typeof saveCurrentGame === 'function') {
