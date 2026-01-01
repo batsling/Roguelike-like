@@ -273,6 +273,16 @@ var GAMES_DATA = [
     ]
   },
   {
+    "name": "Auto Rogue",
+    "year": 2025,
+    "type": "Strategy",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [
+    ]
+  },
+  {
     "name": "Backpack Battles",
     "year": 2023,
     "type": "Strategy",
