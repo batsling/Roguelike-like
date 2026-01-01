@@ -726,176 +726,313 @@ function createGameModal(content) {
 
 // Reorganize layers to avoid arrow crossings
 // Returns { reorganizedLayers: Map, gameToLayer: Map }
+// ===== SUGIYAMA GRAPH LAYOUT ALGORITHM =====
+// Connection cache to avoid redundant lookups
+const connectionCache = new Map();
+
+function getCachedConnections(gameName) {
+  if (!connectionCache.has(gameName)) {
+    connectionCache.set(gameName, getGameConnections(gameName));
+  }
+  return connectionCache.get(gameName);
+}
+
+// Build edge data structures for efficient graph traversal
+function buildEdgeData(layers, gameToLayer) {
+  const outgoingEdges = new Map(); // game -> [connected games]
+  const incomingEdges = new Map(); // game -> [games that connect to this]
+
+  layers.forEach(layer => {
+    layer.forEach(gameData => {
+      const gameName = gameData.name || gameData;
+      const connections = getCachedConnections(gameName);
+
+      outgoingEdges.set(gameName, []);
+      if (!incomingEdges.has(gameName)) {
+        incomingEdges.set(gameName, []);
+      }
+
+      connections.forEach(targetGame => {
+        const targetLayer = gameToLayer.get(targetGame);
+        const sourceLayer = gameToLayer.get(gameName);
+
+        // Only consider forward edges (going down the graph)
+        if (targetLayer !== undefined && targetLayer > sourceLayer) {
+          outgoingEdges.get(gameName).push(targetGame);
+
+          if (!incomingEdges.has(targetGame)) {
+            incomingEdges.set(targetGame, []);
+          }
+          incomingEdges.get(targetGame).push(gameName);
+        }
+      });
+    });
+  });
+
+  return { outgoingEdges, incomingEdges };
+}
+
+// Calculate median position of connected nodes (Sugiyama median heuristic)
+function getMedianPosition(gameName, adjacentLayer, edgeMap, layerPositions) {
+  const connectedGames = edgeMap.get(gameName) || [];
+
+  if (connectedGames.length === 0) {
+    return layerPositions.get(gameName) || 0;
+  }
+
+  // Get positions of connected games in adjacent layer
+  const positions = connectedGames
+    .map(g => layerPositions.get(g))
+    .filter(p => p !== undefined)
+    .sort((a, b) => a - b);
+
+  if (positions.length === 0) {
+    return layerPositions.get(gameName) || 0;
+  }
+
+  // Return median position
+  const mid = Math.floor(positions.length / 2);
+  if (positions.length % 2 === 0) {
+    return (positions[mid - 1] + positions[mid]) / 2;
+  } else {
+    return positions[mid];
+  }
+}
+
+// Sugiyama crossing minimization using median heuristic
+function minimizeCrossings(layers, gameToLayer, edgeData) {
+  const { outgoingEdges, incomingEdges } = edgeData;
+  const layerPositions = new Map(); // Track current position of each game in its layer
+
+  // Initialize positions
+  layers.forEach((layer, layerIndex) => {
+    layer.forEach((gameData, position) => {
+      const gameName = gameData.name || gameData;
+      layerPositions.set(gameName, position);
+    });
+  });
+
+  // Perform bi-directional sweeps
+  const numIterations = 4;
+  for (let iter = 0; iter < numIterations; iter++) {
+    // Sweep down (order each layer based on previous layer)
+    for (let i = 1; i < layers.length; i++) {
+      const currentLayer = layers[i];
+      const previousLayer = layers[i - 1];
+
+      // Calculate median position for each game based on incoming edges
+      const medianValues = currentLayer.map((gameData, idx) => {
+        const gameName = gameData.name || gameData;
+        const median = getMedianPosition(gameName, previousLayer, incomingEdges, layerPositions);
+        return { gameData, gameName, median, originalIndex: idx };
+      });
+
+      // Sort by median position
+      medianValues.sort((a, b) => {
+        if (a.median !== b.median) {
+          return a.median - b.median;
+        }
+        return a.originalIndex - b.originalIndex; // Stable sort
+      });
+
+      // Update layer order and positions
+      layers[i] = medianValues.map(v => v.gameData);
+      medianValues.forEach((v, newPos) => {
+        layerPositions.set(v.gameName, newPos);
+      });
+    }
+
+    // Sweep up (order each layer based on next layer)
+    for (let i = layers.length - 2; i >= 0; i--) {
+      const currentLayer = layers[i];
+      const nextLayer = layers[i + 1];
+
+      // Calculate median position for each game based on outgoing edges
+      const medianValues = currentLayer.map((gameData, idx) => {
+        const gameName = gameData.name || gameData;
+        const median = getMedianPosition(gameName, nextLayer, outgoingEdges, layerPositions);
+        return { gameData, gameName, median, originalIndex: idx };
+      });
+
+      // Sort by median position
+      medianValues.sort((a, b) => {
+        if (a.median !== b.median) {
+          return a.median - b.median;
+        }
+        return a.originalIndex - b.originalIndex; // Stable sort
+      });
+
+      // Update layer order and positions
+      layers[i] = medianValues.map(v => v.gameData);
+      medianValues.forEach((v, newPos) => {
+        layerPositions.set(v.gameName, newPos);
+      });
+    }
+  }
+
+  return layers;
+}
+
+// Main reorganization function using Sugiyama method
 function reorganizeMapLayers(pathData) {
-  const reorganizedLayers = new Map();
+  // Clear connection cache for fresh run
+  connectionCache.clear();
+
   const gameToLayer = new Map();
 
-  // First, copy all games to their initial layers
+  // Copy all games to their initial layers (as arrays for ordering)
   const originalLayers = Array.from(pathData.layers.keys()).sort((a, b) => a - b);
+  const layers = [];
+
   originalLayers.forEach(distance => {
     const gamesAtLayer = pathData.layers.get(distance);
-    reorganizedLayers.set(distance, [...gamesAtLayer]);
+    const layerArray = [...gamesAtLayer];
+    layers.push(layerArray);
+
     gamesAtLayer.forEach(gameData => {
       const gameName = gameData.name || gameData;
       gameToLayer.set(gameName, distance);
     });
   });
 
-  // Now reorganize: push down games that have multiple incoming connections
-  // We check from ALL previous layers, not just adjacent ones
-  let changed = true;
-  let maxIterations = 20; // Increase iterations to handle complex graphs
-  while (changed && maxIterations > 0) {
-    changed = false;
-    maxIterations--;
+  // Build edge data structures
+  const edgeData = buildEdgeData(layers, gameToLayer);
 
-    const layerKeys = Array.from(reorganizedLayers.keys()).sort((a, b) => a - b);
+  // Apply Sugiyama crossing minimization
+  const optimizedLayers = minimizeCrossings(layers, gameToLayer, edgeData);
 
-    // For each layer, count ALL incoming connections to each game from ALL previous layers
-    for (let i = 0; i < layerKeys.length; i++) {
-      const currentLayer = layerKeys[i];
-      const gamesAtCurrentLayer = reorganizedLayers.get(currentLayer);
-
-      // Count incoming connections from ALL previous layers
-      const incomingConnectionsCount = new Map();
-      const incomingSourceLayers = new Map(); // Track which layers connect to each game
-
-      // Check all layers before this one
-      for (let j = 0; j < i; j++) {
-        const sourceLayer = layerKeys[j];
-        const gamesAtSourceLayer = reorganizedLayers.get(sourceLayer);
-
-        gamesAtSourceLayer.forEach(gameData => {
-          const gameName = gameData.name || gameData;
-          const connections = getGameConnections(gameName);
-
-          connections.forEach(targetGame => {
-            const targetLayer = gameToLayer.get(targetGame);
-            // Only count if target is in the current layer we're analyzing
-            if (targetLayer === currentLayer) {
-              const count = incomingConnectionsCount.get(targetGame) || 0;
-              incomingConnectionsCount.set(targetGame, count + 1);
-
-              if (!incomingSourceLayers.has(targetGame)) {
-                incomingSourceLayers.set(targetGame, new Set());
-              }
-              incomingSourceLayers.get(targetGame).add(sourceLayer);
-            }
-          });
-        });
-      }
-
-      // Push down games with multiple incoming connections
-      // Sort by connection count (most connections first) to handle bottlenecks first
-      const sortedTargets = Array.from(incomingConnectionsCount.entries())
-        .sort((a, b) => b[1] - a[1]);
-
-      sortedTargets.forEach(([targetGame, count]) => {
-        if (count > 1) {
-          const currentTargetLayer = gameToLayer.get(targetGame);
-
-          // Push down only 1 layer at a time for more gradual spreading
-          const nextLayer = currentTargetLayer + 1;
-
-          // Find the maximum layer we can use
-          const maxLayer = Math.max(...originalLayers) + 15; // Allow creating new layers
-
-          if (nextLayer <= maxLayer) {
-            // Remove from current layer
-            const currentLayerGames = reorganizedLayers.get(currentTargetLayer);
-            const gameData = currentLayerGames.find(g => (g.name || g) === targetGame);
-            if (gameData) {
-              const index = currentLayerGames.indexOf(gameData);
-              currentLayerGames.splice(index, 1);
-
-              // Add to next layer
-              if (!reorganizedLayers.has(nextLayer)) {
-                reorganizedLayers.set(nextLayer, []);
-              }
-              reorganizedLayers.get(nextLayer).push(gameData);
-
-              // Update tracking
-              gameToLayer.set(targetGame, nextLayer);
-              changed = true;
-            }
-          }
-        }
-      });
-    }
-  }
+  // Convert back to Map structure for compatibility
+  const reorganizedLayers = new Map();
+  originalLayers.forEach((distance, index) => {
+    reorganizedLayers.set(distance, optimizedLayers[index]);
+  });
 
   return { reorganizedLayers, gameToLayer };
 }
 
-// Apply horizontal offsets to games to avoid arrow-box collisions
+// Apply horizontal offsets using improved coordinate assignment
+// Based on Brandes-Köpf style algorithm for straight edges
 function applyHorizontalOffsets(reorganizedLayers, gameToLayer, pathData) {
-  const gameOffsets = new Map(); // Track horizontal offsets for each game
-
-  // Get all layers sorted
+  const gameOffsets = new Map();
   const layerKeys = Array.from(reorganizedLayers.keys()).sort((a, b) => a - b);
 
-  // For each layer, count how many arrows pass through it
-  const layerCrossingCounts = new Map();
+  // Build edge data for coordinate assignment
+  const layers = layerKeys.map(key => reorganizedLayers.get(key));
+  const edgeData = buildEdgeData(layers, gameToLayer);
+  const { outgoingEdges, incomingEdges } = edgeData;
 
-  for (let i = 0; i < layerKeys.length; i++) {
-    const currentLayer = layerKeys[i];
-    let crossingCount = 0;
+  // Assign initial coordinates based on layer position
+  const coordinates = new Map();
+  const minSeparation = 140; // Minimum horizontal separation between nodes
 
-    // Check all layers before this one for crossing arrows
-    for (let j = 0; j < i; j++) {
-      const sourceLayer = layerKeys[j];
-      const gamesAtSourceLayer = reorganizedLayers.get(sourceLayer);
+  layers.forEach((layer, layerIndex) => {
+    layer.forEach((gameData, position) => {
+      const gameName = gameData.name || gameData;
+      // Initial coordinate based on position in layer
+      coordinates.set(gameName, position * minSeparation);
+    });
+  });
 
-      gamesAtSourceLayer.forEach(sourceGameData => {
-        const sourceGame = sourceGameData.name || sourceGameData;
-        const connections = getGameConnections(sourceGame);
+  // Refine coordinates using median of connected nodes (4 passes)
+  for (let pass = 0; pass < 4; pass++) {
+    // Downward pass: align with incoming edges
+    for (let i = 1; i < layers.length; i++) {
+      const currentLayer = layers[i];
 
-        connections.forEach(targetGame => {
-          const targetLayer = gameToLayer.get(targetGame);
-
-          // If arrow skips over current layer (sourceLayer < currentLayer < targetLayer)
-          if (targetLayer > currentLayer && sourceLayer < currentLayer) {
-            crossingCount++;
-          }
-        });
-      });
-    }
-
-    layerCrossingCounts.set(currentLayer, crossingCount);
-  }
-
-  // Apply offsets based on crossing counts and layer size
-  for (let i = 0; i < layerKeys.length; i++) {
-    const currentLayer = layerKeys[i];
-    const gamesAtCurrentLayer = reorganizedLayers.get(currentLayer);
-    const crossingCount = layerCrossingCounts.get(currentLayer) || 0;
-    const numGames = gamesAtCurrentLayer.length;
-
-    // Apply offsets if there are crossings OR if there are many games in this layer
-    if (crossingCount > 0 || numGames > 3) {
-      gamesAtCurrentLayer.forEach((gameData, index) => {
+      currentLayer.forEach((gameData, idx) => {
         const gameName = gameData.name || gameData;
+        const incoming = incomingEdges.get(gameName) || [];
 
-        // Calculate offset based on position and number of games
-        // Spread out more when there are more games or more crossings
-        const spreadFactor = Math.max(50, 30 * Math.ceil(numGames / 3));
+        if (incoming.length > 0) {
+          // Get coordinates of incoming nodes
+          const incomingCoords = incoming
+            .map(g => coordinates.get(g))
+            .filter(c => c !== undefined)
+            .sort((a, b) => a - b);
 
-        // Alternate offsets: left, right, left, right
-        // Center game stays at 0 if odd number of games
-        if (numGames % 2 === 1 && index === Math.floor(numGames / 2)) {
-          gameOffsets.set(gameName, 0);
-        } else if (index < Math.floor(numGames / 2)) {
-          // Left side
-          const leftIndex = Math.floor(numGames / 2) - index;
-          gameOffsets.set(gameName, -spreadFactor * leftIndex);
-        } else {
-          // Right side
-          const rightIndex = index - Math.floor(numGames / 2);
-          gameOffsets.set(gameName, spreadFactor * rightIndex);
+          if (incomingCoords.length > 0) {
+            // Use median of incoming coordinates
+            const mid = Math.floor(incomingCoords.length / 2);
+            const medianCoord = incomingCoords.length % 2 === 0
+              ? (incomingCoords[mid - 1] + incomingCoords[mid]) / 2
+              : incomingCoords[mid];
+
+            coordinates.set(gameName, medianCoord);
+          }
         }
       });
+
+      // Resolve conflicts: ensure minimum separation within layer
+      const sortedLayer = [...currentLayer]
+        .map(gd => ({ name: gd.name || gd, coord: coordinates.get(gd.name || gd) || 0 }))
+        .sort((a, b) => a.coord - b.coord);
+
+      let previousCoord = -Infinity;
+      sortedLayer.forEach(item => {
+        const minCoord = previousCoord + minSeparation;
+        if (coordinates.get(item.name) < minCoord) {
+          coordinates.set(item.name, minCoord);
+        }
+        previousCoord = coordinates.get(item.name);
+      });
+    }
+
+    // Upward pass: align with outgoing edges
+    for (let i = layers.length - 2; i >= 0; i--) {
+      const currentLayer = layers[i];
+
+      currentLayer.forEach((gameData, idx) => {
+        const gameName = gameData.name || gameData;
+        const outgoing = outgoingEdges.get(gameName) || [];
+
+        if (outgoing.length > 0) {
+          // Get coordinates of outgoing nodes
+          const outgoingCoords = outgoing
+            .map(g => coordinates.get(g))
+            .filter(c => c !== undefined)
+            .sort((a, b) => a - b);
+
+          if (outgoingCoords.length > 0) {
+            // Use median of outgoing coordinates
+            const mid = Math.floor(outgoingCoords.length / 2);
+            const medianCoord = outgoingCoords.length % 2 === 0
+              ? (outgoingCoords[mid - 1] + outgoingCoords[mid]) / 2
+              : outgoingCoords[mid];
+
+            coordinates.set(gameName, medianCoord);
+          }
+        }
+      });
+
+      // Resolve conflicts: ensure minimum separation within layer
+      const sortedLayer = [...currentLayer]
+        .map(gd => ({ name: gd.name || gd, coord: coordinates.get(gd.name || gd) || 0 }))
+        .sort((a, b) => a.coord - b.coord);
+
+      let previousCoord = -Infinity;
+      sortedLayer.forEach(item => {
+        const minCoord = previousCoord + minSeparation;
+        if (coordinates.get(item.name) < minCoord) {
+          coordinates.set(item.name, minCoord);
+        }
+        previousCoord = coordinates.get(item.name);
+      });
     }
   }
+
+  // Center the layout: find the middle coordinate and shift to 0
+  let minCoord = Infinity;
+  let maxCoord = -Infinity;
+  coordinates.forEach(coord => {
+    minCoord = Math.min(minCoord, coord);
+    maxCoord = Math.max(maxCoord, coord);
+  });
+  const centerOffset = -(minCoord + maxCoord) / 2;
+
+  // Convert absolute coordinates to offsets from center
+  coordinates.forEach((coord, gameName) => {
+    gameOffsets.set(gameName, coord + centerOffset);
+  });
 
   return gameOffsets;
 }
