@@ -1108,7 +1108,8 @@ var GAMES_DATA = [
       "Windblown",
       "Absolum",
       "Aethermancer",
-      "Dunjungle"
+      "Dunjungle",
+      "Reality Break"
     ]
   },
   {
@@ -2207,7 +2208,8 @@ var GAMES_DATA = [
       "Realm of Ink",
       "Vellum",
       "Dunjungle",
-      "Darkblade Ascent"
+      "Darkblade Ascent",
+      "Reality Break"
     ]
   },
   {
@@ -3618,6 +3620,15 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Shape of Dreams"
     ]
+  },
+  {
+    "name": "Reality Break",
+    "year": 2025,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": []
   },
   {
     "name": "Realm of Ink",
@@ -5202,7 +5213,8 @@ var GAMES_DATA = [
       "Night Swarm",
       "I Am Legion: Stand Survivors",
       "Yet Another Zombie Survivors",
-      "Greedland"
+      "Greedland",
+      "Whisker Squadron: Survivor"
     ]
   },
   {
@@ -5339,7 +5351,16 @@ var GAMES_DATA = [
       "Infinite Space III: Sea of Stars"
     ]
   },
-    {
+  {
+    "name": "Whisker Squadron: Survivor",
+    "year": 2025,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+  {
     "name": "White Knuckle",
     "year": 2025,
     "type": "Action",
