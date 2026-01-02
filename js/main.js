@@ -3011,7 +3011,7 @@ function showItemChoiceModal(onComplete) {
         transition: all 0.3s;
         text-align: center;
       ">
-        ${item.image ? `<img src="${item.image}" style="width: 100px; height: 100px; object-fit: cover; image-rendering: pixelated; margin: 0 auto 15px; display: block; border-radius: 8px; border: 2px solid ${rarityColor};" alt="${item.name}" onerror="this.style.display='none';">` : ''}
+        ${item.image ? `<img src="${item.image}" style="width: 100px; height: 100px; object-fit: contain; image-rendering: pixelated; margin: 0 auto 15px; display: block; border-radius: 8px; border: 2px solid ${rarityColor};" alt="${item.name}" onerror="this.style.display='none';">` : ''}
         <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">${item.name}</div>
         <div style="color: ${rarityColor}; font-size: 14px; margin-bottom: 15px;">${item.rarity}</div>
         <div style="color: #ccc; font-size: 14px; line-height: 1.5;">${item.description}</div>

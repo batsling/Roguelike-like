@@ -663,8 +663,9 @@ function clearChoices() {
   // Remove choice nodes
   document.querySelectorAll('.node.choice').forEach(n => n.remove());
 
-  // Clear CSS arrows EXCEPT background connection arrows
-  document.querySelectorAll('.css-arrow:not(.background-connection)').forEach(arrow => arrow.remove());
+  // Clear ALL CSS arrows including background connection arrows
+  // Background arrows will be redrawn when needed during choice selection
+  document.querySelectorAll('.css-arrow').forEach(arrow => arrow.remove());
 
   // Redraw past path
   const pastNodes = document.querySelectorAll('.node.past');
@@ -1130,11 +1131,6 @@ function advance(game, x, y, encounterType) {
       });
     }
   }, 100);
-
-  // Draw background connection arrows after node is added
-  requestAnimationFrame(() => {
-    drawAllGameConnections();
-  });
 
   // Save game (function in main.js)
   if (typeof saveCurrentGame === 'function') {
