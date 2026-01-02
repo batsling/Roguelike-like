@@ -1,0 +1,26 @@
+<svg width="600" height="900" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="600" height="900" fill="#2a2420"/>
+
+  <!-- Border -->
+  <rect x="10" y="10" width="580" height="880" fill="none" stroke="#cc6600" stroke-width="4" rx="12"/>
+
+  <!-- Icon -->
+  <g transform="translate(300, 400)">
+    <!-- Game controller icon -->
+    <rect x="-80" y="-40" width="160" height="80" rx="20" fill="#4a4440" stroke="#888" stroke-width="3"/>
+    <circle cx="-40" cy="0" r="15" fill="#666"/>
+    <circle cx="40" cy="-10" r="8" fill="#cc6600"/>
+    <circle cx="60" cy="-10" r="8" fill="#cc6600"/>
+    <circle cx="40" cy="10" r="8" fill="#cc6600"/>
+    <circle cx="60" cy="10" r="8" fill="#cc6600"/>
+  </g>
+
+  <!-- Text -->
+  <text x="300" y="550" text-anchor="middle" fill="#888" font-family="Arial, sans-serif" font-size="28" font-weight="bold">
+    NO COVER
+  </text>
+  <text x="300" y="590" text-anchor="middle" fill="#666" font-family="Arial, sans-serif" font-size="20">
+    Image Not Available
+  </text>
+</svg>
