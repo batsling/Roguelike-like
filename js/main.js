@@ -1085,14 +1085,14 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
 
   let html = '';
 
-  // Create container with relative positioning for SVG overlay
-  html += '<div style="position: relative; padding: 60px 80px; width: 100%; min-height: 400px; overflow-x: auto; overflow-y: visible;">';
+  // Create container with zoom-to-fit capability
+  html += '<div style="position: relative; padding: 60px 80px; width: 100%; min-height: 400px; overflow: auto;">';
 
   // SVG for arrows - make it large enough to contain all arrows
   html += '<svg id="map-arrows" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible;"></svg>';
 
-  // Container for game boxes - extra wide to accommodate horizontal offsets
-  html += '<div style="position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; width: 100%; min-width: 1200px;">';
+  // Container for game boxes - zoom to fit if needed
+  html += '<div id="map-game-boxes" style="position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; width: fit-content; min-width: 100%; transform-origin: top center;">';
 
   // Show past games first
   if (pastGames.length > 0) {
@@ -1300,9 +1300,9 @@ function autoZoomMapToFit() {
   const modalContent = document.querySelector('.modal-content');
   if (!modalContent) return;
 
-  // Get the actual content dimensions
-  const contentWrapper = mapContainer.querySelector('div[style*="position: relative"]');
-  if (!contentWrapper) return;
+  // Get the game boxes container
+  const gameBoxesContainer = document.getElementById('map-game-boxes');
+  if (!gameBoxesContainer) return;
 
   // Get all game boxes to find the total bounds
   const gameBoxes = mapContainer.querySelectorAll('[data-game]');
@@ -1312,7 +1312,7 @@ function autoZoomMapToFit() {
 
   gameBoxes.forEach(box => {
     const rect = box.getBoundingClientRect();
-    const containerRect = contentWrapper.getBoundingClientRect();
+    const containerRect = gameBoxesContainer.getBoundingClientRect();
 
     const left = rect.left - containerRect.left;
     const right = rect.right - containerRect.left;
@@ -1339,13 +1339,12 @@ function autoZoomMapToFit() {
   const scale = Math.min(scaleX, scaleY, 1.0); // Don't zoom in, only zoom out
 
   if (scale < 1.0) {
-    // Apply zoom
-    contentWrapper.style.transform = `scale(${scale})`;
-    contentWrapper.style.transformOrigin = 'top center';
+    // Apply zoom to the game boxes container
+    gameBoxesContainer.style.transform = `scale(${scale})`;
 
     // Adjust container height to account for scaling
     const scaledHeight = contentHeight * scale;
-    contentWrapper.parentElement.style.minHeight = scaledHeight + 'px';
+    gameBoxesContainer.parentElement.style.minHeight = scaledHeight + 'px';
   }
 }
 
@@ -3138,8 +3137,8 @@ function startEscapePhase() {
   gameState.escapeGames = [];
   gameState.escapeProgress = 0;
 
-  // Get unique visited games (excluding the amulet game itself)
-  const visitedGames = [...new Set(gameState.visitedGames)].filter(g => g !== gameState.amuletGame.name);
+  // Get unique visited games (including the amulet game)
+  const visitedGames = [...new Set(gameState.visitedGames)];
 
   let selectionHTML = '<div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-top: 20px;">';
 

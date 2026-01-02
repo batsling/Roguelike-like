@@ -1418,10 +1418,12 @@ function showDashModal() {
     return;
   }
 
-  const gamesHTML = connections.map((game, index) => `
+  // Sort connections alphabetically
+  const sortedConnections = [...connections].sort((a, b) => a.localeCompare(b));
+
+  const gamesHTML = sortedConnections.map((game) => `
     <div class="dash-game-option" data-game="${game}" style="
       padding: 12px 15px;
-      margin: 8px 0;
       background: #3a3430;
       border: 2px solid #4a4440;
       border-radius: 6px;
@@ -1429,8 +1431,9 @@ function showDashModal() {
       transition: all 0.2s;
       color: #e6d5b8;
       font-size: 14px;
+      text-align: center;
     ">
-      ${index + 1}. ${game}
+      ${game}
     </div>
   `).join('');
 
@@ -1438,8 +1441,10 @@ function showDashModal() {
     <div style="text-align: center;">
       <h2 style="color: #66ddff; margin-top: 0;">⚡ Dash to Game</h2>
       <p style="color: #e6d5b8;">Select a connected game to dash to (${connections.length} available)</p>
-      <div style="max-height: 400px; overflow-y: auto; margin: 20px 0;">
-        ${gamesHTML}
+      <div style="max-height: 500px; overflow-y: auto; margin: 20px 0; padding: 10px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+          ${gamesHTML}
+        </div>
       </div>
       <button onclick="closeGameModal()" style="margin-top: 10px; padding: 10px 20px; background: #555; border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: bold;">
         Cancel
