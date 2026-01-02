@@ -3,6 +3,7 @@
 ## Table of Contents
 - [Overview](#overview)
 - [Recent Updates](#recent-updates)
+- [Collection System](#collection-system)
 - [Curse System](#curse-system)
 - [Items System](#items-system)
 - [Game Status Effects](#game-status-effects)
@@ -34,6 +35,53 @@ A roguelike game where players navigate through a graph of connected video games
 ---
 
 ## Recent Updates
+
+### Version 4.0 - Collection System & Visual Improvements (January 2025)
+
+**New Collection Feature:**
+- **Collection Menu Button**: New orange-gradient button on main menu
+- **Three Collection Tabs**:
+  - **Games Tab**: All 532 games displayed in responsive grid with cover images
+  - **Items Tab**: All 22 items with local images and descriptions
+  - **Enemies Tab**: All enemies with images, power levels, and stats
+- **Interactive Tooltips**: Hover over games in Collection to see full game info, cover, and influence connections
+- **Responsive Grid Layout**: Auto-fill columns (150px minimum) with hover effects
+
+**Game Data Expansion:**
+- **7 New Games Added**: Drill Core, Flick Shot Rogues, Granvir, House of Necrosis, Spellmasons, There Are No Orcs, Word Play
+- **Total Games**: 532 (up from 525)
+- **Total Connections**: 650 influence relationships (up from 645)
+- **All Games Alphabetically Sorted**: Verified alphabetical order maintained
+
+**Visual & Image Improvements:**
+- **405+ Game Covers**: Game cover images properly linked to all available covers
+- **Local Item Images**: All 22 items now use local images from `images/items/` (no more imgur URLs)
+- **object-fit: contain**: Game covers now use `contain` instead of `cover` to handle different aspect ratios
+  - Prevents cropping of manually added covers
+  - Properly displays varying image sizes without distortion
+- **Cover Image Handling**: Supports different image dimensions and aspect ratios gracefully
+
+**Tooltip Enhancements:**
+- **3-Column Grid Layout**: Influenced/influencer games now display in 3 columns for better horizontal space usage
+- **Renamed "Influenced"**: Changed "Influences:" to "Influenced:" for better grammar
+- **Reduced Font Size**: Influence games now use 10px font for more compact display
+- **Game Cover Positioning**: Game cover appears next to game info at top of tooltip
+- **Collection Integration**: Same tooltip system works in both map screen and Collection
+
+**UI/UX Fixes:**
+- **Arrow Cleanup**: Map arrows now properly cleared when returning to main menu
+  - Prevents arrows from appearing on main menu or other screens
+  - Arrows cleared on death, escape death, curse death, and manual return
+- **Z-Index Corrections**: Buttons now always appear above arrows
+  - Disabled buttons maintain z-index: 100 (arrows have z-index: 0)
+  - Fixed issue where dotted yellow and gray arrows appeared over grayed-out buttons
+  - Applied to Skip, Finished, and all ability buttons
+
+**Technical Improvements:**
+- **clearAllArrows()**: New function to remove all CSS arrows when leaving dungeon
+- **PascalCase Image Paths**: Item images follow consistent naming (e.g., `BallisticBoots.png`)
+- **Image Fallbacks**: Proper fallback handling for missing covers (`no-cover.svg`) and items (`no-item.svg`)
+- **Cache-Busting**: Updated resource versions to v=19
 
 ### Version 3.0 - Manual & Restriction Curses (December 2024)
 
@@ -94,6 +142,205 @@ A roguelike game where players navigate through a graph of connected video games
 - Fixed UI not clearing items/curses when returning to menu after death
 - SVG arrows now properly visible on game paths
 - Curse displays properly sync between game panel and dev tools
+
+---
+
+## Collection System
+
+### Overview
+
+The Collection is a comprehensive catalog accessible from the main menu that displays all games, items, and enemies in the game. It provides an organized view of content with interactive tooltips and visual previews.
+
+**Key Features:**
+- Accessible via orange "Collection" button on main menu
+- Three organized tabs: Games, Items, and Enemies
+- Responsive grid layouts with hover effects
+- Interactive game tooltips showing influence connections
+- Local image support for all content types
+
+---
+
+### Collection Tabs
+
+#### Games Tab
+
+Displays all 532 games in an alphabetical grid format:
+
+**Features:**
+- **Cover Images**: Shows game cover art (or placeholder for games without covers)
+- **Game Information**: Name, year, and type displayed below cover
+- **Interactive Tooltips**: Hover over any game to see:
+  - Full game details (year, type)
+  - Game cover image
+  - Games it influenced (purple, 3-column grid)
+  - Games that influenced it (green, 3-column grid)
+- **Hover Effects**: Cards lift and border highlights on hover
+- **Grid Layout**: Responsive auto-fill (150px minimum per card)
+
+**Visual Details:**
+- Cover images use `object-fit: contain` to preserve aspect ratios
+- Supports varying image sizes without distortion
+- 2:3 aspect ratio for cover display
+- Dark background (#1a1a1a) for image containers
+
+**Example Game Card:**
+```
+┌─────────────────┐
+│   [Cover Art]   │
+│                 │
+│   Game Name     │
+│  2020 • Action  │
+└─────────────────┘
+```
+
+---
+
+#### Items Tab
+
+Displays all 22 items with visual representations:
+
+**Features:**
+- **Item Images**: Local PNG images from `images/items/`
+- **Item Details**: Name and description
+- **Hover Effects**: Green border highlight (#4CAF50) on hover
+- **Grid Layout**: Same responsive grid as games (150px minimum)
+
+**Visual Details:**
+- Images use `object-fit: contain` with 120px height
+- Items displayed with proper transparency
+- Consistent PascalCase naming (e.g., `BallisticBoots.png`)
+
+**Example Item Card:**
+```
+┌─────────────────┐
+│                 │
+│  [Item Image]   │
+│                 │
+│   Item Name     │
+│  Description... │
+└─────────────────┘
+```
+
+---
+
+#### Enemies Tab
+
+Displays all enemies with stats and images:
+
+**Features:**
+- **Enemy Images**: Local images from enemy data
+- **Enemy Details**: Name, power level, and stat
+- **Roll Information**: Shows DC requirement for success
+- **Hover Effects**: Red border highlight (#f44336) on hover
+- **Grid Layout**: Same responsive grid (150px minimum)
+
+**Visual Details:**
+- Images use `object-fit: contain` with 120px height
+- Power level and stat shown in red (#ff6666)
+- DC displayed as "Roll X to succeed"
+
+**Example Enemy Card:**
+```
+┌─────────────────┐
+│                 │
+│ [Enemy Image]   │
+│                 │
+│   Enemy Name    │
+│ Medium • Strength│
+│  Roll 12 to win │
+└─────────────────┘
+```
+
+---
+
+### Collection UI/UX
+
+**Opening Collection:**
+- Click orange "Collection" button on main menu
+- Modal opens with Games tab selected by default
+- Can switch between tabs without closing modal
+
+**Tab Switching:**
+- Click tab buttons at top of modal
+- Active tab highlighted in orange (#ff9800)
+- Inactive tabs shown in gray (#555)
+- Content area updates immediately
+
+**Grid Behavior:**
+- Automatically adjusts columns based on screen width
+- Minimum 150px per card
+- Auto-fill creates responsive layout
+- 15px gap between cards
+- Cards maintain consistent sizing
+
+**Closing Collection:**
+- Click orange "Close" button at bottom
+- Click outside modal (on dark overlay)
+- Returns to main menu
+
+---
+
+### Collection Technical Details
+
+**Image Paths:**
+
+```javascript
+// Games
+game.coverImage = "images/covers/game-name.jpg"
+// or null for placeholder
+
+// Items
+item.image = "images/items/ItemName.png"
+
+// Enemies
+enemy.imageUrl = "https://i.imgur.com/image.png"
+```
+
+**Tooltip Integration:**
+
+The Collection uses the same `showTooltip()` function as the map screen:
+
+```javascript
+onmousemove="if (typeof showTooltip === 'function')
+  showTooltip(event, 'Game Name');"
+onmouseleave="if (typeof hideTooltip === 'function')
+  hideTooltip();"
+```
+
+**Grid Styling:**
+
+```css
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+gap: 15px;
+```
+
+**Fallback Images:**
+- Games without covers: `images/covers/no-cover.svg`
+- Items without images: `images/items/no-item.svg`
+- Enemies without images: `images/enemies/no-enemy.svg`
+
+---
+
+### Collection Functions
+
+**Main Functions:**
+
+```javascript
+// Show collection modal
+showCollection()
+
+// Switch between tabs
+switchCollectionTab('games' | 'items' | 'enemies')
+
+// Close collection
+closeGameModal()
+```
+
+**Location:**
+- Collection UI: `js/main.js` (lines 3720-3883)
+- Tab switching logic: `switchCollectionTab()` function
+- Modal creation: `createGameModal()` function
 
 ---
 
