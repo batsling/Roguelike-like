@@ -4,7 +4,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -33,7 +33,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -42,7 +42,7 @@ var GAMES_DATA = [
     "year": 2013,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -51,7 +51,7 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -60,16 +60,16 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
-   {
+  {
     "name": "Absolum",
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -78,7 +78,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -98,7 +98,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -107,7 +107,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -116,7 +116,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -154,7 +154,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Strategy",
     "connected": false,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Another Farm Roguelike: Rebirth"
@@ -165,7 +165,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": false,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -174,7 +174,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -192,7 +192,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -201,7 +201,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -210,7 +210,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -219,7 +219,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -228,16 +228,16 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
-    {
+  {
     "name": "Asterogues",
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -246,7 +246,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -255,7 +255,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "The Last Flame"
@@ -279,8 +279,7 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [
-    ]
+    "gamesInfluenced": []
   },
   {
     "name": "Backpack Battles",
@@ -349,7 +348,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -358,7 +357,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -378,7 +377,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -387,7 +386,7 @@ var GAMES_DATA = [
     "year": 2015,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -396,7 +395,7 @@ var GAMES_DATA = [
     "year": 1998,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -414,7 +413,7 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Legend of Keepers: Career of a Dungeon Manager",
@@ -426,7 +425,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -435,7 +434,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -462,7 +461,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -471,7 +470,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -480,7 +479,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -489,7 +488,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -498,7 +497,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Strategy",
     "connected": false,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Block Tower TD 2"
@@ -509,7 +508,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": false,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -518,7 +517,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -547,7 +546,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Hellcard"
@@ -558,7 +557,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -567,7 +566,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -576,7 +575,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -612,7 +611,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -621,7 +620,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "CloverPit"
@@ -632,7 +631,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Cross Blitz"
@@ -654,7 +653,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -675,7 +674,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -684,7 +683,7 @@ var GAMES_DATA = [
     "year": 2013,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -693,7 +692,7 @@ var GAMES_DATA = [
     "year": 1991,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -713,7 +712,7 @@ var GAMES_DATA = [
     "year": 2010,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -722,7 +721,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -731,7 +730,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -749,7 +748,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Astral Ascent"
@@ -782,7 +781,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -791,7 +790,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -800,7 +799,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -809,7 +808,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -818,7 +817,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -836,7 +835,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -856,7 +855,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -865,7 +864,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -874,7 +873,7 @@ var GAMES_DATA = [
     "year": 2015,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -883,7 +882,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Vellum"
@@ -894,7 +893,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -912,7 +911,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -921,7 +920,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -939,7 +938,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -948,7 +947,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -959,12 +958,9 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": true,
     "tags": [],
-    "gamesInfluenced": [
-      "BPM: Bullets Per Minute",
-      "Shogun Showdown"
-    ]
+    "gamesInfluenced": []
   },
-    {
+  {
     "name": "Cube Chaos",
     "year": 2023,
     "type": "Deckbuilding",
@@ -978,7 +974,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -987,7 +983,7 @@ var GAMES_DATA = [
     "year": 2016,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Curious Expedition 2",
@@ -999,7 +995,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1039,7 +1035,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1048,7 +1044,7 @@ var GAMES_DATA = [
     "year": 2016,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Chrono Ark",
@@ -1074,7 +1070,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1083,7 +1079,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1117,7 +1113,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1158,7 +1154,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1167,7 +1163,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1176,7 +1172,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1185,7 +1181,7 @@ var GAMES_DATA = [
     "year": 2014,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1234,7 +1230,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1263,7 +1259,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1272,7 +1268,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Slime 3K: Rise Against Despot"
@@ -1283,7 +1279,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1292,7 +1288,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1310,7 +1306,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1319,7 +1315,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1337,7 +1333,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Backback Hero",
@@ -1353,7 +1349,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1362,7 +1358,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1371,7 +1367,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1380,7 +1376,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1389,7 +1385,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1410,7 +1406,7 @@ var GAMES_DATA = [
     "year": 2013,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Cult of the Lamb",
@@ -1432,7 +1428,7 @@ var GAMES_DATA = [
     "year": 2002,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Jupiter Hell",
@@ -1445,7 +1441,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Teamfight Tactics",
@@ -1471,7 +1467,7 @@ var GAMES_DATA = [
     "year": 2006,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1480,7 +1476,7 @@ var GAMES_DATA = [
     "year": 2003,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1489,7 +1485,7 @@ var GAMES_DATA = [
     "year": 2014,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Dicey Dungeon"
@@ -1500,7 +1496,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1509,7 +1505,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1518,7 +1514,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1527,7 +1523,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1572,7 +1568,7 @@ var GAMES_DATA = [
     "year": 2008,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1592,7 +1588,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1601,7 +1597,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1610,7 +1606,7 @@ var GAMES_DATA = [
     "year": 2011,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1619,7 +1615,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Sephiria"
@@ -1630,7 +1626,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1663,7 +1659,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1672,7 +1668,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1703,7 +1699,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1712,7 +1708,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1724,7 +1720,6 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Abandoned Archive",
       "AK-xolotl",
       "Beyond the Long Night",
       "Brutal Orchestra",
@@ -1740,6 +1735,7 @@ var GAMES_DATA = [
       "Escape The Mad Empire",
       "Sephiria",
       "The Unliving",
+      "Abandoned Archive",
       "Asterogues"
     ]
   },
@@ -1748,7 +1744,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1768,7 +1764,7 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1786,12 +1782,21 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
   {
     "name": "Facehand",
+    "year": 2024,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+  {
+    "name": "Fairy Tail: Dungeons",
     "year": 2024,
     "type": "Deckbuilding",
     "connected": false,
@@ -1800,22 +1805,11 @@ var GAMES_DATA = [
     "gamesInfluenced": []
   },
   {
-    "name": "Fairy Tail: Dungeons",
-    "year": 2024,
-    "type": "Action",
-    "connected": false,
-    "influenced": false,
-    "tags": [
-      "anime"
-    ],
-    "gamesInfluenced": []
-  },
-  {
     "name": "Fatal Labyrinth",
     "year": 1990,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1824,7 +1818,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1833,7 +1827,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1864,7 +1858,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1884,11 +1878,11 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
-    {
+  {
     "name": "Footgun: Underground",
     "year": 2024,
     "type": "Action",
@@ -1902,7 +1896,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "For the King 2",
@@ -1914,14 +1908,14 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
-    {
+  {
     "name": "Forestrike",
     "year": 2025,
-    "type": "Strategy",
+    "type": "Action",
     "connected": false,
     "influenced": false,
     "tags": [],
@@ -1932,7 +1926,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1941,7 +1935,7 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1981,7 +1975,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -1990,7 +1984,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2008,7 +2002,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": false,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Geometry Arena 2"
@@ -2019,7 +2013,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": false,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2046,7 +2040,7 @@ var GAMES_DATA = [
     "year": 2014,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2055,7 +2049,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2064,7 +2058,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2084,7 +2078,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2093,7 +2087,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2102,7 +2096,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2111,7 +2105,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2144,7 +2138,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2166,7 +2160,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2175,7 +2169,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "[Redacted]",
@@ -2217,7 +2211,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2249,7 +2243,7 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2258,7 +2252,7 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2276,7 +2270,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2285,7 +2279,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2312,7 +2306,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2330,7 +2324,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2339,7 +2333,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2348,7 +2342,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2357,7 +2351,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Heroes of Hammerwatch 2",
@@ -2388,7 +2382,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2397,7 +2391,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2406,7 +2400,7 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2415,7 +2409,7 @@ var GAMES_DATA = [
     "year": 2015,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2424,7 +2418,7 @@ var GAMES_DATA = [
     "year": 2011,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2433,7 +2427,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Backpack Hero",
@@ -2449,7 +2443,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2478,7 +2472,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2487,7 +2481,7 @@ var GAMES_DATA = [
     "year": 2001,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2496,7 +2490,7 @@ var GAMES_DATA = [
     "year": 2007,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2516,7 +2510,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2525,7 +2519,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2534,7 +2528,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2543,7 +2537,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2552,7 +2546,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2561,7 +2555,7 @@ var GAMES_DATA = [
     "year": 2016,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Dome Keeper",
@@ -2573,7 +2567,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2582,7 +2576,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2591,7 +2585,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2600,7 +2594,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2609,7 +2603,7 @@ var GAMES_DATA = [
     "year": 1986,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2618,7 +2612,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2627,7 +2621,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2648,7 +2642,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2657,7 +2651,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2666,7 +2660,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Super Fantasy Kingdom"
@@ -2677,7 +2671,7 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2695,7 +2689,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2704,7 +2698,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2713,7 +2707,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2747,7 +2741,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2756,7 +2750,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Vampire Survivors"
@@ -2767,7 +2761,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2776,7 +2770,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2785,7 +2779,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2803,7 +2797,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2812,7 +2806,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2821,7 +2815,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2830,7 +2824,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2839,7 +2833,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2848,7 +2842,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2870,7 +2864,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": []
   },
-   {
+  {
     "name": "Mimic Logic",
     "year": 2024,
     "type": "Strategy",
@@ -2884,7 +2878,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2892,7 +2886,7 @@ var GAMES_DATA = [
     "name": "Monmusu Gladiator",
     "year": 2021,
     "type": "Deckbuilding",
-    "connected": false,
+    "connected": true,
     "influenced": false,
     "tags": [],
     "gamesInfluenced": []
@@ -2919,7 +2913,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2928,7 +2922,7 @@ var GAMES_DATA = [
     "year": 2015,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2937,7 +2931,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2957,7 +2951,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2966,7 +2960,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -2995,7 +2989,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3004,7 +2998,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3013,7 +3007,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3022,7 +3016,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3045,7 +3039,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3063,7 +3057,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Necrosmith 2",
@@ -3075,7 +3069,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3095,7 +3089,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3104,7 +3098,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3128,8 +3122,7 @@ var GAMES_DATA = [
       "Ragnarok",
       "Spelunky Classic",
       "Strange Adventures in Infinite Space",
-      "Iter Vehemens Ad Necem",
-      "Lost Flame"
+      "Iter Vehemens Ad Necem"
     ]
   },
   {
@@ -3137,7 +3130,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3160,7 +3153,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3169,7 +3162,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3178,7 +3171,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3187,7 +3180,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3196,7 +3189,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3205,7 +3198,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3238,7 +3231,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3256,7 +3249,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3265,7 +3258,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3274,7 +3267,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3283,7 +3276,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3301,7 +3294,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3310,7 +3303,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3319,7 +3312,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3339,7 +3332,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3372,7 +3365,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3381,7 +3374,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3411,7 +3404,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3420,7 +3413,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3438,10 +3431,8 @@ var GAMES_DATA = [
     "year": 2009,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
-    "tags": [
-      "anime"
-    ],
+    "influenced": false,
+    "tags": [],
     "gamesInfluenced": []
   },
   {
@@ -3450,9 +3441,7 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [
-      "anime"
-    ],
+    "tags": [],
     "gamesInfluenced": [
       "Pokémon Mystery Dungeon: Explorers of Sky"
     ]
@@ -3462,10 +3451,8 @@ var GAMES_DATA = [
     "year": 2012,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
-    "tags": [
-      "anime"
-    ],
+    "influenced": false,
+    "tags": [],
     "gamesInfluenced": []
   },
   {
@@ -3474,9 +3461,7 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [
-      "anime"
-    ],
+    "tags": [],
     "gamesInfluenced": [
       "Paper Animal Adventure",
       "Pokémon Mystery Dungeon: Explorers of Time and Explorers of Darkness",
@@ -3490,10 +3475,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
-    "tags": [
-      "anime"
-    ],
+    "influenced": false,
+    "tags": [],
     "gamesInfluenced": []
   },
   {
@@ -3501,7 +3484,7 @@ var GAMES_DATA = [
     "year": 2015,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3510,10 +3493,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
-    "tags": [
-      "anime"
-    ],
+    "influenced": false,
+    "tags": [],
     "gamesInfluenced": []
   },
   {
@@ -3521,7 +3502,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Aces & Adventures"
@@ -3543,7 +3524,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3552,7 +3533,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3561,7 +3542,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3579,7 +3560,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3588,7 +3569,7 @@ var GAMES_DATA = [
     "year": 1992,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3597,7 +3578,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3606,7 +3587,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3626,7 +3607,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3635,7 +3616,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3644,7 +3625,7 @@ var GAMES_DATA = [
     "year": 2010,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Talented"
@@ -3655,7 +3636,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3664,7 +3645,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3673,7 +3654,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Swapmeat"
@@ -3684,7 +3665,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3693,7 +3674,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Path of Achra",
@@ -3705,7 +3686,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3714,7 +3695,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3723,7 +3704,7 @@ var GAMES_DATA = [
     "year": 2013,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Dead Cells",
@@ -3757,7 +3738,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3766,7 +3747,7 @@ var GAMES_DATA = [
     "year": 2014,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3786,7 +3767,7 @@ var GAMES_DATA = [
     "year": 1980,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Brogue",
@@ -3811,7 +3792,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3840,7 +3821,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3849,7 +3830,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3858,7 +3839,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Nordhold",
@@ -3879,7 +3860,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3888,7 +3869,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3908,7 +3889,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "RollScape"
@@ -3919,7 +3900,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3937,7 +3918,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3946,7 +3927,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3955,7 +3936,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3964,7 +3945,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3973,7 +3954,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3982,7 +3963,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -3991,7 +3972,7 @@ var GAMES_DATA = [
     "year": 2014,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4000,7 +3981,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4043,7 +4024,7 @@ var GAMES_DATA = [
     "year": 2002,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4063,7 +4044,7 @@ var GAMES_DATA = [
     "year": 2001,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4072,7 +4053,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4092,7 +4073,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4101,7 +4082,7 @@ var GAMES_DATA = [
     "year": 2010,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Nuclear Throne"
@@ -4112,7 +4093,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Bingle Bingle",
@@ -4124,7 +4105,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4133,7 +4114,7 @@ var GAMES_DATA = [
     "year": 2012,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4142,7 +4123,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Realm of Ink"
@@ -4153,7 +4134,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4268,7 +4249,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4295,7 +4276,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Centipede Gun",
@@ -4309,7 +4290,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4336,7 +4317,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4354,7 +4335,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4363,7 +4344,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4383,7 +4364,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4426,7 +4407,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4435,7 +4416,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4444,7 +4425,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4453,7 +4434,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4462,7 +4443,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4471,7 +4452,7 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4480,7 +4461,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4489,7 +4470,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4498,11 +4479,11 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
-    {
+  {
     "name": "Stick It to the Stickman",
     "year": 2025,
     "type": "Action",
@@ -4516,7 +4497,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4536,7 +4517,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4545,7 +4526,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4554,7 +4535,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Backpack Battles",
@@ -4579,7 +4560,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4588,7 +4569,7 @@ var GAMES_DATA = [
     "year": 2013,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "GoNNER"
@@ -4599,7 +4580,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4608,7 +4589,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4617,7 +4598,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4637,7 +4618,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4658,7 +4639,7 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4667,7 +4648,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4687,7 +4668,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4696,7 +4677,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4705,7 +4686,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4714,7 +4695,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4780,7 +4761,7 @@ var GAMES_DATA = [
     "year": 2014,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4790,9 +4771,7 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": false,
     "influenced": false,
-    "tags": [
-      "anime"
-    ],
+    "tags": [],
     "gamesInfluenced": []
   },
   {
@@ -4800,7 +4779,7 @@ var GAMES_DATA = [
     "year": 2016,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4809,7 +4788,7 @@ var GAMES_DATA = [
     "year": 2013,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4827,7 +4806,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4836,7 +4815,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4856,7 +4835,7 @@ var GAMES_DATA = [
     "year": 2004,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4874,7 +4853,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4883,7 +4862,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4892,7 +4871,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4901,7 +4880,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4910,7 +4889,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4919,7 +4898,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4928,7 +4907,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4937,7 +4916,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4958,7 +4937,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4967,7 +4946,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -4987,7 +4966,7 @@ var GAMES_DATA = [
     "year": 2002,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5020,10 +4999,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
-    "tags": [
-      "anime"
-    ],
+    "influenced": false,
+    "tags": [],
     "gamesInfluenced": []
   },
   {
@@ -5031,10 +5008,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
-    "tags": [
-      "anime"
-    ],
+    "influenced": false,
+    "tags": [],
     "gamesInfluenced": []
   },
   {
@@ -5042,7 +5017,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5051,7 +5026,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5071,7 +5046,7 @@ var GAMES_DATA = [
     "year": 2012,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5080,7 +5055,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5090,9 +5065,7 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [
-      "anime"
-    ],
+    "tags": [],
     "gamesInfluenced": []
   },
   {
@@ -5111,7 +5084,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5132,7 +5105,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5141,7 +5114,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5150,7 +5123,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5162,7 +5135,7 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "20 Minutes Until Dawn",
+      "20 Minutes Till Dawn",
       "Archons",
       "BloodDome99",
       "Boneraiser Minions",
@@ -5222,7 +5195,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5242,7 +5215,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5262,7 +5235,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5271,7 +5244,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5291,7 +5264,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5300,7 +5273,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5309,7 +5282,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5318,7 +5291,7 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5327,7 +5300,7 @@ var GAMES_DATA = [
     "year": 2011,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5374,7 +5347,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5403,7 +5376,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5412,13 +5385,13 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Abandoned Archive",
       "Astral Ascent",
       "Putrid Shot Ultra",
-      "Wizard of Legend 2"
+      "Wizard of Legend 2",
+      "Abandoned Archive"
     ]
   },
   {
@@ -5426,7 +5399,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5435,7 +5408,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5444,7 +5417,7 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5453,16 +5426,16 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
-    {
+  {
     "name": "Yet Another Zombie Survivors",
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5471,10 +5444,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
-    "tags": [
-      "anime"
-    ],
+    "influenced": false,
+    "tags": [],
     "gamesInfluenced": []
   },
   {
@@ -5504,7 +5475,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5513,7 +5484,7 @@ var GAMES_DATA = [
     "year": 2014,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [
       "Ziggurat 2",
@@ -5525,7 +5496,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   },
@@ -5534,7 +5505,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": []
   }

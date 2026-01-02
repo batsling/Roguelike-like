@@ -346,13 +346,97 @@ function showTooltip(e, name) {
   const influences = game.gamesInfluenced ?? []; // Games this game influenced
   const influencedBy = getInfluencedByGames(name); // Games that influenced this game
 
+  // Helper function to get cover image path
+  const getCover = (gameName) => {
+    const gameData = games.find(g => g.name === gameName);
+    return gameData?.coverImage || 'images/covers/no-cover.svg';
+  };
+
   let connectionsHTML = '';
   if (influencedBy.length > 0) {
-    connectionsHTML += `<div style="margin-top: 8px;"><strong style="color: #4CAF50;">Influenced By:</strong><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">${influencedBy.map(g => `<span style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); padding: 2px 6px; border-radius: 3px; font-size: 10px; word-wrap: break-word; line-height: 1.3;">${g} → ${name}</span>`).join('')}</div></div>`;
+    connectionsHTML += `
+      <div style="margin-top: 10px;">
+        <strong style="color: #4CAF50;">Influenced By:</strong>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-top: 6px;">
+          ${influencedBy.map(g => `
+            <div style="
+              background: rgba(76, 175, 80, 0.1);
+              border: 1px solid rgba(76, 175, 80, 0.3);
+              border-radius: 6px;
+              padding: 6px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 4px;
+            ">
+              <img
+                src="${getCover(g)}"
+                alt="${g}"
+                style="
+                  width: 100%;
+                  height: auto;
+                  aspect-ratio: 2/3;
+                  object-fit: cover;
+                  border-radius: 4px;
+                  background: #1a1a1a;
+                "
+              />
+              <div style="
+                font-size: 9px;
+                text-align: center;
+                line-height: 1.2;
+                color: #ddd;
+                word-wrap: break-word;
+                width: 100%;
+              ">${g}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
   }
+
   if (influences.length > 0) {
-    connectionsHTML += `<div style="margin-top: 8px;"><strong style="color: #9b59b6;">Influences:</strong><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">${influences.map(g => `<span style="background: rgba(155, 89, 182, 0.1); border: 1px solid rgba(155, 89, 182, 0.3); padding: 2px 6px; border-radius: 3px; font-size: 10px; word-wrap: break-word; line-height: 1.3;">${name} → ${g}</span>`).join('')}</div></div>`;
+    connectionsHTML += `
+      <div style="margin-top: 10px;">
+        <strong style="color: #9b59b6;">Influences:</strong>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-top: 6px;">
+          ${influences.map(g => `
+            <div style="
+              background: rgba(155, 89, 182, 0.1);
+              border: 1px solid rgba(155, 89, 182, 0.3);
+              border-radius: 6px;
+              padding: 6px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 4px;
+            ">
+              <img
+                src="${getCover(g)}"
+                alt="${g}"
+                style="
+                  width: 100%;
+                  height: auto;
+                  aspect-ratio: 2/3;
+                  object-fit: cover;
+                  border-radius: 4px;
+                  background: #1a1a1a;
+                "
+              />
+              <div style="
+                font-size: 9px;
+                text-align: center;
+                line-height: 1.2;
+                color: #ddd;
+                word-wrap: break-word;
+                width: 100%;
+              ">${g}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
   }
+
   if (influencedBy.length === 0 && influences.length === 0) {
     connectionsHTML = '<div style="margin-top: 8px; color: #888;">No connections</div>';
   }
@@ -401,12 +485,13 @@ function moveTooltip(e) {
   let top = e.clientY + offset;
 
   // Check if tooltip is too tall for viewport - make it wider to reduce height
+  // Use wider tooltips to accommodate game covers
   if (tooltipRect.height > viewportHeight - topBarHeight - 40) {
     tooltip.style.width = 'auto';
-    tooltip.style.maxWidth = '500px';
+    tooltip.style.maxWidth = '600px';
   } else {
-    tooltip.style.width = '350px';
-    tooltip.style.maxWidth = '350px';
+    tooltip.style.width = '450px';
+    tooltip.style.maxWidth = '450px';
   }
 
   // Re-get rect after potential width change
