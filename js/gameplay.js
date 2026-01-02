@@ -600,13 +600,14 @@ function drawAllGameConnections() {
     return;
   }
 
-  // Get all visible game nodes
-  const allNodes = document.querySelectorAll('.node');
-  console.log('Found', allNodes.length, 'node elements on screen');
+  // Get only choice nodes (not past or current nodes)
+  // This prevents drawing arrows to past nodes that might have the same game
+  const choiceNodes = document.querySelectorAll('.node.choice');
+  console.log('Found', choiceNodes.length, 'choice node elements on screen');
 
   const nodeMap = new Map();
 
-  allNodes.forEach(node => {
+  choiceNodes.forEach(node => {
     // Use data attribute to get clean game name (without button/status text)
     const gameName = node.dataset.gameName;
     if (gameName) {
@@ -614,7 +615,7 @@ function drawAllGameConnections() {
     }
   });
 
-  console.log('Total nodes mapped:', nodeMap.size);
+  console.log('Total choice nodes mapped:', nodeMap.size);
 
   // Draw connections for games that have influence relationships
   let connectionsDrawn = 0;
@@ -1155,7 +1156,7 @@ function showFinish(node, isAmuletGame = false) {
     b.disabled = true;
     b.style.opacity = '0.5';
     b.style.cursor = 'not-allowed';
-    b.style.position = 'relative';
+    // Keep position: absolute (don't change to relative, that would make the box grow)
     b.style.zIndex = '100'; // Ensure z-index stays above arrows even when disabled
 
     // Grey out the Skip button when Finished is pressed

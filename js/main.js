@@ -3783,16 +3783,22 @@ function switchCollectionTab(tab) {
     // Sort games alphabetically
     const sortedGames = [...games].sort((a, b) => a.name.localeCompare(b.name));
 
+    // Get game stats for amulet icons
+    const allStats = getGameStats();
+
     content.innerHTML = `
       <!-- Left side: Game grid -->
       <div id="games-grid" style="flex: 2; overflow-y: auto; padding: 10px;">
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
-          ${sortedGames.map(game => `
+          ${sortedGames.map(game => {
+            const gameStats = allStats[game.name] || { beaten: 0, amulets: 0 };
+            return `
             <div
               class="collection-game-card"
               data-game-name="${game.name.replace(/"/g, '&quot;')}"
               onclick="showGameDetails('${game.name.replace(/'/g, "\\'")}')"
               style="
+                position: relative;
                 background: rgba(0,0,0,0.3);
                 border: 1px solid #444;
                 border-radius: 8px;
@@ -3806,6 +3812,24 @@ function switchCollectionTab(tab) {
               "
               onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#ff9800';"
               onmouseout="this.style.transform=''; this.style.borderColor='#444';">
+              ${gameStats.amulets > 0 ? `
+                <div style="
+                  position: absolute;
+                  top: 5px;
+                  left: 5px;
+                  background: linear-gradient(145deg, gold, #cc9900);
+                  border: 2px solid #000;
+                  border-radius: 50%;
+                  width: 28px;
+                  height: 28px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 16px;
+                  z-index: 10;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+                ">🏺</div>
+              ` : ''}
               <img
                 src="${game.coverImage || 'images/covers/no-cover.svg'}"
                 alt="${game.name}"
@@ -3824,7 +3848,7 @@ function switchCollectionTab(tab) {
                 ${game.year} • ${game.type}
               </div>
             </div>
-          `).join('')}
+          `;}).join('')}
         </div>
       </div>
 
@@ -3840,8 +3864,9 @@ function switchCollectionTab(tab) {
     const sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name));
 
     content.innerHTML = `
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
-        ${sortedItems.map(item => `
+      <div style="flex: 1; overflow-y: auto; padding: 10px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
+          ${sortedItems.map(item => `
           <div style="
             background: rgba(0,0,0,0.3);
             border: 1px solid #444;
@@ -3871,6 +3896,7 @@ function switchCollectionTab(tab) {
             </div>
           </div>
         `).join('')}
+        </div>
       </div>
     `;
   } else if (tab === 'enemies') {
@@ -3878,8 +3904,9 @@ function switchCollectionTab(tab) {
     const sortedEnemies = [...enemies].sort((a, b) => a.name.localeCompare(b.name));
 
     content.innerHTML = `
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
-        ${sortedEnemies.map(enemy => `
+      <div style="flex: 1; overflow-y: auto; padding: 10px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
+          ${sortedEnemies.map(enemy => `
           <div style="
             background: rgba(0,0,0,0.3);
             border: 1px solid #444;
@@ -3912,6 +3939,7 @@ function switchCollectionTab(tab) {
             </div>
           </div>
         `).join('')}
+        </div>
       </div>
     `;
   }
@@ -3948,15 +3976,22 @@ function saveGameStats(stats) {
 /**
  * Increment beaten count for a game
  * @param {string} gameName - Name of the game
+ * @param {boolean} hasAmulet - Whether this was an amulet game
  */
-function incrementGameBeaten(gameName) {
+function incrementGameBeaten(gameName, hasAmulet = false) {
   const stats = getGameStats();
 
   if (!stats[gameName]) {
-    stats[gameName] = { beaten: 0 };
+    stats[gameName] = { beaten: 0, amulets: 0 };
   }
 
   stats[gameName].beaten = (stats[gameName].beaten || 0) + 1;
+
+  if (hasAmulet) {
+    stats[gameName].amulets = (stats[gameName].amulets || 0) + 1;
+    console.log(`${gameName} amulet collected! Total amulets: ${stats[gameName].amulets}`);
+  }
+
   saveGameStats(stats);
 
   console.log(`${gameName} beaten count: ${stats[gameName].beaten}`);
@@ -4014,10 +4049,6 @@ function showGameDetails(gameName) {
 
   detailsPanel.innerHTML = `
     <div style="display: flex; flex-direction: column; gap: 15px;">
-      <!-- Game Cover -->
-      <img src="${game.coverImage || 'images/covers/no-cover.svg'}" alt="${game.name}"
-        style="width: 100%; aspect-ratio: 2/3; object-fit: contain; border-radius: 8px; background: #1a1a1a;" />
-
       <!-- Game Info -->
       <div>
         <h3 style="margin: 0 0 10px 0; color: #ff9800;">${game.name}</h3>
@@ -4031,8 +4062,9 @@ function showGameDetails(gameName) {
       <!-- Tracked Stats -->
       <div style="padding: 12px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 6px;">
         <h4 style="margin: 0 0 8px 0; color: #ff9800; font-size: 14px;">📊 Tracked Stats</h4>
-        <div style="font-size: 13px; color: #ddd;">
-          <strong>Beaten:</strong> ${gameStats.beaten}
+        <div style="font-size: 13px; color: #ddd; line-height: 1.8;">
+          <div><strong>Beaten:</strong> ${gameStats.beaten}</div>
+          ${gameStats.amulets > 0 ? `<div><strong>Amulets Collected:</strong> ${gameStats.amulets}</div>` : ''}
         </div>
       </div>
 
@@ -4047,8 +4079,11 @@ function markGameFinished(gameName) {
     gameState.finishedGames = [];
   }
 
+  // Check if this is the amulet game
+  const isAmuletGame = gameState.amuletGame && gameName === gameState.amuletGame.name;
+
   // Always increment beaten count (tracks all completions, even if player dies later)
-  incrementGameBeaten(gameName);
+  incrementGameBeaten(gameName, isAmuletGame);
 
   // Only add if not already in finishedGames array
   if (!gameState.finishedGames.includes(gameName)) {
