@@ -1152,21 +1152,12 @@ function showFinish(node, isAmuletGame = false) {
   }
 
   b.onclick = () => {
-    // Disable button immediately to prevent multiple clicks
-    b.disabled = true;
-    b.style.opacity = '0.5';
-    b.style.cursor = 'not-allowed';
-    // Keep position: absolute (don't change to relative, that would make the box grow)
-    b.style.zIndex = '100'; // Ensure z-index stays above arrows even when disabled
-
-    // Grey out the Skip button when Finished is pressed
+    // Remove both buttons from DOM
     const skipBtn = node.querySelector('.ability-skip-btn');
     if (skipBtn) {
-      skipBtn.disabled = true;
-      skipBtn.style.opacity = '0.5';
-      skipBtn.style.cursor = 'not-allowed';
-      skipBtn.style.background = '#555';
+      skipBtn.remove();
     }
+    b.remove();
 
     if (isAmuletGame) {
       // Mark game as finished first
@@ -1290,23 +1281,12 @@ function showFinish(node, isAmuletGame = false) {
     `;
     skipBtn.onclick = () => {
       if (confirm('Skip this game and move to the next choice?')) {
-        // Disable the Finished button after skipping
+        // Remove both buttons from DOM
         const finishedBtn = node.querySelector('.finish');
         if (finishedBtn) {
-          finishedBtn.disabled = true;
-          finishedBtn.style.opacity = '0.5';
-          finishedBtn.style.cursor = 'not-allowed';
-          finishedBtn.style.background = '#555';
-          finishedBtn.style.position = 'relative';
-          finishedBtn.style.zIndex = '100'; // Ensure z-index stays above arrows
+          finishedBtn.remove();
         }
-        // Disable the Skip button itself
-        skipBtn.disabled = true;
-        skipBtn.style.opacity = '0.5';
-        skipBtn.style.cursor = 'not-allowed';
-        skipBtn.style.background = '#555';
-        skipBtn.style.position = 'absolute';
-        skipBtn.style.zIndex = '100'; // Ensure z-index stays above arrows
+        skipBtn.remove();
 
         useSkip();
       }
