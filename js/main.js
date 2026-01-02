@@ -1359,6 +1359,23 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
   // Clear existing arrows
   svg.innerHTML = '';
 
+  // Get the game boxes container to check for any transform
+  const gameBoxesContainer = document.getElementById('map-game-boxes');
+  let scale = 1.0;
+  if (gameBoxesContainer) {
+    const transform = window.getComputedStyle(gameBoxesContainer).transform;
+    if (transform && transform !== 'none') {
+      // Extract scale from matrix
+      const values = transform.match(/matrix\(([^)]+)\)/);
+      if (values) {
+        const matrixValues = values[1].split(',').map(parseFloat);
+        scale = matrixValues[0]; // First value is scaleX
+      }
+    }
+  }
+
+  console.log('Map container scale:', scale);
+
   // Get parent dimensions and set SVG to fill it completely
   const parentRect = svg.parentElement.getBoundingClientRect();
   svg.setAttribute('width', parentRect.width);
@@ -2283,16 +2300,37 @@ function handleStoneGolemResult(success) {
   gameState.stoneGolemFightsRemaining--;
 
   if (success) {
+    // Give gold for defeating Stone Golem
+    const goldReward = 10;
+    gold += goldReward;
+    gameState.gold = gold;
+    updateGoldDisplay();
+    updateTopBar();
+    createNotification(`+${goldReward} gold for defeating Stone Golem!`, '#ffdd77', '💰');
+
     // Trigger onEnemyDefeated effects for triggered items (like Cursed Slash)
     if (typeof triggerOnEnemyDefeated === 'function') {
       triggerOnEnemyDefeated();
     }
   } else {
-    // Failed - take 2 damage
+    // Failed - take 2 damage and gain a curse
     health = Math.max(0, health - 2);
     gameState.health = health;
     updateHealthDisplay();
     updateTopBar();
+
+    // Add a random curse for losing to Stone Golem
+    const availableCurses = curses.filter(c =>
+      !gameState.activeCurses.some(ac => ac.name === c.name)
+    );
+
+    if (availableCurses.length > 0) {
+      const randomCurse = availableCurses[Math.floor(Math.random() * availableCurses.length)];
+      if (typeof addCurse === 'function') {
+        addCurse(randomCurse.name);
+        createNotification(`Cursed with ${randomCurse.name}!`, '#ff4444', '😈');
+      }
+    }
   }
 
   if (gameState.stoneGolemFightsRemaining > 0) {
