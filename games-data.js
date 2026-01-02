@@ -340,7 +340,8 @@ var GAMES_DATA = [
       "Wordatro!",
       "Stackflow",
       "Sodaman",
-      "Dogpile"
+      "Dogpile",
+      "Word Play"
     ]
   },
   {
@@ -1501,6 +1502,15 @@ var GAMES_DATA = [
     "gamesInfluenced": []
   },
   {
+    "name": "Drill Core",
+    "year": 2024,
+    "type": "Strategy",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+  {
     "name": "Drop Duchy",
     "year": 2025,
     "type": "Strategy",
@@ -1874,6 +1884,15 @@ var GAMES_DATA = [
     ]
   },
   {
+    "name": "Flick Shot Rogues",
+    "year": 2025,
+    "type": "Strategy",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+  {
     "name": "Flinthook",
     "year": 2017,
     "type": "Action",
@@ -2087,6 +2106,15 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+  {
+    "name": "Granvir",
+    "year": 2025,
+    "type": "Action",
+    "connected": false,
     "influenced": false,
     "tags": [],
     "gamesInfluenced": []
@@ -2378,6 +2406,15 @@ var GAMES_DATA = [
     "gamesInfluenced": []
   },
   {
+    "name": "House of Necrosis",
+    "year": 2025,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+  {
     "name": "I Am Legion: Stand Survivors",
     "year": 2025,
     "type": "Action",
@@ -2462,9 +2499,10 @@ var GAMES_DATA = [
       "Fights in Tight Spaces",
       "Shogun Showdown",
       "The Last Spell",
-      "The Ouroboros King ",
+      "The Ouroboros King",
       "Pawnbarian",
-      "Metal Slug Tactics"
+      "Metal Slug Tactics",
+      "Spellmasons"
     ]
   },
   {
@@ -2559,7 +2597,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Dome Keeper",
-      "Ratropolis"
+      "Ratropolis",
+      "Drill Core"
     ]
   },
   {
@@ -3031,7 +3070,8 @@ var GAMES_DATA = [
       "Shiren the Wanderer GB: Monster of Moonlight Village",
       "Shiren the Wanderer 2: Shiren's Castle and the Oni Invasion",
       "Tangledeep",
-      "100 Rogues"
+      "100 Rogues",
+      "House of Necrosis"
     ]
   },
   {
@@ -3344,7 +3384,7 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "The Ouroboros King "
+      "The Ouroboros King"
     ]
   },
   {
@@ -4097,7 +4137,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Bingle Bingle",
-      "The Ouroboros King "
+      "The Ouroboros King"
     ]
   },
   {
@@ -4210,7 +4250,7 @@ var GAMES_DATA = [
       "Menace from the Deep",
       "Commander Quest",
       "Crush the Industry",
-      "The Ouroboros King ",
+      "The Ouroboros King",
       "Pawnbarian",
       "As We Descend",
       "StarVaders",
@@ -4334,6 +4374,15 @@ var GAMES_DATA = [
     "name": "Spellbook Demonslayers",
     "year": 2022,
     "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+  {
+    "name": "Spellmasons",
+    "year": 2023,
+    "type": "Strategy",
     "connected": true,
     "influenced": false,
     "tags": [],
@@ -4894,6 +4943,15 @@ var GAMES_DATA = [
     "gamesInfluenced": []
   },
   {
+    "name": "There Are No Orcs",
+    "year": 2025,
+    "type": "Strategy",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+  {
     "name": "Time Wasters",
     "year": 2023,
     "type": "Action",
@@ -4991,7 +5049,8 @@ var GAMES_DATA = [
       "Z.H.P. Unlosing Ranger VS Darkdeath Evilman",
       "Mistrogue: Mist and the Living Dungeons",
       "Vivid Knight",
-      "Dungeon of Windaria"
+      "Dungeon of Windaria",
+      "House of Necrosis"
     ]
   },
   {
@@ -5407,6 +5466,15 @@ var GAMES_DATA = [
     "name": "WizardChess",
     "year": 2021,
     "type": "Strategy",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": []
+  },
+  {
+    "name": "Word Play",
+    "year": 2025,
+    "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
     "tags": [],
