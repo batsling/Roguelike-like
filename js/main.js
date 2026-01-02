@@ -3741,7 +3741,7 @@ function showRunHistory() {
 
 function showCollection() {
   const collectionHTML = `
-    <div style="width: 90vw; max-width: 1200px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;">
+    <div style="width: 90vw; max-width: 1400px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
       <h2 style="color: #ff9800; margin-top: 0; text-align: center;">📚 Collection</h2>
 
       <!-- Tab Navigation -->
@@ -3752,7 +3752,7 @@ function showCollection() {
       </div>
 
       <!-- Tab Content -->
-      <div id="collection-content" style="flex: 1; overflow-y: auto; padding: 10px;">
+      <div id="collection-content" style="flex: 1; overflow: hidden; display: flex; gap: 20px;">
         <!-- Content will be populated by switchCollectionTab -->
       </div>
 
@@ -3784,46 +3784,55 @@ function switchCollectionTab(tab) {
     const sortedGames = [...games].sort((a, b) => a.name.localeCompare(b.name));
 
     content.innerHTML = `
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
-        ${sortedGames.map(game => `
-          <div
-            class="collection-game-card"
-            data-game-name="${game.name.replace(/"/g, '&quot;')}"
-            style="
-              background: rgba(0,0,0,0.3);
-              border: 1px solid #444;
-              border-radius: 8px;
-              padding: 10px;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              gap: 8px;
-              transition: transform 0.2s, border-color 0.2s;
-              cursor: pointer;
-            "
-            onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#ff9800';"
-            onmouseout="this.style.transform=''; this.style.borderColor='#444';"
-            onmousemove="if (typeof showTooltip === 'function') showTooltip(event, '${game.name.replace(/'/g, "\\'")}');"
-            onmouseleave="if (typeof hideTooltip === 'function') hideTooltip();">
-            <img
-              src="${game.coverImage || 'images/covers/no-cover.svg'}"
-              alt="${game.name}"
+      <!-- Left side: Game grid -->
+      <div id="games-grid" style="flex: 2; overflow-y: auto; padding: 10px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
+          ${sortedGames.map(game => `
+            <div
+              class="collection-game-card"
+              data-game-name="${game.name.replace(/"/g, '&quot;')}"
+              onclick="showGameDetails('${game.name.replace(/'/g, "\\'")}')"
               style="
-                width: 100%;
-                aspect-ratio: 2/3;
-                object-fit: contain;
-                border-radius: 6px;
-                background: #1a1a1a;
+                background: rgba(0,0,0,0.3);
+                border: 1px solid #444;
+                border-radius: 8px;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+                transition: transform 0.2s, border-color 0.2s;
+                cursor: pointer;
               "
-            />
-            <div style="text-align: center; font-size: 12px; font-weight: bold; color: #ddd; word-wrap: break-word; width: 100%;">
-              ${game.name}
+              onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#ff9800';"
+              onmouseout="this.style.transform=''; this.style.borderColor='#444';">
+              <img
+                src="${game.coverImage || 'images/covers/no-cover.svg'}"
+                alt="${game.name}"
+                style="
+                  width: 100%;
+                  aspect-ratio: 2/3;
+                  object-fit: contain;
+                  border-radius: 6px;
+                  background: #1a1a1a;
+                "
+              />
+              <div style="text-align: center; font-size: 12px; font-weight: bold; color: #ddd; word-wrap: break-word; width: 100%;">
+                ${game.name}
+              </div>
+              <div style="font-size: 10px; color: #888;">
+                ${game.year} • ${game.type}
+              </div>
             </div>
-            <div style="font-size: 10px; color: #888;">
-              ${game.year} • ${game.type}
-            </div>
-          </div>
-        `).join('')}
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Right side: Game details -->
+      <div id="game-details" style="flex: 1; overflow-y: auto; padding: 20px; background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 8px; min-width: 300px;">
+        <div style="text-align: center; color: #888; padding: 40px 20px;">
+          <p>Click a game to view details</p>
+        </div>
       </div>
     `;
   } else if (tab === 'items') {
@@ -3908,10 +3917,138 @@ function switchCollectionTab(tab) {
   }
 }
 
+// ===== GAME STATS TRACKING SYSTEM =====
+
+/**
+ * Get game stats from localStorage
+ * @returns {Object} Game stats object with game names as keys
+ */
+function getGameStats() {
+  try {
+    const stats = localStorage.getItem('gameStats');
+    return stats ? JSON.parse(stats) : {};
+  } catch (e) {
+    console.error('Error loading game stats:', e);
+    return {};
+  }
+}
+
+/**
+ * Save game stats to localStorage
+ * @param {Object} stats - Game stats object
+ */
+function saveGameStats(stats) {
+  try {
+    localStorage.setItem('gameStats', JSON.stringify(stats));
+  } catch (e) {
+    console.error('Error saving game stats:', e);
+  }
+}
+
+/**
+ * Increment beaten count for a game
+ * @param {string} gameName - Name of the game
+ */
+function incrementGameBeaten(gameName) {
+  const stats = getGameStats();
+
+  if (!stats[gameName]) {
+    stats[gameName] = { beaten: 0 };
+  }
+
+  stats[gameName].beaten = (stats[gameName].beaten || 0) + 1;
+  saveGameStats(stats);
+
+  console.log(`${gameName} beaten count: ${stats[gameName].beaten}`);
+}
+
+/**
+ * Show game details in the collection panel
+ * @param {string} gameName - Name of the game to show details for
+ */
+function showGameDetails(gameName) {
+  const game = games.find(g => g.name === gameName);
+  if (!game) return;
+
+  const stats = getGameStats();
+  const gameStats = stats[gameName] || { beaten: 0 };
+
+  // Get influenced by and influences lists
+  const influencedBy = getInfluencedByGames(gameName);
+  const influences = game.gamesInfluenced || [];
+
+  const detailsPanel = document.getElementById('game-details');
+  if (!detailsPanel) return;
+
+  let connectionsHTML = '';
+
+  if (influencedBy.length > 0) {
+    connectionsHTML += `
+      <div style="margin-top: 15px;">
+        <strong style="color: #4CAF50;">Influenced By:</strong>
+        <div style="margin-top: 8px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px;">
+          ${influencedBy.map(g => `
+            <div style="font-size: 11px; padding: 5px 8px; background: rgba(76, 175, 80, 0.1);
+              border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 4px; color: #ddd;">
+              ${g}
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+  }
+
+  if (influences.length > 0) {
+    connectionsHTML += `
+      <div style="margin-top: 15px;">
+        <strong style="color: #9b59b6;">Influenced:</strong>
+        <div style="margin-top: 8px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px;">
+          ${influences.map(g => `
+            <div style="font-size: 11px; padding: 5px 8px; background: rgba(155, 89, 182, 0.1);
+              border: 1px solid rgba(155, 89, 182, 0.3); border-radius: 4px; color: #ddd;">
+              ${g}
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+  }
+
+  detailsPanel.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <!-- Game Cover -->
+      <img src="${game.coverImage || 'images/covers/no-cover.svg'}" alt="${game.name}"
+        style="width: 100%; aspect-ratio: 2/3; object-fit: contain; border-radius: 8px; background: #1a1a1a;" />
+
+      <!-- Game Info -->
+      <div>
+        <h3 style="margin: 0 0 10px 0; color: #ff9800;">${game.name}</h3>
+        <div style="color: #aaa; font-size: 13px; line-height: 1.6;">
+          <div><strong>Release Year:</strong> ${game.year || '—'}</div>
+          <div><strong>Type:</strong> ${game.type || '—'}</div>
+          ${game.tags && game.tags.length > 0 ? `<div><strong>Tags:</strong> ${game.tags.join(', ')}</div>` : ''}
+        </div>
+      </div>
+
+      <!-- Tracked Stats -->
+      <div style="padding: 12px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 6px;">
+        <h4 style="margin: 0 0 8px 0; color: #ff9800; font-size: 14px;">📊 Tracked Stats</h4>
+        <div style="font-size: 13px; color: #ddd;">
+          <strong>Beaten:</strong> ${gameStats.beaten}
+        </div>
+      </div>
+
+      <!-- Connections -->
+      ${connectionsHTML}
+    </div>
+  `;
+}
+
 function markGameFinished(gameName) {
   if (!gameState.finishedGames) {
     gameState.finishedGames = [];
   }
+
+  // Always increment beaten count (tracks all completions, even if player dies later)
+  incrementGameBeaten(gameName);
 
   // Only add if not already in finishedGames array
   if (!gameState.finishedGames.includes(gameName)) {
@@ -4989,3 +5126,5 @@ window.showMapTooltip = showMapTooltip;
 window.moveMapTooltip = moveMapTooltip;
 window.hideMapTooltip = hideMapTooltip;
 window.drawMapArrows = drawMapArrows;
+window.switchCollectionTab = switchCollectionTab;
+window.showGameDetails = showGameDetails;
