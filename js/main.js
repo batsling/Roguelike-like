@@ -3811,20 +3811,28 @@ function switchCollectionTab(tab) {
             background: rgba(0,0,0,0.3);
             border: 1px solid #444;
             border-radius: 8px;
-            padding: 15px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
             gap: 8px;
             transition: transform 0.2s, border-color 0.2s;
           " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#4CAF50';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
-            <div style="text-align: center; font-size: 40px;">
-              ${item.icon || '📦'}
-            </div>
-            <div style="text-align: center; font-size: 13px; font-weight: bold; color: #ddd; word-wrap: break-word;">
+            <img
+              src="${item.image || 'images/items/no-item.svg'}"
+              alt="${item.name}"
+              style="
+                width: 100%;
+                height: 120px;
+                object-fit: contain;
+                border-radius: 6px;
+                background: rgba(0,0,0,0.2);
+              "
+            />
+            <div style="text-align: center; font-size: 12px; font-weight: bold; color: #ddd; word-wrap: break-word;">
               ${item.name}
             </div>
-            <div style="font-size: 11px; color: #aaa; text-align: center; line-height: 1.4;">
-              ${item.effect || 'No description'}
+            <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
+              ${item.description || 'No description'}
             </div>
           </div>
         `).join('')}
@@ -3841,23 +3849,31 @@ function switchCollectionTab(tab) {
             background: rgba(0,0,0,0.3);
             border: 1px solid #444;
             border-radius: 8px;
-            padding: 15px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
             gap: 8px;
             transition: transform 0.2s, border-color 0.2s;
           " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#f44336';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
-            <div style="text-align: center; font-size: 40px;">
-              ${enemy.icon || '👹'}
-            </div>
-            <div style="text-align: center; font-size: 13px; font-weight: bold; color: #ddd; word-wrap: break-word;">
+            <img
+              src="${enemy.imageUrl || 'images/enemies/no-enemy.svg'}"
+              alt="${enemy.name}"
+              style="
+                width: 100%;
+                height: 120px;
+                object-fit: contain;
+                border-radius: 6px;
+                background: rgba(0,0,0,0.2);
+              "
+            />
+            <div style="text-align: center; font-size: 12px; font-weight: bold; color: #ddd; word-wrap: break-word;">
               ${enemy.name}
             </div>
-            <div style="font-size: 11px; color: #ff6666; text-align: center;">
-              HP: ${enemy.hp || 'Unknown'} • ATK: ${enemy.attack || 'Unknown'}
+            <div style="font-size: 10px; color: #ff6666; text-align: center;">
+              ${enemy.powerLevel || 'Unknown'} • ${enemy.stat || 'Unknown'}
             </div>
             <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
-              ${enemy.effect || 'No special effects'}
+              Roll ${enemy.rollCheck || '?'} to succeed
             </div>
           </div>
         `).join('')}
