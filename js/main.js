@@ -1085,14 +1085,14 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
 
   let html = '';
 
-  // Create container with zoom-to-fit capability
-  html += '<div style="position: relative; padding: 60px 80px; width: 100%; min-height: 400px; overflow: auto;">';
-
-  // SVG for arrows - make it large enough to contain all arrows
-  html += '<svg id="map-arrows" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible;"></svg>';
+  // Create outer container with padding
+  html += '<div style="position: relative; padding: 40px; width: 100%; max-height: 70vh; overflow: auto;">';
 
   // Container for game boxes - zoom to fit if needed
-  html += '<div id="map-game-boxes" style="position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; width: fit-content; min-width: 100%; transform-origin: top center;">';
+  html += '<div id="map-game-boxes" style="position: relative; display: flex; flex-direction: column; align-items: center; width: fit-content; min-width: 100%; transform-origin: top center; margin: 0 auto;">';
+
+  // SVG for arrows - as child of game boxes so it scales together
+  html += '<svg id="map-arrows" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible;"></svg>';
 
   // Show past games first
   if (pastGames.length > 0) {
@@ -1341,17 +1341,13 @@ function autoZoomMapToFit() {
   if (scale < 1.0) {
     // Apply zoom to the game boxes container
     gameBoxesContainer.style.transform = `scale(${scale})`;
-
-    // Also apply the same transform to the SVG so arrows scale with content
-    const svg = document.getElementById('map-arrows');
-    if (svg) {
-      svg.style.transform = `scale(${scale})`;
-      svg.style.transformOrigin = 'top center';
-    }
+    gameBoxesContainer.setAttribute('data-scale', scale);
 
     // Adjust container height to account for scaling
     const scaledHeight = contentHeight * scale;
     gameBoxesContainer.parentElement.style.minHeight = scaledHeight + 'px';
+  } else {
+    gameBoxesContainer.removeAttribute('data-scale');
   }
 }
 
@@ -1398,18 +1394,22 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
   console.log('Found game boxes:', gameBoxes.length);
   const boxPositions = new Map();
 
+  // Get the game boxes container to use as reference
+  const gameBoxesContainer = document.getElementById('map-game-boxes');
+  const containerRect = gameBoxesContainer ? gameBoxesContainer.getBoundingClientRect() : svg.getBoundingClientRect();
+
   gameBoxes.forEach(box => {
     const gameName = box.getAttribute('data-game');
     const rect = box.getBoundingClientRect();
-    const svgRect = svg.getBoundingClientRect();
 
+    // Calculate position relative to the container (which is the SVG's parent)
     boxPositions.set(gameName, {
-      x: rect.left - svgRect.left + rect.width / 2,
-      y: rect.top - svgRect.top + rect.height / 2,
-      bottom: rect.bottom - svgRect.top,
-      top: rect.top - svgRect.top
+      x: rect.left - containerRect.left + rect.width / 2,
+      y: rect.top - containerRect.top + rect.height / 2,
+      bottom: rect.bottom - containerRect.top,
+      top: rect.top - containerRect.top
     });
-    console.log(`  Box "${gameName}": (${rect.left - svgRect.left + rect.width / 2}, ${rect.top - svgRect.top})`);
+    console.log(`  Box "${gameName}": (${rect.left - containerRect.left + rect.width / 2}, ${rect.top - containerRect.top})`);
   });
 
   console.log('Total box positions mapped:', boxPositions.size);

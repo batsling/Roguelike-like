@@ -1042,17 +1042,19 @@ function advance(game, x, y, encounterType) {
     // Remove old player icon
     const oldIcon = current.querySelector('#player-icon');
     if (oldIcon) oldIcon.remove();
-    // Remove old ability buttons
+    // Remove old ability buttons and finished button
     const oldSkipBtn = current.querySelector('.ability-skip-btn');
     const oldRerollBtn = current.querySelector('.ability-reroll-btn');
     const oldDashBtn = current.querySelector('.ability-dash-btn');
     const oldNodeDash = current.querySelector('.node-dash-btn');
     const oldNodeReroll = current.querySelector('.node-reroll-btn');
+    const oldFinishBtn = current.querySelector('.finish');
     if (oldSkipBtn) oldSkipBtn.remove();
     if (oldRerollBtn) oldRerollBtn.remove();
     if (oldDashBtn) oldDashBtn.remove();
     if (oldNodeDash) oldNodeDash.remove();
     if (oldNodeReroll) oldNodeReroll.remove();
+    if (oldFinishBtn) oldFinishBtn.remove();
   }
 
   const n = addNode(game, 'current', x, y);
