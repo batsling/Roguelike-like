@@ -446,6 +446,10 @@ document.getElementById('run-history-btn')?.addEventListener('click', () => {
   showRunHistory();
 });
 
+document.getElementById('collection-btn')?.addEventListener('click', () => {
+  showCollection();
+});
+
 document.getElementById('return-menu')?.addEventListener('click', () => {
   if (confirm('Return to main menu? (Game will be saved)')) {
     saveCurrentGame();
@@ -3715,6 +3719,151 @@ function showRunHistory() {
   `;
 
   createGameModal(historyHTML);
+}
+
+function showCollection() {
+  const collectionHTML = `
+    <div style="width: 90vw; max-width: 1200px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;">
+      <h2 style="color: #ff9800; margin-top: 0; text-align: center;">📚 Collection</h2>
+
+      <!-- Tab Navigation -->
+      <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #444;">
+        <button onclick="switchCollectionTab('games')" id="tab-games" style="padding: 10px 20px; background: #ff9800; border: none; border-radius: 6px 6px 0 0; color: white; cursor: pointer; font-weight: bold;">Games (${games.length})</button>
+        <button onclick="switchCollectionTab('items')" id="tab-items" style="padding: 10px 20px; background: #555; border: none; border-radius: 6px 6px 0 0; color: white; cursor: pointer; font-weight: bold;">Items (${items.length})</button>
+        <button onclick="switchCollectionTab('enemies')" id="tab-enemies" style="padding: 10px 20px; background: #555; border: none; border-radius: 6px 6px 0 0; color: white; cursor: pointer; font-weight: bold;">Enemies (${enemies.length})</button>
+      </div>
+
+      <!-- Tab Content -->
+      <div id="collection-content" style="flex: 1; overflow-y: auto; padding: 10px;">
+        <!-- Content will be populated by switchCollectionTab -->
+      </div>
+
+      <div style="text-align: center; margin-top: 20px; padding-top: 15px; border-top: 2px solid #444;">
+        <button onclick="closeGameModal();" style="padding: 10px 30px; background: linear-gradient(145deg, #ff9800, #f57c00); border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>
+      </div>
+    </div>
+  `;
+
+  createGameModal(collectionHTML);
+  switchCollectionTab('games');
+}
+
+function switchCollectionTab(tab) {
+  // Update tab buttons
+  const tabs = ['games', 'items', 'enemies'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`tab-${t}`);
+    if (btn) {
+      btn.style.background = t === tab ? '#ff9800' : '#555';
+    }
+  });
+
+  const content = document.getElementById('collection-content');
+  if (!content) return;
+
+  if (tab === 'games') {
+    // Sort games alphabetically
+    const sortedGames = [...games].sort((a, b) => a.name.localeCompare(b.name));
+
+    content.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
+        ${sortedGames.map(game => `
+          <div style="
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.2s, border-color 0.2s;
+          " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#ff9800';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
+            <img
+              src="${game.coverImage || 'images/covers/no-cover.svg'}"
+              alt="${game.name}"
+              style="
+                width: 100%;
+                aspect-ratio: 2/3;
+                object-fit: cover;
+                border-radius: 6px;
+                background: #1a1a1a;
+              "
+            />
+            <div style="text-align: center; font-size: 12px; font-weight: bold; color: #ddd; word-wrap: break-word; width: 100%;">
+              ${game.name}
+            </div>
+            <div style="font-size: 10px; color: #888;">
+              ${game.year} • ${game.type}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } else if (tab === 'items') {
+    // Sort items alphabetically
+    const sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name));
+
+    content.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
+        ${sortedItems.map(item => `
+          <div style="
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: transform 0.2s, border-color 0.2s;
+          " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#4CAF50';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
+            <div style="text-align: center; font-size: 40px;">
+              ${item.icon || '📦'}
+            </div>
+            <div style="text-align: center; font-size: 13px; font-weight: bold; color: #ddd; word-wrap: break-word;">
+              ${item.name}
+            </div>
+            <div style="font-size: 11px; color: #aaa; text-align: center; line-height: 1.4;">
+              ${item.effect || 'No description'}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } else if (tab === 'enemies') {
+    // Sort enemies alphabetically
+    const sortedEnemies = [...enemies].sort((a, b) => a.name.localeCompare(b.name));
+
+    content.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
+        ${sortedEnemies.map(enemy => `
+          <div style="
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: transform 0.2s, border-color 0.2s;
+          " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#f44336';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
+            <div style="text-align: center; font-size: 40px;">
+              ${enemy.icon || '👹'}
+            </div>
+            <div style="text-align: center; font-size: 13px; font-weight: bold; color: #ddd; word-wrap: break-word;">
+              ${enemy.name}
+            </div>
+            <div style="font-size: 11px; color: #ff6666; text-align: center;">
+              HP: ${enemy.hp || 'Unknown'} • ATK: ${enemy.attack || 'Unknown'}
+            </div>
+            <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
+              ${enemy.effect || 'No special effects'}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
 }
 
 function markGameFinished(gameName) {

@@ -346,50 +346,24 @@ function showTooltip(e, name) {
   const influences = game.gamesInfluenced ?? []; // Games this game influenced
   const influencedBy = getInfluencedByGames(name); // Games that influenced this game
 
-  // Helper function to get cover image path
-  const getCover = (gameName) => {
-    const gameData = games.find(g => g.name === gameName);
-    return gameData?.coverImage || 'images/covers/no-cover.svg';
-  };
+  // Get main game's cover
+  const gameCover = game.coverImage || 'images/covers/no-cover.svg';
 
   let connectionsHTML = '';
   if (influencedBy.length > 0) {
     connectionsHTML += `
       <div style="margin-top: 10px;">
         <strong style="color: #4CAF50;">Influenced By:</strong>
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-top: 6px;">
+        <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 3px;">
           ${influencedBy.map(g => `
             <div style="
+              font-size: 11px;
+              padding: 4px 8px;
               background: rgba(76, 175, 80, 0.1);
               border: 1px solid rgba(76, 175, 80, 0.3);
-              border-radius: 6px;
-              padding: 6px;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              gap: 4px;
-            ">
-              <img
-                src="${getCover(g)}"
-                alt="${g}"
-                style="
-                  width: 100%;
-                  height: auto;
-                  aspect-ratio: 2/3;
-                  object-fit: cover;
-                  border-radius: 4px;
-                  background: #1a1a1a;
-                "
-              />
-              <div style="
-                font-size: 9px;
-                text-align: center;
-                line-height: 1.2;
-                color: #ddd;
-                word-wrap: break-word;
-                width: 100%;
-              ">${g}</div>
-            </div>
+              border-radius: 4px;
+              color: #ddd;
+            ">${g}</div>
           `).join('')}
         </div>
       </div>`;
@@ -399,39 +373,16 @@ function showTooltip(e, name) {
     connectionsHTML += `
       <div style="margin-top: 10px;">
         <strong style="color: #9b59b6;">Influences:</strong>
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-top: 6px;">
+        <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 3px;">
           ${influences.map(g => `
             <div style="
+              font-size: 11px;
+              padding: 4px 8px;
               background: rgba(155, 89, 182, 0.1);
               border: 1px solid rgba(155, 89, 182, 0.3);
-              border-radius: 6px;
-              padding: 6px;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              gap: 4px;
-            ">
-              <img
-                src="${getCover(g)}"
-                alt="${g}"
-                style="
-                  width: 100%;
-                  height: auto;
-                  aspect-ratio: 2/3;
-                  object-fit: cover;
-                  border-radius: 4px;
-                  background: #1a1a1a;
-                "
-              />
-              <div style="
-                font-size: 9px;
-                text-align: center;
-                line-height: 1.2;
-                color: #ddd;
-                word-wrap: break-word;
-                width: 100%;
-              ">${g}</div>
-            </div>
+              border-radius: 4px;
+              color: #ddd;
+            ">${g}</div>
           `).join('')}
         </div>
       </div>`;
@@ -463,9 +414,26 @@ function showTooltip(e, name) {
     `;
   }
 
-  tooltip.innerHTML = `<h4>${name}</h4>
-    <div>Release Year: ${game.year || '—'}</div>
-    <div>Type: ${game.type || '—'}</div>
+  tooltip.innerHTML = `
+    <div style="display: flex; gap: 12px; margin-bottom: 10px;">
+      <img
+        src="${gameCover}"
+        alt="${name}"
+        style="
+          width: 100px;
+          height: 150px;
+          object-fit: cover;
+          border-radius: 6px;
+          background: #1a1a1a;
+          flex-shrink: 0;
+        "
+      />
+      <div style="flex: 1; min-width: 0;">
+        <h4 style="margin: 0 0 8px 0;">${name}</h4>
+        <div>Release Year: ${game.year || '—'}</div>
+        <div>Type: ${game.type || '—'}</div>
+      </div>
+    </div>
     <div class="mini-map">${connectionsHTML}</div>
     ${tagsHTML}`;
   tooltip.style.opacity = 1;
@@ -485,13 +453,12 @@ function moveTooltip(e) {
   let top = e.clientY + offset;
 
   // Check if tooltip is too tall for viewport - make it wider to reduce height
-  // Use wider tooltips to accommodate game covers
   if (tooltipRect.height > viewportHeight - topBarHeight - 40) {
     tooltip.style.width = 'auto';
-    tooltip.style.maxWidth = '600px';
-  } else {
-    tooltip.style.width = '450px';
     tooltip.style.maxWidth = '450px';
+  } else {
+    tooltip.style.width = '350px';
+    tooltip.style.maxWidth = '350px';
   }
 
   // Re-get rect after potential width change
