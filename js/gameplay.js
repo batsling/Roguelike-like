@@ -424,7 +424,7 @@ function showTooltip(e, name) {
         style="
           width: 100px;
           height: 150px;
-          object-fit: cover;
+          object-fit: contain;
           border-radius: 6px;
           background: #1a1a1a;
           flex-shrink: 0;

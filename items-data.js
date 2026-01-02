@@ -4,7 +4,7 @@ var ITEMS_DATA = [
     "rarity": "rare",
     "type": "Passive",
     "description": "Gain +1 Dash",
-    "image": "https://imgur.com/xHGuThN",
+    "image": "images/items/ballistic-boots.png",
     "game": "Enter the Gungeon",
     "tags": [
       "wearable"
@@ -15,7 +15,7 @@ var ITEMS_DATA = [
     "rarity": "uncommon",
     "type": "Passive",
     "description": "Gain +3 Intelligence, but -1 Dexterity",
-    "image": "https://imgur.com/7PwYlLV",
+    "image": "images/items/campfire.png",
     "game": "Brotato",
     "tags": []
   },
@@ -24,7 +24,7 @@ var ITEMS_DATA = [
     "rarity": "uncommon",
     "type": "Triggered",
     "description": "When you defeat an enemy, 50% chance to Heal +1 Health",
-    "image": "https://imgur.com/kHsgAAB",
+    "image": "images/items/charm-of-the-vampire.png",
     "game": "The Binding of Isaac",
     "tags": []
   },
@@ -33,7 +33,7 @@ var ITEMS_DATA = [
     "rarity": "rare",
     "type": "Triggered",
     "description": "Lose half of your max health. When you defeat an enemy, Heal +1 Health",
-    "image": "https://imgur.com/vuYYwHg",
+    "image": "images/items/cursed-slash.png",
     "game": "Hades",
     "tags": []
   },
@@ -42,7 +42,7 @@ var ITEMS_DATA = [
     "rarity": "uncommon",
     "type": "Passive",
     "description": "Gain +1 Reroll",
-    "image": "https://imgur.com/a38hVSs",
+    "image": "images/items/d6.png",
     "game": "The Binding of Isaac",
     "tags": []
   },
@@ -51,7 +51,7 @@ var ITEMS_DATA = [
     "rarity": "common",
     "type": "Passive",
     "description": "Gain +2 Intelligence",
-    "image": "https://imgur.com/1Yg6lUW",
+    "image": "images/items/empty-tome.png",
     "game": "Vampire Survivors",
     "tags": []
   },
@@ -60,7 +60,7 @@ var ITEMS_DATA = [
     "rarity": "common",
     "type": "Passive",
     "description": "Gain +2 Max Health and Heal +2 Health",
-    "image": "https://imgur.com/7ZFcskE",
+    "image": "images/items/hollow-heart.png",
     "game": "Vampire Survivors",
     "tags": []
   },
@@ -69,7 +69,7 @@ var ITEMS_DATA = [
     "rarity": "uncommon",
     "type": "Passive",
     "description": "Gain +3 Charisma, but -1 Dexterity",
-    "image": "https://imgur.com/WQA1brB",
+    "image": "images/items/bowler-hat.png",
     "game": "Brotato",
     "tags": [
       "wearable"
@@ -80,7 +80,7 @@ var ITEMS_DATA = [
     "rarity": "common",
     "type": "Passive",
     "description": "Gain +1 Luck",
-    "image": "https://imgur.com/XkprgSn",
+    "image": "images/items/lucky-toe.png",
     "game": "The Binding of Isaac",
     "tags": []
   },
@@ -89,7 +89,7 @@ var ITEMS_DATA = [
     "rarity": "common",
     "type": "Passive",
     "description": "Gain +1 Max Health and Heal +4 Health",
-    "image": "https://imgur.com/ZfpzXcZ",
+    "image": "images/items/lunch.png",
     "game": "The Binding of Isaac",
     "tags": [
       "food"
@@ -100,7 +100,7 @@ var ITEMS_DATA = [
     "rarity": "uncommon",
     "type": "Passive",
     "description": "Gain +1 Field of View, get an extra option in the space choice",
-    "image": "https://imgur.com/hiX14wX",
+    "image": "images/items/more-options.png",
     "game": "The Binding of Isaac",
     "tags": []
   },
@@ -109,7 +109,7 @@ var ITEMS_DATA = [
     "rarity": "common",
     "type": "Passive",
     "description": "Gain +2 Dexterity",
-    "image": "https://imgur.com/mHg7pUP",
+    "image": "images/items/oddly-smooth-stone.png",
     "game": "Slay the Spire",
     "tags": []
   },
@@ -118,7 +118,7 @@ var ITEMS_DATA = [
     "rarity": "rare",
     "type": "Passive",
     "description": "Gain +5 Max Health and Heal +5 Health, +2 Luck, but -1 Strength",
-    "image": "https://imgur.com/xSDhE5U",
+    "image": "images/items/panda.png",
     "game": "Brotato",
     "tags": []
   },
@@ -127,7 +127,7 @@ var ITEMS_DATA = [
     "rarity": "common",
     "type": "Usable",
     "description": "Apply the Stinky status to the current game. Stinky games are the least prioritized in game selections.",
-    "image": "https://imgur.com/fru3Gyw",
+    "image": "images/items/the-poop.png",
     "game": "The Binding of Isaac",
     "tags": []
   },
@@ -136,7 +136,7 @@ var ITEMS_DATA = [
     "rarity": "uncommon",
     "type": "Usable",
     "description": "Teleport to a random Deckbuilder space",
-    "image": "https://imgur.com/wS3xMss",
+    "image": "images/items/ride-the-bus.png",
     "game": "Balatro",
     "tags": []
   },
@@ -145,7 +145,7 @@ var ITEMS_DATA = [
     "rarity": "common",
     "type": "Usable",
     "description": "Teleport to a random space",
-    "image": "https://imgur.com/RETSDm3",
+    "image": "images/items/scroll-of-teleportation.png",
     "game": "Rogue",
     "tags": []
   },
@@ -154,7 +154,7 @@ var ITEMS_DATA = [
     "rarity": "common",
     "type": "Passive",
     "description": "Gain +2 Charisma",
-    "image": "https://imgur.com/99fmzLa",
+    "image": "images/items/sunglasses.png",
     "game": "Enter the Gungeon",
     "tags": [
       "wearable"
@@ -165,7 +165,7 @@ var ITEMS_DATA = [
     "rarity": "common",
     "type": "Passive",
     "description": "Gain +2 Strength",
-    "image": "https://imgur.com/htl7FIW",
+    "image": "images/items/vajra.png",
     "game": "Slay the Spire",
     "tags": []
   },
@@ -174,7 +174,7 @@ var ITEMS_DATA = [
     "rarity": "rare",
     "type": "Usable",
     "description": "On the first use, create a portal. On second use, return to the space you created the portal on",
-    "image": "https://imgur.com/FxQnJNs",
+    "image": "images/items/ventricle-razor.png",
     "game": "The Binding of Isaac",
     "tags": []
   },
@@ -183,7 +183,7 @@ var ITEMS_DATA = [
     "rarity": "uncommon",
     "type": "Passive",
     "description": "Gain +3 Strength, but -1 Intelligence",
-    "image": "https://imgur.com/mRtclGk",
+    "image": "images/items/wheat.png",
     "game": "Brotato",
     "tags": [
       "food"
@@ -194,7 +194,7 @@ var ITEMS_DATA = [
     "rarity": "rare",
     "type": "Usable",
     "description": "Move to a space of your choice in the same year you are on",
-    "image": "https://imgur.com/xTULxCS",
+    "image": "images/items/winged-boots.png",
     "game": "Slay the Spire",
     "tags": [
       "wearable"
@@ -205,7 +205,7 @@ var ITEMS_DATA = [
     "rarity": "uncommon",
     "type": "Passive",
     "description": "Gain +3 Dexterity, but -1  Intelligence",
-    "image": "https://imgur.com/lh7ebwI",
+    "image": "images/items/wings.png",
     "game": "Brotato",
     "tags": []
   }

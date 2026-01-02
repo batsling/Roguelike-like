@@ -3786,24 +3786,32 @@ function switchCollectionTab(tab) {
     content.innerHTML = `
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
         ${sortedGames.map(game => `
-          <div style="
-            background: rgba(0,0,0,0.3);
-            border: 1px solid #444;
-            border-radius: 8px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            transition: transform 0.2s, border-color 0.2s;
-          " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#ff9800';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
+          <div
+            class="collection-game-card"
+            data-game-name="${game.name.replace(/"/g, '&quot;')}"
+            style="
+              background: rgba(0,0,0,0.3);
+              border: 1px solid #444;
+              border-radius: 8px;
+              padding: 10px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 8px;
+              transition: transform 0.2s, border-color 0.2s;
+              cursor: pointer;
+            "
+            onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#ff9800';"
+            onmouseout="this.style.transform=''; this.style.borderColor='#444';"
+            onmousemove="if (typeof showTooltip === 'function') showTooltip(event, '${game.name.replace(/'/g, "\\'")}');"
+            onmouseleave="if (typeof hideTooltip === 'function') hideTooltip();">
             <img
               src="${game.coverImage || 'images/covers/no-cover.svg'}"
               alt="${game.name}"
               style="
                 width: 100%;
                 aspect-ratio: 2/3;
-                object-fit: cover;
+                object-fit: contain;
                 border-radius: 6px;
                 background: #1a1a1a;
               "
