@@ -354,15 +354,16 @@ function showTooltip(e, name) {
     connectionsHTML += `
       <div style="margin-top: 10px;">
         <strong style="color: #4CAF50;">Influenced By:</strong>
-        <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 3px;">
+        <div style="margin-top: 6px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;">
           ${influencedBy.map(g => `
             <div style="
-              font-size: 11px;
-              padding: 4px 8px;
+              font-size: 10px;
+              padding: 4px 6px;
               background: rgba(76, 175, 80, 0.1);
               border: 1px solid rgba(76, 175, 80, 0.3);
               border-radius: 4px;
               color: #ddd;
+              text-align: center;
             ">${g}</div>
           `).join('')}
         </div>
@@ -372,16 +373,17 @@ function showTooltip(e, name) {
   if (influences.length > 0) {
     connectionsHTML += `
       <div style="margin-top: 10px;">
-        <strong style="color: #9b59b6;">Influences:</strong>
-        <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 3px;">
+        <strong style="color: #9b59b6;">Influenced:</strong>
+        <div style="margin-top: 6px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;">
           ${influences.map(g => `
             <div style="
-              font-size: 11px;
-              padding: 4px 8px;
+              font-size: 10px;
+              padding: 4px 6px;
               background: rgba(155, 89, 182, 0.1);
               border: 1px solid rgba(155, 89, 182, 0.3);
               border-radius: 4px;
               color: #ddd;
+              text-align: center;
             ">${g}</div>
           `).join('')}
         </div>
@@ -675,6 +677,12 @@ function clearChoices() {
   if (pastNodes.length > 0 && currentNode) {
     drawPastLine(pastNodes[pastNodes.length - 1], currentNode);
   }
+}
+
+function clearAllArrows() {
+  // Clear ALL CSS arrows including background connection arrows
+  // Used when exiting the dungeon screen to prevent arrows from showing on other screens
+  document.querySelectorAll('.css-arrow').forEach(arrow => arrow.remove());
 }
 
 function spawnChoices() {
@@ -1151,7 +1159,8 @@ function showFinish(node, isAmuletGame = false) {
     b.disabled = true;
     b.style.opacity = '0.5';
     b.style.cursor = 'not-allowed';
-    b.style.zIndex = '10'; // Ensure z-index stays above arrows even when disabled
+    b.style.position = 'relative';
+    b.style.zIndex = '100'; // Ensure z-index stays above arrows even when disabled
 
     // Grey out the Skip button when Finished is pressed
     const skipBtn = node.querySelector('.ability-skip-btn');
@@ -1280,7 +1289,7 @@ function showFinish(node, isAmuletGame = false) {
       font-weight: bold;
       font-size: 13px;
       opacity: 1;
-      z-index: 10;
+      z-index: 100;
     `;
     skipBtn.onclick = () => {
       if (confirm('Skip this game and move to the next choice?')) {
@@ -1291,14 +1300,16 @@ function showFinish(node, isAmuletGame = false) {
           finishedBtn.style.opacity = '0.5';
           finishedBtn.style.cursor = 'not-allowed';
           finishedBtn.style.background = '#555';
-          finishedBtn.style.zIndex = '10'; // Ensure z-index stays above arrows
+          finishedBtn.style.position = 'relative';
+          finishedBtn.style.zIndex = '100'; // Ensure z-index stays above arrows
         }
         // Disable the Skip button itself
         skipBtn.disabled = true;
         skipBtn.style.opacity = '0.5';
         skipBtn.style.cursor = 'not-allowed';
         skipBtn.style.background = '#555';
-        skipBtn.style.zIndex = '10'; // Ensure z-index stays above arrows
+        skipBtn.style.position = 'absolute';
+        skipBtn.style.zIndex = '100'; // Ensure z-index stays above arrows
 
         useSkip();
       }
@@ -1550,6 +1561,7 @@ window.hideTooltip = hideTooltip;
 window.drawArrowLine = drawArrowLine;
 window.drawPastLine = drawPastLine;
 window.clearChoices = clearChoices;
+window.clearAllArrows = clearAllArrows;
 window.spawnChoices = spawnChoices;
 window.advance = advance;
 window.showFinish = showFinish;

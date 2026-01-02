@@ -26,7 +26,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/20-minutes-till-dawn.jpg"
   },
   {
     "name": "9 Kings",
@@ -35,7 +36,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/9-kings.jpg"
   },
   {
     "name": "99 Levels to Hell",
@@ -44,7 +46,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/99-levels-to-hell.jpg"
   },
   {
     "name": "A Robot Named Fight!",
@@ -53,7 +56,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/a-robot-named-fight.jpg"
   },
   {
     "name": "Abandoned Archive",
@@ -62,7 +66,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/abandoned-archive.jpg"
   },
   {
     "name": "Absolum",
@@ -71,7 +76,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/absolum.jpg"
   },
   {
     "name": "Aces & Adventures",
@@ -80,7 +86,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/aces-adventures.jpg"
   },
   {
     "name": "Across the Obelisk",
@@ -91,7 +98,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "The Royal Writ"
-    ]
+    ],
+    "coverImage": "images/covers/across-the-obelisk.jpg"
   },
   {
     "name": "Aethermancer",
@@ -100,7 +108,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/aethermancer.jpg"
   },
   {
     "name": "AK-xolotl",
@@ -109,7 +118,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/ak-xolotl.jpg"
   },
   {
     "name": "Alina of the Arena",
@@ -118,7 +128,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/alina-of-the-arena.jpg"
   },
   {
     "name": "Ancient Domains of Mystery",
@@ -133,7 +144,8 @@ var GAMES_DATA = [
       "Moonring",
       "Stoneshard",
       "Ultimate ADOM"
-    ]
+    ],
+    "coverImage": "images/covers/ancient-domains-of-mystery.jpg"
   },
   {
     "name": "Angband",
@@ -158,7 +170,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Another Farm Roguelike: Rebirth"
-    ]
+    ],
+    "coverImage": "images/covers/another-farm-roguelike.jpg"
   },
   {
     "name": "Another Farm Roguelike: Rebirth",
@@ -167,7 +180,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/another-farm-roguelike-rebirth.jpg"
   },
   {
     "name": "Aotenjo: Infinite Hands",
@@ -176,7 +190,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/aotenjo-infinite-hands.jpg"
   },
   {
     "name": "Arcane Trigger",
@@ -185,7 +200,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/arcane-trigger.jpg"
   },
   {
     "name": "Arcanium: Rise of Akhan",
@@ -194,7 +210,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/arcanium-rise-of-akhan.jpg"
   },
   {
     "name": "Archons",
@@ -203,7 +220,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/archons.jpg"
   },
   {
     "name": "Arrogue",
@@ -212,7 +230,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/arrogue.jpg"
   },
   {
     "name": "As We Descend",
@@ -221,7 +240,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/as-we-descend.jpg"
   },
   {
     "name": "Asgard's Fall: Viking Survivors",
@@ -230,7 +250,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/asgard-s-fall-viking-survivors.jpg"
   },
   {
     "name": "Asterogues",
@@ -239,7 +260,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/asterogues.jpg"
   },
   {
     "name": "Astral Ascent",
@@ -248,7 +270,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/astral-ascent.jpg"
   },
   {
     "name": "Astronarch",
@@ -259,7 +282,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "The Last Flame"
-    ]
+    ],
+    "coverImage": "images/covers/astronarch.jpg"
   },
   {
     "name": "Auro: A Monster-Bumping Adventure",
@@ -270,7 +294,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Rack and Slay"
-    ]
+    ],
+    "coverImage": "images/covers/auro-a-monster-bumping-adventure.jpg"
   },
   {
     "name": "Auto Rogue",
@@ -279,7 +304,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/auto-rogue.jpg"
   },
   {
     "name": "Backpack Battles",
@@ -291,7 +317,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Knightica",
       "He is Coming"
-    ]
+    ],
+    "coverImage": "images/covers/backpack-battles.jpg"
   },
   {
     "name": "Backpack Hero",
@@ -303,7 +330,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Moon Watch",
       "Spin Hero"
-    ]
+    ],
+    "coverImage": "images/covers/backpack-hero.jpg"
   },
   {
     "name": "Bad North",
@@ -312,7 +340,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/bad-north.jpg"
   },
   {
     "name": "Balatro",
@@ -342,7 +371,8 @@ var GAMES_DATA = [
       "Sodaman",
       "Dogpile",
       "Word Play"
-    ]
+    ],
+    "coverImage": "images/covers/balatro.jpg"
   },
   {
     "name": "Baldi's Basics Plus",
@@ -351,7 +381,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/baldi-s-basics-plus.jpg"
   },
   {
     "name": "Ball x Pit",
@@ -371,7 +402,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Omelet You Cook"
-    ]
+    ],
+    "coverImage": "images/covers/ballionaire.jpg"
   },
   {
     "name": "Banners of Ruin",
@@ -380,7 +412,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/banners-of-ruin.jpg"
   },
   {
     "name": "Barony",
@@ -389,7 +422,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/barony.jpg"
   },
   {
     "name": "Baroque",
@@ -419,7 +453,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Legend of Keepers: Career of a Dungeon Manager",
       "The Last Spell"
-    ]
+    ],
+    "coverImage": "images/covers/battle-brothers.jpg"
   },
   {
     "name": "BAZR",
@@ -437,7 +472,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/be-my-horde.jpg"
   },
   {
     "name": "Beat Blast",
@@ -446,7 +482,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/beat-blast.jpg"
   },
   {
     "name": "Beneath Apple Manor",
@@ -464,7 +501,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/beneath-oresa.jpg"
   },
   {
     "name": "Beyond the Long Night",
@@ -473,7 +511,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/beyond-the-long-night.jpg"
   },
   {
     "name": "Bingle Bingle",
@@ -482,7 +521,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/bingle-bingle.jpg"
   },
   {
     "name": "Blazing Beaks",
@@ -491,7 +531,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/blazing-beaks.jpg"
   },
   {
     "name": "Block Tower TD",
@@ -502,7 +543,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Block Tower TD 2"
-    ]
+    ],
+    "coverImage": "images/covers/block-tower-td.jpg"
   },
   {
     "name": "Block Tower TD 2",
@@ -511,7 +553,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/block-tower-td-2.jpg"
   },
   {
     "name": "BloodDome99",
@@ -520,7 +563,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/blooddome99.jpg"
   },
   {
     "name": "Blue Prince",
@@ -529,7 +573,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/blue-prince.jpg"
   },
   {
     "name": "Boneraiser Minions",
@@ -540,7 +585,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Be My Horde"
-    ]
+    ],
+    "coverImage": "images/covers/boneraiser-minions.jpg"
   },
   {
     "name": "Book of Demons",
@@ -551,7 +597,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Hellcard"
-    ]
+    ],
+    "coverImage": "images/covers/book-of-demons.jpg"
   },
   {
     "name": "Bounty of One",
@@ -560,7 +607,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/bounty-of-one.jpg"
   },
   {
     "name": "BPM: Bullets Per Minute",
@@ -569,7 +617,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/bpm-bullets-per-minute.jpg"
   },
   {
     "name": "Breach Wanderers",
@@ -578,7 +627,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/breach-wanderers.jpg"
   },
   {
     "name": "Brogue",
@@ -605,7 +655,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Rack and Slay",
       "Noobs Are Coming"
-    ]
+    ],
+    "coverImage": "images/covers/brotato.jpg"
   },
   {
     "name": "Brutal Orchestra",
@@ -614,7 +665,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/brutal-orchestra.jpg"
   },
   {
     "name": "Buckshot Roulette",
@@ -625,7 +677,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "CloverPit"
-    ]
+    ],
+    "coverImage": "images/covers/buckshot-roulette.jpg"
   },
   {
     "name": "Candies 'n Curses",
@@ -656,7 +709,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/cat-god-ranch.jpg"
   },
   {
     "name": "Cataclysm",
@@ -686,7 +740,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/cataclysm-dark-days-ahead.jpg"
   },
   {
     "name": "Cave Noire",
@@ -706,7 +761,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Wildfrost"
-    ]
+    ],
+    "coverImage": "images/covers/caveblazers.jpg"
   },
   {
     "name": "Caves of Qud",
@@ -715,7 +771,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/caves-of-qud.jpg"
   },
   {
     "name": "Cavity Busters",
@@ -724,7 +781,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/cavity-busters.jpg"
   },
   {
     "name": "Centipede Gun",
@@ -733,7 +791,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/centipede-gun.jpg"
   },
   {
     "name": "Chaos Zero Nightmare",
@@ -753,7 +812,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Astral Ascent"
-    ]
+    ],
+    "coverImage": "images/covers/children-of-morta.jpg"
   },
   {
     "name": "Chocobo's Dungeon 2",
@@ -793,7 +853,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/chrono-ark.jpg"
   },
   {
     "name": "CleanFall",
@@ -802,7 +863,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/cleanfall.jpg"
   },
   {
     "name": "CloverPit",
@@ -811,7 +873,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/cloverpit.jpg"
   },
   {
     "name": "Clutchtime: Basketball Deckbuilder",
@@ -820,7 +883,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/clutchtime-basketball-deckbuilder.jpg"
   },
   {
     "name": "Coal LLC",
@@ -829,7 +893,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/coal-llc.jpg"
   },
   {
     "name": "Cobalt Core",
@@ -838,7 +903,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/cobalt-core.jpg"
   },
   {
     "name": "Cogmind",
@@ -849,7 +915,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Mainframe Defenders"
-    ]
+    ],
+    "coverImage": "images/covers/cogmind.jpg"
   },
   {
     "name": "Commander Quest",
@@ -858,7 +925,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/commander-quest.jpg"
   },
   {
     "name": "Conan Chop Chop",
@@ -867,7 +935,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/conan-chop-chop.jpg"
   },
   {
     "name": "Convoy",
@@ -876,7 +945,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/convoy.jpg"
   },
   {
     "name": "Crab Champions",
@@ -887,7 +957,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Vellum"
-    ]
+    ],
+    "coverImage": "images/covers/crab-champions.jpg"
   },
   {
     "name": "Crafty Survival",
@@ -905,7 +976,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/crawl.jpg"
   },
   {
     "name": "Crop Rotation",
@@ -914,7 +986,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/crop-rotation.jpg"
   },
   {
     "name": "Cross Blitz",
@@ -923,7 +996,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/cross-blitz.jpg"
   },
   {
     "name": "Crown Trick",
@@ -932,7 +1006,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/crown-trick.jpg"
   },
   {
     "name": "Crush the Industry",
@@ -941,7 +1016,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/crush-the-industry.jpg"
   },
   {
     "name": "Crying Suns",
@@ -950,7 +1026,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/crying-suns.jpg"
   },
   {
     "name": "Crypt of the NecroDancer",
@@ -959,7 +1036,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": true,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/crypt-of-the-necrodancer.jpg"
   },
   {
     "name": "Cube Chaos",
@@ -968,7 +1046,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/cube-chaos.jpg"
   },
   {
     "name": "Cult of the Lamb",
@@ -977,7 +1056,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/cult-of-the-lamb.jpg"
   },
   {
     "name": "Curious Expedition",
@@ -989,7 +1069,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Curious Expedition 2",
       "Insurmountable"
-    ]
+    ],
+    "coverImage": "images/covers/curious-expedition.jpg"
   },
   {
     "name": "Curious Expedition 2",
@@ -998,7 +1079,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/curious-expedition-2.jpg"
   },
   {
     "name": "Curse of the Dead Gods",
@@ -1009,7 +1091,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Ravenswatch"
-    ]
+    ],
+    "coverImage": "images/covers/curse-of-the-dead-gods.jpg"
   },
   {
     "name": "Cursorblade",
@@ -1018,7 +1101,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/cursorblade.jpg"
   },
   {
     "name": "Dark Devotion",
@@ -1029,7 +1113,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Astral Ascent"
-    ]
+    ],
+    "coverImage": "images/covers/dark-devotion.jpg"
   },
   {
     "name": "Darkblade Ascent",
@@ -1038,7 +1123,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/darkblade-ascent.jpg"
   },
   {
     "name": "Darkest Dungeon",
@@ -1064,7 +1150,8 @@ var GAMES_DATA = [
       "Hell Clock",
       "Luck & Loot",
       "Across the Obelisk"
-    ]
+    ],
+    "coverImage": "images/covers/darkest-dungeon.jpg"
   },
   {
     "name": "Darkest Dungeon 2",
@@ -1073,7 +1160,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/darkest-dungeon-2.jpg"
   },
   {
     "name": "Dave the Diver",
@@ -1082,7 +1170,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dave-the-diver.jpg"
   },
   {
     "name": "Dead Cells",
@@ -1107,7 +1196,8 @@ var GAMES_DATA = [
       "Aethermancer",
       "Dunjungle",
       "Reality Break"
-    ]
+    ],
+    "coverImage": "images/covers/dead-cells.jpg"
   },
   {
     "name": "Dead Estate",
@@ -1116,7 +1206,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dead-estate.jpg"
   },
   {
     "name": "Deadzone: Rogue",
@@ -1125,7 +1216,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/deadzone-rogue.jpg"
   },
   {
     "name": "Death by Scrolling",
@@ -1148,7 +1240,8 @@ var GAMES_DATA = [
       "The Spells Brigade",
       "Be My Horde",
       "Sodaman"
-    ]
+    ],
+    "coverImage": "images/covers/death-must-die.jpg"
   },
   {
     "name": "Death Roads: Tournament",
@@ -1157,7 +1250,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/death-roads-tournament.jpg"
   },
   {
     "name": "Deck of Haunts",
@@ -1166,7 +1260,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/deck-of-haunts.jpg"
   },
   {
     "name": "Decktamer",
@@ -1175,7 +1270,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/decktamer.jpg"
   },
   {
     "name": "Deep Dungeons of Doom",
@@ -1184,7 +1280,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/deep-dungeons-of-doom.jpg"
   },
   {
     "name": "Deep Rock Galactic: Survivor",
@@ -1195,7 +1292,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "The Spells Brigade"
-    ]
+    ],
+    "coverImage": "images/covers/deep-rock-galactic-survivor.jpg"
   },
   {
     "name": "Deep Sky Derelicts",
@@ -1206,7 +1304,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Death Roads: Tournament"
-    ]
+    ],
+    "coverImage": "images/covers/deep-sky-derelicts.jpg"
   },
   {
     "name": "Delver",
@@ -1215,7 +1314,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/delver.jpg"
   },
   {
     "name": "DemonCrawl",
@@ -1224,7 +1324,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/demoncrawl.jpg"
   },
   {
     "name": "Demonic Mahjong",
@@ -1233,7 +1334,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/demonic-mahjong.jpg"
   },
   {
     "name": "Demonlore",
@@ -1242,7 +1344,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/demonlore.jpg"
   },
   {
     "name": "Desktop Dungeons",
@@ -1253,7 +1356,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "The Binding of Isaac"
-    ]
+    ],
+    "coverImage": "images/covers/desktop-dungeons.jpg"
   },
   {
     "name": "Desktop Survivors 98",
@@ -1262,7 +1366,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/desktop-survivors-98.jpg"
   },
   {
     "name": "Despot's Game: Dystopian Battle Simulator",
@@ -1273,7 +1378,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Slime 3K: Rise Against Despot"
-    ]
+    ],
+    "coverImage": "images/covers/despot-s-game-dystopian-battle-simulator.jpg"
   },
   {
     "name": "Devil Slayer: Raksasi",
@@ -1282,7 +1388,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/devil-slayer-raksasi.jpg"
   },
   {
     "name": "Dice & Fold",
@@ -1291,7 +1398,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dice-fold.jpg"
   },
   {
     "name": "Dice With Death",
@@ -1300,7 +1408,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dice-with-death.jpg"
   },
   {
     "name": "Dicealot",
@@ -1309,7 +1418,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dicealot.jpg"
   },
   {
     "name": "Dicefolk",
@@ -1318,7 +1428,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dicefolk.jpg"
   },
   {
     "name": "Diceomancer",
@@ -1327,7 +1438,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/diceomancer.jpg"
   },
   {
     "name": "Dicey Dungeons",
@@ -1343,7 +1455,8 @@ var GAMES_DATA = [
       "SpellRogue",
       "Dog Witch",
       "Dicealot"
-    ]
+    ],
+    "coverImage": "images/covers/dicey-dungeons.jpg"
   },
   {
     "name": "Die in the Dungeon",
@@ -1352,7 +1465,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/die-in-the-dungeon.jpg"
   },
   {
     "name": "Dimensionals",
@@ -1361,7 +1475,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dimensionals.jpg"
   },
   {
     "name": "Dog and Goblin",
@@ -1370,7 +1485,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dog-and-goblin.jpg"
   },
   {
     "name": "Dog Witch",
@@ -1400,7 +1516,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Feed the Deep",
       "Wall World"
-    ]
+    ],
+    "coverImage": "images/covers/dome-keeper.jpg"
   },
   {
     "name": "Don't Starve",
@@ -1413,7 +1530,8 @@ var GAMES_DATA = [
       "Cult of the Lamb",
       "Road Not Taken",
       "The Flame in the Flood"
-    ]
+    ],
+    "coverImage": "images/covers/don-t-starve.jpg"
   },
   {
     "name": "Don't Starve Together",
@@ -1422,7 +1540,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/don-t-starve-together.jpg"
   },
   {
     "name": "DoomRL",
@@ -1461,7 +1580,8 @@ var GAMES_DATA = [
       "Loot Rascals",
       "Shovel Knight Dig",
       "GoNNER"
-    ]
+    ],
+    "coverImage": "images/covers/downwell.jpg"
   },
   {
     "name": "Dragon Quest: Young Yangus and the Mystery Dungeon",
@@ -1479,7 +1599,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dragonslayer.jpg"
   },
   {
     "name": "Dream Quest",
@@ -1490,7 +1611,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Dicey Dungeon"
-    ]
+    ],
+    "coverImage": "images/covers/dream-quest.jpg"
   },
   {
     "name": "Dreamscaper",
@@ -1499,7 +1621,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dreamscaper.jpg"
   },
   {
     "name": "Drill Core",
@@ -1508,7 +1631,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/drill-core.jpg"
   },
   {
     "name": "Drop Duchy",
@@ -1517,7 +1641,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/drop-duchy.jpg"
   },
   {
     "name": "Drop Pockets",
@@ -1526,7 +1651,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/drop-pockets.jpg"
   },
   {
     "name": "Dungeon Clawler",
@@ -1535,7 +1661,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dungeon-clawler.jpg"
   },
   {
     "name": "Dungeon Crawl Stone Soup",
@@ -1562,7 +1689,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dungeon-deathball.jpg"
   },
   {
     "name": "Dungeon Hack",
@@ -1571,7 +1699,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dungeon-hack.jpg"
   },
   {
     "name": "Dungeon of Windaria",
@@ -1591,7 +1720,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Tangledeep"
-    ]
+    ],
+    "coverImage": "images/covers/dungeonmans.jpg"
   },
   {
     "name": "Dungeons & Degenerate Gamblers",
@@ -1600,7 +1730,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dungeons-degenerate-gamblers.jpg"
   },
   {
     "name": "Dungeons of Blood and Dream",
@@ -1609,7 +1740,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dungeons-of-blood-and-dream.jpg"
   },
   {
     "name": "Dungeons of Dredmor",
@@ -1618,7 +1750,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dungeons-of-dredmor.jpg"
   },
   {
     "name": "Dungreed",
@@ -1629,7 +1762,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Sephiria"
-    ]
+    ],
+    "coverImage": "images/covers/dungreed.jpg"
   },
   {
     "name": "Dunjungle",
@@ -1638,7 +1772,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dunjungle.jpg"
   },
   {
     "name": "Dwarf Fortress",
@@ -1653,7 +1788,8 @@ var GAMES_DATA = [
       "Wayward",
       "Super Fantasy Kingdom",
       "Void War"
-    ]
+    ],
+    "coverImage": "images/covers/dwarf-fortress.jpg"
   },
   {
     "name": "Elden Ring Nightreign",
@@ -1662,7 +1798,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/elden-ring-nightreign.jpg"
   },
   {
     "name": "Elemental Survivors",
@@ -1671,7 +1808,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/elemental-survivors.jpg"
   },
   {
     "name": "Elin",
@@ -1680,7 +1818,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/elin.jpg"
   },
   {
     "name": "Elona",
@@ -1691,7 +1830,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Elin"
-    ]
+    ],
+    "coverImage": "images/covers/elona.jpg"
   },
   {
     "name": "Ember Knights",
@@ -1702,7 +1842,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Vellum"
-    ]
+    ],
+    "coverImage": "images/covers/ember-knights.jpg"
   },
   {
     "name": "Emberward",
@@ -1711,7 +1852,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/emberward.jpg"
   },
   {
     "name": "Endgame of Devil",
@@ -1720,7 +1862,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/endgame-of-devil.jpg"
   },
   {
     "name": "Enter the Gungeon",
@@ -1747,7 +1890,8 @@ var GAMES_DATA = [
       "The Unliving",
       "Abandoned Archive",
       "Asterogues"
-    ]
+    ],
+    "coverImage": "images/covers/enter-the-gungeon.jpg"
   },
   {
     "name": "Escape The Mad Empire",
@@ -1756,7 +1900,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/escape-the-mad-empire.jpg"
   },
   {
     "name": "Etrian Mystery Dungeon",
@@ -1785,7 +1930,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/evolings.jpg"
   },
   {
     "name": "Exit the Gungeon",
@@ -1794,7 +1940,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/exit-the-gungeon.jpg"
   },
   {
     "name": "Facehand",
@@ -1803,7 +1950,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/facehand.jpg"
   },
   {
     "name": "Fairy Tail: Dungeons",
@@ -1812,7 +1960,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/fairy-tail-dungeons.jpg"
   },
   {
     "name": "Fatal Labyrinth",
@@ -1830,7 +1979,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/fear-hunger.jpg"
   },
   {
     "name": "Feed the Deep",
@@ -1839,7 +1989,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/feed-the-deep.jpg"
   },
   {
     "name": "Fights in Tight Spaces",
@@ -1850,7 +2001,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Knights in Tight Spaces"
-    ]
+    ],
+    "coverImage": "images/covers/fights-in-tight-spaces.jpg"
   },
   {
     "name": "Final Fantasy Fables: Chocobo's Dungeon",
@@ -1870,7 +2022,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/fish-fear-me.jpg"
   },
   {
     "name": "FLERP",
@@ -1881,7 +2034,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Centipede Gun"
-    ]
+    ],
+    "coverImage": "images/covers/flerp.jpg"
   },
   {
     "name": "Flick Shot Rogues",
@@ -1890,7 +2044,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/flick-shot-rogues.jpg"
   },
   {
     "name": "Flinthook",
@@ -1899,7 +2054,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/flinthook.jpg"
   },
   {
     "name": "Footgun: Underground",
@@ -1908,7 +2064,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/footgun-underground.jpg"
   },
   {
     "name": "For the King",
@@ -1920,7 +2077,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "For the King 2",
       "Legend of Keepers: Career of a Dungeon Manager"
-    ]
+    ],
+    "coverImage": "images/covers/for-the-king.jpg"
   },
   {
     "name": "For the King 2",
@@ -1929,7 +2087,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/for-the-king-2.jpg"
   },
   {
     "name": "Forestrike",
@@ -1938,7 +2097,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/forestrike.jpg"
   },
   {
     "name": "Forward: Escape the Fold",
@@ -1947,7 +2107,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/forward-escape-the-fold.jpg"
   },
   {
     "name": "Freaky Awesome",
@@ -1956,7 +2117,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/freaky-awesome.jpg"
   },
   {
     "name": "FTL",
@@ -1987,7 +2149,8 @@ var GAMES_DATA = [
       "Void Bastards",
       "Has-Been Heroes",
       "Crying Suns"
-    ]
+    ],
+    "coverImage": "images/covers/ftl.jpg"
   },
   {
     "name": "Fury Unleashed",
@@ -1996,7 +2159,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/fury-unleashed.jpg"
   },
   {
     "name": "Gatekeeper",
@@ -2005,7 +2169,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/gatekeeper.jpg"
   },
   {
     "name": "Genome Guardian",
@@ -2014,7 +2179,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/genome-guardian.jpg"
   },
   {
     "name": "Geometry Arena",
@@ -2025,7 +2191,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Geometry Arena 2"
-    ]
+    ],
+    "coverImage": "images/covers/geometry-arena.jpg"
   },
   {
     "name": "Geometry Arena 2",
@@ -2034,7 +2201,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/geometry-arena-2.jpg"
   },
   {
     "name": "Gnomes",
@@ -2043,7 +2211,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/gnomes.jpg"
   },
   {
     "name": "Godbreakers",
@@ -2052,7 +2221,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/godbreakers.jpg"
   },
   {
     "name": "Golden Krone Hotel",
@@ -2061,7 +2231,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/golden-krone-hotel.jpg"
   },
   {
     "name": "Golden Light",
@@ -2070,7 +2241,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/golden-light.jpg"
   },
   {
     "name": "Golfie",
@@ -2079,7 +2251,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/golfie.jpg"
   },
   {
     "name": "GoNNER",
@@ -2090,7 +2263,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "GONNER2"
-    ]
+    ],
+    "coverImage": "images/covers/gonner.jpg"
   },
   {
     "name": "GONNER2",
@@ -2099,7 +2273,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/gonner2.jpg"
   },
   {
     "name": "Goobies",
@@ -2108,7 +2283,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/goobies.jpg"
   },
   {
     "name": "Granvir",
@@ -2117,7 +2293,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/granvir.jpg"
   },
   {
     "name": "Greedland",
@@ -2126,7 +2303,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/greedland.jpg"
   },
   {
     "name": "Griftlands",
@@ -2135,7 +2313,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/griftlands.jpg"
   },
   {
     "name": "Gunfire Reborn",
@@ -2148,7 +2327,8 @@ var GAMES_DATA = [
       "Roboquest",
       "Vellum",
       "Darkblade Ascent"
-    ]
+    ],
+    "coverImage": "images/covers/gunfire-reborn.jpg"
   },
   {
     "name": "Gunlocked",
@@ -2159,7 +2339,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Gunlocked 2"
-    ]
+    ],
+    "coverImage": "images/covers/gunlocked.jpg"
   },
   {
     "name": "Gunlocked 2",
@@ -2168,7 +2349,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/gunlocked-2.jpg"
   },
   {
     "name": "Hack",
@@ -2181,7 +2363,8 @@ var GAMES_DATA = [
       "Ancient Domains of Mystery",
       "Dwarf Fortress",
       "NetHack"
-    ]
+    ],
+    "coverImage": "images/covers/hack.jpg"
   },
   {
     "name": "Hadean Tactics",
@@ -2190,7 +2373,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/hadean-tactics.jpg"
   },
   {
     "name": "Hades",
@@ -2232,7 +2416,8 @@ var GAMES_DATA = [
       "Dunjungle",
       "Darkblade Ascent",
       "Reality Break"
-    ]
+    ],
+    "coverImage": "images/covers/hades.jpg"
   },
   {
     "name": "Hades II",
@@ -2241,7 +2426,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/hades-ii.jpg"
   },
   {
     "name": "Halls of Torment",
@@ -2253,7 +2439,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Jotunnslayer: Hordes of Hel",
       "Be My Horde"
-    ]
+    ],
+    "coverImage": "images/covers/halls-of-torment.jpg"
   },
   {
     "name": "Hand of Fate",
@@ -2264,7 +2451,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Hand of Fate 2"
-    ]
+    ],
+    "coverImage": "images/covers/hand-of-fate.jpg"
   },
   {
     "name": "Hand of Fate 2",
@@ -2273,7 +2461,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/hand-of-fate-2.jpg"
   },
   {
     "name": "Has-Been Heroes",
@@ -2282,7 +2471,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/has-been-heroes.jpg"
   },
   {
     "name": "Haste",
@@ -2291,7 +2481,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/haste.jpg"
   },
   {
     "name": "Have a Nice Death",
@@ -2300,7 +2491,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/have-a-nice-death.jpg"
   },
   {
     "name": "He is Coming",
@@ -2309,7 +2501,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/he-is-coming.jpg"
   },
   {
     "name": "Heading Out",
@@ -2318,7 +2511,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/heading-out.jpg"
   },
   {
     "name": "Heavy Bullets",
@@ -2327,7 +2521,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/heavy-bullets.jpg"
   },
   {
     "name": "Hell Clock",
@@ -2336,7 +2531,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/hell-clock.jpg"
   },
   {
     "name": "Hellboy Web of Wyrd",
@@ -2345,7 +2541,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/hellboy-web-of-wyrd.jpg"
   },
   {
     "name": "Hellcard",
@@ -2354,7 +2551,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/hellcard.jpg"
   },
   {
     "name": "Helskate",
@@ -2363,7 +2561,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/helskate.jpg"
   },
   {
     "name": "Heretic's Fork",
@@ -2372,7 +2571,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/heretic-s-fork.jpg"
   },
   {
     "name": "Heroes of Hammerwatch",
@@ -2385,7 +2585,8 @@ var GAMES_DATA = [
       "Heroes of Hammerwatch 2",
       "Tower Factory",
       "Escape The Mad Empire"
-    ]
+    ],
+    "coverImage": "images/covers/heroes-of-hammerwatch.jpg"
   },
   {
     "name": "Heroes of Hammerwatch II",
@@ -2394,7 +2595,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/heroes-of-hammerwatch-ii.jpg"
   },
   {
     "name": "HoloCure: Save the Fans!",
@@ -2412,7 +2614,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/house-of-necrosis.jpg"
   },
   {
     "name": "I Am Legion: Stand Survivors",
@@ -2421,7 +2624,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/i-am-legion-stand-survivors.jpg"
   },
   {
     "name": "Icewall",
@@ -2430,7 +2634,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/icewall.jpg"
   },
   {
     "name": "Immortal Redneck",
@@ -2439,7 +2644,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/immortal-redneck.jpg"
   },
   {
     "name": "Infinite Space III: Sea of Stars",
@@ -2448,7 +2654,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/infinite-space-iii-sea-of-stars.jpg"
   },
   {
     "name": "Infra Arcana",
@@ -2473,7 +2680,8 @@ var GAMES_DATA = [
       "The Royal Writ",
       "My Card Is Better Than Your Card!",
       "Dicealot"
-    ]
+    ],
+    "coverImage": "images/covers/inscryption.jpg"
   },
   {
     "name": "Insurmountable",
@@ -2482,7 +2690,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/insurmountable.jpg"
   },
   {
     "name": "Into the Breach",
@@ -2503,7 +2712,8 @@ var GAMES_DATA = [
       "Pawnbarian",
       "Metal Slug Tactics",
       "Spellmasons"
-    ]
+    ],
+    "coverImage": "images/covers/into-the-breach.jpg"
   },
   {
     "name": "Iratus: Lord of the Dead",
@@ -2512,7 +2722,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/iratus-lord-of-the-dead.jpg"
   },
   {
     "name": "Iter Vehemens Ad Necem",
@@ -2550,7 +2761,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/jotunnslayer-hordes-of-hel.jpg"
   },
   {
     "name": "Jupiter Hell",
@@ -2559,7 +2771,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/jupiter-hell.jpg"
   },
   {
     "name": "Just King",
@@ -2568,7 +2781,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/just-king.jpg"
   },
   {
     "name": "Kādomon: Hyper Auto Battlers",
@@ -2577,7 +2791,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/k-domon-hyper-auto-battlers.jpg"
   },
   {
     "name": "Keeper's Toll",
@@ -2586,7 +2801,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/keeper-s-toll.jpg"
   },
   {
     "name": "Kingdom: New Lands",
@@ -2599,7 +2815,8 @@ var GAMES_DATA = [
       "Dome Keeper",
       "Ratropolis",
       "Drill Core"
-    ]
+    ],
+    "coverImage": "images/covers/kingdom-new-lands.jpg"
   },
   {
     "name": "Knightica",
@@ -2608,7 +2825,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/knightica.jpg"
   },
   {
     "name": "Knights in Tight Spaces",
@@ -2617,7 +2835,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/knights-in-tight-spaces.jpg"
   },
   {
     "name": "Knock on the Coffin Lid",
@@ -2626,7 +2845,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/knock-on-the-coffin-lid.jpg"
   },
   {
     "name": "Lake of Creatures",
@@ -2635,7 +2855,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/lake-of-creatures.jpg"
   },
   {
     "name": "Larn",
@@ -2653,7 +2874,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/legend-of-keepers-career-of-a-dungeon-manager.jpg"
   },
   {
     "name": "Let Him Cook",
@@ -2662,7 +2884,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/let-him-cook.jpg"
   },
   {
     "name": "Linley's Dungeon Crawl",
@@ -2683,7 +2906,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/lone-ruin.jpg"
   },
   {
     "name": "LoneStar",
@@ -2692,7 +2916,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/lonestar.jpg"
   },
   {
     "name": "Loop Hero",
@@ -2703,7 +2928,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Super Fantasy Kingdom"
-    ]
+    ],
+    "coverImage": "images/covers/loop-hero.jpg"
   },
   {
     "name": "Loot Rascals",
@@ -2712,7 +2938,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/loot-rascals.jpg"
   },
   {
     "name": "Loot River",
@@ -2721,7 +2948,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/loot-river.jpg"
   },
   {
     "name": "Lost Flame",
@@ -2730,7 +2958,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/lost-flame.jpg"
   },
   {
     "name": "Lost in Random: The Eternal Die",
@@ -2739,7 +2968,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/lost-in-random-the-eternal-die.jpg"
   },
   {
     "name": "Luck & Loot",
@@ -2748,7 +2978,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/luck-loot.jpg"
   },
   {
     "name": "Luck be a Landlord",
@@ -2773,7 +3004,8 @@ var GAMES_DATA = [
       "Omelet You Cook",
       "Steve's Warehouse: Physics. Roguelike. Chaos.",
       "Runeborn"
-    ]
+    ],
+    "coverImage": "images/covers/luck-be-a-landlord.jpg"
   },
   {
     "name": "Lucky Hero",
@@ -2782,7 +3014,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/lucky-hero.jpg"
   },
   {
     "name": "Magic Survival",
@@ -2802,7 +3035,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/magicraft.jpg"
   },
   {
     "name": "Mainframe Defenders",
@@ -2811,7 +3045,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/mainframe-defenders.jpg"
   },
   {
     "name": "Maze Mice",
@@ -2820,7 +3055,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/maze-mice.jpg"
   },
   {
     "name": "Mechanibot",
@@ -2829,7 +3065,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/mechanibot.jpg"
   },
   {
     "name": "Megabonk",
@@ -2838,7 +3075,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/megabonk.jpg"
   },
   {
     "name": "Meme Mayhem",
@@ -2847,7 +3085,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/meme-mayhem.jpg"
   },
   {
     "name": "Menace from the Deep",
@@ -2856,7 +3095,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/menace-from-the-deep.jpg"
   },
   {
     "name": "Merge Maestro",
@@ -2865,7 +3105,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/merge-maestro.jpg"
   },
   {
     "name": "Metal Slug Tactics",
@@ -2874,7 +3115,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/metal-slug-tactics.jpg"
   },
   {
     "name": "Metal Unit",
@@ -2883,7 +3125,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/metal-unit.jpg"
   },
   {
     "name": "Metallic Child",
@@ -2892,7 +3135,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/metallic-child.jpg"
   },
   {
     "name": "Million Depth",
@@ -2901,7 +3145,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/million-depth.jpg"
   },
   {
     "name": "Mimic Logic",
@@ -2910,7 +3155,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/mimic-logic.jpg"
   },
   {
     "name": "Mistrogue: Mist and the Living Dungeons",
@@ -2919,7 +3165,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/mistrogue-mist-and-the-living-dungeons.jpg"
   },
   {
     "name": "Monmusu Gladiator",
@@ -2928,7 +3175,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/monmusu-gladiator.jpg"
   },
   {
     "name": "Monster Train",
@@ -2945,7 +3193,8 @@ var GAMES_DATA = [
       "The Royal Writ",
       "Cross Blitz",
       "Dicealot"
-    ]
+    ],
+    "coverImage": "images/covers/monster-train.jpg"
   },
   {
     "name": "Monster Train 2",
@@ -2954,7 +3203,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/monster-train-2.jpg"
   },
   {
     "name": "Monstrum",
@@ -2963,7 +3213,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/monstrum.jpg"
   },
   {
     "name": "Moon Watch",
@@ -2972,7 +3223,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/moon-watch.jpg"
   },
   {
     "name": "Moonlighter",
@@ -2983,7 +3235,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Moonlighter 2: The Endless Vault"
-    ]
+    ],
+    "coverImage": "images/covers/moonlighter.jpg"
   },
   {
     "name": "Moonlighter 2: The Endless Vault",
@@ -2992,7 +3245,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/moonlighter-2-the-endless-vault.jpg"
   },
   {
     "name": "Moonring",
@@ -3001,7 +3255,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/moonring.jpg"
   },
   {
     "name": "Moria",
@@ -3012,7 +3267,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Angband"
-    ]
+    ],
+    "coverImage": "images/covers/moria.jpg"
   },
   {
     "name": "Morsels",
@@ -3021,7 +3277,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/morsels.jpg"
   },
   {
     "name": "Mortal Sin",
@@ -3030,7 +3287,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/mortal-sin.jpg"
   },
   {
     "name": "Mothergunship",
@@ -3039,7 +3297,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/mothergunship.jpg"
   },
   {
     "name": "Muck",
@@ -3048,7 +3307,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/muck.jpg"
   },
   {
     "name": "My Card Is Better Than Your Card!",
@@ -3081,7 +3341,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/necrobouncer.jpg"
   },
   {
     "name": "Necroking",
@@ -3090,7 +3351,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/necroking.jpg"
   },
   {
     "name": "Necrosmith",
@@ -3102,7 +3364,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Necrosmith 2",
       "Be My Horde"
-    ]
+    ],
+    "coverImage": "images/covers/necrosmith.jpg"
   },
   {
     "name": "Necrosmith 2",
@@ -3111,7 +3374,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/necrosmith-2.jpg"
   },
   {
     "name": "Neon Abyss",
@@ -3122,7 +3386,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Neon Abyss 2"
-    ]
+    ],
+    "coverImage": "images/covers/neon-abyss.jpg"
   },
   {
     "name": "Neon Abyss 2",
@@ -3131,7 +3396,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/neon-abyss-2.jpg"
   },
   {
     "name": "Neophyte",
@@ -3140,7 +3406,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/neophyte.jpg"
   },
   {
     "name": "NetHack",
@@ -3163,7 +3430,8 @@ var GAMES_DATA = [
       "Spelunky Classic",
       "Strange Adventures in Infinite Space",
       "Iter Vehemens Ad Necem"
-    ]
+    ],
+    "coverImage": "images/covers/nethack.jpg"
   },
   {
     "name": "Night Swarm",
@@ -3186,7 +3454,8 @@ var GAMES_DATA = [
       "SULFUR",
       "Primordialis",
       "CleanFall"
-    ]
+    ],
+    "coverImage": "images/covers/noita.jpg"
   },
   {
     "name": "Nomad Survival",
@@ -3195,7 +3464,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/nomad-survival.jpg"
   },
   {
     "name": "Noobs Are Coming",
@@ -3204,7 +3474,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/noobs-are-coming.jpg"
   },
   {
     "name": "Nordhold",
@@ -3213,7 +3484,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/nordhold.jpg"
   },
   {
     "name": "Nordic Ashes: Survivors of Ragnarok",
@@ -3222,7 +3494,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/nordic-ashes-survivors-of-ragnarok.jpg"
   },
   {
     "name": "Nova Drift",
@@ -3231,7 +3504,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/nova-drift.jpg"
   },
   {
     "name": "Nubby's Number Factory",
@@ -3240,7 +3514,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/nubby-s-number-factory.jpg"
   },
   {
     "name": "Nuclear Throne",
@@ -3264,7 +3539,8 @@ var GAMES_DATA = [
       "Tiny Rogues",
       "Voidigo",
       "GoNNER"
-    ]
+    ],
+    "coverImage": "images/covers/nuclear-throne.jpg"
   },
   {
     "name": "Nunholy",
@@ -3273,7 +3549,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/nunholy.jpg"
   },
   {
     "name": "Octogeddon",
@@ -3282,7 +3559,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/octogeddon.jpg"
   },
   {
     "name": "Odinfall",
@@ -3291,7 +3569,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/odinfall.jpg"
   },
   {
     "name": "Omelet You Cook",
@@ -3300,7 +3579,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/omelet-you-cook.jpg"
   },
   {
     "name": "One Step From Eden",
@@ -3309,7 +3589,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/one-step-from-eden.jpg"
   },
   {
     "name": "OneBit Adventure",
@@ -3318,7 +3599,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/onebit-adventure.jpg"
   },
   {
     "name": "OTXO",
@@ -3327,7 +3609,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/otxo.jpg"
   },
   {
     "name": "Pairs & Perils",
@@ -3336,7 +3619,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/pairs-perils.jpg"
   },
   {
     "name": "Paper Animal Adventure",
@@ -3345,7 +3629,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/paper-animal-adventure.jpg"
   },
   {
     "name": "Paper Planet",
@@ -3354,7 +3639,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/paper-planet.jpg"
   },
   {
     "name": "Patch Quest",
@@ -3365,7 +3651,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Kādomon: Hyper Auto Battlers"
-    ]
+    ],
+    "coverImage": "images/covers/patch-quest.jpg"
   },
   {
     "name": "Path of Achra",
@@ -3374,7 +3661,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/path-of-achra.jpg"
   },
   {
     "name": "Pawnbarian",
@@ -3385,7 +3673,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "The Ouroboros King"
-    ]
+    ],
+    "coverImage": "images/covers/pawnbarian.jpg"
   },
   {
     "name": "Peglin",
@@ -3398,7 +3687,8 @@ var GAMES_DATA = [
       "Dungeon Clawler",
       "Steve's Warehouse: Physics. Roguelike. Chaos.",
       "Arrogue"
-    ]
+    ],
+    "coverImage": "images/covers/peglin.jpg"
   },
   {
     "name": "Picayune Dreams",
@@ -3407,7 +3697,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/picayune-dreams.jpg"
   },
   {
     "name": "Pip My Dice",
@@ -3416,7 +3707,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/pip-my-dice.jpg"
   },
   {
     "name": "Pixel Dungeon",
@@ -3428,7 +3720,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Shattered Pixel Dungeon",
       "OneBit Adventure"
-    ]
+    ],
+    "coverImage": "images/covers/pixel-dungeon.jpg"
   },
   {
     "name": "PlateUp!",
@@ -3437,7 +3730,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/plateup.jpg"
   },
   {
     "name": "Plinko Panic!",
@@ -3446,7 +3740,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/plinko-panic.jpg"
   },
   {
     "name": "Pocket Crystal League",
@@ -3464,7 +3759,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/pogo-rogue.jpg"
   },
   {
     "name": "Pokémon Mystery Dungeon: Explorers of Sky",
@@ -3546,7 +3842,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Aces & Adventures"
-    ]
+    ],
+    "coverImage": "images/covers/popup-dungeon.jpg"
   },
   {
     "name": "Powder",
@@ -3566,7 +3863,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/primordialis.jpg"
   },
   {
     "name": "Putrid Shot Ultra",
@@ -3575,7 +3873,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/putrid-shot-ultra.jpg"
   },
   {
     "name": "Quasimorph",
@@ -3584,7 +3883,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/quasimorph.jpg"
   },
   {
     "name": "Rabbit and Steel",
@@ -3593,7 +3893,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rabbit-and-steel.jpg"
   },
   {
     "name": "Rack and Slay",
@@ -3602,7 +3903,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rack-and-slay.jpg"
   },
   {
     "name": "Ragnarok",
@@ -3611,7 +3913,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/ragnarok.jpg"
   },
   {
     "name": "RAM: Random Access Mayhem",
@@ -3620,7 +3923,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/ram-random-access-mayhem.jpg"
   },
   {
     "name": "Ratropolis",
@@ -3629,7 +3933,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/ratropolis.jpg"
   },
   {
     "name": "Ravenswatch",
@@ -3640,7 +3945,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Shape of Dreams"
-    ]
+    ],
+    "coverImage": "images/covers/ravenswatch.jpg"
   },
   {
     "name": "Reality Break",
@@ -3649,7 +3955,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/reality-break.jpg"
   },
   {
     "name": "Realm of Ink",
@@ -3658,7 +3965,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/realm-of-ink.jpg"
   },
   {
     "name": "Realm of the Mad God",
@@ -3669,7 +3977,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Talented"
-    ]
+    ],
+    "coverImage": "images/covers/realm-of-the-mad-god.jpg"
   },
   {
     "name": "Repetendium",
@@ -3678,7 +3987,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/repetendium.jpg"
   },
   {
     "name": "Return to Abyss",
@@ -3687,7 +3997,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/return-to-abyss.jpg"
   },
   {
     "name": "Returnal",
@@ -3698,7 +4009,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Swapmeat"
-    ]
+    ],
+    "coverImage": "images/covers/returnal.jpg"
   },
   {
     "name": "Revita",
@@ -3707,7 +4019,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/revita.jpg"
   },
   {
     "name": "Rift Wizard",
@@ -3719,7 +4032,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Path of Achra",
       "Rift Wizard 2"
-    ]
+    ],
+    "coverImage": "images/covers/rift-wizard.jpg"
   },
   {
     "name": "Rift Wizard 2",
@@ -3728,7 +4042,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rift-wizard-2.jpg"
   },
   {
     "name": "Ring of Pain",
@@ -3737,7 +4052,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/ring-of-pain.jpg"
   },
   {
     "name": "Risk of Rain",
@@ -3754,7 +4070,8 @@ var GAMES_DATA = [
       "Synthetik: Legion Rising",
       "Wildfrost",
       "Shape of Dreams"
-    ]
+    ],
+    "coverImage": "images/covers/risk-of-rain.jpg"
   },
   {
     "name": "Risk of Rain 2",
@@ -3771,7 +4088,8 @@ var GAMES_DATA = [
       "Megabonk",
       "Vellum",
       "Swapmeat"
-    ]
+    ],
+    "coverImage": "images/covers/risk-of-rain-2.jpg"
   },
   {
     "name": "Risk of Rain Returns",
@@ -3780,7 +4098,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/risk-of-rain-returns.jpg"
   },
   {
     "name": "Road Not Taken",
@@ -3789,7 +4108,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/road-not-taken.jpg"
   },
   {
     "name": "Roboquest",
@@ -3800,7 +4120,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Swapmeat"
-    ]
+    ],
+    "coverImage": "images/covers/roboquest.jpg"
   },
   {
     "name": "Rogue",
@@ -3825,7 +4146,8 @@ var GAMES_DATA = [
       "Torneko's Great Adventure: Mystery Dungeon",
       "Infra Arcana",
       "Fatal Labyrinth"
-    ]
+    ],
+    "coverImage": "images/covers/rogue.jpg"
   },
   {
     "name": "Rogue Heroes: Ruins of Tasos",
@@ -3834,7 +4156,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rogue-heroes-ruins-of-tasos.jpg"
   },
   {
     "name": "Rogue Legacy",
@@ -3854,7 +4177,8 @@ var GAMES_DATA = [
       "Moonlighter",
       "Immortal Redneck",
       "Dunjungle"
-    ]
+    ],
+    "coverImage": "images/covers/rogue-legacy.jpg"
   },
   {
     "name": "Rogue Legacy 2",
@@ -3863,7 +4187,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rogue-legacy-2.jpg"
   },
   {
     "name": "Rogue Lords",
@@ -3872,7 +4197,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rogue-lords.jpg"
   },
   {
     "name": "Rogue Tower",
@@ -3884,7 +4210,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Nordhold",
       "Tower Dominion"
-    ]
+    ],
+    "coverImage": "images/covers/rogue-tower.jpg"
   },
   {
     "name": "Rogue Wizards",
@@ -3893,7 +4220,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rogue-wizards.jpg"
   },
   {
     "name": "Rogue-Fp",
@@ -3902,7 +4230,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rogue-fp.jpg"
   },
   {
     "name": "Rogue: Genesia",
@@ -3911,7 +4240,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rogue-genesia.jpg"
   },
   {
     "name": "Roguebook",
@@ -3922,7 +4252,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Dicefolk"
-    ]
+    ],
+    "coverImage": "images/covers/roguebook.jpg"
   },
   {
     "name": "Roll",
@@ -3933,7 +4264,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "RollScape"
-    ]
+    ],
+    "coverImage": "images/covers/roll.jpg"
   },
   {
     "name": "RollScape",
@@ -3942,7 +4274,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rollscape.jpg"
   },
   {
     "name": "Rounds",
@@ -3951,7 +4284,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rounds.jpg"
   },
   {
     "name": "Runeborn",
@@ -3960,7 +4294,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/runeborn.jpg"
   },
   {
     "name": "Scarlet Tower",
@@ -3969,7 +4304,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/scarlet-tower.jpg"
   },
   {
     "name": "Sea of Survivors",
@@ -3978,7 +4314,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/sea-of-survivors.jpg"
   },
   {
     "name": "Sephiria",
@@ -3987,7 +4324,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/sephiria.jpg"
   },
   {
     "name": "Shadowveil: Legend of The Five Rings",
@@ -3996,7 +4334,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/shadowveil-legend-of-the-five-rings.jpg"
   },
   {
     "name": "Shape of Dreams",
@@ -4005,7 +4344,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/shape-of-dreams.jpg"
   },
   {
     "name": "Shattered Pixel Dungeon",
@@ -4014,7 +4354,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/shattered-pixel-dungeon.jpg"
   },
   {
     "name": "Ship of Fools",
@@ -4023,7 +4364,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/ship-of-fools.jpg"
   },
   {
     "name": "Shiren the Wanderer (2008)",
@@ -4095,7 +4437,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/shiren-the-wanderer-the-mystery-dungeon-of-serpentcoil-island.jpg"
   },
   {
     "name": "Shiren the Wanderer: The Tower of Fortune and the Dice of Fate",
@@ -4106,7 +4449,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Shiren the Wanderer: The Mystery Dungeon of Serpentcoil Island"
-    ]
+    ],
+    "coverImage": "images/covers/shiren-the-wanderer-the-tower-of-fortune-and-the-dice-of-fate.jpg"
   },
   {
     "name": "Shogun Showdown",
@@ -4115,7 +4459,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/shogun-showdown.jpg"
   },
   {
     "name": "Shoot First",
@@ -4126,7 +4471,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Nuclear Throne"
-    ]
+    ],
+    "coverImage": "images/covers/shoot-first.jpg"
   },
   {
     "name": "Shotgun King: The Final Checkmate",
@@ -4138,7 +4484,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Bingle Bingle",
       "The Ouroboros King"
-    ]
+    ],
+    "coverImage": "images/covers/shotgun-king-the-final-checkmate.jpg"
   },
   {
     "name": "Shovel Knight Dig",
@@ -4147,7 +4494,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/shovel-knight-dig.jpg"
   },
   {
     "name": "Sil",
@@ -4156,7 +4504,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/sil.jpg"
   },
   {
     "name": "Skul: The Hero Slayer",
@@ -4167,7 +4516,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Realm of Ink"
-    ]
+    ],
+    "coverImage": "images/covers/skul-the-hero-slayer.jpg"
   },
   {
     "name": "Sky's The Limit MAH-JONG",
@@ -4176,7 +4526,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/sky-s-the-limit-mah-jong.jpg"
   },
   {
     "name": "Slasher's Keep",
@@ -4185,7 +4536,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/slasher-s-keep.jpg"
   },
   {
     "name": "Slay the Spire",
@@ -4271,7 +4623,8 @@ var GAMES_DATA = [
       "Vivid Knight",
       "Deck of Haunts",
       "Monmusu Gladiator"
-    ]
+    ],
+    "coverImage": "images/covers/slay-the-spire.jpg"
   },
   {
     "name": "Slice & Dice",
@@ -4282,7 +4635,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Luck & Loot"
-    ]
+    ],
+    "coverImage": "images/covers/slice-dice.jpg"
   },
   {
     "name": "Slime 3K: Rise Against Despot",
@@ -4291,7 +4645,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/slime-3k-rise-against-despot.jpg"
   },
   {
     "name": "Slot & Dungeons",
@@ -4300,7 +4655,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/slot-dungeons.jpg"
   },
   {
     "name": "Slots & Daggers",
@@ -4323,7 +4679,8 @@ var GAMES_DATA = [
       "Just King",
       "Lone Ruin",
       "Stackflow"
-    ]
+    ],
+    "coverImage": "images/covers/snkrx.jpg"
   },
   {
     "name": "Sodaman",
@@ -4332,7 +4689,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/sodaman.jpg"
   },
   {
     "name": "Sol Cesto",
@@ -4341,7 +4699,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/sol-cesto.jpg"
   },
   {
     "name": "Solitairica",
@@ -4350,7 +4709,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/solitairica.jpg"
   },
   {
     "name": "Soulstone Survivors",
@@ -4359,7 +4719,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/soulstone-survivors.jpg"
   },
   {
     "name": "Space Beast Terror Fright",
@@ -4368,7 +4729,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/space-beast-terror-fright.jpg"
   },
   {
     "name": "Spellbook Demonslayers",
@@ -4377,7 +4739,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/spellbook-demonslayers.jpg"
   },
   {
     "name": "Spellmasons",
@@ -4386,7 +4749,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/spellmasons.jpg"
   },
   {
     "name": "SpellRogue",
@@ -4395,7 +4759,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/spellrogue.jpg"
   },
   {
     "name": "Spelunky",
@@ -4406,7 +4771,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Spelunky 2"
-    ]
+    ],
+    "coverImage": "images/covers/spelunky.jpg"
   },
   {
     "name": "Spelunky 2",
@@ -4415,7 +4781,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/spelunky-2.jpg"
   },
   {
     "name": "Spelunky Classic",
@@ -4458,7 +4825,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/spin-hero.jpg"
   },
   {
     "name": "Spirit Hunters: Infinite Horde",
@@ -4467,7 +4835,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/spirit-hunters-infinite-horde.jpg"
   },
   {
     "name": "Spiritfall",
@@ -4476,7 +4845,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/spiritfall.jpg"
   },
   {
     "name": "Spirits Abyss",
@@ -4485,7 +4855,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/spirits-abyss.jpg"
   },
   {
     "name": "Stackflow",
@@ -4503,7 +4874,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/star-of-providence.jpg"
   },
   {
     "name": "Starlight Revolver",
@@ -4512,7 +4884,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/starlight-revolver.jpg"
   },
   {
     "name": "StarVaders",
@@ -4521,7 +4894,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/starvaders.jpg"
   },
   {
     "name": "Steve's Warehouse: Physics. Roguelike. Chaos.",
@@ -4530,7 +4904,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/steve-s-warehouse-physics-roguelike-chaos.jpg"
   },
   {
     "name": "Stick It to the Stickman",
@@ -4539,7 +4914,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/stick-it-to-the-stickman.jpg"
   },
   {
     "name": "Stoneshard",
@@ -4548,7 +4924,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/stoneshard.jpg"
   },
   {
     "name": "Strange Adventures in Infinite Space",
@@ -4568,7 +4945,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/streets-of-rogue.jpg"
   },
   {
     "name": "SULFUR",
@@ -4577,7 +4955,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/sulfur.jpg"
   },
   {
     "name": "Super Auto Pets",
@@ -4593,7 +4972,8 @@ var GAMES_DATA = [
       "Nubby's Number Factory",
       "Merge Maestro",
       "Facehand"
-    ]
+    ],
+    "coverImage": "images/covers/super-auto-pets.jpg"
   },
   {
     "name": "Super Bullet Break",
@@ -4602,7 +4982,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/super-bullet-break.jpg"
   },
   {
     "name": "Super Fantasy Kingdom",
@@ -4611,7 +4992,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/super-fantasy-kingdom.jpg"
   },
   {
     "name": "Super House of Dead Ninjas",
@@ -4622,7 +5004,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "GoNNER"
-    ]
+    ],
+    "coverImage": "images/covers/super-house-of-dead-ninjas.jpg"
   },
   {
     "name": "Swapmeat",
@@ -4631,7 +5014,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/swapmeat.jpg"
   },
   {
     "name": "Sworn",
@@ -4640,7 +5024,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/sworn.jpg"
   },
   {
     "name": "Synthetik 2",
@@ -4649,7 +5034,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/synthetik-2.jpg"
   },
   {
     "name": "Synthetik: Legion Rising",
@@ -4660,7 +5046,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Synthetik 2"
-    ]
+    ],
+    "coverImage": "images/covers/synthetik-legion-rising.jpg"
   },
   {
     "name": "Talented",
@@ -4669,7 +5056,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/talented.jpg"
   },
   {
     "name": "Tales of Maj'Eyal",
@@ -4681,7 +5069,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Path of Achra",
       "Tangledeep"
-    ]
+    ],
+    "coverImage": "images/covers/tales-of-maj-eyal.jpg"
   },
   {
     "name": "Tangledeep",
@@ -4690,7 +5079,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/tangledeep.jpg"
   },
   {
     "name": "Tape to Tape",
@@ -4699,7 +5089,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/tape-to-tape.jpg"
   },
   {
     "name": "Teamfight Tactics",
@@ -4719,7 +5110,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/teenage-mutant-ninja-turtles-splintered-fate.jpg"
   },
   {
     "name": "Temtem: Swarm",
@@ -4728,7 +5120,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/temtem-swarm.jpg"
   },
   {
     "name": "Terraformers",
@@ -4737,7 +5130,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/terraformers.jpg"
   },
   {
     "name": "TerRoguelike",
@@ -4803,7 +5197,8 @@ var GAMES_DATA = [
       "Lost Flame",
       "Asterogues",
       "Talented"
-    ]
+    ],
+    "coverImage": "images/covers/the-binding-of-isaac.jpg"
   },
   {
     "name": "The Binding of Isaac: Rebirth",
@@ -4812,7 +5207,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/the-binding-of-isaac-rebirth.jpg"
   },
   {
     "name": "The Fable: Manga Build Roguelike",
@@ -4821,7 +5217,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/the-fable-manga-build-roguelike.jpg"
   },
   {
     "name": "The Flame in the Flood",
@@ -4830,7 +5227,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/the-flame-in-the-flood.jpg"
   },
   {
     "name": "The Guided Fate Paradox",
@@ -4848,7 +5246,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/the-king-is-watching.jpg"
   },
   {
     "name": "The Last Flame",
@@ -4857,7 +5256,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/the-last-flame.jpg"
   },
   {
     "name": "The Last Spell",
@@ -4866,7 +5266,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/the-last-spell.jpg"
   },
   {
     "name": "The Legend of Bum-Bo",
@@ -4877,7 +5278,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Brutal Orchestra"
-    ]
+    ],
+    "coverImage": "images/covers/the-legend-of-bum-bo.jpg"
   },
   {
     "name": "The Nightmare of Druaga",
@@ -4895,7 +5297,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/the-ouroboros-king.jpg"
   },
   {
     "name": "The Rogue Prince of Persia",
@@ -4904,7 +5307,8 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/the-rogue-prince-of-persia.jpg"
   },
   {
     "name": "The Royal Writ",
@@ -4949,7 +5353,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": []
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/there-are-no-orcs.jpg"
   },
   {
     "name": "Time Wasters",

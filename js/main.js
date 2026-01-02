@@ -453,6 +453,9 @@ document.getElementById('collection-btn')?.addEventListener('click', () => {
 document.getElementById('return-menu')?.addEventListener('click', () => {
   if (confirm('Return to main menu? (Game will be saved)')) {
     saveCurrentGame();
+    if (typeof clearAllArrows === 'function') {
+      clearAllArrows();
+    }
     document.getElementById('dungeon-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
   }
@@ -464,6 +467,9 @@ document.getElementById('return-menu-top')?.addEventListener('click', () => {
   if (document.getElementById('dungeon-screen').style.display !== 'none') {
     if (confirm('Return to main menu? (Game will be saved)')) {
       saveCurrentGame();
+      if (typeof clearAllArrows === 'function') {
+        clearAllArrows();
+      }
       document.getElementById('dungeon-screen').style.display = 'none';
       document.getElementById('main-menu').style.display = 'flex';
     }
@@ -1875,6 +1881,9 @@ function showCombatModal() {
             updateCursesDisplay?.();
             updateActiveCursesList?.();
             updateGameStats?.();
+            if (typeof clearAllArrows === 'function') {
+              clearAllArrows();
+            }
             document.getElementById('dungeon-screen').style.display = 'none';
             document.getElementById('main-menu').style.display = 'flex';
           };
@@ -1890,6 +1899,9 @@ function showCombatModal() {
             updateActiveCursesList?.();
 
             closeGameModal();
+            if (typeof clearAllArrows === 'function') {
+              clearAllArrows();
+            }
             document.getElementById('dungeon-screen').style.display = 'none';
             document.getElementById('main-menu').style.display = 'flex';
             setTimeout(() => {
@@ -3481,6 +3493,9 @@ function recordLostRun(index) {
         updateCursesDisplay?.();
         updateActiveCursesList?.();
         updateGameStats?.();
+        if (typeof clearAllArrows === 'function') {
+          clearAllArrows();
+        }
         document.getElementById('dungeon-screen').style.display = 'none';
         document.getElementById('main-menu').style.display = 'flex';
       };
@@ -3496,6 +3511,9 @@ function recordLostRun(index) {
         updateActiveCursesList?.();
 
         closeGameModal();
+        if (typeof clearAllArrows === 'function') {
+          clearAllArrows();
+        }
         document.getElementById('dungeon-screen').style.display = 'none';
         document.getElementById('main-menu').style.display = 'flex';
         // Trigger new game button click
@@ -4337,6 +4355,9 @@ function showDeathScreen(message = 'You have perished!', source = 'curse') {
     updateCursesDisplay?.();
     updateActiveCursesList?.();
     updateGameStats?.();
+    if (typeof clearAllArrows === 'function') {
+      clearAllArrows();
+    }
     document.getElementById('dungeon-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
   };
