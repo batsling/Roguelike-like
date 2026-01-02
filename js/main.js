@@ -1342,6 +1342,13 @@ function autoZoomMapToFit() {
     // Apply zoom to the game boxes container
     gameBoxesContainer.style.transform = `scale(${scale})`;
 
+    // Also apply the same transform to the SVG so arrows scale with content
+    const svg = document.getElementById('map-arrows');
+    if (svg) {
+      svg.style.transform = `scale(${scale})`;
+      svg.style.transformOrigin = 'top center';
+    }
+
     // Adjust container height to account for scaling
     const scaledHeight = contentHeight * scale;
     gameBoxesContainer.parentElement.style.minHeight = scaledHeight + 'px';
@@ -1358,23 +1365,6 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
 
   // Clear existing arrows
   svg.innerHTML = '';
-
-  // Get the game boxes container to check for any transform
-  const gameBoxesContainer = document.getElementById('map-game-boxes');
-  let scale = 1.0;
-  if (gameBoxesContainer) {
-    const transform = window.getComputedStyle(gameBoxesContainer).transform;
-    if (transform && transform !== 'none') {
-      // Extract scale from matrix
-      const values = transform.match(/matrix\(([^)]+)\)/);
-      if (values) {
-        const matrixValues = values[1].split(',').map(parseFloat);
-        scale = matrixValues[0]; // First value is scaleX
-      }
-    }
-  }
-
-  console.log('Map container scale:', scale);
 
   // Get parent dimensions and set SVG to fill it completely
   const parentRect = svg.parentElement.getBoundingClientRect();
