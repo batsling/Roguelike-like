@@ -574,20 +574,27 @@ function useItem(itemIndex) {
  * @returns {boolean} - Returns true if teleport was successful, false otherwise
  */
 function teleportToRandomGameOfType(gameType = null) {
-  // Filter connected games, optionally by type
+  // Filter connected games, optionally by type, excluding current game
   let filteredGames;
   if (gameType) {
-    filteredGames = games.filter(g => g.connected === true && g.type === gameType);
-    console.log(`Looking for connected ${gameType} games...`);
+    filteredGames = games.filter(g =>
+      g.connected === true &&
+      g.type === gameType &&
+      g.name !== gameState.currentGame
+    );
+    console.log(`Looking for connected ${gameType} games (excluding current)...`);
   } else {
-    filteredGames = games.filter(g => g.connected === true);
-    console.log('Looking for any connected games...');
+    filteredGames = games.filter(g =>
+      g.connected === true &&
+      g.name !== gameState.currentGame
+    );
+    console.log('Looking for any connected games (excluding current)...');
   }
 
   if (filteredGames.length === 0) {
     const errorMsg = gameType
-      ? `No connected ${gameType} games available!`
-      : 'No connected games available!';
+      ? `No other connected ${gameType} games available!`
+      : 'No other connected games available!';
     console.error(errorMsg);
     alert(errorMsg);
     return false;
@@ -643,8 +650,11 @@ function selectedTeleport(options = {}) {
     title = "Choose Your Destination"
   } = options;
 
-  // Start with connected games only
-  let filteredGames = games.filter(g => g.connected === true);
+  // Start with connected games only, excluding current game
+  let filteredGames = games.filter(g =>
+    g.connected === true &&
+    g.name !== gameState.currentGame
+  );
 
   // Apply year filter
   if (year !== null) {
@@ -665,7 +675,7 @@ function selectedTeleport(options = {}) {
 
   // Check if we have enough games
   if (filteredGames.length === 0) {
-    alert('No games match your criteria!');
+    alert('No other games match your criteria!');
     return false;
   }
 

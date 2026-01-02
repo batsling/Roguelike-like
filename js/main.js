@@ -1275,7 +1275,67 @@ function showMapModal() {
     setTimeout(() => {
       const { gameToLayer } = reorganizeMapLayers(initialPathData);
       drawMapArrows(initialPathData, currentGame, amuletGame, gameToLayer);
-    }, 100);
+
+      // Auto-zoom to fit all content in the viewport
+      autoZoomMapToFit();
+    }, 150);
+  }
+}
+
+// Auto-zoom the map to fit all content within the viewport
+function autoZoomMapToFit() {
+  const mapContainer = document.getElementById('map-view-container');
+  if (!mapContainer) return;
+
+  const modalContent = document.querySelector('.modal-content');
+  if (!modalContent) return;
+
+  // Get the actual content dimensions
+  const contentWrapper = mapContainer.querySelector('div[style*="position: relative"]');
+  if (!contentWrapper) return;
+
+  // Get all game boxes to find the total bounds
+  const gameBoxes = mapContainer.querySelectorAll('[data-game]');
+  if (gameBoxes.length === 0) return;
+
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+
+  gameBoxes.forEach(box => {
+    const rect = box.getBoundingClientRect();
+    const containerRect = contentWrapper.getBoundingClientRect();
+
+    const left = rect.left - containerRect.left;
+    const right = rect.right - containerRect.left;
+    const top = rect.top - containerRect.top;
+    const bottom = rect.bottom - containerRect.top;
+
+    minX = Math.min(minX, left);
+    maxX = Math.max(maxX, right);
+    minY = Math.min(minY, top);
+    maxY = Math.max(maxY, bottom);
+  });
+
+  const contentWidth = maxX - minX + 160; // Add padding
+  const contentHeight = maxY - minY + 160; // Add padding
+
+  // Get available space in modal
+  const modalRect = modalContent.getBoundingClientRect();
+  const availableWidth = modalRect.width - 60; // Account for padding
+  const availableHeight = modalRect.height - 200; // Account for header and padding
+
+  // Calculate scale to fit
+  const scaleX = availableWidth / contentWidth;
+  const scaleY = availableHeight / contentHeight;
+  const scale = Math.min(scaleX, scaleY, 1.0); // Don't zoom in, only zoom out
+
+  if (scale < 1.0) {
+    // Apply zoom
+    contentWrapper.style.transform = `scale(${scale})`;
+    contentWrapper.style.transformOrigin = 'top center';
+
+    // Adjust container height to account for scaling
+    const scaledHeight = contentHeight * scale;
+    contentWrapper.parentElement.style.minHeight = scaledHeight + 'px';
   }
 }
 
