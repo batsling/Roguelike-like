@@ -92,54 +92,45 @@ const ITEM_EFFECTS = {
 
   "Lunch": {
     onAcquire: () => {
-      maxHealth += 1;
-      health = Math.min(health + 4, maxHealth); // Cap health to max health
-      gameState.maxHealth = maxHealth;
-      gameState.health = health;
+      StateMutator.modifyMaxHealth(1);
+      StateMutator.modifyHealth(4);
     }
   },
 
   "D6": {
     onAcquire: () => {
-      reroll += 1;
-      gameState.reroll = reroll;
+      StateMutator.modifyAbility('reroll', 1);
     }
   },
 
   "Sunglasses": {
     onAcquire: () => {
-      charisma += 2;
-      gameState.charisma = charisma;
+      StateMutator.modifyStat('charisma', 2);
     }
   },
 
   "Oddly Smooth Stone": {
     onAcquire: () => {
-      dexterity += 2;
-      gameState.dexterity = dexterity;
+      StateMutator.modifyStat('dexterity', 2);
     }
   },
 
   "Empty Tome": {
     onAcquire: () => {
-      intelligence += 2;
-      gameState.intelligence = intelligence;
+      StateMutator.modifyStat('intelligence', 2);
     }
   },
 
   "Hollow Heart": {
     onAcquire: () => {
-      maxHealth += 2;
-      health = Math.min(health + 2, maxHealth); // Cap health to max health
-      gameState.maxHealth = maxHealth;
-      gameState.health = health;
+      StateMutator.modifyMaxHealth(2);
+      StateMutator.modifyHealth(2);
     }
   },
 
   "Vajra": {
     onAcquire: () => {
-      strength += 2;
-      gameState.strength = strength;
+      StateMutator.modifyStat('strength', 2);
     }
   },
 
@@ -147,50 +138,38 @@ const ITEM_EFFECTS = {
 
   "Bowler Hat": {
     onAcquire: () => {
-      charisma += 3;
-      dexterity -= 1;
-      gameState.charisma = charisma;
-      gameState.dexterity = dexterity;
+      StateMutator.modifyStat('charisma', 3);
+      StateMutator.modifyStat('dexterity', -1);
     }
   },
 
   "Wings": {
     onAcquire: () => {
-      dexterity += 3;
-      intelligence -= 1;
-      gameState.dexterity = dexterity;
-      gameState.intelligence = intelligence;
+      StateMutator.modifyStat('dexterity', 3);
+      StateMutator.modifyStat('intelligence', -1);
     }
   },
 
   "Campfire": {
     onAcquire: () => {
-      intelligence += 3;
-      dexterity -= 1;
-      gameState.intelligence = intelligence;
-      gameState.dexterity = dexterity;
+      StateMutator.modifyStat('intelligence', 3);
+      StateMutator.modifyStat('dexterity', -1);
     }
   },
 
   "Wheat": {
     onAcquire: () => {
-      strength += 3;
-      intelligence -= 1;
-      gameState.strength = strength;
-      gameState.intelligence = intelligence;
+      StateMutator.modifyStat('strength', 3);
+      StateMutator.modifyStat('intelligence', -1);
     }
   },
 
   "Panda": {
     onAcquire: () => {
-      maxHealth += 5;
-      health = Math.min(health + 5, maxHealth); // Cap health to max health
-      luck += 2;
-      strength -= 1;
-      gameState.maxHealth = maxHealth;
-      gameState.health = health;
-      gameState.luck = luck;
-      gameState.strength = strength;
+      StateMutator.modifyMaxHealth(5);
+      StateMutator.modifyHealth(5);
+      StateMutator.modifyStat('luck', 2);
+      StateMutator.modifyStat('strength', -1);
     }
   },
 
@@ -212,21 +191,13 @@ const ITEM_EFFECTS = {
 
       if (roll < totalChance) {
         // Heal +1 health (can't exceed max health)
-        const oldHealth = health;
-        health = Math.min(health + 1, maxHealth);
-        gameState.health = health;
+        const result = StateMutator.modifyHealth(1);
 
-        if (health > oldHealth) {
-          console.log(`Charm of the Vampire: Healed +1 health (${oldHealth} → ${health})`);
-          if (typeof updateHealthDisplay === 'function') {
-            updateHealthDisplay();
-          }
-          if (typeof updateTopBar === 'function') {
-            updateTopBar();
-          }
+        if (result.changed) {
+          console.log(`Charm of the Vampire: Healed +1 health (${result.oldHealth} → ${result.newHealth})`);
           // Show notification
           setTimeout(() => {
-            createNotification('Charm of the Vampire: +1 Health!', 'rgba(76, 175, 80, 0.9)', '🧛');
+            createNotification('Charm of the Vampire: +1 Health!', COLORS.SUCCESS, '🧛');
           }, 100);
         }
       }
