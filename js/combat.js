@@ -174,32 +174,24 @@ function rollD20() {
     let curseMessages = [];
 
     // Check for Curse of Weakness (subtract from roll) - handle stacking
-    if (gameState?.activeCurses) {
-      const weaknessCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('weakness'));
-      if (weaknessCurses.length > 0) {
-        // Use only the first weakness curse and remove it
-        const weaknessCurse = weaknessCurses[0];
-        const penalty = getCurseDamage(weaknessCurse.power);
+    const weaknessCurse = CurseManager.findFirstByType('weakness');
+    if (weaknessCurse) {
+      const penalty = CurseManager.getPenalty(weaknessCurse.power);
+      cursePenalty = penalty;
+      curseMessages.push(`Curse of Weakness: -${penalty}`);
 
-        cursePenalty = penalty;
-        curseMessages.push(`Curse of Weakness: -${penalty}`);
-
-        // Remove this specific curse instance after this roll
-        gameState.activeCurses.splice(gameState.activeCurses.indexOf(weaknessCurse), 1);
-        updateCurseDisplays();
-      }
+      // Remove this specific curse instance after this roll
+      CurseManager.consume(weaknessCurse);
     }
 
     // Check for Curse of Failure (damage on rolling 1) - handle stacking
-    if (currentRoll === 1 && gameState?.activeCurses) {
-      const failureCurses = gameState.activeCurses.filter(c => c.name.toLowerCase().includes('failure'));
+    if (currentRoll === 1) {
+      const failureCurses = CurseManager.findByType('failure');
       if (failureCurses.length > 0) {
         // Trigger all failure curses - sum total damage
-        const totalDamage = failureCurses.reduce((sum, curse) => sum + getCurseDamage(curse.power), 0);
+        const totalDamage = failureCurses.reduce((sum, curse) => sum + CurseManager.getPenalty(curse.power), 0);
 
-        health = Math.max(0, health - totalDamage);
-        gameState.health = health;
-        if (typeof updateTopBar === 'function') updateTopBar();
+        StateMutator.modifyHealth(-totalDamage);
 
         curseMessages.push(`Curse of Failure (×${failureCurses.length}): -${totalDamage} HP!`);
 
