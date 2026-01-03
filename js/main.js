@@ -204,6 +204,11 @@ function loadSavedGame(saveName) {
   skip = save.skip || 0;
   discovery = save.discovery || 0;
 
+  // Invalidate BFS cache when loading a game (game state changed)
+  if (typeof invalidateBFSCache === 'function') {
+    invalidateBFSCache();
+  }
+
   // Clean up any escape container
   const escapeContainer = document.getElementById('escape-container');
   if (escapeContainer) {
@@ -415,6 +420,11 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
 
   startGame = start;
   amuletGame = amulet;
+
+  // Invalidate BFS cache for new run (new start/amulet games)
+  if (typeof invalidateBFSCache === 'function') {
+    invalidateBFSCache();
+  }
 
   // Clean up any escape container from previous run
   const escapeContainer = document.getElementById('escape-container');
