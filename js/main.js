@@ -69,9 +69,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ===== SAVE/LOAD SYSTEM =====
 
 function loadState() {
-  const savedState = localStorage.getItem('roguelikeState');
-  if (savedState) {
-    const state = JSON.parse(savedState);
+  const state = GameStorage.load(STORAGE_KEYS.GAME_STATE);
+  if (state) {
     rations = state.rations;
     gold = state.gold ?? 0;
     health = state.health;
@@ -175,7 +174,12 @@ function saveCurrentGame() {
     discovery: discovery
   };
 
-  localStorage.setItem('roguelikeGameSaves', JSON.stringify(gameSaves));
+  const result = GameStorage.save(STORAGE_KEYS.SAVED_GAMES, gameSaves);
+  if (!result.success) {
+    console.error('Failed to save game:', result.error);
+    alert('Failed to save game: ' + result.error);
+    return;
+  }
   console.log('Game saved:', gameState.saveName);
 }
 
@@ -3662,7 +3666,7 @@ function showVictoryScreen() {
   // Delete the current save since run is complete
   if (gameState.saveName && gameSaves[gameState.saveName]) {
     delete gameSaves[gameState.saveName];
-    localStorage.setItem('gameSaves', JSON.stringify(gameSaves));
+    GameStorage.save(STORAGE_KEYS.SAVED_GAMES, gameSaves);
   }
 
   createGameModal(`
@@ -3693,7 +3697,7 @@ function showVictoryScreen() {
 }
 
 function saveRunToHistory(runData) {
-  const history = JSON.parse(localStorage.getItem('runHistory') || '[]');
+  const history = GameStorage.load(STORAGE_KEYS.RUN_HISTORY, []);
   history.unshift(runData); // Add to beginning
 
   // Keep only last 50 runs
@@ -3701,11 +3705,11 @@ function saveRunToHistory(runData) {
     history.length = 50;
   }
 
-  localStorage.setItem('runHistory', JSON.stringify(history));
+  GameStorage.save(STORAGE_KEYS.RUN_HISTORY, history);
 }
 
 function showRunHistory() {
-  const history = JSON.parse(localStorage.getItem('runHistory') || '[]');
+  const history = GameStorage.load(STORAGE_KEYS.RUN_HISTORY, []);
 
   if (history.length === 0) {
     createGameModal(`
@@ -3979,13 +3983,7 @@ function switchCollectionTab(tab) {
  * @returns {Object} Game stats object with game names as keys
  */
 function getGameStats() {
-  try {
-    const stats = localStorage.getItem('gameStats');
-    return stats ? JSON.parse(stats) : {};
-  } catch (e) {
-    console.error('Error loading game stats:', e);
-    return {};
-  }
+  return GameStorage.load(STORAGE_KEYS.GAME_STATS, {});
 }
 
 /**
@@ -3993,10 +3991,9 @@ function getGameStats() {
  * @param {Object} stats - Game stats object
  */
 function saveGameStats(stats) {
-  try {
-    localStorage.setItem('gameStats', JSON.stringify(stats));
-  } catch (e) {
-    console.error('Error saving game stats:', e);
+  const result = GameStorage.save(STORAGE_KEYS.GAME_STATS, stats);
+  if (!result.success) {
+    console.error('Error saving game stats:', result.error);
   }
 }
 

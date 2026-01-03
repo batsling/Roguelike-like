@@ -121,7 +121,8 @@ const COLORS = {
 const STORAGE_KEYS = {
   GAME_STATE: 'roguelikeState',
   SAVED_GAMES: 'roguelikeGameSaves',
-  GAME_STATS: 'gameStats'
+  GAME_STATS: 'gameStats',
+  RUN_HISTORY: 'runHistory'
 };
 
 // ===== GAME PHASES =====

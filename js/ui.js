@@ -565,7 +565,7 @@ function updateSaveList() {
       e.stopPropagation();
       if (confirm(`Delete save "${saveName}"?`)) {
         delete gameSaves[saveName];
-        localStorage.setItem('gameSaves', JSON.stringify(gameSaves));
+        GameStorage.save(STORAGE_KEYS.SAVED_GAMES, gameSaves);
         updateSaveList();
       }
     };
@@ -581,7 +581,7 @@ function updateSaveList() {
   deleteBtn.onclick = () => {
     if (confirm('Delete all saved games?')) {
       gameSaves = {};
-      localStorage.setItem('roguelikeGameSaves', JSON.stringify(gameSaves));
+      GameStorage.save(STORAGE_KEYS.SAVED_GAMES, gameSaves);
       updateSaveList();
     }
   };

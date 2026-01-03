@@ -79,7 +79,7 @@ var gameState = {
   escapeProgress: 0
 };
 
-var gameSaves = JSON.parse(localStorage.getItem('roguelikeGameSaves') || '{}');
+var gameSaves = GameStorage.load(STORAGE_KEYS.SAVED_GAMES, {});
 
 // ===== CHARACTER DATA =====
 var PLAYER_CHARACTERS = {};
