@@ -1,4 +1,4 @@
-const games = [
+var games = [
   {
     "name": "[Redacted]",
     "year": 2024,

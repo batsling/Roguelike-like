@@ -1541,7 +1541,6 @@ window.spawnChoices = spawnChoices;
 window.advance = advance;
 window.showFinish = showFinish;
 window.renderGameState = renderGameState;
-window.addAbilityButtons = addAbilityButtons;
 window.showDashModal = showDashModal;
 window.useDash = useDash;
 window.useSkip = useSkip;
