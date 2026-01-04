@@ -402,7 +402,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/baldi-s-basics-plus.jpg"
+    "coverImage": "images/covers/baldis-basics-plus.jpg"
   },
   {
     "name": "Ball x Pit",
@@ -2697,7 +2697,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/heretic-s-fork.jpg"
+    "coverImage": "images/covers/heretics-fork.jpg"
   },
   {
     "name": "Heroes of Hammerwatch",
@@ -3674,7 +3674,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/nubby-s-number-factory.jpg"
+    "coverImage": "images/covers/nubbys-number-factory.jpg"
   },
   {
     "name": "Nuclear Throne",
@@ -4714,7 +4714,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/sky-s-the-limit-mah-jong.jpg"
+    "coverImage": "images/covers/skys-the-limit-mah-jong.jpg"
   },
   {
     "name": "Slasher's Keep",
@@ -4724,7 +4724,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/slasher-s-keep.jpg"
+    "coverImage": "images/covers/slashers-keep.jpg"
   },
   {
     "name": "Slay the Spire",
@@ -5118,7 +5118,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/steve-s-warehouse-physics-roguelike-chaos.jpg"
+    "coverImage": "images/covers/steves-warehouse-physics-roguelike-chaos.jpg"
   },
   {
     "name": "Stick It to the Stickman",
@@ -5284,7 +5284,7 @@ var GAMES_DATA = [
       "Path of Achra",
       "Tangledeep"
     ],
-    "coverImage": "images/covers/tales-of-maj-eyal.jpg"
+    "coverImage": "images/covers/tales-of-majeyal.jpg"
   },
   {
     "name": "Tangledeep",
