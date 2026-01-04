@@ -1237,8 +1237,6 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
   // Add tooltip for hover
   html += '<div id="map-tooltip" style="display: none; position: absolute; background: rgba(30, 30, 30, 0.95); border: 2px solid #cc6600; border-radius: 6px; padding: 10px; z-index: 10000; pointer-events: none; max-width: 350px; font-size: 11px; line-height: 1.4;"></div>';
 
-  html += `<p style="margin-top: 20px; color: #888; font-size: 14px;">Viewing paths up to ${maxDistance} step${maxDistance !== 1 ? 's' : ''} | Shortest: ${pathData.shortestDistance} step${pathData.shortestDistance !== 1 ? 's' : ''}</p>`;
-
   return html;
 }
 
@@ -1279,9 +1277,21 @@ function showMapModal() {
   } else {
     const shortestDist = shortestPathData.shortestDistance;
 
-    // Show shortest path info
-    mapHTML += '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; display: flex; justify-content: center; align-items: center; gap: 15px;">';
+    // Show header with controls at the top
+    mapHTML += '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">';
     mapHTML += `<span style="color: #e6d5b8; font-weight: bold;">Shortest Path: ${shortestDist} steps</span>`;
+
+    // Zoom controls
+    mapHTML += `
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <button onclick="zoomMap(0.8)" style="padding: 5px 10px; background: #555; border: none; border-radius: 4px; color: white; cursor: pointer; font-weight: bold;">-</button>
+        <span id="map-zoom-level" style="color: #888; min-width: 50px; text-align: center;">100%</span>
+        <button onclick="zoomMap(1.25)" style="padding: 5px 10px; background: #555; border: none; border-radius: 4px; color: white; cursor: pointer; font-weight: bold;">+</button>
+        <button onclick="resetMapZoom()" style="padding: 5px 10px; background: #555; border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 10px;">Reset</button>
+      </div>
+    `;
+
+    mapHTML += `<button onclick="closeGameModal()" style="padding: 8px 20px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>`;
     mapHTML += '</div>';
 
     // Show shortest distance view only
@@ -1289,10 +1299,12 @@ function showMapModal() {
     mapHTML += generateMapView(currentGame, amuletGame, shortestDist);
     mapHTML += '</div>';
 
-    mapHTML += '<button onclick="closeGameModal()" style="margin-top: 20px; padding: 10px 30px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>';
     mapHTML += '</div>';
 
     createGameModal(mapHTML);
+
+    // Reset zoom level
+    currentMapZoom = 1.0;
 
     // Draw arrows after modal is rendered
     const initialPathData = findPathsUpToDistance(currentGame, amuletGame, shortestDist);
@@ -1653,6 +1665,53 @@ function hideMapTooltip() {
     tooltip.style.display = 'none';
   }
 }
+
+// Map zoom functions
+let currentMapZoom = 1.0;
+
+function zoomMap(factor) {
+  const gameBoxesContainer = document.getElementById('map-game-boxes');
+  if (!gameBoxesContainer) return;
+
+  currentMapZoom *= factor;
+  currentMapZoom = Math.max(0.25, Math.min(currentMapZoom, 3.0)); // Limit zoom between 25% and 300%
+
+  gameBoxesContainer.style.transform = `scale(${currentMapZoom})`;
+  gameBoxesContainer.setAttribute('data-scale', currentMapZoom);
+
+  // Update zoom level display
+  const zoomDisplay = document.getElementById('map-zoom-level');
+  if (zoomDisplay) {
+    zoomDisplay.textContent = Math.round(currentMapZoom * 100) + '%';
+  }
+
+  // Adjust container height to account for scaling
+  const contentHeight = gameBoxesContainer.scrollHeight;
+  const scaledHeight = contentHeight * currentMapZoom;
+  gameBoxesContainer.parentElement.style.minHeight = scaledHeight + 'px';
+}
+
+function resetMapZoom() {
+  currentMapZoom = 1.0;
+  const gameBoxesContainer = document.getElementById('map-game-boxes');
+  if (!gameBoxesContainer) return;
+
+  gameBoxesContainer.style.transform = 'scale(1.0)';
+  gameBoxesContainer.setAttribute('data-scale', '1.0');
+
+  // Update zoom level display
+  const zoomDisplay = document.getElementById('map-zoom-level');
+  if (zoomDisplay) {
+    zoomDisplay.textContent = '100%';
+  }
+
+  // Reset container height
+  gameBoxesContainer.parentElement.style.minHeight = '';
+}
+
+// Make zoom functions globally available
+window.zoomMap = zoomMap;
+window.resetMapZoom = resetMapZoom;
 
 function closeGameModal() {
   const modal = document.getElementById('game-modal');
@@ -3993,42 +4052,125 @@ function switchCollectionTab(tab) {
       </div>
     `;
   } else if (tab === 'curses') {
-    // Sort curses alphabetically
-    const sortedCurses = [...curses].sort((a, b) => a.name.localeCompare(b.name));
+    // Group curses by base name (without I, II, III)
+    const curseGroups = new Map();
+
+    curses.forEach(curse => {
+      // Extract base name and tier
+      const match = curse.name.match(/^(.+?)\s+(I{1,3})$/);
+      if (match) {
+        const baseName = match[1];
+        const tier = match[2];
+
+        if (!curseGroups.has(baseName)) {
+          curseGroups.set(baseName, {});
+        }
+        curseGroups.get(baseName)[tier] = curse;
+      }
+    });
+
+    // Sort curse groups alphabetically by base name
+    const sortedGroups = Array.from(curseGroups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
 
     content.innerHTML = `
       <div style="flex: 1; overflow-y: auto; padding: 10px;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
-          ${sortedCurses.map(curse => `
-          <div style="
-            background: rgba(0,0,0,0.3);
-            border: 1px solid #444;
-            border-radius: 8px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            transition: transform 0.2s, border-color 0.2s;
-          " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#9c27b0';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
-            <div style="text-align: center; font-size: 13px; font-weight: bold; color: #ddd; word-wrap: break-word;">
-              ${curse.name}
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px;">
+          ${sortedGroups.map(([baseName, tiers], index) => {
+            const firstTier = tiers['I'] || tiers['II'] || tiers['III'];
+            return `
+            <div id="curse-card-${index}" style="
+              background: rgba(0,0,0,0.3);
+              border: 1px solid #444;
+              border-radius: 8px;
+              padding: 15px;
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+              transition: transform 0.2s, border-color 0.2s;
+            " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#9c27b0';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
+              <div style="text-align: center; font-size: 13px; font-weight: bold; color: #ddd; word-wrap: break-word; margin-bottom: 5px;">
+                ${baseName}
+              </div>
+
+              <!-- Tier tabs -->
+              <div style="display: flex; gap: 5px; justify-content: center; margin-bottom: 5px;">
+                ${['I', 'II', 'III'].map(tier => tiers[tier] ? `
+                  <button
+                    onclick="switchCurseTier(${index}, '${tier}')"
+                    id="curse-${index}-tab-${tier}"
+                    style="
+                      padding: 4px 12px;
+                      background: ${tier === 'I' ? '#9c27b0' : '#555'};
+                      border: none;
+                      border-radius: 4px;
+                      color: white;
+                      cursor: pointer;
+                      font-size: 11px;
+                      font-weight: bold;
+                    ">
+                    ${tier}
+                  </button>
+                ` : '').join('')}
+              </div>
+
+              <!-- Curse details (tier I shown by default) -->
+              <div id="curse-${index}-details">
+                <div style="font-size: 11px; color: #9c27b0; text-align: center;">
+                  ${firstTier.stat} • ${firstTier.power}
+                </div>
+                <div style="font-size: 10px; color: #888; text-align: center;">
+                  ${firstTier.duration}
+                </div>
+                <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4; margin-top: 5px; padding-top: 8px; border-top: 1px solid #444;">
+                  ${firstTier.description}
+                </div>
+              </div>
+
+              <!-- Hidden data for tier switching -->
+              <script>
+                window.curseData_${index} = ${JSON.stringify(tiers)};
+              </script>
             </div>
-            <div style="font-size: 11px; color: #9c27b0; text-align: center;">
-              ${curse.stat} • ${curse.power}
-            </div>
-            <div style="font-size: 10px; color: #888; text-align: center;">
-              ${curse.duration}
-            </div>
-            <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4; margin-top: 5px; padding-top: 8px; border-top: 1px solid #444;">
-              ${curse.description}
-            </div>
-          </div>
-        `).join('')}
+          `;}).join('')}
         </div>
       </div>
     `;
   }
 }
+
+// Switch between curse tiers (I, II, III)
+function switchCurseTier(cardIndex, tier) {
+  const tiersData = window[`curseData_${cardIndex}`];
+  if (!tiersData || !tiersData[tier]) return;
+
+  const curse = tiersData[tier];
+  const detailsDiv = document.getElementById(`curse-${cardIndex}-details`);
+
+  if (detailsDiv) {
+    detailsDiv.innerHTML = `
+      <div style="font-size: 11px; color: #9c27b0; text-align: center;">
+        ${curse.stat} • ${curse.power}
+      </div>
+      <div style="font-size: 10px; color: #888; text-align: center;">
+        ${curse.duration}
+      </div>
+      <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4; margin-top: 5px; padding-top: 8px; border-top: 1px solid #444;">
+        ${curse.description}
+      </div>
+    `;
+  }
+
+  // Update tab button styles
+  ['I', 'II', 'III'].forEach(t => {
+    const tabBtn = document.getElementById(`curse-${cardIndex}-tab-${t}`);
+    if (tabBtn) {
+      tabBtn.style.background = t === tier ? '#9c27b0' : '#555';
+    }
+  });
+}
+
+// Make switchCurseTier globally available
+window.switchCurseTier = switchCurseTier;
 
 // ===== GAME STATS TRACKING SYSTEM =====
 
