@@ -4085,22 +4085,24 @@ function switchCollectionTab(tab) {
           ${sortedGroups.map(([baseName, tiers], index) => {
             const firstTier = tiers['I'] || tiers['II'] || tiers['III'];
             return `
-            <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; flex-direction: column;">
               <!-- Tier tabs above the box -->
-              <div style="display: flex; gap: 5px; justify-content: center;">
+              <div style="display: flex; gap: 3px; justify-content: center; margin-bottom: -1px; z-index: 1; position: relative;">
                 ${['I', 'II', 'III'].map(tier => tiers[tier] ? `
                   <button
                     onclick="switchCurseTier(${index}, '${tier}')"
                     id="curse-${index}-tab-${tier}"
                     style="
-                      padding: 4px 12px;
-                      background: ${tier === 'I' ? '#9c27b0' : '#555'};
-                      border: none;
-                      border-radius: 4px 4px 0 0;
-                      color: white;
+                      padding: 5px 14px;
+                      background: ${tier === 'I' ? 'rgba(0,0,0,0.3)' : '#555'};
+                      border: 1px solid ${tier === 'I' ? '#9c27b0' : '#444'};
+                      border-bottom: ${tier === 'I' ? '1px solid rgba(0,0,0,0.3)' : '1px solid #444'};
+                      border-radius: 6px 6px 0 0;
+                      color: ${tier === 'I' ? '#9c27b0' : '#aaa'};
                       cursor: pointer;
                       font-size: 11px;
                       font-weight: bold;
+                      transition: all 0.2s;
                     ">
                     ${tier}
                   </button>
@@ -4111,13 +4113,15 @@ function switchCollectionTab(tab) {
               <div id="curse-card-${index}" style="
                 background: rgba(0,0,0,0.3);
                 border: 1px solid #444;
-                border-radius: 8px;
+                border-radius: 0 8px 8px 8px;
                 padding: 15px;
                 display: flex;
                 flex-direction: column;
                 gap: 8px;
                 transition: transform 0.2s, border-color 0.2s;
-              " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#9c27b0';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
+                position: relative;
+                z-index: 0;
+              " onmouseover="this.style.borderColor='#9c27b0';" onmouseout="this.style.borderColor='#444';">
                 <div style="text-align: center; font-size: 13px; font-weight: bold; color: #ddd; word-wrap: break-word;">
                   ${baseName}
                 </div>
@@ -4177,7 +4181,11 @@ function switchCurseTier(cardIndex, tier) {
   ['I', 'II', 'III'].forEach(t => {
     const tabBtn = document.getElementById(`curse-${cardIndex}-tab-${t}`);
     if (tabBtn) {
-      tabBtn.style.background = t === tier ? '#9c27b0' : '#555';
+      const isActive = t === tier;
+      tabBtn.style.background = isActive ? 'rgba(0,0,0,0.3)' : '#555';
+      tabBtn.style.borderColor = isActive ? '#9c27b0' : '#444';
+      tabBtn.style.borderBottomColor = isActive ? 'rgba(0,0,0,0.3)' : '#444';
+      tabBtn.style.color = isActive ? '#9c27b0' : '#aaa';
     }
   });
 }
