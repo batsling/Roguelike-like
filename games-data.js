@@ -1,4 +1,4 @@
-var games = [
+var GAMES_DATA = [
   {
     "name": "[Redacted]",
     "year": 2024,
