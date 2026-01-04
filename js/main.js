@@ -4081,26 +4081,13 @@ function switchCollectionTab(tab) {
 
     content.innerHTML = `
       <div style="flex: 1; overflow-y: auto; padding: 10px;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;">
           ${sortedGroups.map(([baseName, tiers], index) => {
             const firstTier = tiers['I'] || tiers['II'] || tiers['III'];
             return `
-            <div id="curse-card-${index}" style="
-              background: rgba(0,0,0,0.3);
-              border: 1px solid #444;
-              border-radius: 8px;
-              padding: 15px;
-              display: flex;
-              flex-direction: column;
-              gap: 8px;
-              transition: transform 0.2s, border-color 0.2s;
-            " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#9c27b0';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
-              <div style="text-align: center; font-size: 13px; font-weight: bold; color: #ddd; word-wrap: break-word; margin-bottom: 5px;">
-                ${baseName}
-              </div>
-
-              <!-- Tier tabs -->
-              <div style="display: flex; gap: 5px; justify-content: center; margin-bottom: 5px;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Tier tabs above the box -->
+              <div style="display: flex; gap: 5px; justify-content: center;">
                 ${['I', 'II', 'III'].map(tier => tiers[tier] ? `
                   <button
                     onclick="switchCurseTier(${index}, '${tier}')"
@@ -4109,7 +4096,7 @@ function switchCollectionTab(tab) {
                       padding: 4px 12px;
                       background: ${tier === 'I' ? '#9c27b0' : '#555'};
                       border: none;
-                      border-radius: 4px;
+                      border-radius: 4px 4px 0 0;
                       color: white;
                       cursor: pointer;
                       font-size: 11px;
@@ -4120,16 +4107,32 @@ function switchCollectionTab(tab) {
                 ` : '').join('')}
               </div>
 
-              <!-- Curse details (tier I shown by default) -->
-              <div id="curse-${index}-details">
-                <div style="font-size: 11px; color: #9c27b0; text-align: center;">
-                  ${firstTier.stat} • ${firstTier.power}
+              <!-- Curse card box -->
+              <div id="curse-card-${index}" style="
+                background: rgba(0,0,0,0.3);
+                border: 1px solid #444;
+                border-radius: 8px;
+                padding: 15px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                transition: transform 0.2s, border-color 0.2s;
+              " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#9c27b0';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
+                <div style="text-align: center; font-size: 13px; font-weight: bold; color: #ddd; word-wrap: break-word;">
+                  ${baseName}
                 </div>
-                <div style="font-size: 10px; color: #888; text-align: center;">
-                  ${firstTier.duration}
-                </div>
-                <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4; margin-top: 5px; padding-top: 8px; border-top: 1px solid #444;">
-                  ${firstTier.description}
+
+                <!-- Curse details (tier I shown by default) -->
+                <div id="curse-${index}-details">
+                  <div style="font-size: 11px; color: #9c27b0; text-align: center;">
+                    ${firstTier.stat} • ${firstTier.power}
+                  </div>
+                  <div style="font-size: 10px; color: #888; text-align: center;">
+                    ${firstTier.duration}
+                  </div>
+                  <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4; margin-top: 5px; padding-top: 8px; border-top: 1px solid #444;">
+                    ${firstTier.description}
+                  </div>
                 </div>
               </div>
             </div>
