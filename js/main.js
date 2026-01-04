@@ -1312,8 +1312,8 @@ function showMapModal() {
       const { gameToLayer } = reorganizeMapLayers(initialPathData);
       drawMapArrows(initialPathData, currentGame, amuletGame, gameToLayer);
 
-      // Auto-zoom to fit all content in the viewport
-      autoZoomMapToFit();
+      // Auto-zoom disabled - user can manually zoom with controls
+      // autoZoomMapToFit();
     }, 150);
   }
 }
@@ -2346,6 +2346,11 @@ function triggerStoneGolemFight() {
   `);
 
   document.getElementById('roll-stone-golem-btn').onclick = () => {
+    const rollBtn = document.getElementById('roll-stone-golem-btn');
+    rollBtn.disabled = true;
+    rollBtn.style.opacity = '0.5';
+    rollBtn.style.cursor = 'not-allowed';
+
     const roll = Math.floor(Math.random() * 20) + 1;
     const total = roll + playerStatValue;
     const success = total >= stoneGolem.rollCheck;
@@ -2354,7 +2359,7 @@ function triggerStoneGolemFight() {
       <p style="font-size: 20px; color: ${success ? '#4CAF50' : '#ff4444'};">
         Rolled: ${roll} + ${playerStatValue} = ${total} ${success ? '✓ SUCCESS' : '✗ FAILURE'}
       </p>
-      <button onclick="handleStoneGolemResult(${success})" style="padding: 10px 20px; margin-top: 20px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer;">Continue</button>
+      <button onclick="window.handleStoneGolemResult(${success})" style="padding: 10px 20px; margin-top: 20px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Continue</button>
     `;
   };
 }
