@@ -3653,6 +3653,11 @@ function completeEscapeGame(index) {
 function showVictoryScreen() {
   const uniqueBeaten = new Set(gameState.visitedGames || []);
 
+  // Increment amulet stat for successful escape
+  if (gameState.amuletGame) {
+    incrementGameBeaten(gameState.amuletGame.name, true);
+  }
+
   // Save run to history
   saveRunToHistory({
     date: new Date().toISOString(),
@@ -3790,6 +3795,7 @@ function showCollection() {
         <button onclick="switchCollectionTab('games')" id="tab-games" style="padding: 10px 20px; background: #ff9800; border: none; border-radius: 6px 6px 0 0; color: white; cursor: pointer; font-weight: bold;">Games (${games.length})</button>
         <button onclick="switchCollectionTab('items')" id="tab-items" style="padding: 10px 20px; background: #555; border: none; border-radius: 6px 6px 0 0; color: white; cursor: pointer; font-weight: bold;">Items (${items.length})</button>
         <button onclick="switchCollectionTab('enemies')" id="tab-enemies" style="padding: 10px 20px; background: #555; border: none; border-radius: 6px 6px 0 0; color: white; cursor: pointer; font-weight: bold;">Enemies (${enemies.length})</button>
+        <button onclick="switchCollectionTab('curses')" id="tab-curses" style="padding: 10px 20px; background: #555; border: none; border-radius: 6px 6px 0 0; color: white; cursor: pointer; font-weight: bold;">Curses (${curses.length})</button>
       </div>
 
       <!-- Tab Content -->
@@ -3809,7 +3815,7 @@ function showCollection() {
 
 function switchCollectionTab(tab) {
   // Update tab buttons
-  const tabs = ['games', 'items', 'enemies'];
+  const tabs = ['games', 'items', 'enemies', 'curses'];
   tabs.forEach(t => {
     const btn = document.getElementById(`tab-${t}`);
     if (btn) {
@@ -3972,11 +3978,49 @@ function switchCollectionTab(tab) {
             <div style="text-align: center; font-size: 12px; font-weight: bold; color: #ddd; word-wrap: break-word;">
               ${enemy.name}
             </div>
+            <div style="font-size: 10px; color: #888; text-align: center; font-style: italic; margin-bottom: 2px;">
+              ${enemy.game || 'Unknown Game'}
+            </div>
             <div style="font-size: 10px; color: #ff6666; text-align: center;">
               ${enemy.powerLevel || 'Unknown'} • ${enemy.stat || 'Unknown'}
             </div>
             <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
               Roll ${enemy.rollCheck || '?'} to succeed
+            </div>
+          </div>
+        `).join('')}
+        </div>
+      </div>
+    `;
+  } else if (tab === 'curses') {
+    // Sort curses alphabetically
+    const sortedCurses = [...curses].sort((a, b) => a.name.localeCompare(b.name));
+
+    content.innerHTML = `
+      <div style="flex: 1; overflow-y: auto; padding: 10px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+          ${sortedCurses.map(curse => `
+          <div style="
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: transform 0.2s, border-color 0.2s;
+          " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#9c27b0';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
+            <div style="text-align: center; font-size: 13px; font-weight: bold; color: #ddd; word-wrap: break-word;">
+              ${curse.name}
+            </div>
+            <div style="font-size: 11px; color: #9c27b0; text-align: center;">
+              ${curse.stat} • ${curse.power}
+            </div>
+            <div style="font-size: 10px; color: #888; text-align: center;">
+              ${curse.duration}
+            </div>
+            <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4; margin-top: 5px; padding-top: 8px; border-top: 1px solid #444;">
+              ${curse.description}
             </div>
           </div>
         `).join('')}
@@ -4113,11 +4157,9 @@ function markGameFinished(gameName) {
     gameState.finishedGames = [];
   }
 
-  // Check if this is the amulet game
-  const isAmuletGame = gameState.amuletGame && gameName === gameState.amuletGame.name;
-
-  // Always increment beaten count (tracks all completions, even if player dies later)
-  incrementGameBeaten(gameName, isAmuletGame);
+  // Increment beaten count (tracks all completions, even if player dies later)
+  // NOTE: Amulet stat is only incremented on successful escape (in showVictoryScreen)
+  incrementGameBeaten(gameName, false);
 
   // Only add if not already in finishedGames array
   if (!gameState.finishedGames.includes(gameName)) {
