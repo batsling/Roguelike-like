@@ -3847,23 +3847,19 @@ function showRunHistory() {
 function showCollection() {
   const collectionHTML = `
     <div style="width: 90vw; max-width: 1400px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
-      <h2 style="color: #ff9800; margin-top: 0; text-align: center;">📚 Collection</h2>
-
-      <!-- Tab Navigation -->
-      <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #444;">
-        <button onclick="switchCollectionTab('games')" id="tab-games" style="padding: 10px 20px; background: #ff9800; border: none; border-radius: 6px 6px 0 0; color: white; cursor: pointer; font-weight: bold;">Games (${games.length})</button>
-        <button onclick="switchCollectionTab('items')" id="tab-items" style="padding: 10px 20px; background: #555; border: none; border-radius: 6px 6px 0 0; color: white; cursor: pointer; font-weight: bold;">Items (${items.length})</button>
-        <button onclick="switchCollectionTab('enemies')" id="tab-enemies" style="padding: 10px 20px; background: #555; border: none; border-radius: 6px 6px 0 0; color: white; cursor: pointer; font-weight: bold;">Enemies (${enemies.length})</button>
-        <button onclick="switchCollectionTab('curses')" id="tab-curses" style="padding: 10px 20px; background: #555; border: none; border-radius: 6px 6px 0 0; color: white; cursor: pointer; font-weight: bold;">Curses (${curses.length})</button>
+      <!-- Tab Navigation at top -->
+      <div style="display: flex; gap: 10px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #444; align-items: center;">
+        <h2 style="color: #ff9800; margin: 0; flex: 1;">📚 Collection</h2>
+        <button onclick="switchCollectionTab('games')" id="tab-games" style="padding: 8px 16px; background: #ff9800; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Games (${games.length})</button>
+        <button onclick="switchCollectionTab('items')" id="tab-items" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Items (${items.length})</button>
+        <button onclick="switchCollectionTab('enemies')" id="tab-enemies" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Enemies (${enemies.length})</button>
+        <button onclick="switchCollectionTab('curses')" id="tab-curses" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Curses (${curses.length})</button>
+        <button onclick="closeGameModal();" style="padding: 8px 20px; background: #444; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Close</button>
       </div>
 
       <!-- Tab Content -->
       <div id="collection-content" style="flex: 1; overflow: hidden; display: flex; gap: 20px;">
         <!-- Content will be populated by switchCollectionTab -->
-      </div>
-
-      <div style="text-align: center; margin-top: 20px; padding-top: 15px; border-top: 2px solid #444;">
-        <button onclick="closeGameModal();" style="padding: 10px 30px; background: linear-gradient(145deg, #ff9800, #f57c00); border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>
       </div>
     </div>
   `;
@@ -4072,6 +4068,12 @@ function switchCollectionTab(tab) {
     // Sort curse groups alphabetically by base name
     const sortedGroups = Array.from(curseGroups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
 
+    // Store curse data globally for tier switching
+    window.allCurseData = {};
+    sortedGroups.forEach(([baseName, tiers], index) => {
+      window.allCurseData[index] = tiers;
+    });
+
     content.innerHTML = `
       <div style="flex: 1; overflow-y: auto; padding: 10px;">
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px;">
@@ -4125,11 +4127,6 @@ function switchCollectionTab(tab) {
                   ${firstTier.description}
                 </div>
               </div>
-
-              <!-- Hidden data for tier switching -->
-              <script>
-                window.curseData_${index} = ${JSON.stringify(tiers)};
-              </script>
             </div>
           `;}).join('')}
         </div>
@@ -4140,8 +4137,16 @@ function switchCollectionTab(tab) {
 
 // Switch between curse tiers (I, II, III)
 function switchCurseTier(cardIndex, tier) {
-  const tiersData = window[`curseData_${cardIndex}`];
-  if (!tiersData || !tiersData[tier]) return;
+  if (!window.allCurseData || !window.allCurseData[cardIndex]) {
+    console.error('Curse data not found for card', cardIndex);
+    return;
+  }
+
+  const tiersData = window.allCurseData[cardIndex];
+  if (!tiersData[tier]) {
+    console.error('Tier not found:', tier);
+    return;
+  }
 
   const curse = tiersData[tier];
   const detailsDiv = document.getElementById(`curse-${cardIndex}-details`);
