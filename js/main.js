@@ -5607,6 +5607,11 @@ function toggleBingoCell(index) {
   checkForBingo();
 }
 
+// Reward queue for handling multiple bingos
+let bingoRewardQueue = [];
+let processingBingoReward = false;
+let usedBingoItems = []; // Track items shown in current batch to avoid duplicates
+
 function checkForBingo() {
   const lines = [
     // Rows
@@ -5636,10 +5641,14 @@ function checkForBingo() {
     // Update count first
     completedBingos = newBingos;
 
-    // Grant rewards for each new bingo (using sequential reward types)
+    // Queue rewards for each new bingo (using sequential reward types)
+    usedBingoItems = []; // Reset used items for this batch
     for (let i = 0; i < bingosToGrant; i++) {
-      grantBingoReward(oldBingosCount + i + 1);
+      bingoRewardQueue.push(oldBingosCount + i + 1);
     }
+
+    // Start processing the queue
+    processNextBingoReward();
 
     // Update display
     updateBingoStatus();
@@ -5655,6 +5664,22 @@ function checkForBingo() {
   }
 
   updateBingoStatus();
+}
+
+function processNextBingoReward() {
+  if (processingBingoReward) {
+    return;
+  }
+
+  if (bingoRewardQueue.length === 0) {
+    // All rewards processed, clear used items for next batch
+    usedBingoItems = [];
+    return;
+  }
+
+  processingBingoReward = true;
+  const bingoCount = bingoRewardQueue.shift();
+  grantBingoReward(bingoCount);
 }
 
 function updateBingoStatus() {
@@ -5675,44 +5700,39 @@ function grantBingoReward(bingoCount) {
   charisma++;
   updateTopBar();
 
-  let rewardMessage = 'Bingo Complete! Rewards:\n';
-  rewardMessage += '+1 to all combat stats!\n';
+  let bonusText = '+1 to All Combat Stats';
 
   // Apply specific reward bonuses
   switch(rewardType) {
     case 1:
       // Common items
-      giveRandomItems('common');
-      rewardMessage += 'Choose 1 common item!';
+      giveRandomItems('common', bingoCount, bonusText);
       break;
     case 2:
       // Common items
-      giveRandomItems('common');
-      rewardMessage += 'Choose 1 common item!';
+      giveRandomItems('common', bingoCount, bonusText);
       break;
     case 3:
       // Common items + 2 Reroll
       reroll += 2;
       bingoReroll += 2;
-      giveRandomItems('common');
-      rewardMessage += '+2 Reroll\nChoose 1 common item!';
+      bonusText += ', +2 Reroll';
+      giveRandomItems('common', bingoCount, bonusText);
       break;
     case 4:
       // Uncommon items
-      giveRandomItems('uncommon');
-      rewardMessage += 'Choose 1 uncommon item!';
+      giveRandomItems('uncommon', bingoCount, bonusText);
       break;
     case 5:
       // Uncommon items + 1 Skip
       skip += 1;
       bingoSkip += 1;
-      giveRandomItems('uncommon');
-      rewardMessage += '+1 Skip\nChoose 1 uncommon item!';
+      bonusText += ', +1 Skip';
+      giveRandomItems('uncommon', bingoCount, bonusText);
       break;
     case 6:
       // Rare items
-      giveRandomItems('rare');
-      rewardMessage += 'Choose 1 rare item!';
+      giveRandomItems('rare', bingoCount, bonusText);
       break;
     case 7:
       // Rare items + FoV & Discovery
@@ -5720,44 +5740,54 @@ function grantBingoReward(bingoCount) {
       discovery += 1;
       bingoFoV += 1;
       bingoDiscovery += 1;
-      giveRandomItems('rare');
-      rewardMessage += '+1 FoV & Discovery\nChoose 1 rare item!';
+      bonusText += ', +1 FoV & Discovery';
+      giveRandomItems('rare', bingoCount, bonusText);
       break;
     case 8:
       // Rare items + Dash
       dash += 1;
       bingoDash += 1;
-      giveRandomItems('rare');
-      rewardMessage += '+1 Dash\nChoose 1 rare item!';
+      bonusText += ', +1 Dash';
+      giveRandomItems('rare', bingoCount, bonusText);
       break;
   }
-
-  alert(rewardMessage);
 }
 
-function giveRandomItems(rarity) {
-  const rarityItems = items.filter(item => item.rarity === rarity);
+function giveRandomItems(rarity, bingoCount = 1, bonusText = '') {
+  // Filter out items already used in this batch of bingo rewards
+  const rarityItems = items.filter(item =>
+    item.rarity === rarity && !usedBingoItems.includes(item.name)
+  );
 
   if (rarityItems.length === 0) {
     console.log(`No ${rarity} items available`);
     alert(`No ${rarity} items available!`);
+    processingBingoReward = false;
+    processNextBingoReward();
     return;
   }
 
   // Number of choices = 2 + discovery (affected by discovery stat)
-  const numChoices = 2 + discovery;
+  const numChoices = Math.min(2 + discovery, rarityItems.length);
   const choices = [];
 
-  // Generate random item choices (all from the same rarity)
+  // Generate random item choices (all from the same rarity, excluding used items)
   for (let i = 0; i < numChoices && i < rarityItems.length; i++) {
     let randomItem;
     do {
       randomItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
-    } while (choices.find(c => c.name === randomItem.name) && choices.length < rarityItems.length);
+    } while (choices.find(c => c.name === randomItem.name));
     choices.push(randomItem);
+    // Track this item as used in this batch
+    usedBingoItems.push(randomItem.name);
   }
 
   const rarityColor = rarity === 'common' ? '#aaa' : rarity === 'uncommon' ? '#4CAF50' : '#9b59b6';
+
+  // Show queue info if there are more rewards pending
+  const queueInfo = bingoRewardQueue.length > 0
+    ? `<p style="text-align: center; color: #ffaa00; font-size: 14px; margin-top: 0;">${bingoRewardQueue.length} more reward${bingoRewardQueue.length > 1 ? 's' : ''} pending...</p>`
+    : '';
 
   let itemsHTML = '<div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; justify-content: center;">';
 
@@ -5788,7 +5818,9 @@ function giveRandomItems(rarity) {
 
   createGameModal(`
     <div>
-      <h2 style="color: gold; margin-top: 0; text-align: center;">🎯 Bingo Reward!</h2>
+      <h2 style="color: gold; margin-top: 0; text-align: center;">🎯 Bingo #${bingoCount} Complete!</h2>
+      ${queueInfo}
+      <p style="text-align: center; color: #4CAF50; font-weight: bold; margin: 10px 0;">${bonusText}</p>
       <p style="text-align: center; color: #aaa;">Select one ${rarity} item to add to your inventory</p>
       ${itemsHTML}
     </div>
@@ -5813,6 +5845,10 @@ function giveRandomItems(rarity) {
       if (typeof updateInventory === 'function') {
         updateInventory();
       }
+
+      // Mark this reward as processed and show next one if queued
+      processingBingoReward = false;
+      processNextBingoReward();
     };
   });
 }
