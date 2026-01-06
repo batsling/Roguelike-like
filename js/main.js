@@ -5626,8 +5626,8 @@ function updateBingoStatus() {
 }
 
 function grantBingoReward() {
-  // Randomly select one of the 8 rewards
-  const rewardType = Math.floor(Math.random() * 8) + 1;
+  // Rewards are given in order based on completedBingos count (1-8, then cycle)
+  const rewardType = ((completedBingos - 1) % 8) + 1;
 
   // All rewards give +1 to all combat stats
   strength++;
@@ -5645,42 +5645,47 @@ function grantBingoReward() {
     case 2:
       // Common items
       giveRandomItems('common');
-      rewardMessage += 'Choose 1 common item!';
+      rewardMessage += 'Choose 1 from 2 common items!';
       break;
     case 3:
       // Common items + 2 Reroll
+      reroll += 2;
       bingoReroll += 2;
       giveRandomItems('common');
-      rewardMessage += '+2 Reroll\nChoose 1 common item!';
+      rewardMessage += '+2 Reroll\nChoose 1 from 2 common items!';
       break;
     case 4:
       // Uncommon items
       giveRandomItems('uncommon');
-      rewardMessage += 'Choose 1 uncommon item!';
+      rewardMessage += 'Choose 1 from 2 uncommon items!';
       break;
     case 5:
       // Uncommon items + 1 Skip
+      skip += 1;
       bingoSkip += 1;
       giveRandomItems('uncommon');
-      rewardMessage += '+1 Skip\nChoose 1 uncommon item!';
+      rewardMessage += '+1 Skip\nChoose 1 from 2 uncommon items!';
       break;
     case 6:
       // Rare items
       giveRandomItems('rare');
-      rewardMessage += 'Choose 1 rare item!';
+      rewardMessage += 'Choose 1 from 2 rare items!';
       break;
     case 7:
       // Rare items + FoV & Discovery
+      fov += 1;
+      discovery += 1;
       bingoFoV += 1;
       bingoDiscovery += 1;
       giveRandomItems('rare');
-      rewardMessage += '+1 FoV & Discovery\nChoose 1 rare item!';
+      rewardMessage += '+1 FoV & Discovery\nChoose 1 from 2 rare items!';
       break;
     case 8:
       // Rare items + Dash
+      dash += 1;
       bingoDash += 1;
       giveRandomItems('rare');
-      rewardMessage += '+1 Dash\nChoose 1 rare item!';
+      rewardMessage += '+1 Dash\nChoose 1 from 2 rare items!';
       break;
   }
 
@@ -5692,6 +5697,7 @@ function giveRandomItems(rarity) {
 
   if (rarityItems.length === 0) {
     console.log(`No ${rarity} items available`);
+    alert(`No ${rarity} items available!`);
     return;
   }
 
@@ -5699,7 +5705,7 @@ function giveRandomItems(rarity) {
   const numChoices = 2 + discovery + bingoDiscovery;
   const choices = [];
 
-  // Generate random item choices
+  // Generate random item choices (all from the same rarity)
   for (let i = 0; i < numChoices && i < rarityItems.length; i++) {
     let randomItem;
     do {
@@ -5708,19 +5714,47 @@ function giveRandomItems(rarity) {
     choices.push(randomItem);
   }
 
-  // Display choices to user
-  showItemChoiceModal({
-    title: '🎯 Bingo Reward!',
-    message: `Choose 1 from ${numChoices} ${rarity} items:`,
-    items: choices,
-    onChoice: (item) => {
-      inventory.push(item);
-      if (typeof updateInventory === 'function') {
-        updateInventory();
-      }
-      closeGameModal();
-    }
-  });
+  // Create custom modal for bingo item selection
+  createGameModal(`
+    <h2 style="margin-top: 0; color: gold;">🎯 Bingo Reward!</h2>
+    <p style="text-align: center; color: #aaa;">Choose 1 from ${numChoices} ${rarity} items:</p>
+    <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+      ${choices.map(item => `
+        <div
+          style="
+            padding: 15px;
+            background: #1a1a1a;
+            border: 2px solid ${item.rarity === 'rare' ? '#9b59b6' : item.rarity === 'uncommon' ? '#3498db' : '#95a5a6'};
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+          "
+          onmouseover="this.style.background='#2a2a2a'; this.style.borderColor='#ecf0f1';"
+          onmouseout="this.style.background='#1a1a1a'; this.style.borderColor='${item.rarity === 'rare' ? '#9b59b6' : item.rarity === 'uncommon' ? '#3498db' : '#95a5a6'}';"
+          onclick="selectBingoItem(${JSON.stringify(item).replace(/"/g, '&quot;')})"
+        >
+          <div style="font-size: 18px; font-weight: bold; color: ${item.rarity === 'rare' ? '#9b59b6' : item.rarity === 'uncommon' ? '#3498db' : '#95a5a6'};">
+            ${item.name}
+          </div>
+          <div style="color: #888; font-size: 12px; margin-top: 5px;">
+            ${item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)} - ${item.type || 'Item'}
+          </div>
+          <div style="color: #ccc; margin-top: 10px;">
+            ${item.description || 'No description'}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `);
+}
+
+// Helper function to select a bingo item
+function selectBingoItem(item) {
+  inventory.push(item);
+  if (typeof updateInventory === 'function') {
+    updateInventory();
+  }
+  closeGameModal();
 }
 
 function showBingoRewards() {
@@ -5789,5 +5823,6 @@ window.checkForBingo = checkForBingo;
 window.updateBingoStatus = updateBingoStatus;
 window.grantBingoReward = grantBingoReward;
 window.giveRandomItems = giveRandomItems;
+window.selectBingoItem = selectBingoItem;
 window.showBingoRewards = showBingoRewards;
 window.toggleBingo = toggleBingo;

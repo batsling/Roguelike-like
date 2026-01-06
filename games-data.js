@@ -1,3 +1,7 @@
+// Auto-generated from Roguelikes.xlsx
+// 551 games, 683 connections
+// 477 connected, 148 influencers
+
 var GAMES_DATA = [
   {
     "name": "[Redacted]",
@@ -7,7 +11,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/redacted.jpg"
+    "coverImage": "images/covers/-redacted-.jpg"
   },
   {
     "name": "100 Rogues",
@@ -71,7 +75,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/a-robot-named-fight.jpg"
+    "coverImage": "images/covers/a-robot-named-fight-.jpg"
   },
   {
     "name": "Abandoned Archive",
@@ -157,9 +161,7 @@ var GAMES_DATA = [
       "Elona",
       "Moonring",
       "Stoneshard",
-      "Ultimate ADOM",
-      "KeeperRL",
-      "Soulash"
+      "Ultimate ADOM"
     ],
     "coverImage": "images/covers/ancient-domains-of-mystery.jpg"
   },
@@ -402,7 +404,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/baldis-basics-plus.jpg"
+    "coverImage": "images/covers/baldi-s-basics-plus.jpg"
   },
   {
     "name": "Ball x Pit",
@@ -464,7 +466,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/baroque-2007.jpg"
+    "coverImage": "images/covers/baroque-2007-.jpg"
   },
   {
     "name": "Battle Brothers",
@@ -684,7 +686,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Moonring",
-      "Pixel Dungeon",
+      "Shattered Pixel Dungeon",
       "Rogue-Fp",
       "Unexplored",
       "WarpVector"
@@ -909,7 +911,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/chocobo-s-mystery-dungeon-every-buddy.jpg"
+    "coverImage": "images/covers/chocobo-s-mystery-dungeon-every-buddy-.jpg"
   },
   {
     "name": "Chrono Ark",
@@ -1427,9 +1429,7 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": true,
     "tags": [],
-    "gamesInfluenced": [
-      "The Binding of Isaac"
-    ],
+    "gamesInfluenced": [],
     "coverImage": "images/covers/desktop-dungeons.jpg"
   },
   {
@@ -1698,7 +1698,7 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Dicey Dungeons"
+      "Dicey Dungeon"
     ],
     "coverImage": "images/covers/dream-quest.jpg"
   },
@@ -1762,7 +1762,7 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Cataclysm",
       "Cogmind",
-      "Desktop Dungeons",
+      "Desktop Dungeons: Rewind",
       "Dungeonmans",
       "Path of Achra",
       "Vagante",
@@ -2227,29 +2227,7 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": true,
     "tags": [],
-    "gamesInfluenced": [
-      "Arcanium: Rise of Akhan",
-      "Convoy",
-      "Death Roads: Tournament",
-      "Deep Sky Derelicts",
-      "Dicefolk",
-      "Hand of Fate",
-      "Insurmountable",
-      "Into the Breach",
-      "Monstrum",
-      "One Step From Eden",
-      "Road Not Taken",
-      "Slay the Spire",
-      "Slice & Dice",
-      "Terraformers",
-      "WarpVector",
-      "LoneStar",
-      "Shape of Dreams",
-      "Void War",
-      "Void Bastards",
-      "Has-Been Heroes",
-      "Crying Suns"
-    ],
+    "gamesInfluenced": [],
     "coverImage": "images/covers/ftl.jpg"
   },
   {
@@ -2697,7 +2675,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/heretics-fork.jpg"
+    "coverImage": "images/covers/heretic-s-fork.jpg"
   },
   {
     "name": "Heroes of Hammerwatch",
@@ -2707,7 +2685,7 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Heroes of Hammerwatch II",
+      "Heroes of Hammerwatch 2",
       "Tower Factory",
       "Escape The Mad Empire"
     ],
@@ -2731,7 +2709,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/holocure-save-the-fans.jpg"
+    "coverImage": "images/covers/holocure-save-the-fans-.jpg"
   },
   {
     "name": "House of Necrosis",
@@ -2835,7 +2813,7 @@ var GAMES_DATA = [
       "Fights in Tight Spaces",
       "Shogun Showdown",
       "The Last Spell",
-      "The Ouroboros King",
+      "The Ouroboros King ",
       "Pawnbarian",
       "Metal Slug Tactics",
       "Spellmasons"
@@ -2925,16 +2903,6 @@ var GAMES_DATA = [
     "coverImage": "images/covers/k-domon-hyper-auto-battlers.jpg"
   },
   {
-    "name": "Keeper's Toll",
-    "year": 2023,
-    "type": "Action",
-    "connected": true,
-    "influenced": false,
-    "tags": [],
-    "gamesInfluenced": [],
-    "coverImage": "images/covers/keeper-s-toll.jpg"
-  },
-  {
     "name": "KeeperRL",
     "year": 2015,
     "type": "Traditional",
@@ -2943,6 +2911,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/keeperrl.jpg"
+  },
+  {
+    "name": "Keeper's Toll",
+    "year": 2023,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/keeper-s-toll.jpg"
   },
   {
     "name": "Kingdom: New Lands",
@@ -3471,7 +3449,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/my-card-is-better-than-your-card.jpg"
+    "coverImage": "images/covers/my-card-is-better-than-your-card-.jpg"
   },
   {
     "name": "Mystery Dungeon 2: Shiren the Wanderer",
@@ -3674,7 +3652,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/nubbys-number-factory.jpg"
+    "coverImage": "images/covers/nubby-s-number-factory.jpg"
   },
   {
     "name": "Nuclear Throne",
@@ -3843,7 +3821,7 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "The Ouroboros King"
+      "The Ouroboros King "
     ],
     "coverImage": "images/covers/pawnbarian.jpg"
   },
@@ -3888,10 +3866,7 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": true,
     "tags": [],
-    "gamesInfluenced": [
-      "Shattered Pixel Dungeon",
-      "OneBit Adventure"
-    ],
+    "gamesInfluenced": [],
     "coverImage": "images/covers/pixel-dungeon.jpg"
   },
   {
@@ -3902,7 +3877,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/plateup.jpg"
+    "coverImage": "images/covers/plateup-.jpg"
   },
   {
     "name": "Plinko Panic!",
@@ -3912,7 +3887,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/plinko-panic.jpg"
+    "coverImage": "images/covers/plinko-panic-.jpg"
   },
   {
     "name": "Pocket Crystal League",
@@ -4405,16 +4380,6 @@ var GAMES_DATA = [
     "coverImage": "images/covers/rogue-wizards.jpg"
   },
   {
-    "name": "Rogue-Fp",
-    "year": 2023,
-    "type": "Traditional",
-    "connected": true,
-    "influenced": false,
-    "tags": [],
-    "gamesInfluenced": [],
-    "coverImage": "images/covers/rogue-fp.jpg"
-  },
-  {
     "name": "Rogue: Genesia",
     "year": 2022,
     "type": "Action",
@@ -4435,6 +4400,16 @@ var GAMES_DATA = [
       "Dicefolk"
     ],
     "coverImage": "images/covers/roguebook.jpg"
+  },
+  {
+    "name": "Rogue-Fp",
+    "year": 2023,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rogue-fp.jpg"
   },
   {
     "name": "Roll",
@@ -4535,7 +4510,10 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "Shattered Pixel Dungeon",
+      "OneBit Adventure"
+    ],
     "coverImage": "images/covers/shattered-pixel-dungeon.jpg"
   },
   {
@@ -4558,7 +4536,7 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Shiren the Wanderer 4: The Eye of God and the Devil's Navel"
     ],
-    "coverImage": "images/covers/shiren-the-wanderer-2008.jpg"
+    "coverImage": "images/covers/shiren-the-wanderer-2008-.jpg"
   },
   {
     "name": "Shiren the Wanderer 2: Shiren's Castle and the Oni Invasion",
@@ -4670,7 +4648,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Bingle Bingle",
-      "The Ouroboros King"
+      "The Ouroboros King "
     ],
     "coverImage": "images/covers/shotgun-king-the-final-checkmate.jpg"
   },
@@ -4714,7 +4692,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/skys-the-limit-mah-jong.jpg"
+    "coverImage": "images/covers/sky-s-the-limit-mah-jong.jpg"
   },
   {
     "name": "Slasher's Keep",
@@ -4724,7 +4702,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/slashers-keep.jpg"
+    "coverImage": "images/covers/slasher-s-keep.jpg"
   },
   {
     "name": "Slay the Spire",
@@ -4789,7 +4767,7 @@ var GAMES_DATA = [
       "Menace from the Deep",
       "Commander Quest",
       "Crush the Industry",
-      "The Ouroboros King",
+      "The Ouroboros King ",
       "Pawnbarian",
       "As We Descend",
       "StarVaders",
@@ -4801,7 +4779,7 @@ var GAMES_DATA = [
       "Arrogue",
       "Touhou: Lost Branch of Legend",
       "Dimensionals",
-      "Chaos Zero Nightmare",
+      "Chaos Zone Nightmare",
       "Decktamer",
       "Dog Witch",
       "Demonic Mahjong",
@@ -5013,7 +4991,7 @@ var GAMES_DATA = [
       "Enter the Gungeon",
       "Feed the Deep",
       "Flinthook",
-      "FTL",
+      "FTL: Faster Than Light",
       "Loot Rascals",
       "Monstrum",
       "Noita",
@@ -5118,7 +5096,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/steves-warehouse-physics-roguelike-chaos.jpg"
+    "coverImage": "images/covers/steve-s-warehouse-physics-roguelike-chaos-.jpg"
   },
   {
     "name": "Stick It to the Stickman",
@@ -5282,9 +5260,10 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Path of Achra",
-      "Tangledeep"
+      "Tangledeep",
+      "Rogue Empire"
     ],
-    "coverImage": "images/covers/tales-of-majeyal.jpg"
+    "coverImage": "images/covers/tales-of-maj-eyal.jpg"
   },
   {
     "name": "Tangledeep",
@@ -5639,7 +5618,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/toejam-earl-back-in-the-groove.jpg"
+    "coverImage": "images/covers/toejam-earl-back-in-the-groove-.jpg"
   },
   {
     "name": "TombStar",
@@ -5695,7 +5674,8 @@ var GAMES_DATA = [
       "Mistrogue: Mist and the Living Dungeons",
       "Vivid Knight",
       "Dungeon of Windaria",
-      "House of Necrosis"
+      "House of Necrosis",
+      "Monster Girls and the Mysterious Adventure"
     ],
     "coverImage": "images/covers/torneko-s-great-adventure-mystery-dungeon.jpg"
   },
@@ -5892,7 +5872,7 @@ var GAMES_DATA = [
       "Gunlocked",
       "Halls of Torment",
       "Heretic's Fork",
-      "HoloCure: Save the Fans!",
+      "HoloCure: Save the Fans",
       "Icewall",
       "Jotunnslayer: Hordes of Hel",
       "Keeper's Toll",
@@ -6196,7 +6176,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/wordatro.jpg"
+    "coverImage": "images/covers/wordatro-.jpg"
   },
   {
     "name": "Words Can Kill",
@@ -6304,5 +6284,37 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/zorbus.jpg"
+  },
+  {
+    "name": "Monster Girls and the Mysterious Adventure",
+    "year": 2020,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": [
+      "Monster Girls and the Mysterious Adventure 2"
+    ],
+    "coverImage": "images/covers/monster-girls-and-the-mysterious-adventure.jpg"
+  },
+  {
+    "name": "Monster Girls and the Mysterious Adventure 2",
+    "year": 2022,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/monster-girls-and-the-mysterious-adventure-2.jpg"
+  },
+  {
+    "name": "Rogue Empire",
+    "year": 2019,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rogue-empire.jpg"
   }
 ];
