@@ -73,6 +73,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     bingoToggleBtn.addEventListener('click', toggleBingo);
   }
 
+  const toggleBingoBtn = document.getElementById('toggle-bingo-btn');
+  if (toggleBingoBtn) {
+    toggleBingoBtn.addEventListener('click', toggleBingo);
+  }
+
   const viewRewardsBtn = document.getElementById('view-rewards-btn');
   if (viewRewardsBtn) {
     viewRewardsBtn.addEventListener('click', showBingoRewards);
@@ -2435,7 +2440,7 @@ function triggerStoneGolemFight() {
       <p style="font-size: 20px; color: ${success ? '#4CAF50' : '#ff4444'};">
         Rolled: ${roll} + ${playerStatValue} = ${total} ${success ? '✓ SUCCESS' : '✗ FAILURE'}
       </p>
-      <button onclick="window.handleStoneGolemResult(${success})" style="padding: 10px 20px; margin-top: 20px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Continue</button>
+      <button onclick="handleStoneGolemResult(${success})" style="padding: 10px 20px; margin-top: 20px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Continue</button>
     `;
   };
 }
@@ -5832,15 +5837,18 @@ function showBingoRewards() {
 function toggleBingo() {
   const container = document.getElementById('bingo-container');
   const button = document.getElementById('bingo-toggle');
+  const goalsButton = document.getElementById('toggle-bingo-btn');
 
-  if (!container || !button) return;
+  if (!container) return;
 
   if (container.classList.contains('hidden')) {
     container.classList.remove('hidden');
-    button.textContent = 'Hide';
+    if (button) button.textContent = 'Hide';
+    if (goalsButton) goalsButton.textContent = 'Hide Bingo';
   } else {
     container.classList.add('hidden');
-    button.textContent = 'Show';
+    if (button) button.textContent = 'Show';
+    if (goalsButton) goalsButton.textContent = 'Show Bingo';
   }
 }
 
