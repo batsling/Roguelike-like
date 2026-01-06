@@ -732,7 +732,7 @@ function spawnChoices() {
   // Combine: non-stinky first, then stinky (deprioritized)
   const shuffled = [...shuffledNonStinky, ...shuffledStinky];
 
-  let baseFov = fov || 3;
+  let baseFov = fov + 3; // Base 3 + fov stat
 
   // Check for Curse of Shroud (lower FoV) - handle stacking
   const shroudCurses = CurseManager.findByType('shroud');

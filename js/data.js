@@ -18,8 +18,8 @@ var roguePoints = 0;
 var reroll = 0;
 var dash = 0;
 var skip = 0;
-var discovery = 2; // Number of item choices when collecting rewards
-var fov = 3; // Field of View - number of game choices shown
+var discovery = 0; // Number of item choices when collecting rewards (base 2)
+var fov = 0; // Field of View - number of game choices shown (base 3)
 var pactConditions = {
   lessHealth: 0,
   moreGames: 0,

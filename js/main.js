@@ -3140,8 +3140,8 @@ function showItemChoiceModal(onComplete) {
   const choices = [];
   const maxAttempts = 100; // Prevent infinite loop
 
-  // Number of item choices = discovery stat
-  const numChoices = discovery;
+  // Number of item choices = 2 + discovery stat
+  const numChoices = 2 + discovery;
 
   for (let i = 0; i < numChoices; i++) {
     let attempts = 0;
@@ -5595,11 +5595,14 @@ function checkForBingo() {
 
   if (newBingos > completedBingos) {
     const bingosToGrant = newBingos - completedBingos;
+    const oldBingosCount = completedBingos;
+
+    // Update count first
     completedBingos = newBingos;
 
-    // Grant rewards for each new bingo
+    // Grant rewards for each new bingo (using sequential reward types)
     for (let i = 0; i < bingosToGrant; i++) {
-      grantBingoReward();
+      grantBingoReward(oldBingosCount + i + 1);
     }
 
     // Update display
@@ -5625,9 +5628,9 @@ function updateBingoStatus() {
   }
 }
 
-function grantBingoReward() {
-  // Rewards are given in order based on completedBingos count (1-8, then cycle)
-  const rewardType = ((completedBingos - 1) % 8) + 1;
+function grantBingoReward(bingoCount) {
+  // Rewards are given in order based on bingoCount parameter (1-8, then cycle)
+  const rewardType = ((bingoCount - 1) % 8) + 1;
 
   // All rewards give +1 to all combat stats
   strength++;
@@ -5642,50 +5645,64 @@ function grantBingoReward() {
   // Apply specific reward bonuses
   switch(rewardType) {
     case 1:
-    case 2:
       // Common items
       giveRandomItems('common');
-      rewardMessage += 'Choose 1 from 2 common items!';
+      rewardMessage += 'Choose 1 of 2 common items!';
       break;
-    case 3:
+    case 2:
       // Common items + 2 Reroll
       reroll += 2;
       bingoReroll += 2;
       giveRandomItems('common');
-      rewardMessage += '+2 Reroll\nChoose 1 from 2 common items!';
+      rewardMessage += '+2 Reroll\nChoose 1 of 2 common items!';
       break;
-    case 4:
+    case 3:
       // Uncommon items
       giveRandomItems('uncommon');
-      rewardMessage += 'Choose 1 from 2 uncommon items!';
+      rewardMessage += 'Choose 1 of 2 uncommon items!';
       break;
-    case 5:
+    case 4:
       // Uncommon items + 1 Skip
       skip += 1;
       bingoSkip += 1;
       giveRandomItems('uncommon');
-      rewardMessage += '+1 Skip\nChoose 1 from 2 uncommon items!';
+      rewardMessage += '+1 Skip\nChoose 1 of 2 uncommon items!';
       break;
-    case 6:
+    case 5:
       // Rare items
       giveRandomItems('rare');
-      rewardMessage += 'Choose 1 from 2 rare items!';
+      rewardMessage += 'Choose 1 of 2 rare items!';
       break;
-    case 7:
+    case 6:
       // Rare items + FoV & Discovery
       fov += 1;
       discovery += 1;
       bingoFoV += 1;
       bingoDiscovery += 1;
       giveRandomItems('rare');
-      rewardMessage += '+1 FoV & Discovery\nChoose 1 from 2 rare items!';
+      rewardMessage += '+1 FoV & Discovery\nChoose 1 of 2 rare items!';
       break;
-    case 8:
+    case 7:
       // Rare items + Dash
       dash += 1;
       bingoDash += 1;
       giveRandomItems('rare');
-      rewardMessage += '+1 Dash\nChoose 1 from 2 rare items!';
+      rewardMessage += '+1 Dash\nChoose 1 of 2 rare items!';
+      break;
+    case 8:
+      // Common items + all bonuses
+      reroll += 1;
+      skip += 1;
+      fov += 1;
+      discovery += 1;
+      dash += 1;
+      bingoReroll += 1;
+      bingoSkip += 1;
+      bingoFoV += 1;
+      bingoDiscovery += 1;
+      bingoDash += 1;
+      giveRandomItems('common');
+      rewardMessage += '+1 to ALL abilities\nChoose 1 of 2 common items!';
       break;
   }
 
@@ -5701,8 +5718,8 @@ function giveRandomItems(rarity) {
     return;
   }
 
-  // Number of choices = 2 + discovery stat + bingoDiscovery
-  const numChoices = 2 + discovery + bingoDiscovery;
+  // Number of choices = 2 (fixed for bingo)
+  const numChoices = 2;
   const choices = [];
 
   // Generate random item choices (all from the same rarity)
@@ -5710,51 +5727,68 @@ function giveRandomItems(rarity) {
     let randomItem;
     do {
       randomItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
-    } while (choices.includes(randomItem) && choices.length < rarityItems.length);
+    } while (choices.find(c => c.name === randomItem.name) && choices.length < rarityItems.length);
     choices.push(randomItem);
   }
 
-  // Create custom modal for bingo item selection
+  const rarityColor = rarity === 'common' ? '#aaa' : rarity === 'uncommon' ? '#4CAF50' : '#9b59b6';
+
+  let itemsHTML = '<div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; justify-content: center;">';
+
+  choices.forEach((item, index) => {
+    itemsHTML += `
+      <div class="bingo-item-choice-card" data-index="${index}" style="
+        flex: 1;
+        max-width: 250px;
+        padding: 20px;
+        background: #2d2d2d;
+        border: 3px solid ${rarityColor};
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: center;
+      ">
+        ${item.image ? `<img src="${item.image}" style="width: 100px; height: 100px; object-fit: contain; image-rendering: pixelated; margin: 0 auto 15px; display: block; border-radius: 8px; border: 2px solid ${rarityColor};" alt="${item.name}" onerror="this.style.display='none';">` : ''}
+        <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">${item.name}</div>
+        <div style="color: ${rarityColor}; font-size: 14px; margin-bottom: 15px;">${item.rarity}</div>
+        <div style="color: #ccc; font-size: 14px; line-height: 1.5;">${item.description}</div>
+        <div style="color: #888; font-size: 12px; margin-top: 10px; font-style: italic;">${item.type}</div>
+      </div>
+    `;
+  });
+
+  itemsHTML += '</div>';
+  itemsHTML += '<p style="text-align: center; color: #888; margin-top: 20px; font-size: 14px;">Click an item to choose it</p>';
+
   createGameModal(`
-    <h2 style="margin-top: 0; color: gold;">🎯 Bingo Reward!</h2>
-    <p style="text-align: center; color: #aaa;">Choose 1 from ${numChoices} ${rarity} items:</p>
-    <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
-      ${choices.map(item => `
-        <div
-          style="
-            padding: 15px;
-            background: #1a1a1a;
-            border: 2px solid ${item.rarity === 'rare' ? '#9b59b6' : item.rarity === 'uncommon' ? '#3498db' : '#95a5a6'};
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-          "
-          onmouseover="this.style.background='#2a2a2a'; this.style.borderColor='#ecf0f1';"
-          onmouseout="this.style.background='#1a1a1a'; this.style.borderColor='${item.rarity === 'rare' ? '#9b59b6' : item.rarity === 'uncommon' ? '#3498db' : '#95a5a6'}';"
-          onclick="selectBingoItem(${JSON.stringify(item).replace(/"/g, '&quot;')})"
-        >
-          <div style="font-size: 18px; font-weight: bold; color: ${item.rarity === 'rare' ? '#9b59b6' : item.rarity === 'uncommon' ? '#3498db' : '#95a5a6'};">
-            ${item.name}
-          </div>
-          <div style="color: #888; font-size: 12px; margin-top: 5px;">
-            ${item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)} - ${item.type || 'Item'}
-          </div>
-          <div style="color: #ccc; margin-top: 10px;">
-            ${item.description || 'No description'}
-          </div>
-        </div>
-      `).join('')}
+    <div>
+      <h2 style="color: gold; margin-top: 0; text-align: center;">🎯 Bingo Reward!</h2>
+      <p style="text-align: center; color: #aaa;">Select one ${rarity} item to add to your inventory</p>
+      ${itemsHTML}
     </div>
   `);
-}
 
-// Helper function to select a bingo item
-function selectBingoItem(item) {
-  inventory.push(item);
-  if (typeof updateInventory === 'function') {
-    updateInventory();
-  }
-  closeGameModal();
+  document.querySelectorAll('.bingo-item-choice-card').forEach(card => {
+    card.onmouseenter = (e) => {
+      e.currentTarget.style.transform = 'translateY(-5px) scale(1.05)';
+      e.currentTarget.style.boxShadow = '0 10px 30px rgba(255, 215, 0, 0.4)';
+    };
+    card.onmouseleave = (e) => {
+      e.currentTarget.style.transform = '';
+      e.currentTarget.style.boxShadow = '';
+    };
+    card.onclick = (e) => {
+      const itemIndex = parseInt(e.currentTarget.dataset.index);
+      const item = choices[itemIndex];
+
+      acquireItem(item);
+      closeGameModal();
+
+      if (typeof updateInventory === 'function') {
+        updateInventory();
+      }
+    };
+  });
 }
 
 function showBingoRewards() {
@@ -5823,6 +5857,5 @@ window.checkForBingo = checkForBingo;
 window.updateBingoStatus = updateBingoStatus;
 window.grantBingoReward = grantBingoReward;
 window.giveRandomItems = giveRandomItems;
-window.selectBingoItem = selectBingoItem;
 window.showBingoRewards = showBingoRewards;
 window.toggleBingo = toggleBingo;

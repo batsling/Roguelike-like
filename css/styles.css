@@ -956,7 +956,7 @@ text, path, line, g {
 /* ===== BINGO SHEET STYLES ===== */
 #bingo-container {
   position: fixed;
-  right: 20px;
+  left: 250px;
   top: 120px;
   width: 320px;
   background: rgba(30, 30, 30, 0.95);
