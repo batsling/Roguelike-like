@@ -797,6 +797,243 @@
 
     #game-items .empty-inventory {
       text-align: center;
+
+    /* Bingo Sheet Styles */
+    #bingo-container {
+      position: fixed;
+      left: 240px;
+      top: 120px;
+      width: 320px;
+      background: rgba(30, 30, 30, 0.95);
+      border: 2px solid #444;
+      border-radius: 12px;
+      padding: 15px;
+      color: #eee;
+      z-index: 999;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    #bingo-container.hidden {
+      display: none;
+    }
+
+    #bingo-container h3 {
+      margin: 0 0 15px 0;
+      color: #ff6b6b;
+      font-size: 18px;
+      text-align: center;
+      border-bottom: 2px solid #444;
+      padding-bottom: 10px;
+    }
+
+    #bingo-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    #bingo-toggle {
+      padding: 5px 10px;
+      background: #444;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    #bingo-toggle:hover {
+      background: #555;
+    }
+
+    #view-rewards-btn {
+      padding: 5px 10px;
+      background: gold;
+      border: none;
+      border-radius: 4px;
+      color: #333;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    #view-rewards-btn:hover {
+      background: #ffd700;
+    }
+
+    #bingo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+
+    .bingo-cell {
+      aspect-ratio: 1;
+      background: #2d2d2d;
+      border: 2px solid #444;
+      border-radius: 8px;
+      padding: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      font-size: 11px;
+      line-height: 1.3;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .bingo-cell:hover {
+      background: #3d3d3d;
+      transform: scale(1.05);
+      border-color: #666;
+    }
+
+    .bingo-cell.easy {
+      border-color: #4CAF50;
+    }
+
+    .bingo-cell.normal {
+      border-color: #2196F3;
+    }
+
+    .bingo-cell.hard {
+      border-color: #f44336;
+    }
+
+    .bingo-cell.completed {
+      background: #1a1a1a;
+      opacity: 0.7;
+    }
+
+    .bingo-cell.completed::before {
+      content: '✕';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 60px;
+      color: rgba(255, 255, 255, 0.3);
+      font-weight: bold;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .bingo-cell-text {
+      position: relative;
+      z-index: 2;
+    }
+
+    .bingo-difficulty-badge {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      z-index: 3;
+    }
+
+    .bingo-difficulty-badge.easy {
+      background: #4CAF50;
+    }
+
+    .bingo-difficulty-badge.normal {
+      background: #2196F3;
+    }
+
+    .bingo-difficulty-badge.hard {
+      background: #f44336;
+    }
+
+    #bingo-status {
+      text-align: center;
+      padding: 10px;
+      background: #1a1a1a;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    #bingo-count {
+      font-size: 14px;
+      color: gold;
+      font-weight: bold;
+    }
+
+    .bingo-complete-animation {
+      animation: bingo-flash 0.5s ease-in-out 3;
+    }
+
+    @keyframes bingo-flash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Rewards Modal */
+    #rewards-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    }
+
+    #rewards-modal.show {
+      display: flex;
+    }
+
+    #rewards-content {
+      background: #2d2d2d;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      color: white;
+    }
+
+    #rewards-content h2 {
+      margin-top: 0;
+      color: gold;
+      text-align: center;
+    }
+
+    .reward-item {
+      background: #1a1a1a;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border-left: 4px solid gold;
+    }
+
+    .reward-item strong {
+      color: gold;
+    }
+
+    #close-rewards-btn {
+      width: 100%;
+      padding: 10px;
+      background: #4CAF50;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 20px;
+    }
+
+    #close-rewards-btn:hover {
+      background: #45a049;
       color: #666;
       padding: 20px;
       font-style: italic;
@@ -968,6 +1205,23 @@
                 <span class="stat-label">Distance:</span>
                 <span class="stat-value" id="stats-distance">∞</span>
               </div>
+            </div>
+          </div>
+
+          <!-- Bingo Sheet -->
+          <div id="bingo-container">
+            <div id="bingo-header">
+              <h3 style="margin: 0;">🎯 Bingo</h3>
+              <div style="display: flex; gap: 5px;">
+                <button id="view-rewards-btn">Rewards</button>
+                <button id="bingo-toggle">Hide</button>
+              </div>
+            </div>
+            <div id="bingo-status">
+              <div id="bingo-count">0 Bingos Complete</div>
+            </div>
+            <div id="bingo-grid">
+              <!-- Bingo cells will be generated here -->
             </div>
           </div>
 
@@ -1287,6 +1541,41 @@
   <!-- Box Zoom -->
   <div id="box-zoom-popup" class="box-zoom-popup"></div>
 
+  <!-- Rewards Modal -->
+  <div id="rewards-modal">
+    <div id="rewards-content">
+      <h2>🏆 Bingo Rewards</h2>
+      <p style="text-align: center; color: #aaa; margin-bottom: 20px;">Complete a row, column, or diagonal to earn one of these rewards:</p>
+      <div id="rewards-list">
+        <div class="reward-item">
+          <strong>Reward 1:</strong> +1 to All Combat Stats and a selection of 2 Random Common Items
+        </div>
+        <div class="reward-item">
+          <strong>Reward 2:</strong> +1 to All Combat Stats and a selection of 2 Random Common Items
+        </div>
+        <div class="reward-item">
+          <strong>Reward 3:</strong> +1 to All Combat Stats, +2 Reroll, and a selection of 2 Random Common Items
+        </div>
+        <div class="reward-item">
+          <strong>Reward 4:</strong> +1 to All Combat Stats and a selection of 2 Random Uncommon Items
+        </div>
+        <div class="reward-item">
+          <strong>Reward 5:</strong> +1 to All Combat Stats, +1 Skip, and a selection of 2 Random Uncommon Items
+        </div>
+        <div class="reward-item">
+          <strong>Reward 6:</strong> +1 to All Combat Stats and a selection of 2 Random Rare Items
+        </div>
+        <div class="reward-item">
+          <strong>Reward 7:</strong> +1 to All Combat Stats, +1 FoV & Discovery, and a selection of 2 Random Rare Items
+        </div>
+        <div class="reward-item">
+          <strong>Reward 8:</strong> +1 to All Combat Stats, +1 Dash, and a selection of 2 Random Rare Items
+        </div>
+      </div>
+      <button id="close-rewards-btn">Close</button>
+    </div>
+  </div>
+
   <!-- Include SheetJS library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
@@ -1339,6 +1628,17 @@ const amuletImageUrl = 'https://i.imgur.com/kXiZwZX.png';
 // Current combat state
 let currentEnemy = null;
 let currentRoll = null;
+
+// Bingo system state
+let bingoGoals = [];
+let bingoGrid = Array(9).fill(null); // 3x3 grid stored as flat array
+let bingoCompleted = Array(9).fill(false);
+let completedBingos = 0;
+let bingoReroll = 0;
+let bingoSkip = 0;
+let bingoFoV = 0;
+let bingoDiscovery = 0;
+let bingoDash = 0;
 
 // ===== TRUE GAMEPLAY SYSTEM =====
 let gameState = {
@@ -1478,7 +1778,15 @@ document.getElementById('saveState')?.addEventListener('click', function() {
     encounterHistory,
     playerMarkerPosition: playerPos,
     amuletMarkerPosition: amuletPos,
-    markedSvg: svgElement ? new XMLSerializer().serializeToString(svgElement) : null
+    markedSvg: svgElement ? new XMLSerializer().serializeToString(svgElement) : null,
+    bingoGrid,
+    bingoCompleted,
+    completedBingos,
+    bingoReroll,
+    bingoSkip,
+    bingoFoV,
+    bingoDiscovery,
+    bingoDash
   };
   localStorage.setItem('roguelikeState', JSON.stringify(state));
   alert('State saved!');
@@ -1563,6 +1871,20 @@ function loadState() {
     updateRoguePointsDisplay();
     updateConditionCounts();
     updateEncounterHistory();
+
+    // Load bingo state
+    if (state.bingoGrid) {
+      bingoGrid = state.bingoGrid;
+      bingoCompleted = state.bingoCompleted || Array(9).fill(false);
+      completedBingos = state.completedBingos || 0;
+      bingoReroll = state.bingoReroll || 0;
+      bingoSkip = state.bingoSkip || 0;
+      bingoFoV = state.bingoFoV || 0;
+      bingoDiscovery = state.bingoDiscovery || 0;
+      bingoDash = state.bingoDash || 0;
+      renderBingoGrid();
+      updateBingoStatus();
+    }
 
     if (startGame && amuletGame) {
       document.getElementById('output').innerHTML = `
@@ -1700,6 +2022,18 @@ document.getElementById('excelFile').addEventListener('change', function(event) 
           duration: String(row[3]),
           description: String(row[4])
         }));
+      }
+
+      if (workbook.SheetNames.length > 6) {
+        const bingoSheet = workbook.Sheets[workbook.SheetNames[6]];
+        const bingoData = XLSX.utils.sheet_to_json(bingoSheet, { header: 1 });
+        bingoGoals = bingoData.slice(1).map(row => ({
+          goal: String(row[0] || ""),
+          difficulty: String(row[1] || "Normal").toLowerCase()
+        })).filter(goal => goal.goal.trim() !== "");
+
+        // Generate initial bingo grid
+        generateBingoGrid();
       }
 
       document.getElementById('pickRandomGames').disabled = false;
@@ -4307,6 +4641,278 @@ resetView();
 
 // Initialize save list
 updateSaveList();
+
+// ===== BINGO SYSTEM FUNCTIONS =====
+
+function generateBingoGrid() {
+  if (bingoGoals.length === 0) {
+    console.log('No bingo goals loaded');
+    return;
+  }
+
+  // Separate goals by difficulty
+  const easyGoals = bingoGoals.filter(g => g.difficulty === 'easy');
+  const normalGoals = bingoGoals.filter(g => g.difficulty === 'normal');
+  const hardGoals = bingoGoals.filter(g => g.difficulty === 'hard');
+
+  // Reset grid
+  bingoGrid = Array(9).fill(null);
+  bingoCompleted = Array(9).fill(false);
+
+  // Place 1 easy goal in center (position 4)
+  if (easyGoals.length > 0) {
+    const randomEasy = easyGoals[Math.floor(Math.random() * easyGoals.length)];
+    bingoGrid[4] = { ...randomEasy };
+  } else if (normalGoals.length > 0) {
+    const randomNormal = normalGoals[Math.floor(Math.random() * normalGoals.length)];
+    bingoGrid[4] = { ...randomNormal };
+  }
+
+  // Place 2 hard goals in random positions (not center)
+  const availablePositions = [0, 1, 2, 3, 5, 6, 7, 8];
+  if (hardGoals.length >= 2) {
+    for (let i = 0; i < 2; i++) {
+      const posIndex = Math.floor(Math.random() * availablePositions.length);
+      const position = availablePositions.splice(posIndex, 1)[0];
+      const randomHard = hardGoals[Math.floor(Math.random() * hardGoals.length)];
+      bingoGrid[position] = { ...randomHard };
+    }
+  } else if (hardGoals.length === 1) {
+    const position = availablePositions[Math.floor(Math.random() * availablePositions.length)];
+    availablePositions.splice(availablePositions.indexOf(position), 1);
+    bingoGrid[position] = { ...hardGoals[0] };
+  }
+
+  // Fill remaining positions with normal goals
+  availablePositions.forEach(pos => {
+    if (normalGoals.length > 0) {
+      const randomNormal = normalGoals[Math.floor(Math.random() * normalGoals.length)];
+      bingoGrid[pos] = { ...randomNormal };
+    }
+  });
+
+  renderBingoGrid();
+}
+
+function renderBingoGrid() {
+  const gridContainer = document.getElementById('bingo-grid');
+  gridContainer.innerHTML = '';
+
+  bingoGrid.forEach((goal, index) => {
+    const cell = document.createElement('div');
+    cell.className = `bingo-cell ${goal ? goal.difficulty : 'normal'}`;
+    if (bingoCompleted[index]) {
+      cell.classList.add('completed');
+    }
+
+    const badge = document.createElement('div');
+    badge.className = `bingo-difficulty-badge ${goal ? goal.difficulty : 'normal'}`;
+
+    const text = document.createElement('div');
+    text.className = 'bingo-cell-text';
+    text.textContent = goal ? goal.goal : 'Empty';
+
+    cell.appendChild(badge);
+    cell.appendChild(text);
+
+    cell.addEventListener('click', () => toggleBingoCell(index));
+
+    gridContainer.appendChild(cell);
+  });
+}
+
+function toggleBingoCell(index) {
+  bingoCompleted[index] = !bingoCompleted[index];
+  renderBingoGrid();
+  checkForBingo();
+}
+
+function checkForBingo() {
+  const lines = [
+    // Rows
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    // Columns
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    // Diagonals
+    [0, 4, 8],
+    [2, 4, 6]
+  ];
+
+  let newBingos = 0;
+  lines.forEach(line => {
+    if (line.every(index => bingoCompleted[index])) {
+      newBingos++;
+    }
+  });
+
+  if (newBingos > completedBingos) {
+    const bingosToGrant = newBingos - completedBingos;
+    completedBingos = newBingos;
+
+    // Grant rewards for each new bingo
+    for (let i = 0; i < bingosToGrant; i++) {
+      grantBingoReward();
+    }
+
+    // Update display
+    updateBingoStatus();
+
+    // Show celebration
+    document.getElementById('bingo-grid').classList.add('bingo-complete-animation');
+    setTimeout(() => {
+      document.getElementById('bingo-grid').classList.remove('bingo-complete-animation');
+    }, 1500);
+  }
+
+  updateBingoStatus();
+}
+
+function updateBingoStatus() {
+  document.getElementById('bingo-count').textContent =
+    `${completedBingos} Bingo${completedBingos !== 1 ? 's' : ''} Complete`;
+}
+
+function grantBingoReward() {
+  // Randomly select one of the 8 rewards
+  const rewardType = Math.floor(Math.random() * 8) + 1;
+
+  // All rewards give +1 to all combat stats
+  strength++;
+  dexterity++;
+  intelligence++;
+  charisma++;
+  updateTopBar();
+
+  let rewardMessage = 'Bingo Complete! Rewards:\n';
+  rewardMessage += '+1 to all combat stats!\n';
+
+  // Apply specific reward bonuses
+  switch(rewardType) {
+    case 1:
+    case 2:
+      // Common items
+      giveRandomItems('common', 2);
+      rewardMessage += 'Choose 2 common items!';
+      break;
+    case 3:
+      // Common items + 2 Reroll
+      bingoReroll += 2;
+      giveRandomItems('common', 2);
+      rewardMessage += '+2 Reroll\nChoose 2 common items!';
+      break;
+    case 4:
+      // Uncommon items
+      giveRandomItems('uncommon', 2);
+      rewardMessage += 'Choose 2 uncommon items!';
+      break;
+    case 5:
+      // Uncommon items + 1 Skip
+      bingoSkip += 1;
+      giveRandomItems('uncommon', 2);
+      rewardMessage += '+1 Skip\nChoose 2 uncommon items!';
+      break;
+    case 6:
+      // Rare items
+      giveRandomItems('rare', 2);
+      rewardMessage += 'Choose 2 rare items!';
+      break;
+    case 7:
+      // Rare items + FoV & Discovery
+      bingoFoV += 1;
+      bingoDiscovery += 1;
+      giveRandomItems('rare', 2);
+      rewardMessage += '+1 FoV & Discovery\nChoose 2 rare items!';
+      break;
+    case 8:
+      // Rare items + Dash
+      bingoDash += 1;
+      giveRandomItems('rare', 2);
+      rewardMessage += '+1 Dash\nChoose 2 rare items!';
+      break;
+  }
+
+  alert(rewardMessage);
+}
+
+function giveRandomItems(rarity, count) {
+  const rarityItems = items.filter(item => item.rarity === rarity);
+
+  if (rarityItems.length === 0) {
+    console.log(`No ${rarity} items available`);
+    return;
+  }
+
+  const choices = [];
+  for (let i = 0; i < count && i < rarityItems.length; i++) {
+    let randomItem;
+    do {
+      randomItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
+    } while (choices.includes(randomItem) && choices.length < rarityItems.length);
+    choices.push(randomItem);
+  }
+
+  // Display choices to user
+  const outputDiv = document.getElementById('output3');
+  outputDiv.innerHTML = '<p>Choose one of these items from your Bingo reward:</p>';
+
+  const choicesContainer = document.createElement('div');
+  choicesContainer.id = 'bingo-item-choices';
+
+  choices.forEach((item) => {
+    const choiceDiv = document.createElement('div');
+    choiceDiv.className = 'item-choice';
+    choiceDiv.style.cssText = 'margin: 10px 0; padding: 10px; border: 2px solid #4CAF50; border-radius: 4px; cursor: pointer; background: #f9f9f9;';
+    choiceDiv.innerHTML = `
+      <strong>${item.name}</strong> (${item.rarity})
+      <p>${item.description}</p>
+      <p><em>Type: ${item.type}</em></p>
+    `;
+    choiceDiv.addEventListener('click', () => {
+      inventory.push(item);
+      updateInventory();
+      outputDiv.innerHTML = `
+        <p>You chose: <strong>${item.name}</strong> (${item.rarity})</p>
+        <p>${item.description}</p>
+      `;
+    });
+    choicesContainer.appendChild(choiceDiv);
+  });
+
+  outputDiv.appendChild(choicesContainer);
+}
+
+// Bingo UI Event Listeners
+document.getElementById('bingo-toggle').addEventListener('click', function() {
+  const container = document.getElementById('bingo-container');
+  const button = document.getElementById('bingo-toggle');
+
+  if (container.classList.contains('hidden')) {
+    container.classList.remove('hidden');
+    button.textContent = 'Hide';
+  } else {
+    container.classList.add('hidden');
+    button.textContent = 'Show';
+  }
+});
+
+document.getElementById('view-rewards-btn').addEventListener('click', function() {
+  document.getElementById('rewards-modal').classList.add('show');
+});
+
+document.getElementById('close-rewards-btn').addEventListener('click', function() {
+  document.getElementById('rewards-modal').classList.remove('show');
+});
+
+// Close modal when clicking outside
+document.getElementById('rewards-modal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    this.classList.remove('show');
+  }
+});
 
 // End of script - Close the script tag
 </script>
