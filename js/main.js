@@ -5445,54 +5445,40 @@ document.getElementById('triggerSpecificEnemy')?.addEventListener('click', () =>
 // ===== BINGO SYSTEM =====
 
 const BINGO_GOALS = [
-  // Easy goals
-  { goal: "Get drunk", difficulty: "easy" },
-  { goal: "Pet a pet", difficulty: "easy" },
-  { goal: "Defeat an enemy with a ball", difficulty: "easy" },
+  // Easy goals (7)
+  { goal: "Beat a boss with 1 Health left", difficulty: "easy" },
   { goal: "Defeat 15 Skeletons", difficulty: "easy" },
   { goal: "Defeat 15 Zombies", difficulty: "easy" },
+  { goal: "Defeat an enemy with a ball", difficulty: "easy" },
+  { goal: "Get drunk", difficulty: "easy" },
+  { goal: "Pet a pet", difficulty: "easy" },
+  { goal: "Trade all but one health for upgrades once and then win the run", difficulty: "easy" },
 
-  // Normal goals
-  { goal: "Beat a boss with 1 Health left", difficulty: "normal" },
+  // Normal goals (19)
   { goal: "Beat 3 Action Roguelikes", difficulty: "normal" },
   { goal: "Beat 3 Deckbuilder Roguelikes", difficulty: "normal" },
+  { goal: "Beat 3 different roguelikes in one day", difficulty: "normal" },
   { goal: "Beat 3 Strategy Roguelikes", difficulty: "normal" },
+  { goal: "Beat a run without meta progression", difficulty: "normal" },
   { goal: "Become a cannibal", difficulty: "normal" },
+  { goal: "Complete a daily/weekly challenge run", difficulty: "normal" },
   { goal: "Deal damage equal to your block", difficulty: "normal" },
   { goal: "Defeat a boss without taking damage", difficulty: "normal" },
   { goal: "Defeat a magic boss with a gun", difficulty: "normal" },
+  { goal: "Double your max health in a run", difficulty: "normal" },
   { goal: "Get 10 achievements in 1 run", difficulty: "normal" },
-  { goal: "Have a character reach 'level 30'", difficulty: "normal" },
+  { goal: "Have a character reach \"level 30\"", difficulty: "normal" },
   { goal: "Have an enemy defeat 3 enemies", difficulty: "normal" },
   { goal: "Obtain 5 max tier items in one run", difficulty: "normal" },
-  { goal: "Skip 10 rewards", difficulty: "normal" },
-  { goal: "Double your max health in a run", difficulty: "normal" },
-  { goal: "Kill a boss in under 30 seconds", difficulty: "normal" },
-  { goal: "One-shot a boss", difficulty: "normal" },
-  { goal: "Kill an enemy with environmental damage", difficulty: "normal" },
-  { goal: "Fill your entire inventory", difficulty: "normal" },
-  { goal: "Spend 500+ currency in one shop", difficulty: "normal" },
-  { goal: "Take every curse offered", difficulty: "normal" },
-  { goal: "Unlock a secret area", difficulty: "normal" },
-  { goal: "Die and resurrect in same run", difficulty: "normal" },
-  { goal: "Complete a daily challenge", difficulty: "normal" },
-  { goal: "Survive 5 hits without healing", difficulty: "normal" },
-  { goal: "Hoard 999+ currency", difficulty: "normal" },
+  { goal: "Permanently remove 5 cards from your deck and win a run", difficulty: "normal" },
+  { goal: "Ressurect yourself 3 times in one run and win", difficulty: "normal" },
+  { goal: "Tame an enemy", difficulty: "normal" },
+  { goal: "Visit and beat the same game twice in one playthrough", difficulty: "normal" },
 
-  // Hard goals
-  { goal: "Trade all but one health for upgrades and win", difficulty: "hard" },
-  { goal: "Beat a run without moving", difficulty: "hard" },
+  // Hard goals (3)
+  { goal: "Bear a run without moving", difficulty: "hard" },
   { goal: "Beat a run without spending currency", difficulty: "hard" },
   { goal: "Beat a run without taking damage", difficulty: "hard" },
-  { goal: "Beat a run without meta progression", difficulty: "hard" },
-  { goal: "Permanently remove 5 cards and win", difficulty: "hard" },
-  { goal: "Win with only common items", difficulty: "hard" },
-  { goal: "Win using only starter weapon", difficulty: "hard" },
-  { goal: "Never visit a shop", difficulty: "hard" },
-  { goal: "Never heal during entire run", difficulty: "hard" },
-  { goal: "Complete run in under 20 minutes", difficulty: "hard" },
-  { goal: "Beat first floor in under 2 minutes", difficulty: "hard" },
-  { goal: "Reach final boss with starter equipment", difficulty: "hard" },
 ];
 
 function generateBingoGrid() {
