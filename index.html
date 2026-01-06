@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Roguelike-Like</title>
   <!-- External CSS -->
-  <link rel="stylesheet" href="css/styles.css?v=21">
+  <link rel="stylesheet" href="css/styles.css?v=22">
 </head>
 <body>
   <!-- Top Bar -->
@@ -203,6 +203,61 @@
               <p style="font-size: 11px; color: #aaa; margin: 5px 0;">These curses will be verified after you beat a game</p>
               <div id="verification-curses-list">
               </div>
+            </div>
+          </div>
+
+          <!-- Bingo Panel -->
+          <div id="bingo-container">
+            <div id="bingo-header">
+              <h3 style="margin: 0;">🎯 Bingo</h3>
+              <div style="display: flex; gap: 5px;">
+                <button id="view-rewards-btn" onclick="showBingoRewards()">Rewards</button>
+                <button id="bingo-toggle" onclick="toggleBingo()">Hide</button>
+              </div>
+            </div>
+            <div id="bingo-status">
+              <div id="bingo-count">0 Bingos Complete</div>
+            </div>
+            <div id="bingo-grid">
+              <!-- Bingo cells will be generated here -->
+            </div>
+          </div>
+
+          <!-- Bingo Rewards Modal -->
+          <div id="rewards-modal">
+            <div id="rewards-content">
+              <h2>🏆 Bingo Rewards</h2>
+              <p style="text-align: center; color: #aaa; margin-bottom: 20px;">Complete a row, column, or diagonal to earn one of these rewards:</p>
+              <div id="rewards-list">
+                <div class="reward-item">
+                  <strong>Reward 1:</strong> +1 to All Combat Stats and choose 1 from (2 + Discovery) Random Common Items
+                </div>
+                <div class="reward-item">
+                  <strong>Reward 2:</strong> +1 to All Combat Stats and choose 1 from (2 + Discovery) Random Common Items
+                </div>
+                <div class="reward-item">
+                  <strong>Reward 3:</strong> +1 to All Combat Stats, +2 Reroll, and choose 1 from (2 + Discovery) Random Common Items
+                </div>
+                <div class="reward-item">
+                  <strong>Reward 4:</strong> +1 to All Combat Stats and choose 1 from (2 + Discovery) Random Uncommon Items
+                </div>
+                <div class="reward-item">
+                  <strong>Reward 5:</strong> +1 to All Combat Stats, +1 Skip, and choose 1 from (2 + Discovery) Random Uncommon Items
+                </div>
+                <div class="reward-item">
+                  <strong>Reward 6:</strong> +1 to All Combat Stats and choose 1 from (2 + Discovery) Random Rare Items
+                </div>
+                <div class="reward-item">
+                  <strong>Reward 7:</strong> +1 to All Combat Stats, +1 FoV & Discovery, and choose 1 from (2 + Discovery) Random Rare Items
+                </div>
+                <div class="reward-item">
+                  <strong>Reward 8:</strong> +1 to All Combat Stats, +1 Dash, and choose 1 from (2 + Discovery) Random Rare Items
+                </div>
+              </div>
+              <p style="text-align: center; color: #aaa; font-style: italic; margin-top: 15px; font-size: 0.9em;">
+                * Discovery stat increases the number of items you can choose from!
+              </p>
+              <button id="close-rewards-btn">Close</button>
             </div>
           </div>
 
@@ -523,6 +578,6 @@
   <script src="js/events.js?v=19"></script>
   <script src="js/gameplay.js?v=26"></script>
   <script src="js/map.js?v=19"></script>
-  <script src="js/main.js?v=29"></script>
+  <script src="js/main.js?v=30"></script>
 </body>
 </html>

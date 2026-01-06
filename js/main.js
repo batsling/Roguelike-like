@@ -63,6 +63,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('Error updating save list:', err);
   }
 
+  // Initialize bingo system
+  bingoGoals = [...BINGO_GOALS];
+  generateBingoGrid();
+
+  // Add bingo event listeners
+  const bingoToggleBtn = document.getElementById('bingo-toggle');
+  if (bingoToggleBtn) {
+    bingoToggleBtn.addEventListener('click', toggleBingo);
+  }
+
+  const viewRewardsBtn = document.getElementById('view-rewards-btn');
+  if (viewRewardsBtn) {
+    viewRewardsBtn.addEventListener('click', showBingoRewards);
+  }
+
+  const closeRewardsBtn = document.getElementById('close-rewards-btn');
+  if (closeRewardsBtn) {
+    closeRewardsBtn.addEventListener('click', () => {
+      const rewardsModal = document.getElementById('rewards-modal');
+      if (rewardsModal) {
+        rewardsModal.classList.remove('show');
+      }
+    });
+  }
+
+  // Close rewards modal when clicking outside content
+  const rewardsModal = document.getElementById('rewards-modal');
+  if (rewardsModal) {
+    rewardsModal.addEventListener('click', (e) => {
+      if (e.target === rewardsModal) {
+        rewardsModal.classList.remove('show');
+      }
+    });
+  }
+
   console.log('Initialization complete');
 });
 
@@ -85,6 +120,22 @@ function loadState() {
     amuletGame = state.amuletGame;
     encounterHistory = state.encounterHistory ?? [];
     markedSvg = state.markedSvg;
+
+    // Load bingo state
+    bingoGrid = state.bingoGrid ?? Array(9).fill(null);
+    bingoCompleted = state.bingoCompleted ?? Array(9).fill(false);
+    completedBingos = state.completedBingos ?? 0;
+    bingoReroll = state.bingoReroll ?? 0;
+    bingoSkip = state.bingoSkip ?? 0;
+    bingoFoV = state.bingoFoV ?? 0;
+    bingoDiscovery = state.bingoDiscovery ?? 0;
+    bingoDash = state.bingoDash ?? 0;
+
+    // Render bingo grid if available
+    if (bingoGrid && bingoGrid.some(g => g !== null)) {
+      renderBingoGrid();
+      updateBingoStatus();
+    }
 
     if (state.markedSvg) {
       document.getElementById('svg-viewport').innerHTML = markedSvg;
@@ -171,7 +222,16 @@ function saveCurrentGame() {
     reroll: reroll,
     dash: dash,
     skip: skip,
-    discovery: discovery
+    discovery: discovery,
+    // Save bingo state
+    bingoGrid: bingoGrid,
+    bingoCompleted: bingoCompleted,
+    completedBingos: completedBingos,
+    bingoReroll: bingoReroll,
+    bingoSkip: bingoSkip,
+    bingoFoV: bingoFoV,
+    bingoDiscovery: bingoDiscovery,
+    bingoDash: bingoDash
   };
 
   const result = GameStorage.save(STORAGE_KEYS.SAVED_GAMES, gameSaves);
@@ -203,6 +263,22 @@ function loadSavedGame(saveName) {
   dash = save.dash || 0;
   skip = save.skip || 0;
   discovery = save.discovery || 0;
+
+  // Restore bingo state
+  bingoGrid = save.bingoGrid ?? Array(9).fill(null);
+  bingoCompleted = save.bingoCompleted ?? Array(9).fill(false);
+  completedBingos = save.completedBingos ?? 0;
+  bingoReroll = save.bingoReroll ?? 0;
+  bingoSkip = save.bingoSkip ?? 0;
+  bingoFoV = save.bingoFoV ?? 0;
+  bingoDiscovery = save.bingoDiscovery ?? 0;
+  bingoDash = save.bingoDash ?? 0;
+
+  // Render bingo grid
+  if (bingoGrid && bingoGrid.some(g => g !== null)) {
+    renderBingoGrid();
+    updateBingoStatus();
+  }
 
   // Invalidate BFS cache when loading a game (game state changed)
   if (typeof invalidateBFSCache === 'function') {
@@ -5366,6 +5442,318 @@ document.getElementById('triggerSpecificEnemy')?.addEventListener('click', () =>
   }
 });
 
+// ===== BINGO SYSTEM =====
+
+const BINGO_GOALS = [
+  // Easy goals
+  { goal: "Get drunk", difficulty: "easy" },
+  { goal: "Pet a pet", difficulty: "easy" },
+  { goal: "Defeat an enemy with a ball", difficulty: "easy" },
+  { goal: "Defeat 15 Skeletons", difficulty: "easy" },
+  { goal: "Defeat 15 Zombies", difficulty: "easy" },
+
+  // Normal goals
+  { goal: "Beat a boss with 1 Health left", difficulty: "normal" },
+  { goal: "Beat 3 Action Roguelikes", difficulty: "normal" },
+  { goal: "Beat 3 Deckbuilder Roguelikes", difficulty: "normal" },
+  { goal: "Beat 3 Strategy Roguelikes", difficulty: "normal" },
+  { goal: "Become a cannibal", difficulty: "normal" },
+  { goal: "Deal damage equal to your block", difficulty: "normal" },
+  { goal: "Defeat a boss without taking damage", difficulty: "normal" },
+  { goal: "Defeat a magic boss with a gun", difficulty: "normal" },
+  { goal: "Get 10 achievements in 1 run", difficulty: "normal" },
+  { goal: "Have a character reach 'level 30'", difficulty: "normal" },
+  { goal: "Have an enemy defeat 3 enemies", difficulty: "normal" },
+  { goal: "Obtain 5 max tier items in one run", difficulty: "normal" },
+  { goal: "Skip 10 rewards", difficulty: "normal" },
+  { goal: "Double your max health in a run", difficulty: "normal" },
+  { goal: "Kill a boss in under 30 seconds", difficulty: "normal" },
+  { goal: "One-shot a boss", difficulty: "normal" },
+  { goal: "Kill an enemy with environmental damage", difficulty: "normal" },
+  { goal: "Fill your entire inventory", difficulty: "normal" },
+  { goal: "Spend 500+ currency in one shop", difficulty: "normal" },
+  { goal: "Take every curse offered", difficulty: "normal" },
+  { goal: "Unlock a secret area", difficulty: "normal" },
+  { goal: "Die and resurrect in same run", difficulty: "normal" },
+  { goal: "Complete a daily challenge", difficulty: "normal" },
+  { goal: "Survive 5 hits without healing", difficulty: "normal" },
+  { goal: "Hoard 999+ currency", difficulty: "normal" },
+
+  // Hard goals
+  { goal: "Trade all but one health for upgrades and win", difficulty: "hard" },
+  { goal: "Beat a run without moving", difficulty: "hard" },
+  { goal: "Beat a run without spending currency", difficulty: "hard" },
+  { goal: "Beat a run without taking damage", difficulty: "hard" },
+  { goal: "Beat a run without meta progression", difficulty: "hard" },
+  { goal: "Permanently remove 5 cards and win", difficulty: "hard" },
+  { goal: "Win with only common items", difficulty: "hard" },
+  { goal: "Win using only starter weapon", difficulty: "hard" },
+  { goal: "Never visit a shop", difficulty: "hard" },
+  { goal: "Never heal during entire run", difficulty: "hard" },
+  { goal: "Complete run in under 20 minutes", difficulty: "hard" },
+  { goal: "Beat first floor in under 2 minutes", difficulty: "hard" },
+  { goal: "Reach final boss with starter equipment", difficulty: "hard" },
+];
+
+function generateBingoGrid() {
+  if (bingoGoals.length === 0) {
+    console.log('No bingo goals loaded');
+    return;
+  }
+
+  // Separate goals by difficulty
+  const easyGoals = bingoGoals.filter(g => g.difficulty === 'easy');
+  const normalGoals = bingoGoals.filter(g => g.difficulty === 'normal');
+  const hardGoals = bingoGoals.filter(g => g.difficulty === 'hard');
+
+  // Reset grid
+  bingoGrid = Array(9).fill(null);
+  bingoCompleted = Array(9).fill(false);
+
+  // Place 1 easy goal in center (position 4)
+  if (easyGoals.length > 0) {
+    const randomEasy = easyGoals[Math.floor(Math.random() * easyGoals.length)];
+    bingoGrid[4] = { ...randomEasy };
+  } else if (normalGoals.length > 0) {
+    const randomNormal = normalGoals[Math.floor(Math.random() * normalGoals.length)];
+    bingoGrid[4] = { ...randomNormal };
+  }
+
+  // Place 2 hard goals in random positions (not center)
+  const availablePositions = [0, 1, 2, 3, 5, 6, 7, 8];
+  if (hardGoals.length >= 2) {
+    for (let i = 0; i < 2; i++) {
+      const posIndex = Math.floor(Math.random() * availablePositions.length);
+      const position = availablePositions.splice(posIndex, 1)[0];
+      const randomHard = hardGoals[Math.floor(Math.random() * hardGoals.length)];
+      bingoGrid[position] = { ...randomHard };
+    }
+  } else if (hardGoals.length === 1) {
+    const position = availablePositions[Math.floor(Math.random() * availablePositions.length)];
+    availablePositions.splice(availablePositions.indexOf(position), 1);
+    bingoGrid[position] = { ...hardGoals[0] };
+  }
+
+  // Fill remaining positions with normal goals
+  availablePositions.forEach(pos => {
+    if (normalGoals.length > 0) {
+      const randomNormal = normalGoals[Math.floor(Math.random() * normalGoals.length)];
+      bingoGrid[pos] = { ...randomNormal };
+    }
+  });
+
+  renderBingoGrid();
+}
+
+function renderBingoGrid() {
+  const gridContainer = document.getElementById('bingo-grid');
+  if (!gridContainer) return;
+
+  gridContainer.innerHTML = '';
+
+  bingoGrid.forEach((goal, index) => {
+    const cell = document.createElement('div');
+    cell.className = `bingo-cell ${goal ? goal.difficulty : 'normal'}`;
+    if (bingoCompleted[index]) {
+      cell.classList.add('completed');
+    }
+
+    const badge = document.createElement('div');
+    badge.className = `bingo-difficulty-badge ${goal ? goal.difficulty : 'normal'}`;
+
+    const text = document.createElement('div');
+    text.className = 'bingo-cell-text';
+    text.textContent = goal ? goal.goal : 'Empty';
+
+    cell.appendChild(badge);
+    cell.appendChild(text);
+
+    cell.addEventListener('click', () => toggleBingoCell(index));
+
+    gridContainer.appendChild(cell);
+  });
+}
+
+function toggleBingoCell(index) {
+  bingoCompleted[index] = !bingoCompleted[index];
+  renderBingoGrid();
+  checkForBingo();
+}
+
+function checkForBingo() {
+  const lines = [
+    // Rows
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    // Columns
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    // Diagonals
+    [0, 4, 8],
+    [2, 4, 6]
+  ];
+
+  let newBingos = 0;
+  lines.forEach(line => {
+    if (line.every(index => bingoCompleted[index])) {
+      newBingos++;
+    }
+  });
+
+  if (newBingos > completedBingos) {
+    const bingosToGrant = newBingos - completedBingos;
+    completedBingos = newBingos;
+
+    // Grant rewards for each new bingo
+    for (let i = 0; i < bingosToGrant; i++) {
+      grantBingoReward();
+    }
+
+    // Update display
+    updateBingoStatus();
+
+    // Show celebration
+    const bingoGridEl = document.getElementById('bingo-grid');
+    if (bingoGridEl) {
+      bingoGridEl.classList.add('bingo-complete-animation');
+      setTimeout(() => {
+        bingoGridEl.classList.remove('bingo-complete-animation');
+      }, 1500);
+    }
+  }
+
+  updateBingoStatus();
+}
+
+function updateBingoStatus() {
+  const bingoCountEl = document.getElementById('bingo-count');
+  if (bingoCountEl) {
+    bingoCountEl.textContent = `${completedBingos} Bingo${completedBingos !== 1 ? 's' : ''} Complete`;
+  }
+}
+
+function grantBingoReward() {
+  // Randomly select one of the 8 rewards
+  const rewardType = Math.floor(Math.random() * 8) + 1;
+
+  // All rewards give +1 to all combat stats
+  strength++;
+  dexterity++;
+  intelligence++;
+  charisma++;
+  updateTopBar();
+
+  let rewardMessage = 'Bingo Complete! Rewards:\n';
+  rewardMessage += '+1 to all combat stats!\n';
+
+  // Apply specific reward bonuses
+  switch(rewardType) {
+    case 1:
+    case 2:
+      // Common items
+      giveRandomItems('common');
+      rewardMessage += 'Choose 1 common item!';
+      break;
+    case 3:
+      // Common items + 2 Reroll
+      bingoReroll += 2;
+      giveRandomItems('common');
+      rewardMessage += '+2 Reroll\nChoose 1 common item!';
+      break;
+    case 4:
+      // Uncommon items
+      giveRandomItems('uncommon');
+      rewardMessage += 'Choose 1 uncommon item!';
+      break;
+    case 5:
+      // Uncommon items + 1 Skip
+      bingoSkip += 1;
+      giveRandomItems('uncommon');
+      rewardMessage += '+1 Skip\nChoose 1 uncommon item!';
+      break;
+    case 6:
+      // Rare items
+      giveRandomItems('rare');
+      rewardMessage += 'Choose 1 rare item!';
+      break;
+    case 7:
+      // Rare items + FoV & Discovery
+      bingoFoV += 1;
+      bingoDiscovery += 1;
+      giveRandomItems('rare');
+      rewardMessage += '+1 FoV & Discovery\nChoose 1 rare item!';
+      break;
+    case 8:
+      // Rare items + Dash
+      bingoDash += 1;
+      giveRandomItems('rare');
+      rewardMessage += '+1 Dash\nChoose 1 rare item!';
+      break;
+  }
+
+  alert(rewardMessage);
+}
+
+function giveRandomItems(rarity) {
+  const rarityItems = items.filter(item => item.rarity === rarity);
+
+  if (rarityItems.length === 0) {
+    console.log(`No ${rarity} items available`);
+    return;
+  }
+
+  // Number of choices = 2 + discovery stat + bingoDiscovery
+  const numChoices = 2 + discovery + bingoDiscovery;
+  const choices = [];
+
+  // Generate random item choices
+  for (let i = 0; i < numChoices && i < rarityItems.length; i++) {
+    let randomItem;
+    do {
+      randomItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
+    } while (choices.includes(randomItem) && choices.length < rarityItems.length);
+    choices.push(randomItem);
+  }
+
+  // Display choices to user
+  showItemChoiceModal({
+    title: '🎯 Bingo Reward!',
+    message: `Choose 1 from ${numChoices} ${rarity} items:`,
+    items: choices,
+    onChoice: (item) => {
+      inventory.push(item);
+      if (typeof updateInventory === 'function') {
+        updateInventory();
+      }
+      closeGameModal();
+    }
+  });
+}
+
+function showBingoRewards() {
+  const rewardsModal = document.getElementById('rewards-modal');
+  if (rewardsModal) {
+    rewardsModal.classList.add('show');
+  }
+}
+
+function toggleBingo() {
+  const container = document.getElementById('bingo-container');
+  const button = document.getElementById('bingo-toggle');
+
+  if (!container || !button) return;
+
+  if (container.classList.contains('hidden')) {
+    container.classList.remove('hidden');
+    button.textContent = 'Hide';
+  } else {
+    container.classList.add('hidden');
+    button.textContent = 'Show';
+  }
+}
+
 // Export to global scope
 window.loadState = loadState;
 window.saveCurrentGame = saveCurrentGame;
@@ -5402,3 +5790,13 @@ window.hideMapTooltip = hideMapTooltip;
 window.drawMapArrows = drawMapArrows;
 window.switchCollectionTab = switchCollectionTab;
 window.showGameDetails = showGameDetails;
+// Bingo functions
+window.generateBingoGrid = generateBingoGrid;
+window.renderBingoGrid = renderBingoGrid;
+window.toggleBingoCell = toggleBingoCell;
+window.checkForBingo = checkForBingo;
+window.updateBingoStatus = updateBingoStatus;
+window.grantBingoReward = grantBingoReward;
+window.giveRandomItems = giveRandomItems;
+window.showBingoRewards = showBingoRewards;
+window.toggleBingo = toggleBingo;

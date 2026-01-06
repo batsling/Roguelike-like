@@ -33,6 +33,17 @@ var enemies = [];
 var curses = [];
 var encounterHistory = [];
 
+// Bingo State Variables
+var bingoGoals = [];
+var bingoGrid = Array(9).fill(null); // 3x3 grid stored as flat array
+var bingoCompleted = Array(9).fill(false);
+var completedBingos = 0;
+var bingoReroll = 0;
+var bingoSkip = 0;
+var bingoFoV = 0;
+var bingoDiscovery = 0;
+var bingoDash = 0;
+
 // Map Viewer State Variables
 var scale = 1;
 var translateX = 0;
