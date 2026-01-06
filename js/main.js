@@ -5492,44 +5492,75 @@ function generateBingoGrid() {
     return;
   }
 
-  // Separate goals by difficulty
-  const easyGoals = bingoGoals.filter(g => g.difficulty === 'easy');
-  const normalGoals = bingoGoals.filter(g => g.difficulty === 'normal');
-  const hardGoals = bingoGoals.filter(g => g.difficulty === 'hard');
+  // Separate goals by difficulty and shuffle to ensure randomness
+  const easyGoals = [...bingoGoals.filter(g => g.difficulty === 'easy')];
+  const normalGoals = [...bingoGoals.filter(g => g.difficulty === 'normal')];
+  const hardGoals = [...bingoGoals.filter(g => g.difficulty === 'hard')];
+
+  // Shuffle arrays
+  const shuffleArray = (array) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  const shuffledEasy = shuffleArray(easyGoals);
+  const shuffledNormal = shuffleArray(normalGoals);
+  const shuffledHard = shuffleArray(hardGoals);
 
   // Reset grid
   bingoGrid = Array(9).fill(null);
   bingoCompleted = Array(9).fill(false);
 
+  // Track used goals to prevent duplicates
+  const usedGoals = new Set();
+
   // Place 1 easy goal in center (position 4)
-  if (easyGoals.length > 0) {
-    const randomEasy = easyGoals[Math.floor(Math.random() * easyGoals.length)];
-    bingoGrid[4] = { ...randomEasy };
-  } else if (normalGoals.length > 0) {
-    const randomNormal = normalGoals[Math.floor(Math.random() * normalGoals.length)];
-    bingoGrid[4] = { ...randomNormal };
+  if (shuffledEasy.length > 0) {
+    const easyGoal = shuffledEasy[0];
+    bingoGrid[4] = { ...easyGoal };
+    usedGoals.add(easyGoal.goal);
+  } else if (shuffledNormal.length > 0) {
+    const normalGoal = shuffledNormal[0];
+    bingoGrid[4] = { ...normalGoal };
+    usedGoals.add(normalGoal.goal);
   }
 
   // Place 2 hard goals in random positions (not center)
   const availablePositions = [0, 1, 2, 3, 5, 6, 7, 8];
-  if (hardGoals.length >= 2) {
-    for (let i = 0; i < 2; i++) {
+  let hardGoalIndex = 0;
+  for (let i = 0; i < 2 && hardGoalIndex < shuffledHard.length; i++) {
+    // Find next unused hard goal
+    while (hardGoalIndex < shuffledHard.length && usedGoals.has(shuffledHard[hardGoalIndex].goal)) {
+      hardGoalIndex++;
+    }
+
+    if (hardGoalIndex < shuffledHard.length) {
       const posIndex = Math.floor(Math.random() * availablePositions.length);
       const position = availablePositions.splice(posIndex, 1)[0];
-      const randomHard = hardGoals[Math.floor(Math.random() * hardGoals.length)];
-      bingoGrid[position] = { ...randomHard };
+      const hardGoal = shuffledHard[hardGoalIndex];
+      bingoGrid[position] = { ...hardGoal };
+      usedGoals.add(hardGoal.goal);
+      hardGoalIndex++;
     }
-  } else if (hardGoals.length === 1) {
-    const position = availablePositions[Math.floor(Math.random() * availablePositions.length)];
-    availablePositions.splice(availablePositions.indexOf(position), 1);
-    bingoGrid[position] = { ...hardGoals[0] };
   }
 
   // Fill remaining positions with normal goals
+  let normalGoalIndex = 0;
   availablePositions.forEach(pos => {
-    if (normalGoals.length > 0) {
-      const randomNormal = normalGoals[Math.floor(Math.random() * normalGoals.length)];
-      bingoGrid[pos] = { ...randomNormal };
+    // Find next unused normal goal
+    while (normalGoalIndex < shuffledNormal.length && usedGoals.has(shuffledNormal[normalGoalIndex].goal)) {
+      normalGoalIndex++;
+    }
+
+    if (normalGoalIndex < shuffledNormal.length) {
+      const normalGoal = shuffledNormal[normalGoalIndex];
+      bingoGrid[pos] = { ...normalGoal };
+      usedGoals.add(normalGoal.goal);
+      normalGoalIndex++;
     }
   });
 
