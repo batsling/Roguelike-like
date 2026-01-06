@@ -1548,30 +1548,33 @@
       <p style="text-align: center; color: #aaa; margin-bottom: 20px;">Complete a row, column, or diagonal to earn one of these rewards:</p>
       <div id="rewards-list">
         <div class="reward-item">
-          <strong>Reward 1:</strong> +1 to All Combat Stats and a selection of 2 Random Common Items
+          <strong>Reward 1:</strong> +1 to All Combat Stats and choose 2 from (2 + Discovery) Random Common Items
         </div>
         <div class="reward-item">
-          <strong>Reward 2:</strong> +1 to All Combat Stats and a selection of 2 Random Common Items
+          <strong>Reward 2:</strong> +1 to All Combat Stats and choose 2 from (2 + Discovery) Random Common Items
         </div>
         <div class="reward-item">
-          <strong>Reward 3:</strong> +1 to All Combat Stats, +2 Reroll, and a selection of 2 Random Common Items
+          <strong>Reward 3:</strong> +1 to All Combat Stats, +2 Reroll, and choose 2 from (2 + Discovery) Random Common Items
         </div>
         <div class="reward-item">
-          <strong>Reward 4:</strong> +1 to All Combat Stats and a selection of 2 Random Uncommon Items
+          <strong>Reward 4:</strong> +1 to All Combat Stats and choose 2 from (2 + Discovery) Random Uncommon Items
         </div>
         <div class="reward-item">
-          <strong>Reward 5:</strong> +1 to All Combat Stats, +1 Skip, and a selection of 2 Random Uncommon Items
+          <strong>Reward 5:</strong> +1 to All Combat Stats, +1 Skip, and choose 2 from (2 + Discovery) Random Uncommon Items
         </div>
         <div class="reward-item">
-          <strong>Reward 6:</strong> +1 to All Combat Stats and a selection of 2 Random Rare Items
+          <strong>Reward 6:</strong> +1 to All Combat Stats and choose 2 from (2 + Discovery) Random Rare Items
         </div>
         <div class="reward-item">
-          <strong>Reward 7:</strong> +1 to All Combat Stats, +1 FoV & Discovery, and a selection of 2 Random Rare Items
+          <strong>Reward 7:</strong> +1 to All Combat Stats, +1 FoV & Discovery, and choose 2 from (2 + Discovery) Random Rare Items
         </div>
         <div class="reward-item">
-          <strong>Reward 8:</strong> +1 to All Combat Stats, +1 Dash, and a selection of 2 Random Rare Items
+          <strong>Reward 8:</strong> +1 to All Combat Stats, +1 Dash, and choose 2 from (2 + Discovery) Random Rare Items
         </div>
       </div>
+      <p style="text-align: center; color: #aaa; font-style: italic; margin-top: 15px; font-size: 0.9em;">
+        * Discovery stat increases the number of items you can choose from!
+      </p>
       <button id="close-rewards-btn">Close</button>
     </div>
   </div>
@@ -1639,6 +1642,61 @@ let bingoSkip = 0;
 let bingoFoV = 0;
 let bingoDiscovery = 0;
 let bingoDash = 0;
+
+// Hardcoded bingo goals - add more as needed
+const BINGO_GOALS = [
+  // Easy goals
+  { goal: "Get drunk", difficulty: "easy" },
+  { goal: "Pet a pet", difficulty: "easy" },
+  { goal: "Defeat an enemy with a ball", difficulty: "easy" },
+  { goal: "Defeat 15 Skeletons", difficulty: "easy" },
+  { goal: "Defeat 15 Zombies", difficulty: "easy" },
+
+  // Normal goals
+  { goal: "Beat a boss with 1 Health left", difficulty: "normal" },
+  { goal: "Beat 3 Action Roguelikes", difficulty: "normal" },
+  { goal: "Beat 3 Deckbuilder Roguelikes", difficulty: "normal" },
+  { goal: "Beat 3 Strategy Roguelikes", difficulty: "normal" },
+  { goal: "Become a cannibal", difficulty: "normal" },
+  { goal: "Deal damage equal to your block", difficulty: "normal" },
+  { goal: "Defeat a boss without taking damage", difficulty: "normal" },
+  { goal: "Defeat a magic boss with a gun", difficulty: "normal" },
+  { goal: "Get 10 achievements in 1 run", difficulty: "normal" },
+  { goal: "Have a character reach 'level 30'", difficulty: "normal" },
+  { goal: "Have an enemy defeat 3 enemies", difficulty: "normal" },
+  { goal: "Obtain 5 max tier items in one run", difficulty: "normal" },
+  { goal: "Skip 10 rewards", difficulty: "normal" },
+  { goal: "Double your max health in a run", difficulty: "normal" },
+  { goal: "Kill a boss in under 30 seconds", difficulty: "normal" },
+  { goal: "One-shot a boss", difficulty: "normal" },
+  { goal: "Kill an enemy with environmental damage", difficulty: "normal" },
+  { goal: "Fill your entire inventory", difficulty: "normal" },
+  { goal: "Spend 500+ currency in one shop", difficulty: "normal" },
+  { goal: "Take every curse offered", difficulty: "normal" },
+  { goal: "Unlock a secret area", difficulty: "normal" },
+  { goal: "Die and resurrect in same run", difficulty: "normal" },
+  { goal: "Complete a daily challenge", difficulty: "normal" },
+  { goal: "Survive 5 hits without healing", difficulty: "normal" },
+  { goal: "Hoard 999+ currency", difficulty: "normal" },
+
+  // Hard goals
+  { goal: "Trade all but one health for upgrades and win", difficulty: "hard" },
+  { goal: "Beat a run without moving", difficulty: "hard" },
+  { goal: "Beat a run without spending currency", difficulty: "hard" },
+  { goal: "Beat a run without taking damage", difficulty: "hard" },
+  { goal: "Beat a run without meta progression", difficulty: "hard" },
+  { goal: "Permanently remove 5 cards and win", difficulty: "hard" },
+  { goal: "Win with only common items", difficulty: "hard" },
+  { goal: "Win using only starter weapon", difficulty: "hard" },
+  { goal: "Never visit a shop", difficulty: "hard" },
+  { goal: "Never heal during entire run", difficulty: "hard" },
+  { goal: "Complete run in under 20 minutes", difficulty: "hard" },
+  { goal: "Beat first floor in under 2 minutes", difficulty: "hard" },
+  { goal: "Reach final boss with starter equipment", difficulty: "hard" },
+  { goal: "Never open a chest", difficulty: "hard" },
+  { goal: "Only use melee attacks (no ranged)", difficulty: "hard" },
+  { goal: "Only use ranged attacks (no melee)", difficulty: "hard" }
+];
 
 // ===== TRUE GAMEPLAY SYSTEM =====
 let gameState = {
@@ -2024,17 +2082,11 @@ document.getElementById('excelFile').addEventListener('change', function(event) 
         }));
       }
 
-      if (workbook.SheetNames.length > 6) {
-        const bingoSheet = workbook.Sheets[workbook.SheetNames[6]];
-        const bingoData = XLSX.utils.sheet_to_json(bingoSheet, { header: 1 });
-        bingoGoals = bingoData.slice(1).map(row => ({
-          goal: String(row[0] || ""),
-          difficulty: String(row[1] || "Normal").toLowerCase()
-        })).filter(goal => goal.goal.trim() !== "");
+      // Initialize bingo goals from hardcoded array
+      bingoGoals = [...BINGO_GOALS];
 
-        // Generate initial bingo grid
-        generateBingoGrid();
-      }
+      // Generate initial bingo grid
+      generateBingoGrid();
 
       document.getElementById('pickRandomGames').disabled = false;
 
@@ -4846,8 +4898,12 @@ function giveRandomItems(rarity, count) {
     return;
   }
 
+  // Number of choices = count + discovery stat (from bingo rewards)
+  const numChoices = count + bingoDiscovery;
   const choices = [];
-  for (let i = 0; i < count && i < rarityItems.length; i++) {
+
+  // Generate random item choices (more choices = more options to pick from)
+  for (let i = 0; i < numChoices && i < rarityItems.length; i++) {
     let randomItem;
     do {
       randomItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
@@ -4855,9 +4911,12 @@ function giveRandomItems(rarity, count) {
     choices.push(randomItem);
   }
 
+  // Track selected items
+  let selectedItems = [];
+
   // Display choices to user
   const outputDiv = document.getElementById('output3');
-  outputDiv.innerHTML = '<p>Choose one of these items from your Bingo reward:</p>';
+  outputDiv.innerHTML = `<p>Choose ${count} of these items from your Bingo reward (${numChoices} options):</p>`;
 
   const choicesContainer = document.createElement('div');
   choicesContainer.id = 'bingo-item-choices';
@@ -4865,20 +4924,57 @@ function giveRandomItems(rarity, count) {
   choices.forEach((item) => {
     const choiceDiv = document.createElement('div');
     choiceDiv.className = 'item-choice';
-    choiceDiv.style.cssText = 'margin: 10px 0; padding: 10px; border: 2px solid #4CAF50; border-radius: 4px; cursor: pointer; background: #f9f9f9;';
+    choiceDiv.style.cssText = 'margin: 10px 0; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; background: #f9f9f9; transition: all 0.2s;';
     choiceDiv.innerHTML = `
       <strong>${item.name}</strong> (${item.rarity})
       <p>${item.description}</p>
       <p><em>Type: ${item.type}</em></p>
     `;
+
     choiceDiv.addEventListener('click', () => {
-      inventory.push(item);
-      updateInventory();
-      outputDiv.innerHTML = `
-        <p>You chose: <strong>${item.name}</strong> (${item.rarity})</p>
-        <p>${item.description}</p>
-      `;
+      // Toggle selection
+      if (selectedItems.includes(item)) {
+        // Deselect
+        selectedItems = selectedItems.filter(i => i !== item);
+        choiceDiv.style.borderColor = '#ddd';
+        choiceDiv.style.background = '#f9f9f9';
+      } else if (selectedItems.length < count) {
+        // Select (if under limit)
+        selectedItems.push(item);
+        choiceDiv.style.borderColor = '#4CAF50';
+        choiceDiv.style.background = '#e8f5e9';
+      } else {
+        // At limit, show message
+        alert(`You can only choose ${count} items!`);
+        return;
+      }
+
+      // If selected the right amount, show confirm button
+      if (selectedItems.length === count) {
+        if (!document.getElementById('confirm-bingo-items')) {
+          const confirmBtn = document.createElement('button');
+          confirmBtn.id = 'confirm-bingo-items';
+          confirmBtn.textContent = 'Confirm Selection';
+          confirmBtn.style.cssText = 'width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; font-size: 16px;';
+          confirmBtn.addEventListener('click', () => {
+            selectedItems.forEach(selectedItem => {
+              inventory.push(selectedItem);
+            });
+            updateInventory();
+            outputDiv.innerHTML = `
+              <p>You chose: <strong>${selectedItems.map(i => i.name).join(', ')}</strong></p>
+              <p>Items added to inventory!</p>
+            `;
+          });
+          choicesContainer.appendChild(confirmBtn);
+        }
+      } else {
+        // Remove confirm button if it exists
+        const confirmBtn = document.getElementById('confirm-bingo-items');
+        if (confirmBtn) confirmBtn.remove();
+      }
     });
+
     choicesContainer.appendChild(choiceDiv);
   });
 
