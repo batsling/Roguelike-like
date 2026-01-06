@@ -5683,62 +5683,52 @@ function grantBingoReward(bingoCount) {
     case 1:
       // Common items
       giveRandomItems('common');
-      rewardMessage += 'Choose 1 of 2 common items!';
+      rewardMessage += 'Choose 1 common item!';
       break;
     case 2:
+      // Common items
+      giveRandomItems('common');
+      rewardMessage += 'Choose 1 common item!';
+      break;
+    case 3:
       // Common items + 2 Reroll
       reroll += 2;
       bingoReroll += 2;
       giveRandomItems('common');
-      rewardMessage += '+2 Reroll\nChoose 1 of 2 common items!';
-      break;
-    case 3:
-      // Uncommon items
-      giveRandomItems('uncommon');
-      rewardMessage += 'Choose 1 of 2 uncommon items!';
+      rewardMessage += '+2 Reroll\nChoose 1 common item!';
       break;
     case 4:
+      // Uncommon items
+      giveRandomItems('uncommon');
+      rewardMessage += 'Choose 1 uncommon item!';
+      break;
+    case 5:
       // Uncommon items + 1 Skip
       skip += 1;
       bingoSkip += 1;
       giveRandomItems('uncommon');
-      rewardMessage += '+1 Skip\nChoose 1 of 2 uncommon items!';
-      break;
-    case 5:
-      // Rare items
-      giveRandomItems('rare');
-      rewardMessage += 'Choose 1 of 2 rare items!';
+      rewardMessage += '+1 Skip\nChoose 1 uncommon item!';
       break;
     case 6:
+      // Rare items
+      giveRandomItems('rare');
+      rewardMessage += 'Choose 1 rare item!';
+      break;
+    case 7:
       // Rare items + FoV & Discovery
       fov += 1;
       discovery += 1;
       bingoFoV += 1;
       bingoDiscovery += 1;
       giveRandomItems('rare');
-      rewardMessage += '+1 FoV & Discovery\nChoose 1 of 2 rare items!';
+      rewardMessage += '+1 FoV & Discovery\nChoose 1 rare item!';
       break;
-    case 7:
+    case 8:
       // Rare items + Dash
       dash += 1;
       bingoDash += 1;
       giveRandomItems('rare');
-      rewardMessage += '+1 Dash\nChoose 1 of 2 rare items!';
-      break;
-    case 8:
-      // Common items + all bonuses
-      reroll += 1;
-      skip += 1;
-      fov += 1;
-      discovery += 1;
-      dash += 1;
-      bingoReroll += 1;
-      bingoSkip += 1;
-      bingoFoV += 1;
-      bingoDiscovery += 1;
-      bingoDash += 1;
-      giveRandomItems('common');
-      rewardMessage += '+1 to ALL abilities\nChoose 1 of 2 common items!';
+      rewardMessage += '+1 Dash\nChoose 1 rare item!';
       break;
   }
 
@@ -5754,8 +5744,8 @@ function giveRandomItems(rarity) {
     return;
   }
 
-  // Number of choices = 2 (fixed for bingo)
-  const numChoices = 2;
+  // Number of choices = 2 + discovery (affected by discovery stat)
+  const numChoices = 2 + discovery;
   const choices = [];
 
   // Generate random item choices (all from the same rarity)

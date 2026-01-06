@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Roguelike-Like</title>
   <!-- External CSS -->
-  <link rel="stylesheet" href="css/styles.css?v=22">
+  <link rel="stylesheet" href="css/styles.css?v=23">
 </head>
 <body>
   <!-- Top Bar -->
@@ -149,12 +149,6 @@
             </div>
           </div>
 
-          <!-- Goals Section -->
-          <div id="goals-section" style="position: fixed; left: 20px; top: 600px; background: rgba(30, 30, 30, 0.95); padding: 12px; border-radius: 8px; border: 2px solid #cc9900; width: 200px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);">
-            <h3 style="margin: 0 0 10px 0; color: #cc9900; font-size: 16px; text-align: center;">🎯 Goals</h3>
-            <button id="toggle-bingo-btn" style="width: 100%; padding: 8px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Hide Bingo</button>
-          </div>
-
           <!-- Center: Game View -->
           <div id="path-viewport-container">
             <!-- Path Viewport -->
@@ -212,20 +206,28 @@
             </div>
           </div>
 
-          <!-- Bingo Panel -->
-          <div id="bingo-container">
-            <div id="bingo-header">
-              <h3 style="margin: 0;">🎯 Bingo</h3>
-              <div style="display: flex; gap: 5px;">
-                <button id="view-rewards-btn">Rewards</button>
-                <button id="bingo-toggle">Hide</button>
+          <!-- Goals Section -->
+          <div id="goals-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <h3 style="margin: 0; color: #cc9900;">🎯 Goals</h3>
+              <button id="toggle-bingo-btn" style="padding: 6px 12px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Hide Bingo</button>
+            </div>
+
+            <!-- Bingo Panel -->
+            <div id="bingo-container">
+              <div id="bingo-header">
+                <h3 style="margin: 0;">🎯 Bingo</h3>
+                <div style="display: flex; gap: 5px;">
+                  <button id="view-rewards-btn">Rewards</button>
+                  <button id="bingo-toggle">Hide</button>
+                </div>
               </div>
-            </div>
-            <div id="bingo-status">
-              <div id="bingo-count">0 Bingos Complete</div>
-            </div>
-            <div id="bingo-grid">
-              <!-- Bingo cells will be generated here -->
+              <div id="bingo-status">
+                <div id="bingo-count">0 Bingos Complete</div>
+              </div>
+              <div id="bingo-grid">
+                <!-- Bingo cells will be generated here -->
+              </div>
             </div>
           </div>
 
@@ -236,28 +238,28 @@
               <p style="text-align: center; color: #aaa; margin-bottom: 20px;">Complete a row, column, or diagonal to earn one of these rewards:</p>
               <div id="rewards-list">
                 <div class="reward-item">
-                  <strong>Reward 1:</strong> +1 to All Combat Stats and choose 1 from (2 + Discovery) Random Common Items
+                  <strong>Reward 1:</strong> +1 to All Combat Stats and choose 1 Random Common Item
                 </div>
                 <div class="reward-item">
-                  <strong>Reward 2:</strong> +1 to All Combat Stats and choose 1 from (2 + Discovery) Random Common Items
+                  <strong>Reward 2:</strong> +1 to All Combat Stats and choose 1 Random Common Item
                 </div>
                 <div class="reward-item">
-                  <strong>Reward 3:</strong> +1 to All Combat Stats, +2 Reroll, and choose 1 from (2 + Discovery) Random Common Items
+                  <strong>Reward 3:</strong> +1 to All Combat Stats, +2 Reroll, and choose 1 Random Common Item
                 </div>
                 <div class="reward-item">
-                  <strong>Reward 4:</strong> +1 to All Combat Stats and choose 1 from (2 + Discovery) Random Uncommon Items
+                  <strong>Reward 4:</strong> +1 to All Combat Stats and choose 1 Random Uncommon Item
                 </div>
                 <div class="reward-item">
-                  <strong>Reward 5:</strong> +1 to All Combat Stats, +1 Skip, and choose 1 from (2 + Discovery) Random Uncommon Items
+                  <strong>Reward 5:</strong> +1 to All Combat Stats, +1 Skip, and choose 1 Random Uncommon Item
                 </div>
                 <div class="reward-item">
-                  <strong>Reward 6:</strong> +1 to All Combat Stats and choose 1 from (2 + Discovery) Random Rare Items
+                  <strong>Reward 6:</strong> +1 to All Combat Stats and choose 1 Random Rare Item
                 </div>
                 <div class="reward-item">
-                  <strong>Reward 7:</strong> +1 to All Combat Stats, +1 FoV & Discovery, and choose 1 from (2 + Discovery) Random Rare Items
+                  <strong>Reward 7:</strong> +1 to All Combat Stats, +1 FoV & Discovery, and choose 1 Random Rare Item
                 </div>
                 <div class="reward-item">
-                  <strong>Reward 8:</strong> +1 to All Combat Stats, +1 Dash, and choose 1 from (2 + Discovery) Random Rare Items
+                  <strong>Reward 8:</strong> +1 to All Combat Stats, +1 Dash, and choose 1 Random Rare Item
                 </div>
               </div>
               <p style="text-align: center; color: #aaa; font-style: italic; margin-top: 15px; font-size: 0.9em;">
@@ -617,6 +619,6 @@
   <script src="js/events.js?v=19"></script>
   <script src="js/gameplay.js?v=26"></script>
   <script src="js/map.js?v=19"></script>
-  <script src="js/main.js?v=32"></script>
+  <script src="js/main.js?v=33"></script>
 </body>
 </html>
