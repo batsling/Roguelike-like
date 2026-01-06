@@ -5445,7 +5445,7 @@ document.getElementById('triggerSpecificEnemy')?.addEventListener('click', () =>
 // ===== BINGO SYSTEM =====
 
 const BINGO_GOALS = [
-  // Easy goals (7)
+  // Easy goals (9)
   { goal: "Beat a boss with 1 Health left", difficulty: "easy" },
   { goal: "Defeat 15 Skeletons", difficulty: "easy" },
   { goal: "Defeat 15 Zombies", difficulty: "easy" },
@@ -5453,8 +5453,10 @@ const BINGO_GOALS = [
   { goal: "Get drunk", difficulty: "easy" },
   { goal: "Pet a pet", difficulty: "easy" },
   { goal: "Trade all but one health for upgrades once and then win the run", difficulty: "easy" },
+  { goal: "Unlock a new Character", difficulty: "easy" },
+  { goal: "Worship an altar", difficulty: "easy" },
 
-  // Normal goals (19)
+  // Normal goals (21)
   { goal: "Beat 3 Action Roguelikes", difficulty: "normal" },
   { goal: "Beat 3 Deckbuilder Roguelikes", difficulty: "normal" },
   { goal: "Beat 3 different roguelikes in one day", difficulty: "normal" },
@@ -5466,19 +5468,22 @@ const BINGO_GOALS = [
   { goal: "Defeat a boss without taking damage", difficulty: "normal" },
   { goal: "Defeat a magic boss with a gun", difficulty: "normal" },
   { goal: "Double your max health in a run", difficulty: "normal" },
+  { goal: "Enchant an item to +5 or higher", difficulty: "normal" },
   { goal: "Get 10 achievements in 1 run", difficulty: "normal" },
   { goal: "Have a character reach \"level 30\"", difficulty: "normal" },
   { goal: "Have an enemy defeat 3 enemies", difficulty: "normal" },
   { goal: "Obtain 5 max tier items in one run", difficulty: "normal" },
   { goal: "Permanently remove 5 cards from your deck and win a run", difficulty: "normal" },
   { goal: "Ressurect yourself 3 times in one run and win", difficulty: "normal" },
+  { goal: "Succesfully steal an item from a shop", difficulty: "normal" },
   { goal: "Tame an enemy", difficulty: "normal" },
   { goal: "Visit and beat the same game twice in one playthrough", difficulty: "normal" },
 
-  // Hard goals (3)
+  // Hard goals (4)
   { goal: "Bear a run without moving", difficulty: "hard" },
   { goal: "Beat a run without spending currency", difficulty: "hard" },
   { goal: "Beat a run without taking damage", difficulty: "hard" },
+  { goal: "Beat the \"True\" ending of a game", difficulty: "hard" },
 ];
 
 function generateBingoGrid() {
