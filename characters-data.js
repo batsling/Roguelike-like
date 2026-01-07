@@ -2,7 +2,7 @@
 var CHARACTERS_DATA = {
   "rodney": {
     "name": "Rodney",
-    "icon": "https://i.imgur.com/4foPqje.png",
+    "icon": "images/characters/rodney.png",
     "startingStats": {
       "strength": 0,
       "dexterity": 2,
