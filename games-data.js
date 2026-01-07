@@ -1325,7 +1325,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Jotunnslayer: Hordes of Hel",
-      "The Spells Brigade",
+      "The Spell Brigade",
       "Be My Horde",
       "Sodaman"
     ],
@@ -1379,7 +1379,7 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "The Spells Brigade"
+      "The Spell Brigade"
     ],
     "coverImage": "images/covers/deep-rock-galactic-survivor.jpg"
   },
@@ -5627,14 +5627,14 @@ var GAMES_DATA = [
     "coverImage": "images/covers/the-royal-writ.jpg"
   },
   {
-    "name": "The Spells Brigade",
+    "name": "The Spell Brigade",
     "year": 2024,
     "type": "Action",
     "connected": true,
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/the-spells-brigade.jpg"
+    "coverImage": "images/covers/the-spell-brigade.jpg"
   },
   {
     "name": "The Unliving",
@@ -5990,7 +5990,7 @@ var GAMES_DATA = [
       "Soulstone Survivors",
       "Spellbook Demonslayers",
       "Spirit Hunters: Infinite Horde",
-      "The Spells Brigade",
+      "The Spell Brigade",
       "Time Wasters",
       "Tiny Rogues",
       "Tower Factory",
