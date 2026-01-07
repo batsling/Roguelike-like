@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 551 games, 683 connections
-// 477 connected, 148 influencers
+// 555 games, 690 connections
+// 481 connected, 150 influencers
 
 var GAMES_DATA = [
   {
@@ -212,6 +212,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/aotenjo-infinite-hands.jpg"
+  },
+  {
+    "name": "Approaching Infinity",
+    "year": 2020,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/approaching-infinity.jpg"
   },
   {
     "name": "Arcane Trigger",
@@ -702,7 +712,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Rack and Slay",
-      "Noobs Are Coming"
+      "Noobs Are Coming",
+      "Maid Survivors :Little Angels"
     ],
     "coverImage": "images/covers/brotato.jpg"
   },
@@ -822,9 +833,11 @@ var GAMES_DATA = [
     "year": 2010,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "Approaching Infinity"
+    ],
     "coverImage": "images/covers/caves-of-qud.jpg"
   },
   {
@@ -1029,14 +1042,14 @@ var GAMES_DATA = [
     "coverImage": "images/covers/crab-champions.jpg"
   },
   {
-    "name": "Crafty Survival",
+    "name": "Crafty Survivors",
     "year": 2023,
     "type": "Action",
     "connected": true,
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/crafty-survival.jpg"
+    "coverImage": "images/covers/crafty-survivors.jpg"
   },
   {
     "name": "Crawl",
@@ -1123,9 +1136,11 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "Garden of Witches"
+    ],
     "coverImage": "images/covers/cult-of-the-lamb.jpg"
   },
   {
@@ -1218,7 +1233,8 @@ var GAMES_DATA = [
       "As We Descend",
       "Hell Clock",
       "Luck & Loot",
-      "Across the Obelisk"
+      "Across the Obelisk",
+      "Die For The Lich"
     ],
     "coverImage": "images/covers/darkest-dungeon.jpg"
   },
@@ -1526,9 +1542,20 @@ var GAMES_DATA = [
       "Dungeon Clawler",
       "SpellRogue",
       "Dog Witch",
-      "Dicealot"
+      "Dicealot",
+      "Die For The Lich"
     ],
     "coverImage": "images/covers/dicey-dungeons.jpg"
+  },
+  {
+    "name": "Die For The Lich",
+    "year": 2025,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/die-for-the-lich.jpg"
   },
   {
     "name": "Die in the Dungeon",
@@ -2272,6 +2299,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/galactic-glitch.jpg"
   },
   {
+    "name": "Garden of Witches",
+    "year": 2025,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/garden-of-witches.jpg"
+  },
+  {
     "name": "Gatekeeper",
     "year": 2024,
     "type": "Action",
@@ -2529,7 +2566,8 @@ var GAMES_DATA = [
       "Darkblade Ascent",
       "Reality Break",
       "Battle Shapers",
-      "Brew"
+      "Brew",
+      "Garden of Witches"
     ],
     "coverImage": "images/covers/hades.jpg"
   },
@@ -3189,6 +3227,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/magicraft.jpg"
+  },
+  {
+    "name": "Maid Survivors: Little Angels",
+    "year": 2025,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/maid-survivors-little-angels.jpg"
   },
   {
     "name": "Mainframe Defenders",
@@ -4838,7 +4886,8 @@ var GAMES_DATA = [
       "Vivid Knight",
       "Deck of Haunts",
       "Monmusu Gladiator",
-      "A la Card"
+      "A la Card",
+      "Die For The Lich"
     ],
     "coverImage": "images/covers/slay-the-spire.jpg"
   },
@@ -5912,7 +5961,7 @@ var GAMES_DATA = [
       "Boneraiser Minions",
       "Bounty of One",
       "Brotato",
-      "Crafty Survival",
+      "Crafty Survivors",
       "Death Must Die",
       "Deep Rock Galactic: Survivor",
       "Elemental Survivors",
