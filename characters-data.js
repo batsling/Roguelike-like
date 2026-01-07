@@ -1,5 +1,5 @@
 // Characters data - loaded directly as JavaScript to avoid CORS issues
-var PLAYER_CHARACTERS = {
+var CHARACTERS_DATA = {
   "rodney": {
     "name": "Rodney",
     "icon": "https://i.imgur.com/4foPqje.png",
