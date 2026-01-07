@@ -1036,7 +1036,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/no-cover.svg"
+    "coverImage": "images/covers/crafty-survivors.jpg"
   },
   {
     "name": "Crawl",
