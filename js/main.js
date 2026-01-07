@@ -4084,42 +4084,72 @@ function switchCollectionTab(tab) {
       </div>
     `;
   } else if (tab === 'items') {
-    // Sort items alphabetically
-    const sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name));
+    // Get rarity color function
+    const getRarityColor = (rarity) => {
+      switch(rarity) {
+        case 'legendary': return '#ff6b00';
+        case 'rare': return '#9b59b6';
+        case 'uncommon': return '#4CAF50';
+        case 'common': return '#aaa';
+        default: return '#888';
+      }
+    };
+
+    // Default sort is alphabetical
+    let sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name));
 
     content.innerHTML = `
-      <div style="flex: 1; overflow-y: auto; padding: 10px;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
-          ${sortedItems.map(item => `
-          <div style="
-            background: rgba(0,0,0,0.3);
-            border: 1px solid #444;
-            border-radius: 8px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            transition: transform 0.2s, border-color 0.2s;
-          " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#4CAF50';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
-            <img
-              src="${item.image || 'images/items/no-item.svg'}"
-              alt="${item.name}"
-              style="
-                width: 100%;
-                height: 120px;
-                object-fit: contain;
-                border-radius: 6px;
-                background: rgba(0,0,0,0.2);
-              "
-            />
-            <div style="text-align: center; font-size: 12px; font-weight: bold; color: #ddd; word-wrap: break-word;">
-              ${item.name}
+      <div style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
+        <!-- Sort controls -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center;">
+          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort by:</span>
+          <button onclick="sortCollectionItems('alphabetical')" id="sort-alpha" style="padding: 6px 12px; background: #ff9800; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">A-Z</button>
+          <button onclick="sortCollectionItems('rarity')" id="sort-rarity" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Rarity</button>
+          <button onclick="sortCollectionItems('game')" id="sort-game" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Game</button>
+        </div>
+
+        <div id="items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
+          ${sortedItems.map(item => {
+            const rarityColor = getRarityColor(item.rarity);
+            return `
+            <div style="
+              background: rgba(0,0,0,0.3);
+              border: 2px solid ${rarityColor};
+              border-radius: 8px;
+              padding: 10px;
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+              transition: transform 0.2s, box-shadow 0.2s;
+            " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 20px rgba(${rarityColor === '#ff6b00' ? '255,107,0' : rarityColor === '#9b59b6' ? '155,89,182' : rarityColor === '#4CAF50' ? '76,175,80' : '170,170,170'}, 0.4)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+              <img
+                src="${item.image || 'images/items/no-item.svg'}"
+                alt="${item.name}"
+                style="
+                  width: 100%;
+                  height: 120px;
+                  object-fit: contain;
+                  border-radius: 6px;
+                  background: rgba(0,0,0,0.2);
+                  image-rendering: pixelated;
+                "
+                onerror="this.style.display='none';"
+              />
+              <div style="text-align: center; font-size: 12px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word;">
+                ${item.name}
+              </div>
+              <div style="font-size: 10px; color: ${rarityColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
+                ${item.rarity}
+              </div>
+              <div style="font-size: 10px; color: #888; text-align: center; font-style: italic;">
+                ${item.game || 'Unknown'}
+              </div>
+              <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
+                ${item.description || 'No description'}
+              </div>
             </div>
-            <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
-              ${item.description || 'No description'}
-            </div>
-          </div>
-        `).join('')}
+          `;
+          }).join('')}
         </div>
       </div>
     `;
@@ -4261,6 +4291,94 @@ function switchCollectionTab(tab) {
         </div>
       </div>
     `;
+  }
+}
+
+// Sort collection items
+function sortCollectionItems(sortType) {
+  // Get rarity color function
+  const getRarityColor = (rarity) => {
+    switch(rarity) {
+      case 'legendary': return '#ff6b00';
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      case 'common': return '#aaa';
+      default: return '#888';
+    }
+  };
+
+  // Update sort button styles
+  ['alpha', 'rarity', 'game'].forEach(type => {
+    const btn = document.getElementById(`sort-${type}`);
+    if (btn) {
+      btn.style.background = type === sortType.substring(0, type.length) || (sortType === 'alphabetical' && type === 'alpha') ? '#ff9800' : '#555';
+    }
+  });
+
+  let sortedItems;
+  if (sortType === 'alphabetical') {
+    sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name));
+  } else if (sortType === 'rarity') {
+    const rarityOrder = { 'legendary': 4, 'rare': 3, 'uncommon': 2, 'common': 1 };
+    sortedItems = [...items].sort((a, b) => {
+      const rarityDiff = (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0);
+      if (rarityDiff !== 0) return rarityDiff;
+      return a.name.localeCompare(b.name);
+    });
+  } else if (sortType === 'game') {
+    sortedItems = [...items].sort((a, b) => {
+      const gameA = a.game || 'Unknown';
+      const gameB = b.game || 'Unknown';
+      const gameDiff = gameA.localeCompare(gameB);
+      if (gameDiff !== 0) return gameDiff;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  // Update the grid
+  const grid = document.getElementById('items-grid');
+  if (grid) {
+    grid.innerHTML = sortedItems.map(item => {
+      const rarityColor = getRarityColor(item.rarity);
+      return `
+        <div style="
+          background: rgba(0,0,0,0.3);
+          border: 2px solid ${rarityColor};
+          border-radius: 8px;
+          padding: 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          transition: transform 0.2s, box-shadow 0.2s;
+        " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 20px rgba(${rarityColor === '#ff6b00' ? '255,107,0' : rarityColor === '#9b59b6' ? '155,89,182' : rarityColor === '#4CAF50' ? '76,175,80' : '170,170,170'}, 0.4)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+          <img
+            src="${item.image || 'images/items/no-item.svg'}"
+            alt="${item.name}"
+            style="
+              width: 100%;
+              height: 120px;
+              object-fit: contain;
+              border-radius: 6px;
+              background: rgba(0,0,0,0.2);
+              image-rendering: pixelated;
+            "
+            onerror="this.style.display='none';"
+          />
+          <div style="text-align: center; font-size: 12px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word;">
+            ${item.name}
+          </div>
+          <div style="font-size: 10px; color: ${rarityColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
+            ${item.rarity}
+          </div>
+          <div style="font-size: 10px; color: #888; text-align: center; font-style: italic;">
+            ${item.game || 'Unknown'}
+          </div>
+          <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
+            ${item.description || 'No description'}
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 }
 
@@ -6052,3 +6170,6 @@ function hasTrait(traitId) {
 window.updateCharacterUI = updateCharacterUI;
 window.updateTraitsDisplay = updateTraitsDisplay;
 window.hasTrait = hasTrait;
+
+// Export collection functions
+window.sortCollectionItems = sortCollectionItems;

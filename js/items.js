@@ -785,7 +785,8 @@ function showWandOfWishingSelection() {
   }
 
   // Filter for unlocked items only (defaults to true if not specified)
-  const unlockedItems = items.filter(item => item.unlocked !== false);
+  // Also exclude the Wand of Wishing itself
+  const unlockedItems = items.filter(item => item.unlocked !== false && item.name !== 'Wand of Wishing');
 
   // Sort items by rarity then alphabetically
   const rarityOrder = { 'legendary': 4, 'rare': 3, 'uncommon': 2, 'common': 1 };
@@ -839,10 +840,10 @@ function showWandOfWishingSelection() {
       <div style="font-size: 10px; color: ${getRarityColor(item.rarity)}; text-align: center; text-transform: uppercase; font-weight: bold;">
         ${item.rarity}
       </div>
-      <div class="item-tooltip" style="display: none; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 10px; background: #2a2420; color: #e6d5b8; padding: 12px; border: 2px solid ${getRarityColor(item.rarity)}; border-radius: 8px; font-size: 12px; z-index: 10000; max-width: 250px; white-space: normal; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
-        <div style="font-weight: bold; margin-bottom: 5px; color: ${getRarityColor(item.rarity)};">${item.name}</div>
-        <div style="color: #888; font-size: 10px; margin-bottom: 8px;">${item.type} • ${item.game || 'Unknown'}</div>
-        <div style="line-height: 1.4;">${item.description || 'No description'}</div>
+      <div class="item-tooltip" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2a2420; color: #e6d5b8; padding: 15px; border: 2px solid ${getRarityColor(item.rarity)}; border-radius: 8px; font-size: 13px; z-index: 100000; min-width: 300px; max-width: 400px; white-space: normal; box-shadow: 0 8px 24px rgba(0,0,0,0.7); pointer-events: none;">
+        <div style="font-weight: bold; margin-bottom: 8px; color: ${getRarityColor(item.rarity)}; font-size: 15px;">${item.name}</div>
+        <div style="color: #888; font-size: 11px; margin-bottom: 10px;">${item.type} • ${item.game || 'Unknown'}</div>
+        <div style="line-height: 1.6;">${item.description || 'No description'}</div>
       </div>
     </div>
   `).join('');
