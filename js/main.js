@@ -401,7 +401,7 @@ document.getElementById('new-game-btn')?.addEventListener('click', () => {
 
       const stats = char.startingStats || {};
       charDiv.innerHTML = `
-        <img src="${char.icon}" style="width: 64px; height: 64px; image-rendering: pixelated; margin-bottom: 10px;">
+        <img src="${char.icon}" style="max-width: 80px; max-height: 80px; min-width: 64px; min-height: 64px; object-fit: contain; image-rendering: pixelated; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto;">
         <div style="font-weight: bold; margin-bottom: 5px;">${char.name}</div>
         <div style="font-size: 11px; color: #aaa; margin-bottom: 8px;">${char.description || ''}</div>
         ${traitsHTML}
@@ -3506,8 +3506,11 @@ function showEscapeVisualization() {
   playerIcon.src = PLAYER_CHARACTERS[gameState.character].icon;
   playerIcon.style.cssText = `
     position: absolute;
-    width: 64px;
-    height: 64px;
+    max-width: 72px;
+    max-height: 72px;
+    min-width: 48px;
+    min-height: 48px;
+    object-fit: contain;
     image-rendering: pixelated;
     transition: all 0.5s ease;
     z-index: 100;
@@ -3518,7 +3521,7 @@ function showEscapeVisualization() {
   playerDiv.id = 'escape-player-position';
   playerDiv.style.cssText = 'text-align: center; position: relative;';
   playerDiv.innerHTML = `
-    <div style="width: 64px; height: 64px;"></div>
+    <div style="width: 72px; height: 72px;"></div>
     <div style="font-size: 12px; color: #aaa; margin-top: 5px;">You</div>
   `;
   escapeContainer.appendChild(playerDiv);

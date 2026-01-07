@@ -1069,8 +1069,11 @@ function advance(game, x, y, encounterType) {
       top: ${startY - y - 55}px;
       left: 50%;
       transform: translateX(-50%);
-      width: 48px;
-      height: 48px;
+      max-width: 56px;
+      max-height: 56px;
+      min-width: 40px;
+      min-height: 40px;
+      object-fit: contain;
       image-rendering: pixelated;
       z-index: 100;
       pointer-events: none;
@@ -1361,8 +1364,11 @@ function renderGameState() {
           top: -55px;
           left: 50%;
           transform: translateX(-50%);
-          width: 48px;
-          height: 48px;
+          max-width: 56px;
+          max-height: 56px;
+          min-width: 40px;
+          min-height: 40px;
+          object-fit: contain;
           image-rendering: pixelated;
           z-index: 100;
           animation: playerPulse 2s infinite;
