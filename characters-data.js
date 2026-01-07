@@ -16,7 +16,7 @@ var PLAYER_CHARACTERS = {
       "luck": 0
     },
     "traits": ["regeneration"],
-    "description": "Swift and cunning, regenerates when avoiding combat"
+    "description": "Now I abide here, searching endlessly for the precious Amulet... and finding a thousand horrors."
   },
   "isaac": {
     "name": "Isaac",
@@ -34,7 +34,7 @@ var PLAYER_CHARACTERS = {
       "luck": 0
     },
     "traits": ["reroller"],
-    "description": "Strong and persistent, gains rerolls from victories"
+    "description": "Who am I?"
   }
 };
 
