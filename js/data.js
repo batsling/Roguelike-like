@@ -218,8 +218,9 @@ function calculateRarityWeights(luckValue) {
 
 /**
  * Select a random rarity based on weighted probabilities
+ * Legendary items have a 1 in 10 chance when rare is selected
  * @param {number} luckValue - The player's luck stat (defaults to global luck variable)
- * @returns {string} Selected rarity ('common', 'uncommon', or 'rare')
+ * @returns {string} Selected rarity ('common', 'uncommon', 'rare', or 'legendary')
  */
 function selectRandomRarity(luckValue = luck) {
   const weights = calculateRarityWeights(luckValue);
@@ -227,13 +228,24 @@ function selectRandomRarity(luckValue = luck) {
 
   const roll = Math.random() * totalWeight;
 
+  let selectedRarity;
   if (roll < weights.common) {
-    return 'common';
+    selectedRarity = 'common';
   } else if (roll < weights.common + weights.uncommon) {
-    return 'uncommon';
+    selectedRarity = 'uncommon';
   } else {
-    return 'rare';
+    selectedRarity = 'rare';
   }
+
+  // If rare was selected, roll for legendary (10% chance)
+  if (selectedRarity === 'rare') {
+    const legendaryRoll = Math.random();
+    if (legendaryRoll < 0.1) {
+      selectedRarity = 'legendary';
+    }
+  }
+
+  return selectedRarity;
 }
 
 /**

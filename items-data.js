@@ -17,7 +17,8 @@ var ITEMS_DATA = [
     "description": "Gain +3 Intelligence, but -1 Dexterity",
     "image": "images/items/Campfire.png",
     "game": "Brotato",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "Charm of the Vampire",
@@ -26,7 +27,8 @@ var ITEMS_DATA = [
     "description": "When you defeat an enemy, 50% chance to Heal +1 Health",
     "image": "images/items/CharmoftheVampire.png",
     "game": "The Binding of Isaac",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "Cursed Slash",
@@ -35,7 +37,8 @@ var ITEMS_DATA = [
     "description": "Lose half of your max health. When you defeat an enemy, Heal +1 Health",
     "image": "images/items/CursedSlash.png",
     "game": "Hades",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "D6",
@@ -44,7 +47,8 @@ var ITEMS_DATA = [
     "description": "Gain +1 Reroll",
     "image": "images/items/D6.png",
     "game": "The Binding of Isaac",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "Empty Tome",
@@ -53,7 +57,8 @@ var ITEMS_DATA = [
     "description": "Gain +2 Intelligence",
     "image": "images/items/EmptyTome.png",
     "game": "Vampire Survivors",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "Hollow Heart",
@@ -62,7 +67,8 @@ var ITEMS_DATA = [
     "description": "Gain +2 Max Health and Heal +2 Health",
     "image": "images/items/HollowHeart.png",
     "game": "Vampire Survivors",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "Bowler Hat",
@@ -82,7 +88,8 @@ var ITEMS_DATA = [
     "description": "Gain +1 Luck",
     "image": "images/items/LuckyToe.png",
     "game": "The Binding of Isaac",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "Lunch",
@@ -102,7 +109,8 @@ var ITEMS_DATA = [
     "description": "Gain +1 Field of View, get an extra option in the space choice",
     "image": "images/items/MoreOptions.png",
     "game": "The Binding of Isaac",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "Oddly Smooth Stone",
@@ -111,7 +119,8 @@ var ITEMS_DATA = [
     "description": "Gain +2 Dexterity",
     "image": "images/items/OddlySmoothStone.png",
     "game": "Slay the Spire",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "Panda",
@@ -120,7 +129,8 @@ var ITEMS_DATA = [
     "description": "Gain +5 Max Health and Heal +5 Health, +2 Luck, but -1 Strength",
     "image": "images/items/Panda.png",
     "game": "Brotato",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "The Poop",
@@ -129,7 +139,8 @@ var ITEMS_DATA = [
     "description": "Apply the Stinky status to the current game. Stinky games are the least prioritized in game selections.",
     "image": "images/items/The Poop.png",
     "game": "The Binding of Isaac",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "Ride the Bus",
@@ -138,7 +149,8 @@ var ITEMS_DATA = [
     "description": "Teleport to a random Deckbuilder space",
     "image": "images/items/RidetheBus.png",
     "game": "Balatro",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "Scroll of Teleportation",
@@ -147,7 +159,8 @@ var ITEMS_DATA = [
     "description": "Teleport to a random space",
     "image": "images/items/ScrollofTransportation.png",
     "game": "Rogue",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "Sunglasses",
@@ -167,7 +180,8 @@ var ITEMS_DATA = [
     "description": "Gain +2 Strength",
     "image": "images/items/Vajra.png",
     "game": "Slay the Spire",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "Ventricle Razor",
@@ -176,7 +190,8 @@ var ITEMS_DATA = [
     "description": "On the first use, create a portal. On second use, return to the space you created the portal on",
     "image": "images/items/VentricleRazor.png",
     "game": "The Binding of Isaac",
-    "tags": []
+    "tags": [],
+  "unlocked": true
   },
   {
     "name": "Wheat",
@@ -207,6 +222,17 @@ var ITEMS_DATA = [
     "description": "Gain +3 Dexterity, but -1  Intelligence",
     "image": "images/items/Wings.png",
     "game": "Brotato",
-    "tags": []
+    "tags": [],
+  "unlocked": true
+  },
+  {
+    "name": "Wand of Wishing",
+    "rarity": "legendary",
+    "type": "Usable",
+    "description": "Choose any item in the game to add to your inventory",
+    "image": "images/items/WandofWishing.png",
+    "game": "NetHack",
+    "tags": [],
+    "unlocked": true
   }
 ];

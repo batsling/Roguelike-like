@@ -396,6 +396,18 @@ const ITEM_EFFECTS = {
         }
       }
     }
+  },
+
+  "Wand of Wishing": {
+    uses: 1,
+    canUse: () => {
+      // Can use anytime
+      return true;
+    },
+    onUse: () => {
+      // Show special item selection UI (like collection view)
+      showWandOfWishingSelection();
+    }
   }
 };
 
@@ -762,6 +774,141 @@ function triggerOnEnemyDefeated() {
   });
 }
 
+/**
+ * Show Wand of Wishing item selection UI
+ * Displays all unlocked items in a collection-style grid with hover tooltips
+ */
+function showWandOfWishingSelection() {
+  if (!items || items.length === 0) {
+    alert('No items available!');
+    return;
+  }
+
+  // Filter for unlocked items only (defaults to true if not specified)
+  const unlockedItems = items.filter(item => item.unlocked !== false);
+
+  // Sort items by rarity then alphabetically
+  const rarityOrder = { 'legendary': 4, 'rare': 3, 'uncommon': 2, 'common': 1 };
+  const sortedItems = [...unlockedItems].sort((a, b) => {
+    const rarityDiff = (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0);
+    if (rarityDiff !== 0) return rarityDiff;
+    return a.name.localeCompare(b.name);
+  });
+
+  // Get rarity color
+  const getRarityColor = (rarity) => {
+    switch(rarity) {
+      case 'legendary': return '#ff6b00'; // Orange/gold
+      case 'rare': return '#9b59b6';      // Purple
+      case 'uncommon': return '#4CAF50';  // Green
+      case 'common': return '#aaa';       // Gray
+      default: return '#888';
+    }
+  };
+
+  // Create items grid HTML
+  const itemsHTML = sortedItems.map(item => `
+    <div class="wand-item-card" data-item-name="${item.name.replace(/"/g, '&quot;')}" style="
+      background: rgba(0,0,0,0.3);
+      border: 2px solid ${getRarityColor(item.rarity)};
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: all 0.2s;
+      cursor: pointer;
+      position: relative;
+    ">
+      <img
+        src="${item.image || 'images/items/no-item.svg'}"
+        alt="${item.name}"
+        style="
+          width: 100%;
+          height: 96px;
+          object-fit: contain;
+          border-radius: 6px;
+          background: rgba(0,0,0,0.2);
+          image-rendering: pixelated;
+        "
+        onerror="this.style.display='none';"
+      />
+      <div style="text-align: center; font-size: 13px; font-weight: bold; color: ${getRarityColor(item.rarity)}; word-wrap: break-word;">
+        ${item.name}
+      </div>
+      <div style="font-size: 10px; color: ${getRarityColor(item.rarity)}; text-align: center; text-transform: uppercase; font-weight: bold;">
+        ${item.rarity}
+      </div>
+      <div class="item-tooltip" style="display: none; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 10px; background: #2a2420; color: #e6d5b8; padding: 12px; border: 2px solid ${getRarityColor(item.rarity)}; border-radius: 8px; font-size: 12px; z-index: 10000; max-width: 250px; white-space: normal; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+        <div style="font-weight: bold; margin-bottom: 5px; color: ${getRarityColor(item.rarity)};">${item.name}</div>
+        <div style="color: #888; font-size: 10px; margin-bottom: 8px;">${item.type} • ${item.game || 'Unknown'}</div>
+        <div style="line-height: 1.4;">${item.description || 'No description'}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Show modal
+  if (typeof createGameModal === 'function') {
+    createGameModal(`
+      <div style="width: 90vw; max-width: 1200px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
+        <h2 style="color: #ff6b00; margin: 0 0 15px 0; text-align: center;">✨ Wand of Wishing ✨</h2>
+        <p style="color: #aaa; text-align: center; margin-bottom: 20px; font-size: 14px;">
+          Choose any item to add to your inventory
+        </p>
+        <div style="flex: 1; overflow-y: auto; padding: 10px;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px;">
+            ${itemsHTML}
+          </div>
+        </div>
+        <div style="text-align: center; margin-top: 15px; padding-top: 15px; border-top: 2px solid #444;">
+          <button onclick="closeGameModal();" style="padding: 10px 30px; background: #444; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Cancel</button>
+        </div>
+      </div>
+    `);
+
+    // Add hover and click handlers
+    document.querySelectorAll('.wand-item-card').forEach(card => {
+      const tooltip = card.querySelector('.item-tooltip');
+
+      card.onmouseenter = (e) => {
+        e.currentTarget.style.transform = 'translateY(-5px) scale(1.05)';
+        e.currentTarget.style.boxShadow = '0 10px 30px rgba(255, 107, 0, 0.4)';
+        if (tooltip) tooltip.style.display = 'block';
+      };
+
+      card.onmouseleave = (e) => {
+        e.currentTarget.style.transform = '';
+        e.currentTarget.style.boxShadow = '';
+        if (tooltip) tooltip.style.display = 'none';
+      };
+
+      card.onclick = (e) => {
+        const itemName = e.currentTarget.dataset.itemName;
+        const selectedItem = items.find(i => i.name === itemName);
+
+        if (selectedItem) {
+          console.log(`Wand of Wishing: Selected ${itemName}`);
+
+          // Acquire the item
+          acquireItem(selectedItem);
+
+          // Close modal
+          if (typeof closeGameModal === 'function') {
+            closeGameModal();
+          }
+
+          // Show notification
+          setTimeout(() => {
+            createNotification(`Wished for ${itemName}!`, 'rgba(255, 107, 0, 0.95)', '✨');
+          }, 100);
+        }
+      };
+    });
+  } else {
+    console.error('createGameModal function not found!');
+  }
+}
+
 // Export functions to global scope
 window.applyItemEffects = applyItemEffects;
 window.acquireItem = acquireItem;
@@ -774,4 +921,5 @@ window.selectedTeleport = selectedTeleport; // Selected teleport with filters
 window.teleportToRandomGame = teleportToRandomGame;
 window.teleportToRandomDeckbuilder = teleportToRandomDeckbuilder;
 window.triggerOnEnemyDefeated = triggerOnEnemyDefeated; // Trigger onEnemyDefeated effects
+window.showWandOfWishingSelection = showWandOfWishingSelection; // Wand of Wishing UI
 window.ITEM_EFFECTS = ITEM_EFFECTS;

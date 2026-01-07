@@ -611,11 +611,10 @@ function showItemTooltip(e, item) {
 
   // Get rarity color
   const rarityColors = {
-    common: '#ffffff',
+    common: '#aaa',
     uncommon: '#4CAF50',
-    rare: '#2196F3',
-    epic: '#9b59b6',
-    legendary: '#ff9800'
+    rare: '#9b59b6',
+    legendary: '#ff6b00'
   };
   const rarityColor = rarityColors[item.rarity] || '#ffffff';
 
