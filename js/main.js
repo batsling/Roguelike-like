@@ -5754,7 +5754,7 @@ function grantBingoReward(bingoCount) {
 }
 
 function giveRandomItems(rarity, bingoCount = 1, bonusText = '') {
-  // Filter out items already used in this batch of bingo rewards
+  // Filter out items already selected in this batch of bingo rewards
   const rarityItems = items.filter(item =>
     item.rarity === rarity && !usedBingoItems.includes(item.name)
   );
@@ -5771,15 +5771,13 @@ function giveRandomItems(rarity, bingoCount = 1, bonusText = '') {
   const numChoices = Math.min(2 + discovery, rarityItems.length);
   const choices = [];
 
-  // Generate random item choices (all from the same rarity, excluding used items)
+  // Generate random item choices (all from the same rarity, excluding already selected items)
   for (let i = 0; i < numChoices && i < rarityItems.length; i++) {
     let randomItem;
     do {
       randomItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
     } while (choices.find(c => c.name === randomItem.name));
     choices.push(randomItem);
-    // Track this item as used in this batch
-    usedBingoItems.push(randomItem.name);
   }
 
   const rarityColor = rarity === 'common' ? '#aaa' : rarity === 'uncommon' ? '#4CAF50' : '#9b59b6';
@@ -5845,6 +5843,9 @@ function giveRandomItems(rarity, bingoCount = 1, bonusText = '') {
       if (typeof updateInventory === 'function') {
         updateInventory();
       }
+
+      // Track this selected item to avoid showing it again in the same batch
+      usedBingoItems.push(item.name);
 
       // Mark this reward as processed and show next one if queued
       processingBingoReward = false;

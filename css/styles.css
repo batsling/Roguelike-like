@@ -78,7 +78,7 @@ body {
   width: 95%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 0;
 }
 .header-section {
   text-align: center;
@@ -957,11 +957,12 @@ text, path, line, g {
 #goals-section {
   position: fixed;
   left: 250px;
-  top: 120px;
+  top: 60px;
   width: 320px;
   background: rgba(30, 30, 30, 0.95);
   border: 2px solid #cc9900;
-  border-radius: 12px;
+  border-radius: 0;
+  border-top: none;
   padding: 15px;
   color: #eee;
   z-index: 999;
