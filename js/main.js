@@ -382,10 +382,21 @@ document.getElementById('new-game-btn')?.addEventListener('click', () => {
       transition: all 0.2s;
     `;
 
+    // Build traits display
+    let traitsHTML = '';
+    if (char.traits && char.traits.length > 0) {
+      const traitNames = char.traits.map(traitId => {
+        const trait = TRAITS_DATA[traitId];
+        return trait ? `${trait.icon} ${trait.name}` : '';
+      }).filter(t => t).join(', ');
+      traitsHTML = `<div style="font-size: 11px; color: #cc9900; margin-bottom: 5px;">${traitNames}</div>`;
+    }
+
     charDiv.innerHTML = `
       <img src="${char.icon}" style="width: 64px; height: 64px; image-rendering: pixelated; margin-bottom: 10px;">
       <div style="font-weight: bold; margin-bottom: 5px;">${char.name}</div>
       <div style="font-size: 11px; color: #aaa; margin-bottom: 8px;">${char.description}</div>
+      ${traitsHTML}
       <div style="font-size: 10px; color: #888;">
         STR:${char.startingStats.strength}
         DEX:${char.startingStats.dexterity}
@@ -454,14 +465,16 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   }
 
   console.log('Character data:', character);
-  strength = character.startingStats.strength;
-  dexterity = character.startingStats.dexterity;
-  intelligence = character.startingStats.intelligence;
-  charisma = character.startingStats.charisma;
+  strength = character.startingStats.strength || 0;
+  dexterity = character.startingStats.dexterity || 0;
+  intelligence = character.startingStats.intelligence || 0;
+  charisma = character.startingStats.charisma || 0;
   reroll = character.startingStats.reroll || 0;
   dash = character.startingStats.dash || 0;
   skip = character.startingStats.skip || 0;
   discovery = character.startingStats.discovery || 0;
+  fov = character.startingStats.fov || 0;
+  luck = character.startingStats.luck || 0;
 
   // Reset health and gold for new run
   health = 10;
@@ -470,6 +483,9 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
 
   // Clear inventory and curses for new run
   inventory = [];
+
+  // Store character traits
+  const characterTraits = character.traits || [];
 
   gameState = {
     currentGame: start.name,
@@ -489,6 +505,7 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     amuletGame: amulet,
     currentY: 120,
     character: selectedCharacter,
+    traits: characterTraits,
     strength: strength,
     dexterity: dexterity,
     intelligence: intelligence,
@@ -527,6 +544,10 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   if (typeof renderGameState === 'function') {
     renderGameState();
   }
+
+  // Update character UI
+  updateCharacterUI();
+  updateTraitsDisplay();
 
   saveCurrentGame();
   updateSaveList();
@@ -4405,6 +4426,15 @@ function markGameFinished(gameName) {
   // NOTE: Amulet stat is only incremented on successful escape (in showVictoryScreen)
   incrementGameBeaten(gameName, false);
 
+  // Reroller trait: Every time you beat a game, gain +1 Reroll
+  if (hasTrait('reroller')) {
+    reroll++;
+    console.log('Reroller trait triggered: +1 Reroll');
+    if (typeof updateTopBar === 'function') {
+      updateTopBar();
+    }
+  }
+
   // Only add if not already in finishedGames array
   if (!gameState.finishedGames.includes(gameName)) {
     gameState.finishedGames.push(gameName);
@@ -5925,3 +5955,85 @@ window.grantBingoReward = grantBingoReward;
 window.giveRandomItems = giveRandomItems;
 window.showBingoRewards = showBingoRewards;
 window.toggleBingo = toggleBingo;
+
+// ===== CHARACTER & TRAIT FUNCTIONS =====
+
+function updateCharacterUI() {
+  if (!gameState || !gameState.character) return;
+
+  const character = PLAYER_CHARACTERS[gameState.character];
+  if (!character) return;
+
+  // Update character icon
+  const iconEl = document.getElementById('character-icon');
+  if (iconEl) {
+    iconEl.src = character.icon;
+    iconEl.alt = character.name;
+  }
+
+  // Update character name
+  const nameEl = document.getElementById('character-name');
+  if (nameEl) {
+    nameEl.textContent = character.name;
+  }
+}
+
+function updateTraitsDisplay() {
+  const traitsList = document.getElementById('traits-list');
+  if (!traitsList) return;
+
+  const traits = gameState?.traits || [];
+  if (traits.length === 0) {
+    traitsList.innerHTML = '<div style="color: #888; font-style: italic; text-align: center; padding: 5px;">No traits</div>';
+    return;
+  }
+
+  traitsList.innerHTML = '';
+  traits.forEach(traitId => {
+    const trait = TRAITS_DATA[traitId];
+    if (!trait) return;
+
+    const traitDiv = document.createElement('div');
+    traitDiv.className = 'trait-item';
+    traitDiv.style.cssText = 'padding: 8px; margin: 5px 0; background: rgba(204, 153, 0, 0.15); border: 1px solid #cc9900; border-radius: 6px; cursor: help; position: relative;';
+    traitDiv.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 18px;">${trait.icon}</span>
+        <span style="color: #cc9900; font-weight: bold; font-size: 13px;">${trait.name}</span>
+      </div>
+    `;
+
+    // Add tooltip
+    traitDiv.setAttribute('data-tooltip', trait.description);
+
+    // Hover effect for tooltip
+    traitDiv.onmouseenter = function(e) {
+      const tooltip = document.createElement('div');
+      tooltip.id = 'trait-tooltip';
+      tooltip.style.cssText = 'position: fixed; background: #2a2420; color: #e6d5b8; padding: 10px; border: 2px solid #cc9900; border-radius: 6px; font-size: 12px; z-index: 10000; max-width: 250px; pointer-events: none;';
+      tooltip.textContent = trait.description;
+      document.body.appendChild(tooltip);
+
+      const rect = e.currentTarget.getBoundingClientRect();
+      tooltip.style.left = (rect.right + 10) + 'px';
+      tooltip.style.top = rect.top + 'px';
+    };
+
+    traitDiv.onmouseleave = function() {
+      const tooltip = document.getElementById('trait-tooltip');
+      if (tooltip) tooltip.remove();
+    };
+
+    traitsList.appendChild(traitDiv);
+  });
+}
+
+// Check if player has a specific trait
+function hasTrait(traitId) {
+  return gameState?.traits?.includes(traitId) || false;
+}
+
+// Export character and trait functions
+window.updateCharacterUI = updateCharacterUI;
+window.updateTraitsDisplay = updateTraitsDisplay;
+window.hasTrait = hasTrait;

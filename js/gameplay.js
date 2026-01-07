@@ -1092,6 +1092,16 @@ function advance(game, x, y, encounterType) {
     // Store the encounter type for later
     gameState.nextEncounterType = encounterType;
 
+    // Regeneration trait: Every time you choose a game whose encounter isn't enemy combat, heal +1
+    if (encounterType !== 'combat' && typeof hasTrait === 'function' && hasTrait('regeneration')) {
+      health = Math.min(health + 1, maxHealth);
+      gameState.health = health;
+      console.log('Regeneration trait triggered: +1 Health');
+      if (typeof updateTopBar === 'function') {
+        updateTopBar();
+      }
+    }
+
     // Trigger encounter based on type (these functions are in main.js)
     if (encounterType === 'combat' && typeof showCombatModal === 'function') {
       showCombatModal();

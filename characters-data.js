@@ -1,6 +1,6 @@
 // Characters data - loaded directly as JavaScript to avoid CORS issues
-var CHARACTERS_DATA = {
-  "rogue": {
+var PLAYER_CHARACTERS = {
+  "rodney": {
     "name": "Rodney",
     "icon": "https://i.imgur.com/4foPqje.png",
     "startingStats": {
@@ -8,56 +8,46 @@ var CHARACTERS_DATA = {
       "dexterity": 2,
       "intelligence": 1,
       "charisma": 0,
-      "reroll": 1,
-      "dash": 1,
-      "skip": 1,
-      "discovery": 2
-    },
-    "description": "Swift and cunning, favors dexterity"
-  },
-  "warrior": {
-    "name": "The Warrior",
-    "icon": "https://i.imgur.com/4foPqje.png",
-    "startingStats": {
-      "strength": 2,
-      "dexterity": 0,
-      "intelligence": 0,
-      "charisma": 1,
       "reroll": 0,
-      "dash": 1,
-      "skip": 0,
-      "discovery": 2
-    },
-    "description": "Strong and brave, favors strength"
-  },
-  "mage": {
-    "name": "The Mage",
-    "icon": "https://i.imgur.com/4foPqje.png",
-    "startingStats": {
-      "strength": 0,
-      "dexterity": 0,
-      "intelligence": 2,
-      "charisma": 1,
-      "reroll": 1,
       "dash": 0,
       "skip": 0,
-      "discovery": 3
+      "discovery": 0,
+      "fov": 0,
+      "luck": 0
     },
-    "description": "Wise and mystical, favors intelligence"
+    "traits": ["regeneration"],
+    "description": "Swift and cunning, regenerates when avoiding combat"
   },
-  "bard": {
-    "name": "The Bard",
-    "icon": "https://i.imgur.com/4foPqje.png",
+  "isaac": {
+    "name": "Isaac",
+    "icon": "images/characters/isaac.png",
     "startingStats": {
-      "strength": 0,
-      "dexterity": 1,
+      "strength": 3,
+      "dexterity": 0,
       "intelligence": 0,
-      "charisma": 2,
+      "charisma": 0,
       "reroll": 0,
-      "dash": 1,
-      "skip": 1,
-      "discovery": 2
+      "dash": 0,
+      "skip": 0,
+      "discovery": 0,
+      "fov": 0,
+      "luck": 0
     },
-    "description": "Charming and persuasive, favors charisma"
+    "traits": ["reroller"],
+    "description": "Strong and persistent, gains rerolls from victories"
+  }
+};
+
+// Trait definitions
+var TRAITS_DATA = {
+  "reroller": {
+    "name": "Reroller",
+    "description": "Every time you beat a game, gain +1 Reroll",
+    "icon": "🎲"
+  },
+  "regeneration": {
+    "name": "Regeneration",
+    "description": "Every time you choose a game whose encounter isn't enemy combat, heal +1",
+    "icon": "💚"
   }
 };
