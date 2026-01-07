@@ -136,10 +136,13 @@ function loadState() {
     bingoDiscovery = state.bingoDiscovery ?? 0;
     bingoDash = state.bingoDash ?? 0;
 
-    // Render bingo grid if available
+    // Render bingo grid if available, or generate new one if empty
     if (bingoGrid && bingoGrid.some(g => g !== null)) {
       renderBingoGrid();
       updateBingoStatus();
+    } else {
+      // Generate new bingo grid for old saves that don't have one
+      generateBingoGrid();
     }
 
     if (state.markedSvg) {
@@ -560,6 +563,9 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   // Update character UI
   updateCharacterUI();
   updateTraitsDisplay();
+
+  // Generate new bingo grid for this run
+  generateBingoGrid();
 
   saveCurrentGame();
   updateSaveList();
