@@ -366,54 +366,66 @@ document.getElementById('new-game-btn')?.addEventListener('click', () => {
   charSelection.innerHTML = '';
 
   console.log('Populating character selection...');
-  for (const [id, char] of Object.entries(PLAYER_CHARACTERS)) {
-    console.log(`  - Adding character: ${id} (${char.name})`);
+  try {
+    for (const [id, char] of Object.entries(PLAYER_CHARACTERS)) {
+      console.log(`  - Adding character: ${id} (${char.name})`);
 
-    const charDiv = document.createElement('div');
-    charDiv.className = 'character-option';
-    charDiv.dataset.charId = id;
-    charDiv.style.cssText = `
-      padding: 15px;
-      background: #3d3d3d;
-      border: 3px solid #555;
-      border-radius: 8px;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.2s;
-    `;
+      const charDiv = document.createElement('div');
+      charDiv.className = 'character-option';
+      charDiv.dataset.charId = id;
+      charDiv.style.cssText = `
+        padding: 15px;
+        background: #3d3d3d;
+        border: 3px solid #555;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.2s;
+      `;
 
-    // Build traits display
-    let traitsHTML = '';
-    if (char.traits && char.traits.length > 0) {
-      const traitNames = char.traits.map(traitId => {
-        const trait = TRAITS_DATA[traitId];
-        return trait ? `${trait.icon} ${trait.name}` : '';
-      }).filter(t => t).join(', ');
-      traitsHTML = `<div style="font-size: 11px; color: #cc9900; margin-bottom: 5px;">${traitNames}</div>`;
+      // Build traits display
+      let traitsHTML = '';
+      if (char.traits && char.traits.length > 0 && typeof TRAITS_DATA !== 'undefined') {
+        try {
+          const traitNames = char.traits.map(traitId => {
+            const trait = TRAITS_DATA[traitId];
+            return trait ? `${trait.icon} ${trait.name}` : '';
+          }).filter(t => t).join(', ');
+          if (traitNames) {
+            traitsHTML = `<div style="font-size: 11px; color: #cc9900; margin-bottom: 5px;">${traitNames}</div>`;
+          }
+        } catch (e) {
+          console.error('Error loading traits for character:', id, e);
+        }
+      }
+
+      const stats = char.startingStats || {};
+      charDiv.innerHTML = `
+        <img src="${char.icon}" style="width: 64px; height: 64px; image-rendering: pixelated; margin-bottom: 10px;">
+        <div style="font-weight: bold; margin-bottom: 5px;">${char.name}</div>
+        <div style="font-size: 11px; color: #aaa; margin-bottom: 8px;">${char.description || ''}</div>
+        ${traitsHTML}
+        <div style="font-size: 10px; color: #888;">
+          STR:${stats.strength || 0}
+          DEX:${stats.dexterity || 0}
+          INT:${stats.intelligence || 0}
+          CHA:${stats.charisma || 0}
+        </div>
+      `;
+
+      charDiv.onclick = () => {
+        document.querySelectorAll('.character-option').forEach(opt => {
+          opt.style.border = '3px solid #4a4440';
+        });
+        charDiv.style.border = '3px solid #ffcc66';
+        selectedCharacter = id;
+      };
+
+      charSelection.appendChild(charDiv);
     }
-
-    charDiv.innerHTML = `
-      <img src="${char.icon}" style="width: 64px; height: 64px; image-rendering: pixelated; margin-bottom: 10px;">
-      <div style="font-weight: bold; margin-bottom: 5px;">${char.name}</div>
-      <div style="font-size: 11px; color: #aaa; margin-bottom: 8px;">${char.description}</div>
-      ${traitsHTML}
-      <div style="font-size: 10px; color: #888;">
-        STR:${char.startingStats.strength}
-        DEX:${char.startingStats.dexterity}
-        INT:${char.startingStats.intelligence}
-        CHA:${char.startingStats.charisma}
-      </div>
-    `;
-
-    charDiv.onclick = () => {
-      document.querySelectorAll('.character-option').forEach(opt => {
-        opt.style.border = '3px solid #4a4440';
-      });
-      charDiv.style.border = '3px solid #ffcc66';
-      selectedCharacter = id;
-    };
-
-    charSelection.appendChild(charDiv);
+  } catch (e) {
+    console.error('Error populating character selection:', e);
+    alert('Error loading characters: ' + e.message);
   }
 
   document.getElementById('save-modal').style.display = 'flex';
