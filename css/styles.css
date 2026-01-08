@@ -958,7 +958,7 @@ text, path, line, g {
 /* ===== GOALS SECTION STYLES ===== */
 #goals-section {
   position: fixed;
-  left: 250px;
+  left: 270px;
   top: 60px;
   width: 320px;
   background: rgba(30, 30, 30, 0.95);
