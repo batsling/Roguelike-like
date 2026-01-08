@@ -5132,6 +5132,11 @@ function addCurse(curseToAdd) {
     updateActiveCursesList();
   }
 
+  // Trigger onCurseAdded effects for triggered items (like Vitality Orb)
+  if (typeof triggerOnCurseAdded === 'function') {
+    triggerOnCurseAdded();
+  }
+
   return true;
 }
 
@@ -5246,6 +5251,16 @@ function checkCurseDurations(trigger) {
     const trackerId = curseToRemove.id || curseToRemove.name;
     delete gameState.cursesTracker[trackerId];
     gameState.activeCurses.splice(cursesToRemove[i], 1);
+  }
+
+  // Trigger onCurseRemoved effects if any curses were removed
+  if (cursesToRemove.length > 0) {
+    // Trigger for each removed curse
+    for (let i = 0; i < cursesToRemove.length; i++) {
+      if (typeof triggerOnCurseRemoved === 'function') {
+        triggerOnCurseRemoved();
+      }
+    }
   }
 
   // Update display if any curses were removed
@@ -5525,6 +5540,12 @@ document.getElementById('removeSelectedCurse')?.addEventListener('click', () => 
   }
 
   const removed = gameState.activeCurses.splice(curseIndex, 1)[0];
+
+  // Trigger onCurseRemoved effects for triggered items (like Golden Beetle)
+  if (typeof triggerOnCurseRemoved === 'function') {
+    triggerOnCurseRemoved();
+  }
+
   updateActiveCursesList();
   if (typeof updateCursesDisplay === 'function') {
     updateCursesDisplay();

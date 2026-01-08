@@ -398,6 +398,50 @@ const ITEM_EFFECTS = {
     }
   },
 
+  "Golden Beetle": {
+    onAcquire: () => {
+      console.log('Acquired Golden Beetle - will trigger when curses are removed');
+    },
+    onCurseRemoved: () => {
+      // Grant one chest (item reward)
+      console.log('Golden Beetle: Curse removed, granting chest');
+
+      // Show notification
+      setTimeout(() => {
+        createNotification('Golden Beetle: Gained a Chest!', COLORS.RARE, '🪲');
+      }, 100);
+
+      // Grant an item reward
+      if (typeof offerItemReward === 'function') {
+        setTimeout(() => {
+          offerItemReward();
+        }, 500);
+      }
+    }
+  },
+
+  "Vitality Orb": {
+    onAcquire: () => {
+      console.log('Acquired Vitality Orb - will trigger when curses are obtained');
+    },
+    onCurseAdded: () => {
+      // Increase max health by 1 and heal by 1
+      console.log('Vitality Orb: Curse added, increasing max health');
+
+      const oldMaxHealth = maxHealth;
+      const result = StateMutator.modifyMaxHealth(1);
+
+      if (result.changed) {
+        console.log(`Vitality Orb: Max Health increased (${oldMaxHealth} → ${result.newMaxHealth})`);
+
+        // Show notification
+        setTimeout(() => {
+          createNotification('Vitality Orb: +1 Max Health!', COLORS.SUCCESS, '🔮');
+        }, 100);
+      }
+    }
+  },
+
   "Wand of Wishing": {
     uses: 1,
     canUse: () => {
@@ -775,6 +819,52 @@ function triggerOnEnemyDefeated() {
 }
 
 /**
+ * Trigger onCurseAdded effects for all items in inventory that have this trigger
+ * Call this function when the player obtains a new curse
+ */
+function triggerOnCurseAdded() {
+  if (!inventory || inventory.length === 0) {
+    return;
+  }
+
+  console.log('Triggering onCurseAdded effects...');
+
+  // Check each item in inventory for onCurseAdded trigger
+  inventory.forEach(item => {
+    if (!item || !item.name) return;
+
+    const itemEffects = ITEM_EFFECTS[item.name];
+    if (itemEffects && typeof itemEffects.onCurseAdded === 'function') {
+      console.log(`Triggering ${item.name} onCurseAdded effect`);
+      itemEffects.onCurseAdded();
+    }
+  });
+}
+
+/**
+ * Trigger onCurseRemoved effects for all items in inventory that have this trigger
+ * Call this function when the player removes a curse
+ */
+function triggerOnCurseRemoved() {
+  if (!inventory || inventory.length === 0) {
+    return;
+  }
+
+  console.log('Triggering onCurseRemoved effects...');
+
+  // Check each item in inventory for onCurseRemoved trigger
+  inventory.forEach(item => {
+    if (!item || !item.name) return;
+
+    const itemEffects = ITEM_EFFECTS[item.name];
+    if (itemEffects && typeof itemEffects.onCurseRemoved === 'function') {
+      console.log(`Triggering ${item.name} onCurseRemoved effect`);
+      itemEffects.onCurseRemoved();
+    }
+  });
+}
+
+/**
  * Show Wand of Wishing item selection UI
  * Displays all unlocked items in a collection-style grid with hover tooltips
  */
@@ -922,5 +1012,7 @@ window.selectedTeleport = selectedTeleport; // Selected teleport with filters
 window.teleportToRandomGame = teleportToRandomGame;
 window.teleportToRandomDeckbuilder = teleportToRandomDeckbuilder;
 window.triggerOnEnemyDefeated = triggerOnEnemyDefeated; // Trigger onEnemyDefeated effects
+window.triggerOnCurseAdded = triggerOnCurseAdded; // Trigger onCurseAdded effects
+window.triggerOnCurseRemoved = triggerOnCurseRemoved; // Trigger onCurseRemoved effects
 window.showWandOfWishingSelection = showWandOfWishingSelection; // Wand of Wishing UI
 window.ITEM_EFFECTS = ITEM_EFFECTS;

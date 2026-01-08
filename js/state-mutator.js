@@ -327,6 +327,11 @@ const StateMutator = {
       }
     }
 
+    // Trigger onCurseRemoved effects for triggered items (like Golden Beetle)
+    if (typeof triggerOnCurseRemoved === 'function') {
+      triggerOnCurseRemoved();
+    }
+
     return true;
   }
 };

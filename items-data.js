@@ -61,6 +61,16 @@ var ITEMS_DATA = [
   "unlocked": true
   },
   {
+    "name": "Golden Beetle",
+    "rarity": "uncommon",
+    "type": "Triggered",
+    "description": "Whenever you get rid of a curse, gain one Chest",
+    "image": "images/items/GoldenBeetle.png",
+    "game": "The Binding of Isaac",
+    "tags": [],
+    "unlocked": true
+  },
+  {
     "name": "Hollow Heart",
     "rarity": "common",
     "type": "Passive",
@@ -182,6 +192,16 @@ var ITEMS_DATA = [
     "game": "Slay the Spire",
     "tags": [],
   "unlocked": true
+  },
+  {
+    "name": "Vitality Orb",
+    "rarity": "uncommon",
+    "type": "Triggered",
+    "description": "Gain +1 Max Health whenever you obtain a curse",
+    "image": "images/items/VitalityOrb.png",
+    "game": "Slay the Spire",
+    "tags": [],
+    "unlocked": true
   },
   {
     "name": "Ventricle Razor",
