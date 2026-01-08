@@ -497,6 +497,7 @@ function updateHorizontalDisplay() {
     <div class="horizontal-character-card ${selectedCharacter === charKey ? 'selected' : ''}" data-char-key="${charKey}">
       <img src="${character.fullImage}" alt="${character.name}" class="horizontal-char-image">
       <h2 class="char-name">${character.name}</h2>
+      <p class="char-game" style="color: #aaa; font-size: 13px; font-style: italic; margin: 2px 0 8px 0;">From: ${character.game || 'Unknown'}</p>
       <p class="char-description">${character.description}</p>
       <div class="char-stats-section">
         <h3>Starting Stats</h3>
@@ -602,6 +603,7 @@ function showIconCharacterDetails(charKey) {
   content.innerHTML = `
     <img src="${character.fullImage}" alt="${character.name}" class="details-char-image">
     <h2 class="details-char-name">${character.name}</h2>
+    <p class="details-char-game" style="color: #aaa; font-size: 13px; font-style: italic; margin: 2px 0 10px 0; text-align: center;">From: ${character.game || 'Unknown'}</p>
     <p class="details-char-description">${character.description}</p>
     <div class="details-stats-section">
       <h3>Starting Stats</h3>

@@ -2,6 +2,7 @@
 var CHARACTERS_DATA = {
   "rodney": {
     "name": "Rodney",
+    "game": "Rogue",
     "icon": "images/characters/icon/rodney.png",
     "fullImage": "images/characters/full/rodney.png",
     "startingStats": {
@@ -21,6 +22,7 @@ var CHARACTERS_DATA = {
   },
   "isaac": {
     "name": "Isaac",
+    "game": "The Binding of Isaac",
     "icon": "images/characters/icon/isaac.png",
     "fullImage": "images/characters/full/isaac.png",
     "startingStats": {
@@ -40,6 +42,7 @@ var CHARACTERS_DATA = {
   },
   "zoe": {
     "name": "Zoe",
+    "game": "Haste",
     "icon": "images/characters/icon/zoe.png",
     "fullImage": "images/characters/full/zoe.png",
     "startingStats": {
