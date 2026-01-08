@@ -3750,10 +3750,10 @@ function showEscapeVisualization() {
   playerIcon.src = PLAYER_CHARACTERS[gameState.character].icon;
   playerIcon.style.cssText = `
     position: absolute;
-    max-width: 72px;
-    max-height: 72px;
-    min-width: 48px;
-    min-height: 48px;
+    max-width: 96px;
+    max-height: 96px;
+    min-width: 64px;
+    min-height: 64px;
     object-fit: contain;
     image-rendering: pixelated;
     transition: all 0.5s ease;

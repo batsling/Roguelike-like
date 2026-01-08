@@ -1066,13 +1066,13 @@ function advance(game, x, y, encounterType) {
     // Start from old position for animation
     playerIcon.style.cssText = `
       position: absolute;
-      top: ${startY - y - 55}px;
+      top: ${startY - y - 70}px;
       left: 50%;
       transform: translateX(-50%);
-      max-width: 56px;
-      max-height: 56px;
-      min-width: 40px;
-      min-height: 40px;
+      max-width: 80px;
+      max-height: 80px;
+      min-width: 56px;
+      min-height: 56px;
       object-fit: contain;
       image-rendering: pixelated;
       z-index: 100;
@@ -1083,7 +1083,7 @@ function advance(game, x, y, encounterType) {
 
     // Trigger animation after a brief delay
     setTimeout(() => {
-      playerIcon.style.top = '-55px';
+      playerIcon.style.top = '-70px';
       playerIcon.style.animation = 'playerPulse 2s infinite';
     }, 50);
   }
@@ -1400,13 +1400,13 @@ function renderGameState() {
         playerIcon.id = 'player-icon';
         playerIcon.style.cssText = `
           position: absolute;
-          top: -55px;
+          top: -70px;
           left: 50%;
           transform: translateX(-50%);
-          max-width: 56px;
-          max-height: 56px;
-          min-width: 40px;
-          min-height: 40px;
+          max-width: 80px;
+          max-height: 80px;
+          min-width: 56px;
+          min-height: 56px;
           object-fit: contain;
           image-rendering: pixelated;
           z-index: 100;

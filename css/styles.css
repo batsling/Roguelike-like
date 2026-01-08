@@ -766,7 +766,7 @@ text, path, line, g {
 }
 
 #game-stats .stat-item {
-  margin: 10px 0;
+  margin: 6px 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -774,11 +774,13 @@ text, path, line, g {
 
 #game-stats .stat-label {
   color: #b8a890;
+  font-size: 13px;
 }
 
 #game-stats .stat-value {
   font-weight: bold;
   color: #ffcc66;
+  font-size: 13px;
 }
 
 #game-stats .stat-value.health {
