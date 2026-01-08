@@ -41,7 +41,7 @@ function applyCombatOutcome(success) {
       updateTopBar();
     }
 
-    // Check for item rewards
+    // Check for chest rewards (items)
     if (currentEnemy.successReward.toLowerCase().includes('item')) {
       if (currentEnemy.successReward.toLowerCase().includes('common')) {
         giveRandomItem('common');

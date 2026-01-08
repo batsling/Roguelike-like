@@ -3170,7 +3170,7 @@ window.closeGameModal = function() {
   }
 };
 
-function showItemChoiceModal(onComplete) {
+function showItemChoiceModal(onComplete, chestType = 'normal') {
   if (items.length === 0) {
     // If no items, just spawn choices or call callback
     if (onComplete) {
@@ -3184,24 +3184,70 @@ function showItemChoiceModal(onComplete) {
   const choices = [];
   const maxAttempts = 100; // Prevent infinite loop
 
-  // Number of item choices = 2 + discovery stat
-  const numChoices = 2 + discovery;
+  // Determine base count and rarity filter based on chest type
+  let baseCount = 2; // default for normal chest
+  let rarityFilter = null; // null means any rarity
+  let chestTitle = '🎁 Chest';
+
+  switch(chestType) {
+    case 'small':
+      baseCount = 1;
+      chestTitle = '📦 Small Chest';
+      break;
+    case 'large':
+      baseCount = 3;
+      chestTitle = '🎁 Large Chest';
+      break;
+    case 'common':
+      rarityFilter = 'common';
+      chestTitle = '📦 Common Chest';
+      break;
+    case 'uncommon':
+      rarityFilter = 'uncommon';
+      chestTitle = '📦 Uncommon Chest';
+      break;
+    case 'rare':
+      rarityFilter = 'rare';
+      chestTitle = '🎁 Rare Chest';
+      break;
+    case 'legendary':
+      rarityFilter = 'legendary';
+      chestTitle = '✨ Legendary Chest';
+      break;
+    default:
+      chestTitle = '🎁 Chest';
+  }
+
+  // Number of item choices = baseCount + discovery stat
+  const numChoices = baseCount + discovery;
 
   for (let i = 0; i < numChoices; i++) {
     let attempts = 0;
     let selectedItem = null;
 
     while (attempts < maxAttempts) {
-      // Use luck-based rarity selection
-      const targetRarity = selectRandomRarity();
+      let targetRarity;
+
+      if (rarityFilter) {
+        // If chest has a rarity filter, use only that rarity
+        targetRarity = rarityFilter;
+      } else {
+        // Use luck-based rarity selection for normal chests
+        targetRarity = selectRandomRarity();
+      }
 
       const rarityItems = items.filter(item => item.rarity === targetRarity);
       if (rarityItems.length > 0) {
         const randomIndex = Math.floor(Math.random() * rarityItems.length);
         selectedItem = rarityItems[randomIndex];
-      } else {
+      } else if (!rarityFilter) {
+        // Fallback to any item if no rarity filter (normal chest)
         const randomIndex = Math.floor(Math.random() * items.length);
         selectedItem = items[randomIndex];
+      } else {
+        // If rarity filter is set but no items of that rarity exist, break
+        console.warn(`No items of rarity ${rarityFilter} available`);
+        break;
       }
 
       // Check if this item is already in choices
@@ -3282,7 +3328,7 @@ function showItemChoiceModal(onComplete) {
 
   createGameModal(`
     <div>
-      <h2 style="color: #f39c12; margin-top: 0; text-align: center;">🎁 Choose Your Reward!</h2>
+      <h2 style="color: #f39c12; margin-top: 0; text-align: center;">${chestTitle}</h2>
       <p style="text-align: center; color: #aaa;">Select one item to add to your inventory</p>
       ${itemsHTML}
       ${rerollButtonHTML}
@@ -3325,10 +3371,10 @@ function showItemChoiceModal(onComplete) {
   const itemRerollBtn = document.getElementById('item-reroll-btn');
   if (itemRerollBtn && reroll > 0) {
     itemRerollBtn.onclick = () => {
-      if (confirm('Reroll item choices?')) {
+      if (confirm('Reroll chest contents?')) {
         reroll--;
         closeGameModal();
-        setTimeout(() => showItemChoiceModal(onComplete), 100);
+        setTimeout(() => showItemChoiceModal(onComplete, chestType), 100);
       }
     };
   }
@@ -3353,6 +3399,17 @@ function showItemChoiceModal(onComplete) {
       }
     };
   }
+}
+
+// ===== CHEST SYSTEM ALIAS =====
+// Alias function with clearer naming for "chest" system
+function offerChest(chestType = 'normal', onComplete) {
+  showItemChoiceModal(onComplete, chestType);
+}
+
+// Convenience function to offer a chest without callback (for item effects like Golden Beetle)
+function offerItemReward(chestType = 'normal') {
+  showItemChoiceModal(null, chestType);
 }
 
 // ===== ESCAPE PHASE =====
@@ -6080,6 +6137,8 @@ window.showEventModal = showEventModal;
 window.showShopModal = showShopModal;
 window.handleEventChoice = handleEventChoice;
 window.showItemChoiceModal = showItemChoiceModal;
+window.offerChest = offerChest; // Modern "chest" terminology
+window.offerItemReward = offerItemReward; // For backward compatibility and item effects
 window.markGameFinished = markGameFinished;
 window.checkCurseDurations = checkCurseDurations;
 window.addGameStatus = addGameStatus;

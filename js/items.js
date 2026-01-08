@@ -403,7 +403,7 @@ const ITEM_EFFECTS = {
       console.log('Acquired Golden Beetle - will trigger when curses are removed');
     },
     onCurseRemoved: () => {
-      // Grant one chest (item reward)
+      // Grant one chest
       console.log('Golden Beetle: Curse removed, granting chest');
 
       // Show notification
@@ -411,10 +411,10 @@ const ITEM_EFFECTS = {
         createNotification('Golden Beetle: Gained a Chest!', COLORS.RARE, '🪲');
       }, 100);
 
-      // Grant an item reward
+      // Grant a chest (normal type by default)
       if (typeof offerItemReward === 'function') {
         setTimeout(() => {
-          offerItemReward();
+          offerItemReward('normal');
         }, 500);
       }
     }
