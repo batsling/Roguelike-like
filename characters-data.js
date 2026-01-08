@@ -28,7 +28,7 @@ var CHARACTERS_DATA = {
       "dexterity": 0,
       "intelligence": 0,
       "charisma": 0,
-      "reroll": 0,
+      "reroll": 1,
       "dash": 0,
       "skip": 0,
       "discovery": 0,
