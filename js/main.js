@@ -404,7 +404,7 @@ document.getElementById('new-game-btn')?.addEventListener('click', () => {
 
       const stats = char.startingStats || {};
       charDiv.innerHTML = `
-        <img src="${char.icon}" style="max-width: 80px; max-height: 80px; min-width: 64px; min-height: 64px; object-fit: contain; image-rendering: pixelated; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto;">
+        <img src="${char.fullImage || char.icon}" style="max-width: 80px; max-height: 80px; min-width: 64px; min-height: 64px; object-fit: contain; image-rendering: pixelated; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto;">
         <div style="font-weight: bold; margin-bottom: 5px;">${char.name}</div>
         <div style="font-size: 11px; color: #aaa; margin-bottom: 8px;">${char.description || ''}</div>
         ${traitsHTML}
@@ -5052,6 +5052,84 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
   };
 }
 
+// ===== PERFECT PRECISION VERIFICATION SYSTEM =====
+
+/**
+ * Show perfect game verification modal for Perfect Precision trait
+ * @param {Function} onComplete - Callback to run after verification
+ */
+function showPerfectGameVerificationModal(onComplete) {
+  // Check if player has the Perfect Precision trait
+  if (!gameState || !gameState.traits || !gameState.traits.includes('perfect_precision')) {
+    if (onComplete) onComplete();
+    return;
+  }
+
+  // Show verification modal
+  const modalHTML = `
+    <div style="text-align: center;">
+      <h2 style="color: #00bfff; margin-top: 0; font-size: 24px;">🎯 Perfect Precision</h2>
+      <p style="color: #aaa; font-size: 14px; margin: 10px 0;">Did you beat this game without losing a run once?</p>
+      <p style="color: #888; font-size: 12px; margin: 10px 0; font-style: italic;">
+        (Gain +1 Dash if yes)
+      </p>
+      <div style="margin-top: 20px; display: flex; gap: 15px; justify-content: center;">
+        <button id="perfect-yes-btn" style="
+          padding: 12px 24px;
+          background: #4CAF50;
+          border: 2px solid #66bb6a;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+        ">✓ Yes, Perfect Run!</button>
+        <button id="perfect-no-btn" style="
+          padding: 12px 24px;
+          background: #666;
+          border: 2px solid #888;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+        ">✗ No</button>
+      </div>
+    </div>
+  `;
+
+  createGameModal(modalHTML);
+
+  // Handle Yes button
+  document.getElementById('perfect-yes-btn').onclick = () => {
+    // Grant +1 Dash
+    dash += 1;
+    gameState.dash = dash;
+    if (typeof updateTopBar === 'function') {
+      updateTopBar();
+    }
+
+    console.log('Perfect Precision activated: +1 Dash');
+
+    // Show notification
+    setTimeout(() => {
+      if (typeof createNotification === 'function') {
+        createNotification('Perfect Precision: +1 Dash!', '#00bfff', '🎯');
+      }
+    }, 100);
+
+    closeGameModal();
+    if (onComplete) onComplete();
+  };
+
+  // Handle No button
+  document.getElementById('perfect-no-btn').onclick = () => {
+    console.log('Perfect Precision not activated (player did not perfect the game)');
+    closeGameModal();
+    if (onComplete) onComplete();
+  };
+}
+
 /**
  * Show death screen after curse damage
  */
@@ -6164,6 +6242,7 @@ window.updateActiveCursesList = updateActiveCursesList;
 window.addCurse = addCurse;
 window.getCurseMaxUses = getCurseMaxUses;
 window.getGamesWithStatus = getGamesWithStatus;
+window.showPerfectGameVerificationModal = showPerfectGameVerificationModal;
 // Event handlers
 window.handleStoneGolemResult = handleStoneGolemResult;
 window.triggerCombat = triggerCombat;
@@ -6198,10 +6277,10 @@ function updateCharacterUI() {
   const character = PLAYER_CHARACTERS[gameState.character];
   if (!character) return;
 
-  // Update character icon
+  // Update character icon (use fullImage for UI display)
   const iconEl = document.getElementById('character-icon');
   if (iconEl) {
-    iconEl.src = character.icon;
+    iconEl.src = character.fullImage || character.icon;
     iconEl.alt = character.name;
   }
 

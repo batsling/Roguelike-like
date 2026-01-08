@@ -1175,40 +1175,79 @@ function showFinish(node, isAmuletGame = false) {
         startEscapePhase();
       }
     } else {
-      // Show curse verification FIRST (before marking game finished), then mark finished, then item choice
+      // Show curse verification FIRST, then Perfect Precision verification, then mark finished, then item choice
       if (typeof showCurseVerificationModal === 'function') {
         showCurseVerificationModal(() => {
-          // After verification, mark game as finished
-          if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
-            markGameFinished(gameState.currentGame);
-          }
+          // After curse verification, check for Perfect Precision trait
+          if (typeof showPerfectGameVerificationModal === 'function') {
+            showPerfectGameVerificationModal(() => {
+              // After Perfect Precision verification, mark game as finished
+              if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
+                markGameFinished(gameState.currentGame);
+              }
 
-          // Check if we're in the middle of the Colosseum event
-          if (gameState.colosseumState && gameState.colosseumState.stage === 'first_fight') {
-            // Show item choice first, then Colosseum choices
-            if (typeof showItemChoiceModal === 'function') {
-              showItemChoiceModal(() => {
-                // After item selection, update stage and show Colosseum choices
-                gameState.colosseumState.stage = 'choice';
-                if (typeof showColosseumChoices === 'function') {
-                  showColosseumChoices();
+              // Check if we're in the middle of the Colosseum event
+              if (gameState.colosseumState && gameState.colosseumState.stage === 'first_fight') {
+                // Show item choice first, then Colosseum choices
+                if (typeof showItemChoiceModal === 'function') {
+                  showItemChoiceModal(() => {
+                    // After item selection, update stage and show Colosseum choices
+                    gameState.colosseumState.stage = 'choice';
+                    if (typeof showColosseumChoices === 'function') {
+                      showColosseumChoices();
+                    }
+                  });
                 }
-              });
-            }
-          } else if (gameState.colosseumState && gameState.colosseumState.stage === 'champion') {
-            // Show item choice first, then ask about attempts
-            if (typeof showItemChoiceModal === 'function') {
-              showItemChoiceModal(() => {
-                // After item selection, ask if it took 3 or less attempts
-                if (typeof handleChampionResult === 'function') {
-                  handleChampionResult();
+              } else if (gameState.colosseumState && gameState.colosseumState.stage === 'champion') {
+                // Show item choice first, then ask about attempts
+                if (typeof showItemChoiceModal === 'function') {
+                  showItemChoiceModal(() => {
+                    // After item selection, ask if it took 3 or less attempts
+                    if (typeof handleChampionResult === 'function') {
+                      handleChampionResult();
+                    }
+                  });
                 }
-              });
-            }
+              } else {
+                // Normal flow - show item choice
+                if (typeof showItemChoiceModal === 'function') {
+                  showItemChoiceModal();
+                }
+              }
+            });
           } else {
-            // Normal flow - show item choice
-            if (typeof showItemChoiceModal === 'function') {
-              showItemChoiceModal();
+            // Fallback if Perfect Precision verification not available
+            if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
+              markGameFinished(gameState.currentGame);
+            }
+
+            // Check if we're in the middle of the Colosseum event
+            if (gameState.colosseumState && gameState.colosseumState.stage === 'first_fight') {
+              // Show item choice first, then Colosseum choices
+              if (typeof showItemChoiceModal === 'function') {
+                showItemChoiceModal(() => {
+                  // After item selection, update stage and show Colosseum choices
+                  gameState.colosseumState.stage = 'choice';
+                  if (typeof showColosseumChoices === 'function') {
+                    showColosseumChoices();
+                  }
+                });
+              }
+            } else if (gameState.colosseumState && gameState.colosseumState.stage === 'champion') {
+              // Show item choice first, then ask about attempts
+              if (typeof showItemChoiceModal === 'function') {
+                showItemChoiceModal(() => {
+                  // After item selection, ask if it took 3 or less attempts
+                  if (typeof handleChampionResult === 'function') {
+                    handleChampionResult();
+                  }
+                });
+              }
+            } else {
+              // Normal flow - show item choice
+              if (typeof showItemChoiceModal === 'function') {
+                showItemChoiceModal();
+              }
             }
           }
         });

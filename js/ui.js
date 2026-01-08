@@ -475,7 +475,7 @@ function updateGameStats() {
   const characterName = document.getElementById('character-name');
   if (gameState && gameState.character && PLAYER_CHARACTERS[gameState.character]) {
     const character = PLAYER_CHARACTERS[gameState.character];
-    if (characterIcon) characterIcon.src = character.icon;
+    if (characterIcon) characterIcon.src = character.fullImage || character.icon;
     if (characterName) characterName.textContent = character.name;
   }
 
