@@ -54,7 +54,7 @@ var CHARACTERS_DATA = {
       "fov": 0,
       "luck": 0
     },
-    "traits": ["perfect_precision"],
+    "traits": ["precision_landing"],
     "description": "Express Delivery: Arrives with haste, before the world ends."
   }
 };
@@ -71,8 +71,8 @@ var TRAITS_DATA = {
     "description": "Every time you choose a game whose encounter isn't enemy combat, heal +1",
     "icon": "💚"
   },
-  "perfect_precision": {
-    "name": "Perfect Precision",
+  "precision_landing": {
+    "name": "Precision Landing",
     "description": "Every time you beat a game without losing a run, gain +1 Dash",
     "icon": "🎯"
   }

@@ -332,11 +332,12 @@
               <div id="horizontal-character-display" style="
                 flex: 1;
                 text-align: center;
-                padding: 20px;
+                padding: 15px;
                 background: #2a2a2a;
                 border: 3px solid #555;
                 border-radius: 12px;
-                min-height: 400px;
+                max-height: 500px;
+                overflow-y: auto;
               ">
                 <!-- Character will be displayed here -->
               </div>
@@ -375,13 +376,12 @@
           </div>
 
           <!-- Icon View Hover Modal -->
-          <div id="icon-hover-modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; pointer-events: none;">
+          <div id="icon-hover-modal" style="display: none; position: fixed; top: 20px; right: 20px; z-index: 10001; pointer-events: none; max-width: 350px;">
             <div style="
               background: #1a1a1a;
               border: 3px solid gold;
               border-radius: 12px;
-              padding: 20px;
-              max-width: 400px;
+              padding: 15px;
               box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
             " id="icon-hover-content">
               <!-- Hover content will be populated here -->

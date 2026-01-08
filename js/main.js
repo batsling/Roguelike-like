@@ -5230,15 +5230,15 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
   };
 }
 
-// ===== PERFECT PRECISION VERIFICATION SYSTEM =====
+// ===== PRECISION LANDING VERIFICATION SYSTEM =====
 
 /**
- * Show perfect game verification modal for Perfect Precision trait
+ * Show perfect game verification modal for Precision Landing trait
  * @param {Function} onComplete - Callback to run after verification
  */
 function showPerfectGameVerificationModal(onComplete) {
-  // Check if player has the Perfect Precision trait
-  if (!gameState || !gameState.traits || !gameState.traits.includes('perfect_precision')) {
+  // Check if player has the Precision Landing trait
+  if (!gameState || !gameState.traits || !gameState.traits.includes('precision_landing')) {
     if (onComplete) onComplete();
     return;
   }
@@ -5246,7 +5246,7 @@ function showPerfectGameVerificationModal(onComplete) {
   // Show verification modal
   const modalHTML = `
     <div style="text-align: center;">
-      <h2 style="color: #00bfff; margin-top: 0; font-size: 24px;">🎯 Perfect Precision</h2>
+      <h2 style="color: #00bfff; margin-top: 0; font-size: 24px;">🎯 Precision Landing</h2>
       <p style="color: #aaa; font-size: 14px; margin: 10px 0;">Did you beat this game without losing a run once?</p>
       <p style="color: #888; font-size: 12px; margin: 10px 0; font-style: italic;">
         (Gain +1 Dash if yes)
@@ -5287,12 +5287,12 @@ function showPerfectGameVerificationModal(onComplete) {
       updateTopBar();
     }
 
-    console.log('Perfect Precision activated: +1 Dash');
+    console.log('Precision Landing activated: +1 Dash');
 
     // Show notification
     setTimeout(() => {
       if (typeof createNotification === 'function') {
-        createNotification('Perfect Precision: +1 Dash!', '#00bfff', '🎯');
+        createNotification('Precision Landing: +1 Dash!', '#00bfff', '🎯');
       }
     }, 100);
 
@@ -5302,7 +5302,7 @@ function showPerfectGameVerificationModal(onComplete) {
 
   // Handle No button
   document.getElementById('perfect-no-btn').onclick = () => {
-    console.log('Perfect Precision not activated (player did not perfect the game)');
+    console.log('Precision Landing not activated (player did not perfect the game)');
     closeGameModal();
     if (onComplete) onComplete();
   };

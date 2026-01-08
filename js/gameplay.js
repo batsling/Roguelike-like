@@ -1175,13 +1175,13 @@ function showFinish(node, isAmuletGame = false) {
         startEscapePhase();
       }
     } else {
-      // Show curse verification FIRST, then Perfect Precision verification, then mark finished, then item choice
+      // Show curse verification FIRST, then Precision Landing verification, then mark finished, then item choice
       if (typeof showCurseVerificationModal === 'function') {
         showCurseVerificationModal(() => {
-          // After curse verification, check for Perfect Precision trait
+          // After curse verification, check for Precision Landing trait
           if (typeof showPerfectGameVerificationModal === 'function') {
             showPerfectGameVerificationModal(() => {
-              // After Perfect Precision verification, mark game as finished
+              // After Precision Landing verification, mark game as finished
               if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
                 markGameFinished(gameState.currentGame);
               }
@@ -1216,7 +1216,7 @@ function showFinish(node, isAmuletGame = false) {
               }
             });
           } else {
-            // Fallback if Perfect Precision verification not available
+            // Fallback if Precision Landing verification not available
             if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
               markGameFinished(gameState.currentGame);
             }
