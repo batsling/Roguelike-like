@@ -1368,6 +1368,9 @@ text, path, line, g {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  width: 100%;
+  max-width: 90px;
+  margin: 0 auto;
 }
 
 .icon-char-card:hover {
