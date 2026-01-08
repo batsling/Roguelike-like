@@ -354,6 +354,10 @@ document.getElementById('clearAllData')?.addEventListener('click', () => {
 
 // ===== GAME STATE MANAGEMENT =====
 
+// Character selection state
+let currentCharacterIndex = 0;
+let characterViewMode = 'horizontal'; // 'horizontal' or 'icon'
+
 document.getElementById('new-game-btn')?.addEventListener('click', () => {
   console.log('=== START RUN CLICKED ===');
   console.log('games.length:', games.length);
@@ -364,75 +368,249 @@ document.getElementById('new-game-btn')?.addEventListener('click', () => {
     return;
   }
 
-  // Populate character selection
-  const charSelection = document.getElementById('character-selection');
-  charSelection.innerHTML = '';
+  // Reset character selection state
+  currentCharacterIndex = 0;
+  selectedCharacter = null;
 
-  console.log('Populating character selection...');
-  try {
-    for (const [id, char] of Object.entries(PLAYER_CHARACTERS)) {
-      console.log(`  - Adding character: ${id} (${char.name})`);
+  // Populate both views
+  populateHorizontalCharacterView();
+  populateIconCharacterView();
 
-      const charDiv = document.createElement('div');
-      charDiv.className = 'character-option';
-      charDiv.dataset.charId = id;
-      charDiv.style.cssText = `
-        padding: 15px;
-        background: #3d3d3d;
-        border: 3px solid #555;
-        border-radius: 8px;
-        cursor: pointer;
-        text-align: center;
-        transition: all 0.2s;
-      `;
-
-      // Build traits display
-      let traitsHTML = '';
-      if (char.traits && char.traits.length > 0 && typeof TRAITS_DATA !== 'undefined') {
-        try {
-          const traitNames = char.traits.map(traitId => {
-            const trait = TRAITS_DATA[traitId];
-            return trait ? `${trait.icon} ${trait.name}` : '';
-          }).filter(t => t).join(', ');
-          if (traitNames) {
-            traitsHTML = `<div style="font-size: 11px; color: #cc9900; margin-bottom: 5px;">${traitNames}</div>`;
-          }
-        } catch (e) {
-          console.error('Error loading traits for character:', id, e);
-        }
-      }
-
-      const stats = char.startingStats || {};
-      charDiv.innerHTML = `
-        <img src="${char.fullImage || char.icon}" style="max-width: 80px; max-height: 80px; min-width: 64px; min-height: 64px; object-fit: contain; image-rendering: pixelated; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto;">
-        <div style="font-weight: bold; margin-bottom: 5px;">${char.name}</div>
-        <div style="font-size: 11px; color: #aaa; margin-bottom: 8px;">${char.description || ''}</div>
-        ${traitsHTML}
-        <div style="font-size: 10px; color: #888;">
-          STR:${stats.strength || 0}
-          DEX:${stats.dexterity || 0}
-          INT:${stats.intelligence || 0}
-          CHA:${stats.charisma || 0}
-        </div>
-      `;
-
-      charDiv.onclick = () => {
-        document.querySelectorAll('.character-option').forEach(opt => {
-          opt.style.border = '3px solid #4a4440';
-        });
-        charDiv.style.border = '3px solid #ffcc66';
-        selectedCharacter = id;
-      };
-
-      charSelection.appendChild(charDiv);
-    }
-  } catch (e) {
-    console.error('Error populating character selection:', e);
-    alert('Error loading characters: ' + e.message);
-  }
+  // Setup view toggle buttons
+  setupCharacterViewToggle();
 
   document.getElementById('save-modal').style.display = 'flex';
 });
+
+// ===== CHARACTER SELECTION FUNCTIONS =====
+
+function setupCharacterViewToggle() {
+  const horizontalBtn = document.getElementById('horizontal-view-btn');
+  const iconBtn = document.getElementById('icon-view-btn');
+  const horizontalView = document.getElementById('horizontal-character-view');
+  const iconView = document.getElementById('icon-character-view');
+
+  if (!horizontalBtn || !iconBtn || !horizontalView || !iconView) return;
+
+  horizontalBtn.addEventListener('click', () => {
+    characterViewMode = 'horizontal';
+    horizontalBtn.classList.add('active');
+    iconBtn.classList.remove('active');
+    horizontalView.style.display = 'flex';
+    iconView.style.display = 'none';
+  });
+
+  iconBtn.addEventListener('click', () => {
+    characterViewMode = 'icon';
+    iconBtn.classList.add('active');
+    horizontalBtn.classList.remove('active');
+    iconView.style.display = 'block';
+    horizontalView.style.display = 'none';
+  });
+}
+
+function populateHorizontalCharacterView() {
+  const characterKeys = Object.keys(PLAYER_CHARACTERS);
+
+  // Setup prev/next buttons
+  const prevBtn = document.getElementById('prev-char-btn');
+  const nextBtn = document.getElementById('next-char-btn');
+
+  if (prevBtn) {
+    prevBtn.onclick = () => {
+      currentCharacterIndex = (currentCharacterIndex - 1 + characterKeys.length) % characterKeys.length;
+      updateHorizontalDisplay();
+    };
+  }
+
+  if (nextBtn) {
+    nextBtn.onclick = () => {
+      currentCharacterIndex = (currentCharacterIndex + 1) % characterKeys.length;
+      updateHorizontalDisplay();
+    };
+  }
+
+  // Setup pagination dots
+  const dotsContainer = document.getElementById('character-dots');
+  if (dotsContainer) {
+    dotsContainer.innerHTML = characterKeys.map((_, index) =>
+      `<span class="char-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`
+    ).join('');
+
+    // Add click handlers to dots
+    dotsContainer.querySelectorAll('.char-dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        currentCharacterIndex = parseInt(dot.dataset.index);
+        updateHorizontalDisplay();
+      });
+    });
+  }
+
+  // Display the first character
+  updateHorizontalDisplay();
+}
+
+function updateHorizontalDisplay() {
+  const characterKeys = Object.keys(PLAYER_CHARACTERS);
+  const charKey = characterKeys[currentCharacterIndex];
+  const character = PLAYER_CHARACTERS[charKey];
+
+  const displayContainer = document.getElementById('horizontal-character-display');
+  if (!displayContainer || !character) return;
+
+  // Build traits HTML
+  const traitsHTML = character.traits.map(traitId => {
+    const trait = TRAITS_DATA[traitId];
+    if (!trait) return '';
+    return `
+      <div class="trait-box">
+        <span class="trait-icon">${trait.icon}</span>
+        <div class="trait-info">
+          <div class="trait-name">${trait.name}</div>
+          <div class="trait-description">${trait.description}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Build stats HTML
+  const statsHTML = Object.entries(character.startingStats)
+    .filter(([_, value]) => value > 0)
+    .map(([stat, value]) => `
+      <div class="stat-item">
+        <span class="stat-name">${stat.charAt(0).toUpperCase() + stat.slice(1)}:</span>
+        <span class="stat-value">+${value}</span>
+      </div>
+    `).join('');
+
+  displayContainer.innerHTML = `
+    <div class="horizontal-character-card ${selectedCharacter === charKey ? 'selected' : ''}" data-char-key="${charKey}">
+      <img src="${character.fullImage}" alt="${character.name}" class="horizontal-char-image">
+      <h2 class="char-name">${character.name}</h2>
+      <p class="char-description">${character.description}</p>
+      <div class="char-stats-section">
+        <h3>Starting Stats</h3>
+        <div class="char-stats-grid">${statsHTML || '<div class="stat-item">No stat bonuses</div>'}</div>
+      </div>
+      <div class="char-traits-section">
+        <h3>Traits</h3>
+        ${traitsHTML || '<div>No traits</div>'}
+      </div>
+    </div>
+  `;
+
+  // Add click handler for selection
+  const card = displayContainer.querySelector('.horizontal-character-card');
+  if (card) {
+    card.addEventListener('click', () => selectCharacterInHorizontalView(charKey));
+  }
+
+  // Update pagination dots
+  const dots = document.querySelectorAll('.char-dot');
+  dots.forEach((dot, index) => {
+    dot.classList.toggle('active', index === currentCharacterIndex);
+  });
+}
+
+function selectCharacterInHorizontalView(charKey) {
+  selectedCharacter = charKey;
+
+  // Update visual selection
+  const card = document.querySelector('.horizontal-character-card');
+  if (card) {
+    card.classList.add('selected');
+  }
+
+  console.log('Character selected:', charKey);
+}
+
+function populateIconCharacterView() {
+  const characterKeys = Object.keys(PLAYER_CHARACTERS);
+  const gridContainer = document.getElementById('icon-character-grid');
+
+  if (!gridContainer) return;
+
+  gridContainer.innerHTML = characterKeys.map(charKey => {
+    const character = PLAYER_CHARACTERS[charKey];
+    return `
+      <div class="icon-char-card ${selectedCharacter === charKey ? 'selected' : ''}" data-char-key="${charKey}">
+        <img src="${character.icon}" alt="${character.name}">
+        <div class="icon-char-name">${character.name}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Add event listeners for hover and click
+  gridContainer.querySelectorAll('.icon-char-card').forEach(card => {
+    const charKey = card.dataset.charKey;
+
+    // Click to select
+    card.addEventListener('click', () => {
+      selectedCharacter = charKey;
+
+      // Update visual selection
+      gridContainer.querySelectorAll('.icon-char-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+
+      console.log('Character selected:', charKey);
+    });
+
+    // Hover to show details
+    card.addEventListener('mouseenter', () => showIconHoverModal(charKey));
+    card.addEventListener('mouseleave', hideIconHoverModal);
+  });
+}
+
+function showIconHoverModal(charKey) {
+  const character = PLAYER_CHARACTERS[charKey];
+  const modal = document.getElementById('icon-hover-modal');
+  const content = document.getElementById('icon-hover-content');
+
+  if (!modal || !content || !character) return;
+
+  // Build traits HTML
+  const traitsHTML = character.traits.map(traitId => {
+    const trait = TRAITS_DATA[traitId];
+    if (!trait) return '';
+    return `
+      <div class="trait-box-small">
+        <span class="trait-icon">${trait.icon}</span>
+        <div class="trait-info">
+          <div class="trait-name">${trait.name}</div>
+          <div class="trait-description">${trait.description}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Build stats HTML
+  const statsHTML = Object.entries(character.startingStats)
+    .filter(([_, value]) => value > 0)
+    .map(([stat, value]) => `
+      <span class="stat-badge">${stat.charAt(0).toUpperCase() + stat.slice(1)}: +${value}</span>
+    `).join('');
+
+  content.innerHTML = `
+    <img src="${character.fullImage}" alt="${character.name}" class="hover-char-image">
+    <h3>${character.name}</h3>
+    <p class="hover-char-description">${character.description}</p>
+    <div class="hover-stats">
+      ${statsHTML || '<span class="stat-badge">No stat bonuses</span>'}
+    </div>
+    <div class="hover-traits">
+      ${traitsHTML || '<div>No traits</div>'}
+    </div>
+  `;
+
+  modal.style.display = 'block';
+}
+
+function hideIconHoverModal() {
+  const modal = document.getElementById('icon-hover-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
 
 document.getElementById('cancel-save')?.addEventListener('click', () => {
   document.getElementById('save-modal').style.display = 'none';

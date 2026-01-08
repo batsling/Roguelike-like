@@ -290,8 +290,102 @@
           <h3 style="margin-top: 0; color: gold; text-align: center;">Start New Run</h3>
 
           <h4 style="color: #aaa; margin: 20px 0 10px 0;">Choose Your Character</h4>
-          <div id="character-selection" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-            <!-- Characters will be populated here -->
+
+          <!-- View Mode Toggle -->
+          <div id="character-view-toggle" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
+            <button id="horizontal-view-btn" class="view-toggle-btn active" style="
+              padding: 8px 20px;
+              background: #4CAF50;
+              border: 2px solid #66bb6a;
+              border-radius: 6px;
+              color: white;
+              cursor: pointer;
+              font-weight: bold;
+              transition: all 0.2s;
+            ">📜 Horizontal View</button>
+            <button id="icon-view-btn" class="view-toggle-btn" style="
+              padding: 8px 20px;
+              background: #555;
+              border: 2px solid #666;
+              border-radius: 6px;
+              color: white;
+              cursor: pointer;
+              font-weight: bold;
+              transition: all 0.2s;
+            ">🎭 Icon View</button>
+          </div>
+
+          <!-- Horizontal View Container -->
+          <div id="horizontal-character-view" style="display: block; margin-bottom: 20px;">
+            <div style="position: relative; display: flex; align-items: center; justify-content: center; gap: 10px;">
+              <button id="prev-char-btn" style="
+                padding: 10px 15px;
+                background: #555;
+                border: 2px solid #666;
+                border-radius: 6px;
+                color: white;
+                cursor: pointer;
+                font-size: 20px;
+                font-weight: bold;
+              ">◀</button>
+
+              <div id="horizontal-character-display" style="
+                flex: 1;
+                text-align: center;
+                padding: 20px;
+                background: #2a2a2a;
+                border: 3px solid #555;
+                border-radius: 12px;
+                min-height: 400px;
+              ">
+                <!-- Character will be displayed here -->
+              </div>
+
+              <button id="next-char-btn" style="
+                padding: 10px 15px;
+                background: #555;
+                border: 2px solid #666;
+                border-radius: 6px;
+                color: white;
+                cursor: pointer;
+                font-size: 20px;
+                font-weight: bold;
+              ">▶</button>
+            </div>
+
+            <!-- Pagination Dots -->
+            <div id="character-dots" style="display: flex; justify-content: center; gap: 8px; margin-top: 15px;">
+              <!-- Dots will be added here -->
+            </div>
+          </div>
+
+          <!-- Icon View Container -->
+          <div id="icon-character-view" style="display: none; margin-bottom: 20px;">
+            <div id="icon-character-grid" style="
+              display: grid;
+              grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+              gap: 15px;
+              padding: 15px;
+              background: #2a2a2a;
+              border: 3px solid #555;
+              border-radius: 12px;
+            ">
+              <!-- Character icons will be populated here -->
+            </div>
+          </div>
+
+          <!-- Icon View Hover Modal -->
+          <div id="icon-hover-modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; pointer-events: none;">
+            <div style="
+              background: #1a1a1a;
+              border: 3px solid gold;
+              border-radius: 12px;
+              padding: 20px;
+              max-width: 400px;
+              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+            " id="icon-hover-content">
+              <!-- Hover content will be populated here -->
+            </div>
           </div>
 
           <h4 style="color: #aaa; margin: 20px 0 10px 0;">Name This Run</h4>
