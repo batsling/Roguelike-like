@@ -1233,8 +1233,8 @@ text, path, line, g {
 }
 
 .horizontal-char-image {
-  width: 180px;
-  height: 180px;
+  width: 220px;
+  height: 220px;
   object-fit: contain;
   border-radius: 8px;
   margin-bottom: 10px;
@@ -1244,31 +1244,31 @@ text, path, line, g {
 
 .char-name {
   color: gold;
-  margin: 8px 0;
-  font-size: 24px;
+  margin: 6px 0;
+  font-size: 22px;
 }
 
 .char-description {
   color: #aaa;
   font-style: italic;
-  margin: 8px 0 12px 0;
-  line-height: 1.3;
-  font-size: 14px;
+  margin: 6px 0 10px 0;
+  line-height: 1.25;
+  font-size: 12px;
 }
 
 .char-stats-section,
 .char-traits-section {
-  margin: 12px 0;
+  margin: 10px 0;
   text-align: left;
 }
 
 .char-stats-section h3,
 .char-traits-section h3 {
   color: #4CAF50;
-  margin-bottom: 8px;
-  font-size: 16px;
+  margin-bottom: 6px;
+  font-size: 14px;
   border-bottom: 2px solid #444;
-  padding-bottom: 4px;
+  padding-bottom: 3px;
 }
 
 .char-stats-grid {
@@ -1300,16 +1300,16 @@ text, path, line, g {
 .trait-box {
   background: #1a1a1a;
   border: 2px solid #555;
-  border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 8px;
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 6px;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
 
 .trait-icon {
-  font-size: 28px;
+  font-size: 24px;
   flex-shrink: 0;
 }
 
@@ -1320,13 +1320,13 @@ text, path, line, g {
 .trait-name {
   color: gold;
   font-weight: bold;
-  font-size: 14px;
-  margin-bottom: 3px;
+  font-size: 13px;
+  margin-bottom: 2px;
 }
 
 .trait-description {
   color: #ccc;
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.3;
 }
 
@@ -1472,4 +1472,77 @@ text, path, line, g {
 #prev-char-btn:active,
 #next-char-btn:active {
   transform: scale(0.95);
+}
+
+/* ===== ICON VIEW CHARACTER DETAILS PANEL ===== */
+
+.details-char-image {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+  border-radius: 8px;
+  margin: 0 auto 15px auto;
+  background: #1a1a1a;
+  border: 3px solid gold;
+  display: block;
+}
+
+.details-char-name {
+  color: gold;
+  margin: 10px 0;
+  font-size: 24px;
+  text-align: center;
+}
+
+.details-char-description {
+  color: #aaa;
+  font-style: italic;
+  margin: 10px 0 15px 0;
+  line-height: 1.4;
+  font-size: 14px;
+  text-align: center;
+}
+
+.details-stats-section,
+.details-traits-section {
+  margin: 20px 0;
+}
+
+.details-stats-section h3,
+.details-traits-section h3 {
+  color: #4CAF50;
+  margin-bottom: 10px;
+  font-size: 16px;
+  border-bottom: 2px solid #444;
+  padding-bottom: 5px;
+}
+
+.details-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.trait-box-detail {
+  background: #1a1a1a;
+  border: 2px solid #555;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.trait-box-detail .trait-icon {
+  font-size: 28px;
+}
+
+.trait-box-detail .trait-name {
+  font-size: 15px;
+}
+
+.trait-box-detail .trait-description {
+  font-size: 13px;
 }

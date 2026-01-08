@@ -389,8 +389,9 @@ function setupCharacterViewToggle() {
   const iconBtn = document.getElementById('icon-view-btn');
   const horizontalView = document.getElementById('horizontal-character-view');
   const iconView = document.getElementById('icon-character-view');
+  const detailsPanel = document.getElementById('icon-character-details');
 
-  if (!horizontalBtn || !iconBtn || !horizontalView || !iconView) return;
+  if (!horizontalBtn || !iconBtn || !horizontalView || !iconView || !detailsPanel) return;
 
   horizontalBtn.addEventListener('click', () => {
     characterViewMode = 'horizontal';
@@ -398,6 +399,7 @@ function setupCharacterViewToggle() {
     iconBtn.classList.remove('active');
     horizontalView.style.display = 'flex';
     iconView.style.display = 'none';
+    detailsPanel.style.display = 'none';
   });
 
   iconBtn.addEventListener('click', () => {
@@ -406,6 +408,11 @@ function setupCharacterViewToggle() {
     horizontalBtn.classList.remove('active');
     iconView.style.display = 'block';
     horizontalView.style.display = 'none';
+    // Show details panel if a character is selected
+    if (selectedCharacter) {
+      detailsPanel.style.display = 'block';
+      showIconCharacterDetails(selectedCharacter);
+    }
   });
 }
 
@@ -540,11 +547,11 @@ function populateIconCharacterView() {
     `;
   }).join('');
 
-  // Add event listeners for hover and click
+  // Add event listeners for click
   gridContainer.querySelectorAll('.icon-char-card').forEach(card => {
     const charKey = card.dataset.charKey;
 
-    // Click to select
+    // Click to select and show details
     card.addEventListener('click', () => {
       selectedCharacter = charKey;
 
@@ -552,28 +559,27 @@ function populateIconCharacterView() {
       gridContainer.querySelectorAll('.icon-char-card').forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
 
+      // Show character details in the side panel
+      showIconCharacterDetails(charKey);
+
       console.log('Character selected:', charKey);
     });
-
-    // Hover to show details
-    card.addEventListener('mouseenter', () => showIconHoverModal(charKey));
-    card.addEventListener('mouseleave', hideIconHoverModal);
   });
 }
 
-function showIconHoverModal(charKey) {
+function showIconCharacterDetails(charKey) {
   const character = PLAYER_CHARACTERS[charKey];
-  const modal = document.getElementById('icon-hover-modal');
-  const content = document.getElementById('icon-hover-content');
+  const detailsPanel = document.getElementById('icon-character-details');
+  const content = document.getElementById('icon-character-details-content');
 
-  if (!modal || !content || !character) return;
+  if (!detailsPanel || !content || !character) return;
 
   // Build traits HTML
   const traitsHTML = character.traits.map(traitId => {
     const trait = TRAITS_DATA[traitId];
     if (!trait) return '';
     return `
-      <div class="trait-box-small">
+      <div class="trait-box-detail">
         <span class="trait-icon">${trait.icon}</span>
         <div class="trait-info">
           <div class="trait-name">${trait.name}</div>
@@ -591,25 +597,22 @@ function showIconHoverModal(charKey) {
     `).join('');
 
   content.innerHTML = `
-    <img src="${character.fullImage}" alt="${character.name}" class="hover-char-image">
-    <h3>${character.name}</h3>
-    <p class="hover-char-description">${character.description}</p>
-    <div class="hover-stats">
-      ${statsHTML || '<span class="stat-badge">No stat bonuses</span>'}
+    <img src="${character.fullImage}" alt="${character.name}" class="details-char-image">
+    <h2 class="details-char-name">${character.name}</h2>
+    <p class="details-char-description">${character.description}</p>
+    <div class="details-stats-section">
+      <h3>Starting Stats</h3>
+      <div class="details-stats">
+        ${statsHTML || '<span class="stat-badge">No stat bonuses</span>'}
+      </div>
     </div>
-    <div class="hover-traits">
+    <div class="details-traits-section">
+      <h3>Traits</h3>
       ${traitsHTML || '<div>No traits</div>'}
     </div>
   `;
 
-  modal.style.display = 'block';
-}
-
-function hideIconHoverModal() {
-  const modal = document.getElementById('icon-hover-modal');
-  if (modal) {
-    modal.style.display = 'none';
-  }
+  detailsPanel.style.display = 'block';
 }
 
 document.getElementById('cancel-save')?.addEventListener('click', () => {
