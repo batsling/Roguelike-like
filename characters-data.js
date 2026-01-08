@@ -55,7 +55,7 @@ var CHARACTERS_DATA = {
       "luck": 0
     },
     "traits": ["perfect_precision"],
-    "description": "Precision is everything. One mistake is one too many."
+    "description": "Express Delivery: Arrives with haste, before the world ends."
   }
 };
 
