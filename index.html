@@ -48,7 +48,7 @@
 
           <!-- Left Sidebar: Stats Panel -->
           <div id="game-stats">
-            <h3>📊 Stats</h3>
+            <h3 id="stats-header">📊 <span id="stats-character-name">Stats</span></h3>
 
             <!-- Core Stats -->
             <div class="stat-section">
@@ -64,8 +64,7 @@
 
             <!-- Character Info -->
             <div class="stat-section" id="character-info-section" style="text-align: center; padding: 10px 8px; background: rgba(204, 102, 0, 0.1); border-radius: 8px; margin: 8px 0;">
-              <img id="character-icon" src="" alt="Character" style="max-width: 150px; max-height: 150px; min-width: 100px; min-height: 100px; object-fit: contain; image-rendering: pixelated; margin: 0 auto 8px; display: block; border: 2px solid #cc6600; border-radius: 8px;">
-              <div id="character-name" style="font-weight: bold; font-size: 15px; color: #ffcc66;">Character</div>
+              <img id="character-icon" src="" alt="Character" style="max-width: 225px; max-height: 225px; min-width: 150px; min-height: 150px; object-fit: contain; image-rendering: pixelated; margin: 0 auto; display: block; border: 2px solid #cc6600; border-radius: 8px;">
             </div>
 
             <!-- Traits -->
@@ -366,8 +365,8 @@
             <div id="icon-character-view" style="display: none; margin-bottom: 20px;">
               <div id="icon-character-grid" style="
                 display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-                gap: 15px;
+                grid-template-columns: repeat(5, 1fr);
+                gap: 12px;
                 padding: 15px;
                 background: #2a2a2a;
                 border: 3px solid #555;

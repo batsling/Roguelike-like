@@ -472,11 +472,11 @@ function updateGameStats() {
 
   // Update character info
   const characterIcon = document.getElementById('character-icon');
-  const characterName = document.getElementById('character-name');
+  const statsCharacterName = document.getElementById('stats-character-name');
   if (gameState && gameState.character && PLAYER_CHARACTERS[gameState.character]) {
     const character = PLAYER_CHARACTERS[gameState.character];
     if (characterIcon) characterIcon.src = character.fullImage || character.icon;
-    if (characterName) characterName.textContent = character.name;
+    if (statsCharacterName) statsCharacterName.textContent = character.name;
   }
 
   if (statsStrength) statsStrength.textContent = strength;

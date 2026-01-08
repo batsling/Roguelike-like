@@ -6465,10 +6465,10 @@ function updateCharacterUI() {
     iconEl.alt = character.name;
   }
 
-  // Update character name
-  const nameEl = document.getElementById('character-name');
-  if (nameEl) {
-    nameEl.textContent = character.name;
+  // Update character name in header
+  const statsCharacterNameEl = document.getElementById('stats-character-name');
+  if (statsCharacterNameEl) {
+    statsCharacterNameEl.textContent = character.name;
   }
 }
 
