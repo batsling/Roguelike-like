@@ -5138,21 +5138,27 @@ function addCurse(curseToAdd) {
   // Check for Curse of Vulnerability (add duplicate curses)
   const vulnerabilityCurses = getCursesByType('vulnerability');
   if (vulnerabilityCurses.length > 0) {
-    // Track uses for each vulnerability curse
+    // Track uses for each vulnerability curse by unique ID
     if (!gameState.vulnerabilityUses) {
       gameState.vulnerabilityUses = {};
     }
 
-    // Process first available vulnerability curse that has uses left
+    // Keep track of which vulnerability curses to remove (exhausted)
+    const cursesToRemove = [];
+
+    // Process ALL vulnerability curses that have uses left
     for (const vulnerabilityCurse of vulnerabilityCurses) {
-      if (!gameState.vulnerabilityUses[vulnerabilityCurse.name]) {
-        gameState.vulnerabilityUses[vulnerabilityCurse.name] = 0;
+      // Use the curse's unique ID for tracking (not name)
+      const vulnId = vulnerabilityCurse.id || vulnerabilityCurse.name;
+
+      if (!gameState.vulnerabilityUses[vulnId]) {
+        gameState.vulnerabilityUses[vulnId] = 0;
       }
 
       const maxUses = getCurseMaxUses(vulnerabilityCurse.power);
 
       // If this vulnerability curse still has uses, add a duplicate of the incoming curse
-      if (gameState.vulnerabilityUses[vulnerabilityCurse.name] < maxUses) {
+      if (gameState.vulnerabilityUses[vulnId] < maxUses) {
         const duplicateCurse = createCurseObject(curseToAdd);
         gameState.activeCurses.push(duplicateCurse);
 
@@ -5164,19 +5170,21 @@ function addCurse(curseToAdd) {
           diceRolled: 0
         };
 
-        gameState.vulnerabilityUses[vulnerabilityCurse.name]++;
+        gameState.vulnerabilityUses[vulnId]++;
 
-        // Remove curse if we've used all charges
-        if (gameState.vulnerabilityUses[vulnerabilityCurse.name] >= maxUses) {
-          const indexToRemove = gameState.activeCurses.indexOf(vulnerabilityCurse);
-          if (indexToRemove !== -1) {
-            gameState.activeCurses.splice(indexToRemove, 1);
-          }
-          delete gameState.vulnerabilityUses[vulnerabilityCurse.name];
+        // Mark for removal if we've used all charges
+        if (gameState.vulnerabilityUses[vulnId] >= maxUses) {
+          cursesToRemove.push(vulnerabilityCurse);
+          delete gameState.vulnerabilityUses[vulnId];
         }
+      }
+    }
 
-        // Only use one vulnerability curse per incoming curse
-        break;
+    // Remove exhausted vulnerability curses
+    for (const curseToRemove of cursesToRemove) {
+      const indexToRemove = gameState.activeCurses.indexOf(curseToRemove);
+      if (indexToRemove !== -1) {
+        gameState.activeCurses.splice(indexToRemove, 1);
       }
     }
   }
