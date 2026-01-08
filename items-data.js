@@ -62,11 +62,11 @@ var ITEMS_DATA = [
   },
   {
     "name": "Golden Beetle",
-    "rarity": "uncommon",
+    "rarity": "rare",
     "type": "Triggered",
     "description": "Whenever you get rid of a curse, gain one Chest",
     "image": "images/items/GoldenBeetle.png",
-    "game": "The Binding of Isaac",
+    "game": "Forward: Escape the Fold",
     "tags": [],
     "unlocked": true
   },
@@ -195,11 +195,11 @@ var ITEMS_DATA = [
   },
   {
     "name": "Vitality Orb",
-    "rarity": "uncommon",
+    "rarity": "rare",
     "type": "Triggered",
     "description": "Gain +1 Max Health whenever you obtain a curse",
     "image": "images/items/VitalityOrb.png",
-    "game": "Slay the Spire",
+    "game": "Forward: Escape the Fold",
     "tags": [],
     "unlocked": true
   },
