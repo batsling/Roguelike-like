@@ -5135,6 +5135,9 @@ function addCurse(curseToAdd) {
     diceRolled: 0
   };
 
+  // Track how many curses were added (including base curse)
+  let totalCursesAdded = 1;
+
   // Check for Curse of Vulnerability (add duplicate curses)
   const vulnerabilityCurses = getCursesByType('vulnerability');
   if (vulnerabilityCurses.length > 0) {
@@ -5171,6 +5174,7 @@ function addCurse(curseToAdd) {
         };
 
         gameState.vulnerabilityUses[vulnId]++;
+        totalCursesAdded++; // Count each duplicate
 
         // Mark for removal if we've used all charges
         if (gameState.vulnerabilityUses[vulnId] >= maxUses) {
@@ -5198,8 +5202,11 @@ function addCurse(curseToAdd) {
   }
 
   // Trigger onCurseAdded effects for triggered items (like Vitality Orb)
+  // Trigger once for each curse that was added
   if (typeof triggerOnCurseAdded === 'function') {
-    triggerOnCurseAdded();
+    for (let i = 0; i < totalCursesAdded; i++) {
+      triggerOnCurseAdded();
+    }
   }
 
   return true;
