@@ -370,7 +370,10 @@ document.getElementById('new-game-btn')?.addEventListener('click', () => {
 
   // Reset character selection state
   currentCharacterIndex = 0;
-  selectedCharacter = null;
+
+  // Set first character as default selected
+  const characterKeys = Object.keys(PLAYER_CHARACTERS);
+  selectedCharacter = characterKeys.length > 0 ? characterKeys[0] : null;
 
   // Populate both views
   populateHorizontalCharacterView();
@@ -623,6 +626,12 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   const saveName = document.getElementById('save-name-input').value.trim();
   if (!saveName) {
     alert('Please enter a save name');
+    return;
+  }
+
+  // Check if a character has been selected
+  if (!selectedCharacter) {
+    alert('Please select a character before starting your run');
     return;
   }
 

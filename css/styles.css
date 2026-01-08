@@ -745,7 +745,7 @@ text, path, line, g {
 
     /* Game Stats Sidebar */
 #game-stats {
-  width: 220px;
+  width: 270px;
   background: rgba(26, 20, 16, 0.95);
   border-right: 2px solid #cc6600;
   padding: 15px;
