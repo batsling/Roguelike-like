@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 555 games, 690 connections
-// 481 connected, 150 influencers
+// 562 games, 701 connections
+// 488 connected, 155 influencers
 
 var GAMES_DATA = [
   {
@@ -36,6 +36,28 @@ var GAMES_DATA = [
       "Disfigure"
     ],
     "coverImage": "images/covers/20-minutes-till-dawn.jpg"
+  },
+  {
+    "name": "20XX",
+    "year": 2017,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": [
+      "30XX"
+    ],
+    "coverImage": "images/covers/20xx.jpg"
+  },
+  {
+    "name": "30XX",
+    "year": 2021,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/30xx.jpg"
   },
   {
     "name": "9 Kings",
@@ -402,7 +424,8 @@ var GAMES_DATA = [
       "Sodaman",
       "Dogpile",
       "Word Play",
-      "Lootplot"
+      "Lootplot",
+      "Dead Finger Dice"
     ],
     "coverImage": "images/covers/balatro.jpg"
   },
@@ -580,6 +603,18 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/blazing-beaks.jpg"
+  },
+  {
+    "name": "Bleak Sword",
+    "year": 2019,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": [
+      "Scourgebringer"
+    ],
+    "coverImage": "images/covers/bleak-sword.jpg"
   },
   {
     "name": "Block Tower TD",
@@ -1122,6 +1157,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/crypt-of-the-necrodancer.jpg"
   },
   {
+    "name": "Cryptark",
+    "year": 2017,
+    "type": "Action",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/cryptark.jpg"
+  },
+  {
     "name": "Cube Chaos",
     "year": 2023,
     "type": "Deckbuilding",
@@ -1282,7 +1327,8 @@ var GAMES_DATA = [
       "Dunjungle",
       "Reality Break",
       "Battle Shapers",
-      "Galactic Glitch"
+      "Galactic Glitch",
+      "Scourgebringer"
     ],
     "coverImage": "images/covers/dead-cells.jpg"
   },
@@ -1295,6 +1341,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dead-estate.jpg"
+  },
+  {
+    "name": "Dead Finger Dice",
+    "year": 2025,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dead-finger-dice.jpg"
   },
   {
     "name": "Deadzone: Rogue",
@@ -1648,7 +1704,7 @@ var GAMES_DATA = [
     "name": "Don't Starve Together",
     "year": 2014,
     "type": "Action",
-    "connected": false,
+    "connected": true,
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
@@ -1692,7 +1748,9 @@ var GAMES_DATA = [
       "Lone Ruin",
       "Loot Rascals",
       "Shovel Knight Dig",
-      "GoNNER"
+      "GoNNER",
+      "Scourgebringer",
+      "Riptale"
     ],
     "coverImage": "images/covers/downwell.jpg"
   },
@@ -4302,6 +4360,18 @@ var GAMES_DATA = [
     "coverImage": "images/covers/ring-of-pain.jpg"
   },
   {
+    "name": "Riptale",
+    "year": 2017,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": [
+      "Scourgebringer"
+    ],
+    "coverImage": "images/covers/riptale.jpg"
+  },
+  {
     "name": "Risk of Rain",
     "year": 2013,
     "type": "Action",
@@ -4563,6 +4633,18 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/scarlet-tower.jpg"
+  },
+  {
+    "name": "Scourgebringer",
+    "year": 2020,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": [
+      "Galactic Glitch"
+    ],
+    "coverImage": "images/covers/scourgebringer.jpg"
   },
   {
     "name": "Sea of Survivors",
@@ -5162,9 +5244,11 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "Scourgebringer"
+    ],
     "coverImage": "images/covers/star-of-providence.jpg"
   },
   {
@@ -5490,7 +5574,8 @@ var GAMES_DATA = [
       "Has-Been Heroes",
       "Lost Flame",
       "Asterogues",
-      "Talented"
+      "Talented",
+      "20XX"
     ],
     "coverImage": "images/covers/the-binding-of-isaac.jpg"
   },
