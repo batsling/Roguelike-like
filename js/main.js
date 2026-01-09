@@ -6555,3 +6555,42 @@ window.hasTrait = hasTrait;
 
 // Export collection functions
 window.sortCollectionItems = sortCollectionItems;
+
+// ===== INVENTORY SORTING EVENT LISTENERS =====
+
+// Set up inventory sort button event listeners
+document.addEventListener('DOMContentLoaded', () => {
+  const sortAlphaBtn = document.getElementById('sort-alpha-btn');
+  const sortRarityBtn = document.getElementById('sort-rarity-btn');
+  const sortTypeBtn = document.getElementById('sort-type-btn');
+
+  function updateSortButtons(activeBtn) {
+    [sortAlphaBtn, sortRarityBtn, sortTypeBtn].forEach(btn => {
+      if (btn === activeBtn) {
+        btn.style.background = '#4CAF50';
+        btn.style.borderColor = '#66bb6a';
+      } else {
+        btn.style.background = '#555';
+        btn.style.borderColor = '#666';
+      }
+    });
+  }
+
+  sortAlphaBtn?.addEventListener('click', () => {
+    window.inventorySortMode = 'alphabetical';
+    updateSortButtons(sortAlphaBtn);
+    updateInventory();
+  });
+
+  sortRarityBtn?.addEventListener('click', () => {
+    window.inventorySortMode = 'rarity';
+    updateSortButtons(sortRarityBtn);
+    updateInventory();
+  });
+
+  sortTypeBtn?.addEventListener('click', () => {
+    window.inventorySortMode = 'type';
+    updateSortButtons(sortTypeBtn);
+    updateInventory();
+  });
+});

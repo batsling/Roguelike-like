@@ -42,6 +42,9 @@ function updateHealthDisplay() {
 
 // ===== INVENTORY DISPLAY =====
 
+// Global inventory sort mode (default: 'type')
+window.inventorySortMode = window.inventorySortMode || 'type';
+
 function updateInventory() {
   const inventoryDiv = document.getElementById('inventory');
   inventoryDiv.innerHTML = '';
@@ -76,12 +79,22 @@ function updateInventory() {
     if (inventory.length === 0) {
       gameItemsList.innerHTML = '<div class="empty-inventory">No items yet</div>';
     } else {
-      // Sort inventory: usable items first, then passive items
+      // Sort inventory based on current mode
       const sortedInventory = [...inventory].map((item, idx) => ({ item, idx }))
         .sort((a, b) => {
-          const aIsUsable = a.item.type === 'Usable' ? 0 : 1;
-          const bIsUsable = b.item.type === 'Usable' ? 0 : 1;
-          return aIsUsable - bIsUsable;
+          if (window.inventorySortMode === 'alphabetical') {
+            return a.item.name.localeCompare(b.item.name);
+          } else if (window.inventorySortMode === 'rarity') {
+            const rarityOrder = { 'Common': 0, 'Uncommon': 1, 'Rare': 2, 'Epic': 3, 'Legendary': 4 };
+            const aRarity = rarityOrder[a.item.rarity] ?? 0;
+            const bRarity = rarityOrder[b.item.rarity] ?? 0;
+            return bRarity - aRarity; // Higher rarity first
+          } else {
+            // Default: type sort (usable items first, then passive items)
+            const aIsUsable = a.item.type === 'Usable' ? 0 : 1;
+            const bIsUsable = b.item.type === 'Usable' ? 0 : 1;
+            return aIsUsable - bIsUsable;
+          }
         });
 
       gameItemsList.innerHTML = sortedInventory.map(({ item, idx }) => {

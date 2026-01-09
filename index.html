@@ -192,6 +192,11 @@
               <h3 style="margin: 0;">🎒 Inventory</h3>
               <button id="map-btn" onclick="showMapModal()" style="padding: 6px 12px; background: #2196F3; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">🗺️ Map</button>
             </div>
+            <div style="display: flex; gap: 6px; margin-bottom: 8px; justify-content: center;">
+              <button id="sort-alpha-btn" style="padding: 4px 10px; background: #555; border: 1px solid #666; border-radius: 4px; color: white; cursor: pointer; font-size: 11px; transition: background 0.2s;">A-Z</button>
+              <button id="sort-rarity-btn" style="padding: 4px 10px; background: #555; border: 1px solid #666; border-radius: 4px; color: white; cursor: pointer; font-size: 11px; transition: background 0.2s;">Rarity</button>
+              <button id="sort-type-btn" style="padding: 4px 10px; background: #4CAF50; border: 1px solid #66bb6a; border-radius: 4px; color: white; cursor: pointer; font-size: 11px; transition: background 0.2s;">Type</button>
+            </div>
             <div id="game-items-list">
               <div class="empty-inventory">No items yet</div>
             </div>
@@ -290,8 +295,6 @@
           <div style="background: #2d2d2d; padding: 30px; border-radius: 12px; width: 500px; max-height: 90vh; overflow-y: auto;">
             <h3 style="margin-top: 0; color: gold; text-align: center;">Start New Run</h3>
 
-            <h4 style="color: #aaa; margin: 20px 0 10px 0;">Choose Your Character</h4>
-
             <!-- View Mode Toggle -->
             <div id="character-view-toggle" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
               <button id="horizontal-view-btn" class="view-toggle-btn active" style="
@@ -378,7 +381,6 @@
               </div>
             </div>
 
-            <h4 style="color: #aaa; margin: 20px 0 10px 0;">Name This Run</h4>
             <input type="text" id="save-name-input" placeholder="Enter run name" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #555; border-radius: 6px; background: #1a1a1a; color: white;">
 
             <div style="display: flex; gap: 10px;">
