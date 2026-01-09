@@ -85,9 +85,9 @@ function updateInventory() {
           if (window.inventorySortMode === 'alphabetical') {
             return a.item.name.localeCompare(b.item.name);
           } else if (window.inventorySortMode === 'rarity') {
-            const rarityOrder = { 'Common': 0, 'Uncommon': 1, 'Rare': 2, 'Epic': 3, 'Legendary': 4 };
-            const aRarity = rarityOrder[a.item.rarity] ?? 0;
-            const bRarity = rarityOrder[b.item.rarity] ?? 0;
+            const rarityOrder = { 'common': 0, 'uncommon': 1, 'rare': 2, 'epic': 3, 'legendary': 4 };
+            const aRarity = rarityOrder[a.item.rarity?.toLowerCase()] ?? 0;
+            const bRarity = rarityOrder[b.item.rarity?.toLowerCase()] ?? 0;
             return bRarity - aRarity; // Higher rarity first
           } else {
             // Default: type sort (usable items first, then passive items)
