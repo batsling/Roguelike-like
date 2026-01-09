@@ -201,6 +201,84 @@ function findAllShortestPaths(start, goal) {
   };
 }
 
+// Find multiple distinct paths from start to goal
+// Returns an array of paths, sorted by length (shortest first)
+// Each path is an array of game names
+function findMultiplePaths(start, goal, maxPaths = 50) {
+  const paths = [];
+
+  function dfs(current, path, visitedInPath) {
+    // If we've found enough paths, stop searching
+    if (paths.length >= maxPaths) return;
+
+    // If we reached the goal, save this path
+    if (current === goal) {
+      paths.push([...path]);
+      return;
+    }
+
+    // Get connections for current game
+    const connections = getGameConnections(current);
+
+    // Try each connection
+    for (const next of connections) {
+      if (!visitedInPath.has(next)) {
+        path.push(next);
+        visitedInPath.add(next);
+        dfs(next, path, visitedInPath);
+        path.pop();
+        visitedInPath.delete(next);
+      }
+    }
+  }
+
+  // Start DFS from the start node
+  dfs(start, [start], new Set([start]));
+
+  // Sort paths by length (shortest first)
+  paths.sort((a, b) => a.length - b.length);
+
+  return paths;
+}
+
+// Convert a list of paths into pathData format for map visualization
+function pathsToPathData(paths, start, goal) {
+  if (!paths || paths.length === 0) return null;
+
+  const shortestDist = paths[0].length - 1; // Subtract 1 because path includes start
+  const shortestPathGames = new Set(paths[0]);
+
+  // Organize games into layers by their distance from start
+  const layers = new Map();
+  const allGamesOnPaths = new Set();
+
+  paths.forEach(path => {
+    path.forEach((gameName, index) => {
+      allGamesOnPaths.add(gameName);
+
+      if (!layers.has(index)) {
+        layers.set(index, []);
+      }
+
+      // Add game to this layer if not already there
+      const layerGames = layers.get(index);
+      if (!layerGames.find(g => g.name === gameName)) {
+        layerGames.push({
+          name: gameName,
+          isOnShortestPath: shortestPathGames.has(gameName)
+        });
+      }
+    });
+  });
+
+  return {
+    layers: layers,
+    totalDistance: Math.max(...Array.from(layers.keys())),
+    shortestDistance: shortestDist,
+    shortestPathGames: shortestPathGames
+  };
+}
+
 // Find all games within a certain distance from start to goal
 // maxDistance: show paths up to this distance (inclusive)
 // Returns both shortest paths and paths up to maxDistance
@@ -1591,6 +1669,8 @@ window.initGameplayDOM = initGameplayDOM;
 window.bfs = bfs;
 window.bfsPath = bfsPath;
 window.findAllShortestPaths = findAllShortestPaths;
+window.findMultiplePaths = findMultiplePaths;
+window.pathsToPathData = pathsToPathData;
 window.getGameConnections = getGameConnections;
 window.getInfluencedByGames = getInfluencedByGames;
 window.addNode = addNode;

@@ -1402,8 +1402,8 @@ function pushAmuletToBottom(reorganizedLayers, gameToLayer, amuletGame) {
 }
 
 // Generate map visualization HTML for given distance
-function generateMapView(currentGame, amuletGame, maxDistance) {
-  const pathData = findPathsUpToDistance(currentGame, amuletGame, maxDistance);
+function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathData = null) {
+  const pathData = precomputedPathData || findPathsUpToDistance(currentGame, amuletGame, maxDistance);
   if (!pathData) return '<p style="color: #888;">No path data available</p>';
 
   const visitedGames = gameState.visitedGames || [];
@@ -1615,32 +1615,34 @@ function showMapModal() {
   } else {
     const shortestDist = shortestPathData.shortestDistance;
 
-    // Initialize map state if not exists
-    if (!window.mapDisplayState) {
-      window.mapDisplayState = {
-        currentDistance: shortestDist,
-        shortestDistance: shortestDist,
-        currentGame: currentGame,
-        amuletGame: amuletGame
-      };
-    } else {
-      // Update for new map view
-      window.mapDisplayState.currentDistance = shortestDist;
-      window.mapDisplayState.shortestDistance = shortestDist;
-      window.mapDisplayState.currentGame = currentGame;
-      window.mapDisplayState.amuletGame = amuletGame;
-    }
+    // Find multiple paths to choose from
+    const allPaths = findMultiplePaths(currentGame, amuletGame, 100);
+    console.log(`Found ${allPaths.length} paths from ${currentGame} to ${amuletGame}`);
+
+    // Count shortest paths (all paths with minimum length)
+    const shortestPathCount = allPaths.filter(p => p.length - 1 === shortestDist).length;
+
+    // Initialize map state
+    window.mapDisplayState = {
+      allPaths: allPaths,
+      currentPathCount: shortestPathCount, // Start by showing all shortest paths
+      currentGame: currentGame,
+      amuletGame: amuletGame,
+      shortestDistance: shortestDist
+    };
 
     // Show header with controls at the top
     mapHTML += '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">';
     mapHTML += `<span style="color: #e6d5b8; font-weight: bold;">Shortest Path: ${shortestDist} steps</span>`;
 
-    // Show More Paths button
-    mapHTML += `
-      <button id="show-more-paths-btn" onclick="showMorePaths()" style="padding: 8px 16px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">
-        Show More Paths (+1)
-      </button>
-    `;
+    // Show More Paths button (only if there are more paths to show)
+    if (allPaths.length > shortestPathCount) {
+      mapHTML += `
+        <button id="show-more-paths-btn" onclick="showMorePaths()" style="padding: 8px 16px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">
+          Show More Paths (+3)
+        </button>
+      `;
+    }
 
     // Zoom controls
     mapHTML += `
@@ -1655,12 +1657,14 @@ function showMapModal() {
     mapHTML += `<button onclick="closeGameModal()" style="padding: 8px 20px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>`;
     mapHTML += '</div>';
 
-    // Current distance display
-    mapHTML += `<div id="current-distance-display" style="margin-bottom: 10px; color: #aaa; font-size: 12px;">Showing paths up to <span id="current-distance-value" style="color: #4CAF50; font-weight: bold;">${shortestDist}</span> steps</div>`;
+    // Path count display
+    mapHTML += `<div id="current-paths-display" style="margin-bottom: 10px; color: #aaa; font-size: 12px;">Showing <span id="current-paths-value" style="color: #4CAF50; font-weight: bold;">${shortestPathCount}</span> of <span style="color: #888;">${allPaths.length}</span> paths</div>`;
 
-    // Show shortest distance view only
+    // Generate map with initial paths
     mapHTML += '<div id="map-view-container">';
-    mapHTML += generateMapView(currentGame, amuletGame, shortestDist);
+    const initialPaths = allPaths.slice(0, shortestPathCount);
+    const initialPathData = pathsToPathData(initialPaths, currentGame, amuletGame);
+    mapHTML += generateMapView(currentGame, amuletGame, initialPathData.totalDistance, initialPathData);
     mapHTML += '</div>';
 
     mapHTML += '</div>';
@@ -1671,78 +1675,55 @@ function showMapModal() {
     currentMapZoom = 1.0;
 
     // Draw arrows after modal is rendered
-    const initialPathData = findPathsUpToDistance(currentGame, amuletGame, shortestDist);
     setTimeout(() => {
       const { gameToLayer } = reorganizeMapLayers(initialPathData);
       drawMapArrows(initialPathData, currentGame, amuletGame, gameToLayer);
-
-      // Auto-zoom disabled - user can manually zoom with controls
-      // autoZoomMapToFit();
     }, 150);
   }
 }
 
-// Show more paths by incrementing the distance
+// Show more paths (add 3 more paths at a time)
 function showMorePaths() {
   if (!window.mapDisplayState) return;
 
-  const { currentDistance, currentGame, amuletGame } = window.mapDisplayState;
-  const newDistance = currentDistance + 1;
+  const { allPaths, currentPathCount, currentGame, amuletGame } = window.mapDisplayState;
+
+  // Add 3 more paths (or whatever remains)
+  const newPathCount = Math.min(currentPathCount + 3, allPaths.length);
 
   // Update state
-  window.mapDisplayState.currentDistance = newDistance;
+  window.mapDisplayState.currentPathCount = newPathCount;
 
-  // Find if there are any games at this new distance
-  const pathData = findPathsUpToDistance(currentGame, amuletGame, newDistance);
-
-  // Check if we actually got new paths
-  let hasNewPaths = false;
-  if (pathData && pathData.layers) {
-    // Check if the new distance adds any new games
-    const allGames = new Set();
-    pathData.layers.forEach(layer => {
-      layer.forEach(gameInfo => allGames.add(gameInfo.name));
-    });
-
-    // Compare with previous distance
-    const prevPathData = findPathsUpToDistance(currentGame, amuletGame, currentDistance);
-    const prevGames = new Set();
-    if (prevPathData && prevPathData.layers) {
-      prevPathData.layers.forEach(layer => {
-        layer.forEach(gameInfo => prevGames.add(gameInfo.name));
-      });
-    }
-
-    hasNewPaths = allGames.size > prevGames.size;
-  }
+  // Get the paths to display
+  const pathsToShow = allPaths.slice(0, newPathCount);
+  const pathData = pathsToPathData(pathsToShow, currentGame, amuletGame);
 
   // Regenerate the map view
   const mapContainer = document.getElementById('map-view-container');
   if (mapContainer) {
-    mapContainer.innerHTML = generateMapView(currentGame, amuletGame, newDistance);
+    mapContainer.innerHTML = generateMapView(currentGame, amuletGame, pathData.totalDistance, pathData);
   }
 
-  // Update distance display
-  const distanceValue = document.getElementById('current-distance-value');
-  if (distanceValue) {
-    distanceValue.textContent = newDistance;
+  // Update path count display
+  const pathsValue = document.getElementById('current-paths-value');
+  if (pathsValue) {
+    pathsValue.textContent = newPathCount;
   }
 
   // Redraw arrows
   setTimeout(() => {
-    const newPathData = findPathsUpToDistance(currentGame, amuletGame, newDistance);
-    const { gameToLayer } = reorganizeMapLayers(newPathData);
-    drawMapArrows(newPathData, currentGame, amuletGame, gameToLayer);
+    const { gameToLayer } = reorganizeMapLayers(pathData);
+    drawMapArrows(pathData, currentGame, amuletGame, gameToLayer);
   }, 50);
 
-  // Disable button if no new paths were added (we've reached the limit)
-  if (!hasNewPaths) {
+  // Disable button if all paths are now shown
+  if (newPathCount >= allPaths.length) {
     const btn = document.getElementById('show-more-paths-btn');
     if (btn) {
       btn.disabled = true;
       btn.style.background = '#555';
       btn.style.cursor = 'not-allowed';
-      btn.textContent = 'No More Paths';
+      btn.textContent = 'All Paths Shown';
     }
   }
 }
