@@ -796,42 +796,50 @@ function spawnChoices() {
     const nx = startX + posInRow * nodeSpacing;
     const ny = baseY + row * rowSpacing;
 
-    // Determine encounter type
-    const encounterRoll = Math.random() * 100;
+    // Get encounter type from game data (pre-determined at map generation)
     let encounterType, encounterIcon, encounterColor;
 
-    // Check distance (finished games) for shop availability
-    const distance = gameState.finishedGames ? gameState.finishedGames.length : 0;
+    // Find the game object
+    const game = games.find(game => game.name === g);
 
-    if (encounterRoll < 75) {
-      encounterType = 'combat';
-      encounterIcon = '!';
-      // Get game type for color
-      const game = games.find(game => game.name === g);
-      if (game) {
+    if (game && game.encounterType) {
+      // Use pre-determined encounter type from game data
+      encounterType = game.encounterType;
+
+      // Set icon and color based on encounter type
+      if (encounterType === 'combat') {
+        encounterIcon = '!';
+        // Get game type for color
         switch(game.type.toLowerCase()) {
           case 'action': encounterColor = 'red'; break;
           case 'deckbuilding': encounterColor = 'purple'; break;
           case 'strategy': encounterColor = 'blue'; break;
           default: encounterColor = 'green'; break;
         }
-      } else {
-        encounterColor = 'green';
+      } else if (encounterType === 'event') {
+        encounterIcon = '?';
+        encounterColor = 'purple';
+      } else if (encounterType === 'shop') {
+        encounterIcon = '$';
+        encounterColor = 'gold';
       }
-    } else if (encounterRoll < 90) {
-      encounterType = 'event';
-      encounterIcon = '?';
-      encounterColor = 'purple';
-    } else if (distance >= 4) {
-      // Shops only spawn at distance >= 4
-      encounterType = 'shop';
-      encounterIcon = '$';
-      encounterColor = 'gold';
     } else {
-      // Not far enough for shops, default to event
-      encounterType = 'event';
-      encounterIcon = '?';
-      encounterColor = 'purple';
+      // Fallback to random if encounterType not found (shouldn't happen)
+      console.warn(`No encounterType found for game: ${g}, using fallback random generation`);
+      const encounterRoll = Math.random() * 100;
+      if (encounterRoll < 75) {
+        encounterType = 'combat';
+        encounterIcon = '!';
+        encounterColor = 'red';
+      } else if (encounterRoll < 90) {
+        encounterType = 'event';
+        encounterIcon = '?';
+        encounterColor = 'purple';
+      } else {
+        encounterType = 'shop';
+        encounterIcon = '$';
+        encounterColor = 'gold';
+      }
     }
 
     const n = addNode(g, 'choice', nx, ny);
@@ -1510,8 +1518,9 @@ function useDash(targetGame) {
   const y = gameState.currentY;
   const x = 450;
 
-  // Trigger the encounter for this game
-  const encounterType = ['combat', 'event', 'shop'][Math.floor(Math.random() * 3)];
+  // Get the pre-determined encounter type for this game
+  const game = games.find(g => g.name === targetGame);
+  const encounterType = (game && game.encounterType) ? game.encounterType : 'combat';
 
   // Advance to the selected game
   advance(targetGame, x, y + 160, encounterType);
