@@ -1615,69 +1615,9 @@ function showMapModal() {
   } else {
     const shortestDist = shortestPathData.shortestDistance;
 
-    // Find multiple paths to choose from
-    let allPaths = findMultiplePaths(currentGame, amuletGame, 100);
-    console.log(`Found ${allPaths.length} paths from ${currentGame} to ${amuletGame}`);
-
-    if (allPaths.length === 0) {
-      // Fallback: use old distance-based approach
-      console.warn('findMultiplePaths returned no paths, falling back to distance-based approach');
-      const fallbackPathData = findPathsUpToDistance(currentGame, amuletGame, shortestDist);
-
-      if (!fallbackPathData) {
-        mapHTML += '<p style="color: #888;">No paths found</p>';
-        mapHTML += '</div>';
-        createGameModal(mapHTML);
-        return;
-      }
-
-      // Use old rendering approach
-      mapHTML += '<div id="map-view-container">';
-      mapHTML += generateMapView(currentGame, amuletGame, shortestDist, fallbackPathData);
-      mapHTML += '</div></div>';
-      createGameModal(mapHTML);
-
-      // Reset zoom and draw arrows
-      currentMapZoom = 1.0;
-      setTimeout(() => {
-        const { gameToLayer } = reorganizeMapLayers(fallbackPathData);
-        drawMapArrows(fallbackPathData, currentGame, amuletGame, gameToLayer);
-      }, 150);
-      return;
-    }
-
-    // Count shortest paths (all paths with minimum length)
-    let shortestPathCount = allPaths.filter(p => p.length - 1 === shortestDist).length;
-
-    // Ensure we show at least 1 path (in case of mismatch)
-    if (shortestPathCount === 0) {
-      console.warn(`No paths match shortest distance ${shortestDist}, using first path with length ${allPaths[0].length - 1}`);
-      shortestPathCount = 1;
-    }
-
-    console.log(`Showing ${shortestPathCount} shortest paths out of ${allPaths.length} total`);
-
-    // Initialize map state
-    window.mapDisplayState = {
-      allPaths: allPaths,
-      currentPathCount: shortestPathCount, // Start by showing all shortest paths
-      currentGame: currentGame,
-      amuletGame: amuletGame,
-      shortestDistance: shortestDist
-    };
-
     // Show header with controls at the top
-    mapHTML += '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">';
+    mapHTML += '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">';
     mapHTML += `<span style="color: #e6d5b8; font-weight: bold;">Shortest Path: ${shortestDist} steps</span>`;
-
-    // Show More Paths button (only if there are more paths to show)
-    if (allPaths.length > shortestPathCount) {
-      mapHTML += `
-        <button id="show-more-paths-btn" onclick="showMorePaths()" style="padding: 8px 16px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">
-          Show More Paths (+3)
-        </button>
-      `;
-    }
 
     // Zoom controls
     mapHTML += `
@@ -1692,23 +1632,9 @@ function showMapModal() {
     mapHTML += `<button onclick="closeGameModal()" style="padding: 8px 20px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>`;
     mapHTML += '</div>';
 
-    // Path count display
-    mapHTML += `<div id="current-paths-display" style="margin-bottom: 10px; color: #aaa; font-size: 12px;">Showing <span id="current-paths-value" style="color: #4CAF50; font-weight: bold;">${shortestPathCount}</span> of <span style="color: #888;">${allPaths.length}</span> paths</div>`;
-
-    // Generate map with initial paths
+    // Show shortest distance view only
     mapHTML += '<div id="map-view-container">';
-    const initialPaths = allPaths.slice(0, shortestPathCount);
-    const initialPathData = pathsToPathData(initialPaths, currentGame, amuletGame);
-
-    if (!initialPathData) {
-      console.error('Failed to generate path data from paths:', initialPaths);
-      mapHTML += '<p style="color: #ff4444;">Error generating map view</p>';
-      mapHTML += '</div></div>';
-      createGameModal(mapHTML);
-      return;
-    }
-
-    mapHTML += generateMapView(currentGame, amuletGame, initialPathData.totalDistance, initialPathData);
+    mapHTML += generateMapView(currentGame, amuletGame, shortestDist);
     mapHTML += '</div>';
 
     mapHTML += '</div>';
@@ -1719,56 +1645,11 @@ function showMapModal() {
     currentMapZoom = 1.0;
 
     // Draw arrows after modal is rendered
+    const initialPathData = findPathsUpToDistance(currentGame, amuletGame, shortestDist);
     setTimeout(() => {
       const { gameToLayer } = reorganizeMapLayers(initialPathData);
       drawMapArrows(initialPathData, currentGame, amuletGame, gameToLayer);
     }, 150);
-  }
-}
-
-// Show more paths (add 3 more paths at a time)
-function showMorePaths() {
-  if (!window.mapDisplayState) return;
-
-  const { allPaths, currentPathCount, currentGame, amuletGame } = window.mapDisplayState;
-
-  // Add 3 more paths (or whatever remains)
-  const newPathCount = Math.min(currentPathCount + 3, allPaths.length);
-
-  // Update state
-  window.mapDisplayState.currentPathCount = newPathCount;
-
-  // Get the paths to display
-  const pathsToShow = allPaths.slice(0, newPathCount);
-  const pathData = pathsToPathData(pathsToShow, currentGame, amuletGame);
-
-  // Regenerate the map view
-  const mapContainer = document.getElementById('map-view-container');
-  if (mapContainer) {
-    mapContainer.innerHTML = generateMapView(currentGame, amuletGame, pathData.totalDistance, pathData);
-  }
-
-  // Update path count display
-  const pathsValue = document.getElementById('current-paths-value');
-  if (pathsValue) {
-    pathsValue.textContent = newPathCount;
-  }
-
-  // Redraw arrows
-  setTimeout(() => {
-    const { gameToLayer } = reorganizeMapLayers(pathData);
-    drawMapArrows(pathData, currentGame, amuletGame, gameToLayer);
-  }, 50);
-
-  // Disable button if all paths are now shown
-  if (newPathCount >= allPaths.length) {
-    const btn = document.getElementById('show-more-paths-btn');
-    if (btn) {
-      btn.disabled = true;
-      btn.style.background = '#555';
-      btn.style.cursor = 'not-allowed';
-      btn.textContent = 'All Paths Shown';
-    }
   }
 }
 
@@ -6596,7 +6477,6 @@ window.handleChampionResult = handleChampionResult;
 window.completeChampionSuccess = completeChampionSuccess;
 window.completeChampionFailure = completeChampionFailure;
 window.showMapModal = showMapModal;
-window.showMorePaths = showMorePaths;
 window.showMapTooltip = showMapTooltip;
 window.moveMapTooltip = moveMapTooltip;
 window.hideMapTooltip = hideMapTooltip;
