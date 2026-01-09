@@ -36,7 +36,7 @@ var GAMES_DATA = [
       "Disfigure"
     ],
     "coverImage": "images/covers/20-minutes-till-dawn.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "20XX",
     "year": 2017,
@@ -48,7 +48,7 @@ var GAMES_DATA = [
       "30XX"
     ],
     "coverImage": "images/covers/20xx.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "30XX",
     "year": 2021,
@@ -58,7 +58,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/30xx.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "9 Kings",
     "year": 2024,
@@ -68,7 +68,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/9-kings.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "99 Levels to Hell",
     "year": 2013,
@@ -78,7 +78,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/99-levels-to-hell.jpg",
-    "encounterType": "shop"},
+    "encounterType": "event"},
   {
     "name": "A la Card",
     "year": 2025,
@@ -118,7 +118,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/absolum.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Aces & Adventures",
     "year": 2023,
@@ -186,7 +186,7 @@ var GAMES_DATA = [
       "Ultimate ADOM"
     ],
     "coverImage": "images/covers/ancient-domains-of-mystery.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Angband",
     "year": 1990,
@@ -202,7 +202,7 @@ var GAMES_DATA = [
       "Zorbus"
     ],
     "coverImage": "images/covers/angband.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Another Farm Roguelike",
     "year": 2022,
@@ -224,7 +224,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/another-farm-roguelike-rebirth.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Aotenjo: Infinite Hands",
     "year": 2024,
@@ -234,7 +234,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/aotenjo-infinite-hands.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Approaching Infinity",
     "year": 2020,
@@ -294,7 +294,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/as-we-descend.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Asgard's Fall: Viking Survivors",
     "year": 2025,
@@ -304,7 +304,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/asgard-s-fall-viking-survivors.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Asterogues",
     "year": 2023,
@@ -314,7 +314,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/asterogues.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Astral Ascent",
     "year": 2022,
@@ -324,7 +324,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/astral-ascent.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Astronarch",
     "year": 2020,
@@ -372,7 +372,7 @@ var GAMES_DATA = [
       "Lootplot"
     ],
     "coverImage": "images/covers/backpack-battles.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Backpack Hero",
     "year": 2022,
@@ -395,7 +395,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/bad-north.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Balatro",
     "year": 2023,
@@ -428,7 +428,7 @@ var GAMES_DATA = [
       "Dead Finger Dice"
     ],
     "coverImage": "images/covers/balatro.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Baldi's Basics Plus",
     "year": 2020,
@@ -480,7 +480,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/barony.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Baroque",
     "year": 1998,
@@ -513,7 +513,7 @@ var GAMES_DATA = [
       "The Last Spell"
     ],
     "coverImage": "images/covers/battle-brothers.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Battle Shapers",
     "year": 2023,
@@ -533,7 +533,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/bazr.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Be My Horde",
     "year": 2024,
@@ -543,7 +543,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/be-my-horde.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Beat Blast",
     "year": 2020,
@@ -573,7 +573,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/beneath-oresa.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Beyond the Long Night",
     "year": 2023,
@@ -627,7 +627,7 @@ var GAMES_DATA = [
       "Block Tower TD 2"
     ],
     "coverImage": "images/covers/block-tower-td.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Block Tower TD 2",
     "year": 2024,
@@ -657,7 +657,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/blue-prince.jpg",
-    "encounterType": "shop"},
+    "encounterType": "event"},
   {
     "name": "Boneraiser Minions",
     "year": 2022,
@@ -681,7 +681,7 @@ var GAMES_DATA = [
       "Hellcard"
     ],
     "coverImage": "images/covers/book-of-demons.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Bounty of One",
     "year": 2022,
@@ -701,7 +701,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/bpm-bullets-per-minute.jpg",
-    "encounterType": "shop"},
+    "encounterType": "event"},
   {
     "name": "Breach Wanderers",
     "year": 2021,
@@ -721,7 +721,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/brew.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Brogue",
     "year": 2009,
@@ -761,7 +761,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/brutal-orchestra.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Buckshot Roulette",
     "year": 2024,
@@ -773,7 +773,7 @@ var GAMES_DATA = [
       "CloverPit"
     ],
     "coverImage": "images/covers/buckshot-roulette.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Candies 'n Curses",
     "year": 2018,
@@ -807,7 +807,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/cat-god-ranch.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Cataclysm",
     "year": 2010,
@@ -830,7 +830,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/cataclysm-bright-nights.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Cataclysm: Dark Days Ahead",
     "year": 2013,
@@ -850,7 +850,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/cave-noire.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Caveblazers",
     "year": 2017,
@@ -874,7 +874,7 @@ var GAMES_DATA = [
       "Approaching Infinity"
     ],
     "coverImage": "images/covers/caves-of-qud.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Cavity Busters",
     "year": 2020,
@@ -894,7 +894,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/cell-command.jpg",
-    "encounterType": "event"},
+    "encounterType": "shop"},
   {
     "name": "Centipede Gun",
     "year": 2023,
@@ -938,7 +938,7 @@ var GAMES_DATA = [
       "Final Fantasy Fables: Chocobo's Dungeon"
     ],
     "coverImage": "images/covers/chocobo-s-dungeon-2.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Chocobo's Mysterious Dungeon",
     "year": 1997,
@@ -950,7 +950,7 @@ var GAMES_DATA = [
       "Chocobo's Dungeon 2"
     ],
     "coverImage": "images/covers/chocobo-s-mysterious-dungeon.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Chocobo's Mystery Dungeon Every Buddy!",
     "year": 2019,
@@ -1000,7 +1000,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/clutchtime-basketball-deckbuilder.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Coal LLC",
     "year": 2025,
@@ -1010,7 +1010,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/coal-llc.jpg",
-    "encounterType": "shop"},
+    "encounterType": "event"},
   {
     "name": "Cobalt Core",
     "year": 2023,
@@ -1033,7 +1033,7 @@ var GAMES_DATA = [
       "The Doors of Trithius"
     ],
     "coverImage": "images/covers/cogmind.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Commander Quest",
     "year": 2025,
@@ -1075,7 +1075,7 @@ var GAMES_DATA = [
       "Vellum"
     ],
     "coverImage": "images/covers/crab-champions.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Crafty Survivors",
     "year": 2023,
@@ -1125,7 +1125,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/crown-trick.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Crush the Industry",
     "year": 2025,
@@ -1135,7 +1135,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/crush-the-industry.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Crying Suns",
     "year": 2019,
@@ -1155,7 +1155,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/crypt-of-the-necrodancer.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Cryptark",
     "year": 2017,
@@ -1175,7 +1175,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/cube-chaos.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Cult of the Lamb",
     "year": 2022,
@@ -1200,7 +1200,7 @@ var GAMES_DATA = [
       "Insurmountable"
     ],
     "coverImage": "images/covers/curious-expedition.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Curious Expedition 2",
     "year": 2020,
@@ -1210,7 +1210,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/curious-expedition-2.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Curse of the Dead Gods",
     "year": 2020,
@@ -1222,7 +1222,7 @@ var GAMES_DATA = [
       "Ravenswatch"
     ],
     "coverImage": "images/covers/curse-of-the-dead-gods.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Cursorblade",
     "year": 2023,
@@ -1232,7 +1232,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/cursorblade.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Dark Devotion",
     "year": 2019,
@@ -1254,7 +1254,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/darkblade-ascent.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Darkest Dungeon",
     "year": 2016,
@@ -1282,7 +1282,7 @@ var GAMES_DATA = [
       "Die For The Lich"
     ],
     "coverImage": "images/covers/darkest-dungeon.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Darkest Dungeon 2",
     "year": 2023,
@@ -1351,7 +1351,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dead-finger-dice.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Deadzone: Rogue",
     "year": 2025,
@@ -1386,7 +1386,7 @@ var GAMES_DATA = [
       "Sodaman"
     ],
     "coverImage": "images/covers/death-must-die.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Death Roads: Tournament",
     "year": 2023,
@@ -1396,7 +1396,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/death-roads-tournament.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Deck of Haunts",
     "year": 2025,
@@ -1416,7 +1416,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/decktamer.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Deep Dungeons of Doom",
     "year": 2014,
@@ -1438,7 +1438,7 @@ var GAMES_DATA = [
       "The Spell Brigade"
     ],
     "coverImage": "images/covers/deep-rock-galactic-survivor.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Deep Sky Derelicts",
     "year": 2018,
@@ -1490,7 +1490,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/demonlore.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Desktop Dungeons",
     "year": 2010,
@@ -1534,7 +1534,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/devil-slayer-raksasi.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Dice & Fold",
     "year": 2024,
@@ -1574,7 +1574,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dicefolk.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Diceomancer",
     "year": 2024,
@@ -1622,7 +1622,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/die-in-the-dungeon.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Dimensionals",
     "year": 2024,
@@ -1642,7 +1642,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/disfigure.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Dog and Goblin",
     "year": 2024,
@@ -1672,7 +1672,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dogpile.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Dome Keeper",
     "year": 2022,
@@ -1709,7 +1709,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/don-t-starve-together.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "DoomRL",
     "year": 2002,
@@ -1753,7 +1753,7 @@ var GAMES_DATA = [
       "Riptale"
     ],
     "coverImage": "images/covers/downwell.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Dragon Quest: Young Yangus and the Mystery Dungeon",
     "year": 2006,
@@ -1773,7 +1773,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dragonslayer.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Dream Quest",
     "year": 2014,
@@ -1805,7 +1805,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/drill-core.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Drop Duchy",
     "year": 2025,
@@ -1864,7 +1864,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dungeon-deathball.jpg",
-    "encounterType": "event"},
+    "encounterType": "shop"},
   {
     "name": "Dungeon Hack",
     "year": 1993,
@@ -1896,7 +1896,7 @@ var GAMES_DATA = [
       "Tangledeep"
     ],
     "coverImage": "images/covers/dungeonmans.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Dungeons & Degenerate Gamblers",
     "year": 2024,
@@ -1916,7 +1916,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dungeons-of-blood-and-dream.jpg",
-    "encounterType": "event"},
+    "encounterType": "shop"},
   {
     "name": "Dungeons of Dredmor",
     "year": 2011,
@@ -1928,7 +1928,7 @@ var GAMES_DATA = [
       "The Doors of Trithius"
     ],
     "coverImage": "images/covers/dungeons-of-dredmor.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Dungreed",
     "year": 2018,
@@ -1940,7 +1940,7 @@ var GAMES_DATA = [
       "Sephiria"
     ],
     "coverImage": "images/covers/dungreed.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Dunjungle",
     "year": 2025,
@@ -1969,7 +1969,7 @@ var GAMES_DATA = [
       "Soulash 2"
     ],
     "coverImage": "images/covers/dwarf-fortress.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Elden Ring Nightreign",
     "year": 2025,
@@ -1989,7 +1989,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/elemental-survivors.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Elin",
     "year": 2024,
@@ -1999,7 +1999,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/elin.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Elona",
     "year": 2008,
@@ -2023,7 +2023,7 @@ var GAMES_DATA = [
       "Vellum"
     ],
     "coverImage": "images/covers/ember-knights.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Emberward",
     "year": 2024,
@@ -2033,7 +2033,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/emberward.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Endgame of Devil",
     "year": 2023,
@@ -2082,7 +2082,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/escape-the-mad-empire.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Etrian Mystery Dungeon",
     "year": 2015,
@@ -2094,7 +2094,7 @@ var GAMES_DATA = [
       "Etrian Mystery Dungeon 2"
     ],
     "coverImage": "images/covers/etrian-mystery-dungeon.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Etrian Mystery Dungeon 2",
     "year": 2017,
@@ -2104,7 +2104,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/etrian-mystery-dungeon-2.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Evolings",
     "year": 2023,
@@ -2164,7 +2164,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/fear-hunger.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Feed the Deep",
     "year": 2024,
@@ -2186,7 +2186,7 @@ var GAMES_DATA = [
       "Knights in Tight Spaces"
     ],
     "coverImage": "images/covers/fights-in-tight-spaces.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Final Fantasy Fables: Chocobo's Dungeon",
     "year": 2007,
@@ -2230,7 +2230,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/flick-shot-rogues.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Flinthook",
     "year": 2017,
@@ -2303,7 +2303,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/freaky-awesome.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "FTL",
     "year": 2012,
@@ -2335,7 +2335,7 @@ var GAMES_DATA = [
       "Crying Suns"
     ],
     "coverImage": "images/covers/ftl.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Fury Unleashed",
     "year": 2020,
@@ -2365,7 +2365,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/garden-of-witches.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Gatekeeper",
     "year": 2024,
@@ -2387,7 +2387,7 @@ var GAMES_DATA = [
       "Cell Command"
     ],
     "coverImage": "images/covers/genome-guardian.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Geometry Arena",
     "year": 2020,
@@ -2399,7 +2399,7 @@ var GAMES_DATA = [
       "Geometry Arena 2"
     ],
     "coverImage": "images/covers/geometry-arena.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Geometry Arena 2",
     "year": 2023,
@@ -2409,7 +2409,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/geometry-arena-2.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Gnomes",
     "year": 2025,
@@ -2459,7 +2459,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/golfie.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "GoNNER",
     "year": 2016,
@@ -2481,7 +2481,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/gonner2.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Goobies",
     "year": 2023,
@@ -2491,7 +2491,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/goobies.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Granvir",
     "year": 2025,
@@ -2521,7 +2521,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/griftlands.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Gunfire Reborn",
     "year": 2020,
@@ -2536,7 +2536,7 @@ var GAMES_DATA = [
       "Brew"
     ],
     "coverImage": "images/covers/gunfire-reborn.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Gunlocked",
     "year": 2022,
@@ -2558,7 +2558,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/gunlocked-2.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Hack",
     "year": 1984,
@@ -2582,7 +2582,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/hadean-tactics.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Hades",
     "year": 2019,
@@ -2628,7 +2628,7 @@ var GAMES_DATA = [
       "Garden of Witches"
     ],
     "coverImage": "images/covers/hades.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Hades II",
     "year": 2024,
@@ -2651,7 +2651,7 @@ var GAMES_DATA = [
       "Be My Horde"
     ],
     "coverImage": "images/covers/halls-of-torment.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Hand of Fate",
     "year": 2014,
@@ -2693,7 +2693,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/haste.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Have a Nice Death",
     "year": 2022,
@@ -2713,7 +2713,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/he-is-coming.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Heading Out",
     "year": 2023,
@@ -2753,7 +2753,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/hell-clock.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Hellboy Web of Wyrd",
     "year": 2023,
@@ -2763,7 +2763,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/hellboy-web-of-wyrd.jpg",
-    "encounterType": "shop"},
+    "encounterType": "event"},
   {
     "name": "Hellcard",
     "year": 2023,
@@ -2807,7 +2807,7 @@ var GAMES_DATA = [
       "Escape The Mad Empire"
     ],
     "coverImage": "images/covers/heroes-of-hammerwatch.jpg",
-    "encounterType": "event"},
+    "encounterType": "shop"},
   {
     "name": "Heroes of Hammerwatch II",
     "year": 2025,
@@ -2857,7 +2857,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/icewall.jpg",
-    "encounterType": "shop"},
+    "encounterType": "event"},
   {
     "name": "Immortal Redneck",
     "year": 2017,
@@ -2877,7 +2877,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/infinite-space-iii-sea-of-stars.jpg",
-    "encounterType": "shop"},
+    "encounterType": "event"},
   {
     "name": "Infra Arcana",
     "year": 2011,
@@ -2904,7 +2904,7 @@ var GAMES_DATA = [
       "Dicealot"
     ],
     "coverImage": "images/covers/inscryption.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Insurmountable",
     "year": 2021,
@@ -2914,7 +2914,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/insurmountable.jpg",
-    "encounterType": "shop"},
+    "encounterType": "event"},
   {
     "name": "Into the Breach",
     "year": 2018,
@@ -2936,7 +2936,7 @@ var GAMES_DATA = [
       "Spellmasons"
     ],
     "coverImage": "images/covers/into-the-breach.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Iratus: Lord of the Dead",
     "year": 2019,
@@ -2946,7 +2946,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/iratus-lord-of-the-dead.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Iter Vehemens Ad Necem",
     "year": 2001,
@@ -2966,7 +2966,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/izuna-2-the-unemployed-ninja-returns.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Izuna: Legend of the Unemployed Ninja",
     "year": 2006,
@@ -2978,7 +2978,7 @@ var GAMES_DATA = [
       "Izuna 2: The Unemployed Ninja Returns"
     ],
     "coverImage": "images/covers/izuna-legend-of-the-unemployed-ninja.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Jotunnslayer: Hordes of Hel",
     "year": 2025,
@@ -2988,7 +2988,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/jotunnslayer-hordes-of-hel.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Jupiter Hell",
     "year": 2019,
@@ -3008,7 +3008,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/just-king.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Kādomon: Hyper Auto Battlers",
     "year": 2024,
@@ -3028,7 +3028,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/keeper-s-toll.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "KeeperRL",
     "year": 2015,
@@ -3092,7 +3092,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/lake-of-creatures.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Larn",
     "year": 1986,
@@ -3122,7 +3122,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/let-him-cook.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Linley's Dungeon Crawl",
     "year": 1995,
@@ -3155,7 +3155,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/lonestar.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Loop Hero",
     "year": 2021,
@@ -3167,7 +3167,7 @@ var GAMES_DATA = [
       "Super Fantasy Kingdom"
     ],
     "coverImage": "images/covers/loop-hero.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Loot Rascals",
     "year": 2017,
@@ -3187,7 +3187,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/loot-river.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Lootplot",
     "year": 2025,
@@ -3197,7 +3197,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/lootplot.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Lost Flame",
     "year": 2019,
@@ -3263,7 +3263,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/lucky-hero.jpg",
-    "encounterType": "event"},
+    "encounterType": "shop"},
   {
     "name": "Magic Survival",
     "year": 2019,
@@ -3285,7 +3285,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/magicraft.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Maid Survivors: Little Angels",
     "year": 2025,
@@ -3295,7 +3295,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/maid-survivors-little-angels.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Mainframe Defenders",
     "year": 2020,
@@ -3305,7 +3305,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/mainframe-defenders.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Maze Mice",
     "year": 2025,
@@ -3345,7 +3345,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/meme-mayhem.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Menace from the Deep",
     "year": 2024,
@@ -3405,7 +3405,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/million-depth.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Mimic Logic",
     "year": 2024,
@@ -3415,7 +3415,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/mimic-logic.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Mistrogue: Mist and the Living Dungeons",
     "year": 2023,
@@ -3485,7 +3485,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/monster-train-2.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Monstrum",
     "year": 2015,
@@ -3495,7 +3495,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/monstrum.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Moon Watch",
     "year": 2024,
@@ -3527,7 +3527,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/moonlighter-2-the-endless-vault.jpg",
-    "encounterType": "event"},
+    "encounterType": "shop"},
   {
     "name": "Moonring",
     "year": 2023,
@@ -3569,7 +3569,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/mortal-sin.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Mothergunship",
     "year": 2018,
@@ -3579,7 +3579,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/mothergunship.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Muck",
     "year": 2021,
@@ -3615,7 +3615,7 @@ var GAMES_DATA = [
       "House of Necrosis"
     ],
     "coverImage": "images/covers/mystery-dungeon-2-shiren-the-wanderer.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "NecroBouncer",
     "year": 2022,
@@ -3658,7 +3658,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/necrosmith-2.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Neon Abyss",
     "year": 2019,
@@ -3690,7 +3690,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/neophyte.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "NetHack",
     "year": 1987,
@@ -3769,7 +3769,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/nordhold.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Nordic Ashes: Survivors of Ragnarok",
     "year": 2022,
@@ -3799,7 +3799,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/nubby-s-number-factory.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Nuclear Throne",
     "year": 2015,
@@ -3844,7 +3844,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/octogeddon.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Odinfall",
     "year": 2025,
@@ -3896,7 +3896,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/onebit-adventure.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "OTXO",
     "year": 2023,
@@ -3916,7 +3916,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pairs-perils.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Paper Animal Adventure",
     "year": 2025,
@@ -3926,7 +3926,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/paper-animal-adventure.jpg",
-    "encounterType": "event"},
+    "encounterType": "shop"},
   {
     "name": "Paper Planet",
     "year": 2023,
@@ -3948,7 +3948,7 @@ var GAMES_DATA = [
       "Kādomon: Hyper Auto Battlers"
     ],
     "coverImage": "images/covers/patch-quest.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Path of Achra",
     "year": 2023,
@@ -3958,7 +3958,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/path-of-achra.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Pawnbarian",
     "year": 2021,
@@ -4017,7 +4017,7 @@ var GAMES_DATA = [
       "OneBit Adventure"
     ],
     "coverImage": "images/covers/pixel-dungeon.jpg",
-    "encounterType": "event"},
+    "encounterType": "shop"},
   {
     "name": "PlateUp!",
     "year": 2022,
@@ -4037,7 +4037,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/plinko-panic.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Pocket Crystal League",
     "year": 2022,
@@ -4047,7 +4047,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pocket-crystal-league.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Pogo Rogue",
     "year": 2024,
@@ -4067,7 +4067,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-explorers-of-sky.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Pokémon Mystery Dungeon: Explorers of Time and Explorers of Darkness",
     "year": 2007,
@@ -4089,7 +4089,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-gates-to-infinity.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Pokémon Mystery Dungeon: Red and Blue Rescue Team",
     "year": 2005,
@@ -4105,7 +4105,7 @@ var GAMES_DATA = [
       "Pokémon Mystery Dungeon: Rescue Team DX"
     ],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-red-and-blue-rescue-team.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Pokémon Mystery Dungeon: Rescue Team DX",
     "year": 2020,
@@ -4147,7 +4147,7 @@ var GAMES_DATA = [
       "Aces & Adventures"
     ],
     "coverImage": "images/covers/popup-dungeon.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Powder",
     "year": 2003,
@@ -4159,7 +4159,7 @@ var GAMES_DATA = [
       "100 Rogues"
     ],
     "coverImage": "images/covers/powder.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Primordialis",
     "year": 2024,
@@ -4169,7 +4169,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/primordialis.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Putrid Shot Ultra",
     "year": 2022,
@@ -4209,7 +4209,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/rack-and-slay.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Ragnarok",
     "year": 1992,
@@ -4261,7 +4261,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/reality-break.jpg",
-    "encounterType": "shop"},
+    "encounterType": "event"},
   {
     "name": "Realm of Ink",
     "year": 2024,
@@ -4283,7 +4283,7 @@ var GAMES_DATA = [
       "Talented"
     ],
     "coverImage": "images/covers/realm-of-the-mad-god.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Repetendium",
     "year": 2022,
@@ -4303,7 +4303,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/return-to-abyss.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Returnal",
     "year": 2023,
@@ -4325,7 +4325,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/revita.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Rift Wizard",
     "year": 2020,
@@ -4338,7 +4338,7 @@ var GAMES_DATA = [
       "Rift Wizard 2"
     ],
     "coverImage": "images/covers/rift-wizard.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Rift Wizard 2",
     "year": 2024,
@@ -4358,7 +4358,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/ring-of-pain.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Riptale",
     "year": 2017,
@@ -4416,7 +4416,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/risk-of-rain-returns.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Road Not Taken",
     "year": 2014,
@@ -4439,7 +4439,7 @@ var GAMES_DATA = [
       "Brew"
     ],
     "coverImage": "images/covers/roboquest.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Rogue",
     "year": 1980,
@@ -4465,7 +4465,7 @@ var GAMES_DATA = [
       "Fatal Labyrinth"
     ],
     "coverImage": "images/covers/rogue.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Rogue Empire",
     "year": 2019,
@@ -4475,7 +4475,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/rogue-empire.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Rogue Heroes: Ruins of Tasos",
     "year": 2021,
@@ -4516,7 +4516,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/rogue-legacy-2.jpg",
-    "encounterType": "event"},
+    "encounterType": "shop"},
   {
     "name": "Rogue Lords",
     "year": 2021,
@@ -4526,7 +4526,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/rogue-lords.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Rogue Tower",
     "year": 2022,
@@ -4539,7 +4539,7 @@ var GAMES_DATA = [
       "Tower Dominion"
     ],
     "coverImage": "images/covers/rogue-tower.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Rogue Wizards",
     "year": 2016,
@@ -4581,7 +4581,7 @@ var GAMES_DATA = [
       "Dicefolk"
     ],
     "coverImage": "images/covers/roguebook.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Roll",
     "year": 2021,
@@ -4603,7 +4603,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/rollscape.jpg",
-    "encounterType": "event"},
+    "encounterType": "shop"},
   {
     "name": "Rounds",
     "year": 2021,
@@ -4633,7 +4633,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/scarlet-tower.jpg",
-    "encounterType": "event"},
+    "encounterType": "shop"},
   {
     "name": "Scourgebringer",
     "year": 2020,
@@ -4655,7 +4655,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/sea-of-survivors.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Sephiria",
     "year": 2025,
@@ -4665,7 +4665,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/sephiria.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Shadowveil: Legend of The Five Rings",
     "year": 2025,
@@ -4685,7 +4685,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/shape-of-dreams.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Shattered Pixel Dungeon",
     "year": 2014,
@@ -4695,7 +4695,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/shattered-pixel-dungeon.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Ship of Fools",
     "year": 2022,
@@ -4764,7 +4764,7 @@ var GAMES_DATA = [
       "Shiren the Wanderer GB2: Magic Castle of the Desert"
     ],
     "coverImage": "images/covers/shiren-the-wanderer-gb-monster-of-moonlight-village.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Shiren the Wanderer GB2: Magic Castle of the Desert",
     "year": 2001,
@@ -4863,7 +4863,7 @@ var GAMES_DATA = [
       "Realm of Ink"
     ],
     "coverImage": "images/covers/skul-the-hero-slayer.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Sky's The Limit MAH-JONG",
     "year": 2024,
@@ -4883,7 +4883,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/slasher-s-keep.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Slay the Spire",
     "year": 2017,
@@ -4984,7 +4984,7 @@ var GAMES_DATA = [
       "Luck & Loot"
     ],
     "coverImage": "images/covers/slice-dice.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Slime 3K: Rise Against Despot",
     "year": 2023,
@@ -5014,7 +5014,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/slots-daggers.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "SNKRX",
     "year": 2021,
@@ -5039,7 +5039,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/sodaman.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Sol Cesto",
     "year": 2025,
@@ -5059,7 +5059,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/solitairica.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Soulash",
     "year": 2022,
@@ -5071,7 +5071,7 @@ var GAMES_DATA = [
       "Soulash 2"
     ],
     "coverImage": "images/covers/soulash.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Soulash 2",
     "year": 2023,
@@ -5091,7 +5091,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/soulstone-survivors.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Space Beast Terror Fright",
     "year": 2015,
@@ -5101,7 +5101,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/space-beast-terror-fright.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Spellbook Demonslayers",
     "year": 2022,
@@ -5131,7 +5131,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/spellrogue.jpg",
-    "encounterType": "shop"},
+    "encounterType": "event"},
   {
     "name": "Spelunky",
     "year": 2012,
@@ -5208,7 +5208,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/spirit-hunters-infinite-horde.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Spiritfall",
     "year": 2023,
@@ -5280,7 +5280,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/steve-s-warehouse-physics-roguelike-chaos.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Stick It to the Stickman",
     "year": 2025,
@@ -5290,7 +5290,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/stick-it-to-the-stickman.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Stoneshard",
     "year": 2020,
@@ -5300,7 +5300,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/stoneshard.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Strange Adventures in Infinite Space",
     "year": 2002,
@@ -5401,7 +5401,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/sworn.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Synthetik 2",
     "year": 2021,
@@ -5433,7 +5433,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/talented.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Tales of Maj'Eyal",
     "year": 1998,
@@ -5447,7 +5447,7 @@ var GAMES_DATA = [
       "Rogue Empire"
     ],
     "coverImage": "images/covers/tales-of-maj-eyal.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Tangledeep",
     "year": 2017,
@@ -5509,7 +5509,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/terraformers.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "TerRoguelike",
     "year": 2024,
@@ -5519,7 +5519,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/terroguelike.jpg",
-    "encounterType": "shop"},
+    "encounterType": "event"},
   {
     "name": "The Binding of Isaac",
     "year": 2011,
@@ -5588,7 +5588,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-binding-of-isaac-rebirth.jpg",
-    "encounterType": "shop"},
+    "encounterType": "event"},
   {
     "name": "The Doors of Trithius",
     "year": 2021,
@@ -5598,7 +5598,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-doors-of-trithius.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "The Fable: Manga Build Roguelike",
     "year": 2025,
@@ -5608,7 +5608,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-fable-manga-build-roguelike.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "The Flame in the Flood",
     "year": 2016,
@@ -5628,7 +5628,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-guided-fate-paradox.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "The King is Watching",
     "year": 2025,
@@ -5638,7 +5638,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-king-is-watching.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "The Last Flame",
     "year": 2024,
@@ -5648,7 +5648,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-last-flame.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "The Last Spell",
     "year": 2021,
@@ -5670,7 +5670,7 @@ var GAMES_DATA = [
       "Brutal Orchestra"
     ],
     "coverImage": "images/covers/the-legend-of-bum-bo.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "The Nightmare of Druaga",
     "year": 2004,
@@ -5680,7 +5680,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-nightmare-of-druaga.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "The Ouroboros King",
     "year": 2023,
@@ -5690,7 +5690,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-ouroboros-king.jpg",
-    "encounterType": "shop"},
+    "encounterType": "event"},
   {
     "name": "The Rogue Prince of Persia",
     "year": 2024,
@@ -5700,7 +5700,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-rogue-prince-of-persia.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "The Royal Writ",
     "year": 2025,
@@ -5710,7 +5710,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-royal-writ.jpg",
-    "encounterType": "shop"},
+    "encounterType": "event"},
   {
     "name": "The Spell Brigade",
     "year": 2024,
@@ -5720,7 +5720,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-spell-brigade.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "The Unliving",
     "year": 2022,
@@ -5730,7 +5730,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-unliving.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "The Void Rains Upon Her Heart",
     "year": 2018,
@@ -5740,7 +5740,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-void-rains-upon-her-heart.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "There Are No Orcs",
     "year": 2025,
@@ -5750,7 +5750,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/there-are-no-orcs.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Time Wasters",
     "year": 2023,
@@ -5760,7 +5760,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/time-wasters.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Tiny Rogues",
     "year": 2022,
@@ -5780,7 +5780,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/tinyfolks.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "ToeJam & Earl",
     "year": 1991,
@@ -5813,7 +5813,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/tombstar.jpg",
-    "encounterType": "event"},
+    "encounterType": "shop"},
   {
     "name": "Torneko: The Last Hope",
     "year": 1999,
@@ -5825,7 +5825,7 @@ var GAMES_DATA = [
       "Torneko's Great Adventure 3"
     ],
     "coverImage": "images/covers/torneko-the-last-hope.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Torneko's Great Adventure 3",
     "year": 2002,
@@ -5882,7 +5882,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/touhou-lost-branch-of-legend.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Tower Dominion",
     "year": 2025,
@@ -5934,7 +5934,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/ultimate-adom.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Uma Musume: Pretty Derby",
     "year": 2021,
@@ -5944,7 +5944,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/uma-musume-pretty-derby.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Underdogs",
     "year": 2024,
@@ -6031,7 +6031,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/vampire-hunters.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Vampire Survivors",
     "year": 2021,
@@ -6096,7 +6096,7 @@ var GAMES_DATA = [
       "Disfigure"
     ],
     "coverImage": "images/covers/vampire-survivors.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Vellum",
     "year": 2024,
@@ -6106,7 +6106,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/vellum.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Vivid Knight",
     "year": 2021,
@@ -6118,7 +6118,7 @@ var GAMES_DATA = [
       "Vivid World"
     ],
     "coverImage": "images/covers/vivid-knight.jpg",
-    "encounterType": "shop"},
+    "encounterType": "combat"},
   {
     "name": "Vivid World",
     "year": 2025,
@@ -6140,7 +6140,7 @@ var GAMES_DATA = [
       "Wild Bastards"
     ],
     "coverImage": "images/covers/void-bastards.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Void War",
     "year": 2024,
@@ -6212,7 +6212,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/warsim-the-realm-of-aslona.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Wayward",
     "year": 2011,
@@ -6222,7 +6222,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/wayward.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "We Need To Go Deeper",
     "year": 2017,
@@ -6274,7 +6274,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/wild-bastards.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Wildermyth",
     "year": 2019,
@@ -6306,7 +6306,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/windblown.jpg",
-    "encounterType": "combat"},
+    "encounterType": "event"},
   {
     "name": "Wizard of Legend",
     "year": 2018,
@@ -6321,7 +6321,7 @@ var GAMES_DATA = [
       "Abandoned Archive"
     ],
     "coverImage": "images/covers/wizard-of-legend.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Wizard of Legend 2",
     "year": 2024,
@@ -6351,7 +6351,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/word-play.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Wordatro!",
     "year": 2025,
@@ -6361,7 +6361,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/wordatro.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Words Can Kill",
     "year": 2022,
@@ -6391,7 +6391,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/yohane-the-parhelion-numazu-in-the-mirage.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Z.H.P. Unlosing Ranger VS Darkdeath Evilman",
     "year": 2010,
@@ -6403,7 +6403,7 @@ var GAMES_DATA = [
       "The Guided Fate Paradox"
     ],
     "coverImage": "images/covers/z-h-p-unlosing-ranger-vs-darkdeath-evilman.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Zangband",
     "year": 1994,
@@ -6438,7 +6438,7 @@ var GAMES_DATA = [
       "Vellum"
     ],
     "coverImage": "images/covers/ziggurat.jpg",
-    "encounterType": "event"},
+    "encounterType": "combat"},
   {
     "name": "Ziggurat 2",
     "year": 2020,
@@ -6458,7 +6458,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/zoeti.jpg",
-    "encounterType": "combat"},
+    "encounterType": "shop"},
   {
     "name": "Zorbus",
     "year": 2022,
