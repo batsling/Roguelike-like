@@ -206,9 +206,15 @@ function findAllShortestPaths(start, goal) {
 // Each path is an array of game names
 function findMultiplePaths(start, goal, maxPaths = 50) {
   const paths = [];
+  const maxDepth = 20; // Limit depth to prevent infinite recursion
+  let searchCount = 0;
+  const maxSearches = 10000; // Prevent infinite loops
 
-  function dfs(current, path, visitedInPath) {
-    // If we've found enough paths, stop searching
+  function dfs(current, path, visitedInPath, depth) {
+    // Safety checks
+    searchCount++;
+    if (searchCount > maxSearches) return;
+    if (depth > maxDepth) return;
     if (paths.length >= maxPaths) return;
 
     // If we reached the goal, save this path
@@ -225,7 +231,7 @@ function findMultiplePaths(start, goal, maxPaths = 50) {
       if (!visitedInPath.has(next)) {
         path.push(next);
         visitedInPath.add(next);
-        dfs(next, path, visitedInPath);
+        dfs(next, path, visitedInPath, depth + 1);
         path.pop();
         visitedInPath.delete(next);
       }
@@ -233,10 +239,16 @@ function findMultiplePaths(start, goal, maxPaths = 50) {
   }
 
   // Start DFS from the start node
-  dfs(start, [start], new Set([start]));
+  try {
+    dfs(start, [start], new Set([start]), 0);
+  } catch (e) {
+    console.error('Error in findMultiplePaths DFS:', e);
+  }
 
   // Sort paths by length (shortest first)
   paths.sort((a, b) => a.length - b.length);
+
+  console.log(`findMultiplePaths: Found ${paths.length} paths after ${searchCount} searches`);
 
   return paths;
 }

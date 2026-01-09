@@ -1616,13 +1616,33 @@ function showMapModal() {
     const shortestDist = shortestPathData.shortestDistance;
 
     // Find multiple paths to choose from
-    const allPaths = findMultiplePaths(currentGame, amuletGame, 100);
+    let allPaths = findMultiplePaths(currentGame, amuletGame, 100);
     console.log(`Found ${allPaths.length} paths from ${currentGame} to ${amuletGame}`);
 
     if (allPaths.length === 0) {
-      mapHTML += '<p style="color: #888;">No paths found</p>';
-      mapHTML += '</div>';
+      // Fallback: use old distance-based approach
+      console.warn('findMultiplePaths returned no paths, falling back to distance-based approach');
+      const fallbackPathData = findPathsUpToDistance(currentGame, amuletGame, shortestDist);
+
+      if (!fallbackPathData) {
+        mapHTML += '<p style="color: #888;">No paths found</p>';
+        mapHTML += '</div>';
+        createGameModal(mapHTML);
+        return;
+      }
+
+      // Use old rendering approach
+      mapHTML += '<div id="map-view-container">';
+      mapHTML += generateMapView(currentGame, amuletGame, shortestDist, fallbackPathData);
+      mapHTML += '</div></div>';
       createGameModal(mapHTML);
+
+      // Reset zoom and draw arrows
+      currentMapZoom = 1.0;
+      setTimeout(() => {
+        const { gameToLayer } = reorganizeMapLayers(fallbackPathData);
+        drawMapArrows(fallbackPathData, currentGame, amuletGame, gameToLayer);
+      }, 150);
       return;
     }
 
@@ -1679,6 +1699,15 @@ function showMapModal() {
     mapHTML += '<div id="map-view-container">';
     const initialPaths = allPaths.slice(0, shortestPathCount);
     const initialPathData = pathsToPathData(initialPaths, currentGame, amuletGame);
+
+    if (!initialPathData) {
+      console.error('Failed to generate path data from paths:', initialPaths);
+      mapHTML += '<p style="color: #ff4444;">Error generating map view</p>';
+      mapHTML += '</div></div>';
+      createGameModal(mapHTML);
+      return;
+    }
+
     mapHTML += generateMapView(currentGame, amuletGame, initialPathData.totalDistance, initialPathData);
     mapHTML += '</div>';
 
