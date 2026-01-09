@@ -60,7 +60,13 @@ function applyCombatOutcome(success) {
 
     const healthMatch = failureText.match(/(\d+) health/i);
     if (healthMatch) {
-      const healthLoss = parseInt(healthMatch[1]);
+      let healthLoss = parseInt(healthMatch[1]);
+
+      // Apply damage reduction from items (like Garlic)
+      if (typeof calculateDamageReduction === 'function') {
+        healthLoss = calculateDamageReduction(healthLoss);
+      }
+
       const oldHealth = health;
       health = Math.max(0, health - healthLoss);
       gameState.health = health;
@@ -189,7 +195,12 @@ function rollD20() {
       const failureCurses = CurseManager.findByType('failure');
       if (failureCurses.length > 0) {
         // Trigger all failure curses - sum total damage
-        const totalDamage = failureCurses.reduce((sum, curse) => sum + CurseManager.getPenalty(curse.power), 0);
+        let totalDamage = failureCurses.reduce((sum, curse) => sum + CurseManager.getPenalty(curse.power), 0);
+
+        // Apply damage reduction from items (like Garlic)
+        if (typeof calculateDamageReduction === 'function') {
+          totalDamage = calculateDamageReduction(totalDamage);
+        }
 
         StateMutator.modifyHealth(-totalDamage);
 

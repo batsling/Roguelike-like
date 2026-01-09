@@ -146,7 +146,7 @@ var ITEMS_DATA = [
     "name": "The Poop",
     "rarity": "common",
     "type": "Usable",
-    "description": "Apply the Stinky status to the current game. Stinky games are the least prioritized in game selections.",
+    "description": "Choose a visible connected game to apply the Stinky status. Stinky games are the least prioritized in game selections.",
     "image": "images/items/The Poop.png",
     "game": "The Binding of Isaac",
     "tags": [],
@@ -253,6 +253,16 @@ var ITEMS_DATA = [
     "image": "images/items/WandofWishing.png",
     "game": "NetHack",
     "tags": [],
+    "unlocked": true
+  },
+  {
+    "name": "Garlic",
+    "rarity": "uncommon",
+    "type": "Triggered",
+    "description": "Whenever you take damage, take 1 less (minimum 1)",
+    "image": "images/items/Garlic.png",
+    "game": "Super Auto Pets",
+    "tags": ["food"],
     "unlocked": true
   }
 ];

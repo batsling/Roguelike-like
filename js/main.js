@@ -2150,9 +2150,14 @@ function showCombatModal() {
       const failureCurses = getCursesByType('failure');
       if (failureCurses.length > 0) {
         // Trigger all failure curses if rolled a 1
-        const totalDamage = failureCurses.reduce((sum, curse) =>
+        let totalDamage = failureCurses.reduce((sum, curse) =>
           sum + getPowerValue(curse.power, { Low: 2, Medium: 3, High: 4 }), 0
         );
+
+        // Apply damage reduction from items (like Garlic)
+        if (typeof calculateDamageReduction === 'function') {
+          totalDamage = calculateDamageReduction(totalDamage);
+        }
 
         health = Math.max(0, health - totalDamage);
         gameState.health = health;
@@ -2238,6 +2243,11 @@ function showCombatModal() {
         healthLoss = 2;
       } else if (powerText === 'High') {
         healthLoss = 3;
+      }
+
+      // Apply damage reduction from items (like Garlic)
+      if (typeof calculateDamageReduction === 'function') {
+        healthLoss = calculateDamageReduction(healthLoss);
       }
 
       health = Math.max(0, health - healthLoss);
@@ -2586,6 +2596,11 @@ function handleGenericCombatResult(success, powerLevel) {
       healthLoss = 3;
     }
 
+    // Apply damage reduction from items (like Garlic)
+    if (typeof calculateDamageReduction === 'function') {
+      healthLoss = calculateDamageReduction(healthLoss);
+    }
+
     health = Math.max(0, health - healthLoss);
     gameState.health = health;
     updateHealthDisplay();
@@ -2717,7 +2732,14 @@ function handleStoneGolemResult(success) {
     }
   } else {
     // Failed - take 2 damage and gain a curse
-    health = Math.max(0, health - 2);
+    let damage = 2;
+
+    // Apply damage reduction from items (like Garlic)
+    if (typeof calculateDamageReduction === 'function') {
+      damage = calculateDamageReduction(damage);
+    }
+
+    health = Math.max(0, health - damage);
     gameState.health = health;
     updateHealthDisplay();
     updateTopBar();
@@ -2971,15 +2993,9 @@ function removeItemAndReverseStats(index) {
       const match = desc.match(pattern);
       if (match) {
         const value = parseInt(match[1]);
-        // Reverse the stat change (but skip reroll, dash, skip)
-        if (stat !== 'reroll' && stat !== 'dash' && stat !== 'skip') {
-          if (stat === 'maxHealth') {
-            maxHealth = Math.max(1, maxHealth - value);
-            health = Math.min(health, maxHealth); // Cap current health
-            gameState.maxHealth = maxHealth;
-            gameState.health = health;
-            updateHealthDisplay();
-          } else if (stat === 'gold') {
+        // Reverse the stat change (but skip reroll, dash, skip, and maxHealth/health)
+        if (stat !== 'reroll' && stat !== 'dash' && stat !== 'skip' && stat !== 'maxHealth') {
+          if (stat === 'gold') {
             gold = Math.max(0, gold - value);
             gameState.gold = gold;
             updateTopBar();
@@ -2989,6 +3005,7 @@ function removeItemAndReverseStats(index) {
             gameState[stat] = window[stat];
           }
         }
+        // Skip maxHealth and health changes (Binding of Isaac behavior - stats go down but not health)
       }
     });
   }
@@ -3196,7 +3213,14 @@ function completeChampionSuccess() {
 
 function completeChampionFailure() {
   // Lose 3 health
-  health = Math.max(0, health - 3);
+  let damage = 3;
+
+  // Apply damage reduction from items (like Garlic)
+  if (typeof calculateDamageReduction === 'function') {
+    damage = calculateDamageReduction(damage);
+  }
+
+  health = Math.max(0, health - damage);
   gameState.health = health;
   updateHealthDisplay();
   updateTopBar();
@@ -3945,7 +3969,14 @@ function recordLostRun(index) {
   gameState.escapeLostRuns[index]++;
 
   // Deduct 1 health
-  health = Math.max(0, health - 1);
+  let damage = 1;
+
+  // Apply damage reduction from items (like Garlic)
+  if (typeof calculateDamageReduction === 'function') {
+    damage = calculateDamageReduction(damage);
+  }
+
+  health = Math.max(0, health - damage);
   gameState.health = health;
   updateHealthDisplay();
   updateGameStats();
@@ -5253,6 +5284,11 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
 
     // Apply total damage silently
     if (totalDamage > 0) {
+      // Apply damage reduction from items (like Garlic)
+      if (typeof calculateDamageReduction === 'function') {
+        totalDamage = calculateDamageReduction(totalDamage);
+      }
+
       health = Math.max(0, health - totalDamage);
       gameState.health = health;
       updateTopBar?.();

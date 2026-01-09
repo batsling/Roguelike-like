@@ -98,11 +98,16 @@ function selectEncounterOption(eventIndex, optionIndex) {
   // Health changes
   const healthMatch = option.match(/([+-]?\d+) health/i);
   if (healthMatch) {
-    const amount = parseInt(healthMatch[1]);
+    let amount = parseInt(healthMatch[1]);
     if (amount > 0 || option.toLowerCase().includes('heal')) {
       health = Math.min(maxHealth, health + Math.abs(amount));
     } else {
-      health = Math.max(0, health - Math.abs(amount));
+      // Apply damage reduction from items (like Garlic)
+      let damage = Math.abs(amount);
+      if (typeof calculateDamageReduction === 'function') {
+        damage = calculateDamageReduction(damage);
+      }
+      health = Math.max(0, health - damage);
     }
     updateHealthDisplay();
   }

@@ -303,40 +303,12 @@ const ITEM_EFFECTS = {
 
   "The Poop": {
     canUse: () => {
-      // Can use anytime (though most useful during selection)
+      // Can use anytime
       return true;
     },
     onUse: () => {
-      const currentGame = gameState.currentGame;
-      if (!currentGame) {
-        alert('No current game to apply status to!');
-        return;
-      }
-
-      // Check if already has stinky status
-      if (typeof hasGameStatus === 'function' && hasGameStatus(currentGame, 'stinky')) {
-        alert(`${currentGame} is already stinky!`);
-        return;
-      }
-
-      // Add stinky status to current game
-      if (typeof addGameStatus === 'function') {
-        addGameStatus(currentGame, 'stinky', '💩');
-        console.log(`Applied stinky status to ${currentGame}`);
-
-        // Refresh current node to show status icon
-        if (typeof updateNodeStatusIcons === 'function') {
-          const currentNode = document.querySelector('.node.current');
-          if (currentNode) {
-            updateNodeStatusIcons(currentNode);
-          }
-        }
-
-        // Show notification
-        setTimeout(() => {
-          createNotification(`${currentGame} is now STINKY!`, 'rgba(139, 69, 19, 0.95)', '💩');
-        }, 100);
-      }
+      // Show game selection UI for visible connected games
+      showPoopSelection();
     }
   },
 
@@ -452,8 +424,46 @@ const ITEM_EFFECTS = {
       // Show special item selection UI (like collection view)
       showWandOfWishingSelection();
     }
+  },
+
+  "Garlic": {
+    onAcquire: () => {
+      console.log('Acquired Garlic - damage taken will be reduced by 1 (minimum 1)');
+    }
+    // Damage reduction is applied in the calculateDamageReduction function
   }
 };
+
+// ===== DAMAGE REDUCTION FUNCTION =====
+
+/**
+ * Calculate damage reduction from items
+ * @param {number} incomingDamage - The raw damage amount
+ * @returns {number} - The reduced damage amount
+ */
+function calculateDamageReduction(incomingDamage) {
+  let finalDamage = incomingDamage;
+
+  // Check for Garlic item (reduces damage by 1, minimum 1)
+  const hasGarlic = inventory.some(item => item.name === 'Garlic');
+
+  if (hasGarlic && finalDamage > 0) {
+    const oldDamage = finalDamage;
+    finalDamage = Math.max(1, finalDamage - 1);
+    console.log(`Garlic: Reduced damage from ${oldDamage} to ${finalDamage}`);
+
+    // Show notification for damage reduction
+    if (oldDamage !== finalDamage) {
+      setTimeout(() => {
+        if (typeof createNotification === 'function') {
+          createNotification(`Garlic: -1 Damage Taken`, COLORS.SUCCESS, '🧄');
+        }
+      }, 50);
+    }
+  }
+
+  return finalDamage;
+}
 
 // ===== ITEM ACQUISITION FUNCTION =====
 
@@ -1020,6 +1030,149 @@ function showWandOfWishingSelection() {
   }
 }
 
+/**
+ * Show Poop item game selection UI
+ * Displays all visible connected games for applying stinky status
+ */
+function showPoopSelection() {
+  const currentGame = gameState.currentGame;
+  if (!currentGame) {
+    alert('No current game!');
+    return;
+  }
+
+  // Get all connected games (visible on map)
+  const connectedGames = typeof getGameConnections === 'function'
+    ? getGameConnections(currentGame)
+    : [];
+
+  if (connectedGames.length === 0) {
+    alert('No connected games available!');
+    return;
+  }
+
+  // Filter out games that already have stinky status
+  const availableGames = connectedGames.filter(gameName =>
+    typeof hasGameStatus !== 'function' || !hasGameStatus(gameName, 'stinky')
+  );
+
+  if (availableGames.length === 0) {
+    alert('All connected games are already stinky!');
+    return;
+  }
+
+  // Get game type for color coding
+  const getGameTypeColor = (gameName) => {
+    const game = games?.find(g => g.name === gameName);
+    if (!game || !game.type) return '#888';
+
+    switch(game.type.toLowerCase()) {
+      case 'action': return '#ff4444';
+      case 'deckbuilding': return '#bb66ff';
+      case 'strategy': return '#4488ff';
+      case 'traditional': return '#44ff44';
+      default: return '#888';
+    }
+  };
+
+  // Create games grid HTML
+  const gamesHTML = availableGames.map(gameName => {
+    const game = games?.find(g => g.name === gameName);
+    const typeColor = getGameTypeColor(gameName);
+
+    return `
+      <div class="poop-game-card" data-game-name="${gameName.replace(/"/g, '&quot;')}" style="
+        background: rgba(0,0,0,0.3);
+        border: 2px solid ${typeColor};
+        border-radius: 8px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+      ">
+        <div style="font-weight: bold; color: white; text-align: center; font-size: 14px;">
+          ${gameName}
+        </div>
+        <div style="color: #aaa; text-align: center; font-size: 12px;">
+          ${game?.type || 'Unknown'}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Create modal
+  if (typeof createGameModal === 'function') {
+    createGameModal(`
+      <div style="
+        background: rgba(20,20,20,0.98);
+        padding: 30px;
+        border-radius: 12px;
+        border: 3px solid #8B4513;
+        max-width: 600px;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+      ">
+        <h2 style="color: #8B4513; margin: 0 0 15px 0; text-align: center;">💩 The Poop 💩</h2>
+        <p style="color: #aaa; text-align: center; margin-bottom: 20px; font-size: 14px;">
+          Choose a game to make STINKY!<br>
+          <span style="font-size: 12px; color: #888;">Stinky games are deprioritized in selections</span>
+        </p>
+        <div style="flex: 1; overflow-y: auto; padding: 10px;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px;">
+            ${gamesHTML}
+          </div>
+        </div>
+        <div style="text-align: center; margin-top: 15px; padding-top: 15px; border-top: 2px solid #444;">
+          <button onclick="closeGameModal();" style="padding: 10px 30px; background: #444; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Cancel</button>
+        </div>
+      </div>
+    `);
+
+    // Add hover and click handlers
+    document.querySelectorAll('.poop-game-card').forEach(card => {
+      card.onmouseenter = (e) => {
+        e.currentTarget.style.transform = 'translateY(-5px) scale(1.05)';
+        e.currentTarget.style.boxShadow = '0 10px 30px rgba(139, 69, 19, 0.4)';
+      };
+
+      card.onmouseleave = (e) => {
+        e.currentTarget.style.transform = '';
+        e.currentTarget.style.boxShadow = '';
+      };
+
+      card.onclick = (e) => {
+        const selectedGameName = e.currentTarget.dataset.gameName;
+
+        if (selectedGameName) {
+          console.log(`The Poop: Selected ${selectedGameName}`);
+
+          // Apply stinky status
+          if (typeof addGameStatus === 'function') {
+            addGameStatus(selectedGameName, 'stinky', '💩');
+            console.log(`Applied stinky status to ${selectedGameName}`);
+          }
+
+          // Close modal
+          if (typeof closeGameModal === 'function') {
+            closeGameModal();
+          }
+
+          // Show notification
+          setTimeout(() => {
+            createNotification(`${selectedGameName} is now STINKY!`, 'rgba(139, 69, 19, 0.95)', '💩');
+          }, 100);
+        }
+      };
+    });
+  } else {
+    console.error('createGameModal function not found!');
+  }
+}
+
 // Export functions to global scope
 window.applyItemEffects = applyItemEffects;
 window.acquireItem = acquireItem;
@@ -1035,4 +1188,6 @@ window.triggerOnEnemyDefeated = triggerOnEnemyDefeated; // Trigger onEnemyDefeat
 window.triggerOnCurseAdded = triggerOnCurseAdded; // Trigger onCurseAdded effects
 window.triggerOnCurseRemoved = triggerOnCurseRemoved; // Trigger onCurseRemoved effects
 window.showWandOfWishingSelection = showWandOfWishingSelection; // Wand of Wishing UI
+window.showPoopSelection = showPoopSelection; // Poop selection UI
+window.calculateDamageReduction = calculateDamageReduction; // Damage reduction from items
 window.ITEM_EFFECTS = ITEM_EFFECTS;
