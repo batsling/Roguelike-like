@@ -398,17 +398,23 @@ const ITEM_EFFECTS = {
     },
     onCurseAdded: () => {
       // Increase max health by 1 and heal by 1
-      console.log('Vitality Orb: Curse added, increasing max health');
+      console.log('Vitality Orb: Curse added, increasing max health and healing');
 
       const oldMaxHealth = maxHealth;
-      const result = StateMutator.modifyMaxHealth(1);
+      const oldHealth = health;
 
-      if (result.changed) {
-        console.log(`Vitality Orb: Max Health increased (${oldMaxHealth} → ${result.newMaxHealth})`);
+      // Increase max health by 1
+      const maxHealthResult = StateMutator.modifyMaxHealth(1);
+
+      // Heal by 1
+      const healthResult = StateMutator.modifyHealth(1);
+
+      if (maxHealthResult.changed || healthResult.changed) {
+        console.log(`Vitality Orb: Max Health ${oldMaxHealth} → ${maxHealthResult.newMaxHealth}, Health ${oldHealth} → ${healthResult.newHealth}`);
 
         // Show notification
         setTimeout(() => {
-          createNotification('Vitality Orb: +1 Max Health!', COLORS.SUCCESS, '🔮');
+          createNotification('Vitality Orb: +1 Max Health & +1 Health!', COLORS.SUCCESS, '🔮');
         }, 100);
       }
     }
