@@ -1510,6 +1510,30 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
       // Get horizontal offset for this game (if any)
       const horizontalOffset = gameOffsets.get(gameName) || 0;
 
+      // Get encounter icon for this game
+      const game = games.find(g => g.name === gameName);
+      let encounterIcon = '';
+      let encounterColor = '';
+
+      if (game && game.encounterType && !isCurrentGame && !isAmuletGame && !isPastGame) {
+        if (game.encounterType === 'combat') {
+          encounterIcon = '!';
+          // Color based on game type
+          switch(game.type?.toLowerCase()) {
+            case 'action': encounterColor = '#ff4444'; break;
+            case 'deckbuilding': encounterColor = '#bb66ff'; break;
+            case 'strategy': encounterColor = '#4488ff'; break;
+            default: encounterColor = '#44ff44'; break;
+          }
+        } else if (game.encounterType === 'event') {
+          encounterIcon = '?';
+          encounterColor = '#bb66ff';
+        } else if (game.encounterType === 'shop') {
+          encounterIcon = '$';
+          encounterColor = '#ffd700';
+        }
+      }
+
       html += `
         <div class="map-game-box-${gameName.replace(/\s+/g, '-')}" data-game="${gameName}"
              onmouseenter="showMapTooltip(event, '${gameName.replace(/'/g, "\\'")}')"
@@ -1533,8 +1557,10 @@ function generateMapView(currentGame, amuletGame, maxDistance) {
           cursor: pointer;
           opacity: ${!isOnShortestPath && !isCurrentGame && !isAmuletGame ? '0.5' : '1'};
           transform: translateX(${horizontalOffset}px);
+          position: relative;
         ">
           ${isCurrentGame ? '📍 ' : ''}${gameName}${isAmuletGame ? ' 🏆' : ''}${isOnShortestPath && !isCurrentGame && !isAmuletGame ? ' ⭐' : ''}
+          ${encounterIcon ? `<span style="position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; background: ${encounterColor}; color: ${encounterColor === '#ffd700' ? '#000' : '#fff'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid #000; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">${encounterIcon}</span>` : ''}
         </div>
       `;
     });
@@ -1589,9 +1615,32 @@ function showMapModal() {
   } else {
     const shortestDist = shortestPathData.shortestDistance;
 
+    // Initialize map state if not exists
+    if (!window.mapDisplayState) {
+      window.mapDisplayState = {
+        currentDistance: shortestDist,
+        shortestDistance: shortestDist,
+        currentGame: currentGame,
+        amuletGame: amuletGame
+      };
+    } else {
+      // Update for new map view
+      window.mapDisplayState.currentDistance = shortestDist;
+      window.mapDisplayState.shortestDistance = shortestDist;
+      window.mapDisplayState.currentGame = currentGame;
+      window.mapDisplayState.amuletGame = amuletGame;
+    }
+
     // Show header with controls at the top
-    mapHTML += '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">';
+    mapHTML += '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">';
     mapHTML += `<span style="color: #e6d5b8; font-weight: bold;">Shortest Path: ${shortestDist} steps</span>`;
+
+    // Show More Paths button
+    mapHTML += `
+      <button id="show-more-paths-btn" onclick="showMorePaths()" style="padding: 8px 16px; background: #4CAF50; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">
+        Show More Paths (+1)
+      </button>
+    `;
 
     // Zoom controls
     mapHTML += `
@@ -1605,6 +1654,9 @@ function showMapModal() {
 
     mapHTML += `<button onclick="closeGameModal()" style="padding: 8px 20px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>`;
     mapHTML += '</div>';
+
+    // Current distance display
+    mapHTML += `<div id="current-distance-display" style="margin-bottom: 10px; color: #aaa; font-size: 12px;">Showing paths up to <span id="current-distance-value" style="color: #4CAF50; font-weight: bold;">${shortestDist}</span> steps</div>`;
 
     // Show shortest distance view only
     mapHTML += '<div id="map-view-container">';
@@ -1627,6 +1679,71 @@ function showMapModal() {
       // Auto-zoom disabled - user can manually zoom with controls
       // autoZoomMapToFit();
     }, 150);
+  }
+}
+
+// Show more paths by incrementing the distance
+function showMorePaths() {
+  if (!window.mapDisplayState) return;
+
+  const { currentDistance, currentGame, amuletGame } = window.mapDisplayState;
+  const newDistance = currentDistance + 1;
+
+  // Update state
+  window.mapDisplayState.currentDistance = newDistance;
+
+  // Find if there are any games at this new distance
+  const pathData = findPathsUpToDistance(currentGame, amuletGame, newDistance);
+
+  // Check if we actually got new paths
+  let hasNewPaths = false;
+  if (pathData && pathData.layers) {
+    // Check if the new distance adds any new games
+    const allGames = new Set();
+    pathData.layers.forEach(layer => {
+      layer.forEach(gameInfo => allGames.add(gameInfo.name));
+    });
+
+    // Compare with previous distance
+    const prevPathData = findPathsUpToDistance(currentGame, amuletGame, currentDistance);
+    const prevGames = new Set();
+    if (prevPathData && prevPathData.layers) {
+      prevPathData.layers.forEach(layer => {
+        layer.forEach(gameInfo => prevGames.add(gameInfo.name));
+      });
+    }
+
+    hasNewPaths = allGames.size > prevGames.size;
+  }
+
+  // Regenerate the map view
+  const mapContainer = document.getElementById('map-view-container');
+  if (mapContainer) {
+    mapContainer.innerHTML = generateMapView(currentGame, amuletGame, newDistance);
+  }
+
+  // Update distance display
+  const distanceValue = document.getElementById('current-distance-value');
+  if (distanceValue) {
+    distanceValue.textContent = newDistance;
+  }
+
+  // Redraw arrows
+  setTimeout(() => {
+    const newPathData = findPathsUpToDistance(currentGame, amuletGame, newDistance);
+    const { gameToLayer } = reorganizeMapLayers(newPathData);
+    drawMapArrows(newPathData, currentGame, amuletGame, gameToLayer);
+  }, 50);
+
+  // Disable button if no new paths were added (we've reached the limit)
+  if (!hasNewPaths) {
+    const btn = document.getElementById('show-more-paths-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.style.background = '#555';
+      btn.style.cursor = 'not-allowed';
+      btn.textContent = 'No More Paths';
+    }
   }
 }
 
@@ -6454,6 +6571,7 @@ window.handleChampionResult = handleChampionResult;
 window.completeChampionSuccess = completeChampionSuccess;
 window.completeChampionFailure = completeChampionFailure;
 window.showMapModal = showMapModal;
+window.showMorePaths = showMorePaths;
 window.showMapTooltip = showMapTooltip;
 window.moveMapTooltip = moveMapTooltip;
 window.hideMapTooltip = hideMapTooltip;
