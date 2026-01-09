@@ -444,19 +444,26 @@ const ITEM_EFFECTS = {
 function calculateDamageReduction(incomingDamage) {
   let finalDamage = incomingDamage;
 
-  // Check for Garlic item (reduces damage by 1, minimum 1)
-  const hasGarlic = inventory.some(item => item.name === 'Garlic');
+  // Count total Garlic items (considering quantity/stacks)
+  const garlicCount = inventory.reduce((count, item) => {
+    if (item.name === 'Garlic') {
+      return count + (item.quantity || 1);
+    }
+    return count;
+  }, 0);
 
-  if (hasGarlic && finalDamage > 0) {
+  if (garlicCount > 0 && finalDamage > 0) {
     const oldDamage = finalDamage;
-    finalDamage = Math.max(1, finalDamage - 1);
-    console.log(`Garlic: Reduced damage from ${oldDamage} to ${finalDamage}`);
+    // Reduce damage by number of Garlic items, but always take at least 1 damage
+    finalDamage = Math.max(1, finalDamage - garlicCount);
+    console.log(`Garlic (x${garlicCount}): Reduced damage from ${oldDamage} to ${finalDamage}`);
 
     // Show notification for damage reduction
     if (oldDamage !== finalDamage) {
+      const damageReduced = oldDamage - finalDamage;
       setTimeout(() => {
         if (typeof createNotification === 'function') {
-          createNotification(`Garlic: -1 Damage Taken`, COLORS.SUCCESS, '🧄');
+          createNotification(`Garlic${garlicCount > 1 ? ` (x${garlicCount})` : ''}: -${damageReduced} Damage`, COLORS.SUCCESS, '🧄');
         }
       }, 50);
     }
@@ -521,6 +528,9 @@ function acquireItem(item) {
       inventory[existingItemIndex].quantity = 1;
     }
     inventory[existingItemIndex].quantity++;
+
+    // Apply item effects for the additional copy (for Passive and Triggered items)
+    applyItemEffects(itemCopy);
 
     console.log(`Acquired: ${itemCopy.name} (x${inventory[existingItemIndex].quantity})`);
   } else {
