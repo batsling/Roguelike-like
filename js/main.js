@@ -2910,8 +2910,13 @@ function removeItemAndReverseStats(index) {
 
     console.log(`Cursed Slash removed: Max health ${oldMaxHealth} → ${maxHealth}, Current health ${oldHealth} → ${health}`);
 
-    // Remove from inventory and return early
-    inventory.splice(index, 1);
+    // Remove from inventory (handle quantity) and return early
+    if (item.quantity && item.quantity > 1) {
+      item.quantity--;
+      console.log(`${item.name} quantity decreased to ${item.quantity}`);
+    } else {
+      inventory.splice(index, 1);
+    }
     gameState.inventory = inventory;
     updateInventory();
     return;
@@ -2965,8 +2970,13 @@ function removeItemAndReverseStats(index) {
     });
   }
 
-  // Remove from inventory
-  inventory.splice(index, 1);
+  // Remove from inventory (handle quantity)
+  if (item.quantity && item.quantity > 1) {
+    item.quantity--;
+    console.log(`${item.name} quantity decreased to ${item.quantity}`);
+  } else {
+    inventory.splice(index, 1);
+  }
   gameState.inventory = inventory;
   updateInventory();
 }

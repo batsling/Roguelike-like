@@ -239,8 +239,16 @@ const StateMutator = {
       return false;
     }
 
-    const itemName = inventory[index];
-    inventory.splice(index, 1);
+    const item = inventory[index];
+    const itemName = typeof item === 'string' ? item : item.name;
+
+    // Handle quantity for item stacking
+    if (item.quantity && item.quantity > 1) {
+      item.quantity--;
+      console.log(`${itemName} quantity decreased to ${item.quantity}`);
+    } else {
+      inventory.splice(index, 1);
+    }
     gameState.inventory = inventory;
 
     if (updateUI && typeof updateInventory === 'function') {

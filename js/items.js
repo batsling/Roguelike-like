@@ -502,17 +502,32 @@ function acquireItem(item) {
     itemCopy.uses = (effects && effects.uses) || 1;
   }
 
-  // Add to inventory
-  inventory.push(itemCopy);
-  gameState.inventory = [...inventory];
+  // Check if item already exists in inventory (for stacking)
+  const existingItemIndex = inventory.findIndex(item => item.name === itemCopy.name);
 
-  // Apply item effects (for Passive and Triggered items)
-  applyItemEffects(itemCopy);
+  if (existingItemIndex !== -1) {
+    // Item already exists, increment quantity
+    if (!inventory[existingItemIndex].quantity) {
+      inventory[existingItemIndex].quantity = 1;
+    }
+    inventory[existingItemIndex].quantity++;
+
+    console.log(`Acquired: ${itemCopy.name} (x${inventory[existingItemIndex].quantity})`);
+  } else {
+    // New item, add to inventory with quantity of 1
+    itemCopy.quantity = 1;
+    inventory.push(itemCopy);
+
+    // Apply item effects (for Passive and Triggered items) - only on first acquisition
+    applyItemEffects(itemCopy);
+
+    console.log(`Acquired: ${itemCopy.name}${itemCopy.uses ? ` (${itemCopy.uses} uses)` : ''}`);
+  }
+
+  gameState.inventory = [...inventory];
 
   // Update UI
   updateInventory();
-
-  console.log(`Acquired: ${itemCopy.name}${itemCopy.uses ? ` (${itemCopy.uses} uses)` : ''}`);
 }
 
 // ===== HELPER FUNCTIONS =====
@@ -583,10 +598,15 @@ function useItem(itemIndex) {
       gameState.inventory = [...inventory];
       console.log(`${item.name} used. ${item.uses} uses remaining.`);
     } else {
-      // Remove item from inventory when uses reach 0
-      inventory.splice(itemIndex, 1);
+      // Remove item from inventory when uses reach 0 (handle quantity)
+      if (item.quantity && item.quantity > 1) {
+        item.quantity--;
+        console.log(`${item.name} quantity decreased to ${item.quantity}`);
+      } else {
+        inventory.splice(itemIndex, 1);
+        console.log(`Used and removed: ${item.name}`);
+      }
       gameState.inventory = [...inventory];
-      console.log(`Used and removed: ${item.name}`);
     }
 
     // Update UI

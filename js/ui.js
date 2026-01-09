@@ -115,6 +115,21 @@ function updateInventory() {
                    loading="lazy"
                    style="width: 75px; height: 75px; object-fit: contain; border-radius: 6px; display: block; background: #1a1a1a; padding: 2px;"
                    onerror="if(this.src!=='https://via.placeholder.com/75?text=%3F'){this.src='https://via.placeholder.com/75?text=%3F';this.classList.add('image-error');}">
+              ${item.quantity && item.quantity > 1 ? `
+                <div class="item-quantity-badge" style="
+                  position: absolute;
+                  top: 2px;
+                  right: 2px;
+                  background: rgba(0, 0, 0, 0.85);
+                  color: white;
+                  padding: 2px 5px;
+                  border-radius: 3px;
+                  font-size: 11px;
+                  font-weight: bold;
+                  border: 1px solid #ffaa00;
+                  z-index: 15;
+                ">x${item.quantity}</div>
+              ` : ''}
               ${isUsable ? `
                 <button class="item-use-button"
                         data-item-index="${idx}"
