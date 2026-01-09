@@ -1619,8 +1619,23 @@ function showMapModal() {
     const allPaths = findMultiplePaths(currentGame, amuletGame, 100);
     console.log(`Found ${allPaths.length} paths from ${currentGame} to ${amuletGame}`);
 
+    if (allPaths.length === 0) {
+      mapHTML += '<p style="color: #888;">No paths found</p>';
+      mapHTML += '</div>';
+      createGameModal(mapHTML);
+      return;
+    }
+
     // Count shortest paths (all paths with minimum length)
-    const shortestPathCount = allPaths.filter(p => p.length - 1 === shortestDist).length;
+    let shortestPathCount = allPaths.filter(p => p.length - 1 === shortestDist).length;
+
+    // Ensure we show at least 1 path (in case of mismatch)
+    if (shortestPathCount === 0) {
+      console.warn(`No paths match shortest distance ${shortestDist}, using first path with length ${allPaths[0].length - 1}`);
+      shortestPathCount = 1;
+    }
+
+    console.log(`Showing ${shortestPathCount} shortest paths out of ${allPaths.length} total`);
 
     // Initialize map state
     window.mapDisplayState = {
@@ -2142,7 +2157,7 @@ function showCombatModal() {
   const currentGameObj = games.find(g => g.name === gameState.currentGame);
   let requiredStat = 'Strength'; // Default
 
-  if (currentGameObj) {
+  if (currentGameObj && currentGameObj.type) {
     const gameType = currentGameObj.type.toLowerCase();
     switch(gameType) {
       case 'action': requiredStat = 'Strength'; break;
