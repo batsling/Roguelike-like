@@ -257,6 +257,22 @@ function loadSavedGame(saveName) {
 
   // Restore game state
   gameState = { ...save };
+
+  // Generate encounter types if they don't exist (for old saves)
+  if (!gameState.encounterTypes) {
+    gameState.encounterTypes = {};
+    games.forEach(game => {
+      const roll = Math.random() * 100;
+      if (roll < 75) {
+        gameState.encounterTypes[game.name] = 'combat';
+      } else if (roll < 90) {
+        gameState.encounterTypes[game.name] = 'event';
+      } else {
+        gameState.encounterTypes[game.name] = 'shop';
+      }
+    });
+  }
+
   health = save.health;
   maxHealth = save.maxHealth;
   gold = save.gold;
@@ -551,6 +567,20 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   // Store character traits
   const characterTraits = character.traits || [];
 
+  // Generate random encounter types for this run
+  // Each game has: 75% combat, 15% event, 10% shop
+  const encounterTypes = {};
+  games.forEach(game => {
+    const roll = Math.random() * 100;
+    if (roll < 75) {
+      encounterTypes[game.name] = 'combat';
+    } else if (roll < 90) {
+      encounterTypes[game.name] = 'event';
+    } else {
+      encounterTypes[game.name] = 'shop';
+    }
+  });
+
   gameState = {
     currentGame: start.name,
     visitedGames: [start.name],
@@ -577,7 +607,8 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     escapePhase: false,
     escapeGames: [],
     escapeProgress: 0,
-    gameStatusEffects: {} // Map of game names to arrays of status effects
+    gameStatusEffects: {}, // Map of game names to arrays of status effects
+    encounterTypes: encounterTypes // Map of game names to encounter types for this run
   };
 
   startGame = start;
@@ -1372,8 +1403,11 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
       let encounterIcon = '';
       let encounterColor = '';
 
-      if (game && game.encounterType && !isCurrentGame && !isAmuletGame && !isPastGame) {
-        if (game.encounterType === 'combat') {
+      // Get encounter type from gameState (randomly assigned per run)
+      const encounterType = gameState.encounterTypes?.[gameName];
+
+      if (game && encounterType && !isCurrentGame && !isAmuletGame && !isPastGame) {
+        if (encounterType === 'combat') {
           encounterIcon = '!';
           // Color based on game type
           switch(game.type?.toLowerCase()) {
@@ -1382,10 +1416,10 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
             case 'strategy': encounterColor = '#4488ff'; break;
             default: encounterColor = '#44ff44'; break;
           }
-        } else if (game.encounterType === 'event') {
+        } else if (encounterType === 'event') {
           encounterIcon = '?';
           encounterColor = '#bb66ff';
-        } else if (game.encounterType === 'shop') {
+        } else if (encounterType === 'shop') {
           encounterIcon = '$';
           encounterColor = '#ffd700';
         }

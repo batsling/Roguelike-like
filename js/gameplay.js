@@ -894,16 +894,16 @@ function spawnChoices() {
     const nx = startX + posInRow * nodeSpacing;
     const ny = baseY + row * rowSpacing;
 
-    // Get encounter type from game data (pre-determined at map generation)
+    // Get encounter type from gameState (randomly assigned per run)
     let encounterType, encounterIcon, encounterColor;
 
     // Find the game object
     const game = games.find(game => game.name === g);
 
-    if (game && game.encounterType) {
-      // Use pre-determined encounter type from game data
-      encounterType = game.encounterType;
+    // Get encounter type from current run's assignments
+    encounterType = gameState.encounterTypes?.[g];
 
+    if (game && encounterType) {
       // Set icon and color based on encounter type
       if (encounterType === 'combat') {
         encounterIcon = '!';
@@ -1616,9 +1616,8 @@ function useDash(targetGame) {
   const y = gameState.currentY;
   const x = 450;
 
-  // Get the pre-determined encounter type for this game
-  const game = games.find(g => g.name === targetGame);
-  const encounterType = (game && game.encounterType) ? game.encounterType : 'combat';
+  // Get the encounter type for this game from current run's assignments
+  const encounterType = gameState.encounterTypes?.[targetGame] || 'combat';
 
   // Advance to the selected game
   advance(targetGame, x, y + 160, encounterType);
