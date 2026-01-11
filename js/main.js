@@ -6086,7 +6086,8 @@ const BINGO_GOALS = [
   { goal: "Visit and beat the same game twice in one playthrough", difficulty: "normal" },
 
   // Hard goals (4)
-  { goal: "Bear a run without moving", difficulty: "hard" },
+  { goal: "Beat a run without moving", difficulty: "hard" },
+  { goal: "Defeat a boss in 1 second or less/1 turn", difficulty: "hard" },
   { goal: "Beat a run without spending currency", difficulty: "hard" },
   { goal: "Beat a run without taking damage", difficulty: "hard" },
   { goal: "Beat the \"True\" ending of a game", difficulty: "hard" },
