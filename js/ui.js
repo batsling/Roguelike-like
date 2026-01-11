@@ -110,6 +110,19 @@ function updateInventory() {
           }
         }
 
+        // Get rarity color for border
+        const getRarityColor = (rarity) => {
+          switch(rarity?.toLowerCase()) {
+            case 'legendary': return '#ff6b00';
+            case 'rare': return '#9b59b6';
+            case 'uncommon': return '#4CAF50';
+            case 'common': return '#aaa';
+            default: return '#888';
+          }
+        };
+
+        const rarityColor = getRarityColor(item.rarity);
+
         const isUsable = item.type === 'Usable';
         const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
 
@@ -126,7 +139,7 @@ function updateInventory() {
               <img src="${imageUrl}"
                    alt="${item.name}"
                    loading="lazy"
-                   style="width: 75px; height: 75px; object-fit: contain; border-radius: 6px; display: block; background: #1a1a1a; padding: 2px;"
+                   style="width: 75px; height: 75px; object-fit: contain; border-radius: 6px; display: block; background: #1a1a1a; padding: 2px; border: 3px solid ${rarityColor};"
                    onerror="if(this.src!=='https://via.placeholder.com/75?text=%3F'){this.src='https://via.placeholder.com/75?text=%3F';this.classList.add('image-error');}">
               ${item.quantity && item.quantity > 1 ? `
                 <div class="item-quantity-badge" style="
