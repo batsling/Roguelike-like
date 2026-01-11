@@ -3297,7 +3297,7 @@ function showShopModal(purchasedIndices = []) {
   itemsHTML += '</div>';
 
   createGameModal(`
-    <div style="max-width: 800px;">
+    <div style="max-width: 800px; margin: 0 auto;">
       <h2 style="color: gold; margin-top: 0; text-align: center;">🛍️ Mystical Shop 🛍️</h2>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: #2d2d2d; border-radius: 8px;">
         <div style="color: gold; font-weight: bold; font-size: 18px;">💰 Your Gold: ${gold}</div>
