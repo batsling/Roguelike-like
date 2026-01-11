@@ -295,77 +295,8 @@
           <div style="background: #2d2d2d; padding: 30px; border-radius: 12px; width: 500px; max-height: 90vh; overflow-y: auto;">
             <h3 style="margin-top: 0; color: gold; text-align: center;">Start New Run</h3>
 
-            <!-- View Mode Toggle -->
-            <div id="character-view-toggle" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
-              <button id="horizontal-view-btn" class="view-toggle-btn active" style="
-                padding: 8px 20px;
-                background: #4CAF50;
-                border: 2px solid #66bb6a;
-                border-radius: 6px;
-                color: white;
-                cursor: pointer;
-                font-weight: bold;
-                transition: all 0.2s;
-              ">📜 Horizontal View</button>
-              <button id="icon-view-btn" class="view-toggle-btn" style="
-                padding: 8px 20px;
-                background: #555;
-                border: 2px solid #666;
-                border-radius: 6px;
-                color: white;
-                cursor: pointer;
-                font-weight: bold;
-                transition: all 0.2s;
-              ">🎭 Icon View</button>
-            </div>
-
-            <!-- Horizontal View Container -->
-            <div id="horizontal-character-view" style="display: block; margin-bottom: 20px;">
-              <div style="position: relative; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                <button id="prev-char-btn" style="
-                  padding: 10px 15px;
-                  background: #555;
-                  border: 2px solid #666;
-                  border-radius: 6px;
-                  color: white;
-                  cursor: pointer;
-                  font-size: 20px;
-                  font-weight: bold;
-                ">◀</button>
-
-                <div id="horizontal-character-display" style="
-                  flex: 1;
-                  text-align: center;
-                  padding: 15px;
-                  background: #2a2a2a;
-                  border: 3px solid #555;
-                  border-radius: 12px;
-                  height: 550px;
-                  overflow-y: auto;
-                ">
-                  <!-- Character will be displayed here -->
-                </div>
-
-                <button id="next-char-btn" style="
-                  padding: 10px 15px;
-                  background: #555;
-                  border: 2px solid #666;
-                  border-radius: 6px;
-                  color: white;
-                  cursor: pointer;
-                  font-size: 20px;
-                  font-weight: bold;
-                ">▶</button>
-              </div>
-
-              <!-- Pagination Dots -->
-              <div id="character-dots" style="display: flex; justify-content: center; gap: 8px; margin-top: 15px;">
-                <!-- Dots will be added here -->
-              </div>
-            </div>
-
             <!-- Icon View Container -->
-            <div id="icon-character-view" style="display: none; margin-bottom: 20px;">
+            <div id="icon-character-view" style="display: block; margin-bottom: 20px;">
               <div id="icon-character-grid" style="
                 display: grid;
                 grid-template-columns: repeat(5, 1fr);
@@ -389,8 +320,8 @@
             </div>
           </div>
 
-          <!-- Character Details Panel (for Icon View) -->
-          <div id="icon-character-details" style="display: none; background: #2d2d2d; padding: 25px; border-radius: 12px; width: 400px; max-height: 90vh; overflow-y: auto;">
+          <!-- Character Details Panel -->
+          <div id="icon-character-details" style="display: flex; background: #2d2d2d; padding: 25px; border-radius: 12px; width: 400px; max-height: 90vh; overflow-y: auto;">
             <div id="icon-character-details-content">
               <!-- Character details will be populated here -->
             </div>

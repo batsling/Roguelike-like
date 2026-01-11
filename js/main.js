@@ -375,165 +375,22 @@ document.getElementById('new-game-btn')?.addEventListener('click', () => {
   const characterKeys = Object.keys(PLAYER_CHARACTERS);
   selectedCharacter = characterKeys.length > 0 ? characterKeys[0] : null;
 
-  // Populate both views
-  populateHorizontalCharacterView();
+  // Populate icon view
   populateIconCharacterView();
 
-  // Setup view toggle buttons
-  setupCharacterViewToggle();
+  // Show details for first character
+  if (selectedCharacter) {
+    const detailsPanel = document.getElementById('icon-character-details');
+    if (detailsPanel) {
+      detailsPanel.style.display = 'flex';
+      showIconCharacterDetails(selectedCharacter);
+    }
+  }
 
   document.getElementById('save-modal').style.display = 'flex';
 });
 
 // ===== CHARACTER SELECTION FUNCTIONS =====
-
-function setupCharacterViewToggle() {
-  const horizontalBtn = document.getElementById('horizontal-view-btn');
-  const iconBtn = document.getElementById('icon-view-btn');
-  const horizontalView = document.getElementById('horizontal-character-view');
-  const iconView = document.getElementById('icon-character-view');
-  const detailsPanel = document.getElementById('icon-character-details');
-
-  if (!horizontalBtn || !iconBtn || !horizontalView || !iconView || !detailsPanel) return;
-
-  horizontalBtn.addEventListener('click', () => {
-    characterViewMode = 'horizontal';
-    horizontalBtn.classList.add('active');
-    iconBtn.classList.remove('active');
-    horizontalView.style.display = 'flex';
-    iconView.style.display = 'none';
-    detailsPanel.style.display = 'none';
-  });
-
-  iconBtn.addEventListener('click', () => {
-    characterViewMode = 'icon';
-    iconBtn.classList.add('active');
-    horizontalBtn.classList.remove('active');
-    iconView.style.display = 'block';
-    horizontalView.style.display = 'none';
-    // Show details panel if a character is selected
-    if (selectedCharacter) {
-      detailsPanel.style.display = 'block';
-      showIconCharacterDetails(selectedCharacter);
-    }
-  });
-}
-
-function populateHorizontalCharacterView() {
-  const characterKeys = Object.keys(PLAYER_CHARACTERS);
-
-  // Setup prev/next buttons
-  const prevBtn = document.getElementById('prev-char-btn');
-  const nextBtn = document.getElementById('next-char-btn');
-
-  if (prevBtn) {
-    prevBtn.onclick = () => {
-      currentCharacterIndex = (currentCharacterIndex - 1 + characterKeys.length) % characterKeys.length;
-      updateHorizontalDisplay();
-    };
-  }
-
-  if (nextBtn) {
-    nextBtn.onclick = () => {
-      currentCharacterIndex = (currentCharacterIndex + 1) % characterKeys.length;
-      updateHorizontalDisplay();
-    };
-  }
-
-  // Setup pagination dots
-  const dotsContainer = document.getElementById('character-dots');
-  if (dotsContainer) {
-    dotsContainer.innerHTML = characterKeys.map((_, index) =>
-      `<span class="char-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`
-    ).join('');
-
-    // Add click handlers to dots
-    dotsContainer.querySelectorAll('.char-dot').forEach(dot => {
-      dot.addEventListener('click', () => {
-        currentCharacterIndex = parseInt(dot.dataset.index);
-        updateHorizontalDisplay();
-      });
-    });
-  }
-
-  // Display the first character
-  updateHorizontalDisplay();
-}
-
-function updateHorizontalDisplay() {
-  const characterKeys = Object.keys(PLAYER_CHARACTERS);
-  const charKey = characterKeys[currentCharacterIndex];
-  const character = PLAYER_CHARACTERS[charKey];
-
-  const displayContainer = document.getElementById('horizontal-character-display');
-  if (!displayContainer || !character) return;
-
-  // Build traits HTML
-  const traitsHTML = character.traits.map(traitId => {
-    const trait = TRAITS_DATA[traitId];
-    if (!trait) return '';
-    return `
-      <div class="trait-box">
-        <span class="trait-icon">${trait.icon}</span>
-        <div class="trait-info">
-          <div class="trait-name">${trait.name}</div>
-          <div class="trait-description">${trait.description}</div>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  // Build stats HTML
-  const statsHTML = Object.entries(character.startingStats)
-    .filter(([_, value]) => value > 0)
-    .map(([stat, value]) => `
-      <div class="stat-item">
-        <span class="stat-name">${stat.charAt(0).toUpperCase() + stat.slice(1)}:</span>
-        <span class="stat-value">+${value}</span>
-      </div>
-    `).join('');
-
-  displayContainer.innerHTML = `
-    <div class="horizontal-character-card ${selectedCharacter === charKey ? 'selected' : ''}" data-char-key="${charKey}">
-      <img src="${character.fullImage}" alt="${character.name}" class="horizontal-char-image">
-      <h2 class="char-name">${character.name}</h2>
-      <p class="char-game" style="color: #aaa; font-size: 13px; font-style: italic; margin: 2px 0 8px 0;">From: ${character.game || 'Unknown'}</p>
-      <p class="char-description">${character.description}</p>
-      <div class="char-stats-section">
-        <h3>Starting Stats</h3>
-        <div class="char-stats-grid">${statsHTML || '<div class="stat-item">No stat bonuses</div>'}</div>
-      </div>
-      <div class="char-traits-section">
-        <h3>Traits</h3>
-        ${traitsHTML || '<div>No traits</div>'}
-      </div>
-    </div>
-  `;
-
-  // Add click handler for selection
-  const card = displayContainer.querySelector('.horizontal-character-card');
-  if (card) {
-    card.addEventListener('click', () => selectCharacterInHorizontalView(charKey));
-  }
-
-  // Update pagination dots
-  const dots = document.querySelectorAll('.char-dot');
-  dots.forEach((dot, index) => {
-    dot.classList.toggle('active', index === currentCharacterIndex);
-  });
-}
-
-function selectCharacterInHorizontalView(charKey) {
-  selectedCharacter = charKey;
-
-  // Update visual selection
-  const card = document.querySelector('.horizontal-character-card');
-  if (card) {
-    card.classList.add('selected');
-  }
-
-  console.log('Character selected:', charKey);
-}
 
 function populateIconCharacterView() {
   const characterKeys = Object.keys(PLAYER_CHARACTERS);
@@ -3257,6 +3114,11 @@ function showShopModal(purchasedIndices = []) {
   gameState.phase = 'shop';
   updateInventory(); // Refresh item UI to update usable item buttons
 
+  // Initialize shop reroll counter if not present
+  if (!gameState.shopRerollCount) {
+    gameState.shopRerollCount = 0;
+  }
+
   // Store shop items in gameState if not already present (first time opening shop)
   if (!gameState.currentShopItems) {
     gameState.currentShopItems = [];
@@ -3306,46 +3168,94 @@ function showShopModal(purchasedIndices = []) {
   );
   const hasFrugality = frugalityCurses.length > 0;
 
-  let itemsHTML = '<div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">';
+  // Calculate reroll cost: free first time, then 5, 10, 15, etc.
+  const rerollCost = gameState.shopRerollCount === 0 ? 0 : gameState.shopRerollCount * 5;
+  const canReroll = reroll > 0;
+
+  // Get rarity color helper
+  const getRarityColor = (rarity) => {
+    switch(rarity) {
+      case 'legendary': return '#ff6b00';
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      case 'common': return '#aaa';
+      default: return '#888';
+    }
+  };
+
+  // Build items grid
+  let itemsHTML = '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px;">';
 
   shopItems.forEach((item, index) => {
     const isPurchased = purchasedIndices.includes(index);
-    const basePrice = item.rarity === 'common' ? 10 : item.rarity === 'uncommon' ? 25 : 50;
+    const basePrice = item.rarity === 'common' ? 10 : item.rarity === 'uncommon' ? 25 : item.rarity === 'rare' ? 50 : 100;
     const price = basePrice + frugalityModifier;
-    const rarityColor = item.rarity === 'common' ? '#aaa' : item.rarity === 'uncommon' ? '#4CAF50' : '#9b59b6';
+    const rarityColor = getRarityColor(item.rarity);
+
+    // Get item image
+    let imageUrl = item.image && item.image.trim() !== '' ? item.image : 'images/items/default.png';
 
     let priceDisplay = '';
     if (hasFrugality) {
       priceDisplay = `
-        <span style="color: gold; font-weight: bold;">
-          <span style="text-decoration: line-through; color: #888; margin-right: 8px;">${basePrice}</span>
-          ${price} Gold
-        </span>
+        <div style="text-align: center; margin-top: 8px;">
+          <div style="color: gold; font-weight: bold; font-size: 16px;">
+            <span style="text-decoration: line-through; color: #888; margin-right: 8px; font-size: 14px;">${basePrice}</span>
+            ${price}💰
+          </div>
+        </div>
       `;
     } else {
-      priceDisplay = `<span style="color: gold; font-weight: bold;">${price} Gold</span>`;
+      priceDisplay = `
+        <div style="text-align: center; margin-top: 8px;">
+          <div style="color: gold; font-weight: bold; font-size: 16px;">${price}💰</div>
+        </div>
+      `;
     }
 
     itemsHTML += `
-      <div style="padding: 15px; background: #2d2d2d; border-radius: 8px; border: 2px solid ${rarityColor};">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <strong style="font-size: 18px;">${item.name}</strong>
-          <span style="color: ${rarityColor}; font-size: 14px;">${item.rarity}</span>
+      <div style="
+        background: #2d2d2d;
+        border-radius: 12px;
+        border: 3px solid ${rarityColor};
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: transform 0.2s;
+        ${isPurchased ? 'opacity: 0.5;' : ''}
+      " class="shop-item-card">
+        <div style="
+          width: 100px;
+          height: 100px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 10px;
+          background: rgba(0,0,0,0.3);
+          border-radius: 8px;
+          border: 2px solid ${rarityColor};
+        ">
+          <img src="${imageUrl}" alt="${item.name}" style="max-width: 90px; max-height: 90px; object-fit: contain;">
         </div>
-        <p style="color: #ccc; margin: 10px 0;">${item.description}</p>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-          ${priceDisplay}
-          <button class="shop-buy-btn" data-index="${index}" data-price="${price}" style="
-            padding: 8px 16px;
-            background: ${isPurchased ? '#555' : '#4CAF50'};
-            border: none;
-            border-radius: 6px;
-            color: white;
-            cursor: ${isPurchased ? 'not-allowed' : 'pointer'};
-          " ${gold < price || isPurchased ? 'disabled' : ''}>
-            ${isPurchased ? 'Purchased!' : (gold >= price ? 'Buy' : 'Too Expensive')}
-          </button>
-        </div>
+        <div style="font-weight: bold; font-size: 16px; text-align: center; color: white; margin-bottom: 5px;">${item.name}</div>
+        <div style="color: ${rarityColor}; font-size: 13px; text-transform: capitalize; margin-bottom: 8px;">${item.rarity}</div>
+        <div style="color: #ccc; font-size: 12px; text-align: center; margin-bottom: 10px; min-height: 60px;">${item.description}</div>
+        ${priceDisplay}
+        <button class="shop-buy-btn" data-index="${index}" data-price="${price}" style="
+          padding: 10px 20px;
+          background: ${isPurchased ? '#555' : '#4CAF50'};
+          border: none;
+          border-radius: 6px;
+          color: white;
+          cursor: ${isPurchased ? 'not-allowed' : 'pointer'};
+          font-weight: bold;
+          margin-top: 10px;
+          width: 100%;
+          transition: all 0.2s;
+        " ${gold < price || isPurchased ? 'disabled' : ''}>
+          ${isPurchased ? '✓ Purchased' : (gold >= price ? 'Buy' : '💰 Too Expensive')}
+        </button>
       </div>
     `;
   });
@@ -3353,12 +3263,39 @@ function showShopModal(purchasedIndices = []) {
   itemsHTML += '</div>';
 
   createGameModal(`
-    <div>
-      <h2 style="color: gold; margin-top: 0;">Shop Encounter!</h2>
-      <p style="text-align: center;">A mysterious merchant appears...</p>
-      <p style="text-align: center; color: gold; font-weight: bold;">Your Gold: ${gold}</p>
+    <div style="max-width: 800px;">
+      <h2 style="color: gold; margin-top: 0; text-align: center;">🛍️ Mystical Shop 🛍️</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: #2d2d2d; border-radius: 8px;">
+        <div style="color: gold; font-weight: bold; font-size: 18px;">💰 Your Gold: ${gold}</div>
+        <div style="color: #4CAF50; font-weight: bold; font-size: 18px;">🔄 Rerolls: ${reroll}</div>
+      </div>
       ${itemsHTML}
-      <button onclick="closeGameModal()" style="width: 100%; padding: 12px; margin-top: 20px; background: #666; border: none; border-radius: 6px; color: white; cursor: pointer;">Leave Shop</button>
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button id="shop-reroll-btn" style="
+          flex: 1;
+          padding: 12px;
+          background: ${canReroll && gold >= rerollCost ? '#ff9800' : '#555'};
+          border: none;
+          border-radius: 6px;
+          color: white;
+          cursor: ${canReroll && gold >= rerollCost ? 'pointer' : 'not-allowed'};
+          font-weight: bold;
+          font-size: 14px;
+        " ${!canReroll || gold < rerollCost ? 'disabled' : ''}>
+          🔄 Reroll Shop ${rerollCost === 0 ? '(FREE!)' : `(${rerollCost}💰 + 1 Reroll)`}
+        </button>
+        <button onclick="leaveShop()" style="
+          flex: 1;
+          padding: 12px;
+          background: #666;
+          border: none;
+          border-radius: 6px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 14px;
+        ">Leave Shop</button>
+      </div>
     </div>
   `);
 
@@ -3398,13 +3335,55 @@ function showShopModal(purchasedIndices = []) {
           }, 100);
         } else {
           // Otherwise just update button state
-          e.target.textContent = 'Purchased!';
+          e.target.textContent = '✓ Purchased';
           e.target.disabled = true;
           e.target.style.background = '#555';
+          e.target.parentElement.style.opacity = '0.5';
         }
       }
     };
   });
+
+  // Add reroll button handler
+  const rerollBtn = document.getElementById('shop-reroll-btn');
+  if (rerollBtn) {
+    rerollBtn.onclick = () => {
+      if (reroll > 0 && gold >= rerollCost) {
+        // Deduct reroll and gold
+        reroll -= 1;
+        gold -= rerollCost;
+        gameState.reroll = reroll;
+        gameState.gold = gold;
+
+        // Increment reroll counter for next reroll
+        gameState.shopRerollCount++;
+
+        // Clear current shop items to force regeneration
+        gameState.currentShopItems = null;
+
+        // Refresh shop (don't carry over purchased indices)
+        saveCurrentGame();
+        showShopModal([]);
+      }
+    };
+  }
+}
+
+// Function to leave shop and reset reroll counter
+function leaveShop() {
+  // Reset shop state
+  gameState.currentShopItems = null;
+  gameState.shopRerollCount = 0;
+  gameState.phase = 'selection';
+
+  // Save and close
+  saveCurrentGame();
+  closeGameModal();
+
+  // Update inventory to refresh usable item buttons
+  if (typeof updateInventory === 'function') {
+    updateInventory();
+  }
 }
 
 // Clear shop items when closing shop modal
@@ -3412,6 +3391,7 @@ const originalCloseGameModal = window.closeGameModal;
 window.closeGameModal = function() {
   if (gameState.phase === 'shop') {
     delete gameState.currentShopItems;
+    gameState.shopRerollCount = 0; // Reset reroll count for next shop
     gameState.phase = null;
   }
   if (typeof originalCloseGameModal === 'function') {
@@ -6490,6 +6470,7 @@ window.closeGameModal = closeGameModal;
 window.showCombatModal = showCombatModal;
 window.showEventModal = showEventModal;
 window.showShopModal = showShopModal;
+window.leaveShop = leaveShop;
 window.handleEventChoice = handleEventChoice;
 window.showItemChoiceModal = showItemChoiceModal;
 window.offerChest = offerChest; // Modern "chest" terminology

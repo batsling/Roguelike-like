@@ -708,6 +708,7 @@ function drawAllGameConnections() {
   console.log('Total choice nodes mapped:', nodeMap.size);
 
   // Draw connections for games that have influence relationships
+  // BUT skip connections where BOTH games are in the current choice set
   let connectionsDrawn = 0;
 
   games.forEach(game => {
@@ -722,6 +723,13 @@ function drawAllGameConnections() {
         const toNode = nodeMap.get(influencedGame);
 
         if (!toNode) {
+          return;
+        }
+
+        // SKIP drawing arrows between two games that are BOTH in the current choice set
+        // This prevents gray arrows between connected choice nodes
+        if (nodeMap.has(game.name) && nodeMap.has(influencedGame)) {
+          console.log(`  ⊘ Skipping arrow between choice nodes: "${game.name}" ↔ "${influencedGame}"`);
           return;
         }
 
