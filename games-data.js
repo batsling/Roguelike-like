@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 564 games, 703 connections
-// 490 connected, 155 influencers
+// 569 games, 709 connections
+// 494 connected, 155 influencers
 
 var GAMES_DATA = [
   {
@@ -1065,6 +1065,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/convoy.jpg"
   },
   {
+    "name": "Corpse Keeper",
+    "year": 2023,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/corpse-keeper.jpg"
+  },
+  {
     "name": "Crab Champions",
     "year": 2023,
     "type": "Action",
@@ -1280,7 +1290,8 @@ var GAMES_DATA = [
       "Hell Clock",
       "Luck & Loot",
       "Across the Obelisk",
-      "Die For The Lich"
+      "Die For The Lich",
+      "Corpse Keeper"
     ],
     "coverImage": "images/covers/darkest-dungeon.jpg"
   },
@@ -3125,6 +3136,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/let-him-cook.jpg"
   },
   {
+    "name": "Let's! Revolution!",
+    "year": 2023,
+    "type": "Strategy",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/let-s-revolution.jpg"
+  },
+  {
     "name": "Linley's Dungeon Crawl",
     "year": 1995,
     "type": "Traditional",
@@ -3308,6 +3329,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/mainframe-defenders.jpg"
   },
   {
+    "name": "Mana Spark",
+    "year": 2018,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/mana-spark.jpg"
+  },
+  {
     "name": "Maze Mice",
     "year": 2025,
     "type": "Action",
@@ -3473,7 +3504,8 @@ var GAMES_DATA = [
       "Monster Train 2",
       "The Royal Writ",
       "Cross Blitz",
-      "Dicealot"
+      "Dicealot",
+      "Tower Escape"
     ],
     "coverImage": "images/covers/monster-train.jpg"
   },
@@ -4361,6 +4393,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/rift-wizard-2.jpg"
   },
   {
+    "name": "Right and Down",
+    "year": 2022,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/right-and-down.jpg"
+  },
+  {
     "name": "Ring of Pain",
     "year": 2020,
     "type": "Strategy",
@@ -4980,7 +5022,9 @@ var GAMES_DATA = [
       "Deck of Haunts",
       "Monmusu Gladiator",
       "A la Card",
-      "Die For The Lich"
+      "Die For The Lich",
+      "Right and Down",
+      "Tower Escape"
     ],
     "coverImage": "images/covers/slay-the-spire.jpg"
   },
@@ -5196,7 +5240,8 @@ var GAMES_DATA = [
       "Vagante",
       "Wildfrost",
       "GoNNER",
-      "Dunjungle"
+      "Dunjungle",
+      "Mana Spark"
     ],
     "coverImage": "images/covers/spelunky-classic.jpg"
   },
@@ -5586,7 +5631,8 @@ var GAMES_DATA = [
       "Lost Flame",
       "Asterogues",
       "Talented",
-      "20XX"
+      "20XX",
+      "Mana Spark"
     ],
     "coverImage": "images/covers/the-binding-of-isaac.jpg"
   },
@@ -5903,6 +5949,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/tower-dominion.jpg"
+  },
+  {
+    "name": "Tower Escape",
+    "year": 2023,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/tower-escape.jpg"
   },
   {
     "name": "Tower Factory",
