@@ -6072,9 +6072,10 @@ const BINGO_GOALS = [
   { goal: "Defeat an enemy with a ball", difficulty: "easy" },
   { goal: "Get drunk", difficulty: "easy" },
   { goal: "Pet a pet", difficulty: "easy" },
-  { goal: "Trade all but one health for upgrades once and then win the run", difficulty: "easy" },
+  { goal: "Trade health for resources", difficulty: "easy" },
   { goal: "Unlock a new Character", difficulty: "easy" },
   { goal: "Worship an altar", difficulty: "easy" },
+  { goal: "Obtain a mushroom", difficulty: "easy" },
 
   // Normal goals (21)
   { goal: "Beat 3 Action Roguelikes", difficulty: "normal" },
