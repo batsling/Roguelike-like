@@ -304,7 +304,8 @@ function updateCursesDisplay() {
       curse.name.toLowerCase().includes('devotion') ||
       curse.name.toLowerCase().includes('greed') ||
       curse.name.toLowerCase().includes('impulse') ||
-      curse.name.toLowerCase().includes('haste')
+      curse.name.toLowerCase().includes('haste') ||
+      curse.name.toLowerCase().includes('guilt')
     );
     const automaticCurses = activeCurses.filter(curse =>
       !restrictionCurses.includes(curse) && !manualCurses.includes(curse)

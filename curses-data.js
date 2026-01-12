@@ -229,5 +229,26 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "1 Roll",
     "description": "When you roll a 1 (before adding to the roll), take 4 damage"
+  },
+  {
+    "name": "Curse of Guilt I",
+    "stat": "Charisma",
+    "power": "Low",
+    "duration": "Until 1 Game Beaten",
+    "description": "If you killed any innocents, lose 3 health"
+  },
+  {
+    "name": "Curse of Guilt II",
+    "stat": "Charisma",
+    "power": "Medium",
+    "duration": "Until 2 Games Beaten",
+    "description": "If you killed any innocents, lose 3 health"
+  },
+  {
+    "name": "Curse of Guilt III",
+    "stat": "Charisma",
+    "power": "High",
+    "duration": "Until 3 Games Beaten",
+    "description": "If you killed any innocents, lose 3 health"
   }
 ];

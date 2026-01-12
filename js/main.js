@@ -4937,6 +4937,7 @@ function showCurseVerificationModal(onComplete) {
     curse.name.toLowerCase().includes('greed') ||
     curse.name.toLowerCase().includes('impulse') ||
     curse.name.toLowerCase().includes('haste') ||
+    curse.name.toLowerCase().includes('guilt') ||
     curse.name.toLowerCase().includes('blindness') ||
     curse.name.toLowerCase().includes('hubris')
   );
@@ -4962,6 +4963,7 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
   const greedCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('greed'));
   const impulseCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('impulse'));
   const hasteCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('haste'));
+  const guiltCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('guilt'));
 
   // Build the modal HTML with compact styling
   let modalHTML = `
@@ -5169,6 +5171,27 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
     `;
   }
 
+  // Add Guilt section if there are any Guilt curses
+  if (guiltCurses.length > 0) {
+    modalHTML += `
+      <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #ffbb66; margin: 0 0 5px 0; font-size: 15px;">😔 Guilt</h3>
+        <div style="color: #ccaa88; font-size: 11px; margin-bottom: 5px;">
+          ${guiltCurses.map(c => c.name).join(', ')}
+        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Kill any innocents? Penalty: 3 HP if yes</p>
+        <div style="margin-top: 5px;">
+          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+            <input type="radio" name="guilt-check" value="no" checked style="margin-right: 5px;">No
+          </label>
+          <label style="font-size: 12px; color: #ccc;">
+            <input type="radio" name="guilt-check" value="yes" style="margin-right: 5px;">Yes
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
   modalHTML += `
       <button id="verify-all-submit" style="
         padding: 15px 40px;
@@ -5291,6 +5314,15 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
       const beatInTime = hasteRadio && hasteRadio.value === 'yes';
       if (!beatInTime) {
         totalDamage += 2; // Haste always deals 2 damage if failed
+      }
+    }
+
+    // Process Guilt curses (flat 3 damage if killed innocents)
+    if (guiltCurses.length > 0) {
+      const guiltRadio = document.querySelector('input[name="guilt-check"]:checked');
+      const killedInnocents = guiltRadio && guiltRadio.value === 'yes';
+      if (killedInnocents) {
+        totalDamage += 3; // Guilt always deals 3 damage if killed innocents
       }
     }
 
