@@ -6105,6 +6105,8 @@ const BINGO_GOALS = [
   { goal: "Beat a run without spending currency", difficulty: "hard" },
   { goal: "Beat a run without taking damage", difficulty: "hard" },
   { goal: "Beat the \"True\" ending of a game", difficulty: "hard" },
+  { goal: "Get an achievement that only 10% of players or less have gotten ", difficulty: "hard" },
+  
 ];
 
 function generateBingoGrid() {
