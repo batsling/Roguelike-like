@@ -4923,16 +4923,15 @@ function markGameFinished(gameName) {
 
 /**
  * Show curse verification modal for curses that require manual verification
+ * Also includes trait effects like Precision Landing
  * @param {Function} onComplete - Callback to run after all verifications are done
  */
 function showCurseVerificationModal(onComplete) {
-  if (!gameState.activeCurses || gameState.activeCurses.length === 0) {
-    if (onComplete) onComplete();
-    return;
-  }
+  // Check if player has Precision Landing trait
+  const hasPrecisionLanding = gameState && gameState.traits && gameState.traits.includes('precision_landing');
 
   // Get curses that need verification (manual and restriction curses)
-  const cursesToVerify = gameState.activeCurses.filter(curse =>
+  const cursesToVerify = (gameState.activeCurses || []).filter(curse =>
     curse.name.toLowerCase().includes('devotion') ||
     curse.name.toLowerCase().includes('greed') ||
     curse.name.toLowerCase().includes('impulse') ||
@@ -4942,20 +4941,23 @@ function showCurseVerificationModal(onComplete) {
     curse.name.toLowerCase().includes('hubris')
   );
 
-  if (cursesToVerify.length === 0) {
+  // If no curses to verify and no Precision Landing trait, skip verification
+  if (cursesToVerify.length === 0 && !hasPrecisionLanding) {
     if (onComplete) onComplete();
     return;
   }
 
-  // Show combined verification modal for all curses at once
-  verifyCursesCombined(cursesToVerify, onComplete);
+  // Show combined verification modal for all curses and traits at once
+  verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete);
 }
 
 /**
- * Verify all manual curses in a single combined modal
+ * Verify all manual curses and trait effects in a single combined modal
+ * @param {Array} cursesToVerify - Array of curses that need verification
+ * @param {boolean} hasPrecisionLanding - Whether player has Precision Landing trait
  * @param {Function} onComplete - Callback to run after verification is done
  */
-function verifyCursesCombined(cursesToVerify, onComplete) {
+function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
   // Group curses by type
   const blindnessCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('blindness'));
   const hubrisCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('hubris'));
@@ -4968,8 +4970,8 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
   // Build the modal HTML with compact styling
   let modalHTML = `
     <div style="text-align: center;">
-      <h2 style="color: #ff4444; margin-top: 0; font-size: 24px;">😈 Curse Verification</h2>
-      <p style="color: #aaa; font-size: 12px; margin: 5px 0;">Answer honestly for each curse you have active</p>
+      <h2 style="color: #ff4444; margin-top: 0; font-size: 24px;">😈 Game Completion Verification</h2>
+      <p style="color: #aaa; font-size: 12px; margin: 5px 0;">Answer honestly for each active curse and trait effect</p>
   `;
 
   // Add Blindness section (restriction curse - purple)
@@ -5151,6 +5153,7 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
     // Get the time limit based on lowest tier (most lenient)
     const timeLimit = hasteCurses.some(c => c.power === 'Low') ? 4 :
                       hasteCurses.some(c => c.power === 'Medium') ? 3 : 2;
+    const totalHasteDamage = 2 * hasteCurses.length;
 
     modalHTML += `
       <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 6px; padding: 10px; margin: 8px 0;">
@@ -5158,7 +5161,7 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
         <div style="color: #ccaa88; font-size: 11px; margin-bottom: 5px;">
           ${hasteCurses.map(c => c.name).join(', ')}
         </div>
-        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Beat game within ${timeLimit} hours? Penalty: 2 HP if failed</p>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Beat game within ${timeLimit} hours? Penalty: ${totalHasteDamage} HP if failed</p>
         <div style="margin-top: 5px;">
           <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
             <input type="radio" name="haste-check" value="yes" checked style="margin-right: 5px;">Yes
@@ -5173,19 +5176,42 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
 
   // Add Guilt section if there are any Guilt curses
   if (guiltCurses.length > 0) {
+    const totalGuiltDamage = 3 * guiltCurses.length;
+
     modalHTML += `
       <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 6px; padding: 10px; margin: 8px 0;">
         <h3 style="color: #ffbb66; margin: 0 0 5px 0; font-size: 15px;">😔 Guilt</h3>
         <div style="color: #ccaa88; font-size: 11px; margin-bottom: 5px;">
           ${guiltCurses.map(c => c.name).join(', ')}
         </div>
-        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Kill any innocents? Penalty: 3 HP if yes</p>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Kill any innocents? Penalty: ${totalGuiltDamage} HP if yes</p>
         <div style="margin-top: 5px;">
           <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
             <input type="radio" name="guilt-check" value="no" checked style="margin-right: 5px;">No
           </label>
           <label style="font-size: 12px; color: #ccc;">
             <input type="radio" name="guilt-check" value="yes" style="margin-right: 5px;">Yes
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
+  // Add Precision Landing section if player has the trait
+  if (hasPrecisionLanding) {
+    modalHTML += `
+      <div style="background: rgba(0, 191, 255, 0.1); border: 1px solid #00bfff; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #00d4ff; margin: 0 0 5px 0; font-size: 15px;">🎯 Precision Landing</h3>
+        <div style="color: #88c8dd; font-size: 11px; margin-bottom: 5px;">
+          Trait Effect
+        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Beat without losing a run? Reward: +1 Dash if yes</p>
+        <div style="margin-top: 5px;">
+          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+            <input type="radio" name="precision-check" value="yes" checked style="margin-right: 5px;">Yes
+          </label>
+          <label style="font-size: 12px; color: #ccc;">
+            <input type="radio" name="precision-check" value="no" style="margin-right: 5px;">No
           </label>
         </div>
       </div>
@@ -5308,21 +5334,37 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
       totalDamage += badPickCount * impulseDamagePerPick;
     }
 
-    // Process Haste curses (flat 2 damage if failed)
+    // Process Haste curses (2 damage per curse if failed)
     if (hasteCurses.length > 0) {
       const hasteRadio = document.querySelector('input[name="haste-check"]:checked');
       const beatInTime = hasteRadio && hasteRadio.value === 'yes';
       if (!beatInTime) {
-        totalDamage += 2; // Haste always deals 2 damage if failed
+        totalDamage += 2 * hasteCurses.length; // 2 damage per Haste curse
       }
     }
 
-    // Process Guilt curses (flat 3 damage if killed innocents)
+    // Process Guilt curses (3 damage per curse if killed innocents)
     if (guiltCurses.length > 0) {
       const guiltRadio = document.querySelector('input[name="guilt-check"]:checked');
       const killedInnocents = guiltRadio && guiltRadio.value === 'yes';
       if (killedInnocents) {
-        totalDamage += 3; // Guilt always deals 3 damage if killed innocents
+        totalDamage += 3 * guiltCurses.length; // 3 damage per Guilt curse
+      }
+    }
+
+    // Track whether Precision Landing was activated for notification later
+    let precisionLandingActivated = false;
+    if (hasPrecisionLanding) {
+      const precisionRadio = document.querySelector('input[name="precision-check"]:checked');
+      const perfectGame = precisionRadio && precisionRadio.value === 'yes';
+      if (perfectGame) {
+        dash = Math.max(0, dash + 1);
+        gameState.dash = dash;
+        if (typeof updateTopBar === 'function') {
+          updateTopBar();
+        }
+        console.log('Precision Landing activated: +1 Dash');
+        precisionLandingActivated = true;
       }
     }
 
@@ -5352,6 +5394,15 @@ function verifyCursesCombined(cursesToVerify, onComplete) {
         showDeathScreen('You succumbed to your curses!', 'curse');
         return; // Don't call onComplete if player died
       }
+    }
+
+    // Show Precision Landing notification after modal closes
+    if (precisionLandingActivated) {
+      setTimeout(() => {
+        if (typeof createNotification === 'function') {
+          createNotification('Precision Landing: +1 Dash!', '#00bfff', '🎯');
+        }
+      }, 100);
     }
 
     // Continue to mark game as finished (which will update curse UI after incrementing trackers)
