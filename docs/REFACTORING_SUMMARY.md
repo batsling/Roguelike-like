@@ -82,7 +82,7 @@ This document summarizes the major refactoring work completed to improve the Rog
 
 **Solution:** Added utility class system to `css/styles.css`:
 
-**New Utility Classes (~350 lines added across 2 commits):**
+**New Utility Classes (~480 lines added across 3 commits):**
 
 **Commit 1 - Foundation (~230 lines):**
 - **Buttons:** `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-warning`, `.btn-purple`
@@ -132,17 +132,47 @@ This document summarizes the major refactoring work completed to improve the Rog
 - **Empty curses:** utility classes
 - **Bingo/sort gaps:** `.gap-5`, `.gap-6`
 
+**Commit 3 - Dev Tools & Modals (~65 lines):**
+- **Padding:** `.p-25`
+- **Flex:** `.flex-1`
+- **Max height:** `.max-h-300`, `.max-h-90vh`
+- **Overflow:** `.overflow-y-auto`
+- **Font style:** `.italic`
+- **Width:** `.w-400`, `.w-600`
+- **Display:** `.display-block`
+- **Extended margin:** `.mb-5`, `.mb-8`
+- **Background:** `.bg-panel` (#2d2d2d)
+- **Font sizes:** `.font-size-20`, `.font-size-24`
+
+**HTML Updates (89 inline styles removed total):**
+
+**Commit 3 (~23 styles removed):**
+- **Character modals:**
+  - Selection panel → bg-panel, p-20, w-600, max-h-90vh
+  - Details panel → flex, bg-panel, p-25, w-400
+  - Modal buttons → flex-1 utility
+- **Dev tools section:**
+  - Header → text-center, font-size-24
+  - Inventory/curses lists → max-h-300, overflow-y-auto
+  - Select dropdowns → w-full, mb-10
+  - Active curses → text-grey-dark, italic, text-center
+  - Enemy display → text-center, utility classes
+  - Roll section → text/layout utilities
+  - Outcome section → mt-20
+
 **Result:**
-- **Inline styles: 120 → 54** (66 removed, **55% reduction**)
+- **Inline styles: 120 → 31** (89 removed, **74% reduction**)
 - **Consistent styling** across the application
 - **Easier global style changes**
 - **Reusable patterns established**
 - **Tutorial modal fully utility-based**
+- **Dev tools section mostly utility-based**
 
 **Commits:**
 - `be324ee` - Add utility classes and begin CSS cleanup (Phase 3)
 - `d7512ae` - Continue CSS cleanup - add more utility classes
 - `e085a2d` - Continue CSS cleanup - Tutorial modal and HUD updates
+- `66a583f` - Continue CSS cleanup - Dev tools and modals
 
 ---
 
@@ -352,9 +382,9 @@ After refactoring, the following functionality should be verified:
 
 ### Inline Styles
 - **Before:** 120 inline styles
-- **After:** 54 inline styles
-- **Reduction:** 66 styles (55%)
-- **Utility classes added:** 90+ classes (~350 lines)
+- **After:** 31 inline styles
+- **Reduction:** 89 styles (74%)
+- **Utility classes added:** 130+ classes (~480 lines)
 
 ### Documentation
 - **Before:** Minimal module documentation
