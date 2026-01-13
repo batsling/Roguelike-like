@@ -1,0 +1,308 @@
+/**
+ * SHOP.JS - Shop System and Item Purchasing
+ *
+ * Responsibilities:
+ * - Displaying shop modal with items for purchase
+ * - Handling item purchases and gold transactions
+ * - Shop reroll system with escalating costs
+ * - Curse of Frugality price modifications
+ * - Shop state management (items, reroll count)
+ *
+ * Key Functions:
+ * - showShopModal(purchasedIndices) - Displays shop with 3 random items
+ * - leaveShop() - Closes shop and resets shop state
+ */
+
+// ===== SHOP SYSTEM =====
+
+function showShopModal(purchasedIndices = []) {
+  if (items.length === 0) return;
+
+  // Set phase to shop
+  gameState.phase = 'shop';
+  updateInventory(); // Refresh item UI to update usable item buttons
+
+  // Initialize shop reroll counter if not present
+  if (!gameState.shopRerollCount) {
+    gameState.shopRerollCount = 0;
+  }
+
+  // Store shop items in gameState if not already present (first time opening shop)
+  if (!gameState.currentShopItems) {
+    gameState.currentShopItems = [];
+    const maxAttempts = 100; // Prevent infinite loop
+
+    for (let i = 0; i < 3; i++) {
+      let attempts = 0;
+      let selectedItem = null;
+
+      while (attempts < maxAttempts) {
+        // Use luck-based rarity selection
+      const targetRarity = selectRandomRarity();
+
+      const rarityItems = items.filter(item => item.rarity === targetRarity);
+      if (rarityItems.length > 0) {
+        const randomIndex = Math.floor(Math.random() * rarityItems.length);
+        selectedItem = rarityItems[randomIndex];
+      } else {
+        // Fallback to any item if no items of target rarity
+        const randomIndex = Math.floor(Math.random() * items.length);
+        selectedItem = items[randomIndex];
+      }
+
+        // Check if this item is already in shop
+        if (!gameState.currentShopItems.find(shopItem => shopItem.name === selectedItem.name)) {
+          gameState.currentShopItems.push(selectedItem);
+          break;
+        }
+
+        attempts++;
+      }
+
+      // If we couldn't find a unique item after max attempts, just add it anyway
+      // (This should rarely happen unless there are very few items)
+      if (attempts >= maxAttempts && selectedItem) {
+        gameState.currentShopItems.push(selectedItem);
+      }
+    }
+  }
+
+  const shopItems = gameState.currentShopItems;
+
+  // Check for Curse of Frugality - handle stacking
+  const frugalityCurses = getCursesByType('frugality');
+  const frugalityModifier = frugalityCurses.reduce((sum, curse) =>
+    sum + getPowerValue(curse.power, { Low: 5, Medium: 10, High: 15 }), 0
+  );
+  const hasFrugality = frugalityCurses.length > 0;
+
+  // Calculate reroll cost: free first time, then 5, 10, 15, etc.
+  const rerollCost = gameState.shopRerollCount === 0 ? 0 : gameState.shopRerollCount * 5;
+  const canReroll = reroll > 0;
+
+  // Get rarity color helper
+  const getRarityColor = (rarity) => {
+    switch(rarity) {
+      case 'legendary': return '#ff6b00';
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      case 'common': return '#aaa';
+      default: return '#888';
+    }
+  };
+
+  // Build items grid
+  let itemsHTML = '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px;">';
+
+  shopItems.forEach((item, index) => {
+    const isPurchased = purchasedIndices.includes(index);
+    const basePrice = item.rarity === 'common' ? 10 : item.rarity === 'uncommon' ? 25 : item.rarity === 'rare' ? 50 : 100;
+    const price = basePrice + frugalityModifier;
+    const rarityColor = getRarityColor(item.rarity);
+
+    // Get item image
+    let imageUrl = item.image && item.image.trim() !== '' ? item.image : 'images/items/default.png';
+
+    let priceDisplay = '';
+    if (hasFrugality) {
+      priceDisplay = `
+        <div style="text-align: center; margin-top: 8px;">
+          <div style="color: gold; font-weight: bold; font-size: 16px;">
+            <span style="text-decoration: line-through; color: #888; margin-right: 8px; font-size: 14px;">${basePrice}</span>
+            ${price}💰
+          </div>
+        </div>
+      `;
+    } else {
+      priceDisplay = `
+        <div style="text-align: center; margin-top: 8px;">
+          <div style="color: gold; font-weight: bold; font-size: 16px;">${price}💰</div>
+        </div>
+      `;
+    }
+
+    itemsHTML += `
+      <div style="
+        background: #2d2d2d;
+        border-radius: 12px;
+        border: 3px solid ${rarityColor};
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: transform 0.2s;
+        ${isPurchased ? 'opacity: 0.5;' : ''}
+      " class="shop-item-card">
+        <div style="
+          width: 100px;
+          height: 100px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 10px;
+          background: rgba(0,0,0,0.3);
+          border-radius: 8px;
+          border: 2px solid ${rarityColor};
+        ">
+          <img src="${imageUrl}" alt="${item.name}" style="max-width: 90px; max-height: 90px; object-fit: contain;">
+        </div>
+        <div style="font-weight: bold; font-size: 16px; text-align: center; color: white; margin-bottom: 5px;">${item.name}</div>
+        <div style="color: ${rarityColor}; font-size: 13px; text-transform: capitalize; margin-bottom: 8px;">${item.rarity}</div>
+        <div style="color: #ccc; font-size: 12px; text-align: center; margin-bottom: 10px; min-height: 60px;">${item.description}</div>
+        ${priceDisplay}
+        <button class="shop-buy-btn" data-index="${index}" data-price="${price}" style="
+          padding: 10px 20px;
+          background: ${isPurchased ? '#555' : '#4CAF50'};
+          border: none;
+          border-radius: 6px;
+          color: white;
+          cursor: ${isPurchased ? 'not-allowed' : 'pointer'};
+          font-weight: bold;
+          margin-top: 10px;
+          width: 100%;
+          transition: all 0.2s;
+        " ${gold < price || isPurchased ? 'disabled' : ''}>
+          ${isPurchased ? '✓ Purchased' : (gold >= price ? 'Buy' : '💰 Too Expensive')}
+        </button>
+      </div>
+    `;
+  });
+
+  itemsHTML += '</div>';
+
+  createGameModal(`
+    <div style="max-width: 800px; margin: 0 auto;">
+      <h2 style="color: gold; margin-top: 0; text-align: center;">🛍️ Mystical Shop 🛍️</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: #2d2d2d; border-radius: 8px;">
+        <div style="color: gold; font-weight: bold; font-size: 18px;">💰 Your Gold: ${gold}</div>
+        <div style="color: #4CAF50; font-weight: bold; font-size: 18px;">🔄 Rerolls: ${reroll}</div>
+      </div>
+      ${itemsHTML}
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button id="shop-reroll-btn" style="
+          flex: 1;
+          padding: 12px;
+          background: ${canReroll && gold >= rerollCost ? '#ff9800' : '#555'};
+          border: none;
+          border-radius: 6px;
+          color: white;
+          cursor: ${canReroll && gold >= rerollCost ? 'pointer' : 'not-allowed'};
+          font-weight: bold;
+          font-size: 14px;
+        " ${!canReroll || gold < rerollCost ? 'disabled' : ''}>
+          🔄 Reroll Shop ${rerollCost === 0 ? '(FREE!)' : `(${rerollCost}💰 + 1 Reroll)`}
+        </button>
+        <button onclick="leaveShop()" style="
+          flex: 1;
+          padding: 12px;
+          background: #666;
+          border: none;
+          border-radius: 6px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 14px;
+        ">Leave Shop</button>
+      </div>
+    </div>
+  `);
+
+  document.querySelectorAll('.shop-buy-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      const itemIndex = parseInt(e.target.dataset.index);
+      const price = parseInt(e.target.dataset.price);
+      const item = shopItems[itemIndex];
+
+      if (gold >= price) {
+        gold -= price;
+        gameState.gold = gold;
+        acquireItem(item);
+
+        // Track purchased items
+        purchasedIndices.push(itemIndex);
+
+        // Check for Curse of Frugality and remove only ONE after first purchase
+        let curseWasRemoved = false;
+        const frugalityCurses = getCursesByType('frugality');
+        if (frugalityCurses.length > 0) {
+          // Remove only the first frugality curse
+          const curseIndex = gameState.activeCurses.indexOf(frugalityCurses[0]);
+          if (curseIndex !== -1) {
+            gameState.activeCurses.splice(curseIndex, 1);
+            curseWasRemoved = true;
+            updateCurseUI();
+          }
+        }
+
+        saveCurrentGame();
+
+        // If curse was removed, refresh the shop to show normal prices
+        if (curseWasRemoved) {
+          setTimeout(() => {
+            showShopModal(purchasedIndices);
+          }, 100);
+        } else {
+          // Otherwise just update button state
+          e.target.textContent = '✓ Purchased';
+          e.target.disabled = true;
+          e.target.style.background = '#555';
+          e.target.parentElement.style.opacity = '0.5';
+        }
+      }
+    };
+  });
+
+  // Add reroll button handler
+  const rerollBtn = document.getElementById('shop-reroll-btn');
+  if (rerollBtn) {
+    rerollBtn.onclick = () => {
+      if (reroll > 0 && gold >= rerollCost) {
+        // Deduct reroll and gold
+        reroll -= 1;
+        gold -= rerollCost;
+        gameState.reroll = reroll;
+        gameState.gold = gold;
+
+        // Increment reroll counter for next reroll
+        gameState.shopRerollCount++;
+
+        // Clear current shop items to force regeneration
+        gameState.currentShopItems = null;
+
+        // Refresh shop (don't carry over purchased indices)
+        saveCurrentGame();
+        showShopModal([]);
+      }
+    };
+  }
+}
+
+// Function to leave shop and reset reroll counter
+function leaveShop() {
+  // Reset shop state
+  gameState.currentShopItems = null;
+  gameState.shopRerollCount = 0;
+  gameState.phase = 'selection';
+
+  // Save and close
+  saveCurrentGame();
+  closeGameModal();
+
+  // Update inventory to refresh usable item buttons
+  if (typeof updateInventory === 'function') {
+    updateInventory();
+  }
+}
+
+// Clear shop items when closing shop modal
+const originalCloseGameModal = window.closeGameModal;
+window.closeGameModal = function() {
+  if (gameState.phase === 'shop') {
+    delete gameState.currentShopItems;
+    gameState.shopRerollCount = 0; // Reset reroll count for next shop
+    gameState.phase = null;
+  }
+  if (typeof originalCloseGameModal === 'function') {
+    originalCloseGameModal();
+  }
+};
