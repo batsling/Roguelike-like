@@ -1190,6 +1190,7 @@ function showPoopSelection() {
 }
 
 // Export functions to global scope
+window.createNotification = createNotification;
 window.applyItemEffects = applyItemEffects;
 window.acquireItem = acquireItem;
 window.getItemByName = getItemByName;

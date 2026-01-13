@@ -624,4 +624,3 @@ function showDeathScreen(message = 'You have perished!', source = 'curse') {
 
 // Export verification functions globally
 window.showCurseVerificationModal = showCurseVerificationModal;
-window.updateVerificationCursesDisplay = updateVerificationCursesDisplay;

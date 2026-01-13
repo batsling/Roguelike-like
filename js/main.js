@@ -3775,11 +3775,10 @@ document.getElementById('triggerSpecificEnemy')?.addEventListener('click', () =>
 });
 
 // Export to global scope
+window.getPowerValue = getPowerValue;
 window.loadState = loadState;
 window.saveCurrentGame = saveCurrentGame;
 window.loadSavedGame = loadSavedGame;
-window.createGameModal = createGameModal;
-window.closeGameModal = closeGameModal;
 window.showCombatModal = showCombatModal;
 window.showEventModal = showEventModal;
 window.showShopModal = showShopModal;
@@ -3906,9 +3905,6 @@ function hasTrait(traitId) {
 window.updateCharacterUI = updateCharacterUI;
 window.updateTraitsDisplay = updateTraitsDisplay;
 window.hasTrait = hasTrait;
-
-// Export collection functions
-window.sortCollectionItems = sortCollectionItems;
 
 // ===== INVENTORY SORTING EVENT LISTENERS =====
 

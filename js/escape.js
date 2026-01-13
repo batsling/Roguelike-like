@@ -1105,3 +1105,4 @@ window.completeEscapeGame = completeEscapeGame;
 window.recordLostRun = recordLostRun;
 window.startEscapePhase = startEscapePhase;
 window.showVictoryScreen = showVictoryScreen;
+window.sortCollectionItems = sortCollectionItems;
