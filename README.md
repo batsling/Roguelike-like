@@ -32,6 +32,13 @@ A roguelike game where players navigate through a graph of connected video games
 - Comprehensive developer tools
 - Dynamic difficulty scaling based on progress
 
+**Architecture:**
+The codebase is organized into focused, maintainable modules. See [js/README.md](js/README.md) for detailed module documentation.
+- **15 JavaScript modules** with clear responsibilities
+- **main.js reduced by 41.5%** (6,757 → 3,950 lines)
+- **6 new modules extracted** (Jan 2025): modals, shop, character-select, verification, escape, bingo
+- **Better maintainability** for both humans and LLMs
+
 ---
 
 ## Recent Updates
