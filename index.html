@@ -292,11 +292,11 @@
       <div id="save-modal">
         <div style="display: flex; gap: 20px; max-width: 1200px;">
           <!-- Main Character Selection Panel -->
-          <div style="background: #2d2d2d; padding: 30px; border-radius: 12px; width: 600px; max-height: 90vh; overflow-y: auto;">
-            <h3 style="margin-top: 0; color: gold; text-align: center;">Start New Run</h3>
+          <div class="bg-panel p-20 border-radius-12 w-600 max-h-90vh overflow-y-auto">
+            <h3 class="mt-0 text-gold text-center">Start New Run</h3>
 
             <!-- Icon View Container -->
-            <div id="icon-character-view" style="display: block; margin-bottom: 20px;">
+            <div id="icon-character-view" class="display-block mb-20">
               <div id="icon-character-grid" style="
                 display: grid;
                 grid-template-columns: repeat(5, 1fr);
@@ -315,13 +315,13 @@
             <input type="text" id="save-name-input" placeholder="Enter run name" class="w-full p-10 mb-15 border-radius-6 bg-dark" style="border: 1px solid #555; color: white;">
 
             <div class="flex gap-10">
-              <button id="confirm-save" class="btn-medium bg-success" style="flex: 1;">Start Run</button>
-              <button id="cancel-save" class="btn-medium btn-danger" style="flex: 1;">Cancel</button>
+              <button id="confirm-save" class="btn-medium bg-success flex-1">Start Run</button>
+              <button id="cancel-save" class="btn-medium btn-danger flex-1">Cancel</button>
             </div>
           </div>
 
           <!-- Character Details Panel -->
-          <div id="icon-character-details" style="display: flex; background: #2d2d2d; padding: 25px; border-radius: 12px; width: 400px; max-height: 90vh; overflow-y: auto;">
+          <div id="icon-character-details" class="flex bg-panel p-25 border-radius-12 w-400 max-h-90vh overflow-y-auto">
             <div id="icon-character-details-content">
               <!-- Character details will be populated here -->
             </div>
@@ -406,7 +406,7 @@
 
     <!-- Dev Tools Section -->
     <div class="three-column-layout">
-      <div class="column-header" style="grid-column: 1 / -1; text-align: center; font-size: 24px; background: linear-gradient(145deg, #444, #333); border-bottom: 3px solid #666;">
+      <div class="column-header text-center font-size-24" style="grid-column: 1 / -1; background: linear-gradient(145deg, #444, #333); border-bottom: 3px solid #666;">
         🛠️ Developer Tools
       </div>
 
@@ -439,13 +439,13 @@
             <button id="removeSelectedItem">Remove Selected Item</button>
             <button id="removeRandomItem">Remove Random Item</button>
           </div>
-          <div id="removedItemOutput" class="output-area" style="display: none;"></div>
+          <div id="removedItemOutput" class="output-area hidden"></div>
         </div>
 
         <!-- Current Inventory -->
         <div class="section">
           <h3>Current Inventory</h3>
-          <div id="inventory" style="max-height: 300px; overflow-y: auto;"></div>
+          <div id="inventory" class="max-h-300 overflow-y-auto"></div>
         </div>
       </div>
 
@@ -457,7 +457,7 @@
         <div class="section">
           <h3>Add Curse</h3>
           <label for="curseSelect">Select a Curse:</label>
-          <select id="curseSelect" style="width: 100%; margin-bottom: 10px;">
+          <select id="curseSelect" class="w-full mb-10">
             <option value="">-- Select a Curse --</option>
           </select>
           <div class="button-group">
@@ -471,7 +471,7 @@
         <div class="section">
           <h3>Remove Curse</h3>
           <label for="removeCurseSelect">Select Curse to Remove:</label>
-          <select id="removeCurseSelect" style="width: 100%; margin-bottom: 10px;">
+          <select id="removeCurseSelect" class="w-full mb-10">
             <option value="">-- Select a Curse --</option>
           </select>
           <div class="button-group">
@@ -484,8 +484,8 @@
         <!-- Active Curses List -->
         <div class="section">
           <h3>Active Curses</h3>
-          <div id="activeCursesList" style="max-height: 300px; overflow-y: auto;">
-            <div style="color: #888; font-style: italic; text-align: center; padding: 20px;">No active curses</div>
+          <div id="activeCursesList" class="max-h-300 overflow-y-auto">
+            <div class="text-grey-dark italic text-center p-20">No active curses</div>
           </div>
         </div>
       </div>
@@ -516,46 +516,41 @@
             <button id="generateEnemy">Start Combat</button>
           </div>
 
-          <div style="margin-top: 10px;">
+          <div class="mt-10">
             <label for="specificEnemySelect">Or select specific enemy:</label>
-            <select id="specificEnemySelect" style="width: 100%; margin-top: 5px; margin-bottom: 5px;">
+            <select id="specificEnemySelect" class="w-full mt-5-px mb-5">
               <option value="">-- Select Specific Enemy --</option>
             </select>
-            <button id="triggerSpecificEnemy" style="width: 100%;">Fight This Enemy</button>
+            <button id="triggerSpecificEnemy" class="w-full">Fight This Enemy</button>
           </div>
 
-          <div id="enemyDisplay" class="enemy-display" style="display: none;">
-            <div style="text-align: center; margin-bottom: 15px;">
-              <h4 id="enemyName" style="margin: 0 0 8px 0; color: #ff6644; font-size: 20px;"></h4>
-              <div id="enemyGame" style="font-size: 0.9em; color: #b8a890;"></div>
+          <div id="enemyDisplay" class="enemy-display hidden">
+            <div class="text-center mb-15">
+              <h4 id="enemyName" class="m-0 mb-8 stat-color-strength font-size-20"></h4>
+              <div id="enemyGame" class="text-beige" style="font-size: 0.9em;"></div>
             </div>
 
             <img id="enemyImage" class="enemy-image" src="" alt="Enemy Image">
 
-            <div class="roll-section" style="margin-top: 20px;">
-              <div style="text-align: center; margin-bottom: 15px;">
-                <div style="color: #b8a890; font-size: 14px; margin-bottom: 8px;">Roll Check</div>
-                <div id="rollCheckValue" style="font-size: 24px; font-weight: bold; color: #ffcc66;"></div>
+            <div class="roll-section mt-20">
+              <div class="text-center mb-15">
+                <div class="text-beige font-size-14 mb-8">Roll Check</div>
+                <div id="rollCheckValue" class="font-size-24 font-bold" style="color: #ffcc66;"></div>
               </div>
 
-              <div style="display: flex; justify-content: center; margin-bottom: 15px;">
+              <div class="flex justify-center mb-15">
                 <button class="d20-button" id="rollD20">D20</button>
               </div>
 
-              <div id="rollResult" style="
+              <div id="rollResult" class="text-center text-beige p-10 bg-transparent-black border-radius-6" style="
                 min-height: 40px;
-                text-align: center;
                 font-size: 15px;
-                color: #e6d5b8;
                 white-space: pre-line;
                 line-height: 1.6;
-                padding: 10px;
-                background: rgba(0,0,0,0.3);
-                border-radius: 6px;
               "></div>
             </div>
 
-            <div class="outcome-section" style="margin-top: 20px;">
+            <div class="outcome-section mt-20">
               <div id="successOutcome" class="outcome-button success-outcome"></div>
               <div id="failureOutcome" class="outcome-button failure-outcome"></div>
             </div>

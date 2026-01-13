@@ -2002,3 +2002,68 @@ text, path, line, g {
 .p-14 {
   padding: 14px;
 }
+
+.p-25 {
+  padding: 25px;
+}
+
+/* Flex Utilities */
+.flex-1 {
+  flex: 1;
+}
+
+/* Max Height Utilities */
+.max-h-300 {
+  max-height: 300px;
+}
+
+.max-h-90vh {
+  max-height: 90vh;
+}
+
+/* Overflow Utilities */
+.overflow-y-auto {
+  overflow-y: auto;
+}
+
+/* Font Style Utilities */
+.italic {
+  font-style: italic;
+}
+
+/* Width Utilities Extended */
+.w-400 {
+  width: 400px;
+}
+
+.w-600 {
+  width: 600px;
+}
+
+/* Display Block */
+.display-block {
+  display: block;
+}
+
+/* Margin Bottom Extended */
+.mb-8 {
+  margin-bottom: 8px;
+}
+
+.mb-5 {
+  margin-bottom: 5px;
+}
+
+/* Background Color Extended */
+.bg-panel {
+  background: #2d2d2d;
+}
+
+/* Font Size 20 */
+.font-size-20 {
+  font-size: 20px;
+}
+
+.font-size-24 {
+  font-size: 24px;
+}
