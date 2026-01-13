@@ -82,7 +82,9 @@ This document summarizes the major refactoring work completed to improve the Rog
 
 **Solution:** Added utility class system to `css/styles.css`:
 
-**New Utility Classes (~230 lines):**
+**New Utility Classes (~350 lines added across 2 commits):**
+
+**Commit 1 - Foundation (~230 lines):**
 - **Buttons:** `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-warning`, `.btn-purple`
 - **Button sizes:** `.btn-small`, `.btn-medium`, `.btn-mini`
 - **Text colors:** `.text-gold`, `.text-beige`, `.text-green`, `.text-red`, `.text-blue`, `.text-purple`
@@ -93,21 +95,54 @@ This document summarizes the major refactoring work completed to improve the Rog
 - **Display:** `.hidden`, `.block`, `.w-full`
 - **Specialized:** `.main-title`, `.character-icon-large`, `.stat-section-header`, `.scrollable`
 
-**HTML Updates:**
+**Commit 2 - Extended (~206 lines):**
+- **Position:** `.position-relative`, `.position-absolute`
+- **Justify:** `.justify-center`, `.justify-between`
+- **Border radius:** `.border-radius-4/6/8/12`
+- **Backgrounds:** `.bg-dark`, `.bg-grey`, `.bg-danger`, `.bg-success`, `.bg-info`, `.bg-character-panel`
+- **Stat colors:** `.stat-color-strength`, `.stat-color-dexterity`, `.stat-color-intelligence`, etc.
+- **Font sizes:** `.font-size-11/12/13/14/16/18`
+- **Additional text colors:** `.text-light-grey`, `.text-grey-medium`, `.text-grey-dark`, `.text-cyan`, `.text-light-red`, `.text-dark-purple`
+- **Line height:** `.line-height-16`
+- **Extended spacing:** `.mt-0`, `.mt-5-px`, `.mt-15`, `.gap-5`, `.gap-6`, `.gap-30`, `.p-14`
+
+**HTML Updates (66 inline styles removed):**
+
+**Commit 1 (~33 styles removed):**
 - Main menu buttons → utility classes
 - Title → `.main-title`
 - Character icon → `.character-icon-large`
-- Layouts → `.flex`, `.flex-column`
-- **~20 inline styles removed** (120 → ~100 remaining)
+- Top bar button → `.btn-small` + utilities
+- Tutorial/Clear buttons → simplified
+- All stat section headers → `.stat-section-header`
+- All stat labels → `.stat-color-*` classes
+- Character info panel → `.bg-character-panel`
+- Inventory/sort buttons → utility classes
+- Curses/Bingo headers → utility classes
+
+**Commit 2 (~33 styles removed):**
+- **Tutorial modal (complete overhaul):**
+  - All section headers → color utilities
+  - All lists → `.text-grey-medium`, `.line-height-relaxed`
+  - Nested lists → `.mt-5-px`
+  - Inline color spans → utility classes
+  - Tutorial tip → utilities only
+- **Floating HUD:** utility classes for layout and text
+- **Target display:** `.p-14`, `.text-center`
+- **Empty curses:** utility classes
+- **Bingo/sort gaps:** `.gap-5`, `.gap-6`
 
 **Result:**
+- **Inline styles: 120 → 54** (66 removed, **55% reduction**)
 - **Consistent styling** across the application
 - **Easier global style changes**
-- **Foundation for further cleanup**
-- **Reusable patterns**
+- **Reusable patterns established**
+- **Tutorial modal fully utility-based**
 
-**Commit:**
+**Commits:**
 - `be324ee` - Add utility classes and begin CSS cleanup (Phase 3)
+- `d7512ae` - Continue CSS cleanup - add more utility classes
+- `e085a2d` - Continue CSS cleanup - Tutorial modal and HUD updates
 
 ---
 
@@ -316,10 +351,10 @@ After refactoring, the following functionality should be verified:
 - **New modules:** 6 + 1 README
 
 ### Inline Styles
-- **Before:** ~120 inline styles
-- **After:** ~100 inline styles
-- **Reduction:** ~20 styles (17%)
-- **Utility classes added:** 40+ classes
+- **Before:** 120 inline styles
+- **After:** 54 inline styles
+- **Reduction:** 66 styles (55%)
+- **Utility classes added:** 90+ classes (~350 lines)
 
 ### Documentation
 - **Before:** Minimal module documentation
