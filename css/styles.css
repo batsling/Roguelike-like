@@ -2067,3 +2067,141 @@ text, path, line, g {
 .font-size-24 {
   font-size: 24px;
 }
+
+/* Additional Color Utilities */
+.text-warning {
+  color: #ffaa44;
+}
+
+.text-light-gray-aaa {
+  color: #aaa;
+}
+
+.text-yellow-accent {
+  color: #ffcc66;
+}
+
+.text-gold-light {
+  color: #ffdd77;
+}
+
+.text-health {
+  color: #ff8866;
+}
+
+/* Font Size Extended */
+.font-size-09em {
+  font-size: 0.9em;
+}
+
+.font-size-15 {
+  font-size: 15px;
+}
+
+/* Width Utilities */
+.w-300 {
+  width: 300px;
+}
+
+.w-200 {
+  width: 200px;
+}
+
+.max-w-1200 {
+  max-width: 1200px;
+}
+
+.max-w-700 {
+  max-width: 700px;
+}
+
+/* Padding Extended */
+.p-15 {
+  padding: 15px;
+}
+
+.p-12 {
+  padding: 12px;
+}
+
+/* Border Utilities */
+.border-solid-555 {
+  border: 1px solid #555;
+}
+
+.border-solid-666 {
+  border: 1px solid #666;
+}
+
+.border-solid-66bb6a {
+  border: 1px solid #66bb6a;
+}
+
+.border-gold-3 {
+  border: 3px solid gold;
+}
+
+.border-top-444 {
+  border-top: 2px solid #444;
+}
+
+/* Transition Utilities */
+.transition-bg {
+  transition: background 0.2s;
+}
+
+/* Complex Backgrounds */
+.bg-semi-black {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.bg-character-grid {
+  background: #2a2a2a;
+  border: 3px solid #555;
+}
+
+.bg-dev-tools-header {
+  background: linear-gradient(145deg, #444, #333);
+  border-bottom: 3px solid #666;
+}
+
+.bg-target-gradient {
+  background: linear-gradient(#111, #181818);
+}
+
+/* Grid Utilities */
+.grid {
+  display: grid;
+}
+
+.grid-cols-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.grid-col-span-full {
+  grid-column: 1 / -1;
+}
+
+/* Gap Extended */
+.gap-12 {
+  gap: 12px;
+}
+
+/* Height Utilities */
+.h-550 {
+  height: 550px;
+}
+
+/* Z-Index Utilities */
+.z-2000 {
+  z-index: 2000;
+}
+
+/* Special Text Properties */
+.whitespace-pre-line {
+  white-space: pre-line;
+}
+
+.min-h-40 {
+  min-height: 40px;
+}
