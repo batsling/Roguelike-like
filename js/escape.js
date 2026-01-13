@@ -1099,5 +1099,9 @@ function switchCurseTier(cardIndex, tier) {
   });
 }
 
-// Make switchCurseTier globally available
+// Export escape phase functions globally
 window.switchCurseTier = switchCurseTier;
+window.completeEscapeGame = completeEscapeGame;
+window.recordLostRun = recordLostRun;
+window.startEscapePhase = startEscapePhase;
+window.showVictoryScreen = showVictoryScreen;
