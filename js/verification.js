@@ -621,3 +621,7 @@ function showDeathScreen(message = 'You have perished!', source = 'curse') {
     document.getElementById('main-menu').style.display = 'flex';
   };
 }
+
+// Export verification functions globally
+window.showCurseVerificationModal = showCurseVerificationModal;
+window.updateVerificationCursesDisplay = updateVerificationCursesDisplay;
