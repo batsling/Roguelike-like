@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 569 games, 709 connections
-// 494 connected, 155 influencers
+// 571 games, 711 connections
+// 496 connected, 157 influencers
 
 var GAMES_DATA = [
   {
@@ -836,10 +836,22 @@ var GAMES_DATA = [
     "year": 2013,
     "type": "Traditional",
     "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": [
+      "Cataclysm: The Last Generation"
+    ],
+    "coverImage": "images/covers/cataclysm-dark-days-ahead.jpg"
+  },
+  {
+    "name": "Cataclysm: The Last Generation",
+    "year": 2025,
+    "type": "Traditional",
+    "connected": true,
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/cataclysm-dark-days-ahead.jpg"
+    "coverImage": "images/covers/cataclysm-the-last-generation.jpg"
   },
   {
     "name": "Cave Noire",
@@ -3608,10 +3620,22 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": [
+      "Mothergunship: Forge"
+    ],
+    "coverImage": "images/covers/mothergunship.jpg"
+  },
+  {
+    "name": "Mothergunship: Forge",
+    "year": 2022,
+    "type": "Action",
+    "connected": true,
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/mothergunship.jpg"
+    "coverImage": "images/covers/mothergunship-forge.jpg"
   },
   {
     "name": "Muck",
