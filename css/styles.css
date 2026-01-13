@@ -1558,3 +1558,241 @@ text, path, line, g {
 .trait-box-detail .trait-description {
   font-size: 13px;
 }
+
+/* ========================================
+   UTILITY CLASSES (Added Jan 2025)
+   Common reusable styles to reduce inline CSS
+   ======================================== */
+
+/* Button Utilities */
+.btn {
+  padding: 15px 30px;
+  font-size: 18px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.btn-primary {
+  background: linear-gradient(145deg, #4CAF50, #2E7D32);
+}
+
+.btn-secondary {
+  background: linear-gradient(145deg, #2196F3, #0D47A1);
+}
+
+.btn-danger {
+  background: linear-gradient(145deg, #f44336, #c62828);
+}
+
+.btn-warning {
+  background: linear-gradient(145deg, #ff9800, #f57c00);
+}
+
+.btn-purple {
+  background: linear-gradient(145deg, #9b59b6, #7d3c98);
+}
+
+.btn-info {
+  background: #2196F3;
+}
+
+.btn-grey {
+  background: #555;
+}
+
+.btn-small {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.btn-medium {
+  padding: 10px 20px;
+  font-size: 16px;
+}
+
+.btn-mini {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+/* Text Color Utilities */
+.text-gold {
+  color: gold;
+}
+
+.text-beige {
+  color: #e6d5b8;
+}
+
+.text-grey {
+  color: #bbb;
+}
+
+.text-green {
+  color: #4CAF50;
+}
+
+.text-orange {
+  color: #cc9900;
+}
+
+.text-blue {
+  color: #66ccff;
+}
+
+.text-purple {
+  color: #cc66ff;
+}
+
+.text-red {
+  color: #ff6644;
+}
+
+.text-light-green {
+  color: #88ff88;
+}
+
+/* Layout Utilities */
+.flex {
+  display: flex;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gap-10 {
+  gap: 10px;
+}
+
+.gap-15 {
+  gap: 15px;
+}
+
+.gap-20 {
+  gap: 20px;
+}
+
+/* Spacing Utilities */
+.mt-5 {
+  margin-top: 5px;
+}
+
+.mt-10 {
+  margin-top: 10px;
+}
+
+.mt-20 {
+  margin-top: 20px;
+}
+
+.mb-10 {
+  margin-bottom: 10px;
+}
+
+.mb-15 {
+  margin-bottom: 15px;
+}
+
+.mb-20 {
+  margin-bottom: 20px;
+}
+
+.mb-30 {
+  margin-bottom: 30px;
+}
+
+.m-0 {
+  margin: 0;
+}
+
+.p-10 {
+  padding: 10px;
+}
+
+.p-20 {
+  padding: 20px;
+}
+
+/* Text Utilities */
+.text-center {
+  text-align: center;
+}
+
+.font-bold {
+  font-weight: bold;
+}
+
+.line-height-relaxed {
+  line-height: 1.8;
+}
+
+/* Display Utilities */
+.hidden {
+  display: none;
+}
+
+.block {
+  display: block;
+}
+
+/* Width Utilities */
+.w-full {
+  width: 100%;
+}
+
+/* Stat Section Header */
+.stat-section-header {
+  margin: 8px 0 4px 0;
+  font-size: 13px;
+  color: #b8a890;
+  border-bottom: 1px solid #4a4440;
+  padding-bottom: 3px;
+}
+
+.stat-section-header-gold {
+  color: #cc9900;
+  border-bottom-color: #cc9900;
+}
+
+/* Scrollable Container */
+.scrollable {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Main Menu Title */
+.main-title {
+  font-size: 48px;
+  color: gold;
+  margin-bottom: 30px;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+/* Character Icon */
+.character-icon-large {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+  margin: 0 auto;
+  display: block;
+  border: 2px solid #cc6600;
+  border-radius: 8px;
+  background: #1a1a1a;
+}

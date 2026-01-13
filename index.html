@@ -21,25 +21,25 @@
 
       <!-- Main Menu Screen (initial state) -->
       <div id="main-menu">
-        <h1 style="font-size: 48px; color: gold; margin-bottom: 30px; text-shadow: 0 0 20px rgba(255,215,0,0.5);">The Search for the Amulet of Nivlac</h1>
+        <h1 class="main-title">The Search for the Amulet of Nivlac</h1>
 
         <!-- Game Controls -->
-        <div style="display: flex; gap: 15px; margin-bottom: 30px; justify-content: center;">
-          <button id="toggleTutorial" style="padding: 10px 20px; background: #2196F3; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">📖 How to Play</button>
-          <button id="clearAllData" style="padding: 10px 20px; background: #ff4444; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">🗑️ Clear All Data</button>
+        <div class="flex gap-15 mb-30" style="justify-content: center;">
+          <button id="toggleTutorial" class="btn-medium btn-info" style="border: none; border-radius: 6px; font-weight: bold;">📖 How to Play</button>
+          <button id="clearAllData" class="btn-medium" style="background: #ff4444; border: none; border-radius: 6px; font-weight: bold;">🗑️ Clear All Data</button>
         </div>
 
         <!-- Menu Buttons -->
-        <div style="display: flex; flex-direction: column; gap: 20px; width: 300px;">
-          <button id="new-game-btn" style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #4CAF50, #2E7D32); border: none; border-radius: 8px; color: white; cursor: pointer;">Start Run</button>
+        <div class="flex-column gap-20" style="width: 300px;">
+          <button id="new-game-btn" class="btn btn-primary">Start Run</button>
           <div style="position: relative;">
-            <button id="continue-btn" style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #2196F3, #0D47A1); border: none; border-radius: 8px; color: white; cursor: pointer; width: 100%;">Continue</button>
+            <button id="continue-btn" class="btn btn-secondary w-full">Continue</button>
             <div id="save-list">
               <!-- Save slots will be populated here -->
             </div>
           </div>
-          <button id="run-history-btn" style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #9b59b6, #7d3c98); border: none; border-radius: 8px; color: white; cursor: pointer;">Run History</button>
-          <button id="collection-btn" style="padding: 15px 30px; font-size: 18px; background: linear-gradient(145deg, #ff9800, #f57c00); border: none; border-radius: 8px; color: white; cursor: pointer;">Collection</button>
+          <button id="run-history-btn" class="btn btn-purple">Run History</button>
+          <button id="collection-btn" class="btn btn-warning">Collection</button>
         </div>
       </div>
 
@@ -63,8 +63,8 @@
             </div>
 
             <!-- Character Info -->
-            <div class="stat-section" id="character-info-section" style="text-align: center; padding: 10px 8px; background: rgba(204, 102, 0, 0.1); border-radius: 8px; margin: 8px 0;">
-              <img id="character-icon" src="" alt="Character" style="width: 220px; height: 220px; object-fit: contain; margin: 0 auto; display: block; border: 2px solid #cc6600; border-radius: 8px; background: #1a1a1a;">
+            <div class="stat-section text-center p-10" id="character-info-section" style="background: rgba(204, 102, 0, 0.1); border-radius: 8px; margin: 8px 0;">
+              <img id="character-icon" src="" alt="Character" class="character-icon-large">
             </div>
 
             <!-- Traits -->
