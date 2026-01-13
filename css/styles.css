@@ -1796,3 +1796,148 @@ text, path, line, g {
   border-radius: 8px;
   background: #1a1a1a;
 }
+
+/* Position Utilities */
+.position-relative {
+  position: relative;
+}
+
+.position-absolute {
+  position: absolute;
+}
+
+/* Justify Content Utilities */
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+/* Border Utilities */
+.border-radius-4 {
+  border-radius: 4px;
+}
+
+.border-radius-6 {
+  border-radius: 6px;
+}
+
+.border-radius-8 {
+  border-radius: 8px;
+}
+
+.border-radius-12 {
+  border-radius: 12px;
+}
+
+/* Background Utilities */
+.bg-dark {
+  background: #1a1a1a;
+}
+
+.bg-darker {
+  background: #111;
+}
+
+.bg-grey {
+  background: #555;
+}
+
+.bg-danger {
+  background: #ff4444;
+}
+
+.bg-success {
+  background: #4CAF50;
+}
+
+.bg-info {
+  background: #2196F3;
+}
+
+.bg-transparent-black {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.bg-character-panel {
+  background: rgba(204, 102, 0, 0.1);
+}
+
+/* Margin Right */
+.mr-20 {
+  margin-right: 20px;
+}
+
+/* Stat Color Utilities */
+.stat-color-strength {
+  color: #ff6644;
+}
+
+.stat-color-dexterity {
+  color: #88ff88;
+}
+
+.stat-color-intelligence {
+  color: #66ccff;
+}
+
+.stat-color-charisma {
+  color: #cc66ff;
+}
+
+.stat-color-fov {
+  color: #ffaa55;
+}
+
+.stat-color-discovery {
+  color: #99ff99;
+}
+
+.stat-color-luck {
+  color: #ffcc00;
+}
+
+.stat-color-reroll {
+  color: #ffcc66;
+}
+
+.stat-color-dash {
+  color: #66ddff;
+}
+
+.stat-color-skip {
+  color: #ff9966;
+}
+
+/* Font Size Utilities */
+.font-size-11 {
+  font-size: 11px;
+}
+
+.font-size-12 {
+  font-size: 12px;
+}
+
+.font-size-13 {
+  font-size: 13px;
+}
+
+.font-size-14 {
+  font-size: 14px;
+}
+
+.font-size-16 {
+  font-size: 16px;
+}
+
+.font-size-18 {
+  font-size: 18px;
+}
+
+/* Stat Section Header - Grey variant */
+.stat-section-header-grey {
+  color: #888;
+  border-bottom-color: #444;
+}
