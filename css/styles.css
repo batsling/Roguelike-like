@@ -1941,3 +1941,64 @@ text, path, line, g {
   color: #888;
   border-bottom-color: #444;
 }
+
+/* Additional Text Colors */
+.text-light-grey {
+  color: #ccc;
+}
+
+.text-grey-medium {
+  color: #bbb;
+}
+
+.text-grey-dark {
+  color: #888;
+}
+
+.text-light-red {
+  color: #ff6b6b;
+}
+
+.text-cyan {
+  color: #3498db;
+}
+
+.text-dark-purple {
+  color: #9b59b6;
+}
+
+/* Line Height Utilities */
+.line-height-16 {
+  line-height: 1.6;
+}
+
+/* Margin Top Extended */
+.mt-0 {
+  margin-top: 0;
+}
+
+.mt-5-px {
+  margin-top: 5px;
+}
+
+.mt-15 {
+  margin-top: 15px;
+}
+
+/* Gap Utilities */
+.gap-5 {
+  gap: 5px;
+}
+
+.gap-6 {
+  gap: 6px;
+}
+
+.gap-30 {
+  gap: 30px;
+}
+
+/* Padding Utilities */
+.p-14 {
+  padding: 14px;
+}
