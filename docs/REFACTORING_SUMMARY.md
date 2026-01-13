@@ -76,13 +76,13 @@ This document summarizes the major refactoring work completed to improve the Rog
 
 ---
 
-### Phase 3: CSS Cleanup ✅ (In Progress)
+### Phase 3: CSS Cleanup ✅ **COMPLETE**
 
 **Problem:** 120+ inline styles in `index.html` making styling inconsistent and hard to maintain.
 
 **Solution:** Added utility class system to `css/styles.css`:
 
-**New Utility Classes (~480 lines added across 3 commits):**
+**New Utility Classes (~775 lines added across 5 commits):**
 
 **Commit 1 - Foundation (~230 lines):**
 - **Buttons:** `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-warning`, `.btn-purple`
@@ -144,7 +144,31 @@ This document summarizes the major refactoring work completed to improve the Rog
 - **Background:** `.bg-panel` (#2d2d2d)
 - **Font sizes:** `.font-size-20`, `.font-size-24`
 
-**HTML Updates (89 inline styles removed total):**
+**Commit 4 - Extensive Cleanup (~138 lines):**
+- **Additional colors:** `.text-warning`, `.text-light-gray-aaa`, `.text-yellow-accent`, `.text-gold-light`, `.text-health`
+- **Font sizes:** `.font-size-09em`, `.font-size-15`
+- **Width:** `.w-300`, `.w-200`, `.max-w-1200`, `.max-w-700`
+- **Padding:** `.p-15`, `.p-12`
+- **Borders:** `.border-solid-555/666/66bb6a`, `.border-gold-3`, `.border-top-444`
+- **Transitions:** `.transition-bg`
+- **Complex backgrounds:** `.bg-semi-black`, `.bg-character-grid`, `.bg-dev-tools-header`, `.bg-target-gradient`
+- **Grid:** `.grid`, `.grid-cols-5`, `.grid-col-span-full`
+- **Gap:** `.gap-12`
+- **Height:** `.h-550`
+- **Z-index:** `.z-2000`
+- **Special:** `.whitespace-pre-line`, `.min-h-40`
+
+**Commit 5 - Final Polish (~77 lines):**
+- **Margin:** `.m-8-0`
+- **Font size:** `.font-size-095rem`
+- **Text color:** `.text-white`
+- **Position:** `.position-fixed`, `.top-0`, `.left-0`, `.right-10`, `.top-10`, `.bottom-20`, `.left-50`
+- **Transform:** `.translate-x-minus-50`
+- **Complex component:** `.floating-hud-complex` (complete HUD styling)
+- **Modal:** `.modal-full-cover`
+- **Align:** `.items-center`
+
+**HTML Updates (117 inline styles removed total):**
 
 **Commit 3 (~23 styles removed):**
 - **Character modals:**
@@ -160,19 +184,51 @@ This document summarizes the major refactoring work completed to improve the Rog
   - Roll section → text/layout utilities
   - Outcome section → mt-20
 
+**Commit 4 (~22 styles removed):**
+- Menu buttons wrapper → w-300
+- Floating HUD health/gold → text-health, text-gold-light
+- Target display → bg-target-gradient, border-top-444
+- Sort buttons → border-solid-*, transition-bg
+- Empty/manual curses → italic, text-warning, text-light-gray-aaa
+- Bingo rewards → text-light-gray-aaa, italic, font-size-09em
+- Save modal → flex, gap-20, max-w-1200
+- Character grid → complete conversion (grid, grid-cols-5, bg-character-grid, h-550, etc.)
+- Save input → border-solid-555
+- Tutorial modal → bg-semi-black, z-2000, max-w-700, border-gold-3
+- Tutorial tip → italic
+- Dev tools header → grid-col-span-full, bg-dev-tools-header
+- Enemy display → font-size-09em
+- Roll check → text-yellow-accent
+- Roll result → complete conversion (min-h-40, font-size-15, whitespace-pre-line, etc.)
+- Quick actions → bg-success, bg-info
+- Encounter history → w-200, overflow-y-auto
+
+**Commit 5 (~6 styles removed):**
+- Character info → m-8-0
+- Floating HUD → floating-hud-complex, p-12, gap-30, items-center
+- Target display → font-size-095rem
+- Save input → text-white
+- Tutorial modal → modal-full-cover
+- Close button → top-10, right-10
+
 **Result:**
-- **Inline styles: 120 → 31** (89 removed, **74% reduction**)
-- **Consistent styling** across the application
+- **Inline styles: 120 → 3** (117 removed, **97.5% reduction**)
+- **Consistent styling** across the entire application
 - **Easier global style changes**
 - **Reusable patterns established**
-- **Tutorial modal fully utility-based**
-- **Dev tools section mostly utility-based**
+- **All major components using utility classes**
+- **Only essential inline styles remain:**
+  1. `display: none` - Dynamic visibility
+  2. SVG container - Complex layout with specific dimensions
+  3. SVG element - Absolute positioning with specific coordinates
 
 **Commits:**
 - `be324ee` - Add utility classes and begin CSS cleanup (Phase 3)
 - `d7512ae` - Continue CSS cleanup - add more utility classes
 - `e085a2d` - Continue CSS cleanup - Tutorial modal and HUD updates
 - `66a583f` - Continue CSS cleanup - Dev tools and modals
+- `7e8ff73` - Continue CSS cleanup - add more utility classes
+- `0e7d131` - Complete CSS cleanup - 97.5% reduction achieved
 
 ---
 
@@ -382,9 +438,9 @@ After refactoring, the following functionality should be verified:
 
 ### Inline Styles
 - **Before:** 120 inline styles
-- **After:** 31 inline styles
-- **Reduction:** 89 styles (74%)
-- **Utility classes added:** 130+ classes (~480 lines)
+- **After:** 3 inline styles (essential only)
+- **Reduction:** 117 styles (97.5%)
+- **Utility classes added:** 180+ classes (~775 lines)
 
 ### Documentation
 - **Before:** Minimal module documentation
