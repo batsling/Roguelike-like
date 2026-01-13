@@ -62,3 +62,7 @@ function closeGameModal() {
     setTimeout(() => modal.remove(), 300);
   }
 }
+
+// Export modal functions globally
+window.createGameModal = createGameModal;
+window.closeGameModal = closeGameModal;
