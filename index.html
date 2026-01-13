@@ -63,7 +63,7 @@
             </div>
 
             <!-- Character Info -->
-            <div class="stat-section text-center p-10 bg-character-panel border-radius-8" id="character-info-section" style="margin: 8px 0;">
+            <div class="stat-section text-center p-10 bg-character-panel border-radius-8 m-8-0" id="character-info-section">
               <img id="character-icon" src="" alt="Character" class="character-icon-large">
             </div>
 
@@ -167,7 +167,7 @@
               </div>
 
               <!-- Floating Bottom HUD -->
-              <div id="floating-hud" class="flex border-radius-12" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(24, 24, 24, 0.95); border: 2px solid #cc6600; padding: 12px 24px; gap: 30px; align-items: center; z-index: 1000; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px);">
+              <div id="floating-hud" class="flex border-radius-12 floating-hud-complex p-12 gap-30 items-center">
                 <div class="font-size-16 font-bold">
                   <span class="text-beige">Health: </span>
                   <span id="game-health" class="font-size-18 text-health">10/10</span>
@@ -181,7 +181,7 @@
             </div>
 
             <!-- Target Display -->
-            <div id="target" class="p-14 text-center bg-target-gradient border-top-444" style="font-size: .95rem;">
+            <div id="target" class="p-14 text-center bg-target-gradient border-top-444 font-size-095rem">
               <strong>Final Goal:</strong> <span id="target-game">Slay the Spire</span> (far below)
             </div>
           </div>
@@ -302,7 +302,7 @@
               </div>
             </div>
 
-            <input type="text" id="save-name-input" placeholder="Enter run name" class="w-full p-10 mb-15 border-radius-6 bg-dark border-solid-555" style="color: white;">
+            <input type="text" id="save-name-input" placeholder="Enter run name" class="w-full p-10 mb-15 border-radius-6 bg-dark border-solid-555 text-white">
 
             <div class="flex gap-10">
               <button id="confirm-save" class="btn-medium bg-success flex-1">Start Run</button>
@@ -320,9 +320,9 @@
       </div>
 
       <!-- Tutorial Modal -->
-      <div id="tutorial-modal" class="hidden position-absolute bg-semi-black z-2000" style="top: 0; left: 0; width: 100%; height: 100%; align-items: center; justify-content: center;">
+      <div id="tutorial-modal" class="hidden position-absolute bg-semi-black z-2000 modal-full-cover">
         <div class="bg-dark p-20 border-radius-12 position-relative max-w-700 max-h-90vh overflow-y-auto border-gold-3">
-          <button id="close-tutorial" class="position-absolute btn-small bg-danger border-radius-4" style="top: 10px; right: 10px;">✕</button>
+          <button id="close-tutorial" class="position-absolute btn-small bg-danger border-radius-4 top-10 right-10">✕</button>
 
           <h3 class="text-gold text-center mt-0">🎮 How to Play</h3>
 

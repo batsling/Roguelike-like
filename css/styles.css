@@ -2205,3 +2205,80 @@ text, path, line, g {
 .min-h-40 {
   min-height: 40px;
 }
+
+/* Additional Margin Utilities */
+.m-8-0 {
+  margin: 8px 0;
+}
+
+/* Font Size Rem */
+.font-size-095rem {
+  font-size: .95rem;
+}
+
+/* Text Color White */
+.text-white {
+  color: white;
+}
+
+/* Position Utilities Extended */
+.position-fixed {
+  position: fixed;
+}
+
+.top-0 {
+  top: 0;
+}
+
+.left-0 {
+  left: 0;
+}
+
+.right-10 {
+  right: 10px;
+}
+
+.top-10 {
+  top: 10px;
+}
+
+.bottom-20 {
+  bottom: 20px;
+}
+
+.left-50 {
+  left: 50%;
+}
+
+/* Transform Utilities */
+.translate-x-minus-50 {
+  transform: translateX(-50%);
+}
+
+/* Complex Floating HUD */
+.floating-hud-complex {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(24, 24, 24, 0.95);
+  border: 2px solid #cc6600;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+}
+
+/* Tutorial Modal Full Cover */
+.modal-full-cover {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Align Items Utility */
+.items-center {
+  align-items: center;
+}
