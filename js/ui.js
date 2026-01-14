@@ -257,11 +257,74 @@ function updateInventory() {
           }
         };
       });
+
+      // Add equip button event listeners
+      const equipButtons = gameItemsList.querySelectorAll('.item-equip-button');
+      equipButtons.forEach((button) => {
+        button.onclick = (e) => {
+          e.stopPropagation(); // Prevent triggering tooltip
+          const itemIndex = parseInt(button.dataset.itemIndex);
+          equipWeapon(itemIndex);
+        };
+      });
     }
   }
 
-  // Update stats panel
+  // Update stats panel and equipment slots
   updateGameStats();
+  updateEquipmentSlots();
+}
+
+// ===== WEAPON EQUIP/UNEQUIP FUNCTIONS =====
+
+function equipWeapon(itemIndex) {
+  if (itemIndex < 0 || itemIndex >= inventory.length) {
+    console.error('Invalid item index:', itemIndex);
+    return;
+  }
+
+  const weapon = inventory[itemIndex];
+
+  if (weapon.type !== 'Weapon') {
+    console.error('Item is not a weapon:', weapon);
+    return;
+  }
+
+  // If there's already an equipped weapon, it stays in inventory
+  // Just change which one is equipped
+  gameState.equippedWeapon = weapon;
+  gameState.weaponLevel = 1; // Reset to level 1 when equipping new weapon
+
+  // Update UI
+  updateInventory();
+  updateEquipmentSlots();
+
+  if (typeof createNotification === 'function') {
+    createNotification(`Equipped ${weapon.name}`, '#ff9800', '⚔️');
+  }
+
+  console.log('Equipped weapon:', weapon.name);
+}
+
+function unequipWeapon() {
+  if (!gameState.equippedWeapon) {
+    return;
+  }
+
+  const weaponName = gameState.equippedWeapon.name;
+
+  gameState.equippedWeapon = null;
+  gameState.weaponLevel = 1;
+
+  // Update UI
+  updateInventory();
+  updateEquipmentSlots();
+
+  if (typeof createNotification === 'function') {
+    createNotification(`Unequipped ${weaponName}`, '#888', '⚔️');
+  }
+
+  console.log('Unequipped weapon:', weaponName);
 }
 
 // ===== CURSES DISPLAY =====
@@ -875,3 +938,5 @@ window.updateGameStats = updateGameStats;
 window.updateSaveList = updateSaveList;
 window.populateEscapeGameDropdown = populateEscapeGameDropdown;
 window.updateEquipmentSlots = updateEquipmentSlots;
+window.equipWeapon = equipWeapon;
+window.unequipWeapon = unequipWeapon;
