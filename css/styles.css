@@ -2282,3 +2282,121 @@ text, path, line, g {
 .items-center {
   align-items: center;
 }
+}
+
+/* ===== EQUIPMENT SLOTS ===== */
+
+/* Equipment slots container */
+.equipment-slots {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Individual equipment slot */
+.equipment-slot {
+  width: 60px;
+  height: 60px;
+  background: rgba(40, 40, 40, 0.9);
+  border: 2px solid #555;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  pointer-events: all;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.equipment-slot:hover {
+  border-color: #888;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Empty slot placeholder */
+.equipment-slot-empty {
+  font-size: 10px;
+  color: #666;
+  text-align: center;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Equipped item image */
+.equipment-slot img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* Unequip button (hidden by default, shown on hover) */
+.equipment-unequip-btn {
+  position: absolute;
+  bottom: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  background: #d32f2f;
+  border: 1px solid #f44336;
+  border-radius: 4px;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.equipment-slot:hover .equipment-unequip-btn {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.equipment-unequip-btn:hover {
+  background: #f44336;
+  border-color: #ff5252;
+}
+
+/* Weapon slot specific (left) */
+#weapon-slot {
+  border-color: #ff9800;
+}
+
+#weapon-slot:hover {
+  border-color: #ffb74d;
+  box-shadow: 0 4px 8px rgba(255, 152, 0, 0.4);
+}
+
+/* Amulet slot specific (right) */
+#amulet-slot {
+  border-color: #9c27b0;
+}
+
+#amulet-slot:hover {
+  border-color: #ba68c8;
+  box-shadow: 0 4px 8px rgba(156, 39, 176, 0.4);
+}
+
+/* Equipped state */
+.equipment-slot.equipped {
+  background: rgba(50, 50, 50, 0.95);
+  border-width: 3px;
+}
+
+.equipment-slot.equipped .equipment-slot-empty {
+  display: none;
+}

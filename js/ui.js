@@ -753,6 +753,81 @@ function hideItemTooltip() {
   }, 150);
 }
 
+// ===== EQUIPMENT SLOTS =====
+
+function updateEquipmentSlots() {
+  const weaponSlot = document.getElementById('weapon-slot');
+  const amuletSlot = document.getElementById('amulet-slot');
+
+  if (!weaponSlot || !amuletSlot) return;
+
+  // Update weapon slot
+  if (gameState.equippedWeapon) {
+    weaponSlot.classList.add('equipped');
+    weaponSlot.innerHTML = `
+      <img src="${gameState.equippedWeapon.image}" alt="${gameState.equippedWeapon.name}"
+           onerror="this.style.display='none'">
+      <button class="equipment-unequip-btn" onclick="unequipWeapon()">Unequip</button>
+    `;
+
+    // Add tooltip functionality
+    weaponSlot.onmouseenter = (e) => {
+      showWeaponTooltip(e, gameState.equippedWeapon);
+    };
+    weaponSlot.onmouseleave = () => {
+      hideWeaponTooltip();
+    };
+  } else {
+    weaponSlot.classList.remove('equipped');
+    weaponSlot.innerHTML = '<div class="equipment-slot-empty">Weapon</div>';
+    weaponSlot.onmouseenter = null;
+    weaponSlot.onmouseleave = null;
+  }
+
+  // Amulet slot (for future use)
+  amuletSlot.classList.remove('equipped');
+  amuletSlot.innerHTML = '<div class="equipment-slot-empty">Amulet</div>';
+}
+
+function showWeaponTooltip(event, weapon) {
+  const tooltip = document.getElementById('item-tooltip');
+  if (!tooltip) return;
+
+  const weaponLevel = gameState.weaponLevel || 1;
+  const levelText = weaponLevel > 1 ? ` (Level ${weaponLevel})` : '';
+
+  tooltip.innerHTML = `
+    <div class="tooltip-header" style="color: ${getRarityColor(weapon.rarity)};">
+      ${weapon.name}${levelText}
+    </div>
+    <div class="tooltip-type">${weapon.type} - ${weapon.rarity}</div>
+    <div class="tooltip-description">${weapon.description}</div>
+  `;
+
+  const rect = event.currentTarget.getBoundingClientRect();
+  tooltip.style.left = rect.right + 10 + 'px';
+  tooltip.style.top = rect.top + 'px';
+  tooltip.style.display = 'block';
+}
+
+function hideWeaponTooltip() {
+  const tooltip = document.getElementById('item-tooltip');
+  if (tooltip) {
+    tooltip.style.display = 'none';
+  }
+}
+
+function getRarityColor(rarity) {
+  const rarityColors = {
+    'Common': '#aaa',
+    'Uncommon': '#4CAF50',
+    'Rare': '#9b59b6',
+    'Epic': '#e91e63',
+    'Legendary': '#ff6b00'
+  };
+  return rarityColors[rarity] || '#aaa';
+}
+
 // Export functions to global scope for backwards compatibility
 window.updateTopBar = updateTopBar;
 window.updateHealthDisplay = updateHealthDisplay;
@@ -769,3 +844,4 @@ window.updateEncounterHistory = updateEncounterHistory;
 window.updateGameStats = updateGameStats;
 window.updateSaveList = updateSaveList;
 window.populateEscapeGameDropdown = populateEscapeGameDropdown;
+window.updateEquipmentSlots = updateEquipmentSlots;

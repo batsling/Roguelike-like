@@ -63,8 +63,21 @@
             </div>
 
             <!-- Character Info -->
-            <div class="stat-section text-center p-10 bg-character-panel border-radius-8 m-8-0" id="character-info-section">
+            <div class="stat-section text-center p-10 bg-character-panel border-radius-8 m-8-0" id="character-info-section" style="position: relative;">
               <img id="character-icon" src="" alt="Character" class="character-icon-large">
+
+              <!-- Equipment Slots -->
+              <div class="equipment-slots">
+                <!-- Weapon Slot (Left) -->
+                <div id="weapon-slot" class="equipment-slot" data-slot-type="weapon">
+                  <div class="equipment-slot-empty">Weapon</div>
+                </div>
+
+                <!-- Amulet Slot (Right) -->
+                <div id="amulet-slot" class="equipment-slot" data-slot-type="amulet">
+                  <div class="equipment-slot-empty">Amulet</div>
+                </div>
+              </div>
             </div>
 
             <!-- Traits -->
@@ -612,7 +625,7 @@
   <!-- Load embedded data first (no CORS issues) -->
   <script src="characters-data.js?v=19"></script>
   <script src="games-data.js?v=32"></script>
-  <script src="items-data.js?v=19"></script>
+  <script src="items-data.js?v=20"></script>
   <script src="enemies-data.js?v=19"></script>
   <script src="events-data.js?v=19"></script>
   <script src="curses-data.js?v=19"></script>
@@ -625,9 +638,9 @@
   <script src="js/bfs-cache.js?v=1"></script>
 
   <!-- Load game logic -->
-  <script src="js/data.js?v=22"></script>
+  <script src="js/data.js?v=23"></script>
   <script src="js/items.js?v=21"></script>
-  <script src="js/ui.js?v=22"></script>
+  <script src="js/ui.js?v=23"></script>
   <script src="js/combat.js?v=20"></script>
   <script src="js/events.js?v=19"></script>
   <script src="js/gameplay.js?v=29"></script>

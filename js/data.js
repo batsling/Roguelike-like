@@ -113,7 +113,11 @@ var gameState = {
   character: 'rogue',
   escapePhase: false,
   escapeGames: [],
-  escapeProgress: 0
+  escapeProgress: 0,
+  // Weapon system
+  equippedWeapon: null, // Currently equipped weapon object
+  weaponLevel: 1, // Current weapon level (1-3)
+  shopUpgradesUsed: 0 // Track weapon upgrades used in current shop visit
 };
 
 var gameSaves = GameStorage.load(STORAGE_KEYS.SAVED_GAMES, {});
