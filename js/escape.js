@@ -758,9 +758,10 @@ function switchCollectionTab(tab) {
       </div>
     `;
   } else if (tab === 'items') {
-    // Get rarity color function
+    // Get rarity color function (case-insensitive)
     const getRarityColor = (rarity) => {
-      switch(rarity) {
+      const rarityLower = (rarity || '').toLowerCase();
+      switch(rarityLower) {
         case 'legendary': return '#ff6b00';
         case 'rare': return '#9b59b6';
         case 'uncommon': return '#4CAF50';
@@ -971,9 +972,10 @@ function switchCollectionTab(tab) {
 
 // Sort collection items
 function sortCollectionItems(sortType) {
-  // Get rarity color function
+  // Get rarity color function (case-insensitive)
   const getRarityColor = (rarity) => {
-    switch(rarity) {
+    const rarityLower = (rarity || '').toLowerCase();
+    switch(rarityLower) {
       case 'legendary': return '#ff6b00';
       case 'rare': return '#9b59b6';
       case 'uncommon': return '#4CAF50';
@@ -996,14 +998,14 @@ function sortCollectionItems(sortType) {
   } else if (sortType === 'rarity') {
     const rarityOrder = { 'legendary': 4, 'rare': 3, 'uncommon': 2, 'common': 1 };
     sortedItems = [...items].sort((a, b) => {
-      const rarityDiff = (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0);
+      const rarityDiff = (rarityOrder[(b.rarity || '').toLowerCase()] || 0) - (rarityOrder[(a.rarity || '').toLowerCase()] || 0);
       if (rarityDiff !== 0) return rarityDiff;
       return a.name.localeCompare(b.name);
     });
   } else if (sortType === 'game') {
     sortedItems = [...items].sort((a, b) => {
-      const gameA = a.game || 'Unknown';
-      const gameB = b.game || 'Unknown';
+      const gameA = a.reference || 'Unknown';
+      const gameB = b.reference || 'Unknown';
       const gameDiff = gameA.localeCompare(gameB);
       if (gameDiff !== 0) return gameDiff;
       return a.name.localeCompare(b.name);

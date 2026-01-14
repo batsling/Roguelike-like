@@ -327,8 +327,9 @@ function grantBingoReward(bingoCount) {
 
 function giveRandomItems(rarity, bingoCount = 1, bonusText = '') {
   // Filter out items already selected in this batch of bingo rewards
+  // Case-insensitive rarity comparison
   const rarityItems = items.filter(item =>
-    item.rarity === rarity && !usedBingoItems.includes(item.name)
+    item.rarity && item.rarity.toLowerCase() === rarity.toLowerCase() && !usedBingoItems.includes(item.name)
   );
 
   if (rarityItems.length === 0) {

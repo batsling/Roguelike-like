@@ -3093,7 +3093,7 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
         targetRarity = selectRandomRarity();
       }
 
-      const rarityItems = items.filter(item => item.rarity === targetRarity);
+      const rarityItems = items.filter(item => item.rarity && item.rarity.toLowerCase() === targetRarity.toLowerCase());
       if (rarityItems.length > 0) {
         const randomIndex = Math.floor(Math.random() * rarityItems.length);
         selectedItem = rarityItems[randomIndex];
@@ -3125,7 +3125,9 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
   let itemsHTML = '<div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; justify-content: center;">';
 
   choices.forEach((item, index) => {
-    const rarityColor = item.rarity === 'common' ? '#aaa' : item.rarity === 'uncommon' ? '#4CAF50' : '#9b59b6';
+    // Case-insensitive rarity color matching
+    const rarityLower = (item.rarity || '').toLowerCase();
+    const rarityColor = rarityLower === 'legendary' ? '#ff6b00' : rarityLower === 'rare' ? '#9b59b6' : rarityLower === 'uncommon' ? '#4CAF50' : '#aaa';
 
     itemsHTML += `
       <div class="item-choice-card" data-index="${index}" style="
