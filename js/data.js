@@ -63,6 +63,30 @@ var amuletImageUrl = 'https://i.imgur.com/kXiZwZX.png';
 var currentEnemy = null;
 var currentRoll = null;
 
+// ===== ENEMY IMAGE HELPER =====
+/**
+ * Get the local image path for an enemy
+ * @param {string} enemyName - Name of the enemy
+ * @returns {string} - Path to the enemy image
+ */
+function getEnemyImagePath(enemyName) {
+  if (!enemyName) {
+    return 'images/enemies/default.png';
+  }
+
+  // Convert enemy name to filename format
+  // "Stone Golem" -> "stone-golem.png"
+  const filename = enemyName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')  // Replace non-alphanumeric with hyphens
+    .replace(/^-+|-+$/g, '');      // Remove leading/trailing hyphens
+
+  return `images/enemies/${filename}.png`;
+}
+
+// Export globally
+window.getEnemyImagePath = getEnemyImagePath;
+
 // ===== GAME STATE =====
 var gameState = {
   currentGame: null,

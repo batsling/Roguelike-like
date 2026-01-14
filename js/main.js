@@ -1854,12 +1854,14 @@ function showCombatModal() {
   // Get player's stat value for this check
   const playerStatValue = getPlayerStat(enemy.stat);
 
+  const enemyImagePath = getEnemyImagePath(enemy.name);
+
   createGameModal(`
     <div style="text-align: center;">
       <h2 style="color: #ff4444; margin-top: 0;">Combat Encounter!</h2>
       <h3>${enemy.name}</h3>
       <p style="color: #888;">From: ${enemy.game}</p>
-      ${enemy.imageUrl ? `<img src="${enemy.imageUrl}" style="max-width: 200px; max-height: 200px; image-rendering: pixelated; margin: 10px auto; display: block;" alt="${enemy.name}">` : ''}
+      <img src="${enemyImagePath}" style="max-width: 200px; max-height: 200px; image-rendering: pixelated; margin: 10px auto; display: block;" alt="${enemy.name}" onerror="this.style.display='none'">
       <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 15px 0;">
         <p style="font-size: 18px; margin: 5px 0;">
           <span style="color: ${getStatColor(enemy.stat)};">${enemy.stat}</span> Check:
@@ -2268,12 +2270,14 @@ function triggerCombat(enemy, onSuccess = null, onFailure = null, powerLevel = '
   // Get player's stat value for this check
   const playerStatValue = getPlayerStat(enemy.stat);
 
+  const enemyImagePath = getEnemyImagePath(enemy.name);
+
   createGameModal(`
     <div style="text-align: center;">
       <h2 style="color: #ff4444; margin-top: 0;">Combat Encounter!</h2>
       <h3>${enemy.name}</h3>
       <p style="color: #888;">From: ${enemy.game || 'Unknown'}</p>
-      ${enemy.imageUrl ? `<img src="${enemy.imageUrl}" style="max-width: 200px; max-height: 200px; image-rendering: pixelated; margin: 10px auto; display: block;" alt="${enemy.name}">` : ''}
+      <img src="${enemyImagePath}" style="max-width: 200px; max-height: 200px; image-rendering: pixelated; margin: 10px auto; display: block;" alt="${enemy.name}" onerror="this.style.display='none'">
       <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 15px 0;">
         <p style="font-size: 18px; margin: 5px 0;">
           <span style="color: ${getStatColor(enemy.stat)};">${enemy.stat}</span> Check:
@@ -2425,12 +2429,14 @@ function triggerStoneGolemFight() {
   // Trigger combat with Stone Golem
   const playerStatValue = getPlayerStat(stoneGolem.stat);
 
+  const stoneGolemImagePath = getEnemyImagePath(stoneGolem.name);
+
   createGameModal(`
     <div style="text-align: center;">
       <h2 style="color: #ff4444; margin-top: 0;">Combat Encounter!</h2>
       <h3>${stoneGolem.name} (${4 - gameState.stoneGolemFightsRemaining}/3)</h3>
       <p style="color: #888;">From: ${stoneGolem.game}</p>
-      ${stoneGolem.imageUrl ? `<img src="${stoneGolem.imageUrl}" style="max-width: 200px; max-height: 200px; image-rendering: pixelated; margin: 10px auto; display: block;" alt="${stoneGolem.name}">` : ''}
+      <img src="${stoneGolemImagePath}" style="max-width: 200px; max-height: 200px; image-rendering: pixelated; margin: 10px auto; display: block;" alt="${stoneGolem.name}" onerror="this.style.display='none'">
       <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 15px 0;">
         <p style="font-size: 18px; margin: 5px 0;">
           <span style="color: ${getStatColor(stoneGolem.stat)};">${stoneGolem.stat}</span> Check:

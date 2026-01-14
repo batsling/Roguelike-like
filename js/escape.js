@@ -846,8 +846,9 @@ function switchCollectionTab(tab) {
             transition: transform 0.2s, border-color 0.2s;
           " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#f44336';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
             <img
-              src="${enemy.imageUrl || 'images/enemies/no-enemy.svg'}"
+              src="${getEnemyImagePath(enemy.name)}"
               alt="${enemy.name}"
+              onerror="this.style.display='none'"
               style="
                 width: 100%;
                 height: 120px;
