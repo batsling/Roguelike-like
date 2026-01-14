@@ -3407,6 +3407,36 @@ function markGameFinished(gameName) {
 }
 
 /**
+ * Add a curse to the player (wrapper for StateMutator.addCurse)
+ * Handles both curse objects and curse names (strings)
+ * @param {Object|string} curseOrName - Curse object or curse name string
+ * @returns {boolean} - Success status
+ */
+function addCurse(curseOrName) {
+  // Extract curse name if an object was passed
+  const curseName = typeof curseOrName === 'string' ? curseOrName : curseOrName.name;
+
+  if (!curseName) {
+    console.error('Invalid curse data:', curseOrName);
+    return false;
+  }
+
+  // Use StateMutator to add the curse with UI updates
+  return StateMutator.addCurse(curseName, { updateUI: true, notify: false });
+}
+
+/**
+ * Get maximum uses for a curse based on its power level
+ * @param {string} power - Power level ('High', 'Medium', 'Low')
+ * @returns {number} - Maximum uses
+ */
+function getCurseMaxUses(power) {
+  if (power === 'High') return 3;
+  if (power === 'Medium') return 2;
+  return 1; // Low or default
+}
+
+/**
  * Check and update curse durations after game events
  * @param {string} eventType - Type of event ('game_beaten', etc.)
  */
@@ -3849,6 +3879,7 @@ document.getElementById('triggerSpecificEnemy')?.addEventListener('click', () =>
 
 // Export to global scope
 window.getPowerValue = getPowerValue;
+window.updateCurseUI = updateCurseUI;
 window.loadState = loadState;
 window.saveCurrentGame = saveCurrentGame;
 window.loadSavedGame = loadSavedGame;
