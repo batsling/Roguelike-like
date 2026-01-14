@@ -543,31 +543,42 @@ function acquireItem(item) {
     itemCopy.uses = (effects && effects.uses) || 1;
   }
 
-  // Check if item already exists in inventory (for stacking)
-  const existingItemIndex = inventory.findIndex(item => item.name === itemCopy.name);
+  // Weapons do NOT stack - each weapon is a separate inventory entry
+  const isWeapon = itemCopy.type === 'Weapon';
 
-  if (existingItemIndex !== -1) {
-    // Item already exists, increment quantity
-    if (!inventory[existingItemIndex].quantity) {
-      inventory[existingItemIndex].quantity = 1;
-    }
-    inventory[existingItemIndex].quantity++;
-
-    // Apply item effects for the additional copy (for Passive and Triggered items)
-    applyItemEffects(itemCopy);
-
-    console.log(`✅ Acquired: ${itemCopy.name} (x${inventory[existingItemIndex].quantity})`);
-  } else {
-    // New item, add to inventory with quantity of 1
+  if (isWeapon) {
+    // Always add weapons as new entries (no stacking)
     itemCopy.quantity = 1;
     inventory.push(itemCopy);
+    console.log('📥 Weapon added to inventory (no stacking):', itemCopy.name);
+    console.log(`✅ Acquired: ${itemCopy.name}`);
+  } else {
+    // Check if item already exists in inventory (for stacking non-weapons)
+    const existingItemIndex = inventory.findIndex(item => item.name === itemCopy.name);
 
-    console.log('📥 Added to inventory. Inventory entry:', inventory[inventory.length - 1]);
+    if (existingItemIndex !== -1) {
+      // Item already exists, increment quantity
+      if (!inventory[existingItemIndex].quantity) {
+        inventory[existingItemIndex].quantity = 1;
+      }
+      inventory[existingItemIndex].quantity++;
 
-    // Apply item effects (for Passive and Triggered items) - only on first acquisition
-    applyItemEffects(itemCopy);
+      // Apply item effects for the additional copy (for Passive and Triggered items)
+      applyItemEffects(itemCopy);
 
-    console.log(`✅ Acquired: ${itemCopy.name}${itemCopy.uses ? ` (${itemCopy.uses} uses)` : ''}`);
+      console.log(`✅ Acquired: ${itemCopy.name} (x${inventory[existingItemIndex].quantity})`);
+    } else {
+      // New item, add to inventory with quantity of 1
+      itemCopy.quantity = 1;
+      inventory.push(itemCopy);
+
+      console.log('📥 Added to inventory. Inventory entry:', inventory[inventory.length - 1]);
+
+      // Apply item effects (for Passive and Triggered items) - only on first acquisition
+      applyItemEffects(itemCopy);
+
+      console.log(`✅ Acquired: ${itemCopy.name}${itemCopy.uses ? ` (${itemCopy.uses} uses)` : ''}`);
+    }
   }
 
   gameState.inventory = [...inventory];

@@ -370,7 +370,22 @@ function equipWeapon(itemIndex) {
     return;
   }
 
-  // If there's already an equipped weapon, it stays in inventory
+  // If there's already an equipped weapon, add it back to inventory
+  if (gameState.equippedWeapon) {
+    const previousWeapon = {
+      name: gameState.equippedWeapon.name,
+      type: gameState.equippedWeapon.type,
+      rarity: gameState.equippedWeapon.rarity,
+      description: gameState.equippedWeapon.description,
+      image: gameState.equippedWeapon.image,
+      reference: gameState.equippedWeapon.reference,
+      tags: gameState.equippedWeapon.tags,
+      quantity: 1
+    };
+    inventory.push(previousWeapon);
+    console.log('🔫 Previous weapon returned to inventory:', previousWeapon.name);
+  }
+
   // Create a proper copy of the weapon to avoid reference issues
   gameState.equippedWeapon = {
     name: weapon.name,
@@ -380,12 +395,16 @@ function equipWeapon(itemIndex) {
     image: weapon.image,
     reference: weapon.reference,
     tags: weapon.tags,
-    quantity: weapon.quantity
+    quantity: 1
   };
   gameState.weaponLevel = 1; // Reset to level 1 when equipping new weapon
 
+  // Remove weapon from inventory (since it's now equipped)
+  inventory.splice(itemIndex, 1);
+
   console.log('🔫 Weapon equipped to gameState:', gameState.equippedWeapon);
   console.log('🔫 Weapon level set to:', gameState.weaponLevel);
+  console.log('🔫 Weapon removed from inventory at index:', itemIndex);
 
   // Update UI
   updateInventory();
@@ -455,6 +474,19 @@ function unequipWeapon() {
     return;
   }
 
+  // Add weapon back to inventory
+  const weaponToReturn = {
+    name: gameState.equippedWeapon.name,
+    type: gameState.equippedWeapon.type,
+    rarity: gameState.equippedWeapon.rarity,
+    description: gameState.equippedWeapon.description,
+    image: gameState.equippedWeapon.image,
+    reference: gameState.equippedWeapon.reference,
+    tags: gameState.equippedWeapon.tags,
+    quantity: 1
+  };
+  inventory.push(weaponToReturn);
+
   const weaponName = gameState.equippedWeapon.name;
 
   gameState.equippedWeapon = null;
@@ -469,6 +501,7 @@ function unequipWeapon() {
   }
 
   console.log('Unequipped weapon:', weaponName);
+  console.log('Weapon returned to inventory');
 }
 
 // ===== CURSES DISPLAY =====
