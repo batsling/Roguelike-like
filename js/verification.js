@@ -535,14 +535,14 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
         if (weapon.name === 'Blasma Pistol') {
           const chestType = weaponLevel === 1 ? 'small' : weaponLevel === 2 ? 'normal' : 'large';
 
-          // Grant the chest using the existing chest system
-          if (typeof offerItemReward === 'function') {
-            offerItemReward(chestType);
-          }
-
+          // Store that we need to show Blasma chest before normal rewards
           weaponRewardText = `${chestType.charAt(0).toUpperCase() + chestType.slice(1)} Chest`;
           weaponEffectActivated = true;
-          console.log(`${weapon.name} activated: granted ${chestType} chest`);
+
+          // Store chest type for later - we'll show it BEFORE calling onComplete
+          gameState._blasmaPistolChest = chestType;
+
+          console.log(`${weapon.name} activated: will grant ${chestType} chest before normal reward`);
         }
       }
     }
@@ -593,8 +593,25 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       }, precisionLandingActivated ? 200 : 100); // Delay slightly if Precision Landing also activated
     }
 
-    // Continue to mark game as finished (which will update curse UI after incrementing trackers)
-    if (onComplete) onComplete();
+    // Check if Blasma Pistol chest needs to be shown BEFORE the normal reward
+    if (gameState._blasmaPistolChest) {
+      const blasmaChestType = gameState._blasmaPistolChest;
+      delete gameState._blasmaPistolChest; // Clear the flag
+
+      // Show Blasma Pistol chest first, then continue with normal flow
+      if (typeof offerChest === 'function') {
+        offerChest(blasmaChestType, () => {
+          // After Blasma Pistol chest is complete, continue to normal rewards
+          if (onComplete) onComplete();
+        });
+      } else {
+        // Fallback if offerChest not available
+        if (onComplete) onComplete();
+      }
+    } else {
+      // No Blasma Pistol chest, continue normally
+      if (onComplete) onComplete();
+    }
   };
 }
 
