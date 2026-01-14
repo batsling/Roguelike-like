@@ -4,23 +4,23 @@ This folder contains local enemy images for combat encounters. Images should be 
 
 ## Required Images
 
-The following enemy images are needed. Filename format is lowercase with hyphens instead of spaces:
+The following enemy images are needed. Filename format is PascalCase (capitalize each word, no spaces):
 
 | Enemy Name | Filename | Game Source |
 |------------|----------|-------------|
-| Cultist | `cultist.png` | Slay the Spire |
-| Snecko | `snecko.png` | Slay the Spire |
-| Transient | `transient.png` | Slay the Spire |
-| Hobgoblin | `hobgoblin.png` | Rogue |
-| Troll | `troll.png` | Rogue |
-| Dragon | `dragon.png` | Rogue |
-| Mung | `mung.png` | Qud |
-| Revola | `revola.png` | Qud |
-| Skinning Homunculus | `skinning-homunculus.png` | Qud |
-| Gaper | `gaper.png` | The Binding of Isaac |
-| Double Vis | `double-vis.png` | The Binding of Isaac |
-| Tainted Pooter | `tainted-pooter.png` | The Binding of Isaac |
-| Stone Golem | `stone-golem.png` | Teleporter Event |
+| Cultist | `Cultist.png` | Slay the Spire |
+| Snecko | `Snecko.png` | Slay the Spire |
+| Transient | `Transient.png` | Slay the Spire |
+| Hobgoblin | `Hobgoblin.png` | Rogue |
+| Troll | `Troll.png` | Rogue |
+| Dragon | `Dragon.png` | Rogue |
+| Mung | `Mung.png` | Qud |
+| Revola | `Revola.png` | Qud |
+| Skinning Homunculus | `SkinningHomunculus.png` | Qud |
+| Gaper | `Gaper.png` | The Binding of Isaac |
+| Double Vis | `DoubleVis.png` | The Binding of Isaac |
+| Tainted Pooter | `TaintedPooter.png` | The Binding of Isaac |
+| Stone Golem | `StoneGolem.png` | Teleporter Event |
 
 ## Image Requirements
 
@@ -49,10 +49,14 @@ The previous imgur URLs for reference:
 ## How It Works
 
 The `getEnemyImagePath()` function in `js/data.js` automatically converts enemy names to filenames:
-- Converts to lowercase
-- Replaces non-alphanumeric characters with hyphens
+- Splits by spaces and special characters
+- Capitalizes the first letter of each word
+- Joins words together without spaces (PascalCase)
 - Adds `.png` extension
 
-Example: "Stone Golem" → "stone-golem.png"
+Examples:
+- "Stone Golem" → "StoneGolem.png"
+- "Tainted Pooter" → "TaintedPooter.png"
+- "Skinning Homunculus" → "SkinningHomunculus.png"
 
 If an image file is missing, the image element will be hidden automatically using the `onerror` handler.

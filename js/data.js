@@ -74,12 +74,14 @@ function getEnemyImagePath(enemyName) {
     return 'images/enemies/default.png';
   }
 
-  // Convert enemy name to filename format
-  // "Stone Golem" -> "stone-golem.png"
+  // Convert enemy name to PascalCase filename format
+  // "Stone Golem" -> "StoneGolem.png"
+  // "Tainted Pooter" -> "TaintedPooter.png"
   const filename = enemyName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')  // Replace non-alphanumeric with hyphens
-    .replace(/^-+|-+$/g, '');      // Remove leading/trailing hyphens
+    .split(/[^a-zA-Z0-9]+/)  // Split by non-alphanumeric characters
+    .filter(word => word.length > 0)  // Remove empty strings
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())  // Capitalize first letter
+    .join('');  // Join without spaces
 
   return `images/enemies/${filename}.png`;
 }
