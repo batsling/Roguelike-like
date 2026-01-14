@@ -40,6 +40,11 @@ function updateHealthDisplay() {
   updateTopBar();
 }
 
+function updateGoldDisplay() {
+  // Legacy function - now handled by updateTopBar
+  updateTopBar();
+}
+
 // ===== INVENTORY DISPLAY =====
 
 // Global inventory sort mode (default: 'type')
@@ -748,6 +753,7 @@ function hideItemTooltip() {
 // Export functions to global scope for backwards compatibility
 window.updateTopBar = updateTopBar;
 window.updateHealthDisplay = updateHealthDisplay;
+window.updateGoldDisplay = updateGoldDisplay;
 window.updateInventory = updateInventory;
 window.updateCursesDisplay = updateCursesDisplay;
 window.updateVerificationCursesDisplay = updateVerificationCursesDisplay;
