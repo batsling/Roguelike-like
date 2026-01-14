@@ -313,6 +313,57 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
     `;
   }
 
+  // Add Weapon Effect section if player has a weapon equipped
+  if (gameState.equippedWeapon) {
+    const weapon = gameState.equippedWeapon;
+    const weaponLevel = gameState.weaponLevel || 1;
+
+    // Parse weapon effect to get the verification question and reward
+    const getWeaponVerification = (description, level) => {
+      // For Blasma Pistol: "If you open more than 10 chests in one run, gain a (lv1:small/lv2:normal/lv3:large) chest"
+      // Extract the condition and reward
+      const conditionMatch = description.match(/If you ([^,]+),/i);
+      const levelPattern = /\(lv1:([^/]+)\/lv2:([^/]+)\/lv3:([^)]+)\)/;
+      const rewardMatch = description.match(levelPattern);
+
+      let question = conditionMatch ? conditionMatch[1] : 'complete the weapon condition';
+      let reward = 'reward';
+
+      if (rewardMatch) {
+        const rewardValue = level === 1 ? rewardMatch[1] : level === 2 ? rewardMatch[2] : rewardMatch[3];
+        // Extract the reward type (e.g., "chest" from "small chest")
+        const rewardTypeMatch = description.match(/gain a \([^)]+\) (\w+)/);
+        const rewardType = rewardTypeMatch ? rewardTypeMatch[1] : 'reward';
+        reward = `${rewardValue} ${rewardType}`;
+      }
+
+      // Convert to a yes/no question
+      question = 'Did you ' + question.trim() + '?';
+
+      return { question, reward };
+    };
+
+    const { question, reward } = getWeaponVerification(weapon.description, weaponLevel);
+
+    modalHTML += `
+      <div style="background: rgba(255, 152, 0, 0.1); border: 1px solid #ff9800; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #ffb74d; margin: 0 0 5px 0; font-size: 15px;">⚔️ ${weapon.name}</h3>
+        <div style="color: #cc9966; font-size: 11px; margin-bottom: 5px;">
+          Weapon Effect (Level ${weaponLevel})
+        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">${question} Reward: ${reward}</p>
+        <div style="margin-top: 5px;">
+          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+            <input type="radio" name="weapon-check" value="yes" checked style="margin-right: 5px;">Yes
+          </label>
+          <label style="font-size: 12px; color: #ccc;">
+            <input type="radio" name="weapon-check" value="no" style="margin-right: 5px;">No
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
   modalHTML += `
       <button id="verify-all-submit" style="
         padding: 15px 40px;
@@ -463,6 +514,33 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       }
     }
 
+    // Track weapon effect activation for notification later
+    let weaponEffectActivated = false;
+    let weaponRewardText = '';
+    if (gameState.equippedWeapon) {
+      const weaponRadio = document.querySelector('input[name="weapon-check"]:checked');
+      const conditionMet = weaponRadio && weaponRadio.value === 'yes';
+      if (conditionMet) {
+        const weaponLevel = gameState.weaponLevel || 1;
+        const weapon = gameState.equippedWeapon;
+
+        // Grant reward based on weapon and level
+        // For Blasma Pistol: grant small/normal/large chest
+        if (weapon.name === 'Blasma Pistol') {
+          const chestType = weaponLevel === 1 ? 'small' : weaponLevel === 2 ? 'normal' : 'large';
+
+          // Grant the chest using the existing chest system
+          if (typeof offerItemReward === 'function') {
+            offerItemReward(chestType);
+          }
+
+          weaponRewardText = `${chestType.charAt(0).toUpperCase() + chestType.slice(1)} Chest`;
+          weaponEffectActivated = true;
+          console.log(`${weapon.name} activated: granted ${chestType} chest`);
+        }
+      }
+    }
+
     closeGameModal();
 
     // Apply total damage silently
@@ -498,6 +576,15 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
           createNotification('Precision Landing: +1 Dash!', '#00bfff', '🎯');
         }
       }, 100);
+    }
+
+    // Show weapon effect notification after modal closes
+    if (weaponEffectActivated) {
+      setTimeout(() => {
+        if (typeof createNotification === 'function') {
+          createNotification(`${gameState.equippedWeapon.name}: Earned ${weaponRewardText}!`, '#ff9800', '⚔️');
+        }
+      }, precisionLandingActivated ? 200 : 100); // Delay slightly if Precision Landing also activated
     }
 
     // Continue to mark game as finished (which will update curse UI after incrementing trackers)
