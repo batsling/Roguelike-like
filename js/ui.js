@@ -107,13 +107,9 @@ function updateInventory() {
       gameItemsList.innerHTML = '<div class="empty-inventory">No items yet</div>';
     } else {
       // Sort inventory based on current mode
-      // Filter out equipped weapon
+      // Keep all items including weapon duplicates
       const sortedInventory = [...inventory]
         .map((item, idx) => ({ item, idx }))
-        .filter(({ item }) => {
-          // Hide equipped weapon from inventory
-          return !(gameState.equippedWeapon && item.name === gameState.equippedWeapon.name);
-        })
         .sort((a, b) => {
           if (window.inventorySortMode === 'alphabetical') {
             return a.item.name.localeCompare(b.item.name);
@@ -222,28 +218,72 @@ function updateInventory() {
                   Use${item.uses && item.uses > 1 ? ` x${item.uses}` : ''}
                 </button>
               ` : ''}
-              ${isWeapon ? `
-                <button class="item-equip-button"
-                        data-item-index="${idx}"
-                        style="
-                          position: absolute;
-                          bottom: 2px;
-                          left: 2px;
-                          right: 2px;
-                          padding: 2px 4px;
-                          font-size: 10px;
-                          background: #ff9800;
-                          color: white;
-                          border: 1px solid #f57c00;
-                          border-radius: 3px;
-                          cursor: pointer;
-                          font-weight: bold;
-                          text-transform: uppercase;
-                          z-index: 10;
-                        ">
-                  Equip
-                </button>
-              ` : ''}
+              ${isWeapon ? (() => {
+                const isDuplicate = gameState.equippedWeapon && item.name === gameState.equippedWeapon.name;
+                const canUpgrade = isDuplicate && (gameState.weaponLevel || 1) < 3;
+
+                if (canUpgrade) {
+                  return `
+                    <div style="position: absolute; bottom: 2px; left: 2px; right: 2px; display: flex; gap: 2px; z-index: 10;">
+                      <button class="item-equip-button"
+                              data-item-index="${idx}"
+                              style="
+                                flex: 1;
+                                padding: 2px 4px;
+                                font-size: 10px;
+                                background: #ff9800;
+                                color: white;
+                                border: 1px solid #f57c00;
+                                border-radius: 3px;
+                                cursor: pointer;
+                                font-weight: bold;
+                                text-transform: uppercase;
+                              ">
+                        Equip
+                      </button>
+                      <button class="item-upgrade-button"
+                              data-item-index="${idx}"
+                              style="
+                                flex: 1;
+                                padding: 2px 4px;
+                                font-size: 10px;
+                                background: #4CAF50;
+                                color: white;
+                                border: 1px solid #2E7D32;
+                                border-radius: 3px;
+                                cursor: pointer;
+                                font-weight: bold;
+                                text-transform: uppercase;
+                              ">
+                        Upgrade
+                      </button>
+                    </div>
+                  `;
+                } else {
+                  return `
+                    <button class="item-equip-button"
+                            data-item-index="${idx}"
+                            style="
+                              position: absolute;
+                              bottom: 2px;
+                              left: 2px;
+                              right: 2px;
+                              padding: 2px 4px;
+                              font-size: 10px;
+                              background: #ff9800;
+                              color: white;
+                              border: 1px solid #f57c00;
+                              border-radius: 3px;
+                              cursor: pointer;
+                              font-weight: bold;
+                              text-transform: uppercase;
+                              z-index: 10;
+                            ">
+                      Equip
+                    </button>
+                  `;
+                }
+              })() : ''}
             </div>
           </div>
         `;
@@ -292,6 +332,16 @@ function updateInventory() {
           e.stopPropagation(); // Prevent triggering tooltip
           const itemIndex = parseInt(button.dataset.itemIndex);
           equipWeapon(itemIndex);
+        };
+      });
+
+      // Add upgrade button event listeners
+      const upgradeButtons = gameItemsList.querySelectorAll('.item-upgrade-button');
+      upgradeButtons.forEach((button) => {
+        button.onclick = (e) => {
+          e.stopPropagation(); // Prevent triggering tooltip
+          const itemIndex = parseInt(button.dataset.itemIndex);
+          upgradeWeapon(itemIndex);
         };
       });
     }
@@ -346,6 +396,58 @@ function equipWeapon(itemIndex) {
   }
 
   console.log('✅ Weapon equipped successfully:', weapon.name);
+}
+
+function upgradeWeapon(itemIndex) {
+  console.log('⬆️ upgradeWeapon called with index:', itemIndex);
+
+  if (itemIndex < 0 || itemIndex >= inventory.length) {
+    console.error('Invalid item index:', itemIndex);
+    return;
+  }
+
+  if (!gameState.equippedWeapon) {
+    console.error('No weapon equipped');
+    return;
+  }
+
+  const weapon = inventory[itemIndex];
+  console.log('⬆️ Weapon from inventory:', weapon);
+
+  if (weapon.type !== 'Weapon') {
+    console.error('Item is not a weapon:', weapon);
+    return;
+  }
+
+  if (weapon.name !== gameState.equippedWeapon.name) {
+    console.error('Weapon does not match equipped weapon');
+    return;
+  }
+
+  const currentLevel = gameState.weaponLevel || 1;
+
+  if (currentLevel >= 3) {
+    if (typeof createNotification === 'function') {
+      createNotification('Weapon is already max level!', '#ff6b6b', '⚠️');
+    }
+    return;
+  }
+
+  // Level up the weapon
+  gameState.weaponLevel = currentLevel + 1;
+
+  // Remove the duplicate weapon from inventory
+  inventory.splice(itemIndex, 1);
+
+  // Update UI
+  updateInventory();
+  updateEquipmentSlots();
+
+  if (typeof createNotification === 'function') {
+    createNotification(`${weapon.name} upgraded to Level ${gameState.weaponLevel}!`, '#4CAF50', '⬆️');
+  }
+
+  console.log('✅ Weapon upgraded to level:', gameState.weaponLevel);
 }
 
 function unequipWeapon() {
@@ -992,4 +1094,5 @@ window.updateSaveList = updateSaveList;
 window.populateEscapeGameDropdown = populateEscapeGameDropdown;
 window.updateEquipmentSlots = updateEquipmentSlots;
 window.equipWeapon = equipWeapon;
+window.upgradeWeapon = upgradeWeapon;
 window.unequipWeapon = unequipWeapon;
