@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 571 games, 692 connections
-// 496 connected, 157 influencers
+// 574 games, 695 connections
+// 499 connected, 157 influencers
 
 var GAMES_DATA = [
   {
@@ -379,7 +379,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Knightica",
       "He is Coming",
-      "Lootplot"
+      "Lootplot",
+      "Toy Smash Kaboom!"
     ],
     "coverImage": "images/covers/backpack-battles.jpg"
   },
@@ -737,7 +738,8 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Rack and Slay",
-      "Noobs Are Coming"
+      "Noobs Are Coming",
+      "Voids Vigil"
     ],
     "coverImage": "images/covers/brotato.jpg"
   },
@@ -3769,6 +3771,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/night-swarm.jpg"
   },
   {
+    "name": "Nimrods",
+    "year": 2024,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/nimrods.jpg"
+  },
+  {
     "name": "Noita",
     "year": 2019,
     "type": "Action",
@@ -6010,6 +6022,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/tower-of-guns.jpg"
   },
   {
+    "name": "Toy Smash Kaboom!",
+    "year": 2025,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/toy-smash-kaboom.jpg"
+  },
+  {
     "name": "Ultima Ratio Regum",
     "year": 2012,
     "type": "Traditional",
@@ -6189,7 +6211,8 @@ var GAMES_DATA = [
       "Greedland",
       "Whisker Squadron: Survivor",
       "Disfigure",
-      "Vital Shell"
+      "Vital Shell",
+      "Nimrods"
     ],
     "coverImage": "images/covers/vampire-survivors.jpg"
   },
@@ -6266,6 +6289,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/voidigo.jpg"
+  },
+  {
+    "name": "Voids Vigil",
+    "year": 2024,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/voids-vigil.jpg"
   },
   {
     "name": "Wall World",
