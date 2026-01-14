@@ -86,7 +86,13 @@ function updateInventory() {
       gameItemsList.innerHTML = '<div class="empty-inventory">No items yet</div>';
     } else {
       // Sort inventory based on current mode
-      const sortedInventory = [...inventory].map((item, idx) => ({ item, idx }))
+      // Filter out equipped weapon
+      const sortedInventory = [...inventory]
+        .map((item, idx) => ({ item, idx }))
+        .filter(({ item }) => {
+          // Hide equipped weapon from inventory
+          return !(gameState.equippedWeapon && item.name === gameState.equippedWeapon.name);
+        })
         .sort((a, b) => {
           if (window.inventorySortMode === 'alphabetical') {
             return a.item.name.localeCompare(b.item.name);
@@ -96,10 +102,11 @@ function updateInventory() {
             const bRarity = rarityOrder[b.item.rarity?.toLowerCase()] ?? 0;
             return bRarity - aRarity; // Higher rarity first
           } else {
-            // Default: type sort (usable items first, then passive items)
-            const aIsUsable = a.item.type === 'Usable' ? 0 : 1;
-            const bIsUsable = b.item.type === 'Usable' ? 0 : 1;
-            return aIsUsable - bIsUsable;
+            // Default: type sort (weapons first, then usable, then passive)
+            const typeOrder = { 'Weapon': 0, 'Usable': 1, 'Passive': 2 };
+            const aOrder = typeOrder[a.item.type] ?? 3;
+            const bOrder = typeOrder[b.item.type] ?? 3;
+            return aOrder - bOrder;
           }
         });
 
@@ -133,6 +140,7 @@ function updateInventory() {
 
         const isUsable = item.type === 'Usable';
         const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
+        const isWeapon = item.type === 'Weapon';
 
         return `
           <div class="item-display-container" data-item-index="${idx}" style="
@@ -185,6 +193,28 @@ function updateInventory() {
                         "
                         ${!canUse ? 'disabled' : ''}>
                   Use${item.uses && item.uses > 1 ? ` x${item.uses}` : ''}
+                </button>
+              ` : ''}
+              ${isWeapon ? `
+                <button class="item-equip-button"
+                        data-item-index="${idx}"
+                        style="
+                          position: absolute;
+                          bottom: 2px;
+                          left: 2px;
+                          right: 2px;
+                          padding: 2px 4px;
+                          font-size: 10px;
+                          background: #ff9800;
+                          color: white;
+                          border: 1px solid #f57c00;
+                          border-radius: 3px;
+                          cursor: pointer;
+                          font-weight: bold;
+                          text-transform: uppercase;
+                          z-index: 10;
+                        ">
+                  Equip
                 </button>
               ` : ''}
             </div>
