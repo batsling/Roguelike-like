@@ -39,17 +39,14 @@ def import_items():
     # Start from row 2 (skip header)
     for row_num, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
         # Extract columns based on actual Excel structure:
-        # A: Item, B: Rating, C: Phase, D: Type, E: Description,
-        # F: Image (imgur link - ignored), G: Reference, H: Unlock, I: Tags
+        # A: Item, B: Rating, C: Type, D: Description, E: Reference, F: Tags, G: Unlock Condition
         name = row[0]  # Column A - Item
         rarity = row[1]  # Column B - Rating
-        phase = row[2]  # Column C - Phase (Exploration/Both/Escape) - not used
-        item_type = row[3]  # Column D - Type (Passive/Usable/Weapon)
-        description = row[4] if len(row) > 4 else None  # Column E - Description
-        # row[5] is imgur link - skip it, we generate our own image paths
-        reference = row[6] if len(row) > 6 else None  # Column G - Reference (origin game)
-        # row[7] is Unlock Condition - skip for now
-        tags = row[8] if len(row) > 8 else None  # Column I - Tags
+        item_type = row[2]  # Column C - Type (Passive/Usable/Weapon/Triggered)
+        description = row[3] if len(row) > 3 else None  # Column D - Description
+        reference = row[4] if len(row) > 4 else None  # Column E - Reference (origin game)
+        tags = row[5] if len(row) > 5 else None  # Column F - Tags
+        # row[6] is Unlock Condition - skip for now
 
         # Skip empty rows
         if not name:
