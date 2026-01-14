@@ -15,6 +15,8 @@
  * - showDeathScreen(message, source) - Curse death screen
  */
 
+console.log('✅ VERIFICATION.JS v4 loaded - weapon verification trigger active');
+
 // ===== CURSE VERIFICATION SYSTEM =====
 
 /**

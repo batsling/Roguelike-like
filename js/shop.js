@@ -13,6 +13,8 @@
  * - leaveShop() - Closes shop and resets shop state
  */
 
+console.log('✅ SHOP.JS v2 loaded - weapon upgrade system active');
+
 // ===== SHOP SYSTEM =====
 
 function showShopModal(purchasedIndices = []) {

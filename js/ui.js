@@ -3,6 +3,8 @@
 // This module handles all visual updates to the UI including:
 // - Top bar (health, gold, rations)
 // - Inventory display
+
+console.log('✅ UI.JS v25 loaded - weapon deep copy fix active');
 // - Game lists and selections
 // - Encounter history
 // - Game state stats sidebar
