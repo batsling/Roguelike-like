@@ -1,9 +1,10 @@
 /**
- * VERIFICATION.JS - Curse and Trait Verification Modals
+ * VERIFICATION.JS - Curse, Trait, and Weapon Verification Modals
  *
  * Responsibilities:
  * - Displaying combined verification modal for manual/restriction curses
  * - Handling Precision Landing trait verification
+ * - Handling equipped weapon effect verification
  * - Processing verification inputs and applying damage/rewards
  * - Death screen for curse-related deaths
  *
@@ -18,12 +19,15 @@
 
 /**
  * Show curse verification modal for curses that require manual verification
- * Also includes trait effects like Precision Landing
+ * Also includes trait effects like Precision Landing and equipped weapon effects
  * @param {Function} onComplete - Callback to run after all verifications are done
  */
 function showCurseVerificationModal(onComplete) {
   // Check if player has Precision Landing trait
   const hasPrecisionLanding = gameState && gameState.traits && gameState.traits.includes('precision_landing');
+
+  // Check if player has an equipped weapon
+  const hasEquippedWeapon = gameState && gameState.equippedWeapon;
 
   // Get curses that need verification (manual and restriction curses)
   const cursesToVerify = (gameState.activeCurses || []).filter(curse =>
@@ -36,8 +40,8 @@ function showCurseVerificationModal(onComplete) {
     curse.name.toLowerCase().includes('hubris')
   );
 
-  // If no curses to verify and no Precision Landing trait, skip verification
-  if (cursesToVerify.length === 0 && !hasPrecisionLanding) {
+  // If no curses to verify, no Precision Landing trait, and no equipped weapon, skip verification
+  if (cursesToVerify.length === 0 && !hasPrecisionLanding && !hasEquippedWeapon) {
     if (onComplete) onComplete();
     return;
   }
@@ -47,7 +51,7 @@ function showCurseVerificationModal(onComplete) {
 }
 
 /**
- * Verify all manual curses and trait effects in a single combined modal
+ * Verify all manual curses, trait effects, and weapon effects in a single combined modal
  * @param {Array} cursesToVerify - Array of curses that need verification
  * @param {boolean} hasPrecisionLanding - Whether player has Precision Landing trait
  * @param {Function} onComplete - Callback to run after verification is done
