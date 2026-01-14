@@ -3999,21 +3999,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  sortAlphaBtn?.addEventListener('click', () => {
-    window.inventorySortMode = 'alphabetical';
-    updateSortButtons(sortAlphaBtn);
-    updateInventory();
-  });
+  if (sortAlphaBtn) {
+    sortAlphaBtn.addEventListener('click', () => {
+      console.log('Sort A-Z clicked');
+      window.inventorySortMode = 'alphabetical';
+      updateSortButtons(sortAlphaBtn);
+      if (typeof window.updateInventory === 'function') {
+        window.updateInventory();
+      } else {
+        console.error('updateInventory not found');
+      }
+    });
+  }
 
-  sortRarityBtn?.addEventListener('click', () => {
-    window.inventorySortMode = 'rarity';
-    updateSortButtons(sortRarityBtn);
-    updateInventory();
-  });
+  if (sortRarityBtn) {
+    sortRarityBtn.addEventListener('click', () => {
+      console.log('Sort Rarity clicked');
+      window.inventorySortMode = 'rarity';
+      updateSortButtons(sortRarityBtn);
+      if (typeof window.updateInventory === 'function') {
+        window.updateInventory();
+      } else {
+        console.error('updateInventory not found');
+      }
+    });
+  }
 
-  sortTypeBtn?.addEventListener('click', () => {
-    window.inventorySortMode = 'type';
-    updateSortButtons(sortTypeBtn);
-    updateInventory();
-  });
+  if (sortTypeBtn) {
+    sortTypeBtn.addEventListener('click', () => {
+      console.log('Sort Type clicked');
+      window.inventorySortMode = 'type';
+      updateSortButtons(sortTypeBtn);
+      if (typeof window.updateInventory === 'function') {
+        window.updateInventory();
+      } else {
+        console.error('updateInventory not found');
+      }
+    });
+  }
 });
