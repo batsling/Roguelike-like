@@ -3406,6 +3406,79 @@ function markGameFinished(gameName) {
   }
 }
 
+/**
+ * Check and update curse durations after game events
+ * @param {string} eventType - Type of event ('game_beaten', etc.)
+ */
+function checkCurseDurations(eventType = 'game_beaten') {
+  if (!gameState || !gameState.activeCurses) return;
+
+  // Initialize tracker if it doesn't exist
+  if (!gameState.cursesTracker) {
+    gameState.cursesTracker = {};
+  }
+
+  // Get list of restriction curses that were verified (from verification modal)
+  const cursesToIncrement = gameState.restrictionCursesProcessed || [];
+
+  // Track which curses to remove after iteration
+  const cursesToRemove = [];
+
+  // Process each active curse
+  gameState.activeCurses.forEach(curse => {
+    const trackerId = curse.id || curse.name;
+
+    // Initialize tracker for this curse if it doesn't exist
+    if (!gameState.cursesTracker[trackerId]) {
+      gameState.cursesTracker[trackerId] = { gamesBeaten: 0 };
+    }
+
+    const tracker = gameState.cursesTracker[trackerId];
+
+    // Check if this curse should be incremented
+    if (cursesToIncrement.includes(curse.id)) {
+      tracker.gamesBeaten = (tracker.gamesBeaten || 0) + 1;
+      console.log(`Incremented curse ${curse.name} (${curse.id}): ${tracker.gamesBeaten} games beaten`);
+    }
+
+    // Check if curse duration is complete
+    if (curse.duration) {
+      const match = curse.duration.match(/(\d+)\s+game/i);
+      if (match) {
+        const requiredGames = parseInt(match[1]);
+        if (tracker.gamesBeaten >= requiredGames) {
+          console.log(`Curse ${curse.name} duration complete (${tracker.gamesBeaten}/${requiredGames})`);
+          cursesToRemove.push(curse);
+        }
+      }
+    }
+  });
+
+  // Remove completed curses
+  cursesToRemove.forEach(curse => {
+    CurseManager.consume(curse);
+    const trackerId = curse.id || curse.name;
+    delete gameState.cursesTracker[trackerId];
+
+    if (typeof createNotification === 'function') {
+      createNotification(`${curse.name} duration complete!`, '#4CAF50', '✨');
+    }
+  });
+
+  // Clear the processed list for next time
+  gameState.restrictionCursesProcessed = [];
+
+  // Update UI if curses were removed
+  if (cursesToRemove.length > 0) {
+    if (typeof updateActiveCursesList === 'function') {
+      updateActiveCursesList();
+    }
+    if (typeof updateCursesDisplay === 'function') {
+      updateCursesDisplay();
+    }
+  }
+}
+
 // ===== GAME STATUS EFFECTS SYSTEM =====
 
 /**
