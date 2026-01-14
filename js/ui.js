@@ -4,7 +4,26 @@
 // - Top bar (health, gold, rations)
 // - Inventory display
 
-console.log('✅ UI.JS v25 loaded - weapon deep copy fix active');
+console.log('✅ UI.JS v26 loaded - weapon deep copy fix active + comprehensive debugging');
+
+// Check for equipment slots on DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const weaponSlot = document.getElementById('weapon-slot');
+    const amuletSlot = document.getElementById('amulet-slot');
+    console.log('🎯 DOM Ready - Equipment slots check:', {
+      weaponSlot: !!weaponSlot,
+      amuletSlot: !!amuletSlot
+    });
+  });
+} else {
+  const weaponSlot = document.getElementById('weapon-slot');
+  const amuletSlot = document.getElementById('amulet-slot');
+  console.log('🎯 Immediate - Equipment slots check:', {
+    weaponSlot: !!weaponSlot,
+    amuletSlot: !!amuletSlot
+  });
+}
 // - Game lists and selections
 // - Encounter history
 // - Game state stats sidebar
@@ -113,6 +132,12 @@ function updateInventory() {
         });
 
       console.log('Sorted inventory order:', sortedInventory.map(x => x.item.name).join(', '));
+      console.log('📦 First 3 items with full data:', sortedInventory.slice(0, 3).map(x => ({
+        name: x.item.name,
+        type: x.item.type,
+        rarity: x.item.rarity,
+        image: x.item.image
+      })));
 
       gameItemsList.innerHTML = sortedInventory.map(({ item, idx }) => {
         let imageUrl = item.image && item.image.trim() !== ''
@@ -280,12 +305,15 @@ function updateInventory() {
 // ===== WEAPON EQUIP/UNEQUIP FUNCTIONS =====
 
 function equipWeapon(itemIndex) {
+  console.log('🔫 equipWeapon called with index:', itemIndex, 'inventory length:', inventory.length);
+
   if (itemIndex < 0 || itemIndex >= inventory.length) {
     console.error('Invalid item index:', itemIndex);
     return;
   }
 
   const weapon = inventory[itemIndex];
+  console.log('🔫 Weapon from inventory:', weapon);
 
   if (weapon.type !== 'Weapon') {
     console.error('Item is not a weapon:', weapon);
@@ -304,6 +332,9 @@ function equipWeapon(itemIndex) {
   };
   gameState.weaponLevel = 1; // Reset to level 1 when equipping new weapon
 
+  console.log('🔫 Weapon equipped to gameState:', gameState.equippedWeapon);
+  console.log('🔫 Weapon level set to:', gameState.weaponLevel);
+
   // Update UI
   updateInventory();
   updateEquipmentSlots();
@@ -312,7 +343,7 @@ function equipWeapon(itemIndex) {
     createNotification(`Equipped ${weapon.name}`, '#ff9800', '⚔️');
   }
 
-  console.log('Equipped weapon:', weapon.name);
+  console.log('✅ Weapon equipped successfully:', weapon.name);
 }
 
 function unequipWeapon() {
@@ -861,10 +892,21 @@ function updateEquipmentSlots() {
   const weaponSlot = document.getElementById('weapon-slot');
   const amuletSlot = document.getElementById('amulet-slot');
 
-  if (!weaponSlot || !amuletSlot) return;
+  console.log('🔧 updateEquipmentSlots called', {
+    weaponSlotExists: !!weaponSlot,
+    amuletSlotExists: !!amuletSlot,
+    equippedWeapon: gameState.equippedWeapon?.name,
+    weaponLevel: gameState.weaponLevel
+  });
+
+  if (!weaponSlot || !amuletSlot) {
+    console.warn('⚠️ Equipment slots not found in DOM');
+    return;
+  }
 
   // Update weapon slot
   if (gameState.equippedWeapon) {
+    console.log('✅ Updating weapon slot with:', gameState.equippedWeapon);
     weaponSlot.classList.add('equipped');
     weaponSlot.innerHTML = `
       <img src="${gameState.equippedWeapon.image}" alt="${gameState.equippedWeapon.name}"
