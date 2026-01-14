@@ -5,6 +5,8 @@
 // - Modular item effects for easy extension
 // - Item stat modifications
 
+console.log('✅ ITEMS.JS v22 loaded - item acquisition debugging active');
+
 // ===== HELPER FUNCTIONS =====
 
 // Create and display a notification popup
@@ -515,8 +517,24 @@ function applyItemEffects(item) {
 function acquireItem(item) {
   if (!item) return;
 
+  console.log('📥 acquireItem called with:', item);
+  console.log('📥 Item properties:', {
+    name: item.name,
+    type: item.type,
+    rarity: item.rarity,
+    image: item.image,
+    description: item.description
+  });
+
   // Create a copy of the item to track uses
   const itemCopy = { ...item };
+
+  console.log('📥 Item copy created:', {
+    name: itemCopy.name,
+    type: itemCopy.type,
+    rarity: itemCopy.rarity,
+    image: itemCopy.image
+  });
 
   // Initialize uses for Usable items
   if (itemCopy.type === 'Usable') {
@@ -538,19 +556,23 @@ function acquireItem(item) {
     // Apply item effects for the additional copy (for Passive and Triggered items)
     applyItemEffects(itemCopy);
 
-    console.log(`Acquired: ${itemCopy.name} (x${inventory[existingItemIndex].quantity})`);
+    console.log(`✅ Acquired: ${itemCopy.name} (x${inventory[existingItemIndex].quantity})`);
   } else {
     // New item, add to inventory with quantity of 1
     itemCopy.quantity = 1;
     inventory.push(itemCopy);
 
+    console.log('📥 Added to inventory. Inventory entry:', inventory[inventory.length - 1]);
+
     // Apply item effects (for Passive and Triggered items) - only on first acquisition
     applyItemEffects(itemCopy);
 
-    console.log(`Acquired: ${itemCopy.name}${itemCopy.uses ? ` (${itemCopy.uses} uses)` : ''}`);
+    console.log(`✅ Acquired: ${itemCopy.name}${itemCopy.uses ? ` (${itemCopy.uses} uses)` : ''}`);
   }
 
   gameState.inventory = [...inventory];
+
+  console.log('📥 gameState.inventory updated. Length:', gameState.inventory.length);
 
   // Update UI
   updateInventory();
