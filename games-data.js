@@ -1,5 +1,5 @@
 // Auto-generated from Roguelikes.xlsx
-// 574 games, 695 connections
+// 574 games, 712 connections
 // 499 connected, 157 influencers
 
 var GAMES_DATA = [
@@ -173,7 +173,10 @@ var GAMES_DATA = [
       "Elona",
       "Moonring",
       "Stoneshard",
-      "Ultimate ADOM"
+      "Ultimate ADOM",
+      "KeeperRL",
+      "Soulash",
+      "Rogue Empire"
     ],
     "coverImage": "images/covers/ancient-domains-of-mystery.jpg"
   },
@@ -739,6 +742,7 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Rack and Slay",
       "Noobs Are Coming",
+      "Maid Survivors: Little Angels",
       "Voids Vigil"
     ],
     "coverImage": "images/covers/brotato.jpg"
@@ -1167,7 +1171,11 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "BPM: Bullets Per Minute",
+      "Shogun Showdown",
+      "20XX"
+    ],
     "coverImage": "images/covers/crypt-of-the-necrodancer.jpg"
   },
   {
@@ -1608,6 +1616,7 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
+      "Backpack Hero",
       "Dice & Fold",
       "Dungeon Clawler",
       "SpellRogue",
@@ -2816,6 +2825,7 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
+      "Heroes of Hammerwatch II",
       "Tower Factory",
       "Escape The Mad Empire"
     ],
@@ -2943,6 +2953,7 @@ var GAMES_DATA = [
       "Fights in Tight Spaces",
       "Shogun Showdown",
       "The Last Spell",
+      "The Ouroboros King",
       "Pawnbarian",
       "Metal Slug Tactics",
       "Spellmasons"
@@ -3756,7 +3767,10 @@ var GAMES_DATA = [
       "Ragnarok",
       "Spelunky Classic",
       "Strange Adventures in Infinite Space",
-      "Iter Vehemens Ad Necem"
+      "Iter Vehemens Ad Necem",
+      "Lost Flame",
+      "KeeperRL",
+      "UnReal World"
     ],
     "coverImage": "images/covers/nethack.jpg"
   },
@@ -4031,7 +4045,9 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "The Ouroboros King"
+    ],
     "coverImage": "images/covers/pawnbarian.jpg"
   },
   {
@@ -4941,7 +4957,8 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Bingle Bingle"
+      "Bingle Bingle",
+      "The Ouroboros King"
     ],
     "coverImage": "images/covers/shotgun-king-the-final-checkmate.jpg"
   },
@@ -5060,6 +5077,7 @@ var GAMES_DATA = [
       "Menace from the Deep",
       "Commander Quest",
       "Crush the Industry",
+      "The Ouroboros King",
       "Pawnbarian",
       "As We Descend",
       "StarVaders",
@@ -5071,6 +5089,7 @@ var GAMES_DATA = [
       "Arrogue",
       "Touhou: Lost Branch of Legend",
       "Dimensionals",
+      "Chaos Zero Nightmare",
       "Decktamer",
       "Dog Witch",
       "Demonic Mahjong",
