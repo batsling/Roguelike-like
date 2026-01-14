@@ -81,6 +81,7 @@ function updateInventory() {
   // Update game items sidebar if it exists
   const gameItemsList = document.getElementById('game-items-list');
   if (gameItemsList) {
+    console.log('Updating game-items-list, inventory length:', inventory.length, 'sort mode:', window.inventorySortMode);
     if (inventory.length === 0) {
       gameItemsList.innerHTML = '<div class="empty-inventory">No items yet</div>';
     } else {
@@ -101,6 +102,8 @@ function updateInventory() {
             return aIsUsable - bIsUsable;
           }
         });
+
+      console.log('Sorted inventory order:', sortedInventory.map(x => x.item.name).join(', '));
 
       gameItemsList.innerHTML = sortedInventory.map(({ item, idx }) => {
         let imageUrl = item.image && item.image.trim() !== ''

@@ -4030,42 +4030,61 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  console.log('Inventory sort buttons setup:', {
+    sortAlphaBtn: !!sortAlphaBtn,
+    sortRarityBtn: !!sortRarityBtn,
+    sortTypeBtn: !!sortTypeBtn,
+    updateInventory: typeof window.updateInventory
+  });
+
   if (sortAlphaBtn) {
     sortAlphaBtn.addEventListener('click', () => {
-      console.log('Sort A-Z clicked');
+      console.log('Sort A-Z clicked, changing mode from', window.inventorySortMode, 'to alphabetical');
       window.inventorySortMode = 'alphabetical';
       updateSortButtons(sortAlphaBtn);
       if (typeof window.updateInventory === 'function') {
+        console.log('Calling updateInventory()');
         window.updateInventory();
+        console.log('updateInventory() completed');
       } else {
         console.error('updateInventory not found');
       }
     });
+  } else {
+    console.error('sort-alpha-btn not found in DOM');
   }
 
   if (sortRarityBtn) {
     sortRarityBtn.addEventListener('click', () => {
-      console.log('Sort Rarity clicked');
+      console.log('Sort Rarity clicked, changing mode from', window.inventorySortMode, 'to rarity');
       window.inventorySortMode = 'rarity';
       updateSortButtons(sortRarityBtn);
       if (typeof window.updateInventory === 'function') {
+        console.log('Calling updateInventory()');
         window.updateInventory();
+        console.log('updateInventory() completed');
       } else {
         console.error('updateInventory not found');
       }
     });
+  } else {
+    console.error('sort-rarity-btn not found in DOM');
   }
 
   if (sortTypeBtn) {
     sortTypeBtn.addEventListener('click', () => {
-      console.log('Sort Type clicked');
+      console.log('Sort Type clicked, changing mode from', window.inventorySortMode, 'to type');
       window.inventorySortMode = 'type';
       updateSortButtons(sortTypeBtn);
       if (typeof window.updateInventory === 'function') {
+        console.log('Calling updateInventory()');
         window.updateInventory();
+        console.log('updateInventory() completed');
       } else {
         console.error('updateInventory not found');
       }
     });
+  } else {
+    console.error('sort-type-btn not found in DOM');
   }
 });
