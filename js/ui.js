@@ -291,8 +291,15 @@ function equipWeapon(itemIndex) {
   }
 
   // If there's already an equipped weapon, it stays in inventory
-  // Just change which one is equipped
-  gameState.equippedWeapon = weapon;
+  // Create a proper copy of the weapon to avoid reference issues
+  gameState.equippedWeapon = {
+    name: weapon.name,
+    type: weapon.type,
+    rarity: weapon.rarity,
+    description: weapon.description,
+    image: weapon.image,
+    quantity: weapon.quantity
+  };
   gameState.weaponLevel = 1; // Reset to level 1 when equipping new weapon
 
   // Update UI

@@ -215,13 +215,24 @@ let selectedCharacter = "rogue";
 function saveCurrentGame() {
   if (!gameState.saveName) return;
 
+  // Deep copy inventory items to preserve all properties
+  const inventoryCopy = inventory.map(item => ({
+    name: item.name,
+    type: item.type,
+    rarity: item.rarity,
+    description: item.description,
+    image: item.image,
+    quantity: item.quantity,
+    uses: item.uses
+  }));
+
   gameSaves[gameState.saveName] = {
     ...gameState,
     health: health,
     maxHealth: maxHealth,
     gold: gold,
     rations: rations,
-    inventory: [...inventory],
+    inventory: inventoryCopy,
     beatenGames: [...beatenGames],
     strength: strength,
     dexterity: dexterity,
