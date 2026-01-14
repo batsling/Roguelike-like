@@ -918,7 +918,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "gacha"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/chaos-zero-nightmare.jpg"
   },
@@ -6079,7 +6081,8 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [
-      "anime"
+      "anime",
+      "gacha"
     ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/uma-musume-pretty-derby.jpg"
