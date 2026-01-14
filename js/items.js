@@ -1000,8 +1000,9 @@ function showWandOfWishingSelection() {
       </div>
       <div class="item-tooltip" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2a2420; color: #e6d5b8; padding: 15px; border: 2px solid ${getRarityColor(item.rarity)}; border-radius: 8px; font-size: 13px; z-index: 100000; min-width: 300px; max-width: 400px; white-space: normal; box-shadow: 0 8px 24px rgba(0,0,0,0.7); pointer-events: none;">
         <div style="font-weight: bold; margin-bottom: 8px; color: ${getRarityColor(item.rarity)}; font-size: 15px;">${item.name}</div>
-        <div style="color: #888; font-size: 11px; margin-bottom: 10px;">${item.type} • ${item.game || 'Unknown'}</div>
+        <div style="color: #888; font-size: 11px; margin-bottom: 10px;">${item.type} • ${item.reference || 'Unknown'}</div>
         <div style="line-height: 1.6;">${item.description || 'No description'}</div>
+        ${item.tags && item.tags.length > 0 ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2); font-size: 10px; color: #aaa;">Tags: ${item.tags.join(', ')}</div>` : ''}
       </div>
     </div>
   `).join('');

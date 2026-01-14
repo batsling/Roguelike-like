@@ -816,7 +816,7 @@ function switchCollectionTab(tab) {
                 ${item.rarity}
               </div>
               <div style="font-size: 10px; color: #888; text-align: center; font-style: italic;">
-                ${item.game || 'Unknown'}
+                ${item.reference || 'Unknown'}
               </div>
               <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
                 ${item.description || 'No description'}
@@ -1046,7 +1046,7 @@ function sortCollectionItems(sortType) {
             ${item.rarity}
           </div>
           <div style="font-size: 10px; color: #888; text-align: center; font-style: italic;">
-            ${item.game || 'Unknown'}
+            ${item.reference || 'Unknown'}
           </div>
           <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
             ${item.description || 'No description'}

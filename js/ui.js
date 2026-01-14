@@ -831,7 +831,7 @@ function showItemTooltip(e, item) {
   tooltip.innerHTML = `
     <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 18px;">${item.name}</h4>
     <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
-      ${item.game ? `<div>From: ${item.game}</div>` : ''}
+      ${item.reference ? `<div>From: ${item.reference}</div>` : ''}
       <div>${capitalizedRarity} ${item.type}</div>
     </div>
     <div style="font-size: 13px; color: #e0d0b0; line-height: 1.4;">
