@@ -1,5 +1,5 @@
 // Auto-generated from Roguelikes.xlsx
-// 574 games, 712 connections
+// 574 games, 714 connections
 // 499 connected, 157 influencers
 
 var GAMES_DATA = [
@@ -1804,7 +1804,9 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "Dicey Dungeons"
+    ],
     "coverImage": "images/covers/dream-quest.jpg"
   },
   {
@@ -6193,6 +6195,7 @@ var GAMES_DATA = [
       "Gunlocked",
       "Halls of Torment",
       "Heretic's Fork",
+      "HoloCure: Save the Fans!",
       "Icewall",
       "Jotunnslayer: Hordes of Hel",
       "Keeper's Toll",
