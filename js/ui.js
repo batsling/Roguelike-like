@@ -328,6 +328,8 @@ function equipWeapon(itemIndex) {
     rarity: weapon.rarity,
     description: weapon.description,
     image: weapon.image,
+    reference: weapon.reference,
+    tags: weapon.tags,
     quantity: weapon.quantity
   };
   gameState.weaponLevel = 1; // Reset to level 1 when equipping new weapon

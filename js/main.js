@@ -224,6 +224,8 @@ function saveCurrentGame() {
     rarity: item.rarity,
     description: item.description,
     image: item.image,
+    reference: item.reference,
+    tags: item.tags,
     quantity: item.quantity,
     uses: item.uses
   }));
