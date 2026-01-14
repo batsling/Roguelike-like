@@ -4,191 +4,242 @@
 var ITEMS_DATA = [
   {
     "name": "Ballistic Boots",
-    "type": "Passive",
     "rarity": "Rare",
+    "type": "Passive",
     "description": "Gain +1 Dash",
-    "image": "images/items/BallisticBoots.png"
+    "image": "images/items/BallisticBoots.png",
+    "reference": "Enter the Gungeon",
+    "tags": [
+      "wearable"
+    ]
   },
   {
     "name": "More Options",
-    "type": "Passive",
     "rarity": "Uncommon",
+    "type": "Passive",
     "description": "Gain +1 Field of View, get an extra option in the space choice",
-    "image": "images/items/MoreOptions.png"
+    "image": "images/items/MoreOptions.png",
+    "reference": "The Binding of Isaac"
   },
   {
     "name": "Lucky Toe",
-    "type": "Passive",
     "rarity": "Common",
+    "type": "Passive",
     "description": "Gain +1 Luck",
-    "image": "images/items/LuckyToe.png"
+    "image": "images/items/LuckyToe.png",
+    "reference": "The Binding of Isaac"
   },
   {
     "name": "Lunch",
-    "type": "Passive",
     "rarity": "Common",
+    "type": "Passive",
     "description": "Gain +1 Max Health and +3 Health",
-    "image": "images/items/Lunch.png"
+    "image": "images/items/Lunch.png",
+    "reference": "The Binding of Isaac",
+    "tags": [
+      "food"
+    ]
   },
   {
     "name": "D6",
-    "type": "Passive",
     "rarity": "Uncommon",
+    "type": "Passive",
     "description": "Gain +1 Reroll",
-    "image": "images/items/D6.png"
+    "image": "images/items/D6.png",
+    "reference": "The Binding of Isaac"
   },
   {
     "name": "Sunglasses",
-    "type": "Passive",
     "rarity": "Common",
+    "type": "Passive",
     "description": "Gain +2 Charisma",
-    "image": "images/items/Sunglasses.png"
+    "image": "images/items/Sunglasses.png",
+    "reference": "Enter the Gungeon",
+    "tags": [
+      "wearable"
+    ]
   },
   {
     "name": "Oddly Smooth Stone",
-    "type": "Passive",
     "rarity": "Common",
+    "type": "Passive",
     "description": "Gain +2 Dexterity",
-    "image": "images/items/OddlySmoothStone.png"
+    "image": "images/items/OddlySmoothStone.png",
+    "reference": "Slay the Spire"
   },
   {
     "name": "Empty Tome",
-    "type": "Passive",
     "rarity": "Common",
+    "type": "Passive",
     "description": "Gain +2 Intelligence",
-    "image": "images/items/EmptyTome.png"
+    "image": "images/items/EmptyTome.png",
+    "reference": "Vampire Survivors"
   },
   {
     "name": "Hollow Heart",
-    "type": "Passive",
     "rarity": "Common",
+    "type": "Passive",
     "description": "Gain +2 Max Health",
-    "image": "images/items/HollowHeart.png"
+    "image": "images/items/HollowHeart.png",
+    "reference": "Vampire Survivors"
   },
   {
     "name": "Vajra",
-    "type": "Passive",
     "rarity": "Common",
+    "type": "Passive",
     "description": "Gain +2 Strength",
-    "image": "images/items/Vajra.png"
+    "image": "images/items/Vajra.png",
+    "reference": "Slay the Spire"
   },
   {
     "name": "Bowler Hat",
-    "type": "Passive",
     "rarity": "Uncommon",
+    "type": "Passive",
     "description": "Gain +3 Charisma, but -1 Dexterity",
-    "image": "images/items/BowlerHat.png"
+    "image": "images/items/BowlerHat.png",
+    "reference": "Brotato",
+    "tags": [
+      "wearable"
+    ]
   },
   {
     "name": "Wings",
-    "type": "Passive",
     "rarity": "Uncommon",
+    "type": "Passive",
     "description": "Gain +3 Dexterity, but -1  Intelligence",
-    "image": "images/items/Wings.png"
+    "image": "images/items/Wings.png",
+    "reference": "Brotato"
   },
   {
     "name": "Campfire",
-    "type": "Passive",
     "rarity": "Uncommon",
+    "type": "Passive",
     "description": "Gain +3 Intelligence, but -1 Dexterity",
-    "image": "images/items/Campfire.png"
+    "image": "images/items/Campfire.png",
+    "reference": "Brotato"
   },
   {
     "name": "Wheat",
-    "type": "Passive",
     "rarity": "Uncommon",
+    "type": "Passive",
     "description": "Gain +3 Strength, but -1 Intelligence",
-    "image": "images/items/Wheat.png"
+    "image": "images/items/Wheat.png",
+    "reference": "Brotato",
+    "tags": [
+      "food"
+    ]
   },
   {
     "name": "Panda",
-    "type": "Passive",
     "rarity": "Rare",
+    "type": "Passive",
     "description": "Gain +5 Max Health and +2 Luck, but -1 Strength",
-    "image": "images/items/Panda.png"
+    "image": "images/items/Panda.png",
+    "reference": "Brotato"
   },
   {
     "name": "Cursed Slash",
-    "type": "Triggered",
     "rarity": "Rare",
+    "type": "Triggered",
     "description": "Lose half of your max health. When you defeat an enemy, Heal +1 Health",
-    "image": "images/items/CursedSlash.png"
+    "image": "images/items/CursedSlash.png",
+    "reference": "Hades"
   },
   {
     "name": "Winged Boots",
-    "type": "Usable",
     "rarity": "Rare",
+    "type": "Usable",
     "description": "Move to a one of three games that share the year of the game you're currently on",
-    "image": "images/items/WingedBoots.png"
+    "image": "images/items/WingedBoots.png",
+    "reference": "Slay the Spire",
+    "tags": [
+      "wearable"
+    ]
   },
   {
     "name": "Ventricle Razor",
-    "type": "Usable",
     "rarity": "Rare",
+    "type": "Usable",
     "description": "On the first use, create a portal. On second use, return to the space you created the portal on",
-    "image": "images/items/VentricleRazor.png"
+    "image": "images/items/VentricleRazor.png",
+    "reference": "The Binding of Isaac"
   },
   {
     "name": "The Poop",
-    "type": "Usable",
     "rarity": "Common",
-    "description": "Poop on the current space, this space will not show up on the space choice in the future unless it's the only option (very stinky) ",
-    "image": "images/items/ThePoop.png"
+    "type": "Usable",
+    "description": "Poop on the current space, this space will not show up on the space choice in the future unless it's the only option (very stinky)",
+    "image": "images/items/ThePoop.png",
+    "reference": "The Binding of Isaac"
   },
   {
     "name": "Ride the Bus",
-    "type": "Usable",
     "rarity": "Uncommon",
+    "type": "Usable",
     "description": "Teleport to a random Deckbuilder space",
-    "image": "images/items/RidetheBus.png"
+    "image": "images/items/RideTheBus.png",
+    "reference": "Balatro"
   },
   {
-    "name": "Scroll of Teleportation ",
-    "type": "Usable",
+    "name": "Scroll of Teleportation",
     "rarity": "Common",
+    "type": "Usable",
     "description": "Teleport to a random space",
-    "image": "images/items/ScrollofTeleportation.png"
+    "image": "images/items/ScrollOfTeleportation.png",
+    "reference": "Rogue"
   },
   {
     "name": "Charm of the Vampire",
-    "type": "Triggered",
     "rarity": "Uncommon",
+    "type": "Triggered",
     "description": "When you defeat an enemy, 50% chance to Heal +1 Health",
-    "image": "images/items/CharmoftheVampire.png"
+    "image": "images/items/CharmOfTheVampire.png",
+    "reference": "The Binding of Isaac"
   },
   {
     "name": "Wand of Wishing",
-    "type": "Usable",
     "rarity": "Legendary",
+    "type": "Usable",
     "description": "Obtain any one item in the game",
-    "image": "images/items/WandofWishing.png"
+    "image": "images/items/WandOfWishing.png",
+    "reference": "NetHack"
   },
   {
     "name": "Vitality Orb",
-    "type": "Triggered",
     "rarity": "Rare",
+    "type": "Triggered",
     "description": "Gain +1 Max Health (and +1 Health) whenever you obtain a curse",
-    "image": "images/items/VitalityOrb.png"
+    "image": "images/items/VitalityOrb.png",
+    "reference": "Forward: Escape the Fold"
   },
   {
     "name": "Golden Beetle",
-    "type": "Triggered",
     "rarity": "Rare",
+    "type": "Triggered",
     "description": "Whenever you get rid of a curse, gain one Chest",
-    "image": "images/items/GoldenBeetle.png"
+    "image": "images/items/GoldenBeetle.png",
+    "reference": "Forward: Escape the Fold"
   },
   {
     "name": "Garlic",
-    "type": "Triggered",
     "rarity": "Uncommon",
+    "type": "Triggered",
     "description": "Whenever you take damage, take 1 less (minimum 1)",
-    "image": "images/items/Garlic.png"
+    "image": "images/items/Garlic.png",
+    "reference": "Super Auto Pets",
+    "tags": [
+      "food"
+    ]
   },
   {
     "name": "Blasma Pistol",
-    "type": "Weapon",
     "rarity": "Common",
+    "type": "Weapon",
     "description": "If you open more than 10 chests in one run, gain a (lv1:small/lv2:normal/lv3:large) chest",
-    "image": "images/items/BlasmaPistol.png"
+    "image": "images/items/BlasmaPistol.png",
+    "reference": "Flinthook",
+    "tags": [
+      "Gun"
+    ]
   }
 ];
