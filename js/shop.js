@@ -13,7 +13,7 @@
  * - leaveShop() - Closes shop and resets shop state
  */
 
-console.log('✅ SHOP.JS v2 loaded - weapon upgrade system active');
+console.log('✅ SHOP.JS v3 loaded - weapon upgrade system active');
 
 // ===== SHOP SYSTEM =====
 
@@ -203,7 +203,7 @@ function showShopModal(purchasedIndices = []) {
 
   shopItems.forEach((item, index) => {
     const isPurchased = purchasedIndices.includes(index);
-    const basePrice = item.rarity === 'common' ? 10 : item.rarity === 'uncommon' ? 25 : item.rarity === 'rare' ? 50 : 100;
+    const basePrice = item.rarity === 'common' ? 10 : item.rarity === 'uncommon' ? 20 : item.rarity === 'rare' ? 30 : 50;
     const price = basePrice + frugalityModifier;
     const rarityColor = getRarityColor(item.rarity);
 
