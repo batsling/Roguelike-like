@@ -380,10 +380,11 @@ function equipWeapon(itemIndex) {
       image: gameState.equippedWeapon.image,
       reference: gameState.equippedWeapon.reference,
       tags: gameState.equippedWeapon.tags,
-      quantity: 1
+      quantity: 1,
+      level: gameState.weaponLevel || 1 // Store current weapon level
     };
     inventory.push(previousWeapon);
-    console.log('🔫 Previous weapon returned to inventory:', previousWeapon.name);
+    console.log('🔫 Previous weapon returned to inventory with level:', previousWeapon.name, previousWeapon.level);
   }
 
   // Create a proper copy of the weapon to avoid reference issues
@@ -397,7 +398,7 @@ function equipWeapon(itemIndex) {
     tags: weapon.tags,
     quantity: 1
   };
-  gameState.weaponLevel = 1; // Reset to level 1 when equipping new weapon
+  gameState.weaponLevel = weapon.level || 1; // Restore weapon level or default to 1
 
   // Remove weapon from inventory (since it's now equipped)
   inventory.splice(itemIndex, 1);
@@ -411,10 +412,11 @@ function equipWeapon(itemIndex) {
   updateEquipmentSlots();
 
   if (typeof createNotification === 'function') {
-    createNotification(`Equipped ${weapon.name}`, '#ff9800', '⚔️');
+    const levelText = gameState.weaponLevel > 1 ? ` (Lv${gameState.weaponLevel})` : '';
+    createNotification(`Equipped ${weapon.name}${levelText}`, '#ff9800', '⚔️');
   }
 
-  console.log('✅ Weapon equipped successfully:', weapon.name);
+  console.log('✅ Weapon equipped successfully:', weapon.name, 'Level:', gameState.weaponLevel);
 }
 
 function upgradeWeapon(itemIndex) {
@@ -474,7 +476,7 @@ function unequipWeapon() {
     return;
   }
 
-  // Add weapon back to inventory
+  // Add weapon back to inventory with its current level
   const weaponToReturn = {
     name: gameState.equippedWeapon.name,
     type: gameState.equippedWeapon.type,
@@ -483,11 +485,13 @@ function unequipWeapon() {
     image: gameState.equippedWeapon.image,
     reference: gameState.equippedWeapon.reference,
     tags: gameState.equippedWeapon.tags,
-    quantity: 1
+    quantity: 1,
+    level: gameState.weaponLevel || 1 // Store current weapon level
   };
   inventory.push(weaponToReturn);
 
   const weaponName = gameState.equippedWeapon.name;
+  const weaponLevel = gameState.weaponLevel || 1;
 
   gameState.equippedWeapon = null;
   gameState.weaponLevel = 1;
@@ -497,11 +501,12 @@ function unequipWeapon() {
   updateEquipmentSlots();
 
   if (typeof createNotification === 'function') {
-    createNotification(`Unequipped ${weaponName}`, '#888', '⚔️');
+    const levelText = weaponLevel > 1 ? ` (Lv${weaponLevel})` : '';
+    createNotification(`Unequipped ${weaponName}${levelText}`, '#888', '⚔️');
   }
 
-  console.log('Unequipped weapon:', weaponName);
-  console.log('Weapon returned to inventory');
+  console.log('Unequipped weapon:', weaponName, 'Level:', weaponLevel);
+  console.log('Weapon returned to inventory with level:', weaponLevel);
 }
 
 // ===== CURSES DISPLAY =====
