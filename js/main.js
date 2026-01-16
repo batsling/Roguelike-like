@@ -3685,14 +3685,14 @@ function triggerGameStatusEffects(gameName) {
   // Calculate difficulty tier based on games beaten (same as combat)
   const gamesBeaten = gameState.finishedGames?.length || 0;
   let difficultyTier = 'Low';
-  let scalingFactor = 1;
+  let curseSuffix = 'I';
 
   if (gamesBeaten >= 10) {
     difficultyTier = 'High';
-    scalingFactor = 3;
+    curseSuffix = 'III';
   } else if (gamesBeaten >= 5) {
     difficultyTier = 'Medium';
-    scalingFactor = 2;
+    curseSuffix = 'II';
   }
 
   console.log(`Triggering status effects on ${gameName} (Difficulty: ${difficultyTier})`);
@@ -3700,61 +3700,113 @@ function triggerGameStatusEffects(gameName) {
   // Process each status effect
   statuses.forEach(status => {
     let message = '';
+    let isPositive = false;
 
-    switch(status.name) {
-      case 'healing_fountain':
-        const healAmount = scalingFactor;
+    switch(status.name.toLowerCase()) {
+      case 'charmed':
+        // Give Curse of Affection scaled by difficulty
+        const affectionCurseName = `Curse of Affection ${curseSuffix}`;
+        if (typeof CURSES_DATA !== 'undefined') {
+          const affectionCurse = CURSES_DATA.find(c => c.name === affectionCurseName);
+          if (affectionCurse && typeof addCurse === 'function') {
+            addCurse(affectionCurse);
+            message = `${status.icon} Charmed! Gained ${affectionCurseName}`;
+          }
+        }
+        break;
+
+      case 'devilish':
+        // Lose 2 health
+        health = Math.max(0, health - 2);
+        gameState.health = health;
+        message = `${status.icon} Devilish aura deals 2 damage!`;
+        break;
+
+      case 'holy':
+        // Gain 2 health
         const oldHealth = health;
-        health = Math.min(health + healAmount, maxHealth);
+        health = Math.min(health + 2, maxHealth);
         gameState.health = health;
-        message = `${status.icon} Healing Fountain restored ${health - oldHealth} health!`;
+        message = `${status.icon} Holy blessing restores ${health - oldHealth} health!`;
+        isPositive = true;
         break;
 
-      case 'poison_cloud':
-        const damageAmount = scalingFactor;
-        health = Math.max(0, health - damageAmount);
-        gameState.health = health;
-        message = `${status.icon} Poison Cloud dealt ${damageAmount} damage!`;
+      case 'marked':
+        // Give Curse of the Hunter scaled by difficulty
+        const hunterCurseName = `Curse of the Hunter ${curseSuffix}`;
+        if (typeof CURSES_DATA !== 'undefined') {
+          const hunterCurse = CURSES_DATA.find(c => c.name === hunterCurseName);
+          if (hunterCurse && typeof addCurse === 'function') {
+            addCurse(hunterCurse);
+            message = `${status.icon} Marked! Gained ${hunterCurseName}`;
+          }
+        }
         break;
 
-      case 'blessing':
-        const blessHeal = scalingFactor * 2;
-        const oldHealthBlessed = health;
-        health = Math.min(health + blessHeal, maxHealth);
-        gameState.health = health;
-        message = `${status.icon} Divine Blessing restored ${health - oldHealthBlessed} health!`;
+      case 'portal':
+        // Portal is handled by exploration.js, no trigger effect
         break;
 
-      case 'cursed_ground':
-        const curseDamage = scalingFactor * 2;
-        health = Math.max(0, health - curseDamage);
-        gameState.health = health;
-        message = `${status.icon} Cursed Ground dealt ${curseDamage} damage!`;
+      case 'shielded':
+        // Give Curse of Obstruction scaled by difficulty
+        const obstructionCurseName = `Curse of Obstruction ${curseSuffix}`;
+        if (typeof CURSES_DATA !== 'undefined') {
+          const obstructionCurse = CURSES_DATA.find(c => c.name === obstructionCurseName);
+          if (obstructionCurse && typeof addCurse === 'function') {
+            addCurse(obstructionCurse);
+            message = `${status.icon} Shielded! Gained ${obstructionCurseName}`;
+          }
+        }
         break;
 
-      case 'treasure_hoard':
-        const goldAmount = scalingFactor * 5;
-        gold += goldAmount;
-        gameState.gold = gold;
-        message = `${status.icon} Found ${goldAmount} gold!`;
+      case 'shocked':
+        // Give Curse of the Dazed scaled by difficulty
+        const dazedCurseName = `Curse of the Dazed ${curseSuffix}`;
+        if (typeof CURSES_DATA !== 'undefined') {
+          const dazedCurse = CURSES_DATA.find(c => c.name === dazedCurseName);
+          if (dazedCurse && typeof addCurse === 'function') {
+            addCurse(dazedCurse);
+            message = `${status.icon} Shocked! Gained ${dazedCurseName}`;
+          }
+        }
         break;
 
-      case 'trap':
-        const trapDamage = Math.ceil(scalingFactor * 1.5);
-        health = Math.max(0, health - trapDamage);
-        gameState.health = health;
-        message = `${status.icon} Trap triggered! Took ${trapDamage} damage!`;
+      case 'soaked':
+        // Give Curse of the Damp scaled by difficulty
+        const dampCurseName = `Curse of the Damp ${curseSuffix}`;
+        if (typeof CURSES_DATA !== 'undefined') {
+          const dampCurse = CURSES_DATA.find(c => c.name === dampCurseName);
+          if (dampCurse && typeof addCurse === 'function') {
+            addCurse(dampCurse);
+            message = `${status.icon} Soaked! Gained ${dampCurseName}`;
+          }
+        }
+        break;
+
+      case 'stinky':
+        // Stinky is handled by exploration.js, no trigger effect
+        break;
+
+      case 'timed':
+        // Give Curse of Haste scaled by difficulty
+        const hasteCurseName = `Curse of Haste ${curseSuffix}`;
+        if (typeof CURSES_DATA !== 'undefined') {
+          const hasteCurse = CURSES_DATA.find(c => c.name === hasteCurseName);
+          if (hasteCurse && typeof addCurse === 'function') {
+            addCurse(hasteCurse);
+            message = `${status.icon} Timed! Gained ${hasteCurseName}`;
+          }
+        }
         break;
     }
 
     if (message) {
       console.log(message);
-      // Show notification using the existing modal system
-      showNotification(message, status.name.includes('healing') || status.name.includes('blessing') || status.name.includes('treasure') ? 'positive' : 'negative');
+      showNotification(message, isPositive ? 'positive' : 'negative');
     }
   });
 
-  // Update top bar to reflect health/gold changes
+  // Update top bar to reflect health/curse changes
   if (typeof updateTopBar === 'function') {
     updateTopBar();
   }
@@ -4078,12 +4130,16 @@ document.getElementById('addGameStatus')?.addEventListener('click', () => {
 
   // Map status type to icon
   const statusIcons = {
-    'healing_fountain': '💧',
-    'poison_cloud': '☁️',
-    'blessing': '✨',
-    'cursed_ground': '💀',
-    'treasure_hoard': '💰',
-    'trap': '⚠️'
+    'charmed': '💕',
+    'devilish': '👹',
+    'holy': '✨',
+    'marked': '🎯',
+    'portal': '🌀',
+    'shielded': '🛡️',
+    'shocked': '⚡',
+    'soaked': '💧',
+    'stinky': '💩',
+    'timed': '⏱️'
   };
 
   const icon = statusIcons[statusType] || '❓';
