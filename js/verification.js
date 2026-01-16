@@ -15,7 +15,7 @@
  * - showDeathScreen(message, source) - Curse death screen
  */
 
-console.log('✅ VERIFICATION.JS v4 loaded - weapon verification trigger active');
+console.log('✅ VERIFICATION.JS v5 loaded - weapon verification trigger active');
 
 // ===== CURSE VERIFICATION SYSTEM =====
 
@@ -309,10 +309,10 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
         <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Beat without losing a run? Reward: +1 Dash if yes</p>
         <div style="margin-top: 5px;">
           <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
-            <input type="radio" name="precision-check" value="yes" checked style="margin-right: 5px;">Yes
+            <input type="radio" name="precision-check" value="yes" style="margin-right: 5px;">Yes
           </label>
           <label style="font-size: 12px; color: #ccc;">
-            <input type="radio" name="precision-check" value="no" style="margin-right: 5px;">No
+            <input type="radio" name="precision-check" value="no" checked style="margin-right: 5px;">No
           </label>
         </div>
       </div>
