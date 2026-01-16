@@ -2288,7 +2288,7 @@ text, path, line, g {
 
 /* Equipment slots container */
 .equipment-slots {
-  display: inline-flex !important;
+  display: flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   justify-content: center !important;
@@ -2297,6 +2297,8 @@ text, path, line, g {
   margin-top: 15px !important;
   margin-left: auto !important;
   margin-right: auto !important;
+  width: 100%;
+  max-width: 200px;
   pointer-events: none;
   z-index: 10;
 }

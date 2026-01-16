@@ -968,11 +968,24 @@ function showItemTooltip(e, item) {
   // Capitalize rarity
   const capitalizedRarity = item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1);
 
+  // Check if this is a weapon and get its level
+  let weaponLevelText = '';
+  if (item.type === 'Weapon') {
+    // Check if this is the equipped weapon
+    const isEquipped = gameState.equippedWeapon && gameState.equippedWeapon.name === item.name;
+    const level = isEquipped ? (gameState.weaponLevel || 1) : (item.level || 1);
+
+    if (level > 1) {
+      weaponLevelText = `<div style="color: #ffaa44; font-weight: bold;">Level ${level}</div>`;
+    }
+  }
+
   tooltip.innerHTML = `
     <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 18px;">${item.name}</h4>
     <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
       ${item.reference ? `<div>From: ${item.reference}</div>` : ''}
       <div>${capitalizedRarity} ${item.type}</div>
+      ${weaponLevelText}
     </div>
     <div style="font-size: 13px; color: #e0d0b0; line-height: 1.4;">
       ${item.description}
