@@ -252,7 +252,15 @@ var CURSES_DATA = [
     "description": "When you roll a 1 (before adding to the roll), take 4 damage"
   },
   {
-    "name": "Curse of the Dazed",
+    "name": "Curse of the Dazed I",
+    "stat": "Intelligence",
+    "power": "Low",
+    "duration": "Until 1 Game Beaten",
+    "description": "If the next game you beat isn't instead beaten twice, take 2 Damage",
+    "automatic": "Manual"
+  },
+  {
+    "name": "Curse of the Dazed II",
     "stat": "Intelligence",
     "power": "Medium",
     "duration": "Until 1 Game Beaten",
@@ -260,7 +268,23 @@ var CURSES_DATA = [
     "automatic": "Manual"
   },
   {
-    "name": "Curse of Affection",
+    "name": "Curse of the Dazed III",
+    "stat": "Intelligence",
+    "power": "High",
+    "duration": "Until 2 Games Beaten",
+    "description": "If the next game you beat isn't instead beaten twice, take 4 Damage",
+    "automatic": "Manual"
+  },
+  {
+    "name": "Curse of Affection I",
+    "stat": "Charisma",
+    "power": "Low",
+    "duration": "Until 1 Game Beaten",
+    "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 1 health. If not, then take 1 damage",
+    "automatic": "Manual"
+  },
+  {
+    "name": "Curse of Affection II",
     "stat": "Charisma",
     "power": "Medium",
     "duration": "Until 1 Game Beaten",
@@ -268,7 +292,23 @@ var CURSES_DATA = [
     "automatic": "Manual"
   },
   {
-    "name": "Curse of the Hunter",
+    "name": "Curse of Affection III",
+    "stat": "Charisma",
+    "power": "High",
+    "duration": "Until 2 Games Beaten",
+    "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 2 health. If not, then take 3 damage",
+    "automatic": "Manual"
+  },
+  {
+    "name": "Curse of the Hunter I",
+    "stat": "Intelligence",
+    "power": "Low",
+    "duration": "Until 1 Game Beaten",
+    "description": "If you beat a game without getting an achievement, then take 1 damage",
+    "automatic": "Manual"
+  },
+  {
+    "name": "Curse of the Hunter II",
     "stat": "Intelligence",
     "power": "Medium",
     "duration": "Until 1 Game Beaten",
@@ -276,7 +316,23 @@ var CURSES_DATA = [
     "automatic": "Manual"
   },
   {
-    "name": "Curse of the Damp",
+    "name": "Curse of the Hunter III",
+    "stat": "Intelligence",
+    "power": "High",
+    "duration": "Until 2 Games Beaten",
+    "description": "If you beat a game without getting an achievement, then take 3 damage",
+    "automatic": "Manual"
+  },
+  {
+    "name": "Curse of the Damp I",
+    "stat": "Strength",
+    "power": "Low",
+    "duration": "Until 1 Game Beaten",
+    "description": "If the player doesn't touch water, take 2 damage",
+    "automatic": "Manual"
+  },
+  {
+    "name": "Curse of the Damp II",
     "stat": "Strength",
     "power": "Medium",
     "duration": "Until 1 Game Beaten",
@@ -284,11 +340,35 @@ var CURSES_DATA = [
     "automatic": "Manual"
   },
   {
-    "name": "Curse of Obstruction",
+    "name": "Curse of the Damp III",
+    "stat": "Strength",
+    "power": "High",
+    "duration": "Until 2 Games Beaten",
+    "description": "If the player doesn't touch water, take 4 damage",
+    "automatic": "Manual"
+  },
+  {
+    "name": "Curse of Obstruction I",
     "stat": "Dexterity",
     "power": "Low",
     "duration": "1 Roll",
     "description": "Gain Disadvantage on the next combat dice roll",
+    "automatic": "Auto"
+  },
+  {
+    "name": "Curse of Obstruction II",
+    "stat": "Dexterity",
+    "power": "Medium",
+    "duration": "2 Rolls",
+    "description": "Gain Disadvantage on the next 2 combat dice rolls",
+    "automatic": "Auto"
+  },
+  {
+    "name": "Curse of Obstruction III",
+    "stat": "Dexterity",
+    "power": "High",
+    "duration": "3 Rolls",
+    "description": "Gain Disadvantage on the next 3 combat dice rolls",
     "automatic": "Auto"
   }
 ];

@@ -15,7 +15,7 @@
  * - showDeathScreen(message, source) - Curse death screen
  */
 
-console.log('✅ VERIFICATION.JS v6 loaded - weapon verification trigger active');
+console.log('✅ VERIFICATION.JS v7 loaded - weapon verification trigger active');
 
 // ===== CURSE VERIFICATION SYSTEM =====
 
@@ -596,45 +596,60 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       }
     }
 
-    // Process Dazed curses (3 damage if didn't beat game twice)
+    // Process Dazed curses (damage if didn't beat game twice, based on power)
     if (dazedCurses.length > 0) {
       const dazedRadio = document.querySelector('input[name="dazed-check"]:checked');
       const beatTwice = dazedRadio && dazedRadio.value === 'yes';
       if (!beatTwice) {
-        totalDamage += 3 * dazedCurses.length; // 3 damage per Dazed curse
+        const dazedDamage = dazedCurses.reduce((sum, curse) => {
+          return sum + getPowerValue(curse.power, { Low: 2, Medium: 3, High: 4 });
+        }, 0);
+        totalDamage += dazedDamage;
       }
     }
 
-    // Process Affection curses (gain 1 HP if rated 8+, lose 2 HP if not)
+    // Process Affection curses (gain/lose HP based on rating and power)
     if (affectionCurses.length > 0) {
       const affectionRadio = document.querySelector('input[name="affection-check"]:checked');
       const rated8Plus = affectionRadio && affectionRadio.value === 'yes';
       if (rated8Plus) {
-        // Gain health
-        health = Math.min(maxHealth, health + (1 * affectionCurses.length));
+        // Gain health based on power (Low/Med: 1, High: 2)
+        const healthGain = affectionCurses.reduce((sum, curse) => {
+          return sum + (curse.power === 'High' ? 2 : 1);
+        }, 0);
+        health = Math.min(maxHealth, health + healthGain);
         gameState.health = health;
         updateTopBar?.();
       } else {
-        // Lose health
-        totalDamage += 2 * affectionCurses.length;
+        // Lose health based on power (Low: 1, Med: 2, High: 3)
+        const affectionDamage = affectionCurses.reduce((sum, curse) => {
+          return sum + getPowerValue(curse.power, { Low: 1, Medium: 2, High: 3 });
+        }, 0);
+        totalDamage += affectionDamage;
       }
     }
 
-    // Process Hunter curses (2 damage if no achievement)
+    // Process Hunter curses (damage if no achievement, based on power)
     if (hunterCurses.length > 0) {
       const hunterRadio = document.querySelector('input[name="hunter-check"]:checked');
       const gotAchievement = hunterRadio && hunterRadio.value === 'yes';
       if (!gotAchievement) {
-        totalDamage += 2 * hunterCurses.length; // 2 damage per Hunter curse
+        const hunterDamage = hunterCurses.reduce((sum, curse) => {
+          return sum + getPowerValue(curse.power, { Low: 1, Medium: 2, High: 3 });
+        }, 0);
+        totalDamage += hunterDamage;
       }
     }
 
-    // Process Damp curses (3 damage if didn't touch water)
+    // Process Damp curses (damage if didn't touch water, based on power)
     if (dampCurses.length > 0) {
       const dampRadio = document.querySelector('input[name="damp-check"]:checked');
       const touchedWater = dampRadio && dampRadio.value === 'yes';
       if (!touchedWater) {
-        totalDamage += 3 * dampCurses.length; // 3 damage per Damp curse
+        const dampDamage = dampCurses.reduce((sum, curse) => {
+          return sum + getPowerValue(curse.power, { Low: 2, Medium: 3, High: 4 });
+        }, 0);
+        totalDamage += dampDamage;
       }
     }
 
