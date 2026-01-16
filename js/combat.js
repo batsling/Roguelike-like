@@ -175,7 +175,28 @@ function applyCombatOutcome(success) {
 
 function rollD20() {
   if (currentEnemy) {
-    currentRoll = Math.floor(Math.random() * 20) + 1;
+    // Check for Curse of Obstruction (disadvantage on roll)
+    const obstructionCurse = CurseManager.findFirstByType('obstruction');
+    let disadvantage = false;
+    let disadvantageRolls = [];
+
+    if (obstructionCurse) {
+      disadvantage = true;
+      // Roll twice for disadvantage
+      const roll1 = Math.floor(Math.random() * 20) + 1;
+      const roll2 = Math.floor(Math.random() * 20) + 1;
+      disadvantageRolls = [roll1, roll2];
+      currentRoll = Math.min(roll1, roll2); // Take the lower roll
+
+      console.log(`Curse of Obstruction: Rolled ${roll1} and ${roll2}, taking ${currentRoll}`);
+
+      // Remove curse after this roll
+      CurseManager.consume(obstructionCurse);
+    } else {
+      // Normal roll
+      currentRoll = Math.floor(Math.random() * 20) + 1;
+    }
+
     let cursePenalty = 0;
     let curseMessages = [];
 
@@ -256,7 +277,9 @@ function rollD20() {
     const criticalFail = currentRoll === 1 && gameState?.activeCurses?.some(c => c.name.toLowerCase().includes('failure'));
     const success = criticalFail ? false : (totalRoll >= check);
 
-    let resultText = `Rolled: ${currentRoll}`;
+    let resultText = disadvantage
+      ? `Rolled (Disadvantage): ${disadvantageRolls[0]}, ${disadvantageRolls[1]} → ${currentRoll}`
+      : `Rolled: ${currentRoll}`;
     if (modifier !== 0) {
       resultText += ` + ${modifier} (${stat})`;
     }

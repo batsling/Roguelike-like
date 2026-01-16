@@ -15,7 +15,7 @@
  * - showDeathScreen(message, source) - Curse death screen
  */
 
-console.log('✅ VERIFICATION.JS v5 loaded - weapon verification trigger active');
+console.log('✅ VERIFICATION.JS v6 loaded - weapon verification trigger active');
 
 // ===== CURSE VERIFICATION SYSTEM =====
 
@@ -39,7 +39,11 @@ function showCurseVerificationModal(onComplete) {
     curse.name.toLowerCase().includes('haste') ||
     curse.name.toLowerCase().includes('guilt') ||
     curse.name.toLowerCase().includes('blindness') ||
-    curse.name.toLowerCase().includes('hubris')
+    curse.name.toLowerCase().includes('hubris') ||
+    curse.name.toLowerCase().includes('dazed') ||
+    curse.name.toLowerCase().includes('affection') ||
+    curse.name.toLowerCase().includes('hunter') ||
+    curse.name.toLowerCase().includes('damp')
   );
 
   // If no curses to verify, no Precision Landing trait, and no equipped weapon, skip verification
@@ -67,6 +71,10 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
   const impulseCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('impulse'));
   const hasteCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('haste'));
   const guiltCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('guilt'));
+  const dazedCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('dazed'));
+  const affectionCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('affection'));
+  const hunterCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('hunter'));
+  const dampCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('damp'));
 
   // Build the modal HTML with compact styling
   let modalHTML = `
@@ -298,6 +306,90 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
     `;
   }
 
+  // Add Dazed section if there are any Dazed curses
+  if (dazedCurses.length > 0) {
+    modalHTML += `
+      <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #ffbb66; margin: 0 0 5px 0; font-size: 15px;">💫 Dazed</h3>
+        <div style="color: #ccaa88; font-size: 11px; margin-bottom: 5px;">
+          ${dazedCurses.map(c => c.name).join(', ')}
+        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Beat the game twice? Penalty: 3 HP if no</p>
+        <div style="margin-top: 5px;">
+          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+            <input type="radio" name="dazed-check" value="yes" checked style="margin-right: 5px;">Yes
+          </label>
+          <label style="font-size: 12px; color: #ccc;">
+            <input type="radio" name="dazed-check" value="no" style="margin-right: 5px;">No
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
+  // Add Affection section if there are any Affection curses
+  if (affectionCurses.length > 0) {
+    modalHTML += `
+      <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #ffbb66; margin: 0 0 5px 0; font-size: 15px;">💖 Affection</h3>
+        <div style="color: #ccaa88; font-size: 11px; margin-bottom: 5px;">
+          ${affectionCurses.map(c => c.name).join(', ')}
+        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Rate game 8+/10? Gain 1 HP if yes, lose 2 HP if no</p>
+        <div style="margin-top: 5px;">
+          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+            <input type="radio" name="affection-check" value="yes" checked style="margin-right: 5px;">Yes (8+)
+          </label>
+          <label style="font-size: 12px; color: #ccc;">
+            <input type="radio" name="affection-check" value="no" style="margin-right: 5px;">No (<8)
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
+  // Add Hunter section if there are any Hunter curses
+  if (hunterCurses.length > 0) {
+    modalHTML += `
+      <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #ffbb66; margin: 0 0 5px 0; font-size: 15px;">🏹 Hunter</h3>
+        <div style="color: #ccaa88; font-size: 11px; margin-bottom: 5px;">
+          ${hunterCurses.map(c => c.name).join(', ')}
+        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Get achievement? Penalty: 2 HP if no</p>
+        <div style="margin-top: 5px;">
+          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+            <input type="radio" name="hunter-check" value="yes" checked style="margin-right: 5px;">Yes
+          </label>
+          <label style="font-size: 12px; color: #ccc;">
+            <input type="radio" name="hunter-check" value="no" style="margin-right: 5px;">No
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
+  // Add Damp section if there are any Damp curses
+  if (dampCurses.length > 0) {
+    modalHTML += `
+      <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #ffbb66; margin: 0 0 5px 0; font-size: 15px;">💧 Damp</h3>
+        <div style="color: #ccaa88; font-size: 11px; margin-bottom: 5px;">
+          ${dampCurses.map(c => c.name).join(', ')}
+        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Touch water? Penalty: 3 HP if no</p>
+        <div style="margin-top: 5px;">
+          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+            <input type="radio" name="damp-check" value="yes" checked style="margin-right: 5px;">Yes
+          </label>
+          <label style="font-size: 12px; color: #ccc;">
+            <input type="radio" name="damp-check" value="no" style="margin-right: 5px;">No
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
   // Add Precision Landing section if player has the trait
   if (hasPrecisionLanding) {
     modalHTML += `
@@ -501,6 +593,48 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       const killedInnocents = guiltRadio && guiltRadio.value === 'yes';
       if (killedInnocents) {
         totalDamage += 3 * guiltCurses.length; // 3 damage per Guilt curse
+      }
+    }
+
+    // Process Dazed curses (3 damage if didn't beat game twice)
+    if (dazedCurses.length > 0) {
+      const dazedRadio = document.querySelector('input[name="dazed-check"]:checked');
+      const beatTwice = dazedRadio && dazedRadio.value === 'yes';
+      if (!beatTwice) {
+        totalDamage += 3 * dazedCurses.length; // 3 damage per Dazed curse
+      }
+    }
+
+    // Process Affection curses (gain 1 HP if rated 8+, lose 2 HP if not)
+    if (affectionCurses.length > 0) {
+      const affectionRadio = document.querySelector('input[name="affection-check"]:checked');
+      const rated8Plus = affectionRadio && affectionRadio.value === 'yes';
+      if (rated8Plus) {
+        // Gain health
+        health = Math.min(maxHealth, health + (1 * affectionCurses.length));
+        gameState.health = health;
+        updateTopBar?.();
+      } else {
+        // Lose health
+        totalDamage += 2 * affectionCurses.length;
+      }
+    }
+
+    // Process Hunter curses (2 damage if no achievement)
+    if (hunterCurses.length > 0) {
+      const hunterRadio = document.querySelector('input[name="hunter-check"]:checked');
+      const gotAchievement = hunterRadio && hunterRadio.value === 'yes';
+      if (!gotAchievement) {
+        totalDamage += 2 * hunterCurses.length; // 2 damage per Hunter curse
+      }
+    }
+
+    // Process Damp curses (3 damage if didn't touch water)
+    if (dampCurses.length > 0) {
+      const dampRadio = document.querySelector('input[name="damp-check"]:checked');
+      const touchedWater = dampRadio && dampRadio.value === 'yes';
+      if (!touchedWater) {
+        totalDamage += 3 * dampCurses.length; // 3 damage per Damp curse
       }
     }
 

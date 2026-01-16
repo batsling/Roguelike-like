@@ -14,7 +14,7 @@ var CURSES_DATA = [
     "description": "Every time you reset a run, lose 2 health"
   },
   {
-    "name": "Curse of Devotion III",
+    "name": "Curse of Devotion II",
     "stat": "Charisma",
     "power": "High",
     "duration": "Until 2 Games Beaten",
@@ -24,7 +24,7 @@ var CURSES_DATA = [
     "name": "Curse of Greed I",
     "stat": "Charisma",
     "power": "Low",
-    "duration": "Until 2 Games Beaten",
+    "duration": "Until 1 Game Beaten",
     "description": "Every time you skip an upgrade/item choice, lose 1 health"
   },
   {
@@ -32,14 +32,14 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
-    "description": "Every time you skip an upgrade/item choice, lose 2 health"
+    "description": "Every time you skip an upgrade/item choice, lose 1 health"
   },
   {
     "name": "Curse of Greed III",
     "stat": "Charisma",
     "power": "High",
     "duration": "Until 2 Games Beaten",
-    "description": "Every time you skip an upgrade/item choice, lose 3 health"
+    "description": "Every time you skip an upgrade/item choice, lose 2 health"
   },
   {
     "name": "Curse of Impulse I",
@@ -63,18 +63,39 @@ var CURSES_DATA = [
     "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the  cursor is set to, lose 3 health"
   },
   {
+    "name": "Curse of Clacking I",
+    "stat": "Dexterity",
+    "power": "Low",
+    "duration": "Until 1 Game Beaten",
+    "description": "You may not use a controller"
+  },
+  {
+    "name": "Curse of Clacking II",
+    "stat": "Dexterity",
+    "power": "Medium",
+    "duration": "Until 2 Games Beaten",
+    "description": "You may not use a controller"
+  },
+  {
+    "name": "Curse of Clacking III",
+    "stat": "Dexterity",
+    "power": "High",
+    "duration": "Until 3 Games Beaten",
+    "description": "You may not use a controller"
+  },
+  {
     "name": "Curse of Haste I",
     "stat": "Dexterity",
     "power": "Low",
     "duration": "Until 1 Game Beaten",
-    "description": "If you don't beat the next game within 4 hours, lose 2 Health"
+    "description": "If you don't beat the next game within 4 hours, lose 1 Health"
   },
   {
     "name": "Curse of Haste II",
     "stat": "Dexterity",
     "power": "Medium",
     "duration": "Until 1 Game Beaten",
-    "description": "If you don't beat the next game within 3 hours, lose 2 Health"
+    "description": "If you don't beat the next game within 3 hours, lose 1 Health"
   },
   {
     "name": "Curse of Haste III",
@@ -108,85 +129,85 @@ var CURSES_DATA = [
     "name": "Curse of Frugality I",
     "stat": "Intelligence",
     "power": "Low",
-    "duration": "Until Next Purchase",
-    "description": "Shop items cost 5 more gold"
+    "duration": "Until 1 Game Beaten",
+    "description": "When you buy something from a shop, lose 5 Gold"
   },
   {
     "name": "Curse of Frugality II",
     "stat": "Intelligence",
     "power": "Medium",
-    "duration": "Until Next Purchase",
-    "description": "Shop items cost 10 more gold"
+    "duration": "Until 1 Game Beaten",
+    "description": "When you buy something from a shop, lose 10 Gold"
   },
   {
     "name": "Curse of Frugality III",
     "stat": "Intelligence",
     "power": "High",
-    "duration": "Until Next Purchase",
-    "description": "Shop items cost 15 more gold"
+    "duration": "Until 1 Game Beaten",
+    "description": "When you buy something from a shop, lose 15 Gold"
   },
   {
-    "name": "Curse of Shroud I",
+    "name": "Curse of Less Options I",
     "stat": "Intelligence",
     "power": "Low",
-    "duration": "1 Game Selection",
-    "description": "Lower FoV by 1 for the next game selection"
+    "duration": "Until 1 Space Choice Chosen",
+    "description": "Space Choices contain one less option"
   },
   {
-    "name": "Curse of Shroud II",
+    "name": "Curse of Less Options II",
     "stat": "Intelligence",
     "power": "Medium",
-    "duration": "2 Game Selections",
-    "description": "Lower FoV by 1 for the next 2 game selections"
+    "duration": "Until 2 Space Choice Chosen",
+    "description": "Space Choices contain one less option"
   },
   {
-    "name": "Curse of Shroud III",
+    "name": "Curse of Less Options III",
     "stat": "Intelligence",
     "power": "High",
-    "duration": "3 Game Selections",
-    "description": "Lower FoV by 1 for the next 3 game selections"
+    "duration": "Until 2 Space Choices Chosen",
+    "description": "Space Choices contain two less options"
   },
   {
     "name": "Curse of Hubris I",
     "stat": "Strength",
     "power": "Low",
     "duration": "Until 1 Game Beaten w/ Effect",
-    "description": "You must raise the difficulty once if possible "
+    "description": "You must raise the difficulty once if possible"
   },
   {
     "name": "Curse of Hubris II",
     "stat": "Strength",
     "power": "Medium",
     "duration": "Until 1 Game Beaten w/ Effect",
-    "description": "You must raise the difficulty twice if possible "
+    "description": "You must raise the difficulty twice if possible"
   },
   {
     "name": "Curse of Hubris III",
     "stat": "Strength",
     "power": "High",
     "duration": "Until 1 Game Beaten w/ Effect",
-    "description": "You must raise the difficulty three times if possible "
+    "description": "You must raise the difficulty three times if possible"
   },
   {
     "name": "Curse of Vulnerability I",
     "stat": "Strength",
     "power": "Low",
-    "duration": "Until 1 Curse Obtained",
-    "description": "The next curse you obtain is added twice"
+    "duration": "Until 1 Encounter Finished",
+    "description": "If you were to get a curse, increase it's power once if possible"
   },
   {
-    "name": "Curse of Vulnerability II",
+    "name": "Curse of Vulnerability III",
     "stat": "Strength",
     "power": "Medium",
-    "duration": "Until 2 Curses Obtained",
-    "description": "The next 2 curses you obtain are added twice"
+    "duration": "Until 2 Encounters Finished",
+    "description": "If you were to get a curse, increase it's power once if possible"
   },
   {
     "name": "Curse of Vulnerability III",
     "stat": "Strength",
     "power": "High",
-    "duration": "Until 3 Curses Obtained",
-    "description": "The next 3 curses you obtain are added twice"
+    "duration": "Until 3 Encounters Finished",
+    "description": "If you were to get a curse, increase it's power once if possible"
   },
   {
     "name": "Curse of Weakness I",
@@ -231,24 +252,43 @@ var CURSES_DATA = [
     "description": "When you roll a 1 (before adding to the roll), take 4 damage"
   },
   {
-    "name": "Curse of Guilt I",
-    "stat": "Charisma",
-    "power": "Low",
+    "name": "Curse of the Dazed",
+    "stat": "Intelligence",
+    "power": "Medium",
     "duration": "Until 1 Game Beaten",
-    "description": "If you killed any innocents, lose 3 health"
+    "description": "If the next game you beat isn't instead beaten twice, take 3 Damage",
+    "automatic": "Manual"
   },
   {
-    "name": "Curse of Guilt II",
+    "name": "Curse of Affection",
     "stat": "Charisma",
     "power": "Medium",
-    "duration": "Until 2 Games Beaten",
-    "description": "If you killed any innocents, lose 3 health"
+    "duration": "Until 1 Game Beaten",
+    "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 1 health. If not, then take 2 damage",
+    "automatic": "Manual"
   },
   {
-    "name": "Curse of Guilt III",
-    "stat": "Charisma",
-    "power": "High",
-    "duration": "Until 3 Games Beaten",
-    "description": "If you killed any innocents, lose 3 health"
+    "name": "Curse of the Hunter",
+    "stat": "Intelligence",
+    "power": "Medium",
+    "duration": "Until 1 Game Beaten",
+    "description": "If you beat a game without getting an achievement, then take 2 damage",
+    "automatic": "Manual"
+  },
+  {
+    "name": "Curse of the Damp",
+    "stat": "Strength",
+    "power": "Medium",
+    "duration": "Until 1 Game Beaten",
+    "description": "If the player doesn't touch water, take 3 damage",
+    "automatic": "Manual"
+  },
+  {
+    "name": "Curse of Obstruction",
+    "stat": "Dexterity",
+    "power": "Low",
+    "duration": "1 Roll",
+    "description": "Gain Disadvantage on the next combat dice roll",
+    "automatic": "Auto"
   }
 ];
