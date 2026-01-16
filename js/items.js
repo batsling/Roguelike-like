@@ -333,15 +333,10 @@ const ITEM_EFFECTS = {
         return;
       }
 
-      // Check how many portals exist
+      // Check how many portals exist (for UI refresh logic)
       const existingPortals = typeof getGamesWithStatus === 'function'
         ? getGamesWithStatus('portal')
         : [];
-
-      if (existingPortals.length >= 2) {
-        alert('Maximum of 2 portals can exist at once!');
-        return;
-      }
 
       // Add portal status to current game
       if (typeof addGameStatus === 'function') {
@@ -362,8 +357,8 @@ const ITEM_EFFECTS = {
         }, 100);
 
         // Refresh the game view to add portal connections
-        if (existingPortals.length === 1) {
-          // Two portals now exist, refresh choices if we're in selection phase
+        if (existingPortals.length > 0) {
+          // Multiple portals now exist, refresh choices if we're in selection phase
           if (gameState.phase === 'selection' && typeof spawnChoices === 'function') {
             setTimeout(() => spawnChoices(), 500);
           }
