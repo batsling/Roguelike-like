@@ -385,26 +385,26 @@ var CURSES_DATA = [
   },
   {
     "name": "Curse of the Damp I",
-    "stat": "Strength",
+    "stat": "Dexterity",
     "power": "Low",
     "duration": "Until 1 Game Beaten",
-    "description": "If the player doesn't touch water, take 2 damage",
+    "description": "If the player doesn\u2019t touch water in the game, take 3 damage",
     "automatic": "Manual"
   },
   {
     "name": "Curse of the Damp II",
-    "stat": "Strength",
+    "stat": "Dexterity",
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
-    "description": "If the player doesn't touch water, take 3 damage",
+    "description": "If the player doesn\u2019t touch water in the game, take 3 damage",
     "automatic": "Manual"
   },
   {
     "name": "Curse of the Damp III",
-    "stat": "Strength",
+    "stat": "Dexterity",
     "power": "High",
     "duration": "Until 3 Games Beaten",
-    "description": "If the player doesn't touch water, take 4 damage",
+    "description": "If the player doesn\u2019t touch water in the game, take 3 damage",
     "automatic": "Manual"
   }
 ];

@@ -629,15 +629,12 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       }
     }
 
-    // Process Damp curses (damage if didn't touch water, based on power)
+    // Process Damp curses (3 damage per curse if didn't touch water)
     if (dampCurses.length > 0) {
       const dampRadio = document.querySelector('input[name="damp-check"]:checked');
       const touchedWater = dampRadio && dampRadio.value === 'yes';
       if (!touchedWater) {
-        const dampDamage = dampCurses.reduce((sum, curse) => {
-          return sum + getPowerValue(curse.power, { Low: 2, Medium: 3, High: 4 });
-        }, 0);
-        totalDamage += dampDamage;
+        totalDamage += 3 * dampCurses.length; // 3 damage per Damp curse
       }
     }
 
