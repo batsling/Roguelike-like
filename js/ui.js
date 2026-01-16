@@ -1045,27 +1045,44 @@ function hideItemTooltip() {
 
 function updateEquipmentSlots() {
   const weaponSlot = document.getElementById('weapon-slot');
-  const amuletSlot = document.getElementById('amulet-slot');
 
   console.log('🔧 updateEquipmentSlots called', {
     weaponSlotExists: !!weaponSlot,
-    amuletSlotExists: !!amuletSlot,
     equippedWeapon: gameState.equippedWeapon?.name,
     weaponLevel: gameState.weaponLevel
   });
 
-  if (!weaponSlot || !amuletSlot) {
-    console.warn('⚠️ Equipment slots not found in DOM');
+  if (!weaponSlot) {
+    console.warn('⚠️ Weapon slot not found in DOM');
     return;
   }
 
   // Update weapon slot
   if (gameState.equippedWeapon) {
-    console.log('✅ Updating weapon slot with:', gameState.equippedWeapon);
+    const weaponLevel = gameState.weaponLevel || 1;
+    const levelBadge = weaponLevel > 1 ? `
+      <div style="
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        background: #ffaa44;
+        color: #000;
+        font-weight: bold;
+        font-size: 11px;
+        padding: 2px 5px;
+        border-radius: 4px;
+        line-height: 1;
+        z-index: 10;
+        pointer-events: none;
+      ">Lv${weaponLevel}</div>
+    ` : '';
+
+    console.log('✅ Updating weapon slot with:', gameState.equippedWeapon, 'Level:', weaponLevel);
     weaponSlot.classList.add('equipped');
     weaponSlot.innerHTML = `
       <img src="${gameState.equippedWeapon.image}" alt="${gameState.equippedWeapon.name}"
            onerror="this.style.display='none'">
+      ${levelBadge}
       <button class="equipment-unequip-btn" onclick="unequipWeapon()">Unequip</button>
     `;
 
@@ -1082,10 +1099,6 @@ function updateEquipmentSlots() {
     weaponSlot.onmouseenter = null;
     weaponSlot.onmouseleave = null;
   }
-
-  // Amulet slot (for future use)
-  amuletSlot.classList.remove('equipped');
-  amuletSlot.innerHTML = '<div class="equipment-slot-empty">Amulet</div>';
 }
 
 function showWeaponTooltip(event, weapon) {

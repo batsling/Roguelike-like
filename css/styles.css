@@ -2293,12 +2293,10 @@ text, path, line, g {
   flex-wrap: nowrap !important;
   justify-content: center !important;
   align-items: center !important;
-  gap: 15px !important;
   margin-top: 15px !important;
   margin-left: auto !important;
   margin-right: auto !important;
   width: 100%;
-  max-width: 200px;
   pointer-events: none;
   z-index: 10;
 }
