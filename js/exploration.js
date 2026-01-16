@@ -473,6 +473,11 @@ function advance(game, x, y, encounterType) {
       }
     }
 
+    // Trigger game status effects on visit (scales by difficulty)
+    if (typeof triggerGameStatusEffects === 'function') {
+      triggerGameStatusEffects(game);
+    }
+
     // Trigger encounter based on type (these functions are in main.js)
     if (encounterType === 'combat' && typeof showCombatModal === 'function') {
       showCombatModal();

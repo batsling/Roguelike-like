@@ -568,6 +568,33 @@
           </div>
         </div>
 
+        <!-- Game Status Effects -->
+        <div class="section">
+          <h3>Game Status Effects</h3>
+          <label for="statusGameSelect">Select Game:</label>
+          <select id="statusGameSelect" class="w-full mb-10">
+            <option value="">-- Select a Game --</option>
+          </select>
+
+          <label for="statusEffectType">Select Status:</label>
+          <select id="statusEffectType" class="w-full mb-10">
+            <option value="">-- Select Status --</option>
+            <option value="healing_fountain">💧 Healing Fountain (heals 1/2/3)</option>
+            <option value="poison_cloud">☁️ Poison Cloud (damage 1/2/3)</option>
+            <option value="blessing">✨ Divine Blessing (heals 2/4/6)</option>
+            <option value="cursed_ground">💀 Cursed Ground (damage 2/4/6)</option>
+            <option value="treasure_hoard">💰 Treasure Hoard (gold 5/10/15)</option>
+            <option value="trap">⚠️ Trap (damage 1.5/3/4.5)</option>
+          </select>
+
+          <div class="button-group">
+            <button id="addGameStatus">Add Status</button>
+            <button id="removeGameStatus">Remove Status</button>
+            <button id="clearAllStatuses">Clear All</button>
+          </div>
+          <div id="statusOutput" class="output-area"></div>
+        </div>
+
         <!-- Encounter History -->
         <div class="section">
           <h3>Recent Encounters</h3>

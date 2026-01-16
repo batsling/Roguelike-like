@@ -69,6 +69,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   bingoGoals = [...BINGO_GOALS];
   generateBingoGrid();
 
+  // Populate dev tool selects
+  if (typeof populateItemSelects === 'function') populateItemSelects();
+  if (typeof populateCurseSelects === 'function') populateCurseSelects();
+  if (typeof populateEnemySelect === 'function') populateEnemySelect();
+  if (typeof populateStatusGameSelect === 'function') populateStatusGameSelect();
+
   // Add bingo event listeners
   const bingoToggleBtn = document.getElementById('bingo-toggle');
   if (bingoToggleBtn) {
@@ -762,6 +768,30 @@ function populateEnemySelect() {
       enemySelect.appendChild(option);
     });
     enemySelect.disabled = false;
+  }
+}
+
+function populateStatusGameSelect() {
+  const statusGameSelect = document.getElementById('statusGameSelect');
+  if (statusGameSelect && typeof gameConnections !== 'undefined') {
+    statusGameSelect.innerHTML = '<option value="">-- Select a Game --</option>';
+
+    // Get all unique game names from connections
+    const allGames = new Set();
+    Object.keys(gameConnections).forEach(game => allGames.add(game));
+    Object.values(gameConnections).forEach(connectedGames => {
+      connectedGames.forEach(game => allGames.add(game));
+    });
+
+    // Sort alphabetically and add to select
+    Array.from(allGames).sort().forEach(gameName => {
+      const option = document.createElement('option');
+      option.value = gameName;
+      option.textContent = gameName;
+      statusGameSelect.appendChild(option);
+    });
+
+    statusGameSelect.disabled = false;
   }
 }
 
@@ -3643,6 +3673,164 @@ function getGamesWithStatus(statusName) {
   return gamesWithStatus;
 }
 
+/**
+ * Trigger status effects when visiting a game
+ * Status effects scale by difficulty: Low (0-4 games), Medium (5-9), High (10+)
+ * @param {string} gameName - Name of the game being visited
+ */
+function triggerGameStatusEffects(gameName) {
+  const statuses = getGameStatuses(gameName);
+  if (!statuses || statuses.length === 0) return;
+
+  // Calculate difficulty tier based on games beaten (same as combat)
+  const gamesBeaten = gameState.finishedGames?.length || 0;
+  let difficultyTier = 'Low';
+  let scalingFactor = 1;
+
+  if (gamesBeaten >= 10) {
+    difficultyTier = 'High';
+    scalingFactor = 3;
+  } else if (gamesBeaten >= 5) {
+    difficultyTier = 'Medium';
+    scalingFactor = 2;
+  }
+
+  console.log(`Triggering status effects on ${gameName} (Difficulty: ${difficultyTier})`);
+
+  // Process each status effect
+  statuses.forEach(status => {
+    let message = '';
+
+    switch(status.name) {
+      case 'healing_fountain':
+        const healAmount = scalingFactor;
+        const oldHealth = health;
+        health = Math.min(health + healAmount, maxHealth);
+        gameState.health = health;
+        message = `${status.icon} Healing Fountain restored ${health - oldHealth} health!`;
+        break;
+
+      case 'poison_cloud':
+        const damageAmount = scalingFactor;
+        health = Math.max(0, health - damageAmount);
+        gameState.health = health;
+        message = `${status.icon} Poison Cloud dealt ${damageAmount} damage!`;
+        break;
+
+      case 'blessing':
+        const blessHeal = scalingFactor * 2;
+        const oldHealthBlessed = health;
+        health = Math.min(health + blessHeal, maxHealth);
+        gameState.health = health;
+        message = `${status.icon} Divine Blessing restored ${health - oldHealthBlessed} health!`;
+        break;
+
+      case 'cursed_ground':
+        const curseDamage = scalingFactor * 2;
+        health = Math.max(0, health - curseDamage);
+        gameState.health = health;
+        message = `${status.icon} Cursed Ground dealt ${curseDamage} damage!`;
+        break;
+
+      case 'treasure_hoard':
+        const goldAmount = scalingFactor * 5;
+        gold += goldAmount;
+        gameState.gold = gold;
+        message = `${status.icon} Found ${goldAmount} gold!`;
+        break;
+
+      case 'trap':
+        const trapDamage = Math.ceil(scalingFactor * 1.5);
+        health = Math.max(0, health - trapDamage);
+        gameState.health = health;
+        message = `${status.icon} Trap triggered! Took ${trapDamage} damage!`;
+        break;
+    }
+
+    if (message) {
+      console.log(message);
+      // Show notification using the existing modal system
+      showNotification(message, status.name.includes('healing') || status.name.includes('blessing') || status.name.includes('treasure') ? 'positive' : 'negative');
+    }
+  });
+
+  // Update top bar to reflect health/gold changes
+  if (typeof updateTopBar === 'function') {
+    updateTopBar();
+  }
+
+  // Check for death
+  if (health <= 0) {
+    health = 0;
+    gameState.health = 0;
+    if (typeof handleDeath === 'function') {
+      handleDeath('status effect');
+    }
+  }
+}
+
+/**
+ * Show a notification message to the player
+ * @param {string} message - The message to display
+ * @param {string} type - 'positive' or 'negative' for styling
+ */
+function showNotification(message, type = 'neutral') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `status-notification ${type}`;
+  notification.textContent = message;
+  notification.style.cssText = `
+    position: fixed;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: ${type === 'positive' ? 'rgba(76, 175, 80, 0.95)' : type === 'negative' ? 'rgba(244, 67, 54, 0.95)' : 'rgba(33, 33, 33, 0.95)'};
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    animation: notificationSlide 3s ease-in-out;
+    pointer-events: none;
+  `;
+
+  document.body.appendChild(notification);
+
+  // Remove after animation
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+}
+
+// Add notification animation to CSS (if not already present)
+if (!document.querySelector('#notification-animation-style')) {
+  const style = document.createElement('style');
+  style.id = 'notification-animation-style';
+  style.textContent = `
+    @keyframes notificationSlide {
+      0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+      }
+      10% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+      90% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+      100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 // ===== DEV TOOLS EVENT LISTENERS =====
 
 // Item Add/Remove
@@ -3871,6 +4059,113 @@ document.getElementById('triggerItemChoice')?.addEventListener('click', () => {
   }
 });
 
+// Game Status Effects Dev Tools
+document.getElementById('addGameStatus')?.addEventListener('click', () => {
+  const gameSelect = document.getElementById('statusGameSelect');
+  const statusSelect = document.getElementById('statusEffectType');
+  const gameName = gameSelect?.value;
+  const statusType = statusSelect?.value;
+
+  if (!gameName) {
+    alert('Please select a game');
+    return;
+  }
+
+  if (!statusType) {
+    alert('Please select a status effect');
+    return;
+  }
+
+  // Map status type to icon
+  const statusIcons = {
+    'healing_fountain': '💧',
+    'poison_cloud': '☁️',
+    'blessing': '✨',
+    'cursed_ground': '💀',
+    'treasure_hoard': '💰',
+    'trap': '⚠️'
+  };
+
+  const icon = statusIcons[statusType] || '❓';
+  addGameStatus(gameName, statusType, icon);
+
+  const output = document.getElementById('statusOutput');
+  if (output) {
+    output.textContent = `Added ${icon} ${statusType} to ${gameName}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+
+  // Refresh the node display
+  if (typeof updateNodeStatusIcons === 'function') {
+    const nodes = document.querySelectorAll('.node');
+    nodes.forEach(node => {
+      const nodeGameName = node.textContent.replace(/[^\w\s:'-]/g, '').trim();
+      if (nodeGameName === gameName) {
+        updateNodeStatusIcons(node);
+      }
+    });
+  }
+});
+
+document.getElementById('removeGameStatus')?.addEventListener('click', () => {
+  const gameSelect = document.getElementById('statusGameSelect');
+  const statusSelect = document.getElementById('statusEffectType');
+  const gameName = gameSelect?.value;
+  const statusType = statusSelect?.value;
+
+  if (!gameName) {
+    alert('Please select a game');
+    return;
+  }
+
+  if (!statusType) {
+    alert('Please select a status effect');
+    return;
+  }
+
+  removeGameStatus(gameName, statusType);
+
+  const output = document.getElementById('statusOutput');
+  if (output) {
+    output.textContent = `Removed ${statusType} from ${gameName}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+
+  // Refresh the node display
+  if (typeof updateNodeStatusIcons === 'function') {
+    const nodes = document.querySelectorAll('.node');
+    nodes.forEach(node => {
+      const nodeGameName = node.textContent.replace(/[^\w\s:'-]/g, '').trim();
+      if (nodeGameName === gameName) {
+        updateNodeStatusIcons(node);
+      }
+    });
+  }
+});
+
+document.getElementById('clearAllStatuses')?.addEventListener('click', () => {
+  if (confirm('Clear all status effects from all games?')) {
+    if (gameState.gameStatusEffects) {
+      gameState.gameStatusEffects = {};
+    }
+
+    const output = document.getElementById('statusOutput');
+    if (output) {
+      output.textContent = 'Cleared all status effects';
+      output.style.display = 'block';
+      setTimeout(() => { output.style.display = 'none'; }, 2000);
+    }
+
+    // Refresh all node displays
+    if (typeof updateNodeStatusIcons === 'function') {
+      const nodes = document.querySelectorAll('.node');
+      nodes.forEach(node => updateNodeStatusIcons(node));
+    }
+  }
+});
+
 // Specific Enemy Selection
 document.getElementById('triggerSpecificEnemy')?.addEventListener('click', () => {
   const enemySelect = document.getElementById('specificEnemySelect');
@@ -3919,6 +4214,9 @@ window.checkCurseDurations = checkCurseDurations;
 window.addGameStatus = addGameStatus;
 window.removeGameStatus = removeGameStatus;
 window.hasGameStatus = hasGameStatus;
+window.getGameStatuses = getGameStatuses;
+window.getGamesWithStatus = getGamesWithStatus;
+window.triggerGameStatusEffects = triggerGameStatusEffects;
 window.getGameStatuses = getGameStatuses;
 window.updateActiveCursesList = updateActiveCursesList;
 window.addCurse = addCurse;
