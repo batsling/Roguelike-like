@@ -195,6 +195,21 @@ function updateInventory() {
                   z-index: 15;
                 ">x${item.quantity}</div>
               ` : ''}
+              ${isWeapon && item.level && item.level > 1 ? `
+                <div class="item-level-badge" style="
+                  position: absolute;
+                  top: 2px;
+                  right: 2px;
+                  background: #ffaa44;
+                  color: #000;
+                  padding: 2px 5px;
+                  border-radius: 4px;
+                  font-size: 11px;
+                  font-weight: bold;
+                  z-index: 15;
+                  line-height: 1;
+                ">Lv${item.level}</div>
+              ` : ''}
               ${isUsable ? `
                 <button class="item-use-button"
                         data-item-index="${idx}"
@@ -1102,31 +1117,70 @@ function updateEquipmentSlots() {
 }
 
 function showWeaponTooltip(event, weapon) {
-  const tooltip = document.getElementById('item-tooltip');
-  if (!tooltip) return;
+  const tooltip = initItemTooltip();
+  if (!tooltip || !weapon) return;
 
+  // Get rarity color
+  const rarityColors = {
+    common: '#aaa',
+    uncommon: '#4CAF50',
+    rare: '#9b59b6',
+    legendary: '#ff6b00'
+  };
+  const rarityColor = rarityColors[weapon.rarity?.toLowerCase()] || '#ffffff';
+
+  // Build tags HTML
+  let tagsHTML = '';
+  if (weapon.tags && weapon.tags.length > 0) {
+    tagsHTML = `
+      <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
+        <div style="font-size: 11px; color: #888; margin-bottom: 4px;">Tags:</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+          ${weapon.tags.map(tag => `
+            <span style="
+              font-size: 10px;
+              padding: 2px 6px;
+              background: rgba(100, 100, 100, 0.3);
+              border: 1px solid rgba(150, 150, 150, 0.4);
+              border-radius: 3px;
+              color: #aaa;
+            ">${tag}</span>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Capitalize rarity
+  const capitalizedRarity = weapon.rarity.charAt(0).toUpperCase() + weapon.rarity.slice(1);
+
+  // Get weapon level
   const weaponLevel = gameState.weaponLevel || 1;
-  const levelText = weaponLevel > 1 ? ` (Level ${weaponLevel})` : '';
+  let weaponLevelText = '';
+  if (weaponLevel > 1) {
+    weaponLevelText = `<div style="color: #ffaa44; font-weight: bold;">Level ${weaponLevel}</div>`;
+  }
 
   tooltip.innerHTML = `
-    <div class="tooltip-header" style="color: ${getRarityColor(weapon.rarity)};">
-      ${weapon.name}${levelText}
+    <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 18px;">${weapon.name}</h4>
+    <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
+      ${weapon.reference ? `<div>From: ${weapon.reference}</div>` : ''}
+      <div>${capitalizedRarity} ${weapon.type}</div>
+      ${weaponLevelText}
     </div>
-    <div class="tooltip-type">${weapon.type} - ${weapon.rarity}</div>
-    <div class="tooltip-description">${weapon.description}</div>
+    <div style="font-size: 13px; color: #e0d0b0; line-height: 1.4;">
+      ${weapon.description}
+    </div>
+    ${tagsHTML}
   `;
 
-  const rect = event.currentTarget.getBoundingClientRect();
-  tooltip.style.left = rect.right + 10 + 'px';
-  tooltip.style.top = rect.top + 'px';
+  tooltip.style.opacity = 1;
   tooltip.style.display = 'block';
+  moveItemTooltip(event);
 }
 
 function hideWeaponTooltip() {
-  const tooltip = document.getElementById('item-tooltip');
-  if (tooltip) {
-    tooltip.style.display = 'none';
-  }
+  hideItemTooltip();
 }
 
 function getRarityColor(rarity) {
