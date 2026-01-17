@@ -234,9 +234,9 @@ function getRandomLocation(difficulty) {
 
 // Get difficulty tier based on progress (number of beaten games)
 function getDifficultyTier(beatenGamesCount) {
-  if (beatenGamesCount < 3) {
+  if (beatenGamesCount < 5) {
     return 'Easy';
-  } else if (beatenGamesCount < 7) {
+  } else if (beatenGamesCount < 10) {
     return 'Medium';
   } else {
     return 'Hard';
