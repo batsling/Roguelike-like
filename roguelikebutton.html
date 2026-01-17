@@ -1181,6 +1181,15 @@
                 <span class="stat-value" id="stats-distance">∞</span>
               </div>
             </div>
+
+            <!-- Location -->
+            <div class="stat-section">
+              <h4 style="margin: 10px 0 5px 0; font-size: 14px; color: #888; border-bottom: 1px solid #444; padding-bottom: 5px;">🌍 Location</h4>
+              <div style="font-size: 13px; line-height: 1.4;">
+                <div id="stats-location-name" style="color: #ffd700; font-weight: bold; margin-bottom: 5px;">No location</div>
+                <div id="stats-location-desc" style="color: #aaa; font-size: 11px;"></div>
+              </div>
+            </div>
           </div>
 
           <!-- Items Panel -->
@@ -1519,6 +1528,7 @@
 let games = [];
 let connections = [];
 let items = [];
+let locations = [];
 let inventory = [];
 let beatenGames = [];
 let selectedPhase2Games = [];
@@ -1588,8 +1598,9 @@ let gameState = {
   escapePhase: false,  // ADD THIS
   escapeGames: [],     // ADD THIS
   escapeProgress: 0,    // ADD THIS
-  currentLocation: null,
-  currentDifficulty: 'Easy'
+  currentLocation: null,  // Current active location
+  currentDifficulty: 'Easy',
+  difficulty: 0  // Difficulty level (for Risk of Rain 2 effect)
 };
 
 let gameSaves = JSON.parse(localStorage.getItem('roguelikeGameSaves') || '{}');
@@ -2039,6 +2050,17 @@ document.getElementById('excelFile').addEventListener('change', function(event) 
         }));
       }
 
+      if (workbook.SheetNames.length > 6) {
+        const locationsSheet = workbook.Sheets[workbook.SheetNames[6]];
+        const locationsData = XLSX.utils.sheet_to_json(locationsSheet, { header: 1 });
+        locations = locationsData.slice(1).map(row => ({
+          name: String(row[0]),
+          game: String(row[1]),
+          description: String(row[2])
+        }));
+        console.log('Loaded locations:', locations);
+      }
+
       document.getElementById('pickRandomGames').disabled = false;
 
       const startGameSelect = document.getElementById('startGameSelect');
@@ -2336,8 +2358,21 @@ document.getElementById('pickRandomChoice').addEventListener('click', function()
       targetRarity = 'rare';
     }
 
-    const rarityItems = items.filter(item => item.rarity === targetRarity);
-    
+    let rarityItems = items.filter(item => item.rarity === targetRarity);
+
+    // Enter the Gungeon location effect: 20% bonus chance for guns
+    if (gameState.currentLocation && gameState.currentLocation.game === 'Enter the Gungeon') {
+      const gunBonus = Math.random() * 100;
+      if (gunBonus <= 20) {
+        // Try to replace with a gun of the same rarity
+        const gunItems = items.filter(item => item.rarity === targetRarity && item.type.toLowerCase().includes('gun'));
+        if (gunItems.length > 0) {
+          rarityItems = gunItems;
+          console.log('Gungeon location: Replaced item with gun');
+        }
+      }
+    }
+
     if (rarityItems.length > 0) {
       const randomIndex = Math.floor(Math.random() * rarityItems.length);
       choices.push(rarityItems[randomIndex]);
@@ -3170,17 +3205,29 @@ function spawnChoices() {
     }
     
     const n = addNode(g, 'choice', nx, ny);
-    
+
     // Check if this is the amulet game
     const isAmuletGame = (g === gameState.amuletGame.name);
-    
+
     // Override encounter type if it's the amulet game
     if (isAmuletGame) {
       encounterType = 'amulet';
       encounterIcon = '🏺';
       encounterColor = 'gold';
     }
-    
+
+    // Binding of Isaac location effect: 10% chance for status
+    let spaceStatus = null;
+    if (gameState.currentLocation && gameState.currentLocation.game === 'The Binding of Isaac') {
+      const statusRoll = Math.random() * 100;
+      if (statusRoll <= 10) {
+        const statuses = ['Holy', 'Devilish', 'Stinky'];
+        spaceStatus = statuses[Math.floor(Math.random() * statuses.length)];
+        n.dataset.status = spaceStatus;
+        console.log('Isaac location: Added status', spaceStatus, 'to', g);
+      }
+    }
+
     // Add encounter icon to the node
     const icon = document.createElement('span');
     icon.textContent = encounterIcon;
@@ -3202,7 +3249,28 @@ function spawnChoices() {
       box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     `;
     n.appendChild(icon);
-    
+
+    // Add status badge if it has one
+    if (spaceStatus) {
+      const statusBadge = document.createElement('span');
+      statusBadge.textContent = spaceStatus;
+      statusBadge.style.cssText = `
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 2px 6px;
+        background: ${spaceStatus === 'Holy' ? '#ffd700' : spaceStatus === 'Devilish' ? '#8b0000' : '#654321'};
+        color: ${spaceStatus === 'Stinky' ? '#fff' : '#000'};
+        border-radius: 8px;
+        font-size: 9px;
+        font-weight: bold;
+        border: 1px solid #000;
+        white-space: nowrap;
+      `;
+      n.appendChild(statusBadge);
+    }
+
     // Store encounter type on the node
     n.dataset.encounterType = encounterType;
     
@@ -3353,6 +3421,15 @@ function renderGameState() {
     document.getElementById('stats-dexterity').textContent = dexterity;
     document.getElementById('stats-intelligence').textContent = intelligence;
     document.getElementById('stats-charisma').textContent = charisma;
+
+    // Update location display
+    if (gameState.currentLocation) {
+      document.getElementById('stats-location-name').textContent = gameState.currentLocation.name;
+      document.getElementById('stats-location-desc').textContent = gameState.currentLocation.description || '';
+    } else {
+      document.getElementById('stats-location-name').textContent = 'No location';
+      document.getElementById('stats-location-desc').textContent = '';
+    }
   }
   
   // Auto-scroll to current position
@@ -3700,17 +3777,113 @@ function showItemChoiceModal() {
     card.onclick = (e) => {
       const itemIndex = parseInt(e.currentTarget.dataset.index);
       const item = choices[itemIndex];
-      
+
       inventory.push(item);
       gameState.inventory = [...inventory];
       updateInventory();
-      
+
       closeGameModal();
-      
-      // Now spawn the next choices instead of triggering encounter
-      setTimeout(() => spawnChoices(), 300);
+
+      // Risk of Rain 2 location effects
+      if (gameState.currentLocation && gameState.currentLocation.game === 'Risk of Rain 2') {
+        // 50% chance to increase difficulty
+        const difficultyRoll = Math.random() * 100;
+        if (difficultyRoll <= 50) {
+          gameState.difficulty += 1;
+          console.log('Risk of Rain 2 location: Difficulty increased to', gameState.difficulty);
+        }
+
+        // Offer extra chest purchase
+        setTimeout(() => showRiskOfRainChestOffer(), 300);
+      } else {
+        // Normal flow: spawn next choices
+        setTimeout(() => spawnChoices(), 300);
+      }
     };
   });
+}
+
+function showRiskOfRainChestOffer() {
+  const canAfford = gold >= 10;
+  const buttonStyle = canAfford
+    ? 'background: #4CAF50; cursor: pointer;'
+    : 'background: #666; cursor: not-allowed; opacity: 0.5;';
+
+  createGameModal(`
+    <div style="text-align: center;">
+      <h2 style="color: #f39c12; margin-top: 0;">💰 Risk of Rain 2 Bonus</h2>
+      <p style="color: #aaa; font-size: 16px; margin: 20px 0;">
+        You have ${gold} gold. Would you like to purchase an extra chest for <strong style="color: gold;">10 gold</strong>?
+      </p>
+      <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px;">
+        <button id="buy-chest-btn" style="padding: 15px 30px; font-size: 16px; border: none; border-radius: 8px; color: white; ${buttonStyle}" ${!canAfford ? 'disabled' : ''}>
+          Buy Chest (10 gold)
+        </button>
+        <button id="skip-chest-btn" style="padding: 15px 30px; font-size: 16px; background: #888; border: none; border-radius: 8px; color: white; cursor: pointer;">
+          No Thanks
+        </button>
+      </div>
+    </div>
+  `);
+
+  if (canAfford) {
+    document.getElementById('buy-chest-btn').onclick = () => {
+      gold -= 10;
+      gameState.gold = gold;
+      updateTopBar();
+      closeGameModal();
+
+      // Show another item choice
+      setTimeout(() => {
+        showExtraItemChoice();
+      }, 300);
+    };
+  }
+
+  document.getElementById('skip-chest-btn').onclick = () => {
+    closeGameModal();
+    setTimeout(() => spawnChoices(), 300);
+  };
+}
+
+function showExtraItemChoice() {
+  if (items.length === 0) {
+    spawnChoices();
+    return;
+  }
+
+  const rarityRoll = Math.random() * 100;
+  let targetRarity = rarityRoll <= 50 ? 'common' : rarityRoll <= 85 ? 'uncommon' : 'rare';
+
+  const rarityItems = items.filter(item => item.rarity === targetRarity);
+  const item = rarityItems.length > 0
+    ? rarityItems[Math.floor(Math.random() * rarityItems.length)]
+    : items[Math.floor(Math.random() * items.length)];
+
+  const rarityColor = item.rarity === 'common' ? '#aaa' : item.rarity === 'uncommon' ? '#4CAF50' : '#9b59b6';
+
+  createGameModal(`
+    <div style="text-align: center;">
+      <h2 style="color: #f39c12; margin-top: 0;">🎁 Bonus Chest!</h2>
+      <div style="max-width: 300px; margin: 20px auto; padding: 20px; background: #2d2d2d; border: 3px solid ${rarityColor}; border-radius: 12px;">
+        <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">${item.name}</div>
+        <div style="color: ${rarityColor}; font-size: 14px; margin-bottom: 15px;">${item.rarity}</div>
+        <div style="color: #ccc; font-size: 14px; line-height: 1.5;">${item.description}</div>
+        <div style="color: #888; font-size: 12px; margin-top: 10px; font-style: italic;">${item.type}</div>
+      </div>
+      <button id="take-item-btn" style="padding: 15px 30px; font-size: 16px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; margin-top: 20px;">
+        Take Item
+      </button>
+    </div>
+  `);
+
+  document.getElementById('take-item-btn').onclick = () => {
+    inventory.push(item);
+    gameState.inventory = [...inventory];
+    updateInventory();
+    closeGameModal();
+    setTimeout(() => spawnChoices(), 300);
+  };
 }
 
 function createGameModal(content) {
@@ -4135,6 +4308,13 @@ document.getElementById('confirm-save').addEventListener('click', () => {
   intelligence = character.startingStats.intelligence;
   charisma = character.startingStats.charisma;
   
+  // Select random location
+  let randomLocation = null;
+  if (locations.length > 0) {
+    randomLocation = locations[Math.floor(Math.random() * locations.length)];
+    console.log('Selected location:', randomLocation);
+  }
+
   gameState = {
     currentGame: start.name,
     visitedGames: [start.name],
@@ -4155,7 +4335,9 @@ document.getElementById('confirm-save').addEventListener('click', () => {
     charisma: charisma,
     escapePhase: false,
     escapeGames: [],
-    escapeProgress: 0
+    escapeProgress: 0,
+    currentLocation: randomLocation,
+    difficulty: 0
   };
   
   startGame = start;
