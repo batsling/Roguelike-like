@@ -3454,8 +3454,26 @@ function markGameFinished(gameName) {
 
   // Only add if not already in finishedGames array
   if (!gameState.finishedGames.includes(gameName)) {
+    // Get the previous difficulty tier before adding the game
+    const previousDifficulty = getDifficultyTier(gameState.finishedGames.length);
+
     gameState.finishedGames.push(gameName);
     console.log(`Game finished: ${gameName}. Total unique finished: ${gameState.finishedGames.length}`);
+
+    // Check if difficulty tier changed and update location
+    const newDifficulty = getDifficultyTier(gameState.finishedGames.length);
+    if (previousDifficulty !== newDifficulty) {
+      const newLocation = getRandomLocation(newDifficulty);
+      if (newLocation) {
+        gameState.location = newLocation;
+        console.log(`Difficulty tier changed to ${newDifficulty}! New location: ${newLocation.name}`);
+
+        // Update the location display
+        if (typeof updateLocationDisplay === 'function') {
+          updateLocationDisplay(gameState.currentGame);
+        }
+      }
+    }
 
     // Check and update curse durations
     checkCurseDurations('game_beaten');
