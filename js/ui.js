@@ -31,16 +31,22 @@ if (document.readyState === 'loading') {
 // ===== TOP BAR UPDATES =====
 
 function updateTopBar() {
-  // Update floating HUD (now at bottom of screen)
-  const gameHealth = document.getElementById('game-health');
-  const gameGold = document.getElementById('game-gold');
+  // Update top right stats display
+  const displayHealth = document.getElementById('display-health');
+  const displayGold = document.getElementById('display-gold');
+  const displayDifficulty = document.getElementById('display-difficulty');
 
-  if (gameHealth) {
-    gameHealth.textContent = `${health}/${maxHealth}`;
+  if (displayHealth) {
+    displayHealth.textContent = `${health}/${maxHealth}`;
   }
 
-  if (gameGold) {
-    gameGold.textContent = gold;
+  if (displayGold) {
+    displayGold.textContent = gold;
+  }
+
+  if (displayDifficulty) {
+    const difficulty = gameState.finishedGames?.length || 0;
+    displayDifficulty.textContent = difficulty;
   }
 
   // Update stats panel health/gold if they exist
@@ -864,6 +870,13 @@ function updateGameStats() {
   if (statsDifficulty) {
     const difficulty = gameState.finishedGames?.length || 0;
     statsDifficulty.textContent = difficulty;
+  }
+
+  // Update top right stats display
+  const displayDifficulty = document.getElementById('display-difficulty');
+  if (displayDifficulty) {
+    const difficulty = gameState.finishedGames?.length || 0;
+    displayDifficulty.textContent = difficulty;
   }
 }
 

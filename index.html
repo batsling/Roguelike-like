@@ -174,16 +174,8 @@
                 <!-- Nodes will be added here dynamically (z-index: 2 by default) -->
               </div>
 
-              <!-- Floating Bottom HUD -->
-              <div id="floating-hud" class="flex border-radius-12 floating-hud-complex p-12 gap-30 items-center">
-                <div class="font-size-16 font-bold">
-                  <span class="text-beige">Health: </span>
-                  <span id="game-health" class="font-size-18 text-health">10/10</span>
-                </div>
-                <div class="font-size-16 font-bold">
-                  <span class="text-beige">Gold: </span>
-                  <span id="game-gold" class="font-size-18 text-gold-light">0</span>
-                </div>
+              <!-- Floating Bottom HUD - Hidden, stats moved to top right -->
+              <div id="floating-hud" class="flex border-radius-12 floating-hud-complex p-12 gap-30 items-center" style="display: none;">
                 <div id="distance-display" class="font-size-14 text-beige"></div>
               </div>
             </div>
@@ -223,6 +215,23 @@
               <p class="font-size-11 mt-5-px text-light-gray-aaa">These curses will be verified after you beat a game</p>
               <div id="verification-curses-list">
               </div>
+            </div>
+          </div>
+
+          <!-- Stats Display Section (Top Right) -->
+          <div id="stats-display-section">
+            <h3 class="m-0 text-gold mb-10">📊 Stats</h3>
+            <div class="stat-display-item">
+              <span class="stat-display-label">❤️ Health:</span>
+              <span class="stat-display-value health" id="display-health">10/10</span>
+            </div>
+            <div class="stat-display-item">
+              <span class="stat-display-label">💰 Gold:</span>
+              <span class="stat-display-value gold" id="display-gold">0</span>
+            </div>
+            <div class="stat-display-item">
+              <span class="stat-display-label">⚔️ Difficulty:</span>
+              <span class="stat-display-value" id="display-difficulty">0</span>
             </div>
           </div>
 

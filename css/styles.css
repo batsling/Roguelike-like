@@ -955,6 +955,55 @@ text, path, line, g {
   scroll-behavior: smooth;
 }
 
+/* ===== STATS DISPLAY SECTION (TOP RIGHT) ===== */
+#stats-display-section {
+  position: fixed;
+  right: 290px;
+  top: 60px;
+  width: 220px;
+  background: rgba(30, 30, 30, 0.95);
+  border: 2px solid #cc6600;
+  border-radius: 0;
+  border-top: none;
+  padding: 15px;
+  color: #eee;
+  z-index: 999;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+#stats-display-section h3 {
+  text-align: center;
+  border-bottom: 2px solid #cc6600;
+  padding-bottom: 8px;
+}
+
+.stat-display-item {
+  margin: 12px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+}
+
+.stat-display-label {
+  color: #b8a890;
+  font-weight: bold;
+}
+
+.stat-display-value {
+  color: #ffcc66;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.stat-display-value.health {
+  color: #ff6644;
+}
+
+.stat-display-value.gold {
+  color: #ffdd77;
+}
+
 /* ===== GOALS SECTION STYLES ===== */
 #goals-section {
   position: fixed;
