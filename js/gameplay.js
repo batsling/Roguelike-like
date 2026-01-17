@@ -37,6 +37,20 @@ function createStatusIconContainer(gameName) {
   const statuses = getGameStatuses(gameName);
   if (!statuses || statuses.length === 0) return null;
 
+  // Status effect descriptions for tooltips
+  const statusDescriptions = {
+    'charmed': 'Charmed - Grants Curse of Affection when visited (tier depends on difficulty)',
+    'devilish': 'Devilish - Deal 2 damage when visited',
+    'holy': 'Holy - Restore 2 health when visited',
+    'marked': 'Marked - Grants Curse of the Hunter when visited (tier depends on difficulty)',
+    'portal': 'Portal - Can teleport to another portal game',
+    'shielded': 'Shielded - Grants Curse of Obstruction when visited (tier depends on difficulty)',
+    'shocked': 'Shocked - Grants Curse of the Dazed when visited (tier depends on difficulty)',
+    'soaked': 'Soaked - Grants Curse of the Damp when visited (tier depends on difficulty)',
+    'stinky': 'Stinky - Deprioritized in game selection',
+    'timed': 'Timed - Grants Curse of Haste when visited (tier depends on difficulty)'
+  };
+
   const container = document.createElement('div');
   container.className = 'status-icon-container';
   container.style.cssText = `
@@ -52,7 +66,8 @@ function createStatusIconContainer(gameName) {
   statuses.forEach((status) => {
     const icon = document.createElement('span');
     icon.textContent = status.icon;
-    icon.title = status.name;
+    const statusName = status.name.toLowerCase();
+    icon.title = statusDescriptions[statusName] || status.name;
     icon.style.cssText = `
       width: 20px;
       height: 20px;
@@ -64,6 +79,8 @@ function createStatusIconContainer(gameName) {
       justify-content: center;
       font-size: 12px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      pointer-events: auto;
+      cursor: help;
     `;
     container.appendChild(icon);
   });
