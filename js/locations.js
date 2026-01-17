@@ -475,19 +475,19 @@ function applyIsaacModifiers(gameName, location) {
   if (roll < 0.10) {
     // Apply Holy status
     if (typeof addGameStatus === 'function') {
-      addGameStatus(gameName, 'holy');
+      addGameStatus(gameName, 'holy', '✨');
       console.log(`Isaac location effect: ${gameName} is now Holy!`);
     }
   } else if (roll < 0.20) {
     // Apply Devilish status
     if (typeof addGameStatus === 'function') {
-      addGameStatus(gameName, 'devilish');
+      addGameStatus(gameName, 'devilish', '👹');
       console.log(`Isaac location effect: ${gameName} is now Devilish!`);
     }
   } else if (roll < 0.30) {
     // Apply Stinky status
     if (typeof addGameStatus === 'function') {
-      addGameStatus(gameName, 'stinky');
+      addGameStatus(gameName, 'stinky', '💩');
       console.log(`Isaac location effect: ${gameName} is now Stinky!`);
     }
   }
