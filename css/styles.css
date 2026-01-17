@@ -1030,6 +1030,13 @@ text, path, line, g {
   font-style: italic;
 }
 
+.current-difficulty {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #ffcc66;
+  font-weight: bold;
+}
+
 /* ===== GOALS SECTION STYLES ===== */
 #goals-section {
   position: fixed;

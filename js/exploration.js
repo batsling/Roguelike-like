@@ -427,7 +427,7 @@ function advance(game, x, y, encounterType) {
 
   // Update location display with current game info
   if (typeof updateLocationDisplay === 'function') {
-    const gameData = GAMES[game];
+    const gameData = games.find(g => g.name === game);
     const gameDescription = gameData?.description || 'No description available';
     updateLocationDisplay(game, gameDescription);
   }

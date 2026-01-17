@@ -72,6 +72,7 @@ function updateLocationDisplay(gameName, gameDescription) {
   const locationName = document.getElementById('location-name');
   const tierLabel = document.getElementById('tier-label');
   const difficultyRange = document.getElementById('difficulty-range');
+  const currentDifficulty = document.getElementById('current-difficulty');
   const locationSection = document.getElementById('location-display-section');
 
   if (!locationName || !tierLabel || !difficultyRange) return;
@@ -104,6 +105,11 @@ function updateLocationDisplay(gameName, gameDescription) {
   tierLabel.textContent = tierText;
   tierLabel.className = `tier-label ${tier}`;
   difficultyRange.textContent = rangeText;
+
+  // Update current difficulty
+  if (currentDifficulty) {
+    currentDifficulty.textContent = `Current: ${difficulty}`;
+  }
 }
 
 // Location tooltip
