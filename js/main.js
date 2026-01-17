@@ -518,6 +518,10 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     }
   });
 
+  // Select a random location for this run (based on starting difficulty of 0)
+  const initialDifficulty = getDifficultyTier(0); // Start with Easy tier
+  const selectedLocation = getRandomLocation(initialDifficulty);
+
   gameState = {
     currentGame: start.name,
     visitedGames: [start.name],
@@ -545,7 +549,8 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     escapeGames: [],
     escapeProgress: 0,
     gameStatusEffects: {}, // Map of game names to arrays of status effects
-    encounterTypes: encounterTypes // Map of game names to encounter types for this run
+    encounterTypes: encounterTypes, // Map of game names to encounter types for this run
+    location: selectedLocation // Current location for this run
   };
 
   startGame = start;
@@ -3068,6 +3073,12 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
     return;
   }
 
+  // Apply location effects to item pool (e.g., gun spawn boost from Gungeon locations)
+  let itemPool = items;
+  if (gameState?.location && typeof applyGunSpawnBoost === 'function') {
+    itemPool = applyGunSpawnBoost(itemPool, gameState.location);
+  }
+
   const choices = [];
   const maxAttempts = 100; // Prevent infinite loop
 
@@ -3123,14 +3134,14 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
         targetRarity = selectRandomRarity();
       }
 
-      const rarityItems = items.filter(item => item.rarity && item.rarity.toLowerCase() === targetRarity.toLowerCase());
+      const rarityItems = itemPool.filter(item => item.rarity && item.rarity.toLowerCase() === targetRarity.toLowerCase());
       if (rarityItems.length > 0) {
         const randomIndex = Math.floor(Math.random() * rarityItems.length);
         selectedItem = rarityItems[randomIndex];
       } else if (!rarityFilter) {
         // Fallback to any item if no rarity filter (normal chest)
-        const randomIndex = Math.floor(Math.random() * items.length);
-        selectedItem = items[randomIndex];
+        const randomIndex = Math.floor(Math.random() * itemPool.length);
+        selectedItem = itemPool[randomIndex];
       } else {
         // If rarity filter is set but no items of that rarity exist, break
         console.warn(`No items of rarity ${rarityFilter} available`);

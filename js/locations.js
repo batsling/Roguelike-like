@@ -420,6 +420,117 @@ function getLocationEffectDetails(location) {
 }
 
 // ========================================
+// LOCATION EFFECT APPLICATION
+// ========================================
+
+/**
+ * Apply location-specific effects during gameplay
+ * Called at appropriate times based on the effect type
+ */
+
+/**
+ * Apply Enter the Gungeon effect - boost weapon item spawn rate
+ * @param {Array} items - Available items to choose from
+ * @param {Object} location - Current location
+ * @returns {Array} Modified item pool with boosted weapon chances
+ */
+function applyGunSpawnBoost(items, location) {
+  if (!hasGunSpawnBoost(location)) {
+    return items;
+  }
+
+  // Create a modified item pool where weapons appear 20% more
+  const weaponItems = items.filter(item => item.type === 'Weapon');
+  const nonWeaponItems = items.filter(item => item.type !== 'Weapon');
+
+  // Calculate how many extra weapon copies to add (20% boost)
+  const weaponBoostCount = Math.ceil(weaponItems.length * 0.2);
+
+  // Add extra copies of weapons to the pool
+  const boostedWeapons = [];
+  for (let i = 0; i < weaponBoostCount; i++) {
+    const randomWeapon = weaponItems[Math.floor(Math.random() * weaponItems.length)];
+    if (randomWeapon) {
+      boostedWeapons.push(randomWeapon);
+    }
+  }
+
+  return [...nonWeaponItems, ...weaponItems, ...boostedWeapons];
+}
+
+/**
+ * Apply Isaac effect - chance for games to have Holy/Devilish/Stinky status
+ * This should be called when games are being set up or visited
+ * @param {string} gameName - Name of the game
+ * @param {Object} location - Current location
+ */
+function applyIsaacModifiers(gameName, location) {
+  if (!hasIsaacModifiers(location)) {
+    return;
+  }
+
+  // 10% chance for each modifier
+  const roll = Math.random();
+
+  if (roll < 0.10) {
+    // Apply Holy status
+    if (typeof addGameStatus === 'function') {
+      addGameStatus(gameName, 'holy');
+      console.log(`Isaac location effect: ${gameName} is now Holy!`);
+    }
+  } else if (roll < 0.20) {
+    // Apply Devilish status
+    if (typeof addGameStatus === 'function') {
+      addGameStatus(gameName, 'devilish');
+      console.log(`Isaac location effect: ${gameName} is now Devilish!`);
+    }
+  } else if (roll < 0.30) {
+    // Apply Stinky status
+    if (typeof addGameStatus === 'function') {
+      addGameStatus(gameName, 'stinky');
+      console.log(`Isaac location effect: ${gameName} is now Stinky!`);
+    }
+  }
+}
+
+/**
+ * Check if we should show Hades God Boon choice
+ * @param {Object} location - Current location
+ * @returns {boolean} True if Hades boon choice should be offered
+ */
+function shouldOfferHadesBoon(location) {
+  return hasGodBoonChoice(location);
+}
+
+/**
+ * Apply Risk of Rain 2 effect - chance to increase difficulty after beating game
+ * Also offers extra chest opportunity
+ * @param {Object} location - Current location
+ * @returns {Object} Effect results {difficultyIncreased: boolean, offerExtraChest: boolean}
+ */
+function applyRiskOfRainEffect(location) {
+  const result = {
+    difficultyIncreased: false,
+    offerExtraChest: false
+  };
+
+  if (!hasScalingReward(location)) {
+    return result;
+  }
+
+  // 50% chance to increase difficulty
+  if (Math.random() < 0.5) {
+    result.difficultyIncreased = true;
+    console.log('Risk of Rain location effect: Difficulty will increase!');
+  }
+
+  // Always offer extra chest for 10 gold
+  result.offerExtraChest = true;
+
+  return result;
+}
+
+// ========================================
 // EXPORTS
 // ========================================
 
@@ -449,3 +560,9 @@ window.hasIsaacModifiers = hasIsaacModifiers;
 window.hasGodBoonChoice = hasGodBoonChoice;
 window.hasScalingReward = hasScalingReward;
 window.getLocationEffectDetails = getLocationEffectDetails;
+
+// Export effect application functions
+window.applyGunSpawnBoost = applyGunSpawnBoost;
+window.applyIsaacModifiers = applyIsaacModifiers;
+window.shouldOfferHadesBoon = shouldOfferHadesBoon;
+window.applyRiskOfRainEffect = applyRiskOfRainEffect;

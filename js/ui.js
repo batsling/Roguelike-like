@@ -70,18 +70,47 @@ function updateGoldDisplay() {
 
 function updateLocationDisplay(gameName, gameDescription) {
   const locationName = document.getElementById('location-name');
+  const locationGame = document.getElementById('location-game');
+  const locationEffect = document.getElementById('location-effect');
   const tierLabel = document.getElementById('tier-label');
   const currentDifficulty = document.getElementById('current-difficulty');
   const locationSection = document.getElementById('location-display-section');
 
   if (!locationName || !tierLabel) return;
 
-  // Update location name (game name)
-  locationName.textContent = gameName || 'Current Location';
+  // Get the current location from gameState
+  const location = gameState?.location;
 
-  // Store description for tooltip
-  if (locationSection) {
-    locationSection.dataset.description = gameDescription || 'No description available';
+  if (location) {
+    // Update location name (the actual location name, not the game name)
+    locationName.textContent = location.name || 'Current Location';
+
+    // Update the source game
+    if (locationGame) {
+      locationGame.textContent = `from ${location.game}`;
+    }
+
+    // Update the location effect
+    if (locationEffect) {
+      locationEffect.textContent = location.effect || 'No effect';
+    }
+
+    // Store description for tooltip
+    if (locationSection) {
+      locationSection.dataset.description = location.effect || 'No effect';
+    }
+  } else {
+    // Fallback to game name if no location is set
+    locationName.textContent = gameName || 'Current Location';
+    if (locationGame) {
+      locationGame.textContent = 'No location selected';
+    }
+    if (locationEffect) {
+      locationEffect.textContent = 'No effect';
+    }
+    if (locationSection) {
+      locationSection.dataset.description = gameDescription || 'No description available';
+    }
   }
 
   // Calculate difficulty tier

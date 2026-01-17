@@ -156,6 +156,11 @@ function spawnChoices() {
     const nx = startX + posInRow * nodeSpacing;
     const ny = baseY + row * rowSpacing;
 
+    // Apply Isaac location modifiers (10% chance for Holy/Devilish/Stinky)
+    if (gameState?.location && typeof applyIsaacModifiers === 'function') {
+      applyIsaacModifiers(g, gameState.location);
+    }
+
     // Get encounter type from gameState (randomly assigned per run)
     let encounterType, encounterIcon, encounterColor;
 

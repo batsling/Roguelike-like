@@ -841,6 +841,13 @@ function renderGameState() {
 
   // Update stats panel
   updateGameStats();
+
+  // Update location display
+  if (typeof updateLocationDisplay === 'function') {
+    const gameData = games.find(g => g.name === gameState.currentGame);
+    const gameDescription = gameData?.description || 'No description available';
+    updateLocationDisplay(gameState.currentGame, gameDescription);
+  }
 }
 
 // ===== DASH MODAL =====
