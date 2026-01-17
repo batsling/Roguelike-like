@@ -132,6 +132,28 @@ function spawnChoices() {
   const numChoices = Math.max(1, baseFov); // Use fov stat, default to 3
   const opts = shuffled.slice(0, Math.min(numChoices, shuffled.length));
 
+  // Apply pending boon statuses to random games in this choice set
+  if (gameState.pendingLocationStatuses && gameState.pendingLocationStatuses.length > 0) {
+    console.log('Applying pending boon statuses:', gameState.pendingLocationStatuses);
+
+    // Apply each pending status to a random game in the choice set
+    gameState.pendingLocationStatuses.forEach(statusName => {
+      if (opts.length > 0) {
+        const randomIndex = Math.floor(Math.random() * opts.length);
+        const targetGame = opts[randomIndex];
+
+        // Add the status to the game
+        if (typeof addGameStatus === 'function') {
+          addGameStatus(targetGame, statusName.toLowerCase());
+          console.log(`Applied ${statusName} status to ${targetGame} from boon effect`);
+        }
+      }
+    });
+
+    // Clear pending statuses after applying
+    gameState.pendingLocationStatuses = [];
+  }
+
   // Dynamic positioning based on number of choices
   // Node max width = 220px + 56px padding + 6px border = ~282px
   // Use minimum spacing of 300px to ensure no overlap even with long names
