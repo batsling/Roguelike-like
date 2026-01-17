@@ -154,7 +154,8 @@ function selectEncounterOption(eventIndex, optionIndex) {
 function displayShop() {
   const shopItems = items.filter(item => {
     // Shop has a mix of rarities with appropriate prices
-    return true; // All items can appear in shops
+    // Exclude N/A rarity items (boons)
+    return item.rarity !== 'N/A';
   });
 
   const shopSelection = [];
@@ -164,7 +165,7 @@ function displayShop() {
     // Use luck-based rarity selection
     const targetRarity = selectRandomRarity();
 
-    const rarityItems = shopItems.filter(item => item.rarity === targetRarity);
+    const rarityItems = shopItems.filter(item => item.rarity === targetRarity && item.rarity !== 'N/A');
     if (rarityItems.length > 0) {
       const randomItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
 

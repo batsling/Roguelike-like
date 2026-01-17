@@ -434,6 +434,52 @@ const ITEM_EFFECTS = {
       console.log('Acquired Garlic - damage taken will be reduced by 1 (minimum 1)');
     }
     // Damage reduction is applied in the calculateDamageReduction function
+  },
+
+  // ===== BOONS =====
+  // Boons grant stat bonuses when conditions are met, verified after each run
+  // They also have a 20% chance to apply a status effect to the next game
+
+  "Boon of Hermes": {
+    onAcquire: () => {
+      console.log('Acquired Boon of Hermes - condition: beat a game within an hour');
+    }
+    // Effect is applied in verification system
+  },
+
+  "Boon of Zeus": {
+    onAcquire: () => {
+      console.log('Acquired Boon of Zeus - condition: defeat an enemy with lightning');
+    }
+    // Effect is applied in verification system
+  },
+
+  "Boon of Poseidon": {
+    onAcquire: () => {
+      console.log('Acquired Boon of Poseidon - condition: defeat an enemy underwater');
+    }
+    // Effect is applied in verification system
+  },
+
+  "Boon of Artemis": {
+    onAcquire: () => {
+      console.log('Acquired Boon of Artemis - condition: use ranged strategies primarily');
+    }
+    // Effect is applied in verification system
+  },
+
+  "Boon of Aphrodite": {
+    onAcquire: () => {
+      console.log('Acquired Boon of Aphrodite - condition: charm an enemy');
+    }
+    // Effect is applied in verification system
+  },
+
+  "Boon of Athena": {
+    onAcquire: () => {
+      console.log('Acquired Boon of Athena - condition: negate damage with shield 5+ times');
+    }
+    // Effect is applied in verification system
   }
 };
 

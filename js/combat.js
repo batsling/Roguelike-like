@@ -316,7 +316,7 @@ function rollD20() {
 // ===== HELPER FUNCTIONS =====
 
 function giveRandomItem(rarity) {
-  const rarityItems = items.filter(item => item.rarity === rarity);
+  const rarityItems = items.filter(item => item.rarity === rarity && item.rarity !== 'N/A');
   if (rarityItems.length > 0) {
     const randomIndex = Math.floor(Math.random() * rarityItems.length);
     const item = rarityItems[randomIndex];

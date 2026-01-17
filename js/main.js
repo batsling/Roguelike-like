@@ -2731,7 +2731,7 @@ function feedMuncher(indices, itemsToReceive) {
 
   // Give random items of target rarities
   targetRarities.forEach(targetRarity => {
-    const rarityItems = items.filter(item => item.rarity === targetRarity);
+    const rarityItems = items.filter(item => item.rarity === targetRarity && item.rarity !== 'N/A');
     if (rarityItems.length > 0) {
       const randomItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
       acquireItem(randomItem);
@@ -2994,14 +2994,15 @@ function completeChampionSuccess() {
   // Give 2 items using luck-based rarity selection
   for (let i = 0; i < 2; i++) {
     const targetRarity = selectRandomRarity();
-    const rarityItems = items.filter(item => item.rarity === targetRarity);
+    const rarityItems = items.filter(item => item.rarity === targetRarity && item.rarity !== 'N/A');
 
     if (rarityItems.length > 0) {
       const randomItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
       acquireItem(randomItem);
     } else {
       // Fallback to any random item if no items of target rarity exist
-      const randomItem = items[Math.floor(Math.random() * items.length)];
+      const nonNAItems = items.filter(item => item.rarity !== 'N/A');
+      const randomItem = nonNAItems[Math.floor(Math.random() * nonNAItems.length)];
       acquireItem(randomItem);
     }
   }
@@ -3074,7 +3075,8 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
   }
 
   // Apply location effects to item pool (e.g., gun spawn boost from Gungeon locations)
-  let itemPool = items;
+  // Exclude N/A rarity items (boons) from normal item pools
+  let itemPool = items.filter(item => item.rarity !== 'N/A');
   if (gameState?.location && typeof applyGunSpawnBoost === 'function') {
     itemPool = applyGunSpawnBoost(itemPool, gameState.location);
   }
@@ -3471,6 +3473,14 @@ function markGameFinished(gameName) {
         // Update the location display
         if (typeof updateLocationDisplay === 'function') {
           updateLocationDisplay(gameState.currentGame);
+        }
+
+        // Check if this is a Hades location and show boon selection immediately
+        if (newLocation.game === 'Hades' && typeof showHadesBoonSelection === 'function') {
+          // Show boon selection immediately when entering new Hades location
+          setTimeout(() => {
+            showHadesBoonSelection();
+          }, 500); // Small delay to let location display update first
         }
       }
     }

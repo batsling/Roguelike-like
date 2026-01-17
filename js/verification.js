@@ -31,6 +31,9 @@ function showCurseVerificationModal(onComplete) {
   // Check if player has an equipped weapon
   const hasEquippedWeapon = gameState && gameState.equippedWeapon;
 
+  // Check if player has any boons
+  const boons = (gameState.inventory || []).filter(item => item.type === 'Boon');
+
   // Get curses that need verification (manual and restriction curses)
   const cursesToVerify = (gameState.activeCurses || []).filter(curse =>
     curse.name.toLowerCase().includes('devotion') ||
@@ -46,8 +49,8 @@ function showCurseVerificationModal(onComplete) {
     curse.name.toLowerCase().includes('damp')
   );
 
-  // If no curses to verify, no Precision Landing trait, and no equipped weapon, skip verification
-  if (cursesToVerify.length === 0 && !hasPrecisionLanding && !hasEquippedWeapon) {
+  // If no curses to verify, no Precision Landing trait, no equipped weapon, and no boons, skip verification
+  if (cursesToVerify.length === 0 && !hasPrecisionLanding && !hasEquippedWeapon && boons.length === 0) {
     if (onComplete) onComplete();
     return;
   }
@@ -462,6 +465,38 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
     `;
   }
 
+  // Add Boon verification sections
+  const boons = (gameState.inventory || []).filter(item => item.type === 'Boon');
+  if (boons.length > 0) {
+    boons.forEach((boon, index) => {
+      // Parse boon description to get condition
+      const getBoonCondition = (description) => {
+        const conditionMatch = description.match(/If the player ([^,]+)/i);
+        return conditionMatch ? conditionMatch[1] : 'complete the boon condition';
+      };
+
+      const condition = getBoonCondition(boon.description);
+
+      modalHTML += `
+        <div style="background: rgba(138, 43, 226, 0.15); border: 1px solid #8a2be2; border-radius: 6px; padding: 10px; margin: 8px 0;">
+          <h3 style="color: #ba55d3; margin: 0 0 5px 0; font-size: 15px;">🌟 ${boon.name}</h3>
+          <div style="color: #9370db; font-size: 11px; margin-bottom: 5px;">
+            Boon Effect
+          </div>
+          <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Did you ${condition}? Reward: +1 to all combat stats</p>
+          <div style="margin-top: 5px;">
+            <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+              <input type="radio" name="boon-check-${index}" value="yes" checked style="margin-right: 5px;">Yes
+            </label>
+            <label style="font-size: 12px; color: #ccc;">
+              <input type="radio" name="boon-check-${index}" value="no" style="margin-right: 5px;">No
+            </label>
+          </div>
+        </div>
+      `;
+    });
+  }
+
   modalHTML += `
       <button id="verify-all-submit" style="
         padding: 15px 40px;
@@ -678,6 +713,66 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
 
           console.log(`${weapon.name} activated: will grant ${chestType} chest before normal reward`);
         }
+        // For Lil' Bomber: grant +1/+2/+3 Strength
+        else if (weapon.name === "Lil' Bomber") {
+          const strengthBonus = weaponLevel === 1 ? 1 : weaponLevel === 2 ? 2 : 3;
+
+          // Apply strength bonus
+          strength += strengthBonus;
+          gameState.strength = strength;
+          if (typeof updateTopBar === 'function') {
+            updateTopBar();
+          }
+
+          weaponRewardText = `+${strengthBonus} Strength`;
+          weaponEffectActivated = true;
+
+          console.log(`${weapon.name} activated: +${strengthBonus} Strength`);
+        }
+      }
+    }
+
+    // Process Boon verifications
+    const activeBoons = (gameState.inventory || []).filter(item => item.type === 'Boon');
+    const activatedBoons = [];
+    if (activeBoons.length > 0) {
+      activeBoons.forEach((boon, index) => {
+        const boonRadio = document.querySelector(`input[name="boon-check-${index}"]:checked`);
+        const conditionMet = boonRadio && boonRadio.value === 'yes';
+        if (conditionMet) {
+          // Grant +1 to all combat stats
+          strength += 1;
+          dexterity += 1;
+          intelligence += 1;
+          charisma += 1;
+          gameState.strength = strength;
+          gameState.dexterity = dexterity;
+          gameState.intelligence = intelligence;
+          gameState.charisma = charisma;
+
+          console.log(`${boon.name} activated: +1 to all combat stats`);
+
+          // 20% chance to apply status effect to next game
+          if (Math.random() < 0.2) {
+            // Extract status name from description
+            const statusMatch = boon.description.match(/to be (\w+)/);
+            if (statusMatch) {
+              const statusName = statusMatch[1];
+              if (!gameState.pendingLocationStatuses) {
+                gameState.pendingLocationStatuses = [];
+              }
+              gameState.pendingLocationStatuses.push(statusName);
+              console.log(`${boon.name}: Next game will have status ${statusName}`);
+            }
+          }
+
+          activatedBoons.push(boon.name);
+        }
+      });
+
+      // Update UI if any stats changed
+      if (activatedBoons.length > 0 && typeof updateTopBar === 'function') {
+        updateTopBar();
       }
     }
 
@@ -725,6 +820,17 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
           createNotification(`${gameState.equippedWeapon.name}: Earned ${weaponRewardText}!`, '#ff9800', '⚔️');
         }
       }, precisionLandingActivated ? 200 : 100); // Delay slightly if Precision Landing also activated
+    }
+
+    // Show boon notifications after modal closes
+    if (activatedBoons.length > 0) {
+      activatedBoons.forEach((boonName, index) => {
+        setTimeout(() => {
+          if (typeof createNotification === 'function') {
+            createNotification(`${boonName}: +1 to All Combat Stats!`, '#8a2be2', '🌟');
+          }
+        }, (precisionLandingActivated ? 200 : 100) + (weaponEffectActivated ? 100 : 0) + (index * 100));
+      });
     }
 
     // Check if Blasma Pistol chest needs to be shown BEFORE the normal reward

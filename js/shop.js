@@ -47,14 +47,15 @@ function showShopModal(purchasedIndices = []) {
         // Use luck-based rarity selection
       const targetRarity = selectRandomRarity();
 
-      const rarityItems = items.filter(item => item.rarity === targetRarity);
+      const rarityItems = items.filter(item => item.rarity === targetRarity && item.rarity !== 'N/A');
       if (rarityItems.length > 0) {
         const randomIndex = Math.floor(Math.random() * rarityItems.length);
         selectedItem = rarityItems[randomIndex];
       } else {
         // Fallback to any item if no items of target rarity
-        const randomIndex = Math.floor(Math.random() * items.length);
-        selectedItem = items[randomIndex];
+        const nonNAItems = items.filter(item => item.rarity !== 'N/A');
+        const randomIndex = Math.floor(Math.random() * nonNAItems.length);
+        selectedItem = nonNAItems[randomIndex];
       }
 
         // Check if this item is already in shop

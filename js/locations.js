@@ -530,6 +530,89 @@ function applyRiskOfRainEffect(location) {
   return result;
 }
 
+/**
+ * Show Hades boon selection - exactly 2 boons, cannot be rerolled
+ * Displays when entering or arriving at a Hades location
+ */
+function showHadesBoonSelection() {
+  console.log('Showing Hades boon selection...');
+
+  // Get all boon items
+  const allBoons = items.filter(item => item.type === 'Boon');
+
+  if (allBoons.length < 2) {
+    console.error('Not enough boons available!');
+    return;
+  }
+
+  // Select exactly 2 random boons
+  const selectedBoons = [];
+  const availableBoons = [...allBoons];
+
+  for (let i = 0; i < 2; i++) {
+    const randomIndex = Math.floor(Math.random() * availableBoons.length);
+    selectedBoons.push(availableBoons[randomIndex]);
+    availableBoons.splice(randomIndex, 1);
+  }
+
+  // Create modal HTML
+  let modalHTML = `
+    <div style="text-align: center; max-width: 700px; margin: 0 auto;">
+      <h2 style="color: #ba55d3; margin-top: 0; font-size: 28px;">🌟 Divine Boons 🌟</h2>
+      <p style="color: #aaa; font-size: 16px; margin: 15px 0 25px 0;">
+        You've come across two different Gods that offer you assistance on your journey, with a cost of course.
+      </p>
+      <div style="display: flex; gap: 20px; justify-content: center; margin-top: 20px;">
+  `;
+
+  selectedBoons.forEach((boon, index) => {
+    modalHTML += `
+      <div class="boon-choice-card" data-index="${index}" style="
+        flex: 1;
+        max-width: 300px;
+        padding: 25px;
+        background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(75, 0, 130, 0.2));
+        border: 3px solid #8a2be2;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+      " onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 8px 24px rgba(138, 43, 226, 0.5)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+        <div style="width: 150px; height: 150px; margin: 0 auto 15px auto; overflow: hidden; border-radius: 8px; background: rgba(0,0,0,0.3);">
+          <img src="${boon.image}" alt="${boon.name}" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
+        <h3 style="color: #ba55d3; margin: 15px 0 10px 0; font-size: 20px;">${boon.name}</h3>
+        <p style="color: #ccc; font-size: 13px; margin: 10px 0; line-height: 1.6;">${boon.description}</p>
+      </div>
+    `;
+  });
+
+  modalHTML += `
+      </div>
+      <p style="color: #888; font-size: 12px; margin-top: 20px; font-style: italic;">
+        Choose wisely - this selection cannot be rerolled
+      </p>
+    </div>
+  `;
+
+  createGameModal(modalHTML);
+
+  // Add click handlers for boon selection
+  document.querySelectorAll('.boon-choice-card').forEach((card, index) => {
+    card.onclick = () => {
+      const selectedBoon = selectedBoons[index];
+      acquireItem(selectedBoon);
+      closeGameModal();
+
+      // Show notification
+      setTimeout(() => {
+        if (typeof createNotification === 'function') {
+          createNotification(`Received ${selectedBoon.name}!`, '#8a2be2', '🌟');
+        }
+      }, 100);
+    };
+  });
+}
+
 // ========================================
 // EXPORTS
 // ========================================
@@ -565,4 +648,5 @@ window.getLocationEffectDetails = getLocationEffectDetails;
 window.applyGunSpawnBoost = applyGunSpawnBoost;
 window.applyIsaacModifiers = applyIsaacModifiers;
 window.shouldOfferHadesBoon = shouldOfferHadesBoon;
+window.showHadesBoonSelection = showHadesBoonSelection;
 window.applyRiskOfRainEffect = applyRiskOfRainEffect;
