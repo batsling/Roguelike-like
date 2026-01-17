@@ -812,7 +812,206 @@
     @keyframes playerPulse {
       0%, 100% { transform: translateX(-50%) translateY(0); }
       50% { transform: translateX(-50%) translateY(-5px); }
-}
+    }
+
+    /* Location Display */
+    #location-display {
+      position: fixed;
+      right: 20px;
+      top: 80px;
+      width: 280px;
+      background: rgba(30, 30, 30, 0.95);
+      border: 2px solid #444;
+      border-radius: 12px;
+      padding: 15px;
+      color: #eee;
+      z-index: 998;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    #location-display h3 {
+      margin: 0 0 10px 0;
+      color: #f39c12;
+      font-size: 16px;
+      text-align: center;
+      border-bottom: 2px solid #444;
+      padding-bottom: 8px;
+    }
+
+    #location-display .location-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    #location-display .location-details {
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 5px;
+    }
+
+    #location-display .location-difficulty {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      margin-right: 5px;
+    }
+
+    #location-display .difficulty-easy {
+      background: #4CAF50;
+      color: white;
+    }
+
+    #location-display .difficulty-medium {
+      background: #ff9800;
+      color: white;
+    }
+
+    #location-display .difficulty-hard {
+      background: #f44336;
+      color: white;
+    }
+
+    #location-display .location-effect {
+      margin-top: 10px;
+      padding: 8px;
+      background: #2d2d2d;
+      border-left: 3px solid #f39c12;
+      border-radius: 4px;
+      font-size: 11px;
+      line-height: 1.4;
+      color: #ccc;
+    }
+
+    /* Notification System */
+    #notification-container {
+      position: fixed;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 500px;
+    }
+
+    .notification {
+      background: rgba(30, 30, 30, 0.95);
+      border: 2px solid #f39c12;
+      border-radius: 8px;
+      padding: 15px 20px;
+      color: white;
+      font-size: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+      animation: slideInNotification 0.3s ease-out;
+      pointer-events: auto;
+      min-width: 300px;
+    }
+
+    .notification.success {
+      border-color: #4CAF50;
+    }
+
+    .notification.warning {
+      border-color: #ff9800;
+    }
+
+    .notification.error {
+      border-color: #f44336;
+    }
+
+    .notification.info {
+      border-color: #2196F3;
+    }
+
+    @keyframes slideInNotification {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideOutNotification {
+      from {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      to {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+    }
+
+    /* Dev Tools */
+    #dev-tools {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #1a1a1a;
+      border-top: 2px solid #444;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 997;
+      display: none;
+    }
+
+    #dev-tools.open {
+      display: block;
+    }
+
+    #dev-tools-toggle {
+      position: fixed;
+      bottom: 0;
+      right: 20px;
+      background: #333;
+      color: white;
+      border: 1px solid #555;
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      padding: 5px 15px;
+      cursor: pointer;
+      z-index: 998;
+      font-size: 12px;
+    }
+
+    #dev-tools h4 {
+      margin: 10px;
+      color: #f39c12;
+      font-size: 14px;
+      border-bottom: 1px solid #444;
+      padding-bottom: 5px;
+    }
+
+    #notification-log {
+      padding: 10px;
+    }
+
+    .log-entry {
+      padding: 5px 10px;
+      margin: 3px 0;
+      background: #2d2d2d;
+      border-left: 3px solid #f39c12;
+      border-radius: 3px;
+      font-size: 11px;
+      font-family: 'Courier New', monospace;
+      color: #ccc;
+    }
+
+    .log-entry .timestamp {
+      color: #888;
+      margin-right: 10px;
+    }
   </style>
 </head>
 <body>
@@ -916,6 +1115,19 @@
         <!-- Dungeon Path Screen -->
         <div id="dungeon-screen" style="display: none; height: 100%; position: relative;">
                     
+          <!-- Location Display -->
+          <div id="location-display" style="display: none;">
+            <h3>📍 Current Location</h3>
+            <div class="location-name" id="current-location-name">Unknown</div>
+            <div class="location-details">
+              <span class="location-difficulty" id="current-location-difficulty">Easy</span>
+              <span id="current-location-type"></span>
+            </div>
+            <div class="location-effect" id="current-location-effect">
+              No special effects
+            </div>
+          </div>
+
           <!-- ADD THIS STATS PANEL -->
           <div id="game-stats">
             <h3>📊 Stats</h3>
@@ -1029,6 +1241,18 @@
           </div>
         </div>
       </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <!-- Dev Tools -->
+    <button id="dev-tools-toggle">Dev Tools ▲</button>
+    <div id="dev-tools">
+      <h4>Notification Log</h4>
+      <div id="notification-log">
+        <div class="log-entry"><span class="timestamp">[System]</span> Notification log initialized</div>
+      </div>
+    </div>
 
     <!-- Three Column Layout -->
     <div class="three-column-layout">
@@ -1340,6 +1564,10 @@ const amuletImageUrl = 'https://i.imgur.com/kXiZwZX.png';
 let currentEnemy = null;
 let currentRoll = null;
 
+// Location tracking
+let currentLocation = null;
+let notificationLog = [];
+
 // ===== TRUE GAMEPLAY SYSTEM =====
 let gameState = {
   currentGame: null,
@@ -1359,10 +1587,119 @@ let gameState = {
   character: 'rogue',  // ADD THIS
   escapePhase: false,  // ADD THIS
   escapeGames: [],     // ADD THIS
-  escapeProgress: 0    // ADD THIS
+  escapeProgress: 0,    // ADD THIS
+  currentLocation: null,
+  currentDifficulty: 'Easy'
 };
 
 let gameSaves = JSON.parse(localStorage.getItem('roguelikeGameSaves') || '{}');
+
+// ===== NOTIFICATION SYSTEM =====
+
+function showNotification(message, type = 'info', duration = 3000) {
+  const container = document.getElementById('notification-container');
+  if (!container) return;
+
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+
+  container.appendChild(notification);
+
+  // Log notification
+  logNotification(message, type);
+
+  // Auto-remove after duration
+  setTimeout(() => {
+    notification.style.animation = 'slideOutNotification 0.3s ease-in';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, duration);
+}
+
+function logNotification(message, type = 'info') {
+  const timestamp = new Date().toLocaleTimeString();
+  notificationLog.push({ timestamp, message, type });
+
+  const logContainer = document.getElementById('notification-log');
+  if (!logContainer) return;
+
+  const logEntry = document.createElement('div');
+  logEntry.className = 'log-entry';
+  logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+
+  logContainer.appendChild(logEntry);
+
+  // Auto-scroll to bottom
+  logContainer.scrollTop = logContainer.scrollHeight;
+}
+
+// ===== LOCATION SYSTEM =====
+
+function moveToNewLocation() {
+  if (!window.getDifficultyTier || !window.getRandomLocation) {
+    console.error('Location system not loaded');
+    return null;
+  }
+
+  const beatenCount = gameState ? gameState.visitedGames.length - 1 : 0;
+  const difficulty = getDifficultyTier(beatenCount);
+  const location = getRandomLocation(difficulty);
+
+  if (!location) {
+    console.error('No location available for difficulty:', difficulty);
+    return null;
+  }
+
+  currentLocation = location;
+
+  if (gameState) {
+    gameState.currentLocation = location;
+    gameState.currentDifficulty = difficulty;
+  }
+
+  updateLocationDisplay();
+  showNotification(`Entered ${location.name}`, 'info', 4000);
+
+  return location;
+}
+
+function updateLocationDisplay() {
+  const locationDisplay = document.getElementById('location-display');
+  if (!locationDisplay || !currentLocation) return;
+
+  // Show the location display
+  locationDisplay.style.display = 'block';
+
+  // Update location name
+  document.getElementById('current-location-name').textContent = currentLocation.name;
+
+  // Update difficulty badge
+  const difficultyElement = document.getElementById('current-location-difficulty');
+  difficultyElement.textContent = currentLocation.difficulty;
+  difficultyElement.className = `location-difficulty difficulty-${currentLocation.difficulty.toLowerCase()}`;
+
+  // Update type
+  document.getElementById('current-location-type').textContent = currentLocation.type;
+
+  // Update effect
+  document.getElementById('current-location-effect').textContent = currentLocation.effect || 'No special effects';
+}
+
+// Dev Tools Toggle
+document.getElementById('dev-tools-toggle')?.addEventListener('click', function() {
+  const devTools = document.getElementById('dev-tools');
+  if (devTools.classList.contains('open')) {
+    devTools.classList.remove('open');
+    this.textContent = 'Dev Tools ▲';
+  } else {
+    devTools.classList.add('open');
+    this.textContent = 'Dev Tools ▼';
+  }
+});
 
 // DOM elements for gameplay
 const pathContainer = document.getElementById('path-container');
@@ -2891,18 +3228,21 @@ function advance(game, x, y, encounterType) {
   gameState.visitedGames.push(game);
   gameState.currentY = y;
 
+  // Move to a new location
+  moveToNewLocation();
+
   document.getElementById('distance-display').textContent = `Target: ${gameState.amuletGame.name} — ${bfs(game, gameState.amuletGame.name)} steps away`;
-  
+
   // Check if reached amulet game
   if (game === gameState.amuletGame.name) {
     // Beat the amulet game - enter escape phase
     startEscapePhase();
     return;
   }
-  
+
   // Store the encounter type for later
   gameState.nextEncounterType = encounterType;
-  
+
   // Trigger encounter based on type
   if (encounterType === 'combat') {
     showCombatModal();
@@ -2911,10 +3251,10 @@ function advance(game, x, y, encounterType) {
   } else if (encounterType === 'shop') {
     showShopModal();
   }
-  
+
   showFinish(n);
   viewport.scrollTop = y - 200;
-  
+
   // Save game
   saveCurrentGame();
 }
@@ -3822,16 +4162,18 @@ document.getElementById('confirm-save').addEventListener('click', () => {
   amuletGame = amulet;
   
   console.log('New game state:', gameState); // Debug
-  
+
   document.getElementById('save-modal').style.display = 'none';
   document.getElementById('save-name-input').value = '';
   document.getElementById('main-menu').style.display = 'none';
   document.getElementById('dungeon-screen').style.display = 'block';
   document.getElementById('target-game').textContent = amulet.name;
-  
+
   // Small delay to ensure DOM is ready
   setTimeout(() => {
     renderGameState();
+    // Move to initial location
+    moveToNewLocation();
   }, 100);
 });
 
@@ -3843,10 +4185,10 @@ document.getElementById('cancel-save').addEventListener('click', () => {
 function loadGame(saveName) {
   const saveData = gameSaves[saveName];
   if (!saveData) return;
-  
+
   gameState = saveData;
   gameState.gameStarted = true;
-  
+
   health = gameState.health;
   maxHealth = gameState.maxHealth;
   gold = gameState.gold;
@@ -3854,16 +4196,22 @@ function loadGame(saveName) {
   beatenGames = [...gameState.beatenGames];
   startGame = gameState.startGame;
   amuletGame = gameState.amuletGame;
-  
+
+  // Restore location
+  if (gameState.currentLocation) {
+    currentLocation = gameState.currentLocation;
+    updateLocationDisplay();
+  }
+
   updateTopBar();
   updateInventory();
   updateBeatenGamesList();
-  
+
   document.getElementById('main-menu').style.display = 'none';
   document.getElementById('dungeon-screen').style.display = 'block';
   document.getElementById('target-game').textContent = gameState.amuletGame.name;
   document.getElementById('save-list').style.display = 'none';
-  
+
   renderGameState();
 }
 
@@ -4310,5 +4658,9 @@ updateSaveList();
 
 // End of script - Close the script tag
 </script>
+
+<!-- Load locations data -->
+<script src="js/locations.js"></script>
+
 </body>
 </html>
