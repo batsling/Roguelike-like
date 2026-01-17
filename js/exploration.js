@@ -425,6 +425,13 @@ function advance(game, x, y, encounterType) {
   const difficulty = gameState.finishedGames?.length || 0;
   document.getElementById('distance-display').textContent = `Target: ${gameState.amuletGame.name} — ${distance} steps away | Difficulty: ${difficulty}`;
 
+  // Update location display with current game info
+  if (typeof updateLocationDisplay === 'function') {
+    const gameData = GAMES[game];
+    const gameDescription = gameData?.description || 'No description available';
+    updateLocationDisplay(game, gameDescription);
+  }
+
   // Add player icon with animation
   if (gameState.character && PLAYER_CHARACTERS[gameState.character]) {
     const playerIcon = document.createElement('img');

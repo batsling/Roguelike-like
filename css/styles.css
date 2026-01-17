@@ -955,12 +955,12 @@ text, path, line, g {
   scroll-behavior: smooth;
 }
 
-/* ===== STATS DISPLAY SECTION (TOP RIGHT) ===== */
-#stats-display-section {
+/* ===== LOCATION DISPLAY SECTION (TOP RIGHT) ===== */
+#location-display-section {
   position: fixed;
   right: 290px;
   top: 60px;
-  width: 220px;
+  width: 250px;
   background: rgba(30, 30, 30, 0.95);
   border: 2px solid #cc6600;
   border-radius: 0;
@@ -969,39 +969,65 @@ text, path, line, g {
   color: #eee;
   z-index: 999;
   box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  cursor: help;
+  transition: all 0.3s ease;
 }
 
-#stats-display-section h3 {
+#location-display-section:hover {
+  background: rgba(40, 35, 30, 0.98);
+  box-shadow: 0 6px 30px rgba(204, 102, 0, 0.4);
+}
+
+#location-display-section h3 {
   text-align: center;
   border-bottom: 2px solid #cc6600;
   padding-bottom: 8px;
+  font-size: 16px;
+  color: #ffcc66;
 }
 
-.stat-display-item {
-  margin: 12px 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 15px;
+.difficulty-tier-display {
+  margin-top: 15px;
+  text-align: center;
 }
 
-.stat-display-label {
+.difficulty-tier {
+  margin-bottom: 10px;
+}
+
+.tier-label {
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tier-label.easy {
+  background: #4CAF50;
+  color: white;
+  border: 2px solid #66bb6a;
+}
+
+.tier-label.medium {
+  background: #ff9800;
+  color: white;
+  border: 2px solid #ffb74d;
+}
+
+.tier-label.hard {
+  background: #f44336;
+  color: white;
+  border: 2px solid #ff6b6b;
+}
+
+.difficulty-range {
+  font-size: 13px;
   color: #b8a890;
   font-weight: bold;
-}
-
-.stat-display-value {
-  color: #ffcc66;
-  font-weight: bold;
-  font-size: 16px;
-}
-
-.stat-display-value.health {
-  color: #ff6644;
-}
-
-.stat-display-value.gold {
-  color: #ffdd77;
+  font-style: italic;
 }
 
 /* ===== GOALS SECTION STYLES ===== */

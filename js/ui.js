@@ -31,22 +31,16 @@ if (document.readyState === 'loading') {
 // ===== TOP BAR UPDATES =====
 
 function updateTopBar() {
-  // Update top right stats display
-  const displayHealth = document.getElementById('display-health');
-  const displayGold = document.getElementById('display-gold');
-  const displayDifficulty = document.getElementById('display-difficulty');
+  // Update floating HUD (now at bottom of screen)
+  const gameHealth = document.getElementById('game-health');
+  const gameGold = document.getElementById('game-gold');
 
-  if (displayHealth) {
-    displayHealth.textContent = `${health}/${maxHealth}`;
+  if (gameHealth) {
+    gameHealth.textContent = `${health}/${maxHealth}`;
   }
 
-  if (displayGold) {
-    displayGold.textContent = gold;
-  }
-
-  if (displayDifficulty) {
-    const difficulty = gameState.finishedGames?.length || 0;
-    displayDifficulty.textContent = difficulty;
+  if (gameGold) {
+    gameGold.textContent = gold;
   }
 
   // Update stats panel health/gold if they exist
@@ -70,6 +64,133 @@ function updateHealthDisplay() {
 function updateGoldDisplay() {
   // Legacy function - now handled by updateTopBar
   updateTopBar();
+}
+
+// ===== LOCATION DISPLAY =====
+
+function updateLocationDisplay(gameName, gameDescription) {
+  const locationName = document.getElementById('location-name');
+  const tierLabel = document.getElementById('tier-label');
+  const difficultyRange = document.getElementById('difficulty-range');
+  const locationSection = document.getElementById('location-display-section');
+
+  if (!locationName || !tierLabel || !difficultyRange) return;
+
+  // Update location name
+  locationName.textContent = gameName || 'Current Location';
+
+  // Store description for tooltip
+  if (locationSection) {
+    locationSection.dataset.description = gameDescription || 'No description available';
+  }
+
+  // Calculate difficulty tier
+  const difficulty = gameState.finishedGames?.length || 0;
+  let tier = 'easy';
+  let tierText = 'Easy';
+  let rangeText = 'Difficulty 0-4';
+
+  if (difficulty >= 10) {
+    tier = 'hard';
+    tierText = 'Hard';
+    rangeText = 'Difficulty 10+';
+  } else if (difficulty >= 5) {
+    tier = 'medium';
+    tierText = 'Medium';
+    rangeText = 'Difficulty 5-9';
+  }
+
+  // Update tier display
+  tierLabel.textContent = tierText;
+  tierLabel.className = `tier-label ${tier}`;
+  difficultyRange.textContent = rangeText;
+}
+
+// Location tooltip
+let locationTooltip;
+let locationTooltipTimeout = null;
+
+function initLocationTooltip() {
+  if (!locationTooltip) {
+    locationTooltip = document.getElementById('item-tooltip'); // Reuse existing tooltip
+  }
+  return locationTooltip;
+}
+
+function showLocationTooltip(e) {
+  const tooltip = initLocationTooltip();
+  const locationSection = document.getElementById('location-display-section');
+  if (!tooltip || !locationSection) return;
+
+  const description = locationSection.dataset.description || 'No description available';
+  const gameName = document.getElementById('location-name')?.textContent || 'Location';
+
+  tooltip.innerHTML = `
+    <h4 style="margin: 0 0 8px 0; color: #ffcc66; font-size: 16px;">${gameName}</h4>
+    <div style="font-size: 13px; color: #e0d0b0; line-height: 1.4;">
+      ${description}
+    </div>
+  `;
+
+  tooltip.style.opacity = 1;
+  tooltip.style.display = 'block';
+  moveLocationTooltip(e);
+}
+
+function moveLocationTooltip(e) {
+  const tooltip = initLocationTooltip();
+  if (!tooltip) return;
+
+  let left = e.clientX + 14;
+  let top = e.clientY + 14;
+
+  const tooltipWidth = 280;
+  const tooltipHeight = tooltip.offsetHeight || 150;
+
+  if (left + tooltipWidth > window.innerWidth) {
+    left = e.clientX - tooltipWidth - 14;
+  }
+
+  if (top + tooltipHeight > window.innerHeight) {
+    top = window.innerHeight - tooltipHeight - 10;
+  }
+
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
+}
+
+function hideLocationTooltip() {
+  const tooltip = initLocationTooltip();
+  if (!tooltip) return;
+
+  if (locationTooltipTimeout) {
+    clearTimeout(locationTooltipTimeout);
+  }
+
+  tooltip.style.opacity = 0;
+  locationTooltipTimeout = setTimeout(() => {
+    tooltip.style.display = 'none';
+    locationTooltipTimeout = null;
+  }, 150);
+}
+
+// Add event listeners for location display tooltip
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const locationSection = document.getElementById('location-display-section');
+    if (locationSection) {
+      locationSection.addEventListener('mouseenter', showLocationTooltip);
+      locationSection.addEventListener('mousemove', moveLocationTooltip);
+      locationSection.addEventListener('mouseleave', hideLocationTooltip);
+    }
+  });
+} else {
+  const locationSection = document.getElementById('location-display-section');
+  if (locationSection) {
+    locationSection.addEventListener('mouseenter', showLocationTooltip);
+    locationSection.addEventListener('mousemove', moveLocationTooltip);
+    locationSection.addEventListener('mouseleave', hideLocationTooltip);
+  }
 }
 
 // ===== INVENTORY DISPLAY =====
@@ -871,13 +992,6 @@ function updateGameStats() {
     const difficulty = gameState.finishedGames?.length || 0;
     statsDifficulty.textContent = difficulty;
   }
-
-  // Update top right stats display
-  const displayDifficulty = document.getElementById('display-difficulty');
-  if (displayDifficulty) {
-    const difficulty = gameState.finishedGames?.length || 0;
-    displayDifficulty.textContent = difficulty;
-  }
 }
 
 // ===== SAVE/LOAD LIST =====
@@ -1211,6 +1325,7 @@ function getRarityColor(rarity) {
 window.updateTopBar = updateTopBar;
 window.updateHealthDisplay = updateHealthDisplay;
 window.updateGoldDisplay = updateGoldDisplay;
+window.updateLocationDisplay = updateLocationDisplay;
 window.updateInventory = updateInventory;
 window.updateCursesDisplay = updateCursesDisplay;
 window.updateVerificationCursesDisplay = updateVerificationCursesDisplay;
