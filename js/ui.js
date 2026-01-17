@@ -71,13 +71,12 @@ function updateGoldDisplay() {
 function updateLocationDisplay(gameName, gameDescription) {
   const locationName = document.getElementById('location-name');
   const tierLabel = document.getElementById('tier-label');
-  const difficultyRange = document.getElementById('difficulty-range');
   const currentDifficulty = document.getElementById('current-difficulty');
   const locationSection = document.getElementById('location-display-section');
 
-  if (!locationName || !tierLabel || !difficultyRange) return;
+  if (!locationName || !tierLabel) return;
 
-  // Update location name
+  // Update location name (game name)
   locationName.textContent = gameName || 'Current Location';
 
   // Store description for tooltip
@@ -89,26 +88,25 @@ function updateLocationDisplay(gameName, gameDescription) {
   const difficulty = gameState.finishedGames?.length || 0;
   let tier = 'easy';
   let tierText = 'Easy';
-  let rangeText = 'Difficulty 0-4';
+  let rangeText = '0-4';
 
   if (difficulty >= 10) {
     tier = 'hard';
     tierText = 'Hard';
-    rangeText = 'Difficulty 10+';
+    rangeText = '10+';
   } else if (difficulty >= 5) {
     tier = 'medium';
     tierText = 'Medium';
-    rangeText = 'Difficulty 5-9';
+    rangeText = '5-9';
   }
 
-  // Update tier display
-  tierLabel.textContent = tierText;
+  // Update tier display with range inside
+  tierLabel.innerHTML = `${tierText}<br><span class="tier-range">${rangeText}</span>`;
   tierLabel.className = `tier-label ${tier}`;
-  difficultyRange.textContent = rangeText;
 
   // Update current difficulty
   if (currentDifficulty) {
-    currentDifficulty.textContent = `Current: ${difficulty}`;
+    currentDifficulty.textContent = `Current Difficulty: ${difficulty}`;
   }
 }
 

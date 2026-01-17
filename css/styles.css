@@ -986,6 +986,18 @@ text, path, line, g {
   color: #ffcc66;
 }
 
+.location-game-name {
+  text-align: center;
+  font-size: 15px;
+  font-weight: bold;
+  color: #e6d5b8;
+  margin: 10px 0 15px 0;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  border: 1px solid #4a4440;
+}
+
 .difficulty-tier-display {
   margin-top: 15px;
   text-align: center;
@@ -997,12 +1009,20 @@ text, path, line, g {
 
 .tier-label {
   display: inline-block;
-  padding: 8px 20px;
+  padding: 10px 20px;
   border-radius: 6px;
   font-weight: bold;
-  font-size: 18px;
+  font-size: 16px;
   text-transform: uppercase;
   letter-spacing: 1px;
+  line-height: 1.4;
+}
+
+.tier-range {
+  font-size: 13px;
+  font-weight: normal;
+  letter-spacing: 0.5px;
+  opacity: 0.9;
 }
 
 .tier-label.easy {
@@ -1023,16 +1043,9 @@ text, path, line, g {
   border: 2px solid #ff6b6b;
 }
 
-.difficulty-range {
-  font-size: 13px;
-  color: #b8a890;
-  font-weight: bold;
-  font-style: italic;
-}
-
 .current-difficulty {
-  margin-top: 8px;
-  font-size: 14px;
+  margin-top: 12px;
+  font-size: 13px;
   color: #ffcc66;
   font-weight: bold;
 }
