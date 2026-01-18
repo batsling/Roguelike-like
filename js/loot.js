@@ -1014,9 +1014,6 @@ function keepFishFromSushiBar() {
       createNotification(`Added ${numFish} fish to loot!`, '#4488ff', '🐟');
     }
 
-    // Trigger Barrel bonus fish
-    triggerBarrelBonusFish(numFish);
-
     window.tempSushiBarFish = null;
   }
 
@@ -1155,10 +1152,6 @@ function finishSushiConversion() {
       createNotification(`Added ${remainingCount} fish to loot!`, '#4488ff', '🐟');
     }
 
-    // Trigger Barrel bonus fish for all fish obtained (converted and kept)
-    const totalFishObtained = window.tempSushiBarFish.length;
-    triggerBarrelBonusFish(totalFishObtained);
-
     window.tempSushiBarFish = null;
     window.tempSushiConvertedIndices = null;
   }
@@ -1175,7 +1168,6 @@ window.selectRandomFish = selectRandomFish;
 window.getFishGoldValue = getFishGoldValue;
 window.getFishHealthValue = getFishHealthValue;
 window.addToLoot = addToLoot;
-window.triggerBarrelBonusFish = triggerBarrelBonusFish;
 window.removeFromLoot = removeFromLoot;
 window.showLootModal = showLootModal;
 window.updateLootDisplay = updateLootDisplay;

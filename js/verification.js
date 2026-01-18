@@ -430,6 +430,15 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
         };
       }
 
+      // Special handling for Barrel
+      if (weaponName === "Barrel") {
+        const fishCount = level === 1 ? 1 : level === 2 ? 2 : 3;
+        return {
+          question: 'Did you obtain at least 1 fish?',
+          reward: `${fishCount} random fish`
+        };
+      }
+
       // For Blasma Pistol and other weapons: "If you open more than 10 chests in one run, gain a (lv1:small/lv2:normal/lv3:large) chest"
       // Extract the condition and reward
       const conditionMatch = description.match(/If you ([^,]+),/i);
@@ -766,6 +775,23 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
           weaponEffectActivated = true;
 
           console.log(`${weapon.name} activated: +${strengthBonus} Strength`);
+        }
+        // For Barrel: grant 1/2/3 random fish
+        else if (weapon.name === "Barrel") {
+          const fishCount = weaponLevel === 1 ? 1 : weaponLevel === 2 ? 2 : 3;
+
+          // Give random fish based on location
+          if (typeof selectRandomFish === 'function' && typeof addToLoot === 'function') {
+            for (let i = 0; i < fishCount; i++) {
+              const fishResult = selectRandomFish(gameState.location);
+              addToLoot(fishResult);
+            }
+
+            weaponRewardText = `${fishCount} random fish`;
+            weaponEffectActivated = true;
+
+            console.log(`${weapon.name} activated: granted ${fishCount} random fish`);
+          }
         }
       }
     }
