@@ -199,6 +199,61 @@ function showShopModal(purchasedIndices = []) {
     `;
   }
 
+  // Build loot selling section
+  let lootSellHTML = '';
+  if (gameState.loot && gameState.loot.length > 0) {
+    lootSellHTML = `
+      <div style="
+        background: #2d2d2d;
+        border-radius: 12px;
+        border: 3px solid #4488ff;
+        padding: 20px;
+        margin-bottom: 20px;
+      ">
+        <h3 style="color: #4488ff; margin-top: 0; text-align: center; font-size: 18px;">🐟 Sell Loot</h3>
+        <p style="text-align: center; color: #aaa; font-size: 13px; margin-bottom: 15px;">Click on items to sell them for gold</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
+    `;
+
+    gameState.loot.forEach((lootItem, index) => {
+      if (lootItem.isItem) {
+        // Items from fish can't be sold here (they're in regular inventory)
+        return;
+      }
+
+      const fish = lootItem.fish;
+      const rarity = lootItem.rarity;
+      const size = lootItem.size;
+      const goldValue = getFishGoldValue(rarity, size);
+
+      let rarityColor = '#aaa';
+      if (rarity === 'Rare') rarityColor = '#ffd700';
+      else if (rarity === 'Uncommon') rarityColor = '#66ddff';
+
+      lootSellHTML += `
+        <div class="loot-sell-item" data-index="${index}" style="
+          background: rgba(68, 136, 255, 0.1);
+          border: 2px solid ${rarityColor};
+          border-radius: 8px;
+          padding: 10px;
+          cursor: pointer;
+          transition: all 0.2s;
+          text-align: center;
+        " onmouseover="this.style.transform='scale(1.05)'; this.style.background='rgba(68, 136, 255, 0.2)';" onmouseout="this.style.transform='scale(1)'; this.style.background='rgba(68, 136, 255, 0.1)';" onclick="sellLootItem(${index})">
+          <img src="images/fish/${fish.image}.png" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 5px;">
+          <div style="font-size: 12px; font-weight: bold; color: #66ddff; margin-bottom: 3px;">${fish.name}</div>
+          <div style="font-size: 10px; color: ${rarityColor}; margin-bottom: 5px;">${rarity} ${size}</div>
+          <div style="font-size: 13px; font-weight: bold; color: #ffd700;">💰 ${goldValue}g</div>
+        </div>
+      `;
+    });
+
+    lootSellHTML += `
+        </div>
+      </div>
+    `;
+  }
+
   // Build items grid
   let itemsHTML = '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px;">';
 
@@ -286,6 +341,7 @@ function showShopModal(purchasedIndices = []) {
         <div style="color: #4CAF50; font-weight: bold; font-size: 18px;">🔄 Rerolls: ${reroll}</div>
       </div>
       ${weaponUpgradeHTML}
+      ${lootSellHTML}
       ${itemsHTML}
       <div style="display: flex; gap: 10px; margin-top: 20px;">
         <button id="shop-reroll-btn" style="
@@ -447,3 +503,53 @@ window.closeGameModal = function() {
     originalCloseGameModal();
   }
 };
+
+/**
+ * Sell a loot item for gold
+ * @param {number} index - Index in the loot array
+ */
+function sellLootItem(index) {
+  if (!gameState.loot || !gameState.loot[index]) return;
+
+  const lootItem = gameState.loot[index];
+  if (lootItem.isItem) return; // Can't sell items here
+
+  const rarity = lootItem.rarity;
+  const size = lootItem.size;
+  const goldValue = getFishGoldValue(rarity, size);
+
+  // Add gold
+  gold += goldValue;
+  gameState.gold = gold;
+
+  // Remove from loot
+  if (typeof removeFromLoot === 'function') {
+    removeFromLoot(index);
+  } else {
+    gameState.loot.splice(index, 1);
+  }
+
+  // Show notification
+  if (typeof createNotification === 'function') {
+    createNotification(`Sold for ${goldValue} gold!`, '#ffd700', '💰');
+  }
+
+  // Save game
+  saveCurrentGame();
+
+  // Refresh shop to update gold and loot display
+  // Find currently purchased items by checking if buttons are disabled
+  const purchasedIndices = [];
+  document.querySelectorAll('.shop-buy-btn').forEach((btn, idx) => {
+    if (btn.disabled && btn.textContent === '✓ Purchased') {
+      purchasedIndices.push(idx);
+    }
+  });
+
+  showShopModal(purchasedIndices);
+}
+
+// Export shop functions
+window.showShopModal = showShopModal;
+window.leaveShop = leaveShop;
+window.sellLootItem = sellLootItem;

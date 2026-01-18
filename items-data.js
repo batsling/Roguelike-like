@@ -250,7 +250,8 @@ var ITEMS_DATA = [
     "image": "images/items/Barrel.png",
     "reference": "Enter the Gungeon",
     "tags": [
-      "Gun"
+      "gun",
+      "fish"
     ]
   },
   {

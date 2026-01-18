@@ -410,6 +410,36 @@ function addToLoot(lootItem) {
 }
 
 /**
+ * Check if player has Barrel item and trigger bonus fish
+ * Should be called after obtaining any fish
+ * @param {number} numFishObtained - Number of fish obtained in this event
+ */
+function triggerBarrelBonusFish(numFishObtained) {
+  if (numFishObtained < 1) return;
+
+  // Check if player has Barrel
+  const hasBarrel = inventory.some(item => item.name === 'Barrel');
+  if (!hasBarrel) return;
+
+  // Determine bonus fish count based on weapon level (1/2/3)
+  const weaponLevel = gameState.weaponLevel || 1;
+  const bonusFishCount = weaponLevel; // Level 1 = 1 fish, Level 2 = 2 fish, Level 3 = 3 fish
+
+  console.log(`Barrel triggered! Giving ${bonusFishCount} bonus fish`);
+
+  // Give bonus fish
+  for (let i = 0; i < bonusFishCount; i++) {
+    const bonusFish = selectRandomFish(gameState.location);
+    addToLoot(bonusFish);
+  }
+
+  // Show notification
+  if (typeof createNotification === 'function') {
+    createNotification(`Barrel gave ${bonusFishCount} bonus fish!`, '#ff9800', '🛢️');
+  }
+}
+
+/**
  * Remove a fish from the loot inventory
  * @param {number} index - Index of the fish in the loot array
  */
@@ -974,13 +1004,18 @@ function showSushiBarSuccess(caughtFish) {
  */
 function keepFishFromSushiBar() {
   if (window.tempSushiBarFish) {
+    const numFish = window.tempSushiBarFish.length;
+
     window.tempSushiBarFish.forEach(fishData => {
       addToLoot(fishData);
     });
 
     if (typeof createNotification === 'function') {
-      createNotification(`Added ${window.tempSushiBarFish.length} fish to loot!`, '#4488ff', '🐟');
+      createNotification(`Added ${numFish} fish to loot!`, '#4488ff', '🐟');
     }
+
+    // Trigger Barrel bonus fish
+    triggerBarrelBonusFish(numFish);
 
     window.tempSushiBarFish = null;
   }
@@ -1120,6 +1155,10 @@ function finishSushiConversion() {
       createNotification(`Added ${remainingCount} fish to loot!`, '#4488ff', '🐟');
     }
 
+    // Trigger Barrel bonus fish for all fish obtained (converted and kept)
+    const totalFishObtained = window.tempSushiBarFish.length;
+    triggerBarrelBonusFish(totalFishObtained);
+
     window.tempSushiBarFish = null;
     window.tempSushiConvertedIndices = null;
   }
@@ -1136,6 +1175,7 @@ window.selectRandomFish = selectRandomFish;
 window.getFishGoldValue = getFishGoldValue;
 window.getFishHealthValue = getFishHealthValue;
 window.addToLoot = addToLoot;
+window.triggerBarrelBonusFish = triggerBarrelBonusFish;
 window.removeFromLoot = removeFromLoot;
 window.showLootModal = showLootModal;
 window.updateLootDisplay = updateLootDisplay;
