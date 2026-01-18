@@ -8,6 +8,8 @@ C: Type
 D: Description
 E: Reference/origin game
 F: Tags
+G: File (image filename without .png)
+H: Unlock Condition
 """
 
 import openpyxl
@@ -39,14 +41,15 @@ def import_items():
     # Start from row 2 (skip header)
     for row_num, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
         # Extract columns based on actual Excel structure:
-        # A: Item, B: Rating, C: Type, D: Description, E: Reference, F: Tags, G: Unlock Condition
+        # A: Item, B: Rating, C: Type, D: Description, E: Reference, F: Tags, G: File, H: Unlock Condition
         name = row[0]  # Column A - Item
         rarity = row[1]  # Column B - Rating
         item_type = row[2]  # Column C - Type (Passive/Usable/Weapon/Triggered)
         description = row[3] if len(row) > 3 else None  # Column D - Description
         reference = row[4] if len(row) > 4 else None  # Column E - Reference (origin game)
         tags = row[5] if len(row) > 5 else None  # Column F - Tags
-        # row[6] is Unlock Condition - skip for now
+        file_name = row[6] if len(row) > 6 else None  # Column G - File (image filename without .png)
+        # row[7] is Unlock Condition - skip for now
 
         # Skip empty rows
         if not name:
@@ -55,8 +58,11 @@ def import_items():
         # Convert name to clean string
         name = str(name).strip()
 
-        # Generate image path from name
-        filename = name_to_filename(name)
+        # Generate image path from File column (column G) if available, otherwise fallback to name conversion
+        if file_name and str(file_name).strip():
+            filename = str(file_name).strip()
+        else:
+            filename = name_to_filename(name)
         image_path = f"images/items/{filename}.png"
 
         # Build item object
@@ -100,7 +106,7 @@ var ITEMS_DATA = {json.dumps(items, indent=2)};
     print(f"  - description (Column D)")
     print(f"  - reference/origin (Column E)")
     print(f"  - tags (Column F)")
-    print(f"  - image (auto-generated from name)")
+    print(f"  - image (from Column G File, or auto-generated from name if empty)")
 
     # Show first item as example
     if items:
