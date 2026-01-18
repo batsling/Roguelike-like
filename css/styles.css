@@ -1965,19 +1965,23 @@ text, path, line, g {
   margin-right: 20px;
 }
 
-/* Stat Color Utilities */
+/* Stat Color Utilities - High specificity to override #game-stats .stat-label */
+#game-stats .stat-color-strength,
 .stat-color-strength {
   color: #ff6644;
 }
 
+#game-stats .stat-color-dexterity,
 .stat-color-dexterity {
   color: #88ff88;
 }
 
+#game-stats .stat-color-intelligence,
 .stat-color-intelligence {
   color: #66ccff;
 }
 
+#game-stats .stat-color-charisma,
 .stat-color-charisma {
   color: #cc66ff;
 }

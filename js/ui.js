@@ -1022,8 +1022,13 @@ function updateGameStats() {
 
   // Difficulty = total games beaten (matches difficulty in progress bar)
   if (statsDifficulty) {
-    const difficulty = gameState.totalGamesBeaten || 0;
+    // Ensure totalGamesBeaten is initialized
+    if (typeof gameState.totalGamesBeaten !== 'number') {
+      gameState.totalGamesBeaten = 0;
+    }
+    const difficulty = gameState.totalGamesBeaten;
     statsDifficulty.textContent = difficulty;
+    console.log(`📊 Updating difficulty display: ${difficulty}`);
   }
 }
 

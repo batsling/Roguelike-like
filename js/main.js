@@ -3444,8 +3444,12 @@ function markGameFinished(gameName) {
 
   // Initialize totalGamesBeaten if it doesn't exist (backwards compatibility)
   if (typeof gameState.totalGamesBeaten !== 'number') {
+    console.log('⚠️ totalGamesBeaten was not a number, initializing to 0');
     gameState.totalGamesBeaten = 0;
   }
+
+  // Log the state before increment for debugging
+  console.log(`📊 Before increment - totalGamesBeaten: ${gameState.totalGamesBeaten}`);
 
   // Increment beaten count (tracks all completions, even if player dies later)
   // NOTE: Amulet stat is only incremented on successful escape (in showVictoryScreen)
@@ -3454,7 +3458,7 @@ function markGameFinished(gameName) {
   // Increment total games beaten counter (counts ALL completions including duplicates)
   const previousDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
   gameState.totalGamesBeaten++;
-  console.log(`Game finished: ${gameName}. Total games beaten: ${gameState.totalGamesBeaten}`);
+  console.log(`✅ Game finished: ${gameName}. Total games beaten: ${gameState.totalGamesBeaten} (was ${gameState.totalGamesBeaten - 1})`);
 
   // Reroller trait: Every time you beat a game, gain +1 Reroll
   if (hasTrait('reroller')) {

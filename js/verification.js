@@ -420,8 +420,17 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
     const weaponLevel = gameState.weaponLevel || 1;
 
     // Parse weapon effect to get the verification question and reward
-    const getWeaponVerification = (description, level) => {
-      // For Blasma Pistol: "If you open more than 10 chests in one run, gain a (lv1:small/lv2:normal/lv3:large) chest"
+    const getWeaponVerification = (description, level, weaponName) => {
+      // Special handling for Lil' Bomber
+      if (weaponName === "Lil' Bomber") {
+        const strengthBonus = level === 1 ? 1 : level === 2 ? 2 : 3;
+        return {
+          question: 'Did you kill an enemy with a bomb at least one time?',
+          reward: `+${strengthBonus} Strength`
+        };
+      }
+
+      // For Blasma Pistol and other weapons: "If you open more than 10 chests in one run, gain a (lv1:small/lv2:normal/lv3:large) chest"
       // Extract the condition and reward
       const conditionMatch = description.match(/If you ([^,]+),/i);
       const levelPattern = /\(lv1:([^/]+)\/lv2:([^/]+)\/lv3:([^)]+)\)/;
@@ -444,7 +453,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       return { question, reward };
     };
 
-    const { question, reward } = getWeaponVerification(weapon.description, weaponLevel);
+    const { question, reward } = getWeaponVerification(weapon.description, weaponLevel, weapon.name);
 
     modalHTML += `
       <div style="background: rgba(255, 152, 0, 0.1); border: 1px solid #ff9800; border-radius: 6px; padding: 10px; margin: 8px 0;">
