@@ -3473,38 +3473,37 @@ function markGameFinished(gameName) {
 
   // Check if difficulty tier changed and update location
   const newDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
-    if (previousDifficulty !== newDifficulty) {
-      const newLocation = getRandomLocation(newDifficulty);
-      if (newLocation) {
-        gameState.location = newLocation;
-        console.log(`Difficulty tier changed to ${newDifficulty}! New location: ${newLocation.name}`);
+  if (previousDifficulty !== newDifficulty) {
+    const newLocation = getRandomLocation(newDifficulty);
+    if (newLocation) {
+      gameState.location = newLocation;
+      console.log(`Difficulty tier changed to ${newDifficulty}! New location: ${newLocation.name}`);
 
-        // Update the location display
-        if (typeof updateLocationDisplay === 'function') {
-          updateLocationDisplay(gameState.currentGame);
-        }
+      // Update the location display
+      if (typeof updateLocationDisplay === 'function') {
+        updateLocationDisplay(gameState.currentGame);
+      }
 
-        // Check if this is a Hades location and show boon selection immediately
-        if (newLocation.game === 'Hades' && typeof showHadesBoonSelection === 'function') {
-          // Show boon selection immediately when entering new Hades location
-          setTimeout(() => {
-            showHadesBoonSelection();
-          }, 500); // Small delay to let location display update first
-        }
+      // Check if this is a Hades location and show boon selection immediately
+      if (newLocation.game === 'Hades' && typeof showHadesBoonSelection === 'function') {
+        // Show boon selection immediately when entering new Hades location
+        setTimeout(() => {
+          showHadesBoonSelection();
+        }, 500); // Small delay to let location display update first
       }
     }
-
-    // Check and update curse durations
-    checkCurseDurations('game_beaten');
-
-    // Update curse UI to reflect new progress
-    if (typeof updateCurseUI === 'function') {
-      updateCurseUI();
-    }
-
-    updateGameStats();
-    saveCurrentGame();
   }
+
+  // Check and update curse durations
+  checkCurseDurations('game_beaten');
+
+  // Update curse UI to reflect new progress
+  if (typeof updateCurseUI === 'function') {
+    updateCurseUI();
+  }
+
+  updateGameStats();
+  saveCurrentGame();
 }
 
 /**
