@@ -62,7 +62,7 @@ const FISH_DATA = [
     rarity: "Common",
     type: "Watery",
     game: "Hades",
-    image: "chlam"
+    image: "chalm"
   },
   {
     name: "Charp",
