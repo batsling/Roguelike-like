@@ -631,6 +631,503 @@ function hideLootTooltip() {
 }
 
 // ========================================
+// FISHING MINIGAME
+// ========================================
+
+/**
+ * Start the fishing minigame
+ * @param {number} numAttempts - Number of fishing attempts (default 3)
+ * @param {function} onComplete - Callback when fishing is complete, receives array of caught fish
+ */
+function startFishingMinigame(numAttempts = 3, onComplete) {
+  const caughtFish = [];
+  let currentAttempt = 0;
+
+  // Timing for each attempt (decreasing)
+  const attemptTimings = [1000, 500, 250]; // ms to click after button activates
+
+  function doFishingAttempt() {
+    currentAttempt++;
+
+    if (currentAttempt > numAttempts) {
+      // Fishing complete
+      if (onComplete) {
+        onComplete(caughtFish);
+      }
+      return;
+    }
+
+    // Show fishing UI
+    showFishingAttemptUI(currentAttempt, numAttempts, attemptTimings[currentAttempt - 1], (caught, fishData) => {
+      if (caught && fishData) {
+        caughtFish.push(fishData);
+      }
+      // Continue to next attempt after a brief delay
+      setTimeout(() => {
+        doFishingAttempt();
+      }, 500);
+    });
+  }
+
+  doFishingAttempt();
+}
+
+/**
+ * Show the UI for a single fishing attempt
+ */
+function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttemptComplete) {
+  // Create fishing modal
+  const modalHTML = `
+    <div id="fishing-container" style="text-align: center; padding: 40px;">
+      <h3 style="color: #66ddff; margin-bottom: 30px;">Attempt ${attemptNumber} of ${totalAttempts}</h3>
+
+      <div style="position: relative; display: flex; align-items: center; justify-content: center; gap: 40px; margin-bottom: 30px;">
+        <!-- Character Image -->
+        <div id="fishing-character" style="width: 200px; height: 200px;">
+          ${gameState?.character && PLAYER_CHARACTERS[gameState.character] ?
+            `<img src="${PLAYER_CHARACTERS[gameState.character].icon}" style="width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated;">` :
+            ''
+          }
+        </div>
+
+        <!-- Lake Text -->
+        <div>
+          <div style="font-size: 72px; font-weight: bold; color: #4488ff; text-shadow: 0 0 20px rgba(68, 136, 255, 0.5);">
+            LAKE
+          </div>
+
+          <!-- Fishing Button Area -->
+          <div style="position: relative; margin-top: 40px;">
+            <div style="text-align: center; margin-bottom: 10px; color: #aaa; font-size: 14px;">
+              <span>Click here ↓</span>
+            </div>
+            <button id="fishing-btn" disabled style="
+              width: 120px;
+              height: 120px;
+              font-size: 64px;
+              background: #555;
+              border: 4px solid #666;
+              border-radius: 50%;
+              cursor: not-allowed;
+              transition: all 0.2s;
+              opacity: 0.5;
+            ">!</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="fishing-message" style="min-height: 30px; color: #ffd700; font-size: 18px; font-weight: bold;"></div>
+      <div id="caught-fish-display" style="min-height: 150px; margin-top: 20px;"></div>
+    </div>
+  `;
+
+  createGameModal(modalHTML);
+
+  const fishingBtn = document.getElementById('fishing-btn');
+  const fishingMessage = document.getElementById('fishing-message');
+  const caughtFishDisplay = document.getElementById('caught-fish-display');
+
+  let buttonActive = false;
+  let buttonClicked = false;
+  let activationTimeout;
+  let expirationTimeout;
+
+  // Random delay before button activates (3-10 seconds)
+  const activationDelay = 3000 + Math.random() * 7000;
+
+  fishingMessage.textContent = 'Wait for the !...';
+
+  activationTimeout = setTimeout(() => {
+    // Activate button
+    buttonActive = true;
+    fishingBtn.disabled = false;
+    fishingBtn.style.background = '#4488ff';
+    fishingBtn.style.borderColor = '#66aaff';
+    fishingBtn.style.cursor = 'pointer';
+    fishingBtn.style.opacity = '1';
+    fishingBtn.style.boxShadow = '0 0 30px rgba(68, 136, 255, 0.8)';
+    fishingMessage.textContent = 'CLICK NOW!';
+
+    // Set expiration timer
+    expirationTimeout = setTimeout(() => {
+      if (!buttonClicked) {
+        // Failed to click in time
+        fishingMessage.textContent = 'It got away...';
+        fishingBtn.disabled = true;
+        fishingBtn.style.background = '#555';
+        fishingBtn.style.cursor = 'not-allowed';
+        fishingBtn.style.opacity = '0.5';
+
+        setTimeout(() => {
+          closeGameModal();
+          onAttemptComplete(false, null);
+        }, 1500);
+      }
+    }, clickWindow);
+  }, activationDelay);
+
+  fishingBtn.onclick = () => {
+    if (!buttonActive || buttonClicked) return;
+
+    buttonClicked = true;
+    clearTimeout(expirationTimeout);
+
+    // Success! Catch a fish
+    fishingMessage.textContent = 'You caught something!';
+    fishingBtn.style.background = '#44ff44';
+    fishingBtn.style.borderColor = '#66ff66';
+
+    // Select a random fish based on location
+    const fishResult = selectRandomFish(gameState.location);
+
+    if (fishResult.isItem) {
+      // Caught an item instead of fish
+      const item = fishResult.item;
+      caughtFishDisplay.innerHTML = `
+        <div style="animation: fishCatch 0.5s ease-out;">
+          <div style="display: inline-block; padding: 20px; background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(75, 0, 130, 0.3)); border: 3px solid #8a2be2; border-radius: 12px; box-shadow: 0 0 40px rgba(138, 43, 226, 0.6);">
+            <img src="images/items/${item.image}.png" style="width: 120px; height: 120px; object-fit: contain;">
+            <div style="margin-top: 10px; font-size: 20px; font-weight: bold; color: #ba55d3;">${item.name}</div>
+            <div style="margin-top: 5px; color: #aaa;">Special Item!</div>
+          </div>
+        </div>
+      `;
+    } else {
+      // Caught a fish
+      const fish = fishResult.fish;
+      const rarity = fishResult.rarity;
+      const size = fishResult.size;
+      const goldValue = getFishGoldValue(rarity, size);
+
+      let rarityColor = '#aaa';
+      if (rarity === 'Rare') rarityColor = '#ffd700';
+      else if (rarity === 'Uncommon') rarityColor = '#66ddff';
+
+      caughtFishDisplay.innerHTML = `
+        <div style="animation: fishCatch 0.5s ease-out;">
+          <div style="display: inline-block; padding: 20px; background: linear-gradient(135deg, rgba(68, 136, 255, 0.3), rgba(34, 68, 128, 0.3)); border: 3px solid ${rarityColor}; border-radius: 12px; box-shadow: 0 0 40px ${rarityColor}80;">
+            <img src="images/fish/${fish.image}.png" style="width: 120px; height: 120px; object-fit: contain;">
+            <div style="margin-top: 10px; font-size: 20px; font-weight: bold; color: #66ddff;">${fish.name}</div>
+            <div style="margin-top: 5px; color: ${rarityColor};">${rarity} - ${size}</div>
+            <div style="margin-top: 5px; color: #ffd700; font-weight: bold;">💰 ${goldValue}g</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Add CSS animation if not already present
+    if (!document.getElementById('fishing-animations')) {
+      const style = document.createElement('style');
+      style.id = 'fishing-animations';
+      style.textContent = `
+        @keyframes fishCatch {
+          0% { transform: translateY(50px); opacity: 0; }
+          100% { transform: translateY(0); opacity: 1; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    setTimeout(() => {
+      closeGameModal();
+      onAttemptComplete(true, fishResult);
+    }, 2000);
+  };
+}
+
+// ========================================
+// SUSHI BAR EVENT
+// ========================================
+
+/**
+ * Show the Sushi Bar event
+ */
+function showSushiBarEvent() {
+  // Initial prompt
+  const initialPromptHTML = `
+    <div style="text-align: center; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #ffd700; margin-top: 0;">🍣 A Sushi Bar By The Blue Hole</h2>
+      <p style="color: #e6d5b8; font-size: 16px; line-height: 1.6; margin: 20px 0;">
+        As you continue on your journey, you stumble upon a sushi restaurant residing near a large ocean.
+        You meet an eccentric older gentleman who challenges you to a fishing contest.
+      </p>
+      <button onclick="startSushiBarFishing()" style="
+        margin-top: 20px;
+        padding: 12px 30px;
+        background: #4488ff;
+        border: none;
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+      ">Continue</button>
+    </div>
+  `;
+
+  createGameModal(initialPromptHTML);
+}
+
+/**
+ * Start the fishing portion of the Sushi Bar event
+ */
+function startSushiBarFishing() {
+  closeGameModal();
+
+  // Start fishing minigame with 3 attempts
+  startFishingMinigame(3, (caughtFish) => {
+    // Show results based on catches
+    if (caughtFish.length === 0) {
+      // No fish caught - failure prompt
+      showSushiBarFailure();
+    } else {
+      // Fish caught - success prompt with choices
+      showSushiBarSuccess(caughtFish);
+    }
+  });
+}
+
+/**
+ * Show failure prompt (no fish caught)
+ */
+function showSushiBarFailure() {
+  const failureHTML = `
+    <div style="text-align: center; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #888; margin-top: 0;">🍣 No Catch Today</h2>
+      <p style="color: #e6d5b8; font-size: 16px; line-height: 1.6; margin: 20px 0;">
+        You can tell the man is disappointed, but he tells you that the fish just might not have been biting today.
+      </p>
+      <button onclick="closeGameModal()" style="
+        margin-top: 20px;
+        padding: 12px 30px;
+        background: #555;
+        border: none;
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+      ">Continue</button>
+    </div>
+  `;
+
+  createGameModal(failureHTML);
+}
+
+/**
+ * Show success prompt with choices
+ */
+function showSushiBarSuccess(caughtFish) {
+  const successHTML = `
+    <div style="text-align: center; max-width: 700px; margin: 0 auto;">
+      <h2 style="color: #ffd700; margin-top: 0;">🍣 Successful Catch!</h2>
+      <p style="color: #e6d5b8; font-size: 16px; line-height: 1.6; margin: 20px 0;">
+        The old man congratulates you on the successful catch, and offers to have the nearby chef prepare some sushi.
+      </p>
+
+      <div style="display: flex; gap: 20px; justify-content: center; margin-top: 30px;">
+        <button onclick="keepFishFromSushiBar()" style="
+          flex: 1;
+          max-width: 300px;
+          padding: 15px 20px;
+          background: linear-gradient(145deg, #4488ff, #2255cc);
+          border: 2px solid #66aaff;
+          color: white;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+          transition: transform 0.2s;
+        " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+          🎒 Keep the Fish<br>
+          <span style="font-size: 13px; opacity: 0.8;">Sell them later for gold</span>
+        </button>
+
+        <button onclick="convertFishToSushi()" style="
+          flex: 1;
+          max-width: 300px;
+          padding: 15px 20px;
+          background: linear-gradient(145deg, #ff6666, #cc3333);
+          border: 2px solid #ff8888;
+          color: white;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+          transition: transform 0.2s;
+        " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+          🍱 Prepare Sushi<br>
+          <span style="font-size: 13px; opacity: 0.8;">Exchange fish for health</span>
+        </button>
+      </div>
+    </div>
+  `;
+
+  createGameModal(successHTML);
+
+  // Store caught fish in temporary state
+  window.tempSushiBarFish = caughtFish;
+}
+
+/**
+ * Keep all fish - add to loot inventory
+ */
+function keepFishFromSushiBar() {
+  if (window.tempSushiBarFish) {
+    window.tempSushiBarFish.forEach(fishData => {
+      addToLoot(fishData);
+    });
+
+    if (typeof createNotification === 'function') {
+      createNotification(`Added ${window.tempSushiBarFish.length} fish to loot!`, '#4488ff', '🐟');
+    }
+
+    window.tempSushiBarFish = null;
+  }
+
+  closeGameModal();
+}
+
+/**
+ * Convert fish to sushi - show selection UI
+ */
+function convertFishToSushi() {
+  if (!window.tempSushiBarFish || window.tempSushiBarFish.length === 0) {
+    closeGameModal();
+    return;
+  }
+
+  const fishList = window.tempSushiBarFish;
+
+  let fishHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; padding: 20px;">';
+
+  fishList.forEach((fishData, index) => {
+    if (fishData.isItem) {
+      // Item can't be converted to sushi, skip
+      return;
+    }
+
+    const fish = fishData.fish;
+    const rarity = fishData.rarity;
+    const size = fishData.size;
+    const healthValue = getFishHealthValue(rarity, size);
+
+    let rarityColor = '#aaa';
+    if (rarity === 'Rare') rarityColor = '#ffd700';
+    else if (rarity === 'Uncommon') rarityColor = '#66ddff';
+
+    fishHTML += `
+      <div class="sushi-fish-option" data-index="${index}" style="
+        background: linear-gradient(135deg, rgba(68, 136, 255, 0.2), rgba(34, 68, 128, 0.2));
+        border: 3px solid ${rarityColor};
+        border-radius: 12px;
+        padding: 15px;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+      " onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px ${rarityColor}80';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';" onclick="selectFishForSushi(${index})">
+        <img src="images/fish/${fish.image}.png" style="width: 100%; height: 140px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); padding: 10px;">
+        <div style="margin-top: 10px; font-weight: bold; color: #66ddff; font-size: 16px;">${fish.name}</div>
+        <div style="margin-top: 5px; color: ${rarityColor}; font-size: 13px;">${rarity} - ${size}</div>
+        <div style="margin-top: 8px; color: #ff6666; font-size: 15px; font-weight: bold;">❤️ +${healthValue} HP</div>
+      </div>
+    `;
+  });
+
+  fishHTML += '</div>';
+
+  const selectionHTML = `
+    <div style="text-align: center;">
+      <h2 style="color: #ffd700; margin-top: 0;">🍱 Select Fish to Convert to Sushi</h2>
+      <p style="color: #aaa; margin-bottom: 20px;">
+        Click on fish to exchange them for health. Unconverted fish will be added to your loot.
+      </p>
+      ${fishHTML}
+      <button onclick="finishSushiConversion()" style="
+        margin-top: 20px;
+        padding: 12px 30px;
+        background: #44aa44;
+        border: none;
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+      ">Done</button>
+    </div>
+  `;
+
+  createGameModal(selectionHTML);
+
+  // Track which fish have been converted
+  window.tempSushiConvertedIndices = new Set();
+}
+
+/**
+ * Select a fish for sushi conversion
+ */
+function selectFishForSushi(index) {
+  if (!window.tempSushiBarFish || !window.tempSushiBarFish[index]) return;
+
+  const fishData = window.tempSushiBarFish[index];
+  if (fishData.isItem) return; // Can't convert items
+
+  const rarity = fishData.rarity;
+  const size = fishData.size;
+  const healthValue = getFishHealthValue(rarity, size);
+
+  // Add health
+  health = Math.min(health + healthValue, maxHealth);
+  gameState.health = health;
+
+  if (typeof updateTopBar === 'function') {
+    updateTopBar();
+  }
+
+  if (typeof createNotification === 'function') {
+    createNotification(`+${healthValue} HP from sushi!`, '#ff6666', '❤️');
+  }
+
+  // Mark as converted
+  if (!window.tempSushiConvertedIndices) {
+    window.tempSushiConvertedIndices = new Set();
+  }
+  window.tempSushiConvertedIndices.add(index);
+
+  // Remove the card from UI
+  const card = document.querySelector(`.sushi-fish-option[data-index="${index}"]`);
+  if (card) {
+    card.style.opacity = '0.3';
+    card.style.pointerEvents = 'none';
+    card.innerHTML += '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 48px;">✓</div>';
+    card.style.position = 'relative';
+  }
+}
+
+/**
+ * Finish sushi conversion - add remaining fish to loot
+ */
+function finishSushiConversion() {
+  if (window.tempSushiBarFish) {
+    // Add unconverted fish to loot
+    window.tempSushiBarFish.forEach((fishData, index) => {
+      if (!window.tempSushiConvertedIndices || !window.tempSushiConvertedIndices.has(index)) {
+        addToLoot(fishData);
+      }
+    });
+
+    const remainingCount = window.tempSushiBarFish.length - (window.tempSushiConvertedIndices?.size || 0);
+    if (remainingCount > 0 && typeof createNotification === 'function') {
+      createNotification(`Added ${remainingCount} fish to loot!`, '#4488ff', '🐟');
+    }
+
+    window.tempSushiBarFish = null;
+    window.tempSushiConvertedIndices = null;
+  }
+
+  closeGameModal();
+}
+
+// ========================================
 // EXPORTS
 // ========================================
 
@@ -645,3 +1142,10 @@ window.updateLootDisplay = updateLootDisplay;
 window.showLootTooltip = showLootTooltip;
 window.moveLootTooltip = moveLootTooltip;
 window.hideLootTooltip = hideLootTooltip;
+window.startFishingMinigame = startFishingMinigame;
+window.showSushiBarEvent = showSushiBarEvent;
+window.startSushiBarFishing = startSushiBarFishing;
+window.keepFishFromSushiBar = keepFishFromSushiBar;
+window.convertFishToSushi = convertFishToSushi;
+window.selectFishForSushi = selectFishForSushi;
+window.finishSushiConversion = finishSushiConversion;
