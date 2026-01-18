@@ -816,6 +816,64 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
 
     closeGameModal();
 
+    // Immediately increment curse trackers for curses that were completed successfully
+    // This provides instant feedback before the normal checkCurseDurations() call
+    if (gameState.restrictionCursesProcessed && gameState.restrictionCursesProcessed.length > 0) {
+      // Initialize tracker if it doesn't exist
+      if (!gameState.cursesTracker) {
+        gameState.cursesTracker = {};
+      }
+
+      // Track which curses to check for removal
+      const cursesToCheckForRemoval = [];
+
+      // Increment each curse that was successfully completed
+      gameState.activeCurses.forEach(curse => {
+        if (gameState.restrictionCursesProcessed.includes(curse.id)) {
+          const trackerId = curse.id || curse.name;
+          if (!gameState.cursesTracker[trackerId]) {
+            gameState.cursesTracker[trackerId] = { gamesBeaten: 0 };
+          }
+          gameState.cursesTracker[trackerId].gamesBeaten = (gameState.cursesTracker[trackerId].gamesBeaten || 0) + 1;
+          console.log(`✅ Immediately incremented curse ${curse.name} (${curse.id}): ${gameState.cursesTracker[trackerId].gamesBeaten} games beaten`);
+
+          // Check if curse duration is complete
+          if (curse.duration) {
+            const match = curse.duration.match(/(\d+)\s+game/i);
+            if (match) {
+              const requiredGames = parseInt(match[1]);
+              if (gameState.cursesTracker[trackerId].gamesBeaten >= requiredGames) {
+                cursesToCheckForRemoval.push(curse);
+              }
+            }
+          }
+        }
+      });
+
+      // Remove completed curses immediately
+      if (cursesToCheckForRemoval.length > 0 && typeof CurseManager !== 'undefined') {
+        cursesToCheckForRemoval.forEach(curse => {
+          CurseManager.consume(curse);
+          const trackerId = curse.id || curse.name;
+          delete gameState.cursesTracker[trackerId];
+
+          if (typeof createNotification === 'function') {
+            setTimeout(() => {
+              createNotification(`${curse.name} duration complete!`, '#4CAF50', '✨');
+            }, 300);
+          }
+        });
+      }
+
+      // Update curse UI immediately to show the new counters
+      if (typeof updateCurseUI === 'function') {
+        updateCurseUI();
+      }
+
+      // Clear the list so checkCurseDurations doesn't try to increment again
+      gameState.restrictionCursesProcessed = [];
+    }
+
     // Apply total damage silently
     if (totalDamage > 0) {
       // Apply damage reduction from items (like Garlic)
