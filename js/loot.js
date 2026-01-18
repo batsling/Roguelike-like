@@ -429,6 +429,208 @@ function removeFromLoot(index) {
 }
 
 // ========================================
+// LOOT DISPLAY FUNCTIONS
+// ========================================
+
+/**
+ * Show the loot modal with all fish/items in the loot inventory
+ */
+function showLootModal() {
+  if (!gameState.loot) {
+    gameState.loot = [];
+  }
+
+  const lootHTML = getLootHTML();
+
+  const modalHTML = `
+    <div style="text-align: center;">
+      <h2 style="color: #66ddff; margin-top: 0;">🐟 Loot Inventory</h2>
+      <p style="color: #aaa; margin-bottom: 20px;">
+        Fish and items that can be sold at shops
+      </p>
+      <div id="loot-display" style="min-height: 200px;">
+        ${lootHTML}
+      </div>
+      <button onclick="closeGameModal()" style="margin-top: 20px; padding: 12px 24px; background: #555; border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px;">
+        Close
+      </button>
+    </div>
+  `;
+
+  createGameModal(modalHTML);
+}
+
+/**
+ * Get HTML for displaying loot items
+ * @returns {string} HTML string
+ */
+function getLootHTML() {
+  if (!gameState.loot || gameState.loot.length === 0) {
+    return `
+      <div style="text-align: center; padding: 40px; color: #888; font-style: italic;">
+        No loot yet - catch some fish!
+      </div>
+    `;
+  }
+
+  let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; padding: 20px;">';
+
+  gameState.loot.forEach((lootItem, index) => {
+    if (lootItem.isItem) {
+      // Regular item (from 5% chance)
+      const item = lootItem.item;
+      const imagePath = `images/items/${item.image}.png`;
+
+      html += `
+        <div class="loot-item" data-index="${index}" style="
+          background: linear-gradient(135deg, rgba(100, 50, 150, 0.2), rgba(50, 25, 75, 0.2));
+          border: 2px solid #8a2be2;
+          border-radius: 8px;
+          padding: 15px;
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+        " onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(138, 43, 226, 0.5)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+          <img src="${imagePath}" alt="${item.name}" style="width: 100%; height: 120px; object-fit: contain; border-radius: 6px; background: rgba(0,0,0,0.3); padding: 10px;">
+          <div style="margin-top: 10px; font-weight: bold; color: #ba55d3; font-size: 14px;">${item.name}</div>
+          <div style="margin-top: 5px; color: #888; font-size: 12px;">Item</div>
+        </div>
+      `;
+    } else {
+      // Fish
+      const fish = lootItem.fish;
+      const rarity = lootItem.rarity;
+      const size = lootItem.size;
+      const goldValue = getFishGoldValue(rarity, size);
+      const imagePath = `images/fish/${fish.image}.png`;
+
+      // Determine border color by rarity
+      let borderColor = '#666';
+      let rarityColor = '#aaa';
+      if (rarity === 'Rare') {
+        borderColor = '#ffd700';
+        rarityColor = '#ffd700';
+      } else if (rarity === 'Uncommon') {
+        borderColor = '#66ddff';
+        rarityColor = '#66ddff';
+      } else {
+        borderColor = '#999';
+        rarityColor = '#999';
+      }
+
+      html += `
+        <div class="loot-item" data-index="${index}" style="
+          background: linear-gradient(135deg, rgba(50, 100, 150, 0.2), rgba(25, 50, 75, 0.2));
+          border: 2px solid ${borderColor};
+          border-radius: 8px;
+          padding: 15px;
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+        " onmouseover="showLootTooltip(${index}, event)" onmouseout="hideLootTooltip()" onmousemove="moveLootTooltip(event)">
+          <img src="${imagePath}" alt="${fish.name}" style="width: 100%; height: 120px; object-fit: contain; border-radius: 6px; background: rgba(0,0,0,0.3); padding: 10px;">
+          <div style="margin-top: 10px; font-weight: bold; color: #66ddff; font-size: 14px;">${fish.name}</div>
+          <div style="margin-top: 5px; color: ${rarityColor}; font-size: 12px;">${rarity} - ${size}</div>
+          <div style="margin-top: 5px; color: #ffd700; font-size: 13px; font-weight: bold;">💰 ${goldValue}g</div>
+        </div>
+      `;
+    }
+  });
+
+  html += '</div>';
+  return html;
+}
+
+/**
+ * Update the loot display (if modal is open)
+ */
+function updateLootDisplay() {
+  const lootDisplay = document.getElementById('loot-display');
+  if (lootDisplay) {
+    lootDisplay.innerHTML = getLootHTML();
+  }
+}
+
+/**
+ * Show tooltip for loot item
+ */
+function showLootTooltip(index, event) {
+  if (!gameState.loot || !gameState.loot[index]) return;
+
+  const lootItem = gameState.loot[index];
+
+  if (lootItem.isItem) {
+    // Show item tooltip (use existing item tooltip if available)
+    if (typeof showTooltip === 'function') {
+      showTooltip(lootItem.item, event);
+    }
+  } else {
+    // Show fish tooltip
+    const fish = lootItem.fish;
+    const rarity = lootItem.rarity;
+    const size = lootItem.size;
+    const goldValue = getFishGoldValue(rarity, size);
+    const healthValue = getFishHealthValue(rarity, size);
+
+    const tooltipHTML = `
+      <div style="text-align: left;">
+        <div style="font-weight: bold; color: #66ddff; font-size: 16px; margin-bottom: 8px;">${fish.name}</div>
+        <div style="color: #aaa; font-size: 13px; margin-bottom: 4px;"><strong>Game:</strong> ${fish.game}</div>
+        <div style="color: #aaa; font-size: 13px; margin-bottom: 4px;"><strong>Type:</strong> ${fish.type}</div>
+        <div style="color: #ffd700; font-size: 13px; margin-bottom: 4px;"><strong>Rarity:</strong> ${rarity}</div>
+        <div style="color: #88ff88; font-size: 13px; margin-bottom: 4px;"><strong>Size:</strong> ${size}</div>
+        <div style="color: #ffd700; font-size: 14px; margin-top: 8px; font-weight: bold;">💰 Sell: ${goldValue}g</div>
+        <div style="color: #ff6666; font-size: 14px; margin-top: 4px; font-weight: bold;">❤️ Sushi: ${healthValue} HP</div>
+      </div>
+    `;
+
+    // Create or update tooltip
+    let tooltip = document.getElementById('loot-tooltip');
+    if (!tooltip) {
+      tooltip = document.createElement('div');
+      tooltip.id = 'loot-tooltip';
+      tooltip.style.cssText = `
+        position: fixed;
+        background: rgba(0, 0, 0, 0.95);
+        color: #fff;
+        padding: 12px;
+        border-radius: 8px;
+        border: 2px solid #66ddff;
+        z-index: 100000;
+        pointer-events: none;
+        max-width: 300px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.8);
+      `;
+      document.body.appendChild(tooltip);
+    }
+
+    tooltip.innerHTML = tooltipHTML;
+    tooltip.style.display = 'block';
+    tooltip.style.left = (event.clientX + 15) + 'px';
+    tooltip.style.top = (event.clientY + 15) + 'px';
+  }
+}
+
+/**
+ * Move tooltip with mouse
+ */
+function moveLootTooltip(event) {
+  const tooltip = document.getElementById('loot-tooltip');
+  if (tooltip && tooltip.style.display === 'block') {
+    tooltip.style.left = (event.clientX + 15) + 'px';
+    tooltip.style.top = (event.clientY + 15) + 'px';
+  }
+}
+
+/**
+ * Hide loot tooltip
+ */
+function hideLootTooltip() {
+  const tooltip = document.getElementById('loot-tooltip');
+  if (tooltip) {
+    tooltip.style.display = 'none';
+  }
+}
+
+// ========================================
 // EXPORTS
 // ========================================
 
@@ -438,3 +640,8 @@ window.getFishGoldValue = getFishGoldValue;
 window.getFishHealthValue = getFishHealthValue;
 window.addToLoot = addToLoot;
 window.removeFromLoot = removeFromLoot;
+window.showLootModal = showLootModal;
+window.updateLootDisplay = updateLootDisplay;
+window.showLootTooltip = showLootTooltip;
+window.moveLootTooltip = moveLootTooltip;
+window.hideLootTooltip = hideLootTooltip;

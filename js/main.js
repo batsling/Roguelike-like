@@ -534,6 +534,7 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     maxHealth: maxHealth,
     gold: gold,
     inventory: [],
+    loot: [], // Loot inventory for fish and sellable items
     activeCurses: [], // Clear curses for new run
     cursesTracker: {}, // Clear curse tracking for new run
     beatenGames: [...beatenGames],
