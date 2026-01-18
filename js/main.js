@@ -526,6 +526,7 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     currentGame: start.name,
     visitedGames: [start.name],
     finishedGames: [], // Track unique games finished in this run
+    totalGamesBeaten: 0, // Track total number of game completions (including duplicates)
     skippedGames: [], // Track games skipped in this run
     saveName: saveName,
     gameStarted: true,
@@ -1884,7 +1885,7 @@ function showCombatModal() {
   }
 
   // Difficulty scales with number of games beaten
-  const gamesBeaten = gameState.finishedGames?.length || 0;
+  const gamesBeaten = gameState.totalGamesBeaten || 0;
   let powerText = 'Low';
   if (gamesBeaten >= 10) {
     powerText = 'High';
@@ -2440,10 +2441,10 @@ function handlePrimordialTeleporter(optionIndex) {
     closeGameModal();
 
     // Decrease difficulty by 3 games
-    if (gameState.finishedGames && gameState.finishedGames.length >= 3) {
-      gameState.finishedGames = gameState.finishedGames.slice(0, -3);
+    if (gameState.totalGamesBeaten && gameState.totalGamesBeaten >= 3) {
+      gameState.totalGamesBeaten -= 3;
     } else {
-      gameState.finishedGames = [];
+      gameState.totalGamesBeaten = 0;
     }
 
     // Teleport to starting game (gameState.startGame is already the game object)
@@ -3441,9 +3442,19 @@ function markGameFinished(gameName) {
     gameState.finishedGames = [];
   }
 
+  // Initialize totalGamesBeaten if it doesn't exist (backwards compatibility)
+  if (typeof gameState.totalGamesBeaten !== 'number') {
+    gameState.totalGamesBeaten = 0;
+  }
+
   // Increment beaten count (tracks all completions, even if player dies later)
   // NOTE: Amulet stat is only incremented on successful escape (in showVictoryScreen)
   incrementGameBeaten(gameName, false);
+
+  // Increment total games beaten counter (counts ALL completions including duplicates)
+  const previousDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
+  gameState.totalGamesBeaten++;
+  console.log(`Game finished: ${gameName}. Total games beaten: ${gameState.totalGamesBeaten}`);
 
   // Reroller trait: Every time you beat a game, gain +1 Reroll
   if (hasTrait('reroller')) {
@@ -3454,16 +3465,14 @@ function markGameFinished(gameName) {
     }
   }
 
-  // Only add if not already in finishedGames array
+  // Only add if not already in finishedGames array (for unique tracking)
   if (!gameState.finishedGames.includes(gameName)) {
-    // Get the previous difficulty tier before adding the game
-    const previousDifficulty = getDifficultyTier(gameState.finishedGames.length);
-
     gameState.finishedGames.push(gameName);
-    console.log(`Game finished: ${gameName}. Total unique finished: ${gameState.finishedGames.length}`);
+    console.log(`Unique game finished: ${gameName}. Total unique: ${gameState.finishedGames.length}`);
+  }
 
-    // Check if difficulty tier changed and update location
-    const newDifficulty = getDifficultyTier(gameState.finishedGames.length);
+  // Check if difficulty tier changed and update location
+  const newDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
     if (previousDifficulty !== newDifficulty) {
       const newLocation = getRandomLocation(newDifficulty);
       if (newLocation) {
@@ -3722,7 +3731,7 @@ function triggerGameStatusEffects(gameName) {
   if (!statuses || statuses.length === 0) return;
 
   // Calculate difficulty tier based on games beaten (same as combat)
-  const gamesBeaten = gameState.finishedGames?.length || 0;
+  const gamesBeaten = gameState.totalGamesBeaten || 0;
   let difficultyTier = 'Low';
   let curseSuffix = 'I';
 

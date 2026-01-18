@@ -799,7 +799,7 @@ function renderGameState() {
   document.getElementById('game-gold').textContent = gold;
 
   const distance = bfsCached(gameState.currentGame, gameState.amuletGame.name);
-  const difficulty = gameState.finishedGames?.length || 0;
+  const difficulty = gameState.totalGamesBeaten || 0;
   document.getElementById('distance-display').textContent = `Target: ${gameState.amuletGame.name} — ${distance} steps away | Difficulty: ${difficulty}`;
 
   // Reconstruct the path from visited games

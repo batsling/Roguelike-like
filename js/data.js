@@ -106,6 +106,7 @@ var gameState = {
   cursesTracker: {}, // Track curse progress (e.g., games beaten, spaces chosen)
   beatenGames: [],
   finishedGames: [], // Games completed (beaten)
+  totalGamesBeaten: 0, // Track total number of game completions (including duplicates)
   skippedGames: [], // Games skipped
   startGame: null,
   amuletGame: null,

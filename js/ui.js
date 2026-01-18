@@ -114,7 +114,7 @@ function updateLocationDisplay(gameName, gameDescription) {
   }
 
   // Calculate difficulty tier
-  const difficulty = gameState.finishedGames?.length || 0;
+  const difficulty = gameState.totalGamesBeaten || 0;
   let tier = 'easy';
   let tierText = 'Easy';
   let rangeText = '0-4';
@@ -1003,9 +1003,9 @@ function updateGameStats() {
   if (statsLuck) statsLuck.textContent = luck;
   if (statsItems) statsItems.textContent = inventory.length;
 
-  // Games Beaten = unique games finished in this run
+  // Games Beaten = total games beaten in this run (includes duplicates)
   if (statsGames) {
-    const finishedCount = gameState.finishedGames?.length || 0;
+    const finishedCount = gameState.totalGamesBeaten || 0;
     statsGames.textContent = finishedCount;
   }
 
@@ -1020,9 +1020,9 @@ function updateGameStats() {
     statsDistance.textContent = gameState.visitedGames?.length || 0;
   }
 
-  // Difficulty = unique games finished (matches difficulty in progress bar)
+  // Difficulty = total games beaten (matches difficulty in progress bar)
   if (statsDifficulty) {
-    const difficulty = gameState.finishedGames?.length || 0;
+    const difficulty = gameState.totalGamesBeaten || 0;
     statsDifficulty.textContent = difficulty;
   }
 }
