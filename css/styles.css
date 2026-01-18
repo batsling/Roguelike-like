@@ -1965,6 +1965,10 @@ text, path, line, g {
   margin-right: 20px;
 }
 
+.ml-20 {
+  margin-left: 20px;
+}
+
 /* Stat Color Utilities - High specificity to override #game-stats .stat-label */
 #game-stats .stat-color-strength,
 .stat-color-strength {

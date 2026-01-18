@@ -628,6 +628,11 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       const beatInTime = hasteRadio && hasteRadio.value === 'yes';
       if (!beatInTime) {
         totalDamage += 2 * hasteCurses.length; // 2 damage per Haste curse
+      } else {
+        // Mark curses for duration increment (completed successfully)
+        hasteCurses.forEach(curse => {
+          gameState.restrictionCursesProcessed.push(curse.id);
+        });
       }
     }
 
@@ -637,6 +642,11 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       const killedInnocents = guiltRadio && guiltRadio.value === 'yes';
       if (killedInnocents) {
         totalDamage += 3 * guiltCurses.length; // 3 damage per Guilt curse
+      } else {
+        // Mark curses for duration increment (didn't kill innocents)
+        guiltCurses.forEach(curse => {
+          gameState.restrictionCursesProcessed.push(curse.id);
+        });
       }
     }
 
@@ -646,6 +656,11 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       const beatTwice = dazedRadio && dazedRadio.value === 'yes';
       if (!beatTwice) {
         totalDamage += 3 * dazedCurses.length; // 3 damage per Dazed curse
+      } else {
+        // Mark curses for duration increment (beat game twice)
+        dazedCurses.forEach(curse => {
+          gameState.restrictionCursesProcessed.push(curse.id);
+        });
       }
     }
 
@@ -658,6 +673,10 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
         health = Math.min(maxHealth, health + affectionCurses.length);
         gameState.health = health;
         updateTopBar?.();
+        // Mark curses for duration increment (rated 8+)
+        affectionCurses.forEach(curse => {
+          gameState.restrictionCursesProcessed.push(curse.id);
+        });
       } else {
         // Lose 2 health per curse
         totalDamage += 2 * affectionCurses.length;
@@ -670,6 +689,11 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       const gotAchievement = hunterRadio && hunterRadio.value === 'yes';
       if (!gotAchievement) {
         totalDamage += 2 * hunterCurses.length; // 2 damage per Hunter curse
+      } else {
+        // Mark curses for duration increment (got achievement)
+        hunterCurses.forEach(curse => {
+          gameState.restrictionCursesProcessed.push(curse.id);
+        });
       }
     }
 
@@ -679,6 +703,11 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       const touchedWater = dampRadio && dampRadio.value === 'yes';
       if (!touchedWater) {
         totalDamage += 3 * dampCurses.length; // 3 damage per Damp curse
+      } else {
+        // Mark curses for duration increment (touched water)
+        dampCurses.forEach(curse => {
+          gameState.restrictionCursesProcessed.push(curse.id);
+        });
       }
     }
 
