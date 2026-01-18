@@ -608,6 +608,13 @@ function showHadesBoonSelection() {
         if (typeof createNotification === 'function') {
           createNotification(`Received ${selectedBoon.name}!`, '#8a2be2', '🌟');
         }
+
+        // After notification, spawn next game choices
+        setTimeout(() => {
+          if (typeof spawnChoices === 'function') {
+            spawnChoices();
+          }
+        }, 300);
       }, 100);
     };
   });

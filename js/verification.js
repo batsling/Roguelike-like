@@ -1091,6 +1091,10 @@ function showDeathScreen(message = 'You have perished!', source = 'curse') {
     }
     document.getElementById('dungeon-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
+
+    // Hide map button when in menu
+    const mapBtn = document.getElementById('map-btn');
+    if (mapBtn) mapBtn.style.display = 'none';
   };
 }
 

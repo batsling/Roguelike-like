@@ -147,6 +147,10 @@ function applyCombatOutcome(success) {
         closeGameModal();
         document.getElementById('dungeon-screen').style.display = 'none';
         document.getElementById('main-menu').style.display = 'flex';
+
+        // Hide map button when in menu
+        const mapBtn = document.getElementById('map-btn');
+        if (mapBtn) mapBtn.style.display = 'none';
       };
 
       document.getElementById('death-retry-btn').onclick = () => {
@@ -162,6 +166,11 @@ function applyCombatOutcome(success) {
         closeGameModal();
         document.getElementById('dungeon-screen').style.display = 'none';
         document.getElementById('main-menu').style.display = 'flex';
+
+        // Hide map button when in menu
+        const mapBtn = document.getElementById('map-btn');
+        if (mapBtn) mapBtn.style.display = 'none';
+
         // Trigger new game button click
         setTimeout(() => {
           document.getElementById('new-game-btn')?.click();

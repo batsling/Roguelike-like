@@ -340,6 +340,10 @@ function loadSavedGame(saveName) {
   document.getElementById('main-menu').style.display = 'none';
   document.getElementById('dungeon-screen').style.display = 'flex';
 
+  // Show map button when in game
+  const mapBtn = document.getElementById('map-btn');
+  if (mapBtn) mapBtn.style.display = 'inline-block';
+
   // Show or hide elements based on escape phase
   if (gameState.escapePhase) {
     // In escape phase - show escape visualization
@@ -574,6 +578,10 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   document.getElementById('main-menu').style.display = 'none';
   document.getElementById('dungeon-screen').style.display = 'flex';
 
+  // Show map button when in game
+  const mapBtn = document.getElementById('map-btn');
+  if (mapBtn) mapBtn.style.display = 'inline-block';
+
   // Show the normal game elements
   document.getElementById('path-viewport').style.display = 'block';
   // Note: floating-hud is always visible, no need to show/hide
@@ -625,6 +633,10 @@ document.getElementById('return-menu')?.addEventListener('click', () => {
     }
     document.getElementById('dungeon-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
+
+    // Hide map button when in menu
+    const mapBtn = document.getElementById('map-btn');
+    if (mapBtn) mapBtn.style.display = 'none';
   }
 });
 
@@ -639,6 +651,10 @@ document.getElementById('return-menu-top')?.addEventListener('click', () => {
       }
       document.getElementById('dungeon-screen').style.display = 'none';
       document.getElementById('main-menu').style.display = 'flex';
+
+      // Hide map button when in menu
+      const mapBtn = document.getElementById('map-btn');
+      if (mapBtn) mapBtn.style.display = 'none';
     }
   }
 });
@@ -2128,6 +2144,10 @@ function showCombatModal() {
             }
             document.getElementById('dungeon-screen').style.display = 'none';
             document.getElementById('main-menu').style.display = 'flex';
+
+            // Hide map button when in menu
+            const mapBtn = document.getElementById('map-btn');
+            if (mapBtn) mapBtn.style.display = 'none';
           };
 
           document.getElementById('death-retry-btn').onclick = () => {
@@ -2146,6 +2166,11 @@ function showCombatModal() {
             }
             document.getElementById('dungeon-screen').style.display = 'none';
             document.getElementById('main-menu').style.display = 'flex';
+
+            // Hide map button when in menu
+            const mapBtn = document.getElementById('map-btn');
+            if (mapBtn) mapBtn.style.display = 'none';
+
             setTimeout(() => {
               document.getElementById('new-game-btn')?.click();
             }, 100);
@@ -3276,11 +3301,23 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
         updateInventory();
       }
 
-      // Now spawn the next choices or call callback
-      if (onComplete) {
-        setTimeout(() => onComplete(), 300);
+      // Check if we need to show Hades boon selection first
+      if (gameState.pendingHadesBoonSelection) {
+        gameState.pendingHadesBoonSelection = false;
+        setTimeout(() => {
+          if (typeof showHadesBoonSelection === 'function') {
+            showHadesBoonSelection();
+            // After boon selection, spawn choices or call callback
+            // Note: The boon modal will handle spawning choices when it closes
+          }
+        }, 300);
       } else {
-        setTimeout(() => spawnChoices(), 300);
+        // Normal flow: spawn the next choices or call callback
+        if (onComplete) {
+          setTimeout(() => onComplete(), 300);
+        } else {
+          setTimeout(() => spawnChoices(), 300);
+        }
       }
     };
   });
@@ -3309,11 +3346,23 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
         updateInventory();
       }
 
-      // Spawn choices without acquiring an item or call callback
-      if (onComplete) {
-        setTimeout(() => onComplete(), 300);
+      // Check if we need to show Hades boon selection first
+      if (gameState.pendingHadesBoonSelection) {
+        gameState.pendingHadesBoonSelection = false;
+        setTimeout(() => {
+          if (typeof showHadesBoonSelection === 'function') {
+            showHadesBoonSelection();
+            // After boon selection, spawn choices or call callback
+            // Note: The boon modal will handle spawning choices when it closes
+          }
+        }, 300);
       } else {
-        setTimeout(() => spawnChoices(), 300);
+        // Normal flow: spawn choices without acquiring an item or call callback
+        if (onComplete) {
+          setTimeout(() => onComplete(), 300);
+        } else {
+          setTimeout(() => spawnChoices(), 300);
+        }
       }
     };
   }
@@ -3503,12 +3552,10 @@ function markGameFinished(gameName) {
         updateLocationDisplay(gameState.currentGame);
       }
 
-      // Check if this is a Hades location and show boon selection immediately
-      if (newLocation.game === 'Hades' && typeof showHadesBoonSelection === 'function') {
-        // Show boon selection immediately when entering new Hades location
-        setTimeout(() => {
-          showHadesBoonSelection();
-        }, 500); // Small delay to let location display update first
+      // Flag if this is a Hades location - will be shown after item choice
+      if (newLocation.game === 'Hades') {
+        gameState.pendingHadesBoonSelection = true;
+        console.log('Hades location entered - boon selection will be shown after item choice');
       }
     }
   }
@@ -3584,8 +3631,21 @@ function checkCurseDurations(eventType = 'game_beaten') {
 
     const tracker = gameState.cursesTracker[trackerId];
 
-    // Check if this curse should be incremented
-    if (cursesToIncrement.includes(curse.id)) {
+    // Check if this curse has a game-based duration
+    let shouldIncrement = false;
+    if (curse.duration && curse.duration.match(/(\d+)\s+game/i)) {
+      // If it's a restriction curse, check if it was verified
+      if (cursesToIncrement.includes(curse.id)) {
+        shouldIncrement = true;
+      }
+      // If it's a manual curse (not in verification list), always increment
+      else if (curse.automatic === 'Manual' || !curse.automatic) {
+        shouldIncrement = true;
+      }
+    }
+
+    // Increment the counter if needed
+    if (shouldIncrement) {
       tracker.gamesBeaten = (tracker.gamesBeaten || 0) + 1;
       console.log(`Incremented curse ${curse.name} (${curse.id}): ${tracker.gamesBeaten} games beaten`);
     }
@@ -3634,9 +3694,9 @@ function checkCurseDurations(eventType = 'game_beaten') {
  * Add a status effect to a game
  * @param {string} gameName - Name of the game
  * @param {string} statusName - Name of the status effect (e.g. 'stinky', 'portal')
- * @param {string} icon - Emoji icon for the status
+ * @param {string} icon - Emoji icon for the status (optional, will be looked up if not provided)
  */
-function addGameStatus(gameName, statusName, icon = '❓') {
+function addGameStatus(gameName, statusName, icon) {
   if (!gameState.gameStatusEffects) {
     gameState.gameStatusEffects = {};
   }
@@ -3652,12 +3712,29 @@ function addGameStatus(gameName, statusName, icon = '❓') {
     return;
   }
 
+  // Look up icon if not provided
+  if (!icon) {
+    const statusIcons = {
+      'charmed': '💕',
+      'devilish': '👹',
+      'holy': '✨',
+      'marked': '🎯',
+      'portal': '🌀',
+      'shielded': '🛡️',
+      'shocked': '⚡',
+      'soaked': '💧',
+      'stinky': '💩',
+      'timed': '⏱️'
+    };
+    icon = statusIcons[statusName.toLowerCase()] || '❓';
+  }
+
   gameState.gameStatusEffects[gameName].push({
     name: statusName,
     icon: icon
   });
 
-  console.log(`Added status ${statusName} to ${gameName}`);
+  console.log(`Added status ${statusName} to ${gameName} with icon ${icon}`);
 
   // Refresh the display if we're looking at this game
   if (typeof updateGameDisplay === 'function') {
