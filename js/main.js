@@ -592,6 +592,15 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
 
   saveCurrentGame();
   updateSaveList();
+
+  // Check if starting location is a Hades location and show boon selection
+  if (selectedLocation && selectedLocation.game === 'Hades' && typeof showHadesBoonSelection === 'function') {
+    console.log('Starting in Hades location, showing boon selection...');
+    // Small delay to let the dungeon screen render first
+    setTimeout(() => {
+      showHadesBoonSelection();
+    }, 500);
+  }
 });
 
 document.getElementById('continue-btn')?.addEventListener('click', () => {
