@@ -657,6 +657,7 @@ function showCollection() {
         <h2 style="color: #ff9800; margin: 0; flex: 1;">📚 Collection</h2>
         <button onclick="switchCollectionTab('games')" id="tab-games" style="padding: 8px 16px; background: #ff9800; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Games (${games.length})</button>
         <button onclick="switchCollectionTab('items')" id="tab-items" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Items (${items.length})</button>
+        <button onclick="switchCollectionTab('loot')" id="tab-loot" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Loot</button>
         <button onclick="switchCollectionTab('enemies')" id="tab-enemies" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Enemies (${enemies.length})</button>
         <button onclick="switchCollectionTab('curses')" id="tab-curses" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Curses (${curses.length})</button>
         <button onclick="closeGameModal();" style="padding: 8px 20px; background: #444; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Close</button>
@@ -675,7 +676,7 @@ function showCollection() {
 
 function switchCollectionTab(tab) {
   // Update tab buttons
-  const tabs = ['games', 'items', 'enemies', 'curses'];
+  const tabs = ['games', 'items', 'loot', 'enemies', 'curses'];
   tabs.forEach(t => {
     const btn = document.getElementById(`tab-${t}`);
     if (btn) {
@@ -837,6 +838,28 @@ function switchCollectionTab(tab) {
         </div>
       </div>
     `;
+  } else if (tab === 'loot') {
+    // Initialize loot sub-tab if not set
+    if (!window.currentLootSubTab) {
+      window.currentLootSubTab = 'fish';
+    }
+
+    content.innerHTML = `
+      <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+        <!-- Loot Sub-tabs -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #444;">
+          <button onclick="switchLootSubTab('fish')" id="loot-subtab-fish" style="padding: 6px 14px; background: ${window.currentLootSubTab === 'fish' ? '#66b3ff' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">🐟 Fish</button>
+        </div>
+
+        <!-- Loot Sub-tab Content -->
+        <div id="loot-subtab-content" style="flex: 1; overflow-y: auto;">
+          <!-- Content will be populated by switchLootSubTab -->
+        </div>
+      </div>
+    `;
+
+    // Load the current sub-tab content
+    switchLootSubTab(window.currentLootSubTab);
   } else if (tab === 'enemies') {
     // Sort enemies alphabetically
     const sortedEnemies = [...enemies].sort((a, b) => a.name.localeCompare(b.name));
@@ -979,6 +1002,125 @@ function switchCollectionTab(tab) {
   }
 }
 
+// Switch between loot sub-tabs
+function switchLootSubTab(subTab) {
+  window.currentLootSubTab = subTab;
+
+  // Update sub-tab buttons
+  const subTabBtn = document.getElementById(`loot-subtab-${subTab}`);
+  if (subTabBtn) {
+    // Reset all sub-tab buttons
+    ['fish'].forEach(t => {
+      const btn = document.getElementById(`loot-subtab-${t}`);
+      if (btn) {
+        btn.style.background = t === subTab ? '#66b3ff' : '#555';
+      }
+    });
+  }
+
+  const subTabContent = document.getElementById('loot-subtab-content');
+  if (!subTabContent) return;
+
+  if (subTab === 'fish') {
+    // Get fish stats for catch counts
+    const fishStats = getFishStats();
+
+    // Sort fish alphabetically by name
+    const sortedFish = [...FISH_DATA].sort((a, b) => a.name.localeCompare(b.name));
+
+    subTabContent.innerHTML = `
+      <div style="padding: 10px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px;">
+          ${sortedFish.map(fish => {
+            const stats = fishStats[fish.name] || { caught: 0 };
+            const caughtCount = stats.caught;
+
+            let rarityColor = '#aaa';
+            if (fish.rarity === 'Rare') rarityColor = '#ffd700';
+            else if (fish.rarity === 'Uncommon') rarityColor = '#66ddff';
+            else if (fish.rarity === 'Common') rarityColor = '#aaa';
+
+            return `
+              <div style="
+                background: rgba(0,0,0,0.3);
+                border: 2px solid ${rarityColor};
+                border-radius: 8px;
+                padding: 15px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+                transition: transform 0.2s, box-shadow 0.2s;
+                position: relative;
+              " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 0 20px ${rarityColor}80';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+
+                <!-- Caught count badge -->
+                <div style="
+                  position: absolute;
+                  top: 10px;
+                  right: 10px;
+                  background: linear-gradient(135deg, #667eea, #764ba2);
+                  border: 2px solid #fff;
+                  border-radius: 50%;
+                  width: 40px;
+                  height: 40px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-weight: bold;
+                  font-size: 14px;
+                  color: #fff;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                ">
+                  ${caughtCount}
+                </div>
+
+                <!-- Fish image -->
+                <img
+                  src="images/fish/${fish.image}.png"
+                  alt="${fish.name}"
+                  style="
+                    width: 120px;
+                    height: 120px;
+                    object-fit: contain;
+                    border-radius: 6px;
+                  "
+                  onerror="this.style.display='none';"
+                />
+
+                <!-- Fish name -->
+                <div style="text-align: center; font-size: 14px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word;">
+                  ${fish.name}
+                </div>
+
+                <!-- Rarity -->
+                <div style="font-size: 11px; color: ${rarityColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
+                  ${fish.rarity}
+                </div>
+
+                <!-- Game reference -->
+                <div style="font-size: 10px; color: #888; text-align: center; font-style: italic;">
+                  ${fish.game}
+                </div>
+
+                <!-- Location type -->
+                <div style="font-size: 10px; color: #aaa; text-align: center;">
+                  ${fish.type} Waters
+                </div>
+
+                <!-- Times caught text -->
+                <div style="font-size: 11px; color: #ddd; text-align: center; margin-top: 5px; padding-top: 8px; border-top: 1px solid #444; width: 100%;">
+                  ${caughtCount === 0 ? 'Not yet caught' : caughtCount === 1 ? 'Caught once' : `Caught ${caughtCount} times`}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+}
+
 // Sort collection items
 function sortCollectionItems(sortType) {
   // Get rarity color function (case-insensitive)
@@ -1113,6 +1255,7 @@ function switchCurseTier(cardIndex, tier) {
 
 // Export escape phase functions globally
 window.switchCurseTier = switchCurseTier;
+window.switchLootSubTab = switchLootSubTab;
 window.completeEscapeGame = completeEscapeGame;
 window.recordLostRun = recordLostRun;
 window.startEscapePhase = startEscapePhase;

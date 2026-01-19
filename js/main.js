@@ -3433,6 +3433,45 @@ function incrementGameBeaten(gameName, hasAmulet = false) {
   console.log(`${gameName} beaten count: ${stats[gameName].beaten}`);
 }
 
+// ===== FISH STATS TRACKING SYSTEM =====
+
+/**
+ * Get fish stats from localStorage
+ * @returns {Object} Fish stats object with fish names as keys
+ */
+function getFishStats() {
+  return GameStorage.load(STORAGE_KEYS.FISH_STATS, {});
+}
+
+/**
+ * Save fish stats to localStorage
+ * @param {Object} stats - Fish stats object
+ */
+function saveFishStats(stats) {
+  const result = GameStorage.save(STORAGE_KEYS.FISH_STATS, stats);
+  if (!result.success) {
+    console.error('Error saving fish stats:', result.error);
+  }
+}
+
+/**
+ * Increment caught count for a fish
+ * @param {string} fishName - Name of the fish
+ */
+function incrementFishCaught(fishName) {
+  const stats = getFishStats();
+
+  if (!stats[fishName]) {
+    stats[fishName] = { caught: 0 };
+  }
+
+  stats[fishName].caught = (stats[fishName].caught || 0) + 1;
+
+  saveFishStats(stats);
+
+  console.log(`${fishName} caught count: ${stats[fishName].caught}`);
+}
+
 /**
  * Show game details in the collection panel
  * @param {string} gameName - Name of the game to show details for

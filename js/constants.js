@@ -122,7 +122,8 @@ const STORAGE_KEYS = {
   GAME_STATE: 'roguelikeState',
   SAVED_GAMES: 'roguelikeGameSaves',
   GAME_STATS: 'gameStats',
-  RUN_HISTORY: 'runHistory'
+  RUN_HISTORY: 'runHistory',
+  FISH_STATS: 'fishStats'
 };
 
 // ===== GAME PHASES =====
