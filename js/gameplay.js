@@ -12,14 +12,10 @@
 let pathContainer, linesSvg, tooltip, viewport;
 
 function initGameplayDOM() {
-  console.log('🎨 initGameplayDOM v4.0 - HTML/CSS ARROWS');
-
   pathContainer = document.getElementById('path-container');
   linesSvg = document.getElementById('connection-lines'); // Keep reference for legacy, but won't use
   tooltip = document.getElementById('game-tooltip');
   viewport = document.getElementById('path-viewport');
-
-  console.log('✅ DOM initialized - using HTML/CSS arrows instead of SVG');
 }
 
 // ===== HELPER FUNCTIONS =====
@@ -678,8 +674,6 @@ function drawArrowLine(fromNode, toNode) {
   // Create HTML/CSS arrow
   const arrow = createCSSArrow(x1, y1, x2, y2, '#ffdd00', 8, true, 'choice-arrow');
   pathContainer.appendChild(arrow);
-
-  console.log(`✅ Choice arrow drawn from (${x1}, ${y1}) to (${x2}, ${y2})`);
 }
 
 function drawPastLine(fromNode, toNode) {
@@ -700,8 +694,6 @@ function drawPastLine(fromNode, toNode) {
 
 // Draw all game influence connections as light background arrows
 function drawAllGameConnections() {
-  console.log('=== drawAllGameConnections() called (HTML/CSS arrows) ===');
-
   if (!pathContainer) {
     console.error('pathContainer is not defined!');
     return;
@@ -746,7 +738,6 @@ function drawAllGameConnections() {
         // SKIP drawing arrows between two games that are BOTH in the current choice set
         // This prevents gray arrows between connected choice nodes
         if (nodeMap.has(game.name) && nodeMap.has(influencedGame)) {
-          console.log(`  ⊘ Skipping arrow between choice nodes: "${game.name}" ↔ "${influencedGame}"`);
           return;
         }
 
@@ -764,13 +755,9 @@ function drawAllGameConnections() {
         const arrow = createCSSArrow(x1, y1, x2, y2, 'rgba(100, 100, 100, 0.3)', 2, false, 'background-connection');
         pathContainer.appendChild(arrow);
         connectionsDrawn++;
-
-        console.log(`  ✓ Arrow: "${game.name}" → "${influencedGame}"`);
       });
     }
   });
-
-  console.log(`=== Drew ${connectionsDrawn} background connection arrows ===`);
 }
 
 // ===== STATE RENDERING =====

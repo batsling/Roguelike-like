@@ -280,8 +280,6 @@ function spawnChoices() {
     const currentNode = document.querySelector('.node.current');
     const choiceNodes = document.querySelectorAll('.node.choice');
 
-    console.log(`Drawing arrows: current node exists = ${!!currentNode}, choice nodes = ${choiceNodes.length}`);
-
     if (currentNode) {
       choiceNodes.forEach(choiceNode => {
         drawArrowLine(currentNode, choiceNode);

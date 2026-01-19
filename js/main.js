@@ -1587,9 +1587,6 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
   defs.appendChild(marker);
   svg.appendChild(defs);
 
-  console.log('Drawing map arrows, pathData:', pathData);
-  console.log('SVG dimensions set to:', parentRect.width, 'x', Math.max(parentRect.height, 2000));
-
   // Get all game boxes
   const gameBoxes = document.querySelectorAll('[data-game]');
   console.log('Found game boxes:', gameBoxes.length);
@@ -1736,10 +1733,7 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
     svg.appendChild(line);
 
     arrowsDrawn++;
-    console.log(`    ✅ Drew arrow: "${arrow.fromGame}" (dist ${arrow.fromDistance}) → "${arrow.toGame}" (dist ${arrow.toDistance})`);
   });
-
-  console.log(`✅ Total arrows drawn: ${arrowsDrawn}`);
 }
 
 // Map tooltip functions
