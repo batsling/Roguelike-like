@@ -70,6 +70,7 @@ function updateGoldDisplay() {
 
 function updateLocationDisplay(gameName, gameDescription) {
   const locationName = document.getElementById('location-name');
+  const locationType = document.getElementById('location-type');
   const locationGame = document.getElementById('location-game');
   const locationEffect = document.getElementById('location-effect');
   const tierLabel = document.getElementById('tier-label');
@@ -85,9 +86,26 @@ function updateLocationDisplay(gameName, gameDescription) {
     // Update location name (the actual location name, not the game name)
     locationName.textContent = location.name || 'Current Location';
 
+    // Update location type with color coding
+    if (locationType) {
+      const type = location.type || 'Unknown';
+      // Color code based on type
+      const typeColors = {
+        'Undead': '#9b59b6',
+        'Firey': '#e74c3c',
+        'Watery': '#3498db',
+        'Building': '#95a5a6',
+        'Chaos': '#e67e22',
+        'General': '#2ecc71'
+      };
+      const color = typeColors[type] || '#aaa';
+      locationType.textContent = type;
+      locationType.style.color = color;
+    }
+
     // Update the source game
     if (locationGame) {
-      locationGame.textContent = `from ${location.game}`;
+      locationGame.textContent = location.game;
     }
 
     // Update the location effect
@@ -102,6 +120,10 @@ function updateLocationDisplay(gameName, gameDescription) {
   } else {
     // Fallback to game name if no location is set
     locationName.textContent = gameName || 'Current Location';
+    if (locationType) {
+      locationType.textContent = 'Unknown';
+      locationType.style.color = '#aaa';
+    }
     if (locationGame) {
       locationGame.textContent = 'No location selected';
     }
