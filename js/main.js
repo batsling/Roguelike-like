@@ -3457,19 +3457,37 @@ function saveFishStats(stats) {
 /**
  * Increment caught count for a fish
  * @param {string} fishName - Name of the fish
+ * @param {string} size - Size of the fish (Small, Medium, or Large)
  */
-function incrementFishCaught(fishName) {
+function incrementFishCaught(fishName, size = 'Medium') {
   const stats = getFishStats();
 
   if (!stats[fishName]) {
-    stats[fishName] = { caught: 0 };
+    stats[fishName] = {
+      caught: 0,
+      sizes: {
+        Small: 0,
+        Medium: 0,
+        Large: 0
+      }
+    };
+  }
+
+  // Initialize sizes if missing (for backward compatibility)
+  if (!stats[fishName].sizes) {
+    stats[fishName].sizes = {
+      Small: 0,
+      Medium: 0,
+      Large: 0
+    };
   }
 
   stats[fishName].caught = (stats[fishName].caught || 0) + 1;
+  stats[fishName].sizes[size] = (stats[fishName].sizes[size] || 0) + 1;
 
   saveFishStats(stats);
 
-  console.log(`${fishName} caught count: ${stats[fishName].caught}`);
+  console.log(`${fishName} (${size}) caught count: ${stats[fishName].caught} (Small: ${stats[fishName].sizes.Small}, Medium: ${stats[fishName].sizes.Medium}, Large: ${stats[fishName].sizes.Large})`);
 }
 
 /**

@@ -830,7 +830,7 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
       const goldValue = getFishGoldValue(rarity, size);
 
       // Track fish catch
-      incrementFishCaught(fish.name);
+      incrementFishCaught(fish.name, size);
 
       let rarityColor = '#aaa';
       if (rarity === 'Rare') rarityColor = '#ffd700';

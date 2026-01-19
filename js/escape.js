@@ -1003,8 +1003,16 @@ function switchCollectionTab(tab) {
 }
 
 // Switch between loot sub-tabs
-function switchLootSubTab(subTab) {
+function switchLootSubTab(subTab, sortType = null) {
   window.currentLootSubTab = subTab;
+
+  // Initialize or preserve sort type
+  if (!window.currentFishSortType) {
+    window.currentFishSortType = 'alphabetical';
+  }
+  if (sortType) {
+    window.currentFishSortType = sortType;
+  }
 
   // Update sub-tab buttons
   const subTabBtn = document.getElementById(`loot-subtab-${subTab}`);
@@ -1025,15 +1033,51 @@ function switchLootSubTab(subTab) {
     // Get fish stats for catch counts
     const fishStats = getFishStats();
 
-    // Sort fish alphabetically by name
-    const sortedFish = [...FISH_DATA].sort((a, b) => a.name.localeCompare(b.name));
+    // Sort fish based on current sort type
+    let sortedFish;
+    const currentSort = window.currentFishSortType;
+
+    if (currentSort === 'rarity') {
+      const rarityOrder = { 'Rare': 3, 'Uncommon': 2, 'Common': 1 };
+      sortedFish = [...FISH_DATA].sort((a, b) => {
+        const rarityDiff = (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0);
+        if (rarityDiff !== 0) return rarityDiff;
+        return a.name.localeCompare(b.name);
+      });
+    } else if (currentSort === 'game') {
+      sortedFish = [...FISH_DATA].sort((a, b) => {
+        const gameDiff = a.game.localeCompare(b.game);
+        if (gameDiff !== 0) return gameDiff;
+        return a.name.localeCompare(b.name);
+      });
+    } else if (currentSort === 'caught') {
+      sortedFish = [...FISH_DATA].sort((a, b) => {
+        const aCount = (fishStats[a.name]?.caught || 0);
+        const bCount = (fishStats[b.name]?.caught || 0);
+        const countDiff = bCount - aCount;
+        if (countDiff !== 0) return countDiff;
+        return a.name.localeCompare(b.name);
+      });
+    } else {
+      // Default: alphabetical
+      sortedFish = [...FISH_DATA].sort((a, b) => a.name.localeCompare(b.name));
+    }
 
     subTabContent.innerHTML = `
       <div style="padding: 10px;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px;">
+        <!-- Sorting controls -->
+        <div style="display: flex; gap: 8px; margin-bottom: 15px; justify-content: center; flex-wrap: wrap;">
+          <button onclick="switchLootSubTab('fish', 'alphabetical')" style="padding: 6px 12px; background: ${currentSort === 'alphabetical' ? '#66b3ff' : '#555'}; border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 12px; font-weight: bold; transition: background 0.2s;">A-Z</button>
+          <button onclick="switchLootSubTab('fish', 'rarity')" style="padding: 6px 12px; background: ${currentSort === 'rarity' ? '#66b3ff' : '#555'}; border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 12px; font-weight: bold; transition: background 0.2s;">Rarity</button>
+          <button onclick="switchLootSubTab('fish', 'game')" style="padding: 6px 12px; background: ${currentSort === 'game' ? '#66b3ff' : '#555'}; border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 12px; font-weight: bold; transition: background 0.2s;">Game</button>
+          <button onclick="switchLootSubTab('fish', 'caught')" style="padding: 6px 12px; background: ${currentSort === 'caught' ? '#66b3ff' : '#555'}; border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 12px; font-weight: bold; transition: background 0.2s;"># Caught</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
           ${sortedFish.map(fish => {
-            const stats = fishStats[fish.name] || { caught: 0 };
-            const caughtCount = stats.caught;
+            const stats = fishStats[fish.name] || { caught: 0, sizes: { Small: 0, Medium: 0, Large: 0 } };
+            const caughtCount = stats.caught || 0;
+            const sizes = stats.sizes || { Small: 0, Medium: 0, Large: 0 };
 
             let rarityColor = '#aaa';
             if (fish.rarity === 'Rare') rarityColor = '#ffd700';
@@ -1049,7 +1093,7 @@ function switchLootSubTab(subTab) {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                gap: 10px;
+                gap: 8px;
                 transition: transform 0.2s, box-shadow 0.2s;
                 position: relative;
               " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 0 20px ${rarityColor}80';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
@@ -1112,6 +1156,24 @@ function switchLootSubTab(subTab) {
                 <div style="font-size: 11px; color: #ddd; text-align: center; margin-top: 5px; padding-top: 8px; border-top: 1px solid #444; width: 100%;">
                   ${caughtCount === 0 ? 'Not yet caught' : caughtCount === 1 ? 'Caught once' : `Caught ${caughtCount} times`}
                 </div>
+
+                <!-- Size breakdown -->
+                ${caughtCount > 0 ? `
+                  <div style="width: 100%; padding: 8px 0; border-top: 1px solid #444; display: flex; justify-content: space-around; font-size: 10px; color: #bbb;">
+                    <div style="text-align: center;">
+                      <div style="color: #88ff88; font-weight: bold;">S</div>
+                      <div>${sizes.Small || 0}</div>
+                    </div>
+                    <div style="text-align: center;">
+                      <div style="color: #ffdd88; font-weight: bold;">M</div>
+                      <div>${sizes.Medium || 0}</div>
+                    </div>
+                    <div style="text-align: center;">
+                      <div style="color: #ff8888; font-weight: bold;">L</div>
+                      <div>${sizes.Large || 0}</div>
+                    </div>
+                  </div>
+                ` : ''}
               </div>
             `;
           }).join('')}
