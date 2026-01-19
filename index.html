@@ -567,8 +567,13 @@
         <!-- Trigger Event -->
         <div class="section">
           <h3>Trigger Event</h3>
+          <label for="eventSelect">Select Event:</label>
+          <select id="eventSelect" class="w-full mb-10">
+            <option value="">-- Select an Event --</option>
+          </select>
           <div class="button-group">
-            <button id="checkEvent">Random Event</button>
+            <button id="triggerSelectedEvent">Trigger Selected Event</button>
+            <button id="checkEvent">Random Event (In-Game Only)</button>
           </div>
           <div id="eventResult" class="output-area"></div>
         </div>

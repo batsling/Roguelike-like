@@ -74,6 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (typeof populateCurseSelects === 'function') populateCurseSelects();
   if (typeof populateEnemySelect === 'function') populateEnemySelect();
   if (typeof populateStatusGameSelect === 'function') populateStatusGameSelect();
+  if (typeof populateEventSelect === 'function') populateEventSelect();
 
   // Add bingo event listeners
   const bingoToggleBtn = document.getElementById('bingo-toggle');
@@ -824,6 +825,20 @@ function populateStatusGameSelect() {
     });
 
     statusGameSelect.disabled = false;
+  }
+}
+
+function populateEventSelect() {
+  const eventSelect = document.getElementById('eventSelect');
+  if (eventSelect && typeof events !== 'undefined' && events.length > 0) {
+    eventSelect.innerHTML = '<option value="">-- Select an Event --</option>';
+    events.forEach((event, index) => {
+      const option = document.createElement('option');
+      option.value = event.name;
+      option.textContent = event.name;
+      eventSelect.appendChild(option);
+    });
+    eventSelect.disabled = false;
   }
 }
 
@@ -4245,6 +4260,41 @@ document.getElementById('triggerItemChoice')?.addEventListener('click', () => {
     showItemChoiceModal();
   } else {
     alert('Item choice system not available');
+  }
+});
+
+// Event Triggers
+document.getElementById('triggerSelectedEvent')?.addEventListener('click', () => {
+  const eventSelect = document.getElementById('eventSelect');
+  const eventName = eventSelect?.value;
+
+  if (!eventName) {
+    alert('Please select an event');
+    return;
+  }
+
+  if (typeof showEventModal === 'function') {
+    showEventModal(eventName);
+  } else {
+    alert('Event system not available');
+  }
+});
+
+document.getElementById('checkEvent')?.addEventListener('click', () => {
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first to use Random Event');
+    return;
+  }
+
+  if (events.length === 0) {
+    alert('No events available');
+    return;
+  }
+
+  if (typeof showEventModal === 'function') {
+    showEventModal();
+  } else {
+    alert('Event system not available');
   }
 });
 
