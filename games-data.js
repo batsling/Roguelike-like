@@ -2195,6 +2195,15 @@ var GAMES_DATA = [
     "coverImage": "images/covers/freaky-awesome.jpg"
   },
   {
+    "name": "From The Top",
+    "year": 2025,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "coverImage": "images/covers/from-the-top.jpg"
+  },
+  {
     "name": "FTL",
     "year": 2012,
     "type": "Strategy",
@@ -2882,6 +2891,15 @@ var GAMES_DATA = [
     "coverImage": "images/covers/keeper-s-toll.jpg"
   },
   {
+    "name": "Kill the Brickman",
+    "year": 2025,
+    "type": "Strategy",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "coverImage": "images/covers/kill-the-brickman.jpg"
+  },
+  {
     "name": "Kingdom: New Lands",
     "year": 2016,
     "type": "Strategy",
@@ -3445,6 +3463,15 @@ var GAMES_DATA = [
       "House of Necrosis"
     ],
     "coverImage": "images/covers/mystery-dungeon-2-shiren-the-wanderer.jpg"
+  },
+  {
+    "name": "Mythical Concept Starnaut",
+    "year": 2024,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "coverImage": "images/covers/mythical-concept-starnaut.jpg"
   },
   {
     "name": "NecroBouncer",
@@ -6198,32 +6225,5 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "coverImage": "images/covers/zorbus.jpg"
-  },
-  {
-    "name": "Kill the Brickman",
-    "year": 2025,
-    "type": "Strategy",
-    "connected": false,
-    "influenced": false,
-    "tags": [],
-    "coverImage": "images/covers/kill-the-brickman.jpg"
-  },
-  {
-    "name": "Mythical Concept Starnaut",
-    "year": 2024,
-    "type": "Action",
-    "connected": true,
-    "influenced": true,
-    "tags": [],
-    "coverImage": "images/covers/mythical-concept-starnaut.jpg"
-  },
-  {
-    "name": "From The Top",
-    "year": 2025,
-    "type": "Action",
-    "connected": true,
-    "influenced": true,
-    "tags": [],
-    "coverImage": "images/covers/from-the-top.jpg"
   }
 ];
