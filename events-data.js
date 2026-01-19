@@ -29,5 +29,13 @@ var EVENTS_DATA = [
       "Continue (Teleport to an action game not connected to the rest of the map)"
     ],
     "requirement": null
+  },
+  {
+    "name": "A Sushi Bar By The Blue Hole",
+    "description": "As you continue on your journey, you stumble upon a sushi restaurant residing near a large ocean. You meet an eccentric older gentleman who challenges you to a fishing contest.",
+    "options": [
+      "Start fishing (Begin the fishing minigame)"
+    ],
+    "requirement": null
   }
 ];
