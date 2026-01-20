@@ -498,7 +498,8 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
     boons.forEach((boon, index) => {
       // Parse boon description to get condition
       const getBoonCondition = (description) => {
-        const conditionMatch = description.match(/If the player ([^,]+)/i);
+        // Match everything after "If the player" up to " gain" (non-greedy)
+        const conditionMatch = description.match(/If the player ([^,]+?)(?:\s+gain)/i);
         return conditionMatch ? conditionMatch[1] : 'complete the boon condition';
       };
 
