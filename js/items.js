@@ -1276,7 +1276,12 @@ function initializePassiveModifiers(item) {
       strength: 0,
       dexterity: 0,
       intelligence: 0,
-      charisma: 0
+      charisma: 0,
+      dash: 0,
+      reroll: 0,
+      skip: 0,
+      discovery: 0,
+      fov: 0
     };
   }
 }
@@ -1323,7 +1328,7 @@ function upgradeOrDowngradePassive(isUpgrade) {
   initializePassiveModifiers(randomItem);
 
   // Choose random stat to modify
-  const stats = ['strength', 'dexterity', 'intelligence', 'charisma'];
+  const stats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov'];
   const randomStat = stats[Math.floor(Math.random() * stats.length)];
 
   // Apply modification
