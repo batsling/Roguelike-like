@@ -203,6 +203,83 @@ const FISH_DATA = [
     type: "General",
     game: "Cult of the Lamb",
     image: "lobster"
+  },
+  {
+    name: "Scorching Sunfish",
+    rarity: "Uncommon",
+    type: "Firey",
+    game: "Don't Starve Together",
+    image: "scorching-sunfish"
+  },
+  {
+    name: "Ice Bream",
+    rarity: "Uncommon",
+    type: "Icey",
+    game: "Don't Starve Together",
+    image: "ice-bream"
+  },
+  {
+    name: "Mudfish",
+    rarity: "Common",
+    type: "Swampy",
+    game: "Don't Starve Together",
+    image: "mudfish"
+  },
+  {
+    name: "Bitty Baitfish",
+    rarity: "Rare",
+    type: "General",
+    game: "Don't Starve Together",
+    image: "bitty-baitfish"
+  },
+  {
+    name: "Sweetish Fish",
+    rarity: "Common",
+    type: "Swampy",
+    game: "Don't Starve Together",
+    image: "sweetish-fish"
+  },
+  {
+    name: "Runty Guppy",
+    rarity: "Uncommon",
+    type: "General",
+    game: "Don't Starve Together",
+    image: "runty-guppy"
+  },
+  {
+    name: "Smolt Fry",
+    rarity: "Common",
+    type: "General",
+    game: "Don't Starve Together",
+    image: "smolt-fry"
+  },
+  {
+    name: "Needlenosed Squirt",
+    rarity: "Common",
+    type: "General",
+    game: "Don't Starve Together",
+    image: "needlenosed-squirt"
+  },
+  {
+    name: "Jiffy",
+    rarity: "Common",
+    type: "Undead",
+    game: "Hades II",
+    image: "jiffy"
+  },
+  {
+    name: "Goldfish",
+    rarity: "Uncommon",
+    type: "Undead",
+    game: "Hades II",
+    image: "goldfish"
+  },
+  {
+    name: "Styxeon",
+    rarity: "Rare",
+    type: "Undead",
+    game: "Hades II",
+    image: "styxeon"
   }
 ];
 
