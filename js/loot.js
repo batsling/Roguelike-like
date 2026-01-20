@@ -243,7 +243,7 @@ function selectRandomFish(location) {
   if (rarityRoll < itemChance) {
     // 5% chance: Give random item with "fish" tag
     const fishTaggedItems = items.filter(item =>
-      item.tags && item.tags.toLowerCase().includes('fish')
+      item.tags && Array.isArray(item.tags) && item.tags.some(tag => typeof tag === 'string' && tag.toLowerCase().includes('fish'))
     );
 
     if (fishTaggedItems.length > 0) {
