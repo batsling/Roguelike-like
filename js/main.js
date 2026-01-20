@@ -3310,6 +3310,20 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
         updateInventory();
       }
 
+      // Check and update curse durations after item selection
+      // This ensures curse levels are current before moving to next path
+      if (typeof checkCurseDurations === 'function') {
+        checkCurseDurations('game_beaten');
+      }
+
+      // Update curse display to reflect any changes
+      if (typeof updateCursesDisplay === 'function') {
+        updateCursesDisplay();
+      }
+      if (typeof updateTopBar === 'function') {
+        updateTopBar();
+      }
+
       // Check if we need to show Hades boon selection first
       if (gameState.pendingHadesBoonSelection) {
         gameState.pendingHadesBoonSelection = false;
@@ -3353,6 +3367,20 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
       gameState.phase = 'selection';
       if (typeof updateInventory === 'function') {
         updateInventory();
+      }
+
+      // Check and update curse durations after skipping item selection
+      // This ensures curse levels are current before moving to next path
+      if (typeof checkCurseDurations === 'function') {
+        checkCurseDurations('game_beaten');
+      }
+
+      // Update curse display to reflect any changes
+      if (typeof updateCursesDisplay === 'function') {
+        updateCursesDisplay();
+      }
+      if (typeof updateTopBar === 'function') {
+        updateTopBar();
       }
 
       // Check if we need to show Hades boon selection first
