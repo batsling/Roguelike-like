@@ -47,7 +47,7 @@ function showShopModal(purchasedIndices = []) {
         // Use luck-based rarity selection
       const targetRarity = selectRandomRarity();
 
-      const rarityItems = items.filter(item => item.rarity === targetRarity && item.rarity !== 'N/A');
+      const rarityItems = items.filter(item => item.rarity && item.rarity.toLowerCase() === targetRarity.toLowerCase() && item.rarity !== 'N/A');
       if (rarityItems.length > 0) {
         const randomIndex = Math.floor(Math.random() * rarityItems.length);
         selectedItem = rarityItems[randomIndex];
@@ -91,10 +91,10 @@ function showShopModal(purchasedIndices = []) {
   // Get rarity color helper
   const getRarityColor = (rarity) => {
     switch(rarity) {
-      case 'legendary': return '#ff6b00';
-      case 'rare': return '#9b59b6';
-      case 'uncommon': return '#4CAF50';
-      case 'common': return '#aaa';
+      case 'Legendary': return '#ff6b00';
+      case 'Rare': return '#9b59b6';
+      case 'Uncommon': return '#4CAF50';
+      case 'Common': return '#aaa';
       default: return '#888';
     }
   };
@@ -259,7 +259,8 @@ function showShopModal(purchasedIndices = []) {
 
   shopItems.forEach((item, index) => {
     const isPurchased = purchasedIndices.includes(index);
-    const basePrice = item.rarity === 'common' ? 10 : item.rarity === 'uncommon' ? 20 : item.rarity === 'rare' ? 30 : 50;
+    const rarityLower = item.rarity ? item.rarity.toLowerCase() : 'common';
+    const basePrice = rarityLower === 'common' ? 10 : rarityLower === 'uncommon' ? 20 : rarityLower === 'rare' ? 30 : 50;
     const price = basePrice + frugalityModifier;
     const rarityColor = getRarityColor(item.rarity);
 
