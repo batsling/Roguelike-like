@@ -474,7 +474,7 @@ function showLootModal() {
 
   const modalHTML = `
     <div style="text-align: center;">
-      <h2 style="color: #66ddff; margin-top: 0;">🐟 Loot Inventory</h2>
+      <h2 style="color: #66ddff; margin-top: 0;">Loot Inventory</h2>
       <p style="color: #aaa; margin-bottom: 20px;">
         Fish and items that can be sold at shops
       </p>
@@ -520,7 +520,7 @@ function getLootHTML() {
           cursor: pointer;
           transition: transform 0.2s, box-shadow 0.2s;
         " onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(138, 43, 226, 0.5)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
-          <img src="${imagePath}" alt="${item.name}" style="width: 100%; height: 120px; object-fit: contain; border-radius: 6px; background: rgba(0,0,0,0.3); padding: 10px;">
+          <img src="${imagePath}" alt="${item.name}" style="width: 100%; height: 120px; object-fit: contain; object-position: center; border-radius: 6px; background: rgba(0,0,0,0.3); padding: 5px;">
           <div style="margin-top: 10px; font-weight: bold; color: #ba55d3; font-size: 14px;">${item.name}</div>
           <div style="margin-top: 5px; color: #888; font-size: 12px;">Item</div>
         </div>
@@ -556,7 +556,7 @@ function getLootHTML() {
           cursor: pointer;
           transition: transform 0.2s, box-shadow 0.2s;
         " onmouseover="showLootTooltip(${index}, event)" onmouseout="hideLootTooltip()" onmousemove="moveLootTooltip(event)">
-          <img src="${imagePath}" alt="${fish.name}" style="width: 100%; height: 120px; object-fit: contain; border-radius: 6px; background: rgba(0,0,0,0.3); padding: 10px;">
+          <img src="${imagePath}" alt="${fish.name}" style="width: 100%; height: 120px; object-fit: contain; object-position: center; border-radius: 6px; background: rgba(0,0,0,0.3); padding: 5px;">
           <div style="margin-top: 10px; font-weight: bold; color: #66ddff; font-size: 14px;">${fish.name}</div>
           <div style="margin-top: 5px; color: ${rarityColor}; font-size: 12px;">${rarity} - ${size}</div>
           <div style="margin-top: 5px; color: #ffd700; font-size: 13px; font-weight: bold;">💰 ${goldValue}g</div>
@@ -674,7 +674,7 @@ function startFishingMinigame(numAttempts = 3, onComplete) {
   let currentAttempt = 0;
 
   // Timing for each attempt (decreasing)
-  const attemptTimings = [1000, 500, 250]; // ms to click after button activates
+  const attemptTimings = [3000, 2000, 1000]; // ms to click after button activates
 
   function doFishingAttempt() {
     currentAttempt++;
@@ -720,29 +720,25 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
           }
         </div>
 
-        <!-- Lake Text -->
-        <div>
-          <div style="font-size: 72px; font-weight: bold; color: #4488ff; text-shadow: 0 0 20px rgba(68, 136, 255, 0.5);">
-            LAKE
-          </div>
-
-          <!-- Fishing Button Area -->
-          <div style="position: relative; margin-top: 40px;">
-            <div style="text-align: center; margin-bottom: 10px; color: #aaa; font-size: 14px;">
-              <span>Click here ↓</span>
-            </div>
-            <button id="fishing-btn" style="
-              width: 120px;
-              height: 120px;
-              font-size: 64px;
-              background: #555;
-              border: 4px solid #666;
-              border-radius: 50%;
-              cursor: pointer;
-              transition: all 0.2s;
-              opacity: 0.5;
-            ">!</button>
-          </div>
+        <!-- Water Rectangle -->
+        <div id="water-container" style="position: relative; width: 600px; height: 400px; background: linear-gradient(180deg, #87ceeb 0%, #4682b4 100%); border-radius: 12px; box-shadow: 0 4px 20px rgba(68, 136, 255, 0.4); overflow: hidden;">
+          <!-- Fishing Button (exclamation mark) will be positioned randomly inside -->
+          <button id="fishing-btn" style="
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            font-size: 48px;
+            background: #555;
+            border: 4px solid #666;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+            opacity: 0;
+            pointer-events: none;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+          ">!</button>
         </div>
       </div>
 
@@ -767,8 +763,9 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
 
   fishingMessage.textContent = 'Wait for the !...';
 
-  // Handle early clicks (failure)
-  const handleEarlyClick = () => {
+  // Handle clicks on water container (early click = failure)
+  const waterContainer = document.getElementById('water-container');
+  const handleWaterClick = () => {
     if (!buttonActive && !buttonClicked) {
       buttonClicked = true;
       clearTimeout(activationTimeout);
@@ -788,14 +785,31 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
     }
   };
 
+  // Attach early click handler to water container
+  waterContainer.onclick = handleWaterClick;
+
   activationTimeout = setTimeout(() => {
     // Activate button
     buttonActive = true;
+
+    // Position button randomly within the water container
+    // Water container is 600px wide and 400px tall, button is 80px
+    // So we can position from 0 to (600-80) and 0 to (400-80)
+    const maxX = 520; // 600 - 80
+    const maxY = 320; // 400 - 80
+    const randomX = Math.random() * maxX;
+    const randomY = Math.random() * maxY;
+
+    fishingBtn.style.left = randomX + 'px';
+    fishingBtn.style.top = randomY + 'px';
+    fishingBtn.style.transform = 'none'; // Remove the centering transform
+
     fishingBtn.disabled = false;
     fishingBtn.style.background = '#4488ff';
     fishingBtn.style.borderColor = '#66aaff';
     fishingBtn.style.cursor = 'pointer';
     fishingBtn.style.opacity = '1';
+    fishingBtn.style.pointerEvents = 'auto';
     fishingBtn.style.boxShadow = '0 0 30px rgba(68, 136, 255, 0.8)';
     fishingMessage.textContent = 'CLICK NOW!';
 
@@ -807,7 +821,8 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
         fishingBtn.disabled = true;
         fishingBtn.style.background = '#555';
         fishingBtn.style.cursor = 'not-allowed';
-        fishingBtn.style.opacity = '0.5';
+        fishingBtn.style.opacity = '0.3';
+        fishingBtn.style.pointerEvents = 'none';
 
         setTimeout(() => {
           closeGameModal();
@@ -818,13 +833,13 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
   }, activationDelay);
 
   // Use onmousedown instead of onclick to trigger on press
-  fishingBtn.onmousedown = () => {
+  fishingBtn.onmousedown = (e) => {
+    e.stopPropagation(); // Prevent water container click from firing
+
     if (buttonClicked) return;
 
     if (!buttonActive) {
-      // Early click - failure
-      handleEarlyClick();
-      return;
+      return; // Should never happen since button is invisible when inactive
     }
 
     buttonClicked = true;
