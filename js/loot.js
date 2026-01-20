@@ -706,10 +706,12 @@ function startFishingMinigame(numAttempts = 3, onComplete) {
  * Show the UI for a single fishing attempt
  */
 function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttemptComplete) {
-  // Create fishing modal
+  // Create or update fishing modal
   const modalHTML = `
     <div id="fishing-container" style="text-align: center; padding: 40px;">
-      <h3 style="color: #66ddff; margin-bottom: 30px;">Attempt ${attemptNumber} of ${totalAttempts}</h3>
+      <h3 style="color: #66ddff; margin-bottom: 20px;">Attempt ${attemptNumber} of ${totalAttempts}</h3>
+
+      <div id="caught-fish-display" style="min-height: 150px; margin-bottom: 20px;"></div>
 
       <div style="position: relative; display: flex; align-items: center; justify-content: center; gap: 40px; margin-bottom: 30px;">
         <!-- Character Image -->
@@ -743,11 +745,18 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
       </div>
 
       <div id="fishing-message" style="min-height: 30px; color: #ffd700; font-size: 18px; font-weight: bold;"></div>
-      <div id="caught-fish-display" style="min-height: 150px; margin-top: 20px;"></div>
     </div>
   `;
 
-  createGameModal(modalHTML);
+  // Check if modal already exists
+  const existingModal = document.querySelector('.game-modal');
+  if (existingModal) {
+    // Update existing modal content
+    existingModal.innerHTML = modalHTML;
+  } else {
+    // Create new modal
+    createGameModal(modalHTML);
+  }
 
   const fishingBtn = document.getElementById('fishing-btn');
   const fishingMessage = document.getElementById('fishing-message');
@@ -779,7 +788,6 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
       fishingBtn.style.opacity = '0.5';
 
       setTimeout(() => {
-        closeGameModal();
         onAttemptComplete(false, null);
       }, 1500);
     }
@@ -825,7 +833,6 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
         fishingBtn.style.pointerEvents = 'none';
 
         setTimeout(() => {
-          closeGameModal();
           onAttemptComplete(false, null);
         }, 1500);
       }
@@ -905,7 +912,6 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
     }
 
     setTimeout(() => {
-      closeGameModal();
       onAttemptComplete(true, fishResult);
     }, 2000);
   };
@@ -916,40 +922,17 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
 // ========================================
 
 /**
- * Show the Sushi Bar event
+ * Show the Sushi Bar event - goes directly to fishing minigame
  */
 function showSushiBarEvent() {
-  // Show initial event text
-  const initialPromptHTML = `
-    <div style="text-align: center; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #ffd700; margin-top: 0;">🍣 A Sushi Bar By The Blue Hole</h2>
-      <p style="color: #e6d5b8; font-size: 16px; line-height: 1.6; margin: 20px 0;">
-        As you continue on your journey, you stumble upon a sushi restaurant residing near a large ocean.
-        You meet an eccentric older gentleman who challenges you to a fishing contest.
-      </p>
-      <button onclick="startSushiBarFishing()" style="
-        margin-top: 20px;
-        padding: 12px 30px;
-        background: #4488ff;
-        border: none;
-        color: white;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 16px;
-      ">Start Fishing</button>
-    </div>
-  `;
-
-  createGameModal(initialPromptHTML);
+  // Start fishing minigame directly (event description already shown)
+  startSushiBarFishing();
 }
 
 /**
  * Start the fishing portion of the Sushi Bar event
  */
 function startSushiBarFishing() {
-  closeGameModal();
-
   // Start fishing minigame with 3 attempts
   startFishingMinigame(3, (caughtFish) => {
     // Show results based on catches
