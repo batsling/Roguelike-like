@@ -960,7 +960,7 @@ text, path, line, g {
   position: fixed;
   right: 290px;
   top: 60px;
-  width: 250px;
+  width: 200px;
   background: rgba(30, 30, 30, 0.95);
   border: 2px solid #cc6600;
   border-radius: 0;
@@ -976,6 +976,47 @@ text, path, line, g {
 #location-display-section:hover {
   background: rgba(40, 35, 30, 0.98);
   box-shadow: 0 6px 30px rgba(204, 102, 0, 0.4);
+}
+
+/* Location Tooltip */
+#location-hover-tooltip {
+  position: fixed;
+  background: #2a2420;
+  border: 2px solid #cc6600;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  width: 280px;
+  pointer-events: none;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.8);
+  opacity: 0;
+  transition: opacity .2s;
+  z-index: 10000;
+  display: none;
+  font-family: Arial, sans-serif;
+  color: #e6d5b8;
+}
+
+#location-hover-tooltip.visible {
+  display: block;
+  opacity: 1;
+}
+
+.location-tooltip-row {
+  margin: 8px 0;
+  display: flex;
+  gap: 8px;
+}
+
+.location-tooltip-label {
+  color: #888;
+  font-weight: bold;
+  min-width: 60px;
+}
+
+.location-tooltip-value {
+  color: #e6d5b8;
+  flex: 1;
 }
 
 #location-display-section h3 {

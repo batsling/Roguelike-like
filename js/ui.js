@@ -163,89 +163,98 @@ function updateLocationDisplay(gameName, gameDescription) {
 
 // Location tooltip
 let locationTooltip;
-let locationTooltipTimeout = null;
 
 function initLocationTooltip() {
-  if (!locationTooltip) {
-    locationTooltip = document.getElementById('item-tooltip'); // Reuse existing tooltip
-  }
-  return locationTooltip;
+  locationTooltip = document.getElementById('location-hover-tooltip');
+  const locationSection = document.getElementById('location-display-section');
+
+  if (!locationTooltip || !locationSection) return;
+
+  locationSection.addEventListener('mouseenter', (e) => {
+    showLocationTooltip(e);
+  });
+
+  locationSection.addEventListener('mousemove', (e) => {
+    if (locationTooltip && locationTooltip.classList.contains('visible')) {
+      positionLocationTooltip(e);
+    }
+  });
+
+  locationSection.addEventListener('mouseleave', () => {
+    hideLocationTooltip();
+  });
 }
 
 function showLocationTooltip(e) {
-  const tooltip = initLocationTooltip();
-  const locationSection = document.getElementById('location-display-section');
-  if (!tooltip || !locationSection) return;
+  const locationType = document.getElementById('location-type');
+  const locationGame = document.getElementById('location-game');
+  const locationEffect = document.getElementById('location-effect');
 
-  const description = locationSection.dataset.description || 'No description available';
-  const gameName = document.getElementById('location-name')?.textContent || 'Location';
+  if (!locationTooltip || !locationType || !locationGame || !locationEffect) return;
 
-  tooltip.innerHTML = `
-    <h4 style="margin: 0 0 8px 0; color: #ffcc66; font-size: 16px;">${gameName}</h4>
-    <div style="font-size: 13px; color: #e0d0b0; line-height: 1.4;">
-      ${description}
+  const typeColors = {
+    'Undead': '#9b59b6',
+    'Firey': '#e74c3c',
+    'Watery': '#3498db',
+    'Building': '#95a5a6',
+    'Chaos': '#e67e22',
+    'General': '#2ecc71'
+  };
+
+  const typeText = locationType.textContent;
+  const typeColor = typeColors[typeText] || '#aaa';
+
+  locationTooltip.innerHTML = `
+    <div class="location-tooltip-row">
+      <div class="location-tooltip-label">Type:</div>
+      <div class="location-tooltip-value" style="color: ${typeColor};">${typeText}</div>
+    </div>
+    <div class="location-tooltip-row">
+      <div class="location-tooltip-label">From:</div>
+      <div class="location-tooltip-value" style="font-style: italic;">${locationGame.textContent}</div>
+    </div>
+    <div class="location-tooltip-row">
+      <div class="location-tooltip-label">Effect:</div>
+      <div class="location-tooltip-value">${locationEffect.textContent}</div>
     </div>
   `;
 
-  tooltip.style.opacity = 1;
-  tooltip.style.display = 'block';
-  moveLocationTooltip(e);
+  positionLocationTooltip(e);
+  locationTooltip.classList.add('visible');
 }
 
-function moveLocationTooltip(e) {
-  const tooltip = initLocationTooltip();
-  if (!tooltip) return;
+function positionLocationTooltip(e) {
+  if (!locationTooltip) return;
 
-  let left = e.clientX + 14;
-  let top = e.clientY + 14;
+  const tooltipRect = locationTooltip.getBoundingClientRect();
+  let x = e.clientX + 15;
+  let y = e.clientY + 15;
 
-  const tooltipWidth = 280;
-  const tooltipHeight = tooltip.offsetHeight || 150;
-
-  if (left + tooltipWidth > window.innerWidth) {
-    left = e.clientX - tooltipWidth - 14;
+  // Keep tooltip on screen
+  if (x + tooltipRect.width > window.innerWidth) {
+    x = e.clientX - tooltipRect.width - 15;
+  }
+  if (y + tooltipRect.height > window.innerHeight) {
+    y = e.clientY - tooltipRect.height - 15;
   }
 
-  if (top + tooltipHeight > window.innerHeight) {
-    top = window.innerHeight - tooltipHeight - 10;
-  }
-
-  tooltip.style.left = left + 'px';
-  tooltip.style.top = top + 'px';
+  locationTooltip.style.left = x + 'px';
+  locationTooltip.style.top = y + 'px';
 }
 
 function hideLocationTooltip() {
-  const tooltip = initLocationTooltip();
-  if (!tooltip) return;
-
-  if (locationTooltipTimeout) {
-    clearTimeout(locationTooltipTimeout);
+  if (locationTooltip) {
+    locationTooltip.classList.remove('visible');
   }
-
-  tooltip.style.opacity = 0;
-  locationTooltipTimeout = setTimeout(() => {
-    tooltip.style.display = 'none';
-    locationTooltipTimeout = null;
-  }, 150);
 }
 
-// Add event listeners for location display tooltip
+// Initialize location display tooltip
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    const locationSection = document.getElementById('location-display-section');
-    if (locationSection) {
-      locationSection.addEventListener('mouseenter', showLocationTooltip);
-      locationSection.addEventListener('mousemove', moveLocationTooltip);
-      locationSection.addEventListener('mouseleave', hideLocationTooltip);
-    }
+    initLocationTooltip();
   });
 } else {
-  const locationSection = document.getElementById('location-display-section');
-  if (locationSection) {
-    locationSection.addEventListener('mouseenter', showLocationTooltip);
-    locationSection.addEventListener('mousemove', moveLocationTooltip);
-    locationSection.addEventListener('mouseleave', hideLocationTooltip);
-  }
+  initLocationTooltip();
 }
 
 // ===== INVENTORY DISPLAY =====
