@@ -269,7 +269,7 @@ var ITEMS_DATA = [
     "name": "Boon of Hermes",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player beats a game within an hour gain +1 to all combat stats, but 20% chance for games to be Timed",
+    "description": "If the player beat a game within an hour gain +1 to all combat stats, but 20% chance for games to be Timed",
     "image": "images/items/BoonOfHermes.png",
     "reference": "Hades"
   },
@@ -277,7 +277,7 @@ var ITEMS_DATA = [
     "name": "Boon of Zeus",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player defeats an enemy with lightning in their run gain +1 to all combat stats, but 20% chance for games to be Shocked",
+    "description": "If the player defeat an enemy with lightning in their run gain +1 to all combat stats, but 20% chance for games to be Shocked",
     "image": "images/items/BoonOfZeus.png",
     "reference": "Hades"
   },
@@ -285,7 +285,7 @@ var ITEMS_DATA = [
     "name": "Boon of Poseidon",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player defeats an enemy underwater gain +1 to all combat stats, but 20% chance for games to be Soaked",
+    "description": "If the player defeat an enemy underwater gain +1 to all combat stats, but 20% chance for games to be Soaked",
     "image": "images/items/BoonOfPoseidon.png",
     "reference": "Hades"
   },
@@ -293,7 +293,7 @@ var ITEMS_DATA = [
     "name": "Boon of Artemis",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player uses ranged strategies primarlity to win the run gain +1 to all combat stats, but 20% chance for games to be Marked",
+    "description": "If the player use ranged strategies primarlity to win the run gain +1 to all combat stats, but 20% chance for games to be Marked",
     "image": "images/items/BoonOfArtemis.png",
     "reference": "Hades"
   },
@@ -301,7 +301,7 @@ var ITEMS_DATA = [
     "name": "Boon of Aphrodite",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player charms an enemy gain +1 to all combat stats, but 20% chance for games to be Charmed",
+    "description": "If the player charm an enemy gain +1 to all combat stats, but 20% chance for games to be Charmed",
     "image": "images/items/BoonOfAphrodite.png",
     "reference": "Hades"
   },
@@ -309,7 +309,7 @@ var ITEMS_DATA = [
     "name": "Boon of Athena",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player negates damage with a shield 5+ times gain +1 to all combat stats, but 20% for games to be Shielded",
+    "description": "If the player negate damage with a shield 5+ times gain +1 to all combat stats, but 20% for games to be Shielded",
     "image": "images/items/BoonOfAthena.png",
     "reference": "Hades"
   }
