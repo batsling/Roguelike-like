@@ -3749,6 +3749,11 @@ function markGameFinished(gameName) {
     }
   }
 
+  // Trigger onGameBeaten effects for items (like Unstable Genome)
+  if (typeof triggerOnGameBeaten === 'function') {
+    triggerOnGameBeaten();
+  }
+
   // Only add if not already in finishedGames array (for unique tracking)
   if (!gameState.finishedGames.includes(gameName)) {
     gameState.finishedGames.push(gameName);

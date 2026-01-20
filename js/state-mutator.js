@@ -17,7 +17,40 @@ const StateMutator = {
     const { updateUI = true, notify = false, notifyMessage = null } = options;
 
     const oldHealth = health;
-    health = Math.max(0, Math.min(health + delta, maxHealth));
+    let effectiveDelta = delta;
+
+    // Check for Reactive Trauma Plate - prevents lethal damage once
+    if (delta < 0 && (health + delta) <= 0) {
+      const traumaPlateIndex = inventory.findIndex(item => item.name === 'Reactive Trauma Plate');
+      if (traumaPlateIndex !== -1) {
+        console.log('Reactive Trauma Plate activated! Negating lethal damage.');
+
+        // Remove the item
+        if (inventory[traumaPlateIndex].quantity && inventory[traumaPlateIndex].quantity > 1) {
+          inventory[traumaPlateIndex].quantity--;
+        } else {
+          inventory.splice(traumaPlateIndex, 1);
+        }
+        gameState.inventory = [...inventory];
+
+        // Negate the damage (keep at 1 HP)
+        effectiveDelta = 1 - health;
+
+        // Show notification
+        setTimeout(() => {
+          if (typeof createNotification === 'function') {
+            createNotification('Reactive Trauma Plate prevented lethal damage!', '#ff6b00', '🛡️');
+          }
+        }, 100);
+
+        // Update inventory UI
+        if (typeof updateInventory === 'function') {
+          updateInventory();
+        }
+      }
+    }
+
+    health = Math.max(0, Math.min(health + effectiveDelta, maxHealth));
     gameState.health = health;
 
     if (updateUI) {

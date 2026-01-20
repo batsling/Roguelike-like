@@ -480,6 +480,65 @@ const ITEM_EFFECTS = {
       console.log('Acquired Boon of Athena - condition: negate damage with shield 5+ times');
     }
     // Effect is applied in verification system
+  },
+
+  // ===== CAVES OF QUD CYBERNETICS & MUTATIONS =====
+
+  "Reactive Trauma Plate": {
+    onAcquire: () => {
+      console.log('Acquired Reactive Trauma Plate - will prevent lethal damage once');
+    }
+    // Effect is handled in damage calculation
+  },
+
+  "Stabilizar Arm Locks": {
+    onAcquire: () => {
+      StateMutator.modifyStat('dexterity', 6);
+    }
+  },
+
+  "Unstable Genome": {
+    onAcquire: () => {
+      console.log('Acquired Unstable Genome - will trigger after beating games');
+    },
+    onGameBeaten: () => {
+      // 33% chance to destroy this item and offer 3 random items
+      const roll = Math.random();
+      console.log(`Unstable Genome: rolled ${roll.toFixed(2)} vs 0.33 chance`);
+
+      if (roll < 0.33) {
+        // Find and remove this item from inventory
+        const itemIndex = inventory.findIndex(item => item.name === 'Unstable Genome');
+        if (itemIndex !== -1) {
+          // Remove the item
+          if (inventory[itemIndex].quantity && inventory[itemIndex].quantity > 1) {
+            inventory[itemIndex].quantity--;
+          } else {
+            inventory.splice(itemIndex, 1);
+          }
+          gameState.inventory = [...inventory];
+
+          console.log('Unstable Genome: Item destroyed, offering 3 random items');
+
+          // Show notification
+          setTimeout(() => {
+            createNotification('Unstable Genome mutated and was destroyed!', '#ff6b00', '🧬');
+          }, 100);
+
+          // Offer 3 random items to choose from
+          if (typeof showItemChoiceModal === 'function') {
+            setTimeout(() => {
+              showItemChoiceModal(3);
+            }, 500);
+          }
+
+          // Update UI
+          if (typeof updateInventory === 'function') {
+            updateInventory();
+          }
+        }
+      }
+    }
   }
 };
 
@@ -985,6 +1044,30 @@ function triggerOnCurseRemoved() {
 }
 
 /**
+ * Trigger onGameBeaten effects for all items in inventory that have this trigger
+ * Call this function when the player successfully beats a game
+ */
+function triggerOnGameBeaten() {
+  if (!inventory || inventory.length === 0) {
+    return;
+  }
+
+  console.log('Triggering onGameBeaten effects...');
+
+  // Check each item in inventory for onGameBeaten trigger
+  // Use a copy of inventory array since items might be removed during iteration
+  [...inventory].forEach(item => {
+    if (!item || !item.name) return;
+
+    const itemEffects = ITEM_EFFECTS[item.name];
+    if (itemEffects && typeof itemEffects.onGameBeaten === 'function') {
+      console.log(`Triggering ${item.name} onGameBeaten effect`);
+      itemEffects.onGameBeaten();
+    }
+  });
+}
+
+/**
  * Show Wand of Wishing item selection UI
  * Displays all unlocked items in a collection-style grid with hover tooltips
  */
@@ -1470,6 +1553,7 @@ window.teleportToRandomDeckbuilder = teleportToRandomDeckbuilder;
 window.triggerOnEnemyDefeated = triggerOnEnemyDefeated; // Trigger onEnemyDefeated effects
 window.triggerOnCurseAdded = triggerOnCurseAdded; // Trigger onCurseAdded effects
 window.triggerOnCurseRemoved = triggerOnCurseRemoved; // Trigger onCurseRemoved effects
+window.triggerOnGameBeaten = triggerOnGameBeaten; // Trigger onGameBeaten effects
 window.showWandOfWishingSelection = showWandOfWishingSelection; // Wand of Wishing UI
 window.showPoopSelection = showPoopSelection; // Poop selection UI
 window.calculateDamageReduction = calculateDamageReduction; // Damage reduction from items

@@ -312,5 +312,38 @@ var ITEMS_DATA = [
     "description": "If the player negate damage with a shield 5+ times gain +1 to all combat stats, but 20% for games to be Shielded",
     "image": "images/items/BoonOfAthena.png",
     "reference": "Hades"
+  },
+  {
+    "name": "Reactive Trauma Plate",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "If the player would take lethal damage, negate that damage and destroy this item",
+    "image": "images/items/ReactiveTraumaPlate.svg",
+    "reference": "Caves of Qud",
+    "tags": [
+      "cybernetics"
+    ]
+  },
+  {
+    "name": "Stabilizar Arm Locks",
+    "rarity": "Rare",
+    "type": "Passive",
+    "description": "Gain +6 Dexterity",
+    "image": "images/items/StabilizarArmLocks.svg",
+    "reference": "Caves of Qud",
+    "tags": [
+      "cybernetics"
+    ]
+  },
+  {
+    "name": "Unstable Genome",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "When you beat a game, there's a 33% chance for this item to be destroyed and you may gain 1 of 3 random items",
+    "image": "images/items/UnstableGenome.svg",
+    "reference": "Caves of Qud",
+    "tags": [
+      "mutation"
+    ]
   }
 ];
