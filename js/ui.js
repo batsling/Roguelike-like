@@ -329,7 +329,7 @@ function updateInventory() {
       gameItemsList.innerHTML = sortedInventory.map(({ item, idx }) => {
         let imageUrl = item.image && item.image.trim() !== ''
           ? item.image
-          : 'https://via.placeholder.com/75?text=%3F';
+          : 'https://via.placeholder.com/70?text=%3F';
 
         // Fix imgur URLs
         if (imageUrl.includes('imgur.com/') && !imageUrl.includes('i.imgur.com')) {
@@ -369,8 +369,8 @@ function updateInventory() {
               <img src="${imageUrl}"
                    alt="${item.name}"
                    loading="lazy"
-                   style="width: 75px; height: 75px; object-fit: contain; border-radius: 6px; display: block; background: #1a1a1a; padding: 2px; border: 3px solid ${rarityColor};"
-                   onerror="if(this.src!=='https://via.placeholder.com/75?text=%3F'){this.src='https://via.placeholder.com/75?text=%3F';this.classList.add('image-error');}">
+                   style="width: 70px; height: 70px; object-fit: contain; border-radius: 6px; display: block; background: #1a1a1a; padding: 2px; border: 3px solid ${rarityColor};"
+                   onerror="if(this.src!=='https://via.placeholder.com/70?text=%3F'){this.src='https://via.placeholder.com/70?text=%3F';this.classList.add('image-error');}">
               ${item.quantity && item.quantity > 1 ? `
                 <div class="item-quantity-badge" style="
                   position: absolute;

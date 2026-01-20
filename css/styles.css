@@ -852,7 +852,7 @@ text, path, line, g {
 
     /* Game Items Sidebar */
 #game-items {
-  width: 270px;
+  width: 285px;
   height: 100%;
   background: rgba(26, 20, 16, 0.95);
   border-left: 2px solid #cc6600;
@@ -933,7 +933,7 @@ text, path, line, g {
 
 #game-items-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 75px);
+  grid-template-columns: repeat(3, 70px);
   gap: 10px;
   justify-content: center;
 }
