@@ -301,7 +301,7 @@ var ITEMS_DATA = [
     "name": "Boon of Aphrodite",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player charms an enemy gain +1 to all combat stats, but 20% chance for games to be Charmed",
+    "description": "If the player charm an enemy gain +1 to all combat stats, but 20% chance for games to be Charmed",
     "image": "images/items/BoonOfAphrodite.png",
     "reference": "Hades"
   },
