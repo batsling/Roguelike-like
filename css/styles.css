@@ -67,6 +67,36 @@
   gap: 5px;
 }
 
+/* Scrollbar Styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cc6600 #1a1410;
+}
+
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #1a1410;
+  border-radius: 0;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #cc6600;
+  border-radius: 0;
+  border: 2px solid #1a1410;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #ff8800;
+}
+
+*::-webkit-scrollbar-corner {
+  background: #1a1410;
+}
+
 /* General Styles */
 body {
   padding-top: 60px;
@@ -746,6 +776,7 @@ text, path, line, g {
     /* Game Stats Sidebar */
 #game-stats {
   width: 270px;
+  height: 100%;
   background: rgba(26, 20, 16, 0.95);
   border-right: 2px solid #cc6600;
   padding: 15px;
@@ -754,6 +785,7 @@ text, path, line, g {
   font-size: 14px;
   overflow-y: auto;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 #game-stats h3 {
@@ -821,12 +853,14 @@ text, path, line, g {
     /* Game Items Sidebar */
 #game-items {
   width: 270px;
+  height: 100%;
   background: rgba(26, 20, 16, 0.95);
   border-left: 2px solid #cc6600;
   padding: 15px;
   color: #e6d5b8;
   overflow-y: auto;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 #game-items h3 {
@@ -946,6 +980,15 @@ text, path, line, g {
   display: flex;
   height: 100%;
   width: 100%;
+  background: #121212;
+}
+
+#path-viewport-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  background: #121212;
 }
 
 #path-viewport {
@@ -953,6 +996,7 @@ text, path, line, g {
   overflow-y: auto;
   position: relative;
   scroll-behavior: smooth;
+  background: #121212;
 }
 
 /* ===== LOCATION DISPLAY SECTION (TOP RIGHT) ===== */
