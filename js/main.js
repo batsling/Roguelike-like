@@ -285,14 +285,26 @@ function loadSavedGame(saveName) {
   // Generate encounter types if they don't exist (for old saves)
   if (!gameState.encounterTypes) {
     gameState.encounterTypes = {};
+    const startingConnections = gameState.startGame && typeof getGameConnections === 'function'
+      ? getGameConnections(gameState.startGame.name)
+      : [];
+
     games.forEach(game => {
       const roll = Math.random() * 100;
+      const isConnectedToStart = startingConnections.includes(game.name);
+
       if (roll < 75) {
         gameState.encounterTypes[game.name] = 'combat';
       } else if (roll < 90) {
         gameState.encounterTypes[game.name] = 'event';
       } else {
-        gameState.encounterTypes[game.name] = 'shop';
+        // If this is connected to starting game, re-roll to combat or event
+        if (isConnectedToStart) {
+          const reroll = Math.random() * 100;
+          gameState.encounterTypes[game.name] = reroll < 83.33 ? 'combat' : 'event';
+        } else {
+          gameState.encounterTypes[game.name] = 'shop';
+        }
       }
     });
   }
@@ -513,15 +525,29 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
 
   // Generate random encounter types for this run
   // Each game has: 75% combat, 15% event, 10% shop
+  // Shops cannot spawn on games directly connected to the starting game (would be useless)
   const encounterTypes = {};
+  const startingConnections = typeof getGameConnections === 'function'
+    ? getGameConnections(start.name)
+    : [];
+
   games.forEach(game => {
     const roll = Math.random() * 100;
+    const isConnectedToStart = startingConnections.includes(game.name);
+
     if (roll < 75) {
       encounterTypes[game.name] = 'combat';
     } else if (roll < 90) {
       encounterTypes[game.name] = 'event';
     } else {
-      encounterTypes[game.name] = 'shop';
+      // If this is connected to starting game, re-roll to combat or event
+      if (isConnectedToStart) {
+        const reroll = Math.random() * 100;
+        encounterTypes[game.name] = reroll < 83.33 ? 'combat' : 'event'; // 75/90 = 83.33%
+        console.log(`Prevented shop on ${game.name} (connected to start) - rerolled to ${encounterTypes[game.name]}`);
+      } else {
+        encounterTypes[game.name] = 'shop';
+      }
     }
   });
 
