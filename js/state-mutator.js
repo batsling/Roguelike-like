@@ -33,13 +33,13 @@ const StateMutator = {
         }
         gameState.inventory = [...inventory];
 
-        // Negate the damage (keep at 1 HP)
-        effectiveDelta = 1 - health;
+        // Negate all damage (keep health at current value)
+        effectiveDelta = 0;
 
         // Show notification
         setTimeout(() => {
           if (typeof createNotification === 'function') {
-            createNotification('Reactive Trauma Plate prevented lethal damage!', '#ff6b00', '🛡️');
+            createNotification('Reactive Trauma Plate negated all damage!', '#ff6b00', '🛡️');
           }
         }, 100);
 
