@@ -525,6 +525,28 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
     });
   }
 
+  // Add Caves of Qud appearance change verification (only if in a Caves of Qud location)
+  const isInCavesOfQud = gameState.location && typeof hasAppearanceEffect === 'function' && hasAppearanceEffect(gameState.location);
+  if (isInCavesOfQud) {
+    modalHTML += `
+      <div style="background: rgba(102, 187, 106, 0.1); border: 1px solid #66bb6a; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #81c784; margin: 0 0 5px 0; font-size: 15px;">🧬 Appearance Change</h3>
+        <div style="color: #a5d6a7; font-size: 11px; margin-bottom: 5px;">
+          ${gameState.location.name} Effect
+        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Change physical appearance (not attire)? 50/50 upgrade/downgrade random passive</p>
+        <div style="margin-top: 5px;">
+          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+            <input type="radio" name="appearance-check" value="yes" style="margin-right: 5px;">Yes
+          </label>
+          <label style="font-size: 12px; color: #ccc;">
+            <input type="radio" name="appearance-check" value="no" checked style="margin-right: 5px;">No
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
   modalHTML += `
       <button id="verify-all-submit" style="
         padding: 15px 40px;
@@ -850,6 +872,19 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       }
     }
 
+    // Process Caves of Qud appearance change verification
+    let appearanceChangeResult = null;
+    if (isInCavesOfQud) {
+      const appearanceRadio = document.querySelector('input[name="appearance-check"]:checked');
+      const changedAppearance = appearanceRadio && appearanceRadio.value === 'yes';
+      if (changedAppearance && typeof upgradeOrDowngradePassive === 'function') {
+        // 50/50 chance to upgrade or downgrade
+        const isUpgrade = Math.random() < 0.5;
+        appearanceChangeResult = upgradeOrDowngradePassive(isUpgrade);
+        console.log(`Appearance changed in Caves of Qud: ${isUpgrade ? 'upgrade' : 'downgrade'} attempted`);
+      }
+    }
+
     closeGameModal();
 
     // Immediately increment curse trackers for curses that were completed successfully
@@ -963,6 +998,21 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
           }
         }, (precisionLandingActivated ? 200 : 100) + (weaponEffectActivated ? 100 : 0) + (index * 100));
       });
+    }
+
+    // Show appearance change notification after modal closes
+    if (appearanceChangeResult) {
+      const baseDelay = (precisionLandingActivated ? 200 : 100) + (weaponEffectActivated ? 100 : 0) + (activatedBoons.length * 100);
+      setTimeout(() => {
+        if (typeof createNotification === 'function') {
+          if (appearanceChangeResult.success) {
+            const actionText = appearanceChangeResult.isUpgrade ? 'Upgraded' : 'Downgraded';
+            createNotification(`Appearance Changed: ${actionText} ${appearanceChangeResult.itemName}!`, '#66bb6a', '🧬');
+          } else {
+            createNotification('Appearance Changed: No passive items to modify', '#888', '🧬');
+          }
+        }
+      }, baseDelay);
     }
 
     // Check if Blasma Pistol chest needs to be shown BEFORE the normal reward

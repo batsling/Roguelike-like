@@ -243,13 +243,64 @@ const RISK_OF_RAIN_LOCATIONS = [
 ];
 
 // ========================================
+// CAVES OF QUD LOCATIONS
+// ========================================
+// Effect: If the player changes their physical appearance (not attire) in a run,
+//         there's a 50% chance to upgrade and 50% chance to downgrade a random passive item
+const CAVES_OF_QUD_LOCATIONS = [
+  {
+    name: "Salt Marsh",
+    difficulty: "Easy",
+    game: "Caves of Qud",
+    type: "Swampy",
+    effect: "If the player changes their physical appearance (not attire) in a run, there's a 50% chance to upgrade and 50% chance to downgrade a random passive item"
+  },
+  {
+    name: "Asphalt Mines",
+    difficulty: "Easy",
+    game: "Caves of Qud",
+    type: "Underground",
+    effect: "If the player changes their physical appearance (not attire) in a run, there's a 50% chance to upgrade and 50% chance to downgrade a random passive item"
+  },
+  {
+    name: "Salt Dunes",
+    difficulty: "Medium",
+    game: "Caves of Qud",
+    type: "Underground",
+    effect: "If the player changes their physical appearance (not attire) in a run, there's a 50% chance to upgrade and 50% chance to downgrade a random passive item"
+  },
+  {
+    name: "Flower fields",
+    difficulty: "Medium",
+    game: "Caves of Qud",
+    type: "General",
+    effect: "If the player changes their physical appearance (not attire) in a run, there's a 50% chance to upgrade and 50% chance to downgrade a random passive item"
+  },
+  {
+    name: "Deep Jungle",
+    difficulty: "Hard",
+    game: "Caves of Qud",
+    type: "Swampy",
+    effect: "If the player changes their physical appearance (not attire) in a run, there's a 50% chance to upgrade and 50% chance to downgrade a random passive item"
+  },
+  {
+    name: "Moon Stair",
+    difficulty: "Hard",
+    game: "Caves of Qud",
+    type: "Lunar",
+    effect: "If the player changes their physical appearance (not attire) in a run, there's a 50% chance to upgrade and 50% chance to downgrade a random passive item"
+  }
+];
+
+// ========================================
 // COMBINED LOCATIONS DATA
 // ========================================
 const LOCATIONS_DATA = [
   ...GUNGEON_LOCATIONS,
   ...ISAAC_LOCATIONS,
   ...HADES_LOCATIONS,
-  ...RISK_OF_RAIN_LOCATIONS
+  ...RISK_OF_RAIN_LOCATIONS,
+  ...CAVES_OF_QUD_LOCATIONS
 ];
 
 // ========================================
@@ -268,7 +319,8 @@ const locationsByGame = {
   gungeon: GUNGEON_LOCATIONS,
   isaac: ISAAC_LOCATIONS,
   hades: HADES_LOCATIONS,
-  riskOfRain: RISK_OF_RAIN_LOCATIONS
+  riskOfRain: RISK_OF_RAIN_LOCATIONS,
+  cavesOfQud: CAVES_OF_QUD_LOCATIONS
 };
 
 // ========================================
@@ -380,6 +432,15 @@ function hasScalingReward(location) {
 }
 
 /**
+ * Check if location has Caves of Qud effect (appearance change verification)
+ * @param {Object} location - Location object
+ * @returns {boolean} True if location has appearance change effect
+ */
+function hasAppearanceEffect(location) {
+  return isLocationFromGame(location, "Caves of Qud");
+}
+
+/**
  * Apply location-specific logic based on game effect
  * @param {Object} location - Current location
  * @returns {Object} Effect details for the location
@@ -413,6 +474,12 @@ function getLocationEffectDetails(location) {
     effects.parameters = {
       difficultyIncreaseChance: 0.50, // 50% chance
       extraChestCost: 10 // 10 gold
+    };
+  } else if (hasAppearanceEffect(location)) {
+    effects.type = 'appearanceChange';
+    effects.parameters = {
+      upgradeChance: 0.50, // 50% chance to upgrade
+      downgradeChance: 0.50 // 50% chance to downgrade
     };
   }
 
@@ -630,6 +697,7 @@ window.GUNGEON_LOCATIONS = GUNGEON_LOCATIONS;
 window.ISAAC_LOCATIONS = ISAAC_LOCATIONS;
 window.HADES_LOCATIONS = HADES_LOCATIONS;
 window.RISK_OF_RAIN_LOCATIONS = RISK_OF_RAIN_LOCATIONS;
+window.CAVES_OF_QUD_LOCATIONS = CAVES_OF_QUD_LOCATIONS;
 
 // Export organized data
 window.locationsByDifficulty = locationsByDifficulty;
@@ -649,6 +717,7 @@ window.hasGunSpawnBoost = hasGunSpawnBoost;
 window.hasIsaacModifiers = hasIsaacModifiers;
 window.hasGodBoonChoice = hasGodBoonChoice;
 window.hasScalingReward = hasScalingReward;
+window.hasAppearanceEffect = hasAppearanceEffect;
 window.getLocationEffectDetails = getLocationEffectDetails;
 
 // Export effect application functions

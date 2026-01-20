@@ -270,10 +270,15 @@ function updateInventory() {
   removeItemSelect.innerHTML = '<option value="">-- Select an Item --</option>';
 
   inventory.forEach((item, index) => {
+    // Get display name (with stat modifiers for passive items)
+    const displayName = (item.type === 'Passive' && typeof getPassiveDisplayName === 'function')
+      ? getPassiveDisplayName(item)
+      : (item.displayName || item.name);
+
     const itemDiv = document.createElement('div');
     itemDiv.className = 'inventory-item';
     itemDiv.innerHTML = `
-      <strong>${item.name}</strong> (${item.rarity})
+      <strong>${displayName}</strong> (${item.rarity})
       <span class="remove-item" onclick="removeItem(${index})">×</span>
       <p>${item.description}</p>
       <p><em>Type: ${item.type}</em></p>
@@ -282,7 +287,7 @@ function updateInventory() {
 
     const option = document.createElement('option');
     option.value = index;
-    option.textContent = `${item.name} (${item.rarity})`;
+    option.textContent = `${displayName} (${item.rarity})`;
     removeItemSelect.appendChild(option);
   });
 
@@ -1191,8 +1196,13 @@ function showItemTooltip(e, item) {
     }
   }
 
+  // Get display name (with stat modifiers for passive items)
+  const displayName = (item.type === 'Passive' && typeof getPassiveDisplayName === 'function')
+    ? getPassiveDisplayName(item)
+    : (item.displayName || item.name);
+
   tooltip.innerHTML = `
-    <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 18px;">${item.name}</h4>
+    <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 18px;">${displayName}</h4>
     <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
       ${item.reference ? `<div>From: ${item.reference}</div>` : ''}
       <div>${capitalizedRarity} ${item.type}</div>

@@ -1264,6 +1264,120 @@ function showPoopSelection() {
   }
 }
 
+// ===== PASSIVE ITEM STAT MODIFIERS =====
+
+/**
+ * Initialize stat modifiers on a passive item
+ * @param {Object} item - The passive item
+ */
+function initializePassiveModifiers(item) {
+  if (!item.statModifiers) {
+    item.statModifiers = {
+      strength: 0,
+      dexterity: 0,
+      intelligence: 0,
+      charisma: 0
+    };
+  }
+}
+
+/**
+ * Get the display name for a passive item with stat modifiers
+ * @param {Object} item - The passive item
+ * @returns {string} Display name with modifiers (e.g., "Wheat +1" or "Lunch -2")
+ */
+function getPassiveDisplayName(item) {
+  if (item.type !== 'Passive' || !item.statModifiers) {
+    return item.name;
+  }
+
+  // Calculate total modifier value (sum of all stat changes)
+  const totalModifier = Object.values(item.statModifiers).reduce((sum, val) => sum + val, 0);
+
+  if (totalModifier === 0) {
+    return item.name;
+  }
+
+  const modifierText = totalModifier > 0 ? `+${totalModifier}` : `${totalModifier}`;
+  return `${item.name} ${modifierText}`;
+}
+
+/**
+ * Upgrade or downgrade a random passive item
+ * @param {boolean} isUpgrade - True to upgrade, false to downgrade
+ * @returns {Object|null} Result object with success, itemName, and isUpgrade
+ */
+function upgradeOrDowngradePassive(isUpgrade) {
+  // Get all passive items in inventory
+  const passiveItems = inventory.filter(item => item.type === 'Passive');
+
+  if (passiveItems.length === 0) {
+    console.log('No passive items to modify');
+    return { success: false };
+  }
+
+  // Select random passive item
+  const randomItem = passiveItems[Math.floor(Math.random() * passiveItems.length)];
+
+  // Initialize modifiers if not present
+  initializePassiveModifiers(randomItem);
+
+  // Choose random stat to modify
+  const stats = ['strength', 'dexterity', 'intelligence', 'charisma'];
+  const randomStat = stats[Math.floor(Math.random() * stats.length)];
+
+  // Apply modification
+  const change = isUpgrade ? 1 : -1;
+  randomItem.statModifiers[randomStat] += change;
+
+  // Apply the stat change to the game state
+  updateStat(randomStat, change);
+
+  // Store the original name if not already stored
+  if (!randomItem.originalName) {
+    randomItem.originalName = randomItem.name;
+  }
+
+  // Update the display name
+  randomItem.displayName = getPassiveDisplayName(randomItem);
+
+  // Update gameState
+  gameState.inventory = [...inventory];
+
+  // Update UI
+  if (typeof updateInventory === 'function') {
+    updateInventory();
+  }
+
+  console.log(`${isUpgrade ? 'Upgraded' : 'Downgraded'} ${randomItem.originalName || randomItem.name}: ${randomStat} ${change > 0 ? '+' : ''}${change}`);
+
+  return {
+    success: true,
+    itemName: randomItem.displayName || randomItem.name,
+    isUpgrade: isUpgrade,
+    stat: randomStat,
+    change: change
+  };
+}
+
+/**
+ * Remove all stat effects from an item when it's removed from inventory
+ * @param {Object} item - The item being removed
+ */
+function removeItemStatEffects(item) {
+  if (item.type !== 'Passive' || !item.statModifiers) {
+    return;
+  }
+
+  // Reverse all stat modifiers
+  Object.entries(item.statModifiers).forEach(([stat, value]) => {
+    if (value !== 0) {
+      updateStat(stat, -value);
+      console.log(`Removed ${stat} modifier (${value}) from ${item.originalName || item.name}`);
+    }
+  });
+}
+
 // Export functions to global scope
 window.createNotification = createNotification;
 window.applyItemEffects = applyItemEffects;
@@ -1283,3 +1397,7 @@ window.showWandOfWishingSelection = showWandOfWishingSelection; // Wand of Wishi
 window.showPoopSelection = showPoopSelection; // Poop selection UI
 window.calculateDamageReduction = calculateDamageReduction; // Damage reduction from items
 window.ITEM_EFFECTS = ITEM_EFFECTS;
+window.initializePassiveModifiers = initializePassiveModifiers; // Initialize stat modifiers
+window.getPassiveDisplayName = getPassiveDisplayName; // Get display name with modifiers
+window.upgradeOrDowngradePassive = upgradeOrDowngradePassive; // Upgrade/downgrade passive
+window.removeItemStatEffects = removeItemStatEffects; // Remove stat effects when item removed

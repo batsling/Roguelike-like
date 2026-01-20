@@ -2871,6 +2871,11 @@ function removeItemAndReverseStats(index) {
     });
   }
 
+  // Remove stat modifiers from passive items (Caves of Qud effect)
+  if (typeof removeItemStatEffects === 'function') {
+    removeItemStatEffects(item);
+  }
+
   // Remove from inventory (handle quantity)
   if (item.quantity && item.quantity > 1) {
     item.quantity--;
