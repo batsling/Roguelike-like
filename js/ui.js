@@ -421,17 +421,17 @@ function updateInventory() {
 
                 if (canUpgrade) {
                   return `
-                    <div style="position: absolute; bottom: 2px; left: 2px; right: 2px; display: flex; gap: 2px; z-index: 10;">
+                    <div style="position: absolute; bottom: 2px; left: 2px; right: 2px; display: flex; gap: 1px; z-index: 10;">
                       <button class="item-equip-button"
                               data-item-index="${idx}"
                               style="
                                 flex: 1;
-                                padding: 2px 4px;
-                                font-size: 10px;
+                                padding: 1px 2px;
+                                font-size: 8px;
                                 background: #ff9800;
                                 color: white;
                                 border: 1px solid #f57c00;
-                                border-radius: 3px;
+                                border-radius: 2px;
                                 cursor: pointer;
                                 font-weight: bold;
                                 text-transform: uppercase;
@@ -442,12 +442,12 @@ function updateInventory() {
                               data-item-index="${idx}"
                               style="
                                 flex: 1;
-                                padding: 2px 4px;
-                                font-size: 10px;
+                                padding: 1px 2px;
+                                font-size: 8px;
                                 background: #4CAF50;
                                 color: white;
                                 border: 1px solid #2E7D32;
-                                border-radius: 3px;
+                                border-radius: 2px;
                                 cursor: pointer;
                                 font-weight: bold;
                                 text-transform: uppercase;
@@ -465,12 +465,12 @@ function updateInventory() {
                               bottom: 2px;
                               left: 2px;
                               right: 2px;
-                              padding: 2px 4px;
-                              font-size: 10px;
+                              padding: 1px 2px;
+                              font-size: 8px;
                               background: #ff9800;
                               color: white;
                               border: 1px solid #f57c00;
-                              border-radius: 3px;
+                              border-radius: 2px;
                               cursor: pointer;
                               font-weight: bold;
                               text-transform: uppercase;
