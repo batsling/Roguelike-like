@@ -767,6 +767,27 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
 
   fishingMessage.textContent = 'Wait for the !...';
 
+  // Handle early clicks (failure)
+  const handleEarlyClick = () => {
+    if (!buttonActive && !buttonClicked) {
+      buttonClicked = true;
+      clearTimeout(activationTimeout);
+
+      // Failed by clicking too early
+      fishingMessage.textContent = 'Too early! The fish got away...';
+      fishingBtn.disabled = true;
+      fishingBtn.style.background = '#ff4444';
+      fishingBtn.style.borderColor = '#ff6666';
+      fishingBtn.style.cursor = 'not-allowed';
+      fishingBtn.style.opacity = '0.5';
+
+      setTimeout(() => {
+        closeGameModal();
+        onAttemptComplete(false, null);
+      }, 1500);
+    }
+  };
+
   activationTimeout = setTimeout(() => {
     // Activate button
     buttonActive = true;
@@ -796,8 +817,15 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
     }, clickWindow);
   }, activationDelay);
 
-  fishingBtn.onclick = () => {
-    if (!buttonActive || buttonClicked) return;
+  // Use onmousedown instead of onclick to trigger on press
+  fishingBtn.onmousedown = () => {
+    if (buttonClicked) return;
+
+    if (!buttonActive) {
+      // Early click - failure
+      handleEarlyClick();
+      return;
+    }
 
     buttonClicked = true;
     clearTimeout(expirationTimeout);
@@ -876,7 +904,7 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
  * Show the Sushi Bar event
  */
 function showSushiBarEvent() {
-  // Initial prompt
+  // Show initial event text
   const initialPromptHTML = `
     <div style="text-align: center; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #ffd700; margin-top: 0;">🍣 A Sushi Bar By The Blue Hole</h2>
@@ -894,7 +922,7 @@ function showSushiBarEvent() {
         cursor: pointer;
         font-weight: bold;
         font-size: 16px;
-      ">Continue</button>
+      ">Start Fishing</button>
     </div>
   `;
 
