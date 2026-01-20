@@ -108,7 +108,10 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +3 Dexterity, but -1  Intelligence",
     "image": "images/items/Wings.png",
-    "reference": "Brotato"
+    "reference": "Brotato",
+    "tags": [
+      "mutation"
+    ]
   },
   {
     "name": "Campfire",
