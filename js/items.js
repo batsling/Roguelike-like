@@ -1308,6 +1308,39 @@ function getPassiveDisplayName(item) {
 }
 
 /**
+ * Get the modifier description text for a passive item
+ * @param {Object} item - The passive item
+ * @returns {string} Description of all active stat modifiers
+ */
+function getPassiveModifierDescription(item) {
+  if (item.type !== 'Passive' || !item.statModifiers) {
+    return '';
+  }
+
+  const modifiers = [];
+  const statNames = {
+    strength: 'Strength',
+    dexterity: 'Dexterity',
+    intelligence: 'Intelligence',
+    charisma: 'Charisma',
+    dash: 'Dash',
+    reroll: 'Reroll',
+    skip: 'Skip',
+    discovery: 'Discovery',
+    fov: 'Field of View'
+  };
+
+  for (const [stat, value] of Object.entries(item.statModifiers)) {
+    if (value !== 0) {
+      const sign = value > 0 ? '+' : '';
+      modifiers.push(`${sign}${value} ${statNames[stat]}`);
+    }
+  }
+
+  return modifiers.length > 0 ? modifiers.join(', ') : '';
+}
+
+/**
  * Upgrade or downgrade a random passive item
  * @param {boolean} isUpgrade - True to upgrade, false to downgrade
  * @returns {Object|null} Result object with success, itemName, and isUpgrade
@@ -1324,8 +1357,36 @@ function upgradeOrDowngradePassive(isUpgrade) {
   // Select random passive item
   const randomItem = passiveItems[Math.floor(Math.random() * passiveItems.length)];
 
+  // If item has quantity > 1, we need to split it
+  let itemToModify = randomItem;
+  if (randomItem.quantity && randomItem.quantity > 1) {
+    // Decrease original item quantity
+    randomItem.quantity--;
+
+    // Create a new copy with quantity 1
+    itemToModify = {
+      ...randomItem,
+      quantity: 1,
+      statModifiers: {
+        strength: 0,
+        dexterity: 0,
+        intelligence: 0,
+        charisma: 0,
+        dash: 0,
+        reroll: 0,
+        skip: 0,
+        discovery: 0,
+        fov: 0
+      }
+    };
+
+    // Add the split item to inventory
+    inventory.push(itemToModify);
+    console.log(`Split ${randomItem.name} (quantity ${randomItem.quantity + 1} → ${randomItem.quantity} + 1 modified)`);
+  }
+
   // Initialize modifiers if not present
-  initializePassiveModifiers(randomItem);
+  initializePassiveModifiers(itemToModify);
 
   // Choose random stat to modify
   const stats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov'];
@@ -1333,18 +1394,29 @@ function upgradeOrDowngradePassive(isUpgrade) {
 
   // Apply modification
   const change = isUpgrade ? 1 : -1;
-  randomItem.statModifiers[randomStat] += change;
+  itemToModify.statModifiers[randomStat] += change;
 
   // Apply the stat change to the game state
   updateStat(randomStat, change);
 
   // Store the original name if not already stored
-  if (!randomItem.originalName) {
-    randomItem.originalName = randomItem.name;
+  if (!itemToModify.originalName) {
+    itemToModify.originalName = itemToModify.name;
+  }
+
+  // Store the original description if not already stored
+  if (!itemToModify.originalDescription) {
+    itemToModify.originalDescription = itemToModify.description;
   }
 
   // Update the display name
-  randomItem.displayName = getPassiveDisplayName(randomItem);
+  itemToModify.displayName = getPassiveDisplayName(itemToModify);
+
+  // Update the description with modifier info
+  const modifierDesc = getPassiveModifierDescription(itemToModify);
+  if (modifierDesc) {
+    itemToModify.description = `${itemToModify.originalDescription}\n\n[Modified: ${modifierDesc}]`;
+  }
 
   // Update gameState
   gameState.inventory = [...inventory];
@@ -1354,11 +1426,11 @@ function upgradeOrDowngradePassive(isUpgrade) {
     updateInventory();
   }
 
-  console.log(`${isUpgrade ? 'Upgraded' : 'Downgraded'} ${randomItem.originalName || randomItem.name}: ${randomStat} ${change > 0 ? '+' : ''}${change}`);
+  console.log(`${isUpgrade ? 'Upgraded' : 'Downgraded'} ${itemToModify.originalName || itemToModify.name}: ${randomStat} ${change > 0 ? '+' : ''}${change}`);
 
   return {
     success: true,
-    itemName: randomItem.displayName || randomItem.name,
+    itemName: itemToModify.displayName || itemToModify.name,
     isUpgrade: isUpgrade,
     stat: randomStat,
     change: change
@@ -1404,5 +1476,6 @@ window.calculateDamageReduction = calculateDamageReduction; // Damage reduction 
 window.ITEM_EFFECTS = ITEM_EFFECTS;
 window.initializePassiveModifiers = initializePassiveModifiers; // Initialize stat modifiers
 window.getPassiveDisplayName = getPassiveDisplayName; // Get display name with modifiers
+window.getPassiveModifierDescription = getPassiveModifierDescription; // Get modifier description text
 window.upgradeOrDowngradePassive = upgradeOrDowngradePassive; // Upgrade/downgrade passive
 window.removeItemStatEffects = removeItemStatEffects; // Remove stat effects when item removed
