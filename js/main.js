@@ -3390,8 +3390,8 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
         updateTopBar();
       }
 
-      // Check if difficulty tier changed and update location
-      if (typeof getDifficultyTier === 'function' && typeof getRandomLocation === 'function') {
+      // Check if difficulty tier changed and update location (unless manually overridden via dev tools)
+      if (!gameState.manualLocationOverride && typeof getDifficultyTier === 'function' && typeof getRandomLocation === 'function') {
         const currentDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
         const newLocation = getRandomLocation(currentDifficulty);
         if (newLocation && (!gameState.location || gameState.location.name !== newLocation.name)) {
@@ -3464,8 +3464,8 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
         updateTopBar();
       }
 
-      // Check if difficulty tier changed and update location
-      if (typeof getDifficultyTier === 'function' && typeof getRandomLocation === 'function') {
+      // Check if difficulty tier changed and update location (unless manually overridden via dev tools)
+      if (!gameState.manualLocationOverride && typeof getDifficultyTier === 'function' && typeof getRandomLocation === 'function') {
         const currentDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
         const newLocation = getRandomLocation(currentDifficulty);
         if (newLocation && (!gameState.location || gameState.location.name !== newLocation.name)) {
@@ -3729,13 +3729,14 @@ function markGameFinished(gameName) {
     console.log(`Unique game finished: ${gameName}. Total unique: ${gameState.finishedGames.length}`);
   }
 
-  // Check if difficulty tier changed and update location
-  const newDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
-  if (previousDifficulty !== newDifficulty) {
-    const newLocation = getRandomLocation(newDifficulty);
-    if (newLocation) {
-      gameState.location = newLocation;
-      console.log(`Difficulty tier changed to ${newDifficulty}! New location: ${newLocation.name}`);
+  // Check if difficulty tier changed and update location (unless manually overridden via dev tools)
+  if (!gameState.manualLocationOverride) {
+    const newDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
+    if (previousDifficulty !== newDifficulty) {
+      const newLocation = getRandomLocation(newDifficulty);
+      if (newLocation) {
+        gameState.location = newLocation;
+        console.log(`Difficulty tier changed to ${newDifficulty}! New location: ${newLocation.name}`);
 
       // Update the location display
       if (typeof updateLocationDisplay === 'function') {
@@ -3747,6 +3748,7 @@ function markGameFinished(gameName) {
         gameState.pendingHadesBoonSelection = true;
         console.log('Hades location entered - boon selection will be shown after item choice');
       }
+    }
     }
   }
 
@@ -4691,8 +4693,9 @@ document.getElementById('setSelectedLocation')?.addEventListener('click', () => 
 
   const selectedLocation = LOCATIONS_DATA[locationIndex];
 
-  // Set the location
+  // Set the location and enable manual override flag
   gameState.location = selectedLocation;
+  gameState.manualLocationOverride = true;
 
   // Update the location display if the function exists
   if (typeof updateLocationDisplay === 'function') {
@@ -4706,12 +4709,12 @@ document.getElementById('setSelectedLocation')?.addEventListener('click', () => 
 
   const output = document.getElementById('locationOutput');
   if (output) {
-    output.textContent = `Location set to ${selectedLocation.name}`;
+    output.textContent = `Location set to ${selectedLocation.name} (auto-change disabled)`;
     output.style.display = 'block';
     setTimeout(() => { output.style.display = 'none'; }, 2000);
   }
 
-  console.log(`Dev Tools: Set location to ${selectedLocation.name} (${selectedLocation.difficulty} - ${selectedLocation.game})`);
+  console.log(`Dev Tools: Set location to ${selectedLocation.name} (${selectedLocation.difficulty} - ${selectedLocation.game}) - Manual override enabled`);
 });
 
 document.getElementById('setRandomLocation')?.addEventListener('click', () => {
@@ -4728,8 +4731,9 @@ document.getElementById('setRandomLocation')?.addEventListener('click', () => {
   // Pick a random location
   const randomLocation = LOCATIONS_DATA[Math.floor(Math.random() * LOCATIONS_DATA.length)];
 
-  // Set the location
+  // Set the location and enable manual override flag
   gameState.location = randomLocation;
+  gameState.manualLocationOverride = true;
 
   // Update the location display if the function exists
   if (typeof updateLocationDisplay === 'function') {
@@ -4743,12 +4747,31 @@ document.getElementById('setRandomLocation')?.addEventListener('click', () => {
 
   const output = document.getElementById('locationOutput');
   if (output) {
-    output.textContent = `Location set to ${randomLocation.name}`;
+    output.textContent = `Location set to ${randomLocation.name} (auto-change disabled)`;
     output.style.display = 'block';
     setTimeout(() => { output.style.display = 'none'; }, 2000);
   }
 
-  console.log(`Dev Tools: Set random location to ${randomLocation.name} (${randomLocation.difficulty} - ${randomLocation.game})`);
+  console.log(`Dev Tools: Set random location to ${randomLocation.name} (${randomLocation.difficulty} - ${randomLocation.game}) - Manual override enabled`);
+});
+
+document.getElementById('enableAutoLocationChange')?.addEventListener('click', () => {
+  if (!gameState) {
+    alert('No game state available');
+    return;
+  }
+
+  // Clear the manual override flag
+  gameState.manualLocationOverride = false;
+
+  const output = document.getElementById('locationOutput');
+  if (output) {
+    output.textContent = 'Auto location change enabled';
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+
+  console.log('Dev Tools: Manual location override disabled - location will now change automatically with difficulty');
 });
 
 // Specific Enemy Selection
