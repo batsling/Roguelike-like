@@ -34,6 +34,9 @@ function showCurseVerificationModal(onComplete) {
   // Check if player has any boons
   const boons = (gameState.inventory || []).filter(item => item.type === 'Boon');
 
+  // Check if player is in a Caves of Qud location
+  const isInCavesOfQud = gameState.location && typeof hasAppearanceEffect === 'function' && hasAppearanceEffect(gameState.location);
+
   // Get curses that need verification (manual and restriction curses)
   const cursesToVerify = (gameState.activeCurses || []).filter(curse =>
     curse.name.toLowerCase().includes('devotion') ||
@@ -49,8 +52,8 @@ function showCurseVerificationModal(onComplete) {
     curse.name.toLowerCase().includes('damp')
   );
 
-  // If no curses to verify, no Precision Landing trait, no equipped weapon, and no boons, skip verification
-  if (cursesToVerify.length === 0 && !hasPrecisionLanding && !hasEquippedWeapon && boons.length === 0) {
+  // If no curses to verify, no Precision Landing trait, no equipped weapon, no boons, and not in Caves of Qud, skip verification
+  if (cursesToVerify.length === 0 && !hasPrecisionLanding && !hasEquippedWeapon && boons.length === 0 && !isInCavesOfQud) {
     if (onComplete) onComplete();
     return;
   }
