@@ -731,14 +731,14 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
             <div style="text-align: center; margin-bottom: 10px; color: #aaa; font-size: 14px;">
               <span>Click here ↓</span>
             </div>
-            <button id="fishing-btn" disabled style="
+            <button id="fishing-btn" style="
               width: 120px;
               height: 120px;
               font-size: 64px;
               background: #555;
               border: 4px solid #666;
               border-radius: 50%;
-              cursor: not-allowed;
+              cursor: pointer;
               transition: all 0.2s;
               opacity: 0.5;
             ">!</button>
