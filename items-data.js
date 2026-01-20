@@ -180,7 +180,7 @@ var ITEMS_DATA = [
     "rarity": "Uncommon",
     "type": "Usable",
     "description": "Teleport to a random Deckbuilder space",
-    "image": "images/items/RideTheBus.png",
+    "image": "images/items/RidetheBus.png",
     "reference": "Balatro"
   },
   {
@@ -196,7 +196,7 @@ var ITEMS_DATA = [
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "When you defeat an enemy, 50% chance to Heal +1 Health",
-    "image": "images/items/CharmOfTheVampire.png",
+    "image": "images/items/CharmoftheVampire.png",
     "reference": "The Binding of Isaac"
   },
   {
@@ -204,7 +204,7 @@ var ITEMS_DATA = [
     "rarity": "Legendary",
     "type": "Usable",
     "description": "Obtain any one item in the game",
-    "image": "images/items/WandOfWishing.png",
+    "image": "images/items/WandofWishing.png",
     "reference": "NetHack"
   },
   {
@@ -321,7 +321,7 @@ var ITEMS_DATA = [
     "rarity": "Rare",
     "type": "Triggered",
     "description": "If the player would take lethal damage, negate that damage and destroy this item",
-    "image": "images/items/ReactiveTraumaPlate.svg",
+    "image": "images/items/ReactiveTraumaPlate.png",
     "reference": "Caves of Qud",
     "tags": [
       "cybernetics"
@@ -332,7 +332,7 @@ var ITEMS_DATA = [
     "rarity": "Rare",
     "type": "Passive",
     "description": "Gain +6 Dexterity",
-    "image": "images/items/StabilizarArmLocks.svg",
+    "image": "images/items/StabilizarArmLocks.png",
     "reference": "Caves of Qud",
     "tags": [
       "cybernetics"
@@ -343,7 +343,7 @@ var ITEMS_DATA = [
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "When you beat a game, there's a 33% chance for this item to be destroyed and you may gain 1 of 3 random items",
-    "image": "images/items/UnstableGenome.svg",
+    "image": "images/items/UnstableGenome.png",
     "reference": "Caves of Qud",
     "tags": [
       "mutation"
