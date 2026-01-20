@@ -439,7 +439,16 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
         };
       }
 
-      // For Blasma Pistol and other weapons: "If you open more than 10 chests in one run, gain a (lv1:small/lv2:normal/lv3:large) chest"
+      // Special handling for Blasma Pistol
+      if (weaponName === "Blasma Pistol") {
+        const chestSize = level === 1 ? 'small' : level === 2 ? 'normal' : 'large';
+        return {
+          question: 'Did you open more than 10 chests?',
+          reward: `${chestSize} chest`
+        };
+      }
+
+      // For other weapons: "If you open more than 10 chests in one run, gain a (lv1:small/lv2:normal/lv3:large) chest"
       // Extract the condition and reward
       const conditionMatch = description.match(/If you ([^,]+),/i);
       const levelPattern = /\(lv1:([^/]+)\/lv2:([^/]+)\/lv3:([^)]+)\)/;
