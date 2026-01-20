@@ -786,17 +786,24 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
   // Create or update fishing modal
   const modalHTML = `
     <div id="fishing-container" style="text-align: center; padding: 40px;">
-      <h3 style="color: #66ddff; margin-bottom: 20px;">Attempt ${attemptNumber} of ${totalAttempts}</h3>
+      <h3 style="color: #66ddff; margin-bottom: 20px;">Fishing Minigame - Attempt ${attemptNumber} of ${totalAttempts}</h3>
 
-      <div id="caught-fish-display" style="min-height: 150px; margin-bottom: 20px;"></div>
+      <!-- All caught fish display (persistent across attempts) -->
+      <div id="all-caught-fish-container" style="display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; min-height: 180px; flex-wrap: wrap;"></div>
 
-      <div style="position: relative; display: flex; align-items: center; justify-content: center; gap: 40px; margin-bottom: 30px;">
-        <!-- Character Image -->
-        <div id="fishing-character" style="width: 200px; height: 200px;">
-          ${gameState?.character && PLAYER_CHARACTERS[gameState.character] ?
-            `<img src="${PLAYER_CHARACTERS[gameState.character].icon}" style="width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated;">` :
-            ''
-          }
+      <div style="position: relative; display: flex; align-items: flex-end; justify-content: center; gap: 40px; margin-bottom: 30px;">
+        <!-- Left side: Character and caught fish popup -->
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 20px; margin-right: 40px;">
+          <!-- Current caught fish popup (above character) -->
+          <div id="caught-fish-display" style="min-height: 180px; min-width: 200px;"></div>
+
+          <!-- Character Image (moved down and to the left) -->
+          <div id="fishing-character" style="width: 250px; height: 250px;">
+            ${gameState?.character && PLAYER_CHARACTERS[gameState.character] ?
+              `<img src="${PLAYER_CHARACTERS[gameState.character].icon}" style="width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated;">` :
+              ''
+            }
+          </div>
         </div>
 
         <!-- Water Rectangle -->
@@ -828,8 +835,23 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
   // Check if modal already exists
   const existingModal = document.querySelector('.game-modal');
   if (existingModal) {
-    // Update existing modal content
-    existingModal.innerHTML = modalHTML;
+    // Update existing modal content (only on first attempt)
+    if (attemptNumber === 1) {
+      existingModal.innerHTML = modalHTML;
+    } else {
+      // Update only the attempt counter and reset the caught fish display
+      const container = document.getElementById('fishing-container');
+      if (container) {
+        const header = container.querySelector('h3');
+        if (header) {
+          header.textContent = `Fishing Minigame - Attempt ${attemptNumber} of ${totalAttempts}`;
+        }
+        const caughtFishDisplay = document.getElementById('caught-fish-display');
+        if (caughtFishDisplay) {
+          caughtFishDisplay.innerHTML = '';
+        }
+      }
+    }
   } else {
     // Create new modal
     createGameModal(modalHTML);
@@ -863,6 +885,20 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
       fishingBtn.style.borderColor = '#ff6666';
       fishingBtn.style.cursor = 'not-allowed';
       fishingBtn.style.opacity = '0.5';
+
+      // Add miss indicator to persistent container
+      const allCaughtContainer = document.getElementById('all-caught-fish-container');
+      if (allCaughtContainer) {
+        const missCard = document.createElement('div');
+        missCard.innerHTML = `
+          <div style="animation: fishCatch 0.5s ease-out;">
+            <div style="display: inline-block; padding: 15px; background: rgba(100, 50, 50, 0.3); border: 3px solid #ff4444; border-radius: 12px; width: 130px; height: 130px; display: flex; align-items: center; justify-content: center;">
+              <div style="font-size: 48px;">❌</div>
+            </div>
+          </div>
+        `;
+        allCaughtContainer.appendChild(missCard);
+      }
 
       setTimeout(() => {
         onAttemptComplete(false, null);
@@ -909,6 +945,20 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
         fishingBtn.style.opacity = '0.3';
         fishingBtn.style.pointerEvents = 'none';
 
+        // Add miss indicator to persistent container
+        const allCaughtContainer = document.getElementById('all-caught-fish-container');
+        if (allCaughtContainer) {
+          const missCard = document.createElement('div');
+          missCard.innerHTML = `
+            <div style="animation: fishCatch 0.5s ease-out;">
+              <div style="display: inline-block; padding: 15px; background: rgba(100, 50, 50, 0.3); border: 3px solid #ff4444; border-radius: 12px; width: 130px; height: 130px; display: flex; align-items: center; justify-content: center;">
+                <div style="font-size: 48px;">❌</div>
+              </div>
+            </div>
+          `;
+          allCaughtContainer.appendChild(missCard);
+        }
+
         setTimeout(() => {
           onAttemptComplete(false, null);
         }, 1500);
@@ -937,15 +987,18 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
     // Select a random fish based on location
     const fishResult = selectRandomFish(gameState.location);
 
+    // Create the fish/item card HTML
+    let cardHTML = '';
+
     if (fishResult.isItem) {
       // Caught an item instead of fish
       const item = fishResult.item;
-      caughtFishDisplay.innerHTML = `
+      cardHTML = `
         <div style="animation: fishCatch 0.5s ease-out;">
-          <div style="display: inline-block; padding: 20px; background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(75, 0, 130, 0.3)); border: 3px solid #8a2be2; border-radius: 12px; box-shadow: 0 0 40px rgba(138, 43, 226, 0.6);">
-            <img src="images/items/${item.image}.png" style="width: 120px; height: 120px; object-fit: contain;">
-            <div style="margin-top: 10px; font-size: 20px; font-weight: bold; color: #ba55d3;">${item.name}</div>
-            <div style="margin-top: 5px; color: #aaa;">Special Item!</div>
+          <div style="display: inline-block; padding: 15px; background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(75, 0, 130, 0.3)); border: 3px solid #8a2be2; border-radius: 12px; box-shadow: 0 0 40px rgba(138, 43, 226, 0.6);">
+            <img src="images/items/${item.image}.png" style="width: 100px; height: 100px; object-fit: contain;">
+            <div style="margin-top: 8px; font-size: 16px; font-weight: bold; color: #ba55d3;">${item.name}</div>
+            <div style="margin-top: 3px; color: #aaa; font-size: 12px;">Special Item!</div>
           </div>
         </div>
       `;
@@ -963,16 +1016,27 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
       if (rarity === 'Rare') rarityColor = '#ffd700';
       else if (rarity === 'Uncommon') rarityColor = '#66ddff';
 
-      caughtFishDisplay.innerHTML = `
+      cardHTML = `
         <div style="animation: fishCatch 0.5s ease-out;">
-          <div style="display: inline-block; padding: 20px; background: linear-gradient(135deg, rgba(68, 136, 255, 0.3), rgba(34, 68, 128, 0.3)); border: 3px solid ${rarityColor}; border-radius: 12px; box-shadow: 0 0 40px ${rarityColor}80;">
-            <img src="images/fish/${fish.image}.png" style="width: 120px; height: 120px; object-fit: contain;">
-            <div style="margin-top: 10px; font-size: 20px; font-weight: bold; color: #66ddff;">${fish.name}</div>
-            <div style="margin-top: 5px; color: ${rarityColor};">${rarity} - ${size}</div>
-            <div style="margin-top: 5px; color: #ffd700; font-weight: bold;">💰 ${goldValue}g</div>
+          <div style="display: inline-block; padding: 15px; background: linear-gradient(135deg, rgba(68, 136, 255, 0.3), rgba(34, 68, 128, 0.3)); border: 3px solid ${rarityColor}; border-radius: 12px; box-shadow: 0 0 40px ${rarityColor}80;">
+            <img src="images/fish/${fish.image}.png" style="width: 100px; height: 100px; object-fit: contain;">
+            <div style="margin-top: 8px; font-size: 16px; font-weight: bold; color: #66ddff;">${fish.name}</div>
+            <div style="margin-top: 3px; color: ${rarityColor}; font-size: 12px;">${rarity} - ${size}</div>
+            <div style="margin-top: 3px; color: #ffd700; font-weight: bold; font-size: 13px;">💰 ${goldValue}g</div>
           </div>
         </div>
       `;
+    }
+
+    // Show in the popup above character
+    caughtFishDisplay.innerHTML = cardHTML;
+
+    // Also add to the persistent container at the top
+    const allCaughtContainer = document.getElementById('all-caught-fish-container');
+    if (allCaughtContainer) {
+      const permanentCard = document.createElement('div');
+      permanentCard.innerHTML = cardHTML;
+      allCaughtContainer.appendChild(permanentCard);
     }
 
     // Add CSS animation if not already present
