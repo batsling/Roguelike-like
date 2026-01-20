@@ -631,6 +631,20 @@
           <h3>Recent Encounters</h3>
           <div id="encounterHistory" class="w-200 overflow-y-auto"></div>
         </div>
+
+        <!-- Location Teleport -->
+        <div class="section">
+          <h3>🗺️ Location Teleport</h3>
+          <label for="locationSelect">Select Location:</label>
+          <select id="locationSelect" class="w-full mb-10">
+            <option value="">-- Select a Location --</option>
+          </select>
+          <div class="button-group">
+            <button id="teleportToSelected">Go to Selected</button>
+            <button id="teleportToRandom">Go to Random</button>
+          </div>
+          <div id="teleportOutput" class="output-area"></div>
+        </div>
       </div>
     </div>
 

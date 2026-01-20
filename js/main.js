@@ -73,6 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (typeof populateItemSelects === 'function') populateItemSelects();
   if (typeof populateCurseSelects === 'function') populateCurseSelects();
   if (typeof populateEnemySelect === 'function') populateEnemySelect();
+  if (typeof populateLocationSelect === 'function') populateLocationSelect();
   if (typeof populateStatusGameSelect === 'function') populateStatusGameSelect();
   if (typeof populateEventSelect === 'function') populateEventSelect();
 
@@ -801,6 +802,24 @@ function populateEnemySelect() {
       enemySelect.appendChild(option);
     });
     enemySelect.disabled = false;
+  }
+}
+
+function populateLocationSelect() {
+  const locationSelect = document.getElementById('locationSelect');
+  if (locationSelect && typeof games !== 'undefined' && games.length > 0) {
+    locationSelect.innerHTML = '<option value="">-- Select a Location --</option>';
+
+    // Sort games alphabetically
+    const sortedGames = [...games].sort((a, b) => a.name.localeCompare(b.name));
+
+    sortedGames.forEach(game => {
+      const option = document.createElement('option');
+      option.value = game.name;
+      option.textContent = `${game.name} (${game.year} - ${game.type})`;
+      locationSelect.appendChild(option);
+    });
+    locationSelect.disabled = false;
   }
 }
 
@@ -4526,6 +4545,85 @@ document.getElementById('clearAllStatuses')?.addEventListener('click', () => {
       const nodes = document.querySelectorAll('.node');
       nodes.forEach(node => updateNodeStatusIcons(node));
     }
+  }
+});
+
+// Location Teleport Dev Tools
+document.getElementById('teleportToSelected')?.addEventListener('click', () => {
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first');
+    return;
+  }
+
+  const locationSelect = document.getElementById('locationSelect');
+  const gameName = locationSelect?.value;
+
+  if (!gameName) {
+    alert('Please select a location');
+    return;
+  }
+
+  // Find the game to verify it exists
+  const game = games.find(g => g.name === gameName);
+  if (!game) {
+    alert('Game not found');
+    return;
+  }
+
+  // Teleport to the selected game (no encounter)
+  const x = 450; // Center position
+  const y = gameState.currentY + 200;
+
+  if (typeof advance === 'function') {
+    advance(gameName, x, y, null);
+
+    const output = document.getElementById('teleportOutput');
+    if (output) {
+      output.textContent = `Teleported to ${gameName}`;
+      output.style.display = 'block';
+      setTimeout(() => { output.style.display = 'none'; }, 2000);
+    }
+  } else {
+    alert('Teleport function not available');
+  }
+});
+
+document.getElementById('teleportToRandom')?.addEventListener('click', () => {
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first');
+    return;
+  }
+
+  if (!games || games.length === 0) {
+    alert('No games available');
+    return;
+  }
+
+  // Pick a random game excluding current game
+  const availableGames = games.filter(g => g.name !== gameState.currentGame);
+
+  if (availableGames.length === 0) {
+    alert('No other games available');
+    return;
+  }
+
+  const randomGame = availableGames[Math.floor(Math.random() * availableGames.length)];
+
+  // Teleport to the random game (no encounter)
+  const x = 450; // Center position
+  const y = gameState.currentY + 200;
+
+  if (typeof advance === 'function') {
+    advance(randomGame.name, x, y, null);
+
+    const output = document.getElementById('teleportOutput');
+    if (output) {
+      output.textContent = `Teleported to ${randomGame.name}`;
+      output.style.display = 'block';
+      setTimeout(() => { output.style.display = 'none'; }, 2000);
+    }
+  } else {
+    alert('Teleport function not available');
   }
 });
 
