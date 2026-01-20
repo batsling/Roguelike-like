@@ -73,7 +73,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (typeof populateItemSelects === 'function') populateItemSelects();
   if (typeof populateCurseSelects === 'function') populateCurseSelects();
   if (typeof populateEnemySelect === 'function') populateEnemySelect();
-  if (typeof populateLocationSelect === 'function') populateLocationSelect();
+  if (typeof populateSpaceSelect === 'function') populateSpaceSelect();
+  if (typeof populateDifficultyLocationSelect === 'function') populateDifficultyLocationSelect();
   if (typeof populateStatusGameSelect === 'function') populateStatusGameSelect();
   if (typeof populateEventSelect === 'function') populateEventSelect();
 
@@ -805,10 +806,10 @@ function populateEnemySelect() {
   }
 }
 
-function populateLocationSelect() {
-  const locationSelect = document.getElementById('locationSelect');
-  if (locationSelect && typeof games !== 'undefined' && games.length > 0) {
-    locationSelect.innerHTML = '<option value="">-- Select a Location --</option>';
+function populateSpaceSelect() {
+  const spaceSelect = document.getElementById('spaceSelect');
+  if (spaceSelect && typeof games !== 'undefined' && games.length > 0) {
+    spaceSelect.innerHTML = '<option value="">-- Select a Game --</option>';
 
     // Sort games alphabetically
     const sortedGames = [...games].sort((a, b) => a.name.localeCompare(b.name));
@@ -817,9 +818,50 @@ function populateLocationSelect() {
       const option = document.createElement('option');
       option.value = game.name;
       option.textContent = `${game.name} (${game.year} - ${game.type})`;
+      spaceSelect.appendChild(option);
+    });
+    spaceSelect.disabled = false;
+  }
+}
+
+function populateDifficultyLocationSelect() {
+  const locationSelect = document.getElementById('difficultyLocationSelect');
+  if (locationSelect && typeof LOCATIONS_DATA !== 'undefined' && LOCATIONS_DATA.length > 0) {
+    locationSelect.innerHTML = '<option value="">-- Select a Location --</option>';
+
+    // Sort locations by difficulty then by name
+    const difficultyOrder = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
+    const sortedLocations = [...LOCATIONS_DATA].sort((a, b) => {
+      const diffDiff = difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty];
+      if (diffDiff !== 0) return diffDiff;
+      return a.name.localeCompare(b.name);
+    });
+
+    sortedLocations.forEach((location, index) => {
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = `${location.name} (${location.difficulty} - ${location.game})`;
       locationSelect.appendChild(option);
     });
     locationSelect.disabled = false;
+  }
+}
+
+function updateCurrentLocationDisplay() {
+  const display = document.getElementById('currentLocationDisplay');
+  const info = document.getElementById('currentLocationInfo');
+
+  if (!display || !info) return;
+
+  if (gameState && gameState.location) {
+    display.style.display = 'block';
+    info.innerHTML = `
+      <strong>${gameState.location.name}</strong><br>
+      Difficulty: ${gameState.location.difficulty} | Game: ${gameState.location.game}<br>
+      Type: ${gameState.location.type}
+    `;
+  } else {
+    display.style.display = 'none';
   }
 }
 
@@ -4548,18 +4590,18 @@ document.getElementById('clearAllStatuses')?.addEventListener('click', () => {
   }
 });
 
-// Location Teleport Dev Tools
+// Space Movement Dev Tools
 document.getElementById('teleportToSelected')?.addEventListener('click', () => {
   if (!gameState || !gameState.gameStarted) {
     alert('Please start a run first');
     return;
   }
 
-  const locationSelect = document.getElementById('locationSelect');
-  const gameName = locationSelect?.value;
+  const spaceSelect = document.getElementById('spaceSelect');
+  const gameName = spaceSelect?.value;
 
   if (!gameName) {
-    alert('Please select a location');
+    alert('Please select a game');
     return;
   }
 
@@ -4625,6 +4667,88 @@ document.getElementById('teleportToRandom')?.addEventListener('click', () => {
   } else {
     alert('Teleport function not available');
   }
+});
+
+// Difficulty-Based Locations Dev Tools
+document.getElementById('setSelectedLocation')?.addEventListener('click', () => {
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first');
+    return;
+  }
+
+  const locationSelect = document.getElementById('difficultyLocationSelect');
+  const locationIndex = parseInt(locationSelect?.value);
+
+  if (isNaN(locationIndex) || locationIndex < 0) {
+    alert('Please select a location');
+    return;
+  }
+
+  if (!LOCATIONS_DATA || locationIndex >= LOCATIONS_DATA.length) {
+    alert('Invalid location selection');
+    return;
+  }
+
+  const selectedLocation = LOCATIONS_DATA[locationIndex];
+
+  // Set the location
+  gameState.location = selectedLocation;
+
+  // Update the location display if the function exists
+  if (typeof updateLocationDisplay === 'function') {
+    updateLocationDisplay(selectedLocation);
+  }
+
+  // Update the current location display in dev tools
+  if (typeof updateCurrentLocationDisplay === 'function') {
+    updateCurrentLocationDisplay();
+  }
+
+  const output = document.getElementById('locationOutput');
+  if (output) {
+    output.textContent = `Location set to ${selectedLocation.name}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+
+  console.log(`Dev Tools: Set location to ${selectedLocation.name} (${selectedLocation.difficulty} - ${selectedLocation.game})`);
+});
+
+document.getElementById('setRandomLocation')?.addEventListener('click', () => {
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first');
+    return;
+  }
+
+  if (!LOCATIONS_DATA || LOCATIONS_DATA.length === 0) {
+    alert('No locations available');
+    return;
+  }
+
+  // Pick a random location
+  const randomLocation = LOCATIONS_DATA[Math.floor(Math.random() * LOCATIONS_DATA.length)];
+
+  // Set the location
+  gameState.location = randomLocation;
+
+  // Update the location display if the function exists
+  if (typeof updateLocationDisplay === 'function') {
+    updateLocationDisplay(randomLocation);
+  }
+
+  // Update the current location display in dev tools
+  if (typeof updateCurrentLocationDisplay === 'function') {
+    updateCurrentLocationDisplay();
+  }
+
+  const output = document.getElementById('locationOutput');
+  if (output) {
+    output.textContent = `Location set to ${randomLocation.name}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+
+  console.log(`Dev Tools: Set random location to ${randomLocation.name} (${randomLocation.difficulty} - ${randomLocation.game})`);
 });
 
 // Specific Enemy Selection

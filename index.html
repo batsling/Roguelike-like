@@ -632,18 +632,36 @@
           <div id="encounterHistory" class="w-200 overflow-y-auto"></div>
         </div>
 
-        <!-- Location Teleport -->
+        <!-- Space Movement -->
         <div class="section">
-          <h3>🗺️ Location Teleport</h3>
-          <label for="locationSelect">Select Location:</label>
-          <select id="locationSelect" class="w-full mb-10">
-            <option value="">-- Select a Location --</option>
+          <h3>🚀 Space Movement</h3>
+          <label for="spaceSelect">Select Game Node:</label>
+          <select id="spaceSelect" class="w-full mb-10">
+            <option value="">-- Select a Game --</option>
           </select>
           <div class="button-group">
             <button id="teleportToSelected">Go to Selected</button>
             <button id="teleportToRandom">Go to Random</button>
           </div>
           <div id="teleportOutput" class="output-area"></div>
+        </div>
+
+        <!-- Locations -->
+        <div class="section">
+          <h3>🗺️ Locations</h3>
+          <label for="difficultyLocationSelect">Select Location:</label>
+          <select id="difficultyLocationSelect" class="w-full mb-10">
+            <option value="">-- Select a Location --</option>
+          </select>
+          <div class="button-group">
+            <button id="setSelectedLocation">Set Location</button>
+            <button id="setRandomLocation">Random Location</button>
+          </div>
+          <div id="locationOutput" class="output-area"></div>
+          <div id="currentLocationDisplay" style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; font-size: 12px; display: none;">
+            <div style="color: #f39c12; font-weight: bold; margin-bottom: 5px;">Current Location:</div>
+            <div id="currentLocationInfo" style="color: #ccc;"></div>
+          </div>
         </div>
       </div>
     </div>
