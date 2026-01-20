@@ -788,16 +788,13 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
     <div id="fishing-container" style="text-align: center; padding: 40px;">
       <h3 style="color: #66ddff; margin-bottom: 20px;">Fishing Minigame - Attempt ${attemptNumber} of ${totalAttempts}</h3>
 
-      <!-- All caught fish display (persistent across attempts) -->
-      <div id="all-caught-fish-container" style="display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; min-height: 180px; flex-wrap: wrap;"></div>
-
       <div style="position: relative; display: flex; align-items: flex-end; justify-content: center; gap: 40px; margin-bottom: 30px;">
-        <!-- Left side: Character and caught fish popup -->
+        <!-- Left side: Character and caught fish display above -->
         <div style="display: flex; flex-direction: column; align-items: center; gap: 20px; margin-right: 40px;">
-          <!-- Current caught fish popup (above character) -->
-          <div id="caught-fish-display" style="min-height: 180px; min-width: 200px;"></div>
+          <!-- All caught fish display (persistent across attempts, above character) -->
+          <div id="all-caught-fish-container" style="display: flex; justify-content: center; gap: 15px; min-height: 180px; flex-wrap: wrap; max-width: 450px;"></div>
 
-          <!-- Character Image (moved down and to the left) -->
+          <!-- Character Image -->
           <div id="fishing-character" style="width: 250px; height: 250px;">
             ${gameState?.character && PLAYER_CHARACTERS[gameState.character] ?
               `<img src="${PLAYER_CHARACTERS[gameState.character].icon}" style="width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated;">` :
@@ -839,16 +836,12 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
     if (attemptNumber === 1) {
       existingModal.innerHTML = modalHTML;
     } else {
-      // Update only the attempt counter and reset the caught fish display
+      // Update only the attempt counter
       const container = document.getElementById('fishing-container');
       if (container) {
         const header = container.querySelector('h3');
         if (header) {
           header.textContent = `Fishing Minigame - Attempt ${attemptNumber} of ${totalAttempts}`;
-        }
-        const caughtFishDisplay = document.getElementById('caught-fish-display');
-        if (caughtFishDisplay) {
-          caughtFishDisplay.innerHTML = '';
         }
       }
     }
@@ -859,7 +852,6 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
 
   const fishingBtn = document.getElementById('fishing-btn');
   const fishingMessage = document.getElementById('fishing-message');
-  const caughtFishDisplay = document.getElementById('caught-fish-display');
 
   let buttonActive = false;
   let buttonClicked = false;
@@ -1028,10 +1020,7 @@ function showFishingAttemptUI(attemptNumber, totalAttempts, clickWindow, onAttem
       `;
     }
 
-    // Show in the popup above character
-    caughtFishDisplay.innerHTML = cardHTML;
-
-    // Also add to the persistent container at the top
+    // Add to the persistent container above character
     const allCaughtContainer = document.getElementById('all-caught-fish-container');
     if (allCaughtContainer) {
       const permanentCard = document.createElement('div');
