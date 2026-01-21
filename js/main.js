@@ -114,6 +114,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // Add event listeners for map and loot buttons (removed inline onclick handlers)
+  const mapBtn = document.getElementById('map-btn');
+  if (mapBtn) {
+    mapBtn.addEventListener('click', showMapModal);
+  }
+
+  const lootBtn = document.getElementById('loot-btn');
+  if (lootBtn) {
+    lootBtn.addEventListener('click', showLootModal);
+  }
+
   console.log('Initialization complete');
 });
 
