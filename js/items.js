@@ -49,7 +49,8 @@ function updateStat(statName, change) {
     reroll: () => { reroll += change; gameState.reroll = reroll; },
     skip: () => { skip += change; gameState.skip = skip; },
     discovery: () => { discovery += change; gameState.discovery = discovery; },
-    fov: () => { fov += change; gameState.fov = fov; }
+    fov: () => { fov += change; gameState.fov = fov; },
+    luck: () => { luck += change; gameState.luck = luck; }
   };
 
   statMap[statName]?.();
@@ -171,7 +172,7 @@ const ITEM_EFFECTS = {
       StateMutator.modifyMaxHealth(5);
       StateMutator.modifyHealth(5);
       StateMutator.modifyStat('luck', 2);
-      StateMutator.modifyStat('strength', -1);
+      StateMutator.modifyStat('strength', -2);
     }
   },
 
@@ -641,32 +642,73 @@ function getItemStats(itemName) {
 }
 
 /**
+ * Extract all stat modifications from an item's ITEM_EFFECTS with their directions (positive/negative)
+ * @param {string} itemName - Name of the item
+ * @returns {Array} Array of stat modification objects with {stat: string, direction: number (1 or -1)}
+ */
+function getItemStatModifications(itemName) {
+  const effects = ITEM_EFFECTS[itemName];
+  if (!effects || !effects.onAcquire) {
+    return [];
+  }
+
+  const funcString = effects.onAcquire.toString();
+  const modifications = [];
+
+  // Parse for modifyStat calls: modifyStat('strength', 2) or modifyStat('dexterity', -1)
+  const statRegex = /modifyStat\(['"](\w+)['"]\s*,\s*(-?\d+)\)/g;
+  let match;
+
+  while ((match = statRegex.exec(funcString)) !== null) {
+    const statName = match[1];
+    const value = parseInt(match[2]);
+    modifications.push({
+      stat: statName,
+      direction: value >= 0 ? 1 : -1
+    });
+  }
+
+  // Parse for modifyMaxHealth calls
+  const maxHealthRegex = /modifyMaxHealth\((-?\d+)\)/g;
+  while ((match = maxHealthRegex.exec(funcString)) !== null) {
+    const value = parseInt(match[1]);
+    modifications.push({
+      stat: 'maxHealth',
+      direction: value >= 0 ? 1 : -1
+    });
+  }
+
+  // Parse for direct stat assignments like: strength += 2, luck += 1
+  // This handles stats modified directly without StateMutator
+  if (funcString.includes('luck ++') || funcString.includes('luck +=') || funcString.includes('luck = ')) {
+    if (!modifications.find(m => m.stat === 'luck')) {
+      modifications.push({ stat: 'luck', direction: 1 });
+    }
+  }
+
+  return modifications;
+}
+
+/**
  * Downgrade a specific passive item's stats
  * @param {Object} item - The item to downgrade
- * @param {number} downgradeAmount - Amount to downgrade (default -1, can be -2 for stacked curses)
- * @returns {Object} Result object with success, itemName, stat, and change
+ * @param {number} downgradeAmount - Amount to downgrade per stat (default -1, can be -2 for stacked curses)
+ * @returns {Object} Result object with success, itemName, stats array, and change
  */
 function downgradePassiveItem(item, downgradeAmount = -1) {
   // Initialize modifiers if not present
   initializePassiveModifiers(item);
 
-  // Get stats that this item actually provides
-  let availableStats = getItemStats(item.name);
+  // Get all stat modifications this item provides
+  const statModifications = getItemStatModifications(item.name);
 
-  // If no stats found or item has no effects, fall back to all stats
-  if (availableStats.length === 0) {
-    availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck'];
+  // If no stat modifications found, fall back to random stat (shouldn't happen for items with effects)
+  if (statModifications.length === 0) {
+    console.warn(`No stat modifications found for ${item.name}, using fallback`);
+    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth'];
+    const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
+    statModifications.push({ stat: randomStat, direction: 1 });
   }
-
-  // Choose random stat from the item's actual stats
-  const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
-
-  // Apply downgrade
-  const change = downgradeAmount;
-  item.statModifiers[randomStat] += change;
-
-  // Apply the stat change to the game state
-  updateStat(randomStat, change);
 
   // Store the original name if not already stored
   if (!item.originalName) {
@@ -678,6 +720,35 @@ function downgradePassiveItem(item, downgradeAmount = -1) {
     item.originalDescription = item.description;
   }
 
+  // Apply downgrade to ALL stats this item provides
+  const modifiedStats = [];
+  statModifications.forEach(({ stat }) => {
+    // Apply the same downgrade amount to each stat uniformly
+    // E.g., if item gives +2 strength, downgrade by -1 makes it +1 strength
+    // If item gives -2 strength, downgrade by -1 makes it -3 strength
+    const change = downgradeAmount;
+
+    item.statModifiers[stat] += change;
+
+    // Apply the stat change to the game state
+    if (stat === 'maxHealth') {
+      // Handle max health specially
+      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyMaxHealth === 'function') {
+        StateMutator.modifyMaxHealth(change);
+      } else {
+        maxHealth += change;
+        gameState.maxHealth = maxHealth;
+        health = Math.min(health, maxHealth);
+        gameState.health = health;
+      }
+    } else {
+      updateStat(stat, change);
+    }
+
+    modifiedStats.push({ stat, change });
+    console.log(`⬇️ Downgraded ${item.originalName || item.name}: ${stat} ${change > 0 ? '+' : ''}${change}`);
+  });
+
   // Update the display name
   item.displayName = getPassiveDisplayName(item);
 
@@ -687,20 +758,21 @@ function downgradePassiveItem(item, downgradeAmount = -1) {
     item.description = `${item.originalDescription}\n\n[Modified: ${modifierDesc}]`;
   }
 
-  console.log(`⬇️ Downgraded ${item.originalName || item.name}: ${randomStat} ${change}`);
-
-  // Show notification
+  // Show notification for all modified stats
   if (typeof createNotification === 'function') {
-    const statDisplay = randomStat.charAt(0).toUpperCase() + randomStat.slice(1);
     const source = downgradeAmount < -1 ? 'Curse of Decay (stacked)' : 'Curse of Decay';
-    createNotification(`${source}: ${item.originalName || item.name} ${statDisplay} ${change}`, '#8b4513', '⬇️');
+    const statsText = modifiedStats.map(({ stat, change }) => {
+      const statDisplay = stat === 'maxHealth' ? 'Max Health' : stat.charAt(0).toUpperCase() + stat.slice(1);
+      return `${statDisplay} ${change > 0 ? '+' : ''}${change}`;
+    }).join(', ');
+    createNotification(`${source}: ${item.originalName || item.name} - ${statsText}`, '#8b4513', '⬇️');
   }
 
   return {
     success: true,
     itemName: item.displayName || item.name,
-    stat: randomStat,
-    change: change
+    stats: modifiedStats,
+    change: downgradeAmount
   };
 }
 
@@ -805,7 +877,9 @@ function acquireItem(item) {
               reroll: 0,
               skip: 0,
               discovery: 0,
-              fov: 0
+              fov: 0,
+              luck: 0,
+              maxHealth: 0
             }
           };
 
@@ -1543,7 +1617,9 @@ function initializePassiveModifiers(item) {
       reroll: 0,
       skip: 0,
       discovery: 0,
-      fov: 0
+      fov: 0,
+      luck: 0,
+      maxHealth: 0
     };
   }
 }
@@ -1589,7 +1665,9 @@ function getPassiveModifierDescription(item) {
     reroll: 'Reroll',
     skip: 'Skip',
     discovery: 'Discovery',
-    fov: 'Field of View'
+    fov: 'Field of View',
+    luck: 'Luck',
+    maxHealth: 'Max Health'
   };
 
   for (const [stat, value] of Object.entries(item.statModifiers)) {
@@ -1638,7 +1716,9 @@ function upgradeOrDowngradePassive(isUpgrade) {
         reroll: 0,
         skip: 0,
         discovery: 0,
-        fov: 0
+        fov: 0,
+        luck: 0,
+        maxHealth: 0
       }
     };
 
@@ -1650,23 +1730,16 @@ function upgradeOrDowngradePassive(isUpgrade) {
   // Initialize modifiers if not present
   initializePassiveModifiers(itemToModify);
 
-  // Get stats that this item actually provides
-  let availableStats = getItemStats(itemToModify.name);
+  // Get all stat modifications this item provides
+  const statModifications = getItemStatModifications(itemToModify.name);
 
-  // If no stats found or item has no effects, fall back to all stats
-  if (availableStats.length === 0) {
-    availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck'];
+  // If no stat modifications found, fall back to random stat (shouldn't happen for items with effects)
+  if (statModifications.length === 0) {
+    console.warn(`No stat modifications found for ${itemToModify.name}, using fallback`);
+    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth'];
+    const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
+    statModifications.push({ stat: randomStat, direction: 1 });
   }
-
-  // Choose random stat from the item's actual stats
-  const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
-
-  // Apply modification
-  const change = isUpgrade ? 1 : -1;
-  itemToModify.statModifiers[randomStat] += change;
-
-  // Apply the stat change to the game state
-  updateStat(randomStat, change);
 
   // Store the original name if not already stored
   if (!itemToModify.originalName) {
@@ -1677,6 +1750,37 @@ function upgradeOrDowngradePassive(isUpgrade) {
   if (!itemToModify.originalDescription) {
     itemToModify.originalDescription = itemToModify.description;
   }
+
+  // Apply upgrade/downgrade to ALL stats this item provides
+  const modifiedStats = [];
+  const baseChange = isUpgrade ? 1 : -1;
+
+  statModifications.forEach(({ stat }) => {
+    // Apply the same change amount to each stat uniformly
+    // E.g., if item gives +2 strength, upgrade by +1 makes it +3 strength
+    // If item gives -2 strength, upgrade by +1 makes it -1 strength (less penalty)
+    const change = baseChange;
+
+    itemToModify.statModifiers[stat] += change;
+
+    // Apply the stat change to the game state
+    if (stat === 'maxHealth') {
+      // Handle max health specially
+      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyMaxHealth === 'function') {
+        StateMutator.modifyMaxHealth(change);
+      } else {
+        maxHealth += change;
+        gameState.maxHealth = maxHealth;
+        health = Math.min(health, maxHealth);
+        gameState.health = health;
+      }
+    } else {
+      updateStat(stat, change);
+    }
+
+    modifiedStats.push({ stat, change });
+    console.log(`${isUpgrade ? '⬆️ Upgraded' : '⬇️ Downgraded'} ${itemToModify.originalName || itemToModify.name}: ${stat} ${change > 0 ? '+' : ''}${change}`);
+  });
 
   // Update the display name
   itemToModify.displayName = getPassiveDisplayName(itemToModify);
@@ -1695,14 +1799,23 @@ function upgradeOrDowngradePassive(isUpgrade) {
     updateInventory();
   }
 
-  console.log(`${isUpgrade ? 'Upgraded' : 'Downgraded'} ${itemToModify.originalName || itemToModify.name}: ${randomStat} ${change > 0 ? '+' : ''}${change}`);
+  // Show notification for all modified stats
+  if (typeof createNotification === 'function') {
+    const statsText = modifiedStats.map(({ stat, change }) => {
+      const statDisplay = stat === 'maxHealth' ? 'Max Health' : stat.charAt(0).toUpperCase() + stat.slice(1);
+      return `${statDisplay} ${change > 0 ? '+' : ''}${change}`;
+    }).join(', ');
+    const emoji = isUpgrade ? '⬆️' : '⬇️';
+    const color = isUpgrade ? '#66bb6a' : '#ff8a65';
+    createNotification(`${emoji} ${itemToModify.originalName || itemToModify.name} - ${statsText}`, color, emoji);
+  }
 
   return {
     success: true,
     itemName: itemToModify.displayName || itemToModify.name,
     isUpgrade: isUpgrade,
-    stat: randomStat,
-    change: change
+    stats: modifiedStats,
+    change: baseChange
   };
 }
 
