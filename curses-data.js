@@ -406,5 +406,29 @@ var CURSES_DATA = [
     "duration": "Until 3 Games Beaten",
     "description": "If the player doesn\u2019t touch water in the game, take 3 damage",
     "automatic": "Manual"
+  },
+  {
+    "name": "Curse of Decay I",
+    "stat": "Strength",
+    "power": "Low",
+    "duration": "Until 1 Passive Item Obtained",
+    "description": "Whenever the player gets a passive item, downgrade it",
+    "automatic": "Auto"
+  },
+  {
+    "name": "Curse of Decay II",
+    "stat": "Strength",
+    "power": "Medium",
+    "duration": "Until 2 Passive Items Obtained",
+    "description": "Whenever the player gets a passive item, downgrade it",
+    "automatic": "Auto"
+  },
+  {
+    "name": "Curse of Decay III",
+    "stat": "Strength",
+    "power": "High",
+    "duration": "Until 3 Passive Items Obtained",
+    "description": "Whenever the player gets a passive item, downgrade it",
+    "automatic": "Auto"
   }
 ];
