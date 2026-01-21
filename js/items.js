@@ -611,6 +611,32 @@ function applyItemEffects(item) {
 }
 
 /**
+ * Downgrade an item's rarity
+ * @param {Object} item - The item to downgrade
+ * @returns {Object} - The downgraded item
+ */
+function downgradeItemRarity(item) {
+  const rarityOrder = ['Common', 'Uncommon', 'Rare', 'Legendary'];
+  const currentRarityIndex = rarityOrder.indexOf(item.rarity);
+
+  if (currentRarityIndex > 0) {
+    const oldRarity = item.rarity;
+    // Downgrade by one tier
+    item.rarity = rarityOrder[currentRarityIndex - 1];
+    console.log(`⬇️ Curse of Decay: Downgraded ${item.name} from ${oldRarity} to ${item.rarity}`);
+
+    // Show notification
+    if (typeof createNotification === 'function') {
+      createNotification(`Curse of Decay: ${item.name} downgraded to ${item.rarity}`, '#8b4513', '⬇️');
+    }
+  } else {
+    console.log(`⬇️ Curse of Decay: ${item.name} is already ${item.rarity}, cannot downgrade further`);
+  }
+
+  return item;
+}
+
+/**
  * Add item to inventory and apply its effects
  * @param {Object} item - The item to add
  */
@@ -628,6 +654,46 @@ function acquireItem(item) {
 
   // Create a copy of the item to track uses
   const itemCopy = { ...item };
+
+  // ===== CURSE OF DECAY: Downgrade Passive Items =====
+  if (itemCopy.type === 'Passive' && typeof CurseManager !== 'undefined') {
+    const decayCurses = CurseManager.findByType('decay');
+
+    if (decayCurses.length > 0) {
+      // Downgrade the item
+      downgradeItemRarity(itemCopy);
+
+      // Track decay uses for each curse
+      if (!gameState.decayUses) {
+        gameState.decayUses = {};
+      }
+
+      // Process each decay curse and increment its counter
+      decayCurses.forEach(curse => {
+        if (!gameState.decayUses[curse.name]) {
+          gameState.decayUses[curse.name] = 0;
+        }
+        gameState.decayUses[curse.name]++;
+
+        // Get max uses based on power level
+        const maxUses = curse.power === 'High' ? 3 : curse.power === 'Medium' ? 2 : 1;
+
+        console.log(`😈 ${curse.name}: ${gameState.decayUses[curse.name]}/${maxUses} passive items obtained`);
+
+        // Check if curse should be removed
+        if (gameState.decayUses[curse.name] >= maxUses) {
+          console.log(`✨ ${curse.name} has been lifted!`);
+          CurseManager.consume(curse, { updateUI: true, notify: true });
+          delete gameState.decayUses[curse.name];
+        }
+      });
+
+      // Update curses display
+      if (typeof updateCursesDisplay === 'function') {
+        updateCursesDisplay();
+      }
+    }
+  }
 
   console.log('📥 Item copy created:', {
     name: itemCopy.name,

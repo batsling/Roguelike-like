@@ -758,6 +758,15 @@ function getCurseRemainingText(curse) {
     return 'Next purchase';
   }
 
+  // Curse of Decay - shows remaining passive items
+  if (curseName.includes('decay')) {
+    if (!gameState.decayUses) gameState.decayUses = {};
+    const used = gameState.decayUses[curse.name] || 0;
+    const maxUses = curse.power === 'High' ? 3 : curse.power === 'Medium' ? 2 : 1;
+    const remaining = maxUses - used;
+    return `${remaining}/${maxUses} passive items left`;
+  }
+
   // Manual curses that track games beaten (Devotion, Greed, Impulse, etc.)
   const duration = curse.duration || '';
   if (duration.toLowerCase().includes('until') && duration.toLowerCase().includes('game')) {
