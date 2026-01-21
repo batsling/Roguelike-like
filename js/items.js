@@ -611,20 +611,58 @@ function applyItemEffects(item) {
 }
 
 /**
+ * Extract stats that an item provides from its ITEM_EFFECTS
+ * @param {string} itemName - Name of the item
+ * @returns {Array} Array of stat names that the item affects
+ */
+function getItemStats(itemName) {
+  const effects = ITEM_EFFECTS[itemName];
+  if (!effects || !effects.onAcquire) {
+    return [];
+  }
+
+  // Convert the onAcquire function to string and parse for stat modifications
+  const funcString = effects.onAcquire.toString();
+  const stats = [];
+
+  // Check for each stat type in the function body
+  if (funcString.includes('strength')) stats.push('strength');
+  if (funcString.includes('dexterity')) stats.push('dexterity');
+  if (funcString.includes('intelligence')) stats.push('intelligence');
+  if (funcString.includes('charisma')) stats.push('charisma');
+  if (funcString.includes('luck')) stats.push('luck');
+  if (funcString.includes('dash')) stats.push('dash');
+  if (funcString.includes('reroll')) stats.push('reroll');
+  if (funcString.includes('skip')) stats.push('skip');
+  if (funcString.includes('discovery')) stats.push('discovery');
+  if (funcString.includes('fov')) stats.push('fov');
+
+  return stats;
+}
+
+/**
  * Downgrade a specific passive item's stats
  * @param {Object} item - The item to downgrade
+ * @param {number} downgradeAmount - Amount to downgrade (default -1, can be -2 for stacked curses)
  * @returns {Object} Result object with success, itemName, stat, and change
  */
-function downgradePassiveItem(item) {
+function downgradePassiveItem(item, downgradeAmount = -1) {
   // Initialize modifiers if not present
   initializePassiveModifiers(item);
 
-  // Choose random stat to downgrade
-  const stats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov'];
-  const randomStat = stats[Math.floor(Math.random() * stats.length)];
+  // Get stats that this item actually provides
+  let availableStats = getItemStats(item.name);
 
-  // Apply downgrade (-1)
-  const change = -1;
+  // If no stats found or item has no effects, fall back to all stats
+  if (availableStats.length === 0) {
+    availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck'];
+  }
+
+  // Choose random stat from the item's actual stats
+  const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
+
+  // Apply downgrade
+  const change = downgradeAmount;
   item.statModifiers[randomStat] += change;
 
   // Apply the stat change to the game state
@@ -649,12 +687,13 @@ function downgradePassiveItem(item) {
     item.description = `${item.originalDescription}\n\n[Modified: ${modifierDesc}]`;
   }
 
-  console.log(`⬇️ Curse of Decay: Downgraded ${item.originalName || item.name}: ${randomStat} ${change}`);
+  console.log(`⬇️ Downgraded ${item.originalName || item.name}: ${randomStat} ${change}`);
 
   // Show notification
   if (typeof createNotification === 'function') {
     const statDisplay = randomStat.charAt(0).toUpperCase() + randomStat.slice(1);
-    createNotification(`Curse of Decay: ${item.originalName || item.name} ${statDisplay} ${change}`, '#8b4513', '⬇️');
+    const source = downgradeAmount < -1 ? 'Curse of Decay (stacked)' : 'Curse of Decay';
+    createNotification(`${source}: ${item.originalName || item.name} ${statDisplay} ${change}`, '#8b4513', '⬇️');
   }
 
   return {
@@ -780,8 +819,13 @@ function acquireItem(item) {
       }
 
       if (targetItem) {
-        // Downgrade the item
-        downgradePassiveItem(targetItem);
+        // Calculate total downgrade amount (stacking curses)
+        // Each decay curse applies -1, so 2 curses = -2, 3 curses = -3, etc.
+        const totalDowngrade = -1 * decayCurses.length;
+        console.log(`😈 ${decayCurses.length} Decay curse(s) active: applying ${totalDowngrade} downgrade`);
+
+        // Downgrade the item with stacked amount
+        downgradePassiveItem(targetItem, totalDowngrade);
       }
 
       // Track decay uses for each curse
@@ -1606,9 +1650,16 @@ function upgradeOrDowngradePassive(isUpgrade) {
   // Initialize modifiers if not present
   initializePassiveModifiers(itemToModify);
 
-  // Choose random stat to modify
-  const stats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov'];
-  const randomStat = stats[Math.floor(Math.random() * stats.length)];
+  // Get stats that this item actually provides
+  let availableStats = getItemStats(itemToModify.name);
+
+  // If no stats found or item has no effects, fall back to all stats
+  if (availableStats.length === 0) {
+    availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck'];
+  }
+
+  // Choose random stat from the item's actual stats
+  const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
 
   // Apply modification
   const change = isUpgrade ? 1 : -1;
