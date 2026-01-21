@@ -3219,7 +3219,7 @@ function completeChampionFailure() {
 function showItemChoiceModal(onComplete, chestType = 'normal') {
   if (items.length === 0) {
     // If no items, just spawn choices or call callback
-    if (onComplete) {
+    if (typeof onComplete === 'function') {
       setTimeout(() => onComplete(), 300);
     } else {
       setTimeout(() => spawnChoices(), 300);
@@ -3454,7 +3454,7 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
         }, 300);
       } else {
         // Normal flow: spawn the next choices or call callback
-        if (onComplete) {
+        if (typeof onComplete === 'function') {
           setTimeout(() => onComplete(), 300);
         } else {
           setTimeout(() => spawnChoices(), 300);
@@ -3528,7 +3528,7 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
         }, 300);
       } else {
         // Normal flow: spawn choices without acquiring an item or call callback
-        if (onComplete) {
+        if (typeof onComplete === 'function') {
           setTimeout(() => onComplete(), 300);
         } else {
           setTimeout(() => spawnChoices(), 300);

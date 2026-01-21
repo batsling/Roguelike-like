@@ -529,7 +529,7 @@ const ITEM_EFFECTS = {
           // Offer 3 random items to choose from
           if (typeof showItemChoiceModal === 'function') {
             setTimeout(() => {
-              showItemChoiceModal(3);
+              showItemChoiceModal(null, 'large');
             }, 500);
           }
 
