@@ -902,28 +902,31 @@ function acquireItem(item) {
         downgradePassiveItem(targetItem, totalDowngrade);
       }
 
-      // Track decay uses for each curse
+      // Track decay uses for each curse instance (by unique ID)
       if (!gameState.decayUses) {
         gameState.decayUses = {};
       }
 
       // Process each decay curse and increment its counter
       decayCurses.forEach(curse => {
-        if (!gameState.decayUses[curse.name]) {
-          gameState.decayUses[curse.name] = 0;
+        // Use curse._id if available (for unique instances), otherwise fall back to name
+        const curseKey = curse._id || curse.name;
+
+        if (!gameState.decayUses[curseKey]) {
+          gameState.decayUses[curseKey] = 0;
         }
-        gameState.decayUses[curse.name]++;
+        gameState.decayUses[curseKey]++;
 
         // Get max uses based on power level
         const maxUses = curse.power === 'High' ? 3 : curse.power === 'Medium' ? 2 : 1;
 
-        console.log(`😈 ${curse.name}: ${gameState.decayUses[curse.name]}/${maxUses} passive items obtained`);
+        console.log(`😈 ${curse.name}: ${gameState.decayUses[curseKey]}/${maxUses} passive items obtained`);
 
         // Check if curse should be removed
-        if (gameState.decayUses[curse.name] >= maxUses) {
+        if (gameState.decayUses[curseKey] >= maxUses) {
           console.log(`✨ ${curse.name} has been lifted!`);
           CurseManager.consume(curse, { updateUI: true, notify: true });
-          delete gameState.decayUses[curse.name];
+          delete gameState.decayUses[curseKey];
         }
       });
 

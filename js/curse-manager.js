@@ -89,8 +89,16 @@ const CurseManager = {
       return false;
     }
 
-    const curseName = typeof curseOrName === 'string' ? curseOrName : curseOrName.name;
-    const index = gameState.activeCurses.findIndex(c => c.name === curseName);
+    let index = -1;
+
+    // If it's a curse object with an _id, find by ID (for unique instances)
+    if (typeof curseOrName === 'object' && curseOrName._id) {
+      index = gameState.activeCurses.findIndex(c => c._id === curseOrName._id);
+    } else {
+      // Fall back to name-based removal (for backward compatibility)
+      const curseName = typeof curseOrName === 'string' ? curseOrName : curseOrName.name;
+      index = gameState.activeCurses.findIndex(c => c.name === curseName);
+    }
 
     if (index === -1) {
       return false;

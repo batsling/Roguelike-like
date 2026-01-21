@@ -2596,8 +2596,7 @@ text, path, line, g {
 
 /* Utility classes for inline style removal (HTML Code Review fixes) */
 .map-btn-spacing {
-  margin-left: 10px;
-  margin-right: 20px;
+  margin-left: auto;
 }
 
 .path-container-layout {

@@ -321,7 +321,13 @@ const StateMutator = {
       gameState.activeCurses = [];
     }
 
-    gameState.activeCurses.push(curse);
+    // Create a unique instance of the curse with a unique ID
+    const curseInstance = {
+      ...curse,
+      _id: `${curseName}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    };
+
+    gameState.activeCurses.push(curseInstance);
 
     if (updateUI) {
       if (typeof updateCursesDisplay === 'function') updateCursesDisplay();
