@@ -5,7 +5,7 @@
 // - Modular item effects for easy extension
 // - Item stat modifications
 
-console.log('✅ ITEMS.JS v22 loaded - item acquisition debugging active');
+console.log('✅ ITEMS.JS v25 loaded - item acquisition debugging active');
 
 // ===== HELPER FUNCTIONS =====
 
@@ -812,10 +812,15 @@ function acquireItem(item) {
   // Weapons do NOT stack - each weapon is a separate inventory entry
   const isWeapon = itemCopy.type === 'Weapon';
 
+  // Track which item entry was affected (for Curse of Decay logic)
+  let targetItemIndex = -1;
+  let wasStacked = false;
+
   if (isWeapon) {
     // Always add weapons as new entries (no stacking)
     itemCopy.quantity = 1;
     inventory.push(itemCopy);
+    targetItemIndex = inventory.length - 1;
     console.log('📥 Weapon added to inventory (no stacking):', itemCopy.name);
     console.log(`✅ Acquired: ${itemCopy.name}`);
   } else {
@@ -859,6 +864,8 @@ function acquireItem(item) {
         inventory[existingItemIndex].quantity = 1;
       }
       inventory[existingItemIndex].quantity++;
+      targetItemIndex = existingItemIndex;
+      wasStacked = true;
 
       // Apply item effects for the additional copy (for Passive and Triggered items)
       applyItemEffects(itemCopy);
@@ -868,6 +875,7 @@ function acquireItem(item) {
       // New item, add to inventory with quantity of 1
       itemCopy.quantity = 1;
       inventory.push(itemCopy);
+      targetItemIndex = inventory.length - 1;
 
       console.log('📥 Added to inventory. Inventory entry:', inventory[inventory.length - 1]);
 
@@ -882,45 +890,41 @@ function acquireItem(item) {
   if (itemCopy.type === 'Passive' && typeof CurseManager !== 'undefined') {
     const decayCurses = CurseManager.findByType('decay');
 
-    if (decayCurses.length > 0) {
-      // Find the item we just added in the inventory
+    if (decayCurses.length > 0 && targetItemIndex !== -1) {
+      // Use the tracked index instead of searching
       let targetItem = null;
-      const existingItemIndex = inventory.findIndex(item => item.name === itemCopy.name);
+      const existingItem = inventory[targetItemIndex];
 
-      if (existingItemIndex !== -1) {
-        const existingItem = inventory[existingItemIndex];
+      // If the item has quantity > 1, we need to split it off for downgrading
+      if (existingItem.quantity && existingItem.quantity > 1) {
+        // Decrease original item quantity
+        existingItem.quantity--;
 
-        // If the item has quantity > 1, we need to split it off for downgrading
-        if (existingItem.quantity && existingItem.quantity > 1) {
-          // Decrease original item quantity
-          existingItem.quantity--;
+        // Create a new copy with quantity 1 to downgrade
+        targetItem = {
+          ...existingItem,
+          quantity: 1,
+          statModifiers: {
+            strength: 0,
+            dexterity: 0,
+            intelligence: 0,
+            charisma: 0,
+            dash: 0,
+            reroll: 0,
+            skip: 0,
+            discovery: 0,
+            fov: 0,
+            luck: 0,
+            maxHealth: 0
+          }
+        };
 
-          // Create a new copy with quantity 1 to downgrade
-          targetItem = {
-            ...existingItem,
-            quantity: 1,
-            statModifiers: {
-              strength: 0,
-              dexterity: 0,
-              intelligence: 0,
-              charisma: 0,
-              dash: 0,
-              reroll: 0,
-              skip: 0,
-              discovery: 0,
-              fov: 0,
-              luck: 0,
-              maxHealth: 0
-            }
-          };
-
-          // Add the split item to inventory
-          inventory.push(targetItem);
-          console.log(`Split ${existingItem.name} (quantity ${existingItem.quantity + 1} → ${existingItem.quantity} + 1 for downgrade)`);
-        } else {
-          // Item has quantity 1, downgrade it directly
-          targetItem = existingItem;
-        }
+        // Add the split item to inventory
+        inventory.push(targetItem);
+        console.log(`Split ${existingItem.name} (quantity ${existingItem.quantity + 1} → ${existingItem.quantity} + 1 for downgrade)`);
+      } else {
+        // Item has quantity 1, downgrade it directly
+        targetItem = existingItem;
       }
 
       if (targetItem) {

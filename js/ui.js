@@ -4,7 +4,7 @@
 // - Top bar (health, gold, rations)
 // - Inventory display
 
-console.log('✅ UI.JS v26 loaded - weapon deep copy fix active + comprehensive debugging');
+console.log('✅ UI.JS v34 loaded - weapon deep copy fix active + comprehensive debugging');
 
 // Check for equipment slots on DOM ready
 if (document.readyState === 'loading') {

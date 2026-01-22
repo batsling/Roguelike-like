@@ -4,7 +4,7 @@
 // - Page initialization
 // - Event listener setup
 
-console.log('✅ MAIN.JS v43 loaded - inventory deep copy on save active');
+console.log('✅ MAIN.JS v45 loaded - inventory deep copy on save active');
 // - Excel file upload
 // - Save/load game system
 // - Tutorial and UI controls
