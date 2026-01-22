@@ -820,10 +820,41 @@ function acquireItem(item) {
     console.log(`✅ Acquired: ${itemCopy.name}`);
   } else {
     // Check if item already exists in inventory (for stacking non-weapons)
-    const existingItemIndex = inventory.findIndex(item => item.name === itemCopy.name);
+    // For items with stat modifiers (upgraded/downgraded), only stack if modifiers match exactly
+    const existingItemIndex = inventory.findIndex(existingItem => {
+      if (existingItem.name !== itemCopy.name) {
+        return false;
+      }
+
+      // If either item has stat modifiers, check if they match exactly
+      const existingHasModifiers = existingItem.statModifiers &&
+        Object.values(existingItem.statModifiers).some(v => v !== 0);
+      const newHasModifiers = itemCopy.statModifiers &&
+        Object.values(itemCopy.statModifiers).some(v => v !== 0);
+
+      // If both have no modifiers, they can stack
+      if (!existingHasModifiers && !newHasModifiers) {
+        return true;
+      }
+
+      // If only one has modifiers, they cannot stack
+      if (existingHasModifiers !== newHasModifiers) {
+        return false;
+      }
+
+      // Both have modifiers - check if they're identical
+      const existingMods = existingItem.statModifiers;
+      const newMods = itemCopy.statModifiers;
+
+      // Compare all stat modifier values
+      const allStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth'];
+      return allStats.every(stat =>
+        (existingMods[stat] || 0) === (newMods[stat] || 0)
+      );
+    });
 
     if (existingItemIndex !== -1) {
-      // Item already exists, increment quantity
+      // Item already exists with matching modifiers, increment quantity
       if (!inventory[existingItemIndex].quantity) {
         inventory[existingItemIndex].quantity = 1;
       }

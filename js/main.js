@@ -3427,21 +3427,6 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
         updateTopBar();
       }
 
-      // Check if difficulty tier changed and update location (unless manually overridden via dev tools)
-      if (!gameState.manualLocationOverride && typeof getDifficultyTier === 'function' && typeof getRandomLocation === 'function') {
-        const currentDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
-        const newLocation = getRandomLocation(currentDifficulty);
-        if (newLocation && (!gameState.location || gameState.location.name !== newLocation.name)) {
-          gameState.location = newLocation;
-          console.log(`Difficulty check after item selection: ${currentDifficulty}, Location: ${newLocation.name}`);
-
-          // Update the location display
-          if (typeof updateLocationDisplay === 'function') {
-            updateLocationDisplay(gameState.currentGame);
-          }
-        }
-      }
-
       // Check if we need to show Hades boon selection first
       if (gameState.pendingHadesBoonSelection) {
         gameState.pendingHadesBoonSelection = false;
@@ -3499,21 +3484,6 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
       }
       if (typeof updateTopBar === 'function') {
         updateTopBar();
-      }
-
-      // Check if difficulty tier changed and update location (unless manually overridden via dev tools)
-      if (!gameState.manualLocationOverride && typeof getDifficultyTier === 'function' && typeof getRandomLocation === 'function') {
-        const currentDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
-        const newLocation = getRandomLocation(currentDifficulty);
-        if (newLocation && (!gameState.location || gameState.location.name !== newLocation.name)) {
-          gameState.location = newLocation;
-          console.log(`Difficulty check after skipping item: ${currentDifficulty}, Location: ${newLocation.name}`);
-
-          // Update the location display
-          if (typeof updateLocationDisplay === 'function') {
-            updateLocationDisplay(gameState.currentGame);
-          }
-        }
       }
 
       // Check if we need to show Hades boon selection first
