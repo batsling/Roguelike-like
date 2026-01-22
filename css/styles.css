@@ -2595,7 +2595,7 @@ text, path, line, g {
 }
 
 /* Utility classes for inline style removal (HTML Code Review fixes) */
-.map-btn-spacing {
+#top-bar button.map-btn-spacing {
   margin-left: auto;
   margin-right: 120px;
 }
