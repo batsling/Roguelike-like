@@ -244,15 +244,37 @@ function applyCurseToPlayer() {
   const enemy = activeCombat.enemy;
   const failureConsequence = enemy.failureConsequence;
 
-  // Parse curse type and power from failureConsequence (e.g., "Low Curse", "Medium Curse")
+  // Parse curse power from failureConsequence (e.g., "Low Curse", "Medium Curse")
   const match = failureConsequence.match(/(Low|Medium|High)\s+Curse/i);
 
   if (match) {
-    const curseType = match[1];
-    addCombatLog(`You have been cursed! (${curseType})`, 'warning');
+    const cursePower = match[1];
 
-    // The actual curse application will be handled by the existing curse system
-    // This is just a placeholder for the combat log
+    // Find a curse that matches the enemy's stat and the power level
+    if (typeof CURSES_DATA !== 'undefined') {
+      const matchingCurses = CURSES_DATA.filter(curse =>
+        curse.stat === enemy.stat && curse.power === cursePower
+      );
+
+      if (matchingCurses.length > 0) {
+        // Pick a random curse from matching ones
+        const randomCurse = matchingCurses[Math.floor(Math.random() * matchingCurses.length)];
+
+        // Apply the curse using the global addCurse function
+        if (typeof addCurse === 'function') {
+          addCurse(randomCurse.name);
+          addCombatLog(`Cursed with ${randomCurse.name}!`, 'warning');
+        } else {
+          addCombatLog(`You have been cursed! (${cursePower})`, 'warning');
+        }
+      } else {
+        console.warn(`No curse found for stat ${enemy.stat} with power ${cursePower}`);
+        addCombatLog(`You have been cursed! (${cursePower})`, 'warning');
+      }
+    } else {
+      console.warn('CURSES_DATA not available');
+      addCombatLog(`You have been cursed! (${cursePower})`, 'warning');
+    }
   }
 }
 
