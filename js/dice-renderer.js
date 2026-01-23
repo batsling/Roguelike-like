@@ -93,17 +93,12 @@ function createFaceTexture(number, side = null) {
  * @returns {THREE.Group} D20 as a group of face meshes
  */
 function createD20Mesh(diceData) {
-  // Create base icosahedron geometry for vertices
+  // Create base icosahedron geometry
   const baseGeometry = new THREE.IcosahedronGeometry(1, 0);
-  const positions = baseGeometry.attributes.position.array;
 
-  // Get indices - check if index exists first
-  const indexAttribute = baseGeometry.getIndex();
-  if (!indexAttribute) {
-    console.error('No index buffer found on icosahedron geometry');
-    return new THREE.Group(); // Return empty group on error
-  }
-  const indices = indexAttribute.array;
+  // Convert to non-indexed geometry if needed
+  const geometry = baseGeometry.index ? baseGeometry.toNonIndexed() : baseGeometry;
+  const positions = geometry.attributes.position.array;
 
   // D20 face numbering mapping
   const faceNumberMap = [
@@ -114,28 +109,32 @@ function createD20Mesh(diceData) {
   // Create a group to hold all face meshes
   const d20Group = new THREE.Group();
 
-  // Create each face as a separate triangle mesh
-  for (let faceIndex = 0; faceIndex < 20; faceIndex++) {
-    // Get the three vertex indices for this face
-    const i0 = indices[faceIndex * 3 + 0];
-    const i1 = indices[faceIndex * 3 + 1];
-    const i2 = indices[faceIndex * 3 + 2];
+  // Icosahedron has 20 faces, each face is a triangle (3 vertices)
+  // Non-indexed geometry has 60 vertices (20 faces * 3 vertices each)
+  const numFaces = positions.length / 9; // 9 floats per triangle (3 vertices * 3 components)
 
-    // Get vertex positions
+  console.log('Creating D20 with', numFaces, 'faces from', positions.length, 'position values');
+
+  // Create each face as a separate triangle mesh
+  for (let faceIndex = 0; faceIndex < numFaces; faceIndex++) {
+    // Each face has 3 vertices, each vertex has 3 components (x, y, z)
+    const vertexStart = faceIndex * 9;
+
+    // Get vertex positions directly from non-indexed geometry
     const v0 = new THREE.Vector3(
-      positions[i0 * 3 + 0],
-      positions[i0 * 3 + 1],
-      positions[i0 * 3 + 2]
+      positions[vertexStart + 0],
+      positions[vertexStart + 1],
+      positions[vertexStart + 2]
     );
     const v1 = new THREE.Vector3(
-      positions[i1 * 3 + 0],
-      positions[i1 * 3 + 1],
-      positions[i1 * 3 + 2]
+      positions[vertexStart + 3],
+      positions[vertexStart + 4],
+      positions[vertexStart + 5]
     );
     const v2 = new THREE.Vector3(
-      positions[i2 * 3 + 0],
-      positions[i2 * 3 + 1],
-      positions[i2 * 3 + 2]
+      positions[vertexStart + 6],
+      positions[vertexStart + 7],
+      positions[vertexStart + 8]
     );
 
     // Create triangle geometry for this face
