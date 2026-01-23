@@ -76,13 +76,13 @@ function createFaceTexture(number, side = null) {
     // For now, just draw the number
   }
 
-  // Number - draw larger and centered
+  // Number - properly sized and centered
   const displayValue = side && side.displayValue !== null ? side.displayValue : number;
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 80px Arial';
+  ctx.font = 'bold 56px Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(displayValue.toString(), 64, 68); // Slightly lower for better visual balance
+  ctx.fillText(displayValue.toString(), 64, 64); // Centered in 128x128 canvas
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
@@ -236,34 +236,64 @@ function rollDice(diceData, result, callback) {
   hasRolled = true;
   rollCallback = callback;
 
-  // Random rotation for animation
-  const rotationSpeed = {
-    x: (Math.random() - 0.5) * 0.3,
-    y: (Math.random() - 0.5) * 0.3,
-    z: (Math.random() - 0.5) * 0.3
-  };
-
   // Animation duration (1.5 seconds)
   const duration = 1500;
   const startTime = Date.now();
 
+  // Store starting rotation as quaternion
+  const startQuat = new THREE.Quaternion().setFromEuler(diceMesh.rotation);
+
   // Calculate target rotation to show the rolled face
   const targetRotation = calculateFaceRotation(result);
+  const targetEuler = new THREE.Euler(targetRotation.x, targetRotation.y, targetRotation.z, 'XYZ');
+  const targetQuat = new THREE.Quaternion().setFromEuler(targetEuler);
+
+  // Add some extra spins for visual effect (2-3 full rotations)
+  const extraSpins = 2 + Math.random();
+  const spinAxis = new THREE.Vector3(
+    Math.random() - 0.5,
+    Math.random() - 0.5,
+    Math.random() - 0.5
+  ).normalize();
 
   function animateRoll() {
     const elapsed = Date.now() - startTime;
     const progress = Math.min(elapsed / duration, 1);
 
     if (progress < 1) {
-      // Spinning phase - less rotation as we get closer to end
-      const spinFactor = 1 - progress;
-      diceMesh.rotation.x += rotationSpeed.x * spinFactor;
-      diceMesh.rotation.y += rotationSpeed.y * spinFactor;
-      diceMesh.rotation.z += rotationSpeed.z * spinFactor;
+      // Ease out curve for smooth deceleration
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+
+      // Create intermediate quaternion
+      const currentQuat = new THREE.Quaternion();
+
+      // First 70% of animation: mostly spinning
+      // Last 30%: smoothly rotate to final position
+      if (progress < 0.7) {
+        // Spinning phase with extra rotations
+        const spinAmount = extraSpins * Math.PI * 2 * progress / 0.7;
+        const spinQuat = new THREE.Quaternion().setFromAxisAngle(spinAxis, spinAmount);
+        currentQuat.multiplyQuaternions(spinQuat, startQuat);
+      } else {
+        // Transition phase - blend from spinning to target
+        const blendProgress = (progress - 0.7) / 0.3; // 0 to 1 over last 30%
+        const blendEase = 1 - Math.pow(1 - blendProgress, 2); // Ease into final position
+
+        // Calculate final spin position
+        const spinAmount = extraSpins * Math.PI * 2;
+        const spinQuat = new THREE.Quaternion().setFromAxisAngle(spinAxis, spinAmount);
+        const finalSpinQuat = new THREE.Quaternion().multiplyQuaternions(spinQuat, startQuat);
+
+        // Smoothly interpolate from spin to target
+        currentQuat.slerpQuaternions(finalSpinQuat, targetQuat, blendEase);
+      }
+
+      // Apply the rotation
+      diceMesh.rotation.setFromQuaternion(currentQuat);
 
       requestAnimationFrame(animateRoll);
     } else {
-      // Final position - orient to show the result face
+      // Final position - ensure exact target rotation
       diceMesh.rotation.set(targetRotation.x, targetRotation.y, targetRotation.z);
 
       isRolling = false;
