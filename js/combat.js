@@ -278,7 +278,7 @@ function rollD20() {
 
     // Apply stat modifiers
     const stat = currentEnemy.stat;
-    const modifier = getStatModifier(stat);
+    const modifier = getPlayerStatValue(stat);
     const totalRoll = currentRoll + modifier - cursePenalty;
     const check = currentEnemy.rollCheck;
 
@@ -333,7 +333,7 @@ function giveRandomItem(rarity) {
   }
 }
 
-function getStatModifier(statName) {
+function getPlayerStatValue(statName) {
   switch(statName.toLowerCase()) {
     case 'strength': return strength;
     case 'dexterity': return dexterity;
@@ -365,5 +365,5 @@ function applyStatBonus(statName, amount) {
 window.applyCombatOutcome = applyCombatOutcome;
 window.rollD20 = rollD20;
 window.giveRandomItem = giveRandomItem;
-window.getStatModifier = getStatModifier;
+window.getPlayerStatValue = getPlayerStatValue;
 window.applyStatBonus = applyStatBonus;

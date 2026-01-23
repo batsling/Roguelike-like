@@ -96,9 +96,6 @@ function createD20Mesh(diceData) {
   // Create icosahedron geometry (20 faces)
   const geometry = new THREE.IcosahedronGeometry(1, 0);
 
-  // Create materials for each face
-  const materials = [];
-
   // D20 face numbering mapping (icosahedron face index to D20 number)
   // This mapping ensures opposite faces sum to 21
   const faceNumberMap = [
@@ -106,7 +103,8 @@ function createD20Mesh(diceData) {
     6, 15, 7, 14, 8, 13, 9, 12, 10, 11
   ];
 
-  // Create a material for each face
+  // Create materials for each face
+  const materials = [];
   for (let i = 0; i < 20; i++) {
     const number = faceNumberMap[i];
     const sideIndex = number - 1; // Convert to 0-based index
@@ -116,22 +114,24 @@ function createD20Mesh(diceData) {
     const material = new THREE.MeshStandardMaterial({
       map: texture,
       roughness: 0.5,
-      metalness: 0.1
+      metalness: 0.1,
+      side: THREE.DoubleSide
     });
 
     materials.push(material);
   }
 
-  // Assign materials to faces
-  const mesh = new THREE.Mesh(geometry, materials);
+  // Clear any existing groups
+  geometry.clearGroups();
 
-  // Set face materials
-  for (let i = 0; i < geometry.attributes.position.count; i += 3) {
-    const faceIndex = Math.floor(i / 3);
-    if (faceIndex < 20) {
-      geometry.addGroup(i, 3, faceIndex);
-    }
+  // Assign materials to faces using groups
+  // Each face uses 3 vertices, and we have 60 vertices total (20 faces * 3)
+  for (let i = 0; i < 20; i++) {
+    geometry.addGroup(i * 3, 3, i);
   }
+
+  // Create mesh with material array
+  const mesh = new THREE.Mesh(geometry, materials);
 
   return mesh;
 }
