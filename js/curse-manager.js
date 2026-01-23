@@ -67,11 +67,14 @@ const CurseManager = {
 
   /**
    * Get penalty value from curse power
-   * @param {number} power - Curse power level (1-4)
+   * @param {string|number} power - Curse power level ("Low"/"Medium"/"High" or 1-4)
    * @returns {number} - Penalty value
    */
   getPenalty(power) {
-    return CURSE_CONFIG.DAMAGE[power] || 0;
+    // Convert string power to numeric if needed
+    const powerMap = { Low: 1, Medium: 2, High: 3 };
+    const numericPower = typeof power === 'string' ? powerMap[power] : power;
+    return CURSE_CONFIG.DAMAGE[numericPower] || 0;
   },
 
   /**
@@ -90,13 +93,15 @@ const CurseManager = {
     }
 
     let index = -1;
+    let curseName;
 
     // If it's a curse object with an _id, find by ID (for unique instances)
     if (typeof curseOrName === 'object' && curseOrName._id) {
       index = gameState.activeCurses.findIndex(c => c._id === curseOrName._id);
+      curseName = curseOrName.name;
     } else {
       // Fall back to name-based removal (for backward compatibility)
-      const curseName = typeof curseOrName === 'string' ? curseOrName : curseOrName.name;
+      curseName = typeof curseOrName === 'string' ? curseOrName : curseOrName.name;
       index = gameState.activeCurses.findIndex(c => c.name === curseName);
     }
 
@@ -116,7 +121,8 @@ const CurseManager = {
     }
 
     if (notify && typeof createNotification === 'function') {
-      createNotification(`${curseName} consumed`, COLORS.WARNING, '✨');
+      const color = (typeof COLORS !== 'undefined' && COLORS.WARNING) || '#ff9800';
+      createNotification(`${curseName} consumed`, color, '✨');
     }
 
     return true;
@@ -242,7 +248,8 @@ const CurseManager = {
     }
 
     if (notify && count > 0 && typeof createNotification === 'function') {
-      createNotification(`All ${count} curses removed!`, COLORS.SUCCESS, '✨');
+      const color = (typeof COLORS !== 'undefined' && COLORS.SUCCESS) || '#4CAF50';
+      createNotification(`All ${count} curses removed!`, color, '✨');
     }
   }
 };
