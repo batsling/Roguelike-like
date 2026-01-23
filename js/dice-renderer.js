@@ -90,27 +90,74 @@ function createFaceTexture(number, side = null) {
 /**
  * Create a D20 mesh with numbered faces
  * @param {Object} diceData - Dice data from dice system
- * @returns {THREE.Mesh} D20 mesh
+ * @returns {THREE.Group} D20 as a group of face meshes
  */
 function createD20Mesh(diceData) {
-  // Create icosahedron geometry (20 faces)
-  const geometry = new THREE.IcosahedronGeometry(1, 0);
+  // Create base icosahedron geometry for vertices
+  const baseGeometry = new THREE.IcosahedronGeometry(1, 0);
+  const positions = baseGeometry.attributes.position.array;
+  const indices = baseGeometry.index.array;
 
-  // D20 face numbering mapping (icosahedron face index to D20 number)
-  // This mapping ensures opposite faces sum to 21
+  // D20 face numbering mapping
   const faceNumberMap = [
     1, 20, 2, 19, 3, 18, 4, 17, 5, 16,
     6, 15, 7, 14, 8, 13, 9, 12, 10, 11
   ];
 
-  // Create materials for each face
-  const materials = [];
-  for (let i = 0; i < 20; i++) {
-    const number = faceNumberMap[i];
-    const sideIndex = number - 1; // Convert to 0-based index
+  // Create a group to hold all face meshes
+  const d20Group = new THREE.Group();
+
+  // Create each face as a separate triangle mesh
+  for (let faceIndex = 0; faceIndex < 20; faceIndex++) {
+    // Get the three vertex indices for this face
+    const i0 = indices[faceIndex * 3 + 0];
+    const i1 = indices[faceIndex * 3 + 1];
+    const i2 = indices[faceIndex * 3 + 2];
+
+    // Get vertex positions
+    const v0 = new THREE.Vector3(
+      positions[i0 * 3 + 0],
+      positions[i0 * 3 + 1],
+      positions[i0 * 3 + 2]
+    );
+    const v1 = new THREE.Vector3(
+      positions[i1 * 3 + 0],
+      positions[i1 * 3 + 1],
+      positions[i1 * 3 + 2]
+    );
+    const v2 = new THREE.Vector3(
+      positions[i2 * 3 + 0],
+      positions[i2 * 3 + 1],
+      positions[i2 * 3 + 2]
+    );
+
+    // Create triangle geometry for this face
+    const faceGeometry = new THREE.BufferGeometry();
+    const faceVertices = new Float32Array([
+      v0.x, v0.y, v0.z,
+      v1.x, v1.y, v1.z,
+      v2.x, v2.y, v2.z
+    ]);
+    faceGeometry.setAttribute('position', new THREE.BufferAttribute(faceVertices, 3));
+
+    // Create UVs for texture mapping
+    const uvs = new Float32Array([
+      0, 0,
+      1, 0,
+      0.5, 1
+    ]);
+    faceGeometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+
+    // Compute normals
+    faceGeometry.computeVertexNormals();
+
+    // Get the number for this face
+    const number = faceNumberMap[faceIndex];
+    const sideIndex = number - 1;
     const side = diceData.sides[sideIndex];
     const texture = createFaceTexture(number, side);
 
+    // Create material with texture
     const material = new THREE.MeshStandardMaterial({
       map: texture,
       roughness: 0.5,
@@ -118,22 +165,14 @@ function createD20Mesh(diceData) {
       side: THREE.DoubleSide
     });
 
-    materials.push(material);
+    // Create mesh and add to group
+    const faceMesh = new THREE.Mesh(faceGeometry, material);
+    d20Group.add(faceMesh);
   }
 
-  // Clear any existing groups
-  geometry.clearGroups();
+  console.log('D20 created with', d20Group.children.length, 'face meshes');
 
-  // Assign materials to faces using groups
-  // Each face uses 3 vertices, and we have 60 vertices total (20 faces * 3)
-  for (let i = 0; i < 20; i++) {
-    geometry.addGroup(i * 3, 3, i);
-  }
-
-  // Create mesh with material array
-  const mesh = new THREE.Mesh(geometry, materials);
-
-  return mesh;
+  return d20Group;
 }
 
 /**
@@ -144,14 +183,18 @@ function createDice(diceData) {
   // Remove old dice if it exists
   if (diceMesh) {
     diceScene.remove(diceMesh);
-    diceMesh.geometry.dispose();
-    diceMesh.material.forEach(mat => {
-      if (mat.map) mat.map.dispose();
-      mat.dispose();
+
+    // Dispose of all face meshes in the group
+    diceMesh.children.forEach(faceMesh => {
+      if (faceMesh.geometry) faceMesh.geometry.dispose();
+      if (faceMesh.material) {
+        if (faceMesh.material.map) faceMesh.material.map.dispose();
+        faceMesh.material.dispose();
+      }
     });
   }
 
-  // Create new dice
+  // Create new dice (now a Group of face meshes)
   diceMesh = createD20Mesh(diceData);
   diceScene.add(diceMesh);
 }
