@@ -96,7 +96,14 @@ function createD20Mesh(diceData) {
   // Create base icosahedron geometry for vertices
   const baseGeometry = new THREE.IcosahedronGeometry(1, 0);
   const positions = baseGeometry.attributes.position.array;
-  const indices = baseGeometry.index.array;
+
+  // Get indices - check if index exists first
+  const indexAttribute = baseGeometry.getIndex();
+  if (!indexAttribute) {
+    console.error('No index buffer found on icosahedron geometry');
+    return new THREE.Group(); // Return empty group on error
+  }
+  const indices = indexAttribute.array;
 
   // D20 face numbering mapping
   const faceNumberMap = [
