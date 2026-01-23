@@ -82,8 +82,10 @@ function createFaceTexture(number, side = null) {
   ctx.font = 'bold 48px Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  // Position at centroid of triangle UV mapping (0.5, 0.367) -> (64, 47)
-  ctx.fillText(displayValue.toString(), 64, 47);
+  // Triangle UVs: (0.1,0.1), (0.9,0.1), (0.5,0.9)
+  // In canvas coords (Y flipped): (12.8,115.2), (115.2,115.2), (64,12.8)
+  // Centroid: (64, 81)
+  ctx.fillText(displayValue.toString(), 64, 81);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
