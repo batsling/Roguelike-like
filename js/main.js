@@ -2042,22 +2042,26 @@ function showCombatModal() {
   const enemyImagePath = getEnemyImagePath(enemy.name);
   const playerImagePath = getPlayerImagePath();
 
-  // Create Dragon Quest style combat UI
+  // Create wider, cleaner combat UI
   const combatHTML = `
     <div id="combat-container" style="
       display: grid;
-      grid-template-columns: 200px 1fr 300px;
+      grid-template-columns: 240px 1fr 340px;
       grid-template-rows: auto 1fr auto;
-      gap: 15px;
-      height: 80vh;
-      max-height: 700px;
-      padding: 20px;
-      background: #1a1410;
+      gap: 20px;
+      width: 95vw;
+      max-width: 1400px;
+      height: 85vh;
+      max-height: 800px;
+      padding: 25px;
+      background: linear-gradient(135deg, #1a1410 0%, #2a1810 100%);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
     ">
       <!-- Header -->
-      <div style="grid-column: 1 / -1; text-align: center;">
-        <h2 style="color: #ff4444; margin: 0;">Combat!</h2>
-        <p style="color: #888; margin: 5px 0;">Turn <span id="turn-counter">1</span></p>
+      <div style="grid-column: 1 / -1; text-align: center; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
+        <h2 style="color: #ff6644; margin: 0; font-size: 32px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">⚔️ COMBAT ⚔️</h2>
+        <p style="color: #aaa; margin: 8px 0 0 0; font-size: 16px;">Turn <span id="turn-counter" style="color: #ffcc66; font-weight: bold;">1</span></p>
       </div>
 
       <!-- Player Section (Left) -->
@@ -2065,48 +2069,75 @@ function showCombatModal() {
         display: flex;
         flex-direction: column;
         align-items: center;
-        background: rgba(0,100,200,0.1);
-        border: 2px solid #4CAF50;
-        border-radius: 8px;
-        padding: 15px;
+        justify-content: flex-start;
+        background: linear-gradient(145deg, rgba(76,175,80,0.15), rgba(76,175,80,0.05));
+        border: 3px solid #4CAF50;
+        border-radius: 12px;
+        padding: 20px 15px;
+        box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
       ">
+        <!-- Player HP Bar (Above Image) -->
+        <div style="width: 100%; margin-bottom: 15px;">
+          <p style="margin: 0 0 5px 0; font-size: 13px; color: #4CAF50; text-align: center; font-weight: bold; text-transform: uppercase;">YOU</p>
+          <div style="background: #2a2a2a; border-radius: 6px; height: 24px; position: relative; overflow: hidden; border: 2px solid #4CAF50;">
+            <div id="player-hp-bar" style="
+              background: linear-gradient(90deg, #4CAF50, #2E7D32);
+              height: 100%;
+              width: ${(health / maxHealth) * 100}%;
+              transition: width 0.3s ease;
+            "></div>
+            <span id="player-hp" style="
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              font-size: 13px;
+              font-weight: bold;
+              text-shadow: 0 0 4px black;
+              color: white;
+            ">${health}/${maxHealth}</span>
+          </div>
+        </div>
+
+        <!-- Player Image -->
         <img src="${playerImagePath}" style="
-          width: 120px;
-          height: 120px;
+          width: 160px;
+          height: 160px;
           image-rendering: pixelated;
-          margin-bottom: 10px;
+          margin-bottom: 15px;
+          border-radius: 8px;
+          background: rgba(0,0,0,0.3);
+          padding: 8px;
+          border: 2px solid rgba(76,175,80,0.3);
         " alt="Player">
 
-        <div style="text-align: center; width: 100%;">
-          <p style="margin: 5px 0; font-size: 14px; color: #4CAF50;">HP</p>
-          <p id="player-hp" style="margin: 0; font-size: 18px; font-weight: bold;">${health}/${maxHealth}</p>
-
-          <div id="player-effects" style="margin-top: 10px; font-size: 12px;">
-            <!-- Effects will appear here -->
-          </div>
+        <!-- Player Effects -->
+        <div id="player-effects" style="margin-top: 10px; font-size: 13px; text-align: center; width: 100%;">
+          <!-- Effects will appear here -->
         </div>
       </div>
 
-      <!-- Center Section (Enemy + Dice) -->
+      <!-- Center Section (Enemy + Dice + Log) -->
       <div style="
         display: flex;
         flex-direction: column;
-        gap: 15px;
+        gap: 20px;
       ">
         <!-- Enemy Display -->
         <div id="enemy-section" style="
-          background: rgba(200,0,0,0.1);
-          border: 2px solid #ff4444;
-          border-radius: 8px;
-          padding: 15px;
+          background: linear-gradient(145deg, rgba(255,68,68,0.15), rgba(255,68,68,0.05));
+          border: 3px solid #ff4444;
+          border-radius: 12px;
+          padding: 20px;
           text-align: center;
+          box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
         ">
-          <h3 style="margin: 0 0 5px 0; color: #ff4444;">${enemy.name}</h3>
-          <p style="margin: 0; font-size: 12px; color: #888;">${enemy.game}</p>
+          <h3 style="margin: 0 0 3px 0; color: #ff6644; font-size: 24px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${enemy.name}</h3>
+          <p style="margin: 0 0 12px 0; font-size: 13px; color: #999; font-style: italic;">${enemy.game}</p>
 
-          <div style="margin: 10px 0;">
-            <p style="margin: 5px 0; font-size: 14px; color: #ff8888;">HP</p>
-            <div style="background: #2a2a2a; border-radius: 4px; height: 20px; position: relative; overflow: hidden;">
+          <!-- Enemy HP Bar -->
+          <div style="margin-bottom: 12px;">
+            <div style="background: #2a2a2a; border-radius: 6px; height: 24px; position: relative; overflow: hidden; border: 2px solid #ff4444;">
               <div id="enemy-hp-bar" style="
                 background: linear-gradient(90deg, #ff4444, #cc0000);
                 height: 100%;
@@ -2118,104 +2149,133 @@ function showCombatModal() {
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                font-size: 12px;
+                font-size: 13px;
                 font-weight: bold;
-                text-shadow: 0 0 3px black;
+                text-shadow: 0 0 4px black;
+                color: white;
               ">${enemy.health}/${enemy.health}</span>
             </div>
           </div>
 
+          <!-- Enemy Image -->
           <img src="${enemyImagePath}" style="
-            max-width: 150px;
-            max-height: 150px;
+            max-width: 180px;
+            max-height: 180px;
             image-rendering: pixelated;
-            margin: 10px auto;
+            margin: 12px auto;
             display: block;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            padding: 8px;
           " alt="${enemy.name}" onerror="this.style.display='none'">
 
-          <div style="margin-top: 10px; font-size: 12px; color: #aaa;">
-            <p style="margin: 3px 0;">AC: <span style="color: white; font-weight: bold;">${enemy.armorClass}</span></p>
-            <p style="margin: 3px 0;">Attack: <span style="color: #ff6666; font-weight: bold;">${enemy.attack}</span></p>
+          <!-- Enemy Stats -->
+          <div style="display: flex; justify-content: center; gap: 20px; margin-top: 12px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 6px;">
+            <div>
+              <p style="margin: 0; font-size: 11px; color: #aaa; text-transform: uppercase;">Armor Class</p>
+              <p style="margin: 2px 0 0 0; font-size: 18px; color: #66ccff; font-weight: bold;">${enemy.armorClass}</p>
+            </div>
+            <div style="border-left: 1px solid #444; padding-left: 20px;">
+              <p style="margin: 0; font-size: 11px; color: #aaa; text-transform: uppercase;">Attack</p>
+              <p style="margin: 2px 0 0 0; font-size: 18px; color: #ff6666; font-weight: bold;">${enemy.attack}</p>
+            </div>
           </div>
 
-          <div id="enemy-effects" style="margin-top: 10px; font-size: 12px;">
+          <!-- Enemy Effects -->
+          <div id="enemy-effects" style="margin-top: 10px; font-size: 13px;">
             <!-- Enemy effects will appear here -->
           </div>
         </div>
 
         <!-- Dice Area -->
         <div id="dice-area" style="
-          background: rgba(50,50,50,0.5);
-          border: 2px solid #cc6600;
-          border-radius: 8px;
-          padding: 15px;
+          background: linear-gradient(145deg, rgba(204,102,0,0.15), rgba(204,102,0,0.05));
+          border: 3px solid #cc6600;
+          border-radius: 12px;
+          padding: 20px;
           flex: 1;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
           position: relative;
+          min-height: 280px;
+          box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
         ">
           <div id="dice-container" style="
             width: 100%;
-            height: 200px;
+            height: 220px;
             cursor: pointer;
             position: relative;
           "></div>
           <p id="dice-instruction" style="
-            color: #cc6600;
-            font-size: 14px;
-            margin: 10px 0 0 0;
+            color: #ffaa44;
+            font-size: 15px;
+            margin: 12px 0 0 0;
             text-align: center;
-          ">Click the dice to roll!</p>
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+          ">🎲 Click the dice to roll! 🎲</p>
           <div id="roll-result" style="
             margin-top: 10px;
             font-size: 16px;
             text-align: center;
+            width: 100%;
           "></div>
         </div>
 
         <!-- Combat Log -->
         <div id="combat-log" style="
-          background: rgba(0,0,0,0.5);
-          border: 1px solid #666;
-          border-radius: 6px;
-          padding: 10px;
-          max-height: 150px;
+          background: rgba(0,0,0,0.6);
+          border: 2px solid #444;
+          border-radius: 8px;
+          padding: 12px;
+          max-height: 140px;
           overflow-y: auto;
-          font-size: 12px;
+          font-size: 13px;
+          line-height: 1.5;
         ">
-          <p style="color: #888; margin: 0;">Combat started!</p>
+          <p style="color: #aaa; margin: 0;">⚔️ Combat started!</p>
         </div>
       </div>
 
       <!-- Right Section (Inventory) -->
-      <div id="combat-inventory" style="
-        background: rgba(0,0,0,0.3);
-        border: 2px solid #666;
-        border-radius: 8px;
-        padding: 15px;
+      <div id="combat-inventory-section" style="
+        background: linear-gradient(145deg, rgba(0,0,0,0.4), rgba(0,0,0,0.2));
+        border: 3px solid #888;
+        border-radius: 12px;
+        padding: 18px;
         overflow-y: auto;
+        box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
       ">
-        <h4 style="margin: 0 0 10px 0; color: #cc6600;">Inventory</h4>
-        <div id="combat-inventory-items">
+        <h4 style="margin: 0 0 15px 0; color: #ffcc66; font-size: 18px; text-align: center; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid rgba(255,204,102,0.3); padding-bottom: 10px;">📦 Inventory</h4>
+        <div id="combat-inventory-items" style="
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        ">
           <!-- Inventory items will be populated here -->
         </div>
       </div>
 
       <!-- Action Buttons (Bottom) -->
-      <div style="grid-column: 1 / -1; display: flex; gap: 15px; justify-content: center;">
+      <div style="grid-column: 1 / -1; display: flex; gap: 20px; justify-content: center; padding-top: 10px; border-top: 2px solid rgba(255,255,255,0.1);">
         <button id="end-turn-btn" disabled style="
-          padding: 15px 40px;
-          font-size: 18px;
-          background: #666;
-          border: none;
-          border-radius: 8px;
-          color: white;
+          padding: 18px 60px;
+          font-size: 20px;
+          background: linear-gradient(145deg, #555, #444);
+          border: 3px solid #666;
+          border-radius: 10px;
+          color: #888;
           cursor: not-allowed;
           font-weight: bold;
           opacity: 0.5;
-        ">End Turn</button>
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+          transition: all 0.3s ease;
+        ">⏭️ End Turn</button>
       </div>
     </div>
   `;
@@ -2312,7 +2372,9 @@ function showCombatModal() {
         endTurnBtn.disabled = false;
         endTurnBtn.style.opacity = '1';
         endTurnBtn.style.cursor = 'pointer';
-        endTurnBtn.style.background = '#4CAF50';
+        endTurnBtn.style.background = 'linear-gradient(145deg, #4CAF50, #2E7D32)';
+        endTurnBtn.style.color = 'white';
+        endTurnBtn.style.borderColor = '#2E7D32';
       });
 
     } catch (error) {
@@ -2352,14 +2414,16 @@ function showCombatModal() {
     diceRolled = false;
     diceContainer.style.cursor = 'pointer';
 
-    document.getElementById('dice-instruction').textContent = 'Click the dice to roll!';
+    document.getElementById('dice-instruction').textContent = '🎲 Click the dice to roll! 🎲';
     document.getElementById('roll-result').innerHTML = '';
 
     const endTurnBtn = document.getElementById('end-turn-btn');
     endTurnBtn.disabled = true;
     endTurnBtn.style.opacity = '0.5';
     endTurnBtn.style.cursor = 'not-allowed';
-    endTurnBtn.style.background = '#666';
+    endTurnBtn.style.background = 'linear-gradient(145deg, #555, #444)';
+    endTurnBtn.style.color = '#888';
+    endTurnBtn.style.borderColor = '#666';
 
     // Update turn counter
     document.getElementById('turn-counter').textContent = combat.turn + 1;
@@ -2369,10 +2433,15 @@ function showCombatModal() {
   }
 
   function updateCombatUI() {
-    // Update player HP
+    // Update player HP bar and text
+    const playerHpPercent = (combat.player.health / combat.player.maxHealth) * 100;
+    const playerHpBar = document.getElementById('player-hp-bar');
+    if (playerHpBar) {
+      playerHpBar.style.width = `${playerHpPercent}%`;
+    }
     document.getElementById('player-hp').textContent = `${combat.player.health}/${combat.player.maxHealth}`;
 
-    // Update enemy HP
+    // Update enemy HP bar and text
     const enemyHpPercent = (combat.enemy.health / combat.enemy.maxHealth) * 100;
     document.getElementById('enemy-hp-bar').style.width = `${enemyHpPercent}%`;
     document.getElementById('enemy-hp-text').textContent = `${Math.max(0, combat.enemy.health)}/${combat.enemy.maxHealth}`;
@@ -2384,9 +2453,12 @@ function showCombatModal() {
     // Update combat log
     updateCombatLog();
 
-    // Update global health
+    // Update global health and sync with main UI
     health = combat.player.health;
     updateTopBar();
+
+    // Update inventory to reflect any changes
+    updateCombatInventory();
   }
 
   function updateEffectsDisplay(elementId, effects) {
@@ -2427,27 +2499,115 @@ function showCombatModal() {
     const container = document.getElementById('combat-inventory-items');
 
     if (inventory.length === 0) {
-      container.innerHTML = '<p style="color: #666; font-size: 12px;">No items</p>';
+      container.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #666; font-size: 14px;">No items</div>';
       return;
     }
 
-    container.innerHTML = inventory.map((item, index) => {
-      const canUse = item.usableInCombat || false;
+    // Use the same rendering logic as main gameplay
+    container.innerHTML = inventory.map((item, idx) => {
+      let imageUrl = item.image && item.image.trim() !== ''
+        ? item.image
+        : 'https://via.placeholder.com/70?text=%3F';
+
+      // Fix imgur URLs
+      if (imageUrl.includes('imgur.com/') && !imageUrl.includes('i.imgur.com')) {
+        imageUrl = imageUrl.replace('imgur.com/', 'i.imgur.com/');
+        if (!imageUrl.match(/\.(png|jpg|jpeg|gif)$/i)) {
+          imageUrl += '.png';
+        }
+      }
+
+      // Get rarity color
+      const getRarityColor = (rarity) => {
+        switch(rarity?.toLowerCase()) {
+          case 'legendary': return '#ff6b00';
+          case 'rare': return '#9b59b6';
+          case 'uncommon': return '#4CAF50';
+          case 'common': return '#aaa';
+          default: return '#888';
+        }
+      };
+
+      const rarityColor = getRarityColor(item.rarity);
+      const isUsable = item.type === 'Usable';
+      const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
+      const isWeapon = item.type === 'Weapon';
 
       return `
-        <div style="
-          background: ${canUse ? 'rgba(76,175,80,0.1)' : 'rgba(0,0,0,0.3)'};
-          border: 1px solid ${canUse ? '#4CAF50' : '#444'};
-          border-radius: 4px;
+        <div class="combat-item-container" style="
+          display: flex;
+          gap: 10px;
+          background: rgba(0,0,0,0.3);
+          border: 2px solid ${rarityColor};
+          border-radius: 8px;
           padding: 8px;
-          margin-bottom: 8px;
-          ${canUse ? 'cursor: pointer;' : 'opacity: 0.5;'}
-        " ${canUse ? `onclick="useCombatItem(${index})"` : ''}>
-          <p style="margin: 0; font-size: 12px; font-weight: bold; color: ${RARITY_COLORS[item.rarity] || '#888'};">${item.name}</p>
-          <p style="margin: 2px 0 0 0; font-size: 10px; color: #888;">${item.effect}</p>
+          transition: all 0.2s ease;
+          cursor: ${canUse ? 'pointer' : 'default'};
+          opacity: ${canUse || !isUsable ? '1' : '0.6'};
+        " ${canUse ? `onclick="useCombatItem(${idx})"` : ''}>
+          <div style="flex-shrink: 0; position: relative;">
+            <img src="${imageUrl}"
+                 alt="${item.name}"
+                 loading="lazy"
+                 style="width: 60px; height: 60px; object-fit: contain; border-radius: 6px; background: #1a1a1a; padding: 2px; display: block;"
+                 onerror="if(this.src!=='https://via.placeholder.com/70?text=%3F'){this.src='https://via.placeholder.com/70?text=%3F';}">
+            ${item.quantity && item.quantity > 1 ? `
+              <div style="
+                position: absolute;
+                top: 2px;
+                right: 2px;
+                background: rgba(0, 0, 0, 0.9);
+                color: white;
+                padding: 1px 4px;
+                border-radius: 3px;
+                font-size: 10px;
+                font-weight: bold;
+                border: 1px solid #ffaa00;
+              ">x${item.quantity}</div>
+            ` : ''}
+            ${isWeapon && item.level && item.level > 1 ? `
+              <div style="
+                position: absolute;
+                top: 2px;
+                right: 2px;
+                background: #ffaa44;
+                color: #000;
+                padding: 2px 4px;
+                border-radius: 3px;
+                font-size: 10px;
+                font-weight: bold;
+              ">Lv${item.level}</div>
+            ` : ''}
+          </div>
+          <div style="flex: 1; min-width: 0;">
+            <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: bold; color: ${rarityColor}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.name}</p>
+            <p style="margin: 0 0 4px 0; font-size: 10px; color: #aaa; font-style: italic;">${item.type} • ${item.rarity}</p>
+            <p style="margin: 0; font-size: 11px; color: #ccc; line-height: 1.3;">${item.description || item.effect || ''}</p>
+            ${isUsable ? `
+              <div style="margin-top: 6px;">
+                <span style="
+                  display: inline-block;
+                  padding: 3px 8px;
+                  font-size: 10px;
+                  background: ${canUse ? '#4CAF50' : '#555'};
+                  color: ${canUse ? 'white' : '#888'};
+                  border-radius: 4px;
+                  font-weight: bold;
+                  text-transform: uppercase;
+                ">
+                  ${canUse ? '✓ Usable' : '✗ Cannot Use'}${item.uses && item.uses > 1 ? ` (${item.uses}x)` : ''}
+                </span>
+              </div>
+            ` : ''}
+          </div>
         </div>
       `;
     }).join('');
+
+    // Also update the main gameplay inventory to keep them synced
+    if (typeof updateInventory === 'function') {
+      updateInventory();
+    }
   }
 
   function handleVictory() {
