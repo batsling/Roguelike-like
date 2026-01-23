@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roguelike-Like</title>
+  <!-- External CSS -->
+  <link rel="stylesheet" href="css/styles.css?v=34">
+</head>
+<body>
+  <!-- Top Bar -->
+  <div id="top-bar">
+    <button id="return-menu-top" class="btn-small bg-grey border-radius-6 mr-20" aria-label="Return to main menu">📋 Menu</button>
+    <h1>Roguelike-Like</h1>
+    <button id="map-btn" class="btn-small bg-info border-radius-6 map-btn-spacing hidden" aria-label="Open map view">🗺️ Map</button>
+  </div>
+
+  <!-- Main Content Container -->
+  <div class="main-container">
+    <!-- Game Screen -->
+    <div id="game-screen">
+
+      <!-- Main Menu Screen (initial state) -->
+      <div id="main-menu">
+        <h1 class="main-title">The Search for the Amulet of Nivlac</h1>
+
+        <!-- Game Controls -->
+        <div class="flex gap-15 mb-30 justify-center">
+          <button id="toggleTutorial" class="btn-medium btn-info" aria-label="Open tutorial guide">📖 How to Play</button>
+          <button id="clearAllData" class="btn-medium bg-danger" aria-label="Clear all saved game data">🗑️ Clear All Data</button>
+        </div>
+
+        <!-- Menu Buttons -->
+        <div class="flex-column gap-20 w-300" role="navigation" aria-label="Main menu">
+          <button id="new-game-btn" class="btn btn-primary" aria-label="Start a new run">Start Run</button>
+          <div class="position-relative">
+            <button id="continue-btn" class="btn btn-secondary w-full" aria-label="Continue from saved game">Continue</button>
+            <div id="save-list" role="list" aria-label="Saved games">
+              <!-- Save slots will be populated here -->
+            </div>
+          </div>
+          <button id="run-history-btn" class="btn btn-purple" aria-label="View run history">Run History</button>
+          <button id="collection-btn" class="btn btn-warning" aria-label="View collection">Collection</button>
+        </div>
+      </div>
+
+      <!-- Dungeon Path Screen -->
+      <div id="dungeon-screen" class="hidden">
+
+          <!-- Left Sidebar: Stats Panel -->
+          <div id="game-stats">
+            <h3 id="stats-header">📊 <span id="stats-character-name">Stats</span></h3>
+
+            <!-- Core Stats -->
+            <div class="stat-section">
+              <div class="stat-item">
+                <span class="stat-label">Health:</span>
+                <span class="stat-value health" id="stats-health">10/10</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Gold:</span>
+                <span class="stat-value gold" id="stats-gold">0</span>
+              </div>
+            </div>
+
+            <!-- Character Info -->
+            <div class="stat-section text-center p-10 bg-character-panel border-radius-8 m-8-0 position-relative" id="character-info-section">
+              <img id="character-icon" src="" alt="Character" class="character-icon-large">
+
+              <!-- Equipment Slots -->
+              <div class="equipment-slots">
+                <!-- Weapon Slot -->
+                <div id="weapon-slot" class="equipment-slot" data-slot-type="weapon">
+                  <div class="equipment-slot-empty">Weapon</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Traits -->
+            <div class="stat-section" id="traits-section">
+              <h4 class="stat-section-header stat-section-header-gold">Traits</h4>
+              <div id="traits-list">
+                <!-- Traits will be populated here -->
+              </div>
+            </div>
+
+            <!-- Combat Stats -->
+            <div class="stat-section">
+              <h4 class="stat-section-header">Combat</h4>
+              <div class="stat-item stat-tooltip" data-tooltip="Used for Action game checks. Determines success in combat encounters.">
+                <span class="stat-label stat-color-strength">Strength:</span>
+                <span class="stat-value" id="stats-strength">0</span>
+              </div>
+              <div class="stat-item stat-tooltip" data-tooltip="Used for Traditional game checks. Determines success in precision-based encounters.">
+                <span class="stat-label stat-color-dexterity">Dexterity:</span>
+                <span class="stat-value" id="stats-dexterity">0</span>
+              </div>
+              <div class="stat-item stat-tooltip" data-tooltip="Used for Strategy game checks. Determines success in tactical encounters.">
+                <span class="stat-label stat-color-intelligence">Intelligence:</span>
+                <span class="stat-value" id="stats-intelligence">0</span>
+              </div>
+              <div class="stat-item stat-tooltip" data-tooltip="Used for Deckbuilder game checks. Determines success in card-based encounters.">
+                <span class="stat-label stat-color-charisma">Charisma:</span>
+                <span class="stat-value" id="stats-charisma">0</span>
+              </div>
+            </div>
+
+            <!-- Miscellaneous Stats -->
+            <div class="stat-section">
+              <h4 class="stat-section-header">Miscellaneous</h4>
+              <div class="stat-item stat-tooltip" data-tooltip="Number of game choices shown when selecting next game.">
+                <span class="stat-label stat-color-fov">FoV:</span>
+                <span class="stat-value" id="stats-fov">3</span>
+              </div>
+              <div class="stat-item stat-tooltip" data-tooltip="Number of item choices when collecting rewards.">
+                <span class="stat-label stat-color-discovery">Discovery:</span>
+                <span class="stat-value" id="stats-discovery">2</span>
+              </div>
+              <div class="stat-item stat-tooltip" data-tooltip="Increases rare item chances, adds +1 to event rolls, and boosts item proc chances by 5% per point.">
+                <span class="stat-label stat-color-luck">Luck:</span>
+                <span class="stat-value" id="stats-luck">0</span>
+              </div>
+            </div>
+
+            <!-- Ability Stats -->
+            <div class="stat-section">
+              <h4 class="stat-section-header">Abilities</h4>
+              <div class="stat-item stat-tooltip" data-tooltip="Reroll the current game or item choices.">
+                <span class="stat-label stat-color-reroll">Reroll:</span>
+                <span class="stat-value" id="stats-reroll">0</span>
+              </div>
+              <div class="stat-item stat-tooltip" data-tooltip="Dash to any connected game node.">
+                <span class="stat-label stat-color-dash">Dash:</span>
+                <span class="stat-value" id="stats-dash">0</span>
+              </div>
+              <div class="stat-item stat-tooltip" data-tooltip="Skip the current game without playing it.">
+                <span class="stat-label stat-color-skip">Skip:</span>
+                <span class="stat-value" id="stats-skip">0</span>
+              </div>
+            </div>
+
+            <!-- Progress Stats -->
+            <div class="stat-section">
+              <h4 class="stat-section-header stat-section-header-grey">Progress</h4>
+              <div class="stat-item">
+                <span class="stat-label">Items:</span>
+                <span class="stat-value items" id="stats-items">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Games Beaten:</span>
+                <span class="stat-value" id="stats-games">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Games Skipped:</span>
+                <span class="stat-value" id="stats-skipped">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Distance:</span>
+                <span class="stat-value" id="stats-distance">∞</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Difficulty:</span>
+                <span class="stat-value" id="stats-difficulty">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Center: Game View -->
+          <div id="path-viewport-container">
+            <!-- Path Viewport -->
+            <div id="path-viewport">
+              <div id="path-container" class="path-container-layout">
+                <!-- SVG for connection arrows - EXPLICIT HEIGHT not percentage -->
+                <svg id="connection-lines" class="connection-lines-svg" aria-hidden="true"></svg>
+                <!-- Nodes will be added here dynamically (z-index: 2 by default) -->
+              </div>
+
+              <!-- Floating Bottom HUD -->
+              <div id="floating-hud" class="flex border-radius-12 floating-hud-complex p-12 gap-30 items-center">
+                <div class="font-size-16 font-bold">
+                  <span class="text-beige">Health: </span>
+                  <span id="game-health" class="font-size-18 text-health">10/10</span>
+                </div>
+                <div class="font-size-16 font-bold">
+                  <span class="text-beige">Gold: </span>
+                  <span id="game-gold" class="font-size-18 text-gold-light">0</span>
+                </div>
+                <div id="distance-display" class="font-size-14 text-beige"></div>
+              </div>
+            </div>
+
+            <!-- Target Display -->
+            <div id="target" class="p-14 text-center bg-target-gradient border-top-444 font-size-095rem">
+              <strong>Final Goal:</strong> <span id="target-game">Slay the Spire</span> (far below)
+            </div>
+          </div>
+
+          <!-- Right Sidebar: Items Panel -->
+          <div id="game-items">
+            <div class="flex-between mb-10">
+              <h3 class="m-0">🎒 Inventory</h3>
+              <button id="loot-btn" class="btn-small bg-info border-radius-6" aria-label="Open loot inventory">Loot</button>
+            </div>
+            <div class="flex justify-center mb-10 gap-6" role="group" aria-label="Inventory sorting options">
+              <button id="sort-alpha-btn" class="btn-mini bg-grey border-radius-4 border-solid-666 transition-bg" aria-label="Sort alphabetically" aria-pressed="false">A-Z</button>
+              <button id="sort-rarity-btn" class="btn-mini bg-grey border-radius-4 border-solid-666 transition-bg" aria-label="Sort by rarity" aria-pressed="false">Rarity</button>
+              <button id="sort-type-btn" class="btn-mini bg-success border-radius-4 border-solid-66bb6a transition-bg" aria-label="Sort by type" aria-pressed="true">Type</button>
+            </div>
+            <div id="game-items-list">
+              <div class="empty-inventory">No items yet</div>
+            </div>
+
+            <!-- Curses Panel -->
+            <div id="game-curses" class="mt-20">
+              <h3 class="text-red">😈 Active Curses</h3>
+              <div id="game-curses-list">
+                <div class="empty-curses text-center p-10 text-grey-dark italic">No active curses</div>
+              </div>
+            </div>
+
+            <!-- Non-Automatic Curses (requires verification) -->
+            <div id="verification-curses" class="mt-20 hidden">
+              <h3 class="text-warning">⚠️ Active Manual Curses</h3>
+              <p class="font-size-11 mt-5-px text-light-gray-aaa">These curses will be verified after you beat a game</p>
+              <div id="verification-curses-list">
+              </div>
+            </div>
+          </div>
+
+          <!-- Location Display Section (Top Right) -->
+          <div id="location-display-section">
+            <h3 class="m-0 text-gold mb-10">📍 <span id="location-name">Current Location</span></h3>
+
+            <!-- Difficulty Display -->
+            <div class="difficulty-tier-display">
+              <div class="difficulty-tier" id="difficulty-tier-indicator">
+                <span class="tier-label" id="tier-label">Easy<br><span class="tier-range">0-4</span></span>
+              </div>
+              <div class="current-difficulty" id="current-difficulty">Current Difficulty: 0</div>
+            </div>
+
+            <!-- Hidden tooltip data -->
+            <div id="location-tooltip-data" class="hidden" aria-hidden="true">
+              <div id="location-type">Unknown</div>
+              <div id="location-game">No location selected</div>
+              <div id="location-effect">No effect</div>
+            </div>
+          </div>
+
+          <!-- Goals Section -->
+          <div id="goals-section">
+            <div class="flex-between mb-10">
+              <h3 class="m-0 text-orange">🎯 Goals</h3>
+              <button id="toggle-bingo-btn" class="btn-mini bg-success border-radius-6 font-size-12" aria-label="Toggle bingo panel visibility" aria-pressed="false">Hide Bingo</button>
+            </div>
+
+            <!-- Bingo Panel -->
+            <div id="bingo-container">
+              <div id="bingo-header">
+                <h3 class="m-0">🎯 Bingo</h3>
+                <div class="flex gap-5">
+                  <button id="view-rewards-btn" aria-label="View bingo rewards">Rewards</button>
+                  <button id="bingo-toggle" aria-label="Toggle bingo panel visibility">Hide</button>
+                </div>
+              </div>
+              <div id="bingo-status">
+                <div id="bingo-count">0 Bingos Complete</div>
+              </div>
+              <div id="bingo-grid">
+                <!-- Bingo cells will be generated here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Bingo Rewards Modal -->
+          <div id="rewards-modal" role="dialog" aria-modal="true" aria-labelledby="rewards-modal-title">
+            <div id="rewards-content">
+              <h2 id="rewards-modal-title">🏆 Bingo Rewards</h2>
+              <p class="text-center mb-20 text-light-gray-aaa">Complete a row, column, or diagonal to earn one of these rewards:</p>
+              <div id="rewards-list">
+                <div class="reward-item">
+                  <strong>Reward 1:</strong> +1 to All Combat Stats and choose 1 Random Common Item
+                </div>
+                <div class="reward-item">
+                  <strong>Reward 2:</strong> +1 to All Combat Stats and choose 1 Random Common Item
+                </div>
+                <div class="reward-item">
+                  <strong>Reward 3:</strong> +1 to All Combat Stats, +2 Reroll, and choose 1 Random Common Item
+                </div>
+                <div class="reward-item">
+                  <strong>Reward 4:</strong> +1 to All Combat Stats and choose 1 Random Uncommon Item
+                </div>
+                <div class="reward-item">
+                  <strong>Reward 5:</strong> +1 to All Combat Stats, +1 Skip, and choose 1 Random Uncommon Item
+                </div>
+                <div class="reward-item">
+                  <strong>Reward 6:</strong> +1 to All Combat Stats and choose 1 Random Rare Item
+                </div>
+                <div class="reward-item">
+                  <strong>Reward 7:</strong> +1 to All Combat Stats, +1 FoV & Discovery, and choose 1 Random Rare Item
+                </div>
+                <div class="reward-item">
+                  <strong>Reward 8:</strong> +1 to All Combat Stats, +1 Dash, and choose 1 Random Rare Item
+                </div>
+              </div>
+              <p class="text-center mt-20 text-light-gray-aaa italic font-size-09em">
+                * Discovery stat increases the number of items you can choose from!
+              </p>
+              <button id="close-rewards-btn" aria-label="Close rewards modal">Close</button>
+            </div>
+          </div>
+
+          <!-- Tooltip -->
+          <div id="game-tooltip" class="tooltip" role="tooltip" aria-hidden="true"></div>
+          <div id="item-tooltip" class="tooltip" role="tooltip" aria-hidden="true"></div>
+          <div id="location-hover-tooltip" role="tooltip" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <!-- Save Name Input Modal -->
+      <!-- Character Selection & Run Naming Modal -->
+      <div id="save-modal" role="dialog" aria-modal="true" aria-labelledby="save-modal-title">
+        <div class="flex gap-20 max-w-1200">
+          <!-- Main Character Selection Panel -->
+          <div class="bg-panel p-20 border-radius-12 w-600 max-h-90vh overflow-y-auto">
+            <h3 id="save-modal-title" class="mt-0 text-gold text-center">Start New Run</h3>
+
+            <!-- Icon View Container -->
+            <div id="icon-character-view" class="display-block mb-20">
+              <div id="icon-character-grid" class="grid grid-cols-5 gap-12 p-15 bg-character-grid border-radius-12 h-550 overflow-y-auto">
+                <!-- Character icons will be populated here -->
+              </div>
+            </div>
+
+            <label for="save-name-input" class="visually-hidden">Run name</label>
+            <input type="text" id="save-name-input" placeholder="Enter run name" class="w-full p-10 mb-15 border-radius-6 bg-dark border-solid-555 text-white" aria-label="Enter run name">
+
+            <div class="flex gap-10">
+              <button id="confirm-save" class="btn-medium bg-success flex-1" aria-label="Start the run with selected character">Start Run</button>
+              <button id="cancel-save" class="btn-medium btn-danger flex-1" aria-label="Cancel and return to menu">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Character Details Panel -->
+          <div id="icon-character-details" class="flex bg-panel p-25 border-radius-12 w-400 max-h-90vh overflow-y-auto">
+            <div id="icon-character-details-content">
+              <!-- Character details will be populated here -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tutorial Modal -->
+      <div id="tutorial-modal" class="hidden position-absolute bg-semi-black z-2000 modal-full-cover" role="dialog" aria-modal="true" aria-labelledby="tutorial-modal-title">
+        <div class="bg-dark p-20 border-radius-12 position-relative max-w-700 max-h-90vh overflow-y-auto border-gold-3">
+          <button id="close-tutorial" class="position-absolute btn-small bg-danger border-radius-4 top-10 right-10" aria-label="Close tutorial">✕</button>
+
+          <h3 id="tutorial-modal-title" class="text-gold text-center mt-0">🎮 How to Play</h3>
+
+          <p class="text-light-grey line-height-16"><strong>Goal:</strong> Enter the Dungeon of Roguelikes, grab the Amulet of Nivlac, and escape without dying.</p>
+
+          <h4 class="text-green mt-20">🗺️ Exploration Phase</h4>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li>Navigate a map of roguelikes connected through inspiration</li>
+            <li>Move one game at a time across the map</li>
+            <li>After beating a game, you get a <strong>random item choice</strong></li>
+            <li>Then you trigger the space's <strong>Encounter</strong>:
+              <ul class="mt-5-px">
+                <li><span class="text-red">!</span> = <strong>Enemy Combat</strong> (dice roll using your stats)</li>
+                <li><span class="text-purple">?</span> = <strong>Event</strong> (story choice)</li>
+                <li><span class="text-gold">$</span> = <strong>Shop</strong> (buy items with gold)</li>
+              </ul>
+            </li>
+            <li>The encounter type is shown as an icon in the top-right of each space</li>
+            <li>Find the game marked with <span class="text-gold">🏺</span> - that's where the Amulet is!</li>
+          </ul>
+
+          <h4 class="text-red mt-20">🏃 Escape Phase</h4>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li>Once you beat the Amulet game, you enter the Escape Phase</li>
+            <li>Choose <strong>3 games you've already beaten</strong> to replay</li>
+            <li>For each game, you'll see two buttons:
+              <ul class="mt-5-px">
+                <li><strong>Lost Run</strong> - Click this each time you lose a run while playing that game (<strong>-1 health per loss</strong>)</li>
+                <li><strong>Finished</strong> - Click this when you beat the game to progress to the next one</li>
+              </ul>
+            </li>
+            <li>Complete all 3 games without your health reaching 0 to escape with the Amulet!</li>
+          </ul>
+
+          <h4 class="text-dark-purple mt-20">😈 Curses System</h4>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li>Curses are debuffs with three tiers (I, II, III) that get stronger each tier</li>
+            <li>Some curses are automatic (start of run), others trigger on events or combat failures</li>
+            <li>Curses have durations: track how many uses/games/spaces before they expire</li>
+            <li>View your curses collection in the <strong>📚 Collection</strong> menu</li>
+          </ul>
+
+          <h4 class="text-light-red mt-20">🎯 Bingo Challenges</h4>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li>Complete bingo goals by clicking cells in the 3x3 grid on the right</li>
+            <li>Goals have three difficulties: <span class="text-green">Easy</span>, <span class="text-blue">Normal</span>, <span class="text-red">Hard</span></li>
+            <li>Complete a row, column, or diagonal to earn rewards in order</li>
+            <li>All rewards give <strong>+1 to all combat stats</strong> plus items and bonuses</li>
+            <li>Click <strong>Rewards</strong> to see what each bingo completion grants</li>
+          </ul>
+
+          <h4 class="text-cyan mt-20">🗺️ Map Viewer</h4>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li>Click <strong>View Map</strong> to see the full roguelike influence graph</li>
+            <li>Use <strong>+/-</strong> buttons to zoom in/out on the map</li>
+            <li>Games are color-coded: <span class="text-green">visited</span>, <span class="text-blue">available</span>, <span class="text-grey">locked</span></li>
+            <li>Hover over games to see shortest path distances</li>
+          </ul>
+
+          <h4 class="text-gold mt-20">📚 Collection Menu</h4>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li><strong>Games</strong>: See all roguelikes, their connections, and stats (beaten count, amulets collected)</li>
+            <li><strong>Items</strong>: Browse all items by rarity (Common, Uncommon, Rare)</li>
+            <li><strong>Enemies</strong>: View all enemies and their stats</li>
+            <li><strong>Curses</strong>: Review all curses with tier tabs (I, II, III)</li>
+          </ul>
+
+          <p class="text-grey-dark font-size-14 mt-20 italic">💡 Tip: Build up health and items during exploration before grabbing the Amulet!</p>
+        </div>
+      </div>
+
+    <!-- Dev Tools Section -->
+    <div class="three-column-layout">
+      <div class="column-header text-center font-size-24 grid-col-span-full bg-dev-tools-header">
+        🛠️ Developer Tools
+      </div>
+
+      <!-- Items Dev Tools -->
+      <div class="column">
+        <div class="column-header">📦 Items</div>
+
+        <!-- Add Item -->
+        <div class="section">
+          <h3>Add Item</h3>
+          <label for="itemSelect">Select an Item:</label>
+          <select id="itemSelect">
+            <option value="">-- Select an Item --</option>
+          </select>
+          <div class="button-group">
+            <button id="giveSelectedItem">Add Selected Item</button>
+            <button id="pickRandomItem">Add Random Item</button>
+          </div>
+          <div id="output3" class="output-area"></div>
+        </div>
+
+        <!-- Remove Item -->
+        <div class="section">
+          <h3>Remove Item</h3>
+          <label for="removeItemSelect">Select Item to Remove:</label>
+          <select id="removeItemSelect">
+            <option value="">-- Select an Item --</option>
+          </select>
+          <div class="button-group">
+            <button id="removeSelectedItem">Remove Selected Item</button>
+            <button id="removeRandomItem">Remove Random Item</button>
+          </div>
+          <div id="removedItemOutput" class="output-area hidden"></div>
+        </div>
+
+        <!-- Current Inventory -->
+        <div class="section">
+          <h3>Current Inventory</h3>
+          <div id="inventory" class="max-h-300 overflow-y-auto"></div>
+        </div>
+      </div>
+
+      <!-- Curses Dev Tools -->
+      <div class="column">
+        <div class="column-header">😈 Curses</div>
+
+        <!-- Add Curse -->
+        <div class="section">
+          <h3>Add Curse</h3>
+          <label for="curseSelect">Select a Curse:</label>
+          <select id="curseSelect" class="w-full mb-10">
+            <option value="">-- Select a Curse --</option>
+          </select>
+          <div class="button-group">
+            <button id="addSelectedCurse">Add Selected Curse</button>
+            <button id="addRandomCurse">Add Random Curse</button>
+          </div>
+          <div id="curseAddOutput" class="output-area"></div>
+        </div>
+
+        <!-- Remove Curse -->
+        <div class="section">
+          <h3>Remove Curse</h3>
+          <label for="removeCurseSelect">Select Curse to Remove:</label>
+          <select id="removeCurseSelect" class="w-full mb-10">
+            <option value="">-- Select a Curse --</option>
+          </select>
+          <div class="button-group">
+            <button id="removeSelectedCurse">Remove Selected Curse</button>
+            <button id="clearAllCurses">Clear All Curses</button>
+          </div>
+          <div id="curseRemoveOutput" class="output-area"></div>
+        </div>
+
+        <!-- Active Curses List -->
+        <div class="section">
+          <h3>Active Curses</h3>
+          <div id="activeCursesList" class="max-h-300 overflow-y-auto">
+            <div class="text-grey-dark italic text-center p-20">No active curses</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Encounters Dev Tools -->
+      <div class="column">
+        <div class="column-header">⚔️ Encounters</div>
+
+        <!-- Trigger Combat -->
+        <div class="section">
+          <h3>Trigger Combat</h3>
+          <div class="combat-selector">
+            <select id="statSelect">
+              <option value="">-- Select Stat --</option>
+              <option value="Strength" class="strength">Strength</option>
+              <option value="Charisma" class="charisma">Charisma</option>
+              <option value="Intelligence" class="intelligence">Intelligence</option>
+              <option value="Dexterity" class="dexterity">Dexterity</option>
+            </select>
+
+            <select id="powerSelect">
+              <option value="">-- Select Power --</option>
+              <option value="1">Low</option>
+              <option value="2">Medium</option>
+              <option value="3">High</option>
+            </select>
+
+            <button id="generateEnemy">Start Combat</button>
+          </div>
+
+          <div class="mt-10">
+            <label for="specificEnemySelect">Or select specific enemy:</label>
+            <select id="specificEnemySelect" class="w-full mt-5-px mb-5">
+              <option value="">-- Select Specific Enemy --</option>
+            </select>
+            <button id="triggerSpecificEnemy" class="w-full">Fight This Enemy</button>
+          </div>
+
+          <div id="enemyDisplay" class="enemy-display hidden">
+            <div class="text-center mb-15">
+              <h4 id="enemyName" class="m-0 mb-8 stat-color-strength font-size-20"></h4>
+              <div id="enemyGame" class="text-beige font-size-09em"></div>
+            </div>
+
+            <img id="enemyImage" class="enemy-image" src="" alt="Enemy Image">
+
+            <div class="roll-section mt-20">
+              <div class="text-center mb-15">
+                <div class="text-beige font-size-14 mb-8">Roll Check</div>
+                <div id="rollCheckValue" class="font-size-24 font-bold text-yellow-accent"></div>
+              </div>
+
+              <div class="flex justify-center mb-15">
+                <button class="d20-button" id="rollD20">D20</button>
+              </div>
+
+              <div id="rollResult" class="text-center text-beige p-10 bg-transparent-black border-radius-6 min-h-40 font-size-15 whitespace-pre-line line-height-16"></div>
+            </div>
+
+            <div class="outcome-section mt-20">
+              <div id="successOutcome" class="outcome-button success-outcome"></div>
+              <div id="failureOutcome" class="outcome-button failure-outcome"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trigger Event -->
+        <div class="section">
+          <h3>Trigger Event</h3>
+          <label for="eventSelect">Select Event:</label>
+          <select id="eventSelect" class="w-full mb-10">
+            <option value="">-- Select an Event --</option>
+          </select>
+          <div class="button-group">
+            <button id="triggerSelectedEvent">Trigger Selected Event</button>
+            <button id="checkEvent">Random Event (In-Game Only)</button>
+          </div>
+          <div id="eventResult" class="output-area"></div>
+        </div>
+
+        <!-- Trigger Specific Encounter -->
+        <div class="section">
+          <h3>Quick Actions</h3>
+          <div class="button-group">
+            <button id="triggerShop" class="bg-success">Trigger Shop</button>
+            <button id="triggerItemChoice" class="bg-info">Trigger Item Choice</button>
+          </div>
+        </div>
+
+        <!-- Game Status Effects -->
+        <div class="section">
+          <h3>Game Status Effects</h3>
+          <label for="statusGameSelect">Select Game:</label>
+          <select id="statusGameSelect" class="w-full mb-10">
+            <option value="">-- Select a Game --</option>
+          </select>
+
+          <label for="statusEffectType">Select Status:</label>
+          <select id="statusEffectType" class="w-full mb-10">
+            <option value="">-- Select Status --</option>
+            <option value="charmed">💕 Charmed (Curse of Affection I/II/III)</option>
+            <option value="devilish">👹 Devilish (lose 2 health)</option>
+            <option value="holy">✨ Holy (gain 2 health)</option>
+            <option value="marked">🎯 Marked (Curse of the Hunter I/II/III)</option>
+            <option value="portal">🌀 Portal (teleport connection)</option>
+            <option value="shielded">🛡️ Shielded (Curse of Obstruction I/II/III)</option>
+            <option value="shocked">⚡ Shocked (Curse of the Dazed I/II/III)</option>
+            <option value="soaked">💧 Soaked (Curse of the Damp I/II/III)</option>
+            <option value="stinky">💩 Stinky (deprioritized in selection)</option>
+            <option value="timed">⏱️ Timed (Curse of Haste I/II/III)</option>
+          </select>
+
+          <div class="button-group">
+            <button id="addGameStatus">Add Status</button>
+            <button id="removeGameStatus">Remove Status</button>
+            <button id="clearAllStatuses">Clear All</button>
+          </div>
+          <div id="statusOutput" class="output-area"></div>
+        </div>
+
+        <!-- Encounter History -->
+        <div class="section">
+          <h3>Recent Encounters</h3>
+          <div id="encounterHistory" class="w-200 overflow-y-auto"></div>
+        </div>
+
+        <!-- Space Movement -->
+        <div class="section">
+          <h3>🚀 Space Movement</h3>
+          <label for="spaceSelect">Select Game Node:</label>
+          <select id="spaceSelect" class="w-full mb-10">
+            <option value="">-- Select a Game --</option>
+          </select>
+          <div class="button-group">
+            <button id="teleportToSelected">Go to Selected</button>
+            <button id="teleportToRandom">Go to Random</button>
+          </div>
+          <div id="teleportOutput" class="output-area"></div>
+        </div>
+
+        <!-- Locations -->
+        <div class="section">
+          <h3>🗺️ Locations</h3>
+          <label for="difficultyLocationSelect">Select Location:</label>
+          <select id="difficultyLocationSelect" class="w-full mb-10">
+            <option value="">-- Select a Location --</option>
+          </select>
+          <div class="button-group">
+            <button id="setSelectedLocation">Set Location</button>
+            <button id="setRandomLocation">Random Location</button>
+          </div>
+          <div class="button-group">
+            <button id="enableAutoLocationChange" class="bg-info-active" aria-pressed="false">Enable Auto-Change</button>
+          </div>
+          <div id="locationOutput" class="output-area"></div>
+          <div id="currentLocationDisplay" class="current-location-display hidden">
+            <div class="location-label">Current Location:</div>
+            <div id="currentLocationInfo" class="location-info"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- Pact of Punishment -->
+    <div id="pact-of-punishment">
+      <h2>Pact of Punishment</h2>
+      <label for="completions">Number of Times Beaten:</label>
+      <input type="number" id="completions" min="0" value="0">
+      <button id="calculateRoguePoints">Calculate Rogue Points</button>
+      <div id="rogue-points-display"></div>
+      <h3>Conditions</h3>
+      <div class="pact-condition">
+        <span>Start with less health (1 Rogue Point per health lost)</span>
+        <button id="lessHealth-minus">-</button>
+        <span id="lessHealth-count">0</span>
+        <button id="lessHealth-plus">+</button>
+      </div>
+      <div class="pact-condition">
+        <span>Require more games to escape (2 Rogue Point per extra game)</span>
+        <button id="moreGames-minus">-</button>
+        <span id="moreGames-count">0</span>
+        <button id="moreGames-plus">+</button>
+      </div>
+      <div class="pact-condition">
+        <span>Randomly select one required game (2 Rogue Point per random game)</span>
+        <button id="randomGame-minus">-</button>
+        <span id="randomGame-count">0</span>
+        <button id="randomGame-plus">+</button>
+      </div>
+      <div class="pact-condition">
+        <span>Add a "Challenge Run" (3 Rogue Point per challenge run)</span>
+        <button id="challengeRun-minus">-</button>
+        <span id="challengeRun-count">0</span>
+        <button id="challengeRun-plus">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Box Zoom -->
+  <div id="box-zoom-popup" class="box-zoom-popup"></div>
+
+  <!-- Load JavaScript modules in order -->
+  <!-- Load embedded data first (no CORS issues) -->
+  <script src="characters-data.js?v=19"></script>
+  <script src="games-data.js?v=32"></script>
+  <script src="items-data.js?v=21"></script>
+  <script src="enemies-data.js?v=19"></script>
+  <script src="events-data.js?v=19"></script>
+  <script src="curses-data.js?v=19"></script>
+
+  <!-- Load utilities first (constants, storage, state management) -->
+  <script src="js/constants.js?v=2"></script>
+  <script src="js/storage.js?v=1"></script>
+  <script src="js/state-mutator.js?v=1"></script>
+  <script src="js/curse-manager.js?v=1"></script>
+  <script src="js/locations.js?v=1"></script>
+  <script src="js/loot.js?v=1"></script>
+
+  <!-- Load game logic -->
+  <script src="js/data.js?v=23"></script>
+  <script src="js/items.js?v=25"></script>
+  <script src="js/ui.js?v=34"></script>
+  <script src="js/combat.js?v=21"></script>
+  <script src="js/events.js?v=19"></script>
+  <script src="js/gameplay.js?v=29"></script>
+  <script src="js/bfs-cache.js?v=1"></script>
+  <script src="js/map.js?v=19"></script>
+  <script src="js/modals.js?v=2"></script>
+  <script src="js/shop.js?v=3"></script>
+  <script src="js/character-select.js?v=1"></script>
+  <script src="js/verification.js?v=9"></script>
+  <script src="js/escape.js?v=6"></script>
+  <script src="js/exploration.js?v=1"></script>
+  <script src="js/bingo.js?v=2"></script>
+  <script src="js/main.js?v=45"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+node_modules/
+package.json
+package-lock.json
+
+# Cover scraper cache
+.cache/
+games-data.js.backup
+
+# Downloaded cover images (optional - uncomment to ignore)
+# images/covers/*.jpg
+# images/covers/*.png

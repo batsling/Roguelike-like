@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Cache Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      background: #222;
+      color: white;
+    }
+    .test-box {
+      padding: 20px;
+      margin: 20px 0;
+      border: 3px dashed red;
+      background: rgba(255, 0, 0, 0.2);
+    }
+    .instructions {
+      background: #333;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔴 Browser Cache Test</h1>
+
+  <div class="instructions">
+    <h2>Instructions:</h2>
+    <ol>
+      <li>If you see this page with a RED DASHED BORDER around the box below, CSS is loading correctly</li>
+      <li>If you don't see red borders, your browser is aggressively caching CSS files</li>
+      <li>Try these cache clearing methods in order:</li>
+    </ol>
+
+    <h3>Method 1: Hard Refresh</h3>
+    <ul>
+      <li><strong>Windows/Linux:</strong> Ctrl + F5 or Ctrl + Shift + R</li>
+      <li><strong>Mac:</strong> Cmd + Shift + R</li>
+    </ul>
+
+    <h3>Method 2: Clear Browser Cache</h3>
+    <ul>
+      <li><strong>Chrome:</strong> Settings → Privacy → Clear browsing data → Cached images and files</li>
+      <li><strong>Firefox:</strong> Options → Privacy → Cookies and Site Data → Clear Data</li>
+      <li><strong>Edge:</strong> Settings → Privacy → Clear browsing data</li>
+    </ul>
+
+    <h3>Method 3: Disable Cache in DevTools</h3>
+    <ul>
+      <li>Press F12 to open DevTools</li>
+      <li>Go to Network tab</li>
+      <li>Check "Disable cache"</li>
+      <li>Keep DevTools open while testing</li>
+    </ul>
+
+    <h3>Method 4: Private/Incognito Window</h3>
+    <ul>
+      <li>Open a new private/incognito window</li>
+      <li>Navigate to the game URL</li>
+      <li>This bypasses all cache</li>
+    </ul>
+  </div>
+
+  <div class="test-box">
+    <h2>✅ TEST BOX</h2>
+    <p>If you can see a RED DASHED BORDER around this box, your CSS is loading correctly!</p>
+    <p>The box should also have a slight red background tint.</p>
+  </div>
+
+  <div style="background: #333; padding: 20px; border-radius: 8px;">
+    <h3>Current Status:</h3>
+    <p id="status">Checking...</p>
+    <script>
+      // Test if CSS loaded
+      const testBox = document.querySelector('.test-box');
+      const styles = window.getComputedStyle(testBox);
+      const hasBorder = styles.borderStyle === 'dashed' && styles.borderColor.includes('255');
+
+      document.getElementById('status').innerHTML = hasBorder
+        ? '<span style="color: #4CAF50; font-weight: bold;">✅ CSS IS LOADING CORRECTLY!</span><br>Your browser can load CSS changes. The issue with the main game must be something else.'
+        : '<span style="color: #f44336; font-weight: bold;">❌ CSS NOT LOADING!</span><br>Your browser is caching CSS files. Try the methods above.';
+    </script>
+  </div>
+
+  <div style="margin-top: 40px; padding: 20px; background: #444; border-radius: 8px;">
+    <h3>Next Steps:</h3>
+    <p><strong>If CSS is loading here but not in the main game:</strong></p>
+    <ul>
+      <li>The main game has a server-side cache</li>
+      <li>OR your local file system needs a restart</li>
+      <li>OR there's a service worker caching files</li>
+    </ul>
+
+    <p><strong>If CSS is NOT loading here:</strong></p>
+    <ul>
+      <li>Your browser has aggressive caching enabled</li>
+      <li>Try opening in incognito/private mode</li>
+      <li>Try a different browser</li>
+      <li>Check if you have a browser extension blocking CSS</li>
+    </ul>
+  </div>
+</body>
+</html>
