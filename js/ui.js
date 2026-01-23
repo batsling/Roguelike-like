@@ -996,6 +996,7 @@ function updateGameStats() {
   // Update stats in the game view sidebar
   const statsHealth = document.getElementById('stats-health');
   const statsGold = document.getElementById('stats-gold');
+  const statsAttack = document.getElementById('stats-attack');
   const statsStrength = document.getElementById('stats-strength');
   const statsDexterity = document.getElementById('stats-dexterity');
   const statsIntelligence = document.getElementById('stats-intelligence');
@@ -1024,6 +1025,7 @@ function updateGameStats() {
     if (statsCharacterName) statsCharacterName.textContent = character.name;
   }
 
+  if (statsAttack) statsAttack.textContent = attack;
   if (statsStrength) statsStrength.textContent = strength;
   if (statsDexterity) statsDexterity.textContent = dexterity;
   if (statsIntelligence) statsIntelligence.textContent = intelligence;

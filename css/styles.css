@@ -2079,6 +2079,11 @@ text, path, line, g {
   color: #cc66ff;
 }
 
+#game-stats .stat-color-attack,
+.stat-color-attack {
+  color: #ff4444;
+}
+
 .stat-color-fov {
   color: #ffaa55;
 }

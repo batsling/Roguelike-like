@@ -516,6 +516,7 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   dexterity = character.startingStats.dexterity || 0;
   intelligence = character.startingStats.intelligence || 0;
   charisma = character.startingStats.charisma || 0;
+  attack = character.startingStats.attack || 0;
   reroll = character.startingStats.reroll || 0;
   dash = character.startingStats.dash || 0;
   skip = character.startingStats.skip || 0;
@@ -2035,295 +2036,600 @@ function showCombatModal() {
   const randomIndex = Math.floor(Math.random() * matchingEnemies.length);
   const enemy = matchingEnemies[randomIndex];
 
-  // Get player's stat value for this check
-  const playerStatValue = getPlayerStat(enemy.stat);
+  // Initialize combat state
+  const combat = window.CombatState.initializeCombat(enemy);
 
   const enemyImagePath = getEnemyImagePath(enemy.name);
+  const playerImagePath = getPlayerImagePath();
 
-  createGameModal(`
-    <div style="text-align: center;">
-      <h2 style="color: #ff4444; margin-top: 0;">Combat Encounter!</h2>
-      <h3>${enemy.name}</h3>
-      <p style="color: #888;">From: ${enemy.game}</p>
-      <img src="${enemyImagePath}" style="max-width: 200px; max-height: 200px; image-rendering: pixelated; margin: 10px auto; display: block;" alt="${enemy.name}" onerror="this.style.display='none'">
-      <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 15px 0;">
-        <p style="font-size: 18px; margin: 5px 0;">
-          <span style="color: ${getStatColor(enemy.stat)};">${enemy.stat}</span> Check:
-          <strong>Roll ${enemy.rollCheck}+</strong>
-        </p>
-        <p style="font-size: 16px; margin: 5px 0; color: #aaa;">
-          Your ${enemy.stat}: <strong style="color: ${getStatColor(enemy.stat)};">${playerStatValue >= 0 ? '+' : ''}${playerStatValue}</strong>
-        </p>
-        <p style="font-size: 14px; margin: 5px 0; color: #888;">
-          (D20 + ${playerStatValue} must be ≥ ${enemy.rollCheck})
-        </p>
+  // Create Dragon Quest style combat UI
+  const combatHTML = `
+    <div id="combat-container" style="
+      display: grid;
+      grid-template-columns: 200px 1fr 300px;
+      grid-template-rows: auto 1fr auto;
+      gap: 15px;
+      height: 80vh;
+      max-height: 700px;
+      padding: 20px;
+      background: #1a1410;
+    ">
+      <!-- Header -->
+      <div style="grid-column: 1 / -1; text-align: center;">
+        <h2 style="color: #ff4444; margin: 0;">Combat!</h2>
+        <p style="color: #888; margin: 5px 0;">Turn <span id="turn-counter">1</span></p>
       </div>
-      <button id="roll-combat-btn" style="padding: 20px 40px; font-size: 20px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; margin: 15px auto; display: block; min-width: 180px; font-weight: bold; position: relative; z-index: 10;">
-        Roll D20
-      </button>
-      <div id="combat-result" style="margin-top: 20px; font-size: 16px;"></div>
-    </div>
-  `);
 
-  const rollBtn = document.getElementById('roll-combat-btn');
-  rollBtn.addEventListener('click', function handleRoll() {
-    const diceRoll = Math.floor(Math.random() * 20) + 1;
-    let cursePenalty = 0;
-    let curseMessages = [];
+      <!-- Player Section (Left) -->
+      <div id="player-section" style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: rgba(0,100,200,0.1);
+        border: 2px solid #4CAF50;
+        border-radius: 8px;
+        padding: 15px;
+      ">
+        <img src="${playerImagePath}" style="
+          width: 120px;
+          height: 120px;
+          image-rendering: pixelated;
+          margin-bottom: 10px;
+        " alt="Player">
 
-    // Check for Curse of Weakness (subtract from roll) - handle stacking
-    const weaknessCurses = getCursesByType('weakness');
-    if (weaknessCurses.length > 0) {
-      // Use only the first weakness curse and remove it
-      const weaknessCurse = weaknessCurses[0];
-      const penalty = getPowerValue(weaknessCurse.power, { Low: 2, Medium: 3, High: 4 });
+        <div style="text-align: center; width: 100%;">
+          <p style="margin: 5px 0; font-size: 14px; color: #4CAF50;">HP</p>
+          <p id="player-hp" style="margin: 0; font-size: 18px; font-weight: bold;">${health}/${maxHealth}</p>
 
-      cursePenalty = penalty;
-      curseMessages.push(`Curse of Weakness: -${penalty}`);
+          <div id="player-effects" style="margin-top: 10px; font-size: 12px;">
+            <!-- Effects will appear here -->
+          </div>
+        </div>
+      </div>
 
-      // Remove this specific curse instance after this roll
-      gameState.activeCurses.splice(gameState.activeCurses.indexOf(weaknessCurse), 1);
-      updateCurseUI();
-    }
+      <!-- Center Section (Enemy + Dice) -->
+      <div style="
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      ">
+        <!-- Enemy Display -->
+        <div id="enemy-section" style="
+          background: rgba(200,0,0,0.1);
+          border: 2px solid #ff4444;
+          border-radius: 8px;
+          padding: 15px;
+          text-align: center;
+        ">
+          <h3 style="margin: 0 0 5px 0; color: #ff4444;">${enemy.name}</h3>
+          <p style="margin: 0; font-size: 12px; color: #888;">${enemy.game}</p>
 
-    // Check for Curse of Failure (damage on rolling 1) - handle stacking
-    if (diceRoll === 1) {
-      const failureCurses = getCursesByType('failure');
-      if (failureCurses.length > 0) {
-        // Trigger all failure curses if rolled a 1
-        let totalDamage = failureCurses.reduce((sum, curse) =>
-          sum + getPowerValue(curse.power, { Low: 2, Medium: 3, High: 4 }), 0
-        );
-
-        // Apply damage reduction from items (like Garlic)
-        if (typeof calculateDamageReduction === 'function') {
-          totalDamage = calculateDamageReduction(totalDamage);
-        }
-
-        health = Math.max(0, health - totalDamage);
-        gameState.health = health;
-        updateTopBar?.();
-
-        curseMessages.push(`Curse of Failure (×${failureCurses.length}): -${totalDamage} HP!`);
-
-        // Show popup notification for Curse of Failure damage
-        setTimeout(() => {
-          createGameModal?.(`
-            <div style="text-align: center;">
-              <h2 style="color: #ff4444; margin-top: 0; font-size: 32px;">😱 Curse of Failure!</h2>
-              <p style="font-size: 18px; color: #ff8888;">You rolled a natural 1!</p>
-              <p style="font-size: 20px; font-weight: bold; color: #ff0000; margin: 15px 0;">
-                ⚠️ CRITICAL FAILURE - Combat Auto-Lost!
-              </p>
-              <p style="font-size: 24px; font-weight: bold; color: #ff6666; margin: 20px 0;">
-                -${totalDamage} HP
-              </p>
-              ${failureCurses.length > 1 ? `<p style="color: #cc8888; font-size: 14px;">${failureCurses.length} curses triggered</p>` : ''}
-              <button onclick="closeGameModal()" style="
-                padding: 10px 30px;
-                margin-top: 20px;
-                background: #ff4444;
-                border: none;
-                border-radius: 6px;
-                color: white;
-                cursor: pointer;
+          <div style="margin: 10px 0;">
+            <p style="margin: 5px 0; font-size: 14px; color: #ff8888;">HP</p>
+            <div style="background: #2a2a2a; border-radius: 4px; height: 20px; position: relative; overflow: hidden;">
+              <div id="enemy-hp-bar" style="
+                background: linear-gradient(90deg, #ff4444, #cc0000);
+                height: 100%;
+                width: 100%;
+                transition: width 0.3s ease;
+              "></div>
+              <span id="enemy-hp-text" style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 12px;
                 font-weight: bold;
-              ">Continue</button>
+                text-shadow: 0 0 3px black;
+              ">${enemy.health}/${enemy.health}</span>
             </div>
-          `);
-        }, 500);
+          </div>
 
-        // Remove all failure curses after triggering
-        gameState.activeCurses = gameState.activeCurses.filter(c => !c.name.toLowerCase().includes('failure'));
-        updateCurseUI();
+          <img src="${enemyImagePath}" style="
+            max-width: 150px;
+            max-height: 150px;
+            image-rendering: pixelated;
+            margin: 10px auto;
+            display: block;
+          " alt="${enemy.name}" onerror="this.style.display='none'">
 
-        // Check for death
-        if (health <= 0) {
-          // Will be handled by the death check below
-        }
-      }
-    }
+          <div style="margin-top: 10px; font-size: 12px; color: #aaa;">
+            <p style="margin: 3px 0;">AC: <span style="color: white; font-weight: bold;">${enemy.armorClass}</span></p>
+            <p style="margin: 3px 0;">Attack: <span style="color: #ff6666; font-weight: bold;">${enemy.attack}</span></p>
+          </div>
 
-    const totalRoll = diceRoll + playerStatValue - cursePenalty;
+          <div id="enemy-effects" style="margin-top: 10px; font-size: 12px;">
+            <!-- Enemy effects will appear here -->
+          </div>
+        </div>
 
-    // Curse of Failure causes critical fail - auto-lose combat
-    const criticalFail = diceRoll === 1 && getCursesByType('failure').length > 0;
-    const success = criticalFail ? false : (totalRoll >= enemy.rollCheck);
+        <!-- Dice Area -->
+        <div id="dice-area" style="
+          background: rgba(50,50,50,0.5);
+          border: 2px solid #cc6600;
+          border-radius: 8px;
+          padding: 15px;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+        ">
+          <div id="dice-container" style="
+            width: 100%;
+            height: 200px;
+            cursor: pointer;
+            position: relative;
+          "></div>
+          <p id="dice-instruction" style="
+            color: #cc6600;
+            font-size: 14px;
+            margin: 10px 0 0 0;
+            text-align: center;
+          ">Click the dice to roll!</p>
+          <div id="roll-result" style="
+            margin-top: 10px;
+            font-size: 16px;
+            text-align: center;
+          "></div>
+        </div>
 
-    let resultHTML = `
-      <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 10px 0;">
-        <p style="font-size: 20px; font-weight: bold;">Dice: ${diceRoll}</p>
-        <p style="font-size: 16px; color: ${getStatColor(enemy.stat)};">+ ${enemy.stat} Bonus: ${playerStatValue}</p>
-        ${cursePenalty > 0 ? `<p style="font-size: 16px; color: #ff6666;">- Weakness Penalty: ${cursePenalty}</p>` : ''}
-        <p style="font-size: 24px; font-weight: bold; margin-top: 10px; color: gold;">Total: ${totalRoll}</p>
-        ${criticalFail ? `<p style="font-size: 18px; font-weight: bold; color: #ff0000; margin-top: 10px;">⚠️ CRITICAL FAILURE!</p>` : ''}
-        ${curseMessages.length > 0 ? `<p style="font-size: 14px; color: #ff8888; margin-top: 10px;">${curseMessages.join('<br>')}</p>` : ''}
+        <!-- Combat Log -->
+        <div id="combat-log" style="
+          background: rgba(0,0,0,0.5);
+          border: 1px solid #666;
+          border-radius: 6px;
+          padding: 10px;
+          max-height: 150px;
+          overflow-y: auto;
+          font-size: 12px;
+        ">
+          <p style="color: #888; margin: 0;">Combat started!</p>
+        </div>
       </div>
-    `;
 
-    if (success) {
-      const goldMatch = enemy.successReward.match(/(\d+) Gold/);
-      if (goldMatch) {
-        const goldAmount = parseInt(goldMatch[1]);
-        gold += goldAmount;
-        gameState.gold = gold;
-        updateTopBar();
-      }
+      <!-- Right Section (Inventory) -->
+      <div id="combat-inventory" style="
+        background: rgba(0,0,0,0.3);
+        border: 2px solid #666;
+        border-radius: 8px;
+        padding: 15px;
+        overflow-y: auto;
+      ">
+        <h4 style="margin: 0 0 10px 0; color: #cc6600;">Inventory</h4>
+        <div id="combat-inventory-items">
+          <!-- Inventory items will be populated here -->
+        </div>
+      </div>
 
-      // Trigger onEnemyDefeated effects for triggered items
-      if (typeof triggerOnEnemyDefeated === 'function') {
-        triggerOnEnemyDefeated();
-      }
+      <!-- Action Buttons (Bottom) -->
+      <div style="grid-column: 1 / -1; display: flex; gap: 15px; justify-content: center;">
+        <button id="end-turn-btn" disabled style="
+          padding: 15px 40px;
+          font-size: 18px;
+          background: #666;
+          border: none;
+          border-radius: 8px;
+          color: white;
+          cursor: not-allowed;
+          font-weight: bold;
+          opacity: 0.5;
+        ">End Turn</button>
+      </div>
+    </div>
+  `;
 
-      resultHTML += `<p style="color: #4CAF50; font-weight: bold;">SUCCESS!</p>
-                    <p>${enemy.successReward}</p>`;
-    } else {
-      // Damage based on difficulty level
-      let healthLoss = 1; // Low difficulty
-      if (powerText === 'Medium') {
-        healthLoss = 2;
-      } else if (powerText === 'High') {
-        healthLoss = 3;
-      }
+  createGameModal(combatHTML);
 
-      // Apply damage reduction from items (like Garlic)
-      if (typeof calculateDamageReduction === 'function') {
-        healthLoss = calculateDamageReduction(healthLoss);
-      }
+  // Initialize 3D dice renderer
+  const diceContainer = document.getElementById('dice-container');
+  window.DiceRenderer.initDiceRenderer(diceContainer);
+  window.DiceRenderer.createDice(combat.dice[0]);
 
-      health = Math.max(0, health - healthLoss);
-      gameState.health = health;
-      updateHealthDisplay();
+  // Populate inventory
+  updateCombatInventory();
 
-      // Check for death
-      if (health <= 0) {
-        // Clear items and curses immediately on death
-        inventory = [];
-        if (gameState.activeCurses) {
-          gameState.activeCurses = [];
-        }
+  // Setup dice click handler
+  let diceRolled = false;
+  diceContainer.addEventListener('click', handleDiceClick);
 
-        setTimeout(() => {
-          createGameModal(`
-            <div style="text-align: center;">
-              <h1 style="color: #ff4444; font-size: 48px; margin: 20px 0;">💀 YOU ARE DEAD</h1>
-              <p style="color: #aaa; font-size: 18px; margin: 20px 0;">Your journey has come to an end...</p>
-              <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
-                <button id="death-home-btn" style="
-                  padding: 12px 24px;
-                  background: #444;
-                  border: 2px solid #666;
-                  border-radius: 8px;
-                  color: white;
-                  cursor: pointer;
-                  font-weight: bold;
-                  font-size: 16px;
-                  transition: all 0.2s;
-                " onmouseover="this.style.background='#555'" onmouseout="this.style.background='#444'">
-                  🏠 Home
-                </button>
-                <button id="death-retry-btn" style="
-                  padding: 12px 24px;
-                  background: #d32f2f;
-                  border: 2px solid #f44336;
-                  border-radius: 8px;
-                  color: white;
-                  cursor: pointer;
-                  font-weight: bold;
-                  font-size: 16px;
-                  transition: all 0.2s;
-                " onmouseover="this.style.background='#e53935'" onmouseout="this.style.background='#d32f2f'">
-                  🔄 Try Again
-                </button>
-              </div>
-            </div>
-          `);
-
-          document.getElementById('death-home-btn').onclick = () => {
-            closeGameModal();
-            // Update UI to reflect cleared items and curses
-            updateInventory?.();
-            updateCursesDisplay?.();
-            updateActiveCursesList?.();
-            updateGameStats?.();
-            if (typeof clearAllArrows === 'function') {
-              clearAllArrows();
-            }
-            document.getElementById('dungeon-screen').style.display = 'none';
-            document.getElementById('main-menu').style.display = 'flex';
-
-            // Hide map button when in menu
-            const mapBtn = document.getElementById('map-btn');
-            if (mapBtn) mapBtn.style.display = 'none';
-          };
-
-          document.getElementById('death-retry-btn').onclick = () => {
-            // Clear UI immediately to prevent flash
-            inventory = [];
-            if (gameState.activeCurses) {
-              gameState.activeCurses = [];
-            }
-            updateInventory?.();
-            updateCursesDisplay?.();
-            updateActiveCursesList?.();
-
-            closeGameModal();
-            if (typeof clearAllArrows === 'function') {
-              clearAllArrows();
-            }
-            document.getElementById('dungeon-screen').style.display = 'none';
-            document.getElementById('main-menu').style.display = 'flex';
-
-            // Hide map button when in menu
-            const mapBtn = document.getElementById('map-btn');
-            if (mapBtn) mapBtn.style.display = 'none';
-
-            setTimeout(() => {
-              document.getElementById('new-game-btn')?.click();
-            }, 100);
-          };
-        }, 300);
-        return; // Exit the function early to prevent showing combat results
-      }
-
-      // Apply curse based on enemy's failure trigger
-      const matchingCurses = curses.filter(curse =>
-        curse.power === powerText && curse.stat === enemy.stat
-      );
-      let failureText = `Lose ${healthLoss} health`;
-      if (matchingCurses.length > 0) {
-        const randomCurseIndex = Math.floor(Math.random() * matchingCurses.length);
-        const selectedCurse = matchingCurses[randomCurseIndex];
-
-        // Add curse using helper function (handles Curse of Vulnerability)
-        addCurse(selectedCurse);
-
-        failureText = `Lose ${healthLoss} health and gain ${selectedCurse.name}!`;
-      }
-
-      resultHTML += `<p style="color: #ff4444; font-weight: bold;">FAILURE!</p>
-                    <p>${failureText}</p>`;
+  function handleDiceClick() {
+    if (diceRolled || combat.phase !== 'player_turn') {
+      return;
     }
 
-    resultHTML += `<button onclick="closeGameModal()" style="padding: 10px 20px; margin-top: 20px; background: #666; border: none; border-radius: 6px; color: white; cursor: pointer;">Continue</button>`;
+    try {
+      // Roll the dice through combat state
+      const rollResult = window.CombatState.rollCombatDice(0);
+      diceRolled = true;
 
-    document.getElementById('combat-result').innerHTML = resultHTML;
-    rollBtn.disabled = true;
-    rollBtn.style.opacity = '0.5';
-    rollBtn.style.cursor = 'not-allowed';
-    rollBtn.removeEventListener('click', handleRoll);
+      // Update UI
+      document.getElementById('dice-instruction').textContent = 'Rolling...';
+      diceContainer.style.cursor = 'default';
 
+      // Animate the 3D dice
+      window.DiceRenderer.rollDice(combat.dice[0], rollResult.total, (result) => {
+        // Apply curse modifiers
+        let finalRoll = result;
+        const statModifier = window.CombatState.getStatModifier();
+
+        // Check for Curse of Failure
+        const failureCurses = getCursesByType('failure');
+        if (failureCurses.length > 0 && result === 1) {
+          // Curse of Failure: Roll of 1 is auto-miss and deals damage
+          addCombatLogMessage(`Rolled a 1! Curse of Failure activated!`, 'danger');
+
+          // Deal failure damage
+          let totalDamage = failureCurses.reduce((sum, curse) =>
+            sum + getPowerValue(curse.power, { Low: 2, Medium: 3, High: 4 }), 0
+          );
+
+          if (typeof calculateDamageReduction === 'function') {
+            totalDamage = calculateDamageReduction(totalDamage);
+          }
+
+          health = Math.max(0, health - totalDamage);
+          gameState.health = health;
+          updateCombatUI();
+          addCombatLogMessage(`Curse of Failure dealt ${totalDamage} damage!`, 'danger');
+
+          // Treat roll as 0 for AC check (auto-miss)
+          finalRoll = 0;
+        }
+
+        // Check for Curse of Weakness
+        let cursePenalty = 0;
+        const weaknessCurses = getCursesByType('weakness');
+        if (weaknessCurses.length > 0) {
+          const weaknessCurse = weaknessCurses[0];
+          cursePenalty = getPowerValue(weaknessCurse.power, { Low: 2, Medium: 3, High: 4 });
+
+          addCombatLogMessage(`Curse of Weakness: -${cursePenalty}`, 'warning');
+
+          // Remove curse after use
+          gameState.activeCurses.splice(gameState.activeCurses.indexOf(weaknessCurse), 1);
+          updateCurseUI();
+        }
+
+        const totalRoll = finalRoll + statModifier - cursePenalty;
+
+        // Display roll result
+        document.getElementById('roll-result').innerHTML = `
+          <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 6px;">
+            <p style="margin: 3px 0;">Dice: <strong>${result}</strong></p>
+            <p style="margin: 3px 0; color: ${getStatColor(enemy.stat)};">+ ${enemy.stat}: <strong>${statModifier}</strong></p>
+            ${cursePenalty > 0 ? `<p style="margin: 3px 0; color: #ff6666;">- Weakness: <strong>${cursePenalty}</strong></p>` : ''}
+            <p style="margin: 8px 0 0 0; font-size: 20px; color: gold;"><strong>Total: ${totalRoll}</strong></p>
+            <p style="margin: 5px 0 0 0; font-size: 12px; color: #888;">Need ${enemy.armorClass}+ to hit</p>
+          </div>
+        `;
+
+        document.getElementById('dice-instruction').textContent = 'Roll complete!';
+
+        // Enable end turn button
+        const endTurnBtn = document.getElementById('end-turn-btn');
+        endTurnBtn.disabled = false;
+        endTurnBtn.style.opacity = '1';
+        endTurnBtn.style.cursor = 'pointer';
+        endTurnBtn.style.background = '#4CAF50';
+      });
+
+    } catch (error) {
+      console.error('Error rolling dice:', error);
+      addCombatLogMessage(error.message, 'danger');
+    }
+  }
+
+  // Setup end turn button
+  document.getElementById('end-turn-btn').addEventListener('click', handleEndTurn);
+
+  function handleEndTurn() {
+    try {
+      const turnResult = window.CombatState.endPlayerTurn();
+
+      // Update UI
+      updateCombatUI();
+
+      // Check combat result
+      if (turnResult.phase === 'victory') {
+        handleVictory();
+      } else if (turnResult.phase === 'defeat') {
+        handleDefeat();
+      } else {
+        // Continue to next turn
+        startNextTurn();
+      }
+
+    } catch (error) {
+      console.error('Error ending turn:', error);
+      addCombatLogMessage(error.message, 'danger');
+    }
+  }
+
+  function startNextTurn() {
+    // Reset for next turn
+    diceRolled = false;
+    diceContainer.style.cursor = 'pointer';
+
+    document.getElementById('dice-instruction').textContent = 'Click the dice to roll!';
+    document.getElementById('roll-result').innerHTML = '';
+
+    const endTurnBtn = document.getElementById('end-turn-btn');
+    endTurnBtn.disabled = true;
+    endTurnBtn.style.opacity = '0.5';
+    endTurnBtn.style.cursor = 'not-allowed';
+    endTurnBtn.style.background = '#666';
+
+    // Update turn counter
+    document.getElementById('turn-counter').textContent = combat.turn + 1;
+
+    // Re-create dice for next roll
+    window.DiceRenderer.createDice(combat.dice[0]);
+  }
+
+  function updateCombatUI() {
+    // Update player HP
+    document.getElementById('player-hp').textContent = `${combat.player.health}/${combat.player.maxHealth}`;
+
+    // Update enemy HP
+    const enemyHpPercent = (combat.enemy.health / combat.enemy.maxHealth) * 100;
+    document.getElementById('enemy-hp-bar').style.width = `${enemyHpPercent}%`;
+    document.getElementById('enemy-hp-text').textContent = `${Math.max(0, combat.enemy.health)}/${combat.enemy.maxHealth}`;
+
+    // Update effects displays
+    updateEffectsDisplay('player-effects', combat.player.effects);
+    updateEffectsDisplay('enemy-effects', combat.enemy.effects);
+
+    // Update combat log
+    updateCombatLog();
+
+    // Update global health
+    health = combat.player.health;
+    updateTopBar();
+  }
+
+  function updateEffectsDisplay(elementId, effects) {
+    const container = document.getElementById(elementId);
+    const descriptions = window.CombatEffects.getEffectDescriptions(effects);
+
+    if (descriptions.length === 0) {
+      container.innerHTML = '';
+    } else {
+      container.innerHTML = descriptions.map(desc =>
+        `<p style="margin: 2px 0; color: #aaa;">${desc}</p>`
+      ).join('');
+    }
+  }
+
+  function updateCombatLog() {
+    const logContainer = document.getElementById('combat-log');
+    const messages = combat.log.slice(-5); // Show last 5 messages
+
+    logContainer.innerHTML = messages.map(msg => {
+      const color = msg.type === 'success' ? '#4CAF50' :
+                    msg.type === 'danger' ? '#ff4444' :
+                    msg.type === 'warning' ? '#ff9800' : '#888';
+
+      return `<p style="margin: 3px 0; color: ${color};">${msg.message}</p>`;
+    }).join('');
+
+    // Scroll to bottom
+    logContainer.scrollTop = logContainer.scrollHeight;
+  }
+
+  function addCombatLogMessage(message, type = 'info') {
+    window.CombatState.addCombatLog(message, type);
+    updateCombatLog();
+  }
+
+  function updateCombatInventory() {
+    const container = document.getElementById('combat-inventory-items');
+
+    if (inventory.length === 0) {
+      container.innerHTML = '<p style="color: #666; font-size: 12px;">No items</p>';
+      return;
+    }
+
+    container.innerHTML = inventory.map((item, index) => {
+      const canUse = item.usableInCombat || false;
+
+      return `
+        <div style="
+          background: ${canUse ? 'rgba(76,175,80,0.1)' : 'rgba(0,0,0,0.3)'};
+          border: 1px solid ${canUse ? '#4CAF50' : '#444'};
+          border-radius: 4px;
+          padding: 8px;
+          margin-bottom: 8px;
+          ${canUse ? 'cursor: pointer;' : 'opacity: 0.5;'}
+        " ${canUse ? `onclick="useCombatItem(${index})"` : ''}>
+          <p style="margin: 0; font-size: 12px; font-weight: bold; color: ${RARITY_COLORS[item.rarity] || '#888'};">${item.name}</p>
+          <p style="margin: 2px 0 0 0; font-size: 10px; color: #888;">${item.effect}</p>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function handleVictory() {
+    window.DiceRenderer.disposeDiceRenderer();
+
+    // Award rewards
+    const goldMatch = enemy.successReward.match(/(\d+) Gold/);
+    if (goldMatch) {
+      const goldAmount = parseInt(goldMatch[1]);
+      gold += goldAmount;
+      gameState.gold = gold;
+      updateTopBar();
+    }
+
+    // Trigger onEnemyDefeated effects
+    if (typeof triggerOnEnemyDefeated === 'function') {
+      triggerOnEnemyDefeated();
+    }
+
+    // Record encounter
     encounterHistory.push({
       type: 'combat',
       enemy: enemy.name,
-      outcome: success ? 'Victory' : 'Defeat',
+      outcome: 'Victory',
       timestamp: new Date().toLocaleString()
     });
     updateEncounterHistory();
     saveCurrentGame();
-  });
+
+    // Show victory screen
+    setTimeout(() => {
+      createGameModal(`
+        <div style="text-align: center;">
+          <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">⚔️ VICTORY!</h2>
+          <h3>${enemy.name} defeated!</h3>
+          <p style="color: #4CAF50; font-size: 18px; margin: 20px 0;">${enemy.successReward}</p>
+          <button onclick="closeGameModal()" style="
+            padding: 15px 30px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+          ">Continue</button>
+        </div>
+      `);
+    }, 500);
+
+    window.CombatState.endCombat(true);
+  }
+
+  function handleDefeat() {
+    window.DiceRenderer.disposeDiceRenderer();
+
+    // Clear items and curses on death
+    inventory = [];
+    if (gameState.activeCurses) {
+      gameState.activeCurses = [];
+    }
+
+    // Record encounter
+    encounterHistory.push({
+      type: 'combat',
+      enemy: enemy.name,
+      outcome: 'Defeat',
+      timestamp: new Date().toLocaleString()
+    });
+    updateEncounterHistory();
+
+    window.CombatState.endCombat(false);
+
+    // Show death screen
+    setTimeout(() => {
+      createGameModal(`
+        <div style="text-align: center;">
+          <h1 style="color: #ff4444; font-size: 48px; margin: 20px 0;">💀 YOU ARE DEAD</h1>
+          <p style="color: #aaa; font-size: 18px; margin: 20px 0;">Your journey has come to an end...</p>
+          <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
+            <button id="death-home-btn" style="
+              padding: 12px 24px;
+              background: #444;
+              border: 2px solid #666;
+              border-radius: 8px;
+              color: white;
+              cursor: pointer;
+              font-weight: bold;
+              font-size: 16px;
+            ">🏠 Home</button>
+            <button id="death-retry-btn" style="
+              padding: 12px 24px;
+              background: #d32f2f;
+              border: 2px solid #f44336;
+              border-radius: 8px;
+              color: white;
+              cursor: pointer;
+              font-weight: bold;
+              font-size: 16px;
+            ">🔄 Try Again</button>
+          </div>
+        </div>
+      `);
+
+      document.getElementById('death-home-btn').onclick = () => {
+        closeGameModal();
+        updateInventory?.();
+        updateCursesDisplay?.();
+        updateActiveCursesList?.();
+        updateGameStats?.();
+        if (typeof clearAllArrows === 'function') {
+          clearAllArrows();
+        }
+        document.getElementById('dungeon-screen').style.display = 'none';
+        document.getElementById('main-menu').style.display = 'flex';
+        const mapBtn = document.getElementById('map-btn');
+        if (mapBtn) mapBtn.style.display = 'none';
+      };
+
+      document.getElementById('death-retry-btn').onclick = () => {
+        inventory = [];
+        if (gameState.activeCurses) {
+          gameState.activeCurses = [];
+        }
+        updateInventory?.();
+        updateCursesDisplay?.();
+        updateActiveCursesList?.();
+
+        closeGameModal();
+        if (typeof clearAllArrows === 'function') {
+          clearAllArrows();
+        }
+        document.getElementById('dungeon-screen').style.display = 'none';
+        document.getElementById('main-menu').style.display = 'flex';
+        const mapBtn = document.getElementById('map-btn');
+        if (mapBtn) mapBtn.style.display = 'none';
+
+        setTimeout(() => {
+          document.getElementById('new-game-btn')?.click();
+        }, 100);
+      };
+    }, 300);
+  }
+
+  // Helper function to get player image
+  function getPlayerImagePath() {
+    if (gameState && gameState.character && PLAYER_CHARACTERS[gameState.character]) {
+      const character = PLAYER_CHARACTERS[gameState.character];
+      return character.fullImage || character.icon;
+    }
+    return 'images/characters/full/default.png';
+  }
+
+  // Global function for using items in combat
+  window.useCombatItem = function(itemIndex) {
+    if (combat.phase !== 'player_turn') {
+      addCombatLogMessage('Cannot use items during enemy turn!', 'warning');
+      return;
+    }
+
+    const item = inventory[itemIndex];
+    if (!item || !item.usableInCombat) {
+      addCombatLogMessage('This item cannot be used in combat!', 'warning');
+      return;
+    }
+
+    // Use the item (this would call the item's effect function)
+    // For now, just show a message
+    addCombatLogMessage(`Used ${item.name}!`, 'success');
+
+    // TODO: Implement item effects in combat
+    // This would require updating the item system to work with combat state
+
+    updateCombatInventory();
+  };
+
+  // Initial UI update
+  updateCombatUI();
 }
 
+// Make showCombatModal available globally
+window.showCombatModal = showCombatModal;
 // Check if an event's requirement is met
 function checkEventRequirement(event) {
   if (!event.requirement) return true; // No requirement means always available

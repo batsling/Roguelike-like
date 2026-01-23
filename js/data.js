@@ -13,6 +13,7 @@ var strength = 0;
 var dexterity = 0;
 var intelligence = 0;
 var charisma = 0;
+var attack = 0;
 var luck = 0;
 var roguePoints = 0;
 var reroll = 0;
