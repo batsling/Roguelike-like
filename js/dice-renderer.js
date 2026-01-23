@@ -76,13 +76,14 @@ function createFaceTexture(number, side = null) {
     // For now, just draw the number
   }
 
-  // Number - properly sized and centered
+  // Number - sized and positioned for triangular face
   const displayValue = side && side.displayValue !== null ? side.displayValue : number;
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 56px Arial';
+  ctx.font = 'bold 48px Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(displayValue.toString(), 64, 64); // Centered in 128x128 canvas
+  // Position at centroid of triangle UV mapping (0.5, 0.367) -> (64, 47)
+  ctx.fillText(displayValue.toString(), 64, 47);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
