@@ -392,10 +392,14 @@ function resizeDiceRenderer() {
 function disposeDiceRenderer() {
   if (diceMesh) {
     diceScene.remove(diceMesh);
-    diceMesh.geometry.dispose();
-    diceMesh.material.forEach(mat => {
-      if (mat.map) mat.map.dispose();
-      mat.dispose();
+
+    // Dispose of all face meshes in the group
+    diceMesh.children.forEach(faceMesh => {
+      if (faceMesh.geometry) faceMesh.geometry.dispose();
+      if (faceMesh.material) {
+        if (faceMesh.material.map) faceMesh.material.map.dispose();
+        faceMesh.material.dispose();
+      }
     });
   }
 
@@ -411,6 +415,10 @@ function disposeDiceRenderer() {
   diceRenderer = null;
   diceMesh = null;
   diceContainer = null;
+  isRolling = false;
+  hasRolled = false;
+  rollCallback = null;
+  faceNormals = [];
 }
 
 // Export to global scope

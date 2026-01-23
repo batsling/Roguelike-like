@@ -2388,6 +2388,19 @@ function showCombatModal() {
 
   function handleEndTurn() {
     try {
+      // Check if combat is still active
+      const combat = window.CombatState.getCombatState();
+      if (!combat) {
+        console.warn('No active combat');
+        return;
+      }
+
+      // Check if it's player's turn
+      if (combat.phase !== 'player_turn') {
+        console.warn('Not in player turn phase:', combat.phase);
+        return;
+      }
+
       const turnResult = window.CombatState.endPlayerTurn();
 
       // Update UI
@@ -2611,6 +2624,10 @@ function showCombatModal() {
   }
 
   function handleVictory() {
+    // Disable all combat buttons
+    const endTurnBtn = document.getElementById('end-turn-btn');
+    if (endTurnBtn) endTurnBtn.disabled = true;
+
     window.DiceRenderer.disposeDiceRenderer();
 
     // Award rewards
