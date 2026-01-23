@@ -11,7 +11,9 @@ let diceRenderer = null;
 let diceMesh = null;
 let diceContainer = null;
 let isRolling = false;
+let hasRolled = false;
 let rollCallback = null;
+let faceNormals = []; // Store face normals for rotation calculations
 
 /**
  * Initialize the 3D dice renderer
@@ -74,13 +76,13 @@ function createFaceTexture(number, side = null) {
     // For now, just draw the number
   }
 
-  // Number
+  // Number - draw larger and centered
   const displayValue = side && side.displayValue !== null ? side.displayValue : number;
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 72px Arial';
+  ctx.font = 'bold 80px Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(displayValue.toString(), 64, 64);
+  ctx.fillText(displayValue.toString(), 64, 68); // Slightly lower for better visual balance
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
@@ -113,6 +115,9 @@ function createD20Mesh(diceData) {
   // Non-indexed geometry has 60 vertices (20 faces * 3 vertices each)
   const numFaces = positions.length / 9; // 9 floats per triangle (3 vertices * 3 components)
 
+  // Reset face normals array
+  faceNormals = [];
+
   console.log('Creating D20 with', numFaces, 'faces from', positions.length, 'position values');
 
   // Create each face as a separate triangle mesh
@@ -137,6 +142,12 @@ function createD20Mesh(diceData) {
       positions[vertexStart + 8]
     );
 
+    // Calculate face normal (outward pointing)
+    const edge1 = new THREE.Vector3().subVectors(v1, v0);
+    const edge2 = new THREE.Vector3().subVectors(v2, v0);
+    const faceNormal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
+    faceNormals.push(faceNormal);
+
     // Create triangle geometry for this face
     const faceGeometry = new THREE.BufferGeometry();
     const faceVertices = new Float32Array([
@@ -146,11 +157,12 @@ function createD20Mesh(diceData) {
     ]);
     faceGeometry.setAttribute('position', new THREE.BufferAttribute(faceVertices, 3));
 
-    // Create UVs for texture mapping
+    // Create UVs for texture mapping - map to center portion of texture
+    // This helps center the number on the triangular face
     const uvs = new Float32Array([
-      0, 0,
-      1, 0,
-      0.5, 1
+      0.1, 0.1,   // Bottom left
+      0.9, 0.1,   // Bottom right
+      0.5, 0.9    // Top center
     ]);
     faceGeometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
 
@@ -200,6 +212,9 @@ function createDice(diceData) {
     });
   }
 
+  // Reset roll state for new dice
+  hasRolled = false;
+
   // Create new dice (now a Group of face meshes)
   diceMesh = createD20Mesh(diceData);
   diceScene.add(diceMesh);
@@ -218,6 +233,7 @@ function rollDice(diceData, result, callback) {
   }
 
   isRolling = true;
+  hasRolled = true;
   rollCallback = callback;
 
   // Random rotation for animation
@@ -231,22 +247,19 @@ function rollDice(diceData, result, callback) {
   const duration = 1500;
   const startTime = Date.now();
 
-  // Face number to rotation mapping
-  const faceRotations = getFaceRotations();
-  const targetRotation = faceRotations[result - 1]; // Convert to 0-based index
+  // Calculate target rotation to show the rolled face
+  const targetRotation = calculateFaceRotation(result);
 
   function animateRoll() {
     const elapsed = Date.now() - startTime;
     const progress = Math.min(elapsed / duration, 1);
 
     if (progress < 1) {
-      // Spinning phase
-      diceMesh.rotation.x += rotationSpeed.x;
-      diceMesh.rotation.y += rotationSpeed.y;
-      diceMesh.rotation.z += rotationSpeed.z;
-
-      // Ease out as we approach the end
-      const easeOut = 1 - Math.pow(1 - progress, 3);
+      // Spinning phase - less rotation as we get closer to end
+      const spinFactor = 1 - progress;
+      diceMesh.rotation.x += rotationSpeed.x * spinFactor;
+      diceMesh.rotation.y += rotationSpeed.y * spinFactor;
+      diceMesh.rotation.z += rotationSpeed.z * spinFactor;
 
       requestAnimationFrame(animateRoll);
     } else {
@@ -302,34 +315,41 @@ function animateDiceJump(callback) {
 }
 
 /**
- * Get rotation values for each D20 face to show it on top
- * @returns {Array<Object>} Array of rotation objects for each face
+ * Calculate rotation to orient a specific face toward the camera
+ * @param {number} faceNumber - The face number to show (1-20)
+ * @returns {Object} Rotation object {x, y, z}
  */
-function getFaceRotations() {
-  // Pre-calculated rotations to show each face of a D20 on top
-  // These are approximate and may need fine-tuning
-  return [
-    { x: 0, y: 0, z: 0 },                           // 1
-    { x: Math.PI, y: 0, z: 0 },                     // 2
-    { x: Math.PI / 2, y: 0, z: 0 },                 // 3
-    { x: -Math.PI / 2, y: 0, z: 0 },                // 4
-    { x: 0, y: Math.PI / 2, z: 0 },                 // 5
-    { x: 0, y: -Math.PI / 2, z: 0 },                // 6
-    { x: Math.PI / 3, y: 0, z: 0 },                 // 7
-    { x: -Math.PI / 3, y: 0, z: 0 },                // 8
-    { x: 2 * Math.PI / 3, y: 0, z: 0 },             // 9
-    { x: -2 * Math.PI / 3, y: 0, z: 0 },            // 10
-    { x: 0, y: Math.PI / 3, z: 0 },                 // 11
-    { x: 0, y: -Math.PI / 3, z: 0 },                // 12
-    { x: 0, y: 2 * Math.PI / 3, z: 0 },             // 13
-    { x: 0, y: -2 * Math.PI / 3, z: 0 },            // 14
-    { x: Math.PI / 4, y: Math.PI / 4, z: 0 },       // 15
-    { x: -Math.PI / 4, y: Math.PI / 4, z: 0 },      // 16
-    { x: Math.PI / 4, y: -Math.PI / 4, z: 0 },      // 17
-    { x: -Math.PI / 4, y: -Math.PI / 4, z: 0 },     // 18
-    { x: 3 * Math.PI / 4, y: Math.PI / 4, z: 0 },   // 19
-    { x: -3 * Math.PI / 4, y: Math.PI / 4, z: 0 }   // 20
+function calculateFaceRotation(faceNumber) {
+  // Face number to face index (0-based)
+  const faceNumberMap = [
+    1, 20, 2, 19, 3, 18, 4, 17, 5, 16,
+    6, 15, 7, 14, 8, 13, 9, 12, 10, 11
   ];
+  const faceIndex = faceNumberMap.indexOf(faceNumber);
+
+  if (faceIndex === -1 || !faceNormals[faceIndex]) {
+    console.warn('Invalid face number or missing normal:', faceNumber);
+    return { x: 0, y: 0, z: 0 };
+  }
+
+  // Get the face normal
+  const normal = faceNormals[faceIndex];
+
+  // We want the face normal to point toward the camera (which is at z=5 looking at origin)
+  // Camera looks down negative Z, so we want normal to point at +Z
+  const targetDirection = new THREE.Vector3(0, 0, 1);
+
+  // Calculate rotation needed to align normal with target
+  const quaternion = new THREE.Quaternion();
+  quaternion.setFromUnitVectors(normal, targetDirection);
+
+  // Convert quaternion to Euler angles
+  const euler = new THREE.Euler();
+  euler.setFromQuaternion(quaternion, 'XYZ');
+
+  console.log(`Face ${faceNumber} rotation:`, euler.x, euler.y, euler.z);
+
+  return { x: euler.x, y: euler.y, z: euler.z };
 }
 
 /**
@@ -338,8 +358,8 @@ function getFaceRotations() {
 function animate() {
   requestAnimationFrame(animate);
 
-  // Slow idle rotation when not rolling
-  if (!isRolling && diceMesh) {
+  // Slow idle rotation when not rolling and hasn't been rolled yet
+  if (!isRolling && !hasRolled && diceMesh) {
     diceMesh.rotation.x += 0.002;
     diceMesh.rotation.y += 0.003;
   }
