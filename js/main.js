@@ -2101,24 +2101,6 @@ function showCombatModal() {
         min-height: 0;
         gap: 15px;
       ">
-        <!-- Items Bar (Integrated) -->
-        <div id="items-bar" style="
-          background: rgba(0,0,0,0.3);
-          border: 2px solid #666;
-          border-radius: 8px;
-          padding: 10px 15px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          overflow-x: auto;
-          min-height: 60px;
-        ">
-          <div id="items-icons" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
-            <!-- Item icons will be populated here -->
-          </div>
-        </div>
-
         <!-- Combat Scene (Player vs Enemy + Dice) -->
         <div style="
           flex: 1;
@@ -2129,15 +2111,40 @@ function showCombatModal() {
           <!-- Combatants Area -->
           <div style="
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 30px;
+            flex-direction: column;
+            gap: 15px;
             flex: 1;
             background: rgba(0,0,0,0.3);
             border: 2px solid #444;
             border-radius: 12px;
             padding: 25px;
           ">
+            <!-- Items Bar (at top) -->
+            <div id="items-bar" style="
+              background: rgba(0,0,0,0.5);
+              border: 2px solid #666;
+              border-radius: 8px;
+              padding: 10px 15px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 8px;
+              overflow-x: auto;
+              min-height: 60px;
+            ">
+              <div id="items-icons" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
+                <!-- Item icons will be populated here -->
+              </div>
+            </div>
+
+            <!-- Player and Enemy Container -->
+            <div style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              gap: 30px;
+              flex: 1;
+            ">
             <!-- Player (Left) -->
             <div id="player-section" style="
               flex: 1;
@@ -2336,6 +2343,7 @@ function showCombatModal() {
                 transition: all 0.2s;
               ">📜 Log</button>
             </div>
+            </div>
           </div>
 
           <!-- Dice Area (Bottom) -->
@@ -2433,25 +2441,33 @@ function showCombatModal() {
         </div>
       </div>
     </div>
-
-    <!-- Tooltip (Hidden by default) -->
-    <div id="item-tooltip" style="
-      position: fixed;
-      display: none;
-      background: linear-gradient(145deg, rgba(30,30,40,0.98), rgba(20,20,30,0.98));
-      border: 3px solid #888;
-      border-radius: 8px;
-      padding: 12px 15px;
-      max-width: 300px;
-      z-index: 20000;
-      pointer-events: none;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.8);
-    ">
-      <div id="tooltip-content"></div>
-    </div>
   `;
 
   createGameModal(combatHTML);
+
+  // Create tooltip element and append to document.body (not inside modal to avoid overflow issues)
+  const existingTooltip = document.getElementById('item-tooltip');
+  if (existingTooltip) existingTooltip.remove();
+
+  const tooltip = document.createElement('div');
+  tooltip.id = 'item-tooltip';
+  tooltip.style.cssText = `
+    position: fixed;
+    display: none;
+    background: linear-gradient(145deg, rgba(30,30,40,0.98), rgba(20,20,30,0.98));
+    border: 3px solid #888;
+    border-radius: 8px;
+    padding: 12px 15px;
+    max-width: 300px;
+    z-index: 20000;
+    pointer-events: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+  `;
+
+  const tooltipContent = document.createElement('div');
+  tooltipContent.id = 'tooltip-content';
+  tooltip.appendChild(tooltipContent);
+  document.body.appendChild(tooltip);
 
   // Add hover effects CSS for items
   const style = document.createElement('style');
