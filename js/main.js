@@ -2093,33 +2093,33 @@ function showCombatModal() {
         </div>
       </div>
 
-      <!-- Top Items Bar -->
-      <div id="items-bar" style="
-        background: rgba(0,0,0,0.4);
-        border: 2px solid #666;
-        border-radius: 8px;
-        padding: 12px 20px;
-        margin-bottom: 15px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        overflow-x: auto;
-        min-height: 70px;
-      ">
-        <span style="color: #ffcc66; font-weight: bold; font-size: 14px; text-transform: uppercase; white-space: nowrap; margin-right: 10px;">📦 Items:</span>
-        <div id="items-icons" style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <!-- Item icons will be populated here -->
-        </div>
-      </div>
-
       <!-- Main Combat Area -->
       <div style="
         display: flex;
-        gap: 15px;
+        flex-direction: column;
         flex: 1;
         min-height: 0;
+        gap: 15px;
       ">
-        <!-- Combat Scene (Player vs Enemy) -->
+        <!-- Items Bar (Integrated) -->
+        <div id="items-bar" style="
+          background: rgba(0,0,0,0.3);
+          border: 2px solid #666;
+          border-radius: 8px;
+          padding: 10px 15px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          overflow-x: auto;
+          min-height: 60px;
+        ">
+          <div id="items-icons" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
+            <!-- Item icons will be populated here -->
+          </div>
+        </div>
+
+        <!-- Combat Scene (Player vs Enemy + Dice) -->
         <div style="
           flex: 1;
           display: flex;
@@ -3141,7 +3141,7 @@ function showCombatModal() {
 window.showCombatModal = showCombatModal;
 
 // Global tooltip functions for item hover
-function showItemTooltip(event, itemIndex) {
+window.showItemTooltip = function showItemTooltip(event, itemIndex) {
   const tooltip = document.getElementById('item-tooltip');
   const tooltipContent = document.getElementById('tooltip-content');
 
@@ -3204,7 +3204,7 @@ function showItemTooltip(event, itemIndex) {
   document.addEventListener('mousemove', tooltip._mouseMoveHandler);
 }
 
-function hideItemTooltip() {
+window.hideItemTooltip = function hideItemTooltip() {
   const tooltip = document.getElementById('item-tooltip');
   if (!tooltip) return;
 
@@ -3217,7 +3217,7 @@ function hideItemTooltip() {
   }
 }
 
-function updateTooltipPosition(event) {
+window.updateTooltipPosition = function updateTooltipPosition(event) {
   const tooltip = document.getElementById('item-tooltip');
   if (!tooltip) return;
 
@@ -3231,14 +3231,14 @@ function updateTooltipPosition(event) {
     x = event.clientX - tooltipRect.width - offset;
   }
   if (y + tooltipRect.height > window.innerHeight) {
-    y = event.clientY - tooltipRect.height - offset;
+    y = event.clientX - tooltipRect.height - offset;
   }
 
   tooltip.style.left = x + 'px';
   tooltip.style.top = y + 'px';
 }
 
-function useCombatItem(itemIndex) {
+window.useCombatItem = function useCombatItem(itemIndex) {
   if (itemIndex >= inventory.length) return;
 
   const item = inventory[itemIndex];
