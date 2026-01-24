@@ -3223,19 +3223,14 @@ window.showCombatModal = showCombatModal;
 
 // Combat-specific tooltip functions for item hover
 window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) {
-  console.log('showCombatItemTooltip called:', itemIndex);
   const tooltip = document.getElementById('combat-item-tooltip');
   const tooltipContent = document.getElementById('combat-tooltip-content');
 
-  console.log('Tooltip element:', tooltip, 'Content element:', tooltipContent);
-
   if (!tooltip || !tooltipContent || itemIndex >= inventory.length) {
-    console.warn('Tooltip show failed - tooltip:', !!tooltip, 'content:', !!tooltipContent, 'valid index:', itemIndex < inventory.length);
     return;
   }
 
   const item = inventory[itemIndex];
-  console.log('Showing tooltip for item:', item.name);
 
   const getRarityColor = (rarity) => {
     switch(rarity?.toLowerCase()) {
@@ -3263,7 +3258,7 @@ window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) 
       </div>
       <p style="margin: 8px 0; color: #ccc; font-size: 13px; line-height: 1.4;">${item.description || 'No description'}</p>
       ${isUsable ? `
-        <button style="
+        <button ${canUse ? `onclick="useCombatItem(${itemIndex}); hideCombatItemTooltip();"` : 'disabled'} style="
           width: 100%;
           padding: 8px;
           margin-top: 8px;
@@ -3275,8 +3270,9 @@ window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) 
           font-size: 14px;
           cursor: ${canUse ? 'pointer' : 'not-allowed'};
           opacity: ${canUse ? '1' : '0.5'};
-        " ${canUse ? `onclick="useCombatItem(${itemIndex}); hideCombatItemTooltip();"` : ''}>
-          ${canUse ? '✓ Use Item' : '✗ Cannot Use'}
+          transition: all 0.2s;
+        ">
+          Use
         </button>
       ` : ''}
     </div>
@@ -3285,8 +3281,6 @@ window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) 
   tooltip.style.display = 'block';
   tooltip.style.visibility = 'visible';
   tooltip.style.opacity = '1';
-
-  console.log('Tooltip should be visible now. Display:', tooltip.style.display, 'Visibility:', tooltip.style.visibility);
 
   // Position tooltip near cursor
   updateCombatTooltipPosition(event);
