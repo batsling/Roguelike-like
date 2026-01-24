@@ -2328,6 +2328,7 @@ function showCombatModal() {
             justify-content: center;
             min-height: 280px;
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+            position: relative;
           ">
             <div id="dice-container" style="
               width: 100%;
@@ -2353,18 +2354,20 @@ function showCombatModal() {
 
             <!-- End Turn Button -->
             <button id="end-turn-btn" disabled style="
-              margin-top: 15px;
-              padding: 14px 50px;
-              font-size: 18px;
+              position: absolute;
+              top: 10px;
+              right: 10px;
+              padding: 10px 30px;
+              font-size: 16px;
               background: linear-gradient(145deg, #555, #444);
               border: 3px solid #666;
-              border-radius: 10px;
+              border-radius: 8px;
               color: #888;
               cursor: not-allowed;
               font-weight: bold;
               opacity: 0.5;
               text-transform: uppercase;
-              letter-spacing: 2px;
+              letter-spacing: 1px;
               box-shadow: 0 4px 12px rgba(0,0,0,0.4);
               transition: all 0.3s ease;
             ">⏭️ End Turn</button>
