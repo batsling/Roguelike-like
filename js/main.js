@@ -2636,8 +2636,11 @@ function showCombatModal() {
     endTurnBtn.style.color = '#888';
     endTurnBtn.style.borderColor = '#666';
 
-    // Update turn counter
-    document.getElementById('turn-counter').textContent = combat.turn + 1;
+    // Update turn counter (if it exists - removed in new layout)
+    const turnCounter = document.getElementById('turn-counter');
+    if (turnCounter) {
+      turnCounter.textContent = combat.turn + 1;
+    }
 
     // Re-create dice for next roll
     window.DiceRenderer.createDice(combat.dice[0]);
@@ -2762,7 +2765,7 @@ function showCombatModal() {
           cursor: pointer;
           transition: all 0.2s ease;
           ${!canUse && isUsable ? 'opacity: 0.5;' : ''}
-        " onmouseenter="showItemTooltip(event, ${idx})" onmouseleave="hideItemTooltip()">
+        " onmouseenter="showCombatItemTooltip(event, ${idx})" onmouseleave="hideCombatItemTooltip()">
           <img src="${imageUrl}" style="
             width: 100%;
             height: 100%;
@@ -3177,8 +3180,8 @@ function showCombatModal() {
 // Make showCombatModal available globally
 window.showCombatModal = showCombatModal;
 
-// Global tooltip functions for item hover
-window.showItemTooltip = function showItemTooltip(event, itemIndex) {
+// Combat-specific tooltip functions for item hover
+window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) {
   const tooltip = document.getElementById('item-tooltip');
   const tooltipContent = document.getElementById('tooltip-content');
 
@@ -3224,7 +3227,7 @@ window.showItemTooltip = function showItemTooltip(event, itemIndex) {
           font-size: 14px;
           cursor: ${canUse ? 'pointer' : 'not-allowed'};
           opacity: ${canUse ? '1' : '0.5'};
-        " ${canUse ? `onclick="useCombatItem(${itemIndex}); hideItemTooltip();"` : ''}>
+        " ${canUse ? `onclick="useCombatItem(${itemIndex}); hideCombatItemTooltip();"` : ''}>
           ${canUse ? '✓ Use Item' : '✗ Cannot Use'}
         </button>
       ` : ''}
@@ -3234,14 +3237,14 @@ window.showItemTooltip = function showItemTooltip(event, itemIndex) {
   tooltip.style.display = 'block';
 
   // Position tooltip near cursor
-  updateTooltipPosition(event);
+  updateCombatTooltipPosition(event);
 
   // Update position as mouse moves
-  tooltip._mouseMoveHandler = (e) => updateTooltipPosition(e);
+  tooltip._mouseMoveHandler = (e) => updateCombatTooltipPosition(e);
   document.addEventListener('mousemove', tooltip._mouseMoveHandler);
 }
 
-window.hideItemTooltip = function hideItemTooltip() {
+window.hideCombatItemTooltip = function hideCombatItemTooltip() {
   const tooltip = document.getElementById('item-tooltip');
   if (!tooltip) return;
 
@@ -3254,7 +3257,7 @@ window.hideItemTooltip = function hideItemTooltip() {
   }
 }
 
-window.updateTooltipPosition = function updateTooltipPosition(event) {
+window.updateCombatTooltipPosition = function updateCombatTooltipPosition(event) {
   const tooltip = document.getElementById('item-tooltip');
   if (!tooltip) return;
 
