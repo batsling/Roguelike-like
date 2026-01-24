@@ -9,6 +9,11 @@
  * Key Functions:
  * - createGameModal(content) - Creates and displays a modal with given HTML content
  * - closeGameModal() - Closes the current game modal with animation
+ *
+ * Z-Index Usage:
+ * - Modal backdrop: 10000 (Layer 4 - Modals)
+ * - Modal content is inside backdrop, inherits stacking context
+ * - See main.js for full z-index layering system documentation
  */
 
 // ===== MODAL FUNCTIONS =====
@@ -60,6 +65,12 @@ function closeGameModal() {
   if (modal) {
     modal.style.animation = 'fadeOut 0.3s';
     setTimeout(() => modal.remove(), 300);
+  }
+
+  // Clean up combat tooltip if it exists
+  const combatTooltip = document.getElementById('item-tooltip');
+  if (combatTooltip) {
+    combatTooltip.remove();
   }
 }
 

@@ -10,6 +10,29 @@ console.log('✅ MAIN.JS v45 loaded - inventory deep copy on save active');
 // - Tutorial and UI controls
 // - Integration of all other modules
 
+// ===== Z-INDEX LAYERING SYSTEM =====
+// Organized from lowest to highest to prevent layering conflicts
+//
+// Layer 1 (Base): 1-99
+//   - Map SVG arrows: 1
+//   - Item hover effects: 10
+//
+// Layer 2 (UI Panels): 100-999
+//   - (Reserved for future use)
+//
+// Layer 3 (Side Panels): 1000-9999
+//   - Combat stats panel: 1000
+//   - Combat log panel: 1000
+//
+// Layer 4 (Modals): 10000-19999
+//   - Modal backdrop: 10000 (from modals.js)
+//   - Map tooltip: 10000
+//   - Trait tooltips: 10000
+//   - Generic buttons: 10000
+//
+// Layer 5 (Tooltips & Overlays): 20000+
+//   - Combat item tooltip: 20000
+//
 // ===== HELPER FUNCTIONS =====
 
 // Get curses by type from active curses
@@ -2252,6 +2275,7 @@ function showCombatModal() {
               display: flex;
               flex-direction: column;
               align-items: center;
+              position: relative;
             ">
               <div style="text-align: center; margin-bottom: 10px;">
                 <h3 style="margin: 0 0 2px 0; color: #ff6644; font-size: 22px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${enemy.name}</h3>
@@ -3198,12 +3222,19 @@ window.showCombatModal = showCombatModal;
 
 // Combat-specific tooltip functions for item hover
 window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) {
+  console.log('showCombatItemTooltip called:', itemIndex);
   const tooltip = document.getElementById('item-tooltip');
   const tooltipContent = document.getElementById('tooltip-content');
 
-  if (!tooltip || !tooltipContent || itemIndex >= inventory.length) return;
+  console.log('Tooltip element:', tooltip, 'Content element:', tooltipContent);
+
+  if (!tooltip || !tooltipContent || itemIndex >= inventory.length) {
+    console.warn('Tooltip show failed - tooltip:', !!tooltip, 'content:', !!tooltipContent, 'valid index:', itemIndex < inventory.length);
+    return;
+  }
 
   const item = inventory[itemIndex];
+  console.log('Showing tooltip for item:', item.name);
 
   const getRarityColor = (rarity) => {
     switch(rarity?.toLowerCase()) {
@@ -3251,6 +3282,10 @@ window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) 
   `;
 
   tooltip.style.display = 'block';
+  tooltip.style.visibility = 'visible';
+  tooltip.style.opacity = '1';
+
+  console.log('Tooltip should be visible now. Display:', tooltip.style.display, 'Visibility:', tooltip.style.visibility);
 
   // Position tooltip near cursor
   updateCombatTooltipPosition(event);
