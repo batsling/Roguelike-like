@@ -2047,10 +2047,10 @@ function showCombatModal() {
     <div id="combat-container" style="
       display: flex;
       flex-direction: column;
-      width: 98vw;
-      max-width: 1900px;
-      height: 95vh;
-      max-height: 980px;
+      width: 92vw;
+      max-width: 1400px;
+      height: 90vh;
+      max-height: 900px;
       padding: 20px;
       background: linear-gradient(135deg, #1a1410 0%, #2a1810 100%);
       border-radius: 12px;
