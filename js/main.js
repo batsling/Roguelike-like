@@ -2296,6 +2296,23 @@ function showCombatModal() {
               <div id="enemy-effects" style="font-size: 12px; text-align: center; min-height: 20px;">
                 <!-- Effects will appear here -->
               </div>
+
+              <!-- View Combat Log Button -->
+              <button id="view-log-btn" style="
+                position: absolute;
+                top: -10px;
+                right: 10px;
+                background: rgba(255,204,102,0.2);
+                border: 2px solid #ffcc66;
+                border-radius: 6px;
+                padding: 6px 12px;
+                color: #ffcc66;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: bold;
+                text-transform: uppercase;
+                transition: all 0.2s;
+              ">📜 Log</button>
             </div>
           </div>
 
@@ -2354,24 +2371,40 @@ function showCombatModal() {
           </div>
         </div>
 
-        <!-- Combat Log (Right Side) -->
-        <div id="combat-log" style="
-          width: 320px;
-          min-width: 320px;
-          background: rgba(0,0,0,0.6);
-          border: 2px solid #444;
-          border-radius: 8px;
-          padding: 15px;
-          overflow-y: auto;
-          font-size: 13px;
-          line-height: 1.6;
-          display: flex;
-          flex-direction: column;
-        ">
-          <h4 style="margin: 0 0 10px 0; color: #ffcc66; font-size: 16px; border-bottom: 2px solid rgba(255,204,102,0.3); padding-bottom: 8px;">📜 Combat Log</h4>
-          <div id="combat-log-messages" style="flex: 1; overflow-y: auto;">
-            <p style="color: #aaa; margin: 0;">⚔️ Combat started! Turn <span style="color: #ffcc66;">1</span></p>
-          </div>
+      </div>
+
+      <!-- Combat Log Panel (Hidden by default, slides in from right) -->
+      <div id="log-panel" style="
+        position: absolute;
+        right: 0;
+        top: 0;
+        width: 380px;
+        height: 100%;
+        background: linear-gradient(145deg, rgba(30,30,40,0.98), rgba(20,20,30,0.98));
+        border-left: 3px solid #ffcc66;
+        border-radius: 0 12px 12px 0;
+        padding: 25px;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        z-index: 1000;
+        box-shadow: -4px 0 20px rgba(0,0,0,0.5);
+        overflow-y: auto;
+      ">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid rgba(255,204,102,0.3); padding-bottom: 15px;">
+          <h3 style="margin: 0; color: #ffcc66; font-size: 24px;">📜 Combat Log</h3>
+          <button id="close-log-btn" style="
+            background: rgba(255,68,68,0.2);
+            border: 2px solid #ff4444;
+            border-radius: 6px;
+            padding: 6px 12px;
+            color: #ff6666;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+          ">✕</button>
+        </div>
+        <div id="combat-log-messages" style="display: flex; flex-direction: column; gap: 8px;">
+          <p style="color: #aaa; margin: 0;">⚔️ Combat started! Turn <span style="color: #ffcc66;">1</span></p>
         </div>
       </div>
     </div>
@@ -2423,6 +2456,9 @@ function showCombatModal() {
 
   // Setup stats panel toggle
   setupStatsPanel();
+
+  // Setup combat log panel toggle
+  setupLogPanel();
 
   // Setup item tooltips
   setupItemTooltips();
@@ -2782,6 +2818,21 @@ function showCombatModal() {
 
     closeStatsBtn.addEventListener('click', () => {
       statsPanel.style.transform = 'translateX(-100%)';
+    });
+  }
+
+  function setupLogPanel() {
+    const logPanel = document.getElementById('log-panel');
+    const viewLogBtn = document.getElementById('view-log-btn');
+    const closeLogBtn = document.getElementById('close-log-btn');
+
+    // Toggle panel
+    viewLogBtn.addEventListener('click', () => {
+      logPanel.style.transform = 'translateX(0)';
+    });
+
+    closeLogBtn.addEventListener('click', () => {
+      logPanel.style.transform = 'translateX(100%)';
     });
   }
 
