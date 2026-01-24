@@ -68,7 +68,7 @@ function closeGameModal() {
   }
 
   // Clean up combat tooltip if it exists
-  const combatTooltip = document.getElementById('item-tooltip');
+  const combatTooltip = document.getElementById('combat-item-tooltip');
   if (combatTooltip) {
     combatTooltip.remove();
   }

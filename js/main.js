@@ -31,7 +31,8 @@ console.log('✅ MAIN.JS v45 loaded - inventory deep copy on save active');
 //   - Generic buttons: 10000
 //
 // Layer 5 (Tooltips & Overlays): 20000+
-//   - Combat item tooltip: 20000
+//   - Combat item tooltip (#combat-item-tooltip): 20000
+//   - Main inventory tooltip (#item-tooltip from index.html): inherits from parent
 //
 // ===== HELPER FUNCTIONS =====
 
@@ -2470,11 +2471,11 @@ function showCombatModal() {
   createGameModal(combatHTML);
 
   // Create tooltip element and append to document.body (not inside modal to avoid overflow issues)
-  const existingTooltip = document.getElementById('item-tooltip');
+  const existingTooltip = document.getElementById('combat-item-tooltip');
   if (existingTooltip) existingTooltip.remove();
 
   const tooltip = document.createElement('div');
-  tooltip.id = 'item-tooltip';
+  tooltip.id = 'combat-item-tooltip';
   tooltip.style.cssText = `
     position: fixed;
     display: none;
@@ -2489,7 +2490,7 @@ function showCombatModal() {
   `;
 
   const tooltipContent = document.createElement('div');
-  tooltipContent.id = 'tooltip-content';
+  tooltipContent.id = 'combat-tooltip-content';
   tooltip.appendChild(tooltipContent);
   document.body.appendChild(tooltip);
 
@@ -3223,8 +3224,8 @@ window.showCombatModal = showCombatModal;
 // Combat-specific tooltip functions for item hover
 window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) {
   console.log('showCombatItemTooltip called:', itemIndex);
-  const tooltip = document.getElementById('item-tooltip');
-  const tooltipContent = document.getElementById('tooltip-content');
+  const tooltip = document.getElementById('combat-item-tooltip');
+  const tooltipContent = document.getElementById('combat-tooltip-content');
 
   console.log('Tooltip element:', tooltip, 'Content element:', tooltipContent);
 
@@ -3296,7 +3297,7 @@ window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) 
 }
 
 window.hideCombatItemTooltip = function hideCombatItemTooltip() {
-  const tooltip = document.getElementById('item-tooltip');
+  const tooltip = document.getElementById('combat-item-tooltip');
   if (!tooltip) return;
 
   tooltip.style.display = 'none';
@@ -3309,7 +3310,7 @@ window.hideCombatItemTooltip = function hideCombatItemTooltip() {
 }
 
 window.updateCombatTooltipPosition = function updateCombatTooltipPosition(event) {
-  const tooltip = document.getElementById('item-tooltip');
+  const tooltip = document.getElementById('combat-item-tooltip');
   if (!tooltip) return;
 
   const offset = 15;
