@@ -2047,15 +2047,16 @@ function showCombatModal() {
     <div id="combat-container" style="
       display: flex;
       flex-direction: column;
-      width: 95vw;
-      max-width: 1600px;
-      height: 90vh;
-      max-height: 900px;
+      width: 98vw;
+      max-width: 1900px;
+      height: 95vh;
+      max-height: 980px;
       padding: 20px;
       background: linear-gradient(135deg, #1a1410 0%, #2a1810 100%);
       border-radius: 12px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.6);
       position: relative;
+      overflow: hidden;
     ">
       <!-- Stats Panel (Hidden by default, slides in from left) -->
       <div id="stats-panel" style="
@@ -2355,7 +2356,8 @@ function showCombatModal() {
 
         <!-- Combat Log (Right Side) -->
         <div id="combat-log" style="
-          width: 280px;
+          width: 320px;
+          min-width: 320px;
           background: rgba(0,0,0,0.6);
           border: 2px solid #444;
           border-radius: 8px;
@@ -2392,6 +2394,24 @@ function showCombatModal() {
   `;
 
   createGameModal(combatHTML);
+
+  // Add hover effects CSS for items
+  const style = document.createElement('style');
+  style.textContent = `
+    .item-icon {
+      transform: scale(1);
+    }
+    .item-icon:hover {
+      transform: scale(1.15);
+      filter: brightness(1.3);
+      box-shadow: 0 0 15px rgba(255, 204, 102, 0.6);
+      z-index: 10;
+    }
+    .item-icon:active {
+      transform: scale(1.05);
+    }
+  `;
+  document.head.appendChild(style);
 
   // Initialize 3D dice renderer
   const diceContainer = document.getElementById('dice-container');
