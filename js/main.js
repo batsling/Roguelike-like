@@ -2689,6 +2689,11 @@ function showCombatModal() {
   function populateItemsBar() {
     const itemsContainer = document.getElementById('items-icons');
 
+    if (!itemsContainer) {
+      console.warn('Items container not found');
+      return;
+    }
+
     if (inventory.length === 0) {
       itemsContainer.innerHTML = '<span style="color: #666; font-size: 13px;">No items</span>';
       return;
@@ -2841,7 +2846,14 @@ function showCombatModal() {
   }
 
   function updateCombatInventory() {
+    // Now uses the items bar instead of separate inventory section
+    populateItemsBar();
+    return;
+
+    // Old code below is no longer used
     const container = document.getElementById('combat-inventory-items');
+
+    if (!container) return; // Element no longer exists in new layout
 
     if (inventory.length === 0) {
       container.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #666; font-size: 14px;">No items</div>';
