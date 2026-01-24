@@ -2443,7 +2443,7 @@ function showCombatModal() {
       border-radius: 8px;
       padding: 12px 15px;
       max-width: 300px;
-      z-index: 10000;
+      z-index: 20000;
       pointer-events: none;
       box-shadow: 0 4px 20px rgba(0,0,0,0.8);
     ">
