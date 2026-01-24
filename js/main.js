@@ -2187,16 +2187,27 @@ function showCombatModal() {
               </div>
 
               <!-- Player Image -->
-              <img src="${playerImagePath}" style="
-                width: 140px;
-                height: 140px;
-                image-rendering: pixelated;
+              <div style="
+                width: 200px;
+                height: 200px;
                 margin-bottom: 12px;
                 border-radius: 8px;
                 background: rgba(0,0,0,0.3);
                 padding: 8px;
                 border: 2px solid rgba(76,175,80,0.4);
-              " alt="Player">
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              ">
+                <img src="${playerImagePath}" style="
+                  max-width: 100%;
+                  max-height: 100%;
+                  width: auto;
+                  height: auto;
+                  image-rendering: pixelated;
+                  object-fit: contain;
+                " alt="Player">
+              </div>
 
               <!-- Combat Stats -->
               <div style="
@@ -2261,16 +2272,27 @@ function showCombatModal() {
               </div>
 
               <!-- Enemy Image -->
-              <img src="${enemyImagePath}" style="
-                max-width: 140px;
-                max-height: 140px;
-                image-rendering: pixelated;
+              <div style="
+                width: 200px;
+                height: 200px;
                 margin-bottom: 12px;
                 border-radius: 8px;
                 background: rgba(0,0,0,0.3);
                 padding: 8px;
                 border: 2px solid rgba(255,68,68,0.4);
-              " alt="${enemy.name}" onerror="this.style.display='none'">
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              ">
+                <img src="${enemyImagePath}" style="
+                  max-width: 100%;
+                  max-height: 100%;
+                  width: auto;
+                  height: auto;
+                  image-rendering: pixelated;
+                  object-fit: contain;
+                " alt="${enemy.name}" onerror="this.style.display='none'">
+              </div>
 
               <!-- Enemy Stats -->
               <div style="
