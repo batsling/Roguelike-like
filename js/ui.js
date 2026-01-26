@@ -665,8 +665,9 @@ function upgradeWeapon(itemIndex) {
     return;
   }
 
-  // Level up the weapon
+  // Level up the weapon (both in gameState and on weapon object)
   gameState.weaponLevel = currentLevel + 1;
+  gameState.equippedWeapon.level = gameState.weaponLevel; // Keep weapon.level in sync
 
   // Remove the duplicate weapon from inventory
   inventory.splice(itemIndex, 1);

@@ -177,6 +177,10 @@ function initializeWeaponBonuses(weapon) {
       luck: 0
     };
   }
+  // Initialize weapon level if not present
+  if (!weapon.level) {
+    weapon.level = 1;
+  }
 }
 
 // Export scalable passive functions to global scope

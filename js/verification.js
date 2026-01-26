@@ -795,21 +795,23 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
 
           console.log(`${weapon.name} activated: will grant ${chestType} chest before normal reward`);
         }
-        // For Lil' Bomber: weapon gains +1/+2/+3 Strength
+        // For Lil' Bomber: weapon gains +1/+2/+3 Strength based on weapon level
         else if (weapon.name === "Lil' Bomber") {
-          const strengthBonus = weaponLevel === 1 ? 1 : weaponLevel === 2 ? 2 : 3;
-
-          // Initialize weapon bonuses if not present
+          // Initialize weapon bonuses and level if not present
           if (typeof initializeWeaponBonuses === 'function') {
             initializeWeaponBonuses(weapon);
           }
 
-          // Add bonus to weapon (cumulative)
+          // Determine bonus based on current weapon level
+          const strengthBonus = weaponLevel === 1 ? 1 : weaponLevel === 2 ? 2 : 3;
+
+          // Add bonus to weapon
           weapon.bonuses.strength += strengthBonus;
 
-          // Level up weapon
+          // Level up weapon (both in gameState and on weapon object)
           if (weaponLevel < 3) {
             gameState.weaponLevel = weaponLevel + 1;
+            weapon.level = gameState.weaponLevel; // Keep weapon.level in sync
           }
 
           // Update UI to reflect new weapon bonuses
@@ -823,7 +825,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
           weaponRewardText = `Weapon gains +${strengthBonus} Strength (Total: +${weapon.bonuses.strength})`;
           weaponEffectActivated = true;
 
-          console.log(`${weapon.name} leveled to ${weaponLevel + 1}: weapon gains +${strengthBonus} Strength (total weapon bonus: +${weapon.bonuses.strength})`);
+          console.log(`${weapon.name} leveled to ${gameState.weaponLevel}: weapon gains +${strengthBonus} Strength (total weapon bonus: +${weapon.bonuses.strength})`);
         }
         // For Barrel: grant 1/2/3 random fish
         else if (weapon.name === "Barrel") {

@@ -431,8 +431,9 @@ function showShopModal(purchasedIndices = []) {
         gold -= upgradeCost;
         gameState.gold = gold;
 
-        // Increase weapon level
+        // Increase weapon level (both in gameState and on weapon object)
         gameState.weaponLevel = currentLevel + 1;
+        gameState.equippedWeapon.level = gameState.weaponLevel; // Keep weapon.level in sync
 
         // Track that we've used an upgrade this shop
         gameState.shopUpgradesUsed++;

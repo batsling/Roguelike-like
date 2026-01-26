@@ -118,7 +118,7 @@ var gameState = {
   escapeProgress: 0,
   // Weapon system
   equippedWeapon: null, // Currently equipped weapon object
-  weaponLevel: 1, // Current weapon level (1-3)
+  weaponLevel: 1, // Working copy of equipped weapon's level (synced with weapon.level)
   shopUpgradesUsed: 0 // Track weapon upgrades used in current shop visit
 };
 
