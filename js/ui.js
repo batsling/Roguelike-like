@@ -658,6 +658,13 @@ function upgradeWeapon(itemIndex) {
 
   const currentLevel = gameState.weaponLevel || 1;
 
+  if (currentLevel >= 3) {
+    if (typeof createNotification === 'function') {
+      createNotification('Weapon is already max level!', '#ff6b6b', '⚠️');
+    }
+    return;
+  }
+
   // Level up the weapon (both in gameState and on weapon object)
   gameState.weaponLevel = currentLevel + 1;
   gameState.equippedWeapon.level = gameState.weaponLevel; // Keep weapon.level in sync
@@ -1254,6 +1261,29 @@ function showItemTooltip(e, item) {
     ? getPassiveDisplayName(item)
     : (item.displayName || item.name);
 
+  // Build weapon bonuses display
+  let bonusesHTML = '';
+  if (item.type === 'Weapon' && item.bonuses) {
+    const bonusEntries = [];
+    if (item.bonuses.attack) bonusEntries.push(`+${item.bonuses.attack} Attack`);
+    if (item.bonuses.strength) bonusEntries.push(`+${item.bonuses.strength} Strength`);
+    if (item.bonuses.dexterity) bonusEntries.push(`+${item.bonuses.dexterity} Dexterity`);
+    if (item.bonuses.intelligence) bonusEntries.push(`+${item.bonuses.intelligence} Intelligence`);
+    if (item.bonuses.charisma) bonusEntries.push(`+${item.bonuses.charisma} Charisma`);
+    if (item.bonuses.luck) bonusEntries.push(`+${item.bonuses.luck} Luck`);
+
+    if (bonusEntries.length > 0) {
+      bonusesHTML = `
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(76, 175, 80, 0.3);">
+          <div style="font-size: 12px; color: #4CAF50; font-weight: bold; margin-bottom: 4px;">Accumulated Bonuses:</div>
+          <div style="font-size: 12px; color: #8BC34A;">
+            ${bonusEntries.join(' • ')}
+          </div>
+        </div>
+      `;
+    }
+  }
+
   tooltip.innerHTML = `
     <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 18px;">${displayName}</h4>
     <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
@@ -1264,6 +1294,7 @@ function showItemTooltip(e, item) {
     <div style="font-size: 13px; color: #e0d0b0; line-height: 1.4;">
       ${item.description}
     </div>
+    ${bonusesHTML}
     ${tagsHTML}
   `;
 
@@ -1420,6 +1451,29 @@ function showWeaponTooltip(event, weapon) {
     weaponLevelText = `<div style="color: #ffaa44; font-weight: bold;">Level ${weaponLevel}</div>`;
   }
 
+  // Build weapon bonuses display
+  let bonusesHTML = '';
+  if (weapon.bonuses) {
+    const bonusEntries = [];
+    if (weapon.bonuses.attack) bonusEntries.push(`+${weapon.bonuses.attack} Attack`);
+    if (weapon.bonuses.strength) bonusEntries.push(`+${weapon.bonuses.strength} Strength`);
+    if (weapon.bonuses.dexterity) bonusEntries.push(`+${weapon.bonuses.dexterity} Dexterity`);
+    if (weapon.bonuses.intelligence) bonusEntries.push(`+${weapon.bonuses.intelligence} Intelligence`);
+    if (weapon.bonuses.charisma) bonusEntries.push(`+${weapon.bonuses.charisma} Charisma`);
+    if (weapon.bonuses.luck) bonusEntries.push(`+${weapon.bonuses.luck} Luck`);
+
+    if (bonusEntries.length > 0) {
+      bonusesHTML = `
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(76, 175, 80, 0.3);">
+          <div style="font-size: 12px; color: #4CAF50; font-weight: bold; margin-bottom: 4px;">Accumulated Bonuses:</div>
+          <div style="font-size: 12px; color: #8BC34A;">
+            ${bonusEntries.join(' • ')}
+          </div>
+        </div>
+      `;
+    }
+  }
+
   tooltip.innerHTML = `
     <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 18px;">${weapon.name}</h4>
     <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
@@ -1430,6 +1484,7 @@ function showWeaponTooltip(event, weapon) {
     <div style="font-size: 13px; color: #e0d0b0; line-height: 1.4;">
       ${weapon.description}
     </div>
+    ${bonusesHTML}
     ${tagsHTML}
   `;
 
