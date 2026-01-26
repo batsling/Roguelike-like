@@ -105,14 +105,12 @@ var ITEMS_DATA = [
   },
   {
     "name": "Calipers",
-    "rarity": "Rare",
+    "rarity": "Common",
     "type": "Passive",
-    "description": "On the second turn of each combat, gain +5 Block",
+    "description": "Start the second turn of combat with +5 Block",
     "image": "images/items/Calipers.png",
     "reference": "Slay the Spire",
-    "tags": [
-      "defense"
-    ]
+    "tags": []
   },
   {
     "name": "Charm of the Vampire",
@@ -366,10 +364,10 @@ var ITEMS_DATA = [
     "type": "Scaling",
     "description": "Gain scaling +1 Attack per 10 max health",
     "image": "images/items/BeefyRing.png",
-    "reference": "The Binding of Isaac",
+    "reference": "Megabonk",
     "tags": [
-      "ring",
-      "wearable"
+      "wearable",
+      "ring"
     ]
   },
   {
@@ -387,24 +385,22 @@ var ITEMS_DATA = [
     "name": "Slutty Rocket",
     "rarity": "Uncommon",
     "type": "Weapon",
-    "description": "If you kill an enemy with fire at least one time, this weapon gains (+1/+2/+3) Attack",
+    "description": "If you kill an enemy with a missile at least one time, this weapon gains (+1/+2/+3) Attack",
     "image": "images/items/SluttyRocket.png",
-    "reference": "Enter the Gungeon",
+    "reference": "Megabonk",
     "tags": [
-      "gun",
-      "explosive"
+      "ranged"
     ]
   },
   {
     "name": "Blood Magic",
     "rarity": "Rare",
     "type": "Weapon",
-    "description": "If you kill an enemy while at full health, permanently gain (+1/+2/+3) max health",
+    "description": "If you create or use a magic circle, gain (+1/+2/+3) Max Health",
     "image": "images/items/BloodMagic.png",
-    "reference": "Slay the Spire",
+    "reference": "Megabonk",
     "tags": [
-      "magic",
-      "health"
+      "ranged"
     ]
   },
   {

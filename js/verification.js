@@ -446,7 +446,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       if (weaponName === "Slutty Rocket") {
         const attackBonus = level === 1 ? 1 : level === 2 ? 2 : 3;
         return {
-          question: 'Did you kill an enemy with fire at least one time?',
+          question: 'Did you kill an enemy with a missile at least one time?',
           reward: `+${attackBonus} Attack`
         };
       }
@@ -455,8 +455,8 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       if (weaponName === "Blood Magic") {
         const maxHealthBonus = level === 1 ? 1 : level === 2 ? 2 : 3;
         return {
-          question: 'Did you kill an enemy while at full health?',
-          reward: `+${maxHealthBonus} max health (permanent)`
+          question: 'Did you create or use a magic circle?',
+          reward: `+${maxHealthBonus} Max Health (permanent)`
         };
       }
 
