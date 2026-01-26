@@ -1025,7 +1025,16 @@ function updateGameStats() {
     if (statsCharacterName) statsCharacterName.textContent = character.name;
   }
 
-  if (statsAttack) statsAttack.textContent = attack;
+  // Use getEffectiveAttack() to include scalable passive bonuses (like Beefy Ring)
+  if (statsAttack) {
+    const effectiveAttack = typeof getEffectiveAttack === 'function' ? getEffectiveAttack() : attack;
+    if (effectiveAttack !== attack) {
+      // Show base attack and total if they differ
+      statsAttack.textContent = `${effectiveAttack} (${attack}+${effectiveAttack - attack})`;
+    } else {
+      statsAttack.textContent = attack;
+    }
+  }
   if (statsStrength) statsStrength.textContent = strength;
   if (statsDexterity) statsDexterity.textContent = dexterity;
   if (statsIntelligence) statsIntelligence.textContent = intelligence;

@@ -32,7 +32,7 @@ function initializeCombat(enemy) {
   const playerState = {
     health: health,
     maxHealth: maxHealth,
-    attack: attack,
+    attack: typeof getEffectiveAttack === 'function' ? getEffectiveAttack() : attack,
     strength: strength,
     dexterity: dexterity,
     intelligence: intelligence,

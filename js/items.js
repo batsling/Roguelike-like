@@ -65,6 +65,51 @@ function determineEncounterType() {
   return 'shop';
 }
 
+// ===== SCALABLE PASSIVE ITEM SYSTEM =====
+// This system handles items that scale with player stats and need to be recalculated
+
+/**
+ * Recalculate all scalable passive item bonuses
+ * Called whenever stats that affect scalable items change (e.g., max health)
+ * @returns {Object} Object containing calculated bonuses for each stat
+ */
+function recalculateScalablePassives() {
+  const bonuses = {
+    attack: 0,
+    strength: 0,
+    dexterity: 0,
+    intelligence: 0,
+    charisma: 0,
+    luck: 0
+  };
+
+  // Check for Beefy Ring: +1 Attack per 10 max health
+  const hasBeefyRing = inventory.some(item => item.name === 'Beefy Ring');
+  if (hasBeefyRing) {
+    const beefyRingBonus = Math.floor(maxHealth / 10);
+    bonuses.attack += beefyRingBonus;
+    console.log(`Beefy Ring: +${beefyRingBonus} attack (from ${maxHealth} max health)`);
+  }
+
+  // Add more scalable passive items here as they're added to the game
+  // Example: const hasOtherItem = inventory.some(item => item.name === 'Other Item');
+
+  return bonuses;
+}
+
+/**
+ * Get the current attack stat including all bonuses
+ * @returns {number} Total attack including base attack and scalable bonuses
+ */
+function getEffectiveAttack() {
+  const bonuses = recalculateScalablePassives();
+  return attack + bonuses.attack;
+}
+
+// Export scalable passive functions to global scope
+window.recalculateScalablePassives = recalculateScalablePassives;
+window.getEffectiveAttack = getEffectiveAttack;
+
 // ===== ITEM EFFECTS REGISTRY =====
 // Define all item effects here for easy maintenance and extension
 
@@ -174,6 +219,17 @@ const ITEM_EFFECTS = {
       StateMutator.modifyStat('luck', 2);
       StateMutator.modifyStat('strength', -2);
     }
+  },
+
+  "Beefy Ring": {
+    onAcquire: () => {
+      // Scalable passive: +1 Attack per 10 max health
+      // Effect is calculated dynamically in recalculateScalablePassives()
+      // and applied in getEffectiveAttack()
+      console.log('Acquired Beefy Ring - grants +1 Attack per 10 max health (scalable)');
+    }
+    // Note: This item's effect is handled by the scalable passive system
+    // No direct stat modification needed on acquire
   },
 
   // ===== TRIGGERED ITEMS =====
