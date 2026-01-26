@@ -163,7 +163,7 @@ function getEffectiveStat(statName) {
 }
 
 /**
- * Initialize weapon bonuses when a weapon is acquired or equipped
+ * Initialize weapon bonuses and level if not already present
  * @param {Object} weapon - The weapon object
  */
 function initializeWeaponBonuses(weapon) {
@@ -929,8 +929,13 @@ function acquireItem(item) {
     description: item.description
   });
 
-  // Create a copy of the item to track uses
+  // Create a copy of the item
+  // For weapons, exclude bonuses and level to ensure each instance is independent
   const itemCopy = { ...item };
+  if (item.type === 'Weapon') {
+    delete itemCopy.bonuses;
+    delete itemCopy.level;
+  }
 
   console.log('📥 Item copy created:', {
     name: itemCopy.name,

@@ -795,24 +795,18 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
 
           console.log(`${weapon.name} activated: will grant ${chestType} chest before normal reward`);
         }
-        // For Lil' Bomber: weapon gains +1/+2/+3 Strength based on weapon level
+        // For Lil' Bomber: weapon gains +X Strength based on weapon level (X = level)
         else if (weapon.name === "Lil' Bomber") {
           // Initialize weapon bonuses and level if not present
           if (typeof initializeWeaponBonuses === 'function') {
             initializeWeaponBonuses(weapon);
           }
 
-          // Determine bonus based on current weapon level
-          const strengthBonus = weaponLevel === 1 ? 1 : weaponLevel === 2 ? 2 : 3;
+          // Bonus equals current weapon level (no max)
+          const strengthBonus = weaponLevel;
 
-          // Add bonus to weapon
+          // Add bonus to weapon (verification does NOT level up weapon)
           weapon.bonuses.strength += strengthBonus;
-
-          // Level up weapon (both in gameState and on weapon object)
-          if (weaponLevel < 3) {
-            gameState.weaponLevel = weaponLevel + 1;
-            weapon.level = gameState.weaponLevel; // Keep weapon.level in sync
-          }
 
           // Update UI to reflect new weapon bonuses
           if (typeof updateTopBar === 'function') {
@@ -825,7 +819,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
           weaponRewardText = `Weapon gains +${strengthBonus} Strength (Total: +${weapon.bonuses.strength})`;
           weaponEffectActivated = true;
 
-          console.log(`${weapon.name} leveled to ${gameState.weaponLevel}: weapon gains +${strengthBonus} Strength (total weapon bonus: +${weapon.bonuses.strength})`);
+          console.log(`${weapon.name} gains +${strengthBonus} Strength (Level ${weaponLevel}) - total weapon bonus: +${weapon.bonuses.strength}`);
         }
         // For Barrel: grant 1/2/3 random fish
         else if (weapon.name === "Barrel") {

@@ -658,13 +658,6 @@ function upgradeWeapon(itemIndex) {
 
   const currentLevel = gameState.weaponLevel || 1;
 
-  if (currentLevel >= 3) {
-    if (typeof createNotification === 'function') {
-      createNotification('Weapon is already max level!', '#ff6b6b', '⚠️');
-    }
-    return;
-  }
-
   // Level up the weapon (both in gameState and on weapon object)
   gameState.weaponLevel = currentLevel + 1;
   gameState.equippedWeapon.level = gameState.weaponLevel; // Keep weapon.level in sync

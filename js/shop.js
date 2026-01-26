@@ -104,12 +104,10 @@ function showShopModal(purchasedIndices = []) {
   if (gameState.equippedWeapon) {
     const weapon = gameState.equippedWeapon;
     const currentLevel = gameState.weaponLevel || 1;
-    const maxLevel = 3;
-    const isMaxLevel = currentLevel >= maxLevel;
     const alreadyUpgraded = gameState.shopUpgradesUsed > 0;
 
-    // Calculate upgrade cost based on current level
-    const upgradeCost = currentLevel === 1 ? 10 : 20;
+    // Calculate upgrade cost based on current level (scales with level)
+    const upgradeCost = currentLevel * 10;
 
     // Parse weapon description to extract level-specific effects
     const parseWeaponEffect = (description, level) => {
@@ -125,9 +123,9 @@ function showShopModal(purchasedIndices = []) {
     };
 
     const currentEffect = parseWeaponEffect(weapon.description, currentLevel);
-    const nextEffect = !isMaxLevel ? parseWeaponEffect(weapon.description, currentLevel + 1) : null;
+    const nextEffect = parseWeaponEffect(weapon.description, currentLevel + 1);
 
-    const canUpgrade = !isMaxLevel && !alreadyUpgraded && gold >= upgradeCost;
+    const canUpgrade = !alreadyUpgraded && gold >= upgradeCost;
     const rarityColor = getRarityColor(weapon.rarity);
 
     weaponUpgradeHTML = `
@@ -155,15 +153,13 @@ function showShopModal(purchasedIndices = []) {
           </div>
           <div style="flex: 1;">
             <div style="font-weight: bold; font-size: 16px; color: white; margin-bottom: 5px;">${weapon.name}</div>
-            <div style="color: #ff9800; font-size: 14px; margin-bottom: 10px;">Level ${currentLevel} / ${maxLevel}</div>
+            <div style="color: #ff9800; font-size: 14px; margin-bottom: 10px;">Level ${currentLevel}</div>
             <div style="color: #ccc; font-size: 12px; margin-bottom: 8px;">
               <strong style="color: #4CAF50;">Current:</strong> ${currentEffect}
             </div>
-            ${!isMaxLevel ? `
-              <div style="color: #ccc; font-size: 12px; margin-bottom: 10px;">
-                <strong style="color: #ffb74d;">Next Level:</strong> ${nextEffect}
-              </div>
-            ` : ''}
+            <div style="color: #ccc; font-size: 12px; margin-bottom: 10px;">
+              <strong style="color: #ffb74d;">Next Level:</strong> ${nextEffect}
+            </div>
             <button id="weapon-upgrade-btn" style="
               padding: 10px 20px;
               background: ${canUpgrade ? '#ff9800' : '#555'};
@@ -175,7 +171,7 @@ function showShopModal(purchasedIndices = []) {
               font-size: 14px;
               width: 100%;
             " ${!canUpgrade ? 'disabled' : ''}>
-              ${isMaxLevel ? '⭐ MAX LEVEL' : alreadyUpgraded ? '✓ Upgraded This Shop' : gold >= upgradeCost ? `⬆️ Upgrade (${upgradeCost}💰)` : `💰 Need ${upgradeCost} Gold`}
+              ${alreadyUpgraded ? '✓ Upgraded This Shop' : gold >= upgradeCost ? `⬆️ Upgrade (${upgradeCost}💰)` : `💰 Need ${upgradeCost} Gold`}
             </button>
           </div>
         </div>
@@ -423,8 +419,8 @@ function showShopModal(purchasedIndices = []) {
   if (weaponUpgradeBtn && gameState.equippedWeapon) {
     weaponUpgradeBtn.onclick = () => {
       const currentLevel = gameState.weaponLevel || 1;
-      const upgradeCost = currentLevel === 1 ? 10 : 20;
-      const canUpgrade = currentLevel < 3 && gameState.shopUpgradesUsed === 0 && gold >= upgradeCost;
+      const upgradeCost = currentLevel * 10;
+      const canUpgrade = gameState.shopUpgradesUsed === 0 && gold >= upgradeCost;
 
       if (canUpgrade) {
         // Deduct gold
