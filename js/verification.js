@@ -460,6 +460,15 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
         };
       }
 
+      // Special handling for Dexecutioner
+      if (weaponName === "Dexecutioner") {
+        const dexterityBonus = level === 1 ? 1 : level === 2 ? 2 : 3;
+        return {
+          question: 'Did you kill an enemy with a piercing attack at least one time?',
+          reward: `+${dexterityBonus} Dexterity`
+        };
+      }
+
       // Special handling for Blasma Pistol
       if (weaponName === "Blasma Pistol") {
         const chestSize = level === 1 ? 'small' : level === 2 ? 'normal' : 'large';
@@ -908,6 +917,32 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
           weaponEffectActivated = true;
 
           console.log(`${weapon.name} grants +${maxHealthBonus} max health (Level ${weaponLevel}) - player max health: ${maxHealth}`);
+        }
+        // For Dexecutioner: weapon gains +X Dexterity based on weapon level (X = level)
+        else if (weapon.name === "Dexecutioner") {
+          // Initialize weapon bonuses and level if not present
+          if (typeof initializeWeaponBonuses === 'function') {
+            initializeWeaponBonuses(weapon);
+          }
+
+          // Bonus equals current weapon level
+          const dexterityBonus = weaponLevel;
+
+          // Add bonus to weapon (verification does NOT level up weapon)
+          weapon.bonuses.dexterity += dexterityBonus;
+
+          // Update UI to reflect new weapon bonuses
+          if (typeof updateTopBar === 'function') {
+            updateTopBar();
+          }
+          if (typeof updateGameStats === 'function') {
+            updateGameStats();
+          }
+
+          weaponRewardText = `Weapon gains +${dexterityBonus} Dexterity (Total: +${weapon.bonuses.dexterity})`;
+          weaponEffectActivated = true;
+
+          console.log(`${weapon.name} gains +${dexterityBonus} Dexterity (Level ${weaponLevel}) - total weapon bonus: +${weapon.bonuses.dexterity}`);
         }
       }
     }

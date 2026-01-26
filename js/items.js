@@ -91,8 +91,18 @@ function recalculateScalablePassives() {
     console.log(`Beefy Ring: +${beefyRingBonus} attack (from ${maxHealth} max health)`);
   }
 
+  // Check for Focus Crystal: +1 Attack if melee weapon equipped
+  const hasFocusCrystal = inventory.some(item => item.name === 'Focus Crystal');
+  if (hasFocusCrystal && gameState.equippedWeapon) {
+    const weaponTags = gameState.equippedWeapon.tags || [];
+    const isMeleeWeapon = weaponTags.includes('melee');
+    if (isMeleeWeapon) {
+      bonuses.attack += 1;
+      console.log(`Focus Crystal: +1 attack (melee weapon equipped)`);
+    }
+  }
+
   // Add more scalable passive items here as they're added to the game
-  // Example: const hasOtherItem = inventory.some(item => item.name === 'Other Item');
 
   return bonuses;
 }

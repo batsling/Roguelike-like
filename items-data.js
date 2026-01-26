@@ -395,5 +395,25 @@ var ITEMS_DATA = [
       "magic",
       "health"
     ]
+  },
+  {
+    "name": "Focus Crystal",
+    "rarity": "Common",
+    "type": "Passive",
+    "description": "If you have a melee weapon equipped, gain +1 Attack",
+    "image": "images/items/FocusCrystal.png",
+    "reference": "Risk of Rain 2",
+    "tags": []
+  },
+  {
+    "name": "Dexecutioner",
+    "rarity": "Uncommon",
+    "type": "Weapon",
+    "description": "If you kill an enemy with a piercing attack at least one time, this weapon gains (+1/+2/+3) Dexterity",
+    "image": "images/items/Dexecutioner.png",
+    "reference": "Megabonk",
+    "tags": [
+      "melee"
+    ]
   }
 ];
