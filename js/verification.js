@@ -514,7 +514,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
           <div style="color: #9370db; font-size: 11px; margin-bottom: 5px;">
             Boon Effect
           </div>
-          <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Did you ${condition}? Reward: +1 to all combat stats</p>
+          <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Did you ${condition}? Reward: +1 to all combat roll bonus stats</p>
           <div style="margin-top: 5px;">
             <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
               <input type="radio" name="boon-check-${index}" value="yes" checked style="margin-right: 5px;">Yes
@@ -839,7 +839,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
         const boonRadio = document.querySelector(`input[name="boon-check-${index}"]:checked`);
         const conditionMet = boonRadio && boonRadio.value === 'yes';
         if (conditionMet) {
-          // Grant +1 to all combat stats
+          // Grant +1 to all combat roll bonus stats (Str/Dex/Int/Cha, not Attack)
           strength += 1;
           dexterity += 1;
           intelligence += 1;
@@ -849,7 +849,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
           gameState.intelligence = intelligence;
           gameState.charisma = charisma;
 
-          console.log(`${boon.name} activated: +1 to all combat stats`);
+          console.log(`${boon.name} activated: +1 to all combat roll bonus stats`);
 
           // 20% chance to apply status effect to next game
           if (Math.random() < 0.2) {
@@ -997,7 +997,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       activatedBoons.forEach((boonName, index) => {
         setTimeout(() => {
           if (typeof createNotification === 'function') {
-            createNotification(`${boonName}: +1 to All Combat Stats!`, '#8a2be2', '🌟');
+            createNotification(`${boonName}: +1 to All Combat Roll Bonus Stats!`, '#8a2be2', '🌟');
           }
         }, (precisionLandingActivated ? 200 : 100) + (weaponEffectActivated ? 100 : 0) + (index * 100));
       });
