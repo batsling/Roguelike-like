@@ -442,6 +442,24 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
         };
       }
 
+      // Special handling for Slutty Rocket
+      if (weaponName === "Slutty Rocket") {
+        const attackBonus = level === 1 ? 1 : level === 2 ? 2 : 3;
+        return {
+          question: 'Did you kill an enemy with fire at least one time?',
+          reward: `+${attackBonus} Attack`
+        };
+      }
+
+      // Special handling for Blood Magic
+      if (weaponName === "Blood Magic") {
+        const maxHealthBonus = level === 1 ? 1 : level === 2 ? 2 : 3;
+        return {
+          question: 'Did you kill an enemy while at full health?',
+          reward: `+${maxHealthBonus} max health (permanent)`
+        };
+      }
+
       // Special handling for Blasma Pistol
       if (weaponName === "Blasma Pistol") {
         const chestSize = level === 1 ? 'small' : level === 2 ? 'normal' : 'large';
@@ -837,6 +855,59 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
 
             console.log(`${weapon.name} activated: granted ${fishCount} random fish`);
           }
+        }
+        // For Slutty Rocket: weapon gains +X Attack based on weapon level (X = level)
+        else if (weapon.name === "Slutty Rocket") {
+          // Initialize weapon bonuses and level if not present
+          if (typeof initializeWeaponBonuses === 'function') {
+            initializeWeaponBonuses(weapon);
+          }
+
+          // Bonus equals current weapon level
+          const attackBonus = weaponLevel;
+
+          // Add bonus to weapon (verification does NOT level up weapon)
+          weapon.bonuses.attack += attackBonus;
+
+          // Update UI to reflect new weapon bonuses
+          if (typeof updateTopBar === 'function') {
+            updateTopBar();
+          }
+          if (typeof updateGameStats === 'function') {
+            updateGameStats();
+          }
+
+          weaponRewardText = `Weapon gains +${attackBonus} Attack (Total: +${weapon.bonuses.attack})`;
+          weaponEffectActivated = true;
+
+          console.log(`${weapon.name} gains +${attackBonus} Attack (Level ${weaponLevel}) - total weapon bonus: +${weapon.bonuses.attack}`);
+        }
+        // For Blood Magic: player gains +X max health permanently (stored on player, not weapon)
+        else if (weapon.name === "Blood Magic") {
+          // Bonus equals current weapon level
+          const maxHealthBonus = weaponLevel;
+
+          // Add max health directly to player (not weapon-stored)
+          if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyMaxHealth === 'function') {
+            StateMutator.modifyMaxHealth(maxHealthBonus);
+          } else {
+            // Fallback: direct modification
+            maxHealth += maxHealthBonus;
+            gameState.maxHealth = maxHealth;
+          }
+
+          // Update UI to reflect new max health
+          if (typeof updateTopBar === 'function') {
+            updateTopBar();
+          }
+          if (typeof updateGameStats === 'function') {
+            updateGameStats();
+          }
+
+          weaponRewardText = `Gained +${maxHealthBonus} max health permanently (Total max health: ${maxHealth})`;
+          weaponEffectActivated = true;
+
+          console.log(`${weapon.name} grants +${maxHealthBonus} max health (Level ${weaponLevel}) - player max health: ${maxHealth}`);
         }
       }
     }

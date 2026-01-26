@@ -1,5 +1,5 @@
 // Auto-generated from Roguelikes.xlsx
-// 40 items
+// 38 items
 
 var ITEMS_DATA = [
   {
@@ -10,8 +10,7 @@ var ITEMS_DATA = [
     "image": "images/items/BallisticBoots.png",
     "reference": "Enter the Gungeon",
     "tags": [
-      "wearable",
-      "shoes"
+      "wearable"
     ]
   },
   {
@@ -41,7 +40,7 @@ var ITEMS_DATA = [
     "name": "Boon of Aphrodite",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player charms an enemy gain +1 to all combat roll bonus stats, but 20% chance for games to be Charmed",
+    "description": "If the player charms an enemy gain +1 to all combat stats, but 20% chance for games to be Charmed",
     "image": "images/items/BoonOfAphrodite.png",
     "reference": "Hades"
   },
@@ -49,7 +48,7 @@ var ITEMS_DATA = [
     "name": "Boon of Artemis",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player uses ranged strategies primarlity to win the run gain +1 to all combat roll bonus stats, but 20% chance for games to be Marked",
+    "description": "If the player uses ranged strategies primarlity to win the run gain +1 to all combat stats, but 20% chance for games to be Marked",
     "image": "images/items/BoonOfArtemis.png",
     "reference": "Hades"
   },
@@ -57,7 +56,7 @@ var ITEMS_DATA = [
     "name": "Boon of Athena",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player negates damage with a shield 5+ times gain +1 to all combat roll bonus stats, but 20% for games to be Shielded",
+    "description": "If the player negates damage with a shield 5+ times gain +1 to all combat stats, but 20% for games to be Shielded",
     "image": "images/items/BoonOfAthena.png",
     "reference": "Hades"
   },
@@ -65,7 +64,7 @@ var ITEMS_DATA = [
     "name": "Boon of Hermes",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player beats a game within an hour gain +1 to all combat roll bonus stats, but 20% chance for games to be Timed",
+    "description": "If the player beats a game within an hour gain +1 to all combat stats, but 20% chance for games to be Timed",
     "image": "images/items/BoonOfHermes.png",
     "reference": "Hades"
   },
@@ -73,7 +72,7 @@ var ITEMS_DATA = [
     "name": "Boon of Poseidon",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player defeats an enemy underwater gain +1 to all combat roll bonus stats, but 20% chance for games to be Soaked",
+    "description": "If the player defeats an enemy underwater gain +1 to all combat stats, but 20% chance for games to be Soaked",
     "image": "images/items/BoonOfPoseidon.png",
     "reference": "Hades"
   },
@@ -81,7 +80,7 @@ var ITEMS_DATA = [
     "name": "Boon of Zeus",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player defeats an enemy with lightning in their run gain +1 to all combat roll bonus stats, but 20% chance for games to be Shocked",
+    "description": "If the player defeats an enemy with lightning in their run gain +1 to all combat stats, but 20% chance for games to be Shocked",
     "image": "images/items/BoonOfZeus.png",
     "reference": "Hades"
   },
@@ -93,8 +92,7 @@ var ITEMS_DATA = [
     "image": "images/items/BowlerHat.png",
     "reference": "Brotato",
     "tags": [
-      "wearable",
-      "hat"
+      "wearable"
     ]
   },
   {
@@ -168,7 +166,7 @@ var ITEMS_DATA = [
     "name": "Lil' Bomber",
     "rarity": "Common",
     "type": "Weapon",
-    "description": "If you kill an enemy with a bomb at least one time, this weapon gains (+1/+2/+3) Strength",
+    "description": "If you kill an enemy with a bomb at least one time, gain (+1/+2/+3) Strength",
     "image": "images/items/LilBomber.png",
     "reference": "Enter the Gungeon",
     "tags": [
@@ -214,7 +212,7 @@ var ITEMS_DATA = [
     "name": "Panda",
     "rarity": "Rare",
     "type": "Passive",
-    "description": "Gain +5 Max Health and +2 Luck, but -2 Strength",
+    "description": "Gain +5 Max Health and +2 Luck, but -1 Strength",
     "image": "images/items/Panda.png",
     "reference": "Brotato"
   },
@@ -264,8 +262,7 @@ var ITEMS_DATA = [
     "image": "images/items/Sunglasses.png",
     "reference": "Enter the Gungeon",
     "tags": [
-      "wearable",
-      "glasses"
+      "wearable"
     ]
   },
   {
@@ -338,8 +335,7 @@ var ITEMS_DATA = [
     "image": "images/items/WingedBoots.png",
     "reference": "Slay the Spire",
     "tags": [
-      "wearable",
-      "shoes"
+      "wearable"
     ]
   },
   {
@@ -355,14 +351,14 @@ var ITEMS_DATA = [
   },
   {
     "name": "Beefy Ring",
-    "rarity": "Rare",
+    "rarity": "Uncommon",
     "type": "Passive",
     "description": "Gain scaling +1 Attack per 10 max health",
     "image": "images/items/BeefyRing.png",
-    "reference": "Megabonk",
+    "reference": "The Binding of Isaac",
     "tags": [
-      "wearable",
-      "ring"
+      "ring",
+      "wearable"
     ]
   },
   {
@@ -374,6 +370,30 @@ var ITEMS_DATA = [
     "reference": "Slay the Spire",
     "tags": [
       "potion"
+    ]
+  },
+  {
+    "name": "Slutty Rocket",
+    "rarity": "Common",
+    "type": "Weapon",
+    "description": "If you kill an enemy with fire at least one time, this weapon gains (+1/+2/+3) Attack",
+    "image": "images/items/SluttyRocket.png",
+    "reference": "Enter the Gungeon",
+    "tags": [
+      "gun",
+      "explosive"
+    ]
+  },
+  {
+    "name": "Blood Magic",
+    "rarity": "Rare",
+    "type": "Weapon",
+    "description": "If you kill an enemy while at full health, permanently gain (+1/+2/+3) max health",
+    "image": "images/items/BloodMagic.png",
+    "reference": "Slay the Spire",
+    "tags": [
+      "magic",
+      "health"
     ]
   }
 ];
