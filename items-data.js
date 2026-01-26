@@ -351,7 +351,7 @@ var ITEMS_DATA = [
   },
   {
     "name": "Beefy Ring",
-    "rarity": "Uncommon",
+    "rarity": "Rare",
     "type": "Passive",
     "description": "Gain scaling +1 Attack per 10 max health",
     "image": "images/items/BeefyRing.png",
@@ -374,7 +374,7 @@ var ITEMS_DATA = [
   },
   {
     "name": "Slutty Rocket",
-    "rarity": "Common",
+    "rarity": "Uncommon",
     "type": "Weapon",
     "description": "If you kill an enemy with fire at least one time, this weapon gains (+1/+2/+3) Attack",
     "image": "images/items/SluttyRocket.png",
