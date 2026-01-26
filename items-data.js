@@ -1,5 +1,5 @@
 // Auto-generated from Roguelikes.xlsx
-// 39 items
+// 40 items
 
 var ITEMS_DATA = [
   {
@@ -10,7 +10,8 @@ var ITEMS_DATA = [
     "image": "images/items/BallisticBoots.png",
     "reference": "Enter the Gungeon",
     "tags": [
-      "wearable"
+      "wearable",
+      "shoes"
     ]
   },
   {
@@ -92,7 +93,8 @@ var ITEMS_DATA = [
     "image": "images/items/BowlerHat.png",
     "reference": "Brotato",
     "tags": [
-      "wearable"
+      "wearable",
+      "hat"
     ]
   },
   {
@@ -166,7 +168,7 @@ var ITEMS_DATA = [
     "name": "Lil' Bomber",
     "rarity": "Common",
     "type": "Weapon",
-    "description": "If you kill an enemy with a bomb at least one time, gain (+1/+2/+3) Strength",
+    "description": "If you kill an enemy with a bomb at least one time, this weapon gains (+1/+2/+3) Strength",
     "image": "images/items/LilBomber.png",
     "reference": "Enter the Gungeon",
     "tags": [
@@ -262,7 +264,8 @@ var ITEMS_DATA = [
     "image": "images/items/Sunglasses.png",
     "reference": "Enter the Gungeon",
     "tags": [
-      "wearable"
+      "wearable",
+      "glasses"
     ]
   },
   {
@@ -335,7 +338,8 @@ var ITEMS_DATA = [
     "image": "images/items/WingedBoots.png",
     "reference": "Slay the Spire",
     "tags": [
-      "wearable"
+      "wearable",
+      "shoes"
     ]
   },
   {
@@ -357,7 +361,19 @@ var ITEMS_DATA = [
     "image": "images/items/BeefyRing.png",
     "reference": "Megabonk",
     "tags": [
-      "wearable"
+      "wearable",
+      "ring"
+    ]
+  },
+  {
+    "name": "Fire Potion",
+    "rarity": "Uncommon",
+    "type": "Active",
+    "description": "In combat, deal 10 damage to a target enemy",
+    "image": "images/items/FirePotion.png",
+    "reference": "Slay the Spire",
+    "tags": [
+      "potion"
     ]
   }
 ];
