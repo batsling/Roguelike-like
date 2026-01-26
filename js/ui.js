@@ -1025,7 +1025,10 @@ function updateGameStats() {
     if (statsCharacterName) statsCharacterName.textContent = character.name;
   }
 
-  // Use getEffectiveAttack() to include scalable passive bonuses (like Beefy Ring)
+  // Use getTotalBonuses() to include all bonuses (scalable passives + weapon)
+  const totalBonuses = typeof getTotalBonuses === 'function' ? getTotalBonuses() : null;
+
+  // Attack stat with bonuses
   if (statsAttack) {
     const effectiveAttack = typeof getEffectiveAttack === 'function' ? getEffectiveAttack() : attack;
     if (effectiveAttack !== attack) {
@@ -1035,10 +1038,46 @@ function updateGameStats() {
       statsAttack.textContent = attack;
     }
   }
-  if (statsStrength) statsStrength.textContent = strength;
-  if (statsDexterity) statsDexterity.textContent = dexterity;
-  if (statsIntelligence) statsIntelligence.textContent = intelligence;
-  if (statsCharisma) statsCharisma.textContent = charisma;
+
+  // Strength stat with bonuses
+  if (statsStrength) {
+    const effectiveStrength = totalBonuses ? strength + totalBonuses.strength : strength;
+    if (totalBonuses && totalBonuses.strength !== 0) {
+      statsStrength.textContent = `${effectiveStrength} (${strength}+${totalBonuses.strength})`;
+    } else {
+      statsStrength.textContent = strength;
+    }
+  }
+
+  // Dexterity stat with bonuses
+  if (statsDexterity) {
+    const effectiveDexterity = totalBonuses ? dexterity + totalBonuses.dexterity : dexterity;
+    if (totalBonuses && totalBonuses.dexterity !== 0) {
+      statsDexterity.textContent = `${effectiveDexterity} (${dexterity}+${totalBonuses.dexterity})`;
+    } else {
+      statsDexterity.textContent = dexterity;
+    }
+  }
+
+  // Intelligence stat with bonuses
+  if (statsIntelligence) {
+    const effectiveIntelligence = totalBonuses ? intelligence + totalBonuses.intelligence : intelligence;
+    if (totalBonuses && totalBonuses.intelligence !== 0) {
+      statsIntelligence.textContent = `${effectiveIntelligence} (${intelligence}+${totalBonuses.intelligence})`;
+    } else {
+      statsIntelligence.textContent = intelligence;
+    }
+  }
+
+  // Charisma stat with bonuses
+  if (statsCharisma) {
+    const effectiveCharisma = totalBonuses ? charisma + totalBonuses.charisma : charisma;
+    if (totalBonuses && totalBonuses.charisma !== 0) {
+      statsCharisma.textContent = `${effectiveCharisma} (${charisma}+${totalBonuses.charisma})`;
+    } else {
+      statsCharisma.textContent = charisma;
+    }
+  }
   if (statsReroll) statsReroll.textContent = reroll;
   if (statsDash) statsDash.textContent = dash;
   if (statsSkip) statsSkip.textContent = skip;

@@ -28,15 +28,17 @@ function initializeCombat(enemy) {
     effects: window.CombatEffects.createEffects()
   };
 
-  // Create player state snapshot
+  // Create player state snapshot with effective stats (including weapon bonuses)
+  const getEffectiveStat = window.getEffectiveStat || ((statName) => window[statName] || 0);
+
   const playerState = {
     health: health,
     maxHealth: maxHealth,
     attack: typeof getEffectiveAttack === 'function' ? getEffectiveAttack() : attack,
-    strength: strength,
-    dexterity: dexterity,
-    intelligence: intelligence,
-    charisma: charisma,
+    strength: getEffectiveStat('strength'),
+    dexterity: getEffectiveStat('dexterity'),
+    intelligence: getEffectiveStat('intelligence'),
+    charisma: getEffectiveStat('charisma'),
     effects: window.CombatEffects.createEffects()
   };
 

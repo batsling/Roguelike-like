@@ -795,21 +795,35 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
 
           console.log(`${weapon.name} activated: will grant ${chestType} chest before normal reward`);
         }
-        // For Lil' Bomber: grant +1/+2/+3 Strength
+        // For Lil' Bomber: weapon gains +1/+2/+3 Strength
         else if (weapon.name === "Lil' Bomber") {
           const strengthBonus = weaponLevel === 1 ? 1 : weaponLevel === 2 ? 2 : 3;
 
-          // Apply strength bonus
-          strength += strengthBonus;
-          gameState.strength = strength;
+          // Initialize weapon bonuses if not present
+          if (typeof initializeWeaponBonuses === 'function') {
+            initializeWeaponBonuses(weapon);
+          }
+
+          // Add bonus to weapon (cumulative)
+          weapon.bonuses.strength += strengthBonus;
+
+          // Level up weapon
+          if (weaponLevel < 3) {
+            gameState.weaponLevel = weaponLevel + 1;
+          }
+
+          // Update UI to reflect new weapon bonuses
           if (typeof updateTopBar === 'function') {
             updateTopBar();
           }
+          if (typeof updateGameStats === 'function') {
+            updateGameStats();
+          }
 
-          weaponRewardText = `+${strengthBonus} Strength`;
+          weaponRewardText = `Weapon gains +${strengthBonus} Strength (Total: +${weapon.bonuses.strength})`;
           weaponEffectActivated = true;
 
-          console.log(`${weapon.name} activated: +${strengthBonus} Strength`);
+          console.log(`${weapon.name} leveled to ${weaponLevel + 1}: weapon gains +${strengthBonus} Strength (total weapon bonus: +${weapon.bonuses.strength})`);
         }
         // For Barrel: grant 1/2/3 random fish
         else if (weapon.name === "Barrel") {

@@ -98,17 +98,94 @@ function recalculateScalablePassives() {
 }
 
 /**
+ * Get bonuses from equipped weapon
+ * @returns {Object} Object containing weapon bonuses for each stat
+ */
+function getWeaponBonuses() {
+  const bonuses = {
+    attack: 0,
+    strength: 0,
+    dexterity: 0,
+    intelligence: 0,
+    charisma: 0,
+    luck: 0
+  };
+
+  if (gameState.equippedWeapon && gameState.equippedWeapon.bonuses) {
+    const weaponBonuses = gameState.equippedWeapon.bonuses;
+    bonuses.attack += weaponBonuses.attack || 0;
+    bonuses.strength += weaponBonuses.strength || 0;
+    bonuses.dexterity += weaponBonuses.dexterity || 0;
+    bonuses.intelligence += weaponBonuses.intelligence || 0;
+    bonuses.charisma += weaponBonuses.charisma || 0;
+    bonuses.luck += weaponBonuses.luck || 0;
+  }
+
+  return bonuses;
+}
+
+/**
+ * Get total bonuses from all sources (scalable passives + weapon)
+ * @returns {Object} Object containing total bonuses for each stat
+ */
+function getTotalBonuses() {
+  const passiveBonuses = recalculateScalablePassives();
+  const weaponBonuses = getWeaponBonuses();
+
+  return {
+    attack: passiveBonuses.attack + weaponBonuses.attack,
+    strength: passiveBonuses.strength + weaponBonuses.strength,
+    dexterity: passiveBonuses.dexterity + weaponBonuses.dexterity,
+    intelligence: passiveBonuses.intelligence + weaponBonuses.intelligence,
+    charisma: passiveBonuses.charisma + weaponBonuses.charisma,
+    luck: passiveBonuses.luck + weaponBonuses.luck
+  };
+}
+
+/**
  * Get the current attack stat including all bonuses
- * @returns {number} Total attack including base attack and scalable bonuses
+ * @returns {number} Total attack including base attack and all bonuses
  */
 function getEffectiveAttack() {
-  const bonuses = recalculateScalablePassives();
+  const bonuses = getTotalBonuses();
   return attack + bonuses.attack;
+}
+
+/**
+ * Get effective value for any stat including bonuses
+ * @param {string} statName - Name of the stat (strength, dexterity, etc.)
+ * @returns {number} Total value including base stat and bonuses
+ */
+function getEffectiveStat(statName) {
+  const bonuses = getTotalBonuses();
+  const baseValue = window[statName] || 0;
+  return baseValue + (bonuses[statName] || 0);
+}
+
+/**
+ * Initialize weapon bonuses when a weapon is acquired or equipped
+ * @param {Object} weapon - The weapon object
+ */
+function initializeWeaponBonuses(weapon) {
+  if (!weapon.bonuses) {
+    weapon.bonuses = {
+      attack: 0,
+      strength: 0,
+      dexterity: 0,
+      intelligence: 0,
+      charisma: 0,
+      luck: 0
+    };
+  }
 }
 
 // Export scalable passive functions to global scope
 window.recalculateScalablePassives = recalculateScalablePassives;
+window.getWeaponBonuses = getWeaponBonuses;
+window.getTotalBonuses = getTotalBonuses;
 window.getEffectiveAttack = getEffectiveAttack;
+window.getEffectiveStat = getEffectiveStat;
+window.initializeWeaponBonuses = initializeWeaponBonuses;
 
 // ===== ITEM EFFECTS REGISTRY =====
 // Define all item effects here for easy maintenance and extension
@@ -875,6 +952,8 @@ function acquireItem(item) {
   if (isWeapon) {
     // Always add weapons as new entries (no stacking)
     itemCopy.quantity = 1;
+    // Initialize weapon bonuses
+    initializeWeaponBonuses(itemCopy);
     inventory.push(itemCopy);
     targetItemIndex = inventory.length - 1;
     console.log('📥 Weapon added to inventory (no stacking):', itemCopy.name);
