@@ -376,6 +376,30 @@ function endPlayerTurn() {
 
   addCombatLog(`--- Turn ${activeCombat.turn + 1} ---`, 'info');
 
+  // Check for Calipers: grants +5 block on turn 2 (when turn === 1)
+  if (activeCombat.turn === 1) {
+    const hasCalipers = inventory.some(item => item.name === 'Calipers');
+    if (hasCalipers) {
+      // Calculate Calipers block value (base 5, can be modified by upgrades/downgrades)
+      const calipersItem = inventory.find(item => item.name === 'Calipers');
+      let blockAmount = 5;
+
+      // Apply upgrade/downgrade modifiers if present
+      if (calipersItem && calipersItem.statModifiers) {
+        blockAmount += calipersItem.statModifiers.block || 0;
+      }
+
+      if (blockAmount > 0) {
+        if (typeof window.CombatEffects !== 'undefined' && typeof window.CombatEffects.addBlock === 'function') {
+          window.CombatEffects.addBlock(activeCombat.player, blockAmount);
+        } else {
+          activeCombat.player.effects.block += blockAmount;
+        }
+        addCombatLog(`Calipers grants +${blockAmount} Block!`, 'success');
+      }
+    }
+  }
+
   return {
     phase: 'player_turn',
     attackResult: attackResult,

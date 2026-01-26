@@ -892,6 +892,12 @@ function getItemStatModifications(itemName) {
     }
   }
 
+  // Special case: Calipers grants block in combat (not on acquire)
+  // Allow it to be upgraded/downgraded by treating block as a modifiable stat
+  if (itemName === 'Calipers') {
+    modifications.push({ stat: 'block', direction: 1 });
+  }
+
   return modifications;
 }
 
@@ -911,7 +917,7 @@ function downgradePassiveItem(item, downgradeAmount = -1) {
   // If no stat modifications found, fall back to random stat (shouldn't happen for items with effects)
   if (statModifications.length === 0) {
     console.warn(`No stat modifications found for ${item.name}, using fallback`);
-    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth'];
+    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth', 'block'];
     const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
     statModifications.push({ stat: randomStat, direction: 1 });
   }
@@ -1128,7 +1134,8 @@ function acquireItem(item) {
             discovery: 0,
             fov: 0,
             luck: 0,
-            maxHealth: 0
+            maxHealth: 0,
+            block: 0
           }
         };
 
@@ -1870,8 +1877,13 @@ function initializePassiveModifiers(item) {
       discovery: 0,
       fov: 0,
       luck: 0,
-      maxHealth: 0
+      maxHealth: 0,
+      block: 0  // For items like Calipers that grant block in combat
     };
+  }
+  // Ensure block modifier exists on older items
+  if (item.statModifiers && !('block' in item.statModifiers)) {
+    item.statModifiers.block = 0;
   }
 }
 
@@ -1969,7 +1981,8 @@ function upgradeOrDowngradePassive(isUpgrade) {
         discovery: 0,
         fov: 0,
         luck: 0,
-        maxHealth: 0
+        maxHealth: 0,
+        block: 0
       }
     };
 

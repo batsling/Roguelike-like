@@ -104,6 +104,17 @@ var ITEMS_DATA = [
     "reference": "Brotato"
   },
   {
+    "name": "Calipers",
+    "rarity": "Rare",
+    "type": "Passive",
+    "description": "On the second turn of each combat, gain +5 Block",
+    "image": "images/items/Calipers.png",
+    "reference": "Slay the Spire",
+    "tags": [
+      "defense"
+    ]
+  },
+  {
     "name": "Charm of the Vampire",
     "rarity": "Uncommon",
     "type": "Triggered",
