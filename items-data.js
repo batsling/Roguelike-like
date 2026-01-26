@@ -352,7 +352,7 @@ var ITEMS_DATA = [
   {
     "name": "Beefy Ring",
     "rarity": "Rare",
-    "type": "Passive",
+    "type": "Scaling",
     "description": "Gain scaling +1 Attack per 10 max health",
     "image": "images/items/BeefyRing.png",
     "reference": "The Binding of Isaac",
