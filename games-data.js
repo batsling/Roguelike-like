@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 581 games, 724 connections
-// 505 connected, 159 influencers
+// 587 games, 739 connections
+// 512 connected, 160 influencers
 
 var GAMES_DATA = [
   {
@@ -8,9 +8,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/redacted.jpg"
   },
   {
@@ -54,9 +53,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/30xx.jpg"
   },
   {
@@ -64,9 +62,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/9-kings.jpg"
   },
   {
@@ -74,9 +71,8 @@ var GAMES_DATA = [
     "year": 2013,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/99-levels-to-hell.jpg"
   },
   {
@@ -84,9 +80,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/a-la-card.jpg"
   },
   {
@@ -94,9 +89,8 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/a-robot-named-fight.jpg"
   },
   {
@@ -104,9 +98,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/abandoned-archive.jpg"
   },
   {
@@ -114,9 +107,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/absolum.jpg"
   },
   {
@@ -124,9 +116,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/aces-adventures.jpg"
   },
   {
@@ -146,9 +137,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/aethermancer.jpg"
   },
   {
@@ -156,9 +146,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/ak-xolotl.jpg"
   },
   {
@@ -166,9 +155,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/alina-of-the-arena.jpg"
   },
   {
@@ -211,7 +199,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Strategy",
     "connected": false,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Another Farm Roguelike: Rebirth"
@@ -223,9 +211,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": false,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/another-farm-roguelike-rebirth.jpg"
   },
   {
@@ -233,9 +220,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/aotenjo-infinite-hands.jpg"
   },
   {
@@ -243,9 +229,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/approaching-infinity.jpg"
   },
   {
@@ -255,7 +240,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/arcane-trigger.jpg"
   },
   {
@@ -263,9 +247,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/arcanium-rise-of-akhan.jpg"
   },
   {
@@ -273,9 +256,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/archons.jpg"
   },
   {
@@ -283,9 +265,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/arrogue.jpg"
   },
   {
@@ -293,9 +274,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/as-we-descend.jpg"
   },
   {
@@ -303,9 +283,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/asgard-s-fall-viking-survivors.jpg"
   },
   {
@@ -313,9 +292,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/asterogues.jpg"
   },
   {
@@ -323,9 +301,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/astral-ascent.jpg"
   },
   {
@@ -333,7 +310,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "The Last Flame"
@@ -371,7 +348,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/auto-rogue.jpg"
   },
   {
@@ -409,7 +385,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/bad-north.jpg"
   },
   {
@@ -441,7 +416,8 @@ var GAMES_DATA = [
       "Dogpile",
       "Word Play",
       "Lootplot",
-      "Dead Finger Dice"
+      "Dead Finger Dice",
+      "RogueJack21"
     ],
     "coverImage": "images/covers/balatro.jpg"
   },
@@ -450,9 +426,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/baldi-s-basics-plus.jpg"
   },
   {
@@ -460,9 +435,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/ball-x-pit.jpg"
   },
   {
@@ -482,9 +456,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/banners-of-ruin.jpg"
   },
   {
@@ -492,9 +465,8 @@ var GAMES_DATA = [
     "year": 2015,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/barony.jpg"
   },
   {
@@ -502,9 +474,8 @@ var GAMES_DATA = [
     "year": 1998,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/baroque.jpg"
   },
   {
@@ -514,7 +485,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/baroque-2007.jpg"
   },
   {
@@ -522,7 +492,7 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Legend of Keepers: Career of a Dungeon Manager",
@@ -535,9 +505,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/battle-shapers.jpg"
   },
   {
@@ -545,9 +514,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/bazr.jpg"
   },
   {
@@ -555,9 +523,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/be-my-horde.jpg"
   },
   {
@@ -567,7 +534,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/beat-blast.jpg"
   },
   {
@@ -577,7 +543,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/beneath-apple-manor.jpg"
   },
   {
@@ -585,9 +550,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/beneath-oresa.jpg"
   },
   {
@@ -595,9 +559,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/beyond-the-long-night.jpg"
   },
   {
@@ -605,9 +568,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/bingle-bingle.jpg"
   },
   {
@@ -615,9 +577,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/blazing-beaks.jpg"
   },
   {
@@ -625,7 +586,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Scourgebringer"
@@ -637,7 +598,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Strategy",
     "connected": false,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Block Tower TD 2"
@@ -649,9 +610,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": false,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/block-tower-td-2.jpg"
   },
   {
@@ -659,9 +619,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/blooddome99.jpg"
   },
   {
@@ -671,7 +630,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/blue-prince.jpg"
   },
   {
@@ -691,7 +649,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Hellcard"
@@ -703,9 +661,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/bounty-of-one.jpg"
   },
   {
@@ -713,9 +670,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/bpm-bullets-per-minute.jpg"
   },
   {
@@ -723,9 +679,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/breach-wanderers.jpg"
   },
   {
@@ -733,9 +688,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/brew.jpg"
   },
   {
@@ -766,7 +720,8 @@ var GAMES_DATA = [
       "Noobs Are Coming",
       "Maid Survivors: Little Angels",
       "Voids Vigil",
-      "Pesticide Not Required"
+      "Pesticide Not Required",
+      "Astro Prospector"
     ],
     "coverImage": "images/covers/brotato.jpg"
   },
@@ -775,9 +730,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/brutal-orchestra.jpg"
   },
   {
@@ -785,7 +739,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "CloverPit"
@@ -797,7 +751,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Cross Blitz"
@@ -821,9 +775,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/cat-god-ranch.jpg"
   },
   {
@@ -844,9 +797,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/cataclysm-bright-nights.jpg"
   },
   {
@@ -866,9 +818,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/cataclysm-the-last-generation.jpg"
   },
   {
@@ -876,9 +827,8 @@ var GAMES_DATA = [
     "year": 1991,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/cave-noire.jpg"
   },
   {
@@ -910,9 +860,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/cavity-busters.jpg"
   },
   {
@@ -920,9 +869,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": false,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/cell-command.jpg"
   },
   {
@@ -930,9 +878,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/centipede-gun.jpg"
   },
   {
@@ -940,9 +887,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/chaos-zero-nightmare.jpg"
   },
   {
@@ -950,7 +896,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Astral Ascent"
@@ -986,9 +932,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/chocobo-s-mystery-dungeon-every-buddy.jpg"
   },
   {
@@ -1008,9 +953,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/choo-choo-survivor-2.jpg"
   },
   {
@@ -1018,9 +962,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/chrono-ark.jpg"
   },
   {
@@ -1028,9 +971,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/cleanfall.jpg"
   },
   {
@@ -1038,9 +980,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/cloverpit.jpg"
   },
   {
@@ -1048,9 +989,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/clutchtime-basketball-deckbuilder.jpg"
   },
   {
@@ -1060,7 +1000,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/coal-llc.jpg"
   },
   {
@@ -1068,9 +1007,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/cobalt-core.jpg"
   },
   {
@@ -1091,9 +1029,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/commander-quest.jpg"
   },
   {
@@ -1101,9 +1038,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/conan-chop-chop.jpg"
   },
   {
@@ -1111,9 +1047,8 @@ var GAMES_DATA = [
     "year": 2015,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/convoy.jpg"
   },
   {
@@ -1121,9 +1056,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/corpse-keeper.jpg"
   },
   {
@@ -1131,7 +1065,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Vellum",
@@ -1144,9 +1078,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/crafty-survivors.jpg"
   },
   {
@@ -1156,7 +1089,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/crawl.jpg"
   },
   {
@@ -1164,9 +1096,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/crop-rotation.jpg"
   },
   {
@@ -1174,9 +1105,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/cross-blitz.jpg"
   },
   {
@@ -1186,7 +1116,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/crown-trick.jpg"
   },
   {
@@ -1194,9 +1123,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/crush-the-industry.jpg"
   },
   {
@@ -1204,9 +1132,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/crying-suns.jpg"
   },
   {
@@ -1230,7 +1157,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/cryptark.jpg"
   },
   {
@@ -1240,7 +1166,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/cube-chaos.jpg"
   },
   {
@@ -1260,7 +1185,7 @@ var GAMES_DATA = [
     "year": 2016,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Curious Expedition 2",
@@ -1273,9 +1198,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/curious-expedition-2.jpg"
   },
   {
@@ -1297,7 +1221,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/cursorblade.jpg"
   },
   {
@@ -1317,9 +1240,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/darkblade-ascent.jpg"
   },
   {
@@ -1327,7 +1249,7 @@ var GAMES_DATA = [
     "year": 2016,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Chrono Ark",
@@ -1356,9 +1278,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/darkest-dungeon-2.jpg"
   },
   {
@@ -1366,9 +1287,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dave-the-diver.jpg"
   },
   {
@@ -1405,9 +1325,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dead-estate.jpg"
   },
   {
@@ -1415,9 +1334,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dead-finger-dice.jpg"
   },
   {
@@ -1427,7 +1345,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/deadzone-rogue.jpg"
   },
   {
@@ -1437,7 +1354,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/death-by-scrolling.jpg"
   },
   {
@@ -1460,9 +1376,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/death-roads-tournament.jpg"
   },
   {
@@ -1470,9 +1385,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/deck-of-haunts.jpg"
   },
   {
@@ -1480,9 +1394,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/decktamer.jpg"
   },
   {
@@ -1490,9 +1403,8 @@ var GAMES_DATA = [
     "year": 2014,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/deep-dungeons-of-doom.jpg"
   },
   {
@@ -1526,17 +1438,15 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/delver.jpg"
   },
   {
     "name": "DemonCrawl",
     "year": 2019,
     "type": "Strategy",
-    "connected": false,
+    "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/demoncrawl.jpg"
   },
   {
@@ -1544,9 +1454,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/demonic-mahjong.jpg"
   },
   {
@@ -1556,7 +1465,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/demonlore.jpg"
   },
   {
@@ -1576,9 +1484,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/desktop-survivors-98.jpg"
   },
   {
@@ -1586,7 +1493,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Slime 3K: Rise Against Despot"
@@ -1598,9 +1505,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/devil-slayer-raksasi.jpg"
   },
   {
@@ -1608,9 +1514,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dice-fold.jpg"
   },
   {
@@ -1620,7 +1525,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dice-with-death.jpg"
   },
   {
@@ -1628,9 +1532,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dicealot.jpg"
   },
   {
@@ -1638,9 +1541,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dicefolk.jpg"
   },
   {
@@ -1650,7 +1552,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/diceomancer.jpg"
   },
   {
@@ -1676,9 +1577,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/die-for-the-lich.jpg"
   },
   {
@@ -1686,9 +1586,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/die-in-the-dungeon.jpg"
   },
   {
@@ -1696,9 +1595,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dimensionals.jpg"
   },
   {
@@ -1706,9 +1604,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/disfigure.jpg"
   },
   {
@@ -1716,9 +1613,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dog-and-goblin.jpg"
   },
   {
@@ -1726,9 +1622,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dog-witch.jpg"
   },
   {
@@ -1736,9 +1631,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dogpile.jpg"
   },
   {
@@ -1759,7 +1653,7 @@ var GAMES_DATA = [
     "year": 2013,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Cult of the Lamb",
@@ -1775,7 +1669,6 @@ var GAMES_DATA = [
     "connected": true,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/don-t-starve-together.jpg"
   },
   {
@@ -1783,7 +1676,7 @@ var GAMES_DATA = [
     "year": 2002,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Jupiter Hell",
@@ -1797,7 +1690,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Teamfight Tactics",
@@ -1827,9 +1720,8 @@ var GAMES_DATA = [
     "year": 2006,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dragon-quest-young-yangus-and-the-mystery-dungeon.jpg"
   },
   {
@@ -1837,9 +1729,8 @@ var GAMES_DATA = [
     "year": 2003,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dragonslayer.jpg"
   },
   {
@@ -1847,7 +1738,7 @@ var GAMES_DATA = [
     "year": 2014,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Dicey Dungeons"
@@ -1859,9 +1750,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dreamscaper.jpg"
   },
   {
@@ -1869,9 +1759,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/drill-core.jpg"
   },
   {
@@ -1879,9 +1768,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/drop-duchy.jpg"
   },
   {
@@ -1889,9 +1777,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/drop-pockets.jpg"
   },
   {
@@ -1899,9 +1786,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dungeon-clawler.jpg"
   },
   {
@@ -1930,7 +1816,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dungeon-deathball.jpg"
   },
   {
@@ -1940,7 +1825,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dungeon-hack.jpg"
   },
   {
@@ -1948,9 +1832,8 @@ var GAMES_DATA = [
     "year": 2008,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dungeon-of-windaria.jpg"
   },
   {
@@ -1970,9 +1853,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dungeons-degenerate-gamblers.jpg"
   },
   {
@@ -1980,9 +1862,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dungeons-of-blood-and-dream.jpg"
   },
   {
@@ -2002,7 +1883,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Sephiria"
@@ -2014,9 +1895,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/dunjungle.jpg"
   },
   {
@@ -2045,7 +1925,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/elden-ring-nightreign.jpg"
   },
   {
@@ -2053,9 +1932,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/elemental-survivors.jpg"
   },
   {
@@ -2063,9 +1941,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/elin.jpg"
   },
   {
@@ -2097,9 +1974,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/emberward.jpg"
   },
   {
@@ -2107,9 +1983,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/endgame-of-devil.jpg"
   },
   {
@@ -2138,7 +2013,8 @@ var GAMES_DATA = [
       "Abandoned Archive",
       "Asterogues",
       "Galactic Glitch",
-      "Atomicrops"
+      "Atomicrops",
+      "Astro Prospector"
     ],
     "coverImage": "images/covers/enter-the-gungeon.jpg"
   },
@@ -2147,9 +2023,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/escape-the-mad-empire.jpg"
   },
   {
@@ -2169,9 +2044,8 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/etrian-mystery-dungeon-2.jpg"
   },
   {
@@ -2181,7 +2055,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/evolings.jpg"
   },
   {
@@ -2189,9 +2062,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/exit-the-gungeon.jpg"
   },
   {
@@ -2199,9 +2071,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/facehand.jpg"
   },
   {
@@ -2211,7 +2082,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/fairy-tail-dungeons.jpg"
   },
   {
@@ -2219,9 +2089,8 @@ var GAMES_DATA = [
     "year": 1990,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/fatal-labyrinth.jpg"
   },
   {
@@ -2229,9 +2098,8 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/fear-hunger.jpg"
   },
   {
@@ -2239,9 +2107,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/feed-the-deep.jpg"
   },
   {
@@ -2273,9 +2140,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/fish-fear-me.jpg"
   },
   {
@@ -2297,7 +2163,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/flick-shot-rogues.jpg"
   },
   {
@@ -2305,9 +2170,8 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/flinthook.jpg"
   },
   {
@@ -2317,7 +2181,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/footgun-underground.jpg"
   },
   {
@@ -2325,7 +2188,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "For the King 2",
@@ -2338,9 +2201,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/for-the-king-2.jpg"
   },
   {
@@ -2350,7 +2212,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/forestrike.jpg"
   },
   {
@@ -2358,9 +2219,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/forward-escape-the-fold.jpg"
   },
   {
@@ -2368,9 +2228,8 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/freaky-awesome.jpg"
   },
   {
@@ -2378,9 +2237,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/from-the-top.jpg"
   },
   {
@@ -2411,7 +2269,8 @@ var GAMES_DATA = [
       "Void War",
       "Void Bastards",
       "Has-Been Heroes",
-      "Crying Suns"
+      "Crying Suns",
+      "BroomSweeper"
     ],
     "coverImage": "images/covers/ftl.jpg"
   },
@@ -2420,9 +2279,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/fury-unleashed.jpg"
   },
   {
@@ -2430,9 +2288,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/galactic-glitch.jpg"
   },
   {
@@ -2440,9 +2297,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/garden-of-witches.jpg"
   },
   {
@@ -2450,9 +2306,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/gatekeeper.jpg"
   },
   {
@@ -2460,7 +2315,7 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": false,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Cell Command"
@@ -2472,7 +2327,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": false,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Geometry Arena 2"
@@ -2484,9 +2339,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": false,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/geometry-arena-2.jpg"
   },
   {
@@ -2496,7 +2350,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/gnomes.jpg"
   },
   {
@@ -2506,7 +2359,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/godbreakers.jpg"
   },
   {
@@ -2514,9 +2366,8 @@ var GAMES_DATA = [
     "year": 2014,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/golden-krone-hotel.jpg"
   },
   {
@@ -2524,9 +2375,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/golden-light.jpg"
   },
   {
@@ -2534,9 +2384,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/golfie.jpg"
   },
   {
@@ -2556,9 +2405,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/gonner2.jpg"
   },
   {
@@ -2566,9 +2414,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/goobies.jpg"
   },
   {
@@ -2578,7 +2425,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/granvir.jpg"
   },
   {
@@ -2586,9 +2432,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/greedland.jpg"
   },
   {
@@ -2596,9 +2441,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/griftlands.jpg"
   },
   {
@@ -2633,9 +2477,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/gunlocked-2.jpg"
   },
   {
@@ -2657,9 +2500,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/hadean-tactics.jpg"
   },
   {
@@ -2667,7 +2509,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "[Redacted]",
@@ -2713,9 +2555,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/hades-ii.jpg"
   },
   {
@@ -2748,9 +2589,8 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/hand-of-fate-2.jpg"
   },
   {
@@ -2758,9 +2598,8 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/has-been-heroes.jpg"
   },
   {
@@ -2770,7 +2609,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/haste.jpg"
   },
   {
@@ -2778,9 +2616,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/have-a-nice-death.jpg"
   },
   {
@@ -2788,9 +2625,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/he-is-coming.jpg"
   },
   {
@@ -2800,7 +2636,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/heading-out.jpg"
   },
   {
@@ -2810,7 +2645,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/heat-signature.jpg"
   },
   {
@@ -2820,7 +2654,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/heavy-bullets.jpg"
   },
   {
@@ -2828,9 +2661,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/hell-clock.jpg"
   },
   {
@@ -2840,7 +2672,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/hellboy-web-of-wyrd.jpg"
   },
   {
@@ -2848,9 +2679,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/hellcard.jpg"
   },
   {
@@ -2858,9 +2688,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/helskate.jpg"
   },
   {
@@ -2868,9 +2697,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/heretic-s-fork.jpg"
   },
   {
@@ -2878,7 +2706,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Heroes of Hammerwatch II",
@@ -2892,9 +2720,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/heroes-of-hammerwatch-ii.jpg"
   },
   {
@@ -2902,9 +2729,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/holocure-save-the-fans.jpg"
   },
   {
@@ -2912,9 +2738,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/house-of-necrosis.jpg"
   },
   {
@@ -2922,9 +2747,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/i-am-legion-stand-survivors.jpg"
   },
   {
@@ -2932,9 +2756,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/icewall.jpg"
   },
   {
@@ -2942,9 +2765,8 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/immortal-redneck.jpg"
   },
   {
@@ -2952,9 +2774,8 @@ var GAMES_DATA = [
     "year": 2015,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/infinite-space-iii-sea-of-stars.jpg"
   },
   {
@@ -2962,9 +2783,8 @@ var GAMES_DATA = [
     "year": 2011,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/infra-arcana.jpg"
   },
   {
@@ -2972,7 +2792,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Backpack Hero",
@@ -2990,9 +2810,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/insurmountable.jpg"
   },
   {
@@ -3022,9 +2841,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/iratus-lord-of-the-dead.jpg"
   },
   {
@@ -3032,9 +2850,8 @@ var GAMES_DATA = [
     "year": 2001,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/iter-vehemens-ad-necem.jpg"
   },
   {
@@ -3042,9 +2859,8 @@ var GAMES_DATA = [
     "year": 2007,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/izuna-2-the-unemployed-ninja-returns.jpg"
   },
   {
@@ -3064,9 +2880,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/jotunnslayer-hordes-of-hel.jpg"
   },
   {
@@ -3074,9 +2889,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/jupiter-hell.jpg"
   },
   {
@@ -3084,40 +2898,36 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/just-king.jpg"
   },
   {
-    "name": "Kādomon: Hyper Auto Battlers",
+    "name": "K\u0101domon: Hyper Auto Battlers",
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/k-domon-hyper-auto-battlers.jpg"
-  },
-  {
-    "name": "Keeper's Toll",
-    "year": 2023,
-    "type": "Action",
-    "connected": true,
-    "influenced": false,
-    "tags": [],
-    "gamesInfluenced": [],
-    "coverImage": "images/covers/keeper-s-toll.jpg"
   },
   {
     "name": "KeeperRL",
     "year": 2015,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/keeperrl.jpg"
+  },
+  {
+    "name": "Keeper's Toll",
+    "year": 2023,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "coverImage": "images/covers/keeper-s-toll.jpg"
   },
   {
     "name": "Kill the Brickman",
@@ -3126,7 +2936,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/kill-the-brickman.jpg"
   },
   {
@@ -3134,7 +2943,7 @@ var GAMES_DATA = [
     "year": 2016,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Dome Keeper",
@@ -3148,9 +2957,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/knightica.jpg"
   },
   {
@@ -3158,9 +2966,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/knights-in-tight-spaces.jpg"
   },
   {
@@ -3168,9 +2975,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/knock-on-the-coffin-lid.jpg"
   },
   {
@@ -3178,9 +2984,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/lake-of-creatures.jpg"
   },
   {
@@ -3188,9 +2993,8 @@ var GAMES_DATA = [
     "year": 1986,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/larn.jpg"
   },
   {
@@ -3198,9 +3002,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/legend-of-keepers-career-of-a-dungeon-manager.jpg"
   },
   {
@@ -3208,9 +3011,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/let-him-cook.jpg"
   },
   {
@@ -3220,7 +3022,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/let-s-revolution.jpg"
   },
   {
@@ -3241,9 +3042,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/lone-ruin.jpg"
   },
   {
@@ -3251,9 +3051,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/lonestar.jpg"
   },
   {
@@ -3261,7 +3060,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Super Fantasy Kingdom"
@@ -3273,9 +3072,8 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/loot-rascals.jpg"
   },
   {
@@ -3285,7 +3083,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/loot-river.jpg"
   },
   {
@@ -3293,9 +3090,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/lootplot.jpg"
   },
   {
@@ -3303,9 +3099,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/lost-flame.jpg"
   },
   {
@@ -3313,9 +3108,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/lost-in-random-the-eternal-die.jpg"
   },
   {
@@ -3323,9 +3117,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/luck-loot.jpg"
   },
   {
@@ -3350,7 +3143,8 @@ var GAMES_DATA = [
       "Cat God Ranch",
       "Omelet You Cook",
       "Steve's Warehouse: Physics. Roguelike. Chaos.",
-      "Runeborn"
+      "Runeborn",
+      "BroomSweeper"
     ],
     "coverImage": "images/covers/luck-be-a-landlord.jpg"
   },
@@ -3359,9 +3153,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/lucky-hero.jpg"
   },
   {
@@ -3369,7 +3162,7 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Vampire Survivors"
@@ -3381,9 +3174,11 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "Astro Prospector"
+    ],
     "coverImage": "images/covers/magicraft.jpg"
   },
   {
@@ -3391,9 +3186,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/maid-survivors-little-angels.jpg"
   },
   {
@@ -3401,9 +3195,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/mainframe-defenders.jpg"
   },
   {
@@ -3411,9 +3204,8 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/mana-spark.jpg"
   },
   {
@@ -3421,9 +3213,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/maze-mice.jpg"
   },
   {
@@ -3433,7 +3224,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/mechanibot.jpg"
   },
   {
@@ -3441,9 +3231,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/megabonk.jpg"
   },
   {
@@ -3451,9 +3240,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/meme-mayhem.jpg"
   },
   {
@@ -3461,9 +3249,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/menace-from-the-deep.jpg"
   },
   {
@@ -3471,9 +3258,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/merge-maestro.jpg"
   },
   {
@@ -3481,9 +3267,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/metal-slug-tactics.jpg"
   },
   {
@@ -3491,9 +3276,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/metal-unit.jpg"
   },
   {
@@ -3503,7 +3287,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/metallic-child.jpg"
   },
   {
@@ -3513,7 +3296,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/million-depth.jpg"
   },
   {
@@ -3523,7 +3305,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/mimic-logic.jpg"
   },
   {
@@ -3531,9 +3312,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/mistrogue-mist-and-the-living-dungeons.jpg"
   },
   {
@@ -3541,9 +3321,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/monmusu-gladiator.jpg"
   },
   {
@@ -3563,9 +3342,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/monster-girls-and-the-mysterious-adventure-2.jpg"
   },
   {
@@ -3592,9 +3370,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/monster-train-2.jpg"
   },
   {
@@ -3602,9 +3379,8 @@ var GAMES_DATA = [
     "year": 2015,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/monstrum.jpg"
   },
   {
@@ -3612,9 +3388,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/moon-watch.jpg"
   },
   {
@@ -3634,9 +3409,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/moonlighter-2-the-endless-vault.jpg"
   },
   {
@@ -3644,9 +3418,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/moonring.jpg"
   },
   {
@@ -3668,7 +3441,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/morsels.jpg"
   },
   {
@@ -3676,9 +3448,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/mortal-sin.jpg"
   },
   {
@@ -3698,9 +3469,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/mothergunship-forge.jpg"
   },
   {
@@ -3708,9 +3478,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/muck.jpg"
   },
   {
@@ -3718,9 +3487,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/my-card-is-better-than-your-card.jpg"
   },
   {
@@ -3744,9 +3512,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/mythical-concept-starnaut.jpg"
   },
   {
@@ -3754,9 +3521,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/necrobouncer.jpg"
   },
   {
@@ -3766,7 +3532,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/necroking.jpg"
   },
   {
@@ -3774,7 +3539,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Necrosmith 2",
@@ -3787,9 +3552,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/necrosmith-2.jpg"
   },
   {
@@ -3809,9 +3573,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/neon-abyss-2.jpg"
   },
   {
@@ -3819,9 +3582,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/neophyte.jpg"
   },
   {
@@ -3856,9 +3618,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/night-swarm.jpg"
   },
   {
@@ -3866,9 +3627,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/nimrods.jpg"
   },
   {
@@ -3891,9 +3651,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/nomad-survival.jpg"
   },
   {
@@ -3901,9 +3660,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/noobs-are-coming.jpg"
   },
   {
@@ -3911,9 +3669,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/nordhold.jpg"
   },
   {
@@ -3921,9 +3678,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/nordic-ashes-survivors-of-ragnarok.jpg"
   },
   {
@@ -3931,9 +3687,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/nova-drift.jpg"
   },
   {
@@ -3941,9 +3696,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/nubby-s-number-factory.jpg"
   },
   {
@@ -3968,7 +3722,9 @@ var GAMES_DATA = [
       "Tiny Rogues",
       "Voidigo",
       "GoNNER",
-      "Atomicrops"
+      "Atomicrops",
+      "Astro Prospector",
+      "Rocket Rats"
     ],
     "coverImage": "images/covers/nuclear-throne.jpg"
   },
@@ -3977,9 +3733,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/nunholy.jpg"
   },
   {
@@ -3989,7 +3744,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/octogeddon.jpg"
   },
   {
@@ -3997,9 +3751,8 @@ var GAMES_DATA = [
     "year": 2026,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/oddcore.jpg"
   },
   {
@@ -4007,9 +3760,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/odinfall.jpg"
   },
   {
@@ -4017,7 +3769,7 @@ var GAMES_DATA = [
     "year": 1987,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "UnReal World"
@@ -4029,9 +3781,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/omelet-you-cook.jpg"
   },
   {
@@ -4039,9 +3790,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/one-step-from-eden.jpg"
   },
   {
@@ -4049,9 +3799,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/onebit-adventure.jpg"
   },
   {
@@ -4061,7 +3810,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/otxo.jpg"
   },
   {
@@ -4069,9 +3817,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/pairs-perils.jpg"
   },
   {
@@ -4079,9 +3826,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/paper-animal-adventure.jpg"
   },
   {
@@ -4089,9 +3835,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/paper-planet.jpg"
   },
   {
@@ -4102,7 +3847,7 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Kādomon: Hyper Auto Battlers"
+      "K\u0101domon: Hyper Auto Battlers"
     ],
     "coverImage": "images/covers/patch-quest.jpg"
   },
@@ -4111,9 +3856,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/path-of-achra.jpg"
   },
   {
@@ -4147,9 +3891,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/pesticide-not-required.jpg"
   },
   {
@@ -4157,9 +3900,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/picayune-dreams.jpg"
   },
   {
@@ -4167,9 +3909,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/pip-my-dice.jpg"
   },
   {
@@ -4192,7 +3933,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/plateup.jpg"
   },
   {
@@ -4200,9 +3940,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/plinko-panic.jpg"
   },
   {
@@ -4210,9 +3949,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/pocket-crystal-league.jpg"
   },
   {
@@ -4222,43 +3960,40 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/pogo-rogue.jpg"
   },
   {
-    "name": "Pokémon Mystery Dungeon: Explorers of Sky",
+    "name": "Pok\u00e9mon Mystery Dungeon: Explorers of Sky",
     "year": 2009,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-explorers-of-sky.jpg"
   },
   {
-    "name": "Pokémon Mystery Dungeon: Explorers of Time and Explorers of Darkness",
+    "name": "Pok\u00e9mon Mystery Dungeon: Explorers of Time and Explorers of Darkness",
     "year": 2007,
     "type": "Traditional",
     "connected": true,
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Pokémon Mystery Dungeon: Explorers of Sky"
+      "Pok\u00e9mon Mystery Dungeon: Explorers of Sky"
     ],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-explorers-of-time-and-explorers-of-darkness.jpg"
   },
   {
-    "name": "Pokémon Mystery Dungeon: Gates to Infinity",
+    "name": "Pok\u00e9mon Mystery Dungeon: Gates to Infinity",
     "year": 2012,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-gates-to-infinity.jpg"
   },
   {
-    "name": "Pokémon Mystery Dungeon: Red and Blue Rescue Team",
+    "name": "Pok\u00e9mon Mystery Dungeon: Red and Blue Rescue Team",
     "year": 2005,
     "type": "Traditional",
     "connected": true,
@@ -4266,41 +4001,38 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Paper Animal Adventure",
-      "Pokémon Mystery Dungeon: Explorers of Time and Explorers of Darkness",
-      "Pokémon Mystery Dungeon: Gates to Infinity",
-      "Pokémon Super Mystery Dungeon",
-      "Pokémon Mystery Dungeon: Rescue Team DX"
+      "Pok\u00e9mon Mystery Dungeon: Explorers of Time and Explorers of Darkness",
+      "Pok\u00e9mon Mystery Dungeon: Gates to Infinity",
+      "Pok\u00e9mon Super Mystery Dungeon",
+      "Pok\u00e9mon Mystery Dungeon: Rescue Team DX"
     ],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-red-and-blue-rescue-team.jpg"
   },
   {
-    "name": "Pokémon Mystery Dungeon: Rescue Team DX",
+    "name": "Pok\u00e9mon Mystery Dungeon: Rescue Team DX",
     "year": 2020,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-rescue-team-dx.jpg"
   },
   {
-    "name": "Pokémon Super Mystery Dungeon",
+    "name": "Pok\u00e9mon Super Mystery Dungeon",
     "year": 2015,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/pok-mon-super-mystery-dungeon.jpg"
   },
   {
-    "name": "PokéRogue",
+    "name": "Pok\u00e9Rogue",
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/pok-rogue.jpg"
   },
   {
@@ -4308,7 +4040,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Aces & Adventures"
@@ -4332,9 +4064,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/primordialis.jpg"
   },
   {
@@ -4342,9 +4073,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/putrid-shot-ultra.jpg"
   },
   {
@@ -4352,9 +4082,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/quasimorph.jpg"
   },
   {
@@ -4364,7 +4093,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/rabbit-and-steel.jpg"
   },
   {
@@ -4372,9 +4100,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/rack-and-slay.jpg"
   },
   {
@@ -4382,9 +4109,8 @@ var GAMES_DATA = [
     "year": 1992,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/ragnarok.jpg"
   },
   {
@@ -4392,9 +4118,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/ram-random-access-mayhem.jpg"
   },
   {
@@ -4402,9 +4127,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/ratropolis.jpg"
   },
   {
@@ -4424,9 +4148,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/reality-break.jpg"
   },
   {
@@ -4434,9 +4157,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/realm-of-ink.jpg"
   },
   {
@@ -4444,7 +4166,7 @@ var GAMES_DATA = [
     "year": 2010,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Talented"
@@ -4456,9 +4178,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/repetendium.jpg"
   },
   {
@@ -4466,9 +4187,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/return-to-abyss.jpg"
   },
   {
@@ -4476,7 +4196,7 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Swapmeat"
@@ -4488,9 +4208,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/revita.jpg"
   },
   {
@@ -4498,7 +4217,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Path of Achra",
@@ -4511,9 +4230,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/rift-wizard-2.jpg"
   },
   {
@@ -4521,9 +4239,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/right-and-down.jpg"
   },
   {
@@ -4531,9 +4248,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/ring-of-pain.jpg"
   },
   {
@@ -4553,7 +4269,7 @@ var GAMES_DATA = [
     "year": 2013,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Dead Cells",
@@ -4575,12 +4291,13 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Muck",
-      "PokéRogue",
+      "Pok\u00e9Rogue",
       "TerRoguelike",
       "Gatekeeper",
       "Megabonk",
       "Vellum",
-      "Swapmeat"
+      "Swapmeat",
+      "Lort"
     ],
     "coverImage": "images/covers/risk-of-rain-2.jpg"
   },
@@ -4589,9 +4306,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/risk-of-rain-returns.jpg"
   },
   {
@@ -4599,9 +4315,8 @@ var GAMES_DATA = [
     "year": 2014,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/road-not-taken.jpg"
   },
   {
@@ -4622,7 +4337,7 @@ var GAMES_DATA = [
     "year": 1980,
     "type": "Traditional",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Brogue",
@@ -4648,9 +4363,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/rogue-empire.jpg"
   },
   {
@@ -4658,9 +4372,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/rogue-heroes-ruins-of-tasos.jpg"
   },
   {
@@ -4689,9 +4402,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/rogue-legacy-2.jpg"
   },
   {
@@ -4699,9 +4411,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/rogue-lords.jpg"
   },
   {
@@ -4709,7 +4420,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Nordhold",
@@ -4724,27 +4435,15 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/rogue-wizards.jpg"
-  },
-  {
-    "name": "Rogue-Fp",
-    "year": 2023,
-    "type": "Traditional",
-    "connected": true,
-    "influenced": false,
-    "tags": [],
-    "gamesInfluenced": [],
-    "coverImage": "images/covers/rogue-fp.jpg"
   },
   {
     "name": "Rogue: Genesia",
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/rogue-genesia.jpg"
   },
   {
@@ -4760,11 +4459,20 @@ var GAMES_DATA = [
     "coverImage": "images/covers/roguebook.jpg"
   },
   {
+    "name": "Rogue-Fp",
+    "year": 2023,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "coverImage": "images/covers/rogue-fp.jpg"
+  },
+  {
     "name": "Roll",
     "year": 2021,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "RollScape"
@@ -4776,9 +4484,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/rollscape.jpg"
   },
   {
@@ -4788,7 +4495,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/rounds.jpg"
   },
   {
@@ -4796,9 +4502,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/runeborn.jpg"
   },
   {
@@ -4806,9 +4511,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/scarlet-tower.jpg"
   },
   {
@@ -4828,9 +4532,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/sea-of-survivors.jpg"
   },
   {
@@ -4838,9 +4541,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/sephiria.jpg"
   },
   {
@@ -4848,9 +4550,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/shadowveil-legend-of-the-five-rings.jpg"
   },
   {
@@ -4858,9 +4559,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/shape-of-dreams.jpg"
   },
   {
@@ -4868,9 +4568,8 @@ var GAMES_DATA = [
     "year": 2014,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/shattered-pixel-dungeon.jpg"
   },
   {
@@ -4878,9 +4577,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/ship-of-fools.jpg"
   },
   {
@@ -4925,9 +4623,8 @@ var GAMES_DATA = [
     "year": 2002,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/shiren-the-wanderer-gaiden-asuka-the-swordswoman.jpg"
   },
   {
@@ -4947,9 +4644,8 @@ var GAMES_DATA = [
     "year": 2001,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/shiren-the-wanderer-gb2-magic-castle-of-the-desert.jpg"
   },
   {
@@ -4957,9 +4653,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/shiren-the-wanderer-the-mystery-dungeon-of-serpentcoil-island.jpg"
   },
   {
@@ -4979,9 +4674,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/shogun-showdown.jpg"
   },
   {
@@ -4989,7 +4683,7 @@ var GAMES_DATA = [
     "year": 2010,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Nuclear Throne"
@@ -5001,7 +4695,7 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Bingle Bingle",
@@ -5014,9 +4708,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/shovel-knight-dig.jpg"
   },
   {
@@ -5024,9 +4717,8 @@ var GAMES_DATA = [
     "year": 2012,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/sil.jpg"
   },
   {
@@ -5034,7 +4726,7 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Realm of Ink"
@@ -5046,9 +4738,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/sky-s-the-limit-mah-jong.jpg"
   },
   {
@@ -5058,7 +4749,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/slasher-s-keep.jpg"
   },
   {
@@ -5090,7 +4780,7 @@ var GAMES_DATA = [
       "Hadean Tactics",
       "Hellcard",
       "Iratus: Lord of the Dead",
-      "Kādomon: Hyper Auto Battlers",
+      "K\u0101domon: Hyper Auto Battlers",
       "Legend of Keepers: Career of a Dungeon Manager",
       "Luck be a Landlord",
       "Magicraft",
@@ -5149,7 +4839,9 @@ var GAMES_DATA = [
       "Die For The Lich",
       "Right and Down",
       "Tower Escape",
-      "Atomicrops"
+      "Atomicrops",
+      "BroomSweeper",
+      "RogueJack21"
     ],
     "coverImage": "images/covers/slay-the-spire.jpg"
   },
@@ -5170,9 +4862,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/slime-3k-rise-against-despot.jpg"
   },
   {
@@ -5182,7 +4873,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/slot-dungeons.jpg"
   },
   {
@@ -5192,7 +4882,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/slots-daggers.jpg"
   },
   {
@@ -5200,7 +4889,7 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Centipede Gun",
@@ -5215,9 +4904,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/sodaman.jpg"
   },
   {
@@ -5227,7 +4915,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/sol-cesto.jpg"
   },
   {
@@ -5237,7 +4924,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/solitairica.jpg"
   },
   {
@@ -5257,9 +4943,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/soulash-2.jpg"
   },
   {
@@ -5267,9 +4952,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/soulstone-survivors.jpg"
   },
   {
@@ -5279,7 +4963,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/space-beast-terror-fright.jpg"
   },
   {
@@ -5287,9 +4970,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/spellbook-demonslayers.jpg"
   },
   {
@@ -5297,9 +4979,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/spellmasons.jpg"
   },
   {
@@ -5307,9 +4988,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/spellrogue.jpg"
   },
   {
@@ -5329,9 +5009,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/spelunky-2.jpg"
   },
   {
@@ -5375,9 +5054,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/spin-hero.jpg"
   },
   {
@@ -5385,9 +5063,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/spirit-hunters-infinite-horde.jpg"
   },
   {
@@ -5395,9 +5072,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/spiritfall.jpg"
   },
   {
@@ -5405,9 +5081,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/spirits-abyss.jpg"
   },
   {
@@ -5415,9 +5090,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/stackflow.jpg"
   },
   {
@@ -5437,9 +5111,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/starlight-revolver.jpg"
   },
   {
@@ -5447,9 +5120,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/starvaders.jpg"
   },
   {
@@ -5457,9 +5129,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/steve-s-warehouse-physics-roguelike-chaos.jpg"
   },
   {
@@ -5469,7 +5140,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/stick-it-to-the-stickman.jpg"
   },
   {
@@ -5477,9 +5147,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/stoneshard.jpg"
   },
   {
@@ -5499,9 +5168,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/streets-of-rogue.jpg"
   },
   {
@@ -5509,9 +5177,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/sulfur.jpg"
   },
   {
@@ -5519,11 +5186,11 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Strategy",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Backpack Battles",
-      "Kādomon: Hyper Auto Battlers",
+      "K\u0101domon: Hyper Auto Battlers",
       "Knightica",
       "Nubby's Number Factory",
       "Merge Maestro",
@@ -5538,7 +5205,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/super-bullet-break.jpg"
   },
   {
@@ -5546,9 +5212,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/super-fantasy-kingdom.jpg"
   },
   {
@@ -5556,7 +5221,7 @@ var GAMES_DATA = [
     "year": 2013,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "GoNNER"
@@ -5568,9 +5233,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/swapmeat.jpg"
   },
   {
@@ -5578,9 +5242,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/sworn.jpg"
   },
   {
@@ -5588,9 +5251,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/synthetik-2.jpg"
   },
   {
@@ -5610,9 +5272,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/talented.jpg"
   },
   {
@@ -5634,9 +5295,8 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/tangledeep.jpg"
   },
   {
@@ -5644,9 +5304,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/tape-to-tape.jpg"
   },
   {
@@ -5657,7 +5316,8 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Knightica"
+      "Knightica",
+      "Dwarves: Glory, Death and Loot"
     ],
     "coverImage": "images/covers/teamfight-tactics.jpg"
   },
@@ -5666,9 +5326,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/teenage-mutant-ninja-turtles-splintered-fate.jpg"
   },
   {
@@ -5676,9 +5335,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/temtem-swarm.jpg"
   },
   {
@@ -5686,9 +5344,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/terraformers.jpg"
   },
   {
@@ -5696,9 +5353,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/terroguelike.jpg"
   },
   {
@@ -5766,9 +5422,8 @@ var GAMES_DATA = [
     "year": 2014,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-binding-of-isaac-rebirth.jpg"
   },
   {
@@ -5776,9 +5431,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-doors-of-trithius.jpg"
   },
   {
@@ -5788,7 +5442,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-fable-manga-build-roguelike.jpg"
   },
   {
@@ -5796,9 +5449,8 @@ var GAMES_DATA = [
     "year": 2016,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-flame-in-the-flood.jpg"
   },
   {
@@ -5806,9 +5458,8 @@ var GAMES_DATA = [
     "year": 2013,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-guided-fate-paradox.jpg"
   },
   {
@@ -5818,7 +5469,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-king-is-watching.jpg"
   },
   {
@@ -5826,9 +5476,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-last-flame.jpg"
   },
   {
@@ -5836,9 +5485,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-last-spell.jpg"
   },
   {
@@ -5858,9 +5506,8 @@ var GAMES_DATA = [
     "year": 2004,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-nightmare-of-druaga.jpg"
   },
   {
@@ -5868,9 +5515,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-ouroboros-king.jpg"
   },
   {
@@ -5878,9 +5524,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-rogue-prince-of-persia.jpg"
   },
   {
@@ -5888,9 +5533,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-royal-writ.jpg"
   },
   {
@@ -5898,9 +5542,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-spell-brigade.jpg"
   },
   {
@@ -5908,9 +5551,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-unliving.jpg"
   },
   {
@@ -5918,9 +5560,8 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/the-void-rains-upon-her-heart.jpg"
   },
   {
@@ -5930,7 +5571,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/there-are-no-orcs.jpg"
   },
   {
@@ -5938,9 +5578,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/time-wasters.jpg"
   },
   {
@@ -5948,9 +5587,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/tiny-rogues.jpg"
   },
   {
@@ -5958,9 +5596,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/tinyfolks.jpg"
   },
   {
@@ -5981,9 +5618,8 @@ var GAMES_DATA = [
     "year": 2019,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/toejam-earl-back-in-the-groove.jpg"
   },
   {
@@ -5991,9 +5627,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/tombstar.jpg"
   },
   {
@@ -6013,9 +5648,8 @@ var GAMES_DATA = [
     "year": 2002,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/torneko-s-great-adventure-3.jpg"
   },
   {
@@ -6032,7 +5666,7 @@ var GAMES_DATA = [
       "Chocobo's Mysterious Dungeon",
       "Torneko: The Last Hope",
       "The Nightmare of Druaga",
-      "Pokémon Mystery Dungeon: Red and Blue Rescue Team",
+      "Pok\u00e9mon Mystery Dungeon: Red and Blue Rescue Team",
       "Dragon Quest: Young Yangus and the Mystery Dungeon",
       "Etrian Mystery Dungeon",
       "Izuna: Legend of the Unemployed Ninja",
@@ -6050,9 +5684,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/touhou-crawl.jpg"
   },
   {
@@ -6060,9 +5693,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/touhou-lost-branch-of-legend.jpg"
   },
   {
@@ -6070,9 +5702,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/tower-dominion.jpg"
   },
   {
@@ -6080,9 +5711,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/tower-escape.jpg"
   },
   {
@@ -6090,9 +5720,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/tower-factory.jpg"
   },
   {
@@ -6112,9 +5741,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/toy-smash-kaboom.jpg"
   },
   {
@@ -6122,9 +5750,8 @@ var GAMES_DATA = [
     "year": 2012,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/ultima-ratio-regum.jpg"
   },
   {
@@ -6132,9 +5759,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/ultimate-adom.jpg"
   },
   {
@@ -6144,7 +5770,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/uma-musume-pretty-derby.jpg"
   },
   {
@@ -6154,7 +5779,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/underdogs.jpg"
   },
   {
@@ -6174,9 +5798,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/undermine-2.jpg"
   },
   {
@@ -6197,9 +5820,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/unexplored-2-the-wayfarer-s-legacy.jpg"
   },
   {
@@ -6219,9 +5841,8 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/vagante.jpg"
   },
   {
@@ -6229,9 +5850,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/vampire-hunters.jpg"
   },
   {
@@ -6300,7 +5920,8 @@ var GAMES_DATA = [
       "Nimrods",
       "Mythical Concept Starnaut",
       "Choo Choo Survivor",
-      "Pesticide Not Required"
+      "Pesticide Not Required",
+      "Astro Prospector"
     ],
     "coverImage": "images/covers/vampire-survivors.jpg"
   },
@@ -6309,9 +5930,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/vellum.jpg"
   },
   {
@@ -6319,9 +5939,8 @@ var GAMES_DATA = [
     "year": 2026,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/vital-shell.jpg"
   },
   {
@@ -6341,9 +5960,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/vivid-world.jpg"
   },
   {
@@ -6363,9 +5981,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/void-war.jpg"
   },
   {
@@ -6373,9 +5990,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/voidigo.jpg"
   },
   {
@@ -6383,9 +5999,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/voids-vigil.jpg"
   },
   {
@@ -6405,9 +6020,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/wall-world-2.jpg"
   },
   {
@@ -6415,9 +6029,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/warpvector.jpg"
   },
   {
@@ -6425,9 +6038,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/warriors-abyss.jpg"
   },
   {
@@ -6435,9 +6047,8 @@ var GAMES_DATA = [
     "year": 2017,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/warsim-the-realm-of-aslona.jpg"
   },
   {
@@ -6445,9 +6056,8 @@ var GAMES_DATA = [
     "year": 2011,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/wayward.jpg"
   },
   {
@@ -6457,7 +6067,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/we-need-to-go-deeper.jpg"
   },
   {
@@ -6477,9 +6086,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/whisker-squadron-survivor.jpg"
   },
   {
@@ -6489,7 +6097,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/white-knuckle.jpg"
   },
   {
@@ -6497,9 +6104,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/wild-bastards.jpg"
   },
   {
@@ -6509,7 +6115,6 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/wildermyth.jpg"
   },
   {
@@ -6529,9 +6134,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/windblown.jpg"
   },
   {
@@ -6539,7 +6143,7 @@ var GAMES_DATA = [
     "year": 2018,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Astral Ascent",
@@ -6554,9 +6158,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/wizard-of-legend-2.jpg"
   },
   {
@@ -6564,9 +6167,8 @@ var GAMES_DATA = [
     "year": 2021,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/wizardchess.jpg"
   },
   {
@@ -6574,9 +6176,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/word-play.jpg"
   },
   {
@@ -6584,9 +6185,8 @@ var GAMES_DATA = [
     "year": 2025,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/wordatro.jpg"
   },
   {
@@ -6594,9 +6194,8 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/words-can-kill.jpg"
   },
   {
@@ -6604,9 +6203,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/yet-another-zombie-survivors.jpg"
   },
   {
@@ -6614,9 +6212,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/yohane-the-parhelion-numazu-in-the-mirage.jpg"
   },
   {
@@ -6648,9 +6245,8 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/zet-zillions.jpg"
   },
   {
@@ -6658,7 +6254,7 @@ var GAMES_DATA = [
     "year": 2014,
     "type": "Action",
     "connected": true,
-    "influenced": true,
+    "influenced": false,
     "tags": [],
     "gamesInfluenced": [
       "Ziggurat 2",
@@ -6671,9 +6267,8 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/ziggurat-2.jpg"
   },
   {
@@ -6681,9 +6276,8 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Deckbuilding",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/zoeti.jpg"
   },
   {
@@ -6691,9 +6285,62 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Traditional",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
     "coverImage": "images/covers/zorbus.jpg"
+  },
+  {
+    "name": "Lort",
+    "year": 2026,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "coverImage": "images/covers/lort.jpg"
+  },
+  {
+    "name": "BroomSweeper",
+    "year": 2026,
+    "type": "Strategy",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "coverImage": "images/covers/broomsweeper.jpg"
+  },
+  {
+    "name": "Dwarves: Glory, Death and Loot",
+    "year": 2023,
+    "type": "Strategy",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "coverImage": "images/covers/dwarves-glory-death-and-loot.jpg"
+  },
+  {
+    "name": "RogueJack21",
+    "year": 2026,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "coverImage": "images/covers/roguejack21.jpg"
+  },
+  {
+    "name": "Astro Prospector",
+    "year": 2025,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "coverImage": "images/covers/astro-prospector.jpg"
+  },
+  {
+    "name": "Rocket Rats",
+    "year": 2024,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "coverImage": "images/covers/rocket-rats.jpg"
   }
 ];
