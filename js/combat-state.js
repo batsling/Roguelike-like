@@ -362,65 +362,46 @@ function endPlayerTurn() {
     throw new Error('Not in player turn phase');
   }
 
-  // Check if dice have been rolled
-  if (activeCombat.diceRolled.length === 0) {
-    throw new Error('Must roll dice before ending turn');
-  }
+  // In the new energy system, player doesn't need to roll - they can end turn with unused energy
+  // No validation needed here
 
-  // Get the main dice roll result
-  const mainDice = activeCombat.dice[0];
-  const rollResult = mainDice.currentRoll;
-
-  if (!rollResult) {
-    throw new Error('No roll result found');
-  }
-
-  // Execute player attack
-  const attackResult = executePlayerAttack(rollResult.total);
-
-  // Check if enemy is defeated
+  // Check if enemy is already defeated (from successful attack during player turn)
   if (activeCombat.enemy.health <= 0) {
     activeCombat.phase = 'victory';
     addCombatLog(`${activeCombat.enemy.name} defeated!`, 'success');
     return {
-      phase: 'victory',
-      attackResult: attackResult
+      phase: 'victory'
     };
   }
 
-  // Transition to enemy turn if attack missed
-  if (!attackResult.hit) {
-    activeCombat.phase = 'enemy_turn';
+  // Enemy turn always happens (unless enemy is already dead)
+  activeCombat.phase = 'enemy_turn';
 
-    // Execute enemy attack
-    const enemyAttackResult = executeEnemyAttack();
+  // Execute enemy attack
+  const enemyAttackResult = executeEnemyAttack();
 
-    // Apply curse
+  // Apply curse (if player took damage)
+  if (enemyAttackResult.damage > 0) {
     applyCurseToPlayer();
-
-    // Process poison on player (if any)
-    const poisonResult = window.CombatEffects.processPoisonDamage(activeCombat.player);
-    if (poisonResult.poisonDamage > 0) {
-      addCombatLog(`Poison dealt ${poisonResult.poisonDamage} damage!`, 'danger');
-      health = activeCombat.player.health;
-    }
-
-    // Check if player is defeated
-    if (activeCombat.player.health <= 0) {
-      activeCombat.phase = 'defeat';
-      addCombatLog('You have been defeated!', 'danger');
-      health = 0;
-      return {
-        phase: 'defeat',
-        attackResult: attackResult,
-        enemyAttackResult: enemyAttackResult
-      };
-    }
   }
 
-  // Clear block from both player and enemy at end of turn
-  window.CombatEffects.clearBlock(activeCombat.player.effects);
-  window.CombatEffects.clearBlock(activeCombat.enemy.effects);
+  // Process poison on player (if any)
+  const poisonResult = window.CombatEffects.processPoisonDamage(activeCombat.player);
+  if (poisonResult.poisonDamage > 0) {
+    addCombatLog(`Poison dealt ${poisonResult.poisonDamage} damage!`, 'danger');
+    health = activeCombat.player.health;
+  }
+
+  // Check if player is defeated
+  if (activeCombat.player.health <= 0) {
+    activeCombat.phase = 'defeat';
+    addCombatLog('You have been defeated!', 'danger');
+    health = 0;
+    return {
+      phase: 'defeat',
+      enemyAttackResult: enemyAttackResult
+    };
+  }
 
   // Process poison on enemy (if any)
   const enemyPoisonResult = window.CombatEffects.processPoisonDamage(activeCombat.enemy);
@@ -432,8 +413,7 @@ function endPlayerTurn() {
       activeCombat.phase = 'victory';
       addCombatLog(`${activeCombat.enemy.name} defeated by poison!`, 'success');
       return {
-        phase: 'victory',
-        attackResult: attackResult
+        phase: 'victory'
       };
     }
   }
@@ -441,7 +421,10 @@ function endPlayerTurn() {
   // Start next turn
   activeCombat.turn++;
   activeCombat.phase = 'player_turn';
-  activeCombat.diceRolled = [];
+
+  // Reset roll counts for new turn
+  activeCombat.rollCount.attack = 0;
+  activeCombat.rollCount.defense = 0;
 
   addCombatLog(`--- Turn ${activeCombat.turn + 1} ---`, 'info');
 

@@ -2460,7 +2460,7 @@ function showCombatModal() {
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 280px;
+            min-height: 320px;
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
             position: relative;
           ">
@@ -2484,27 +2484,173 @@ function showCombatModal() {
             ">
               ⚠️ DISADVANTAGE: Roll twice, take lower!
             </div>
-            <div id="dice-container" style="
+
+            <!-- Energy Display -->
+            <div id="energy-display" style="
+              position: absolute;
+              top: 15px;
+              left: 20px;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              background: rgba(255,204,0,0.15);
+              border: 2px solid #ffcc00;
+              border-radius: 8px;
+              padding: 8px 16px;
+              box-shadow: 0 2px 8px rgba(255,204,0,0.3);
+            ">
+              <div style="
+                font-size: 18px;
+                font-weight: bold;
+                color: #ffcc00;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+              ">Energy:</div>
+              <div id="energy-bolts" style="
+                display: flex;
+                gap: 4px;
+                font-size: 24px;
+              ">⚡⚡</div>
+              <div id="energy-count" style="
+                font-size: 18px;
+                font-weight: bold;
+                color: #ffcc00;
+              ">2/2</div>
+            </div>
+
+            <!-- Dual Dice Container -->
+            <div style="
+              display: flex;
+              gap: 30px;
+              align-items: center;
+              justify-content: center;
               width: 100%;
-              height: 200px;
-              cursor: pointer;
-              position: relative;
-            "></div>
-            <p id="dice-instruction" style="
-              color: #ffaa44;
-              font-size: 15px;
-              margin: 10px 0 0 0;
-              text-align: center;
-              font-weight: bold;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-            ">🎲 Click the dice to roll! 🎲</p>
-            <div id="roll-result" style="
-              margin-top: 8px;
-              font-size: 16px;
-              text-align: center;
-              width: 100%;
-            "></div>
+              margin-top: 20px;
+            ">
+              <!-- Attack D20 -->
+              <div style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                flex: 1;
+                max-width: 400px;
+              ">
+                <div style="
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  margin-bottom: 10px;
+                ">
+                  <div style="
+                    font-size: 14px;
+                    font-weight: bold;
+                    color: #cc6600;
+                    text-transform: uppercase;
+                    letter-spacing: 1.5px;
+                  ">⚔️ ATTACK D20</div>
+                  <div style="
+                    font-size: 12px;
+                    color: #ffcc00;
+                    background: rgba(255,204,0,0.2);
+                    border: 1px solid #ffcc00;
+                    border-radius: 4px;
+                    padding: 2px 6px;
+                  ">1⚡</div>
+                </div>
+                <div style="
+                  background: rgba(204,102,0,0.1);
+                  border: 2px solid #cc6600;
+                  border-radius: 8px;
+                  padding: 10px;
+                  width: 100%;
+                ">
+                  <div id="attack-dice-container" class="dice-clickable" style="
+                    width: 100%;
+                    height: 180px;
+                    cursor: pointer;
+                    position: relative;
+                  "></div>
+                  <p class="dice-instruction" style="
+                    color: #ffaa44;
+                    font-size: 13px;
+                    margin: 8px 0 0 0;
+                    text-align: center;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                  ">🎲 Click to Attack!</p>
+                  <div id="attack-roll-result" style="
+                    margin-top: 6px;
+                    font-size: 14px;
+                    text-align: center;
+                    width: 100%;
+                    min-height: 20px;
+                  "></div>
+                </div>
+              </div>
+
+              <!-- Defense D6 -->
+              <div style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                flex: 1;
+                max-width: 400px;
+              ">
+                <div style="
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  margin-bottom: 10px;
+                ">
+                  <div style="
+                    font-size: 14px;
+                    font-weight: bold;
+                    color: #66ccff;
+                    text-transform: uppercase;
+                    letter-spacing: 1.5px;
+                  ">🛡️ DEFEND D6</div>
+                  <div style="
+                    font-size: 12px;
+                    color: #ffcc00;
+                    background: rgba(255,204,0,0.2);
+                    border: 1px solid #ffcc00;
+                    border-radius: 4px;
+                    padding: 2px 6px;
+                  ">1⚡</div>
+                </div>
+                <div style="
+                  background: rgba(102,204,255,0.1);
+                  border: 2px solid #66ccff;
+                  border-radius: 8px;
+                  padding: 10px;
+                  width: 100%;
+                ">
+                  <div id="defense-dice-container" class="dice-clickable" style="
+                    width: 100%;
+                    height: 180px;
+                    cursor: pointer;
+                    position: relative;
+                  "></div>
+                  <p class="dice-instruction" style="
+                    color: #66ccff;
+                    font-size: 13px;
+                    margin: 8px 0 0 0;
+                    text-align: center;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                  ">🎲 Click to Defend!</p>
+                  <div id="defense-roll-result" style="
+                    margin-top: 6px;
+                    font-size: 14px;
+                    text-align: center;
+                    width: 100%;
+                    min-height: 20px;
+                  "></div>
+                </div>
+              </div>
+            </div>
 
             <!-- End Turn Button -->
             <button id="end-turn-btn" disabled style="
@@ -2611,10 +2757,17 @@ function showCombatModal() {
   `;
   document.head.appendChild(style);
 
-  // Initialize 3D dice renderer
-  const diceContainer = document.getElementById('dice-container');
-  window.DiceRenderer.initDiceRenderer(diceContainer);
-  window.DiceRenderer.createDice(combat.dice[0]);
+  // Initialize 3D dice renderers (separate instances for attack and defense)
+  const attackDiceContainer = document.getElementById('attack-dice-container');
+  const defenseDiceContainer = document.getElementById('defense-dice-container');
+
+  const attackRenderer = new window.DiceRendererInstance();
+  attackRenderer.init(attackDiceContainer);
+  attackRenderer.createDice(combat.dice.attack);
+
+  const defenseRenderer = new window.DiceRendererInstance();
+  defenseRenderer.init(defenseDiceContainer);
+  defenseRenderer.createDice(combat.dice.defense);
 
   // Populate items bar
   populateItemsBar();
@@ -2637,93 +2790,177 @@ function showCombatModal() {
   // Setup item tooltips
   setupItemTooltips();
 
-  // Setup dice click handler
-  let diceRolled = false;
-  diceContainer.addEventListener('click', handleDiceClick);
+  // Update energy display
+  updateEnergyDisplay();
 
-  function handleDiceClick() {
-    if (diceRolled || combat.phase !== 'player_turn') {
+  // Setup dice click handlers for both attack and defense
+  attackDiceContainer.addEventListener('click', () => handleDiceClick('attack'));
+  defenseDiceContainer.addEventListener('click', () => handleDiceClick('defense'));
+
+  // Update energy display
+  function updateEnergyDisplay() {
+    const combat = window.CombatState.getCombatState();
+    if (!combat) return;
+
+    const energyBolts = document.getElementById('energy-bolts');
+    const energyCount = document.getElementById('energy-count');
+
+    if (energyBolts && energyCount) {
+      // Show lightning bolts based on current energy
+      const bolts = '⚡'.repeat(combat.player.energy);
+      const greyBolts = '<span style="opacity: 0.3;">⚡</span>'.repeat(combat.player.maxEnergy - combat.player.energy);
+      energyBolts.innerHTML = bolts + greyBolts;
+      energyCount.textContent = `${combat.player.energy}/${combat.player.maxEnergy}`;
+    }
+
+    // Update dice container opacity based on available energy
+    const attackContainer = document.getElementById('attack-dice-container');
+    const defenseContainer = document.getElementById('defense-dice-container');
+
+    if (combat.player.energy < 1) {
+      if (attackContainer) attackContainer.style.opacity = '0.4';
+      if (defenseContainer) defenseContainer.style.opacity = '0.4';
+    } else {
+      if (attackContainer) attackContainer.style.opacity = '1';
+      if (defenseContainer) defenseContainer.style.opacity = '1';
+    }
+  }
+
+  function handleDiceClick(diceType) {
+    if (combat.phase !== 'player_turn') {
+      return;
+    }
+
+    const currentCombat = window.CombatState.getCombatState();
+    if (!currentCombat || currentCombat.player.energy < 1) {
+      addCombatLogMessage('Not enough energy!', 'warning');
       return;
     }
 
     try {
       // Roll the dice through combat state
-      const rollResult = window.CombatState.rollCombatDice(0);
-      diceRolled = true;
+      const rollResult = window.CombatState.rollCombatDice(diceType);
 
-      // Update UI
-      document.getElementById('dice-instruction').textContent = 'Rolling...';
-      diceContainer.style.cursor = 'default';
-
-      // Hide obstruction indicator if curse expired
-      const obstructionCursesAfterRoll = gameState.activeCurses ? gameState.activeCurses.filter(curse =>
-        curse.name && curse.name.toLowerCase().includes('obstruction')
-      ) : [];
-      const obstructionIndicatorElement = document.getElementById('obstruction-indicator');
-      if (obstructionCursesAfterRoll.length === 0 && obstructionIndicatorElement) {
-        obstructionIndicatorElement.style.display = 'none';
+      if (!rollResult.success) {
+        addCombatLogMessage(rollResult.error, 'danger');
+        return;
       }
 
+      // Update energy display
+      updateEnergyDisplay();
+
+      // Get the appropriate renderer and result display
+      const renderer = diceType === 'attack' ? attackRenderer : defenseRenderer;
+      const resultDisplay = document.getElementById(`${diceType}-roll-result`);
+
+      // Get result value based on dice type
+      const resultValue = diceType === 'attack' ? rollResult.result.baseValue : rollResult.result.total;
+
       // Animate the 3D dice
-      window.DiceRenderer.rollDice(combat.dice[0], rollResult.total, (result) => {
-        // Apply curse modifiers
-        let finalRoll = result;
-        const statModifier = window.CombatState.getStatModifier();
-
-        // Check for Curse of Failure
-        const failureCurses = getCursesByType('failure');
-        if (failureCurses.length > 0 && result === 1) {
-          // Curse of Failure: Roll of 1 is auto-miss and deals damage
-          addCombatLogMessage(`Rolled a 1! Curse of Failure activated!`, 'danger');
-
-          // Deal failure damage
-          let totalDamage = failureCurses.reduce((sum, curse) =>
-            sum + getPowerValue(curse.power, { Low: 2, Medium: 3, High: 4 }), 0
-          );
-
-          if (typeof calculateDamageReduction === 'function') {
-            totalDamage = calculateDamageReduction(totalDamage);
+      renderer.rollDice(combat.dice[diceType], resultValue, (result) => {
+        if (diceType === 'attack') {
+          // Hide obstruction indicator if curse expired
+          const obstructionCursesAfterRoll = gameState.activeCurses ? gameState.activeCurses.filter(curse =>
+            curse.name && curse.name.toLowerCase().includes('obstruction')
+          ) : [];
+          const obstructionIndicatorElement = document.getElementById('obstruction-indicator');
+          if (obstructionCursesAfterRoll.length === 0 && obstructionIndicatorElement) {
+            obstructionIndicatorElement.style.display = 'none';
           }
 
-          health = Math.max(0, health - totalDamage);
-          gameState.health = health;
+          // Apply curse modifiers
+          let finalRoll = result;
+          const statModifier = window.CombatState.getStatModifier();
+
+          // Check for Curse of Failure
+          const failureCurses = getCursesByType('failure');
+          if (failureCurses.length > 0 && result === 1) {
+            // Curse of Failure: Roll of 1 is auto-miss and deals damage
+            addCombatLogMessage(`Rolled a 1! Curse of Failure activated!`, 'danger');
+
+            // Deal failure damage
+            let totalDamage = failureCurses.reduce((sum, curse) =>
+              sum + getPowerValue(curse.power, { Low: 2, Medium: 3, High: 4 }), 0
+            );
+
+            if (typeof calculateDamageReduction === 'function') {
+              totalDamage = calculateDamageReduction(totalDamage);
+            }
+
+            combat.player.health = Math.max(0, combat.player.health - totalDamage);
+            gameState.health = combat.player.health;
+            updateCombatUI();
+            addCombatLogMessage(`Curse of Failure dealt ${totalDamage} damage!`, 'danger');
+
+            // Treat roll as 0 for AC check (auto-miss)
+            finalRoll = 0;
+          }
+
+          // Check for Curse of Weakness
+          let cursePenalty = 0;
+          const weaknessCurses = getCursesByType('weakness');
+          if (weaknessCurses.length > 0) {
+            const weaknessCurse = weaknessCurses[0];
+            cursePenalty = getPowerValue(weaknessCurse.power, { Low: 2, Medium: 3, High: 4 });
+
+            addCombatLogMessage(`Curse of Weakness: -${cursePenalty}`, 'warning');
+
+            // Remove curse after use
+            gameState.activeCurses.splice(gameState.activeCurses.indexOf(weaknessCurse), 1);
+            updateCurseUI();
+          }
+
+          const totalRoll = finalRoll + statModifier - cursePenalty;
+          const hit = totalRoll >= combat.enemy.armorClass;
+
+          // Display roll result
+          resultDisplay.innerHTML = `
+            <div style="background: rgba(0,0,0,0.5); padding: 8px; border-radius: 6px;">
+              <p style="margin: 2px 0; font-size: 12px;">Dice: <strong>${result}</strong></p>
+              <p style="margin: 2px 0; font-size: 12px; color: ${getStatColor(combat.enemy.stat)};">+ ${combat.enemy.stat}: <strong>${statModifier}</strong></p>
+              ${cursePenalty > 0 ? `<p style="margin: 2px 0; font-size: 12px; color: #ff6666;">- Weakness: <strong>${cursePenalty}</strong></p>` : ''}
+              <p style="margin: 4px 0 0 0; font-size: 16px; color: ${hit ? '#4CAF50' : '#ff6666'};"><strong>${hit ? 'HIT!' : 'MISS'} (${totalRoll}/${combat.enemy.armorClass})</strong></p>
+            </div>
+          `;
+
+          if (hit) {
+            // Calculate and apply damage
+            const weaponDamage = gameState.equippedWeapon ? gameState.equippedWeapon.damage : 1;
+            combat.enemy.health = Math.max(0, combat.enemy.health - weaponDamage);
+
+            addCombatLogMessage(`⚔️ Attack hit! (${totalRoll} vs AC ${combat.enemy.armorClass})`, 'success');
+            addCombatLogMessage(`💥 Dealt ${weaponDamage} damage to ${combat.enemy.name}!`, 'success');
+
+            // Update UI to show enemy damage
+            updateCombatUI();
+
+            // Check if enemy is defeated
+            if (combat.enemy.health <= 0) {
+              setTimeout(() => {
+                handleVictory();
+              }, 500);
+            }
+          } else {
+            addCombatLogMessage(`❌ Attack missed! (${totalRoll} vs AC ${combat.enemy.armorClass})`, 'info');
+          }
+
+        } else {
+          // Defense dice - show block gained
+          const blockGained = rollResult.result.total;
+          combat.player.effects.block = (combat.player.effects.block || 0) + blockGained;
+
+          resultDisplay.innerHTML = `
+            <div style="background: rgba(0,0,0,0.5); padding: 8px; border-radius: 6px;">
+              <p style="margin: 2px 0; font-size: 16px; color: #66ccff;"><strong>+${blockGained} 🛡️</strong></p>
+              <p style="margin: 4px 0 0 0; font-size: 12px;">Block: ${combat.player.effects.block}</p>
+            </div>
+          `;
+
+          addCombatLogMessage(`🛡️ Gained ${blockGained} block! (Total: ${combat.player.effects.block})`, 'info');
           updateCombatUI();
-          addCombatLogMessage(`Curse of Failure dealt ${totalDamage} damage!`, 'danger');
-
-          // Treat roll as 0 for AC check (auto-miss)
-          finalRoll = 0;
         }
 
-        // Check for Curse of Weakness
-        let cursePenalty = 0;
-        const weaknessCurses = getCursesByType('weakness');
-        if (weaknessCurses.length > 0) {
-          const weaknessCurse = weaknessCurses[0];
-          cursePenalty = getPowerValue(weaknessCurse.power, { Low: 2, Medium: 3, High: 4 });
-
-          addCombatLogMessage(`Curse of Weakness: -${cursePenalty}`, 'warning');
-
-          // Remove curse after use
-          gameState.activeCurses.splice(gameState.activeCurses.indexOf(weaknessCurse), 1);
-          updateCurseUI();
-        }
-
-        const totalRoll = finalRoll + statModifier - cursePenalty;
-
-        // Display roll result
-        document.getElementById('roll-result').innerHTML = `
-          <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 6px;">
-            <p style="margin: 3px 0;">Dice: <strong>${result}</strong></p>
-            <p style="margin: 3px 0; color: ${getStatColor(enemy.stat)};">+ ${enemy.stat}: <strong>${statModifier}</strong></p>
-            ${cursePenalty > 0 ? `<p style="margin: 3px 0; color: #ff6666;">- Weakness: <strong>${cursePenalty}</strong></p>` : ''}
-            <p style="margin: 8px 0 0 0; font-size: 20px; color: gold;"><strong>Total: ${totalRoll}</strong></p>
-            <p style="margin: 5px 0 0 0; font-size: 12px; color: #888;">Need ${enemy.armorClass}+ to hit</p>
-          </div>
-        `;
-
-        document.getElementById('dice-instruction').textContent = 'Roll complete!';
-
-        // Enable end turn button
+        // Enable end turn button after any roll
         const endTurnBtn = document.getElementById('end-turn-btn');
         endTurnBtn.disabled = false;
         endTurnBtn.style.opacity = '1';
@@ -2780,11 +3017,11 @@ function showCombatModal() {
 
   function startNextTurn() {
     // Reset for next turn
-    diceRolled = false;
-    diceContainer.style.cursor = 'pointer';
+    const currentCombat = window.CombatState.getCombatState();
 
-    document.getElementById('dice-instruction').textContent = '🎲 Click the dice to roll! 🎲';
-    document.getElementById('roll-result').innerHTML = '';
+    // Clear roll results
+    document.getElementById('attack-roll-result').innerHTML = '';
+    document.getElementById('defense-roll-result').innerHTML = '';
 
     const endTurnBtn = document.getElementById('end-turn-btn');
     endTurnBtn.disabled = true;
@@ -2794,14 +3031,19 @@ function showCombatModal() {
     endTurnBtn.style.color = '#888';
     endTurnBtn.style.borderColor = '#666';
 
-    // Update turn counter (if it exists - removed in new layout)
-    const turnCounter = document.getElementById('turn-counter');
-    if (turnCounter) {
-      turnCounter.textContent = combat.turn + 1;
-    }
+    // Reset energy to max
+    currentCombat.player.energy = currentCombat.player.maxEnergy;
+
+    // Reset block to 0 at start of turn
+    currentCombat.player.effects.block = 0;
+
+    // Update energy display
+    updateEnergyDisplay();
+    updateCombatUI();
 
     // Re-create dice for next roll
-    window.DiceRenderer.createDice(combat.dice[0]);
+    attackRenderer.createDice(currentCombat.dice.attack);
+    defenseRenderer.createDice(currentCombat.dice.defense);
   }
 
   function updateCombatUI() {
@@ -3184,7 +3426,9 @@ function showCombatModal() {
     const endTurnBtn = document.getElementById('end-turn-btn');
     if (endTurnBtn) endTurnBtn.disabled = true;
 
-    window.DiceRenderer.disposeDiceRenderer();
+    // Dispose both dice renderers
+    attackRenderer.dispose();
+    defenseRenderer.dispose();
 
     // Award rewards
     const goldMatch = enemy.successReward.match(/(\d+) Gold/);
@@ -3235,7 +3479,9 @@ function showCombatModal() {
   }
 
   function handleDefeat() {
-    window.DiceRenderer.disposeDiceRenderer();
+    // Dispose both dice renderers
+    attackRenderer.dispose();
+    defenseRenderer.dispose();
 
     // Clear items and curses on death
     inventory = [];
