@@ -102,6 +102,8 @@ var gameState = {
   maxHealth: 10,
   gold: 0,
   rations: 10,
+  energy: 2, // Energy available per turn in combat
+  maxEnergy: 2, // Maximum energy per turn (can be increased by items)
   inventory: [],
   activeCurses: [], // Track active curses on player
   cursesTracker: {}, // Track curse progress (e.g., games beaten, spaces chosen)

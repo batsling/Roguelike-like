@@ -31,6 +31,34 @@ function createD20() {
 }
 
 /**
+ * Create a Defense D6 with specific block values
+ * Face distribution: 1🛡️, 2🛡️, 2🛡️, 3🛡️, 3🛡️, 4🛡️
+ * @returns {Object} Defense D6 dice object
+ */
+function createDefenseD6() {
+  // Block values for each face (index 0-5)
+  const blockValues = [1, 2, 2, 3, 3, 4];
+
+  const sides = [];
+  for (let i = 0; i < 6; i++) {
+    sides.push({
+      value: blockValues[i],     // Block value for this face
+      texture: null,
+      modifiers: [],
+      displayValue: null,
+      displayText: `${blockValues[i]}🛡️`  // Display as "X🛡️"
+    });
+  }
+
+  return {
+    type: 'd6-defense',
+    sides: sides,
+    globalModifiers: [],
+    currentRoll: null
+  };
+}
+
+/**
  * Create a dice of any size (D6, D8, D12, etc.)
  * @param {number} numSides - Number of sides on the dice
  * @param {string} type - Type identifier (e.g., 'd6', 'd8')
@@ -212,6 +240,7 @@ function resetDice(dice) {
 if (typeof window !== 'undefined') {
   window.DiceSystem = {
     createD20,
+    createDefenseD6,
     createDice,
     rollDice,
     addGlobalModifier,

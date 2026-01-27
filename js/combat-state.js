@@ -39,21 +39,34 @@ function initializeCombat(enemy) {
     dexterity: getEffectiveStat('dexterity'),
     intelligence: getEffectiveStat('intelligence'),
     charisma: getEffectiveStat('charisma'),
+    energy: gameState.energy || 2,  // Energy for actions this turn
+    maxEnergy: gameState.maxEnergy || 2,  // Max energy per turn
     effects: window.CombatEffects.createEffects()
   };
 
-  // Create player's dice
-  const playerDice = window.DiceSystem.createD20();
+  // Create player's dice - both Attack D20 and Defense D6
+  const attackDice = window.DiceSystem.createD20();
+  const defenseDice = window.DiceSystem.createDefenseD6();
 
   // Initialize combat state
   activeCombat = {
     enemy: enemyState,
     player: playerState,
-    dice: [playerDice],  // Array to support multiple dice in the future
+    dice: {
+      attack: attackDice,
+      defense: defenseDice
+    },
     turn: 0,
     phase: 'player_turn',  // 'player_turn', 'enemy_turn', 'victory', 'defeat'
     log: [],  // Combat log for displaying what happened
-    diceRolled: [],  // Track which dice have been rolled this turn
+    diceRolled: {
+      attack: false,
+      defense: false
+    },  // Track which dice have been rolled
+    rollCount: {
+      attack: 0,
+      defense: 0
+    },  // Track how many times each die was rolled this turn
     actionsAvailable: {
       canRollDice: true,
       canUseItems: true,
@@ -84,10 +97,10 @@ function addCombatLog(message, type = 'info') {
 
 /**
  * Roll a specific dice in combat
- * @param {number} diceIndex - Index of the dice to roll (default 0 for main D20)
- * @returns {Object} Roll result
+ * @param {string} diceType - Type of dice to roll ('attack' or 'defense')
+ * @returns {Object} Roll result with success/error info
  */
-function rollCombatDice(diceIndex = 0) {
+function rollCombatDice(diceType = 'attack') {
   if (!activeCombat) {
     throw new Error('No active combat');
   }
@@ -96,29 +109,32 @@ function rollCombatDice(diceIndex = 0) {
     throw new Error('Cannot roll dice during enemy turn');
   }
 
-  if (diceIndex < 0 || diceIndex >= activeCombat.dice.length) {
-    throw new Error('Invalid dice index');
+  if (!['attack', 'defense'].includes(diceType)) {
+    throw new Error('Invalid dice type');
   }
 
-  // Check if this dice has already been rolled
-  if (activeCombat.diceRolled.includes(diceIndex)) {
-    throw new Error('This dice has already been rolled this turn');
+  // Check if player has enough energy
+  if (activeCombat.player.energy < 1) {
+    return { success: false, error: 'Not enough energy' };
   }
 
-  // Check if player has Curse of Obstruction (Disadvantage)
+  // Spend energy
+  activeCombat.player.energy -= 1;
+
+  // Check if player has Curse of Obstruction (Disadvantage) - only affects attack rolls
   const obstructionCurses = gameState.activeCurses ? gameState.activeCurses.filter(curse =>
     curse.name && curse.name.toLowerCase().includes('obstruction')
   ) : [];
 
-  const hasObstruction = obstructionCurses.length > 0;
+  const hasObstruction = obstructionCurses.length > 0 && diceType === 'attack';
 
   // Roll the dice
-  const dice = activeCombat.dice[diceIndex];
+  const dice = activeCombat.dice[diceType];
   let rollResult = window.DiceSystem.rollDice(dice);
   let roll1Value = rollResult.total;
   let roll2Value = null;
 
-  // If player has Curse of Obstruction, roll twice and take the lower
+  // If player has Curse of Obstruction on attack roll, roll twice and take the lower
   if (hasObstruction) {
     const secondRollResult = window.DiceSystem.rollDice(dice);
     roll2Value = secondRollResult.total;
@@ -158,13 +174,17 @@ function rollCombatDice(diceIndex = 0) {
     }
   } else {
     // Normal roll (no disadvantage)
-    addCombatLog(`Rolled a ${rollResult.total}!`, 'info');
+    if (diceType === 'attack') {
+      addCombatLog(`Rolled attack: ${rollResult.total}!`, 'info');
+    } else {
+      addCombatLog(`Rolled defense: ${rollResult.total} block!`, 'info');
+    }
   }
 
-  // Mark dice as rolled
-  activeCombat.diceRolled.push(diceIndex);
+  // Track roll count
+  activeCombat.rollCount[diceType]++;
 
-  return rollResult;
+  return { success: true, result: rollResult, diceType: diceType };
 }
 
 /**
