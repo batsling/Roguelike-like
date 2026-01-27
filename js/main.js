@@ -2196,25 +2196,6 @@ function showCombatModal() {
 
               <div style="text-align: center; margin-bottom: 10px;">
                 <p style="margin: 0 0 5px 0; font-size: 14px; color: #4CAF50; font-weight: bold; text-transform: uppercase;">YOU</p>
-                <!-- HP Bar -->
-                <div style="background: #2a2a2a; border-radius: 6px; height: 26px; width: 200px; position: relative; overflow: hidden; border: 2px solid #4CAF50;">
-                  <div id="player-hp-bar" style="
-                    background: linear-gradient(90deg, #4CAF50, #2E7D32);
-                    height: 100%;
-                    width: ${(health / maxHealth) * 100}%;
-                    transition: width 0.3s ease;
-                  "></div>
-                  <span id="player-hp" style="
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    font-size: 14px;
-                    font-weight: bold;
-                    text-shadow: 0 0 4px black;
-                    color: white;
-                  ">${health}/${maxHealth}</span>
-                </div>
               </div>
 
               <!-- Player Image -->
@@ -2236,6 +2217,67 @@ function showCombatModal() {
                   image-rendering: pixelated;
                   object-fit: contain;
                 " alt="Player">
+              </div>
+
+              <!-- Health and Block Bar -->
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                <!-- Block Display -->
+                <div id="player-block-display" style="
+                  position: relative;
+                  width: 50px;
+                  height: 50px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  display: none;
+                ">
+                  <!-- Shield Icon -->
+                  <div style="
+                    position: absolute;
+                    width: 100%;
+                    height: 100%;
+                    font-size: 50px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #66ccff;
+                    text-shadow: 0 0 8px rgba(102,204,255,0.5);
+                  ">🛡️</div>
+                  <!-- Block Value -->
+                  <div id="player-block-value" style="
+                    position: relative;
+                    z-index: 1;
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: white;
+                    text-shadow:
+                      -1px -1px 0 #000,
+                      1px -1px 0 #000,
+                      -1px 1px 0 #000,
+                      1px 1px 0 #000,
+                      0 0 4px #000;
+                  ">0</div>
+                </div>
+
+                <!-- HP Bar -->
+                <div style="background: #2a2a2a; border-radius: 6px; height: 26px; width: 200px; position: relative; overflow: hidden; border: 2px solid #4CAF50;">
+                  <div id="player-hp-bar" style="
+                    background: linear-gradient(90deg, #4CAF50, #2E7D32);
+                    height: 100%;
+                    width: ${(health / maxHealth) * 100}%;
+                    transition: width 0.3s ease;
+                  "></div>
+                  <span id="player-hp" style="
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-size: 14px;
+                    font-weight: bold;
+                    text-shadow: 0 0 4px black;
+                    color: white;
+                  ">${health}/${maxHealth}</span>
+                </div>
               </div>
 
               <!-- Combat Stats -->
@@ -2279,26 +2321,6 @@ function showCombatModal() {
               <div style="text-align: center; margin-bottom: 10px;">
                 <h3 style="margin: 0 0 2px 0; color: #ff6644; font-size: 22px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${enemy.name}</h3>
                 <p style="margin: 0 0 8px 0; font-size: 12px; color: #999; font-style: italic;">${enemy.game}</p>
-
-                <!-- HP Bar -->
-                <div style="background: #2a2a2a; border-radius: 6px; height: 26px; width: 200px; position: relative; overflow: hidden; border: 2px solid #ff4444; margin: 0 auto;">
-                  <div id="enemy-hp-bar" style="
-                    background: linear-gradient(90deg, #ff4444, #cc0000);
-                    height: 100%;
-                    width: 100%;
-                    transition: width 0.3s ease;
-                  "></div>
-                  <span id="enemy-hp-text" style="
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    font-size: 14px;
-                    font-weight: bold;
-                    text-shadow: 0 0 4px black;
-                    color: white;
-                  ">${enemy.health}/${enemy.health}</span>
-                </div>
               </div>
 
               <!-- Enemy Image -->
@@ -2320,6 +2342,67 @@ function showCombatModal() {
                   image-rendering: pixelated;
                   object-fit: contain;
                 " alt="${enemy.name}" onerror="this.style.display='none'">
+              </div>
+
+              <!-- Health and Block Bar -->
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                <!-- Block Display -->
+                <div id="enemy-block-display" style="
+                  position: relative;
+                  width: 50px;
+                  height: 50px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  display: none;
+                ">
+                  <!-- Shield Icon -->
+                  <div style="
+                    position: absolute;
+                    width: 100%;
+                    height: 100%;
+                    font-size: 50px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #66ccff;
+                    text-shadow: 0 0 8px rgba(102,204,255,0.5);
+                  ">🛡️</div>
+                  <!-- Block Value -->
+                  <div id="enemy-block-value" style="
+                    position: relative;
+                    z-index: 1;
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: white;
+                    text-shadow:
+                      -1px -1px 0 #000,
+                      1px -1px 0 #000,
+                      -1px 1px 0 #000,
+                      1px 1px 0 #000,
+                      0 0 4px #000;
+                  ">0</div>
+                </div>
+
+                <!-- HP Bar -->
+                <div style="background: #2a2a2a; border-radius: 6px; height: 26px; width: 200px; position: relative; overflow: hidden; border: 2px solid #ff4444;">
+                  <div id="enemy-hp-bar" style="
+                    background: linear-gradient(90deg, #ff4444, #cc0000);
+                    height: 100%;
+                    width: 100%;
+                    transition: width 0.3s ease;
+                  "></div>
+                  <span id="enemy-hp-text" style="
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-size: 14px;
+                    font-weight: bold;
+                    text-shadow: 0 0 4px black;
+                    color: white;
+                  ">${enemy.health}/${enemy.health}</span>
+                </div>
               </div>
 
               <!-- Enemy Stats -->
@@ -2730,10 +2813,36 @@ function showCombatModal() {
     }
     document.getElementById('player-hp').textContent = `${combat.player.health}/${combat.player.maxHealth}`;
 
+    // Update player block display
+    const playerBlockDisplay = document.getElementById('player-block-display');
+    const playerBlockValue = document.getElementById('player-block-value');
+    if (playerBlockDisplay && playerBlockValue) {
+      const playerBlock = combat.player.effects.block || 0;
+      if (playerBlock > 0) {
+        playerBlockDisplay.style.display = 'flex';
+        playerBlockValue.textContent = playerBlock;
+      } else {
+        playerBlockDisplay.style.display = 'none';
+      }
+    }
+
     // Update enemy HP bar and text
     const enemyHpPercent = (combat.enemy.health / combat.enemy.maxHealth) * 100;
     document.getElementById('enemy-hp-bar').style.width = `${enemyHpPercent}%`;
     document.getElementById('enemy-hp-text').textContent = `${Math.max(0, combat.enemy.health)}/${combat.enemy.maxHealth}`;
+
+    // Update enemy block display
+    const enemyBlockDisplay = document.getElementById('enemy-block-display');
+    const enemyBlockValue = document.getElementById('enemy-block-value');
+    if (enemyBlockDisplay && enemyBlockValue) {
+      const enemyBlock = combat.enemy.effects.block || 0;
+      if (enemyBlock > 0) {
+        enemyBlockDisplay.style.display = 'flex';
+        enemyBlockValue.textContent = enemyBlock;
+      } else {
+        enemyBlockDisplay.style.display = 'none';
+      }
+    }
 
     // Update effects displays
     updateEffectsDisplay('player-effects', combat.player.effects);
