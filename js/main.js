@@ -2231,10 +2231,8 @@ function showCombatModal() {
                 justify-content: center;
               ">
                 <img src="${playerImagePath}" style="
-                  max-width: 100%;
-                  max-height: 100%;
-                  width: auto;
-                  height: auto;
+                  width: 100%;
+                  height: 100%;
                   image-rendering: pixelated;
                   object-fit: contain;
                 " alt="Player">
@@ -2317,10 +2315,8 @@ function showCombatModal() {
                 justify-content: center;
               ">
                 <img src="${enemyImagePath}" style="
-                  max-width: 100%;
-                  max-height: 100%;
-                  width: auto;
-                  height: auto;
+                  width: 100%;
+                  height: 100%;
                   image-rendering: pixelated;
                   object-fit: contain;
                 " alt="${enemy.name}" onerror="this.style.display='none'">
@@ -2385,6 +2381,26 @@ function showCombatModal() {
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
             position: relative;
           ">
+            <!-- Obstruction Indicator (shown when Curse of Obstruction is active) -->
+            <div id="obstruction-indicator" style="
+              position: absolute;
+              top: 10px;
+              left: 50%;
+              transform: translateX(-50%);
+              background: rgba(255,100,100,0.9);
+              border: 2px solid #ff4444;
+              border-radius: 8px;
+              padding: 8px 16px;
+              color: white;
+              font-weight: bold;
+              font-size: 13px;
+              text-align: center;
+              display: none;
+              box-shadow: 0 4px 12px rgba(255,0,0,0.4);
+              z-index: 100;
+            ">
+              ⚠️ DISADVANTAGE: Roll twice, take lower!
+            </div>
             <div id="dice-container" style="
               width: 100%;
               height: 200px;
@@ -2520,6 +2536,15 @@ function showCombatModal() {
   // Populate items bar
   populateItemsBar();
 
+  // Check for Curse of Obstruction and show indicator
+  const obstructionCurses = gameState.activeCurses ? gameState.activeCurses.filter(curse =>
+    curse.name && curse.name.toLowerCase().includes('obstruction')
+  ) : [];
+  const obstructionIndicator = document.getElementById('obstruction-indicator');
+  if (obstructionCurses.length > 0 && obstructionIndicator) {
+    obstructionIndicator.style.display = 'block';
+  }
+
   // Setup stats panel toggle
   setupStatsPanel();
 
@@ -2546,6 +2571,15 @@ function showCombatModal() {
       // Update UI
       document.getElementById('dice-instruction').textContent = 'Rolling...';
       diceContainer.style.cursor = 'default';
+
+      // Hide obstruction indicator if curse expired
+      const obstructionCursesAfterRoll = gameState.activeCurses ? gameState.activeCurses.filter(curse =>
+        curse.name && curse.name.toLowerCase().includes('obstruction')
+      ) : [];
+      const obstructionIndicatorElement = document.getElementById('obstruction-indicator');
+      if (obstructionCursesAfterRoll.length === 0 && obstructionIndicatorElement) {
+        obstructionIndicatorElement.style.display = 'none';
+      }
 
       // Animate the 3D dice
       window.DiceRenderer.rollDice(combat.dice[0], rollResult.total, (result) => {
@@ -3497,7 +3531,7 @@ function triggerCombat(enemy, onSuccess = null, onFailure = null, powerLevel = '
       <h2 style="color: #ff4444; margin-top: 0;">Combat Encounter!</h2>
       <h3>${enemy.name}</h3>
       <p style="color: #888;">From: ${enemy.game || 'Unknown'}</p>
-      <img src="${enemyImagePath}" style="max-width: 200px; max-height: 200px; image-rendering: pixelated; margin: 10px auto; display: block;" alt="${enemy.name}" onerror="this.style.display='none'">
+      <img src="${enemyImagePath}" style="width: 200px; height: 200px; image-rendering: pixelated; object-fit: contain; margin: 10px auto; display: block;" alt="${enemy.name}" onerror="this.style.display='none'">
       <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 15px 0;">
         <p style="font-size: 18px; margin: 5px 0;">
           <span style="color: ${getStatColor(enemy.stat)};">${enemy.stat}</span> Check:

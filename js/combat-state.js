@@ -105,15 +105,64 @@ function rollCombatDice(diceIndex = 0) {
     throw new Error('This dice has already been rolled this turn');
   }
 
+  // Check if player has Curse of Obstruction (Disadvantage)
+  const obstructionCurses = gameState.activeCurses ? gameState.activeCurses.filter(curse =>
+    curse.name && curse.name.toLowerCase().includes('obstruction')
+  ) : [];
+
+  const hasObstruction = obstructionCurses.length > 0;
+
   // Roll the dice
   const dice = activeCombat.dice[diceIndex];
-  const rollResult = window.DiceSystem.rollDice(dice);
+  let rollResult = window.DiceSystem.rollDice(dice);
+  let roll1Value = rollResult.total;
+  let roll2Value = null;
+
+  // If player has Curse of Obstruction, roll twice and take the lower
+  if (hasObstruction) {
+    const secondRollResult = window.DiceSystem.rollDice(dice);
+    roll2Value = secondRollResult.total;
+
+    // Take the lower of the two rolls
+    if (roll2Value < roll1Value) {
+      rollResult = secondRollResult;
+    }
+
+    // Log both rolls with visual distinction
+    addCombatLog(`Curse of Obstruction! Rolled ${roll1Value} and ${roll2Value} → Taking lower: ${rollResult.total}`, 'warning');
+
+    // Decrement obstruction curse duration (consume one roll)
+    obstructionCurses.forEach(curse => {
+      if (curse.duration && curse.duration.includes('Roll')) {
+        // Parse the duration (e.g., "1 Roll", "2 Rolls", "3 Rolls")
+        const rollsMatch = curse.duration.match(/(\d+)\s*Roll/i);
+        if (rollsMatch) {
+          const rollsRemaining = parseInt(rollsMatch[1]);
+          if (rollsRemaining > 1) {
+            // Decrement the roll count
+            curse.duration = `${rollsRemaining - 1} Roll${rollsRemaining - 1 > 1 ? 's' : ''}`;
+          } else {
+            // Remove the curse (it was the last roll)
+            if (typeof CurseManager !== 'undefined' && typeof CurseManager.consume === 'function') {
+              CurseManager.consume(curse);
+              addCombatLog(`Curse of Obstruction expired!`, 'info');
+            }
+          }
+        }
+      }
+    });
+
+    // Update curse UI
+    if (typeof updateCurseUI === 'function') {
+      updateCurseUI();
+    }
+  } else {
+    // Normal roll (no disadvantage)
+    addCombatLog(`Rolled a ${rollResult.total}!`, 'info');
+  }
 
   // Mark dice as rolled
   activeCombat.diceRolled.push(diceIndex);
-
-  // Log the roll
-  addCombatLog(`Rolled a ${rollResult.total}!`, 'info');
 
   return rollResult;
 }

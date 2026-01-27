@@ -357,7 +357,7 @@ function updateInventory() {
 
         const rarityColor = getRarityColor(item.rarity);
 
-        const isUsable = item.type === 'Usable';
+        const isUsable = item.type === 'Usable' || item.type === 'Active';
         const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
         const isWeapon = item.type === 'Weapon';
 
@@ -1296,6 +1296,22 @@ function showItemTooltip(e, item) {
     }
   }
 
+  // Build scaling item bonuses display (e.g., Beefy Ring)
+  let scalingBonusHTML = '';
+  if (item.type === 'Scaling' && item.name === 'Beefy Ring') {
+    const beefyRingBonus = Math.floor((gameState.maxHealth || maxHealth) / 10);
+    if (beefyRingBonus > 0) {
+      scalingBonusHTML = `
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(138, 43, 226, 0.3);">
+          <div style="font-size: 12px; color: #ba55d3; font-weight: bold; margin-bottom: 4px;">Current Bonus:</div>
+          <div style="font-size: 12px; color: #da70d6;">
+            +${beefyRingBonus} Attack (from ${gameState.maxHealth || maxHealth} max health)
+          </div>
+        </div>
+      `;
+    }
+  }
+
   tooltip.innerHTML = `
     <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 18px;">${displayName}</h4>
     <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
@@ -1307,6 +1323,7 @@ function showItemTooltip(e, item) {
       ${item.description}
     </div>
     ${bonusesHTML}
+    ${scalingBonusHTML}
     ${tagsHTML}
   `;
 

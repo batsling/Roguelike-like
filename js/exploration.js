@@ -600,28 +600,46 @@ function showFinish(node, isAmuletGame = false) {
             if (gameState.colosseumState && gameState.colosseumState.stage === 'first_fight') {
               // Show item choice first, then Colosseum choices
               if (typeof showItemChoiceModal === 'function') {
+                // Check if Unstable Genome triggered
+                const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
+                if (gameState.unstableGenomeTriggered) {
+                  console.log('Unstable Genome triggered - showing large chest');
+                  gameState.unstableGenomeTriggered = false; // Clear flag
+                }
                 showItemChoiceModal(() => {
                   // After item selection, update stage and show Colosseum choices
                   gameState.colosseumState.stage = 'choice';
                   if (typeof showColosseumChoices === 'function') {
                     showColosseumChoices();
                   }
-                });
+                }, chestType);
               }
             } else if (gameState.colosseumState && gameState.colosseumState.stage === 'champion') {
               // Show item choice first, then ask about attempts
               if (typeof showItemChoiceModal === 'function') {
+                // Check if Unstable Genome triggered
+                const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
+                if (gameState.unstableGenomeTriggered) {
+                  console.log('Unstable Genome triggered - showing large chest');
+                  gameState.unstableGenomeTriggered = false; // Clear flag
+                }
                 showItemChoiceModal(() => {
                   // After item selection, ask if it took 3 or less attempts
                   if (typeof handleChampionResult === 'function') {
                     handleChampionResult();
                   }
-                });
+                }, chestType);
               }
             } else {
               // Normal flow - show item choice
               if (typeof showItemChoiceModal === 'function') {
-                showItemChoiceModal();
+                // Check if Unstable Genome triggered - if so, show large chest (3 items)
+                const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
+                if (gameState.unstableGenomeTriggered) {
+                  console.log('Unstable Genome triggered - showing large chest');
+                  gameState.unstableGenomeTriggered = false; // Clear flag
+                }
+                showItemChoiceModal(null, chestType);
               }
             }
           }, 150); // Small delay for UI to update
@@ -638,28 +656,46 @@ function showFinish(node, isAmuletGame = false) {
           if (gameState.colosseumState && gameState.colosseumState.stage === 'first_fight') {
             // Show item choice first, then Colosseum choices
             if (typeof showItemChoiceModal === 'function') {
+              // Check if Unstable Genome triggered
+              const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
+              if (gameState.unstableGenomeTriggered) {
+                console.log('Unstable Genome triggered - showing large chest');
+                gameState.unstableGenomeTriggered = false; // Clear flag
+              }
               showItemChoiceModal(() => {
                 // After item selection, update stage and show Colosseum choices
                 gameState.colosseumState.stage = 'choice';
                 if (typeof showColosseumChoices === 'function') {
                   showColosseumChoices();
                 }
-              });
+              }, chestType);
             }
           } else if (gameState.colosseumState && gameState.colosseumState.stage === 'champion') {
             // Show item choice first, then ask about attempts
             if (typeof showItemChoiceModal === 'function') {
+              // Check if Unstable Genome triggered
+              const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
+              if (gameState.unstableGenomeTriggered) {
+                console.log('Unstable Genome triggered - showing large chest');
+                gameState.unstableGenomeTriggered = false; // Clear flag
+              }
               showItemChoiceModal(() => {
                 // After item selection, ask if it took 3 or less attempts
                 if (typeof handleChampionResult === 'function') {
                   handleChampionResult();
                 }
-              });
+              }, chestType);
             }
           } else {
             // Normal flow - show item choice
             if (typeof showItemChoiceModal === 'function') {
-              showItemChoiceModal();
+              // Check if Unstable Genome triggered - if so, show large chest (3 items)
+              const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
+              if (gameState.unstableGenomeTriggered) {
+                console.log('Unstable Genome triggered - showing large chest');
+                gameState.unstableGenomeTriggered = false; // Clear flag
+              }
+              showItemChoiceModal(null, chestType);
             }
           }
         }, 150); // Small delay for UI to update

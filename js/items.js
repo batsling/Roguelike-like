@@ -666,19 +666,15 @@ const ITEM_EFFECTS = {
           }
           gameState.inventory = [...inventory];
 
-          console.log('Unstable Genome: Item destroyed, offering 3 random items');
+          console.log('Unstable Genome: Item destroyed, will offer 3 random items in normal flow');
+
+          // Set flag to show large chest in the normal reward flow
+          gameState.unstableGenomeTriggered = true;
 
           // Show notification
           setTimeout(() => {
             createNotification('Unstable Genome mutated and was destroyed!', '#ff6b00', '🧬');
           }, 100);
-
-          // Offer 3 random items to choose from
-          if (typeof showItemChoiceModal === 'function') {
-            setTimeout(() => {
-              showItemChoiceModal(null, 'large');
-            }, 500);
-          }
 
           // Update UI
           if (typeof updateInventory === 'function') {
