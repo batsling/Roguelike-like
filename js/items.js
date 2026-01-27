@@ -50,7 +50,12 @@ function updateStat(statName, change) {
     skip: () => { skip += change; gameState.skip = skip; },
     discovery: () => { discovery += change; gameState.discovery = discovery; },
     fov: () => { fov += change; gameState.fov = fov; },
-    luck: () => { luck += change; gameState.luck = luck; }
+    luck: () => { luck += change; gameState.luck = luck; },
+    block: () => {
+      // Block is not a persistent player stat - it's only tracked as an item modifier
+      // The actual block effect is applied during combat via the item's statModifiers
+      console.log(`Block modifier changed by ${change} (item-specific, not a player stat)`);
+    }
   };
 
   statMap[statName]?.();
@@ -1996,7 +2001,7 @@ function upgradeOrDowngradePassive(isUpgrade) {
   // If no stat modifications found, fall back to random stat (shouldn't happen for items with effects)
   if (statModifications.length === 0) {
     console.warn(`No stat modifications found for ${itemToModify.name}, using fallback`);
-    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth'];
+    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth', 'block'];
     const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
     statModifications.push({ stat: randomStat, direction: 1 });
   }
