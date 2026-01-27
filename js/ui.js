@@ -594,8 +594,12 @@ function equipWeapon(itemIndex) {
       quantity: 1,
       level: gameState.weaponLevel || 1 // Store current weapon level
     };
+    // Preserve accumulated bonuses if they exist
+    if (gameState.equippedWeapon.bonuses) {
+      previousWeapon.bonuses = {...gameState.equippedWeapon.bonuses};
+    }
     inventory.push(previousWeapon);
-    console.log('🔫 Previous weapon returned to inventory with level:', previousWeapon.name, previousWeapon.level);
+    console.log('🔫 Previous weapon returned to inventory with level:', previousWeapon.name, previousWeapon.level, 'bonuses:', previousWeapon.bonuses);
   }
 
   // Create a proper copy of the weapon to avoid reference issues
@@ -609,6 +613,10 @@ function equipWeapon(itemIndex) {
     tags: weapon.tags,
     quantity: 1
   };
+  // Restore accumulated bonuses if they exist
+  if (weapon.bonuses) {
+    gameState.equippedWeapon.bonuses = {...weapon.bonuses};
+  }
   gameState.weaponLevel = weapon.level || 1; // Restore weapon level or default to 1
 
   // Remove weapon from inventory (since it's now equipped)
@@ -700,6 +708,10 @@ function unequipWeapon() {
     quantity: 1,
     level: gameState.weaponLevel || 1 // Store current weapon level
   };
+  // Preserve accumulated bonuses if they exist
+  if (gameState.equippedWeapon.bonuses) {
+    weaponToReturn.bonuses = {...gameState.equippedWeapon.bonuses};
+  }
   inventory.push(weaponToReturn);
 
   const weaponName = gameState.equippedWeapon.name;
