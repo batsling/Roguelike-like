@@ -137,6 +137,40 @@ class DiceRendererInstance {
   }
 
   /**
+   * Create canvas texture for an Enemy D6 face
+   * @param {Object} side - Side data from dice system
+   * @returns {THREE.CanvasTexture} Texture for the face
+   */
+  createEnemyFaceTexture(side) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+
+    // Background - red theme for enemies
+    ctx.fillStyle = '#cc3333';
+    ctx.fillRect(0, 0, 128, 128);
+
+    // Border
+    ctx.strokeStyle = '#660000';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(0, 0, 128, 128);
+
+    // Display text from side
+    const displayText = side.displayText || `${side.value}`;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 40px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(displayText, 64, 64);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  /**
    * Create a D20 mesh with numbered faces
    * @param {Object} diceData - Dice data from dice system
    * @returns {THREE.Group} D20 as a group of face meshes
@@ -242,12 +276,12 @@ class DiceRendererInstance {
 
   /**
    * Create a D6 mesh with block value faces
-   * @param {Object} diceData - Dice data from dice system (d6-defense)
+   * @param {Object} diceData - Dice data from dice system (d6-defense or enemy dice)
    * @returns {THREE.Mesh} D6 cube mesh
    */
   createD6Mesh(diceData) {
-    // Create cube geometry - slightly smaller than D20
-    const geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+    // Create cube geometry - bigger for better readability
+    const geometry = new THREE.BoxGeometry(1.2, 1.2, 1.2);
 
     const materials = [];
 
@@ -263,10 +297,20 @@ class DiceRendererInstance {
 
     this.faceNormals = [];
 
+    // Check if this is an enemy dice
+    const isEnemyDice = diceData.type.startsWith('d6-enemy');
+
     for (let i = 0; i < 6; i++) {
       const side = diceData.sides[i];
-      const blockValue = side.value;
-      const texture = this.createDefenseFaceTexture(blockValue, side);
+
+      // Use appropriate texture based on dice type
+      let texture;
+      if (isEnemyDice) {
+        texture = this.createEnemyFaceTexture(side);
+      } else {
+        const blockValue = side.value;
+        texture = this.createDefenseFaceTexture(blockValue, side);
+      }
 
       const material = new THREE.MeshStandardMaterial({
         map: texture,
@@ -324,7 +368,7 @@ class DiceRendererInstance {
     this.diceType = diceData.type;
 
     // Create new dice based on type
-    if (diceData.type === 'd6-defense') {
+    if (diceData.type === 'd6-defense' || diceData.type.startsWith('d6-enemy')) {
       this.mesh = this.createD6Mesh(diceData);
     } else {
       // Default to D20
@@ -464,11 +508,11 @@ class DiceRendererInstance {
    * @returns {Object} Rotation object {x, y, z}
    */
   calculateFaceRotation(faceNumber) {
-    // For D6, faceNumber is 1-6 and maps directly to face index 0-5
+    // For D6 (defense or enemy), faceNumber is 1-6 and maps directly to face index 0-5
     // For D20, use the face number map
     let faceIndex;
 
-    if (this.diceType === 'd6-defense') {
+    if (this.diceType === 'd6-defense' || this.diceType.startsWith('d6-enemy')) {
       faceIndex = faceNumber - 1;
     } else {
       // D20 face numbering mapping

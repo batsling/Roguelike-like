@@ -59,6 +59,75 @@ function createDefenseD6() {
 }
 
 /**
+ * Create a Low Difficulty Enemy D6
+ * Sides: 3🛡️, 3🛡️, 2⚔️, 2⚔️, 3⚔️, 3⚔️
+ * @returns {Object} Enemy D6 dice object
+ */
+function createEnemyD6Low() {
+  const sides = [
+    { value: 3, texture: null, modifiers: [], displayValue: null, displayText: '3🛡️', action: 'defend' },
+    { value: 3, texture: null, modifiers: [], displayValue: null, displayText: '3🛡️', action: 'defend' },
+    { value: 2, texture: null, modifiers: [], displayValue: null, displayText: '2⚔️', action: 'attack' },
+    { value: 2, texture: null, modifiers: [], displayValue: null, displayText: '2⚔️', action: 'attack' },
+    { value: 3, texture: null, modifiers: [], displayValue: null, displayText: '3⚔️', action: 'attack' },
+    { value: 3, texture: null, modifiers: [], displayValue: null, displayText: '3⚔️', action: 'attack' }
+  ];
+
+  return {
+    type: 'd6-enemy-low',
+    sides: sides,
+    globalModifiers: [],
+    currentRoll: null
+  };
+}
+
+/**
+ * Create a Medium Difficulty Enemy D6
+ * Sides: 5🛡️, 5🛡️, 3⚔️, 3⚔️, 5⚔️, 5⚔️
+ * @returns {Object} Enemy D6 dice object
+ */
+function createEnemyD6Medium() {
+  const sides = [
+    { value: 5, texture: null, modifiers: [], displayValue: null, displayText: '5🛡️', action: 'defend' },
+    { value: 5, texture: null, modifiers: [], displayValue: null, displayText: '5🛡️', action: 'defend' },
+    { value: 3, texture: null, modifiers: [], displayValue: null, displayText: '3⚔️', action: 'attack' },
+    { value: 3, texture: null, modifiers: [], displayValue: null, displayText: '3⚔️', action: 'attack' },
+    { value: 5, texture: null, modifiers: [], displayValue: null, displayText: '5⚔️', action: 'attack' },
+    { value: 5, texture: null, modifiers: [], displayValue: null, displayText: '5⚔️', action: 'attack' }
+  ];
+
+  return {
+    type: 'd6-enemy-medium',
+    sides: sides,
+    globalModifiers: [],
+    currentRoll: null
+  };
+}
+
+/**
+ * Create a High Difficulty Enemy D6
+ * Sides: 7🛡️, 7🛡️, 5⚔️, 5⚔️, 7⚔️, 7⚔️
+ * @returns {Object} Enemy D6 dice object
+ */
+function createEnemyD6High() {
+  const sides = [
+    { value: 7, texture: null, modifiers: [], displayValue: null, displayText: '7🛡️', action: 'defend' },
+    { value: 7, texture: null, modifiers: [], displayValue: null, displayText: '7🛡️', action: 'defend' },
+    { value: 5, texture: null, modifiers: [], displayValue: null, displayText: '5⚔️', action: 'attack' },
+    { value: 5, texture: null, modifiers: [], displayValue: null, displayText: '5⚔️', action: 'attack' },
+    { value: 7, texture: null, modifiers: [], displayValue: null, displayText: '7⚔️', action: 'attack' },
+    { value: 7, texture: null, modifiers: [], displayValue: null, displayText: '7⚔️', action: 'attack' }
+  ];
+
+  return {
+    type: 'd6-enemy-high',
+    sides: sides,
+    globalModifiers: [],
+    currentRoll: null
+  };
+}
+
+/**
  * Create a dice of any size (D6, D8, D12, etc.)
  * @param {number} numSides - Number of sides on the dice
  * @param {string} type - Type identifier (e.g., 'd6', 'd8')
@@ -241,6 +310,9 @@ if (typeof window !== 'undefined') {
   window.DiceSystem = {
     createD20,
     createDefenseD6,
+    createEnemyD6Low,
+    createEnemyD6Medium,
+    createEnemyD6High,
     createDice,
     rollDice,
     addGlobalModifier,

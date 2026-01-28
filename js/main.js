@@ -2302,13 +2302,51 @@ function showCombatModal() {
               </div>
             </div>
 
-            <!-- VS Separator -->
+            <!-- Enemy Intent Display -->
             <div style="
-              font-size: 36px;
-              font-weight: bold;
-              color: #666;
-              text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            ">⚔️</div>
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 10px;
+              padding: 15px;
+            ">
+              <div style="
+                font-size: 14px;
+                font-weight: bold;
+                color: #ffaa44;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 5px;
+              ">ENEMY INTENT</div>
+
+              <!-- Enemy Dice Container -->
+              <div style="
+                background: rgba(204,51,51,0.1);
+                border: 2px solid #cc3333;
+                border-radius: 8px;
+                padding: 10px;
+              ">
+                <div id="enemy-intent-dice-container" style="
+                  width: 150px;
+                  height: 150px;
+                  position: relative;
+                "></div>
+              </div>
+
+              <!-- Enemy Intent Text -->
+              <div id="enemy-intent-text" style="
+                background: rgba(0,0,0,0.5);
+                padding: 8px 16px;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: bold;
+                color: #ffaa44;
+                text-align: center;
+                min-width: 150px;
+              ">
+                Rolling...
+              </div>
+            </div>
 
             <!-- Enemy (Right) -->
             <div id="enemy-section" style="
@@ -2757,9 +2795,10 @@ function showCombatModal() {
   `;
   document.head.appendChild(style);
 
-  // Initialize 3D dice renderers (separate instances for attack and defense)
+  // Initialize 3D dice renderers (separate instances for attack, defense, and enemy)
   const attackDiceContainer = document.getElementById('attack-dice-container');
   const defenseDiceContainer = document.getElementById('defense-dice-container');
+  const enemyIntentDiceContainer = document.getElementById('enemy-intent-dice-container');
 
   const attackRenderer = new window.DiceRendererInstance();
   attackRenderer.init(attackDiceContainer);
@@ -2768,6 +2807,13 @@ function showCombatModal() {
   const defenseRenderer = new window.DiceRendererInstance();
   defenseRenderer.init(defenseDiceContainer);
   defenseRenderer.createDice(combat.dice.defense);
+
+  const enemyIntentRenderer = new window.DiceRendererInstance();
+  enemyIntentRenderer.init(enemyIntentDiceContainer);
+  enemyIntentRenderer.createDice(combat.dice.enemy);
+
+  // Roll enemy dice and show intent
+  showEnemyIntent();
 
   // Populate items bar
   populateItemsBar();
@@ -2796,6 +2842,27 @@ function showCombatModal() {
   // Setup dice click handlers for both attack and defense
   attackDiceContainer.addEventListener('click', () => handleDiceClick('attack'));
   defenseDiceContainer.addEventListener('click', () => handleDiceClick('defense'));
+
+  // Show enemy intent by rolling their dice
+  function showEnemyIntent() {
+    const currentCombat = window.CombatState.getCombatState();
+    if (!currentCombat || !currentCombat.enemy.plannedAction) return;
+
+    const plannedAction = currentCombat.enemy.plannedAction;
+    const intentTextEl = document.getElementById('enemy-intent-text');
+
+    // Animate the enemy dice
+    enemyIntentRenderer.rollDice(currentCombat.dice.enemy, plannedAction.sideIndex, (result) => {
+      // Update the intent text based on action type
+      if (plannedAction.type === 'attack') {
+        const totalDamage = plannedAction.value + currentCombat.enemy.strength;
+        intentTextEl.innerHTML = `<span style="color: #ff6666;">⚔️ Will attack for ${totalDamage} damage</span>`;
+      } else {
+        const totalBlock = plannedAction.value + currentCombat.enemy.defence;
+        intentTextEl.innerHTML = `<span style="color: #66ccff;">🛡️ Will gain ${totalBlock} block</span>`;
+      }
+    });
+  }
 
   // Update energy display
   function updateEnergyDisplay() {
@@ -3044,6 +3111,10 @@ function showCombatModal() {
     // Re-create dice for next roll
     attackRenderer.createDice(currentCombat.dice.attack);
     defenseRenderer.createDice(currentCombat.dice.defense);
+    enemyIntentRenderer.createDice(currentCombat.dice.enemy);
+
+    // Show new enemy intent
+    showEnemyIntent();
   }
 
   function updateCombatUI() {
@@ -3426,9 +3497,10 @@ function showCombatModal() {
     const endTurnBtn = document.getElementById('end-turn-btn');
     if (endTurnBtn) endTurnBtn.disabled = true;
 
-    // Dispose both dice renderers
+    // Dispose all three dice renderers
     attackRenderer.dispose();
     defenseRenderer.dispose();
+    enemyIntentRenderer.dispose();
 
     // Award rewards
     const goldMatch = enemy.successReward.match(/(\d+) Gold/);
@@ -3479,9 +3551,10 @@ function showCombatModal() {
   }
 
   function handleDefeat() {
-    // Dispose both dice renderers
+    // Dispose all three dice renderers
     attackRenderer.dispose();
     defenseRenderer.dispose();
+    enemyIntentRenderer.dispose();
 
     // Clear items and curses on death
     inventory = [];

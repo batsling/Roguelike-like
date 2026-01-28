@@ -13,19 +13,36 @@ var activeCombat = null;
  */
 function initializeCombat(enemy) {
   // Create a copy of the enemy with combat-specific data
+  // Create enemy dice based on difficulty
+  let enemyDice;
+  if (enemy.difficulty === 'Low') {
+    enemyDice = window.DiceSystem.createEnemyD6Low();
+  } else if (enemy.difficulty === 'Medium') {
+    enemyDice = window.DiceSystem.createEnemyD6Medium();
+  } else if (enemy.difficulty === 'High') {
+    enemyDice = window.DiceSystem.createEnemyD6High();
+  } else {
+    // Default to low if difficulty not specified
+    enemyDice = window.DiceSystem.createEnemyD6Low();
+  }
+
   const enemyState = {
     name: enemy.name,
     powerLevel: enemy.powerLevel,
     game: enemy.game,
     stat: enemy.stat,
+    difficulty: enemy.difficulty,
     armorClass: enemy.armorClass,
     maxHealth: enemy.health,
     health: enemy.health,
-    attack: enemy.attack,
+    attack: enemy.attack,  // Keep for backwards compatibility
+    strength: 0,  // Bonus damage for attack dice
+    defence: 0,   // Bonus block for defense dice
     successReward: enemy.successReward,
     failureConsequence: enemy.failureConsequence,
     imageUrl: enemy.imageUrl,
-    effects: window.CombatEffects.createEffects()
+    effects: window.CombatEffects.createEffects(),
+    plannedAction: null  // Will be set after rolling enemy dice
   };
 
   // Create player state snapshot with effective stats (including weapon bonuses)
@@ -54,7 +71,8 @@ function initializeCombat(enemy) {
     player: playerState,
     dice: {
       attack: attackDice,
-      defense: defenseDice
+      defense: defenseDice,
+      enemy: enemyDice
     },
     turn: 0,
     phase: 'player_turn',  // 'player_turn', 'enemy_turn', 'victory', 'defeat'
@@ -76,6 +94,9 @@ function initializeCombat(enemy) {
 
   // Log combat start
   addCombatLog(`Combat started against ${enemy.name}!`);
+
+  // Roll enemy dice to set their initial intent
+  rollEnemyDice();
 
   return activeCombat;
 }
@@ -272,36 +293,107 @@ function executePlayerAttack(rollTotal) {
 }
 
 /**
- * Execute the enemy's attack on the player
- * @returns {Object} Attack result
+ * Roll enemy dice to determine their intent for this turn
+ * @returns {Object} Planned action with type and value
  */
-function executeEnemyAttack() {
+function rollEnemyDice() {
+  if (!activeCombat) {
+    throw new Error('No active combat');
+  }
+
+  const enemyDice = activeCombat.dice.enemy;
+  const rollResult = window.DiceSystem.rollDice(enemyDice);
+  const side = rollResult.side;
+
+  // Determine planned action based on dice roll
+  const plannedAction = {
+    type: side.action,  // 'attack' or 'defend'
+    value: side.value,
+    displayText: side.displayText,
+    sideIndex: rollResult.sideIndex + 1  // For display (1-6)
+  };
+
+  activeCombat.enemy.plannedAction = plannedAction;
+
+  // Log the enemy's intent
+  if (plannedAction.type === 'attack') {
+    const totalDamage = plannedAction.value + activeCombat.enemy.strength;
+    addCombatLog(`${activeCombat.enemy.name} plans to attack for ${totalDamage} damage!`, 'warning');
+  } else {
+    const totalBlock = plannedAction.value + activeCombat.enemy.defence;
+    addCombatLog(`${activeCombat.enemy.name} plans to gain ${totalBlock} block!`, 'info');
+  }
+
+  return plannedAction;
+}
+
+/**
+ * Execute the enemy's planned action
+ * @returns {Object} Action result
+ */
+function executeEnemyAction() {
   if (!activeCombat) {
     throw new Error('No active combat');
   }
 
   const enemy = activeCombat.enemy;
   const player = activeCombat.player;
-  const damage = enemy.attack;
+  const plannedAction = enemy.plannedAction;
 
-  // Apply damage through player's block
-  const damageResult = window.CombatEffects.processDamageWithBlock(player, damage);
+  if (!plannedAction) {
+    throw new Error('No planned action for enemy');
+  }
 
-  addCombatLog(
-    `${enemy.name} attacks! Dealt ${damageResult.healthLost} damage${
-      damageResult.blockConsumed > 0 ? ` (${damageResult.blockConsumed} blocked)` : ''
-    }`,
-    'danger'
-  );
+  if (plannedAction.type === 'attack') {
+    // Execute attack
+    const damage = plannedAction.value + enemy.strength;
 
-  // Update global health variable
-  health = player.health;
+    // Apply damage through player's block
+    const damageResult = window.CombatEffects.processDamageWithBlock(player, damage);
 
-  return {
-    damage: damageResult.healthLost,
-    blockConsumed: damageResult.blockConsumed,
-    playerHealth: player.health
-  };
+    addCombatLog(
+      `${enemy.name} attacks! Dealt ${damageResult.healthLost} damage${
+        damageResult.blockConsumed > 0 ? ` (${damageResult.blockConsumed} blocked)` : ''
+      }`,
+      'danger'
+    );
+
+    // Update global health variable
+    health = player.health;
+
+    return {
+      type: 'attack',
+      damage: damageResult.healthLost,
+      blockConsumed: damageResult.blockConsumed,
+      playerHealth: player.health
+    };
+  } else {
+    // Execute defense
+    const blockGained = plannedAction.value + enemy.defence;
+
+    if (typeof window.CombatEffects !== 'undefined' && typeof window.CombatEffects.addBlock === 'function') {
+      window.CombatEffects.addBlock(enemy, blockGained);
+    } else {
+      enemy.effects.block = (enemy.effects.block || 0) + blockGained;
+    }
+
+    addCombatLog(`${enemy.name} gains ${blockGained} block!`, 'info');
+
+    return {
+      type: 'defend',
+      blockGained: blockGained,
+      enemyBlock: enemy.effects.block
+    };
+  }
+}
+
+/**
+ * Execute the enemy's attack on the player (legacy - kept for backwards compatibility)
+ * @returns {Object} Attack result
+ */
+function executeEnemyAttack() {
+  // Use new executeEnemyAction function
+  return executeEnemyAction();
 }
 
 /**
@@ -377,11 +469,11 @@ function endPlayerTurn() {
   // Enemy turn always happens (unless enemy is already dead)
   activeCombat.phase = 'enemy_turn';
 
-  // Execute enemy attack
-  const enemyAttackResult = executeEnemyAttack();
+  // Execute enemy's planned action
+  const enemyActionResult = executeEnemyAction();
 
-  // Apply curse (if player took damage)
-  if (enemyAttackResult.damage > 0) {
+  // Apply curse (if player took damage from enemy attack)
+  if (enemyActionResult.type === 'attack' && enemyActionResult.damage > 0) {
     applyCurseToPlayer();
   }
 
@@ -399,7 +491,7 @@ function endPlayerTurn() {
     health = 0;
     return {
       phase: 'defeat',
-      enemyAttackResult: enemyAttackResult
+      enemyActionResult: enemyActionResult
     };
   }
 
@@ -428,6 +520,9 @@ function endPlayerTurn() {
 
   addCombatLog(`--- Turn ${activeCombat.turn + 1} ---`, 'info');
 
+  // Roll enemy dice to set their intent for this turn
+  rollEnemyDice();
+
   // Check for Calipers: grants +5 block on turn 2 (when turn === 1)
   if (activeCombat.turn === 1) {
     const hasCalipers = inventory.some(item => item.name === 'Calipers');
@@ -453,9 +548,7 @@ function endPlayerTurn() {
   }
 
   return {
-    phase: 'player_turn',
-    attackResult: attackResult,
-    enemyAttackResult: attackResult.hit ? null : executeEnemyAttack
+    phase: 'player_turn'
   };
 }
 
@@ -495,9 +588,11 @@ if (typeof window !== 'undefined') {
     initializeCombat,
     addCombatLog,
     rollCombatDice,
+    rollEnemyDice,
     checkHit,
     getStatModifier,
     executePlayerAttack,
+    executeEnemyAction,
     executeEnemyAttack,
     applyCurseToPlayer,
     endPlayerTurn,
