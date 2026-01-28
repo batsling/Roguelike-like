@@ -2594,6 +2594,36 @@ function showCombatModal() {
                     width: 100%;
                     min-height: 20px;
                   "></div>
+
+                  <!-- Attack Confirm/Reroll Buttons -->
+                  <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                    <button id="attack-confirm-btn" disabled style="
+                      padding: 8px 20px;
+                      font-size: 14px;
+                      background: linear-gradient(145deg, #555, #444);
+                      border: 2px solid #666;
+                      border-radius: 6px;
+                      color: #888;
+                      cursor: not-allowed;
+                      font-weight: bold;
+                      opacity: 0.5;
+                      text-transform: uppercase;
+                      letter-spacing: 0.5px;
+                    ">✓ Confirm</button>
+                    <button id="attack-reroll-btn" disabled style="
+                      padding: 6px 16px;
+                      font-size: 12px;
+                      background: linear-gradient(145deg, #555, #444);
+                      border: 2px solid #666;
+                      border-radius: 6px;
+                      color: #888;
+                      cursor: not-allowed;
+                      font-weight: bold;
+                      opacity: 0.5;
+                      text-transform: uppercase;
+                      letter-spacing: 0.5px;
+                    ">🔄 Reroll (0)</button>
+                  </div>
                 </div>
               </div>
 
@@ -2646,6 +2676,36 @@ function showCombatModal() {
                     width: 100%;
                     min-height: 20px;
                   "></div>
+
+                  <!-- Defense Confirm/Reroll Buttons -->
+                  <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                    <button id="defense-confirm-btn" disabled style="
+                      padding: 8px 20px;
+                      font-size: 14px;
+                      background: linear-gradient(145deg, #555, #444);
+                      border: 2px solid #666;
+                      border-radius: 6px;
+                      color: #888;
+                      cursor: not-allowed;
+                      font-weight: bold;
+                      opacity: 0.5;
+                      text-transform: uppercase;
+                      letter-spacing: 0.5px;
+                    ">✓ Confirm</button>
+                    <button id="defense-reroll-btn" disabled style="
+                      padding: 6px 16px;
+                      font-size: 12px;
+                      background: linear-gradient(145deg, #555, #444);
+                      border: 2px solid #666;
+                      border-radius: 6px;
+                      color: #888;
+                      cursor: not-allowed;
+                      font-weight: bold;
+                      opacity: 0.5;
+                      text-transform: uppercase;
+                      letter-spacing: 0.5px;
+                    ">🔄 Reroll (0)</button>
+                  </div>
                 </div>
               </div>
             </div>
