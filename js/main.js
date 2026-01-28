@@ -2124,6 +2124,7 @@ function showCombatModal() {
         flex: 1;
         min-height: 0;
         gap: 15px;
+        overflow-y: auto;
       ">
         <!-- Combat Scene (Player vs Enemy + Dice) -->
         <div style="
@@ -2307,8 +2308,8 @@ function showCombatModal() {
               display: flex;
               flex-direction: column;
               align-items: center;
-              gap: 10px;
-              padding: 15px;
+              gap: 8px;
+              padding: 10px;
             ">
               <div style="
                 font-size: 14px;
@@ -2324,11 +2325,11 @@ function showCombatModal() {
                 background: rgba(204,51,51,0.1);
                 border: 2px solid #cc3333;
                 border-radius: 8px;
-                padding: 10px;
+                padding: 8px;
               ">
                 <div id="enemy-intent-dice-container" style="
-                  width: 150px;
-                  height: 150px;
+                  width: 120px;
+                  height: 120px;
                   position: relative;
                 "></div>
               </div>
@@ -2493,12 +2494,11 @@ function showCombatModal() {
             background: linear-gradient(145deg, rgba(204,102,0,0.15), rgba(204,102,0,0.05));
             border: 3px solid #cc6600;
             border-radius: 12px;
-            padding: 20px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 320px;
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
             position: relative;
           ">
@@ -2604,7 +2604,7 @@ function showCombatModal() {
                 ">
                   <div id="attack-dice-container" class="dice-clickable" style="
                     width: 100%;
-                    height: 180px;
+                    height: 150px;
                     cursor: pointer;
                     position: relative;
                   "></div>
@@ -2666,7 +2666,7 @@ function showCombatModal() {
                 ">
                   <div id="defense-dice-container" class="dice-clickable" style="
                     width: 100%;
-                    height: 180px;
+                    height: 150px;
                     cursor: pointer;
                     position: relative;
                   "></div>
@@ -2856,10 +2856,10 @@ function showCombatModal() {
       // Update the intent text based on action type
       if (plannedAction.type === 'attack') {
         const totalDamage = plannedAction.value + currentCombat.enemy.strength;
-        intentTextEl.innerHTML = `<span style="color: #ff6666;">⚔️ Will attack for ${totalDamage} damage</span>`;
+        intentTextEl.innerHTML = `<span style="color: #ff6666;">⚔️ The enemy will attack for ${totalDamage} damage</span>`;
       } else {
         const totalBlock = plannedAction.value + currentCombat.enemy.defence;
-        intentTextEl.innerHTML = `<span style="color: #66ccff;">🛡️ Will gain ${totalBlock} block</span>`;
+        intentTextEl.innerHTML = `<span style="color: #66ccff;">🛡️ The enemy will gain ${totalBlock} block</span>`;
       }
     });
   }
@@ -2991,12 +2991,19 @@ function showCombatModal() {
           `;
 
           if (hit) {
-            // Calculate and apply damage
+            // Calculate and apply damage through enemy's block
             const weaponDamage = gameState.equippedWeapon ? gameState.equippedWeapon.damage : 1;
-            combat.enemy.health = Math.max(0, combat.enemy.health - weaponDamage);
+
+            // Apply damage through enemy's block
+            const damageResult = window.CombatEffects.processDamageWithBlock(combat.enemy, weaponDamage);
 
             addCombatLogMessage(`⚔️ Attack hit! (${totalRoll} vs AC ${combat.enemy.armorClass})`, 'success');
-            addCombatLogMessage(`💥 Dealt ${weaponDamage} damage to ${combat.enemy.name}!`, 'success');
+
+            if (damageResult.blockConsumed > 0) {
+              addCombatLogMessage(`💥 Dealt ${damageResult.healthLost} damage (${damageResult.blockConsumed} blocked)!`, 'success');
+            } else {
+              addCombatLogMessage(`💥 Dealt ${damageResult.healthLost} damage to ${combat.enemy.name}!`, 'success');
+            }
 
             // Update UI to show enemy damage
             updateCombatUI();

@@ -518,6 +518,10 @@ function endPlayerTurn() {
   activeCombat.rollCount.attack = 0;
   activeCombat.rollCount.defense = 0;
 
+  // Reset block for both player and enemy at start of turn
+  activeCombat.player.effects.block = 0;
+  activeCombat.enemy.effects.block = 0;
+
   addCombatLog(`--- Turn ${activeCombat.turn + 1} ---`, 'info');
 
   // Roll enemy dice to set their intent for this turn
