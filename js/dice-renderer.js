@@ -90,9 +90,11 @@ class DiceRendererInstance {
     ctx.font = 'bold 48px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    // Triangle UVs: (0.1,0.1), (0.9,0.1), (0.5,0.9)
-    // In canvas coords (Y flipped): (12.8,115.2), (115.2,115.2), (64,12.8)
-    // Centroid: (64, 81)
+
+    // Add text outline for better readability
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 6;
+    ctx.strokeText(displayValue.toString(), 64, 81);
     ctx.fillText(displayValue.toString(), 64, 81);
 
     const texture = new THREE.CanvasTexture(canvas);
@@ -129,6 +131,11 @@ class DiceRendererInstance {
     ctx.font = 'bold 40px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+
+    // Add text outline for better readability
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 6;
+    ctx.strokeText(displayText, 64, 64);
     ctx.fillText(displayText, 64, 64);
 
     const texture = new THREE.CanvasTexture(canvas);
@@ -163,6 +170,11 @@ class DiceRendererInstance {
     ctx.font = 'bold 40px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+
+    // Add text outline for better readability
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 6;
+    ctx.strokeText(displayText, 64, 64);
     ctx.fillText(displayText, 64, 64);
 
     const texture = new THREE.CanvasTexture(canvas);
@@ -177,7 +189,8 @@ class DiceRendererInstance {
    */
   createD20Mesh(diceData) {
     // Create base icosahedron geometry - larger for better visibility
-    const baseGeometry = new THREE.IcosahedronGeometry(1.6, 0);
+    // Use subdivision level 1 for smoother, more rounded appearance
+    const baseGeometry = new THREE.IcosahedronGeometry(1.6, 1);
 
     // Convert to non-indexed geometry if needed
     const geometry = baseGeometry.index ? baseGeometry.toNonIndexed() : baseGeometry;
@@ -281,7 +294,8 @@ class DiceRendererInstance {
    */
   createD6Mesh(diceData) {
     // Create cube geometry - larger for better readability
-    const geometry = new THREE.BoxGeometry(2.0, 2.0, 2.0);
+    // Use segments for smoother edges (closer to rounded appearance)
+    const geometry = new THREE.BoxGeometry(2.0, 2.0, 2.0, 4, 4, 4);
 
     const materials = [];
 

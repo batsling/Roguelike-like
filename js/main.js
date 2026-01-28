@@ -2281,22 +2281,6 @@ function showCombatModal() {
                 </div>
               </div>
 
-              <!-- Combat Stats -->
-              <div style="
-                background: rgba(0,0,0,0.4);
-                border: 1px solid #4CAF50;
-                border-radius: 6px;
-                padding: 8px 16px;
-                margin-bottom: 8px;
-              ">
-                <div style="display: flex; gap: 15px; font-size: 13px;">
-                  <div style="text-align: center;">
-                    <p style="margin: 0; color: #aaa; font-size: 10px; text-transform: uppercase;">Attack</p>
-                    <p style="margin: 2px 0 0 0; color: #ff6666; font-weight: bold; font-size: 16px;">${attack}</p>
-                  </div>
-                </div>
-              </div>
-
               <!-- Player Effects -->
               <div id="player-effects" style="font-size: 12px; text-align: center; min-height: 20px;">
                 <!-- Effects will appear here -->
@@ -2452,14 +2436,10 @@ function showCombatModal() {
                 padding: 8px 16px;
                 margin-bottom: 8px;
               ">
-                <div style="display: flex; gap: 15px; font-size: 13px;">
+                <div style="display: flex; gap: 15px; font-size: 13px; justify-content: center;">
                   <div style="text-align: center;">
                     <p style="margin: 0; color: #aaa; font-size: 10px; text-transform: uppercase;">AC</p>
                     <p style="margin: 2px 0 0 0; color: #66ccff; font-weight: bold; font-size: 16px;">${enemy.armorClass}</p>
-                  </div>
-                  <div style="text-align: center; border-left: 1px solid #666; padding-left: 15px;">
-                    <p style="margin: 0; color: #aaa; font-size: 10px; text-transform: uppercase;">Attack</p>
-                    <p style="margin: 2px 0 0 0; color: #ff6666; font-weight: bold; font-size: 16px;">${enemy.attack}</p>
                   </div>
                 </div>
               </div>
@@ -2583,9 +2563,8 @@ function showCombatModal() {
                     font-size: 14px;
                     font-weight: bold;
                     color: #cc6600;
-                    text-transform: uppercase;
-                    letter-spacing: 1.5px;
-                  ">⚔️ ATTACK D20</div>
+                    letter-spacing: 0.5px;
+                  ">⚔️ Attack for ${attack} damage</div>
                   <div style="
                     font-size: 12px;
                     color: #ffcc00;
@@ -2608,15 +2587,6 @@ function showCombatModal() {
                     cursor: pointer;
                     position: relative;
                   "></div>
-                  <p class="dice-instruction" style="
-                    color: #ffaa44;
-                    font-size: 13px;
-                    margin: 8px 0 0 0;
-                    text-align: center;
-                    font-weight: bold;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                  ">🎲 Click to Attack!</p>
                   <div id="attack-roll-result" style="
                     margin-top: 6px;
                     font-size: 14px;
@@ -2645,9 +2615,8 @@ function showCombatModal() {
                     font-size: 14px;
                     font-weight: bold;
                     color: #66ccff;
-                    text-transform: uppercase;
-                    letter-spacing: 1.5px;
-                  ">🛡️ DEFEND D6</div>
+                    letter-spacing: 0.5px;
+                  ">🛡️ Block Roll</div>
                   <div style="
                     font-size: 12px;
                     color: #ffcc00;
@@ -2670,15 +2639,6 @@ function showCombatModal() {
                     cursor: pointer;
                     position: relative;
                   "></div>
-                  <p class="dice-instruction" style="
-                    color: #66ccff;
-                    font-size: 13px;
-                    margin: 8px 0 0 0;
-                    text-align: center;
-                    font-weight: bold;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                  ">🎲 Click to Defend!</p>
                   <div id="defense-roll-result" style="
                     margin-top: 6px;
                     font-size: 14px;
