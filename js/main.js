@@ -2859,9 +2859,26 @@ function showCombatModal() {
   // Update energy display
   updateEnergyDisplay();
 
+  // Pending roll state - stores roll data before confirmation
+  const pendingRolls = {
+    attack: null,
+    defense: null
+  };
+
+  // Initialize reroll button text with current reroll count
+  updateRerollButtonText();
+
   // Setup dice click handlers for both attack and defense
   attackDiceContainer.addEventListener('click', () => handleDiceClick('attack'));
   defenseDiceContainer.addEventListener('click', () => handleDiceClick('defense'));
+
+  // Setup confirm button handlers
+  document.getElementById('attack-confirm-btn').addEventListener('click', () => handleConfirm('attack'));
+  document.getElementById('defense-confirm-btn').addEventListener('click', () => handleConfirm('defense'));
+
+  // Setup reroll button handlers
+  document.getElementById('attack-reroll-btn').addEventListener('click', () => handleReroll('attack'));
+  document.getElementById('defense-reroll-btn').addEventListener('click', () => handleReroll('defense'));
 
   // Show enemy intent by rolling their dice
   function showEnemyIntent() {
@@ -2913,8 +2930,73 @@ function showCombatModal() {
     }
   }
 
+  // Helper to update reroll button text with current count
+  function updateRerollButtonText() {
+    const attackRerollBtn = document.getElementById('attack-reroll-btn');
+    const defenseRerollBtn = document.getElementById('defense-reroll-btn');
+    const rerollCount = gameState.reroll || 0;
+
+    if (attackRerollBtn) {
+      attackRerollBtn.textContent = `🔄 Reroll (${rerollCount})`;
+    }
+    if (defenseRerollBtn) {
+      defenseRerollBtn.textContent = `🔄 Reroll (${rerollCount})`;
+    }
+  }
+
+  // Helper to enable/disable buttons
+  function updateButtonStates(diceType, hasRoll, isConfirmed) {
+    const confirmBtn = document.getElementById(`${diceType}-confirm-btn`);
+    const rerollBtn = document.getElementById(`${diceType}-reroll-btn`);
+    const rerollCount = gameState.reroll || 0;
+
+    // Confirm button: enabled after roll, disabled after confirming or no roll
+    if (confirmBtn) {
+      if (hasRoll && !isConfirmed) {
+        confirmBtn.disabled = false;
+        confirmBtn.style.opacity = '1';
+        confirmBtn.style.cursor = 'pointer';
+        confirmBtn.style.background = 'linear-gradient(145deg, #4CAF50, #2E7D32)';
+        confirmBtn.style.color = 'white';
+        confirmBtn.style.borderColor = '#2E7D32';
+      } else {
+        confirmBtn.disabled = true;
+        confirmBtn.style.opacity = '0.5';
+        confirmBtn.style.cursor = 'not-allowed';
+        confirmBtn.style.background = 'linear-gradient(145deg, #555, #444)';
+        confirmBtn.style.color = '#888';
+        confirmBtn.style.borderColor = '#666';
+      }
+    }
+
+    // Reroll button: enabled after roll if reroll>0, disabled if reroll=0 or confirmed or no roll
+    if (rerollBtn) {
+      if (hasRoll && !isConfirmed && rerollCount > 0) {
+        rerollBtn.disabled = false;
+        rerollBtn.style.opacity = '1';
+        rerollBtn.style.cursor = 'pointer';
+        rerollBtn.style.background = 'linear-gradient(145deg, #9b59b6, #7d3c98)';
+        rerollBtn.style.color = 'white';
+        rerollBtn.style.borderColor = '#7d3c98';
+      } else {
+        rerollBtn.disabled = true;
+        rerollBtn.style.opacity = '0.5';
+        rerollBtn.style.cursor = 'not-allowed';
+        rerollBtn.style.background = 'linear-gradient(145deg, #555, #444)';
+        rerollBtn.style.color = '#888';
+        rerollBtn.style.borderColor = '#666';
+      }
+    }
+  }
+
   function handleDiceClick(diceType) {
     if (combat.phase !== 'player_turn') {
+      return;
+    }
+
+    // Don't allow new rolls if this dice already has a pending roll
+    if (pendingRolls[diceType]) {
+      addCombatLogMessage('Please confirm or reroll the current roll first!', 'warning');
       return;
     }
 
@@ -2959,29 +3041,22 @@ function showCombatModal() {
             obstructionIndicatorElement.style.display = 'none';
           }
 
-          // Apply curse modifiers
+          // Calculate curse modifiers (but don't apply yet)
           let finalRoll = result;
           const statModifier = window.CombatState.getStatModifier();
 
           // Check for Curse of Failure
           const failureCurses = getCursesByType('failure');
+          let failureDamage = 0;
           if (failureCurses.length > 0 && result === 1) {
             // Curse of Failure: Roll of 1 is auto-miss and deals damage
-            addCombatLogMessage(`Rolled a 1! Curse of Failure activated!`, 'danger');
-
-            // Deal failure damage
-            let totalDamage = failureCurses.reduce((sum, curse) =>
+            failureDamage = failureCurses.reduce((sum, curse) =>
               sum + getPowerValue(curse.power, { Low: 2, Medium: 3, High: 4 }), 0
             );
 
             if (typeof calculateDamageReduction === 'function') {
-              totalDamage = calculateDamageReduction(totalDamage);
+              failureDamage = calculateDamageReduction(failureDamage);
             }
-
-            combat.player.health = Math.max(0, combat.player.health - totalDamage);
-            gameState.health = combat.player.health;
-            updateCombatUI();
-            addCombatLogMessage(`Curse of Failure dealt ${totalDamage} damage!`, 'danger');
 
             // Treat roll as 0 for AC check (auto-miss)
             finalRoll = 0;
@@ -2989,89 +3064,191 @@ function showCombatModal() {
 
           // Check for Curse of Weakness
           let cursePenalty = 0;
+          let weaknessCurse = null;
           const weaknessCurses = getCursesByType('weakness');
           if (weaknessCurses.length > 0) {
-            const weaknessCurse = weaknessCurses[0];
+            weaknessCurse = weaknessCurses[0];
             cursePenalty = getPowerValue(weaknessCurse.power, { Low: 2, Medium: 3, High: 4 });
-
-            addCombatLogMessage(`Curse of Weakness: -${cursePenalty}`, 'warning');
-
-            // Remove curse after use
-            gameState.activeCurses.splice(gameState.activeCurses.indexOf(weaknessCurse), 1);
-            updateCurseUI();
           }
 
           const totalRoll = finalRoll + statModifier - cursePenalty;
           const hit = totalRoll >= combat.enemy.armorClass;
 
-          // Display roll result
+          // Calculate what damage WOULD be dealt (but don't apply it)
+          let calculatedDamage = 0;
+          let damagePreview = null;
+          if (hit) {
+            calculatedDamage = combat.player.attack;
+            // Preview what would happen with block
+            const enemyBlock = combat.enemy.effects.block || 0;
+            const blockConsumed = Math.min(enemyBlock, calculatedDamage);
+            const healthLost = calculatedDamage - blockConsumed;
+            damagePreview = { blockConsumed, healthLost };
+          }
+
+          // Store pending roll data
+          pendingRolls[diceType] = {
+            result: result,
+            finalRoll: finalRoll,
+            statModifier: statModifier,
+            cursePenalty: cursePenalty,
+            weaknessCurse: weaknessCurse,
+            failureCurses: failureCurses,
+            failureDamage: failureDamage,
+            totalRoll: totalRoll,
+            hit: hit,
+            damage: calculatedDamage,
+            damagePreview: damagePreview
+          };
+
+          // Display roll result (preview)
           resultDisplay.innerHTML = `
             <div style="background: rgba(0,0,0,0.5); padding: 8px; border-radius: 6px;">
               <p style="margin: 2px 0; font-size: 12px;">Dice: <strong>${result}</strong></p>
               <p style="margin: 2px 0; font-size: 12px; color: ${getStatColor(combat.enemy.stat)};">+ ${combat.enemy.stat}: <strong>${statModifier}</strong></p>
               ${cursePenalty > 0 ? `<p style="margin: 2px 0; font-size: 12px; color: #ff6666;">- Weakness: <strong>${cursePenalty}</strong></p>` : ''}
+              ${failureDamage > 0 ? `<p style="margin: 2px 0; font-size: 12px; color: #ff6666;">⚠️ Failure: <strong>${failureDamage} dmg to you</strong></p>` : ''}
               <p style="margin: 4px 0 0 0; font-size: 16px; color: ${hit ? '#4CAF50' : '#ff6666'};"><strong>${hit ? 'HIT!' : 'MISS'} (${totalRoll}/${combat.enemy.armorClass})</strong></p>
             </div>
           `;
 
-          if (hit) {
-            // Calculate and apply damage through enemy's block using player's attack stat
-            const damage = combat.player.attack;
-
-            // Apply damage through enemy's block
-            const damageResult = window.CombatEffects.processDamageWithBlock(combat.enemy, damage);
-
-            addCombatLogMessage(`⚔️ Attack hit! (${totalRoll} vs AC ${combat.enemy.armorClass})`, 'success');
-
-            if (damageResult.blockConsumed > 0) {
-              addCombatLogMessage(`💥 Dealt ${damageResult.healthLost} damage (${damageResult.blockConsumed} blocked)!`, 'success');
-            } else {
-              addCombatLogMessage(`💥 Dealt ${damageResult.healthLost} damage to ${combat.enemy.name}!`, 'success');
-            }
-
-            // Update UI to show enemy damage
-            updateCombatUI();
-
-            // Check if enemy is defeated
-            if (combat.enemy.health <= 0) {
-              setTimeout(() => {
-                handleVictory();
-              }, 500);
-            }
-          } else {
-            addCombatLogMessage(`❌ Attack missed! (${totalRoll} vs AC ${combat.enemy.armorClass})`, 'info');
-          }
-
         } else {
-          // Defense dice - show block gained
+          // Defense dice - calculate block that would be gained
           const blockGained = rollResult.result.total;
-          combat.player.effects.block = (combat.player.effects.block || 0) + blockGained;
+          const newBlockTotal = (combat.player.effects.block || 0) + blockGained;
 
+          // Store pending roll data
+          pendingRolls[diceType] = {
+            blockGained: blockGained,
+            newBlockTotal: newBlockTotal
+          };
+
+          // Display roll result (preview)
           resultDisplay.innerHTML = `
             <div style="background: rgba(0,0,0,0.5); padding: 8px; border-radius: 6px;">
               <p style="margin: 2px 0; font-size: 16px; color: #66ccff;"><strong>+${blockGained} 🛡️</strong></p>
-              <p style="margin: 4px 0 0 0; font-size: 12px;">Block: ${combat.player.effects.block}</p>
+              <p style="margin: 4px 0 0 0; font-size: 12px;">Block: ${newBlockTotal}</p>
             </div>
           `;
-
-          addCombatLogMessage(`🛡️ Gained ${blockGained} block! (Total: ${combat.player.effects.block})`, 'info');
-          updateCombatUI();
         }
 
-        // Enable end turn button after any roll
-        const endTurnBtn = document.getElementById('end-turn-btn');
-        endTurnBtn.disabled = false;
-        endTurnBtn.style.opacity = '1';
-        endTurnBtn.style.cursor = 'pointer';
-        endTurnBtn.style.background = 'linear-gradient(145deg, #4CAF50, #2E7D32)';
-        endTurnBtn.style.color = 'white';
-        endTurnBtn.style.borderColor = '#2E7D32';
+        // Enable confirm and reroll buttons
+        updateButtonStates(diceType, true, false);
       });
 
     } catch (error) {
       console.error('Error rolling dice:', error);
       addCombatLogMessage(error.message, 'danger');
     }
+  }
+
+  // Handle confirming a roll (executes the stored effect)
+  function handleConfirm(diceType) {
+    if (!pendingRolls[diceType]) {
+      return; // No pending roll
+    }
+
+    const pending = pendingRolls[diceType];
+
+    if (diceType === 'attack') {
+      // Execute attack effects
+      if (pending.failureDamage > 0) {
+        addCombatLogMessage(`Rolled a 1! Curse of Failure activated!`, 'danger');
+        combat.player.health = Math.max(0, combat.player.health - pending.failureDamage);
+        gameState.health = combat.player.health;
+        updateCombatUI();
+        addCombatLogMessage(`Curse of Failure dealt ${pending.failureDamage} damage!`, 'danger');
+      }
+
+      // Remove Curse of Weakness if it was applied
+      if (pending.weaknessCurse) {
+        addCombatLogMessage(`Curse of Weakness: -${pending.cursePenalty}`, 'warning');
+        gameState.activeCurses.splice(gameState.activeCurses.indexOf(pending.weaknessCurse), 1);
+        updateCurseUI();
+      }
+
+      if (pending.hit) {
+        // Apply damage through enemy's block
+        const damageResult = window.CombatEffects.processDamageWithBlock(combat.enemy, pending.damage);
+
+        addCombatLogMessage(`⚔️ Attack hit! (${pending.totalRoll} vs AC ${combat.enemy.armorClass})`, 'success');
+
+        if (damageResult.blockConsumed > 0) {
+          addCombatLogMessage(`💥 Dealt ${damageResult.healthLost} damage (${damageResult.blockConsumed} blocked)!`, 'success');
+        } else {
+          addCombatLogMessage(`💥 Dealt ${damageResult.healthLost} damage to ${combat.enemy.name}!`, 'success');
+        }
+
+        // Update UI to show enemy damage
+        updateCombatUI();
+
+        // Check if enemy is defeated
+        if (combat.enemy.health <= 0) {
+          setTimeout(() => {
+            handleVictory();
+          }, 500);
+        }
+      } else {
+        addCombatLogMessage(`❌ Attack missed! (${pending.totalRoll} vs AC ${combat.enemy.armorClass})`, 'info');
+      }
+
+    } else {
+      // Execute defense effects
+      combat.player.effects.block = pending.newBlockTotal;
+      addCombatLogMessage(`🛡️ Gained ${pending.blockGained} block! (Total: ${pending.newBlockTotal})`, 'info');
+      updateCombatUI();
+    }
+
+    // Clear the pending roll
+    pendingRolls[diceType] = null;
+
+    // Disable both confirm and reroll buttons after confirming
+    updateButtonStates(diceType, false, true);
+
+    // Enable end turn button after confirming
+    const endTurnBtn = document.getElementById('end-turn-btn');
+    endTurnBtn.disabled = false;
+    endTurnBtn.style.opacity = '1';
+    endTurnBtn.style.cursor = 'pointer';
+    endTurnBtn.style.background = 'linear-gradient(145deg, #4CAF50, #2E7D32)';
+    endTurnBtn.style.color = 'white';
+    endTurnBtn.style.borderColor = '#2E7D32';
+  }
+
+  // Handle rerolling a dice (costs reroll stat)
+  function handleReroll(diceType) {
+    if (!pendingRolls[diceType]) {
+      return; // No pending roll
+    }
+
+    if (gameState.reroll <= 0) {
+      addCombatLogMessage('No rerolls remaining!', 'warning');
+      return;
+    }
+
+    // Consume one reroll
+    gameState.reroll--;
+
+    // Clear the pending roll
+    pendingRolls[diceType] = null;
+
+    // Disable buttons temporarily
+    updateButtonStates(diceType, false, false);
+
+    // Update reroll button text
+    updateRerollButtonText();
+
+    addCombatLogMessage(`🔄 Rerolling ${diceType} dice... (${gameState.reroll} rerolls left)`, 'info');
+
+    // Trigger a new roll (this will refund the energy since we're rerolling)
+    // First, refund the energy that was spent
+    combat.player.energy = Math.min(combat.player.energy + 1, combat.player.maxEnergy);
+    updateEnergyDisplay();
+
+    // Now roll again (this will spend energy again)
+    setTimeout(() => {
+      handleDiceClick(diceType);
+    }, 100);
   }
 
   // Setup end turn button
@@ -3120,6 +3297,14 @@ function showCombatModal() {
     // Clear roll results
     document.getElementById('attack-roll-result').innerHTML = '';
     document.getElementById('defense-roll-result').innerHTML = '';
+
+    // Clear pending rolls
+    pendingRolls.attack = null;
+    pendingRolls.defense = null;
+
+    // Reset confirm and reroll buttons
+    updateButtonStates('attack', false, false);
+    updateButtonStates('defense', false, false);
 
     const endTurnBtn = document.getElementById('end-turn-btn');
     endTurnBtn.disabled = true;
