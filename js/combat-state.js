@@ -469,6 +469,9 @@ function endPlayerTurn() {
   // Enemy turn always happens (unless enemy is already dead)
   activeCombat.phase = 'enemy_turn';
 
+  // Reset enemy block from last turn before executing new action
+  activeCombat.enemy.effects.block = 0;
+
   // Execute enemy's planned action
   const enemyActionResult = executeEnemyAction();
 
@@ -518,9 +521,8 @@ function endPlayerTurn() {
   activeCombat.rollCount.attack = 0;
   activeCombat.rollCount.defense = 0;
 
-  // Reset block for both player and enemy at start of turn
+  // Reset only player block at start of player turn (enemy block was already reset)
   activeCombat.player.effects.block = 0;
-  activeCombat.enemy.effects.block = 0;
 
   addCombatLog(`--- Turn ${activeCombat.turn + 1} ---`, 'info');
 

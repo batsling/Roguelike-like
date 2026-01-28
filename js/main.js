@@ -2920,11 +2920,15 @@ function showCombatModal() {
       const renderer = diceType === 'attack' ? attackRenderer : defenseRenderer;
       const resultDisplay = document.getElementById(`${diceType}-roll-result`);
 
-      // Get result value based on dice type
-      const resultValue = diceType === 'attack' ? rollResult.result.baseValue : rollResult.result.total;
+      // Get the face number to show on the dice
+      // For D20: use the rolled value (1-20)
+      // For D6: use sideIndex + 1 to show correct face (1-6)
+      const faceNumber = diceType === 'attack'
+        ? rollResult.result.baseValue
+        : rollResult.result.sideIndex + 1;
 
       // Animate the 3D dice
-      renderer.rollDice(combat.dice[diceType], resultValue, (result) => {
+      renderer.rollDice(combat.dice[diceType], faceNumber, (result) => {
         if (diceType === 'attack') {
           // Hide obstruction indicator if curse expired
           const obstructionCursesAfterRoll = gameState.activeCurses ? gameState.activeCurses.filter(curse =>
@@ -2991,11 +2995,11 @@ function showCombatModal() {
           `;
 
           if (hit) {
-            // Calculate and apply damage through enemy's block
-            const weaponDamage = gameState.equippedWeapon ? gameState.equippedWeapon.damage : 1;
+            // Calculate and apply damage through enemy's block using player's attack stat
+            const damage = combat.player.attack;
 
             // Apply damage through enemy's block
-            const damageResult = window.CombatEffects.processDamageWithBlock(combat.enemy, weaponDamage);
+            const damageResult = window.CombatEffects.processDamageWithBlock(combat.enemy, damage);
 
             addCombatLogMessage(`⚔️ Attack hit! (${totalRoll} vs AC ${combat.enemy.armorClass})`, 'success');
 
