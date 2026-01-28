@@ -176,8 +176,8 @@ class DiceRendererInstance {
    * @returns {THREE.Group} D20 as a group of face meshes
    */
   createD20Mesh(diceData) {
-    // Create base icosahedron geometry
-    const baseGeometry = new THREE.IcosahedronGeometry(1, 0);
+    // Create base icosahedron geometry - larger for better visibility
+    const baseGeometry = new THREE.IcosahedronGeometry(1.6, 0);
 
     // Convert to non-indexed geometry if needed
     const geometry = baseGeometry.index ? baseGeometry.toNonIndexed() : baseGeometry;
@@ -280,8 +280,8 @@ class DiceRendererInstance {
    * @returns {THREE.Mesh} D6 cube mesh
    */
   createD6Mesh(diceData) {
-    // Create cube geometry - bigger for better readability
-    const geometry = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+    // Create cube geometry - larger for better readability
+    const geometry = new THREE.BoxGeometry(2.0, 2.0, 2.0);
 
     const materials = [];
 
