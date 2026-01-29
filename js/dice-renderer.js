@@ -85,7 +85,7 @@ class DiceRendererInstance {
     }
 
     // Number - sized and positioned for triangular face
-    const displayValue = side && side.displayValue !== null ? side.displayValue : number;
+    const displayValue = side && side.displayValue !== null ? side.displayValue : (number || 1);
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 48px Arial';
     ctx.textAlign = 'center';
@@ -264,9 +264,10 @@ class DiceRendererInstance {
       faceGeometry.computeVertexNormals();
 
       // Get the number for this face
-      const number = faceNumberMap[faceIndex];
+      // With subdivision, we have more faces than numbers, so cycle through them
+      const number = faceNumberMap[faceIndex % faceNumberMap.length] || (faceIndex % 20) + 1;
       const sideIndex = number - 1;
-      const side = diceData.sides[sideIndex];
+      const side = diceData.sides[sideIndex] || { value: number, displayValue: null };
       const texture = this.createD20FaceTexture(number, side);
 
       // Create material with texture
