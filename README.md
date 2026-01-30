@@ -43,6 +43,75 @@ The codebase is organized into focused, maintainable modules. See [js/README.md]
 
 ## Recent Updates
 
+### Version 5.0 - Weapon System & Combat Enhancements (January 2026)
+
+**Weapon System:**
+- **Weapon Bonuses**: Weapons can now accumulate stat bonuses through verification triggers
+- **Per-Weapon Stats**: Each weapon tracks its own level and bonuses independently
+- **Weapon Leveling**: Weapons level up (1-3) through combining duplicates or shop upgrades
+  - Level 1 → 2: 10 gold or combine duplicate
+  - Level 2 → 3: 20 gold or combine duplicate
+- **Weapon Swapping**: Bonuses stored on weapons persist when equipping/unequipping
+- **Verification Rewards**: Weapons grant bonuses based on current level (not cumulative)
+
+**New Item Types:**
+- **Scaling Items**: Items that dynamically calculate bonuses (cannot be upgraded like Passives)
+  - Example: Beefy Ring - grants +1 Attack per 10 max health
+
+**Combat Enhancements:**
+- **Block Mechanic**: Block absorbs damage before health
+  - Block granted by items like Calipers
+  - Block does NOT persist between turns
+- **Combat Tooltips**: Fixed hovering tooltips for items in combat
+  - Tooltips moved to document.body to avoid z-index stacking issues
+  - Unique IDs prevent conflicts with inventory tooltips
+- **Combat Turn Tracking**: Turn-based effects now properly trigger on specific turns
+
+**Passive Item System:**
+- **Upgrade/Downgrade System**: All Passive items can be upgraded/downgraded
+  - Supported stats: strength, dexterity, intelligence, charisma, dash, reroll, skip, discovery, fov, luck, maxHealth, block
+  - Items split when upgraded/downgraded if quantity > 1
+  - Modifiers displayed in item tooltips
+- **Stat Modifiers**: Each passive tracks individual stat changes
+- **Block Support**: Passive items can now modify block values
+
+**New Weapons (7 total):**
+1. **Lil' Bomber** (Common): Gains (+1/+2/+3) Strength per level when killing with bombs
+2. **Slutty Rocket** (Uncommon): Gains (+1/+2/+3) Attack per level when killing with fire
+3. **Blood Magic** (Rare): Permanently grants (+1/+2/+3) max health when killing at full health
+4. **Dexecutioner** (Uncommon): Gains (+1/+2/+3) Dexterity per level when killing with piercing attacks
+5. **Barrel** (Uncommon): Grants (1/2/3) random fish per level when obtaining fish
+6. **Blasma Pistol** (Common): Grants (small/normal/large) chest per level when opening 10+ chests
+
+**New Passive Items:**
+1. **Beefy Ring** (Rare, Scaling): Gain +1 Attack per 10 max health
+2. **Focus Crystal** (Common): Gain +1 Attack if melee weapon equipped
+3. **Calipers** (Rare): On turn 2 of combat, gain +5 Block (upgradeable/downgradeable)
+
+**New Active Items:**
+1. **Fire Potion** (Uncommon): Deal 10 damage to enemy in combat (single use)
+
+**Weapon Tooltip Enhancements:**
+- **Accumulated Bonuses Display**: Tooltips show all non-zero weapon bonuses
+  - Format: "Accumulated Bonuses: +7 Strength • +3 Attack"
+  - Green styling distinguishes bonuses from description
+- **Level Display**: Weapon level shown in tooltip and equipment slot
+- **Works for All Locations**: Inventory, equipment slot, and combat tooltips
+
+**Technical Improvements:**
+- **Scalable Passive System**: `recalculateScalablePassives()` dynamically calculates bonuses
+- **Weapon Bonus System**: `getWeaponBonuses()` retrieves weapon-stored bonuses
+- **Total Bonus Calculation**: `getTotalBonuses()` combines all bonus sources
+- **Effective Stats**: `getEffectiveStat()` returns base stat + all bonuses
+- **Combat State Integration**: Combat system uses effective stats including weapon bonuses
+
+**UI/UX Improvements:**
+- Fixed combat item tooltips appearing behind modal
+- Items bar moved to top of combat area
+- Weapon level badge displayed in equipment slot (orange, top-right)
+- Combat tooltips use unique IDs to prevent cleanup conflicts
+- Block display in combat UI
+
 ### Version 4.0 - Collection System & Visual Improvements (January 2025)
 
 **New Collection Feature:**

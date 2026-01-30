@@ -10,6 +10,30 @@ console.log('✅ MAIN.JS v45 loaded - inventory deep copy on save active');
 // - Tutorial and UI controls
 // - Integration of all other modules
 
+// ===== Z-INDEX LAYERING SYSTEM =====
+// Organized from lowest to highest to prevent layering conflicts
+//
+// Layer 1 (Base): 1-99
+//   - Map SVG arrows: 1
+//   - Item hover effects: 10
+//
+// Layer 2 (UI Panels): 100-999
+//   - (Reserved for future use)
+//
+// Layer 3 (Side Panels): 1000-9999
+//   - Combat stats panel: 1000
+//   - Combat log panel: 1000
+//
+// Layer 4 (Modals): 10000-19999
+//   - Modal backdrop: 10000 (from modals.js)
+//   - Map tooltip: 10000
+//   - Trait tooltips: 10000
+//   - Generic buttons: 10000
+//
+// Layer 5 (Tooltips & Overlays): 20000+
+//   - Combat item tooltip (#combat-item-tooltip): 20000
+//   - Main inventory tooltip (#item-tooltip from index.html): inherits from parent
+//
 // ===== HELPER FUNCTIONS =====
 
 // Get curses by type from active curses
@@ -516,6 +540,7 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   dexterity = character.startingStats.dexterity || 0;
   intelligence = character.startingStats.intelligence || 0;
   charisma = character.startingStats.charisma || 0;
+  attack = character.startingStats.attack || 0;
   reroll = character.startingStats.reroll || 0;
   dash = character.startingStats.dash || 0;
   skip = character.startingStats.skip || 0;
@@ -2035,293 +2060,1968 @@ function showCombatModal() {
   const randomIndex = Math.floor(Math.random() * matchingEnemies.length);
   const enemy = matchingEnemies[randomIndex];
 
-  // Get player's stat value for this check
-  const playerStatValue = getPlayerStat(enemy.stat);
+  // Initialize combat state
+  const combat = window.CombatState.initializeCombat(enemy);
 
   const enemyImagePath = getEnemyImagePath(enemy.name);
+  const playerImagePath = getPlayerImagePath();
 
-  createGameModal(`
-    <div style="text-align: center;">
-      <h2 style="color: #ff4444; margin-top: 0;">Combat Encounter!</h2>
-      <h3>${enemy.name}</h3>
-      <p style="color: #888;">From: ${enemy.game}</p>
-      <img src="${enemyImagePath}" style="max-width: 200px; max-height: 200px; image-rendering: pixelated; margin: 10px auto; display: block;" alt="${enemy.name}" onerror="this.style.display='none'">
-      <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 15px 0;">
-        <p style="font-size: 18px; margin: 5px 0;">
-          <span style="color: ${getStatColor(enemy.stat)};">${enemy.stat}</span> Check:
-          <strong>Roll ${enemy.rollCheck}+</strong>
-        </p>
-        <p style="font-size: 16px; margin: 5px 0; color: #aaa;">
-          Your ${enemy.stat}: <strong style="color: ${getStatColor(enemy.stat)};">${playerStatValue >= 0 ? '+' : ''}${playerStatValue}</strong>
-        </p>
-        <p style="font-size: 14px; margin: 5px 0; color: #888;">
-          (D20 + ${playerStatValue} must be ≥ ${enemy.rollCheck})
-        </p>
+  // Create STS-style combat UI
+  const combatHTML = `
+    <div id="combat-container" style="
+      display: flex;
+      flex-direction: column;
+      width: 92vw;
+      max-width: 1400px;
+      height: 90vh;
+      max-height: 900px;
+      padding: 20px;
+      background: linear-gradient(135deg, #1a1410 0%, #2a1810 100%);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      position: relative;
+      overflow: hidden;
+    ">
+      <!-- Stats Panel (Hidden by default, slides in from left) -->
+      <div id="stats-panel" style="
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 320px;
+        height: 100%;
+        background: linear-gradient(145deg, rgba(30,30,40,0.98), rgba(20,20,30,0.98));
+        border-right: 3px solid #4CAF50;
+        border-radius: 12px 0 0 12px;
+        padding: 25px;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1000;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+        overflow-y: auto;
+      ">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid rgba(76,175,80,0.3); padding-bottom: 15px;">
+          <h3 style="margin: 0; color: #4CAF50; font-size: 24px;">📊 All Stats</h3>
+          <button id="close-stats-btn" style="
+            background: rgba(255,68,68,0.2);
+            border: 2px solid #ff4444;
+            border-radius: 6px;
+            padding: 6px 12px;
+            color: #ff6666;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+          ">✕</button>
+        </div>
+        <div id="all-stats-content" style="display: flex; flex-direction: column; gap: 15px;">
+          <!-- Will be populated with all stats -->
+        </div>
       </div>
-      <button id="roll-combat-btn" style="padding: 20px 40px; font-size: 20px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; margin: 15px auto; display: block; min-width: 180px; font-weight: bold; position: relative; z-index: 10;">
-        Roll D20
-      </button>
-      <div id="combat-result" style="margin-top: 20px; font-size: 16px;"></div>
+
+      <!-- Main Combat Area -->
+      <div style="
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        gap: 15px;
+        overflow-y: auto;
+      ">
+        <!-- Combat Scene (Player vs Enemy + Dice) -->
+        <div style="
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+        ">
+          <!-- Combatants Area -->
+          <div style="
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid #444;
+            border-radius: 12px;
+            padding: 25px;
+          ">
+            <!-- Items Bar (at top) -->
+            <div id="items-bar" style="
+              background: rgba(0,0,0,0.5);
+              border: 2px solid #666;
+              border-radius: 8px;
+              padding: 10px 15px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 8px;
+              overflow-x: auto;
+              min-height: 60px;
+            ">
+              <div id="items-icons" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
+                <!-- Item icons will be populated here -->
+              </div>
+            </div>
+
+            <!-- Player and Enemy Container -->
+            <div style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              gap: 30px;
+              flex: 1;
+            ">
+            <!-- Player (Left) -->
+            <div id="player-section" style="
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              position: relative;
+            ">
+              <!-- View All Stats Button -->
+              <button id="view-stats-btn" style="
+                position: absolute;
+                top: -10px;
+                left: 10px;
+                background: rgba(76,175,80,0.2);
+                border: 2px solid #4CAF50;
+                border-radius: 6px;
+                padding: 6px 12px;
+                color: #4CAF50;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: bold;
+                text-transform: uppercase;
+                transition: all 0.2s;
+              ">📊 Stats</button>
+
+              <div style="text-align: center; margin-bottom: 10px;">
+                <p style="margin: 0 0 5px 0; font-size: 14px; color: #4CAF50; font-weight: bold; text-transform: uppercase;">YOU</p>
+              </div>
+
+              <!-- Player Image -->
+              <div style="
+                width: 200px;
+                height: 200px;
+                margin-bottom: 12px;
+                border-radius: 8px;
+                background: rgba(0,0,0,0.3);
+                padding: 8px;
+                border: 2px solid rgba(76,175,80,0.4);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              ">
+                <img src="${playerImagePath}" style="
+                  width: 100%;
+                  height: 100%;
+                  image-rendering: pixelated;
+                  object-fit: contain;
+                " alt="Player">
+              </div>
+
+              <!-- Health and Block Bar -->
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                <!-- Block Display -->
+                <div id="player-block-display" style="
+                  position: relative;
+                  width: 50px;
+                  height: 50px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  display: none;
+                ">
+                  <!-- Shield Icon -->
+                  <div style="
+                    position: absolute;
+                    width: 100%;
+                    height: 100%;
+                    font-size: 50px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #66ccff;
+                    text-shadow: 0 0 8px rgba(102,204,255,0.5);
+                  ">🛡️</div>
+                  <!-- Block Value -->
+                  <div id="player-block-value" style="
+                    position: relative;
+                    z-index: 1;
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: white;
+                    text-shadow:
+                      -1px -1px 0 #000,
+                      1px -1px 0 #000,
+                      -1px 1px 0 #000,
+                      1px 1px 0 #000,
+                      0 0 4px #000;
+                  ">0</div>
+                </div>
+
+                <!-- HP Bar -->
+                <div style="background: #2a2a2a; border-radius: 6px; height: 26px; width: 200px; position: relative; overflow: hidden; border: 2px solid #4CAF50;">
+                  <div id="player-hp-bar" style="
+                    background: linear-gradient(90deg, #4CAF50, #2E7D32);
+                    height: 100%;
+                    width: ${(health / maxHealth) * 100}%;
+                    transition: width 0.3s ease;
+                  "></div>
+                  <span id="player-hp" style="
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-size: 14px;
+                    font-weight: bold;
+                    text-shadow: 0 0 4px black;
+                    color: white;
+                  ">${health}/${maxHealth}</span>
+                </div>
+              </div>
+
+              <!-- Player Effects -->
+              <div id="player-effects" style="font-size: 12px; text-align: center; min-height: 20px;">
+                <!-- Effects will appear here -->
+              </div>
+            </div>
+
+            <!-- Enemy Intent Display -->
+            <div style="
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 8px;
+              padding: 10px;
+            ">
+              <div style="
+                font-size: 14px;
+                font-weight: bold;
+                color: #ffaa44;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 5px;
+              ">ENEMY INTENT</div>
+
+              <!-- Enemy Dice Container -->
+              <div style="
+                background: rgba(204,51,51,0.1);
+                border: 2px solid #cc3333;
+                border-radius: 8px;
+                padding: 8px;
+              ">
+                <div id="enemy-intent-dice-container" style="
+                  width: 120px;
+                  height: 120px;
+                  position: relative;
+                "></div>
+              </div>
+
+              <!-- Enemy Intent Text -->
+              <div id="enemy-intent-text" style="
+                background: rgba(0,0,0,0.5);
+                padding: 8px 16px;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: bold;
+                color: #ffaa44;
+                text-align: center;
+                min-width: 150px;
+              ">
+                Rolling...
+              </div>
+            </div>
+
+            <!-- Enemy (Right) -->
+            <div id="enemy-section" style="
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              position: relative;
+            ">
+              <div style="text-align: center; margin-bottom: 10px;">
+                <h3 style="margin: 0 0 2px 0; color: #ff6644; font-size: 22px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${enemy.name}</h3>
+                <p style="margin: 0 0 8px 0; font-size: 12px; color: #999; font-style: italic;">${enemy.game}</p>
+              </div>
+
+              <!-- Enemy Image -->
+              <div style="
+                width: 200px;
+                height: 200px;
+                margin-bottom: 12px;
+                border-radius: 8px;
+                background: rgba(0,0,0,0.3);
+                padding: 8px;
+                border: 2px solid rgba(255,68,68,0.4);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              ">
+                <img src="${enemyImagePath}" style="
+                  width: 100%;
+                  height: 100%;
+                  image-rendering: pixelated;
+                  object-fit: contain;
+                " alt="${enemy.name}" onerror="this.style.display='none'">
+              </div>
+
+              <!-- Health and Block Bar -->
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                <!-- Block Display -->
+                <div id="enemy-block-display" style="
+                  position: relative;
+                  width: 50px;
+                  height: 50px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  display: none;
+                ">
+                  <!-- Shield Icon -->
+                  <div style="
+                    position: absolute;
+                    width: 100%;
+                    height: 100%;
+                    font-size: 50px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #66ccff;
+                    text-shadow: 0 0 8px rgba(102,204,255,0.5);
+                  ">🛡️</div>
+                  <!-- Block Value -->
+                  <div id="enemy-block-value" style="
+                    position: relative;
+                    z-index: 1;
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: white;
+                    text-shadow:
+                      -1px -1px 0 #000,
+                      1px -1px 0 #000,
+                      -1px 1px 0 #000,
+                      1px 1px 0 #000,
+                      0 0 4px #000;
+                  ">0</div>
+                </div>
+
+                <!-- HP Bar -->
+                <div style="background: #2a2a2a; border-radius: 6px; height: 26px; width: 200px; position: relative; overflow: hidden; border: 2px solid #ff4444;">
+                  <div id="enemy-hp-bar" style="
+                    background: linear-gradient(90deg, #ff4444, #cc0000);
+                    height: 100%;
+                    width: 100%;
+                    transition: width 0.3s ease;
+                  "></div>
+                  <span id="enemy-hp-text" style="
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-size: 14px;
+                    font-weight: bold;
+                    text-shadow: 0 0 4px black;
+                    color: white;
+                  ">${enemy.health}/${enemy.health}</span>
+                </div>
+              </div>
+
+              <!-- Enemy Stats -->
+              <div style="
+                background: rgba(0,0,0,0.4);
+                border: 1px solid #ff4444;
+                border-radius: 6px;
+                padding: 8px 16px;
+                margin-bottom: 8px;
+              ">
+                <div style="display: flex; gap: 15px; font-size: 13px; justify-content: center;">
+                  <div style="text-align: center;">
+                    <p style="margin: 0; color: #aaa; font-size: 10px; text-transform: uppercase;">AC</p>
+                    <p style="margin: 2px 0 0 0; color: #66ccff; font-weight: bold; font-size: 16px;">${enemy.armorClass}</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Enemy Effects -->
+              <div id="enemy-effects" style="font-size: 12px; text-align: center; min-height: 20px;">
+                <!-- Effects will appear here -->
+              </div>
+
+              <!-- View Combat Log Button -->
+              <button id="view-log-btn" style="
+                position: absolute;
+                top: -10px;
+                right: 10px;
+                background: rgba(255,204,102,0.2);
+                border: 2px solid #ffcc66;
+                border-radius: 6px;
+                padding: 6px 12px;
+                color: #ffcc66;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: bold;
+                text-transform: uppercase;
+                transition: all 0.2s;
+              ">📜 Log</button>
+            </div>
+            </div>
+          </div>
+
+          <!-- Dice Area (Bottom) -->
+          <div id="dice-area" style="
+            background: linear-gradient(145deg, rgba(204,102,0,0.15), rgba(204,102,0,0.05));
+            border: 3px solid #cc6600;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+            position: relative;
+          ">
+            <!-- Obstruction Indicator (shown when Curse of Obstruction is active) -->
+            <div id="obstruction-indicator" style="
+              position: absolute;
+              top: 10px;
+              left: 50%;
+              transform: translateX(-50%);
+              background: rgba(255,100,100,0.9);
+              border: 2px solid #ff4444;
+              border-radius: 8px;
+              padding: 8px 16px;
+              color: white;
+              font-weight: bold;
+              font-size: 13px;
+              text-align: center;
+              display: none;
+              box-shadow: 0 4px 12px rgba(255,0,0,0.4);
+              z-index: 100;
+            ">
+              ⚠️ DISADVANTAGE: Roll twice, take lower!
+            </div>
+
+            <!-- Energy Display -->
+            <div id="energy-display" style="
+              position: absolute;
+              top: 15px;
+              left: 20px;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              background: rgba(255,204,0,0.15);
+              border: 2px solid #ffcc00;
+              border-radius: 8px;
+              padding: 8px 16px;
+              box-shadow: 0 2px 8px rgba(255,204,0,0.3);
+            ">
+              <div style="
+                font-size: 18px;
+                font-weight: bold;
+                color: #ffcc00;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+              ">Energy:</div>
+              <div id="energy-bolts" style="
+                display: flex;
+                gap: 4px;
+                font-size: 24px;
+              ">⚡⚡</div>
+              <div id="energy-count" style="
+                font-size: 18px;
+                font-weight: bold;
+                color: #ffcc00;
+              ">2/2</div>
+            </div>
+
+            <!-- Dual Dice Container -->
+            <div style="
+              display: flex;
+              gap: 30px;
+              align-items: center;
+              justify-content: center;
+              width: 100%;
+              margin-top: 20px;
+            ">
+              <!-- Attack D20 -->
+              <div style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                flex: 1;
+                max-width: 400px;
+              ">
+                <div style="
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  margin-bottom: 10px;
+                ">
+                  <div style="
+                    font-size: 14px;
+                    font-weight: bold;
+                    color: #cc6600;
+                    letter-spacing: 0.5px;
+                  ">⚔️ Attack for ${attack} damage</div>
+                  <div style="
+                    font-size: 12px;
+                    color: #ffcc00;
+                    background: rgba(255,204,0,0.2);
+                    border: 1px solid #ffcc00;
+                    border-radius: 4px;
+                    padding: 2px 6px;
+                  ">1⚡</div>
+                </div>
+                <div style="
+                  background: rgba(204,102,0,0.1);
+                  border: 2px solid #cc6600;
+                  border-radius: 8px;
+                  padding: 10px;
+                  width: 100%;
+                ">
+                  <div id="attack-dice-container" class="dice-clickable" style="
+                    width: 100%;
+                    height: 150px;
+                    cursor: pointer;
+                    position: relative;
+                  "></div>
+                  <div id="attack-roll-result" style="
+                    margin-top: 6px;
+                    font-size: 14px;
+                    text-align: center;
+                    width: 100%;
+                    min-height: 20px;
+                  "></div>
+
+                  <!-- Attack Confirm/Reroll Buttons -->
+                  <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                    <button id="attack-confirm-btn" disabled style="
+                      padding: 8px 20px;
+                      font-size: 14px;
+                      background: linear-gradient(145deg, #555, #444);
+                      border: 2px solid #666;
+                      border-radius: 6px;
+                      color: #888;
+                      cursor: not-allowed;
+                      font-weight: bold;
+                      opacity: 0.5;
+                      text-transform: uppercase;
+                      letter-spacing: 0.5px;
+                    ">✓ Confirm</button>
+                    <button id="attack-reroll-btn" disabled style="
+                      padding: 6px 16px;
+                      font-size: 12px;
+                      background: linear-gradient(145deg, #555, #444);
+                      border: 2px solid #666;
+                      border-radius: 6px;
+                      color: #888;
+                      cursor: not-allowed;
+                      font-weight: bold;
+                      opacity: 0.5;
+                      text-transform: uppercase;
+                      letter-spacing: 0.5px;
+                    ">🔄 Reroll (0)</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Defense D6 -->
+              <div style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                flex: 1;
+                max-width: 400px;
+              ">
+                <div style="
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  margin-bottom: 10px;
+                ">
+                  <div style="
+                    font-size: 14px;
+                    font-weight: bold;
+                    color: #66ccff;
+                    letter-spacing: 0.5px;
+                  ">🛡️ Block Roll</div>
+                  <div style="
+                    font-size: 12px;
+                    color: #ffcc00;
+                    background: rgba(255,204,0,0.2);
+                    border: 1px solid #ffcc00;
+                    border-radius: 4px;
+                    padding: 2px 6px;
+                  ">1⚡</div>
+                </div>
+                <div style="
+                  background: rgba(102,204,255,0.1);
+                  border: 2px solid #66ccff;
+                  border-radius: 8px;
+                  padding: 10px;
+                  width: 100%;
+                ">
+                  <div id="defense-dice-container" class="dice-clickable" style="
+                    width: 100%;
+                    height: 150px;
+                    cursor: pointer;
+                    position: relative;
+                  "></div>
+                  <div id="defense-roll-result" style="
+                    margin-top: 6px;
+                    font-size: 14px;
+                    text-align: center;
+                    width: 100%;
+                    min-height: 20px;
+                  "></div>
+
+                  <!-- Defense Confirm/Reroll Buttons -->
+                  <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                    <button id="defense-confirm-btn" disabled style="
+                      padding: 8px 20px;
+                      font-size: 14px;
+                      background: linear-gradient(145deg, #555, #444);
+                      border: 2px solid #666;
+                      border-radius: 6px;
+                      color: #888;
+                      cursor: not-allowed;
+                      font-weight: bold;
+                      opacity: 0.5;
+                      text-transform: uppercase;
+                      letter-spacing: 0.5px;
+                    ">✓ Confirm</button>
+                    <button id="defense-reroll-btn" disabled style="
+                      padding: 6px 16px;
+                      font-size: 12px;
+                      background: linear-gradient(145deg, #555, #444);
+                      border: 2px solid #666;
+                      border-radius: 6px;
+                      color: #888;
+                      cursor: not-allowed;
+                      font-weight: bold;
+                      opacity: 0.5;
+                      text-transform: uppercase;
+                      letter-spacing: 0.5px;
+                    ">🔄 Reroll (0)</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- End Turn Button -->
+            <button id="end-turn-btn" disabled style="
+              position: absolute;
+              top: 10px;
+              right: 10px;
+              padding: 10px 30px;
+              font-size: 16px;
+              background: linear-gradient(145deg, #555, #444);
+              border: 3px solid #666;
+              border-radius: 8px;
+              color: #888;
+              cursor: not-allowed;
+              font-weight: bold;
+              opacity: 0.5;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+              transition: all 0.3s ease;
+            ">⏭️ End Turn</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Combat Log Panel (Hidden by default, slides in from right) -->
+      <div id="log-panel" style="
+        position: absolute;
+        right: 0;
+        top: 0;
+        width: 380px;
+        height: 100%;
+        background: linear-gradient(145deg, rgba(30,30,40,0.98), rgba(20,20,30,0.98));
+        border-left: 3px solid #ffcc66;
+        border-radius: 0 12px 12px 0;
+        padding: 25px;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        z-index: 1000;
+        box-shadow: -4px 0 20px rgba(0,0,0,0.5);
+        overflow-y: auto;
+      ">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid rgba(255,204,102,0.3); padding-bottom: 15px;">
+          <h3 style="margin: 0; color: #ffcc66; font-size: 24px;">📜 Combat Log</h3>
+          <button id="close-log-btn" style="
+            background: rgba(255,68,68,0.2);
+            border: 2px solid #ff4444;
+            border-radius: 6px;
+            padding: 6px 12px;
+            color: #ff6666;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+          ">✕</button>
+        </div>
+        <div id="combat-log-messages" style="display: flex; flex-direction: column; gap: 8px;">
+          <p style="color: #aaa; margin: 0;">⚔️ Combat started! Turn <span style="color: #ffcc66;">1</span></p>
+        </div>
+      </div>
     </div>
-  `);
+  `;
 
-  const rollBtn = document.getElementById('roll-combat-btn');
-  rollBtn.addEventListener('click', function handleRoll() {
-    const diceRoll = Math.floor(Math.random() * 20) + 1;
-    let cursePenalty = 0;
-    let curseMessages = [];
+  createGameModal(combatHTML);
 
-    // Check for Curse of Weakness (subtract from roll) - handle stacking
-    const weaknessCurses = getCursesByType('weakness');
-    if (weaknessCurses.length > 0) {
-      // Use only the first weakness curse and remove it
-      const weaknessCurse = weaknessCurses[0];
-      const penalty = getPowerValue(weaknessCurse.power, { Low: 2, Medium: 3, High: 4 });
+  // Create tooltip element and append to document.body (not inside modal to avoid overflow issues)
+  const existingTooltip = document.getElementById('combat-item-tooltip');
+  if (existingTooltip) existingTooltip.remove();
 
-      cursePenalty = penalty;
-      curseMessages.push(`Curse of Weakness: -${penalty}`);
+  const tooltip = document.createElement('div');
+  tooltip.id = 'combat-item-tooltip';
+  tooltip.style.cssText = `
+    position: fixed;
+    display: none;
+    background: linear-gradient(145deg, rgba(30,30,40,0.98), rgba(20,20,30,0.98));
+    border: 3px solid #888;
+    border-radius: 8px;
+    padding: 12px 15px;
+    max-width: 300px;
+    z-index: 20000;
+    pointer-events: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+  `;
 
-      // Remove this specific curse instance after this roll
-      gameState.activeCurses.splice(gameState.activeCurses.indexOf(weaknessCurse), 1);
-      updateCurseUI();
+  const tooltipContent = document.createElement('div');
+  tooltipContent.id = 'combat-tooltip-content';
+  tooltip.appendChild(tooltipContent);
+  document.body.appendChild(tooltip);
+
+  // Add hover effects CSS for items
+  const style = document.createElement('style');
+  style.textContent = `
+    .item-icon {
+      transform: scale(1);
+    }
+    .item-icon:hover {
+      transform: scale(1.15);
+      filter: brightness(1.3);
+      box-shadow: 0 0 15px rgba(255, 204, 102, 0.6);
+      z-index: 10;
+    }
+    .item-icon:active {
+      transform: scale(1.05);
+    }
+  `;
+  document.head.appendChild(style);
+
+  // Initialize 3D dice renderers (separate instances for attack, defense, and enemy)
+  const attackDiceContainer = document.getElementById('attack-dice-container');
+  const defenseDiceContainer = document.getElementById('defense-dice-container');
+  const enemyIntentDiceContainer = document.getElementById('enemy-intent-dice-container');
+
+  const attackRenderer = new window.DiceRendererInstance();
+  attackRenderer.init(attackDiceContainer);
+  attackRenderer.createDice(combat.dice.attack);
+
+  const defenseRenderer = new window.DiceRendererInstance();
+  defenseRenderer.init(defenseDiceContainer);
+  defenseRenderer.createDice(combat.dice.defense);
+
+  const enemyIntentRenderer = new window.DiceRendererInstance();
+  enemyIntentRenderer.init(enemyIntentDiceContainer);
+  enemyIntentRenderer.createDice(combat.dice.enemy);
+
+  // Roll enemy dice and show intent
+  showEnemyIntent();
+
+  // Populate items bar
+  populateItemsBar();
+
+  // Check for Curse of Obstruction and show indicator
+  const obstructionCurses = gameState.activeCurses ? gameState.activeCurses.filter(curse =>
+    curse.name && curse.name.toLowerCase().includes('obstruction')
+  ) : [];
+  const obstructionIndicator = document.getElementById('obstruction-indicator');
+  if (obstructionCurses.length > 0 && obstructionIndicator) {
+    obstructionIndicator.style.display = 'block';
+  }
+
+  // Setup stats panel toggle
+  setupStatsPanel();
+
+  // Setup combat log panel toggle
+  setupLogPanel();
+
+  // Setup item tooltips
+  setupItemTooltips();
+
+  // Update energy display
+  updateEnergyDisplay();
+
+  // Pending roll state - stores roll data before confirmation
+  const pendingRolls = {
+    attack: null,
+    defense: null
+  };
+
+  // Initialize reroll button text with current reroll count
+  updateRerollButtonText();
+
+  // Setup dice click handlers for both attack and defense
+  attackDiceContainer.addEventListener('click', () => handleDiceClick('attack'));
+  defenseDiceContainer.addEventListener('click', () => handleDiceClick('defense'));
+
+  // Setup confirm button handlers
+  document.getElementById('attack-confirm-btn').addEventListener('click', () => handleConfirm('attack'));
+  document.getElementById('defense-confirm-btn').addEventListener('click', () => handleConfirm('defense'));
+
+  // Setup reroll button handlers
+  document.getElementById('attack-reroll-btn').addEventListener('click', () => handleReroll('attack'));
+  document.getElementById('defense-reroll-btn').addEventListener('click', () => handleReroll('defense'));
+
+  // Show enemy intent by rolling their dice
+  function showEnemyIntent() {
+    const currentCombat = window.CombatState.getCombatState();
+    if (!currentCombat || !currentCombat.enemy.plannedAction) return;
+
+    const plannedAction = currentCombat.enemy.plannedAction;
+    const intentTextEl = document.getElementById('enemy-intent-text');
+
+    // Animate the enemy dice
+    enemyIntentRenderer.rollDice(currentCombat.dice.enemy, plannedAction.sideIndex, (result) => {
+      // Update the intent text based on action type
+      if (plannedAction.type === 'attack') {
+        const totalDamage = plannedAction.value + currentCombat.enemy.strength;
+        intentTextEl.innerHTML = `<span style="color: #ff6666;">⚔️ The enemy will attack for ${totalDamage} damage</span>`;
+      } else {
+        const totalBlock = plannedAction.value + currentCombat.enemy.defence;
+        intentTextEl.innerHTML = `<span style="color: #66ccff;">🛡️ The enemy will gain ${totalBlock} block</span>`;
+      }
+    });
+  }
+
+  // Update energy display
+  function updateEnergyDisplay() {
+    const combat = window.CombatState.getCombatState();
+    if (!combat) return;
+
+    const energyBolts = document.getElementById('energy-bolts');
+    const energyCount = document.getElementById('energy-count');
+
+    if (energyBolts && energyCount) {
+      // Show lightning bolts based on current energy
+      const bolts = '⚡'.repeat(combat.player.energy);
+      const greyBolts = '<span style="opacity: 0.3;">⚡</span>'.repeat(combat.player.maxEnergy - combat.player.energy);
+      energyBolts.innerHTML = bolts + greyBolts;
+      energyCount.textContent = `${combat.player.energy}/${combat.player.maxEnergy}`;
     }
 
-    // Check for Curse of Failure (damage on rolling 1) - handle stacking
-    if (diceRoll === 1) {
-      const failureCurses = getCursesByType('failure');
-      if (failureCurses.length > 0) {
-        // Trigger all failure curses if rolled a 1
-        let totalDamage = failureCurses.reduce((sum, curse) =>
-          sum + getPowerValue(curse.power, { Low: 2, Medium: 3, High: 4 }), 0
-        );
+    // Update dice container opacity based on available energy
+    const attackContainer = document.getElementById('attack-dice-container');
+    const defenseContainer = document.getElementById('defense-dice-container');
 
-        // Apply damage reduction from items (like Garlic)
-        if (typeof calculateDamageReduction === 'function') {
-          totalDamage = calculateDamageReduction(totalDamage);
-        }
+    if (combat.player.energy < 1) {
+      if (attackContainer) attackContainer.style.opacity = '0.4';
+      if (defenseContainer) defenseContainer.style.opacity = '0.4';
+    } else {
+      if (attackContainer) attackContainer.style.opacity = '1';
+      if (defenseContainer) defenseContainer.style.opacity = '1';
+    }
+  }
 
-        health = Math.max(0, health - totalDamage);
-        gameState.health = health;
-        updateTopBar?.();
+  // Helper to update reroll button text with current count
+  function updateRerollButtonText() {
+    const attackRerollBtn = document.getElementById('attack-reroll-btn');
+    const defenseRerollBtn = document.getElementById('defense-reroll-btn');
+    const rerollCount = gameState.reroll || 0;
 
-        curseMessages.push(`Curse of Failure (×${failureCurses.length}): -${totalDamage} HP!`);
+    if (attackRerollBtn) {
+      attackRerollBtn.textContent = `🔄 Reroll (${rerollCount})`;
+    }
+    if (defenseRerollBtn) {
+      defenseRerollBtn.textContent = `🔄 Reroll (${rerollCount})`;
+    }
+  }
 
-        // Show popup notification for Curse of Failure damage
-        setTimeout(() => {
-          createGameModal?.(`
-            <div style="text-align: center;">
-              <h2 style="color: #ff4444; margin-top: 0; font-size: 32px;">😱 Curse of Failure!</h2>
-              <p style="font-size: 18px; color: #ff8888;">You rolled a natural 1!</p>
-              <p style="font-size: 20px; font-weight: bold; color: #ff0000; margin: 15px 0;">
-                ⚠️ CRITICAL FAILURE - Combat Auto-Lost!
-              </p>
-              <p style="font-size: 24px; font-weight: bold; color: #ff6666; margin: 20px 0;">
-                -${totalDamage} HP
-              </p>
-              ${failureCurses.length > 1 ? `<p style="color: #cc8888; font-size: 14px;">${failureCurses.length} curses triggered</p>` : ''}
-              <button onclick="closeGameModal()" style="
-                padding: 10px 30px;
-                margin-top: 20px;
-                background: #ff4444;
-                border: none;
-                border-radius: 6px;
-                color: white;
-                cursor: pointer;
-                font-weight: bold;
-              ">Continue</button>
-            </div>
-          `);
-        }, 500);
+  // Helper to enable/disable buttons
+  function updateButtonStates(diceType, hasRoll, isConfirmed) {
+    const confirmBtn = document.getElementById(`${diceType}-confirm-btn`);
+    const rerollBtn = document.getElementById(`${diceType}-reroll-btn`);
+    const rerollCount = gameState.reroll || 0;
 
-        // Remove all failure curses after triggering
-        gameState.activeCurses = gameState.activeCurses.filter(c => !c.name.toLowerCase().includes('failure'));
-        updateCurseUI();
-
-        // Check for death
-        if (health <= 0) {
-          // Will be handled by the death check below
-        }
+    // Confirm button: enabled after roll, disabled after confirming or no roll
+    if (confirmBtn) {
+      if (hasRoll && !isConfirmed) {
+        confirmBtn.disabled = false;
+        confirmBtn.style.opacity = '1';
+        confirmBtn.style.cursor = 'pointer';
+        confirmBtn.style.background = 'linear-gradient(145deg, #4CAF50, #2E7D32)';
+        confirmBtn.style.color = 'white';
+        confirmBtn.style.borderColor = '#2E7D32';
+      } else {
+        confirmBtn.disabled = true;
+        confirmBtn.style.opacity = '0.5';
+        confirmBtn.style.cursor = 'not-allowed';
+        confirmBtn.style.background = 'linear-gradient(145deg, #555, #444)';
+        confirmBtn.style.color = '#888';
+        confirmBtn.style.borderColor = '#666';
       }
     }
 
-    const totalRoll = diceRoll + playerStatValue - cursePenalty;
+    // Reroll button: enabled after roll if reroll>0, disabled if reroll=0 or confirmed or no roll
+    if (rerollBtn) {
+      if (hasRoll && !isConfirmed && rerollCount > 0) {
+        rerollBtn.disabled = false;
+        rerollBtn.style.opacity = '1';
+        rerollBtn.style.cursor = 'pointer';
+        rerollBtn.style.background = 'linear-gradient(145deg, #9b59b6, #7d3c98)';
+        rerollBtn.style.color = 'white';
+        rerollBtn.style.borderColor = '#7d3c98';
+      } else {
+        rerollBtn.disabled = true;
+        rerollBtn.style.opacity = '0.5';
+        rerollBtn.style.cursor = 'not-allowed';
+        rerollBtn.style.background = 'linear-gradient(145deg, #555, #444)';
+        rerollBtn.style.color = '#888';
+        rerollBtn.style.borderColor = '#666';
+      }
+    }
+  }
 
-    // Curse of Failure causes critical fail - auto-lose combat
-    const criticalFail = diceRoll === 1 && getCursesByType('failure').length > 0;
-    const success = criticalFail ? false : (totalRoll >= enemy.rollCheck);
+  function handleDiceClick(diceType) {
+    if (combat.phase !== 'player_turn') {
+      return;
+    }
 
-    let resultHTML = `
-      <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 10px 0;">
-        <p style="font-size: 20px; font-weight: bold;">Dice: ${diceRoll}</p>
-        <p style="font-size: 16px; color: ${getStatColor(enemy.stat)};">+ ${enemy.stat} Bonus: ${playerStatValue}</p>
-        ${cursePenalty > 0 ? `<p style="font-size: 16px; color: #ff6666;">- Weakness Penalty: ${cursePenalty}</p>` : ''}
-        <p style="font-size: 24px; font-weight: bold; margin-top: 10px; color: gold;">Total: ${totalRoll}</p>
-        ${criticalFail ? `<p style="font-size: 18px; font-weight: bold; color: #ff0000; margin-top: 10px;">⚠️ CRITICAL FAILURE!</p>` : ''}
-        ${curseMessages.length > 0 ? `<p style="font-size: 14px; color: #ff8888; margin-top: 10px;">${curseMessages.join('<br>')}</p>` : ''}
+    // Don't allow new rolls if this dice already has a pending roll
+    if (pendingRolls[diceType]) {
+      addCombatLogMessage('Please confirm or reroll the current roll first!', 'warning');
+      return;
+    }
+
+    const currentCombat = window.CombatState.getCombatState();
+    if (!currentCombat || currentCombat.player.energy < 1) {
+      addCombatLogMessage('Not enough energy!', 'warning');
+      return;
+    }
+
+    try {
+      // Roll the dice through combat state
+      const rollResult = window.CombatState.rollCombatDice(diceType);
+
+      if (!rollResult.success) {
+        addCombatLogMessage(rollResult.error, 'danger');
+        return;
+      }
+
+      // Update energy display
+      updateEnergyDisplay();
+
+      // Get the appropriate renderer and result display
+      const renderer = diceType === 'attack' ? attackRenderer : defenseRenderer;
+      const resultDisplay = document.getElementById(`${diceType}-roll-result`);
+
+      // Get the face number to show on the dice
+      // For D20: use the rolled value (1-20)
+      // For D6: use sideIndex + 1 to show correct face (1-6)
+      const faceNumber = diceType === 'attack'
+        ? rollResult.result.baseValue
+        : rollResult.result.sideIndex + 1;
+
+      // Animate the 3D dice
+      renderer.rollDice(combat.dice[diceType], faceNumber, (result) => {
+        if (diceType === 'attack') {
+          // Hide obstruction indicator if curse expired
+          const obstructionCursesAfterRoll = gameState.activeCurses ? gameState.activeCurses.filter(curse =>
+            curse.name && curse.name.toLowerCase().includes('obstruction')
+          ) : [];
+          const obstructionIndicatorElement = document.getElementById('obstruction-indicator');
+          if (obstructionCursesAfterRoll.length === 0 && obstructionIndicatorElement) {
+            obstructionIndicatorElement.style.display = 'none';
+          }
+
+          // Calculate curse modifiers (but don't apply yet)
+          let finalRoll = result;
+          const statModifier = window.CombatState.getStatModifier();
+
+          // Check for Curse of Failure
+          const failureCurses = getCursesByType('failure');
+          let failureDamage = 0;
+          if (failureCurses.length > 0 && result === 1) {
+            // Curse of Failure: Roll of 1 is auto-miss and deals damage
+            failureDamage = failureCurses.reduce((sum, curse) =>
+              sum + getPowerValue(curse.power, { Low: 2, Medium: 3, High: 4 }), 0
+            );
+
+            if (typeof calculateDamageReduction === 'function') {
+              failureDamage = calculateDamageReduction(failureDamage);
+            }
+
+            // Treat roll as 0 for AC check (auto-miss)
+            finalRoll = 0;
+          }
+
+          // Check for Curse of Weakness
+          let cursePenalty = 0;
+          let weaknessCurse = null;
+          const weaknessCurses = getCursesByType('weakness');
+          if (weaknessCurses.length > 0) {
+            weaknessCurse = weaknessCurses[0];
+            cursePenalty = getPowerValue(weaknessCurse.power, { Low: 2, Medium: 3, High: 4 });
+          }
+
+          const totalRoll = finalRoll + statModifier - cursePenalty;
+          const hit = totalRoll >= combat.enemy.armorClass;
+
+          // Calculate what damage WOULD be dealt (but don't apply it)
+          let calculatedDamage = 0;
+          let damagePreview = null;
+          if (hit) {
+            calculatedDamage = combat.player.attack;
+            // Preview what would happen with block
+            const enemyBlock = combat.enemy.effects.block || 0;
+            const blockConsumed = Math.min(enemyBlock, calculatedDamage);
+            const healthLost = calculatedDamage - blockConsumed;
+            damagePreview = { blockConsumed, healthLost };
+          }
+
+          // Store pending roll data
+          pendingRolls[diceType] = {
+            result: result,
+            finalRoll: finalRoll,
+            statModifier: statModifier,
+            cursePenalty: cursePenalty,
+            weaknessCurse: weaknessCurse,
+            failureCurses: failureCurses,
+            failureDamage: failureDamage,
+            totalRoll: totalRoll,
+            hit: hit,
+            damage: calculatedDamage,
+            damagePreview: damagePreview
+          };
+
+          // Display roll result (preview)
+          resultDisplay.innerHTML = `
+            <div style="background: rgba(0,0,0,0.5); padding: 8px; border-radius: 6px;">
+              <p style="margin: 2px 0; font-size: 12px;">Dice: <strong>${result}</strong></p>
+              <p style="margin: 2px 0; font-size: 12px; color: ${getStatColor(combat.enemy.stat)};">+ ${combat.enemy.stat}: <strong>${statModifier}</strong></p>
+              ${cursePenalty > 0 ? `<p style="margin: 2px 0; font-size: 12px; color: #ff6666;">- Weakness: <strong>${cursePenalty}</strong></p>` : ''}
+              ${failureDamage > 0 ? `<p style="margin: 2px 0; font-size: 12px; color: #ff6666;">⚠️ Failure: <strong>${failureDamage} dmg to you</strong></p>` : ''}
+              <p style="margin: 4px 0 0 0; font-size: 16px; color: ${hit ? '#4CAF50' : '#ff6666'};"><strong>${hit ? 'HIT!' : 'MISS'} (${totalRoll}/${combat.enemy.armorClass})</strong></p>
+            </div>
+          `;
+
+        } else {
+          // Defense dice - calculate block that would be gained
+          const blockGained = rollResult.result.total;
+          const newBlockTotal = (combat.player.effects.block || 0) + blockGained;
+
+          // Store pending roll data
+          pendingRolls[diceType] = {
+            blockGained: blockGained,
+            newBlockTotal: newBlockTotal
+          };
+
+          // Display roll result (preview)
+          resultDisplay.innerHTML = `
+            <div style="background: rgba(0,0,0,0.5); padding: 8px; border-radius: 6px;">
+              <p style="margin: 2px 0; font-size: 16px; color: #66ccff;"><strong>+${blockGained} 🛡️</strong></p>
+              <p style="margin: 4px 0 0 0; font-size: 12px;">Block: ${newBlockTotal}</p>
+            </div>
+          `;
+        }
+
+        // Enable confirm and reroll buttons
+        updateButtonStates(diceType, true, false);
+      });
+
+    } catch (error) {
+      console.error('Error rolling dice:', error);
+      addCombatLogMessage(error.message, 'danger');
+    }
+  }
+
+  // Handle confirming a roll (executes the stored effect)
+  function handleConfirm(diceType) {
+    if (!pendingRolls[diceType]) {
+      return; // No pending roll
+    }
+
+    const pending = pendingRolls[diceType];
+
+    if (diceType === 'attack') {
+      // Execute attack effects
+      if (pending.failureDamage > 0) {
+        addCombatLogMessage(`Rolled a 1! Curse of Failure activated!`, 'danger');
+        combat.player.health = Math.max(0, combat.player.health - pending.failureDamage);
+        gameState.health = combat.player.health;
+        updateCombatUI();
+        addCombatLogMessage(`Curse of Failure dealt ${pending.failureDamage} damage!`, 'danger');
+      }
+
+      // Remove Curse of Weakness if it was applied
+      if (pending.weaknessCurse) {
+        addCombatLogMessage(`Curse of Weakness: -${pending.cursePenalty}`, 'warning');
+        gameState.activeCurses.splice(gameState.activeCurses.indexOf(pending.weaknessCurse), 1);
+        updateCurseUI();
+      }
+
+      if (pending.hit) {
+        // Apply damage through enemy's block
+        const damageResult = window.CombatEffects.processDamageWithBlock(combat.enemy, pending.damage);
+
+        addCombatLogMessage(`⚔️ Attack hit! (${pending.totalRoll} vs AC ${combat.enemy.armorClass})`, 'success');
+
+        if (damageResult.blockConsumed > 0) {
+          addCombatLogMessage(`💥 Dealt ${damageResult.healthLost} damage (${damageResult.blockConsumed} blocked)!`, 'success');
+        } else {
+          addCombatLogMessage(`💥 Dealt ${damageResult.healthLost} damage to ${combat.enemy.name}!`, 'success');
+        }
+
+        // Update UI to show enemy damage
+        updateCombatUI();
+
+        // Check if enemy is defeated
+        if (combat.enemy.health <= 0) {
+          setTimeout(() => {
+            handleVictory();
+          }, 500);
+        }
+      } else {
+        addCombatLogMessage(`❌ Attack missed! (${pending.totalRoll} vs AC ${combat.enemy.armorClass})`, 'info');
+      }
+
+    } else {
+      // Execute defense effects
+      combat.player.effects.block = pending.newBlockTotal;
+      addCombatLogMessage(`🛡️ Gained ${pending.blockGained} block! (Total: ${pending.newBlockTotal})`, 'info');
+      updateCombatUI();
+    }
+
+    // Clear the pending roll
+    pendingRolls[diceType] = null;
+
+    // Disable both confirm and reroll buttons after confirming
+    updateButtonStates(diceType, false, true);
+
+    // Enable end turn button after confirming
+    const endTurnBtn = document.getElementById('end-turn-btn');
+    endTurnBtn.disabled = false;
+    endTurnBtn.style.opacity = '1';
+    endTurnBtn.style.cursor = 'pointer';
+    endTurnBtn.style.background = 'linear-gradient(145deg, #4CAF50, #2E7D32)';
+    endTurnBtn.style.color = 'white';
+    endTurnBtn.style.borderColor = '#2E7D32';
+  }
+
+  // Handle rerolling a dice (costs reroll stat)
+  function handleReroll(diceType) {
+    if (!pendingRolls[diceType]) {
+      return; // No pending roll
+    }
+
+    if (gameState.reroll <= 0) {
+      addCombatLogMessage('No rerolls remaining!', 'warning');
+      return;
+    }
+
+    // Consume one reroll
+    gameState.reroll--;
+
+    // Clear the pending roll
+    pendingRolls[diceType] = null;
+
+    // Disable buttons temporarily
+    updateButtonStates(diceType, false, false);
+
+    // Update reroll button text
+    updateRerollButtonText();
+
+    addCombatLogMessage(`🔄 Rerolling ${diceType} dice... (${gameState.reroll} rerolls left)`, 'info');
+
+    // Trigger a new roll (this will refund the energy since we're rerolling)
+    // First, refund the energy that was spent
+    combat.player.energy = Math.min(combat.player.energy + 1, combat.player.maxEnergy);
+    updateEnergyDisplay();
+
+    // Now roll again (this will spend energy again)
+    setTimeout(() => {
+      handleDiceClick(diceType);
+    }, 100);
+  }
+
+  // Setup end turn button
+  document.getElementById('end-turn-btn').addEventListener('click', handleEndTurn);
+
+  function handleEndTurn() {
+    try {
+      // Check if combat is still active
+      const combat = window.CombatState.getCombatState();
+      if (!combat) {
+        console.warn('No active combat');
+        return;
+      }
+
+      // Check if it's player's turn
+      if (combat.phase !== 'player_turn') {
+        console.warn('Not in player turn phase:', combat.phase);
+        return;
+      }
+
+      const turnResult = window.CombatState.endPlayerTurn();
+
+      // Update UI
+      updateCombatUI();
+
+      // Check combat result
+      if (turnResult.phase === 'victory') {
+        handleVictory();
+      } else if (turnResult.phase === 'defeat') {
+        handleDefeat();
+      } else {
+        // Continue to next turn
+        startNextTurn();
+      }
+
+    } catch (error) {
+      console.error('Error ending turn:', error);
+      addCombatLogMessage(error.message, 'danger');
+    }
+  }
+
+  function startNextTurn() {
+    // Reset for next turn
+    const currentCombat = window.CombatState.getCombatState();
+
+    // Clear roll results
+    document.getElementById('attack-roll-result').innerHTML = '';
+    document.getElementById('defense-roll-result').innerHTML = '';
+
+    // Clear pending rolls
+    pendingRolls.attack = null;
+    pendingRolls.defense = null;
+
+    // Reset confirm and reroll buttons
+    updateButtonStates('attack', false, false);
+    updateButtonStates('defense', false, false);
+
+    const endTurnBtn = document.getElementById('end-turn-btn');
+    endTurnBtn.disabled = true;
+    endTurnBtn.style.opacity = '0.5';
+    endTurnBtn.style.cursor = 'not-allowed';
+    endTurnBtn.style.background = 'linear-gradient(145deg, #555, #444)';
+    endTurnBtn.style.color = '#888';
+    endTurnBtn.style.borderColor = '#666';
+
+    // Reset energy to max
+    currentCombat.player.energy = currentCombat.player.maxEnergy;
+
+    // Reset block to 0 at start of turn
+    currentCombat.player.effects.block = 0;
+
+    // Update energy display
+    updateEnergyDisplay();
+    updateCombatUI();
+
+    // Re-create dice for next roll
+    attackRenderer.createDice(currentCombat.dice.attack);
+    defenseRenderer.createDice(currentCombat.dice.defense);
+    enemyIntentRenderer.createDice(currentCombat.dice.enemy);
+
+    // Show new enemy intent
+    showEnemyIntent();
+  }
+
+  function updateCombatUI() {
+    // Update player HP bar and text
+    const playerHpPercent = (combat.player.health / combat.player.maxHealth) * 100;
+    const playerHpBar = document.getElementById('player-hp-bar');
+    if (playerHpBar) {
+      playerHpBar.style.width = `${playerHpPercent}%`;
+    }
+    document.getElementById('player-hp').textContent = `${combat.player.health}/${combat.player.maxHealth}`;
+
+    // Update player block display
+    const playerBlockDisplay = document.getElementById('player-block-display');
+    const playerBlockValue = document.getElementById('player-block-value');
+    if (playerBlockDisplay && playerBlockValue) {
+      const playerBlock = combat.player.effects.block || 0;
+      if (playerBlock > 0) {
+        playerBlockDisplay.style.display = 'flex';
+        playerBlockValue.textContent = playerBlock;
+      } else {
+        playerBlockDisplay.style.display = 'none';
+      }
+    }
+
+    // Update enemy HP bar and text
+    const enemyHpPercent = (combat.enemy.health / combat.enemy.maxHealth) * 100;
+    document.getElementById('enemy-hp-bar').style.width = `${enemyHpPercent}%`;
+    document.getElementById('enemy-hp-text').textContent = `${Math.max(0, combat.enemy.health)}/${combat.enemy.maxHealth}`;
+
+    // Update enemy block display
+    const enemyBlockDisplay = document.getElementById('enemy-block-display');
+    const enemyBlockValue = document.getElementById('enemy-block-value');
+    if (enemyBlockDisplay && enemyBlockValue) {
+      const enemyBlock = combat.enemy.effects.block || 0;
+      if (enemyBlock > 0) {
+        enemyBlockDisplay.style.display = 'flex';
+        enemyBlockValue.textContent = enemyBlock;
+      } else {
+        enemyBlockDisplay.style.display = 'none';
+      }
+    }
+
+    // Update effects displays
+    updateEffectsDisplay('player-effects', combat.player.effects);
+    updateEffectsDisplay('enemy-effects', combat.enemy.effects);
+
+    // Update combat log
+    updateCombatLog();
+
+    // Update global health and sync with main UI
+    health = combat.player.health;
+    updateTopBar();
+
+    // Update inventory to reflect any changes
+    updateCombatInventory();
+
+    // Update items bar
+    populateItemsBar();
+  }
+
+  function updateEffectsDisplay(elementId, effects) {
+    const container = document.getElementById(elementId);
+    const descriptions = window.CombatEffects.getEffectDescriptions(effects);
+
+    if (descriptions.length === 0) {
+      container.innerHTML = '';
+    } else {
+      container.innerHTML = descriptions.map(desc =>
+        `<p style="margin: 2px 0; color: #aaa;">${desc}</p>`
+      ).join('');
+    }
+  }
+
+  function updateCombatLog() {
+    const logContainer = document.getElementById('combat-log-messages');
+    if (!logContainer) return;
+
+    const messages = combat.log; // Show all messages
+
+    logContainer.innerHTML = messages.map(msg => {
+      const color = msg.type === 'success' ? '#4CAF50' :
+                    msg.type === 'danger' ? '#ff4444' :
+                    msg.type === 'warning' ? '#ff9800' : '#aaa';
+
+      return `<p style="margin: 5px 0; color: ${color}; line-height: 1.4;">${msg.message}</p>`;
+    }).join('');
+
+    // Scroll to bottom
+    logContainer.scrollTop = logContainer.scrollHeight;
+  }
+
+  function addCombatLogMessage(message, type = 'info') {
+    window.CombatState.addCombatLog(message, type);
+    updateCombatLog();
+  }
+
+  function populateItemsBar() {
+    const itemsContainer = document.getElementById('items-icons');
+
+    if (!itemsContainer) {
+      console.warn('Items container not found');
+      return;
+    }
+
+    if (inventory.length === 0) {
+      itemsContainer.innerHTML = '<span style="color: #666; font-size: 13px;">No items</span>';
+      return;
+    }
+
+    itemsContainer.innerHTML = inventory.map((item, idx) => {
+      let imageUrl = item.image && item.image.trim() !== ''
+        ? item.image
+        : 'https://via.placeholder.com/50?text=%3F';
+
+      // Fix imgur URLs
+      if (imageUrl.includes('imgur.com/') && !imageUrl.includes('i.imgur.com')) {
+        imageUrl = imageUrl.replace('imgur.com/', 'i.imgur.com/');
+        if (!imageUrl.match(/\.(png|jpg|jpeg|gif)$/i)) {
+          imageUrl += '.png';
+        }
+      }
+
+      const getRarityColor = (rarity) => {
+        switch(rarity?.toLowerCase()) {
+          case 'legendary': return '#ff6b00';
+          case 'rare': return '#9b59b6';
+          case 'uncommon': return '#4CAF50';
+          case 'common': return '#aaa';
+          default: return '#888';
+        }
+      };
+
+      const rarityColor = getRarityColor(item.rarity);
+      const isUsable = item.type === 'Usable';
+      const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
+
+      return `
+        <div class="item-icon" data-item-index="${idx}" style="
+          width: 50px;
+          height: 50px;
+          position: relative;
+          border: 2px solid ${rarityColor};
+          border-radius: 6px;
+          background: rgba(0,0,0,0.5);
+          cursor: pointer;
+          transition: all 0.2s ease;
+          ${!canUse && isUsable ? 'opacity: 0.5;' : ''}
+        " onmouseenter="showCombatItemTooltip(event, ${idx})" onmouseleave="hideCombatItemTooltip()">
+          <img src="${imageUrl}" style="
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 4px;
+          " alt="${item.name}" onerror="if(this.src!=='https://via.placeholder.com/50?text=%3F'){this.src='https://via.placeholder.com/50?text=%3F';}">
+          ${item.quantity && item.quantity > 1 ? `
+            <div style="
+              position: absolute;
+              bottom: 2px;
+              right: 2px;
+              background: rgba(0,0,0,0.9);
+              color: white;
+              padding: 1px 3px;
+              border-radius: 3px;
+              font-size: 9px;
+              font-weight: bold;
+              border: 1px solid #ffaa00;
+            ">x${item.quantity}</div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function setupStatsPanel() {
+    const statsPanel = document.getElementById('stats-panel');
+    const viewStatsBtn = document.getElementById('view-stats-btn');
+    const closeStatsBtn = document.getElementById('close-stats-btn');
+
+    // Populate stats
+    const statsContent = document.getElementById('all-stats-content');
+    statsContent.innerHTML = `
+      <div style="background: rgba(0,0,0,0.4); border: 2px solid #4CAF50; border-radius: 8px; padding: 15px;">
+        <h4 style="margin: 0 0 12px 0; color: #4CAF50; font-size: 16px; border-bottom: 1px solid rgba(76,175,80,0.3); padding-bottom: 8px;">⚔️ Combat Stats</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div style="text-align: center; background: rgba(255,102,102,0.1); border: 1px solid #ff6666; border-radius: 6px; padding: 8px;">
+            <p style="margin: 0; color: #aaa; font-size: 11px; text-transform: uppercase;">Attack</p>
+            <p style="margin: 4px 0 0 0; color: #ff6666; font-weight: bold; font-size: 20px;">${attack}</p>
+          </div>
+          <div style="text-align: center; background: rgba(76,175,80,0.1); border: 1px solid #4CAF50; border-radius: 6px; padding: 8px;">
+            <p style="margin: 0; color: #aaa; font-size: 11px; text-transform: uppercase;">Health</p>
+            <p style="margin: 4px 0 0 0; color: #4CAF50; font-weight: bold; font-size: 20px;">${health}/${maxHealth}</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="background: rgba(0,0,0,0.4); border: 2px solid #888; border-radius: 8px; padding: 15px;">
+        <h4 style="margin: 0 0 12px 0; color: #aaa; font-size: 16px; border-bottom: 1px solid rgba(136,136,136,0.3); padding-bottom: 8px;">📊 Base Stats</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div style="background: rgba(255,68,68,0.1); border: 1px solid #ff4444; border-radius: 6px; padding: 8px;">
+            <p style="margin: 0; color: #aaa; font-size: 10px; text-transform: uppercase;">Strength</p>
+            <p style="margin: 3px 0 0 0; color: #ff6666; font-weight: bold; font-size: 18px;">${strength}</p>
+          </div>
+          <div style="background: rgba(76,175,80,0.1); border: 1px solid #4CAF50; border-radius: 6px; padding: 8px;">
+            <p style="margin: 0; color: #aaa; font-size: 10px; text-transform: uppercase;">Dexterity</p>
+            <p style="margin: 3px 0 0 0; color: #4CAF50; font-weight: bold; font-size: 18px;">${dexterity}</p>
+          </div>
+          <div style="background: rgba(102,153,255,0.1); border: 1px solid #6699ff; border-radius: 6px; padding: 8px;">
+            <p style="margin: 0; color: #aaa; font-size: 10px; text-transform: uppercase;">Intelligence</p>
+            <p style="margin: 3px 0 0 0; color: #6699ff; font-weight: bold; font-size: 18px;">${intelligence}</p>
+          </div>
+          <div style="background: rgba(255,102,255,0.1); border: 1px solid #ff66ff; border-radius: 6px; padding: 8px;">
+            <p style="margin: 0; color: #aaa; font-size: 10px; text-transform: uppercase;">Charisma</p>
+            <p style="margin: 3px 0 0 0; color: #ff66ff; font-weight: bold; font-size: 18px;">${charisma}</p>
+          </div>
+          <div style="background: rgba(255,204,102,0.1); border: 1px solid #ffcc66; border-radius: 6px; padding: 8px;">
+            <p style="margin: 0; color: #aaa; font-size: 10px; text-transform: uppercase;">Luck</p>
+            <p style="margin: 3px 0 0 0; color: #ffcc66; font-weight: bold; font-size: 18px;">${luck}</p>
+          </div>
+          <div style="background: rgba(255,255,255,0.05); border: 1px solid #888; border-radius: 6px; padding: 8px;">
+            <p style="margin: 0; color: #aaa; font-size: 10px; text-transform: uppercase;">Reroll</p>
+            <p style="margin: 3px 0 0 0; color: #aaa; font-weight: bold; font-size: 18px;">${reroll}</p>
+          </div>
+        </div>
       </div>
     `;
 
-    if (success) {
-      const goldMatch = enemy.successReward.match(/(\d+) Gold/);
-      if (goldMatch) {
-        const goldAmount = parseInt(goldMatch[1]);
-        gold += goldAmount;
-        gameState.gold = gold;
-        updateTopBar();
-      }
+    // Toggle panel
+    viewStatsBtn.addEventListener('click', () => {
+      statsPanel.style.transform = 'translateX(0)';
+    });
 
-      // Trigger onEnemyDefeated effects for triggered items
-      if (typeof triggerOnEnemyDefeated === 'function') {
-        triggerOnEnemyDefeated();
-      }
+    closeStatsBtn.addEventListener('click', () => {
+      statsPanel.style.transform = 'translateX(-100%)';
+    });
+  }
 
-      resultHTML += `<p style="color: #4CAF50; font-weight: bold;">SUCCESS!</p>
-                    <p>${enemy.successReward}</p>`;
-    } else {
-      // Damage based on difficulty level
-      let healthLoss = 1; // Low difficulty
-      if (powerText === 'Medium') {
-        healthLoss = 2;
-      } else if (powerText === 'High') {
-        healthLoss = 3;
-      }
+  function setupLogPanel() {
+    const logPanel = document.getElementById('log-panel');
+    const viewLogBtn = document.getElementById('view-log-btn');
+    const closeLogBtn = document.getElementById('close-log-btn');
 
-      // Apply damage reduction from items (like Garlic)
-      if (typeof calculateDamageReduction === 'function') {
-        healthLoss = calculateDamageReduction(healthLoss);
-      }
+    // Toggle panel
+    viewLogBtn.addEventListener('click', () => {
+      logPanel.style.transform = 'translateX(0)';
+    });
 
-      health = Math.max(0, health - healthLoss);
-      gameState.health = health;
-      updateHealthDisplay();
+    closeLogBtn.addEventListener('click', () => {
+      logPanel.style.transform = 'translateX(100%)';
+    });
+  }
 
-      // Check for death
-      if (health <= 0) {
-        // Clear items and curses immediately on death
-        inventory = [];
-        if (gameState.activeCurses) {
-          gameState.activeCurses = [];
-        }
+  function setupItemTooltips() {
+    // Tooltip functions are defined globally below
+  }
 
-        setTimeout(() => {
-          createGameModal(`
-            <div style="text-align: center;">
-              <h1 style="color: #ff4444; font-size: 48px; margin: 20px 0;">💀 YOU ARE DEAD</h1>
-              <p style="color: #aaa; font-size: 18px; margin: 20px 0;">Your journey has come to an end...</p>
-              <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
-                <button id="death-home-btn" style="
-                  padding: 12px 24px;
-                  background: #444;
-                  border: 2px solid #666;
-                  border-radius: 8px;
-                  color: white;
-                  cursor: pointer;
-                  font-weight: bold;
-                  font-size: 16px;
-                  transition: all 0.2s;
-                " onmouseover="this.style.background='#555'" onmouseout="this.style.background='#444'">
-                  🏠 Home
-                </button>
-                <button id="death-retry-btn" style="
-                  padding: 12px 24px;
-                  background: #d32f2f;
-                  border: 2px solid #f44336;
-                  border-radius: 8px;
-                  color: white;
-                  cursor: pointer;
-                  font-weight: bold;
-                  font-size: 16px;
-                  transition: all 0.2s;
-                " onmouseover="this.style.background='#e53935'" onmouseout="this.style.background='#d32f2f'">
-                  🔄 Try Again
-                </button>
-              </div>
-            </div>
-          `);
+  function updateCombatInventory() {
+    // Now uses the items bar instead of separate inventory section
+    populateItemsBar();
+    return;
 
-          document.getElementById('death-home-btn').onclick = () => {
-            closeGameModal();
-            // Update UI to reflect cleared items and curses
-            updateInventory?.();
-            updateCursesDisplay?.();
-            updateActiveCursesList?.();
-            updateGameStats?.();
-            if (typeof clearAllArrows === 'function') {
-              clearAllArrows();
-            }
-            document.getElementById('dungeon-screen').style.display = 'none';
-            document.getElementById('main-menu').style.display = 'flex';
+    // Old code below is no longer used
+    const container = document.getElementById('combat-inventory-items');
 
-            // Hide map button when in menu
-            const mapBtn = document.getElementById('map-btn');
-            if (mapBtn) mapBtn.style.display = 'none';
-          };
+    if (!container) return; // Element no longer exists in new layout
 
-          document.getElementById('death-retry-btn').onclick = () => {
-            // Clear UI immediately to prevent flash
-            inventory = [];
-            if (gameState.activeCurses) {
-              gameState.activeCurses = [];
-            }
-            updateInventory?.();
-            updateCursesDisplay?.();
-            updateActiveCursesList?.();
-
-            closeGameModal();
-            if (typeof clearAllArrows === 'function') {
-              clearAllArrows();
-            }
-            document.getElementById('dungeon-screen').style.display = 'none';
-            document.getElementById('main-menu').style.display = 'flex';
-
-            // Hide map button when in menu
-            const mapBtn = document.getElementById('map-btn');
-            if (mapBtn) mapBtn.style.display = 'none';
-
-            setTimeout(() => {
-              document.getElementById('new-game-btn')?.click();
-            }, 100);
-          };
-        }, 300);
-        return; // Exit the function early to prevent showing combat results
-      }
-
-      // Apply curse based on enemy's failure trigger
-      const matchingCurses = curses.filter(curse =>
-        curse.power === powerText && curse.stat === enemy.stat
-      );
-      let failureText = `Lose ${healthLoss} health`;
-      if (matchingCurses.length > 0) {
-        const randomCurseIndex = Math.floor(Math.random() * matchingCurses.length);
-        const selectedCurse = matchingCurses[randomCurseIndex];
-
-        // Add curse using helper function (handles Curse of Vulnerability)
-        addCurse(selectedCurse);
-
-        failureText = `Lose ${healthLoss} health and gain ${selectedCurse.name}!`;
-      }
-
-      resultHTML += `<p style="color: #ff4444; font-weight: bold;">FAILURE!</p>
-                    <p>${failureText}</p>`;
+    if (inventory.length === 0) {
+      container.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #666; font-size: 14px;">No items</div>';
+      return;
     }
 
-    resultHTML += `<button onclick="closeGameModal()" style="padding: 10px 20px; margin-top: 20px; background: #666; border: none; border-radius: 6px; color: white; cursor: pointer;">Continue</button>`;
+    // Use the same rendering logic as main gameplay
+    container.innerHTML = inventory.map((item, idx) => {
+      let imageUrl = item.image && item.image.trim() !== ''
+        ? item.image
+        : 'https://via.placeholder.com/70?text=%3F';
 
-    document.getElementById('combat-result').innerHTML = resultHTML;
-    rollBtn.disabled = true;
-    rollBtn.style.opacity = '0.5';
-    rollBtn.style.cursor = 'not-allowed';
-    rollBtn.removeEventListener('click', handleRoll);
+      // Fix imgur URLs
+      if (imageUrl.includes('imgur.com/') && !imageUrl.includes('i.imgur.com')) {
+        imageUrl = imageUrl.replace('imgur.com/', 'i.imgur.com/');
+        if (!imageUrl.match(/\.(png|jpg|jpeg|gif)$/i)) {
+          imageUrl += '.png';
+        }
+      }
 
+      // Get rarity color
+      const getRarityColor = (rarity) => {
+        switch(rarity?.toLowerCase()) {
+          case 'legendary': return '#ff6b00';
+          case 'rare': return '#9b59b6';
+          case 'uncommon': return '#4CAF50';
+          case 'common': return '#aaa';
+          default: return '#888';
+        }
+      };
+
+      const rarityColor = getRarityColor(item.rarity);
+      const isUsable = item.type === 'Usable';
+      const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
+      const isWeapon = item.type === 'Weapon';
+
+      return `
+        <div class="combat-item-container" style="
+          display: flex;
+          gap: 10px;
+          background: rgba(0,0,0,0.3);
+          border: 2px solid ${rarityColor};
+          border-radius: 8px;
+          padding: 8px;
+          transition: all 0.2s ease;
+          cursor: ${canUse ? 'pointer' : 'default'};
+          opacity: ${canUse || !isUsable ? '1' : '0.6'};
+        " ${canUse ? `onclick="useCombatItem(${idx})"` : ''}>
+          <div style="flex-shrink: 0; position: relative;">
+            <img src="${imageUrl}"
+                 alt="${item.name}"
+                 loading="lazy"
+                 style="width: 60px; height: 60px; object-fit: contain; border-radius: 6px; background: #1a1a1a; padding: 2px; display: block;"
+                 onerror="if(this.src!=='https://via.placeholder.com/70?text=%3F'){this.src='https://via.placeholder.com/70?text=%3F';}">
+            ${item.quantity && item.quantity > 1 ? `
+              <div style="
+                position: absolute;
+                top: 2px;
+                right: 2px;
+                background: rgba(0, 0, 0, 0.9);
+                color: white;
+                padding: 1px 4px;
+                border-radius: 3px;
+                font-size: 10px;
+                font-weight: bold;
+                border: 1px solid #ffaa00;
+              ">x${item.quantity}</div>
+            ` : ''}
+            ${isWeapon && item.level && item.level > 1 ? `
+              <div style="
+                position: absolute;
+                top: 2px;
+                right: 2px;
+                background: #ffaa44;
+                color: #000;
+                padding: 2px 4px;
+                border-radius: 3px;
+                font-size: 10px;
+                font-weight: bold;
+              ">Lv${item.level}</div>
+            ` : ''}
+          </div>
+          <div style="flex: 1; min-width: 0;">
+            <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: bold; color: ${rarityColor}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.name}</p>
+            <p style="margin: 0 0 4px 0; font-size: 10px; color: #aaa; font-style: italic;">${item.type} • ${item.rarity}</p>
+            <p style="margin: 0; font-size: 11px; color: #ccc; line-height: 1.3;">${item.description || item.effect || ''}</p>
+            ${isUsable ? `
+              <div style="margin-top: 6px;">
+                <span style="
+                  display: inline-block;
+                  padding: 3px 8px;
+                  font-size: 10px;
+                  background: ${canUse ? '#4CAF50' : '#555'};
+                  color: ${canUse ? 'white' : '#888'};
+                  border-radius: 4px;
+                  font-weight: bold;
+                  text-transform: uppercase;
+                ">
+                  ${canUse ? '✓ Usable' : '✗ Cannot Use'}${item.uses && item.uses > 1 ? ` (${item.uses}x)` : ''}
+                </span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Also update the main gameplay inventory to keep them synced
+    if (typeof updateInventory === 'function') {
+      updateInventory();
+    }
+  }
+
+  function handleVictory() {
+    // Disable all combat buttons
+    const endTurnBtn = document.getElementById('end-turn-btn');
+    if (endTurnBtn) endTurnBtn.disabled = true;
+
+    // Dispose all three dice renderers
+    attackRenderer.dispose();
+    defenseRenderer.dispose();
+    enemyIntentRenderer.dispose();
+
+    // Award rewards
+    const goldMatch = enemy.successReward.match(/(\d+) Gold/);
+    if (goldMatch) {
+      const goldAmount = parseInt(goldMatch[1]);
+      gold += goldAmount;
+      gameState.gold = gold;
+      updateTopBar();
+    }
+
+    // Trigger onEnemyDefeated effects
+    if (typeof triggerOnEnemyDefeated === 'function') {
+      triggerOnEnemyDefeated();
+    }
+
+    // Record encounter
     encounterHistory.push({
       type: 'combat',
       enemy: enemy.name,
-      outcome: success ? 'Victory' : 'Defeat',
+      outcome: 'Victory',
       timestamp: new Date().toLocaleString()
     });
     updateEncounterHistory();
     saveCurrentGame();
-  });
+
+    // Show victory screen
+    setTimeout(() => {
+      createGameModal(`
+        <div style="text-align: center;">
+          <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">⚔️ VICTORY!</h2>
+          <h3>${enemy.name} defeated!</h3>
+          <p style="color: #4CAF50; font-size: 18px; margin: 20px 0;">${enemy.successReward}</p>
+          <button onclick="closeGameModal()" style="
+            padding: 15px 30px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+          ">Continue</button>
+        </div>
+      `);
+    }, 500);
+
+    window.CombatState.endCombat(true);
+  }
+
+  function handleDefeat() {
+    // Dispose all three dice renderers
+    attackRenderer.dispose();
+    defenseRenderer.dispose();
+    enemyIntentRenderer.dispose();
+
+    // Clear items and curses on death
+    inventory = [];
+    if (gameState.activeCurses) {
+      gameState.activeCurses = [];
+    }
+
+    // Record encounter
+    encounterHistory.push({
+      type: 'combat',
+      enemy: enemy.name,
+      outcome: 'Defeat',
+      timestamp: new Date().toLocaleString()
+    });
+    updateEncounterHistory();
+
+    window.CombatState.endCombat(false);
+
+    // Show death screen
+    setTimeout(() => {
+      createGameModal(`
+        <div style="text-align: center;">
+          <h1 style="color: #ff4444; font-size: 48px; margin: 20px 0;">💀 YOU ARE DEAD</h1>
+          <p style="color: #aaa; font-size: 18px; margin: 20px 0;">Your journey has come to an end...</p>
+          <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
+            <button id="death-home-btn" style="
+              padding: 12px 24px;
+              background: #444;
+              border: 2px solid #666;
+              border-radius: 8px;
+              color: white;
+              cursor: pointer;
+              font-weight: bold;
+              font-size: 16px;
+            ">🏠 Home</button>
+            <button id="death-retry-btn" style="
+              padding: 12px 24px;
+              background: #d32f2f;
+              border: 2px solid #f44336;
+              border-radius: 8px;
+              color: white;
+              cursor: pointer;
+              font-weight: bold;
+              font-size: 16px;
+            ">🔄 Try Again</button>
+          </div>
+        </div>
+      `);
+
+      document.getElementById('death-home-btn').onclick = () => {
+        closeGameModal();
+        updateInventory?.();
+        updateCursesDisplay?.();
+        updateActiveCursesList?.();
+        updateGameStats?.();
+        if (typeof clearAllArrows === 'function') {
+          clearAllArrows();
+        }
+        document.getElementById('dungeon-screen').style.display = 'none';
+        document.getElementById('main-menu').style.display = 'flex';
+        const mapBtn = document.getElementById('map-btn');
+        if (mapBtn) mapBtn.style.display = 'none';
+      };
+
+      document.getElementById('death-retry-btn').onclick = () => {
+        inventory = [];
+        if (gameState.activeCurses) {
+          gameState.activeCurses = [];
+        }
+        updateInventory?.();
+        updateCursesDisplay?.();
+        updateActiveCursesList?.();
+
+        closeGameModal();
+        if (typeof clearAllArrows === 'function') {
+          clearAllArrows();
+        }
+        document.getElementById('dungeon-screen').style.display = 'none';
+        document.getElementById('main-menu').style.display = 'flex';
+        const mapBtn = document.getElementById('map-btn');
+        if (mapBtn) mapBtn.style.display = 'none';
+
+        setTimeout(() => {
+          document.getElementById('new-game-btn')?.click();
+        }, 100);
+      };
+    }, 300);
+  }
+
+  // Helper function to get player image
+  function getPlayerImagePath() {
+    if (gameState && gameState.character && PLAYER_CHARACTERS[gameState.character]) {
+      const character = PLAYER_CHARACTERS[gameState.character];
+      return character.fullImage || character.icon;
+    }
+    return 'images/characters/full/default.png';
+  }
+
+  // Global function for using items in combat
+  window.useCombatItem = function(itemIndex) {
+    if (combat.phase !== 'player_turn') {
+      addCombatLogMessage('Cannot use items during enemy turn!', 'warning');
+      return;
+    }
+
+    const item = inventory[itemIndex];
+    if (!item || !item.usableInCombat) {
+      addCombatLogMessage('This item cannot be used in combat!', 'warning');
+      return;
+    }
+
+    // Use the item (this would call the item's effect function)
+    // For now, just show a message
+    addCombatLogMessage(`Used ${item.name}!`, 'success');
+
+    // TODO: Implement item effects in combat
+    // This would require updating the item system to work with combat state
+
+    updateCombatInventory();
+  };
+
+  // Initial UI update
+  updateCombatUI();
+}
+
+// Make showCombatModal available globally
+window.showCombatModal = showCombatModal;
+
+// Combat-specific tooltip functions for item hover
+window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) {
+  const tooltip = document.getElementById('combat-item-tooltip');
+  const tooltipContent = document.getElementById('combat-tooltip-content');
+
+  if (!tooltip || !tooltipContent || itemIndex >= inventory.length) {
+    return;
+  }
+
+  const item = inventory[itemIndex];
+
+  const getRarityColor = (rarity) => {
+    switch(rarity?.toLowerCase()) {
+      case 'legendary': return '#ff6b00';
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      case 'common': return '#aaa';
+      default: return '#888';
+    }
+  };
+
+  const rarityColor = getRarityColor(item.rarity);
+  const isUsable = item.type === 'Usable';
+  const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
+
+  tooltipContent.innerHTML = `
+    <div style="min-width: 220px;">
+      <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 16px; border-bottom: 2px solid ${rarityColor}; padding-bottom: 6px;">
+        ${item.name}
+      </h4>
+      <div style="margin-bottom: 8px;">
+        <span style="color: ${rarityColor}; font-weight: bold; font-size: 13px;">${item.rarity || 'Common'}</span>
+        <span style="color: #666; margin: 0 6px;">•</span>
+        <span style="color: #aaa; font-size: 13px;">${item.type || 'Item'}</span>
+      </div>
+      <p style="margin: 8px 0; color: #ccc; font-size: 13px; line-height: 1.4;">${item.description || 'No description'}</p>
+      ${isUsable ? `
+        <button ${canUse ? `onclick="useCombatItem(${itemIndex}); hideCombatItemTooltip();"` : 'disabled'} style="
+          width: 100%;
+          padding: 8px;
+          margin-top: 8px;
+          background: ${canUse ? 'linear-gradient(145deg, #4CAF50, #2E7D32)' : 'linear-gradient(145deg, #555, #444)'};
+          border: 2px solid ${canUse ? '#2E7D32' : '#666'};
+          border-radius: 6px;
+          color: ${canUse ? 'white' : '#888'};
+          font-weight: bold;
+          font-size: 14px;
+          cursor: ${canUse ? 'pointer' : 'not-allowed'};
+          opacity: ${canUse ? '1' : '0.5'};
+          transition: all 0.2s;
+        ">
+          Use
+        </button>
+      ` : ''}
+    </div>
+  `;
+
+  tooltip.style.display = 'block';
+  tooltip.style.visibility = 'visible';
+  tooltip.style.opacity = '1';
+
+  // Position tooltip near cursor
+  updateCombatTooltipPosition(event);
+
+  // Update position as mouse moves
+  tooltip._mouseMoveHandler = (e) => updateCombatTooltipPosition(e);
+  document.addEventListener('mousemove', tooltip._mouseMoveHandler);
+}
+
+window.hideCombatItemTooltip = function hideCombatItemTooltip() {
+  const tooltip = document.getElementById('combat-item-tooltip');
+  if (!tooltip) return;
+
+  tooltip.style.display = 'none';
+
+  // Remove mouse move listener
+  if (tooltip._mouseMoveHandler) {
+    document.removeEventListener('mousemove', tooltip._mouseMoveHandler);
+    tooltip._mouseMoveHandler = null;
+  }
+}
+
+window.updateCombatTooltipPosition = function updateCombatTooltipPosition(event) {
+  const tooltip = document.getElementById('combat-item-tooltip');
+  if (!tooltip) return;
+
+  const offset = 15;
+  let x = event.clientX + offset;
+  let y = event.clientY + offset;
+
+  // Keep tooltip on screen
+  const tooltipRect = tooltip.getBoundingClientRect();
+  if (x + tooltipRect.width > window.innerWidth) {
+    x = event.clientX - tooltipRect.width - offset;
+  }
+  if (y + tooltipRect.height > window.innerHeight) {
+    y = event.clientX - tooltipRect.height - offset;
+  }
+
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+}
+
+window.useCombatItem = function useCombatItem(itemIndex) {
+  if (itemIndex >= inventory.length) return;
+
+  const item = inventory[itemIndex];
+
+  // Use the item through the existing system
+  if (typeof useItem === 'function') {
+    useItem(itemIndex);
+
+    // Refresh items bar
+    const populateFunc = window.populateItemsBar || populateItemsBar;
+    if (typeof populateFunc === 'function') {
+      populateFunc();
+    }
+
+    // Update combat UI
+    if (typeof updateCombatUI === 'function') {
+      updateCombatUI();
+    }
+  }
 }
 
 // Check if an event's requirement is met
@@ -2475,7 +4175,7 @@ function triggerCombat(enemy, onSuccess = null, onFailure = null, powerLevel = '
       <h2 style="color: #ff4444; margin-top: 0;">Combat Encounter!</h2>
       <h3>${enemy.name}</h3>
       <p style="color: #888;">From: ${enemy.game || 'Unknown'}</p>
-      <img src="${enemyImagePath}" style="max-width: 200px; max-height: 200px; image-rendering: pixelated; margin: 10px auto; display: block;" alt="${enemy.name}" onerror="this.style.display='none'">
+      <img src="${enemyImagePath}" style="width: 200px; height: 200px; image-rendering: pixelated; object-fit: contain; margin: 10px auto; display: block;" alt="${enemy.name}" onerror="this.style.display='none'">
       <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 15px 0;">
         <p style="font-size: 18px; margin: 5px 0;">
           <span style="color: ${getStatColor(enemy.stat)};">${enemy.stat}</span> Check:

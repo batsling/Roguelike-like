@@ -357,7 +357,7 @@ function updateInventory() {
 
         const rarityColor = getRarityColor(item.rarity);
 
-        const isUsable = item.type === 'Usable';
+        const isUsable = item.type === 'Usable' || item.type === 'Active';
         const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
         const isWeapon = item.type === 'Weapon';
 
@@ -594,8 +594,12 @@ function equipWeapon(itemIndex) {
       quantity: 1,
       level: gameState.weaponLevel || 1 // Store current weapon level
     };
+    // Preserve accumulated bonuses if they exist
+    if (gameState.equippedWeapon.bonuses) {
+      previousWeapon.bonuses = {...gameState.equippedWeapon.bonuses};
+    }
     inventory.push(previousWeapon);
-    console.log('🔫 Previous weapon returned to inventory with level:', previousWeapon.name, previousWeapon.level);
+    console.log('🔫 Previous weapon returned to inventory with level:', previousWeapon.name, previousWeapon.level, 'bonuses:', previousWeapon.bonuses);
   }
 
   // Create a proper copy of the weapon to avoid reference issues
@@ -609,6 +613,10 @@ function equipWeapon(itemIndex) {
     tags: weapon.tags,
     quantity: 1
   };
+  // Restore accumulated bonuses if they exist
+  if (weapon.bonuses) {
+    gameState.equippedWeapon.bonuses = {...weapon.bonuses};
+  }
   gameState.weaponLevel = weapon.level || 1; // Restore weapon level or default to 1
 
   // Remove weapon from inventory (since it's now equipped)
@@ -665,8 +673,9 @@ function upgradeWeapon(itemIndex) {
     return;
   }
 
-  // Level up the weapon
+  // Level up the weapon (both in gameState and on weapon object)
   gameState.weaponLevel = currentLevel + 1;
+  gameState.equippedWeapon.level = gameState.weaponLevel; // Keep weapon.level in sync
 
   // Remove the duplicate weapon from inventory
   inventory.splice(itemIndex, 1);
@@ -699,6 +708,10 @@ function unequipWeapon() {
     quantity: 1,
     level: gameState.weaponLevel || 1 // Store current weapon level
   };
+  // Preserve accumulated bonuses if they exist
+  if (gameState.equippedWeapon.bonuses) {
+    weaponToReturn.bonuses = {...gameState.equippedWeapon.bonuses};
+  }
   inventory.push(weaponToReturn);
 
   const weaponName = gameState.equippedWeapon.name;
@@ -996,6 +1009,7 @@ function updateGameStats() {
   // Update stats in the game view sidebar
   const statsHealth = document.getElementById('stats-health');
   const statsGold = document.getElementById('stats-gold');
+  const statsAttack = document.getElementById('stats-attack');
   const statsStrength = document.getElementById('stats-strength');
   const statsDexterity = document.getElementById('stats-dexterity');
   const statsIntelligence = document.getElementById('stats-intelligence');
@@ -1024,10 +1038,59 @@ function updateGameStats() {
     if (statsCharacterName) statsCharacterName.textContent = character.name;
   }
 
-  if (statsStrength) statsStrength.textContent = strength;
-  if (statsDexterity) statsDexterity.textContent = dexterity;
-  if (statsIntelligence) statsIntelligence.textContent = intelligence;
-  if (statsCharisma) statsCharisma.textContent = charisma;
+  // Use getTotalBonuses() to include all bonuses (scalable passives + weapon)
+  const totalBonuses = typeof getTotalBonuses === 'function' ? getTotalBonuses() : null;
+
+  // Attack stat with bonuses
+  if (statsAttack) {
+    const effectiveAttack = typeof getEffectiveAttack === 'function' ? getEffectiveAttack() : attack;
+    if (effectiveAttack !== attack) {
+      // Show base attack and total if they differ
+      statsAttack.textContent = `${effectiveAttack} (${attack}+${effectiveAttack - attack})`;
+    } else {
+      statsAttack.textContent = attack;
+    }
+  }
+
+  // Strength stat with bonuses
+  if (statsStrength) {
+    const effectiveStrength = totalBonuses ? strength + totalBonuses.strength : strength;
+    if (totalBonuses && totalBonuses.strength !== 0) {
+      statsStrength.textContent = `${effectiveStrength} (${strength}+${totalBonuses.strength})`;
+    } else {
+      statsStrength.textContent = strength;
+    }
+  }
+
+  // Dexterity stat with bonuses
+  if (statsDexterity) {
+    const effectiveDexterity = totalBonuses ? dexterity + totalBonuses.dexterity : dexterity;
+    if (totalBonuses && totalBonuses.dexterity !== 0) {
+      statsDexterity.textContent = `${effectiveDexterity} (${dexterity}+${totalBonuses.dexterity})`;
+    } else {
+      statsDexterity.textContent = dexterity;
+    }
+  }
+
+  // Intelligence stat with bonuses
+  if (statsIntelligence) {
+    const effectiveIntelligence = totalBonuses ? intelligence + totalBonuses.intelligence : intelligence;
+    if (totalBonuses && totalBonuses.intelligence !== 0) {
+      statsIntelligence.textContent = `${effectiveIntelligence} (${intelligence}+${totalBonuses.intelligence})`;
+    } else {
+      statsIntelligence.textContent = intelligence;
+    }
+  }
+
+  // Charisma stat with bonuses
+  if (statsCharisma) {
+    const effectiveCharisma = totalBonuses ? charisma + totalBonuses.charisma : charisma;
+    if (totalBonuses && totalBonuses.charisma !== 0) {
+      statsCharisma.textContent = `${effectiveCharisma} (${charisma}+${totalBonuses.charisma})`;
+    } else {
+      statsCharisma.textContent = charisma;
+    }
+  }
   if (statsReroll) statsReroll.textContent = reroll;
   if (statsDash) statsDash.textContent = dash;
   if (statsSkip) statsSkip.textContent = skip;
@@ -1210,6 +1273,45 @@ function showItemTooltip(e, item) {
     ? getPassiveDisplayName(item)
     : (item.displayName || item.name);
 
+  // Build weapon bonuses display
+  let bonusesHTML = '';
+  if (item.type === 'Weapon' && item.bonuses) {
+    const bonusEntries = [];
+    if (item.bonuses.attack) bonusEntries.push(`+${item.bonuses.attack} Attack`);
+    if (item.bonuses.strength) bonusEntries.push(`+${item.bonuses.strength} Strength`);
+    if (item.bonuses.dexterity) bonusEntries.push(`+${item.bonuses.dexterity} Dexterity`);
+    if (item.bonuses.intelligence) bonusEntries.push(`+${item.bonuses.intelligence} Intelligence`);
+    if (item.bonuses.charisma) bonusEntries.push(`+${item.bonuses.charisma} Charisma`);
+    if (item.bonuses.luck) bonusEntries.push(`+${item.bonuses.luck} Luck`);
+
+    if (bonusEntries.length > 0) {
+      bonusesHTML = `
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(76, 175, 80, 0.3);">
+          <div style="font-size: 12px; color: #4CAF50; font-weight: bold; margin-bottom: 4px;">Accumulated Bonuses:</div>
+          <div style="font-size: 12px; color: #8BC34A;">
+            ${bonusEntries.join(' • ')}
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  // Build scaling item bonuses display (e.g., Beefy Ring)
+  let scalingBonusHTML = '';
+  if (item.type === 'Scaling' && item.name === 'Beefy Ring') {
+    const beefyRingBonus = Math.floor((gameState.maxHealth || maxHealth) / 10);
+    if (beefyRingBonus > 0) {
+      scalingBonusHTML = `
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(138, 43, 226, 0.3);">
+          <div style="font-size: 12px; color: #ba55d3; font-weight: bold; margin-bottom: 4px;">Current Bonus:</div>
+          <div style="font-size: 12px; color: #da70d6;">
+            +${beefyRingBonus} Attack (from ${gameState.maxHealth || maxHealth} max health)
+          </div>
+        </div>
+      `;
+    }
+  }
+
   tooltip.innerHTML = `
     <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 18px;">${displayName}</h4>
     <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
@@ -1220,6 +1322,8 @@ function showItemTooltip(e, item) {
     <div style="font-size: 13px; color: #e0d0b0; line-height: 1.4;">
       ${item.description}
     </div>
+    ${bonusesHTML}
+    ${scalingBonusHTML}
     ${tagsHTML}
   `;
 
@@ -1376,6 +1480,29 @@ function showWeaponTooltip(event, weapon) {
     weaponLevelText = `<div style="color: #ffaa44; font-weight: bold;">Level ${weaponLevel}</div>`;
   }
 
+  // Build weapon bonuses display
+  let bonusesHTML = '';
+  if (weapon.bonuses) {
+    const bonusEntries = [];
+    if (weapon.bonuses.attack) bonusEntries.push(`+${weapon.bonuses.attack} Attack`);
+    if (weapon.bonuses.strength) bonusEntries.push(`+${weapon.bonuses.strength} Strength`);
+    if (weapon.bonuses.dexterity) bonusEntries.push(`+${weapon.bonuses.dexterity} Dexterity`);
+    if (weapon.bonuses.intelligence) bonusEntries.push(`+${weapon.bonuses.intelligence} Intelligence`);
+    if (weapon.bonuses.charisma) bonusEntries.push(`+${weapon.bonuses.charisma} Charisma`);
+    if (weapon.bonuses.luck) bonusEntries.push(`+${weapon.bonuses.luck} Luck`);
+
+    if (bonusEntries.length > 0) {
+      bonusesHTML = `
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(76, 175, 80, 0.3);">
+          <div style="font-size: 12px; color: #4CAF50; font-weight: bold; margin-bottom: 4px;">Accumulated Bonuses:</div>
+          <div style="font-size: 12px; color: #8BC34A;">
+            ${bonusEntries.join(' • ')}
+          </div>
+        </div>
+      `;
+    }
+  }
+
   tooltip.innerHTML = `
     <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 18px;">${weapon.name}</h4>
     <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
@@ -1386,6 +1513,7 @@ function showWeaponTooltip(event, weapon) {
     <div style="font-size: 13px; color: #e0d0b0; line-height: 1.4;">
       ${weapon.description}
     </div>
+    ${bonusesHTML}
     ${tagsHTML}
   `;
 

@@ -442,6 +442,33 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
         };
       }
 
+      // Special handling for Slutty Rocket
+      if (weaponName === "Slutty Rocket") {
+        const attackBonus = level === 1 ? 1 : level === 2 ? 2 : 3;
+        return {
+          question: 'Did you kill an enemy with a missile at least one time?',
+          reward: `+${attackBonus} Attack`
+        };
+      }
+
+      // Special handling for Blood Magic
+      if (weaponName === "Blood Magic") {
+        const maxHealthBonus = level === 1 ? 1 : level === 2 ? 2 : 3;
+        return {
+          question: 'Did you create or use a magic circle?',
+          reward: `+${maxHealthBonus} Max Health (permanent)`
+        };
+      }
+
+      // Special handling for Dexecutioner
+      if (weaponName === "Dexecutioner") {
+        const dexterityBonus = level === 1 ? 1 : level === 2 ? 2 : 3;
+        return {
+          question: 'Did you kill an enemy with a piercing attack at least one time?',
+          reward: `+${dexterityBonus} Dexterity`
+        };
+      }
+
       // Special handling for Blasma Pistol
       if (weaponName === "Blasma Pistol") {
         const chestSize = level === 1 ? 'small' : level === 2 ? 'normal' : 'large';
@@ -514,7 +541,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
           <div style="color: #9370db; font-size: 11px; margin-bottom: 5px;">
             Boon Effect
           </div>
-          <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Did you ${condition}? Reward: +1 to all combat stats</p>
+          <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Did you ${condition}? Reward: +1 to all combat roll bonus stats</p>
           <div style="margin-top: 5px;">
             <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
               <input type="radio" name="boon-check-${index}" value="yes" checked style="margin-right: 5px;">Yes
@@ -795,21 +822,31 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
 
           console.log(`${weapon.name} activated: will grant ${chestType} chest before normal reward`);
         }
-        // For Lil' Bomber: grant +1/+2/+3 Strength
+        // For Lil' Bomber: weapon gains +X Strength based on weapon level (X = level)
         else if (weapon.name === "Lil' Bomber") {
-          const strengthBonus = weaponLevel === 1 ? 1 : weaponLevel === 2 ? 2 : 3;
+          // Initialize weapon bonuses and level if not present
+          if (typeof initializeWeaponBonuses === 'function') {
+            initializeWeaponBonuses(weapon);
+          }
 
-          // Apply strength bonus
-          strength += strengthBonus;
-          gameState.strength = strength;
+          // Bonus equals current weapon level (no max)
+          const strengthBonus = weaponLevel;
+
+          // Add bonus to weapon (verification does NOT level up weapon)
+          weapon.bonuses.strength += strengthBonus;
+
+          // Update UI to reflect new weapon bonuses
           if (typeof updateTopBar === 'function') {
             updateTopBar();
           }
+          if (typeof updateGameStats === 'function') {
+            updateGameStats();
+          }
 
-          weaponRewardText = `+${strengthBonus} Strength`;
+          weaponRewardText = `Weapon gains +${strengthBonus} Strength (Total: +${weapon.bonuses.strength})`;
           weaponEffectActivated = true;
 
-          console.log(`${weapon.name} activated: +${strengthBonus} Strength`);
+          console.log(`${weapon.name} gains +${strengthBonus} Strength (Level ${weaponLevel}) - total weapon bonus: +${weapon.bonuses.strength}`);
         }
         // For Barrel: grant 1/2/3 random fish
         else if (weapon.name === "Barrel") {
@@ -828,6 +865,85 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
             console.log(`${weapon.name} activated: granted ${fishCount} random fish`);
           }
         }
+        // For Slutty Rocket: weapon gains +X Attack based on weapon level (X = level)
+        else if (weapon.name === "Slutty Rocket") {
+          // Initialize weapon bonuses and level if not present
+          if (typeof initializeWeaponBonuses === 'function') {
+            initializeWeaponBonuses(weapon);
+          }
+
+          // Bonus equals current weapon level
+          const attackBonus = weaponLevel;
+
+          // Add bonus to weapon (verification does NOT level up weapon)
+          weapon.bonuses.attack += attackBonus;
+
+          // Update UI to reflect new weapon bonuses
+          if (typeof updateTopBar === 'function') {
+            updateTopBar();
+          }
+          if (typeof updateGameStats === 'function') {
+            updateGameStats();
+          }
+
+          weaponRewardText = `Weapon gains +${attackBonus} Attack (Total: +${weapon.bonuses.attack})`;
+          weaponEffectActivated = true;
+
+          console.log(`${weapon.name} gains +${attackBonus} Attack (Level ${weaponLevel}) - total weapon bonus: +${weapon.bonuses.attack}`);
+        }
+        // For Blood Magic: player gains +X max health permanently (stored on player, not weapon)
+        else if (weapon.name === "Blood Magic") {
+          // Bonus equals current weapon level
+          const maxHealthBonus = weaponLevel;
+
+          // Add max health directly to player (not weapon-stored)
+          if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyMaxHealth === 'function') {
+            StateMutator.modifyMaxHealth(maxHealthBonus);
+          } else {
+            // Fallback: direct modification
+            maxHealth += maxHealthBonus;
+            gameState.maxHealth = maxHealth;
+          }
+
+          // Update UI to reflect new max health
+          if (typeof updateTopBar === 'function') {
+            updateTopBar();
+          }
+          if (typeof updateGameStats === 'function') {
+            updateGameStats();
+          }
+
+          weaponRewardText = `Gained +${maxHealthBonus} max health permanently (Total max health: ${maxHealth})`;
+          weaponEffectActivated = true;
+
+          console.log(`${weapon.name} grants +${maxHealthBonus} max health (Level ${weaponLevel}) - player max health: ${maxHealth}`);
+        }
+        // For Dexecutioner: weapon gains +X Dexterity based on weapon level (X = level)
+        else if (weapon.name === "Dexecutioner") {
+          // Initialize weapon bonuses and level if not present
+          if (typeof initializeWeaponBonuses === 'function') {
+            initializeWeaponBonuses(weapon);
+          }
+
+          // Bonus equals current weapon level
+          const dexterityBonus = weaponLevel;
+
+          // Add bonus to weapon (verification does NOT level up weapon)
+          weapon.bonuses.dexterity += dexterityBonus;
+
+          // Update UI to reflect new weapon bonuses
+          if (typeof updateTopBar === 'function') {
+            updateTopBar();
+          }
+          if (typeof updateGameStats === 'function') {
+            updateGameStats();
+          }
+
+          weaponRewardText = `Weapon gains +${dexterityBonus} Dexterity (Total: +${weapon.bonuses.dexterity})`;
+          weaponEffectActivated = true;
+
+          console.log(`${weapon.name} gains +${dexterityBonus} Dexterity (Level ${weaponLevel}) - total weapon bonus: +${weapon.bonuses.dexterity}`);
+        }
       }
     }
 
@@ -839,7 +955,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
         const boonRadio = document.querySelector(`input[name="boon-check-${index}"]:checked`);
         const conditionMet = boonRadio && boonRadio.value === 'yes';
         if (conditionMet) {
-          // Grant +1 to all combat stats
+          // Grant +1 to all combat roll bonus stats (Str/Dex/Int/Cha, not Attack)
           strength += 1;
           dexterity += 1;
           intelligence += 1;
@@ -849,7 +965,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
           gameState.intelligence = intelligence;
           gameState.charisma = charisma;
 
-          console.log(`${boon.name} activated: +1 to all combat stats`);
+          console.log(`${boon.name} activated: +1 to all combat roll bonus stats`);
 
           // 20% chance to apply status effect to next game
           if (Math.random() < 0.2) {
@@ -997,7 +1113,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
       activatedBoons.forEach((boonName, index) => {
         setTimeout(() => {
           if (typeof createNotification === 'function') {
-            createNotification(`${boonName}: +1 to All Combat Stats!`, '#8a2be2', '🌟');
+            createNotification(`${boonName}: +1 to All Combat Roll Bonus Stats!`, '#8a2be2', '🌟');
           }
         }, (precisionLandingActivated ? 200 : 100) + (weaponEffectActivated ? 100 : 0) + (index * 100));
       });

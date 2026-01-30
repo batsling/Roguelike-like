@@ -50,7 +50,12 @@ function updateStat(statName, change) {
     skip: () => { skip += change; gameState.skip = skip; },
     discovery: () => { discovery += change; gameState.discovery = discovery; },
     fov: () => { fov += change; gameState.fov = fov; },
-    luck: () => { luck += change; gameState.luck = luck; }
+    luck: () => { luck += change; gameState.luck = luck; },
+    block: () => {
+      // Block is not a persistent player stat - it's only tracked as an item modifier
+      // The actual block effect is applied during combat via the item's statModifiers
+      console.log(`Block modifier changed by ${change} (item-specific, not a player stat)`);
+    }
   };
 
   statMap[statName]?.();
@@ -64,6 +69,142 @@ function determineEncounterType() {
   if (encounterRoll < 90) return 'event';
   return 'shop';
 }
+
+// ===== SCALABLE PASSIVE ITEM SYSTEM =====
+// This system handles items that scale with player stats and need to be recalculated
+
+/**
+ * Recalculate all scalable passive item bonuses
+ * Called whenever stats that affect scalable items change (e.g., max health)
+ * @returns {Object} Object containing calculated bonuses for each stat
+ */
+function recalculateScalablePassives() {
+  const bonuses = {
+    attack: 0,
+    strength: 0,
+    dexterity: 0,
+    intelligence: 0,
+    charisma: 0,
+    luck: 0
+  };
+
+  // Check for Beefy Ring: +1 Attack per 10 max health
+  const hasBeefyRing = inventory.some(item => item.name === 'Beefy Ring');
+  if (hasBeefyRing) {
+    const beefyRingBonus = Math.floor(maxHealth / 10);
+    bonuses.attack += beefyRingBonus;
+    console.log(`Beefy Ring: +${beefyRingBonus} attack (from ${maxHealth} max health)`);
+  }
+
+  // Check for Focus Crystal: +1 Attack if melee weapon equipped
+  const hasFocusCrystal = inventory.some(item => item.name === 'Focus Crystal');
+  if (hasFocusCrystal && gameState.equippedWeapon) {
+    const weaponTags = gameState.equippedWeapon.tags || [];
+    const isMeleeWeapon = weaponTags.includes('melee');
+    if (isMeleeWeapon) {
+      bonuses.attack += 1;
+      console.log(`Focus Crystal: +1 attack (melee weapon equipped)`);
+    }
+  }
+
+  // Add more scalable passive items here as they're added to the game
+
+  return bonuses;
+}
+
+/**
+ * Get bonuses from equipped weapon
+ * @returns {Object} Object containing weapon bonuses for each stat
+ */
+function getWeaponBonuses() {
+  const bonuses = {
+    attack: 0,
+    strength: 0,
+    dexterity: 0,
+    intelligence: 0,
+    charisma: 0,
+    luck: 0
+  };
+
+  if (gameState.equippedWeapon && gameState.equippedWeapon.bonuses) {
+    const weaponBonuses = gameState.equippedWeapon.bonuses;
+    bonuses.attack += weaponBonuses.attack || 0;
+    bonuses.strength += weaponBonuses.strength || 0;
+    bonuses.dexterity += weaponBonuses.dexterity || 0;
+    bonuses.intelligence += weaponBonuses.intelligence || 0;
+    bonuses.charisma += weaponBonuses.charisma || 0;
+    bonuses.luck += weaponBonuses.luck || 0;
+  }
+
+  return bonuses;
+}
+
+/**
+ * Get total bonuses from all sources (scalable passives + weapon)
+ * @returns {Object} Object containing total bonuses for each stat
+ */
+function getTotalBonuses() {
+  const passiveBonuses = recalculateScalablePassives();
+  const weaponBonuses = getWeaponBonuses();
+
+  return {
+    attack: passiveBonuses.attack + weaponBonuses.attack,
+    strength: passiveBonuses.strength + weaponBonuses.strength,
+    dexterity: passiveBonuses.dexterity + weaponBonuses.dexterity,
+    intelligence: passiveBonuses.intelligence + weaponBonuses.intelligence,
+    charisma: passiveBonuses.charisma + weaponBonuses.charisma,
+    luck: passiveBonuses.luck + weaponBonuses.luck
+  };
+}
+
+/**
+ * Get the current attack stat including all bonuses
+ * @returns {number} Total attack including base attack and all bonuses
+ */
+function getEffectiveAttack() {
+  const bonuses = getTotalBonuses();
+  return attack + bonuses.attack;
+}
+
+/**
+ * Get effective value for any stat including bonuses
+ * @param {string} statName - Name of the stat (strength, dexterity, etc.)
+ * @returns {number} Total value including base stat and bonuses
+ */
+function getEffectiveStat(statName) {
+  const bonuses = getTotalBonuses();
+  const baseValue = window[statName] || 0;
+  return baseValue + (bonuses[statName] || 0);
+}
+
+/**
+ * Initialize weapon bonuses and level if not already present
+ * @param {Object} weapon - The weapon object
+ */
+function initializeWeaponBonuses(weapon) {
+  if (!weapon.bonuses) {
+    weapon.bonuses = {
+      attack: 0,
+      strength: 0,
+      dexterity: 0,
+      intelligence: 0,
+      charisma: 0,
+      luck: 0
+    };
+  }
+  // Initialize weapon level if not present
+  if (!weapon.level) {
+    weapon.level = 1;
+  }
+}
+
+// Export scalable passive functions to global scope
+window.recalculateScalablePassives = recalculateScalablePassives;
+window.getWeaponBonuses = getWeaponBonuses;
+window.getTotalBonuses = getTotalBonuses;
+window.getEffectiveAttack = getEffectiveAttack;
+window.getEffectiveStat = getEffectiveStat;
+window.initializeWeaponBonuses = initializeWeaponBonuses;
 
 // ===== ITEM EFFECTS REGISTRY =====
 // Define all item effects here for easy maintenance and extension
@@ -174,6 +315,17 @@ const ITEM_EFFECTS = {
       StateMutator.modifyStat('luck', 2);
       StateMutator.modifyStat('strength', -2);
     }
+  },
+
+  "Beefy Ring": {
+    onAcquire: () => {
+      // Scalable passive: +1 Attack per 10 max health
+      // Effect is calculated dynamically in recalculateScalablePassives()
+      // and applied in getEffectiveAttack()
+      console.log('Acquired Beefy Ring - grants +1 Attack per 10 max health (scalable)');
+    }
+    // Note: This item's effect is handled by the scalable passive system
+    // No direct stat modification needed on acquire
   },
 
   // ===== TRIGGERED ITEMS =====
@@ -519,19 +671,15 @@ const ITEM_EFFECTS = {
           }
           gameState.inventory = [...inventory];
 
-          console.log('Unstable Genome: Item destroyed, offering 3 random items');
+          console.log('Unstable Genome: Item destroyed, will offer 3 random items in normal flow');
+
+          // Set flag to show large chest in the normal reward flow
+          gameState.unstableGenomeTriggered = true;
 
           // Show notification
           setTimeout(() => {
             createNotification('Unstable Genome mutated and was destroyed!', '#ff6b00', '🧬');
           }, 100);
-
-          // Offer 3 random items to choose from
-          if (typeof showItemChoiceModal === 'function') {
-            setTimeout(() => {
-              showItemChoiceModal(null, 'large');
-            }, 500);
-          }
 
           // Update UI
           if (typeof updateInventory === 'function') {
@@ -539,6 +687,65 @@ const ITEM_EFFECTS = {
           }
         }
       }
+    }
+  },
+
+  "Fire Potion": {
+    uses: 1, // Single use
+    canUse: () => {
+      // Can only use in combat phase
+      return gameState.phase === 'combat';
+    },
+    onUse: () => {
+      // Get combat state
+      const combatState = typeof window.CombatState !== 'undefined' && typeof window.CombatState.getCombatState === 'function'
+        ? window.CombatState.getCombatState()
+        : null;
+
+      if (!combatState || !combatState.enemy) {
+        console.error('Fire Potion: No active combat found');
+        return;
+      }
+
+      // Deal 10 damage to enemy through block
+      const damage = 10;
+      let damageResult = { healthLost: damage, blockConsumed: 0 };
+
+      if (typeof window.CombatEffects !== 'undefined' && typeof window.CombatEffects.processDamageWithBlock === 'function') {
+        damageResult = window.CombatEffects.processDamageWithBlock(combatState.enemy, damage);
+      } else {
+        // Fallback: direct damage
+        combatState.enemy.health -= damage;
+        if (combatState.enemy.health < 0) combatState.enemy.health = 0;
+      }
+
+      // Log the damage
+      if (typeof window.CombatState !== 'undefined' && typeof window.CombatState.addCombatLog === 'function') {
+        window.CombatState.addCombatLog(
+          `Fire Potion! Dealt ${damageResult.healthLost} damage${
+            damageResult.blockConsumed > 0 ? ` (${damageResult.blockConsumed} blocked)` : ''
+          }`,
+          'success'
+        );
+      }
+
+      // Update combat UI
+      if (typeof updateCombatUI === 'function') {
+        updateCombatUI();
+      }
+
+      // Check if enemy was defeated
+      if (combatState.enemy.health <= 0) {
+        combatState.phase = 'victory';
+        if (typeof window.CombatState !== 'undefined' && typeof window.CombatState.addCombatLog === 'function') {
+          window.CombatState.addCombatLog(`${combatState.enemy.name} defeated by Fire Potion!`, 'success');
+        }
+        if (typeof updateCombatUI === 'function') {
+          updateCombatUI();
+        }
+      }
+
+      console.log(`Fire Potion used: dealt ${damageResult.healthLost} damage, enemy health: ${combatState.enemy.health}`);
     }
   }
 };
@@ -686,6 +893,12 @@ function getItemStatModifications(itemName) {
     }
   }
 
+  // Special case: Calipers grants block in combat (not on acquire)
+  // Allow it to be upgraded/downgraded by treating block as a modifiable stat
+  if (itemName === 'Calipers') {
+    modifications.push({ stat: 'block', direction: 1 });
+  }
+
   return modifications;
 }
 
@@ -705,7 +918,7 @@ function downgradePassiveItem(item, downgradeAmount = -1) {
   // If no stat modifications found, fall back to random stat (shouldn't happen for items with effects)
   if (statModifications.length === 0) {
     console.warn(`No stat modifications found for ${item.name}, using fallback`);
-    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth'];
+    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth', 'block'];
     const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
     statModifications.push({ stat: randomStat, direction: 1 });
   }
@@ -792,8 +1005,13 @@ function acquireItem(item) {
     description: item.description
   });
 
-  // Create a copy of the item to track uses
+  // Create a copy of the item
+  // For weapons, exclude bonuses and level to ensure each instance is independent
   const itemCopy = { ...item };
+  if (item.type === 'Weapon') {
+    delete itemCopy.bonuses;
+    delete itemCopy.level;
+  }
 
   console.log('📥 Item copy created:', {
     name: itemCopy.name,
@@ -819,6 +1037,8 @@ function acquireItem(item) {
   if (isWeapon) {
     // Always add weapons as new entries (no stacking)
     itemCopy.quantity = 1;
+    // Initialize weapon bonuses
+    initializeWeaponBonuses(itemCopy);
     inventory.push(itemCopy);
     targetItemIndex = inventory.length - 1;
     console.log('📥 Weapon added to inventory (no stacking):', itemCopy.name);
@@ -915,7 +1135,8 @@ function acquireItem(item) {
             discovery: 0,
             fov: 0,
             luck: 0,
-            maxHealth: 0
+            maxHealth: 0,
+            block: 0
           }
         };
 
@@ -1657,8 +1878,13 @@ function initializePassiveModifiers(item) {
       discovery: 0,
       fov: 0,
       luck: 0,
-      maxHealth: 0
+      maxHealth: 0,
+      block: 0  // For items like Calipers that grant block in combat
     };
+  }
+  // Ensure block modifier exists on older items
+  if (item.statModifiers && !('block' in item.statModifiers)) {
+    item.statModifiers.block = 0;
   }
 }
 
@@ -1756,7 +1982,8 @@ function upgradeOrDowngradePassive(isUpgrade) {
         discovery: 0,
         fov: 0,
         luck: 0,
-        maxHealth: 0
+        maxHealth: 0,
+        block: 0
       }
     };
 
@@ -1774,7 +2001,7 @@ function upgradeOrDowngradePassive(isUpgrade) {
   // If no stat modifications found, fall back to random stat (shouldn't happen for items with effects)
   if (statModifications.length === 0) {
     console.warn(`No stat modifications found for ${itemToModify.name}, using fallback`);
-    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth'];
+    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth', 'block'];
     const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
     statModifications.push({ stat: randomStat, direction: 1 });
   }

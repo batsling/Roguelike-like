@@ -13,6 +13,7 @@ var strength = 0;
 var dexterity = 0;
 var intelligence = 0;
 var charisma = 0;
+var attack = 0;
 var luck = 0;
 var roguePoints = 0;
 var reroll = 0;
@@ -101,6 +102,8 @@ var gameState = {
   maxHealth: 10,
   gold: 0,
   rations: 10,
+  energy: 2, // Energy available per turn in combat
+  maxEnergy: 2, // Maximum energy per turn (can be increased by items)
   inventory: [],
   activeCurses: [], // Track active curses on player
   cursesTracker: {}, // Track curse progress (e.g., games beaten, spaces chosen)
@@ -117,7 +120,7 @@ var gameState = {
   escapeProgress: 0,
   // Weapon system
   equippedWeapon: null, // Currently equipped weapon object
-  weaponLevel: 1, // Current weapon level (1-3)
+  weaponLevel: 1, // Working copy of equipped weapon's level (synced with weapon.level)
   shopUpgradesUsed: 0 // Track weapon upgrades used in current shop visit
 };
 

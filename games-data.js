@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 581 games, 724 connections
-// 505 connected, 159 influencers
+// 589 games, 746 connections
+// 514 connected, 162 influencers
 
 var GAMES_DATA = [
   {
@@ -329,6 +329,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/astral-ascent.jpg"
   },
   {
+    "name": "Astro Prospector",
+    "year": 2025,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/astro-prospector.jpg"
+  },
+  {
     "name": "Astronarch",
     "year": 2020,
     "type": "Strategy",
@@ -441,7 +451,9 @@ var GAMES_DATA = [
       "Dogpile",
       "Word Play",
       "Lootplot",
-      "Dead Finger Dice"
+      "Dead Finger Dice",
+      "RogueJack21",
+      "Hungry Horrors"
     ],
     "coverImage": "images/covers/balatro.jpg"
   },
@@ -755,6 +767,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/brogue.jpg"
   },
   {
+    "name": "BroomSweeper",
+    "year": 2026,
+    "type": "Strategy",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/broomsweeper.jpg"
+  },
+  {
     "name": "Brotato",
     "year": 2022,
     "type": "Action",
@@ -766,7 +788,8 @@ var GAMES_DATA = [
       "Noobs Are Coming",
       "Maid Survivors: Little Angels",
       "Voids Vigil",
-      "Pesticide Not Required"
+      "Pesticide Not Required",
+      "Astro Prospector"
     ],
     "coverImage": "images/covers/brotato.jpg"
   },
@@ -1533,8 +1556,8 @@ var GAMES_DATA = [
     "name": "DemonCrawl",
     "year": 2019,
     "type": "Strategy",
-    "connected": false,
-    "influenced": false,
+    "connected": true,
+    "influenced": true,
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/demoncrawl.jpg"
@@ -1764,7 +1787,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Cult of the Lamb",
       "Road Not Taken",
-      "The Flame in the Flood"
+      "The Flame in the Flood",
+      "Hungry Horrors"
     ],
     "coverImage": "images/covers/don-t-starve.jpg"
   },
@@ -2039,6 +2063,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/dwarf-fortress.jpg"
   },
   {
+    "name": "Dwarves: Glory, Death and Loot",
+    "year": 2023,
+    "type": "Strategy",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dwarves-glory-death-and-loot.jpg"
+  },
+  {
     "name": "Elden Ring Nightreign",
     "year": 2025,
     "type": "Action",
@@ -2138,7 +2172,8 @@ var GAMES_DATA = [
       "Abandoned Archive",
       "Asterogues",
       "Galactic Glitch",
-      "Atomicrops"
+      "Atomicrops",
+      "Astro Prospector"
     ],
     "coverImage": "images/covers/enter-the-gungeon.jpg"
   },
@@ -2411,7 +2446,8 @@ var GAMES_DATA = [
       "Void War",
       "Void Bastards",
       "Has-Been Heroes",
-      "Crying Suns"
+      "Crying Suns",
+      "BroomSweeper"
     ],
     "coverImage": "images/covers/ftl.jpg"
   },
@@ -2918,6 +2954,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/house-of-necrosis.jpg"
   },
   {
+    "name": "Hungry Horrors",
+    "year": 2026,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/hungry-horrors.jpg"
+  },
+  {
     "name": "I Am Legion: Stand Survivors",
     "year": 2025,
     "type": "Action",
@@ -3264,7 +3310,8 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Super Fantasy Kingdom"
+      "Super Fantasy Kingdom",
+      "Winnie's Hole"
     ],
     "coverImage": "images/covers/loop-hero.jpg"
   },
@@ -3297,6 +3344,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/lootplot.jpg"
+  },
+  {
+    "name": "Lort",
+    "year": 2026,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/lort.jpg"
   },
   {
     "name": "Lost Flame",
@@ -3350,7 +3407,8 @@ var GAMES_DATA = [
       "Cat God Ranch",
       "Omelet You Cook",
       "Steve's Warehouse: Physics. Roguelike. Chaos.",
-      "Runeborn"
+      "Runeborn",
+      "BroomSweeper"
     ],
     "coverImage": "images/covers/luck-be-a-landlord.jpg"
   },
@@ -3381,9 +3439,11 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "Astro Prospector"
+    ],
     "coverImage": "images/covers/magicraft.jpg"
   },
   {
@@ -3968,7 +4028,9 @@ var GAMES_DATA = [
       "Tiny Rogues",
       "Voidigo",
       "GoNNER",
-      "Atomicrops"
+      "Atomicrops",
+      "Astro Prospector",
+      "Rocket Rats"
     ],
     "coverImage": "images/covers/nuclear-throne.jpg"
   },
@@ -4531,9 +4593,11 @@ var GAMES_DATA = [
     "year": 2020,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "Winnie's Hole"
+    ],
     "coverImage": "images/covers/ring-of-pain.jpg"
   },
   {
@@ -4580,7 +4644,8 @@ var GAMES_DATA = [
       "Gatekeeper",
       "Megabonk",
       "Vellum",
-      "Swapmeat"
+      "Swapmeat",
+      "Lort"
     ],
     "coverImage": "images/covers/risk-of-rain-2.jpg"
   },
@@ -4616,6 +4681,16 @@ var GAMES_DATA = [
       "Brew"
     ],
     "coverImage": "images/covers/roboquest.jpg"
+  },
+  {
+    "name": "Rocket Rats",
+    "year": 2024,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rocket-rats.jpg"
   },
   {
     "name": "Rogue",
@@ -4758,6 +4833,16 @@ var GAMES_DATA = [
       "Dicefolk"
     ],
     "coverImage": "images/covers/roguebook.jpg"
+  },
+  {
+    "name": "RogueJack21",
+    "year": 2026,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/roguejack21.jpg"
   },
   {
     "name": "Roll",
@@ -5149,7 +5234,11 @@ var GAMES_DATA = [
       "Die For The Lich",
       "Right and Down",
       "Tower Escape",
-      "Atomicrops"
+      "Atomicrops",
+      "BroomSweeper",
+      "RogueJack21",
+      "Winnie's Hole",
+      "Hungry Horrors"
     ],
     "coverImage": "images/covers/slay-the-spire.jpg"
   },
@@ -5657,7 +5746,8 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Knightica"
+      "Knightica",
+      "Dwarves: Glory, Death and Loot"
     ],
     "coverImage": "images/covers/teamfight-tactics.jpg"
   },
@@ -6300,7 +6390,8 @@ var GAMES_DATA = [
       "Nimrods",
       "Mythical Concept Starnaut",
       "Choo Choo Survivor",
-      "Pesticide Not Required"
+      "Pesticide Not Required",
+      "Astro Prospector"
     ],
     "coverImage": "images/covers/vampire-survivors.jpg"
   },
@@ -6520,7 +6611,8 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Decktamer"
+      "Decktamer",
+      "Hungry Horrors"
     ],
     "coverImage": "images/covers/wildfrost.jpg"
   },
@@ -6533,6 +6625,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/windblown.jpg"
+  },
+  {
+    "name": "Winnie's Hole",
+    "year": 2026,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/winnie-s-hole.jpg"
   },
   {
     "name": "Wizard of Legend",
