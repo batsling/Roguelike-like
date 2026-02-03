@@ -1,426 +1,588 @@
-// Auto-generated from Roguelikes.xlsx
-// 38 items
+// Auto-generated from Roguelikes.xlsx - Items
 
 var ITEMS_DATA = [
   {
     "name": "Ballistic Boots",
-    "rarity": "Rare",
+    "rating": "Rare",
     "type": "Passive",
     "description": "Gain +1 Dash",
-    "image": "images/items/BallisticBoots.png",
     "reference": "Enter the Gungeon",
     "tags": [
-      "wearable"
-    ]
+      "wearable",
+      "shoes"
+    ],
+    "imageUrl": "images/items/BallisticBoots.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Barrel",
-    "rarity": "Uncommon",
+    "rating": "Uncommon",
     "type": "Weapon",
     "description": "If you obtain at least 1 fish, gain (1/2/3) random fish",
-    "image": "images/items/Barrel.png",
     "reference": "Enter the Gungeon",
     "tags": [
       "gun",
-      "fish"
-    ]
+      "fish",
+      "ranged",
+      "fishing weight"
+    ],
+    "imageUrl": "images/items/Barrel.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Blasma Pistol",
-    "rarity": "Common",
+    "rating": "Common",
     "type": "Weapon",
     "description": "If you open more than 10 chests, gain a (small/normal/large) chest",
-    "image": "images/items/BlasmaPistol.png",
     "reference": "Flinthook",
     "tags": [
-      "gun"
-    ]
+      "gun",
+      "ranged"
+    ],
+    "imageUrl": "images/items/BlasmaPistol.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Boon of Aphrodite",
-    "rarity": "N/A",
+    "rating": "N/A",
     "type": "Boon",
-    "description": "If the player charms an enemy gain +1 to all combat stats, but 20% chance for games to be Charmed",
-    "image": "images/items/BoonOfAphrodite.png",
-    "reference": "Hades"
+    "description": "If the player charms an enemy gain +1 to all combat roll bonus stats, but 20% chance for games to be Charmed",
+    "reference": "Hades",
+    "tags": [],
+    "imageUrl": "images/items/BoonOfAphrodite.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Boon of Artemis",
-    "rarity": "N/A",
+    "rating": "N/A",
     "type": "Boon",
-    "description": "If the player uses ranged strategies primarlity to win the run gain +1 to all combat stats, but 20% chance for games to be Marked",
-    "image": "images/items/BoonOfArtemis.png",
-    "reference": "Hades"
+    "description": "If the player uses ranged strategies primarlity to win the run gain +1 to all combat roll bonus stats, but 20% chance for games to be Marked",
+    "reference": "Hades",
+    "tags": [],
+    "imageUrl": "images/items/BoonOfArtemis.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Boon of Athena",
-    "rarity": "N/A",
+    "rating": "N/A",
     "type": "Boon",
-    "description": "If the player negates damage with a shield 5+ times gain +1 to all combat stats, but 20% for games to be Shielded",
-    "image": "images/items/BoonOfAthena.png",
-    "reference": "Hades"
+    "description": "If the player negates damage with a shield 5+ times gain +1 to all combat roll bonus stats, but 20% for games to be Shielded",
+    "reference": "Hades",
+    "tags": [],
+    "imageUrl": "images/items/BoonOfAthena.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Boon of Hermes",
-    "rarity": "N/A",
+    "rating": "N/A",
     "type": "Boon",
-    "description": "If the player beats a game within an hour gain +1 to all combat stats, but 20% chance for games to be Timed",
-    "image": "images/items/BoonOfHermes.png",
-    "reference": "Hades"
+    "description": "If the player beats a game within an hour gain +1 to all combat roll bonus stats, but 20% chance for games to be Timed",
+    "reference": "Hades",
+    "tags": [],
+    "imageUrl": "images/items/BoonOfHermes.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Boon of Poseidon",
-    "rarity": "N/A",
+    "rating": "N/A",
     "type": "Boon",
-    "description": "If the player defeats an enemy underwater gain +1 to all combat stats, but 20% chance for games to be Soaked",
-    "image": "images/items/BoonOfPoseidon.png",
-    "reference": "Hades"
+    "description": "If the player defeats an enemy underwater gain +1 to all combat roll bonus stats, but 20% chance for games to be Soaked",
+    "reference": "Hades",
+    "tags": [],
+    "imageUrl": "images/items/BoonOfPoseidon.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Boon of Zeus",
-    "rarity": "N/A",
+    "rating": "N/A",
     "type": "Boon",
-    "description": "If the player defeats an enemy with lightning in their run gain +1 to all combat stats, but 20% chance for games to be Shocked",
-    "image": "images/items/BoonOfZeus.png",
-    "reference": "Hades"
+    "description": "If the player defeats an enemy with lightning in their run gain +1 to all combat roll bonus stats, but 20% chance for games to be Shocked",
+    "reference": "Hades",
+    "tags": [],
+    "imageUrl": "images/items/BoonOfZeus.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Bowler Hat",
-    "rarity": "Uncommon",
+    "rating": "Uncommon",
     "type": "Passive",
     "description": "Gain +3 Charisma, but -1 Dexterity",
-    "image": "images/items/BowlerHat.png",
     "reference": "Brotato",
     "tags": [
-      "wearable"
-    ]
+      "wearable",
+      "hat"
+    ],
+    "imageUrl": "images/items/BowlerHat.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Campfire",
-    "rarity": "Uncommon",
+    "rating": "Uncommon",
     "type": "Passive",
     "description": "Gain +3 Intelligence, but -1 Dexterity",
-    "image": "images/items/Campfire.png",
-    "reference": "Brotato"
-  },
-  {
-    "name": "Calipers",
-    "rarity": "Common",
-    "type": "Passive",
-    "description": "Start the second turn of combat with +5 Block",
-    "image": "images/items/Calipers.png",
-    "reference": "Slay the Spire",
-    "tags": []
+    "reference": "Brotato",
+    "tags": [],
+    "imageUrl": "images/items/Campfire.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Charm of the Vampire",
-    "rarity": "Uncommon",
+    "rating": "Uncommon",
     "type": "Triggered",
     "description": "When you defeat an enemy, 50% chance to Heal +1 Health",
-    "image": "images/items/CharmOfTheVampire.png",
-    "reference": "The Binding of Isaac"
+    "reference": "The Binding of Isaac",
+    "tags": [],
+    "imageUrl": "images/items/CharmOfTheVampire.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Cursed Slash",
-    "rarity": "Rare",
+    "rating": "Rare",
     "type": "Triggered",
     "description": "Lose half of your max health. When you defeat an enemy, Heal +1 Health",
-    "image": "images/items/CursedSlash.png",
-    "reference": "Hades"
+    "reference": "Hades",
+    "tags": [],
+    "imageUrl": "images/items/CursedSlash.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "D6",
-    "rarity": "Uncommon",
+    "rating": "Uncommon",
     "type": "Passive",
-    "description": "Gain +1 Reroll",
-    "image": "images/items/D6.png",
-    "reference": "The Binding of Isaac"
+    "description": "Gain +2 Rerolls",
+    "reference": "The Binding of Isaac",
+    "tags": [],
+    "imageUrl": "images/items/D6.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Empty Tome",
-    "rarity": "Common",
+    "rating": "Common",
     "type": "Passive",
     "description": "Gain +2 Intelligence",
-    "image": "images/items/EmptyTome.png",
-    "reference": "Vampire Survivors"
+    "reference": "Vampire Survivors",
+    "tags": [],
+    "imageUrl": "images/items/EmptyTome.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Garlic",
-    "rarity": "Uncommon",
+    "rating": "Uncommon",
     "type": "Triggered",
     "description": "Whenever you take damage, take 1 less (minimum 1)",
-    "image": "images/items/Garlic.png",
     "reference": "Super Auto Pets",
     "tags": [
       "food"
-    ]
+    ],
+    "imageUrl": "images/items/Garlic.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Golden Beetle",
-    "rarity": "Rare",
+    "rating": "Rare",
     "type": "Triggered",
     "description": "Whenever you get rid of a curse, gain one Chest",
-    "image": "images/items/GoldenBeetle.png",
-    "reference": "Forward: Escape the Fold"
+    "reference": "Forward: Escape the Fold",
+    "tags": [],
+    "imageUrl": "images/items/GoldenBeetle.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Hollow Heart",
-    "rarity": "Common",
+    "rating": "Common",
     "type": "Passive",
     "description": "Gain +2 Max Health",
-    "image": "images/items/HollowHeart.png",
-    "reference": "Vampire Survivors"
+    "reference": "Vampire Survivors",
+    "tags": [],
+    "imageUrl": "images/items/HollowHeart.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Lil' Bomber",
-    "rarity": "Common",
+    "rating": "Common",
     "type": "Weapon",
-    "description": "If you kill an enemy with a bomb at least one time, gain (+1/+2/+3) Strength",
-    "image": "images/items/LilBomber.png",
+    "description": "If you kill an enemy with a bomb at least one time, this weapon gains (+1/+2/+3) to a random side",
     "reference": "Enter the Gungeon",
     "tags": [
-      "gun"
-    ]
+      "gun",
+      "ranged"
+    ],
+    "imageUrl": "images/items/LilBomber.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Lucky Toe",
-    "rarity": "Common",
+    "rating": "Common",
     "type": "Passive",
     "description": "Gain +1 Luck",
-    "image": "images/items/LuckyToe.png",
-    "reference": "The Binding of Isaac"
+    "reference": "The Binding of Isaac",
+    "tags": [],
+    "imageUrl": "images/items/LuckyToe.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Lunch",
-    "rarity": "Common",
+    "rating": "Common",
     "type": "Passive",
     "description": "Gain +1 Max Health and +3 Health",
-    "image": "images/items/Lunch.png",
     "reference": "The Binding of Isaac",
     "tags": [
       "food"
-    ]
+    ],
+    "imageUrl": "images/items/Lunch.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "More Options",
-    "rarity": "Uncommon",
+    "rating": "Uncommon",
     "type": "Passive",
     "description": "Gain +1 Field of View, get an extra option in the space choice",
-    "image": "images/items/MoreOptions.png",
-    "reference": "The Binding of Isaac"
+    "reference": "The Binding of Isaac",
+    "tags": [],
+    "imageUrl": "images/items/MoreOptions.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Oddly Smooth Stone",
-    "rarity": "Common",
+    "rating": "Common",
     "type": "Passive",
     "description": "Gain +2 Dexterity",
-    "image": "images/items/OddlySmoothStone.png",
-    "reference": "Slay the Spire"
+    "reference": "Slay the Spire",
+    "tags": [],
+    "imageUrl": "images/items/OddlySmoothStone.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Panda",
-    "rarity": "Rare",
+    "rating": "Rare",
     "type": "Passive",
-    "description": "Gain +5 Max Health and +2 Luck, but -1 Strength",
-    "image": "images/items/Panda.png",
-    "reference": "Brotato"
+    "description": "Gain +5 Max Health and +2 Luck, but -2 Strength",
+    "reference": "Brotato",
+    "tags": [],
+    "imageUrl": "images/items/Panda.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Reactive Trauma Plate",
-    "rarity": "Rare",
+    "rating": "Rare",
     "type": "Triggered",
     "description": "If the player would take lethal damage, negate that damage and destroy this item",
-    "image": "images/items/ReactiveTraumaPlate.png",
     "reference": "Caves of Qud",
     "tags": [
       "cybernetics"
-    ]
+    ],
+    "imageUrl": "images/items/ReactiveTraumaPlate.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Ride the Bus",
-    "rarity": "Uncommon",
+    "rating": "Uncommon",
     "type": "Usable",
     "description": "Teleport to a random Deckbuilder space",
-    "image": "images/items/RideTheBus.png",
-    "reference": "Balatro"
+    "reference": "Balatro",
+    "tags": [],
+    "imageUrl": "images/items/RideTheBus.png",
+    "unlockCondition": "N/A"
   },
   {
-    "name": "Scroll of Teleportation",
-    "rarity": "Common",
+    "name": "Scroll of Teleportation ",
+    "rating": "Common",
     "type": "Usable",
     "description": "Teleport to a random space",
-    "image": "images/items/ScrollOfTeleportation.png",
-    "reference": "Rogue"
+    "reference": "Rogue",
+    "tags": [],
+    "imageUrl": "images/items/ScrollOfTeleportation.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Stabilizar Arm Locks",
-    "rarity": "Rare",
+    "rating": "Rare",
     "type": "Passive",
     "description": "Gain +6 Dexterity",
-    "image": "images/items/StabilizarArmLocks.png",
     "reference": "Caves of Qud",
     "tags": [
       "cybernetics"
-    ]
+    ],
+    "imageUrl": "images/items/StabilizarArmLocks.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Sunglasses",
-    "rarity": "Common",
+    "rating": "Common",
     "type": "Passive",
     "description": "Gain +2 Charisma",
-    "image": "images/items/Sunglasses.png",
     "reference": "Enter the Gungeon",
     "tags": [
-      "wearable"
-    ]
+      "wearable",
+      "glasses"
+    ],
+    "imageUrl": "images/items/Sunglasses.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "The Poop",
-    "rarity": "Common",
+    "rating": "Common",
     "type": "Usable",
-    "description": "Poop on the current space, this space will not show up on the space choice in the future unless it's the only option (very stinky)",
-    "image": "images/items/ThePoop.png",
-    "reference": "The Binding of Isaac"
+    "description": "Poop on the current space, this space will not show up on the space choice in the future unless it's the only option (very stinky) ",
+    "reference": "The Binding of Isaac",
+    "tags": [],
+    "imageUrl": "images/items/ThePoop.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Unstable Genome",
-    "rarity": "Uncommon",
+    "rating": "Uncommon",
     "type": "Triggered",
     "description": "When you beat a game, there's a 33% chance for this item to be destroyed and you may gain 1 of 3 random items",
-    "image": "images/items/UnstableGenome.png",
     "reference": "Caves of Qud",
     "tags": [
       "mutation"
-    ]
+    ],
+    "imageUrl": "images/items/UnstableGenome.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Vajra",
-    "rarity": "Common",
+    "rating": "Common",
     "type": "Passive",
     "description": "Gain +2 Strength",
-    "image": "images/items/Vajra.png",
-    "reference": "Slay the Spire"
+    "reference": "Slay the Spire",
+    "tags": [],
+    "imageUrl": "images/items/Vajra.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Ventricle Razor",
-    "rarity": "Rare",
+    "rating": "Rare",
     "type": "Usable",
     "description": "On the first use, create a portal. On second use, return to the space you created the portal on",
-    "image": "images/items/VentricleRazor.png",
-    "reference": "The Binding of Isaac"
+    "reference": "The Binding of Isaac",
+    "tags": [],
+    "imageUrl": "images/items/VentricleRazor.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Vitality Orb",
-    "rarity": "Rare",
+    "rating": "Rare",
     "type": "Triggered",
     "description": "Gain +1 Max Health (and +1 Health) whenever you obtain a curse",
-    "image": "images/items/VitalityOrb.png",
-    "reference": "Forward: Escape the Fold"
+    "reference": "Forward: Escape the Fold",
+    "tags": [],
+    "imageUrl": "images/items/VitalityOrb.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Wand of Wishing",
-    "rarity": "Legendary",
+    "rating": "Legendary",
     "type": "Usable",
     "description": "Obtain any one item in the game",
-    "image": "images/items/WandOfWishing.png",
-    "reference": "NetHack"
+    "reference": "NetHack",
+    "tags": [],
+    "imageUrl": "images/items/WandOfWishing.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Wheat",
-    "rarity": "Uncommon",
+    "rating": "Uncommon",
     "type": "Passive",
     "description": "Gain +3 Strength, but -1 Intelligence",
-    "image": "images/items/Wheat.png",
     "reference": "Brotato",
     "tags": [
       "food"
-    ]
+    ],
+    "imageUrl": "images/items/Wheat.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Winged Boots",
-    "rarity": "Rare",
+    "rating": "Rare",
     "type": "Usable",
     "description": "Move to a one of three games that share the year of the game you're currently on",
-    "image": "images/items/WingedBoots.png",
     "reference": "Slay the Spire",
     "tags": [
-      "wearable"
-    ]
+      "wearable",
+      "shoes"
+    ],
+    "imageUrl": "images/items/WingedBoots.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Wings",
-    "rarity": "Uncommon",
+    "rating": "Uncommon",
     "type": "Passive",
     "description": "Gain +3 Dexterity, but -1  Intelligence",
-    "image": "images/items/Wings.png",
     "reference": "Brotato",
     "tags": [
       "mutation"
-    ]
+    ],
+    "imageUrl": "images/items/Wings.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Beefy Ring",
-    "rarity": "Rare",
+    "rating": "Rare",
     "type": "Scaling",
-    "description": "Gain scaling +1 Attack per 10 max health",
-    "image": "images/items/BeefyRing.png",
+    "description": "Gain scaling +1 Strength per 10 max health ",
     "reference": "Megabonk",
     "tags": [
       "wearable",
       "ring"
-    ]
+    ],
+    "imageUrl": "images/items/BeefyRing.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Fire Potion",
-    "rarity": "Uncommon",
-    "type": "Active",
+    "rating": "Uncommon",
+    "type": "Usable",
     "description": "In combat, deal 10 damage to a target enemy",
-    "image": "images/items/FirePotion.png",
     "reference": "Slay the Spire",
     "tags": [
       "potion"
-    ]
+    ],
+    "imageUrl": "images/items/FirePotion.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Slutty Rocket",
-    "rarity": "Uncommon",
+    "rating": "Uncommon",
     "type": "Weapon",
-    "description": "If you kill an enemy with a missile at least one time, this weapon gains (+1/+2/+3) Attack",
-    "image": "images/items/SluttyRocket.png",
+    "description": "If you kill an enemy with a missile at least one time, this weapon gains (+1/+2/+3) to a random side",
     "reference": "Megabonk",
     "tags": [
       "ranged"
-    ]
+    ],
+    "imageUrl": "images/items/SluttyRocket.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Blood Magic",
-    "rarity": "Rare",
+    "rating": "Rare",
     "type": "Weapon",
-    "description": "If you create or use a magic circle, gain (+1/+2/+3) Max Health",
-    "image": "images/items/BloodMagic.png",
+    "description": "If you create or use a magic circle, this weapon gains (+1/+2/+3) to a random side",
     "reference": "Megabonk",
     "tags": [
       "ranged"
-    ]
+    ],
+    "imageUrl": "images/items/BloodMagic.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Focus Crystal",
-    "rarity": "Common",
+    "rating": "Common",
     "type": "Passive",
-    "description": "If you have a melee weapon equipped, gain +1 Attack",
-    "image": "images/items/FocusCrystal.png",
+    "description": "If you have a melee weapon equipped, gain +2 Strength",
     "reference": "Risk of Rain 2",
-    "tags": []
+    "tags": [],
+    "imageUrl": "images/items/FocusCrystal.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Dexecutioner",
-    "rarity": "Uncommon",
+    "rating": "Uncommon",
     "type": "Weapon",
-    "description": "If you kill an enemy with a piercing attack at least one time, this weapon gains (+1/+2/+3) Dexterity",
-    "image": "images/items/Dexecutioner.png",
+    "description": "If you kill an enemy with a piercing attack at least one time, this weapon gains (+1/+2/+3) to a random side",
     "reference": "Megabonk",
     "tags": [
-      "melee"
-    ]
+      "melee",
+      "finesse"
+    ],
+    "imageUrl": "images/items/Dexecutioner.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Horn Cleat",
+    "rating": "Common",
+    "type": "Passive",
+    "description": "Start the second turn of combat with +5 Block",
+    "reference": "Slay the Spire",
+    "tags": [],
+    "imageUrl": "images/items/HornCleat.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Secret Technique Instructions",
+    "rating": "Rare",
+    "type": "Triggered",
+    "description": "Whenever you Perfect a game (beat a game/combat without losing a run), gain +1 Dash",
+    "reference": "Haste",
+    "tags": [
+      "book"
+    ],
+    "imageUrl": "images/items/SecretTechniqueInstructions.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Clown Shoes",
+    "rating": "Uncommon",
+    "type": "Triggered",
+    "description": "Whenever you don't Perfect a game, (beat a game/combat without losing a run) 50% chance to treat it like you did",
+    "reference": "Haste",
+    "tags": [
+      "wearable",
+      "shoes"
+    ],
+    "imageUrl": "images/items/ClownShoes.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Performance Based Health Insurance",
+    "rating": "Common",
+    "type": "Triggered",
+    "description": "Whenever you perfect a game (beat a game/combat without losing a run), Gain +2 Health",
+    "reference": "Haste",
+    "tags": [],
+    "imageUrl": "images/items/PerformanceBasedHealthInsurance.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Steady Investment",
+    "rating": "Common",
+    "type": "Triggered",
+    "description": "Whenever you perfect a game (beat a game/combat without losing a run), Gain +5 Gold",
+    "reference": "Haste",
+    "tags": [],
+    "imageUrl": "images/items/SteadyInvestment.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Red Pigment",
+    "rating": "N/A",
+    "type": "Usable",
+    "description": "Only Usable During Combat. Gain +3 Strength until end of the turn",
+    "reference": "Brutal Orchestra",
+    "tags": [],
+    "imageUrl": "images/items/RedPigment.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Yellow Pigment",
+    "rating": "N/A",
+    "type": "Usable",
+    "description": "Only Usable During Combat. Gain +3 Dexterity until end of the turn",
+    "reference": "Brutal Orchestra",
+    "tags": [],
+    "imageUrl": "images/items/YellowPigment.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Blue Pigment",
+    "rating": "N/A",
+    "type": "Usable",
+    "description": "Only Usable During Combat. Gain +3 Intelligence until end of the turn",
+    "reference": "Brutal Orchestra",
+    "tags": [],
+    "imageUrl": "images/items/BluePigment.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Purple Pigment",
+    "rating": "N/A",
+    "type": "Usable",
+    "description": "Only Usable During Combat. Gain +3 Charisma until end of the turn",
+    "reference": "Brutal Orchestra",
+    "tags": [],
+    "imageUrl": "images/items/PurplePigment.png",
+    "unlockCondition": "N/A"
   }
 ];

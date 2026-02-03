@@ -1,3 +1,5 @@
+// Auto-generated from Roguelikes.xlsx - Curses
+
 var CURSES_DATA = [
   {
     "name": "Curse of Devotion I",
@@ -172,7 +174,7 @@ var CURSES_DATA = [
     "stat": "Strength",
     "power": "Low",
     "duration": "Until 1 Game Beaten w/ Effect",
-    "description": "You must raise the difficulty once if possible",
+    "description": "You must raise the difficulty once if possible ",
     "automatic": "Restriction"
   },
   {
@@ -180,7 +182,7 @@ var CURSES_DATA = [
     "stat": "Strength",
     "power": "Medium",
     "duration": "Until 1 Game Beaten w/ Effect",
-    "description": "You must raise the difficulty twice if possible",
+    "description": "You must raise the difficulty twice if possible ",
     "automatic": "Restriction"
   },
   {
@@ -188,7 +190,7 @@ var CURSES_DATA = [
     "stat": "Strength",
     "power": "High",
     "duration": "Until 1 Game Beaten w/ Effect",
-    "description": "You must raise the difficulty three times if possible",
+    "description": "You must raise the difficulty three times if possible ",
     "automatic": "Restriction"
   },
   {
@@ -219,24 +221,24 @@ var CURSES_DATA = [
     "name": "Curse of Weakness I",
     "stat": "Strength",
     "power": "Low",
-    "duration": "1 Roll",
-    "description": "Subtract 2 from your next roll",
+    "duration": "Until 1 Combat Beaten",
+    "description": "Start the next Combat with 3 Frail",
     "automatic": "Auto"
   },
   {
     "name": "Curse of Weakness II",
     "stat": "Strength",
     "power": "Medium",
-    "duration": "1 Roll",
-    "description": "Subtract 3 from your next roll",
+    "duration": "Until 2 Combats Beaten",
+    "description": "Start the next Combat with 3 Frail",
     "automatic": "Auto"
   },
   {
     "name": "Curse of Weakness III",
     "stat": "Strength",
     "power": "High",
-    "duration": "1 Roll",
-    "description": "Subtract 4 from your next roll",
+    "duration": "Until 3 Combats Beaten",
+    "description": "Start the next Combat with 3 Frail",
     "automatic": "Auto"
   },
   {
@@ -244,7 +246,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Low",
     "duration": "Until 1 is rolled",
-    "description": "When you roll a 1 (before adding to the roll), Fail the combat no matter what and take 2 damage",
+    "description": "When you roll a 1 on a D20 (before adding to the roll), Fail the combat no matter what and take 2 damage",
     "automatic": "Auto"
   },
   {
@@ -252,7 +254,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Medium",
     "duration": "Until 1 is rolled",
-    "description": "When you roll a 1 (before adding to the roll), Fail the combat no matter what and take 3 damage",
+    "description": "When you roll a 1 on a D20 (before adding to the roll), Fail the combat no matter what and take 3 damage",
     "automatic": "Auto"
   },
   {
@@ -260,7 +262,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "High",
     "duration": "Until 1 is rolled",
-    "description": "When you roll a 1 (before adding to the roll), Fail the combat no matter what and take 4 damage",
+    "description": "When you roll a 1 on a D20 (before adding to the roll), Fail the combat no matter what and take 4 damage",
     "automatic": "Auto"
   },
   {
@@ -363,24 +365,24 @@ var CURSES_DATA = [
     "name": "Curse of Obstruction I",
     "stat": "Strength",
     "power": "Low",
-    "duration": "1 Roll",
-    "description": "Gain Disadvantage on the next combat dice roll",
+    "duration": "Until 1 Combat Beaten",
+    "description": "All enemies gain 1 Shield at the start of their turn",
     "automatic": "Auto"
   },
   {
     "name": "Curse of Obstruction II",
     "stat": "Strength",
     "power": "Medium",
-    "duration": "2 Rolls",
-    "description": "Gain Disadvantage on the next combat dice roll",
+    "duration": "Until 2 Combats Beaten",
+    "description": "All enemies gain 2 Shield at the start of their turn",
     "automatic": "Auto"
   },
   {
     "name": "Curse of Obstruction III",
     "stat": "Strength",
     "power": "High",
-    "duration": "3 Rolls",
-    "description": "Gain Disadvantage on the next combat dice roll",
+    "duration": "Until 3 Combats Beaten",
+    "description": "All enemies gain 3 Shield at the start of their turn",
     "automatic": "Auto"
   },
   {
@@ -388,7 +390,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Low",
     "duration": "Until 1 Game Beaten",
-    "description": "If the player doesn\u2019t touch water in the game, take 3 damage",
+    "description": "If the player doesn’t touch water in the game, take 3 damage",
     "automatic": "Manual"
   },
   {
@@ -396,7 +398,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
-    "description": "If the player doesn\u2019t touch water in the game, take 3 damage",
+    "description": "If the player doesn’t touch water in the game, take 3 damage",
     "automatic": "Manual"
   },
   {
@@ -404,7 +406,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "High",
     "duration": "Until 3 Games Beaten",
-    "description": "If the player doesn\u2019t touch water in the game, take 3 damage",
+    "description": "If the player doesn’t touch water in the game, take 3 damage",
     "automatic": "Manual"
   },
   {
@@ -424,11 +426,35 @@ var CURSES_DATA = [
     "automatic": "Auto"
   },
   {
-    "name": "Curse of Decay III",
+    "name": "Curse of Decay II",
     "stat": "Strength",
     "power": "High",
     "duration": "Until 3 Passive Items Obtained",
     "description": "Whenever the player gets a passive item, downgrade it",
+    "automatic": "Auto"
+  },
+  {
+    "name": "Curse of Misfortune I",
+    "stat": "Charisma",
+    "power": "Low",
+    "duration": "1 Roll",
+    "description": "Gain Disadvantage on the next D20 roll",
+    "automatic": "Auto"
+  },
+  {
+    "name": "Curse of Misfortune II",
+    "stat": "Charisma",
+    "power": "Medium",
+    "duration": "2 Rolls",
+    "description": "Gain Disadvantage on the next D20 roll",
+    "automatic": "Auto"
+  },
+  {
+    "name": "Curse of Misfortune III",
+    "stat": "Charisma",
+    "power": "High",
+    "duration": "3 Rolls",
+    "description": "Gain Disadvantage on the next D20 roll",
     "automatic": "Auto"
   }
 ];
