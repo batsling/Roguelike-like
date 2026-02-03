@@ -188,10 +188,14 @@ function renderResourcesBar(combat) {
 }
 
 /**
- * Render player section
+ * Render player section with full image
  */
 function renderPlayerSection(combat) {
   const p = combat.player;
+  // Get player image
+  const playerImagePath = typeof getPlayerImagePath === 'function'
+    ? getPlayerImagePath()
+    : 'images/characters/full/default.png';
 
   return `
     <div style="
@@ -201,9 +205,74 @@ function renderPlayerSection(combat) {
       padding: 15px;
       text-align: center;
     ">
-      <div style="font-size: 18px; font-weight: bold; color: #4CAF50; margin-bottom: 10px;">
+      <div style="font-size: 14px; font-weight: bold; color: #4CAF50; text-transform: uppercase; margin-bottom: 8px;">
         YOU
       </div>
+
+      <!-- Player Image -->
+      <div style="
+        width: 180px;
+        height: 180px;
+        margin: 0 auto 12px auto;
+        border-radius: 8px;
+        background: rgba(0,0,0,0.3);
+        padding: 8px;
+        border: 2px solid rgba(76,175,80,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      ">
+        <img src="${playerImagePath}" style="
+          width: 100%;
+          height: 100%;
+          image-rendering: pixelated;
+          object-fit: contain;
+        " alt="Player" onerror="this.style.display='none'">
+      </div>
+
+      <!-- Health Bar -->
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+        ${p.block > 0 ? `
+          <div style="
+            position: relative;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <div style="position: absolute; font-size: 40px; color: #66ccff; text-shadow: 0 0 8px rgba(102,204,255,0.5);">🛡️</div>
+            <div style="
+              position: relative;
+              z-index: 1;
+              font-size: 16px;
+              font-weight: bold;
+              color: white;
+              text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            ">${p.block}</div>
+          </div>
+        ` : ''}
+
+        <div style="background: #2a2a2a; border-radius: 6px; height: 22px; width: 160px; position: relative; overflow: hidden; border: 2px solid #4CAF50;">
+          <div style="
+            background: linear-gradient(90deg, #4CAF50, #2E7D32);
+            height: 100%;
+            width: ${(p.health / p.maxHealth) * 100}%;
+            transition: width 0.3s ease;
+          "></div>
+          <span style="
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 0 0 4px black;
+            color: white;
+          ">${p.health}/${p.maxHealth}</span>
+        </div>
+      </div>
+
       ${renderStatusEffects(p.statuses, 'player')}
     </div>
   `;
@@ -280,7 +349,7 @@ function renderEnemiesSection(combat) {
 }
 
 /**
- * Render single enemy card with image
+ * Render single enemy card with image and health bar
  */
 function renderEnemyCard(enemy, combat) {
   const isDead = enemy.health <= 0;
@@ -291,52 +360,92 @@ function renderEnemyCard(enemy, combat) {
       ? getEnemyImagePath(enemy.name)
       : `images/enemies/${enemy.name.replace(/\s+/g, '')}.png`);
 
+  const healthPercent = Math.max(0, (enemy.health / enemy.maxHealth) * 100);
+
   return `
     <div class="enemy-card" data-enemy-id="${enemy.id}" style="
       background: ${isDead ? 'rgba(0,0,0,0.3)' : 'rgba(244,67,54,0.1)'};
       border: 2px solid ${isDead ? '#333' : 'rgba(244,67,54,0.4)'};
       border-radius: 10px;
-      padding: 12px;
+      padding: 15px;
       ${isDead ? 'opacity: 0.5;' : 'cursor: pointer;'}
       transition: all 0.2s;
+      text-align: center;
     ">
-      <div style="display: flex; gap: 12px; align-items: flex-start;">
-        <!-- Enemy Image -->
-        <div style="flex-shrink: 0;">
-          <img src="${enemyImagePath}"
-            alt="${enemy.name}"
-            onerror="this.style.display='none'"
-            style="
-              width: 80px;
-              height: 80px;
-              object-fit: contain;
-              image-rendering: pixelated;
-              border-radius: 6px;
-              background: rgba(0,0,0,0.3);
-            "
-          />
-        </div>
+      <!-- Enemy Name -->
+      <div style="font-size: 18px; font-weight: bold; color: ${isDead ? '#666' : '#F44336'}; margin-bottom: 8px;">
+        ${enemy.name}
+      </div>
 
-        <!-- Enemy Info -->
-        <div style="flex: 1; min-width: 0;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div style="font-size: 16px; font-weight: bold; color: ${isDead ? '#666' : '#F44336'};">
-              ${enemy.name}
-            </div>
-            <div style="color: ${isDead ? '#666' : '#F44336'}; font-size: 14px;">
-              ❤️ ${enemy.health}/${enemy.maxHealth}
-            </div>
+      <!-- Enemy Image -->
+      <div style="
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 12px auto;
+        border-radius: 8px;
+        background: rgba(0,0,0,0.3);
+        padding: 8px;
+        border: 2px solid ${isDead ? '#333' : 'rgba(244,67,54,0.4)'};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      ">
+        <img src="${enemyImagePath}"
+          alt="${enemy.name}"
+          onerror="this.style.display='none'"
+          style="
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
+          "
+        />
+      </div>
+
+      <!-- Health and Block Bar -->
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+        ${enemy.block > 0 ? `
+          <div style="
+            position: relative;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <div style="position: absolute; font-size: 36px; color: #66ccff; text-shadow: 0 0 8px rgba(102,204,255,0.5);">🛡️</div>
+            <div style="
+              position: relative;
+              z-index: 1;
+              font-size: 14px;
+              font-weight: bold;
+              color: white;
+              text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            ">${enemy.block}</div>
           </div>
+        ` : ''}
 
-          ${enemy.block > 0 ? `
-            <div style="color: #78909C; font-size: 14px; margin-bottom: 5px;">
-              🛡️ Block: ${enemy.block}
-            </div>
-          ` : ''}
-
-          ${renderStatusEffects(enemy.statuses, enemy.id)}
+        <div style="background: #2a2a2a; border-radius: 6px; height: 20px; width: 140px; position: relative; overflow: hidden; border: 2px solid ${isDead ? '#666' : '#F44336'};">
+          <div style="
+            background: linear-gradient(90deg, #F44336, #c62828);
+            height: 100%;
+            width: ${healthPercent}%;
+            transition: width 0.3s ease;
+          "></div>
+          <span style="
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 11px;
+            font-weight: bold;
+            text-shadow: 0 0 4px black;
+            color: white;
+          ">${enemy.health}/${enemy.maxHealth}</span>
         </div>
       </div>
+
+      ${renderStatusEffects(enemy.statuses, enemy.id)}
 
       ${!isDead && enemy.currentIntent ? `
         <div style="
@@ -500,48 +609,76 @@ function renderDie(die, combat) {
         </div>
       ` : ''}
 
-      <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+      <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 5px;">
         ${!die.isRolled && isAvailable ? `
           <button class="die-roll-btn" data-die-id="${die.id}" style="
-            padding: 8px 16px;
+            padding: 10px 20px;
             background: linear-gradient(145deg, #2196F3, #1565C0);
-            border: none;
-            border-radius: 6px;
+            border: 2px solid #42A5F5;
+            border-radius: 8px;
             color: white;
             cursor: pointer;
             font-weight: bold;
-          ">Roll (1⚡)</button>
+            font-size: 14px;
+            text-transform: uppercase;
+            box-shadow: 0 2px 8px rgba(33,150,243,0.4);
+            transition: all 0.2s;
+          ">⚡ Roll</button>
         ` : ''}
 
         ${die.isRolled && !die.isConfirmed ? `
           <button class="die-confirm-btn" data-die-id="${die.id}" style="
-            padding: 8px 12px;
+            padding: 10px 16px;
             background: linear-gradient(145deg, #4CAF50, #2E7D32);
-            border: none;
-            border-radius: 6px;
+            border: 2px solid #66BB6A;
+            border-radius: 8px;
             color: white;
             cursor: pointer;
             font-weight: bold;
-          ">Confirm</button>
+            font-size: 13px;
+            text-transform: uppercase;
+            box-shadow: 0 2px 8px rgba(76,175,80,0.4);
+            transition: all 0.2s;
+          ">✓ Confirm</button>
           ${combat.player.rerolls > 0 ? `
             <button class="die-reroll-btn" data-die-id="${die.id}" style="
-              padding: 8px 12px;
+              padding: 10px 16px;
               background: linear-gradient(145deg, #FF9800, #F57C00);
-              border: none;
-              border-radius: 6px;
+              border: 2px solid #FFB74D;
+              border-radius: 8px;
               color: white;
               cursor: pointer;
               font-weight: bold;
-            ">Reroll</button>
+              font-size: 13px;
+              text-transform: uppercase;
+              box-shadow: 0 2px 8px rgba(255,152,0,0.4);
+              transition: all 0.2s;
+            ">🔄 Reroll</button>
           ` : ''}
         ` : ''}
 
         ${die.isConfirmed ? `
-          <span style="color: #4CAF50; font-weight: bold;">✓ Used</span>
+          <div style="
+            padding: 8px 16px;
+            background: rgba(76,175,80,0.2);
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            color: #4CAF50;
+            font-weight: bold;
+            font-size: 13px;
+          ">✓ USED</div>
         ` : ''}
 
         ${die.isExhausted ? `
-          <span style="color: #F44336; font-size: 12px;">Exhausted</span>
+          <div style="
+            padding: 8px 16px;
+            background: rgba(244,67,54,0.2);
+            border: 2px solid #F44336;
+            border-radius: 8px;
+            color: #F44336;
+            font-weight: bold;
+            font-size: 12px;
+          ">EXHAUSTED</div>
         ` : ''}
       </div>
     </div>
@@ -652,50 +789,57 @@ function renderCombatLog(combat) {
   `;
 }
 
+// Cache for preloaded move images
+const moveImageCache = {};
+
 /**
- * Create custom face texture for combat dice
- * @param {string} text - Text to display on face (e.g., "2 Dmg", "3 Block")
+ * Preload move images for dice faces
+ */
+function preloadMoveImages() {
+  if (!window.MOVES_DATA) return;
+
+  Object.keys(window.MOVES_DATA).forEach(key => {
+    const move = window.MOVES_DATA[key];
+    if (move.imageUrl) {
+      const img = new Image();
+      img.src = move.imageUrl;
+      moveImageCache[key.toLowerCase()] = img;
+    }
+  });
+}
+
+// Preload images on script load
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', preloadMoveImages);
+  // Also try immediate preload if data is already available
+  setTimeout(preloadMoveImages, 100);
+}
+
+/**
+ * Get image URL for a move type
+ * @param {string} moveType - Move type like "Dmg", "Block", "Heal"
+ * @returns {string|null} Image URL or null
+ */
+function getMoveImageUrl(moveType) {
+  if (!moveType || !window.MOVES_DATA) return null;
+  const key = moveType.toLowerCase();
+  const move = window.MOVES_DATA[key];
+  return move?.imageUrl || null;
+}
+
+/**
+ * Create custom texture for combat D6 face with image
+ * @param {Object} face - Face object with effects array
  * @param {string} bgColor - Background color
- * @returns {Object} Dice side data for DiceRendererInstance
+ * @returns {HTMLCanvasElement} Canvas with rendered face
  */
-function createCombatDiceSide(text, bgColor = '#cc6600') {
-  return {
-    value: 1,
-    displayValue: null,
-    displayText: text || '?'
-  };
-}
-
-/**
- * Convert combat dice faces to DiceRenderer format
- * @param {Array} faces - Array of face objects from character/weapon/ally data
- * @param {string} sourceColor - Background color based on source type
- * @returns {Object} Dice data compatible with DiceRendererInstance
- */
-function convertToDiceRendererFormat(faces, sourceColor = '#cc6600') {
-  const sides = faces.map((face, index) => ({
-    value: index + 1,
-    displayValue: null,
-    displayText: face.isBlank ? '—' : (face.raw || '?')
-  }));
-
-  return {
-    type: 'd6-combat',
-    sides: sides,
-    sourceColor: sourceColor
-  };
-}
-
-/**
- * Create custom texture for combat D6 face
- */
-function createCombatFaceTexture(text, bgColor = '#cc6600') {
+function createCombatFaceTexture(face, bgColor = '#cc6600') {
   const canvas = document.createElement('canvas');
   canvas.width = 128;
   canvas.height = 128;
   const ctx = canvas.getContext('2d');
 
-  // Background
+  // Background with rounded corners effect
   ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, 128, 128);
 
@@ -704,22 +848,113 @@ function createCombatFaceTexture(text, bgColor = '#cc6600') {
   ctx.lineWidth = 4;
   ctx.strokeRect(2, 2, 124, 124);
 
-  // Text - handle multi-word text
+  // Inner highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(6, 6, 116, 116);
+
+  // Handle blank face
+  if (face.isBlank) {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(10, 10, 108, 108);
+    ctx.fillStyle = '#666666';
+    ctx.font = 'bold 48px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('—', 64, 64);
+    return canvas;
+  }
+
+  // Get the first effect for display (most faces have one main effect)
+  const effect = face.effects && face.effects[0];
+  if (!effect) {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 32px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('?', 64, 64);
+    return canvas;
+  }
+
+  // Draw the value number in the top portion
+  const value = effect.value || 0;
   ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 48px Arial';
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-
-  // Adjust font size based on text length
-  const fontSize = text.length > 8 ? 24 : text.length > 5 ? 32 : 40;
-  ctx.font = `bold ${fontSize}px Arial`;
-
-  // Add text outline for better readability
+  ctx.textBaseline = 'top';
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = 4;
-  ctx.strokeText(text, 64, 64);
-  ctx.fillText(text, 64, 64);
+  ctx.strokeText(value.toString(), 64, 8);
+  ctx.fillText(value.toString(), 64);
+
+  // Try to draw the move image in the bottom portion
+  const moveKey = effect.move?.toLowerCase();
+  const cachedImg = moveImageCache[moveKey];
+
+  if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
+    // Draw the image centered in the lower portion
+    const imgSize = 56;
+    const imgX = (128 - imgSize) / 2;
+    const imgY = 64;
+    ctx.drawImage(cachedImg, imgX, imgY, imgSize, imgSize);
+  } else {
+    // Fallback: draw move name text
+    const moveName = effect.move || '?';
+    ctx.font = 'bold 20px Arial';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3;
+    ctx.strokeText(moveName, 64, 92);
+    ctx.fillText(moveName, 64, 92);
+  }
+
+  // If there are multiple effects, add indicator
+  if (face.effects && face.effects.length > 1) {
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('+', 120, 120);
+  }
 
   return canvas;
+}
+
+/**
+ * Create combat face texture with image loading callback
+ * This version handles async image loading
+ */
+function createCombatFaceTextureAsync(face, bgColor, callback) {
+  if (face.isBlank || !face.effects || !face.effects[0]) {
+    callback(createCombatFaceTexture(face, bgColor));
+    return;
+  }
+
+  const effect = face.effects[0];
+  const moveKey = effect.move?.toLowerCase();
+  const imageUrl = getMoveImageUrl(effect.move);
+
+  if (!imageUrl) {
+    callback(createCombatFaceTexture(face, bgColor));
+    return;
+  }
+
+  // Check cache first
+  if (moveImageCache[moveKey]?.complete && moveImageCache[moveKey]?.naturalWidth > 0) {
+    callback(createCombatFaceTexture(face, bgColor));
+    return;
+  }
+
+  // Load image then create texture
+  const img = new Image();
+  img.onload = () => {
+    moveImageCache[moveKey] = img;
+    callback(createCombatFaceTexture(face, bgColor));
+  };
+  img.onerror = () => {
+    callback(createCombatFaceTexture(face, bgColor));
+  };
+  img.src = imageUrl;
 }
 
 /**
@@ -728,16 +963,16 @@ function createCombatFaceTexture(text, bgColor = '#cc6600') {
 class CombatDiceRenderer extends DiceRendererInstance {
   constructor() {
     super();
-    this.faceTexts = [];
+    this.faces = [];
     this.bgColor = '#cc6600';
   }
 
   /**
-   * Create a D6 mesh with custom text faces for combat
+   * Create a D6 mesh with image faces for combat
    */
   createCombatD6Mesh(faces, bgColor = '#cc6600') {
     this.bgColor = bgColor;
-    this.faceTexts = faces.map(f => f.isBlank ? '—' : (f.raw || '?'));
+    this.faces = faces;
 
     // Create cube geometry
     const geometry = new THREE.BoxGeometry(2.0, 2.0, 2.0, 4, 4, 4);
@@ -758,8 +993,8 @@ class CombatDiceRenderer extends DiceRendererInstance {
 
     // Map dice faces to cube faces (indices 0-5)
     for (let i = 0; i < 6; i++) {
-      const faceText = this.faceTexts[i] || '?';
-      const canvas = createCombatFaceTexture(faceText, bgColor);
+      const face = faces[i] || { isBlank: true, effects: [], raw: '?' };
+      const canvas = createCombatFaceTexture(face, bgColor);
       const texture = new THREE.CanvasTexture(canvas);
       texture.needsUpdate = true;
 
@@ -790,6 +1025,7 @@ class CombatDiceRenderer extends DiceRendererInstance {
     // Reset roll state
     this.hasRolled = false;
     this.diceType = 'd6-combat';
+    this.faces = faces;
 
     // Create new mesh
     this.mesh = this.createCombatD6Mesh(faces, bgColor);
