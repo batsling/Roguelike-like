@@ -38,10 +38,13 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     charisma: Math.floor(playerStats.charisma / 3)
   };
 
-  // Create player state
+  // Create player state - ensure health values are valid numbers
+  const playerHealth = (typeof window.health === 'number' && !isNaN(window.health)) ? window.health : 10;
+  const playerMaxHealth = (typeof window.maxHealth === 'number' && !isNaN(window.maxHealth)) ? window.maxHealth : 10;
+
   const player = {
-    health: window.health || 10,
-    maxHealth: window.maxHealth || 10,
+    health: playerHealth,
+    maxHealth: playerMaxHealth,
     energy: characterData.energy || 2,
     maxEnergy: characterData.energy || 2,
     mana: 0,

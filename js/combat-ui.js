@@ -26,103 +26,138 @@ function renderCombatUI(combat, container) {
       width: 100%;
       height: 100%;
       background: linear-gradient(135deg, #1a1410 0%, #2a1810 100%);
-      padding: 15px;
-      gap: 10px;
+      padding: 10px;
+      gap: 8px;
       overflow: hidden;
+      box-sizing: border-box;
     ">
       <!-- Top: Resources Bar -->
       ${renderResourcesBar(combat)}
 
-      <!-- Middle: Combat Area -->
+      <!-- Main Area: Combat + Log -->
       <div style="
         flex: 1;
         display: flex;
-        gap: 15px;
+        gap: 10px;
         min-height: 0;
         overflow: hidden;
       ">
-        <!-- Left: Player Side -->
-        <div style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
-          ${renderPlayerSection(combat)}
-          ${renderAlliesSection(combat)}
-        </div>
-
-        <!-- Center: VS and Actions -->
+        <!-- Left: Combat Area (Player vs Enemy) -->
         <div style="
-          width: 120px;
+          flex: 1;
           display: flex;
           flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 15px;
+          gap: 8px;
+          min-width: 0;
+          overflow: hidden;
+        ">
+          <!-- Combatants Row -->
+          <div style="
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+            flex: 1;
+            min-height: 0;
+          ">
+            <!-- Player Side -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto;">
+              ${renderPlayerSection(combat)}
+              ${renderAlliesSection(combat)}
+            </div>
+
+            <!-- Center: VS and Actions -->
+            <div style="
+              width: 100px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              gap: 10px;
+              flex-shrink: 0;
+            ">
+              <div style="
+                font-size: 28px;
+                font-weight: bold;
+                color: #ff6644;
+                text-shadow: 0 0 10px rgba(255,100,50,0.5);
+              ">VS</div>
+              <button id="combat-end-turn-btn" style="
+                padding: 10px 16px;
+                font-size: 14px;
+                font-weight: bold;
+                background: linear-gradient(145deg, #4CAF50, #2E7D32);
+                border: 2px solid #66BB6A;
+                border-radius: 8px;
+                color: white;
+                cursor: pointer;
+                text-transform: uppercase;
+              ">End Turn</button>
+              <button id="combat-dash-btn" style="
+                padding: 6px 12px;
+                font-size: 12px;
+                background: linear-gradient(145deg, #2196F3, #1565C0);
+                border: 2px solid #42A5F5;
+                border-radius: 6px;
+                color: white;
+                cursor: pointer;
+                ${combat.player.dash > 0 ? '' : 'opacity: 0.5; cursor: not-allowed;'}
+              ">Dash (${combat.player.dash})</button>
+            </div>
+
+            <!-- Enemy Side -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto;">
+              ${renderEnemiesSection(combat)}
+            </div>
+          </div>
+
+          <!-- Dice Area -->
+          <div style="
+            background: rgba(0,0,0,0.4);
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 10px;
+            flex-shrink: 0;
+          ">
+            ${renderDiceArea(combat)}
+          </div>
+
+          <!-- Spellbook -->
+          ${combat.spells && combat.spells.length > 0 ? `
+            <div id="spellbook-container" style="
+              background: rgba(0,0,0,0.4);
+              border: 2px solid #9C27B0;
+              border-radius: 8px;
+              padding: 8px;
+              max-height: 80px;
+              overflow-y: auto;
+              flex-shrink: 0;
+            ">
+              ${renderSpellbook(combat)}
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Right: Combat Log -->
+        <div id="combat-log-container" style="
+          width: 200px;
+          background: rgba(0,0,0,0.4);
+          border: 2px solid #444;
+          border-radius: 8px;
+          padding: 10px;
+          overflow-y: auto;
+          flex-shrink: 0;
         ">
           <div style="
-            font-size: 32px;
+            font-size: 12px;
             font-weight: bold;
-            color: #ff6644;
-            text-shadow: 0 0 10px rgba(255,100,50,0.5);
-          ">VS</div>
-          <button id="combat-end-turn-btn" style="
-            padding: 12px 20px;
-            font-size: 16px;
-            font-weight: bold;
-            background: linear-gradient(145deg, #4CAF50, #2E7D32);
-            border: 2px solid #66BB6A;
-            border-radius: 8px;
-            color: white;
-            cursor: pointer;
+            color: #888;
             text-transform: uppercase;
-          ">End Turn</button>
-          <button id="combat-dash-btn" style="
-            padding: 8px 16px;
-            font-size: 14px;
-            background: linear-gradient(145deg, #2196F3, #1565C0);
-            border: 2px solid #42A5F5;
-            border-radius: 6px;
-            color: white;
-            cursor: pointer;
-            ${combat.player.dash > 0 ? '' : 'opacity: 0.5; cursor: not-allowed;'}
-          ">Dash (${combat.player.dash})</button>
+            margin-bottom: 8px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+          ">Combat Log</div>
+          ${renderCombatLog(combat)}
         </div>
-
-        <!-- Right: Enemy Side -->
-        <div style="flex: 1; display: flex; flex-direction: column; gap: 10px; overflow-y: auto;">
-          ${renderEnemiesSection(combat)}
-        </div>
-      </div>
-
-      <!-- Bottom: Dice Area -->
-      <div style="
-        background: rgba(0,0,0,0.4);
-        border: 2px solid #444;
-        border-radius: 10px;
-        padding: 15px;
-      ">
-        ${renderDiceArea(combat)}
-      </div>
-
-      <!-- Spellbook (collapsible) -->
-      <div id="spellbook-container" style="
-        background: rgba(0,0,0,0.4);
-        border: 2px solid #9C27B0;
-        border-radius: 10px;
-        max-height: 200px;
-        overflow-y: auto;
-      ">
-        ${renderSpellbook(combat)}
-      </div>
-
-      <!-- Combat Log -->
-      <div id="combat-log-container" style="
-        background: rgba(0,0,0,0.3);
-        border: 1px solid #333;
-        border-radius: 6px;
-        padding: 8px;
-        max-height: 100px;
-        overflow-y: auto;
-        font-size: 12px;
-      ">
-        ${renderCombatLog(combat)}
       </div>
     </div>
   `;
@@ -192,10 +227,15 @@ function renderResourcesBar(combat) {
  */
 function renderPlayerSection(combat) {
   const p = combat.player;
-  // Get player image
-  const playerImagePath = typeof getPlayerImagePath === 'function'
-    ? getPlayerImagePath()
-    : 'images/characters/full/default.png';
+  // Get player image from character data
+  let playerImagePath = 'images/characters/Full/default.png';
+  if (typeof gameState !== 'undefined' && gameState.character) {
+    const characters = window.PLAYER_CHARACTERS || window.CHARACTERS_DATA;
+    if (characters && characters[gameState.character]) {
+      const char = characters[gameState.character];
+      playerImagePath = char.fullImage || char.icon || playerImagePath;
+    }
+  }
 
   return `
     <div style="
@@ -885,7 +925,7 @@ function createCombatFaceTexture(face, bgColor = '#cc6600') {
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = 4;
   ctx.strokeText(value.toString(), 64, 8);
-  ctx.fillText(value.toString(), 64);
+  ctx.fillText(value.toString(), 64, 8);
 
   // Try to draw the move image in the bottom portion
   const moveKey = effect.move?.toLowerCase();
