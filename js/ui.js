@@ -35,6 +35,7 @@ function updateTopBar() {
   const gameHealth = document.getElementById('game-health');
   const gameGold = document.getElementById('game-gold');
   const gameLevel = document.getElementById('game-level');
+  const gameAlliesCount = document.getElementById('game-allies-count');
 
   if (gameHealth) {
     gameHealth.textContent = `${health}/${maxHealth}`;
@@ -46,6 +47,10 @@ function updateTopBar() {
 
   if (gameLevel && typeof gameState !== 'undefined') {
     gameLevel.textContent = gameState.playerLevel || 1;
+  }
+
+  if (gameAlliesCount && typeof gameState !== 'undefined') {
+    gameAlliesCount.textContent = (gameState.activeAllies || []).length;
   }
 
   // Update stats panel health/gold if they exist

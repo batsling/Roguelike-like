@@ -78,11 +78,16 @@ Implemented:
 - Dice face upgrade (increases value by 1 on random face)
 - Functions: `showLevelUpPrompt()`, `confirmLevelUp()`, `upgradeDiceFace()`
 
-### 2. Ally System
-Need to implement:
-- Ally recruitment UI
-- Ally tracking in game state (gameState.activeAllies)
-- Ally HP persistence between combats
+### 2. Ally System (DONE)
+Implemented:
+- `gameState.activeAllies` for tracking allies
+- Ally recruitment: `recruitAlly(name)`, `recruitRandomAlly()`
+- Ally dismissal: `dismissAlly(name)`
+- HP tracking: `updateAllyHp(name, hp)`, `healAlly(name, amount)`
+- Allies panel UI: `showAlliesPanel()` - accessible from HUD
+- Ally count display in floating HUD
+- Allies passed to combat engine during combat
+- Ally HP synced after combat (victory/defeat)
 
 ### 3. Combat Trigger Integration (DONE)
 Completed:

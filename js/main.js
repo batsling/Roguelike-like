@@ -625,7 +625,8 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     gameStatusEffects: {}, // Map of game names to arrays of status effects
     encounterTypes: encounterTypes, // Map of game names to encounter types for this run
     location: selectedLocation, // Current location for this run
-    playerLevel: 1 // Character level for dice combat system
+    playerLevel: 1, // Character level for dice combat system
+    activeAllies: [] // Allies that provide dice in combat
   };
 
   startGame = start;
@@ -3987,8 +3988,16 @@ function showDiceCombatModal() {
     weaponData = WEAPONS_DATA.find(w => w.name === gameState.equippedWeapon.name);
   }
 
-  // Get active allies (currently not tracked, start with empty)
-  const allies = [];
+  // Get active allies from gameState
+  const allies = (gameState.activeAllies || []).map(allyData => {
+    // Each ally in gameState stores current HP, we need to merge with base data
+    const baseAlly = ALLIES_DATA.find(a => a.name === allyData.name);
+    if (!baseAlly) return null;
+    return {
+      ...baseAlly,
+      currentHp: allyData.currentHp !== undefined ? allyData.currentHp : baseAlly.hp
+    };
+  }).filter(Boolean);
 
   // Initialize combat
   const combatState = window.CombatEngine.initCombat([enemyData], characterData, weaponData, allies);
@@ -4045,6 +4054,19 @@ function showDiceCombatModal() {
  * Handle victory in dice combat
  */
 function handleDiceCombatVictory(enemy) {
+  // Sync ally HP from combat state before ending
+  const combatState = window.CombatEngine.getCombatState();
+  if (combatState && combatState.allies) {
+    combatState.allies.forEach(ally => {
+      if (ally.isAlive) {
+        updateAllyHp(ally.name, ally.health);
+      } else {
+        // Ally died in combat
+        dismissAlly(ally.name);
+      }
+    });
+  }
+
   window.CombatEngine.endCombat(true);
 
   // Award gold based on difficulty
@@ -4095,10 +4117,13 @@ function handleDiceCombatVictory(enemy) {
 function handleDiceCombatDefeat(enemy) {
   window.CombatEngine.endCombat(false);
 
-  // Clear items and curses on death
+  // Clear items, curses, and allies on death
   inventory = [];
   if (gameState.activeCurses) {
     gameState.activeCurses = [];
+  }
+  if (gameState.activeAllies) {
+    gameState.activeAllies = [];
   }
 
   // Record encounter
@@ -4423,6 +4448,177 @@ function upgradeDiceFace(characterKey) {
 // Make level-up functions globally available
 window.showLevelUpPrompt = showLevelUpPrompt;
 window.confirmLevelUp = confirmLevelUp;
+
+// ============== ALLY SYSTEM ==============
+
+/**
+ * Recruit an ally
+ * @param {string} allyName - Name of the ally from ALLIES_DATA
+ * @returns {boolean} Success
+ */
+function recruitAlly(allyName) {
+  if (!ALLIES_DATA) {
+    console.error('ALLIES_DATA not loaded');
+    return false;
+  }
+
+  const allyData = ALLIES_DATA.find(a => a.name === allyName);
+  if (!allyData) {
+    console.error('Ally not found:', allyName);
+    return false;
+  }
+
+  // Check if already recruited
+  if (gameState.activeAllies.some(a => a.name === allyName)) {
+    console.log('Ally already recruited:', allyName);
+    return false;
+  }
+
+  // Add ally with full HP
+  gameState.activeAllies.push({
+    name: allyData.name,
+    currentHp: allyData.hp
+  });
+
+  saveCurrentGame();
+  console.log(`Recruited ally: ${allyName}`);
+  return true;
+}
+
+/**
+ * Dismiss an ally
+ * @param {string} allyName - Name of the ally to dismiss
+ * @returns {boolean} Success
+ */
+function dismissAlly(allyName) {
+  const index = gameState.activeAllies.findIndex(a => a.name === allyName);
+  if (index === -1) {
+    console.error('Ally not found in active allies:', allyName);
+    return false;
+  }
+
+  gameState.activeAllies.splice(index, 1);
+  saveCurrentGame();
+  console.log(`Dismissed ally: ${allyName}`);
+  return true;
+}
+
+/**
+ * Update ally HP after combat
+ * @param {string} allyName - Name of the ally
+ * @param {number} newHp - New HP value
+ */
+function updateAllyHp(allyName, newHp) {
+  const ally = gameState.activeAllies.find(a => a.name === allyName);
+  if (!ally) return;
+
+  ally.currentHp = Math.max(0, newHp);
+
+  // Remove ally if HP <= 0
+  if (ally.currentHp <= 0) {
+    dismissAlly(allyName);
+    console.log(`${allyName} has fallen!`);
+  }
+}
+
+/**
+ * Heal an ally
+ * @param {string} allyName - Name of the ally
+ * @param {number} amount - Amount to heal
+ */
+function healAlly(allyName, amount) {
+  const ally = gameState.activeAllies.find(a => a.name === allyName);
+  if (!ally) return;
+
+  const allyData = ALLIES_DATA.find(a => a.name === allyName);
+  if (!allyData) return;
+
+  ally.currentHp = Math.min(ally.currentHp + amount, allyData.hp);
+  saveCurrentGame();
+}
+
+/**
+ * Show ally management UI
+ */
+function showAlliesPanel() {
+  const allies = gameState.activeAllies || [];
+  const allAvailableAllies = ALLIES_DATA || [];
+
+  const activeAlliesHtml = allies.length > 0 ? allies.map(ally => {
+    const baseAlly = allAvailableAllies.find(a => a.name === ally.name);
+    if (!baseAlly) return '';
+    return `
+      <div style="
+        background: rgba(76,175,80,0.1);
+        border: 2px solid #4CAF50;
+        border-radius: 8px;
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      ">
+        <div>
+          <div style="font-weight: bold; color: #4CAF50; font-size: 16px;">${baseAlly.name}</div>
+          <div style="color: #aaa; font-size: 12px;">${baseAlly.type} - ${baseAlly.game}</div>
+          <div style="color: #fff; margin-top: 5px;">
+            HP: ${ally.currentHp}/${baseAlly.hp}
+          </div>
+          <div style="color: #888; font-size: 11px; margin-top: 5px;">
+            Dice: ${baseAlly.dice.map(d => d.raw).slice(0, 3).join(', ')}...
+          </div>
+        </div>
+        <button onclick="dismissAlly('${baseAlly.name}'); showAlliesPanel();" style="
+          padding: 8px 16px;
+          background: #d32f2f;
+          border: none;
+          border-radius: 6px;
+          color: white;
+          cursor: pointer;
+        ">Dismiss</button>
+      </div>
+    `;
+  }).join('') : '<p style="color: #666; text-align: center;">No active allies</p>';
+
+  createGameModal(`
+    <div style="padding: 20px; max-width: 600px;">
+      <h2 style="color: #4CAF50; margin-bottom: 20px; text-align: center;">Allies</h2>
+
+      <h3 style="color: #aaa; margin-bottom: 10px;">Active Allies (${allies.length})</h3>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px;">
+        ${activeAlliesHtml}
+      </div>
+
+      <div style="text-align: center;">
+        <button onclick="closeGameModal()" style="
+          padding: 12px 30px;
+          background: #444;
+          border: 2px solid #666;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+        ">Close</button>
+      </div>
+    </div>
+  `);
+}
+
+/**
+ * Test function to recruit a random ally
+ */
+function recruitRandomAlly() {
+  if (!ALLIES_DATA || ALLIES_DATA.length === 0) return false;
+  const randomAlly = ALLIES_DATA[Math.floor(Math.random() * ALLIES_DATA.length)];
+  return recruitAlly(randomAlly.name);
+}
+
+// Make ally functions globally available
+window.recruitAlly = recruitAlly;
+window.dismissAlly = dismissAlly;
+window.updateAllyHp = updateAllyHp;
+window.healAlly = healAlly;
+window.showAlliesPanel = showAlliesPanel;
+window.recruitRandomAlly = recruitRandomAlly;
 
 // Combat-specific tooltip functions for item hover
 window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) {
