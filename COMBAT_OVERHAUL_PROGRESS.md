@@ -82,10 +82,12 @@ Need to implement:
 - Ally tracking in game state (gameState.activeAllies)
 - Ally HP persistence between combats
 
-### 3. Combat Trigger Integration
-Need to connect:
-- Replace old combat triggers with `showDiceCombatModal()`
-- Or add a toggle to choose which combat system to use
+### 3. Combat Trigger Integration (DONE)
+Completed:
+- Added `useDiceCombat` toggle (default: true)
+- Updated exploration.js to check toggle and call appropriate combat
+- Added `window.toggleCombatSystem()` for easy switching
+- Set via console: `window.useDiceCombat = true/false`
 
 ## How to Test
 

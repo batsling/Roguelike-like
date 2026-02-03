@@ -258,6 +258,9 @@ function loadState() {
 
 let selectedCharacter = "rogue";
 
+// Combat system toggle - set to true to use new dice-based combat
+let useDiceCombat = true;
+
 function saveCurrentGame() {
   if (!gameState.saveName) return;
 
@@ -4162,6 +4165,22 @@ function handleDiceCombatDefeat(enemy) {
 
 // Make new combat modal available globally
 window.showDiceCombatModal = showDiceCombatModal;
+
+// Expose combat system toggle
+Object.defineProperty(window, 'useDiceCombat', {
+  get: function() { return useDiceCombat; },
+  set: function(val) {
+    useDiceCombat = val;
+    console.log(`Combat system: ${val ? 'New Dice-Based' : 'Classic D20'}`);
+  }
+});
+
+// Toggle combat system function
+window.toggleCombatSystem = function() {
+  useDiceCombat = !useDiceCombat;
+  console.log(`Combat system switched to: ${useDiceCombat ? 'New Dice-Based' : 'Classic D20'}`);
+  return useDiceCombat;
+};
 
 // Combat-specific tooltip functions for item hover
 window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) {
