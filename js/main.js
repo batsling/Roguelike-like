@@ -4081,6 +4081,11 @@ function handleDiceCombatVictory(enemy) {
     });
   }
 
+  // Cleanup 3D dice renderers
+  if (window.CombatUI && window.CombatUI.cleanup3DDice) {
+    window.CombatUI.cleanup3DDice();
+  }
+
   window.CombatEngine.endCombat(true);
 
   // Award gold based on difficulty
@@ -4129,6 +4134,11 @@ function handleDiceCombatVictory(enemy) {
  * Handle defeat in dice combat
  */
 function handleDiceCombatDefeat(enemy) {
+  // Cleanup 3D dice renderers
+  if (window.CombatUI && window.CombatUI.cleanup3DDice) {
+    window.CombatUI.cleanup3DDice();
+  }
+
   window.CombatEngine.endCombat(false);
 
   // Clear items, curses, and allies on death

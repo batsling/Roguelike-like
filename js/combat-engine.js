@@ -140,7 +140,8 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     statuses: {},
     ability: ally.ability,
     isAlive: true,
-    position: index
+    position: index,
+    imageUrl: ally.imageUrl
   }));
 
   // Initialize combat state
@@ -330,7 +331,7 @@ function rollPlayerDie(diceId) {
     });
   }
 
-  return { success: true, face: face, diceId: diceId };
+  return { success: true, face: face, diceId: diceId, faceIndex: faceIndex };
 }
 
 /**
@@ -373,7 +374,7 @@ function rerollPlayerDie(diceId) {
     });
   }
 
-  return { success: true, face: face, diceId: diceId };
+  return { success: true, face: face, diceId: diceId, faceIndex: faceIndex };
 }
 
 /**
