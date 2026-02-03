@@ -624,7 +624,8 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     escapeProgress: 0,
     gameStatusEffects: {}, // Map of game names to arrays of status effects
     encounterTypes: encounterTypes, // Map of game names to encounter types for this run
-    location: selectedLocation // Current location for this run
+    location: selectedLocation, // Current location for this run
+    playerLevel: 1 // Character level for dice combat system
   };
 
   startGame = start;
@@ -4181,6 +4182,247 @@ window.toggleCombatSystem = function() {
   console.log(`Combat system switched to: ${useDiceCombat ? 'New Dice-Based' : 'Classic D20'}`);
   return useDiceCombat;
 };
+
+// ============== LEVEL-UP SYSTEM ==============
+
+/**
+ * Show the level-up prompt for the current character
+ */
+function showLevelUpPrompt() {
+  const characterKey = selectedCharacter || gameState.character || 'rodney';
+  const characterData = CHARACTERS_DATA[characterKey];
+
+  if (!characterData) {
+    console.error('Character data not found for level-up');
+    return;
+  }
+
+  const currentLevel = gameState.playerLevel || 1;
+  const levelUpCondition = characterData.levelUpCondition || 'Complete a special achievement';
+
+  createGameModal(`
+    <div style="text-align: center; padding: 20px; max-width: 500px;">
+      <h2 style="color: #FFD700; margin-bottom: 20px;">Level Up!</h2>
+      <div style="
+        background: rgba(0,0,0,0.4);
+        border: 2px solid #FFD700;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+      ">
+        <p style="color: #aaa; font-size: 14px; margin-bottom: 10px;">
+          Current Level: <span style="color: #FFD700; font-size: 20px; font-weight: bold;">${currentLevel}</span>
+        </p>
+        <p style="color: #ccc; margin-bottom: 15px;">
+          To level up, you must:
+        </p>
+        <p style="
+          color: #fff;
+          font-size: 16px;
+          font-weight: bold;
+          background: rgba(255,215,0,0.1);
+          border: 1px solid rgba(255,215,0,0.3);
+          border-radius: 6px;
+          padding: 10px;
+        ">
+          "${levelUpCondition}"
+        </p>
+      </div>
+      <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">
+        Have you completed this requirement?
+      </p>
+      <div style="display: flex; gap: 15px; justify-content: center;">
+        <button id="level-up-confirm-btn" style="
+          padding: 12px 24px;
+          background: linear-gradient(145deg, #4CAF50, #2E7D32);
+          border: 2px solid #2E7D32;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+        ">Yes, Level Up!</button>
+        <button id="level-up-cancel-btn" style="
+          padding: 12px 24px;
+          background: #444;
+          border: 2px solid #666;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+        ">Not Yet</button>
+      </div>
+    </div>
+  `);
+
+  document.getElementById('level-up-confirm-btn').onclick = () => {
+    closeGameModal();
+    confirmLevelUp();
+  };
+
+  document.getElementById('level-up-cancel-btn').onclick = () => {
+    closeGameModal();
+  };
+}
+
+/**
+ * Confirm level up and apply bonuses
+ */
+function confirmLevelUp() {
+  const characterKey = selectedCharacter || gameState.character || 'rodney';
+  const characterData = CHARACTERS_DATA[characterKey];
+
+  if (!characterData || !characterData.levelUpStats) {
+    console.error('Character level-up data not found');
+    return;
+  }
+
+  const oldLevel = gameState.playerLevel || 1;
+  gameState.playerLevel = oldLevel + 1;
+
+  const bonuses = characterData.levelUpStats;
+  const appliedBonuses = [];
+
+  // Apply stat bonuses
+  if (bonuses.strength) {
+    strength += bonuses.strength;
+    appliedBonuses.push(`+${bonuses.strength} Strength`);
+  }
+  if (bonuses.dexterity) {
+    dexterity += bonuses.dexterity;
+    appliedBonuses.push(`+${bonuses.dexterity} Dexterity`);
+  }
+  if (bonuses.intelligence) {
+    intelligence += bonuses.intelligence;
+    appliedBonuses.push(`+${bonuses.intelligence} Intelligence`);
+  }
+  if (bonuses.charisma) {
+    charisma += bonuses.charisma;
+    appliedBonuses.push(`+${bonuses.charisma} Charisma`);
+  }
+  if (bonuses.reroll) {
+    reroll += bonuses.reroll;
+    gameState.reroll = reroll;
+    appliedBonuses.push(`+${bonuses.reroll} Reroll`);
+  }
+  if (bonuses.dash) {
+    gameState.dash = (gameState.dash || 0) + bonuses.dash;
+    appliedBonuses.push(`+${bonuses.dash} Dash`);
+  }
+  if (bonuses.luck) {
+    luck += bonuses.luck;
+    appliedBonuses.push(`+${bonuses.luck} Luck`);
+  }
+
+  // Handle random stat allocation
+  if (bonuses.random && bonuses.random > 0) {
+    const randomStats = ['strength', 'dexterity', 'intelligence', 'charisma'];
+    for (let i = 0; i < bonuses.random; i++) {
+      const randomStat = randomStats[Math.floor(Math.random() * randomStats.length)];
+      switch(randomStat) {
+        case 'strength': strength++; break;
+        case 'dexterity': dexterity++; break;
+        case 'intelligence': intelligence++; break;
+        case 'charisma': charisma++; break;
+      }
+      appliedBonuses.push(`+1 ${randomStat.charAt(0).toUpperCase() + randomStat.slice(1)} (random)`);
+    }
+  }
+
+  // Upgrade a random dice face (increase value by 1)
+  const diceUpgraded = upgradeDiceFace(characterKey);
+
+  // Update UI
+  updateTopBar();
+  saveCurrentGame();
+
+  // Show level-up results
+  createGameModal(`
+    <div style="text-align: center; padding: 20px; max-width: 500px;">
+      <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
+      <div style="
+        background: rgba(76,175,80,0.1);
+        border: 2px solid #4CAF50;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+      ">
+        <p style="color: #4CAF50; font-size: 18px; margin-bottom: 15px; font-weight: bold;">
+          Bonuses Gained:
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          ${appliedBonuses.map(b => `
+            <div style="color: #fff; font-size: 14px;">
+              ${b}
+            </div>
+          `).join('')}
+          ${diceUpgraded ? `
+            <div style="color: #FFD700; font-size: 14px; margin-top: 10px;">
+              ${diceUpgraded}
+            </div>
+          ` : ''}
+        </div>
+      </div>
+      <button onclick="closeGameModal()" style="
+        padding: 12px 30px;
+        background: linear-gradient(145deg, #4CAF50, #2E7D32);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+      ">Continue</button>
+    </div>
+  `);
+}
+
+/**
+ * Upgrade a random dice face by increasing its value
+ * @param {string} characterKey - The character key
+ * @returns {string|null} Description of upgrade or null
+ */
+function upgradeDiceFace(characterKey) {
+  const characterData = CHARACTERS_DATA[characterKey];
+  if (!characterData || !characterData.dice) return null;
+
+  // Find faces with numeric values that can be upgraded
+  const upgradableFaces = [];
+  characterData.dice.forEach((face, index) => {
+    if (!face.isBlank && face.effects) {
+      face.effects.forEach((effect, effectIndex) => {
+        if (effect.value && typeof effect.value === 'number') {
+          upgradableFaces.push({ faceIndex: index, effectIndex, effect });
+        }
+      });
+    }
+  });
+
+  if (upgradableFaces.length === 0) return null;
+
+  // Pick a random face to upgrade
+  const chosen = upgradableFaces[Math.floor(Math.random() * upgradableFaces.length)];
+  const oldValue = chosen.effect.value;
+
+  // Upgrade the face
+  characterData.dice[chosen.faceIndex].effects[chosen.effectIndex].value++;
+
+  // Update the raw text
+  const effect = characterData.dice[chosen.faceIndex].effects[chosen.effectIndex];
+  const addonsStr = effect.addons && effect.addons.length > 0 ? ' ' + effect.addons.join(' ') : '';
+  const targetStr = effect.target ? ' ' + effect.target : '';
+  characterData.dice[chosen.faceIndex].effects[chosen.effectIndex].raw =
+    `${effect.value} ${effect.move}${targetStr}${addonsStr}`;
+  characterData.dice[chosen.faceIndex].raw =
+    characterData.dice[chosen.faceIndex].effects.map(e => e.raw).join(', ');
+
+  return `Dice upgraded: ${effect.move} ${oldValue} → ${effect.value}`;
+}
+
+// Make level-up functions globally available
+window.showLevelUpPrompt = showLevelUpPrompt;
+window.confirmLevelUp = confirmLevelUp;
 
 // Combat-specific tooltip functions for item hover
 window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) {

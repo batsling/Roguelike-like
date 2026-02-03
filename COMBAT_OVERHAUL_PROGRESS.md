@@ -69,12 +69,14 @@
 
 ## Remaining Work
 
-### 1. Level-Up System
-Need to implement:
-- Level display in stats panel
-- Level-up verification prompts (based on character.levelUpCondition)
-- Stat bonus application on level up
-- Random dice face upgrade on level up
+### 1. Level-Up System (DONE)
+Implemented:
+- Level display in floating HUD (click to level up)
+- Level-up verification prompt showing character's levelUpCondition
+- Stat bonus application based on character.levelUpStats
+- Random stat allocation when character has "random" bonus
+- Dice face upgrade (increases value by 1 on random face)
+- Functions: `showLevelUpPrompt()`, `confirmLevelUp()`, `upgradeDiceFace()`
 
 ### 2. Ally System
 Need to implement:

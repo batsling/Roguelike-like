@@ -34,6 +34,7 @@ function updateTopBar() {
   // Update floating HUD (now at bottom of screen)
   const gameHealth = document.getElementById('game-health');
   const gameGold = document.getElementById('game-gold');
+  const gameLevel = document.getElementById('game-level');
 
   if (gameHealth) {
     gameHealth.textContent = `${health}/${maxHealth}`;
@@ -41,6 +42,10 @@ function updateTopBar() {
 
   if (gameGold) {
     gameGold.textContent = gold;
+  }
+
+  if (gameLevel && typeof gameState !== 'undefined') {
+    gameLevel.textContent = gameState.playerLevel || 1;
   }
 
   // Update stats panel health/gold if they exist
