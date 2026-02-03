@@ -384,6 +384,15 @@ function showShopModal(purchasedIndices = []) {
         gameState.gold = gold;
         acquireItem(item);
 
+        // Auto-equip weapon if no weapon is equipped
+        if (item.type === 'Weapon' && !gameState.equippedWeapon) {
+          const weaponIndex = inventory.findIndex(i => i.name === item.name);
+          if (weaponIndex !== -1 && typeof equipWeapon === 'function') {
+            equipWeapon(weaponIndex);
+            console.log(`Auto-equipped weapon: ${item.name}`);
+          }
+        }
+
         // Track purchased items
         purchasedIndices.push(itemIndex);
 

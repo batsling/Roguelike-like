@@ -320,6 +320,17 @@ function loadSavedGame(saveName) {
   // Restore game state
   gameState = { ...save };
 
+  // Backward compatibility for new combat system properties (for old saves)
+  if (gameState.playerLevel === undefined) {
+    gameState.playerLevel = 1;
+  }
+  if (gameState.activeAllies === undefined) {
+    gameState.activeAllies = [];
+  }
+  if (gameState.equippedWeapon === undefined) {
+    gameState.equippedWeapon = null;
+  }
+
   // Generate encounter types if they don't exist (for old saves)
   if (!gameState.encounterTypes) {
     gameState.encounterTypes = {};
