@@ -3899,6 +3899,270 @@ function showCombatModal() {
 // Make showCombatModal available globally
 window.showCombatModal = showCombatModal;
 
+/**
+ * New Dice-Based Combat Modal
+ * Uses CombatEngine and CombatUI for the new combat system
+ */
+function showDiceCombatModal() {
+  if (!ENEMIES_DATA || ENEMIES_DATA.length === 0) {
+    console.error('ENEMIES_DATA not loaded');
+    return;
+  }
+
+  // Set phase to combat
+  gameState.phase = 'combat';
+  updateInventory();
+
+  // Get difficulty based on games beaten
+  const gamesBeaten = gameState.totalGamesBeaten || 0;
+  let difficulty = 'Low';
+  if (gamesBeaten >= 10) {
+    difficulty = 'High';
+  } else if (gamesBeaten >= 5) {
+    difficulty = 'Medium';
+  }
+
+  // Determine type based on current game
+  const currentGameObj = games.find(g => g.name === gameState.currentGame);
+  let enemyType = 'Strength';
+  if (currentGameObj && currentGameObj.type) {
+    const gameType = currentGameObj.type.toLowerCase();
+    switch(gameType) {
+      case 'action': enemyType = 'Strength'; break;
+      case 'deckbuilding': enemyType = 'Charisma'; break;
+      case 'strategy': enemyType = 'Intelligence'; break;
+      case 'traditional': enemyType = 'Dexterity'; break;
+      default: enemyType = 'Strength';
+    }
+  }
+
+  // Filter enemies by difficulty and type
+  const matchingEnemies = ENEMIES_DATA.filter(enemy =>
+    enemy.difficulty === difficulty && enemy.type === enemyType
+  );
+
+  // Fallback to any enemy of the right difficulty if no type match
+  const candidates = matchingEnemies.length > 0
+    ? matchingEnemies
+    : ENEMIES_DATA.filter(e => e.difficulty === difficulty);
+
+  if (candidates.length === 0) {
+    console.error('No matching enemies found');
+    return;
+  }
+
+  // Select random enemy
+  const enemyData = candidates[Math.floor(Math.random() * candidates.length)];
+
+  // Get character data
+  const characterKey = selectedCharacter || gameState.character || 'rodney';
+  const characterData = CHARACTERS_DATA[characterKey];
+
+  if (!characterData) {
+    console.error('Character data not found for:', characterKey);
+    // Fall back to old combat system
+    showCombatModal();
+    return;
+  }
+
+  // Merge player stats into character data
+  characterData.stats = {
+    strength: strength || 0,
+    dexterity: dexterity || 0,
+    intelligence: intelligence || 0,
+    charisma: charisma || 0
+  };
+  characterData.health = health;
+  characterData.maxHealth = maxHealth;
+  characterData.reroll = gameState.reroll || reroll || 0;
+  characterData.dash = gameState.dash || 0;
+
+  // Get weapon data if equipped
+  let weaponData = null;
+  if (gameState.equippedWeapon && WEAPONS_DATA) {
+    weaponData = WEAPONS_DATA.find(w => w.name === gameState.equippedWeapon.name);
+  }
+
+  // Get active allies (currently not tracked, start with empty)
+  const allies = [];
+
+  // Initialize combat
+  const combatState = window.CombatEngine.initCombat([enemyData], characterData, weaponData, allies);
+
+  if (!combatState) {
+    console.error('Failed to initialize combat');
+    return;
+  }
+
+  // Create modal HTML container
+  const combatHTML = `
+    <div id="dice-combat-modal" style="
+      width: 95vw;
+      max-width: 1200px;
+      height: 90vh;
+      max-height: 800px;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(135deg, #1a1410 0%, #2a1810 100%);
+      border-radius: 12px;
+      overflow: hidden;
+    ">
+      <div id="dice-combat-content" style="flex: 1; overflow: hidden;"></div>
+    </div>
+  `;
+
+  createGameModal(combatHTML);
+
+  // Render the combat UI
+  const container = document.getElementById('dice-combat-content');
+  if (container && window.CombatUI) {
+    window.CombatUI.renderCombatUI(combatState, container);
+  }
+
+  // Override the checkCombatEnd to handle victory/defeat properly
+  const originalCheckEnd = window.CombatUI.checkCombatEnd;
+  window.CombatUI.checkCombatEnd = function() {
+    const combat = window.CombatEngine.getCombatState();
+    if (!combat) return;
+
+    if (combat.phase === 'victory') {
+      setTimeout(() => {
+        handleDiceCombatVictory(enemyData);
+      }, 500);
+    } else if (combat.phase === 'defeat') {
+      setTimeout(() => {
+        handleDiceCombatDefeat(enemyData);
+      }, 500);
+    }
+  };
+}
+
+/**
+ * Handle victory in dice combat
+ */
+function handleDiceCombatVictory(enemy) {
+  window.CombatEngine.endCombat(true);
+
+  // Award gold based on difficulty
+  const goldAmounts = { 'Low': 10, 'Medium': 20, 'High': 30 };
+  const goldReward = goldAmounts[enemy.difficulty] || 10;
+  gold += goldReward;
+  gameState.gold = gold;
+  updateTopBar();
+
+  // Trigger onEnemyDefeated effects
+  if (typeof triggerOnEnemyDefeated === 'function') {
+    triggerOnEnemyDefeated();
+  }
+
+  // Record encounter
+  encounterHistory.push({
+    type: 'combat',
+    enemy: enemy.name,
+    outcome: 'Victory',
+    timestamp: new Date().toLocaleString()
+  });
+  updateEncounterHistory();
+  saveCurrentGame();
+
+  // Show victory screen
+  createGameModal(`
+    <div style="text-align: center; padding: 30px;">
+      <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">Victory!</h2>
+      <h3 style="color: #fff; margin: 15px 0;">${enemy.name} defeated!</h3>
+      <p style="color: #FFD700; font-size: 18px; margin: 20px 0;">+${goldReward} Gold</p>
+      <button onclick="closeGameModal()" style="
+        padding: 15px 30px;
+        background: linear-gradient(145deg, #4CAF50, #2E7D32);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+      ">Continue</button>
+    </div>
+  `);
+}
+
+/**
+ * Handle defeat in dice combat
+ */
+function handleDiceCombatDefeat(enemy) {
+  window.CombatEngine.endCombat(false);
+
+  // Clear items and curses on death
+  inventory = [];
+  if (gameState.activeCurses) {
+    gameState.activeCurses = [];
+  }
+
+  // Record encounter
+  encounterHistory.push({
+    type: 'combat',
+    enemy: enemy.name,
+    outcome: 'Defeat',
+    timestamp: new Date().toLocaleString()
+  });
+  updateEncounterHistory();
+
+  // Show death screen
+  createGameModal(`
+    <div style="text-align: center; padding: 30px;">
+      <h1 style="color: #ff4444; font-size: 48px; margin: 20px 0;">YOU DIED</h1>
+      <p style="color: #aaa; font-size: 18px; margin: 20px 0;">Defeated by ${enemy.name}</p>
+      <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
+        <button id="dice-death-home-btn" style="
+          padding: 12px 24px;
+          background: #444;
+          border: 2px solid #666;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+        ">Home</button>
+        <button id="dice-death-retry-btn" style="
+          padding: 12px 24px;
+          background: #d32f2f;
+          border: 2px solid #f44336;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+        ">Try Again</button>
+      </div>
+    </div>
+  `);
+
+  document.getElementById('dice-death-home-btn').onclick = () => {
+    closeGameModal();
+    updateInventory?.();
+    updateCursesDisplay?.();
+    if (typeof clearAllArrows === 'function') clearAllArrows();
+    document.getElementById('dungeon-screen').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+    const mapBtn = document.getElementById('map-btn');
+    if (mapBtn) mapBtn.style.display = 'none';
+  };
+
+  document.getElementById('dice-death-retry-btn').onclick = () => {
+    closeGameModal();
+    if (typeof clearAllArrows === 'function') clearAllArrows();
+    document.getElementById('dungeon-screen').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+    const mapBtn = document.getElementById('map-btn');
+    if (mapBtn) mapBtn.style.display = 'none';
+    setTimeout(() => {
+      document.getElementById('new-game-btn')?.click();
+    }, 100);
+  };
+}
+
+// Make new combat modal available globally
+window.showDiceCombatModal = showDiceCombatModal;
+
 // Combat-specific tooltip functions for item hover
 window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) {
   const tooltip = document.getElementById('combat-item-tooltip');

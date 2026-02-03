@@ -43,74 +43,83 @@
 ### 3. HTML Integration (100%)
 - `index.html` updated with all new script includes
 
+### 4. Combat UI (100%)
+- **New file**: `js/combat-ui.js`
+- **Features implemented**:
+  - Player dice pool display with roll/confirm/reroll buttons
+  - Enemy intent display showing what enemies plan to do
+  - Status effect icons for player, allies, and enemies
+  - Spellbook panel with spell costs and availability
+  - Energy/Mana/Reroll resource bars
+  - Enemy targeting via click selection
+  - Auto-targeting for single-enemy encounters
+  - Combat log with color-coded messages
+  - Victory/defeat handling
+
+### 5. Main.js Integration (100%)
+- **New function**: `showDiceCombatModal()`
+- **Features implemented**:
+  - Enemy selection by difficulty and type
+  - Character data loading from CHARACTERS_DATA
+  - Weapon integration with WEAPONS_DATA
+  - Player stat merging into combat
+  - Victory rewards (gold based on difficulty)
+  - Defeat handling with retry option
+  - Available globally via `window.showDiceCombatModal()`
+
 ## Remaining Work
 
-### 1. Combat UI (`js/main.js` - `showCombatModal`) - Needs Update
-The existing combat modal uses the old D20 attack/defense system. It needs to be updated to:
-
-1. **Display player dice pool** (character die, weapon die, ally dice)
-2. **Show dice faces** with confirm/reroll buttons per die
-3. **Enemy intent display** showing what enemies plan to do
-4. **Status effect icons** for both player and enemies
-5. **Spellbook UI** - collapsible panel showing available spells with mana costs
-6. **Targeting interface** - click to select target for single-target moves
-7. **Wide/Cleave highlighting** - show affected targets
-8. **Energy/Mana display** - current and max
-9. **Ally HP bars** - track ally health
-
-### 2. Integration Points
-To connect the new engine to the UI:
-
-```javascript
-// In showCombatModal(), replace initializeCombat with:
-const characterData = CHARACTERS_DATA[selectedCharacter];
-const weaponData = equippedWeapon ? WEAPONS_DATA.find(w => w.name === equippedWeapon.name) : null;
-const combat = window.CombatEngine.initCombat([enemy], characterData, weaponData, activeAllies);
-
-// UI event handlers needed:
-- onDiceRoll(diceId) -> CombatEngine.rollPlayerDie(diceId)
-- onDiceReroll(diceId) -> CombatEngine.rerollPlayerDie(diceId)
-- onDiceConfirm(diceId, targets) -> CombatEngine.confirmDie(diceId, targets)
-- onDash() -> CombatEngine.useDash()
-- onCastSpell(spellName, targets) -> CombatEngine.castSpell(spellName, targets)
-- onEndTurn() -> CombatEngine.endTurn()
-```
-
-### 3. Level-Up System
+### 1. Level-Up System
 Need to implement:
 - Level display in stats panel
 - Level-up verification prompts (based on character.levelUpCondition)
 - Stat bonus application on level up
 - Random dice face upgrade on level up
 
-### 4. Weapon Integration
-Need to add:
-- Weapon equip UI
-- Weapon die added to combat pool when equipped
-- Weapon tags (Finesse, Fishing Weight) applied during combat
+### 2. Ally System
+Need to implement:
+- Ally recruitment UI
+- Ally tracking in game state (gameState.activeAllies)
+- Ally HP persistence between combats
 
-## How to Test Current Implementation
+### 3. Combat Trigger Integration
+Need to connect:
+- Replace old combat triggers with `showDiceCombatModal()`
+- Or add a toggle to choose which combat system to use
 
-1. Open browser console
-2. Test combat engine directly:
+## How to Test
+
+### Option 1: Direct Call (Browser Console)
 ```javascript
-// Initialize test combat
-const enemies = ENEMIES_DATA.filter(e => e.name === 'Cultist');
+// Call the new dice combat modal directly
+showDiceCombatModal();
+```
+
+### Option 2: Test Engine Only
+```javascript
+const enemies = ENEMIES_DATA.filter(e => e.name === 'Lemurian');
 const character = CHARACTERS_DATA['rodney'];
-const combat = CombatEngine.initCombat(enemies, character);
+const combat = window.CombatEngine.initCombat(enemies, character);
 
 // Roll a die
-CombatEngine.rollPlayerDie('character');
+window.CombatEngine.rollPlayerDie('character');
 
 // Check state
-console.log(CombatEngine.getCombatState());
+console.log(window.CombatEngine.getCombatState());
 
-// Confirm die (auto-targets)
-CombatEngine.confirmDie('character', { self: true });
+// Confirm die with target
+window.CombatEngine.confirmDie('character', { enemyId: 'enemy_0' });
 
 // End turn
-CombatEngine.endTurn();
+window.CombatEngine.endTurn();
 ```
+
+### Option 3: Replace Old Combat Globally
+```javascript
+// In browser console, swap systems:
+window.showCombatModal = window.showDiceCombatModal;
+```
+Then trigger any combat encounter in the game.
 
 ## API Reference
 
