@@ -932,9 +932,16 @@ function addBlock(target, amount) {
  * @param {number} amount - Heal amount
  */
 function healTarget(target, amount) {
-  if (amount <= 0) return;
-  const healed = Math.min(amount, target.maxHealth - target.health);
-  target.health += healed;
+  // Validate inputs
+  const healAmount = (typeof amount === 'number' && !isNaN(amount)) ? amount : 0;
+  if (healAmount <= 0) return;
+
+  // Ensure target has valid health values
+  const currentHealth = (typeof target.health === 'number' && !isNaN(target.health)) ? target.health : 0;
+  const maxHealth = (typeof target.maxHealth === 'number' && !isNaN(target.maxHealth)) ? target.maxHealth : currentHealth;
+
+  const healed = Math.min(healAmount, maxHealth - currentHealth);
+  target.health = currentHealth + healed;
   addLog(`${target.name || 'Player'} healed ${healed}`, 'success');
 
   if (target === combatState.player) {

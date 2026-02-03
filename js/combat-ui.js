@@ -42,7 +42,7 @@ function renderCombatUI(combat, container) {
         min-height: 0;
         overflow: hidden;
       ">
-        <!-- Left: Combat Area (Player vs Enemy) -->
+        <!-- Left: Combat Area -->
         <div style="
           flex: 1;
           display: flex;
@@ -51,7 +51,7 @@ function renderCombatUI(combat, container) {
           min-width: 0;
           overflow: hidden;
         ">
-          <!-- Combatants Row -->
+          <!-- Combatants Row: Player | Intent | Enemy -->
           <div style="
             display: flex;
             gap: 10px;
@@ -65,33 +65,53 @@ function renderCombatUI(combat, container) {
               ${renderAlliesSection(combat)}
             </div>
 
-            <!-- Center: VS and Actions -->
+            <!-- Center: Enemy Intent Display -->
             <div style="
-              width: 100px;
+              width: 140px;
               display: flex;
               flex-direction: column;
               align-items: center;
               justify-content: center;
               gap: 10px;
               flex-shrink: 0;
+              background: rgba(0,0,0,0.3);
+              border-radius: 8px;
+              padding: 10px;
             ">
               <div style="
-                font-size: 28px;
-                font-weight: bold;
-                color: #ff6644;
-                text-shadow: 0 0 10px rgba(255,100,50,0.5);
-              ">VS</div>
-              <button id="combat-end-turn-btn" style="
-                padding: 10px 16px;
                 font-size: 14px;
                 font-weight: bold;
-                background: linear-gradient(145deg, #4CAF50, #2E7D32);
-                border: 2px solid #66BB6A;
-                border-radius: 8px;
-                color: white;
-                cursor: pointer;
+                color: #ffaa44;
                 text-transform: uppercase;
-              ">End Turn</button>
+                margin-bottom: 5px;
+              ">ENEMY INTENT</div>
+              ${renderEnemyIntentCenter(combat)}
+            </div>
+
+            <!-- Enemy Side -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto;">
+              ${renderEnemiesSection(combat)}
+            </div>
+          </div>
+
+          <!-- Dice Area with End Turn/Dash buttons -->
+          <div style="
+            background: rgba(0,0,0,0.4);
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 10px;
+            flex-shrink: 0;
+            position: relative;
+          ">
+            <!-- End Turn / Dash buttons in top-right -->
+            <div style="
+              position: absolute;
+              top: 8px;
+              right: 8px;
+              display: flex;
+              gap: 8px;
+              z-index: 10;
+            ">
               <button id="combat-dash-btn" style="
                 padding: 6px 12px;
                 font-size: 12px;
@@ -102,22 +122,18 @@ function renderCombatUI(combat, container) {
                 cursor: pointer;
                 ${combat.player.dash > 0 ? '' : 'opacity: 0.5; cursor: not-allowed;'}
               ">Dash (${combat.player.dash})</button>
+              <button id="combat-end-turn-btn" style="
+                padding: 8px 16px;
+                font-size: 14px;
+                font-weight: bold;
+                background: linear-gradient(145deg, #4CAF50, #2E7D32);
+                border: 2px solid #66BB6A;
+                border-radius: 8px;
+                color: white;
+                cursor: pointer;
+                text-transform: uppercase;
+              ">End Turn</button>
             </div>
-
-            <!-- Enemy Side -->
-            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto;">
-              ${renderEnemiesSection(combat)}
-            </div>
-          </div>
-
-          <!-- Dice Area -->
-          <div style="
-            background: rgba(0,0,0,0.4);
-            border: 2px solid #444;
-            border-radius: 8px;
-            padding: 10px;
-            flex-shrink: 0;
-          ">
             ${renderDiceArea(combat)}
           </div>
 
@@ -139,7 +155,7 @@ function renderCombatUI(combat, container) {
 
         <!-- Right: Combat Log -->
         <div id="combat-log-container" style="
-          width: 200px;
+          width: 180px;
           background: rgba(0,0,0,0.4);
           border: 2px solid #444;
           border-radius: 8px;
@@ -148,7 +164,7 @@ function renderCombatUI(combat, container) {
           flex-shrink: 0;
         ">
           <div style="
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
             color: #888;
             text-transform: uppercase;
@@ -378,6 +394,77 @@ function renderAlliesSection(combat) {
 }
 
 /**
+ * Render enemy intent in center panel
+ */
+function renderEnemyIntentCenter(combat) {
+  const aliveEnemies = combat.enemies.filter(e => e.health > 0);
+
+  if (aliveEnemies.length === 0) {
+    return `<div style="color: #666; font-size: 14px;">No enemies</div>`;
+  }
+
+  return aliveEnemies.map(enemy => {
+    const intent = enemy.currentIntent;
+    if (!intent || intent.length === 0) {
+      return `
+        <div style="
+          background: rgba(204,51,51,0.2);
+          border: 2px solid #cc3333;
+          border-radius: 8px;
+          padding: 8px;
+          text-align: center;
+          width: 100%;
+        ">
+          <div style="font-size: 12px; color: #F44336; margin-bottom: 4px;">${enemy.name}</div>
+          <div style="color: #888; font-size: 11px;">Waiting...</div>
+        </div>
+      `;
+    }
+
+    // Show the intent faces
+    return `
+      <div style="
+        background: rgba(204,51,51,0.2);
+        border: 2px solid #cc3333;
+        border-radius: 8px;
+        padding: 8px;
+        text-align: center;
+        width: 100%;
+      ">
+        <div style="font-size: 12px; color: #F44336; margin-bottom: 6px;">${enemy.name}</div>
+        <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
+          ${intent.map(i => {
+            const face = i.face;
+            if (!face || face.isBlank) {
+              return `<div style="color: #666; font-size: 14px;">—</div>`;
+            }
+            const effect = face.effects && face.effects[0];
+            if (!effect) {
+              return `<div style="color: #888; font-size: 14px;">?</div>`;
+            }
+            const moveKey = effect.move?.toLowerCase();
+            const emoji = moveEmojis[moveKey] || effect.move || '?';
+            const value = effect.value || 0;
+            return `
+              <div style="
+                background: rgba(0,0,0,0.4);
+                padding: 4px 10px;
+                border-radius: 4px;
+                font-size: 16px;
+                font-weight: bold;
+                color: #fff;
+              ">
+                ${value} ${emoji}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/**
  * Render enemies section
  */
 function renderEnemiesSection(combat) {
@@ -486,23 +573,6 @@ function renderEnemyCard(enemy, combat) {
       </div>
 
       ${renderStatusEffects(enemy.statuses, enemy.id)}
-
-      ${!isDead && enemy.currentIntent ? `
-        <div style="
-          margin-top: 10px;
-          padding: 8px;
-          background: rgba(255,200,0,0.1);
-          border: 1px solid rgba(255,200,0,0.3);
-          border-radius: 6px;
-        ">
-          <div style="font-size: 11px; color: #FFD700; text-transform: uppercase; margin-bottom: 4px;">
-            Intent
-          </div>
-          <div style="font-size: 14px; color: #fff;">
-            ${enemy.currentIntent.map(i => i.face.raw || 'Nothing').join(', ')}
-          </div>
-        </div>
-      ` : ''}
     </div>
   `;
 }
@@ -829,46 +899,23 @@ function renderCombatLog(combat) {
   `;
 }
 
-// Cache for preloaded move images
-const moveImageCache = {};
+// Move type to emoji/symbol mapping for dice faces (avoids CORS issues with images)
+const moveEmojis = {
+  'dmg': '⚔',
+  'block': '🛡',
+  'heal': '❤',
+  'mana': '◆',
+  'reroll': '↻',
+  'inflict': '☠',
+  'get': '★',
+  'cleanse': '✦',
+  'spawn': '◎',
+  'alter': '⟲',
+  'pain': '✖'
+};
 
 /**
- * Preload move images for dice faces
- */
-function preloadMoveImages() {
-  if (!window.MOVES_DATA) return;
-
-  Object.keys(window.MOVES_DATA).forEach(key => {
-    const move = window.MOVES_DATA[key];
-    if (move.imageUrl) {
-      const img = new Image();
-      img.src = move.imageUrl;
-      moveImageCache[key.toLowerCase()] = img;
-    }
-  });
-}
-
-// Preload images on script load
-if (typeof window !== 'undefined') {
-  window.addEventListener('load', preloadMoveImages);
-  // Also try immediate preload if data is already available
-  setTimeout(preloadMoveImages, 100);
-}
-
-/**
- * Get image URL for a move type
- * @param {string} moveType - Move type like "Dmg", "Block", "Heal"
- * @returns {string|null} Image URL or null
- */
-function getMoveImageUrl(moveType) {
-  if (!moveType || !window.MOVES_DATA) return null;
-  const key = moveType.toLowerCase();
-  const move = window.MOVES_DATA[key];
-  return move?.imageUrl || null;
-}
-
-/**
- * Create custom texture for combat D6 face with image
+ * Create custom texture for combat D6 face (text/emoji based to avoid CORS)
  * @param {Object} face - Face object with effects array
  * @param {string} bgColor - Background color
  * @returns {HTMLCanvasElement} Canvas with rendered face
@@ -879,7 +926,7 @@ function createCombatFaceTexture(face, bgColor = '#cc6600') {
   canvas.height = 128;
   const ctx = canvas.getContext('2d');
 
-  // Background with rounded corners effect
+  // Background
   ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, 128, 128);
 
@@ -889,7 +936,7 @@ function createCombatFaceTexture(face, bgColor = '#cc6600') {
   ctx.strokeRect(2, 2, 124, 124);
 
   // Inner highlight
-  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
   ctx.lineWidth = 2;
   ctx.strokeRect(6, 6, 116, 116);
 
@@ -905,7 +952,7 @@ function createCombatFaceTexture(face, bgColor = '#cc6600') {
     return canvas;
   }
 
-  // Get the first effect for display (most faces have one main effect)
+  // Get the first effect for display
   const effect = face.effects && face.effects[0];
   if (!effect) {
     ctx.fillStyle = '#ffffff';
@@ -916,85 +963,49 @@ function createCombatFaceTexture(face, bgColor = '#cc6600') {
     return canvas;
   }
 
-  // Draw the value number in the top portion
+  // Draw the value number at top
   const value = effect.value || 0;
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 48px Arial';
+  ctx.font = 'bold 52px Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 4;
-  ctx.strokeText(value.toString(), 64, 8);
-  ctx.fillText(value.toString(), 64, 8);
+  ctx.lineWidth = 5;
+  ctx.strokeText(value.toString(), 64, 5);
+  ctx.fillText(value.toString(), 64, 5);
 
-  // Try to draw the move image in the bottom portion
+  // Draw move type symbol at bottom
   const moveKey = effect.move?.toLowerCase();
-  const cachedImg = moveImageCache[moveKey];
+  const symbol = moveEmojis[moveKey];
 
-  if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
-    // Draw the image centered in the lower portion
-    const imgSize = 56;
-    const imgX = (128 - imgSize) / 2;
-    const imgY = 64;
-    ctx.drawImage(cachedImg, imgX, imgY, imgSize, imgSize);
-  } else {
-    // Fallback: draw move name text
-    const moveName = effect.move || '?';
-    ctx.font = 'bold 20px Arial';
+  if (symbol) {
+    ctx.font = '42px Arial';
     ctx.textBaseline = 'middle';
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 3;
-    ctx.strokeText(moveName, 64, 92);
-    ctx.fillText(moveName, 64, 92);
+    ctx.strokeText(symbol, 64, 90);
+    ctx.fillText(symbol, 64, 90);
+  } else {
+    // Fallback: draw move name text
+    const moveName = effect.move || '?';
+    ctx.font = 'bold 18px Arial';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3;
+    ctx.strokeText(moveName, 64, 90);
+    ctx.fillText(moveName, 64, 90);
   }
 
   // If there are multiple effects, add indicator
   if (face.effects && face.effects.length > 1) {
     ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 16px Arial';
+    ctx.font = 'bold 18px Arial';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
-    ctx.fillText('+', 120, 120);
+    ctx.fillText('+', 118, 118);
   }
 
   return canvas;
-}
-
-/**
- * Create combat face texture with image loading callback
- * This version handles async image loading
- */
-function createCombatFaceTextureAsync(face, bgColor, callback) {
-  if (face.isBlank || !face.effects || !face.effects[0]) {
-    callback(createCombatFaceTexture(face, bgColor));
-    return;
-  }
-
-  const effect = face.effects[0];
-  const moveKey = effect.move?.toLowerCase();
-  const imageUrl = getMoveImageUrl(effect.move);
-
-  if (!imageUrl) {
-    callback(createCombatFaceTexture(face, bgColor));
-    return;
-  }
-
-  // Check cache first
-  if (moveImageCache[moveKey]?.complete && moveImageCache[moveKey]?.naturalWidth > 0) {
-    callback(createCombatFaceTexture(face, bgColor));
-    return;
-  }
-
-  // Load image then create texture
-  const img = new Image();
-  img.onload = () => {
-    moveImageCache[moveKey] = img;
-    callback(createCombatFaceTexture(face, bgColor));
-  };
-  img.onerror = () => {
-    callback(createCombatFaceTexture(face, bgColor));
-  };
-  img.src = imageUrl;
 }
 
 /**
