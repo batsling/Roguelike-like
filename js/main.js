@@ -550,17 +550,20 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   }
 
   console.log('Character data:', character);
-  strength = character.startingStats.strength || 0;
-  dexterity = character.startingStats.dexterity || 0;
-  intelligence = character.startingStats.intelligence || 0;
-  charisma = character.startingStats.charisma || 0;
-  attack = character.startingStats.attack || 0;
-  reroll = character.startingStats.reroll || 0;
-  dash = character.startingStats.dash || 0;
-  skip = character.startingStats.skip || 0;
-  discovery = character.startingStats.discovery || 0;
-  fov = character.startingStats.fov || 0;
-  luck = character.startingStats.luck || 0;
+
+  // Handle both old format (startingStats) and new format (no startingStats, all start at 0)
+  const stats = character.startingStats || {};
+  strength = stats.strength || 0;
+  dexterity = stats.dexterity || 0;
+  intelligence = stats.intelligence || 0;
+  charisma = stats.charisma || 0;
+  attack = stats.attack || 0;
+  reroll = stats.reroll || 0;
+  dash = stats.dash || 0;
+  skip = stats.skip || 0;
+  discovery = stats.discovery || 0;
+  fov = stats.fov || 0;
+  luck = stats.luck || 0;
 
   // Reset health and gold for new run
   health = 10;
