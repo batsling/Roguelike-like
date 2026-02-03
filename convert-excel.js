@@ -322,12 +322,12 @@ const items = itemsData.map(row => {
 
   return {
     name: row['Item'] || '',
-    rating: row['Rating'] || 'Common',
+    rarity: row['Rating'] || 'Common',  // UI expects 'rarity' not 'rating'
     type: row['Type'] || 'Passive',
     description: row['Description'] || '',
-    reference: row['Reference'] || '',
+    game: row['Reference'] || '',  // UI expects 'game' not 'reference'
     tags: tags,
-    imageUrl: row['File'] ? `images/items/${row['File']}.png` : null,
+    image: row['File'] ? `images/items/${row['File']}.png` : null,  // UI expects 'image' not 'imageUrl'
     unlockCondition: row['Unlock Condition'] || null
   };
 });
