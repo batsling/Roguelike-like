@@ -1884,10 +1884,12 @@ function attachCombatEventListeners(combat) {
       // Add enemy targeting
       if (combatData && combatData.enemies) {
         const aliveEnemies = combatData.enemies.filter(en => en.health > 0);
+        console.log('[Confirm] Alive enemies:', aliveEnemies.map(e => ({ id: e.id, health: e.health })));
 
         // If only one enemy, auto-target it
         if (aliveEnemies.length === 1) {
           targets.enemyId = aliveEnemies[0].id;
+          console.log('[Confirm] Auto-targeting single enemy:', targets.enemyId);
         } else if (aliveEnemies.length > 1 && window.selectedEnemyTarget) {
           // Use selected target if available
           targets.enemyId = window.selectedEnemyTarget;
@@ -1902,7 +1904,9 @@ function attachCombatEventListeners(combat) {
         }
       }
 
+      console.log('[Confirm] Final targets:', targets);
       const result = window.CombatEngine.confirmDie(diceId, targets);
+      console.log('[Confirm] Result:', result);
       if (result.success) {
         window.selectedEnemyTarget = null; // Clear selection after use
         updateCombatDisplay();

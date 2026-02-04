@@ -772,6 +772,9 @@ function resolveTargets(effect, targets, isCantrip) {
   const moveData = typeof MOVES_DATA !== 'undefined' ? MOVES_DATA[effect.move?.toLowerCase()] : null;
   const preferredTarget = moveData?.preferredTarget || 'Enemy';
 
+  console.log('[resolveTargets] Input:', { effect: effect.move, targets, isCantrip, preferredTarget });
+  console.log('[resolveTargets] Available enemies:', combatState.enemies.map(e => ({ id: e.id, health: e.health })));
+
   // Wide: all enemies (for damage) or all allies (for support)
   if (addons.includes('Wide')) {
     if (preferredTarget === 'Enemy') {
@@ -840,6 +843,11 @@ function resolveTargets(effect, targets, isCantrip) {
     }
   }
 
+  console.log('[resolveTargets] Result:', {
+    enemies: result.enemies.map(e => e.id),
+    allies: result.allies.length,
+    player: result.player
+  });
   return result;
 }
 
