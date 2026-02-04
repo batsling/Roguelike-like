@@ -98,6 +98,11 @@ def import_games():
         if is_influenced:
             influenced_games.add(name)
 
+        # Parse tags (comma-separated)
+        parsed_tags = []
+        if tags:
+            parsed_tags = [t.strip() for t in str(tags).split(',') if t.strip()]
+
         # Build game object
         game = {
             "name": name,
@@ -105,7 +110,7 @@ def import_games():
             "type": str(game_type).strip() if game_type else "Traditional",
             "connected": bool(connected),
             "influenced": is_influenced,
-            "tags": []
+            "tags": parsed_tags
         }
 
         # Add gamesInfluenced if there are any

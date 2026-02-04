@@ -907,7 +907,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "gacha"
+    ],
     "coverImage": "images/covers/chaos-zero-nightmare.jpg"
   },
   {
@@ -1175,7 +1177,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "coverImage": "images/covers/cryptark.jpg"
   },
   {
@@ -2110,7 +2114,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "coverImage": "images/covers/fairy-tail-dungeons.jpg"
   },
   {
@@ -2453,7 +2459,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "coverImage": "images/covers/granvir.jpg"
   },
   {
@@ -2858,7 +2866,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "gamesInfluenced": [
       "Alina of the Arena",
       "Backpack Hero",
@@ -3506,7 +3516,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "gamesInfluenced": [
       "Mothergunship: Forge"
     ],
@@ -3518,7 +3530,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "coverImage": "images/covers/mothergunship-forge.jpg"
   },
   {
@@ -3998,7 +4012,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "coverImage": "images/covers/pocket-crystal-league.jpg"
   },
   {
@@ -4016,7 +4032,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-explorers-of-sky.jpg"
   },
   {
@@ -4025,7 +4043,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "gamesInfluenced": [
       "Pok\u00e9mon Mystery Dungeon: Explorers of Sky"
     ],
@@ -4037,7 +4057,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-gates-to-infinity.jpg"
   },
   {
@@ -4046,7 +4068,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "gamesInfluenced": [
       "Paper Animal Adventure",
       "Pok\u00e9mon Mystery Dungeon: Explorers of Time and Explorers of Darkness",
@@ -4062,7 +4086,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-rescue-team-dx.jpg"
   },
   {
@@ -4071,7 +4097,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "coverImage": "images/covers/pok-mon-super-mystery-dungeon.jpg"
   },
   {
@@ -4080,7 +4108,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "coverImage": "images/covers/pok-rogue.jpg"
   },
   {
@@ -5192,7 +5222,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "coverImage": "images/covers/starvaders.jpg"
   },
   {
@@ -5512,7 +5544,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "coverImage": "images/covers/the-fable-manga-build-roguelike.jpg"
   },
   {
@@ -5756,7 +5790,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "coverImage": "images/covers/touhou-crawl.jpg"
   },
   {
@@ -5765,7 +5801,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "coverImage": "images/covers/touhou-lost-branch-of-legend.jpg"
   },
   {
@@ -5840,7 +5878,10 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "anime",
+      "gacha"
+    ],
     "coverImage": "images/covers/uma-musume-pretty-derby.jpg"
   },
   {
@@ -5849,7 +5890,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "coverImage": "images/covers/underdogs.jpg"
   },
   {
@@ -6014,7 +6057,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "coverImage": "images/covers/vital-shell.jpg"
   },
   {
@@ -6297,7 +6342,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "coverImage": "images/covers/yohane-the-parhelion-numazu-in-the-mirage.jpg"
   },
   {
@@ -6379,7 +6426,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "coverImage": "images/covers/swarm-grinder.jpg"
   },
   {
