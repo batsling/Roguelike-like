@@ -398,12 +398,10 @@ function confirmDie(diceId, targets = {}) {
   }
 
   const face = die.currentFace;
-  console.log('[confirmDie] Face:', { raw: face?.raw, isBlank: face?.isBlank, effects: face?.effects });
 
   // Process effects (skip Cantrip effects as they were already processed)
   if (!face.isBlank) {
     face.effects.forEach(effect => {
-      console.log('[confirmDie] Processing effect:', effect);
       if (!effect.addons || !effect.addons.includes('Cantrip')) {
         processEffect(effect, die, targets);
       }
@@ -605,15 +603,11 @@ function processEffect(effect, die, targets, isCantrip = false) {
   const move = effect.move.toLowerCase();
   let value = effect.value || 0;
 
-  console.log('[processEffect] move=' + move + ', effect.value=' + effect.value + ', initial value=' + value);
-
   // Apply stat bonuses
   value = calculateMoveValue(move, value, die);
-  console.log('[processEffect] After calculateMoveValue: value=' + value + ' (type: ' + typeof value + ')');
 
   // Get targets based on addons
   const resolvedTargets = resolveTargets(effect, targets, isCantrip);
-  console.log('[processEffect] About to process move=' + move + ' with value=' + value);
 
   // Process based on move type
   switch (move) {
@@ -724,13 +718,10 @@ function processEffect(effect, die, targets, isCantrip = false) {
  * @returns {number} Modified value
  */
 function calculateMoveValue(move, value, die) {
-  console.log('[calculateMoveValue] ENTER: move=' + move + ', value=' + value);
   const bonuses = combatState.player.bonuses || {};
-  console.log('[calculateMoveValue] bonuses:', bonuses);
 
   // Ensure value is a valid number
   const baseValue = (typeof value === 'number' && !isNaN(value)) ? value : 0;
-  console.log('[calculateMoveValue] baseValue=' + baseValue);
 
   // Check for Finesse on weapons
   const hasFinesse = die && die.tags && die.tags.includes('finesse');
@@ -740,39 +731,28 @@ function calculateMoveValue(move, value, die) {
   const dexBonus = bonuses.dexterity || 0;
   const intBonus = bonuses.intelligence || 0;
   const chaBonus = bonuses.charisma || 0;
-  console.log('[calculateMoveValue] str=' + strBonus + ', dex=' + dexBonus + ', int=' + intBonus + ', cha=' + chaBonus);
 
-  let result;
   switch (move) {
     case 'dmg':
     case 'pain':
     case 'assassinate':
-      result = baseValue + (hasFinesse ? dexBonus : strBonus);
-      console.log('[calculateMoveValue] dmg/pain/assassinate result=' + result);
-      return result;
+      return baseValue + (hasFinesse ? dexBonus : strBonus);
 
     case 'block':
-      result = baseValue + dexBonus;
-      console.log('[calculateMoveValue] block result=' + result);
-      return result;
+      return baseValue + dexBonus;
 
     case 'heal':
     case 'mana':
     case 'vitality':
-      result = baseValue + intBonus;
-      console.log('[calculateMoveValue] heal/mana/vitality result=' + result);
-      return result;
+      return baseValue + intBonus;
 
     case 'reroll':
     case 'get':
     case 'inflict':
     case 'cleanse':
-      result = baseValue + chaBonus;
-      console.log('[calculateMoveValue] reroll/get/inflict/cleanse result=' + result);
-      return result;
+      return baseValue + chaBonus;
 
     default:
-      console.log('[calculateMoveValue] default result=' + baseValue);
       return baseValue;
   }
 }
@@ -791,9 +771,6 @@ function resolveTargets(effect, targets, isCantrip) {
   // Get preferred target from MOVES_DATA
   const moveData = typeof MOVES_DATA !== 'undefined' ? MOVES_DATA[effect.move?.toLowerCase()] : null;
   const preferredTarget = moveData?.preferredTarget || 'Enemy';
-
-  console.log('[resolveTargets] Input:', { effect: effect.move, targets, isCantrip, preferredTarget });
-  console.log('[resolveTargets] Available enemies:', combatState.enemies.map(e => ({ id: e.id, health: e.health })));
 
   // Wide: all enemies (for damage) or all allies (for support)
   if (addons.includes('Wide')) {
@@ -863,11 +840,6 @@ function resolveTargets(effect, targets, isCantrip) {
     }
   }
 
-  console.log('[resolveTargets] Result:', {
-    enemies: result.enemies.map(e => e.id),
-    allies: result.allies.length,
-    player: result.player
-  });
   return result;
 }
 
@@ -901,7 +873,6 @@ function getAutoTargets(effect) {
 function dealDamage(target, damage, addons = []) {
   // Validate damage is a valid number
   let dmg = (typeof damage === 'number' && !isNaN(damage)) ? damage : 0;
-  console.log('[dealDamage] Called with:', { targetName: target?.name, targetId: target?.id, damage, dmg, targetHealth: target?.health });
   if (dmg <= 0) return;
 
   // Check Engage (x2 on full health)
@@ -942,7 +913,6 @@ function dealDamage(target, damage, addons = []) {
   // Deal remaining damage to health
   if (remainingDamage > 0) {
     target.health -= remainingDamage;
-    console.log('[dealDamage] After damage:', { targetName: target?.name, newHealth: target?.health, remainingDamage });
     addLog(`${target.name || 'Player'} took ${remainingDamage} damage`, 'danger');
 
     // Check Thorns
@@ -1410,9 +1380,6 @@ function addLog(message, type = 'info') {
     type: type,
     timestamp: Date.now()
   });
-
-  // Also log to console for debugging
-  console.log(`[Combat] ${message}`);
 }
 
 /**

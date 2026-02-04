@@ -107,9 +107,18 @@ function renderCombatUI(combat, container) {
       }
       .enemy-die-container {
         transition: transform 0.2s;
+        position: relative;
+        z-index: 1;
       }
       .enemy-die-container:hover {
         transform: scale(1.05);
+        z-index: 9999;
+      }
+      .enemy-dice-tooltip {
+        z-index: 10000 !important;
+      }
+      .dice-tooltip {
+        z-index: 10000 !important;
       }
       /* Crisp pixel art rendering */
       .pixel-image {
@@ -572,7 +581,7 @@ function renderEnemyIntentCenter(combat) {
                   padding: 10px;
                   margin-bottom: 8px;
                   display: none;
-                  z-index: 100;
+                  z-index: 10000;
                   min-width: 160px;
                   max-width: 220px;
                   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
@@ -996,7 +1005,7 @@ function renderDie(die, combat) {
         padding: 10px;
         margin-bottom: 8px;
         display: none;
-        z-index: 100;
+        z-index: 10000;
         min-width: 180px;
         max-width: 250px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.5);
@@ -1711,7 +1720,6 @@ function initializeEnemy3DDice(combat, shouldAnimate = true) {
 
     // Check if enemy has intent
     if (!enemy.currentIntent || enemy.currentIntent.length === 0) {
-      console.log(`Enemy ${enemy.name} has no intent`);
       return;
     }
 
@@ -1884,12 +1892,10 @@ function attachCombatEventListeners(combat) {
       // Add enemy targeting
       if (combatData && combatData.enemies) {
         const aliveEnemies = combatData.enemies.filter(en => en.health > 0);
-        console.log('[Confirm] Alive enemies:', aliveEnemies.map(e => ({ id: e.id, health: e.health })));
 
         // If only one enemy, auto-target it
         if (aliveEnemies.length === 1) {
           targets.enemyId = aliveEnemies[0].id;
-          console.log('[Confirm] Auto-targeting single enemy:', targets.enemyId);
         } else if (aliveEnemies.length > 1 && window.selectedEnemyTarget) {
           // Use selected target if available
           targets.enemyId = window.selectedEnemyTarget;
@@ -1904,9 +1910,7 @@ function attachCombatEventListeners(combat) {
         }
       }
 
-      console.log('[Confirm] Final targets:', targets);
       const result = window.CombatEngine.confirmDie(diceId, targets);
-      console.log('[Confirm] Result:', result);
       if (result.success) {
         window.selectedEnemyTarget = null; // Clear selection after use
         updateCombatDisplay();
@@ -2118,16 +2122,64 @@ function checkCombatEnd() {
   if (!combat) return;
 
   if (combat.phase === 'victory') {
+    // Get the enemy data for rewards
+    const enemy = combat.enemies[0]; // Primary enemy
+
+    // Sync player health from combat
+    if (typeof window.health !== 'undefined') {
+      window.health = combat.player.health;
+    }
+    if (typeof window.gameState !== 'undefined') {
+      window.gameState.health = combat.player.health;
+    }
+    if (typeof updateHealthDisplay === 'function') {
+      updateHealthDisplay();
+    }
+
     setTimeout(() => {
-      alert('Victory!');
-      window.CombatEngine.endCombat(true);
-      // TODO: Handle victory rewards
+      // Call the victory handler in main.js if it exists
+      if (typeof window.handleDiceCombatVictory === 'function') {
+        window.handleDiceCombatVictory(enemy);
+      } else {
+        // Fallback: simple victory message
+        window.CombatEngine.endCombat(true);
+        if (typeof closeGameModal === 'function') {
+          closeGameModal();
+        }
+        if (typeof createNotification === 'function') {
+          createNotification('Victory! Enemy defeated!', '#4CAF50', '⚔️');
+        }
+      }
     }, 500);
   } else if (combat.phase === 'defeat') {
+    // Get the enemy data
+    const enemy = combat.enemies[0];
+
+    // Sync player health from combat
+    if (typeof window.health !== 'undefined') {
+      window.health = combat.player.health;
+    }
+    if (typeof window.gameState !== 'undefined') {
+      window.gameState.health = combat.player.health;
+    }
+    if (typeof updateHealthDisplay === 'function') {
+      updateHealthDisplay();
+    }
+
     setTimeout(() => {
-      alert('Defeat!');
-      window.CombatEngine.endCombat(false);
-      // TODO: Handle defeat consequences
+      // Call the defeat handler in main.js if it exists
+      if (typeof window.handleDiceCombatDefeat === 'function') {
+        window.handleDiceCombatDefeat(enemy);
+      } else {
+        // Fallback: simple defeat message
+        window.CombatEngine.endCombat(false);
+        if (typeof closeGameModal === 'function') {
+          closeGameModal();
+        }
+        if (typeof createNotification === 'function') {
+          createNotification('Defeat...', '#f44336', '💀');
+        }
+      }
     }, 500);
   }
 }
