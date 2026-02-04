@@ -120,6 +120,17 @@ function renderCombatUI(combat, container) {
       .dice-tooltip {
         z-index: 10000 !important;
       }
+      /* Ensure 3D dice canvas doesn't overlap tooltips */
+      .dice-3d-container,
+      .enemy-dice-3d-container {
+        position: relative;
+        z-index: 1;
+      }
+      .dice-3d-container canvas,
+      .enemy-dice-3d-container canvas {
+        position: relative;
+        z-index: 1;
+      }
       /* Crisp pixel art rendering */
       .pixel-image {
         image-rendering: pixelated;

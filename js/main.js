@@ -690,7 +690,9 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   if (selectedLocation && selectedLocation.game === 'Hades' && typeof showHadesBoonSelection === 'function') {
     console.log('Starting in Hades location, showing boon selection...');
     // Small delay to let the dungeon screen render first
-    setTimeout(() => {
+    // Store the timeout ID so it can be cleared if player finishes game before it fires
+    gameState.hadesStartBoonTimeout = setTimeout(() => {
+      gameState.hadesStartBoonTimeout = null;
       showHadesBoonSelection();
     }, 500);
   }
@@ -6276,7 +6278,7 @@ function showEnemyDetails(enemyName) {
           id="enemy-detail-image"
           src="${enemy.imageUrl || getEnemyImagePath(enemy.name)}"
           alt="${enemy.name}"
-          style="width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${diffColor};"
+          style="width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${diffColor}; image-rendering: pixelated; image-rendering: crisp-edges;"
           onerror="this.style.opacity='0.3'"
         />
         <div style="flex: 1;">
@@ -7611,10 +7613,11 @@ function updateCharacterUI() {
     iconEl.alt = character.name;
   }
 
-  // Update character name in header
+  // Update character name in header (with level)
   const statsCharacterNameEl = document.getElementById('stats-character-name');
   if (statsCharacterNameEl) {
-    statsCharacterNameEl.textContent = character.name;
+    const level = gameState.playerLevel || 1;
+    statsCharacterNameEl.innerHTML = `${character.name} <span style="color: #ff9800; font-size: 14px;">Lv.${level}</span>`;
   }
 }
 

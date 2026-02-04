@@ -967,6 +967,8 @@ function switchCollectionTab(tab) {
                   object-fit: contain;
                   border-radius: 4px;
                   background: rgba(0,0,0,0.2);
+                  image-rendering: pixelated;
+                  image-rendering: crisp-edges;
                 "
               />
               <div style="text-align: center; font-size: 11px; font-weight: bold; color: #ddd; word-wrap: break-word; width: 100%; line-height: 1.2;">

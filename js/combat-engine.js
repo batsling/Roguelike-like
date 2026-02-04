@@ -436,7 +436,25 @@ function confirmDie(diceId, targets = {}) {
     die.isConfirmed = true;
   }
 
+  // Check for victory after dealing damage
+  checkVictoryCondition();
+
   return { success: true };
+}
+
+/**
+ * Check if all enemies are defeated and set victory phase
+ */
+function checkVictoryCondition() {
+  if (!combatState || combatState.phase === 'victory' || combatState.phase === 'defeat') {
+    return;
+  }
+
+  const allDead = combatState.enemies.every(e => e.health <= 0);
+  if (allDead) {
+    combatState.phase = 'victory';
+    addLog('All enemies defeated!', 'success');
+  }
 }
 
 /**

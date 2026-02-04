@@ -578,6 +578,13 @@ function showFinish(node, isAmuletGame = false) {
     }
     b.remove();
 
+    // Clear any pending Hades start boon selection timeout to prevent it from firing
+    // after the player has already progressed (fixes game skipping issue)
+    if (gameState.hadesStartBoonTimeout) {
+      clearTimeout(gameState.hadesStartBoonTimeout);
+      gameState.hadesStartBoonTimeout = null;
+    }
+
     if (isAmuletGame) {
       // Mark game as finished first
       if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
