@@ -11,6 +11,7 @@
 // Store active dice renderers for cleanup
 let activeDiceRenderers = {};
 let enemyDiceRenderers = {};
+let lastEnemyDiceInitTurn = -1; // Track which turn enemy dice were initialized
 
 // Image cache for move icons
 const moveImageCache = {};
@@ -98,6 +99,16 @@ function renderCombatUI(combat, container) {
       .die-roll-btn:hover, .die-confirm-btn:hover, .die-reroll-btn:hover {
         transform: scale(1.05);
       }
+      /* Enemy dice tooltip on hover */
+      .enemy-die-container:hover .enemy-dice-tooltip {
+        display: block !important;
+      }
+      .enemy-die-container {
+        transition: transform 0.2s;
+      }
+      .enemy-die-container:hover {
+        transform: scale(1.05);
+      }
       #enemy-intent-panel {
         animation: intentReveal 0.5s ease-out;
       }
@@ -156,18 +167,19 @@ function renderCombatUI(combat, container) {
             display: flex;
             gap: 10px;
             align-items: stretch;
-            flex: 1;
-            min-height: 0;
+            height: 320px;
+            flex-shrink: 0;
           ">
             <!-- Player Side -->
-            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto;">
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto; max-height: 320px;">
               ${renderPlayerSection(combat)}
               ${renderAlliesSection(combat)}
             </div>
 
             <!-- Center: Enemy Intent Display -->
             <div id="enemy-intent-panel" style="
-              width: 160px;
+              width: 180px;
+              height: 320px;
               display: flex;
               flex-direction: column;
               align-items: center;
@@ -178,6 +190,7 @@ function renderCombatUI(combat, container) {
               border: 2px solid rgba(255,170,68,0.4);
               border-radius: 8px;
               padding: 10px;
+              overflow-y: auto;
             ">
               <div style="
                 font-size: 14px;
@@ -201,7 +214,7 @@ function renderCombatUI(combat, container) {
             </div>
 
             <!-- Enemy Side -->
-            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto;">
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto; max-height: 320px;">
               ${renderEnemiesSection(combat)}
             </div>
           </div>
@@ -377,10 +390,10 @@ function renderPlayerSection(combat) {
         YOU
       </div>
 
-      <!-- Player Image -->
+      <!-- Player Image - LARGER -->
       <div style="
-        width: 180px;
-        height: 180px;
+        width: 200px;
+        height: 200px;
         margin: 0 auto 12px auto;
         border-radius: 8px;
         background: rgba(0,0,0,0.3);
@@ -533,7 +546,7 @@ function renderEnemyIntentCenter(combat) {
       `;
     }
 
-    // Show the intent as 3D dice
+    // Show the intent as 3D dice with hover tooltips
     return `
       <div style="
         background: rgba(204,51,51,0.2);
@@ -553,13 +566,37 @@ function renderEnemyIntentCenter(combat) {
             const emoji = moveEmojis[moveKey] || effect?.move || '—';
             const value = effect?.value || 0;
 
+            // Generate enemy dice tooltip showing all faces
+            const enemyDiceTooltip = enemy.dice && enemy.dice.length > 0 ?
+              generateEnemyDiceTooltip(enemy.dice, enemy.name) : '';
+
             return `
               <div class="enemy-die-container" style="
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 gap: 4px;
+                position: relative;
               ">
+                <!-- Tooltip showing all enemy dice faces -->
+                <div class="enemy-dice-tooltip" style="
+                  position: absolute;
+                  bottom: 100%;
+                  left: 50%;
+                  transform: translateX(-50%);
+                  background: rgba(20,20,25,0.95);
+                  border: 2px solid #cc3333;
+                  border-radius: 8px;
+                  padding: 10px;
+                  margin-bottom: 8px;
+                  display: none;
+                  z-index: 100;
+                  min-width: 160px;
+                  max-width: 220px;
+                  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+                ">
+                  ${enemyDiceTooltip}
+                </div>
                 <!-- 3D Dice Container -->
                 <div id="enemy-dice-3d-${diceId}"
                      class="enemy-dice-3d-container"
@@ -572,6 +609,7 @@ function renderEnemyIntentCenter(combat) {
                        background: #1a1410;
                        border-radius: 6px;
                        border: 2px solid #cc3333;
+                       cursor: help;
                      ">
                 </div>
                 <!-- Effect label below dice -->
@@ -592,6 +630,49 @@ function renderEnemyIntentCenter(combat) {
       </div>
     `;
   }).join('');
+}
+
+/**
+ * Generate tooltip HTML for enemy dice faces with descriptions
+ */
+function generateEnemyDiceTooltip(faces, enemyName) {
+  if (!faces || faces.length === 0) return '<div style="color: #666;">No dice data</div>';
+
+  const facesHTML = faces.map((face, i) => {
+    if (face.isBlank) {
+      return `
+        <div style="display: flex; align-items: center; gap: 6px; padding: 3px 4px; background: rgba(0,0,0,0.3); border-radius: 3px;">
+          <span style="font-size: 14px; width: 20px; text-align: center;">—</span>
+          <span style="color: #666; font-size: 11px;">Blank</span>
+        </div>
+      `;
+    }
+
+    const effect = face.effects && face.effects[0];
+    if (!effect) return '';
+
+    const moveKey = effect.move?.toLowerCase();
+    const emoji = moveEmojis[moveKey] || '?';
+    const value = effect.value || 0;
+    const description = moveDescriptions[moveKey] || effect.move || 'Unknown';
+    const target = effect.target ? ` (${effect.target})` : '';
+
+    return `
+      <div style="display: flex; align-items: center; gap: 6px; padding: 3px 4px; background: rgba(0,0,0,0.3); border-radius: 3px;">
+        <span style="font-size: 14px; width: 20px; text-align: center;">${emoji}</span>
+        <div style="flex: 1;">
+          <span style="font-weight: bold; color: #fff; font-size: 11px;">${value} ${effect.move}${target}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div style="font-size: 11px; color: #F44336; margin-bottom: 6px; text-transform: uppercase; font-weight: bold;">${enemyName} - All Faces</div>
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      ${facesHTML}
+    </div>
+  `;
 }
 
 /**
@@ -634,10 +715,10 @@ function renderEnemyCard(enemy, combat) {
         ${enemy.name}
       </div>
 
-      <!-- Enemy Image -->
+      <!-- Enemy Image - LARGER -->
       <div style="
-        width: 120px;
-        height: 120px;
+        width: 160px;
+        height: 160px;
         margin: 0 auto 12px auto;
         border-radius: 8px;
         background: rgba(0,0,0,0.3);
@@ -708,7 +789,7 @@ function renderEnemyCard(enemy, combat) {
 }
 
 /**
- * Render status effects for a target
+ * Render status effects for a target using PNG images
  */
 function renderStatusEffects(statuses, targetId) {
   if (!statuses || Object.keys(statuses).length === 0) return '';
@@ -733,25 +814,55 @@ function renderStatusEffects(statuses, targetId) {
     'multi_attack': '⚡'
   };
 
+  // Status descriptions for tooltips
+  const statusDescriptions = {
+    'burn': 'Takes 3 damage per stack at turn start',
+    'poison': 'Takes damage equal to stacks at turn start',
+    'dodge': 'Negates next incoming attack',
+    'power': 'Increases damage dealt',
+    'block': 'Absorbs incoming damage',
+    'frail': 'Takes double damage',
+    'thorns': 'Deals damage to attackers',
+    'oiled': 'Burns deal double damage',
+    'ruptured': 'Takes 3 damage when dodging',
+    'confused': 'Energy costs are randomized',
+    'ritual': 'Gains Power each turn',
+    'barricade': 'Block persists between turns',
+    'forgetful': 'Cannot use abilities',
+    'formless': 'Rerolls intent when hit',
+    'fading': 'Dies when stacks reach 0',
+    'shifting': 'Loses Power when hit',
+    'multi_attack': 'Attacks multiple times'
+  };
+
   const entries = Object.entries(statuses).filter(([k, v]) => v > 0);
   if (entries.length === 0) return '';
 
   return `
-    <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px;">
-      ${entries.map(([status, stacks]) => `
-        <div title="${status}: ${stacks}" style="
-          background: rgba(0,0,0,0.4);
-          border-radius: 4px;
-          padding: 2px 6px;
-          font-size: 12px;
-          display: flex;
-          align-items: center;
-          gap: 3px;
-        ">
-          <span>${statusIcons[status] || '❔'}</span>
-          <span style="color: #fff;">${stacks}</span>
-        </div>
-      `).join('')}
+    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; justify-content: center;">
+      ${entries.map(([status, stacks]) => {
+        const imgPath = moveImagePaths[status];
+        const description = statusDescriptions[status] || status;
+
+        return `
+          <div title="${status}: ${stacks}\n${description}" style="
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            padding: 4px 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-width: 50px;
+          ">
+            ${imgPath ?
+              `<img src="${imgPath}" style="width: 24px; height: 24px; image-rendering: pixelated;" onerror="this.outerHTML='<span style=font-size:20px>${statusIcons[status] || '❔'}</span>'">` :
+              `<span style="font-size: 20px;">${statusIcons[status] || '❔'}</span>`
+            }
+            <span style="color: #fff; font-weight: bold; font-size: 14px;">${stacks}</span>
+          </div>
+        `;
+      }).join('')}
     </div>
   `;
 }
@@ -775,7 +886,7 @@ function renderDiceArea(combat) {
 }
 
 /**
- * Generate tooltip HTML for dice faces
+ * Generate tooltip HTML for dice faces (simple version)
  */
 function generateDiceTooltip(die) {
   if (!die.faces || die.faces.length === 0) return '';
@@ -797,6 +908,69 @@ function generateDiceTooltip(die) {
   return facesHTML;
 }
 
+// Move descriptions for tooltips
+const moveDescriptions = {
+  'dmg': 'Deal damage to enemy',
+  'block': 'Gain block (absorbs damage)',
+  'heal': 'Restore health',
+  'mana': 'Gain mana for spells',
+  'reroll': 'Gain reroll charges',
+  'inflict': 'Apply status to enemy',
+  'get': 'Gain status effect',
+  'cleanse': 'Remove debuffs',
+  'spawn': 'Summon a creature',
+  'alter': 'Transform into new form',
+  'pain': 'Deal damage to self',
+  'assassinate': 'Kill enemy if HP ≤ value',
+  'vitality': 'Gain max health'
+};
+
+/**
+ * Generate detailed tooltip HTML for dice faces with descriptions
+ */
+function generateDiceTooltipDetailed(die) {
+  if (!die.faces || die.faces.length === 0) return '<div style="color: #666;">No faces</div>';
+
+  const facesHTML = die.faces.map((face, i) => {
+    if (face.isBlank) {
+      return `
+        <div style="display: flex; align-items: center; gap: 8px; padding: 4px 6px; background: rgba(0,0,0,0.3); border-radius: 4px;">
+          <span style="font-size: 16px; width: 24px; text-align: center;">—</span>
+          <span style="color: #666;">Blank face</span>
+        </div>
+      `;
+    }
+
+    const effect = face.effects && face.effects[0];
+    if (!effect) return `<div style="padding: 4px 6px; color: #888;">Unknown effect</div>`;
+
+    const moveKey = effect.move?.toLowerCase();
+    const emoji = moveEmojis[moveKey] || '?';
+    const value = effect.value || 0;
+    const description = moveDescriptions[moveKey] || effect.move || 'Unknown';
+    const target = effect.target ? ` (${effect.target})` : '';
+    const addons = effect.addons && effect.addons.length > 0 ? ` [${effect.addons.join(', ')}]` : '';
+
+    // Get status image path if available
+    const statusImgPath = moveImagePaths[moveKey];
+    const imgHtml = statusImgPath ?
+      `<img src="${statusImgPath}" style="width: 20px; height: 20px; image-rendering: pixelated;" onerror="this.style.display='none'">` :
+      `<span style="font-size: 16px;">${emoji}</span>`;
+
+    return `
+      <div style="display: flex; align-items: center; gap: 8px; padding: 4px 6px; background: rgba(0,0,0,0.3); border-radius: 4px;">
+        <div style="width: 24px; text-align: center; flex-shrink: 0;">${imgHtml}</div>
+        <div style="flex: 1;">
+          <div style="font-weight: bold; color: #fff;">${value} ${effect.move}${target}</div>
+          <div style="font-size: 10px; color: #aaa;">${description}${addons}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return facesHTML;
+}
+
 /**
  * Render a single die with 3D container and tooltip
  */
@@ -804,9 +978,11 @@ function renderDie(die, combat) {
   const isAvailable = !die.isExhausted &&
     (die.source !== 'ally' || combat.allies.find(a => a.id === die.id)?.isAlive);
 
-  const borderColor = die.isConfirmed ? '#4CAF50' :
-    die.isRolled ? '#FFD700' :
-    isAvailable ? '#2196F3' : '#666';
+  // Dice can be rolled again after confirming (as long as player has energy)
+  const canRoll = isAvailable && !die.isRolled && combat.player.energy >= (die.energyCost || 1);
+
+  const borderColor = die.isRolled ? '#FFD700' :
+    canRoll ? '#2196F3' : '#666';
 
   const sourceColor = die.source === 'character' ? '#cc6600' :
     die.source === 'weapon' ? '#888888' :
@@ -823,7 +999,7 @@ function renderDie(die, combat) {
       position: relative;
       ${!isAvailable ? 'opacity: 0.5;' : ''}
     ">
-      <!-- Tooltip on hover showing all faces -->
+      <!-- Tooltip on hover showing all faces with descriptions -->
       <div class="dice-tooltip" style="
         position: absolute;
         bottom: 100%;
@@ -832,16 +1008,17 @@ function renderDie(die, combat) {
         background: rgba(20,20,25,0.95);
         border: 2px solid #555;
         border-radius: 8px;
-        padding: 8px;
+        padding: 10px;
         margin-bottom: 8px;
         display: none;
         z-index: 100;
-        min-width: 120px;
+        min-width: 180px;
+        max-width: 250px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.5);
       ">
-        <div style="font-size: 11px; color: #888; margin-bottom: 6px; text-transform: uppercase;">All Faces</div>
-        <div style="display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; font-size: 13px; color: #fff;">
-          ${generateDiceTooltip(die)}
+        <div style="font-size: 12px; color: #ffaa44; margin-bottom: 8px; text-transform: uppercase; font-weight: bold;">${die.name} - All Faces</div>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #fff;">
+          ${generateDiceTooltipDetailed(die)}
         </div>
       </div>
 
@@ -861,7 +1038,7 @@ function renderDie(die, combat) {
           margin: 0 auto 8px auto;
           background: #1a1410;
           border-radius: 8px;
-          cursor: ${!die.isRolled && isAvailable ? 'pointer' : 'default'};
+          cursor: ${canRoll ? 'pointer' : 'default'};
           position: relative;
         ">
         ${!die.isRolled && !activeDiceRenderers[die.id] ? `
@@ -873,7 +1050,7 @@ function renderDie(die, combat) {
             color: #666;
             font-size: 14px;
             pointer-events: none;
-          ">Click to Roll</div>
+          ">${canRoll ? 'Click to Roll' : 'Need Energy'}</div>
         ` : ''}
       </div>
 
@@ -892,8 +1069,9 @@ function renderDie(die, combat) {
         </div>
       ` : ''}
 
+      <!-- Buttons below dice: Reroll and Confirm side by side -->
       <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 5px;">
-        ${!die.isRolled && isAvailable ? `
+        ${canRoll ? `
           <button class="die-roll-btn" data-die-id="${die.id}" style="
             padding: 10px 20px;
             background: linear-gradient(145deg, #2196F3, #1565C0);
@@ -906,10 +1084,24 @@ function renderDie(die, combat) {
             text-transform: uppercase;
             box-shadow: 0 2px 8px rgba(33,150,243,0.4);
             transition: all 0.2s;
-          ">⚡ Roll</button>
+          ">⚡ Roll (${die.energyCost || 1}⚡)</button>
         ` : ''}
 
-        ${die.isRolled && !die.isConfirmed ? `
+        ${die.isRolled ? `
+          <button class="die-reroll-btn" data-die-id="${die.id}" style="
+            padding: 10px 16px;
+            background: ${combat.player.rerolls > 0 ? 'linear-gradient(145deg, #FF9800, #F57C00)' : 'rgba(100,100,100,0.5)'};
+            border: 2px solid ${combat.player.rerolls > 0 ? '#FFB74D' : '#666'};
+            border-radius: 8px;
+            color: white;
+            cursor: ${combat.player.rerolls > 0 ? 'pointer' : 'not-allowed'};
+            font-weight: bold;
+            font-size: 13px;
+            text-transform: uppercase;
+            box-shadow: ${combat.player.rerolls > 0 ? '0 2px 8px rgba(255,152,0,0.4)' : 'none'};
+            transition: all 0.2s;
+            ${combat.player.rerolls <= 0 ? 'opacity: 0.5;' : ''}
+          ">🔄 Reroll</button>
           <button class="die-confirm-btn" data-die-id="${die.id}" style="
             padding: 10px 16px;
             background: linear-gradient(145deg, #4CAF50, #2E7D32);
@@ -923,33 +1115,6 @@ function renderDie(die, combat) {
             box-shadow: 0 2px 8px rgba(76,175,80,0.4);
             transition: all 0.2s;
           ">✓ Confirm</button>
-          ${combat.player.rerolls > 0 ? `
-            <button class="die-reroll-btn" data-die-id="${die.id}" style="
-              padding: 10px 16px;
-              background: linear-gradient(145deg, #FF9800, #F57C00);
-              border: 2px solid #FFB74D;
-              border-radius: 8px;
-              color: white;
-              cursor: pointer;
-              font-weight: bold;
-              font-size: 13px;
-              text-transform: uppercase;
-              box-shadow: 0 2px 8px rgba(255,152,0,0.4);
-              transition: all 0.2s;
-            ">🔄 Reroll</button>
-          ` : ''}
-        ` : ''}
-
-        ${die.isConfirmed ? `
-          <div style="
-            padding: 8px 16px;
-            background: rgba(76,175,80,0.2);
-            border: 2px solid #4CAF50;
-            border-radius: 8px;
-            color: #4CAF50;
-            font-weight: bold;
-            font-size: 13px;
-          ">✓ USED</div>
         ` : ''}
 
         ${die.isExhausted ? `
@@ -1607,7 +1772,11 @@ function attachCombatEventListeners(combat) {
   preloadMoveImages().then(() => {
     setTimeout(() => {
       initialize3DDice(combat);
-      initializeEnemy3DDice(combat);
+      // Only initialize enemy dice at the start of each new turn
+      if (lastEnemyDiceInitTurn !== combat.turn) {
+        lastEnemyDiceInitTurn = combat.turn;
+        initializeEnemy3DDice(combat);
+      }
     }, 50);
   });
 
@@ -1681,6 +1850,16 @@ function attachCombatEventListeners(combat) {
   document.querySelectorAll('.die-reroll-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const diceId = e.target.dataset.dieId;
+      const combatData = window.CombatEngine.getCombatState();
+
+      // Check if player has rerolls
+      if (!combatData || combatData.player.rerolls < 1) {
+        showTargetRequiredMessage();
+        const msg = document.getElementById('target-required-msg');
+        if (msg) msg.innerHTML = '🔄 No rerolls available!';
+        return;
+      }
+
       const result = window.CombatEngine.rerollPlayerDie(diceId);
       if (result.success) {
         // Animate the 3D dice reroll

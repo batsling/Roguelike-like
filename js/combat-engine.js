@@ -382,6 +382,7 @@ function rerollPlayerDie(diceId) {
 
 /**
  * Confirm a die roll and apply effects
+ * Dice can be used multiple times per turn as long as player has energy
  * @param {string} diceId - ID of the die
  * @param {Object} targets - Target information { enemyId, allyId, etc. }
  * @returns {Object} Result
@@ -392,12 +393,11 @@ function confirmDie(diceId, targets = {}) {
   }
 
   const die = combatState.playerDice.find(d => d.id === diceId);
-  if (!die || !die.isRolled || die.isConfirmed) {
+  if (!die || !die.isRolled) {
     return { success: false, error: 'Cannot confirm this die' };
   }
 
   const face = die.currentFace;
-  die.isConfirmed = true;
 
   // Process effects (skip Cantrip effects as they were already processed)
   if (!face.isBlank) {
@@ -409,18 +409,32 @@ function confirmDie(diceId, targets = {}) {
   }
 
   // Check for Exhert
-  face.effects.forEach(effect => {
-    if (effect.addons) {
-      const exhertAddon = effect.addons.find(a => a.startsWith('Exhert'));
-      if (exhertAddon) {
-        die.isExhausted = true;
-        // Parse duration if present
-        const match = exhertAddon.match(/Exhert\s*\((\d+)\)/i);
-        die.exhertDuration = match ? parseInt(match[1]) : Infinity;
-        addLog(`${die.name} is exhausted!`, 'warning');
+  let hasExhert = false;
+  if (face.effects) {
+    face.effects.forEach(effect => {
+      if (effect.addons) {
+        const exhertAddon = effect.addons.find(a => a.startsWith('Exhert'));
+        if (exhertAddon) {
+          hasExhert = true;
+          die.isExhausted = true;
+          // Parse duration if present
+          const match = exhertAddon.match(/Exhert\s*\((\d+)\)/i);
+          die.exhertDuration = match ? parseInt(match[1]) : Infinity;
+          addLog(`${die.name} is exhausted!`, 'warning');
+        }
       }
-    }
-  });
+    });
+  }
+
+  // Reset dice state so it can be rolled again (unless exhausted)
+  if (!hasExhert) {
+    die.isRolled = false;
+    die.isConfirmed = false;
+    die.currentFace = null;
+    die.currentFaceIndex = null;
+  } else {
+    die.isConfirmed = true;
+  }
 
   return { success: true };
 }
