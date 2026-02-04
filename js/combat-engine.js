@@ -881,6 +881,7 @@ function getAutoTargets(effect) {
 function dealDamage(target, damage, addons = []) {
   // Validate damage is a valid number
   let dmg = (typeof damage === 'number' && !isNaN(damage)) ? damage : 0;
+  console.log('[dealDamage] Called with:', { targetName: target?.name, targetId: target?.id, damage, dmg, targetHealth: target?.health });
   if (dmg <= 0) return;
 
   // Check Engage (x2 on full health)
@@ -921,6 +922,7 @@ function dealDamage(target, damage, addons = []) {
   // Deal remaining damage to health
   if (remainingDamage > 0) {
     target.health -= remainingDamage;
+    console.log('[dealDamage] After damage:', { targetName: target?.name, newHealth: target?.health, remainingDamage });
     addLog(`${target.name || 'Player'} took ${remainingDamage} damage`, 'danger');
 
     // Check Thorns
