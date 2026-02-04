@@ -605,14 +605,15 @@ function processEffect(effect, die, targets, isCantrip = false) {
   const move = effect.move.toLowerCase();
   let value = effect.value || 0;
 
-  console.log('[processEffect] Effect:', { move, rawValue: effect.value, valueAfterDefault: value });
+  console.log('[processEffect] move=' + move + ', effect.value=' + effect.value + ', initial value=' + value);
 
   // Apply stat bonuses
   value = applyStatBonus(move, value, die);
-  console.log('[processEffect] After stat bonus:', { move, value });
+  console.log('[processEffect] After applyStatBonus: value=' + value + ' (type: ' + typeof value + ')');
 
   // Get targets based on addons
   const resolvedTargets = resolveTargets(effect, targets, isCantrip);
+  console.log('[processEffect] About to process move=' + move + ' with value=' + value);
 
   // Process based on move type
   switch (move) {
