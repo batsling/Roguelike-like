@@ -20,6 +20,46 @@ function renderCombatUI(combat, container) {
   if (!combat) return;
 
   const html = `
+    <style>
+      .combat-die:hover .dice-tooltip {
+        display: block !important;
+      }
+      .combat-die {
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      .combat-die:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+      }
+      .enemy-card:hover {
+        transform: scale(1.02);
+        box-shadow: 0 0 12px rgba(255,215,0,0.4);
+      }
+      .die-roll-btn:hover, .die-confirm-btn:hover, .die-reroll-btn:hover {
+        transform: scale(1.05);
+      }
+      #enemy-intent-panel {
+        animation: intentReveal 0.5s ease-out;
+      }
+      @keyframes intentReveal {
+        0% {
+          opacity: 0.5;
+          transform: scale(0.95);
+          border-color: rgba(255,100,50,0.8);
+          box-shadow: 0 0 20px rgba(255,100,50,0.5);
+        }
+        50% {
+          border-color: rgba(255,170,68,0.8);
+          box-shadow: 0 0 15px rgba(255,170,68,0.4);
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1);
+          border-color: rgba(255,170,68,0.4);
+          box-shadow: none;
+        }
+      }
+    </style>
     <div id="new-combat-container" style="
       display: flex;
       flex-direction: column;
@@ -66,15 +106,16 @@ function renderCombatUI(combat, container) {
             </div>
 
             <!-- Center: Enemy Intent Display -->
-            <div style="
-              width: 140px;
+            <div id="enemy-intent-panel" style="
+              width: 160px;
               display: flex;
               flex-direction: column;
               align-items: center;
-              justify-content: center;
+              justify-content: flex-start;
               gap: 10px;
               flex-shrink: 0;
               background: rgba(0,0,0,0.3);
+              border: 2px solid rgba(255,170,68,0.4);
               border-radius: 8px;
               padding: 10px;
             ">
@@ -84,7 +125,18 @@ function renderCombatUI(combat, container) {
                 color: #ffaa44;
                 text-transform: uppercase;
                 margin-bottom: 5px;
-              ">ENEMY INTENT</div>
+                display: flex;
+                align-items: center;
+                gap: 6px;
+              ">
+                <span style="font-size: 16px;">🎲</span>
+                ENEMY INTENT
+              </div>
+              <div style="
+                font-size: 11px;
+                color: #888;
+                margin-bottom: 4px;
+              ">Turn ${combat.turn}</div>
               ${renderEnemyIntentCenter(combat)}
             </div>
 
@@ -627,15 +679,17 @@ function renderStatusEffects(statuses, targetId) {
 }
 
 /**
- * Render dice area
+ * Render dice area with larger container
  */
 function renderDiceArea(combat) {
   return `
     <div style="
       display: flex;
       flex-wrap: wrap;
-      gap: 15px;
+      gap: 12px;
       justify-content: center;
+      padding: 10px 0;
+      min-height: 220px;
     ">
       ${combat.playerDice.map(die => renderDie(die, combat)).join('')}
     </div>
@@ -643,21 +697,39 @@ function renderDiceArea(combat) {
 }
 
 /**
- * Render a single die with 3D container
+ * Generate tooltip HTML for dice faces
+ */
+function generateDiceTooltip(die) {
+  if (!die.faces || die.faces.length === 0) return '';
+
+  const facesHTML = die.faces.map((face, i) => {
+    if (face.isBlank) {
+      return `<div style="padding: 2px 6px; background: rgba(0,0,0,0.3); border-radius: 3px; color: #666;">—</div>`;
+    }
+    const effect = face.effects && face.effects[0];
+    if (!effect) return `<div style="padding: 2px 6px;">?</div>`;
+
+    const moveKey = effect.move?.toLowerCase();
+    const emoji = moveEmojis[moveKey] || effect.move || '?';
+    const value = effect.value || 0;
+
+    return `<div style="padding: 2px 6px; background: rgba(0,0,0,0.3); border-radius: 3px;">${value} ${emoji}</div>`;
+  }).join('');
+
+  return facesHTML;
+}
+
+/**
+ * Render a single die with 3D container and tooltip
  */
 function renderDie(die, combat) {
   const isAvailable = !die.isExhausted &&
     (die.source !== 'ally' || combat.allies.find(a => a.id === die.id)?.isAlive);
 
-  const faceDisplay = die.isRolled && die.currentFace
-    ? (die.currentFace.isBlank ? 'Blank' : die.currentFace.raw)
-    : '?';
-
   const borderColor = die.isConfirmed ? '#4CAF50' :
     die.isRolled ? '#FFD700' :
     isAvailable ? '#2196F3' : '#666';
 
-  // Determine source color for 3D die based on source type
   const sourceColor = die.source === 'character' ? '#cc6600' :
     die.source === 'weapon' ? '#888888' :
     die.source === 'ally' ? '#66ccff' : '#cc6600';
@@ -667,31 +739,53 @@ function renderDie(die, combat) {
       background: rgba(0,0,0,0.5);
       border: 3px solid ${borderColor};
       border-radius: 12px;
-      padding: 15px;
-      min-width: 160px;
+      padding: 12px;
+      min-width: 180px;
       text-align: center;
+      position: relative;
       ${!isAvailable ? 'opacity: 0.5;' : ''}
     ">
-      <div style="font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 5px;">
+      <!-- Tooltip on hover showing all faces -->
+      <div class="dice-tooltip" style="
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(20,20,25,0.95);
+        border: 2px solid #555;
+        border-radius: 8px;
+        padding: 8px;
+        margin-bottom: 8px;
+        display: none;
+        z-index: 100;
+        min-width: 120px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      ">
+        <div style="font-size: 11px; color: #888; margin-bottom: 6px; text-transform: uppercase;">All Faces</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; font-size: 13px; color: #fff;">
+          ${generateDiceTooltip(die)}
+        </div>
+      </div>
+
+      <div style="font-size: 11px; color: #888; text-transform: uppercase; margin-bottom: 3px;">
         ${die.source}
       </div>
-      <div style="font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 10px;">
+      <div style="font-size: 13px; font-weight: bold; color: #fff; margin-bottom: 8px;">
         ${die.name}
       </div>
 
-      <!-- 3D Dice Container -->
+      <!-- 3D Dice Container - BIGGER -->
       <div id="dice-3d-${die.id}" class="dice-3d-container" data-die-id="${die.id}"
         data-source-color="${sourceColor}"
         style="
-          width: 120px;
-          height: 120px;
-          margin: 0 auto 10px auto;
+          width: 140px;
+          height: 140px;
+          margin: 0 auto 8px auto;
           background: #1a1410;
           border-radius: 8px;
           cursor: ${!die.isRolled && isAvailable ? 'pointer' : 'default'};
           position: relative;
         ">
-        <!-- 3D renderer will be initialized here -->
         ${!die.isRolled && !activeDiceRenderers[die.id] ? `
           <div style="
             position: absolute;
@@ -710,9 +804,10 @@ function renderDie(die, combat) {
         <div style="
           background: rgba(0,0,0,0.4);
           border-radius: 6px;
-          padding: 8px;
-          margin-bottom: 10px;
+          padding: 6px;
+          margin-bottom: 8px;
           font-size: 14px;
+          font-weight: bold;
           color: #fff;
         ">
           ${die.currentFace.isBlank ? 'Blank' : die.currentFace.raw}
@@ -1016,6 +1111,7 @@ class CombatDiceRenderer extends DiceRendererInstance {
     super();
     this.faces = [];
     this.bgColor = '#cc6600';
+    this.targetFaceIndex = null;
   }
 
   /**
@@ -1030,19 +1126,18 @@ class CombatDiceRenderer extends DiceRendererInstance {
 
     const materials = [];
 
-    // Cube face normals in order: right, left, top, bottom, front, back
-    const cubeNormals = [
-      new THREE.Vector3(1, 0, 0),
-      new THREE.Vector3(-1, 0, 0),
-      new THREE.Vector3(0, 1, 0),
-      new THREE.Vector3(0, -1, 0),
-      new THREE.Vector3(0, 0, 1),
-      new THREE.Vector3(0, 0, -1)
+    // Cube face order in Three.js BoxGeometry: +X, -X, +Y, -Y, +Z, -Z
+    // We map our 6 dice faces to these positions
+    this.faceNormals = [
+      new THREE.Vector3(1, 0, 0),   // Face 0 -> +X (right)
+      new THREE.Vector3(-1, 0, 0),  // Face 1 -> -X (left)
+      new THREE.Vector3(0, 1, 0),   // Face 2 -> +Y (top)
+      new THREE.Vector3(0, -1, 0),  // Face 3 -> -Y (bottom)
+      new THREE.Vector3(0, 0, 1),   // Face 4 -> +Z (front)
+      new THREE.Vector3(0, 0, -1)   // Face 5 -> -Z (back)
     ];
 
-    this.faceNormals = [];
-
-    // Map dice faces to cube faces (indices 0-5)
+    // Map dice faces to cube faces
     for (let i = 0; i < 6; i++) {
       const face = faces[i] || { isBlank: true, effects: [], raw: '?' };
       const canvas = createCombatFaceTexture(face, bgColor);
@@ -1056,7 +1151,6 @@ class CombatDiceRenderer extends DiceRendererInstance {
       });
 
       materials.push(material);
-      this.faceNormals.push(cubeNormals[i].clone());
     }
 
     const mesh = new THREE.Mesh(geometry, materials);
@@ -1067,20 +1161,143 @@ class CombatDiceRenderer extends DiceRendererInstance {
    * Create combat dice and add to scene
    */
   createCombatDice(faces, bgColor = '#cc6600') {
-    // Remove old dice if it exists
     if (this.mesh) {
       this.scene.remove(this.mesh);
       this.disposeMesh();
     }
 
-    // Reset roll state
     this.hasRolled = false;
     this.diceType = 'd6-combat';
     this.faces = faces;
+    this.targetFaceIndex = null;
 
-    // Create new mesh
     this.mesh = this.createCombatD6Mesh(faces, bgColor);
     this.scene.add(this.mesh);
+  }
+
+  /**
+   * Roll the dice to show a specific face
+   * @param {number} faceIndex - 0-based index of face to show
+   * @param {Function} callback - Called when animation completes
+   */
+  rollToFace(faceIndex, callback) {
+    if (this.isRolling) {
+      console.warn('Dice is already rolling');
+      return;
+    }
+
+    this.isRolling = true;
+    this.hasRolled = true;
+    this.targetFaceIndex = faceIndex;
+
+    const duration = 1200;
+    const startTime = Date.now();
+
+    // Store starting rotation
+    const startQuat = new THREE.Quaternion().setFromEuler(this.mesh.rotation);
+
+    // Calculate target rotation to show the specified face
+    const targetRotation = this.calculateFaceRotation(faceIndex + 1);
+    const targetEuler = new THREE.Euler(targetRotation.x, targetRotation.y, targetRotation.z, 'XYZ');
+    const targetQuat = new THREE.Quaternion().setFromEuler(targetEuler);
+
+    // Random spin axis for visual variety
+    const spinAxis = new THREE.Vector3(
+      Math.random() - 0.5,
+      Math.random() - 0.5,
+      Math.random() - 0.5
+    ).normalize();
+    const extraSpins = 2 + Math.random();
+
+    const animateRoll = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      if (progress < 1) {
+        const easeProgress = 1 - Math.pow(1 - progress, 3);
+        const currentQuat = new THREE.Quaternion();
+
+        if (progress < 0.6) {
+          // Spinning phase
+          const spinAmount = extraSpins * Math.PI * 2 * progress / 0.6;
+          const spinQuat = new THREE.Quaternion().setFromAxisAngle(spinAxis, spinAmount);
+          currentQuat.multiplyQuaternions(spinQuat, startQuat);
+        } else {
+          // Transition to final position
+          const blendProgress = (progress - 0.6) / 0.4;
+          const blendEase = 1 - Math.pow(1 - blendProgress, 2);
+
+          const spinAmount = extraSpins * Math.PI * 2;
+          const spinQuat = new THREE.Quaternion().setFromAxisAngle(spinAxis, spinAmount);
+          const finalSpinQuat = new THREE.Quaternion().multiplyQuaternions(spinQuat, startQuat);
+
+          currentQuat.slerpQuaternions(finalSpinQuat, targetQuat, blendEase);
+        }
+
+        this.mesh.rotation.setFromQuaternion(currentQuat);
+        requestAnimationFrame(animateRoll);
+      } else {
+        // Final position - ensure exact target
+        this.mesh.rotation.set(targetRotation.x, targetRotation.y, targetRotation.z);
+        this.isRolling = false;
+        if (callback) callback();
+      }
+    };
+
+    // Start with a small jump
+    this.animateDiceJump(() => animateRoll());
+  }
+
+  /**
+   * Calculate rotation to show a face toward camera
+   */
+  calculateFaceRotation(faceNumber) {
+    const faceIndex = faceNumber - 1;
+
+    if (faceIndex < 0 || faceIndex >= 6 || !this.faceNormals[faceIndex]) {
+      return { x: 0, y: 0, z: 0 };
+    }
+
+    const normal = this.faceNormals[faceIndex].clone();
+    const targetDirection = new THREE.Vector3(0, 0, 1); // Camera is at +Z
+
+    const quaternion = new THREE.Quaternion();
+    quaternion.setFromUnitVectors(normal, targetDirection);
+
+    const euler = new THREE.Euler();
+    euler.setFromQuaternion(quaternion, 'XYZ');
+
+    return { x: euler.x, y: euler.y, z: euler.z };
+  }
+
+  /**
+   * Animate dice jumping
+   */
+  animateDiceJump(callback) {
+    const jumpHeight = 1.0;
+    const jumpDuration = 200;
+    const startY = this.mesh.position.y;
+    const startTime = Date.now();
+
+    const jump = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / jumpDuration, 1);
+
+      if (progress < 0.5) {
+        this.mesh.position.y = startY + (jumpHeight * (progress * 2));
+      } else {
+        this.mesh.position.y = startY + (jumpHeight * (1 - (progress - 0.5) * 2));
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(jump);
+      } else {
+        this.mesh.position.y = startY;
+        callback();
+      }
+    };
+
+    jump();
   }
 
   disposeMesh() {
@@ -1098,29 +1315,6 @@ class CombatDiceRenderer extends DiceRendererInstance {
         this.mesh.material.dispose();
       }
     }
-  }
-
-  /**
-   * Override calculateFaceRotation for D6
-   */
-  calculateFaceRotation(faceNumber) {
-    const faceIndex = faceNumber - 1;
-
-    if (faceIndex < 0 || faceIndex >= 6 || !this.faceNormals[faceIndex]) {
-      console.warn('Invalid face number:', faceNumber);
-      return { x: 0, y: 0, z: 0 };
-    }
-
-    const normal = this.faceNormals[faceIndex];
-    const targetDirection = new THREE.Vector3(0, 0, 1);
-
-    const quaternion = new THREE.Quaternion();
-    quaternion.setFromUnitVectors(normal, targetDirection);
-
-    const euler = new THREE.Euler();
-    euler.setFromQuaternion(quaternion, 'XYZ');
-
-    return { x: euler.x, y: euler.y, z: euler.z };
   }
 }
 
@@ -1185,7 +1379,7 @@ function handleDiceContainerClick(diceId) {
 }
 
 /**
- * Animate 3D dice roll
+ * Animate 3D dice roll to show specific face
  */
 function animate3DDiceRoll(diceId, faceIndex, callback) {
   const rendererData = activeDiceRenderers[diceId];
@@ -1195,22 +1389,9 @@ function animate3DDiceRoll(diceId, faceIndex, callback) {
   }
 
   const renderer = rendererData.renderer;
-  const die = rendererData.die;
 
-  // faceIndex is 0-based, rollDice expects 1-based
-  const faceNumber = faceIndex + 1;
-
-  // Create mock dice data for rollDice method
-  const diceData = {
-    type: 'd6-combat',
-    sides: die.faces.map((f, i) => ({
-      value: i + 1,
-      displayValue: null,
-      displayText: f.isBlank ? '—' : (f.raw || '?')
-    }))
-  };
-
-  renderer.rollDice(diceData, faceNumber, callback);
+  // Use our custom rollToFace method that ensures correct face is shown
+  renderer.rollToFace(faceIndex, callback);
 }
 
 /**
@@ -1260,12 +1441,22 @@ function attachCombatEventListeners(combat) {
   document.querySelectorAll('.die-confirm-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const diceId = e.target.dataset.dieId;
+      const combatData = window.CombatEngine.getCombatState();
+
+      // Find the die and check if it needs a target
+      const die = combatData?.playerDice.find(d => d.id === diceId);
+      if (!die || !die.currentFace) return;
+
+      // Check if face has damage or other targeting effects
+      const needsTarget = !die.currentFace.isBlank && die.currentFace.effects.some(effect => {
+        const move = effect.move?.toLowerCase();
+        return ['dmg', 'inflict', 'assassinate'].includes(move);
+      });
 
       // Build targets based on current selection and combat state
       const targets = { self: true };
 
       // Add enemy targeting
-      const combatData = window.CombatEngine.getCombatState();
       if (combatData && combatData.enemies) {
         const aliveEnemies = combatData.enemies.filter(en => en.health > 0);
 
@@ -1275,8 +1466,13 @@ function attachCombatEventListeners(combat) {
         } else if (aliveEnemies.length > 1 && window.selectedEnemyTarget) {
           // Use selected target if available
           targets.enemyId = window.selectedEnemyTarget;
+        } else if (aliveEnemies.length > 1 && needsTarget) {
+          // Force target selection for damage effects
+          showTargetRequiredMessage();
+          highlightEnemiesForSelection();
+          return; // Don't confirm until target is selected
         } else if (aliveEnemies.length > 1) {
-          // Default to first enemy if no selection
+          // Default to first enemy for non-targeting effects
           targets.enemyId = aliveEnemies[0].id;
         }
       }
@@ -1375,6 +1571,92 @@ function attachCombatEventListeners(combat) {
       card.style.boxShadow = '0 0 10px #FFD700';
     });
   });
+}
+
+/**
+ * Show message requiring target selection
+ */
+function showTargetRequiredMessage() {
+  // Create a floating message
+  const existingMsg = document.getElementById('target-required-msg');
+  if (existingMsg) existingMsg.remove();
+
+  const msg = document.createElement('div');
+  msg.id = 'target-required-msg';
+  msg.innerHTML = '⚔️ Select a target first!';
+  msg.style.cssText = `
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(244, 67, 54, 0.95);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    animation: fadeInOut 2s forwards;
+  `;
+
+  // Add animation style if not exists
+  if (!document.getElementById('target-msg-style')) {
+    const style = document.createElement('style');
+    style.id = 'target-msg-style';
+    style.textContent = `
+      @keyframes fadeInOut {
+        0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+        15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        85% { opacity: 1; }
+        100% { opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  document.body.appendChild(msg);
+
+  // Remove after animation
+  setTimeout(() => msg.remove(), 2000);
+}
+
+/**
+ * Highlight enemies to indicate target selection is needed
+ */
+function highlightEnemiesForSelection() {
+  document.querySelectorAll('.enemy-card').forEach(card => {
+    const enemyId = card.dataset.enemyId;
+    const combat = window.CombatEngine.getCombatState();
+    const enemy = combat?.enemies.find(e => e.id === enemyId);
+
+    if (enemy && enemy.health > 0) {
+      // Add pulsing highlight effect
+      card.style.animation = 'targetPulse 0.6s ease-in-out 3';
+      card.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.8)';
+
+      // Remove effect after animation
+      setTimeout(() => {
+        card.style.animation = '';
+        if (!window.selectedEnemyTarget || window.selectedEnemyTarget !== enemyId) {
+          card.style.boxShadow = '';
+        }
+      }, 1800);
+    }
+  });
+
+  // Add pulse animation if not exists
+  if (!document.getElementById('target-pulse-style')) {
+    const style = document.createElement('style');
+    style.id = 'target-pulse-style';
+    style.textContent = `
+      @keyframes targetPulse {
+        0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.4); }
+        50% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.9); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
 }
 
 /**
