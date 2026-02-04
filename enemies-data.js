@@ -187,7 +187,7 @@ var ENEMIES_DATA = [
   {
     "name": "Elder Lemurian",
     "type": "Strength",
-    "difficulty": "Hard",
+    "difficulty": "High",
     "hp": 40,
     "ability": "N/A",
     "game": "Risk of Rain",

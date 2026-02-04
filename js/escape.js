@@ -844,7 +844,7 @@ function switchCollectionTab(tab) {
                 ${item.rarity}
               </div>
               <div style="font-size: 10px; color: #888; text-align: center; font-style: italic;">
-                ${item.reference || 'Unknown'}
+                ${item.game || 'Unknown'}
               </div>
               <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
                 ${item.description || 'No description'}
@@ -878,25 +878,63 @@ function switchCollectionTab(tab) {
     // Load the current sub-tab content
     switchLootSubTab(window.currentLootSubTab);
   } else if (tab === 'enemies') {
+    // Initialize sort state if not set
+    if (!window.enemySortType) {
+      window.enemySortType = 'name';
+    }
+
     // Filter out variants (they'll be shown in the details panel of their base enemy)
     // and filter out N/A difficulty enemies (variants/transformations)
     const baseEnemies = enemies.filter(e => !e.variantOf && e.difficulty !== 'N/A');
-    const sortedEnemies = [...baseEnemies].sort((a, b) => a.name.localeCompare(b.name));
 
     // Get difficulty color
     const getDifficultyColor = (difficulty) => {
       switch((difficulty || '').toLowerCase()) {
         case 'low': return '#4CAF50';
         case 'medium': return '#ff9800';
-        case 'hard': return '#f44336';
+        case 'high': return '#f44336';
         case 'boss': return '#9b59b6';
         default: return '#888';
       }
     };
 
+    // Sort enemies based on current sort type
+    const difficultyOrder = { 'low': 1, 'medium': 2, 'high': 3, 'boss': 4 };
+    let sortedEnemies;
+    if (window.enemySortType === 'name') {
+      sortedEnemies = [...baseEnemies].sort((a, b) => a.name.localeCompare(b.name));
+    } else if (window.enemySortType === 'type') {
+      sortedEnemies = [...baseEnemies].sort((a, b) => {
+        const typeDiff = (a.type || '').localeCompare(b.type || '');
+        return typeDiff !== 0 ? typeDiff : a.name.localeCompare(b.name);
+      });
+    } else if (window.enemySortType === 'game') {
+      sortedEnemies = [...baseEnemies].sort((a, b) => {
+        const gameDiff = (a.game || '').localeCompare(b.game || '');
+        return gameDiff !== 0 ? gameDiff : a.name.localeCompare(b.name);
+      });
+    } else if (window.enemySortType === 'difficulty') {
+      sortedEnemies = [...baseEnemies].sort((a, b) => {
+        const diffA = difficultyOrder[(a.difficulty || '').toLowerCase()] || 0;
+        const diffB = difficultyOrder[(b.difficulty || '').toLowerCase()] || 0;
+        return diffA !== diffB ? diffA - diffB : a.name.localeCompare(b.name);
+      });
+    } else {
+      sortedEnemies = [...baseEnemies].sort((a, b) => a.name.localeCompare(b.name));
+    }
+
     content.innerHTML = `
       <!-- Left side: Enemy grid (8 per row) -->
       <div id="enemies-grid-container" style="flex: 2; overflow-y: auto; padding: 10px;">
+        <!-- Sort controls -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center;">
+          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort:</span>
+          <button onclick="sortEnemies('name')" id="enemy-sort-name" style="padding: 6px 12px; background: ${window.enemySortType === 'name' ? '#f44336' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Name</button>
+          <button onclick="sortEnemies('type')" id="enemy-sort-type" style="padding: 6px 12px; background: ${window.enemySortType === 'type' ? '#f44336' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Type</button>
+          <button onclick="sortEnemies('game')" id="enemy-sort-game" style="padding: 6px 12px; background: ${window.enemySortType === 'game' ? '#f44336' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Game</button>
+          <button onclick="sortEnemies('difficulty')" id="enemy-sort-difficulty" style="padding: 6px 12px; background: ${window.enemySortType === 'difficulty' ? '#f44336' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Difficulty</button>
+          <span style="color: #666; font-size: 11px; margin-left: auto;">${sortedEnemies.length} enemies</span>
+        </div>
         <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px;">
           ${sortedEnemies.map(enemy => {
             const diffColor = getDifficultyColor(enemy.difficulty);
@@ -1265,8 +1303,8 @@ function sortCollectionItems(sortType) {
     });
   } else if (sortType === 'game') {
     sortedItems = filteredItems.sort((a, b) => {
-      const gameA = a.reference || 'Unknown';
-      const gameB = b.reference || 'Unknown';
+      const gameA = a.game || 'Unknown';
+      const gameB = b.game || 'Unknown';
       const gameDiff = gameA.localeCompare(gameB);
       if (gameDiff !== 0) return gameDiff;
       return a.name.localeCompare(b.name);
@@ -1309,7 +1347,7 @@ function sortCollectionItems(sortType) {
             ${item.rarity}
           </div>
           <div style="font-size: 10px; color: #888; text-align: center; font-style: italic;">
-            ${item.reference || 'Unknown'}
+            ${item.game || 'Unknown'}
           </div>
           <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
             ${item.description || 'No description'}
@@ -1324,6 +1362,12 @@ function sortCollectionItems(sortType) {
 function toggleItemsNA() {
   window.itemsShowNA = !window.itemsShowNA;
   switchCollectionTab('items');
+}
+
+// Sort enemies in collection
+function sortEnemies(sortType) {
+  window.enemySortType = sortType;
+  switchCollectionTab('enemies');
 }
 
 // Switch between curse tiers (I, II, III)

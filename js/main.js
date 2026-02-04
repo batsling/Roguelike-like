@@ -6168,7 +6168,7 @@ function showEnemyDetails(enemyName) {
     switch((difficulty || '').toLowerCase()) {
       case 'low': return '#4CAF50';
       case 'medium': return '#ff9800';
-      case 'hard': return '#f44336';
+      case 'high': return '#f44336';
       case 'boss': return '#9b59b6';
       default: return '#888';
     }
@@ -6229,8 +6229,8 @@ function showEnemyDetails(enemyName) {
 
   // Build dice HTML
   const diceHTML = enemy.dice ? `
-    <div style="margin-top: 15px;">
-      <strong style="color: #f44336;">Dice:</strong>
+    <div id="enemy-dice-section" style="margin-top: 15px;">
+      <strong style="color: #f44336;">Dice (${enemy.name}):</strong>
       <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
         ${enemy.dice.map((face, idx) => {
           if (face.isBlank) {
@@ -6317,14 +6317,57 @@ function showEnemyDetails(enemyName) {
   `;
 }
 
-// Switch enemy image in details panel (for variants)
+// Switch enemy form in details panel (for variants) - updates image and dice
 function switchEnemyImage(enemyName) {
   const enemy = enemies.find(e => e.name === enemyName);
   if (!enemy) return;
 
+  // Update image
   const img = document.getElementById('enemy-detail-image');
   if (img) {
     img.src = enemy.imageUrl || getEnemyImagePath(enemy.name);
+  }
+
+  // Update dice section
+  const diceContainer = document.getElementById('enemy-dice-section');
+  if (diceContainer && enemy.dice) {
+    diceContainer.innerHTML = `
+      <strong style="color: #f44336;">Dice (${enemy.name}):</strong>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
+        ${enemy.dice.map((face, idx) => {
+          if (face.isBlank) {
+            return `
+              <div style="
+                background: rgba(0,0,0,0.4);
+                border: 1px solid #333;
+                border-radius: 6px;
+                padding: 8px;
+                text-align: center;
+                font-size: 11px;
+                color: #666;
+              ">
+                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
+                <div>Blank</div>
+              </div>
+            `;
+          }
+          return `
+            <div style="
+              background: rgba(244, 67, 54, 0.1);
+              border: 1px solid rgba(244, 67, 54, 0.3);
+              border-radius: 6px;
+              padding: 8px;
+              text-align: center;
+              font-size: 11px;
+              color: #ddd;
+            ">
+              <div style="font-weight: bold; color: #f44336; margin-bottom: 4px;">Face ${idx + 1}</div>
+              <div>${face.raw || face.effects?.map(e => e.raw).join(', ') || '—'}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
   }
 }
 

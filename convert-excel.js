@@ -115,6 +115,16 @@ const gamesMap = new Map();
 
 gamesData.forEach(row => {
   const name = row['Name'];
+  const fileName = row['File'];
+
+  // Use File column if available, otherwise generate from name
+  let coverImage;
+  if (fileName && fileName.toString().trim()) {
+    coverImage = `images/covers/${fileName.toString().trim()}.jpg`;
+  } else {
+    coverImage = `images/covers/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.jpg`;
+  }
+
   const game = {
     name: name,
     year: parseInt(row['Year']) || 0,
@@ -123,7 +133,7 @@ gamesData.forEach(row => {
     influenced: row['Influencer?'] === true || row['Influencer?'] === 'TRUE',
     tags: [],
     gamesInfluenced: [],
-    coverImage: `images/covers/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.jpg`
+    coverImage: coverImage
   };
 
   if (game.coverImage === 'images/covers/-.jpg' || game.coverImage === 'images/covers/.jpg') {
