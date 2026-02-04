@@ -609,10 +609,17 @@ function processEffect(effect, die, targets, isCantrip = false) {
   // Get targets based on addons
   const resolvedTargets = resolveTargets(effect, targets, isCantrip);
 
+  console.log('processEffect:', { move, value, targets, resolvedTargets, isCantrip });
+
   // Process based on move type
   switch (move) {
     case 'dmg':
+      console.log('Processing dmg, enemies to target:', resolvedTargets.enemies.length);
+      if (resolvedTargets.enemies.length === 0) {
+        console.warn('No enemies to deal damage to! Targets:', targets);
+      }
       resolvedTargets.enemies.forEach(enemy => {
+        console.log('Dealing', value, 'damage to', enemy.name);
         dealDamage(enemy, value, effect.addons || []);
       });
       break;

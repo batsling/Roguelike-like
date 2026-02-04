@@ -12,6 +12,7 @@
 let activeDiceRenderers = {};
 let enemyDiceRenderers = {};
 let lastEnemyDiceInitTurn = -1; // Track which turn enemy dice were initialized
+let rolledDiceStates = {}; // Track which dice have been rolled (to stop animation)
 
 // Image cache for move icons
 const moveImageCache = {};
@@ -109,88 +110,88 @@ function renderCombatUI(combat, container) {
       .enemy-die-container:hover {
         transform: scale(1.05);
       }
-      #enemy-intent-panel {
-        animation: intentReveal 0.5s ease-out;
-      }
-      @keyframes intentReveal {
-        0% {
-          opacity: 0.5;
-          transform: scale(0.95);
-          border-color: rgba(255,100,50,0.8);
-          box-shadow: 0 0 20px rgba(255,100,50,0.5);
-        }
-        50% {
-          border-color: rgba(255,170,68,0.8);
-          box-shadow: 0 0 15px rgba(255,170,68,0.4);
-        }
-        100% {
-          opacity: 1;
-          transform: scale(1);
-          border-color: rgba(255,170,68,0.4);
-          box-shadow: none;
-        }
+      /* Crisp pixel art rendering */
+      .pixel-image {
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        -ms-interpolation-mode: nearest-neighbor;
       }
     </style>
-    <div id="new-combat-container" style="
+    <!-- Outer container with combat log on the side -->
+    <div style="
       display: flex;
-      flex-direction: column;
       width: 100%;
       height: 100%;
-      background: linear-gradient(135deg, #1a1410 0%, #2a1810 100%);
-      padding: 10px;
-      gap: 8px;
+      gap: 0;
       overflow: hidden;
       box-sizing: border-box;
     ">
-      <!-- Top: Resources Bar -->
-      ${renderResourcesBar(combat)}
+      <!-- Combat Log - Outside main box -->
+      <div id="combat-log-sidebar" style="
+        width: 160px;
+        background: rgba(20,15,10,0.95);
+        border-right: 2px solid #333;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      ">
+        <div style="
+          font-size: 11px;
+          font-weight: bold;
+          color: #888;
+          text-transform: uppercase;
+          margin-bottom: 8px;
+          padding-bottom: 5px;
+          border-bottom: 1px solid #444;
+        ">Combat Log</div>
+        <div style="flex: 1; overflow-y: auto;">
+          ${renderCombatLog(combat)}
+        </div>
+      </div>
 
-      <!-- Main Area: Combat + Log -->
-      <div style="
+      <!-- Main Combat Area -->
+      <div id="new-combat-container" style="
         flex: 1;
         display: flex;
-        gap: 10px;
-        min-height: 0;
+        flex-direction: column;
+        background: linear-gradient(135deg, #1a1410 0%, #2a1810 100%);
+        padding: 10px;
+        gap: 8px;
         overflow: hidden;
+        box-sizing: border-box;
       ">
-        <!-- Left: Combat Area -->
-        <div style="
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          min-width: 0;
-          overflow: hidden;
-        ">
-          <!-- Combatants Row: Player | Intent | Enemy -->
-          <div style="
-            display: flex;
-            gap: 10px;
-            align-items: stretch;
-            height: 320px;
-            flex-shrink: 0;
-          ">
-            <!-- Player Side -->
-            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto; max-height: 320px;">
-              ${renderPlayerSection(combat)}
-              ${renderAlliesSection(combat)}
-            </div>
+        <!-- Top: Resources Bar -->
+        ${renderResourcesBar(combat)}
 
-            <!-- Center: Enemy Intent Display -->
-            <div id="enemy-intent-panel" style="
-              width: 180px;
-              height: 320px;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: flex-start;
-              gap: 10px;
-              flex-shrink: 0;
-              background: rgba(0,0,0,0.3);
-              border: 2px solid rgba(255,170,68,0.4);
-              border-radius: 8px;
-              padding: 10px;
-              overflow-y: auto;
+        <!-- Combatants Row: Player | Intent | Enemy -->
+        <div style="
+          display: flex;
+          gap: 10px;
+          align-items: stretch;
+          flex: 1;
+          min-height: 0;
+        ">
+          <!-- Player Side -->
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto;">
+            ${renderPlayerSection(combat)}
+            ${renderAlliesSection(combat)}
+          </div>
+
+          <!-- Center: Enemy Intent Display - LARGER -->
+          <div id="enemy-intent-panel" style="
+            width: 220px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            flex-shrink: 0;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,170,68,0.4);
+            border-radius: 8px;
+            padding: 12px;
+            overflow-y: auto;
             ">
               <div style="
                 font-size: 14px;
@@ -213,92 +214,69 @@ function renderCombatUI(combat, container) {
               ${renderEnemyIntentCenter(combat)}
             </div>
 
-            <!-- Enemy Side -->
-            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto; max-height: 320px;">
-              ${renderEnemiesSection(combat)}
-            </div>
+          <!-- Enemy Side -->
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto;">
+            ${renderEnemiesSection(combat)}
           </div>
-
-          <!-- Dice Area with End Turn/Dash buttons -->
-          <div style="
-            background: rgba(0,0,0,0.4);
-            border: 2px solid #444;
-            border-radius: 8px;
-            padding: 10px;
-            flex-shrink: 0;
-            position: relative;
-          ">
-            <!-- End Turn / Dash buttons in top-right -->
-            <div style="
-              position: absolute;
-              top: 8px;
-              right: 8px;
-              display: flex;
-              gap: 8px;
-              z-index: 10;
-            ">
-              <button id="combat-dash-btn" style="
-                padding: 6px 12px;
-                font-size: 12px;
-                background: linear-gradient(145deg, #2196F3, #1565C0);
-                border: 2px solid #42A5F5;
-                border-radius: 6px;
-                color: white;
-                cursor: pointer;
-                ${combat.player.dash > 0 ? '' : 'opacity: 0.5; cursor: not-allowed;'}
-              ">Dash (${combat.player.dash})</button>
-              <button id="combat-end-turn-btn" style="
-                padding: 8px 16px;
-                font-size: 14px;
-                font-weight: bold;
-                background: linear-gradient(145deg, #4CAF50, #2E7D32);
-                border: 2px solid #66BB6A;
-                border-radius: 8px;
-                color: white;
-                cursor: pointer;
-                text-transform: uppercase;
-              ">End Turn</button>
-            </div>
-            ${renderDiceArea(combat)}
-          </div>
-
-          <!-- Spellbook -->
-          ${combat.spells && combat.spells.length > 0 ? `
-            <div id="spellbook-container" style="
-              background: rgba(0,0,0,0.4);
-              border: 2px solid #9C27B0;
-              border-radius: 8px;
-              padding: 8px;
-              max-height: 80px;
-              overflow-y: auto;
-              flex-shrink: 0;
-            ">
-              ${renderSpellbook(combat)}
-            </div>
-          ` : ''}
         </div>
 
-        <!-- Right: Combat Log -->
-        <div id="combat-log-container" style="
-          width: 180px;
+        <!-- Dice Area with End Turn/Dash buttons -->
+        <div style="
           background: rgba(0,0,0,0.4);
           border: 2px solid #444;
           border-radius: 8px;
           padding: 10px;
-          overflow-y: auto;
           flex-shrink: 0;
+          position: relative;
         ">
+          <!-- End Turn / Dash buttons in top-right -->
           <div style="
-            font-size: 11px;
-            font-weight: bold;
-            color: #888;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-            border-bottom: 1px solid #444;
-            padding-bottom: 5px;
-          ">Combat Log</div>
-          ${renderCombatLog(combat)}
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+          ">
+            <button id="combat-dash-btn" style="
+              padding: 6px 12px;
+              font-size: 12px;
+              background: linear-gradient(145deg, #2196F3, #1565C0);
+              border: 2px solid #42A5F5;
+              border-radius: 6px;
+              color: white;
+              cursor: pointer;
+              ${combat.player.dash > 0 ? '' : 'opacity: 0.5; cursor: not-allowed;'}
+            ">Dash (${combat.player.dash})</button>
+            <button id="combat-end-turn-btn" style="
+              padding: 8px 16px;
+              font-size: 14px;
+              font-weight: bold;
+              background: linear-gradient(145deg, #4CAF50, #2E7D32);
+              border: 2px solid #66BB6A;
+              border-radius: 8px;
+              color: white;
+              cursor: pointer;
+              text-transform: uppercase;
+            ">End Turn</button>
+          </div>
+          ${renderDiceArea(combat)}
         </div>
+
+        <!-- Spellbook -->
+        ${combat.spells && combat.spells.length > 0 ? `
+          <div id="spellbook-container" style="
+            background: rgba(0,0,0,0.4);
+            border: 2px solid #9C27B0;
+            border-radius: 8px;
+            padding: 8px;
+            max-height: 80px;
+            overflow-y: auto;
+            flex-shrink: 0;
+          ">
+            ${renderSpellbook(combat)}
+          </div>
+        ` : ''}
       </div>
     </div>
   `;
@@ -306,6 +284,7 @@ function renderCombatUI(combat, container) {
   container.innerHTML = html;
   attachCombatEventListeners(combat);
 }
+
 
 /**
  * Render resources bar (Energy, Mana, Rerolls)
@@ -403,10 +382,12 @@ function renderPlayerSection(combat) {
         align-items: center;
         justify-content: center;
       ">
-        <img src="${playerImagePath}" style="
+        <img src="${playerImagePath}" class="pixel-image" style="
           width: 100%;
           height: 100%;
           image-rendering: pixelated;
+          image-rendering: crisp-edges;
+          -ms-interpolation-mode: nearest-neighbor;
           object-fit: contain;
         " alt="Player" onerror="this.style.display='none'">
       </div>
@@ -597,17 +578,17 @@ function renderEnemyIntentCenter(combat) {
                 ">
                   ${enemyDiceTooltip}
                 </div>
-                <!-- 3D Dice Container -->
+                <!-- 3D Dice Container - LARGER -->
                 <div id="enemy-dice-3d-${diceId}"
                      class="enemy-dice-3d-container"
                      data-enemy-id="${enemy.id}"
                      data-die-index="${dieIdx}"
                      data-face-index="${i.faceIndex}"
                      style="
-                       width: 70px;
-                       height: 70px;
+                       width: 90px;
+                       height: 90px;
                        background: #1a1410;
-                       border-radius: 6px;
+                       border-radius: 8px;
                        border: 2px solid #cc3333;
                        cursor: help;
                      ">
@@ -730,12 +711,15 @@ function renderEnemyCard(enemy, combat) {
       ">
         <img src="${enemyImagePath}"
           alt="${enemy.name}"
+          class="pixel-image"
           onerror="this.style.display='none'"
           style="
             width: 100%;
             height: 100%;
             object-fit: contain;
             image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            -ms-interpolation-mode: nearest-neighbor;
           "
         />
       </div>
@@ -1596,8 +1580,30 @@ if (typeof window !== 'undefined') {
  * Initialize 3D dice renderers for all dice in combat
  */
 function initialize3DDice(combat) {
-  // Clean up old renderers first
-  cleanup3DDice();
+  // Clean up old renderers first (but preserve rolled states)
+  Object.keys(activeDiceRenderers).forEach(diceId => {
+    const data = activeDiceRenderers[diceId];
+    if (data && data.renderer) {
+      // Save rolled state before cleanup
+      if (data.renderer.hasRolled) {
+        rolledDiceStates[diceId] = {
+          hasRolled: true,
+          faceIndex: data.renderer.targetFaceIndex,
+          rotation: data.renderer.mesh ? {
+            x: data.renderer.mesh.rotation.x,
+            y: data.renderer.mesh.rotation.y,
+            z: data.renderer.mesh.rotation.z
+          } : null
+        };
+      }
+      try {
+        data.renderer.dispose();
+      } catch (e) {
+        console.warn('Error disposing dice renderer:', e);
+      }
+    }
+  });
+  activeDiceRenderers = {};
 
   combat.playerDice.forEach(die => {
     const container = document.getElementById(`dice-3d-${die.id}`);
@@ -1613,6 +1619,29 @@ function initialize3DDice(combat) {
       const renderer = new CombatDiceRenderer();
       renderer.init(container);
       renderer.createCombatDice(die.faces, bgColor);
+
+      // Restore rolled state if die was previously rolled
+      const savedState = rolledDiceStates[die.id];
+      if (die.isRolled && savedState) {
+        renderer.hasRolled = true;
+        renderer.targetFaceIndex = savedState.faceIndex;
+        // Restore exact rotation to stop idle animation
+        if (savedState.rotation && renderer.mesh) {
+          renderer.mesh.rotation.set(savedState.rotation.x, savedState.rotation.y, savedState.rotation.z);
+        }
+      } else if (die.isRolled && die.currentFaceIndex !== undefined) {
+        // Die was rolled but we don't have saved state - set to correct face
+        renderer.hasRolled = true;
+        const targetRotation = renderer.calculateFaceRotation(die.currentFaceIndex + 1);
+        if (renderer.mesh) {
+          renderer.mesh.rotation.set(targetRotation.x, targetRotation.y, targetRotation.z);
+        }
+      }
+
+      // Clear saved state if die is no longer rolled (was reset)
+      if (!die.isRolled) {
+        delete rolledDiceStates[die.id];
+      }
 
       // Store reference
       activeDiceRenderers[die.id] = {
@@ -1665,18 +1694,34 @@ function animate3DDiceRoll(diceId, faceIndex, callback) {
 
 /**
  * Initialize 3D dice renderers for enemy intent dice
+ * @param {Object} combat - Combat state
+ * @param {boolean} shouldAnimate - Whether to animate the dice roll (only on turn start)
  */
-function initializeEnemy3DDice(combat) {
+function initializeEnemy3DDice(combat, shouldAnimate = true) {
   // Clean up old enemy renderers
   cleanupEnemy3DDice();
 
+  if (!combat.enemies || combat.enemies.length === 0) {
+    return;
+  }
+
   combat.enemies.forEach(enemy => {
-    if (enemy.health <= 0 || !enemy.currentIntent) return;
+    if (enemy.health <= 0) return;
+
+    // Check if enemy has intent
+    if (!enemy.currentIntent || enemy.currentIntent.length === 0) {
+      console.log(`Enemy ${enemy.name} has no intent`);
+      return;
+    }
 
     enemy.currentIntent.forEach((intent, dieIdx) => {
       const diceId = `enemy-${enemy.id}-${dieIdx}`;
       const container = document.getElementById(`enemy-dice-3d-${diceId}`);
-      if (!container) return;
+
+      if (!container) {
+        console.warn(`Container not found for enemy dice: enemy-dice-3d-${diceId}`);
+        return;
+      }
 
       // Enemy dice are red-tinted
       const bgColor = '#993333';
@@ -1686,27 +1731,44 @@ function initializeEnemy3DDice(combat) {
         const renderer = new CombatDiceRenderer();
         renderer.init(container);
 
-        // Create dice with all faces from enemy's dice pool
-        if (enemy.dice && enemy.dice.length > 0) {
-          renderer.createCombatDice(enemy.dice, bgColor);
+        // Create dice with faces from intent
+        const faces = [];
+        // Build 6 faces - use enemy dice if available, otherwise create from intent
+        if (enemy.dice && enemy.dice.length >= 6) {
+          for (let i = 0; i < 6; i++) {
+            faces.push(enemy.dice[i] || { isBlank: true });
+          }
         } else {
-          // Fallback: create single-face dice
-          const singleFace = intent.face || { isBlank: true };
-          const fakeDice = [singleFace, singleFace, singleFace, singleFace, singleFace, singleFace];
-          renderer.createCombatDice(fakeDice, bgColor);
+          // Use intent face repeated for all 6 sides as fallback
+          const intentFace = intent.face || { isBlank: true };
+          for (let i = 0; i < 6; i++) {
+            faces.push(intentFace);
+          }
         }
+
+        renderer.createCombatDice(faces, bgColor);
 
         // Store reference
         enemyDiceRenderers[diceId] = {
           renderer: renderer,
           enemyId: enemy.id,
-          faceIndex: intent.faceIndex
+          faceIndex: intent.faceIndex || 0
         };
 
-        // Auto-roll to show the intent face
-        setTimeout(() => {
-          animateEnemyDiceRoll(diceId, intent.faceIndex);
-        }, 100 + (dieIdx * 200)); // Stagger the rolls
+        // Set to the intent face - animate only on turn start
+        const targetFace = intent.faceIndex !== undefined ? intent.faceIndex : 0;
+        if (shouldAnimate) {
+          setTimeout(() => {
+            animateEnemyDiceRoll(diceId, targetFace);
+          }, 100 + (dieIdx * 200)); // Stagger the rolls
+        } else {
+          // Just set the face without animation
+          renderer.hasRolled = true;
+          const targetRotation = renderer.calculateFaceRotation(targetFace + 1);
+          if (renderer.mesh) {
+            renderer.mesh.rotation.set(targetRotation.x, targetRotation.y, targetRotation.z);
+          }
+        }
 
       } catch (e) {
         console.error('Failed to initialize enemy 3D dice for', diceId, e);
@@ -1772,11 +1834,13 @@ function attachCombatEventListeners(combat) {
   preloadMoveImages().then(() => {
     setTimeout(() => {
       initialize3DDice(combat);
-      // Only initialize enemy dice at the start of each new turn
-      if (lastEnemyDiceInitTurn !== combat.turn) {
+      // Always try to initialize enemy dice - the function will check if renderers already exist
+      // Only animate the roll on turn change
+      const shouldAnimate = lastEnemyDiceInitTurn !== combat.turn;
+      if (shouldAnimate) {
         lastEnemyDiceInitTurn = combat.turn;
-        initializeEnemy3DDice(combat);
       }
+      initializeEnemy3DDice(combat, shouldAnimate);
     }, 50);
   });
 
