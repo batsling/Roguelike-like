@@ -608,8 +608,8 @@ function processEffect(effect, die, targets, isCantrip = false) {
   console.log('[processEffect] move=' + move + ', effect.value=' + effect.value + ', initial value=' + value);
 
   // Apply stat bonuses
-  value = applyStatBonus(move, value, die);
-  console.log('[processEffect] After applyStatBonus: value=' + value + ' (type: ' + typeof value + ')');
+  value = calculateMoveValue(move, value, die);
+  console.log('[processEffect] After calculateMoveValue: value=' + value + ' (type: ' + typeof value + ')');
 
   // Get targets based on addons
   const resolvedTargets = resolveTargets(effect, targets, isCantrip);
@@ -723,14 +723,14 @@ function processEffect(effect, die, targets, isCantrip = false) {
  * @param {Object} die - Die source (for weapon finesse check)
  * @returns {number} Modified value
  */
-function applyStatBonus(move, value, die) {
-  console.log('[applyStatBonus] ENTER: move=' + move + ', value=' + value);
+function calculateMoveValue(move, value, die) {
+  console.log('[calculateMoveValue] ENTER: move=' + move + ', value=' + value);
   const bonuses = combatState.player.bonuses || {};
-  console.log('[applyStatBonus] bonuses:', bonuses);
+  console.log('[calculateMoveValue] bonuses:', bonuses);
 
   // Ensure value is a valid number
   const baseValue = (typeof value === 'number' && !isNaN(value)) ? value : 0;
-  console.log('[applyStatBonus] baseValue=' + baseValue);
+  console.log('[calculateMoveValue] baseValue=' + baseValue);
 
   // Check for Finesse on weapons
   const hasFinesse = die && die.tags && die.tags.includes('finesse');
@@ -740,7 +740,7 @@ function applyStatBonus(move, value, die) {
   const dexBonus = bonuses.dexterity || 0;
   const intBonus = bonuses.intelligence || 0;
   const chaBonus = bonuses.charisma || 0;
-  console.log('[applyStatBonus] str=' + strBonus + ', dex=' + dexBonus + ', int=' + intBonus + ', cha=' + chaBonus);
+  console.log('[calculateMoveValue] str=' + strBonus + ', dex=' + dexBonus + ', int=' + intBonus + ', cha=' + chaBonus);
 
   let result;
   switch (move) {
@@ -748,19 +748,19 @@ function applyStatBonus(move, value, die) {
     case 'pain':
     case 'assassinate':
       result = baseValue + (hasFinesse ? dexBonus : strBonus);
-      console.log('[applyStatBonus] dmg/pain/assassinate result=' + result);
+      console.log('[calculateMoveValue] dmg/pain/assassinate result=' + result);
       return result;
 
     case 'block':
       result = baseValue + dexBonus;
-      console.log('[applyStatBonus] block result=' + result);
+      console.log('[calculateMoveValue] block result=' + result);
       return result;
 
     case 'heal':
     case 'mana':
     case 'vitality':
       result = baseValue + intBonus;
-      console.log('[applyStatBonus] heal/mana/vitality result=' + result);
+      console.log('[calculateMoveValue] heal/mana/vitality result=' + result);
       return result;
 
     case 'reroll':
@@ -768,11 +768,11 @@ function applyStatBonus(move, value, die) {
     case 'inflict':
     case 'cleanse':
       result = baseValue + chaBonus;
-      console.log('[applyStatBonus] reroll/get/inflict/cleanse result=' + result);
+      console.log('[calculateMoveValue] reroll/get/inflict/cleanse result=' + result);
       return result;
 
     default:
-      console.log('[applyStatBonus] default result=' + baseValue);
+      console.log('[calculateMoveValue] default result=' + baseValue);
       return baseValue;
   }
 }
