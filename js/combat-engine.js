@@ -724,10 +724,13 @@ function processEffect(effect, die, targets, isCantrip = false) {
  * @returns {number} Modified value
  */
 function applyStatBonus(move, value, die) {
+  console.log('[applyStatBonus] ENTER: move=' + move + ', value=' + value);
   const bonuses = combatState.player.bonuses || {};
+  console.log('[applyStatBonus] bonuses:', bonuses);
 
   // Ensure value is a valid number
   const baseValue = (typeof value === 'number' && !isNaN(value)) ? value : 0;
+  console.log('[applyStatBonus] baseValue=' + baseValue);
 
   // Check for Finesse on weapons
   const hasFinesse = die && die.tags && die.tags.includes('finesse');
@@ -737,28 +740,39 @@ function applyStatBonus(move, value, die) {
   const dexBonus = bonuses.dexterity || 0;
   const intBonus = bonuses.intelligence || 0;
   const chaBonus = bonuses.charisma || 0;
+  console.log('[applyStatBonus] str=' + strBonus + ', dex=' + dexBonus + ', int=' + intBonus + ', cha=' + chaBonus);
 
+  let result;
   switch (move) {
     case 'dmg':
     case 'pain':
     case 'assassinate':
-      return baseValue + (hasFinesse ? dexBonus : strBonus);
+      result = baseValue + (hasFinesse ? dexBonus : strBonus);
+      console.log('[applyStatBonus] dmg/pain/assassinate result=' + result);
+      return result;
 
     case 'block':
-      return baseValue + dexBonus;
+      result = baseValue + dexBonus;
+      console.log('[applyStatBonus] block result=' + result);
+      return result;
 
     case 'heal':
     case 'mana':
     case 'vitality':
-      return baseValue + intBonus;
+      result = baseValue + intBonus;
+      console.log('[applyStatBonus] heal/mana/vitality result=' + result);
+      return result;
 
     case 'reroll':
     case 'get':
     case 'inflict':
     case 'cleanse':
-      return baseValue + chaBonus;
+      result = baseValue + chaBonus;
+      console.log('[applyStatBonus] reroll/get/inflict/cleanse result=' + result);
+      return result;
 
     default:
+      console.log('[applyStatBonus] default result=' + baseValue);
       return baseValue;
   }
 }
