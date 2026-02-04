@@ -10,6 +10,66 @@
 
 // Store active dice renderers for cleanup
 let activeDiceRenderers = {};
+let enemyDiceRenderers = {};
+
+// Image cache for move icons
+const moveImageCache = {};
+let imagesPreloaded = false;
+
+// Move type to image path mapping
+const moveImagePaths = {
+  'dmg': 'images/moves/Attack.png',
+  'block': 'images/moves/Defense.png',
+  'heal': 'images/moves/Health.png',
+  'mana': 'images/moves/Mana.png',
+  'inflict': 'images/moves/Status.png',
+  'assassinate': 'images/moves/Assassinate.png',
+  'vitality': 'images/moves/Vitality.png',
+  // Statuses for inflict targets
+  'burn': 'images/statuses/Burn.png',
+  'poison': 'images/statuses/Poison.png',
+  'dodge': 'images/statuses/Dodge.png',
+  'power': 'images/statuses/Power.png',
+  'frail': 'images/statuses/Frail.png',
+  'thorns': 'images/statuses/Thorns.png',
+  'oiled': 'images/statuses/Oiled.png',
+  'ruptured': 'images/statuses/Ruptured.png',
+  'confused': 'images/statuses/Confused.png',
+  'barricade': 'images/statuses/Barricade.png',
+  'fading': 'images/statuses/Fading.png',
+  'shifting': 'images/statuses/Shifting.png',
+  'formless': 'images/statuses/Formless.png',
+  'forgetful': 'images/statuses/Forgetful.png',
+  'ritual': 'images/statuses/Ritual.png',
+  'multi_attack': 'images/statuses/MultiAttack.png'
+};
+
+/**
+ * Preload move images for dice faces
+ */
+function preloadMoveImages() {
+  if (imagesPreloaded) return Promise.resolve();
+
+  const promises = Object.entries(moveImagePaths).map(([key, path]) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        moveImageCache[key] = img;
+        resolve();
+      };
+      img.onerror = () => {
+        console.warn(`Failed to load image: ${path}`);
+        resolve(); // Continue even if image fails
+      };
+      img.src = path;
+    });
+  });
+
+  return Promise.all(promises).then(() => {
+    imagesPreloaded = true;
+  });
+}
 
 /**
  * Render the new combat UI
@@ -446,7 +506,7 @@ function renderAlliesSection(combat) {
 }
 
 /**
- * Render enemy intent in center panel
+ * Render enemy intent in center panel with 3D dice
  */
 function renderEnemyIntentCenter(combat) {
   const aliveEnemies = combat.enemies.filter(e => e.health > 0);
@@ -455,7 +515,7 @@ function renderEnemyIntentCenter(combat) {
     return `<div style="color: #666; font-size: 14px;">No enemies</div>`;
   }
 
-  return aliveEnemies.map(enemy => {
+  return aliveEnemies.map((enemy, enemyIdx) => {
     const intent = enemy.currentIntent;
     if (!intent || intent.length === 0) {
       return `
@@ -473,7 +533,7 @@ function renderEnemyIntentCenter(combat) {
       `;
     }
 
-    // Show the intent faces
+    // Show the intent as 3D dice
     return `
       <div style="
         background: rgba(204,51,51,0.2);
@@ -484,29 +544,47 @@ function renderEnemyIntentCenter(combat) {
         width: 100%;
       ">
         <div style="font-size: 12px; color: #F44336; margin-bottom: 6px;">${enemy.name}</div>
-        <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
-          ${intent.map(i => {
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center;">
+          ${intent.map((i, dieIdx) => {
             const face = i.face;
-            if (!face || face.isBlank) {
-              return `<div style="color: #666; font-size: 14px;">—</div>`;
-            }
-            const effect = face.effects && face.effects[0];
-            if (!effect) {
-              return `<div style="color: #888; font-size: 14px;">?</div>`;
-            }
-            const moveKey = effect.move?.toLowerCase();
-            const emoji = moveEmojis[moveKey] || effect.move || '?';
-            const value = effect.value || 0;
+            const diceId = `enemy-${enemy.id}-${dieIdx}`;
+            const effect = face?.effects?.[0];
+            const moveKey = effect?.move?.toLowerCase();
+            const emoji = moveEmojis[moveKey] || effect?.move || '—';
+            const value = effect?.value || 0;
+
             return `
-              <div style="
-                background: rgba(0,0,0,0.4);
-                padding: 4px 10px;
-                border-radius: 4px;
-                font-size: 16px;
-                font-weight: bold;
-                color: #fff;
+              <div class="enemy-die-container" style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
               ">
-                ${value} ${emoji}
+                <!-- 3D Dice Container -->
+                <div id="enemy-dice-3d-${diceId}"
+                     class="enemy-dice-3d-container"
+                     data-enemy-id="${enemy.id}"
+                     data-die-index="${dieIdx}"
+                     data-face-index="${i.faceIndex}"
+                     style="
+                       width: 70px;
+                       height: 70px;
+                       background: #1a1410;
+                       border-radius: 6px;
+                       border: 2px solid #cc3333;
+                     ">
+                </div>
+                <!-- Effect label below dice -->
+                <div style="
+                  background: rgba(0,0,0,0.5);
+                  padding: 2px 8px;
+                  border-radius: 4px;
+                  font-size: 12px;
+                  font-weight: bold;
+                  color: #fff;
+                ">
+                  ${face?.isBlank ? '—' : `${value} ${emoji}`}
+                </div>
               </div>
             `;
           }).join('')}
@@ -1010,7 +1088,7 @@ const moveEmojis = {
 };
 
 /**
- * Create custom texture for combat D6 face (text/emoji based to avoid CORS)
+ * Create custom texture for combat D6 face with PNG images when available
  * @param {Object} face - Face object with effects array
  * @param {string} bgColor - Background color
  * @returns {HTMLCanvasElement} Canvas with rendered face
@@ -1069,26 +1147,24 @@ function createCombatFaceTexture(face, bgColor = '#cc6600') {
   ctx.strokeText(value.toString(), 64, 5);
   ctx.fillText(value.toString(), 64, 5);
 
-  // Draw move type symbol at bottom
+  // Try to draw move type image, fall back to emoji
   const moveKey = effect.move?.toLowerCase();
-  const symbol = moveEmojis[moveKey];
+  const cachedImage = moveImageCache[moveKey];
 
-  if (symbol) {
-    ctx.font = '42px Arial';
-    ctx.textBaseline = 'middle';
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3;
-    ctx.strokeText(symbol, 64, 90);
-    ctx.fillText(symbol, 64, 90);
+  if (cachedImage && cachedImage.complete && cachedImage.naturalWidth > 0) {
+    // Draw the PNG image
+    try {
+      const imgSize = 48;
+      const imgX = 64 - imgSize / 2;
+      const imgY = 68;
+      ctx.drawImage(cachedImage, imgX, imgY, imgSize, imgSize);
+    } catch (e) {
+      // Fall back to emoji if image drawing fails
+      drawMoveEmoji(ctx, moveKey, effect.move);
+    }
   } else {
-    // Fallback: draw move name text
-    const moveName = effect.move || '?';
-    ctx.font = 'bold 18px Arial';
-    ctx.textBaseline = 'middle';
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3;
-    ctx.strokeText(moveName, 64, 90);
-    ctx.fillText(moveName, 64, 90);
+    // Fall back to emoji
+    drawMoveEmoji(ctx, moveKey, effect.move);
   }
 
   // If there are multiple effects, add indicator
@@ -1101,6 +1177,34 @@ function createCombatFaceTexture(face, bgColor = '#cc6600') {
   }
 
   return canvas;
+}
+
+/**
+ * Draw move emoji on canvas (fallback when PNG not available)
+ */
+function drawMoveEmoji(ctx, moveKey, moveName) {
+  const symbol = moveEmojis[moveKey];
+
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+
+  if (symbol) {
+    ctx.font = '42px Arial';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3;
+    ctx.strokeText(symbol, 64, 90);
+    ctx.fillText(symbol, 64, 90);
+  } else {
+    // Fallback: draw move name text
+    const name = moveName || '?';
+    ctx.font = 'bold 18px Arial';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3;
+    ctx.strokeText(name, 64, 90);
+    ctx.fillText(name, 64, 90);
+  }
 }
 
 /**
@@ -1395,9 +1499,90 @@ function animate3DDiceRoll(diceId, faceIndex, callback) {
 }
 
 /**
- * Clean up all 3D dice renderers
+ * Initialize 3D dice renderers for enemy intent dice
+ */
+function initializeEnemy3DDice(combat) {
+  // Clean up old enemy renderers
+  cleanupEnemy3DDice();
+
+  combat.enemies.forEach(enemy => {
+    if (enemy.health <= 0 || !enemy.currentIntent) return;
+
+    enemy.currentIntent.forEach((intent, dieIdx) => {
+      const diceId = `enemy-${enemy.id}-${dieIdx}`;
+      const container = document.getElementById(`enemy-dice-3d-${diceId}`);
+      if (!container) return;
+
+      // Enemy dice are red-tinted
+      const bgColor = '#993333';
+
+      try {
+        // Create renderer instance
+        const renderer = new CombatDiceRenderer();
+        renderer.init(container);
+
+        // Create dice with all faces from enemy's dice pool
+        if (enemy.dice && enemy.dice.length > 0) {
+          renderer.createCombatDice(enemy.dice, bgColor);
+        } else {
+          // Fallback: create single-face dice
+          const singleFace = intent.face || { isBlank: true };
+          const fakeDice = [singleFace, singleFace, singleFace, singleFace, singleFace, singleFace];
+          renderer.createCombatDice(fakeDice, bgColor);
+        }
+
+        // Store reference
+        enemyDiceRenderers[diceId] = {
+          renderer: renderer,
+          enemyId: enemy.id,
+          faceIndex: intent.faceIndex
+        };
+
+        // Auto-roll to show the intent face
+        setTimeout(() => {
+          animateEnemyDiceRoll(diceId, intent.faceIndex);
+        }, 100 + (dieIdx * 200)); // Stagger the rolls
+
+      } catch (e) {
+        console.error('Failed to initialize enemy 3D dice for', diceId, e);
+      }
+    });
+  });
+}
+
+/**
+ * Animate enemy dice roll to show intent face
+ */
+function animateEnemyDiceRoll(diceId, faceIndex) {
+  const rendererData = enemyDiceRenderers[diceId];
+  if (!rendererData || !rendererData.renderer) return;
+
+  const renderer = rendererData.renderer;
+  renderer.rollToFace(faceIndex, null);
+}
+
+/**
+ * Clean up all enemy 3D dice renderers
+ */
+function cleanupEnemy3DDice() {
+  Object.keys(enemyDiceRenderers).forEach(diceId => {
+    const data = enemyDiceRenderers[diceId];
+    if (data && data.renderer) {
+      try {
+        data.renderer.dispose();
+      } catch (e) {
+        console.warn('Error disposing enemy dice renderer:', e);
+      }
+    }
+  });
+  enemyDiceRenderers = {};
+}
+
+/**
+ * Clean up all 3D dice renderers (player and enemy)
  */
 function cleanup3DDice() {
+  // Clean up player dice
   Object.keys(activeDiceRenderers).forEach(diceId => {
     const data = activeDiceRenderers[diceId];
     if (data && data.renderer) {
@@ -1409,16 +1594,22 @@ function cleanup3DDice() {
     }
   });
   activeDiceRenderers = {};
+
+  // Clean up enemy dice
+  cleanupEnemy3DDice();
 }
 
 /**
  * Attach event listeners to combat UI
  */
 function attachCombatEventListeners(combat) {
-  // Initialize 3D dice after DOM is ready
-  setTimeout(() => {
-    initialize3DDice(combat);
-  }, 50);
+  // Preload images then initialize 3D dice after DOM is ready
+  preloadMoveImages().then(() => {
+    setTimeout(() => {
+      initialize3DDice(combat);
+      initializeEnemy3DDice(combat);
+    }, 50);
+  });
 
   // Roll buttons
   document.querySelectorAll('.die-roll-btn').forEach(btn => {
@@ -1701,6 +1892,9 @@ if (typeof window !== 'undefined') {
     checkCombatEnd,
     cleanup3DDice,
     initialize3DDice,
-    animate3DDiceRoll
+    animate3DDiceRoll,
+    initializeEnemy3DDice,
+    animateEnemyDiceRoll,
+    preloadMoveImages
   };
 }
