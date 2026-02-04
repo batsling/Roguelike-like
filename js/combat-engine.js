@@ -398,10 +398,12 @@ function confirmDie(diceId, targets = {}) {
   }
 
   const face = die.currentFace;
+  console.log('[confirmDie] Face:', { raw: face?.raw, isBlank: face?.isBlank, effects: face?.effects });
 
   // Process effects (skip Cantrip effects as they were already processed)
   if (!face.isBlank) {
     face.effects.forEach(effect => {
+      console.log('[confirmDie] Processing effect:', effect);
       if (!effect.addons || !effect.addons.includes('Cantrip')) {
         processEffect(effect, die, targets);
       }
@@ -603,8 +605,11 @@ function processEffect(effect, die, targets, isCantrip = false) {
   const move = effect.move.toLowerCase();
   let value = effect.value || 0;
 
+  console.log('[processEffect] Effect:', { move, rawValue: effect.value, valueAfterDefault: value });
+
   // Apply stat bonuses
   value = applyStatBonus(move, value, die);
+  console.log('[processEffect] After stat bonus:', { move, value });
 
   // Get targets based on addons
   const resolvedTargets = resolveTargets(effect, targets, isCantrip);
