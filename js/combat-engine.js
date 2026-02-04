@@ -30,12 +30,12 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     charisma: typeof getEffectiveStat === 'function' ? getEffectiveStat('charisma') : (window.charisma || 0)
   };
 
-  // Calculate stat bonuses (every 3 = +1)
+  // Calculate stat bonuses (every 3 = +1) - ensure valid numbers
   const statBonuses = {
-    strength: Math.floor(playerStats.strength / 3),
-    dexterity: Math.floor(playerStats.dexterity / 3),
-    intelligence: Math.floor(playerStats.intelligence / 3),
-    charisma: Math.floor(playerStats.charisma / 3)
+    strength: Math.floor((playerStats.strength || 0) / 3) || 0,
+    dexterity: Math.floor((playerStats.dexterity || 0) / 3) || 0,
+    intelligence: Math.floor((playerStats.intelligence || 0) / 3) || 0,
+    charisma: Math.floor((playerStats.charisma || 0) / 3) || 0
   };
 
   // Create player state - ensure health values are valid numbers
@@ -609,17 +609,10 @@ function processEffect(effect, die, targets, isCantrip = false) {
   // Get targets based on addons
   const resolvedTargets = resolveTargets(effect, targets, isCantrip);
 
-  console.log('processEffect:', { move, value, targets, resolvedTargets, isCantrip });
-
   // Process based on move type
   switch (move) {
     case 'dmg':
-      console.log('Processing dmg, enemies to target:', resolvedTargets.enemies.length);
-      if (resolvedTargets.enemies.length === 0) {
-        console.warn('No enemies to deal damage to! Targets:', targets);
-      }
       resolvedTargets.enemies.forEach(enemy => {
-        console.log('Dealing', value, 'damage to', enemy.name);
         dealDamage(enemy, value, effect.addons || []);
       });
       break;
@@ -725,33 +718,42 @@ function processEffect(effect, die, targets, isCantrip = false) {
  * @returns {number} Modified value
  */
 function applyStatBonus(move, value, die) {
-  const bonuses = combatState.player.bonuses;
+  const bonuses = combatState.player.bonuses || {};
+
+  // Ensure value is a valid number
+  const baseValue = (typeof value === 'number' && !isNaN(value)) ? value : 0;
 
   // Check for Finesse on weapons
   const hasFinesse = die && die.tags && die.tags.includes('finesse');
+
+  // Get bonus values with fallback to 0
+  const strBonus = bonuses.strength || 0;
+  const dexBonus = bonuses.dexterity || 0;
+  const intBonus = bonuses.intelligence || 0;
+  const chaBonus = bonuses.charisma || 0;
 
   switch (move) {
     case 'dmg':
     case 'pain':
     case 'assassinate':
-      return value + (hasFinesse ? bonuses.dexterity : bonuses.strength);
+      return baseValue + (hasFinesse ? dexBonus : strBonus);
 
     case 'block':
-      return value + bonuses.dexterity;
+      return baseValue + dexBonus;
 
     case 'heal':
     case 'mana':
     case 'vitality':
-      return value + bonuses.intelligence;
+      return baseValue + intBonus;
 
     case 'reroll':
     case 'get':
     case 'inflict':
     case 'cleanse':
-      return value + bonuses.charisma;
+      return baseValue + chaBonus;
 
     default:
-      return value;
+      return baseValue;
   }
 }
 
@@ -869,17 +871,19 @@ function getAutoTargets(effect) {
  * @param {Array} addons - Effect addons
  */
 function dealDamage(target, damage, addons = []) {
-  if (damage <= 0) return;
+  // Validate damage is a valid number
+  let dmg = (typeof damage === 'number' && !isNaN(damage)) ? damage : 0;
+  if (dmg <= 0) return;
 
   // Check Engage (x2 on full health)
   if (addons.includes('Engage') && target.health === target.maxHealth) {
-    damage *= 2;
+    dmg *= 2;
   }
 
   // Check Frail (double damage)
   const frailStacks = target.statuses['frail'] || 0;
   if (frailStacks > 0) {
-    damage *= 2;
+    dmg *= 2;
   }
 
   // Check Dodge
@@ -898,7 +902,7 @@ function dealDamage(target, damage, addons = []) {
   // Power affects outgoing damage, not incoming - skip for now
 
   // Apply block first
-  let remainingDamage = damage;
+  let remainingDamage = dmg;
   if (target.block > 0) {
     const blocked = Math.min(target.block, remainingDamage);
     target.block -= blocked;
@@ -942,9 +946,11 @@ function dealDamage(target, damage, addons = []) {
  * @param {number} amount - Block amount
  */
 function addBlock(target, amount) {
-  if (amount <= 0) return;
-  target.block = (target.block || 0) + amount;
-  addLog(`${target.name || 'Player'} gained ${amount} block`, 'info');
+  // Validate amount is a valid number
+  const blockAmount = (typeof amount === 'number' && !isNaN(amount)) ? amount : 0;
+  if (blockAmount <= 0) return;
+  target.block = (target.block || 0) + blockAmount;
+  addLog(`${target.name || 'Player'} gained ${blockAmount} block`, 'info');
 }
 
 /**
