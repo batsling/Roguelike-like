@@ -4100,6 +4100,11 @@ function handleDiceCombatVictory(enemy) {
     triggerOnEnemyDefeated();
   }
 
+  // Record enemy defeated for collection stats
+  if (typeof recordEnemyDefeated === 'function') {
+    recordEnemyDefeated(enemy.name);
+  }
+
   // Record encounter
   encounterHistory.push({
     type: 'combat',
@@ -4148,6 +4153,11 @@ function handleDiceCombatDefeat(enemy) {
   }
   if (gameState.activeAllies) {
     gameState.activeAllies = [];
+  }
+
+  // Record player killed by enemy for collection stats
+  if (typeof recordPlayerKilledBy === 'function') {
+    recordPlayerKilledBy(enemy.name);
   }
 
   // Record encounter
@@ -6143,6 +6153,230 @@ function showGameDetails(gameName) {
   `;
 }
 
+function showEnemyDetails(enemyName) {
+  const enemy = enemies.find(e => e.name === enemyName);
+  if (!enemy) return;
+
+  // Get enemy stats
+  const enemyStats = getEnemyStats(enemyName);
+
+  // Find variants of this enemy
+  const variants = enemies.filter(e => e.variantOf === enemyName);
+
+  // Get difficulty color
+  const getDifficultyColor = (difficulty) => {
+    switch((difficulty || '').toLowerCase()) {
+      case 'low': return '#4CAF50';
+      case 'medium': return '#ff9800';
+      case 'hard': return '#f44336';
+      case 'boss': return '#9b59b6';
+      default: return '#888';
+    }
+  };
+
+  // Get type color
+  const getTypeColor = (type) => {
+    switch((type || '').toLowerCase()) {
+      case 'strength': return '#f44336';
+      case 'dexterity': return '#4CAF50';
+      case 'intelligence': return '#2196F3';
+      case 'charisma': return '#ff9800';
+      default: return '#888';
+    }
+  };
+
+  const diffColor = getDifficultyColor(enemy.difficulty);
+  const typeColor = getTypeColor(enemy.type);
+
+  const detailsPanel = document.getElementById('enemy-details');
+  if (!detailsPanel) return;
+
+  // Build variant images HTML
+  let variantHTML = '';
+  if (variants.length > 0) {
+    const allForms = [enemy, ...variants];
+    variantHTML = `
+      <div style="margin-top: 15px;">
+        <strong style="color: #9b59b6;">Forms:</strong>
+        <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+          ${allForms.map((form, idx) => `
+            <div
+              onclick="switchEnemyImage('${form.name.replace(/'/g, "\\'")}')"
+              style="
+                cursor: pointer;
+                padding: 5px;
+                border: 2px solid ${idx === 0 ? '#9b59b6' : '#444'};
+                border-radius: 6px;
+                background: rgba(0,0,0,0.3);
+                transition: border-color 0.2s;
+              "
+              onmouseover="this.style.borderColor='#9b59b6'"
+              onmouseout="this.style.borderColor='${idx === 0 ? '#9b59b6' : '#444'}'"
+            >
+              <img
+                src="${form.imageUrl || getEnemyImagePath(form.name)}"
+                alt="${form.name}"
+                style="width: 60px; height: 60px; object-fit: contain;"
+                onerror="this.style.opacity='0.3'"
+              />
+              <div style="font-size: 9px; text-align: center; color: #aaa; margin-top: 4px;">${form.name}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Build dice HTML
+  const diceHTML = enemy.dice ? `
+    <div style="margin-top: 15px;">
+      <strong style="color: #f44336;">Dice:</strong>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
+        ${enemy.dice.map((face, idx) => {
+          if (face.isBlank) {
+            return `
+              <div style="
+                background: rgba(0,0,0,0.4);
+                border: 1px solid #333;
+                border-radius: 6px;
+                padding: 8px;
+                text-align: center;
+                font-size: 11px;
+                color: #666;
+              ">
+                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
+                <div>Blank</div>
+              </div>
+            `;
+          }
+          return `
+            <div style="
+              background: rgba(244, 67, 54, 0.1);
+              border: 1px solid rgba(244, 67, 54, 0.3);
+              border-radius: 6px;
+              padding: 8px;
+              text-align: center;
+              font-size: 11px;
+              color: #ddd;
+            ">
+              <div style="font-weight: bold; color: #f44336; margin-bottom: 4px;">Face ${idx + 1}</div>
+              <div>${face.raw || face.effects?.map(e => e.raw).join(', ') || '—'}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  detailsPanel.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <!-- Enemy Header -->
+      <div style="display: flex; gap: 15px; align-items: flex-start;">
+        <img
+          id="enemy-detail-image"
+          src="${enemy.imageUrl || getEnemyImagePath(enemy.name)}"
+          alt="${enemy.name}"
+          style="width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${diffColor};"
+          onerror="this.style.opacity='0.3'"
+        />
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 10px 0; color: #f44336;">${enemy.name}</h3>
+          <div style="color: #aaa; font-size: 13px; line-height: 1.8;">
+            <div><strong>Type:</strong> <span style="color: ${typeColor};">${enemy.type || '—'}</span></div>
+            <div><strong>Difficulty:</strong> <span style="color: ${diffColor};">${enemy.difficulty || '—'}</span></div>
+            <div><strong>HP:</strong> ${enemy.hp || '—'}</div>
+            <div><strong>Game:</strong> ${enemy.game || '—'}</div>
+            <div><strong>Location:</strong> ${enemy.location || '—'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ability -->
+      ${enemy.ability && enemy.ability !== 'N/A' ? `
+        <div style="padding: 12px; background: rgba(155, 89, 182, 0.1); border: 1px solid rgba(155, 89, 182, 0.3); border-radius: 6px;">
+          <h4 style="margin: 0 0 8px 0; color: #9b59b6; font-size: 14px;">⚡ Ability</h4>
+          <div style="font-size: 13px; color: #ddd;">${enemy.ability}</div>
+        </div>
+      ` : ''}
+
+      <!-- Combat Stats -->
+      <div style="padding: 12px; background: rgba(244, 67, 54, 0.1); border: 1px solid rgba(244, 67, 54, 0.3); border-radius: 6px;">
+        <h4 style="margin: 0 0 8px 0; color: #f44336; font-size: 14px;">📊 Combat Record</h4>
+        <div style="font-size: 13px; color: #ddd; line-height: 1.8;">
+          <div><strong>Times Defeated:</strong> ${enemyStats.timesBeaten || 0}</div>
+          <div><strong>Times Killed Player:</strong> ${enemyStats.timesKilledPlayer || 0}</div>
+        </div>
+      </div>
+
+      <!-- Variants -->
+      ${variantHTML}
+
+      <!-- Dice -->
+      ${diceHTML}
+    </div>
+  `;
+}
+
+// Switch enemy image in details panel (for variants)
+function switchEnemyImage(enemyName) {
+  const enemy = enemies.find(e => e.name === enemyName);
+  if (!enemy) return;
+
+  const img = document.getElementById('enemy-detail-image');
+  if (img) {
+    img.src = enemy.imageUrl || getEnemyImagePath(enemy.name);
+  }
+}
+
+// Get enemy stats from gameState
+function getEnemyStats(enemyName) {
+  if (!gameState.enemyStats) {
+    gameState.enemyStats = {};
+  }
+
+  // Find base enemy name (for variants)
+  const enemy = enemies.find(e => e.name === enemyName);
+  const baseName = enemy?.variantOf || enemyName;
+
+  return gameState.enemyStats[baseName] || { timesBeaten: 0, timesKilledPlayer: 0 };
+}
+
+// Record enemy defeat
+function recordEnemyDefeated(enemyName) {
+  if (!gameState.enemyStats) {
+    gameState.enemyStats = {};
+  }
+
+  // Find base enemy name (for variants)
+  const enemy = enemies.find(e => e.name === enemyName);
+  const baseName = enemy?.variantOf || enemyName;
+
+  if (!gameState.enemyStats[baseName]) {
+    gameState.enemyStats[baseName] = { timesBeaten: 0, timesKilledPlayer: 0 };
+  }
+
+  gameState.enemyStats[baseName].timesBeaten++;
+  saveGameState();
+}
+
+// Record player death to enemy
+function recordPlayerKilledBy(enemyName) {
+  if (!gameState.enemyStats) {
+    gameState.enemyStats = {};
+  }
+
+  // Find base enemy name (for variants)
+  const enemy = enemies.find(e => e.name === enemyName);
+  const baseName = enemy?.variantOf || enemyName;
+
+  if (!gameState.enemyStats[baseName]) {
+    gameState.enemyStats[baseName] = { timesBeaten: 0, timesKilledPlayer: 0 };
+  }
+
+  gameState.enemyStats[baseName].timesKilledPlayer++;
+  saveGameState();
+}
+
 function markGameFinished(gameName) {
   if (!gameState.finishedGames) {
     gameState.finishedGames = [];
@@ -7303,6 +7537,11 @@ window.hideMapTooltip = hideMapTooltip;
 window.drawMapArrows = drawMapArrows;
 window.switchCollectionTab = switchCollectionTab;
 window.showGameDetails = showGameDetails;
+window.showEnemyDetails = showEnemyDetails;
+window.switchEnemyImage = switchEnemyImage;
+window.getEnemyStats = getEnemyStats;
+window.recordEnemyDefeated = recordEnemyDefeated;
+window.recordPlayerKilledBy = recordPlayerKilledBy;
 // Bingo functions
 window.generateBingoGrid = generateBingoGrid;
 window.renderBingoGrid = renderBingoGrid;

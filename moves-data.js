@@ -83,13 +83,13 @@ var MOVES_DATA = {
     "description": "Kill an enemy with at least X health left",
     "preferredTarget": "Enemy",
     "bonusStat": "Strength",
-    "imageUrl": "images/moves/Attack.png"
+    "imageUrl": "images/moves/Assassinate.png"
   },
   "vitality": {
     "name": "Vitality",
     "description": "Gain X Max Health",
     "preferredTarget": "Ally/Self",
     "bonusStat": "Intelligence",
-    "imageUrl": "images/moves/Health.png"
+    "imageUrl": "images/moves/Vitality.png"
   }
 };

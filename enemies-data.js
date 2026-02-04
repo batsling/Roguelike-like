@@ -90,7 +90,8 @@ var ENEMIES_DATA = [
         "raw": "3 Dmg"
       }
     ],
-    "imageUrl": "images/enemies/Lemurian.png"
+    "imageUrl": "images/enemies/Lemurian.png",
+    "variantOf": null
   },
   {
     "name": "Stone Golem",
@@ -180,7 +181,8 @@ var ENEMIES_DATA = [
         "raw": "4 Dmg"
       }
     ],
-    "imageUrl": "images/enemies/StoneGolem.png"
+    "imageUrl": "images/enemies/StoneGolem.png",
+    "variantOf": null
   },
   {
     "name": "Elder Lemurian",
@@ -284,7 +286,8 @@ var ENEMIES_DATA = [
         "raw": "7 Dmg, 3 Burn"
       }
     ],
-    "imageUrl": "images/enemies/ElderLemurian.png"
+    "imageUrl": "images/enemies/ElderLemurian.png",
+    "variantOf": null
   },
   {
     "name": "Pacer",
@@ -374,7 +377,8 @@ var ENEMIES_DATA = [
         "raw": "3 Dmg"
       }
     ],
-    "imageUrl": "images/enemies/Pacer.png"
+    "imageUrl": "images/enemies/Pacer.png",
+    "variantOf": null
   },
   {
     "name": "Gaper",
@@ -464,7 +468,8 @@ var ENEMIES_DATA = [
         "raw": "3 Dmg"
       }
     ],
-    "imageUrl": "images/enemies/Gaper.png"
+    "imageUrl": "images/enemies/Gaper.png",
+    "variantOf": null
   },
   {
     "name": "Double Vis",
@@ -533,7 +538,8 @@ var ENEMIES_DATA = [
         "raw": "5 Dmg Overload"
       }
     ],
-    "imageUrl": "images/enemies/DoubleVis.png"
+    "imageUrl": "images/enemies/DoubleVis.png",
+    "variantOf": null
   },
   {
     "name": "Tainted Pooter",
@@ -613,7 +619,8 @@ var ENEMIES_DATA = [
         "raw": "6 Dmg Cleave"
       }
     ],
-    "imageUrl": "images/enemies/TaintedPooter.png"
+    "imageUrl": "images/enemies/TaintedPooter.png",
+    "variantOf": null
   },
   {
     "name": "Mung",
@@ -676,7 +683,8 @@ var ENEMIES_DATA = [
         "raw": "1 Dmg"
       }
     ],
-    "imageUrl": "images/enemies/Mung.png"
+    "imageUrl": "images/enemies/Mung.png",
+    "variantOf": null
   },
   {
     "name": "Mungling Mud Lung",
@@ -784,7 +792,8 @@ var ENEMIES_DATA = [
         "raw": "2 Dmg"
       }
     ],
-    "imageUrl": "images/enemies/MunglingMudLung.png"
+    "imageUrl": "images/enemies/MunglingMudLung.png",
+    "variantOf": null
   },
   {
     "name": "Mungie",
@@ -874,7 +883,8 @@ var ENEMIES_DATA = [
         "raw": "1 Dmg"
       }
     ],
-    "imageUrl": "images/enemies/Mungie.png"
+    "imageUrl": "images/enemies/Mungie.png",
+    "variantOf": null
   },
   {
     "name": "Revola",
@@ -1003,7 +1013,8 @@ var ENEMIES_DATA = [
         "raw": "4 Dmg, 4 Block Cleave"
       }
     ],
-    "imageUrl": "images/enemies/Revola.png"
+    "imageUrl": "images/enemies/Revola.png",
+    "variantOf": null
   },
   {
     "name": "Revola (Standing)",
@@ -1159,7 +1170,8 @@ var ENEMIES_DATA = [
         "raw": "4 Dmg, 3 Ruptured, 8 Block, Alter Revola"
       }
     ],
-    "imageUrl": "images/enemies/RevolaStanding.png"
+    "imageUrl": "images/enemies/RevolaStanding.png",
+    "variantOf": "Revola"
   },
   {
     "name": "Skinning Homunculus",
@@ -1261,7 +1273,8 @@ var ENEMIES_DATA = [
         "raw": "8 Dmg Overload"
       }
     ],
-    "imageUrl": "images/enemies/SkinningHomunculus.png"
+    "imageUrl": "images/enemies/SkinningHomunculus.png",
+    "variantOf": null
   },
   {
     "name": "Hobgoblin",
@@ -1333,7 +1346,8 @@ var ENEMIES_DATA = [
         "raw": "3 Dmg"
       }
     ],
-    "imageUrl": "images/enemies/Hobgoblin.png"
+    "imageUrl": "images/enemies/Hobgoblin.png",
+    "variantOf": null
   },
   {
     "name": "Troll",
@@ -1414,7 +1428,8 @@ var ENEMIES_DATA = [
         "raw": "6 Dmg"
       }
     ],
-    "imageUrl": "images/enemies/Troll.png"
+    "imageUrl": "images/enemies/Troll.png",
+    "variantOf": null
   },
   {
     "name": "Dragon",
@@ -1510,7 +1525,8 @@ var ENEMIES_DATA = [
         "raw": "10 Dmg 5  Burn"
       }
     ],
-    "imageUrl": "images/enemies/Dragon.png"
+    "imageUrl": "images/enemies/Dragon.png",
+    "variantOf": null
   },
   {
     "name": "Cultist",
@@ -1604,7 +1620,8 @@ var ENEMIES_DATA = [
         "raw": "2 Dmg"
       }
     ],
-    "imageUrl": "images/enemies/Cultist.png"
+    "imageUrl": "images/enemies/Cultist.png",
+    "variantOf": null
   },
   {
     "name": "Snecko",
@@ -1704,7 +1721,8 @@ var ENEMIES_DATA = [
         "raw": "4 Dmg"
       }
     ],
-    "imageUrl": "images/enemies/Snecko.png"
+    "imageUrl": "images/enemies/Snecko.png",
+    "variantOf": null
   },
   {
     "name": "Transient",
@@ -1818,7 +1836,8 @@ var ENEMIES_DATA = [
         "raw": "5 x Turn number Dmg"
       }
     ],
-    "imageUrl": "images/enemies/Transient.png"
+    "imageUrl": "images/enemies/Transient.png",
+    "variantOf": null
   },
   {
     "name": "Bones",
@@ -1908,7 +1927,8 @@ var ENEMIES_DATA = [
         "raw": "4 Dmg"
       }
     ],
-    "imageUrl": "images/enemies/Bones.png"
+    "imageUrl": "images/enemies/Bones.png",
+    "variantOf": null
   },
   {
     "name": "Fanatic",
@@ -2040,7 +2060,8 @@ var ENEMIES_DATA = [
         "raw": "8 Dmg, 8 Pain "
       }
     ],
-    "imageUrl": "images/enemies/Fanatic.png"
+    "imageUrl": "images/enemies/Fanatic.png",
+    "variantOf": null
   },
   {
     "name": "Spiker",
@@ -2134,6 +2155,7 @@ var ENEMIES_DATA = [
         "raw": "7 Dmg"
       }
     ],
-    "imageUrl": "images/enemies/Spiker.png"
+    "imageUrl": "images/enemies/Spiker.png",
+    "variantOf": null
   }
 ];

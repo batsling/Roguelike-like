@@ -228,6 +228,9 @@ const enemies = enemiesData.map(row => {
     diceFaces.push(parseDiceFace(faceStr));
   }
 
+  // Get variant field - if it references another enemy, this is a variant of that enemy
+  const variantOf = row['Variant'] && row['Variant'] !== 'N/A' ? row['Variant'] : null;
+
   return {
     name: row['Name'] || '',
     type: row['Type'] || '',
@@ -237,7 +240,8 @@ const enemies = enemiesData.map(row => {
     game: row['Game'] || '',
     location: row['Location'] || 'General',
     dice: diceFaces,
-    imageUrl: row['File'] ? `images/enemies/${row['File']}.png` : null
+    imageUrl: row['File'] ? `images/enemies/${row['File']}.png` : null,
+    variantOf: variantOf
   };
 });
 

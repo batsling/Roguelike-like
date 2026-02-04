@@ -768,6 +768,11 @@ function switchCollectionTab(tab) {
       </div>
     `;
   } else if (tab === 'items') {
+    // Initialize filter state if not set
+    if (typeof window.itemsShowNA === 'undefined') {
+      window.itemsShowNA = false; // Default: hide N/A items
+    }
+
     // Get rarity color function (case-insensitive)
     const getRarityColor = (rarity) => {
       const rarityLower = (rarity || '').toLowerCase();
@@ -780,17 +785,29 @@ function switchCollectionTab(tab) {
       }
     };
 
-    // Default sort is alphabetical
-    let sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name));
+    // Filter and sort items
+    let filteredItems = window.itemsShowNA ? [...items] : items.filter(item => {
+      const rarity = (item.rarity || '').toLowerCase();
+      return rarity !== 'n/a';
+    });
+    let sortedItems = filteredItems.sort((a, b) => a.name.localeCompare(b.name));
+
+    const naCount = items.filter(item => (item.rarity || '').toLowerCase() === 'n/a').length;
 
     content.innerHTML = `
       <div style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
-        <!-- Sort controls -->
-        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center;">
-          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort by:</span>
+        <!-- Sort and Filter controls -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center; flex-wrap: wrap;">
+          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort:</span>
           <button onclick="sortCollectionItems('alphabetical')" id="sort-alpha" style="padding: 6px 12px; background: #ff9800; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">A-Z</button>
           <button onclick="sortCollectionItems('rarity')" id="sort-rarity" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Rarity</button>
           <button onclick="sortCollectionItems('game')" id="sort-game" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Game</button>
+          <div style="border-left: 1px solid #555; height: 20px; margin: 0 5px;"></div>
+          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Filter:</span>
+          <button onclick="toggleItemsNA()" id="filter-na" style="padding: 6px 12px; background: ${window.itemsShowNA ? '#ff9800' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">
+            ${window.itemsShowNA ? 'Hide' : 'Show'} N/A (${naCount})
+          </button>
+          <span style="color: #666; font-size: 11px; margin-left: auto;">Showing ${sortedItems.length} of ${items.length}</span>
         </div>
 
         <div id="items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
@@ -861,49 +878,74 @@ function switchCollectionTab(tab) {
     // Load the current sub-tab content
     switchLootSubTab(window.currentLootSubTab);
   } else if (tab === 'enemies') {
-    // Sort enemies alphabetically
-    const sortedEnemies = [...enemies].sort((a, b) => a.name.localeCompare(b.name));
+    // Filter out variants (they'll be shown in the details panel of their base enemy)
+    // and filter out N/A difficulty enemies (variants/transformations)
+    const baseEnemies = enemies.filter(e => !e.variantOf && e.difficulty !== 'N/A');
+    const sortedEnemies = [...baseEnemies].sort((a, b) => a.name.localeCompare(b.name));
+
+    // Get difficulty color
+    const getDifficultyColor = (difficulty) => {
+      switch((difficulty || '').toLowerCase()) {
+        case 'low': return '#4CAF50';
+        case 'medium': return '#ff9800';
+        case 'hard': return '#f44336';
+        case 'boss': return '#9b59b6';
+        default: return '#888';
+      }
+    };
 
     content.innerHTML = `
-      <div style="flex: 1; overflow-y: auto; padding: 10px;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
-          ${sortedEnemies.map(enemy => `
-          <div style="
-            background: rgba(0,0,0,0.3);
-            border: 1px solid #444;
-            border-radius: 8px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            transition: transform 0.2s, border-color 0.2s;
-          " onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#f44336';" onmouseout="this.style.transform=''; this.style.borderColor='#444';">
-            <img
-              src="${getEnemyImagePath(enemy.name)}"
-              alt="${enemy.name}"
-              onerror="this.style.display='none'"
+      <!-- Left side: Enemy grid (8 per row) -->
+      <div id="enemies-grid-container" style="flex: 2; overflow-y: auto; padding: 10px;">
+        <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px;">
+          ${sortedEnemies.map(enemy => {
+            const diffColor = getDifficultyColor(enemy.difficulty);
+            return `
+            <div
+              class="collection-enemy-card"
+              data-enemy-name="${enemy.name.replace(/"/g, '&quot;')}"
+              onclick="showEnemyDetails('${enemy.name.replace(/'/g, "\\'")}')"
               style="
-                width: 100%;
-                height: 120px;
-                object-fit: contain;
-                border-radius: 6px;
-                background: rgba(0,0,0,0.2);
+                background: rgba(0,0,0,0.3);
+                border: 2px solid ${diffColor};
+                border-radius: 8px;
+                padding: 8px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+                transition: transform 0.2s, box-shadow 0.2s;
+                cursor: pointer;
               "
-            />
-            <div style="text-align: center; font-size: 12px; font-weight: bold; color: #ddd; word-wrap: break-word;">
-              ${enemy.name}
+              onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.5)';"
+              onmouseout="this.style.transform=''; this.style.boxShadow='';">
+              <img
+                src="${enemy.imageUrl || getEnemyImagePath(enemy.name)}"
+                alt="${enemy.name}"
+                onerror="this.style.opacity='0.3'"
+                style="
+                  width: 100%;
+                  height: 80px;
+                  object-fit: contain;
+                  border-radius: 4px;
+                  background: rgba(0,0,0,0.2);
+                "
+              />
+              <div style="text-align: center; font-size: 11px; font-weight: bold; color: #ddd; word-wrap: break-word; width: 100%; line-height: 1.2;">
+                ${enemy.name}
+              </div>
+              <div style="font-size: 9px; color: ${diffColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
+                ${enemy.difficulty || 'Unknown'}
+              </div>
             </div>
-            <div style="font-size: 10px; color: #888; text-align: center; font-style: italic; margin-bottom: 2px;">
-              ${enemy.game || 'Unknown Game'}
-            </div>
-            <div style="font-size: 10px; color: #ff6666; text-align: center;">
-              ${enemy.powerLevel || 'Unknown'} • ${enemy.stat || 'Unknown'}
-            </div>
-            <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
-              Roll ${enemy.rollCheck || '?'} to succeed
-            </div>
-          </div>
-        `).join('')}
+          `;}).join('')}
+        </div>
+      </div>
+
+      <!-- Right side: Enemy details -->
+      <div id="enemy-details" style="flex: 1; overflow-y: auto; padding: 20px; background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 8px; min-width: 350px;">
+        <div style="text-align: center; color: #888; padding: 40px 20px;">
+          <p>Click an enemy to view details</p>
         </div>
       </div>
     `;
@@ -1205,18 +1247,24 @@ function sortCollectionItems(sortType) {
     }
   });
 
+  // Filter N/A items if needed
+  let filteredItems = window.itemsShowNA ? [...items] : items.filter(item => {
+    const rarity = (item.rarity || '').toLowerCase();
+    return rarity !== 'n/a';
+  });
+
   let sortedItems;
   if (sortType === 'alphabetical') {
-    sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name));
+    sortedItems = filteredItems.sort((a, b) => a.name.localeCompare(b.name));
   } else if (sortType === 'rarity') {
     const rarityOrder = { 'legendary': 4, 'rare': 3, 'uncommon': 2, 'common': 1 };
-    sortedItems = [...items].sort((a, b) => {
+    sortedItems = filteredItems.sort((a, b) => {
       const rarityDiff = (rarityOrder[(b.rarity || '').toLowerCase()] || 0) - (rarityOrder[(a.rarity || '').toLowerCase()] || 0);
       if (rarityDiff !== 0) return rarityDiff;
       return a.name.localeCompare(b.name);
     });
   } else if (sortType === 'game') {
-    sortedItems = [...items].sort((a, b) => {
+    sortedItems = filteredItems.sort((a, b) => {
       const gameA = a.reference || 'Unknown';
       const gameB = b.reference || 'Unknown';
       const gameDiff = gameA.localeCompare(gameB);
@@ -1270,6 +1318,12 @@ function sortCollectionItems(sortType) {
       `;
     }).join('');
   }
+}
+
+// Toggle N/A items visibility
+function toggleItemsNA() {
+  window.itemsShowNA = !window.itemsShowNA;
+  switchCollectionTab('items');
 }
 
 // Switch between curse tiers (I, II, III)
