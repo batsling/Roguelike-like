@@ -150,7 +150,7 @@ function renderCombatUI(combat, container) {
       width: 100%;
       height: 100%;
       gap: 0;
-      overflow: hidden;
+      overflow: visible;
       box-sizing: border-box;
     ">
       <!-- Combat Log - Outside main box -->
@@ -185,7 +185,7 @@ function renderCombatUI(combat, container) {
         background: linear-gradient(135deg, #1a1410 0%, #2a1810 100%);
         padding: 10px;
         gap: 8px;
-        overflow: hidden;
+        overflow: visible;
         box-sizing: border-box;
       ">
         <!-- Top: Resources Bar -->
@@ -203,7 +203,7 @@ function renderCombatUI(combat, container) {
           min-height: 0;
         ">
           <!-- Player Side -->
-          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto;">
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow: visible;">
             ${renderPlayerSection(combat)}
             ${renderAlliesSection(combat)}
           </div>
@@ -221,7 +221,7 @@ function renderCombatUI(combat, container) {
             border: 2px solid rgba(255,170,68,0.4);
             border-radius: 8px;
             padding: 12px;
-            overflow-y: auto;
+            overflow: visible;
             ">
               <div style="
                 font-size: 14px;
@@ -245,12 +245,12 @@ function renderCombatUI(combat, container) {
             </div>
 
           <!-- Enemy Side -->
-          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto;">
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow: visible;">
             ${renderEnemiesSection(combat)}
           </div>
         </div>
 
-        <!-- Dice Area with End Turn/Dash buttons -->
+        <!-- Dice Area with End Turn/Dash/Stats buttons -->
         <div style="
           background: rgba(0,0,0,0.4);
           border: 2px solid #444;
@@ -259,7 +259,7 @@ function renderCombatUI(combat, container) {
           flex-shrink: 0;
           position: relative;
         ">
-          <!-- End Turn / Dash buttons in top-right -->
+          <!-- Stats / Dash / End Turn buttons in top-right -->
           <div style="
             position: absolute;
             top: 8px;
@@ -268,6 +268,15 @@ function renderCombatUI(combat, container) {
             gap: 8px;
             z-index: 10;
           ">
+            <button id="combat-stats-btn" style="
+              padding: 6px 12px;
+              font-size: 12px;
+              background: linear-gradient(145deg, #9C27B0, #7B1FA2);
+              border: 2px solid #BA68C8;
+              border-radius: 6px;
+              color: white;
+              cursor: pointer;
+            ">📊 Stats</button>
             <button id="combat-dash-btn" style="
               padding: 6px 12px;
               font-size: 12px;
@@ -289,6 +298,23 @@ function renderCombatUI(combat, container) {
               cursor: pointer;
               text-transform: uppercase;
             ">End Turn</button>
+          </div>
+          <!-- Toggleable Stats Panel -->
+          <div id="combat-stats-panel" style="
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 8px;
+            background: rgba(20,15,25,0.98);
+            border: 2px solid #9C27B0;
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 100;
+            min-width: 280px;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+          ">
+            ${renderCombatStatsPanel(combat)}
           </div>
           ${renderDiceArea(combat)}
         </div>
@@ -479,6 +505,126 @@ function renderItemsBar() {
       <div style="display: flex; gap: 6px; flex-wrap: nowrap;">
         ${itemIcons}
       </div>
+    </div>
+  `;
+}
+
+/**
+ * Render the combat stats panel showing player stats and dice bonuses
+ */
+function renderCombatStatsPanel(combat) {
+  const p = combat.player;
+  const bonuses = p.bonuses || { strength: 0, dexterity: 0, intelligence: 0, charisma: 0 };
+
+  // Get character dice data
+  const characterKey = (typeof gameState !== 'undefined' && gameState.character) || 'rodney';
+  const characterData = window.CHARACTERS_DATA ? window.CHARACTERS_DATA[characterKey] : null;
+  const dice = characterData ? characterData.dice : [];
+
+  // Map moves to their bonus stats
+  const moveBonusStats = {
+    'dmg': 'strength',
+    'block': 'dexterity',
+    'heal': 'intelligence',
+    'mana': 'intelligence',
+    'reroll': 'charisma',
+    'get': 'charisma',
+    'inflict': 'charisma',
+    'cleanse': 'charisma',
+    'vitality': 'intelligence',
+    'assassinate': 'strength',
+    'pain': 'strength'
+  };
+
+  const statColors = {
+    strength: '#ff6666',
+    dexterity: '#66ff66',
+    intelligence: '#6666ff',
+    charisma: '#ffff66'
+  };
+
+  // Render stats section
+  const statsHTML = `
+    <div style="margin-bottom: 15px;">
+      <div style="font-size: 13px; font-weight: bold; color: #9C27B0; margin-bottom: 10px; border-bottom: 1px solid #9C27B0; padding-bottom: 5px;">
+        📊 Combat Stats
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <div style="background: rgba(255,102,102,0.1); border: 1px solid ${statColors.strength}; border-radius: 6px; padding: 8px; text-align: center;">
+          <div style="font-size: 11px; color: #888;">Strength</div>
+          <div style="font-size: 18px; color: ${statColors.strength}; font-weight: bold;">${bonuses.strength || 0}</div>
+        </div>
+        <div style="background: rgba(102,255,102,0.1); border: 1px solid ${statColors.dexterity}; border-radius: 6px; padding: 8px; text-align: center;">
+          <div style="font-size: 11px; color: #888;">Dexterity</div>
+          <div style="font-size: 18px; color: ${statColors.dexterity}; font-weight: bold;">${bonuses.dexterity || 0}</div>
+        </div>
+        <div style="background: rgba(102,102,255,0.1); border: 1px solid ${statColors.intelligence}; border-radius: 6px; padding: 8px; text-align: center;">
+          <div style="font-size: 11px; color: #888;">Intelligence</div>
+          <div style="font-size: 18px; color: ${statColors.intelligence}; font-weight: bold;">${bonuses.intelligence || 0}</div>
+        </div>
+        <div style="background: rgba(255,255,102,0.1); border: 1px solid ${statColors.charisma}; border-radius: 6px; padding: 8px; text-align: center;">
+          <div style="font-size: 11px; color: #888;">Charisma</div>
+          <div style="font-size: 18px; color: ${statColors.charisma}; font-weight: bold;">${bonuses.charisma || 0}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Render dice faces with bonuses
+  const diceFacesHTML = dice.length > 0 ? `
+    <div>
+      <div style="font-size: 13px; font-weight: bold; color: #FFD700; margin-bottom: 10px; border-bottom: 1px solid #FFD700; padding-bottom: 5px;">
+        🎲 Dice Faces & Bonuses
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto;">
+        ${dice.map((face, idx) => {
+          if (face.isBlank) {
+            return `
+              <div style="background: rgba(100,100,100,0.2); border: 1px dashed #555; border-radius: 4px; padding: 6px 10px; display: flex; align-items: center; gap: 10px;">
+                <span style="color: #666; font-weight: bold; min-width: 50px;">Face ${idx + 1}</span>
+                <span style="color: #666;">— Blank —</span>
+              </div>
+            `;
+          }
+
+          const effectsHTML = face.effects ? face.effects.map(effect => {
+            const move = effect.move || '';
+            const value = effect.value || 0;
+            const bonusStat = moveBonusStats[move.toLowerCase()] || null;
+            const bonusValue = bonusStat ? (bonuses[bonusStat] || 0) : 0;
+            const statColor = bonusStat ? statColors[bonusStat] : '#888';
+            const totalValue = value + bonusValue;
+
+            return `
+              <span style="display: inline-flex; align-items: center; gap: 4px;">
+                <span style="color: #fff;">${value}</span>
+                ${bonusValue > 0 ? `<span style="color: ${statColor};">+${bonusValue}</span>` : ''}
+                <span style="color: #aaa;">${move}</span>
+                ${bonusValue > 0 ? `<span style="color: ${statColor}; font-weight: bold;">= ${totalValue}</span>` : ''}
+                ${effect.status ? `<span style="color: #ba68c8;">${effect.status}</span>` : ''}
+              </span>
+            `;
+          }).join(', ') : '<span style="color: #666;">No effects</span>';
+
+          return `
+            <div style="background: rgba(255,215,0,0.1); border: 1px solid #555; border-radius: 4px; padding: 6px 10px; display: flex; align-items: center; gap: 10px;">
+              <span style="color: #FFD700; font-weight: bold; min-width: 50px;">Face ${idx + 1}</span>
+              <span style="flex: 1;">${effectsHTML}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  ` : '<div style="color: #666;">No dice data available</div>';
+
+  return `
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+        <span style="font-size: 14px; font-weight: bold; color: #fff;">Combat Stats</span>
+        <button id="close-stats-panel-btn" style="background: none; border: none; color: #888; cursor: pointer; font-size: 18px; padding: 0;">&times;</button>
+      </div>
+      ${statsHTML}
+      ${diceFacesHTML}
     </div>
   `;
 }
@@ -2145,6 +2291,27 @@ function attachCombatEventListeners(combat) {
       card.style.boxShadow = '0 0 10px #FFD700';
     });
   });
+
+  // Stats panel toggle
+  const statsBtn = document.getElementById('combat-stats-btn');
+  const statsPanel = document.getElementById('combat-stats-panel');
+  const closeStatsBtn = document.getElementById('close-stats-panel-btn');
+
+  if (statsBtn && statsPanel) {
+    statsBtn.addEventListener('click', () => {
+      if (statsPanel.style.display === 'none' || !statsPanel.style.display) {
+        statsPanel.style.display = 'block';
+      } else {
+        statsPanel.style.display = 'none';
+      }
+    });
+  }
+
+  if (closeStatsBtn && statsPanel) {
+    closeStatsBtn.addEventListener('click', () => {
+      statsPanel.style.display = 'none';
+    });
+  }
 }
 
 /**

@@ -4415,14 +4415,90 @@ function confirmLevelUp() {
     }
   }
 
-  // Upgrade a random dice face (increase value by 1)
-  const diceUpgraded = upgradeDiceFace(characterKey);
-
   // Update UI
   updateTopBar();
   saveCurrentGame();
 
-  // Show level-up results
+  // Show stat bonuses first, then dice level-up choice
+  createGameModal(`
+    <div style="text-align: center; padding: 20px; max-width: 500px;">
+      <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
+      <div style="
+        background: rgba(76,175,80,0.1);
+        border: 2px solid #4CAF50;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+      ">
+        <p style="color: #4CAF50; font-size: 18px; margin-bottom: 15px; font-weight: bold;">
+          Stat Bonuses Gained:
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          ${appliedBonuses.length > 0 ? appliedBonuses.map(b => `
+            <div style="color: #fff; font-size: 14px;">
+              ${b}
+            </div>
+          `).join('') : '<div style="color: #888; font-size: 14px;">No stat bonuses</div>'}
+        </div>
+      </div>
+      <button id="proceed-to-dice-levelup-btn" style="
+        padding: 12px 30px;
+        background: linear-gradient(145deg, #FFD700, #FFA000);
+        border: 2px solid #FFD700;
+        border-radius: 8px;
+        color: #000;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 16px;
+      ">🎲 Choose Dice Upgrade</button>
+    </div>
+  `);
+
+  // Attach click handler for proceeding to dice level-up
+  document.getElementById('proceed-to-dice-levelup-btn').onclick = () => {
+    closeGameModal();
+    // Show dice level-up choice modal
+    showDiceLevelUpChoiceModal(characterKey, (diceResult) => {
+      // Show final result
+      if (diceResult) {
+        createNotification(diceResult, '#FFD700', '🎲');
+      }
+      saveCurrentGame();
+    });
+  };
+}
+
+// Legacy function for backwards compatibility (random upgrade)
+function confirmLevelUpLegacy() {
+  const characterKey = selectedCharacter || gameState.character || 'rodney';
+  const characterData = CHARACTERS_DATA[characterKey];
+
+  if (!characterData || !characterData.levelUpStats) {
+    console.error('Character level-up data not found');
+    return;
+  }
+
+  const oldLevel = gameState.playerLevel || 1;
+  gameState.playerLevel = oldLevel + 1;
+
+  const bonuses = characterData.levelUpStats;
+  const appliedBonuses = [];
+
+  // Apply stat bonuses (same as above)
+  if (bonuses.strength) { strength += bonuses.strength; appliedBonuses.push(`+${bonuses.strength} Strength`); }
+  if (bonuses.dexterity) { dexterity += bonuses.dexterity; appliedBonuses.push(`+${bonuses.dexterity} Dexterity`); }
+  if (bonuses.intelligence) { intelligence += bonuses.intelligence; appliedBonuses.push(`+${bonuses.intelligence} Intelligence`); }
+  if (bonuses.charisma) { charisma += bonuses.charisma; appliedBonuses.push(`+${bonuses.charisma} Charisma`); }
+  if (bonuses.reroll) { reroll += bonuses.reroll; gameState.reroll = reroll; appliedBonuses.push(`+${bonuses.reroll} Reroll`); }
+  if (bonuses.dash) { gameState.dash = (gameState.dash || 0) + bonuses.dash; appliedBonuses.push(`+${bonuses.dash} Dash`); }
+  if (bonuses.luck) { luck += bonuses.luck; appliedBonuses.push(`+${bonuses.luck} Luck`); }
+
+  // Upgrade a random dice face (old behavior)
+  const diceUpgraded = upgradeDiceFace(characterKey);
+
+  updateTopBar();
+  saveCurrentGame();
+
   createGameModal(`
     <div style="text-align: center; padding: 20px; max-width: 500px;">
       <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
@@ -4437,16 +4513,8 @@ function confirmLevelUp() {
           Bonuses Gained:
         </p>
         <div style="display: flex; flex-direction: column; gap: 8px;">
-          ${appliedBonuses.map(b => `
-            <div style="color: #fff; font-size: 14px;">
-              ${b}
-            </div>
-          `).join('')}
-          ${diceUpgraded ? `
-            <div style="color: #FFD700; font-size: 14px; margin-top: 10px;">
-              ${diceUpgraded}
-            </div>
-          ` : ''}
+          ${appliedBonuses.map(b => `<div style="color: #fff; font-size: 14px;">${b}</div>`).join('')}
+          ${diceUpgraded ? `<div style="color: #FFD700; font-size: 14px; margin-top: 10px;">${diceUpgraded}</div>` : ''}
         </div>
       </div>
       <button onclick="closeGameModal()" style="
@@ -4505,9 +4573,346 @@ function upgradeDiceFace(characterKey) {
   return `Dice upgraded: ${effect.move} ${oldValue} → ${effect.value}`;
 }
 
+/**
+ * Generate level-up options for dice
+ * @param {string} characterKey - The character key
+ * @returns {Array} Array of upgrade options
+ */
+function generateDiceLevelUpOptions(characterKey) {
+  const characterData = CHARACTERS_DATA[characterKey];
+  if (!characterData || !characterData.dice) return [];
+
+  const options = [];
+  const luckValue = typeof luck !== 'undefined' ? luck : 0;
+
+  // Find blank faces and upgradeable faces
+  const blankFaces = [];
+  const upgradableFaces = [];
+
+  characterData.dice.forEach((face, index) => {
+    if (face.isBlank) {
+      blankFaces.push({ faceIndex: index, face });
+    } else if (face.effects) {
+      face.effects.forEach((effect, effectIndex) => {
+        if (effect.value && typeof effect.value === 'number') {
+          upgradableFaces.push({ faceIndex: index, effectIndex, effect, face });
+        }
+      });
+    }
+  });
+
+  // Generate options - prioritize blank faces if available
+  const hasBlankFace = blankFaces.length > 0;
+
+  // If there's a blank face, at least one option should be adding a new side
+  if (hasBlankFace) {
+    const blankFace = blankFaces[Math.floor(Math.random() * blankFaces.length)];
+    const newSideOption = generateNewSideOption(blankFace.faceIndex, luckValue);
+    if (newSideOption) {
+      options.push(newSideOption);
+    }
+  }
+
+  // Fill remaining options with number upgrades (shuffle and pick)
+  const shuffledUpgrades = upgradableFaces.sort(() => Math.random() - 0.5);
+  for (const upgrade of shuffledUpgrades) {
+    if (options.length >= 3) break;
+
+    // Don't add duplicate face upgrades
+    const alreadyHasFace = options.some(o => o.type === 'upgrade' && o.faceIndex === upgrade.faceIndex);
+    if (alreadyHasFace) continue;
+
+    options.push({
+      type: 'upgrade',
+      faceIndex: upgrade.faceIndex,
+      effectIndex: upgrade.effectIndex,
+      effect: upgrade.effect,
+      face: upgrade.face,
+      description: `+1 to ${upgrade.effect.move}`,
+      before: upgrade.effect.value,
+      after: upgrade.effect.value + 1
+    });
+  }
+
+  // If we still need more options and have more blank faces, add them
+  if (options.length < 3 && blankFaces.length > 1) {
+    for (const blank of blankFaces) {
+      if (options.length >= 3) break;
+      const alreadyHasFace = options.some(o => o.faceIndex === blank.faceIndex);
+      if (alreadyHasFace) continue;
+
+      const newSideOption = generateNewSideOption(blank.faceIndex, luckValue);
+      if (newSideOption) {
+        options.push(newSideOption);
+      }
+    }
+  }
+
+  // If still under 3 options and we have upgradeable faces, add more upgrade variants
+  // (different amount upgrades or duplicates with slight variations)
+  while (options.length < 3 && upgradableFaces.length > 0) {
+    const randomUpgrade = upgradableFaces[Math.floor(Math.random() * upgradableFaces.length)];
+    options.push({
+      type: 'upgrade',
+      faceIndex: randomUpgrade.faceIndex,
+      effectIndex: randomUpgrade.effectIndex,
+      effect: randomUpgrade.effect,
+      face: randomUpgrade.face,
+      description: `+1 to ${randomUpgrade.effect.move}`,
+      before: randomUpgrade.effect.value,
+      after: randomUpgrade.effect.value + 1
+    });
+  }
+
+  return options.slice(0, 3);
+}
+
+/**
+ * Generate a new side option for a blank face
+ * @param {number} faceIndex - Index of the blank face
+ * @param {number} luckValue - Player's luck stat
+ * @returns {Object} New side option
+ */
+function generateNewSideOption(faceIndex, luckValue) {
+  // Get available moves for level-up (excluding special ones like spawn, alter)
+  const levelUpMoves = ['dmg', 'block', 'heal', 'reroll', 'mana', 'get', 'inflict'];
+
+  // Select a random move
+  const selectedMove = levelUpMoves[Math.floor(Math.random() * levelUpMoves.length)];
+  const moveData = MOVES_DATA ? MOVES_DATA[selectedMove] : null;
+
+  // Determine base value based on rarity (affected by luck)
+  const rarity = selectRandomRarity ? selectRandomRarity(luckValue) : 'common';
+  let baseValue = 1;
+  switch (rarity) {
+    case 'uncommon': baseValue = 2; break;
+    case 'rare': baseValue = 3; break;
+    case 'legendary': baseValue = 4; break;
+    default: baseValue = 1;
+  }
+
+  // Handle status moves (Get = buff, Inflict = debuff)
+  let statusName = null;
+  if (selectedMove === 'get' || selectedMove === 'inflict') {
+    const isDebuff = selectedMove === 'inflict';
+    const statuses = STATUSES_DATA ? Object.values(STATUSES_DATA) : [];
+
+    // Filter by type
+    const filteredStatuses = statuses.filter(s => {
+      if (isDebuff) {
+        return s.type === 'Debuff' || s.preference === 'Negative';
+      } else {
+        return s.type === 'Buff' || s.preference === 'Positive';
+      }
+    });
+
+    if (filteredStatuses.length > 0) {
+      const selectedStatus = filteredStatuses[Math.floor(Math.random() * filteredStatuses.length)];
+      statusName = selectedStatus.name;
+    } else {
+      statusName = isDebuff ? 'Burn' : 'Power';
+    }
+  }
+
+  // Build the effect description
+  let effectDescription;
+  let effectRaw;
+  if (statusName) {
+    effectDescription = `${baseValue} ${selectedMove.charAt(0).toUpperCase() + selectedMove.slice(1)} ${statusName}`;
+    effectRaw = `${baseValue} ${selectedMove} ${statusName}`;
+  } else {
+    effectDescription = `${baseValue} ${moveData ? moveData.name : selectedMove.charAt(0).toUpperCase() + selectedMove.slice(1)}`;
+    effectRaw = `${baseValue} ${selectedMove}`;
+  }
+
+  return {
+    type: 'newSide',
+    faceIndex: faceIndex,
+    move: selectedMove,
+    value: baseValue,
+    statusName: statusName,
+    rarity: rarity,
+    description: `Add ${effectDescription}`,
+    effectRaw: effectRaw,
+    moveData: moveData
+  };
+}
+
+/**
+ * Apply a dice level-up option
+ * @param {Object} option - The selected option
+ * @param {string} characterKey - The character key
+ * @returns {string} Description of what was applied
+ */
+function applyDiceLevelUpOption(option, characterKey) {
+  const characterData = CHARACTERS_DATA[characterKey];
+  if (!characterData || !characterData.dice) return null;
+
+  if (option.type === 'upgrade') {
+    // Upgrade existing face value
+    const oldValue = option.effect.value;
+    characterData.dice[option.faceIndex].effects[option.effectIndex].value++;
+
+    // Update raw text
+    const effect = characterData.dice[option.faceIndex].effects[option.effectIndex];
+    const addonsStr = effect.addons && effect.addons.length > 0 ? ' ' + effect.addons.join(' ') : '';
+    const targetStr = effect.target ? ' ' + effect.target : '';
+    characterData.dice[option.faceIndex].effects[option.effectIndex].raw =
+      `${effect.value} ${effect.move}${targetStr}${addonsStr}`;
+    characterData.dice[option.faceIndex].raw =
+      characterData.dice[option.faceIndex].effects.map(e => e.raw).join(', ');
+
+    return `Dice upgraded: ${effect.move} ${oldValue} → ${effect.value}`;
+  } else if (option.type === 'newSide') {
+    // Add new side to blank face
+    const newEffect = {
+      move: option.move,
+      value: option.value,
+      raw: option.effectRaw
+    };
+
+    if (option.statusName) {
+      newEffect.status = option.statusName;
+    }
+
+    // Determine target based on move type
+    if (option.moveData && option.moveData.preferredTarget) {
+      if (option.moveData.preferredTarget === 'Enemy') {
+        newEffect.target = 'enemy';
+      } else if (option.moveData.preferredTarget === 'Ally/Self') {
+        newEffect.target = 'self';
+      }
+    }
+
+    // Update the face
+    characterData.dice[option.faceIndex] = {
+      isBlank: false,
+      effects: [newEffect],
+      raw: option.effectRaw
+    };
+
+    return `New dice side: ${option.description}`;
+  }
+
+  return null;
+}
+
+/**
+ * Show dice level-up choice modal
+ * @param {string} characterKey - The character key
+ * @param {Function} onComplete - Callback when selection is complete
+ */
+function showDiceLevelUpChoiceModal(characterKey, onComplete) {
+  const options = generateDiceLevelUpOptions(characterKey);
+
+  if (options.length === 0) {
+    // No options available, skip dice upgrade
+    if (onComplete) onComplete(null);
+    return;
+  }
+
+  const getRarityColor = (rarity) => {
+    switch (rarity?.toLowerCase()) {
+      case 'legendary': return '#ff6b00';
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      default: return '#aaa';
+    }
+  };
+
+  const optionsHTML = options.map((opt, idx) => {
+    let previewHTML = '';
+    let rarityBadge = '';
+
+    if (opt.type === 'upgrade') {
+      // Show before → after
+      previewHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; justify-content: center; margin-top: 10px;">
+          <div style="background: rgba(255,100,100,0.2); border: 2px solid #666; border-radius: 8px; padding: 10px; min-width: 80px; text-align: center;">
+            <div style="font-size: 12px; color: #888; margin-bottom: 4px;">Before</div>
+            <div style="font-size: 20px; color: #ff6666; font-weight: bold;">${opt.before}</div>
+            <div style="font-size: 11px; color: #aaa;">${opt.effect.move}</div>
+          </div>
+          <div style="font-size: 24px; color: #FFD700;">→</div>
+          <div style="background: rgba(100,255,100,0.2); border: 2px solid #4CAF50; border-radius: 8px; padding: 10px; min-width: 80px; text-align: center;">
+            <div style="font-size: 12px; color: #888; margin-bottom: 4px;">After</div>
+            <div style="font-size: 20px; color: #4CAF50; font-weight: bold;">${opt.after}</div>
+            <div style="font-size: 11px; color: #aaa;">${opt.effect.move}</div>
+          </div>
+        </div>
+      `;
+    } else if (opt.type === 'newSide') {
+      // Show new side preview
+      const rarityColor = getRarityColor(opt.rarity);
+      rarityBadge = `<span style="background: ${rarityColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; text-transform: uppercase; margin-left: 8px;">${opt.rarity}</span>`;
+      previewHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; justify-content: center; margin-top: 10px;">
+          <div style="background: rgba(100,100,100,0.2); border: 2px dashed #666; border-radius: 8px; padding: 10px; min-width: 80px; text-align: center;">
+            <div style="font-size: 12px; color: #888; margin-bottom: 4px;">Before</div>
+            <div style="font-size: 20px; color: #666;">—</div>
+            <div style="font-size: 11px; color: #666;">Blank</div>
+          </div>
+          <div style="font-size: 24px; color: #FFD700;">→</div>
+          <div style="background: rgba(255,215,0,0.2); border: 2px solid ${rarityColor}; border-radius: 8px; padding: 10px; min-width: 80px; text-align: center;">
+            <div style="font-size: 12px; color: #888; margin-bottom: 4px;">After</div>
+            <div style="font-size: 20px; color: ${rarityColor}; font-weight: bold;">${opt.value}</div>
+            <div style="font-size: 11px; color: #aaa;">${opt.statusName || opt.move}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="dice-levelup-option" data-option-index="${idx}" style="
+        background: rgba(40,40,50,0.8);
+        border: 2px solid #555;
+        border-radius: 12px;
+        padding: 15px;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex: 1;
+        min-width: 200px;
+        max-width: 280px;
+      " onmouseenter="this.style.borderColor='#FFD700'; this.style.transform='translateY(-4px)';"
+         onmouseleave="this.style.borderColor='#555'; this.style.transform='translateY(0)';">
+        <div style="font-size: 14px; color: #FFD700; font-weight: bold; text-align: center;">
+          Face ${opt.faceIndex + 1}${rarityBadge}
+        </div>
+        <div style="font-size: 13px; color: #ccc; text-align: center; margin-top: 5px;">
+          ${opt.description}
+        </div>
+        ${previewHTML}
+      </div>
+    `;
+  }).join('');
+
+  const modalHTML = `
+    <div style="text-align: center; padding: 20px; max-width: 900px;">
+      <h2 style="color: #FFD700; margin-bottom: 10px;">🎲 Dice Level Up!</h2>
+      <p style="color: #aaa; margin-bottom: 20px;">Choose an upgrade for your dice:</p>
+      <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px;">
+        ${optionsHTML}
+      </div>
+    </div>
+  `;
+
+  createGameModal(modalHTML);
+
+  // Attach click handlers
+  document.querySelectorAll('.dice-levelup-option').forEach((el, idx) => {
+    el.onclick = () => {
+      const selectedOption = options[idx];
+      const result = applyDiceLevelUpOption(selectedOption, characterKey);
+      closeGameModal();
+      if (onComplete) onComplete(result);
+    };
+  });
+}
+
 // Make level-up functions globally available
 window.showLevelUpPrompt = showLevelUpPrompt;
 window.confirmLevelUp = confirmLevelUp;
+window.showDiceLevelUpChoiceModal = showDiceLevelUpChoiceModal;
 
 // ============== ALLY SYSTEM ==============
 

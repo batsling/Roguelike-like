@@ -548,4 +548,49 @@ var GAME_STATUSES_DATA = ${JSON.stringify(gameStatuses, null, 2)};
   console.log(`✅ Game Statuses: ${Object.keys(gameStatuses).length} game statuses`);
 }
 
+// ============== FISH ==============
+const fishSheet = workbook.Sheets['fish'];
+if (fishSheet) {
+  const fishData = XLSX.utils.sheet_to_json(fishSheet);
+
+  const fish = fishData.map(row => {
+    return {
+      name: row['Name'] || '',
+      rarity: row['Rarity'] || 'Common',
+      types: row['Types'] ? row['Types'].split(',').map(t => t.trim()) : [],
+      game: row['Game'] || '',
+      imageUrl: row['Image'] ? `images/fish/${row['Image']}.png` : null
+    };
+  });
+
+  const fishOutput = `// Auto-generated from Roguelikes.xlsx - Fish
+
+var FISH_DATA = ${JSON.stringify(fish, null, 2)};
+`;
+
+  fs.writeFileSync('fish-data.js', fishOutput);
+  console.log(`✅ Fish: ${fish.length} fish`);
+}
+
+// ============== BINGO ==============
+const bingoSheet = workbook.Sheets['bingo'];
+if (bingoSheet) {
+  const bingoData = XLSX.utils.sheet_to_json(bingoSheet);
+
+  const bingoGoals = bingoData.map(row => {
+    return {
+      goal: row['Goal'] || '',
+      difficulty: (row['Difficulty'] || 'Normal').toLowerCase()
+    };
+  });
+
+  const bingoOutput = `// Auto-generated from Roguelikes.xlsx - Bingo Goals
+
+var BINGO_GOALS_DATA = ${JSON.stringify(bingoGoals, null, 2)};
+`;
+
+  fs.writeFileSync('bingo-data.js', bingoOutput);
+  console.log(`✅ Bingo: ${bingoGoals.length} goals`);
+}
+
 console.log('\n✅ All data files generated successfully!');
