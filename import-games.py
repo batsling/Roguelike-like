@@ -78,7 +78,7 @@ def import_games():
         connected = row[3]  # Column D - Connected?
         # Skip row[4] - Influencer? (formula)
         tags = row[5] if len(row) > 5 else None  # Column F - Tags
-        # row[6] is File
+        file_name = row[6] if len(row) > 6 else None  # Column G - File
         # row[7] is Owned
 
         if not name:
@@ -86,9 +86,12 @@ def import_games():
 
         name = str(name).strip()
 
-        # Generate cover image path
-        filename = name_to_filename(name)
-        cover_image = f"images/covers/{filename}.jpg"
+        # Generate cover image path - use File column if available, otherwise generate from name
+        if file_name and str(file_name).strip():
+            cover_image = f"images/covers/{str(file_name).strip()}.jpg"
+        else:
+            filename = name_to_filename(name)
+            cover_image = f"images/covers/{filename}.jpg"
 
         # Get games this game influenced
         games_influenced = connections_map.get(name, [])
@@ -98,6 +101,11 @@ def import_games():
         if is_influenced:
             influenced_games.add(name)
 
+        # Parse tags (comma-separated)
+        parsed_tags = []
+        if tags:
+            parsed_tags = [t.strip() for t in str(tags).split(',') if t.strip()]
+
         # Build game object
         game = {
             "name": name,
@@ -105,7 +113,7 @@ def import_games():
             "type": str(game_type).strip() if game_type else "Traditional",
             "connected": bool(connected),
             "influenced": is_influenced,
-            "tags": []
+            "tags": parsed_tags
         }
 
         # Add gamesInfluenced if there are any

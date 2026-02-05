@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 589 games, 746 connections
-// 514 connected, 162 influencers
+// 592 games, 749 connections
+// 517 connected, 162 influencers
 
 var GAMES_DATA = [
   {
@@ -277,6 +277,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/archons.jpg"
+  },
+  {
+    "name": "Army of Ruin",
+    "year": 2022,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/army-of-ruin.jpg"
   },
   {
     "name": "Arrogue",
@@ -2524,6 +2534,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/geometry-arena-2.jpg"
+  },
+  {
+    "name": "Glyphica: Typing Survival",
+    "year": 2024,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/glyphica-typing-survival.jpg"
   },
   {
     "name": "Gnomes",
@@ -5663,6 +5683,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/swapmeat.jpg"
   },
   {
+    "name": "Swarm Grinder",
+    "year": 2023,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/swarm-grinder.jpg"
+  },
+  {
     "name": "Sworn",
     "year": 2025,
     "type": "Action",
@@ -6391,7 +6421,10 @@ var GAMES_DATA = [
       "Mythical Concept Starnaut",
       "Choo Choo Survivor",
       "Pesticide Not Required",
-      "Astro Prospector"
+      "Astro Prospector",
+      "Swarm Grinder",
+      "Army of Ruin",
+      "Glyphica: Typing Survival"
     ],
     "coverImage": "images/covers/vampire-survivors.jpg"
   },

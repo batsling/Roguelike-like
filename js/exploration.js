@@ -511,8 +511,13 @@ function advance(game, x, y, encounterType) {
     }
 
     // Trigger encounter based on type (these functions are in main.js)
-    if (encounterType === 'combat' && typeof showCombatModal === 'function') {
-      showCombatModal();
+    if (encounterType === 'combat') {
+      // Check if new dice combat system is enabled
+      if (window.useDiceCombat && typeof showDiceCombatModal === 'function') {
+        showDiceCombatModal();
+      } else if (typeof showCombatModal === 'function') {
+        showCombatModal();
+      }
     } else if (encounterType === 'event' && typeof showEventModal === 'function') {
       showEventModal();
     } else if (encounterType === 'shop' && typeof showShopModal === 'function') {
@@ -572,6 +577,13 @@ function showFinish(node, isAmuletGame = false) {
       skipBtn.remove();
     }
     b.remove();
+
+    // Clear any pending Hades start boon selection timeout to prevent it from firing
+    // after the player has already progressed (fixes game skipping issue)
+    if (gameState.hadesStartBoonTimeout) {
+      clearTimeout(gameState.hadesStartBoonTimeout);
+      gameState.hadesStartBoonTimeout = null;
+    }
 
     if (isAmuletGame) {
       // Mark game as finished first

@@ -183,6 +183,31 @@ function initializeData() {
     console.error('✗ CURSES_DATA not found!');
   }
 
+  // New dice combat data
+  if (typeof ALLIES_DATA !== 'undefined') {
+    console.log('✓ Allies loaded:', ALLIES_DATA.length);
+  } else {
+    console.warn('✗ ALLIES_DATA not found (optional for dice combat)');
+  }
+
+  if (typeof WEAPONS_DATA !== 'undefined') {
+    console.log('✓ Weapons loaded:', WEAPONS_DATA.length);
+  } else {
+    console.warn('✗ WEAPONS_DATA not found (optional for dice combat)');
+  }
+
+  if (typeof STATUSES_DATA !== 'undefined') {
+    console.log('✓ Combat Statuses loaded:', Object.keys(STATUSES_DATA).length);
+  }
+
+  if (typeof MOVES_DATA !== 'undefined') {
+    console.log('✓ Combat Moves loaded:', Object.keys(MOVES_DATA).length);
+  }
+
+  if (typeof SPELLS_DATA !== 'undefined') {
+    console.log('✓ Spells loaded:', SPELLS_DATA.length);
+  }
+
   console.log('=== DATA SUMMARY ===');
   console.log('Games:', games.length);
   console.log('Items:', items.length);
@@ -190,6 +215,9 @@ function initializeData() {
   console.log('Enemies:', enemies.length);
   console.log('Curses:', curses.length);
   console.log('Characters:', Object.keys(PLAYER_CHARACTERS).length);
+  console.log('Allies:', typeof ALLIES_DATA !== 'undefined' ? ALLIES_DATA.length : 0);
+  console.log('Weapons:', typeof WEAPONS_DATA !== 'undefined' ? WEAPONS_DATA.length : 0);
+  console.log('Spells:', typeof SPELLS_DATA !== 'undefined' ? SPELLS_DATA.length : 0);
 
   // Populate UI dropdowns if function is available
   setTimeout(() => {

@@ -258,6 +258,9 @@ function loadState() {
 
 let selectedCharacter = "rogue";
 
+// Combat system toggle - set to true to use new dice-based combat
+let useDiceCombat = true;
+
 function saveCurrentGame() {
   if (!gameState.saveName) return;
 
@@ -316,6 +319,17 @@ function loadSavedGame(saveName) {
 
   // Restore game state
   gameState = { ...save };
+
+  // Backward compatibility for new combat system properties (for old saves)
+  if (gameState.playerLevel === undefined) {
+    gameState.playerLevel = 1;
+  }
+  if (gameState.activeAllies === undefined) {
+    gameState.activeAllies = [];
+  }
+  if (gameState.equippedWeapon === undefined) {
+    gameState.equippedWeapon = null;
+  }
 
   // Generate encounter types if they don't exist (for old saves)
   if (!gameState.encounterTypes) {
@@ -536,17 +550,20 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   }
 
   console.log('Character data:', character);
-  strength = character.startingStats.strength || 0;
-  dexterity = character.startingStats.dexterity || 0;
-  intelligence = character.startingStats.intelligence || 0;
-  charisma = character.startingStats.charisma || 0;
-  attack = character.startingStats.attack || 0;
-  reroll = character.startingStats.reroll || 0;
-  dash = character.startingStats.dash || 0;
-  skip = character.startingStats.skip || 0;
-  discovery = character.startingStats.discovery || 0;
-  fov = character.startingStats.fov || 0;
-  luck = character.startingStats.luck || 0;
+
+  // Handle both old format (startingStats) and new format (no startingStats, all start at 0)
+  const stats = character.startingStats || {};
+  strength = stats.strength || 0;
+  dexterity = stats.dexterity || 0;
+  intelligence = stats.intelligence || 0;
+  charisma = stats.charisma || 0;
+  attack = stats.attack || 0;
+  reroll = stats.reroll || 0;
+  dash = stats.dash || 0;
+  skip = stats.skip || 0;
+  discovery = stats.discovery || 0;
+  fov = stats.fov || 0;
+  luck = stats.luck || 0;
 
   // Reset health and gold for new run
   health = 10;
@@ -621,7 +638,9 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     escapeProgress: 0,
     gameStatusEffects: {}, // Map of game names to arrays of status effects
     encounterTypes: encounterTypes, // Map of game names to encounter types for this run
-    location: selectedLocation // Current location for this run
+    location: selectedLocation, // Current location for this run
+    playerLevel: 1, // Character level for dice combat system
+    activeAllies: [] // Allies that provide dice in combat
   };
 
   startGame = start;
@@ -671,7 +690,9 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   if (selectedLocation && selectedLocation.game === 'Hades' && typeof showHadesBoonSelection === 'function') {
     console.log('Starting in Hades location, showing boon selection...');
     // Small delay to let the dungeon screen render first
-    setTimeout(() => {
+    // Store the timeout ID so it can be cleared if player finishes game before it fires
+    gameState.hadesStartBoonTimeout = setTimeout(() => {
+      gameState.hadesStartBoonTimeout = null;
       showHadesBoonSelection();
     }, 500);
   }
@@ -3899,6 +3920,742 @@ function showCombatModal() {
 // Make showCombatModal available globally
 window.showCombatModal = showCombatModal;
 
+/**
+ * New Dice-Based Combat Modal
+ * Uses CombatEngine and CombatUI for the new combat system
+ */
+function showDiceCombatModal() {
+  if (!ENEMIES_DATA || ENEMIES_DATA.length === 0) {
+    console.error('ENEMIES_DATA not loaded');
+    return;
+  }
+
+  // Set phase to combat
+  gameState.phase = 'combat';
+  updateInventory();
+
+  // Get difficulty based on games beaten
+  const gamesBeaten = gameState.totalGamesBeaten || 0;
+  let difficulty = 'Low';
+  if (gamesBeaten >= 10) {
+    difficulty = 'High';
+  } else if (gamesBeaten >= 5) {
+    difficulty = 'Medium';
+  }
+
+  // Determine type based on current game
+  const currentGameObj = games.find(g => g.name === gameState.currentGame);
+  let enemyType = 'Strength';
+  if (currentGameObj && currentGameObj.type) {
+    const gameType = currentGameObj.type.toLowerCase();
+    switch(gameType) {
+      case 'action': enemyType = 'Strength'; break;
+      case 'deckbuilding': enemyType = 'Charisma'; break;
+      case 'strategy': enemyType = 'Intelligence'; break;
+      case 'traditional': enemyType = 'Dexterity'; break;
+      default: enemyType = 'Strength';
+    }
+  }
+
+  // Filter enemies by difficulty and type
+  const matchingEnemies = ENEMIES_DATA.filter(enemy =>
+    enemy.difficulty === difficulty && enemy.type === enemyType
+  );
+
+  // Fallback to any enemy of the right difficulty if no type match
+  const candidates = matchingEnemies.length > 0
+    ? matchingEnemies
+    : ENEMIES_DATA.filter(e => e.difficulty === difficulty);
+
+  if (candidates.length === 0) {
+    console.error('No matching enemies found');
+    return;
+  }
+
+  // Select random enemy
+  const enemyData = candidates[Math.floor(Math.random() * candidates.length)];
+
+  // Get character data
+  const characterKey = selectedCharacter || gameState.character || 'rodney';
+  const characterData = CHARACTERS_DATA[characterKey];
+
+  if (!characterData) {
+    console.error('Character data not found for:', characterKey);
+    // Fall back to old combat system
+    showCombatModal();
+    return;
+  }
+
+  // Merge player stats into character data
+  characterData.stats = {
+    strength: strength || 0,
+    dexterity: dexterity || 0,
+    intelligence: intelligence || 0,
+    charisma: charisma || 0
+  };
+  characterData.health = health;
+  characterData.maxHealth = maxHealth;
+  characterData.reroll = gameState.reroll || reroll || 0;
+  characterData.dash = gameState.dash || 0;
+
+  // Get weapon data if equipped
+  let weaponData = null;
+  if (gameState.equippedWeapon && WEAPONS_DATA) {
+    weaponData = WEAPONS_DATA.find(w => w.name === gameState.equippedWeapon.name);
+  }
+
+  // Get active allies from gameState
+  const allies = (gameState.activeAllies || []).map(allyData => {
+    // Each ally in gameState stores current HP, we need to merge with base data
+    const baseAlly = ALLIES_DATA.find(a => a.name === allyData.name);
+    if (!baseAlly) return null;
+    return {
+      ...baseAlly,
+      currentHp: allyData.currentHp !== undefined ? allyData.currentHp : baseAlly.hp
+    };
+  }).filter(Boolean);
+
+  // Initialize combat
+  const combatState = window.CombatEngine.initCombat([enemyData], characterData, weaponData, allies);
+
+  if (!combatState) {
+    console.error('Failed to initialize combat');
+    return;
+  }
+
+  // Create modal HTML container
+  const combatHTML = `
+    <div id="dice-combat-modal" style="
+      width: 95vw;
+      max-width: 1200px;
+      height: 90vh;
+      max-height: 800px;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(135deg, #1a1410 0%, #2a1810 100%);
+      border-radius: 12px;
+      overflow: hidden;
+    ">
+      <div id="dice-combat-content" style="flex: 1; overflow: hidden;"></div>
+    </div>
+  `;
+
+  createGameModal(combatHTML);
+
+  // Render the combat UI
+  const container = document.getElementById('dice-combat-content');
+  if (container && window.CombatUI) {
+    window.CombatUI.renderCombatUI(combatState, container);
+  }
+
+  // Override the checkCombatEnd to handle victory/defeat properly
+  const originalCheckEnd = window.CombatUI.checkCombatEnd;
+  window.CombatUI.checkCombatEnd = function() {
+    const combat = window.CombatEngine.getCombatState();
+    if (!combat) return;
+
+    if (combat.phase === 'victory') {
+      setTimeout(() => {
+        handleDiceCombatVictory(enemyData);
+      }, 500);
+    } else if (combat.phase === 'defeat') {
+      setTimeout(() => {
+        handleDiceCombatDefeat(enemyData);
+      }, 500);
+    }
+  };
+}
+
+/**
+ * Handle victory in dice combat
+ */
+function handleDiceCombatVictory(enemy) {
+  // Sync ally HP from combat state before ending
+  const combatState = window.CombatEngine.getCombatState();
+  if (combatState && combatState.allies) {
+    combatState.allies.forEach(ally => {
+      if (ally.isAlive) {
+        updateAllyHp(ally.name, ally.health);
+      } else {
+        // Ally died in combat
+        dismissAlly(ally.name);
+      }
+    });
+  }
+
+  // Cleanup 3D dice renderers
+  if (window.CombatUI && window.CombatUI.cleanup3DDice) {
+    window.CombatUI.cleanup3DDice();
+  }
+
+  window.CombatEngine.endCombat(true);
+
+  // Award gold based on difficulty
+  const goldAmounts = { 'Low': 10, 'Medium': 20, 'High': 30 };
+  const goldReward = goldAmounts[enemy.difficulty] || 10;
+  gold += goldReward;
+  gameState.gold = gold;
+  updateTopBar();
+
+  // Trigger onEnemyDefeated effects
+  if (typeof triggerOnEnemyDefeated === 'function') {
+    triggerOnEnemyDefeated();
+  }
+
+  // Record enemy defeated for collection stats
+  if (typeof recordEnemyDefeated === 'function') {
+    recordEnemyDefeated(enemy.name);
+  }
+
+  // Record encounter
+  encounterHistory.push({
+    type: 'combat',
+    enemy: enemy.name,
+    outcome: 'Victory',
+    timestamp: new Date().toLocaleString()
+  });
+  updateEncounterHistory();
+  saveCurrentGame();
+
+  // Show victory screen
+  createGameModal(`
+    <div style="text-align: center; padding: 30px;">
+      <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">Victory!</h2>
+      <h3 style="color: #fff; margin: 15px 0;">${enemy.name} defeated!</h3>
+      <p style="color: #FFD700; font-size: 18px; margin: 20px 0;">+${goldReward} Gold</p>
+      <button onclick="closeGameModal()" style="
+        padding: 15px 30px;
+        background: linear-gradient(145deg, #4CAF50, #2E7D32);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+      ">Continue</button>
+    </div>
+  `);
+}
+
+/**
+ * Handle defeat in dice combat
+ */
+function handleDiceCombatDefeat(enemy) {
+  // Cleanup 3D dice renderers
+  if (window.CombatUI && window.CombatUI.cleanup3DDice) {
+    window.CombatUI.cleanup3DDice();
+  }
+
+  window.CombatEngine.endCombat(false);
+
+  // Clear items, curses, and allies on death
+  inventory = [];
+  if (gameState.activeCurses) {
+    gameState.activeCurses = [];
+  }
+  if (gameState.activeAllies) {
+    gameState.activeAllies = [];
+  }
+
+  // Record player killed by enemy for collection stats
+  if (typeof recordPlayerKilledBy === 'function') {
+    recordPlayerKilledBy(enemy.name);
+  }
+
+  // Record encounter
+  encounterHistory.push({
+    type: 'combat',
+    enemy: enemy.name,
+    outcome: 'Defeat',
+    timestamp: new Date().toLocaleString()
+  });
+  updateEncounterHistory();
+
+  // Show death screen
+  createGameModal(`
+    <div style="text-align: center; padding: 30px;">
+      <h1 style="color: #ff4444; font-size: 48px; margin: 20px 0;">YOU DIED</h1>
+      <p style="color: #aaa; font-size: 18px; margin: 20px 0;">Defeated by ${enemy.name}</p>
+      <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
+        <button id="dice-death-home-btn" style="
+          padding: 12px 24px;
+          background: #444;
+          border: 2px solid #666;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+        ">Home</button>
+        <button id="dice-death-retry-btn" style="
+          padding: 12px 24px;
+          background: #d32f2f;
+          border: 2px solid #f44336;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+        ">Try Again</button>
+      </div>
+    </div>
+  `);
+
+  document.getElementById('dice-death-home-btn').onclick = () => {
+    closeGameModal();
+    updateInventory?.();
+    updateCursesDisplay?.();
+    if (typeof clearAllArrows === 'function') clearAllArrows();
+    document.getElementById('dungeon-screen').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+    const mapBtn = document.getElementById('map-btn');
+    if (mapBtn) mapBtn.style.display = 'none';
+  };
+
+  document.getElementById('dice-death-retry-btn').onclick = () => {
+    closeGameModal();
+    if (typeof clearAllArrows === 'function') clearAllArrows();
+    document.getElementById('dungeon-screen').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+    const mapBtn = document.getElementById('map-btn');
+    if (mapBtn) mapBtn.style.display = 'none';
+    setTimeout(() => {
+      document.getElementById('new-game-btn')?.click();
+    }, 100);
+  };
+}
+
+// Make new combat modal available globally
+window.showDiceCombatModal = showDiceCombatModal;
+
+// Expose combat system toggle
+Object.defineProperty(window, 'useDiceCombat', {
+  get: function() { return useDiceCombat; },
+  set: function(val) {
+    useDiceCombat = val;
+    console.log(`Combat system: ${val ? 'New Dice-Based' : 'Classic D20'}`);
+  }
+});
+
+// Toggle combat system function
+window.toggleCombatSystem = function() {
+  useDiceCombat = !useDiceCombat;
+  console.log(`Combat system switched to: ${useDiceCombat ? 'New Dice-Based' : 'Classic D20'}`);
+  return useDiceCombat;
+};
+
+// ============== LEVEL-UP SYSTEM ==============
+
+/**
+ * Show the level-up prompt for the current character
+ */
+function showLevelUpPrompt() {
+  const characterKey = selectedCharacter || gameState.character || 'rodney';
+  const characterData = CHARACTERS_DATA[characterKey];
+
+  if (!characterData) {
+    console.error('Character data not found for level-up');
+    return;
+  }
+
+  const currentLevel = gameState.playerLevel || 1;
+  const levelUpCondition = characterData.levelUpCondition || 'Complete a special achievement';
+
+  createGameModal(`
+    <div style="text-align: center; padding: 20px; max-width: 500px;">
+      <h2 style="color: #FFD700; margin-bottom: 20px;">Level Up!</h2>
+      <div style="
+        background: rgba(0,0,0,0.4);
+        border: 2px solid #FFD700;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+      ">
+        <p style="color: #aaa; font-size: 14px; margin-bottom: 10px;">
+          Current Level: <span style="color: #FFD700; font-size: 20px; font-weight: bold;">${currentLevel}</span>
+        </p>
+        <p style="color: #ccc; margin-bottom: 15px;">
+          To level up, you must:
+        </p>
+        <p style="
+          color: #fff;
+          font-size: 16px;
+          font-weight: bold;
+          background: rgba(255,215,0,0.1);
+          border: 1px solid rgba(255,215,0,0.3);
+          border-radius: 6px;
+          padding: 10px;
+        ">
+          "${levelUpCondition}"
+        </p>
+      </div>
+      <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">
+        Have you completed this requirement?
+      </p>
+      <div style="display: flex; gap: 15px; justify-content: center;">
+        <button id="level-up-confirm-btn" style="
+          padding: 12px 24px;
+          background: linear-gradient(145deg, #4CAF50, #2E7D32);
+          border: 2px solid #2E7D32;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+        ">Yes, Level Up!</button>
+        <button id="level-up-cancel-btn" style="
+          padding: 12px 24px;
+          background: #444;
+          border: 2px solid #666;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+        ">Not Yet</button>
+      </div>
+    </div>
+  `);
+
+  document.getElementById('level-up-confirm-btn').onclick = () => {
+    closeGameModal();
+    confirmLevelUp();
+  };
+
+  document.getElementById('level-up-cancel-btn').onclick = () => {
+    closeGameModal();
+  };
+}
+
+/**
+ * Confirm level up and apply bonuses
+ */
+function confirmLevelUp() {
+  const characterKey = selectedCharacter || gameState.character || 'rodney';
+  const characterData = CHARACTERS_DATA[characterKey];
+
+  if (!characterData || !characterData.levelUpStats) {
+    console.error('Character level-up data not found');
+    return;
+  }
+
+  const oldLevel = gameState.playerLevel || 1;
+  gameState.playerLevel = oldLevel + 1;
+
+  const bonuses = characterData.levelUpStats;
+  const appliedBonuses = [];
+
+  // Apply stat bonuses
+  if (bonuses.strength) {
+    strength += bonuses.strength;
+    appliedBonuses.push(`+${bonuses.strength} Strength`);
+  }
+  if (bonuses.dexterity) {
+    dexterity += bonuses.dexterity;
+    appliedBonuses.push(`+${bonuses.dexterity} Dexterity`);
+  }
+  if (bonuses.intelligence) {
+    intelligence += bonuses.intelligence;
+    appliedBonuses.push(`+${bonuses.intelligence} Intelligence`);
+  }
+  if (bonuses.charisma) {
+    charisma += bonuses.charisma;
+    appliedBonuses.push(`+${bonuses.charisma} Charisma`);
+  }
+  if (bonuses.reroll) {
+    reroll += bonuses.reroll;
+    gameState.reroll = reroll;
+    appliedBonuses.push(`+${bonuses.reroll} Reroll`);
+  }
+  if (bonuses.dash) {
+    gameState.dash = (gameState.dash || 0) + bonuses.dash;
+    appliedBonuses.push(`+${bonuses.dash} Dash`);
+  }
+  if (bonuses.luck) {
+    luck += bonuses.luck;
+    appliedBonuses.push(`+${bonuses.luck} Luck`);
+  }
+
+  // Handle random stat allocation
+  if (bonuses.random && bonuses.random > 0) {
+    const randomStats = ['strength', 'dexterity', 'intelligence', 'charisma'];
+    for (let i = 0; i < bonuses.random; i++) {
+      const randomStat = randomStats[Math.floor(Math.random() * randomStats.length)];
+      switch(randomStat) {
+        case 'strength': strength++; break;
+        case 'dexterity': dexterity++; break;
+        case 'intelligence': intelligence++; break;
+        case 'charisma': charisma++; break;
+      }
+      appliedBonuses.push(`+1 ${randomStat.charAt(0).toUpperCase() + randomStat.slice(1)} (random)`);
+    }
+  }
+
+  // Upgrade a random dice face (increase value by 1)
+  const diceUpgraded = upgradeDiceFace(characterKey);
+
+  // Update UI
+  updateTopBar();
+  saveCurrentGame();
+
+  // Show level-up results
+  createGameModal(`
+    <div style="text-align: center; padding: 20px; max-width: 500px;">
+      <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
+      <div style="
+        background: rgba(76,175,80,0.1);
+        border: 2px solid #4CAF50;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+      ">
+        <p style="color: #4CAF50; font-size: 18px; margin-bottom: 15px; font-weight: bold;">
+          Bonuses Gained:
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          ${appliedBonuses.map(b => `
+            <div style="color: #fff; font-size: 14px;">
+              ${b}
+            </div>
+          `).join('')}
+          ${diceUpgraded ? `
+            <div style="color: #FFD700; font-size: 14px; margin-top: 10px;">
+              ${diceUpgraded}
+            </div>
+          ` : ''}
+        </div>
+      </div>
+      <button onclick="closeGameModal()" style="
+        padding: 12px 30px;
+        background: linear-gradient(145deg, #4CAF50, #2E7D32);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+      ">Continue</button>
+    </div>
+  `);
+}
+
+/**
+ * Upgrade a random dice face by increasing its value
+ * @param {string} characterKey - The character key
+ * @returns {string|null} Description of upgrade or null
+ */
+function upgradeDiceFace(characterKey) {
+  const characterData = CHARACTERS_DATA[characterKey];
+  if (!characterData || !characterData.dice) return null;
+
+  // Find faces with numeric values that can be upgraded
+  const upgradableFaces = [];
+  characterData.dice.forEach((face, index) => {
+    if (!face.isBlank && face.effects) {
+      face.effects.forEach((effect, effectIndex) => {
+        if (effect.value && typeof effect.value === 'number') {
+          upgradableFaces.push({ faceIndex: index, effectIndex, effect });
+        }
+      });
+    }
+  });
+
+  if (upgradableFaces.length === 0) return null;
+
+  // Pick a random face to upgrade
+  const chosen = upgradableFaces[Math.floor(Math.random() * upgradableFaces.length)];
+  const oldValue = chosen.effect.value;
+
+  // Upgrade the face
+  characterData.dice[chosen.faceIndex].effects[chosen.effectIndex].value++;
+
+  // Update the raw text
+  const effect = characterData.dice[chosen.faceIndex].effects[chosen.effectIndex];
+  const addonsStr = effect.addons && effect.addons.length > 0 ? ' ' + effect.addons.join(' ') : '';
+  const targetStr = effect.target ? ' ' + effect.target : '';
+  characterData.dice[chosen.faceIndex].effects[chosen.effectIndex].raw =
+    `${effect.value} ${effect.move}${targetStr}${addonsStr}`;
+  characterData.dice[chosen.faceIndex].raw =
+    characterData.dice[chosen.faceIndex].effects.map(e => e.raw).join(', ');
+
+  return `Dice upgraded: ${effect.move} ${oldValue} → ${effect.value}`;
+}
+
+// Make level-up functions globally available
+window.showLevelUpPrompt = showLevelUpPrompt;
+window.confirmLevelUp = confirmLevelUp;
+
+// ============== ALLY SYSTEM ==============
+
+/**
+ * Recruit an ally
+ * @param {string} allyName - Name of the ally from ALLIES_DATA
+ * @returns {boolean} Success
+ */
+function recruitAlly(allyName) {
+  if (!ALLIES_DATA) {
+    console.error('ALLIES_DATA not loaded');
+    return false;
+  }
+
+  const allyData = ALLIES_DATA.find(a => a.name === allyName);
+  if (!allyData) {
+    console.error('Ally not found:', allyName);
+    return false;
+  }
+
+  // Check if already recruited
+  if (gameState.activeAllies.some(a => a.name === allyName)) {
+    console.log('Ally already recruited:', allyName);
+    return false;
+  }
+
+  // Add ally with full HP
+  gameState.activeAllies.push({
+    name: allyData.name,
+    currentHp: allyData.hp
+  });
+
+  saveCurrentGame();
+  console.log(`Recruited ally: ${allyName}`);
+  return true;
+}
+
+/**
+ * Dismiss an ally
+ * @param {string} allyName - Name of the ally to dismiss
+ * @returns {boolean} Success
+ */
+function dismissAlly(allyName) {
+  const index = gameState.activeAllies.findIndex(a => a.name === allyName);
+  if (index === -1) {
+    console.error('Ally not found in active allies:', allyName);
+    return false;
+  }
+
+  gameState.activeAllies.splice(index, 1);
+  saveCurrentGame();
+  console.log(`Dismissed ally: ${allyName}`);
+  return true;
+}
+
+/**
+ * Update ally HP after combat
+ * @param {string} allyName - Name of the ally
+ * @param {number} newHp - New HP value
+ */
+function updateAllyHp(allyName, newHp) {
+  const ally = gameState.activeAllies.find(a => a.name === allyName);
+  if (!ally) return;
+
+  ally.currentHp = Math.max(0, newHp);
+
+  // Remove ally if HP <= 0
+  if (ally.currentHp <= 0) {
+    dismissAlly(allyName);
+    console.log(`${allyName} has fallen!`);
+  }
+}
+
+/**
+ * Heal an ally
+ * @param {string} allyName - Name of the ally
+ * @param {number} amount - Amount to heal
+ */
+function healAlly(allyName, amount) {
+  const ally = gameState.activeAllies.find(a => a.name === allyName);
+  if (!ally) return;
+
+  const allyData = ALLIES_DATA.find(a => a.name === allyName);
+  if (!allyData) return;
+
+  ally.currentHp = Math.min(ally.currentHp + amount, allyData.hp);
+  saveCurrentGame();
+}
+
+/**
+ * Show ally management UI
+ */
+function showAlliesPanel() {
+  const allies = gameState.activeAllies || [];
+  const allAvailableAllies = ALLIES_DATA || [];
+
+  const activeAlliesHtml = allies.length > 0 ? allies.map(ally => {
+    const baseAlly = allAvailableAllies.find(a => a.name === ally.name);
+    if (!baseAlly) return '';
+    return `
+      <div style="
+        background: rgba(76,175,80,0.1);
+        border: 2px solid #4CAF50;
+        border-radius: 8px;
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      ">
+        <div>
+          <div style="font-weight: bold; color: #4CAF50; font-size: 16px;">${baseAlly.name}</div>
+          <div style="color: #aaa; font-size: 12px;">${baseAlly.type} - ${baseAlly.game}</div>
+          <div style="color: #fff; margin-top: 5px;">
+            HP: ${ally.currentHp}/${baseAlly.hp}
+          </div>
+          <div style="color: #888; font-size: 11px; margin-top: 5px;">
+            Dice: ${baseAlly.dice.map(d => d.raw).slice(0, 3).join(', ')}...
+          </div>
+        </div>
+        <button onclick="dismissAlly('${baseAlly.name}'); showAlliesPanel();" style="
+          padding: 8px 16px;
+          background: #d32f2f;
+          border: none;
+          border-radius: 6px;
+          color: white;
+          cursor: pointer;
+        ">Dismiss</button>
+      </div>
+    `;
+  }).join('') : '<p style="color: #666; text-align: center;">No active allies</p>';
+
+  createGameModal(`
+    <div style="padding: 20px; max-width: 600px;">
+      <h2 style="color: #4CAF50; margin-bottom: 20px; text-align: center;">Allies</h2>
+
+      <h3 style="color: #aaa; margin-bottom: 10px;">Active Allies (${allies.length})</h3>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px;">
+        ${activeAlliesHtml}
+      </div>
+
+      <div style="text-align: center;">
+        <button onclick="closeGameModal()" style="
+          padding: 12px 30px;
+          background: #444;
+          border: 2px solid #666;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+        ">Close</button>
+      </div>
+    </div>
+  `);
+}
+
+/**
+ * Test function to recruit a random ally
+ */
+function recruitRandomAlly() {
+  if (!ALLIES_DATA || ALLIES_DATA.length === 0) return false;
+  const randomAlly = ALLIES_DATA[Math.floor(Math.random() * ALLIES_DATA.length)];
+  return recruitAlly(randomAlly.name);
+}
+
+// Make ally functions globally available
+window.recruitAlly = recruitAlly;
+window.dismissAlly = dismissAlly;
+window.updateAllyHp = updateAllyHp;
+window.healAlly = healAlly;
+window.showAlliesPanel = showAlliesPanel;
+window.recruitRandomAlly = recruitRandomAlly;
+
 // Combat-specific tooltip functions for item hover
 window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) {
   const tooltip = document.getElementById('combat-item-tooltip');
@@ -5398,6 +6155,273 @@ function showGameDetails(gameName) {
   `;
 }
 
+function showEnemyDetails(enemyName) {
+  const enemy = enemies.find(e => e.name === enemyName);
+  if (!enemy) return;
+
+  // Get enemy stats
+  const enemyStats = getEnemyStats(enemyName);
+
+  // Find variants of this enemy
+  const variants = enemies.filter(e => e.variantOf === enemyName);
+
+  // Get difficulty color
+  const getDifficultyColor = (difficulty) => {
+    switch((difficulty || '').toLowerCase()) {
+      case 'low': return '#4CAF50';
+      case 'medium': return '#ff9800';
+      case 'high': return '#f44336';
+      case 'boss': return '#9b59b6';
+      default: return '#888';
+    }
+  };
+
+  // Get type color
+  const getTypeColor = (type) => {
+    switch((type || '').toLowerCase()) {
+      case 'strength': return '#f44336';
+      case 'dexterity': return '#4CAF50';
+      case 'intelligence': return '#2196F3';
+      case 'charisma': return '#ff9800';
+      default: return '#888';
+    }
+  };
+
+  const diffColor = getDifficultyColor(enemy.difficulty);
+  const typeColor = getTypeColor(enemy.type);
+
+  const detailsPanel = document.getElementById('enemy-details');
+  if (!detailsPanel) return;
+
+  // Build variant images HTML
+  let variantHTML = '';
+  if (variants.length > 0) {
+    const allForms = [enemy, ...variants];
+    variantHTML = `
+      <div style="margin-top: 15px;">
+        <strong style="color: #9b59b6;">Forms:</strong>
+        <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+          ${allForms.map((form, idx) => `
+            <div
+              onclick="switchEnemyImage('${form.name.replace(/'/g, "\\'")}')"
+              style="
+                cursor: pointer;
+                padding: 5px;
+                border: 2px solid ${idx === 0 ? '#9b59b6' : '#444'};
+                border-radius: 6px;
+                background: rgba(0,0,0,0.3);
+                transition: border-color 0.2s;
+              "
+              onmouseover="this.style.borderColor='#9b59b6'"
+              onmouseout="this.style.borderColor='${idx === 0 ? '#9b59b6' : '#444'}'"
+            >
+              <img
+                src="${form.imageUrl || getEnemyImagePath(form.name)}"
+                alt="${form.name}"
+                style="width: 60px; height: 60px; object-fit: contain;"
+                onerror="this.style.opacity='0.3'"
+              />
+              <div style="font-size: 9px; text-align: center; color: #aaa; margin-top: 4px;">${form.name}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Build dice HTML
+  const diceHTML = enemy.dice ? `
+    <div id="enemy-dice-section" style="margin-top: 15px;">
+      <strong style="color: #f44336;">Dice (${enemy.name}):</strong>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
+        ${enemy.dice.map((face, idx) => {
+          if (face.isBlank) {
+            return `
+              <div style="
+                background: rgba(0,0,0,0.4);
+                border: 1px solid #333;
+                border-radius: 6px;
+                padding: 8px;
+                text-align: center;
+                font-size: 11px;
+                color: #666;
+              ">
+                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
+                <div>Blank</div>
+              </div>
+            `;
+          }
+          return `
+            <div style="
+              background: rgba(244, 67, 54, 0.1);
+              border: 1px solid rgba(244, 67, 54, 0.3);
+              border-radius: 6px;
+              padding: 8px;
+              text-align: center;
+              font-size: 11px;
+              color: #ddd;
+            ">
+              <div style="font-weight: bold; color: #f44336; margin-bottom: 4px;">Face ${idx + 1}</div>
+              <div>${face.raw || face.effects?.map(e => e.raw).join(', ') || '—'}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  detailsPanel.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <!-- Enemy Header -->
+      <div style="display: flex; gap: 15px; align-items: flex-start;">
+        <img
+          id="enemy-detail-image"
+          src="${enemy.imageUrl || getEnemyImagePath(enemy.name)}"
+          alt="${enemy.name}"
+          style="width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${diffColor}; image-rendering: pixelated; image-rendering: crisp-edges;"
+          onerror="this.style.opacity='0.3'"
+        />
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 10px 0; color: #f44336;">${enemy.name}</h3>
+          <div style="color: #aaa; font-size: 13px; line-height: 1.8;">
+            <div><strong>Type:</strong> <span style="color: ${typeColor};">${enemy.type || '—'}</span></div>
+            <div><strong>Difficulty:</strong> <span style="color: ${diffColor};">${enemy.difficulty || '—'}</span></div>
+            <div><strong>HP:</strong> ${enemy.hp || '—'}</div>
+            <div><strong>Game:</strong> ${enemy.game || '—'}</div>
+            <div><strong>Location:</strong> ${enemy.location || '—'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ability -->
+      ${enemy.ability && enemy.ability !== 'N/A' ? `
+        <div style="padding: 12px; background: rgba(155, 89, 182, 0.1); border: 1px solid rgba(155, 89, 182, 0.3); border-radius: 6px;">
+          <h4 style="margin: 0 0 8px 0; color: #9b59b6; font-size: 14px;">⚡ Ability</h4>
+          <div style="font-size: 13px; color: #ddd;">${enemy.ability}</div>
+        </div>
+      ` : ''}
+
+      <!-- Combat Stats -->
+      <div style="padding: 12px; background: rgba(244, 67, 54, 0.1); border: 1px solid rgba(244, 67, 54, 0.3); border-radius: 6px;">
+        <h4 style="margin: 0 0 8px 0; color: #f44336; font-size: 14px;">📊 Combat Record</h4>
+        <div style="font-size: 13px; color: #ddd; line-height: 1.8;">
+          <div><strong>Times Defeated:</strong> ${enemyStats.timesBeaten || 0}</div>
+          <div><strong>Times Killed Player:</strong> ${enemyStats.timesKilledPlayer || 0}</div>
+        </div>
+      </div>
+
+      <!-- Variants -->
+      ${variantHTML}
+
+      <!-- Dice -->
+      ${diceHTML}
+    </div>
+  `;
+}
+
+// Switch enemy form in details panel (for variants) - updates image and dice
+function switchEnemyImage(enemyName) {
+  const enemy = enemies.find(e => e.name === enemyName);
+  if (!enemy) return;
+
+  // Update image
+  const img = document.getElementById('enemy-detail-image');
+  if (img) {
+    img.src = enemy.imageUrl || getEnemyImagePath(enemy.name);
+  }
+
+  // Update dice section
+  const diceContainer = document.getElementById('enemy-dice-section');
+  if (diceContainer && enemy.dice) {
+    diceContainer.innerHTML = `
+      <strong style="color: #f44336;">Dice (${enemy.name}):</strong>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
+        ${enemy.dice.map((face, idx) => {
+          if (face.isBlank) {
+            return `
+              <div style="
+                background: rgba(0,0,0,0.4);
+                border: 1px solid #333;
+                border-radius: 6px;
+                padding: 8px;
+                text-align: center;
+                font-size: 11px;
+                color: #666;
+              ">
+                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
+                <div>Blank</div>
+              </div>
+            `;
+          }
+          return `
+            <div style="
+              background: rgba(244, 67, 54, 0.1);
+              border: 1px solid rgba(244, 67, 54, 0.3);
+              border-radius: 6px;
+              padding: 8px;
+              text-align: center;
+              font-size: 11px;
+              color: #ddd;
+            ">
+              <div style="font-weight: bold; color: #f44336; margin-bottom: 4px;">Face ${idx + 1}</div>
+              <div>${face.raw || face.effects?.map(e => e.raw).join(', ') || '—'}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+}
+
+// Get enemy stats from gameState
+function getEnemyStats(enemyName) {
+  if (!gameState.enemyStats) {
+    gameState.enemyStats = {};
+  }
+
+  // Find base enemy name (for variants)
+  const enemy = enemies.find(e => e.name === enemyName);
+  const baseName = enemy?.variantOf || enemyName;
+
+  return gameState.enemyStats[baseName] || { timesBeaten: 0, timesKilledPlayer: 0 };
+}
+
+// Record enemy defeat
+function recordEnemyDefeated(enemyName) {
+  if (!gameState.enemyStats) {
+    gameState.enemyStats = {};
+  }
+
+  // Find base enemy name (for variants)
+  const enemy = enemies.find(e => e.name === enemyName);
+  const baseName = enemy?.variantOf || enemyName;
+
+  if (!gameState.enemyStats[baseName]) {
+    gameState.enemyStats[baseName] = { timesBeaten: 0, timesKilledPlayer: 0 };
+  }
+
+  gameState.enemyStats[baseName].timesBeaten++;
+  saveGameState();
+}
+
+// Record player death to enemy
+function recordPlayerKilledBy(enemyName) {
+  if (!gameState.enemyStats) {
+    gameState.enemyStats = {};
+  }
+
+  // Find base enemy name (for variants)
+  const enemy = enemies.find(e => e.name === enemyName);
+  const baseName = enemy?.variantOf || enemyName;
+
+  if (!gameState.enemyStats[baseName]) {
+    gameState.enemyStats[baseName] = { timesBeaten: 0, timesKilledPlayer: 0 };
+  }
+
+  gameState.enemyStats[baseName].timesKilledPlayer++;
+  saveGameState();
+}
+
 function markGameFinished(gameName) {
   if (!gameState.finishedGames) {
     gameState.finishedGames = [];
@@ -6558,6 +7582,11 @@ window.hideMapTooltip = hideMapTooltip;
 window.drawMapArrows = drawMapArrows;
 window.switchCollectionTab = switchCollectionTab;
 window.showGameDetails = showGameDetails;
+window.showEnemyDetails = showEnemyDetails;
+window.switchEnemyImage = switchEnemyImage;
+window.getEnemyStats = getEnemyStats;
+window.recordEnemyDefeated = recordEnemyDefeated;
+window.recordPlayerKilledBy = recordPlayerKilledBy;
 // Bingo functions
 window.generateBingoGrid = generateBingoGrid;
 window.renderBingoGrid = renderBingoGrid;
@@ -6584,10 +7613,11 @@ function updateCharacterUI() {
     iconEl.alt = character.name;
   }
 
-  // Update character name in header
+  // Update character name in header (with level)
   const statsCharacterNameEl = document.getElementById('stats-character-name');
   if (statsCharacterNameEl) {
-    statsCharacterNameEl.textContent = character.name;
+    const level = gameState.playerLevel || 1;
+    statsCharacterNameEl.innerHTML = `${character.name} <span style="color: #ff9800; font-size: 14px;">Lv.${level}</span>`;
   }
 }
 

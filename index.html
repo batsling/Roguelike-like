@@ -189,6 +189,14 @@
                   <span class="text-beige">Gold: </span>
                   <span id="game-gold" class="font-size-18 text-gold-light">0</span>
                 </div>
+                <div id="level-display" class="font-size-16 font-bold" title="Level up through game verification">
+                  <span class="text-beige">Lv: </span>
+                  <span id="game-level" class="font-size-18" style="color: #FFD700;">1</span>
+                </div>
+                <div id="allies-display" class="font-size-16 font-bold" style="cursor: pointer;" onclick="showAlliesPanel()" title="View allies">
+                  <span style="color: #4CAF50;">Allies: </span>
+                  <span id="game-allies-count" class="font-size-18" style="color: #4CAF50;">0</span>
+                </div>
                 <div id="distance-display" class="font-size-14 text-beige"></div>
               </div>
             </div>
@@ -719,12 +727,20 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
   <!-- Load embedded data first (no CORS issues) -->
-  <script src="characters-data.js?v=20"></script>
-  <script src="games-data.js?v=32"></script>
-  <script src="items-data.js?v=21"></script>
-  <script src="enemies-data.js?v=20"></script>
+  <script src="characters-data.js?v=21"></script>
+  <script src="games-data.js?v=33"></script>
+  <script src="items-data.js?v=22"></script>
+  <script src="enemies-data.js?v=21"></script>
   <script src="events-data.js?v=19"></script>
-  <script src="curses-data.js?v=19"></script>
+  <script src="curses-data.js?v=20"></script>
+  <script src="allies-data.js?v=1"></script>
+  <script src="weapons-data.js?v=1"></script>
+  <script src="statuses-data.js?v=1"></script>
+  <script src="moves-data.js?v=1"></script>
+  <script src="addons-data.js?v=1"></script>
+  <script src="spells-data.js?v=1"></script>
+  <script src="spell-keywords-data.js?v=1"></script>
+  <script src="game-statuses-data.js?v=1"></script>
 
   <!-- Load utilities first (constants, storage, state management) -->
   <script src="js/constants.js?v=3"></script>
@@ -742,6 +758,8 @@
   <script src="js/dice-system.js?v=1"></script>
   <script src="js/dice-renderer.js?v=1"></script>
   <script src="js/combat-state.js?v=1"></script>
+  <script src="js/combat-engine.js?v=1"></script>
+  <script src="js/combat-ui.js?v=1"></script>
   <script src="js/combat.js?v=22"></script>
   <script src="js/events.js?v=19"></script>
   <script src="js/gameplay.js?v=29"></script>

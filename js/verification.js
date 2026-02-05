@@ -52,23 +52,30 @@ function showCurseVerificationModal(onComplete) {
     curse.name.toLowerCase().includes('damp')
   );
 
-  // If no curses to verify, no Precision Landing trait, no equipped weapon, no boons, and not in Caves of Qud, skip verification
-  if (cursesToVerify.length === 0 && !hasPrecisionLanding && !hasEquippedWeapon && boons.length === 0 && !isInCavesOfQud) {
+  // Check for level up opportunity (character always has a level up condition)
+  const characterKey = window.selectedCharacter || (gameState && gameState.character) || 'rodney';
+  const characterData = typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA[characterKey] : null;
+  const canLevelUp = characterData && characterData.levelUpCondition;
+
+  // If no curses to verify, no Precision Landing trait, no equipped weapon, no boons, not in Caves of Qud, and no level up, skip verification
+  if (cursesToVerify.length === 0 && !hasPrecisionLanding && !hasEquippedWeapon && boons.length === 0 && !isInCavesOfQud && !canLevelUp) {
     if (onComplete) onComplete();
     return;
   }
 
   // Show combined verification modal for all curses and traits at once
-  verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete);
+  verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, canLevelUp, characterData);
 }
 
 /**
- * Verify all manual curses, trait effects, and weapon effects in a single combined modal
+ * Verify all manual curses, trait effects, weapon effects, and level up in a single combined modal
  * @param {Array} cursesToVerify - Array of curses that need verification
  * @param {boolean} hasPrecisionLanding - Whether player has Precision Landing trait
  * @param {Function} onComplete - Callback to run after verification is done
+ * @param {boolean} canLevelUp - Whether character can level up
+ * @param {Object} characterData - Character data with levelUpCondition
  */
-function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
+function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, canLevelUp = false, characterData = null) {
   // Group curses by type
   const blindnessCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('blindness'));
   const hubrisCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('hubris'));
@@ -577,6 +584,28 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
     `;
   }
 
+  // Add Level Up verification section
+  if (canLevelUp && characterData) {
+    const currentLevel = gameState.playerLevel || 1;
+    modalHTML += `
+      <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid #FFD700; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #FFD700; margin: 0 0 5px 0; font-size: 15px;">⭐ Level Up (Lv.${currentLevel})</h3>
+        <div style="color: #ffd54f; font-size: 11px; margin-bottom: 5px;">
+          ${characterData.name || 'Character'}
+        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">${characterData.levelUpCondition}</p>
+        <div style="margin-top: 5px;">
+          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+            <input type="radio" name="levelup-check" value="yes" style="margin-right: 5px;">Yes, I did this!
+          </label>
+          <label style="font-size: 12px; color: #ccc;">
+            <input type="radio" name="levelup-check" value="no" checked style="margin-right: 5px;">No
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
   modalHTML += `
       <button id="verify-all-submit" style="
         padding: 15px 40px;
@@ -1001,6 +1030,45 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete) {
         const isUpgrade = Math.random() < 0.5;
         appearanceChangeResult = upgradeOrDowngradePassive(isUpgrade);
         console.log(`Appearance changed in Caves of Qud: ${isUpgrade ? 'upgrade' : 'downgrade'} attempted`);
+      }
+    }
+
+    // Process Level Up verification
+    let leveledUp = false;
+    if (canLevelUp && characterData) {
+      const levelUpRadio = document.querySelector('input[name="levelup-check"]:checked');
+      const didLevelUp = levelUpRadio && levelUpRadio.value === 'yes';
+      if (didLevelUp) {
+        // Level up the player
+        gameState.playerLevel = (gameState.playerLevel || 1) + 1;
+        leveledUp = true;
+
+        // Apply level up stats
+        if (characterData.levelUpStats) {
+          const stats = characterData.levelUpStats;
+          if (stats.strength) gameState.strength = (gameState.strength || 0) + stats.strength;
+          if (stats.dexterity) gameState.dexterity = (gameState.dexterity || 0) + stats.dexterity;
+          if (stats.intelligence) gameState.intelligence = (gameState.intelligence || 0) + stats.intelligence;
+          if (stats.charisma) gameState.charisma = (gameState.charisma || 0) + stats.charisma;
+          if (stats.reroll) gameState.rerolls = (gameState.rerolls || 0) + stats.reroll;
+          if (stats.dash) gameState.dash = (gameState.dash || 0) + stats.dash;
+          if (stats.skip) gameState.skip = (gameState.skip || 0) + stats.skip;
+          if (stats.discovery) gameState.discovery = (gameState.discovery || 0) + stats.discovery;
+          if (stats.fov) gameState.fov = (gameState.fov || 0) + stats.fov;
+          if (stats.luck) gameState.luck = (gameState.luck || 0) + stats.luck;
+        }
+
+        console.log(`⭐ Level up! Now level ${gameState.playerLevel}`);
+
+        // Update UI
+        if (typeof updateTopBar === 'function') updateTopBar();
+        if (typeof updateCharacterUI === 'function') updateCharacterUI();
+        if (typeof updateStatsDisplay === 'function') updateStatsDisplay();
+
+        // Show notification
+        if (typeof createNotification === 'function') {
+          createNotification(`⭐ Level Up! Now Lv.${gameState.playerLevel}`, 'success');
+        }
       }
     }
 

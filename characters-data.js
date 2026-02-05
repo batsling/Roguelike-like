@@ -1,85 +1,317 @@
-// Characters data - loaded directly as JavaScript to avoid CORS issues
+// Auto-generated from Roguelikes.xlsx - Characters
+// Characters with dice-based combat
+
 var CHARACTERS_DATA = {
   "rodney": {
     "name": "Rodney",
     "game": "Rogue",
-    "icon": "images/characters/icon/rodney.png",
-    "fullImage": "images/characters/full/rodney.png",
-    "startingStats": {
+    "icon": "images/characters/Icon/Rodney.png",
+    "fullImage": "images/characters/Full/Rodney.png",
+    "energy": 2,
+    "mana": 3,
+    "levelUpCondition": "Beat a game without meta progression",
+    "levelUpStats": {
       "strength": 0,
-      "dexterity": 2,
-      "intelligence": 1,
+      "dexterity": 0,
+      "intelligence": 0,
       "charisma": 0,
-      "attack": 3,
       "reroll": 0,
       "dash": 0,
       "skip": 0,
       "discovery": 0,
       "fov": 0,
-      "luck": 0
+      "luck": 0,
+      "random": 2
     },
-    "traits": ["regeneration"],
-    "description": "Now I abide here, searching endlessly for the precious Amulet... and finding a thousand horrors."
+    "description": "Now I abide here, searching endlessly for the precious Amulet... and finding a thousand horrors.",
+    "combatStart": "Dice",
+    "dice": [
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "1 Mana",
+            "value": 1,
+            "move": "Mana",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "1 Mana"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "1 Heal",
+            "value": 1,
+            "move": "Heal",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "1 Heal"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Block",
+            "value": 2,
+            "move": "Block",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Block"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Block",
+            "value": 2,
+            "move": "Block",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Block"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Dmg",
+            "value": 2,
+            "move": "Dmg",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Dmg"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Dmg",
+            "value": 2,
+            "move": "Dmg",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Dmg"
+      }
+    ]
   },
   "isaac": {
     "name": "Isaac",
     "game": "The Binding of Isaac",
-    "icon": "images/characters/icon/isaac.png",
-    "fullImage": "images/characters/full/isaac.png",
-    "startingStats": {
-      "strength": 3,
+    "icon": "images/characters/Icon/Isaac.png",
+    "fullImage": "images/characters/Full/Isaac.png",
+    "energy": 2,
+    "mana": 3,
+    "levelUpCondition": "Unlock a new gameplay element",
+    "levelUpStats": {
+      "strength": 1,
       "dexterity": 0,
       "intelligence": 0,
       "charisma": 0,
-      "attack": 3,
       "reroll": 1,
       "dash": 0,
       "skip": 0,
       "discovery": 0,
       "fov": 0,
-      "luck": 0
+      "luck": 0,
+      "random": 0
     },
-    "traits": ["reroller"],
-    "description": "Who am I?"
+    "description": "Who am I?",
+    "combatStart": "Dice",
+    "dice": [
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "1 Reroll",
+            "value": 1,
+            "move": "Reroll",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "1 Reroll"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "1 Reroll",
+            "value": 1,
+            "move": "Reroll",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "1 Reroll"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Block",
+            "value": 2,
+            "move": "Block",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Block"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Block",
+            "value": 2,
+            "move": "Block",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Block"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Dmg",
+            "value": 2,
+            "move": "Dmg",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Dmg"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Dmg",
+            "value": 2,
+            "move": "Dmg",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Dmg"
+      }
+    ]
   },
   "zoe": {
     "name": "Zoe",
     "game": "Haste",
-    "icon": "images/characters/icon/zoe.png",
-    "fullImage": "images/characters/full/zoe.png",
-    "startingStats": {
-      "strength": 2,
+    "icon": "images/characters/Icon/Zoe.png",
+    "fullImage": "images/characters/Full/Zoe.png",
+    "energy": 2,
+    "mana": 3,
+    "levelUpCondition": "Perfect a Game",
+    "levelUpStats": {
+      "strength": 1,
       "dexterity": 0,
       "intelligence": 0,
       "charisma": 0,
-      "attack": 3,
       "reroll": 0,
       "dash": 1,
       "skip": 0,
       "discovery": 0,
       "fov": 0,
-      "luck": 0
+      "luck": 0,
+      "random": 0
     },
-    "traits": ["precision_landing"],
-    "description": "Express Delivery: Arrives with haste, before the world ends."
-  }
-};
-
-// Trait definitions
-var TRAITS_DATA = {
-  "reroller": {
-    "name": "Reroller",
-    "description": "Every time you beat a game, gain +1 Reroll",
-    "icon": "🎲"
-  },
-  "regeneration": {
-    "name": "Regeneration",
-    "description": "Every time you choose a game whose encounter isn't enemy combat, heal +1",
-    "icon": "💚"
-  },
-  "precision_landing": {
-    "name": "Precision Landing",
-    "description": "Every time you beat a game without losing a run, gain +1 Dash",
-    "icon": "🎯"
+    "description": "Express Delivery: Arrives with haste, before the world ends.",
+    "combatStart": "Dice",
+    "dice": [
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "Get 1 Dodge",
+            "value": 1,
+            "move": "Get",
+            "addons": [],
+            "target": "Dodge"
+          }
+        ],
+        "raw": "Get 1 Dodge"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "Get 1 Dodge",
+            "value": 1,
+            "move": "Get",
+            "addons": [],
+            "target": "Dodge"
+          }
+        ],
+        "raw": "Get 1 Dodge"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Dmg",
+            "value": 2,
+            "move": "Dmg",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Dmg"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Dmg",
+            "value": 2,
+            "move": "Dmg",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Dmg"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Dmg",
+            "value": 2,
+            "move": "Dmg",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Dmg"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Dmg",
+            "value": 2,
+            "move": "Dmg",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Dmg"
+      }
+    ]
   }
 };
