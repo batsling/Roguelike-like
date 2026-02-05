@@ -143,6 +143,22 @@ function renderCombatUI(combat, container) {
         box-shadow: 0 4px 12px rgba(255,255,255,0.3);
         z-index: 10;
       }
+      /* Enemy dice tooltip - ensure it shows above everything */
+      .enemy-dice-tooltip {
+        z-index: 99999 !important;
+        pointer-events: none;
+      }
+      .enemy-die-container {
+        position: relative;
+      }
+      .enemy-die-container:hover .enemy-dice-tooltip {
+        display: block !important;
+      }
+      /* Dice tooltip for player dice */
+      .dice-tooltip {
+        z-index: 99999 !important;
+        pointer-events: none;
+      }
     </style>
     <!-- Outer container with combat log on the side -->
     <div style="
@@ -848,20 +864,17 @@ function renderEnemyIntentCenter(combat) {
               ">
                 <!-- Tooltip showing all enemy dice faces -->
                 <div class="enemy-dice-tooltip" style="
-                  position: absolute;
-                  bottom: 100%;
-                  left: 50%;
-                  transform: translateX(-50%);
-                  background: rgba(20,20,25,0.95);
+                  position: fixed;
+                  background: rgba(20,20,25,0.98);
                   border: 2px solid #cc3333;
                   border-radius: 8px;
-                  padding: 10px;
-                  margin-bottom: 8px;
+                  padding: 12px;
                   display: none;
-                  z-index: 10000;
-                  min-width: 160px;
-                  max-width: 220px;
-                  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+                  z-index: 99999;
+                  min-width: 200px;
+                  max-width: 280px;
+                  box-shadow: 0 6px 20px rgba(0,0,0,0.7);
+                  pointer-events: none;
                 ">
                   ${enemyDiceTooltip}
                 </div>
@@ -902,6 +915,7 @@ function renderEnemyIntentCenter(combat) {
 
 /**
  * Generate tooltip HTML for enemy dice faces with descriptions
+ * Matches the style of player dice tooltips
  */
 function generateEnemyDiceTooltip(faces, enemyName) {
   if (!faces || faces.length === 0) return '<div style="color: #666;">No dice data</div>';
@@ -909,35 +923,44 @@ function generateEnemyDiceTooltip(faces, enemyName) {
   const facesHTML = faces.map((face, i) => {
     if (face.isBlank) {
       return `
-        <div style="display: flex; align-items: center; gap: 6px; padding: 3px 4px; background: rgba(0,0,0,0.3); border-radius: 3px;">
-          <span style="font-size: 14px; width: 20px; text-align: center;">—</span>
-          <span style="color: #666; font-size: 11px;">Blank</span>
+        <div style="display: flex; align-items: center; gap: 8px; padding: 4px 6px; background: rgba(0,0,0,0.3); border-radius: 4px;">
+          <span style="font-size: 16px; width: 24px; text-align: center;">—</span>
+          <span style="color: #666;">Blank face</span>
         </div>
       `;
     }
 
     const effect = face.effects && face.effects[0];
-    if (!effect) return '';
+    if (!effect) return `<div style="padding: 4px 6px; color: #888;">Unknown effect</div>`;
 
     const moveKey = effect.move?.toLowerCase();
     const emoji = moveEmojis[moveKey] || '?';
     const value = effect.value || 0;
     const description = moveDescriptions[moveKey] || effect.move || 'Unknown';
     const target = effect.target ? ` (${effect.target})` : '';
+    const addons = effect.addons && effect.addons.length > 0 ? ` [${effect.addons.join(', ')}]` : '';
+    const status = effect.status ? ` ${effect.status}` : '';
+
+    // Get status image data URL if available
+    const statusImgPath = moveImageBase64[moveKey];
+    const imgHtml = statusImgPath ?
+      `<img src="${statusImgPath}" style="width: 20px; height: 20px; image-rendering: pixelated;" onerror="this.style.display='none'">` :
+      `<span style="font-size: 16px;">${emoji}</span>`;
 
     return `
-      <div style="display: flex; align-items: center; gap: 6px; padding: 3px 4px; background: rgba(0,0,0,0.3); border-radius: 3px;">
-        <span style="font-size: 14px; width: 20px; text-align: center;">${emoji}</span>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 4px 6px; background: rgba(0,0,0,0.3); border-radius: 4px;">
+        <div style="width: 24px; text-align: center; flex-shrink: 0;">${imgHtml}</div>
         <div style="flex: 1;">
-          <span style="font-weight: bold; color: #fff; font-size: 11px;">${value} ${effect.move}${target}</span>
+          <div style="font-weight: bold; color: #fff;">${value} ${effect.move}${status}${target}</div>
+          <div style="font-size: 10px; color: #aaa;">${description}${addons}</div>
         </div>
       </div>
     `;
   }).join('');
 
   return `
-    <div style="font-size: 11px; color: #F44336; margin-bottom: 6px; text-transform: uppercase; font-weight: bold;">${enemyName} - All Faces</div>
-    <div style="display: flex; flex-direction: column; gap: 4px;">
+    <div style="font-size: 12px; color: #F44336; margin-bottom: 8px; text-transform: uppercase; font-weight: bold;">${enemyName} - All Faces</div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
       ${facesHTML}
     </div>
   `;
@@ -2311,6 +2334,44 @@ function attachCombatEventListeners(combat) {
     closeStatsBtn.addEventListener('click', () => {
       statsPanel.style.display = 'none';
     });
+  }
+
+  // Enemy dice tooltip positioning (for fixed position tooltips)
+  document.querySelectorAll('.enemy-die-container').forEach(container => {
+    const tooltip = container.querySelector('.enemy-dice-tooltip');
+    if (!tooltip) return;
+
+    container.addEventListener('mouseenter', (e) => {
+      tooltip.style.display = 'block';
+      positionTooltip(tooltip, e);
+    });
+
+    container.addEventListener('mousemove', (e) => {
+      positionTooltip(tooltip, e);
+    });
+
+    container.addEventListener('mouseleave', () => {
+      tooltip.style.display = 'none';
+    });
+  });
+
+  // Helper function to position tooltip near mouse
+  function positionTooltip(tooltip, event) {
+    const offset = 15;
+    let x = event.clientX + offset;
+    let y = event.clientY - tooltip.offsetHeight - offset;
+
+    // Keep tooltip on screen
+    const rect = tooltip.getBoundingClientRect();
+    if (x + rect.width > window.innerWidth) {
+      x = event.clientX - rect.width - offset;
+    }
+    if (y < 0) {
+      y = event.clientY + offset;
+    }
+
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
   }
 }
 

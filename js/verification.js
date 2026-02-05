@@ -1202,24 +1202,51 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       }, baseDelay);
     }
 
-    // Check if Blasma Pistol chest needs to be shown BEFORE the normal reward
-    if (gameState._blasmaPistolChest) {
-      const blasmaChestType = gameState._blasmaPistolChest;
-      delete gameState._blasmaPistolChest; // Clear the flag
+    // Helper function to continue to rewards after all level-up stuff is done
+    const continueToRewards = () => {
+      // Check if Blasma Pistol chest needs to be shown BEFORE the normal reward
+      if (gameState._blasmaPistolChest) {
+        const blasmaChestType = gameState._blasmaPistolChest;
+        delete gameState._blasmaPistolChest; // Clear the flag
 
-      // Show Blasma Pistol chest first, then continue with normal flow
-      if (typeof offerChest === 'function') {
-        offerChest(blasmaChestType, () => {
-          // After Blasma Pistol chest is complete, continue to normal rewards
+        // Show Blasma Pistol chest first, then continue with normal flow
+        if (typeof offerChest === 'function') {
+          offerChest(blasmaChestType, () => {
+            // After Blasma Pistol chest is complete, continue to normal rewards
+            if (onComplete) onComplete();
+          });
+        } else {
+          // Fallback if offerChest not available
           if (onComplete) onComplete();
-        });
+        }
       } else {
-        // Fallback if offerChest not available
+        // No Blasma Pistol chest, continue normally
         if (onComplete) onComplete();
       }
+    };
+
+    // If player leveled up, show dice level-up choices BEFORE item rewards
+    if (leveledUp) {
+      const characterKey = gameState.character || 'rodney';
+      if (typeof showDiceLevelUpChoiceModal === 'function') {
+        // Small delay to let notifications appear first
+        setTimeout(() => {
+          showDiceLevelUpChoiceModal(characterKey, (diceResult) => {
+            if (diceResult && typeof createNotification === 'function') {
+              createNotification(diceResult, '#FFD700', '🎲');
+            }
+            if (typeof saveCurrentGame === 'function') saveCurrentGame();
+            // Now continue to item rewards
+            continueToRewards();
+          });
+        }, 300);
+      } else {
+        // Fallback if showDiceLevelUpChoiceModal not available
+        continueToRewards();
+      }
     } else {
-      // No Blasma Pistol chest, continue normally
-      if (onComplete) onComplete();
+      // No level up, continue directly to rewards
+      continueToRewards();
     }
   };
 }
