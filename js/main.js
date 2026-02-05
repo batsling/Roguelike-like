@@ -4043,6 +4043,29 @@ function showDiceCombatModal() {
 
   createGameModal(combatHTML);
 
+  // Create tooltip element for item hover (reuse existing or create new)
+  const existingTooltip = document.getElementById('combat-item-tooltip');
+  if (!existingTooltip) {
+    const tooltip = document.createElement('div');
+    tooltip.id = 'combat-item-tooltip';
+    tooltip.style.cssText = `
+      position: fixed;
+      display: none;
+      background: linear-gradient(145deg, rgba(30,30,40,0.98), rgba(20,20,30,0.98));
+      border: 3px solid #888;
+      border-radius: 8px;
+      padding: 12px 15px;
+      max-width: 300px;
+      z-index: 20000;
+      pointer-events: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+    `;
+    const tooltipContent = document.createElement('div');
+    tooltipContent.id = 'combat-tooltip-content';
+    tooltip.appendChild(tooltipContent);
+    document.body.appendChild(tooltip);
+  }
+
   // Render the combat UI
   const container = document.getElementById('dice-combat-content');
   if (container && window.CombatUI) {
@@ -4769,10 +4792,15 @@ window.useCombatItem = function useCombatItem(itemIndex) {
   if (typeof useItem === 'function') {
     useItem(itemIndex);
 
-    // Refresh items bar
+    // Refresh items bar (old combat system)
     const populateFunc = window.populateItemsBar || populateItemsBar;
     if (typeof populateFunc === 'function') {
       populateFunc();
+    }
+
+    // Refresh items bar (new combat system)
+    if (window.CombatUI && typeof window.CombatUI.updateItemsBar === 'function') {
+      window.CombatUI.updateItemsBar();
     }
 
     // Update combat UI

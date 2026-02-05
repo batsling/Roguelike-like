@@ -137,6 +137,12 @@ function renderCombatUI(combat, container) {
         image-rendering: crisp-edges;
         -ms-interpolation-mode: nearest-neighbor;
       }
+      /* Combat item icons hover effect */
+      .combat-item-icon:hover {
+        transform: scale(1.15);
+        box-shadow: 0 4px 12px rgba(255,255,255,0.3);
+        z-index: 10;
+      }
     </style>
     <!-- Outer container with combat log on the side -->
     <div style="
@@ -184,6 +190,9 @@ function renderCombatUI(combat, container) {
       ">
         <!-- Top: Resources Bar -->
         ${renderResourcesBar(combat)}
+
+        <!-- Items Bar -->
+        ${renderItemsBar()}
 
         <!-- Combatants Row: Player | Intent | Enemy -->
         <div style="
@@ -359,6 +368,117 @@ function renderResourcesBar(combat) {
           <span style="color: #aaa; font-size: 12px;">Block</span>
         </div>
       ` : ''}
+    </div>
+  `;
+}
+
+/**
+ * Render items bar showing all player items with hover tooltips
+ * Usable items show a "Use" button in their tooltip
+ */
+function renderItemsBar() {
+  // Access inventory from global scope
+  const inv = window.inventory || [];
+
+  if (inv.length === 0) {
+    return `
+      <div id="combat-items-bar" style="
+        background: rgba(0,0,0,0.4);
+        border: 2px solid #555;
+        border-radius: 8px;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-height: 50px;
+        overflow-x: auto;
+      ">
+        <span style="color: #666; font-size: 12px; font-style: italic;">No items</span>
+      </div>
+    `;
+  }
+
+  const getRarityColor = (rarity) => {
+    switch(rarity?.toLowerCase()) {
+      case 'legendary': return '#ff6b00';
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      case 'common': return '#aaa';
+      default: return '#888';
+    }
+  };
+
+  const itemIcons = inv.map((item, idx) => {
+    let imageUrl = item.image && item.image.trim() !== ''
+      ? item.image
+      : 'https://via.placeholder.com/40?text=%3F';
+
+    // Fix imgur URLs
+    if (imageUrl.includes('imgur.com/') && !imageUrl.includes('i.imgur.com')) {
+      imageUrl = imageUrl.replace('imgur.com/', 'i.imgur.com/');
+      if (!imageUrl.match(/\.(png|jpg|jpeg|gif)$/i)) {
+        imageUrl += '.png';
+      }
+    }
+
+    const rarityColor = getRarityColor(item.rarity);
+    const isUsable = item.type === 'Usable';
+    const canUse = isUsable && typeof window.canUseItem === 'function' && window.canUseItem(item);
+
+    return `
+      <div class="combat-item-icon" data-item-index="${idx}" style="
+        width: 40px;
+        height: 40px;
+        position: relative;
+        border: 2px solid ${rarityColor};
+        border-radius: 6px;
+        background: rgba(0,0,0,0.5);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+        ${!canUse && isUsable ? 'opacity: 0.5;' : ''}
+      " onmouseenter="if(window.showCombatItemTooltip)window.showCombatItemTooltip(event, ${idx})" onmouseleave="if(window.hideCombatItemTooltip)window.hideCombatItemTooltip()">
+        <img src="${imageUrl}" style="
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          border-radius: 4px;
+        " alt="${item.name}" onerror="if(this.src!=='https://via.placeholder.com/40?text=%3F'){this.src='https://via.placeholder.com/40?text=%3F';}">
+        ${item.quantity && item.quantity > 1 ? `
+          <div style="
+            position: absolute;
+            bottom: 1px;
+            right: 1px;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 0px 2px;
+            border-radius: 2px;
+            font-size: 8px;
+            font-weight: bold;
+            border: 1px solid #ffaa00;
+          ">x${item.quantity}</div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div id="combat-items-bar" style="
+      background: rgba(0,0,0,0.4);
+      border: 2px solid #555;
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 50px;
+      overflow-x: auto;
+    ">
+      <span style="color: #888; font-size: 11px; text-transform: uppercase; margin-right: 8px; flex-shrink: 0;">Items:</span>
+      <div style="display: flex; gap: 6px; flex-wrap: nowrap;">
+        ${itemIcons}
+      </div>
     </div>
   `;
 }
@@ -2195,6 +2315,23 @@ function checkCombatEnd() {
   }
 }
 
+/**
+ * Update just the items bar without re-rendering the whole combat UI
+ */
+function updateItemsBar() {
+  const itemsBarContainer = document.getElementById('combat-items-bar');
+  if (itemsBarContainer) {
+    const newItemsBar = renderItemsBar();
+    // Create a temporary container to parse the HTML
+    const temp = document.createElement('div');
+    temp.innerHTML = newItemsBar;
+    const newBar = temp.firstElementChild;
+    if (newBar) {
+      itemsBarContainer.replaceWith(newBar);
+    }
+  }
+}
+
 // Export to global scope
 if (typeof window !== 'undefined') {
   window.CombatUI = {
@@ -2206,6 +2343,8 @@ if (typeof window !== 'undefined') {
     animate3DDiceRoll,
     initializeEnemy3DDice,
     animateEnemyDiceRoll,
-    preloadMoveImages
+    preloadMoveImages,
+    renderItemsBar,
+    updateItemsBar
   };
 }
