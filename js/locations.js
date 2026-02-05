@@ -600,8 +600,9 @@ function applyRiskOfRainEffect(location) {
 /**
  * Show Hades boon selection - exactly 2 boons, cannot be rerolled
  * Displays when entering or arriving at a Hades location
+ * @param {boolean} shouldSpawnChoices - Whether to spawn next game choices after selection (default true)
  */
-function showHadesBoonSelection() {
+function showHadesBoonSelection(shouldSpawnChoices = true) {
   console.log('Showing Hades boon selection...');
 
   // Get all boon items
@@ -676,12 +677,14 @@ function showHadesBoonSelection() {
           createNotification(`Received ${selectedBoon.name}!`, '#8a2be2', '🌟');
         }
 
-        // After notification, spawn next game choices
-        setTimeout(() => {
-          if (typeof spawnChoices === 'function') {
-            spawnChoices();
-          }
-        }, 300);
+        // After notification, spawn next game choices (only if not starting boon)
+        if (shouldSpawnChoices) {
+          setTimeout(() => {
+            if (typeof spawnChoices === 'function') {
+              spawnChoices();
+            }
+          }, 300);
+        }
       }, 100);
     };
   });

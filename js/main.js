@@ -693,7 +693,8 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     // Store the timeout ID so it can be cleared if player finishes game before it fires
     gameState.hadesStartBoonTimeout = setTimeout(() => {
       gameState.hadesStartBoonTimeout = null;
-      showHadesBoonSelection();
+      // Pass false - starting boon shouldn't spawn choices, player is already at the starting location
+      showHadesBoonSelection(false);
     }, 500);
   }
 });
@@ -6401,7 +6402,7 @@ function recordEnemyDefeated(enemyName) {
   }
 
   gameState.enemyStats[baseName].timesBeaten++;
-  saveGameState();
+  saveCurrentGame();
 }
 
 // Record player death to enemy
@@ -6419,7 +6420,7 @@ function recordPlayerKilledBy(enemyName) {
   }
 
   gameState.enemyStats[baseName].timesKilledPlayer++;
-  saveGameState();
+  saveCurrentGame();
 }
 
 function markGameFinished(gameName) {
