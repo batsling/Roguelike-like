@@ -315,12 +315,12 @@ function renderCombatUI(combat, container) {
               text-transform: uppercase;
             ">End Turn</button>
           </div>
-          <!-- Toggleable Stats Panel -->
+          <!-- Toggleable Stats Panel - positioned on left (opposite of buttons) -->
           <div id="combat-stats-panel" style="
             display: none;
             position: absolute;
             top: 50px;
-            right: 8px;
+            left: 8px;
             background: rgba(20,15,25,0.98);
             border: 2px solid #9C27B0;
             border-radius: 8px;
@@ -1220,10 +1220,36 @@ const moveDescriptions = {
 };
 
 /**
- * Generate detailed tooltip HTML for dice faces with descriptions
+ * Generate detailed tooltip HTML for dice faces with descriptions and stat bonuses
  */
-function generateDiceTooltipDetailed(die) {
+function generateDiceTooltipDetailed(die, combat) {
   if (!die.faces || die.faces.length === 0) return '<div style="color: #666;">No faces</div>';
+
+  // Get player bonuses from combat state
+  const bonuses = combat?.player?.bonuses || { strength: 0, dexterity: 0, intelligence: 0, charisma: 0 };
+
+  // Map moves to their bonus stats
+  const moveBonusStats = {
+    'dmg': 'strength',
+    'block': 'dexterity',
+    'heal': 'intelligence',
+    'mana': 'intelligence',
+    'reroll': 'charisma',
+    'get': 'charisma',
+    'inflict': 'charisma',
+    'cleanse': 'charisma',
+    'vitality': 'intelligence',
+    'assassinate': 'strength',
+    'pain': 'strength'
+  };
+
+  // Stat colors
+  const statColors = {
+    strength: '#ff6666',
+    dexterity: '#66ff66',
+    intelligence: '#6699ff',
+    charisma: '#ffff66'
+  };
 
   const facesHTML = die.faces.map((face, i) => {
     if (face.isBlank) {
@@ -1245,6 +1271,12 @@ function generateDiceTooltipDetailed(die) {
     const target = effect.target ? ` (${effect.target})` : '';
     const addons = effect.addons && effect.addons.length > 0 ? ` [${effect.addons.join(', ')}]` : '';
 
+    // Calculate stat bonus
+    const bonusStat = moveBonusStats[moveKey];
+    const bonusValue = bonusStat ? (bonuses[bonusStat] || 0) : 0;
+    const statColor = bonusStat ? statColors[bonusStat] : '#888';
+    const bonusDisplay = bonusValue > 0 ? `<span style="color: ${statColor}; font-weight: bold;"> +${bonusValue}</span>` : '';
+
     // Get status image data URL if available
     const statusImgPath = moveImageBase64[moveKey];
     const imgHtml = statusImgPath ?
@@ -1255,7 +1287,7 @@ function generateDiceTooltipDetailed(die) {
       <div style="display: flex; align-items: center; gap: 8px; padding: 4px 6px; background: rgba(0,0,0,0.3); border-radius: 4px;">
         <div style="width: 24px; text-align: center; flex-shrink: 0;">${imgHtml}</div>
         <div style="flex: 1;">
-          <div style="font-weight: bold; color: #fff;">${value} ${effect.move}${target}</div>
+          <div style="font-weight: bold; color: #fff;">${value} ${effect.move}${bonusDisplay}${target}</div>
           <div style="font-size: 10px; color: #aaa;">${description}${addons}</div>
         </div>
       </div>
@@ -1312,7 +1344,7 @@ function renderDie(die, combat) {
       ">
         <div style="font-size: 12px; color: #ffaa44; margin-bottom: 8px; text-transform: uppercase; font-weight: bold;">${die.name} - All Faces</div>
         <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #fff;">
-          ${generateDiceTooltipDetailed(die)}
+          ${generateDiceTooltipDetailed(die, combat)}
         </div>
       </div>
 
