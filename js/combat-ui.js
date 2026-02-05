@@ -160,7 +160,7 @@ function renderCombatUI(combat, container) {
         pointer-events: none;
       }
     </style>
-    <!-- Outer container with combat log on the side -->
+    <!-- Outer container with combat log on left and stats on right -->
     <div style="
       display: flex;
       width: 100%;
@@ -169,7 +169,7 @@ function renderCombatUI(combat, container) {
       overflow: visible;
       box-sizing: border-box;
     ">
-      <!-- Combat Log - Outside main box -->
+      <!-- Combat Log - Left sidebar -->
       <div id="combat-log-sidebar" style="
         width: 160px;
         background: rgba(20,15,10,0.95);
@@ -266,7 +266,7 @@ function renderCombatUI(combat, container) {
           </div>
         </div>
 
-        <!-- Dice Area with End Turn/Dash/Stats buttons -->
+        <!-- Dice Area with End Turn/Dash buttons -->
         <div style="
           background: rgba(0,0,0,0.4);
           border: 2px solid #444;
@@ -275,7 +275,7 @@ function renderCombatUI(combat, container) {
           flex-shrink: 0;
           position: relative;
         ">
-          <!-- Stats / Dash / End Turn buttons in top-right -->
+          <!-- Dash / End Turn buttons in top-right -->
           <div style="
             position: absolute;
             top: 8px;
@@ -284,15 +284,6 @@ function renderCombatUI(combat, container) {
             gap: 8px;
             z-index: 10;
           ">
-            <button id="combat-stats-btn" style="
-              padding: 6px 12px;
-              font-size: 12px;
-              background: linear-gradient(145deg, #9C27B0, #7B1FA2);
-              border: 2px solid #BA68C8;
-              border-radius: 6px;
-              color: white;
-              cursor: pointer;
-            ">📊 Stats</button>
             <button id="combat-dash-btn" style="
               padding: 6px 12px;
               font-size: 12px;
@@ -315,23 +306,6 @@ function renderCombatUI(combat, container) {
               text-transform: uppercase;
             ">End Turn</button>
           </div>
-          <!-- Toggleable Stats Panel - positioned on left (opposite of buttons) -->
-          <div id="combat-stats-panel" style="
-            display: none;
-            position: absolute;
-            top: 50px;
-            left: 8px;
-            background: rgba(20,15,25,0.98);
-            border: 2px solid #9C27B0;
-            border-radius: 8px;
-            padding: 15px;
-            z-index: 100;
-            min-width: 280px;
-            max-width: 400px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-          ">
-            ${renderCombatStatsPanel(combat)}
-          </div>
           ${renderDiceArea(combat)}
         </div>
 
@@ -349,6 +323,20 @@ function renderCombatUI(combat, container) {
             ${renderSpellbook(combat)}
           </div>
         ` : ''}
+      </div>
+
+      <!-- Stats Panel - Right sidebar -->
+      <div id="combat-stats-sidebar" style="
+        width: 180px;
+        background: rgba(20,15,25,0.95);
+        border-left: 2px solid #9C27B0;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        overflow-y: auto;
+      ">
+        ${renderCombatStatsSidebar(combat)}
       </div>
     </div>
   `;
@@ -638,6 +626,114 @@ function renderCombatStatsPanel(combat) {
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
         <span style="font-size: 14px; font-weight: bold; color: #fff;">Combat Stats</span>
         <button id="close-stats-panel-btn" style="background: none; border: none; color: #888; cursor: pointer; font-size: 18px; padding: 0;">&times;</button>
+      </div>
+      ${statsHTML}
+      ${diceFacesHTML}
+    </div>
+  `;
+}
+
+/**
+ * Render the combat stats sidebar (permanent, narrower version)
+ */
+function renderCombatStatsSidebar(combat) {
+  const p = combat.player;
+  const bonuses = p.bonuses || { strength: 0, dexterity: 0, intelligence: 0, charisma: 0 };
+
+  // Get character dice data
+  const characterKey = (typeof gameState !== 'undefined' && gameState.character) || 'rodney';
+  const characterData = window.CHARACTERS_DATA ? window.CHARACTERS_DATA[characterKey] : null;
+  const dice = characterData ? characterData.dice : [];
+
+  // Map moves to their bonus stats
+  const moveBonusStats = {
+    'dmg': 'strength',
+    'block': 'dexterity',
+    'heal': 'intelligence',
+    'mana': 'intelligence',
+    'reroll': 'charisma',
+    'get': 'charisma',
+    'inflict': 'charisma',
+    'cleanse': 'charisma',
+    'vitality': 'intelligence',
+    'assassinate': 'strength',
+    'pain': 'strength'
+  };
+
+  const statColors = {
+    strength: '#ff6666',
+    dexterity: '#66ff66',
+    intelligence: '#6666ff',
+    charisma: '#ffff66'
+  };
+
+  // Render stats section (2x2 grid for narrow sidebar)
+  const statsHTML = `
+    <div style="margin-bottom: 10px;">
+      <div style="font-size: 11px; font-weight: bold; color: #9C27B0; margin-bottom: 8px; border-bottom: 1px solid #9C27B0; padding-bottom: 4px;">
+        Stats
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+        <div style="background: rgba(255,102,102,0.1); border: 1px solid ${statColors.strength}; border-radius: 4px; padding: 4px; text-align: center;">
+          <div style="font-size: 9px; color: #888;">STR</div>
+          <div style="font-size: 14px; color: ${statColors.strength}; font-weight: bold;">${bonuses.strength || 0}</div>
+        </div>
+        <div style="background: rgba(102,255,102,0.1); border: 1px solid ${statColors.dexterity}; border-radius: 4px; padding: 4px; text-align: center;">
+          <div style="font-size: 9px; color: #888;">DEX</div>
+          <div style="font-size: 14px; color: ${statColors.dexterity}; font-weight: bold;">${bonuses.dexterity || 0}</div>
+        </div>
+        <div style="background: rgba(102,102,255,0.1); border: 1px solid ${statColors.intelligence}; border-radius: 4px; padding: 4px; text-align: center;">
+          <div style="font-size: 9px; color: #888;">INT</div>
+          <div style="font-size: 14px; color: ${statColors.intelligence}; font-weight: bold;">${bonuses.intelligence || 0}</div>
+        </div>
+        <div style="background: rgba(255,255,102,0.1); border: 1px solid ${statColors.charisma}; border-radius: 4px; padding: 4px; text-align: center;">
+          <div style="font-size: 9px; color: #888;">CHA</div>
+          <div style="font-size: 14px; color: ${statColors.charisma}; font-weight: bold;">${bonuses.charisma || 0}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Render dice faces with bonuses (compact for sidebar)
+  const diceFacesHTML = dice.length > 0 ? `
+    <div>
+      <div style="font-size: 11px; font-weight: bold; color: #FFD700; margin-bottom: 6px; border-bottom: 1px solid #FFD700; padding-bottom: 4px;">
+        Dice Faces
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 3px; max-height: 300px; overflow-y: auto;">
+        ${dice.map((face, idx) => {
+          if (face.isBlank) {
+            return `
+              <div style="background: rgba(100,100,100,0.2); border: 1px dashed #555; border-radius: 3px; padding: 3px 5px; font-size: 10px;">
+                <span style="color: #666;">${idx + 1}. Blank</span>
+              </div>
+            `;
+          }
+
+          const effectsHTML = face.effects ? face.effects.map(effect => {
+            const move = effect.move || '';
+            const value = effect.value || 0;
+            const bonusStat = moveBonusStats[move.toLowerCase()] || null;
+            const bonusValue = bonusStat ? (bonuses[bonusStat] || 0) : 0;
+            const statColor = bonusStat ? statColors[bonusStat] : '#888';
+
+            return `<span style="color: #fff;">${value}</span>${bonusValue > 0 ? `<span style="color: ${statColor};">+${bonusValue}</span>` : ''} <span style="color: #aaa;">${move}</span>${effect.status ? ` <span style="color: #ba68c8; font-size: 9px;">${effect.status}</span>` : ''}`;
+          }).join(', ') : '<span style="color: #666;">-</span>';
+
+          return `
+            <div style="background: rgba(255,215,0,0.05); border: 1px solid #444; border-radius: 3px; padding: 3px 5px; font-size: 10px;">
+              <span style="color: #FFD700; font-weight: bold;">${idx + 1}.</span> ${effectsHTML}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  ` : '<div style="color: #666; font-size: 10px;">No dice data</div>';
+
+  return `
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="font-size: 12px; font-weight: bold; color: #fff; text-align: center; padding-bottom: 5px; border-bottom: 2px solid #9C27B0;">
+        Combat Stats
       </div>
       ${statsHTML}
       ${diceFacesHTML}
@@ -2346,27 +2442,6 @@ function attachCombatEventListeners(combat) {
       card.style.boxShadow = '0 0 10px #FFD700';
     });
   });
-
-  // Stats panel toggle
-  const statsBtn = document.getElementById('combat-stats-btn');
-  const statsPanel = document.getElementById('combat-stats-panel');
-  const closeStatsBtn = document.getElementById('close-stats-panel-btn');
-
-  if (statsBtn && statsPanel) {
-    statsBtn.addEventListener('click', () => {
-      if (statsPanel.style.display === 'none' || !statsPanel.style.display) {
-        statsPanel.style.display = 'block';
-      } else {
-        statsPanel.style.display = 'none';
-      }
-    });
-  }
-
-  if (closeStatsBtn && statsPanel) {
-    closeStatsBtn.addEventListener('click', () => {
-      statsPanel.style.display = 'none';
-    });
-  }
 
   // Enemy dice tooltip positioning (for fixed position tooltips)
   document.querySelectorAll('.enemy-die-container').forEach(container => {
