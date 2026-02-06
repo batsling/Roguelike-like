@@ -795,7 +795,8 @@ function switchCollectionTab(tab) {
     const naCount = items.filter(item => (item.rarity || '').toLowerCase() === 'n/a').length;
 
     content.innerHTML = `
-      <div style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
+      <!-- Left side: Item grid -->
+      <div id="items-grid-container" style="flex: 2; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
         <!-- Sort and Filter controls -->
         <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center; flex-wrap: wrap;">
           <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort:</span>
@@ -810,26 +811,35 @@ function switchCollectionTab(tab) {
           <span style="color: #666; font-size: 11px; margin-left: auto;">Showing ${sortedItems.length} of ${items.length}</span>
         </div>
 
-        <div id="items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
+        <div id="items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; overflow-y: auto;">
           ${sortedItems.map(item => {
             const rarityColor = getRarityColor(item.rarity);
             return `
-            <div style="
-              background: rgba(0,0,0,0.3);
-              border: 2px solid ${rarityColor};
-              border-radius: 8px;
-              padding: 10px;
-              display: flex;
-              flex-direction: column;
-              gap: 8px;
-              transition: transform 0.2s, box-shadow 0.2s;
-            " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 20px rgba(${rarityColor === '#ff6b00' ? '255,107,0' : rarityColor === '#9b59b6' ? '155,89,182' : rarityColor === '#4CAF50' ? '76,175,80' : '170,170,170'}, 0.4)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+            <div
+              class="collection-item-card"
+              data-item-name="${item.name.replace(/"/g, '&quot;')}"
+              onclick="showItemDetails('${item.name.replace(/'/g, "\\'")}')"
+              style="
+                background: rgba(0,0,0,0.3);
+                border: 2px solid ${rarityColor};
+                border-radius: 8px;
+                padding: 8px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+                transition: transform 0.2s, box-shadow 0.2s;
+                cursor: pointer;
+              "
+              onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.5)';"
+              onmouseout="this.style.transform=''; this.style.boxShadow='';"
+            >
               <img
                 src="${item.image || 'images/items/no-item.svg'}"
                 alt="${item.name}"
                 style="
-                  width: 100%;
-                  height: 120px;
+                  width: 80px;
+                  height: 80px;
                   object-fit: contain;
                   border-radius: 6px;
                   background: rgba(0,0,0,0.2);
@@ -837,21 +847,22 @@ function switchCollectionTab(tab) {
                 "
                 onerror="this.style.display='none';"
               />
-              <div style="text-align: center; font-size: 12px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word;">
+              <div style="text-align: center; font-size: 11px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word; width: 100%;">
                 ${item.name}
               </div>
-              <div style="font-size: 10px; color: ${rarityColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
+              <div style="font-size: 9px; color: ${rarityColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
                 ${item.rarity}
-              </div>
-              <div style="font-size: 10px; color: #888; text-align: center; font-style: italic;">
-                ${item.game || 'Unknown'}
-              </div>
-              <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
-                ${item.description || 'No description'}
               </div>
             </div>
           `;
           }).join('')}
+        </div>
+      </div>
+
+      <!-- Right side: Item details -->
+      <div id="item-details" style="flex: 1; overflow-y: auto; padding: 20px; background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 8px; min-width: 300px;">
+        <div style="text-align: center; color: #888; padding: 40px 20px;">
+          <p>Click an item to view details</p>
         </div>
       </div>
     `;

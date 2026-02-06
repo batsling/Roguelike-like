@@ -6807,6 +6807,148 @@ function switchEnemyImage(enemyName) {
   }
 }
 
+/**
+ * Show item details in the collection panel
+ * @param {string} itemName - Name of the item to show details for
+ */
+function showItemDetails(itemName) {
+  const item = items.find(i => i.name === itemName);
+  if (!item) return;
+
+  const detailsPanel = document.getElementById('item-details');
+  if (!detailsPanel) return;
+
+  // Get rarity color
+  const getRarityColor = (rarity) => {
+    const rarityLower = (rarity || '').toLowerCase();
+    switch(rarityLower) {
+      case 'legendary': return '#ff6b00';
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      case 'common': return '#aaa';
+      default: return '#888';
+    }
+  };
+
+  // Get type color
+  const getTypeColor = (type) => {
+    const typeLower = (type || '').toLowerCase();
+    switch(typeLower) {
+      case 'weapon': return '#f44336';
+      case 'passive': return '#4CAF50';
+      case 'consumable': return '#2196F3';
+      case 'active': return '#ff9800';
+      case 'boon': return '#9b59b6';
+      default: return '#888';
+    }
+  };
+
+  const rarityColor = getRarityColor(item.rarity);
+  const typeColor = getTypeColor(item.type);
+
+  // Build tags HTML
+  const tagsHTML = item.tags && item.tags.length > 0 ? `
+    <div style="margin-top: 15px;">
+      <strong style="color: #9b59b6;">Tags:</strong>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+        ${item.tags.map(tag => `
+          <span style="
+            font-size: 11px;
+            padding: 4px 10px;
+            background: rgba(155, 89, 182, 0.15);
+            border: 1px solid rgba(155, 89, 182, 0.4);
+            border-radius: 12px;
+            color: #ba68c8;
+          ">${tag}</span>
+        `).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  // Build dice HTML for weapons
+  const diceHTML = item.dice && item.dice.length > 0 ? `
+    <div style="margin-top: 15px;">
+      <strong style="color: #f44336;">Weapon Dice:</strong>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
+        ${item.dice.map((face, idx) => {
+          if (face.isBlank) {
+            return `
+              <div style="
+                background: rgba(0,0,0,0.4);
+                border: 1px solid #333;
+                border-radius: 6px;
+                padding: 8px;
+                text-align: center;
+                font-size: 11px;
+                color: #666;
+              ">
+                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
+                <div>Blank</div>
+              </div>
+            `;
+          }
+          return `
+            <div style="
+              background: rgba(244, 67, 54, 0.1);
+              border: 1px solid rgba(244, 67, 54, 0.3);
+              border-radius: 6px;
+              padding: 8px;
+              text-align: center;
+              font-size: 11px;
+              color: #ddd;
+            ">
+              <div style="font-weight: bold; color: #f44336; margin-bottom: 4px;">Face ${idx + 1}</div>
+              <div>${face.raw || face.effects?.map(e => e.raw).join(', ') || '—'}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  detailsPanel.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <!-- Item Header -->
+      <div style="display: flex; gap: 15px; align-items: flex-start;">
+        <img
+          src="${item.image || 'images/items/no-item.svg'}"
+          alt="${item.name}"
+          style="width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${rarityColor}; image-rendering: pixelated;"
+          onerror="this.style.opacity='0.3'"
+        />
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 10px 0; color: ${rarityColor};">${item.name}</h3>
+          <div style="color: #aaa; font-size: 13px; line-height: 1.8;">
+            <div><strong>Rarity:</strong> <span style="color: ${rarityColor}; text-transform: uppercase; font-weight: bold;">${item.rarity || '—'}</span></div>
+            <div><strong>Type:</strong> <span style="color: ${typeColor};">${item.type || '—'}</span></div>
+            <div><strong>Game:</strong> ${item.game || '—'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div style="padding: 12px; background: rgba(${rarityColor === '#ff6b00' ? '255,107,0' : rarityColor === '#9b59b6' ? '155,89,182' : rarityColor === '#4CAF50' ? '76,175,80' : '170,170,170'}, 0.1); border: 1px solid ${rarityColor}40; border-radius: 6px;">
+        <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 14px;">📜 Description</h4>
+        <div style="font-size: 13px; color: #ddd; line-height: 1.6;">${item.description || 'No description available.'}</div>
+      </div>
+
+      <!-- Unlock Condition -->
+      ${item.unlockCondition && item.unlockCondition !== 'N/A' ? `
+        <div style="padding: 12px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 6px;">
+          <h4 style="margin: 0 0 8px 0; color: #ff9800; font-size: 14px;">🔓 Unlock Condition</h4>
+          <div style="font-size: 13px; color: #ddd;">${item.unlockCondition}</div>
+        </div>
+      ` : ''}
+
+      <!-- Tags -->
+      ${tagsHTML}
+
+      <!-- Dice (for weapons) -->
+      ${diceHTML}
+    </div>
+  `;
+}
+
 // Get enemy stats from gameState
 function getEnemyStats(enemyName) {
   if (!gameState.enemyStats) {
@@ -8017,6 +8159,7 @@ window.drawMapArrows = drawMapArrows;
 window.switchCollectionTab = switchCollectionTab;
 window.showGameDetails = showGameDetails;
 window.showEnemyDetails = showEnemyDetails;
+window.showItemDetails = showItemDetails;
 window.switchEnemyImage = switchEnemyImage;
 window.getEnemyStats = getEnemyStats;
 window.recordEnemyDefeated = recordEnemyDefeated;

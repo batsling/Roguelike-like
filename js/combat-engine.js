@@ -1325,6 +1325,62 @@ function dealDamageToPlayer(damage, addons, enemy) {
     player.health -= remaining;
     window.health = player.health;
     addLog(`${enemy.name} dealt ${remaining} damage!`, 'danger');
+
+    // Apply curse based on enemy type and difficulty
+    applyCurseFromEnemy(enemy);
+  }
+}
+
+/**
+ * Apply a curse to the player based on the attacking enemy
+ * @param {Object} enemy - The attacking enemy
+ */
+function applyCurseFromEnemy(enemy) {
+  if (!enemy) return;
+
+  // Map enemy type to curse stat (enemy type is already the stat name)
+  const curseStat = enemy.type || 'Strength';
+
+  // Map enemy difficulty to curse power
+  const difficultyToPower = {
+    'Low': 'Low',
+    'Medium': 'Medium',
+    'High': 'High'
+  };
+  const cursePower = difficultyToPower[enemy.difficulty] || 'Low';
+
+  // Find matching curses from CURSES_DATA
+  if (typeof CURSES_DATA !== 'undefined') {
+    const matchingCurses = CURSES_DATA.filter(curse =>
+      curse.stat === curseStat && curse.power === cursePower
+    );
+
+    if (matchingCurses.length > 0) {
+      // Pick a random curse from matching ones
+      const randomCurse = matchingCurses[Math.floor(Math.random() * matchingCurses.length)];
+
+      // Apply the curse using StateMutator if available
+      if (typeof StateMutator !== 'undefined' && StateMutator.addCurse) {
+        StateMutator.addCurse(randomCurse.name, { updateUI: true, notify: true });
+        addLog(`Cursed with ${randomCurse.name}!`, 'warning');
+      } else if (typeof addCurse === 'function') {
+        addCurse(randomCurse.name);
+        addLog(`Cursed with ${randomCurse.name}!`, 'warning');
+      } else {
+        // Fallback: manually add curse
+        if (!gameState.activeCurses) gameState.activeCurses = [];
+        const curseInstance = {
+          ...randomCurse,
+          _id: `${randomCurse.name}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        };
+        gameState.activeCurses.push(curseInstance);
+        addLog(`Cursed with ${randomCurse.name}!`, 'warning');
+        if (typeof updateCursesDisplay === 'function') updateCursesDisplay();
+        if (typeof updateTopBar === 'function') updateTopBar();
+      }
+    } else {
+      console.warn(`No curse found for stat ${curseStat} with power ${cursePower}`);
+    }
   }
 }
 
