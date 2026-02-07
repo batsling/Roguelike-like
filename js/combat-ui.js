@@ -1423,20 +1423,17 @@ function renderDie(die, combat) {
     ">
       <!-- Tooltip on hover showing all faces with descriptions -->
       <div class="dice-tooltip" style="
-        position: absolute;
-        bottom: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(20,20,25,0.95);
-        border: 2px solid #555;
+        position: fixed;
+        background: rgba(20,20,25,0.98);
+        border: 2px solid #ffaa44;
         border-radius: 8px;
-        padding: 10px;
-        margin-bottom: 8px;
+        padding: 12px;
         display: none;
-        z-index: 10000;
-        min-width: 180px;
-        max-width: 250px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        z-index: 99999;
+        min-width: 200px;
+        max-width: 280px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.7);
+        pointer-events: none;
       ">
         <div style="font-size: 12px; color: #ffaa44; margin-bottom: 8px; text-transform: uppercase; font-weight: bold;">${die.name} - All Faces</div>
         <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #fff;">
@@ -2443,25 +2440,6 @@ function attachCombatEventListeners(combat) {
     });
   });
 
-  // Enemy dice tooltip positioning (for fixed position tooltips)
-  document.querySelectorAll('.enemy-die-container').forEach(container => {
-    const tooltip = container.querySelector('.enemy-dice-tooltip');
-    if (!tooltip) return;
-
-    container.addEventListener('mouseenter', (e) => {
-      tooltip.style.display = 'block';
-      positionTooltip(tooltip, e);
-    });
-
-    container.addEventListener('mousemove', (e) => {
-      positionTooltip(tooltip, e);
-    });
-
-    container.addEventListener('mouseleave', () => {
-      tooltip.style.display = 'none';
-    });
-  });
-
   // Helper function to position tooltip near mouse
   function positionTooltip(tooltip, event) {
     const offset = 15;
@@ -2480,6 +2458,44 @@ function attachCombatEventListeners(combat) {
     tooltip.style.left = x + 'px';
     tooltip.style.top = y + 'px';
   }
+
+  // Player dice tooltip positioning (for fixed position tooltips)
+  document.querySelectorAll('.combat-die').forEach(container => {
+    const tooltip = container.querySelector('.dice-tooltip');
+    if (!tooltip) return;
+
+    container.addEventListener('mouseenter', (e) => {
+      tooltip.style.display = 'block';
+      positionTooltip(tooltip, e);
+    });
+
+    container.addEventListener('mousemove', (e) => {
+      positionTooltip(tooltip, e);
+    });
+
+    container.addEventListener('mouseleave', () => {
+      tooltip.style.display = 'none';
+    });
+  });
+
+  // Enemy dice tooltip positioning (for fixed position tooltips)
+  document.querySelectorAll('.enemy-die-container').forEach(container => {
+    const tooltip = container.querySelector('.enemy-dice-tooltip');
+    if (!tooltip) return;
+
+    container.addEventListener('mouseenter', (e) => {
+      tooltip.style.display = 'block';
+      positionTooltip(tooltip, e);
+    });
+
+    container.addEventListener('mousemove', (e) => {
+      positionTooltip(tooltip, e);
+    });
+
+    container.addEventListener('mouseleave', () => {
+      tooltip.style.display = 'none';
+    });
+  });
 }
 
 /**

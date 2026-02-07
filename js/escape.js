@@ -895,8 +895,7 @@ function switchCollectionTab(tab) {
     }
 
     // Filter out variants (they'll be shown in the details panel of their base enemy)
-    // and filter out N/A difficulty enemies (variants/transformations)
-    const baseEnemies = enemies.filter(e => !e.variantOf && e.difficulty !== 'N/A');
+    const baseEnemies = enemies.filter(e => !e.variantOf);
 
     // Get difficulty color
     const getDifficultyColor = (difficulty) => {
@@ -1330,22 +1329,31 @@ function sortCollectionItems(sortType) {
     grid.innerHTML = sortedItems.map(item => {
       const rarityColor = getRarityColor(item.rarity);
       return `
-        <div style="
-          background: rgba(0,0,0,0.3);
-          border: 2px solid ${rarityColor};
-          border-radius: 8px;
-          padding: 10px;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          transition: transform 0.2s, box-shadow 0.2s;
-        " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 20px rgba(${rarityColor === '#ff6b00' ? '255,107,0' : rarityColor === '#9b59b6' ? '155,89,182' : rarityColor === '#4CAF50' ? '76,175,80' : '170,170,170'}, 0.4)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+        <div
+          class="collection-item-card"
+          data-item-name="${item.name.replace(/"/g, '&quot;')}"
+          onclick="showItemDetails('${item.name.replace(/'/g, "\\'")}')"
+          style="
+            background: rgba(0,0,0,0.3);
+            border: 2px solid ${rarityColor};
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+          "
+          onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.5)';"
+          onmouseout="this.style.transform=''; this.style.boxShadow='';"
+        >
           <img
             src="${item.image || 'images/items/no-item.svg'}"
             alt="${item.name}"
             style="
-              width: 100%;
-              height: 120px;
+              width: 80px;
+              height: 80px;
               object-fit: contain;
               border-radius: 6px;
               background: rgba(0,0,0,0.2);
@@ -1353,17 +1361,11 @@ function sortCollectionItems(sortType) {
             "
             onerror="this.style.display='none';"
           />
-          <div style="text-align: center; font-size: 12px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word;">
+          <div style="text-align: center; font-size: 11px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word; width: 100%;">
             ${item.name}
           </div>
-          <div style="font-size: 10px; color: ${rarityColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
+          <div style="font-size: 9px; color: ${rarityColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
             ${item.rarity}
-          </div>
-          <div style="font-size: 10px; color: #888; text-align: center; font-style: italic;">
-            ${item.game || 'Unknown'}
-          </div>
-          <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
-            ${item.description || 'No description'}
           </div>
         </div>
       `;

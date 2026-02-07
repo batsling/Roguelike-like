@@ -6835,12 +6835,21 @@ function showItemDetails(itemName) {
     </div>
   ` : '';
 
+  // Look up weapon dice from WEAPONS_DATA if this is a weapon
+  let weaponDice = null;
+  if (item.type === 'Weapon' && typeof WEAPONS_DATA !== 'undefined') {
+    const weaponData = WEAPONS_DATA.find(w => w.name === item.name);
+    if (weaponData && weaponData.dice) {
+      weaponDice = weaponData.dice;
+    }
+  }
+
   // Build dice HTML for weapons
-  const diceHTML = item.dice && item.dice.length > 0 ? `
+  const diceHTML = weaponDice && weaponDice.length > 0 ? `
     <div style="margin-top: 15px;">
       <strong style="color: #f44336;">Weapon Dice:</strong>
       <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
-        ${item.dice.map((face, idx) => {
+        ${weaponDice.map((face, idx) => {
           if (face.isBlank) {
             return `
               <div style="

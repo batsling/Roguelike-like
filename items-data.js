@@ -136,16 +136,6 @@ var ITEMS_DATA = [
     "unlockCondition": "N/A"
   },
   {
-    "name": "Cursed Slash",
-    "rarity": "Rare",
-    "type": "Triggered",
-    "description": "Lose half of your max health. When you defeat an enemy, Heal +1 Health",
-    "game": "Hades",
-    "tags": [],
-    "image": "images/items/CursedSlash.png",
-    "unlockCondition": "N/A"
-  },
-  {
     "name": "D6",
     "rarity": "Uncommon",
     "type": "Passive",
