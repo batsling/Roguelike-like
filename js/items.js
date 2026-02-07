@@ -331,77 +331,43 @@ const ITEM_EFFECTS = {
   // ===== TRIGGERED ITEMS =====
 
   "Charm of the Vampire": {
+    _lastProcessedFrame: 0, // Track last processed frame to avoid duplicate triggers
     onAcquire: () => {
       // No immediate effect on acquire
       console.log('Acquired Charm of the Vampire - will trigger on enemy defeats');
     },
     onEnemyDefeated: () => {
-      // 50% base chance + (5% * luck)
+      // Use frame counter to only trigger once per defeat event
+      const currentFrame = Date.now();
+      const itemEffect = ITEM_EFFECTS["Charm of the Vampire"];
+      if (currentFrame - itemEffect._lastProcessedFrame < 50) {
+        return; // Already processed this defeat
+      }
+      itemEffect._lastProcessedFrame = currentFrame;
+
+      // Count all copies in inventory
+      const copies = inventory.filter(i => i.name === 'Charm of the Vampire').length;
+
+      // 50% base chance + (5% * luck) - same chance regardless of copies
       const baseChance = 0.50;
       const luckBonus = (luck || 0) * 0.05;
       const totalChance = baseChance + luckBonus;
 
       const roll = Math.random();
-      console.log(`Charm of the Vampire: rolled ${roll.toFixed(2)} vs ${totalChance.toFixed(2)} chance`);
+      console.log(`Charm of the Vampire (x${copies}): rolled ${roll.toFixed(2)} vs ${totalChance.toFixed(2)} chance`);
 
       if (roll < totalChance) {
-        // Heal +1 health (can't exceed max health)
-        const result = StateMutator.modifyHealth(1);
+        // Heal +1 health per copy (can't exceed max health)
+        const healAmount = copies;
+        const result = StateMutator.modifyHealth(healAmount);
 
         if (result.changed) {
-          console.log(`Charm of the Vampire: Healed +1 health (${result.oldHealth} → ${result.newHealth})`);
+          console.log(`Charm of the Vampire (x${copies}): Healed +${healAmount} health (${result.oldHealth} → ${result.newHealth})`);
           // Show notification
           setTimeout(() => {
-            createNotification('Charm of the Vampire: +1 Health!', COLORS.SUCCESS, '🧛');
+            createNotification(`Charm of the Vampire: +${healAmount} Health!`, COLORS.SUCCESS, '🧛');
           }, 100);
         }
-      }
-    }
-  },
-
-  "Cursed Slash": {
-    onAcquire: () => {
-      // Lose half of max health (rounded down)
-      const healthLoss = Math.floor(maxHealth / 2);
-      const oldMaxHealth = maxHealth;
-      const oldHealth = health;
-
-      maxHealth -= healthLoss;
-      // Cap current health to new max, but don't reduce it otherwise
-      health = Math.min(health, maxHealth);
-      // Ensure player doesn't die (minimum 1 HP)
-      health = Math.max(1, health);
-
-      gameState.maxHealth = maxHealth;
-      gameState.health = health;
-
-      console.log(`Cursed Slash: Max health ${oldMaxHealth} → ${maxHealth}, Current health ${oldHealth} → ${health}`);
-
-      if (typeof updateHealthDisplay === 'function') {
-        updateHealthDisplay();
-      }
-      if (typeof updateTopBar === 'function') {
-        updateTopBar();
-      }
-    },
-    onEnemyDefeated: () => {
-      // Always heal +1 health when defeating an enemy
-      const oldHealth = health;
-      health = Math.min(health + 1, maxHealth);
-      gameState.health = health;
-
-      if (health > oldHealth) {
-        console.log(`Cursed Slash: Healed +1 health (${oldHealth} → ${health})`);
-        if (typeof updateHealthDisplay === 'function') {
-          updateHealthDisplay();
-        }
-        if (typeof updateTopBar === 'function') {
-          updateTopBar();
-        }
-        // Show notification
-        setTimeout(() => {
-          createNotification('Cursed Slash: +1 Health!', 'rgba(156, 39, 176, 0.9)', '⚔️');
-        }, 100);
       }
     }
   },

@@ -1121,12 +1121,13 @@ function processPlayerStartOfTurn() {
     }
   });
 
-  // Check for Horn Cleat on turn 2
+  // Check for Horn Cleat on turn 2 (stacks: +5 Block per copy)
   if (combatState.turn === 2 && typeof inventory !== 'undefined') {
-    const hasHornCleat = inventory.some(item => item.name === 'Horn Cleat');
-    if (hasHornCleat) {
-      addBlock(combatState.player, 5);
-      addLog('Horn Cleat grants +5 Block!', 'success');
+    const hornCleatCount = inventory.filter(item => item.name === 'Horn Cleat').length;
+    if (hornCleatCount > 0) {
+      const totalBlock = 5 * hornCleatCount;
+      addBlock(combatState.player, totalBlock);
+      addLog(`Horn Cleat${hornCleatCount > 1 ? ` x${hornCleatCount}` : ''} grants +${totalBlock} Block!`, 'success');
     }
   }
 

@@ -5412,7 +5412,7 @@ function handleGenericCombatResult(success, powerLevel) {
   const enemy = callbacks.enemy;
 
   if (success) {
-    // Trigger onEnemyDefeated effects for triggered items (like Cursed Slash)
+    // Trigger onEnemyDefeated effects for triggered items
     if (typeof triggerOnEnemyDefeated === 'function') {
       triggerOnEnemyDefeated();
     }
@@ -5576,7 +5576,7 @@ function handleStoneGolemResult(success) {
     updateTopBar();
     createNotification(`+${goldReward} gold for defeating Stone Golem!`, '#ffdd77', '💰');
 
-    // Trigger onEnemyDefeated effects for triggered items (like Cursed Slash)
+    // Trigger onEnemyDefeated effects for triggered items
     if (typeof triggerOnEnemyDefeated === 'function') {
       triggerOnEnemyDefeated();
     }
@@ -5786,36 +5786,6 @@ function feedMuncher(indices, itemsToReceive) {
 
 function removeItemAndReverseStats(index) {
   const item = inventory[index];
-
-  // Special handling for Cursed Slash - restore the max health it took
-  if (item.name === 'Cursed Slash') {
-    const oldMaxHealth = maxHealth;
-    const oldHealth = health;
-
-    // Restore max health (reverse the halving by doubling)
-    maxHealth = maxHealth * 2;
-
-    // Restore current health proportionally (same proportion as before)
-    health = Math.min(maxHealth, health * 2);
-
-    gameState.maxHealth = maxHealth;
-    gameState.health = health;
-    updateHealthDisplay();
-    updateTopBar();
-
-    console.log(`Cursed Slash removed: Max health ${oldMaxHealth} → ${maxHealth}, Current health ${oldHealth} → ${health}`);
-
-    // Remove from inventory (handle quantity) and return early
-    if (item.quantity && item.quantity > 1) {
-      item.quantity--;
-      console.log(`${item.name} quantity decreased to ${item.quantity}`);
-    } else {
-      inventory.splice(index, 1);
-    }
-    gameState.inventory = inventory;
-    updateInventory();
-    return;
-  }
 
   // Reverse item effects (but NOT reroll, dash, skip)
   // NOTE: This parses the item description to determine what stats to reverse
