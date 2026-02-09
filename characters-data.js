@@ -4,7 +4,7 @@ var CHARACTERS_DATA = [
   {
     "name": "Rodney",
     "game": "Rogue",
-    "energy": 2,
+    "energy": 3,
     "mana": 3,
     "strength": 0,
     "dexterity": 0,
@@ -86,7 +86,7 @@ var CHARACTERS_DATA = [
   {
     "name": "Isaac",
     "game": "The Binding of Isaac",
-    "energy": 2,
+    "energy": 3,
     "mana": 3,
     "strength": 1,
     "dexterity": 0,
@@ -168,7 +168,7 @@ var CHARACTERS_DATA = [
   {
     "name": "Zoe",
     "game": "Haste",
-    "energy": 2,
+    "energy": 3,
     "mana": 3,
     "strength": 1,
     "dexterity": 0,

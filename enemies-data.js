@@ -5,7 +5,7 @@ var ENEMIES_DATA = [
     "name": "Lemurian",
     "type": "Strength",
     "difficulty": "Low",
-    "hp": 10,
+    "hp": 6,
     "ability": null,
     "game": "Risk of Rain",
     "location": "General",
@@ -14,12 +14,12 @@ var ENEMIES_DATA = [
         "effects": [
           {
             "move": "Get",
-            "value": 2,
+            "value": 1,
             "status": "Power",
             "addons": []
           }
         ],
-        "raw": "Get 2 Power"
+        "raw": "Get 1 Power"
       },
       {
         "effects": [
@@ -79,7 +79,7 @@ var ENEMIES_DATA = [
     "name": "Stone Golem",
     "type": "Strength",
     "difficulty": "Medium",
-    "hp": 20,
+    "hp": 15,
     "ability": null,
     "game": "Risk of Rain",
     "location": "General",
@@ -88,12 +88,12 @@ var ENEMIES_DATA = [
         "effects": [
           {
             "move": "Get",
-            "value": 3,
+            "value": 2,
             "status": "Power",
             "addons": []
           }
         ],
-        "raw": "Get 3 Power"
+        "raw": "Get 2 Power"
       },
       {
         "effects": [
@@ -153,7 +153,7 @@ var ENEMIES_DATA = [
     "name": "Elder Lemurian",
     "type": "Strength",
     "difficulty": "High",
-    "hp": 40,
+    "hp": 20,
     "ability": null,
     "game": "Risk of Rain",
     "location": "General",
@@ -162,12 +162,12 @@ var ENEMIES_DATA = [
         "effects": [
           {
             "move": "Get",
-            "value": 3,
+            "value": 2,
             "status": "Power",
             "addons": []
           }
         ],
-        "raw": "Get 3 Power"
+        "raw": "Get 2 Power"
       },
       {
         "effects": [
@@ -237,7 +237,7 @@ var ENEMIES_DATA = [
     "name": "Pacer",
     "type": "Strength",
     "difficulty": "N/A",
-    "hp": 10,
+    "hp": 6,
     "ability": null,
     "game": "The Binding of Isaac",
     "location": "Building",
@@ -310,7 +310,7 @@ var ENEMIES_DATA = [
     "name": "Gaper",
     "type": "Strength",
     "difficulty": "Low",
-    "hp": 10,
+    "hp": 6,
     "ability": "When Defeated, Spawn Pacer",
     "game": "The Binding of Isaac",
     "location": "Building",
@@ -383,7 +383,7 @@ var ENEMIES_DATA = [
     "name": "Double Vis",
     "type": "Strength",
     "difficulty": "Medium",
-    "hp": 20,
+    "hp": 15,
     "ability": null,
     "game": "The Binding of Isaac",
     "location": "Building",
@@ -441,7 +441,7 @@ var ENEMIES_DATA = [
     "name": "Tainted Pooter",
     "type": "Strength",
     "difficulty": "High",
-    "hp": 40,
+    "hp": 20,
     "ability": "When Defeated, Strength Save 15 or take 3 Dmg",
     "game": "The Binding of Isaac",
     "location": "Building",
@@ -508,7 +508,7 @@ var ENEMIES_DATA = [
     "name": "Mung",
     "type": "Intelligence",
     "difficulty": "N/A",
-    "hp": 5,
+    "hp": 4,
     "ability": null,
     "game": "Brutal Orchestra",
     "location": "Desert",
@@ -560,7 +560,7 @@ var ENEMIES_DATA = [
     "name": "Mungling Mud Lung",
     "type": "Intelligence",
     "difficulty": "Low",
-    "hp": 10,
+    "hp": 6,
     "ability": "When Defeated, 50% chance to Spawn Mung / Multi Attack 2",
     "game": "Brutal Orchestra",
     "location": "Desert",
@@ -718,7 +718,7 @@ var ENEMIES_DATA = [
     "name": "Revola",
     "type": "Intelligence",
     "difficulty": "Medium",
-    "hp": 20,
+    "hp": 15,
     "ability": "Starts with Forgetful, Barricade",
     "game": "Brutal Orchestra",
     "location": "Watery",
@@ -821,7 +821,7 @@ var ENEMIES_DATA = [
     "name": "Revola (Standing)",
     "type": "Intelligence",
     "difficulty": "N/A",
-    "hp": 20,
+    "hp": 15,
     "ability": "Starts with Forgetful, Barricade",
     "game": "Brutal Orchestra",
     "location": "Watery",
@@ -944,7 +944,7 @@ var ENEMIES_DATA = [
     "name": "Skinning Homunculus",
     "type": "Intelligence",
     "difficulty": "High",
-    "hp": 40,
+    "hp": 25,
     "ability": "When another ally is damaged, 1 Frail Overload / Formless",
     "game": "Brutal Orchestra",
     "location": "Chaos",
@@ -1029,7 +1029,7 @@ var ENEMIES_DATA = [
     "name": "Hobgoblin",
     "type": "Dexterity",
     "difficulty": "Low",
-    "hp": 10,
+    "hp": 6,
     "ability": null,
     "game": "Rogue",
     "location": "General",
@@ -1088,7 +1088,7 @@ var ENEMIES_DATA = [
     "name": "Troll",
     "type": "Dexterity",
     "difficulty": "Medium",
-    "hp": 20,
+    "hp": 15,
     "ability": null,
     "game": "Rogue",
     "location": "General",
@@ -1154,7 +1154,7 @@ var ENEMIES_DATA = [
     "name": "Dragon",
     "type": "Dexterity",
     "difficulty": "High",
-    "hp": 40,
+    "hp": 20,
     "ability": "Immune to Burn",
     "game": "Rogue",
     "location": "General",
@@ -1235,7 +1235,7 @@ var ENEMIES_DATA = [
     "name": "Cultist",
     "type": "Charisma",
     "difficulty": "Low",
-    "hp": 10,
+    "hp": 6,
     "ability": null,
     "game": "Slay the Spire",
     "location": "General",
@@ -1314,7 +1314,7 @@ var ENEMIES_DATA = [
     "name": "Snecko",
     "type": "Charisma",
     "difficulty": "Medium",
-    "hp": 20,
+    "hp": 15,
     "ability": null,
     "game": "Slay the Spire",
     "location": "General",
@@ -1496,7 +1496,7 @@ var ENEMIES_DATA = [
     "name": "Bones",
     "type": "Intelligence",
     "difficulty": "Low",
-    "hp": 10,
+    "hp": 6,
     "ability": "When Defeated, 2 Dmg to it's adjacent allies",
     "game": "Slice & Dice",
     "location": "Undead",
@@ -1569,7 +1569,7 @@ var ENEMIES_DATA = [
     "name": "Fanatic",
     "type": "Intelligence",
     "difficulty": "Medium",
-    "hp": 20,
+    "hp": 15,
     "ability": null,
     "game": "Slice & Dice",
     "location": "General",
@@ -1672,7 +1672,7 @@ var ENEMIES_DATA = [
     "name": "Spiker",
     "type": "Intelligence",
     "difficulty": "High",
-    "hp": 40,
+    "hp": 20,
     "ability": "Starts with 2 Thorns",
     "game": "Slice & Dice",
     "location": "General",
