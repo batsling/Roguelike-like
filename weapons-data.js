@@ -1,5 +1,4 @@
-// Auto-generated from Roguelikes.xlsx - Weapons
-// Weapons with combat dice
+// Auto-generated from Roguelikes.xlsx
 
 var WEAPONS_DATA = [
   {
@@ -7,69 +6,55 @@ var WEAPONS_DATA = [
     "rarity": "Uncommon",
     "dice": [
       {
-        "isBlank": true,
-        "effects": []
+        "isBlank": true
       },
       {
-        "isBlank": true,
-        "effects": []
+        "isBlank": true
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "2 Dmg Ranged",
-            "value": 2,
             "move": "Dmg",
+            "value": 2,
             "addons": [
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "2 Dmg Ranged"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "2 Dmg Ranged",
-            "value": 2,
             "move": "Dmg",
+            "value": 2,
             "addons": [
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "2 Dmg Ranged"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "2 Dmg Ranged",
-            "value": 2,
             "move": "Dmg",
+            "value": 2,
             "addons": [
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "2 Dmg Ranged"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "2 Dmg Ranged",
-            "value": 2,
             "move": "Dmg",
+            "value": 2,
             "addons": [
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "2 Dmg Ranged"
@@ -81,61 +66,49 @@ var WEAPONS_DATA = [
     "rarity": "Common",
     "dice": [
       {
-        "isBlank": true,
-        "effects": []
+        "isBlank": true
       },
       {
-        "isBlank": true,
-        "effects": []
+        "isBlank": true
       },
       {
-        "isBlank": true,
-        "effects": []
+        "isBlank": true
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "1 Dmg Wealth Ranged",
-            "value": 1,
             "move": "Dmg",
+            "value": 1,
             "addons": [
               "Wealth",
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "1 Dmg Wealth Ranged"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "1 Dmg Wealth Ranged",
-            "value": 1,
             "move": "Dmg",
+            "value": 1,
             "addons": [
               "Wealth",
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "1 Dmg Wealth Ranged"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "2 Dmg Wealth Ranged",
+            "move": "Dmg",
             "value": 2,
-            "move": "Dmg",
             "addons": [
               "Wealth",
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "2 Dmg Wealth Ranged"
@@ -147,61 +120,49 @@ var WEAPONS_DATA = [
     "rarity": "Common",
     "dice": [
       {
-        "isBlank": true,
-        "effects": []
+        "isBlank": true
       },
       {
-        "isBlank": true,
-        "effects": []
+        "isBlank": true
       },
       {
-        "isBlank": true,
-        "effects": []
+        "isBlank": true
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "1 Dmg Wide Ranged",
-            "value": 1,
             "move": "Dmg",
+            "value": 1,
             "addons": [
               "Wide",
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "1 Dmg Wide Ranged"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "1 Dmg Wide Ranged",
-            "value": 1,
             "move": "Dmg",
+            "value": 1,
             "addons": [
               "Wide",
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "1 Dmg Wide Ranged"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "1 Dmg Wide Ranged",
-            "value": 1,
             "move": "Dmg",
+            "value": 1,
             "addons": [
               "Wide",
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "1 Dmg Wide Ranged"
@@ -213,73 +174,59 @@ var WEAPONS_DATA = [
     "rarity": "Uncommon",
     "dice": [
       {
-        "isBlank": true,
-        "effects": []
+        "isBlank": true
       },
       {
-        "isBlank": true,
-        "effects": []
+        "isBlank": true
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "1 Dmg Wide Ranged",
-            "value": 1,
             "move": "Dmg",
+            "value": 1,
             "addons": [
               "Wide",
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "1 Dmg Wide Ranged"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "1 Dmg Wide Ranged",
-            "value": 1,
             "move": "Dmg",
+            "value": 1,
             "addons": [
               "Wide",
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "1 Dmg Wide Ranged"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "2 Dmg Wide Ranged",
+            "move": "Dmg",
             "value": 2,
-            "move": "Dmg",
             "addons": [
               "Wide",
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "2 Dmg Wide Ranged"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "2 Dmg Wide Ranged",
-            "value": 2,
             "move": "Dmg",
+            "value": 2,
             "addons": [
               "Wide",
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "2 Dmg Wide Ranged"
@@ -291,94 +238,74 @@ var WEAPONS_DATA = [
     "rarity": "Rare",
     "dice": [
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "1 Heal",
-            "value": 1,
             "move": "Heal",
-            "addons": [],
-            "target": null
+            "value": 1,
+            "addons": []
           }
         ],
         "raw": "1 Heal"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "1 Heal",
-            "value": 1,
             "move": "Heal",
-            "addons": [],
-            "target": null
+            "value": 1,
+            "addons": []
           }
         ],
         "raw": "1 Heal"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "2 Dmg Ranged",
-            "value": 2,
             "move": "Dmg",
+            "value": 2,
             "addons": [
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "2 Dmg Ranged"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "2 Dmg Ranged",
-            "value": 2,
             "move": "Dmg",
+            "value": 2,
             "addons": [
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "2 Dmg Ranged"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "2 Dmg Ranged",
-            "value": 2,
             "move": "Dmg",
+            "value": 2,
             "addons": [
               "Ranged"
-            ],
-            "target": null
+            ]
           }
         ],
         "raw": "2 Dmg Ranged"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "3 Dmg Ranged",
+            "move": "Dmg",
             "value": 3,
-            "move": "Dmg",
             "addons": [
               "Ranged"
-            ],
-            "target": null
+            ]
           },
           {
-            "raw": "1 Vitality",
-            "value": 1,
             "move": "Vitality",
-            "addons": [],
-            "target": null
+            "value": 1,
+            "addons": []
           }
         ],
         "raw": "3 Dmg Ranged, 1 Vitality"
@@ -390,61 +317,47 @@ var WEAPONS_DATA = [
     "rarity": "Uncommon",
     "dice": [
       {
-        "isBlank": true,
-        "effects": []
+        "isBlank": true
       },
       {
-        "isBlank": true,
-        "effects": []
+        "isBlank": true
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "2 Dmg",
-            "value": 2,
             "move": "Dmg",
-            "addons": [],
-            "target": null
+            "value": 2,
+            "addons": []
           }
         ],
         "raw": "2 Dmg"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "3 Dmg",
-            "value": 3,
             "move": "Dmg",
-            "addons": [],
-            "target": null
+            "value": 3,
+            "addons": []
           }
         ],
         "raw": "3 Dmg"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "3 Dmg",
-            "value": 3,
             "move": "Dmg",
-            "addons": [],
-            "target": null
+            "value": 3,
+            "addons": []
           }
         ],
         "raw": "3 Dmg"
       },
       {
-        "isBlank": false,
         "effects": [
           {
-            "raw": "3 Assassinate",
-            "value": 3,
             "move": "Assassinate",
-            "addons": [],
-            "target": null
+            "value": 3,
+            "addons": []
           }
         ],
         "raw": "3 Assassinate"

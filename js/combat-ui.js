@@ -84,9 +84,6 @@ function renderCombatUI(combat, container) {
 
   const html = `
     <style>
-      .combat-die:hover .dice-tooltip {
-        display: block !important;
-      }
       .combat-die {
         transition: transform 0.2s, box-shadow 0.2s;
       }
@@ -101,10 +98,6 @@ function renderCombatUI(combat, container) {
       .die-roll-btn:hover, .die-confirm-btn:hover, .die-reroll-btn:hover {
         transform: scale(1.05);
       }
-      /* Enemy dice tooltip on hover */
-      .enemy-die-container:hover .enemy-dice-tooltip {
-        display: block !important;
-      }
       .enemy-die-container {
         transition: transform 0.2s;
         position: relative;
@@ -113,12 +106,6 @@ function renderCombatUI(combat, container) {
       .enemy-die-container:hover {
         transform: scale(1.05);
         z-index: 9999;
-      }
-      .enemy-dice-tooltip {
-        z-index: 10000 !important;
-      }
-      .dice-tooltip {
-        z-index: 10000 !important;
       }
       /* Ensure 3D dice canvas doesn't overlap tooltips */
       .dice-3d-container,
@@ -143,18 +130,8 @@ function renderCombatUI(combat, container) {
         box-shadow: 0 4px 12px rgba(255,255,255,0.3);
         z-index: 10;
       }
-      /* Enemy dice tooltip - ensure it shows above everything */
-      .enemy-dice-tooltip {
-        z-index: 99999 !important;
-        pointer-events: none;
-      }
-      .enemy-die-container {
-        position: relative;
-      }
-      .enemy-die-container:hover .enemy-dice-tooltip {
-        display: block !important;
-      }
-      /* Dice tooltip for player dice */
+      /* Tooltip z-index - JavaScript handles display */
+      .enemy-dice-tooltip,
       .dice-tooltip {
         z-index: 99999 !important;
         pointer-events: none;
@@ -961,6 +938,8 @@ function renderEnemyIntentCenter(combat) {
                 <!-- Tooltip showing all enemy dice faces -->
                 <div class="enemy-dice-tooltip" style="
                   position: fixed;
+                  left: -9999px;
+                  top: 0;
                   background: rgba(20,20,25,0.98);
                   border: 2px solid #cc3333;
                   border-radius: 8px;
@@ -1424,6 +1403,8 @@ function renderDie(die, combat) {
       <!-- Tooltip on hover showing all faces with descriptions -->
       <div class="dice-tooltip" style="
         position: fixed;
+        left: -9999px;
+        top: 0;
         background: rgba(20,20,25,0.98);
         border: 2px solid #ffaa44;
         border-radius: 8px;

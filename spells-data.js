@@ -1,4 +1,4 @@
-// Auto-generated from Roguelikes.xlsx - Spells
+// Auto-generated from Roguelikes.xlsx
 
 var SPELLS_DATA = [
   {
@@ -9,17 +9,8 @@ var SPELLS_DATA = [
     "keywords": [
       "SingleCast"
     ],
-    "affectedByBonus": true,
-    "effects": [
-      {
-        "raw": "2 Heal",
-        "value": 2,
-        "move": "Heal",
-        "addons": [],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Poultice.png"
+    "hasBonus": true,
+    "image": "images/spells/Poultice.png"
   },
   {
     "name": "Remedy",
@@ -29,24 +20,8 @@ var SPELLS_DATA = [
     "keywords": [
       "SingleCast"
     ],
-    "affectedByBonus": true,
-    "effects": [
-      {
-        "raw": "1 Heal",
-        "value": 1,
-        "move": "Heal",
-        "addons": [],
-        "target": null
-      },
-      {
-        "raw": "1 Cleanse",
-        "value": 1,
-        "move": "Cleanse",
-        "addons": [],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Remedy.png"
+    "hasBonus": true,
+    "image": "images/spells/Remedy.png"
   },
   {
     "name": "Sprout",
@@ -56,17 +31,8 @@ var SPELLS_DATA = [
     "keywords": [
       "Channel"
     ],
-    "affectedByBonus": true,
-    "effects": [
-      {
-        "raw": "3 Heal",
-        "value": 3,
-        "move": "Heal",
-        "addons": [],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Sprout.png"
+    "hasBonus": true,
+    "image": "images/spells/Sprout.png"
   },
   {
     "name": "Abyss",
@@ -74,25 +40,8 @@ var SPELLS_DATA = [
     "rarity": "Uncommon",
     "description": "Kill an enemy with half or less health",
     "keywords": [],
-    "affectedByBonus": false,
-    "effects": [
-      {
-        "raw": "Kill an enemy with half or less health",
-        "value": null,
-        "move": "Kill",
-        "addons": [
-          "an",
-          "enemy",
-          "with",
-          "half",
-          "or",
-          "less",
-          "health"
-        ],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Abyss.png"
+    "hasBonus": false,
+    "image": "images/spells/Abyss.png"
   },
   {
     "name": "Infinity",
@@ -100,20 +49,8 @@ var SPELLS_DATA = [
     "rarity": "Rare",
     "description": "Kill an enemy",
     "keywords": [],
-    "affectedByBonus": false,
-    "effects": [
-      {
-        "raw": "Kill an enemy",
-        "value": null,
-        "move": "Kill",
-        "addons": [
-          "an",
-          "enemy"
-        ],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Infinity.png"
+    "hasBonus": false,
+    "image": "images/spells/Infinity.png"
   },
   {
     "name": "Harvest",
@@ -123,35 +60,8 @@ var SPELLS_DATA = [
     "keywords": [
       "Cooldown"
     ],
-    "affectedByBonus": false,
-    "effects": [
-      {
-        "raw": "Kill an enemy with exactly 1 health",
-        "value": null,
-        "move": "Kill",
-        "addons": [
-          "an",
-          "enemy",
-          "with",
-          "exactly",
-          "1",
-          "health"
-        ],
-        "target": null
-      },
-      {
-        "raw": "then Gain 3 mana",
-        "value": null,
-        "move": "then",
-        "addons": [
-          "Gain",
-          "3",
-          "mana"
-        ],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Harvest.png"
+    "hasBonus": false,
+    "image": "images/spells/Harvest.png"
   },
   {
     "name": "Miasma",
@@ -159,28 +69,8 @@ var SPELLS_DATA = [
     "rarity": "Rare",
     "description": "1 Dmg Cleave, 1 Poison Cleave",
     "keywords": [],
-    "affectedByBonus": true,
-    "effects": [
-      {
-        "raw": "1 Dmg Cleave",
-        "value": 1,
-        "move": "Dmg",
-        "addons": [
-          "Cleave"
-        ],
-        "target": null
-      },
-      {
-        "raw": "1 Poison Cleave",
-        "value": 1,
-        "move": "Poison",
-        "addons": [
-          "Cleave"
-        ],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Miasma.png"
+    "hasBonus": true,
+    "image": "images/spells/Miasma.png"
   },
   {
     "name": "Scald",
@@ -188,22 +78,8 @@ var SPELLS_DATA = [
     "rarity": "Uncommon",
     "description": "2 Dmg to all damaged enemies",
     "keywords": [],
-    "affectedByBonus": true,
-    "effects": [
-      {
-        "raw": "2 Dmg to all damaged enemies",
-        "value": 2,
-        "move": "Dmg",
-        "addons": [
-          "to",
-          "all",
-          "damaged",
-          "enemies"
-        ],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Scald.png"
+    "hasBonus": true,
+    "image": "images/spells/Scald.png"
   },
   {
     "name": "Blaze",
@@ -211,17 +87,8 @@ var SPELLS_DATA = [
     "rarity": "Rare",
     "description": "13 Dmg",
     "keywords": [],
-    "affectedByBonus": true,
-    "effects": [
-      {
-        "raw": "13 Dmg",
-        "value": 13,
-        "move": "Dmg",
-        "addons": [],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Blaze.png"
+    "hasBonus": true,
+    "image": "images/spells/Blaze.png"
   },
   {
     "name": "Crush",
@@ -229,23 +96,8 @@ var SPELLS_DATA = [
     "rarity": "Rare",
     "description": "3 Dmg to leftmost and rightmost enemy",
     "keywords": [],
-    "affectedByBonus": true,
-    "effects": [
-      {
-        "raw": "3 Dmg to leftmost and rightmost enemy",
-        "value": 3,
-        "move": "Dmg",
-        "addons": [
-          "to",
-          "leftmost",
-          "and",
-          "rightmost",
-          "enemy"
-        ],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Crush.png"
+    "hasBonus": true,
+    "image": "images/spells/Crush.png"
   },
   {
     "name": "Burn",
@@ -253,19 +105,8 @@ var SPELLS_DATA = [
     "rarity": "Uncommon",
     "description": "1 Dmg Overload",
     "keywords": [],
-    "affectedByBonus": true,
-    "effects": [
-      {
-        "raw": "1 Dmg Overload",
-        "value": 1,
-        "move": "Dmg",
-        "addons": [
-          "Overload"
-        ],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Burn.png"
+    "hasBonus": true,
+    "image": "images/spells/Burn.png"
   },
   {
     "name": "Bind",
@@ -275,21 +116,8 @@ var SPELLS_DATA = [
     "keywords": [
       "Deplete"
     ],
-    "affectedByBonus": true,
-    "effects": [
-      {
-        "raw": "Self/Ally gains 1 Dodge",
-        "value": null,
-        "move": "Self/Ally",
-        "addons": [
-          "gains",
-          "1",
-          "Dodge"
-        ],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Bind.png"
+    "hasBonus": true,
+    "image": "images/spells/Bind.png"
   },
   {
     "name": "Poke",
@@ -299,17 +127,8 @@ var SPELLS_DATA = [
     "keywords": [
       "Cooldown"
     ],
-    "affectedByBonus": true,
-    "effects": [
-      {
-        "raw": "1 Dmg",
-        "value": 1,
-        "move": "Dmg",
-        "addons": [],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Poke.png"
+    "hasBonus": true,
+    "image": "images/spells/Poke.png"
   },
   {
     "name": "Flick",
@@ -319,19 +138,8 @@ var SPELLS_DATA = [
     "keywords": [
       "Cooldown"
     ],
-    "affectedByBonus": true,
-    "effects": [
-      {
-        "raw": "1 Dmg Engage",
-        "value": 1,
-        "move": "Dmg",
-        "addons": [
-          "Engage"
-        ],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Flick.png"
+    "hasBonus": true,
+    "image": "images/spells/Flick.png"
   },
   {
     "name": "Balance",
@@ -339,28 +147,8 @@ var SPELLS_DATA = [
     "rarity": "Uncommon",
     "description": "1 Dmg Wide, 1 Heal Wide",
     "keywords": [],
-    "affectedByBonus": true,
-    "effects": [
-      {
-        "raw": "1 Dmg Wide",
-        "value": 1,
-        "move": "Dmg",
-        "addons": [
-          "Wide"
-        ],
-        "target": null
-      },
-      {
-        "raw": "1 Heal Wide",
-        "value": 1,
-        "move": "Heal",
-        "addons": [
-          "Wide"
-        ],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Balance.png"
+    "hasBonus": true,
+    "image": "images/spells/Balance.png"
   },
   {
     "name": "Mend",
@@ -368,22 +156,8 @@ var SPELLS_DATA = [
     "rarity": "Common",
     "description": "Set self/ally to 5 Health",
     "keywords": [],
-    "affectedByBonus": false,
-    "effects": [
-      {
-        "raw": "Set self/ally to 5 Health",
-        "value": null,
-        "move": "Set",
-        "addons": [
-          "self/ally",
-          "to",
-          "5",
-          "Health"
-        ],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Mend.png"
+    "hasBonus": false,
+    "image": "images/spells/Mend.png"
   },
   {
     "name": "Scorch",
@@ -393,19 +167,8 @@ var SPELLS_DATA = [
     "keywords": [
       "SingleCast"
     ],
-    "affectedByBonus": true,
-    "effects": [
-      {
-        "raw": "1 dmg Cleave",
-        "value": 1,
-        "move": "dmg",
-        "addons": [
-          "Cleave"
-        ],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Scorch.png"
+    "hasBonus": true,
+    "image": "images/spells/Scorch.png"
   },
   {
     "name": "Zap",
@@ -415,24 +178,8 @@ var SPELLS_DATA = [
     "keywords": [
       "Cooldown"
     ],
-    "affectedByBonus": false,
-    "effects": [
-      {
-        "raw": "Kill an enemy with exactly 2 health",
-        "value": null,
-        "move": "Kill",
-        "addons": [
-          "an",
-          "enemy",
-          "with",
-          "exactly",
-          "2",
-          "health"
-        ],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Zap.png"
+    "hasBonus": false,
+    "image": "images/spells/Zap.png"
   },
   {
     "name": "Gaze",
@@ -442,19 +189,7 @@ var SPELLS_DATA = [
     "keywords": [
       "Future"
     ],
-    "affectedByBonus": false,
-    "effects": [
-      {
-        "raw": "Gain 1 Reroll",
-        "value": null,
-        "move": "Gain",
-        "addons": [
-          "1",
-          "Reroll"
-        ],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Gaze.png"
+    "hasBonus": false,
+    "image": "images/spells/Gaze.png"
   }
 ];

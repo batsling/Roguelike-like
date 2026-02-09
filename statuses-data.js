@@ -1,7 +1,7 @@
-// Auto-generated from Roguelikes.xlsx - Combat Statuses
+// Auto-generated from Roguelikes.xlsx
 
-var STATUSES_DATA = {
-  "burn": {
+var STATUSES_DATA = [
+  {
     "name": "Burn",
     "description": "Deals 3 damage to any target per stack",
     "type": "Debuff",
@@ -10,9 +10,10 @@ var STATUSES_DATA = {
     "decay": "Down by 1 at end of turn",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Burn.png"
+    "image": "images/statuses/Burn.png",
+    "levelUp": "Common"
   },
-  "poison": {
+  {
     "name": "Poison",
     "description": "Deals X damage to any target where X is the stack ",
     "type": "Debuff",
@@ -21,9 +22,10 @@ var STATUSES_DATA = {
     "decay": "Down by 1 at end of turn",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Poison.png"
+    "image": "images/statuses/Poison.png",
+    "levelUp": "Common"
   },
-  "dodge": {
+  {
     "name": "Dodge",
     "description": "Negate the next X sources of damage where X is the stack",
     "type": "Buff",
@@ -32,9 +34,10 @@ var STATUSES_DATA = {
     "decay": "Stack Goes down when hit",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/Dodge.png"
+    "image": "images/statuses/Dodge.png",
+    "levelUp": "Rare"
   },
-  "power": {
+  {
     "name": "Power",
     "description": "Raise or Lower the damage dealth by this target by X",
     "type": "Buff",
@@ -43,9 +46,10 @@ var STATUSES_DATA = {
     "decay": "None",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/Power.png"
+    "image": "images/statuses/Power.png",
+    "levelUp": "Uncommon"
   },
-  "oiled": {
+  {
     "name": "Oiled",
     "description": "Burn deals double damage, and at end of turn, Dex save 10 or Lose 1 Energy",
     "type": "Debuff",
@@ -54,9 +58,10 @@ var STATUSES_DATA = {
     "decay": "Down by 1 at end of turn",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Oiled.png"
+    "image": "images/statuses/Oiled.png",
+    "levelUp": "N/A"
   },
-  "forgetful": {
+  {
     "name": "Forgetful",
     "description": "Dice sides that have already been rolled cannot appear until all sides have been rolled",
     "type": "Ability",
@@ -65,9 +70,10 @@ var STATUSES_DATA = {
     "decay": "Down by 1 when all sides have been rolled",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Forgetful.png"
+    "image": "images/statuses/Forgetful.png",
+    "levelUp": "N/A"
   },
-  "barricade": {
+  {
     "name": "Barricade",
     "description": "Block goes down by half at end of turn",
     "type": "Ability",
@@ -76,9 +82,10 @@ var STATUSES_DATA = {
     "decay": "Down by 1 at end of turn",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/Barricade.png"
+    "image": "images/statuses/Barricade.png",
+    "levelUp": "Rare"
   },
-  "ruptured": {
+  {
     "name": "Ruptured",
     "description": "Deals 3 damage to the player when they dodge",
     "type": "Debuff",
@@ -87,9 +94,10 @@ var STATUSES_DATA = {
     "decay": "Down by 1 when dash is used",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Ruptured.png"
+    "image": "images/statuses/Ruptured.png",
+    "levelUp": "N/A"
   },
-  "frail": {
+  {
     "name": "Frail",
     "description": "All damage to target is doubled",
     "type": "Debuff",
@@ -98,9 +106,10 @@ var STATUSES_DATA = {
     "decay": "Down by 1 at end of turn",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Frail.png"
+    "image": "images/statuses/Frail.png",
+    "levelUp": "Rare"
   },
-  "formless": {
+  {
     "name": "Formless",
     "description": "When dealth damage, reroll's their intent die",
     "type": "Ability",
@@ -109,9 +118,10 @@ var STATUSES_DATA = {
     "decay": "None",
     "who": "Enemy",
     "preference": "Neutral",
-    "imageUrl": "images/statuses/Formless.png"
+    "image": "images/statuses/Formless.png",
+    "levelUp": "N/A"
   },
-  "multi_attack_x": {
+  {
     "name": "Multi Attack X",
     "description": "This enemy rolls X amount of die at a time",
     "type": "Ability",
@@ -120,9 +130,10 @@ var STATUSES_DATA = {
     "decay": "None",
     "who": "Enemy",
     "preference": "Positive",
-    "imageUrl": "images/statuses/MultiAttack.png"
+    "image": "images/statuses/MultiAttack.png",
+    "levelUp": "N/A"
   },
-  "ritual": {
+  {
     "name": "Ritual",
     "description": "At the end of its turn, gains X Power",
     "type": "Buff",
@@ -131,9 +142,10 @@ var STATUSES_DATA = {
     "decay": "None",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/Ritual.png"
+    "image": "images/statuses/Ritual.png",
+    "levelUp": "Rare"
   },
-  "confused": {
+  {
     "name": "Confused",
     "description": "Each Dice Energy Cost is randomized between 0 and your max energy every roll",
     "type": "Debuff",
@@ -142,9 +154,10 @@ var STATUSES_DATA = {
     "decay": "Down by 1 at end of turn",
     "who": "Player",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Confused.png"
+    "image": "images/statuses/Confused.png",
+    "levelUp": "N/A"
   },
-  "fading_x": {
+  {
     "name": "Fading X",
     "description": "Dies in X turns",
     "type": "Debuff",
@@ -153,9 +166,10 @@ var STATUSES_DATA = {
     "decay": "Down by 1 at end of turn",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Fading.png"
+    "image": "images/statuses/Fading.png",
+    "levelUp": "N/A"
   },
-  "shifting": {
+  {
     "name": "Shifting",
     "description": "Loses X Power where X is the amount of damage taken this turn",
     "type": "Debuff",
@@ -164,9 +178,10 @@ var STATUSES_DATA = {
     "decay": "None",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Shifting.png"
+    "image": "images/statuses/Shifting.png",
+    "levelUp": "N/A"
   },
-  "thorns": {
+  {
     "name": "Thorns",
     "description": "When a target with Thorns gets dealt Dmg directly, the attacker takes X Dmg",
     "type": "Buff",
@@ -175,6 +190,7 @@ var STATUSES_DATA = {
     "decay": "None",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/Thorns.png"
+    "image": "images/statuses/Thorns.png",
+    "levelUp": "Uncommon"
   }
-};
+];

@@ -1,4 +1,4 @@
-// Auto-generated from Roguelikes.xlsx - Items
+// Auto-generated from Roguelikes.xlsx
 
 var ITEMS_DATA = [
   {
