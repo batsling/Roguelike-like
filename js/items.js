@@ -761,6 +761,79 @@ const ITEM_EFFECTS = {
 
       console.error('Fire Potion: No active combat found');
     }
+  },
+
+  // ===== NEW SLAY THE SPIRE ITEMS =====
+
+  "Busted Crown": {
+    onAcquire: () => {
+      StateMutator.modifyMaxEnergy(1);
+      StateMutator.modifyDiscovery(-2);
+      console.log('Acquired Busted Crown: +1 Max Energy, -2 Discovery');
+    }
+  },
+
+  "Philosopher's Stone": {
+    onAcquire: () => {
+      // +1 Max Energy (can be upgraded/downgraded)
+      StateMutator.modifyMaxEnergy(1);
+      console.log("Acquired Philosopher's Stone: +1 Max Energy, enemies start with 1 Power");
+      // Note: The enemy Power effect is handled in combat initialization
+    }
+    // Enemy Power effect is applied in combat-engine.js when combat starts
+  },
+
+  "Meat on the Bone": {
+    onAcquire: () => {
+      console.log('Acquired Meat on the Bone - will trigger at end of combat if HP <= 50%');
+    },
+    onCombatEnd: (combatState) => {
+      // Trigger if health is at 50% or below max
+      if (health <= maxHealth / 2) {
+        // Count copies for stacking
+        const copies = inventory.filter(i => i.name === 'Meat on the Bone').length;
+        const healAmount = 3 * copies;
+
+        StateMutator.modifyHealth(healAmount);
+        console.log(`Meat on the Bone${copies > 1 ? ` x${copies}` : ''}: Healed ${healAmount} HP (HP was at 50% or below)`);
+
+        if (typeof createNotification === 'function') {
+          createNotification(`Meat on the Bone: +${healAmount} Health`, '#66bb6a', '🍖');
+        }
+      }
+    }
+  },
+
+  "Blood Vial": {
+    onAcquire: () => {
+      console.log('Acquired Blood Vial - will trigger when entering combat');
+    },
+    onCombatStart: () => {
+      // Count copies for stacking
+      const copies = inventory.filter(i => i.name === 'Blood Vial').length;
+      const healAmount = 1 * copies;
+
+      StateMutator.modifyHealth(healAmount);
+      console.log(`Blood Vial${copies > 1 ? ` x${copies}` : ''}: Healed ${healAmount} HP on combat start`);
+
+      if (typeof createNotification === 'function') {
+        createNotification(`Blood Vial: +${healAmount} Health`, '#66bb6a', '🩸');
+      }
+    }
+  },
+
+  "Focus Crystal": {
+    onAcquire: () => {
+      // Effect is calculated dynamically in getEffectiveAttack()
+      console.log('Acquired Focus Crystal: +1 Attack when melee weapon equipped');
+    }
+  },
+
+  "Horn Cleat": {
+    onAcquire: () => {
+      // Effect is applied in combat turn 2
+      console.log('Acquired Horn Cleat: +5 Block at start of turn 2');
+    }
   }
 };
 
@@ -899,6 +972,26 @@ function getItemStatModifications(itemName) {
     });
   }
 
+  // Parse for modifyMaxEnergy calls
+  const maxEnergyRegex = /modifyMaxEnergy\((-?\d+)\)/g;
+  while ((match = maxEnergyRegex.exec(funcString)) !== null) {
+    const value = parseInt(match[1]);
+    modifications.push({
+      stat: 'maxEnergy',
+      direction: value >= 0 ? 1 : -1
+    });
+  }
+
+  // Parse for modifyDiscovery calls
+  const discoveryRegex = /modifyDiscovery\((-?\d+)\)/g;
+  while ((match = discoveryRegex.exec(funcString)) !== null) {
+    const value = parseInt(match[1]);
+    modifications.push({
+      stat: 'discovery',
+      direction: value >= 0 ? 1 : -1
+    });
+  }
+
   // Parse for direct stat assignments like: strength += 2, luck += 1
   // This handles stats modified directly without StateMutator
   if (funcString.includes('luck ++') || funcString.includes('luck +=') || funcString.includes('luck = ')) {
@@ -912,6 +1005,10 @@ function getItemStatModifications(itemName) {
   if (itemName === 'Calipers') {
     modifications.push({ stat: 'block', direction: 1 });
   }
+
+  // Special case: Philosopher's Stone - only energy is upgradeable, not the enemy Power effect
+  // The parsing above will already capture maxEnergy, so we don't need to add anything here
+  // The enemy Power effect is NOT a stat modification, so it won't be affected by upgrade/downgrade
 
   return modifications;
 }
@@ -932,7 +1029,7 @@ function downgradePassiveItem(item, downgradeAmount = -1) {
   // If no stat modifications found, fall back to random stat (shouldn't happen for items with effects)
   if (statModifications.length === 0) {
     console.warn(`No stat modifications found for ${item.name}, using fallback`);
-    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth', 'block'];
+    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth', 'maxEnergy', 'block'];
     const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
     statModifications.push({ stat: randomStat, direction: 1 });
   }
@@ -967,6 +1064,21 @@ function downgradePassiveItem(item, downgradeAmount = -1) {
         gameState.maxHealth = maxHealth;
         health = Math.min(health, maxHealth);
         gameState.health = health;
+      }
+    } else if (stat === 'maxEnergy') {
+      // Handle max energy
+      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyMaxEnergy === 'function') {
+        StateMutator.modifyMaxEnergy(change);
+      } else {
+        gameState.maxEnergy = (gameState.maxEnergy || 2) + change;
+      }
+    } else if (stat === 'discovery') {
+      // Handle discovery
+      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyDiscovery === 'function') {
+        StateMutator.modifyDiscovery(change);
+      } else {
+        discovery += change;
+        gameState.discovery = discovery;
       }
     } else {
       updateStat(stat, change);
@@ -1893,12 +2005,16 @@ function initializePassiveModifiers(item) {
       fov: 0,
       luck: 0,
       maxHealth: 0,
+      maxEnergy: 0,  // For items like Busted Crown, Philosopher's Stone
       block: 0  // For items like Calipers that grant block in combat
     };
   }
-  // Ensure block modifier exists on older items
+  // Ensure block and maxEnergy modifiers exist on older items
   if (item.statModifiers && !('block' in item.statModifiers)) {
     item.statModifiers.block = 0;
+  }
+  if (item.statModifiers && !('maxEnergy' in item.statModifiers)) {
+    item.statModifiers.maxEnergy = 0;
   }
 }
 
@@ -2015,7 +2131,7 @@ function upgradeOrDowngradePassive(isUpgrade) {
   // If no stat modifications found, fall back to random stat (shouldn't happen for items with effects)
   if (statModifications.length === 0) {
     console.warn(`No stat modifications found for ${itemToModify.name}, using fallback`);
-    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth', 'block'];
+    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth', 'maxEnergy', 'block'];
     const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
     statModifications.push({ stat: randomStat, direction: 1 });
   }
@@ -2052,6 +2168,21 @@ function upgradeOrDowngradePassive(isUpgrade) {
         gameState.maxHealth = maxHealth;
         health = Math.min(health, maxHealth);
         gameState.health = health;
+      }
+    } else if (stat === 'maxEnergy') {
+      // Handle max energy
+      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyMaxEnergy === 'function') {
+        StateMutator.modifyMaxEnergy(change);
+      } else {
+        gameState.maxEnergy = (gameState.maxEnergy || 2) + change;
+      }
+    } else if (stat === 'discovery') {
+      // Handle discovery
+      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyDiscovery === 'function') {
+        StateMutator.modifyDiscovery(change);
+      } else {
+        discovery += change;
+        gameState.discovery = discovery;
       }
     } else {
       updateStat(stat, change);

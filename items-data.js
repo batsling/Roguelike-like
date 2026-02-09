@@ -238,7 +238,9 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +2 Dexterity",
     "game": "Slay the Spire",
-    "tags": [],
+    "tags": [
+      "stone"
+    ],
     "image": "images/items/OddlySmoothStone.png",
     "unlockCondition": "N/A"
   },
@@ -573,6 +575,53 @@ var ITEMS_DATA = [
     "game": "Brutal Orchestra",
     "tags": [],
     "image": "images/items/PurplePigment.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Busted Crown",
+    "rarity": "Rare",
+    "type": "Passive",
+    "description": "Gain +1 Max Energy, but -2 Discovery",
+    "game": "Slay the Spire",
+    "tags": [
+      "wearable",
+      "hat"
+    ],
+    "image": "images/items/BustedCrown.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Philosopher's Stone",
+    "rarity": "Rare",
+    "type": "Passive",
+    "description": "Gain +1 Max Energy, but all enemies start with 1 Power",
+    "game": "Slay the Spire",
+    "tags": [
+      "stone"
+    ],
+    "image": "images/items/PhilosophersStone.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Meat on the Bone",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "Whenever your Health is at 50% or below Max Health at the end of combat, gain +3 Health",
+    "game": "Slay the Spire",
+    "tags": [
+      "food"
+    ],
+    "image": "images/items/MeatOnTheBone.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Blood Vial",
+    "rarity": "Common",
+    "type": "Triggered",
+    "description": "Whenever you enter a combat encounter, gain +1 Health",
+    "game": "Slay the Spire",
+    "tags": [],
+    "image": "images/items/BloodVial.png",
     "unlockCondition": "N/A"
   }
 ];

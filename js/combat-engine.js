@@ -171,6 +171,27 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
 
   addLog('Combat started!', 'info');
 
+  // Check for Philosopher's Stone - enemies start with Power
+  if (typeof inventory !== 'undefined') {
+    const philosopherStoneCount = inventory.filter(i => i.name === "Philosopher's Stone").length;
+    if (philosopherStoneCount > 0) {
+      // Each enemy gets 1 Power (does not stack with multiple stones)
+      combatState.enemies.forEach(enemy => {
+        enemy.statuses.power = (enemy.statuses.power || 0) + 1;
+      });
+      addLog("Philosopher's Stone: All enemies start with 1 Power", 'warning');
+    }
+
+    // Trigger Blood Vial onCombatStart effect
+    const bloodVialEffect = ITEM_EFFECTS && ITEM_EFFECTS['Blood Vial'];
+    if (bloodVialEffect && bloodVialEffect.onCombatStart) {
+      const hasBloodVial = inventory.some(i => i.name === 'Blood Vial');
+      if (hasBloodVial) {
+        bloodVialEffect.onCombatStart();
+      }
+    }
+  }
+
   // Roll enemy intents
   rollAllEnemyIntents();
 
@@ -1472,6 +1493,18 @@ function getCombatState() {
  */
 function endCombat(victory) {
   if (!combatState) return null;
+
+  // Trigger onCombatEnd effects for items (before clearing combat state)
+  if (victory && typeof inventory !== 'undefined' && typeof ITEM_EFFECTS !== 'undefined') {
+    // Meat on the Bone: heal if HP <= 50%
+    const meatEffect = ITEM_EFFECTS['Meat on the Bone'];
+    if (meatEffect && meatEffect.onCombatEnd) {
+      const hasMeat = inventory.some(i => i.name === 'Meat on the Bone');
+      if (hasMeat) {
+        meatEffect.onCombatEnd(combatState);
+      }
+    }
+  }
 
   const result = {
     victory: victory,
