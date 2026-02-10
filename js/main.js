@@ -7031,6 +7031,195 @@ function showSpellDetails(spellName) {
   `;
 }
 
+function showCharacterDetails(charName) {
+  const charactersData = typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA : [];
+  const char = charactersData.find(c => c.name === charName);
+  if (!char) return;
+
+  const detailsPanel = document.getElementById('character-details');
+  if (!detailsPanel) return;
+
+  const charIcon = `images/characters/${char.name}.png`;
+
+  // Build stats HTML
+  const stats = [
+    { label: 'Strength', value: char.strength || 0, color: '#f44336' },
+    { label: 'Dexterity', value: char.dexterity || 0, color: '#4CAF50' },
+    { label: 'Intelligence', value: char.intelligence || 0, color: '#2196F3' },
+    { label: 'Charisma', value: char.charisma || 0, color: '#9b59b6' },
+    { label: 'Luck', value: char.luck || 0, color: '#ff9800' },
+  ];
+
+  const resources = [
+    { label: 'Energy', value: char.energy || 0, color: '#ffcc00' },
+    { label: 'Mana', value: char.mana || 0, color: '#66b3ff' },
+    { label: 'Reroll', value: char.reroll || 0, color: '#888' },
+    { label: 'Dash', value: char.dash || 0, color: '#888' },
+    { label: 'Skip', value: char.skip || 0, color: '#888' },
+    { label: 'Discovery', value: char.discovery || 0, color: '#888' },
+  ];
+
+  // Build dice HTML
+  const diceHTML = char.dice && char.dice.length > 0 ? `
+    <div style="margin-top: 15px;">
+      <strong style="color: #4CAF50;">Starting Dice:</strong>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
+        ${char.dice.map((face, idx) => {
+          if (face.isBlank) {
+            return `<div style="background: rgba(0,0,0,0.4); border: 1px solid #333; border-radius: 6px; padding: 8px; text-align: center; font-size: 11px; color: #666;">
+              <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
+              <div>Blank</div>
+            </div>`;
+          }
+          return `<div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 6px; padding: 8px; text-align: center; font-size: 11px; color: #ddd;">
+            <div style="font-weight: bold; color: #4CAF50; margin-bottom: 4px;">Face ${idx + 1}</div>
+            <div>${face.raw || '—'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  detailsPanel.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <!-- Character Header -->
+      <div style="display: flex; gap: 15px; align-items: flex-start;">
+        <img
+          src="${charIcon}"
+          alt="${char.name}"
+          style="width: 100px; height: 100px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid #4CAF50; image-rendering: pixelated;"
+          onerror="this.style.opacity='0.3'"
+        />
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 10px 0; color: #4CAF50;">${char.name}</h3>
+          <div style="color: #aaa; font-size: 13px; line-height: 1.8;">
+            <div><strong>Game:</strong> ${char.game || '—'}</div>
+            <div><strong>Combat Start:</strong> ${char.combatStart || 'Dice'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div style="padding: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 6px;">
+        <div style="font-size: 13px; color: #ddd; line-height: 1.6; font-style: italic;">"${char.description || 'No description available.'}"</div>
+      </div>
+
+      <!-- Resources -->
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+        ${resources.map(r => `
+          <div style="background: rgba(0,0,0,0.3); border-radius: 6px; padding: 8px; text-align: center;">
+            <div style="font-size: 10px; color: #888; text-transform: uppercase;">${r.label}</div>
+            <div style="font-size: 18px; font-weight: bold; color: ${r.color};">${r.value}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Stats -->
+      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+        ${stats.map(s => `
+          <div style="background: rgba(0,0,0,0.3); border-radius: 6px; padding: 8px; text-align: center;">
+            <div style="font-size: 9px; color: #888; text-transform: uppercase;">${s.label.substring(0, 3)}</div>
+            <div style="font-size: 16px; font-weight: bold; color: ${s.color};">${s.value}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Level Up Condition -->
+      ${char.levelUp ? `
+        <div style="padding: 12px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 6px;">
+          <h4 style="margin: 0 0 8px 0; color: #ff9800; font-size: 14px;">🔓 Unlock Condition</h4>
+          <div style="font-size: 13px; color: #ddd;">${char.levelUp}</div>
+        </div>
+      ` : ''}
+
+      <!-- Dice -->
+      ${diceHTML}
+    </div>
+  `;
+}
+
+function showAllyDetails(allyName) {
+  const alliesData = typeof ALLIES_DATA !== 'undefined' ? ALLIES_DATA : [];
+  const ally = alliesData.find(a => a.name === allyName);
+  if (!ally) return;
+
+  const detailsPanel = document.getElementById('ally-details');
+  if (!detailsPanel) return;
+
+  const allyIcon = ally.image || `images/allies/${ally.name}.png`;
+
+  // Get rarity color
+  const getRarityColor = (rarity) => {
+    switch((rarity || '').toLowerCase()) {
+      case 'high': return '#9b59b6';
+      case 'medium': return '#ff9800';
+      case 'low': return '#4CAF50';
+      default: return '#888';
+    }
+  };
+
+  const rarityColor = getRarityColor(ally.rarity);
+
+  // Build dice HTML
+  const diceHTML = ally.dice && ally.dice.length > 0 ? `
+    <div style="margin-top: 15px;">
+      <strong style="color: #2196F3;">Ally Dice:</strong>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
+        ${ally.dice.map((face, idx) => {
+          if (face.isBlank || face.raw === 'X') {
+            return `<div style="background: rgba(0,0,0,0.4); border: 1px solid #333; border-radius: 6px; padding: 8px; text-align: center; font-size: 11px; color: #666;">
+              <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
+              <div>${face.raw === 'X' ? 'X' : 'Blank'}</div>
+            </div>`;
+          }
+          return `<div style="background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 6px; padding: 8px; text-align: center; font-size: 11px; color: #ddd;">
+            <div style="font-weight: bold; color: #2196F3; margin-bottom: 4px;">Face ${idx + 1}</div>
+            <div>${face.raw || '—'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  detailsPanel.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <!-- Ally Header -->
+      <div style="display: flex; gap: 15px; align-items: flex-start;">
+        <img
+          src="${allyIcon}"
+          alt="${ally.name}"
+          style="width: 100px; height: 100px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${rarityColor}; image-rendering: pixelated;"
+          onerror="this.style.opacity='0.3'"
+        />
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 10px 0; color: ${rarityColor};">${ally.name}</h3>
+          <div style="color: #aaa; font-size: 13px; line-height: 1.8;">
+            <div><strong>Type:</strong> ${ally.type || 'Ally'}</div>
+            <div><strong>Rarity:</strong> <span style="color: ${rarityColor}; text-transform: uppercase; font-weight: bold;">${ally.rarity || '—'}</span></div>
+            <div><strong>HP:</strong> <span style="color: #ff4444; font-weight: bold;">${ally.hp || '?'}</span></div>
+            <div><strong>Game:</strong> ${ally.game || '—'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ability -->
+      ${ally.ability ? `
+        <div style="padding: 12px; background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 6px;">
+          <h4 style="margin: 0 0 8px 0; color: #2196F3; font-size: 14px;">✨ Special Ability</h4>
+          <div style="font-size: 13px; color: #ddd; line-height: 1.6;">${ally.ability}</div>
+        </div>
+      ` : `
+        <div style="padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 6px;">
+          <div style="font-size: 13px; color: #888; text-align: center;">No special ability</div>
+        </div>
+      `}
+
+      <!-- Dice -->
+      ${diceHTML}
+    </div>
+  `;
+}
+
 // Get enemy stats from gameState
 function getEnemyStats(enemyName) {
   if (!gameState.enemyStats) {
