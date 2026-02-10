@@ -7039,7 +7039,7 @@ function showCharacterDetails(charName) {
   const detailsPanel = document.getElementById('character-details');
   if (!detailsPanel) return;
 
-  const charIcon = `images/characters/${char.name}.png`;
+  const charIcon = `images/characters/Full/${char.name}.png`;
 
   // Build stats HTML
   const stats = [

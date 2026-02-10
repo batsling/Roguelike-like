@@ -832,7 +832,7 @@ function switchCollectionTab(tab) {
 
         <div id="characters-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; overflow-y: auto;">
           ${sortedCharacters.map(char => {
-            const charIcon = `images/characters/${char.name}.png`;
+            const charIcon = `images/characters/Icon/${char.name}.png`;
             return `
             <div
               class="collection-character-card"

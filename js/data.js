@@ -139,7 +139,15 @@ function initializeData() {
 
   // Load from embedded data variables (defined in *-data.js files)
   if (typeof CHARACTERS_DATA !== 'undefined') {
-    PLAYER_CHARACTERS = CHARACTERS_DATA;
+    // Convert array to object keyed by name and add image paths
+    PLAYER_CHARACTERS = {};
+    CHARACTERS_DATA.forEach(char => {
+      PLAYER_CHARACTERS[char.name] = {
+        ...char,
+        icon: `images/characters/Icon/${char.name}.png`,
+        fullImage: `images/characters/Full/${char.name}.png`
+      };
+    });
     console.log('✓ Characters loaded:', Object.keys(PLAYER_CHARACTERS).length);
   } else {
     console.error('✗ CHARACTERS_DATA not found!');
