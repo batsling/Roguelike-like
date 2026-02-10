@@ -64,26 +64,71 @@ function showIconCharacterDetails(charKey) {
 
   if (isNewFormat) {
     // New dice-based character format
-    const diceHTML = character.dice.map(face => `
-      <div style="
-        background: rgba(255,255,255,0.1);
-        border: 1px solid #666;
-        border-radius: 4px;
-        padding: 6px 10px;
-        font-size: 12px;
-        color: #fff;
-      ">${face.raw || 'Blank'}</div>
-    `).join('');
+    // Build dice HTML (enemy-style grid)
+    const diceHTML = `
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
+        ${character.dice.map((face, idx) => {
+          if (face.isBlank) {
+            return `
+              <div style="
+                background: rgba(0,0,0,0.4);
+                border: 1px solid #333;
+                border-radius: 6px;
+                padding: 8px;
+                text-align: center;
+                font-size: 11px;
+                color: #666;
+              ">
+                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
+                <div>Blank</div>
+              </div>
+            `;
+          }
+          return `
+            <div style="
+              background: rgba(76, 175, 80, 0.1);
+              border: 1px solid rgba(76, 175, 80, 0.3);
+              border-radius: 6px;
+              padding: 8px;
+              text-align: center;
+              font-size: 11px;
+              color: #ddd;
+            ">
+              <div style="font-weight: bold; color: #4CAF50; margin-bottom: 4px;">Face ${idx + 1}</div>
+              <div>${face.raw || '—'}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
 
-    // Build level-up stats HTML
-    let levelUpHTML = '';
+    // Build level-up bonuses list (check both formats)
+    const levelUpBonuses = [];
     if (character.levelUpStats) {
-      const bonuses = Object.entries(character.levelUpStats)
-        .filter(([_, value]) => value > 0)
-        .map(([stat, value]) => `+${value} ${stat.charAt(0).toUpperCase() + stat.slice(1)}`)
-        .join(', ');
-      levelUpHTML = bonuses || 'None';
+      // New format with levelUpStats object
+      Object.entries(character.levelUpStats).forEach(([stat, value]) => {
+        if (value > 0) levelUpBonuses.push({ stat: stat.charAt(0).toUpperCase() + stat.slice(1), value });
+      });
+    } else {
+      // Current format with stats at top level
+      if (character.strength > 0) levelUpBonuses.push({ stat: 'Strength', value: character.strength });
+      if (character.dexterity > 0) levelUpBonuses.push({ stat: 'Dexterity', value: character.dexterity });
+      if (character.intelligence > 0) levelUpBonuses.push({ stat: 'Intelligence', value: character.intelligence });
+      if (character.charisma > 0) levelUpBonuses.push({ stat: 'Charisma', value: character.charisma });
+      if (character.luck > 0) levelUpBonuses.push({ stat: 'Luck', value: character.luck });
+      if (character.reroll > 0) levelUpBonuses.push({ stat: 'Reroll', value: character.reroll });
+      if (character.dash > 0) levelUpBonuses.push({ stat: 'Dash', value: character.dash });
+      if (character.skip > 0) levelUpBonuses.push({ stat: 'Skip', value: character.skip });
+      if (character.discovery > 0) levelUpBonuses.push({ stat: 'Discovery', value: character.discovery });
+      if (character.fov > 0) levelUpBonuses.push({ stat: 'FoV', value: character.fov });
+      if (character.random > 0) levelUpBonuses.push({ stat: 'Random', value: character.random });
     }
+    const levelUpHTML = levelUpBonuses.length > 0
+      ? levelUpBonuses.map(b => `<span style="color: #4CAF50; font-weight: bold;">+${b.value} ${b.stat}</span>`).join(', ')
+      : '<span style="color: #888;">None</span>';
+
+    // Get level up condition (check both field names)
+    const levelUpCondition = character.levelUpCondition || character.levelUp || '';
 
     detailsHTML = `
       <img src="${character.fullImage}" alt="${character.name}" class="details-char-image">
@@ -92,27 +137,31 @@ function showIconCharacterDetails(charKey) {
       <p class="details-char-description">${character.description}</p>
 
       <div class="details-stats-section">
-        <h3>Combat Stats</h3>
-        <div class="details-stats" style="display: flex; gap: 10px; justify-content: center;">
-          <span class="stat-badge" style="background: rgba(255,200,0,0.2); border-color: #FFD700;">Energy: ${character.energy || 2}</span>
-          <span class="stat-badge" style="background: rgba(138,43,226,0.2); border-color: #9C27B0;">Mana: ${character.mana || 0}</span>
+        <h3>Starting Resources</h3>
+        <div class="details-stats" style="display: flex; gap: 15px; justify-content: center;">
+          <div style="background: rgba(255,204,0,0.15); border: 2px solid #FFD700; border-radius: 6px; padding: 8px 16px; text-align: center;">
+            <div style="font-size: 10px; color: #FFD700; text-transform: uppercase;">Energy</div>
+            <div style="font-size: 22px; font-weight: bold; color: #FFD700;">${character.energy || 2}</div>
+          </div>
+          <div style="background: rgba(102,179,255,0.15); border: 2px solid #66b3ff; border-radius: 6px; padding: 8px 16px; text-align: center;">
+            <div style="font-size: 10px; color: #66b3ff; text-transform: uppercase;">Mana</div>
+            <div style="font-size: 22px; font-weight: bold; color: #66b3ff;">${character.mana || 0}</div>
+          </div>
         </div>
       </div>
+
+      ${levelUpCondition ? `
+        <div style="margin-top: 15px; padding: 12px; background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.3); border-radius: 6px;">
+          <div style="color: #ff9800; font-size: 14px; font-weight: bold; margin-bottom: 8px;">⬆️ Level Up Condition</div>
+          <div style="color: #ddd; font-size: 13px; margin-bottom: 8px;">${levelUpCondition}</div>
+          <div style="color: #aaa; font-size: 12px;"><strong>Rewards:</strong> ${levelUpHTML}</div>
+        </div>
+      ` : ''}
 
       <div class="details-traits-section">
         <h3>Character Die (6 faces)</h3>
-        <div style="display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px;">
-          ${diceHTML}
-        </div>
+        ${diceHTML}
       </div>
-
-      ${character.levelUpCondition ? `
-        <div style="margin-top: 15px; padding: 10px; background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3); border-radius: 6px;">
-          <div style="color: #FFD700; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Level Up Condition:</div>
-          <div style="color: #ccc; font-size: 13px;">${character.levelUpCondition}</div>
-          <div style="color: #888; font-size: 11px; margin-top: 5px;">Rewards: ${levelUpHTML}</div>
-        </div>
-      ` : ''}
     `;
   } else {
     // Old traits-based format (fallback)

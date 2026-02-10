@@ -7041,40 +7041,60 @@ function showCharacterDetails(charName) {
 
   const charIcon = `images/characters/Full/${char.name}.png`;
 
-  // Build stats HTML
-  const stats = [
-    { label: 'Strength', value: char.strength || 0, color: '#f44336' },
-    { label: 'Dexterity', value: char.dexterity || 0, color: '#4CAF50' },
-    { label: 'Intelligence', value: char.intelligence || 0, color: '#2196F3' },
-    { label: 'Charisma', value: char.charisma || 0, color: '#9b59b6' },
-    { label: 'Luck', value: char.luck || 0, color: '#ff9800' },
-  ];
+  // Build level up bonuses list
+  const levelUpBonuses = [];
+  if (char.strength > 0) levelUpBonuses.push({ stat: 'Strength', value: char.strength, color: '#f44336' });
+  if (char.dexterity > 0) levelUpBonuses.push({ stat: 'Dexterity', value: char.dexterity, color: '#4CAF50' });
+  if (char.intelligence > 0) levelUpBonuses.push({ stat: 'Intelligence', value: char.intelligence, color: '#2196F3' });
+  if (char.charisma > 0) levelUpBonuses.push({ stat: 'Charisma', value: char.charisma, color: '#9b59b6' });
+  if (char.luck > 0) levelUpBonuses.push({ stat: 'Luck', value: char.luck, color: '#ff9800' });
+  if (char.reroll > 0) levelUpBonuses.push({ stat: 'Reroll', value: char.reroll, color: '#888' });
+  if (char.dash > 0) levelUpBonuses.push({ stat: 'Dash', value: char.dash, color: '#888' });
+  if (char.skip > 0) levelUpBonuses.push({ stat: 'Skip', value: char.skip, color: '#888' });
+  if (char.discovery > 0) levelUpBonuses.push({ stat: 'Discovery', value: char.discovery, color: '#888' });
+  if (char.fov > 0) levelUpBonuses.push({ stat: 'FoV', value: char.fov, color: '#888' });
+  if (char.random > 0) levelUpBonuses.push({ stat: 'Random', value: char.random, color: '#888' });
 
-  const resources = [
-    { label: 'Energy', value: char.energy || 0, color: '#ffcc00' },
-    { label: 'Mana', value: char.mana || 0, color: '#66b3ff' },
-    { label: 'Reroll', value: char.reroll || 0, color: '#888' },
-    { label: 'Dash', value: char.dash || 0, color: '#888' },
-    { label: 'Skip', value: char.skip || 0, color: '#888' },
-    { label: 'Discovery', value: char.discovery || 0, color: '#888' },
-  ];
+  const levelUpBonusesHTML = levelUpBonuses.length > 0
+    ? levelUpBonuses.map(b => `<span style="color: ${b.color}; font-weight: bold;">+${b.value} ${b.stat}</span>`).join(', ')
+    : '<span style="color: #888;">None</span>';
 
-  // Build dice HTML
+  // Build dice HTML (enemy-style)
   const diceHTML = char.dice && char.dice.length > 0 ? `
     <div style="margin-top: 15px;">
-      <strong style="color: #4CAF50;">Starting Dice:</strong>
+      <strong style="color: #4CAF50;">Character Die (6 faces):</strong>
       <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
         ${char.dice.map((face, idx) => {
           if (face.isBlank) {
-            return `<div style="background: rgba(0,0,0,0.4); border: 1px solid #333; border-radius: 6px; padding: 8px; text-align: center; font-size: 11px; color: #666;">
-              <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
-              <div>Blank</div>
-            </div>`;
+            return `
+              <div style="
+                background: rgba(0,0,0,0.4);
+                border: 1px solid #333;
+                border-radius: 6px;
+                padding: 8px;
+                text-align: center;
+                font-size: 11px;
+                color: #666;
+              ">
+                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
+                <div>Blank</div>
+              </div>
+            `;
           }
-          return `<div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 6px; padding: 8px; text-align: center; font-size: 11px; color: #ddd;">
-            <div style="font-weight: bold; color: #4CAF50; margin-bottom: 4px;">Face ${idx + 1}</div>
-            <div>${face.raw || '—'}</div>
-          </div>`;
+          return `
+            <div style="
+              background: rgba(76, 175, 80, 0.1);
+              border: 1px solid rgba(76, 175, 80, 0.3);
+              border-radius: 6px;
+              padding: 8px;
+              text-align: center;
+              font-size: 11px;
+              color: #ddd;
+            ">
+              <div style="font-weight: bold; color: #4CAF50; margin-bottom: 4px;">Face ${idx + 1}</div>
+              <div>${face.raw || '—'}</div>
+            </div>
+          `;
         }).join('')}
       </div>
     </div>
@@ -7101,33 +7121,29 @@ function showCharacterDetails(charName) {
         <div style="font-size: 13px; color: #ddd; line-height: 1.6; font-style: italic;">"${char.description || 'No description available.'}"</div>
       </div>
 
-      <!-- Resources -->
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
-        ${resources.map(r => `
-          <div style="background: rgba(0,0,0,0.3); border-radius: 6px; padding: 8px; text-align: center;">
-            <div style="font-size: 10px; color: #888; text-transform: uppercase;">${r.label}</div>
-            <div style="font-size: 18px; font-weight: bold; color: ${r.color};">${r.value}</div>
+      <!-- Starting Resources -->
+      <div>
+        <strong style="color: #4CAF50;">Starting Resources:</strong>
+        <div style="display: flex; gap: 15px; margin-top: 8px; justify-content: center;">
+          <div style="background: rgba(255,204,0,0.15); border: 1px solid rgba(255,204,0,0.4); border-radius: 6px; padding: 10px 20px; text-align: center;">
+            <div style="font-size: 11px; color: #ffcc00; text-transform: uppercase;">Energy</div>
+            <div style="font-size: 24px; font-weight: bold; color: #ffcc00;">${char.energy || 0}</div>
           </div>
-        `).join('')}
-      </div>
-
-      <!-- Stats -->
-      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
-        ${stats.map(s => `
-          <div style="background: rgba(0,0,0,0.3); border-radius: 6px; padding: 8px; text-align: center;">
-            <div style="font-size: 9px; color: #888; text-transform: uppercase;">${s.label.substring(0, 3)}</div>
-            <div style="font-size: 16px; font-weight: bold; color: ${s.color};">${s.value}</div>
+          <div style="background: rgba(102,179,255,0.15); border: 1px solid rgba(102,179,255,0.4); border-radius: 6px; padding: 10px 20px; text-align: center;">
+            <div style="font-size: 11px; color: #66b3ff; text-transform: uppercase;">Mana</div>
+            <div style="font-size: 24px; font-weight: bold; color: #66b3ff;">${char.mana || 0}</div>
           </div>
-        `).join('')}
-      </div>
-
-      <!-- Level Up Condition -->
-      ${char.levelUp ? `
-        <div style="padding: 12px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 6px;">
-          <h4 style="margin: 0 0 8px 0; color: #ff9800; font-size: 14px;">⬆️ Level Up Condition</h4>
-          <div style="font-size: 13px; color: #ddd;">${char.levelUp}</div>
         </div>
-      ` : ''}
+      </div>
+
+      <!-- Level Up -->
+      <div style="padding: 12px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 6px;">
+        <h4 style="margin: 0 0 8px 0; color: #ff9800; font-size: 14px;">⬆️ Level Up Condition</h4>
+        <div style="font-size: 13px; color: #ddd; margin-bottom: 8px;">${char.levelUp || 'None'}</div>
+        <div style="font-size: 12px; color: #aaa;">
+          <strong>Rewards:</strong> ${levelUpBonusesHTML}
+        </div>
+      </div>
 
       <!-- Dice -->
       ${diceHTML}
