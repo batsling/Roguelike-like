@@ -7082,21 +7082,18 @@ function showCharacterDetails(charName) {
 
   detailsPanel.innerHTML = `
     <div style="display: flex; flex-direction: column; gap: 15px;">
-      <!-- Character Header -->
-      <div style="display: flex; gap: 15px; align-items: flex-start;">
-        <img
-          src="${charIcon}"
-          alt="${char.name}"
-          style="width: 150px; height: 150px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid #4CAF50; image-rendering: pixelated;"
-          onerror="this.style.opacity='0.3'"
-        />
-        <div style="flex: 1;">
-          <h3 style="margin: 0 0 10px 0; color: #4CAF50;">${char.name}</h3>
-          <div style="color: #aaa; font-size: 13px; line-height: 1.8;">
-            <div><strong>Game:</strong> ${char.game || '—'}</div>
-            <div><strong>Combat Start:</strong> ${char.combatStart || 'Dice'}</div>
-          </div>
-        </div>
+      <!-- Character Image - Centered -->
+      <img
+        src="${charIcon}"
+        alt="${char.name}"
+        style="width: 280px; height: 280px; object-fit: contain; border-radius: 8px; background: #1a1a1a; border: 3px solid #4CAF50; display: block; margin: 0 auto;"
+        onerror="this.style.opacity='0.3'"
+      />
+
+      <!-- Character Name & Info -->
+      <div style="text-align: center;">
+        <h3 style="margin: 0 0 5px 0; color: #4CAF50; font-size: 22px;">${char.name}</h3>
+        <div style="color: #aaa; font-size: 13px;">From: ${char.game || 'Unknown'}</div>
       </div>
 
       <!-- Description -->

@@ -651,9 +651,9 @@ function showRunHistory() {
 
 function showCollection() {
   const collectionHTML = `
-    <div style="width: 90vw; max-width: 1400px; max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column;">
-      <!-- Tab Navigation at top - sticky -->
-      <div style="display: flex; gap: 8px; padding: 10px 0; border-bottom: 2px solid #444; align-items: center; flex-wrap: wrap; position: sticky; top: -30px; background: #2a2420; z-index: 10; margin: -30px -30px 15px -30px; padding: 10px 30px;">
+    <div style="width: 90vw; max-width: 1400px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
+      <!-- Tab Navigation at top -->
+      <div style="display: flex; gap: 8px; padding-bottom: 10px; margin-bottom: 15px; border-bottom: 2px solid #444; align-items: center; flex-wrap: wrap;">
         <h2 style="color: #ff9800; margin: 0; flex: 1; min-width: 120px;">📚 Collection</h2>
         <button onclick="switchCollectionTab('games')" id="tab-games" style="padding: 6px 12px; background: #ff9800; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Games (${games.length})</button>
         <button onclick="switchCollectionTab('characters')" id="tab-characters" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Characters (${typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA.length : 0})</button>
