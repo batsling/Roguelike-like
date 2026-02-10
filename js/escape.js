@@ -849,7 +849,7 @@ function switchCollectionTab(tab) {
           <span style="color: #666; font-size: 11px; margin-left: auto;">${sortedCharacters.length} of ${charactersData.length}</span>
         </div>
 
-        <div id="characters-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; overflow-y: auto;">
+        <div id="characters-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; overflow-y: auto;">
           ${sortedCharacters.map(char => {
             const charIcon = `images/characters/Icon/${char.name}.png`;
             return `
@@ -861,11 +861,11 @@ function switchCollectionTab(tab) {
                 background: rgba(0,0,0,0.3);
                 border: 2px solid #4CAF50;
                 border-radius: 8px;
-                padding: 10px;
+                padding: 12px;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                gap: 6px;
+                gap: 8px;
                 transition: transform 0.2s, box-shadow 0.2s;
                 cursor: pointer;
               "
@@ -876,8 +876,8 @@ function switchCollectionTab(tab) {
                 src="${charIcon}"
                 alt="${char.name}"
                 style="
-                  width: 80px;
-                  height: 80px;
+                  width: 110px;
+                  height: 110px;
                   object-fit: contain;
                   border-radius: 6px;
                   background: rgba(0,0,0,0.2);

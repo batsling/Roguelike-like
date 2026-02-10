@@ -7087,7 +7087,7 @@ function showCharacterDetails(charName) {
         <img
           src="${charIcon}"
           alt="${char.name}"
-          style="width: 100px; height: 100px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid #4CAF50; image-rendering: pixelated;"
+          style="width: 150px; height: 150px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid #4CAF50; image-rendering: pixelated;"
           onerror="this.style.opacity='0.3'"
         />
         <div style="flex: 1;">
@@ -7127,7 +7127,7 @@ function showCharacterDetails(charName) {
       <!-- Level Up Condition -->
       ${char.levelUp ? `
         <div style="padding: 12px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 6px;">
-          <h4 style="margin: 0 0 8px 0; color: #ff9800; font-size: 14px;">🔓 Unlock Condition</h4>
+          <h4 style="margin: 0 0 8px 0; color: #ff9800; font-size: 14px;">⬆️ Level Up Condition</h4>
           <div style="font-size: 13px; color: #ddd;">${char.levelUp}</div>
         </div>
       ` : ''}
