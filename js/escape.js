@@ -832,12 +832,12 @@ function switchCollectionTab(tab) {
 
         <div id="characters-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; overflow-y: auto;">
           ${sortedCharacters.map(char => {
-            const charIcon = \`images/characters/\${char.name}.png\`;
-            return \`
+            const charIcon = `images/characters/${char.name}.png`;
+            return `
             <div
               class="collection-character-card"
-              data-character-name="\${char.name.replace(/"/g, '&quot;')}"
-              onclick="showCharacterDetails('\${char.name.replace(/'/g, "\\\\'")}')"
+              data-character-name="${char.name.replace(/"/g, '&quot;')}"
+              onclick="showCharacterDetails('${char.name.replace(/'/g, "\\'")}')"
               style="
                 background: rgba(0,0,0,0.3);
                 border: 2px solid #4CAF50;
@@ -854,8 +854,8 @@ function switchCollectionTab(tab) {
               onmouseout="this.style.transform=''; this.style.boxShadow='';"
             >
               <img
-                src="\${charIcon}"
-                alt="\${char.name}"
+                src="${charIcon}"
+                alt="${char.name}"
                 style="
                   width: 80px;
                   height: 80px;
@@ -867,13 +867,13 @@ function switchCollectionTab(tab) {
                 onerror="this.style.opacity='0.3';"
               />
               <div style="text-align: center; font-size: 12px; font-weight: bold; color: #4CAF50; word-wrap: break-word; width: 100%;">
-                \${char.name}
+                ${char.name}
               </div>
               <div style="font-size: 10px; color: #888; text-align: center;">
-                \${char.game || 'Unknown'}
+                ${char.game || 'Unknown'}
               </div>
             </div>
-          \`;
+          `;
           }).join('')}
         </div>
       </div>
@@ -1230,16 +1230,16 @@ function switchCollectionTab(tab) {
 
         <div id="allies-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; overflow-y: auto;">
           ${sortedAllies.map(ally => {
-            const allyIcon = ally.image || \`images/allies/\${ally.name}.png\`;
+            const allyIcon = ally.image || `images/allies/${ally.name}.png`;
             const rarityColor = getAllyRarityColor(ally.rarity);
-            return \`
+            return `
             <div
               class="collection-ally-card"
-              data-ally-name="\${ally.name.replace(/"/g, '&quot;')}"
-              onclick="showAllyDetails('\${ally.name.replace(/'/g, "\\\\'")}')"
+              data-ally-name="${ally.name.replace(/"/g, '&quot;')}"
+              onclick="showAllyDetails('${ally.name.replace(/'/g, "\\'")}')"
               style="
                 background: rgba(0,0,0,0.3);
-                border: 2px solid \${rarityColor};
+                border: 2px solid ${rarityColor};
                 border-radius: 8px;
                 padding: 10px;
                 display: flex;
@@ -1253,8 +1253,8 @@ function switchCollectionTab(tab) {
               onmouseout="this.style.transform=''; this.style.boxShadow='';"
             >
               <img
-                src="\${allyIcon}"
-                alt="\${ally.name}"
+                src="${allyIcon}"
+                alt="${ally.name}"
                 style="
                   width: 80px;
                   height: 80px;
@@ -1265,17 +1265,17 @@ function switchCollectionTab(tab) {
                 "
                 onerror="this.style.opacity='0.3';"
               />
-              <div style="text-align: center; font-size: 12px; font-weight: bold; color: \${rarityColor}; word-wrap: break-word; width: 100%;">
-                \${ally.name}
+              <div style="text-align: center; font-size: 12px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word; width: 100%;">
+                ${ally.name}
               </div>
               <div style="font-size: 10px; color: #888; text-align: center;">
-                \${ally.type || 'Ally'} • HP: \${ally.hp || '?'}
+                ${ally.type || 'Ally'} • HP: ${ally.hp || '?'}
               </div>
               <div style="font-size: 9px; color: #666; text-align: center;">
-                \${ally.game || 'Unknown'}
+                ${ally.game || 'Unknown'}
               </div>
             </div>
-          \`;
+          `;
           }).join('')}
         </div>
       </div>
@@ -1444,11 +1444,11 @@ function switchCollectionTab(tab) {
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; overflow-y: auto;">
           ${sortedStatuses.map(status => {
             const typeColor = getStatusTypeColor(status.type);
-            const statusIcon = status.image || \`images/statuses/\${status.name}.png\`;
-            return \`
+            const statusIcon = status.image || `images/statuses/${status.name}.png`;
+            return `
             <div style="
               background: rgba(0,0,0,0.3);
-              border: 2px solid \${typeColor};
+              border: 2px solid ${typeColor};
               border-radius: 8px;
               padding: 15px;
               display: flex;
@@ -1457,8 +1457,8 @@ function switchCollectionTab(tab) {
               transition: transform 0.2s, box-shadow 0.2s;
             " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.5)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
               <img
-                src="\${statusIcon}"
-                alt="\${status.name}"
+                src="${statusIcon}"
+                alt="${status.name}"
                 style="
                   width: 48px;
                   height: 48px;
@@ -1472,21 +1472,21 @@ function switchCollectionTab(tab) {
               />
               <div style="flex: 1; min-width: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                  <div style="font-size: 14px; font-weight: bold; color: \${typeColor};">\${status.name}</div>
-                  <div style="font-size: 10px; color: \${typeColor}; text-transform: uppercase; font-weight: bold; padding: 2px 8px; background: rgba(\${typeColor === '#4CAF50' ? '76,175,80' : '244,67,54'}, 0.2); border-radius: 4px;">
-                    \${status.type || 'Unknown'}
+                  <div style="font-size: 14px; font-weight: bold; color: ${typeColor};">${status.name}</div>
+                  <div style="font-size: 10px; color: ${typeColor}; text-transform: uppercase; font-weight: bold; padding: 2px 8px; background: rgba(${typeColor === '#4CAF50' ? '76,175,80' : '244,67,54'}, 0.2); border-radius: 4px;">
+                    ${status.type || 'Unknown'}
                   </div>
                 </div>
                 <div style="font-size: 12px; color: #ddd; line-height: 1.4; margin-bottom: 8px;">
-                  \${status.description || 'No description'}
+                  ${status.description || 'No description'}
                 </div>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; font-size: 10px; color: #888;">
-                  \${status.stackable ? '<span style="color: #66b3ff;">Stackable</span>' : ''}
-                  \${status.decay && status.decay !== 'None' ? \`<span>Decay: \${status.decay}</span>\` : ''}
+                  ${status.stackable ? '<span style="color: #66b3ff;">Stackable</span>' : ''}
+                  ${status.decay && status.decay !== 'None' ? `<span>Decay: ${status.decay}</span>` : ''}
                 </div>
               </div>
             </div>
-          \`;
+          `;
           }).join('')}
         </div>
       </div>
@@ -1701,7 +1701,7 @@ function switchCollectionTab(tab) {
       `;
     }
   }
-}}
+}
 
 // Sort collection spells
 function sortCollectionSpells(sortType) {
