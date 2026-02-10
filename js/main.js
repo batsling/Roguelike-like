@@ -6928,6 +6928,109 @@ function showItemDetails(itemName) {
   `;
 }
 
+function showSpellDetails(spellName) {
+  const spellsData = typeof SPELLS_DATA !== 'undefined' ? SPELLS_DATA : [];
+  const spell = spellsData.find(s => s.name === spellName);
+  if (!spell) return;
+
+  const detailsPanel = document.getElementById('spell-details');
+  if (!detailsPanel) return;
+
+  // Get rarity color
+  const getRarityColor = (rarity) => {
+    const rarityLower = (rarity || '').toLowerCase();
+    switch(rarityLower) {
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      case 'common': return '#aaa';
+      default: return '#888';
+    }
+  };
+
+  // Get element color
+  const getElementColor = (element) => {
+    switch((element || '').toLowerCase()) {
+      case 'fire': return '#ff4444';
+      case 'water': return '#4488ff';
+      case 'earth': return '#88aa44';
+      case 'dark': return '#8844aa';
+      case 'blood': return '#cc2222';
+      case 'poison': return '#44aa44';
+      case 'electric': return '#ffcc00';
+      default: return '#888';
+    }
+  };
+
+  const rarityColor = getRarityColor(spell.rarity);
+  const elementColor = getElementColor(spell.element);
+
+  // Build keywords HTML
+  const keywordsHTML = spell.keywords && spell.keywords.length > 0 ? `
+    <div style="margin-top: 15px;">
+      <strong style="color: #9b59b6;">Keywords:</strong>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+        ${spell.keywords.map(keyword => `
+          <span style="
+            font-size: 11px;
+            padding: 4px 10px;
+            background: rgba(155, 89, 182, 0.15);
+            border: 1px solid rgba(155, 89, 182, 0.4);
+            border-radius: 12px;
+            color: #ba68c8;
+          ">${keyword}</span>
+        `).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  detailsPanel.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <!-- Spell Header -->
+      <div style="display: flex; gap: 15px; align-items: flex-start;">
+        <img
+          src="${spell.image || 'images/spells/no-spell.svg'}"
+          alt="${spell.name}"
+          style="width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${rarityColor}; image-rendering: pixelated;"
+          onerror="this.style.opacity='0.3'"
+        />
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 10px 0; color: ${rarityColor};">${spell.name}</h3>
+          <div style="color: #aaa; font-size: 13px; line-height: 1.8;">
+            <div><strong>Rarity:</strong> <span style="color: ${rarityColor}; text-transform: uppercase; font-weight: bold;">${spell.rarity || '—'}</span></div>
+            <div><strong>Cost:</strong> <span style="color: #66b3ff; font-weight: bold;">${spell.cost} Mana</span></div>
+            <div><strong>Game:</strong> ${spell.game || '—'}</div>
+            <div><strong>Element:</strong> <span style="color: ${elementColor}; font-weight: bold;">${spell.element && spell.element !== 'N/A' ? spell.element : 'None'}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div style="padding: 12px; background: rgba(${rarityColor === '#9b59b6' ? '155,89,182' : rarityColor === '#4CAF50' ? '76,175,80' : '170,170,170'}, 0.1); border: 1px solid ${rarityColor}40; border-radius: 6px;">
+        <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 14px;">Effect</h4>
+        <div style="font-size: 13px; color: #ddd; line-height: 1.6;">${spell.description || 'No description available.'}</div>
+      </div>
+
+      <!-- Bonus Indicator -->
+      <div style="padding: 12px; background: rgba(${spell.hasBonus ? '76, 175, 80' : '136, 136, 136'}, 0.1); border: 1px solid ${spell.hasBonus ? '#4CAF5040' : '#88888840'}; border-radius: 6px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;">${spell.hasBonus ? '✓' : '✗'}</span>
+          <div>
+            <div style="font-weight: bold; color: ${spell.hasBonus ? '#4CAF50' : '#888'};">
+              ${spell.hasBonus ? 'Has Bonus Effect' : 'No Bonus Effect'}
+            </div>
+            <div style="font-size: 11px; color: #888;">
+              ${spell.hasBonus ? 'This spell can be enhanced with bonuses' : 'This spell cannot be enhanced'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Keywords -->
+      ${keywordsHTML}
+    </div>
+  `;
+}
+
 // Get enemy stats from gameState
 function getEnemyStats(enemyName) {
   if (!gameState.enemyStats) {

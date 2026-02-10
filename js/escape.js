@@ -660,6 +660,7 @@ function showCollection() {
         <button onclick="switchCollectionTab('loot')" id="tab-loot" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Loot</button>
         <button onclick="switchCollectionTab('enemies')" id="tab-enemies" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Enemies (${enemies.length})</button>
         <button onclick="switchCollectionTab('curses')" id="tab-curses" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Curses (${curses.length})</button>
+        <button onclick="switchCollectionTab('spells')" id="tab-spells" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Spells (${typeof SPELLS_DATA !== 'undefined' ? SPELLS_DATA.length : 0})</button>
         <button onclick="closeGameModal();" style="padding: 8px 20px; background: #444; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Close</button>
       </div>
 
@@ -676,7 +677,7 @@ function showCollection() {
 
 function switchCollectionTab(tab) {
   // Update tab buttons
-  const tabs = ['games', 'items', 'loot', 'enemies', 'curses'];
+  const tabs = ['games', 'items', 'loot', 'enemies', 'curses', 'spells'];
   tabs.forEach(t => {
     const btn = document.getElementById(`tab-${t}`);
     if (btn) {
@@ -1091,7 +1092,158 @@ function switchCollectionTab(tab) {
         </div>
       </div>
     `;
+  } else if (tab === 'spells') {
+    // Initialize sort state if not set
+    if (!window.spellSortType) {
+      window.spellSortType = 'alphabetical';
+    }
+
+    // Get rarity color function
+    const getRarityColor = (rarity) => {
+      const rarityLower = (rarity || '').toLowerCase();
+      switch(rarityLower) {
+        case 'rare': return '#9b59b6';
+        case 'uncommon': return '#4CAF50';
+        case 'common': return '#aaa';
+        default: return '#888';
+      }
+    };
+
+    // Get element color function
+    const getElementColor = (element) => {
+      switch((element || '').toLowerCase()) {
+        case 'fire': return '#ff4444';
+        case 'water': return '#4488ff';
+        case 'earth': return '#88aa44';
+        case 'dark': return '#8844aa';
+        case 'blood': return '#cc2222';
+        case 'poison': return '#44aa44';
+        case 'electric': return '#ffcc00';
+        default: return '#888';
+      }
+    };
+
+    // Get spells data
+    const spellsData = typeof SPELLS_DATA !== 'undefined' ? SPELLS_DATA : [];
+
+    // Sort spells based on current sort type
+    let sortedSpells;
+    if (window.spellSortType === 'alphabetical') {
+      sortedSpells = [...spellsData].sort((a, b) => a.name.localeCompare(b.name));
+    } else if (window.spellSortType === 'rarity') {
+      const rarityOrder = { 'rare': 3, 'uncommon': 2, 'common': 1 };
+      sortedSpells = [...spellsData].sort((a, b) => {
+        const rarityDiff = (rarityOrder[(b.rarity || '').toLowerCase()] || 0) - (rarityOrder[(a.rarity || '').toLowerCase()] || 0);
+        if (rarityDiff !== 0) return rarityDiff;
+        return a.name.localeCompare(b.name);
+      });
+    } else if (window.spellSortType === 'element') {
+      sortedSpells = [...spellsData].sort((a, b) => {
+        const elemA = a.element || 'N/A';
+        const elemB = b.element || 'N/A';
+        const elemDiff = elemA.localeCompare(elemB);
+        if (elemDiff !== 0) return elemDiff;
+        return a.name.localeCompare(b.name);
+      });
+    } else if (window.spellSortType === 'game') {
+      sortedSpells = [...spellsData].sort((a, b) => {
+        const gameA = a.game || 'Unknown';
+        const gameB = b.game || 'Unknown';
+        const gameDiff = gameA.localeCompare(gameB);
+        if (gameDiff !== 0) return gameDiff;
+        return a.name.localeCompare(b.name);
+      });
+    } else if (window.spellSortType === 'cost') {
+      sortedSpells = [...spellsData].sort((a, b) => {
+        const costDiff = (a.cost || 0) - (b.cost || 0);
+        if (costDiff !== 0) return costDiff;
+        return a.name.localeCompare(b.name);
+      });
+    } else {
+      sortedSpells = [...spellsData].sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    content.innerHTML = `
+      <!-- Left side: Spell grid -->
+      <div id="spells-grid-container" style="flex: 2; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
+        <!-- Sort controls -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center; flex-wrap: wrap;">
+          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort:</span>
+          <button onclick="sortCollectionSpells('alphabetical')" id="spell-sort-alpha" style="padding: 6px 12px; background: ${window.spellSortType === 'alphabetical' ? '#9b59b6' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">A-Z</button>
+          <button onclick="sortCollectionSpells('rarity')" id="spell-sort-rarity" style="padding: 6px 12px; background: ${window.spellSortType === 'rarity' ? '#9b59b6' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Rarity</button>
+          <button onclick="sortCollectionSpells('element')" id="spell-sort-element" style="padding: 6px 12px; background: ${window.spellSortType === 'element' ? '#9b59b6' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Element</button>
+          <button onclick="sortCollectionSpells('cost')" id="spell-sort-cost" style="padding: 6px 12px; background: ${window.spellSortType === 'cost' ? '#9b59b6' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Cost</button>
+          <button onclick="sortCollectionSpells('game')" id="spell-sort-game" style="padding: 6px 12px; background: ${window.spellSortType === 'game' ? '#9b59b6' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Game</button>
+          <span style="color: #666; font-size: 11px; margin-left: auto;">${sortedSpells.length} spells</span>
+        </div>
+
+        <div id="spells-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; overflow-y: auto;">
+          ${sortedSpells.map(spell => {
+            const rarityColor = getRarityColor(spell.rarity);
+            const elementColor = getElementColor(spell.element);
+            return `
+            <div
+              class="collection-spell-card"
+              data-spell-name="${spell.name.replace(/"/g, '&quot;')}"
+              onclick="showSpellDetails('${spell.name.replace(/'/g, "\\'")}')"
+              style="
+                background: rgba(0,0,0,0.3);
+                border: 2px solid ${rarityColor};
+                border-radius: 8px;
+                padding: 8px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+                transition: transform 0.2s, box-shadow 0.2s;
+                cursor: pointer;
+              "
+              onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.5)';"
+              onmouseout="this.style.transform=''; this.style.boxShadow='';"
+            >
+              <img
+                src="${spell.image || 'images/spells/no-spell.svg'}"
+                alt="${spell.name}"
+                style="
+                  width: 80px;
+                  height: 80px;
+                  object-fit: contain;
+                  border-radius: 6px;
+                  background: rgba(0,0,0,0.2);
+                  image-rendering: pixelated;
+                "
+                onerror="this.style.opacity='0.3';"
+              />
+              <div style="text-align: center; font-size: 11px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word; width: 100%;">
+                ${spell.name}
+              </div>
+              <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
+                <span style="font-size: 10px; color: #66b3ff; font-weight: bold;">${spell.cost} Mana</span>
+                ${spell.element && spell.element !== 'N/A' ? `<span style="font-size: 9px; color: ${elementColor}; font-weight: bold;">${spell.element}</span>` : ''}
+              </div>
+              <div style="font-size: 9px; color: ${rarityColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
+                ${spell.rarity}
+              </div>
+            </div>
+          `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Right side: Spell details -->
+      <div id="spell-details" style="flex: 1; overflow-y: auto; padding: 20px; background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 8px; min-width: 300px;">
+        <div style="text-align: center; color: #888; padding: 40px 20px;">
+          <p>Click a spell to view details</p>
+        </div>
+      </div>
+    `;
   }
+}
+
+// Sort collection spells
+function sortCollectionSpells(sortType) {
+  window.spellSortType = sortType;
+  switchCollectionTab('spells');
 }
 
 // Switch between loot sub-tabs
@@ -1436,3 +1588,4 @@ window.recordLostRun = recordLostRun;
 window.startEscapePhase = startEscapePhase;
 window.showVictoryScreen = showVictoryScreen;
 window.sortCollectionItems = sortCollectionItems;
+window.sortCollectionSpells = sortCollectionSpells;

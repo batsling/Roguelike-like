@@ -10,6 +10,8 @@ var SPELLS_DATA = [
       "SingleCast"
     ],
     "hasBonus": true,
+    "game": "Slice & Dice",
+    "element": "Earth",
     "image": "images/spells/Poultice.png"
   },
   {
@@ -21,6 +23,8 @@ var SPELLS_DATA = [
       "SingleCast"
     ],
     "hasBonus": true,
+    "game": "Slice & Dice",
+    "element": "Earth",
     "image": "images/spells/Remedy.png"
   },
   {
@@ -32,6 +36,8 @@ var SPELLS_DATA = [
       "Channel"
     ],
     "hasBonus": true,
+    "game": "Slice & Dice",
+    "element": "Earth",
     "image": "images/spells/Sprout.png"
   },
   {
@@ -41,6 +47,8 @@ var SPELLS_DATA = [
     "description": "Kill an enemy with half or less health",
     "keywords": [],
     "hasBonus": false,
+    "game": "Slice & Dice",
+    "element": "Dark",
     "image": "images/spells/Abyss.png"
   },
   {
@@ -50,6 +58,8 @@ var SPELLS_DATA = [
     "description": "Kill an enemy",
     "keywords": [],
     "hasBonus": false,
+    "game": "Slice & Dice",
+    "element": "N/A",
     "image": "images/spells/Infinity.png"
   },
   {
@@ -61,6 +71,8 @@ var SPELLS_DATA = [
       "Cooldown"
     ],
     "hasBonus": false,
+    "game": "Slice & Dice",
+    "element": "Blood",
     "image": "images/spells/Harvest.png"
   },
   {
@@ -70,6 +82,8 @@ var SPELLS_DATA = [
     "description": "1 Dmg Cleave, 1 Poison Cleave",
     "keywords": [],
     "hasBonus": true,
+    "game": "Slice & Dice",
+    "element": "Poison",
     "image": "images/spells/Miasma.png"
   },
   {
@@ -79,6 +93,8 @@ var SPELLS_DATA = [
     "description": "2 Dmg to all damaged enemies",
     "keywords": [],
     "hasBonus": true,
+    "game": "Slice & Dice",
+    "element": "Water",
     "image": "images/spells/Scald.png"
   },
   {
@@ -88,6 +104,8 @@ var SPELLS_DATA = [
     "description": "13 Dmg",
     "keywords": [],
     "hasBonus": true,
+    "game": "Slice & Dice",
+    "element": "Fire",
     "image": "images/spells/Blaze.png"
   },
   {
@@ -97,6 +115,8 @@ var SPELLS_DATA = [
     "description": "3 Dmg to leftmost and rightmost enemy",
     "keywords": [],
     "hasBonus": true,
+    "game": "Slice & Dice",
+    "element": "N/A",
     "image": "images/spells/Crush.png"
   },
   {
@@ -106,6 +126,8 @@ var SPELLS_DATA = [
     "description": "1 Dmg Overload",
     "keywords": [],
     "hasBonus": true,
+    "game": "Slice & Dice",
+    "element": "Fire",
     "image": "images/spells/Burn.png"
   },
   {
@@ -117,6 +139,8 @@ var SPELLS_DATA = [
       "Deplete"
     ],
     "hasBonus": true,
+    "game": "Slice & Dice",
+    "element": "N/A",
     "image": "images/spells/Bind.png"
   },
   {
@@ -128,6 +152,8 @@ var SPELLS_DATA = [
       "Cooldown"
     ],
     "hasBonus": true,
+    "game": "Slice & Dice",
+    "element": "N/A",
     "image": "images/spells/Poke.png"
   },
   {
@@ -139,6 +165,8 @@ var SPELLS_DATA = [
       "Cooldown"
     ],
     "hasBonus": true,
+    "game": "Slice & Dice",
+    "element": "N/A",
     "image": "images/spells/Flick.png"
   },
   {
@@ -148,6 +176,8 @@ var SPELLS_DATA = [
     "description": "1 Dmg Wide, 1 Heal Wide",
     "keywords": [],
     "hasBonus": true,
+    "game": "Slice & Dice",
+    "element": "N/A",
     "image": "images/spells/Balance.png"
   },
   {
@@ -157,6 +187,8 @@ var SPELLS_DATA = [
     "description": "Set self/ally to 5 Health",
     "keywords": [],
     "hasBonus": false,
+    "game": "Slice & Dice",
+    "element": "Blood",
     "image": "images/spells/Mend.png"
   },
   {
@@ -168,6 +200,8 @@ var SPELLS_DATA = [
       "SingleCast"
     ],
     "hasBonus": true,
+    "game": "Slice & Dice",
+    "element": "Fire",
     "image": "images/spells/Scorch.png"
   },
   {
@@ -179,6 +213,8 @@ var SPELLS_DATA = [
       "Cooldown"
     ],
     "hasBonus": false,
+    "game": "Slice & Dice",
+    "element": "Electric",
     "image": "images/spells/Zap.png"
   },
   {
@@ -190,6 +226,8 @@ var SPELLS_DATA = [
       "Future"
     ],
     "hasBonus": false,
+    "game": "Slice & Dice",
+    "element": "N/A",
     "image": "images/spells/Gaze.png"
   }
 ];
