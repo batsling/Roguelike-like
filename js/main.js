@@ -3978,7 +3978,7 @@ function showDiceCombatModal() {
 
   // Get character data
   const characterKey = selectedCharacter || gameState.character || 'rodney';
-  const characterData = CHARACTERS_DATA[characterKey];
+  const characterData = PLAYER_CHARACTERS[characterKey];
 
   if (!characterData) {
     console.error('Character data not found for:', characterKey);
@@ -4275,7 +4275,7 @@ window.toggleCombatSystem = function() {
  */
 function showLevelUpPrompt() {
   const characterKey = selectedCharacter || gameState.character || 'rodney';
-  const characterData = CHARACTERS_DATA[characterKey];
+  const characterData = PLAYER_CHARACTERS[characterKey];
 
   if (!characterData) {
     console.error('Character data not found for level-up');
@@ -4356,7 +4356,7 @@ function showLevelUpPrompt() {
  */
 function confirmLevelUp() {
   const characterKey = selectedCharacter || gameState.character || 'rodney';
-  const characterData = CHARACTERS_DATA[characterKey];
+  const characterData = PLAYER_CHARACTERS[characterKey];
 
   if (!characterData || !characterData.levelUpStats) {
     console.error('Character level-up data not found');
@@ -4471,7 +4471,7 @@ function confirmLevelUp() {
 // Legacy function for backwards compatibility (random upgrade)
 function confirmLevelUpLegacy() {
   const characterKey = selectedCharacter || gameState.character || 'rodney';
-  const characterData = CHARACTERS_DATA[characterKey];
+  const characterData = PLAYER_CHARACTERS[characterKey];
 
   if (!characterData || !characterData.levelUpStats) {
     console.error('Character level-up data not found');
@@ -4537,7 +4537,7 @@ function confirmLevelUpLegacy() {
  * @returns {string|null} Description of upgrade or null
  */
 function upgradeDiceFace(characterKey) {
-  const characterData = CHARACTERS_DATA[characterKey];
+  const characterData = PLAYER_CHARACTERS[characterKey];
   if (!characterData || !characterData.dice) return null;
 
   // Find faces with numeric values that can be upgraded
@@ -4579,7 +4579,7 @@ function upgradeDiceFace(characterKey) {
  * @returns {Array} Array of upgrade options
  */
 function generateDiceLevelUpOptions(characterKey) {
-  const characterData = CHARACTERS_DATA[characterKey];
+  const characterData = PLAYER_CHARACTERS[characterKey];
   if (!characterData || !characterData.dice) return [];
 
   const options = [];
@@ -4745,7 +4745,7 @@ function generateNewSideOption(faceIndex, luckValue) {
  * @returns {string} Description of what was applied
  */
 function applyDiceLevelUpOption(option, characterKey) {
-  const characterData = CHARACTERS_DATA[characterKey];
+  const characterData = PLAYER_CHARACTERS[characterKey];
   if (!characterData || !characterData.dice) return null;
 
   if (option.type === 'upgrade') {
