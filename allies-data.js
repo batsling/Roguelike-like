@@ -1,4 +1,5 @@
-// Auto-generated from Roguelikes.xlsx
+// Auto-generated from Roguelikes.xlsx - Allies
+// Allies that provide dice in combat
 
 var ALLIES_DATA = [
   {
@@ -6,83 +7,101 @@ var ALLIES_DATA = [
     "type": "Hero",
     "rarity": "Low",
     "hp": 6,
-    "ability": null,
+    "ability": "N/A",
     "game": "Slice & Dice",
     "dice": [
       {
+        "isBlank": false,
         "effects": [
           {
-            "move": "Pain",
+            "raw": "1 Pain Cantrip",
             "value": 1,
+            "move": "Pain",
             "addons": [
               "Cantrip"
-            ]
+            ],
+            "target": null
           }
         ],
         "raw": "1 Pain Cantrip"
       },
       {
+        "isBlank": false,
         "effects": [
           {
-            "move": "Pain",
+            "raw": "1 Pain Cantrip",
             "value": 1,
+            "move": "Pain",
             "addons": [
               "Cantrip"
-            ]
+            ],
+            "target": null
           }
         ],
         "raw": "1 Pain Cantrip"
       },
       {
+        "isBlank": false,
         "effects": [
           {
-            "move": "Dmg",
+            "raw": "1 Dmg Cleave",
             "value": 1,
+            "move": "Dmg",
             "addons": [
               "Cleave"
-            ]
+            ],
+            "target": null
           }
         ],
         "raw": "1 Dmg Cleave"
       },
       {
+        "isBlank": false,
         "effects": [
           {
-            "move": "Dmg",
+            "raw": "1 Dmg Cleave",
             "value": 1,
+            "move": "Dmg",
             "addons": [
               "Cleave"
-            ]
+            ],
+            "target": null
           }
         ],
         "raw": "1 Dmg Cleave"
       },
       {
+        "isBlank": false,
         "effects": [
           {
-            "move": "Dmg",
+            "raw": "1 Dmg Cantrip",
             "value": 1,
+            "move": "Dmg",
             "addons": [
               "Cantrip"
-            ]
+            ],
+            "target": null
           }
         ],
         "raw": "1 Dmg Cantrip"
       },
       {
+        "isBlank": false,
         "effects": [
           {
-            "move": "Dmg",
+            "raw": "1 Dmg Cantrip",
             "value": 1,
+            "move": "Dmg",
             "addons": [
               "Cantrip"
-            ]
+            ],
+            "target": null
           }
         ],
         "raw": "1 Dmg Cantrip"
       }
     ],
-    "image": "images/allies/Clumsy.png"
+    "imageUrl": "images/allies/Clumsy.png"
   },
   {
     "name": "Mystic",
@@ -93,84 +112,110 @@ var ALLIES_DATA = [
     "game": "Slice & Dice",
     "dice": [
       {
-        "isBlank": true
+        "isBlank": true,
+        "effects": []
       },
       {
+        "isBlank": false,
         "effects": [
           {
-            "move": "Mana",
+            "raw": "1 Mana",
             "value": 1,
-            "addons": []
+            "move": "Mana",
+            "addons": [],
+            "target": null
           }
         ],
         "raw": "1 Mana"
       },
       {
+        "isBlank": false,
         "effects": [
           {
-            "move": "Heal",
+            "raw": "1 Heal",
             "value": 1,
-            "addons": []
+            "move": "Heal",
+            "addons": [],
+            "target": null
           },
           {
-            "move": "Mana",
+            "raw": "1 Mana",
             "value": 1,
-            "addons": []
+            "move": "Mana",
+            "addons": [],
+            "target": null
           }
         ],
         "raw": "1 Heal, 1 Mana"
       },
       {
+        "isBlank": false,
         "effects": [
           {
-            "move": "Heal",
+            "raw": "1 Heal",
             "value": 1,
-            "addons": []
+            "move": "Heal",
+            "addons": [],
+            "target": null
           },
           {
-            "move": "Mana",
+            "raw": "1 Mana",
             "value": 1,
-            "addons": []
+            "move": "Mana",
+            "addons": [],
+            "target": null
           }
         ],
         "raw": "1 Heal, 1 Mana"
       },
       {
+        "isBlank": false,
         "effects": [
           {
-            "move": "Heal",
+            "raw": "1 Heal",
             "value": 1,
-            "addons": []
+            "move": "Heal",
+            "addons": [],
+            "target": null
           },
           {
-            "move": "Mana",
+            "raw": "1 Mana",
             "value": 1,
-            "addons": []
+            "move": "Mana",
+            "addons": [],
+            "target": null
           }
         ],
         "raw": "1 Heal, 1 Mana"
       },
       {
+        "isBlank": false,
         "effects": [
           {
+            "raw": "1 Heal",
+            "value": 1,
             "move": "Heal",
-            "value": 1,
-            "addons": []
+            "addons": [],
+            "target": null
           },
           {
+            "raw": "1 Mana",
+            "value": 1,
             "move": "Mana",
-            "value": 1,
-            "addons": []
+            "addons": [],
+            "target": null
           },
           {
+            "raw": "1 Block",
+            "value": 1,
             "move": "Block",
-            "value": 1,
-            "addons": []
+            "addons": [],
+            "target": null
           }
         ],
         "raw": "1 Heal, 1 Mana, 1 Block"
       }
     ],
-    "image": "images/allies/Mystic.png"
+    "imageUrl": "images/allies/Mystic.png"
   }
 ];

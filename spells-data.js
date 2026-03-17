@@ -1,4 +1,4 @@
-// Auto-generated from Roguelikes.xlsx
+// Auto-generated from Roguelikes.xlsx - Spells
 
 var SPELLS_DATA = [
   {
@@ -9,10 +9,17 @@ var SPELLS_DATA = [
     "keywords": [
       "SingleCast"
     ],
-    "hasBonus": true,
-    "game": "Slice & Dice",
-    "element": "Earth",
-    "image": "images/spells/Poultice.png"
+    "affectedByBonus": true,
+    "effects": [
+      {
+        "raw": "2 Heal",
+        "value": 2,
+        "move": "Heal",
+        "addons": [],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Poultice.png"
   },
   {
     "name": "Remedy",
@@ -22,10 +29,24 @@ var SPELLS_DATA = [
     "keywords": [
       "SingleCast"
     ],
-    "hasBonus": true,
-    "game": "Slice & Dice",
-    "element": "Earth",
-    "image": "images/spells/Remedy.png"
+    "affectedByBonus": true,
+    "effects": [
+      {
+        "raw": "1 Heal",
+        "value": 1,
+        "move": "Heal",
+        "addons": [],
+        "target": null
+      },
+      {
+        "raw": "1 Cleanse",
+        "value": 1,
+        "move": "Cleanse",
+        "addons": [],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Remedy.png"
   },
   {
     "name": "Sprout",
@@ -35,10 +56,17 @@ var SPELLS_DATA = [
     "keywords": [
       "Channel"
     ],
-    "hasBonus": true,
-    "game": "Slice & Dice",
-    "element": "Earth",
-    "image": "images/spells/Sprout.png"
+    "affectedByBonus": true,
+    "effects": [
+      {
+        "raw": "3 Heal",
+        "value": 3,
+        "move": "Heal",
+        "addons": [],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Sprout.png"
   },
   {
     "name": "Abyss",
@@ -46,10 +74,25 @@ var SPELLS_DATA = [
     "rarity": "Uncommon",
     "description": "Kill an enemy with half or less health",
     "keywords": [],
-    "hasBonus": false,
-    "game": "Slice & Dice",
-    "element": "Dark",
-    "image": "images/spells/Abyss.png"
+    "affectedByBonus": false,
+    "effects": [
+      {
+        "raw": "Kill an enemy with half or less health",
+        "value": null,
+        "move": "Kill",
+        "addons": [
+          "an",
+          "enemy",
+          "with",
+          "half",
+          "or",
+          "less",
+          "health"
+        ],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Abyss.png"
   },
   {
     "name": "Infinity",
@@ -57,10 +100,20 @@ var SPELLS_DATA = [
     "rarity": "Rare",
     "description": "Kill an enemy",
     "keywords": [],
-    "hasBonus": false,
-    "game": "Slice & Dice",
-    "element": "N/A",
-    "image": "images/spells/Infinity.png"
+    "affectedByBonus": false,
+    "effects": [
+      {
+        "raw": "Kill an enemy",
+        "value": null,
+        "move": "Kill",
+        "addons": [
+          "an",
+          "enemy"
+        ],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Infinity.png"
   },
   {
     "name": "Harvest",
@@ -70,10 +123,35 @@ var SPELLS_DATA = [
     "keywords": [
       "Cooldown"
     ],
-    "hasBonus": false,
-    "game": "Slice & Dice",
-    "element": "Blood",
-    "image": "images/spells/Harvest.png"
+    "affectedByBonus": false,
+    "effects": [
+      {
+        "raw": "Kill an enemy with exactly 1 health",
+        "value": null,
+        "move": "Kill",
+        "addons": [
+          "an",
+          "enemy",
+          "with",
+          "exactly",
+          "1",
+          "health"
+        ],
+        "target": null
+      },
+      {
+        "raw": "then Gain 3 mana",
+        "value": null,
+        "move": "then",
+        "addons": [
+          "Gain",
+          "3",
+          "mana"
+        ],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Harvest.png"
   },
   {
     "name": "Miasma",
@@ -81,10 +159,28 @@ var SPELLS_DATA = [
     "rarity": "Rare",
     "description": "1 Dmg Cleave, 1 Poison Cleave",
     "keywords": [],
-    "hasBonus": true,
-    "game": "Slice & Dice",
-    "element": "Poison",
-    "image": "images/spells/Miasma.png"
+    "affectedByBonus": true,
+    "effects": [
+      {
+        "raw": "1 Dmg Cleave",
+        "value": 1,
+        "move": "Dmg",
+        "addons": [
+          "Cleave"
+        ],
+        "target": null
+      },
+      {
+        "raw": "1 Poison Cleave",
+        "value": 1,
+        "move": "Poison",
+        "addons": [
+          "Cleave"
+        ],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Miasma.png"
   },
   {
     "name": "Scald",
@@ -92,10 +188,22 @@ var SPELLS_DATA = [
     "rarity": "Uncommon",
     "description": "2 Dmg to all damaged enemies",
     "keywords": [],
-    "hasBonus": true,
-    "game": "Slice & Dice",
-    "element": "Water",
-    "image": "images/spells/Scald.png"
+    "affectedByBonus": true,
+    "effects": [
+      {
+        "raw": "2 Dmg to all damaged enemies",
+        "value": 2,
+        "move": "Dmg",
+        "addons": [
+          "to",
+          "all",
+          "damaged",
+          "enemies"
+        ],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Scald.png"
   },
   {
     "name": "Blaze",
@@ -103,10 +211,17 @@ var SPELLS_DATA = [
     "rarity": "Rare",
     "description": "13 Dmg",
     "keywords": [],
-    "hasBonus": true,
-    "game": "Slice & Dice",
-    "element": "Fire",
-    "image": "images/spells/Blaze.png"
+    "affectedByBonus": true,
+    "effects": [
+      {
+        "raw": "13 Dmg",
+        "value": 13,
+        "move": "Dmg",
+        "addons": [],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Blaze.png"
   },
   {
     "name": "Crush",
@@ -114,10 +229,23 @@ var SPELLS_DATA = [
     "rarity": "Rare",
     "description": "3 Dmg to leftmost and rightmost enemy",
     "keywords": [],
-    "hasBonus": true,
-    "game": "Slice & Dice",
-    "element": "N/A",
-    "image": "images/spells/Crush.png"
+    "affectedByBonus": true,
+    "effects": [
+      {
+        "raw": "3 Dmg to leftmost and rightmost enemy",
+        "value": 3,
+        "move": "Dmg",
+        "addons": [
+          "to",
+          "leftmost",
+          "and",
+          "rightmost",
+          "enemy"
+        ],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Crush.png"
   },
   {
     "name": "Burn",
@@ -125,10 +253,19 @@ var SPELLS_DATA = [
     "rarity": "Uncommon",
     "description": "1 Dmg Overload",
     "keywords": [],
-    "hasBonus": true,
-    "game": "Slice & Dice",
-    "element": "Fire",
-    "image": "images/spells/Burn.png"
+    "affectedByBonus": true,
+    "effects": [
+      {
+        "raw": "1 Dmg Overload",
+        "value": 1,
+        "move": "Dmg",
+        "addons": [
+          "Overload"
+        ],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Burn.png"
   },
   {
     "name": "Bind",
@@ -138,10 +275,21 @@ var SPELLS_DATA = [
     "keywords": [
       "Deplete"
     ],
-    "hasBonus": true,
-    "game": "Slice & Dice",
-    "element": "N/A",
-    "image": "images/spells/Bind.png"
+    "affectedByBonus": true,
+    "effects": [
+      {
+        "raw": "Self/Ally gains 1 Dodge",
+        "value": null,
+        "move": "Self/Ally",
+        "addons": [
+          "gains",
+          "1",
+          "Dodge"
+        ],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Bind.png"
   },
   {
     "name": "Poke",
@@ -151,10 +299,17 @@ var SPELLS_DATA = [
     "keywords": [
       "Cooldown"
     ],
-    "hasBonus": true,
-    "game": "Slice & Dice",
-    "element": "N/A",
-    "image": "images/spells/Poke.png"
+    "affectedByBonus": true,
+    "effects": [
+      {
+        "raw": "1 Dmg",
+        "value": 1,
+        "move": "Dmg",
+        "addons": [],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Poke.png"
   },
   {
     "name": "Flick",
@@ -164,10 +319,19 @@ var SPELLS_DATA = [
     "keywords": [
       "Cooldown"
     ],
-    "hasBonus": true,
-    "game": "Slice & Dice",
-    "element": "N/A",
-    "image": "images/spells/Flick.png"
+    "affectedByBonus": true,
+    "effects": [
+      {
+        "raw": "1 Dmg Engage",
+        "value": 1,
+        "move": "Dmg",
+        "addons": [
+          "Engage"
+        ],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Flick.png"
   },
   {
     "name": "Balance",
@@ -175,10 +339,28 @@ var SPELLS_DATA = [
     "rarity": "Uncommon",
     "description": "1 Dmg Wide, 1 Heal Wide",
     "keywords": [],
-    "hasBonus": true,
-    "game": "Slice & Dice",
-    "element": "N/A",
-    "image": "images/spells/Balance.png"
+    "affectedByBonus": true,
+    "effects": [
+      {
+        "raw": "1 Dmg Wide",
+        "value": 1,
+        "move": "Dmg",
+        "addons": [
+          "Wide"
+        ],
+        "target": null
+      },
+      {
+        "raw": "1 Heal Wide",
+        "value": 1,
+        "move": "Heal",
+        "addons": [
+          "Wide"
+        ],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Balance.png"
   },
   {
     "name": "Mend",
@@ -186,10 +368,22 @@ var SPELLS_DATA = [
     "rarity": "Common",
     "description": "Set self/ally to 5 Health",
     "keywords": [],
-    "hasBonus": false,
-    "game": "Slice & Dice",
-    "element": "Blood",
-    "image": "images/spells/Mend.png"
+    "affectedByBonus": false,
+    "effects": [
+      {
+        "raw": "Set self/ally to 5 Health",
+        "value": null,
+        "move": "Set",
+        "addons": [
+          "self/ally",
+          "to",
+          "5",
+          "Health"
+        ],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Mend.png"
   },
   {
     "name": "Scorch",
@@ -199,10 +393,19 @@ var SPELLS_DATA = [
     "keywords": [
       "SingleCast"
     ],
-    "hasBonus": true,
-    "game": "Slice & Dice",
-    "element": "Fire",
-    "image": "images/spells/Scorch.png"
+    "affectedByBonus": true,
+    "effects": [
+      {
+        "raw": "1 dmg Cleave",
+        "value": 1,
+        "move": "dmg",
+        "addons": [
+          "Cleave"
+        ],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Scorch.png"
   },
   {
     "name": "Zap",
@@ -212,10 +415,24 @@ var SPELLS_DATA = [
     "keywords": [
       "Cooldown"
     ],
-    "hasBonus": false,
-    "game": "Slice & Dice",
-    "element": "Electric",
-    "image": "images/spells/Zap.png"
+    "affectedByBonus": false,
+    "effects": [
+      {
+        "raw": "Kill an enemy with exactly 2 health",
+        "value": null,
+        "move": "Kill",
+        "addons": [
+          "an",
+          "enemy",
+          "with",
+          "exactly",
+          "2",
+          "health"
+        ],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Zap.png"
   },
   {
     "name": "Gaze",
@@ -225,9 +442,19 @@ var SPELLS_DATA = [
     "keywords": [
       "Future"
     ],
-    "hasBonus": false,
-    "game": "Slice & Dice",
-    "element": "N/A",
-    "image": "images/spells/Gaze.png"
+    "affectedByBonus": false,
+    "effects": [
+      {
+        "raw": "Gain 1 Reroll",
+        "value": null,
+        "move": "Gain",
+        "addons": [
+          "1",
+          "Reroll"
+        ],
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Gaze.png"
   }
 ];

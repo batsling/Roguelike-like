@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 592 games, 749 connections
-// 517 connected, 162 influencers
+// 598 games, 758 connections
+// 523 connected, 162 influencers
 
 var GAMES_DATA = [
   {
@@ -463,7 +463,10 @@ var GAMES_DATA = [
       "Lootplot",
       "Dead Finger Dice",
       "RogueJack21",
-      "Hungry Horrors"
+      "Hungry Horrors",
+      "Rogue Factory",
+      "Dice A Million",
+      "Menherarium"
     ],
     "coverImage": "images/covers/balatro.jpg"
   },
@@ -495,7 +498,8 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Omelet You Cook"
+      "Omelet You Cook",
+      "Menherarium"
     ],
     "coverImage": "images/covers/ballionaire.jpg"
   },
@@ -1645,6 +1649,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dice-fold.jpg"
+  },
+  {
+    "name": "Dice A Million",
+    "year": 2026,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/dice-a-million.jpg"
   },
   {
     "name": "Dice With Death",
@@ -3547,6 +3561,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/menace-from-the-deep.jpg"
   },
   {
+    "name": "Menherarium",
+    "year": 2026,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/menherarium.jpg"
+  },
+  {
     "name": "Merge Maestro",
     "year": 2025,
     "type": "Deckbuilding",
@@ -3585,6 +3609,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/metallic-child.jpg"
+  },
+  {
+    "name": "Mewgenics",
+    "year": 2026,
+    "type": "Strategy",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/mewgenics.jpg"
   },
   {
     "name": "Million Depth",
@@ -4288,6 +4322,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/plinko-panic.jpg"
   },
   {
+    "name": "Pluto",
+    "year": 2026,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/pluto.jpg"
+  },
+  {
     "name": "Pocket Crystal League",
     "year": 2022,
     "type": "Deckbuilding",
@@ -4747,6 +4791,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/rogue-empire.jpg"
+  },
+  {
+    "name": "Rogue Factory",
+    "year": 2026,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rogue-factory.jpg"
   },
   {
     "name": "Rogue Heroes: Ruins of Tasos",
@@ -5258,9 +5312,21 @@ var GAMES_DATA = [
       "BroomSweeper",
       "RogueJack21",
       "Winnie's Hole",
-      "Hungry Horrors"
+      "Hungry Horrors",
+      "Slay the Spire 2",
+      "Pluto"
     ],
     "coverImage": "images/covers/slay-the-spire.jpg"
+  },
+  {
+    "name": "Slay the Spire 2",
+    "year": 2026,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/slay-the-spire-2.jpg"
   },
   {
     "name": "Slice & Dice",
@@ -5877,7 +5943,9 @@ var GAMES_DATA = [
       "Asterogues",
       "Talented",
       "20XX",
-      "Mana Spark"
+      "Mana Spark",
+      "Mewgenics",
+      "Dice A Million"
     ],
     "coverImage": "images/covers/the-binding-of-isaac.jpg"
   },
@@ -6424,7 +6492,8 @@ var GAMES_DATA = [
       "Astro Prospector",
       "Swarm Grinder",
       "Army of Ruin",
-      "Glyphica: Typing Survival"
+      "Glyphica: Typing Survival",
+      "Rogue Factory"
     ],
     "coverImage": "images/covers/vampire-survivors.jpg"
   },

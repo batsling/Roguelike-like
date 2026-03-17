@@ -1,4 +1,4 @@
-// Auto-generated from Roguelikes.xlsx
+// Auto-generated from Roguelikes.xlsx - Curses
 
 var CURSES_DATA = [
   {
@@ -7,7 +7,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 2 Games Beaten",
     "description": "Every time you reset a run, lose 1 health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Devotion II",
@@ -15,7 +15,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
     "description": "Every time you reset a run, lose 2 health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Devotion III",
@@ -23,7 +23,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 2 Games Beaten",
     "description": "Every time you reset a run, lose 3 health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Greed I",
@@ -31,7 +31,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 2 Game Beaten",
     "description": "Every time you skip an upgrade/item choice in game, lose 1 health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Greed II",
@@ -39,7 +39,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
     "description": "Every time you skip an upgrade/item choice in game, lose 2 health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Greed III",
@@ -47,7 +47,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 2 Games Beaten",
     "description": "Every time you skip an upgrade/item choice in game, lose 3 health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Impulse I",
@@ -55,7 +55,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Game Beaten",
     "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the  cursor is set to, lose 1 health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Impulse II",
@@ -63,7 +63,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 1 Game Beaten",
     "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the  cursor is set to, lose 2 health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Impulse III",
@@ -71,7 +71,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 1 Game Beaten",
     "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the  cursor is set to, lose 3 health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Haste I",
@@ -79,7 +79,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Game Beaten",
     "description": "If you don't beat the next game within 4 hours, lose 2 Health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Haste II",
@@ -87,7 +87,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 1 Game Beaten",
     "description": "If you don't beat the next game within 3 hours, lose 2 Health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Haste III",
@@ -95,7 +95,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 1 Game Beaten",
     "description": "If you don't beat the next game within 2 hours, lose 2 Health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Blindness I",
@@ -103,7 +103,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Game Beaten w/ Effect",
     "description": "You must randomly choose your starting Character/Loadout",
-    "automatic": false
+    "automatic": "Restriction"
   },
   {
     "name": "Curse of Blindness II",
@@ -111,7 +111,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Games Beaten w/ Effect",
     "description": "You must randomly choose your starting Character/Loadout",
-    "automatic": false
+    "automatic": "Restriction"
   },
   {
     "name": "Curse of Blindness III",
@@ -119,7 +119,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Games Beaten w/ Effect",
     "description": "You must randomly choose your starting Character/Loadout",
-    "automatic": false
+    "automatic": "Restriction"
   },
   {
     "name": "Curse of Frugality I",
@@ -127,7 +127,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Shop Item Bought",
     "description": "Everything in Shops cost 5 more Gold",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Frugality II",
@@ -135,7 +135,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 1 Shop Item Bought",
     "description": "Everything in Shops cost 10 more Gold",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Frugality III",
@@ -143,7 +143,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 1 Shop Item Bought",
     "description": "Everything in Shops cost 15 more Gold",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Shroud I",
@@ -151,7 +151,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Space Choice Chosen",
     "description": "Space Choices contain one less option",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Shroud II",
@@ -159,7 +159,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Space Choice Chosen",
     "description": "Space Choices contain one less option",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Shroud III",
@@ -167,7 +167,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Space Choices Chosen",
     "description": "Space Choices contain one less option",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Hubris I",
@@ -175,7 +175,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Game Beaten w/ Effect",
     "description": "You must raise the difficulty once if possible ",
-    "automatic": false
+    "automatic": "Restriction"
   },
   {
     "name": "Curse of Hubris II",
@@ -183,7 +183,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 1 Game Beaten w/ Effect",
     "description": "You must raise the difficulty twice if possible ",
-    "automatic": false
+    "automatic": "Restriction"
   },
   {
     "name": "Curse of Hubris III",
@@ -191,7 +191,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 1 Game Beaten w/ Effect",
     "description": "You must raise the difficulty three times if possible ",
-    "automatic": false
+    "automatic": "Restriction"
   },
   {
     "name": "Curse of Vulnerability I",
@@ -199,7 +199,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Curse Obtained",
     "description": "If you were to get a curse, Get another of the same exact Curse",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Vulnerability II",
@@ -207,7 +207,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Curses Obtained",
     "description": "If you were to get a curse, Get another of the same exact Curse",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Vulnerability III",
@@ -215,7 +215,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Curses Obtained",
     "description": "If you were to get a curse, Get another of the same exact Curse",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Weakness I",
@@ -223,7 +223,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Combat Beaten",
     "description": "Start the next Combat with 3 Frail",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Weakness II",
@@ -231,7 +231,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Combats Beaten",
     "description": "Start the next Combat with 3 Frail",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Weakness III",
@@ -239,7 +239,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Combats Beaten",
     "description": "Start the next Combat with 3 Frail",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of the Failure I",
@@ -247,7 +247,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 is rolled",
     "description": "When you roll a 1 on a D20 (before adding to the roll), Fail the combat no matter what and take 2 damage",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of the Failure II",
@@ -255,7 +255,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 1 is rolled",
     "description": "When you roll a 1 on a D20 (before adding to the roll), Fail the combat no matter what and take 3 damage",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of the Failure III",
@@ -263,7 +263,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 1 is rolled",
     "description": "When you roll a 1 on a D20 (before adding to the roll), Fail the combat no matter what and take 4 damage",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Guilt I",
@@ -271,7 +271,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Game Beaten",
     "description": "If you killed any innocents, lose 3 health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Guilt II",
@@ -279,7 +279,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
     "description": "If you killed any innocents, lose 3 health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Guilt III",
@@ -287,7 +287,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Games Beaten",
     "description": "If you killed any innocents, lose 3 health",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of the Dazed I",
@@ -295,7 +295,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Game Beaten",
     "description": "If the next game you beat isn't instead beaten twice, take 3 Damage",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of the Dazed II",
@@ -303,7 +303,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
     "description": "If the next game you beat isn't instead beaten twice, take 3 Damage",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of the Dazed III",
@@ -311,7 +311,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Games Beaten",
     "description": "If the next game you beat isn't instead beaten twice, take 3 Damage",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Affection I",
@@ -319,7 +319,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Game Beaten",
     "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 1 health. If not, then take 2 damage",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Affection II",
@@ -327,7 +327,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
     "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 1 health. If not, then take 2 damage",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Affection III",
@@ -335,7 +335,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Games Beaten",
     "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 1 health. If not, then take 2 damage",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of the Hunter I",
@@ -343,7 +343,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Game Beaten",
     "description": "If you beat a game without getting an achievement, then take 2 damage",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of the Hunter II",
@@ -351,7 +351,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
     "description": "If you beat a game without getting an achievement, then take 2 damage",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of the Hunter III",
@@ -359,7 +359,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Games Beaten",
     "description": "If you beat a game without getting an achievement, then take 2 damage",
-    "automatic": false
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Obstruction I",
@@ -367,7 +367,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Combat Beaten",
     "description": "All enemies gain 1 Shield at the start of their turn",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Obstruction II",
@@ -375,7 +375,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Combats Beaten",
     "description": "All enemies gain 2 Shield at the start of their turn",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Obstruction III",
@@ -383,31 +383,31 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Combats Beaten",
     "description": "All enemies gain 3 Shield at the start of their turn",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of the Damp I",
     "stat": "Dexterity",
     "power": "Low",
     "duration": "Until 1 Game Beaten",
-    "description": "If the player doesn\u2019t touch water in the game, take 3 damage",
-    "automatic": false
+    "description": "If the player doesn’t touch water in the game, take 3 damage",
+    "automatic": "Manual"
   },
   {
     "name": "Curse of the Damp II",
     "stat": "Dexterity",
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
-    "description": "If the player doesn\u2019t touch water in the game, take 3 damage",
-    "automatic": false
+    "description": "If the player doesn’t touch water in the game, take 3 damage",
+    "automatic": "Manual"
   },
   {
     "name": "Curse of the Damp III",
     "stat": "Dexterity",
     "power": "High",
     "duration": "Until 3 Games Beaten",
-    "description": "If the player doesn\u2019t touch water in the game, take 3 damage",
-    "automatic": false
+    "description": "If the player doesn’t touch water in the game, take 3 damage",
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Decay I",
@@ -415,7 +415,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Passive Item Obtained",
     "description": "Whenever the player gets a passive item, downgrade it",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Decay II",
@@ -423,7 +423,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Passive Items Obtained",
     "description": "Whenever the player gets a passive item, downgrade it",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Decay II",
@@ -431,7 +431,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Passive Items Obtained",
     "description": "Whenever the player gets a passive item, downgrade it",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Misfortune I",
@@ -439,7 +439,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "1 Roll",
     "description": "Gain Disadvantage on the next D20 roll",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Misfortune II",
@@ -447,7 +447,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "2 Rolls",
     "description": "Gain Disadvantage on the next D20 roll",
-    "automatic": false
+    "automatic": "Auto"
   },
   {
     "name": "Curse of Misfortune III",
@@ -455,6 +455,6 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "3 Rolls",
     "description": "Gain Disadvantage on the next D20 roll",
-    "automatic": false
+    "automatic": "Auto"
   }
 ];
