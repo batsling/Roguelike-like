@@ -62,8 +62,8 @@ function showCurseVerificationModal(onComplete) {
   );
 
   // Check for level up opportunity (character always has a level up condition)
-  const characterKey = window.selectedCharacter || (gameState && gameState.character) || 'rodney';
-  const characterData = typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA[characterKey] : null;
+  const characterKey = window.selectedCharacter || (gameState && gameState.character) || 'Rodney';
+  const characterData = typeof PLAYER_CHARACTERS !== 'undefined' ? PLAYER_CHARACTERS[characterKey] : null;
   const canLevelUp = characterData && characterData.levelUpCondition;
 
   // If no curses to verify, no Precision Landing trait, no equipped weapon, no boons, not in Caves of Qud, no level up, and no Haste perfect items, skip verification
@@ -1348,7 +1348,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
 
     // If player leveled up, show dice level-up choices BEFORE item rewards
     if (leveledUp) {
-      const characterKey = gameState.character || 'rodney';
+      const characterKey = gameState.character || 'Rodney';
       if (typeof showDiceLevelUpChoiceModal === 'function') {
         // Small delay to let notifications appear first
         setTimeout(() => {

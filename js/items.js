@@ -62,14 +62,6 @@ function updateStat(statName, change) {
   if (typeof updateGameStats === 'function') updateGameStats();
 }
 
-// Determine encounter type based on weighted roll
-function determineEncounterType() {
-  const encounterRoll = Math.random() * 100;
-  if (encounterRoll < 75) return 'combat';
-  if (encounterRoll < 90) return 'event';
-  return 'shop';
-}
-
 // ===== SCALABLE PASSIVE ITEM SYSTEM =====
 // This system handles items that scale with player stats and need to be recalculated
 

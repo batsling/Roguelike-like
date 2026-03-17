@@ -256,7 +256,7 @@ function loadState() {
   }
 }
 
-let selectedCharacter = "rogue";
+let selectedCharacter = null;
 
 // Combat system toggle - set to true to use new dice-based combat
 let useDiceCombat = true;
@@ -3894,29 +3894,6 @@ function showCombatModal() {
     return 'images/characters/full/default.png';
   }
 
-  // Global function for using items in combat
-  window.useCombatItem = function(itemIndex) {
-    if (combat.phase !== 'player_turn') {
-      addCombatLogMessage('Cannot use items during enemy turn!', 'warning');
-      return;
-    }
-
-    const item = inventory[itemIndex];
-    if (!item || !item.usableInCombat) {
-      addCombatLogMessage('This item cannot be used in combat!', 'warning');
-      return;
-    }
-
-    // Use the item (this would call the item's effect function)
-    // For now, just show a message
-    addCombatLogMessage(`Used ${item.name}!`, 'success');
-
-    // TODO: Implement item effects in combat
-    // This would require updating the item system to work with combat state
-
-    updateCombatInventory();
-  };
-
   // Initial UI update
   updateCombatUI();
 }
@@ -3980,7 +3957,7 @@ function showDiceCombatModal() {
   const enemyData = candidates[Math.floor(Math.random() * candidates.length)];
 
   // Get character data
-  const characterKey = selectedCharacter || gameState.character || 'rodney';
+  const characterKey = selectedCharacter || gameState.character || 'Rodney';
   const characterData = PLAYER_CHARACTERS[characterKey];
 
   if (!characterData) {
@@ -4277,7 +4254,7 @@ window.toggleCombatSystem = function() {
  * Show the level-up prompt for the current character
  */
 function showLevelUpPrompt() {
-  const characterKey = selectedCharacter || gameState.character || 'rodney';
+  const characterKey = selectedCharacter || gameState.character || 'Rodney';
   const characterData = PLAYER_CHARACTERS[characterKey];
 
   if (!characterData) {
@@ -4358,7 +4335,7 @@ function showLevelUpPrompt() {
  * Confirm level up and apply bonuses
  */
 function confirmLevelUp() {
-  const characterKey = selectedCharacter || gameState.character || 'rodney';
+  const characterKey = selectedCharacter || gameState.character || 'Rodney';
   const characterData = PLAYER_CHARACTERS[characterKey];
 
   if (!characterData || !characterData.levelUpStats) {
@@ -4473,7 +4450,7 @@ function confirmLevelUp() {
 
 // Legacy function for backwards compatibility (random upgrade)
 function confirmLevelUpLegacy() {
-  const characterKey = selectedCharacter || gameState.character || 'rodney';
+  const characterKey = selectedCharacter || gameState.character || 'Rodney';
   const characterData = PLAYER_CHARACTERS[characterKey];
 
   if (!characterData || !characterData.levelUpStats) {

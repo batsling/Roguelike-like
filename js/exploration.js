@@ -492,9 +492,6 @@ function advance(game, x, y, encounterType) {
   const isAmuletGame = game === gameState.amuletGame.name;
 
   if (!isAmuletGame) {
-    // Store the encounter type for later
-    gameState.nextEncounterType = encounterType;
-
     // Regeneration trait: Every time you choose a game whose encounter isn't enemy combat, heal +1
     if (encounterType !== 'combat' && typeof hasTrait === 'function' && hasTrait('regeneration')) {
       health = Math.min(health + 1, maxHealth);

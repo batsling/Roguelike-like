@@ -498,7 +498,7 @@ function renderCombatStatsPanel(combat) {
   const bonuses = p.bonuses || { strength: 0, dexterity: 0, intelligence: 0, charisma: 0 };
 
   // Get character dice data
-  const characterKey = (typeof gameState !== 'undefined' && gameState.character) || 'rodney';
+  const characterKey = (typeof gameState !== 'undefined' && gameState.character) || 'Rodney';
   const characterData = window.CHARACTERS_DATA ? window.CHARACTERS_DATA[characterKey] : null;
   const dice = characterData ? characterData.dice : [];
 
@@ -618,7 +618,7 @@ function renderCombatStatsSidebar(combat) {
   const bonuses = p.bonuses || { strength: 0, dexterity: 0, intelligence: 0, charisma: 0 };
 
   // Get character dice data
-  const characterKey = (typeof gameState !== 'undefined' && gameState.character) || 'rodney';
+  const characterKey = (typeof gameState !== 'undefined' && gameState.character) || 'Rodney';
   const characterData = window.CHARACTERS_DATA ? window.CHARACTERS_DATA[characterKey] : null;
   const dice = characterData ? characterData.dice : [];
 
