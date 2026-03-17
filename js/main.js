@@ -1488,6 +1488,8 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
       const isCurrentGame = gameName === currentGame;
       const isAmuletGame = gameName === amuletGame;
       const isPastGame = pastGames.includes(gameName);
+      const isChoice = !isCurrentGame && !isAmuletGame && !isPastGame &&
+        (gameState.currentChoices || []).includes(gameName);
 
       let boxColor = '#4a4440';
       let borderColor = '#cc6600';
@@ -1501,6 +1503,9 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
       } else if (isPastGame) {
         boxColor = '#3a3a3a';
         borderColor = '#555';
+      } else if (isChoice) {
+        boxColor = '#3d2d00';
+        borderColor = '#ff9900';
       } else if (!isOnShortestPath) {
         // Games NOT on shortest path: dimmed/grayed out
         boxColor = '#2a2a2a';
@@ -1537,14 +1542,25 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
         }
       }
 
+      const choiceAttr = isChoice ? ' data-is-choice="true"' : '';
+      const choiceEnterHandler = isChoice
+        ? `highlightChoicePath(event, '${gameName.replace(/'/g, "\\'")}'); showMapTooltip(event, '${gameName.replace(/'/g, "\\'")}')`
+        : `showMapTooltip(event, '${gameName.replace(/'/g, "\\'")}')`;
+      const choiceLeaveHandler = isChoice
+        ? `clearChoicePath(); hideMapTooltip()`
+        : `hideMapTooltip()`;
+      const choiceShadow = isChoice
+        ? '0 0 10px rgba(255, 153, 0, 0.6), 0 3px 6px rgba(0,0,0,0.3)'
+        : '0 3px 6px rgba(0,0,0,0.3)';
+
       html += `
-        <div class="map-game-box-${gameName.replace(/\s+/g, '-')}" data-game="${gameName}"
-             onmouseenter="showMapTooltip(event, '${gameName.replace(/'/g, "\\'")}')"
+        <div class="map-game-box-${gameName.replace(/\s+/g, '-')}" data-game="${gameName}"${choiceAttr}
+             onmouseenter="${choiceEnterHandler}"
              onmousemove="moveMapTooltip(event)"
-             onmouseleave="hideMapTooltip()"
+             onmouseleave="${choiceLeaveHandler}"
              style="
           background: ${boxColor};
-          border: 2px solid ${borderColor};
+          border: ${isChoice ? '3px' : '2px'} solid ${borderColor};
           border-radius: 6px;
           padding: 6px 10px;
           width: ${boxWidth}px;
@@ -1555,14 +1571,14 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
           text-align: center;
           font-weight: bold;
           font-size: 11px;
-          color: ${isCurrentGame ? 'white' : (isPastGame || !isOnShortestPath ? '#888' : '#e6d5b8')};
-          box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+          color: ${isCurrentGame ? 'white' : (isPastGame || (!isOnShortestPath && !isChoice) ? '#888' : '#e6d5b8')};
+          box-shadow: ${choiceShadow};
           cursor: pointer;
-          opacity: ${!isOnShortestPath && !isCurrentGame && !isAmuletGame ? '0.5' : '1'};
+          opacity: ${!isOnShortestPath && !isChoice && !isCurrentGame && !isAmuletGame ? '0.5' : '1'};
           transform: translateX(${horizontalOffset}px);
           position: relative;
         ">
-          ${isCurrentGame ? '📍 ' : ''}${gameName}${isAmuletGame ? ' 🏆' : ''}${isOnShortestPath && !isCurrentGame && !isAmuletGame ? ' ⭐' : ''}
+          ${isCurrentGame ? '📍 ' : ''}${isChoice ? '◆ ' : ''}${gameName}${isAmuletGame ? ' 🏆' : ''}${isOnShortestPath && !isCurrentGame && !isAmuletGame && !isChoice ? ' ⭐' : ''}
           ${encounterIcon ? `<span style="position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; background: ${encounterColor}; color: ${encounterColor === '#ffd700' ? '#000' : '#fff'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid #000; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">${encounterIcon}</span>` : ''}
         </div>
       `;
@@ -1893,10 +1909,87 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
     line.setAttribute('stroke-width', '3');
     line.setAttribute('opacity', '0.8');
     line.setAttribute('marker-end', 'url(#map-arrowhead)');
+    line.setAttribute('data-from', arrow.fromGame);
+    line.setAttribute('data-to', arrow.toGame);
     svg.appendChild(line);
 
     arrowsDrawn++;
   });
+}
+
+// Highlight the shortest path from a choice game to the amulet game on the map.
+// Called on mouseenter of a choice node.
+function highlightChoicePath(event, choiceGame) {
+  const amuletGame = typeof gameState.amuletGame === 'string'
+    ? gameState.amuletGame
+    : gameState.amuletGame?.name;
+  if (!amuletGame) return;
+
+  // Get the path from this choice to the amulet
+  const path = bfsPath(choiceGame, amuletGame);
+  const pathSet = new Set(path || [choiceGame]);
+
+  // Collect all choice games so we can keep them at full opacity
+  const choiceSet = new Set(gameState.currentChoices || []);
+
+  // Dim all map nodes that aren't on this choice's path
+  const allNodes = document.querySelectorAll('[data-game]');
+  allNodes.forEach(node => {
+    const name = node.getAttribute('data-game');
+    const isOnPath = pathSet.has(name);
+    const isChoice = choiceSet.has(name);
+    const isHoveredChoice = name === choiceGame;
+
+    if (isHoveredChoice) {
+      node.style.borderColor = '#ffcc00';
+      node.style.boxShadow = '0 0 16px rgba(255, 204, 0, 0.9), 0 3px 6px rgba(0,0,0,0.3)';
+      node.style.opacity = '1';
+    } else if (isOnPath) {
+      node.style.borderColor = '#ff9900';
+      node.style.boxShadow = '0 0 8px rgba(255, 153, 0, 0.5)';
+      node.style.opacity = '1';
+    } else if (isChoice) {
+      // Other choices: dim slightly
+      node.style.opacity = '0.35';
+    } else {
+      node.style.opacity = '0.25';
+    }
+  });
+
+  // Highlight arrows on the path, dim others
+  const svg = document.getElementById('map-arrows');
+  if (svg) {
+    svg.querySelectorAll('line').forEach(line => {
+      const from = line.getAttribute('data-from');
+      const to = line.getAttribute('data-to');
+      if (pathSet.has(from) && pathSet.has(to)) {
+        line.setAttribute('stroke', '#ffcc00');
+        line.setAttribute('stroke-width', '4');
+        line.setAttribute('opacity', '1');
+      } else {
+        line.setAttribute('opacity', '0.1');
+      }
+    });
+  }
+}
+
+// Restore all map nodes and arrows to their default appearance.
+function clearChoicePath() {
+  const allNodes = document.querySelectorAll('[data-game]');
+  allNodes.forEach(node => {
+    node.style.opacity = '';
+    node.style.borderColor = '';
+    node.style.boxShadow = '';
+  });
+
+  const svg = document.getElementById('map-arrows');
+  if (svg) {
+    svg.querySelectorAll('line').forEach(line => {
+      line.setAttribute('stroke', '#4CAF50');
+      line.setAttribute('stroke-width', '3');
+      line.setAttribute('opacity', '0.8');
+    });
+  }
 }
 
 // Map tooltip functions

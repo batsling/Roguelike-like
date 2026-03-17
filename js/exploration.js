@@ -154,6 +154,9 @@ function spawnChoices() {
     gameState.pendingLocationStatuses = [];
   }
 
+  // Store current choices so the map can highlight them
+  gameState.currentChoices = [...opts];
+
   // Dynamic positioning based on number of choices
   // Node max width = 220px + 56px padding + 6px border = ~282px
   // Use minimum spacing of 300px to ensure no overlap even with long names
@@ -413,6 +416,9 @@ function removeDashRerollButtons() {
 function advance(game, x, y, encounterType) {
   // Remove floating Dash/Reroll buttons from choice screen
   removeDashRerollButtons();
+
+  // Clear current choices now that the player has picked one
+  gameState.currentChoices = [];
 
   // Get current player icon position before clearing choices
   const oldPlayerIcon = document.getElementById('player-icon');
