@@ -320,6 +320,9 @@ function loadSavedGame(saveName) {
   // Restore game state
   gameState = { ...save };
 
+  // Sync selectedCharacter with the saved character so combat lookups work
+  selectedCharacter = gameState.character || Object.keys(PLAYER_CHARACTERS)[0];
+
   // Backward compatibility for new combat system properties (for old saves)
   if (gameState.playerLevel === undefined) {
     gameState.playerLevel = 1;
