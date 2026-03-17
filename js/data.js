@@ -141,7 +141,7 @@ function initializeData() {
   if (typeof CHARACTERS_DATA !== 'undefined') {
     // Convert array to object keyed by name and add image paths
     PLAYER_CHARACTERS = {};
-    CHARACTERS_DATA.forEach(char => {
+    Object.values(CHARACTERS_DATA).forEach(char => {
       PLAYER_CHARACTERS[char.name] = {
         ...char,
         icon: `images/characters/Icon/${char.name}.png`,
