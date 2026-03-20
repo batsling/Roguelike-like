@@ -210,6 +210,110 @@ var CHARACTERS_DATA = {
       }
     ]
   },
+  "ironclad": {
+    "name": "Ironclad",
+    "game": "Slay the Spire",
+    "icon": "images/characters/Icon/Ironclad.png",
+    "fullImage": "images/characters/Full/Ironclad.png",
+    "energy": 3,
+    "mana": 3,
+    "levelUpCondition": "Beat a game on a higher ascension level",
+    "levelUpStats": {
+      "strength": 2,
+      "dexterity": 0,
+      "intelligence": 0,
+      "charisma": 0,
+      "reroll": 0,
+      "dash": 0,
+      "skip": 0,
+      "discovery": 0,
+      "fov": 0,
+      "luck": 0,
+      "random": 0
+    },
+    "description": "My desire to fight burns brighter than any flame.",
+    "combatStart": "Dice",
+    "dice": [
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Block",
+            "value": 2,
+            "move": "Block",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Block"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Block",
+            "value": 2,
+            "move": "Block",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Block"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Block",
+            "value": 2,
+            "move": "Block",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Block"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Dmg",
+            "value": 2,
+            "move": "Dmg",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Dmg"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Dmg",
+            "value": 2,
+            "move": "Dmg",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Dmg"
+      },
+      {
+        "isBlank": false,
+        "effects": [
+          {
+            "raw": "2 Dmg",
+            "value": 2,
+            "move": "Dmg",
+            "addons": [],
+            "target": null
+          }
+        ],
+        "raw": "2 Dmg"
+      }
+    ]
+  },
   "zoe": {
     "name": "Zoe",
     "game": "Haste",
