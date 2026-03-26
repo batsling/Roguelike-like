@@ -302,6 +302,74 @@ function parseOrderedPattern(patternStr) {
 }
 
 /**
+ * Parse an ordered-pattern description string into an effects array that
+ * executeEnemyActions can iterate over.
+ *
+ * Handles probability splits: "50% 10 Dmg Ranged / 50% 7 Dmg Melee 2 Vulnerable"
+ * Handles simple sequences:   "10 Dmg Ranged"  /  "6 Dmg Ranged 1 Burn"
+ * Handles no-ops:             "Unknown Intent (\"Charging\")"
+ */
+const PATTERN_ADDONS   = new Set(['ranged','melee','pierce','self','engage','trap','aoe','splash']);
+const PATTERN_STATUSES = new Set([
+  'burn','poison','weak','vulnerable','stun','oiled','dodge','power','frail','confused',
+  'barricade','fading','thorns','shifting','formless','ritual','ruptured','bleed','slow','silence',
+]);
+
+function parsePatternDescToEffects(desc) {
+  if (!desc || /unknown intent/i.test(desc)) return [];
+
+  // Probability split: "50% desc1 / 50% desc2"
+  if (desc.includes('%') && desc.includes('/')) {
+    const options = desc.split('/').map(s => s.trim());
+    const weighted = [];
+    for (const opt of options) {
+      const m = opt.match(/^(\d+)%\s*(.*)/);
+      if (m) weighted.push({ weight: parseInt(m[1]), text: m[2].trim() });
+    }
+    if (weighted.length > 0) {
+      const total = weighted.reduce((s, o) => s + o.weight, 0);
+      let roll = Math.random() * total;
+      for (const o of weighted) {
+        roll -= o.weight;
+        if (roll <= 0) return parseSimplePatternDesc(o.text);
+      }
+      return parseSimplePatternDesc(weighted[weighted.length - 1].text);
+    }
+  }
+
+  return parseSimplePatternDesc(desc);
+}
+
+function parseSimplePatternDesc(text) {
+  const effects = [];
+  const tokens  = text.trim().split(/\s+/);
+  let i = 0;
+  while (i < tokens.length) {
+    if (!tokens[i].match(/^\d+$/)) { i++; continue; }
+    const value   = parseInt(tokens[i++]);
+    if (i >= tokens.length) break;
+    const move    = tokens[i++];
+    const moveLow = move.toLowerCase();
+
+    if (moveLow === 'dmg') {
+      const addons = [];
+      while (i < tokens.length && PATTERN_ADDONS.has(tokens[i].toLowerCase())) {
+        addons.push(tokens[i++]);
+      }
+      effects.push({ raw: `${value} ${move}`, value, move: 'Dmg', addons, target: null });
+    } else if (moveLow === 'block') {
+      effects.push({ raw: `${value} ${move}`, value, move: 'Block', addons: [], target: null });
+    } else if (moveLow === 'heal') {
+      effects.push({ raw: `${value} ${move}`, value, move: 'Heal', addons: [], target: null });
+    } else if (PATTERN_STATUSES.has(moveLow)) {
+      effects.push({ raw: `${value} ${move}`, value, move: 'Inflict', addons: [], target: move });
+    }
+    // Unknown move type — skip silently
+  }
+  return effects;
+}
+
+/**
  * Detect if a string contains dice notation (e.g. "D6", "D8x3", "D8x2 + D6x2").
  * @param {string} str
  * @returns {boolean}
@@ -382,8 +450,10 @@ function rollEnemyIntent(enemy) {
     const idx = enemy.patternTurnIndex || 0;
     const current = turns[idx];
 
-    // Build a pseudo-face from the pattern description
-    const pseudoFace = { isBlank: false, effects: [], raw: current.description };
+    // Build a pseudo-face by parsing the description into executable effects
+    const parsedEffects = parsePatternDescToEffects(current.description);
+    const isUnknownIntent = /unknown intent/i.test(current.description);
+    const pseudoFace = { isBlank: isUnknownIntent, effects: parsedEffects, raw: current.description };
     enemy.currentIntent.push({ faceIndex: idx, face: pseudoFace, resolved: false });
 
     // Advance index; find "Next:" to determine loop point
@@ -1056,6 +1126,11 @@ function dealDamage(target, damage, addons = []) {
     dmg *= 2;
   }
 
+  // Check Vulnerable (50% more incoming damage)
+  if (target.statuses['vulnerable']) {
+    dmg = Math.ceil(dmg * 1.5);
+  }
+
   // Check Dodge
   const dodgeStacks = target.statuses['dodge'] || 0;
   if (dodgeStacks > 0 && !addons.includes('self')) {
@@ -1364,6 +1439,14 @@ function executeEnemyActions() {
   combatState.enemies.forEach(enemy => {
     if (enemy.health <= 0) return;
 
+    // Check Stun — skip turn and consume one stack
+    if (enemy.statuses['stun'] && enemy.statuses['stun'] > 0) {
+      enemy.statuses['stun']--;
+      if (enemy.statuses['stun'] <= 0) delete enemy.statuses['stun'];
+      addLog(`${enemy.name} is stunned and skips their turn!`, 'warning');
+      return;
+    }
+
     // Reset enemy block
     if (!enemy.statuses['barricade']) {
       enemy.block = 0;
@@ -1407,9 +1490,15 @@ function executeEnemyActions() {
 
           // Process effect (targeting player)
           switch (effect.move?.toLowerCase()) {
-            case 'dmg':
-              dealDamageToPlayer(value, effect.addons || [], enemy);
+            case 'dmg': {
+              let dmgVal = value;
+              // Weak on enemy reduces outgoing damage by 25%
+              if (enemy.statuses['weak']) {
+                dmgVal = Math.floor(dmgVal * 0.75);
+              }
+              dealDamageToPlayer(dmgVal, effect.addons || [], enemy);
               break;
+            }
 
             case 'block':
               addBlock(enemy, value);
@@ -1474,6 +1563,11 @@ function dealDamageToPlayer(damage, addons, enemy) {
   // Check Frail
   if (player.statuses['frail']) {
     damage *= 2;
+  }
+
+  // Check Vulnerable (50% more incoming damage)
+  if (player.statuses['vulnerable']) {
+    damage = Math.ceil(damage * 1.5);
   }
 
   // Check Dodge
@@ -1595,7 +1689,7 @@ function processStatusEffects(target, timing) {
 
   if (timing === 'end') {
     // Decay statuses
-    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade'];
+    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade', 'vulnerable', 'weak'];
     decayStatuses.forEach(status => {
       if (statuses[status]) {
         statuses[status]--;
@@ -1833,8 +1927,12 @@ function resolveCardEffect(card, target) {
     // Deal X Dmg [Y times]
     const dmgMatch = p.match(/Deal (\d+) Dmg(?:.*?(\d+) times?)?/i);
     if (dmgMatch) {
-      const dmg = parseInt(dmgMatch[1]);
+      let dmg = parseInt(dmgMatch[1]);
       const times = dmgMatch[2] ? parseInt(dmgMatch[2]) : 1;
+      // Weak on player reduces outgoing damage by 25%
+      if (combatState.player.statuses['weak']) {
+        dmg = Math.floor(dmg * 0.75);
+      }
       if (isAoECard) {
         combatState.enemies.filter(e => e.health > 0).forEach(e => {
           for (let t = 0; t < times; t++) dealDamage(e, dmg);
