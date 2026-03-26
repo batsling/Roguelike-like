@@ -9,7 +9,7 @@
  *   Bottom bar   — draw pile | energy orb | discard | exhaust (Part 2)
  */
 
-console.log('✅ COMBAT-UI.JS (STS Parts 1+2) loaded');
+console.log('✅ COMBAT-UI.JS (STS Parts 1+2+3) loaded');
 
 // ============== CONSTANTS & COLORS ==============
 
@@ -137,28 +137,45 @@ function renderTopBar(combat) {
 // ============== ENEMIES ZONE ==============
 
 function renderEnemiesZone(combat) {
+  const selectedIdx  = combat.selectedCardIndex;
+  const selectedCard = (selectedIdx !== null && selectedIdx !== undefined)
+    ? (combat.hand || [])[selectedIdx] : null;
+
+  const banner = selectedCard ? `
+    <div id="combat-targeting-hint" style="
+      position:absolute; top:8px; left:50%; transform:translateX(-50%);
+      background:rgba(180,30,30,0.88); border:2px solid #e74c3c;
+      color:white; padding:5px 18px; border-radius:20px;
+      font-size:12px; font-weight:bold; white-space:nowrap;
+      z-index:50; pointer-events:none;
+    ">⚔ Select target for "${selectedCard.name}" — Esc to cancel</div>
+  ` : '';
+
   return `
     <div id="combat-enemies-zone" style="
-      flex: 1; display: flex;
-      align-items: flex-end; justify-content: center;
-      padding: 20px 20px 10px; gap: 28px;
-      min-height: 0;
+      flex:1; display:flex; position:relative;
+      align-items:flex-end; justify-content:center;
+      padding:20px 20px 10px; gap:28px;
+      min-height:0;
     ">
+      ${banner}
       ${combat.enemies.map(e => renderEnemyCard(e, combat)).join('')}
     </div>
   `;
 }
 
 function renderEnemyCard(enemy, combat) {
-  const isDead      = enemy.health <= 0;
-  const isTargeted  = combat.targetedEnemyId === enemy.id;
-  const hpPct       = Math.max(0, (enemy.health / enemy.maxHealth) * 100);
-  const hpColor     = hpPct > 50 ? '#27ae60' : hpPct > 25 ? '#f39c12' : '#c0392b';
-  const imgSrc      = enemy.imageUrl || 'images/enemies/default.png';
+  const isDead       = enemy.health <= 0;
+  const isTargeted   = combat.targetedEnemyId === enemy.id;
+  const isTargeting  = !isDead && combat.selectedCardIndex !== null
+                       && combat.selectedCardIndex !== undefined;
+  const hpPct        = Math.max(0, (enemy.health / enemy.maxHealth) * 100);
+  const hpColor      = hpPct > 50 ? '#27ae60' : hpPct > 25 ? '#f39c12' : '#c0392b';
+  const imgSrc       = enemy.imageUrl || 'images/enemies/default.png';
 
   return `
     <div id="enemy-card-${enemy.id}"
-         class="enemy-card"
+         class="enemy-card${isTargeting ? ' enemy-targetable' : ''}"
          data-enemy-id="${enemy.id}"
          style="
       display: flex; flex-direction: column; align-items: center;
@@ -796,6 +813,10 @@ function renderStatusRow(statuses, _id) {
 // ============== EVENT LISTENERS ==============
 
 function attachCombatEventListeners(combat) {
+  // Inject CSS and ensure document-level listeners (idempotent)
+  injectCombatInteractionCSS();
+  ensureDragAndKeyListeners();
+
   // End turn button
   const endBtn = document.getElementById('combat-end-turn-btn');
   if (endBtn) {
@@ -814,10 +835,12 @@ function attachCombatEventListeners(combat) {
     el.addEventListener('click', () => handleEnemyClick(el.dataset.enemyId));
   });
 
-  // Card hand clicks
+  // Card hand: click + drag mousedown + tooltip (all per-render)
   document.querySelectorAll('.combat-hand-card').forEach(el => {
     el.addEventListener('click', () => handleCardClick(parseInt(el.dataset.handIndex)));
   });
+  attachDragMouseDown();
+  attachCardTooltip();
 }
 
 function handleEnemyClick(enemyId) {
@@ -875,6 +898,271 @@ function handleCardClick(index) {
       checkCombatEnd();
     }
   }
+}
+
+// ============== PART 3: DRAG-TO-PLAY + TARGETING + TOOLTIP ==============
+
+function injectCombatInteractionCSS() {
+  if (document.getElementById('combat-interaction-css')) return;
+  const s = document.createElement('style');
+  s.id = 'combat-interaction-css';
+  s.textContent = `
+    @keyframes targetPulse {
+      0%,100% { box-shadow: 0 0 0 2px rgba(192,57,43,0.5); }
+      50%      { box-shadow: 0 0 0 4px rgba(192,57,43,0.9), 0 0 18px rgba(231,76,60,0.6); }
+    }
+    .enemy-targetable { animation: targetPulse 1s ease-in-out infinite; cursor: crosshair !important; }
+    @keyframes combatShake {
+      0%,100% { transform: translateX(0); }
+      20%     { transform: translateX(-5px); }
+      60%     { transform: translateX(4px); }
+      80%     { transform: translateX(-3px); }
+    }
+    .card-shake { animation: combatShake 0.28s ease-in-out; }
+    #combat-drag-clone {
+      position: fixed !important;
+      pointer-events: none !important;
+      z-index: 9998 !important;
+      transform: rotate(-6deg) scale(1.1) !important;
+      opacity: 0.88 !important;
+      transition: none !important;
+      margin: 0 !important;
+    }
+    #combat-card-tooltip { pointer-events:none; transition:opacity 0.08s; }
+  `;
+  document.head.appendChild(s);
+}
+
+// Drag state — persists across re-renders
+let _dragState = null;
+let _dragListenersAttached = false;
+
+function ensureDragAndKeyListeners() {
+  if (_dragListenersAttached) return;
+  _dragListenersAttached = true;
+
+  // --- Mouse move: update clone position + highlight enemy under cursor ---
+  document.addEventListener('mousemove', e => {
+    if (!_dragState) return;
+    const dx = e.clientX - _dragState.startX;
+    const dy = e.clientY - _dragState.startY;
+
+    if (!_dragState.moved && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      _dragState.moved = true;
+      if (_dragState.cardEl) _dragState.cardEl.style.opacity = '0.3';
+
+      // Build clone from live DOM card element
+      const rect  = _dragState.cardEl.getBoundingClientRect();
+      const clone = _dragState.cardEl.cloneNode(true);
+      clone.id    = 'combat-drag-clone';
+      clone.removeAttribute('onmouseover');
+      clone.removeAttribute('onmouseout');
+      clone.style.width  = rect.width  + 'px';
+      clone.style.height = rect.height + 'px';
+      clone.style.left   = (e.clientX - _dragState.offsetX) + 'px';
+      clone.style.top    = (e.clientY - _dragState.offsetY) + 'px';
+      document.body.appendChild(clone);
+      _dragState.clone = clone;
+    }
+
+    if (_dragState.moved && _dragState.clone) {
+      _dragState.clone.style.left = (e.clientX - _dragState.offsetX) + 'px';
+      _dragState.clone.style.top  = (e.clientY - _dragState.offsetY) + 'px';
+    }
+
+    // Highlight enemy under cursor while dragging
+    if (_dragState.moved) {
+      document.querySelectorAll('.enemy-card').forEach(el => {
+        const r    = el.getBoundingClientRect();
+        const over = e.clientX >= r.left && e.clientX <= r.right
+                  && e.clientY >= r.top  && e.clientY <= r.bottom;
+        el.style.outline = over ? `3px solid ${C.goldBright}` : '';
+      });
+    }
+  });
+
+  // --- Mouse up: play card on enemy drop or cancel ---
+  document.addEventListener('mouseup', e => {
+    if (!_dragState) return;
+    const { cardIndex, clone, moved, cardEl } = _dragState;
+    _dragState = null;
+    if (clone)   clone.remove();
+    if (cardEl)  cardEl.style.opacity = '';
+    document.querySelectorAll('.enemy-card').forEach(el => el.style.outline = '');
+
+    if (!moved) return; // not a drag — click handler will fire
+
+    const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+    if (!combat || combat.phase !== 'player_action') return;
+
+    const card = (combat.hand || [])[cardIndex];
+    if (!card) return;
+
+    const canAfford  = (card.cost || 0) <= (combat.player.energy || 0);
+    if (!canAfford) return;
+
+    const needsTarget = window.CombatEngine.cardNeedsTarget
+      ? window.CombatEngine.cardNeedsTarget(card) : false;
+
+    if (needsTarget) {
+      // Must drop on an enemy
+      const enemyEl = document.elementFromPoint(e.clientX, e.clientY)
+                        ?.closest('.enemy-card');
+      if (enemyEl) {
+        combat.selectedCardIndex = cardIndex;
+        handleEnemyClick(enemyEl.dataset.enemyId);
+      }
+      // Dropped elsewhere — cancel silently
+    } else {
+      // Non-targeted: play on drop anywhere
+      const result = window.CombatEngine.playCard(cardIndex, null);
+      if (result && result.success) {
+        combat.selectedCardIndex = null;
+        updateCombatDisplay();
+        checkCombatEnd();
+      }
+    }
+  });
+
+  // --- Escape: cancel card selection ---
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+    if (combat && combat.selectedCardIndex !== null && combat.selectedCardIndex !== undefined) {
+      combat.selectedCardIndex = null;
+      updateCombatDisplay();
+    }
+    if (_dragState) {
+      if (_dragState.clone)  _dragState.clone.remove();
+      if (_dragState.cardEl) _dragState.cardEl.style.opacity = '';
+      _dragState = null;
+    }
+  });
+}
+
+// Per-render: attach mousedown to card elements for drag initiation
+function attachDragMouseDown() {
+  document.querySelectorAll('.combat-hand-card').forEach(el => {
+    el.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault(); // prevent text selection during drag
+      const rect    = el.getBoundingClientRect();
+      _dragState = {
+        cardIndex: parseInt(el.dataset.handIndex),
+        cardEl:    el,
+        clone:     null,
+        moved:     false,
+        startX:    e.clientX,
+        startY:    e.clientY,
+        offsetX:   e.clientX - rect.left,
+        offsetY:   e.clientY - rect.top,
+      };
+    });
+  });
+}
+
+// Card tooltip — persistent div, updated on hover
+let _tooltipEl   = null;
+let _tooltipTimer = null;
+
+function attachCardTooltip() {
+  function getTooltip() {
+    if (!_tooltipEl || !document.body.contains(_tooltipEl)) {
+      _tooltipEl = document.createElement('div');
+      _tooltipEl.id = 'combat-card-tooltip';
+      _tooltipEl.style.cssText = 'position:fixed;opacity:0;z-index:200;';
+      document.body.appendChild(_tooltipEl);
+    }
+    return _tooltipEl;
+  }
+
+  document.querySelectorAll('.combat-hand-card').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      clearTimeout(_tooltipTimer);
+      const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+      if (!combat) return;
+      const idx  = parseInt(el.dataset.handIndex);
+      const card = (combat.hand || [])[idx];
+      if (!card) return;
+
+      const bc        = typeColor(card.type);
+      const bg        = cardTypeBg(card.type);
+      const canAfford = (card.cost || 0) <= (combat.player.energy || 0);
+      const costColor = canAfford ? '#ffd700' : '#e74c3c';
+
+      const tt = getTooltip();
+      tt.innerHTML = `
+        <div style="
+          width:168px;
+          background:${bg};
+          border:2px solid ${bc};
+          border-radius:10px;
+          overflow:hidden;
+          box-shadow:0 10px 36px rgba(0,0,0,0.9), 0 0 18px ${bc}44;
+          font-family:'Georgia',serif;
+        ">
+          <div style="
+            display:flex; align-items:center; gap:8px;
+            padding:6px 10px;
+            background:rgba(0,0,0,0.45);
+            border-bottom:1px solid ${bc}44;
+          ">
+            <div style="
+              width:30px; height:30px; flex-shrink:0;
+              background:radial-gradient(circle at 40% 35%, #f7c03a, #b86000);
+              border:2px solid ${costColor}; border-radius:50%;
+              display:flex; align-items:center; justify-content:center;
+              font-weight:bold; font-size:15px; color:white;
+            ">${card.cost}</div>
+            <div>
+              <div style="font-size:12px; font-weight:bold; color:white; line-height:1.2;">
+                ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
+              </div>
+              <div style="font-size:10px; color:${bc}; text-transform:uppercase; letter-spacing:0.5px;">${card.type}</div>
+            </div>
+          </div>
+          <div style="height:80px; background:rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; overflow:hidden;">
+            <img src="${card.imageUrl || 'images/cards/default.png'}"
+              style="max-width:160px; max-height:78px; object-fit:contain;"
+              onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:36px>${typeEmoji(card.type)}</span>'">
+          </div>
+          <div style="padding:8px 10px; font-size:11px; color:#edd; line-height:1.55; text-align:center; min-height:36px;">
+            ${card.description}
+          </div>
+          <div style="
+            padding:4px 10px 6px;
+            display:flex; justify-content:space-between; align-items:center;
+            border-top:1px solid ${bc}33; font-size:9px;
+          ">
+            <span style="color:${rarityColor(card.rarity)};">${card.rarity || ''}</span>
+            <span style="color:${C.textDim};">
+              ${card.isStatusCard ? 'Status · Clears' : ''}
+              ${card.upgradeEffect && !card.upgraded ? 'Upgradeable' : ''}
+            </span>
+          </div>
+        </div>
+      `;
+
+      const rect      = el.getBoundingClientRect();
+      const ttW       = 168;
+      const ttH       = 260;
+      let left = rect.left + rect.width / 2 - ttW / 2;
+      let top  = rect.top - ttH - 12;
+      if (left < 6)                        left = 6;
+      if (left + ttW > window.innerWidth - 6) left = window.innerWidth - ttW - 6;
+      if (top  < 6)                        top  = rect.bottom + 8;
+
+      tt.style.left    = left + 'px';
+      tt.style.top     = top  + 'px';
+      tt.style.opacity = '1';
+    });
+
+    el.addEventListener('mouseleave', () => {
+      _tooltipTimer = setTimeout(() => {
+        if (_tooltipEl) _tooltipEl.style.opacity = '0';
+      }, 80);
+    });
+  });
 }
 
 // ============== FLOATING NUMBERS ==============
