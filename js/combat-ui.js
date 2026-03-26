@@ -9,7 +9,7 @@
  *   Bottom bar   — draw pile | energy orb | discard | exhaust (Part 2)
  */
 
-console.log('✅ COMBAT-UI.JS (STS Parts 1+2+3) loaded');
+console.log('✅ COMBAT-UI.JS (STS Parts 1+2+3+4) loaded');
 
 // ============== CONSTANTS & COLORS ==============
 
@@ -822,8 +822,11 @@ function attachCombatEventListeners(combat) {
   if (endBtn) {
     endBtn.addEventListener('click', () => {
       if (!window.CombatEngine) return;
+      const snap   = captureHPSnapshot(window.CombatEngine.getCombatState());
       const result = window.CombatEngine.endTurn();
       if (result && result.success) {
+        const combat = window.CombatEngine.getCombatState();
+        showHPDiffs(snap, combat);
         updateCombatDisplay();
         checkCombatEnd();
       }
@@ -848,11 +851,17 @@ function handleEnemyClick(enemyId) {
   if (!combat) return;
 
   if (combat.selectedCardIndex !== null && combat.selectedCardIndex !== undefined) {
-    const result = window.CombatEngine.playCard(combat.selectedCardIndex, `enemy_${enemyId}`);
+    const cardIndex = combat.selectedCardIndex;
+    const snap      = captureHPSnapshot(combat);
+    const result    = window.CombatEngine.playCard(cardIndex, `enemy_${enemyId}`);
     if (result && result.success) {
       combat.selectedCardIndex = null;
-      updateCombatDisplay();
-      checkCombatEnd();
+      animateCardPlay(cardIndex, `enemy_${enemyId}`, () => {
+        showHPDiffs(snap, combat);
+        checkAndFlashReshuffle(snap, combat);
+        updateCombatDisplay();
+        checkCombatEnd();
+      });
     }
     return;
   }
@@ -872,6 +881,12 @@ function handleCardClick(index) {
 
   const canAfford = (card.cost || 0) <= (combat.player.energy || 0);
   if (!canAfford) {
+    // Shake the card as visual feedback
+    const cardEl = document.querySelector(`.combat-hand-card[data-hand-index="${index}"]`);
+    if (cardEl) {
+      cardEl.classList.add('card-shake');
+      setTimeout(() => cardEl.classList.remove('card-shake'), 300);
+    }
     typeof createNotification === 'function' &&
       createNotification('Not enough energy!', '#e74c3c', '⚡');
     return;
@@ -882,7 +897,6 @@ function handleCardClick(index) {
     : false;
 
   if (needsTarget) {
-    // Toggle selection; if clicking same card again, deselect
     if (combat.selectedCardIndex === index) {
       combat.selectedCardIndex = null;
     } else {
@@ -890,12 +904,16 @@ function handleCardClick(index) {
     }
     updateCombatDisplay();
   } else {
-    // No target required — play immediately
+    const snap   = captureHPSnapshot(combat);
     const result = window.CombatEngine.playCard(index, null);
     if (result && result.success) {
       combat.selectedCardIndex = null;
-      updateCombatDisplay();
-      checkCombatEnd();
+      animateCardPlay(index, null, () => {
+        showHPDiffs(snap, combat);
+        checkAndFlashReshuffle(snap, combat);
+        updateCombatDisplay();
+        checkCombatEnd();
+      });
     }
   }
 }
@@ -1091,61 +1109,68 @@ function attachCardTooltip() {
       const costColor = canAfford ? '#ffd700' : '#e74c3c';
 
       const tt = getTooltip();
-      tt.innerHTML = `
-        <div style="
-          width:168px;
-          background:${bg};
-          border:2px solid ${bc};
-          border-radius:10px;
-          overflow:hidden;
-          box-shadow:0 10px 36px rgba(0,0,0,0.9), 0 0 18px ${bc}44;
-          font-family:'Georgia',serif;
-        ">
+
+      // Dice cards get a special face-grid tooltip
+      const diceResult = (card.type || '').toLowerCase() === 'dice'
+        ? renderDiceTooltipContent(card) : null;
+
+      if (diceResult) {
+        tt.innerHTML = diceResult.html;
+      } else {
+        tt.innerHTML = `
           <div style="
-            display:flex; align-items:center; gap:8px;
-            padding:6px 10px;
-            background:rgba(0,0,0,0.45);
-            border-bottom:1px solid ${bc}44;
+            width:168px;
+            background:${bg};
+            border:2px solid ${bc};
+            border-radius:10px; overflow:hidden;
+            box-shadow:0 10px 36px rgba(0,0,0,0.9), 0 0 18px ${bc}44;
+            font-family:'Georgia',serif;
           ">
             <div style="
-              width:30px; height:30px; flex-shrink:0;
-              background:radial-gradient(circle at 40% 35%, #f7c03a, #b86000);
-              border:2px solid ${costColor}; border-radius:50%;
-              display:flex; align-items:center; justify-content:center;
-              font-weight:bold; font-size:15px; color:white;
-            ">${card.cost}</div>
-            <div>
-              <div style="font-size:12px; font-weight:bold; color:white; line-height:1.2;">
-                ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
+              display:flex; align-items:center; gap:8px;
+              padding:6px 10px; background:rgba(0,0,0,0.45);
+              border-bottom:1px solid ${bc}44;
+            ">
+              <div style="
+                width:30px; height:30px; flex-shrink:0;
+                background:radial-gradient(circle at 40% 35%,#f7c03a,#b86000);
+                border:2px solid ${costColor}; border-radius:50%;
+                display:flex; align-items:center; justify-content:center;
+                font-weight:bold; font-size:15px; color:white;
+              ">${card.cost}</div>
+              <div>
+                <div style="font-size:12px; font-weight:bold; color:white; line-height:1.2;">
+                  ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
+                </div>
+                <div style="font-size:10px; color:${bc}; text-transform:uppercase; letter-spacing:0.5px;">${card.type}</div>
               </div>
-              <div style="font-size:10px; color:${bc}; text-transform:uppercase; letter-spacing:0.5px;">${card.type}</div>
+            </div>
+            <div style="height:80px; background:rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; overflow:hidden;">
+              <img src="${card.imageUrl || 'images/cards/default.png'}"
+                style="max-width:160px; max-height:78px; object-fit:contain;"
+                onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:36px>${typeEmoji(card.type)}</span>'">
+            </div>
+            <div style="padding:8px 10px; font-size:11px; color:#edd; line-height:1.55; text-align:center; min-height:36px;">
+              ${card.description}
+            </div>
+            <div style="
+              padding:4px 10px 6px;
+              display:flex; justify-content:space-between; align-items:center;
+              border-top:1px solid ${bc}33; font-size:9px;
+            ">
+              <span style="color:${rarityColor(card.rarity)};">${card.rarity || ''}</span>
+              <span style="color:${C.textDim};">
+                ${card.isStatusCard ? 'Status · Clears' : ''}
+                ${card.upgradeEffect && !card.upgraded ? 'Upgradeable' : ''}
+              </span>
             </div>
           </div>
-          <div style="height:80px; background:rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; overflow:hidden;">
-            <img src="${card.imageUrl || 'images/cards/default.png'}"
-              style="max-width:160px; max-height:78px; object-fit:contain;"
-              onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:36px>${typeEmoji(card.type)}</span>'">
-          </div>
-          <div style="padding:8px 10px; font-size:11px; color:#edd; line-height:1.55; text-align:center; min-height:36px;">
-            ${card.description}
-          </div>
-          <div style="
-            padding:4px 10px 6px;
-            display:flex; justify-content:space-between; align-items:center;
-            border-top:1px solid ${bc}33; font-size:9px;
-          ">
-            <span style="color:${rarityColor(card.rarity)};">${card.rarity || ''}</span>
-            <span style="color:${C.textDim};">
-              ${card.isStatusCard ? 'Status · Clears' : ''}
-              ${card.upgradeEffect && !card.upgraded ? 'Upgradeable' : ''}
-            </span>
-          </div>
-        </div>
-      `;
+        `;
+      }
 
       const rect      = el.getBoundingClientRect();
-      const ttW       = 168;
-      const ttH       = 260;
+      const ttW       = diceResult ? diceResult.width : 168;
+      const ttH       = diceResult ? (60 + parseDiceFaces(card.description).length * 72) : 260;
       let left = rect.left + rect.width / 2 - ttW / 2;
       let top  = rect.top - ttH - 12;
       if (left < 6)                        left = 6;
@@ -1163,6 +1188,212 @@ function attachCardTooltip() {
       }, 80);
     });
   });
+}
+
+// ============== PART 4: ANIMATIONS + 3D DICE ==============
+
+// Unicode die faces (index = face number, 1-based)
+const DICE_UNICODE = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+
+// Snapshot combat HP/block/pile state before an action
+function captureHPSnapshot(combat) {
+  return {
+    playerHP:    combat.player.health,
+    playerBlock: combat.player.block || 0,
+    drawCount:   (combat.drawPile    || []).length,
+    discardCount:(combat.discardPile || []).length,
+    enemies: Object.fromEntries(
+      (combat.enemies || []).map(e => [e.id, { hp: e.health, block: e.block || 0 }])
+    ),
+  };
+}
+
+// Show floating +/- numbers based on HP diff between snapshot and current state
+function showHPDiffs(oldSnap, combat) {
+  // Player
+  const pHP = combat.player.health - oldSnap.playerHP;
+  if (pHP < 0) showFloatingNumber('combat-player-zone', Math.abs(pHP), 'damage');
+  if (pHP > 0) showFloatingNumber('combat-player-zone', pHP, 'heal');
+  const pBlk = (combat.player.block || 0) - oldSnap.playerBlock;
+  if (pBlk > 0) showFloatingNumber('combat-player-zone', pBlk, 'block');
+
+  // Enemies
+  (combat.enemies || []).forEach(e => {
+    const prev = oldSnap.enemies[e.id];
+    if (!prev) return;
+    const hpD  = e.health - prev.hp;
+    const blkD = (e.block || 0) - prev.block;
+    if (hpD < 0)  showFloatingNumber(`enemy-card-${e.id}`, Math.abs(hpD), 'damage');
+    if (hpD > 0)  showFloatingNumber(`enemy-card-${e.id}`, hpD, 'heal');
+    if (blkD > 0) showFloatingNumber(`enemy-card-${e.id}`, blkD, 'block');
+  });
+}
+
+// Flash the draw pile icon when a reshuffle has occurred
+function checkAndFlashReshuffle(oldSnap, combat) {
+  const newDraw    = (combat.drawPile    || []).length;
+  const newDiscard = (combat.discardPile || []).length;
+  if (newDraw > oldSnap.drawCount + 2 && newDiscard < oldSnap.discardCount - 2) {
+    const btn = document.querySelector("[onclick*=\"_showCombatPile('draw')\"]");
+    if (btn) {
+      btn.style.transition = 'background 0.12s';
+      btn.style.background = 'rgba(76,175,80,0.45)';
+      setTimeout(() => { btn.style.background = 'rgba(255,255,255,0.055)'; }, 700);
+      showFloatingText('📚 Reshuffled!', '#4CAF50');
+    }
+  }
+}
+
+// Show a brief centered floating text (used for reshuffle etc.)
+function showFloatingText(text, color) {
+  if (!document.getElementById('combat-float-style')) return; // ensure base CSS exists
+  const f = document.createElement('div');
+  f.style.cssText = `
+    position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+    color:${color}; font-size:18px; font-weight:bold;
+    pointer-events:none; z-index:99999;
+    text-shadow:0 1px 6px rgba(0,0,0,0.9);
+    animation:floatUp 1.1s ease-out forwards;
+  `;
+  f.textContent = text;
+  document.body.appendChild(f);
+  setTimeout(() => f.remove(), 1150);
+}
+
+// Animate a card flying from its hand position to a target, then call callback
+function animateCardPlay(cardIndex, targetId, callback) {
+  const cardEl   = document.querySelector(`.combat-hand-card[data-hand-index="${cardIndex}"]`);
+  const rawId    = targetId ? targetId.replace('enemy_', '') : null;
+  const targetEl = rawId ? document.getElementById(`enemy-card-${rawId}`) : null;
+
+  if (!cardEl) { callback(); return; }
+
+  const cRect = cardEl.getBoundingClientRect();
+  const tRect = targetEl
+    ? targetEl.getBoundingClientRect()
+    : { left: window.innerWidth / 2, top: window.innerHeight * 0.3, width: 0, height: 0 };
+
+  const destX = tRect.left + tRect.width  / 2 - cRect.width  / 2;
+  const destY = tRect.top  + tRect.height / 2 - cRect.height / 2;
+
+  cardEl.style.opacity = '0.12';
+
+  const clone = cardEl.cloneNode(true);
+  clone.removeAttribute('onmouseover');
+  clone.removeAttribute('onmouseout');
+  clone.style.cssText = `
+    position:fixed !important; margin:0 !important;
+    pointer-events:none !important; z-index:9997 !important;
+    width:${cRect.width}px; height:${cRect.height}px;
+    left:${cRect.left}px; top:${cRect.top}px;
+    transform-origin:center center;
+    transform:rotate(0deg) scale(1); opacity:1;
+    transition: left 0.23s cubic-bezier(.4,0,.2,1),
+                top  0.23s cubic-bezier(.4,0,.2,1),
+                opacity 0.23s, transform 0.23s;
+  `;
+  document.body.appendChild(clone);
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    clone.style.left      = destX + 'px';
+    clone.style.top       = destY + 'px';
+    clone.style.opacity   = '0';
+    clone.style.transform = 'rotate(14deg) scale(0.55)';
+  }));
+
+  setTimeout(() => {
+    clone.remove();
+    callback();
+  }, 260);
+}
+
+// Parse "1: text\n2: text..." die description into face objects
+function parseDiceFaces(description) {
+  if (!description) return [];
+  return description
+    .split(/[\r\n]+/)
+    .map(line => line.match(/^(\d+):\s*(.+)$/))
+    .filter(Boolean)
+    .map(m => ({ num: parseInt(m[1]), text: m[2].trim() }));
+}
+
+// Render 3D-style dice card tooltip content
+function renderDiceTooltipContent(card) {
+  const bc   = typeColor(card.type);
+  const desc = card.upgraded && card.upgradedDescription ? card.upgradedDescription : card.description;
+  const faces = parseDiceFaces(desc);
+  if (!faces.length) return null; // fall through to standard tooltip
+
+  const cols   = faces.length <= 4 ? 2 : 3;
+  const width  = cols === 2 ? 200 : 252;
+
+  const facesHTML = faces.map(f => {
+    const pip = f.num >= 1 && f.num <= 6 ? DICE_UNICODE[f.num] : `🎲`;
+    return `
+      <div style="
+        background:rgba(255,255,255,0.07);
+        border:1px solid rgba(255,255,255,0.18);
+        border-radius:8px; padding:5px 4px;
+        display:flex; flex-direction:column; align-items:center; gap:2px;
+      ">
+        <div style="font-size:24px; line-height:1; filter:drop-shadow(0 1px 2px #0008);">
+          ${pip}${f.num > 6 ? `<span style="font-size:10px;vertical-align:super;">${f.num}</span>` : ''}
+        </div>
+        <div style="font-size:8px; color:#e0d0c0; text-align:center; line-height:1.3;">${f.text}</div>
+      </div>
+    `;
+  }).join('');
+
+  const costColor = '#ffd700';
+  return {
+    width,
+    html: `
+      <div style="
+        width:${width}px;
+        background:${cardTypeBg(card.type)};
+        border:2px solid ${bc};
+        border-radius:10px; overflow:hidden;
+        box-shadow:0 10px 36px rgba(0,0,0,0.9), 0 0 18px ${bc}44;
+        font-family:'Georgia',serif;
+      ">
+        <!-- Header -->
+        <div style="
+          display:flex; align-items:center; gap:8px;
+          padding:6px 10px; background:rgba(0,0,0,0.45);
+          border-bottom:1px solid ${bc}44;
+        ">
+          <div style="
+            width:28px; height:28px; flex-shrink:0;
+            background:radial-gradient(circle at 40% 35%,#f7c03a,#b86000);
+            border:2px solid ${costColor}; border-radius:50%;
+            display:flex; align-items:center; justify-content:center;
+            font-weight:bold; font-size:13px; color:white;
+          ">${card.cost}</div>
+          <div>
+            <div style="font-size:12px; font-weight:bold; color:white;">
+              ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
+            </div>
+            <div style="font-size:9px; color:${bc}; text-transform:uppercase; letter-spacing:0.5px;">
+              Dice · ${card.rarity || ''}${card.game ? ' · ' + card.game : ''}
+            </div>
+          </div>
+        </div>
+        <!-- Die faces grid -->
+        <div style="
+          display:grid; grid-template-columns:repeat(${cols},1fr);
+          gap:5px; padding:8px;
+        ">
+          ${facesHTML}
+        </div>
+        <!-- Footer -->
+        <div style="
+          padding:3px 10px 5px;
+          border-top:1px solid ${bc}33; font-size:9px; color:${C.textDim};
+          text-align:center;
+        ">Roll on play · ${faces.length}-sided</div>
+      </div>
+    `,
+  };
 }
 
 // ============== FLOATING NUMBERS ==============
