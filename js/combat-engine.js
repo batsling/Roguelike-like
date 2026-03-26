@@ -372,15 +372,32 @@ function parseSimplePatternDesc(text) {
   const tokens  = text.trim().split(/\s+/);
   let i = 0;
   while (i < tokens.length) {
+    // NxM notation: "5x4 Dmg Ranged" → 5 damage, 4 times
+    const nxmMatch = tokens[i].match(/^(\d+)[xX](\d+)$/);
+    if (nxmMatch) {
+      const dmgVal = parseInt(nxmMatch[1]);
+      const times  = parseInt(nxmMatch[2]);
+      i++;
+      if (i < tokens.length && tokens[i].toLowerCase() === 'dmg') {
+        i++;
+        const addons = [];
+        while (i < tokens.length && PATTERN_ADDONS.has(tokens[i].toLowerCase())) {
+          addons.push(tokens[i++]);
+        }
+        effects.push({ raw: `${dmgVal}x${times} Dmg`, value: dmgVal, move: 'Dmg', addons, times });
+      }
+      continue;
+    }
+
     if (!tokens[i].match(/^\d+$/)) { i++; continue; }
     const numIdx  = i;                  // index of the number token
     const value   = parseInt(tokens[i++]);
     if (i >= tokens.length) break;
     const move    = tokens[i++];
     const moveLow = move.toLowerCase();
-    // If the token immediately before the number was "Gain", this is a self-buff
+    // If the token immediately before the number was "Gain" or "Get", this is a self-buff
     const prevToken = numIdx > 0 ? tokens[numIdx - 1].toLowerCase() : '';
-    const isSelfBuff = prevToken === 'gain';
+    const isSelfBuff = prevToken === 'gain' || prevToken === 'get';
 
     if (moveLow === 'dmg') {
       const addons = [];
@@ -393,7 +410,7 @@ function parseSimplePatternDesc(text) {
     } else if (moveLow === 'heal') {
       effects.push({ raw: `${value} ${move}`, value, move: 'Heal', addons: [], target: null });
     } else if (PATTERN_STATUSES.has(moveLow)) {
-      // "Gain X Status" → enemy self-buff (Get); otherwise inflict on player
+      // "Gain/Get X Status" → enemy self-buff (Get); otherwise inflict on player
       const moveType = isSelfBuff ? 'Get' : 'Inflict';
       effects.push({ raw: `${value} ${move}`, value, move: moveType, addons: [], target: move });
     }
@@ -1587,7 +1604,34 @@ function executeEnemyActions() {
               if (enemy.statuses['weak']) {
                 dmgVal = Math.floor(dmgVal * 0.75);
               }
-              dealDamageToPlayer(dmgVal, effect.addons || [], enemy);
+              // NxM: hit times (e.g. 5x4 Dmg → 4 hits of 5)
+              const hitCount = effect.times || 1;
+              for (let t = 0; t < hitCount; t++) {
+                dealDamageToPlayer(dmgVal, effect.addons || [], enemy);
+              }
+              // Extract embedded status inflictions packed into Dmg addons
+              // e.g. addons ["1","Burn"] → inflict 1 Burn on player
+              {
+                const addons = effect.addons || [];
+                for (let ai = 0; ai + 1 < addons.length; ai++) {
+                  if (/^\d+$/.test(addons[ai]) && PATTERN_STATUSES.has(addons[ai + 1].toLowerCase())) {
+                    const sKey   = addons[ai + 1].toLowerCase();
+                    const sCount = parseInt(addons[ai]);
+                    combatState.player.statuses[sKey] = (combatState.player.statuses[sKey] || 0) + sCount;
+                    addLog(`${enemy.name} inflicted ${sCount} ${addons[ai + 1]}`, 'warning');
+                    ai++; // skip the status-name token
+                  }
+                }
+              }
+              break;
+            }
+
+            case 'x': {
+              // Turn-scaling damage: value × current turn number (e.g. Transient "5 x Turn number Dmg")
+              let dmgVal = value * combatState.turn;
+              if (enemy.statuses['weak']) dmgVal = Math.floor(dmgVal * 0.75);
+              dealDamageToPlayer(dmgVal, [], enemy);
+              addLog(`${enemy.name} deals ${dmgVal} (${value}×turn ${combatState.turn})`, 'info');
               break;
             }
 
@@ -1599,15 +1643,16 @@ function executeEnemyActions() {
               healTarget(enemy, value);
               break;
 
-            case 'get':
+            case 'get': {
               const statusName = effect.target?.toLowerCase();
               if (statusName) {
                 enemy.statuses[statusName] = (enemy.statuses[statusName] || 0) + value;
                 addLog(`${enemy.name} gained ${value} ${effect.target}`, 'info');
               }
               break;
+            }
 
-            case 'inflict':
+            case 'inflict': {
               const inflictStatus = effect.target?.toLowerCase();
               if (inflictStatus) {
                 combatState.player.statuses[inflictStatus] =
@@ -1615,6 +1660,7 @@ function executeEnemyActions() {
                 addLog(`${enemy.name} inflicted ${value} ${effect.target}`, 'warning');
               }
               break;
+            }
 
             case 'spawn':
               addLog(`${enemy.name} spawned ${effect.target || 'creature'}`, 'warning');
@@ -1624,9 +1670,12 @@ function executeEnemyActions() {
               addLog(`${enemy.name} altered form`, 'info');
               break;
 
-            case 'pain':
-              dealDamage(enemy, value, ['self']);
+            case 'pain': {
+              // value may be null if stored in addons[0] (data quirk: "Pain 2" → addons:["2"])
+              const painVal = value || (effect.addons && parseInt(effect.addons[0])) || 0;
+              dealDamage(enemy, painVal, ['self']);
               break;
+            }
 
             default: {
               // If the move type is a known status name, treat it as inflict-on-player
@@ -1780,8 +1829,8 @@ function processStatusEffects(target, timing) {
   const statuses = target.statuses;
 
   if (timing === 'start') {
-    // Burn deals damage at start
-    if (statuses['burn']) {
+    // Burn deals damage at start (skipped if Immune to Burn)
+    if (statuses['burn'] && !statuses['immune_burn']) {
       const burnDamage = 3 * statuses['burn'];
       // Check Oiled (double burn damage)
       const multiplier = statuses['oiled'] ? 2 : 1;
