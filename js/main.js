@@ -3998,6 +3998,89 @@ window.showCombatModal = showCombatModal;
  * New Dice-Based Combat Modal
  * Uses CombatEngine and CombatUI for the new combat system
  */
+/**
+ * Build a combat encounter using the weight system.
+ * Total weight budgets:
+ *   First combat ever: 2
+ *   Low (rest): 4
+ *   Medium (first of tier): 5  |  Medium (rest): 7
+ *   High (first of tier): 8    |  High (rest): 10
+ * Max 4 enemies per encounter.
+ * Enemy selection: pick a target weight 1..remaining equally, then pick a random
+ * enemy with that weight from the eligible pool. Repeat until budget exhausted.
+ */
+function buildWeightedEncounter() {
+  const gamesBeaten = gameState.totalGamesBeaten || 0;
+  const combatsCompleted = gameState.totalCombatsCompleted || 0;
+
+  // Determine current difficulty tier
+  let currentTier;
+  if (gamesBeaten >= 10) currentTier = 'High';
+  else if (gamesBeaten >= 5) currentTier = 'Medium';
+  else currentTier = 'Low';
+
+  // Detect first combat of a new tier
+  const isFirstCombatEver = combatsCompleted === 0;
+  const tierChanged = gameState.lastDifficultyTier !== currentTier;
+  const isFirstOfTier = isFirstCombatEver || tierChanged;
+
+  // Budget based on tier + first/rest
+  let budget;
+  if (isFirstCombatEver) {
+    budget = 2;
+  } else if (currentTier === 'Low') {
+    budget = 4;
+  } else if (currentTier === 'Medium') {
+    budget = isFirstOfTier ? 5 : 7;
+  } else { // High
+    budget = isFirstOfTier ? 8 : 10;
+  }
+
+  // Update tier tracking (will persist after combat)
+  gameState.lastDifficultyTier = currentTier;
+
+  // Build eligible pool: all enemies with a numeric weight at or below current tier
+  const tierOrder = ['Low', 'Medium', 'High'];
+  const maxTierIdx = tierOrder.indexOf(currentTier);
+  const eligiblePool = ENEMIES_DATA.filter(e =>
+    e.weight !== null && e.difficulty !== null &&
+    tierOrder.indexOf(e.difficulty) <= maxTierIdx
+  );
+
+  if (eligiblePool.length === 0) {
+    console.error('No eligible enemies found for encounter');
+    return null;
+  }
+
+  // Select enemies fairly
+  const selectedEnemies = [];
+  let remainingBudget = budget;
+  const maxEnemies = 4;
+
+  while (remainingBudget > 0 && selectedEnemies.length < maxEnemies) {
+    // Find candidates that fit within remaining budget
+    const fittingCandidates = eligiblePool.filter(e => e.weight <= remainingBudget);
+    if (fittingCandidates.length === 0) break;
+
+    // Determine available weight values (1 to max fitting weight), pick one equally
+    const maxWeight = Math.max(...fittingCandidates.map(e => e.weight));
+    const targetWeight = Math.floor(Math.random() * maxWeight) + 1;
+
+    // Find enemies with exactly that weight; if none, find closest lower weight
+    let weightCandidates = fittingCandidates.filter(e => e.weight === targetWeight);
+    if (weightCandidates.length === 0) {
+      // Pick any fitting enemy (fallback)
+      weightCandidates = fittingCandidates;
+    }
+
+    const chosen = weightCandidates[Math.floor(Math.random() * weightCandidates.length)];
+    selectedEnemies.push(chosen);
+    remainingBudget -= chosen.weight;
+  }
+
+  return selectedEnemies;
+}
+
 function showDiceCombatModal() {
   if (!ENEMIES_DATA || ENEMIES_DATA.length === 0) {
     console.error('ENEMIES_DATA not loaded');
@@ -4008,46 +4091,15 @@ function showDiceCombatModal() {
   gameState.phase = 'combat';
   updateInventory();
 
-  // Get difficulty based on games beaten
-  const gamesBeaten = gameState.totalGamesBeaten || 0;
-  let difficulty = 'Low';
-  if (gamesBeaten >= 10) {
-    difficulty = 'High';
-  } else if (gamesBeaten >= 5) {
-    difficulty = 'Medium';
-  }
-
-  // Determine type based on current game
-  const currentGameObj = games.find(g => g.name === gameState.currentGame);
-  let enemyType = 'Strength';
-  if (currentGameObj && currentGameObj.type) {
-    const gameType = currentGameObj.type.toLowerCase();
-    switch(gameType) {
-      case 'action': enemyType = 'Strength'; break;
-      case 'deckbuilding': enemyType = 'Charisma'; break;
-      case 'strategy': enemyType = 'Intelligence'; break;
-      case 'traditional': enemyType = 'Dexterity'; break;
-      default: enemyType = 'Strength';
-    }
-  }
-
-  // Filter enemies by difficulty and type
-  const matchingEnemies = ENEMIES_DATA.filter(enemy =>
-    enemy.difficulty === difficulty && enemy.type === enemyType
-  );
-
-  // Fallback to any enemy of the right difficulty if no type match
-  const candidates = matchingEnemies.length > 0
-    ? matchingEnemies
-    : ENEMIES_DATA.filter(e => e.difficulty === difficulty);
-
-  if (candidates.length === 0) {
+  // Build encounter using weight system
+  const encounterEnemies = buildWeightedEncounter();
+  if (!encounterEnemies || encounterEnemies.length === 0) {
     console.error('No matching enemies found');
     return;
   }
 
-  // Select random enemy
-  const enemyData = candidates[Math.floor(Math.random() * candidates.length)];
+  // Use the first enemy as the primary (multi-enemy support via array passed to initCombat)
+  const enemyData = encounterEnemies[0];
 
   // Get character data
   const characterKey = selectedCharacter || gameState.character || 'Rodney';
@@ -4089,8 +4141,8 @@ function showDiceCombatModal() {
     };
   }).filter(Boolean);
 
-  // Initialize combat
-  const combatState = window.CombatEngine.initCombat([enemyData], characterData, weaponData, allies);
+  // Initialize combat with all encounter enemies
+  const combatState = window.CombatEngine.initCombat(encounterEnemies, characterData, weaponData, allies);
 
   if (!combatState) {
     console.error('Failed to initialize combat');
@@ -4187,7 +4239,10 @@ function handleDiceCombatVictory(enemy) {
 
   window.CombatEngine.endCombat(true);
 
-  // Award gold based on difficulty
+  // Increment combat counter for weight system
+  gameState.totalCombatsCompleted = (gameState.totalCombatsCompleted || 0) + 1;
+
+  // Award gold based on difficulty tier
   const goldAmounts = { 'Low': 10, 'Medium': 20, 'High': 30 };
   const goldReward = goldAmounts[enemy.difficulty] || 10;
   gold += goldReward;
@@ -4214,22 +4269,34 @@ function handleDiceCombatVictory(enemy) {
   updateEncounterHistory();
   saveCurrentGame();
 
-  // Show victory screen
+  // Show victory screen with card reward option
   createGameModal(`
     <div style="text-align: center; padding: 30px;">
       <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">Victory!</h2>
       <h3 style="color: #fff; margin: 15px 0;">${enemy.name} defeated!</h3>
       <p style="color: #FFD700; font-size: 18px; margin: 20px 0;">+${goldReward} Gold</p>
-      <button onclick="closeGameModal()" style="
-        padding: 15px 30px;
-        background: linear-gradient(145deg, #4CAF50, #2E7D32);
-        border: none;
-        border-radius: 8px;
-        color: white;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 16px;
-      ">Continue</button>
+      <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+        <button onclick="closeGameModal()" style="
+          padding: 15px 30px;
+          background: linear-gradient(145deg, #4CAF50, #2E7D32);
+          border: none;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+        ">Continue</button>
+        <button onclick="closeGameModal(); if(typeof showCardRewardModal==='function') showCardRewardModal();" style="
+          padding: 15px 30px;
+          background: linear-gradient(145deg, #9b59b6, #6c3483);
+          border: none;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+        ">+ Add Card to Deck</button>
+      </div>
     </div>
   `);
 }

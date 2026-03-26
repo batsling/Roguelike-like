@@ -152,5 +152,9 @@ var BINGO_GOALS_DATA = [
   {
     "goal": "Beat a game you have gotten 100% achievements on",
     "difficulty": "hard"
+  },
+  {
+    "goal": "Use elements to your advantage",
+    "difficulty": "normal"
   }
 ];

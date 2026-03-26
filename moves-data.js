@@ -31,7 +31,7 @@ var MOVES_DATA = {
   },
   "spawn": {
     "name": "Spawn",
-    "description": "Spawn X Creature where X is the name of a creature",
+    "description": "Spawn X Creature where X is the name of a creature. If used by enemies, the new enemy will have the Unknown intent showing \"Doing nothing\"",
     "preferredTarget": "Self",
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
@@ -73,7 +73,7 @@ var MOVES_DATA = {
   },
   "pain": {
     "name": "Pain",
-    "description": "Whenever this side is rolled, target Deals X damage to self ",
+    "description": "Whenever this side is rolled, target Deals X damage to self (not Melee or Ranged)",
     "preferredTarget": "Self",
     "bonusStat": "Strength",
     "imageUrl": "images/moves/Status.png"
@@ -91,5 +91,33 @@ var MOVES_DATA = {
     "preferredTarget": "Ally/Self",
     "bonusStat": "Intelligence",
     "imageUrl": "images/moves/Vitality.png"
+  },
+  "add x to (deck, hand, discard)": {
+    "name": "Add X to (Deck, Hand, Discard)",
+    "description": "Enemy gives X card to your Deck, Hand, or Discard",
+    "preferredTarget": "Player",
+    "bonusStat": "No",
+    "imageUrl": "images/moves/Status.png"
+  },
+  "steal x in y": {
+    "name": "Steal X in Y",
+    "description": "Enemy Steals X Card from the player's Y(Deck, Hand, Discard, Any) for the duration of the battle",
+    "preferredTarget": "Player",
+    "bonusStat": "No",
+    "imageUrl": "images/moves/Status.png"
+  },
+  "consume x in y for z": {
+    "name": "Consume X in Y for Z",
+    "description": "Steal X from the player's Y(Deck, Hand, Discard, Any) and then destroy it permanently and then Get z status if succesfully stolen and destroyed",
+    "preferredTarget": "Player",
+    "bonusStat": "No",
+    "imageUrl": "images/moves/Status.png"
+  },
+  "lose ": {
+    "name": "Lose ",
+    "description": "Lose X status Y times (# or All)",
+    "preferredTarget": "Self",
+    "bonusStat": "No",
+    "imageUrl": "images/moves/Status.png"
   }
 };

@@ -48,12 +48,22 @@ var ADDONS_DATA = {
   },
   "fishingweight": {
     "name": "Fishing Weight",
-    "description": "Gain +1 Dmg to each side for every 3 Common, 2 Uncommon, or 1 Rare fish in your loot inventory",
+    "description": "Gain +1 Dmg for every 3 Common, 2 Uncommon, or 1 Rare fish in your loot inventory",
     "canBeAttachedTo": "Weapon"
   },
   "wealth": {
     "name": "Wealth",
     "description": "Add +1 for every 10 Gold the player has",
+    "canBeAttachedTo": "All"
+  },
+  "indiscriminate": {
+    "name": "Indiscriminate",
+    "description": "Will use random applicable targets",
+    "canBeAttachedTo": "All"
+  },
+  "infusex": {
+    "name": "Infuse (X)",
+    "description": "If this kills an enemy, gain X Max Health",
     "canBeAttachedTo": "All"
   }
 };

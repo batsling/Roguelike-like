@@ -64,6 +64,9 @@ var amuletImageUrl = 'https://i.imgur.com/kXiZwZX.png';
 var currentEnemy = null;
 var currentRoll = null;
 
+// Card system state
+var cards = []; // All available cards data (CARDS_DATA)
+
 // ===== ENEMY IMAGE HELPER =====
 /**
  * Get the local image path for an enemy
@@ -118,10 +121,17 @@ var gameState = {
   escapePhase: false,
   escapeGames: [],
   escapeProgress: 0,
-  // Weapon system
-  equippedWeapon: null, // Currently equipped weapon object
-  weaponLevel: 1, // Working copy of equipped weapon's level (synced with weapon.level)
-  shopUpgradesUsed: 0 // Track weapon upgrades used in current shop visit
+  // Card/Deck system
+  deck: [],        // All cards the player owns (persistent)
+  hand: [],        // Cards currently in hand during combat
+  drawPile: [],    // Cards left to draw from this combat
+  discardPile: [], // Cards played this combat
+  // Combat encounter tracking (for weight-based system)
+  totalCombatsCompleted: 0,   // How many combats have been completed this run
+  lastDifficultyTier: null,   // 'Low', 'Medium', 'High' - tracks transitions
+  // Shop per-visit services
+  shopUpgradesUsed: 0,        // Card upgrade used this shop visit (max 1)
+  shopRemovesUsed: 0          // Card remove used this shop visit (max 1)
 };
 
 var gameSaves = GameStorage.load(STORAGE_KEYS.SAVED_GAMES, {});
@@ -204,6 +214,13 @@ function initializeData() {
     console.warn('✗ WEAPONS_DATA not found (optional for dice combat)');
   }
 
+  if (typeof CARDS_DATA !== 'undefined') {
+    cards = CARDS_DATA;
+    console.log('✓ Cards loaded:', cards.length);
+  } else {
+    console.warn('✗ CARDS_DATA not found');
+  }
+
   if (typeof STATUSES_DATA !== 'undefined') {
     console.log('✓ Combat Statuses loaded:', Object.keys(STATUSES_DATA).length);
   }
@@ -225,6 +242,7 @@ function initializeData() {
   console.log('Characters:', Object.keys(PLAYER_CHARACTERS).length);
   console.log('Allies:', typeof ALLIES_DATA !== 'undefined' ? ALLIES_DATA.length : 0);
   console.log('Weapons:', typeof WEAPONS_DATA !== 'undefined' ? WEAPONS_DATA.length : 0);
+  console.log('Cards:', cards.length);
   console.log('Spells:', typeof SPELLS_DATA !== 'undefined' ? SPELLS_DATA.length : 0);
 
   // Populate UI dropdowns if function is available

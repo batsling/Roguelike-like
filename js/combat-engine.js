@@ -114,16 +114,36 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     // Parse starting abilities from enemy.ability
     const startingStatuses = parseStartingAbilities(enemy.ability);
 
+    // Randomize HP from min-max range
+    let hp;
+    if (enemy.hpMin !== undefined && enemy.hpMax !== undefined) {
+      hp = Math.floor(Math.random() * (enemy.hpMax - enemy.hpMin + 1)) + enemy.hpMin;
+    } else {
+      hp = enemy.hp || 10;
+    }
+
+    // Determine intent pattern type from pattern string
+    // "Always: ..." → random each turn
+    // "Turn 1: ... | Turn 2: ... | Next: ..." → ordered turns
+    const patternStr = enemy.pattern || '';
+    const isOrderedPattern = /Turn \d+:/i.test(patternStr);
+    const parsedPattern = isOrderedPattern ? parseOrderedPattern(patternStr) : null;
+
     return {
       id: `enemy_${index}`,
       name: enemy.name,
       type: enemy.type,
       difficulty: enemy.difficulty,
-      health: enemy.hp,
-      maxHealth: enemy.hp,
+      weight: enemy.weight,
+      health: hp,
+      maxHealth: hp,
       block: 0,
       statuses: startingStatuses,
       ability: enemy.ability,
+      pattern: patternStr,
+      patternType: isOrderedPattern ? 'ordered' : 'random',
+      patternTurns: parsedPattern,  // Array of turn entries for ordered patterns
+      patternTurnIndex: 0,          // Current position in ordered pattern
       game: enemy.game,
       location: enemy.location,
       dice: enemy.dice,
@@ -251,6 +271,79 @@ function parseStartingAbilities(abilityStr) {
 }
 
 /**
+ * Parse an ordered pattern string into an array of turn entries.
+ * Pattern format: "Turn 1: <desc> | Turn 2: <desc> | Next: Repeat"
+ * or              "Turn 1: <desc> | Next: <desc>"
+ * Returns an array of { label, description } objects.
+ * The last entry with label "Next" defines what to loop from.
+ */
+function parseOrderedPattern(patternStr) {
+  const turns = [];
+  const parts = patternStr.split('|').map(p => p.trim());
+  for (const part of parts) {
+    const colonIdx = part.indexOf(':');
+    if (colonIdx === -1) continue;
+    const label = part.slice(0, colonIdx).trim();
+    const description = part.slice(colonIdx + 1).trim();
+    turns.push({ label, description });
+  }
+  return turns;
+}
+
+/**
+ * Detect if a string contains dice notation (e.g. "D6", "D8x3", "D8x2 + D6x2").
+ * @param {string} str
+ * @returns {boolean}
+ */
+function hasDiceNotation(str) {
+  return /D\d+/i.test(str);
+}
+
+/**
+ * Roll dice from notation like "D6", "D8x3", "D8x2 + D6x2".
+ * Each die is rolled individually (not summed before rolling).
+ * @param {string} notation - Raw string containing dice notation
+ * @returns {{ total: number, rolls: Array<{die:number, result:number}> }}
+ */
+function rollDiceNotation(notation) {
+  const rolls = [];
+  // Match all dice groups like "D8x2" or "D6" or "D10x3"
+  const diceRegex = /(\d*)[xX]?D(\d+)(?:[xX](\d+))?/gi;
+  let match;
+  let str = notation.replace(/\+/g, ' ');
+  while ((match = diceRegex.exec(str)) !== null) {
+    // Handle both "D8x2" (dieSize=8, count=2) and "D8x2" written as "2xD8"
+    let count = 1;
+    let sides = parseInt(match[2]);
+    if (match[1] && match[1] !== '') count = parseInt(match[1]);
+    if (match[3] && match[3] !== '') count = parseInt(match[3]);
+    for (let i = 0; i < count; i++) {
+      const result = Math.floor(Math.random() * sides) + 1;
+      rolls.push({ die: sides, result });
+    }
+  }
+  const total = rolls.reduce((sum, r) => sum + r.result, 0);
+  return { total, rolls };
+}
+
+/**
+ * Parse a damage value from an effect, resolving dice notation if present.
+ * For dice attacks (D6/D8/etc.), rolls each die individually.
+ * @param {Object} effect - Effect object
+ * @param {Object} [options] - Options: { canReroll, rerollsAvailable }
+ * @returns {{ value: number, isDiceAttack: boolean, rollDetails: string }}
+ */
+function resolveEffectValue(effect) {
+  const raw = effect.raw || '';
+  if (hasDiceNotation(raw)) {
+    const { total, rolls } = rollDiceNotation(raw);
+    const rollStr = rolls.map(r => `d${r.die}:${r.result}`).join(', ');
+    return { value: total, isDiceAttack: true, rollDetails: rollStr };
+  }
+  return { value: effect.value || 0, isDiceAttack: false, rollDetails: null };
+}
+
+/**
  * Roll intent for all enemies
  */
 function rollAllEnemyIntents() {
@@ -262,27 +355,54 @@ function rollAllEnemyIntents() {
 }
 
 /**
- * Roll intent for a single enemy
+ * Roll intent for a single enemy.
+ * - Ordered pattern enemies advance through their turn list each turn.
+ * - Random pattern enemies roll a die face (existing behaviour).
  * @param {Object} enemy - Enemy state object
  */
 function rollEnemyIntent(enemy) {
   if (!enemy.dice || enemy.dice.length === 0) return;
 
-  // Check for Multi Attack
-  const multiAttack = enemy.statuses['multi_attack'] || 1;
-
   enemy.currentIntent = [];
 
-  for (let i = 0; i < multiAttack; i++) {
-    // Roll random face
-    const faceIndex = Math.floor(Math.random() * enemy.dice.length);
-    const face = enemy.dice[faceIndex];
+  if (enemy.patternType === 'ordered' && enemy.patternTurns && enemy.patternTurns.length > 0) {
+    // Advance through the ordered pattern
+    const turns = enemy.patternTurns;
+    const idx = enemy.patternTurnIndex || 0;
+    const current = turns[idx];
 
-    enemy.currentIntent.push({
-      faceIndex: faceIndex,
-      face: face,
-      resolved: false
-    });
+    // Build a pseudo-face from the pattern description
+    const pseudoFace = { isBlank: false, effects: [], raw: current.description };
+    enemy.currentIntent.push({ faceIndex: idx, face: pseudoFace, resolved: false });
+
+    // Advance index; find "Next:" to determine loop point
+    let nextIdx = idx + 1;
+    if (nextIdx >= turns.length) {
+      // Find the "Next" entry for looping
+      const nextEntry = turns.findIndex(t => t.label.toLowerCase() === 'next');
+      if (nextEntry !== -1) {
+        // "Next: Repeat" means loop back to turn 1 (index 0)
+        const nextDesc = turns[nextEntry].description.toLowerCase();
+        nextIdx = nextDesc.includes('repeat') ? 0 : nextEntry;
+      } else {
+        nextIdx = 0;
+      }
+    }
+    // Skip any "Next:" labels when looping
+    while (nextIdx < turns.length && turns[nextIdx].label.toLowerCase() === 'next') {
+      nextIdx++;
+    }
+    if (nextIdx >= turns.length) nextIdx = 0;
+    enemy.patternTurnIndex = nextIdx;
+
+  } else {
+    // Random: roll dice face(s)
+    const multiAttack = enemy.statuses['multi_attack'] || 1;
+    for (let i = 0; i < multiAttack; i++) {
+      const faceIndex = Math.floor(Math.random() * enemy.dice.length);
+      const face = enemy.dice[faceIndex];
+      enemy.currentIntent.push({ faceIndex, face, resolved: false });
+    }
   }
 
   // Log intent
@@ -1243,7 +1363,19 @@ function executeEnemyActions() {
         const powerBonus = enemy.statuses['power'] || 0;
 
         face.effects.forEach(effect => {
-          let value = effect.value || 0;
+          // Resolve value - rolls dice if D6/D8/etc. notation present
+          const resolved = resolveEffectValue(effect);
+          let value = resolved.value;
+          if (resolved.isDiceAttack) {
+            addLog(`${enemy.name} rolls dice: ${resolved.rollDetails} = ${value}`, 'info');
+            // Allow player to spend a reroll to reroll this dice attack
+            if (combatState.player.rerolls > 0) {
+              combatState.player.rerolls--;
+              const rerolled = rollDiceNotation(effect.raw || '');
+              addLog(`Reroll used! New roll: ${rerolled.rolls.map(r=>`d${r.die}:${r.result}`).join(', ')} = ${rerolled.total}`, 'success');
+              value = rerolled.total;
+            }
+          }
 
           // Add power bonus to damage
           if (effect.move?.toLowerCase() === 'dmg') {

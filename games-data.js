@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 598 games, 758 connections
-// 523 connected, 162 influencers
+// 600 games, 761 connections
+// 524 connected, 162 influencers
 
 var GAMES_DATA = [
   {
@@ -840,6 +840,16 @@ var GAMES_DATA = [
       "Cross Blitz"
     ],
     "coverImage": "images/covers/candies-n-curses.jpg"
+  },
+  {
+    "name": "Captain Forever Remix",
+    "year": 2016,
+    "type": "Action",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/captain-forever-remix.jpg"
   },
   {
     "name": "Castle of the Winds",
@@ -2471,7 +2481,8 @@ var GAMES_DATA = [
       "Void Bastards",
       "Has-Been Heroes",
       "Crying Suns",
-      "BroomSweeper"
+      "BroomSweeper",
+      "Switchcars"
     ],
     "coverImage": "images/covers/ftl.jpg"
   },
@@ -5541,7 +5552,8 @@ var GAMES_DATA = [
       "Wildfrost",
       "GoNNER",
       "Dunjungle",
-      "Mana Spark"
+      "Mana Spark",
+      "Switchcars"
     ],
     "coverImage": "images/covers/spelunky-classic.jpg"
   },
@@ -5759,6 +5771,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/swarm-grinder.jpg"
   },
   {
+    "name": "Switchcars",
+    "year": 2016,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/switchcars.jpg"
+  },
+  {
     "name": "Sworn",
     "year": 2025,
     "type": "Action",
@@ -5945,7 +5967,8 @@ var GAMES_DATA = [
       "20XX",
       "Mana Spark",
       "Mewgenics",
-      "Dice A Million"
+      "Dice A Million",
+      "Switchcars"
     ],
     "coverImage": "images/covers/the-binding-of-isaac.jpg"
   },

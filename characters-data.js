@@ -8,7 +8,7 @@ var CHARACTERS_DATA = {
     "icon": "images/characters/Icon/Rodney.png",
     "fullImage": "images/characters/Full/Rodney.png",
     "energy": 3,
-    "mana": 3,
+    "mana": 0,
     "levelUpCondition": "Beat a game without meta progression",
     "levelUpStats": {
       "strength": 0,
@@ -24,85 +24,31 @@ var CHARACTERS_DATA = {
       "random": 2
     },
     "description": "Now I abide here, searching endlessly for the precious Amulet... and finding a thousand horrors.",
-    "combatStart": "Dice",
+    "combatStart": "Identify",
     "dice": [
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "1 Mana",
-            "value": 1,
-            "move": "Mana",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "1 Mana"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "1 Heal",
-            "value": 1,
-            "move": "Heal",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "1 Heal"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Block",
-            "value": 2,
-            "move": "Block",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Block"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Block",
-            "value": 2,
-            "move": "Block",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Block"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
+        "isBlank": true,
+        "effects": []
       }
     ]
   },
@@ -112,7 +58,7 @@ var CHARACTERS_DATA = {
     "icon": "images/characters/Icon/Isaac.png",
     "fullImage": "images/characters/Full/Isaac.png",
     "energy": 3,
-    "mana": 3,
+    "mana": 0,
     "levelUpCondition": "Unlock a new gameplay element",
     "levelUpStats": {
       "strength": 1,
@@ -131,186 +77,28 @@ var CHARACTERS_DATA = {
     "combatStart": "Dice",
     "dice": [
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "1 Reroll",
-            "value": 1,
-            "move": "Reroll",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "1 Reroll"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "1 Reroll",
-            "value": 1,
-            "move": "Reroll",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "1 Reroll"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Block",
-            "value": 2,
-            "move": "Block",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Block"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Block",
-            "value": 2,
-            "move": "Block",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Block"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
-      }
-    ]
-  },
-  "ironclad": {
-    "name": "Ironclad",
-    "game": "Slay the Spire",
-    "icon": "images/characters/Icon/Ironclad.png",
-    "fullImage": "images/characters/Full/Ironclad.png",
-    "energy": 3,
-    "mana": 3,
-    "levelUpCondition": "Beat a game on a higher ascension level",
-    "levelUpStats": {
-      "strength": 2,
-      "dexterity": 0,
-      "intelligence": 0,
-      "charisma": 0,
-      "reroll": 0,
-      "dash": 0,
-      "skip": 0,
-      "discovery": 0,
-      "fov": 0,
-      "luck": 0,
-      "random": 0
-    },
-    "description": "My desire to fight burns brighter than any flame.",
-    "combatStart": "Dice",
-    "dice": [
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Block",
-            "value": 2,
-            "move": "Block",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Block"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Block",
-            "value": 2,
-            "move": "Block",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Block"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Block",
-            "value": 2,
-            "move": "Block",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Block"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
+        "isBlank": true,
+        "effects": []
       }
     ]
   },
@@ -320,7 +108,7 @@ var CHARACTERS_DATA = {
     "icon": "images/characters/Icon/Zoe.png",
     "fullImage": "images/characters/Full/Zoe.png",
     "energy": 3,
-    "mana": 3,
+    "mana": 0,
     "levelUpCondition": "Perfect a Game",
     "levelUpStats": {
       "strength": 1,
@@ -336,85 +124,131 @@ var CHARACTERS_DATA = {
       "random": 0
     },
     "description": "Express Delivery: Arrives with haste, before the world ends.",
-    "combatStart": "Dice",
+    "combatStart": "Perfect",
     "dice": [
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "Get 1 Dodge",
-            "value": 1,
-            "move": "Get",
-            "addons": [],
-            "target": "Dodge"
-          }
-        ],
-        "raw": "Get 1 Dodge"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "Get 1 Dodge",
-            "value": 1,
-            "move": "Get",
-            "addons": [],
-            "target": "Dodge"
-          }
-        ],
-        "raw": "Get 1 Dodge"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
+        "isBlank": true,
+        "effects": []
+      }
+    ]
+  },
+  "minä": {
+    "name": "Minä",
+    "game": "Noita",
+    "icon": "images/characters/Icon/Minä.png",
+    "fullImage": "images/characters/Full/Minä.png",
+    "energy": 3,
+    "mana": 0,
+    "levelUpCondition": "Craft or combine a spell or weapon",
+    "levelUpStats": {
+      "strength": 0,
+      "dexterity": 0,
+      "intelligence": 1,
+      "charisma": 1,
+      "reroll": 0,
+      "dash": 0,
+      "skip": 0,
+      "discovery": 0,
+      "fov": 0,
+      "luck": 0,
+      "random": 0
+    },
+    "description": "Why must you go destroying everything? Why? For glory? For your precious god of gods. Is it really worth all this? Is it? Is it really?",
+    "combatStart": "Spells",
+    "dice": [
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
+    ]
+  },
+  "ironclad": {
+    "name": "Ironclad",
+    "game": "Slay the Spire",
+    "icon": "images/characters/Icon/Ironclad.png",
+    "fullImage": "images/characters/Full/Ironclad.png",
+    "energy": 3,
+    "mana": 0,
+    "levelUpCondition": "Beat a game on a hard difficulty",
+    "levelUpStats": {
+      "strength": 1,
+      "dexterity": 1,
+      "intelligence": 0,
+      "charisma": 0,
+      "reroll": 0,
+      "dash": 0,
+      "skip": 0,
+      "discovery": 0,
+      "fov": 0,
+      "luck": 0,
+      "random": 0
+    },
+    "description": "The remaining soldier of the Ironclads. Sold his soul to harness demonic energies.",
+    "combatStart": "Cards",
+    "dice": [
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
       }
     ]
   }
