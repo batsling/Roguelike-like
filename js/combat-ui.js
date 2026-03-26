@@ -67,6 +67,11 @@ const STATUS_META = {
   weak:           { img: 'Weak',        emoji: '🔻', label: 'Weak'         },
   rerollable:     { img: 'Rerollable',  emoji: '🎲', label: 'Rerollable'   },
   power_per_turn: { img: null,          emoji: '⬆', label: 'Power/Turn'   },
+  // Temporary stat boosts (e.g. from pigment cards, "Gain +X Stat until end of combat")
+  strength:       { img: null,          emoji: '💪', label: 'Strength'     },
+  intelligence:   { img: null,          emoji: '🧠', label: 'Intelligence' },
+  dexterity:      { img: null,          emoji: '🏃', label: 'Dexterity'    },
+  charisma:       { img: null,          emoji: '✨', label: 'Charisma'     },
 };
 
 // ============== MAIN RENDER ENTRY POINT ==============

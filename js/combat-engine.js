@@ -501,6 +501,11 @@ function rollEnemyIntent(enemy) {
         // Forgetful: exclude already-rolled faces until all have been seen, then reset
         if (enemy.rolledFaces.size >= enemy.dice.length) {
           enemy.rolledFaces.clear();
+          // One full cycle complete — consume one Forgetful stack
+          enemy.statuses['forgetful']--;
+          if (enemy.statuses['forgetful'] <= 0) {
+            delete enemy.statuses['forgetful'];
+          }
         }
         const availableIndices = enemy.dice
           .map((_, idx) => idx)
@@ -1205,11 +1210,17 @@ function dealDamage(target, damage, addons = []) {
       }
     }
 
-    // Check Thorns
+    // Check Thorns — melee attacker takes X damage back from the target
     if (target.statuses['thorns'] && !addons.includes('self') && !addons.includes('Ranged')) {
       const thornsDamage = target.statuses['thorns'];
-      combatState.player.health -= thornsDamage;
-      addLog(`Thorns dealt ${thornsDamage} damage back!`, 'warning');
+      if (target === combatState.player) {
+        // Player has thorns — not applicable here (attacker is dealt with in dealDamageToPlayer)
+      } else {
+        // Enemy has thorns — player (the attacker) takes thorns damage
+        combatState.player.health -= thornsDamage;
+        window.health = combatState.player.health;
+        addLog(`Thorns dealt ${thornsDamage} damage to player!`, 'warning');
+      }
     }
 
     // Check Shifting
@@ -1656,6 +1667,13 @@ function dealDamageToPlayer(damage, addons, enemy) {
     window.health = player.health;
     addLog(`${enemy.name} dealt ${remaining} damage!`, 'danger');
 
+    // Player Thorns — melee attacker takes X damage back
+    if (player.statuses['thorns'] && enemy && !addons.includes('Ranged')) {
+      const thornsDamage = player.statuses['thorns'];
+      enemy.health -= thornsDamage;
+      addLog(`Thorns dealt ${thornsDamage} damage to ${enemy.name}!`, 'info');
+    }
+
     // Rust — downgrade a random passive item when this enemy deals HP damage
     if (enemy && enemy.statuses['rust']) {
       if (typeof window.downgradeRandomPassiveItem === 'function') {
@@ -2003,10 +2021,16 @@ function resolveCardEffect(card, target) {
       let dmg = parseInt(dmgMatch[1]);
       const times = dmgMatch[2] ? parseInt(dmgMatch[2]) : 1;
       // Player Power bonus adds to outgoing damage
-      const playerPower = combatState.player.statuses['power'] || 0;
+      const playerPower = player.statuses['power'] || 0;
       if (playerPower !== 0) dmg += playerPower;
+      // Temporary combat stat boosts (from pigment cards: +Strength/Intelligence/Dexterity/Charisma)
+      const statBonus = (player.statuses['strength']     || 0)
+                      + (player.statuses['intelligence']  || 0)
+                      + (player.statuses['dexterity']     || 0)
+                      + (player.statuses['charisma']      || 0);
+      if (statBonus !== 0) dmg += statBonus;
       // Weak on player reduces outgoing damage by 25%
-      if (combatState.player.statuses['weak']) {
+      if (player.statuses['weak']) {
         dmg = Math.floor(dmg * 0.75);
       }
       if (isAoECard) {
