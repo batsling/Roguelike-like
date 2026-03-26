@@ -9,6 +9,7 @@ var CHARACTERS_DATA = {
     "fullImage": "images/characters/Full/Rodney.png",
     "energy": 3,
     "mana": 0,
+    "health": 75,
     "levelUpCondition": "Beat a game without meta progression",
     "levelUpStats": {
       "strength": 0,
@@ -25,6 +26,16 @@ var CHARACTERS_DATA = {
     },
     "description": "Now I abide here, searching endlessly for the precious Amulet... and finding a thousand horrors.",
     "combatStart": "Identify",
+    "startingDeck": [
+      {
+        "cardName": "Attacks",
+        "count": 5
+      },
+      {
+        "cardName": "Defends",
+        "count": 5
+      }
+    ],
     "dice": [
       {
         "isBlank": true,
@@ -59,6 +70,7 @@ var CHARACTERS_DATA = {
     "fullImage": "images/characters/Full/Isaac.png",
     "energy": 3,
     "mana": 0,
+    "health": 75,
     "levelUpCondition": "Unlock a new gameplay element",
     "levelUpStats": {
       "strength": 1,
@@ -75,6 +87,20 @@ var CHARACTERS_DATA = {
     },
     "description": "Who am I?",
     "combatStart": "Dice",
+    "startingDeck": [
+      {
+        "cardName": "Attacks",
+        "count": 5
+      },
+      {
+        "cardName": "Defends",
+        "count": 4
+      },
+      {
+        "cardName": "Isaac's D6",
+        "count": 1
+      }
+    ],
     "dice": [
       {
         "isBlank": true,
@@ -109,6 +135,7 @@ var CHARACTERS_DATA = {
     "fullImage": "images/characters/Full/Zoe.png",
     "energy": 3,
     "mana": 0,
+    "health": 50,
     "levelUpCondition": "Perfect a Game",
     "levelUpStats": {
       "strength": 1,
@@ -125,6 +152,16 @@ var CHARACTERS_DATA = {
     },
     "description": "Express Delivery: Arrives with haste, before the world ends.",
     "combatStart": "Perfect",
+    "startingDeck": [
+      {
+        "cardName": "Attacks",
+        "count": 5
+      },
+      {
+        "cardName": "Defends",
+        "count": 5
+      }
+    ],
     "dice": [
       {
         "isBlank": true,
@@ -159,6 +196,7 @@ var CHARACTERS_DATA = {
     "fullImage": "images/characters/Full/Minä.png",
     "energy": 3,
     "mana": 0,
+    "health": 60,
     "levelUpCondition": "Craft or combine a spell or weapon",
     "levelUpStats": {
       "strength": 0,
@@ -175,6 +213,16 @@ var CHARACTERS_DATA = {
     },
     "description": "Why must you go destroying everything? Why? For glory? For your precious god of gods. Is it really worth all this? Is it? Is it really?",
     "combatStart": "Spells",
+    "startingDeck": [
+      {
+        "cardName": "Attacks",
+        "count": 5
+      },
+      {
+        "cardName": "Defends",
+        "count": 5
+      }
+    ],
     "dice": [
       {
         "isBlank": true,
@@ -209,6 +257,7 @@ var CHARACTERS_DATA = {
     "fullImage": "images/characters/Full/Ironclad.png",
     "energy": 3,
     "mana": 0,
+    "health": 80,
     "levelUpCondition": "Beat a game on a hard difficulty",
     "levelUpStats": {
       "strength": 1,
@@ -225,6 +274,20 @@ var CHARACTERS_DATA = {
     },
     "description": "The remaining soldier of the Ironclads. Sold his soul to harness demonic energies.",
     "combatStart": "Cards",
+    "startingDeck": [
+      {
+        "cardName": "Attacks",
+        "count": 5
+      },
+      {
+        "cardName": "Defends",
+        "count": 4
+      },
+      {
+        "cardName": "Bash",
+        "count": 1
+      }
+    ],
     "dice": [
       {
         "isBlank": true,

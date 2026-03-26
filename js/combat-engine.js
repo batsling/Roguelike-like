@@ -189,6 +189,17 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     combatState.spells = [...window.playerSpells];
   }
 
+  // Initialize card deck system
+  combatState.drawPile = [];
+  combatState.hand = [];
+  combatState.discardPile = [];
+  combatState.exhaustPile = [];
+  combatState.powers = [];
+  combatState.selectedCardIndex = null;
+  combatState.reshuffleQueued = false;
+  combatState.lastPlayedCard = null;
+  initCombatDeck(characterData);
+
   addLog('Combat started!', 'info');
 
   // Check for Philosopher's Stone - enemies start with Power
@@ -1246,21 +1257,24 @@ function processPlayerStartOfTurn() {
   // Reset energy
   combatState.player.energy = combatState.player.maxEnergy;
 
-  // Reset dice states
-  combatState.playerDice.forEach(die => {
-    die.isRolled = false;
-    die.isConfirmed = false;
-    die.currentFace = null;
+  // Apply power_per_turn (Demon Form etc.)
+  if (combatState.player.statuses['power_per_turn']) {
+    const gain = combatState.player.statuses['power_per_turn'];
+    combatState.player.statuses['power'] = (combatState.player.statuses['power'] || 0) + gain;
+    addLog(`Gained ${gain} Power (Demon Form)`, 'success');
+  }
 
-    // Reduce exhert duration
-    if (die.isExhausted && die.exhertDuration !== Infinity) {
-      die.exhertDuration--;
-      if (die.exhertDuration <= 0) {
-        die.isExhausted = false;
-        addLog(`${die.name} is no longer exhausted`, 'info');
-      }
-    }
-  });
+  // Clear block at start of player turn (unless Barricade)
+  if (!combatState.player.statuses['barricade']) {
+    if (combatState.player.block > 0) combatState.player.block = 0;
+  }
+
+  // Draw cards for this turn
+  if (combatState.drawPile !== undefined) {
+    // Discard any remaining hand first (shouldn't normally have any, but safety)
+    const drawCount = BASE_DRAW_PER_TURN;
+    drawCards(drawCount);
+  }
 
   // Check for Horn Cleat on turn 2 (stacks: +5 Block per copy)
   if (combatState.turn === 2 && typeof inventory !== 'undefined') {
@@ -1285,6 +1299,15 @@ function endTurn() {
   }
 
   combatState.phase = 'end_turn';
+
+  // Discard hand (unplayed cards go to discard)
+  if (combatState.hand) {
+    for (const card of combatState.hand) {
+      combatState.discardPile.push(card);
+    }
+    combatState.hand = [];
+    combatState.selectedCardIndex = null;
+  }
 
   // Cap mana at max
   if (combatState.player.mana > combatState.player.maxMana) {
@@ -1649,11 +1672,305 @@ function endCombat(victory) {
   return result;
 }
 
+// ============== CARD COMBAT SYSTEM ==============
+
+const HAND_SIZE_LIMIT = 10;
+const BASE_DRAW_PER_TURN = 5;
+
+/**
+ * Resolve a card name from the starting deck, handling plurals.
+ * "Attacks" → matches card named "Attack", etc.
+ */
+function resolveStartingCardName(name) {
+  if (!window.cards && !window.CARDS_DATA) return null;
+  const pool = window.cards || window.CARDS_DATA || [];
+  const exact = pool.find(c => c.name === name);
+  if (exact) return exact;
+  if (name.endsWith('s')) return pool.find(c => c.name === name.slice(0, -1)) || null;
+  return null;
+}
+
+/**
+ * Build the full combat deck from character starting deck + collected cards.
+ */
+function buildCombatDeck(characterData) {
+  const deck = [];
+  let uid = Date.now();
+
+  // Starting deck from character data
+  const startingDeck = characterData.startingDeck || [];
+  for (const entry of startingDeck) {
+    const template = resolveStartingCardName(entry.cardName);
+    if (template) {
+      for (let i = 0; i < entry.count; i++) {
+        deck.push({ ...template, upgraded: false, _uid: `start_${uid++}` });
+      }
+    } else {
+      console.warn('Starting deck card not found:', entry.cardName);
+    }
+  }
+
+  // Collected cards from gameState.deck
+  const collected = (typeof gameState !== 'undefined' && gameState.deck) ? gameState.deck : [];
+  for (const card of collected) {
+    deck.push({ ...card, _uid: `run_${uid++}` });
+  }
+
+  return deck;
+}
+
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/**
+ * Initialize the card deck system at combat start.
+ */
+function initCombatDeck(characterData) {
+  const fullDeck = buildCombatDeck(characterData);
+  combatState.drawPile = shuffleArray(fullDeck);
+  combatState.hand = [];
+  combatState.discardPile = [];
+  combatState.exhaustPile = [];
+  combatState.powers = [];
+  combatState.selectedCardIndex = null;
+  combatState.reshuffleQueued = false;
+  addLog(`Deck initialized: ${fullDeck.length} cards`, 'info');
+}
+
+/**
+ * Draw cards from draw pile into hand. Reshuffles discard if needed.
+ * @returns {Array} Cards drawn
+ */
+function drawCards(count = 1) {
+  const drawn = [];
+  for (let i = 0; i < count; i++) {
+    if (combatState.hand.length >= HAND_SIZE_LIMIT) break;
+
+    if (combatState.drawPile.length === 0) {
+      if (combatState.discardPile.length === 0) break;
+      combatState.drawPile = shuffleArray([...combatState.discardPile]);
+      combatState.discardPile = [];
+      combatState.reshuffleQueued = true;
+      addLog('Reshuffled discard pile into draw pile', 'info');
+    }
+
+    const card = combatState.drawPile.shift();
+    combatState.hand.push(card);
+    drawn.push(card);
+  }
+  return drawn;
+}
+
+/**
+ * Determine if a card requires clicking an enemy target.
+ */
+function cardNeedsTarget(card) {
+  const desc = (card.description || '').toLowerCase();
+  const type = (card.type || '').toLowerCase();
+  if (type === 'skill' || type === 'power' || type === 'status') return false;
+  if (type === 'dice') return false;
+  if (desc.includes('cleave') || desc.includes('all enemies') || desc.includes('indiscriminate')) return false;
+  return type === 'attack';
+}
+
+/**
+ * Resolve a card's effects when played.
+ * @returns {boolean} True if card should be exhausted rather than discarded
+ */
+function resolveCardEffect(card, target) {
+  const desc = card.description || '';
+  let shouldExhaust = false;
+  const player = combatState.player;
+
+  // Split effects by '. ' to handle multi-effect cards
+  const parts = desc.replace(/\.\s*$/, '').split(/\.\s+/);
+
+  for (const part of parts) {
+    const p = part.trim();
+    if (!p) continue;
+    const lower = p.toLowerCase();
+
+    if (lower === 'exhaust') { shouldExhaust = true; continue; }
+
+    // Deal X Dmg [Y times]
+    const dmgMatch = p.match(/Deal (\d+) Dmg(?:.*?(\d+) times?)?/i);
+    if (dmgMatch) {
+      const dmg = parseInt(dmgMatch[1]);
+      const times = dmgMatch[2] ? parseInt(dmgMatch[2]) : 1;
+      const isAoE = lower.includes('cleave') || lower.includes('indiscriminate');
+      if (isAoE) {
+        combatState.enemies.filter(e => e.health > 0).forEach(e => {
+          for (let t = 0; t < times; t++) dealDamage(e, dmg);
+        });
+      } else if (target) {
+        for (let t = 0; t < times; t++) dealDamage(target, dmg);
+      }
+      continue;
+    }
+
+    // Gain X Block
+    const blockMatch = p.match(/Gain (\d+) Block/i);
+    if (blockMatch) { addBlock(player, parseInt(blockMatch[1])); continue; }
+
+    // Draw X card(s)
+    const drawMatch = p.match(/Draw (\d+) cards?/i);
+    if (drawMatch) { drawCards(parseInt(drawMatch[1])); continue; }
+
+    // Apply X [Status] (on target)
+    const applyMatch = p.match(/Apply (\d+) (\w+)/i);
+    if (applyMatch && target) {
+      const stacks = parseInt(applyMatch[1]);
+      const key = applyMatch[2].toLowerCase();
+      target.statuses[key] = (target.statuses[key] || 0) + stacks;
+      addLog(`Applied ${stacks} ${applyMatch[2]} to ${target.name}`, 'warning');
+      continue;
+    }
+
+    // Gain X Energy
+    const energyMatch = p.match(/Gain (\d+) Energy/i);
+    if (energyMatch) {
+      const e = parseInt(energyMatch[1]);
+      player.energy += e;
+      addLog(`Gained ${e} Energy`, 'success');
+      continue;
+    }
+
+    // Lose X Health
+    const loseHpMatch = p.match(/Lose (\d+) Health/i);
+    if (loseHpMatch) {
+      const hp = parseInt(loseHpMatch[1]);
+      player.health -= hp;
+      window.health = player.health;
+      addLog(`Lost ${hp} Health`, 'danger');
+      continue;
+    }
+
+    // X Infuse / Infuse X
+    const infuseMatch = p.match(/(?:(\d+)\s+Infuse|Infuse\s+(\d+))/i);
+    if (infuseMatch) {
+      const amt = parseInt(infuseMatch[1] || infuseMatch[2]) || 1;
+      player.mana = Math.min(player.maxMana, (player.mana || 0) + amt);
+      addLog(`Infused ${amt} Mana`, 'info');
+      continue;
+    }
+
+    // Barricade
+    if (lower === 'gain barricade' || lower === 'barricade') {
+      player.statuses['barricade'] = 1;
+      addLog('Barricade: Block no longer expires', 'success');
+      continue;
+    }
+
+    // Demon Form: "At the start of each turn, gain X Power"
+    const demonMatch = p.match(/gain (\d+) Power/i);
+    if (demonMatch && lower.includes('start')) {
+      const perTurn = parseInt(demonMatch[1]);
+      player.statuses['power_per_turn'] = (player.statuses['power_per_turn'] || 0) + perTurn;
+      addLog(`Demon Form: +${perTurn} Power each turn`, 'success');
+      continue;
+    }
+
+    // Assassinate: X Assassinate
+    const assassinMatch = p.match(/(\d+) Assassinate/i);
+    if (assassinMatch && target) {
+      const dmg = parseInt(assassinMatch[1]);
+      const bonus = target.health < target.maxHealth * 0.5 ? dmg * 2 : dmg;
+      dealDamage(target, bonus);
+      continue;
+    }
+
+    // Wealth (gain gold)
+    if (lower.includes('wealth')) {
+      const g = 5;
+      if (typeof window.gold !== 'undefined') { window.gold += g; if (gameState) gameState.gold = window.gold; }
+      addLog(`Wealth: +${g} Gold`, 'success');
+      continue;
+    }
+
+    // Fishing Weight (mark for fishing loot)
+    if (lower.includes('fishing weight')) { addLog('Fishing Weight triggered', 'info'); continue; }
+
+    // Unknown — log it
+    if (lower && lower !== 'n/a') addLog(`${card.name}: ${p}`, 'info');
+  }
+
+  // Apply power_per_turn on Powers
+  if (card.type === 'Power') {
+    // Already tracked; effects above handled specifics
+  }
+
+  return shouldExhaust;
+}
+
+/**
+ * Play a card from hand.
+ * @param {number} handIndex - Index in combatState.hand
+ * @param {string|null} targetId - Enemy id for targeted attacks
+ */
+function playCard(handIndex, targetId = null) {
+  if (!combatState || combatState.phase !== 'player_action') return { success: false, error: 'Not player turn' };
+  if (handIndex < 0 || handIndex >= combatState.hand.length) return { success: false, error: 'Invalid hand index' };
+
+  const card = combatState.hand[handIndex];
+  if (!card) return { success: false, error: 'Card not found' };
+
+  if (combatState.player.energy < card.cost) return { success: false, error: 'Not enough energy' };
+
+  const needsTarget = cardNeedsTarget(card);
+  let target = null;
+  if (needsTarget) {
+    target = combatState.enemies.find(e => e.id === targetId && e.health > 0);
+    if (!target) return { success: false, error: 'No valid target' };
+  }
+
+  // Deduct energy and remove from hand
+  combatState.player.energy -= card.cost;
+  combatState.hand.splice(handIndex, 1);
+  combatState.selectedCardIndex = null;
+  combatState.lastPlayedCard = card;
+
+  // Resolve effects
+  const shouldExhaust = resolveCardEffect(card, target);
+
+  // Route to appropriate pile
+  if (shouldExhaust) {
+    combatState.exhaustPile.push(card);
+    addLog(`${card.name} exhausted`, 'info');
+  } else if (card.type === 'Power') {
+    combatState.powers.push(card);
+    addLog(`${card.name} activated`, 'success');
+  } else {
+    combatState.discardPile.push(card);
+  }
+
+  addLog(`Played ${card.name}`, 'info');
+
+  // Check victory
+  const allDead = combatState.enemies.every(e => e.health <= 0);
+  if (allDead) {
+    combatState.phase = 'victory';
+    addLog('Victory!', 'success');
+    return { success: true, phase: 'victory' };
+  }
+
+  return { success: true };
+}
+
 // ============== EXPORTS ==============
 
 if (typeof window !== 'undefined') {
   window.CombatEngine = {
     initCombat,
+    initCombatDeck,
+    drawCards,
+    playCard,
+    cardNeedsTarget,
     rollPlayerDie,
     rerollPlayerDie,
     confirmDie,

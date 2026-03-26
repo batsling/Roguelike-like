@@ -175,6 +175,23 @@ var GAMES_DATA = ${JSON.stringify(games, null, 2)};
 fs.writeFileSync('games-data.js', gamesOutput);
 console.log(`✅ Games: ${totalGames} games with ${totalConnections} connections`);
 
+// Parse starting deck from "5 Attacks, 4 Defends, 1 Bash" format
+function parseDeckColumn(deckStr) {
+  if (!deckStr) return [];
+  const entries = [];
+  const parts = deckStr.split(',').map(s => s.trim());
+  for (const part of parts) {
+    const match = part.match(/^(\d+)\s+(.+)$/);
+    if (match) {
+      const count = parseInt(match[1]);
+      // Strip trailing 's' for plurals (Attacks→Attack, Defends→Defend) but not proper names
+      let cardName = match[2].trim();
+      entries.push({ cardName, count });
+    }
+  }
+  return entries;
+}
+
 // ============== CHARACTERS ==============
 const charactersSheet = workbook.Sheets['characters'];
 const charactersData = XLSX.utils.sheet_to_json(charactersSheet);
@@ -191,6 +208,9 @@ charactersData.forEach(row => {
     diceFaces.push(parseDiceFace(faceStr));
   }
 
+  // Parse starting deck
+  const startingDeck = parseDeckColumn(row['Deck'] || '');
+
   characters[key] = {
     name: name,
     game: row['Game'] || '',
@@ -198,6 +218,7 @@ charactersData.forEach(row => {
     fullImage: `images/characters/Full/${name}.png`,
     energy: parseInt(row['Energy']) || 2,
     mana: parseInt(row['Mana']) || 0,
+    health: parseInt(row['Health']) || 80,
     levelUpCondition: row['Level Up'] || '',
     levelUpStats: {
       strength: parseInt(row['Str']) || 0,
@@ -213,7 +234,8 @@ charactersData.forEach(row => {
       random: parseInt(row['Random']) || 0
     },
     description: row['Description'] || '',
-    combatStart: row['Combat Start'] || 'Dice',
+    combatStart: row['Combat Start'] || 'Cards',
+    startingDeck: startingDeck,
     dice: diceFaces
   };
 });
