@@ -182,7 +182,7 @@ function renderEnemyCard(enemy, combat) {
       opacity: ${isDead ? 0.2 : 1};
       transition: opacity 0.4s;
       cursor: ${isDead ? 'default' : 'pointer'};
-      min-width: 100px; max-width: 150px;
+      min-width: 125px; max-width: 175px;
       position: relative;
     ">
       <!-- Intent badge -->
@@ -192,9 +192,9 @@ function renderEnemyCard(enemy, combat) {
 
       <!-- Portrait -->
       <div style="
-        width: 88px; height: 88px;
+        width: 120px; height: 120px;
         border-radius: 8px;
-        border: 2px solid ${isTargeted ? C.goldBright : C.border};
+        border: 2px solid ${isTargeted ? C.goldBright : isTargeting ? '#c0392b' : C.border};
         background: rgba(0,0,0,0.4);
         display: flex; align-items: center; justify-content: center;
         overflow: hidden;
@@ -202,16 +202,16 @@ function renderEnemyCard(enemy, combat) {
         transition: box-shadow 0.15s, border-color 0.15s;
       ">
         <img src="${imgSrc}" alt="${enemy.name}"
-          style="max-width:86px; max-height:86px; object-fit:contain;"
-          onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=font-size:42px>👾</span>'">
+          style="max-width:118px; max-height:118px; object-fit:contain;"
+          onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=font-size:56px>👾</span>'">
       </div>
 
       <!-- Block badge overlay -->
       ${enemy.block > 0 ? `
         <div style="
-          position:absolute; top:44px; right:-8px;
+          position:absolute; top:56px; right:-10px;
           background:${C.block}; color:white;
-          border-radius:50%; width:24px; height:24px;
+          border-radius:50%; width:26px; height:26px;
           display:flex; align-items:center; justify-content:center;
           font-size:10px; font-weight:bold;
           border:2px solid #1a1a3a; line-height:1;
@@ -220,7 +220,7 @@ function renderEnemyCard(enemy, combat) {
 
       <!-- Name -->
       <div style="
-        margin-top:6px; font-size:11px; font-weight:bold;
+        margin-top:6px; font-size:12px; font-weight:bold;
         color:${C.text}; text-align:center; line-height:1.2;
       ">${enemy.name}</div>
       <div style="font-size:9px; color:${C.textDim}; margin-bottom:4px;">${enemy.game || ''}</div>
@@ -277,28 +277,27 @@ function getIntentType(raw) {
 
 function renderIntentBadge(enemy) {
   if (!enemy.currentIntent || enemy.currentIntent.length === 0) return '';
-  const rawStr = enemy.currentIntent.map(i => i.face?.raw || '').join(' / ');
-  const type   = getIntentType(rawStr);
-  const style  = INTENT_STYLES[type] || INTENT_STYLES.unknown;
 
-  let extra = '';
-  if (type === 'attack') {
-    const nums = rawStr.match(/\d+/g);
-    if (nums) {
-      const total = nums.reduce((s, n) => s + parseInt(n), 0);
-      if (total > 0) extra = ` ${total}`;
-    }
-  }
+  // Get the raw description(s) exactly as written in the pattern column
+  const rawStr = enemy.currentIntent.map(i => i.face?.raw || '').filter(Boolean).join(' / ');
+  if (!rawStr) return '';
+
+  const type  = getIntentType(rawStr);
+  const style = INTENT_STYLES[type] || INTENT_STYLES.unknown;
+
+  // Truncate for display — show the actual text
+  const displayText = rawStr.length > 38 ? rawStr.slice(0, 36) + '…' : rawStr;
 
   return `
     <div title="${rawStr.replace(/"/g, '&quot;')}" style="
       display:inline-flex; align-items:center; gap:4px;
       background:${style.bg}; border:1px solid ${style.border};
       border-radius:12px; padding:3px 8px;
-      font-size:11px; white-space:nowrap; cursor:default;
+      font-size:10px; white-space:nowrap; cursor:default;
+      max-width:160px; overflow:hidden;
     ">
-      <span>${style.emoji}</span>
-      <span style="color:white; font-weight:bold;">${style.label}${extra}</span>
+      <span style="flex-shrink:0;">${style.emoji}</span>
+      <span style="color:white; overflow:hidden; text-overflow:ellipsis;">${displayText}</span>
     </div>
   `;
 }
@@ -311,13 +310,15 @@ function renderPlayerZone(combat) {
                 || (typeof gameState !== 'undefined' ? gameState.character : null)
                 || 'Rodney';
   const charData = (typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
-  const portrait = charData ? charData.icon : 'images/characters/Icon/Rodney.png';
+  const portrait = charData
+    ? (charData.fullImage || charData.icon || 'images/characters/Full/Rodney.png')
+    : 'images/characters/Full/Rodney.png';
   const hpPct    = Math.max(0, (p.health / p.maxHealth) * 100);
   const hpColor  = hpPct > 50 ? '#27ae60' : hpPct > 25 ? '#f39c12' : '#c0392b';
 
   return `
     <div id="combat-player-zone" style="
-      height: 175px; flex-shrink: 0;
+      height: 195px; flex-shrink: 0;
       display: flex; align-items: flex-start;
       padding: 8px 20px; gap: 16px;
       background: rgba(0,0,0,0.35);
@@ -326,14 +327,14 @@ function renderPlayerZone(combat) {
       <!-- Portrait + HP -->
       <div style="display:flex; flex-direction:column; align-items:center; width:110px; flex-shrink:0;">
         <div style="
-          width:80px; height:80px;
+          width:110px; height:130px;
           border-radius:8px; border:2px solid ${C.gold};
           background:rgba(0,0,0,0.5);
-          overflow:hidden; display:flex; align-items:center; justify-content:center;
+          overflow:hidden; display:flex; align-items:flex-end; justify-content:center;
         ">
           <img src="${portrait}" alt="${charKey}"
-            style="max-width:78px; max-height:78px; object-fit:contain;"
-            onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=font-size:36px>🧙</span>'">
+            style="width:110px; object-fit:cover; object-position:top;"
+            onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=font-size:52px>🧙</span>'">
         </div>
         <div style="font-size:11px; color:${C.gold}; margin-top:4px; font-weight:bold;">${charKey}</div>
 
@@ -682,6 +683,7 @@ function renderBottomBar(combat) {
 
 // ============== PILE VIEWER MODAL (Part 2) ==============
 
+// Show a pile overlay INSIDE the combat UI (so it doesn't destroy the combat modal)
 window._showCombatPile = function(pileType) {
   const combat = window.CombatEngine && window.CombatEngine.getCombatState();
   if (!combat) return;
@@ -695,9 +697,13 @@ window._showCombatPile = function(pileType) {
 
   if (pile.length === 0) {
     typeof createNotification === 'function' &&
-      createNotification(`${label || pileType} pile is empty.`, '#888', '📭');
+      createNotification(`${title} is empty.`, '#888', '📭');
     return;
   }
+
+  // Remove any existing pile overlay
+  const existing = document.getElementById('combat-pile-overlay');
+  if (existing) existing.remove();
 
   const cardsHTML = pile.map(card => {
     const bc = typeColor(card.type);
@@ -707,32 +713,57 @@ window._showCombatPile = function(pileType) {
         background:${bg}; border:2px solid ${bc};
         border-radius:8px; padding:8px 10px;
         display:flex; flex-direction:column; align-items:center;
-        min-width:100px; max-width:120px;
+        min-width:95px; max-width:115px; flex-shrink:0;
       ">
         <div style="font-size:10px; font-weight:bold; color:white; text-align:center; margin-bottom:3px;">
           ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
         </div>
         <div style="font-size:9px; color:${bc}; margin-bottom:3px;">${card.type} · ${card.rarity || ''}</div>
-        <div style="font-size:8px; color:#ddd; text-align:center; margin-bottom:4px; min-height:26px;">${card.description}</div>
+        <div style="font-size:8px; color:#ddd; text-align:center; margin-bottom:4px; min-height:24px; line-height:1.3;">${card.description}</div>
         <div style="font-size:10px; color:#ffd700;">⚡${card.cost}</div>
       </div>
     `;
   }).join('');
 
-  typeof createGameModal === 'function' && createGameModal(`
-    <div style="padding:20px; max-width:820px; margin:0 auto;">
-      <h2 style="color:${color}; text-align:center; margin-top:0;">${title} (${pile.length})</h2>
-      <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; max-height:60vh; overflow-y:auto; padding:4px;">
+  const overlay = document.createElement('div');
+  overlay.id = 'combat-pile-overlay';
+  overlay.style.cssText = `
+    position:fixed; inset:0; background:rgba(0,0,0,0.72);
+    display:flex; align-items:center; justify-content:center;
+    z-index:20000;
+  `;
+  overlay.innerHTML = `
+    <div style="
+      background:#1a0808; border:2px solid ${color};
+      border-radius:12px; padding:20px;
+      max-width:820px; width:90vw; max-height:80vh;
+      display:flex; flex-direction:column;
+      box-shadow:0 10px 40px rgba(0,0,0,0.9);
+      font-family:'Georgia',serif;
+    ">
+      <h2 style="color:${color}; text-align:center; margin:0 0 14px; font-size:18px;">
+        ${title} (${pile.length})
+      </h2>
+      <div style="
+        display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+        overflow-y:auto; flex:1; padding:4px;
+      ">
         ${cardsHTML}
       </div>
-      <div style="text-align:center; margin-top:16px;">
-        <button onclick="closeGameModal()" style="
-          padding:10px 26px; background:#555; border:none; border-radius:8px;
-          color:white; cursor:pointer; font-size:14px; font-weight:bold;
+      <div style="text-align:center; margin-top:14px;">
+        <button id="combat-pile-close" style="
+          padding:10px 28px; background:#555; border:2px solid #888;
+          border-radius:8px; color:white; cursor:pointer;
+          font-size:14px; font-weight:bold;
         ">Close</button>
       </div>
     </div>
-  `);
+  `;
+  document.body.appendChild(overlay);
+
+  // Close on button click or backdrop click
+  document.getElementById('combat-pile-close').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 };
 
 // ============== COMBAT LOG PANEL ==============
@@ -853,10 +884,11 @@ function handleEnemyClick(enemyId) {
   if (combat.selectedCardIndex !== null && combat.selectedCardIndex !== undefined) {
     const cardIndex = combat.selectedCardIndex;
     const snap      = captureHPSnapshot(combat);
-    const result    = window.CombatEngine.playCard(cardIndex, `enemy_${enemyId}`);
+    // enemyId already has the full id (e.g. "enemy_0") — pass directly
+    const result    = window.CombatEngine.playCard(cardIndex, enemyId);
     if (result && result.success) {
       combat.selectedCardIndex = null;
-      animateCardPlay(cardIndex, `enemy_${enemyId}`, () => {
+      animateCardPlay(cardIndex, enemyId, () => {
         showHPDiffs(snap, combat);
         checkAndFlashReshuffle(snap, combat);
         updateCombatDisplay();
@@ -1263,8 +1295,8 @@ function showFloatingText(text, color) {
 // Animate a card flying from its hand position to a target, then call callback
 function animateCardPlay(cardIndex, targetId, callback) {
   const cardEl   = document.querySelector(`.combat-hand-card[data-hand-index="${cardIndex}"]`);
-  const rawId    = targetId ? targetId.replace('enemy_', '') : null;
-  const targetEl = rawId ? document.getElementById(`enemy-card-${rawId}`) : null;
+  // targetId is the full enemy id like "enemy_0"; DOM element is "enemy-card-enemy_0"
+  const targetEl = targetId ? document.getElementById(`enemy-card-${targetId}`) : null;
 
   if (!cardEl) { callback(); return; }
 
@@ -1440,9 +1472,18 @@ function updateCombatDisplay() {
 }
 
 function checkCombatEnd() {
+  // main.js overrides window.CombatUI.checkCombatEnd after combat starts.
+  // If it has been replaced, delegate to the override so victory/defeat fires.
+  if (window.CombatUI && window.CombatUI.checkCombatEnd !== checkCombatEnd) {
+    window.CombatUI.checkCombatEnd();
+    return;
+  }
+  // Fallback: check state directly in case override hasn't been set yet
   const combat = window.CombatEngine && window.CombatEngine.getCombatState();
   if (!combat) return;
-  // Victory/defeat handled by main.js override with a delay
+  if (combat.phase === 'victory' || combat.phase === 'defeat') {
+    console.warn('[CombatUI] checkCombatEnd: phase =', combat.phase, '— no override active');
+  }
 }
 
 // ============== STUBS ==============

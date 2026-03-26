@@ -45,8 +45,8 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
   const player = {
     health: playerHealth,
     maxHealth: playerMaxHealth,
-    energy: characterData.energy || 2,
-    maxEnergy: characterData.energy || 2,
+    energy: (typeof gameState !== 'undefined' && gameState.maxEnergy) || characterData.energy || 2,
+    maxEnergy: (typeof gameState !== 'undefined' && gameState.maxEnergy) || characterData.energy || 2,
     mana: 0,
     maxMana: characterData.mana || 0,
     stats: playerStats,
