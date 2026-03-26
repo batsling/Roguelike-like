@@ -715,6 +715,81 @@ document.getElementById('collection-btn')?.addEventListener('click', () => {
   showCollection();
 });
 
+// ============================================================
+// SETTINGS SYSTEM
+// ============================================================
+
+const SETTINGS_KEY = 'roguelikeSettings';
+
+/** Load settings from localStorage, merging with defaults. */
+function loadSettings() {
+  const defaults = { specificEnemies: false };
+  try {
+    const stored = localStorage.getItem(SETTINGS_KEY);
+    return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
+  } catch (e) {
+    return defaults;
+  }
+}
+
+/** Persist settings to localStorage. */
+function saveSettings(settings) {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+}
+
+/** Current in-memory settings (read once on load, written on change). */
+let gameSettings = loadSettings();
+
+/** Show the settings modal. */
+function showSettingsModal() {
+  const overlay = document.createElement('div');
+  overlay.id = 'settings-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:30000;';
+
+  overlay.innerHTML = `
+    <div style="background:#1a1a2e;border:2px solid #444;border-radius:12px;padding:28px;min-width:340px;max-width:480px;color:#eee;font-family:inherit;">
+      <h2 style="margin:0 0 18px;font-size:20px;color:#fff;">⚙️ Settings</h2>
+
+      <div style="margin-bottom:22px;">
+        <h3 style="margin:0 0 10px;font-size:14px;color:#aaa;text-transform:uppercase;letter-spacing:.05em;">Combat</h3>
+
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:10px;border-radius:8px;border:1px solid #333;background:#111;">
+          <input type="checkbox" id="setting-specific-enemies" style="margin-top:3px;width:16px;height:16px;accent-color:#ff9800;flex-shrink:0;"
+            ${gameSettings.specificEnemies ? 'checked' : ''}>
+          <span>
+            <strong style="display:block;margin-bottom:4px;">Specific Enemies</strong>
+            <span style="font-size:12px;color:#aaa;">
+              When <b>ON</b>: enemies are limited to those from the game you're currently visiting.<br>
+              When <b>OFF</b> (default): any enemy whose type matches the game category can appear
+              (Action→Strength, Deckbuilding→Charisma, Strategy→Intelligence, Traditional→Dexterity).
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <button id="settings-save" style="padding:8px 20px;background:#4CAF50;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Save</button>
+        <button id="settings-cancel" style="padding:8px 20px;background:#555;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Cancel</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#settings-save').addEventListener('click', () => {
+    gameSettings.specificEnemies = overlay.querySelector('#setting-specific-enemies').checked;
+    saveSettings(gameSettings);
+    overlay.remove();
+  });
+
+  overlay.querySelector('#settings-cancel').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+document.getElementById('settings-btn')?.addEventListener('click', showSettingsModal);
+
+// ============================================================
+
 document.getElementById('return-menu')?.addEventListener('click', () => {
   if (confirm('Return to main menu? (Game will be saved)')) {
     saveCurrentGame();
@@ -4039,13 +4114,45 @@ function buildWeightedEncounter() {
   // Update tier tracking (will persist after combat)
   gameState.lastDifficultyTier = currentTier;
 
-  // Build eligible pool: all enemies with a numeric weight at or below current tier
+  // Build eligible pool: difficulty tier + game-type filter
   const tierOrder = ['Low', 'Medium', 'High'];
   const maxTierIdx = tierOrder.indexOf(currentTier);
-  const eligiblePool = ENEMIES_DATA.filter(e =>
+
+  // Determine which enemy type matches the current game's category
+  const GAME_TYPE_TO_ENEMY_TYPE = {
+    'Action': 'Strength',
+    'Deckbuilding': 'Charisma',
+    'Strategy': 'Intelligence',
+    'Traditional': 'Dexterity',
+  };
+  const currentGameObj = typeof games !== 'undefined'
+    ? games.find(g => g.name === gameState.currentGame)
+    : null;
+  const currentGameType = currentGameObj?.type || null;
+  const requiredEnemyType = currentGameType ? (GAME_TYPE_TO_ENEMY_TYPE[currentGameType] || null) : null;
+
+  // Base pool: tier-eligible enemies that match the game's enemy type
+  // (falls back to all tier-eligible if no game type can be determined)
+  let basePool = ENEMIES_DATA.filter(e =>
     e.weight !== null && e.difficulty !== null &&
-    tierOrder.indexOf(e.difficulty) <= maxTierIdx
+    tierOrder.indexOf(e.difficulty) <= maxTierIdx &&
+    (!requiredEnemyType || e.type === requiredEnemyType)
   );
+  if (basePool.length === 0) {
+    // Fallback: drop the type filter
+    basePool = ENEMIES_DATA.filter(e =>
+      e.weight !== null && e.difficulty !== null &&
+      tierOrder.indexOf(e.difficulty) <= maxTierIdx
+    );
+  }
+
+  // Specific Enemies setting: additionally restrict to enemies from the current game
+  let eligiblePool = basePool;
+  if (gameSettings.specificEnemies && gameState.currentGame) {
+    const specificPool = basePool.filter(e => e.game === gameState.currentGame);
+    // Only apply the game filter if it leaves at least one enemy
+    if (specificPool.length > 0) eligiblePool = specificPool;
+  }
 
   if (eligiblePool.length === 0) {
     console.error('No eligible enemies found for encounter');

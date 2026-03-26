@@ -149,7 +149,9 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
       dice: enemy.dice,
       currentIntent: null,
       imageUrl: enemy.imageUrl,
-      position: index  // Position for Cleave targeting
+      position: index,           // Position for Cleave targeting
+      staggerThreshold: parseStaggerThreshold(enemy.ability),
+      rolledFaces: new Set()     // For Forgetful tracking
     };
   });
 
@@ -279,6 +281,16 @@ function parseStartingAbilities(abilityStr) {
   }
 
   return statuses;
+}
+
+/**
+ * Parse the stagger threshold (as a fraction 0-1) from an ability string.
+ * "Stagger 33%" → 0.33.  Returns null if no stagger ability.
+ */
+function parseStaggerThreshold(abilityStr) {
+  if (!abilityStr) return null;
+  const m = abilityStr.match(/Stagger\s+(\d+(?:\.\d+)?)%/i);
+  return m ? parseFloat(m[1]) / 100 : null;
 }
 
 /**
@@ -479,9 +491,27 @@ function rollEnemyIntent(enemy) {
   } else {
     // Random: roll dice face(s)
     const multiAttack = enemy.statuses['multi_attack'] || 1;
+    const isForgetful = !!enemy.statuses['forgetful'];
+
     for (let i = 0; i < multiAttack; i++) {
-      const faceIndex = Math.floor(Math.random() * enemy.dice.length);
-      const face = enemy.dice[faceIndex];
+      let faceIndex;
+      let face;
+
+      if (isForgetful) {
+        // Forgetful: exclude already-rolled faces until all have been seen, then reset
+        if (enemy.rolledFaces.size >= enemy.dice.length) {
+          enemy.rolledFaces.clear();
+        }
+        const availableIndices = enemy.dice
+          .map((_, idx) => idx)
+          .filter(idx => !enemy.rolledFaces.has(idx));
+        faceIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+        enemy.rolledFaces.add(faceIndex);
+      } else {
+        faceIndex = Math.floor(Math.random() * enemy.dice.length);
+      }
+
+      face = enemy.dice[faceIndex];
       enemy.currentIntent.push({ faceIndex, face, resolved: false });
     }
   }
@@ -1146,6 +1176,14 @@ function dealDamage(target, damage, addons = []) {
   const powerStacks = target === combatState.player ? 0 : (target.statuses['power'] || 0);
   // Power affects outgoing damage, not incoming - skip for now
 
+  // Check Stagger — if this single hit is ≥ X% of the target's max HP, apply Stun
+  if (target !== combatState.player && target.staggerThreshold && target.staggerThreshold > 0) {
+    if (dmg >= target.staggerThreshold * target.maxHealth) {
+      target.statuses['stun'] = (target.statuses['stun'] || 0) + 1;
+      addLog(`${target.name} is staggered by the heavy hit!`, 'warning');
+    }
+  }
+
   // Apply block first
   let remainingDamage = dmg;
   if (target.block > 0) {
@@ -1159,6 +1197,13 @@ function dealDamage(target, damage, addons = []) {
   if (remainingDamage > 0) {
     target.health -= remainingDamage;
     addLog(`${target.name || 'Player'} took ${remainingDamage} damage`, 'danger');
+
+    // Pigment Rich — hitting this enemy adds a random pigment card to the player's hand
+    if (target !== combatState.player && target.statuses['pigment_rich']) {
+      if (typeof window.addRandomPigmentToHand === 'function') {
+        window.addRandomPigmentToHand();
+      }
+    }
 
     // Check Thorns
     if (target.statuses['thorns'] && !addons.includes('self') && !addons.includes('Ranged')) {
@@ -1389,12 +1434,19 @@ function endTurn() {
     combatState.player.mana = combatState.player.maxMana;
   }
 
-  // Process enemy status effects
+  // Process enemy start-of-turn status effects (burn/poison tick BEFORE enemies act)
   combatState.enemies.forEach(enemy => {
     if (enemy.health > 0) {
-      processStatusEffects(enemy, 'end');
+      processStatusEffects(enemy, 'start');
     }
   });
+
+  // Check for victory from burn/poison kills before enemies act
+  if (combatState.enemies.every(e => e.health <= 0)) {
+    combatState.phase = 'victory';
+    addLog('Victory!', 'success');
+    return { success: true, phase: 'victory' };
+  }
 
   // Execute enemy actions
   executeEnemyActions();
@@ -1413,6 +1465,13 @@ function endTurn() {
     addLog('Victory!', 'success');
     return { success: true, phase: 'victory' };
   }
+
+  // Process enemy end-of-turn status effects (decay statuses AFTER they've acted)
+  combatState.enemies.forEach(enemy => {
+    if (enemy.health > 0) {
+      processStatusEffects(enemy, 'end');
+    }
+  });
 
   // Reset block (unless Barricade)
   if (!combatState.player.statuses['barricade']) {
@@ -1474,8 +1533,8 @@ function executeEnemyActions() {
           let value = resolved.value;
           if (resolved.isDiceAttack) {
             addLog(`${enemy.name} rolls dice: ${resolved.rollDetails} = ${value}`, 'info');
-            // Allow player to spend a reroll to reroll this dice attack
-            if (combatState.player.rerolls > 0) {
+            // Allow player to spend a reroll ONLY if this enemy has the Rerollable status
+            if (enemy.statuses['rerollable'] && combatState.player.rerolls > 0) {
               combatState.player.rerolls--;
               const rerolled = rollDiceNotation(effect.raw || '');
               addLog(`Reroll used! New roll: ${rerolled.rolls.map(r=>`d${r.die}:${r.result}`).join(', ')} = ${rerolled.total}`, 'success');
@@ -1597,6 +1656,13 @@ function dealDamageToPlayer(damage, addons, enemy) {
     window.health = player.health;
     addLog(`${enemy.name} dealt ${remaining} damage!`, 'danger');
 
+    // Rust — downgrade a random passive item when this enemy deals HP damage
+    if (enemy && enemy.statuses['rust']) {
+      if (typeof window.downgradeRandomPassiveItem === 'function') {
+        window.downgradeRandomPassiveItem();
+      }
+    }
+
     // Apply curse based on enemy type and difficulty
     applyCurseFromEnemy(enemy);
   }
@@ -1688,6 +1754,13 @@ function processStatusEffects(target, timing) {
   }
 
   if (timing === 'end') {
+    // Oiled: lose 1 energy at end of turn
+    if (statuses['oiled'] && target === combatState.player) {
+      const current = combatState.player.energy || 0;
+      combatState.player.energy = Math.max(0, current - 1);
+      addLog('Oiled: lost 1 energy', 'warning');
+    }
+
     // Decay statuses
     const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade', 'vulnerable', 'weak'];
     decayStatuses.forEach(status => {
@@ -1929,6 +2002,9 @@ function resolveCardEffect(card, target) {
     if (dmgMatch) {
       let dmg = parseInt(dmgMatch[1]);
       const times = dmgMatch[2] ? parseInt(dmgMatch[2]) : 1;
+      // Player Power bonus adds to outgoing damage
+      const playerPower = combatState.player.statuses['power'] || 0;
+      if (playerPower !== 0) dmg += playerPower;
       // Weak on player reduces outgoing damage by 25%
       if (combatState.player.statuses['weak']) {
         dmg = Math.floor(dmg * 0.75);

@@ -325,6 +325,24 @@ if (window.CombatEngine) {
   };
 }
 
+/**
+ * Pigment Rich hook — add a random pigment/status card to the player's combat hand.
+ * Called by combat-engine when an enemy with pigment_rich status takes damage.
+ */
+function addRandomPigmentToHand() {
+  const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+  if (!combat) return;
+
+  const pigments = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
+    .filter(c => c.isStatusCard);
+  if (pigments.length === 0) return;
+
+  const card = { ...pigments[Math.floor(Math.random() * pigments.length)] };
+  combat.hand.push(card);
+
+  if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
+}
+
 // Export
 window.showCardRewardModal = showCardRewardModal;
 window.showDeckModal = showDeckModal;
@@ -333,4 +351,5 @@ window.removeCardFromDeck = removeCardFromDeck;
 window.upgradeCardInDeck = upgradeCardInDeck;
 window.addWeaponCardToDeck = addWeaponCardToDeck;
 window.clearStatusCardsAfterCombat = clearStatusCardsAfterCombat;
+window.addRandomPigmentToHand = addRandomPigmentToHand;
 window.HAND_SIZE_LIMIT = HAND_SIZE_LIMIT;

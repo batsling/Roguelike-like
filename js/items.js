@@ -2263,4 +2263,5 @@ window.initializePassiveModifiers = initializePassiveModifiers; // Initialize st
 window.getPassiveDisplayName = getPassiveDisplayName; // Get display name with modifiers
 window.getPassiveModifierDescription = getPassiveModifierDescription; // Get modifier description text
 window.upgradeOrDowngradePassive = upgradeOrDowngradePassive; // Upgrade/downgrade passive
+window.downgradeRandomPassiveItem = () => upgradeOrDowngradePassive(false); // Rust hook
 window.removeItemStatEffects = removeItemStatEffects; // Remove stat effects when item removed
