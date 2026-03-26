@@ -242,42 +242,57 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
  */
 function parseStartingAbilities(abilityStr) {
   const statuses = {};
-
   if (!abilityStr) return statuses;
 
-  // Check for "Starts with X, Y"
-  const startsWithMatch = abilityStr.match(/Starts with (.+)/i);
-  if (startsWithMatch) {
-    const statusList = startsWithMatch[1].split(',').map(s => s.trim());
-    statusList.forEach(status => {
-      // Check for "X Y" pattern (e.g., "2 Thorns")
-      const numMatch = status.match(/^(\d+)\s+(.+)$/);
-      if (numMatch) {
-        statuses[numMatch[2].toLowerCase()] = parseInt(numMatch[1]);
-      } else {
-        statuses[status.toLowerCase()] = 1;
+  // Split by '/' to get individual clauses; then split non-"When" clauses by ',' too.
+  // "When Defeated, ..." style clauses are left intact then skipped.
+  const rawParts = [];
+  for (const slashPart of abilityStr.split('/')) {
+    const trimmed = slashPart.trim();
+    if (/^when\b/i.test(trimmed)) {
+      rawParts.push(trimmed); // keep "When ..." intact so it isn't garbled by comma split
+    } else {
+      for (const commaPart of trimmed.split(',')) {
+        rawParts.push(commaPart.trim());
       }
-    });
+    }
   }
 
-  // Check for Fading X / Shifting
-  const fadingMatch = abilityStr.match(/Fading (\d+)/i);
-  if (fadingMatch) {
-    statuses['fading'] = parseInt(fadingMatch[1]);
-  }
+  for (const seg of rawParts) {
+    if (!seg) continue;
+    // Skip defeat-trigger and "When another …" clauses entirely
+    if (/^when\b/i.test(seg) || /defeat/i.test(seg)) continue;
 
-  if (abilityStr.toLowerCase().includes('shifting')) {
-    statuses['shifting'] = 1;
-  }
+    // Fading N
+    const fadingMatch = seg.match(/^Fading\s+(\d+)$/i);
+    if (fadingMatch) { statuses['fading'] = parseInt(fadingMatch[1]); continue; }
 
-  if (abilityStr.toLowerCase().includes('formless')) {
-    statuses['formless'] = 1;
-  }
+    // Multi Attack N
+    const multiMatch = seg.match(/^Multi\s+Attack\s+(\d+)$/i);
+    if (multiMatch) { statuses['multi_attack'] = parseInt(multiMatch[1]); continue; }
 
-  // Check for Multi Attack X
-  const multiMatch = abilityStr.match(/Multi Attack (\d+)/i);
-  if (multiMatch) {
-    statuses['multi_attack'] = parseInt(multiMatch[1]);
+    // Stagger N% — stored via parseStaggerThreshold; no status entry needed
+    if (/^Stagger\s+\d+%?$/i.test(seg)) continue;
+
+    // Immune to X  →  immune_x
+    const immuneMatch = seg.match(/^Immune\s+to\s+(.+)$/i);
+    if (immuneMatch) {
+      statuses['immune_' + immuneMatch[1].toLowerCase().replace(/\s+/g, '_')] = 1;
+      continue;
+    }
+
+    // N StatusName  (e.g., "3 Thorns")
+    const numNameMatch = seg.match(/^(\d+)\s+(\w[\w\s]*)$/);
+    if (numNameMatch) {
+      const key = numNameMatch[2].trim().toLowerCase().replace(/\s+/g, '_');
+      statuses[key] = parseInt(numNameMatch[1]);
+      continue;
+    }
+
+    // Named ability → snake_case key, value 1
+    // (Pigment Rich, Rerollable, Rust, Formless, Shifting, Barricade, Forgetful, etc.)
+    const key = seg.trim().toLowerCase().replace(/\s+/g, '_');
+    if (key) statuses[key] = 1;
   }
 
   return statuses;
@@ -358,10 +373,14 @@ function parseSimplePatternDesc(text) {
   let i = 0;
   while (i < tokens.length) {
     if (!tokens[i].match(/^\d+$/)) { i++; continue; }
+    const numIdx  = i;                  // index of the number token
     const value   = parseInt(tokens[i++]);
     if (i >= tokens.length) break;
     const move    = tokens[i++];
     const moveLow = move.toLowerCase();
+    // If the token immediately before the number was "Gain", this is a self-buff
+    const prevToken = numIdx > 0 ? tokens[numIdx - 1].toLowerCase() : '';
+    const isSelfBuff = prevToken === 'gain';
 
     if (moveLow === 'dmg') {
       const addons = [];
@@ -374,7 +393,9 @@ function parseSimplePatternDesc(text) {
     } else if (moveLow === 'heal') {
       effects.push({ raw: `${value} ${move}`, value, move: 'Heal', addons: [], target: null });
     } else if (PATTERN_STATUSES.has(moveLow)) {
-      effects.push({ raw: `${value} ${move}`, value, move: 'Inflict', addons: [], target: move });
+      // "Gain X Status" → enemy self-buff (Get); otherwise inflict on player
+      const moveType = isSelfBuff ? 'Get' : 'Inflict';
+      effects.push({ raw: `${value} ${move}`, value, move: moveType, addons: [], target: move });
     }
     // Unknown move type — skip silently
   }
@@ -1606,6 +1627,17 @@ function executeEnemyActions() {
             case 'pain':
               dealDamage(enemy, value, ['self']);
               break;
+
+            default: {
+              // If the move type is a known status name, treat it as inflict-on-player
+              const unknownMove = effect.move?.toLowerCase();
+              if (unknownMove && PATTERN_STATUSES.has(unknownMove)) {
+                combatState.player.statuses[unknownMove] =
+                  (combatState.player.statuses[unknownMove] || 0) + value;
+                addLog(`${enemy.name} inflicted ${value} ${effect.move}`, 'warning');
+              }
+              break;
+            }
           }
         });
 
@@ -2188,7 +2220,14 @@ function playCard(handIndex, targetId = null) {
   const card = combatState.hand[handIndex];
   if (!card) return { success: false, error: 'Card not found' };
 
-  if (combatState.player.energy < card.cost) return { success: false, error: 'Not enough energy' };
+  // Confused: randomize card cost between 0 and maxEnergy
+  let cardCost = card.cost;
+  if (combatState.player.statuses['confused']) {
+    cardCost = Math.floor(Math.random() * (combatState.player.maxEnergy + 1));
+    addLog(`Confused! ${card.name} costs ${cardCost} energy`, 'warning');
+  }
+
+  if (combatState.player.energy < cardCost) return { success: false, error: 'Not enough energy' };
 
   const needsTarget = cardNeedsTarget(card);
   let target = null;
@@ -2198,7 +2237,7 @@ function playCard(handIndex, targetId = null) {
   }
 
   // Deduct energy and remove from hand
-  combatState.player.energy -= card.cost;
+  combatState.player.energy -= cardCost;
   combatState.hand.splice(handIndex, 1);
   combatState.selectedCardIndex = null;
   combatState.lastPlayedCard = card;
