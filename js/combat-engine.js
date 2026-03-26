@@ -1783,10 +1783,41 @@ function cardNeedsTarget(card) {
  * Resolve a card's effects when played.
  * @returns {boolean} True if card should be exhausted rather than discarded
  */
+// Parse "N: effect text" dice face lines from a card description
+function parseDiceFacesForEngine(description) {
+  if (!description) return [];
+  return description
+    .split(/[\r\n]+/)
+    .map(line => line.match(/^(\d+):\s*(.+)$/))
+    .filter(Boolean)
+    .map(m => ({ num: parseInt(m[1]), text: m[2].trim() }));
+}
+
 function resolveCardEffect(card, target) {
   const desc = card.description || '';
   let shouldExhaust = false;
   const player = combatState.player;
+
+  // Status cards always exhaust (they are one-use pigments that clear after combat)
+  if (card.isStatusCard) shouldExhaust = true;
+
+  // Dice cards: roll a random face and resolve that face's text as a skill effect
+  if ((card.type || '').toLowerCase() === 'dice') {
+    const faces = parseDiceFacesForEngine(desc);
+    if (faces.length > 0) {
+      const rolled = Math.floor(Math.random() * faces.length);
+      const face   = faces[rolled];
+      addLog(`${card.name} → rolled ${face.num}: ${face.text}`, 'info');
+      // Resolve the face text as a temporary non-targeting skill
+      resolveCardEffect({ ...card, type: 'Skill', isStatusCard: false, description: face.text }, target);
+    }
+    return shouldExhaust;
+  }
+
+  // Pre-scan the whole description for AoE keywords (they may be in a separate clause)
+  const fullDescLower = desc.toLowerCase();
+  const isAoECard = fullDescLower.includes('cleave') || fullDescLower.includes('all enemies')
+                 || fullDescLower.includes('indiscriminate');
 
   // Split effects by '. ' to handle multi-effect cards
   const parts = desc.replace(/\.\s*$/, '').split(/\.\s+/);
@@ -1797,14 +1828,14 @@ function resolveCardEffect(card, target) {
     const lower = p.toLowerCase();
 
     if (lower === 'exhaust') { shouldExhaust = true; continue; }
+    if (lower === 'indiscriminate' || lower === 'cleave') { continue; } // handled above via isAoECard
 
     // Deal X Dmg [Y times]
     const dmgMatch = p.match(/Deal (\d+) Dmg(?:.*?(\d+) times?)?/i);
     if (dmgMatch) {
       const dmg = parseInt(dmgMatch[1]);
       const times = dmgMatch[2] ? parseInt(dmgMatch[2]) : 1;
-      const isAoE = lower.includes('cleave') || lower.includes('indiscriminate');
-      if (isAoE) {
+      if (isAoECard) {
         combatState.enemies.filter(e => e.health > 0).forEach(e => {
           for (let t = 0; t < times; t++) dealDamage(e, dmg);
         });
@@ -1890,6 +1921,45 @@ function resolveCardEffect(card, target) {
       const g = 5;
       if (typeof window.gold !== 'undefined') { window.gold += g; if (gameState) gameState.gold = window.gold; }
       addLog(`Wealth: +${g} Gold`, 'success');
+      continue;
+    }
+
+    // Heal X Health
+    const healMatch = p.match(/Heal (\d+) Health/i);
+    if (healMatch) {
+      const hp = parseInt(healMatch[1]);
+      player.health = Math.min(player.maxHealth, player.health + hp);
+      window.health = player.health;
+      addLog(`Healed ${hp} Health`, 'success');
+      continue;
+    }
+
+    // Take X Dmg (self-damage, e.g. dice face side-effect)
+    const selfDmgMatch = p.match(/Take (\d+) Dmg/i);
+    if (selfDmgMatch) {
+      const dmg = parseInt(selfDmgMatch[1]);
+      player.health -= dmg;
+      window.health = player.health;
+      addLog(`Took ${dmg} damage`, 'danger');
+      continue;
+    }
+
+    // Enemy loses X Power
+    const enemyPowerMatch = p.match(/Enemy loses (\d+) Power/i);
+    if (enemyPowerMatch && target) {
+      const loss = parseInt(enemyPowerMatch[1]);
+      target.statuses['power'] = Math.max(0, (target.statuses['power'] || 0) - loss);
+      addLog(`${target.name} loses ${loss} Power`, 'warning');
+      continue;
+    }
+
+    // Gain +X [Stat] until end of combat (stat buffs)
+    const statBoostMatch = p.match(/Gain \+(\d+) (Intelligence|Strength|Dexterity|Charisma)/i);
+    if (statBoostMatch) {
+      const amt  = parseInt(statBoostMatch[1]);
+      const stat = statBoostMatch[2].toLowerCase();
+      player.statuses[stat] = (player.statuses[stat] || 0) + amt;
+      addLog(`+${amt} ${statBoostMatch[2]} this combat`, 'success');
       continue;
     }
 

@@ -9,6 +9,20 @@
 - [Game Status Effects](#game-status-effects)
 - [Events System](#events-system)
 - [Combat System](#combat-system)
+  - [Combat Flow](#combat-flow)
+  - [Energy System](#energy-system)
+  - [Card Hand](#card-hand)
+  - [Card Types](#card-types)
+  - [Card Rarities](#card-rarities)
+  - [Card Effects Reference](#card-effects-reference)
+  - [Combat Statuses](#combat-statuses)
+  - [Enemy Intents](#enemy-intents)
+  - [Draw / Discard / Exhaust Piles](#draw--discard--exhaust-piles)
+  - [Enemy Encounter System](#enemy-encounter-system)
+  - [Card Rewards](#card-rewards)
+  - [Shop Card Services](#shop-card-services)
+  - [Weapons and Cards](#weapons-and-cards)
+  - [Deck Management](#deck-management)
 - [Teleport System](#teleport-system)
 - [Developer Tools](#developer-tools)
 - [Code Optimization](#code-optimization)
@@ -19,13 +33,15 @@
 
 ## Overview
 
-A roguelike game where players navigate through a graph of connected video games, encountering combat, events, and shops. The game features a comprehensive curse system, item effects, and dynamic gameplay mechanics.
+A roguelike game where players navigate through a graph of connected video games, encountering card-based combat, events, and shops. The game features a full Slay the Spire–style card system, a comprehensive curse system, item effects, and dynamic gameplay mechanics.
 
 **Key Features:**
-- D20-based combat and event resolution
+- STS-style card-based combat (hand, energy, draw/discard/exhaust piles)
 - 11 unique curse types across 3 categories (Restriction, Manual, Automatic)
 - Player-verified curse tracking system with combined verification modal
 - Extensive item system (passive, usable, and triggered)
+- Card deck system (collect cards, upgrade, remove at shop)
+- Weight-based enemy encounter system with difficulty tiers
 - Game status effects (portals, stinky games)
 - Escape sequence after finding the amulet
 - Save/load system with multiple save slots
@@ -34,14 +50,46 @@ A roguelike game where players navigate through a graph of connected video games
 
 **Architecture:**
 The codebase is organized into focused, maintainable modules. See [js/README.md](js/README.md) for detailed module documentation.
-- **15 JavaScript modules** with clear responsibilities
-- **main.js reduced by 41.5%** (6,757 → 3,950 lines)
-- **6 new modules extracted** (Jan 2025): modals, shop, character-select, verification, escape, bingo
+- **15+ JavaScript modules** with clear responsibilities
+- **combat-engine.js**: Card resolution, status effects, enemy AI
+- **combat-ui.js**: Fan-arc hand rendering, drag-to-play, targeting mode
+- **cards.js**: Deck management, card rewards, shop card services
 - **Better maintainability** for both humans and LLMs
 
 ---
 
 ## Recent Updates
+
+### Version 6.0 - Card-Based Combat System (March 2026)
+
+**Complete Combat Rewrite:**
+- **STS-style card hand**: Up to 5 cards dealt per turn, displayed in a fan arc
+- **Energy system**: 3 energy per turn (configurable via `gameState.maxEnergy`); cards cost 1–3 energy
+- **Draw / Discard / Exhaust piles**: Full three-pile system; discard reshuffled into draw when empty
+- **Card types**: Attack, Skill, Power, Dice, Status
+- **Card rarities**: Starter, Common, Uncommon, Rare (Starter excluded from rewards)
+- **Targeting mode**: Click a card → click an enemy to play; AoE cards skip targeting
+- **Drag-to-play**: Drag a card up from the hand to play it (also activates targeting for single-target cards)
+- **Enemy intents**: Each enemy shows its next action from its `pattern` column before acting
+- **Card rewards**: Post-combat modal offers 3 random cards weighted by luck
+- **Shop card services**: Upgrade a card (75g), remove a card (50g), buy 2 cards for sale
+- **Status cards (Pigments)**: Auto-exhausted when played; cleared from deck after combat
+- **Dice cards**: Randomly roll a face on play; each face has its own effect
+- **Weapon cards**: Acquiring a weapon item adds its matching card to the deck
+
+**New Modules:**
+- `js/combat-engine.js` — Full card resolution engine (effects, status effects, enemy AI, AoE, dice)
+- `js/combat-ui.js` — Full STS-style combat UI (fan hand, pile overlay, drag, tooltips, HP diffs)
+- `js/cards.js` — Deck management, card reward modal, shop services, status card cleanup
+
+**Key Technical Details:**
+- Hand fan uses `transform: rotate(Xdeg) translateY(Ypx)` with `transform-origin: bottom center`
+- Pile viewer is a `position:fixed; z-index:20000` overlay (does NOT destroy the combat modal)
+- `checkCombatEnd` delegates to `main.js` override via `window.CombatUI.checkCombatEnd`
+- `gameState.maxEnergy` is respected on combat init (items like Busted Crown set this)
+- AoE detection pre-scans full card description before iterating effect parts
+
+---
 
 ### Version 5.0 - Weapon System & Combat Enhancements (January 2026)
 
@@ -1361,30 +1409,203 @@ For events that use stat checks (via generic combat):
 
 ## Combat System
 
+### Overview
+
+Combat uses a Slay the Spire–style card system. Each encounter is a turn-based fight between the player and one or more enemies. The player draws cards from their deck each turn, spends energy to play them, and ends the turn to let enemies act.
+
+---
+
 ### Combat Flow
 
-1. Enemy appears with stat check requirement (Strength/Dex/Int/Cha)
-2. Player rolls 1d20 + relevant stat modifier
-3. **Curse of Weakness** applies penalty if active
-4. **Curse of Failure** triggers on natural 1 (auto-lose + damage)
-5. Compare total to enemy's DC (rollCheck)
-6. If success: Player gets reward
-7. If failure: Player takes damage based on difficulty
+```
+Start of Combat
+  → initCombat() shuffles deck, draws 5 cards, restores energy
+  ↓
+Player's Turn
+  → Draw 5 cards (or remaining draw pile + reshuffled discard)
+  → Each card costs 1–3 energy (shown on card)
+  → Play cards by clicking or dragging
+  → Single-target cards enter targeting mode; click an enemy to resolve
+  → AoE cards (Cleave, Indiscriminate, "all enemies") hit every enemy instantly
+  → End Turn button: discard hand, enemies act, draw 5 again
+  ↓
+Enemy Turn
+  → Each enemy executes its next intent (shown in banner before it acts)
+  → Intents cycle through the enemy's pattern list
+  ↓
+Check Win / Loss
+  → All enemies dead → victory, card reward modal
+  → Player HP ≤ 0 → defeat, game over
+```
 
-### Combat Damage
+---
 
-Combat damage is determined by enemy power level:
-- **Low**: 1 damage on failure
-- **Medium**: 2 damage on failure
-- **High**: 3 damage on failure
+### Energy System
 
-### Critical Failure
+- **Starting energy**: 3 per turn (default)
+- **Maximum energy**: Controlled by `gameState.maxEnergy`; items like Busted Crown increase it
+- Energy is **fully restored** at the start of each player turn
+- Cards that cost more energy than available cannot be played
 
-Rolling a natural 1 (d20 = 1) with active Curse of Failure:
-- Shows "⚠️ CRITICAL FAILURE" message
-- Combat is automatically lost (regardless of total roll)
-- All Failure curses trigger for combined damage
-- All Failure curses are removed after triggering
+---
+
+### Card Hand
+
+- **Hand size**: Up to 5 cards drawn per turn (hard cap: 10)
+- Cards are displayed in a **fan arc** at the bottom of the screen
+- Hover a card to expand it and see a full tooltip
+- Drag a card upward or click it to play it
+- A targeting banner appears when a single-target card is selected; click an enemy to confirm
+
+---
+
+### Card Types
+
+| Type | Description |
+|------|-------------|
+| **Attack** | Deals damage to one or all enemies |
+| **Skill** | Non-damage effects: block, healing, buffs, debuffs |
+| **Power** | Persistent effects that last the entire combat |
+| **Dice** | Rolls a random face on play; each face has a different effect |
+| **Status** | Temporary cards (e.g., Pigments); auto-exhausted when played, cleared from deck after combat |
+
+---
+
+### Card Rarities
+
+| Rarity | Source |
+|--------|--------|
+| **Starter** | Character starting deck; never offered as rewards |
+| **Common** | Most frequent in reward pool |
+| **Uncommon** | Moderate chance; better effects |
+| **Rare** | Least frequent; most powerful |
+
+Rarity chances are weighted by the player's **Luck** stat (same system as items).
+
+---
+
+### Card Effects Reference
+
+Effects are parsed from card `description` strings. Supported keywords:
+
+| Keyword | Engine Behavior |
+|---------|----------------|
+| `Deal X Dmg` | Deals X damage (modified by Strength for Attack cards) |
+| `Gain X Block` | Adds X block (absorbs damage before HP) |
+| `Heal X Health` | Restores X HP to the player |
+| `Take X Dmg` | Player takes X damage (self-harm cards) |
+| `Draw X Cards` | Draws X additional cards from draw pile |
+| `Gain X Energy` | Adds X energy this turn |
+| `Apply X [Status]` | Applies a combat status (Burn, Poison, Stun, Weak, Vulnerable, etc.) |
+| `Enemy loses X Power` | Reduces target enemy's Power stat |
+| `Gain +X [Stat] until end of combat` | Temporary stat boost for the current combat |
+| `Cleave` / `Indiscriminate` / `all enemies` | Card hits all enemies (AoE) |
+| `Exhaust` | Card is removed from this combat after being played |
+
+**Dice cards** use a `"N: effect text\n..."` format — one line per face. A random face is rolled on play and its text resolved as a normal card effect.
+
+---
+
+### Combat Statuses
+
+Status effects are tracked per-entity. Each status has a defined `onApply`, `onTurnStart`, `onTurnEnd`, or `onDamageDealt` hook. Examples:
+
+| Status | Effect |
+|--------|--------|
+| **Burn** | Deals damage at end of turn |
+| **Poison** | Stacks; deals damage each turn then decreases |
+| **Stun** | Target skips their next action |
+| **Weak** | Reduces outgoing damage |
+| **Vulnerable** | Increases incoming damage |
+| **Power** | Generic damage/defense bonus |
+
+---
+
+### Enemy Intents
+
+Before each enemy turn, the enemy's **intent** is shown in a banner above its card. The intent text comes directly from the enemy's `pattern` field in `enemies-data.js`. Intents cycle through the pattern list each turn.
+
+Example patterns: `"Deal 5 Dmg"`, `"Apply 2 Burn"`, `"Gain 3 Block"`.
+
+---
+
+### Draw / Discard / Exhaust Piles
+
+- **Draw pile**: Cards left to draw from this combat. Displayed as a number button (bottom-left).
+- **Discard pile**: Cards played or discarded this turn. Displayed as a number button (bottom-right).
+- **Exhaust pile**: Cards permanently removed for this combat (Power cards, Status cards, cards with `Exhaust` keyword). Not reshuffled.
+- When the draw pile is empty and the player needs to draw, the discard pile is reshuffled into the draw pile.
+- Click either pile button to open an overlay showing all cards in that pile.
+
+---
+
+### Enemy Encounter System
+
+Enemies are selected using a **weight-based budget system** tied to difficulty tier:
+
+| Tier | Games Beaten | Budget Range |
+|------|-------------|--------------|
+| Low | 0–4 | Small budget |
+| Medium | 5–9 | Medium budget |
+| High | 10+ | Large budget |
+
+Each enemy has a `weight` and a `cost`. Encounters are assembled by randomly picking enemies within the budget, weighted by their `weight` value. This ensures multiple weak enemies or a single strong enemy depending on the roll.
+
+---
+
+### Card Rewards
+
+After winning combat, a **card reward modal** appears offering 3 random cards:
+- Cards drawn from the non-Starter, non-Status reward pool
+- Rarity weighted by the player's Luck stat
+- Player selects one card to add to their deck, or skips
+- `showCardRewardModal()` in `js/cards.js`
+
+---
+
+### Shop Card Services
+
+The shop offers two one-time services per visit:
+
+| Service | Cost | Description |
+|---------|------|-------------|
+| **Upgrade a Card** | 75 gold | Permanently upgrades one deck card (improved effect or reduced cost) |
+| **Remove a Card** | 50 gold | Permanently removes one deck card from the run |
+
+The shop also shows **2 cards for sale** at random prices. Purchasing adds them to the deck immediately.
+
+---
+
+### Weapons and Cards
+
+Acquiring a **weapon item** (type `weapon` or tag `weapon`) automatically adds a matching card to the player's deck. The card is identified by matching the weapon's name in `CARDS_DATA`. This is handled by a hook on `window.acquireItem` in `js/cards.js`.
+
+---
+
+### Deck Management
+
+The deck viewer modal (`showDeckModal()`) shows all cards in the player's current deck with rarity, type, cost, and description. Accessible from the inventory/UI during a run.
+
+**Deck state in `gameState`:**
+```javascript
+gameState.deck        // All cards the player owns (persistent across encounters)
+gameState.hand        // Cards in hand during combat
+gameState.drawPile    // Cards left to draw this combat
+gameState.discardPile // Cards played this combat
+```
+
+---
+
+### Key Files
+
+| File | Responsibility |
+|------|---------------|
+| `js/combat-engine.js` | Card resolution, status effects, enemy AI, AoE detection, dice cards |
+| `js/combat-ui.js` | Fan-arc hand, drag-to-play, pile overlay, targeting mode, HP diff animations |
+| `js/cards.js` | Deck management, card reward modal, shop services, status card cleanup |
+| `data/cards-data.js` | Card definitions (name, type, rarity, cost, description, upgrade data) |
+| `data/enemies-data.js` | Enemy definitions (HP, power, patterns, weight/cost for encounter budget) |
+| `data/statuses-data.js` | Combat status effect definitions |
 
 ---
 
@@ -1549,10 +1770,27 @@ The game includes comprehensive dev tools at the bottom of the page:
 - Use `updateStat()` helper for stat modifications
 - Call appropriate update functions after changes
 
-### Combat Critical Failure Not Triggering
-- Verify Curse of Failure is in active curses
-- Check that d20 roll = 1 (not total roll)
-- Ensure `getCursesByType('failure')` returns curses
+### Card Not Playing When Clicked
+- Ensure the card has sufficient energy to play (`combat.energy >= card.cost`)
+- Single-target cards require clicking an enemy after selecting the card — check that a valid target exists
+- Check browser console for `[CombatEngine] playCard` errors
+
+### Pile Overlay Closing Combat
+- `_showCombatPile()` must use a `position:fixed` div appended to `document.body`, NOT `createGameModal()` (which destroys the combat screen)
+- Verify `js/combat-ui.js` builds a standalone overlay with `z-index:20000`
+
+### Cards Dealing No Damage / Effects Not Resolving
+- Card description must use exact keywords (e.g. `Deal X Dmg`, not `deals X damage`)
+- Dice card faces must follow the `"N: effect text"` format, one per line
+- Check `resolveCardEffect` in `js/combat-engine.js` for supported keywords
+
+### maxEnergy Not Being Applied
+- Items set `gameState.maxEnergy`; `initCombat` must read this first
+- Verify `combat.energy = gameState.maxEnergy || characterData.energy || 2` in `initCombat`
+
+### Game Over Not Triggering After Player Death
+- `checkCombatEnd()` in `combat-ui.js` delegates to `window.CombatUI.checkCombatEnd` (set by `main.js`)
+- If `main.js` override is not running, check that `window.CombatUI` is exported at bottom of `combat-ui.js`
 
 ### Teleport Not Working
 - Verify target games have `connected: true`
