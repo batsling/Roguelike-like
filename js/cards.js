@@ -343,6 +343,25 @@ function addRandomPigmentToHand() {
   if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
 }
 
+/**
+ * Add a random pigment/status card to the player's discard pile.
+ * It will be shuffled into the draw pile on the next reshuffle.
+ * Called by combat-engine for enemies that add pigments to the deck.
+ */
+function addRandomPigmentToDeck() {
+  const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+  if (!combat) return;
+
+  const pigments = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
+    .filter(c => c.isStatusCard);
+  if (pigments.length === 0) return;
+
+  const card = { ...pigments[Math.floor(Math.random() * pigments.length)] };
+  combat.discardPile.push(card);
+
+  if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
+}
+
 // Export
 window.showCardRewardModal = showCardRewardModal;
 window.showDeckModal = showDeckModal;
@@ -352,4 +371,5 @@ window.upgradeCardInDeck = upgradeCardInDeck;
 window.addWeaponCardToDeck = addWeaponCardToDeck;
 window.clearStatusCardsAfterCombat = clearStatusCardsAfterCombat;
 window.addRandomPigmentToHand = addRandomPigmentToHand;
+window.addRandomPigmentToDeck = addRandomPigmentToDeck;
 window.HAND_SIZE_LIMIT = HAND_SIZE_LIMIT;

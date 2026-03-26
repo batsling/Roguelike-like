@@ -345,6 +345,20 @@ const PATTERN_STATUSES = new Set([
 function parsePatternDescToEffects(desc) {
   if (!desc || /unknown intent/i.test(desc)) return [];
 
+  // Special text patterns detected before probability splitting
+
+  // "Add N random Pigment ... to (your) deck/hand"
+  if (/\badd \d+ random pigment/i.test(desc)) {
+    return [{ raw: desc, value: 1, move: 'AddPigment', addons: [], target: null }];
+  }
+
+  // "Consume N random Pigment ... for X Power, Y Block"
+  if (/\bconsume \d+ random pigment/i.test(desc)) {
+    const m = desc.match(/for\s+(\d+)\s+Power,?\s*(\d+)\s+Block/i);
+    return [{ raw: desc, value: 1, move: 'ConsumePigment', addons: [],
+              power: m ? parseInt(m[1]) : 0, block: m ? parseInt(m[2]) : 0 }];
+  }
+
   // Probability split: "50% desc1 / 50% desc2"
   if (desc.includes('%') && desc.includes('/')) {
     const options = desc.split('/').map(s => s.trim());
@@ -486,12 +500,10 @@ function rollAllEnemyIntents() {
 /**
  * Roll intent for a single enemy.
  * - Ordered pattern enemies advance through their turn list each turn.
- * - Random pattern enemies roll a die face (existing behaviour).
+ * - Random pattern enemies now execute their pattern string (dice are legacy).
  * @param {Object} enemy - Enemy state object
  */
 function rollEnemyIntent(enemy) {
-  if (!enemy.dice || enemy.dice.length === 0) return;
-
   enemy.currentIntent = [];
 
   if (enemy.patternType === 'ordered' && enemy.patternTurns && enemy.patternTurns.length > 0) {
@@ -527,35 +539,38 @@ function rollEnemyIntent(enemy) {
     enemy.patternTurnIndex = nextIdx;
 
   } else {
-    // Random: roll dice face(s)
+    // Random: execute the pattern description (dice are the old design)
+    const patternDesc = (enemy.pattern || '').replace(/^Always:\s*/i, '').trim();
     const multiAttack = enemy.statuses['multi_attack'] || 1;
     const isForgetful = !!enemy.statuses['forgetful'];
 
-    for (let i = 0; i < multiAttack; i++) {
-      let faceIndex;
-      let face;
+    // Split probability branches for Forgetful tracking
+    const branches = (patternDesc.includes('%') && patternDesc.includes('/'))
+      ? patternDesc.split('/').map(s => s.trim()).filter(s => /^\d+%/.test(s))
+      : [];
 
-      if (isForgetful) {
-        // Forgetful: exclude already-rolled faces until all have been seen, then reset
-        if (enemy.rolledFaces.size >= enemy.dice.length) {
+    for (let i = 0; i < multiAttack; i++) {
+      let effects;
+
+      if (isForgetful && branches.length > 1) {
+        // Forgetful: cycle through all branches before repeating
+        if (enemy.rolledFaces.size >= branches.length) {
           enemy.rolledFaces.clear();
-          // One full cycle complete — consume one Forgetful stack
           enemy.statuses['forgetful']--;
-          if (enemy.statuses['forgetful'] <= 0) {
-            delete enemy.statuses['forgetful'];
-          }
+          if (enemy.statuses['forgetful'] <= 0) delete enemy.statuses['forgetful'];
         }
-        const availableIndices = enemy.dice
-          .map((_, idx) => idx)
+        const availableIndices = branches.map((_, idx) => idx)
           .filter(idx => !enemy.rolledFaces.has(idx));
-        faceIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
-        enemy.rolledFaces.add(faceIndex);
+        const chosen = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+        enemy.rolledFaces.add(chosen);
+        effects = parseSimplePatternDesc(branches[chosen].replace(/^\d+%\s*/, '').trim());
       } else {
-        faceIndex = Math.floor(Math.random() * enemy.dice.length);
+        effects = parsePatternDescToEffects(patternDesc);
       }
 
-      face = enemy.dice[faceIndex];
-      enemy.currentIntent.push({ faceIndex, face, resolved: false });
+      const isBlank = effects.length === 0 || /unknown intent/i.test(patternDesc);
+      const pseudoFace = { isBlank, effects, raw: patternDesc };
+      enemy.currentIntent.push({ faceIndex: 0, face: pseudoFace, resolved: false });
     }
   }
 
@@ -1271,6 +1286,38 @@ function dealDamage(target, damage, addons = []) {
       rollEnemyIntent(target);
       addLog(`${target.name} rerolled intent due to Formless`, 'info');
     }
+
+    // Trigger on-death ability for enemies that just died
+    if (target !== combatState.player && target.health <= 0) {
+      onEnemyDefeated(target);
+    }
+
+    // Skinning Homunculus reactive: "When another ally takes Melee Dmg, Add 1 Frail Overload to Intent"
+    // Only fires on non-ranged, non-self player attacks against enemies
+    if (target !== combatState.player && !addons.includes('self') && !addons.includes('Ranged')) {
+      combatState.enemies.forEach(e => {
+        if (e !== target && e.health > 0 &&
+            /when another ally takes melee dmg/i.test(e.ability || '')) {
+          if (!e.currentIntent) e.currentIntent = [];
+          e.currentIntent.push({
+            faceIndex: -1,
+            face: {
+              isBlank: false,
+              raw: '1 Frail Overload (reaction)',
+              effects: [{
+                raw: '1 Frail',
+                value: 1,
+                move: 'Inflict',
+                addons: ['Overload'],
+                target: 'Frail'
+              }]
+            },
+            resolved: false
+          });
+          addLog(`${e.name} reacts: +1 Frail Overload added to intent!`, 'warning');
+        }
+      });
+    }
   }
 
   // Update global health if player
@@ -1407,6 +1454,185 @@ function processSpellEffect(effect, spell, targets) {
 
   // Standard effect processing
   processEffect(effect, null, targets);
+}
+
+// ============== COMPLEX ENEMY MECHANICS ==============
+
+/**
+ * Remove a random pigment (isStatusCard) card from any combat pile.
+ * Returns true if one was found and removed.
+ */
+function consumeRandomPigmentCard() {
+  const piles = [
+    { list: combatState.hand,        name: 'hand'    },
+    { list: combatState.drawPile,    name: 'draw'    },
+    { list: combatState.discardPile, name: 'discard' },
+  ];
+  const candidates = [];
+  piles.forEach(({ list, name }) => {
+    list.forEach((card, idx) => {
+      if (card.isStatusCard) candidates.push({ list, idx, card, name });
+    });
+  });
+  if (candidates.length === 0) return false;
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  pick.list.splice(pick.idx, 1);
+  addLog(`${pick.card.name} was consumed!`, 'info');
+  return true;
+}
+
+/**
+ * Spawn a named enemy at a given combat position, replacing whoever is there.
+ * If the slot is already alive, the new enemy is pushed to the end instead.
+ */
+function spawnEnemyAtSlot(enemyName, position) {
+  if (typeof ENEMIES_DATA === 'undefined') {
+    addLog(`Cannot spawn ${enemyName}: ENEMIES_DATA not loaded`, 'warning');
+    return;
+  }
+  const template = ENEMIES_DATA.find(e => e.name.toLowerCase() === enemyName.toLowerCase());
+  if (!template) {
+    addLog(`Cannot spawn ${enemyName}: not found`, 'warning');
+    return;
+  }
+
+  let hp;
+  if (template.hpMin !== undefined && template.hpMax !== undefined) {
+    hp = Math.floor(Math.random() * (template.hpMax - template.hpMin + 1)) + template.hpMin;
+  } else {
+    hp = template.hp || 10;
+  }
+
+  const isOrdered = /Turn \d+:/i.test(template.pattern || '');
+  const newEnemy = {
+    id: `enemy_${position}_spawn_${Date.now()}`,
+    name: template.name,
+    type: template.type,
+    difficulty: template.difficulty,
+    weight: template.weight,
+    health: hp,
+    maxHealth: hp,
+    block: 0,
+    statuses: parseStartingAbilities(template.ability),
+    ability: template.ability,
+    pattern: template.pattern || '',
+    patternType: isOrdered ? 'ordered' : 'random',
+    patternTurns: isOrdered ? parseOrderedPattern(template.pattern) : null,
+    patternTurnIndex: 0,
+    game: template.game,
+    location: template.location,
+    dice: template.dice,
+    currentIntent: null,
+    imageUrl: template.imageUrl,
+    position: position,
+    staggerThreshold: parseStaggerThreshold(template.ability),
+    rolledFaces: new Set()
+  };
+
+  // Replace dead enemy at this position; otherwise append
+  const idx = combatState.enemies.findIndex(e => e.position === position && e.health <= 0);
+  if (idx !== -1) {
+    combatState.enemies[idx] = newEnemy;
+  } else {
+    newEnemy.position = combatState.enemies.length;
+    combatState.enemies.push(newEnemy);
+  }
+
+  rollEnemyIntent(newEnemy);
+  addLog(`${template.name} spawned!`, 'warning');
+  if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
+}
+
+/**
+ * Execute the "When Defeated, <clause>" portion of an enemy's ability.
+ * Recursive: handles probability splits before dispatching specific effects.
+ */
+function executeWhenDefeatedClause(enemy, clause) {
+  const text = clause.trim();
+
+  // Probability split: "60% Spawn Pacer / 40% Spawn Gusher"
+  if (text.includes('%') && text.includes('/')) {
+    const parts = text.split('/').map(s => s.trim());
+    const weighted = [];
+    for (const p of parts) {
+      const m = p.match(/^(\d+)%\s*(.*)/);
+      if (m) weighted.push({ weight: parseInt(m[1]), text: m[2].trim() });
+    }
+    if (weighted.length > 0) {
+      const total = weighted.reduce((s, o) => s + o.weight, 0);
+      let roll = Math.random() * total;
+      for (const o of weighted) {
+        roll -= o.weight;
+        if (roll <= 0) { executeWhenDefeatedClause(enemy, o.text); return; }
+      }
+      executeWhenDefeatedClause(enemy, weighted[weighted.length - 1].text);
+      return;
+    }
+  }
+
+  // Single probability: "50% chance to Spawn Mung"
+  const chancePct = text.match(/^(\d+)%\s*(?:chance\s+to\s+)?(.+)/i);
+  if (chancePct) {
+    if (Math.random() * 100 < parseInt(chancePct[1])) {
+      executeWhenDefeatedClause(enemy, chancePct[2].trim());
+    }
+    return;
+  }
+
+  // Spawn <EnemyName>
+  const spawnM = text.match(/^Spawn\s+(.+)/i);
+  if (spawnM) {
+    spawnEnemyAtSlot(spawnM[1].trim(), enemy.position);
+    return;
+  }
+
+  // N Dmg to (its) adjacent allies
+  const adjDmgM = text.match(/^(\d+)\s+Dmg\s+to\s+(?:it[''s]*\s+)?adjacent\s+allies?/i);
+  if (adjDmgM) {
+    const dmg = parseInt(adjDmgM[1]);
+    const pos = enemy.position;
+    combatState.enemies.forEach(e => {
+      if (e !== enemy && e.health > 0 && Math.abs(e.position - pos) === 1) {
+        e.health -= dmg;
+        addLog(`${e.name} took ${dmg} damage from ${enemy.name}'s death!`, 'danger');
+      }
+    });
+    return;
+  }
+
+  // Strength Save DC or take X Dmg
+  const strSaveM = text.match(/^Strength\s+Save\s+(\d+)\s+or\s+take\s+(\d+)\s+Dmg/i);
+  if (strSaveM) {
+    const dc  = parseInt(strSaveM[1]);
+    const dmg = parseInt(strSaveM[2]);
+    const roll   = Math.floor(Math.random() * 20) + 1;
+    const strMod = combatState.player.bonuses?.strength || 0;
+    const total  = roll + strMod;
+    addLog(`Strength Save DC${dc}: rolled ${roll} + ${strMod} mod = ${total}`, 'info');
+    if (total < dc) {
+      combatState.player.health -= dmg;
+      window.health = combatState.player.health;
+      addLog(`Failed save! Took ${dmg} damage.`, 'danger');
+    } else {
+      addLog('Passed Strength Save!', 'success');
+    }
+    return;
+  }
+
+  addLog(`${enemy.name} death effect unhandled: ${text}`, 'info');
+}
+
+/**
+ * Trigger an enemy's on-death ability clause (called once per enemy death).
+ */
+function onEnemyDefeated(enemy) {
+  if (enemy.onDeathTriggered) return;
+  enemy.onDeathTriggered = true;
+  if (!enemy.ability) return;
+  const m = enemy.ability.match(/When Defeated,?\s*(.+)/i);
+  if (!m) return;
+  addLog(`${enemy.name}: death trigger fires!`, 'warning');
+  executeWhenDefeatedClause(enemy, m[1].trim());
 }
 
 // ============== TURN MANAGEMENT ==============
@@ -1655,25 +1881,102 @@ function executeEnemyActions() {
             case 'inflict': {
               const inflictStatus = effect.target?.toLowerCase();
               if (inflictStatus) {
-                combatState.player.statuses[inflictStatus] =
-                  (combatState.player.statuses[inflictStatus] || 0) + value;
-                addLog(`${enemy.name} inflicted ${value} ${effect.target}`, 'warning');
+                const isAoE = (effect.addons || []).some(a =>
+                  ['overload','wide'].includes(a.toLowerCase()));
+                if (isAoE) {
+                  // Inflict on player + all allies
+                  combatState.player.statuses[inflictStatus] =
+                    (combatState.player.statuses[inflictStatus] || 0) + value;
+                  combatState.allies.forEach(a => {
+                    if (a.isAlive) {
+                      a.statuses[inflictStatus] = (a.statuses[inflictStatus] || 0) + value;
+                    }
+                  });
+                  addLog(`${enemy.name} inflicted ${value} ${effect.target} on all targets!`, 'warning');
+                } else {
+                  combatState.player.statuses[inflictStatus] =
+                    (combatState.player.statuses[inflictStatus] || 0) + value;
+                  addLog(`${enemy.name} inflicted ${value} ${effect.target}`, 'warning');
+                }
               }
               break;
             }
 
             case 'spawn':
-              addLog(`${enemy.name} spawned ${effect.target || 'creature'}`, 'warning');
+              if (effect.target) {
+                spawnEnemyAtSlot(effect.target, enemy.position + combatState.enemies.length);
+              }
               break;
 
-            case 'alter':
-              addLog(`${enemy.name} altered form`, 'info');
+            case 'alter': {
+              // Transform enemy into another form, keeping current HP
+              const targetForm = effect.target;
+              if (typeof ENEMIES_DATA !== 'undefined' && targetForm) {
+                const tmpl = ENEMIES_DATA.find(e => e.name === targetForm);
+                if (tmpl) {
+                  const isOrd = /Turn \d+:/i.test(tmpl.pattern || '');
+                  enemy.name            = tmpl.name;
+                  enemy.ability         = tmpl.ability;
+                  enemy.pattern         = tmpl.pattern || '';
+                  enemy.patternType     = isOrd ? 'ordered' : 'random';
+                  enemy.patternTurns    = isOrd ? parseOrderedPattern(tmpl.pattern) : null;
+                  enemy.patternTurnIndex = 0;
+                  enemy.dice            = tmpl.dice;
+                  enemy.imageUrl        = tmpl.imageUrl;
+                  enemy.staggerThreshold = parseStaggerThreshold(tmpl.ability);
+                  enemy.rolledFaces     = new Set();
+                  Object.assign(enemy.statuses, parseStartingAbilities(tmpl.ability));
+                  addLog(`Transformed into ${tmpl.name}!`, 'warning');
+                  rollEnemyIntent(enemy);
+                  if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
+                } else {
+                  addLog(`${enemy.name}: cannot find form "${targetForm}"`, 'warning');
+                }
+              }
               break;
+            }
+
+            case 'addpigment': {
+              // "to deck" → discard pile (shuffled in later); otherwise → hand
+              const toDeck = /\bto\s+(?:your\s+)?deck\b/i.test(effect.raw || '');
+              if (toDeck) {
+                if (typeof window.addRandomPigmentToDeck === 'function') {
+                  window.addRandomPigmentToDeck();
+                  addLog(`${enemy.name} added a Pigment card to your deck!`, 'warning');
+                }
+              } else {
+                if (typeof window.addRandomPigmentToHand === 'function') {
+                  window.addRandomPigmentToHand();
+                  addLog(`${enemy.name} added a Pigment card to your hand!`, 'warning');
+                }
+              }
+              break;
+            }
+
+            case 'consumepigment': {
+              // Consume a random pigment from any pile; reward enemy with Power + Block
+              const consumed = consumeRandomPigmentCard();
+              if (consumed) {
+                if (effect.power) {
+                  enemy.statuses['power'] = (enemy.statuses['power'] || 0) + effect.power;
+                  addLog(`${enemy.name} gained ${effect.power} Power from Pigment!`, 'warning');
+                }
+                if (effect.block) {
+                  addBlock(enemy, effect.block);
+                }
+              } else {
+                addLog(`${enemy.name} tried to consume Pigment but none found`, 'info');
+              }
+              break;
+            }
 
             case 'pain': {
-              // value may be null if stored in addons[0] (data quirk: "Pain 2" → addons:["2"])
+              // Pain = direct self-damage, bypasses block/thorns/dodge
               const painVal = value || (effect.addons && parseInt(effect.addons[0])) || 0;
-              dealDamage(enemy, painVal, ['self']);
+              if (painVal > 0) {
+                enemy.health -= painVal;
+                addLog(`${enemy.name} took ${painVal} pain (self-damage)`, 'danger');
+              }
               break;
             }
 
@@ -1877,6 +2180,7 @@ function processStatusEffects(target, timing) {
       if (statuses['fading'] <= 0) {
         target.health = 0;
         addLog(`${target.name} faded away!`, 'info');
+        if (target !== combatState.player) onEnemyDefeated(target);
       }
     }
   }
