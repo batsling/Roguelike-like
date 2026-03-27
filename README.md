@@ -17,6 +17,9 @@
   - [Card Effects Reference](#card-effects-reference)
   - [Combat Statuses](#combat-statuses)
   - [Enemy Intents](#enemy-intents)
+  - [Enemy Ability Triggers](#enemy-ability-triggers)
+  - [Spawning and Transformation](#spawning-and-transformation)
+  - [Pigment Card Mechanics](#pigment-card-mechanics)
   - [Draw / Discard / Exhaust Piles](#draw--discard--exhaust-piles)
   - [Enemy Encounter System](#enemy-encounter-system)
   - [Card Rewards](#card-rewards)
@@ -59,6 +62,43 @@ The codebase is organized into focused, maintainable modules. See [js/README.md]
 ---
 
 ## Recent Updates
+
+### Version 6.1 - Advanced Enemy Mechanics (March 2026)
+
+**Pattern-Based Execution (all enemies):**
+- Dice arrays in enemy data are now legacy — all enemies execute their `pattern` string exclusively
+- `rollEnemyIntent` strips the `"Always: "` prefix and parses the description for both ordered and random enemies
+- Random probability splits (`50% desc / 50% desc`) are handled with proper weighted random selection
+- Forgetful enemies cycle through all branches before repeating, using branch index tracking
+
+**New Complex Enemy Mechanics:**
+- **Pain**: Enemy self-damage that bypasses block, thorns, and dodge entirely (direct HP reduction)
+- **Spawning**: When an enemy is defeated or on a spawn trigger, a new enemy replaces the dead slot using `spawnEnemyAtSlot()`, fully initialized from `ENEMIES_DATA`
+- **Alter (Transformation)**: An enemy transforms into a new form, changing name/pattern/ability/image while keeping current HP
+- **Add Pigment**: Enemy adds a random Pigment (status) card to the player's hand or deck depending on pattern text
+- **Consume Pigment**: Enemy consumes a random Pigment card from anywhere (hand/draw/discard) and gains Power + Block in return
+- **Skinning Homunculus Reactive**: When an ally takes non-ranged damage, enemies with the `"When another ally takes Melee Dmg"` ability inject a `1 Frail Overload` effect into their intent mid-turn
+- **Overload / Wide on Inflict**: Status infliction with Overload or Wide addons applies the status to the player AND all allies simultaneously
+
+**On-Death Trigger System:**
+- `onEnemyDefeated(enemy)` fires when an enemy's HP reaches 0 (from damage or Fading expiry)
+- A one-time guard (`onDeathTriggered` flag) prevents double-triggering
+- `executeWhenDefeatedClause` parses the `"When Defeated, ..."` ability text and handles: Spawn X, N% chance, probability splits (`60% X / 40% Y`), adjacent ally damage, and Strength Save checks
+
+**Improved Pattern Parsing:**
+- `parseSimplePatternDesc` now handles `NxM Dmg` multi-hit notation (e.g., `5x4 Dmg` → 4 hits of 5 damage)
+- `Gain`/`Get` prefix before a status correctly flags it as a self-buff instead of an infliction
+- `parsePatternDescToEffects` has dedicated keyword branches for `AddPigment` and `ConsumePigment` before falling through to general parsing
+- `parseStartingAbilities` rewritten to correctly handle all enemy ability formats: `Fading N`, `Multi Attack N`, `Stagger N%`, `Immune to X`, and generic `N StatusName`
+
+**New Functions:**
+- `spawnEnemyAtSlot(enemyName, position)` — creates full enemy state, rolls initial intent, updates display
+- `consumeRandomPigmentCard()` — finds a random `isStatusCard` card across all piles and removes it
+- `onEnemyDefeated(enemy)` — fires death trigger from ability string
+- `executeWhenDefeatedClause(enemy, clause)` — executes parsed death trigger text
+- `addRandomPigmentToDeck()` in `cards.js` — adds a random pigment to the discard pile (shuffled in on next reshuffle)
+
+---
 
 ### Version 6.0 - Card-Based Combat System (March 2026)
 
@@ -1508,24 +1548,130 @@ Effects are parsed from card `description` strings. Supported keywords:
 
 ### Combat Statuses
 
-Status effects are tracked per-entity. Each status has a defined `onApply`, `onTurnStart`, `onTurnEnd`, or `onDamageDealt` hook. Examples:
+Status effects are tracked per-entity in the `statuses` dictionary on each combatant.
+
+#### Player / Enemy Statuses
 
 | Status | Effect |
 |--------|--------|
-| **Burn** | Deals damage at end of turn |
-| **Poison** | Stacks; deals damage each turn then decreases |
+| **Burn** | Takes damage at end of turn; does not apply if `immune_burn` is set |
+| **Poison** | Stacks; takes damage each turn then decreases by 1 |
 | **Stun** | Target skips their next action |
-| **Weak** | Reduces outgoing damage |
-| **Vulnerable** | Increases incoming damage |
-| **Power** | Generic damage/defense bonus |
+| **Weak** | Reduces outgoing damage by 25% |
+| **Vulnerable** | Increases incoming damage by 50% |
+| **Frail** | Reduces block gain |
+| **Power** | Generic bonus to damage and/or defense |
+| **Block** | Absorbs incoming damage before HP; does not persist between turns |
+
+#### Enemy-Only Statuses (from Ability string)
+
+| Status | Effect |
+|--------|--------|
+| **Fading N** | Counts down each turn; when it hits 0 the enemy dies (fires `onEnemyDefeated`) |
+| **Multi Attack N** | Enemy executes its pattern N times per turn |
+| **Forgetful** | Enemy cycles through probability branches without repeating before resetting |
+| **Immune to X** | Enemy is immune to the named status (e.g., `immune_burn`) |
+| **Pain N** | Enemy deals N direct damage to itself — bypasses block, thorns, and dodge entirely |
+
+#### Inflict Addons
+
+| Addon | Effect |
+|-------|--------|
+| **Overload** | Applies the status to the player AND all allies |
+| **Wide** | Alias for Overload |
+| *(none)* | Applies only to the player |
 
 ---
 
 ### Enemy Intents
 
-Before each enemy turn, the enemy's **intent** is shown in a banner above its card. The intent text comes directly from the enemy's `pattern` field in `enemies-data.js`. Intents cycle through the pattern list each turn.
+Before each enemy turn, the enemy's **intent** is shown in a banner above its card. All enemies execute their `pattern` string — the old dice arrays are legacy and ignored.
 
-Example patterns: `"Deal 5 Dmg"`, `"Apply 2 Burn"`, `"Gain 3 Block"`.
+#### Pattern Formats
+
+| Format | Meaning |
+|--------|---------|
+| `Always: <desc>` | Executes `<desc>` every turn |
+| `Turn 1: <desc> / Turn 2: <desc> / ...` | Ordered rotation; `Next:` suffix loops the list |
+| `50% <desc1> / 50% <desc2>` | Random weighted branch selection |
+
+#### Pattern Description Keywords
+
+| Keyword | Effect |
+|---------|--------|
+| `N Dmg` | Deals N damage to the player |
+| `NxM Dmg` | Deals N damage M times (multi-hit) |
+| `N Block` | Enemy gains N block |
+| `N Heal` | Enemy heals N HP |
+| `Gain N <Status>` / `Get N <Status>` | Enemy applies the status to itself |
+| `N <Status>` | Enemy inflicts N stacks of status on the player |
+| `N <Status> Overload` | Inflicts N on player AND all allies |
+| `Add N random Pigment to hand/deck` | Adds a random pigment card to the player's hand or deck |
+| `Consume N random Pigment for X Power, Y Block` | Consumes a random pigment from any pile; gains X Power and Y Block |
+
+---
+
+### Enemy Ability Triggers
+
+Complex enemy behaviors are declared in the `ability` field of each enemy and parsed at runtime.
+
+#### Starting Ability Formats
+
+| Format | Effect |
+|--------|--------|
+| `N StatusName` | Enemy starts combat with N stacks of the named status |
+| `Fading N` | Enemy starts with a Fading countdown of N turns |
+| `Multi Attack N` | Enemy acts N times per turn |
+| `Stagger N%` | Enemy staggers (skips next action) when its HP crosses certain thresholds |
+| `Immune to X` | Sets `immune_X` flag; blocks the named status |
+
+#### Death Triggers
+
+Death trigger text follows the format `When Defeated, <clause>` in the ability string. Supported clause types:
+
+| Clause | Effect |
+|--------|--------|
+| `Spawn <EnemyName>` | Spawns a new enemy from ENEMIES_DATA, replacing this enemy's slot |
+| `N% Spawn <EnemyName>` | N% chance to spawn |
+| `60% Spawn X / 40% Spawn Y` | Weighted random spawn choice |
+| `N Dmg to adjacent allies` | Deals N damage to enemies in adjacent position slots |
+| `Strength Save DC N or take X Dmg` | Player rolls vs DC; failure takes X damage |
+
+#### Reactive Abilities
+
+| Ability Text | Trigger | Effect |
+|-------------|---------|--------|
+| `When another ally takes Melee Dmg` | Any non-ranged attack on an ally | Injects `1 Frail Overload` into this enemy's current turn intent |
+
+---
+
+### Spawning and Transformation
+
+#### `spawnEnemyAtSlot(enemyName, position)`
+- Looks up `enemyName` in `ENEMIES_DATA` (case-insensitive)
+- Randomizes HP within `hpMin`–`hpMax` range
+- Initializes all fields: statuses, pattern type, stagger threshold, intent
+- Replaces the dead enemy at `position`; appends if no dead enemy exists
+- Immediately rolls and displays initial intent
+
+#### `alter` (Transformation)
+- Triggered by `Alter <FormName>` in a pattern description
+- Transforms the enemy's name, ability, pattern, image, and stagger threshold in place
+- **Current HP is preserved** — only form data changes
+- Merges new starting statuses from the new form's ability string
+- Immediately rerolls intent for the new form
+
+---
+
+### Pigment Card Mechanics
+
+**Pigment cards** (Status type, `isStatusCard: true`) are temporary cards that enemies can interact with:
+
+| Enemy Action | Effect |
+|-------------|--------|
+| Add Pigment to hand | Calls `addRandomPigmentToHand()` — picks a random pigment from CARDS_DATA and adds it to combat hand |
+| Add Pigment to deck | Calls `addRandomPigmentToDeck()` — adds to discard pile (shuffled into draw on next reshuffle) |
+| Consume Pigment | `consumeRandomPigmentCard()` — searches hand → draw pile → discard pile and removes one random pigment; then awards the enemy Power + Block |
 
 ---
 
@@ -1600,12 +1746,28 @@ gameState.discardPile // Cards played this combat
 
 | File | Responsibility |
 |------|---------------|
-| `js/combat-engine.js` | Card resolution, status effects, enemy AI, AoE detection, dice cards |
+| `js/combat-engine.js` | Card resolution, status effects, enemy AI, pattern execution, spawning, death triggers |
 | `js/combat-ui.js` | Fan-arc hand, drag-to-play, pile overlay, targeting mode, HP diff animations |
-| `js/cards.js` | Deck management, card reward modal, shop services, status card cleanup |
+| `js/cards.js` | Deck management, card reward modal, shop services, pigment card helpers |
 | `data/cards-data.js` | Card definitions (name, type, rarity, cost, description, upgrade data) |
-| `data/enemies-data.js` | Enemy definitions (HP, power, patterns, weight/cost for encounter budget) |
+| `data/enemies-data.js` | Enemy definitions (HP, pattern, ability, weight/cost for encounter budget) |
 | `data/statuses-data.js` | Combat status effect definitions |
+
+**Key combat-engine.js functions:**
+
+| Function | Purpose |
+|----------|---------|
+| `rollEnemyIntent(enemy)` | Parses the enemy's `pattern` string and populates `currentIntent` |
+| `executeEnemyActions(enemy)` | Resolves each intent item: Dmg, Block, Heal, Inflict, Spawn, Alter, AddPigment, ConsumePigment, Pain |
+| `parsePatternDescToEffects(desc)` | Converts a pattern description string into effect objects |
+| `parseSimplePatternDesc(text)` | Tokenizes text into effects; handles NxM multi-hit and Gain/Get self-buffs |
+| `parseStartingAbilities(abilityStr)` | Extracts starting statuses from an ability string (Fading, Multi Attack, Immune to, etc.) |
+| `spawnEnemyAtSlot(name, pos)` | Creates and inserts a new enemy from ENEMIES_DATA at the given position |
+| `onEnemyDefeated(enemy)` | Fires the enemy's "When Defeated" ability clause (one-shot guard) |
+| `executeWhenDefeatedClause(enemy, clause)` | Parses and executes death trigger text (Spawn, Dmg, Strength Save, probability) |
+| `consumeRandomPigmentCard()` | Removes a random `isStatusCard` card from any pile |
+| `dealDamage(target, amount, addons)` | Applies damage with block/thorns/dodge resolution; fires death trigger and reactive hooks |
+| `processStatusEffects(target)` | Applies per-turn status ticks (Burn, Poison, Fading, etc.) |
 
 ---
 
