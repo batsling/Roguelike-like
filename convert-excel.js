@@ -175,6 +175,23 @@ var GAMES_DATA = ${JSON.stringify(games, null, 2)};
 fs.writeFileSync('games-data.js', gamesOutput);
 console.log(`✅ Games: ${totalGames} games with ${totalConnections} connections`);
 
+// Parse starting deck from "5 Attacks, 4 Defends, 1 Bash" format
+function parseDeckColumn(deckStr) {
+  if (!deckStr) return [];
+  const entries = [];
+  const parts = deckStr.split(',').map(s => s.trim());
+  for (const part of parts) {
+    const match = part.match(/^(\d+)\s+(.+)$/);
+    if (match) {
+      const count = parseInt(match[1]);
+      // Strip trailing 's' for plurals (Attacks→Attack, Defends→Defend) but not proper names
+      let cardName = match[2].trim();
+      entries.push({ cardName, count });
+    }
+  }
+  return entries;
+}
+
 // ============== CHARACTERS ==============
 const charactersSheet = workbook.Sheets['characters'];
 const charactersData = XLSX.utils.sheet_to_json(charactersSheet);
@@ -191,6 +208,9 @@ charactersData.forEach(row => {
     diceFaces.push(parseDiceFace(faceStr));
   }
 
+  // Parse starting deck
+  const startingDeck = parseDeckColumn(row['Deck'] || '');
+
   characters[key] = {
     name: name,
     game: row['Game'] || '',
@@ -198,6 +218,7 @@ charactersData.forEach(row => {
     fullImage: `images/characters/Full/${name}.png`,
     energy: parseInt(row['Energy']) || 2,
     mana: parseInt(row['Mana']) || 0,
+    health: parseInt(row['Health']) || 80,
     levelUpCondition: row['Level Up'] || '',
     levelUpStats: {
       strength: parseInt(row['Str']) || 0,
@@ -213,7 +234,8 @@ charactersData.forEach(row => {
       random: parseInt(row['Random']) || 0
     },
     description: row['Description'] || '',
-    combatStart: row['Combat Start'] || 'Dice',
+    combatStart: row['Combat Start'] || 'Cards',
+    startingDeck: startingDeck,
     dice: diceFaces
   };
 });
@@ -241,12 +263,36 @@ const enemies = enemiesData.map(row => {
   // Get variant field - if it references another enemy, this is a variant of that enemy
   const variantOf = row['Variant'] && row['Variant'] !== 'N/A' ? row['Variant'] : null;
 
+  // Parse HP range "30-34" into { min, max }
+  const hpStr = String(row['HP'] || '10');
+  let hpMin, hpMax;
+  const hpMatch = hpStr.match(/^(\d+)-(\d+)$/);
+  if (hpMatch) {
+    hpMin = parseInt(hpMatch[1]);
+    hpMax = parseInt(hpMatch[2]);
+  } else {
+    hpMin = hpMax = parseInt(hpStr) || 10;
+  }
+
+  // Parse weight - may be N/A for spawn-only enemies
+  const rawWeight = row['Weight'];
+  const weight = (rawWeight !== undefined && rawWeight !== 'N/A' && rawWeight !== '') ? parseInt(rawWeight) : null;
+
+  // Parse difficulty - may be N/A for spawn-only enemies
+  const difficulty = (row['Difficulty'] && row['Difficulty'] !== 'N/A') ? row['Difficulty'] : null;
+
+  // Parse pattern - determines intent behavior
+  const pattern = row['Pattern'] || null;
+
   return {
     name: row['Name'] || '',
     type: row['Type'] || '',
-    difficulty: row['Difficulty'] || 'Low',
-    hp: parseInt(row['HP']) || 10,
+    difficulty: difficulty,
+    weight: weight,
+    hpMin: hpMin,
+    hpMax: hpMax,
     ability: row['Ability'] || null,
+    pattern: pattern,
     game: row['Game'] || '',
     location: row['Location'] || 'General',
     dice: diceFaces,
@@ -299,26 +345,27 @@ var ALLIES_DATA = ${JSON.stringify(allies, null, 2)};
 }
 
 // ============== WEAPONS ==============
+// Weapons now give a card when acquired; weapon sheet stores passive upgrade effects
 const weaponsSheet = workbook.Sheets['weapons'];
 if (weaponsSheet) {
   const weaponsData = XLSX.utils.sheet_to_json(weaponsSheet);
 
   const weapons = weaponsData.map(row => {
-    const diceFaces = [];
-    for (let i = 1; i <= 6; i++) {
-      const faceStr = row[`Dice Face ${i}`];
-      diceFaces.push(parseDiceFace(faceStr));
-    }
+    const tags = row['tags'] ? row['tags'].split(',').map(t => t.trim()) : [];
 
     return {
       name: row['Name'] || '',
       rarity: row['Rarity'] || 'Common',
-      dice: diceFaces
+      upgradeEffect: row['Upgrade'] || '',
+      game: row['Reference'] || '',
+      tags: tags,
+      imageUrl: row['img'] ? `images/items/${row['img']}.png` : null,
+      unlockCondition: row['Unlock Condition'] || null
     };
   });
 
   const weaponsOutput = `// Auto-generated from Roguelikes.xlsx - Weapons
-// Weapons with combat dice
+// Weapons are items that add a card to the deck when acquired; upgrade effect is the passive scaling condition
 
 var WEAPONS_DATA = ${JSON.stringify(weapons, null, 2)};
 `;
@@ -546,6 +593,89 @@ var GAME_STATUSES_DATA = ${JSON.stringify(gameStatuses, null, 2)};
 
   fs.writeFileSync('game-statuses-data.js', gameStatusesOutput);
   console.log(`✅ Game Statuses: ${Object.keys(gameStatuses).length} game statuses`);
+}
+
+// ============== FISH ==============
+const fishSheet = workbook.Sheets['fish'];
+if (fishSheet) {
+  const fishData = XLSX.utils.sheet_to_json(fishSheet);
+
+  const fish = fishData.map(row => {
+    return {
+      name: row['Name'] || '',
+      rarity: row['Rarity'] || 'Common',
+      types: row['Types'] ? row['Types'].split(',').map(t => t.trim()) : [],
+      game: row['Game'] || '',
+      imageUrl: row['Image'] ? `images/fish/${row['Image']}.png` : null
+    };
+  });
+
+  const fishOutput = `// Auto-generated from Roguelikes.xlsx - Fish
+
+var FISH_DATA = ${JSON.stringify(fish, null, 2)};
+`;
+
+  fs.writeFileSync('fish-data.js', fishOutput);
+  console.log(`✅ Fish: ${fish.length} fish`);
+}
+
+// ============== BINGO ==============
+const bingoSheet = workbook.Sheets['bingo'];
+if (bingoSheet) {
+  const bingoData = XLSX.utils.sheet_to_json(bingoSheet);
+
+  const bingoGoals = bingoData.map(row => {
+    return {
+      goal: row['Goal'] || '',
+      difficulty: (row['Difficulty'] || 'Normal').toLowerCase()
+    };
+  });
+
+  const bingoOutput = `// Auto-generated from Roguelikes.xlsx - Bingo Goals
+
+var BINGO_GOALS_DATA = ${JSON.stringify(bingoGoals, null, 2)};
+`;
+
+  fs.writeFileSync('bingo-data.js', bingoOutput);
+  console.log(`✅ Bingo: ${bingoGoals.length} goals`);
+}
+
+// ============== CARDS ==============
+const cardsSheet = workbook.Sheets['cards'];
+if (cardsSheet) {
+  const cardsData = XLSX.utils.sheet_to_json(cardsSheet);
+
+  const cards = cardsData.map(row => {
+    const tags = row['Tags'] ? row['Tags'].split(',').map(t => t.trim()) : [];
+    const upgradedCost = row['Upgraded Cost'];
+    const isStatusCard = (row['Type'] || '').toLowerCase() === 'status';
+
+    return {
+      name: row['Name'] || '',
+      rarity: row['Rarity'] || 'Common',
+      cost: parseInt(row['Cost']) || 0,
+      type: row['Type'] || 'Attack',
+      description: row['Description'] || '',
+      upgradedDescription: (!isStatusCard && row['Upgraded Description'] && row['Upgraded Description'] !== 'N/A')
+        ? row['Upgraded Description'] : null,
+      upgradedCost: (!isStatusCard && upgradedCost !== undefined && upgradedCost !== 'N/A')
+        ? parseInt(upgradedCost) : null,
+      canUpgrade: !isStatusCard && row['Rarity'] !== 'Starter' && row['Upgraded Description'] !== 'N/A',
+      isStatusCard: isStatusCard,
+      imageUrl: (row['Img'] && row['Img'] !== 'N/A') ? `images/cards/${row['Img']}.png` : null,
+      game: (row['Game'] && row['Game'] !== 'N/A') ? row['Game'] : null,
+      tags: tags
+    };
+  });
+
+  const cardsOutput = `// Auto-generated from Roguelikes.xlsx - Cards
+// Card deck system: players build a deck from this pool
+
+var CARDS_DATA = ${JSON.stringify(cards, null, 2)};
+`;
+
+  fs.writeFileSync('cards-data.js', cardsOutput);
+  console.log(`✅ Cards: ${cards.length} cards`);
 }
 
 console.log('\n✅ All data files generated successfully!');

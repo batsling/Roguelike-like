@@ -107,6 +107,62 @@ const StateMutator = {
   },
 
   /**
+   * Modify maximum energy with UI updates
+   * @param {number} delta - Amount to change max energy by
+   * @param {Object} options - Configuration options
+   * @returns {Object} - { oldMaxEnergy, newMaxEnergy, changed }
+   */
+  modifyMaxEnergy(delta, options = {}) {
+    const { updateUI = true, notify = false } = options;
+
+    const oldMaxEnergy = gameState.maxEnergy || 2;
+    const newMaxEnergy = Math.max(1, oldMaxEnergy + delta);
+    gameState.maxEnergy = newMaxEnergy;
+
+    if (updateUI) {
+      if (typeof updateTopBar === 'function') updateTopBar();
+      if (typeof updateGameStats === 'function') updateGameStats();
+    }
+
+    if (notify && delta !== 0) {
+      const message = `${delta > 0 ? '+' : ''}${delta} Max Energy`;
+      if (typeof createNotification === 'function') {
+        createNotification(message, COLORS.INFO, '⚡');
+      }
+    }
+
+    return { oldMaxEnergy, newMaxEnergy, changed: oldMaxEnergy !== newMaxEnergy };
+  },
+
+  /**
+   * Modify discovery stat with UI updates
+   * @param {number} delta - Amount to change discovery by
+   * @param {Object} options - Configuration options
+   * @returns {Object} - { oldValue, newValue, changed }
+   */
+  modifyDiscovery(delta, options = {}) {
+    const { updateUI = true, notify = false } = options;
+
+    const oldValue = discovery || 0;
+    discovery = oldValue + delta;
+    gameState.discovery = discovery;
+
+    if (updateUI) {
+      if (typeof updateGameStats === 'function') updateGameStats();
+      if (typeof updateTopBar === 'function') updateTopBar();
+    }
+
+    if (notify && delta !== 0) {
+      const message = `${delta > 0 ? '+' : ''}${delta} Discovery`;
+      if (typeof createNotification === 'function') {
+        createNotification(message, COLORS.INFO, '🔍');
+      }
+    }
+
+    return { oldValue, newValue: discovery, changed: oldValue !== discovery };
+  },
+
+  /**
    * Modify player gold with UI updates
    * @param {number} delta - Amount to change gold by
    * @param {Object} options - Configuration options

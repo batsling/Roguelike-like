@@ -154,6 +154,9 @@ function spawnChoices() {
     gameState.pendingLocationStatuses = [];
   }
 
+  // Store current choices so the map can highlight them
+  gameState.currentChoices = [...opts];
+
   // Dynamic positioning based on number of choices
   // Node max width = 220px + 56px padding + 6px border = ~282px
   // Use minimum spacing of 300px to ensure no overlap even with long names
@@ -414,6 +417,9 @@ function advance(game, x, y, encounterType) {
   // Remove floating Dash/Reroll buttons from choice screen
   removeDashRerollButtons();
 
+  // Clear current choices now that the player has picked one
+  gameState.currentChoices = [];
+
   // Get current player icon position before clearing choices
   const oldPlayerIcon = document.getElementById('player-icon');
   let startY = gameState.currentY || 120;
@@ -492,9 +498,6 @@ function advance(game, x, y, encounterType) {
   const isAmuletGame = game === gameState.amuletGame.name;
 
   if (!isAmuletGame) {
-    // Store the encounter type for later
-    gameState.nextEncounterType = encounterType;
-
     // Regeneration trait: Every time you choose a game whose encounter isn't enemy combat, heal +1
     if (encounterType !== 'combat' && typeof hasTrait === 'function' && hasTrait('regeneration')) {
       health = Math.min(health + 1, maxHealth);

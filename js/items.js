@@ -62,14 +62,6 @@ function updateStat(statName, change) {
   if (typeof updateGameStats === 'function') updateGameStats();
 }
 
-// Determine encounter type based on weighted roll
-function determineEncounterType() {
-  const encounterRoll = Math.random() * 100;
-  if (encounterRoll < 75) return 'combat';
-  if (encounterRoll < 90) return 'event';
-  return 'shop';
-}
-
 // ===== SCALABLE PASSIVE ITEM SYSTEM =====
 // This system handles items that scale with player stats and need to be recalculated
 
@@ -331,77 +323,43 @@ const ITEM_EFFECTS = {
   // ===== TRIGGERED ITEMS =====
 
   "Charm of the Vampire": {
+    _lastProcessedFrame: 0, // Track last processed frame to avoid duplicate triggers
     onAcquire: () => {
       // No immediate effect on acquire
       console.log('Acquired Charm of the Vampire - will trigger on enemy defeats');
     },
     onEnemyDefeated: () => {
-      // 50% base chance + (5% * luck)
+      // Use frame counter to only trigger once per defeat event
+      const currentFrame = Date.now();
+      const itemEffect = ITEM_EFFECTS["Charm of the Vampire"];
+      if (currentFrame - itemEffect._lastProcessedFrame < 50) {
+        return; // Already processed this defeat
+      }
+      itemEffect._lastProcessedFrame = currentFrame;
+
+      // Count all copies in inventory
+      const copies = inventory.filter(i => i.name === 'Charm of the Vampire').length;
+
+      // 50% base chance + (5% * luck) - same chance regardless of copies
       const baseChance = 0.50;
       const luckBonus = (luck || 0) * 0.05;
       const totalChance = baseChance + luckBonus;
 
       const roll = Math.random();
-      console.log(`Charm of the Vampire: rolled ${roll.toFixed(2)} vs ${totalChance.toFixed(2)} chance`);
+      console.log(`Charm of the Vampire (x${copies}): rolled ${roll.toFixed(2)} vs ${totalChance.toFixed(2)} chance`);
 
       if (roll < totalChance) {
-        // Heal +1 health (can't exceed max health)
-        const result = StateMutator.modifyHealth(1);
+        // Heal +1 health per copy (can't exceed max health)
+        const healAmount = copies;
+        const result = StateMutator.modifyHealth(healAmount);
 
         if (result.changed) {
-          console.log(`Charm of the Vampire: Healed +1 health (${result.oldHealth} → ${result.newHealth})`);
+          console.log(`Charm of the Vampire (x${copies}): Healed +${healAmount} health (${result.oldHealth} → ${result.newHealth})`);
           // Show notification
           setTimeout(() => {
-            createNotification('Charm of the Vampire: +1 Health!', COLORS.SUCCESS, '🧛');
+            createNotification(`Charm of the Vampire: +${healAmount} Health!`, COLORS.SUCCESS, '🧛');
           }, 100);
         }
-      }
-    }
-  },
-
-  "Cursed Slash": {
-    onAcquire: () => {
-      // Lose half of max health (rounded down)
-      const healthLoss = Math.floor(maxHealth / 2);
-      const oldMaxHealth = maxHealth;
-      const oldHealth = health;
-
-      maxHealth -= healthLoss;
-      // Cap current health to new max, but don't reduce it otherwise
-      health = Math.min(health, maxHealth);
-      // Ensure player doesn't die (minimum 1 HP)
-      health = Math.max(1, health);
-
-      gameState.maxHealth = maxHealth;
-      gameState.health = health;
-
-      console.log(`Cursed Slash: Max health ${oldMaxHealth} → ${maxHealth}, Current health ${oldHealth} → ${health}`);
-
-      if (typeof updateHealthDisplay === 'function') {
-        updateHealthDisplay();
-      }
-      if (typeof updateTopBar === 'function') {
-        updateTopBar();
-      }
-    },
-    onEnemyDefeated: () => {
-      // Always heal +1 health when defeating an enemy
-      const oldHealth = health;
-      health = Math.min(health + 1, maxHealth);
-      gameState.health = health;
-
-      if (health > oldHealth) {
-        console.log(`Cursed Slash: Healed +1 health (${oldHealth} → ${health})`);
-        if (typeof updateHealthDisplay === 'function') {
-          updateHealthDisplay();
-        }
-        if (typeof updateTopBar === 'function') {
-          updateTopBar();
-        }
-        // Show notification
-        setTimeout(() => {
-          createNotification('Cursed Slash: +1 Health!', 'rgba(156, 39, 176, 0.9)', '⚔️');
-        }, 100);
       }
     }
   },
@@ -795,6 +753,79 @@ const ITEM_EFFECTS = {
 
       console.error('Fire Potion: No active combat found');
     }
+  },
+
+  // ===== NEW SLAY THE SPIRE ITEMS =====
+
+  "Busted Crown": {
+    onAcquire: () => {
+      StateMutator.modifyMaxEnergy(1);
+      StateMutator.modifyDiscovery(-2);
+      console.log('Acquired Busted Crown: +1 Max Energy, -2 Discovery');
+    }
+  },
+
+  "Philosopher's Stone": {
+    onAcquire: () => {
+      // +1 Max Energy (can be upgraded/downgraded)
+      StateMutator.modifyMaxEnergy(1);
+      console.log("Acquired Philosopher's Stone: +1 Max Energy, enemies start with 1 Power");
+      // Note: The enemy Power effect is handled in combat initialization
+    }
+    // Enemy Power effect is applied in combat-engine.js when combat starts
+  },
+
+  "Meat on the Bone": {
+    onAcquire: () => {
+      console.log('Acquired Meat on the Bone - will trigger at end of combat if HP <= 50%');
+    },
+    onCombatEnd: (combatState) => {
+      // Trigger if health is at 50% or below max
+      if (health <= maxHealth / 2) {
+        // Count copies for stacking
+        const copies = inventory.filter(i => i.name === 'Meat on the Bone').length;
+        const healAmount = 3 * copies;
+
+        StateMutator.modifyHealth(healAmount);
+        console.log(`Meat on the Bone${copies > 1 ? ` x${copies}` : ''}: Healed ${healAmount} HP (HP was at 50% or below)`);
+
+        if (typeof createNotification === 'function') {
+          createNotification(`Meat on the Bone: +${healAmount} Health`, '#66bb6a', '🍖');
+        }
+      }
+    }
+  },
+
+  "Blood Vial": {
+    onAcquire: () => {
+      console.log('Acquired Blood Vial - will trigger when entering combat');
+    },
+    onCombatStart: () => {
+      // Count copies for stacking
+      const copies = inventory.filter(i => i.name === 'Blood Vial').length;
+      const healAmount = 1 * copies;
+
+      StateMutator.modifyHealth(healAmount);
+      console.log(`Blood Vial${copies > 1 ? ` x${copies}` : ''}: Healed ${healAmount} HP on combat start`);
+
+      if (typeof createNotification === 'function') {
+        createNotification(`Blood Vial: +${healAmount} Health`, '#66bb6a', '🩸');
+      }
+    }
+  },
+
+  "Focus Crystal": {
+    onAcquire: () => {
+      // Effect is calculated dynamically in getEffectiveAttack()
+      console.log('Acquired Focus Crystal: +1 Attack when melee weapon equipped');
+    }
+  },
+
+  "Horn Cleat": {
+    onAcquire: () => {
+      // Effect is applied in combat turn 2
+      console.log('Acquired Horn Cleat: +5 Block at start of turn 2');
+    }
   }
 };
 
@@ -933,6 +964,26 @@ function getItemStatModifications(itemName) {
     });
   }
 
+  // Parse for modifyMaxEnergy calls
+  const maxEnergyRegex = /modifyMaxEnergy\((-?\d+)\)/g;
+  while ((match = maxEnergyRegex.exec(funcString)) !== null) {
+    const value = parseInt(match[1]);
+    modifications.push({
+      stat: 'maxEnergy',
+      direction: value >= 0 ? 1 : -1
+    });
+  }
+
+  // Parse for modifyDiscovery calls
+  const discoveryRegex = /modifyDiscovery\((-?\d+)\)/g;
+  while ((match = discoveryRegex.exec(funcString)) !== null) {
+    const value = parseInt(match[1]);
+    modifications.push({
+      stat: 'discovery',
+      direction: value >= 0 ? 1 : -1
+    });
+  }
+
   // Parse for direct stat assignments like: strength += 2, luck += 1
   // This handles stats modified directly without StateMutator
   if (funcString.includes('luck ++') || funcString.includes('luck +=') || funcString.includes('luck = ')) {
@@ -946,6 +997,10 @@ function getItemStatModifications(itemName) {
   if (itemName === 'Calipers') {
     modifications.push({ stat: 'block', direction: 1 });
   }
+
+  // Special case: Philosopher's Stone - only energy is upgradeable, not the enemy Power effect
+  // The parsing above will already capture maxEnergy, so we don't need to add anything here
+  // The enemy Power effect is NOT a stat modification, so it won't be affected by upgrade/downgrade
 
   return modifications;
 }
@@ -966,7 +1021,7 @@ function downgradePassiveItem(item, downgradeAmount = -1) {
   // If no stat modifications found, fall back to random stat (shouldn't happen for items with effects)
   if (statModifications.length === 0) {
     console.warn(`No stat modifications found for ${item.name}, using fallback`);
-    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth', 'block'];
+    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth', 'maxEnergy', 'block'];
     const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
     statModifications.push({ stat: randomStat, direction: 1 });
   }
@@ -1001,6 +1056,21 @@ function downgradePassiveItem(item, downgradeAmount = -1) {
         gameState.maxHealth = maxHealth;
         health = Math.min(health, maxHealth);
         gameState.health = health;
+      }
+    } else if (stat === 'maxEnergy') {
+      // Handle max energy
+      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyMaxEnergy === 'function') {
+        StateMutator.modifyMaxEnergy(change);
+      } else {
+        gameState.maxEnergy = (gameState.maxEnergy || 2) + change;
+      }
+    } else if (stat === 'discovery') {
+      // Handle discovery
+      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyDiscovery === 'function') {
+        StateMutator.modifyDiscovery(change);
+      } else {
+        discovery += change;
+        gameState.discovery = discovery;
       }
     } else {
       updateStat(stat, change);
@@ -1927,12 +1997,16 @@ function initializePassiveModifiers(item) {
       fov: 0,
       luck: 0,
       maxHealth: 0,
+      maxEnergy: 0,  // For items like Busted Crown, Philosopher's Stone
       block: 0  // For items like Calipers that grant block in combat
     };
   }
-  // Ensure block modifier exists on older items
+  // Ensure block and maxEnergy modifiers exist on older items
   if (item.statModifiers && !('block' in item.statModifiers)) {
     item.statModifiers.block = 0;
+  }
+  if (item.statModifiers && !('maxEnergy' in item.statModifiers)) {
+    item.statModifiers.maxEnergy = 0;
   }
 }
 
@@ -2049,7 +2123,7 @@ function upgradeOrDowngradePassive(isUpgrade) {
   // If no stat modifications found, fall back to random stat (shouldn't happen for items with effects)
   if (statModifications.length === 0) {
     console.warn(`No stat modifications found for ${itemToModify.name}, using fallback`);
-    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth', 'block'];
+    const availableStats = ['strength', 'dexterity', 'intelligence', 'charisma', 'dash', 'reroll', 'skip', 'discovery', 'fov', 'luck', 'maxHealth', 'maxEnergy', 'block'];
     const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
     statModifications.push({ stat: randomStat, direction: 1 });
   }
@@ -2086,6 +2160,21 @@ function upgradeOrDowngradePassive(isUpgrade) {
         gameState.maxHealth = maxHealth;
         health = Math.min(health, maxHealth);
         gameState.health = health;
+      }
+    } else if (stat === 'maxEnergy') {
+      // Handle max energy
+      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyMaxEnergy === 'function') {
+        StateMutator.modifyMaxEnergy(change);
+      } else {
+        gameState.maxEnergy = (gameState.maxEnergy || 2) + change;
+      }
+    } else if (stat === 'discovery') {
+      // Handle discovery
+      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyDiscovery === 'function') {
+        StateMutator.modifyDiscovery(change);
+      } else {
+        discovery += change;
+        gameState.discovery = discovery;
       }
     } else {
       updateStat(stat, change);
@@ -2174,4 +2263,5 @@ window.initializePassiveModifiers = initializePassiveModifiers; // Initialize st
 window.getPassiveDisplayName = getPassiveDisplayName; // Get display name with modifiers
 window.getPassiveModifierDescription = getPassiveModifierDescription; // Get modifier description text
 window.upgradeOrDowngradePassive = upgradeOrDowngradePassive; // Upgrade/downgrade passive
+window.downgradeRandomPassiveItem = () => upgradeOrDowngradePassive(false); // Rust hook
 window.removeItemStatEffects = removeItemStatEffects; // Remove stat effects when item removed

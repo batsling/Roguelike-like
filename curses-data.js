@@ -14,7 +14,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
-    "description": "Every time you reset a run, lose 2 health",
+    "description": "Every time you reset a run, lose 3 health",
     "automatic": "Manual"
   },
   {
@@ -22,7 +22,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "High",
     "duration": "Until 2 Games Beaten",
-    "description": "Every time you reset a run, lose 3 health",
+    "description": "Every time you reset a run, lose 5 health",
     "automatic": "Manual"
   },
   {
@@ -38,7 +38,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
-    "description": "Every time you skip an upgrade/item choice in game, lose 2 health",
+    "description": "Every time you skip an upgrade/item choice in game, lose 3 health",
     "automatic": "Manual"
   },
   {
@@ -46,7 +46,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "High",
     "duration": "Until 2 Games Beaten",
-    "description": "Every time you skip an upgrade/item choice in game, lose 3 health",
+    "description": "Every time you skip an upgrade/item choice in game, lose 5 health",
     "automatic": "Manual"
   },
   {
@@ -62,7 +62,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Medium",
     "duration": "Until 1 Game Beaten",
-    "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the  cursor is set to, lose 2 health",
+    "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the  cursor is set to, lose 3 health",
     "automatic": "Manual"
   },
   {
@@ -70,7 +70,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "High",
     "duration": "Until 1 Game Beaten",
-    "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the  cursor is set to, lose 3 health",
+    "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the  cursor is set to, lose 5 health",
     "automatic": "Manual"
   },
   {
@@ -78,7 +78,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Low",
     "duration": "Until 1 Game Beaten",
-    "description": "If you don't beat the next game within 4 hours, lose 2 Health",
+    "description": "If you don't beat the next game within 4 hours, lose 3 Health",
     "automatic": "Manual"
   },
   {
@@ -86,7 +86,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Medium",
     "duration": "Until 1 Game Beaten",
-    "description": "If you don't beat the next game within 3 hours, lose 2 Health",
+    "description": "If you don't beat the next game within 3 hours, lose 3 Health",
     "automatic": "Manual"
   },
   {
@@ -94,7 +94,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "High",
     "duration": "Until 1 Game Beaten",
-    "description": "If you don't beat the next game within 2 hours, lose 2 Health",
+    "description": "If you don't beat the next game within 2 hours, lose 3 Health",
     "automatic": "Manual"
   },
   {
@@ -246,7 +246,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Low",
     "duration": "Until 1 is rolled",
-    "description": "When you roll a 1 on a D20 (before adding to the roll), Fail the combat no matter what and take 2 damage",
+    "description": "When you roll a 1 on any roll (before adding to the roll), Fail the combat no matter what and take 2 damage",
     "automatic": "Auto"
   },
   {
@@ -254,7 +254,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Medium",
     "duration": "Until 1 is rolled",
-    "description": "When you roll a 1 on a D20 (before adding to the roll), Fail the combat no matter what and take 3 damage",
+    "description": "When you roll a 1 on any roll (before adding to the roll), Fail the combat no matter what and take 3 damage",
     "automatic": "Auto"
   },
   {
@@ -262,7 +262,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "High",
     "duration": "Until 1 is rolled",
-    "description": "When you roll a 1 on a D20 (before adding to the roll), Fail the combat no matter what and take 4 damage",
+    "description": "When you roll a 1 on any roll (before adding to the roll), Fail the combat no matter what and take 4 damage",
     "automatic": "Auto"
   },
   {
@@ -270,7 +270,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Low",
     "duration": "Until 1 Game Beaten",
-    "description": "If you killed any innocents, lose 3 health",
+    "description": "If you killed any innocents, lose 5 health",
     "automatic": "Manual"
   },
   {
@@ -278,7 +278,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
-    "description": "If you killed any innocents, lose 3 health",
+    "description": "If you killed any innocents, lose 5 health",
     "automatic": "Manual"
   },
   {
@@ -286,7 +286,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "High",
     "duration": "Until 3 Games Beaten",
-    "description": "If you killed any innocents, lose 3 health",
+    "description": "If you killed any innocents, lose 5 health",
     "automatic": "Manual"
   },
   {
@@ -294,7 +294,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Low",
     "duration": "Until 1 Game Beaten",
-    "description": "If the next game you beat isn't instead beaten twice, take 3 Damage",
+    "description": "If the next game you beat isn't instead beaten twice, take 5 Damage",
     "automatic": "Manual"
   },
   {
@@ -302,7 +302,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
-    "description": "If the next game you beat isn't instead beaten twice, take 3 Damage",
+    "description": "If the next game you beat isn't instead beaten twice, take 5 Damage",
     "automatic": "Manual"
   },
   {
@@ -310,7 +310,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "High",
     "duration": "Until 3 Games Beaten",
-    "description": "If the next game you beat isn't instead beaten twice, take 3 Damage",
+    "description": "If the next game you beat isn't instead beaten twice, take 5 Damage",
     "automatic": "Manual"
   },
   {
@@ -318,7 +318,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Low",
     "duration": "Until 1 Game Beaten",
-    "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 1 health. If not, then take 2 damage",
+    "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 5 health. If not, then take 5 damage",
     "automatic": "Manual"
   },
   {
@@ -326,7 +326,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
-    "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 1 health. If not, then take 2 damage",
+    "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 5 health. If not, then take 5 damage",
     "automatic": "Manual"
   },
   {
@@ -334,7 +334,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "High",
     "duration": "Until 3 Games Beaten",
-    "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 1 health. If not, then take 2 damage",
+    "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 5 health. If not, then take 5 damage",
     "automatic": "Manual"
   },
   {
@@ -342,7 +342,7 @@ var CURSES_DATA = [
     "stat": "Intelligence",
     "power": "Low",
     "duration": "Until 1 Game Beaten",
-    "description": "If you beat a game without getting an achievement, then take 2 damage",
+    "description": "If you beat a game without getting an achievement, then take 5 damage",
     "automatic": "Manual"
   },
   {
@@ -350,7 +350,7 @@ var CURSES_DATA = [
     "stat": "Intelligence",
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
-    "description": "If you beat a game without getting an achievement, then take 2 damage",
+    "description": "If you beat a game without getting an achievement, then take 5 damage",
     "automatic": "Manual"
   },
   {
@@ -358,7 +358,7 @@ var CURSES_DATA = [
     "stat": "Intelligence",
     "power": "High",
     "duration": "Until 3 Games Beaten",
-    "description": "If you beat a game without getting an achievement, then take 2 damage",
+    "description": "If you beat a game without getting an achievement, then take 5 damage",
     "automatic": "Manual"
   },
   {
@@ -366,7 +366,7 @@ var CURSES_DATA = [
     "stat": "Strength",
     "power": "Low",
     "duration": "Until 1 Combat Beaten",
-    "description": "All enemies gain 1 Shield at the start of their turn",
+    "description": "All enemies gain 5 Block at the start of combat",
     "automatic": "Auto"
   },
   {
@@ -374,7 +374,7 @@ var CURSES_DATA = [
     "stat": "Strength",
     "power": "Medium",
     "duration": "Until 2 Combats Beaten",
-    "description": "All enemies gain 2 Shield at the start of their turn",
+    "description": "All enemies gain 10 Block at the start of combat",
     "automatic": "Auto"
   },
   {
@@ -382,7 +382,7 @@ var CURSES_DATA = [
     "stat": "Strength",
     "power": "High",
     "duration": "Until 3 Combats Beaten",
-    "description": "All enemies gain 3 Shield at the start of their turn",
+    "description": "All enemies gain 20 Block at the start of combat",
     "automatic": "Auto"
   },
   {
@@ -438,7 +438,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Low",
     "duration": "1 Roll",
-    "description": "Gain Disadvantage on the next D20 roll",
+    "description": "Gain Disadvantage on the next roll",
     "automatic": "Auto"
   },
   {
@@ -446,7 +446,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Medium",
     "duration": "2 Rolls",
-    "description": "Gain Disadvantage on the next D20 roll",
+    "description": "Gain Disadvantage on the next roll",
     "automatic": "Auto"
   },
   {
@@ -454,7 +454,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "High",
     "duration": "3 Rolls",
-    "description": "Gain Disadvantage on the next D20 roll",
+    "description": "Gain Disadvantage on the next roll",
     "automatic": "Auto"
   }
 ];

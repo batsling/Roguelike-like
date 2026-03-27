@@ -13,7 +13,7 @@
  * - leaveShop() - Closes shop and resets shop state
  */
 
-console.log('✅ SHOP.JS v3 loaded - weapon upgrade system active');
+console.log('✅ SHOP.JS v4 loaded - card upgrade/remove system active');
 
 // ===== SHOP SYSTEM =====
 
@@ -29,10 +29,9 @@ function showShopModal(purchasedIndices = []) {
     gameState.shopRerollCount = 0;
   }
 
-  // Initialize shop upgrade counter if not present
-  if (gameState.shopUpgradesUsed === undefined) {
-    gameState.shopUpgradesUsed = 0;
-  }
+  // Initialize shop service counters if not present
+  if (gameState.shopUpgradesUsed === undefined) gameState.shopUpgradesUsed = 0;
+  if (gameState.shopRemovesUsed === undefined) gameState.shopRemovesUsed = 0;
 
   // Store shop items in gameState if not already present (first time opening shop)
   if (!gameState.currentShopItems) {
@@ -99,104 +98,161 @@ function showShopModal(purchasedIndices = []) {
     }
   };
 
-  // Build weapon upgrade panel
-  let weaponUpgradeHTML = '';
-  if (gameState.equippedWeapon) {
-    const weapon = gameState.equippedWeapon;
-    const currentLevel = gameState.weaponLevel || 1;
-    const maxLevel = 3;
-    const isMaxLevel = currentLevel >= maxLevel;
-    const alreadyUpgraded = gameState.shopUpgradesUsed > 0;
+  // ===== CARD SERVICES PANEL =====
+  const CARD_UPGRADE_COST = 75;
+  const CARD_REMOVE_COST = 50;
+  const deckCards = (gameState.deck || []).filter(c => !c.isStatusCard);
+  const alreadyUpgraded = gameState.shopUpgradesUsed > 0;
+  const alreadyRemoved = gameState.shopRemovesUsed > 0;
 
-    // Calculate upgrade cost based on current level
-    const upgradeCost = currentLevel === 1 ? 10 : 20;
-
-    // Parse weapon description to extract level-specific effects
-    const parseWeaponEffect = (description, level) => {
-      // Match pattern like (lv1:small/lv2:normal/lv3:large)
-      const levelPattern = /\(lv1:([^/]+)\/lv2:([^/]+)\/lv3:([^)]+)\)/;
-      const match = description.match(levelPattern);
-
-      if (match) {
-        const effectValue = level === 1 ? match[1] : level === 2 ? match[2] : match[3];
-        return description.replace(levelPattern, effectValue);
-      }
-      return description;
-    };
-
-    const currentEffect = parseWeaponEffect(weapon.description, currentLevel);
-    const nextEffect = !isMaxLevel ? parseWeaponEffect(weapon.description, currentLevel + 1) : null;
-
-    const canUpgrade = !isMaxLevel && !alreadyUpgraded && gold >= upgradeCost;
-    const rarityColor = getRarityColor(weapon.rarity);
-
-    weaponUpgradeHTML = `
-      <div style="
-        background: #2d2d2d;
-        border-radius: 12px;
-        border: 3px solid #ff9800;
-        padding: 20px;
-        margin-bottom: 20px;
+  // Build upgrade selector
+  const upgradeableCards = deckCards.filter(c => c.canUpgrade && !c.upgraded);
+  let upgradeSelectHTML = '';
+  if (upgradeableCards.length > 0) {
+    upgradeSelectHTML = `
+      <select id="shop-card-upgrade-select" style="
+        background:#1a1a1a; color:white; border:1px solid #9b59b6;
+        border-radius:4px; padding:6px 10px; font-size:13px; width:100%;
+        margin-bottom:8px;
       ">
-        <h3 style="color: #ff9800; margin-top: 0; text-align: center; font-size: 18px;">⚔️ Weapon Upgrade</h3>
-        <div style="display: flex; gap: 20px; align-items: center;">
-          <div style="
-            width: 80px;
-            height: 80px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0,0,0,0.3);
-            border-radius: 8px;
-            border: 2px solid ${rarityColor};
-            flex-shrink: 0;
-          ">
-            <img src="${weapon.image}" alt="${weapon.name}" style="max-width: 70px; max-height: 70px; object-fit: contain;">
-          </div>
-          <div style="flex: 1;">
-            <div style="font-weight: bold; font-size: 16px; color: white; margin-bottom: 5px;">${weapon.name}</div>
-            <div style="color: #ff9800; font-size: 14px; margin-bottom: 10px;">Level ${currentLevel} / ${maxLevel}</div>
-            <div style="color: #ccc; font-size: 12px; margin-bottom: 8px;">
-              <strong style="color: #4CAF50;">Current:</strong> ${currentEffect}
-            </div>
-            ${!isMaxLevel ? `
-              <div style="color: #ccc; font-size: 12px; margin-bottom: 10px;">
-                <strong style="color: #ffb74d;">Next Level:</strong> ${nextEffect}
-              </div>
-            ` : ''}
-            <button id="weapon-upgrade-btn" style="
-              padding: 10px 20px;
-              background: ${canUpgrade ? '#ff9800' : '#555'};
-              border: none;
-              border-radius: 6px;
-              color: white;
-              cursor: ${canUpgrade ? 'pointer' : 'not-allowed'};
-              font-weight: bold;
-              font-size: 14px;
-              width: 100%;
-            " ${!canUpgrade ? 'disabled' : ''}>
-              ${isMaxLevel ? '⭐ MAX LEVEL' : alreadyUpgraded ? '✓ Upgraded This Shop' : gold >= upgradeCost ? `⬆️ Upgrade (${upgradeCost}💰)` : `💰 Need ${upgradeCost} Gold`}
-            </button>
-          </div>
-        </div>
-      </div>
+        <option value="">— Pick a card to upgrade —</option>
+        ${upgradeableCards.map((c, i) => {
+          const realIdx = deckCards.indexOf(c);
+          return `<option value="${realIdx}">${c.name} (${c.rarity})</option>`;
+        }).join('')}
+      </select>
     `;
   } else {
-    weaponUpgradeHTML = `
-      <div style="
-        background: #2d2d2d;
-        border-radius: 12px;
-        border: 3px solid #555;
-        padding: 20px;
-        margin-bottom: 20px;
-        text-align: center;
-        color: #888;
+    upgradeSelectHTML = `<p style="color:#888;font-size:12px;margin:4px 0;">No upgradeable cards in deck.</p>`;
+  }
+
+  // Build remove selector
+  let removeSelectHTML = '';
+  if (deckCards.length > 0) {
+    removeSelectHTML = `
+      <select id="shop-card-remove-select" style="
+        background:#1a1a1a; color:white; border:1px solid #e74c3c;
+        border-radius:4px; padding:6px 10px; font-size:13px; width:100%;
+        margin-bottom:8px;
       ">
-        <h3 style="color: #666; margin-top: 0; font-size: 18px;">⚔️ Weapon Upgrade</h3>
-        <p style="margin: 10px 0;">No weapon equipped</p>
-        <p style="font-size: 12px; margin: 0;">Equip a weapon to upgrade it here!</p>
-      </div>
+        <option value="">— Pick a card to remove —</option>
+        ${deckCards.map((c, i) => `<option value="${i}">${c.name}${c.upgraded ? ' +' : ''} (${c.rarity})</option>`).join('')}
+      </select>
     `;
+  } else {
+    removeSelectHTML = `<p style="color:#888;font-size:12px;margin:4px 0;">No cards in deck to remove.</p>`;
+  }
+
+  const cardServicesHTML = `
+    <div style="
+      background: #2d2d2d;
+      border-radius: 12px;
+      border: 3px solid #9b59b6;
+      padding: 20px;
+      margin-bottom: 20px;
+    ">
+      <h3 style="color: #9b59b6; margin-top: 0; text-align: center; font-size: 18px;">🃏 Card Services</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <!-- Upgrade -->
+        <div>
+          <div style="color:#9b59b6;font-weight:bold;font-size:14px;margin-bottom:8px;">⬆️ Upgrade a Card (${CARD_UPGRADE_COST}💰)</div>
+          ${upgradeSelectHTML}
+          <button id="shop-card-upgrade-btn" style="
+            padding: 10px 16px;
+            background: ${alreadyUpgraded ? '#555' : (gold >= CARD_UPGRADE_COST && upgradeableCards.length > 0 ? '#9b59b6' : '#555')};
+            border: none; border-radius: 6px; color: white;
+            cursor: ${alreadyUpgraded || upgradeableCards.length === 0 || gold < CARD_UPGRADE_COST ? 'not-allowed' : 'pointer'};
+            font-weight: bold; font-size: 13px; width: 100%;
+          " ${alreadyUpgraded || upgradeableCards.length === 0 || gold < CARD_UPGRADE_COST ? 'disabled' : ''}>
+            ${alreadyUpgraded ? '✓ Upgraded This Shop' : `Upgrade (${CARD_UPGRADE_COST}💰)`}
+          </button>
+        </div>
+        <!-- Remove -->
+        <div>
+          <div style="color:#e74c3c;font-weight:bold;font-size:14px;margin-bottom:8px;">🗑️ Remove a Card (${CARD_REMOVE_COST}💰)</div>
+          ${removeSelectHTML}
+          <button id="shop-card-remove-btn" style="
+            padding: 10px 16px;
+            background: ${alreadyRemoved ? '#555' : (gold >= CARD_REMOVE_COST && deckCards.length > 0 ? '#e74c3c' : '#555')};
+            border: none; border-radius: 6px; color: white;
+            cursor: ${alreadyRemoved || deckCards.length === 0 || gold < CARD_REMOVE_COST ? 'not-allowed' : 'pointer'};
+            font-weight: bold; font-size: 13px; width: 100%;
+          " ${alreadyRemoved || deckCards.length === 0 || gold < CARD_REMOVE_COST ? 'disabled' : ''}>
+            ${alreadyRemoved ? '✓ Removed This Shop' : `Remove (${CARD_REMOVE_COST}💰)`}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ===== CARDS FOR SALE =====
+  // Pick 2 random non-starter cards to sell in the shop
+  if (!gameState.currentShopCards) {
+    const cardPool = cards ? cards.filter(c => c.rarity !== 'Starter' && !c.isStatusCard) : [];
+    const shopCardCount = 2;
+    gameState.currentShopCards = [];
+    const attempts = 100;
+    for (let i = 0; i < shopCardCount; i++) {
+      let selected = null, tries = 0;
+      while (tries < attempts && cardPool.length > 0) {
+        const rarityKey = selectRandomRarity();
+        const rarityLabel = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare' }[rarityKey] || 'Common';
+        const pool = cardPool.filter(c => c.rarity === rarityLabel);
+        const candidates = pool.length > 0 ? pool : cardPool;
+        const candidate = candidates[Math.floor(Math.random() * candidates.length)];
+        if (!gameState.currentShopCards.find(c => c.name === candidate.name)) {
+          selected = candidate;
+          break;
+        }
+        tries++;
+      }
+      if (selected) gameState.currentShopCards.push(selected);
+    }
+  }
+  const shopCards = gameState.currentShopCards || [];
+  const purchasedCardIndices = gameState.purchasedShopCards || [];
+
+  const cardPriceFor = (c) => {
+    const base = c.rarity === 'Rare' ? 60 : c.rarity === 'Uncommon' ? 40 : 20;
+    return base + frugalityModifier;
+  };
+
+  let shopCardsHTML = '';
+  if (shopCards.length > 0) {
+    shopCardsHTML = `
+      <div style="background:#2d2d2d;border-radius:12px;border:3px solid #9b59b6;padding:20px;margin-bottom:20px;">
+        <h3 style="color:#9b59b6;margin-top:0;text-align:center;font-size:18px;">🃏 Cards for Sale</h3>
+        <div style="display:grid;grid-template-columns:repeat(${shopCards.length},1fr);gap:15px;">
+    `;
+    shopCards.forEach((card, idx) => {
+      const isPurchased = purchasedCardIndices.includes(idx);
+      const price = cardPriceFor(card);
+      const color = getRarityColor(card.rarity);
+      const imgSrc = card.imageUrl || 'images/cards/default.png';
+      shopCardsHTML += `
+        <div style="
+          background:#1e1e2e;border:2px solid ${color};border-radius:10px;
+          padding:15px;display:flex;flex-direction:column;align-items:center;
+          ${isPurchased ? 'opacity:0.5;' : ''}
+        ">
+          <img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;"
+               onerror="this.style.display='none'">
+          <div style="font-weight:bold;font-size:14px;color:white;text-align:center;margin-bottom:3px;">${card.name}</div>
+          <div style="color:${color};font-size:11px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
+          <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:8px;">${card.description}</div>
+          <div style="color:#ffd700;font-size:13px;font-weight:bold;margin-bottom:8px;">${price}💰</div>
+          <button class="shop-card-buy-btn" data-card-index="${idx}" data-price="${price}" style="
+            padding:8px 16px;background:${isPurchased ? '#555' : (gold >= price ? '#9b59b6' : '#555')};
+            border:none;border-radius:6px;color:white;
+            cursor:${isPurchased || gold < price ? 'not-allowed' : 'pointer'};
+            font-weight:bold;font-size:12px;width:100%;
+          " ${isPurchased || gold < price ? 'disabled' : ''}>
+            ${isPurchased ? '✓ Purchased' : (gold >= price ? 'Buy' : '💰 Too Expensive')}
+          </button>
+        </div>
+      `;
+    });
+    shopCardsHTML += `</div></div>`;
   }
 
   // Build loot selling section
@@ -335,13 +391,15 @@ function showShopModal(purchasedIndices = []) {
   itemsHTML += '</div>';
 
   createGameModal(`
-    <div style="max-width: 800px; margin: 0 auto;">
+    <div style="max-width: 900px; margin: 0 auto;">
       <h2 style="color: gold; margin-top: 0; text-align: center;">🛍️ Mystical Shop 🛍️</h2>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: #2d2d2d; border-radius: 8px;">
         <div style="color: gold; font-weight: bold; font-size: 18px;">💰 Your Gold: ${gold}</div>
+        <div style="color: #9b59b6; font-weight: bold; font-size: 16px;">🃏 Deck: ${(gameState.deck||[]).length} cards</div>
         <div style="color: #4CAF50; font-weight: bold; font-size: 18px;">🔄 Rerolls: ${reroll}</div>
       </div>
-      ${weaponUpgradeHTML}
+      ${cardServicesHTML}
+      ${shopCardsHTML}
       ${lootSellHTML}
       ${itemsHTML}
       <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -427,36 +485,70 @@ function showShopModal(purchasedIndices = []) {
     };
   });
 
-  // Add weapon upgrade button handler
-  const weaponUpgradeBtn = document.getElementById('weapon-upgrade-btn');
-  if (weaponUpgradeBtn && gameState.equippedWeapon) {
-    weaponUpgradeBtn.onclick = () => {
-      const currentLevel = gameState.weaponLevel || 1;
-      const upgradeCost = currentLevel === 1 ? 10 : 20;
-      const canUpgrade = currentLevel < 3 && gameState.shopUpgradesUsed === 0 && gold >= upgradeCost;
-
-      if (canUpgrade) {
-        // Deduct gold
-        gold -= upgradeCost;
+  // Card upgrade button handler
+  const cardUpgradeBtn = document.getElementById('shop-card-upgrade-btn');
+  if (cardUpgradeBtn && gameState.shopUpgradesUsed === 0) {
+    cardUpgradeBtn.onclick = () => {
+      const sel = document.getElementById('shop-card-upgrade-select');
+      if (!sel || sel.value === '') {
+        createNotification('Select a card to upgrade first.', '#888', '⬆️');
+        return;
+      }
+      const cardIdx = parseInt(sel.value);
+      if (isNaN(cardIdx) || gold < CARD_UPGRADE_COST) return;
+      const deckFiltered = (gameState.deck || []).filter(c => !c.isStatusCard);
+      if (cardIdx >= deckFiltered.length) return;
+      const realIdx = (gameState.deck || []).indexOf(deckFiltered[cardIdx]);
+      if (typeof upgradeCardInDeck === 'function' && upgradeCardInDeck(realIdx)) {
+        gold -= CARD_UPGRADE_COST;
         gameState.gold = gold;
-
-        // Increase weapon level (both in gameState and on weapon object)
-        gameState.weaponLevel = currentLevel + 1;
-        gameState.equippedWeapon.level = gameState.weaponLevel; // Keep weapon.level in sync
-
-        // Track that we've used an upgrade this shop
         gameState.shopUpgradesUsed++;
-
-        // Save and refresh shop to show updated weapon
         saveCurrentGame();
-        updateEquipmentSlots(); // Update the equipment slot display
         showShopModal(purchasedIndices);
-
-        // Show notification
-        createNotification(`Upgraded ${gameState.equippedWeapon.name} to Level ${gameState.weaponLevel}!`, '#ff9800', '⬆️');
       }
     };
   }
+
+  // Card remove button handler
+  const cardRemoveBtn = document.getElementById('shop-card-remove-btn');
+  if (cardRemoveBtn && gameState.shopRemovesUsed === 0) {
+    cardRemoveBtn.onclick = () => {
+      const sel = document.getElementById('shop-card-remove-select');
+      if (!sel || sel.value === '') {
+        createNotification('Select a card to remove first.', '#888', '🗑️');
+        return;
+      }
+      const cardIdx = parseInt(sel.value);
+      if (isNaN(cardIdx) || gold < CARD_REMOVE_COST) return;
+      const deckFiltered = (gameState.deck || []).filter(c => !c.isStatusCard);
+      if (cardIdx >= deckFiltered.length) return;
+      const realIdx = (gameState.deck || []).indexOf(deckFiltered[cardIdx]);
+      gold -= CARD_REMOVE_COST;
+      gameState.gold = gold;
+      gameState.shopRemovesUsed++;
+      if (typeof removeCardFromDeck === 'function') removeCardFromDeck(realIdx);
+      saveCurrentGame();
+      showShopModal(purchasedIndices);
+    };
+  }
+
+  // Card buy button handlers
+  document.querySelectorAll('.shop-card-buy-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      const cardIndex = parseInt(e.target.dataset.cardIndex);
+      const price = parseInt(e.target.dataset.price);
+      if (isNaN(cardIndex) || gold < price) return;
+      const card = shopCards[cardIndex];
+      if (!card) return;
+      gold -= price;
+      gameState.gold = gold;
+      if (!gameState.purchasedShopCards) gameState.purchasedShopCards = [];
+      gameState.purchasedShopCards.push(cardIndex);
+      if (typeof addCardToDeck === 'function') addCardToDeck(card);
+      saveCurrentGame();
+      showShopModal(purchasedIndices);
+    };
+  });
 
   // Add reroll button handler
   const rerollBtn = document.getElementById('shop-reroll-btn');
@@ -487,8 +579,11 @@ function showShopModal(purchasedIndices = []) {
 function leaveShop() {
   // Reset shop state
   gameState.currentShopItems = null;
+  gameState.currentShopCards = null;
+  gameState.purchasedShopCards = null;
   gameState.shopRerollCount = 0;
-  gameState.shopUpgradesUsed = 0; // Reset weapon upgrade counter
+  gameState.shopUpgradesUsed = 0;
+  gameState.shopRemovesUsed = 0;
   gameState.phase = 'selection';
 
   // Save and close
@@ -506,8 +601,11 @@ const originalCloseGameModal = window.closeGameModal;
 window.closeGameModal = function() {
   if (gameState.phase === 'shop') {
     delete gameState.currentShopItems;
-    gameState.shopRerollCount = 0; // Reset reroll count for next shop
-    gameState.shopUpgradesUsed = 0; // Reset weapon upgrade counter for next shop
+    delete gameState.currentShopCards;
+    delete gameState.purchasedShopCards;
+    gameState.shopRerollCount = 0;
+    gameState.shopUpgradesUsed = 0;
+    gameState.shopRemovesUsed = 0;
     gameState.phase = null;
   }
   if (typeof originalCloseGameModal === 'function') {

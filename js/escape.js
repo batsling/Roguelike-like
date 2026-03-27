@@ -653,14 +653,18 @@ function showCollection() {
   const collectionHTML = `
     <div style="width: 90vw; max-width: 1400px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
       <!-- Tab Navigation at top -->
-      <div style="display: flex; gap: 10px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #444; align-items: center;">
-        <h2 style="color: #ff9800; margin: 0; flex: 1;">📚 Collection</h2>
-        <button onclick="switchCollectionTab('games')" id="tab-games" style="padding: 8px 16px; background: #ff9800; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Games (${games.length})</button>
-        <button onclick="switchCollectionTab('items')" id="tab-items" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Items (${items.length})</button>
-        <button onclick="switchCollectionTab('loot')" id="tab-loot" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Loot</button>
-        <button onclick="switchCollectionTab('enemies')" id="tab-enemies" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Enemies (${enemies.length})</button>
-        <button onclick="switchCollectionTab('curses')" id="tab-curses" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Curses (${curses.length})</button>
-        <button onclick="closeGameModal();" style="padding: 8px 20px; background: #444; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Close</button>
+      <div style="display: flex; gap: 8px; padding-bottom: 10px; margin-bottom: 15px; border-bottom: 2px solid #444; align-items: center; flex-wrap: wrap;">
+        <h2 style="color: #ff9800; margin: 0; flex: 1; min-width: 120px;">📚 Collection</h2>
+        <button onclick="switchCollectionTab('games')" id="tab-games" style="padding: 6px 12px; background: #ff9800; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Games (${games.length})</button>
+        <button onclick="switchCollectionTab('characters')" id="tab-characters" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Characters (${typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA.length : 0})</button>
+        <button onclick="switchCollectionTab('items')" id="tab-items" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Items (${items.length})</button>
+        <button onclick="switchCollectionTab('loot')" id="tab-loot" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Loot</button>
+        <button onclick="switchCollectionTab('enemies')" id="tab-enemies" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Enemies (${enemies.length})</button>
+        <button onclick="switchCollectionTab('allies')" id="tab-allies" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Allies (${typeof ALLIES_DATA !== 'undefined' ? ALLIES_DATA.length : 0})</button>
+        <button onclick="switchCollectionTab('curses')" id="tab-curses" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Curses (${curses.length})</button>
+        <button onclick="switchCollectionTab('statuses')" id="tab-statuses" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Statuses (${typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA.length : 0})</button>
+        <button onclick="switchCollectionTab('spells')" id="tab-spells" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Spells (${typeof SPELLS_DATA !== 'undefined' ? SPELLS_DATA.length : 0})</button>
+        <button onclick="closeGameModal();" style="padding: 6px 14px; background: #444; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Close</button>
       </div>
 
       <!-- Tab Content -->
@@ -675,8 +679,14 @@ function showCollection() {
 }
 
 function switchCollectionTab(tab) {
+  // Save focus state before re-rendering
+  const activeElement = document.activeElement;
+  const activeId = activeElement ? activeElement.id : null;
+  const selectionStart = activeElement && activeElement.selectionStart !== undefined ? activeElement.selectionStart : null;
+  const selectionEnd = activeElement && activeElement.selectionEnd !== undefined ? activeElement.selectionEnd : null;
+
   // Update tab buttons
-  const tabs = ['games', 'items', 'loot', 'enemies', 'curses'];
+  const tabs = ['games', 'characters', 'items', 'loot', 'enemies', 'allies', 'curses', 'statuses', 'spells'];
   tabs.forEach(t => {
     const btn = document.getElementById(`tab-${t}`);
     if (btn) {
@@ -687,17 +697,46 @@ function switchCollectionTab(tab) {
   const content = document.getElementById('collection-content');
   if (!content) return;
 
+  // Helper to restore focus after content update
+  const restoreFocus = () => {
+    if (activeId) {
+      const element = document.getElementById(activeId);
+      if (element) {
+        element.focus();
+        if (selectionStart !== null && element.setSelectionRange) {
+          element.setSelectionRange(selectionStart, selectionEnd);
+        }
+      }
+    }
+  };
+
   if (tab === 'games') {
-    // Sort games alphabetically
-    const sortedGames = [...games].sort((a, b) => a.name.localeCompare(b.name));
+    // Initialize search state
+    if (typeof window.gamesSearchTerm === 'undefined') window.gamesSearchTerm = '';
+
+    // Filter and sort games
+    const searchTerm = window.gamesSearchTerm.toLowerCase();
+    let filteredGames = searchTerm
+      ? games.filter(g => g.name.toLowerCase().includes(searchTerm))
+      : [...games];
+    const sortedGames = filteredGames.sort((a, b) => a.name.localeCompare(b.name));
 
     // Get game stats for amulet icons
     const allStats = getGameStats();
 
     content.innerHTML = `
       <!-- Left side: Game grid -->
-      <div id="games-grid" style="flex: 2; overflow-y: auto; padding: 10px;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
+      <div id="games-grid" style="flex: 2; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
+        <!-- Search bar -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center;">
+          <span style="color: #aaa; font-size: 13px;">🔍</span>
+          <input type="text" id="games-search" placeholder="Search games..." value="${window.gamesSearchTerm}"
+            oninput="window.gamesSearchTerm = this.value; switchCollectionTab('games');"
+            style="flex: 1; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid #555; border-radius: 6px; color: white; font-size: 13px; outline: none;"
+          />
+          <span style="color: #666; font-size: 11px;">${sortedGames.length} of ${games.length}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; overflow-y: auto;">
           ${sortedGames.map(game => {
             const gameStats = allStats[game.name] || { beaten: 0, amulets: 0 };
             return `
@@ -767,11 +806,110 @@ function switchCollectionTab(tab) {
         </div>
       </div>
     `;
+  } else if (tab === 'characters') {
+    // Initialize search and sort state
+    if (typeof window.charactersSearchTerm === 'undefined') window.charactersSearchTerm = '';
+    if (!window.characterSortType) window.characterSortType = 'alphabetical';
+
+    const charactersData = typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA : [];
+    const searchTerm = window.charactersSearchTerm.toLowerCase();
+
+    // Filter by search
+    let filteredCharacters = searchTerm
+      ? charactersData.filter(c => c.name.toLowerCase().includes(searchTerm) || (c.game && c.game.toLowerCase().includes(searchTerm)))
+      : [...charactersData];
+
+    // Sort characters
+    let sortedCharacters;
+    if (window.characterSortType === 'alphabetical') {
+      sortedCharacters = filteredCharacters.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (window.characterSortType === 'game') {
+      sortedCharacters = filteredCharacters.sort((a, b) => {
+        const gameDiff = (a.game || '').localeCompare(b.game || '');
+        return gameDiff !== 0 ? gameDiff : a.name.localeCompare(b.name);
+      });
+    } else {
+      sortedCharacters = filteredCharacters.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    content.innerHTML = `
+      <!-- Left side: Character grid -->
+      <div id="characters-grid-container" style="flex: 2; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
+        <!-- Search and Sort controls -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center; flex-wrap: wrap;">
+          <span style="color: #aaa; font-size: 13px;">🔍</span>
+          <input type="text" id="characters-search" placeholder="Search characters..." value="${window.charactersSearchTerm}"
+            oninput="window.charactersSearchTerm = this.value; switchCollectionTab('characters');"
+            style="flex: 1; min-width: 150px; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid #555; border-radius: 6px; color: white; font-size: 13px; outline: none;"
+          />
+          <div style="border-left: 1px solid #555; height: 20px; margin: 0 5px;"></div>
+          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort:</span>
+          <button onclick="window.characterSortType = 'alphabetical'; switchCollectionTab('characters');" style="padding: 6px 12px; background: ${window.characterSortType === 'alphabetical' ? '#4CAF50' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">A-Z</button>
+          <button onclick="window.characterSortType = 'game'; switchCollectionTab('characters');" style="padding: 6px 12px; background: ${window.characterSortType === 'game' ? '#4CAF50' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Game</button>
+          <span style="color: #666; font-size: 11px; margin-left: auto;">${sortedCharacters.length} of ${charactersData.length}</span>
+        </div>
+
+        <div id="characters-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; overflow-y: auto;">
+          ${sortedCharacters.map(char => {
+            const charIcon = `images/characters/Icon/${char.name}.png`;
+            return `
+            <div
+              class="collection-character-card"
+              data-character-name="${char.name.replace(/"/g, '&quot;')}"
+              onclick="showCharacterDetails('${char.name.replace(/'/g, "\\'")}')"
+              style="
+                background: rgba(0,0,0,0.3);
+                border: 2px solid #4CAF50;
+                border-radius: 8px;
+                padding: 12px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+                transition: transform 0.2s, box-shadow 0.2s;
+                cursor: pointer;
+              "
+              onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.5)';"
+              onmouseout="this.style.transform=''; this.style.boxShadow='';"
+            >
+              <img
+                src="${charIcon}"
+                alt="${char.name}"
+                style="
+                  width: 110px;
+                  height: 110px;
+                  object-fit: contain;
+                  border-radius: 6px;
+                  background: rgba(0,0,0,0.2);
+                  image-rendering: pixelated;
+                "
+                onerror="this.style.opacity='0.3';"
+              />
+              <div style="text-align: center; font-size: 12px; font-weight: bold; color: #4CAF50; word-wrap: break-word; width: 100%;">
+                ${char.name}
+              </div>
+              <div style="font-size: 10px; color: #888; text-align: center;">
+                ${char.game || 'Unknown'}
+              </div>
+            </div>
+          `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Right side: Character details -->
+      <div id="character-details" style="flex: 1; overflow-y: auto; padding: 20px; background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 8px; min-width: 300px;">
+        <div style="text-align: center; color: #888; padding: 40px 20px;">
+          <p>Click a character to view details</p>
+        </div>
+      </div>
+    `;
   } else if (tab === 'items') {
     // Initialize filter state if not set
-    if (typeof window.itemsShowNA === 'undefined') {
-      window.itemsShowNA = false; // Default: hide N/A items
-    }
+    if (typeof window.itemsShowNA === 'undefined') window.itemsShowNA = false;
+    if (typeof window.itemsSearchTerm === 'undefined') window.itemsSearchTerm = '';
+    if (typeof window.itemsTypeFilter === 'undefined') window.itemsTypeFilter = 'all';
+    if (!window.itemsSortType) window.itemsSortType = 'alphabetical';
 
     // Get rarity color function (case-insensitive)
     const getRarityColor = (rarity) => {
@@ -785,51 +923,111 @@ function switchCollectionTab(tab) {
       }
     };
 
-    // Filter and sort items
-    let filteredItems = window.itemsShowNA ? [...items] : items.filter(item => {
-      const rarity = (item.rarity || '').toLowerCase();
-      return rarity !== 'n/a';
-    });
-    let sortedItems = filteredItems.sort((a, b) => a.name.localeCompare(b.name));
+    // Get unique item types
+    const itemTypes = [...new Set(items.map(i => i.type).filter(t => t))].sort();
+
+    // Filter items
+    let filteredItems = [...items];
+
+    // Filter by N/A
+    if (!window.itemsShowNA) {
+      filteredItems = filteredItems.filter(item => (item.rarity || '').toLowerCase() !== 'n/a');
+    }
+
+    // Filter by search term
+    const searchTerm = window.itemsSearchTerm.toLowerCase();
+    if (searchTerm) {
+      filteredItems = filteredItems.filter(item =>
+        item.name.toLowerCase().includes(searchTerm) ||
+        (item.description && item.description.toLowerCase().includes(searchTerm)) ||
+        (item.game && item.game.toLowerCase().includes(searchTerm))
+      );
+    }
+
+    // Filter by type
+    if (window.itemsTypeFilter !== 'all') {
+      filteredItems = filteredItems.filter(item => item.type === window.itemsTypeFilter);
+    }
+
+    // Sort items
+    let sortedItems;
+    if (window.itemsSortType === 'alphabetical') {
+      sortedItems = filteredItems.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (window.itemsSortType === 'rarity') {
+      const rarityOrder = { 'legendary': 4, 'rare': 3, 'uncommon': 2, 'common': 1 };
+      sortedItems = filteredItems.sort((a, b) => {
+        const rarityDiff = (rarityOrder[(b.rarity || '').toLowerCase()] || 0) - (rarityOrder[(a.rarity || '').toLowerCase()] || 0);
+        return rarityDiff !== 0 ? rarityDiff : a.name.localeCompare(b.name);
+      });
+    } else if (window.itemsSortType === 'game') {
+      sortedItems = filteredItems.sort((a, b) => {
+        const gameA = a.game || 'Unknown';
+        const gameB = b.game || 'Unknown';
+        const gameDiff = gameA.localeCompare(gameB);
+        return gameDiff !== 0 ? gameDiff : a.name.localeCompare(b.name);
+      });
+    } else {
+      sortedItems = filteredItems.sort((a, b) => a.name.localeCompare(b.name));
+    }
 
     const naCount = items.filter(item => (item.rarity || '').toLowerCase() === 'n/a').length;
 
     content.innerHTML = `
-      <div style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
-        <!-- Sort and Filter controls -->
-        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center; flex-wrap: wrap;">
-          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort:</span>
-          <button onclick="sortCollectionItems('alphabetical')" id="sort-alpha" style="padding: 6px 12px; background: #ff9800; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">A-Z</button>
-          <button onclick="sortCollectionItems('rarity')" id="sort-rarity" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Rarity</button>
-          <button onclick="sortCollectionItems('game')" id="sort-game" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Game</button>
-          <div style="border-left: 1px solid #555; height: 20px; margin: 0 5px;"></div>
-          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Filter:</span>
-          <button onclick="toggleItemsNA()" id="filter-na" style="padding: 6px 12px; background: ${window.itemsShowNA ? '#ff9800' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">
-            ${window.itemsShowNA ? 'Hide' : 'Show'} N/A (${naCount})
+      <!-- Left side: Item grid -->
+      <div id="items-grid-container" style="flex: 2; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
+        <!-- Search, Sort and Filter controls -->
+        <div style="display: flex; gap: 8px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center; flex-wrap: wrap;">
+          <span style="color: #aaa; font-size: 13px;">🔍</span>
+          <input type="text" id="items-search" placeholder="Search items..." value="${window.itemsSearchTerm}"
+            oninput="window.itemsSearchTerm = this.value; switchCollectionTab('items');"
+            style="flex: 1; min-width: 120px; padding: 6px 10px; background: rgba(0,0,0,0.3); border: 1px solid #555; border-radius: 6px; color: white; font-size: 12px; outline: none;"
+          />
+          <div style="border-left: 1px solid #555; height: 20px; margin: 0 3px;"></div>
+          <span style="color: #aaa; font-size: 12px; font-weight: bold;">Sort:</span>
+          <button onclick="window.itemsSortType = 'alphabetical'; switchCollectionTab('items');" style="padding: 5px 10px; background: ${window.itemsSortType === 'alphabetical' ? '#ff9800' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 11px;">A-Z</button>
+          <button onclick="window.itemsSortType = 'rarity'; switchCollectionTab('items');" style="padding: 5px 10px; background: ${window.itemsSortType === 'rarity' ? '#ff9800' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 11px;">Rarity</button>
+          <button onclick="window.itemsSortType = 'game'; switchCollectionTab('items');" style="padding: 5px 10px; background: ${window.itemsSortType === 'game' ? '#ff9800' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 11px;">Game</button>
+          <div style="border-left: 1px solid #555; height: 20px; margin: 0 3px;"></div>
+          <span style="color: #aaa; font-size: 12px; font-weight: bold;">Type:</span>
+          <select onchange="window.itemsTypeFilter = this.value; switchCollectionTab('items');" style="padding: 5px 8px; background: #444; border: 1px solid #555; border-radius: 6px; color: white; font-size: 11px; cursor: pointer;">
+            <option value="all" ${window.itemsTypeFilter === 'all' ? 'selected' : ''}>All</option>
+            ${itemTypes.map(type => `<option value="${type}" ${window.itemsTypeFilter === type ? 'selected' : ''}>${type}</option>`).join('')}
+          </select>
+          <button onclick="toggleItemsNA()" style="padding: 5px 10px; background: ${window.itemsShowNA ? '#ff9800' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 11px;">
+            N/A (${naCount})
           </button>
-          <span style="color: #666; font-size: 11px; margin-left: auto;">Showing ${sortedItems.length} of ${items.length}</span>
+          <span style="color: #666; font-size: 10px; margin-left: auto;">${sortedItems.length} of ${items.length}</span>
         </div>
 
-        <div id="items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
+        <div id="items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; overflow-y: auto;">
           ${sortedItems.map(item => {
             const rarityColor = getRarityColor(item.rarity);
             return `
-            <div style="
-              background: rgba(0,0,0,0.3);
-              border: 2px solid ${rarityColor};
-              border-radius: 8px;
-              padding: 10px;
-              display: flex;
-              flex-direction: column;
-              gap: 8px;
-              transition: transform 0.2s, box-shadow 0.2s;
-            " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 20px rgba(${rarityColor === '#ff6b00' ? '255,107,0' : rarityColor === '#9b59b6' ? '155,89,182' : rarityColor === '#4CAF50' ? '76,175,80' : '170,170,170'}, 0.4)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+            <div
+              class="collection-item-card"
+              data-item-name="${item.name.replace(/"/g, '&quot;')}"
+              onclick="showItemDetails('${item.name.replace(/'/g, "\\'")}')"
+              style="
+                background: rgba(0,0,0,0.3);
+                border: 2px solid ${rarityColor};
+                border-radius: 8px;
+                padding: 8px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+                transition: transform 0.2s, box-shadow 0.2s;
+                cursor: pointer;
+              "
+              onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.5)';"
+              onmouseout="this.style.transform=''; this.style.boxShadow='';"
+            >
               <img
                 src="${item.image || 'images/items/no-item.svg'}"
                 alt="${item.name}"
                 style="
-                  width: 100%;
-                  height: 120px;
+                  width: 80px;
+                  height: 80px;
                   object-fit: contain;
                   border-radius: 6px;
                   background: rgba(0,0,0,0.2);
@@ -837,21 +1035,22 @@ function switchCollectionTab(tab) {
                 "
                 onerror="this.style.display='none';"
               />
-              <div style="text-align: center; font-size: 12px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word;">
+              <div style="text-align: center; font-size: 11px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word; width: 100%;">
                 ${item.name}
               </div>
-              <div style="font-size: 10px; color: ${rarityColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
+              <div style="font-size: 9px; color: ${rarityColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
                 ${item.rarity}
-              </div>
-              <div style="font-size: 10px; color: #888; text-align: center; font-style: italic;">
-                ${item.game || 'Unknown'}
-              </div>
-              <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
-                ${item.description || 'No description'}
               </div>
             </div>
           `;
           }).join('')}
+        </div>
+      </div>
+
+      <!-- Right side: Item details -->
+      <div id="item-details" style="flex: 1; overflow-y: auto; padding: 20px; background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 8px; min-width: 300px;">
+        <div style="text-align: center; color: #888; padding: 40px 20px;">
+          <p>Click an item to view details</p>
         </div>
       </div>
     `;
@@ -884,8 +1083,7 @@ function switchCollectionTab(tab) {
     }
 
     // Filter out variants (they'll be shown in the details panel of their base enemy)
-    // and filter out N/A difficulty enemies (variants/transformations)
-    const baseEnemies = enemies.filter(e => !e.variantOf && e.difficulty !== 'N/A');
+    const baseEnemies = enemies.filter(e => !e.variantOf);
 
     // Get difficulty color
     const getDifficultyColor = (difficulty) => {
@@ -989,6 +1187,125 @@ function switchCollectionTab(tab) {
         </div>
       </div>
     `;
+  } else if (tab === 'allies') {
+    // Initialize search state
+    if (typeof window.alliesSearchTerm === 'undefined') window.alliesSearchTerm = '';
+    if (!window.allySortType) window.allySortType = 'alphabetical';
+
+    const alliesData = typeof ALLIES_DATA !== 'undefined' ? ALLIES_DATA : [];
+    const searchTerm = window.alliesSearchTerm.toLowerCase();
+
+    // Filter by search
+    let filteredAllies = searchTerm
+      ? alliesData.filter(a => a.name.toLowerCase().includes(searchTerm) || (a.game && a.game.toLowerCase().includes(searchTerm)))
+      : [...alliesData];
+
+    // Sort allies
+    let sortedAllies;
+    if (window.allySortType === 'alphabetical') {
+      sortedAllies = filteredAllies.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (window.allySortType === 'game') {
+      sortedAllies = filteredAllies.sort((a, b) => {
+        const gameDiff = (a.game || '').localeCompare(b.game || '');
+        return gameDiff !== 0 ? gameDiff : a.name.localeCompare(b.name);
+      });
+    } else if (window.allySortType === 'rarity') {
+      const rarityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+      sortedAllies = filteredAllies.sort((a, b) => {
+        const rarityDiff = (rarityOrder[(b.rarity || '').toLowerCase()] || 0) - (rarityOrder[(a.rarity || '').toLowerCase()] || 0);
+        return rarityDiff !== 0 ? rarityDiff : a.name.localeCompare(b.name);
+      });
+    } else {
+      sortedAllies = filteredAllies.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    // Get rarity color
+    const getAllyRarityColor = (rarity) => {
+      switch((rarity || '').toLowerCase()) {
+        case 'high': return '#9b59b6';
+        case 'medium': return '#ff9800';
+        case 'low': return '#4CAF50';
+        default: return '#888';
+      }
+    };
+
+    content.innerHTML = `
+      <!-- Left side: Ally grid -->
+      <div id="allies-grid-container" style="flex: 2; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
+        <!-- Search and Sort controls -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center; flex-wrap: wrap;">
+          <span style="color: #aaa; font-size: 13px;">🔍</span>
+          <input type="text" id="allies-search" placeholder="Search allies..." value="${window.alliesSearchTerm}"
+            oninput="window.alliesSearchTerm = this.value; switchCollectionTab('allies');"
+            style="flex: 1; min-width: 150px; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid #555; border-radius: 6px; color: white; font-size: 13px; outline: none;"
+          />
+          <div style="border-left: 1px solid #555; height: 20px; margin: 0 5px;"></div>
+          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort:</span>
+          <button onclick="window.allySortType = 'alphabetical'; switchCollectionTab('allies');" style="padding: 6px 12px; background: ${window.allySortType === 'alphabetical' ? '#2196F3' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">A-Z</button>
+          <button onclick="window.allySortType = 'game'; switchCollectionTab('allies');" style="padding: 6px 12px; background: ${window.allySortType === 'game' ? '#2196F3' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Game</button>
+          <button onclick="window.allySortType = 'rarity'; switchCollectionTab('allies');" style="padding: 6px 12px; background: ${window.allySortType === 'rarity' ? '#2196F3' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Rarity</button>
+          <span style="color: #666; font-size: 11px; margin-left: auto;">${sortedAllies.length} of ${alliesData.length}</span>
+        </div>
+
+        <div id="allies-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; overflow-y: auto;">
+          ${sortedAllies.map(ally => {
+            const allyIcon = ally.image || `images/allies/${ally.name}.png`;
+            const rarityColor = getAllyRarityColor(ally.rarity);
+            return `
+            <div
+              class="collection-ally-card"
+              data-ally-name="${ally.name.replace(/"/g, '&quot;')}"
+              onclick="showAllyDetails('${ally.name.replace(/'/g, "\\'")}')"
+              style="
+                background: rgba(0,0,0,0.3);
+                border: 2px solid ${rarityColor};
+                border-radius: 8px;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+                transition: transform 0.2s, box-shadow 0.2s;
+                cursor: pointer;
+              "
+              onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.5)';"
+              onmouseout="this.style.transform=''; this.style.boxShadow='';"
+            >
+              <img
+                src="${allyIcon}"
+                alt="${ally.name}"
+                style="
+                  width: 80px;
+                  height: 80px;
+                  object-fit: contain;
+                  border-radius: 6px;
+                  background: rgba(0,0,0,0.2);
+                  image-rendering: pixelated;
+                "
+                onerror="this.style.opacity='0.3';"
+              />
+              <div style="text-align: center; font-size: 12px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word; width: 100%;">
+                ${ally.name}
+              </div>
+              <div style="font-size: 10px; color: #888; text-align: center;">
+                ${ally.type || 'Ally'} • HP: ${ally.hp || '?'}
+              </div>
+              <div style="font-size: 9px; color: #666; text-align: center;">
+                ${ally.game || 'Unknown'}
+              </div>
+            </div>
+          `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Right side: Ally details -->
+      <div id="ally-details" style="flex: 1; overflow-y: auto; padding: 20px; background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 8px; min-width: 300px;">
+        <div style="text-align: center; color: #888; padding: 40px 20px;">
+          <p>Click an ally to view details</p>
+        </div>
+      </div>
+    `;
   } else if (tab === 'curses') {
     // Group curses by base name (without I, II, III)
     const curseGroups = new Map();
@@ -1081,7 +1398,337 @@ function switchCollectionTab(tab) {
         </div>
       </div>
     `;
+  } else if (tab === 'statuses') {
+    // Initialize search and filter state
+    if (typeof window.statusesSearchTerm === 'undefined') window.statusesSearchTerm = '';
+    if (!window.statusSortType) window.statusSortType = 'alphabetical';
+    if (typeof window.statusTypeFilter === 'undefined') window.statusTypeFilter = 'all';
+
+    const statusesData = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA : [];
+    const searchTerm = window.statusesSearchTerm.toLowerCase();
+
+    // Filter by search
+    let filteredStatuses = searchTerm
+      ? statusesData.filter(s => s.name.toLowerCase().includes(searchTerm) || (s.description && s.description.toLowerCase().includes(searchTerm)))
+      : [...statusesData];
+
+    // Filter by type
+    if (window.statusTypeFilter !== 'all') {
+      filteredStatuses = filteredStatuses.filter(s => (s.type || '').toLowerCase() === window.statusTypeFilter.toLowerCase());
+    }
+
+    // Sort statuses
+    let sortedStatuses;
+    if (window.statusSortType === 'alphabetical') {
+      sortedStatuses = filteredStatuses.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (window.statusSortType === 'type') {
+      sortedStatuses = filteredStatuses.sort((a, b) => {
+        const typeDiff = (a.type || '').localeCompare(b.type || '');
+        return typeDiff !== 0 ? typeDiff : a.name.localeCompare(b.name);
+      });
+    } else {
+      sortedStatuses = filteredStatuses.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    // Get status type color
+    const getStatusTypeColor = (type) => {
+      switch((type || '').toLowerCase()) {
+        case 'buff': return '#4CAF50';
+        case 'debuff': return '#f44336';
+        default: return '#888';
+      }
+    };
+
+    content.innerHTML = `
+      <div style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
+        <!-- Search and Filter controls -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center; flex-wrap: wrap;">
+          <span style="color: #aaa; font-size: 13px;">🔍</span>
+          <input type="text" id="statuses-search" placeholder="Search statuses..." value="${window.statusesSearchTerm}"
+            oninput="window.statusesSearchTerm = this.value; switchCollectionTab('statuses');"
+            style="flex: 1; min-width: 150px; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid #555; border-radius: 6px; color: white; font-size: 13px; outline: none;"
+          />
+          <div style="border-left: 1px solid #555; height: 20px; margin: 0 5px;"></div>
+          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort:</span>
+          <button onclick="window.statusSortType = 'alphabetical'; switchCollectionTab('statuses');" style="padding: 6px 12px; background: ${window.statusSortType === 'alphabetical' ? '#ff9800' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">A-Z</button>
+          <button onclick="window.statusSortType = 'type'; switchCollectionTab('statuses');" style="padding: 6px 12px; background: ${window.statusSortType === 'type' ? '#ff9800' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Type</button>
+          <div style="border-left: 1px solid #555; height: 20px; margin: 0 5px;"></div>
+          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Filter:</span>
+          <button onclick="window.statusTypeFilter = 'all'; switchCollectionTab('statuses');" style="padding: 6px 12px; background: ${window.statusTypeFilter === 'all' ? '#ff9800' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">All</button>
+          <button onclick="window.statusTypeFilter = 'buff'; switchCollectionTab('statuses');" style="padding: 6px 12px; background: ${window.statusTypeFilter === 'buff' ? '#4CAF50' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Buffs</button>
+          <button onclick="window.statusTypeFilter = 'debuff'; switchCollectionTab('statuses');" style="padding: 6px 12px; background: ${window.statusTypeFilter === 'debuff' ? '#f44336' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Debuffs</button>
+          <span style="color: #666; font-size: 11px; margin-left: auto;">${sortedStatuses.length} of ${statusesData.length}</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; overflow-y: auto;">
+          ${sortedStatuses.map(status => {
+            const typeColor = getStatusTypeColor(status.type);
+            const statusIcon = status.image || `images/statuses/${status.name}.png`;
+            return `
+            <div style="
+              background: rgba(0,0,0,0.3);
+              border: 2px solid ${typeColor};
+              border-radius: 8px;
+              padding: 15px;
+              display: flex;
+              gap: 12px;
+              align-items: flex-start;
+              transition: transform 0.2s, box-shadow 0.2s;
+            " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.5)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+              <img
+                src="${statusIcon}"
+                alt="${status.name}"
+                style="
+                  width: 48px;
+                  height: 48px;
+                  object-fit: contain;
+                  border-radius: 6px;
+                  background: rgba(0,0,0,0.2);
+                  image-rendering: pixelated;
+                  flex-shrink: 0;
+                "
+                onerror="this.style.opacity='0.3';"
+              />
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <div style="font-size: 14px; font-weight: bold; color: ${typeColor};">${status.name}</div>
+                  <div style="font-size: 10px; color: ${typeColor}; text-transform: uppercase; font-weight: bold; padding: 2px 8px; background: rgba(${typeColor === '#4CAF50' ? '76,175,80' : '244,67,54'}, 0.2); border-radius: 4px;">
+                    ${status.type || 'Unknown'}
+                  </div>
+                </div>
+                <div style="font-size: 12px; color: #ddd; line-height: 1.4; margin-bottom: 8px;">
+                  ${status.description || 'No description'}
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; font-size: 10px; color: #888;">
+                  ${status.stackable ? '<span style="color: #66b3ff;">Stackable</span>' : ''}
+                  ${status.decay && status.decay !== 'None' ? `<span>Decay: ${status.decay}</span>` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  } else if (tab === 'spells') {
+    // Initialize state
+    if (!window.spellSortType) window.spellSortType = 'alphabetical';
+    if (typeof window.spellsSearchTerm === 'undefined') window.spellsSearchTerm = '';
+    if (typeof window.spellElementFilter === 'undefined') window.spellElementFilter = 'all';
+    if (typeof window.spellSubTab === 'undefined') window.spellSubTab = 'spells';
+
+    // Get rarity color function
+    const getRarityColor = (rarity) => {
+      const rarityLower = (rarity || '').toLowerCase();
+      switch(rarityLower) {
+        case 'rare': return '#9b59b6';
+        case 'uncommon': return '#4CAF50';
+        case 'common': return '#aaa';
+        default: return '#888';
+      }
+    };
+
+    // Get element color function
+    const getElementColor = (element) => {
+      switch((element || '').toLowerCase()) {
+        case 'fire': return '#ff4444';
+        case 'water': return '#4488ff';
+        case 'earth': return '#88aa44';
+        case 'dark': return '#8844aa';
+        case 'blood': return '#cc2222';
+        case 'poison': return '#44aa44';
+        case 'electric': return '#ffcc00';
+        default: return '#888';
+      }
+    };
+
+    // Get spells and keywords data
+    const spellsData = typeof SPELLS_DATA !== 'undefined' ? SPELLS_DATA : [];
+    const keywordsData = typeof SPELL_KEYWORDS_DATA !== 'undefined' ? SPELL_KEYWORDS_DATA : {};
+    const searchTerm = window.spellsSearchTerm.toLowerCase();
+
+    // Get unique elements for filter
+    const elements = [...new Set(spellsData.map(s => s.element).filter(e => e && e !== 'N/A'))].sort();
+
+    // Filter spells
+    let filteredSpells = [...spellsData];
+
+    // Filter by search
+    if (searchTerm) {
+      filteredSpells = filteredSpells.filter(s =>
+        s.name.toLowerCase().includes(searchTerm) ||
+        (s.description && s.description.toLowerCase().includes(searchTerm))
+      );
+    }
+
+    // Filter by element
+    if (window.spellElementFilter !== 'all') {
+      if (window.spellElementFilter === 'none') {
+        filteredSpells = filteredSpells.filter(s => !s.element || s.element === 'N/A');
+      } else {
+        filteredSpells = filteredSpells.filter(s => s.element === window.spellElementFilter);
+      }
+    }
+
+    // Sort spells
+    let sortedSpells;
+    if (window.spellSortType === 'alphabetical') {
+      sortedSpells = filteredSpells.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (window.spellSortType === 'rarity') {
+      const rarityOrder = { 'rare': 3, 'uncommon': 2, 'common': 1 };
+      sortedSpells = filteredSpells.sort((a, b) => {
+        const rarityDiff = (rarityOrder[(b.rarity || '').toLowerCase()] || 0) - (rarityOrder[(a.rarity || '').toLowerCase()] || 0);
+        return rarityDiff !== 0 ? rarityDiff : a.name.localeCompare(b.name);
+      });
+    } else if (window.spellSortType === 'element') {
+      sortedSpells = filteredSpells.sort((a, b) => {
+        const elemA = a.element || 'N/A';
+        const elemB = b.element || 'N/A';
+        return elemA.localeCompare(elemB) || a.name.localeCompare(b.name);
+      });
+    } else if (window.spellSortType === 'cost') {
+      sortedSpells = filteredSpells.sort((a, b) => (a.cost || 0) - (b.cost || 0) || a.name.localeCompare(b.name));
+    } else if (window.spellSortType === 'game') {
+      sortedSpells = filteredSpells.sort((a, b) => (a.game || '').localeCompare(b.game || '') || a.name.localeCompare(b.name));
+    } else {
+      sortedSpells = filteredSpells.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    // Build keywords array from the object
+    const keywordsArray = Object.values(keywordsData);
+
+    if (window.spellSubTab === 'keywords') {
+      // Show keywords sub-tab
+      content.innerHTML = `
+        <div style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
+          <!-- Sub-tab navigation -->
+          <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center;">
+            <button onclick="window.spellSubTab = 'spells'; switchCollectionTab('spells');" style="padding: 8px 16px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Spells (${spellsData.length})</button>
+            <button onclick="window.spellSubTab = 'keywords'; switchCollectionTab('spells');" style="padding: 8px 16px; background: #9b59b6; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 13px;">Keywords (${keywordsArray.length})</button>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; overflow-y: auto;">
+            ${keywordsArray.map(kw => `
+              <div style="
+                background: rgba(0,0,0,0.3);
+                border: 2px solid #9b59b6;
+                border-radius: 8px;
+                padding: 15px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+              ">
+                <div style="font-size: 16px; font-weight: bold; color: #9b59b6;">${kw.name}</div>
+                <div style="font-size: 13px; color: #ddd; line-height: 1.5;">${kw.description}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    } else {
+      // Show spells sub-tab
+      content.innerHTML = `
+        <!-- Left side: Spell grid -->
+        <div id="spells-grid-container" style="flex: 2; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
+          <!-- Sub-tab navigation -->
+          <div style="display: flex; gap: 10px; margin-bottom: 10px; padding: 8px 10px; background: rgba(0,0,0,0.2); border-radius: 6px; align-items: center;">
+            <button onclick="window.spellSubTab = 'spells'; switchCollectionTab('spells');" style="padding: 6px 14px; background: #9b59b6; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Spells (${spellsData.length})</button>
+            <button onclick="window.spellSubTab = 'keywords'; switchCollectionTab('spells');" style="padding: 6px 14px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Keywords (${keywordsArray.length})</button>
+          </div>
+
+          <!-- Search, Sort and Filter controls -->
+          <div style="display: flex; gap: 8px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center; flex-wrap: wrap;">
+            <span style="color: #aaa; font-size: 13px;">🔍</span>
+            <input type="text" id="spells-search" placeholder="Search spells..." value="${window.spellsSearchTerm}"
+              oninput="window.spellsSearchTerm = this.value; switchCollectionTab('spells');"
+              style="flex: 1; min-width: 120px; padding: 6px 10px; background: rgba(0,0,0,0.3); border: 1px solid #555; border-radius: 6px; color: white; font-size: 12px; outline: none;"
+            />
+            <div style="border-left: 1px solid #555; height: 20px; margin: 0 3px;"></div>
+            <span style="color: #aaa; font-size: 12px; font-weight: bold;">Sort:</span>
+            <button onclick="window.spellSortType = 'alphabetical'; switchCollectionTab('spells');" style="padding: 5px 10px; background: ${window.spellSortType === 'alphabetical' ? '#9b59b6' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 11px;">A-Z</button>
+            <button onclick="window.spellSortType = 'rarity'; switchCollectionTab('spells');" style="padding: 5px 10px; background: ${window.spellSortType === 'rarity' ? '#9b59b6' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 11px;">Rarity</button>
+            <button onclick="window.spellSortType = 'cost'; switchCollectionTab('spells');" style="padding: 5px 10px; background: ${window.spellSortType === 'cost' ? '#9b59b6' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 11px;">Cost</button>
+            <div style="border-left: 1px solid #555; height: 20px; margin: 0 3px;"></div>
+            <span style="color: #aaa; font-size: 12px; font-weight: bold;">Element:</span>
+            <select onchange="window.spellElementFilter = this.value; switchCollectionTab('spells');" style="padding: 5px 8px; background: #444; border: 1px solid #555; border-radius: 6px; color: white; font-size: 11px; cursor: pointer;">
+              <option value="all" ${window.spellElementFilter === 'all' ? 'selected' : ''}>All</option>
+              <option value="none" ${window.spellElementFilter === 'none' ? 'selected' : ''}>None</option>
+              ${elements.map(elem => `<option value="${elem}" ${window.spellElementFilter === elem ? 'selected' : ''} style="color: ${getElementColor(elem)}">${elem}</option>`).join('')}
+            </select>
+            <span style="color: #666; font-size: 10px; margin-left: auto;">${sortedSpells.length} of ${spellsData.length}</span>
+          </div>
+
+          <div id="spells-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; overflow-y: auto;">
+            ${sortedSpells.map(spell => {
+              const rarityColor = getRarityColor(spell.rarity);
+              const elementColor = getElementColor(spell.element);
+              return `
+              <div
+                class="collection-spell-card"
+                data-spell-name="${spell.name.replace(/"/g, '&quot;')}"
+                onclick="showSpellDetails('${spell.name.replace(/'/g, "\\'")}')"
+                style="
+                  background: rgba(0,0,0,0.3);
+                  border: 2px solid ${rarityColor};
+                  border-radius: 8px;
+                  padding: 8px;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  gap: 6px;
+                  transition: transform 0.2s, box-shadow 0.2s;
+                  cursor: pointer;
+                "
+                onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.5)';"
+                onmouseout="this.style.transform=''; this.style.boxShadow='';"
+              >
+                <img
+                  src="${spell.image || 'images/spells/no-spell.svg'}"
+                  alt="${spell.name}"
+                  style="
+                    width: 80px;
+                    height: 80px;
+                    object-fit: contain;
+                    border-radius: 6px;
+                    background: rgba(0,0,0,0.2);
+                    image-rendering: pixelated;
+                  "
+                  onerror="this.style.opacity='0.3';"
+                />
+                <div style="text-align: center; font-size: 11px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word; width: 100%;">
+                  ${spell.name}
+                </div>
+                <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
+                  <span style="font-size: 10px; color: #66b3ff; font-weight: bold;">${spell.cost} Mana</span>
+                  ${spell.element && spell.element !== 'N/A' ? `<span style="font-size: 9px; color: ${elementColor}; font-weight: bold;">${spell.element}</span>` : ''}
+                </div>
+                <div style="font-size: 9px; color: ${rarityColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
+                  ${spell.rarity}
+                </div>
+              </div>
+            `;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- Right side: Spell details -->
+        <div id="spell-details" style="flex: 1; overflow-y: auto; padding: 20px; background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 8px; min-width: 300px;">
+          <div style="text-align: center; color: #888; padding: 40px 20px;">
+            <p>Click a spell to view details</p>
+          </div>
+        </div>
+      `;
+    }
   }
+
+  // Restore focus after content update
+  restoreFocus();
+}
+
+// Sort collection spells
+function sortCollectionSpells(sortType) {
+  window.spellSortType = sortType;
+  switchCollectionTab('spells');
 }
 
 // Switch between loot sub-tabs
@@ -1319,22 +1966,31 @@ function sortCollectionItems(sortType) {
     grid.innerHTML = sortedItems.map(item => {
       const rarityColor = getRarityColor(item.rarity);
       return `
-        <div style="
-          background: rgba(0,0,0,0.3);
-          border: 2px solid ${rarityColor};
-          border-radius: 8px;
-          padding: 10px;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          transition: transform 0.2s, box-shadow 0.2s;
-        " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 20px rgba(${rarityColor === '#ff6b00' ? '255,107,0' : rarityColor === '#9b59b6' ? '155,89,182' : rarityColor === '#4CAF50' ? '76,175,80' : '170,170,170'}, 0.4)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+        <div
+          class="collection-item-card"
+          data-item-name="${item.name.replace(/"/g, '&quot;')}"
+          onclick="showItemDetails('${item.name.replace(/'/g, "\\'")}')"
+          style="
+            background: rgba(0,0,0,0.3);
+            border: 2px solid ${rarityColor};
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+          "
+          onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.5)';"
+          onmouseout="this.style.transform=''; this.style.boxShadow='';"
+        >
           <img
             src="${item.image || 'images/items/no-item.svg'}"
             alt="${item.name}"
             style="
-              width: 100%;
-              height: 120px;
+              width: 80px;
+              height: 80px;
               object-fit: contain;
               border-radius: 6px;
               background: rgba(0,0,0,0.2);
@@ -1342,17 +1998,11 @@ function sortCollectionItems(sortType) {
             "
             onerror="this.style.display='none';"
           />
-          <div style="text-align: center; font-size: 12px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word;">
+          <div style="text-align: center; font-size: 11px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word; width: 100%;">
             ${item.name}
           </div>
-          <div style="font-size: 10px; color: ${rarityColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
+          <div style="font-size: 9px; color: ${rarityColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
             ${item.rarity}
-          </div>
-          <div style="font-size: 10px; color: #888; text-align: center; font-style: italic;">
-            ${item.game || 'Unknown'}
-          </div>
-          <div style="font-size: 10px; color: #aaa; text-align: center; line-height: 1.4;">
-            ${item.description || 'No description'}
           </div>
         </div>
       `;
@@ -1423,3 +2073,4 @@ window.recordLostRun = recordLostRun;
 window.startEscapePhase = startEscapePhase;
 window.showVictoryScreen = showVictoryScreen;
 window.sortCollectionItems = sortCollectionItems;
+window.sortCollectionSpells = sortCollectionSpells;

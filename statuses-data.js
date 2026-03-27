@@ -3,7 +3,7 @@
 var STATUSES_DATA = {
   "burn": {
     "name": "Burn",
-    "description": "Deals 3 damage to any target per stack",
+    "description": "Deals 3 damage to any target per stack at the end of turn",
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
@@ -14,7 +14,7 @@ var STATUSES_DATA = {
   },
   "poison": {
     "name": "Poison",
-    "description": "Deals X damage to any target where X is the stack ",
+    "description": "Deals X damage to any target where X is the stack at the start of turn",
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
@@ -29,7 +29,7 @@ var STATUSES_DATA = {
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
-    "decay": "Stack Goes down when hit",
+    "decay": "Stack Goes down when player was going to lose health",
     "who": "All",
     "preference": "Positive",
     "imageUrl": "images/statuses/Dodge.png"
@@ -80,7 +80,7 @@ var STATUSES_DATA = {
   },
   "ruptured": {
     "name": "Ruptured",
-    "description": "Deals 3 damage to the player when they dodge",
+    "description": "Deals 3 damage to the player when they use a dash to gain dodge",
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
@@ -91,7 +91,7 @@ var STATUSES_DATA = {
   },
   "frail": {
     "name": "Frail",
-    "description": "All damage to target is doubled",
+    "description": "All damage deals double to target ",
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
@@ -102,7 +102,7 @@ var STATUSES_DATA = {
   },
   "formless": {
     "name": "Formless",
-    "description": "When dealth damage, reroll's their intent die",
+    "description": "When dealt damage, change it's intent",
     "type": "Ability",
     "stackable": false,
     "maxStack": null,
@@ -113,7 +113,7 @@ var STATUSES_DATA = {
   },
   "multi_attack_x": {
     "name": "Multi Attack X",
-    "description": "This enemy rolls X amount of die at a time",
+    "description": "This enemy has X amount of intents in a turn",
     "type": "Ability",
     "stackable": false,
     "maxStack": null,
@@ -168,7 +168,7 @@ var STATUSES_DATA = {
   },
   "thorns": {
     "name": "Thorns",
-    "description": "When a target with Thorns gets dealt Dmg directly, the attacker takes X Dmg",
+    "description": "When a target with Thorns gets dealt or deals Melee Dmg, the target deals X Dmg to the attacker/recipient",
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
@@ -176,5 +176,93 @@ var STATUSES_DATA = {
     "who": "All",
     "preference": "Positive",
     "imageUrl": "images/statuses/Thorns.png"
+  },
+  "vulnerable": {
+    "name": "Vulnerable",
+    "description": "All damage deals 50% more to target ",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Vulnerable.png"
+  },
+  "weak": {
+    "name": "Weak",
+    "description": "Target deals 25% less damage.",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Weak.png"
+  },
+  "stun": {
+    "name": "Stun",
+    "description": "The enemy's intent will be changed to \"Stunned\" and will do nothing on this turn ",
+    "type": "Debuff",
+    "stackable": false,
+    "maxStack": 1,
+    "decay": "Down by 1 at end of turn",
+    "who": "Enemy",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Stun.png"
+  },
+  "unknown": {
+    "name": "Unknown",
+    "description": "This enemy intends to do something specific",
+    "type": "Intent",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Neutral",
+    "imageUrl": "images/statuses/Unknown.png"
+  },
+  "stagger_x": {
+    "name": "Stagger X",
+    "description": "Target will gain Stun when hit with X% of Total Health lost in one hit",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Stun.png"
+  },
+  "pigment_rich": {
+    "name": "Pigment Rich",
+    "description": "When hit, add a random pigment card to your hand.",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Neutral",
+    "imageUrl": "images/statuses/PigmentRich.png"
+  },
+  "rerollable": {
+    "name": "Rerollable",
+    "description": "Attacks from this enemy can be rerolled costing 1 Reroll",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Neutral",
+    "imageUrl": "images/statuses/Rerollable.png"
+  },
+  "rust": {
+    "name": "Rust",
+    "description": "If this enemy does damage that causes the player to lose health, Downgrade a random passive item",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Neutral",
+    "imageUrl": "images/statuses/Rust.png"
   }
 };

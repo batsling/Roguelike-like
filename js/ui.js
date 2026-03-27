@@ -1019,7 +1019,6 @@ function updateGameStats() {
   // Update stats in the game view sidebar
   const statsHealth = document.getElementById('stats-health');
   const statsGold = document.getElementById('stats-gold');
-  const statsAttack = document.getElementById('stats-attack');
   const statsStrength = document.getElementById('stats-strength');
   const statsDexterity = document.getElementById('stats-dexterity');
   const statsIntelligence = document.getElementById('stats-intelligence');
@@ -1050,17 +1049,6 @@ function updateGameStats() {
 
   // Use getTotalBonuses() to include all bonuses (scalable passives + weapon)
   const totalBonuses = typeof getTotalBonuses === 'function' ? getTotalBonuses() : null;
-
-  // Attack stat with bonuses
-  if (statsAttack) {
-    const effectiveAttack = typeof getEffectiveAttack === 'function' ? getEffectiveAttack() : attack;
-    if (effectiveAttack !== attack) {
-      // Show base attack and total if they differ
-      statsAttack.textContent = `${effectiveAttack} (${attack}+${effectiveAttack - attack})`;
-    } else {
-      statsAttack.textContent = attack;
-    }
-  }
 
   // Strength stat with bonuses
   if (statsStrength) {

@@ -34,6 +34,15 @@ function showCurseVerificationModal(onComplete) {
   // Check if player has any boons
   const boons = (gameState.inventory || []).filter(item => item.type === 'Boon');
 
+  // Check for Haste "perfect game" items
+  const hastePerfectItems = (gameState.inventory || []).filter(item =>
+    item.name === 'Secret Technique Instructions' ||
+    item.name === 'Clown Shoes' ||
+    item.name === 'Performance Based Health Insurance' ||
+    item.name === 'Steady Investment'
+  );
+  const hasHastePerfectItems = hastePerfectItems.length > 0;
+
   // Check if player is in a Caves of Qud location
   const isInCavesOfQud = gameState.location && typeof hasAppearanceEffect === 'function' && hasAppearanceEffect(gameState.location);
 
@@ -53,18 +62,18 @@ function showCurseVerificationModal(onComplete) {
   );
 
   // Check for level up opportunity (character always has a level up condition)
-  const characterKey = window.selectedCharacter || (gameState && gameState.character) || 'rodney';
-  const characterData = typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA[characterKey] : null;
+  const characterKey = window.selectedCharacter || (gameState && gameState.character) || 'Rodney';
+  const characterData = typeof PLAYER_CHARACTERS !== 'undefined' ? PLAYER_CHARACTERS[characterKey] : null;
   const canLevelUp = characterData && characterData.levelUpCondition;
 
-  // If no curses to verify, no Precision Landing trait, no equipped weapon, no boons, not in Caves of Qud, and no level up, skip verification
-  if (cursesToVerify.length === 0 && !hasPrecisionLanding && !hasEquippedWeapon && boons.length === 0 && !isInCavesOfQud && !canLevelUp) {
+  // If no curses to verify, no Precision Landing trait, no equipped weapon, no boons, not in Caves of Qud, no level up, and no Haste perfect items, skip verification
+  if (cursesToVerify.length === 0 && !hasPrecisionLanding && !hasEquippedWeapon && boons.length === 0 && !isInCavesOfQud && !canLevelUp && !hasHastePerfectItems) {
     if (onComplete) onComplete();
     return;
   }
 
   // Show combined verification modal for all curses and traits at once
-  verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, canLevelUp, characterData);
+  verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, canLevelUp, characterData, hastePerfectItems);
 }
 
 /**
@@ -74,8 +83,9 @@ function showCurseVerificationModal(onComplete) {
  * @param {Function} onComplete - Callback to run after verification is done
  * @param {boolean} canLevelUp - Whether character can level up
  * @param {Object} characterData - Character data with levelUpCondition
+ * @param {Array} hastePerfectItems - Array of Haste "perfect game" items in inventory
  */
-function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, canLevelUp = false, characterData = null) {
+function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, canLevelUp = false, characterData = null, hastePerfectItems = []) {
   // Group curses by type
   const blindnessCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('blindness'));
   const hubrisCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('hubris'));
@@ -418,6 +428,44 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           </label>
           <label style="font-size: 12px; color: #ccc;">
             <input type="radio" name="precision-check" value="no" checked style="margin-right: 5px;">No
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
+  // Add Haste Perfect Game section if player has any Haste perfect items
+  if (hastePerfectItems.length > 0) {
+    // Build reward description based on items
+    const rewardParts = [];
+    const hasSecretTechnique = hastePerfectItems.some(i => i.name === 'Secret Technique Instructions');
+    const hasClownShoes = hastePerfectItems.some(i => i.name === 'Clown Shoes');
+    const hasHealthInsurance = hastePerfectItems.some(i => i.name === 'Performance Based Health Insurance');
+    const hasSteadyInvestment = hastePerfectItems.some(i => i.name === 'Steady Investment');
+
+    // Count stacks
+    const secretTechniqueCount = hastePerfectItems.filter(i => i.name === 'Secret Technique Instructions').length;
+    const healthInsuranceCount = hastePerfectItems.filter(i => i.name === 'Performance Based Health Insurance').length;
+    const steadyInvestmentCount = hastePerfectItems.filter(i => i.name === 'Steady Investment').length;
+
+    if (hasSecretTechnique) rewardParts.push(`+${secretTechniqueCount} Dash`);
+    if (hasHealthInsurance) rewardParts.push(`+${2 * healthInsuranceCount} Health`);
+    if (hasSteadyInvestment) rewardParts.push(`+${5 * steadyInvestmentCount} Gold`);
+
+    modalHTML += `
+      <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid #ffd700; border-radius: 6px; padding: 10px; margin: 8px 0;">
+        <h3 style="color: #ffd700; margin: 0 0 5px 0; font-size: 15px;">⚡ Perfect Game (Haste Items)</h3>
+        <div style="color: #ccaa55; font-size: 11px; margin-bottom: 5px;">
+          ${hastePerfectItems.map(i => i.name).join(', ')}
+        </div>
+        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Beat without losing a run?${rewardParts.length > 0 ? ` Reward: ${rewardParts.join(', ')}` : ''}</p>
+        ${hasClownShoes ? `<p style="font-size: 11px; margin: 3px 0; color: #888; font-style: italic;">Clown Shoes: 50% chance to treat "No" as "Yes"</p>` : ''}
+        <div style="margin-top: 5px;">
+          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+            <input type="radio" name="haste-perfect-check" value="yes" style="margin-right: 5px;">Yes
+          </label>
+          <label style="font-size: 12px; color: #ccc;">
+            <input type="radio" name="haste-perfect-check" value="no" checked style="margin-right: 5px;">No
           </label>
         </div>
       </div>
@@ -827,6 +875,68 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       }
     }
 
+    // Track Haste perfect items activation for notification later
+    let hastePerfectActivated = false;
+    let hastePerfectRewards = [];
+    if (hastePerfectItems.length > 0) {
+      const hasteRadio = document.querySelector('input[name="haste-perfect-check"]:checked');
+      let perfectGame = hasteRadio && hasteRadio.value === 'yes';
+
+      // Clown Shoes: 50% chance to treat "No" as "Yes"
+      const clownShoesCount = hastePerfectItems.filter(i => i.name === 'Clown Shoes').length;
+      if (!perfectGame && clownShoesCount > 0) {
+        // Each Clown Shoes gives 50% chance
+        for (let i = 0; i < clownShoesCount; i++) {
+          if (Math.random() < 0.5) {
+            perfectGame = true;
+            hastePerfectRewards.push('Clown Shoes activated!');
+            console.log('Clown Shoes activated: treating non-perfect as perfect');
+            break;
+          }
+        }
+      }
+
+      if (perfectGame) {
+        hastePerfectActivated = true;
+
+        // Secret Technique Instructions: +1 Dash per copy
+        const secretTechniqueCount = hastePerfectItems.filter(i => i.name === 'Secret Technique Instructions').length;
+        if (secretTechniqueCount > 0) {
+          dash = Math.max(0, dash + secretTechniqueCount);
+          gameState.dash = dash;
+          hastePerfectRewards.push(`+${secretTechniqueCount} Dash`);
+          console.log(`Secret Technique Instructions: +${secretTechniqueCount} Dash`);
+        }
+
+        // Performance Based Health Insurance: +2 Health per copy
+        const healthInsuranceCount = hastePerfectItems.filter(i => i.name === 'Performance Based Health Insurance').length;
+        if (healthInsuranceCount > 0) {
+          const healthGain = 2 * healthInsuranceCount;
+          health = Math.min(maxHealth, health + healthGain);
+          gameState.health = health;
+          hastePerfectRewards.push(`+${healthGain} Health`);
+          console.log(`Performance Based Health Insurance: +${healthGain} Health`);
+        }
+
+        // Steady Investment: +5 Gold per copy
+        const steadyInvestmentCount = hastePerfectItems.filter(i => i.name === 'Steady Investment').length;
+        if (steadyInvestmentCount > 0) {
+          const goldGain = 5 * steadyInvestmentCount;
+          gold += goldGain;
+          gameState.gold = gold;
+          hastePerfectRewards.push(`+${goldGain} Gold`);
+          console.log(`Steady Investment: +${goldGain} Gold`);
+        }
+
+        if (typeof updateTopBar === 'function') {
+          updateTopBar();
+        }
+        if (typeof updateGameStats === 'function') {
+          updateGameStats();
+        }
+      }
+    }
+
     // Track weapon effect activation for notification later
     let weaponEffectActivated = false;
     let weaponRewardText = '';
@@ -1167,29 +1277,40 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       }, 100);
     }
 
+    // Show Haste perfect items notification after modal closes
+    if (hastePerfectActivated && hastePerfectRewards.length > 0) {
+      setTimeout(() => {
+        if (typeof createNotification === 'function') {
+          createNotification(`Perfect Game: ${hastePerfectRewards.join(', ')}!`, '#ffd700', '⚡');
+        }
+      }, precisionLandingActivated ? 200 : 100);
+    }
+
     // Show weapon effect notification after modal closes
     if (weaponEffectActivated) {
+      const weaponDelay = 100 + (precisionLandingActivated ? 100 : 0) + (hastePerfectActivated ? 100 : 0);
       setTimeout(() => {
         if (typeof createNotification === 'function') {
           createNotification(`${gameState.equippedWeapon.name}: Earned ${weaponRewardText}!`, '#ff9800', '⚔️');
         }
-      }, precisionLandingActivated ? 200 : 100); // Delay slightly if Precision Landing also activated
+      }, weaponDelay);
     }
 
     // Show boon notifications after modal closes
     if (activatedBoons.length > 0) {
+      const boonBaseDelay = 100 + (precisionLandingActivated ? 100 : 0) + (hastePerfectActivated ? 100 : 0) + (weaponEffectActivated ? 100 : 0);
       activatedBoons.forEach((boonName, index) => {
         setTimeout(() => {
           if (typeof createNotification === 'function') {
             createNotification(`${boonName}: +1 to All Combat Roll Bonus Stats!`, '#8a2be2', '🌟');
           }
-        }, (precisionLandingActivated ? 200 : 100) + (weaponEffectActivated ? 100 : 0) + (index * 100));
+        }, boonBaseDelay + (index * 100));
       });
     }
 
     // Show appearance change notification after modal closes
     if (appearanceChangeResult) {
-      const baseDelay = (precisionLandingActivated ? 200 : 100) + (weaponEffectActivated ? 100 : 0) + (activatedBoons.length * 100);
+      const baseDelay = 100 + (precisionLandingActivated ? 100 : 0) + (hastePerfectActivated ? 100 : 0) + (weaponEffectActivated ? 100 : 0) + (activatedBoons.length * 100);
       setTimeout(() => {
         if (typeof createNotification === 'function') {
           if (appearanceChangeResult.success) {
@@ -1202,24 +1323,51 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       }, baseDelay);
     }
 
-    // Check if Blasma Pistol chest needs to be shown BEFORE the normal reward
-    if (gameState._blasmaPistolChest) {
-      const blasmaChestType = gameState._blasmaPistolChest;
-      delete gameState._blasmaPistolChest; // Clear the flag
+    // Helper function to continue to rewards after all level-up stuff is done
+    const continueToRewards = () => {
+      // Check if Blasma Pistol chest needs to be shown BEFORE the normal reward
+      if (gameState._blasmaPistolChest) {
+        const blasmaChestType = gameState._blasmaPistolChest;
+        delete gameState._blasmaPistolChest; // Clear the flag
 
-      // Show Blasma Pistol chest first, then continue with normal flow
-      if (typeof offerChest === 'function') {
-        offerChest(blasmaChestType, () => {
-          // After Blasma Pistol chest is complete, continue to normal rewards
+        // Show Blasma Pistol chest first, then continue with normal flow
+        if (typeof offerChest === 'function') {
+          offerChest(blasmaChestType, () => {
+            // After Blasma Pistol chest is complete, continue to normal rewards
+            if (onComplete) onComplete();
+          });
+        } else {
+          // Fallback if offerChest not available
           if (onComplete) onComplete();
-        });
+        }
       } else {
-        // Fallback if offerChest not available
+        // No Blasma Pistol chest, continue normally
         if (onComplete) onComplete();
       }
+    };
+
+    // If player leveled up, show dice level-up choices BEFORE item rewards
+    if (leveledUp) {
+      const characterKey = gameState.character || 'Rodney';
+      if (typeof showDiceLevelUpChoiceModal === 'function') {
+        // Small delay to let notifications appear first
+        setTimeout(() => {
+          showDiceLevelUpChoiceModal(characterKey, (diceResult) => {
+            if (diceResult && typeof createNotification === 'function') {
+              createNotification(diceResult, '#FFD700', '🎲');
+            }
+            if (typeof saveCurrentGame === 'function') saveCurrentGame();
+            // Now continue to item rewards
+            continueToRewards();
+          });
+        }, 300);
+      } else {
+        // Fallback if showDiceLevelUpChoiceModal not available
+        continueToRewards();
+      }
     } else {
-      // No Blasma Pistol chest, continue normally
-      if (onComplete) onComplete();
+      // No level up, continue directly to rewards
+      continueToRewards();
     }
   };
 }

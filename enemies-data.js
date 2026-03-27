@@ -6,8 +6,11 @@ var ENEMIES_DATA = [
     "name": "Lemurian",
     "type": "Strength",
     "difficulty": "Low",
-    "hp": 10,
-    "ability": "N/A",
+    "weight": 1,
+    "hpMin": 30,
+    "hpMax": 34,
+    "ability": "Stagger 33%",
+    "pattern": "Always: 75% 6 Dmg Ranged 1 Burn / 25% 9 Dmg Melee",
     "game": "Risk of Rain",
     "location": "General",
     "dice": [
@@ -15,14 +18,14 @@ var ENEMIES_DATA = [
         "isBlank": false,
         "effects": [
           {
-            "raw": "Get 2 Power",
-            "value": 2,
+            "raw": "Get 1 Power",
+            "value": 1,
             "move": "Get",
             "addons": [],
             "target": "Power"
           }
         ],
-        "raw": "Get 2 Power"
+        "raw": "Get 1 Power"
       },
       {
         "isBlank": false,
@@ -97,8 +100,11 @@ var ENEMIES_DATA = [
     "name": "Stone Golem",
     "type": "Strength",
     "difficulty": "Medium",
-    "hp": 20,
-    "ability": "N/A",
+    "weight": 2,
+    "hpMin": 64,
+    "hpMax": 70,
+    "ability": "Stagger 33%",
+    "pattern": "Turn 1: Unknown Intent (\"Charging\") | Turn 2: 50% 10 Dmg Ranged / 50% 7 Dmg Melee 2 Vulnerable | Next: Repeat",
     "game": "Risk of Rain",
     "location": "General",
     "dice": [
@@ -106,14 +112,14 @@ var ENEMIES_DATA = [
         "isBlank": false,
         "effects": [
           {
-            "raw": "Get 3 Power",
-            "value": 3,
+            "raw": "Get 2 Power",
+            "value": 2,
             "move": "Get",
             "addons": [],
             "target": "Power"
           }
         ],
-        "raw": "Get 3 Power"
+        "raw": "Get 2 Power"
       },
       {
         "isBlank": false,
@@ -188,8 +194,11 @@ var ENEMIES_DATA = [
     "name": "Elder Lemurian",
     "type": "Strength",
     "difficulty": "High",
-    "hp": 40,
-    "ability": "N/A",
+    "weight": 7,
+    "hpMin": 200,
+    "hpMax": 220,
+    "ability": "Stagger 33%",
+    "pattern": "Always: 50% 3x5 Dmg Ranged / 50% 8 Dmg Melee 5 Burn",
     "game": "Risk of Rain",
     "location": "General",
     "dice": [
@@ -197,14 +206,14 @@ var ENEMIES_DATA = [
         "isBlank": false,
         "effects": [
           {
-            "raw": "Get 3 Power",
-            "value": 3,
+            "raw": "Get 2 Power",
+            "value": 2,
             "move": "Get",
             "addons": [],
             "target": "Power"
           }
         ],
-        "raw": "Get 3 Power"
+        "raw": "Get 2 Power"
       },
       {
         "isBlank": false,
@@ -292,11 +301,14 @@ var ENEMIES_DATA = [
   {
     "name": "Pacer",
     "type": "Strength",
-    "difficulty": "N/A",
-    "hp": 10,
-    "ability": null,
+    "difficulty": null,
+    "weight": null,
+    "hpMin": 20,
+    "hpMax": 24,
+    "ability": "N/A",
+    "pattern": "Always: 75% Unknown Intent (\"Wandering\") / 25% 6 Dmg Melee",
     "game": "The Binding of Isaac",
-    "location": "Building",
+    "location": "General",
     "dice": [
       {
         "isBlank": false,
@@ -384,10 +396,13 @@ var ENEMIES_DATA = [
     "name": "Gaper",
     "type": "Strength",
     "difficulty": "Low",
-    "hp": 10,
-    "ability": "When Defeated, Spawn Pacer",
+    "weight": 1,
+    "hpMin": 20,
+    "hpMax": 24,
+    "ability": "When Defeated, 60% Spawn Pacer / 40% Spawn Gusher",
+    "pattern": "Always: 6 Dmg Melee",
     "game": "The Binding of Isaac",
-    "location": "Building",
+    "location": "General",
     "dice": [
       {
         "isBlank": false,
@@ -472,13 +487,56 @@ var ENEMIES_DATA = [
     "variantOf": null
   },
   {
+    "name": "Gusher",
+    "type": "Strength",
+    "difficulty": null,
+    "weight": null,
+    "hpMin": 20,
+    "hpMax": 24,
+    "ability": "N/A",
+    "pattern": "Always: 75% Unknown Intent (\"Wandering\") / 25% 6 Dmg Ranged",
+    "game": "The Binding of Isaac",
+    "location": "General",
+    "dice": [
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
+    ],
+    "imageUrl": "images/enemies/Gusher.png",
+    "variantOf": null
+  },
+  {
     "name": "Double Vis",
     "type": "Strength",
     "difficulty": "Medium",
-    "hp": 20,
+    "weight": 3,
+    "hpMin": 48,
+    "hpMax": 54,
     "ability": "N/A",
+    "pattern": "Always: 10 Dmg Overload Ranged",
     "game": "The Binding of Isaac",
-    "location": "Building",
+    "location": "General",
     "dice": [
       {
         "isBlank": true,
@@ -545,10 +603,13 @@ var ENEMIES_DATA = [
     "name": "Tainted Pooter",
     "type": "Strength",
     "difficulty": "High",
-    "hp": 40,
+    "weight": 7,
+    "hpMin": 130,
+    "hpMax": 140,
     "ability": "When Defeated, Strength Save 15 or take 3 Dmg",
+    "pattern": "Turn 1: 5x4 Dmg Ranged | Turn 2: 5x2 Dmg Ranged",
     "game": "The Binding of Isaac",
-    "location": "Building",
+    "location": "General",
     "dice": [
       {
         "isBlank": true,
@@ -625,9 +686,12 @@ var ENEMIES_DATA = [
   {
     "name": "Mung",
     "type": "Intelligence",
-    "difficulty": "N/A",
-    "hp": 5,
-    "ability": "N/A",
+    "difficulty": null,
+    "weight": 1,
+    "hpMin": 20,
+    "hpMax": 24,
+    "ability": "Pigment Rich",
+    "pattern": "Always: 50% 3 Dmg Melee / 50% Add 1 random Pigment Status card to your deck",
     "game": "Brutal Orchestra",
     "location": "Desert",
     "dice": [
@@ -687,11 +751,54 @@ var ENEMIES_DATA = [
     "variantOf": null
   },
   {
+    "name": "Mud Lung",
+    "type": "Intelligence",
+    "difficulty": "Low",
+    "weight": 2,
+    "hpMin": 30,
+    "hpMax": 34,
+    "ability": "Pigment Rich",
+    "pattern": "Always: 58% 6 Dmg Melee / 42% Consume 1 random Pigment Status card in Any for 3 Power, 6 Block",
+    "game": "Brutal Orchestra",
+    "location": "Desert",
+    "dice": [
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
+    ],
+    "imageUrl": "images/enemies/MudLung.png",
+    "variantOf": null
+  },
+  {
     "name": "Mungling Mud Lung",
     "type": "Intelligence",
     "difficulty": "Low",
-    "hp": 10,
-    "ability": "When Defeated, 50% chance to Spawn Mung / Multi Attack 2",
+    "weight": 3,
+    "hpMin": 48,
+    "hpMax": 54,
+    "ability": "Pigment Rich / Multi Attack 2 / When Defeated, 50% chance to Spawn Mung ",
+    "pattern": "Always: 41% 6 Dmg Melee /  29% Consume 1 random Pigment Status card in Any for 3 Power, 6 Block / 30% 4 Pain, Spawn Mungie",
     "game": "Brutal Orchestra",
     "location": "Desert",
     "dice": [
@@ -798,9 +905,12 @@ var ENEMIES_DATA = [
   {
     "name": "Mungie",
     "type": "Intelligence",
-    "difficulty": "N/A",
-    "hp": 3,
-    "ability": "N/A",
+    "difficulty": null,
+    "weight": null,
+    "hpMin": 12,
+    "hpMax": 14,
+    "ability": "Pigment Rich",
+    "pattern": "Always: 3 Dmg Melee",
     "game": "Brutal Orchestra",
     "location": "Desert",
     "dice": [
@@ -890,8 +1000,11 @@ var ENEMIES_DATA = [
     "name": "Revola",
     "type": "Intelligence",
     "difficulty": "Medium",
-    "hp": 20,
-    "ability": "Starts with Forgetful, Barricade",
+    "weight": 3,
+    "hpMin": 130,
+    "hpMax": 140,
+    "ability": "Pigment Rich / Forgetful / Barricade",
+    "pattern": "Always: 41% 3 Dmg Ranged, 3 Oiled / 41% 15 Dmg Ranged, 16 Block / 18% Alter Revola (Standing), Gain 2 Frail",
     "game": "Brutal Orchestra",
     "location": "Watery",
     "dice": [
@@ -1019,9 +1132,12 @@ var ENEMIES_DATA = [
   {
     "name": "Revola (Standing)",
     "type": "Intelligence",
-    "difficulty": "N/A",
-    "hp": 20,
-    "ability": "Starts with Forgetful, Barricade",
+    "difficulty": null,
+    "weight": null,
+    "hpMin": 130,
+    "hpMax": 140,
+    "ability": "Pigment Rich / Forgetful / Barricade",
+    "pattern": "Always: 77% 9 Dmg Melee, Inflict 3 Ruptured, 20 Block, Alter Revola, Lose All Frail / 23% Unknown Intent (\"Stood up too fast, got a headrush\")",
     "game": "Brutal Orchestra",
     "location": "Watery",
     "dice": [
@@ -1177,8 +1293,11 @@ var ENEMIES_DATA = [
     "name": "Skinning Homunculus",
     "type": "Intelligence",
     "difficulty": "High",
-    "hp": 40,
-    "ability": "When another ally is damaged, 1 Frail Overload / Formless",
+    "weight": 5,
+    "hpMin": 100,
+    "hpMax": 110,
+    "ability": "Formless / When another ally takes Melee Dmg, Add 1 Frail Overload to Intent",
+    "pattern": "Always: 43% 10 Dmg Ranged OverloadExceptLeft / 43% 10 Dmg Ranged OverloadExceptRight / 14% 40 Dmg Ranged, 35 Pain",
     "game": "Brutal Orchestra",
     "location": "Chaos",
     "dice": [
@@ -1280,8 +1399,11 @@ var ENEMIES_DATA = [
     "name": "Hobgoblin",
     "type": "Dexterity",
     "difficulty": "Low",
-    "hp": 10,
-    "ability": "N/A",
+    "weight": 1,
+    "hpMin": 30,
+    "hpMax": 34,
+    "ability": "Rerollable",
+    "pattern": "Always: D8 Dmg Melee",
     "game": "Rogue",
     "location": "General",
     "dice": [
@@ -1350,11 +1472,54 @@ var ENEMIES_DATA = [
     "variantOf": null
   },
   {
+    "name": "Aquator",
+    "type": "Dexterity",
+    "difficulty": "Medium",
+    "weight": 2,
+    "hpMin": 40,
+    "hpMax": 46,
+    "ability": "Rust / Rerollable",
+    "pattern": "Always: D6x3 Dmg Melee",
+    "game": "Rogue",
+    "location": "General",
+    "dice": [
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
+    ],
+    "imageUrl": "images/enemies/Aquator.png",
+    "variantOf": null
+  },
+  {
     "name": "Troll",
     "type": "Dexterity",
     "difficulty": "Medium",
-    "hp": 20,
-    "ability": "N/A",
+    "weight": 4,
+    "hpMin": 60,
+    "hpMax": 66,
+    "ability": "Rerollable",
+    "pattern": "Always: D8x2+D6x2 Dmg Melee",
     "game": "Rogue",
     "location": "General",
     "dice": [
@@ -1435,8 +1600,11 @@ var ENEMIES_DATA = [
     "name": "Dragon",
     "type": "Dexterity",
     "difficulty": "High",
-    "hp": 40,
-    "ability": "Immune to Burn",
+    "weight": 9,
+    "hpMin": 250,
+    "hpMax": 270,
+    "ability": "Immune to Burn, Rerollable",
+    "pattern": "Always: 50% D6x6 Dmg Ranged, 5 Burn / 50% D8x2+D10x3 Dmg Melee",
     "game": "Rogue",
     "location": "General",
     "dice": [
@@ -1532,92 +1700,37 @@ var ENEMIES_DATA = [
     "name": "Cultist",
     "type": "Charisma",
     "difficulty": "Low",
-    "hp": 10,
+    "weight": 2,
+    "hpMin": 48,
+    "hpMax": 54,
     "ability": "N/A",
+    "pattern": "Turn 1: Get 3 Ritual | Next: 6 Dmg Melee",
     "game": "Slay the Spire",
     "location": "General",
     "dice": [
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "Get 1 Ritual Exhert",
-            "value": 1,
-            "move": "Get",
-            "addons": [
-              "Exhert"
-            ],
-            "target": "Ritual"
-          }
-        ],
-        "raw": "Get 1 Ritual Exhert"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "Get 1 Ritual Exhert",
-            "value": 1,
-            "move": "Get",
-            "addons": [
-              "Exhert"
-            ],
-            "target": "Ritual"
-          }
-        ],
-        "raw": "Get 1 Ritual Exhert"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
+        "isBlank": true,
+        "effects": []
       },
       {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
+        "isBlank": true,
+        "effects": []
       }
     ],
     "imageUrl": "images/enemies/Cultist.png",
@@ -1627,8 +1740,11 @@ var ENEMIES_DATA = [
     "name": "Snecko",
     "type": "Charisma",
     "difficulty": "Medium",
-    "hp": 20,
+    "weight": 6,
+    "hpMin": 114,
+    "hpMax": 120,
     "ability": "N/A",
+    "pattern": "Turn 1: Inflict 6 Confused | Next: 60% 8 Dmg Melee 2 Vulnerable / 40% 15 Dmg Melee",
     "game": "Slay the Spire",
     "location": "General",
     "dice": [
@@ -1728,8 +1844,11 @@ var ENEMIES_DATA = [
     "name": "Transient",
     "type": "Charisma",
     "difficulty": "High",
-    "hp": 99,
+    "weight": 9,
+    "hpMin": 999,
+    "hpMax": 999,
     "ability": "Fading 4/Shifting",
+    "pattern": "Always: 30 + (Turn Number - 1 x 10) Dmg Melee",
     "game": "Slay the Spire",
     "location": "General",
     "dice": [
@@ -1843,8 +1962,11 @@ var ENEMIES_DATA = [
     "name": "Bones",
     "type": "Intelligence",
     "difficulty": "Low",
-    "hp": 10,
-    "ability": "When Defeated, 2 Dmg to it's adjacent allies",
+    "weight": 1,
+    "hpMin": 30,
+    "hpMax": 34,
+    "ability": "When Defeated, 5 Dmg to it's adjacent allies",
+    "pattern": "Always: 60% 9 Dmg Melee / 40% 6 Dmg Melee",
     "game": "Slice & Dice",
     "location": "Undead",
     "dice": [
@@ -1934,8 +2056,11 @@ var ENEMIES_DATA = [
     "name": "Fanatic",
     "type": "Intelligence",
     "difficulty": "Medium",
-    "hp": 20,
+    "weight": 3,
+    "hpMin": 15,
+    "hpMax": 15,
     "ability": "N/A",
+    "pattern": "Always: 33% 20 Dmg Melee, 20 Pain / 33% 15 Dmg Melee, 15 Pain / 33% 10 Dmg Melee, 10 Pain",
     "game": "Slice & Dice",
     "location": "General",
     "dice": [
@@ -2067,8 +2192,11 @@ var ENEMIES_DATA = [
     "name": "Spiker",
     "type": "Intelligence",
     "difficulty": "High",
-    "hp": 40,
-    "ability": "Starts with 2 Thorns",
+    "weight": 3,
+    "hpMin": 20,
+    "hpMax": 20,
+    "ability": "3 Thorns",
+    "pattern": "Always 60% 15 Dmg Melee / 40% 10 Dmg Ranged, Gain 1 Thorns",
     "game": "Slice & Dice",
     "location": "General",
     "dice": [

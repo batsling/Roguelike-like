@@ -9,6 +9,23 @@
 - [Game Status Effects](#game-status-effects)
 - [Events System](#events-system)
 - [Combat System](#combat-system)
+  - [Combat Flow](#combat-flow)
+  - [Energy System](#energy-system)
+  - [Card Hand](#card-hand)
+  - [Card Types](#card-types)
+  - [Card Rarities](#card-rarities)
+  - [Card Effects Reference](#card-effects-reference)
+  - [Combat Statuses](#combat-statuses)
+  - [Enemy Intents](#enemy-intents)
+  - [Enemy Ability Triggers](#enemy-ability-triggers)
+  - [Spawning and Transformation](#spawning-and-transformation)
+  - [Pigment Card Mechanics](#pigment-card-mechanics)
+  - [Draw / Discard / Exhaust Piles](#draw--discard--exhaust-piles)
+  - [Enemy Encounter System](#enemy-encounter-system)
+  - [Card Rewards](#card-rewards)
+  - [Shop Card Services](#shop-card-services)
+  - [Weapons and Cards](#weapons-and-cards)
+  - [Deck Management](#deck-management)
 - [Teleport System](#teleport-system)
 - [Developer Tools](#developer-tools)
 - [Code Optimization](#code-optimization)
@@ -19,13 +36,15 @@
 
 ## Overview
 
-A roguelike game where players navigate through a graph of connected video games, encountering combat, events, and shops. The game features a comprehensive curse system, item effects, and dynamic gameplay mechanics.
+A roguelike game where players navigate through a graph of connected video games, encountering card-based combat, events, and shops. The game features a full Slay the Spire–style card system, a comprehensive curse system, item effects, and dynamic gameplay mechanics.
 
 **Key Features:**
-- D20-based combat and event resolution
+- STS-style card-based combat (hand, energy, draw/discard/exhaust piles)
 - 11 unique curse types across 3 categories (Restriction, Manual, Automatic)
 - Player-verified curse tracking system with combined verification modal
 - Extensive item system (passive, usable, and triggered)
+- Card deck system (collect cards, upgrade, remove at shop)
+- Weight-based enemy encounter system with difficulty tiers
 - Game status effects (portals, stinky games)
 - Escape sequence after finding the amulet
 - Save/load system with multiple save slots
@@ -34,14 +53,83 @@ A roguelike game where players navigate through a graph of connected video games
 
 **Architecture:**
 The codebase is organized into focused, maintainable modules. See [js/README.md](js/README.md) for detailed module documentation.
-- **15 JavaScript modules** with clear responsibilities
-- **main.js reduced by 41.5%** (6,757 → 3,950 lines)
-- **6 new modules extracted** (Jan 2025): modals, shop, character-select, verification, escape, bingo
+- **15+ JavaScript modules** with clear responsibilities
+- **combat-engine.js**: Card resolution, status effects, enemy AI
+- **combat-ui.js**: Fan-arc hand rendering, drag-to-play, targeting mode
+- **cards.js**: Deck management, card rewards, shop card services
 - **Better maintainability** for both humans and LLMs
 
 ---
 
 ## Recent Updates
+
+### Version 6.1 - Advanced Enemy Mechanics (March 2026)
+
+**Pattern-Based Execution (all enemies):**
+- Dice arrays in enemy data are now legacy — all enemies execute their `pattern` string exclusively
+- `rollEnemyIntent` strips the `"Always: "` prefix and parses the description for both ordered and random enemies
+- Random probability splits (`50% desc / 50% desc`) are handled with proper weighted random selection
+- Forgetful enemies cycle through all branches before repeating, using branch index tracking
+
+**New Complex Enemy Mechanics:**
+- **Pain**: Enemy self-damage that bypasses block, thorns, and dodge entirely (direct HP reduction)
+- **Spawning**: When an enemy is defeated or on a spawn trigger, a new enemy replaces the dead slot using `spawnEnemyAtSlot()`, fully initialized from `ENEMIES_DATA`
+- **Alter (Transformation)**: An enemy transforms into a new form, changing name/pattern/ability/image while keeping current HP
+- **Add Pigment**: Enemy adds a random Pigment (status) card to the player's hand or deck depending on pattern text
+- **Consume Pigment**: Enemy consumes a random Pigment card from anywhere (hand/draw/discard) and gains Power + Block in return
+- **Skinning Homunculus Reactive**: When an ally takes non-ranged damage, enemies with the `"When another ally takes Melee Dmg"` ability inject a `1 Frail Overload` effect into their intent mid-turn
+- **Overload / Wide on Inflict**: Status infliction with Overload or Wide addons applies the status to the player AND all allies simultaneously
+
+**On-Death Trigger System:**
+- `onEnemyDefeated(enemy)` fires when an enemy's HP reaches 0 (from damage or Fading expiry)
+- A one-time guard (`onDeathTriggered` flag) prevents double-triggering
+- `executeWhenDefeatedClause` parses the `"When Defeated, ..."` ability text and handles: Spawn X, N% chance, probability splits (`60% X / 40% Y`), adjacent ally damage, and Strength Save checks
+
+**Improved Pattern Parsing:**
+- `parseSimplePatternDesc` now handles `NxM Dmg` multi-hit notation (e.g., `5x4 Dmg` → 4 hits of 5 damage)
+- `Gain`/`Get` prefix before a status correctly flags it as a self-buff instead of an infliction
+- `parsePatternDescToEffects` has dedicated keyword branches for `AddPigment` and `ConsumePigment` before falling through to general parsing
+- `parseStartingAbilities` rewritten to correctly handle all enemy ability formats: `Fading N`, `Multi Attack N`, `Stagger N%`, `Immune to X`, and generic `N StatusName`
+
+**New Functions:**
+- `spawnEnemyAtSlot(enemyName, position)` — creates full enemy state, rolls initial intent, updates display
+- `consumeRandomPigmentCard()` — finds a random `isStatusCard` card across all piles and removes it
+- `onEnemyDefeated(enemy)` — fires death trigger from ability string
+- `executeWhenDefeatedClause(enemy, clause)` — executes parsed death trigger text
+- `addRandomPigmentToDeck()` in `cards.js` — adds a random pigment to the discard pile (shuffled in on next reshuffle)
+
+---
+
+### Version 6.0 - Card-Based Combat System (March 2026)
+
+**Complete Combat Rewrite:**
+- **STS-style card hand**: Up to 5 cards dealt per turn, displayed in a fan arc
+- **Energy system**: 3 energy per turn (configurable via `gameState.maxEnergy`); cards cost 1–3 energy
+- **Draw / Discard / Exhaust piles**: Full three-pile system; discard reshuffled into draw when empty
+- **Card types**: Attack, Skill, Power, Dice, Status
+- **Card rarities**: Starter, Common, Uncommon, Rare (Starter excluded from rewards)
+- **Targeting mode**: Click a card → click an enemy to play; AoE cards skip targeting
+- **Drag-to-play**: Drag a card up from the hand to play it (also activates targeting for single-target cards)
+- **Enemy intents**: Each enemy shows its next action from its `pattern` column before acting
+- **Card rewards**: Post-combat modal offers 3 random cards weighted by luck
+- **Shop card services**: Upgrade a card (75g), remove a card (50g), buy 2 cards for sale
+- **Status cards (Pigments)**: Auto-exhausted when played; cleared from deck after combat
+- **Dice cards**: Randomly roll a face on play; each face has its own effect
+- **Weapon cards**: Acquiring a weapon item adds its matching card to the deck
+
+**New Modules:**
+- `js/combat-engine.js` — Full card resolution engine (effects, status effects, enemy AI, AoE, dice)
+- `js/combat-ui.js` — Full STS-style combat UI (fan hand, pile overlay, drag, tooltips, HP diffs)
+- `js/cards.js` — Deck management, card reward modal, shop services, status card cleanup
+
+**Key Technical Details:**
+- Hand fan uses `transform: rotate(Xdeg) translateY(Ypx)` with `transform-origin: bottom center`
+- Pile viewer is a `position:fixed; z-index:20000` overlay (does NOT destroy the combat modal)
+- `checkCombatEnd` delegates to `main.js` override via `window.CombatUI.checkCombatEnd`
+- `gameState.maxEnergy` is respected on combat init (items like Busted Crown set this)
+- AoE detection pre-scans full card description before iterating effect parts
+
+---
 
 ### Version 5.0 - Weapon System & Combat Enhancements (January 2026)
 
@@ -1361,30 +1449,325 @@ For events that use stat checks (via generic combat):
 
 ## Combat System
 
+### Overview
+
+Combat uses a Slay the Spire–style card system. Each encounter is a turn-based fight between the player and one or more enemies. The player draws cards from their deck each turn, spends energy to play them, and ends the turn to let enemies act.
+
+---
+
 ### Combat Flow
 
-1. Enemy appears with stat check requirement (Strength/Dex/Int/Cha)
-2. Player rolls 1d20 + relevant stat modifier
-3. **Curse of Weakness** applies penalty if active
-4. **Curse of Failure** triggers on natural 1 (auto-lose + damage)
-5. Compare total to enemy's DC (rollCheck)
-6. If success: Player gets reward
-7. If failure: Player takes damage based on difficulty
+```
+Start of Combat
+  → initCombat() shuffles deck, draws 5 cards, restores energy
+  ↓
+Player's Turn
+  → Draw 5 cards (or remaining draw pile + reshuffled discard)
+  → Each card costs 1–3 energy (shown on card)
+  → Play cards by clicking or dragging
+  → Single-target cards enter targeting mode; click an enemy to resolve
+  → AoE cards (Cleave, Indiscriminate, "all enemies") hit every enemy instantly
+  → End Turn button: discard hand, enemies act, draw 5 again
+  ↓
+Enemy Turn
+  → Each enemy executes its next intent (shown in banner before it acts)
+  → Intents cycle through the enemy's pattern list
+  ↓
+Check Win / Loss
+  → All enemies dead → victory, card reward modal
+  → Player HP ≤ 0 → defeat, game over
+```
 
-### Combat Damage
+---
 
-Combat damage is determined by enemy power level:
-- **Low**: 1 damage on failure
-- **Medium**: 2 damage on failure
-- **High**: 3 damage on failure
+### Energy System
 
-### Critical Failure
+- **Starting energy**: 3 per turn (default)
+- **Maximum energy**: Controlled by `gameState.maxEnergy`; items like Busted Crown increase it
+- Energy is **fully restored** at the start of each player turn
+- Cards that cost more energy than available cannot be played
 
-Rolling a natural 1 (d20 = 1) with active Curse of Failure:
-- Shows "⚠️ CRITICAL FAILURE" message
-- Combat is automatically lost (regardless of total roll)
-- All Failure curses trigger for combined damage
-- All Failure curses are removed after triggering
+---
+
+### Card Hand
+
+- **Hand size**: Up to 5 cards drawn per turn (hard cap: 10)
+- Cards are displayed in a **fan arc** at the bottom of the screen
+- Hover a card to expand it and see a full tooltip
+- Drag a card upward or click it to play it
+- A targeting banner appears when a single-target card is selected; click an enemy to confirm
+
+---
+
+### Card Types
+
+| Type | Description |
+|------|-------------|
+| **Attack** | Deals damage to one or all enemies |
+| **Skill** | Non-damage effects: block, healing, buffs, debuffs |
+| **Power** | Persistent effects that last the entire combat |
+| **Dice** | Rolls a random face on play; each face has a different effect |
+| **Status** | Temporary cards (e.g., Pigments); auto-exhausted when played, cleared from deck after combat |
+
+---
+
+### Card Rarities
+
+| Rarity | Source |
+|--------|--------|
+| **Starter** | Character starting deck; never offered as rewards |
+| **Common** | Most frequent in reward pool |
+| **Uncommon** | Moderate chance; better effects |
+| **Rare** | Least frequent; most powerful |
+
+Rarity chances are weighted by the player's **Luck** stat (same system as items).
+
+---
+
+### Card Effects Reference
+
+Effects are parsed from card `description` strings. Supported keywords:
+
+| Keyword | Engine Behavior |
+|---------|----------------|
+| `Deal X Dmg` | Deals X damage (modified by Strength for Attack cards) |
+| `Gain X Block` | Adds X block (absorbs damage before HP) |
+| `Heal X Health` | Restores X HP to the player |
+| `Take X Dmg` | Player takes X damage (self-harm cards) |
+| `Draw X Cards` | Draws X additional cards from draw pile |
+| `Gain X Energy` | Adds X energy this turn |
+| `Apply X [Status]` | Applies a combat status (Burn, Poison, Stun, Weak, Vulnerable, etc.) |
+| `Enemy loses X Power` | Reduces target enemy's Power stat |
+| `Gain +X [Stat] until end of combat` | Temporary stat boost for the current combat |
+| `Cleave` / `Indiscriminate` / `all enemies` | Card hits all enemies (AoE) |
+| `Exhaust` | Card is removed from this combat after being played |
+
+**Dice cards** use a `"N: effect text\n..."` format — one line per face. A random face is rolled on play and its text resolved as a normal card effect.
+
+---
+
+### Combat Statuses
+
+Status effects are tracked per-entity in the `statuses` dictionary on each combatant.
+
+#### Player / Enemy Statuses
+
+| Status | Effect |
+|--------|--------|
+| **Burn** | Takes damage at end of turn; does not apply if `immune_burn` is set |
+| **Poison** | Stacks; takes damage each turn then decreases by 1 |
+| **Stun** | Target skips their next action |
+| **Weak** | Reduces outgoing damage by 25% |
+| **Vulnerable** | Increases incoming damage by 50% |
+| **Frail** | Reduces block gain |
+| **Power** | Generic bonus to damage and/or defense |
+| **Block** | Absorbs incoming damage before HP; does not persist between turns |
+
+#### Enemy-Only Statuses (from Ability string)
+
+| Status | Effect |
+|--------|--------|
+| **Fading N** | Counts down each turn; when it hits 0 the enemy dies (fires `onEnemyDefeated`) |
+| **Multi Attack N** | Enemy executes its pattern N times per turn |
+| **Forgetful** | Enemy cycles through probability branches without repeating before resetting |
+| **Immune to X** | Enemy is immune to the named status (e.g., `immune_burn`) |
+| **Pain N** | Enemy deals N direct damage to itself — bypasses block, thorns, and dodge entirely |
+
+#### Inflict Addons
+
+| Addon | Effect |
+|-------|--------|
+| **Overload** | Applies the status to the player AND all allies |
+| **Wide** | Alias for Overload |
+| *(none)* | Applies only to the player |
+
+---
+
+### Enemy Intents
+
+Before each enemy turn, the enemy's **intent** is shown in a banner above its card. All enemies execute their `pattern` string — the old dice arrays are legacy and ignored.
+
+#### Pattern Formats
+
+| Format | Meaning |
+|--------|---------|
+| `Always: <desc>` | Executes `<desc>` every turn |
+| `Turn 1: <desc> / Turn 2: <desc> / ...` | Ordered rotation; `Next:` suffix loops the list |
+| `50% <desc1> / 50% <desc2>` | Random weighted branch selection |
+
+#### Pattern Description Keywords
+
+| Keyword | Effect |
+|---------|--------|
+| `N Dmg` | Deals N damage to the player |
+| `NxM Dmg` | Deals N damage M times (multi-hit) |
+| `N Block` | Enemy gains N block |
+| `N Heal` | Enemy heals N HP |
+| `Gain N <Status>` / `Get N <Status>` | Enemy applies the status to itself |
+| `N <Status>` | Enemy inflicts N stacks of status on the player |
+| `N <Status> Overload` | Inflicts N on player AND all allies |
+| `Add N random Pigment to hand/deck` | Adds a random pigment card to the player's hand or deck |
+| `Consume N random Pigment for X Power, Y Block` | Consumes a random pigment from any pile; gains X Power and Y Block |
+
+---
+
+### Enemy Ability Triggers
+
+Complex enemy behaviors are declared in the `ability` field of each enemy and parsed at runtime.
+
+#### Starting Ability Formats
+
+| Format | Effect |
+|--------|--------|
+| `N StatusName` | Enemy starts combat with N stacks of the named status |
+| `Fading N` | Enemy starts with a Fading countdown of N turns |
+| `Multi Attack N` | Enemy acts N times per turn |
+| `Stagger N%` | Enemy staggers (skips next action) when its HP crosses certain thresholds |
+| `Immune to X` | Sets `immune_X` flag; blocks the named status |
+
+#### Death Triggers
+
+Death trigger text follows the format `When Defeated, <clause>` in the ability string. Supported clause types:
+
+| Clause | Effect |
+|--------|--------|
+| `Spawn <EnemyName>` | Spawns a new enemy from ENEMIES_DATA, replacing this enemy's slot |
+| `N% Spawn <EnemyName>` | N% chance to spawn |
+| `60% Spawn X / 40% Spawn Y` | Weighted random spawn choice |
+| `N Dmg to adjacent allies` | Deals N damage to enemies in adjacent position slots |
+| `Strength Save DC N or take X Dmg` | Player rolls vs DC; failure takes X damage |
+
+#### Reactive Abilities
+
+| Ability Text | Trigger | Effect |
+|-------------|---------|--------|
+| `When another ally takes Melee Dmg` | Any non-ranged attack on an ally | Injects `1 Frail Overload` into this enemy's current turn intent |
+
+---
+
+### Spawning and Transformation
+
+#### `spawnEnemyAtSlot(enemyName, position)`
+- Looks up `enemyName` in `ENEMIES_DATA` (case-insensitive)
+- Randomizes HP within `hpMin`–`hpMax` range
+- Initializes all fields: statuses, pattern type, stagger threshold, intent
+- Replaces the dead enemy at `position`; appends if no dead enemy exists
+- Immediately rolls and displays initial intent
+
+#### `alter` (Transformation)
+- Triggered by `Alter <FormName>` in a pattern description
+- Transforms the enemy's name, ability, pattern, image, and stagger threshold in place
+- **Current HP is preserved** — only form data changes
+- Merges new starting statuses from the new form's ability string
+- Immediately rerolls intent for the new form
+
+---
+
+### Pigment Card Mechanics
+
+**Pigment cards** (Status type, `isStatusCard: true`) are temporary cards that enemies can interact with:
+
+| Enemy Action | Effect |
+|-------------|--------|
+| Add Pigment to hand | Calls `addRandomPigmentToHand()` — picks a random pigment from CARDS_DATA and adds it to combat hand |
+| Add Pigment to deck | Calls `addRandomPigmentToDeck()` — adds to discard pile (shuffled into draw on next reshuffle) |
+| Consume Pigment | `consumeRandomPigmentCard()` — searches hand → draw pile → discard pile and removes one random pigment; then awards the enemy Power + Block |
+
+---
+
+### Draw / Discard / Exhaust Piles
+
+- **Draw pile**: Cards left to draw from this combat. Displayed as a number button (bottom-left).
+- **Discard pile**: Cards played or discarded this turn. Displayed as a number button (bottom-right).
+- **Exhaust pile**: Cards permanently removed for this combat (Power cards, Status cards, cards with `Exhaust` keyword). Not reshuffled.
+- When the draw pile is empty and the player needs to draw, the discard pile is reshuffled into the draw pile.
+- Click either pile button to open an overlay showing all cards in that pile.
+
+---
+
+### Enemy Encounter System
+
+Enemies are selected using a **weight-based budget system** tied to difficulty tier:
+
+| Tier | Games Beaten | Budget Range |
+|------|-------------|--------------|
+| Low | 0–4 | Small budget |
+| Medium | 5–9 | Medium budget |
+| High | 10+ | Large budget |
+
+Each enemy has a `weight` and a `cost`. Encounters are assembled by randomly picking enemies within the budget, weighted by their `weight` value. This ensures multiple weak enemies or a single strong enemy depending on the roll.
+
+---
+
+### Card Rewards
+
+After winning combat, a **card reward modal** appears offering 3 random cards:
+- Cards drawn from the non-Starter, non-Status reward pool
+- Rarity weighted by the player's Luck stat
+- Player selects one card to add to their deck, or skips
+- `showCardRewardModal()` in `js/cards.js`
+
+---
+
+### Shop Card Services
+
+The shop offers two one-time services per visit:
+
+| Service | Cost | Description |
+|---------|------|-------------|
+| **Upgrade a Card** | 75 gold | Permanently upgrades one deck card (improved effect or reduced cost) |
+| **Remove a Card** | 50 gold | Permanently removes one deck card from the run |
+
+The shop also shows **2 cards for sale** at random prices. Purchasing adds them to the deck immediately.
+
+---
+
+### Weapons and Cards
+
+Acquiring a **weapon item** (type `weapon` or tag `weapon`) automatically adds a matching card to the player's deck. The card is identified by matching the weapon's name in `CARDS_DATA`. This is handled by a hook on `window.acquireItem` in `js/cards.js`.
+
+---
+
+### Deck Management
+
+The deck viewer modal (`showDeckModal()`) shows all cards in the player's current deck with rarity, type, cost, and description. Accessible from the inventory/UI during a run.
+
+**Deck state in `gameState`:**
+```javascript
+gameState.deck        // All cards the player owns (persistent across encounters)
+gameState.hand        // Cards in hand during combat
+gameState.drawPile    // Cards left to draw this combat
+gameState.discardPile // Cards played this combat
+```
+
+---
+
+### Key Files
+
+| File | Responsibility |
+|------|---------------|
+| `js/combat-engine.js` | Card resolution, status effects, enemy AI, pattern execution, spawning, death triggers |
+| `js/combat-ui.js` | Fan-arc hand, drag-to-play, pile overlay, targeting mode, HP diff animations |
+| `js/cards.js` | Deck management, card reward modal, shop services, pigment card helpers |
+| `data/cards-data.js` | Card definitions (name, type, rarity, cost, description, upgrade data) |
+| `data/enemies-data.js` | Enemy definitions (HP, pattern, ability, weight/cost for encounter budget) |
+| `data/statuses-data.js` | Combat status effect definitions |
+
+**Key combat-engine.js functions:**
+
+| Function | Purpose |
+|----------|---------|
+| `rollEnemyIntent(enemy)` | Parses the enemy's `pattern` string and populates `currentIntent` |
+| `executeEnemyActions(enemy)` | Resolves each intent item: Dmg, Block, Heal, Inflict, Spawn, Alter, AddPigment, ConsumePigment, Pain |
+| `parsePatternDescToEffects(desc)` | Converts a pattern description string into effect objects |
+| `parseSimplePatternDesc(text)` | Tokenizes text into effects; handles NxM multi-hit and Gain/Get self-buffs |
+| `parseStartingAbilities(abilityStr)` | Extracts starting statuses from an ability string (Fading, Multi Attack, Immune to, etc.) |
+| `spawnEnemyAtSlot(name, pos)` | Creates and inserts a new enemy from ENEMIES_DATA at the given position |
+| `onEnemyDefeated(enemy)` | Fires the enemy's "When Defeated" ability clause (one-shot guard) |
+| `executeWhenDefeatedClause(enemy, clause)` | Parses and executes death trigger text (Spawn, Dmg, Strength Save, probability) |
+| `consumeRandomPigmentCard()` | Removes a random `isStatusCard` card from any pile |
+| `dealDamage(target, amount, addons)` | Applies damage with block/thorns/dodge resolution; fires death trigger and reactive hooks |
+| `processStatusEffects(target)` | Applies per-turn status ticks (Burn, Poison, Fading, etc.) |
 
 ---
 
@@ -1549,10 +1932,27 @@ The game includes comprehensive dev tools at the bottom of the page:
 - Use `updateStat()` helper for stat modifications
 - Call appropriate update functions after changes
 
-### Combat Critical Failure Not Triggering
-- Verify Curse of Failure is in active curses
-- Check that d20 roll = 1 (not total roll)
-- Ensure `getCursesByType('failure')` returns curses
+### Card Not Playing When Clicked
+- Ensure the card has sufficient energy to play (`combat.energy >= card.cost`)
+- Single-target cards require clicking an enemy after selecting the card — check that a valid target exists
+- Check browser console for `[CombatEngine] playCard` errors
+
+### Pile Overlay Closing Combat
+- `_showCombatPile()` must use a `position:fixed` div appended to `document.body`, NOT `createGameModal()` (which destroys the combat screen)
+- Verify `js/combat-ui.js` builds a standalone overlay with `z-index:20000`
+
+### Cards Dealing No Damage / Effects Not Resolving
+- Card description must use exact keywords (e.g. `Deal X Dmg`, not `deals X damage`)
+- Dice card faces must follow the `"N: effect text"` format, one per line
+- Check `resolveCardEffect` in `js/combat-engine.js` for supported keywords
+
+### maxEnergy Not Being Applied
+- Items set `gameState.maxEnergy`; `initCombat` must read this first
+- Verify `combat.energy = gameState.maxEnergy || characterData.energy || 2` in `initCombat`
+
+### Game Over Not Triggering After Player Death
+- `checkCombatEnd()` in `combat-ui.js` delegates to `window.CombatUI.checkCombatEnd` (set by `main.js`)
+- If `main.js` override is not running, check that `window.CombatUI` is exported at bottom of `combat-ui.js`
 
 ### Teleport Not Working
 - Verify target games have `connected: true`

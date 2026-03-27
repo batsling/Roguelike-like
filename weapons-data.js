@@ -1,454 +1,64 @@
 // Auto-generated from Roguelikes.xlsx - Weapons
-// Weapons with combat dice
+// Weapons are items that add a card to the deck when acquired; upgrade effect is the passive scaling condition
 
 var WEAPONS_DATA = [
   {
     "name": "Barrel",
     "rarity": "Uncommon",
-    "dice": [
-      {
-        "isBlank": true,
-        "effects": []
-      },
-      {
-        "isBlank": true,
-        "effects": []
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg Ranged",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg Ranged"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg Ranged",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg Ranged"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg Ranged",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg Ranged"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg Ranged",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg Ranged"
-      }
-    ]
+    "upgradeEffect": "If you obtain at least 1 fish, gain (1/2) random fish",
+    "game": "Enter the Gungeon",
+    "tags": [
+      "gun",
+      "fish",
+      "ranged"
+    ],
+    "imageUrl": "images/items/Barrel.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Blasma Pistol",
     "rarity": "Common",
-    "dice": [
-      {
-        "isBlank": true,
-        "effects": []
-      },
-      {
-        "isBlank": true,
-        "effects": []
-      },
-      {
-        "isBlank": true,
-        "effects": []
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "1 Dmg Wealth Ranged",
-            "value": 1,
-            "move": "Dmg",
-            "addons": [
-              "Wealth",
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "1 Dmg Wealth Ranged"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "1 Dmg Wealth Ranged",
-            "value": 1,
-            "move": "Dmg",
-            "addons": [
-              "Wealth",
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "1 Dmg Wealth Ranged"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg Wealth Ranged",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [
-              "Wealth",
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg Wealth Ranged"
-      }
-    ]
+    "upgradeEffect": "If you open more than 10 chests, gain a (small/normal) chest",
+    "game": "Flinthook",
+    "tags": [
+      "gun",
+      "ranged"
+    ],
+    "imageUrl": "images/items/BlasmaPistol.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Lil' Bomber",
     "rarity": "Common",
-    "dice": [
-      {
-        "isBlank": true,
-        "effects": []
-      },
-      {
-        "isBlank": true,
-        "effects": []
-      },
-      {
-        "isBlank": true,
-        "effects": []
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "1 Dmg Wide Ranged",
-            "value": 1,
-            "move": "Dmg",
-            "addons": [
-              "Wide",
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "1 Dmg Wide Ranged"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "1 Dmg Wide Ranged",
-            "value": 1,
-            "move": "Dmg",
-            "addons": [
-              "Wide",
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "1 Dmg Wide Ranged"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "1 Dmg Wide Ranged",
-            "value": 1,
-            "move": "Dmg",
-            "addons": [
-              "Wide",
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "1 Dmg Wide Ranged"
-      }
-    ]
-  },
-  {
-    "name": "Slutty Rocket",
-    "rarity": "Uncommon",
-    "dice": [
-      {
-        "isBlank": true,
-        "effects": []
-      },
-      {
-        "isBlank": true,
-        "effects": []
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "1 Dmg Wide Ranged",
-            "value": 1,
-            "move": "Dmg",
-            "addons": [
-              "Wide",
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "1 Dmg Wide Ranged"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "1 Dmg Wide Ranged",
-            "value": 1,
-            "move": "Dmg",
-            "addons": [
-              "Wide",
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "1 Dmg Wide Ranged"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg Wide Ranged",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [
-              "Wide",
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg Wide Ranged"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg Wide Ranged",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [
-              "Wide",
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg Wide Ranged"
-      }
-    ]
+    "upgradeEffect": "If you kill an enemy with a bomb at least one time, this weapon gains (+1/+2) Dmg",
+    "game": "Enter the Gungeon",
+    "tags": [
+      "gun",
+      "ranged"
+    ],
+    "imageUrl": "images/items/LilBomber.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Blood Magic",
     "rarity": "Rare",
-    "dice": [
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "1 Heal",
-            "value": 1,
-            "move": "Heal",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "1 Heal"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "1 Heal",
-            "value": 1,
-            "move": "Heal",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "1 Heal"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg Ranged",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg Ranged"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg Ranged",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg Ranged"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg Ranged",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [
-              "Ranged"
-            ],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg Ranged"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "3 Dmg Ranged",
-            "value": 3,
-            "move": "Dmg",
-            "addons": [
-              "Ranged"
-            ],
-            "target": null
-          },
-          {
-            "raw": "1 Vitality",
-            "value": 1,
-            "move": "Vitality",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "3 Dmg Ranged, 1 Vitality"
-      }
-    ]
+    "upgradeEffect": "If you create or use a magic circle, this weapon gains (+1/+2/) Infuse",
+    "game": "Megabonk",
+    "tags": [
+      "ranged"
+    ],
+    "imageUrl": "images/items/BloodMagic.png",
+    "unlockCondition": "N/A"
   },
   {
     "name": "Dexecutioner",
     "rarity": "Uncommon",
-    "dice": [
-      {
-        "isBlank": true,
-        "effects": []
-      },
-      {
-        "isBlank": true,
-        "effects": []
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "2 Dmg",
-            "value": 2,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "2 Dmg"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "3 Dmg",
-            "value": 3,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "3 Dmg"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "3 Dmg",
-            "value": 3,
-            "move": "Dmg",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "3 Dmg"
-      },
-      {
-        "isBlank": false,
-        "effects": [
-          {
-            "raw": "3 Assassinate",
-            "value": 3,
-            "move": "Assassinate",
-            "addons": [],
-            "target": null
-          }
-        ],
-        "raw": "3 Assassinate"
-      }
-    ]
+    "upgradeEffect": "If you kill an enemy with a piercing attack at least one time, this weapon gains (+1/+2) Assassinate",
+    "game": "Megabonk",
+    "tags": [
+      "melee"
+    ],
+    "imageUrl": "images/items/Dexecutioner.png",
+    "unlockCondition": "N/A"
   }
 ];

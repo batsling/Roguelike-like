@@ -41,6 +41,7 @@
           </div>
           <button id="run-history-btn" class="btn btn-purple" aria-label="View run history">Run History</button>
           <button id="collection-btn" class="btn btn-warning" aria-label="View collection">Collection</button>
+          <button id="settings-btn" class="btn btn-secondary" aria-label="Open settings">⚙️ Settings</button>
         </div>
       </div>
 
@@ -87,11 +88,7 @@
             <!-- Combat Stats -->
             <div class="stat-section">
               <h4 class="stat-section-header">Combat</h4>
-              <div class="stat-item stat-tooltip" data-tooltip="Damage dealt to enemies when attacks hit.">
-                <span class="stat-label stat-color-attack">Attack:</span>
-                <span class="stat-value" id="stats-attack">0</span>
-              </div>
-              <div class="stat-item stat-tooltip" data-tooltip="Used for Action game checks. Determines success in combat encounters.">
+              <div class="stat-item stat-tooltip" data-tooltip="Bonus to damage dice. Used for Action game checks.">
                 <span class="stat-label stat-color-strength">Strength:</span>
                 <span class="stat-value" id="stats-strength">0</span>
               </div>
@@ -734,7 +731,8 @@
   <script src="events-data.js?v=19"></script>
   <script src="curses-data.js?v=20"></script>
   <script src="allies-data.js?v=1"></script>
-  <script src="weapons-data.js?v=1"></script>
+  <script src="weapons-data.js?v=2"></script>
+  <script src="cards-data.js?v=1"></script>
   <script src="statuses-data.js?v=1"></script>
   <script src="moves-data.js?v=1"></script>
   <script src="addons-data.js?v=1"></script>
@@ -766,7 +764,8 @@
   <script src="js/bfs-cache.js?v=1"></script>
   <script src="js/map.js?v=19"></script>
   <script src="js/modals.js?v=2"></script>
-  <script src="js/shop.js?v=3"></script>
+  <script src="js/shop.js?v=4"></script>
+  <script src="js/cards.js?v=1"></script>
   <script src="js/character-select.js?v=1"></script>
   <script src="js/verification.js?v=9"></script>
   <script src="js/escape.js?v=6"></script>

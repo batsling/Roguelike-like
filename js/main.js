@@ -256,7 +256,7 @@ function loadState() {
   }
 }
 
-let selectedCharacter = "rogue";
+let selectedCharacter = null;
 
 // Combat system toggle - set to true to use new dice-based combat
 let useDiceCombat = true;
@@ -319,6 +319,9 @@ function loadSavedGame(saveName) {
 
   // Restore game state
   gameState = { ...save };
+
+  // Sync selectedCharacter with the saved character so combat lookups work
+  selectedCharacter = gameState.character || Object.keys(PLAYER_CHARACTERS)[0];
 
   // Backward compatibility for new combat system properties (for old saves)
   if (gameState.playerLevel === undefined) {
@@ -565,9 +568,10 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   fov = stats.fov || 0;
   luck = stats.luck || 0;
 
-  // Reset health and gold for new run
-  health = 10;
-  maxHealth = 10;
+  // Reset health and gold for new run — use character's base health if defined
+  const baseHealth = character.health || 10;
+  health = baseHealth;
+  maxHealth = baseHealth;
   gold = 0;
 
   // Clear inventory and curses for new run
@@ -693,7 +697,8 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     // Store the timeout ID so it can be cleared if player finishes game before it fires
     gameState.hadesStartBoonTimeout = setTimeout(() => {
       gameState.hadesStartBoonTimeout = null;
-      showHadesBoonSelection();
+      // Pass false - starting boon shouldn't spawn choices, player is already at the starting location
+      showHadesBoonSelection(false);
     }, 500);
   }
 });
@@ -710,6 +715,81 @@ document.getElementById('run-history-btn')?.addEventListener('click', () => {
 document.getElementById('collection-btn')?.addEventListener('click', () => {
   showCollection();
 });
+
+// ============================================================
+// SETTINGS SYSTEM
+// ============================================================
+
+const SETTINGS_KEY = 'roguelikeSettings';
+
+/** Load settings from localStorage, merging with defaults. */
+function loadSettings() {
+  const defaults = { specificEnemies: false };
+  try {
+    const stored = localStorage.getItem(SETTINGS_KEY);
+    return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
+  } catch (e) {
+    return defaults;
+  }
+}
+
+/** Persist settings to localStorage. */
+function saveSettings(settings) {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+}
+
+/** Current in-memory settings (read once on load, written on change). */
+let gameSettings = loadSettings();
+
+/** Show the settings modal. */
+function showSettingsModal() {
+  const overlay = document.createElement('div');
+  overlay.id = 'settings-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:30000;';
+
+  overlay.innerHTML = `
+    <div style="background:#1a1a2e;border:2px solid #444;border-radius:12px;padding:28px;min-width:340px;max-width:480px;color:#eee;font-family:inherit;">
+      <h2 style="margin:0 0 18px;font-size:20px;color:#fff;">⚙️ Settings</h2>
+
+      <div style="margin-bottom:22px;">
+        <h3 style="margin:0 0 10px;font-size:14px;color:#aaa;text-transform:uppercase;letter-spacing:.05em;">Combat</h3>
+
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:10px;border-radius:8px;border:1px solid #333;background:#111;">
+          <input type="checkbox" id="setting-specific-enemies" style="margin-top:3px;width:16px;height:16px;accent-color:#ff9800;flex-shrink:0;"
+            ${gameSettings.specificEnemies ? 'checked' : ''}>
+          <span>
+            <strong style="display:block;margin-bottom:4px;">Specific Enemies</strong>
+            <span style="font-size:12px;color:#aaa;">
+              When <b>ON</b>: enemies are limited to those from the game you're currently visiting.<br>
+              When <b>OFF</b> (default): any enemy whose type matches the game category can appear
+              (Action→Strength, Deckbuilding→Charisma, Strategy→Intelligence, Traditional→Dexterity).
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <button id="settings-save" style="padding:8px 20px;background:#4CAF50;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Save</button>
+        <button id="settings-cancel" style="padding:8px 20px;background:#555;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Cancel</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#settings-save').addEventListener('click', () => {
+    gameSettings.specificEnemies = overlay.querySelector('#setting-specific-enemies').checked;
+    saveSettings(gameSettings);
+    overlay.remove();
+  });
+
+  overlay.querySelector('#settings-cancel').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+document.getElementById('settings-btn')?.addEventListener('click', showSettingsModal);
+
+// ============================================================
 
 document.getElementById('return-menu')?.addEventListener('click', () => {
   if (confirm('Return to main menu? (Game will be saved)')) {
@@ -1484,6 +1564,8 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
       const isCurrentGame = gameName === currentGame;
       const isAmuletGame = gameName === amuletGame;
       const isPastGame = pastGames.includes(gameName);
+      const isChoice = !isCurrentGame && !isAmuletGame && !isPastGame &&
+        (gameState.currentChoices || []).includes(gameName);
 
       let boxColor = '#4a4440';
       let borderColor = '#cc6600';
@@ -1497,6 +1579,9 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
       } else if (isPastGame) {
         boxColor = '#3a3a3a';
         borderColor = '#555';
+      } else if (isChoice) {
+        boxColor = '#3d2d00';
+        borderColor = '#ff9900';
       } else if (!isOnShortestPath) {
         // Games NOT on shortest path: dimmed/grayed out
         boxColor = '#2a2a2a';
@@ -1533,14 +1618,25 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
         }
       }
 
+      const choiceAttr = isChoice ? ' data-is-choice="true"' : '';
+      const choiceEnterHandler = isChoice
+        ? `highlightChoicePath(event, '${gameName.replace(/'/g, "\\'")}'); showMapTooltip(event, '${gameName.replace(/'/g, "\\'")}')`
+        : `showMapTooltip(event, '${gameName.replace(/'/g, "\\'")}')`;
+      const choiceLeaveHandler = isChoice
+        ? `clearChoicePath(); hideMapTooltip()`
+        : `hideMapTooltip()`;
+      const choiceShadow = isChoice
+        ? '0 0 10px rgba(255, 153, 0, 0.6), 0 3px 6px rgba(0,0,0,0.3)'
+        : '0 3px 6px rgba(0,0,0,0.3)';
+
       html += `
-        <div class="map-game-box-${gameName.replace(/\s+/g, '-')}" data-game="${gameName}"
-             onmouseenter="showMapTooltip(event, '${gameName.replace(/'/g, "\\'")}')"
+        <div class="map-game-box-${gameName.replace(/\s+/g, '-')}" data-game="${gameName}"${choiceAttr}
+             onmouseenter="${choiceEnterHandler}"
              onmousemove="moveMapTooltip(event)"
-             onmouseleave="hideMapTooltip()"
+             onmouseleave="${choiceLeaveHandler}"
              style="
           background: ${boxColor};
-          border: 2px solid ${borderColor};
+          border: ${isChoice ? '3px' : '2px'} solid ${borderColor};
           border-radius: 6px;
           padding: 6px 10px;
           width: ${boxWidth}px;
@@ -1551,14 +1647,14 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
           text-align: center;
           font-weight: bold;
           font-size: 11px;
-          color: ${isCurrentGame ? 'white' : (isPastGame || !isOnShortestPath ? '#888' : '#e6d5b8')};
-          box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+          color: ${isCurrentGame ? 'white' : (isPastGame || (!isOnShortestPath && !isChoice) ? '#888' : '#e6d5b8')};
+          box-shadow: ${choiceShadow};
           cursor: pointer;
-          opacity: ${!isOnShortestPath && !isCurrentGame && !isAmuletGame ? '0.5' : '1'};
+          opacity: ${!isOnShortestPath && !isChoice && !isCurrentGame && !isAmuletGame ? '0.5' : '1'};
           transform: translateX(${horizontalOffset}px);
           position: relative;
         ">
-          ${isCurrentGame ? '📍 ' : ''}${gameName}${isAmuletGame ? ' 🏆' : ''}${isOnShortestPath && !isCurrentGame && !isAmuletGame ? ' ⭐' : ''}
+          ${isCurrentGame ? '📍 ' : ''}${isChoice ? '◆ ' : ''}${gameName}${isAmuletGame ? ' 🏆' : ''}${isOnShortestPath && !isCurrentGame && !isAmuletGame && !isChoice ? ' ⭐' : ''}
           ${encounterIcon ? `<span style="position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; background: ${encounterColor}; color: ${encounterColor === '#ffd700' ? '#000' : '#fff'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid #000; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">${encounterIcon}</span>` : ''}
         </div>
       `;
@@ -1889,10 +1985,87 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
     line.setAttribute('stroke-width', '3');
     line.setAttribute('opacity', '0.8');
     line.setAttribute('marker-end', 'url(#map-arrowhead)');
+    line.setAttribute('data-from', arrow.fromGame);
+    line.setAttribute('data-to', arrow.toGame);
     svg.appendChild(line);
 
     arrowsDrawn++;
   });
+}
+
+// Highlight the shortest path from a choice game to the amulet game on the map.
+// Called on mouseenter of a choice node.
+function highlightChoicePath(event, choiceGame) {
+  const amuletGame = typeof gameState.amuletGame === 'string'
+    ? gameState.amuletGame
+    : gameState.amuletGame?.name;
+  if (!amuletGame) return;
+
+  // Get the path from this choice to the amulet
+  const path = bfsPath(choiceGame, amuletGame);
+  const pathSet = new Set(path || [choiceGame]);
+
+  // Collect all choice games so we can keep them at full opacity
+  const choiceSet = new Set(gameState.currentChoices || []);
+
+  // Dim all map nodes that aren't on this choice's path
+  const allNodes = document.querySelectorAll('[data-game]');
+  allNodes.forEach(node => {
+    const name = node.getAttribute('data-game');
+    const isOnPath = pathSet.has(name);
+    const isChoice = choiceSet.has(name);
+    const isHoveredChoice = name === choiceGame;
+
+    if (isHoveredChoice) {
+      node.style.borderColor = '#ffcc00';
+      node.style.boxShadow = '0 0 16px rgba(255, 204, 0, 0.9), 0 3px 6px rgba(0,0,0,0.3)';
+      node.style.opacity = '1';
+    } else if (isOnPath) {
+      node.style.borderColor = '#ff9900';
+      node.style.boxShadow = '0 0 8px rgba(255, 153, 0, 0.5)';
+      node.style.opacity = '1';
+    } else if (isChoice) {
+      // Other choices: dim slightly
+      node.style.opacity = '0.35';
+    } else {
+      node.style.opacity = '0.25';
+    }
+  });
+
+  // Highlight arrows on the path, dim others
+  const svg = document.getElementById('map-arrows');
+  if (svg) {
+    svg.querySelectorAll('line').forEach(line => {
+      const from = line.getAttribute('data-from');
+      const to = line.getAttribute('data-to');
+      if (pathSet.has(from) && pathSet.has(to)) {
+        line.setAttribute('stroke', '#ffcc00');
+        line.setAttribute('stroke-width', '4');
+        line.setAttribute('opacity', '1');
+      } else {
+        line.setAttribute('opacity', '0.1');
+      }
+    });
+  }
+}
+
+// Restore all map nodes and arrows to their default appearance.
+function clearChoicePath() {
+  const allNodes = document.querySelectorAll('[data-game]');
+  allNodes.forEach(node => {
+    node.style.opacity = '';
+    node.style.borderColor = '';
+    node.style.boxShadow = '';
+  });
+
+  const svg = document.getElementById('map-arrows');
+  if (svg) {
+    svg.querySelectorAll('line').forEach(line => {
+      line.setAttribute('stroke', '#4CAF50');
+      line.setAttribute('stroke-width', '3');
+      line.setAttribute('opacity', '0.8');
+    });
+  }
 }
 
 // Map tooltip functions
@@ -3890,29 +4063,6 @@ function showCombatModal() {
     return 'images/characters/full/default.png';
   }
 
-  // Global function for using items in combat
-  window.useCombatItem = function(itemIndex) {
-    if (combat.phase !== 'player_turn') {
-      addCombatLogMessage('Cannot use items during enemy turn!', 'warning');
-      return;
-    }
-
-    const item = inventory[itemIndex];
-    if (!item || !item.usableInCombat) {
-      addCombatLogMessage('This item cannot be used in combat!', 'warning');
-      return;
-    }
-
-    // Use the item (this would call the item's effect function)
-    // For now, just show a message
-    addCombatLogMessage(`Used ${item.name}!`, 'success');
-
-    // TODO: Implement item effects in combat
-    // This would require updating the item system to work with combat state
-
-    updateCombatInventory();
-  };
-
   // Initial UI update
   updateCombatUI();
 }
@@ -3924,6 +4074,121 @@ window.showCombatModal = showCombatModal;
  * New Dice-Based Combat Modal
  * Uses CombatEngine and CombatUI for the new combat system
  */
+/**
+ * Build a combat encounter using the weight system.
+ * Total weight budgets:
+ *   First combat ever: 2
+ *   Low (rest): 4
+ *   Medium (first of tier): 5  |  Medium (rest): 7
+ *   High (first of tier): 8    |  High (rest): 10
+ * Max 4 enemies per encounter.
+ * Enemy selection: pick a target weight 1..remaining equally, then pick a random
+ * enemy with that weight from the eligible pool. Repeat until budget exhausted.
+ */
+function buildWeightedEncounter() {
+  const gamesBeaten = gameState.totalGamesBeaten || 0;
+  const combatsCompleted = gameState.totalCombatsCompleted || 0;
+
+  // Determine current difficulty tier
+  let currentTier;
+  if (gamesBeaten >= 10) currentTier = 'High';
+  else if (gamesBeaten >= 5) currentTier = 'Medium';
+  else currentTier = 'Low';
+
+  // Detect first combat of a new tier
+  const isFirstCombatEver = combatsCompleted === 0;
+  const tierChanged = gameState.lastDifficultyTier !== currentTier;
+  const isFirstOfTier = isFirstCombatEver || tierChanged;
+
+  // Budget based on tier + first/rest
+  let budget;
+  if (isFirstCombatEver) {
+    budget = 2;
+  } else if (currentTier === 'Low') {
+    budget = 4;
+  } else if (currentTier === 'Medium') {
+    budget = isFirstOfTier ? 5 : 7;
+  } else { // High
+    budget = isFirstOfTier ? 8 : 10;
+  }
+
+  // Update tier tracking (will persist after combat)
+  gameState.lastDifficultyTier = currentTier;
+
+  // Build eligible pool: difficulty tier + game-type filter
+  const tierOrder = ['Low', 'Medium', 'High'];
+  const maxTierIdx = tierOrder.indexOf(currentTier);
+
+  // Determine which enemy type matches the current game's category
+  const GAME_TYPE_TO_ENEMY_TYPE = {
+    'Action': 'Strength',
+    'Deckbuilding': 'Charisma',
+    'Strategy': 'Intelligence',
+    'Traditional': 'Dexterity',
+  };
+  const currentGameObj = typeof games !== 'undefined'
+    ? games.find(g => g.name === gameState.currentGame)
+    : null;
+  const currentGameType = currentGameObj?.type || null;
+  const requiredEnemyType = currentGameType ? (GAME_TYPE_TO_ENEMY_TYPE[currentGameType] || null) : null;
+
+  // Base pool: tier-eligible enemies that match the game's enemy type
+  // (falls back to all tier-eligible if no game type can be determined)
+  let basePool = ENEMIES_DATA.filter(e =>
+    e.weight !== null && e.difficulty !== null &&
+    tierOrder.indexOf(e.difficulty) <= maxTierIdx &&
+    (!requiredEnemyType || e.type === requiredEnemyType)
+  );
+  if (basePool.length === 0) {
+    // Fallback: drop the type filter
+    basePool = ENEMIES_DATA.filter(e =>
+      e.weight !== null && e.difficulty !== null &&
+      tierOrder.indexOf(e.difficulty) <= maxTierIdx
+    );
+  }
+
+  // Specific Enemies setting: additionally restrict to enemies from the current game
+  let eligiblePool = basePool;
+  if (gameSettings.specificEnemies && gameState.currentGame) {
+    const specificPool = basePool.filter(e => e.game === gameState.currentGame);
+    // Only apply the game filter if it leaves at least one enemy
+    if (specificPool.length > 0) eligiblePool = specificPool;
+  }
+
+  if (eligiblePool.length === 0) {
+    console.error('No eligible enemies found for encounter');
+    return null;
+  }
+
+  // Select enemies fairly
+  const selectedEnemies = [];
+  let remainingBudget = budget;
+  const maxEnemies = 4;
+
+  while (remainingBudget > 0 && selectedEnemies.length < maxEnemies) {
+    // Find candidates that fit within remaining budget
+    const fittingCandidates = eligiblePool.filter(e => e.weight <= remainingBudget);
+    if (fittingCandidates.length === 0) break;
+
+    // Determine available weight values (1 to max fitting weight), pick one equally
+    const maxWeight = Math.max(...fittingCandidates.map(e => e.weight));
+    const targetWeight = Math.floor(Math.random() * maxWeight) + 1;
+
+    // Find enemies with exactly that weight; if none, find closest lower weight
+    let weightCandidates = fittingCandidates.filter(e => e.weight === targetWeight);
+    if (weightCandidates.length === 0) {
+      // Pick any fitting enemy (fallback)
+      weightCandidates = fittingCandidates;
+    }
+
+    const chosen = weightCandidates[Math.floor(Math.random() * weightCandidates.length)];
+    selectedEnemies.push(chosen);
+    remainingBudget -= chosen.weight;
+  }
+
+  return selectedEnemies;
+}
+
 function showDiceCombatModal() {
   if (!ENEMIES_DATA || ENEMIES_DATA.length === 0) {
     console.error('ENEMIES_DATA not loaded');
@@ -3934,50 +4199,19 @@ function showDiceCombatModal() {
   gameState.phase = 'combat';
   updateInventory();
 
-  // Get difficulty based on games beaten
-  const gamesBeaten = gameState.totalGamesBeaten || 0;
-  let difficulty = 'Low';
-  if (gamesBeaten >= 10) {
-    difficulty = 'High';
-  } else if (gamesBeaten >= 5) {
-    difficulty = 'Medium';
-  }
-
-  // Determine type based on current game
-  const currentGameObj = games.find(g => g.name === gameState.currentGame);
-  let enemyType = 'Strength';
-  if (currentGameObj && currentGameObj.type) {
-    const gameType = currentGameObj.type.toLowerCase();
-    switch(gameType) {
-      case 'action': enemyType = 'Strength'; break;
-      case 'deckbuilding': enemyType = 'Charisma'; break;
-      case 'strategy': enemyType = 'Intelligence'; break;
-      case 'traditional': enemyType = 'Dexterity'; break;
-      default: enemyType = 'Strength';
-    }
-  }
-
-  // Filter enemies by difficulty and type
-  const matchingEnemies = ENEMIES_DATA.filter(enemy =>
-    enemy.difficulty === difficulty && enemy.type === enemyType
-  );
-
-  // Fallback to any enemy of the right difficulty if no type match
-  const candidates = matchingEnemies.length > 0
-    ? matchingEnemies
-    : ENEMIES_DATA.filter(e => e.difficulty === difficulty);
-
-  if (candidates.length === 0) {
+  // Build encounter using weight system
+  const encounterEnemies = buildWeightedEncounter();
+  if (!encounterEnemies || encounterEnemies.length === 0) {
     console.error('No matching enemies found');
     return;
   }
 
-  // Select random enemy
-  const enemyData = candidates[Math.floor(Math.random() * candidates.length)];
+  // Use the first enemy as the primary (multi-enemy support via array passed to initCombat)
+  const enemyData = encounterEnemies[0];
 
   // Get character data
-  const characterKey = selectedCharacter || gameState.character || 'rodney';
-  const characterData = CHARACTERS_DATA[characterKey];
+  const characterKey = selectedCharacter || gameState.character || 'Rodney';
+  const characterData = PLAYER_CHARACTERS[characterKey];
 
   if (!characterData) {
     console.error('Character data not found for:', characterKey);
@@ -4015,8 +4249,8 @@ function showDiceCombatModal() {
     };
   }).filter(Boolean);
 
-  // Initialize combat
-  const combatState = window.CombatEngine.initCombat([enemyData], characterData, weaponData, allies);
+  // Initialize combat with all encounter enemies
+  const combatState = window.CombatEngine.initCombat(encounterEnemies, characterData, weaponData, allies);
 
   if (!combatState) {
     console.error('Failed to initialize combat');
@@ -4041,6 +4275,29 @@ function showDiceCombatModal() {
   `;
 
   createGameModal(combatHTML);
+
+  // Create tooltip element for item hover (reuse existing or create new)
+  const existingTooltip = document.getElementById('combat-item-tooltip');
+  if (!existingTooltip) {
+    const tooltip = document.createElement('div');
+    tooltip.id = 'combat-item-tooltip';
+    tooltip.style.cssText = `
+      position: fixed;
+      display: none;
+      background: linear-gradient(145deg, rgba(30,30,40,0.98), rgba(20,20,30,0.98));
+      border: 3px solid #888;
+      border-radius: 8px;
+      padding: 12px 15px;
+      max-width: 300px;
+      z-index: 20000;
+      pointer-events: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+    `;
+    const tooltipContent = document.createElement('div');
+    tooltipContent.id = 'combat-tooltip-content';
+    tooltip.appendChild(tooltipContent);
+    document.body.appendChild(tooltip);
+  }
 
   // Render the combat UI
   const container = document.getElementById('dice-combat-content');
@@ -4090,7 +4347,10 @@ function handleDiceCombatVictory(enemy) {
 
   window.CombatEngine.endCombat(true);
 
-  // Award gold based on difficulty
+  // Increment combat counter for weight system
+  gameState.totalCombatsCompleted = (gameState.totalCombatsCompleted || 0) + 1;
+
+  // Award gold based on difficulty tier
   const goldAmounts = { 'Low': 10, 'Medium': 20, 'High': 30 };
   const goldReward = goldAmounts[enemy.difficulty] || 10;
   gold += goldReward;
@@ -4117,22 +4377,34 @@ function handleDiceCombatVictory(enemy) {
   updateEncounterHistory();
   saveCurrentGame();
 
-  // Show victory screen
+  // Show victory screen with card reward option
   createGameModal(`
     <div style="text-align: center; padding: 30px;">
       <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">Victory!</h2>
       <h3 style="color: #fff; margin: 15px 0;">${enemy.name} defeated!</h3>
       <p style="color: #FFD700; font-size: 18px; margin: 20px 0;">+${goldReward} Gold</p>
-      <button onclick="closeGameModal()" style="
-        padding: 15px 30px;
-        background: linear-gradient(145deg, #4CAF50, #2E7D32);
-        border: none;
-        border-radius: 8px;
-        color: white;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 16px;
-      ">Continue</button>
+      <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+        <button onclick="closeGameModal()" style="
+          padding: 15px 30px;
+          background: linear-gradient(145deg, #4CAF50, #2E7D32);
+          border: none;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+        ">Continue</button>
+        <button onclick="closeGameModal(); if(typeof showCardRewardModal==='function') showCardRewardModal();" style="
+          padding: 15px 30px;
+          background: linear-gradient(145deg, #9b59b6, #6c3483);
+          border: none;
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 16px;
+        ">+ Add Card to Deck</button>
+      </div>
     </div>
   `);
 }
@@ -4250,8 +4522,8 @@ window.toggleCombatSystem = function() {
  * Show the level-up prompt for the current character
  */
 function showLevelUpPrompt() {
-  const characterKey = selectedCharacter || gameState.character || 'rodney';
-  const characterData = CHARACTERS_DATA[characterKey];
+  const characterKey = selectedCharacter || gameState.character || 'Rodney';
+  const characterData = PLAYER_CHARACTERS[characterKey];
 
   if (!characterData) {
     console.error('Character data not found for level-up');
@@ -4331,8 +4603,8 @@ function showLevelUpPrompt() {
  * Confirm level up and apply bonuses
  */
 function confirmLevelUp() {
-  const characterKey = selectedCharacter || gameState.character || 'rodney';
-  const characterData = CHARACTERS_DATA[characterKey];
+  const characterKey = selectedCharacter || gameState.character || 'Rodney';
+  const characterData = PLAYER_CHARACTERS[characterKey];
 
   if (!characterData || !characterData.levelUpStats) {
     console.error('Character level-up data not found');
@@ -4391,14 +4663,90 @@ function confirmLevelUp() {
     }
   }
 
-  // Upgrade a random dice face (increase value by 1)
-  const diceUpgraded = upgradeDiceFace(characterKey);
-
   // Update UI
   updateTopBar();
   saveCurrentGame();
 
-  // Show level-up results
+  // Show stat bonuses first, then dice level-up choice
+  createGameModal(`
+    <div style="text-align: center; padding: 20px; max-width: 500px;">
+      <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
+      <div style="
+        background: rgba(76,175,80,0.1);
+        border: 2px solid #4CAF50;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+      ">
+        <p style="color: #4CAF50; font-size: 18px; margin-bottom: 15px; font-weight: bold;">
+          Stat Bonuses Gained:
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          ${appliedBonuses.length > 0 ? appliedBonuses.map(b => `
+            <div style="color: #fff; font-size: 14px;">
+              ${b}
+            </div>
+          `).join('') : '<div style="color: #888; font-size: 14px;">No stat bonuses</div>'}
+        </div>
+      </div>
+      <button id="proceed-to-dice-levelup-btn" style="
+        padding: 12px 30px;
+        background: linear-gradient(145deg, #FFD700, #FFA000);
+        border: 2px solid #FFD700;
+        border-radius: 8px;
+        color: #000;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 16px;
+      ">🎲 Choose Dice Upgrade</button>
+    </div>
+  `);
+
+  // Attach click handler for proceeding to dice level-up
+  document.getElementById('proceed-to-dice-levelup-btn').onclick = () => {
+    closeGameModal();
+    // Show dice level-up choice modal
+    showDiceLevelUpChoiceModal(characterKey, (diceResult) => {
+      // Show final result
+      if (diceResult) {
+        createNotification(diceResult, '#FFD700', '🎲');
+      }
+      saveCurrentGame();
+    });
+  };
+}
+
+// Legacy function for backwards compatibility (random upgrade)
+function confirmLevelUpLegacy() {
+  const characterKey = selectedCharacter || gameState.character || 'Rodney';
+  const characterData = PLAYER_CHARACTERS[characterKey];
+
+  if (!characterData || !characterData.levelUpStats) {
+    console.error('Character level-up data not found');
+    return;
+  }
+
+  const oldLevel = gameState.playerLevel || 1;
+  gameState.playerLevel = oldLevel + 1;
+
+  const bonuses = characterData.levelUpStats;
+  const appliedBonuses = [];
+
+  // Apply stat bonuses (same as above)
+  if (bonuses.strength) { strength += bonuses.strength; appliedBonuses.push(`+${bonuses.strength} Strength`); }
+  if (bonuses.dexterity) { dexterity += bonuses.dexterity; appliedBonuses.push(`+${bonuses.dexterity} Dexterity`); }
+  if (bonuses.intelligence) { intelligence += bonuses.intelligence; appliedBonuses.push(`+${bonuses.intelligence} Intelligence`); }
+  if (bonuses.charisma) { charisma += bonuses.charisma; appliedBonuses.push(`+${bonuses.charisma} Charisma`); }
+  if (bonuses.reroll) { reroll += bonuses.reroll; gameState.reroll = reroll; appliedBonuses.push(`+${bonuses.reroll} Reroll`); }
+  if (bonuses.dash) { gameState.dash = (gameState.dash || 0) + bonuses.dash; appliedBonuses.push(`+${bonuses.dash} Dash`); }
+  if (bonuses.luck) { luck += bonuses.luck; appliedBonuses.push(`+${bonuses.luck} Luck`); }
+
+  // Upgrade a random dice face (old behavior)
+  const diceUpgraded = upgradeDiceFace(characterKey);
+
+  updateTopBar();
+  saveCurrentGame();
+
   createGameModal(`
     <div style="text-align: center; padding: 20px; max-width: 500px;">
       <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
@@ -4413,16 +4761,8 @@ function confirmLevelUp() {
           Bonuses Gained:
         </p>
         <div style="display: flex; flex-direction: column; gap: 8px;">
-          ${appliedBonuses.map(b => `
-            <div style="color: #fff; font-size: 14px;">
-              ${b}
-            </div>
-          `).join('')}
-          ${diceUpgraded ? `
-            <div style="color: #FFD700; font-size: 14px; margin-top: 10px;">
-              ${diceUpgraded}
-            </div>
-          ` : ''}
+          ${appliedBonuses.map(b => `<div style="color: #fff; font-size: 14px;">${b}</div>`).join('')}
+          ${diceUpgraded ? `<div style="color: #FFD700; font-size: 14px; margin-top: 10px;">${diceUpgraded}</div>` : ''}
         </div>
       </div>
       <button onclick="closeGameModal()" style="
@@ -4445,7 +4785,7 @@ function confirmLevelUp() {
  * @returns {string|null} Description of upgrade or null
  */
 function upgradeDiceFace(characterKey) {
-  const characterData = CHARACTERS_DATA[characterKey];
+  const characterData = PLAYER_CHARACTERS[characterKey];
   if (!characterData || !characterData.dice) return null;
 
   // Find faces with numeric values that can be upgraded
@@ -4481,9 +4821,346 @@ function upgradeDiceFace(characterKey) {
   return `Dice upgraded: ${effect.move} ${oldValue} → ${effect.value}`;
 }
 
+/**
+ * Generate level-up options for dice
+ * @param {string} characterKey - The character key
+ * @returns {Array} Array of upgrade options
+ */
+function generateDiceLevelUpOptions(characterKey) {
+  const characterData = PLAYER_CHARACTERS[characterKey];
+  if (!characterData || !characterData.dice) return [];
+
+  const options = [];
+  const luckValue = typeof luck !== 'undefined' ? luck : 0;
+
+  // Find blank faces and upgradeable faces
+  const blankFaces = [];
+  const upgradableFaces = [];
+
+  characterData.dice.forEach((face, index) => {
+    if (face.isBlank) {
+      blankFaces.push({ faceIndex: index, face });
+    } else if (face.effects) {
+      face.effects.forEach((effect, effectIndex) => {
+        if (effect.value && typeof effect.value === 'number') {
+          upgradableFaces.push({ faceIndex: index, effectIndex, effect, face });
+        }
+      });
+    }
+  });
+
+  // Generate options - prioritize blank faces if available
+  const hasBlankFace = blankFaces.length > 0;
+
+  // If there's a blank face, at least one option should be adding a new side
+  if (hasBlankFace) {
+    const blankFace = blankFaces[Math.floor(Math.random() * blankFaces.length)];
+    const newSideOption = generateNewSideOption(blankFace.faceIndex, luckValue);
+    if (newSideOption) {
+      options.push(newSideOption);
+    }
+  }
+
+  // Fill remaining options with number upgrades (shuffle and pick)
+  const shuffledUpgrades = upgradableFaces.sort(() => Math.random() - 0.5);
+  for (const upgrade of shuffledUpgrades) {
+    if (options.length >= 3) break;
+
+    // Don't add duplicate face upgrades
+    const alreadyHasFace = options.some(o => o.type === 'upgrade' && o.faceIndex === upgrade.faceIndex);
+    if (alreadyHasFace) continue;
+
+    options.push({
+      type: 'upgrade',
+      faceIndex: upgrade.faceIndex,
+      effectIndex: upgrade.effectIndex,
+      effect: upgrade.effect,
+      face: upgrade.face,
+      description: `+1 to ${upgrade.effect.move}`,
+      before: upgrade.effect.value,
+      after: upgrade.effect.value + 1
+    });
+  }
+
+  // If we still need more options and have more blank faces, add them
+  if (options.length < 3 && blankFaces.length > 1) {
+    for (const blank of blankFaces) {
+      if (options.length >= 3) break;
+      const alreadyHasFace = options.some(o => o.faceIndex === blank.faceIndex);
+      if (alreadyHasFace) continue;
+
+      const newSideOption = generateNewSideOption(blank.faceIndex, luckValue);
+      if (newSideOption) {
+        options.push(newSideOption);
+      }
+    }
+  }
+
+  // If still under 3 options and we have upgradeable faces, add more upgrade variants
+  // (different amount upgrades or duplicates with slight variations)
+  while (options.length < 3 && upgradableFaces.length > 0) {
+    const randomUpgrade = upgradableFaces[Math.floor(Math.random() * upgradableFaces.length)];
+    options.push({
+      type: 'upgrade',
+      faceIndex: randomUpgrade.faceIndex,
+      effectIndex: randomUpgrade.effectIndex,
+      effect: randomUpgrade.effect,
+      face: randomUpgrade.face,
+      description: `+1 to ${randomUpgrade.effect.move}`,
+      before: randomUpgrade.effect.value,
+      after: randomUpgrade.effect.value + 1
+    });
+  }
+
+  return options.slice(0, 3);
+}
+
+/**
+ * Generate a new side option for a blank face
+ * @param {number} faceIndex - Index of the blank face
+ * @param {number} luckValue - Player's luck stat
+ * @returns {Object} New side option
+ */
+function generateNewSideOption(faceIndex, luckValue) {
+  // Get available moves for level-up (excluding special ones like spawn, alter)
+  const levelUpMoves = ['dmg', 'block', 'heal', 'reroll', 'mana', 'get', 'inflict'];
+
+  // Select a random move
+  const selectedMove = levelUpMoves[Math.floor(Math.random() * levelUpMoves.length)];
+  const moveData = MOVES_DATA ? MOVES_DATA[selectedMove] : null;
+
+  // Determine base value based on rarity (affected by luck)
+  const rarity = selectRandomRarity ? selectRandomRarity(luckValue) : 'common';
+  let baseValue = 1;
+  switch (rarity) {
+    case 'uncommon': baseValue = 2; break;
+    case 'rare': baseValue = 3; break;
+    case 'legendary': baseValue = 4; break;
+    default: baseValue = 1;
+  }
+
+  // Handle status moves (Get = buff, Inflict = debuff)
+  let statusName = null;
+  if (selectedMove === 'get' || selectedMove === 'inflict') {
+    const isDebuff = selectedMove === 'inflict';
+    const statuses = STATUSES_DATA ? Object.values(STATUSES_DATA) : [];
+
+    // Filter by type
+    const filteredStatuses = statuses.filter(s => {
+      if (isDebuff) {
+        return s.type === 'Debuff' || s.preference === 'Negative';
+      } else {
+        return s.type === 'Buff' || s.preference === 'Positive';
+      }
+    });
+
+    if (filteredStatuses.length > 0) {
+      const selectedStatus = filteredStatuses[Math.floor(Math.random() * filteredStatuses.length)];
+      statusName = selectedStatus.name;
+    } else {
+      statusName = isDebuff ? 'Burn' : 'Power';
+    }
+  }
+
+  // Build the effect description
+  let effectDescription;
+  let effectRaw;
+  if (statusName) {
+    effectDescription = `${baseValue} ${selectedMove.charAt(0).toUpperCase() + selectedMove.slice(1)} ${statusName}`;
+    effectRaw = `${baseValue} ${selectedMove} ${statusName}`;
+  } else {
+    effectDescription = `${baseValue} ${moveData ? moveData.name : selectedMove.charAt(0).toUpperCase() + selectedMove.slice(1)}`;
+    effectRaw = `${baseValue} ${selectedMove}`;
+  }
+
+  return {
+    type: 'newSide',
+    faceIndex: faceIndex,
+    move: selectedMove,
+    value: baseValue,
+    statusName: statusName,
+    rarity: rarity,
+    description: `Add ${effectDescription}`,
+    effectRaw: effectRaw,
+    moveData: moveData
+  };
+}
+
+/**
+ * Apply a dice level-up option
+ * @param {Object} option - The selected option
+ * @param {string} characterKey - The character key
+ * @returns {string} Description of what was applied
+ */
+function applyDiceLevelUpOption(option, characterKey) {
+  const characterData = PLAYER_CHARACTERS[characterKey];
+  if (!characterData || !characterData.dice) return null;
+
+  if (option.type === 'upgrade') {
+    // Upgrade existing face value
+    const oldValue = option.effect.value;
+    characterData.dice[option.faceIndex].effects[option.effectIndex].value++;
+
+    // Update raw text
+    const effect = characterData.dice[option.faceIndex].effects[option.effectIndex];
+    const addonsStr = effect.addons && effect.addons.length > 0 ? ' ' + effect.addons.join(' ') : '';
+    const targetStr = effect.target ? ' ' + effect.target : '';
+    characterData.dice[option.faceIndex].effects[option.effectIndex].raw =
+      `${effect.value} ${effect.move}${targetStr}${addonsStr}`;
+    characterData.dice[option.faceIndex].raw =
+      characterData.dice[option.faceIndex].effects.map(e => e.raw).join(', ');
+
+    return `Dice upgraded: ${effect.move} ${oldValue} → ${effect.value}`;
+  } else if (option.type === 'newSide') {
+    // Add new side to blank face
+    const newEffect = {
+      move: option.move,
+      value: option.value,
+      raw: option.effectRaw
+    };
+
+    if (option.statusName) {
+      newEffect.status = option.statusName;
+    }
+
+    // Determine target based on move type
+    if (option.moveData && option.moveData.preferredTarget) {
+      if (option.moveData.preferredTarget === 'Enemy') {
+        newEffect.target = 'enemy';
+      } else if (option.moveData.preferredTarget === 'Ally/Self') {
+        newEffect.target = 'self';
+      }
+    }
+
+    // Update the face
+    characterData.dice[option.faceIndex] = {
+      isBlank: false,
+      effects: [newEffect],
+      raw: option.effectRaw
+    };
+
+    return `New dice side: ${option.description}`;
+  }
+
+  return null;
+}
+
+/**
+ * Show dice level-up choice modal
+ * @param {string} characterKey - The character key
+ * @param {Function} onComplete - Callback when selection is complete
+ */
+function showDiceLevelUpChoiceModal(characterKey, onComplete) {
+  const options = generateDiceLevelUpOptions(characterKey);
+
+  if (options.length === 0) {
+    // No options available, skip dice upgrade
+    if (onComplete) onComplete(null);
+    return;
+  }
+
+  const getRarityColor = (rarity) => {
+    switch (rarity?.toLowerCase()) {
+      case 'legendary': return '#ff6b00';
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      default: return '#aaa';
+    }
+  };
+
+  const optionsHTML = options.map((opt, idx) => {
+    let previewHTML = '';
+    let rarityBadge = '';
+
+    if (opt.type === 'upgrade') {
+      // Show before → after
+      previewHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; justify-content: center; margin-top: 10px;">
+          <div style="background: rgba(255,100,100,0.2); border: 2px solid #666; border-radius: 8px; padding: 10px; min-width: 80px; text-align: center;">
+            <div style="font-size: 12px; color: #888; margin-bottom: 4px;">Before</div>
+            <div style="font-size: 20px; color: #ff6666; font-weight: bold;">${opt.before}</div>
+            <div style="font-size: 11px; color: #aaa;">${opt.effect.move}</div>
+          </div>
+          <div style="font-size: 24px; color: #FFD700;">→</div>
+          <div style="background: rgba(100,255,100,0.2); border: 2px solid #4CAF50; border-radius: 8px; padding: 10px; min-width: 80px; text-align: center;">
+            <div style="font-size: 12px; color: #888; margin-bottom: 4px;">After</div>
+            <div style="font-size: 20px; color: #4CAF50; font-weight: bold;">${opt.after}</div>
+            <div style="font-size: 11px; color: #aaa;">${opt.effect.move}</div>
+          </div>
+        </div>
+      `;
+    } else if (opt.type === 'newSide') {
+      // Show new side preview
+      const rarityColor = getRarityColor(opt.rarity);
+      rarityBadge = `<span style="background: ${rarityColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; text-transform: uppercase; margin-left: 8px;">${opt.rarity}</span>`;
+      previewHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; justify-content: center; margin-top: 10px;">
+          <div style="background: rgba(100,100,100,0.2); border: 2px dashed #666; border-radius: 8px; padding: 10px; min-width: 80px; text-align: center;">
+            <div style="font-size: 12px; color: #888; margin-bottom: 4px;">Before</div>
+            <div style="font-size: 20px; color: #666;">—</div>
+            <div style="font-size: 11px; color: #666;">Blank</div>
+          </div>
+          <div style="font-size: 24px; color: #FFD700;">→</div>
+          <div style="background: rgba(255,215,0,0.2); border: 2px solid ${rarityColor}; border-radius: 8px; padding: 10px; min-width: 80px; text-align: center;">
+            <div style="font-size: 12px; color: #888; margin-bottom: 4px;">After</div>
+            <div style="font-size: 20px; color: ${rarityColor}; font-weight: bold;">${opt.value}</div>
+            <div style="font-size: 11px; color: #aaa;">${opt.statusName || opt.move}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="dice-levelup-option" data-option-index="${idx}" style="
+        background: rgba(40,40,50,0.8);
+        border: 2px solid #555;
+        border-radius: 12px;
+        padding: 15px;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex: 1;
+        min-width: 200px;
+        max-width: 280px;
+      " onmouseenter="this.style.borderColor='#FFD700'; this.style.transform='translateY(-4px)';"
+         onmouseleave="this.style.borderColor='#555'; this.style.transform='translateY(0)';">
+        <div style="font-size: 14px; color: #FFD700; font-weight: bold; text-align: center;">
+          Face ${opt.faceIndex + 1}${rarityBadge}
+        </div>
+        <div style="font-size: 13px; color: #ccc; text-align: center; margin-top: 5px;">
+          ${opt.description}
+        </div>
+        ${previewHTML}
+      </div>
+    `;
+  }).join('');
+
+  const modalHTML = `
+    <div style="text-align: center; padding: 20px; max-width: 900px;">
+      <h2 style="color: #FFD700; margin-bottom: 10px;">🎲 Dice Level Up!</h2>
+      <p style="color: #aaa; margin-bottom: 20px;">Choose an upgrade for your dice:</p>
+      <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px;">
+        ${optionsHTML}
+      </div>
+    </div>
+  `;
+
+  createGameModal(modalHTML);
+
+  // Attach click handlers
+  document.querySelectorAll('.dice-levelup-option').forEach((el, idx) => {
+    el.onclick = () => {
+      const selectedOption = options[idx];
+      const result = applyDiceLevelUpOption(selectedOption, characterKey);
+      closeGameModal();
+      if (onComplete) onComplete(result);
+    };
+  });
+}
+
 // Make level-up functions globally available
 window.showLevelUpPrompt = showLevelUpPrompt;
 window.confirmLevelUp = confirmLevelUp;
+window.showDiceLevelUpChoiceModal = showDiceLevelUpChoiceModal;
 
 // ============== ALLY SYSTEM ==============
 
@@ -4768,10 +5445,15 @@ window.useCombatItem = function useCombatItem(itemIndex) {
   if (typeof useItem === 'function') {
     useItem(itemIndex);
 
-    // Refresh items bar
+    // Refresh items bar (old combat system)
     const populateFunc = window.populateItemsBar || populateItemsBar;
     if (typeof populateFunc === 'function') {
       populateFunc();
+    }
+
+    // Refresh items bar (new combat system)
+    if (window.CombatUI && typeof window.CombatUI.updateItemsBar === 'function') {
+      window.CombatUI.updateItemsBar();
     }
 
     // Update combat UI
@@ -4978,7 +5660,7 @@ function handleGenericCombatResult(success, powerLevel) {
   const enemy = callbacks.enemy;
 
   if (success) {
-    // Trigger onEnemyDefeated effects for triggered items (like Cursed Slash)
+    // Trigger onEnemyDefeated effects for triggered items
     if (typeof triggerOnEnemyDefeated === 'function') {
       triggerOnEnemyDefeated();
     }
@@ -5142,7 +5824,7 @@ function handleStoneGolemResult(success) {
     updateTopBar();
     createNotification(`+${goldReward} gold for defeating Stone Golem!`, '#ffdd77', '💰');
 
-    // Trigger onEnemyDefeated effects for triggered items (like Cursed Slash)
+    // Trigger onEnemyDefeated effects for triggered items
     if (typeof triggerOnEnemyDefeated === 'function') {
       triggerOnEnemyDefeated();
     }
@@ -5352,36 +6034,6 @@ function feedMuncher(indices, itemsToReceive) {
 
 function removeItemAndReverseStats(index) {
   const item = inventory[index];
-
-  // Special handling for Cursed Slash - restore the max health it took
-  if (item.name === 'Cursed Slash') {
-    const oldMaxHealth = maxHealth;
-    const oldHealth = health;
-
-    // Restore max health (reverse the halving by doubling)
-    maxHealth = maxHealth * 2;
-
-    // Restore current health proportionally (same proportion as before)
-    health = Math.min(maxHealth, health * 2);
-
-    gameState.maxHealth = maxHealth;
-    gameState.health = health;
-    updateHealthDisplay();
-    updateTopBar();
-
-    console.log(`Cursed Slash removed: Max health ${oldMaxHealth} → ${maxHealth}, Current health ${oldHealth} → ${health}`);
-
-    // Remove from inventory (handle quantity) and return early
-    if (item.quantity && item.quantity > 1) {
-      item.quantity--;
-      console.log(`${item.name} quantity decreased to ${item.quantity}`);
-    } else {
-      inventory.splice(index, 1);
-    }
-    gameState.inventory = inventory;
-    updateInventory();
-    return;
-  }
 
   // Reverse item effects (but NOT reroll, dash, skip)
   // NOTE: This parses the item description to determine what stats to reverse
@@ -6373,6 +7025,462 @@ function switchEnemyImage(enemyName) {
   }
 }
 
+/**
+ * Show item details in the collection panel
+ * @param {string} itemName - Name of the item to show details for
+ */
+function showItemDetails(itemName) {
+  const item = items.find(i => i.name === itemName);
+  if (!item) return;
+
+  const detailsPanel = document.getElementById('item-details');
+  if (!detailsPanel) return;
+
+  // Get rarity color
+  const getRarityColor = (rarity) => {
+    const rarityLower = (rarity || '').toLowerCase();
+    switch(rarityLower) {
+      case 'legendary': return '#ff6b00';
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      case 'common': return '#aaa';
+      default: return '#888';
+    }
+  };
+
+  // Get type color
+  const getTypeColor = (type) => {
+    const typeLower = (type || '').toLowerCase();
+    switch(typeLower) {
+      case 'weapon': return '#f44336';
+      case 'passive': return '#4CAF50';
+      case 'consumable': return '#2196F3';
+      case 'active': return '#ff9800';
+      case 'boon': return '#9b59b6';
+      default: return '#888';
+    }
+  };
+
+  const rarityColor = getRarityColor(item.rarity);
+  const typeColor = getTypeColor(item.type);
+
+  // Build tags HTML
+  const tagsHTML = item.tags && item.tags.length > 0 ? `
+    <div style="margin-top: 15px;">
+      <strong style="color: #9b59b6;">Tags:</strong>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+        ${item.tags.map(tag => `
+          <span style="
+            font-size: 11px;
+            padding: 4px 10px;
+            background: rgba(155, 89, 182, 0.15);
+            border: 1px solid rgba(155, 89, 182, 0.4);
+            border-radius: 12px;
+            color: #ba68c8;
+          ">${tag}</span>
+        `).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  // Look up weapon dice from WEAPONS_DATA if this is a weapon
+  let weaponDice = null;
+  if (item.type === 'Weapon' && typeof WEAPONS_DATA !== 'undefined') {
+    const weaponData = WEAPONS_DATA.find(w => w.name === item.name);
+    if (weaponData && weaponData.dice) {
+      weaponDice = weaponData.dice;
+    }
+  }
+
+  // Build dice HTML for weapons
+  const diceHTML = weaponDice && weaponDice.length > 0 ? `
+    <div style="margin-top: 15px;">
+      <strong style="color: #f44336;">Weapon Dice:</strong>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
+        ${weaponDice.map((face, idx) => {
+          if (face.isBlank) {
+            return `
+              <div style="
+                background: rgba(0,0,0,0.4);
+                border: 1px solid #333;
+                border-radius: 6px;
+                padding: 8px;
+                text-align: center;
+                font-size: 11px;
+                color: #666;
+              ">
+                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
+                <div>Blank</div>
+              </div>
+            `;
+          }
+          return `
+            <div style="
+              background: rgba(244, 67, 54, 0.1);
+              border: 1px solid rgba(244, 67, 54, 0.3);
+              border-radius: 6px;
+              padding: 8px;
+              text-align: center;
+              font-size: 11px;
+              color: #ddd;
+            ">
+              <div style="font-weight: bold; color: #f44336; margin-bottom: 4px;">Face ${idx + 1}</div>
+              <div>${face.raw || face.effects?.map(e => e.raw).join(', ') || '—'}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  detailsPanel.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <!-- Item Header -->
+      <div style="display: flex; gap: 15px; align-items: flex-start;">
+        <img
+          src="${item.image || 'images/items/no-item.svg'}"
+          alt="${item.name}"
+          style="width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${rarityColor}; image-rendering: pixelated;"
+          onerror="this.style.opacity='0.3'"
+        />
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 10px 0; color: ${rarityColor};">${item.name}</h3>
+          <div style="color: #aaa; font-size: 13px; line-height: 1.8;">
+            <div><strong>Rarity:</strong> <span style="color: ${rarityColor}; text-transform: uppercase; font-weight: bold;">${item.rarity || '—'}</span></div>
+            <div><strong>Type:</strong> <span style="color: ${typeColor};">${item.type || '—'}</span></div>
+            <div><strong>Game:</strong> ${item.game || '—'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div style="padding: 12px; background: rgba(${rarityColor === '#ff6b00' ? '255,107,0' : rarityColor === '#9b59b6' ? '155,89,182' : rarityColor === '#4CAF50' ? '76,175,80' : '170,170,170'}, 0.1); border: 1px solid ${rarityColor}40; border-radius: 6px;">
+        <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 14px;">📜 Description</h4>
+        <div style="font-size: 13px; color: #ddd; line-height: 1.6;">${item.description || 'No description available.'}</div>
+      </div>
+
+      <!-- Unlock Condition -->
+      ${item.unlockCondition && item.unlockCondition !== 'N/A' ? `
+        <div style="padding: 12px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 6px;">
+          <h4 style="margin: 0 0 8px 0; color: #ff9800; font-size: 14px;">🔓 Unlock Condition</h4>
+          <div style="font-size: 13px; color: #ddd;">${item.unlockCondition}</div>
+        </div>
+      ` : ''}
+
+      <!-- Tags -->
+      ${tagsHTML}
+
+      <!-- Dice (for weapons) -->
+      ${diceHTML}
+    </div>
+  `;
+}
+
+function showSpellDetails(spellName) {
+  const spellsData = typeof SPELLS_DATA !== 'undefined' ? SPELLS_DATA : [];
+  const spell = spellsData.find(s => s.name === spellName);
+  if (!spell) return;
+
+  const detailsPanel = document.getElementById('spell-details');
+  if (!detailsPanel) return;
+
+  // Get rarity color
+  const getRarityColor = (rarity) => {
+    const rarityLower = (rarity || '').toLowerCase();
+    switch(rarityLower) {
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      case 'common': return '#aaa';
+      default: return '#888';
+    }
+  };
+
+  // Get element color
+  const getElementColor = (element) => {
+    switch((element || '').toLowerCase()) {
+      case 'fire': return '#ff4444';
+      case 'water': return '#4488ff';
+      case 'earth': return '#88aa44';
+      case 'dark': return '#8844aa';
+      case 'blood': return '#cc2222';
+      case 'poison': return '#44aa44';
+      case 'electric': return '#ffcc00';
+      default: return '#888';
+    }
+  };
+
+  const rarityColor = getRarityColor(spell.rarity);
+  const elementColor = getElementColor(spell.element);
+
+  // Build keywords HTML
+  const keywordsHTML = spell.keywords && spell.keywords.length > 0 ? `
+    <div style="margin-top: 15px;">
+      <strong style="color: #9b59b6;">Keywords:</strong>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+        ${spell.keywords.map(keyword => `
+          <span style="
+            font-size: 11px;
+            padding: 4px 10px;
+            background: rgba(155, 89, 182, 0.15);
+            border: 1px solid rgba(155, 89, 182, 0.4);
+            border-radius: 12px;
+            color: #ba68c8;
+          ">${keyword}</span>
+        `).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  detailsPanel.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <!-- Spell Header -->
+      <div style="display: flex; gap: 15px; align-items: flex-start;">
+        <img
+          src="${spell.image || 'images/spells/no-spell.svg'}"
+          alt="${spell.name}"
+          style="width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${rarityColor}; image-rendering: pixelated;"
+          onerror="this.style.opacity='0.3'"
+        />
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 10px 0; color: ${rarityColor};">${spell.name}</h3>
+          <div style="color: #aaa; font-size: 13px; line-height: 1.8;">
+            <div><strong>Rarity:</strong> <span style="color: ${rarityColor}; text-transform: uppercase; font-weight: bold;">${spell.rarity || '—'}</span></div>
+            <div><strong>Cost:</strong> <span style="color: #66b3ff; font-weight: bold;">${spell.cost} Mana</span></div>
+            <div><strong>Game:</strong> ${spell.game || '—'}</div>
+            <div><strong>Element:</strong> <span style="color: ${elementColor}; font-weight: bold;">${spell.element && spell.element !== 'N/A' ? spell.element : 'None'}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div style="padding: 12px; background: rgba(${rarityColor === '#9b59b6' ? '155,89,182' : rarityColor === '#4CAF50' ? '76,175,80' : '170,170,170'}, 0.1); border: 1px solid ${rarityColor}40; border-radius: 6px;">
+        <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 14px;">Effect</h4>
+        <div style="font-size: 13px; color: #ddd; line-height: 1.6;">${spell.description || 'No description available.'}</div>
+      </div>
+
+      <!-- Bonus Indicator -->
+      <div style="padding: 12px; background: rgba(${spell.hasBonus ? '76, 175, 80' : '136, 136, 136'}, 0.1); border: 1px solid ${spell.hasBonus ? '#4CAF5040' : '#88888840'}; border-radius: 6px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;">${spell.hasBonus ? '✓' : '✗'}</span>
+          <div>
+            <div style="font-weight: bold; color: ${spell.hasBonus ? '#4CAF50' : '#888'};">
+              ${spell.hasBonus ? 'Has Bonus Effect' : 'No Bonus Effect'}
+            </div>
+            <div style="font-size: 11px; color: #888;">
+              ${spell.hasBonus ? 'This spell can be enhanced with bonuses' : 'This spell cannot be enhanced'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Keywords -->
+      ${keywordsHTML}
+    </div>
+  `;
+}
+
+function showCharacterDetails(charName) {
+  const charactersData = typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA : [];
+  const char = charactersData.find(c => c.name === charName);
+  if (!char) return;
+
+  const detailsPanel = document.getElementById('character-details');
+  if (!detailsPanel) return;
+
+  const charIcon = `images/characters/Full/${char.name}.png`;
+
+  // Build level up bonuses list
+  const levelUpBonuses = [];
+  if (char.strength > 0) levelUpBonuses.push({ stat: 'Strength', value: char.strength, color: '#f44336' });
+  if (char.dexterity > 0) levelUpBonuses.push({ stat: 'Dexterity', value: char.dexterity, color: '#4CAF50' });
+  if (char.intelligence > 0) levelUpBonuses.push({ stat: 'Intelligence', value: char.intelligence, color: '#2196F3' });
+  if (char.charisma > 0) levelUpBonuses.push({ stat: 'Charisma', value: char.charisma, color: '#9b59b6' });
+  if (char.luck > 0) levelUpBonuses.push({ stat: 'Luck', value: char.luck, color: '#ff9800' });
+  if (char.reroll > 0) levelUpBonuses.push({ stat: 'Reroll', value: char.reroll, color: '#888' });
+  if (char.dash > 0) levelUpBonuses.push({ stat: 'Dash', value: char.dash, color: '#888' });
+  if (char.skip > 0) levelUpBonuses.push({ stat: 'Skip', value: char.skip, color: '#888' });
+  if (char.discovery > 0) levelUpBonuses.push({ stat: 'Discovery', value: char.discovery, color: '#888' });
+  if (char.fov > 0) levelUpBonuses.push({ stat: 'FoV', value: char.fov, color: '#888' });
+  if (char.random > 0) levelUpBonuses.push({ stat: 'Random', value: char.random, color: '#888' });
+
+  const levelUpBonusesHTML = levelUpBonuses.length > 0
+    ? levelUpBonuses.map(b => `<span style="color: ${b.color}; font-weight: bold;">+${b.value} ${b.stat}</span>`).join(', ')
+    : '<span style="color: #888;">None</span>';
+
+  // Build dice HTML (enemy-style)
+  const diceHTML = char.dice && char.dice.length > 0 ? `
+    <div style="margin-top: 15px;">
+      <strong style="color: #4CAF50;">Character Die (6 faces):</strong>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
+        ${char.dice.map((face, idx) => {
+          if (face.isBlank) {
+            return `
+              <div style="
+                background: rgba(0,0,0,0.4);
+                border: 1px solid #333;
+                border-radius: 6px;
+                padding: 8px;
+                text-align: center;
+                font-size: 11px;
+                color: #666;
+              ">
+                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
+                <div>Blank</div>
+              </div>
+            `;
+          }
+          return `
+            <div style="
+              background: rgba(76, 175, 80, 0.1);
+              border: 1px solid rgba(76, 175, 80, 0.3);
+              border-radius: 6px;
+              padding: 8px;
+              text-align: center;
+              font-size: 11px;
+              color: #ddd;
+            ">
+              <div style="font-weight: bold; color: #4CAF50; margin-bottom: 4px;">Face ${idx + 1}</div>
+              <div>${face.raw || '—'}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  detailsPanel.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <!-- Character Image - Centered -->
+      <img
+        src="${charIcon}"
+        alt="${char.name}"
+        style="width: 280px; height: 280px; object-fit: contain; border-radius: 8px; background: #1a1a1a; border: 3px solid #4CAF50; display: block; margin: 0 auto;"
+        onerror="this.style.opacity='0.3'"
+      />
+
+      <!-- Character Name & Info -->
+      <div style="text-align: center;">
+        <h3 style="margin: 0 0 5px 0; color: #4CAF50; font-size: 22px;">${char.name}</h3>
+        <div style="color: #aaa; font-size: 13px;">From: ${char.game || 'Unknown'}</div>
+      </div>
+
+      <!-- Description -->
+      <div style="padding: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 6px;">
+        <div style="font-size: 13px; color: #ddd; line-height: 1.6; font-style: italic;">"${char.description || 'No description available.'}"</div>
+      </div>
+
+      <!-- Starting Resources -->
+      <div>
+        <strong style="color: #4CAF50;">Starting Resources:</strong>
+        <div style="display: flex; gap: 15px; margin-top: 8px; justify-content: center;">
+          <div style="background: rgba(255,204,0,0.15); border: 1px solid rgba(255,204,0,0.4); border-radius: 6px; padding: 10px 20px; text-align: center;">
+            <div style="font-size: 11px; color: #ffcc00; text-transform: uppercase;">Energy</div>
+            <div style="font-size: 24px; font-weight: bold; color: #ffcc00;">${char.energy || 0}</div>
+          </div>
+          <div style="background: rgba(102,179,255,0.15); border: 1px solid rgba(102,179,255,0.4); border-radius: 6px; padding: 10px 20px; text-align: center;">
+            <div style="font-size: 11px; color: #66b3ff; text-transform: uppercase;">Mana</div>
+            <div style="font-size: 24px; font-weight: bold; color: #66b3ff;">${char.mana || 0}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Level Up -->
+      <div style="padding: 12px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 6px;">
+        <h4 style="margin: 0 0 8px 0; color: #ff9800; font-size: 14px;">⬆️ Level Up Condition</h4>
+        <div style="font-size: 13px; color: #ddd; margin-bottom: 8px;">${char.levelUp || 'None'}</div>
+        <div style="font-size: 12px; color: #aaa;">
+          <strong>Rewards:</strong> ${levelUpBonusesHTML}
+        </div>
+      </div>
+
+      <!-- Dice -->
+      ${diceHTML}
+    </div>
+  `;
+}
+
+function showAllyDetails(allyName) {
+  const alliesData = typeof ALLIES_DATA !== 'undefined' ? ALLIES_DATA : [];
+  const ally = alliesData.find(a => a.name === allyName);
+  if (!ally) return;
+
+  const detailsPanel = document.getElementById('ally-details');
+  if (!detailsPanel) return;
+
+  const allyIcon = ally.image || `images/allies/${ally.name}.png`;
+
+  // Get rarity color
+  const getRarityColor = (rarity) => {
+    switch((rarity || '').toLowerCase()) {
+      case 'high': return '#9b59b6';
+      case 'medium': return '#ff9800';
+      case 'low': return '#4CAF50';
+      default: return '#888';
+    }
+  };
+
+  const rarityColor = getRarityColor(ally.rarity);
+
+  // Build dice HTML
+  const diceHTML = ally.dice && ally.dice.length > 0 ? `
+    <div style="margin-top: 15px;">
+      <strong style="color: #2196F3;">Ally Dice:</strong>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
+        ${ally.dice.map((face, idx) => {
+          if (face.isBlank || face.raw === 'X') {
+            return `<div style="background: rgba(0,0,0,0.4); border: 1px solid #333; border-radius: 6px; padding: 8px; text-align: center; font-size: 11px; color: #666;">
+              <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
+              <div>${face.raw === 'X' ? 'X' : 'Blank'}</div>
+            </div>`;
+          }
+          return `<div style="background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 6px; padding: 8px; text-align: center; font-size: 11px; color: #ddd;">
+            <div style="font-weight: bold; color: #2196F3; margin-bottom: 4px;">Face ${idx + 1}</div>
+            <div>${face.raw || '—'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  detailsPanel.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <!-- Ally Header -->
+      <div style="display: flex; gap: 15px; align-items: flex-start;">
+        <img
+          src="${allyIcon}"
+          alt="${ally.name}"
+          style="width: 100px; height: 100px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${rarityColor}; image-rendering: pixelated;"
+          onerror="this.style.opacity='0.3'"
+        />
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 10px 0; color: ${rarityColor};">${ally.name}</h3>
+          <div style="color: #aaa; font-size: 13px; line-height: 1.8;">
+            <div><strong>Type:</strong> ${ally.type || 'Ally'}</div>
+            <div><strong>Rarity:</strong> <span style="color: ${rarityColor}; text-transform: uppercase; font-weight: bold;">${ally.rarity || '—'}</span></div>
+            <div><strong>HP:</strong> <span style="color: #ff4444; font-weight: bold;">${ally.hp || '?'}</span></div>
+            <div><strong>Game:</strong> ${ally.game || '—'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ability -->
+      ${ally.ability ? `
+        <div style="padding: 12px; background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 6px;">
+          <h4 style="margin: 0 0 8px 0; color: #2196F3; font-size: 14px;">✨ Special Ability</h4>
+          <div style="font-size: 13px; color: #ddd; line-height: 1.6;">${ally.ability}</div>
+        </div>
+      ` : `
+        <div style="padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 6px;">
+          <div style="font-size: 13px; color: #888; text-align: center;">No special ability</div>
+        </div>
+      `}
+
+      <!-- Dice -->
+      ${diceHTML}
+    </div>
+  `;
+}
+
 // Get enemy stats from gameState
 function getEnemyStats(enemyName) {
   if (!gameState.enemyStats) {
@@ -6401,7 +7509,7 @@ function recordEnemyDefeated(enemyName) {
   }
 
   gameState.enemyStats[baseName].timesBeaten++;
-  saveGameState();
+  saveCurrentGame();
 }
 
 // Record player death to enemy
@@ -6419,7 +7527,7 @@ function recordPlayerKilledBy(enemyName) {
   }
 
   gameState.enemyStats[baseName].timesKilledPlayer++;
-  saveGameState();
+  saveCurrentGame();
 }
 
 function markGameFinished(gameName) {
@@ -7583,6 +8691,7 @@ window.drawMapArrows = drawMapArrows;
 window.switchCollectionTab = switchCollectionTab;
 window.showGameDetails = showGameDetails;
 window.showEnemyDetails = showEnemyDetails;
+window.showItemDetails = showItemDetails;
 window.switchEnemyImage = switchEnemyImage;
 window.getEnemyStats = getEnemyStats;
 window.recordEnemyDefeated = recordEnemyDefeated;
