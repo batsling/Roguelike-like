@@ -358,7 +358,7 @@ function evaluateScalingFormulas(desc) {
 }
 
 function parsePatternDescToEffects(desc) {
-  if (!desc || /unknown intent/i.test(desc)) return [];
+  if (!desc || /unknown intent/i.test(desc)) return { effects: [], text: desc || '' };
 
   // Evaluate turn-scaling formulas (e.g. Transient) before any other parsing
   desc = evaluateScalingFormulas(desc);
@@ -367,14 +367,14 @@ function parsePatternDescToEffects(desc) {
 
   // "Add N random Pigment ... to (your) deck/hand"
   if (/\badd \d+ random pigment/i.test(desc)) {
-    return [{ raw: desc, value: 1, move: 'AddPigment', addons: [], target: null }];
+    return { effects: [{ raw: desc, value: 1, move: 'AddPigment', addons: [], target: null }], text: desc };
   }
 
   // "Consume N random Pigment ... for X Power, Y Block"
   if (/\bconsume \d+ random pigment/i.test(desc)) {
     const m = desc.match(/for\s+(\d+)\s+Power,?\s*(\d+)\s+Block/i);
-    return [{ raw: desc, value: 1, move: 'ConsumePigment', addons: [],
-              power: m ? parseInt(m[1]) : 0, block: m ? parseInt(m[2]) : 0 }];
+    return { effects: [{ raw: desc, value: 1, move: 'ConsumePigment', addons: [],
+              power: m ? parseInt(m[1]) : 0, block: m ? parseInt(m[2]) : 0 }], text: desc };
   }
 
   // Probability split: "50% desc1 / 50% desc2"
@@ -390,13 +390,14 @@ function parsePatternDescToEffects(desc) {
       let roll = Math.random() * total;
       for (const o of weighted) {
         roll -= o.weight;
-        if (roll <= 0) return parseSimplePatternDesc(o.text);
+        if (roll <= 0) return { effects: parseSimplePatternDesc(o.text), text: o.text };
       }
-      return parseSimplePatternDesc(weighted[weighted.length - 1].text);
+      const last = weighted[weighted.length - 1];
+      return { effects: parseSimplePatternDesc(last.text), text: last.text };
     }
   }
 
-  return parseSimplePatternDesc(desc);
+  return { effects: parseSimplePatternDesc(desc), text: desc };
 }
 
 function parseSimplePatternDesc(text) {
@@ -579,7 +580,7 @@ function rollEnemyIntent(enemy) {
     const current = turns[idx];
 
     // Build a pseudo-face by parsing the description into executable effects
-    const parsedEffects = parsePatternDescToEffects(current.description);
+    const { effects: parsedEffects } = parsePatternDescToEffects(current.description);
     const isUnknownIntent = /unknown intent/i.test(current.description);
     const pseudoFace = { isBlank: isUnknownIntent, effects: parsedEffects, raw: current.description };
     enemy.currentIntent.push({ faceIndex: idx, face: pseudoFace, resolved: false });
@@ -617,6 +618,7 @@ function rollEnemyIntent(enemy) {
 
     for (let i = 0; i < multiAttack; i++) {
       let effects;
+      let resolvedText;
 
       if (isForgetful && branches.length > 1) {
         // Forgetful: cycle through all branches before repeating
@@ -629,18 +631,21 @@ function rollEnemyIntent(enemy) {
           .filter(idx => !enemy.rolledFaces.has(idx));
         const chosen = availableIndices[Math.floor(Math.random() * availableIndices.length)];
         enemy.rolledFaces.add(chosen);
-        effects = parseSimplePatternDesc(branches[chosen].replace(/^\d+%\s*/, '').trim());
+        resolvedText = branches[chosen].replace(/^\d+%\s*/, '').trim();
+        effects = parseSimplePatternDesc(resolvedText);
       } else {
-        effects = parsePatternDescToEffects(patternDesc);
+        const parsed = parsePatternDescToEffects(patternDesc);
+        effects = parsed.effects;
+        resolvedText = parsed.text;
       }
 
-      const isBlank = effects.length === 0 || /unknown intent/i.test(patternDesc);
-      const pseudoFace = { isBlank, effects, raw: patternDesc };
+      const isBlank = effects.length === 0 || /unknown intent/i.test(resolvedText);
+      const pseudoFace = { isBlank, effects, raw: resolvedText };
       enemy.currentIntent.push({ faceIndex: 0, face: pseudoFace, resolved: false });
     }
   }
 
-  // Log intent
+  // Log intent (shows resolved text, not the full probability string)
   const intentStr = enemy.currentIntent.map(intent => intent.face.raw || 'Unknown').join(', ');
   addLog(`${enemy.name} intends: ${intentStr}`, 'warning');
 }

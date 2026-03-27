@@ -568,9 +568,10 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   fov = stats.fov || 0;
   luck = stats.luck || 0;
 
-  // Reset health and gold for new run
-  health = 10;
-  maxHealth = 10;
+  // Reset health and gold for new run — use character's base health if defined
+  const baseHealth = character.health || 10;
+  health = baseHealth;
+  maxHealth = baseHealth;
   gold = 0;
 
   // Clear inventory and curses for new run
