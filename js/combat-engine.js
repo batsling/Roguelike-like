@@ -336,14 +336,32 @@ function parseOrderedPattern(patternStr) {
  * Handles simple sequences:   "10 Dmg Ranged"  /  "6 Dmg Ranged 1 Burn"
  * Handles no-ops:             "Unknown Intent (\"Charging\")"
  */
-const PATTERN_ADDONS   = new Set(['ranged','melee','pierce','self','engage','trap','aoe','splash']);
+const PATTERN_ADDONS   = new Set(['ranged','melee','pierce','self','engage','trap','aoe','splash','overload','overloadexceptleft','overloadexceptright']);
 const PATTERN_STATUSES = new Set([
   'burn','poison','weak','vulnerable','stun','oiled','dodge','power','frail','confused',
   'barricade','fading','thorns','shifting','formless','ritual','ruptured','bleed','slow','silence',
 ]);
 
+/**
+ * Evaluate turn-scaling formulas in a pattern description.
+ * Replaces "N + (Turn Number - A x B)" with the computed value for the current turn.
+ * Example: "30 + (Turn Number - 1 x 10)" on turn 3 → "50"
+ */
+function evaluateScalingFormulas(desc) {
+  return desc.replace(
+    /(\d+)\s*\+\s*\(Turn\s+Number\s*-\s*(\d+)\s*[xX×]\s*(\d+)\)/gi,
+    (_, base, sub, mult) => {
+      const turn = (combatState && combatState.turn) || 1;
+      return String(parseInt(base) + (turn - parseInt(sub)) * parseInt(mult));
+    }
+  );
+}
+
 function parsePatternDescToEffects(desc) {
   if (!desc || /unknown intent/i.test(desc)) return [];
+
+  // Evaluate turn-scaling formulas (e.g. Transient) before any other parsing
+  desc = evaluateScalingFormulas(desc);
 
   // Special text patterns detected before probability splitting
 
@@ -399,6 +417,54 @@ function parseSimplePatternDesc(text) {
           addons.push(tokens[i++]);
         }
         effects.push({ raw: `${dmgVal}x${times} Dmg`, value: dmgVal, move: 'Dmg', addons, times });
+      }
+      continue;
+    }
+
+    // Dice notation: "D8 Dmg", "D6x3 Dmg", "D8x2+D10x3 Dmg"
+    // D<sides>, D<sides>x<count>, or compound D<s1>x<c1>+D<s2>x<c2>
+    if (/^D\d+/i.test(tokens[i])) {
+      const rawDice = tokens[i]; i++;
+      if (i < tokens.length && tokens[i].toLowerCase() === 'dmg') {
+        i++;
+        const addons = [];
+        while (i < tokens.length && PATTERN_ADDONS.has(tokens[i].toLowerCase())) {
+          addons.push(tokens[i++]);
+        }
+        // Parse each dice group from compound notation (e.g. "D8x2+D10x3" → two groups)
+        const diceGroups = [];
+        for (const part of rawDice.split('+')) {
+          const m = part.match(/^D(\d+)(?:[xX](\d+))?$/i);
+          if (m) diceGroups.push({ sides: parseInt(m[1]), count: m[2] ? parseInt(m[2]) : 1 });
+        }
+        effects.push({ raw: `${rawDice} Dmg`, value: 0, move: 'Dmg', addons, diceGroups });
+      }
+      continue;
+    }
+
+    // "Lose All <Status>" or "Lose <N> <Status>"
+    if (tokens[i].toLowerCase() === 'lose') {
+      i++;
+      if (i >= tokens.length) break;
+      let loseAll = false;
+      let loseCount = 0;
+      if (tokens[i].toLowerCase() === 'all') {
+        loseAll = true;
+        i++;
+      } else if (/^\d+$/.test(tokens[i])) {
+        loseCount = parseInt(tokens[i++]);
+      } else {
+        continue; // unknown format, skip
+      }
+      if (i < tokens.length) {
+        const statusName = tokens[i++];
+        effects.push({
+          raw: `Lose ${loseAll ? 'All' : loseCount} ${statusName}`,
+          value: loseCount,
+          move: 'Lose',
+          target: statusName,
+          all: loseAll
+        });
       }
       continue;
     }
@@ -1825,27 +1891,71 @@ function executeEnemyActions() {
           // Process effect (targeting player)
           switch (effect.move?.toLowerCase()) {
             case 'dmg': {
-              let dmgVal = value;
-              // Weak on enemy reduces outgoing damage by 25%
-              if (enemy.statuses['weak']) {
-                dmgVal = Math.floor(dmgVal * 0.75);
-              }
-              // NxM: hit times (e.g. 5x4 Dmg → 4 hits of 5)
-              const hitCount = effect.times || 1;
-              for (let t = 0; t < hitCount; t++) {
-                dealDamageToPlayer(dmgVal, effect.addons || [], enemy);
+              const addons = effect.addons || [];
+              const hasOverload      = addons.some(a => a.toLowerCase() === 'overload');
+              const hasExceptLeft    = addons.some(a => a.toLowerCase() === 'overloadexceptleft');
+              const hasExceptRight   = addons.some(a => a.toLowerCase() === 'overloadexceptright');
+              const isAoE = hasOverload || hasExceptLeft || hasExceptRight;
+
+              // Helper: deal one hit to a target, resolving dice or fixed damage
+              const dealHit = (target, dmgPerHit) => {
+                if (target === combatState.player || (combatState.allies && combatState.allies.includes(target))) {
+                  dealDamageToPlayer(dmgPerHit, addons, enemy);
+                } else {
+                  dealDamage(target, dmgPerHit, addons);
+                }
+              };
+
+              if (effect.diceGroups && effect.diceGroups.length > 0) {
+                // Dice attack: each group is a separate batch of hits
+                const diceStr = effect.diceGroups.map(g => `${g.count}d${g.sides}`).join('+');
+                addLog(`${enemy.name} rolls ${diceStr}!`, 'info');
+                effect.diceGroups.forEach(group => {
+                  for (let t = 0; t < group.count; t++) {
+                    let roll = Math.floor(Math.random() * group.sides) + 1;
+                    if (enemy.statuses['weak']) roll = Math.floor(roll * 0.75);
+                    // Player hit (always)
+                    dealDamageToPlayer(roll, addons, enemy);
+                    // AoE: hit allies and other enemies
+                    if (isAoE) {
+                      (combatState.allies || []).forEach(a => { if (a.isAlive) dealDamage(a, roll, addons); });
+                      combatState.enemies.forEach(oe => {
+                        if (oe === enemy || oe.health <= 0) return;
+                        if (hasExceptLeft  && oe.position < enemy.position) return;
+                        if (hasExceptRight && oe.position > enemy.position) return;
+                        dealDamage(oe, roll, addons);
+                      });
+                    }
+                  }
+                });
+              } else {
+                // Fixed damage (NxM or simple)
+                let dmgVal = value;
+                if (enemy.statuses['weak']) dmgVal = Math.floor(dmgVal * 0.75);
+                const hitCount = effect.times || 1;
+                for (let t = 0; t < hitCount; t++) {
+                  dealDamageToPlayer(dmgVal, addons, enemy);
+                  if (isAoE) {
+                    (combatState.allies || []).forEach(a => { if (a.isAlive) dealDamage(a, dmgVal, addons); });
+                    combatState.enemies.forEach(oe => {
+                      if (oe === enemy || oe.health <= 0) return;
+                      if (hasExceptLeft  && oe.position < enemy.position) return;
+                      if (hasExceptRight && oe.position > enemy.position) return;
+                      dealDamage(oe, dmgVal, addons);
+                    });
+                  }
+                }
               }
               // Extract embedded status inflictions packed into Dmg addons
               // e.g. addons ["1","Burn"] → inflict 1 Burn on player
               {
-                const addons = effect.addons || [];
                 for (let ai = 0; ai + 1 < addons.length; ai++) {
                   if (/^\d+$/.test(addons[ai]) && PATTERN_STATUSES.has(addons[ai + 1].toLowerCase())) {
                     const sKey   = addons[ai + 1].toLowerCase();
                     const sCount = parseInt(addons[ai]);
                     combatState.player.statuses[sKey] = (combatState.player.statuses[sKey] || 0) + sCount;
                     addLog(`${enemy.name} inflicted ${sCount} ${addons[ai + 1]}`, 'warning');
-                    ai++; // skip the status-name token
+                    ai++;
                   }
                 }
               }
@@ -1853,7 +1963,7 @@ function executeEnemyActions() {
             }
 
             case 'x': {
-              // Turn-scaling damage: value × current turn number (e.g. Transient "5 x Turn number Dmg")
+              // Turn-scaling damage: value × current turn number (legacy handler)
               let dmgVal = value * combatState.turn;
               if (enemy.statuses['weak']) dmgVal = Math.floor(dmgVal * 0.75);
               dealDamageToPlayer(dmgVal, [], enemy);
@@ -1976,6 +2086,24 @@ function executeEnemyActions() {
               if (painVal > 0) {
                 enemy.health -= painVal;
                 addLog(`${enemy.name} took ${painVal} pain (self-damage)`, 'danger');
+              }
+              break;
+            }
+
+            case 'lose': {
+              // "Lose All <Status>" removes all stacks; "Lose N <Status>" removes N stacks
+              const loseKey = effect.target?.toLowerCase().replace(/\s+/g, '_');
+              if (loseKey) {
+                if (effect.all) {
+                  delete enemy.statuses[loseKey];
+                  addLog(`${enemy.name} lost all ${effect.target}`, 'info');
+                } else {
+                  const current = enemy.statuses[loseKey] || 0;
+                  const remaining = Math.max(0, current - (effect.value || 0));
+                  if (remaining <= 0) delete enemy.statuses[loseKey];
+                  else enemy.statuses[loseKey] = remaining;
+                  addLog(`${enemy.name} lost ${effect.value} ${effect.target}`, 'info');
+                }
               }
               break;
             }

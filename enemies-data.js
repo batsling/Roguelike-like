@@ -1297,7 +1297,7 @@ var ENEMIES_DATA = [
     "hpMin": 100,
     "hpMax": 110,
     "ability": "Formless / When another ally takes Melee Dmg, Add 1 Frail Overload to Intent",
-    "pattern": "Always: 43% 10 Dmg Ranged Overload / 43% 10 Dmg Ranged Overload / 14% 40 Dmg Ranged, 35 Pain",
+    "pattern": "Always: 43% 10 Dmg Ranged OverloadExceptLeft / 43% 10 Dmg Ranged OverloadExceptRight / 14% 40 Dmg Ranged, 35 Pain",
     "game": "Brutal Orchestra",
     "location": "Chaos",
     "dice": [
@@ -1478,7 +1478,7 @@ var ENEMIES_DATA = [
     "weight": 2,
     "hpMin": 40,
     "hpMax": 46,
-    "ability": "Rust, Rerollable",
+    "ability": "Rust / Rerollable",
     "pattern": "Always: D6x3 Dmg Melee",
     "game": "Rogue",
     "location": "General",
@@ -1519,7 +1519,7 @@ var ENEMIES_DATA = [
     "hpMin": 60,
     "hpMax": 66,
     "ability": "Rerollable",
-    "pattern": "Always: D8x2 + D6x2 Dmg Melee",
+    "pattern": "Always: D8x2+D6x2 Dmg Melee",
     "game": "Rogue",
     "location": "General",
     "dice": [
@@ -1604,7 +1604,7 @@ var ENEMIES_DATA = [
     "hpMin": 250,
     "hpMax": 270,
     "ability": "Immune to Burn, Rerollable",
-    "pattern": "Always: 50% D6x6 Dmg Ranged, 5 Burn / 50% D8x2 +D10x3 Dmg Melee",
+    "pattern": "Always: 50% D6x6 Dmg Ranged, 5 Burn / 50% D8x2+D10x3 Dmg Melee",
     "game": "Rogue",
     "location": "General",
     "dice": [
