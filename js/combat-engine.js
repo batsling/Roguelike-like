@@ -223,6 +223,45 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
         bloodVialEffect.onCombatStart();
       }
     }
+
+    // Garlic: apply +1 Brace per Garlic in inventory
+    const garlicCount = inventory.filter(i => i.name === 'Garlic').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (garlicCount > 0) {
+      combatState.player.statuses['brace'] = (combatState.player.statuses['brace'] || 0) + garlicCount;
+      addLog(`Garlic: +${garlicCount} Brace`, 'info');
+    }
+
+    // Leech Brood: inflict +1 Leeches to all enemies at start of conflict
+    // If player is above 50% health, lose 10 health
+    if (inventory.some(i => i.name === 'Leech Brood')) {
+      combatState.enemies.forEach(enemy => {
+        enemy.statuses['leeches'] = (enemy.statuses['leeches'] || 0) + 1;
+        enemy.statuses['leeches_owner'] = 'player';
+      });
+      addLog('Leech Brood: +1 Leeches on all enemies', 'warning');
+      if (combatState.player.health > combatState.player.maxHealth * 0.5) {
+        combatState.player.health = Math.max(1, combatState.player.health - 10);
+        window.health = combatState.player.health;
+        addLog('Leech Brood: you were above 50% health — lost 10 HP!', 'danger');
+      }
+    }
+
+    // Raven Feather: inflict Soul Link on 2 random enemies at start of conflict
+    if (inventory.some(i => i.name === 'Raven Feather')) {
+      const living = combatState.enemies.filter(e => e.health > 0);
+      const targets = living.sort(() => Math.random() - 0.5).slice(0, 2);
+      targets.forEach(e => {
+        e.statuses['soul_link'] = 1;
+      });
+      if (targets.length > 0) {
+        addLog(`Raven Feather: Soul Link on ${targets.map(e => e.name).join(', ')}`, 'warning');
+      }
+    }
+
+    // Horn Cleat: handled in processPlayerStartOfTurn (start of turn 2 → +14 Block)
+    if (inventory.some(i => i.name === 'Horn Cleat')) {
+      combatState._hornCleatPending = true;
+    }
   }
 
   // Roll enemy intents
@@ -1290,6 +1329,21 @@ function dealDamage(target, damage, addons = []) {
     dmg = Math.ceil(dmg * 1.5);
   }
 
+  // Check Bruise (melee/ranged attacks deal +1 per stack)
+  const bruiseStacks = target.statuses['bruise'] || 0;
+  const isMeleeOrRanged = !addons.includes('self');
+  if (bruiseStacks > 0 && isMeleeOrRanged) {
+    dmg += bruiseStacks;
+  }
+
+  // Check Holy Shield (negate the hit entirely, takes precedence over block)
+  if (target.statuses['holy_shield'] && target.statuses['holy_shield'] > 0 && !addons.includes('self')) {
+    target.statuses['holy_shield']--;
+    if (target.statuses['holy_shield'] <= 0) delete target.statuses['holy_shield'];
+    addLog(`${target.name || 'Player'}'s Holy Shield absorbed the hit!`, 'success');
+    return;
+  }
+
   // Check Dodge
   const dodgeStacks = target.statuses['dodge'] || 0;
   if (dodgeStacks > 0 && !addons.includes('self')) {
@@ -1311,6 +1365,12 @@ function dealDamage(target, damage, addons = []) {
       target.statuses['stun'] = (target.statuses['stun'] || 0) + 1;
       addLog(`${target.name} is staggered by the heavy hit!`, 'warning');
     }
+  }
+
+  // Check Brace (reduce incoming damage by 1 per stack, minimum 1 total)
+  const braceStacks = target.statuses['brace'] || 0;
+  if (braceStacks > 0) {
+    dmg = Math.max(1, dmg - braceStacks);
   }
 
   // Apply block first
@@ -1356,6 +1416,20 @@ function dealDamage(target, damage, addons = []) {
     if (target.statuses['formless']) {
       rollEnemyIntent(target);
       addLog(`${target.name} rerolled intent due to Formless`, 'info');
+    }
+
+    // Soul Link — propagate health loss to all other soul-linked units
+    if (target.statuses['soul_link'] && !combatState._soulLinkPropagating) {
+      combatState._soulLinkPropagating = true;
+      combatState.enemies.forEach(e => {
+        if (e !== target && e.health > 0 && e.statuses['soul_link']) {
+          dealDamage(e, remainingDamage, ['self']);
+        }
+      });
+      if (target !== combatState.player && combatState.player.statuses['soul_link']) {
+        dealDamageToPlayer(remainingDamage, ['self'], null);
+      }
+      combatState._soulLinkPropagating = false;
     }
 
     // Trigger on-death ability for enemies that just died
@@ -1699,6 +1773,14 @@ function executeWhenDefeatedClause(enemy, clause) {
 function onEnemyDefeated(enemy) {
   if (enemy.onDeathTriggered) return;
   enemy.onDeathTriggered = true;
+
+  // Metal Plate: when you kill an enemy, gain +1 Brace
+  const inv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+  if (inv.some(i => i.name === 'Metal Plate')) {
+    combatState.player.statuses['brace'] = (combatState.player.statuses['brace'] || 0) + 1;
+    addLog('Metal Plate: +1 Brace!', 'success');
+  }
+
   if (!enemy.ability) return;
   const m = enemy.ability.match(/When Defeated,?\s*(.+)/i);
   if (!m) return;
@@ -1733,6 +1815,13 @@ function processPlayerStartOfTurn() {
   // Clear block at start of player turn (unless Barricade)
   if (!combatState.player.statuses['barricade']) {
     if (combatState.player.block > 0) combatState.player.block = 0;
+  }
+
+  // Horn Cleat: +14 Block at the start of the second turn
+  if (combatState._hornCleatPending && combatState.turn === 2) {
+    addBlock(combatState.player, 14);
+    addLog('Horn Cleat: +14 Block!', 'success');
+    combatState._hornCleatPending = false;
   }
 
   // Draw cards for this turn
@@ -1824,6 +1913,22 @@ function endTurn() {
     combatState.player.block = 0;
   } else {
     combatState.player.block = Math.floor(combatState.player.block / 2);
+  }
+
+  // Leeches: drain health from all enemies leeched by the player, heal the player
+  let playerLeechHeal = 0;
+  combatState.enemies.forEach(enemy => {
+    if (enemy.health > 0 && enemy.statuses['leeches'] && enemy.statuses['leeches_owner'] === 'player') {
+      const drain = enemy.statuses['leeches'];
+      enemy.health = Math.max(0, enemy.health - drain);
+      playerLeechHeal += drain;
+      if (enemy.health <= 0) onEnemyDefeated(enemy);
+    }
+  });
+  if (playerLeechHeal > 0) {
+    combatState.player.health = Math.min(combatState.player.maxHealth, combatState.player.health + playerLeechHeal);
+    window.health = combatState.player.health;
+    addLog(`Leeches drained ${playerLeechHeal} health → healed player`, 'success');
   }
 
   // Process player end of turn status effects
@@ -2157,6 +2262,21 @@ function dealDamageToPlayer(damage, addons, enemy) {
     damage = Math.ceil(damage * 1.5);
   }
 
+  // Check Bruise (melee/ranged attacks deal +1 per stack)
+  const bruiseStacks = player.statuses['bruise'] || 0;
+  const isDirectHit = !addons || !addons.includes('self');
+  if (bruiseStacks > 0 && isDirectHit) {
+    damage += bruiseStacks;
+  }
+
+  // Check Holy Shield (negate the hit entirely, takes precedence over block)
+  if (player.statuses['holy_shield'] && player.statuses['holy_shield'] > 0 && isDirectHit) {
+    player.statuses['holy_shield']--;
+    if (player.statuses['holy_shield'] <= 0) delete player.statuses['holy_shield'];
+    addLog('Holy Shield absorbed the hit!', 'success');
+    return;
+  }
+
   // Check Dodge
   if (player.statuses['dodge'] && player.statuses['dodge'] > 0) {
     player.statuses['dodge']--;
@@ -2165,6 +2285,12 @@ function dealDamageToPlayer(damage, addons, enemy) {
     }
     addLog('Dodged!', 'success');
     return;
+  }
+
+  // Check Brace (reduce incoming damage by 1 per stack, minimum 1 total)
+  const braceStacks = player.statuses['brace'] || 0;
+  if (braceStacks > 0) {
+    damage = Math.max(1, damage - braceStacks);
   }
 
   // Apply block
@@ -2182,7 +2308,34 @@ function dealDamageToPlayer(damage, addons, enemy) {
   if (remaining > 0) {
     player.health -= remaining;
     window.health = player.health;
-    addLog(`${enemy.name} dealt ${remaining} damage!`, 'danger');
+    addLog(`${enemy ? enemy.name : 'Unknown'} dealt ${remaining} damage!`, 'danger');
+
+    // Soul Link — propagate health loss to all soul-linked enemies
+    if (player.statuses['soul_link'] && !combatState._soulLinkPropagating) {
+      combatState._soulLinkPropagating = true;
+      combatState.enemies.forEach(e => {
+        if (e.health > 0 && e.statuses['soul_link']) {
+          dealDamage(e, remaining, ['self']);
+        }
+      });
+      combatState._soulLinkPropagating = false;
+    }
+
+    // Prayer Card — 33% chance to gain +1 Holy Shield when taking damage
+    const inv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+    if (inv.some(i => i.name === 'Prayer Card') && isDirectHit) {
+      if (Math.random() < 0.33) {
+        player.statuses['holy_shield'] = (player.statuses['holy_shield'] || 0) + 1;
+        addLog('Prayer Card: +1 Holy Shield!', 'success');
+      }
+    }
+
+    // Prayer Beads — +3 temporary Brace until end of next turn when taking damage
+    if (inv.some(i => i.name === 'Prayer Beads') && isDirectHit) {
+      player.statuses['brace'] = (player.statuses['brace'] || 0) + 3;
+      player.statuses['brace_temp'] = (player.statuses['brace_temp'] || 0) + 3;
+      addLog('Prayer Beads: +3 temporary Brace!', 'success');
+    }
 
     // Player Thorns — melee attacker takes X damage back
     if (player.statuses['thorns'] && enemy && !addons.includes('Ranged')) {
@@ -2296,8 +2449,24 @@ function processStatusEffects(target, timing) {
       addLog('Oiled: lost 1 energy', 'warning');
     }
 
+    // Regeneration: heal X health at end of turn
+    if (statuses['regeneration'] && statuses['regeneration'] > 0) {
+      const regenAmount = statuses['regeneration'];
+      target.health = Math.min(target.maxHealth, target.health + regenAmount);
+      if (target === combatState.player) window.health = target.health;
+      addLog(`${target.name || 'Player'} regenerated ${regenAmount} health`, 'success');
+    }
+
+    // Prayer Beads temporary Brace: remove the temp stacks accumulated this combat
+    if (target === combatState.player && statuses['brace_temp'] && statuses['brace_temp'] > 0) {
+      const tempBrace = statuses['brace_temp'];
+      statuses['brace'] = Math.max(0, (statuses['brace'] || 0) - tempBrace);
+      if (statuses['brace'] <= 0) delete statuses['brace'];
+      delete statuses['brace_temp'];
+    }
+
     // Decay statuses
-    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade', 'vulnerable', 'weak'];
+    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration'];
     decayStatuses.forEach(status => {
       if (statuses[status]) {
         statuses[status]--;
@@ -2557,6 +2726,30 @@ function resolveCardEffect(card, target) {
         });
       } else if (target) {
         for (let t = 0; t < times; t++) dealDamage(target, dmg);
+      }
+
+      // Strike triggers (Attack cards dealing direct damage)
+      if ((card.type || '').toLowerCase() === 'attack' && target) {
+        const inv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+
+        // Bird Head: Strikes inflict Soul Link
+        if (inv.some(i => i.name === 'Bird Head')) {
+          target.statuses['soul_link'] = 1;
+          addLog(`Bird Head: ${target.name} is Soul Linked!`, 'warning');
+        }
+
+        // Brass Knuckles: Strikes inflict Bruise
+        if (inv.some(i => i.name === 'Brass Knuckles')) {
+          target.statuses['bruise'] = (target.statuses['bruise'] || 0) + 1;
+          addLog(`Brass Knuckles: ${target.name} gains 1 Bruise!`, 'warning');
+        }
+
+        // Jar of Leeches: Strikes inflict Leeches
+        if (inv.some(i => i.name === 'Jar of Leeches')) {
+          target.statuses['leeches'] = (target.statuses['leeches'] || 0) + 1;
+          target.statuses['leeches_owner'] = 'player';
+          addLog(`Jar of Leeches: ${target.name} gains 1 Leeches!`, 'warning');
+        }
       }
       continue;
     }

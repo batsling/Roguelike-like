@@ -81,7 +81,7 @@ var ITEMS_DATA = [
     "unlockCondition": "N/A"
   },
   {
-    "name": "Stabilizar Arm Locks",
+    "name": "Stabilizer Arm Locks",
     "rarity": "Rare",
     "type": "Passive",
     "description": "Gain +6 Dexterity",
@@ -504,6 +504,196 @@ var ITEMS_DATA = [
     "game": "Vampire Survivors",
     "tags": [],
     "image": "images/items/HollowHeart.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Toxic Egg",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "Whenever you add a Skill card to your deck, Upgrade it",
+    "game": "Slay the Spire",
+    "tags": ["egg"],
+    "image": "images/items/ToxicEgg.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Molten Egg",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "Whenever you add an Attack card to your deck, Upgrade it",
+    "game": "Slay the Spire",
+    "tags": ["egg"],
+    "image": "images/items/MoltenEgg.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Frozen Egg",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "Whenever you add a Power card to your deck, Upgrade it",
+    "game": "Slay the Spire",
+    "tags": ["egg"],
+    "image": "images/items/FrozenEgg.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Bird Head",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "Your Strikes inflict Soul Link",
+    "game": "Mewgenics",
+    "tags": ["bird"],
+    "image": "images/items/BirdHead.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Prayer Card",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "33% chance to gain +1 Holy Shield each time you take damage",
+    "game": "Mewgenics",
+    "tags": ["card", "paper", "holy", "cardboard"],
+    "image": "images/items/PrayerCard.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Brass Knuckles",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "Your Strikes inflict Bruise",
+    "game": "Mewgenics",
+    "tags": [],
+    "image": "images/items/BrassKnuckles.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Leech Brood",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "At the start of conflict, inflict +1 Leeches to all enemies. If you start combat above 50% health, lose 10 health",
+    "game": "Mewgenics",
+    "tags": ["leech"],
+    "image": "images/items/LeechBrood.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Jar of Leeches",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "Your Strikes inflict Leeches",
+    "game": "Mewgenics",
+    "tags": ["leech", "jar"],
+    "image": "images/items/JarOfLeeches.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Metal Plate",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "When you kill an enemy, Gain +1 Brace",
+    "game": "Mewgenics",
+    "tags": ["scrap"],
+    "image": "images/items/MetalPlate.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Prayer Beads",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "Whenever you take damage, gain temporary +3 Brace until end of your next turn",
+    "game": "Mewgenics",
+    "tags": ["monk", "wearable", "necklace"],
+    "image": "images/items/PrayerBeads.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Raven Feather",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "At the start of conflict, inflict Soul Link on 2 random enemies",
+    "game": "Mewgenics",
+    "tags": ["bird"],
+    "image": "images/items/RavenFeather.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Percs",
+    "rarity": "Common",
+    "type": "Usable",
+    "description": "Gain +10 Block",
+    "game": "Mewgenics",
+    "tags": ["drug", "pill", "consumable"],
+    "image": "images/items/Percs.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Roid Rage",
+    "rarity": "Common",
+    "type": "Usable",
+    "description": "Gain +5 Strength this combat/event",
+    "game": "Mewgenics",
+    "tags": ["drug", "pill", "consumable"],
+    "image": "images/items/RoidRage.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Speedball",
+    "rarity": "Common",
+    "type": "Usable",
+    "description": "Gain +5 Dexterity this combat/event",
+    "game": "Mewgenics",
+    "tags": ["drug", "pill", "consumable"],
+    "image": "images/items/Speedball.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Brain Candy",
+    "rarity": "Common",
+    "type": "Usable",
+    "description": "Gain +5 Intelligence this combat/event",
+    "game": "Mewgenics",
+    "tags": ["drug", "pill", "consumable"],
+    "image": "images/items/BrainCandy.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Clover",
+    "rarity": "Common",
+    "type": "Usable",
+    "description": "Gain +5 Luck this combat/event",
+    "game": "Mewgenics",
+    "tags": ["drug", "pill", "consumable"],
+    "image": "images/items/Clover.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Disco Biscuit",
+    "rarity": "Common",
+    "type": "Usable",
+    "description": "Gain +5 Charisma this combat/event",
+    "game": "Mewgenics",
+    "tags": ["drug", "pill", "consumable"],
+    "image": "images/items/DiscoBiscuit.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Stem Cells",
+    "rarity": "Uncommon",
+    "type": "Usable",
+    "description": "Gain +3 Regeneration",
+    "game": "Mewgenics",
+    "tags": ["consumable"],
+    "image": "images/items/StemCells.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Paper Bag",
+    "rarity": "Rare",
+    "type": "Scaling",
+    "description": "Your Charisma is equal to your highest stat",
+    "game": "Mewgenics",
+    "tags": ["wearable", "paper"],
+    "image": "images/items/PaperBag.png",
     "unlockCondition": "N/A"
   }
 ];

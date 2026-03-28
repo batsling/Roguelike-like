@@ -99,6 +99,19 @@ function recalculateScalablePassives() {
     }
   }
 
+  // Paper Bag: Charisma equals the player's highest stat
+  const hasPaperBag = inventory.some(item => item.name === 'Paper Bag');
+  if (hasPaperBag) {
+    const baseCha = typeof charisma !== 'undefined' ? charisma : 0;
+    const baseStr = typeof strength !== 'undefined' ? strength : 0;
+    const baseDex = typeof dexterity !== 'undefined' ? dexterity : 0;
+    const baseInt = typeof intelligence !== 'undefined' ? intelligence : 0;
+    const highest = Math.max(baseStr, baseDex, baseInt, baseCha);
+    if (highest > baseCha) {
+      bonuses.charisma = (bonuses.charisma || 0) + (highest - baseCha);
+    }
+  }
+
   // Add more scalable passive items here as they're added to the game
 
   return bonuses;
@@ -823,8 +836,101 @@ const ITEM_EFFECTS = {
 
   "Horn Cleat": {
     onAcquire: () => {
-      // Effect is applied in combat turn 2
-      console.log('Acquired Horn Cleat: +5 Block at start of turn 2');
+      // Effect is applied in combat turn 2 via initCombat flag
+      console.log('Acquired Horn Cleat: +14 Block at start of turn 2');
+    }
+  },
+
+  // ===== MEWGENICS USABLE ITEMS =====
+
+  "Percs": {
+    uses: 1,
+    canUse: () => gameState.phase === 'combat',
+    onUse: () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+      if (cs && cs.player) {
+        cs.player.block = (cs.player.block || 0) + 10;
+        if (cs.log) cs.log.push({ message: 'Percs: +10 Block!', type: 'success' });
+        createNotification('Percs: +10 Block!', COLORS.SUCCESS, '💊');
+      }
+    }
+  },
+
+  "Roid Rage": {
+    uses: 1,
+    canUse: () => gameState.phase === 'combat',
+    onUse: () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+      if (cs && cs.player) {
+        cs.player.statuses['strength'] = (cs.player.statuses['strength'] || 0) + 5;
+        if (cs.log) cs.log.push({ message: 'Roid Rage: +5 Strength this combat!', type: 'success' });
+        createNotification('Roid Rage: +5 Strength!', COLORS.SUCCESS, '💊');
+      }
+    }
+  },
+
+  "Speedball": {
+    uses: 1,
+    canUse: () => gameState.phase === 'combat',
+    onUse: () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+      if (cs && cs.player) {
+        cs.player.statuses['dexterity'] = (cs.player.statuses['dexterity'] || 0) + 5;
+        if (cs.log) cs.log.push({ message: 'Speedball: +5 Dexterity this combat!', type: 'success' });
+        createNotification('Speedball: +5 Dexterity!', COLORS.SUCCESS, '💊');
+      }
+    }
+  },
+
+  "Brain Candy": {
+    uses: 1,
+    canUse: () => gameState.phase === 'combat',
+    onUse: () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+      if (cs && cs.player) {
+        cs.player.statuses['intelligence'] = (cs.player.statuses['intelligence'] || 0) + 5;
+        if (cs.log) cs.log.push({ message: 'Brain Candy: +5 Intelligence this combat!', type: 'success' });
+        createNotification('Brain Candy: +5 Intelligence!', COLORS.SUCCESS, '💊');
+      }
+    }
+  },
+
+  "Clover": {
+    uses: 1,
+    canUse: () => gameState.phase === 'combat',
+    onUse: () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+      if (cs && cs.player) {
+        cs.player.statuses['luck_bonus'] = (cs.player.statuses['luck_bonus'] || 0) + 5;
+        if (cs.log) cs.log.push({ message: 'Clover: +5 Luck this combat!', type: 'success' });
+        createNotification('Clover: +5 Luck!', COLORS.SUCCESS, '🍀');
+      }
+    }
+  },
+
+  "Disco Biscuit": {
+    uses: 1,
+    canUse: () => gameState.phase === 'combat',
+    onUse: () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+      if (cs && cs.player) {
+        cs.player.statuses['charisma'] = (cs.player.statuses['charisma'] || 0) + 5;
+        if (cs.log) cs.log.push({ message: 'Disco Biscuit: +5 Charisma this combat!', type: 'success' });
+        createNotification('Disco Biscuit: +5 Charisma!', COLORS.SUCCESS, '💊');
+      }
+    }
+  },
+
+  "Stem Cells": {
+    uses: 1,
+    canUse: () => gameState.phase === 'combat',
+    onUse: () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+      if (cs && cs.player) {
+        cs.player.statuses['regeneration'] = (cs.player.statuses['regeneration'] || 0) + 3;
+        if (cs.log) cs.log.push({ message: 'Stem Cells: +3 Regeneration!', type: 'success' });
+        createNotification('Stem Cells: +3 Regeneration!', COLORS.SUCCESS, '🧫');
+      }
     }
   }
 };
