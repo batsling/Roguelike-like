@@ -841,6 +841,27 @@ const ITEM_EFFECTS = {
     }
   },
 
+  "Molten Egg": {
+    onAcquire: () => {
+      // Effect applied in addCardToDeck: auto-upgrades Attack cards added to deck
+      console.log('Acquired Molten Egg: Attack cards added to deck are auto-upgraded');
+    }
+  },
+
+  "Toxic Egg": {
+    onAcquire: () => {
+      // Effect applied in addCardToDeck: auto-upgrades Skill cards added to deck
+      console.log('Acquired Toxic Egg: Skill cards added to deck are auto-upgraded');
+    }
+  },
+
+  "Frozen Egg": {
+    onAcquire: () => {
+      // Effect applied in addCardToDeck: auto-upgrades Power cards added to deck
+      console.log('Acquired Frozen Egg: Power cards added to deck are auto-upgraded');
+    }
+  },
+
   // ===== MEWGENICS USABLE ITEMS =====
 
   "Percs": {

@@ -75,6 +75,33 @@ function selectCardRewards() {
 function addCardToDeck(card) {
   if (!gameState.deck) gameState.deck = [];
   gameState.deck.push({ ...card, upgraded: false });
+
+  // Egg items: auto-upgrade the card if it matches the egg's type
+  const inv = typeof inventory !== 'undefined' ? inventory : [];
+  const newIndex = gameState.deck.length - 1;
+  const cardType = (card.type || '').toLowerCase();
+
+  if (!card.isStatusCard && !card.upgraded && card.upgradedDescription) {
+    const shouldUpgrade =
+      (cardType === 'attack' && inv.some(i => i.name === 'Molten Egg')) ||
+      (cardType === 'skill'  && inv.some(i => i.name === 'Toxic Egg'))  ||
+      (cardType === 'power'  && inv.some(i => i.name === 'Frozen Egg'));
+
+    if (shouldUpgrade) {
+      const addedCard = gameState.deck[newIndex];
+      addedCard.upgraded = true;
+      addedCard.description = card.upgradedDescription;
+      if (card.upgradedCost !== null && card.upgradedCost !== undefined) {
+        addedCard.cost = card.upgradedCost;
+      }
+      if (typeof createNotification === 'function') {
+        createNotification(`${card.name} added to deck (upgraded by Egg)!`, '#ff9800', '🥚');
+      }
+      saveCurrentGame();
+      return;
+    }
+  }
+
   if (typeof createNotification === 'function') {
     createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
   }
