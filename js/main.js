@@ -2257,6 +2257,16 @@ function showCombatModal() {
   // Initialize combat state
   const combat = window.CombatState.initializeCombat(enemy);
 
+  // Apply any statuses queued by pre-combat events
+  if (Array.isArray(gameState.pendingCombatStatuses) && gameState.pendingCombatStatuses.length > 0) {
+    for (const pending of gameState.pendingCombatStatuses) {
+      if (combat && combat.playerStatuses) {
+        combat.playerStatuses[pending.status] = (combat.playerStatuses[pending.status] || 0) + (pending.stacks || 1);
+      }
+    }
+    gameState.pendingCombatStatuses = [];
+  }
+
   const enemyImagePath = getEnemyImagePath(enemy.name);
   const playerImagePath = getPlayerImagePath();
 
@@ -4255,6 +4265,17 @@ function showDiceCombatModal() {
   if (!combatState) {
     console.error('Failed to initialize combat');
     return;
+  }
+
+  // Apply statuses queued by pre-combat events (e.g. frail from event outcomes)
+  if (Array.isArray(gameState.pendingCombatStatuses) && gameState.pendingCombatStatuses.length > 0) {
+    for (const pending of gameState.pendingCombatStatuses) {
+      if (combatState.player && combatState.player.statuses) {
+        const key = pending.status.toLowerCase();
+        combatState.player.statuses[key] = (combatState.player.statuses[key] || 0) + (pending.stacks || 1);
+      }
+    }
+    gameState.pendingCombatStatuses = [];
   }
 
   // Create modal HTML container
