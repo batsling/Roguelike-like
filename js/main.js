@@ -144,6 +144,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     mapBtn.addEventListener('click', showMapModal);
   }
 
+  const deckBtn = document.getElementById('deck-btn');
+  if (deckBtn) {
+    deckBtn.addEventListener('click', () => {
+      if (typeof showDeckModal === 'function') showDeckModal();
+    });
+  }
+
   const lootBtn = document.getElementById('loot-btn');
   if (lootBtn) {
     lootBtn.addEventListener('click', showLootModal);
@@ -407,9 +414,9 @@ function loadSavedGame(saveName) {
   document.getElementById('main-menu').style.display = 'none';
   document.getElementById('dungeon-screen').style.display = 'flex';
 
-  // Show map button when in game
-  const mapBtn = document.getElementById('map-btn');
-  if (mapBtn) mapBtn.style.display = 'inline-block';
+  // Show top-right buttons when in game
+  const topBarRight = document.getElementById('top-bar-right');
+  if (topBarRight) topBarRight.style.display = 'flex';
 
   // Show or hide elements based on escape phase
   if (gameState.escapePhase) {
@@ -666,9 +673,9 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   document.getElementById('main-menu').style.display = 'none';
   document.getElementById('dungeon-screen').style.display = 'flex';
 
-  // Show map button when in game
-  const mapBtn = document.getElementById('map-btn');
-  if (mapBtn) mapBtn.style.display = 'inline-block';
+  // Show top-right buttons when in game
+  const topBarRight = document.getElementById('top-bar-right');
+  if (topBarRight) topBarRight.style.display = 'flex';
 
   // Show the normal game elements
   document.getElementById('path-viewport').style.display = 'block';
@@ -800,9 +807,9 @@ document.getElementById('return-menu')?.addEventListener('click', () => {
     document.getElementById('dungeon-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
 
-    // Hide map button when in menu
-    const mapBtn = document.getElementById('map-btn');
-    if (mapBtn) mapBtn.style.display = 'none';
+    // Hide top-right buttons when in menu
+    const topBarRight = document.getElementById('top-bar-right');
+    if (topBarRight) topBarRight.style.display = 'none';
   }
 });
 
@@ -818,9 +825,9 @@ document.getElementById('return-menu-top')?.addEventListener('click', () => {
       document.getElementById('dungeon-screen').style.display = 'none';
       document.getElementById('main-menu').style.display = 'flex';
 
-      // Hide map button when in menu
-      const mapBtn = document.getElementById('map-btn');
-      if (mapBtn) mapBtn.style.display = 'none';
+      // Hide top-right buttons when in menu
+      const topBarRight = document.getElementById('top-bar-right');
+      if (topBarRight) topBarRight.style.display = 'none';
     }
   }
 });
@@ -4035,8 +4042,8 @@ function showCombatModal() {
         }
         document.getElementById('dungeon-screen').style.display = 'none';
         document.getElementById('main-menu').style.display = 'flex';
-        const mapBtn = document.getElementById('map-btn');
-        if (mapBtn) mapBtn.style.display = 'none';
+        const topBarRight = document.getElementById('top-bar-right');
+        if (topBarRight) topBarRight.style.display = 'none';
       };
 
       document.getElementById('death-retry-btn').onclick = () => {
@@ -4054,8 +4061,8 @@ function showCombatModal() {
         }
         document.getElementById('dungeon-screen').style.display = 'none';
         document.getElementById('main-menu').style.display = 'flex';
-        const mapBtn = document.getElementById('map-btn');
-        if (mapBtn) mapBtn.style.display = 'none';
+        const topBarRight = document.getElementById('top-bar-right');
+        if (topBarRight) topBarRight.style.display = 'none';
 
         setTimeout(() => {
           document.getElementById('new-game-btn')?.click();
@@ -4501,8 +4508,8 @@ function handleDiceCombatDefeat(enemy) {
     if (typeof clearAllArrows === 'function') clearAllArrows();
     document.getElementById('dungeon-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
-    const mapBtn = document.getElementById('map-btn');
-    if (mapBtn) mapBtn.style.display = 'none';
+    const topBarRight = document.getElementById('top-bar-right');
+    if (topBarRight) topBarRight.style.display = 'none';
   };
 
   document.getElementById('dice-death-retry-btn').onclick = () => {
@@ -4510,8 +4517,8 @@ function handleDiceCombatDefeat(enemy) {
     if (typeof clearAllArrows === 'function') clearAllArrows();
     document.getElementById('dungeon-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
-    const mapBtn = document.getElementById('map-btn');
-    if (mapBtn) mapBtn.style.display = 'none';
+    const topBarRight = document.getElementById('top-bar-right');
+    if (topBarRight) topBarRight.style.display = 'none';
     setTimeout(() => {
       document.getElementById('new-game-btn')?.click();
     }, 100);

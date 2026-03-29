@@ -2600,9 +2600,11 @@ text, path, line, g {
 }
 
 /* Utility classes for inline style removal (HTML Code Review fixes) */
-#top-bar button.map-btn-spacing {
-  margin-left: auto;
+#top-bar-right {
   margin-right: 120px;
+  display: none;
+  gap: 8px;
+  align-items: center;
 }
 
 .path-container-layout {
