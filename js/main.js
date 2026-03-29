@@ -4691,11 +4691,18 @@ function confirmLevelUp() {
     }
   }
 
+  // Sync stats to gameState
+  gameState.strength = strength;
+  gameState.dexterity = dexterity;
+  gameState.intelligence = intelligence;
+  gameState.charisma = charisma;
+  gameState.luck = luck;
+
   // Update UI
   updateTopBar();
   saveCurrentGame();
 
-  // Show stat bonuses first, then dice level-up choice
+  // Show stat bonuses, then offer card reward
   createGameModal(`
     <div style="text-align: center; padding: 20px; max-width: 500px;">
       <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
@@ -4711,36 +4718,26 @@ function confirmLevelUp() {
         </p>
         <div style="display: flex; flex-direction: column; gap: 8px;">
           ${appliedBonuses.length > 0 ? appliedBonuses.map(b => `
-            <div style="color: #fff; font-size: 14px;">
-              ${b}
-            </div>
+            <div style="color: #fff; font-size: 14px;">${b}</div>
           `).join('') : '<div style="color: #888; font-size: 14px;">No stat bonuses</div>'}
         </div>
       </div>
-      <button id="proceed-to-dice-levelup-btn" style="
+      <button id="proceed-to-card-reward-btn" style="
         padding: 12px 30px;
-        background: linear-gradient(145deg, #FFD700, #FFA000);
-        border: 2px solid #FFD700;
+        background: linear-gradient(145deg, #9b59b6, #7d3c98);
+        border: 2px solid #9b59b6;
         border-radius: 8px;
-        color: #000;
+        color: #fff;
         font-weight: bold;
         cursor: pointer;
         font-size: 16px;
-      ">🎲 Choose Dice Upgrade</button>
+      ">🃏 Choose Card Reward</button>
     </div>
   `);
 
-  // Attach click handler for proceeding to dice level-up
-  document.getElementById('proceed-to-dice-levelup-btn').onclick = () => {
+  document.getElementById('proceed-to-card-reward-btn').onclick = () => {
     closeGameModal();
-    // Show dice level-up choice modal
-    showDiceLevelUpChoiceModal(characterKey, (diceResult) => {
-      // Show final result
-      if (diceResult) {
-        createNotification(diceResult, '#FFD700', '🎲');
-      }
-      saveCurrentGame();
-    });
+    showCardRewardModal(() => { saveCurrentGame(); });
   };
 }
 
@@ -5185,9 +5182,110 @@ function showDiceLevelUpChoiceModal(characterKey, onComplete) {
   });
 }
 
+/**
+ * Show a card reward picker: player chooses 1 of 3 random cards.
+ * Luck shifts the rarity distribution toward Uncommon/Rare.
+ * @param {Function} onComplete - Called after a card is chosen or skipped
+ */
+function showCardRewardModal(onComplete) {
+  const rarityColor = (rarity) => {
+    switch (rarity) {
+      case 'Rare':     return '#9b59b6';
+      case 'Uncommon': return '#4CAF50';
+      case 'Common':   return '#aaa';
+      default:         return '#666';
+    }
+  };
+
+  // Pick one card with luck-weighted rarity, excluding already-seen names
+  function pickOne(exclude) {
+    const currentLuck = typeof luck !== 'undefined' ? luck : (gameState.luck || 0);
+    const wCommon   = Math.max(10, 70 - currentLuck * 3);
+    const wUncommon = Math.min(65, 25 + currentLuck * 2);
+    const wRare     = Math.min(45,  5 + currentLuck);
+    const total     = wCommon + wUncommon + wRare;
+
+    const pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
+      .filter(c => c.rarity && c.rarity !== 'Starter' && c.rarity !== 'N/A' && !exclude.has(c.name));
+    if (pool.length === 0) return null;
+
+    let roll = Math.random() * total;
+    let pickedRarity;
+    if      (roll < wCommon)              pickedRarity = 'Common';
+    else if (roll < wCommon + wUncommon)  pickedRarity = 'Uncommon';
+    else                                  pickedRarity = 'Rare';
+
+    let candidates = pool.filter(c => c.rarity === pickedRarity);
+    if (candidates.length === 0) candidates = pool;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  // Pick 3 unique cards
+  const chosen = [];
+  const seen   = new Set();
+  for (let i = 0; i < 3; i++) {
+    const card = pickOne(seen);
+    if (!card) break;
+    seen.add(card.name);
+    chosen.push(card);
+  }
+
+  if (chosen.length === 0) {
+    if (onComplete) onComplete();
+    return;
+  }
+
+  const cardsHTML = chosen.map((card, idx) => {
+    const color  = rarityColor(card.rarity);
+    const imgSrc = card.imageUrl || 'images/cards/default.png';
+    return `
+      <div class="card-reward-option" data-card-idx="${idx}" style="
+        background:#1e1e2e; border:2px solid ${color}; border-radius:12px;
+        padding:16px; display:flex; flex-direction:column; align-items:center;
+        width:155px; cursor:pointer;
+        transition: transform 0.15s, box-shadow 0.15s;
+      " onmouseenter="this.style.transform='translateY(-6px)'; this.style.boxShadow='0 8px 24px ${color}66';"
+         onmouseleave="this.style.transform=''; this.style.boxShadow='';">
+        <img src="${imgSrc}" alt="${card.name}"
+             style="width:80px;height:80px;object-fit:contain;margin-bottom:10px;"
+             onerror="this.style.display='none'">
+        <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:4px;">${card.name}</div>
+        <div style="color:${color};font-size:11px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
+        <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>
+        <div style="color:#ffd700;font-size:12px;font-weight:bold;">Cost: ${card.cost}</div>
+      </div>
+    `;
+  }).join('');
+
+  createGameModal(`
+    <div style="text-align:center; padding:20px; max-width:640px;">
+      <h2 style="color:#FFD700; margin-top:0; margin-bottom:8px;">🃏 Card Reward</h2>
+      <p style="color:#aaa; margin-bottom:20px; font-size:13px;">Choose a card to add to your deck:</p>
+      <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+        ${cardsHTML}
+      </div>
+      <button onclick="closeGameModal()" style="
+        margin-top:20px; padding:10px 24px;
+        background:#444; border:none; border-radius:8px;
+        color:#aaa; cursor:pointer; font-size:13px;
+      ">Skip</button>
+    </div>
+  `);
+
+  document.querySelectorAll('.card-reward-option').forEach(el => {
+    el.onclick = () => {
+      const card = chosen[parseInt(el.dataset.cardIdx)];
+      if (card && typeof addCardToDeck === 'function') addCardToDeck(card);
+      closeGameModal();
+      if (onComplete) onComplete();
+    };
+  });
+}
+
 // Make level-up functions globally available
 window.showLevelUpPrompt = showLevelUpPrompt;
 window.confirmLevelUp = confirmLevelUp;
+window.showCardRewardModal = showCardRewardModal;
 window.showDiceLevelUpChoiceModal = showDiceLevelUpChoiceModal;
 
 // ============== ALLY SYSTEM ==============

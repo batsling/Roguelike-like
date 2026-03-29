@@ -2351,8 +2351,6 @@ function dealDamageToPlayer(damage, addons, enemy) {
       }
     }
 
-    // Apply curse based on enemy type and difficulty
-    applyCurseFromEnemy(enemy);
   }
 }
 
