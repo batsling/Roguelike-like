@@ -619,9 +619,9 @@ function rollEnemyIntent(enemy) {
     const current = turns[idx];
 
     // Build a pseudo-face by parsing the description into executable effects
-    const { effects: parsedEffects } = parsePatternDescToEffects(current.description);
+    const parsedTurn = parsePatternDescToEffects(current.description);
     const isUnknownIntent = /unknown intent/i.test(current.description);
-    const pseudoFace = { isBlank: isUnknownIntent, effects: parsedEffects, raw: current.description };
+    const pseudoFace = { isBlank: isUnknownIntent, effects: parsedTurn.effects, raw: parsedTurn.text };
     enemy.currentIntent.push({ faceIndex: idx, face: pseudoFace, resolved: false });
 
     // Advance index; find "Next:" to determine loop point

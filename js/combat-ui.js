@@ -178,10 +178,12 @@ function renderEnemyCard(enemy, combat) {
   const hpColor      = hpPct > 50 ? '#27ae60' : hpPct > 25 ? '#f39c12' : '#c0392b';
   const imgSrc       = enemy.imageUrl || 'images/enemies/default.png';
 
+  const safePattern = (enemy.pattern || '').replace(/"/g, '&quot;');
   return `
     <div id="enemy-card-${enemy.id}"
          class="enemy-card${isTargeting ? ' enemy-targetable' : ''}"
          data-enemy-id="${enemy.id}"
+         data-full-pattern="${safePattern}"
          style="
       display: flex; flex-direction: column; align-items: center;
       opacity: ${isDead ? 0.2 : 1};
@@ -253,6 +255,61 @@ function renderEnemyCard(enemy, combat) {
       </div>
     </div>
   `;
+}
+
+// ============== ENEMY PATTERN TOOLTIP ==============
+
+function ensureEnemyPatternTooltip() {
+  if (!document.getElementById('enemy-pattern-tooltip')) {
+    const tip = document.createElement('div');
+    tip.id = 'enemy-pattern-tooltip';
+    tip.style.cssText = [
+      'position:fixed', 'z-index:9999', 'pointer-events:none',
+      'background:#1a1a2e', 'border:1px solid #9b59b6',
+      'border-radius:8px', 'padding:8px 12px',
+      'font-size:11px', 'color:#e0e0e0', 'line-height:1.7',
+      'max-width:280px', 'white-space:pre-wrap',
+      'box-shadow:0 4px 16px rgba(0,0,0,0.7)',
+      'display:none',
+    ].join(';');
+    document.body.appendChild(tip);
+  }
+}
+
+function formatEnemyPattern(pattern) {
+  if (!pattern) return 'No pattern data';
+  // Ordered: "Turn 1: X | Turn 2: Y | Next: Repeat"
+  if (/Turn \d+:/i.test(pattern)) {
+    return pattern.split('|').map(s => s.trim()).join('\n');
+  }
+  // Random: "Always: 75% X / 25% Y"
+  const body = pattern.replace(/^Always:\s*/i, '');
+  if (body.includes('%') && body.includes('/')) {
+    return 'Always:\n' + body.split('/').map(s => '  ' + s.trim()).join('\n');
+  }
+  return pattern;
+}
+
+function showEnemyPatternTooltip(el, e) {
+  const tip = document.getElementById('enemy-pattern-tooltip');
+  if (!tip) return;
+  tip.textContent = formatEnemyPattern(el.dataset.fullPattern || '');
+  tip.style.display = 'block';
+  positionEnemyPatternTooltip(e);
+}
+
+function hideEnemyPatternTooltip() {
+  const tip = document.getElementById('enemy-pattern-tooltip');
+  if (tip) tip.style.display = 'none';
+}
+
+function positionEnemyPatternTooltip(e) {
+  const tip = document.getElementById('enemy-pattern-tooltip');
+  if (!tip || tip.style.display === 'none') return;
+  const x = e.clientX + 14;
+  const y = e.clientY - 10;
+  tip.style.left = Math.min(x, window.innerWidth - 295) + 'px';
+  tip.style.top  = Math.min(y, window.innerHeight - tip.offsetHeight - 10) + 'px';
 }
 
 // ============== INTENT BADGE ==============
@@ -869,9 +926,13 @@ function attachCombatEventListeners(combat) {
     });
   }
 
-  // Enemy clicks
+  // Enemy clicks + pattern hover tooltip
+  ensureEnemyPatternTooltip();
   document.querySelectorAll('.enemy-card').forEach(el => {
     el.addEventListener('click', () => handleEnemyClick(el.dataset.enemyId));
+    el.addEventListener('mouseenter', (e) => showEnemyPatternTooltip(el, e));
+    el.addEventListener('mouseleave', () => hideEnemyPatternTooltip());
+    el.addEventListener('mousemove', (e) => positionEnemyPatternTooltip(e));
   });
 
   // Card hand: click + drag mousedown + tooltip (all per-render)
