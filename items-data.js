@@ -37,8 +37,8 @@ var ITEMS_DATA = [
   {
     "name": "Panda",
     "rarity": "Rare",
-    "type": "Passive",
-    "description": "Gain +10 Max Health and +2 Luck, but -2 Strength",
+    "type": "Pickup",
+    "description": "Gain +20 Max Health and +2 Luck, but -2 Strength",
     "game": "Brotato",
     "tags": [],
     "image": "images/items/Panda.png",
@@ -144,9 +144,9 @@ var ITEMS_DATA = [
     "name": "Vitality Orb",
     "rarity": "Rare",
     "type": "Triggered",
-    "description": "Gain +1 Max Health whenever you obtain a curse",
+    "description": "Gain +8 Max Health whenever you obtain a curse",
     "game": "Forward: Escape the Fold",
-    "tags": [],
+    "tags": ["orb"],
     "image": "images/items/VitalityOrb.png",
     "unlockCondition": "N/A"
   },
@@ -259,7 +259,7 @@ var ITEMS_DATA = [
     "name": "Beefy Ring",
     "rarity": "Rare",
     "type": "Scaling",
-    "description": "Gain scaling +1 Strength per 100 max health ",
+    "description": "Gain scaling +1 Strength per 20 max health",
     "game": "Megabonk",
     "tags": [
       "wearable",
@@ -447,7 +447,7 @@ var ITEMS_DATA = [
   {
     "name": "Lunch",
     "rarity": "Common",
-    "type": "Passive",
+    "type": "Pickup",
     "description": "Gain +3 Max Health and +3 Health",
     "game": "The Binding of Isaac",
     "tags": [
@@ -499,7 +499,7 @@ var ITEMS_DATA = [
   {
     "name": "Hollow Heart",
     "rarity": "Common",
-    "type": "Passive",
+    "type": "Pickup",
     "description": "Gain +5 Max Health",
     "game": "Vampire Survivors",
     "tags": [],
@@ -694,6 +694,76 @@ var ITEMS_DATA = [
     "game": "Mewgenics",
     "tags": ["wearable", "paper"],
     "image": "images/items/PaperBag.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Anchor",
+    "rarity": "Common",
+    "type": "Triggered",
+    "description": "At the start of combat, Gain +10 Block",
+    "game": "Slay the Spire",
+    "tags": ["sea", "ship"],
+    "image": "images/items/Anchor.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Bronze Scales",
+    "rarity": "Common",
+    "type": "Triggered",
+    "description": "At the start of combat, Gain +3 Thorns",
+    "game": "Slay the Spire",
+    "tags": ["metal"],
+    "image": "images/items/BronzeScales.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Death Orb",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "When you play a power, deal X damage to each enemy where X is the amount of curses you have",
+    "game": "Forward: Escape the Fold",
+    "tags": ["orb", "devilroom"],
+    "image": "images/items/DeathOrb.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Mummified Hand",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "When you play a power, a random card in your hand becomes free to play this turn",
+    "game": "Slay the Spire",
+    "tags": ["mummy"],
+    "image": "images/items/MummifiedHand.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Strike Dummy",
+    "rarity": "Common",
+    "type": "Triggered",
+    "description": "Your Strikes Gain +3 Dmg",
+    "game": "Slay the Spire",
+    "tags": ["wood"],
+    "image": "images/items/StrikeDummy.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Whetstone",
+    "rarity": "Common",
+    "type": "Pickup",
+    "description": "Upgrade 2 random Attacks",
+    "game": "Slay the Spire",
+    "tags": ["stone"],
+    "image": "images/items/Whetstone.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "War Paint",
+    "rarity": "Common",
+    "type": "Pickup",
+    "description": "Upgrade 2 random Skills",
+    "game": "Slay the Spire",
+    "tags": [],
+    "image": "images/items/WarPaint.png",
     "unlockCondition": "N/A"
   }
 ];

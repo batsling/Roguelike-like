@@ -262,6 +262,20 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     if (inventory.some(i => i.name === 'Horn Cleat')) {
       combatState._hornCleatPending = true;
     }
+
+    // Anchor: +10 Block at start of combat
+    const anchorCount = inventory.filter(i => i.name === 'Anchor').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (anchorCount > 0) {
+      combatState.player.block = (combatState.player.block || 0) + 10 * anchorCount;
+      addLog(`Anchor: +${10 * anchorCount} Block`, 'info');
+    }
+
+    // Bronze Scales: +3 Thorns at start of combat
+    const bronzeScalesCount = inventory.filter(i => i.name === 'Bronze Scales').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (bronzeScalesCount > 0) {
+      combatState.player.statuses['thorns'] = (combatState.player.statuses['thorns'] || 0) + 3 * bronzeScalesCount;
+      addLog(`Bronze Scales: +${3 * bronzeScalesCount} Thorns`, 'info');
+    }
   }
 
   // Roll enemy intents
@@ -2531,6 +2545,20 @@ function endCombat(victory) {
     }
   }
 
+  // Permanently destroy Training cards played this combat
+  if (combatState._destroyCards && combatState._destroyCards.length > 0 &&
+      typeof gameState !== 'undefined' && Array.isArray(gameState.deck)) {
+    for (const cardName of combatState._destroyCards) {
+      const idx = gameState.deck.findIndex(c => c.name === cardName);
+      if (idx !== -1) {
+        gameState.deck.splice(idx, 1);
+      }
+    }
+  }
+
+  // Restore free-cost overrides from Mummified Hand (cleanup)
+  // (Cards are already removed from hand; no action needed here)
+
   const result = {
     victory: victory,
     turns: combatState.turn,
@@ -2726,6 +2754,20 @@ function resolveCardEffect(card, target) {
         for (let t = 0; t < times; t++) dealDamage(target, dmg);
       }
 
+      // Strike Dummy: Attack cards deal +3 damage
+      if ((card.type || '').toLowerCase() === 'attack') {
+        const invSD = typeof window.inventory !== 'undefined' ? window.inventory : [];
+        const strikeDummyCount = invSD.filter(i => i.name === 'Strike Dummy').reduce((n, i) => n + (i.quantity || 1), 0);
+        if (strikeDummyCount > 0) {
+          const bonus = 3 * strikeDummyCount;
+          if (isAoECard) {
+            combatState.enemies.filter(e => e.health > 0).forEach(e => dealDamage(e, bonus));
+          } else if (target) {
+            dealDamage(target, bonus);
+          }
+        }
+      }
+
       // Strike triggers (Attack cards dealing direct damage)
       if ((card.type || '').toLowerCase() === 'attack' && target) {
         const inv = typeof window.inventory !== 'undefined' ? window.inventory : [];
@@ -2877,9 +2919,74 @@ function resolveCardEffect(card, target) {
     if (lower && lower !== 'n/a') addLog(`${card.name}: ${p}`, 'info');
   }
 
-  // Apply power_per_turn on Powers
-  if (card.type === 'Power') {
-    // Already tracked; effects above handled specifics
+  // Power-play triggers
+  if ((card.type || '').toLowerCase() === 'power') {
+    const invPow = typeof window.inventory !== 'undefined' ? window.inventory : [];
+
+    // Death Orb: deal damage to all enemies equal to number of active curses
+    if (invPow.some(i => i.name === 'Death Orb')) {
+      const curseCount = (typeof gameState !== 'undefined' && Array.isArray(gameState.activeCurses))
+        ? gameState.activeCurses.length : 0;
+      if (curseCount > 0) {
+        combatState.enemies.filter(e => e.health > 0).forEach(e => dealDamage(e, curseCount, ['self']));
+        addLog(`Death Orb: ${curseCount} curse damage to all enemies!`, 'warning');
+      }
+    }
+
+    // Mummified Hand: a random card in hand becomes free this turn
+    if (invPow.some(i => i.name === 'Mummified Hand')) {
+      const hand = combatState.hand;
+      if (hand && hand.length > 0) {
+        const idx = Math.floor(Math.random() * hand.length);
+        hand[idx]._freeCost = hand[idx].cost;
+        hand[idx].cost = 0;
+        addLog(`Mummified Hand: ${hand[idx].name} costs 0 this turn!`, 'success');
+      }
+    }
+  }
+
+  // Training card: apply permanent stat bonuses and mark for permanent destruction
+  if ((card.type || '').toLowerCase() === 'training') {
+    const desc = (card.upgraded ? card.upgradedDescription : card.description) || card.description || '';
+
+    // Parse "Permanently Gain +N StatName" patterns
+    const statMap = { strength: 'strength', dexterity: 'dexterity', intelligence: 'intelligence', charisma: 'charisma' };
+    const permRegex = /\+(\d+)\s+(strength|dexterity|intelligence|charisma)/gi;
+    let m;
+    while ((m = permRegex.exec(desc)) !== null) {
+      const val = parseInt(m[1]);
+      const stat = m[2].toLowerCase();
+      if (statMap[stat] !== undefined) {
+        if (typeof window[stat] !== 'undefined') window[stat] += val;
+        if (typeof gameState !== 'undefined') gameState[stat] = (gameState[stat] || 0) + val;
+        addLog(`${card.name}: permanently +${val} ${stat}!`, 'success');
+      }
+    }
+
+    // Runner's High: for every 10 missing health, gain +N Max Health
+    if (/every 10 health/i.test(desc)) {
+      const gainMatch = desc.match(/Gain \+(\d+) Max Health/i);
+      const gainPerTen = gainMatch ? parseInt(gainMatch[1]) : 2;
+      const missing = Math.max(0, (typeof maxHealth !== 'undefined' ? maxHealth : 0) - (typeof health !== 'undefined' ? health : 0));
+      const bonus = Math.floor(missing / 10) * gainPerTen;
+      if (bonus > 0 && typeof StateMutator !== 'undefined') {
+        StateMutator.modifyMaxHealth(bonus, { onlyMax: true });
+        addLog(`${card.name}: +${bonus} Max Health from missing health!`, 'success');
+      }
+    }
+
+    // Mark for permanent destruction from deck after combat
+    combatState._destroyCards = combatState._destroyCards || [];
+    combatState._destroyCards.push(card.name);
+
+    // Sync stats to gameState
+    if (typeof gameState !== 'undefined') {
+      ['strength', 'dexterity', 'intelligence', 'charisma'].forEach(s => {
+        if (typeof window[s] !== 'undefined') gameState[s] = window[s];
+      });
+    }
+
+    shouldExhaust = true; // Remove from hand (won't be shuffled back since we also destroy from deck)
   }
 
   return shouldExhaust;

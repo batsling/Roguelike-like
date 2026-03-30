@@ -312,8 +312,80 @@ var CARDS_DATA = [
     "isStatusCard": false,
     "imageUrl": "images/cards/Barricade.png",
     "game": "Slay the Spire",
-    "tags": [
-      "ironclad"
-    ]
+    "tags": ["ironclad"]
+  },
+  {
+    "name": "Claw",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Attack",
+    "description": "Deal 3 Dmg. Increase the damage of ALL Claw cards by 2 this combat.",
+    "upgradedDescription": "Deal 4 Dmg. Increase the damage of ALL Claw cards by 3 this combat.",
+    "upgradedCost": 0,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Claw.png",
+    "game": "Slay the Spire",
+    "tags": ["Defect"]
+  },
+  {
+    "name": "Target Practice",
+    "rarity": "Uncommon",
+    "cost": 3,
+    "type": "Training",
+    "description": "Permanently Gain +1 Strength and +2 Charisma. Destroy.",
+    "upgradedDescription": "Permanently Gain +2 Strength and +3 Charisma. Destroy.",
+    "upgradedCost": 3,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "isTraining": true,
+    "imageUrl": "images/cards/TargetPractice.png",
+    "game": "Monmusu Gladiator",
+    "tags": []
+  },
+  {
+    "name": "Boulder Dodge",
+    "rarity": "Uncommon",
+    "cost": 3,
+    "type": "Training",
+    "description": "Permanently Gain +1 Intelligence and +2 Dexterity. Destroy.",
+    "upgradedDescription": "Permanently Gain +2 Intelligence and +3 Dexterity. Destroy.",
+    "upgradedCost": 3,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "isTraining": true,
+    "imageUrl": "images/cards/BoulderDodge.png",
+    "game": "Monmusu Gladiator",
+    "tags": []
+  },
+  {
+    "name": "Mock Battle",
+    "rarity": "Rare",
+    "cost": 5,
+    "type": "Training",
+    "description": "Permanently Gain +2 Strength, Dexterity, Intelligence, and Charisma. Destroy.",
+    "upgradedDescription": "Permanently Gain +2 Strength, Dexterity, Intelligence, and Charisma. Destroy.",
+    "upgradedCost": 4,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "isTraining": true,
+    "imageUrl": "images/cards/MockBattle.png",
+    "game": "Monmusu Gladiator",
+    "tags": []
+  },
+  {
+    "name": "Runner's High",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Training",
+    "description": "For every 10 Health you have under Max Health, Gain +2 Max Health. Destroy.",
+    "upgradedDescription": "For every 10 Health you have under Max Health, Gain +3 Max Health. Destroy.",
+    "upgradedCost": 2,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "isTraining": true,
+    "imageUrl": "images/cards/Runner'sHigh.png",
+    "game": "Monmusu Gladiator",
+    "tags": []
   }
 ];

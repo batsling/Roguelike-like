@@ -78,14 +78,14 @@ const StateMutator = {
    * @returns {Object} - { oldMaxHealth, newMaxHealth, changed }
    */
   modifyMaxHealth(delta, options = {}) {
-    const { updateUI = true, notify = false } = options;
+    const { updateUI = true, notify = false, onlyMax = false } = options;
 
     const oldMaxHealth = maxHealth;
     maxHealth = Math.max(1, maxHealth + delta);
     gameState.maxHealth = maxHealth;
 
-    // Also increase current health if it was at max
-    if (health === oldMaxHealth) {
+    // Also increase current health if it was at max — unless onlyMax is set
+    if (!onlyMax && health === oldMaxHealth) {
       health = maxHealth;
       gameState.health = health;
     }

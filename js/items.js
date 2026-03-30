@@ -80,10 +80,10 @@ function recalculateScalablePassives() {
     luck: 0
   };
 
-  // Check for Beefy Ring: +1 Attack per 10 max health
+  // Check for Beefy Ring: +1 Attack per 20 max health
   const hasBeefyRing = inventory.some(item => item.name === 'Beefy Ring');
   if (hasBeefyRing) {
-    const beefyRingBonus = Math.floor(maxHealth / 10);
+    const beefyRingBonus = Math.floor(maxHealth / 20);
     bonuses.attack += beefyRingBonus;
     console.log(`Beefy Ring: +${beefyRingBonus} attack (from ${maxHealth} max health)`);
   }
@@ -241,8 +241,8 @@ const ITEM_EFFECTS = {
 
   "Lunch": {
     onAcquire: () => {
-      StateMutator.modifyMaxHealth(1);
-      StateMutator.modifyHealth(4);
+      StateMutator.modifyMaxHealth(3);
+      StateMutator.modifyHealth(3);
     }
   },
 
@@ -272,8 +272,7 @@ const ITEM_EFFECTS = {
 
   "Hollow Heart": {
     onAcquire: () => {
-      StateMutator.modifyMaxHealth(2);
-      StateMutator.modifyHealth(2);
+      StateMutator.modifyMaxHealth(5, { onlyMax: true });
     }
   },
 
@@ -315,8 +314,7 @@ const ITEM_EFFECTS = {
 
   "Panda": {
     onAcquire: () => {
-      StateMutator.modifyMaxHealth(5);
-      StateMutator.modifyHealth(5);
+      StateMutator.modifyMaxHealth(20, { onlyMax: true });
       StateMutator.modifyStat('luck', 2);
       StateMutator.modifyStat('strength', -2);
     }
@@ -518,24 +516,10 @@ const ITEM_EFFECTS = {
       console.log('Acquired Vitality Orb - will trigger when curses are obtained');
     },
     onCurseAdded: () => {
-      // Increase max health by 1 and heal by 1
-      console.log('Vitality Orb: Curse added, increasing max health and healing');
-
-      const oldMaxHealth = maxHealth;
-      const oldHealth = health;
-
-      // Increase max health by 1
-      const maxHealthResult = StateMutator.modifyMaxHealth(1);
-
-      // Heal by 1
-      const healthResult = StateMutator.modifyHealth(1);
-
-      if (maxHealthResult.changed || healthResult.changed) {
-        console.log(`Vitality Orb: Max Health ${oldMaxHealth} → ${maxHealthResult.newMaxHealth}, Health ${oldHealth} → ${healthResult.newHealth}`);
-
-        // Show notification
+      const maxHealthResult = StateMutator.modifyMaxHealth(8, { onlyMax: true });
+      if (maxHealthResult.changed) {
         setTimeout(() => {
-          createNotification('Vitality Orb: +1 Max Health & +1 Health!', COLORS.SUCCESS, '🔮');
+          createNotification('Vitality Orb: +8 Max Health!', COLORS.SUCCESS, '🔮');
         }, 100);
       }
     }
@@ -951,6 +935,89 @@ const ITEM_EFFECTS = {
         cs.player.statuses['regeneration'] = (cs.player.statuses['regeneration'] || 0) + 3;
         if (cs.log) cs.log.push({ message: 'Stem Cells: +3 Regeneration!', type: 'success' });
         createNotification('Stem Cells: +3 Regeneration!', COLORS.SUCCESS, '🧫');
+      }
+    }
+  },
+
+  // ===== STS: ANCHOR, BRONZE SCALES =====
+
+  "Anchor": {
+    onAcquire: () => {
+      // Effect applied in combat-engine.js initCombat
+      console.log('Acquired Anchor: +10 Block at start of combat');
+    }
+  },
+
+  "Bronze Scales": {
+    onAcquire: () => {
+      // Effect applied in combat-engine.js initCombat
+      console.log('Acquired Bronze Scales: +3 Thorns at start of combat');
+    }
+  },
+
+  // ===== STS/FOLD: TRIGGERED POWER CARDS =====
+
+  "Death Orb": {
+    onAcquire: () => {
+      // Effect applied in combat-engine.js resolveCardEffect on Power play
+      console.log('Acquired Death Orb: deals curse-count damage to all enemies when a Power is played');
+    }
+  },
+
+  "Mummified Hand": {
+    onAcquire: () => {
+      // Effect applied in combat-engine.js resolveCardEffect on Power play
+      console.log('Acquired Mummified Hand: a random hand card becomes free when a Power is played');
+    }
+  },
+
+  // ===== STS: STRIKE DUMMY =====
+
+  "Strike Dummy": {
+    onAcquire: () => {
+      // Effect applied in combat-engine.js resolveCardEffect on Attack play
+      console.log('Acquired Strike Dummy: Strikes deal +3 damage');
+    }
+  },
+
+  // ===== STS: PICKUP ITEMS =====
+
+  "Whetstone": {
+    onAcquire: () => {
+      // Upgrade 2 random Attack cards in deck
+      if (!gameState.deck || gameState.deck.length === 0) return;
+      const attackCards = gameState.deck
+        .map((c, i) => ({ c, i }))
+        .filter(({ c }) => !c.upgraded && (c.type || '').toLowerCase() === 'attack' && c.upgradedDescription);
+      const targets = attackCards.sort(() => Math.random() - 0.5).slice(0, 2);
+      targets.forEach(({ c, i }) => {
+        c.upgraded = true;
+        c.description = c.upgradedDescription;
+        if (c.upgradedCost !== null && c.upgradedCost !== undefined) c.cost = c.upgradedCost;
+      });
+      if (targets.length > 0) {
+        createNotification(`Whetstone: upgraded ${targets.map(({ c }) => c.name).join(', ')}!`, COLORS.SUCCESS, '🪨');
+        saveCurrentGame();
+      }
+    }
+  },
+
+  "War Paint": {
+    onAcquire: () => {
+      // Upgrade 2 random Skill cards in deck
+      if (!gameState.deck || gameState.deck.length === 0) return;
+      const skillCards = gameState.deck
+        .map((c, i) => ({ c, i }))
+        .filter(({ c }) => !c.upgraded && (c.type || '').toLowerCase() === 'skill' && c.upgradedDescription);
+      const targets = skillCards.sort(() => Math.random() - 0.5).slice(0, 2);
+      targets.forEach(({ c }) => {
+        c.upgraded = true;
+        c.description = c.upgradedDescription;
+        if (c.upgradedCost !== null && c.upgradedCost !== undefined) c.cost = c.upgradedCost;
+      });
+      if (targets.length > 0) {
+        createNotification(`War Paint: upgraded ${targets.map(({ c }) => c.name).join(', ')}!`, COLORS.SUCCESS, '🎨');
+        saveCurrentGame();
       }
     }
   }

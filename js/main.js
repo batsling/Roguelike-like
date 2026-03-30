@@ -5206,7 +5206,10 @@ function showCardRewardModal(onComplete) {
     const total     = wCommon + wUncommon + wRare;
 
     const pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
-      .filter(c => c.rarity && c.rarity !== 'Starter' && c.rarity !== 'N/A' && !exclude.has(c.name));
+      .filter(c => c.rarity && c.rarity !== 'Starter' && c.rarity !== 'N/A'
+               && (c.type || '').toLowerCase() !== 'training'
+               && !c.isTraining
+               && !exclude.has(c.name));
     if (pool.length === 0) return null;
 
     let roll = Math.random() * total;
