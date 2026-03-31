@@ -89,7 +89,7 @@ var ITEMS_DATA = [
     "tags": [
       "cybernetics"
     ],
-    "image": "images/items/StabilizarArmLocks.png",
+    "image": "images/items/StabilizerArmLocks.png",
     "unlockCondition": "N/A"
   },
   {

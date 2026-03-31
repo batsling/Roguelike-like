@@ -6955,30 +6955,20 @@ function showEnemyDetails(enemyName) {
   const enemy = enemies.find(e => e.name === enemyName);
   if (!enemy) return;
 
-  // Get enemy stats
   const enemyStats = getEnemyStats(enemyName);
-
-  // Find variants of this enemy
   const variants = enemies.filter(e => e.variantOf === enemyName);
 
-  // Get difficulty color
-  const getDifficultyColor = (difficulty) => {
-    switch((difficulty || '').toLowerCase()) {
-      case 'low': return '#4CAF50';
-      case 'medium': return '#ff9800';
-      case 'high': return '#f44336';
-      case 'boss': return '#9b59b6';
+  const getDifficultyColor = (d) => {
+    switch((d||'').toLowerCase()) {
+      case 'low': return '#4CAF50'; case 'medium': return '#ff9800';
+      case 'high': return '#f44336'; case 'boss': return '#9b59b6';
       default: return '#888';
     }
   };
-
-  // Get type color
-  const getTypeColor = (type) => {
-    switch((type || '').toLowerCase()) {
-      case 'strength': return '#f44336';
-      case 'dexterity': return '#4CAF50';
-      case 'intelligence': return '#2196F3';
-      case 'charisma': return '#ff9800';
+  const getTypeColor = (t) => {
+    switch((t||'').toLowerCase()) {
+      case 'strength': return '#f44336'; case 'dexterity': return '#4CAF50';
+      case 'intelligence': return '#2196F3'; case 'charisma': return '#ff9800';
       default: return '#888';
     }
   };
@@ -6989,100 +6979,85 @@ function showEnemyDetails(enemyName) {
   const detailsPanel = document.getElementById('enemy-details');
   if (!detailsPanel) return;
 
-  // Build variant images HTML
+  // Build variant forms HTML
   let variantHTML = '';
   if (variants.length > 0) {
     const allForms = [enemy, ...variants];
-    variantHTML = `
-      <div style="margin-top: 15px;">
-        <strong style="color: #9b59b6;">Forms:</strong>
-        <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
-          ${allForms.map((form, idx) => `
-            <div
-              onclick="switchEnemyImage('${form.name.replace(/'/g, "\\'")}')"
-              style="
-                cursor: pointer;
-                padding: 5px;
-                border: 2px solid ${idx === 0 ? '#9b59b6' : '#444'};
-                border-radius: 6px;
-                background: rgba(0,0,0,0.3);
-                transition: border-color 0.2s;
-              "
-              onmouseover="this.style.borderColor='#9b59b6'"
-              onmouseout="this.style.borderColor='${idx === 0 ? '#9b59b6' : '#444'}'"
-            >
-              <img
-                src="${form.imageUrl || getEnemyImagePath(form.name)}"
-                alt="${form.name}"
-                style="width: 60px; height: 60px; object-fit: contain;"
-                onerror="this.style.opacity='0.3'"
-              />
-              <div style="font-size: 9px; text-align: center; color: #aaa; margin-top: 4px;">${form.name}</div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
+    variantHTML = '<div style="margin-top:15px;"><strong style="color:#9b59b6;">Forms:</strong><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">' +
+      allForms.map((form, idx) =>
+        '<div onclick="switchEnemyForm(\'' + form.name.replace(/'/g, "\\'") + '\')" style="cursor:pointer;padding:5px;border:2px solid ' + (idx===0?'#9b59b6':'#444') + ';border-radius:6px;background:rgba(0,0,0,0.3);transition:border-color 0.2s;" onmouseover="this.style.borderColor=\'#9b59b6\'" onmouseout="this.style.borderColor=\'' + (idx===0?'#9b59b6':'#444') + '\'">' +
+          '<img src="' + (form.imageUrl || getEnemyImagePath(form.name)) + '" alt="' + form.name + '" style="width:50px;height:50px;object-fit:contain;" onerror="this.style.opacity=\'0.3\'"/>' +
+          '<div style="font-size:9px;text-align:center;color:#aaa;margin-top:3px;">' + form.name + '</div></div>'
+      ).join('') +
+    '</div></div>';
   }
 
-  // Build dice HTML
-  const diceHTML = enemy.dice ? `
-    <div id="enemy-dice-section" style="margin-top: 15px;">
-      <strong style="color: #f44336;">Dice (${enemy.name}):</strong>
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
-        ${enemy.dice.map((face, idx) => {
-          if (face.isBlank) {
-            return `
-              <div style="
-                background: rgba(0,0,0,0.4);
-                border: 1px solid #333;
-                border-radius: 6px;
-                padding: 8px;
-                text-align: center;
-                font-size: 11px;
-                color: #666;
-              ">
-                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
-                <div>Blank</div>
-              </div>
-            `;
-          }
-          return `
-            <div style="
-              background: rgba(244, 67, 54, 0.1);
-              border: 1px solid rgba(244, 67, 54, 0.3);
-              border-radius: 6px;
-              padding: 8px;
-              text-align: center;
-              font-size: 11px;
-              color: #ddd;
-            ">
-              <div style="font-weight: bold; color: #f44336; margin-bottom: 4px;">Face ${idx + 1}</div>
-              <div>${face.raw || face.effects?.map(e => e.raw).join(', ') || '—'}</div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    </div>
-  ` : '';
+  // Build pattern HTML — parse "Turn X: A | Turn Y: B | Next: C" or "Always: A / B"
+  let patternHTML = '';
+  if (enemy.pattern) {
+    const renderPatternStep = (step) => {
+      // Determine intent icon based on keywords
+      const s = step.toLowerCase();
+      let icon = '?', color = '#888';
+      if (s.includes('dmg') || s.includes('pain') || s.includes('assassinate')) { icon = '⚔'; color = '#f44336'; }
+      else if (s.includes('block')) { icon = '🛡'; color = '#5b9bd5'; }
+      else if (s.includes('heal') || s.includes('regenerat')) { icon = '💚'; color = '#4CAF50'; }
+      else if (s.includes('ritual') || s.includes('power') || s.includes('get ') || s.includes('inflict') || s.includes('burn') || s.includes('poison') || s.includes('vulnerable') || s.includes('weak') || s.includes('stun') || s.includes('confused') || s.includes('ruptured')) { icon = '✦'; color = '#ff9800'; }
+      else if (s.includes('spawn') || s.includes('alter') || s.includes('consume') || s.includes('steal') || s.includes('add ')) { icon = '◈'; color = '#9b59b6'; }
+      else if (s.includes('unknown') || s.includes('charging') || s.includes('wandering')) { icon = '?'; color = '#888'; }
+      return '<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;background:rgba(0,0,0,0.2);border-left:3px solid ' + color + ';border-radius:0 5px 5px 0;margin-bottom:4px;">' +
+        '<span style="font-size:14px;flex-shrink:0;">' + icon + '</span>' +
+        '<span style="font-size:11px;color:#ddd;line-height:1.5;">' + step.trim() + '</span></div>';
+    };
+
+    // Split on " | " for turn-based or use "/" for probability within a phase
+    const phases = enemy.pattern.split(' | ');
+    patternHTML = '<div id="enemy-pattern-section" style="margin-top:12px;"><strong style="color:#f44336;font-size:13px;">Pattern:</strong>' +
+      '<div style="margin-top:8px;font-size:11px;color:#bbb;font-style:italic;margin-bottom:6px;">' + enemy.pattern + '</div>';
+
+    if (phases.length > 1) {
+      // Turn-based: render each phase
+      patternHTML += '<div style="display:flex;flex-direction:column;gap:4px;">';
+      phases.forEach(phase => {
+        const colonIdx = phase.indexOf(':');
+        if (colonIdx !== -1) {
+          const label = phase.slice(0, colonIdx).trim();
+          const actions = phase.slice(colonIdx + 1).trim();
+          patternHTML += '<div style="margin-bottom:4px;"><span style="color:#ff9800;font-size:10px;font-weight:bold;text-transform:uppercase;">' + label + ':</span>';
+          actions.split('/').forEach(act => { patternHTML += renderPatternStep(act.trim()); });
+          patternHTML += '</div>';
+        } else {
+          phase.split('/').forEach(act => { patternHTML += renderPatternStep(act.trim()); });
+        }
+      });
+      patternHTML += '</div>';
+    } else {
+      // Single phase (Always: ... / ...)
+      const colonIdx = enemy.pattern.indexOf(':');
+      const actions = colonIdx !== -1 ? enemy.pattern.slice(colonIdx + 1) : enemy.pattern;
+      patternHTML += '<div style="display:flex;flex-direction:column;gap:4px;">';
+      actions.split('/').forEach(act => { patternHTML += renderPatternStep(act.trim()); });
+      patternHTML += '</div>';
+    }
+    patternHTML += '</div>';
+  }
 
   detailsPanel.innerHTML = `
-    <div style="display: flex; flex-direction: column; gap: 15px;">
-      <!-- Enemy Header -->
-      <div style="display: flex; gap: 15px; align-items: flex-start;">
-        <img
-          id="enemy-detail-image"
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <!-- Header -->
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <img id="enemy-detail-image"
           src="${enemy.imageUrl || getEnemyImagePath(enemy.name)}"
           alt="${enemy.name}"
-          style="width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${diffColor}; image-rendering: pixelated; image-rendering: crisp-edges;"
+          style="width:110px;height:110px;object-fit:contain;border-radius:8px;background:rgba(0,0,0,0.3);border:2px solid ${diffColor};image-rendering:pixelated;"
           onerror="this.style.opacity='0.3'"
         />
-        <div style="flex: 1;">
-          <h3 style="margin: 0 0 10px 0; color: #f44336;">${enemy.name}</h3>
-          <div style="color: #aaa; font-size: 13px; line-height: 1.8;">
-            <div><strong>Type:</strong> <span style="color: ${typeColor};">${enemy.type || '—'}</span></div>
-            <div><strong>Difficulty:</strong> <span style="color: ${diffColor};">${enemy.difficulty || '—'}</span></div>
-            <div><strong>HP:</strong> ${enemy.hp || '—'}</div>
+        <div style="flex:1;">
+          <h3 style="margin:0 0 8px 0;color:#f44336;">${enemy.name}</h3>
+          <div style="font-size:12px;color:#aaa;line-height:1.9;">
+            <div><strong>Type:</strong> <span style="color:${typeColor};">${enemy.type || '—'}</span></div>
+            <div><strong>Difficulty:</strong> <span style="color:${diffColor};">${enemy.difficulty || '—'}</span></div>
+            <div><strong>HP:</strong> ${enemy.hpMin != null ? (enemy.hpMin === enemy.hpMax ? enemy.hpMin : enemy.hpMin + '–' + enemy.hpMax) : (enemy.hp || '—')}</div>
             <div><strong>Game:</strong> ${enemy.game || '—'}</div>
             <div><strong>Location:</strong> ${enemy.location || '—'}</div>
           </div>
@@ -7091,81 +7066,41 @@ function showEnemyDetails(enemyName) {
 
       <!-- Ability -->
       ${enemy.ability && enemy.ability !== 'N/A' ? `
-        <div style="padding: 12px; background: rgba(155, 89, 182, 0.1); border: 1px solid rgba(155, 89, 182, 0.3); border-radius: 6px;">
-          <h4 style="margin: 0 0 8px 0; color: #9b59b6; font-size: 14px;">⚡ Ability</h4>
-          <div style="font-size: 13px; color: #ddd;">${enemy.ability}</div>
+        <div style="padding:10px 12px;background:rgba(155,89,182,0.1);border:1px solid rgba(155,89,182,0.3);border-radius:6px;">
+          <div style="font-size:12px;font-weight:bold;color:#9b59b6;margin-bottom:4px;">⚡ Ability</div>
+          <div style="font-size:12px;color:#ddd;">${enemy.ability}</div>
         </div>
       ` : ''}
 
+      <!-- Pattern -->
+      ${patternHTML}
+
       <!-- Combat Stats -->
-      <div style="padding: 12px; background: rgba(244, 67, 54, 0.1); border: 1px solid rgba(244, 67, 54, 0.3); border-radius: 6px;">
-        <h4 style="margin: 0 0 8px 0; color: #f44336; font-size: 14px;">📊 Combat Record</h4>
-        <div style="font-size: 13px; color: #ddd; line-height: 1.8;">
-          <div><strong>Times Defeated:</strong> ${enemyStats.timesBeaten || 0}</div>
-          <div><strong>Times Killed Player:</strong> ${enemyStats.timesKilledPlayer || 0}</div>
+      <div style="padding:10px 12px;background:rgba(244,67,54,0.08);border:1px solid rgba(244,67,54,0.2);border-radius:6px;">
+        <div style="font-size:12px;font-weight:bold;color:#f44336;margin-bottom:4px;">📊 Combat Record</div>
+        <div style="font-size:12px;color:#ddd;line-height:1.8;">
+          <div>Defeated: ${enemyStats.timesBeaten || 0}x</div>
+          <div>Killed Player: ${enemyStats.timesKilledPlayer || 0}x</div>
         </div>
       </div>
 
       <!-- Variants -->
       ${variantHTML}
-
-      <!-- Dice -->
-      ${diceHTML}
     </div>
   `;
 }
 
-// Switch enemy form in details panel (for variants) - updates image and dice
-function switchEnemyImage(enemyName) {
+// Switch enemy form in details panel (for variants) — updates image and pattern
+function switchEnemyForm(enemyName) {
   const enemy = enemies.find(e => e.name === enemyName);
   if (!enemy) return;
 
-  // Update image
   const img = document.getElementById('enemy-detail-image');
-  if (img) {
-    img.src = enemy.imageUrl || getEnemyImagePath(enemy.name);
-  }
+  if (img) img.src = enemy.imageUrl || getEnemyImagePath(enemy.name);
 
-  // Update dice section
-  const diceContainer = document.getElementById('enemy-dice-section');
-  if (diceContainer && enemy.dice) {
-    diceContainer.innerHTML = `
-      <strong style="color: #f44336;">Dice (${enemy.name}):</strong>
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
-        ${enemy.dice.map((face, idx) => {
-          if (face.isBlank) {
-            return `
-              <div style="
-                background: rgba(0,0,0,0.4);
-                border: 1px solid #333;
-                border-radius: 6px;
-                padding: 8px;
-                text-align: center;
-                font-size: 11px;
-                color: #666;
-              ">
-                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
-                <div>Blank</div>
-              </div>
-            `;
-          }
-          return `
-            <div style="
-              background: rgba(244, 67, 54, 0.1);
-              border: 1px solid rgba(244, 67, 54, 0.3);
-              border-radius: 6px;
-              padding: 8px;
-              text-align: center;
-              font-size: 11px;
-              color: #ddd;
-            ">
-              <div style="font-weight: bold; color: #f44336; margin-bottom: 4px;">Face ${idx + 1}</div>
-              <div>${face.raw || face.effects?.map(e => e.raw).join(', ') || '—'}</div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
+  const patternContainer = document.getElementById('enemy-pattern-section');
+  if (patternContainer && enemy.pattern) {
+    patternContainer.querySelector('div:nth-child(2)').textContent = enemy.pattern;
   }
 }
 
@@ -7380,7 +7315,7 @@ function showSpellDetails(spellName) {
       <!-- Spell Header -->
       <div style="display: flex; gap: 15px; align-items: flex-start;">
         <img
-          src="${spell.image || 'images/spells/no-spell.svg'}"
+          src="${spell.imageUrl || spell.image || 'images/spells/no-spell.svg'}"
           alt="${spell.name}"
           style="width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${rarityColor}; image-rendering: pixelated;"
           onerror="this.style.opacity='0.3'"
@@ -7423,9 +7358,83 @@ function showSpellDetails(spellName) {
   `;
 }
 
+function showCardDetails(cardName) {
+  const allCards = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
+  const card = allCards.find(c => c.name === cardName);
+  if (!card) return;
+
+  const detailsPanel = document.getElementById('card-details');
+  if (!detailsPanel) return;
+
+  const getRarityColor = (r) => {
+    switch((r||'').toLowerCase()) {
+      case 'legendary': return '#ff6b00';
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      case 'common': return '#aaa';
+      case 'starter': return '#2196F3';
+      default: return '#666';
+    }
+  };
+  const getTypeColor = (t) => {
+    switch((t||'').toLowerCase()) {
+      case 'attack': return '#e74c3c';
+      case 'skill': return '#2980b9';
+      case 'power': return '#8e44ad';
+      case 'training': return '#27ae60';
+      case 'dice': return '#d35400';
+      default: return '#888';
+    }
+  };
+
+  const rc = getRarityColor(card.rarity);
+  const tc = getTypeColor(card.type);
+  const typeEmoji = (card.type||'').toLowerCase() === 'attack' ? '⚔' :
+                    (card.type||'').toLowerCase() === 'skill' ? '🛡' :
+                    (card.type||'').toLowerCase() === 'power' ? '✨' : '🃏';
+
+  detailsPanel.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <!-- Card render -->
+      <div style="border:2px solid ${rc};border-radius:12px;background:rgba(10,10,15,0.9);box-shadow:0 0 12px ${rc}55;overflow:hidden;max-width:220px;margin:0 auto;position:relative;">
+        <div style="position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:${tc};border:2px solid rgba(255,255,255,0.35);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;color:white;z-index:2;">
+          ${card.cost !== null && card.cost !== undefined ? card.cost : '?'}
+        </div>
+        ${card.imageUrl
+          ? '<img src="' + card.imageUrl + '" alt="' + card.name + '" style="width:100%;height:120px;object-fit:cover;image-rendering:pixelated;" onerror="this.style.display=\'none\'"/>'
+          : '<div style="width:100%;height:120px;background:linear-gradient(135deg,' + tc + '33,' + rc + '22);display:flex;align-items:center;justify-content:center;font-size:48px;color:' + tc + '88;">' + typeEmoji + '</div>'
+        }
+        <div style="padding:10px;">
+          <div style="font-size:14px;font-weight:bold;color:#eee;margin-bottom:4px;">${card.name}</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <span style="font-size:10px;color:${tc};text-transform:uppercase;font-weight:bold;">${card.type||''}</span>
+            <span style="font-size:10px;color:${rc};text-transform:uppercase;">${card.rarity||''}</span>
+          </div>
+          <div style="font-size:12px;color:#ddd;line-height:1.5;">${card.description||'No description.'}</div>
+        </div>
+      </div>
+
+      ${card.canUpgrade && card.upgradedDescription ? `
+        <div style="padding:10px 12px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);border-radius:8px;">
+          <div style="font-size:11px;font-weight:bold;color:#ff9800;margin-bottom:6px;">✦ Upgraded</div>
+          <div style="font-size:11px;color:#ccc;line-height:1.5;">${card.upgradedDescription}</div>
+          ${card.upgradedCost !== card.cost ? '<div style="font-size:10px;color:#888;margin-top:4px;">Cost: ' + card.upgradedCost + '</div>' : ''}
+        </div>
+      ` : (card.upgradedDescription ? `
+        <div style="padding:10px 12px;background:rgba(150,150,150,0.08);border:1px solid rgba(150,150,150,0.2);border-radius:8px;">
+          <div style="font-size:11px;font-weight:bold;color:#aaa;margin-bottom:6px;">Upgraded</div>
+          <div style="font-size:11px;color:#bbb;line-height:1.5;">${card.upgradedDescription}</div>
+        </div>
+      ` : '')}
+
+      ${card.game ? `<div style="font-size:11px;color:#666;">From: <span style="color:#888;">${card.game}</span></div>` : ''}
+    </div>
+  `;
+}
+
 function showCharacterDetails(charName) {
-  const charactersData = typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA : [];
-  const char = charactersData.find(c => c.name === charName);
+  const allChars = typeof CHARACTERS_DATA !== 'undefined' ? Object.values(CHARACTERS_DATA) : [];
+  const char = allChars.find(c => c.name === charName);
   if (!char) return;
 
   const detailsPanel = document.getElementById('character-details');
@@ -8835,8 +8844,9 @@ window.drawMapArrows = drawMapArrows;
 window.switchCollectionTab = switchCollectionTab;
 window.showGameDetails = showGameDetails;
 window.showEnemyDetails = showEnemyDetails;
+window.showCardDetails = showCardDetails;
 window.showItemDetails = showItemDetails;
-window.switchEnemyImage = switchEnemyImage;
+window.switchEnemyForm = switchEnemyForm;
 window.getEnemyStats = getEnemyStats;
 window.recordEnemyDefeated = recordEnemyDefeated;
 window.recordPlayerKilledBy = recordPlayerKilledBy;
