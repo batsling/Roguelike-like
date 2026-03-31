@@ -276,7 +276,24 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
       combatState.player.statuses['thorns'] = (combatState.player.statuses['thorns'] || 0) + 3 * bronzeScalesCount;
       addLog(`Bronze Scales: +${3 * bronzeScalesCount} Thorns`, 'info');
     }
+
+    // Du-Vu Doll: at start of combat, gain X Power where X = curse count
+    const duVuCount = inventory.filter(i => i.name === 'Du-Vu Doll').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (duVuCount > 0) {
+      const curseCount = (typeof gameState !== 'undefined' && gameState.activeCurses) ? gameState.activeCurses.length : 0;
+      if (curseCount > 0) {
+        const powerGain = curseCount * duVuCount;
+        combatState.player.statuses['power'] = (combatState.player.statuses['power'] || 0) + powerGain;
+        addLog(`Du-Vu Doll: +${powerGain} Power!`, 'info');
+      }
+    }
   }
+
+  // Initialize incremental item counters
+  combatState.incrementals = {
+    attacksTotal: 0,     // cumulative attacks this combat (Pen Nib, Nunchaku)
+    attacksThisTurn: 0,  // attacks played this turn (Ornamental Fan, Shuriken)
+  };
 
   // Roll enemy intents
   rollAllEnemyIntents();
@@ -1327,6 +1344,11 @@ function dealDamage(target, damage, addons = []) {
   let dmg = (typeof damage === 'number' && !isNaN(damage)) ? damage : 0;
   if (dmg <= 0) return;
 
+  // Pen Nib: every 10th attack deals double damage
+  if (combatState && combatState._penNibDouble) {
+    dmg *= 2;
+  }
+
   // Check Engage (x2 on full health)
   if (addons.includes('Engage') && target.health === target.maxHealth) {
     dmg *= 2;
@@ -1788,11 +1810,19 @@ function onEnemyDefeated(enemy) {
   if (enemy.onDeathTriggered) return;
   enemy.onDeathTriggered = true;
 
-  // Metal Plate: when you kill an enemy, gain +1 Brace
   const inv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+
+  // Metal Plate: when you kill an enemy, gain +1 Brace
   if (inv.some(i => i.name === 'Metal Plate')) {
     combatState.player.statuses['brace'] = (combatState.player.statuses['brace'] || 0) + 1;
     addLog('Metal Plate: +1 Brace!', 'success');
+  }
+
+  // Gremlin Horn: when an enemy dies, gain +1 Energy and draw 1 card
+  if (inv.some(i => i.name === 'Gremlin Horn')) {
+    combatState.player.energy++;
+    drawCards(1);
+    addLog('Gremlin Horn: +1 Energy, draw 1!', 'success');
   }
 
   if (!enemy.ability) return;
@@ -1855,6 +1885,31 @@ function processPlayerStartOfTurn() {
     }
   }
 
+  if (typeof inventory !== 'undefined') {
+    // Captain's Wheel: +18 Block at the start of turn 3
+    if (combatState.turn === 3) {
+      const captainsWheelCount = inventory.filter(i => i.name === "Captain's Wheel").reduce((n, i) => n + (i.quantity || 1), 0);
+      if (captainsWheelCount > 0) {
+        addBlock(combatState.player, 18 * captainsWheelCount);
+        addLog(`Captain's Wheel: +${18 * captainsWheelCount} Block!`, 'success');
+      }
+    }
+
+    // Happy Flower: every 3 turns, gain +1 Energy
+    if (combatState.turn > 1 && combatState.turn % 3 === 0) {
+      const happyFlowerCount = inventory.filter(i => i.name === 'Happy Flower').reduce((n, i) => n + (i.quantity || 1), 0);
+      if (happyFlowerCount > 0) {
+        combatState.player.energy += happyFlowerCount;
+        addLog(`Happy Flower: +${happyFlowerCount} Energy!`, 'success');
+      }
+    }
+  }
+
+  // Reset per-turn attack counter for incremental items
+  if (combatState.incrementals) {
+    combatState.incrementals.attacksThisTurn = 0;
+  }
+
   addLog(`--- Turn ${combatState.turn} ---`, 'info');
 }
 
@@ -1881,6 +1936,15 @@ function endTurn() {
   // Cap mana at max
   if (combatState.player.mana > combatState.player.maxMana) {
     combatState.player.mana = combatState.player.maxMana;
+  }
+
+  // Stone Calendar: at the end of turn 7, deal 52 damage to all enemies
+  if (combatState.turn === 7 && typeof inventory !== 'undefined') {
+    const hasStoneCalendar = inventory.some(i => i.name === 'Stone Calendar');
+    if (hasStoneCalendar) {
+      combatState.enemies.filter(e => e.health > 0).forEach(e => dealDamage(e, 52, ['self']));
+      addLog('Stone Calendar: 52 damage to all enemies!', 'success');
+    }
   }
 
   // Process enemy start-of-turn status effects (burn/poison tick BEFORE enemies act)
@@ -2545,6 +2609,21 @@ function endCombat(victory) {
     }
   }
 
+  // Burning Blood: at the end of combat, gain +6 Health
+  if (victory && typeof inventory !== 'undefined') {
+    const burningBloodCount = inventory.filter(i => i.name === 'Burning Blood').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (burningBloodCount > 0) {
+      const heal = 6 * burningBloodCount;
+      if (typeof StateMutator !== 'undefined') {
+        StateMutator.modifyHealth(heal);
+      } else if (typeof gameState !== 'undefined') {
+        gameState.health = Math.min((gameState.maxHealth || 999), (gameState.health || 0) + heal);
+        if (typeof window.health !== 'undefined') window.health = gameState.health;
+      }
+      addLog(`Burning Blood: +${heal} Health!`, 'success');
+    }
+  }
+
   // Permanently destroy Training cards played this combat
   if (combatState._destroyCards && combatState._destroyCards.length > 0 &&
       typeof gameState !== 'undefined' && Array.isArray(gameState.deck)) {
@@ -3026,8 +3105,44 @@ function playCard(handIndex, targetId = null) {
   combatState.selectedCardIndex = null;
   combatState.lastPlayedCard = card;
 
+  // Incremental item tracking: update attack counters BEFORE resolveCardEffect so Pen Nib can double
+  const _cardType = (card.type || '').toLowerCase();
+  if (_cardType === 'attack') {
+    const _incInv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+    combatState.incrementals = combatState.incrementals || { attacksTotal: 0, attacksThisTurn: 0 };
+    combatState.incrementals.attacksTotal++;
+    combatState.incrementals.attacksThisTurn++;
+    // Pen Nib: every 10th attack deals double damage — flag for dealDamage
+    if (combatState.incrementals.attacksTotal % 10 === 0 && _incInv.some(i => i.name === 'Pen Nib')) {
+      combatState._penNibDouble = true;
+    }
+  }
+
   // Resolve effects
   const shouldExhaust = resolveCardEffect(card, target);
+
+  // Post-play incremental triggers for attack cards
+  if (_cardType === 'attack') {
+    const _incInv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+    const _at = combatState.incrementals.attacksTotal;
+    const _att = combatState.incrementals.attacksThisTurn;
+    combatState._penNibDouble = false; // clear double-damage flag
+    // Nunchaku: every 10 attacks → +1 Energy
+    if (_at % 10 === 0 && _incInv.some(i => i.name === 'Nunchaku')) {
+      combatState.player.energy++;
+      addLog('Nunchaku: +1 Energy!', 'success');
+    }
+    // Shuriken: every 3 attacks this turn → +1 Power
+    if (_att % 3 === 0 && _incInv.some(i => i.name === 'Shuriken')) {
+      combatState.player.statuses['power'] = (combatState.player.statuses['power'] || 0) + 1;
+      addLog('Shuriken: +1 Power!', 'success');
+    }
+    // Ornamental Fan: every 4 attacks this turn → +4 Block
+    if (_att % 4 === 0 && _incInv.some(i => i.name === 'Ornamental Fan')) {
+      addBlock(combatState.player, 4);
+      addLog('Ornamental Fan: +4 Block!', 'success');
+    }
+  }
 
   // Route to appropriate pile
   if (shouldExhaust) {

@@ -405,8 +405,8 @@ var ITEMS_DATA = [
   {
     "name": "Garlic",
     "rarity": "Common",
-    "type": "Triggered",
-    "description": "Whenever you take damage, take 1 less (minimum 1)",
+    "type": "Passive",
+    "description": "Gain +1 Brace",
     "game": "Super Auto Pets",
     "tags": [
       "food"
@@ -764,6 +764,106 @@ var ITEMS_DATA = [
     "game": "Slay the Spire",
     "tags": [],
     "image": "images/items/WarPaint.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Burning Blood",
+    "rarity": "Common",
+    "type": "Triggered",
+    "description": "At the end of combat, Gain +6 Health",
+    "game": "Slay the Spire",
+    "tags": [],
+    "image": "images/items/BurningBlood.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Captain's Wheel",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "Start the 3rd turn of combat with +18 Block",
+    "game": "Slay the Spire",
+    "tags": ["sea", "ship"],
+    "image": "images/items/Captain'sWheel.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Gremlin Horn",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "When an enemy dies, Gain +1 Energy and Draw 1 card",
+    "game": "Slay the Spire",
+    "tags": ["gremlin"],
+    "image": "images/items/GremlinHorn.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Du-Vu Doll",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "At the start of each combat, Gain X Power where X is the amount of curses you have",
+    "game": "Slay the Spire",
+    "tags": ["voodoo"],
+    "image": "images/items/Du-VuDoll.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Stone Calendar",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "At the end of turn 7, Deal 52 Damage to all enemies",
+    "game": "Slay the Spire",
+    "tags": ["stone"],
+    "image": "images/items/StoneCalendar.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Pen Nib",
+    "rarity": "Common",
+    "type": "Incremental",
+    "description": "Every 10th attack you play deals double damage",
+    "game": "Slay the Spire",
+    "tags": ["pen", "ink"],
+    "image": "images/items/PenNib.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Nunchaku",
+    "rarity": "Common",
+    "type": "Incremental",
+    "description": "Every time you play 10 attacks, gain +1 Energy",
+    "game": "Slay the Spire",
+    "tags": ["weapon"],
+    "image": "images/items/Nunchaku.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Happy Flower",
+    "rarity": "Common",
+    "type": "Incremental",
+    "description": "Every 3 turns, Gain +1 Energy",
+    "game": "Slay the Spire",
+    "tags": ["flower", "plant"],
+    "image": "images/items/HappyFlower.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Ornamental Fan",
+    "rarity": "Uncommon",
+    "type": "Incremental",
+    "description": "Every time you play 4 attacks in a single turn, Gain +4 Block",
+    "game": "Slay the Spire",
+    "tags": ["fan"],
+    "image": "images/items/OrnamentalFan.png",
+    "unlockCondition": "N/A"
+  },
+  {
+    "name": "Shuriken",
+    "rarity": "Uncommon",
+    "type": "Incremental",
+    "description": "Every time you play 3 attacks in a single turn, Gain +1 Power",
+    "game": "Slay the Spire",
+    "tags": ["weapon", "ninja"],
+    "image": "images/items/Shuriken.png",
     "unlockCondition": "N/A"
   }
 ];

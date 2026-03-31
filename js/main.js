@@ -3710,6 +3710,33 @@ function showCombatModal() {
               border: 1px solid #ffaa00;
             ">x${item.quantity}</div>
           ` : ''}
+          ${(function() {
+            if ((item.type || '').toLowerCase() !== 'incremental') return '';
+            const cs = window.combatState;
+            const inc = cs && cs.incrementals;
+            let cur = null, max = null;
+            switch (item.name) {
+              case 'Pen Nib':    cur = inc ? inc.attacksTotal % 10 : 0;     max = 10; break;
+              case 'Nunchaku':   cur = inc ? inc.attacksTotal % 10 : 0;     max = 10; break;
+              case 'Happy Flower': cur = cs ? (cs.turn - 1) % 3 : 0;        max = 3;  break;
+              case 'Ornamental Fan': cur = inc ? inc.attacksThisTurn % 4 : 0; max = 4; break;
+              case 'Shuriken':   cur = inc ? inc.attacksThisTurn % 3 : 0;   max = 3;  break;
+            }
+            if (max === null) return '';
+            return \`<div style="
+              position: absolute;
+              top: 1px;
+              left: 1px;
+              background: rgba(0,0,0,0.85);
+              color: #ffcc44;
+              padding: 1px 3px;
+              border-radius: 3px;
+              font-size: 9px;
+              font-weight: bold;
+              border: 1px solid #ffcc44;
+              line-height: 1.2;
+            ">\${cur}/\${max}</div>\`;
+          })()}
         </div>
       `;
     }).join('');
