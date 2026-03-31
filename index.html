@@ -338,15 +338,15 @@
 
       <!-- Save Name Input Modal -->
       <!-- Character Selection & Run Naming Modal -->
-      <div id="save-modal" role="dialog" aria-modal="true" aria-labelledby="save-modal-title">
-        <div class="flex gap-20 max-w-1200">
+      <div id="save-modal" role="dialog" aria-modal="true" aria-labelledby="save-modal-title" style="overflow:hidden;">
+        <div class="flex gap-20" style="width:min(calc(100vw - 32px), 1020px); flex-wrap:nowrap; align-items:flex-start;">
           <!-- Main Character Selection Panel -->
-          <div class="bg-panel p-20 border-radius-12 w-600 max-h-90vh overflow-y-auto">
+          <div class="bg-panel p-20 border-radius-12 max-h-90vh overflow-y-auto" style="flex:1.5; min-width:0;">
             <h3 id="save-modal-title" class="mt-0 text-gold text-center">Start New Run</h3>
 
             <!-- Icon View Container -->
             <div id="icon-character-view" class="display-block mb-20">
-              <div id="icon-character-grid" class="grid grid-cols-5 gap-12 p-15 bg-character-grid border-radius-12 h-550 overflow-y-auto">
+              <div id="icon-character-grid" class="grid gap-12 p-15 bg-character-grid border-radius-12 h-550 overflow-y-auto" style="grid-template-columns:repeat(5,1fr); overflow-x:hidden;">
                 <!-- Character icons will be populated here -->
               </div>
             </div>
@@ -361,7 +361,7 @@
           </div>
 
           <!-- Character Details Panel -->
-          <div id="icon-character-details" class="flex bg-panel p-25 border-radius-12 w-400 max-h-90vh overflow-y-auto">
+          <div id="icon-character-details" class="flex bg-panel p-25 border-radius-12 max-h-90vh overflow-y-auto" style="flex:1; min-width:280px; max-width:420px;">
             <div id="icon-character-details-content">
               <!-- Character details will be populated here -->
             </div>

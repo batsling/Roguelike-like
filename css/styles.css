@@ -1543,7 +1543,7 @@ text, path, line, g {
   background: #2a2a2a;
   border: 3px solid #444;
   border-radius: 12px;
-  padding: 8px;
+  padding: 6px;
   cursor: pointer;
   transition: all 0.3s ease;
   text-align: center;
@@ -1553,8 +1553,7 @@ text, path, line, g {
   justify-content: center;
   align-items: center;
   width: 100%;
-  max-width: 90px;
-  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .icon-char-card:hover {

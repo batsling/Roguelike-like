@@ -168,7 +168,9 @@ function showIconCharacterDetails(charKey) {
               ? CARDS_DATA.find(c => c.name === entry.cardName || c.name.toLowerCase() === entry.cardName.toLowerCase())
               : null;
             const color = template ? (template.rarity === 'Rare' ? '#9b59b6' : template.rarity === 'Uncommon' ? '#4CAF50' : '#888') : '#888';
-            return `<div style="display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.3);border:1px solid ${color};border-radius:6px;padding:5px 8px;margin:3px 0;">
+            return `<div style="display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.3);border:1px solid ${color};border-radius:6px;padding:5px 8px;margin:3px 0;cursor:default;"
+              onmouseenter="if(typeof showCardNameTooltip==='function') showCardNameTooltip('${entry.cardName.replace(/'/g,"\\'")}', event)"
+              onmouseleave="if(typeof hideCardNameTooltip==='function') hideCardNameTooltip()">
               <span style="color:${color};font-weight:bold;font-size:15px;">x${entry.count}</span>
               <div>
                 <div style="font-size:12px;color:white;font-weight:bold;">${entry.cardName}</div>

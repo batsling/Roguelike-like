@@ -7401,7 +7401,7 @@ function showCardDetails(cardName) {
           ${card.cost !== null && card.cost !== undefined ? card.cost : '?'}
         </div>
         ${card.imageUrl
-          ? '<img src="' + card.imageUrl + '" alt="' + card.name + '" style="width:100%;height:120px;object-fit:cover;image-rendering:pixelated;" onerror="this.style.display=\'none\'"/>'
+          ? '<img src="' + card.imageUrl + '" alt="' + card.name + '" style="width:100%;height:120px;object-fit:contain;background:rgba(0,0,0,0.3);image-rendering:pixelated;" onerror="this.style.display=\'none\'"/>'
           : '<div style="width:100%;height:120px;background:linear-gradient(135deg,' + tc + '33,' + rc + '22);display:flex;align-items:center;justify-content:center;font-size:48px;color:' + tc + '88;">' + typeEmoji + '</div>'
         }
         <div style="padding:10px;">
@@ -7460,44 +7460,35 @@ function showCharacterDetails(charName) {
     ? levelUpBonuses.map(b => `<span style="color: ${b.color}; font-weight: bold;">+${b.value} ${b.stat}</span>`).join(', ')
     : '<span style="color: #888;">None</span>';
 
-  // Build dice HTML (enemy-style)
-  const diceHTML = char.dice && char.dice.length > 0 ? `
+  // Build starting deck HTML
+  const startingEntries = (char.startingDeck) ? char.startingDeck : [];
+  const startingDeckHTML = startingEntries.length > 0 ? `
     <div style="margin-top: 15px;">
-      <strong style="color: #4CAF50;">Character Die (6 faces):</strong>
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
-        ${char.dice.map((face, idx) => {
-          if (face.isBlank) {
-            return `
-              <div style="
-                background: rgba(0,0,0,0.4);
-                border: 1px solid #333;
-                border-radius: 6px;
-                padding: 8px;
-                text-align: center;
-                font-size: 11px;
-                color: #666;
-              ">
-                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
-                <div>Blank</div>
-              </div>
-            `;
-          }
-          return `
-            <div style="
-              background: rgba(76, 175, 80, 0.1);
-              border: 1px solid rgba(76, 175, 80, 0.3);
-              border-radius: 6px;
-              padding: 8px;
-              text-align: center;
-              font-size: 11px;
-              color: #ddd;
-            ">
-              <div style="font-weight: bold; color: #4CAF50; margin-bottom: 4px;">Face ${idx + 1}</div>
-              <div>${face.raw || '—'}</div>
+      <strong style="color: #4CAF50;">Starting Deck:</strong>
+      <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 5px;">
+        ${startingEntries.map(entry => {
+          const template = typeof CARDS_DATA !== 'undefined'
+            ? CARDS_DATA.find(c => c.name === entry.cardName || c.name.toLowerCase() === entry.cardName.toLowerCase())
+            : null;
+          const color = template ? (template.rarity === 'Rare' ? '#9b59b6' : template.rarity === 'Uncommon' ? '#4CAF50' : '#888') : '#888';
+          return `<div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.3);border:1px solid ${color};border-radius:6px;padding:5px 8px;cursor:default;"
+            onmouseenter="showCardNameTooltip('${entry.cardName.replace(/'/g,"\\'")}', event)"
+            onmouseleave="hideCardNameTooltip()">
+            <span style="color:${color};font-weight:bold;font-size:14px;min-width:24px;">×${entry.count}</span>
+            <div>
+              <div style="font-size:12px;color:white;font-weight:bold;">${entry.cardName}</div>
+              ${template ? `<div style="font-size:10px;color:#aaa;">${template.type || ''} · Cost ${template.cost !== undefined ? template.cost : '?'}</div>` : ''}
             </div>
-          `;
+          </div>`;
         }).join('')}
       </div>
+    </div>
+  ` : '';
+
+  const combatStartHTML = char.combatStart ? `
+    <div style="margin-top: 10px; padding: 8px; background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.4); border-radius: 6px;">
+      <div style="color: #ff9800; font-size: 12px; font-weight: bold; margin-bottom: 3px;">⚡ Combat Start</div>
+      <div style="color: #ddd; font-size: 12px;">${char.combatStart}</div>
     </div>
   ` : '';
 
@@ -7546,8 +7537,9 @@ function showCharacterDetails(charName) {
         </div>
       </div>
 
-      <!-- Dice -->
-      ${diceHTML}
+      <!-- Starting Deck -->
+      ${startingDeckHTML}
+      ${combatStartHTML}
     </div>
   `;
 }
@@ -8847,6 +8839,72 @@ window.showEnemyDetails = showEnemyDetails;
 window.showCardDetails = showCardDetails;
 window.showItemDetails = showItemDetails;
 window.switchEnemyForm = switchEnemyForm;
+
+// ============== CARD NAME TOOLTIP ==============
+// Lightweight floating card preview shown on hovering card names.
+
+(function() {
+  let _tooltipEl = null;
+
+  function _getTooltipEl() {
+    if (!_tooltipEl) {
+      _tooltipEl = document.createElement('div');
+      _tooltipEl.id = 'card-name-tooltip';
+      _tooltipEl.style.cssText = [
+        'position:fixed','z-index:99999','pointer-events:none',
+        'display:none','background:#1a1a2e',
+        'border-radius:10px','box-shadow:0 6px 24px rgba(0,0,0,0.8)',
+        'overflow:hidden','width:160px',
+      ].join(';');
+      document.body.appendChild(_tooltipEl);
+    }
+    return _tooltipEl;
+  }
+
+  window.showCardNameTooltip = function(cardName, event) {
+    const card = typeof CARDS_DATA !== 'undefined'
+      ? CARDS_DATA.find(c => c.name === cardName || c.name.toLowerCase() === cardName.toLowerCase())
+      : null;
+    if (!card) return;
+
+    const rc = card.rarity === 'Rare' ? '#9b59b6' : card.rarity === 'Uncommon' ? '#4CAF50' : card.rarity === 'Common' ? '#aaa' : '#888';
+    const tc = (card.type||'').toLowerCase()==='attack' ? '#e74c3c'
+             : (card.type||'').toLowerCase()==='skill'  ? '#2980b9'
+             : (card.type||'').toLowerCase()==='power'  ? '#8e44ad' : '#888';
+    const imgSrc = card.imageUrl || '';
+
+    const el = _getTooltipEl();
+    el.style.border = '2px solid ' + rc;
+    el.innerHTML = `
+      <div style="position:relative;">
+        <div style="position:absolute;top:5px;left:5px;width:20px;height:20px;border-radius:50%;background:${tc};border:2px solid rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:white;z-index:2;">${card.cost !== null && card.cost !== undefined ? card.cost : '?'}</div>
+        ${imgSrc
+          ? `<img src="${imgSrc}" style="width:100%;height:100px;object-fit:contain;background:rgba(0,0,0,0.4);display:block;" onerror="this.style.display='none'">`
+          : `<div style="width:100%;height:100px;display:flex;align-items:center;justify-content:center;font-size:36px;background:rgba(0,0,0,0.3);">${(card.type||'').toLowerCase()==='attack'?'⚔':(card.type||'').toLowerCase()==='skill'?'🛡':'✨'}</div>`}
+      </div>
+      <div style="padding:8px;">
+        <div style="font-size:12px;font-weight:bold;color:#eee;margin-bottom:3px;">${card.name}</div>
+        <div style="font-size:9px;color:${tc};text-transform:uppercase;font-weight:bold;margin-bottom:2px;">${card.type||''} · <span style="color:${rc}">${card.rarity||''}</span></div>
+        <div style="font-size:10px;color:#ccc;line-height:1.4;">${card.description||''}</div>
+      </div>
+    `;
+
+    el.style.display = 'block';
+    const rect = event.target.getBoundingClientRect();
+    const vpW = window.innerWidth, vpH = window.innerHeight;
+    let left = rect.right + 8;
+    let top = rect.top;
+    if (left + 160 > vpW) left = rect.left - 168;
+    if (top + 220 > vpH) top = vpH - 228;
+    el.style.left = left + 'px';
+    el.style.top = Math.max(4, top) + 'px';
+  };
+
+  window.hideCardNameTooltip = function() {
+    const el = _getTooltipEl();
+    el.style.display = 'none';
+  };
+})();
 window.getEnemyStats = getEnemyStats;
 window.recordEnemyDefeated = recordEnemyDefeated;
 window.recordPlayerKilledBy = recordPlayerKilledBy;
