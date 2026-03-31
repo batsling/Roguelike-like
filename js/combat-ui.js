@@ -340,6 +340,22 @@ function getIntentType(raw) {
 function renderIntentBadge(enemy) {
   if (!enemy.currentIntent || enemy.currentIntent.length === 0) return '';
 
+  // If stunned, override display
+  if (enemy.statuses && enemy.statuses['stun'] > 0) {
+    return `
+      <div title="Stunned — skips next turn" style="
+        display:inline-flex; align-items:center; gap:4px;
+        background:#4a3000; border:1px solid #ff9800;
+        border-radius:12px; padding:3px 8px;
+        font-size:10px; white-space:nowrap; cursor:default;
+        max-width:160px; overflow:hidden;
+      ">
+        <span style="flex-shrink:0;">💫</span>
+        <span style="color:#ff9800; overflow:hidden; text-overflow:ellipsis;">Stunned</span>
+      </div>
+    `;
+  }
+
   // Get the raw description(s) exactly as written in the pattern column
   const rawStr = enemy.currentIntent.map(i => i.face?.raw || '').filter(Boolean).join(' / ');
   if (!rawStr) return '';

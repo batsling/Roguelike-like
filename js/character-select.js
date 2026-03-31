@@ -159,8 +159,31 @@ function showIconCharacterDetails(charKey) {
       ` : ''}
 
       <div class="details-traits-section">
-        <h3>Character Die (6 faces)</h3>
-        ${diceHTML}
+        <h3>Starting Deck</h3>
+        ${(() => {
+          const startingDeck = character.startingDeck || [];
+          if (startingDeck.length === 0) return '<p style="color:#888;font-size:12px;">No starting deck</p>';
+          const cardRows = startingDeck.map(entry => {
+            const template = typeof CARDS_DATA !== 'undefined'
+              ? CARDS_DATA.find(c => c.name === entry.cardName || c.name.toLowerCase() === entry.cardName.toLowerCase())
+              : null;
+            const color = template ? (template.rarity === 'Rare' ? '#9b59b6' : template.rarity === 'Uncommon' ? '#4CAF50' : '#888') : '#888';
+            return `<div style="display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.3);border:1px solid ${color};border-radius:6px;padding:5px 8px;margin:3px 0;">
+              <span style="color:${color};font-weight:bold;font-size:15px;">x${entry.count}</span>
+              <div>
+                <div style="font-size:12px;color:white;font-weight:bold;">${entry.cardName}</div>
+                ${template ? `<div style="font-size:10px;color:#aaa;">${template.type || ''} · Cost ${template.cost !== undefined ? template.cost : '?'}</div>` : ''}
+              </div>
+            </div>`;
+          }).join('');
+          return cardRows;
+        })()}
+        ${character.combatStart ? `
+          <div style="margin-top:10px;padding:8px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.4);border-radius:6px;">
+            <div style="color:#ff9800;font-size:12px;font-weight:bold;margin-bottom:3px;">⚡ Combat Start</div>
+            <div style="color:#ddd;font-size:12px;">${character.combatStart}</div>
+          </div>
+        ` : ''}
       </div>
     `;
   } else {

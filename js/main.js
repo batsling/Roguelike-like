@@ -3712,7 +3712,7 @@ function showCombatModal() {
           ` : ''}
           ${(function() {
             if ((item.type || '').toLowerCase() !== 'incremental') return '';
-            const cs = window.combatState;
+            const cs = window.CombatEngine ? window.CombatEngine.getCombatState() : null;
             const inc = cs && cs.incrementals;
             let cur = 0, max = null;
             switch (item.name) {

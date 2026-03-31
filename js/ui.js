@@ -272,6 +272,80 @@ if (document.readyState === 'loading') {
 // Global inventory sort mode (default: 'type')
 window.inventorySortMode = window.inventorySortMode || 'type';
 
+/**
+ * Update the compact items display at the top of the left sidebar (#game-stats).
+ * Shows all items as small icons; usable items have a "Use" button.
+ * Incremental items show their current progress counter.
+ */
+function updateSidebarItems() {
+  const section = document.getElementById('sidebar-items-section');
+  const grid = document.getElementById('sidebar-items-grid');
+  if (!section || !grid) return;
+
+  const items = typeof inventory !== 'undefined' ? inventory : [];
+  if (items.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+
+  const getRarityColor = (rarity) => {
+    switch ((rarity || '').toLowerCase()) {
+      case 'legendary': return '#ff6b00';
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      case 'common': return '#aaa';
+      default: return '#888';
+    }
+  };
+
+  // Get incremental counter for a given item name
+  function getIncrementalBadge(item) {
+    const cs = window.CombatEngine ? window.CombatEngine.getCombatState() : null;
+    const inc = cs && cs.incrementals;
+    let cur = null, max = null;
+    switch (item.name) {
+      case 'Pen Nib':        cur = inc ? inc.attacksTotal % 10 : (typeof gameState !== 'undefined' ? (gameState.runAttacks || 0) % 10 : 0); max = 10; break;
+      case 'Nunchaku':       cur = inc ? inc.attacksTotal % 10 : (typeof gameState !== 'undefined' ? (gameState.runAttacks || 0) % 10 : 0); max = 10; break;
+      case 'Happy Flower':   cur = cs ? (cs.turn - 1) % 3 : 0; max = 3; break;
+      case 'Ornamental Fan': cur = inc ? inc.attacksThisTurn % 4 : 0; max = 4; break;
+      case 'Shuriken':       cur = inc ? inc.attacksThisTurn % 3 : 0; max = 3; break;
+    }
+    if (cur === null) return '';
+    return `<div style="position:absolute;bottom:1px;left:1px;background:rgba(0,0,0,0.9);color:#ffcc44;padding:1px 3px;border-radius:3px;font-size:8px;font-weight:bold;border:1px solid #ffcc44;">${cur}/${max}</div>`;
+  }
+
+  grid.innerHTML = items.map((item, idx) => {
+    const color = getRarityColor(item.rarity);
+    let imgSrc = item.image && item.image.trim() ? item.image : '';
+    if (imgSrc && imgSrc.includes('imgur.com/') && !imgSrc.includes('i.imgur.com')) {
+      imgSrc = imgSrc.replace('imgur.com/', 'i.imgur.com/');
+      if (!imgSrc.match(/\.(png|jpg|jpeg|gif)$/i)) imgSrc += '.png';
+    }
+
+    const isUsable = item.type === 'Usable' || item.type === 'Active';
+    const isIncremental = (item.type || '').toLowerCase() === 'incremental';
+    const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
+    const incBadge = isIncremental ? getIncrementalBadge(item) : '';
+
+    const quantityBadge = item.quantity && item.quantity > 1
+      ? `<div style="position:absolute;top:1px;right:1px;background:rgba(0,0,0,0.9);color:white;padding:1px 3px;border-radius:3px;font-size:8px;font-weight:bold;border:1px solid #ffaa00;">${item.quantity}</div>`
+      : '';
+
+    const useBtn = isUsable
+      ? `<button onclick="event.stopPropagation(); if(typeof useItem==='function') useItem(${idx});" title="${canUse ? 'Use' : 'Cannot use now'}" style="position:absolute;bottom:0;left:0;right:0;font-size:8px;padding:1px;background:${canUse ? '#4CAF50' : '#555'};color:${canUse ? 'white' : '#888'};border:none;border-radius:0 0 4px 4px;cursor:${canUse ? 'pointer' : 'not-allowed'};font-weight:bold;${canUse ? '' : 'opacity:0.6;'}">${canUse ? 'USE' : '—'}</button>`
+      : '';
+
+    return `<div title="${item.name}: ${item.description}" style="position:relative;width:40px;height:40px;border:2px solid ${color};border-radius:6px;background:rgba(0,0,0,0.5);overflow:visible;flex-shrink:0;">
+      ${imgSrc
+        ? `<img src="${imgSrc}" alt="${item.name}" style="width:100%;height:100%;object-fit:contain;border-radius:4px;" onerror="this.style.display='none'">`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;">🎒</div>`}
+      ${quantityBadge}${incBadge}${useBtn}
+    </div>`;
+  }).join('');
+}
+window.updateSidebarItems = updateSidebarItems;
+
 function updateInventory() {
   const inventoryDiv = document.getElementById('inventory');
   inventoryDiv.innerHTML = '';
@@ -571,6 +645,7 @@ function updateInventory() {
   // Update stats panel and equipment slots
   updateGameStats();
   updateEquipmentSlots();
+  updateSidebarItems();
 }
 
 // ===== WEAPON EQUIP/UNEQUIP FUNCTIONS =====

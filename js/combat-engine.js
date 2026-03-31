@@ -289,10 +289,11 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     }
   }
 
-  // Initialize incremental item counters
+  // Initialize incremental item counters — attacksTotal persists across combats via gameState.runAttacks
+  const savedRunAttacks = (typeof gameState !== 'undefined' && gameState.runAttacks) ? gameState.runAttacks : 0;
   combatState.incrementals = {
-    attacksTotal: 0,     // cumulative attacks this combat (Pen Nib, Nunchaku)
-    attacksThisTurn: 0,  // attacks played this turn (Ornamental Fan, Shuriken)
+    attacksTotal: savedRunAttacks,  // cumulative attacks this run (Pen Nib, Nunchaku)
+    attacksThisTurn: 0,             // attacks played this turn (Ornamental Fan, Shuriken)
   };
 
   // Roll enemy intents
@@ -411,6 +412,21 @@ const PATTERN_STATUSES = new Set([
   'burn','poison','weak','vulnerable','stun','oiled','dodge','power','frail','confused',
   'barricade','fading','thorns','shifting','formless','ritual','ruptured','bleed','slow','silence',
 ]);
+// Statuses that do not stack — applying again just sets to 1
+const NON_STACKABLE_STATUSES = new Set(['stun', 'dodge', 'silence', 'confusion', 'confused']);
+
+/**
+ * Apply a status to a unit, respecting non-stackable caps.
+ */
+function applyStatus(unit, statusName, amount) {
+  if (!unit || !unit.statuses) return;
+  const key = statusName.toLowerCase();
+  if (NON_STACKABLE_STATUSES.has(key)) {
+    unit.statuses[key] = 1;
+  } else {
+    unit.statuses[key] = (unit.statuses[key] || 0) + amount;
+  }
+}
 
 /**
  * Evaluate turn-scaling formulas in a pattern description.
@@ -655,24 +671,29 @@ function rollEnemyIntent(enemy) {
     const pseudoFace = { isBlank: isUnknownIntent, effects: parsedTurn.effects, raw: parsedTurn.text };
     enemy.currentIntent.push({ faceIndex: idx, face: pseudoFace, resolved: false });
 
-    // Advance index; find "Next:" to determine loop point
+    // Advance index; "Next:" is the repeating loop point (not a skip target)
     let nextIdx = idx + 1;
-    if (nextIdx >= turns.length) {
-      // Find the "Next" entry for looping
+    const isCurrentNext = current.label.toLowerCase() === 'next';
+
+    if (isCurrentNext) {
+      // We just executed a "Next:" entry — check if it means "repeat from start"
+      const desc = current.description.toLowerCase().trim();
+      if (desc === 'repeat') {
+        nextIdx = 0; // "Next: Repeat" → loop back to Turn 1
+      } else {
+        nextIdx = idx; // Stay at this "Next:" entry (loop here forever)
+      }
+    } else if (nextIdx >= turns.length) {
+      // Ran past the end — find the Next: entry to loop at
       const nextEntry = turns.findIndex(t => t.label.toLowerCase() === 'next');
       if (nextEntry !== -1) {
-        // "Next: Repeat" means loop back to turn 1 (index 0)
-        const nextDesc = turns[nextEntry].description.toLowerCase();
-        nextIdx = nextDesc.includes('repeat') ? 0 : nextEntry;
+        const nextDesc = turns[nextEntry].description.toLowerCase().trim();
+        nextIdx = nextDesc === 'repeat' ? 0 : nextEntry;
       } else {
         nextIdx = 0;
       }
     }
-    // Skip any "Next:" labels when looping
-    while (nextIdx < turns.length && turns[nextIdx].label.toLowerCase() === 'next') {
-      nextIdx++;
-    }
-    if (nextIdx >= turns.length) nextIdx = 0;
+    // (Do NOT skip "Next:" entries — they are executed as normal turns)
     enemy.patternTurnIndex = nextIdx;
 
   } else {
@@ -1125,7 +1146,7 @@ function processEffect(effect, die, targets, isCantrip = false) {
       // Give status to self
       const statusName = effect.target ? effect.target.toLowerCase() : '';
       if (statusName) {
-        combatState.player.statuses[statusName] = (combatState.player.statuses[statusName] || 0) + value;
+        applyStatus(combatState.player, statusName, value);
         addLog(`Gained ${value} ${effect.target}`, 'info');
       }
       break;
@@ -1135,7 +1156,7 @@ function processEffect(effect, die, targets, isCantrip = false) {
       const inflictStatus = effect.target ? effect.target.toLowerCase() : '';
       if (inflictStatus) {
         resolvedTargets.enemies.forEach(enemy => {
-          enemy.statuses[inflictStatus] = (enemy.statuses[inflictStatus] || 0) + value;
+          applyStatus(enemy, inflictStatus, value);
           addLog(`Inflicted ${value} ${effect.target} on ${enemy.name}`, 'info');
         });
       }
@@ -1398,7 +1419,7 @@ function dealDamage(target, damage, addons = []) {
   // Check Stagger — if this single hit is ≥ X% of the target's max HP, apply Stun
   if (target !== combatState.player && target.staggerThreshold && target.staggerThreshold > 0) {
     if (dmg >= target.staggerThreshold * target.maxHealth) {
-      target.statuses['stun'] = (target.statuses['stun'] || 0) + 1;
+      target.statuses['stun'] = 1; // Stun is non-stackable
       addLog(`${target.name} is staggered by the heavy hit!`, 'warning');
     }
   }
@@ -2183,17 +2204,13 @@ function executeEnemyActions() {
                   ['overload','wide'].includes(a.toLowerCase()));
                 if (isAoE) {
                   // Inflict on player + all allies
-                  combatState.player.statuses[inflictStatus] =
-                    (combatState.player.statuses[inflictStatus] || 0) + value;
+                  applyStatus(combatState.player, inflictStatus, value);
                   combatState.allies.forEach(a => {
-                    if (a.isAlive) {
-                      a.statuses[inflictStatus] = (a.statuses[inflictStatus] || 0) + value;
-                    }
+                    if (a.isAlive) applyStatus(a, inflictStatus, value);
                   });
                   addLog(`${enemy.name} inflicted ${value} ${effect.target} on all targets!`, 'warning');
                 } else {
-                  combatState.player.statuses[inflictStatus] =
-                    (combatState.player.statuses[inflictStatus] || 0) + value;
+                  applyStatus(combatState.player, inflictStatus, value);
                   addLog(`${enemy.name} inflicted ${value} ${effect.target}`, 'warning');
                 }
               }
@@ -3112,6 +3129,8 @@ function playCard(handIndex, targetId = null) {
     combatState.incrementals = combatState.incrementals || { attacksTotal: 0, attacksThisTurn: 0 };
     combatState.incrementals.attacksTotal++;
     combatState.incrementals.attacksThisTurn++;
+    // Persist run-wide attack count to gameState so it survives across combats
+    if (typeof gameState !== 'undefined') gameState.runAttacks = combatState.incrementals.attacksTotal;
     // Pen Nib: every 10th attack deals double damage — flag for dealDamage
     if (combatState.incrementals.attacksTotal % 10 === 0 && _incInv.some(i => i.name === 'Pen Nib')) {
       combatState._penNibDouble = true;
