@@ -768,7 +768,7 @@ var ITEMS_DATA = [
   },
   {
     "name": "Burning Blood",
-    "rarity": "Common",
+    "rarity": "Starter",
     "type": "Triggered",
     "description": "At the end of combat, Gain +6 Health",
     "game": "Slay the Spire",
@@ -798,7 +798,7 @@ var ITEMS_DATA = [
   },
   {
     "name": "Du-Vu Doll",
-    "rarity": "Uncommon",
+    "rarity": "Rare",
     "type": "Triggered",
     "description": "At the start of each combat, Gain X Power where X is the amount of curses you have",
     "game": "Slay the Spire",
