@@ -118,11 +118,15 @@ gamesData.forEach(row => {
   const fileName = row['File'];
 
   // Use File column if available, otherwise generate from name
+  // Check for .png first, fallback to .jpg
   let coverImage;
-  if (fileName && fileName.toString().trim()) {
-    coverImage = `images/covers/${fileName.toString().trim()}.jpg`;
+  const baseName = (fileName && fileName.toString().trim())
+    ? fileName.toString().trim()
+    : name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (fs.existsSync(`images/covers/${baseName}.png`)) {
+    coverImage = `images/covers/${baseName}.png`;
   } else {
-    coverImage = `images/covers/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.jpg`;
+    coverImage = `images/covers/${baseName}.jpg`;
   }
 
   const game = {

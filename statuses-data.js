@@ -29,7 +29,7 @@ var STATUSES_DATA = {
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
-    "decay": "Stack Goes down when player was going to lose health",
+    "decay": "Down when player was going to lose health",
     "who": "All",
     "preference": "Positive",
     "imageUrl": "images/statuses/Dodge.png"
@@ -58,12 +58,12 @@ var STATUSES_DATA = {
   },
   "forgetful": {
     "name": "Forgetful",
-    "description": "Dice sides that have already been rolled cannot appear until all sides have been rolled",
+    "description": "This enemy cannot repeat any of its intents until it has performed all of them.",
     "type": "Ability",
     "stackable": false,
-    "maxStack": 1,
+    "maxStack": null,
     "decay": "Down by 1 when all sides have been rolled",
-    "who": "All",
+    "who": "Enemy",
     "preference": "Negative",
     "imageUrl": "images/statuses/Forgetful.png"
   },
@@ -72,8 +72,8 @@ var STATUSES_DATA = {
     "description": "Block goes down by half at end of turn",
     "type": "Ability",
     "stackable": false,
-    "maxStack": 1,
-    "decay": "Down by 1 at end of turn",
+    "maxStack": null,
+    "decay": "None",
     "who": "All",
     "preference": "Positive",
     "imageUrl": "images/statuses/Barricade.png"
@@ -91,7 +91,7 @@ var STATUSES_DATA = {
   },
   "frail": {
     "name": "Frail",
-    "description": "All damage deals double to target ",
+    "description": "All damage deals double to target",
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
@@ -274,8 +274,7 @@ var STATUSES_DATA = {
     "decay": "None",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/Brace.png",
-    "rarity": "Common"
+    "imageUrl": "images/statuses/Brace.png"
   },
   "bruise": {
     "name": "Bruise",
@@ -286,8 +285,7 @@ var STATUSES_DATA = {
     "decay": "None",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Bruise.png",
-    "rarity": "Common"
+    "imageUrl": "images/statuses/Bruise.png"
   },
   "leeches": {
     "name": "Leeches",
@@ -298,8 +296,7 @@ var STATUSES_DATA = {
     "decay": "None",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Leeches.png",
-    "rarity": "Uncommon"
+    "imageUrl": "images/statuses/Leeches.png"
   },
   "soul_link": {
     "name": "Soul Link",
@@ -310,8 +307,7 @@ var STATUSES_DATA = {
     "decay": "None",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/SoulLink.png",
-    "rarity": "Rare"
+    "imageUrl": "images/statuses/SoulLink.png"
   },
   "holy_shield": {
     "name": "Holy Shield",
@@ -322,8 +318,7 @@ var STATUSES_DATA = {
     "decay": "When the target would take damage",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/HolyShield.png",
-    "rarity": "Rare"
+    "imageUrl": "images/statuses/HolyShield.png"
   },
   "regeneration": {
     "name": "Regeneration",
@@ -334,7 +329,17 @@ var STATUSES_DATA = {
     "decay": "Down by 1 at end of turn",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/Regeneration.png",
-    "rarity": "Uncommon"
+    "imageUrl": "images/statuses/Regeneration.png"
+  },
+  "defense": {
+    "name": "Defense",
+    "description": "Raise or Lower the Block gained by this target by X",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Defense.png"
   }
 };

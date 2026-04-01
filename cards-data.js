@@ -3,11 +3,11 @@
 
 var CARDS_DATA = [
   {
-    "name": "Attack",
+    "name": "Strike",
     "rarity": "Starter",
     "cost": 1,
     "type": "Attack",
-    "description": "Deal 6 Dmg",
+    "description": "Deal 6 Dmg.",
     "upgradedDescription": "Deal 9 Dmg.",
     "upgradedCost": 1,
     "canUpgrade": false,
@@ -21,7 +21,7 @@ var CARDS_DATA = [
     "rarity": "Starter",
     "cost": 1,
     "type": "Skill",
-    "description": "Gain 5 Block",
+    "description": "Gain 5 Block.",
     "upgradedDescription": "Gain 8 Block.",
     "upgradedCost": 1,
     "canUpgrade": false,
@@ -35,7 +35,7 @@ var CARDS_DATA = [
     "rarity": "Starter",
     "cost": 2,
     "type": "Attack",
-    "description": "Deal 8 Dmg. Apply 2 Vulnerable",
+    "description": "Deal 8 Dmg. Apply 2 Vulnerable.",
     "upgradedDescription": "Deal 10 Dmg. Apply 3 Vulnerable.",
     "upgradedCost": 2,
     "canUpgrade": false,
@@ -115,8 +115,8 @@ var CARDS_DATA = [
     "rarity": "Starter",
     "cost": 1,
     "type": "Dice",
-    "description": "1: Gain random curse from the current difficulty\r\n2: Take 3 Dmg\r\n3: Gain 5 Block\r\n4: Heal 3 Health\r\n5: Draw 1 Card\r\n6: Gain a Random Common Item",
-    "upgradedDescription": "1: Gain 2 random curses from the current difficulty\r\n2: Take 5 Dmg\r\n3: Gain 8 Block\r\n4: Heal 3 Health\r\n5: Draw 2 Cards\r\n6: Gain a Random Item",
+    "description": "1: Gain random curse from the current difficulty.\r\n2: Take 3 Dmg\r\n3: Gain 5 Block\r\n4: Heal 3 Health\r\n5: Draw 1 Card\r\n6: Gain a Random Common Item",
+    "upgradedDescription": "1: Gain 2 random curses from the current difficulty.\r\n2: Take 5 Dmg\r\n3: Gain 8 Block\r\n4: Heal 3 Health\r\n5: Draw 2 Cards\r\n6: Gain a Random Item",
     "upgradedCost": 1,
     "canUpgrade": false,
     "isStatusCard": false,
@@ -145,8 +145,8 @@ var CARDS_DATA = [
     "rarity": "Uncommon",
     "cost": 0,
     "type": "Skill",
-    "description": "Lose 3 Health. Gain 3 Energy.",
-    "upgradedDescription": "Lose 3 Health. Gain 2 Energy.",
+    "description": "Lose 3 Health. Gain 2 Energy.",
+    "upgradedDescription": "Lose 3 Health. Gain 3 Energy.",
     "upgradedCost": 0,
     "canUpgrade": true,
     "isStatusCard": false,
@@ -177,13 +177,13 @@ var CARDS_DATA = [
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
-    "description": "Deal 2 Dmg. Wealth",
-    "upgradedDescription": "Deal 2 Dmg. Wealth",
+    "description": "Deal 2 Dmg. Wealth.",
+    "upgradedDescription": "Deal 2 Dmg. Wealth.",
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
     "imageUrl": "images/cards/BlasmaPistol.png",
-    "game": "Flintlock",
+    "game": "Flinthook",
     "tags": [
       "weapon"
     ]
@@ -238,10 +238,10 @@ var CARDS_DATA = [
   },
   {
     "name": "Blue Pigment",
-    "rarity": "N/A",
+    "rarity": "None",
     "cost": 1,
     "type": "Status",
-    "description": "Gain +3 Intelligence until end of combat. Exhaust",
+    "description": "Gain +3 Intelligence until end of combat. Exhaust.",
     "upgradedDescription": null,
     "upgradedCost": null,
     "canUpgrade": false,
@@ -254,10 +254,10 @@ var CARDS_DATA = [
   },
   {
     "name": "Purple Pigment",
-    "rarity": "N/A",
+    "rarity": "None",
     "cost": 1,
     "type": "Status",
-    "description": "Gain +3 Charisma until end of combat. Exhaust",
+    "description": "Gain +3 Charisma until end of combat. Exhaust.",
     "upgradedDescription": null,
     "upgradedCost": null,
     "canUpgrade": false,
@@ -270,10 +270,10 @@ var CARDS_DATA = [
   },
   {
     "name": "Red Pigment",
-    "rarity": "N/A",
+    "rarity": "None",
     "cost": 1,
     "type": "Status",
-    "description": "Gain +3 Strength until end of combat. Exhaust",
+    "description": "Gain +3 Strength until end of combat. Exhaust.",
     "upgradedDescription": null,
     "upgradedCost": null,
     "canUpgrade": false,
@@ -286,10 +286,10 @@ var CARDS_DATA = [
   },
   {
     "name": "Yellow Pigment",
-    "rarity": "N/A",
+    "rarity": "None",
     "cost": 1,
     "type": "Status",
-    "description": "Gain +3 Dexterity until end of combat. Exhaust",
+    "description": "Gain +3 Dexterity until end of combat. Exhaust.",
     "upgradedDescription": null,
     "upgradedCost": null,
     "canUpgrade": false,
@@ -305,14 +305,16 @@ var CARDS_DATA = [
     "rarity": "Rare",
     "cost": 3,
     "type": "Power",
-    "description": "Gain Barricade ",
-    "upgradedDescription": "Gain Barricade ",
+    "description": "Gain Barricade.",
+    "upgradedDescription": "Gain Barricade.",
     "upgradedCost": 2,
     "canUpgrade": true,
     "isStatusCard": false,
     "imageUrl": "images/cards/Barricade.png",
     "game": "Slay the Spire",
-    "tags": ["ironclad"]
+    "tags": [
+      "ironclad"
+    ]
   },
   {
     "name": "Claw",
@@ -326,7 +328,9 @@ var CARDS_DATA = [
     "isStatusCard": false,
     "imageUrl": "images/cards/Claw.png",
     "game": "Slay the Spire",
-    "tags": ["Defect"]
+    "tags": [
+      "Defect"
+    ]
   },
   {
     "name": "Target Practice",
@@ -338,7 +342,6 @@ var CARDS_DATA = [
     "upgradedCost": 3,
     "canUpgrade": true,
     "isStatusCard": false,
-    "isTraining": true,
     "imageUrl": "images/cards/TargetPractice.png",
     "game": "Monmusu Gladiator",
     "tags": []
@@ -353,7 +356,6 @@ var CARDS_DATA = [
     "upgradedCost": 3,
     "canUpgrade": true,
     "isStatusCard": false,
-    "isTraining": true,
     "imageUrl": "images/cards/BoulderDodge.png",
     "game": "Monmusu Gladiator",
     "tags": []
@@ -368,7 +370,6 @@ var CARDS_DATA = [
     "upgradedCost": 4,
     "canUpgrade": true,
     "isStatusCard": false,
-    "isTraining": true,
     "imageUrl": "images/cards/MockBattle.png",
     "game": "Monmusu Gladiator",
     "tags": []
@@ -379,11 +380,10 @@ var CARDS_DATA = [
     "cost": 2,
     "type": "Training",
     "description": "For every 10 Health you have under Max Health, Gain +2 Max Health. Destroy.",
-    "upgradedDescription": "For every 10 Health you have under Max Health, Gain +3 Max Health. Destroy.",
+    "upgradedDescription": "For every 10 Health you have under Max Health, Gain +3 Max Health. Destroy. ",
     "upgradedCost": 2,
     "canUpgrade": true,
     "isStatusCard": false,
-    "isTraining": true,
     "imageUrl": "images/cards/Runner'sHigh.png",
     "game": "Monmusu Gladiator",
     "tags": []

@@ -1095,7 +1095,9 @@ function updateGameStats() {
   const statsHealth = document.getElementById('stats-health');
   const statsGold = document.getElementById('stats-gold');
   const statsStrength = document.getElementById('stats-strength');
+  const statsPower = document.getElementById('stats-power');
   const statsDexterity = document.getElementById('stats-dexterity');
+  const statsDefense = document.getElementById('stats-defense');
   const statsIntelligence = document.getElementById('stats-intelligence');
   const statsCharisma = document.getElementById('stats-charisma');
   const statsReroll = document.getElementById('stats-reroll');
@@ -1135,6 +1137,12 @@ function updateGameStats() {
     }
   }
 
+  // Power derived stat (every 3 Strength = 1 Power)
+  if (statsPower) {
+    const effectiveStrength = totalBonuses ? strength + totalBonuses.strength : strength;
+    statsPower.textContent = Math.floor(effectiveStrength / 3);
+  }
+
   // Dexterity stat with bonuses
   if (statsDexterity) {
     const effectiveDexterity = totalBonuses ? dexterity + totalBonuses.dexterity : dexterity;
@@ -1143,6 +1151,12 @@ function updateGameStats() {
     } else {
       statsDexterity.textContent = dexterity;
     }
+  }
+
+  // Defense derived stat (every 3 Dexterity = 1 Defense)
+  if (statsDefense) {
+    const effectiveDexterity = totalBonuses ? dexterity + totalBonuses.dexterity : dexterity;
+    statsDefense.textContent = Math.floor(effectiveDexterity / 3);
   }
 
   // Intelligence stat with bonuses

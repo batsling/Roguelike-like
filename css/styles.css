@@ -827,6 +827,30 @@ text, path, line, g {
   color: #88ff88;
 }
 
+#game-stats .stat-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+#game-stats .stat-icon-derived {
+  width: 16px;
+  height: 16px;
+  opacity: 0.85;
+}
+
+#game-stats .stat-derived {
+  margin-left: 8px;
+  opacity: 0.85;
+  font-size: 12px;
+}
+
+#game-stats .stat-derived-value {
+  font-size: 12px;
+}
+
 #game-stats .stat-tooltip {
   cursor: help;
   position: relative;
@@ -2111,6 +2135,16 @@ text, path, line, g {
 
 .stat-color-skip {
   color: #ff9966;
+}
+
+#game-stats .stat-color-power,
+.stat-color-power {
+  color: #ff8844;
+}
+
+#game-stats .stat-color-defense,
+.stat-color-defense {
+  color: #66ffaa;
 }
 
 /* Font Size Utilities */
