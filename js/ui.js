@@ -348,10 +348,14 @@ window.updateSidebarItems = updateSidebarItems;
 
 function updateInventory() {
   const inventoryDiv = document.getElementById('inventory');
-  inventoryDiv.innerHTML = '';
-
   const removeItemSelect = document.getElementById('removeItemSelect');
-  removeItemSelect.innerHTML = '<option value="">-- Select an Item --</option>';
+
+  if (inventoryDiv) {
+    inventoryDiv.innerHTML = '';
+  }
+  if (removeItemSelect) {
+    removeItemSelect.innerHTML = '<option value="">-- Select an Item --</option>';
+  }
 
   inventory.forEach((item, index) => {
     // Get display name (with stat modifiers for passive items)
@@ -359,25 +363,31 @@ function updateInventory() {
       ? getPassiveDisplayName(item)
       : (item.displayName || item.name);
 
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'inventory-item';
-    itemDiv.innerHTML = `
-      <strong>${displayName}</strong> (${item.rarity})
-      <span class="remove-item" onclick="removeItem(${index})">×</span>
-      <p>${item.description}</p>
-      <p><em>Type: ${item.type}</em></p>
-    `;
-    inventoryDiv.appendChild(itemDiv);
+    if (inventoryDiv) {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'inventory-item';
+      itemDiv.innerHTML = `
+        <strong>${displayName}</strong> (${item.rarity})
+        <span class="remove-item" onclick="removeItem(${index})">×</span>
+        <p>${item.description}</p>
+        <p><em>Type: ${item.type}</em></p>
+      `;
+      inventoryDiv.appendChild(itemDiv);
+    }
 
-    const option = document.createElement('option');
-    option.value = index;
-    option.textContent = `${displayName} (${item.rarity})`;
-    removeItemSelect.appendChild(option);
+    if (removeItemSelect) {
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = `${displayName} (${item.rarity})`;
+      removeItemSelect.appendChild(option);
+    }
   });
 
-  removeItemSelect.disabled = inventory.length === 0;
-  document.getElementById('removeSelectedItem').disabled = inventory.length === 0;
-  document.getElementById('removeRandomItem').disabled = inventory.length === 0;
+  if (removeItemSelect) removeItemSelect.disabled = inventory.length === 0;
+  const removeSelectedItem = document.getElementById('removeSelectedItem');
+  const removeRandomItem = document.getElementById('removeRandomItem');
+  if (removeSelectedItem) removeSelectedItem.disabled = inventory.length === 0;
+  if (removeRandomItem) removeRandomItem.disabled = inventory.length === 0;
 
   // Update game items sidebar if it exists
   const gameItemsList = document.getElementById('game-items-list');
@@ -1137,10 +1147,21 @@ function updateGameStats() {
     }
   }
 
-  // Power derived stat (every 3 Strength = 1 Power)
+  // Get active combat state for combat-time status bonuses
+  const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+  const combatPower = cs ? (cs.player.statuses['power'] || 0) : 0;
+  const combatDefense = cs ? (cs.player.statuses['defense'] || 0) : 0;
+
+  // Power derived stat (every 3 Strength = 1 Power) + any combat/item power bonuses
   if (statsPower) {
     const effectiveStrength = totalBonuses ? strength + totalBonuses.strength : strength;
-    statsPower.textContent = Math.floor(effectiveStrength / 3);
+    const basePower = Math.floor(effectiveStrength / 3);
+    const totalPower = basePower + combatPower;
+    if (combatPower !== 0) {
+      statsPower.textContent = `${totalPower} (${basePower}+${combatPower})`;
+    } else {
+      statsPower.textContent = totalPower;
+    }
   }
 
   // Dexterity stat with bonuses
@@ -1153,10 +1174,16 @@ function updateGameStats() {
     }
   }
 
-  // Defense derived stat (every 3 Dexterity = 1 Defense)
+  // Defense derived stat (every 3 Dexterity = 1 Defense) + any combat/item defense bonuses
   if (statsDefense) {
     const effectiveDexterity = totalBonuses ? dexterity + totalBonuses.dexterity : dexterity;
-    statsDefense.textContent = Math.floor(effectiveDexterity / 3);
+    const baseDefense = Math.floor(effectiveDexterity / 3);
+    const totalDefense = baseDefense + combatDefense;
+    if (combatDefense !== 0) {
+      statsDefense.textContent = `${totalDefense} (${baseDefense}+${combatDefense})`;
+    } else {
+      statsDefense.textContent = totalDefense;
+    }
   }
 
   // Intelligence stat with bonuses

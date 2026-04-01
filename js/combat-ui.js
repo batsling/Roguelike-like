@@ -53,6 +53,7 @@ const STATUS_META = {
   vulnerable:     { img: 'Vulnerable',  emoji: '💢', label: 'Vulnerable'   },
   dodge:          { img: 'Dodge',       emoji: '💨', label: 'Dodge'        },
   power:          { img: 'Power',       emoji: '⚡', label: 'Power'        },
+  defense:        { img: 'Defense',     emoji: '🛡', label: 'Defense'      },
   ritual:         { img: 'Ritual',      emoji: '🔮', label: 'Ritual'       },
   barricade:      { img: 'Barricade',   emoji: '🏰', label: 'Barricade'    },
   confused:       { img: 'Confused',    emoji: '❓', label: 'Confused'     },
@@ -1754,6 +1755,8 @@ function updateCombatDisplay() {
   const container = document.getElementById('dice-combat-content');
   if (!combat || !container) return;
   renderCombatUI(combat, container);
+  // Keep sidebar Power/Defense in sync with combat statuses
+  if (typeof window.updateGameStats === 'function') window.updateGameStats();
 }
 
 function checkCombatEnd() {

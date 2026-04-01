@@ -1233,14 +1233,19 @@ function calculateMoveValue(move, value, die) {
   const intBonus = bonuses.intelligence || 0;
   const chaBonus = bonuses.charisma || 0;
 
+  // Combat status bonuses (from items/attacks like Shuriken power, defense gains)
+  const playerStatuses = combatState.player.statuses || {};
+  const combatPowerBonus = playerStatuses['power'] || 0;
+  const combatDefenseBonus = playerStatuses['defense'] || 0;
+
   switch (move) {
     case 'dmg':
     case 'pain':
     case 'assassinate':
-      return baseValue + (hasFinesse ? dexBonus : strBonus);
+      return baseValue + (hasFinesse ? dexBonus : strBonus) + combatPowerBonus;
 
     case 'block':
-      return baseValue + dexBonus;
+      return baseValue + dexBonus + combatDefenseBonus;
 
     case 'heal':
     case 'mana':
