@@ -306,10 +306,12 @@ function showDeckModal() {
   }
 
   // Build starting deck from character data
-  const charKey = (typeof selectedCharacter !== 'undefined' ? selectedCharacter : null)
-               || (typeof gameState !== 'undefined' ? gameState.character : null)
-               || 'Rodney';
-  const charData = typeof PLAYER_CHARACTERS !== 'undefined' ? PLAYER_CHARACTERS[charKey] : null;
+  const charKey = (typeof selectedCharacter !== 'undefined' && selectedCharacter)
+               ? selectedCharacter
+               : ((typeof gameState !== 'undefined' && gameState && gameState.character)
+                 ? gameState.character
+                 : null);
+  const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
   const startingEntries = (charData && charData.startingDeck) ? charData.startingDeck : [];
 
   const startingCards = [];
@@ -321,24 +323,18 @@ function showDeckModal() {
       for (let i = 0; i < (entry.count || 1); i++) {
         startingCards.push(template);
       }
+    } else {
+      // Card template not found — show a placeholder
+      for (let i = 0; i < (entry.count || 1); i++) {
+        startingCards.push({ name: entry.cardName, rarity: 'Starter', type: '', description: '', cost: '?' });
+      }
     }
   }
 
   // Collected cards
-  const collectedCards = (gameState && gameState.deck) ? gameState.deck : [];
+  const collectedCards = (typeof gameState !== 'undefined' && gameState && gameState.deck) ? gameState.deck : [];
 
   const totalCount = startingCards.length + collectedCards.length;
-  if (totalCount === 0) {
-    createGameModal(`
-      <div style="text-align:center;padding:30px;">
-        <h2 style="color:#9b59b6;">🃏 Your Deck</h2>
-        <p style="color:#aaa;">Your deck is empty.</p>
-        <button onclick="closeGameModal()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
-      </div>
-    `);
-    return;
-  }
-
   const startingHTML = startingCards.map(c => cardHtml(c, 'Starting')).join('');
   const collectedHTML = collectedCards.map(c => cardHtml(c, 'Acquired')).join('');
 

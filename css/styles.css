@@ -1543,7 +1543,7 @@ text, path, line, g {
   background: #2a2a2a;
   border: 3px solid #444;
   border-radius: 12px;
-  padding: 6px;
+  padding: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
   text-align: center;
@@ -1553,7 +1553,9 @@ text, path, line, g {
   justify-content: center;
   align-items: center;
   width: 100%;
+  min-width: 0;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .icon-char-card:hover {
@@ -1581,7 +1583,11 @@ text, path, line, g {
 .icon-char-name {
   color: white;
   font-weight: bold;
-  font-size: 12px;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
   line-height: 1.2;
 }
 

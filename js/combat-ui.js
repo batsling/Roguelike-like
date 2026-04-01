@@ -89,6 +89,7 @@ function renderCombatUI(combat, container) {
       color: ${C.text};
       user-select: none;
     ">
+      ${renderItemsBar(combat)}
       ${renderTopBar(combat)}
 
       <div style="flex:1; display:flex; overflow:hidden; position:relative; min-height:0;">
@@ -105,6 +106,100 @@ function renderCombatUI(combat, container) {
   `;
 
   attachCombatEventListeners(combat);
+}
+
+// ============== ITEMS BAR ==============
+
+function renderItemsBar(combat) {
+  const inv = window.inventory || [];
+  if (inv.length === 0) return '';
+
+  const cs = window.CombatEngine ? window.CombatEngine.getCombatState() : null;
+  const inc = cs && cs.incrementals;
+
+  const getRarityColor = (rarity) => {
+    switch ((rarity || '').toLowerCase()) {
+      case 'legendary': return '#ff6b00';
+      case 'rare':      return '#9b59b6';
+      case 'uncommon':  return '#4CAF50';
+      case 'common':    return '#aaa';
+      default:          return '#888';
+    }
+  };
+
+  const getIncrementalCounter = (item) => {
+    if ((item.type || '').toLowerCase() !== 'incremental') return '';
+    let cur = 0, max = null;
+    switch (item.name) {
+      case 'Pen Nib':        cur = inc ? inc.attacksTotal % 10 : 0;     max = 10; break;
+      case 'Nunchaku':       cur = inc ? inc.attacksTotal % 10 : 0;     max = 10; break;
+      case 'Happy Flower':   cur = cs  ? (cs.turn - 1) % 3 : 0;        max = 3;  break;
+      case 'Ornamental Fan': cur = inc ? inc.attacksThisTurn % 4 : 0;  max = 4;  break;
+      case 'Shuriken':       cur = inc ? inc.attacksThisTurn % 3 : 0;  max = 3;  break;
+    }
+    if (max === null) return '';
+    return `<div style="position:absolute;top:1px;left:1px;background:rgba(0,0,0,0.85);color:#ffcc44;padding:1px 3px;border-radius:3px;font-size:9px;font-weight:bold;border:1px solid #ffcc44;line-height:1.2;">${cur}/${max}</div>`;
+  };
+
+  const itemsHTML = inv.map((item, idx) => {
+    let imageUrl = (item.image && item.image.trim()) ? item.image : '';
+    if (imageUrl.includes('imgur.com/') && !imageUrl.includes('i.imgur.com')) {
+      imageUrl = imageUrl.replace('imgur.com/', 'i.imgur.com/');
+      if (!imageUrl.match(/\.(png|jpg|jpeg|gif)$/i)) imageUrl += '.png';
+    }
+    const color = getRarityColor(item.rarity);
+    const isUsable = item.type === 'Usable';
+    const canUse = isUsable && typeof window.canUseItem === 'function' && window.canUseItem(item);
+    const onClick = canUse ? `onclick="window.useCombatItem(${idx})"` : '';
+    const quantityBadge = item.quantity && item.quantity > 1
+      ? `<div style="position:absolute;bottom:1px;right:1px;background:rgba(0,0,0,0.9);color:white;padding:1px 3px;border-radius:3px;font-size:9px;font-weight:bold;border:1px solid #ffaa00;">x${item.quantity}</div>`
+      : '';
+    const imgEl = imageUrl
+      ? `<img src="${imageUrl}" alt="${item.name}" style="width:100%;height:100%;object-fit:contain;border-radius:3px;" onerror="this.style.display='none'">`
+      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;">?</div>`;
+    return `
+      <div style="
+        position:relative;width:40px;height:40px;
+        border:2px solid ${color};border-radius:5px;
+        background:rgba(0,0,0,0.5);cursor:${canUse ? 'pointer' : 'default'};
+        ${!canUse && isUsable ? 'opacity:0.5;' : ''}
+        flex-shrink:0;
+      " ${onClick}
+         onmouseenter="if(typeof window.showCombatItemTooltip==='function')window.showCombatItemTooltip(event,${idx})"
+         onmouseleave="if(typeof window.hideCombatItemTooltip==='function')window.hideCombatItemTooltip()">
+        ${imgEl}${quantityBadge}${getIncrementalCounter(item)}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div id="combat-items-bar" style="
+      background:rgba(0,0,0,0.6);
+      border-bottom:1px solid rgba(255,255,255,0.1);
+      padding:4px 16px;
+      display:flex;align-items:center;gap:6px;
+      flex-shrink:0;overflow-x:auto;
+    ">
+      <span style="color:#aaa;font-size:11px;white-space:nowrap;margin-right:4px;">Items:</span>
+      ${itemsHTML}
+    </div>
+  `;
+}
+
+// Called by useCombatItem after an item is used
+function updateItemsBar() {
+  const wrapper = document.getElementById('combat-wrapper');
+  if (!wrapper) return;
+  const existing = document.getElementById('combat-items-bar');
+  if (!existing) return;
+  const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+  const newBar = renderItemsBar(combat || {});
+  const tmp = document.createElement('div');
+  tmp.innerHTML = newBar;
+  const newEl = tmp.firstElementChild;
+  if (newEl) {
+    existing.replaceWith(newEl);
+  }
 }
 
 // ============== TOP BAR ==============
@@ -337,6 +432,50 @@ function getIntentType(raw) {
   return 'attack';
 }
 
+function applyIntentModifiers(rawStr, enemy) {
+  const power = (enemy.statuses && enemy.statuses['power']) || 0;
+  const weak  = (enemy.statuses && enemy.statuses['weak'])  || 0;
+  if (power === 0 && weak === 0) return { text: rawStr, modified: false, modifiers: [] };
+
+  const type = getIntentType(rawStr);
+  if (type !== 'attack') return { text: rawStr, modified: false, modifiers: [] };
+
+  const modifiers = [];
+  if (power > 0) modifiers.push(`+${power} Power`);
+  if (power < 0) modifiers.push(`${power} Power`);
+  if (weak  > 0) modifiers.push(`Weak ×0.75`);
+
+  let modified = rawStr;
+  let changed = false;
+
+  // Fixed damage: "N Dmg" or "NxM Dmg"
+  modified = modified.replace(/(\d+)(x\d+)?\s+[Dd]mg/gi, (match, n, times) => {
+    let dmg = parseInt(n);
+    if (power !== 0) dmg += power;
+    if (weak  >  0) dmg = Math.floor(dmg * 0.75);
+    changed = true;
+    return `${dmg}${times || ''} Dmg`;
+  });
+
+  // Dice damage: "D8 Dmg" → show "+N" suffix for power
+  if (power !== 0) {
+    modified = modified.replace(/([Dd]\d+(?:[xX]\d+)?(?:\+[Dd]\d+(?:[xX]\d+)?)*)\s+[Dd]mg/gi, (match, dice) => {
+      changed = true;
+      const sign = power > 0 ? `+${power}` : `${power}`;
+      const suffix = weak > 0 ? ` ×0.75` : '';
+      return `${dice}${sign}${suffix} Dmg`;
+    });
+  } else if (weak > 0) {
+    // Only weak, dice case
+    modified = modified.replace(/([Dd]\d+(?:[xX]\d+)?(?:\+[Dd]\d+(?:[xX]\d+)?)*)\s+[Dd]mg/gi, (match, dice) => {
+      changed = true;
+      return `${dice} ×0.75 Dmg`;
+    });
+  }
+
+  return { text: modified, modified: changed, modifiers };
+}
+
 function renderIntentBadge(enemy) {
   if (!enemy.currentIntent || enemy.currentIntent.length === 0) return '';
 
@@ -363,19 +502,35 @@ function renderIntentBadge(enemy) {
   const type  = getIntentType(rawStr);
   const style = INTENT_STYLES[type] || INTENT_STYLES.unknown;
 
-  // Truncate for display — show the actual text
-  const displayText = rawStr.length > 38 ? rawStr.slice(0, 36) + '…' : rawStr;
+  // Apply power/weak modifiers to display text
+  const { text: displayRaw, modified, modifiers } = applyIntentModifiers(rawStr, enemy);
+  const tooltipText = modified
+    ? `${rawStr} → ${displayRaw} (${modifiers.join(', ')})`
+    : rawStr;
+
+  const displayText = displayRaw.length > 38 ? displayRaw.slice(0, 36) + '…' : displayRaw;
+
+  // Show modifier indicators in badge
+  const powerStacks = (enemy.statuses && enemy.statuses['power']) || 0;
+  const weakStacks  = (enemy.statuses && enemy.statuses['weak'])  || 0;
+  const modBadge = (powerStacks !== 0 || weakStacks > 0) && type === 'attack' ? `
+    <span style="
+      font-size:9px; background:rgba(0,0,0,0.4);
+      border-radius:6px; padding:1px 3px; color:#ffcc44;
+    ">${powerStacks !== 0 ? (powerStacks > 0 ? `+${powerStacks}⚡` : `${powerStacks}⚡`) : ''}${weakStacks > 0 ? '↓' : ''}</span>
+  ` : '';
 
   return `
-    <div title="${rawStr.replace(/"/g, '&quot;')}" style="
+    <div title="${tooltipText.replace(/"/g, '&quot;')}" style="
       display:inline-flex; align-items:center; gap:4px;
       background:${style.bg}; border:1px solid ${style.border};
       border-radius:12px; padding:3px 8px;
       font-size:10px; white-space:nowrap; cursor:default;
-      max-width:160px; overflow:hidden;
+      max-width:180px; overflow:hidden;
     ">
       <span style="flex-shrink:0;">${style.emoji}</span>
       <span style="color:white; overflow:hidden; text-overflow:ellipsis;">${displayText}</span>
+      ${modBadge}
     </div>
   `;
 }
@@ -883,6 +1038,48 @@ function renderLogPanel(combat) {
 
 // ============== STATUS ROW ==============
 
+function showStatusTooltip(event, key, val) {
+  let tip = document.getElementById('combat-status-tooltip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'combat-status-tooltip';
+    tip.style.cssText = `
+      position:fixed; z-index:25000; pointer-events:none;
+      background:linear-gradient(145deg,rgba(20,20,30,0.97),rgba(15,15,25,0.97));
+      border:2px solid #888; border-radius:8px; padding:10px 12px;
+      max-width:240px; box-shadow:0 4px 20px rgba(0,0,0,0.8);
+      font-family:'Georgia',serif; font-size:12px; color:#e6d5b8;
+    `;
+    document.body.appendChild(tip);
+  }
+  const data = (typeof STATUSES_DATA !== 'undefined') ? STATUSES_DATA[key] : null;
+  const meta = STATUS_META[key] || { emoji: '•', label: key };
+  const name = data ? data.name : meta.label;
+  const desc = data ? data.description : '';
+  const type = data ? data.type : '';
+  const decay = data ? data.decay : '';
+  const typeColor = type === 'Buff' ? '#4CAF50' : type === 'Debuff' ? '#e74c3c' : '#aaa';
+  tip.innerHTML = `
+    <div style="font-weight:bold;font-size:13px;margin-bottom:4px;">
+      ${meta.emoji} ${name}
+      ${val > 0 ? `<span style="color:#ffcc44;margin-left:6px;">×${val}</span>` : ''}
+    </div>
+    ${desc ? `<div style="color:#ccc;font-size:11px;margin-bottom:4px;">${desc}</div>` : ''}
+    ${type ? `<div style="color:${typeColor};font-size:10px;">${type}</div>` : ''}
+    ${decay && decay !== 'None' ? `<div style="color:#888;font-size:10px;margin-top:2px;">⏱ ${decay}</div>` : ''}
+  `;
+  const x = Math.min(event.clientX + 12, window.innerWidth - 260);
+  const y = Math.min(event.clientY + 12, window.innerHeight - 140);
+  tip.style.left = x + 'px';
+  tip.style.top  = y + 'px';
+  tip.style.display = 'block';
+}
+
+function hideStatusTooltip() {
+  const tip = document.getElementById('combat-status-tooltip');
+  if (tip) tip.style.display = 'none';
+}
+
 function renderStatusRow(statuses, _id) {
   if (!statuses) return '';
   const entries = Object.entries(statuses).filter(([k, v]) => v > 0 && k !== 'block');
@@ -893,13 +1090,15 @@ function renderStatusRow(statuses, _id) {
         const meta    = STATUS_META[key] || { img:null, emoji:'•', label:key };
         const imgPath = meta.img ? `images/statuses/${meta.img}.png` : null;
         return `
-          <div title="${meta.label}: ${val}" style="
+          <div style="
             position:relative; width:22px; height:22px;
             display:flex; align-items:center; justify-content:center;
             background:rgba(0,0,0,0.5);
             border:1px solid rgba(255,255,255,0.2);
             border-radius:4px; font-size:10px; cursor:default;
-          ">
+          "
+          onmouseenter="if(typeof window.CombatUI!=='undefined'&&window.CombatUI.showStatusTooltip)window.CombatUI.showStatusTooltip(event,'${key}',${val})"
+          onmouseleave="if(typeof window.CombatUI!=='undefined'&&window.CombatUI.hideStatusTooltip)window.CombatUI.hideStatusTooltip()">
             ${imgPath
               ? `<img src="${imgPath}" style="width:18px;height:18px;object-fit:contain;"
                    onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span>${meta.emoji}</span>')">`
@@ -1583,5 +1782,7 @@ if (typeof window !== 'undefined') {
     cleanup3DDice,
     updateItemsBar,
     showFloatingNumber,
+    showStatusTooltip,
+    hideStatusTooltip,
   };
 }

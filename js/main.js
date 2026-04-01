@@ -147,7 +147,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const deckBtn = document.getElementById('deck-btn');
   if (deckBtn) {
     deckBtn.addEventListener('click', () => {
-      if (typeof showDeckModal === 'function') showDeckModal();
+      if (typeof window.showDeckModal === 'function') {
+        window.showDeckModal();
+      } else {
+        console.error('[Deck] showDeckModal not found on window');
+      }
     });
   }
 
@@ -4688,7 +4692,30 @@ function confirmLevelUp() {
   }
   if (bonuses.luck) {
     luck += bonuses.luck;
+    gameState.luck = luck;
     appliedBonuses.push(`+${bonuses.luck} Luck`);
+  }
+  if (bonuses.skip) {
+    skip += bonuses.skip;
+    gameState.skip = skip;
+    appliedBonuses.push(`+${bonuses.skip} Skip`);
+  }
+  if (bonuses.discovery) {
+    discovery += bonuses.discovery;
+    gameState.discovery = discovery;
+    appliedBonuses.push(`+${bonuses.discovery} Discovery`);
+  }
+  if (bonuses.fov) {
+    fov += bonuses.fov;
+    gameState.fov = fov;
+    appliedBonuses.push(`+${bonuses.fov} FoV`);
+  }
+  if (bonuses.maxHealth) {
+    maxHealth += bonuses.maxHealth;
+    health = Math.min(health + bonuses.maxHealth, maxHealth);
+    gameState.maxHealth = maxHealth;
+    gameState.health = health;
+    appliedBonuses.push(`+${bonuses.maxHealth} Max Health`);
   }
 
   // Handle random stat allocation
@@ -7401,8 +7428,8 @@ function showCardDetails(cardName) {
           ${card.cost !== null && card.cost !== undefined ? card.cost : '?'}
         </div>
         ${card.imageUrl
-          ? '<img src="' + card.imageUrl + '" alt="' + card.name + '" style="width:100%;height:120px;object-fit:contain;background:rgba(0,0,0,0.3);image-rendering:pixelated;" onerror="this.style.display=\'none\'"/>'
-          : '<div style="width:100%;height:120px;background:linear-gradient(135deg,' + tc + '33,' + rc + '22);display:flex;align-items:center;justify-content:center;font-size:48px;color:' + tc + '88;">' + typeEmoji + '</div>'
+          ? '<img src="' + card.imageUrl + '" alt="' + card.name + '" style="width:100%;height:160px;object-fit:contain;background:rgba(0,0,0,0.3);display:block;" onerror="this.style.display=\'none\'"/>'
+          : '<div style="width:100%;height:160px;background:linear-gradient(135deg,' + tc + '33,' + rc + '22);display:flex;align-items:center;justify-content:center;font-size:48px;color:' + tc + '88;">' + typeEmoji + '</div>'
         }
         <div style="padding:10px;">
           <div style="font-size:14px;font-weight:bold;color:#eee;margin-bottom:4px;">${card.name}</div>
@@ -7442,19 +7469,20 @@ function showCharacterDetails(charName) {
 
   const charIcon = `images/characters/Full/${char.name}.png`;
 
-  // Build level up bonuses list
+  // Build level up bonuses list — read from levelUpStats object
   const levelUpBonuses = [];
-  if (char.strength > 0) levelUpBonuses.push({ stat: 'Strength', value: char.strength, color: '#f44336' });
-  if (char.dexterity > 0) levelUpBonuses.push({ stat: 'Dexterity', value: char.dexterity, color: '#4CAF50' });
-  if (char.intelligence > 0) levelUpBonuses.push({ stat: 'Intelligence', value: char.intelligence, color: '#2196F3' });
-  if (char.charisma > 0) levelUpBonuses.push({ stat: 'Charisma', value: char.charisma, color: '#9b59b6' });
-  if (char.luck > 0) levelUpBonuses.push({ stat: 'Luck', value: char.luck, color: '#ff9800' });
-  if (char.reroll > 0) levelUpBonuses.push({ stat: 'Reroll', value: char.reroll, color: '#888' });
-  if (char.dash > 0) levelUpBonuses.push({ stat: 'Dash', value: char.dash, color: '#888' });
-  if (char.skip > 0) levelUpBonuses.push({ stat: 'Skip', value: char.skip, color: '#888' });
-  if (char.discovery > 0) levelUpBonuses.push({ stat: 'Discovery', value: char.discovery, color: '#888' });
-  if (char.fov > 0) levelUpBonuses.push({ stat: 'FoV', value: char.fov, color: '#888' });
-  if (char.random > 0) levelUpBonuses.push({ stat: 'Random', value: char.random, color: '#888' });
+  const lus = char.levelUpStats || {};
+  if (lus.strength > 0) levelUpBonuses.push({ stat: 'Strength', value: lus.strength, color: '#f44336' });
+  if (lus.dexterity > 0) levelUpBonuses.push({ stat: 'Dexterity', value: lus.dexterity, color: '#4CAF50' });
+  if (lus.intelligence > 0) levelUpBonuses.push({ stat: 'Intelligence', value: lus.intelligence, color: '#2196F3' });
+  if (lus.charisma > 0) levelUpBonuses.push({ stat: 'Charisma', value: lus.charisma, color: '#9b59b6' });
+  if (lus.luck > 0) levelUpBonuses.push({ stat: 'Luck', value: lus.luck, color: '#ff9800' });
+  if (lus.reroll > 0) levelUpBonuses.push({ stat: 'Reroll', value: lus.reroll, color: '#888' });
+  if (lus.dash > 0) levelUpBonuses.push({ stat: 'Dash', value: lus.dash, color: '#888' });
+  if (lus.skip > 0) levelUpBonuses.push({ stat: 'Skip', value: lus.skip, color: '#888' });
+  if (lus.discovery > 0) levelUpBonuses.push({ stat: 'Discovery', value: lus.discovery, color: '#888' });
+  if (lus.fov > 0) levelUpBonuses.push({ stat: 'FoV', value: lus.fov, color: '#888' });
+  if (lus.random > 0) levelUpBonuses.push({ stat: 'Random (any stat)', value: lus.random, color: '#aaa' });
 
   const levelUpBonusesHTML = levelUpBonuses.length > 0
     ? levelUpBonuses.map(b => `<span style="color: ${b.color}; font-weight: bold;">+${b.value} ${b.stat}</span>`).join(', ')
@@ -7531,7 +7559,7 @@ function showCharacterDetails(charName) {
       <!-- Level Up -->
       <div style="padding: 12px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 6px;">
         <h4 style="margin: 0 0 8px 0; color: #ff9800; font-size: 14px;">⬆️ Level Up Condition</h4>
-        <div style="font-size: 13px; color: #ddd; margin-bottom: 8px;">${char.levelUp || 'None'}</div>
+        <div style="font-size: 13px; color: #ddd; margin-bottom: 8px;">${char.levelUpCondition || char.levelUp || 'None'}</div>
         <div style="font-size: 12px; color: #aaa;">
           <strong>Rewards:</strong> ${levelUpBonusesHTML}
         </div>
@@ -8879,8 +8907,8 @@ window.switchEnemyForm = switchEnemyForm;
       <div style="position:relative;">
         <div style="position:absolute;top:5px;left:5px;width:20px;height:20px;border-radius:50%;background:${tc};border:2px solid rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:white;z-index:2;">${card.cost !== null && card.cost !== undefined ? card.cost : '?'}</div>
         ${imgSrc
-          ? `<img src="${imgSrc}" style="width:100%;height:100px;object-fit:contain;background:rgba(0,0,0,0.4);display:block;" onerror="this.style.display='none'">`
-          : `<div style="width:100%;height:100px;display:flex;align-items:center;justify-content:center;font-size:36px;background:rgba(0,0,0,0.3);">${(card.type||'').toLowerCase()==='attack'?'⚔':(card.type||'').toLowerCase()==='skill'?'🛡':'✨'}</div>`}
+          ? `<img src="${imgSrc}" style="width:100%;height:120px;object-fit:contain;background:rgba(0,0,0,0.4);display:block;" onerror="this.style.display='none'">`
+          : `<div style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;font-size:36px;background:rgba(0,0,0,0.3);">${(card.type||'').toLowerCase()==='attack'?'⚔':(card.type||'').toLowerCase()==='skill'?'🛡':'✨'}</div>`}
       </div>
       <div style="padding:8px;">
         <div style="font-size:12px;font-weight:bold;color:#eee;margin-bottom:3px;">${card.name}</div>
