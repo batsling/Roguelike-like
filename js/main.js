@@ -2359,24 +2359,6 @@ function showCombatModal() {
             border-radius: 12px;
             padding: 25px;
           ">
-            <!-- Items Bar (at top) -->
-            <div id="items-bar" style="
-              background: rgba(0,0,0,0.5);
-              border: 2px solid #666;
-              border-radius: 8px;
-              padding: 10px 15px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 8px;
-              overflow-x: auto;
-              min-height: 60px;
-            ">
-              <div id="items-icons" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
-                <!-- Item icons will be populated here -->
-              </div>
-            </div>
-
             <!-- Player and Enemy Container -->
             <div style="
               display: flex;
@@ -4779,7 +4761,12 @@ function confirmLevelUp() {
 
   document.getElementById('proceed-to-card-reward-btn').onclick = () => {
     closeGameModal();
-    showCardRewardModal(() => { saveCurrentGame(); });
+    if (typeof window.showCardRewardModal === 'function') {
+      window.showCardRewardModal();
+      saveCurrentGame();
+    } else {
+      console.error('[LevelUp] showCardRewardModal not found on window');
+    }
   };
 }
 
