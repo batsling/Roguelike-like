@@ -146,13 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const deckBtn = document.getElementById('deck-btn');
   if (deckBtn) {
-    deckBtn.addEventListener('click', () => {
-      if (typeof window.showDeckModal === 'function') {
-        window.showDeckModal();
-      } else {
-        console.error('[Deck] showDeckModal not found on window');
-      }
-    });
+    deckBtn.addEventListener('click', showDeckModal);
   }
 
   const lootBtn = document.getElementById('loot-btn');
@@ -4544,6 +4538,73 @@ window.toggleCombatSystem = function() {
   console.log(`Combat system switched to: ${useDiceCombat ? 'New Dice-Based' : 'Classic D20'}`);
   return useDiceCombat;
 };
+
+// ============== DECK VIEWER ==============
+
+function showDeckModal() {
+  const charKey = (selectedCharacter) || (gameState && gameState.character) || null;
+  const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
+  const startingEntries = (charData && charData.startingDeck) ? charData.startingDeck : [];
+
+  const getRarityColor = (rarity) => {
+    switch (rarity) {
+      case 'Rare': return '#9b59b6'; case 'Uncommon': return '#4CAF50';
+      case 'Common': return '#aaa';  case 'Starter':  return '#888';
+      default: return '#666';
+    }
+  };
+
+  const cardHtml = (card, label) => {
+    const color = getRarityColor(card.rarity);
+    const imgSrc = card.imageUrl || '';
+    return `
+      <div style="background:#2d2d2d;border:2px solid ${color};border-radius:8px;
+        padding:12px;display:flex;flex-direction:column;align-items:center;
+        min-width:130px;max-width:160px;position:relative;">
+        ${label ? `<div style="position:absolute;top:4px;right:4px;background:${color};color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:bold;">${label}</div>` : ''}
+        ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
+        <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:3px;">${card.name}${card.upgraded ? ' +' : ''}</div>
+        <div style="color:${color};font-size:11px;margin-bottom:4px;">${card.rarity || 'Starter'} · ${card.type || ''}</div>
+        <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:6px;">${card.description || ''}</div>
+        <div style="color:#ffd700;font-size:11px;">Cost: ${card.cost !== undefined ? card.cost : '?'}</div>
+      </div>
+    `;
+  };
+
+  // Build starting cards from character startingDeck
+  const CDATA = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : (typeof cards !== 'undefined' ? cards : []);
+  const startingCards = [];
+  for (const entry of startingEntries) {
+    const tmpl = CDATA.find(c => c.name === entry.cardName || c.name.toLowerCase() === entry.cardName.toLowerCase());
+    const obj = tmpl || { name: entry.cardName, rarity: 'Starter', type: '', description: '', cost: '?' };
+    for (let i = 0; i < (entry.count || 1); i++) startingCards.push(obj);
+  }
+
+  // Collected (acquired) cards from this run
+  const collectedCards = (gameState && gameState.deck) ? gameState.deck : [];
+
+  const totalCount = startingCards.length + collectedCards.length;
+  const startingHTML = startingCards.map(c => cardHtml(c, 'Starting')).join('');
+  const collectedHTML = collectedCards.map(c => cardHtml(c, 'Acquired')).join('');
+
+  createGameModal(`
+    <div style="padding:20px;max-width:1100px;margin:0 auto;">
+      <h2 style="color:#9b59b6;text-align:center;margin-top:0;">🃏 Your Deck (${totalCount} cards)</h2>
+      ${startingHTML ? `
+        <h3 style="color:#888;margin:12px 0 8px;">Starting Deck (${startingCards.length})</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">${startingHTML}</div>
+      ` : '<p style="color:#888;text-align:center;">No starting deck</p>'}
+      ${collectedHTML ? `
+        <h3 style="color:#9b59b6;margin:12px 0 8px;">Acquired Cards (${collectedCards.length})</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">${collectedHTML}</div>
+      ` : ''}
+      <div style="text-align:center;margin-top:20px;">
+        <button onclick="closeGameModal()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
+      </div>
+    </div>
+  `);
+}
+window.showDeckModal = showDeckModal;
 
 // ============== LEVEL-UP SYSTEM ==============
 

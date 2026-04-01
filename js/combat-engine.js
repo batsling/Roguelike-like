@@ -418,6 +418,18 @@ const NON_STACKABLE_STATUSES = new Set(['stun', 'dodge', 'silence', 'confusion',
 /**
  * Apply a status to a unit, respecting non-stackable caps.
  */
+// Add a random pigment/status card to the player's combat hand
+function addPigmentCardToHand() {
+  if (!combatState) return;
+  const pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : []).filter(c => c.isStatusCard);
+  if (pool.length === 0) return;
+  const card = { ...pool[Math.floor(Math.random() * pool.length)] };
+  if (!combatState.hand) combatState.hand = [];
+  combatState.hand.push(card);
+  addLog('A pigment card was added to your hand!', 'success');
+  if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
+}
+
 function applyStatus(unit, statusName, amount) {
   if (!unit || !unit.statuses) return;
   const key = statusName.toLowerCase();
@@ -449,21 +461,8 @@ function parsePatternDescToEffects(desc) {
   // Evaluate turn-scaling formulas (e.g. Transient) before any other parsing
   desc = evaluateScalingFormulas(desc);
 
-  // Special text patterns detected before probability splitting
-
-  // "Add N random Pigment ... to (your) deck/hand"
-  if (/\badd \d+ random pigment/i.test(desc)) {
-    return { effects: [{ raw: desc, value: 1, move: 'AddPigment', addons: [], target: null }], text: desc };
-  }
-
-  // "Consume N random Pigment ... for X Power, Y Block"
-  if (/\bconsume \d+ random pigment/i.test(desc)) {
-    const m = desc.match(/for\s+(\d+)\s+Power,?\s*(\d+)\s+Block/i);
-    return { effects: [{ raw: desc, value: 1, move: 'ConsumePigment', addons: [],
-              power: m ? parseInt(m[1]) : 0, block: m ? parseInt(m[2]) : 0 }], text: desc };
-  }
-
-  // Probability split: "50% desc1 / 50% desc2"
+  // Probability split FIRST: "50% desc1 / 50% desc2"
+  // Must run before special-case checks so "Consume" inside a branch is handled per-branch
   if (desc.includes('%') && desc.includes('/')) {
     const options = desc.split('/').map(s => s.trim());
     const weighted = [];
@@ -476,11 +475,23 @@ function parsePatternDescToEffects(desc) {
       let roll = Math.random() * total;
       for (const o of weighted) {
         roll -= o.weight;
-        if (roll <= 0) return { effects: parseSimplePatternDesc(o.text), text: o.text };
+        if (roll <= 0) return parsePatternDescToEffects(o.text);
       }
       const last = weighted[weighted.length - 1];
-      return { effects: parseSimplePatternDesc(last.text), text: last.text };
+      return parsePatternDescToEffects(last.text);
     }
+  }
+
+  // "Add N random Pigment ... to (your) deck/hand"
+  if (/\badd \d+ random pigment/i.test(desc)) {
+    return { effects: [{ raw: desc, value: 1, move: 'AddPigment', addons: [], target: null }], text: desc };
+  }
+
+  // "Consume N random Pigment ... for X Power, Y Block"
+  if (/\bconsume \d+ random pigment/i.test(desc)) {
+    const m = desc.match(/for\s+(\d+)\s+Power,?\s*(\d+)\s+Block/i);
+    return { effects: [{ raw: desc, value: 1, move: 'ConsumePigment', addons: [],
+              power: m ? parseInt(m[1]) : 0, block: m ? parseInt(m[2]) : 0 }], text: desc };
   }
 
   return { effects: parseSimplePatternDesc(desc), text: desc };
@@ -1446,9 +1457,7 @@ function dealDamage(target, damage, addons = []) {
 
     // Pigment Rich — hitting this enemy adds a random pigment card to the player's hand
     if (target !== combatState.player && target.statuses['pigment_rich']) {
-      if (typeof window.addRandomPigmentToHand === 'function') {
-        window.addRandomPigmentToHand();
-      }
+      addPigmentCardToHand();
     }
 
     // Check Thorns — melee attacker takes X damage back from the target

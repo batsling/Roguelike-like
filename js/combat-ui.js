@@ -212,44 +212,6 @@ function renderTopBar(combat) {
   const p    = combat.player;
   const turn = combat.turn || 1;
   const isPlayerTurn = combat.phase === 'player_action';
-
-  // Build compact inline items strip
-  const inv = window.inventory || [];
-  const cs  = window.CombatEngine ? window.CombatEngine.getCombatState() : null;
-  const inc = cs && cs.incrementals;
-  const getRarityColor = (r) => {
-    switch ((r||'').toLowerCase()) {
-      case 'legendary': return '#ff6b00'; case 'rare': return '#9b59b6';
-      case 'uncommon': return '#4CAF50'; case 'common': return '#aaa'; default: return '#888';
-    }
-  };
-  const inlineItemsHTML = inv.length === 0 ? '' : inv.map((item, idx) => {
-    let url = (item.image && item.image.trim()) ? item.image : '';
-    if (url.includes('imgur.com/') && !url.includes('i.imgur.com')) {
-      url = url.replace('imgur.com/', 'i.imgur.com/');
-      if (!url.match(/\.(png|jpg|jpeg|gif)$/i)) url += '.png';
-    }
-    const color = getRarityColor(item.rarity);
-    const isUsable = item.type === 'Usable';
-    const canUse = isUsable && typeof window.canUseItem === 'function' && window.canUseItem(item);
-    const onClick = canUse ? `onclick="window.useCombatItem(${idx})"` : '';
-    // Incremental counter
-    let counter = '';
-    if ((item.type||'').toLowerCase() === 'incremental') {
-      let cur = 0, max = null;
-      switch(item.name) {
-        case 'Pen Nib': case 'Nunchaku': cur = inc ? inc.attacksTotal % 10 : 0; max = 10; break;
-        case 'Happy Flower':   cur = cs ? (cs.turn - 1) % 3 : 0; max = 3; break;
-        case 'Ornamental Fan': cur = inc ? inc.attacksThisTurn % 4 : 0; max = 4; break;
-        case 'Shuriken':       cur = inc ? inc.attacksThisTurn % 3 : 0; max = 3; break;
-      }
-      if (max !== null) counter = `<div style="position:absolute;bottom:0;right:0;background:rgba(0,0,0,0.9);color:#ffcc44;font-size:8px;font-weight:bold;padding:0 2px;border-radius:2px;line-height:1.3;">${cur}/${max}</div>`;
-    }
-    const qty = item.quantity && item.quantity > 1 ? `<div style="position:absolute;top:0;right:0;background:rgba(0,0,0,0.9);color:white;font-size:8px;padding:0 2px;border-radius:2px;line-height:1.3;border:1px solid #ffaa00;">x${item.quantity}</div>` : '';
-    const img = url ? `<img src="${url}" alt="${item.name}" style="width:100%;height:100%;object-fit:contain;" onerror="this.style.display='none'">` : `<span style="font-size:14px;">?</span>`;
-    return `<div style="position:relative;width:28px;height:28px;border:1px solid ${color};border-radius:4px;background:rgba(0,0,0,0.5);flex-shrink:0;cursor:${canUse?'pointer':'default'};${!canUse&&isUsable?'opacity:0.5;':''}" ${onClick} onmouseenter="if(typeof window.showCombatItemTooltip==='function')window.showCombatItemTooltip(event,${idx})" onmouseleave="if(typeof window.hideCombatItemTooltip==='function')window.hideCombatItemTooltip()">${img}${qty}${counter}</div>`;
-  }).join('');
-
   return `
     <div id="combat-topbar" style="
       height: 44px;
@@ -257,9 +219,9 @@ function renderTopBar(combat) {
       border-bottom: 2px solid ${C.border};
       display: flex; align-items: center;
       justify-content: space-between;
-      padding: 0 12px; flex-shrink: 0; z-index: 10; gap: 8px;
+      padding: 0 20px; flex-shrink: 0; z-index: 10;
     ">
-      <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+      <div style="display:flex; align-items:center; gap:16px;">
         <span style="color:${C.gold}; font-size:15px; font-weight:bold;">Turn ${turn}</span>
         <span style="font-size:13px;">
           ${isPlayerTurn
@@ -267,12 +229,7 @@ function renderTopBar(combat) {
             : '<span style="color:#e74c3c;">● Enemy Turn</span>'}
         </span>
       </div>
-      ${inlineItemsHTML ? `
-        <div id="combat-items-bar" style="display:flex;align-items:center;gap:4px;overflow-x:auto;flex:1;padding:0 8px;min-width:0;">
-          ${inlineItemsHTML}
-        </div>
-      ` : '<div style="flex:1;"></div>'}
-      <div style="display:flex; align-items:center; gap:12px; font-size:13px; flex-shrink:0;">
+      <div style="display:flex; align-items:center; gap:20px; font-size:13px;">
         <span style="color:#e74c3c;">❤ ${p.health}/${p.maxHealth}</span>
         ${p.block > 0 ? `<span style="color:#5dade2;">🛡 ${p.block}</span>` : ''}
         <span style="color:${C.gold};">💰 ${typeof window.gold !== 'undefined' ? window.gold : 0}</span>
