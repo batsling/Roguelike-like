@@ -13,26 +13,29 @@ console.log('✅ MAIN.JS v45 loaded - inventory deep copy on save active');
 // ===== Z-INDEX LAYERING SYSTEM =====
 // Organized from lowest to highest to prevent layering conflicts
 //
-// Layer 1 (Base): 1-99
+// Layer 1 (Base): 1-20
 //   - Map SVG arrows: 1
 //   - Item hover effects: 10
+//   - Combat hand cards: 20+
 //
-// Layer 2 (UI Panels): 100-999
-//   - (Reserved for future use)
+// Layer 2 (UI Chrome): 100
+//   - #top-bar, #game-stats, ability buttons
 //
-// Layer 3 (Side Panels): 1000-9999
-//   - Combat stats panel: 1000
-//   - Combat log panel: 1000
+// Layer 3 (Map / Dropdowns): 200
+//   - #save-list dropdown
 //
-// Layer 4 (Modals): 10000-19999
-//   - Modal backdrop: 10000 (from modals.js)
-//   - Map tooltip: 10000
-//   - Trait tooltips: 10000
-//   - Generic buttons: 10000
+// Layer 4 (Floating Panels): 300
+//   - #location-display-section, #goals-section, .floating-hud-complex, .box-zoom-popup
 //
-// Layer 5 (Tooltips & Overlays): 20000+
-//   - Combat item tooltip (#combat-item-tooltip): 20000
-//   - Main inventory tooltip (#item-tooltip from index.html): inherits from parent
+// Layer 5 (Hover Popovers): 400
+//   - #game-tooltip, #item-tooltip
+//
+// Layer 6 (Modals): 500
+//   - #game-modal (modals.js), #save-modal, #rewards-modal, .z-2000
+//
+// Layer 7 (Tooltips — always on top): 9000
+//   - #combat-item-tooltip, #combat-status-tooltip
+//   - #location-hover-tooltip, #game-stats .stat-tooltip::after
 //
 // ===== HELPER FUNCTIONS =====
 
@@ -2962,7 +2965,7 @@ function showCombatModal() {
     border-radius: 8px;
     padding: 12px 15px;
     max-width: 300px;
-    z-index: 20000;
+    z-index: 9000;
     pointer-events: none;
     box-shadow: 0 4px 20px rgba(0,0,0,0.8);
   `;
@@ -4296,7 +4299,7 @@ function showDiceCombatModal() {
       border-radius: 8px;
       padding: 12px 15px;
       max-width: 300px;
-      z-index: 20000;
+      z-index: 9000;
       pointer-events: auto;
       box-shadow: 0 4px 20px rgba(0,0,0,0.8);
     `;

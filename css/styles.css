@@ -1,3 +1,12 @@
+/* ===== Z-INDEX TIER SYSTEM =====
+ *  100 : sticky UI chrome (top bar, sidebars, ability buttons)
+ *  200 : map nodes, dropdowns from chrome elements
+ *  300 : floating panels (location display, active card panel)
+ *  400 : hover popovers (#game-tooltip, .box-zoom-popup)
+ *  500 : modals (backdrop + content)
+ * 9000 : tooltips — always on top
+ * ============================= */
+
 /* Top Bar */
 #top-bar {
   position: fixed;
@@ -10,7 +19,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 100;
   border-bottom: 2px solid #cc6600;
 }
 #top-bar div {
@@ -470,7 +479,7 @@ h3, h4 {
   border-radius: 5px;
   padding: 10px;
   box-shadow: 0 0 10px rgba(0,0,0,0.8);
-  z-index: 1000;
+  z-index: 400;
   pointer-events: none;
   display: none;
   max-width: 300px;
@@ -504,10 +513,6 @@ text, path, line, g {
 
 .movable-marker {
   pointer-events: auto;
-}
-
-.box-zoom-popup {
-  z-index: 10000;
 }
 
 .event-options {
@@ -715,7 +720,7 @@ text, path, line, g {
   box-shadow: 0 15px 40px rgba(0,0,0,.8);
   opacity: 0;
   transition: opacity .15s;
-  z-index: 999;
+  z-index: 9000;
   display: none;
   font-family: Arial, sans-serif;
   color: #e6d5b8;
@@ -752,7 +757,7 @@ text, path, line, g {
   right: 0;
   bottom: 0;
   background: rgba(0,0,0,0.9);
-  z-index: 10000;
+  z-index: 500;
   justify-content: center;
   align-items: center;
 }
@@ -768,7 +773,7 @@ text, path, line, g {
   margin-top: 5px;
   max-height: 400px;
   overflow-y: auto;
-  z-index: 1000;
+  z-index: 200;
   box-shadow: 0 4px 12px rgba(0,0,0,0.8);
   border: 2px solid #cc6600;
 }
@@ -870,7 +875,7 @@ text, path, line, g {
   font-size: 12px;
   white-space: normal;
   width: 220px;
-  z-index: 99999;
+  z-index: 9000;
   box-shadow: 0 4px 12px rgba(0,0,0,0.8);
   pointer-events: none;
   line-height: 1.4;
@@ -1041,7 +1046,7 @@ text, path, line, g {
   border-top: none;
   padding: 15px;
   color: #eee;
-  z-index: 999;
+  z-index: 300;
   box-shadow: 0 4px 20px rgba(0,0,0,0.5);
   cursor: help;
   transition: all 0.3s ease;
@@ -1065,7 +1070,7 @@ text, path, line, g {
   box-shadow: 0 8px 20px rgba(0,0,0,0.8);
   opacity: 0;
   transition: opacity .2s;
-  z-index: 10000;
+  z-index: 9000;
   display: none;
   font-family: Arial, sans-serif;
   color: #e6d5b8;
@@ -1177,7 +1182,7 @@ text, path, line, g {
   border-top: none;
   padding: 15px;
   color: #eee;
-  z-index: 999;
+  z-index: 300;
   box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
 
@@ -1359,7 +1364,7 @@ text, path, line, g {
   display: none;
   justify-content: center;
   align-items: center;
-  z-index: 10000;
+  z-index: 500;
 }
 
 #rewards-modal.show {
@@ -2432,7 +2437,7 @@ text, path, line, g {
 
 /* Z-Index Utilities */
 .z-2000 {
-  z-index: 2000;
+  z-index: 500;
 }
 
 /* Special Text Properties */
@@ -2501,7 +2506,7 @@ text, path, line, g {
   transform: translateX(-50%);
   background: rgba(24, 24, 24, 0.95);
   border: 2px solid #cc6600;
-  z-index: 1000;
+  z-index: 300;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(5px);
 }

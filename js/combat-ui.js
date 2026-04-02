@@ -77,6 +77,8 @@ const STATUS_META = {
   regeneration:   { img: 'Regeneration',  emoji: '💚', label: 'Regeneration' },
   rust:           { img: 'Rust',          emoji: '⚙', label: 'Rust'         },
   soul_link:      { img: 'SoulLink',      emoji: '🔗', label: 'Soul Link'    },
+  split:          { img: 'Split',         emoji: '⚡', label: 'Split'        },
+  curl_up:        { img: 'CurlUp',        emoji: '🛡', label: 'Curl Up'      },
   // Temporary stat boosts (e.g. from pigment cards, "Gain +X Stat until end of combat")
   strength:       { img: null,            emoji: '💪', label: 'Strength'     },
   intelligence:   { img: null,            emoji: '🧠', label: 'Intelligence' },
@@ -700,50 +702,62 @@ function typeEmoji(type) {
 }
 
 function renderCardInHand(card, index, total, combat) {
-  const isSelected    = combat.selectedCardIndex === index;
-  const isPlayerTurn  = combat.phase === 'player_action';
-  const canAfford     = (card.cost || 0) <= (combat.player.energy || 0);
+  const isSelected   = combat.selectedCardIndex === index;
+  const isPlayerTurn = combat.phase === 'player_action';
+  const canAfford    = (card.cost || 0) <= (combat.player.energy || 0);
+
+  // Responsive card dimensions based on hand size
+  let cardW, cardH, marginL, artH, namePx, descPx, orbW;
+  if (total <= 5) {
+    cardW = 92; cardH = 134; marginL = -24; artH = 58; namePx = 10; descPx = 8.5; orbW = 27;
+  } else if (total <= 7) {
+    cardW = 80; cardH = 118; marginL = -18; artH = 50; namePx = 9;  descPx = 7.5; orbW = 25;
+  } else if (total <= 9) {
+    cardW = 70; cardH = 104; marginL = -14; artH = 44; namePx = 8.5; descPx = 7;  orbW = 23;
+  } else {
+    cardW = 62; cardH = 92;  marginL = -10; artH = 38; namePx = 8;   descPx = 6.5; orbW = 21;
+  }
 
   // Fan geometry — spread cards in an arc
-  const t         = total <= 1 ? 0 : (index - (total - 1) / 2) / ((total - 1) / 2);
-  const maxAngle  = Math.min(5 * (total - 1), 28);
-  const rotation  = t * (maxAngle / 2);
-  const yLift     = (1 - Math.abs(t)) * 8;  // center cards slightly higher
+  const t        = total <= 1 ? 0 : (index - (total - 1) / 2) / ((total - 1) / 2);
+  const maxAngle = Math.min(4 * (total - 1), 24);
+  const rotation = t * (maxAngle / 2);
+  const yLift    = (1 - Math.abs(t)) * 7;
 
-  const borderColor   = typeColor(card.type);
-  const bgColor       = cardTypeBg(card.type);
-  const costColor     = canAfford ? '#ffd700' : '#e74c3c';
-  const imgSrc        = card.imageUrl || 'images/cards/default.png';
+  const borderColor = typeColor(card.type);
+  const bgColor     = cardTypeBg(card.type);
+  const costColor   = canAfford ? '#ffd700' : '#e74c3c';
+  const imgSrc      = card.imageUrl || '';
 
   const baseTransform = `rotate(${rotation}deg) translateY(${-yLift}px)`;
-  const selTransform  = `rotate(${rotation * 0.3}deg) translateY(-32px) scale(1.18)`;
-  const hoverTrans    = `rotate(${rotation * 0.2}deg) translateY(-52px) scale(1.45)`;
+  const selTransform  = `rotate(${rotation * 0.3}deg) translateY(-30px) scale(1.18)`;
+  const hoverTrans    = `rotate(${rotation * 0.2}deg) translateY(-50px) scale(1.42)`;
 
   const boxShadow = isSelected
-    ? `0 0 22px ${C.goldBright}aa`
-    : `0 4px 12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.07)`;
+    ? `0 0 20px ${C.goldBright}bb, 0 0 6px ${borderColor}88`
+    : `0 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)`;
 
-  const marginLeft = index > 0 ? 'margin-left:-22px;' : '';
+  const ml = index > 0 ? `margin-left:${marginL}px;` : '';
 
-  const hoJS = `this.style.transform='${hoverTrans}';this.style.zIndex='95';this.style.boxShadow='0 8px 28px rgba(0,0,0,0.75), 0 0 14px ${borderColor}77';`;
+  const hoJS  = `this.style.transform='${hoverTrans}';this.style.zIndex='95';this.style.boxShadow='0 10px 30px rgba(0,0,0,0.8), 0 0 16px ${borderColor}99';`;
   const hoOut = `this.style.transform='${isSelected ? selTransform : baseTransform}';this.style.zIndex='${isSelected ? 90 : 20 + index}';this.style.boxShadow='${boxShadow}';`;
 
   return `
     <div class="combat-hand-card" data-hand-index="${index}"
       style="
         position:relative;
-        width:90px; height:130px;
+        width:${cardW}px; height:${cardH}px;
         background:${bgColor};
         border:2px solid ${isSelected ? C.goldBright : borderColor};
-        border-radius:8px;
-        ${marginLeft}
+        border-radius:9px;
+        ${ml}
         flex-shrink:0;
         cursor:${isPlayerTurn ? 'pointer' : 'default'};
-        opacity:${isPlayerTurn && !canAfford ? 0.6 : 1};
+        opacity:${isPlayerTurn && !canAfford ? 0.55 : 1};
         transform-origin:bottom center;
         transform:${isSelected ? selTransform : baseTransform};
         z-index:${isSelected ? 90 : 20 + index};
-        transition:transform 0.15s, box-shadow 0.15s;
+        transition:transform 0.14s ease, box-shadow 0.14s ease, opacity 0.1s;
         box-shadow:${boxShadow};
         display:flex; flex-direction:column;
         overflow:hidden;
@@ -754,54 +768,60 @@ function renderCardInHand(card, index, total, combat) {
       <!-- Cost orb -->
       <div style="
         position:absolute; top:-1px; left:-1px;
-        width:26px; height:26px;
-        background:radial-gradient(circle at 40% 35%, #f7c03a, #b86000);
+        width:${orbW}px; height:${orbW}px;
+        background:radial-gradient(circle at 38% 32%, #f9cd45, #c07000, #7a3e00);
         border:2px solid ${costColor};
         border-radius:50%;
         display:flex; align-items:center; justify-content:center;
-        font-weight:bold; font-size:13px; color:white;
+        font-weight:bold; font-size:${orbW - 13}px; color:white;
         z-index:3;
-        box-shadow:0 0 6px ${costColor}99;
+        box-shadow:0 0 7px ${costColor}bb;
+        text-shadow:0 1px 2px rgba(0,0,0,0.7);
       ">${card.cost}</div>
 
       <!-- Art area -->
       <div style="
-        width:100%; height:54px;
-        background:rgba(0,0,0,0.35);
-        border-bottom:1px solid ${borderColor}44;
+        width:100%; height:${artH}px;
+        background:linear-gradient(180deg,rgba(0,0,0,0.45),rgba(0,0,0,0.25));
+        border-bottom:1px solid ${borderColor}55;
         display:flex; align-items:center; justify-content:center;
         overflow:hidden; flex-shrink:0;
       ">
-        <img src="${imgSrc}" alt="${card.name}"
-          style="max-width:80px; max-height:52px; object-fit:contain;"
-          onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:24px>${typeEmoji(card.type)}</span>'">
+        ${imgSrc
+          ? `<img src="${imgSrc}" alt="${card.name}"
+               style="width:100%;height:100%;object-fit:contain;padding:3px;box-sizing:border-box;"
+               onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=\\"font-size:${artH - 10}px\\">${typeEmoji(card.type)}</span>')">`
+          : `<span style="font-size:${artH - 10}px;">${typeEmoji(card.type)}</span>`}
       </div>
 
       <!-- Name -->
       <div style="
-        padding:3px 4px 1px; font-size:9.5px; font-weight:bold; color:white;
+        padding:3px 5px 1px;
+        font-size:${namePx}px; font-weight:700; color:#f0e8d8;
         text-align:center; line-height:1.2; flex-shrink:0;
-      ">${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}</div>
+        text-shadow:0 1px 3px rgba(0,0,0,0.8);
+        letter-spacing:0.2px;
+      ">${card.name}${card.upgraded ? `<span style="color:#4CAF50;font-size:${namePx + 1}px;">⁺</span>` : ''}</div>
 
       <!-- Divider -->
-      <div style="height:1px; background:${borderColor}55; margin:1px 4px; flex-shrink:0;"></div>
+      <div style="height:1px; background:linear-gradient(90deg,transparent,${borderColor}88,transparent); margin:1px 3px; flex-shrink:0;"></div>
 
       <!-- Description -->
       <div style="
-        flex:1; padding:2px 5px;
-        font-size:8px; color:#ddd;
-        text-align:center; line-height:1.3;
+        flex:1; padding:2px 4px;
+        font-size:${descPx}px; color:#ccc;
+        text-align:center; line-height:1.35;
         overflow:hidden;
       ">${card.description}</div>
 
       <!-- Type footer -->
       <div style="
         padding:2px 4px;
-        background:rgba(0,0,0,0.35);
+        background:${borderColor}22;
         border-top:1px solid ${borderColor}44;
-        font-size:8px; color:${borderColor};
+        font-size:${descPx - 0.5}px; color:${borderColor};
         text-align:center; flex-shrink:0;
-        text-transform:uppercase; letter-spacing:0.5px;
+        text-transform:uppercase; letter-spacing:0.6px; font-weight:600;
       ">${card.type || 'Card'}</div>
     </div>
   `;
@@ -1049,7 +1069,7 @@ function showStatusTooltip(event, key, val) {
     tip = document.createElement('div');
     tip.id = 'combat-status-tooltip';
     tip.style.cssText = `
-      position:fixed; z-index:25000; pointer-events:none;
+      position:fixed; z-index:9000; pointer-events:none;
       background:linear-gradient(145deg,rgba(20,20,30,0.97),rgba(15,15,25,0.97));
       border:2px solid #888; border-radius:8px; padding:10px 12px;
       max-width:240px; box-shadow:0 4px 20px rgba(0,0,0,0.8);

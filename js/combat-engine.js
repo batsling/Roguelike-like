@@ -468,8 +468,8 @@ function parsePatternDescToEffects(desc) {
     const options = desc.split('/').map(s => s.trim());
     const weighted = [];
     for (const opt of options) {
-      const m = opt.match(/^(\d+)%\s*(.*)/);
-      if (m) weighted.push({ weight: parseInt(m[1]), text: m[2].trim() });
+      const m = opt.match(/^(\d+(?:\.\d+)?)%\s*(.*)/);
+      if (m) weighted.push({ weight: parseFloat(m[1]), text: m[2].trim() });
     }
     if (weighted.length > 0) {
       const total = weighted.reduce((s, o) => s + o.weight, 0);
@@ -1773,8 +1773,8 @@ function executeWhenDefeatedClause(enemy, clause) {
     const parts = text.split('/').map(s => s.trim());
     const weighted = [];
     for (const p of parts) {
-      const m = p.match(/^(\d+)%\s*(.*)/);
-      if (m) weighted.push({ weight: parseInt(m[1]), text: m[2].trim() });
+      const m = p.match(/^(\d+(?:\.\d+)?)%\s*(.*)/);
+      if (m) weighted.push({ weight: parseFloat(m[1]), text: m[2].trim() });
     }
     if (weighted.length > 0) {
       const total = weighted.reduce((s, o) => s + o.weight, 0);
@@ -1789,9 +1789,9 @@ function executeWhenDefeatedClause(enemy, clause) {
   }
 
   // Single probability: "50% chance to Spawn Mung"
-  const chancePct = text.match(/^(\d+)%\s*(?:chance\s+to\s+)?(.+)/i);
+  const chancePct = text.match(/^(\d+(?:\.\d+)?)%\s*(?:chance\s+to\s+)?(.+)/i);
   if (chancePct) {
-    if (Math.random() * 100 < parseInt(chancePct[1])) {
+    if (Math.random() * 100 < parseFloat(chancePct[1])) {
       executeWhenDefeatedClause(enemy, chancePct[2].trim());
     }
     return;

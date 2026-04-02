@@ -35,7 +35,7 @@ function createGameModal(content) {
     justify-content: center;
     align-items: flex-start;
     padding-top: 30px;
-    z-index: 10000;
+    z-index: 500;
     animation: fadeIn 0.3s;
   `;
 
