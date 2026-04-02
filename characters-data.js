@@ -27,7 +27,10 @@ var CHARACTERS_DATA = {
     "description": "Now I abide here, searching endlessly for the precious Amulet... and finding a thousand horrors.",
     "combatStart": "Cards",
     "startingItems": [],
-    "startingDeck": [],
+    "startingDeck": [
+      { "cardName": "Strike", "count": 5 },
+      { "cardName": "Defend", "count": 5 }
+    ],
     "dice": [
       {
         "isBlank": true,
@@ -80,7 +83,10 @@ var CHARACTERS_DATA = {
     "description": "Who am I?",
     "combatStart": "Cards",
     "startingItems": [],
-    "startingDeck": [],
+    "startingDeck": [
+      { "cardName": "Strike", "count": 5 },
+      { "cardName": "Defend", "count": 4 }
+    ],
     "dice": [
       {
         "isBlank": true,
@@ -133,7 +139,10 @@ var CHARACTERS_DATA = {
     "description": "Express Delivery: Arrives with haste, before the world ends.",
     "combatStart": "Cards",
     "startingItems": [],
-    "startingDeck": [],
+    "startingDeck": [
+      { "cardName": "Strike", "count": 5 },
+      { "cardName": "Defend", "count": 5 }
+    ],
     "dice": [
       {
         "isBlank": true,
@@ -186,7 +195,10 @@ var CHARACTERS_DATA = {
     "description": "Why must you go destroying everything? Why? For glory? For your precious god of gods. Is it really worth all this? Is it? Is it really?",
     "combatStart": "Cards",
     "startingItems": [],
-    "startingDeck": [],
+    "startingDeck": [
+      { "cardName": "Strike", "count": 5 },
+      { "cardName": "Defend", "count": 5 }
+    ],
     "dice": [
       {
         "isBlank": true,
@@ -239,7 +251,11 @@ var CHARACTERS_DATA = {
     "description": "The remaining soldier of the Ironclads. Sold his soul to harness demonic energies.",
     "combatStart": "Cards",
     "startingItems": ["Burning Blood"],
-    "startingDeck": [],
+    "startingDeck": [
+      { "cardName": "Strike", "count": 5 },
+      { "cardName": "Defend", "count": 4 },
+      { "cardName": "Bash", "count": 1 }
+    ],
     "dice": [
       {
         "isBlank": true,

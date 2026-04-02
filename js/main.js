@@ -7763,6 +7763,26 @@ function showCharacterDetails(charName) {
     </div>
   ` : '';
 
+  const startingItemsList = char.startingItems || [];
+  const startingItemsHTML = startingItemsList.length > 0 ? `
+    <div style="margin-top: 15px;">
+      <strong style="color: #cc6600;">Starting Item${startingItemsList.length > 1 ? 's' : ''}:</strong>
+      <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 5px;">
+        ${startingItemsList.map(itemName => {
+          const itemData = typeof items !== 'undefined' ? items.find(i => i.name === itemName) : null;
+          const rarityColor = itemData ? (itemData.rarity === 'Rare' ? '#9b59b6' : itemData.rarity === 'Uncommon' ? '#4CAF50' : '#888') : '#cc6600';
+          return `<div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.3);border:1px solid ${rarityColor};border-radius:6px;padding:5px 8px;">
+            <span style="color:${rarityColor};font-weight:bold;font-size:18px;">★</span>
+            <div>
+              <div style="font-size:12px;color:white;font-weight:bold;">${itemName}</div>
+              ${itemData ? `<div style="font-size:10px;color:#aaa;">${itemData.rarity || ''} · ${itemData.type || ''}</div>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+
   detailsPanel.innerHTML = `
     <div style="display: flex; flex-direction: column; gap: 15px;">
       <!-- Character Image - Centered -->
@@ -7811,6 +7831,7 @@ function showCharacterDetails(charName) {
       <!-- Starting Deck -->
       ${startingDeckHTML}
       ${combatStartHTML}
+      ${startingItemsHTML}
     </div>
   `;
 }

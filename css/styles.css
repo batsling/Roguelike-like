@@ -786,6 +786,8 @@ text, path, line, g {
   overflow-y: auto;
   flex-shrink: 0;
   box-sizing: border-box;
+  position: relative;
+  z-index: 100;
 }
 
 #game-stats h3 {
