@@ -26,6 +26,7 @@ var CHARACTERS_DATA = {
     },
     "description": "Now I abide here, searching endlessly for the precious Amulet... and finding a thousand horrors.",
     "combatStart": "Cards",
+    "startingItems": [],
     "startingDeck": [],
     "dice": [
       {
@@ -78,6 +79,7 @@ var CHARACTERS_DATA = {
     },
     "description": "Who am I?",
     "combatStart": "Cards",
+    "startingItems": [],
     "startingDeck": [],
     "dice": [
       {
@@ -130,6 +132,7 @@ var CHARACTERS_DATA = {
     },
     "description": "Express Delivery: Arrives with haste, before the world ends.",
     "combatStart": "Cards",
+    "startingItems": [],
     "startingDeck": [],
     "dice": [
       {
@@ -182,6 +185,7 @@ var CHARACTERS_DATA = {
     },
     "description": "Why must you go destroying everything? Why? For glory? For your precious god of gods. Is it really worth all this? Is it? Is it really?",
     "combatStart": "Cards",
+    "startingItems": [],
     "startingDeck": [],
     "dice": [
       {
@@ -234,6 +238,7 @@ var CHARACTERS_DATA = {
     },
     "description": "The remaining soldier of the Ironclads. Sold his soul to harness demonic energies.",
     "combatStart": "Cards",
+    "startingItems": ["Burning Blood"],
     "startingDeck": [],
     "dice": [
       {

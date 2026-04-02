@@ -664,6 +664,18 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   // Generate new bingo grid for this run
   generateBingoGrid();
 
+  // Give character's starting items
+  const startingItemNames = character.startingItems || [];
+  startingItemNames.forEach(itemName => {
+    const itemData = items.find(i => i.name === itemName);
+    if (itemData && typeof acquireItem === 'function') {
+      acquireItem(itemData);
+      console.log(`Starting item granted: ${itemName}`);
+    } else {
+      console.warn(`Starting item not found in items list: ${itemName}`);
+    }
+  });
+
   saveCurrentGame();
   updateSaveList();
 
