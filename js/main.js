@@ -338,31 +338,23 @@ function loadSavedGame(saveName) {
   if (gameState.equippedWeapon === undefined) {
     gameState.equippedWeapon = null;
   }
+  if (!gameState.deck) {
+    gameState.deck = [];
+  }
+  if (!gameState.postcombatChoicesUsed) {
+    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
+  }
 
   // Generate encounter types if they don't exist (for old saves)
   if (!gameState.encounterTypes) {
     gameState.encounterTypes = {};
-    const startingConnections = gameState.startGame && typeof getGameConnections === 'function'
-      ? getGameConnections(gameState.startGame.name)
-      : [];
-
     games.forEach(game => {
-      const roll = Math.random() * 100;
-      const isConnectedToStart = startingConnections.includes(game.name);
-
-      if (roll < 75) {
-        gameState.encounterTypes[game.name] = 'combat';
-      } else if (roll < 90) {
-        gameState.encounterTypes[game.name] = 'event';
-      } else {
-        // If this is connected to starting game, re-roll to combat or event
-        if (isConnectedToStart) {
-          const reroll = Math.random() * 100;
-          gameState.encounterTypes[game.name] = reroll < 83.33 ? 'combat' : 'event';
-        } else {
-          gameState.encounterTypes[game.name] = 'shop';
-        }
-      }
+      gameState.encounterTypes[game.name] = 'combat';
+    });
+  } else {
+    // Migrate old saves: change any non-combat encounters to combat
+    Object.keys(gameState.encounterTypes).forEach(gameName => {
+      gameState.encounterTypes[gameName] = 'combat';
     });
   }
 
@@ -585,32 +577,10 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   // Store character traits
   const characterTraits = character.traits || [];
 
-  // Generate random encounter types for this run
-  // Each game has: 75% combat, 15% event, 10% shop
-  // Shops cannot spawn on games directly connected to the starting game (would be useless)
+  // All encounters are combat — shops/events are now accessible via post-combat choices
   const encounterTypes = {};
-  const startingConnections = typeof getGameConnections === 'function'
-    ? getGameConnections(start.name)
-    : [];
-
   games.forEach(game => {
-    const roll = Math.random() * 100;
-    const isConnectedToStart = startingConnections.includes(game.name);
-
-    if (roll < 75) {
-      encounterTypes[game.name] = 'combat';
-    } else if (roll < 90) {
-      encounterTypes[game.name] = 'event';
-    } else {
-      // If this is connected to starting game, re-roll to combat or event
-      if (isConnectedToStart) {
-        const reroll = Math.random() * 100;
-        encounterTypes[game.name] = reroll < 83.33 ? 'combat' : 'event'; // 75/90 = 83.33%
-        console.log(`Prevented shop on ${game.name} (connected to start) - rerolled to ${encounterTypes[game.name]}`);
-      } else {
-        encounterTypes[game.name] = 'shop';
-      }
-    }
+    encounterTypes[game.name] = 'combat';
   });
 
   // Select a random location for this run (based on starting difficulty of 0)
@@ -649,7 +619,9 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     encounterTypes: encounterTypes, // Map of game names to encounter types for this run
     location: selectedLocation, // Current location for this run
     playerLevel: 1, // Character level for dice combat system
-    activeAllies: [] // Allies that provide dice in combat
+    activeAllies: [], // Allies that provide dice in combat
+    deck: [], // Cards collected during this run
+    postcombatChoicesUsed: { Low: [], Medium: [], High: [] } // Tracks which post-combat options have been used per difficulty tier
   };
 
   startGame = start;
@@ -4400,36 +4372,247 @@ function handleDiceCombatVictory(enemy) {
   updateEncounterHistory();
   saveCurrentGame();
 
-  // Show victory screen with card reward option
+  // Show brief victory notification then go straight to card reward
   createGameModal(`
     <div style="text-align: center; padding: 30px;">
       <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">Victory!</h2>
       <h3 style="color: #fff; margin: 15px 0;">${enemy.name} defeated!</h3>
       <p style="color: #FFD700; font-size: 18px; margin: 20px 0;">+${goldReward} Gold</p>
-      <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-        <button onclick="closeGameModal()" style="
-          padding: 15px 30px;
-          background: linear-gradient(145deg, #4CAF50, #2E7D32);
-          border: none;
-          border-radius: 8px;
-          color: white;
-          cursor: pointer;
-          font-weight: bold;
-          font-size: 16px;
-        ">Continue</button>
-        <button onclick="closeGameModal(); if(typeof showCardRewardModal==='function') showCardRewardModal();" style="
-          padding: 15px 30px;
-          background: linear-gradient(145deg, #9b59b6, #6c3483);
-          border: none;
-          border-radius: 8px;
-          color: white;
-          cursor: pointer;
-          font-weight: bold;
-          font-size: 16px;
-        ">+ Add Card to Deck</button>
-      </div>
+      <button onclick="closeGameModal(); showCardRewardModal(() => showPostCombatChoiceModal('${enemy.difficulty || 'Low'}'));" style="
+        padding: 15px 40px;
+        background: linear-gradient(145deg, #4CAF50, #2E7D32);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+      ">Continue →</button>
     </div>
   `);
+}
+
+/**
+ * Show post-combat choice modal (Rest / Smith / Shop / Movement Event).
+ * Each option can only be used once per difficulty tier per run.
+ * @param {string} difficulty - 'Low' | 'Medium' | 'High'
+ */
+function showPostCombatChoiceModal(difficulty) {
+  const tier = difficulty || 'Low';
+  if (!gameState.postcombatChoicesUsed) {
+    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
+  }
+  const used = gameState.postcombatChoicesUsed[tier] || [];
+
+  const optionData = [
+    {
+      key: 'rest',
+      label: 'Rest',
+      icon: '🛌',
+      desc: 'Heal 50% of your max health.',
+      color: '#4CAF50',
+      action: () => {
+        const heal = Math.floor(maxHealth * 0.5);
+        health = Math.min(health + heal, maxHealth);
+        window.health = health;
+        gameState.health = health;
+        if (typeof updateTopBar === 'function') updateTopBar();
+        if (typeof saveCurrentGame === 'function') saveCurrentGame();
+        closeGameModal();
+        if (typeof createNotification === 'function') createNotification(`Rested: +${heal} Health`, '#4CAF50', '🛌');
+      }
+    },
+    {
+      key: 'smith',
+      label: 'Smith',
+      icon: '⚒️',
+      desc: 'Choose 2 cards from your deck to upgrade for free.',
+      color: '#FF9800',
+      action: () => {
+        closeGameModal();
+        showSmithChoiceModal();
+      }
+    },
+    {
+      key: 'shop',
+      label: 'Shop',
+      icon: '🛒',
+      desc: 'Visit the shop to buy items.',
+      color: '#FFD700',
+      action: () => {
+        closeGameModal();
+        // Reset shop state so fresh items appear
+        gameState.currentShopItems = null;
+        gameState.shopRerollCount = 0;
+        gameState.shopUpgradesUsed = 0;
+        gameState.shopRemovesUsed = 0;
+        if (typeof showShopModal === 'function') showShopModal();
+      }
+    },
+    {
+      key: 'movement',
+      label: 'Movement Event',
+      icon: '🗺️',
+      desc: 'A special event that helps you navigate difficult terrain. (Coming soon)',
+      color: '#9b59b6',
+      action: () => {
+        closeGameModal();
+        if (typeof createNotification === 'function') createNotification('Movement Event coming soon!', '#9b59b6', '🗺️');
+      }
+    }
+  ];
+
+  const buttonsHTML = optionData.map(opt => {
+    const isUsed = used.includes(opt.key);
+    return `
+      <div style="
+        background: ${isUsed ? '#1a1a1a' : '#2d2d2d'};
+        border: 2px solid ${isUsed ? '#444' : opt.color};
+        border-radius: 12px;
+        padding: 20px;
+        cursor: ${isUsed ? 'not-allowed' : 'pointer'};
+        opacity: ${isUsed ? '0.45' : '1'};
+        transition: transform 0.15s, box-shadow 0.15s;
+        text-align: center;
+        min-width: 140px;
+        max-width: 160px;
+        ${isUsed ? '' : `onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 20px ${opt.color}66'"`}
+      "
+      ${isUsed ? '' : `onclick="window._postcombatUseOption('${opt.key}', '${tier}')"`}
+      id="postcombat-opt-${opt.key}">
+        <div style="font-size:36px;margin-bottom:10px;">${opt.icon}</div>
+        <div style="font-weight:bold;color:${isUsed ? '#666' : 'white'};font-size:15px;margin-bottom:8px;">${opt.label}</div>
+        <div style="color:${isUsed ? '#555' : '#aaa'};font-size:12px;line-height:1.4;">${opt.desc}</div>
+        ${isUsed ? '<div style="color:#666;font-size:11px;margin-top:8px;font-style:italic;">Used this tier</div>' : ''}
+      </div>
+    `;
+  }).join('');
+
+  // Register option handler globally (modal scope)
+  window._postcombatUseOption = (key, t) => {
+    if (!gameState.postcombatChoicesUsed[t]) gameState.postcombatChoicesUsed[t] = [];
+    gameState.postcombatChoicesUsed[t].push(key);
+    if (typeof saveCurrentGame === 'function') saveCurrentGame();
+    const opt = optionData.find(o => o.key === key);
+    if (opt) opt.action();
+  };
+
+  createGameModal(`
+    <div style="text-align:center; padding:24px; max-width:760px;">
+      <h2 style="color:#FFD700; margin-top:0; margin-bottom:6px;">After Battle</h2>
+      <p style="color:#aaa; font-size:13px; margin-bottom:20px;">
+        Choose one option — each can be used <strong>once per difficulty tier</strong>.
+        Currently: <span style="color:#4CAF50;">${tier}</span> tier.
+      </p>
+      <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">
+        ${buttonsHTML}
+      </div>
+      <button onclick="closeGameModal()" style="
+        padding:10px 30px; background:#444; border:none; border-radius:8px;
+        color:#aaa; cursor:pointer; font-size:13px;
+      ">Skip</button>
+    </div>
+  `);
+}
+
+/**
+ * Show the Smith upgrade modal — player picks up to 2 cards to upgrade for free.
+ */
+function showSmithChoiceModal() {
+  const upgradeable = (gameState.deck || []).filter(c => c.canUpgrade && !c.upgraded);
+  if (upgradeable.length === 0) {
+    if (typeof createNotification === 'function') createNotification('No upgradeable cards in deck!', '#FF9800', '⚒️');
+    return;
+  }
+
+  const MAX_UPGRADES = 2;
+  let selectedIndices = new Set();
+
+  function renderSmithModal() {
+    const cardsHTML = upgradeable.map((card, idx) => {
+      const sel = selectedIndices.has(idx);
+      const color = sel ? '#FF9800' : '#555';
+      return `
+        <div class="smith-card-option" data-smith-idx="${idx}" style="
+          background: ${sel ? '#3a2800' : '#2d2d2d'};
+          border: 2px solid ${color};
+          border-radius: 10px;
+          padding: 14px;
+          cursor: pointer;
+          display:flex; flex-direction:column; align-items:center;
+          min-width:130px; max-width:155px;
+          transition: transform 0.15s;
+        ">
+          <img src="${card.imageUrl || 'images/cards/default.png'}" alt="${card.name}"
+               style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;"
+               onerror="this.style.display='none'">
+          <div style="font-weight:bold;font-size:12px;color:white;text-align:center;">${card.name}</div>
+          <div style="font-size:10px;color:#aaa;margin-top:3px;">${card.rarity} · ${card.type}</div>
+          ${sel ? '<div style="color:#FF9800;font-size:11px;margin-top:4px;">✓ Selected</div>' : ''}
+        </div>
+      `;
+    }).join('');
+
+    createGameModal(`
+      <div style="text-align:center; padding:20px; max-width:820px;">
+        <h2 style="color:#FF9800; margin-top:0;">⚒️ Smith — Upgrade Cards</h2>
+        <p style="color:#aaa; font-size:13px; margin-bottom:16px;">
+          Select up to ${MAX_UPGRADES} cards to upgrade for free.
+          (${selectedIndices.size}/${MAX_UPGRADES} selected)
+        </p>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:20px;">
+          ${cardsHTML}
+        </div>
+        <div style="display:flex; gap:10px; justify-content:center;">
+          <button id="smith-confirm-btn" style="
+            padding:10px 28px; background:${selectedIndices.size > 0 ? '#FF9800' : '#555'};
+            border:none; border-radius:8px; color:white; cursor:pointer; font-weight:bold;
+          ">Upgrade (${selectedIndices.size})</button>
+          <button onclick="closeGameModal()" style="
+            padding:10px 24px; background:#444; border:none; border-radius:8px;
+            color:#aaa; cursor:pointer;
+          ">Cancel</button>
+        </div>
+      </div>
+    `);
+
+    document.querySelectorAll('.smith-card-option').forEach(el => {
+      el.onclick = () => {
+        const idx = parseInt(el.dataset.smithIdx);
+        if (selectedIndices.has(idx)) {
+          selectedIndices.delete(idx);
+        } else if (selectedIndices.size < MAX_UPGRADES) {
+          selectedIndices.add(idx);
+        }
+        renderSmithModal();
+      };
+    });
+
+    const confirmBtn = document.getElementById('smith-confirm-btn');
+    if (confirmBtn) {
+      confirmBtn.onclick = () => {
+        let upgradeCount = 0;
+        selectedIndices.forEach(idx => {
+          const card = upgradeable[idx];
+          const deckIdx = gameState.deck.findIndex(c => c === card || (c.name === card.name && !c.upgraded));
+          if (deckIdx !== -1) {
+            gameState.deck[deckIdx].upgraded = true;
+            if (gameState.deck[deckIdx].upgradedDescription) {
+              gameState.deck[deckIdx].description = gameState.deck[deckIdx].upgradedDescription;
+            }
+            upgradeCount++;
+          }
+        });
+        if (typeof saveCurrentGame === 'function') saveCurrentGame();
+        closeGameModal();
+        if (typeof createNotification === 'function') {
+          createNotification(`Upgraded ${upgradeCount} card${upgradeCount !== 1 ? 's' : ''}!`, '#FF9800', '⚒️');
+        }
+      };
+    }
+  }
+
+  renderSmithModal();
 }
 
 /**

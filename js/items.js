@@ -652,99 +652,104 @@ const ITEM_EFFECTS = {
       return gameState.phase === 'combat';
     },
     onUse: () => {
-      // Check for new dice combat system first
       const newCombatState = typeof window.CombatEngine !== 'undefined' && typeof window.CombatEngine.getCombatState === 'function'
         ? window.CombatEngine.getCombatState()
         : null;
-
-      // Fall back to old combat system
       const oldCombatState = typeof window.CombatState !== 'undefined' && typeof window.CombatState.getCombatState === 'function'
         ? window.CombatState.getCombatState()
         : null;
 
       const damage = 10;
 
-      // Handle new dice combat system
-      if (newCombatState && newCombatState.enemies && newCombatState.enemies.length > 0) {
-        const enemy = newCombatState.enemies.find(e => e.health > 0);
-        if (!enemy) {
-          console.error('Fire Potion: No living enemies');
-          return;
-        }
-
-        // Deal damage through block
+      // Helper: apply fire potion damage to a specific enemy (new combat system)
+      function applyFirePotionToEnemy(cs, enemy) {
         let actualDamage = damage;
         if (enemy.block > 0) {
-          const blockedDamage = Math.min(enemy.block, damage);
-          enemy.block -= blockedDamage;
-          actualDamage = damage - blockedDamage;
+          const blocked = Math.min(enemy.block, damage);
+          enemy.block -= blocked;
+          actualDamage = damage - blocked;
         }
         enemy.health -= actualDamage;
         if (enemy.health < 0) enemy.health = 0;
-
-        // Log using combat engine's log
-        if (newCombatState.log) {
-          newCombatState.log.push({
-            message: `Fire Potion! Dealt ${actualDamage} damage to ${enemy.name}`,
-            type: 'success'
-          });
-        }
-
-        // Update UI
+        if (cs.log) cs.log.push({ message: `Fire Potion! Dealt ${actualDamage} damage to ${enemy.name}`, type: 'success' });
         if (typeof window.CombatUI !== 'undefined' && typeof window.CombatUI.updateCombatDisplay === 'function') {
           window.CombatUI.updateCombatDisplay();
         }
-
-        // Check for victory
-        if (enemy.health <= 0) {
-          const allDead = newCombatState.enemies.every(e => e.health <= 0);
-          if (allDead) {
-            newCombatState.phase = 'victory';
-            if (typeof window.CombatUI !== 'undefined' && typeof window.CombatUI.checkCombatEnd === 'function') {
-              window.CombatUI.checkCombatEnd();
-            }
+        if (enemy.health <= 0 && cs.enemies.every(e => e.health <= 0)) {
+          cs.phase = 'victory';
+          if (typeof window.CombatUI !== 'undefined' && typeof window.CombatUI.checkCombatEnd === 'function') {
+            window.CombatUI.checkCombatEnd();
           }
         }
+      }
 
-        console.log(`Fire Potion used (dice combat): dealt ${actualDamage} damage, enemy health: ${enemy.health}`);
+      // Handle new dice combat system
+      if (newCombatState && newCombatState.enemies && newCombatState.enemies.length > 0) {
+        const living = newCombatState.enemies.filter(e => e.health > 0);
+        if (living.length === 0) { console.error('Fire Potion: No living enemies'); return; }
+
+        if (living.length === 1) {
+          // Only one target — apply directly
+          applyFirePotionToEnemy(newCombatState, living[0]);
+          return;
+        }
+
+        // Multiple targets — show selection modal
+        const targetsHTML = living.map((e, idx) => `
+          <button onclick="window._firePotionApply(${idx})" style="
+            display:flex; align-items:center; gap:12px;
+            padding:12px 20px; background:#2d2d2d; border:2px solid #e74c3c;
+            border-radius:8px; color:white; cursor:pointer; font-size:14px; font-weight:bold;
+            width:100%; margin-bottom:8px; transition:background 0.15s;
+          " onmouseenter="this.style.background='#4a1a1a'" onmouseleave="this.style.background='#2d2d2d'">
+            ${e.imageUrl ? `<img src="${e.imageUrl}" style="width:40px;height:40px;object-fit:contain;image-rendering:pixelated;" onerror="this.style.display='none'">` : ''}
+            <span>${e.name}</span>
+            <span style="margin-left:auto;color:#aaa;font-size:12px;">${e.health}/${e.maxHealth} HP</span>
+          </button>
+        `).join('');
+
+        window._firePotionApply = (idx) => {
+          delete window._firePotionApply;
+          if (typeof closeGameModal === 'function') closeGameModal();
+          applyFirePotionToEnemy(newCombatState, living[idx]);
+        };
+
+        if (typeof createGameModal === 'function') {
+          createGameModal(`
+            <div style="padding:24px; min-width:320px;">
+              <h3 style="color:#e74c3c; text-align:center; margin-top:0;">🔥 Fire Potion — Choose Target</h3>
+              <p style="color:#aaa; text-align:center; font-size:13px; margin-bottom:16px;">Deals ${damage} damage to one enemy.</p>
+              ${targetsHTML}
+              <button onclick="delete window._firePotionApply; closeGameModal();" style="
+                width:100%; padding:10px; background:#444; border:none; border-radius:6px;
+                color:#aaa; cursor:pointer; margin-top:4px;
+              ">Cancel</button>
+            </div>
+          `);
+        }
         return;
       }
 
-      // Handle old combat system
+      // Handle old combat system (single enemy only)
       if (oldCombatState && oldCombatState.enemy) {
         let damageResult = { healthLost: damage, blockConsumed: 0 };
-
         if (typeof window.CombatEffects !== 'undefined' && typeof window.CombatEffects.processDamageWithBlock === 'function') {
           damageResult = window.CombatEffects.processDamageWithBlock(oldCombatState.enemy, damage);
         } else {
           oldCombatState.enemy.health -= damage;
           if (oldCombatState.enemy.health < 0) oldCombatState.enemy.health = 0;
         }
-
         if (typeof window.CombatState !== 'undefined' && typeof window.CombatState.addCombatLog === 'function') {
-          window.CombatState.addCombatLog(
-            `Fire Potion! Dealt ${damageResult.healthLost} damage${
-              damageResult.blockConsumed > 0 ? ` (${damageResult.blockConsumed} blocked)` : ''
-            }`,
-            'success'
-          );
+          window.CombatState.addCombatLog(`Fire Potion! Dealt ${damageResult.healthLost} damage${damageResult.blockConsumed > 0 ? ` (${damageResult.blockConsumed} blocked)` : ''}`, 'success');
         }
-
-        if (typeof updateCombatUI === 'function') {
-          updateCombatUI();
-        }
-
+        if (typeof updateCombatUI === 'function') updateCombatUI();
         if (oldCombatState.enemy.health <= 0) {
           oldCombatState.phase = 'victory';
           if (typeof window.CombatState !== 'undefined' && typeof window.CombatState.addCombatLog === 'function') {
             window.CombatState.addCombatLog(`${oldCombatState.enemy.name} defeated by Fire Potion!`, 'success');
           }
-          if (typeof updateCombatUI === 'function') {
-            updateCombatUI();
-          }
+          if (typeof updateCombatUI === 'function') updateCombatUI();
         }
-
-        console.log(`Fire Potion used (old combat): dealt ${damageResult.healthLost} damage, enemy health: ${oldCombatState.enemy.health}`);
         return;
       }
 

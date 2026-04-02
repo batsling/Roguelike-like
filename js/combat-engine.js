@@ -314,6 +314,7 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
 function parseStartingAbilities(abilityStr) {
   const statuses = {};
   if (!abilityStr) return statuses;
+  if (abilityStr.trim().toUpperCase() === 'N/A') return statuses;
 
   // Split by '/' to get individual clauses; then split non-"When" clauses by ',' too.
   // "When Defeated, ..." style clauses are left intact then skipped.
@@ -499,7 +500,8 @@ function parsePatternDescToEffects(desc) {
 
 function parseSimplePatternDesc(text) {
   const effects = [];
-  const tokens  = text.trim().split(/\s+/);
+  // Strip trailing commas from each token so "Ranged," is treated the same as "Ranged"
+  const tokens  = text.trim().split(/\s+/).map(t => t.replace(/,+$/, ''));
   let i = 0;
   while (i < tokens.length) {
     // NxM notation: "5x4 Dmg Ranged" → 5 damage, 4 times
