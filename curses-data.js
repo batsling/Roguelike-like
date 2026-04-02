@@ -29,7 +29,7 @@ var CURSES_DATA = [
     "name": "Curse of Greed I",
     "stat": "Charisma",
     "power": "Low",
-    "duration": "Until 2 Game Beaten",
+    "duration": "Until 2 Games Beaten",
     "description": "Every time you skip an upgrade/item choice in game, lose 1 health",
     "automatic": "Manual"
   },
@@ -54,7 +54,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Low",
     "duration": "Until 1 Game Beaten",
-    "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the  cursor is set to, lose 1 health",
+    "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the cursor is set to, lose 1 health",
     "automatic": "Manual"
   },
   {
@@ -62,7 +62,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Medium",
     "duration": "Until 1 Game Beaten",
-    "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the  cursor is set to, lose 3 health",
+    "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the cursor is set to, lose 3 health",
     "automatic": "Manual"
   },
   {
@@ -70,7 +70,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "High",
     "duration": "Until 1 Game Beaten",
-    "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the  cursor is set to, lose 5 health",
+    "description": "When given options for upgrades/items, if you don't take the option that is the topmost, the leftmost, or what the cursor is set to, lose 5 health",
     "automatic": "Manual"
   },
   {
@@ -103,7 +103,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Game Beaten w/ Effect",
     "description": "You must randomly choose your starting Character/Loadout",
-    "automatic": "Restriction"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Blindness II",
@@ -111,7 +111,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Games Beaten w/ Effect",
     "description": "You must randomly choose your starting Character/Loadout",
-    "automatic": "Restriction"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Blindness III",
@@ -119,7 +119,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Games Beaten w/ Effect",
     "description": "You must randomly choose your starting Character/Loadout",
-    "automatic": "Restriction"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Frugality I",
@@ -127,7 +127,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Shop Item Bought",
     "description": "Everything in Shops cost 5 more Gold",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Frugality II",
@@ -135,7 +135,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 1 Shop Item Bought",
     "description": "Everything in Shops cost 10 more Gold",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Frugality III",
@@ -143,7 +143,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 1 Shop Item Bought",
     "description": "Everything in Shops cost 15 more Gold",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Shroud I",
@@ -151,7 +151,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Space Choice Chosen",
     "description": "Space Choices contain one less option",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Shroud II",
@@ -159,7 +159,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Space Choice Chosen",
     "description": "Space Choices contain one less option",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Shroud III",
@@ -167,7 +167,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Space Choices Chosen",
     "description": "Space Choices contain one less option",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Hubris I",
@@ -175,7 +175,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Game Beaten w/ Effect",
     "description": "You must raise the difficulty once if possible ",
-    "automatic": "Restriction"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Hubris II",
@@ -183,7 +183,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 1 Game Beaten w/ Effect",
     "description": "You must raise the difficulty twice if possible ",
-    "automatic": "Restriction"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Hubris III",
@@ -191,7 +191,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 1 Game Beaten w/ Effect",
     "description": "You must raise the difficulty three times if possible ",
-    "automatic": "Restriction"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Vulnerability I",
@@ -199,7 +199,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Curse Obtained",
     "description": "If you were to get a curse, Get another of the same exact Curse",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Vulnerability II",
@@ -207,7 +207,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Curses Obtained",
     "description": "If you were to get a curse, Get another of the same exact Curse",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Vulnerability III",
@@ -215,7 +215,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Curses Obtained",
     "description": "If you were to get a curse, Get another of the same exact Curse",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Weakness I",
@@ -223,7 +223,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Combat Beaten",
     "description": "Start the next Combat with 3 Frail",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Weakness II",
@@ -231,7 +231,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Combats Beaten",
     "description": "Start the next Combat with 3 Frail",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Weakness III",
@@ -239,7 +239,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Combats Beaten",
     "description": "Start the next Combat with 3 Frail",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of the Failure I",
@@ -247,7 +247,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 is rolled",
     "description": "When you roll a 1 on any roll (before adding to the roll), Fail the combat no matter what and take 2 damage",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of the Failure II",
@@ -255,7 +255,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 1 is rolled",
     "description": "When you roll a 1 on any roll (before adding to the roll), Fail the combat no matter what and take 3 damage",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of the Failure III",
@@ -263,7 +263,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 1 is rolled",
     "description": "When you roll a 1 on any roll (before adding to the roll), Fail the combat no matter what and take 4 damage",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Guilt I",
@@ -367,7 +367,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Combat Beaten",
     "description": "All enemies gain 5 Block at the start of combat",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Obstruction II",
@@ -375,7 +375,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Combats Beaten",
     "description": "All enemies gain 10 Block at the start of combat",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Obstruction III",
@@ -383,7 +383,7 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "Until 3 Combats Beaten",
     "description": "All enemies gain 20 Block at the start of combat",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of the Damp I",
@@ -415,7 +415,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "Until 1 Passive Item Obtained",
     "description": "Whenever the player gets a passive item, downgrade it",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Decay II",
@@ -423,15 +423,15 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "Until 2 Passive Items Obtained",
     "description": "Whenever the player gets a passive item, downgrade it",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
-    "name": "Curse of Decay II",
+    "name": "Curse of Decay III",
     "stat": "Strength",
     "power": "High",
     "duration": "Until 3 Passive Items Obtained",
     "description": "Whenever the player gets a passive item, downgrade it",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Misfortune I",
@@ -439,7 +439,7 @@ var CURSES_DATA = [
     "power": "Low",
     "duration": "1 Roll",
     "description": "Gain Disadvantage on the next roll",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Misfortune II",
@@ -447,7 +447,7 @@ var CURSES_DATA = [
     "power": "Medium",
     "duration": "2 Rolls",
     "description": "Gain Disadvantage on the next roll",
-    "automatic": "Auto"
+    "automatic": "Manual"
   },
   {
     "name": "Curse of Misfortune III",
@@ -455,6 +455,6 @@ var CURSES_DATA = [
     "power": "High",
     "duration": "3 Rolls",
     "description": "Gain Disadvantage on the next roll",
-    "automatic": "Auto"
+    "automatic": "Manual"
   }
 ];

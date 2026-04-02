@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 600 games, 761 connections
-// 524 connected, 162 influencers
+// 602 games, 763 connections
+// 526 connected, 163 influencers
 
 var GAMES_DATA = [
   {
@@ -286,7 +286,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/army-of-ruin.jpg"
+    "coverImage": "images/covers/army-of-ruin.png"
   },
   {
     "name": "Arrogue",
@@ -346,7 +346,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/astro-prospector.jpg"
+    "coverImage": "images/covers/astro-prospector.png"
   },
   {
     "name": "Astronarch",
@@ -370,7 +370,7 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Pesticide Not Required"
     ],
-    "coverImage": "images/covers/atomicrops.jpg"
+    "coverImage": "images/covers/atomicrops.png"
   },
   {
     "name": "Auro: A Monster-Bumping Adventure",
@@ -788,7 +788,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/broomsweeper.jpg"
+    "coverImage": "images/covers/broomsweeper.png"
   },
   {
     "name": "Brotato",
@@ -861,7 +861,7 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Dungeonmans"
     ],
-    "coverImage": "images/covers/castle-of-the-winds.jpg"
+    "coverImage": "images/covers/castle-of-the-winds.png"
   },
   {
     "name": "Cat God Ranch",
@@ -2450,7 +2450,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/from-the-top.jpg"
+    "coverImage": "images/covers/from-the-top.png"
   },
   {
     "name": "FTL",
@@ -2989,6 +2989,18 @@ var GAMES_DATA = [
     "coverImage": "images/covers/holocure-save-the-fans.jpg"
   },
   {
+    "name": "Hoplite",
+    "year": 2013,
+    "type": "Strategy",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": [
+      "Into the Breach"
+    ],
+    "coverImage": "images/covers/hoplite.png"
+  },
+  {
     "name": "House of Necrosis",
     "year": 2025,
     "type": "Traditional",
@@ -3006,7 +3018,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/hungry-horrors.jpg"
+    "coverImage": "images/covers/hungry-horrors.png"
   },
   {
     "name": "I Am Legion: Stand Survivors",
@@ -3218,7 +3230,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/kill-the-brickman.jpg"
+    "coverImage": "images/covers/kill-the-brickman.png"
   },
   {
     "name": "Kingdom: New Lands",
@@ -3398,7 +3410,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/lort.jpg"
+    "coverImage": "images/covers/lort.png"
   },
   {
     "name": "Lost Flame",
@@ -3409,6 +3421,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/lost-flame.jpg"
+  },
+  {
+    "name": "Lost In Fantaland",
+    "year": 2022,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/lost-in-fantaland.png"
   },
   {
     "name": "Lost in Random: The Eternal Die",
@@ -3872,7 +3894,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/mythical-concept-starnaut.jpg"
+    "coverImage": "images/covers/mythical-concept-starnaut.png"
   },
   {
     "name": "NecroBouncer",
@@ -3994,7 +4016,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/nimrods.jpg"
+    "coverImage": "images/covers/nimrods.png"
   },
   {
     "name": "Noita",
@@ -4277,7 +4299,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/pesticide-not-required.jpg"
+    "coverImage": "images/covers/pesticide-not-required.png"
   },
   {
     "name": "Picayune Dreams",
@@ -4765,7 +4787,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/rocket-rats.jpg"
+    "coverImage": "images/covers/rocket-rats.png"
   },
   {
     "name": "Rogue",
@@ -4811,7 +4833,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/rogue-factory.jpg"
+    "coverImage": "images/covers/rogue-factory.png"
   },
   {
     "name": "Rogue Heroes: Ruins of Tasos",
@@ -4927,7 +4949,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/roguejack21.jpg"
+    "coverImage": "images/covers/roguejack21.png"
   },
   {
     "name": "Roll",
@@ -5325,7 +5347,8 @@ var GAMES_DATA = [
       "Winnie's Hole",
       "Hungry Horrors",
       "Slay the Spire 2",
-      "Pluto"
+      "Pluto",
+      "Lost In Fantaland"
     ],
     "coverImage": "images/covers/slay-the-spire.jpg"
   },
@@ -5337,7 +5360,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/slay-the-spire-2.jpg"
+    "coverImage": "images/covers/slay-the-spire-2.png"
   },
   {
     "name": "Slice & Dice",
@@ -5768,7 +5791,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/swarm-grinder.jpg"
+    "coverImage": "images/covers/swarm-grinder.png"
   },
   {
     "name": "Switchcars",
@@ -6294,7 +6317,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/tower-escape.jpg"
+    "coverImage": "images/covers/tower-escape.png"
   },
   {
     "name": "Tower Factory",
@@ -6602,7 +6625,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/voids-vigil.jpg"
+    "coverImage": "images/covers/voids-vigil.png"
   },
   {
     "name": "Wall World",

@@ -2,17 +2,17 @@
 
 var ITEMS_DATA = [
   {
-    "name": "Ride the Bus",
+    "name": "",
     "rarity": "Uncommon",
     "type": "Usable",
     "description": "Teleport to a random Deckbuilder space",
     "game": "Balatro",
     "tags": [],
     "image": "images/items/RideTheBus.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Bowler Hat",
+    "name": "",
     "rarity": "Uncommon",
     "type": "Passive",
     "description": "Gain +4 Charisma, but -1 Dexterity",
@@ -22,30 +22,30 @@ var ITEMS_DATA = [
       "hat"
     ],
     "image": "images/items/BowlerHat.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Campfire",
+    "name": "",
     "rarity": "Uncommon",
     "type": "Passive",
     "description": "Gain +4 Intelligence, but -1 Dexterity",
     "game": "Brotato",
     "tags": [],
     "image": "images/items/Campfire.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Panda",
+    "name": "",
     "rarity": "Rare",
-    "type": "Passive",
-    "description": "Gain +10 Max Health and +2 Luck, but -2 Strength",
+    "type": "Pickup",
+    "description": "Gain +20 Max Health and +2 Luck, but -2 Strength",
     "game": "Brotato",
     "tags": [],
     "image": "images/items/Panda.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Wheat",
+    "name": "",
     "rarity": "Uncommon",
     "type": "Passive",
     "description": "Gain +4 Strength, but -1 Intelligence",
@@ -54,10 +54,10 @@ var ITEMS_DATA = [
       "food"
     ],
     "image": "images/items/Wheat.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Wings",
+    "name": "",
     "rarity": "Uncommon",
     "type": "Passive",
     "description": "Gain +4 Dexterity, but -1  Intelligence",
@@ -66,10 +66,10 @@ var ITEMS_DATA = [
       "mutation"
     ],
     "image": "images/items/Wings.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Reactive Trauma Plate",
+    "name": "",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "If the player would take lethal damage, negate that damage and destroy this item",
@@ -78,10 +78,10 @@ var ITEMS_DATA = [
       "cybernetics"
     ],
     "image": "images/items/ReactiveTraumaPlate.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Stabilizar Arm Locks",
+    "name": "",
     "rarity": "Rare",
     "type": "Passive",
     "description": "Gain +6 Dexterity",
@@ -89,11 +89,11 @@ var ITEMS_DATA = [
     "tags": [
       "cybernetics"
     ],
-    "image": "images/items/StabilizarArmLocks.png",
-    "unlockCondition": "N/A"
+    "image": "images/items/StabilizerArmLocks.png",
+    "unlockCondition": null
   },
   {
-    "name": "Unstable Genome",
+    "name": "",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "When you beat a game, there's a 33% chance for this item to be destroyed and you may gain 1 of 3 random items",
@@ -102,10 +102,10 @@ var ITEMS_DATA = [
       "mutation"
     ],
     "image": "images/items/UnstableGenome.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Ballistic Boots",
+    "name": "",
     "rarity": "Rare",
     "type": "Passive",
     "description": "Gain +1 Dash",
@@ -115,10 +115,10 @@ var ITEMS_DATA = [
       "shoes"
     ],
     "image": "images/items/BallisticBoots.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Sunglasses",
+    "name": "",
     "rarity": "Common",
     "type": "Passive",
     "description": "Gain +2 Charisma",
@@ -128,113 +128,118 @@ var ITEMS_DATA = [
       "glasses"
     ],
     "image": "images/items/Sunglasses.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Golden Beetle",
+    "name": "",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "Whenever you get rid of a curse, gain one Chest",
     "game": "Forward: Escape the Fold",
-    "tags": [],
+    "tags": [
+      "bug"
+    ],
     "image": "images/items/GoldenBeetle.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Vitality Orb",
+    "name": "",
     "rarity": "Rare",
     "type": "Triggered",
-    "description": "Gain +1 Max Health whenever you obtain a curse",
+    "description": "Gain +8 Max Health whenever you obtain a curse",
     "game": "Forward: Escape the Fold",
-    "tags": [],
+    "tags": [
+      "orb"
+    ],
     "image": "images/items/VitalityOrb.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Boon of Aphrodite",
+    "name": "",
     "rarity": "N/A",
     "type": "Boon",
     "description": "If the player charms an enemy gain +1 to all combat roll bonus stats, but 20% chance for games to be Charmed",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfAphrodite.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Boon of Artemis",
+    "name": "",
     "rarity": "N/A",
     "type": "Boon",
     "description": "If the player uses ranged strategies primarlity to win the run gain +1 to all combat roll bonus stats, but 20% chance for games to be Marked",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfArtemis.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Boon of Athena",
+    "name": "",
     "rarity": "N/A",
     "type": "Boon",
     "description": "If the player negates damage with a shield 5+ times gain +1 to all combat roll bonus stats, but 20% for games to be Shielded",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfAthena.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Boon of Hermes",
+    "name": "",
     "rarity": "N/A",
     "type": "Boon",
     "description": "If the player beats a game within an hour gain +1 to all combat roll bonus stats, but 20% chance for games to be Timed",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfHermes.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Boon of Poseidon",
+    "name": "",
     "rarity": "N/A",
     "type": "Boon",
     "description": "If the player defeats an enemy underwater gain +1 to all combat roll bonus stats, but 20% chance for games to be Soaked",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfPoseidon.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Boon of Zeus",
+    "name": "",
     "rarity": "N/A",
     "type": "Boon",
     "description": "If the player defeats an enemy with lightning in their run gain +1 to all combat roll bonus stats, but 20% chance for games to be Shocked",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfZeus.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Clown Shoes",
+    "name": "",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "Whenever you don't Perfect a game, (beat a game/combat without losing a run) 50% chance to treat it like you did",
     "game": "Haste",
     "tags": [
       "wearable",
-      "shoes"
+      "shoes",
+      "clown"
     ],
     "image": "images/items/ClownShoes.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Performance Based Health Insurance",
+    "name": "",
     "rarity": "Common",
     "type": "Triggered",
     "description": "Whenever you perfect a game (beat a game/combat without losing a run), Gain +3 Health",
     "game": "Haste",
     "tags": [],
     "image": "images/items/PerformanceBasedHealthInsurance.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Secret Technique Instructions",
+    "name": "",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "Whenever you perfect a game (beat a game/combat without losing a run), gain +1 Dash",
@@ -243,86 +248,91 @@ var ITEMS_DATA = [
       "book"
     ],
     "image": "images/items/SecretTechniqueInstructions.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Steady Investment",
+    "name": "",
     "rarity": "Common",
     "type": "Triggered",
     "description": "Whenever you perfect a game (beat a game/combat without losing a run), Gain +5 Gold",
     "game": "Haste",
     "tags": [],
     "image": "images/items/SteadyInvestment.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Beefy Ring",
+    "name": "",
     "rarity": "Rare",
     "type": "Scaling",
-    "description": "Gain scaling +1 Strength per 100 max health ",
+    "description": "Gain scaling +1 Strength per 20 max health ",
     "game": "Megabonk",
     "tags": [
       "wearable",
       "ring"
     ],
     "image": "images/items/BeefyRing.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Wand of Wishing",
+    "name": "",
     "rarity": "Legendary",
     "type": "Usable",
     "description": "Obtain any one item in the game",
     "game": "NetHack",
     "tags": [],
     "image": "images/items/WandOfWishing.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Focus Crystal",
+    "name": "",
     "rarity": "Common",
     "type": "Passive",
     "description": "Melee Weapons deal +1 Dmg",
     "game": "Risk of Rain 2",
-    "tags": [],
+    "tags": [
+      "crystal"
+    ],
     "image": "images/items/FocusCrystal.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Scroll of Teleportation ",
+    "name": "",
     "rarity": "Common",
     "type": "Usable",
     "description": "Teleport to a random space",
     "game": "Rogue",
     "tags": [],
     "image": "images/items/ScrollOfTeleportation.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Blood Vial",
+    "name": "",
     "rarity": "Common",
     "type": "Triggered",
     "description": "Whenever you enter a combat encounter, gain +1 Health",
     "game": "Slay the Spire",
-    "tags": [],
+    "tags": [
+      "blood"
+    ],
     "image": "images/items/BloodVial.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Busted Crown",
+    "name": "",
     "rarity": "Rare",
     "type": "Passive",
     "description": "Gain +1 Max Energy, but -2 Discovery",
     "game": "Slay the Spire",
     "tags": [
       "wearable",
-      "hat"
+      "hat",
+      "crown"
     ],
     "image": "images/items/BustedCrown.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Fire Potion",
+    "name": "",
     "rarity": "Uncommon",
     "type": "Usable",
     "description": "In combat, deal 20 damage to a target enemy",
@@ -331,32 +341,36 @@ var ITEMS_DATA = [
       "potion"
     ],
     "image": "images/items/FirePotion.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Horn Cleat",
+    "name": "",
     "rarity": "Uncommon",
     "type": "Passive",
-    "description": "Start the second turn of combat with +14 Block",
+    "description": "Start the 2nd turn of combat with +14 Block",
     "game": "Slay the Spire",
-    "tags": [],
+    "tags": [
+      "sea",
+      "ship"
+    ],
     "image": "images/items/HornCleat.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Meat on the Bone",
+    "name": "",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "Whenever your Health is at 50% or below Max Health at the end of combat, gain +12 Health",
     "game": "Slay the Spire",
     "tags": [
-      "food"
+      "food",
+      "meat"
     ],
     "image": "images/items/MeatOnTheBone.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Oddly Smooth Stone",
+    "name": "",
     "rarity": "Common",
     "type": "Passive",
     "description": "Gain +2 Dexterity",
@@ -365,10 +379,10 @@ var ITEMS_DATA = [
       "stone"
     ],
     "image": "images/items/OddlySmoothStone.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Philosopher's Stone",
+    "name": "",
     "rarity": "Rare",
     "type": "Passive",
     "description": "Gain +1 Max Energy, but all enemies start with 1 Power",
@@ -377,20 +391,20 @@ var ITEMS_DATA = [
       "stone"
     ],
     "image": "images/items/PhilosophersStone.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Vajra",
+    "name": "",
     "rarity": "Common",
     "type": "Passive",
     "description": "Gain +2 Strength",
     "game": "Slay the Spire",
     "tags": [],
     "image": "images/items/Vajra.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Winged Boots",
+    "name": "",
     "rarity": "Rare",
     "type": "Usable",
     "description": "Move to a one of three games that share the year of the game you're currently on",
@@ -400,110 +414,556 @@ var ITEMS_DATA = [
       "shoes"
     ],
     "image": "images/items/WingedBoots.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Garlic",
-    "rarity": "Common",
-    "type": "Triggered",
-    "description": "Whenever you take damage, take 1 less (minimum 1)",
+    "name": "",
+    "rarity": "Uncommon",
+    "type": "Passive",
+    "description": "Gain +1 Brace",
     "game": "Super Auto Pets",
     "tags": [
       "food"
     ],
     "image": "images/items/Garlic.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Charm of the Vampire",
+    "name": "",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "When you defeat an enemy, 50% chance to Heal +3 Health",
     "game": "The Binding of Isaac",
     "tags": [],
     "image": "images/items/CharmOfTheVampire.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "D6",
+    "name": "",
     "rarity": "Uncommon",
     "type": "Passive",
     "description": "Gain +2 Rerolls",
     "game": "The Binding of Isaac",
     "tags": [],
     "image": "images/items/D6.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Lucky Toe",
+    "name": "",
     "rarity": "Common",
     "type": "Passive",
     "description": "Gain +1 Luck",
     "game": "The Binding of Isaac",
     "tags": [],
     "image": "images/items/LuckyToe.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Lunch",
+    "name": "",
     "rarity": "Common",
-    "type": "Passive",
+    "type": "Pickup",
     "description": "Gain +3 Max Health and +3 Health",
     "game": "The Binding of Isaac",
     "tags": [
       "food"
     ],
     "image": "images/items/Lunch.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "More Options",
+    "name": "",
     "rarity": "Uncommon",
     "type": "Passive",
     "description": "Gain +1 Field of View, get an extra option in the space choice",
     "game": "The Binding of Isaac",
     "tags": [],
     "image": "images/items/MoreOptions.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "The Poop",
+    "name": "",
     "rarity": "Common",
     "type": "Usable",
     "description": "Poop on the current space, this space will not show up on the space choice in the future unless it's the only option (very stinky) ",
     "game": "The Binding of Isaac",
     "tags": [],
     "image": "images/items/ThePoop.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Ventricle Razor",
+    "name": "",
     "rarity": "Rare",
     "type": "Usable",
     "description": "On the first use, create a portal. On second use, return to the space you created the portal on",
     "game": "The Binding of Isaac",
     "tags": [],
     "image": "images/items/VentricleRazor.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Empty Tome",
+    "name": "",
     "rarity": "Common",
     "type": "Passive",
     "description": "Gain +2 Intelligence",
     "game": "Vampire Survivors",
     "tags": [],
     "image": "images/items/EmptyTome.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
   },
   {
-    "name": "Hollow Heart",
+    "name": "",
     "rarity": "Common",
-    "type": "Passive",
+    "type": "Pickup",
     "description": "Gain +5 Max Health",
     "game": "Vampire Survivors",
     "tags": [],
     "image": "images/items/HollowHeart.png",
-    "unlockCondition": "N/A"
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "Whenever you add a Skill card to your deck, Upgrade it",
+    "game": "Slay the Spire",
+    "tags": [
+      "egg"
+    ],
+    "image": "images/items/ToxicEgg.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "Whenever you add an Attack card to your deck, Upgrade it",
+    "game": "Slay the Spire",
+    "tags": [
+      "egg"
+    ],
+    "image": "images/items/MoltenEgg.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "Whenever you add a Power card to your deck, Upgrade it",
+    "game": "Slay the Spire",
+    "tags": [
+      "egg"
+    ],
+    "image": "images/items/FrozenEgg.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "Your Strikes inflict Soul Link.",
+    "game": "Mewgenics",
+    "tags": [
+      "bird",
+      "devilroom"
+    ],
+    "image": "images/items/BirdHead.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "33% chance to gain +1 Holy Shield each time you take damage",
+    "game": "Mewgenics",
+    "tags": [
+      "card",
+      "paper",
+      "holy",
+      "cardboard"
+    ],
+    "image": "images/items/PrayerCard.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "Your Strikes inflict Bruise",
+    "game": "Mewgenics",
+    "tags": [],
+    "image": "images/items/BrassKnuckles.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "At the start of conflict, inflict +1 Leeches to all enemies. If you start combat above 50% health, lose 10 health",
+    "game": "Mewgenics",
+    "tags": [
+      "leech"
+    ],
+    "image": "images/items/LeechBrood.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "Your Strikes inflict Leeches",
+    "game": "Mewgenics",
+    "tags": [
+      "leech",
+      "jar"
+    ],
+    "image": "images/items/JarOfLeeches.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "When you kill an enemy, Gain +1 Brace",
+    "game": "Mewgenics",
+    "tags": [
+      "scrap",
+      "metal"
+    ],
+    "image": "images/items/MetalPlate.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "Whenever you take damage, gain temporary +3 Brace until end of your next turn",
+    "game": "Mewgenics",
+    "tags": [
+      "monk",
+      "wearable",
+      "necklace"
+    ],
+    "image": "images/items/PrayerBeads.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "At the start of conflict, inflict Soul Link on 2 random enemies",
+    "game": "Mewgenics",
+    "tags": [
+      "bird"
+    ],
+    "image": "images/items/RavenFeather.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Common",
+    "type": "Usable",
+    "description": "Gain +10 Block",
+    "game": "Mewgenics",
+    "tags": [
+      "drug",
+      "pill",
+      "consumable"
+    ],
+    "image": "images/items/Percs.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Common",
+    "type": "Usable",
+    "description": "Gain +5 Strength this combat/event",
+    "game": "Mewgenics",
+    "tags": [
+      "drug",
+      "pill",
+      "consumable"
+    ],
+    "image": "images/items/RoidRage.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Common",
+    "type": "Usable",
+    "description": "Gain +5 Dexterity this combat/event",
+    "game": "Mewgenics",
+    "tags": [
+      "drug",
+      "pill",
+      "consumable"
+    ],
+    "image": "images/items/Speedball.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Common",
+    "type": "Usable",
+    "description": "Gain +5 Intelligence this combat/event",
+    "game": "Mewgenics",
+    "tags": [
+      "drug",
+      "pill",
+      "consumable"
+    ],
+    "image": "images/items/BrainCandy.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Common",
+    "type": "Usable",
+    "description": "Gain +5 Luck this combat/event",
+    "game": "Mewgenics",
+    "tags": [
+      "drug",
+      "pill",
+      "consumable"
+    ],
+    "image": "images/items/Clover.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Common",
+    "type": "Usable",
+    "description": "Gain +5 Charisma this combat/event",
+    "game": "Mewgenics",
+    "tags": [
+      "drug",
+      "pill",
+      "consumable"
+    ],
+    "image": "images/items/DiscoBiscuit.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Uncommon",
+    "type": "Usable",
+    "description": "Gain +3 Regeneration",
+    "game": "Mewgenics",
+    "tags": [
+      "consumable"
+    ],
+    "image": "images/items/StemCells.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Rare",
+    "type": "Scaling",
+    "description": "Your Charisma is equal to your highest stat",
+    "game": "Mewgenics",
+    "tags": [
+      "wearable",
+      "paper"
+    ],
+    "image": "images/items/PaperBag.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Common",
+    "type": "Triggered",
+    "description": "At the start of combat, Gain +10 Block",
+    "game": "Slay the Spire",
+    "tags": [
+      "sea",
+      "ship"
+    ],
+    "image": "images/items/Anchor.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Common",
+    "type": "Triggered",
+    "description": "At the start of combat, Gain +3 Thorns",
+    "game": "Slay the Spire",
+    "tags": [
+      "metal"
+    ],
+    "image": "images/items/BronzeScales.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "When you play a power, deal X damage to each enemy where X is the amount of curses you have",
+    "game": "Forward: Escape the Fold",
+    "tags": [
+      "orb",
+      "devilroom"
+    ],
+    "image": "images/items/DeathOrb.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "When you play a power, a random card in your hand becomes free to play this turn",
+    "game": "Slay the Spire",
+    "tags": [
+      "mummy"
+    ],
+    "image": "images/items/MummifiedHand.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Common",
+    "type": "Triggered",
+    "description": "Your Strikes Gain +3 Dmg",
+    "game": "Slay the Spire",
+    "tags": [
+      "wood"
+    ],
+    "image": "images/items/StrikeDummy.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Common",
+    "type": "Pickup",
+    "description": "Upgrade 2 random Attacks",
+    "game": "Slay the Spire",
+    "tags": [
+      "stone"
+    ],
+    "image": "images/items/Whetstone.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Common",
+    "type": "Pickup",
+    "description": "Upgrade 2 random Skills",
+    "game": "Slay the Spire",
+    "tags": [],
+    "image": "images/items/WarPaint.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Starter",
+    "type": "Triggered",
+    "description": "At the end of combat, Gain +6 Health",
+    "game": "Slay the Spire",
+    "tags": [],
+    "image": "images/items/BurningBlood.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "Start the 3rd turn of combat with +18 Block",
+    "game": "Slay the Spire",
+    "tags": [
+      "sea",
+      "ship"
+    ],
+    "image": "images/items/Captain'sWheel.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "When an enemy dies, Gain +1 Energy and Draw 1 card",
+    "game": "Slay the Spire",
+    "tags": [],
+    "image": "images/items/GremlinHorn.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "At the start of each combat, Gain X Power where X is the amount of curses you have",
+    "game": "Slay the Spire",
+    "tags": [
+      "doll"
+    ],
+    "image": "images/items/Du-VuDoll.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Common",
+    "type": "Incremental",
+    "description": "Every 10th attack you play deals double damage",
+    "game": "Slay the Spire",
+    "tags": [],
+    "image": "images/items/PenNib.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Common",
+    "type": "Incremental",
+    "description": "Every time you play 10 attacks, gain +1 Energy",
+    "game": "Slay the Spire",
+    "tags": [
+      "ninja"
+    ],
+    "image": "images/items/Nunchaku.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "At the end of turn 7, Deal 52 Damage to all enemies",
+    "game": "Slay the Spire",
+    "tags": [
+      "stone"
+    ],
+    "image": "images/items/StoneCalendar.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Common",
+    "type": "Incremental",
+    "description": "Every 3 turns, Gain +1 energy",
+    "game": "Slay the Spire",
+    "tags": [
+      "flower"
+    ],
+    "image": "images/items/HappyFlower.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Uncommon",
+    "type": "Incremental",
+    "description": "Every time you play 4 attacks in a single turn, Gain +4 Block",
+    "game": "Slay the Spire",
+    "tags": [
+      "japan"
+    ],
+    "image": "images/items/OrnamentalFan.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "",
+    "rarity": "Uncommon",
+    "type": "Incremental",
+    "description": "Every time you play 3 attacks in a single turn, Gain +1 Power",
+    "game": "Slay the Spire",
+    "tags": [
+      "ninja"
+    ],
+    "image": "images/items/Shuriken.png",
+    "unlockCondition": null
   }
 ];

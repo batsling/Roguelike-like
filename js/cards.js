@@ -75,6 +75,33 @@ function selectCardRewards() {
 function addCardToDeck(card) {
   if (!gameState.deck) gameState.deck = [];
   gameState.deck.push({ ...card, upgraded: false });
+
+  // Egg items: auto-upgrade the card if it matches the egg's type
+  const inv = typeof inventory !== 'undefined' ? inventory : [];
+  const newIndex = gameState.deck.length - 1;
+  const cardType = (card.type || '').toLowerCase();
+
+  if (!card.isStatusCard && !card.upgraded && card.upgradedDescription) {
+    const shouldUpgrade =
+      (cardType === 'attack' && inv.some(i => i.name === 'Molten Egg')) ||
+      (cardType === 'skill'  && inv.some(i => i.name === 'Toxic Egg'))  ||
+      (cardType === 'power'  && inv.some(i => i.name === 'Frozen Egg'));
+
+    if (shouldUpgrade) {
+      const addedCard = gameState.deck[newIndex];
+      addedCard.upgraded = true;
+      addedCard.description = card.upgradedDescription;
+      if (card.upgradedCost !== null && card.upgradedCost !== undefined) {
+        addedCard.cost = card.upgradedCost;
+      }
+      if (typeof createNotification === 'function') {
+        createNotification(`${card.name} added to deck (upgraded by Egg)!`, '#ff9800', '🥚');
+      }
+      saveCurrentGame();
+      return;
+    }
+  }
+
   if (typeof createNotification === 'function') {
     createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
   }
@@ -248,17 +275,6 @@ function showCardRewardModal() {
  * Accessible from the inventory/UI.
  */
 function showDeckModal() {
-  if (!gameState.deck || gameState.deck.length === 0) {
-    createGameModal(`
-      <div style="text-align:center;padding:30px;">
-        <h2 style="color:#9b59b6;">🃏 Your Deck</h2>
-        <p style="color:#aaa;">Your deck is empty. Win combats or find weapons to add cards!</p>
-        <button onclick="closeGameModal()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
-      </div>
-    `);
-    return;
-  }
-
   const getRarityColor = (rarity) => {
     switch (rarity) {
       case 'Rare': return '#9b59b6';
@@ -269,31 +285,70 @@ function showDeckModal() {
     }
   };
 
-  const deckHTML = gameState.deck.map((card, i) => {
+  function cardHtml(card, label) {
     const color = getRarityColor(card.rarity);
     const imgSrc = card.imageUrl || 'images/cards/default.png';
     return `
       <div style="
         background:#2d2d2d;border:2px solid ${color};border-radius:8px;
         padding:12px;display:flex;flex-direction:column;align-items:center;
-        min-width:130px;max-width:160px;
+        min-width:130px;max-width:160px;position:relative;
       ">
+        ${label ? `<div style="position:absolute;top:4px;right:4px;background:${color};color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:bold;">${label}</div>` : ''}
         <img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;"
              onerror="this.style.display='none'">
         <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:3px;">${card.name}${card.upgraded ? ' +' : ''}</div>
-        <div style="color:${color};font-size:11px;margin-bottom:4px;">${card.rarity} · ${card.type}</div>
-        <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:6px;">${card.description}</div>
-        <div style="color:#ffd700;font-size:11px;">Cost: ${card.cost}</div>
+        <div style="color:${color};font-size:11px;margin-bottom:4px;">${card.rarity || 'Starter'} · ${card.type || ''}</div>
+        <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:6px;">${card.description || ''}</div>
+        <div style="color:#ffd700;font-size:11px;">Cost: ${card.cost !== undefined ? card.cost : '?'}</div>
       </div>
     `;
-  }).join('');
+  }
+
+  // Build starting deck from character data
+  const charKey = (typeof selectedCharacter !== 'undefined' && selectedCharacter)
+               ? selectedCharacter
+               : ((typeof gameState !== 'undefined' && gameState && gameState.character)
+                 ? gameState.character
+                 : null);
+  const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
+  const startingEntries = (charData && charData.startingDeck) ? charData.startingDeck : [];
+
+  const startingCards = [];
+  for (const entry of startingEntries) {
+    const template = typeof CARDS_DATA !== 'undefined'
+      ? CARDS_DATA.find(c => c.name === entry.cardName || c.name.toLowerCase() === entry.cardName.toLowerCase())
+      : null;
+    if (template) {
+      for (let i = 0; i < (entry.count || 1); i++) {
+        startingCards.push(template);
+      }
+    } else {
+      // Card template not found — show a placeholder
+      for (let i = 0; i < (entry.count || 1); i++) {
+        startingCards.push({ name: entry.cardName, rarity: 'Starter', type: '', description: '', cost: '?' });
+      }
+    }
+  }
+
+  // Collected cards
+  const collectedCards = (typeof gameState !== 'undefined' && gameState && gameState.deck) ? gameState.deck : [];
+
+  const totalCount = startingCards.length + collectedCards.length;
+  const startingHTML = startingCards.map(c => cardHtml(c, 'Starting')).join('');
+  const collectedHTML = collectedCards.map(c => cardHtml(c, 'Acquired')).join('');
 
   createGameModal(`
-    <div style="padding:20px;max-width:900px;margin:0 auto;">
-      <h2 style="color:#9b59b6;text-align:center;margin-top:0;">🃏 Your Deck (${gameState.deck.length} cards)</h2>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
-        ${deckHTML}
-      </div>
+    <div style="padding:20px;max-width:1100px;margin:0 auto;">
+      <h2 style="color:#9b59b6;text-align:center;margin-top:0;">🃏 Your Deck (${totalCount} cards)</h2>
+      ${startingHTML ? `
+        <h3 style="color:#888;margin:12px 0 8px;">Starting Deck (${startingCards.length})</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">${startingHTML}</div>
+      ` : ''}
+      ${collectedHTML ? `
+        <h3 style="color:#9b59b6;margin:12px 0 8px;">Acquired Cards (${collectedCards.length})</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">${collectedHTML}</div>
+      ` : ''}
       <div style="text-align:center;margin-top:20px;">
         <button onclick="closeGameModal()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
       </div>

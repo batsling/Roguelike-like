@@ -25,17 +25,8 @@ var CHARACTERS_DATA = {
       "random": 2
     },
     "description": "Now I abide here, searching endlessly for the precious Amulet... and finding a thousand horrors.",
-    "combatStart": "Identify",
-    "startingDeck": [
-      {
-        "cardName": "Attacks",
-        "count": 5
-      },
-      {
-        "cardName": "Defends",
-        "count": 5
-      }
-    ],
+    "combatStart": "Cards",
+    "startingDeck": [],
     "dice": [
       {
         "isBlank": true,
@@ -86,21 +77,8 @@ var CHARACTERS_DATA = {
       "random": 0
     },
     "description": "Who am I?",
-    "combatStart": "Dice",
-    "startingDeck": [
-      {
-        "cardName": "Attacks",
-        "count": 5
-      },
-      {
-        "cardName": "Defends",
-        "count": 4
-      },
-      {
-        "cardName": "Isaac's D6",
-        "count": 1
-      }
-    ],
+    "combatStart": "Cards",
+    "startingDeck": [],
     "dice": [
       {
         "isBlank": true,
@@ -151,17 +129,8 @@ var CHARACTERS_DATA = {
       "random": 0
     },
     "description": "Express Delivery: Arrives with haste, before the world ends.",
-    "combatStart": "Perfect",
-    "startingDeck": [
-      {
-        "cardName": "Attacks",
-        "count": 5
-      },
-      {
-        "cardName": "Defends",
-        "count": 5
-      }
-    ],
+    "combatStart": "Cards",
+    "startingDeck": [],
     "dice": [
       {
         "isBlank": true,
@@ -212,17 +181,8 @@ var CHARACTERS_DATA = {
       "random": 0
     },
     "description": "Why must you go destroying everything? Why? For glory? For your precious god of gods. Is it really worth all this? Is it? Is it really?",
-    "combatStart": "Spells",
-    "startingDeck": [
-      {
-        "cardName": "Attacks",
-        "count": 5
-      },
-      {
-        "cardName": "Defends",
-        "count": 5
-      }
-    ],
+    "combatStart": "Cards",
+    "startingDeck": [],
     "dice": [
       {
         "isBlank": true,
@@ -274,20 +234,7 @@ var CHARACTERS_DATA = {
     },
     "description": "The remaining soldier of the Ironclads. Sold his soul to harness demonic energies.",
     "combatStart": "Cards",
-    "startingDeck": [
-      {
-        "cardName": "Attacks",
-        "count": 5
-      },
-      {
-        "cardName": "Defends",
-        "count": 4
-      },
-      {
-        "cardName": "Bash",
-        "count": 1
-      }
-    ],
+    "startingDeck": [],
     "dice": [
       {
         "isBlank": true,

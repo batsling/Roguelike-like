@@ -144,6 +144,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     mapBtn.addEventListener('click', showMapModal);
   }
 
+  const deckBtn = document.getElementById('deck-btn');
+  if (deckBtn) {
+    deckBtn.addEventListener('click', showDeckModal);
+  }
+
   const lootBtn = document.getElementById('loot-btn');
   if (lootBtn) {
     lootBtn.addEventListener('click', showLootModal);
@@ -407,9 +412,9 @@ function loadSavedGame(saveName) {
   document.getElementById('main-menu').style.display = 'none';
   document.getElementById('dungeon-screen').style.display = 'flex';
 
-  // Show map button when in game
-  const mapBtn = document.getElementById('map-btn');
-  if (mapBtn) mapBtn.style.display = 'inline-block';
+  // Show top-right buttons when in game
+  const topBarRight = document.getElementById('top-bar-right');
+  if (topBarRight) topBarRight.style.display = 'flex';
 
   // Show or hide elements based on escape phase
   if (gameState.escapePhase) {
@@ -666,9 +671,9 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   document.getElementById('main-menu').style.display = 'none';
   document.getElementById('dungeon-screen').style.display = 'flex';
 
-  // Show map button when in game
-  const mapBtn = document.getElementById('map-btn');
-  if (mapBtn) mapBtn.style.display = 'inline-block';
+  // Show top-right buttons when in game
+  const topBarRight = document.getElementById('top-bar-right');
+  if (topBarRight) topBarRight.style.display = 'flex';
 
   // Show the normal game elements
   document.getElementById('path-viewport').style.display = 'block';
@@ -800,9 +805,9 @@ document.getElementById('return-menu')?.addEventListener('click', () => {
     document.getElementById('dungeon-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
 
-    // Hide map button when in menu
-    const mapBtn = document.getElementById('map-btn');
-    if (mapBtn) mapBtn.style.display = 'none';
+    // Hide top-right buttons when in menu
+    const topBarRight = document.getElementById('top-bar-right');
+    if (topBarRight) topBarRight.style.display = 'none';
   }
 });
 
@@ -818,9 +823,9 @@ document.getElementById('return-menu-top')?.addEventListener('click', () => {
       document.getElementById('dungeon-screen').style.display = 'none';
       document.getElementById('main-menu').style.display = 'flex';
 
-      // Hide map button when in menu
-      const mapBtn = document.getElementById('map-btn');
-      if (mapBtn) mapBtn.style.display = 'none';
+      // Hide top-right buttons when in menu
+      const topBarRight = document.getElementById('top-bar-right');
+      if (topBarRight) topBarRight.style.display = 'none';
     }
   }
 });
@@ -2257,6 +2262,16 @@ function showCombatModal() {
   // Initialize combat state
   const combat = window.CombatState.initializeCombat(enemy);
 
+  // Apply any statuses queued by pre-combat events
+  if (Array.isArray(gameState.pendingCombatStatuses) && gameState.pendingCombatStatuses.length > 0) {
+    for (const pending of gameState.pendingCombatStatuses) {
+      if (combat && combat.playerStatuses) {
+        combat.playerStatuses[pending.status] = (combat.playerStatuses[pending.status] || 0) + (pending.stacks || 1);
+      }
+    }
+    gameState.pendingCombatStatuses = [];
+  }
+
   const enemyImagePath = getEnemyImagePath(enemy.name);
   const playerImagePath = getPlayerImagePath();
 
@@ -2338,24 +2353,6 @@ function showCombatModal() {
             border-radius: 12px;
             padding: 25px;
           ">
-            <!-- Items Bar (at top) -->
-            <div id="items-bar" style="
-              background: rgba(0,0,0,0.5);
-              border: 2px solid #666;
-              border-radius: 8px;
-              padding: 10px 15px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 8px;
-              overflow-x: auto;
-              min-height: 60px;
-            ">
-              <div id="items-icons" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
-                <!-- Item icons will be populated here -->
-              </div>
-            </div>
-
             <!-- Player and Enemy Container -->
             <div style="
               display: flex;
@@ -3693,6 +3690,21 @@ function showCombatModal() {
               border: 1px solid #ffaa00;
             ">x${item.quantity}</div>
           ` : ''}
+          ${(function() {
+            if ((item.type || '').toLowerCase() !== 'incremental') return '';
+            const cs = window.CombatEngine ? window.CombatEngine.getCombatState() : null;
+            const inc = cs && cs.incrementals;
+            let cur = 0, max = null;
+            switch (item.name) {
+              case 'Pen Nib':        cur = inc ? inc.attacksTotal % 10 : 0;      max = 10; break;
+              case 'Nunchaku':       cur = inc ? inc.attacksTotal % 10 : 0;      max = 10; break;
+              case 'Happy Flower':   cur = cs  ? (cs.turn - 1) % 3 : 0;         max = 3;  break;
+              case 'Ornamental Fan': cur = inc ? inc.attacksThisTurn % 4 : 0;   max = 4;  break;
+              case 'Shuriken':       cur = inc ? inc.attacksThisTurn % 3 : 0;   max = 3;  break;
+            }
+            if (max === null) return '';
+            return '<div style="position:absolute;top:1px;left:1px;background:rgba(0,0,0,0.85);color:#ffcc44;padding:1px 3px;border-radius:3px;font-size:9px;font-weight:bold;border:1px solid #ffcc44;line-height:1.2;">' + cur + '/' + max + '</div>';
+          })()}
         </div>
       `;
     }).join('');
@@ -4025,8 +4037,8 @@ function showCombatModal() {
         }
         document.getElementById('dungeon-screen').style.display = 'none';
         document.getElementById('main-menu').style.display = 'flex';
-        const mapBtn = document.getElementById('map-btn');
-        if (mapBtn) mapBtn.style.display = 'none';
+        const topBarRight = document.getElementById('top-bar-right');
+        if (topBarRight) topBarRight.style.display = 'none';
       };
 
       document.getElementById('death-retry-btn').onclick = () => {
@@ -4044,8 +4056,8 @@ function showCombatModal() {
         }
         document.getElementById('dungeon-screen').style.display = 'none';
         document.getElementById('main-menu').style.display = 'flex';
-        const mapBtn = document.getElementById('map-btn');
-        if (mapBtn) mapBtn.style.display = 'none';
+        const topBarRight = document.getElementById('top-bar-right');
+        if (topBarRight) topBarRight.style.display = 'none';
 
         setTimeout(() => {
           document.getElementById('new-game-btn')?.click();
@@ -4255,6 +4267,17 @@ function showDiceCombatModal() {
   if (!combatState) {
     console.error('Failed to initialize combat');
     return;
+  }
+
+  // Apply statuses queued by pre-combat events (e.g. frail from event outcomes)
+  if (Array.isArray(gameState.pendingCombatStatuses) && gameState.pendingCombatStatuses.length > 0) {
+    for (const pending of gameState.pendingCombatStatuses) {
+      if (combatState.player && combatState.player.statuses) {
+        const key = pending.status.toLowerCase();
+        combatState.player.statuses[key] = (combatState.player.statuses[key] || 0) + (pending.stacks || 1);
+      }
+    }
+    gameState.pendingCombatStatuses = [];
   }
 
   // Create modal HTML container
@@ -4480,8 +4503,8 @@ function handleDiceCombatDefeat(enemy) {
     if (typeof clearAllArrows === 'function') clearAllArrows();
     document.getElementById('dungeon-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
-    const mapBtn = document.getElementById('map-btn');
-    if (mapBtn) mapBtn.style.display = 'none';
+    const topBarRight = document.getElementById('top-bar-right');
+    if (topBarRight) topBarRight.style.display = 'none';
   };
 
   document.getElementById('dice-death-retry-btn').onclick = () => {
@@ -4489,8 +4512,8 @@ function handleDiceCombatDefeat(enemy) {
     if (typeof clearAllArrows === 'function') clearAllArrows();
     document.getElementById('dungeon-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
-    const mapBtn = document.getElementById('map-btn');
-    if (mapBtn) mapBtn.style.display = 'none';
+    const topBarRight = document.getElementById('top-bar-right');
+    if (topBarRight) topBarRight.style.display = 'none';
     setTimeout(() => {
       document.getElementById('new-game-btn')?.click();
     }, 100);
@@ -4515,6 +4538,73 @@ window.toggleCombatSystem = function() {
   console.log(`Combat system switched to: ${useDiceCombat ? 'New Dice-Based' : 'Classic D20'}`);
   return useDiceCombat;
 };
+
+// ============== DECK VIEWER ==============
+
+function showDeckModal() {
+  const charKey = (selectedCharacter) || (gameState && gameState.character) || null;
+  const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
+  const startingEntries = (charData && charData.startingDeck) ? charData.startingDeck : [];
+
+  const getRarityColor = (rarity) => {
+    switch (rarity) {
+      case 'Rare': return '#9b59b6'; case 'Uncommon': return '#4CAF50';
+      case 'Common': return '#aaa';  case 'Starter':  return '#888';
+      default: return '#666';
+    }
+  };
+
+  const cardHtml = (card, label) => {
+    const color = getRarityColor(card.rarity);
+    const imgSrc = card.imageUrl || '';
+    return `
+      <div style="background:#2d2d2d;border:2px solid ${color};border-radius:8px;
+        padding:12px;display:flex;flex-direction:column;align-items:center;
+        min-width:130px;max-width:160px;position:relative;">
+        ${label ? `<div style="position:absolute;top:4px;right:4px;background:${color};color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:bold;">${label}</div>` : ''}
+        ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
+        <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:3px;">${card.name}${card.upgraded ? ' +' : ''}</div>
+        <div style="color:${color};font-size:11px;margin-bottom:4px;">${card.rarity || 'Starter'} · ${card.type || ''}</div>
+        <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:6px;">${card.description || ''}</div>
+        <div style="color:#ffd700;font-size:11px;">Cost: ${card.cost !== undefined ? card.cost : '?'}</div>
+      </div>
+    `;
+  };
+
+  // Build starting cards from character startingDeck
+  const CDATA = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : (typeof cards !== 'undefined' ? cards : []);
+  const startingCards = [];
+  for (const entry of startingEntries) {
+    const tmpl = CDATA.find(c => c.name === entry.cardName || c.name.toLowerCase() === entry.cardName.toLowerCase());
+    const obj = tmpl || { name: entry.cardName, rarity: 'Starter', type: '', description: '', cost: '?' };
+    for (let i = 0; i < (entry.count || 1); i++) startingCards.push(obj);
+  }
+
+  // Collected (acquired) cards from this run
+  const collectedCards = (gameState && gameState.deck) ? gameState.deck : [];
+
+  const totalCount = startingCards.length + collectedCards.length;
+  const startingHTML = startingCards.map(c => cardHtml(c, 'Starting')).join('');
+  const collectedHTML = collectedCards.map(c => cardHtml(c, 'Acquired')).join('');
+
+  createGameModal(`
+    <div style="padding:20px;max-width:1100px;margin:0 auto;">
+      <h2 style="color:#9b59b6;text-align:center;margin-top:0;">🃏 Your Deck (${totalCount} cards)</h2>
+      ${startingHTML ? `
+        <h3 style="color:#888;margin:12px 0 8px;">Starting Deck (${startingCards.length})</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">${startingHTML}</div>
+      ` : '<p style="color:#888;text-align:center;">No starting deck</p>'}
+      ${collectedHTML ? `
+        <h3 style="color:#9b59b6;margin:12px 0 8px;">Acquired Cards (${collectedCards.length})</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">${collectedHTML}</div>
+      ` : ''}
+      <div style="text-align:center;margin-top:20px;">
+        <button onclick="closeGameModal()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
+      </div>
+    </div>
+  `);
+}
+window.showDeckModal = showDeckModal;
 
 // ============== LEVEL-UP SYSTEM ==============
 
@@ -4645,7 +4735,30 @@ function confirmLevelUp() {
   }
   if (bonuses.luck) {
     luck += bonuses.luck;
+    gameState.luck = luck;
     appliedBonuses.push(`+${bonuses.luck} Luck`);
+  }
+  if (bonuses.skip) {
+    skip += bonuses.skip;
+    gameState.skip = skip;
+    appliedBonuses.push(`+${bonuses.skip} Skip`);
+  }
+  if (bonuses.discovery) {
+    discovery += bonuses.discovery;
+    gameState.discovery = discovery;
+    appliedBonuses.push(`+${bonuses.discovery} Discovery`);
+  }
+  if (bonuses.fov) {
+    fov += bonuses.fov;
+    gameState.fov = fov;
+    appliedBonuses.push(`+${bonuses.fov} FoV`);
+  }
+  if (bonuses.maxHealth) {
+    maxHealth += bonuses.maxHealth;
+    health = Math.min(health + bonuses.maxHealth, maxHealth);
+    gameState.maxHealth = maxHealth;
+    gameState.health = health;
+    appliedBonuses.push(`+${bonuses.maxHealth} Max Health`);
   }
 
   // Handle random stat allocation
@@ -4663,11 +4776,18 @@ function confirmLevelUp() {
     }
   }
 
+  // Sync stats to gameState
+  gameState.strength = strength;
+  gameState.dexterity = dexterity;
+  gameState.intelligence = intelligence;
+  gameState.charisma = charisma;
+  gameState.luck = luck;
+
   // Update UI
   updateTopBar();
   saveCurrentGame();
 
-  // Show stat bonuses first, then dice level-up choice
+  // Show stat bonuses, then offer card reward
   createGameModal(`
     <div style="text-align: center; padding: 20px; max-width: 500px;">
       <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
@@ -4683,36 +4803,31 @@ function confirmLevelUp() {
         </p>
         <div style="display: flex; flex-direction: column; gap: 8px;">
           ${appliedBonuses.length > 0 ? appliedBonuses.map(b => `
-            <div style="color: #fff; font-size: 14px;">
-              ${b}
-            </div>
+            <div style="color: #fff; font-size: 14px;">${b}</div>
           `).join('') : '<div style="color: #888; font-size: 14px;">No stat bonuses</div>'}
         </div>
       </div>
-      <button id="proceed-to-dice-levelup-btn" style="
+      <button id="proceed-to-card-reward-btn" style="
         padding: 12px 30px;
-        background: linear-gradient(145deg, #FFD700, #FFA000);
-        border: 2px solid #FFD700;
+        background: linear-gradient(145deg, #9b59b6, #7d3c98);
+        border: 2px solid #9b59b6;
         border-radius: 8px;
-        color: #000;
+        color: #fff;
         font-weight: bold;
         cursor: pointer;
         font-size: 16px;
-      ">🎲 Choose Dice Upgrade</button>
+      ">🃏 Choose Card Reward</button>
     </div>
   `);
 
-  // Attach click handler for proceeding to dice level-up
-  document.getElementById('proceed-to-dice-levelup-btn').onclick = () => {
+  document.getElementById('proceed-to-card-reward-btn').onclick = () => {
     closeGameModal();
-    // Show dice level-up choice modal
-    showDiceLevelUpChoiceModal(characterKey, (diceResult) => {
-      // Show final result
-      if (diceResult) {
-        createNotification(diceResult, '#FFD700', '🎲');
-      }
+    if (typeof window.showCardRewardModal === 'function') {
+      window.showCardRewardModal();
       saveCurrentGame();
-    });
+    } else {
+      console.error('[LevelUp] showCardRewardModal not found on window');
+    }
   };
 }
 
@@ -5157,9 +5272,113 @@ function showDiceLevelUpChoiceModal(characterKey, onComplete) {
   });
 }
 
+/**
+ * Show a card reward picker: player chooses 1 of 3 random cards.
+ * Luck shifts the rarity distribution toward Uncommon/Rare.
+ * @param {Function} onComplete - Called after a card is chosen or skipped
+ */
+function showCardRewardModal(onComplete) {
+  const rarityColor = (rarity) => {
+    switch (rarity) {
+      case 'Rare':     return '#9b59b6';
+      case 'Uncommon': return '#4CAF50';
+      case 'Common':   return '#aaa';
+      default:         return '#666';
+    }
+  };
+
+  // Pick one card with luck-weighted rarity, excluding already-seen names
+  function pickOne(exclude) {
+    const currentLuck = typeof luck !== 'undefined' ? luck : (gameState.luck || 0);
+    const wCommon   = Math.max(10, 70 - currentLuck * 3);
+    const wUncommon = Math.min(65, 25 + currentLuck * 2);
+    const wRare     = Math.min(45,  5 + currentLuck);
+    const total     = wCommon + wUncommon + wRare;
+
+    const pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
+      .filter(c => c.rarity && c.rarity !== 'Starter' && c.rarity !== 'N/A'
+               && (c.type || '').toLowerCase() !== 'training'
+               && !c.isTraining
+               && !exclude.has(c.name));
+    if (pool.length === 0) return null;
+
+    let roll = Math.random() * total;
+    let pickedRarity;
+    if      (roll < wCommon)              pickedRarity = 'Common';
+    else if (roll < wCommon + wUncommon)  pickedRarity = 'Uncommon';
+    else                                  pickedRarity = 'Rare';
+
+    let candidates = pool.filter(c => c.rarity === pickedRarity);
+    if (candidates.length === 0) candidates = pool;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  // Pick 3 unique cards
+  const chosen = [];
+  const seen   = new Set();
+  for (let i = 0; i < 3; i++) {
+    const card = pickOne(seen);
+    if (!card) break;
+    seen.add(card.name);
+    chosen.push(card);
+  }
+
+  if (chosen.length === 0) {
+    if (onComplete) onComplete();
+    return;
+  }
+
+  const cardsHTML = chosen.map((card, idx) => {
+    const color  = rarityColor(card.rarity);
+    const imgSrc = card.imageUrl || 'images/cards/default.png';
+    return `
+      <div class="card-reward-option" data-card-idx="${idx}" style="
+        background:#1e1e2e; border:2px solid ${color}; border-radius:12px;
+        padding:16px; display:flex; flex-direction:column; align-items:center;
+        width:155px; cursor:pointer;
+        transition: transform 0.15s, box-shadow 0.15s;
+      " onmouseenter="this.style.transform='translateY(-6px)'; this.style.boxShadow='0 8px 24px ${color}66';"
+         onmouseleave="this.style.transform=''; this.style.boxShadow='';">
+        <img src="${imgSrc}" alt="${card.name}"
+             style="width:80px;height:80px;object-fit:contain;margin-bottom:10px;"
+             onerror="this.style.display='none'">
+        <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:4px;">${card.name}</div>
+        <div style="color:${color};font-size:11px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
+        <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>
+        <div style="color:#ffd700;font-size:12px;font-weight:bold;">Cost: ${card.cost}</div>
+      </div>
+    `;
+  }).join('');
+
+  createGameModal(`
+    <div style="text-align:center; padding:20px; max-width:640px;">
+      <h2 style="color:#FFD700; margin-top:0; margin-bottom:8px;">🃏 Card Reward</h2>
+      <p style="color:#aaa; margin-bottom:20px; font-size:13px;">Choose a card to add to your deck:</p>
+      <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+        ${cardsHTML}
+      </div>
+      <button onclick="closeGameModal()" style="
+        margin-top:20px; padding:10px 24px;
+        background:#444; border:none; border-radius:8px;
+        color:#aaa; cursor:pointer; font-size:13px;
+      ">Skip</button>
+    </div>
+  `);
+
+  document.querySelectorAll('.card-reward-option').forEach(el => {
+    el.onclick = () => {
+      const card = chosen[parseInt(el.dataset.cardIdx)];
+      if (card && typeof addCardToDeck === 'function') addCardToDeck(card);
+      closeGameModal();
+      if (onComplete) onComplete();
+    };
+  });
+}
+
 // Make level-up functions globally available
 window.showLevelUpPrompt = showLevelUpPrompt;
 window.confirmLevelUp = confirmLevelUp;
+window.showCardRewardModal = showCardRewardModal;
 window.showDiceLevelUpChoiceModal = showDiceLevelUpChoiceModal;
 
 // ============== ALLY SYSTEM ==============
@@ -6811,30 +7030,20 @@ function showEnemyDetails(enemyName) {
   const enemy = enemies.find(e => e.name === enemyName);
   if (!enemy) return;
 
-  // Get enemy stats
   const enemyStats = getEnemyStats(enemyName);
-
-  // Find variants of this enemy
   const variants = enemies.filter(e => e.variantOf === enemyName);
 
-  // Get difficulty color
-  const getDifficultyColor = (difficulty) => {
-    switch((difficulty || '').toLowerCase()) {
-      case 'low': return '#4CAF50';
-      case 'medium': return '#ff9800';
-      case 'high': return '#f44336';
-      case 'boss': return '#9b59b6';
+  const getDifficultyColor = (d) => {
+    switch((d||'').toLowerCase()) {
+      case 'low': return '#4CAF50'; case 'medium': return '#ff9800';
+      case 'high': return '#f44336'; case 'boss': return '#9b59b6';
       default: return '#888';
     }
   };
-
-  // Get type color
-  const getTypeColor = (type) => {
-    switch((type || '').toLowerCase()) {
-      case 'strength': return '#f44336';
-      case 'dexterity': return '#4CAF50';
-      case 'intelligence': return '#2196F3';
-      case 'charisma': return '#ff9800';
+  const getTypeColor = (t) => {
+    switch((t||'').toLowerCase()) {
+      case 'strength': return '#f44336'; case 'dexterity': return '#4CAF50';
+      case 'intelligence': return '#2196F3'; case 'charisma': return '#ff9800';
       default: return '#888';
     }
   };
@@ -6845,100 +7054,85 @@ function showEnemyDetails(enemyName) {
   const detailsPanel = document.getElementById('enemy-details');
   if (!detailsPanel) return;
 
-  // Build variant images HTML
+  // Build variant forms HTML
   let variantHTML = '';
   if (variants.length > 0) {
     const allForms = [enemy, ...variants];
-    variantHTML = `
-      <div style="margin-top: 15px;">
-        <strong style="color: #9b59b6;">Forms:</strong>
-        <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
-          ${allForms.map((form, idx) => `
-            <div
-              onclick="switchEnemyImage('${form.name.replace(/'/g, "\\'")}')"
-              style="
-                cursor: pointer;
-                padding: 5px;
-                border: 2px solid ${idx === 0 ? '#9b59b6' : '#444'};
-                border-radius: 6px;
-                background: rgba(0,0,0,0.3);
-                transition: border-color 0.2s;
-              "
-              onmouseover="this.style.borderColor='#9b59b6'"
-              onmouseout="this.style.borderColor='${idx === 0 ? '#9b59b6' : '#444'}'"
-            >
-              <img
-                src="${form.imageUrl || getEnemyImagePath(form.name)}"
-                alt="${form.name}"
-                style="width: 60px; height: 60px; object-fit: contain;"
-                onerror="this.style.opacity='0.3'"
-              />
-              <div style="font-size: 9px; text-align: center; color: #aaa; margin-top: 4px;">${form.name}</div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
+    variantHTML = '<div style="margin-top:15px;"><strong style="color:#9b59b6;">Forms:</strong><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">' +
+      allForms.map((form, idx) =>
+        '<div onclick="switchEnemyForm(\'' + form.name.replace(/'/g, "\\'") + '\')" style="cursor:pointer;padding:5px;border:2px solid ' + (idx===0?'#9b59b6':'#444') + ';border-radius:6px;background:rgba(0,0,0,0.3);transition:border-color 0.2s;" onmouseover="this.style.borderColor=\'#9b59b6\'" onmouseout="this.style.borderColor=\'' + (idx===0?'#9b59b6':'#444') + '\'">' +
+          '<img src="' + (form.imageUrl || getEnemyImagePath(form.name)) + '" alt="' + form.name + '" style="width:50px;height:50px;object-fit:contain;" onerror="this.style.opacity=\'0.3\'"/>' +
+          '<div style="font-size:9px;text-align:center;color:#aaa;margin-top:3px;">' + form.name + '</div></div>'
+      ).join('') +
+    '</div></div>';
   }
 
-  // Build dice HTML
-  const diceHTML = enemy.dice ? `
-    <div id="enemy-dice-section" style="margin-top: 15px;">
-      <strong style="color: #f44336;">Dice (${enemy.name}):</strong>
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
-        ${enemy.dice.map((face, idx) => {
-          if (face.isBlank) {
-            return `
-              <div style="
-                background: rgba(0,0,0,0.4);
-                border: 1px solid #333;
-                border-radius: 6px;
-                padding: 8px;
-                text-align: center;
-                font-size: 11px;
-                color: #666;
-              ">
-                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
-                <div>Blank</div>
-              </div>
-            `;
-          }
-          return `
-            <div style="
-              background: rgba(244, 67, 54, 0.1);
-              border: 1px solid rgba(244, 67, 54, 0.3);
-              border-radius: 6px;
-              padding: 8px;
-              text-align: center;
-              font-size: 11px;
-              color: #ddd;
-            ">
-              <div style="font-weight: bold; color: #f44336; margin-bottom: 4px;">Face ${idx + 1}</div>
-              <div>${face.raw || face.effects?.map(e => e.raw).join(', ') || '—'}</div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    </div>
-  ` : '';
+  // Build pattern HTML — parse "Turn X: A | Turn Y: B | Next: C" or "Always: A / B"
+  let patternHTML = '';
+  if (enemy.pattern) {
+    const renderPatternStep = (step) => {
+      // Determine intent icon based on keywords
+      const s = step.toLowerCase();
+      let icon = '?', color = '#888';
+      if (s.includes('dmg') || s.includes('pain') || s.includes('assassinate')) { icon = '⚔'; color = '#f44336'; }
+      else if (s.includes('block')) { icon = '🛡'; color = '#5b9bd5'; }
+      else if (s.includes('heal') || s.includes('regenerat')) { icon = '💚'; color = '#4CAF50'; }
+      else if (s.includes('ritual') || s.includes('power') || s.includes('get ') || s.includes('inflict') || s.includes('burn') || s.includes('poison') || s.includes('vulnerable') || s.includes('weak') || s.includes('stun') || s.includes('confused') || s.includes('ruptured')) { icon = '✦'; color = '#ff9800'; }
+      else if (s.includes('spawn') || s.includes('alter') || s.includes('consume') || s.includes('steal') || s.includes('add ')) { icon = '◈'; color = '#9b59b6'; }
+      else if (s.includes('unknown') || s.includes('charging') || s.includes('wandering')) { icon = '?'; color = '#888'; }
+      return '<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;background:rgba(0,0,0,0.2);border-left:3px solid ' + color + ';border-radius:0 5px 5px 0;margin-bottom:4px;">' +
+        '<span style="font-size:14px;flex-shrink:0;">' + icon + '</span>' +
+        '<span style="font-size:11px;color:#ddd;line-height:1.5;">' + step.trim() + '</span></div>';
+    };
+
+    // Split on " | " for turn-based or use "/" for probability within a phase
+    const phases = enemy.pattern.split(' | ');
+    patternHTML = '<div id="enemy-pattern-section" style="margin-top:12px;"><strong style="color:#f44336;font-size:13px;">Pattern:</strong>' +
+      '<div style="margin-top:8px;font-size:11px;color:#bbb;font-style:italic;margin-bottom:6px;">' + enemy.pattern + '</div>';
+
+    if (phases.length > 1) {
+      // Turn-based: render each phase
+      patternHTML += '<div style="display:flex;flex-direction:column;gap:4px;">';
+      phases.forEach(phase => {
+        const colonIdx = phase.indexOf(':');
+        if (colonIdx !== -1) {
+          const label = phase.slice(0, colonIdx).trim();
+          const actions = phase.slice(colonIdx + 1).trim();
+          patternHTML += '<div style="margin-bottom:4px;"><span style="color:#ff9800;font-size:10px;font-weight:bold;text-transform:uppercase;">' + label + ':</span>';
+          actions.split('/').forEach(act => { patternHTML += renderPatternStep(act.trim()); });
+          patternHTML += '</div>';
+        } else {
+          phase.split('/').forEach(act => { patternHTML += renderPatternStep(act.trim()); });
+        }
+      });
+      patternHTML += '</div>';
+    } else {
+      // Single phase (Always: ... / ...)
+      const colonIdx = enemy.pattern.indexOf(':');
+      const actions = colonIdx !== -1 ? enemy.pattern.slice(colonIdx + 1) : enemy.pattern;
+      patternHTML += '<div style="display:flex;flex-direction:column;gap:4px;">';
+      actions.split('/').forEach(act => { patternHTML += renderPatternStep(act.trim()); });
+      patternHTML += '</div>';
+    }
+    patternHTML += '</div>';
+  }
 
   detailsPanel.innerHTML = `
-    <div style="display: flex; flex-direction: column; gap: 15px;">
-      <!-- Enemy Header -->
-      <div style="display: flex; gap: 15px; align-items: flex-start;">
-        <img
-          id="enemy-detail-image"
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <!-- Header -->
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <img id="enemy-detail-image"
           src="${enemy.imageUrl || getEnemyImagePath(enemy.name)}"
           alt="${enemy.name}"
-          style="width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${diffColor}; image-rendering: pixelated; image-rendering: crisp-edges;"
+          style="width:110px;height:110px;object-fit:contain;border-radius:8px;background:rgba(0,0,0,0.3);border:2px solid ${diffColor};image-rendering:pixelated;"
           onerror="this.style.opacity='0.3'"
         />
-        <div style="flex: 1;">
-          <h3 style="margin: 0 0 10px 0; color: #f44336;">${enemy.name}</h3>
-          <div style="color: #aaa; font-size: 13px; line-height: 1.8;">
-            <div><strong>Type:</strong> <span style="color: ${typeColor};">${enemy.type || '—'}</span></div>
-            <div><strong>Difficulty:</strong> <span style="color: ${diffColor};">${enemy.difficulty || '—'}</span></div>
-            <div><strong>HP:</strong> ${enemy.hp || '—'}</div>
+        <div style="flex:1;">
+          <h3 style="margin:0 0 8px 0;color:#f44336;">${enemy.name}</h3>
+          <div style="font-size:12px;color:#aaa;line-height:1.9;">
+            <div><strong>Type:</strong> <span style="color:${typeColor};">${enemy.type || '—'}</span></div>
+            <div><strong>Difficulty:</strong> <span style="color:${diffColor};">${enemy.difficulty || '—'}</span></div>
+            <div><strong>HP:</strong> ${enemy.hpMin != null ? (enemy.hpMin === enemy.hpMax ? enemy.hpMin : enemy.hpMin + '–' + enemy.hpMax) : (enemy.hp || '—')}</div>
             <div><strong>Game:</strong> ${enemy.game || '—'}</div>
             <div><strong>Location:</strong> ${enemy.location || '—'}</div>
           </div>
@@ -6947,81 +7141,41 @@ function showEnemyDetails(enemyName) {
 
       <!-- Ability -->
       ${enemy.ability && enemy.ability !== 'N/A' ? `
-        <div style="padding: 12px; background: rgba(155, 89, 182, 0.1); border: 1px solid rgba(155, 89, 182, 0.3); border-radius: 6px;">
-          <h4 style="margin: 0 0 8px 0; color: #9b59b6; font-size: 14px;">⚡ Ability</h4>
-          <div style="font-size: 13px; color: #ddd;">${enemy.ability}</div>
+        <div style="padding:10px 12px;background:rgba(155,89,182,0.1);border:1px solid rgba(155,89,182,0.3);border-radius:6px;">
+          <div style="font-size:12px;font-weight:bold;color:#9b59b6;margin-bottom:4px;">⚡ Ability</div>
+          <div style="font-size:12px;color:#ddd;">${enemy.ability}</div>
         </div>
       ` : ''}
 
+      <!-- Pattern -->
+      ${patternHTML}
+
       <!-- Combat Stats -->
-      <div style="padding: 12px; background: rgba(244, 67, 54, 0.1); border: 1px solid rgba(244, 67, 54, 0.3); border-radius: 6px;">
-        <h4 style="margin: 0 0 8px 0; color: #f44336; font-size: 14px;">📊 Combat Record</h4>
-        <div style="font-size: 13px; color: #ddd; line-height: 1.8;">
-          <div><strong>Times Defeated:</strong> ${enemyStats.timesBeaten || 0}</div>
-          <div><strong>Times Killed Player:</strong> ${enemyStats.timesKilledPlayer || 0}</div>
+      <div style="padding:10px 12px;background:rgba(244,67,54,0.08);border:1px solid rgba(244,67,54,0.2);border-radius:6px;">
+        <div style="font-size:12px;font-weight:bold;color:#f44336;margin-bottom:4px;">📊 Combat Record</div>
+        <div style="font-size:12px;color:#ddd;line-height:1.8;">
+          <div>Defeated: ${enemyStats.timesBeaten || 0}x</div>
+          <div>Killed Player: ${enemyStats.timesKilledPlayer || 0}x</div>
         </div>
       </div>
 
       <!-- Variants -->
       ${variantHTML}
-
-      <!-- Dice -->
-      ${diceHTML}
     </div>
   `;
 }
 
-// Switch enemy form in details panel (for variants) - updates image and dice
-function switchEnemyImage(enemyName) {
+// Switch enemy form in details panel (for variants) — updates image and pattern
+function switchEnemyForm(enemyName) {
   const enemy = enemies.find(e => e.name === enemyName);
   if (!enemy) return;
 
-  // Update image
   const img = document.getElementById('enemy-detail-image');
-  if (img) {
-    img.src = enemy.imageUrl || getEnemyImagePath(enemy.name);
-  }
+  if (img) img.src = enemy.imageUrl || getEnemyImagePath(enemy.name);
 
-  // Update dice section
-  const diceContainer = document.getElementById('enemy-dice-section');
-  if (diceContainer && enemy.dice) {
-    diceContainer.innerHTML = `
-      <strong style="color: #f44336;">Dice (${enemy.name}):</strong>
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
-        ${enemy.dice.map((face, idx) => {
-          if (face.isBlank) {
-            return `
-              <div style="
-                background: rgba(0,0,0,0.4);
-                border: 1px solid #333;
-                border-radius: 6px;
-                padding: 8px;
-                text-align: center;
-                font-size: 11px;
-                color: #666;
-              ">
-                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
-                <div>Blank</div>
-              </div>
-            `;
-          }
-          return `
-            <div style="
-              background: rgba(244, 67, 54, 0.1);
-              border: 1px solid rgba(244, 67, 54, 0.3);
-              border-radius: 6px;
-              padding: 8px;
-              text-align: center;
-              font-size: 11px;
-              color: #ddd;
-            ">
-              <div style="font-weight: bold; color: #f44336; margin-bottom: 4px;">Face ${idx + 1}</div>
-              <div>${face.raw || face.effects?.map(e => e.raw).join(', ') || '—'}</div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
+  const patternContainer = document.getElementById('enemy-pattern-section');
+  if (patternContainer && enemy.pattern) {
+    patternContainer.querySelector('div:nth-child(2)').textContent = enemy.pattern;
   }
 }
 
@@ -7236,7 +7390,7 @@ function showSpellDetails(spellName) {
       <!-- Spell Header -->
       <div style="display: flex; gap: 15px; align-items: flex-start;">
         <img
-          src="${spell.image || 'images/spells/no-spell.svg'}"
+          src="${spell.imageUrl || spell.image || 'images/spells/no-spell.svg'}"
           alt="${spell.name}"
           style="width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${rarityColor}; image-rendering: pixelated;"
           onerror="this.style.opacity='0.3'"
@@ -7279,9 +7433,83 @@ function showSpellDetails(spellName) {
   `;
 }
 
+function showCardDetails(cardName) {
+  const allCards = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
+  const card = allCards.find(c => c.name === cardName);
+  if (!card) return;
+
+  const detailsPanel = document.getElementById('card-details');
+  if (!detailsPanel) return;
+
+  const getRarityColor = (r) => {
+    switch((r||'').toLowerCase()) {
+      case 'legendary': return '#ff6b00';
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      case 'common': return '#aaa';
+      case 'starter': return '#2196F3';
+      default: return '#666';
+    }
+  };
+  const getTypeColor = (t) => {
+    switch((t||'').toLowerCase()) {
+      case 'attack': return '#e74c3c';
+      case 'skill': return '#2980b9';
+      case 'power': return '#8e44ad';
+      case 'training': return '#27ae60';
+      case 'dice': return '#d35400';
+      default: return '#888';
+    }
+  };
+
+  const rc = getRarityColor(card.rarity);
+  const tc = getTypeColor(card.type);
+  const typeEmoji = (card.type||'').toLowerCase() === 'attack' ? '⚔' :
+                    (card.type||'').toLowerCase() === 'skill' ? '🛡' :
+                    (card.type||'').toLowerCase() === 'power' ? '✨' : '🃏';
+
+  detailsPanel.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <!-- Card render -->
+      <div style="border:2px solid ${rc};border-radius:12px;background:rgba(10,10,15,0.9);box-shadow:0 0 12px ${rc}55;overflow:hidden;max-width:220px;margin:0 auto;position:relative;">
+        <div style="position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:${tc};border:2px solid rgba(255,255,255,0.35);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;color:white;z-index:2;">
+          ${card.cost !== null && card.cost !== undefined ? card.cost : '?'}
+        </div>
+        ${card.imageUrl
+          ? '<img src="' + card.imageUrl + '" alt="' + card.name + '" style="width:100%;height:160px;object-fit:contain;background:rgba(0,0,0,0.3);display:block;" onerror="this.style.display=\'none\'"/>'
+          : '<div style="width:100%;height:160px;background:linear-gradient(135deg,' + tc + '33,' + rc + '22);display:flex;align-items:center;justify-content:center;font-size:48px;color:' + tc + '88;">' + typeEmoji + '</div>'
+        }
+        <div style="padding:10px;">
+          <div style="font-size:14px;font-weight:bold;color:#eee;margin-bottom:4px;">${card.name}</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <span style="font-size:10px;color:${tc};text-transform:uppercase;font-weight:bold;">${card.type||''}</span>
+            <span style="font-size:10px;color:${rc};text-transform:uppercase;">${card.rarity||''}</span>
+          </div>
+          <div style="font-size:12px;color:#ddd;line-height:1.5;">${card.description||'No description.'}</div>
+        </div>
+      </div>
+
+      ${card.canUpgrade && card.upgradedDescription ? `
+        <div style="padding:10px 12px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);border-radius:8px;">
+          <div style="font-size:11px;font-weight:bold;color:#ff9800;margin-bottom:6px;">✦ Upgraded</div>
+          <div style="font-size:11px;color:#ccc;line-height:1.5;">${card.upgradedDescription}</div>
+          ${card.upgradedCost !== card.cost ? '<div style="font-size:10px;color:#888;margin-top:4px;">Cost: ' + card.upgradedCost + '</div>' : ''}
+        </div>
+      ` : (card.upgradedDescription ? `
+        <div style="padding:10px 12px;background:rgba(150,150,150,0.08);border:1px solid rgba(150,150,150,0.2);border-radius:8px;">
+          <div style="font-size:11px;font-weight:bold;color:#aaa;margin-bottom:6px;">Upgraded</div>
+          <div style="font-size:11px;color:#bbb;line-height:1.5;">${card.upgradedDescription}</div>
+        </div>
+      ` : '')}
+
+      ${card.game ? `<div style="font-size:11px;color:#666;">From: <span style="color:#888;">${card.game}</span></div>` : ''}
+    </div>
+  `;
+}
+
 function showCharacterDetails(charName) {
-  const charactersData = typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA : [];
-  const char = charactersData.find(c => c.name === charName);
+  const allChars = typeof CHARACTERS_DATA !== 'undefined' ? Object.values(CHARACTERS_DATA) : [];
+  const char = allChars.find(c => c.name === charName);
   if (!char) return;
 
   const detailsPanel = document.getElementById('character-details');
@@ -7289,62 +7517,54 @@ function showCharacterDetails(charName) {
 
   const charIcon = `images/characters/Full/${char.name}.png`;
 
-  // Build level up bonuses list
+  // Build level up bonuses list — read from levelUpStats object
   const levelUpBonuses = [];
-  if (char.strength > 0) levelUpBonuses.push({ stat: 'Strength', value: char.strength, color: '#f44336' });
-  if (char.dexterity > 0) levelUpBonuses.push({ stat: 'Dexterity', value: char.dexterity, color: '#4CAF50' });
-  if (char.intelligence > 0) levelUpBonuses.push({ stat: 'Intelligence', value: char.intelligence, color: '#2196F3' });
-  if (char.charisma > 0) levelUpBonuses.push({ stat: 'Charisma', value: char.charisma, color: '#9b59b6' });
-  if (char.luck > 0) levelUpBonuses.push({ stat: 'Luck', value: char.luck, color: '#ff9800' });
-  if (char.reroll > 0) levelUpBonuses.push({ stat: 'Reroll', value: char.reroll, color: '#888' });
-  if (char.dash > 0) levelUpBonuses.push({ stat: 'Dash', value: char.dash, color: '#888' });
-  if (char.skip > 0) levelUpBonuses.push({ stat: 'Skip', value: char.skip, color: '#888' });
-  if (char.discovery > 0) levelUpBonuses.push({ stat: 'Discovery', value: char.discovery, color: '#888' });
-  if (char.fov > 0) levelUpBonuses.push({ stat: 'FoV', value: char.fov, color: '#888' });
-  if (char.random > 0) levelUpBonuses.push({ stat: 'Random', value: char.random, color: '#888' });
+  const lus = char.levelUpStats || {};
+  if (lus.strength > 0) levelUpBonuses.push({ stat: 'Strength', value: lus.strength, color: '#f44336' });
+  if (lus.dexterity > 0) levelUpBonuses.push({ stat: 'Dexterity', value: lus.dexterity, color: '#4CAF50' });
+  if (lus.intelligence > 0) levelUpBonuses.push({ stat: 'Intelligence', value: lus.intelligence, color: '#2196F3' });
+  if (lus.charisma > 0) levelUpBonuses.push({ stat: 'Charisma', value: lus.charisma, color: '#9b59b6' });
+  if (lus.luck > 0) levelUpBonuses.push({ stat: 'Luck', value: lus.luck, color: '#ff9800' });
+  if (lus.reroll > 0) levelUpBonuses.push({ stat: 'Reroll', value: lus.reroll, color: '#888' });
+  if (lus.dash > 0) levelUpBonuses.push({ stat: 'Dash', value: lus.dash, color: '#888' });
+  if (lus.skip > 0) levelUpBonuses.push({ stat: 'Skip', value: lus.skip, color: '#888' });
+  if (lus.discovery > 0) levelUpBonuses.push({ stat: 'Discovery', value: lus.discovery, color: '#888' });
+  if (lus.fov > 0) levelUpBonuses.push({ stat: 'FoV', value: lus.fov, color: '#888' });
+  if (lus.random > 0) levelUpBonuses.push({ stat: 'Random (any stat)', value: lus.random, color: '#aaa' });
 
   const levelUpBonusesHTML = levelUpBonuses.length > 0
     ? levelUpBonuses.map(b => `<span style="color: ${b.color}; font-weight: bold;">+${b.value} ${b.stat}</span>`).join(', ')
     : '<span style="color: #888;">None</span>';
 
-  // Build dice HTML (enemy-style)
-  const diceHTML = char.dice && char.dice.length > 0 ? `
+  // Build starting deck HTML
+  const startingEntries = (char.startingDeck) ? char.startingDeck : [];
+  const startingDeckHTML = startingEntries.length > 0 ? `
     <div style="margin-top: 15px;">
-      <strong style="color: #4CAF50;">Character Die (6 faces):</strong>
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
-        ${char.dice.map((face, idx) => {
-          if (face.isBlank) {
-            return `
-              <div style="
-                background: rgba(0,0,0,0.4);
-                border: 1px solid #333;
-                border-radius: 6px;
-                padding: 8px;
-                text-align: center;
-                font-size: 11px;
-                color: #666;
-              ">
-                <div style="font-weight: bold; color: #444;">Face ${idx + 1}</div>
-                <div>Blank</div>
-              </div>
-            `;
-          }
-          return `
-            <div style="
-              background: rgba(76, 175, 80, 0.1);
-              border: 1px solid rgba(76, 175, 80, 0.3);
-              border-radius: 6px;
-              padding: 8px;
-              text-align: center;
-              font-size: 11px;
-              color: #ddd;
-            ">
-              <div style="font-weight: bold; color: #4CAF50; margin-bottom: 4px;">Face ${idx + 1}</div>
-              <div>${face.raw || '—'}</div>
+      <strong style="color: #4CAF50;">Starting Deck:</strong>
+      <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 5px;">
+        ${startingEntries.map(entry => {
+          const template = typeof CARDS_DATA !== 'undefined'
+            ? CARDS_DATA.find(c => c.name === entry.cardName || c.name.toLowerCase() === entry.cardName.toLowerCase())
+            : null;
+          const color = template ? (template.rarity === 'Rare' ? '#9b59b6' : template.rarity === 'Uncommon' ? '#4CAF50' : '#888') : '#888';
+          return `<div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.3);border:1px solid ${color};border-radius:6px;padding:5px 8px;cursor:default;"
+            onmouseenter="showCardNameTooltip('${entry.cardName.replace(/'/g,"\\'")}', event)"
+            onmouseleave="hideCardNameTooltip()">
+            <span style="color:${color};font-weight:bold;font-size:14px;min-width:24px;">×${entry.count}</span>
+            <div>
+              <div style="font-size:12px;color:white;font-weight:bold;">${entry.cardName}</div>
+              ${template ? `<div style="font-size:10px;color:#aaa;">${template.type || ''} · Cost ${template.cost !== undefined ? template.cost : '?'}</div>` : ''}
             </div>
-          `;
+          </div>`;
         }).join('')}
       </div>
+    </div>
+  ` : '';
+
+  const combatStartHTML = char.combatStart ? `
+    <div style="margin-top: 10px; padding: 8px; background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.4); border-radius: 6px;">
+      <div style="color: #ff9800; font-size: 12px; font-weight: bold; margin-bottom: 3px;">⚡ Combat Start</div>
+      <div style="color: #ddd; font-size: 12px;">${char.combatStart}</div>
     </div>
   ` : '';
 
@@ -7387,14 +7607,15 @@ function showCharacterDetails(charName) {
       <!-- Level Up -->
       <div style="padding: 12px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 6px;">
         <h4 style="margin: 0 0 8px 0; color: #ff9800; font-size: 14px;">⬆️ Level Up Condition</h4>
-        <div style="font-size: 13px; color: #ddd; margin-bottom: 8px;">${char.levelUp || 'None'}</div>
+        <div style="font-size: 13px; color: #ddd; margin-bottom: 8px;">${char.levelUpCondition || char.levelUp || 'None'}</div>
         <div style="font-size: 12px; color: #aaa;">
           <strong>Rewards:</strong> ${levelUpBonusesHTML}
         </div>
       </div>
 
-      <!-- Dice -->
-      ${diceHTML}
+      <!-- Starting Deck -->
+      ${startingDeckHTML}
+      ${combatStartHTML}
     </div>
   `;
 }
@@ -8691,8 +8912,75 @@ window.drawMapArrows = drawMapArrows;
 window.switchCollectionTab = switchCollectionTab;
 window.showGameDetails = showGameDetails;
 window.showEnemyDetails = showEnemyDetails;
+window.showCardDetails = showCardDetails;
 window.showItemDetails = showItemDetails;
-window.switchEnemyImage = switchEnemyImage;
+window.switchEnemyForm = switchEnemyForm;
+
+// ============== CARD NAME TOOLTIP ==============
+// Lightweight floating card preview shown on hovering card names.
+
+(function() {
+  let _tooltipEl = null;
+
+  function _getTooltipEl() {
+    if (!_tooltipEl) {
+      _tooltipEl = document.createElement('div');
+      _tooltipEl.id = 'card-name-tooltip';
+      _tooltipEl.style.cssText = [
+        'position:fixed','z-index:99999','pointer-events:none',
+        'display:none','background:#1a1a2e',
+        'border-radius:10px','box-shadow:0 6px 24px rgba(0,0,0,0.8)',
+        'overflow:hidden','width:160px',
+      ].join(';');
+      document.body.appendChild(_tooltipEl);
+    }
+    return _tooltipEl;
+  }
+
+  window.showCardNameTooltip = function(cardName, event) {
+    const card = typeof CARDS_DATA !== 'undefined'
+      ? CARDS_DATA.find(c => c.name === cardName || c.name.toLowerCase() === cardName.toLowerCase())
+      : null;
+    if (!card) return;
+
+    const rc = card.rarity === 'Rare' ? '#9b59b6' : card.rarity === 'Uncommon' ? '#4CAF50' : card.rarity === 'Common' ? '#aaa' : '#888';
+    const tc = (card.type||'').toLowerCase()==='attack' ? '#e74c3c'
+             : (card.type||'').toLowerCase()==='skill'  ? '#2980b9'
+             : (card.type||'').toLowerCase()==='power'  ? '#8e44ad' : '#888';
+    const imgSrc = card.imageUrl || '';
+
+    const el = _getTooltipEl();
+    el.style.border = '2px solid ' + rc;
+    el.innerHTML = `
+      <div style="position:relative;">
+        <div style="position:absolute;top:5px;left:5px;width:20px;height:20px;border-radius:50%;background:${tc};border:2px solid rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:white;z-index:2;">${card.cost !== null && card.cost !== undefined ? card.cost : '?'}</div>
+        ${imgSrc
+          ? `<img src="${imgSrc}" style="width:100%;height:120px;object-fit:contain;background:rgba(0,0,0,0.4);display:block;" onerror="this.style.display='none'">`
+          : `<div style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;font-size:36px;background:rgba(0,0,0,0.3);">${(card.type||'').toLowerCase()==='attack'?'⚔':(card.type||'').toLowerCase()==='skill'?'🛡':'✨'}</div>`}
+      </div>
+      <div style="padding:8px;">
+        <div style="font-size:12px;font-weight:bold;color:#eee;margin-bottom:3px;">${card.name}</div>
+        <div style="font-size:9px;color:${tc};text-transform:uppercase;font-weight:bold;margin-bottom:2px;">${card.type||''} · <span style="color:${rc}">${card.rarity||''}</span></div>
+        <div style="font-size:10px;color:#ccc;line-height:1.4;">${card.description||''}</div>
+      </div>
+    `;
+
+    el.style.display = 'block';
+    const rect = event.target.getBoundingClientRect();
+    const vpW = window.innerWidth, vpH = window.innerHeight;
+    let left = rect.right + 8;
+    let top = rect.top;
+    if (left + 160 > vpW) left = rect.left - 168;
+    if (top + 220 > vpH) top = vpH - 228;
+    el.style.left = left + 'px';
+    el.style.top = Math.max(4, top) + 'px';
+  };
+
+  window.hideCardNameTooltip = function() {
+    const el = _getTooltipEl();
+    el.style.display = 'none';
+  };
+})();
 window.getEnemyStats = getEnemyStats;
 window.recordEnemyDefeated = recordEnemyDefeated;
 window.recordPlayerKilledBy = recordPlayerKilledBy;

@@ -223,7 +223,78 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
         bloodVialEffect.onCombatStart();
       }
     }
+
+    // Garlic: apply +1 Brace per Garlic in inventory
+    const garlicCount = inventory.filter(i => i.name === 'Garlic').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (garlicCount > 0) {
+      combatState.player.statuses['brace'] = (combatState.player.statuses['brace'] || 0) + garlicCount;
+      addLog(`Garlic: +${garlicCount} Brace`, 'info');
+    }
+
+    // Leech Brood: inflict +1 Leeches to all enemies at start of conflict
+    // If player is above 50% health, lose 10 health
+    if (inventory.some(i => i.name === 'Leech Brood')) {
+      combatState.enemies.forEach(enemy => {
+        enemy.statuses['leeches'] = (enemy.statuses['leeches'] || 0) + 1;
+        enemy.statuses['leeches_owner'] = 'player';
+      });
+      addLog('Leech Brood: +1 Leeches on all enemies', 'warning');
+      if (combatState.player.health > combatState.player.maxHealth * 0.5) {
+        combatState.player.health = Math.max(1, combatState.player.health - 10);
+        window.health = combatState.player.health;
+        addLog('Leech Brood: you were above 50% health — lost 10 HP!', 'danger');
+      }
+    }
+
+    // Raven Feather: inflict Soul Link on 2 random enemies at start of conflict
+    if (inventory.some(i => i.name === 'Raven Feather')) {
+      const living = combatState.enemies.filter(e => e.health > 0);
+      const targets = living.sort(() => Math.random() - 0.5).slice(0, 2);
+      targets.forEach(e => {
+        e.statuses['soul_link'] = 1;
+      });
+      if (targets.length > 0) {
+        addLog(`Raven Feather: Soul Link on ${targets.map(e => e.name).join(', ')}`, 'warning');
+      }
+    }
+
+    // Horn Cleat: handled in processPlayerStartOfTurn (start of turn 2 → +14 Block)
+    if (inventory.some(i => i.name === 'Horn Cleat')) {
+      combatState._hornCleatPending = true;
+    }
+
+    // Anchor: +10 Block at start of combat
+    const anchorCount = inventory.filter(i => i.name === 'Anchor').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (anchorCount > 0) {
+      combatState.player.block = (combatState.player.block || 0) + 10 * anchorCount;
+      addLog(`Anchor: +${10 * anchorCount} Block`, 'info');
+    }
+
+    // Bronze Scales: +3 Thorns at start of combat
+    const bronzeScalesCount = inventory.filter(i => i.name === 'Bronze Scales').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (bronzeScalesCount > 0) {
+      combatState.player.statuses['thorns'] = (combatState.player.statuses['thorns'] || 0) + 3 * bronzeScalesCount;
+      addLog(`Bronze Scales: +${3 * bronzeScalesCount} Thorns`, 'info');
+    }
+
+    // Du-Vu Doll: at start of combat, gain X Power where X = curse count
+    const duVuCount = inventory.filter(i => i.name === 'Du-Vu Doll').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (duVuCount > 0) {
+      const curseCount = (typeof gameState !== 'undefined' && gameState.activeCurses) ? gameState.activeCurses.length : 0;
+      if (curseCount > 0) {
+        const powerGain = curseCount * duVuCount;
+        combatState.player.statuses['power'] = (combatState.player.statuses['power'] || 0) + powerGain;
+        addLog(`Du-Vu Doll: +${powerGain} Power!`, 'info');
+      }
+    }
   }
+
+  // Initialize incremental item counters — attacksTotal persists across combats via gameState.runAttacks
+  const savedRunAttacks = (typeof gameState !== 'undefined' && gameState.runAttacks) ? gameState.runAttacks : 0;
+  combatState.incrementals = {
+    attacksTotal: savedRunAttacks,  // cumulative attacks this run (Pen Nib, Nunchaku)
+    attacksThisTurn: 0,             // attacks played this turn (Ornamental Fan, Shuriken)
+  };
 
   // Roll enemy intents
   rollAllEnemyIntents();
@@ -341,6 +412,33 @@ const PATTERN_STATUSES = new Set([
   'burn','poison','weak','vulnerable','stun','oiled','dodge','power','frail','confused',
   'barricade','fading','thorns','shifting','formless','ritual','ruptured','bleed','slow','silence',
 ]);
+// Statuses that do not stack — applying again just sets to 1
+const NON_STACKABLE_STATUSES = new Set(['stun', 'dodge', 'silence', 'confusion', 'confused']);
+
+/**
+ * Apply a status to a unit, respecting non-stackable caps.
+ */
+// Add a random pigment/status card to the player's combat hand
+function addPigmentCardToHand() {
+  if (!combatState) return;
+  const pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : []).filter(c => c.isStatusCard);
+  if (pool.length === 0) return;
+  const card = { ...pool[Math.floor(Math.random() * pool.length)] };
+  if (!combatState.hand) combatState.hand = [];
+  combatState.hand.push(card);
+  addLog('A pigment card was added to your hand!', 'success');
+  if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
+}
+
+function applyStatus(unit, statusName, amount) {
+  if (!unit || !unit.statuses) return;
+  const key = statusName.toLowerCase();
+  if (NON_STACKABLE_STATUSES.has(key)) {
+    unit.statuses[key] = 1;
+  } else {
+    unit.statuses[key] = (unit.statuses[key] || 0) + amount;
+  }
+}
 
 /**
  * Evaluate turn-scaling formulas in a pattern description.
@@ -363,21 +461,8 @@ function parsePatternDescToEffects(desc) {
   // Evaluate turn-scaling formulas (e.g. Transient) before any other parsing
   desc = evaluateScalingFormulas(desc);
 
-  // Special text patterns detected before probability splitting
-
-  // "Add N random Pigment ... to (your) deck/hand"
-  if (/\badd \d+ random pigment/i.test(desc)) {
-    return { effects: [{ raw: desc, value: 1, move: 'AddPigment', addons: [], target: null }], text: desc };
-  }
-
-  // "Consume N random Pigment ... for X Power, Y Block"
-  if (/\bconsume \d+ random pigment/i.test(desc)) {
-    const m = desc.match(/for\s+(\d+)\s+Power,?\s*(\d+)\s+Block/i);
-    return { effects: [{ raw: desc, value: 1, move: 'ConsumePigment', addons: [],
-              power: m ? parseInt(m[1]) : 0, block: m ? parseInt(m[2]) : 0 }], text: desc };
-  }
-
-  // Probability split: "50% desc1 / 50% desc2"
+  // Probability split FIRST: "50% desc1 / 50% desc2"
+  // Must run before special-case checks so "Consume" inside a branch is handled per-branch
   if (desc.includes('%') && desc.includes('/')) {
     const options = desc.split('/').map(s => s.trim());
     const weighted = [];
@@ -390,11 +475,23 @@ function parsePatternDescToEffects(desc) {
       let roll = Math.random() * total;
       for (const o of weighted) {
         roll -= o.weight;
-        if (roll <= 0) return { effects: parseSimplePatternDesc(o.text), text: o.text };
+        if (roll <= 0) return parsePatternDescToEffects(o.text);
       }
       const last = weighted[weighted.length - 1];
-      return { effects: parseSimplePatternDesc(last.text), text: last.text };
+      return parsePatternDescToEffects(last.text);
     }
+  }
+
+  // "Add N random Pigment ... to (your) deck/hand"
+  if (/\badd \d+ random pigment/i.test(desc)) {
+    return { effects: [{ raw: desc, value: 1, move: 'AddPigment', addons: [], target: null }], text: desc };
+  }
+
+  // "Consume N random Pigment ... for X Power, Y Block"
+  if (/\bconsume \d+ random pigment/i.test(desc)) {
+    const m = desc.match(/for\s+(\d+)\s+Power,?\s*(\d+)\s+Block/i);
+    return { effects: [{ raw: desc, value: 1, move: 'ConsumePigment', addons: [],
+              power: m ? parseInt(m[1]) : 0, block: m ? parseInt(m[2]) : 0 }], text: desc };
   }
 
   return { effects: parseSimplePatternDesc(desc), text: desc };
@@ -580,29 +677,34 @@ function rollEnemyIntent(enemy) {
     const current = turns[idx];
 
     // Build a pseudo-face by parsing the description into executable effects
-    const { effects: parsedEffects } = parsePatternDescToEffects(current.description);
+    const parsedTurn = parsePatternDescToEffects(current.description);
     const isUnknownIntent = /unknown intent/i.test(current.description);
-    const pseudoFace = { isBlank: isUnknownIntent, effects: parsedEffects, raw: current.description };
+    const pseudoFace = { isBlank: isUnknownIntent, effects: parsedTurn.effects, raw: parsedTurn.text };
     enemy.currentIntent.push({ faceIndex: idx, face: pseudoFace, resolved: false });
 
-    // Advance index; find "Next:" to determine loop point
+    // Advance index; "Next:" is the repeating loop point (not a skip target)
     let nextIdx = idx + 1;
-    if (nextIdx >= turns.length) {
-      // Find the "Next" entry for looping
+    const isCurrentNext = current.label.toLowerCase() === 'next';
+
+    if (isCurrentNext) {
+      // We just executed a "Next:" entry — check if it means "repeat from start"
+      const desc = current.description.toLowerCase().trim();
+      if (desc === 'repeat') {
+        nextIdx = 0; // "Next: Repeat" → loop back to Turn 1
+      } else {
+        nextIdx = idx; // Stay at this "Next:" entry (loop here forever)
+      }
+    } else if (nextIdx >= turns.length) {
+      // Ran past the end — find the Next: entry to loop at
       const nextEntry = turns.findIndex(t => t.label.toLowerCase() === 'next');
       if (nextEntry !== -1) {
-        // "Next: Repeat" means loop back to turn 1 (index 0)
-        const nextDesc = turns[nextEntry].description.toLowerCase();
-        nextIdx = nextDesc.includes('repeat') ? 0 : nextEntry;
+        const nextDesc = turns[nextEntry].description.toLowerCase().trim();
+        nextIdx = nextDesc === 'repeat' ? 0 : nextEntry;
       } else {
         nextIdx = 0;
       }
     }
-    // Skip any "Next:" labels when looping
-    while (nextIdx < turns.length && turns[nextIdx].label.toLowerCase() === 'next') {
-      nextIdx++;
-    }
-    if (nextIdx >= turns.length) nextIdx = 0;
+    // (Do NOT skip "Next:" entries — they are executed as normal turns)
     enemy.patternTurnIndex = nextIdx;
 
   } else {
@@ -1055,7 +1157,7 @@ function processEffect(effect, die, targets, isCantrip = false) {
       // Give status to self
       const statusName = effect.target ? effect.target.toLowerCase() : '';
       if (statusName) {
-        combatState.player.statuses[statusName] = (combatState.player.statuses[statusName] || 0) + value;
+        applyStatus(combatState.player, statusName, value);
         addLog(`Gained ${value} ${effect.target}`, 'info');
       }
       break;
@@ -1065,7 +1167,7 @@ function processEffect(effect, die, targets, isCantrip = false) {
       const inflictStatus = effect.target ? effect.target.toLowerCase() : '';
       if (inflictStatus) {
         resolvedTargets.enemies.forEach(enemy => {
-          enemy.statuses[inflictStatus] = (enemy.statuses[inflictStatus] || 0) + value;
+          applyStatus(enemy, inflictStatus, value);
           addLog(`Inflicted ${value} ${effect.target} on ${enemy.name}`, 'info');
         });
       }
@@ -1131,14 +1233,19 @@ function calculateMoveValue(move, value, die) {
   const intBonus = bonuses.intelligence || 0;
   const chaBonus = bonuses.charisma || 0;
 
+  // Combat status bonuses (from items/attacks like Shuriken power, defense gains)
+  const playerStatuses = combatState.player.statuses || {};
+  const combatPowerBonus = playerStatuses['power'] || 0;
+  const combatDefenseBonus = playerStatuses['defense'] || 0;
+
   switch (move) {
     case 'dmg':
     case 'pain':
     case 'assassinate':
-      return baseValue + (hasFinesse ? dexBonus : strBonus);
+      return baseValue + (hasFinesse ? dexBonus : strBonus) + combatPowerBonus;
 
     case 'block':
-      return baseValue + dexBonus;
+      return baseValue + dexBonus + combatDefenseBonus;
 
     case 'heal':
     case 'mana':
@@ -1274,6 +1381,11 @@ function dealDamage(target, damage, addons = []) {
   let dmg = (typeof damage === 'number' && !isNaN(damage)) ? damage : 0;
   if (dmg <= 0) return;
 
+  // Pen Nib: every 10th attack deals double damage
+  if (combatState && combatState._penNibDouble) {
+    dmg *= 2;
+  }
+
   // Check Engage (x2 on full health)
   if (addons.includes('Engage') && target.health === target.maxHealth) {
     dmg *= 2;
@@ -1288,6 +1400,21 @@ function dealDamage(target, damage, addons = []) {
   // Check Vulnerable (50% more incoming damage)
   if (target.statuses['vulnerable']) {
     dmg = Math.ceil(dmg * 1.5);
+  }
+
+  // Check Bruise (melee/ranged attacks deal +1 per stack)
+  const bruiseStacks = target.statuses['bruise'] || 0;
+  const isMeleeOrRanged = !addons.includes('self');
+  if (bruiseStacks > 0 && isMeleeOrRanged) {
+    dmg += bruiseStacks;
+  }
+
+  // Check Holy Shield (negate the hit entirely, takes precedence over block)
+  if (target.statuses['holy_shield'] && target.statuses['holy_shield'] > 0 && !addons.includes('self')) {
+    target.statuses['holy_shield']--;
+    if (target.statuses['holy_shield'] <= 0) delete target.statuses['holy_shield'];
+    addLog(`${target.name || 'Player'}'s Holy Shield absorbed the hit!`, 'success');
+    return;
   }
 
   // Check Dodge
@@ -1308,9 +1435,15 @@ function dealDamage(target, damage, addons = []) {
   // Check Stagger — if this single hit is ≥ X% of the target's max HP, apply Stun
   if (target !== combatState.player && target.staggerThreshold && target.staggerThreshold > 0) {
     if (dmg >= target.staggerThreshold * target.maxHealth) {
-      target.statuses['stun'] = (target.statuses['stun'] || 0) + 1;
+      target.statuses['stun'] = 1; // Stun is non-stackable
       addLog(`${target.name} is staggered by the heavy hit!`, 'warning');
     }
+  }
+
+  // Check Brace (reduce incoming damage by 1 per stack, minimum 1 total)
+  const braceStacks = target.statuses['brace'] || 0;
+  if (braceStacks > 0) {
+    dmg = Math.max(1, dmg - braceStacks);
   }
 
   // Apply block first
@@ -1329,9 +1462,7 @@ function dealDamage(target, damage, addons = []) {
 
     // Pigment Rich — hitting this enemy adds a random pigment card to the player's hand
     if (target !== combatState.player && target.statuses['pigment_rich']) {
-      if (typeof window.addRandomPigmentToHand === 'function') {
-        window.addRandomPigmentToHand();
-      }
+      addPigmentCardToHand();
     }
 
     // Check Thorns — melee attacker takes X damage back from the target
@@ -1356,6 +1487,20 @@ function dealDamage(target, damage, addons = []) {
     if (target.statuses['formless']) {
       rollEnemyIntent(target);
       addLog(`${target.name} rerolled intent due to Formless`, 'info');
+    }
+
+    // Soul Link — propagate health loss to all other soul-linked units
+    if (target.statuses['soul_link'] && !combatState._soulLinkPropagating) {
+      combatState._soulLinkPropagating = true;
+      combatState.enemies.forEach(e => {
+        if (e !== target && e.health > 0 && e.statuses['soul_link']) {
+          dealDamage(e, remainingDamage, ['self']);
+        }
+      });
+      if (target !== combatState.player && combatState.player.statuses['soul_link']) {
+        dealDamageToPlayer(remainingDamage, ['self'], null);
+      }
+      combatState._soulLinkPropagating = false;
     }
 
     // Trigger on-death ability for enemies that just died
@@ -1699,6 +1844,22 @@ function executeWhenDefeatedClause(enemy, clause) {
 function onEnemyDefeated(enemy) {
   if (enemy.onDeathTriggered) return;
   enemy.onDeathTriggered = true;
+
+  const inv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+
+  // Metal Plate: when you kill an enemy, gain +1 Brace
+  if (inv.some(i => i.name === 'Metal Plate')) {
+    combatState.player.statuses['brace'] = (combatState.player.statuses['brace'] || 0) + 1;
+    addLog('Metal Plate: +1 Brace!', 'success');
+  }
+
+  // Gremlin Horn: when an enemy dies, gain +1 Energy and draw 1 card
+  if (inv.some(i => i.name === 'Gremlin Horn')) {
+    combatState.player.energy++;
+    drawCards(1);
+    addLog('Gremlin Horn: +1 Energy, draw 1!', 'success');
+  }
+
   if (!enemy.ability) return;
   const m = enemy.ability.match(/When Defeated,?\s*(.+)/i);
   if (!m) return;
@@ -1735,6 +1896,13 @@ function processPlayerStartOfTurn() {
     if (combatState.player.block > 0) combatState.player.block = 0;
   }
 
+  // Horn Cleat: +14 Block at the start of the second turn
+  if (combatState._hornCleatPending && combatState.turn === 2) {
+    addBlock(combatState.player, 14);
+    addLog('Horn Cleat: +14 Block!', 'success');
+    combatState._hornCleatPending = false;
+  }
+
   // Draw cards for this turn
   if (combatState.drawPile !== undefined) {
     // Discard any remaining hand first (shouldn't normally have any, but safety)
@@ -1750,6 +1918,31 @@ function processPlayerStartOfTurn() {
       addBlock(combatState.player, totalBlock);
       addLog(`Horn Cleat${hornCleatCount > 1 ? ` x${hornCleatCount}` : ''} grants +${totalBlock} Block!`, 'success');
     }
+  }
+
+  if (typeof inventory !== 'undefined') {
+    // Captain's Wheel: +18 Block at the start of turn 3
+    if (combatState.turn === 3) {
+      const captainsWheelCount = inventory.filter(i => i.name === "Captain's Wheel").reduce((n, i) => n + (i.quantity || 1), 0);
+      if (captainsWheelCount > 0) {
+        addBlock(combatState.player, 18 * captainsWheelCount);
+        addLog(`Captain's Wheel: +${18 * captainsWheelCount} Block!`, 'success');
+      }
+    }
+
+    // Happy Flower: every 3 turns, gain +1 Energy
+    if (combatState.turn > 1 && combatState.turn % 3 === 0) {
+      const happyFlowerCount = inventory.filter(i => i.name === 'Happy Flower').reduce((n, i) => n + (i.quantity || 1), 0);
+      if (happyFlowerCount > 0) {
+        combatState.player.energy += happyFlowerCount;
+        addLog(`Happy Flower: +${happyFlowerCount} Energy!`, 'success');
+      }
+    }
+  }
+
+  // Reset per-turn attack counter for incremental items
+  if (combatState.incrementals) {
+    combatState.incrementals.attacksThisTurn = 0;
   }
 
   addLog(`--- Turn ${combatState.turn} ---`, 'info');
@@ -1778,6 +1971,15 @@ function endTurn() {
   // Cap mana at max
   if (combatState.player.mana > combatState.player.maxMana) {
     combatState.player.mana = combatState.player.maxMana;
+  }
+
+  // Stone Calendar: at the end of turn 7, deal 52 damage to all enemies
+  if (combatState.turn === 7 && typeof inventory !== 'undefined') {
+    const hasStoneCalendar = inventory.some(i => i.name === 'Stone Calendar');
+    if (hasStoneCalendar) {
+      combatState.enemies.filter(e => e.health > 0).forEach(e => dealDamage(e, 52, ['self']));
+      addLog('Stone Calendar: 52 damage to all enemies!', 'success');
+    }
   }
 
   // Process enemy start-of-turn status effects (burn/poison tick BEFORE enemies act)
@@ -1824,6 +2026,22 @@ function endTurn() {
     combatState.player.block = 0;
   } else {
     combatState.player.block = Math.floor(combatState.player.block / 2);
+  }
+
+  // Leeches: drain health from all enemies leeched by the player, heal the player
+  let playerLeechHeal = 0;
+  combatState.enemies.forEach(enemy => {
+    if (enemy.health > 0 && enemy.statuses['leeches'] && enemy.statuses['leeches_owner'] === 'player') {
+      const drain = enemy.statuses['leeches'];
+      enemy.health = Math.max(0, enemy.health - drain);
+      playerLeechHeal += drain;
+      if (enemy.health <= 0) onEnemyDefeated(enemy);
+    }
+  });
+  if (playerLeechHeal > 0) {
+    combatState.player.health = Math.min(combatState.player.maxHealth, combatState.player.health + playerLeechHeal);
+    window.health = combatState.player.health;
+    addLog(`Leeches drained ${playerLeechHeal} health → healed player`, 'success');
   }
 
   // Process player end of turn status effects
@@ -2000,17 +2218,13 @@ function executeEnemyActions() {
                   ['overload','wide'].includes(a.toLowerCase()));
                 if (isAoE) {
                   // Inflict on player + all allies
-                  combatState.player.statuses[inflictStatus] =
-                    (combatState.player.statuses[inflictStatus] || 0) + value;
+                  applyStatus(combatState.player, inflictStatus, value);
                   combatState.allies.forEach(a => {
-                    if (a.isAlive) {
-                      a.statuses[inflictStatus] = (a.statuses[inflictStatus] || 0) + value;
-                    }
+                    if (a.isAlive) applyStatus(a, inflictStatus, value);
                   });
                   addLog(`${enemy.name} inflicted ${value} ${effect.target} on all targets!`, 'warning');
                 } else {
-                  combatState.player.statuses[inflictStatus] =
-                    (combatState.player.statuses[inflictStatus] || 0) + value;
+                  applyStatus(combatState.player, inflictStatus, value);
                   addLog(`${enemy.name} inflicted ${value} ${effect.target}`, 'warning');
                 }
               }
@@ -2157,6 +2371,21 @@ function dealDamageToPlayer(damage, addons, enemy) {
     damage = Math.ceil(damage * 1.5);
   }
 
+  // Check Bruise (melee/ranged attacks deal +1 per stack)
+  const bruiseStacks = player.statuses['bruise'] || 0;
+  const isDirectHit = !addons || !addons.includes('self');
+  if (bruiseStacks > 0 && isDirectHit) {
+    damage += bruiseStacks;
+  }
+
+  // Check Holy Shield (negate the hit entirely, takes precedence over block)
+  if (player.statuses['holy_shield'] && player.statuses['holy_shield'] > 0 && isDirectHit) {
+    player.statuses['holy_shield']--;
+    if (player.statuses['holy_shield'] <= 0) delete player.statuses['holy_shield'];
+    addLog('Holy Shield absorbed the hit!', 'success');
+    return;
+  }
+
   // Check Dodge
   if (player.statuses['dodge'] && player.statuses['dodge'] > 0) {
     player.statuses['dodge']--;
@@ -2165,6 +2394,12 @@ function dealDamageToPlayer(damage, addons, enemy) {
     }
     addLog('Dodged!', 'success');
     return;
+  }
+
+  // Check Brace (reduce incoming damage by 1 per stack, minimum 1 total)
+  const braceStacks = player.statuses['brace'] || 0;
+  if (braceStacks > 0) {
+    damage = Math.max(1, damage - braceStacks);
   }
 
   // Apply block
@@ -2182,7 +2417,34 @@ function dealDamageToPlayer(damage, addons, enemy) {
   if (remaining > 0) {
     player.health -= remaining;
     window.health = player.health;
-    addLog(`${enemy.name} dealt ${remaining} damage!`, 'danger');
+    addLog(`${enemy ? enemy.name : 'Unknown'} dealt ${remaining} damage!`, 'danger');
+
+    // Soul Link — propagate health loss to all soul-linked enemies
+    if (player.statuses['soul_link'] && !combatState._soulLinkPropagating) {
+      combatState._soulLinkPropagating = true;
+      combatState.enemies.forEach(e => {
+        if (e.health > 0 && e.statuses['soul_link']) {
+          dealDamage(e, remaining, ['self']);
+        }
+      });
+      combatState._soulLinkPropagating = false;
+    }
+
+    // Prayer Card — 33% chance to gain +1 Holy Shield when taking damage
+    const inv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+    if (inv.some(i => i.name === 'Prayer Card') && isDirectHit) {
+      if (Math.random() < 0.33) {
+        player.statuses['holy_shield'] = (player.statuses['holy_shield'] || 0) + 1;
+        addLog('Prayer Card: +1 Holy Shield!', 'success');
+      }
+    }
+
+    // Prayer Beads — +3 temporary Brace until end of next turn when taking damage
+    if (inv.some(i => i.name === 'Prayer Beads') && isDirectHit) {
+      player.statuses['brace'] = (player.statuses['brace'] || 0) + 3;
+      player.statuses['brace_temp'] = (player.statuses['brace_temp'] || 0) + 3;
+      addLog('Prayer Beads: +3 temporary Brace!', 'success');
+    }
 
     // Player Thorns — melee attacker takes X damage back
     if (player.statuses['thorns'] && enemy && !addons.includes('Ranged')) {
@@ -2198,8 +2460,6 @@ function dealDamageToPlayer(damage, addons, enemy) {
       }
     }
 
-    // Apply curse based on enemy type and difficulty
-    applyCurseFromEnemy(enemy);
   }
 }
 
@@ -2296,8 +2556,24 @@ function processStatusEffects(target, timing) {
       addLog('Oiled: lost 1 energy', 'warning');
     }
 
+    // Regeneration: heal X health at end of turn
+    if (statuses['regeneration'] && statuses['regeneration'] > 0) {
+      const regenAmount = statuses['regeneration'];
+      target.health = Math.min(target.maxHealth, target.health + regenAmount);
+      if (target === combatState.player) window.health = target.health;
+      addLog(`${target.name || 'Player'} regenerated ${regenAmount} health`, 'success');
+    }
+
+    // Prayer Beads temporary Brace: remove the temp stacks accumulated this combat
+    if (target === combatState.player && statuses['brace_temp'] && statuses['brace_temp'] > 0) {
+      const tempBrace = statuses['brace_temp'];
+      statuses['brace'] = Math.max(0, (statuses['brace'] || 0) - tempBrace);
+      if (statuses['brace'] <= 0) delete statuses['brace'];
+      delete statuses['brace_temp'];
+    }
+
     // Decay statuses
-    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade', 'vulnerable', 'weak'];
+    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration'];
     decayStatuses.forEach(status => {
       if (statuses[status]) {
         statuses[status]--;
@@ -2363,6 +2639,35 @@ function endCombat(victory) {
       }
     }
   }
+
+  // Burning Blood: at the end of combat, gain +6 Health
+  if (victory && typeof inventory !== 'undefined') {
+    const burningBloodCount = inventory.filter(i => i.name === 'Burning Blood').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (burningBloodCount > 0) {
+      const heal = 6 * burningBloodCount;
+      if (typeof StateMutator !== 'undefined') {
+        StateMutator.modifyHealth(heal);
+      } else if (typeof gameState !== 'undefined') {
+        gameState.health = Math.min((gameState.maxHealth || 999), (gameState.health || 0) + heal);
+        if (typeof window.health !== 'undefined') window.health = gameState.health;
+      }
+      addLog(`Burning Blood: +${heal} Health!`, 'success');
+    }
+  }
+
+  // Permanently destroy Training cards played this combat
+  if (combatState._destroyCards && combatState._destroyCards.length > 0 &&
+      typeof gameState !== 'undefined' && Array.isArray(gameState.deck)) {
+    for (const cardName of combatState._destroyCards) {
+      const idx = gameState.deck.findIndex(c => c.name === cardName);
+      if (idx !== -1) {
+        gameState.deck.splice(idx, 1);
+      }
+    }
+  }
+
+  // Restore free-cost overrides from Mummified Hand (cleanup)
+  // (Cards are already removed from hand; no action needed here)
 
   const result = {
     victory: victory,
@@ -2558,6 +2863,44 @@ function resolveCardEffect(card, target) {
       } else if (target) {
         for (let t = 0; t < times; t++) dealDamage(target, dmg);
       }
+
+      // Strike Dummy: Attack cards deal +3 damage
+      if ((card.type || '').toLowerCase() === 'attack') {
+        const invSD = typeof window.inventory !== 'undefined' ? window.inventory : [];
+        const strikeDummyCount = invSD.filter(i => i.name === 'Strike Dummy').reduce((n, i) => n + (i.quantity || 1), 0);
+        if (strikeDummyCount > 0) {
+          const bonus = 3 * strikeDummyCount;
+          if (isAoECard) {
+            combatState.enemies.filter(e => e.health > 0).forEach(e => dealDamage(e, bonus));
+          } else if (target) {
+            dealDamage(target, bonus);
+          }
+        }
+      }
+
+      // Strike triggers (Attack cards dealing direct damage)
+      if ((card.type || '').toLowerCase() === 'attack' && target) {
+        const inv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+
+        // Bird Head: Strikes inflict Soul Link
+        if (inv.some(i => i.name === 'Bird Head')) {
+          target.statuses['soul_link'] = 1;
+          addLog(`Bird Head: ${target.name} is Soul Linked!`, 'warning');
+        }
+
+        // Brass Knuckles: Strikes inflict Bruise
+        if (inv.some(i => i.name === 'Brass Knuckles')) {
+          target.statuses['bruise'] = (target.statuses['bruise'] || 0) + 1;
+          addLog(`Brass Knuckles: ${target.name} gains 1 Bruise!`, 'warning');
+        }
+
+        // Jar of Leeches: Strikes inflict Leeches
+        if (inv.some(i => i.name === 'Jar of Leeches')) {
+          target.statuses['leeches'] = (target.statuses['leeches'] || 0) + 1;
+          target.statuses['leeches_owner'] = 'player';
+          addLog(`Jar of Leeches: ${target.name} gains 1 Leeches!`, 'warning');
+        }
+      }
       continue;
     }
 
@@ -2686,9 +3029,74 @@ function resolveCardEffect(card, target) {
     if (lower && lower !== 'n/a') addLog(`${card.name}: ${p}`, 'info');
   }
 
-  // Apply power_per_turn on Powers
-  if (card.type === 'Power') {
-    // Already tracked; effects above handled specifics
+  // Power-play triggers
+  if ((card.type || '').toLowerCase() === 'power') {
+    const invPow = typeof window.inventory !== 'undefined' ? window.inventory : [];
+
+    // Death Orb: deal damage to all enemies equal to number of active curses
+    if (invPow.some(i => i.name === 'Death Orb')) {
+      const curseCount = (typeof gameState !== 'undefined' && Array.isArray(gameState.activeCurses))
+        ? gameState.activeCurses.length : 0;
+      if (curseCount > 0) {
+        combatState.enemies.filter(e => e.health > 0).forEach(e => dealDamage(e, curseCount, ['self']));
+        addLog(`Death Orb: ${curseCount} curse damage to all enemies!`, 'warning');
+      }
+    }
+
+    // Mummified Hand: a random card in hand becomes free this turn
+    if (invPow.some(i => i.name === 'Mummified Hand')) {
+      const hand = combatState.hand;
+      if (hand && hand.length > 0) {
+        const idx = Math.floor(Math.random() * hand.length);
+        hand[idx]._freeCost = hand[idx].cost;
+        hand[idx].cost = 0;
+        addLog(`Mummified Hand: ${hand[idx].name} costs 0 this turn!`, 'success');
+      }
+    }
+  }
+
+  // Training card: apply permanent stat bonuses and mark for permanent destruction
+  if ((card.type || '').toLowerCase() === 'training') {
+    const desc = (card.upgraded ? card.upgradedDescription : card.description) || card.description || '';
+
+    // Parse "Permanently Gain +N StatName" patterns
+    const statMap = { strength: 'strength', dexterity: 'dexterity', intelligence: 'intelligence', charisma: 'charisma' };
+    const permRegex = /\+(\d+)\s+(strength|dexterity|intelligence|charisma)/gi;
+    let m;
+    while ((m = permRegex.exec(desc)) !== null) {
+      const val = parseInt(m[1]);
+      const stat = m[2].toLowerCase();
+      if (statMap[stat] !== undefined) {
+        if (typeof window[stat] !== 'undefined') window[stat] += val;
+        if (typeof gameState !== 'undefined') gameState[stat] = (gameState[stat] || 0) + val;
+        addLog(`${card.name}: permanently +${val} ${stat}!`, 'success');
+      }
+    }
+
+    // Runner's High: for every 10 missing health, gain +N Max Health
+    if (/every 10 health/i.test(desc)) {
+      const gainMatch = desc.match(/Gain \+(\d+) Max Health/i);
+      const gainPerTen = gainMatch ? parseInt(gainMatch[1]) : 2;
+      const missing = Math.max(0, (typeof maxHealth !== 'undefined' ? maxHealth : 0) - (typeof health !== 'undefined' ? health : 0));
+      const bonus = Math.floor(missing / 10) * gainPerTen;
+      if (bonus > 0 && typeof StateMutator !== 'undefined') {
+        StateMutator.modifyMaxHealth(bonus, { onlyMax: true });
+        addLog(`${card.name}: +${bonus} Max Health from missing health!`, 'success');
+      }
+    }
+
+    // Mark for permanent destruction from deck after combat
+    combatState._destroyCards = combatState._destroyCards || [];
+    combatState._destroyCards.push(card.name);
+
+    // Sync stats to gameState
+    if (typeof gameState !== 'undefined') {
+      ['strength', 'dexterity', 'intelligence', 'charisma'].forEach(s => {
+        if (typeof window[s] !== 'undefined') gameState[s] = window[s];
+      });
+    }
+
+    shouldExhaust = true; // Remove from hand (won't be shuffled back since we also destroy from deck)
   }
 
   return shouldExhaust;
@@ -2728,8 +3136,46 @@ function playCard(handIndex, targetId = null) {
   combatState.selectedCardIndex = null;
   combatState.lastPlayedCard = card;
 
+  // Incremental item tracking: update attack counters BEFORE resolveCardEffect so Pen Nib can double
+  const _cardType = (card.type || '').toLowerCase();
+  if (_cardType === 'attack') {
+    const _incInv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+    combatState.incrementals = combatState.incrementals || { attacksTotal: 0, attacksThisTurn: 0 };
+    combatState.incrementals.attacksTotal++;
+    combatState.incrementals.attacksThisTurn++;
+    // Persist run-wide attack count to gameState so it survives across combats
+    if (typeof gameState !== 'undefined') gameState.runAttacks = combatState.incrementals.attacksTotal;
+    // Pen Nib: every 10th attack deals double damage — flag for dealDamage
+    if (combatState.incrementals.attacksTotal % 10 === 0 && _incInv.some(i => i.name === 'Pen Nib')) {
+      combatState._penNibDouble = true;
+    }
+  }
+
   // Resolve effects
   const shouldExhaust = resolveCardEffect(card, target);
+
+  // Post-play incremental triggers for attack cards
+  if (_cardType === 'attack') {
+    const _incInv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+    const _at = combatState.incrementals.attacksTotal;
+    const _att = combatState.incrementals.attacksThisTurn;
+    combatState._penNibDouble = false; // clear double-damage flag
+    // Nunchaku: every 10 attacks → +1 Energy
+    if (_at % 10 === 0 && _incInv.some(i => i.name === 'Nunchaku')) {
+      combatState.player.energy++;
+      addLog('Nunchaku: +1 Energy!', 'success');
+    }
+    // Shuriken: every 3 attacks this turn → +1 Power
+    if (_att % 3 === 0 && _incInv.some(i => i.name === 'Shuriken')) {
+      combatState.player.statuses['power'] = (combatState.player.statuses['power'] || 0) + 1;
+      addLog('Shuriken: +1 Power!', 'success');
+    }
+    // Ornamental Fan: every 4 attacks this turn → +4 Block
+    if (_att % 4 === 0 && _incInv.some(i => i.name === 'Ornamental Fan')) {
+      addBlock(combatState.player, 4);
+      addLog('Ornamental Fan: +4 Block!', 'success');
+    }
+  }
 
   // Route to appropriate pile
   if (shouldExhaust) {

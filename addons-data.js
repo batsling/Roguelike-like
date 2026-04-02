@@ -3,13 +3,13 @@
 var ADDONS_DATA = {
   "cantrip": {
     "name": "Cantrip",
-    "description": "Whenever this side is rolled, trigger it's effect immediately (to a random preferred target)",
+    "description": "Whenever this side is rolled, trigger its effect immediately (to a random preferred target)",
     "canBeAttachedTo": "All"
   },
   "ranged": {
     "name": "Ranged",
     "description": "Ignores effects come from contact",
-    "canBeAttachedTo": "Attack, Status"
+    "canBeAttachedTo": "All"
   },
   "multiplyx": {
     "name": "Multiply X",
@@ -18,22 +18,12 @@ var ADDONS_DATA = {
   },
   "overload": {
     "name": "Overload",
-    "description": "Applies this side to every target",
+    "description": "Applies this to every target (both the player/allies and enemies). Adding ExceptLeft or ExceptRight will allow an enemy to hit everything except any other enemy targets to it's left or right",
     "canBeAttachedTo": "All"
   },
   "cleave": {
     "name": "Cleave",
-    "description": "Applies this side to target and every target to it's direct left and right (Allies or Enemies)",
-    "canBeAttachedTo": "All"
-  },
-  "wide": {
-    "name": "Wide",
-    "description": "Applies this side to every target on the opposing side",
-    "canBeAttachedTo": "All"
-  },
-  "exhertx": {
-    "name": "Exhert (X)",
-    "description": "When this side is rolled, for the next X turns, or for the rest of combat if no X, this side is blank",
+    "description": "Applies this to target and every target to it's direct left and right (Allies or Enemies)",
     "canBeAttachedTo": "All"
   },
   "engage": {
@@ -44,12 +34,12 @@ var ADDONS_DATA = {
   "finesse": {
     "name": "Finesse",
     "description": "This weapon scales damage with Dexterity instead of Strength",
-    "canBeAttachedTo": "Weapon"
+    "canBeAttachedTo": "All"
   },
   "fishingweight": {
     "name": "Fishing Weight",
     "description": "Gain +1 Dmg for every 3 Common, 2 Uncommon, or 1 Rare fish in your loot inventory",
-    "canBeAttachedTo": "Weapon"
+    "canBeAttachedTo": "All"
   },
   "wealth": {
     "name": "Wealth",
@@ -62,8 +52,18 @@ var ADDONS_DATA = {
     "canBeAttachedTo": "All"
   },
   "infusex": {
-    "name": "Infuse (X)",
+    "name": "Infuse X",
     "description": "If this kills an enemy, gain X Max Health",
+    "canBeAttachedTo": "All"
+  },
+  "melee": {
+    "name": "Melee",
+    "description": "Triggers effects from contact (Thorns, etc.)",
+    "canBeAttachedTo": "All"
+  },
+  "destroy": {
+    "name": "Destroy",
+    "description": "Remove this from your deck permanently",
     "canBeAttachedTo": "All"
   }
 };

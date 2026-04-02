@@ -650,26 +650,35 @@ function showRunHistory() {
 }
 
 function showCollection() {
-  const collectionHTML = `
-    <div style="width: 90vw; max-width: 1400px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
-      <!-- Tab Navigation at top -->
-      <div style="display: flex; gap: 8px; padding-bottom: 10px; margin-bottom: 15px; border-bottom: 2px solid #444; align-items: center; flex-wrap: wrap;">
-        <h2 style="color: #ff9800; margin: 0; flex: 1; min-width: 120px;">📚 Collection</h2>
-        <button onclick="switchCollectionTab('games')" id="tab-games" style="padding: 6px 12px; background: #ff9800; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Games (${games.length})</button>
-        <button onclick="switchCollectionTab('characters')" id="tab-characters" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Characters (${typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA.length : 0})</button>
-        <button onclick="switchCollectionTab('items')" id="tab-items" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Items (${items.length})</button>
-        <button onclick="switchCollectionTab('loot')" id="tab-loot" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Loot</button>
-        <button onclick="switchCollectionTab('enemies')" id="tab-enemies" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Enemies (${enemies.length})</button>
-        <button onclick="switchCollectionTab('allies')" id="tab-allies" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Allies (${typeof ALLIES_DATA !== 'undefined' ? ALLIES_DATA.length : 0})</button>
-        <button onclick="switchCollectionTab('curses')" id="tab-curses" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Curses (${curses.length})</button>
-        <button onclick="switchCollectionTab('statuses')" id="tab-statuses" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Statuses (${typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA.length : 0})</button>
-        <button onclick="switchCollectionTab('spells')" id="tab-spells" style="padding: 6px 12px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Spells (${typeof SPELLS_DATA !== 'undefined' ? SPELLS_DATA.length : 0})</button>
-        <button onclick="closeGameModal();" style="padding: 6px 14px; background: #444; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Close</button>
-      </div>
+  const charCount = typeof CHARACTERS_DATA !== 'undefined' ? Object.keys(CHARACTERS_DATA).length : 0;
+  const cardCount = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.filter(c => c.rarity !== 'Starter' && c.type !== 'Status').length : 0;
+  const spellCount = typeof SPELLS_DATA !== 'undefined' ? SPELLS_DATA.length : 0;
 
-      <!-- Tab Content -->
-      <div id="collection-content" style="flex: 1; overflow: hidden; display: flex; gap: 20px;">
-        <!-- Content will be populated by switchCollectionTab -->
+  const collectionHTML = `
+    <style>
+      .col-tab-btn { padding: 6px 12px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px; transition: all 0.15s; }
+      .col-tab-btn:hover { filter: brightness(1.2); }
+      .col-card-hover { transition: transform 0.18s, box-shadow 0.18s; cursor: pointer; }
+      .col-card-hover:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.6); }
+      @keyframes shimmer { 0%,100%{opacity:1} 50%{opacity:0.55} }
+      .rarity-shimmer { animation: shimmer 2.4s ease-in-out infinite; }
+      .glass-panel { background: rgba(15,15,20,0.65); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08); }
+    </style>
+    <div style="width: 90vw; max-width: 1400px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
+      <div style="display: flex; gap: 6px; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 2px solid #333; align-items: center; flex-wrap: wrap;">
+        <h2 style="color: #ff9800; margin: 0; flex: 1; min-width: 110px; font-size: 18px;">📚 Collection</h2>
+        <button class="col-tab-btn" onclick="switchCollectionTab('games')" id="tab-games" style="background:#ff9800;">Games (${games.length})</button>
+        <button class="col-tab-btn" onclick="switchCollectionTab('characters')" id="tab-characters" style="background:#555;">Characters (${charCount})</button>
+        <button class="col-tab-btn" onclick="switchCollectionTab('cards')" id="tab-cards" style="background:#555;">Cards (${cardCount})</button>
+        <button class="col-tab-btn" onclick="switchCollectionTab('items')" id="tab-items" style="background:#555;">Items (${items.length})</button>
+        <button class="col-tab-btn" onclick="switchCollectionTab('loot')" id="tab-loot" style="background:#555;">Loot</button>
+        <button class="col-tab-btn" onclick="switchCollectionTab('enemies')" id="tab-enemies" style="background:#555;">Enemies (${enemies.length})</button>
+        <button class="col-tab-btn" onclick="switchCollectionTab('curses')" id="tab-curses" style="background:#555;">Curses (${curses.length})</button>
+        <button class="col-tab-btn" onclick="switchCollectionTab('statuses')" id="tab-statuses" style="background:#555;">Reference</button>
+        <button class="col-tab-btn" onclick="switchCollectionTab('spells')" id="tab-spells" style="background:#555;">Spells (${spellCount})</button>
+        <button class="col-tab-btn" onclick="closeGameModal();" style="background:#333; margin-left: 4px;">✕ Close</button>
+      </div>
+      <div id="collection-content" style="flex: 1; overflow: hidden; display: flex; gap: 16px;">
       </div>
     </div>
   `;
@@ -686,12 +695,10 @@ function switchCollectionTab(tab) {
   const selectionEnd = activeElement && activeElement.selectionEnd !== undefined ? activeElement.selectionEnd : null;
 
   // Update tab buttons
-  const tabs = ['games', 'characters', 'items', 'loot', 'enemies', 'allies', 'curses', 'statuses', 'spells'];
+  const tabs = ['games', 'characters', 'cards', 'items', 'loot', 'enemies', 'curses', 'statuses', 'spells'];
   tabs.forEach(t => {
     const btn = document.getElementById(`tab-${t}`);
-    if (btn) {
-      btn.style.background = t === tab ? '#ff9800' : '#555';
-    }
+    if (btn) btn.style.background = t === tab ? '#ff9800' : '#555';
   });
 
   const content = document.getElementById('collection-content');
@@ -807,103 +814,173 @@ function switchCollectionTab(tab) {
       </div>
     `;
   } else if (tab === 'characters') {
-    // Initialize search and sort state
     if (typeof window.charactersSearchTerm === 'undefined') window.charactersSearchTerm = '';
     if (!window.characterSortType) window.characterSortType = 'alphabetical';
 
-    const charactersData = typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA : [];
+    const rawChars = typeof CHARACTERS_DATA !== 'undefined' ? Object.values(CHARACTERS_DATA) : [];
     const searchTerm = window.charactersSearchTerm.toLowerCase();
+    let filtered = searchTerm
+      ? rawChars.filter(c => c.name.toLowerCase().includes(searchTerm) || (c.game || '').toLowerCase().includes(searchTerm))
+      : [...rawChars];
 
-    // Filter by search
-    let filteredCharacters = searchTerm
-      ? charactersData.filter(c => c.name.toLowerCase().includes(searchTerm) || (c.game && c.game.toLowerCase().includes(searchTerm)))
-      : [...charactersData];
-
-    // Sort characters
-    let sortedCharacters;
-    if (window.characterSortType === 'alphabetical') {
-      sortedCharacters = filteredCharacters.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (window.characterSortType === 'game') {
-      sortedCharacters = filteredCharacters.sort((a, b) => {
-        const gameDiff = (a.game || '').localeCompare(b.game || '');
-        return gameDiff !== 0 ? gameDiff : a.name.localeCompare(b.name);
-      });
+    if (window.characterSortType === 'game') {
+      filtered.sort((a, b) => (a.game || '').localeCompare(b.game || '') || a.name.localeCompare(b.name));
     } else {
-      sortedCharacters = filteredCharacters.sort((a, b) => a.name.localeCompare(b.name));
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
     }
 
     content.innerHTML = `
-      <!-- Left side: Character grid -->
-      <div id="characters-grid-container" style="flex: 2; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
-        <!-- Search and Sort controls -->
-        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center; flex-wrap: wrap;">
-          <span style="color: #aaa; font-size: 13px;">🔍</span>
-          <input type="text" id="characters-search" placeholder="Search characters..." value="${window.charactersSearchTerm}"
+      <div style="flex: 2; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
+        <div style="display: flex; gap: 8px; margin-bottom: 12px; padding: 8px 12px; background: rgba(0,0,0,0.35); border-radius: 8px; align-items: center; flex-wrap: wrap;">
+          <input type="text" placeholder="🔍 Search characters…" value="${window.charactersSearchTerm}"
             oninput="window.charactersSearchTerm = this.value; switchCollectionTab('characters');"
-            style="flex: 1; min-width: 150px; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid #555; border-radius: 6px; color: white; font-size: 13px; outline: none;"
-          />
-          <div style="border-left: 1px solid #555; height: 20px; margin: 0 5px;"></div>
-          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort:</span>
-          <button onclick="window.characterSortType = 'alphabetical'; switchCollectionTab('characters');" style="padding: 6px 12px; background: ${window.characterSortType === 'alphabetical' ? '#4CAF50' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">A-Z</button>
-          <button onclick="window.characterSortType = 'game'; switchCollectionTab('characters');" style="padding: 6px 12px; background: ${window.characterSortType === 'game' ? '#4CAF50' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Game</button>
-          <span style="color: #666; font-size: 11px; margin-left: auto;">${sortedCharacters.length} of ${charactersData.length}</span>
+            style="flex:1; min-width:130px; padding:6px 10px; background:rgba(0,0,0,0.4); border:1px solid #444; border-radius:6px; color:white; font-size:12px; outline:none;"/>
+          <span style="color:#555; font-size:13px;">|</span>
+          <button onclick="window.characterSortType='alphabetical'; switchCollectionTab('characters');" style="padding:5px 10px; background:${window.characterSortType==='alphabetical'?'#4CAF50':'#444'}; border:none; border-radius:5px; color:white; cursor:pointer; font-size:11px; font-weight:bold;">A-Z</button>
+          <button onclick="window.characterSortType='game'; switchCollectionTab('characters');" style="padding:5px 10px; background:${window.characterSortType==='game'?'#4CAF50':'#444'}; border:none; border-radius:5px; color:white; cursor:pointer; font-size:11px; font-weight:bold;">Game</button>
+          <span style="color:#555; font-size:11px; margin-left:auto;">${filtered.length}/${rawChars.length}</span>
         </div>
-
-        <div id="characters-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; overflow-y: auto;">
-          ${sortedCharacters.map(char => {
-            const charIcon = `images/characters/Icon/${char.name}.png`;
-            return `
-            <div
-              class="collection-character-card"
-              data-character-name="${char.name.replace(/"/g, '&quot;')}"
-              onclick="showCharacterDetails('${char.name.replace(/'/g, "\\'")}')"
-              style="
-                background: rgba(0,0,0,0.3);
-                border: 2px solid #4CAF50;
-                border-radius: 8px;
-                padding: 12px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 8px;
-                transition: transform 0.2s, box-shadow 0.2s;
-                cursor: pointer;
-              "
-              onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.5)';"
-              onmouseout="this.style.transform=''; this.style.boxShadow='';"
-            >
-              <img
-                src="${charIcon}"
-                alt="${char.name}"
-                style="
-                  width: 110px;
-                  height: 110px;
-                  object-fit: contain;
-                  border-radius: 6px;
-                  background: rgba(0,0,0,0.2);
-                  image-rendering: pixelated;
-                "
-                onerror="this.style.opacity='0.3';"
-              />
-              <div style="text-align: center; font-size: 12px; font-weight: bold; color: #4CAF50; word-wrap: break-word; width: 100%;">
-                ${char.name}
-              </div>
-              <div style="font-size: 10px; color: #888; text-align: center;">
-                ${char.game || 'Unknown'}
-              </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; overflow-y: auto;">
+          ${filtered.map(char => `
+            <div class="col-card-hover glass-panel" onclick="showCharacterDetails('${char.name.replace(/'/g,"\\'")}') "
+              style="border-radius:10px; padding:14px 10px; display:flex; flex-direction:column; align-items:center; gap:8px;
+                     border: 2px solid rgba(76,175,80,0.5); box-shadow: 0 0 10px rgba(76,175,80,0.12);">
+              <img src="${char.icon || 'images/characters/Icon/' + char.name + '.png'}" alt="${char.name}"
+                style="width:90px; height:90px; object-fit:contain; border-radius:8px; background:rgba(0,0,0,0.3); image-rendering:pixelated;"
+                onerror="this.style.opacity='0.25';"/>
+              <div style="font-size:12px; font-weight:bold; color:#4CAF50; text-align:center;">${char.name}</div>
+              <div style="font-size:10px; color:#888; text-align:center;">${char.game || ''}</div>
+              <div style="font-size:10px; color:#aaa;">❤ ${char.health || '?'} &nbsp;⚡ ${char.energy || 0}</div>
             </div>
-          `;
-          }).join('')}
+          `).join('')}
         </div>
       </div>
-
-      <!-- Right side: Character details -->
-      <div id="character-details" style="flex: 1; overflow-y: auto; padding: 20px; background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 8px; min-width: 300px;">
-        <div style="text-align: center; color: #888; padding: 40px 20px;">
-          <p>Click a character to view details</p>
-        </div>
+      <div id="character-details" class="glass-panel" style="flex:1; overflow-y:auto; padding:20px; border-radius:10px; min-width:280px;">
+        <div style="text-align:center; color:#666; padding:40px 20px; font-size:13px;">Select a character to view details</div>
       </div>
     `;
+  } else if (tab === 'cards') {
+    if (typeof window.cardsSearchTerm === 'undefined') window.cardsSearchTerm = '';
+    if (typeof window.cardsTypeFilter === 'undefined') window.cardsTypeFilter = 'all';
+    if (typeof window.cardsRarityFilter === 'undefined') window.cardsRarityFilter = 'all';
+    if (typeof window.cardsSortType === 'undefined') window.cardsSortType = 'rarity';
+
+    const allCards = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
+    // Exclude status cards and starters from main pool view
+    let filteredCards = allCards.filter(c => c.type !== 'Status');
+
+    const searchTerm = window.cardsSearchTerm.toLowerCase();
+    if (searchTerm) {
+      filteredCards = filteredCards.filter(c =>
+        c.name.toLowerCase().includes(searchTerm) ||
+        (c.description || '').toLowerCase().includes(searchTerm)
+      );
+    }
+    if (window.cardsTypeFilter !== 'all') {
+      filteredCards = filteredCards.filter(c => (c.type || '').toLowerCase() === window.cardsTypeFilter);
+    }
+    if (window.cardsRarityFilter !== 'all') {
+      filteredCards = filteredCards.filter(c => (c.rarity || '').toLowerCase() === window.cardsRarityFilter);
+    }
+
+    const rarityOrder = { 'legendary':5,'rare':4,'uncommon':3,'common':2,'starter':1 };
+    const typeOrder = { 'attack':1,'skill':2,'power':3,'training':4,'dice':5 };
+    if (window.cardsSortType === 'rarity') {
+      filteredCards.sort((a,b) => (rarityOrder[(b.rarity||'').toLowerCase()]||0) - (rarityOrder[(a.rarity||'').toLowerCase()]||0) || a.name.localeCompare(b.name));
+    } else if (window.cardsSortType === 'type') {
+      filteredCards.sort((a,b) => (typeOrder[(a.type||'').toLowerCase()]||9) - (typeOrder[(b.type||'').toLowerCase()]||9) || a.name.localeCompare(b.name));
+    } else if (window.cardsSortType === 'cost') {
+      filteredCards.sort((a,b) => (a.cost||0) - (b.cost||0) || a.name.localeCompare(b.name));
+    } else {
+      filteredCards.sort((a,b) => a.name.localeCompare(b.name));
+    }
+
+    const getRarityColor = (r) => {
+      switch((r||'').toLowerCase()) {
+        case 'legendary': return '#ff6b00';
+        case 'rare': return '#9b59b6';
+        case 'uncommon': return '#4CAF50';
+        case 'common': return '#aaa';
+        case 'starter': return '#2196F3';
+        default: return '#666';
+      }
+    };
+    const getTypeColor = (t) => {
+      switch((t||'').toLowerCase()) {
+        case 'attack': return '#e74c3c';
+        case 'skill': return '#2980b9';
+        case 'power': return '#8e44ad';
+        case 'training': return '#27ae60';
+        case 'dice': return '#d35400';
+        default: return '#888';
+      }
+    };
+
+    const cardTypes = [...new Set(allCards.filter(c=>c.type!=='Status').map(c=>c.type).filter(Boolean))].sort();
+    const rarities = [...new Set(allCards.filter(c=>c.type!=='Status').map(c=>c.rarity).filter(Boolean))].sort();
+
+    content.innerHTML = `
+      <div style="flex:2; overflow-y:auto; padding:10px; display:flex; flex-direction:column;">
+        <!-- Controls -->
+        <div style="display:flex; gap:6px; margin-bottom:12px; padding:8px 12px; background:rgba(0,0,0,0.35); border-radius:8px; align-items:center; flex-wrap:wrap;">
+          <input type="text" placeholder="🔍 Search cards…" value="${window.cardsSearchTerm}"
+            oninput="window.cardsSearchTerm=this.value; switchCollectionTab('cards');"
+            style="flex:1; min-width:120px; padding:6px 10px; background:rgba(0,0,0,0.4); border:1px solid #444; border-radius:6px; color:white; font-size:12px; outline:none;"/>
+          <span style="color:#555;">|</span>
+          <select onchange="window.cardsTypeFilter=this.value; switchCollectionTab('cards');" style="padding:5px 8px; background:#333; border:1px solid #444; border-radius:6px; color:white; font-size:11px; cursor:pointer;">
+            <option value="all" ${window.cardsTypeFilter==='all'?'selected':''}>All Types</option>
+            ${cardTypes.map(t=>`<option value="${t.toLowerCase()}" ${window.cardsTypeFilter===t.toLowerCase()?'selected':''}>${t}</option>`).join('')}
+          </select>
+          <select onchange="window.cardsRarityFilter=this.value; switchCollectionTab('cards');" style="padding:5px 8px; background:#333; border:1px solid #444; border-radius:6px; color:white; font-size:11px; cursor:pointer;">
+            <option value="all" ${window.cardsRarityFilter==='all'?'selected':''}>All Rarities</option>
+            ${rarities.map(r=>`<option value="${r.toLowerCase()}" ${window.cardsRarityFilter===r.toLowerCase()?'selected':''}>${r}</option>`).join('')}
+          </select>
+          <span style="color:#555;">|</span>
+          <button onclick="window.cardsSortType='rarity'; switchCollectionTab('cards');" style="padding:5px 9px; background:${window.cardsSortType==='rarity'?'#ff9800':'#444'}; border:none; border-radius:5px; color:white; cursor:pointer; font-size:11px; font-weight:bold;">Rarity</button>
+          <button onclick="window.cardsSortType='type'; switchCollectionTab('cards');" style="padding:5px 9px; background:${window.cardsSortType==='type'?'#ff9800':'#444'}; border:none; border-radius:5px; color:white; cursor:pointer; font-size:11px; font-weight:bold;">Type</button>
+          <button onclick="window.cardsSortType='cost'; switchCollectionTab('cards');" style="padding:5px 9px; background:${window.cardsSortType==='cost'?'#ff9800':'#444'}; border:none; border-radius:5px; color:white; cursor:pointer; font-size:11px; font-weight:bold;">Cost</button>
+          <button onclick="window.cardsSortType='alpha'; switchCollectionTab('cards');" style="padding:5px 9px; background:${window.cardsSortType==='alpha'?'#ff9800':'#444'}; border:none; border-radius:5px; color:white; cursor:pointer; font-size:11px; font-weight:bold;">A-Z</button>
+          <span style="color:#555; font-size:11px; margin-left:auto;">${filteredCards.length}/${allCards.filter(c=>c.type!=='Status').length}</span>
+        </div>
+        <!-- Card grid -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:10px; overflow-y:auto;">
+          ${filteredCards.map(card => {
+            const rc = getRarityColor(card.rarity);
+            const tc = getTypeColor(card.type);
+            const isShimmer = (card.rarity||'').toLowerCase() === 'rare' || (card.rarity||'').toLowerCase() === 'legendary';
+            return `
+            <div class="col-card-hover ${isShimmer?'rarity-shimmer':''}" onclick="showCardDetails('${card.name.replace(/'/g,"\\'")}') "
+              style="border-radius:10px; border:2px solid ${rc}; background:rgba(10,10,15,0.8);
+                     box-shadow: 0 0 8px ${rc}44; display:flex; flex-direction:column; overflow:hidden; min-height:160px; position:relative;">
+              <!-- Cost bubble -->
+              <div style="position:absolute; top:6px; left:6px; width:22px; height:22px; border-radius:50%;
+                           background:${tc}; border:2px solid rgba(255,255,255,0.3); display:flex; align-items:center; justify-content:center;
+                           font-size:11px; font-weight:bold; color:white; z-index:2;">
+                ${card.cost !== null && card.cost !== undefined ? card.cost : '?'}
+              </div>
+              <!-- Card image -->
+              ${card.imageUrl ? `
+                <img src="${card.imageUrl}" alt="${card.name}"
+                  style="width:100%; height:80px; object-fit:contain; background:rgba(0,0,0,0.3); image-rendering:pixelated;"
+                  onerror="this.style.display='none';"/>
+              ` : `<div style="width:100%; height:80px; background:linear-gradient(135deg,${tc}33,${rc}22); display:flex; align-items:center; justify-content:center; font-size:28px; color:${tc}88;">
+                ${(card.type||'').toLowerCase()==='attack'?'⚔':(card.type||'').toLowerCase()==='skill'?'🛡':(card.type||'').toLowerCase()==='power'?'✨':'🃏'}
+              </div>`}
+              <!-- Card info -->
+              <div style="padding:6px; flex:1; display:flex; flex-direction:column; gap:3px;">
+                <div style="font-size:11px; font-weight:bold; color:#eee; line-height:1.2;">${card.name}</div>
+                <div style="font-size:9px; color:${tc}; text-transform:uppercase; font-weight:bold;">${card.type || ''}</div>
+                <div style="font-size:9px; color:${rc}; text-transform:uppercase;">${card.rarity || ''}</div>
+              </div>
+            </div>
+          `;}).join('')}
+        </div>
+      </div>
+      <div id="card-details" class="glass-panel" style="flex:1; overflow-y:auto; padding:20px; border-radius:10px; min-width:280px;">
+        <div style="text-align:center; color:#666; padding:40px 20px; font-size:13px;">Select a card to view details</div>
+      </div>
+    `;
+
   } else if (tab === 'items') {
     // Initialize filter state if not set
     if (typeof window.itemsShowNA === 'undefined') window.itemsShowNA = false;
@@ -999,59 +1076,28 @@ function switchCollectionTab(tab) {
           <span style="color: #666; font-size: 10px; margin-left: auto;">${sortedItems.length} of ${items.length}</span>
         </div>
 
-        <div id="items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; overflow-y: auto;">
+        <div id="items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; overflow-y: auto;">
           ${sortedItems.map(item => {
             const rarityColor = getRarityColor(item.rarity);
+            const isShimmer = ['legendary','rare'].includes((item.rarity||'').toLowerCase());
             return `
-            <div
-              class="collection-item-card"
-              data-item-name="${item.name.replace(/"/g, '&quot;')}"
+            <div class="col-card-hover ${isShimmer?'rarity-shimmer':''}"
               onclick="showItemDetails('${item.name.replace(/'/g, "\\'")}')"
-              style="
-                background: rgba(0,0,0,0.3);
-                border: 2px solid ${rarityColor};
-                border-radius: 8px;
-                padding: 8px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 6px;
-                transition: transform 0.2s, box-shadow 0.2s;
-                cursor: pointer;
-              "
-              onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.5)';"
-              onmouseout="this.style.transform=''; this.style.boxShadow='';"
-            >
-              <img
-                src="${item.image || 'images/items/no-item.svg'}"
-                alt="${item.name}"
-                style="
-                  width: 80px;
-                  height: 80px;
-                  object-fit: contain;
-                  border-radius: 6px;
-                  background: rgba(0,0,0,0.2);
-                  image-rendering: pixelated;
-                "
-                onerror="this.style.display='none';"
-              />
-              <div style="text-align: center; font-size: 11px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word; width: 100%;">
-                ${item.name}
-              </div>
-              <div style="font-size: 9px; color: ${rarityColor}; text-align: center; text-transform: uppercase; font-weight: bold;">
-                ${item.rarity}
-              </div>
+              style="background:rgba(10,10,15,0.8); border:2px solid ${rarityColor};
+                     box-shadow:0 0 8px ${rarityColor}44; border-radius:10px; padding:10px;
+                     display:flex; flex-direction:column; align-items:center; gap:6px;">
+              <img src="${item.image || ''}" alt="${item.name}"
+                style="width:72px; height:72px; object-fit:contain; border-radius:6px; background:rgba(0,0,0,0.3); image-rendering:pixelated;"
+                onerror="this.style.display='none';"/>
+              <div style="text-align:center; font-size:11px; font-weight:bold; color:${rarityColor}; word-break:break-word; width:100%;">${item.name}</div>
+              <div style="font-size:9px; color:${rarityColor}; text-transform:uppercase; font-weight:bold;">${item.rarity||''}</div>
             </div>
           `;
           }).join('')}
         </div>
       </div>
-
-      <!-- Right side: Item details -->
-      <div id="item-details" style="flex: 1; overflow-y: auto; padding: 20px; background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 8px; min-width: 300px;">
-        <div style="text-align: center; color: #888; padding: 40px 20px;">
-          <p>Click an item to view details</p>
-        </div>
+      <div id="item-details" class="glass-panel" style="flex:1; overflow-y:auto; padding:20px; border-radius:10px; min-width:280px;">
+        <div style="text-align:center; color:#666; padding:40px 20px; font-size:13px;">Select an item to view details</div>
       </div>
     `;
   } else if (tab === 'loot') {
@@ -1188,124 +1234,11 @@ function switchCollectionTab(tab) {
       </div>
     `;
   } else if (tab === 'allies') {
-    // Initialize search state
-    if (typeof window.alliesSearchTerm === 'undefined') window.alliesSearchTerm = '';
-    if (!window.allySortType) window.allySortType = 'alphabetical';
-
-    const alliesData = typeof ALLIES_DATA !== 'undefined' ? ALLIES_DATA : [];
-    const searchTerm = window.alliesSearchTerm.toLowerCase();
-
-    // Filter by search
-    let filteredAllies = searchTerm
-      ? alliesData.filter(a => a.name.toLowerCase().includes(searchTerm) || (a.game && a.game.toLowerCase().includes(searchTerm)))
-      : [...alliesData];
-
-    // Sort allies
-    let sortedAllies;
-    if (window.allySortType === 'alphabetical') {
-      sortedAllies = filteredAllies.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (window.allySortType === 'game') {
-      sortedAllies = filteredAllies.sort((a, b) => {
-        const gameDiff = (a.game || '').localeCompare(b.game || '');
-        return gameDiff !== 0 ? gameDiff : a.name.localeCompare(b.name);
-      });
-    } else if (window.allySortType === 'rarity') {
-      const rarityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
-      sortedAllies = filteredAllies.sort((a, b) => {
-        const rarityDiff = (rarityOrder[(b.rarity || '').toLowerCase()] || 0) - (rarityOrder[(a.rarity || '').toLowerCase()] || 0);
-        return rarityDiff !== 0 ? rarityDiff : a.name.localeCompare(b.name);
-      });
-    } else {
-      sortedAllies = filteredAllies.sort((a, b) => a.name.localeCompare(b.name));
-    }
-
-    // Get rarity color
-    const getAllyRarityColor = (rarity) => {
-      switch((rarity || '').toLowerCase()) {
-        case 'high': return '#9b59b6';
-        case 'medium': return '#ff9800';
-        case 'low': return '#4CAF50';
-        default: return '#888';
-      }
-    };
-
-    content.innerHTML = `
-      <!-- Left side: Ally grid -->
-      <div id="allies-grid-container" style="flex: 2; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
-        <!-- Search and Sort controls -->
-        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center; flex-wrap: wrap;">
-          <span style="color: #aaa; font-size: 13px;">🔍</span>
-          <input type="text" id="allies-search" placeholder="Search allies..." value="${window.alliesSearchTerm}"
-            oninput="window.alliesSearchTerm = this.value; switchCollectionTab('allies');"
-            style="flex: 1; min-width: 150px; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid #555; border-radius: 6px; color: white; font-size: 13px; outline: none;"
-          />
-          <div style="border-left: 1px solid #555; height: 20px; margin: 0 5px;"></div>
-          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort:</span>
-          <button onclick="window.allySortType = 'alphabetical'; switchCollectionTab('allies');" style="padding: 6px 12px; background: ${window.allySortType === 'alphabetical' ? '#2196F3' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">A-Z</button>
-          <button onclick="window.allySortType = 'game'; switchCollectionTab('allies');" style="padding: 6px 12px; background: ${window.allySortType === 'game' ? '#2196F3' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Game</button>
-          <button onclick="window.allySortType = 'rarity'; switchCollectionTab('allies');" style="padding: 6px 12px; background: ${window.allySortType === 'rarity' ? '#2196F3' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Rarity</button>
-          <span style="color: #666; font-size: 11px; margin-left: auto;">${sortedAllies.length} of ${alliesData.length}</span>
-        </div>
-
-        <div id="allies-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; overflow-y: auto;">
-          ${sortedAllies.map(ally => {
-            const allyIcon = ally.image || `images/allies/${ally.name}.png`;
-            const rarityColor = getAllyRarityColor(ally.rarity);
-            return `
-            <div
-              class="collection-ally-card"
-              data-ally-name="${ally.name.replace(/"/g, '&quot;')}"
-              onclick="showAllyDetails('${ally.name.replace(/'/g, "\\'")}')"
-              style="
-                background: rgba(0,0,0,0.3);
-                border: 2px solid ${rarityColor};
-                border-radius: 8px;
-                padding: 10px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 6px;
-                transition: transform 0.2s, box-shadow 0.2s;
-                cursor: pointer;
-              "
-              onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.5)';"
-              onmouseout="this.style.transform=''; this.style.boxShadow='';"
-            >
-              <img
-                src="${allyIcon}"
-                alt="${ally.name}"
-                style="
-                  width: 80px;
-                  height: 80px;
-                  object-fit: contain;
-                  border-radius: 6px;
-                  background: rgba(0,0,0,0.2);
-                  image-rendering: pixelated;
-                "
-                onerror="this.style.opacity='0.3';"
-              />
-              <div style="text-align: center; font-size: 12px; font-weight: bold; color: ${rarityColor}; word-wrap: break-word; width: 100%;">
-                ${ally.name}
-              </div>
-              <div style="font-size: 10px; color: #888; text-align: center;">
-                ${ally.type || 'Ally'} • HP: ${ally.hp || '?'}
-              </div>
-              <div style="font-size: 9px; color: #666; text-align: center;">
-                ${ally.game || 'Unknown'}
-              </div>
-            </div>
-          `;
-          }).join('')}
-        </div>
-      </div>
-
-      <!-- Right side: Ally details -->
-      <div id="ally-details" style="flex: 1; overflow-y: auto; padding: 20px; background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 8px; min-width: 300px;">
-        <div style="text-align: center; color: #888; padding: 40px 20px;">
-          <p>Click an ally to view details</p>
-        </div>
-      </div>
-    `;
+    // Allies tab removed — redirect to characters
+    switchCollectionTab('characters');
+    return;
+  } else if (tab === '_allies_removed') {
+    // Allies tab removed — no-op
   } else if (tab === 'curses') {
     // Group curses by base name (without I, II, III)
     const curseGroups = new Map();
@@ -1399,115 +1332,161 @@ function switchCollectionTab(tab) {
       </div>
     `;
   } else if (tab === 'statuses') {
-    // Initialize search and filter state
-    if (typeof window.statusesSearchTerm === 'undefined') window.statusesSearchTerm = '';
-    if (!window.statusSortType) window.statusSortType = 'alphabetical';
-    if (typeof window.statusTypeFilter === 'undefined') window.statusTypeFilter = 'all';
+    // Embedded reference data from design spreadsheet
+    const REF_STATUSES = [
+      {name:'Burn',desc:'Deals 3 damage to any target per stack at the end of turn',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Burn',rarity:'Common'},
+      {name:'Poison',desc:'Deals X damage to any target where X is the stack at the start of turn',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Poison',rarity:'Common'},
+      {name:'Dodge',desc:'Negate the next X sources of damage where X is the stack',type:'Buff',stackable:true,decay:'Down when player was going to lose health',who:'All',file:'Dodge',rarity:'Rare'},
+      {name:'Power',desc:'Raise or Lower the damage dealt by this target by X',type:'Buff',stackable:true,decay:'None',who:'All',file:'Power',rarity:'Uncommon'},
+      {name:'Oiled',desc:'Burn deals double damage, and at end of turn, Dex save 10 or Lose 1 Energy',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Oiled',rarity:''},
+      {name:'Forgetful',desc:'This enemy cannot repeat any of its intents until it has performed all of them.',type:'Ability',stackable:false,decay:'Down by 1 when all sides have been rolled',who:'Enemy',file:'Forgetful',rarity:''},
+      {name:'Barricade',desc:'Block goes down by half at end of turn',type:'Ability',stackable:false,decay:'None',who:'All',file:'Barricade',rarity:'Rare'},
+      {name:'Ruptured',desc:'Deals 3 damage to the player when they use a dash to gain dodge',type:'Debuff',stackable:true,decay:'Down by 1 when dash is used',who:'All',file:'Ruptured',rarity:''},
+      {name:'Frail',desc:'All damage deals double to target',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Frail',rarity:'Rare'},
+      {name:'Formless',desc:'When dealt damage, change its intent',type:'Ability',stackable:false,decay:'None',who:'Enemy',file:'Formless',rarity:''},
+      {name:'Multi Attack X',desc:'This enemy has X amount of intents in a turn',type:'Ability',stackable:false,decay:'None',who:'Enemy',file:'MultiAttack',rarity:''},
+      {name:'Ritual',desc:'At the end of its turn, gains X Power',type:'Buff',stackable:true,decay:'None',who:'All',file:'Ritual',rarity:'Rare'},
+      {name:'Confused',desc:'Each Dice Energy Cost is randomized between 0 and your max energy every roll',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'Player',file:'Confused',rarity:''},
+      {name:'Fading X',desc:'Dies in X turns',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Fading',rarity:''},
+      {name:'Shifting',desc:'Loses X Power where X is the amount of damage taken this turn',type:'Debuff',stackable:false,decay:'None',who:'All',file:'Shifting',rarity:''},
+      {name:'Thorns',desc:'When a target with Thorns gets dealt or deals Melee Dmg, the target deals X Dmg to the attacker/recipient',type:'Buff',stackable:true,decay:'None',who:'All',file:'Thorns',rarity:'Uncommon'},
+      {name:'Vulnerable',desc:'All damage deals 50% more to target',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Vulnerable',rarity:'Common'},
+      {name:'Weak',desc:'Target deals 25% less damage.',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Weak',rarity:'Common'},
+      {name:'Stun',desc:'The enemy\'s intent will be changed to "Stunned" and will do nothing on this turn',type:'Debuff',stackable:false,decay:'Down by 1 at end of turn',who:'Enemy',file:'Stun',rarity:''},
+      {name:'Unknown',desc:'This enemy intends to do something specific',type:'Intent',stackable:false,decay:'None',who:'Enemy',file:'Unknown',rarity:''},
+      {name:'Stagger X',desc:'Target will gain Stun when hit with X% of Total Health lost in one hit',type:'Ability',stackable:false,decay:'None',who:'Enemy',file:'Stun',rarity:''},
+      {name:'Pigment Rich',desc:'When hit, add a random pigment card to your hand.',type:'Ability',stackable:false,decay:'None',who:'Enemy',file:'PigmentRich',rarity:''},
+      {name:'Rerollable',desc:'Attacks from this enemy can be rerolled costing 1 Reroll',type:'Ability',stackable:false,decay:'None',who:'Enemy',file:'Rerollable',rarity:''},
+      {name:'Rust',desc:'If this enemy does damage that causes the player to lose health, Downgrade a random passive item',type:'Ability',stackable:false,decay:'None',who:'Enemy',file:'Rust',rarity:''},
+      {name:'Brace',desc:'Target takes 1 less damage from all sources per stack. (minimum 1)',type:'Buff',stackable:true,decay:'None',who:'All',file:'Brace',rarity:'Common'},
+      {name:'Bruise',desc:'Increases all melee and ranged damage taken by 1 per stack.',type:'Debuff',stackable:true,decay:'None',who:'All',file:'Bruise',rarity:'Common'},
+      {name:'Leeches',desc:'Drains 1 health per stack from all afflicted units at the end of the applier\'s turn and gives it to the applier.',type:'Debuff',stackable:true,decay:'None',who:'All',file:'Leeches',rarity:'Uncommon'},
+      {name:'Soul Link',desc:'Whenever a soul linked target loses health, all soul linked characters lose that health as well.',type:'Debuff',stackable:false,decay:'None',who:'All',file:'SoulLink',rarity:'Rare'},
+      {name:'Holy Shield',desc:'The next time this unit gets hit, take no damage and lose 1 Holy Shield. This takes precedence over Block',type:'Buff',stackable:true,decay:'When the target would take damage',who:'All',file:'HolyShield',rarity:'Rare'},
+      {name:'Regeneration',desc:'At the end of target\'s turn, it gains X health where X is the stack',type:'Buff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Regeneration',rarity:'Uncommon'},
+    ];
+    const REF_MOVES = [
+      {name:'Dmg',desc:'Deals X damage to target',target:'Enemy',file:'Attack',scaling:'Strength',rarity:'Common'},
+      {name:'Block',desc:'Give target X block — X amount of damage a target can take before it affects their health',target:'Ally/Self',file:'Defense',scaling:'Dexterity',rarity:'Common'},
+      {name:'Reroll',desc:'Gains X rerolls',target:'Self',file:'Status',scaling:'Charisma',rarity:'Rare'},
+      {name:'Heal',desc:'Give target X health',target:'Ally/Self',file:'Health',scaling:'Intelligence',rarity:'Uncommon'},
+      {name:'Spawn',desc:'Spawn X Creature — if used by enemies, the new enemy will show "Doing nothing"',target:'Self',file:'Status',scaling:'N/A',rarity:''},
+      {name:'Alter',desc:'Alter target into X with the same Health as the original target, but Max Health of X',target:'Self',file:'Status',scaling:'N/A',rarity:''},
+      {name:'Get',desc:'Give X status to self',target:'Self',file:'Status',scaling:'Charisma',rarity:'Common'},
+      {name:'Inflict',desc:'Inflict X status to target',target:'Enemy',file:'Status',scaling:'Charisma',rarity:'Common'},
+      {name:'Cleanse',desc:'Removes X stacks of all debuff statuses',target:'Ally/Self',file:'Status',scaling:'Charisma',rarity:'Uncommon'},
+      {name:'Mana',desc:'Gain X Mana',target:'Self',file:'Mana',scaling:'Intelligence',rarity:'Common'},
+      {name:'Pain',desc:'Target deals X damage to self (not Melee or Ranged)',target:'Self',file:'Status',scaling:'Strength',rarity:''},
+      {name:'Assassinate',desc:'Kill an enemy with at least X health left',target:'Enemy',file:'Assassinate',scaling:'Strength',rarity:'Rare'},
+      {name:'Vitality',desc:'Gain X Max Health',target:'Ally/Self',file:'Vitality',scaling:'Intelligence',rarity:'Rare'},
+      {name:'Add X to Y',desc:'Target gives X card to your Y (Deck, Hand, or Discard)',target:'Player',file:'Status',scaling:'N/A',rarity:''},
+      {name:'Steal X in Y',desc:'Enemy steals X card from the player\'s Y (Deck, Hand, Discard, Any) for the duration of the battle',target:'Player',file:'Status',scaling:'N/A',rarity:''},
+      {name:'Consume X in Y for Z',desc:'Steal X from player\'s Y and destroy it permanently, then Get Z status if successful',target:'Player',file:'Status',scaling:'N/A',rarity:''},
+      {name:'Lose',desc:'Lose X status Y times (# or All)',target:'Self',file:'Status',scaling:'N/A',rarity:''},
+    ];
+    const REF_ADDONS = [
+      {name:'Cantrip',desc:'Whenever this side is rolled, trigger its effect immediately (to a random preferred target)',attachTo:'All',forms:''},
+      {name:'Ranged',desc:'Ignores effects that come from contact',attachTo:'Attack, Status',forms:''},
+      {name:'Multiply X',desc:'Multiplies this side by X (Example: 2 Damage Multi 2)',attachTo:'All',forms:''},
+      {name:'Overload',desc:'Applies this to every target (both player/allies and enemies). ExceptLeft/ExceptRight lets an enemy hit everything except neighbors.',attachTo:'All',forms:'OverloadExceptLeft, OverloadExceptRight'},
+      {name:'Cleave',desc:'Applies this to target and every target directly to its left and right',attachTo:'All',forms:''},
+      {name:'Engage',desc:'x2 on targets with full health',attachTo:'All',forms:''},
+      {name:'Finesse',desc:'This weapon scales damage with Dexterity instead of Strength',attachTo:'Weapon',forms:''},
+      {name:'Fishing Weight',desc:'Gain +1 Dmg for every 3 Common, 2 Uncommon, or 1 Rare fish in your loot inventory',attachTo:'Weapon',forms:''},
+      {name:'Wealth',desc:'Add +1 for every 10 Gold the player has',attachTo:'All',forms:''},
+      {name:'Indiscriminate',desc:'Will use random applicable targets',attachTo:'All',forms:''},
+      {name:'Infuse X',desc:'If this kills an enemy, gain X Max Health',attachTo:'All',forms:''},
+      {name:'Melee',desc:'Triggers effects from contact (Thorns, etc.)',attachTo:'All',forms:''},
+      {name:'Destroy',desc:'Remove this from your deck permanently',attachTo:'All',forms:''},
+    ];
 
-    const statusesData = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA : [];
-    const searchTerm = window.statusesSearchTerm.toLowerCase();
+    if (!window.refSubtab) window.refSubtab = 'statuses';
+    if (typeof window.refSearch === 'undefined') window.refSearch = '';
+    if (!window.refTypeFilter) window.refTypeFilter = 'all';
 
-    // Filter by search
-    let filteredStatuses = searchTerm
-      ? statusesData.filter(s => s.name.toLowerCase().includes(searchTerm) || (s.description && s.description.toLowerCase().includes(searchTerm)))
-      : [...statusesData];
-
-    // Filter by type
-    if (window.statusTypeFilter !== 'all') {
-      filteredStatuses = filteredStatuses.filter(s => (s.type || '').toLowerCase() === window.statusTypeFilter.toLowerCase());
-    }
-
-    // Sort statuses
-    let sortedStatuses;
-    if (window.statusSortType === 'alphabetical') {
-      sortedStatuses = filteredStatuses.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (window.statusSortType === 'type') {
-      sortedStatuses = filteredStatuses.sort((a, b) => {
-        const typeDiff = (a.type || '').localeCompare(b.type || '');
-        return typeDiff !== 0 ? typeDiff : a.name.localeCompare(b.name);
-      });
-    } else {
-      sortedStatuses = filteredStatuses.sort((a, b) => a.name.localeCompare(b.name));
-    }
-
-    // Get status type color
-    const getStatusTypeColor = (type) => {
-      switch((type || '').toLowerCase()) {
+    const getTypeColor = (type) => {
+      switch((type||'').toLowerCase()) {
         case 'buff': return '#4CAF50';
         case 'debuff': return '#f44336';
-        default: return '#888';
+        case 'ability': return '#9c6bff';
+        case 'intent': return '#888';
+        default: return '#7ea8be';
+      }
+    };
+    const getRarityColor = (r) => {
+      switch((r||'').toLowerCase()) {
+        case 'common': return '#aaa';
+        case 'uncommon': return '#4CAF50';
+        case 'rare': return '#5b9bd5';
+        default: return '#555';
       }
     };
 
-    content.innerHTML = `
-      <div style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column;">
-        <!-- Search and Filter controls -->
-        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center; flex-wrap: wrap;">
-          <span style="color: #aaa; font-size: 13px;">🔍</span>
-          <input type="text" id="statuses-search" placeholder="Search statuses..." value="${window.statusesSearchTerm}"
-            oninput="window.statusesSearchTerm = this.value; switchCollectionTab('statuses');"
-            style="flex: 1; min-width: 150px; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid #555; border-radius: 6px; color: white; font-size: 13px; outline: none;"
-          />
-          <div style="border-left: 1px solid #555; height: 20px; margin: 0 5px;"></div>
-          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort:</span>
-          <button onclick="window.statusSortType = 'alphabetical'; switchCollectionTab('statuses');" style="padding: 6px 12px; background: ${window.statusSortType === 'alphabetical' ? '#ff9800' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">A-Z</button>
-          <button onclick="window.statusSortType = 'type'; switchCollectionTab('statuses');" style="padding: 6px 12px; background: ${window.statusSortType === 'type' ? '#ff9800' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Type</button>
-          <div style="border-left: 1px solid #555; height: 20px; margin: 0 5px;"></div>
-          <span style="color: #aaa; font-size: 13px; font-weight: bold;">Filter:</span>
-          <button onclick="window.statusTypeFilter = 'all'; switchCollectionTab('statuses');" style="padding: 6px 12px; background: ${window.statusTypeFilter === 'all' ? '#ff9800' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">All</button>
-          <button onclick="window.statusTypeFilter = 'buff'; switchCollectionTab('statuses');" style="padding: 6px 12px; background: ${window.statusTypeFilter === 'buff' ? '#4CAF50' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Buffs</button>
-          <button onclick="window.statusTypeFilter = 'debuff'; switchCollectionTab('statuses');" style="padding: 6px 12px; background: ${window.statusTypeFilter === 'debuff' ? '#f44336' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Debuffs</button>
-          <span style="color: #666; font-size: 11px; margin-left: auto;">${sortedStatuses.length} of ${statusesData.length}</span>
-        </div>
+    const subBtnStyle = (active) => 'padding:7px 18px;border:none;border-radius:6px 6px 0 0;cursor:pointer;font-weight:bold;font-size:13px;transition:background 0.2s;' +
+      (active ? 'background:#ff9800;color:#111;' : 'background:rgba(0,0,0,0.35);color:#aaa;');
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; overflow-y: auto;">
-          ${sortedStatuses.map(status => {
-            const typeColor = getStatusTypeColor(status.type);
-            const statusIcon = status.image || `images/statuses/${status.name}.png`;
-            return `
-            <div style="
-              background: rgba(0,0,0,0.3);
-              border: 2px solid ${typeColor};
-              border-radius: 8px;
-              padding: 15px;
-              display: flex;
-              gap: 12px;
-              align-items: flex-start;
-              transition: transform 0.2s, box-shadow 0.2s;
-            " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.5)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
-              <img
-                src="${statusIcon}"
-                alt="${status.name}"
-                style="
-                  width: 48px;
-                  height: 48px;
-                  object-fit: contain;
-                  border-radius: 6px;
-                  background: rgba(0,0,0,0.2);
-                  image-rendering: pixelated;
-                  flex-shrink: 0;
-                "
-                onerror="this.style.opacity='0.3';"
-              />
-              <div style="flex: 1; min-width: 0;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                  <div style="font-size: 14px; font-weight: bold; color: ${typeColor};">${status.name}</div>
-                  <div style="font-size: 10px; color: ${typeColor}; text-transform: uppercase; font-weight: bold; padding: 2px 8px; background: rgba(${typeColor === '#4CAF50' ? '76,175,80' : '244,67,54'}, 0.2); border-radius: 4px;">
-                    ${status.type || 'Unknown'}
-                  </div>
-                </div>
-                <div style="font-size: 12px; color: #ddd; line-height: 1.4; margin-bottom: 8px;">
-                  ${status.description || 'No description'}
-                </div>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap; font-size: 10px; color: #888;">
-                  ${status.stackable ? '<span style="color: #66b3ff;">Stackable</span>' : ''}
-                  ${status.decay && status.decay !== 'None' ? `<span>Decay: ${status.decay}</span>` : ''}
-                </div>
-              </div>
-            </div>
-          `;
+    const searchTerm = window.refSearch.toLowerCase();
+
+    let innerHtml = '';
+
+    if (window.refSubtab === 'statuses') {
+      let data = REF_STATUSES;
+      if (searchTerm) data = data.filter(s => s.name.toLowerCase().includes(searchTerm) || s.desc.toLowerCase().includes(searchTerm));
+      if (window.refTypeFilter !== 'all') data = data.filter(s => s.type.toLowerCase() === window.refTypeFilter);
+
+      const typeFilters = ['all','buff','debuff','ability'];
+      innerHtml = `
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+          <span style="color:#aaa;font-size:12px;">Filter:</span>
+          ${typeFilters.map(f => '<button onclick="window.refTypeFilter=\'' + f + '\';switchCollectionTab(\'statuses\');" style="padding:5px 12px;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;background:' + (window.refTypeFilter===f ? getTypeColor(f==='all'?'':f) || '#ff9800' : '#444') + ';color:white;">' + (f==='all'?'All':f.charAt(0).toUpperCase()+f.slice(1)) + '</button>').join('')}
+          <span style="color:#666;font-size:11px;margin-left:auto;">${data.length} entries</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;overflow-y:auto;">
+          ${data.map(s => {
+            const tc = getTypeColor(s.type);
+            const rc = getRarityColor(s.rarity);
+            return '<div style="background:rgba(0,0,0,0.35);border:1px solid ' + tc + '44;border-left:3px solid ' + tc + ';border-radius:8px;padding:12px;display:flex;gap:10px;align-items:flex-start;transition:transform 0.15s,box-shadow 0.15s;" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 4px 12px rgba(0,0,0,0.5)\';" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\';"><img src="images/statuses/' + s.file + '.png" alt="' + s.name + '" style="width:44px;height:44px;object-fit:contain;border-radius:5px;background:rgba(0,0,0,0.2);image-rendering:pixelated;flex-shrink:0;" onerror="this.style.opacity=\'0.2\';"/><div style="flex:1;min-width:0;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:6px;"><span style="font-size:13px;font-weight:bold;color:' + tc + ';">' + s.name + '</span><span style="font-size:10px;color:' + tc + ';text-transform:uppercase;font-weight:bold;padding:2px 6px;background:' + tc + '22;border-radius:4px;white-space:nowrap;">' + s.type + '</span></div><div style="font-size:11px;color:#ccc;line-height:1.5;margin-bottom:6px;">' + s.desc + '</div><div style="display:flex;gap:8px;flex-wrap:wrap;font-size:10px;"><span style="color:#888;">Affects: ' + s.who + '</span>' + (s.stackable ? '<span style="color:#66b3ff;">Stackable</span>' : '') + (s.decay && s.decay!=='None' ? '<span style="color:#aaa;" title="' + s.decay + '">Decays</span>' : '') + (s.rarity ? '<span style="color:' + rc + ';margin-left:auto;">' + s.rarity + '</span>' : '') + '</div></div></div>';
           }).join('')}
         </div>
+      `;
+    } else if (window.refSubtab === 'moves') {
+      let data = REF_MOVES;
+      if (searchTerm) data = data.filter(m => m.name.toLowerCase().includes(searchTerm) || m.desc.toLowerCase().includes(searchTerm));
+      innerHtml = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;overflow-y:auto;">
+          ${data.map(m => {
+            const rc = getRarityColor(m.rarity);
+            return '<div style="background:rgba(0,0,0,0.35);border:1px solid #7ea8be44;border-left:3px solid #7ea8be;border-radius:8px;padding:12px;transition:transform 0.15s,box-shadow 0.15s;" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 4px 12px rgba(0,0,0,0.5)\';" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\';"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:14px;font-weight:bold;color:#c9d6e3;">' + m.name + '</span>' + (m.rarity ? '<span style="font-size:10px;color:' + rc + ';font-weight:bold;">' + m.rarity + '</span>' : '') + '</div><div style="font-size:11px;color:#ccc;line-height:1.5;margin-bottom:8px;">' + m.desc + '</div><div style="display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:#888;"><span>Target: <span style="color:#b8d4e8;">' + m.target + '</span></span>' + (m.scaling && m.scaling!=='N/A' ? '<span>Scales: <span style="color:#b8d4e8;">' + m.scaling + '</span></span>' : '') + '</div></div>';
+          }).join('')}
+        </div>
+      `;
+    } else if (window.refSubtab === 'addons') {
+      let data = REF_ADDONS;
+      if (searchTerm) data = data.filter(a => a.name.toLowerCase().includes(searchTerm) || a.desc.toLowerCase().includes(searchTerm));
+      innerHtml = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;overflow-y:auto;">
+          ${data.map(a => '<div style="background:rgba(0,0,0,0.35);border:1px solid #b8860b44;border-left:3px solid #b8860b;border-radius:8px;padding:12px;transition:transform 0.15s,box-shadow 0.15s;" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 4px 12px rgba(0,0,0,0.5)\';" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\';"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:14px;font-weight:bold;color:#f0c040;">' + a.name + '</span><span style="font-size:10px;color:#888;">Attaches to: <span style="color:#d4b060;">' + a.attachTo + '</span></span></div><div style="font-size:11px;color:#ccc;line-height:1.5;margin-bottom:6px;">' + a.desc + '</div>' + (a.forms ? '<div style="font-size:10px;color:#888;">Forms: <span style="color:#c8a040;">' + a.forms + '</span></div>' : '') + '</div>').join('')}
+        </div>
+      `;
+    }
+
+    content.innerHTML = `
+      <div style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;">
+        <!-- Subtab buttons -->
+        <div style="display:flex;gap:0;margin-bottom:0;border-bottom:2px solid #ff9800;">
+          <button onclick="window.refSubtab='statuses';window.refTypeFilter='all';switchCollectionTab('statuses');" style="${subBtnStyle(window.refSubtab==='statuses')}">Statuses</button>
+          <button onclick="window.refSubtab='moves';switchCollectionTab('statuses');" style="${subBtnStyle(window.refSubtab==='moves')}">Moves</button>
+          <button onclick="window.refSubtab='addons';switchCollectionTab('statuses');" style="${subBtnStyle(window.refSubtab==='addons')}">Addons</button>
+        </div>
+        <!-- Search bar -->
+        <div style="display:flex;gap:10px;margin:12px 0;padding:8px 12px;background:rgba(0,0,0,0.3);border-radius:8px;align-items:center;">
+          <span style="color:#aaa;font-size:13px;">&#128269;</span>
+          <input type="text" placeholder="Search..." value="${window.refSearch}"
+            oninput="window.refSearch=this.value;switchCollectionTab('statuses');"
+            style="flex:1;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid #555;border-radius:6px;color:white;font-size:13px;outline:none;"
+          />
+        </div>
+        ${innerHtml}
       </div>
     `;
   } else if (tab === 'spells') {
@@ -1683,7 +1662,7 @@ function switchCollectionTab(tab) {
                 onmouseout="this.style.transform=''; this.style.boxShadow='';"
               >
                 <img
-                  src="${spell.image || 'images/spells/no-spell.svg'}"
+                  src="${spell.imageUrl || spell.image || 'images/spells/no-spell.svg'}"
                   alt="${spell.name}"
                   style="
                     width: 80px;

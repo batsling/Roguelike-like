@@ -5,28 +5,28 @@ var MOVES_DATA = {
     "name": "Dmg",
     "description": "Deals X damage to target",
     "preferredTarget": "Enemy",
-    "bonusStat": "Strength",
+    "bonusStat": "No",
     "imageUrl": "images/moves/Attack.png"
   },
   "block": {
     "name": "Block",
     "description": "Give target X block, X amount of damage a target can take before it affects their health",
     "preferredTarget": "Ally/Self",
-    "bonusStat": "Dexterity",
+    "bonusStat": "No",
     "imageUrl": "images/moves/Defense.png"
   },
   "reroll": {
     "name": "Reroll",
     "description": "Gains X rerolls",
     "preferredTarget": "Self",
-    "bonusStat": "Charisma",
+    "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
   },
   "heal": {
     "name": "Heal",
     "description": "Give target X health",
     "preferredTarget": "Ally/Self",
-    "bonusStat": "Intelligence",
+    "bonusStat": "No",
     "imageUrl": "images/moves/Health.png"
   },
   "spawn": {
@@ -47,54 +47,54 @@ var MOVES_DATA = {
     "name": "Get",
     "description": "Give X status to self",
     "preferredTarget": "Self",
-    "bonusStat": "Charisma",
+    "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
   },
   "inflict": {
     "name": "Inflict",
     "description": "Inflict X status to target",
     "preferredTarget": "Enemy",
-    "bonusStat": "Charisma",
+    "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
   },
   "cleanse": {
     "name": "Cleanse",
     "description": "Removes X stacks of all debuff statuses",
     "preferredTarget": "Ally/Self",
-    "bonusStat": "Charisma",
+    "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
   },
   "mana": {
     "name": "Mana",
     "description": "Gain X Mana",
     "preferredTarget": "Self",
-    "bonusStat": "Intelligence",
+    "bonusStat": "No",
     "imageUrl": "images/moves/Mana.png"
   },
   "pain": {
     "name": "Pain",
-    "description": "Whenever this side is rolled, target Deals X damage to self (not Melee or Ranged)",
+    "description": "Target Deals X damage to self (not Melee or Ranged)",
     "preferredTarget": "Self",
-    "bonusStat": "Strength",
+    "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
   },
   "assassinate": {
     "name": "Assassinate",
     "description": "Kill an enemy with at least X health left",
     "preferredTarget": "Enemy",
-    "bonusStat": "Strength",
+    "bonusStat": "No",
     "imageUrl": "images/moves/Assassinate.png"
   },
   "vitality": {
     "name": "Vitality",
     "description": "Gain X Max Health",
     "preferredTarget": "Ally/Self",
-    "bonusStat": "Intelligence",
+    "bonusStat": "No",
     "imageUrl": "images/moves/Vitality.png"
   },
-  "add x to (deck, hand, discard)": {
-    "name": "Add X to (Deck, Hand, Discard)",
-    "description": "Enemy gives X card to your Deck, Hand, or Discard",
+  "add x to y": {
+    "name": "Add X to Y",
+    "description": "Target gives X card to your Y (Deck, Hand, or Discard)",
     "preferredTarget": "Player",
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
@@ -113,9 +113,9 @@ var MOVES_DATA = {
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
   },
-  "lose ": {
-    "name": "Lose ",
-    "description": "Lose X status Y times (# or All)",
+  "lose": {
+    "name": "Lose",
+    "description": "Target loses X status Y times (# or All)",
     "preferredTarget": "Self",
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"

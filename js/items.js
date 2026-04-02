@@ -80,10 +80,10 @@ function recalculateScalablePassives() {
     luck: 0
   };
 
-  // Check for Beefy Ring: +1 Attack per 10 max health
+  // Check for Beefy Ring: +1 Attack per 20 max health
   const hasBeefyRing = inventory.some(item => item.name === 'Beefy Ring');
   if (hasBeefyRing) {
-    const beefyRingBonus = Math.floor(maxHealth / 10);
+    const beefyRingBonus = Math.floor(maxHealth / 20);
     bonuses.attack += beefyRingBonus;
     console.log(`Beefy Ring: +${beefyRingBonus} attack (from ${maxHealth} max health)`);
   }
@@ -96,6 +96,19 @@ function recalculateScalablePassives() {
     if (isMeleeWeapon) {
       bonuses.attack += 1;
       console.log(`Focus Crystal: +1 attack (melee weapon equipped)`);
+    }
+  }
+
+  // Paper Bag: Charisma equals the player's highest stat
+  const hasPaperBag = inventory.some(item => item.name === 'Paper Bag');
+  if (hasPaperBag) {
+    const baseCha = typeof charisma !== 'undefined' ? charisma : 0;
+    const baseStr = typeof strength !== 'undefined' ? strength : 0;
+    const baseDex = typeof dexterity !== 'undefined' ? dexterity : 0;
+    const baseInt = typeof intelligence !== 'undefined' ? intelligence : 0;
+    const highest = Math.max(baseStr, baseDex, baseInt, baseCha);
+    if (highest > baseCha) {
+      bonuses.charisma = (bonuses.charisma || 0) + (highest - baseCha);
     }
   }
 
@@ -228,8 +241,8 @@ const ITEM_EFFECTS = {
 
   "Lunch": {
     onAcquire: () => {
-      StateMutator.modifyMaxHealth(1);
-      StateMutator.modifyHealth(4);
+      StateMutator.modifyMaxHealth(3);
+      StateMutator.modifyHealth(3);
     }
   },
 
@@ -259,8 +272,7 @@ const ITEM_EFFECTS = {
 
   "Hollow Heart": {
     onAcquire: () => {
-      StateMutator.modifyMaxHealth(2);
-      StateMutator.modifyHealth(2);
+      StateMutator.modifyMaxHealth(5, { onlyMax: true });
     }
   },
 
@@ -302,8 +314,7 @@ const ITEM_EFFECTS = {
 
   "Panda": {
     onAcquire: () => {
-      StateMutator.modifyMaxHealth(5);
-      StateMutator.modifyHealth(5);
+      StateMutator.modifyMaxHealth(20, { onlyMax: true });
       StateMutator.modifyStat('luck', 2);
       StateMutator.modifyStat('strength', -2);
     }
@@ -505,24 +516,10 @@ const ITEM_EFFECTS = {
       console.log('Acquired Vitality Orb - will trigger when curses are obtained');
     },
     onCurseAdded: () => {
-      // Increase max health by 1 and heal by 1
-      console.log('Vitality Orb: Curse added, increasing max health and healing');
-
-      const oldMaxHealth = maxHealth;
-      const oldHealth = health;
-
-      // Increase max health by 1
-      const maxHealthResult = StateMutator.modifyMaxHealth(1);
-
-      // Heal by 1
-      const healthResult = StateMutator.modifyHealth(1);
-
-      if (maxHealthResult.changed || healthResult.changed) {
-        console.log(`Vitality Orb: Max Health ${oldMaxHealth} → ${maxHealthResult.newMaxHealth}, Health ${oldHealth} → ${healthResult.newHealth}`);
-
-        // Show notification
+      const maxHealthResult = StateMutator.modifyMaxHealth(8, { onlyMax: true });
+      if (maxHealthResult.changed) {
         setTimeout(() => {
-          createNotification('Vitality Orb: +1 Max Health & +1 Health!', COLORS.SUCCESS, '🔮');
+          createNotification('Vitality Orb: +8 Max Health!', COLORS.SUCCESS, '🔮');
         }, 100);
       }
     }
@@ -823,8 +820,205 @@ const ITEM_EFFECTS = {
 
   "Horn Cleat": {
     onAcquire: () => {
-      // Effect is applied in combat turn 2
-      console.log('Acquired Horn Cleat: +5 Block at start of turn 2');
+      // Effect is applied in combat turn 2 via initCombat flag
+      console.log('Acquired Horn Cleat: +14 Block at start of turn 2');
+    }
+  },
+
+  "Molten Egg": {
+    onAcquire: () => {
+      // Effect applied in addCardToDeck: auto-upgrades Attack cards added to deck
+      console.log('Acquired Molten Egg: Attack cards added to deck are auto-upgraded');
+    }
+  },
+
+  "Toxic Egg": {
+    onAcquire: () => {
+      // Effect applied in addCardToDeck: auto-upgrades Skill cards added to deck
+      console.log('Acquired Toxic Egg: Skill cards added to deck are auto-upgraded');
+    }
+  },
+
+  "Frozen Egg": {
+    onAcquire: () => {
+      // Effect applied in addCardToDeck: auto-upgrades Power cards added to deck
+      console.log('Acquired Frozen Egg: Power cards added to deck are auto-upgraded');
+    }
+  },
+
+  // ===== MEWGENICS USABLE ITEMS =====
+
+  "Percs": {
+    uses: 1,
+    canUse: () => gameState.phase === 'combat',
+    onUse: () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+      if (cs && cs.player) {
+        cs.player.block = (cs.player.block || 0) + 10;
+        if (cs.log) cs.log.push({ message: 'Percs: +10 Block!', type: 'success' });
+        createNotification('Percs: +10 Block!', COLORS.SUCCESS, '💊');
+      }
+    }
+  },
+
+  "Roid Rage": {
+    uses: 1,
+    canUse: () => gameState.phase === 'combat',
+    onUse: () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+      if (cs && cs.player) {
+        cs.player.statuses['strength'] = (cs.player.statuses['strength'] || 0) + 5;
+        if (cs.log) cs.log.push({ message: 'Roid Rage: +5 Strength this combat!', type: 'success' });
+        createNotification('Roid Rage: +5 Strength!', COLORS.SUCCESS, '💊');
+      }
+    }
+  },
+
+  "Speedball": {
+    uses: 1,
+    canUse: () => gameState.phase === 'combat',
+    onUse: () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+      if (cs && cs.player) {
+        cs.player.statuses['dexterity'] = (cs.player.statuses['dexterity'] || 0) + 5;
+        if (cs.log) cs.log.push({ message: 'Speedball: +5 Dexterity this combat!', type: 'success' });
+        createNotification('Speedball: +5 Dexterity!', COLORS.SUCCESS, '💊');
+      }
+    }
+  },
+
+  "Brain Candy": {
+    uses: 1,
+    canUse: () => gameState.phase === 'combat',
+    onUse: () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+      if (cs && cs.player) {
+        cs.player.statuses['intelligence'] = (cs.player.statuses['intelligence'] || 0) + 5;
+        if (cs.log) cs.log.push({ message: 'Brain Candy: +5 Intelligence this combat!', type: 'success' });
+        createNotification('Brain Candy: +5 Intelligence!', COLORS.SUCCESS, '💊');
+      }
+    }
+  },
+
+  "Clover": {
+    uses: 1,
+    canUse: () => gameState.phase === 'combat',
+    onUse: () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+      if (cs && cs.player) {
+        cs.player.statuses['luck_bonus'] = (cs.player.statuses['luck_bonus'] || 0) + 5;
+        if (cs.log) cs.log.push({ message: 'Clover: +5 Luck this combat!', type: 'success' });
+        createNotification('Clover: +5 Luck!', COLORS.SUCCESS, '🍀');
+      }
+    }
+  },
+
+  "Disco Biscuit": {
+    uses: 1,
+    canUse: () => gameState.phase === 'combat',
+    onUse: () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+      if (cs && cs.player) {
+        cs.player.statuses['charisma'] = (cs.player.statuses['charisma'] || 0) + 5;
+        if (cs.log) cs.log.push({ message: 'Disco Biscuit: +5 Charisma this combat!', type: 'success' });
+        createNotification('Disco Biscuit: +5 Charisma!', COLORS.SUCCESS, '💊');
+      }
+    }
+  },
+
+  "Stem Cells": {
+    uses: 1,
+    canUse: () => gameState.phase === 'combat',
+    onUse: () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+      if (cs && cs.player) {
+        cs.player.statuses['regeneration'] = (cs.player.statuses['regeneration'] || 0) + 3;
+        if (cs.log) cs.log.push({ message: 'Stem Cells: +3 Regeneration!', type: 'success' });
+        createNotification('Stem Cells: +3 Regeneration!', COLORS.SUCCESS, '🧫');
+      }
+    }
+  },
+
+  // ===== STS: ANCHOR, BRONZE SCALES =====
+
+  "Anchor": {
+    onAcquire: () => {
+      // Effect applied in combat-engine.js initCombat
+      console.log('Acquired Anchor: +10 Block at start of combat');
+    }
+  },
+
+  "Bronze Scales": {
+    onAcquire: () => {
+      // Effect applied in combat-engine.js initCombat
+      console.log('Acquired Bronze Scales: +3 Thorns at start of combat');
+    }
+  },
+
+  // ===== STS/FOLD: TRIGGERED POWER CARDS =====
+
+  "Death Orb": {
+    onAcquire: () => {
+      // Effect applied in combat-engine.js resolveCardEffect on Power play
+      console.log('Acquired Death Orb: deals curse-count damage to all enemies when a Power is played');
+    }
+  },
+
+  "Mummified Hand": {
+    onAcquire: () => {
+      // Effect applied in combat-engine.js resolveCardEffect on Power play
+      console.log('Acquired Mummified Hand: a random hand card becomes free when a Power is played');
+    }
+  },
+
+  // ===== STS: STRIKE DUMMY =====
+
+  "Strike Dummy": {
+    onAcquire: () => {
+      // Effect applied in combat-engine.js resolveCardEffect on Attack play
+      console.log('Acquired Strike Dummy: Strikes deal +3 damage');
+    }
+  },
+
+  // ===== STS: PICKUP ITEMS =====
+
+  "Whetstone": {
+    onAcquire: () => {
+      // Upgrade 2 random Attack cards in deck
+      if (!gameState.deck || gameState.deck.length === 0) return;
+      const attackCards = gameState.deck
+        .map((c, i) => ({ c, i }))
+        .filter(({ c }) => !c.upgraded && (c.type || '').toLowerCase() === 'attack' && c.upgradedDescription);
+      const targets = attackCards.sort(() => Math.random() - 0.5).slice(0, 2);
+      targets.forEach(({ c, i }) => {
+        c.upgraded = true;
+        c.description = c.upgradedDescription;
+        if (c.upgradedCost !== null && c.upgradedCost !== undefined) c.cost = c.upgradedCost;
+      });
+      if (targets.length > 0) {
+        createNotification(`Whetstone: upgraded ${targets.map(({ c }) => c.name).join(', ')}!`, COLORS.SUCCESS, '🪨');
+        saveCurrentGame();
+      }
+    }
+  },
+
+  "War Paint": {
+    onAcquire: () => {
+      // Upgrade 2 random Skill cards in deck
+      if (!gameState.deck || gameState.deck.length === 0) return;
+      const skillCards = gameState.deck
+        .map((c, i) => ({ c, i }))
+        .filter(({ c }) => !c.upgraded && (c.type || '').toLowerCase() === 'skill' && c.upgradedDescription);
+      const targets = skillCards.sort(() => Math.random() - 0.5).slice(0, 2);
+      targets.forEach(({ c }) => {
+        c.upgraded = true;
+        c.description = c.upgradedDescription;
+        if (c.upgradedCost !== null && c.upgradedCost !== undefined) c.cost = c.upgradedCost;
+      });
+      if (targets.length > 0) {
+        createNotification(`War Paint: upgraded ${targets.map(({ c }) => c.name).join(', ')}!`, COLORS.SUCCESS, '🎨');
+        saveCurrentGame();
+      }
     }
   }
 };

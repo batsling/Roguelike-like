@@ -272,12 +272,90 @@ if (document.readyState === 'loading') {
 // Global inventory sort mode (default: 'type')
 window.inventorySortMode = window.inventorySortMode || 'type';
 
+/**
+ * Update the compact items display at the top of the left sidebar (#game-stats).
+ * Shows all items as small icons; usable items have a "Use" button.
+ * Incremental items show their current progress counter.
+ */
+function updateSidebarItems() {
+  const section = document.getElementById('sidebar-items-section');
+  const grid = document.getElementById('sidebar-items-grid');
+  if (!section || !grid) return;
+
+  const items = typeof inventory !== 'undefined' ? inventory : [];
+  if (items.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+
+  const getRarityColor = (rarity) => {
+    switch ((rarity || '').toLowerCase()) {
+      case 'legendary': return '#ff6b00';
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      case 'common': return '#aaa';
+      default: return '#888';
+    }
+  };
+
+  // Get incremental counter for a given item name
+  function getIncrementalBadge(item) {
+    const cs = window.CombatEngine ? window.CombatEngine.getCombatState() : null;
+    const inc = cs && cs.incrementals;
+    let cur = null, max = null;
+    switch (item.name) {
+      case 'Pen Nib':        cur = inc ? inc.attacksTotal % 10 : (typeof gameState !== 'undefined' ? (gameState.runAttacks || 0) % 10 : 0); max = 10; break;
+      case 'Nunchaku':       cur = inc ? inc.attacksTotal % 10 : (typeof gameState !== 'undefined' ? (gameState.runAttacks || 0) % 10 : 0); max = 10; break;
+      case 'Happy Flower':   cur = cs ? (cs.turn - 1) % 3 : 0; max = 3; break;
+      case 'Ornamental Fan': cur = inc ? inc.attacksThisTurn % 4 : 0; max = 4; break;
+      case 'Shuriken':       cur = inc ? inc.attacksThisTurn % 3 : 0; max = 3; break;
+    }
+    if (cur === null) return '';
+    return `<div style="position:absolute;bottom:1px;left:1px;background:rgba(0,0,0,0.9);color:#ffcc44;padding:1px 3px;border-radius:3px;font-size:8px;font-weight:bold;border:1px solid #ffcc44;">${cur}/${max}</div>`;
+  }
+
+  grid.innerHTML = items.map((item, idx) => {
+    const color = getRarityColor(item.rarity);
+    let imgSrc = item.image && item.image.trim() ? item.image : '';
+    if (imgSrc && imgSrc.includes('imgur.com/') && !imgSrc.includes('i.imgur.com')) {
+      imgSrc = imgSrc.replace('imgur.com/', 'i.imgur.com/');
+      if (!imgSrc.match(/\.(png|jpg|jpeg|gif)$/i)) imgSrc += '.png';
+    }
+
+    const isUsable = item.type === 'Usable' || item.type === 'Active';
+    const isIncremental = (item.type || '').toLowerCase() === 'incremental';
+    const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
+    const incBadge = isIncremental ? getIncrementalBadge(item) : '';
+
+    const quantityBadge = item.quantity && item.quantity > 1
+      ? `<div style="position:absolute;top:1px;right:1px;background:rgba(0,0,0,0.9);color:white;padding:1px 3px;border-radius:3px;font-size:8px;font-weight:bold;border:1px solid #ffaa00;">${item.quantity}</div>`
+      : '';
+
+    const useBtn = isUsable
+      ? `<button onclick="event.stopPropagation(); if(typeof useItem==='function') useItem(${idx});" title="${canUse ? 'Use' : 'Cannot use now'}" style="position:absolute;bottom:0;left:0;right:0;font-size:8px;padding:1px;background:${canUse ? '#4CAF50' : '#555'};color:${canUse ? 'white' : '#888'};border:none;border-radius:0 0 4px 4px;cursor:${canUse ? 'pointer' : 'not-allowed'};font-weight:bold;${canUse ? '' : 'opacity:0.6;'}">${canUse ? 'USE' : '—'}</button>`
+      : '';
+
+    return `<div title="${item.name}: ${item.description}" style="position:relative;width:40px;height:40px;border:2px solid ${color};border-radius:6px;background:rgba(0,0,0,0.5);overflow:visible;flex-shrink:0;">
+      ${imgSrc
+        ? `<img src="${imgSrc}" alt="${item.name}" style="width:100%;height:100%;object-fit:contain;border-radius:4px;" onerror="this.style.display='none'">`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;">🎒</div>`}
+      ${quantityBadge}${incBadge}${useBtn}
+    </div>`;
+  }).join('');
+}
+window.updateSidebarItems = updateSidebarItems;
+
 function updateInventory() {
   const inventoryDiv = document.getElementById('inventory');
-  inventoryDiv.innerHTML = '';
-
   const removeItemSelect = document.getElementById('removeItemSelect');
-  removeItemSelect.innerHTML = '<option value="">-- Select an Item --</option>';
+
+  if (inventoryDiv) {
+    inventoryDiv.innerHTML = '';
+  }
+  if (removeItemSelect) {
+    removeItemSelect.innerHTML = '<option value="">-- Select an Item --</option>';
+  }
 
   inventory.forEach((item, index) => {
     // Get display name (with stat modifiers for passive items)
@@ -285,25 +363,31 @@ function updateInventory() {
       ? getPassiveDisplayName(item)
       : (item.displayName || item.name);
 
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'inventory-item';
-    itemDiv.innerHTML = `
-      <strong>${displayName}</strong> (${item.rarity})
-      <span class="remove-item" onclick="removeItem(${index})">×</span>
-      <p>${item.description}</p>
-      <p><em>Type: ${item.type}</em></p>
-    `;
-    inventoryDiv.appendChild(itemDiv);
+    if (inventoryDiv) {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'inventory-item';
+      itemDiv.innerHTML = `
+        <strong>${displayName}</strong> (${item.rarity})
+        <span class="remove-item" onclick="removeItem(${index})">×</span>
+        <p>${item.description}</p>
+        <p><em>Type: ${item.type}</em></p>
+      `;
+      inventoryDiv.appendChild(itemDiv);
+    }
 
-    const option = document.createElement('option');
-    option.value = index;
-    option.textContent = `${displayName} (${item.rarity})`;
-    removeItemSelect.appendChild(option);
+    if (removeItemSelect) {
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = `${displayName} (${item.rarity})`;
+      removeItemSelect.appendChild(option);
+    }
   });
 
-  removeItemSelect.disabled = inventory.length === 0;
-  document.getElementById('removeSelectedItem').disabled = inventory.length === 0;
-  document.getElementById('removeRandomItem').disabled = inventory.length === 0;
+  if (removeItemSelect) removeItemSelect.disabled = inventory.length === 0;
+  const removeSelectedItem = document.getElementById('removeSelectedItem');
+  const removeRandomItem = document.getElementById('removeRandomItem');
+  if (removeSelectedItem) removeSelectedItem.disabled = inventory.length === 0;
+  if (removeRandomItem) removeRandomItem.disabled = inventory.length === 0;
 
   // Update game items sidebar if it exists
   const gameItemsList = document.getElementById('game-items-list');
@@ -571,6 +655,7 @@ function updateInventory() {
   // Update stats panel and equipment slots
   updateGameStats();
   updateEquipmentSlots();
+  updateSidebarItems();
 }
 
 // ===== WEAPON EQUIP/UNEQUIP FUNCTIONS =====
@@ -1020,7 +1105,9 @@ function updateGameStats() {
   const statsHealth = document.getElementById('stats-health');
   const statsGold = document.getElementById('stats-gold');
   const statsStrength = document.getElementById('stats-strength');
+  const statsPower = document.getElementById('stats-power');
   const statsDexterity = document.getElementById('stats-dexterity');
+  const statsDefense = document.getElementById('stats-defense');
   const statsIntelligence = document.getElementById('stats-intelligence');
   const statsCharisma = document.getElementById('stats-charisma');
   const statsReroll = document.getElementById('stats-reroll');
@@ -1060,6 +1147,23 @@ function updateGameStats() {
     }
   }
 
+  // Get active combat state for combat-time status bonuses
+  const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
+  const combatPower = cs ? (cs.player.statuses['power'] || 0) : 0;
+  const combatDefense = cs ? (cs.player.statuses['defense'] || 0) : 0;
+
+  // Power derived stat (every 3 Strength = 1 Power) + any combat/item power bonuses
+  if (statsPower) {
+    const effectiveStrength = totalBonuses ? strength + totalBonuses.strength : strength;
+    const basePower = Math.floor(effectiveStrength / 3);
+    const totalPower = basePower + combatPower;
+    if (combatPower !== 0) {
+      statsPower.textContent = `${totalPower} (${basePower}+${combatPower})`;
+    } else {
+      statsPower.textContent = totalPower;
+    }
+  }
+
   // Dexterity stat with bonuses
   if (statsDexterity) {
     const effectiveDexterity = totalBonuses ? dexterity + totalBonuses.dexterity : dexterity;
@@ -1067,6 +1171,18 @@ function updateGameStats() {
       statsDexterity.textContent = `${effectiveDexterity} (${dexterity}+${totalBonuses.dexterity})`;
     } else {
       statsDexterity.textContent = dexterity;
+    }
+  }
+
+  // Defense derived stat (every 3 Dexterity = 1 Defense) + any combat/item defense bonuses
+  if (statsDefense) {
+    const effectiveDexterity = totalBonuses ? dexterity + totalBonuses.dexterity : dexterity;
+    const baseDefense = Math.floor(effectiveDexterity / 3);
+    const totalDefense = baseDefense + combatDefense;
+    if (combatDefense !== 0) {
+      statsDefense.textContent = `${totalDefense} (${baseDefense}+${combatDefense})`;
+    } else {
+      statsDefense.textContent = totalDefense;
     }
   }
 

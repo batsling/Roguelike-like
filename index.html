@@ -12,7 +12,10 @@
   <div id="top-bar">
     <button id="return-menu-top" class="btn-small bg-grey border-radius-6 mr-20" aria-label="Return to main menu">📋 Menu</button>
     <h1>Roguelike-Like</h1>
-    <button id="map-btn" class="btn-small bg-info border-radius-6 map-btn-spacing hidden" aria-label="Open map view">🗺️ Map</button>
+    <div id="top-bar-right" style="display:none; margin-left:auto; gap:8px; align-items:center;">
+      <button id="deck-btn" class="btn-small btn-purple border-radius-6" aria-label="View your deck">🃏 Deck</button>
+      <button id="map-btn" class="btn-small bg-info border-radius-6" aria-label="Open map view">🗺️ Map</button>
+    </div>
   </div>
 
   <!-- Main Content Container -->
@@ -50,6 +53,13 @@
 
           <!-- Left Sidebar: Stats Panel -->
           <div id="game-stats">
+
+            <!-- Items display (shown at top of character screen) -->
+            <div id="sidebar-items-section" style="display:none;">
+              <h4 style="color:#cc6600;margin:0 0 6px;font-size:13px;border-bottom:1px solid rgba(204,102,0,0.3);padding-bottom:4px;">🎒 Items</h4>
+              <div id="sidebar-items-grid" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;"></div>
+            </div>
+
             <h3 id="stats-header">📊 <span id="stats-character-name">Stats</span></h3>
 
             <!-- Core Stats -->
@@ -89,18 +99,32 @@
             <div class="stat-section">
               <h4 class="stat-section-header">Combat</h4>
               <div class="stat-item stat-tooltip" data-tooltip="Bonus to damage dice. Used for Action game checks.">
+                <img src="images/Stats/Strength.png" class="stat-icon" alt="Strength">
                 <span class="stat-label stat-color-strength">Strength:</span>
                 <span class="stat-value" id="stats-strength">0</span>
               </div>
+              <div class="stat-item stat-tooltip stat-derived" data-tooltip="Every 3 Strength = 1 Power. Adds bonus damage to attack dice.">
+                <img src="images/statuses/Power.png" class="stat-icon stat-icon-derived" alt="Power">
+                <span class="stat-label stat-color-power">Power:</span>
+                <span class="stat-value stat-derived-value" id="stats-power">0</span>
+              </div>
               <div class="stat-item stat-tooltip" data-tooltip="Used for Traditional game checks. Determines success in precision-based encounters.">
+                <img src="images/Stats/Dexterity.png" class="stat-icon" alt="Dexterity">
                 <span class="stat-label stat-color-dexterity">Dexterity:</span>
                 <span class="stat-value" id="stats-dexterity">0</span>
               </div>
+              <div class="stat-item stat-tooltip stat-derived" data-tooltip="Every 3 Dexterity = 1 Defense. Adds bonus block to defense dice.">
+                <img src="images/statuses/Defense.png" class="stat-icon stat-icon-derived" alt="Defense">
+                <span class="stat-label stat-color-defense">Defense:</span>
+                <span class="stat-value stat-derived-value" id="stats-defense">0</span>
+              </div>
               <div class="stat-item stat-tooltip" data-tooltip="Used for Strategy game checks. Determines success in tactical encounters.">
+                <img src="images/Stats/Intelligence.png" class="stat-icon" alt="Intelligence">
                 <span class="stat-label stat-color-intelligence">Intelligence:</span>
                 <span class="stat-value" id="stats-intelligence">0</span>
               </div>
               <div class="stat-item stat-tooltip" data-tooltip="Used for Deckbuilder game checks. Determines success in card-based encounters.">
+                <img src="images/Stats/Charisma.png" class="stat-icon" alt="Charisma">
                 <span class="stat-label stat-color-charisma">Charisma:</span>
                 <span class="stat-value" id="stats-charisma">0</span>
               </div>
@@ -110,14 +134,17 @@
             <div class="stat-section">
               <h4 class="stat-section-header">Miscellaneous</h4>
               <div class="stat-item stat-tooltip" data-tooltip="Number of game choices shown when selecting next game.">
+                <img src="images/Stats/FoV.png" class="stat-icon" alt="FoV">
                 <span class="stat-label stat-color-fov">FoV:</span>
                 <span class="stat-value" id="stats-fov">3</span>
               </div>
               <div class="stat-item stat-tooltip" data-tooltip="Number of item choices when collecting rewards.">
+                <img src="images/Stats/Discovery.png" class="stat-icon" alt="Discovery">
                 <span class="stat-label stat-color-discovery">Discovery:</span>
                 <span class="stat-value" id="stats-discovery">2</span>
               </div>
               <div class="stat-item stat-tooltip" data-tooltip="Increases rare item chances, adds +1 to event rolls, and boosts item proc chances by 5% per point.">
+                <img src="images/Stats/Luck.png" class="stat-icon" alt="Luck">
                 <span class="stat-label stat-color-luck">Luck:</span>
                 <span class="stat-value" id="stats-luck">0</span>
               </div>
@@ -127,14 +154,17 @@
             <div class="stat-section">
               <h4 class="stat-section-header">Abilities</h4>
               <div class="stat-item stat-tooltip" data-tooltip="Reroll the current game or item choices.">
+                <img src="images/Stats/Reroll.png" class="stat-icon" alt="Reroll">
                 <span class="stat-label stat-color-reroll">Reroll:</span>
                 <span class="stat-value" id="stats-reroll">0</span>
               </div>
               <div class="stat-item stat-tooltip" data-tooltip="Dash to any connected game node.">
+                <img src="images/Stats/Dash.png" class="stat-icon" alt="Dash">
                 <span class="stat-label stat-color-dash">Dash:</span>
                 <span class="stat-value" id="stats-dash">0</span>
               </div>
               <div class="stat-item stat-tooltip" data-tooltip="Skip the current game without playing it.">
+                <img src="images/Stats/Skip.png" class="stat-icon" alt="Skip">
                 <span class="stat-label stat-color-skip">Skip:</span>
                 <span class="stat-value" id="stats-skip">0</span>
               </div>
@@ -328,15 +358,15 @@
 
       <!-- Save Name Input Modal -->
       <!-- Character Selection & Run Naming Modal -->
-      <div id="save-modal" role="dialog" aria-modal="true" aria-labelledby="save-modal-title">
-        <div class="flex gap-20 max-w-1200">
+      <div id="save-modal" role="dialog" aria-modal="true" aria-labelledby="save-modal-title" style="overflow:hidden;">
+        <div class="flex gap-20" style="width:min(calc(100vw - 32px), 1020px); flex-wrap:nowrap; align-items:flex-start;">
           <!-- Main Character Selection Panel -->
-          <div class="bg-panel p-20 border-radius-12 w-600 max-h-90vh overflow-y-auto">
+          <div class="bg-panel p-20 border-radius-12 max-h-90vh overflow-y-auto" style="flex:1.5; min-width:0;">
             <h3 id="save-modal-title" class="mt-0 text-gold text-center">Start New Run</h3>
 
             <!-- Icon View Container -->
             <div id="icon-character-view" class="display-block mb-20">
-              <div id="icon-character-grid" class="grid grid-cols-5 gap-12 p-15 bg-character-grid border-radius-12 h-550 overflow-y-auto">
+              <div id="icon-character-grid" class="grid p-10 bg-character-grid border-radius-12 h-550 overflow-y-auto" style="grid-template-columns:repeat(5,1fr); gap:8px; overflow-x:hidden; box-sizing:border-box;">
                 <!-- Character icons will be populated here -->
               </div>
             </div>
@@ -351,7 +381,7 @@
           </div>
 
           <!-- Character Details Panel -->
-          <div id="icon-character-details" class="flex bg-panel p-25 border-radius-12 w-400 max-h-90vh overflow-y-auto">
+          <div id="icon-character-details" class="flex bg-panel p-25 border-radius-12 max-h-90vh overflow-y-auto" style="flex:1; min-width:280px; max-width:420px;">
             <div id="icon-character-details-content">
               <!-- Character details will be populated here -->
             </div>
@@ -765,12 +795,13 @@
   <script src="js/map.js?v=19"></script>
   <script src="js/modals.js?v=2"></script>
   <script src="js/shop.js?v=4"></script>
-  <script src="js/cards.js?v=1"></script>
+  <script src="js/cards.js?v=2"></script>
   <script src="js/character-select.js?v=1"></script>
   <script src="js/verification.js?v=9"></script>
   <script src="js/escape.js?v=6"></script>
   <script src="js/exploration.js?v=1"></script>
   <script src="js/bingo.js?v=2"></script>
   <script src="js/main.js?v=45"></script>
+  <script src="js/event-engine.js?v=1"></script>
 </body>
 </html>
