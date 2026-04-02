@@ -435,7 +435,7 @@ function getIntentType(raw) {
   if (s.includes('heal'))  return 'heal';
   if (s.includes('ritual') || s.includes('get') || s.includes('power')) return 'buff';
   if (s.includes('inflict') || s.includes('burn') || s.includes('oiled')) return 'debuff';
-  if (s.includes('spawn')) return 'spawn';
+  if (s.includes('spawn') || s.includes('splitting')) return 'spawn';
   return 'attack';
 }
 

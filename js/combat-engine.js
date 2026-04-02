@@ -129,7 +129,7 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     const isOrderedPattern = /Turn \d+:/i.test(patternStr);
     const parsedPattern = isOrderedPattern ? parseOrderedPattern(patternStr) : null;
 
-    return {
+    const enemyState = {
       id: `enemy_${index}`,
       name: enemy.name,
       type: enemy.type,
@@ -149,10 +149,14 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
       dice: enemy.dice,
       currentIntent: null,
       imageUrl: enemy.imageUrl,
-      position: index,           // Position for Cleave targeting
+      position: index,              // Position for Cleave targeting
       staggerThreshold: parseStaggerThreshold(enemy.ability),
-      rolledFaces: new Set()     // For Forgetful tracking
+      rolledFaces: new Set(),       // For Forgetful tracking
+      curlUpTriggeredThisTurn: false,
+      splitAbility: parseSplitAbility(enemy.ability)
     };
+    resolveDeterminedValues(enemyState);
+    return enemyState;
   });
 
   // Create ally states (for HP tracking)
@@ -335,6 +339,24 @@ function parseStartingAbilities(abilityStr) {
     // Skip defeat-trigger and "When another …" clauses entirely
     if (/^when\b/i.test(seg) || /defeat/i.test(seg)) continue;
 
+    // "Curl Up Determined(X-Y)" — roll block amount once at combat start
+    const curlUpDetMatch = seg.match(/^Curl\s+Up\s+Determined\((\d+)-(\d+)\)$/i);
+    if (curlUpDetMatch) {
+      const lo = parseInt(curlUpDetMatch[1]), hi = parseInt(curlUpDetMatch[2]);
+      statuses['curl_up'] = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+      continue;
+    }
+
+    // "Curl Up N" — fixed block amount
+    const curlUpFixedMatch = seg.match(/^Curl\s+Up\s+(\d+)$/i);
+    if (curlUpFixedMatch) { statuses['curl_up'] = parseInt(curlUpFixedMatch[1]); continue; }
+
+    // Plain "Curl Up" — treat as curl_up flag (will need curlUpValue from elsewhere)
+    if (/^Curl\s+Up$/i.test(seg)) { statuses['curl_up'] = 1; continue; }
+
+    // Skip "Split N Name" — handled separately via parseSplitAbility
+    if (/^Split\s+\d+/i.test(seg)) continue;
+
     // Fading N
     const fadingMatch = seg.match(/^Fading\s+(\d+)$/i);
     if (fadingMatch) { statuses['fading'] = parseInt(fadingMatch[1]); continue; }
@@ -378,6 +400,54 @@ function parseStaggerThreshold(abilityStr) {
   if (!abilityStr) return null;
   const m = abilityStr.match(/Stagger\s+(\d+(?:\.\d+)?)%/i);
   return m ? parseFloat(m[1]) / 100 : null;
+}
+
+/**
+ * Pre-roll all Determined(X-Y) values from an enemy's pattern string.
+ * Each unique "X-Y" range gets one fixed value for the whole combat.
+ * @param {Object} enemy - Enemy state object (must have .pattern)
+ */
+function resolveDeterminedValues(enemy) {
+  enemy.determinedValues = {};
+  const regex = /Determined\((\d+)-(\d+)\)/gi;
+  let m;
+  while ((m = regex.exec(enemy.pattern || '')) !== null) {
+    const key = `${m[1]}-${m[2]}`;
+    if (!(key in enemy.determinedValues)) {
+      const lo = parseInt(m[1]), hi = parseInt(m[2]);
+      enemy.determinedValues[key] = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+    }
+  }
+}
+
+/**
+ * Replace Determined(X-Y) tokens in a description with the enemy's pre-rolled values.
+ * @param {string} desc
+ * @param {Object} enemy
+ * @returns {string}
+ */
+function applyDetermined(desc, enemy) {
+  if (!desc || !enemy.determinedValues) return desc;
+  return desc.replace(/Determined\((\d+)-(\d+)\)/gi, (match, lo, hi) => {
+    const key = `${lo}-${hi}`;
+    if (enemy.determinedValues[key] !== undefined) return String(enemy.determinedValues[key]);
+    // Safety fallback: roll fresh if somehow not pre-rolled
+    const val = Math.floor(Math.random() * (parseInt(hi) - parseInt(lo) + 1)) + parseInt(lo);
+    enemy.determinedValues[key] = val;
+    return String(val);
+  });
+}
+
+/**
+ * Parse split ability from ability string.
+ * "Split 2 Acid Slime (M)" → { count: 2, spawnName: "Acid Slime (M)" }
+ * Returns null if no split ability.
+ */
+function parseSplitAbility(abilityStr) {
+  if (!abilityStr) return null;
+  const m = abilityStr.match(/\bSplit\s+(\d+)\s+(.+)/i);
+  if (!m) return null;
+  return { count: parseInt(m[1]), spawnName: m[2].trim(), triggered: false, splitting: false };
 }
 
 /**
@@ -569,6 +639,25 @@ function parseSimplePatternDesc(text) {
       continue;
     }
 
+    // "Add N CardName to Discard" — e.g. "Add 2 Slimed to Discard"
+    if (tokens[i].toLowerCase() === 'add') {
+      i++;
+      if (i < tokens.length && /^\d+$/.test(tokens[i])) {
+        const count = parseInt(tokens[i++]);
+        const nameTokens = [];
+        while (i < tokens.length && tokens[i].toLowerCase() !== 'to') {
+          nameTokens.push(tokens[i++]);
+        }
+        if (i < tokens.length && tokens[i].toLowerCase() === 'to') i++;
+        if (i < tokens.length && tokens[i].toLowerCase() === 'discard') i++;
+        if (nameTokens.length > 0) {
+          const cardName = nameTokens.join(' ');
+          effects.push({ raw: `Add ${count} ${cardName} to Discard`, value: count, move: 'AddToDiscard', target: cardName, addons: [] });
+        }
+      }
+      continue;
+    }
+
     if (!tokens[i].match(/^\d+$/)) { i++; continue; }
     const numIdx  = i;                  // index of the number token
     const value   = parseInt(tokens[i++]);
@@ -658,6 +747,8 @@ function resolveEffectValue(effect) {
 function rollAllEnemyIntents() {
   combatState.enemies.forEach(enemy => {
     if (enemy.health > 0) {
+      // Reset Curl Up trigger at the start of each new round
+      enemy.curlUpTriggeredThisTurn = false;
       rollEnemyIntent(enemy);
     }
   });
@@ -711,7 +802,9 @@ function rollEnemyIntent(enemy) {
 
   } else {
     // Random: execute the pattern description (dice are the old design)
-    const patternDesc = (enemy.pattern || '').replace(/^Always:\s*/i, '').trim();
+    const rawPatternDesc = (enemy.pattern || '').replace(/^Always:\s*/i, '').trim();
+    // Substitute any Determined(X-Y) tokens with the pre-rolled combat values
+    const patternDesc = applyDetermined(rawPatternDesc, enemy);
     const multiAttack = enemy.statuses['multi_attack'] || 1;
     const isForgetful = !!enemy.statuses['forgetful'];
 
@@ -747,6 +840,22 @@ function rollEnemyIntent(enemy) {
       const pseudoFace = { isBlank, effects, raw: resolvedText };
       enemy.currentIntent.push({ faceIndex: 0, face: pseudoFace, resolved: false });
     }
+  }
+
+  // Split override: if HP ≤ 50% and split not yet triggered, override intent to Splitting
+  if (enemy.splitAbility && !enemy.splitAbility.triggered && enemy.health <= enemy.maxHealth * 0.5) {
+    enemy.currentIntent = [{
+      faceIndex: 0,
+      face: {
+        isBlank: false,
+        effects: [{ raw: 'Splitting', value: 0, move: 'Split', addons: [] }],
+        raw: `Splitting (×${enemy.splitAbility.count} ${enemy.splitAbility.spawnName})`
+      },
+      resolved: false
+    }];
+    enemy.splitAbility.splitting = true;
+    addLog(`${enemy.name} begins to split!`, 'warning');
+    return;
   }
 
   // Log intent (shows resolved text, not the full probability string)
@@ -1434,6 +1543,15 @@ function dealDamage(target, damage, addons = []) {
   const powerStacks = target === combatState.player ? 0 : (target.statuses['power'] || 0);
   // Power affects outgoing damage, not incoming - skip for now
 
+  // Curl Up: gain block on the first attack hit received each turn (enemies only, not self-damage)
+  if (target !== combatState.player && target.statuses && target.statuses['curl_up'] > 0
+      && !target.curlUpTriggeredThisTurn && !addons.includes('self')) {
+    const curlAmt = target.statuses['curl_up'];
+    addBlock(target, curlAmt);
+    target.curlUpTriggeredThisTurn = true;
+    addLog(`${target.name} curled up! Gained ${curlAmt} Block`, 'info');
+  }
+
   // Check Stagger — if this single hit is ≥ X% of the target's max HP, apply Stun
   if (target !== combatState.player && target.staggerThreshold && target.staggerThreshold > 0) {
     if (dmg >= target.staggerThreshold * target.maxHealth) {
@@ -1744,8 +1862,11 @@ function spawnEnemyAtSlot(enemyName, position) {
     imageUrl: template.imageUrl,
     position: position,
     staggerThreshold: parseStaggerThreshold(template.ability),
-    rolledFaces: new Set()
+    rolledFaces: new Set(),
+    curlUpTriggeredThisTurn: false,
+    splitAbility: parseSplitAbility(template.ability)
   };
+  resolveDeterminedValues(newEnemy);
 
   // Replace dead enemy at this position; otherwise append
   const idx = combatState.enemies.findIndex(e => e.position === position && e.health <= 0);
@@ -1758,6 +1879,55 @@ function spawnEnemyAtSlot(enemyName, position) {
 
   rollEnemyIntent(newEnemy);
   addLog(`${template.name} spawned!`, 'warning');
+  if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
+}
+
+/**
+ * Spawn a split copy of an enemy with a specific HP value (used by Split ability).
+ * @param {string} enemyName - Template name to look up
+ * @param {number} inheritedHp - HP to give the spawn (≤ template max)
+ */
+function spawnSplitEnemy(enemyName, inheritedHp) {
+  if (typeof ENEMIES_DATA === 'undefined') return;
+  const template = ENEMIES_DATA.find(e => e.name.toLowerCase() === enemyName.toLowerCase());
+  if (!template) {
+    addLog(`Split: cannot find template "${enemyName}"`, 'warning');
+    return;
+  }
+
+  const isOrdered = /Turn \d+:/i.test(template.pattern || '');
+  const spawnHp = Math.max(1, inheritedHp);
+  const position = combatState.enemies.length;
+  const newEnemy = {
+    id: `enemy_split_${position}_${Date.now()}`,
+    name: template.name,
+    type: template.type,
+    difficulty: template.difficulty,
+    weight: template.weight,
+    health: spawnHp,
+    maxHealth: template.hpMax || template.hp || spawnHp,
+    block: 0,
+    statuses: parseStartingAbilities(template.ability),
+    ability: template.ability,
+    pattern: template.pattern || '',
+    patternType: isOrdered ? 'ordered' : 'random',
+    patternTurns: isOrdered ? parseOrderedPattern(template.pattern) : null,
+    patternTurnIndex: 0,
+    game: template.game,
+    location: template.location,
+    dice: template.dice,
+    currentIntent: null,
+    imageUrl: template.imageUrl,
+    position,
+    staggerThreshold: parseStaggerThreshold(template.ability),
+    rolledFaces: new Set(),
+    curlUpTriggeredThisTurn: false,
+    splitAbility: parseSplitAbility(template.ability)
+  };
+  resolveDeterminedValues(newEnemy);
+  combatState.enemies.push(newEnemy);
+  rollEnemyIntent(newEnemy);
+  addLog(`${template.name} (${spawnHp} HP) emerges from the split!`, 'warning');
   if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
 }
 
@@ -2239,6 +2409,22 @@ function executeEnemyActions() {
               }
               break;
 
+            case 'split': {
+              if (enemy.splitAbility && !enemy.splitAbility.triggered) {
+                enemy.splitAbility.triggered = true;
+                const { count, spawnName } = enemy.splitAbility;
+                const splitHp = Math.max(1, enemy.health);
+                addLog(`${enemy.name} splits into ${count} ${spawnName}!`, 'warning');
+                for (let s = 0; s < count; s++) {
+                  spawnSplitEnemy(spawnName, splitHp);
+                }
+                // Remove the original enemy
+                enemy.health = 0;
+                onEnemyDefeated(enemy);
+              }
+              break;
+            }
+
             case 'alter': {
               // Transform enemy into another form, keeping current HP
               const targetForm = effect.target;
@@ -2279,6 +2465,28 @@ function executeEnemyActions() {
                 if (typeof window.addRandomPigmentToHand === 'function') {
                   window.addRandomPigmentToHand();
                   addLog(`${enemy.name} added a Pigment card to your hand!`, 'warning');
+                }
+              }
+              break;
+            }
+
+            case 'addtodiscard': {
+              // Add N copies of a named card to the player's discard pile
+              const addCount = effect.value || 1;
+              const addName  = effect.target || '';
+              if (addName && typeof CARDS_DATA !== 'undefined') {
+                const tmpl = CARDS_DATA.find(c => c.name.toLowerCase() === addName.toLowerCase());
+                if (tmpl) {
+                  for (let ci = 0; ci < addCount; ci++) {
+                    combatState.discardPile.push({
+                      ...tmpl,
+                      id: `status_card_${Date.now()}_${ci}`,
+                      isStatusCard: false  // playable; description handles exhaust
+                    });
+                  }
+                  addLog(`${enemy.name} added ${addCount} ${addName} to your discard!`, 'warning');
+                } else {
+                  addLog(`${enemy.name}: could not find card "${addName}"`, 'info');
                 }
               }
               break;
