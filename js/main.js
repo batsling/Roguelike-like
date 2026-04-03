@@ -5618,7 +5618,7 @@ function showCardRewardModal(onComplete) {
       <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
         ${cardsHTML}
       </div>
-      <button onclick="closeGameModal()" style="
+      <button id="card-reward-skip-btn" style="
         margin-top:20px; padding:10px 24px;
         background:#444; border:none; border-radius:8px;
         color:#aaa; cursor:pointer; font-size:13px;
@@ -5626,10 +5626,31 @@ function showCardRewardModal(onComplete) {
     </div>
   `);
 
+  const skipBtn = document.getElementById('card-reward-skip-btn');
+  if (skipBtn) {
+    skipBtn.onclick = () => {
+      closeGameModal();
+      if (onComplete) onComplete();
+    };
+  }
+
   document.querySelectorAll('.card-reward-option').forEach(el => {
     el.onclick = () => {
       const card = chosen[parseInt(el.dataset.cardIdx)];
-      if (card && typeof addCardToDeck === 'function') addCardToDeck(card);
+      if (card) {
+        const addFn = window.addCardToDeck || (typeof addCardToDeck !== 'undefined' ? addCardToDeck : null);
+        if (addFn) {
+          addFn(card);
+        } else {
+          // Fallback: add directly to gameState.deck
+          if (!gameState.deck) gameState.deck = [];
+          gameState.deck.push({ ...card, upgraded: false });
+          saveCurrentGame();
+          if (typeof createNotification === 'function') {
+            createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
+          }
+        }
+      }
       closeGameModal();
       if (onComplete) onComplete();
     };
