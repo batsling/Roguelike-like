@@ -4248,6 +4248,12 @@ function showDiceCombatModal() {
     };
   }).filter(Boolean);
 
+  // Clean up any lingering hover tooltips before combat starts
+  ['game-tooltip', 'item-tooltip', 'location-hover-tooltip'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
   // Initialize combat with all encounter enemies
   const combatState = window.CombatEngine.initCombat(encounterEnemies, characterData, weaponData, allies);
 
@@ -4739,6 +4745,48 @@ window.toggleCombatSystem = function() {
 
 // ============== DECK VIEWER ==============
 
+function showCardZoomOverlay(card) {
+  const existing = document.getElementById('card-zoom-overlay');
+  if (existing) existing.remove();
+
+  const rarityColors = { Rare: '#9b59b6', Uncommon: '#4CAF50', Common: '#aaa', Starter: '#888' };
+  const color = rarityColors[card.rarity] || '#888';
+  const imgSrc = card.imageUrl || '';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'card-zoom-overlay';
+  overlay.style.cssText = `
+    position:fixed; inset:0; background:rgba(0,0,0,0.75);
+    display:flex; align-items:center; justify-content:center;
+    z-index:10000; cursor:pointer;
+  `;
+  overlay.innerHTML = `
+    <div style="
+      background:#1e1e2e; border:3px solid ${color};
+      border-radius:16px; padding:28px 32px;
+      max-width:360px; width:90vw; text-align:center;
+      box-shadow:0 12px 50px rgba(0,0,0,0.9);
+      cursor:default;
+    " onclick="event.stopPropagation()">
+      ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}"
+        style="width:140px;height:140px;object-fit:contain;margin-bottom:14px;border-radius:8px;border:2px solid ${color}40;"
+        onerror="this.style.display='none'">` : ''}
+      <h2 style="margin:0 0 6px;color:white;font-size:20px;">${card.name}${card.upgraded ? ' <span style="color:#4CAF50">+</span>' : ''}</h2>
+      <div style="color:${color};font-size:13px;margin-bottom:10px;font-weight:bold;">${card.rarity || 'Starter'} · ${card.type || ''}</div>
+      <div style="color:#ddd;font-size:14px;line-height:1.6;margin-bottom:14px;">${card.description || ''}</div>
+      <div style="color:#ffd700;font-size:16px;font-weight:bold;">Cost: ${card.cost !== undefined ? card.cost : '?'}</div>
+      <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
+        margin-top:18px; padding:8px 24px;
+        background:#444; border:1px solid #666; border-radius:8px;
+        color:white; cursor:pointer; font-size:13px;
+      ">Close</button>
+    </div>
+  `;
+  overlay.addEventListener('click', () => overlay.remove());
+  document.body.appendChild(overlay);
+}
+window.showCardZoomOverlay = showCardZoomOverlay;
+
 function showDeckModal() {
   const charKey = (selectedCharacter) || (gameState && gameState.character) || null;
   const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
@@ -4752,13 +4800,16 @@ function showDeckModal() {
     }
   };
 
-  const cardHtml = (card, label) => {
+  const cardHtml = (card, label, idx) => {
     const color = getRarityColor(card.rarity);
     const imgSrc = card.imageUrl || '';
     return `
-      <div style="background:#2d2d2d;border:2px solid ${color};border-radius:8px;
+      <div data-deck-card-idx="${idx}" style="background:#2d2d2d;border:2px solid ${color};border-radius:8px;
         padding:12px;display:flex;flex-direction:column;align-items:center;
-        min-width:130px;max-width:160px;position:relative;">
+        min-width:130px;max-width:160px;position:relative;cursor:pointer;
+        transition:transform 0.15s,box-shadow 0.15s;"
+        onmouseenter="this.style.transform='scale(1.04)';this.style.boxShadow='0 6px 20px rgba(0,0,0,0.6)'"
+        onmouseleave="this.style.transform='';this.style.boxShadow=''">
         ${label ? `<div style="position:absolute;top:4px;right:4px;background:${color};color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:bold;">${label}</div>` : ''}
         ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
         <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:3px;">${card.name}${card.upgraded ? ' +' : ''}</div>
@@ -4782,12 +4833,15 @@ function showDeckModal() {
   const collectedCards = (gameState && gameState.deck) ? gameState.deck : [];
 
   const totalCount = startingCards.length + collectedCards.length;
-  const startingHTML = startingCards.map(c => cardHtml(c, 'Starting')).join('');
-  const collectedHTML = collectedCards.map(c => cardHtml(c, 'Acquired')).join('');
+  // Store all cards in order for click-to-zoom (starting first, then collected)
+  window._deckModalAllCards = [...startingCards, ...collectedCards];
+  const startingHTML = startingCards.map((c, i) => cardHtml(c, 'Starting', i)).join('');
+  const collectedHTML = collectedCards.map((c, i) => cardHtml(c, 'Acquired', startingCards.length + i)).join('');
 
   createGameModal(`
     <div style="padding:20px;max-width:1100px;margin:0 auto;">
       <h2 style="color:#9b59b6;text-align:center;margin-top:0;">🃏 Your Deck (${totalCount} cards)</h2>
+      <p style="text-align:center;color:#888;font-size:12px;margin:0 0 12px;">Click a card to zoom in</p>
       ${startingHTML ? `
         <h3 style="color:#888;margin:12px 0 8px;">Starting Deck (${startingCards.length})</h3>
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">${startingHTML}</div>
@@ -4801,6 +4855,15 @@ function showDeckModal() {
       </div>
     </div>
   `);
+
+  // Attach click-to-zoom on each card
+  document.querySelectorAll('[data-deck-card-idx]').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.deckCardIdx);
+      const card = window._deckModalAllCards && window._deckModalAllCards[idx];
+      if (card) showCardZoomOverlay(card);
+    });
+  });
 }
 window.showDeckModal = showDeckModal;
 
@@ -7770,15 +7833,20 @@ function showCharacterDetails(charName) {
   const startingItemsHTML = startingItemsList.length > 0 ? `
     <div style="margin-top: 15px;">
       <strong style="color: #cc6600;">Starting Item${startingItemsList.length > 1 ? 's' : ''}:</strong>
-      <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 5px;">
+      <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;">
         ${startingItemsList.map(itemName => {
           const itemData = typeof items !== 'undefined' ? items.find(i => i.name === itemName) : null;
           const rarityColor = itemData ? (itemData.rarity === 'Rare' ? '#9b59b6' : itemData.rarity === 'Uncommon' ? '#4CAF50' : '#888') : '#cc6600';
-          return `<div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.3);border:1px solid ${rarityColor};border-radius:6px;padding:5px 8px;">
-            <span style="color:${rarityColor};font-weight:bold;font-size:18px;">★</span>
+          const imgSrc = itemData && itemData.image ? itemData.image : '';
+          return `<div style="display:flex;align-items:center;gap:12px;background:rgba(0,0,0,0.3);border:1px solid ${rarityColor};border-radius:8px;padding:8px 10px;">
+            ${imgSrc
+              ? `<img src="${imgSrc}" alt="${itemName}" style="width:52px;height:52px;object-fit:contain;border-radius:6px;border:1px solid ${rarityColor}40;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.display='none'">`
+              : `<div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;">📦</div>`
+            }
             <div>
-              <div style="font-size:12px;color:white;font-weight:bold;">${itemName}</div>
-              ${itemData ? `<div style="font-size:10px;color:#aaa;">${itemData.rarity || ''} · ${itemData.type || ''}</div>` : ''}
+              <div style="font-size:13px;color:white;font-weight:bold;">${itemName}</div>
+              ${itemData ? `<div style="font-size:11px;color:${rarityColor};font-weight:bold;text-transform:uppercase;">${itemData.rarity || ''}</div>` : ''}
+              ${itemData && itemData.type ? `<div style="font-size:10px;color:#aaa;">${itemData.type}</div>` : ''}
             </div>
           </div>`;
         }).join('')}

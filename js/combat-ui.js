@@ -528,7 +528,7 @@ function renderIntentBadge(enemy) {
   ` : '';
 
   return `
-    <div title="${tooltipText.replace(/"/g, '&quot;')}" style="
+    <div data-intent-tooltip="${tooltipText.replace(/"/g, '&quot;')}" style="
       display:inline-flex; align-items:center; gap:4px;
       background:${style.bg}; border:1px solid ${style.border};
       border-radius:12px; padding:3px 8px;
@@ -963,16 +963,19 @@ window._showCombatPile = function(pileType) {
   const existing = document.getElementById('combat-pile-overlay');
   if (existing) existing.remove();
 
-  const cardsHTML = pile.map(card => {
+  const cardsHTML = pile.map((card, idx) => {
     const bc = typeColor(card.type);
     const bg = cardTypeBg(card.type);
     return `
-      <div style="
+      <div data-pile-card-idx="${idx}" style="
         background:${bg}; border:2px solid ${bc};
         border-radius:8px; padding:8px 10px;
         display:flex; flex-direction:column; align-items:center;
         min-width:95px; max-width:115px; flex-shrink:0;
-      ">
+        cursor:pointer; transition:transform 0.12s,box-shadow 0.12s;
+      "
+      onmouseenter="this.style.transform='scale(1.06)';this.style.boxShadow='0 4px 14px rgba(0,0,0,0.7)'"
+      onmouseleave="this.style.transform='';this.style.boxShadow=''">
         <div style="font-size:10px; font-weight:bold; color:white; text-align:center; margin-bottom:3px;">
           ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
         </div>
@@ -1022,6 +1025,14 @@ window._showCombatPile = function(pileType) {
   // Close on button click or backdrop click
   document.getElementById('combat-pile-close').addEventListener('click', () => overlay.remove());
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+  // Click card to zoom in
+  overlay.querySelectorAll('[data-pile-card-idx]').forEach(el => {
+    el.addEventListener('click', () => {
+      const card = pile[parseInt(el.dataset.pileCardIdx)];
+      if (card && typeof showCardZoomOverlay === 'function') showCardZoomOverlay(card);
+    });
+  });
 };
 
 // ============== COMBAT LOG PANEL ==============
@@ -1167,12 +1178,22 @@ function attachCombatEventListeners(combat) {
   }
 
   // Enemy clicks + pattern hover tooltip
+  // Pattern tooltip shows only when NOT hovering status icons or the intent badge
   ensureEnemyPatternTooltip();
   document.querySelectorAll('.enemy-card').forEach(el => {
     el.addEventListener('click', () => handleEnemyClick(el.dataset.enemyId));
-    el.addEventListener('mouseenter', (e) => showEnemyPatternTooltip(el, e));
+    el.addEventListener('mouseenter', (e) => {
+      if (e.target.closest('[data-intent-tooltip]') || e.target.closest('.combat-status-icon')) return;
+      showEnemyPatternTooltip(el, e);
+    });
     el.addEventListener('mouseleave', () => hideEnemyPatternTooltip());
-    el.addEventListener('mousemove', (e) => positionEnemyPatternTooltip(e));
+    el.addEventListener('mousemove', (e) => {
+      if (e.target.closest('[data-intent-tooltip]') || e.target.closest('.combat-status-icon')) {
+        hideEnemyPatternTooltip();
+        return;
+      }
+      positionEnemyPatternTooltip(e);
+    });
   });
 
   // Card hand: click + drag mousedown + tooltip (all per-render)
