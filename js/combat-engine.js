@@ -484,7 +484,7 @@ const PATTERN_STATUSES = new Set([
   'barricade','fading','thorns','shifting','formless','ritual','ruptured','bleed','slow','silence',
 ]);
 // Statuses that do not stack — applying again just sets to 1
-const NON_STACKABLE_STATUSES = new Set(['stun', 'dodge', 'silence', 'confusion', 'confused']);
+const NON_STACKABLE_STATUSES = new Set(['stun', 'dodge', 'silence', 'confused']);
 
 /**
  * Apply a status to a unit, respecting non-stackable caps.
