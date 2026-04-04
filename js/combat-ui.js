@@ -1095,13 +1095,22 @@ function showStatusTooltip(event, key, val) {
   const type = data ? data.type : '';
   const decay = data ? data.decay : '';
   const typeColor = type === 'Buff' ? '#4CAF50' : type === 'Debuff' ? '#e74c3c' : '#aaa';
+  const imgPath = meta.img ? `images/statuses/${meta.img}.png` : null;
   tip.innerHTML = `
-    <div style="font-weight:bold;font-size:13px;margin-bottom:4px;">
-      ${meta.emoji} ${name}
-      ${val > 0 ? `<span style="color:#ffcc44;margin-left:6px;">×${val}</span>` : ''}
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      ${imgPath
+        ? `<img src="${imgPath}" style="width:28px;height:28px;object-fit:contain;flex-shrink:0;"
+             onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=\\"font-size:18px;\\">${meta.emoji}</span>')">`
+        : `<span style="font-size:18px;">${meta.emoji}</span>`}
+      <div>
+        <div style="font-weight:bold;font-size:13px;">
+          ${name}
+          ${val > 0 ? `<span style="color:#ffcc44;margin-left:6px;">×${val}</span>` : ''}
+        </div>
+        ${type ? `<div style="color:${typeColor};font-size:10px;">${type}</div>` : ''}
+      </div>
     </div>
-    ${desc ? `<div style="color:#ccc;font-size:11px;margin-bottom:4px;">${desc}</div>` : ''}
-    ${type ? `<div style="color:${typeColor};font-size:10px;">${type}</div>` : ''}
+    ${desc ? `<div style="color:#ccc;font-size:11px;margin-bottom:4px;line-height:1.4;">${desc}</div>` : ''}
     ${decay && decay !== 'None' ? `<div style="color:#888;font-size:10px;margin-top:2px;">⏱ ${decay}</div>` : ''}
   `;
   const x = Math.min(event.clientX + 12, window.innerWidth - 260);

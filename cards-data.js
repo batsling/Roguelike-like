@@ -10,7 +10,7 @@ var CARDS_DATA = [
     "description": "Deal 6 Dmg.",
     "upgradedDescription": "Deal 9 Dmg.",
     "upgradedCost": 1,
-    "canUpgrade": false,
+    "canUpgrade": true,
     "isStatusCard": false,
     "imageUrl": null,
     "game": null,
@@ -24,7 +24,7 @@ var CARDS_DATA = [
     "description": "Gain 5 Block.",
     "upgradedDescription": "Gain 8 Block.",
     "upgradedCost": 1,
-    "canUpgrade": false,
+    "canUpgrade": true,
     "isStatusCard": false,
     "imageUrl": null,
     "game": null,
@@ -38,7 +38,7 @@ var CARDS_DATA = [
     "description": "Deal 8 Dmg. Apply 2 Vulnerable.",
     "upgradedDescription": "Deal 10 Dmg. Apply 3 Vulnerable.",
     "upgradedCost": 2,
-    "canUpgrade": false,
+    "canUpgrade": true,
     "isStatusCard": false,
     "imageUrl": "images/cards/Bash.png",
     "game": "Slay the Spire",
@@ -118,7 +118,7 @@ var CARDS_DATA = [
     "description": "1: Gain random curse from the current difficulty.\r\n2: Take 3 Dmg\r\n3: Gain 5 Block\r\n4: Heal 3 Health\r\n5: Draw 1 Card\r\n6: Gain a Random Common Item",
     "upgradedDescription": "1: Gain 2 random curses from the current difficulty.\r\n2: Take 5 Dmg\r\n3: Gain 8 Block\r\n4: Heal 3 Health\r\n5: Draw 2 Cards\r\n6: Gain a Random Item",
     "upgradedCost": 1,
-    "canUpgrade": false,
+    "canUpgrade": true,
     "isStatusCard": false,
     "imageUrl": null,
     "game": "The Binding of Isaac",
@@ -166,7 +166,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/cards/Barrel.png",
+    "imageUrl": "images/weapons/Barrel.png",
     "game": "Enter the Gungeon",
     "tags": [
       "weapon"
@@ -182,7 +182,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/cards/BlasmaPistol.png",
+    "imageUrl": "images/weapons/BlasmaPistol.png",
     "game": "Flinthook",
     "tags": [
       "weapon"
@@ -198,7 +198,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/cards/LilBomber.png",
+    "imageUrl": "images/weapons/LilBomber.png",
     "game": "Enter the Gungeon",
     "tags": [
       "weapon"
@@ -214,7 +214,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/cards/BloodMagic.png",
+    "imageUrl": "images/weapons/BloodMagic.png",
     "game": "Megabonk",
     "tags": [
       "weapon"
@@ -230,7 +230,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/cards/Dexecutioner.png",
+    "imageUrl": "images/weapons/Dexecutioner.png",
     "game": "Megabonk",
     "tags": [
       "weapon"

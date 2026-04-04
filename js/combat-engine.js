@@ -527,13 +527,14 @@ function evaluateScalingFormulas(desc) {
 }
 
 function parsePatternDescToEffects(desc) {
-  if (!desc || /unknown intent/i.test(desc)) return { effects: [], text: desc || '' };
+  if (!desc) return { effects: [], text: '' };
 
   // Evaluate turn-scaling formulas (e.g. Transient) before any other parsing
   desc = evaluateScalingFormulas(desc);
 
   // Probability split FIRST: "50% desc1 / 50% desc2"
-  // Must run before special-case checks so "Consume" inside a branch is handled per-branch
+  // Must run before unknown-intent check so each branch is resolved independently.
+  // e.g. "75% Unknown Intent ("Wandering") / 25% 6 Dmg Ranged" rolls and picks ONE.
   if (desc.includes('%') && desc.includes('/')) {
     const options = desc.split('/').map(s => s.trim());
     const weighted = [];
@@ -551,6 +552,14 @@ function parsePatternDescToEffects(desc) {
       const last = weighted[weighted.length - 1];
       return parsePatternDescToEffects(last.text);
     }
+  }
+
+  // Unknown intent check AFTER probability split so each branch resolves independently.
+  // Extract the label from "Unknown Intent ("Label")" to show just the label.
+  if (/unknown intent/i.test(desc)) {
+    const labelMatch = desc.match(/unknown intent\s*\(\s*"?([^")]+)"?\s*\)/i);
+    const text = labelMatch ? labelMatch[1].trim() : desc;
+    return { effects: [], text };
   }
 
   // "Add N random Pigment ... to (your) deck/hand"

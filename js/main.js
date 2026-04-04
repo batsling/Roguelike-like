@@ -4,7 +4,7 @@
 // - Page initialization
 // - Event listener setup
 
-console.log('✅ MAIN.JS v45 loaded - inventory deep copy on save active');
+console.log('✅ MAIN.JS v49 loaded - weapons as items, unknown intent fix, all cards upgradeable');
 // - Excel file upload
 // - Save/load game system
 // - Tutorial and UI controls
@@ -5579,6 +5579,7 @@ function showCardRewardModal(onComplete) {
       .filter(c => c.rarity && c.rarity !== 'Starter' && c.rarity !== 'N/A'
                && (c.type || '').toLowerCase() !== 'training'
                && !c.isTraining
+               && !(c.tags && c.tags.includes('weapon'))
                && !exclude.has(c.name));
     if (pool.length === 0) return null;
 
@@ -7876,9 +7877,24 @@ function showCharacterDetails(charName) {
       <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;">
         ${startingItemsList.map(itemName => {
           const itemData = typeof items !== 'undefined' ? items.find(i => i.name === itemName) : null;
-          const rarityColor = itemData ? (itemData.rarity === 'Rare' ? '#9b59b6' : itemData.rarity === 'Uncommon' ? '#4CAF50' : '#888') : '#cc6600';
+          const rarityColor = itemData ? (itemData.rarity === 'Rare' ? '#9b59b6' : itemData.rarity === 'Uncommon' ? '#4CAF50' : itemData.rarity === 'Common' ? '#aaa' : '#888') : '#cc6600';
           const imgSrc = itemData && itemData.image ? itemData.image : '';
-          return `<div style="display:flex;align-items:center;gap:12px;background:rgba(0,0,0,0.3);border:1px solid ${rarityColor};border-radius:8px;padding:8px 10px;">
+          const safeItemName = itemName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          const descText = itemData && itemData.description ? itemData.description.replace(/'/g, "\\'") : '';
+          const typeText = itemData && itemData.type ? itemData.type : '';
+          const refText = itemData && (itemData.reference || itemData.game) ? (itemData.reference || itemData.game) : '';
+          return `<div class="collection-starting-item" style="display:flex;align-items:center;gap:12px;background:rgba(0,0,0,0.3);border:1px solid ${rarityColor};border-radius:8px;padding:8px 10px;position:relative;cursor:default;"
+            onmouseenter="(function(el){
+              var t=document.getElementById('collection-item-tip');
+              if(!t){t=document.createElement('div');t.id='collection-item-tip';t.style.cssText='position:fixed;z-index:9000;pointer-events:none;background:linear-gradient(145deg,rgba(20,20,30,0.97),rgba(15,15,25,0.97));border:2px solid ${rarityColor};border-radius:8px;padding:12px 14px;max-width:260px;box-shadow:0 4px 20px rgba(0,0,0,0.8);font-family:Georgia,serif;font-size:12px;color:#e6d5b8;';document.body.appendChild(t);}
+              t.style.borderColor='${rarityColor}';
+              t.innerHTML='<div style=\\'display:flex;align-items:center;gap:8px;margin-bottom:8px;\\'>${imgSrc ? `<img src=\\'${imgSrc}\\' style=\\'width:36px;height:36px;object-fit:contain;flex-shrink:0;image-rendering:pixelated;\\' onerror=\\'this.style.display=\\"none\\"\\'>` : ''}<div><div style=\\'font-weight:bold;font-size:13px;color:white;\\'>${safeItemName}</div>${typeText ? `<div style=\\'font-size:10px;color:${rarityColor};text-transform:uppercase;font-weight:bold;\\'>${typeText}${refText ? ` · ${refText}` : ''}</div>` : ''}</div></div>${descText ? `<div style=\\'color:#ccc;font-size:11px;line-height:1.5;\\'>${descText}</div>` : ''}';
+              var r=el.getBoundingClientRect();
+              var tx=Math.min(r.right+8,window.innerWidth-270);
+              var ty=Math.min(r.top,window.innerHeight-200);
+              t.style.left=tx+'px';t.style.top=ty+'px';t.style.display='block';
+            })(this)"
+            onmouseleave="var t=document.getElementById('collection-item-tip');if(t)t.style.display='none';">
             ${imgSrc
               ? `<img src="${imgSrc}" alt="${itemName}" style="width:52px;height:52px;object-fit:contain;border-radius:6px;border:1px solid ${rarityColor}40;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.display='none'">`
               : `<div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;">📦</div>`

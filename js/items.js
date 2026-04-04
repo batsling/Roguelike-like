@@ -1360,6 +1360,24 @@ function acquireItem(item) {
     targetItemIndex = inventory.length - 1;
     console.log('📥 Weapon added to inventory (no stacking):', itemCopy.name);
     console.log(`✅ Acquired: ${itemCopy.name}`);
+    // Add the corresponding weapon card to the deck
+    if (typeof CARDS_DATA !== 'undefined') {
+      const weaponCard = CARDS_DATA.find(c => c.name === itemCopy.name && c.tags && c.tags.includes('weapon'));
+      if (weaponCard) {
+        const addFn = window.addCardToDeck || (typeof addCardToDeck !== 'undefined' ? addCardToDeck : null);
+        if (addFn) {
+          addFn(weaponCard);
+        } else if (typeof gameState !== 'undefined') {
+          if (!gameState.deck) gameState.deck = [];
+          gameState.deck.push({ ...weaponCard, upgraded: false });
+          if (typeof saveCurrentGame === 'function') saveCurrentGame();
+        }
+        console.log(`🃏 Weapon card added to deck: ${weaponCard.name}`);
+        if (typeof createNotification === 'function') {
+          createNotification(`${weaponCard.name} card added to deck!`, '#4CAF50', '🃏');
+        }
+      }
+    }
   } else {
     // Check if item already exists in inventory (for stacking non-weapons)
     // For items with stat modifiers (upgraded/downgraded), only stack if modifiers match exactly
