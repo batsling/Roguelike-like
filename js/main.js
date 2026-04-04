@@ -4391,6 +4391,25 @@ function handleDiceCombatVictory(enemy) {
     timestamp: new Date().toLocaleString()
   });
   updateEncounterHistory();
+
+  // Reset post-combat choices when player first reaches Medium or Hard difficulty
+  if (!gameState.postcombatChoicesUsed) {
+    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
+  }
+  if (enemy.difficulty === 'Medium' && !gameState.firstMediumCombatWon) {
+    gameState.firstMediumCombatWon = true;
+    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
+    if (typeof createNotification === 'function') {
+      createNotification('Reached Medium difficulty — post-combat options reset!', '#f39c12', '⚔');
+    }
+  } else if (enemy.difficulty === 'High' && !gameState.firstHardCombatWon) {
+    gameState.firstHardCombatWon = true;
+    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
+    if (typeof createNotification === 'function') {
+      createNotification('Reached Hard difficulty — post-combat options reset!', '#c0392b', '💀');
+    }
+  }
+
   saveCurrentGame();
 
   // Show brief victory notification then go straight to card reward
