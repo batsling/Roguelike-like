@@ -2140,10 +2140,15 @@ function endTurn() {
 
   combatState.phase = 'end_turn';
 
-  // Discard hand (unplayed cards go to discard)
+  // Discard hand (unplayed cards go to discard; Ethereal cards exhaust instead)
   if (combatState.hand) {
     for (const card of combatState.hand) {
-      combatState.discardPile.push(card);
+      if ((card.description || '').toLowerCase().includes('ethereal')) {
+        combatState.exhaustPile.push(card);
+        addLog(`${card.name} exhausted (Ethereal)`, 'info');
+      } else {
+        combatState.discardPile.push(card);
+      }
     }
     combatState.hand = [];
     combatState.selectedCardIndex = null;
@@ -3058,7 +3063,7 @@ function resolveCardEffect(card, target) {
     const lower = p.toLowerCase();
 
     if (lower === 'exhaust') { shouldExhaust = true; continue; }
-    if (lower === 'ethereal') { shouldExhaust = true; continue; } // Ethereal cards exhaust after use
+    if (lower === 'ethereal') { continue; } // Ethereal exhausts at end of turn if still in hand, not on play
     if (lower === 'indiscriminate' || lower === 'cleave') { continue; } // handled above via isAoECard
 
     // Deal X Dmg [Y times] — supports both "Deal 5 Dmg 2 times" and "Deal 5x2 Dmg" (NxM notation)
