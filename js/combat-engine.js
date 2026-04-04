@@ -478,7 +478,7 @@ function parseOrderedPattern(patternStr) {
  * Handles simple sequences:   "10 Dmg Ranged"  /  "6 Dmg Ranged 1 Burn"
  * Handles no-ops:             "Unknown Intent (\"Charging\")"
  */
-const PATTERN_ADDONS   = new Set(['ranged','melee','pierce','self','engage','trap','aoe','splash','overload','overloadexceptleft','overloadexceptright']);
+const PATTERN_ADDONS   = new Set(['ranged','melee','pierce','self','engage','trap','aoe','splash','overload','overloadexceptleft','overloadexceptright','cleave']);
 const PATTERN_STATUSES = new Set([
   'burn','poison','weak','vulnerable','stun','oiled','dodge','power','frail','confused',
   'barricade','fading','thorns','shifting','formless','ritual','ruptured','bleed','slow','silence',
@@ -3043,8 +3043,11 @@ function resolveCardEffect(card, target) {
 
   // Pre-scan the whole description for AoE keywords (they may be in a separate clause)
   const fullDescLower = desc.toLowerCase();
-  const isAoECard = fullDescLower.includes('cleave') || fullDescLower.includes('all enemies')
-                 || fullDescLower.includes('indiscriminate');
+  // Cleave hits all enemies AND all allies (sweeping AoE)
+  // Indiscriminate / "all enemies" hit only all enemies
+  const isCleaveCard = fullDescLower.includes('cleave');
+  const isAoECard    = isCleaveCard || fullDescLower.includes('all enemies')
+                    || fullDescLower.includes('indiscriminate');
 
   // Split effects by '. ' to handle multi-effect cards
   const parts = desc.replace(/\.\s*$/, '').split(/\.\s+/);
@@ -3055,13 +3058,15 @@ function resolveCardEffect(card, target) {
     const lower = p.toLowerCase();
 
     if (lower === 'exhaust') { shouldExhaust = true; continue; }
+    if (lower === 'ethereal') { shouldExhaust = true; continue; } // Ethereal cards exhaust after use
     if (lower === 'indiscriminate' || lower === 'cleave') { continue; } // handled above via isAoECard
 
-    // Deal X Dmg [Y times]
-    const dmgMatch = p.match(/Deal (\d+) Dmg(?:.*?(\d+) times?)?/i);
+    // Deal X Dmg [Y times] — supports both "Deal 5 Dmg 2 times" and "Deal 5x2 Dmg" (NxM notation)
+    const dmgMatchNxM = p.match(/Deal (\d+)[xX](\d+) Dmg/i);
+    const dmgMatch    = dmgMatchNxM || p.match(/Deal (\d+) Dmg(?:.*?(\d+) times?)?/i);
     if (dmgMatch) {
       let dmg = parseInt(dmgMatch[1]);
-      const times = dmgMatch[2] ? parseInt(dmgMatch[2]) : 1;
+      const times = dmgMatchNxM ? parseInt(dmgMatchNxM[2]) : (dmgMatch[2] ? parseInt(dmgMatch[2]) : 1);
       // Player Power bonus adds to outgoing damage
       const playerPower = player.statuses['power'] || 0;
       if (playerPower !== 0) dmg += playerPower;
@@ -3079,6 +3084,13 @@ function resolveCardEffect(card, target) {
         combatState.enemies.filter(e => e.health > 0).forEach(e => {
           for (let t = 0; t < times; t++) dealDamage(e, dmg);
         });
+        // Cleave also hits all allies (sweeping attack that doesn't discriminate)
+        if (isCleaveCard && combatState.allies) {
+          combatState.allies.filter(a => a.isAlive).forEach(a => {
+            for (let t = 0; t < times; t++) dealDamage(a, dmg);
+          });
+          if (combatState.allies.some(a => a.isAlive)) addLog('Cleave hit all allies too!', 'warning');
+        }
       } else if (target) {
         for (let t = 0; t < times; t++) dealDamage(target, dmg);
       }
@@ -3131,13 +3143,18 @@ function resolveCardEffect(card, target) {
     const drawMatch = p.match(/Draw (\d+) cards?/i);
     if (drawMatch) { drawCards(parseInt(drawMatch[1])); continue; }
 
-    // Apply X [Status] (on target)
-    const applyMatch = p.match(/Apply (\d+) (\w+)/i);
-    if (applyMatch && target) {
+    // Apply / Inflict X [Status] (on current target or all enemies if AoE)
+    const applyMatch = p.match(/(?:Apply|Inflict) (\d+) (\w+)/i);
+    if (applyMatch) {
       const stacks = parseInt(applyMatch[1]);
       const key = applyMatch[2].toLowerCase();
-      target.statuses[key] = (target.statuses[key] || 0) + stacks;
-      addLog(`Applied ${stacks} ${applyMatch[2]} to ${target.name}`, 'warning');
+      const statusTargets = isAoECard
+        ? combatState.enemies.filter(e => e.health > 0)
+        : (target ? [target] : []);
+      statusTargets.forEach(t => {
+        t.statuses[key] = (t.statuses[key] || 0) + stacks;
+        addLog(`Applied ${stacks} ${applyMatch[2]} to ${t.name}`, 'warning');
+      });
       continue;
     }
 
@@ -3182,6 +3199,13 @@ function resolveCardEffect(card, target) {
       const perTurn = parseInt(demonMatch[1]);
       player.statuses['power_per_turn'] = (player.statuses['power_per_turn'] || 0) + perTurn;
       addLog(`Demon Form: +${perTurn} Power each turn`, 'success');
+      continue;
+    }
+    // Inflame / direct "Gain X Power" (immediate power gain, not per-turn)
+    if (demonMatch && !lower.includes('start')) {
+      const gain = parseInt(demonMatch[1]);
+      player.statuses['power'] = (player.statuses['power'] || 0) + gain;
+      addLog(`+${gain} Power`, 'success');
       continue;
     }
 
