@@ -492,7 +492,9 @@ const NON_STACKABLE_STATUSES = new Set(['stun', 'dodge', 'silence', 'confused'])
 // Add a random pigment/status card to the player's combat hand
 function addPigmentCardToHand() {
   if (!combatState) return;
-  const pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : []).filter(c => c.isStatusCard);
+  // Only pick cards explicitly tagged as pigments, never status cards like Slimed
+  const pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
+    .filter(c => c.isStatusCard && c.tags && c.tags.includes('pigment'));
   if (pool.length === 0) return;
   const card = { ...pool[Math.floor(Math.random() * pool.length)] };
   if (!combatState.hand) combatState.hand = [];

@@ -556,65 +556,84 @@ function renderPlayerZone(combat) {
   const hpPct    = Math.max(0, (p.health / p.maxHealth) * 100);
   const hpColor  = hpPct > 50 ? '#27ae60' : hpPct > 25 ? '#f39c12' : '#c0392b';
 
+  const statusRowHTML = renderStatusRow(p.statuses, 'player');
+  const hasStatuses   = statusRowHTML.trim().length > 0;
+
   return `
     <div id="combat-player-zone" style="
-      height: 195px; flex-shrink: 0;
-      display: flex; align-items: flex-start;
-      padding: 8px 20px; gap: 16px;
+      flex-shrink: 0;
+      display: flex; flex-direction: column;
       background: rgba(0,0,0,0.35);
       border-top: 2px solid ${C.border};
     ">
-      <!-- Portrait + HP -->
-      <div style="display:flex; flex-direction:column; align-items:center; width:110px; flex-shrink:0;">
-        <div style="
-          width:110px; height:130px;
-          border-radius:8px; border:2px solid ${C.gold};
-          background:rgba(0,0,0,0.5);
-          overflow:hidden; display:flex; align-items:flex-end; justify-content:center;
-        ">
-          <img src="${portrait}" alt="${charKey}"
-            style="width:110px; object-fit:cover; object-position:top;"
-            onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=font-size:52px>🧙</span>'">
-        </div>
-        <div style="font-size:11px; color:${C.gold}; margin-top:4px; font-weight:bold;">${charKey}</div>
+      <!-- Main row: portrait | powers | actions -->
+      <div style="display:flex; align-items:flex-start; padding:8px 20px; gap:16px;">
 
-        <div style="
-          width:100%; margin-top:5px;
-          background:${C.hpBg}; border-radius:4px;
-          height:10px; overflow:hidden;
-          border:1px solid rgba(255,255,255,0.15);
-        ">
+        <!-- Portrait + name only -->
+        <div style="display:flex; flex-direction:column; align-items:center; width:100px; flex-shrink:0;">
           <div style="
-            width:${hpPct}%; height:100%;
-            background:linear-gradient(90deg,${hpColor},${hpColor}cc);
-            transition:width 0.3s; border-radius:4px;
-          "></div>
+            width:100px; height:120px;
+            border-radius:8px; border:2px solid ${C.gold};
+            background:rgba(0,0,0,0.5);
+            overflow:hidden; display:flex; align-items:flex-end; justify-content:center;
+          ">
+            <img src="${portrait}" alt="${charKey}"
+              style="width:100px; object-fit:cover; object-position:top;"
+              onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=font-size:52px>🧙</span>'">
+          </div>
+          <div style="font-size:11px; color:${C.gold}; margin-top:4px; font-weight:bold;">${charKey}</div>
         </div>
-        <div style="font-size:11px; color:${C.text}; margin-top:2px;">❤ ${p.health} / ${p.maxHealth}</div>
 
+        <!-- Powers zone -->
+        <div id="combat-powers-zone" style="
+          flex:1; display:flex; flex-wrap:wrap;
+          align-content:flex-start; gap:8px; padding:4px;
+          min-height:50px;
+        ">
+          ${renderPowersZone(combat)}
+        </div>
+
+        <!-- End turn + energy pips -->
+        ${renderActionsZone(combat)}
+      </div>
+
+      <!-- Bottom strip: HP bar | block | statuses — full width, never cramped -->
+      <div style="
+        display:flex; align-items:center; flex-wrap:wrap;
+        gap:6px; padding:4px 20px 8px;
+        border-top:1px solid rgba(255,255,255,0.08);
+      ">
+        <!-- HP bar + numbers -->
+        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+          <div style="
+            width:120px;
+            background:${C.hpBg}; border-radius:4px;
+            height:10px; overflow:hidden;
+            border:1px solid rgba(255,255,255,0.15);
+          ">
+            <div style="
+              width:${hpPct}%; height:100%;
+              background:linear-gradient(90deg,${hpColor},${hpColor}cc);
+              transition:width 0.3s; border-radius:4px;
+            "></div>
+          </div>
+          <span style="font-size:11px; color:${C.text}; white-space:nowrap;">❤ ${p.health} / ${p.maxHealth}</span>
+        </div>
+
+        <!-- Block badge (always visible when > 0) -->
         ${p.block > 0 ? `
           <div style="
-            margin-top:4px; display:flex; align-items:center; gap:4px;
+            display:flex; align-items:center; gap:4px;
             background:${C.blockBg}; border:1px solid ${C.block};
-            border-radius:8px; padding:2px 8px;
-            font-size:12px; font-weight:bold; color:#5dade2;
+            border-radius:8px; padding:2px 10px;
+            font-size:13px; font-weight:bold; color:#5dade2;
+            white-space:nowrap; flex-shrink:0;
           ">🛡 ${p.block}</div>
         ` : ''}
 
-        <div style="margin-top:4px;">${renderStatusRow(p.statuses, 'player')}</div>
+        <!-- Status icons — wrap freely in remaining space -->
+        ${hasStatuses ? statusRowHTML : ''}
       </div>
-
-      <!-- Powers zone -->
-      <div id="combat-powers-zone" style="
-        flex:1; display:flex; flex-wrap:wrap;
-        align-content:flex-start; gap:8px; padding:4px;
-        min-height:50px;
-      ">
-        ${renderPowersZone(combat)}
-      </div>
-
-      <!-- End turn + energy pips -->
-      ${renderActionsZone(combat)}
     </div>
   `;
 }
