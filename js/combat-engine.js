@@ -1552,13 +1552,13 @@ function dealDamage(target, damage, addons = []) {
   const powerStacks = target === combatState.player ? 0 : (target.statuses['power'] || 0);
   // Power affects outgoing damage, not incoming - skip for now
 
-  // Curl Up: gain block on the first attack hit received each turn (enemies only, not self-damage)
-  if (target !== combatState.player && target.statuses && target.statuses['curl_up'] > 0
-      && !target.curlUpTriggeredThisTurn && !addons.includes('self')) {
-    const curlAmt = target.statuses['curl_up'];
-    addBlock(target, curlAmt);
-    target.curlUpTriggeredThisTurn = true;
-    addLog(`${target.name} curled up! Gained ${curlAmt} Block`, 'info');
+  // Curl Up: gain block AFTER taking damage (first hit each turn, enemies only, not self-damage)
+  // Flag is set here so we know to apply it post-damage
+  const curlUpPending = target !== combatState.player && target.statuses
+      && target.statuses['curl_up'] > 0 && !target.curlUpTriggeredThisTurn
+      && !addons.includes('self');
+  if (curlUpPending) {
+    target.curlUpTriggeredThisTurn = true; // mark now so re-entrant hits don't double-trigger
   }
 
   // Check Stagger — if this single hit is ≥ X% of the target's max HP, apply Stun
@@ -1630,6 +1630,13 @@ function dealDamage(target, damage, addons = []) {
         dealDamageToPlayer(remainingDamage, ['self'], null);
       }
       combatState._soulLinkPropagating = false;
+    }
+
+    // Curl Up: gain block after receiving this hit (reactive block, doesn't absorb the triggering hit)
+    if (curlUpPending) {
+      const curlAmt = target.statuses['curl_up'];
+      addBlock(target, curlAmt);
+      addLog(`${target.name} curled up! Gained ${curlAmt} Block`, 'info');
     }
 
     // Trigger on-death ability for enemies that just died
@@ -2931,11 +2938,18 @@ function buildCombatDeck(characterData) {
 
   // Starting deck from character data
   const startingDeck = characterData.startingDeck || [];
+  const upgradedStarting = (typeof gameState !== 'undefined' && gameState.upgradedStartingCards) || {};
   for (const entry of startingDeck) {
     const template = resolveStartingCardName(entry.cardName);
     if (template) {
+      const wasSmithUpgraded = !!upgradedStarting[entry.cardName];
       for (let i = 0; i < entry.count; i++) {
-        deck.push({ ...template, upgraded: false, _uid: `start_${uid++}` });
+        const card = { ...template, upgraded: wasSmithUpgraded, _uid: `start_${uid++}` };
+        if (wasSmithUpgraded) {
+          if (card.upgradedDescription) card.description = card.upgradedDescription;
+          if (card.upgradedCost !== null && card.upgradedCost !== undefined) card.cost = card.upgradedCost;
+        }
+        deck.push(card);
       }
     } else {
       console.warn('Starting deck card not found:', entry.cardName);

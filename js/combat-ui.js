@@ -788,9 +788,9 @@ function renderCardInHand(card, index, total, combat) {
         overflow:hidden; flex-shrink:0;
       ">
         ${imgSrc
-          ? `<img src="${imgSrc}" alt="${card.name}"
+          ? `<img src="${imgSrc}" alt=""
                style="width:100%;height:100%;object-fit:contain;padding:3px;box-sizing:border-box;"
-               onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=\\"font-size:${artH - 10}px\\">${typeEmoji(card.type)}</span>')">`
+               onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:${artH - 10}px>${typeEmoji(card.type)}</span>'">`
           : `<span style="font-size:${artH - 10}px;">${typeEmoji(card.type)}</span>`}
       </div>
 
@@ -1100,7 +1100,7 @@ function showStatusTooltip(event, key, val) {
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
       ${imgPath
         ? `<img src="${imgPath}" style="width:28px;height:28px;object-fit:contain;flex-shrink:0;"
-             onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=\\"font-size:18px;\\">${meta.emoji}</span>')">`
+             onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=font-size:18px>${meta.emoji}</span>')">`
         : `<span style="font-size:18px;">${meta.emoji}</span>`}
       <div>
         <div style="font-weight:bold;font-size:13px;">
@@ -1135,7 +1135,7 @@ function renderStatusRow(statuses, _id) {
         const meta    = STATUS_META[key] || { img:null, emoji:'•', label:key };
         const imgPath = meta.img ? `images/statuses/${meta.img}.png` : null;
         return `
-          <div style="
+          <div class="combat-status-icon" style="
             position:relative; width:22px; height:22px;
             display:flex; align-items:center; justify-content:center;
             background:rgba(0,0,0,0.5);

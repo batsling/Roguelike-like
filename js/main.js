@@ -4559,7 +4559,25 @@ function showPostCombatChoiceModal(difficulty) {
  * Show the Smith upgrade modal — player picks up to 2 cards to upgrade for free.
  */
 function showSmithChoiceModal() {
-  const upgradeable = (gameState.deck || []).filter(c => c.canUpgrade && !c.upgraded);
+  // Include starter cards from character's starting deck that haven't been smith-upgraded yet
+  const upgradedStarting = gameState.upgradedStartingCards || {};
+  const charKey = gameState.character;
+  const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
+  const startingEntries = (charData && charData.startingDeck) ? charData.startingDeck : [];
+
+  const seenStarting = new Set();
+  const startingUpgradeable = [];
+  startingEntries.forEach(entry => {
+    const template = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
+    if (template && template.canUpgrade && !upgradedStarting[entry.cardName] && !seenStarting.has(entry.cardName)) {
+      seenStarting.add(entry.cardName);
+      startingUpgradeable.push({ ...template, _isStarting: true });
+    }
+  });
+
+  const collectedUpgradeable = (gameState.deck || []).filter(c => c.canUpgrade && !c.upgraded);
+  const upgradeable = [...startingUpgradeable, ...collectedUpgradeable];
+
   if (upgradeable.length === 0) {
     if (typeof createNotification === 'function') createNotification('No upgradeable cards in deck!', '#FF9800', '⚒️');
     return;
@@ -4634,13 +4652,23 @@ function showSmithChoiceModal() {
         let upgradeCount = 0;
         selectedIndices.forEach(idx => {
           const card = upgradeable[idx];
-          const deckIdx = gameState.deck.findIndex(c => c === card || (c.name === card.name && !c.upgraded));
-          if (deckIdx !== -1) {
-            gameState.deck[deckIdx].upgraded = true;
-            if (gameState.deck[deckIdx].upgradedDescription) {
-              gameState.deck[deckIdx].description = gameState.deck[deckIdx].upgradedDescription;
-            }
+          if (card._isStarting) {
+            // Track starting card upgrades separately; applied in buildCombatDeck
+            if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
+            gameState.upgradedStartingCards[card.name] = true;
             upgradeCount++;
+          } else {
+            const deckIdx = gameState.deck.findIndex(c => c === card || (c.name === card.name && !c.upgraded));
+            if (deckIdx !== -1) {
+              gameState.deck[deckIdx].upgraded = true;
+              if (gameState.deck[deckIdx].upgradedDescription) {
+                gameState.deck[deckIdx].description = gameState.deck[deckIdx].upgradedDescription;
+              }
+              if (gameState.deck[deckIdx].upgradedCost !== null && gameState.deck[deckIdx].upgradedCost !== undefined) {
+                gameState.deck[deckIdx].cost = gameState.deck[deckIdx].upgradedCost;
+              }
+              upgradeCount++;
+            }
           }
         });
         if (typeof saveCurrentGame === 'function') saveCurrentGame();
