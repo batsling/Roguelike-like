@@ -1025,7 +1025,34 @@ const ITEM_EFFECTS = {
         saveCurrentGame();
       }
     }
-  }
+  },
+
+  "Old Coin": {
+    onAcquire: () => {
+      const gain = 100;
+      window.gold = (window.gold || 0) + gain;
+      if (typeof gameState !== 'undefined') gameState.gold = window.gold;
+      if (typeof saveCurrentGame === 'function') saveCurrentGame();
+      createNotification(`Old Coin: +${gain} Gold!`, COLORS.SUCCESS, '🪙');
+    }
+  },
+
+  "Mango": {
+    onAcquire: () => {
+      const gain = 14;
+      window.maxHealth = (window.maxHealth || 0) + gain;
+      window.health    = Math.min((window.health || 0) + gain, window.maxHealth);
+      if (typeof gameState !== 'undefined') {
+        gameState.maxHealth = window.maxHealth;
+        gameState.health    = window.health;
+      }
+      if (typeof saveCurrentGame === 'function') saveCurrentGame();
+      createNotification(`Mango: +${gain} Max Health and +${gain} Health!`, COLORS.SUCCESS, '🥭');
+    }
+  },
+
+  // Ice Cream: energy remaining at end of turn carries over to the next turn (tracked in combat engine)
+  "Ice Cream": {}
 };
 
 // ===== DAMAGE REDUCTION FUNCTION =====

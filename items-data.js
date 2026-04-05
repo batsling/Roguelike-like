@@ -1,5 +1,5 @@
 // Auto-generated from Roguelikes.xlsx
-// 82 items
+// 85 items
 
 var ITEMS_DATA = [
   {
@@ -14,7 +14,7 @@ var ITEMS_DATA = [
     "name": "Bowler Hat",
     "rarity": "Uncommon",
     "type": "Passive",
-    "description": "Gain +4 Charisma, but -1 Dexterity",
+    "description": "Gain +6 Charisma, but -2 Dexterity",
     "image": "images/items/BowlerHat.png",
     "reference": "Brotato",
     "tags": [
@@ -26,7 +26,7 @@ var ITEMS_DATA = [
     "name": "Campfire",
     "rarity": "Uncommon",
     "type": "Passive",
-    "description": "Gain +4 Intelligence, but -1 Dexterity",
+    "description": "Gain +6 Intelligence, but -2 Dexterity",
     "image": "images/items/Campfire.png",
     "reference": "Brotato"
   },
@@ -34,7 +34,7 @@ var ITEMS_DATA = [
     "name": "Panda",
     "rarity": "Rare",
     "type": "Pickup",
-    "description": "Gain +20 Max Health and +2 Luck, but -2 Strength",
+    "description": "Gain +20 Max Health and +2 Luck, but -3 Strength",
     "image": "images/items/Panda.png",
     "reference": "Brotato"
   },
@@ -42,7 +42,7 @@ var ITEMS_DATA = [
     "name": "Wheat",
     "rarity": "Uncommon",
     "type": "Passive",
-    "description": "Gain +4 Strength, but -1 Intelligence",
+    "description": "Gain +6 Strength, but -2 Intelligence",
     "image": "images/items/Wheat.png",
     "reference": "Brotato",
     "tags": [
@@ -53,7 +53,7 @@ var ITEMS_DATA = [
     "name": "Wings",
     "rarity": "Uncommon",
     "type": "Passive",
-    "description": "Gain +4 Dexterity, but -1  Intelligence",
+    "description": "Gain +6 Dexterity, but -2  Intelligence",
     "image": "images/items/Wings.png",
     "reference": "Brotato",
     "tags": [
@@ -204,7 +204,7 @@ var ITEMS_DATA = [
     "name": "Performance Based Health Insurance",
     "rarity": "Common",
     "type": "Triggered",
-    "description": "Whenever you perfect a game (beat a game/combat without losing a run), Gain +3 Health",
+    "description": "Whenever you perfect a game (beat a game/combat without losing a run), Gain +5 Health",
     "image": "images/items/PerformanceBasedHealthInsurance.png",
     "reference": "Haste"
   },
@@ -231,7 +231,7 @@ var ITEMS_DATA = [
     "name": "Beefy Ring",
     "rarity": "Rare",
     "type": "Scaling",
-    "description": "Gain scaling +1 Strength per 20 max health",
+    "description": "Gain scaling +1 Strength per 20 max health ",
     "image": "images/items/BeefyRing.png",
     "reference": "Megabonk",
     "tags": [
@@ -251,7 +251,7 @@ var ITEMS_DATA = [
     "name": "Focus Crystal",
     "rarity": "Common",
     "type": "Passive",
-    "description": "Melee Weapons deal +1 Dmg",
+    "description": "Melee Attacks deal +1 Dmg",
     "image": "images/items/FocusCrystal.png",
     "reference": "Risk of Rain 2",
     "tags": [
@@ -259,7 +259,7 @@ var ITEMS_DATA = [
     ]
   },
   {
-    "name": "Scroll of Teleportation",
+    "name": "Scroll of Teleportation ",
     "rarity": "Common",
     "type": "Usable",
     "description": "Teleport to a random space",
@@ -270,7 +270,7 @@ var ITEMS_DATA = [
     "name": "Blood Vial",
     "rarity": "Common",
     "type": "Triggered",
-    "description": "Whenever you enter a combat encounter, gain +1 Health",
+    "description": "At the start of combat, gain +1 Health",
     "image": "images/items/BloodVial.png",
     "reference": "Slay the Spire",
     "tags": [
@@ -329,7 +329,7 @@ var ITEMS_DATA = [
     "name": "Oddly Smooth Stone",
     "rarity": "Common",
     "type": "Passive",
-    "description": "Gain +2 Dexterity",
+    "description": "Gain +3 Dexterity",
     "image": "images/items/OddlySmoothStone.png",
     "reference": "Slay the Spire",
     "tags": [
@@ -351,7 +351,7 @@ var ITEMS_DATA = [
     "name": "Vajra",
     "rarity": "Common",
     "type": "Passive",
-    "description": "Gain +2 Strength",
+    "description": "Gain +3 Strength",
     "image": "images/items/Vajra.png",
     "reference": "Slay the Spire"
   },
@@ -370,8 +370,8 @@ var ITEMS_DATA = [
   {
     "name": "Garlic",
     "rarity": "Uncommon",
-    "type": "Passive",
-    "description": "Gain +1 Brace",
+    "type": "Triggered",
+    "description": "At the start of combat, gain +1 Brace",
     "image": "images/items/Garlic.png",
     "reference": "Super Auto Pets",
     "tags": [
@@ -406,7 +406,7 @@ var ITEMS_DATA = [
     "name": "Lunch",
     "rarity": "Common",
     "type": "Pickup",
-    "description": "Gain +3 Max Health and +3 Health",
+    "description": "Gain +5 Max Health and +5 Health",
     "image": "images/items/Lunch.png",
     "reference": "The Binding of Isaac",
     "tags": [
@@ -425,7 +425,7 @@ var ITEMS_DATA = [
     "name": "The Poop",
     "rarity": "Common",
     "type": "Usable",
-    "description": "Poop on the current space, this space will not show up on the space choice in the future unless it's the only option (very stinky)",
+    "description": "Poop on the current space, this space will not show up on the space choice in the future unless it's the only option (very stinky) ",
     "image": "images/items/ThePoop.png",
     "reference": "The Binding of Isaac"
   },
@@ -441,7 +441,7 @@ var ITEMS_DATA = [
     "name": "Empty Tome",
     "rarity": "Common",
     "type": "Passive",
-    "description": "Gain +2 Intelligence",
+    "description": "Gain +3 Intelligence",
     "image": "images/items/EmptyTome.png",
     "reference": "Vampire Survivors"
   },
@@ -449,7 +449,7 @@ var ITEMS_DATA = [
     "name": "Hollow Heart",
     "rarity": "Common",
     "type": "Pickup",
-    "description": "Gain +5 Max Health",
+    "description": "Gain +8 Max Health",
     "image": "images/items/HollowHeart.png",
     "reference": "Vampire Survivors"
   },
@@ -856,6 +856,39 @@ var ITEMS_DATA = [
     "reference": "Slay the Spire",
     "tags": [
       "ninja"
+    ]
+  },
+  {
+    "name": "Ice Cream",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "When you end your turn with energy, gain that much energy on your next energy",
+    "image": "images/items/IceCream.png",
+    "reference": "Slay the Spire",
+    "tags": [
+      "food"
+    ]
+  },
+  {
+    "name": "Old Coin",
+    "rarity": "Rare",
+    "type": "Pickup",
+    "description": "Gain 100 Gold",
+    "image": "images/items/OldCoin.png",
+    "reference": "Slay the Spire",
+    "tags": [
+      "coin"
+    ]
+  },
+  {
+    "name": "Mango",
+    "rarity": "Rare",
+    "type": "Pickup",
+    "description": "Gain + 14 Max Health and +14 Health",
+    "image": "images/items/Mango.png",
+    "reference": "Slay the Spire",
+    "tags": [
+      "food"
     ]
   }
 ];

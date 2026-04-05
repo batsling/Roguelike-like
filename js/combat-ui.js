@@ -670,15 +670,17 @@ function renderActionsZone(combat) {
     ">
       <!-- Energy pips -->
       <div style="display:flex; align-items:center; gap:5px;">
-        ${Array.from({length: maxEnergy}, (_, i) => `
-          <div style="
+        ${Array.from({length: Math.max(maxEnergy, energy)}, (_, i) => {
+          const filled = i < energy;
+          const bonus  = i >= maxEnergy; // extra pip from Ice Cream carry-over
+          return `<div style="
             width:18px; height:18px; border-radius:50%;
-            background:${i < energy ? '#e67e22' : '#3d2b1a'};
-            border:2px solid ${i < energy ? '#f39c12' : '#5a3a1a'};
-            box-shadow:${i < energy ? '0 0 6px #f39c12' : 'none'};
+            background:${filled ? (bonus ? '#9b59b6' : '#e67e22') : '#3d2b1a'};
+            border:2px solid ${filled ? (bonus ? '#c39bd3' : '#f39c12') : '#5a3a1a'};
+            box-shadow:${filled ? (bonus ? '0 0 6px #c39bd3' : '0 0 6px #f39c12') : 'none'};
             transition:all 0.2s;
-          "></div>
-        `).join('')}
+          "></div>`;
+        }).join('')}
         <span style="color:${C.gold}; font-size:12px; margin-left:3px;">${energy}/${maxEnergy}</span>
       </div>
 

@@ -2071,8 +2071,15 @@ function processPlayerStartOfTurn() {
   // Reset cooldowns
   combatState.spellCooldowns = {};
 
-  // Reset energy
+  // Reset energy to base max
   combatState.player.energy = combatState.player.maxEnergy;
+
+  // Ice Cream: add any carried-over energy from last turn (can exceed maxEnergy)
+  if (combatState._iceCreamCarryOver > 0) {
+    combatState.player.energy += combatState._iceCreamCarryOver;
+    addLog(`Ice Cream: +${combatState._iceCreamCarryOver} bonus energy!`, 'success');
+    combatState._iceCreamCarryOver = 0;
+  }
 
   // Apply power_per_turn (Demon Form etc.)
   if (combatState.player.statuses['power_per_turn']) {
@@ -2148,6 +2155,15 @@ function endTurn() {
   }
 
   combatState.phase = 'end_turn';
+
+  // Ice Cream: carry over leftover energy to next turn (player can exceed maxEnergy)
+  const iceCreamCount = typeof inventory !== 'undefined'
+    ? inventory.filter(i => i.name === 'Ice Cream').reduce((n, i) => n + (i.quantity || 1), 0)
+    : 0;
+  if (iceCreamCount > 0 && combatState.player.energy > 0) {
+    combatState._iceCreamCarryOver = (combatState._iceCreamCarryOver || 0) + combatState.player.energy;
+    addLog(`Ice Cream: ${combatState.player.energy} energy carried over!`, 'success');
+  }
 
   // Discard hand (unplayed cards go to discard; Ethereal cards exhaust instead)
   if (combatState.hand) {
