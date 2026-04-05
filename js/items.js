@@ -241,8 +241,8 @@ const ITEM_EFFECTS = {
 
   "Lunch": {
     onAcquire: () => {
-      StateMutator.modifyMaxHealth(3);
-      StateMutator.modifyHealth(3);
+      StateMutator.modifyMaxHealth(5);
+      StateMutator.modifyHealth(5);
     }
   },
 
@@ -260,25 +260,25 @@ const ITEM_EFFECTS = {
 
   "Oddly Smooth Stone": {
     onAcquire: () => {
-      StateMutator.modifyStat('dexterity', 2);
+      StateMutator.modifyStat('dexterity', 3);
     }
   },
 
   "Empty Tome": {
     onAcquire: () => {
-      StateMutator.modifyStat('intelligence', 2);
+      StateMutator.modifyStat('intelligence', 3);
     }
   },
 
   "Hollow Heart": {
     onAcquire: () => {
-      StateMutator.modifyMaxHealth(5, { onlyMax: true });
+      StateMutator.modifyMaxHealth(8, { onlyMax: true });
     }
   },
 
   "Vajra": {
     onAcquire: () => {
-      StateMutator.modifyStat('strength', 2);
+      StateMutator.modifyStat('strength', 3);
     }
   },
 
@@ -286,29 +286,29 @@ const ITEM_EFFECTS = {
 
   "Bowler Hat": {
     onAcquire: () => {
-      StateMutator.modifyStat('charisma', 3);
-      StateMutator.modifyStat('dexterity', -1);
+      StateMutator.modifyStat('charisma', 6);
+      StateMutator.modifyStat('dexterity', -2);
     }
   },
 
   "Wings": {
     onAcquire: () => {
-      StateMutator.modifyStat('dexterity', 3);
-      StateMutator.modifyStat('intelligence', -1);
+      StateMutator.modifyStat('dexterity', 6);
+      StateMutator.modifyStat('intelligence', -2);
     }
   },
 
   "Campfire": {
     onAcquire: () => {
-      StateMutator.modifyStat('intelligence', 3);
-      StateMutator.modifyStat('dexterity', -1);
+      StateMutator.modifyStat('intelligence', 6);
+      StateMutator.modifyStat('dexterity', -2);
     }
   },
 
   "Wheat": {
     onAcquire: () => {
-      StateMutator.modifyStat('strength', 3);
-      StateMutator.modifyStat('intelligence', -1);
+      StateMutator.modifyStat('strength', 6);
+      StateMutator.modifyStat('intelligence', -2);
     }
   },
 
@@ -316,7 +316,7 @@ const ITEM_EFFECTS = {
     onAcquire: () => {
       StateMutator.modifyMaxHealth(20, { onlyMax: true });
       StateMutator.modifyStat('luck', 2);
-      StateMutator.modifyStat('strength', -2);
+      StateMutator.modifyStat('strength', -3);
     }
   },
 
@@ -538,10 +538,14 @@ const ITEM_EFFECTS = {
   },
 
   "Garlic": {
-    onAcquire: () => {
-      console.log('Acquired Garlic - damage taken will be reduced by 1 (minimum 1)');
+    onCombatStart: () => {
+      const copies = inventory.filter(i => i.name === 'Garlic').reduce((n, i) => n + (i.quantity || 1), 0);
+      if (typeof combatState !== 'undefined' && combatState && combatState.player) {
+        combatState.player.statuses = combatState.player.statuses || {};
+        combatState.player.statuses['Brace'] = (combatState.player.statuses['Brace'] || 0) + copies;
+      }
+      createNotification(`Garlic: +${copies} Brace`, '#66bb6a', '🧄');
     }
-    // Damage reduction is applied in the calculateDamageReduction function
   },
 
   // ===== BOONS =====
@@ -1063,34 +1067,7 @@ const ITEM_EFFECTS = {
  * @returns {number} - The reduced damage amount
  */
 function calculateDamageReduction(incomingDamage) {
-  let finalDamage = incomingDamage;
-
-  // Count total Garlic items (considering quantity/stacks)
-  const garlicCount = inventory.reduce((count, item) => {
-    if (item.name === 'Garlic') {
-      return count + (item.quantity || 1);
-    }
-    return count;
-  }, 0);
-
-  if (garlicCount > 0 && finalDamage > 0) {
-    const oldDamage = finalDamage;
-    // Reduce damage by number of Garlic items, but always take at least 1 damage
-    finalDamage = Math.max(1, finalDamage - garlicCount);
-    console.log(`Garlic (x${garlicCount}): Reduced damage from ${oldDamage} to ${finalDamage}`);
-
-    // Show notification for damage reduction
-    if (oldDamage !== finalDamage) {
-      const damageReduced = oldDamage - finalDamage;
-      setTimeout(() => {
-        if (typeof createNotification === 'function') {
-          createNotification(`Garlic${garlicCount > 1 ? ` (x${garlicCount})` : ''}: -${damageReduced} Damage`, COLORS.SUCCESS, '🧄');
-        }
-      }, 50);
-    }
-  }
-
-  return finalDamage;
+  return incomingDamage;
 }
 
 // ===== ITEM ACQUISITION FUNCTION =====
