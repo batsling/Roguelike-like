@@ -1913,10 +1913,10 @@ function sortCollectionItems(sortType) {
     }
   });
 
-  // Filter N/A and Starter items (Starter items are character-specific starting items, not collectables)
+  // Filter N/A items if needed
   let filteredItems = window.itemsShowNA ? [...items] : items.filter(item => {
     const rarity = (item.rarity || '').toLowerCase();
-    return rarity !== 'n/a' && rarity !== 'starter';
+    return rarity !== 'n/a';
   });
 
   let sortedItems;
