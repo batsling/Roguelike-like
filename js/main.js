@@ -4249,10 +4249,7 @@ function showDiceCombatModal() {
   }).filter(Boolean);
 
   // Clean up any lingering hover tooltips before combat starts
-  ['game-tooltip', 'item-tooltip', 'location-hover-tooltip'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
+  if (typeof hideAllTooltips === 'function') hideAllTooltips();
 
   // Initialize combat with all encounter enemies
   const combatState = window.CombatEngine.initCombat(encounterEnemies, characterData, weaponData, allies);
