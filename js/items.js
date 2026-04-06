@@ -802,6 +802,18 @@ const ITEM_EFFECTS = {
     }
   },
 
+  "Ring of the Snake": {
+    onCombatStart: () => {
+      if (typeof drawCards === 'function') {
+        drawCards(2);
+        addLog('Ring of the Snake: Draw 2 extra cards!', 'success');
+      }
+      if (typeof createNotification === 'function') {
+        createNotification('Ring of the Snake: +2 cards drawn!', '#66bb6a', '🐍');
+      }
+    }
+  },
+
   "Blood Vial": {
     onAcquire: () => {
       console.log('Acquired Blood Vial - will trigger when entering combat');

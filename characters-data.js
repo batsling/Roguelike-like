@@ -282,5 +282,45 @@ var CHARACTERS_DATA = {
         "effects": []
       }
     ]
+  },
+  "silent": {
+    "name": "Silent",
+    "game": "Slay the Spire",
+    "icon": "images/characters/Icon/Silent.png",
+    "fullImage": "images/characters/Full/Silent.png",
+    "energy": 3,
+    "mana": 0,
+    "health": 70,
+    "levelUpCondition": "Beat a game on a hard difficulty",
+    "levelUpStats": {
+      "strength": 0,
+      "dexterity": 1,
+      "intelligence": 0,
+      "charisma": 1,
+      "reroll": 0,
+      "dash": 0,
+      "skip": 0,
+      "discovery": 0,
+      "fov": 0,
+      "luck": 0,
+      "random": 0
+    },
+    "description": "A deadly huntress from the foglands. Eradicates foes with daggers and poisons.",
+    "combatStart": "Cards",
+    "startingItems": ["Ring of the Snake"],
+    "startingDeck": [
+      { "cardName": "Strike", "count": 5 },
+      { "cardName": "Defend", "count": 5 },
+      { "cardName": "Survivor", "count": 1 },
+      { "cardName": "Neutralize", "count": 1 }
+    ],
+    "dice": [
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] }
+    ]
   }
 };

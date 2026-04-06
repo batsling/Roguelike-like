@@ -3132,6 +3132,29 @@ function resolveCardEffect(card, target, options = {}) {
     if (lower === 'indiscriminate' || lower === 'cleave') { continue; } // handled above via isAoECard
     if (lower === 'sly' || lower === 'innate' || lower === 'unplayable') { continue; }
 
+    // Deal NxX Dmg — Skewer-style: N damage, X times where X = energy spent (xValue)
+    const dmgMatchNxX = p.match(/Deal (\d+)[xX]X Dmg/i);
+    if (dmgMatchNxX && xValue > 0) {
+      let dmg   = parseInt(dmgMatchNxX[1]);
+      const times = xValue;
+      const playerPower = player.statuses['power'] || 0;
+      if (playerPower !== 0) dmg += playerPower;
+      if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
+      // Shiv bonus from Accuracy
+      if (card.name === 'Shiv' || (card.tags && card.tags.includes('shiv'))) {
+        dmg += player.statuses['shiv_damage_bonus'] || 0;
+      }
+      if (isAoECard) {
+        combatState.enemies.filter(e => e.health > 0).forEach(e => {
+          for (let t = 0; t < times; t++) dealDamage(e, dmg);
+        });
+      } else if (target) {
+        for (let t = 0; t < times; t++) dealDamage(target, dmg);
+      }
+      addLog(`${card.name}: ${dmg} x${times} = ${dmg * times} damage`, 'info');
+      continue;
+    }
+
     // Deal X Dmg [Y times] — supports both "Deal 5 Dmg 2 times" and "Deal 5x2 Dmg" (NxM notation)
     const dmgMatchNxM = p.match(/Deal (\d+)[xX](\d+) Dmg/i);
     const dmgMatch    = dmgMatchNxM || p.match(/Deal (\d+) Dmg(?:.*?(\d+) times?)?/i);
@@ -3147,6 +3170,10 @@ function resolveCardEffect(card, target, options = {}) {
                       + (player.statuses['dexterity']     || 0)
                       + (player.statuses['charisma']      || 0);
       if (statBonus !== 0) dmg += statBonus;
+      // Accuracy: Shiv cards deal bonus damage
+      if (card.name === 'Shiv' && player.statuses['shiv_damage_bonus']) {
+        dmg += player.statuses['shiv_damage_bonus'];
+      }
       // Weak on player reduces outgoing damage by 25%
       if (player.statuses['weak']) {
         dmg = Math.floor(dmg * 0.75);
@@ -3206,8 +3233,8 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // Gain X Block
-    const blockMatch = p.match(/Gain (\d+) Block/i);
+    // Gain X Block (handles "Gain 5 Block" and "Gain +5 Block")
+    const blockMatch = p.match(/Gain \+?(\d+) Block/i);
     if (blockMatch) { addBlock(player, parseInt(blockMatch[1])); continue; }
 
     // Draw X card(s)
@@ -3404,8 +3431,56 @@ function resolveCardEffect(card, target, options = {}) {
     if (doppelMatch) {
       const bonus = doppelMatch[1] ? parseInt(doppelMatch[1]) : 0;
       const total = xValue + bonus;
-      combatState._nextTurnBonus = { draw: total, energy: total };
+      combatState._nextTurnBonus = combatState._nextTurnBonus || { draw: 0, energy: 0 };
+      combatState._nextTurnBonus.draw   += total;
+      combatState._nextTurnBonus.energy += total;
       addLog(`Doppelganger: next turn +${total} draw & +${total} energy`, 'success');
+      continue;
+    }
+
+    // Outmaneuver / "Next turn, Gain +N Energy"
+    const nextTurnEnergyMatch = p.match(/Next turn,?\s+Gain \+?(\d+) [Ee]nergy/i);
+    if (nextTurnEnergyMatch) {
+      const gain = parseInt(nextTurnEnergyMatch[1]);
+      combatState._nextTurnBonus = combatState._nextTurnBonus || { draw: 0, energy: 0 };
+      combatState._nextTurnBonus.energy += gain;
+      addLog(`Outmaneuver: +${gain} Energy next turn`, 'success');
+      continue;
+    }
+
+    // Accuracy: "Shivs deal +N Dmg" — store permanent shiv bonus for this combat
+    const accuracyMatch = p.match(/Shivs? deal \+?(\d+) Dmg/i);
+    if (accuracyMatch) {
+      const bonus = parseInt(accuracyMatch[1]);
+      player.statuses['shiv_damage_bonus'] = (player.statuses['shiv_damage_bonus'] || 0) + bonus;
+      addLog(`Accuracy: Shivs deal +${bonus} more damage`, 'success');
+      continue;
+    }
+
+    // Heel Hook: "If the target has [Status], [effect]"
+    const conditionalMatch = p.match(/If the target has (\w+),?\s+(.+)/i);
+    if (conditionalMatch && target) {
+      const statusKey = conditionalMatch[1].toLowerCase();
+      if ((target.statuses[statusKey] || 0) > 0) {
+        // Resolve the conditional effect string (split by " and " for compound effects)
+        const effects = conditionalMatch[2].split(/ and /i);
+        for (const eff of effects) {
+          resolveCardEffect({ ...card, description: eff.trim(), type: 'Skill', isStatusCard: false }, target, options);
+        }
+      }
+      continue;
+    }
+
+    // "Inflict X StatusA Cleave and Y StatusB Cleave" — multi-status AoE (Crippling Cloud)
+    const multiStatusAoE = p.match(/Inflict (\d+) (\w+) Cleave and (\d+) (\w+) Cleave/i);
+    if (multiStatusAoE) {
+      const enemies = combatState.enemies.filter(e => e.health > 0);
+      const [, n1, s1, n2, s2] = multiStatusAoE;
+      enemies.forEach(e => {
+        e.statuses[s1.toLowerCase()] = (e.statuses[s1.toLowerCase()] || 0) + parseInt(n1);
+        e.statuses[s2.toLowerCase()] = (e.statuses[s2.toLowerCase()] || 0) + parseInt(n2);
+      });
+      addLog(`${card.name}: ${n1} ${s1} + ${n2} ${s2} to all enemies`, 'warning');
       continue;
     }
 

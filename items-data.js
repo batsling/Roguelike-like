@@ -1,5 +1,5 @@
 // Auto-generated from Roguelikes.xlsx
-// 85 items
+// 86 items
 
 var ITEMS_DATA = [
   {
@@ -889,6 +889,17 @@ var ITEMS_DATA = [
     "reference": "Slay the Spire",
     "tags": [
       "food"
+    ]
+  },
+  {
+    "name": "Ring of the Snake",
+    "rarity": "Starter",
+    "type": "Triggered",
+    "description": "At the start of combat, Draw 2 Cards",
+    "image": "images/items/RingOfTheSnake.png",
+    "reference": "Slay the Spire",
+    "tags": [
+      "ring"
     ]
   }
 ];

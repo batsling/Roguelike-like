@@ -1,5 +1,5 @@
 // Auto-generated from Roguelikes.xlsx - Cards
-// Card deck system: players build a deck from this pool
+// Card deck system
 
 var CARDS_DATA = [
   {
@@ -179,8 +179,7 @@ var CARDS_DATA = [
     "imageUrl": "images/weapons/Barrel.png",
     "game": "Enter the Gungeon",
     "tags": [
-      "weapon",
-      "offense"
+      "weapon"
     ]
   },
   {
@@ -196,8 +195,7 @@ var CARDS_DATA = [
     "imageUrl": "images/weapons/BlasmaPistol.png",
     "game": "Flinthook",
     "tags": [
-      "weapon",
-      "offense"
+      "weapon"
     ]
   },
   {
@@ -213,8 +211,7 @@ var CARDS_DATA = [
     "imageUrl": "images/weapons/LilBomber.png",
     "game": "Enter the Gungeon",
     "tags": [
-      "weapon",
-      "offense"
+      "weapon"
     ]
   },
   {
@@ -230,9 +227,7 @@ var CARDS_DATA = [
     "imageUrl": "images/weapons/BloodMagic.png",
     "game": "Megabonk",
     "tags": [
-      "weapon",
-      "offense",
-      "health"
+      "weapon"
     ]
   },
   {
@@ -248,8 +243,7 @@ var CARDS_DATA = [
     "imageUrl": "images/weapons/Dexecutioner.png",
     "game": "Megabonk",
     "tags": [
-      "weapon",
-      "offense"
+      "weapon"
     ]
   },
   {
@@ -346,7 +340,7 @@ var CARDS_DATA = [
     "imageUrl": "images/cards/Claw.png",
     "game": "Slay the Spire",
     "tags": [
-      "Defect",
+      "defect",
       "offense"
     ]
   },
@@ -714,6 +708,219 @@ var CARDS_DATA = [
       "silent",
       "draw",
       "energy"
+    ]
+  },
+  {
+    "name": "Leg Sweep",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "description": "Inflict 2 Weak. Gain 11 Block.",
+    "upgradedDescription": "Inflict 3 Weak. Gain 14 Block.",
+    "upgradedCost": 2,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/LegSweep.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "silent",
+      "debuff",
+      "defense"
+    ]
+  },
+  {
+    "name": "Heel Hook",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "description": "Deal 5 Dmg Melee. If the target has Weak, Gain +1 Energy and Draw 1 Card",
+    "upgradedDescription": "Deal 8 Dmg Melee. If the target has Weak, Gain +1 Energy and Draw 1 Card",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/HeelHook.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "silent",
+      "debuff",
+      "offense"
+    ]
+  },
+  {
+    "name": "Dash",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "description": "Gain +10 Block. Deal 10 Dmg Melee.",
+    "upgradedDescription": "Gain +13 Block. Deal 13 Dmg Melee.",
+    "upgradedCost": 2,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Dash.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "silent",
+      "offense",
+      "defense"
+    ]
+  },
+  {
+    "name": "Crippling Cloud",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "description": "Inflict 4 Poison Cleave and 2 Weak Cleave.",
+    "upgradedDescription": "Inflict 7 Poison Cleave and 2 Weak Cleave.",
+    "upgradedCost": 2,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/CripplingCloud.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "silent",
+      "debuff",
+      "aoe"
+    ]
+  },
+  {
+    "name": "Accuracy",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Power",
+    "description": "Shivs deal +4 Dmg.",
+    "upgradedDescription": "Shivs deal +6 Dmg.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Accuracy.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "silent",
+      "scaling"
+    ]
+  },
+  {
+    "name": "Backflip",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "description": "Gain +5 Block. Draw 2 Cards.",
+    "upgradedDescription": "Gain 8 Block. Draw 2 Cards.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Backflip.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "silent",
+      "defense",
+      "draw"
+    ]
+  },
+  {
+    "name": "Acrobatics",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "description": "Draw 3 Cards. Discard 1 Card.",
+    "upgradedDescription": "Draw 4 Cards. Discard 1 Card.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Acrobatics.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "silent",
+      "draw",
+      "discard"
+    ]
+  },
+  {
+    "name": "Outmaneuver",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "description": "Next turn, Gain +2 Energy.",
+    "upgradedDescription": "Next turn, Gain +3 energy",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Outmaneuver.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "silent",
+      "energy"
+    ]
+  },
+  {
+    "name": "Skewer",
+    "rarity": "Uncommon",
+    "cost": "X",
+    "type": "Attack",
+    "description": "Deal 7xX Dmg Melee.",
+    "upgradedDescription": "Deal 10xX Dmg Melee.",
+    "upgradedCost": "X",
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Skewer.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "silent",
+      "offense"
+    ]
+  },
+  {
+    "name": "Die Die Die",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Attack",
+    "description": "Deal 13 Dmg Ranged Cleave. Exhaust.",
+    "upgradedDescription": "Deal 17 Dmg Ranged Cleave. Exhaust.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/DieDieDie.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "silent",
+      "offense",
+      "aoe"
+    ]
+  },
+  {
+    "name": "Neutralize",
+    "rarity": "Starter",
+    "cost": 0,
+    "type": "Attack",
+    "description": "Deal 3 Dmg Melee. Inflict 1 Weak.",
+    "upgradedDescription": "Deal 4 Dmg Melee. Inflict 2 Weak.",
+    "upgradedCost": 0,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Neutralize.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "silent",
+      "offense",
+      "debuff"
+    ]
+  },
+  {
+    "name": "Survivor",
+    "rarity": "Starter",
+    "cost": 1,
+    "type": "Skill",
+    "description": "Gain +8 Block. Discard 1 Card.",
+    "upgradedDescription": "Gain +11 Block. Discard 1 Card.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Survivor.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "silent",
+      "defense",
+      "discard"
     ]
   }
 ];
