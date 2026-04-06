@@ -2088,6 +2088,29 @@ function processPlayerStartOfTurn() {
     addLog(`Gained ${gain} Power (Demon Form)`, 'success');
   }
 
+  // Noxious Fumes: inflict poison_per_turn to all enemies at start of turn
+  if (combatState.player.statuses['poison_per_turn']) {
+    const stacks = combatState.player.statuses['poison_per_turn'];
+    combatState.enemies.filter(e => e.health > 0).forEach(e => {
+      e.statuses['poison'] = (e.statuses['poison'] || 0) + stacks;
+    });
+    addLog(`Noxious Fumes: ${stacks} Poison to all enemies!`, 'warning');
+  }
+
+  // Doppelganger: apply next-turn bonus (draw + energy)
+  if (combatState._nextTurnBonus) {
+    const bonus = combatState._nextTurnBonus;
+    if (bonus.energy > 0) {
+      combatState.player.energy += bonus.energy;
+      addLog(`Doppelganger: +${bonus.energy} Energy!`, 'success');
+    }
+    if (bonus.draw > 0) {
+      drawCards(bonus.draw);
+      addLog(`Doppelganger: draw ${bonus.draw} card(s)!`, 'success');
+    }
+    combatState._nextTurnBonus = null;
+  }
+
   // Clear block at start of player turn (unless Barricade)
   if (!combatState.player.statuses['barricade']) {
     if (combatState.player.block > 0) combatState.player.block = 0;
@@ -2165,12 +2188,17 @@ function endTurn() {
     addLog(`Ice Cream: ${combatState.player.energy} energy carried over!`, 'success');
   }
 
-  // Discard hand (unplayed cards go to discard; Ethereal cards exhaust instead)
+  // Discard hand (Ethereal → exhaust; Sly → trigger effect then discard; others → discard)
   if (combatState.hand) {
-    for (const card of combatState.hand) {
-      if ((card.description || '').toLowerCase().includes('ethereal')) {
+    for (const card of [...combatState.hand]) {
+      const descLower = (card.description || '').toLowerCase();
+      if (descLower.includes('ethereal')) {
         combatState.exhaustPile.push(card);
         addLog(`${card.name} exhausted (Ethereal)`, 'info');
+      } else if (descLower.includes('sly')) {
+        addLog(`${card.name}: Sly — triggered on discard!`, 'success');
+        resolveCardEffect(card, null);
+        combatState.discardPile.push(card);
       } else {
         combatState.discardPile.push(card);
       }
@@ -2997,7 +3025,11 @@ function shuffleArray(arr) {
  */
 function initCombatDeck(characterData) {
   const fullDeck = buildCombatDeck(characterData);
-  combatState.drawPile = shuffleArray(fullDeck);
+  const shuffled = shuffleArray(fullDeck);
+  // Innate: move Innate cards to the top of the draw pile
+  const innate = shuffled.filter(c => (c.description || '').toLowerCase().includes('innate'));
+  const rest   = shuffled.filter(c => !(c.description || '').toLowerCase().includes('innate'));
+  combatState.drawPile = [...innate, ...rest];
   combatState.hand = [];
   combatState.discardPile = [];
   combatState.exhaustPile = [];
@@ -3057,10 +3089,11 @@ function parseDiceFacesForEngine(description) {
     .map(m => ({ num: parseInt(m[1]), text: m[2].trim() }));
 }
 
-function resolveCardEffect(card, target) {
+function resolveCardEffect(card, target, options = {}) {
   const desc = card.description || '';
   let shouldExhaust = false;
   const player = combatState.player;
+  const xValue = options.xValue || 0;
 
   // Status cards always exhaust (they are one-use pigments that clear after combat)
   if (card.isStatusCard) shouldExhaust = true;
@@ -3097,6 +3130,7 @@ function resolveCardEffect(card, target) {
     if (lower === 'exhaust') { shouldExhaust = true; continue; }
     if (lower === 'ethereal') { continue; } // Ethereal exhausts at end of turn if still in hand, not on play
     if (lower === 'indiscriminate' || lower === 'cleave') { continue; } // handled above via isAoECard
+    if (lower === 'sly' || lower === 'innate' || lower === 'unplayable') { continue; }
 
     // Deal X Dmg [Y times] — supports both "Deal 5 Dmg 2 times" and "Deal 5x2 Dmg" (NxM notation)
     const dmgMatchNxM = p.match(/Deal (\d+)[xX](\d+) Dmg/i);
@@ -3195,8 +3229,8 @@ function resolveCardEffect(card, target) {
       continue;
     }
 
-    // Gain X Energy
-    const energyMatch = p.match(/Gain (\d+) Energy/i);
+    // Gain X Energy (handles "Gain 1 Energy" and "Gain +1 Energy")
+    const energyMatch = p.match(/Gain \+?(\d+) Energy/i);
     if (energyMatch) {
       const e = parseInt(energyMatch[1]);
       player.energy += e;
@@ -3305,6 +3339,76 @@ function resolveCardEffect(card, target) {
     // Fishing Weight (mark for fishing loot)
     if (lower.includes('fishing weight')) { addLog('Fishing Weight triggered', 'info'); continue; }
 
+    // Conjure X CardName — add cards to hand
+    const conjureMatch = p.match(/Conjure (\d+) (.+)/i);
+    if (conjureMatch) {
+      const count    = parseInt(conjureMatch[1]);
+      const nameRaw  = conjureMatch[2].trim().replace(/s$/i, ''); // strip trailing 's' for plural
+      const template = typeof CARDS_DATA !== 'undefined'
+        ? CARDS_DATA.find(c => c.name.toLowerCase() === nameRaw.toLowerCase()
+                             || c.name.toLowerCase() === conjureMatch[2].trim().toLowerCase())
+        : null;
+      if (template) {
+        for (let i = 0; i < count; i++) {
+          combatState.hand.push({ ...template, _uid: `conjure_${Date.now()}_${i}` });
+        }
+        addLog(`Conjured ${count}x ${template.name}`, 'success');
+      } else {
+        addLog(`Conjure: card "${nameRaw}" not found`, 'warning');
+      }
+      continue;
+    }
+
+    // Discard X Card(s)
+    const discardMatch = p.match(/Discard (\d+) Cards?/i);
+    if (discardMatch) {
+      const count = parseInt(discardMatch[1]);
+      for (let i = 0; i < count && combatState.hand.length > 0; i++) {
+        const idx       = Math.floor(Math.random() * combatState.hand.length);
+        const discarded = combatState.hand.splice(idx, 1)[0];
+        combatState.discardPile.push(discarded);
+        addLog(`Discarded ${discarded.name}`, 'info');
+      }
+      continue;
+    }
+
+    // Inflict -X Power (Disarm etc.)
+    const inflictNegPowerMatch = p.match(/Inflict -(\d+) Power/i);
+    if (inflictNegPowerMatch && target) {
+      const loss = parseInt(inflictNegPowerMatch[1]);
+      target.statuses['power'] = Math.max(0, (target.statuses['power'] || 0) - loss);
+      addLog(`${target.name} loses ${loss} Power`, 'warning');
+      continue;
+    }
+
+    // After Image: "Whenever you play a Card, Gain X Block"
+    const afterImageMatch = p.match(/Whenever you play a Card,?\s+Gain (\d+) Block/i);
+    if (afterImageMatch) {
+      const amt = parseInt(afterImageMatch[1]);
+      player.statuses['block_per_card_play'] = (player.statuses['block_per_card_play'] || 0) + amt;
+      addLog(`After Image: +${amt} Block per card played`, 'success');
+      continue;
+    }
+
+    // Noxious Fumes: "At the start of each turn, Inflict X Poison [Cleave]"
+    const noxFumesMatch = p.match(/Inflict (\d+) Poison/i);
+    if (noxFumesMatch && lower.includes('start')) {
+      const stacks = parseInt(noxFumesMatch[1]);
+      player.statuses['poison_per_turn'] = (player.statuses['poison_per_turn'] || 0) + stacks;
+      addLog(`Noxious Fumes: will inflict ${stacks} Poison each turn`, 'success');
+      continue;
+    }
+
+    // Doppelganger: "Next turn, Draw X[+N] Cards and Gain X[+N] Energy"
+    const doppelMatch = p.match(/Next turn,?\s+Draw X\+?(\d+)? Cards? and Gain X\+?(\d+)? Energy/i);
+    if (doppelMatch) {
+      const bonus = doppelMatch[1] ? parseInt(doppelMatch[1]) : 0;
+      const total = xValue + bonus;
+      combatState._nextTurnBonus = { draw: total, energy: total };
+      addLog(`Doppelganger: next turn +${total} draw & +${total} energy`, 'success');
+      continue;
+    }
+
     // Unknown — log it
     if (lower && lower !== 'n/a') addLog(`${card.name}: ${p}`, 'info');
   }
@@ -3394,8 +3498,20 @@ function playCard(handIndex, targetId = null) {
   const card = combatState.hand[handIndex];
   if (!card) return { success: false, error: 'Card not found' };
 
-  // Confused: randomize card cost between 0 and maxEnergy
+  // Unplayable / Sly cards cannot be played directly
+  if (card.cost === 'No' || (card.description || '').toLowerCase().includes('unplayable')) {
+    return { success: false, error: 'This card is unplayable' };
+  }
+
+  // X cost: spend all remaining energy
+  let xValue = 0;
   let cardCost = card.cost;
+  if (cardCost === 'X') {
+    xValue   = combatState.player.energy;
+    cardCost = xValue;
+  }
+
+  // Confused: randomize card cost between 0 and maxEnergy
   if (combatState.player.statuses['confused']) {
     cardCost = Math.floor(Math.random() * (combatState.player.maxEnergy + 1));
     addLog(`Confused! ${card.name} costs ${cardCost} energy`, 'warning');
@@ -3431,8 +3547,8 @@ function playCard(handIndex, targetId = null) {
     }
   }
 
-  // Resolve effects
-  const shouldExhaust = resolveCardEffect(card, target);
+  // Resolve effects (pass xValue for X-cost cards like Doppelganger)
+  const shouldExhaust = resolveCardEffect(card, target, { xValue });
 
   // Post-play incremental triggers for attack cards
   if (_cardType === 'attack') {
@@ -3466,6 +3582,11 @@ function playCard(handIndex, targetId = null) {
     addLog(`${card.name} activated`, 'success');
   } else {
     combatState.discardPile.push(card);
+  }
+
+  // After Image: gain block for every card played (checked after routing so After Image itself counts)
+  if (combatState.player.statuses['block_per_card_play']) {
+    addBlock(combatState.player, combatState.player.statuses['block_per_card_play']);
   }
 
   addLog(`Played ${card.name}`, 'info');

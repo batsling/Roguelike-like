@@ -725,7 +725,9 @@ function typeEmoji(type) {
 function renderCardInHand(card, index, total, combat) {
   const isSelected   = combat.selectedCardIndex === index;
   const isPlayerTurn = combat.phase === 'player_action';
-  const canAfford    = (card.cost || 0) <= (combat.player.energy || 0);
+  const isXCost      = card.cost === 'X';
+  const isNoCost     = card.cost === 'No';
+  const canAfford    = !isNoCost && (isXCost || (card.cost || 0) <= (combat.player.energy || 0));
 
   // Responsive card dimensions based on hand size
   let cardW, cardH, marginL, artH, namePx, descPx, orbW;
@@ -798,7 +800,7 @@ function renderCardInHand(card, index, total, combat) {
         z-index:3;
         box-shadow:0 0 7px ${costColor}bb;
         text-shadow:0 1px 2px rgba(0,0,0,0.7);
-      ">${card.cost}</div>
+      ">${isNoCost ? '🚫' : isXCost ? 'X' : card.cost}</div>
 
       <!-- Art area -->
       <div style="
@@ -1268,7 +1270,7 @@ function handleCardClick(index) {
   const card = hand[index];
   if (!card) return;
 
-  const canAfford = (card.cost || 0) <= (combat.player.energy || 0);
+  const canAfford = card.cost !== 'No' && (card.cost === 'X' || (card.cost || 0) <= (combat.player.energy || 0));
   if (!canAfford) {
     // Shake the card as visual feedback
     const cardEl = document.querySelector(`.combat-hand-card[data-hand-index="${index}"]`);
@@ -1405,7 +1407,7 @@ function ensureDragAndKeyListeners() {
     const card = (combat.hand || [])[cardIndex];
     if (!card) return;
 
-    const canAfford  = (card.cost || 0) <= (combat.player.energy || 0);
+    const canAfford  = card.cost !== 'No' && (card.cost === 'X' || (card.cost || 0) <= (combat.player.energy || 0));
     if (!canAfford) return;
 
     const needsTarget = window.CombatEngine.cardNeedsTarget
@@ -1494,7 +1496,7 @@ function attachCardTooltip() {
 
       const bc        = typeColor(card.type);
       const bg        = cardTypeBg(card.type);
-      const canAfford = (card.cost || 0) <= (combat.player.energy || 0);
+      const canAfford = card.cost !== 'No' && (card.cost === 'X' || (card.cost || 0) <= (combat.player.energy || 0));
       const costColor = canAfford ? '#ffd700' : '#e74c3c';
 
       const tt = getTooltip();
@@ -1526,7 +1528,7 @@ function attachCardTooltip() {
                 border:2px solid ${costColor}; border-radius:50%;
                 display:flex; align-items:center; justify-content:center;
                 font-weight:bold; font-size:15px; color:white;
-              ">${card.cost}</div>
+              ">${card.cost === 'No' ? '🚫' : card.cost}</div>
               <div>
                 <div style="font-size:12px; font-weight:bold; color:white; line-height:1.2;">
                   ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
