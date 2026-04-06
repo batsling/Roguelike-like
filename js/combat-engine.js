@@ -205,6 +205,7 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
   combatState.reshuffleQueued = false;
   combatState.lastPlayedCard = null;
   combatState._scalingCounters = {}; // Tracks per-combat scaling bonuses (e.g. Claw damage bonus)
+  combatState._discardedThisTurn = false; // Tracks if player discarded a card this turn (Sneaky Strike)
   initCombatDeck(characterData);
 
   addLog('Combat started!', 'info');
@@ -1614,9 +1615,11 @@ function dealDamage(target, damage, addons = []) {
       }
     }
 
-    // Check Shifting
+    // Check Shifting: loses Power equal to damage taken; Shackled so it regains that Power end-of-turn
     if (target.statuses['shifting']) {
-      target.statuses['power'] = (target.statuses['power'] || 0) - remainingDamage;
+      const loss = remainingDamage;
+      target.statuses['power'] = (target.statuses['power'] || 0) - loss;
+      target.statuses['shackled'] = (target.statuses['shackled'] || 0) + loss;
     }
 
     // Check Formless
@@ -2135,6 +2138,17 @@ function processPlayerStartOfTurn() {
   if (!combatState.player.statuses['barricade']) {
     if (combatState.player.block > 0) combatState.player.block = 0;
   }
+
+  // Next Turn Block (Dodge and Roll): apply pending block, then clear
+  if (combatState.player.statuses['next_turn_block']) {
+    const ntb = combatState.player.statuses['next_turn_block'];
+    addBlock(combatState.player, ntb);
+    delete combatState.player.statuses['next_turn_block'];
+    addLog(`Next Turn Block: +${ntb} Block!`, 'success');
+  }
+
+  // Reset discard-tracking flag for Sneaky Strike etc.
+  combatState._discardedThisTurn = false;
 
   // Horn Cleat: +14 Block at the start of the second turn
   if (combatState._hornCleatPending && combatState.turn === 2) {
@@ -2892,6 +2906,14 @@ function processStatusEffects(target, timing) {
         if (target !== combatState.player) onEnemyDefeated(target);
       }
     }
+
+    // Shackled: target regains X Power at end of their turn, then Shackled clears
+    if (statuses['shackled']) {
+      const regain = statuses['shackled'];
+      statuses['power'] = (statuses['power'] || 0) + regain;
+      delete statuses['shackled'];
+      addLog(`${target.name || 'Target'} regained ${regain} Power (Shackled expired)`, 'info');
+    }
   }
 }
 
@@ -3262,7 +3284,12 @@ function resolveCardEffect(card, target, options = {}) {
 
     // Gain X Block (handles "Gain 5 Block" and "Gain +5 Block")
     const blockMatch = p.match(/Gain \+?(\d+) Block/i);
-    if (blockMatch) { addBlock(player, parseInt(blockMatch[1])); continue; }
+    if (blockMatch) {
+      const blockAmt = parseInt(blockMatch[1]);
+      addBlock(player, blockAmt);
+      card._lastBlockGain = blockAmt; // used by Dodge and Roll "Next Turn Block equal to Block Gained"
+      continue;
+    }
 
     // Draw X card(s)
     const drawMatch = p.match(/Draw (\d+) cards?/i);
@@ -3512,16 +3539,99 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // "Inflict X StatusA Cleave and Y StatusB Cleave" — multi-status AoE (Crippling Cloud)
-    const multiStatusAoE = p.match(/Inflict (\d+) (\w+) Cleave and (\d+) (\w+) Cleave/i);
+    // "Inflict X StatusA Cleave and Y StatusB Cleave" — multi-status AoE (Crippling Cloud / Piercing Wail)
+    const multiStatusAoE = p.match(/Inflict (-?\d+) (\w+) Cleave and (?:Inflict )?(-?\d+) (\w+) Cleave/i);
     if (multiStatusAoE) {
       const enemies = combatState.enemies.filter(e => e.health > 0);
-      const [, n1, s1, n2, s2] = multiStatusAoE;
+      const [, n1raw, s1, n2raw, s2] = multiStatusAoE;
+      const n1 = parseInt(n1raw), n2 = parseInt(n2raw);
       enemies.forEach(e => {
-        e.statuses[s1.toLowerCase()] = (e.statuses[s1.toLowerCase()] || 0) + parseInt(n1);
-        e.statuses[s2.toLowerCase()] = (e.statuses[s2.toLowerCase()] || 0) + parseInt(n2);
+        if (n1 < 0) {
+          e.statuses['power'] = (e.statuses['power'] || 0) + n1; // negative = power loss
+        } else {
+          e.statuses[s1.toLowerCase()] = (e.statuses[s1.toLowerCase()] || 0) + n1;
+        }
+        if (n2 < 0) {
+          e.statuses['power'] = (e.statuses['power'] || 0) + n2;
+        } else {
+          e.statuses[s2.toLowerCase()] = (e.statuses[s2.toLowerCase()] || 0) + n2;
+        }
       });
       addLog(`${card.name}: ${n1} ${s1} + ${n2} ${s2} to all enemies`, 'warning');
+      continue;
+    }
+
+    // Bane: "If the target has Poison, deal NxM Dmg instead"
+    const baneMatch = p.match(/If the target has (\w+),\s+deal (\d+)[xX](\d+) Dmg(?: Melee| Ranged)? instead/i);
+    if (baneMatch && target) {
+      const statusKey = baneMatch[1].toLowerCase();
+      if ((target.statuses[statusKey] || 0) > 0) {
+        const dmgBase = parseInt(baneMatch[2]);
+        const times   = parseInt(baneMatch[3]);
+        let dmg = dmgBase;
+        const pp = player.statuses['power'] || 0;
+        if (pp !== 0) dmg += pp;
+        if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
+        if (combatState._scalingCounters && combatState._scalingCounters[card.name]) dmg += combatState._scalingCounters[card.name];
+        for (let t = 0; t < times; t++) dealDamage(target, dmg);
+        addLog(`${card.name}: ${statusKey} triggered — ${dmg}x${times} = ${dmg * times} dmg`, 'success');
+      }
+      continue;
+    }
+
+    // Dodge and Roll: "Gain Next Turn Block equal to Block Gained"
+    if (/Gain Next Turn Block equal to Block Gained/i.test(p)) {
+      // Block already applied by the earlier block handler; store the same amount as next_turn_block
+      const lastBlockGain = card._lastBlockGain || 0;
+      if (lastBlockGain > 0) {
+        player.statuses['next_turn_block'] = (player.statuses['next_turn_block'] || 0) + lastBlockGain;
+        addLog(`Dodge and Roll: +${lastBlockGain} Block next turn!`, 'success');
+      }
+      continue;
+    }
+
+    // Unload: "Discard All non-Attack Cards in your hand"
+    if (/Discard All non-Attack Cards in your hand/i.test(p)) {
+      const toDiscard = combatState.hand.filter(c => (c.type || '').toLowerCase() !== 'attack');
+      toDiscard.forEach(c => {
+        const idx = combatState.hand.indexOf(c);
+        if (idx !== -1) combatState.hand.splice(idx, 1);
+        combatState.discardPile.push(c);
+        combatState._discardedThisTurn = true;
+      });
+      if (toDiscard.length > 0) addLog(`${card.name}: Discarded ${toDiscard.length} non-Attack card(s)`, 'info');
+      continue;
+    }
+
+    // Sneaky Strike: "If you have Discarded a Card this turn, Gain +N Energy"
+    const sneakyMatch = p.match(/If you have Discarded a Card this turn,\s+Gain \+?(\d+) Energy/i);
+    if (sneakyMatch) {
+      if (combatState._discardedThisTurn) {
+        const gain = parseInt(sneakyMatch[1]);
+        player.energy += gain;
+        addLog(`Sneaky Strike: +${gain} Energy (card discarded this turn)!`, 'success');
+      }
+      continue;
+    }
+
+    // Malaise: "Inflict -X Power and Inflict X Weak" (X = xValue)
+    const malaiseMatch = p.match(/Inflict -\(X(?:\+(\d+))?\) Power and Inflict X(?:\+(\d+))? Weak/i)
+                      || p.match(/Inflict -X(?:\+(\d+))? Power and Inflict X(?:\+(\d+))? Weak/i);
+    if (malaiseMatch && target) {
+      const bonus = parseInt(malaiseMatch[1] || malaiseMatch[2] || '0');
+      const total = xValue + bonus;
+      target.statuses['power'] = (target.statuses['power'] || 0) - total;
+      target.statuses['weak']  = (target.statuses['weak']  || 0) + total;
+      addLog(`${card.name}: -${total} Power, +${total} Weak`, 'warning');
+      continue;
+    }
+
+    // Gain +N Thorns (Caltrops)
+    const thornsMatch = p.match(/Gain \+?(\d+) Thorns/i);
+    if (thornsMatch) {
+      const t = parseInt(thornsMatch[1]);
+      player.statuses['thorns'] = (player.statuses['thorns'] || 0) + t;
+      addLog(`+${t} Thorns`, 'success');
       continue;
     }
 

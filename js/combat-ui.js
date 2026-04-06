@@ -722,12 +722,48 @@ function typeEmoji(type) {
   return {attack:'⚔',skill:'✨',power:'💜',dice:'🎲',status:'⊘'}[(type||'').toLowerCase()] || '🃏';
 }
 
+// Check if a card's "If" condition is currently satisfied in combat state.
+// Returns true if condition is met (card should glow), false otherwise.
+function checkCardCondition(card, combat) {
+  const desc = card.description || '';
+  const player = combat.player;
+
+  // "If the target has [Status]" — check targeted enemy or any alive enemy
+  const targetStatusMatch = desc.match(/If the target has (\w+)/i);
+  if (targetStatusMatch) {
+    const statusKey = targetStatusMatch[1].toLowerCase();
+    // Use targeted enemy, fall back to first alive enemy
+    const target = combat.enemies.find(e => e.id === combat.targetedEnemyId && e.health > 0)
+                || combat.enemies.find(e => e.health > 0);
+    return !!(target && (target.statuses[statusKey] || 0) > 0);
+  }
+
+  // "If the target has Poison, deal ... instead" (Bane)
+  const baneCondMatch = desc.match(/If the target has (\w+),/i);
+  if (baneCondMatch) {
+    const statusKey = baneCondMatch[1].toLowerCase();
+    const target = combat.enemies.find(e => e.id === combat.targetedEnemyId && e.health > 0)
+                || combat.enemies.find(e => e.health > 0);
+    return !!(target && (target.statuses[statusKey] || 0) > 0);
+  }
+
+  // "If you have Discarded a Card this turn" (Sneaky Strike)
+  if (/If you have Discarded a Card this turn/i.test(desc)) {
+    return !!combat._discardedThisTurn;
+  }
+
+  return false;
+}
+
 function renderCardInHand(card, index, total, combat) {
   const isSelected   = combat.selectedCardIndex === index;
   const isPlayerTurn = combat.phase === 'player_action';
   const isXCost      = card.cost === 'X';
   const isNoCost     = card.cost === 'No';
   const canAfford    = !isNoCost && (isXCost || (card.cost || 0) <= (combat.player.energy || 0));
+
+  // Check if the card's "If" condition is currently met (highlight like STS)
+  const conditionMet = isPlayerTurn && /\bIf\b/i.test(card.description || '') && checkCardCondition(card, combat);
 
   // Responsive card dimensions based on hand size
   let cardW, cardH, marginL, artH, namePx, descPx, orbW;
@@ -756,13 +792,18 @@ function renderCardInHand(card, index, total, combat) {
   const selTransform  = `rotate(${rotation * 0.3}deg) translateY(-30px) scale(1.18)`;
   const hoverTrans    = `rotate(${rotation * 0.2}deg) translateY(-50px) scale(1.42)`;
 
+  // Condition-met glow: bright teal pulse when the "If" clause is satisfied
+  const condGlow  = '#00e5ff';
   const boxShadow = isSelected
     ? `0 0 20px ${C.goldBright}bb, 0 0 6px ${borderColor}88`
-    : `0 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)`;
+    : conditionMet
+      ? `0 0 14px ${condGlow}cc, 0 0 5px ${condGlow}88, 0 4px 10px rgba(0,0,0,0.6)`
+      : `0 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)`;
+  const activeBorder = isSelected ? C.goldBright : conditionMet ? condGlow : borderColor;
 
   const ml = index > 0 ? `margin-left:${marginL}px;` : '';
 
-  const hoJS  = `this.style.transform='${hoverTrans}';this.style.zIndex='95';this.style.boxShadow='0 10px 30px rgba(0,0,0,0.8), 0 0 16px ${borderColor}99';`;
+  const hoJS  = `this.style.transform='${hoverTrans}';this.style.zIndex='95';this.style.boxShadow='0 10px 30px rgba(0,0,0,0.8), 0 0 16px ${conditionMet ? condGlow : borderColor}99';`;
   const hoOut = `this.style.transform='${isSelected ? selTransform : baseTransform}';this.style.zIndex='${isSelected ? 90 : 20 + index}';this.style.boxShadow='${boxShadow}';`;
 
   return `
@@ -771,7 +812,7 @@ function renderCardInHand(card, index, total, combat) {
         position:relative;
         width:${cardW}px; height:${cardH}px;
         background:${bgColor};
-        border:2px solid ${isSelected ? C.goldBright : borderColor};
+        border:2px solid ${activeBorder};
         border-radius:9px;
         ${ml}
         flex-shrink:0;
@@ -1995,6 +2036,7 @@ window.showCardPickerModal = function(options) {
       const card = pileCards.splice(idx, 1)[0];
       if (action === 'discard') {
         combat.discardPile.push(card);
+        combat._discardedThisTurn = true;
         window.CombatEngine && window.CombatEngine.addLog(`Discarded ${card.name}`, 'info');
       } else {
         combat.exhaustPile.push(card);
