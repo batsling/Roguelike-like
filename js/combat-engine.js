@@ -204,6 +204,7 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
   combatState.selectedCardIndex = null;
   combatState.reshuffleQueued = false;
   combatState.lastPlayedCard = null;
+  combatState._scalingCounters = {}; // Tracks per-combat scaling bonuses (e.g. Claw damage bonus)
   initCombatDeck(characterData);
 
   addLog('Combat started!', 'info');
@@ -760,6 +761,10 @@ function rollAllEnemyIntents() {
     if (enemy.health > 0) {
       // Reset Curl Up trigger at the start of each new round
       enemy.curlUpTriggeredThisTurn = false;
+      // Clear justSpawned flag so they act normally next turn, then roll their real intent
+      if (enemy.justSpawned) {
+        enemy.justSpawned = false;
+      }
       rollEnemyIntent(enemy);
     }
   });
@@ -1886,6 +1891,14 @@ function spawnEnemyAtSlot(enemyName, position) {
   };
   resolveDeterminedValues(newEnemy);
 
+  // Mark as just spawned: shows Unknown intent and skips action on spawn turn
+  newEnemy.justSpawned = true;
+  newEnemy.currentIntent = [{
+    faceIndex: 0,
+    face: { isBlank: true, effects: [], raw: 'Unknown' },
+    resolved: false
+  }];
+
   // Replace dead enemy at this position; otherwise append
   const idx = combatState.enemies.findIndex(e => e.position === position && e.health <= 0);
   if (idx !== -1) {
@@ -1895,7 +1908,6 @@ function spawnEnemyAtSlot(enemyName, position) {
     combatState.enemies.push(newEnemy);
   }
 
-  rollEnemyIntent(newEnemy);
   addLog(`${template.name} spawned!`, 'warning');
   if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
 }
@@ -1943,8 +1955,16 @@ function spawnSplitEnemy(enemyName, inheritedHp) {
     splitAbility: parseSplitAbility(template.ability)
   };
   resolveDeterminedValues(newEnemy);
+
+  // Mark as just spawned: shows Unknown intent and skips action on spawn turn
+  newEnemy.justSpawned = true;
+  newEnemy.currentIntent = [{
+    faceIndex: 0,
+    face: { isBlank: true, effects: [], raw: 'Unknown' },
+    resolved: false
+  }];
+
   combatState.enemies.push(newEnemy);
-  rollEnemyIntent(newEnemy);
   addLog(`${template.name} (${spawnHp} HP) emerges from the split!`, 'warning');
   if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
 }
@@ -2300,6 +2320,9 @@ function endTurn() {
 function executeEnemyActions() {
   combatState.enemies.forEach(enemy => {
     if (enemy.health <= 0) return;
+
+    // Spawned this turn — skip action (shows Unknown intent on spawn turn)
+    if (enemy.justSpawned) return;
 
     // Check Stun — skip turn and consume one stack
     if (enemy.statuses['stun'] && enemy.statuses['stun'] > 0) {
@@ -3174,6 +3197,10 @@ function resolveCardEffect(card, target, options = {}) {
       if (card.name === 'Shiv' && player.statuses['shiv_damage_bonus']) {
         dmg += player.statuses['shiv_damage_bonus'];
       }
+      // Scaling cards: apply accumulated per-combat bonus (e.g. Claw +2 per play)
+      if (combatState._scalingCounters && combatState._scalingCounters[card.name]) {
+        dmg += combatState._scalingCounters[card.name];
+      }
       // Weak on player reduces outgoing damage by 25%
       if (player.statuses['weak']) {
         dmg = Math.floor(dmg * 0.75);
@@ -3386,15 +3413,17 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // Discard X Card(s)
+    // Discard X Card(s) — queue a player card pick instead of random discard
     const discardMatch = p.match(/Discard (\d+) Cards?/i);
     if (discardMatch) {
       const count = parseInt(discardMatch[1]);
-      for (let i = 0; i < count && combatState.hand.length > 0; i++) {
-        const idx       = Math.floor(Math.random() * combatState.hand.length);
-        const discarded = combatState.hand.splice(idx, 1)[0];
-        combatState.discardPile.push(discarded);
-        addLog(`Discarded ${discarded.name}`, 'info');
+      if (combatState.hand.length > 0) {
+        // Queue a pending pick; the modal will be shown after resolveCardEffect returns
+        combatState._pendingCardPick = {
+          action: 'discard',
+          pile: 'hand',
+          count: Math.min(count, combatState.hand.length)
+        };
       }
       continue;
     }
@@ -3454,6 +3483,18 @@ function resolveCardEffect(card, target, options = {}) {
       const bonus = parseInt(accuracyMatch[1]);
       player.statuses['shiv_damage_bonus'] = (player.statuses['shiv_damage_bonus'] || 0) + bonus;
       addLog(`Accuracy: Shivs deal +${bonus} more damage`, 'success');
+      continue;
+    }
+
+    // Scaling cards: "Increase the damage of ALL X cards by N this combat"
+    // (e.g. Claw: each play raises all Claw damage by 2)
+    const scalingMatch = p.match(/Increase the damage of ALL (.+?) cards? by \+?(\d+) this combat/i);
+    if (scalingMatch) {
+      const scaledCardName = scalingMatch[1].trim();
+      const increment = parseInt(scalingMatch[2]);
+      if (!combatState._scalingCounters) combatState._scalingCounters = {};
+      combatState._scalingCounters[scaledCardName] = (combatState._scalingCounters[scaledCardName] || 0) + increment;
+      addLog(`${scaledCardName} damage +${increment} (total bonus: +${combatState._scalingCounters[scaledCardName]})`, 'success');
       continue;
     }
 
@@ -3672,6 +3713,15 @@ function playCard(handIndex, targetId = null) {
     combatState.phase = 'victory';
     addLog('Victory!', 'success');
     return { success: true, phase: 'victory' };
+  }
+
+  // Show card picker modal if a pending pick was queued (e.g., "Discard 1 Card")
+  if (combatState._pendingCardPick) {
+    const pick = combatState._pendingCardPick;
+    combatState._pendingCardPick = null;
+    if (typeof window.showCardPickerModal === 'function') {
+      window.showCardPickerModal(pick);
+    }
   }
 
   return { success: true };

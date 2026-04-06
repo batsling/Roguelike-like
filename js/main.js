@@ -4565,13 +4565,15 @@ function showSmithChoiceModal() {
   const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
   const startingEntries = (charData && charData.startingDeck) ? charData.startingDeck : [];
 
-  const seenStarting = new Set();
   const startingUpgradeable = [];
   startingEntries.forEach(entry => {
     const template = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
-    if (template && template.canUpgrade && !upgradedStarting[entry.cardName] && !seenStarting.has(entry.cardName)) {
-      seenStarting.add(entry.cardName);
-      startingUpgradeable.push({ ...template, _isStarting: true });
+    if (template && template.canUpgrade && !upgradedStarting[entry.cardName]) {
+      // Add one entry per copy so the player sees their full deck
+      const count = entry.count || 1;
+      for (let i = 0; i < count; i++) {
+        startingUpgradeable.push({ ...template, _isStarting: true });
+      }
     }
   });
 

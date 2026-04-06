@@ -846,6 +846,20 @@ function renderCardInHand(card, index, total, combat) {
         text-align:center; flex-shrink:0;
         text-transform:uppercase; letter-spacing:0.6px; font-weight:600;
       ">${card.type || 'Card'}</div>
+
+      ${(() => {
+        const scalingBonus = combat._scalingCounters && combat._scalingCounters[card.name];
+        if (!scalingBonus) return '';
+        return `<div style="
+          position:absolute; bottom:22px; right:-1px;
+          background:#c0392b; border:1px solid #ff6b6b;
+          border-radius:6px 0 0 6px;
+          padding:1px 5px;
+          font-size:${descPx - 0.5}px; font-weight:bold; color:#fff;
+          pointer-events:none; z-index:4;
+          text-shadow:0 1px 2px rgba(0,0,0,0.7);
+        ">+${scalingBonus}</div>`;
+      })()}
     </div>
   `;
 }
@@ -1846,6 +1860,152 @@ function checkCombatEnd() {
     console.warn('[CombatUI] checkCombatEnd: phase =', combat.phase, '— no override active');
   }
 }
+
+// ============== CARD PICKER MODAL ==============
+// Shown when a card effect requires the player to choose card(s) from a pile.
+// options: { action: 'discard'|'exhaust', pile: 'hand'|'draw'|'discard'|'exhaust', count: N }
+
+window.showCardPickerModal = function(options) {
+  const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+  if (!combat) return;
+
+  const { action, pile, count } = options;
+  const actionLabel = action === 'discard' ? 'Discard' : 'Exhaust';
+  const actionColor = action === 'discard' ? '#f39c12' : '#7f8c8d';
+
+  const pileMap = {
+    hand:    { cards: combat.hand || [],        label: 'Hand'         },
+    draw:    { cards: combat.drawPile || [],    label: 'Draw Pile'    },
+    discard: { cards: combat.discardPile || [], label: 'Discard Pile' },
+    exhaust: { cards: combat.exhaustPile || [], label: 'Exhaust Pile' },
+  };
+  const { cards: pileCards, label: pileLabel } = pileMap[pile] || pileMap.hand;
+
+  // If nothing to pick from, skip
+  if (pileCards.length === 0) return;
+
+  // Track selected indices
+  const selected = new Set();
+
+  // Remove any existing picker
+  const existing = document.getElementById('combat-card-picker');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'combat-card-picker';
+  overlay.style.cssText = `
+    position:fixed; inset:0; background:rgba(0,0,0,0.80);
+    display:flex; align-items:center; justify-content:center;
+    z-index:25000; font-family:'Georgia',serif;
+  `;
+
+  overlay.innerHTML = `
+    <div id="card-picker-panel" style="
+      background:#1a0808; border:2px solid ${actionColor};
+      border-radius:12px; padding:20px;
+      max-width:840px; width:92vw; max-height:82vh;
+      display:flex; flex-direction:column;
+      box-shadow:0 10px 40px rgba(0,0,0,0.95);
+    ">
+      <h2 style="color:${actionColor}; text-align:center; margin:0 0 6px; font-size:18px;">
+        ${actionLabel} ${count} Card${count !== 1 ? 's' : ''}
+      </h2>
+      <p style="color:#aaa; text-align:center; margin:0 0 14px; font-size:12px;">
+        Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to ${actionLabel.toLowerCase()}.
+      </p>
+      <div id="card-picker-grid" style="
+        display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+        overflow-y:auto; flex:1; padding:4px;
+      ">
+        ${pileCards.map((card, idx) => {
+          const bc = typeColor(card.type);
+          const bg = cardTypeBg(card.type);
+          return `
+            <div class="picker-card" data-picker-idx="${idx}" style="
+              background:${bg}; border:2px solid ${bc};
+              border-radius:8px; padding:8px 10px;
+              display:flex; flex-direction:column; align-items:center;
+              min-width:95px; max-width:115px; flex-shrink:0;
+              cursor:pointer; transition:transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+              user-select:none;
+            ">
+              <div style="font-size:10px; font-weight:bold; color:white; text-align:center; margin-bottom:3px;">
+                ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
+              </div>
+              <div style="font-size:9px; color:${bc}; margin-bottom:3px;">${card.type} · ${card.rarity || ''}</div>
+              <div style="font-size:8px; color:#ddd; text-align:center; margin-bottom:4px; min-height:24px; line-height:1.3;">${card.description}</div>
+              <div style="font-size:10px; color:#ffd700;">⚡${card.cost}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin-top:14px;">
+        <span id="picker-selected-count" style="color:#aaa; font-size:13px;">Selected: 0 / ${count}</span>
+        <button id="picker-confirm-btn" style="
+          padding:10px 28px; background:#555; border:2px solid #888;
+          border-radius:8px; color:#888; cursor:not-allowed;
+          font-size:14px; font-weight:bold; transition:all 0.15s;
+        " disabled>${actionLabel}</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const confirmBtn = document.getElementById('picker-confirm-btn');
+  const countLabel = document.getElementById('picker-selected-count');
+
+  function updateConfirmBtn() {
+    countLabel.textContent = `Selected: ${selected.size} / ${count}`;
+    const ready = selected.size === count;
+    confirmBtn.disabled = !ready;
+    confirmBtn.style.background = ready ? actionColor : '#555';
+    confirmBtn.style.borderColor = ready ? actionColor : '#888';
+    confirmBtn.style.color       = ready ? '#000' : '#888';
+    confirmBtn.style.cursor      = ready ? 'pointer' : 'not-allowed';
+  }
+
+  // Card click handler
+  overlay.querySelectorAll('.picker-card').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.pickerIdx);
+      if (selected.has(idx)) {
+        selected.delete(idx);
+        el.style.borderColor = typeColor(pileCards[idx].type);
+        el.style.boxShadow = '';
+        el.style.transform = '';
+      } else {
+        if (selected.size >= count) return; // Can't select more
+        selected.add(idx);
+        el.style.borderColor = actionColor;
+        el.style.boxShadow = `0 0 12px ${actionColor}88`;
+        el.style.transform = 'scale(1.05)';
+      }
+      updateConfirmBtn();
+    });
+  });
+
+  // Confirm handler
+  confirmBtn.addEventListener('click', () => {
+    if (selected.size !== count) return;
+
+    // Sort descending so splice doesn't shift indices
+    const sortedIdx = [...selected].sort((a, b) => b - a);
+    for (const idx of sortedIdx) {
+      const card = pileCards.splice(idx, 1)[0];
+      if (action === 'discard') {
+        combat.discardPile.push(card);
+        window.CombatEngine && window.CombatEngine.addLog(`Discarded ${card.name}`, 'info');
+      } else {
+        combat.exhaustPile.push(card);
+        window.CombatEngine && window.CombatEngine.addLog(`Exhausted ${card.name}`, 'info');
+      }
+    }
+
+    overlay.remove();
+    if (typeof renderCombat === 'function') renderCombat();
+  });
+};
 
 // ============== STUBS ==============
 
