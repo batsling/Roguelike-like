@@ -1131,7 +1131,10 @@ function updateGameStats() {
   if (gameState && gameState.character && PLAYER_CHARACTERS[gameState.character]) {
     const character = PLAYER_CHARACTERS[gameState.character];
     if (characterIcon) characterIcon.src = character.fullImage || character.icon;
-    if (statsCharacterName) statsCharacterName.textContent = character.name;
+    if (statsCharacterName) {
+      const lv = (typeof gameState !== 'undefined' && gameState.playerLevel) ? gameState.playerLevel : 1;
+      statsCharacterName.innerHTML = `${character.name} <span style="color:#ff9800;font-size:13px;">Lv:${lv}</span>`;
+    }
   }
 
   // Use getTotalBonuses() to include all bonuses (scalable passives + weapon)
