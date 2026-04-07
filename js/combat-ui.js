@@ -79,6 +79,14 @@ const STATUS_META = {
   soul_link:      { img: 'SoulLink',      emoji: '🔗', label: 'Soul Link'    },
   split:          { img: 'Split',         emoji: '⚡', label: 'Split'        },
   curl_up:        { img: 'CurlUp',        emoji: '🛡', label: 'Curl Up'      },
+  // Next-turn statuses (Separate stacking — stored as arrays)
+  next_turn_block:  { img: 'NextTurnBlock',   emoji: '🛡', label: 'Next Turn Block'   },
+  next_turn_draw:   { img: 'NextTurnDraw',    emoji: '🃏', label: 'Next Turn Draw'    },
+  next_turn_energy: { img: 'NextTurnEnergy',  emoji: '⚡', label: 'Next Turn Energy'  },
+  // Other new statuses
+  blur:    { img: 'Blur',    emoji: '🌀', label: 'Blur'    },
+  choked:  { img: 'Choked',  emoji: '💀', label: 'Choked'  },
+  shackled:{ img: null,      emoji: '🔒', label: 'Shackled' },
   // Temporary stat boosts (e.g. from pigment cards, "Gain +X Stat until end of combat")
   strength:       { img: null,            emoji: '💪', label: 'Strength'     },
   intelligence:   { img: null,            emoji: '🧠', label: 'Intelligence' },
@@ -1205,7 +1213,16 @@ function hideStatusTooltip() {
 
 function renderStatusRow(statuses, _id) {
   if (!statuses) return '';
-  const entries = Object.entries(statuses).filter(([k, v]) => v > 0 && k !== 'block');
+  // Build entries, expanding array-type Separate statuses into one icon per instance
+  const entries = [];
+  Object.entries(statuses).forEach(([k, v]) => {
+    if (k === 'block') return;
+    if (Array.isArray(v)) {
+      v.forEach(instance => { if (instance > 0) entries.push([k, instance]); });
+    } else if (v > 0) {
+      entries.push([k, v]);
+    }
+  });
   if (!entries.length) return '';
   return `
     <div style="display:flex; flex-wrap:wrap; gap:3px; justify-content:center;">

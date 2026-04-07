@@ -1702,6 +1702,17 @@ function addBlock(target, amount) {
 }
 
 /**
+ * Add a "Separate" status instance (stores as array, each entry is a distinct instance).
+ * Used for Next Turn Block / Draw / Energy which don't stack but create separate instances.
+ */
+function addSeparateStatus(target, key, amount) {
+  if (!Array.isArray(target.statuses[key])) {
+    target.statuses[key] = target.statuses[key] ? [target.statuses[key]] : [];
+  }
+  target.statuses[key].push(amount);
+}
+
+/**
  * Heal a target
  * @param {Object} target - Target entity
  * @param {number} amount - Heal amount
@@ -2120,31 +2131,47 @@ function processPlayerStartOfTurn() {
     addLog(`Noxious Fumes: ${stacks} Poison to all enemies!`, 'warning');
   }
 
-  // Doppelganger: apply next-turn bonus (draw + energy)
-  if (combatState._nextTurnBonus) {
-    const bonus = combatState._nextTurnBonus;
-    if (bonus.energy > 0) {
-      combatState.player.energy += bonus.energy;
-      addLog(`Doppelganger: +${bonus.energy} Energy!`, 'success');
-    }
-    if (bonus.draw > 0) {
-      drawCards(bonus.draw);
-      addLog(`Doppelganger: draw ${bonus.draw} card(s)!`, 'success');
-    }
-    combatState._nextTurnBonus = null;
-  }
-
-  // Clear block at start of player turn (unless Barricade)
-  if (!combatState.player.statuses['barricade']) {
+  // Clear block at start of player turn (unless Barricade or Blur)
+  if (!combatState.player.statuses['barricade'] && !combatState.player.statuses['blur']) {
     if (combatState.player.block > 0) combatState.player.block = 0;
+  } else if (combatState.player.statuses['blur'] > 0) {
+    // Blur: preserve block this turn, then decay the Blur stack
+    combatState.player.statuses['blur']--;
+    if (combatState.player.statuses['blur'] <= 0) delete combatState.player.statuses['blur'];
+    addLog('Blur: block preserved this turn!', 'success');
   }
 
-  // Next Turn Block (Dodge and Roll): apply pending block, then clear
+  // Next Turn Block (Separate stacking — array of instances)
   if (combatState.player.statuses['next_turn_block']) {
-    const ntb = combatState.player.statuses['next_turn_block'];
-    addBlock(combatState.player, ntb);
+    const instances = Array.isArray(combatState.player.statuses['next_turn_block'])
+      ? combatState.player.statuses['next_turn_block']
+      : [combatState.player.statuses['next_turn_block']];
+    instances.forEach(amt => addBlock(combatState.player, amt));
     delete combatState.player.statuses['next_turn_block'];
-    addLog(`Next Turn Block: +${ntb} Block!`, 'success');
+    const total = instances.reduce((a, b) => a + b, 0);
+    addLog(`Next Turn Block: +${total} Block!`, 'success');
+  }
+
+  // Next Turn Energy (Separate stacking — array of instances)
+  if (combatState.player.statuses['next_turn_energy']) {
+    const instances = Array.isArray(combatState.player.statuses['next_turn_energy'])
+      ? combatState.player.statuses['next_turn_energy']
+      : [combatState.player.statuses['next_turn_energy']];
+    instances.forEach(amt => { combatState.player.energy += amt; });
+    delete combatState.player.statuses['next_turn_energy'];
+    const total = instances.reduce((a, b) => a + b, 0);
+    addLog(`Next Turn Energy: +${total} Energy!`, 'success');
+  }
+
+  // Next Turn Draw (Separate stacking — array of instances)
+  if (combatState.player.statuses['next_turn_draw']) {
+    const instances = Array.isArray(combatState.player.statuses['next_turn_draw'])
+      ? combatState.player.statuses['next_turn_draw']
+      : [combatState.player.statuses['next_turn_draw']];
+    delete combatState.player.statuses['next_turn_draw'];
+    instances.forEach(amt => drawCards(amt));
+    const total = instances.reduce((a, b) => a + b, 0);
+    addLog(`Next Turn Draw: Drew ${total} card(s)!`, 'success');
   }
 
   // Reset discard-tracking flag for Sneaky Strike etc.
@@ -2221,6 +2248,11 @@ function endTurn() {
     combatState._iceCreamCarryOver = (combatState._iceCreamCarryOver || 0) + combatState.player.energy;
     addLog(`Ice Cream: ${combatState.player.energy} energy carried over!`, 'success');
   }
+
+  // Clear Choked status from all enemies at end of player turn
+  combatState.enemies.forEach(e => {
+    if (e.statuses['choked']) delete e.statuses['choked'];
+  });
 
   // Discard hand (Ethereal → exhaust; Sly → trigger effect then discard; others → discard)
   if (combatState.hand) {
@@ -3104,6 +3136,13 @@ function drawCards(count = 1) {
     const card = combatState.drawPile.shift();
     combatState.hand.push(card);
     drawn.push(card);
+    combatState._lastDrawnCard = card;
+
+    // Endless Agony: whenever drawn, add a copy to the draw pile
+    if (/Whenever you draw this card, add a copy to your Draw Pile/i.test(card.description || '')) {
+      combatState.drawPile.push({ ...card, _uid: `ea_copy_${Date.now()}` });
+      addLog(`${card.name}: added a copy to the draw pile`, 'info');
+    }
   }
   return drawn;
 }
@@ -3482,25 +3521,34 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // Doppelganger: "Next turn, Draw X[+N] Cards and Gain X[+N] Energy"
-    const doppelMatch = p.match(/Next turn,?\s+Draw X\+?(\d+)? Cards? and Gain X\+?(\d+)? Energy/i);
+    // Doppelganger: "Gain X[+N] Next Turn Draw and Gain X[+N] Next Turn Energy"
+    const doppelMatch = p.match(/Gain X(?:\+(\d+))? Next Turn Draw and Gain X(?:\+(\d+))? Next Turn Energy/i);
     if (doppelMatch) {
-      const bonus = doppelMatch[1] ? parseInt(doppelMatch[1]) : 0;
-      const total = xValue + bonus;
-      combatState._nextTurnBonus = combatState._nextTurnBonus || { draw: 0, energy: 0 };
-      combatState._nextTurnBonus.draw   += total;
-      combatState._nextTurnBonus.energy += total;
-      addLog(`Doppelganger: next turn +${total} draw & +${total} energy`, 'success');
+      const drawBonus   = doppelMatch[1] ? parseInt(doppelMatch[1]) : 0;
+      const energyBonus = doppelMatch[2] ? parseInt(doppelMatch[2]) : 0;
+      const totalDraw   = xValue + drawBonus;
+      const totalEnergy = xValue + energyBonus;
+      addSeparateStatus(player, 'next_turn_draw',   totalDraw);
+      addSeparateStatus(player, 'next_turn_energy', totalEnergy);
+      addLog(`Doppelganger: +${totalDraw} Next Turn Draw, +${totalEnergy} Next Turn Energy`, 'success');
       continue;
     }
 
-    // Outmaneuver / "Next turn, Gain +N Energy"
-    const nextTurnEnergyMatch = p.match(/Next turn,?\s+Gain \+?(\d+) [Ee]nergy/i);
+    // "Gain +N Next Turn Energy" (Outmaneuver, Flying Knee, etc.)
+    const nextTurnEnergyMatch = p.match(/Gain \+?(\d+) Next Turn Energy/i);
     if (nextTurnEnergyMatch) {
       const gain = parseInt(nextTurnEnergyMatch[1]);
-      combatState._nextTurnBonus = combatState._nextTurnBonus || { draw: 0, energy: 0 };
-      combatState._nextTurnBonus.energy += gain;
-      addLog(`Outmaneuver: +${gain} Energy next turn`, 'success');
+      addSeparateStatus(player, 'next_turn_energy', gain);
+      addLog(`+${gain} Next Turn Energy`, 'success');
+      continue;
+    }
+
+    // "Gain +N Next Turn Draw"
+    const nextTurnDrawMatch = p.match(/Gain \+?(\d+) Next Turn Draw/i);
+    if (nextTurnDrawMatch) {
+      const gain = parseInt(nextTurnDrawMatch[1]);
+      addSeparateStatus(player, 'next_turn_draw', gain);
+      addLog(`+${gain} Next Turn Draw`, 'success');
       continue;
     }
 
@@ -3581,10 +3629,9 @@ function resolveCardEffect(card, target, options = {}) {
 
     // Dodge and Roll: "Gain Next Turn Block equal to Block Gained"
     if (/Gain Next Turn Block equal to Block Gained/i.test(p)) {
-      // Block already applied by the earlier block handler; store the same amount as next_turn_block
       const lastBlockGain = card._lastBlockGain || 0;
       if (lastBlockGain > 0) {
-        player.statuses['next_turn_block'] = (player.statuses['next_turn_block'] || 0) + lastBlockGain;
+        addSeparateStatus(player, 'next_turn_block', lastBlockGain);
         addLog(`Dodge and Roll: +${lastBlockGain} Block next turn!`, 'success');
       }
       continue;
@@ -3632,6 +3679,111 @@ function resolveCardEffect(card, target, options = {}) {
       const t = parseInt(thornsMatch[1]);
       player.statuses['thorns'] = (player.statuses['thorns'] || 0) + t;
       addLog(`+${t} Thorns`, 'success');
+      continue;
+    }
+
+    // Gain N Blur
+    const blurGainMatch = p.match(/Gain (\d+) Blur/i);
+    if (blurGainMatch) {
+      const amt = parseInt(blurGainMatch[1]);
+      player.statuses['blur'] = (player.statuses['blur'] || 0) + amt;
+      addLog(`Gained ${amt} Blur`, 'success');
+      continue;
+    }
+
+    // Bouncing Flask: "Inflict N Status on Random target. Repeat M times."
+    const bouncingMatch = p.match(/Inflict (\d+) (\w+) on Random target\.?\s+Repeat (\d+) times?/i);
+    if (bouncingMatch) {
+      const amount    = parseInt(bouncingMatch[1]);
+      const statusKey = bouncingMatch[2].toLowerCase();
+      const repeats   = parseInt(bouncingMatch[3]);
+      const totalHits = repeats + 1;
+      const liveEnemies = combatState.enemies.filter(e => e.health > 0);
+      if (liveEnemies.length > 0) {
+        let lastHit = null;
+        for (let i = 0; i < totalHits; i++) {
+          const eligible = (liveEnemies.length > 1 && lastHit)
+            ? liveEnemies.filter(e => e !== lastHit)
+            : liveEnemies;
+          const hit = eligible[Math.floor(Math.random() * eligible.length)];
+          hit.statuses[statusKey] = (hit.statuses[statusKey] || 0) + amount;
+          lastHit = hit;
+          addLog(`${card.name}: ${amount} ${statusKey} → ${hit.name}`, 'warning');
+        }
+      }
+      continue;
+    }
+
+    // Discard N Random Card(s) (All-Out Attack)
+    const discardRandomMatch = p.match(/Discard (\d+) Random Cards?/i);
+    if (discardRandomMatch) {
+      const count = parseInt(discardRandomMatch[1]);
+      for (let i = 0; i < count && combatState.hand.length > 0; i++) {
+        const idx = Math.floor(Math.random() * combatState.hand.length);
+        const gone = combatState.hand.splice(idx, 1)[0];
+        combatState.discardPile.push(gone);
+        combatState._discardedThisTurn = true;
+        addLog(`${card.name}: discarded ${gone.name}`, 'info');
+      }
+      continue;
+    }
+
+    // Calculated Gamble: "Discard your hand, then Draw that many Cards"
+    if (/Discard your hand,?\s+then Draw that many Cards?/i.test(p)) {
+      const handCount = combatState.hand.length;
+      combatState.hand.forEach(c => combatState.discardPile.push(c));
+      combatState.hand = [];
+      if (handCount > 0) combatState._discardedThisTurn = true;
+      drawCards(handCount);
+      addLog(`Calculated Gamble: discarded ${handCount}, drew ${handCount}`, 'info');
+      continue;
+    }
+
+    // Catalyst: "Inflict Double/Triple Poison" — multiply target's current poison
+    const catalystMatch = p.match(/Inflict (Double|Triple) Poison/i);
+    if (catalystMatch && target) {
+      const mult = catalystMatch[1].toLowerCase() === 'triple' ? 3 : 2;
+      const cur = target.statuses['poison'] || 0;
+      if (cur > 0) {
+        target.statuses['poison'] = cur * mult;
+        addLog(`Catalyst: Poison ${cur} → ${cur * mult}`, 'warning');
+      } else {
+        addLog(`Catalyst: no poison to multiply`, 'info');
+      }
+      continue;
+    }
+
+    // Conjure N Random [Type] to/in Hand (Distract)
+    const conjureRandomTypeMatch = p.match(/Conjure (\d+) Random (\w+) (?:to|in) Hand/i);
+    if (conjureRandomTypeMatch) {
+      const count      = parseInt(conjureRandomTypeMatch[1]);
+      const typeFilter = conjureRandomTypeMatch[2].toLowerCase();
+      const makeFree   = /play it for free this turn/i.test(desc);
+      const pool = typeof CARDS_DATA !== 'undefined'
+        ? CARDS_DATA.filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard)
+        : [];
+      for (let i = 0; i < count; i++) {
+        if (pool.length === 0) break;
+        const picked = pool[Math.floor(Math.random() * pool.length)];
+        const conjured = { ...picked, _uid: `conjure_rnd_${Date.now()}_${i}` };
+        if (makeFree) conjured.cost = 0;
+        combatState.hand.push(conjured);
+        addLog(`Conjured ${conjured.name} (${typeFilter}${makeFree ? ', free' : ''})`, 'success');
+      }
+      continue;
+    }
+
+    // "You can play it for free this turn" — handled by the Conjure step above
+    if (/You can play it for free this turn/i.test(p)) { continue; }
+
+    // Escape Plan: "If it was a Skill, Gain +N Block"
+    const escapePlanMatch = p.match(/If it was a Skill,?\s+Gain \+?(\d+) Block/i);
+    if (escapePlanMatch) {
+      const blockAmt = parseInt(escapePlanMatch[1]);
+      if (combatState._lastDrawnCard && (combatState._lastDrawnCard.type || '').toLowerCase() === 'skill') {
+        addBlock(player, blockAmt);
+        addLog(`Escape Plan: drew a Skill — +${blockAmt} Block!`, 'success');
+      }
       continue;
     }
 
@@ -3775,6 +3927,13 @@ function playCard(handIndex, targetId = null) {
 
   // Resolve effects (pass xValue for X-cost cards like Doppelganger)
   const shouldExhaust = resolveCardEffect(card, target, { xValue });
+
+  // Choked: each card play deals X direct damage to the choked enemy
+  combatState.enemies.filter(e => e.health > 0 && e.statuses['choked']).forEach(e => {
+    const chokeDmg = e.statuses['choked'];
+    e.health -= chokeDmg;
+    addLog(`${e.name} takes ${chokeDmg} damage from Choked!`, 'danger');
+  });
 
   // Post-play incremental triggers for attack cards
   if (_cardType === 'attack') {
