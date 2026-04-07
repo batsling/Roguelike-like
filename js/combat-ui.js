@@ -83,10 +83,12 @@ const STATUS_META = {
   next_turn_block:  { img: 'NextTurnBlock',   emoji: '🛡', label: 'Next Turn Block'   },
   next_turn_draw:   { img: 'NextTurnDraw',    emoji: '🃏', label: 'Next Turn Draw'    },
   next_turn_energy: { img: 'NextTurnEnergy',  emoji: '⚡', label: 'Next Turn Energy'  },
-  // Other new statuses
-  blur:    { img: 'Blur',    emoji: '🌀', label: 'Blur'    },
-  choked:  { img: 'Choked',  emoji: '💀', label: 'Choked'  },
-  shackled:{ img: null,      emoji: '🔒', label: 'Shackled' },
+  // Other statuses
+  blur:            { img: 'Blur',           emoji: '🌀', label: 'Blur'            },
+  choked:          { img: 'Choked',         emoji: '💀', label: 'Choked'          },
+  shackled:        { img: null,             emoji: '🔒', label: 'Shackled'        },
+  well_laid_plans: { img: 'Well-LaidPlans', emoji: '📋', label: 'Well-Laid Plans' },
+  shiv_per_turn:   { img: null,             emoji: '🗡', label: 'Shiv/Turn'       },
   // Temporary stat boosts (e.g. from pigment cards, "Gain +X Stat until end of combat")
   strength:       { img: null,            emoji: '💪', label: 'Strength'     },
   intelligence:   { img: null,            emoji: '🧠', label: 'Intelligence' },
@@ -768,7 +770,12 @@ function renderCardInHand(card, index, total, combat) {
   const isPlayerTurn = combat.phase === 'player_action';
   const isXCost      = card.cost === 'X';
   const isNoCost     = card.cost === 'No';
-  const canAfford    = !isNoCost && (isXCost || (card.cost || 0) <= (combat.player.energy || 0));
+  // Compute effective cost (accounts for Eviscerate / Masterful Stab / free-cost cards)
+  const effectiveCost = (window.CombatEngine && window.CombatEngine.getEffectiveCost)
+    ? window.CombatEngine.getEffectiveCost(card)
+    : (card._freeCost ? 0 : card.cost);
+  const displayCost = isXCost ? 'X' : isNoCost ? '—' : effectiveCost;
+  const canAfford    = !isNoCost && (isXCost || ((typeof effectiveCost === 'number' ? effectiveCost : card.cost) <= (combat.player.energy || 0)));
 
   // Check if the card's "If" condition is currently met (highlight like STS)
   const conditionMet = isPlayerTurn && /\bIf\b/i.test(card.description || '') && checkCardCondition(card, combat);
@@ -849,7 +856,7 @@ function renderCardInHand(card, index, total, combat) {
         z-index:3;
         box-shadow:0 0 7px ${costColor}bb;
         text-shadow:0 1px 2px rgba(0,0,0,0.7);
-      ">${isNoCost ? '🚫' : isXCost ? 'X' : card.cost}</div>
+      ">${isNoCost ? '🚫' : displayCost}${card._retain ? ' 🔒' : ''}</div>
 
       <!-- Art area -->
       <div style="
@@ -1928,8 +1935,8 @@ window.showCardPickerModal = function(options) {
   if (!combat) return;
 
   const { action, pile, count } = options;
-  const actionLabel = action === 'discard' ? 'Discard' : 'Exhaust';
-  const actionColor = action === 'discard' ? '#f39c12' : '#7f8c8d';
+  const actionLabel = action === 'discard' ? 'Discard' : action === 'setup' ? 'Setup' : 'Exhaust';
+  const actionColor = action === 'discard' ? '#f39c12' : action === 'setup' ? '#4fc3f7' : '#7f8c8d';
 
   const pileMap = {
     hand:    { cards: combat.hand || [],        label: 'Hand'         },
@@ -2054,7 +2061,13 @@ window.showCardPickerModal = function(options) {
       if (action === 'discard') {
         combat.discardPile.push(card);
         combat._discardedThisTurn = true;
+        combat._discardsThisTurn = (combat._discardsThisTurn || 0) + 1;
         window.CombatEngine && window.CombatEngine.addLog(`Discarded ${card.name}`, 'info');
+      } else if (action === 'setup') {
+        // Put on top of draw pile, mark free cost
+        card._freeCost = true;
+        combat.drawPile.unshift(card);
+        window.CombatEngine && window.CombatEngine.addLog(`Setup: ${card.name} → top of draw (costs 0)`, 'info');
       } else {
         combat.exhaustPile.push(card);
         window.CombatEngine && window.CombatEngine.addLog(`Exhausted ${card.name}`, 'info');

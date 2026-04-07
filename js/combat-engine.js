@@ -206,6 +206,8 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
   combatState.lastPlayedCard = null;
   combatState._scalingCounters = {}; // Tracks per-combat scaling bonuses (e.g. Claw damage bonus)
   combatState._discardedThisTurn = false; // Tracks if player discarded a card this turn (Sneaky Strike)
+  combatState._discardsThisTurn = 0;      // Count of cards discarded this turn (Eviscerate cost)
+  combatState._playerHealthLossTimes = 0; // Times player took actual HP damage this combat (Masterful Stab)
   initCombatDeck(characterData);
 
   addLog('Combat started!', 'info');
@@ -1694,8 +1696,11 @@ function dealDamage(target, damage, addons = []) {
  * @param {number} amount - Block amount
  */
 function addBlock(target, amount) {
-  // Validate amount is a valid number
-  const blockAmount = (typeof amount === 'number' && !isNaN(amount)) ? amount : 0;
+  const base = (typeof amount === 'number' && !isNaN(amount)) ? amount : 0;
+  if (base <= 0) return;
+  // Apply Defense status bonus (Footwork etc.)
+  const defense = (target.statuses && target.statuses['defense']) ? target.statuses['defense'] : 0;
+  const blockAmount = Math.max(0, base + defense);
   if (blockAmount <= 0) return;
   target.block = (target.block || 0) + blockAmount;
   addLog(`${target.name || 'Player'} gained ${blockAmount} block`, 'info');
@@ -1710,6 +1715,26 @@ function addSeparateStatus(target, key, amount) {
     target.statuses[key] = target.statuses[key] ? [target.statuses[key]] : [];
   }
   target.statuses[key].push(amount);
+}
+
+/**
+ * Compute the effective energy cost of a card, accounting for dynamic-cost effects.
+ * Returns 'X' or 'No' for special cost types, or a plain number otherwise.
+ */
+function getEffectiveCost(card) {
+  if (!card) return 0;
+  if (card._freeCost) return 0;
+  const raw = card.cost;
+  if (raw === 'X' || raw === 'No') return raw;
+  let cost = parseInt(raw) || 0;
+  const desc = card.description || '';
+  if (/Costs 1 less Energy for each Discarded Card this turn/i.test(desc)) {
+    cost = Math.max(0, cost - ((combatState && combatState._discardsThisTurn) || 0));
+  }
+  if (/Costs 1 more Energy for each time you've lost Health this combat/i.test(desc)) {
+    cost = cost + ((combatState && combatState._playerHealthLossTimes) || 0);
+  }
+  return cost;
 }
 
 /**
@@ -2174,8 +2199,23 @@ function processPlayerStartOfTurn() {
     addLog(`Next Turn Draw: Drew ${total} card(s)!`, 'success');
   }
 
-  // Reset discard-tracking flag for Sneaky Strike etc.
+  // Reset discard-tracking flags for Sneaky Strike / Eviscerate etc.
   combatState._discardedThisTurn = false;
+  combatState._discardsThisTurn = 0;
+
+  // Infinite Blades: conjure Shiv(s) to hand at start of each turn
+  if (combatState.player.statuses['shiv_per_turn']) {
+    const shivCount = combatState.player.statuses['shiv_per_turn'];
+    const shivTemplate = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === 'Shiv') : null;
+    if (shivTemplate) {
+      let conjured = 0;
+      for (let i = 0; i < shivCount && combatState.hand.length < HAND_SIZE_LIMIT; i++) {
+        combatState.hand.push({ ...shivTemplate, _uid: `shiv_ibl_${Date.now()}_${i}` });
+        conjured++;
+      }
+      if (conjured > 0) addLog(`Infinite Blades: Conjured ${conjured} Shiv(s)`, 'success');
+    }
+  }
 
   // Horn Cleat: +14 Block at the start of the second turn
   if (combatState._hornCleatPending && combatState.turn === 2) {
@@ -2254,9 +2294,21 @@ function endTurn() {
     if (e.statuses['choked']) delete e.statuses['choked'];
   });
 
-  // Discard hand (Ethereal → exhaust; Sly → trigger effect then discard; others → discard)
+  // Well-Laid Plans: mark up to X cards in hand with Retain before discarding
+  if (combatState.player.statuses['well_laid_plans'] > 0) {
+    const wlp = combatState.player.statuses['well_laid_plans'];
+    let retained = 0;
+    for (const hc of combatState.hand) {
+      if (retained >= wlp) break;
+      if (!hc._retain) { hc._retain = true; retained++; addLog(`Well-Laid Plans: ${hc.name} retained`, 'success'); }
+    }
+  }
+
+  // Discard hand (Ethereal → exhaust; Sly → trigger; Retained → keep; others → discard)
   if (combatState.hand) {
+    const kept = [];
     for (const card of [...combatState.hand]) {
+      if (card._retain) { kept.push(card); continue; }
       const descLower = (card.description || '').toLowerCase();
       if (descLower.includes('ethereal')) {
         combatState.exhaustPile.push(card);
@@ -2269,7 +2321,7 @@ function endTurn() {
         combatState.discardPile.push(card);
       }
     }
-    combatState.hand = [];
+    combatState.hand = kept;
     combatState.selectedCardIndex = null;
   }
 
@@ -2763,6 +2815,7 @@ function dealDamageToPlayer(damage, addons, enemy) {
   if (remaining > 0) {
     player.health -= remaining;
     window.health = player.health;
+    combatState._playerHealthLossTimes = (combatState._playerHealthLossTimes || 0) + 1;
     addLog(`${enemy ? enemy.name : 'Unknown'} dealt ${remaining} damage!`, 'danger');
 
     // Soul Link — propagate health loss to all soul-linked enemies
@@ -3645,6 +3698,7 @@ function resolveCardEffect(card, target, options = {}) {
         if (idx !== -1) combatState.hand.splice(idx, 1);
         combatState.discardPile.push(c);
         combatState._discardedThisTurn = true;
+        combatState._discardsThisTurn = (combatState._discardsThisTurn || 0) + 1;
       });
       if (toDiscard.length > 0) addLog(`${card.name}: Discarded ${toDiscard.length} non-Attack card(s)`, 'info');
       continue;
@@ -3718,6 +3772,7 @@ function resolveCardEffect(card, target, options = {}) {
         const gone = combatState.hand.splice(idx, 1)[0];
         combatState.discardPile.push(gone);
         combatState._discardedThisTurn = true;
+        combatState._discardsThisTurn = (combatState._discardsThisTurn || 0) + 1;
         addLog(`${card.name}: discarded ${gone.name}`, 'info');
       }
       continue;
@@ -3728,7 +3783,7 @@ function resolveCardEffect(card, target, options = {}) {
       const handCount = combatState.hand.length;
       combatState.hand.forEach(c => combatState.discardPile.push(c));
       combatState.hand = [];
-      if (handCount > 0) combatState._discardedThisTurn = true;
+      if (handCount > 0) { combatState._discardedThisTurn = true; combatState._discardsThisTurn = (combatState._discardsThisTurn || 0) + handCount; }
       drawCards(handCount);
       addLog(`Calculated Gamble: discarded ${handCount}, drew ${handCount}`, 'info');
       continue;
@@ -3781,6 +3836,77 @@ function resolveCardEffect(card, target, options = {}) {
       }
       continue;
     }
+
+    // Expertise: "Draw X Cards where X is equal to N - the amount of Cards in your Hand"
+    const expertiseMatch = p.match(/Draw X Cards where X is equal to (\d+) - the amount of Cards in your Hand/i);
+    if (expertiseMatch) {
+      const cap = parseInt(expertiseMatch[1]);
+      const toDraw = Math.max(0, cap - combatState.hand.length);
+      if (toDraw > 0) drawCards(toDraw);
+      addLog(`Expertise: Drew ${toDraw} card(s)`, 'success');
+      continue;
+    }
+
+    // Finisher: "Deal NxX Dmg Melee where X is equal to the amount of Attacks played this turn"
+    const finisherMatch = p.match(/Deal (\d+)xX Dmg (Melee|Ranged) where X is equal to the amount of Attacks played this turn/i);
+    if (finisherMatch && target) {
+      const dmgPer = parseInt(finisherMatch[1]);
+      const isFinisherRanged = finisherMatch[2].toLowerCase() === 'ranged';
+      const attackCount = (combatState.incrementals && combatState.incrementals.attacksThisTurn) || 0;
+      const addons = isFinisherRanged ? ['ranged'] : ['melee'];
+      for (let i = 0; i < attackCount; i++) dealDamage(target, dmgPer, addons);
+      addLog(`Finisher: ${dmgPer}×${attackCount} = ${dmgPer * attackCount} dmg`, 'success');
+      continue;
+    }
+
+    // Flechettes: "Deal NxX Dmg Ranged where X is equal to the amount of Skills in your Hand"
+    const flechettesMatch = p.match(/Deal (\d+)xX Dmg (Melee|Ranged) where X is equal to the amount of Skills in your Hand/i);
+    if (flechettesMatch && target) {
+      const dmgPer = parseInt(flechettesMatch[1]);
+      const isFleRanged = flechettesMatch[2].toLowerCase() === 'ranged';
+      const skillCount = combatState.hand.filter(c => (c.type || '').toLowerCase() === 'skill').length;
+      const addons = isFleRanged ? ['ranged'] : ['melee'];
+      for (let i = 0; i < skillCount; i++) dealDamage(target, dmgPer, addons);
+      addLog(`Flechettes: ${dmgPer}×${skillCount} = ${dmgPer * skillCount} dmg`, 'success');
+      continue;
+    }
+
+    // Gain +N Defense (Footwork)
+    const defenseGainMatch = p.match(/Gain \+?(\d+) Defense/i);
+    if (defenseGainMatch) {
+      const def = parseInt(defenseGainMatch[1]);
+      player.statuses['defense'] = (player.statuses['defense'] || 0) + def;
+      addLog(`+${def} Defense`, 'success');
+      continue;
+    }
+
+    // Infinite Blades: "At the start of your turn, Conjure N Shiv(s) to Hand"
+    if (/At the start of your turn,\s+Conjure (\d+) Shivs? to Hand/i.test(p)) {
+      const cnt = parseInt(p.match(/Conjure (\d+)/i)[1]);
+      player.statuses['shiv_per_turn'] = (player.statuses['shiv_per_turn'] || 0) + cnt;
+      addLog(`Infinite Blades: +${cnt} Shiv per turn`, 'success');
+      continue;
+    }
+
+    // Well-Laid Plans: "Gain +N Well-Laid Plans"
+    const wlpMatch = p.match(/Gain \+?(\d+) Well-Laid Plans/i);
+    if (wlpMatch) {
+      const stacks = parseInt(wlpMatch[1]);
+      player.statuses['well_laid_plans'] = (player.statuses['well_laid_plans'] || 0) + stacks;
+      addLog(`+${stacks} Well-Laid Plans`, 'success');
+      continue;
+    }
+
+    // Setup: "Put 1 Card from your Hand on top of your Draw Pile. It costs 0 until played."
+    if (/Put 1 Card from your Hand on top of your Draw Pile/i.test(p)) {
+      if (combatState.hand.length > 0) {
+        combatState._pendingCardPick = { action: 'setup', pile: 'hand', count: 1 };
+      }
+      continue;
+    }
+
+    // "It costs 0 until played" — handled by Setup pick action
+    if (/It costs 0 until played/i.test(p)) { continue; }
 
     // Unknown — log it
     if (lower && lower !== 'n/a') addLog(`${card.name}: ${p}`, 'info');
@@ -3876,16 +4002,16 @@ function playCard(handIndex, targetId = null) {
     return { success: false, error: 'This card is unplayable' };
   }
 
-  // X cost: spend all remaining energy
+  // Compute effective cost (handles dynamic costs like Eviscerate / Masterful Stab / free cards)
   let xValue = 0;
-  let cardCost = card.cost;
-  if (cardCost === 'X') {
+  let cardCost = getEffectiveCost(card);
+  if (card.cost === 'X') {
     xValue   = combatState.player.energy;
     cardCost = xValue;
   }
 
   // Confused: randomize card cost between 0 and maxEnergy
-  if (combatState.player.statuses['confused']) {
+  if (combatState.player.statuses['confused'] && card.cost !== 'No') {
     cardCost = Math.floor(Math.random() * (combatState.player.maxEnergy + 1));
     addLog(`Confused! ${card.name} costs ${cardCost} energy`, 'warning');
   }
@@ -3904,6 +4030,9 @@ function playCard(handIndex, targetId = null) {
   combatState.hand.splice(handIndex, 1);
   combatState.selectedCardIndex = null;
   combatState.lastPlayedCard = card;
+  // Clear transient flags (free-cost, retain) when a card is actually played
+  delete card._freeCost;
+  delete card._retain;
 
   // Incremental item tracking: update attack counters BEFORE resolveCardEffect so Pen Nib can double
   const _cardType = (card.type || '').toLowerCase();
@@ -4008,6 +4137,7 @@ if (typeof window !== 'undefined') {
     endTurn,
     getCombatState,
     endCombat,
-    addLog
+    addLog,
+    getEffectiveCost
   };
 }
