@@ -3700,14 +3700,9 @@ function resolveCardEffect(card, target, options = {}) {
       const totalHits = repeats + 1;
       const liveEnemies = combatState.enemies.filter(e => e.health > 0);
       if (liveEnemies.length > 0) {
-        let lastHit = null;
         for (let i = 0; i < totalHits; i++) {
-          const eligible = (liveEnemies.length > 1 && lastHit)
-            ? liveEnemies.filter(e => e !== lastHit)
-            : liveEnemies;
-          const hit = eligible[Math.floor(Math.random() * eligible.length)];
+          const hit = liveEnemies[Math.floor(Math.random() * liveEnemies.length)];
           hit.statuses[statusKey] = (hit.statuses[statusKey] || 0) + amount;
-          lastHit = hit;
           addLog(`${card.name}: ${amount} ${statusKey} → ${hit.name}`, 'warning');
         }
       }
