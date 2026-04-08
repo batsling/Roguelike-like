@@ -3010,7 +3010,7 @@ function processStatusEffects(target, timing) {
     }
 
     // Decay statuses
-    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration', 'thorns'];
+    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration'];
     decayStatuses.forEach(status => {
       if (statuses[status]) {
         statuses[status]--;
