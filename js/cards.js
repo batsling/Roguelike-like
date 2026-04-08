@@ -314,14 +314,25 @@ function showDeckModal() {
   const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
   const startingEntries = (charData && charData.startingDeck) ? charData.startingDeck : [];
 
+  const upgradedStarting = (typeof gameState !== 'undefined' && gameState && gameState.upgradedStartingCards) || {};
   const startingCards = [];
   for (const entry of startingEntries) {
     const template = typeof CARDS_DATA !== 'undefined'
       ? CARDS_DATA.find(c => c.name === entry.cardName || c.name.toLowerCase() === entry.cardName.toLowerCase())
       : null;
     if (template) {
+      const wasUpgraded = !!upgradedStarting[entry.cardName];
+      const card = wasUpgraded
+        ? {
+            ...template,
+            upgraded: true,
+            description: template.upgradedDescription || template.description,
+            cost: (template.upgradedCost !== null && template.upgradedCost !== undefined)
+              ? template.upgradedCost : template.cost
+          }
+        : template;
       for (let i = 0; i < (entry.count || 1); i++) {
-        startingCards.push(template);
+        startingCards.push(card);
       }
     } else {
       // Card template not found — show a placeholder

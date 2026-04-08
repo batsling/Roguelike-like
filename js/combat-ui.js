@@ -1332,6 +1332,7 @@ function handleEnemyClick(enemyId) {
         updateCombatDisplay();
         checkCombatEnd();
       });
+      updateCombatDisplay(); // Immediately remove card from hand
     }
     return;
   }
@@ -1384,6 +1385,7 @@ function handleCardClick(index) {
         updateCombatDisplay();
         checkCombatEnd();
       });
+      updateCombatDisplay(); // Immediately remove card from hand
     }
   }
 }
@@ -1985,20 +1987,29 @@ window.showCardPickerModal = function(options) {
         ${pileCards.map((card, idx) => {
           const bc = typeColor(card.type);
           const bg = cardTypeBg(card.type);
+          const imgSrc = card.imageUrl || '';
           return `
             <div class="picker-card" data-picker-idx="${idx}" style="
               background:${bg}; border:2px solid ${bc};
-              border-radius:8px; padding:8px 10px;
+              border-radius:8px; padding:6px 8px;
               display:flex; flex-direction:column; align-items:center;
               min-width:95px; max-width:115px; flex-shrink:0;
               cursor:pointer; transition:transform 0.12s, box-shadow 0.12s, border-color 0.12s;
               user-select:none;
             ">
-              <div style="font-size:10px; font-weight:bold; color:white; text-align:center; margin-bottom:3px;">
+              <div style="width:100%; height:54px; background:rgba(0,0,0,0.35);
+                border-radius:5px; margin-bottom:5px;
+                display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0;">
+                ${imgSrc
+                  ? `<img src="${imgSrc}" alt="" style="width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;"
+                       onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:28px>${typeEmoji(card.type)}</span>'">`
+                  : `<span style="font-size:28px;">${typeEmoji(card.type)}</span>`}
+              </div>
+              <div style="font-size:10px; font-weight:bold; color:white; text-align:center; margin-bottom:2px;">
                 ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
               </div>
-              <div style="font-size:9px; color:${bc}; margin-bottom:3px;">${card.type} · ${card.rarity || ''}</div>
-              <div style="font-size:8px; color:#ddd; text-align:center; margin-bottom:4px; min-height:24px; line-height:1.3;">${card.description}</div>
+              <div style="font-size:9px; color:${bc}; margin-bottom:2px;">${card.type} · ${card.rarity || ''}</div>
+              <div style="font-size:8px; color:#ddd; text-align:center; margin-bottom:3px; min-height:20px; line-height:1.3;">${card.description}</div>
               <div style="font-size:10px; color:#ffd700;">⚡${card.cost}</div>
             </div>
           `;

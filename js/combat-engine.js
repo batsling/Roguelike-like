@@ -208,6 +208,14 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
   combatState._discardedThisTurn = false; // Tracks if player discarded a card this turn (Sneaky Strike)
   combatState._discardsThisTurn = 0;      // Count of cards discarded this turn (Eviscerate cost)
   combatState._playerHealthLossTimes = 0; // Times player took actual HP damage this combat (Masterful Stab)
+  // Flat attack bonus from items (Focus Crystal, Beefy Ring, etc.) — added per-hit to attack cards
+  combatState._flatAttackBonus = 0;
+  if (typeof recalculateScalablePassives === 'function') {
+    try {
+      const passiveBonuses = recalculateScalablePassives();
+      combatState._flatAttackBonus = passiveBonuses.attack || 0;
+    } catch (e) {}
+  }
   initCombatDeck(characterData);
 
   addLog('Combat started!', 'info');
@@ -3276,11 +3284,15 @@ function resolveCardEffect(card, target, options = {}) {
       const times = xValue;
       const playerPower = player.statuses['power'] || 0;
       if (playerPower !== 0) dmg += playerPower;
-      if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
       // Shiv bonus from Accuracy
       if (card.name === 'Shiv' || (card.tags && card.tags.includes('shiv'))) {
         dmg += player.statuses['shiv_damage_bonus'] || 0;
       }
+      // Flat item attack bonus (Focus Crystal, Beefy Ring, etc.)
+      if ((card.type || '').toLowerCase() === 'attack' && combatState._flatAttackBonus) {
+        dmg += combatState._flatAttackBonus;
+      }
+      if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
       if (isAoECard) {
         combatState.enemies.filter(e => e.health > 0).forEach(e => {
           for (let t = 0; t < times; t++) dealDamage(e, dmg);
@@ -3314,6 +3326,10 @@ function resolveCardEffect(card, target, options = {}) {
       // Scaling cards: apply accumulated per-combat bonus (e.g. Claw +2 per play)
       if (combatState._scalingCounters && combatState._scalingCounters[card.name]) {
         dmg += combatState._scalingCounters[card.name];
+      }
+      // Flat item attack bonus (Focus Crystal, Beefy Ring, etc.) — added per-hit for attack cards
+      if ((card.type || '').toLowerCase() === 'attack' && combatState._flatAttackBonus) {
+        dmg += combatState._flatAttackBonus;
       }
       // Weak on player reduces outgoing damage by 25%
       if (player.statuses['weak']) {
