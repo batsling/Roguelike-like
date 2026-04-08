@@ -209,6 +209,7 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
   combatState._discardsThisTurn = 0;      // Count of cards discarded this turn (Eviscerate cost)
   combatState._playerHealthLossTimes = 0; // Times player took actual HP damage this combat (Masterful Stab)
   // Flat attack bonus from items (Focus Crystal, Beefy Ring, etc.) — added per-hit to attack cards
+  combatState._hitLog = []; // Per-play hit records for multi-hit visual playback
   combatState._flatAttackBonus = 0;
   if (typeof recalculateScalablePassives === 'function') {
     try {
@@ -1525,6 +1526,17 @@ function dealDamage(target, damage, addons = []) {
     dmg += combatState._flatAttackBonus;
   }
 
+  // Offensive thorns: attacker's own thorns add to their melee damage
+  if (addons.includes('melee') && target !== combatState.player) {
+    const playerThorns = (combatState.player && combatState.player.statuses['thorns']) || 0;
+    if (playerThorns > 0) dmg += playerThorns;
+  }
+
+  // Record hit for multi-hit visual playback
+  if (combatState._hitLog !== undefined && target !== combatState.player && !addons.includes('self')) {
+    combatState._hitLog.push({ targetId: target.id || null, dmg });
+  }
+
   // Pen Nib: every 10th attack deals double damage
   if (combatState && combatState._penNibDouble) {
     dmg *= 2;
@@ -2772,6 +2784,18 @@ function executeEnemyActions() {
  */
 function dealDamageToPlayer(damage, addons, enemy) {
   const player = combatState.player;
+  const isMeleeHit = !addons || (!addons.includes('Ranged') && !addons.includes('self'));
+
+  // Offensive thorns: attacker's (enemy's) own thorns add to their melee attacks
+  if (enemy && isMeleeHit) {
+    const enemyThorns = (enemy.statuses && enemy.statuses['thorns']) || 0;
+    if (enemyThorns > 0) damage += enemyThorns;
+  }
+
+  // Record hit for multi-hit visual playback
+  if (combatState._hitLog !== undefined && isMeleeHit) {
+    combatState._hitLog.push({ targetId: 'player', dmg: damage });
+  }
 
   // Check Frail
   if (player.statuses['frail']) {
@@ -2986,7 +3010,7 @@ function processStatusEffects(target, timing) {
     }
 
     // Decay statuses
-    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration'];
+    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration', 'thorns'];
     decayStatuses.forEach(status => {
       if (statuses[status]) {
         statuses[status]--;
