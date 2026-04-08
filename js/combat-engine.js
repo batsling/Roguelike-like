@@ -4159,7 +4159,7 @@ function resolveCardEffect(card, target, options = {}) {
     // Gain 1 Random Potion Item (Alchemize)
     if (/Gain 1 Random Potion Item/i.test(p)) {
       if (typeof ITEMS_DATA !== 'undefined') {
-        const potions = ITEMS_DATA.filter(i => i.type === 'Usable');
+        const potions = ITEMS_DATA.filter(i => i.tags && i.tags.includes('potion'));
         if (potions.length > 0) {
           const potion = potions[Math.floor(Math.random() * potions.length)];
           if (typeof acquireItem === 'function') {
