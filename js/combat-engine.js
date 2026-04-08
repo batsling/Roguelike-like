@@ -1519,6 +1519,12 @@ function dealDamage(target, damage, addons = []) {
   let dmg = (typeof damage === 'number' && !isNaN(damage)) ? damage : 0;
   if (dmg <= 0) return;
 
+  // Flat melee attack bonus from items (Focus Crystal, Beefy Ring, etc.)
+  // Applied whenever a melee hit is dealt by the player
+  if (addons.includes('melee') && combatState._flatAttackBonus) {
+    dmg += combatState._flatAttackBonus;
+  }
+
   // Pen Nib: every 10th attack deals double damage
   if (combatState && combatState._penNibDouble) {
     dmg *= 2;
@@ -3288,17 +3294,15 @@ function resolveCardEffect(card, target, options = {}) {
       if (card.name === 'Shiv' || (card.tags && card.tags.includes('shiv'))) {
         dmg += player.statuses['shiv_damage_bonus'] || 0;
       }
-      // Flat item attack bonus (Focus Crystal, Beefy Ring, etc.) — melee damage only, added per-hit
-      if (combatState._flatAttackBonus && /melee/i.test(p)) {
-        dmg += combatState._flatAttackBonus;
-      }
       if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
+      // Pass melee/ranged addon so dealDamage can apply flat bonuses (e.g. Focus Crystal)
+      const nxxAddons = /melee/i.test(p) ? ['melee'] : /ranged/i.test(p) ? ['ranged'] : [];
       if (isAoECard) {
         combatState.enemies.filter(e => e.health > 0).forEach(e => {
-          for (let t = 0; t < times; t++) dealDamage(e, dmg);
+          for (let t = 0; t < times; t++) dealDamage(e, dmg, nxxAddons);
         });
       } else if (target) {
-        for (let t = 0; t < times; t++) dealDamage(target, dmg);
+        for (let t = 0; t < times; t++) dealDamage(target, dmg, nxxAddons);
       }
       addLog(`${card.name}: ${dmg} x${times} = ${dmg * times} damage`, 'info');
       continue;
@@ -3327,27 +3331,25 @@ function resolveCardEffect(card, target, options = {}) {
       if (combatState._scalingCounters && combatState._scalingCounters[card.name]) {
         dmg += combatState._scalingCounters[card.name];
       }
-      // Flat item attack bonus (Focus Crystal, Beefy Ring, etc.) — melee damage only, added per-hit
-      if (combatState._flatAttackBonus && /melee/i.test(p)) {
-        dmg += combatState._flatAttackBonus;
-      }
       // Weak on player reduces outgoing damage by 25%
       if (player.statuses['weak']) {
         dmg = Math.floor(dmg * 0.75);
       }
+      // Pass melee/ranged addon so dealDamage can apply flat bonuses (e.g. Focus Crystal)
+      const hitAddons = /melee/i.test(p) ? ['melee'] : /ranged/i.test(p) ? ['ranged'] : [];
       if (isAoECard) {
         combatState.enemies.filter(e => e.health > 0).forEach(e => {
-          for (let t = 0; t < times; t++) dealDamage(e, dmg);
+          for (let t = 0; t < times; t++) dealDamage(e, dmg, hitAddons);
         });
         // Cleave also hits all allies (sweeping attack that doesn't discriminate)
         if (isCleaveCard && combatState.allies) {
           combatState.allies.filter(a => a.isAlive).forEach(a => {
-            for (let t = 0; t < times; t++) dealDamage(a, dmg);
+            for (let t = 0; t < times; t++) dealDamage(a, dmg, hitAddons);
           });
           if (combatState.allies.some(a => a.isAlive)) addLog('Cleave hit all allies too!', 'warning');
         }
       } else if (target) {
-        for (let t = 0; t < times; t++) dealDamage(target, dmg);
+        for (let t = 0; t < times; t++) dealDamage(target, dmg, hitAddons);
       }
 
       // Strike Dummy: Attack cards deal +3 damage
