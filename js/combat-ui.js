@@ -2169,8 +2169,8 @@ window.showCardPickerModal = function(options) {
   if (!combat) return;
 
   const { action, pile, count } = options;
-  const actionLabel = action === 'discard' ? 'Discard' : action === 'setup' ? 'Setup' : 'Exhaust';
-  const actionColor = action === 'discard' ? '#f39c12' : action === 'setup' ? '#4fc3f7' : '#7f8c8d';
+  const actionLabel = action === 'discard' ? 'Discard' : action === 'setup' ? 'Setup' : action === 'nightmare' ? 'Choose' : 'Exhaust';
+  const actionColor = action === 'discard' ? '#f39c12' : action === 'setup' ? '#4fc3f7' : action === 'nightmare' ? '#9b59b6' : '#7f8c8d';
 
   const pileMap = {
     hand:    { cards: combat.hand || [],        label: 'Hand'         },
@@ -2210,7 +2210,7 @@ window.showCardPickerModal = function(options) {
         ${actionLabel} ${count} Card${count !== 1 ? 's' : ''}
       </h2>
       <p style="color:#aaa; text-align:center; margin:0 0 14px; font-size:12px;">
-        Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to ${actionLabel.toLowerCase()}.
+        ${action === 'nightmare' ? `Choose a card to conjure ${options._nightmareCount || 3} copies of next turn.` : `Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to ${actionLabel.toLowerCase()}.`}
       </p>
       <div id="card-picker-grid" style="
         display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
@@ -2297,23 +2297,31 @@ window.showCardPickerModal = function(options) {
   confirmBtn.addEventListener('click', () => {
     if (selected.size !== count) return;
 
-    // Sort descending so splice doesn't shift indices
-    const sortedIdx = [...selected].sort((a, b) => b - a);
-    for (const idx of sortedIdx) {
-      const card = pileCards.splice(idx, 1)[0];
-      if (action === 'discard') {
-        combat.discardPile.push(card);
-        combat._discardedThisTurn = true;
-        combat._discardsThisTurn = (combat._discardsThisTurn || 0) + 1;
-        window.CombatEngine && window.CombatEngine.addLog(`Discarded ${card.name}`, 'info');
-      } else if (action === 'setup') {
-        // Put on top of draw pile, mark free cost
-        card._freeCost = true;
-        combat.drawPile.unshift(card);
-        window.CombatEngine && window.CombatEngine.addLog(`Setup: ${card.name} → top of draw (costs 0)`, 'info');
-      } else {
-        combat.exhaustPile.push(card);
-        window.CombatEngine && window.CombatEngine.addLog(`Exhausted ${card.name}`, 'info');
+    if (action === 'nightmare') {
+      // Nightmare: store chosen card for next-turn conjuring (don't remove from pile)
+      const idx = [...selected][0];
+      const card = pileCards[idx];
+      combat._nightmareCard = { ...card };
+      combat._nightmareCount = options._nightmareCount || 3;
+      window.CombatEngine && window.CombatEngine.addLog(`Nightmare: will conjure ${combat._nightmareCount}x ${card.name} next turn!`, 'success');
+    } else {
+      // Sort descending so splice doesn't shift indices
+      const sortedIdx = [...selected].sort((a, b) => b - a);
+      for (const idx of sortedIdx) {
+        const card = pileCards.splice(idx, 1)[0];
+        if (action === 'discard') {
+          combat.discardPile.push(card);
+          combat._discardedThisTurn = true;
+          combat._discardsThisTurn = (combat._discardsThisTurn || 0) + 1;
+          window.CombatEngine && window.CombatEngine.addLog(`Discarded ${card.name}`, 'info');
+        } else if (action === 'setup') {
+          card._freeCost = true;
+          combat.drawPile.unshift(card);
+          window.CombatEngine && window.CombatEngine.addLog(`Setup: ${card.name} → top of draw (costs 0)`, 'info');
+        } else {
+          combat.exhaustPile.push(card);
+          window.CombatEngine && window.CombatEngine.addLog(`Exhausted ${card.name}`, 'info');
+        }
       }
     }
 

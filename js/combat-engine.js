@@ -1542,6 +1542,11 @@ function dealDamage(target, damage, addons = []) {
     dmg *= 2;
   }
 
+  // Double Damage: player's attacks deal double damage for X turns
+  if (!addons.includes('self') && target !== combatState.player && combatState.player.statuses['double_damage']) {
+    dmg *= 2;
+  }
+
   // Check Engage (x2 on full health)
   if (addons.includes('Engage') && target.health === target.maxHealth) {
     dmg *= 2;
@@ -1611,6 +1616,11 @@ function dealDamage(target, damage, addons = []) {
     dmg = Math.max(1, dmg - braceStacks);
   }
 
+  // Intangible: reduce all incoming damage to 1
+  if (target.statuses && target.statuses['intangible']) {
+    dmg = 1;
+  }
+
   // Apply block first
   let remainingDamage = dmg;
   if (target.block > 0) {
@@ -1648,6 +1658,13 @@ function dealDamage(target, damage, addons = []) {
       const loss = remainingDamage;
       target.statuses['power'] = (target.statuses['power'] || 0) - loss;
       target.statuses['shackled'] = (target.statuses['shackled'] || 0) + loss;
+    }
+
+    // Envenom: when player deals unblocked attack damage to an enemy, apply X Poison
+    if (target !== combatState.player && !addons.includes('self') && combatState.player.statuses['envenom']) {
+      const poisonAmt = combatState.player.statuses['envenom'];
+      target.statuses['poison'] = (target.statuses['poison'] || 0) + poisonAmt;
+      addLog(`Envenom: +${poisonAmt} Poison!`, 'warning');
     }
 
     // Check Formless
@@ -1759,6 +1776,12 @@ function getEffectiveCost(card) {
   }
   if (/Costs 1 more Energy for each time you've lost Health this combat/i.test(desc)) {
     cost = cost + ((combatState && combatState._playerHealthLossTimes) || 0);
+  }
+  // Grand Finale: can only be played with an empty draw pile
+  if (/Can only be played if there are no cards in your draw pile/i.test(desc)) {
+    if (combatState && combatState.drawPile && combatState.drawPile.length > 0) {
+      return 'No';
+    }
   }
   return cost;
 }
@@ -2135,6 +2158,18 @@ function onEnemyDefeated(enemy) {
     addLog('Gremlin Horn: +1 Energy, draw 1!', 'success');
   }
 
+  // Corpse Explosion: on death, deal X * maxHealth to all other living enemies
+  if (enemy.statuses && enemy.statuses['corpse_explosion']) {
+    const mult = enemy.statuses['corpse_explosion'];
+    const explodeDmg = Math.round(mult * (enemy.maxHealth || 0));
+    if (explodeDmg > 0) {
+      combatState.enemies.filter(e => e !== enemy && e.health > 0).forEach(e => {
+        dealDamage(e, explodeDmg, ['self']);
+      });
+      addLog(`Corpse Explosion: ${explodeDmg} damage to all other enemies!`, 'danger');
+    }
+  }
+
   if (!enemy.ability) return;
   const m = enemy.ability.match(/When Defeated,?\s*(.+)/i);
   if (!m) return;
@@ -2241,6 +2276,36 @@ function processPlayerStartOfTurn() {
       }
       if (conjured > 0) addLog(`Infinite Blades: Conjured ${conjured} Shiv(s)`, 'success');
     }
+  }
+
+  // Tools of the Trade: draw 1, then discard 1 at start of each turn
+  if (combatState.player.statuses['tools_of_trade']) {
+    drawCards(1);
+    if (combatState.hand.length > 0) {
+      combatState._pendingCardPick = { action: 'discard', pile: 'hand', count: 1 };
+    }
+    addLog('Tools of the Trade: draw 1, discard 1', 'success');
+  }
+
+  // Wraith Form: lose 1 Defense at the start of each turn
+  if (combatState.player.statuses['wraith_form']) {
+    if (combatState.player.statuses['defense'] > 0) {
+      combatState.player.statuses['defense']--;
+      if (combatState.player.statuses['defense'] <= 0) delete combatState.player.statuses['defense'];
+    }
+    addLog('Wraith Form: lost 1 Defense', 'warning');
+  }
+
+  // Nightmare: conjure N copies of the chosen card to hand
+  if (combatState._nightmareCard) {
+    const nc = combatState._nightmareCard;
+    const nc_count = combatState._nightmareCount || 3;
+    delete combatState._nightmareCard;
+    delete combatState._nightmareCount;
+    for (let i = 0; i < nc_count && combatState.hand.length < HAND_SIZE_LIMIT; i++) {
+      combatState.hand.push({ ...nc, _uid: `nightmare_${Date.now()}_${i}` });
+    }
+    addLog(`Nightmare: conjured ${nc_count}x ${nc.name}!`, 'success');
   }
 
   // Horn Cleat: +14 Block at the start of the second turn
@@ -3010,7 +3075,7 @@ function processStatusEffects(target, timing) {
     }
 
     // Decay statuses
-    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration'];
+    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration', 'double_damage', 'intangible', 'no_draw'];
     decayStatuses.forEach(status => {
       if (statuses[status]) {
         statuses[status]--;
@@ -3019,6 +3084,11 @@ function processStatusEffects(target, timing) {
         }
       }
     });
+
+    // Burst: clears completely at end of turn
+    if (target === combatState.player && statuses['burst']) {
+      delete statuses['burst'];
+    }
 
     // Fading
     if (statuses['fading']) {
@@ -3213,6 +3283,8 @@ function initCombatDeck(characterData) {
  */
 function drawCards(count = 1) {
   const drawn = [];
+  // No Draw: player cannot draw cards this turn
+  if (combatState.player.statuses['no_draw']) return drawn;
   for (let i = 0; i < count; i++) {
     if (combatState.hand.length >= HAND_SIZE_LIMIT) break;
 
@@ -3950,6 +4022,157 @@ function resolveCardEffect(card, target, options = {}) {
     // "It costs 0 until played" — handled by Setup pick action
     if (/It costs 0 until played/i.test(p)) { continue; }
 
+    // Gain +N Burst (until end of turn)
+    const burstGainMatch = p.match(/Gain \+?(\d+) Burst/i);
+    if (burstGainMatch) {
+      const stacks = parseInt(burstGainMatch[1]);
+      player.statuses['burst'] = (player.statuses['burst'] || 0) + stacks;
+      addLog(`+${stacks} Burst`, 'success');
+      continue;
+    }
+
+    // Gain +N No Draw (Bullet Time)
+    const noDrawMatch = p.match(/Gain \+?(\d+) No Draw/i);
+    if (noDrawMatch) {
+      const stacks = parseInt(noDrawMatch[1]);
+      player.statuses['no_draw'] = (player.statuses['no_draw'] || 0) + stacks;
+      addLog(`+${stacks} No Draw`, 'info');
+      continue;
+    }
+
+    // All Cards in your Hand are free to play this turn (Bullet Time)
+    if (/All Cards in your Hand are free to play this turn/i.test(p)) {
+      (combatState.hand || []).forEach(c => { c._freeCost = true; });
+      addLog('Bullet Time: all hand cards cost 0 this turn!', 'success');
+      continue;
+    }
+
+    // Inflict N Corpse Explosion
+    const ceInflictMatch = p.match(/Inflict (\d+) Corpse Explosion/i);
+    if (ceInflictMatch) {
+      const targets = isAoECard
+        ? combatState.enemies.filter(e => e.health > 0)
+        : (target ? [target] : []);
+      const stacks = parseInt(ceInflictMatch[1]);
+      targets.forEach(t => {
+        t.statuses['corpse_explosion'] = (t.statuses['corpse_explosion'] || 0) + stacks;
+      });
+      addLog(`Inflicted ${stacks} Corpse Explosion`, 'warning');
+      continue;
+    }
+
+    // Gain +N Envenom (Power card)
+    const envenomGainMatch = p.match(/Gain \+?(\d+) Envenom/i);
+    if (envenomGainMatch) {
+      const stacks = parseInt(envenomGainMatch[1]);
+      player.statuses['envenom'] = (player.statuses['envenom'] || 0) + stacks;
+      addLog(`+${stacks} Envenom`, 'success');
+      continue;
+    }
+
+    // Decrease the Dmg of this Card by N this combat (Glass Knife)
+    const glassDecMatch = p.match(/Decrease the Dmg of this Card by (\d+) this combat/i);
+    if (glassDecMatch) {
+      const decrease = parseInt(glassDecMatch[1]);
+      card.description = card.description.replace(/(Deal )(\d+)(x\d+ Dmg)/i, (_m, pre, num, post) =>
+        pre + Math.max(0, parseInt(num) - decrease) + post
+      );
+      if (card.upgradedDescription) {
+        card.upgradedDescription = card.upgradedDescription.replace(/(Deal )(\d+)(x\d+ Dmg)/i, (_m, pre, num, post) =>
+          pre + Math.max(0, parseInt(num) - decrease) + post
+        );
+      }
+      addLog(`${card.name}: base damage -${decrease}`, 'info');
+      continue;
+    }
+
+    // Can only be played if draw pile is empty (Grand Finale condition text — skip)
+    if (/Can only be played if there are no cards in your draw pile/i.test(p)) { continue; }
+
+    // Choose a Card. Next turn, Conjure N copies of that Card to your Hand. (Nightmare)
+    const nightmarePickMatch = p.match(/Choose a Card\. Next turn, Conjure (\d+) copies of that Card to your Hand/i);
+    if (nightmarePickMatch) {
+      const nc = parseInt(nightmarePickMatch[1]);
+      if (combatState.hand.length > 0) {
+        combatState._pendingCardPick = { action: 'nightmare', pile: 'hand', count: 1, _nightmareCount: nc };
+      }
+      continue;
+    }
+
+    // Gain +N Double Damage (Phantasmal Killer)
+    const doubleDmgGainMatch = p.match(/Gain \+?(\d+) Double Damage/i);
+    if (doubleDmgGainMatch) {
+      const stacks = parseInt(doubleDmgGainMatch[1]);
+      player.statuses['double_damage'] = (player.statuses['double_damage'] || 0) + stacks;
+      addLog(`+${stacks} Double Damage`, 'success');
+      continue;
+    }
+
+    // Discard your Hand, then Conjure X [Upgraded] Shivs (Storm of Steel)
+    if (/Discard your Hand, then Conjure X (Upgraded )?Shivs/i.test(p)) {
+      const handCards = [...combatState.hand];
+      const handCount = handCards.length;
+      combatState.hand = [];
+      handCards.forEach(c => combatState.discardPile.push(c));
+      combatState._discardedThisTurn = true;
+      combatState._discardsThisTurn = (combatState._discardsThisTurn || 0) + handCount;
+      const shivTemplate = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === 'Shiv') : null;
+      if (shivTemplate) {
+        const isUpgradedShiv = /Upgraded Shivs/i.test(p);
+        for (let i = 0; i < handCount && combatState.hand.length < HAND_SIZE_LIMIT; i++) {
+          const shiv = { ...shivTemplate, _uid: `sos_${Date.now()}_${i}` };
+          if (isUpgradedShiv && shivTemplate.upgradedDescription) {
+            shiv.upgraded = true;
+            shiv.description = shivTemplate.upgradedDescription;
+            if (shivTemplate.upgradedCost !== undefined && shivTemplate.upgradedCost !== null) shiv.cost = shivTemplate.upgradedCost;
+          }
+          combatState.hand.push(shiv);
+        }
+      }
+      addLog(`Storm of Steel: discarded ${handCount}, conjured ${handCount} Shivs`, 'success');
+      continue;
+    }
+
+    // At the start of your turn, Draw N Card and Discard N Card (Tools of the Trade)
+    if (/At the start of your turn, Draw \d+ Card and Discard \d+ Card/i.test(p)) {
+      player.statuses['tools_of_trade'] = 1;
+      addLog('Tools of the Trade activated', 'success');
+      continue;
+    }
+
+    // Gain +N Intangible (Wraith Form)
+    const intangibleMatch = p.match(/Gain \+?(\d+) Intangible/i);
+    if (intangibleMatch) {
+      const stacks = parseInt(intangibleMatch[1]);
+      player.statuses['intangible'] = (player.statuses['intangible'] || 0) + stacks;
+      addLog(`+${stacks} Intangible`, 'success');
+      continue;
+    }
+
+    // At the start of the turn, Lose 1 Defense (Wraith Form passive)
+    if (/At the start of the turn, Lose 1 Defense/i.test(p)) {
+      player.statuses['wraith_form'] = 1;
+      addLog('Wraith Form: Defense will erode each turn', 'warning');
+      continue;
+    }
+
+    // Gain 1 Random Potion Item (Alchemize)
+    if (/Gain 1 Random Potion Item/i.test(p)) {
+      if (typeof ITEMS_DATA !== 'undefined') {
+        const potions = ITEMS_DATA.filter(i => i.type === 'Usable');
+        if (potions.length > 0) {
+          const potion = potions[Math.floor(Math.random() * potions.length)];
+          if (typeof acquireItem === 'function') {
+            acquireItem(potion);
+          } else if (typeof window.inventory !== 'undefined') {
+            window.inventory.push({ ...potion, quantity: 1 });
+          }
+          addLog(`Alchemize: gained ${potion.name}!`, 'success');
+        }
+      }
+      continue;
+    }
+
     // Unknown — log it
     if (lower && lower !== 'n/a') addLog(`${card.name}: ${p}`, 'info');
   }
@@ -4093,6 +4316,14 @@ function playCard(handIndex, targetId = null) {
 
   // Resolve effects (pass xValue for X-cost cards like Doppelganger)
   const shouldExhaust = resolveCardEffect(card, target, { xValue });
+
+  // Burst: if player played a Skill and has burst stacks, replay the card's effects once
+  if (_cardType === 'skill' && combatState.player.statuses['burst'] > 0) {
+    combatState.player.statuses['burst']--;
+    if (combatState.player.statuses['burst'] <= 0) delete combatState.player.statuses['burst'];
+    resolveCardEffect(card, target, { xValue });
+    addLog(`Burst: ${card.name} triggered again!`, 'success');
+  }
 
   // Choked: each card play deals X direct damage to the choked enemy
   combatState.enemies.filter(e => e.health > 0 && e.statuses['choked']).forEach(e => {
