@@ -1368,49 +1368,27 @@ function acquireItem(item) {
   let wasStacked = false;
 
   if (isWeapon) {
-    // Check if player already has this weapon at level 1 → upgrade to level 2
-    const existingWeaponIdx = inventory.findIndex(i => i.type === 'Weapon' && i.name === itemCopy.name);
-    if (existingWeaponIdx !== -1 && (inventory[existingWeaponIdx].level || 1) < 2) {
-      // Upgrade the existing weapon to level 2
-      inventory[existingWeaponIdx].level = 2;
-      targetItemIndex = existingWeaponIdx;
-      // Upgrade the corresponding weapon card in the deck
-      if (typeof gameState !== 'undefined' && gameState.deck) {
-        const deckCard = gameState.deck.find(c => c.name === itemCopy.name && c.tags && c.tags.includes('weapon'));
-        if (deckCard) {
-          deckCard.upgraded = true;
-          if (deckCard.upgradedDescription) deckCard.description = deckCard.upgradedDescription;
-          if (deckCard.upgradedCost !== undefined && deckCard.upgradedCost !== null) deckCard.cost = deckCard.upgradedCost;
+    // Each copy is independent — always add a new inventory entry and a new deck card
+    itemCopy.quantity = 1;
+    initializeWeaponBonuses(itemCopy);
+    inventory.push(itemCopy);
+    targetItemIndex = inventory.length - 1;
+    console.log('📥 Weapon added to inventory:', itemCopy.name);
+    console.log(`✅ Acquired: ${itemCopy.name}`);
+    if (typeof CARDS_DATA !== 'undefined') {
+      const weaponCard = CARDS_DATA.find(c => c.name === itemCopy.name && c.tags && c.tags.includes('weapon'));
+      if (weaponCard) {
+        const addFn = window.addCardToDeck || (typeof addCardToDeck !== 'undefined' ? addCardToDeck : null);
+        if (addFn) {
+          addFn(weaponCard);
+        } else if (typeof gameState !== 'undefined') {
+          if (!gameState.deck) gameState.deck = [];
+          gameState.deck.push({ ...weaponCard, upgraded: false });
           if (typeof saveCurrentGame === 'function') saveCurrentGame();
         }
-      }
-      console.log(`⬆️ ${itemCopy.name} upgraded to level 2`);
-      if (typeof createNotification === 'function') {
-        createNotification(`${itemCopy.name} upgraded to level 2!`, '#ff9800', '⬆️');
-      }
-    } else {
-      // First time acquiring this weapon — add to inventory and deck
-      itemCopy.quantity = 1;
-      initializeWeaponBonuses(itemCopy);
-      inventory.push(itemCopy);
-      targetItemIndex = inventory.length - 1;
-      console.log('📥 Weapon added to inventory:', itemCopy.name);
-      console.log(`✅ Acquired: ${itemCopy.name}`);
-      if (typeof CARDS_DATA !== 'undefined') {
-        const weaponCard = CARDS_DATA.find(c => c.name === itemCopy.name && c.tags && c.tags.includes('weapon'));
-        if (weaponCard) {
-          const addFn = window.addCardToDeck || (typeof addCardToDeck !== 'undefined' ? addCardToDeck : null);
-          if (addFn) {
-            addFn(weaponCard);
-          } else if (typeof gameState !== 'undefined') {
-            if (!gameState.deck) gameState.deck = [];
-            gameState.deck.push({ ...weaponCard, upgraded: false });
-            if (typeof saveCurrentGame === 'function') saveCurrentGame();
-          }
-          console.log(`🃏 Weapon card added to deck: ${weaponCard.name}`);
-          if (typeof createNotification === 'function') {
-            createNotification(`${weaponCard.name} card added to deck!`, '#4CAF50', '🃏');
-          }
+        console.log(`🃏 Weapon card added to deck: ${weaponCard.name}`);
+        if (typeof createNotification === 'function') {
+          createNotification(`${weaponCard.name} card added to deck!`, '#4CAF50', '🃏');
         }
       }
     }
