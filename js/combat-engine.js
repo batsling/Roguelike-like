@@ -3288,8 +3288,8 @@ function resolveCardEffect(card, target, options = {}) {
       if (card.name === 'Shiv' || (card.tags && card.tags.includes('shiv'))) {
         dmg += player.statuses['shiv_damage_bonus'] || 0;
       }
-      // Flat item attack bonus (Focus Crystal, Beefy Ring, etc.)
-      if ((card.type || '').toLowerCase() === 'attack' && combatState._flatAttackBonus) {
+      // Flat item attack bonus (Focus Crystal, Beefy Ring, etc.) — melee damage only, added per-hit
+      if (combatState._flatAttackBonus && /melee/i.test(p)) {
         dmg += combatState._flatAttackBonus;
       }
       if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
@@ -3327,8 +3327,8 @@ function resolveCardEffect(card, target, options = {}) {
       if (combatState._scalingCounters && combatState._scalingCounters[card.name]) {
         dmg += combatState._scalingCounters[card.name];
       }
-      // Flat item attack bonus (Focus Crystal, Beefy Ring, etc.) — added per-hit for attack cards
-      if ((card.type || '').toLowerCase() === 'attack' && combatState._flatAttackBonus) {
+      // Flat item attack bonus (Focus Crystal, Beefy Ring, etc.) — melee damage only, added per-hit
+      if (combatState._flatAttackBonus && /melee/i.test(p)) {
         dmg += combatState._flatAttackBonus;
       }
       // Weak on player reduces outgoing damage by 25%
