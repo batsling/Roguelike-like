@@ -1,5 +1,5 @@
 // Auto-generated from Roguelikes.xlsx
-// 86 items
+// 91 items
 
 var ITEMS_DATA = [
   {
@@ -901,5 +901,57 @@ var ITEMS_DATA = [
     "tags": [
       "ring"
     ]
+  },
+  {
+    "name": "Barrel",
+    "rarity": "Uncommon",
+    "type": "Weapon",
+    "description": "Add the Card \"Barrel\" into your Deck. If you obtain at least 1 fish, Gain (1/2) random fish",
+    "image": "images/items/Barrel.png",
+    "reference": "Enter the Gungeon",
+    "tags": [
+      "gun",
+      "fish"
+    ]
+  },
+  {
+    "name": "Blasma Pistol",
+    "rarity": "Common",
+    "type": "Weapon",
+    "description": "Add the Card \"Blasma Pistol\" into your Deck. If you open more than 10 chests, gain a (small/normal) chest",
+    "image": "images/items/BlasmaPistol.png",
+    "reference": "Flinthook",
+    "tags": [
+      "gun"
+    ]
+  },
+  {
+    "name": "Lil' Bomber",
+    "rarity": "Common",
+    "type": "Weapon",
+    "description": "Add the Card \"Lil' Bomber\" into your Deck. If you kill an enemy with a bomb at least one time, \"Barrel\" Gains (+1/+2) Dmg",
+    "image": "images/items/LilBomber.png",
+    "reference": "Enter the Gungeon",
+    "tags": [
+      "gun"
+    ]
+  },
+  {
+    "name": "Blood Magic",
+    "rarity": "Rare",
+    "type": "Weapon",
+    "description": "Add the Card \"Blood Magic\" into your Deck. If you create or use a magic circle, \"Blood Magic\" Gains (+1/+2/) Infuse",
+    "image": "images/items/BloodMagic.png",
+    "reference": "Megabonk",
+    "tags": []
+  },
+  {
+    "name": "Dexecutioner",
+    "rarity": "Uncommon",
+    "type": "Weapon",
+    "description": "Add the Card \"Dexecutioner\" into your Deck. If you kill an enemy with a piercing attack at least one time, \"Dexecutioner\" gains (+1/+2) Assassinate",
+    "image": "images/items/Dexecutioner.png",
+    "reference": "Megabonk",
+    "tags": []
   }
 ];

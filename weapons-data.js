@@ -12,7 +12,7 @@ var WEAPONS_DATA = [
       "fish",
       "ranged"
     ],
-    "imageUrl": "images/weapons/Barrel.png",
+    "imageUrl": "images/items/Barrel.png",
     "unlockCondition": "N/A"
   },
   {
@@ -24,7 +24,7 @@ var WEAPONS_DATA = [
       "gun",
       "ranged"
     ],
-    "imageUrl": "images/weapons/BlasmaPistol.png",
+    "imageUrl": "images/items/BlasmaPistol.png",
     "unlockCondition": "N/A"
   },
   {
@@ -36,7 +36,7 @@ var WEAPONS_DATA = [
       "gun",
       "ranged"
     ],
-    "imageUrl": "images/weapons/LilBomber.png",
+    "imageUrl": "images/items/LilBomber.png",
     "unlockCondition": "N/A"
   },
   {
@@ -47,7 +47,7 @@ var WEAPONS_DATA = [
     "tags": [
       "ranged"
     ],
-    "imageUrl": "images/weapons/BloodMagic.png",
+    "imageUrl": "images/items/BloodMagic.png",
     "unlockCondition": "N/A"
   },
   {
@@ -58,7 +58,7 @@ var WEAPONS_DATA = [
     "tags": [
       "melee"
     ],
-    "imageUrl": "images/weapons/Dexecutioner.png",
+    "imageUrl": "images/items/Dexecutioner.png",
     "unlockCondition": "N/A"
   }
 ];
