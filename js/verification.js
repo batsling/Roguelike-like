@@ -28,8 +28,9 @@ function showCurseVerificationModal(onComplete) {
   // Check if player has Precision Landing trait
   const hasPrecisionLanding = gameState && gameState.traits && gameState.traits.includes('precision_landing');
 
-  // Check if player has an equipped weapon
-  const hasEquippedWeapon = gameState && gameState.equippedWeapon;
+  // Check if player has any weapons in inventory
+  const weaponsInInventory = (gameState && gameState.inventory || []).filter(i => i.type === 'Weapon');
+  const hasEquippedWeapon = weaponsInInventory.length > 0;
 
   // Check if player has any boons
   const boons = (gameState.inventory || []).filter(item => item.type === 'Boon');
@@ -472,109 +473,54 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
     `;
   }
 
-  // Add Weapon Effect section if player has a weapon equipped
-  if (gameState.equippedWeapon) {
-    const weapon = gameState.equippedWeapon;
-    const weaponLevel = gameState.weaponLevel || 1;
-
-    // Parse weapon effect to get the verification question and reward
-    const getWeaponVerification = (description, level, weaponName) => {
-      // Special handling for Lil' Bomber
+  // Add Weapon Effect section for each weapon in inventory
+  const inventoryWeapons = (gameState.inventory || []).filter(i => i.type === 'Weapon');
+  if (inventoryWeapons.length > 0) {
+    const getWeaponVerification = (weaponName, level) => {
+      const lv = level || 1;
       if (weaponName === "Lil' Bomber") {
-        const strengthBonus = level === 1 ? 1 : level === 2 ? 2 : 3;
-        return {
-          question: 'Did you kill an enemy with a bomb at least one time?',
-          reward: `+${strengthBonus} Strength`
-        };
+        return { question: 'Did you kill an enemy with a bomb at least one time?', reward: `+${lv} Dmg to Lil' Bomber card` };
       }
-
-      // Special handling for Barrel
       if (weaponName === "Barrel") {
-        const fishCount = level === 1 ? 1 : level === 2 ? 2 : 3;
-        return {
-          question: 'Did you obtain at least 1 fish?',
-          reward: `${fishCount} random fish`
-        };
+        return { question: 'Did you obtain at least 1 fish?', reward: `${lv} random fish` };
       }
-
-      // Special handling for Slutty Rocket
-      if (weaponName === "Slutty Rocket") {
-        const attackBonus = level === 1 ? 1 : level === 2 ? 2 : 3;
-        return {
-          question: 'Did you kill an enemy with a missile at least one time?',
-          reward: `+${attackBonus} Attack`
-        };
-      }
-
-      // Special handling for Blood Magic
       if (weaponName === "Blood Magic") {
-        const maxHealthBonus = level === 1 ? 1 : level === 2 ? 2 : 3;
-        return {
-          question: 'Did you create or use a magic circle?',
-          reward: `+${maxHealthBonus} Max Health (permanent)`
-        };
+        return { question: 'Did you create or use a magic circle?', reward: `+${lv} Infuse to Blood Magic card` };
       }
-
-      // Special handling for Dexecutioner
       if (weaponName === "Dexecutioner") {
-        const dexterityBonus = level === 1 ? 1 : level === 2 ? 2 : 3;
-        return {
-          question: 'Did you kill an enemy with a piercing attack at least one time?',
-          reward: `+${dexterityBonus} Dexterity`
-        };
+        return { question: 'Did you kill an enemy with a piercing attack at least one time?', reward: `+${lv} Assassinate to Dexecutioner card` };
       }
-
-      // Special handling for Blasma Pistol
       if (weaponName === "Blasma Pistol") {
-        const chestSize = level === 1 ? 'small' : level === 2 ? 'normal' : 'large';
-        return {
-          question: 'Did you open more than 10 chests?',
-          reward: `${chestSize} chest`
-        };
+        const chestSize = lv === 1 ? 'small' : 'normal';
+        return { question: 'Did you open more than 10 chests?', reward: `${chestSize} chest` };
       }
-
-      // For other weapons: "If you open more than 10 chests in one run, gain a (lv1:small/lv2:normal/lv3:large) chest"
-      // Extract the condition and reward
-      const conditionMatch = description.match(/If you ([^,]+),/i);
-      const levelPattern = /\(lv1:([^/]+)\/lv2:([^/]+)\/lv3:([^)]+)\)/;
-      const rewardMatch = description.match(levelPattern);
-
-      let question = conditionMatch ? conditionMatch[1] : 'complete the weapon condition';
-      let reward = 'reward';
-
-      if (rewardMatch) {
-        const rewardValue = level === 1 ? rewardMatch[1] : level === 2 ? rewardMatch[2] : rewardMatch[3];
-        // Extract the reward type (e.g., "chest" from "small chest")
-        const rewardTypeMatch = description.match(/gain a \([^)]+\) (\w+)/);
-        const rewardType = rewardTypeMatch ? rewardTypeMatch[1] : 'reward';
-        reward = `${rewardValue} ${rewardType}`;
-      }
-
-      // Convert to a yes/no question
-      question = 'Did you ' + question.trim() + '?';
-
-      return { question, reward };
+      // Generic: extract condition from description
+      const conditionMatch = (weaponName || '').match(/If you ([^,]+),/i);
+      const question = conditionMatch ? 'Did you ' + conditionMatch[1].trim() + '?' : 'Did you complete the weapon condition?';
+      return { question, reward: 'weapon reward' };
     };
 
-    const { question, reward } = getWeaponVerification(weapon.description, weaponLevel, weapon.name);
-
-    modalHTML += `
-      <div style="background: rgba(255, 152, 0, 0.1); border: 1px solid #ff9800; border-radius: 6px; padding: 10px; margin: 8px 0;">
-        <h3 style="color: #ffb74d; margin: 0 0 5px 0; font-size: 15px;">⚔️ ${weapon.name}</h3>
-        <div style="color: #cc9966; font-size: 11px; margin-bottom: 5px;">
-          Weapon Effect (Level ${weaponLevel})
+    inventoryWeapons.forEach((weapon, wIdx) => {
+      const weaponLevel = weapon.level || 1;
+      const { question, reward } = getWeaponVerification(weapon.name, weaponLevel);
+      modalHTML += `
+        <div style="background: rgba(255, 152, 0, 0.1); border: 1px solid #ff9800; border-radius: 6px; padding: 10px; margin: 8px 0;">
+          <h3 style="color: #ffb74d; margin: 0 0 5px 0; font-size: 15px;">⚔️ ${weapon.name}</h3>
+          <div style="color: #cc9966; font-size: 11px; margin-bottom: 5px;">
+            Weapon Effect${weaponLevel > 1 ? ` (Lv${weaponLevel})` : ''}
+          </div>
+          <p style="font-size: 13px; margin: 5px 0; color: #ddd;">${question} <em style="color:#ffb74d;">Reward: ${reward}</em></p>
+          <div style="margin-top: 5px;">
+            <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
+              <input type="radio" name="weapon-check-${wIdx}" value="yes" checked style="margin-right: 5px;">Yes
+            </label>
+            <label style="font-size: 12px; color: #ccc;">
+              <input type="radio" name="weapon-check-${wIdx}" value="no" style="margin-right: 5px;">No
+            </label>
+          </div>
         </div>
-        <p style="font-size: 13px; margin: 5px 0; color: #ddd;">${question} Reward: ${reward}</p>
-        <div style="margin-top: 5px;">
-          <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
-            <input type="radio" name="weapon-check" value="yes" checked style="margin-right: 5px;">Yes
-          </label>
-          <label style="font-size: 12px; color: #ccc;">
-            <input type="radio" name="weapon-check" value="no" style="margin-right: 5px;">No
-          </label>
-        </div>
-      </div>
-    `;
+      `;
+    });
   }
 
   // Add Boon verification sections
@@ -940,151 +886,64 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
     // Track weapon effect activation for notification later
     let weaponEffectActivated = false;
     let weaponRewardText = '';
-    if (gameState.equippedWeapon) {
-      const weaponRadio = document.querySelector('input[name="weapon-check"]:checked');
+    const verifyInventoryWeapons = (gameState.inventory || []).filter(i => i.type === 'Weapon');
+    verifyInventoryWeapons.forEach((weapon, wIdx) => {
+      const weaponRadio = document.querySelector(`input[name="weapon-check-${wIdx}"]:checked`);
       const conditionMet = weaponRadio && weaponRadio.value === 'yes';
-      if (conditionMet) {
-        const weaponLevel = gameState.weaponLevel || 1;
-        const weapon = gameState.equippedWeapon;
+      if (!conditionMet) return;
 
-        // Grant reward based on weapon and level
-        // For Blasma Pistol: grant small/normal/large chest
-        if (weapon.name === 'Blasma Pistol') {
-          const chestType = weaponLevel === 1 ? 'small' : weaponLevel === 2 ? 'normal' : 'large';
+      const weaponLevel = weapon.level || 1;
 
-          // Store that we need to show Blasma chest before normal rewards
-          weaponRewardText = `${chestType.charAt(0).toUpperCase() + chestType.slice(1)} Chest`;
-          weaponEffectActivated = true;
+      // Helper: find this weapon's card in gameState.deck and add a numeric bonus to a description value
+      const applyCardBonus = (cardName, pattern, bonus) => {
+        if (!gameState.deck) return;
+        const card = gameState.deck.find(c => c.name === cardName && c.tags && c.tags.includes('weapon'));
+        if (!card) return;
+        card.description = card.description.replace(pattern, (match, num) => match.replace(num, String(parseInt(num) + bonus)));
+        if (typeof saveCurrentGame === 'function') saveCurrentGame();
+      };
 
-          // Store chest type for later - we'll show it BEFORE calling onComplete
-          gameState._blasmaPistolChest = chestType;
+      if (weapon.name === 'Blasma Pistol') {
+        const chestType = weaponLevel === 1 ? 'small' : 'normal';
+        gameState._blasmaPistolChest = chestType;
+        weaponRewardText = `${chestType.charAt(0).toUpperCase() + chestType.slice(1)} Chest`;
+        weaponEffectActivated = true;
+        console.log(`${weapon.name} activated: will grant ${chestType} chest`);
 
-          console.log(`${weapon.name} activated: will grant ${chestType} chest before normal reward`);
-        }
-        // For Lil' Bomber: weapon gains +X Strength based on weapon level (X = level)
-        else if (weapon.name === "Lil' Bomber") {
-          // Initialize weapon bonuses and level if not present
-          if (typeof initializeWeaponBonuses === 'function') {
-            initializeWeaponBonuses(weapon);
-          }
+      } else if (weapon.name === "Lil' Bomber") {
+        // Add +N to the numeric damage value in the Lil' Bomber card description ("Deal X Dmg")
+        applyCardBonus("Lil' Bomber", /Deal (\d+) Dmg/i, weaponLevel);
+        weaponRewardText = `Lil' Bomber card gains +${weaponLevel} Dmg`;
+        weaponEffectActivated = true;
+        console.log(`${weapon.name} card gains +${weaponLevel} Dmg (Lv${weaponLevel})`);
 
-          // Bonus equals current weapon level (no max)
-          const strengthBonus = weaponLevel;
-
-          // Add bonus to weapon (verification does NOT level up weapon)
-          weapon.bonuses.strength += strengthBonus;
-
-          // Update UI to reflect new weapon bonuses
-          if (typeof updateTopBar === 'function') {
-            updateTopBar();
-          }
-          if (typeof updateGameStats === 'function') {
-            updateGameStats();
-          }
-
-          weaponRewardText = `Weapon gains +${strengthBonus} Strength (Total: +${weapon.bonuses.strength})`;
-          weaponEffectActivated = true;
-
-          console.log(`${weapon.name} gains +${strengthBonus} Strength (Level ${weaponLevel}) - total weapon bonus: +${weapon.bonuses.strength}`);
-        }
-        // For Barrel: grant 1/2/3 random fish
-        else if (weapon.name === "Barrel") {
-          const fishCount = weaponLevel === 1 ? 1 : weaponLevel === 2 ? 2 : 3;
-
-          // Give random fish based on location
-          if (typeof selectRandomFish === 'function' && typeof addToLoot === 'function') {
-            for (let i = 0; i < fishCount; i++) {
-              const fishResult = selectRandomFish(gameState.location);
-              addToLoot(fishResult);
-            }
-
-            weaponRewardText = `${fishCount} random fish`;
-            weaponEffectActivated = true;
-
-            console.log(`${weapon.name} activated: granted ${fishCount} random fish`);
+      } else if (weapon.name === "Barrel") {
+        const fishCount = weaponLevel;
+        if (typeof selectRandomFish === 'function' && typeof addToLoot === 'function') {
+          for (let i = 0; i < fishCount; i++) {
+            const fishResult = selectRandomFish(gameState.location);
+            addToLoot(fishResult);
           }
         }
-        // For Slutty Rocket: weapon gains +X Attack based on weapon level (X = level)
-        else if (weapon.name === "Slutty Rocket") {
-          // Initialize weapon bonuses and level if not present
-          if (typeof initializeWeaponBonuses === 'function') {
-            initializeWeaponBonuses(weapon);
-          }
+        weaponRewardText = `${fishCount} random fish`;
+        weaponEffectActivated = true;
+        console.log(`${weapon.name} activated: granted ${fishCount} random fish`);
 
-          // Bonus equals current weapon level
-          const attackBonus = weaponLevel;
+      } else if (weapon.name === "Blood Magic") {
+        // Add +N to the Infuse value in the Blood Magic card description
+        applyCardBonus("Blood Magic", /(\d+) Infuse/i, weaponLevel);
+        weaponRewardText = `Blood Magic card gains +${weaponLevel} Infuse`;
+        weaponEffectActivated = true;
+        console.log(`${weapon.name} card gains +${weaponLevel} Infuse (Lv${weaponLevel})`);
 
-          // Add bonus to weapon (verification does NOT level up weapon)
-          weapon.bonuses.attack += attackBonus;
-
-          // Update UI to reflect new weapon bonuses
-          if (typeof updateTopBar === 'function') {
-            updateTopBar();
-          }
-          if (typeof updateGameStats === 'function') {
-            updateGameStats();
-          }
-
-          weaponRewardText = `Weapon gains +${attackBonus} Attack (Total: +${weapon.bonuses.attack})`;
-          weaponEffectActivated = true;
-
-          console.log(`${weapon.name} gains +${attackBonus} Attack (Level ${weaponLevel}) - total weapon bonus: +${weapon.bonuses.attack}`);
-        }
-        // For Blood Magic: player gains +X max health permanently (stored on player, not weapon)
-        else if (weapon.name === "Blood Magic") {
-          // Bonus equals current weapon level
-          const maxHealthBonus = weaponLevel;
-
-          // Add max health directly to player (not weapon-stored)
-          if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyMaxHealth === 'function') {
-            StateMutator.modifyMaxHealth(maxHealthBonus);
-          } else {
-            // Fallback: direct modification
-            maxHealth += maxHealthBonus;
-            gameState.maxHealth = maxHealth;
-          }
-
-          // Update UI to reflect new max health
-          if (typeof updateTopBar === 'function') {
-            updateTopBar();
-          }
-          if (typeof updateGameStats === 'function') {
-            updateGameStats();
-          }
-
-          weaponRewardText = `Gained +${maxHealthBonus} max health permanently (Total max health: ${maxHealth})`;
-          weaponEffectActivated = true;
-
-          console.log(`${weapon.name} grants +${maxHealthBonus} max health (Level ${weaponLevel}) - player max health: ${maxHealth}`);
-        }
-        // For Dexecutioner: weapon gains +X Dexterity based on weapon level (X = level)
-        else if (weapon.name === "Dexecutioner") {
-          // Initialize weapon bonuses and level if not present
-          if (typeof initializeWeaponBonuses === 'function') {
-            initializeWeaponBonuses(weapon);
-          }
-
-          // Bonus equals current weapon level
-          const dexterityBonus = weaponLevel;
-
-          // Add bonus to weapon (verification does NOT level up weapon)
-          weapon.bonuses.dexterity += dexterityBonus;
-
-          // Update UI to reflect new weapon bonuses
-          if (typeof updateTopBar === 'function') {
-            updateTopBar();
-          }
-          if (typeof updateGameStats === 'function') {
-            updateGameStats();
-          }
-
-          weaponRewardText = `Weapon gains +${dexterityBonus} Dexterity (Total: +${weapon.bonuses.dexterity})`;
-          weaponEffectActivated = true;
-
-          console.log(`${weapon.name} gains +${dexterityBonus} Dexterity (Level ${weaponLevel}) - total weapon bonus: +${weapon.bonuses.dexterity}`);
-        }
+      } else if (weapon.name === "Dexecutioner") {
+        // Add +N to the Assassinate value in the Dexecutioner card description
+        applyCardBonus("Dexecutioner", /(\d+) Assassinate/i, weaponLevel);
+        weaponRewardText = `Dexecutioner card gains +${weaponLevel} Assassinate`;
+        weaponEffectActivated = true;
+        console.log(`${weapon.name} card gains +${weaponLevel} Assassinate (Lv${weaponLevel})`);
       }
-    }
+    });
 
     // Process Boon verifications
     const activeBoons = (gameState.inventory || []).filter(item => item.type === 'Boon');

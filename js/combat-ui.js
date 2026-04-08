@@ -1477,7 +1477,7 @@ function handleEnemyClick(enemyId) {
       combat._hitLog = [];
       combat.selectedCardIndex = null;
       animateCardPlay(cardIndex, enemyId, () => {
-        showHPDiffs(snap, combat);
+        showHPDiffs(snap, combat, hitLog.length > 0);
         checkAndFlashReshuffle(snap, combat);
         replayHits(hitLog, () => {
           updateCombatDisplay();
@@ -1534,7 +1534,7 @@ function handleCardClick(index) {
       combat._hitLog = [];
       combat.selectedCardIndex = null;
       animateCardPlay(index, null, () => {
-        showHPDiffs(snap, combat);
+        showHPDiffs(snap, combat, hitLog.length > 0);
         checkAndFlashReshuffle(snap, combat);
         replayHits(hitLog, () => {
           updateCombatDisplay();
@@ -1871,7 +1871,8 @@ function captureHPSnapshot(combat) {
 }
 
 // Show floating +/- numbers based on HP diff between snapshot and current state
-function showHPDiffs(oldSnap, combat) {
+// skipEnemyDmg: pass true when replayHits will handle per-hit enemy damage numbers
+function showHPDiffs(oldSnap, combat, skipEnemyDmg = false) {
   // Player
   const pHP = combat.player.health - oldSnap.playerHP;
   if (pHP < 0) showFloatingNumber('combat-player-zone', Math.abs(pHP), 'damage');
@@ -1879,7 +1880,8 @@ function showHPDiffs(oldSnap, combat) {
   const pBlk = (combat.player.block || 0) - oldSnap.playerBlock;
   if (pBlk > 0) showFloatingNumber('combat-player-zone', pBlk, 'block');
 
-  // Enemies
+  // Enemies — skip individual damage when replayHits will handle it
+  if (skipEnemyDmg) return;
   (combat.enemies || []).forEach(e => {
     const prev = oldSnap.enemies[e.id];
     if (!prev) return;
