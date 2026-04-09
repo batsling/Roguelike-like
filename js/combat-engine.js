@@ -1783,6 +1783,11 @@ function getEffectiveCost(card) {
       return 'No';
     }
   }
+  // Clash: unplayable if any card in hand is not an Attack
+  if (/Can only be played if every Card in your Hand is an Attack/i.test(desc)) {
+    const hand = (combatState && combatState.hand) || [];
+    if (hand.some(c => (c.type || '').toLowerCase() !== 'attack')) return 'No';
+  }
   return cost;
 }
 
@@ -3090,6 +3095,14 @@ function processStatusEffects(target, timing) {
       delete statuses['burst'];
     }
 
+    // Flex: remove temporary Power at end of player's turn
+    if (target === combatState.player && combatState._flexPower) {
+      const fp = combatState._flexPower;
+      statuses['power'] = Math.max(0, (statuses['power'] || 0) - fp);
+      if ((statuses['power'] || 0) <= 0) delete statuses['power'];
+      delete combatState._flexPower;
+    }
+
     // Fading
     if (statuses['fading']) {
       statuses['fading']--;
@@ -3366,6 +3379,11 @@ function resolveCardEffect(card, target, options = {}) {
   const isAoECard    = isCleaveCard || fullDescLower.includes('all enemies')
                     || fullDescLower.includes('indiscriminate');
 
+  // Heavy Blade: pre-scan for power multiplier (e.g. "Power affects this card x3 times")
+  let _powerMultiplier = 1;
+  const _heavyBladeM = desc.match(/Power affects this card x(\d+) times?/i);
+  if (_heavyBladeM) _powerMultiplier = parseInt(_heavyBladeM[1]);
+
   // Split effects by '. ' to handle multi-effect cards
   const parts = desc.replace(/\.\s*$/, '').split(/\.\s+/);
 
@@ -3410,9 +3428,9 @@ function resolveCardEffect(card, target, options = {}) {
     if (dmgMatch) {
       let dmg = parseInt(dmgMatch[1]);
       const times = dmgMatchNxM ? parseInt(dmgMatchNxM[2]) : (dmgMatch[2] ? parseInt(dmgMatch[2]) : 1);
-      // Player Power bonus adds to outgoing damage
+      // Player Power bonus adds to outgoing damage (Heavy Blade multiplies it)
       const playerPower = player.statuses['power'] || 0;
-      if (playerPower !== 0) dmg += playerPower;
+      if (playerPower !== 0) dmg += playerPower * _powerMultiplier;
       // Temporary combat stat boosts (from pigment cards: +Strength/Intelligence/Dexterity/Charisma)
       const statBonus = (player.statuses['strength']     || 0)
                       + (player.statuses['intelligence']  || 0)
@@ -3625,6 +3643,70 @@ function resolveCardEffect(card, target, options = {}) {
 
     // Fishing Weight (mark for fishing loot)
     if (lower.includes('fishing weight')) { addLog('Fishing Weight triggered', 'info'); continue; }
+
+    // Conjure N copy/copies of this card to Discard (Anger)
+    if (/Conjure \d+ cop(?:y|ies) of this card to Discard/i.test(p)) {
+      combatState.discardPile.push({ ...card, _uid: `copy_${Date.now()}` });
+      addLog(`${card.name}: added copy to Discard`, 'info');
+      continue;
+    }
+
+    // Conjure N CardName to Draw (Wild Strike: Wound to Draw)
+    const conjureToDrawMatch = p.match(/Conjure (\d+) (.+?) to Draw/i);
+    if (conjureToDrawMatch) {
+      const cTDCount = parseInt(conjureToDrawMatch[1]);
+      const cTDName  = conjureToDrawMatch[2].trim();
+      const cTDTpl   = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name.toLowerCase() === cTDName.toLowerCase()) : null;
+      if (cTDTpl) {
+        for (let i = 0; i < cTDCount; i++) {
+          combatState.drawPile.push({ ...cTDTpl, _uid: `conjure_draw_${Date.now()}_${i}` });
+        }
+        addLog(`Conjured ${cTDCount}x ${cTDTpl.name} into Draw Pile`, 'info');
+      } else {
+        addLog(`Conjure to Draw: card "${cTDName}" not found`, 'warning');
+      }
+      continue;
+    }
+
+    // Deal X Dmg Melee, where X is equal to your current Block (Body Slam)
+    if (/Deal X Dmg Melee, where X is equal to your current Block/i.test(p)) {
+      const blockDmg = player.block || 0;
+      if (target) dealDamage(target, blockDmg, ['melee']);
+      addLog(`Body Slam: ${blockDmg} damage (= block)`, 'info');
+      continue;
+    }
+
+    // Deal N Dmg Ranged to a Random target (Sword Boomerang)
+    const sboomerangMatch = p.match(/Deal (\d+) Dmg Ranged to a Random target/i);
+    if (sboomerangMatch) {
+      let sbDmg = parseInt(sboomerangMatch[1]);
+      const sbPower = player.statuses['power'] || 0;
+      if (sbPower !== 0) sbDmg += sbPower;
+      if (player.statuses['weak']) sbDmg = Math.floor(sbDmg * 0.75);
+      const sbLive = combatState.enemies.filter(e => e.health > 0);
+      if (sbLive.length > 0) {
+        const sbHit = sbLive[Math.floor(Math.random() * sbLive.length)];
+        dealDamage(sbHit, sbDmg, ['ranged']);
+        combatState._lastRandomHit = { dmg: sbDmg, addons: ['ranged'] };
+      }
+      continue;
+    }
+
+    // Repeat N times (Sword Boomerang follow-up)
+    const repeatMatch = p.match(/^Repeat (\d+) times?$/i);
+    if (repeatMatch && combatState._lastRandomHit) {
+      const rpts = parseInt(repeatMatch[1]);
+      const { dmg: rDmg, addons: rAddons } = combatState._lastRandomHit;
+      const rLive = combatState.enemies.filter(e => e.health > 0);
+      for (let i = 0; i < rpts; i++) {
+        if (rLive.length > 0) {
+          const rHit = rLive[Math.floor(Math.random() * rLive.length)];
+          dealDamage(rHit, rDmg, rAddons);
+        }
+      }
+      delete combatState._lastRandomHit;
+      continue;
+    }
 
     // Conjure X CardName — add cards to hand
     const conjureMatch = p.match(/Conjure (\d+) (.+)/i);
@@ -4172,6 +4254,109 @@ function resolveCardEffect(card, target, options = {}) {
       }
       continue;
     }
+
+    // Until the end of the turn, Gain +N Power (Flex)
+    const flexMatch = p.match(/Until the end of the turn, Gain \+?(\d+) Power/i);
+    if (flexMatch) {
+      const fGain = parseInt(flexMatch[1]);
+      player.statuses['power'] = (player.statuses['power'] || 0) + fGain;
+      combatState._flexPower = (combatState._flexPower || 0) + fGain;
+      addLog(`Flex: +${fGain} Power until end of turn`, 'success');
+      continue;
+    }
+
+    // Play the top card of your Draw Pile and Exhaust it (Havoc)
+    if (/Play the top card of your Draw Pile and Exhaust it/i.test(p)) {
+      if (combatState.drawPile.length > 0) {
+        const topCard = combatState.drawPile.pop();
+        addLog(`Havoc: playing ${topCard.name}...`, 'info');
+        resolveCardEffect(topCard, target, {});
+        combatState.exhaustPile.push(topCard);
+        addLog(`Havoc: exhausted ${topCard.name}`, 'info');
+      }
+      continue;
+    }
+
+    // Put a Card from your Discard on the top of the Draw Pile (Headbutt)
+    if (/Put a Card from your Discard on the top of the Draw Pile/i.test(p)) {
+      if (combatState.discardPile.length > 0) {
+        combatState._pendingCardPick = { action: 'topdraw', pile: 'discard', count: 1 };
+      }
+      continue;
+    }
+
+    // Put a Card from your Hand on the top of the Draw Pile (Warcry)
+    if (/Put a Card from your Hand on the top of the Draw Pile/i.test(p)) {
+      if (combatState.hand.length > 0) {
+        combatState._pendingCardPick = { action: 'topdraw', pile: 'hand', count: 1 };
+      }
+      continue;
+    }
+
+    // Power affects this card xN times (Heavy Blade — handled by pre-scan, skip)
+    if (/Power affects this card x\d+ times?/i.test(p)) { continue; }
+
+    // Deals N additional damage for all Cards that contain "Strike" (Perfected Strike)
+    const perfectedMatch = p.match(/Deals (\d+) additional damage for All of your Cards that contain/i);
+    if (perfectedMatch) {
+      const bonusPer = parseInt(perfectedMatch[1]);
+      const allDeckCards = [
+        ...(combatState.drawPile || []),
+        ...(combatState.hand || []),
+        ...(combatState.discardPile || []),
+        ...(combatState.exhaustPile || [])
+      ];
+      const strikeCount = allDeckCards.filter(c => /strike/i.test(c.name)).length;
+      if (strikeCount > 0 && target) {
+        const bonusDmg = bonusPer * strikeCount;
+        dealDamage(target, bonusDmg, ['melee']);
+        addLog(`Perfected Strike: +${bonusDmg} bonus (${strikeCount} Strike cards)`, 'success');
+      }
+      continue;
+    }
+
+    // Upgrade a Card in your hand for the rest of combat (Armaments non-upgraded)
+    if (/Upgrade a Card in your hand for the rest of combat/i.test(p)) {
+      if (combatState.hand.length > 0) {
+        combatState._pendingCardPick = { action: 'upgrade', pile: 'hand', count: 1 };
+      }
+      continue;
+    }
+
+    // Upgrade all Cards in your hand for the rest of combat (Armaments upgraded)
+    if (/Upgrade all Cards in your hand for the rest of combat/i.test(p)) {
+      combatState.hand.forEach(c => {
+        if (!c.upgraded && c.upgradedDescription) {
+          c.upgraded = true;
+          c.description = c.upgradedDescription;
+          if (c.upgradedCost !== null && c.upgradedCost !== undefined) c.cost = c.upgradedCost;
+        }
+      });
+      addLog('Armaments: upgraded all hand cards!', 'success');
+      continue;
+    }
+
+    // Exhaust a random Card in your Hand (True Grit non-upgraded) — check BEFORE generic
+    if (/Exhaust a random Card in your Hand/i.test(p)) {
+      if (combatState.hand.length > 0) {
+        const rIdx = Math.floor(Math.random() * combatState.hand.length);
+        const gone = combatState.hand.splice(rIdx, 1)[0];
+        combatState.exhaustPile.push(gone);
+        addLog(`True Grit: exhausted ${gone.name}`, 'info');
+      }
+      continue;
+    }
+
+    // Exhaust a Card in your Hand (True Grit upgraded — player chooses)
+    if (/Exhaust a Card in your Hand/i.test(p)) {
+      if (combatState.hand.length > 0) {
+        combatState._pendingCardPick = { action: 'exhaust', pile: 'hand', count: 1 };
+      }
+      continue;
+    }
+
+    // Can only be played if every Card in your Hand is an Attack (Clash condition — skip)
+    if (/Can only be played if every Card in your Hand is an Attack/i.test(p)) { continue; }
 
     // Unknown — log it
     if (lower && lower !== 'n/a') addLog(`${card.name}: ${p}`, 'info');

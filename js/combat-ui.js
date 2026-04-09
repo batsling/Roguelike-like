@@ -2169,8 +2169,8 @@ window.showCardPickerModal = function(options) {
   if (!combat) return;
 
   const { action, pile, count } = options;
-  const actionLabel = action === 'discard' ? 'Discard' : action === 'setup' ? 'Setup' : action === 'nightmare' ? 'Choose' : 'Exhaust';
-  const actionColor = action === 'discard' ? '#f39c12' : action === 'setup' ? '#4fc3f7' : action === 'nightmare' ? '#9b59b6' : '#7f8c8d';
+  const actionLabel = action === 'discard' ? 'Discard' : action === 'setup' ? 'Setup' : action === 'nightmare' ? 'Choose' : action === 'topdraw' ? 'Top of Draw' : action === 'upgrade' ? 'Upgrade' : 'Exhaust';
+  const actionColor = action === 'discard' ? '#f39c12' : action === 'setup' ? '#4fc3f7' : action === 'nightmare' ? '#9b59b6' : action === 'topdraw' ? '#2ecc71' : action === 'upgrade' ? '#3498db' : '#7f8c8d';
 
   const pileMap = {
     hand:    { cards: combat.hand || [],        label: 'Hand'         },
@@ -2210,7 +2210,7 @@ window.showCardPickerModal = function(options) {
         ${actionLabel} ${count} Card${count !== 1 ? 's' : ''}
       </h2>
       <p style="color:#aaa; text-align:center; margin:0 0 14px; font-size:12px;">
-        ${action === 'nightmare' ? `Choose a card to conjure ${options._nightmareCount || 3} copies of next turn.` : `Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to ${actionLabel.toLowerCase()}.`}
+        ${action === 'nightmare' ? `Choose a card to conjure ${options._nightmareCount || 3} copies of next turn.` : action === 'topdraw' ? `Choose a card to place on top of your Draw Pile.` : action === 'upgrade' ? `Choose a card to upgrade for the rest of combat.` : `Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to ${actionLabel.toLowerCase()}.`}
       </p>
       <div id="card-picker-grid" style="
         display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
@@ -2304,6 +2304,22 @@ window.showCardPickerModal = function(options) {
       combat._nightmareCard = { ...card };
       combat._nightmareCount = options._nightmareCount || 3;
       window.CombatEngine && window.CombatEngine.addLog(`Nightmare: will conjure ${combat._nightmareCount}x ${card.name} next turn!`, 'success');
+    } else if (action === 'topdraw') {
+      // Top of Draw: remove card from source pile, put on top of draw pile
+      const idx = [...selected][0];
+      const card = pileCards.splice(idx, 1)[0];
+      combat.drawPile.unshift(card);
+      window.CombatEngine && window.CombatEngine.addLog(`${card.name} → top of Draw Pile`, 'info');
+    } else if (action === 'upgrade') {
+      // Upgrade: apply upgrade to the selected card in-place (don't move it)
+      const idx = [...selected][0];
+      const card = pileCards[idx];
+      if (!card.upgraded && card.upgradedDescription) {
+        card.upgraded = true;
+        card.description = card.upgradedDescription;
+        if (card.upgradedCost !== null && card.upgradedCost !== undefined) card.cost = card.upgradedCost;
+        window.CombatEngine && window.CombatEngine.addLog(`Armaments: upgraded ${card.name}!`, 'success');
+      }
     } else {
       // Sort descending so splice doesn't shift indices
       const sortedIdx = [...selected].sort((a, b) => b - a);
