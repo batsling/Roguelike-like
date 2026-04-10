@@ -2169,8 +2169,8 @@ window.showCardPickerModal = function(options) {
   if (!combat) return;
 
   const { action, pile, count } = options;
-  const actionLabel = action === 'discard' ? 'Discard' : action === 'setup' ? 'Setup' : action === 'nightmare' ? 'Choose' : action === 'topdraw' ? 'Top of Draw' : action === 'upgrade' ? 'Upgrade' : 'Exhaust';
-  const actionColor = action === 'discard' ? '#f39c12' : action === 'setup' ? '#4fc3f7' : action === 'nightmare' ? '#9b59b6' : action === 'topdraw' ? '#2ecc71' : action === 'upgrade' ? '#3498db' : '#7f8c8d';
+  const actionLabel = action === 'discard' ? 'Discard' : action === 'setup' ? 'Setup' : action === 'nightmare' ? 'Choose' : action === 'topdraw' ? 'Top of Draw' : action === 'upgrade' ? 'Upgrade' : action === 'copy' ? 'Copy' : 'Exhaust';
+  const actionColor = action === 'discard' ? '#f39c12' : action === 'setup' ? '#4fc3f7' : action === 'nightmare' ? '#9b59b6' : action === 'topdraw' ? '#2ecc71' : action === 'upgrade' ? '#3498db' : action === 'copy' ? '#e67e22' : '#7f8c8d';
 
   const pileMap = {
     hand:    { cards: combat.hand || [],        label: 'Hand'         },
@@ -2178,7 +2178,12 @@ window.showCardPickerModal = function(options) {
     discard: { cards: combat.discardPile || [], label: 'Discard Pile' },
     exhaust: { cards: combat.exhaustPile || [], label: 'Exhaust Pile' },
   };
-  const { cards: pileCards, label: pileLabel } = pileMap[pile] || pileMap.hand;
+  let { cards: pileCards, label: pileLabel } = pileMap[pile] || pileMap.hand;
+
+  // Filter by allowed types if specified (Dual Wield — only Attack/Power cards)
+  if (options._typesAllowed) {
+    pileCards = pileCards.filter(c => options._typesAllowed.includes((c.type || '').toLowerCase()));
+  }
 
   // If nothing to pick from, skip
   if (pileCards.length === 0) return;
@@ -2210,7 +2215,7 @@ window.showCardPickerModal = function(options) {
         ${actionLabel} ${count} Card${count !== 1 ? 's' : ''}
       </h2>
       <p style="color:#aaa; text-align:center; margin:0 0 14px; font-size:12px;">
-        ${action === 'nightmare' ? `Choose a card to conjure ${options._nightmareCount || 3} copies of next turn.` : action === 'topdraw' ? `Choose a card to place on top of your Draw Pile.` : action === 'upgrade' ? `Choose a card to upgrade for the rest of combat.` : `Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to ${actionLabel.toLowerCase()}.`}
+        ${action === 'nightmare' ? `Choose a card to conjure ${options._nightmareCount || 3} copies of next turn.` : action === 'topdraw' ? `Choose a card to place on top of your Draw Pile.` : action === 'upgrade' ? `Choose a card to upgrade for the rest of combat.` : action === 'copy' ? `Choose an Attack or Power card to conjure ${options._copyCount || 1} cop${(options._copyCount || 1) !== 1 ? 'ies' : 'y'} of to Hand.` : `Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to ${actionLabel.toLowerCase()}.`}
       </p>
       <div id="card-picker-grid" style="
         display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
@@ -2320,6 +2325,15 @@ window.showCardPickerModal = function(options) {
         if (card.upgradedCost !== null && card.upgradedCost !== undefined) card.cost = card.upgradedCost;
         window.CombatEngine && window.CombatEngine.addLog(`Armaments: upgraded ${card.name}!`, 'success');
       }
+    } else if (action === 'copy') {
+      // Dual Wield: conjure N copies of the chosen card into hand (don't remove original)
+      const idx = [...selected][0];
+      const card = pileCards[idx];
+      const copyCount = options._copyCount || 1;
+      for (let i = 0; i < copyCount; i++) {
+        combat.hand.push({ ...card, _uid: `dual_wield_copy_${Date.now()}_${i}` });
+      }
+      window.CombatEngine && window.CombatEngine.addLog(`Dual Wield: conjured ${copyCount}x ${card.name} to Hand!`, 'success');
     } else {
       // Sort descending so splice doesn't shift indices
       const sortedIdx = [...selected].sort((a, b) => b - a);
@@ -2335,8 +2349,13 @@ window.showCardPickerModal = function(options) {
           combat.drawPile.unshift(card);
           window.CombatEngine && window.CombatEngine.addLog(`Setup: ${card.name} → top of draw (costs 0)`, 'info');
         } else {
+          // Exhaust
           combat.exhaustPile.push(card);
           window.CombatEngine && window.CombatEngine.addLog(`Exhausted ${card.name}`, 'info');
+          // Fire on-exhaust triggers (Dark Embrace, etc.)
+          if (window.CombatEngine && window.CombatEngine.onCardExhausted) {
+            window.CombatEngine.onCardExhausted(card);
+          }
         }
       }
     }

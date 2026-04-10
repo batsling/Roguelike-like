@@ -1777,6 +1777,10 @@ function getEffectiveCost(card) {
   if (/Costs 1 more Energy for each time you've lost Health this combat/i.test(desc)) {
     cost = cost + ((combatState && combatState._playerHealthLossTimes) || 0);
   }
+  // Blood for Blood: costs 1 less per health loss event
+  if (/Costs 1 less Energy for each time you lost Health this combat/i.test(desc)) {
+    cost = Math.max(0, cost - ((combatState && combatState._playerHealthLossTimes) || 0));
+  }
   // Grand Finale: can only be played with an empty draw pile
   if (/Can only be played if there are no cards in your draw pile/i.test(desc)) {
     if (combatState && combatState.drawPile && combatState.drawPile.length > 0) {
@@ -1812,6 +1816,22 @@ function healTarget(target, amount) {
   if (target === combatState.player) {
     window.health = target.health;
   }
+}
+
+/**
+ * Directly reduce player health, bypassing block (health loss, not attack damage).
+ * Counts toward _playerHealthLossTimes (Blood for Blood / Masterful Stab).
+ * Respects Intangible. Does NOT trigger take-damage-only effects (Thorns, Prayer Card, etc).
+ */
+function loseHealth(amount) {
+  const player = combatState.player;
+  let hp = amount;
+  if (player.statuses && player.statuses['intangible']) hp = 1;
+  if (hp <= 0) return;
+  player.health -= hp;
+  window.health = player.health;
+  combatState._playerHealthLossTimes = (combatState._playerHealthLossTimes || 0) + 1;
+  addLog(`Lost ${hp} Health`, 'danger');
 }
 
 /**
@@ -3090,6 +3110,17 @@ function processStatusEffects(target, timing) {
       }
     });
 
+    // Combust: at end of player's turn, lose N HP and deal N×dmg to all enemies
+    if (target === combatState.player && statuses['combust']) {
+      const stacks = statuses['combust'];
+      const dmgPerStack = combatState._combustDmgPerStack || 5;
+      loseHealth(stacks);
+      combatState.enemies.filter(e => e.health > 0).forEach(e => {
+        dealDamage(e, stacks * dmgPerStack, ['ranged']);
+      });
+      addLog(`Combust: lost ${stacks} HP, dealt ${stacks * dmgPerStack} dmg to all enemies`, 'warning');
+    }
+
     // Burst: clears completely at end of turn
     if (target === combatState.player && statuses['burst']) {
       delete statuses['burst'];
@@ -3314,6 +3345,16 @@ function drawCards(count = 1) {
     drawn.push(card);
     combatState._lastDrawnCard = card;
 
+    // Evolve: whenever a status card is drawn, draw X more cards
+    if (card.isStatusCard && !combatState._evolveFiring &&
+        combatState.player.statuses && combatState.player.statuses['evolve']) {
+      combatState._evolveFiring = true;
+      const evolveDraw = combatState.player.statuses['evolve'];
+      addLog(`Evolve: drew ${card.name} (status), drawing ${evolveDraw} more`, 'success');
+      drawCards(evolveDraw);
+      combatState._evolveFiring = false;
+    }
+
     // Endless Agony: whenever drawn, add a copy to the draw pile
     if (/Whenever you draw this card, add a copy to your Draw Pile/i.test(card.description || '')) {
       combatState.drawPile.push({ ...card, _uid: `ea_copy_${Date.now()}` });
@@ -3387,6 +3428,14 @@ function resolveCardEffect(card, target, options = {}) {
   // Split effects by '. ' to handle multi-effect cards
   const parts = desc.replace(/\.\s*$/, '').split(/\.\s+/);
 
+  // Combust Power: register stacks before part parsing (effect fires each end-of-turn, not immediately)
+  if (card.name === 'Combust') {
+    player.statuses['combust'] = (player.statuses['combust'] || 0) + 1;
+    const dmgM = desc.match(/Deal (\d+) Dmg/i);
+    if (dmgM) combatState._combustDmgPerStack = parseInt(dmgM[1]);
+    addLog(`Combust: ${player.statuses['combust']} stack(s) active`, 'info');
+  }
+
   for (const part of parts) {
     const p = part.trim();
     if (!p) continue;
@@ -3396,6 +3445,64 @@ function resolveCardEffect(card, target, options = {}) {
     if (lower === 'ethereal') { continue; } // Ethereal exhausts at end of turn if still in hand, not on play
     if (lower === 'indiscriminate' || lower === 'cleave') { continue; } // handled above via isAoECard
     if (lower === 'sly' || lower === 'innate' || lower === 'unplayable') { continue; }
+
+    // Skip "at the end of your turn" clauses — recurring effects handled by processStatusEffects
+    if (/at the end of your turn/i.test(lower)) continue;
+
+    // Gain Double Block (Entrench)
+    if (/Gain Double Block/i.test(lower)) {
+      player.block = (player.block || 0) * 2;
+      addLog(`Entrench: Block doubled to ${player.block}`, 'success');
+      continue;
+    }
+
+    // Gain +N Evolve (Evolve card)
+    const evolveGainMatch = p.match(/Gain \+?(\d+) Evolve/i);
+    if (evolveGainMatch) {
+      player.statuses['evolve'] = (player.statuses['evolve'] || 0) + parseInt(evolveGainMatch[1]);
+      addLog(`+${evolveGainMatch[1]} Evolve`, 'info');
+      continue;
+    }
+
+    // Whenever a Card is Exhausted, Draw X Card(s) (Dark Embrace)
+    if (/Whenever a Card is Exhausted/i.test(p)) {
+      const drawM = p.match(/Draw (\d+) Card/i);
+      const draws = drawM ? parseInt(drawM[1]) : 1;
+      player.statuses['dark_embrace'] = (player.statuses['dark_embrace'] || 0) + draws;
+      addLog(`Dark Embrace: ${player.statuses['dark_embrace']} stack(s)`, 'info');
+      continue;
+    }
+
+    // If the target has Vulnerable, gain energy and draw (Dropkick)
+    if (/If the target has Vulnerable/i.test(p)) {
+      if (target && target.statuses && target.statuses['vulnerable']) {
+        const eM = p.match(/Gain \+?(\d+) Energy/i);
+        const dM = p.match(/Draw (\d+) Card/i);
+        if (eM) { player.energy += parseInt(eM[1]); addLog('Dropkick: +1 Energy!', 'success'); }
+        if (dM) drawCards(parseInt(dM[1]));
+      }
+      continue;
+    }
+
+    // Choose an Attack or Power Card (Dual Wield part 1 — handled by Conjure step below)
+    if (/Choose an Attack or Power Card/i.test(p)) continue;
+
+    // Conjure N Copy/Copies of that Card to Hand (Dual Wield) — before generic Conjure handler
+    if (/Conjure \d+ Cop(?:y|ies) of that Card to Hand/i.test(p)) {
+      const cM = p.match(/Conjure (\d+)/i);
+      const copyCount = cM ? parseInt(cM[1]) : 1;
+      const handFilterd = combatState.hand.filter(c => ['attack', 'power'].includes((c.type || '').toLowerCase()));
+      if (handFilterd.length > 0) {
+        combatState._pendingCardPick = {
+          action: 'copy',
+          pile: 'hand',
+          count: 1,
+          _copyCount: copyCount,
+          _typesAllowed: ['attack', 'power']
+        };
+      }
+      continue;
+    }
 
     // Deal NxX Dmg — Skewer-style: N damage, X times where X = energy spent (xValue)
     const dmgMatchNxX = p.match(/Deal (\d+)[xX]X Dmg/i);
@@ -3543,13 +3650,10 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // Lose X Health
+    // Lose X Health (direct health loss, not attack damage — triggers loseHealth)
     const loseHpMatch = p.match(/Lose (\d+) Health/i);
     if (loseHpMatch) {
-      const hp = parseInt(loseHpMatch[1]);
-      player.health -= hp;
-      window.health = player.health;
-      addLog(`Lost ${hp} Health`, 'danger');
+      loseHealth(parseInt(loseHpMatch[1]));
       continue;
     }
 
@@ -4340,6 +4444,16 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
+    // Exhaust N Card(s) — player picks from hand (Burning Pact; not random, not "in your Hand")
+    if (/Exhaust \d+ Cards?/i.test(p) && !/random/i.test(lower) && !/in your hand/i.test(lower)) {
+      const cntM = p.match(/Exhaust (\d+)/i);
+      const cnt = cntM ? parseInt(cntM[1]) : 1;
+      if (combatState.hand.length > 0) {
+        combatState._pendingCardPick = { action: 'exhaust', pile: 'hand', count: Math.min(cnt, combatState.hand.length) };
+      }
+      continue;
+    }
+
     // Exhaust a random Card in your Hand (True Grit non-upgraded) — check BEFORE generic
     if (/Exhaust a random Card in your Hand/i.test(p)) {
       if (combatState.hand.length > 0) {
@@ -4548,6 +4662,7 @@ function playCard(handIndex, targetId = null) {
   if (shouldExhaust) {
     combatState.exhaustPile.push(card);
     addLog(`${card.name} exhausted`, 'info');
+    onCardExhausted(card); // Fire Dark Embrace and similar on-exhaust triggers
   } else if (card.type === 'Power') {
     combatState.powers.push(card);
     addLog(`${card.name} activated`, 'success');
@@ -4582,6 +4697,22 @@ function playCard(handIndex, targetId = null) {
   return { success: true };
 }
 
+/**
+ * Called whenever a card is exhausted (from engine routing or UI picker).
+ * Fires Dark Embrace ("whenever a card is exhausted, draw X") and similar triggers.
+ */
+function onCardExhausted(card) {
+  if (!combatState || !combatState.player) return;
+  const player = combatState.player;
+  if (player.statuses && player.statuses['dark_embrace'] && !combatState._darkEmbraceFiring) {
+    const draws = player.statuses['dark_embrace'];
+    combatState._darkEmbraceFiring = true;
+    drawCards(draws);
+    addLog(`Dark Embrace: drew ${draws} card(s)`, 'success');
+    combatState._darkEmbraceFiring = false;
+  }
+}
+
 // ============== EXPORTS ==============
 
 if (typeof window !== 'undefined') {
@@ -4600,6 +4731,7 @@ if (typeof window !== 'undefined') {
     getCombatState,
     endCombat,
     addLog,
-    getEffectiveCost
+    getEffectiveCost,
+    onCardExhausted
   };
 }
