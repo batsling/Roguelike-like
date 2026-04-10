@@ -188,7 +188,7 @@ function showShopModal(purchasedIndices = []) {
   // ===== CARDS FOR SALE =====
   // Pick 2 random non-starter cards to sell in the shop
   if (!gameState.currentShopCards) {
-    const cardPool = cards ? cards.filter(c => c.rarity !== 'Starter' && !c.isStatusCard) : [];
+    const cardPool = cards ? cards.filter(c => c.rarity !== 'Starter' && !c.isStatusCard && !c.isCurse) : [];
     const shopCardCount = 2;
     gameState.currentShopCards = [];
     const attempts = 100;

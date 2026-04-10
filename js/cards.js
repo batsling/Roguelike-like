@@ -36,7 +36,7 @@ function selectCardRewards() {
   if (!cards || cards.length === 0) return [];
 
   const pool = cards.filter(c =>
-    c.rarity !== 'Starter' && !c.isStatusCard && c.rarity in CARD_RARITY_MAP
+    c.rarity !== 'Starter' && !c.isStatusCard && !c.isCurse && c.rarity in CARD_RARITY_MAP
   );
   if (pool.length === 0) return [];
 

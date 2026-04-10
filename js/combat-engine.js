@@ -3356,7 +3356,7 @@ function drawCards(count = 1) {
     }
 
     // Endless Agony: whenever drawn, add a copy to the draw pile
-    if (/Whenever you draw this card, add a copy to your Draw Pile/i.test(card.description || '')) {
+    if (/Whenever you draw this card,.*(?:add a copy to your Draw Pile|Conjure.*copy.*to Draw)/i.test(card.description || '')) {
       combatState.drawPile.push({ ...card, _uid: `ea_copy_${Date.now()}` });
       addLog(`${card.name}: added a copy to the draw pile`, 'info');
     }
@@ -3448,6 +3448,9 @@ function resolveCardEffect(card, target, options = {}) {
 
     // Skip "at the end of your turn" clauses — recurring effects handled by processStatusEffects
     if (/at the end of your turn/i.test(lower)) continue;
+
+    // Skip "Whenever you draw this card" clauses — draw-triggered effects handled in drawCards()
+    if (/whenever you draw this card/i.test(lower)) continue;
 
     // Gain Double Block (Entrench)
     if (/Gain Double Block/i.test(lower)) {
@@ -3757,7 +3760,7 @@ function resolveCardEffect(card, target, options = {}) {
 
     // Conjure N CardName to Draw (Wild Strike: Wound to Draw)
     const conjureToDrawMatch = p.match(/Conjure (\d+) (.+?) to Draw/i);
-    if (conjureToDrawMatch) {
+    if (conjureToDrawMatch && !/copy of this card/i.test(conjureToDrawMatch[2])) {
       const cTDCount = parseInt(conjureToDrawMatch[1]);
       const cTDName  = conjureToDrawMatch[2].trim();
       const cTDTpl   = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name.toLowerCase() === cTDName.toLowerCase()) : null;
@@ -3768,6 +3771,27 @@ function resolveCardEffect(card, target, options = {}) {
         addLog(`Conjured ${cTDCount}x ${cTDTpl.name} into Draw Pile`, 'info');
       } else {
         addLog(`Conjure to Draw: card "${cTDName}" not found`, 'warning');
+      }
+      continue;
+    }
+
+    // Conjure N CardName to Hand — explicit hand destination (Cloak and Dagger, etc.)
+    const conjureToHandMatch = p.match(/Conjure (\d+) (.+?) to Hand/i);
+    if (conjureToHandMatch && !/cop(?:y|ies) of that card/i.test(conjureToHandMatch[2]) && !/random/i.test(conjureToHandMatch[2])) {
+      const cTHCount = parseInt(conjureToHandMatch[1]);
+      const cTHRaw   = conjureToHandMatch[2].trim();
+      const cTHName  = cTHRaw.replace(/s$/i, ''); // strip plural 's'
+      const cTHTpl   = typeof CARDS_DATA !== 'undefined'
+        ? CARDS_DATA.find(c => c.name.toLowerCase() === cTHName.toLowerCase()
+                           || c.name.toLowerCase() === cTHRaw.toLowerCase())
+        : null;
+      if (cTHTpl) {
+        for (let i = 0; i < cTHCount; i++) {
+          combatState.hand.push({ ...cTHTpl, _uid: `conjure_hand_${Date.now()}_${i}` });
+        }
+        addLog(`Conjured ${cTHCount}x ${cTHTpl.name} to Hand`, 'success');
+      } else {
+        addLog(`Conjure to Hand: "${cTHName}" not found`, 'warning');
       }
       continue;
     }
@@ -4078,8 +4102,8 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // Calculated Gamble: "Discard your hand, then Draw that many Cards"
-    if (/Discard your hand,?\s+then Draw that many Cards?/i.test(p)) {
+    // Calculated Gamble: "Discard your hand, then Draw that many / X Cards..."
+    if (/Discard your hand,?\s+then Draw (?:that many|X) Cards?/i.test(p)) {
       const handCount = combatState.hand.length;
       combatState.hand.forEach(c => combatState.discardPile.push(c));
       combatState.hand = [];
