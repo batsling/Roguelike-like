@@ -2429,6 +2429,7 @@ function endTurn() {
       if (descLower.includes('ethereal')) {
         combatState.exhaustPile.push(card);
         addLog(`${card.name} exhausted (Ethereal)`, 'info');
+        onCardExhausted(card);
       } else if (descLower.includes('sly')) {
         addLog(`${card.name}: Sly — triggered on discard!`, 'success');
         resolveCardEffect(card, null);
@@ -3110,6 +3111,25 @@ function processStatusEffects(target, timing) {
       }
     });
 
+    // Metallicize: gain block at end of player's turn per stack
+    if (target === combatState.player && statuses['metallicize']) {
+      addBlock(combatState.player, statuses['metallicize']);
+      addLog(`Metallicize: +${statuses['metallicize']} Block`, 'success');
+    }
+
+    // Flame Barrier: remove temporary Thorns at end of player's turn
+    if (target === combatState.player && combatState._flameBarrierThorns) {
+      const fb = combatState._flameBarrierThorns;
+      statuses['thorns'] = Math.max(0, (statuses['thorns'] || 0) - fb);
+      if ((statuses['thorns'] || 0) <= 0) delete statuses['thorns'];
+      delete combatState._flameBarrierThorns;
+    }
+
+    // Rage: clear per-turn attack block bonus
+    if (target === combatState.player && combatState._rageBlock) {
+      delete combatState._rageBlock;
+    }
+
     // Combust: at end of player's turn, lose N HP and deal N×dmg to all enemies
     if (target === combatState.player && statuses['combust']) {
       const stacks = statuses['combust'];
@@ -3355,6 +3375,16 @@ function drawCards(count = 1) {
       combatState._evolveFiring = false;
     }
 
+    // Fire Breathing: whenever a status or curse card is drawn, deal AoE ranged damage
+    if ((card.isStatusCard || card.isCurse) && !combatState._fireBreathFiring &&
+        combatState.player.statuses && combatState.player.statuses['fire_breathing']) {
+      combatState._fireBreathFiring = true;
+      const fb = combatState.player.statuses['fire_breathing'];
+      combatState.enemies.filter(e => e.health > 0).forEach(e => dealDamage(e, fb, ['ranged']));
+      addLog(`Fire Breathing: ${fb} dmg to all enemies`, 'warning');
+      combatState._fireBreathFiring = false;
+    }
+
     // Endless Agony: whenever drawn, add a copy to the draw pile
     if (/Whenever you draw this card,.*(?:add a copy to your Draw Pile|Conjure.*copy.*to Draw)/i.test(card.description || '')) {
       combatState.drawPile.push({ ...card, _uid: `ea_copy_${Date.now()}` });
@@ -3436,6 +3466,13 @@ function resolveCardEffect(card, target, options = {}) {
     addLog(`Combust: ${player.statuses['combust']} stack(s) active`, 'info');
   }
 
+  // Metallicize Power: register stacks before part parsing (end-of-turn block)
+  if (card.name === 'Metallicize') {
+    const mM = desc.match(/Gain \+?(\d+) Block/i);
+    player.statuses['metallicize'] = (player.statuses['metallicize'] || 0) + (mM ? parseInt(mM[1]) : 3);
+    addLog(`Metallicize: +${mM ? parseInt(mM[1]) : 3} Block each turn`, 'info');
+  }
+
   for (const part of parts) {
     const p = part.trim();
     if (!p) continue;
@@ -3451,6 +3488,50 @@ function resolveCardEffect(card, target, options = {}) {
 
     // Skip "Whenever you draw this card" clauses — draw-triggered effects handled in drawCards()
     if (/whenever you draw this card/i.test(lower)) continue;
+
+    // Gain +N Thorns until the end of turn (Flame Barrier — temporary Thorns)
+    const tempThornsM = p.match(/Gain \+?(\d+) Thorns until the end of turn/i);
+    if (tempThornsM) {
+      const amt = parseInt(tempThornsM[1]);
+      player.statuses['thorns'] = (player.statuses['thorns'] || 0) + amt;
+      combatState._flameBarrierThorns = (combatState._flameBarrierThorns || 0) + amt;
+      addLog(`+${amt} Thorns (until end of turn)`, 'success');
+      continue;
+    }
+
+    // Gain +N Feel No Pain (register on-exhaust block)
+    const feelNoPainM = p.match(/Gain \+?(\d+) Feel No Pain/i);
+    if (feelNoPainM) {
+      player.statuses['feel_no_pain'] = (player.statuses['feel_no_pain'] || 0) + parseInt(feelNoPainM[1]);
+      addLog(`+${feelNoPainM[1]} Feel No Pain`, 'info');
+      continue;
+    }
+
+    // Gain +N Fire Breathing (register on-draw-status damage)
+    const fireBreathM = p.match(/Gain \+?(\d+) Fire Breathing/i);
+    if (fireBreathM) {
+      player.statuses['fire_breathing'] = (player.statuses['fire_breathing'] || 0) + parseInt(fireBreathM[1]);
+      addLog(`+${fireBreathM[1]} Fire Breathing`, 'info');
+      continue;
+    }
+
+    // Until the end of your turn, whenever you play an Attack, Gain +N Block (Rage)
+    const rageM = p.match(/Until the end of your turn.*whenever you play an Attack.*Gain \+?(\d+) Block/i);
+    if (rageM) {
+      combatState._rageBlock = (combatState._rageBlock || 0) + parseInt(rageM[1]);
+      addLog(`Rage: +${combatState._rageBlock} Block per Attack this turn`, 'success');
+      continue;
+    }
+
+    // Increase the Dmg of this Card by N this combat (Rampage self-scaling)
+    const selfScaleM = p.match(/Increase the Dmg of this Card by \+?(\d+) this combat/i);
+    if (selfScaleM) {
+      const inc = parseInt(selfScaleM[1]);
+      if (!combatState._scalingCounters) combatState._scalingCounters = {};
+      combatState._scalingCounters[card.name] = (combatState._scalingCounters[card.name] || 0) + inc;
+      addLog(`${card.name}: +${inc} Dmg this combat (total: +${combatState._scalingCounters[card.name]})`, 'success');
+      continue;
+    }
 
     // Gain Double Block (Entrench)
     if (/Gain Double Block/i.test(lower)) {
@@ -4680,6 +4761,11 @@ function playCard(handIndex, targetId = null) {
       addBlock(combatState.player, 4);
       addLog('Ornamental Fan: +4 Block!', 'success');
     }
+    // Rage: whenever an Attack is played this turn, gain block
+    if (combatState._rageBlock) {
+      addBlock(combatState.player, combatState._rageBlock);
+      addLog(`Rage: +${combatState._rageBlock} Block`, 'success');
+    }
   }
 
   // Route to appropriate pile
@@ -4728,12 +4814,18 @@ function playCard(handIndex, targetId = null) {
 function onCardExhausted(card) {
   if (!combatState || !combatState.player) return;
   const player = combatState.player;
+  // Dark Embrace: draw X cards whenever any card is exhausted
   if (player.statuses && player.statuses['dark_embrace'] && !combatState._darkEmbraceFiring) {
     const draws = player.statuses['dark_embrace'];
     combatState._darkEmbraceFiring = true;
     drawCards(draws);
     addLog(`Dark Embrace: drew ${draws} card(s)`, 'success');
     combatState._darkEmbraceFiring = false;
+  }
+  // Feel No Pain: gain block whenever any card is exhausted
+  if (player.statuses && player.statuses['feel_no_pain']) {
+    addBlock(player, player.statuses['feel_no_pain']);
+    addLog(`Feel No Pain: +${player.statuses['feel_no_pain']} Block`, 'success');
   }
 }
 

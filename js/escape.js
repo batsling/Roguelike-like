@@ -1383,6 +1383,8 @@ function switchCollectionTab(tab) {
       {name:'Evolve',desc:'Whenever you draw a Status card, draw X additional Cards',type:'Ability',stackable:true,decay:'None',who:'Player',file:'Evolve',rarity:''},
       {name:'Combust',desc:'At the end of your turn, lose N Health and deal N×5 damage to all enemies (N = stacks)',type:'Ability',stackable:true,decay:'None',who:'Player',file:'Combust',rarity:''},
       {name:'Dark Embrace',desc:'Whenever a card is Exhausted, draw X cards (X = stacks)',type:'Ability',stackable:true,decay:'None',who:'Player',file:'DarkEmbrace',rarity:''},
+      {name:'Feel No Pain',desc:'Whenever a card is Exhausted, gain X Block (X = stacks)',type:'Ability',stackable:true,decay:'None',who:'Player',file:'FeelNoPain',rarity:''},
+      {name:'Fire Breathing',desc:'Whenever you draw a Status or Curse card, deal X damage to all enemies (X = stacks)',type:'Ability',stackable:true,decay:'None',who:'Player',file:'FireBreathing',rarity:''},
     ];
     const REF_MOVES = [
       {name:'Dmg',desc:'Deals X damage to target',target:'Enemy',file:'Attack',scaling:'Strength',rarity:'Common'},
