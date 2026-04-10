@@ -1005,19 +1005,40 @@ const ITEM_EFFECTS = {
 
   "Whetstone": {
     onAcquire: () => {
-      // Upgrade 2 random Attack cards in deck
-      if (!gameState.deck || gameState.deck.length === 0) return;
-      const attackCards = gameState.deck
-        .map((c, i) => ({ c, i }))
-        .filter(({ c }) => !c.upgraded && (c.type || '').toLowerCase() === 'attack' && c.upgradedDescription);
-      const targets = attackCards.sort(() => Math.random() - 0.5).slice(0, 2);
-      targets.forEach(({ c, i }) => {
-        c.upgraded = true;
-        c.description = c.upgradedDescription;
-        if (c.upgradedCost !== null && c.upgradedCost !== undefined) c.cost = c.upgradedCost;
+      // Build combined pool: starter Attack cards + collected Attack cards
+      const charData = (typeof PLAYER_CHARACTERS !== 'undefined' && gameState.character)
+        ? PLAYER_CHARACTERS[gameState.character] : null;
+      const upgradedStarting = gameState.upgradedStartingCards || {};
+      const pool = [];
+      // Starter deck attacks
+      ((charData && charData.startingDeck) || []).forEach(entry => {
+        const tmpl = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
+        if (tmpl && (tmpl.type || '').toLowerCase() === 'attack' && tmpl.upgradedDescription && !upgradedStarting[entry.cardName]) {
+          const count = entry.count || 1;
+          for (let i = 0; i < count; i++) pool.push({ _isStarting: true, name: tmpl.name });
+        }
       });
-      if (targets.length > 0) {
-        createNotification(`Whetstone: upgraded ${targets.map(({ c }) => c.name).join(', ')}!`, COLORS.SUCCESS, '🪨');
+      // Collected deck attacks
+      (gameState.deck || []).forEach((c, i) => {
+        if (!c.upgraded && (c.type || '').toLowerCase() === 'attack' && c.upgradedDescription)
+          pool.push({ _isStarting: false, c, i });
+      });
+      const targets = pool.sort(() => Math.random() - 0.5).slice(0, 2);
+      const names = [];
+      targets.forEach(t => {
+        if (t._isStarting) {
+          if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
+          gameState.upgradedStartingCards[t.name] = true;
+          names.push(t.name);
+        } else {
+          t.c.upgraded = true;
+          t.c.description = t.c.upgradedDescription;
+          if (t.c.upgradedCost !== null && t.c.upgradedCost !== undefined) t.c.cost = t.c.upgradedCost;
+          names.push(t.c.name);
+        }
+      });
+      if (names.length > 0) {
+        createNotification(`Whetstone: upgraded ${names.join(', ')}!`, COLORS.SUCCESS, '🪨');
         saveCurrentGame();
       }
     }
@@ -1025,19 +1046,40 @@ const ITEM_EFFECTS = {
 
   "War Paint": {
     onAcquire: () => {
-      // Upgrade 2 random Skill cards in deck
-      if (!gameState.deck || gameState.deck.length === 0) return;
-      const skillCards = gameState.deck
-        .map((c, i) => ({ c, i }))
-        .filter(({ c }) => !c.upgraded && (c.type || '').toLowerCase() === 'skill' && c.upgradedDescription);
-      const targets = skillCards.sort(() => Math.random() - 0.5).slice(0, 2);
-      targets.forEach(({ c }) => {
-        c.upgraded = true;
-        c.description = c.upgradedDescription;
-        if (c.upgradedCost !== null && c.upgradedCost !== undefined) c.cost = c.upgradedCost;
+      // Build combined pool: starter Skill cards + collected Skill cards
+      const charData = (typeof PLAYER_CHARACTERS !== 'undefined' && gameState.character)
+        ? PLAYER_CHARACTERS[gameState.character] : null;
+      const upgradedStarting = gameState.upgradedStartingCards || {};
+      const pool = [];
+      // Starter deck skills
+      ((charData && charData.startingDeck) || []).forEach(entry => {
+        const tmpl = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
+        if (tmpl && (tmpl.type || '').toLowerCase() === 'skill' && tmpl.upgradedDescription && !upgradedStarting[entry.cardName]) {
+          const count = entry.count || 1;
+          for (let i = 0; i < count; i++) pool.push({ _isStarting: true, name: tmpl.name });
+        }
       });
-      if (targets.length > 0) {
-        createNotification(`War Paint: upgraded ${targets.map(({ c }) => c.name).join(', ')}!`, COLORS.SUCCESS, '🎨');
+      // Collected deck skills
+      (gameState.deck || []).forEach((c, i) => {
+        if (!c.upgraded && (c.type || '').toLowerCase() === 'skill' && c.upgradedDescription)
+          pool.push({ _isStarting: false, c, i });
+      });
+      const targets = pool.sort(() => Math.random() - 0.5).slice(0, 2);
+      const names = [];
+      targets.forEach(t => {
+        if (t._isStarting) {
+          if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
+          gameState.upgradedStartingCards[t.name] = true;
+          names.push(t.name);
+        } else {
+          t.c.upgraded = true;
+          t.c.description = t.c.upgradedDescription;
+          if (t.c.upgradedCost !== null && t.c.upgradedCost !== undefined) t.c.cost = t.c.upgradedCost;
+          names.push(t.c.name);
+        }
+      });
+      if (names.length > 0) {
+        createNotification(`War Paint: upgraded ${names.join(', ')}!`, COLORS.SUCCESS, '🎨');
         saveCurrentGame();
       }
     }

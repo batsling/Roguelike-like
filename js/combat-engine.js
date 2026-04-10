@@ -4270,7 +4270,11 @@ function resolveCardEffect(card, target, options = {}) {
       if (combatState.drawPile.length > 0) {
         const topCard = combatState.drawPile.pop();
         addLog(`Havoc: playing ${topCard.name}...`, 'info');
-        resolveCardEffect(topCard, target, {});
+        // For attack cards, auto-target a random living enemy
+        const havocTarget = (topCard.type || '').toLowerCase() === 'attack'
+          ? (combatState.enemies.filter(e => e.health > 0)[0] || null)
+          : null;
+        resolveCardEffect(topCard, havocTarget, {});
         combatState.exhaustPile.push(topCard);
         addLog(`Havoc: exhausted ${topCard.name}`, 'info');
       }
