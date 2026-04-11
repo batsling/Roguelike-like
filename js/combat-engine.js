@@ -313,6 +313,26 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     attacksThisTurn: 0,             // attacks played this turn (Ornamental Fan, Shuriken)
   };
 
+  // Curse of Weakness: start combat with 3 Weak
+  if (typeof CurseManager !== 'undefined') {
+    const weaknessCurses = CurseManager.findByType('weakness');
+    weaknessCurses.forEach(curse => {
+      combatState.player.statuses['weak'] = (combatState.player.statuses['weak'] || 0) + 3;
+      addLog(`Curse of Weakness: started with 3 Weak`, 'danger');
+    });
+
+    // Curse of Obstruction: all enemies gain Plated Armor at start of combat
+    const obstructionCurses = CurseManager.findByType('obstruction');
+    obstructionCurses.forEach(curse => {
+      const armorAmounts = { Low: 3, Medium: 5, High: 7 };
+      const armorAmt = armorAmounts[curse.power] || 3;
+      combatState.enemies.forEach(e => {
+        e.statuses['plated_armor'] = (e.statuses['plated_armor'] || 0) + armorAmt;
+      });
+      addLog(`Curse of Obstruction: all enemies gained +${armorAmounts[curse.power] || 3} Plated Armor`, 'danger');
+    });
+  }
+
   // Roll enemy intents
   rollAllEnemyIntents();
 

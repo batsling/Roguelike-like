@@ -184,41 +184,13 @@ function applyCombatOutcome(success) {
 
 function rollD20() {
   if (currentEnemy) {
-    // Check for Curse of Obstruction (disadvantage on roll)
-    const obstructionCurse = CurseManager.findFirstByType('obstruction');
+    // Normal roll
     let disadvantage = false;
     let disadvantageRolls = [];
-
-    if (obstructionCurse) {
-      disadvantage = true;
-      // Roll twice for disadvantage
-      const roll1 = Math.floor(Math.random() * 20) + 1;
-      const roll2 = Math.floor(Math.random() * 20) + 1;
-      disadvantageRolls = [roll1, roll2];
-      currentRoll = Math.min(roll1, roll2); // Take the lower roll
-
-      console.log(`Curse of Obstruction: Rolled ${roll1} and ${roll2}, taking ${currentRoll}`);
-
-      // Remove curse after this roll
-      CurseManager.consume(obstructionCurse);
-    } else {
-      // Normal roll
-      currentRoll = Math.floor(Math.random() * 20) + 1;
-    }
+    currentRoll = Math.floor(Math.random() * 20) + 1;
 
     let cursePenalty = 0;
     let curseMessages = [];
-
-    // Check for Curse of Weakness (subtract from roll) - handle stacking
-    const weaknessCurse = CurseManager.findFirstByType('weakness');
-    if (weaknessCurse) {
-      const penalty = CurseManager.getPenalty(weaknessCurse.power);
-      cursePenalty = penalty;
-      curseMessages.push(`Curse of Weakness: -${penalty}`);
-
-      // Remove this specific curse instance after this roll
-      CurseManager.consume(weaknessCurse);
-    }
 
     // Check for Curse of Failure (damage on rolling 1) - handle stacking
     if (currentRoll === 1) {
