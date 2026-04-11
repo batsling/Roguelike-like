@@ -1386,6 +1386,7 @@ function switchCollectionTab(tab) {
       {name:'Dark Embrace',desc:'Whenever a card is Exhausted, draw X cards (X = stacks)',type:'Ability',stackable:true,decay:'None',who:'Player',file:'DarkEmbrace',rarity:''},
       {name:'Feel No Pain',desc:'Whenever a card is Exhausted, gain X Block (X = stacks)',type:'Ability',stackable:true,decay:'None',who:'Player',file:'FeelNoPain',rarity:''},
       {name:'Fire Breathing',desc:'Whenever you draw a Status or Curse card, deal X damage to all enemies (X = stacks)',type:'Ability',stackable:true,decay:'None',who:'Player',file:'FireBreathing',rarity:''},
+      {name:'Plated Armor',desc:'At the end of your turn, Gain X Block. Loses 1 stack whenever you take unblocked damage.',type:'Buff',stackable:true,decay:'Down by 1 when receiving unblocked Dmg',who:'All',file:'PlatedArmor',rarity:'Uncommon'},
     ];
     const REF_MOVES = [
       {name:'Dmg',desc:'Deals X damage to target',target:'Enemy',file:'Attack',scaling:'Strength',rarity:'Common'},

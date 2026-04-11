@@ -1635,6 +1635,12 @@ function dealDamage(target, damage, addons = []) {
     target.health -= remainingDamage;
     addLog(`${target.name || 'Player'} took ${remainingDamage} damage`, 'danger');
 
+    // Plated Armor: lose 1 stack when taking unblocked damage
+    if (target.statuses && target.statuses['plated_armor']) {
+      target.statuses['plated_armor']--;
+      if (target.statuses['plated_armor'] <= 0) delete target.statuses['plated_armor'];
+    }
+
     // Pigment Rich — hitting this enemy adds a random pigment card to the player's hand
     if (target !== combatState.player && target.statuses['pigment_rich']) {
       addPigmentCardToHand();
@@ -2432,6 +2438,42 @@ function endTurn() {
     }
   }
 
+  // Curse card end-of-turn effects (fire while cards are still in hand)
+  if (combatState.hand) {
+    const handSnapshot = [...combatState.hand];
+    for (const card of handSnapshot) {
+      if (!card.isCurse) continue;
+      const cdesc = (card.description || '').toLowerCase();
+      // Decay: deals 2 Dmg to player
+      if (/deals \d+ dmg to you/i.test(card.description)) {
+        const dmgMatch = card.description.match(/deals (\d+) Dmg to you/i);
+        const dmgAmt = dmgMatch ? parseInt(dmgMatch[1]) : 2;
+        dealDamageToPlayer(dmgAmt, ['self'], null);
+        addLog(`Decay: took ${dmgAmt} damage!`, 'danger');
+      }
+      // Doubt: gain 1 Weak
+      if (/gain \d+ weak/i.test(card.description)) {
+        const wkMatch = card.description.match(/Gain (\d+) Weak/i);
+        combatState.player.statuses['weak'] = (combatState.player.statuses['weak'] || 0) + (wkMatch ? parseInt(wkMatch[1]) : 1);
+        addLog(`Doubt: Gained 1 Weak`, 'warning');
+      }
+      // Shame: gain 1 Frail
+      if (/gain \d+ frail/i.test(card.description)) {
+        const frMatch = card.description.match(/Gain (\d+) Frail/i);
+        combatState.player.statuses['frail'] = (combatState.player.statuses['frail'] || 0) + (frMatch ? parseInt(frMatch[1]) : 1);
+        addLog(`Shame: Gained 1 Frail`, 'warning');
+      }
+      // Regret: lose 1 Health for each card in hand
+      if (/lose \d+ health for each card in hand/i.test(card.description)) {
+        const regretDmg = combatState.hand.length;
+        if (regretDmg > 0) {
+          loseHealth(regretDmg);
+          addLog(`Regret: Lost ${regretDmg} Health (${regretDmg} cards in hand)`, 'danger');
+        }
+      }
+    }
+  }
+
   // Discard hand (Ethereal → exhaust; Sly → trigger; Retained → keep; others → discard)
   if (combatState.hand) {
     const kept = [];
@@ -2959,6 +3001,12 @@ function dealDamageToPlayer(damage, addons, enemy) {
     combatState._playerHealthLossTimes = (combatState._playerHealthLossTimes || 0) + 1;
     addLog(`${enemy ? enemy.name : 'Unknown'} dealt ${remaining} damage!`, 'danger');
 
+    // Plated Armor: lose 1 stack when taking unblocked damage
+    if (player.statuses && player.statuses['plated_armor']) {
+      player.statuses['plated_armor']--;
+      if (player.statuses['plated_armor'] <= 0) delete player.statuses['plated_armor'];
+    }
+
     // Soul Link — propagate health loss to all soul-linked enemies
     if (player.statuses['soul_link'] && !combatState._soulLinkPropagating) {
       combatState._soulLinkPropagating = true;
@@ -3127,6 +3175,12 @@ function processStatusEffects(target, timing) {
     if (target === combatState.player && statuses['metallicize']) {
       addBlock(combatState.player, statuses['metallicize']);
       addLog(`Metallicize: +${statuses['metallicize']} Block`, 'success');
+    }
+
+    // Plated Armor: gain X block at end of target's turn
+    if (statuses['plated_armor']) {
+      addBlock(target, statuses['plated_armor']);
+      addLog(`Plated Armor: +${statuses['plated_armor']} Block`, 'success');
     }
 
     // Flame Barrier: remove temporary Thorns at end of player's turn
@@ -4777,6 +4831,15 @@ function playCard(handIndex, targetId = null) {
     if (combatState._rageBlock) {
       addBlock(combatState.player, combatState._rageBlock);
       addLog(`Rage: +${combatState._rageBlock} Block`, 'success');
+    }
+  }
+
+  // Pain (curse card): if Pain is in hand while another card is played, lose 1 Health
+  if (!card.isCurse) {
+    const painInHand = combatState.hand.some(c => c.name === 'Pain' && c.isCurse);
+    if (painInHand) {
+      loseHealth(1);
+      addLog('Pain: Lost 1 Health', 'danger');
     }
   }
 
