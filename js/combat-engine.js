@@ -493,7 +493,7 @@ function parseOrderedPattern(patternStr) {
  */
 const PATTERN_ADDONS   = new Set(['ranged','melee','pierce','self','engage','trap','aoe','splash','overload','overloadexceptleft','overloadexceptright','cleave']);
 const PATTERN_STATUSES = new Set([
-  'burn','poison','weak','vulnerable','stun','oiled','dodge','power','frail','confused',
+  'burn','poison','weak','vulnerable','stun','oiled','dodge','power','frail','enfeebled','confused',
   'barricade','fading','thorns','shifting','formless','ritual','ruptured','bleed','slow','silence',
 ]);
 // Statuses that do not stack — applying again just sets to 1
@@ -1552,9 +1552,9 @@ function dealDamage(target, damage, addons = []) {
     dmg *= 2;
   }
 
-  // Check Frail (double damage)
-  const frailStacks = target.statuses['frail'] || 0;
-  if (frailStacks > 0) {
+  // Check Enfeebled (double damage taken)
+  const enfeebledStacks = target.statuses['enfeebled'] || 0;
+  if (enfeebledStacks > 0) {
     dmg *= 2;
   }
 
@@ -1710,18 +1710,18 @@ function dealDamage(target, damage, addons = []) {
             faceIndex: -1,
             face: {
               isBlank: false,
-              raw: '1 Frail Overload (reaction)',
+              raw: '1 Enfeebled Overload (reaction)',
               effects: [{
-                raw: '1 Frail',
+                raw: '1 Enfeebled',
                 value: 1,
                 move: 'Inflict',
                 addons: ['Overload'],
-                target: 'Frail'
+                target: 'Enfeebled'
               }]
             },
             resolved: false
           });
-          addLog(`${e.name} reacts: +1 Frail Overload added to intent!`, 'warning');
+          addLog(`${e.name} reacts: +1 Enfeebled Overload added to intent!`, 'warning');
         }
       });
     }
@@ -1743,7 +1743,11 @@ function addBlock(target, amount) {
   if (base <= 0) return;
   // Apply Defense status bonus (Footwork etc.)
   const defense = (target.statuses && target.statuses['defense']) ? target.statuses['defense'] : 0;
-  const blockAmount = Math.max(0, base + defense);
+  let blockAmount = Math.max(0, base + defense);
+  // Frail (STS): reduces block gained by 25%
+  if (target.statuses && target.statuses['frail']) {
+    blockAmount = Math.floor(blockAmount * 0.75);
+  }
   if (blockAmount <= 0) return;
   target.block = (target.block || 0) + blockAmount;
   addLog(`${target.name || 'Player'} gained ${blockAmount} block`, 'info');
@@ -1819,14 +1823,22 @@ function healTarget(target, amount) {
 }
 
 /**
- * Directly reduce player health, bypassing block (health loss, not attack damage).
- * Counts toward _playerHealthLossTimes (Blood for Blood / Masterful Stab).
- * Respects Intangible. Does NOT trigger take-damage-only effects (Thorns, Prayer Card, etc).
+ * Reduce player health via health-loss effects (Combust, Hemokinesis, etc.).
+ * Goes through block before affecting health. Respects Intangible.
+ * Counts toward _playerHealthLossTimes only when actual health is lost.
+ * Does NOT trigger take-damage-only effects (Thorns, Prayer Card, etc).
  */
 function loseHealth(amount) {
   const player = combatState.player;
   let hp = amount;
   if (player.statuses && player.statuses['intangible']) hp = 1;
+  if (hp <= 0) return;
+  // Consume block first
+  const blocked = Math.min(hp, player.block || 0);
+  if (blocked > 0) {
+    player.block -= blocked;
+    hp -= blocked;
+  }
   if (hp <= 0) return;
   player.health -= hp;
   window.health = player.health;
@@ -1840,7 +1852,7 @@ function loseHealth(amount) {
  * @param {number} stacks - Stacks to remove per debuff
  */
 function cleanseDebuffs(target, stacks) {
-  const debuffs = ['burn', 'poison', 'oiled', 'frail', 'ruptured', 'confused', 'fading'];
+  const debuffs = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'ruptured', 'confused', 'fading'];
 
   debuffs.forEach(debuff => {
     if (target.statuses[debuff]) {
@@ -2888,8 +2900,8 @@ function dealDamageToPlayer(damage, addons, enemy) {
     combatState._hitLog.push({ targetId: 'player', dmg: damage });
   }
 
-  // Check Frail
-  if (player.statuses['frail']) {
+  // Check Enfeebled (double damage taken)
+  if (player.statuses['enfeebled']) {
     damage *= 2;
   }
 
@@ -3101,7 +3113,7 @@ function processStatusEffects(target, timing) {
     }
 
     // Decay statuses
-    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration', 'double_damage', 'intangible', 'no_draw'];
+    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration', 'double_damage', 'intangible', 'no_draw'];
     decayStatuses.forEach(status => {
       if (statuses[status]) {
         statuses[status]--;

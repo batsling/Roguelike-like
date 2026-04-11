@@ -490,7 +490,7 @@ var ENEMIES_DATA = [
     "hpMin": 130,
     "hpMax": 140,
     "ability": "Pigment Rich / Forgetful / Barricade",
-    "pattern": "Always: 41% 3 Dmg Ranged, 3 Oiled / 41% 15 Dmg Ranged, 16 Block / 18% Alter Revola (Standing), Gain 2 Frail",
+    "pattern": "Always: 41% 3 Dmg Ranged, 3 Oiled / 41% 15 Dmg Ranged, 16 Block / 18% Alter Revola (Standing), Gain 2 Enfeebled",
     "game": "Brutal Orchestra",
     "location": "Watery",
     "dice": [
@@ -530,7 +530,7 @@ var ENEMIES_DATA = [
     "hpMin": 130,
     "hpMax": 140,
     "ability": "Pigment Rich / Forgetful / Barricade",
-    "pattern": "Always: 77% 9 Dmg Melee, Inflict 3 Ruptured, 20 Block, Alter Revola, Lose All Frail / 23% Unknown Intent (\"Stood up too fast, got a headrush\")",
+    "pattern": "Always: 77% 9 Dmg Melee, Inflict 3 Ruptured, 20 Block, Alter Revola, Lose All Enfeebled / 23% Unknown Intent (\"Stood up too fast, got a headrush\")",
     "game": "Brutal Orchestra",
     "location": "Watery",
     "dice": [
@@ -569,7 +569,7 @@ var ENEMIES_DATA = [
     "weight": 5,
     "hpMin": 100,
     "hpMax": 110,
-    "ability": "Formless / When another ally takes Melee Dmg, Add 1 Frail Overload to Intent",
+    "ability": "Formless / When another ally takes Melee Dmg, Add 1 Enfeebled Overload to Intent",
     "pattern": "Always: 43% 10 Dmg Ranged OverloadExceptLeft / 43% 10 Dmg Ranged OverloadExceptRight / 14% 40 Dmg Ranged, 35 Pain",
     "game": "Brutal Orchestra",
     "location": "Chaos",
