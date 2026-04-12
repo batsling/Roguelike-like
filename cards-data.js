@@ -2190,7 +2190,7 @@ var CARDS_DATA = [
     "type": "Attack",
     "description": "Deal 12 Dmg Melee. Sequential Upgrade Dmg +3.",
     "upgradedDescription": null,
-    "upgradedCost": 1,
+    "upgradedCost": 2,
     "canUpgrade": true,
     "sequentialUpgrade": true,
     "isStatusCard": false,
