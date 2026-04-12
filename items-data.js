@@ -1,5 +1,5 @@
 // Auto-generated from Roguelikes.xlsx
-// 91 items
+// 92 items
 
 var ITEMS_DATA = [
   {
@@ -952,6 +952,15 @@ var ITEMS_DATA = [
     "description": "Add the Card \"Dexecutioner\" into your Deck. If you kill an enemy with a piercing attack at least one time, \"Dexecutioner\" gains (+1/+2) Assassinate",
     "image": "images/items/Dexecutioner.png",
     "reference": "Megabonk",
+    "tags": []
+  },
+  {
+    "name": "Thread and Needle",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "At the start of combat, Gain +4 Plated Armor.",
+    "image": "images/items/ThreadAndNeedle.png",
+    "reference": "Slay the Spire",
     "tags": []
   }
 ];

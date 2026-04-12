@@ -304,6 +304,12 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
         addLog(`Du-Vu Doll: +${powerGain} Power!`, 'info');
       }
     }
+
+    // Thread and Needle: +4 Plated Armor at start of combat
+    if (inventory.some(i => i.name === 'Thread and Needle')) {
+      combatState.player.statuses['plated_armor'] = (combatState.player.statuses['plated_armor'] || 0) + 4;
+      addLog('Thread and Needle: +4 Plated Armor', 'info');
+    }
   }
 
   // Initialize incremental item counters — attacksTotal persists across combats via gameState.runAttacks
@@ -1870,6 +1876,12 @@ function loseHealth(amount) {
   window.health = player.health;
   combatState._playerHealthLossTimes = (combatState._playerHealthLossTimes || 0) + 1;
   addLog(`Lost ${hp} Health`, 'danger');
+  // Rupture: gain power whenever health is lost from a card
+  if (combatState._inCardResolution && player.statuses && player.statuses['rupture_power']) {
+    const gain = player.statuses['rupture_power'];
+    player.statuses['power'] = (player.statuses['power'] || 0) + gain;
+    addLog(`Rupture: +${gain} Power`, 'success');
+  }
 }
 
 /**
@@ -3601,6 +3613,17 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
+    // Rupture Power: register "whenever you lose health from a card, gain +N power"
+    const ruptureM = p.match(/Whenever you lose Health from a Card, Gain \+?(\d+) Power/i);
+    if (ruptureM) {
+      player.statuses['rupture_power'] = (player.statuses['rupture_power'] || 0) + parseInt(ruptureM[1]);
+      addLog(`Rupture: will gain +${ruptureM[1]} Power per health loss from cards`, 'success');
+      continue;
+    }
+
+    // Skip "Sequential Upgrade Dmg +N" — informational flavor text, not an executable effect
+    if (/Sequential Upgrade Dmg \+\d+/i.test(p)) { continue; }
+
     // Until the end of your turn, whenever you play an Attack, Gain +N Block (Rage)
     const rageM = p.match(/Until the end of your turn.*whenever you play an Attack.*Gain \+?(\d+) Block/i);
     if (rageM) {
@@ -3796,6 +3819,29 @@ function resolveCardEffect(card, target, options = {}) {
     const drawMatch = p.match(/Draw (\d+) cards?/i);
     if (drawMatch) { drawCards(parseInt(drawMatch[1])); continue; }
 
+    // Multi-status AoE: "Apply/Inflict N Status1 Cleave and [Apply/Inflict] N Status2 Cleave"
+    // (Shockwave, Crippling Cloud, Piercing Wail) — must be checked BEFORE generic applyMatch
+    const multiStatusAoE2 = p.match(/(?:Apply|Inflict) (-?\d+) (\w+) Cleave and (?:(?:Apply|Inflict) )?(-?\d+) (\w+) Cleave/i);
+    if (multiStatusAoE2) {
+      const enemies2 = combatState.enemies.filter(e => e.health > 0);
+      const [, n1raw, s1, n2raw, s2] = multiStatusAoE2;
+      const n1 = parseInt(n1raw), n2 = parseInt(n2raw);
+      enemies2.forEach(e => {
+        if (n1 < 0) {
+          e.statuses['power'] = (e.statuses['power'] || 0) + n1;
+        } else {
+          e.statuses[s1.toLowerCase()] = (e.statuses[s1.toLowerCase()] || 0) + n1;
+        }
+        if (n2 < 0) {
+          e.statuses['power'] = (e.statuses['power'] || 0) + n2;
+        } else {
+          e.statuses[s2.toLowerCase()] = (e.statuses[s2.toLowerCase()] || 0) + n2;
+        }
+      });
+      addLog(`${card.name}: ${n1} ${s1} + ${n2} ${s2} to all enemies`, 'warning');
+      continue;
+    }
+
     // Apply / Inflict X [Status] (on current target or all enemies if AoE)
     const applyMatch = p.match(/(?:Apply|Inflict) (\d+) (\w+)/i);
     if (applyMatch) {
@@ -3840,6 +3886,24 @@ function resolveCardEffect(card, target, options = {}) {
     if (lower === 'gain barricade' || lower === 'barricade') {
       player.statuses['barricade'] = 1;
       addLog('Barricade: Block no longer expires', 'success');
+      continue;
+    }
+
+    // Spot Weakness: "If the target enemy intends to attack, Gain +N Power"
+    const spotWeaknessM = p.match(/If the target enemy intends to attack, Gain \+?(\d+) Power/i);
+    if (spotWeaknessM) {
+      if (target) {
+        const isAttacking = target.currentIntent && target.currentIntent.some(
+          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg')
+        );
+        if (isAttacking) {
+          const gain = parseInt(spotWeaknessM[1]);
+          player.statuses['power'] = (player.statuses['power'] || 0) + gain;
+          addLog(`Spot Weakness: +${gain} Power (enemy intends to attack)!`, 'success');
+        } else {
+          addLog(`Spot Weakness: enemy not attacking this turn`, 'info');
+        }
+      }
       continue;
     }
 
@@ -4131,28 +4195,6 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // "Inflict X StatusA Cleave and Y StatusB Cleave" — multi-status AoE (Crippling Cloud / Piercing Wail)
-    const multiStatusAoE = p.match(/Inflict (-?\d+) (\w+) Cleave and (?:Inflict )?(-?\d+) (\w+) Cleave/i);
-    if (multiStatusAoE) {
-      const enemies = combatState.enemies.filter(e => e.health > 0);
-      const [, n1raw, s1, n2raw, s2] = multiStatusAoE;
-      const n1 = parseInt(n1raw), n2 = parseInt(n2raw);
-      enemies.forEach(e => {
-        if (n1 < 0) {
-          e.statuses['power'] = (e.statuses['power'] || 0) + n1; // negative = power loss
-        } else {
-          e.statuses[s1.toLowerCase()] = (e.statuses[s1.toLowerCase()] || 0) + n1;
-        }
-        if (n2 < 0) {
-          e.statuses['power'] = (e.statuses['power'] || 0) + n2;
-        } else {
-          e.statuses[s2.toLowerCase()] = (e.statuses[s2.toLowerCase()] || 0) + n2;
-        }
-      });
-      addLog(`${card.name}: ${n1} ${s1} + ${n2} ${s2} to all enemies`, 'warning');
-      continue;
-    }
-
     // Bane: "If the target has Poison, deal NxM Dmg instead"
     const baneMatch = p.match(/If the target has (\w+),\s+deal (\d+)[xX](\d+) Dmg(?: Melee| Ranged)? instead/i);
     if (baneMatch && target) {
@@ -4178,6 +4220,33 @@ function resolveCardEffect(card, target, options = {}) {
         addSeparateStatus(player, 'next_turn_block', lastBlockGain);
         addLog(`Dodge and Roll: +${lastBlockGain} Block next turn!`, 'success');
       }
+      continue;
+    }
+
+    // Second Wind / Sever Soul: "Exhaust all non-Attack Cards in Hand"
+    if (/Exhaust all non-Attack Cards in Hand/i.test(p)) {
+      const toExhaust = combatState.hand.filter(c => (c.type || '').toLowerCase() !== 'attack');
+      toExhaust.forEach(c => {
+        const idx = combatState.hand.indexOf(c);
+        if (idx !== -1) combatState.hand.splice(idx, 1);
+        combatState.exhaustPile.push(c);
+        onCardExhausted(c);
+      });
+      combatState._exhaustedNonAttackCount = (combatState._exhaustedNonAttackCount || 0) + toExhaust.length;
+      if (toExhaust.length > 0) addLog(`${card.name}: Exhausted ${toExhaust.length} non-Attack card(s)`, 'info');
+      continue;
+    }
+
+    // Second Wind: "Gain +N Block for each Card Exhausted"
+    const blockPerExhaustMatch = p.match(/Gain \+?(\d+) Block for each Card Exhausted/i);
+    if (blockPerExhaustMatch) {
+      const blockPer = parseInt(blockPerExhaustMatch[1]);
+      const exhaustCount = combatState._exhaustedNonAttackCount || 0;
+      if (exhaustCount > 0) {
+        addBlock(player, blockPer * exhaustCount);
+        addLog(`${card.name}: +${blockPer * exhaustCount} Block (${exhaustCount} exhausted)`, 'success');
+      }
+      combatState._exhaustedNonAttackCount = 0;
       continue;
     }
 
@@ -4809,6 +4878,8 @@ function playCard(handIndex, targetId = null) {
   }
 
   // Resolve effects (pass xValue for X-cost cards like Doppelganger)
+  // _inCardResolution: set true so loseHealth() can trigger Rupture during card resolution
+  combatState._inCardResolution = true;
   const shouldExhaust = resolveCardEffect(card, target, { xValue });
 
   // Burst: if player played a Skill and has burst stacks, replay the card's effects once
@@ -4862,6 +4933,7 @@ function playCard(handIndex, targetId = null) {
       addLog('Pain: Lost 1 Health', 'danger');
     }
   }
+  combatState._inCardResolution = false;
 
   // Route to appropriate pile
   if (shouldExhaust) {
@@ -4921,6 +4993,15 @@ function onCardExhausted(card) {
   if (player.statuses && player.statuses['feel_no_pain']) {
     addBlock(player, player.statuses['feel_no_pain']);
     addLog(`Feel No Pain: +${player.statuses['feel_no_pain']} Block`, 'success');
+  }
+  // Sentinel: "If this Card is Exhausted, Gain +N Energy"
+  if (card && card.description) {
+    const sentinelM = card.description.match(/If this Card is Exhausted, Gain \+?(\d+) Energy/i);
+    if (sentinelM) {
+      const energyGain = parseInt(sentinelM[1]);
+      player.energy += energyGain;
+      addLog(`Sentinel: +${energyGain} Energy`, 'success');
+    }
   }
 }
 

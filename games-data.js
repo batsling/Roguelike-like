@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 602 games, 763 connections
-// 526 connected, 163 influencers
+// 603 games, 764 connections
+// 527 connected, 163 influencers
 
 var GAMES_DATA = [
   {
@@ -466,7 +466,8 @@ var GAMES_DATA = [
       "Hungry Horrors",
       "Rogue Factory",
       "Dice A Million",
-      "Menherarium"
+      "Menherarium",
+      "Raccoin: Coin Pusher Roguelike"
     ],
     "coverImage": "images/covers/balatro.jpg"
   },
@@ -4525,6 +4526,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/rabbit-and-steel.jpg"
+  },
+  {
+    "name": "Raccoin: Coin Pusher Roguelike",
+    "year": 2026,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/raccoin-coin-pusher-roguelike.jpg"
   },
   {
     "name": "Rack and Slay",

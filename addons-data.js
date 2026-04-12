@@ -90,5 +90,10 @@ var ADDONS_DATA = {
     "name": "Unplayable",
     "description": "This card cannot be played and has no mana cost",
     "canBeAttachedTo": "Cards"
+  },
+  "sequentialupgrade": {
+    "name": "Sequential Upgrade",
+    "description": "This card can be upgraded any number of times. Adding Dmg will allow the card to scale its damage by X each time.",
+    "canBeAttachedTo": "Cards"
   }
 };

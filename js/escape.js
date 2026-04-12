@@ -1428,6 +1428,7 @@ function switchCollectionTab(tab) {
       {name:'Sly',desc:'This card is Unplayable, but its effect triggers when it is discarded',attachTo:'Cards',forms:''},
       {name:'Unplayable',desc:'This card cannot be played and has no energy cost',attachTo:'Cards',forms:''},
       {name:'Retain',desc:'This card is not discarded at the end of the turn',attachTo:'Cards',forms:''},
+      {name:'Sequential Upgrade',desc:'This card can be upgraded any number of times. Each upgrade increases the damage by the specified amount (first upgrade also reduces cost).',attachTo:'Cards',forms:''},
     ];
 
     if (!window.refSubtab) window.refSubtab = 'statuses';
