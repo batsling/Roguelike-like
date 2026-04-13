@@ -545,10 +545,10 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Did you ${condition}? Reward: +1 to all combat roll bonus stats</p>
           <div style="margin-top: 5px;">
             <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
-              <input type="radio" name="boon-check-${index}" value="yes" checked style="margin-right: 5px;">Yes
+              <input type="radio" name="boon-check-${index}" value="yes" style="margin-right: 5px;">Yes
             </label>
             <label style="font-size: 12px; color: #ccc;">
-              <input type="radio" name="boon-check-${index}" value="no" style="margin-right: 5px;">No
+              <input type="radio" name="boon-check-${index}" value="no" checked style="margin-right: 5px;">No
             </label>
           </div>
         </div>

@@ -1328,6 +1328,38 @@ function showItemTooltip(e, item) {
     }
   }
 
+  // Build weapon card preview
+  let weaponCardHTML = '';
+  if (item.type === 'Weapon' && typeof CARDS_DATA !== 'undefined') {
+    const baseCard = CARDS_DATA.find(c => c.name === item.name && c.tags && c.tags.includes('weapon'));
+    if (baseCard) {
+      const rarityCardColors = { Rare: '#9b59b6', Uncommon: '#4CAF50', Common: '#aaa', Starter: '#888' };
+      const cardColor = rarityCardColors[baseCard.rarity] || '#aaa';
+
+      const currentCard = (gameState.deck && gameState.deck.find(c => c.name === item.name)) || null;
+      const isUpgraded = currentCard && (currentCard.upgraded || currentCard.description !== baseCard.description);
+
+      function buildCardBlock(card, label) {
+        const upgradedMark = card.upgraded ? ' +' : '';
+        return `
+          <div style="background: rgba(0,0,0,0.35); border: 1px solid ${cardColor}; border-radius: 6px; padding: 8px; margin-top: 4px;">
+            ${label ? `<div style="font-size: 10px; color: #888; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">${label}</div>` : ''}
+            <div style="font-weight: bold; color: ${cardColor}; font-size: 12px;">${card.name}${upgradedMark}</div>
+            <div style="font-size: 10px; color: #888; margin-bottom: 4px;">${card.rarity || ''} · ${card.type || ''} · Cost: ${card.cost !== undefined ? card.cost : '?'}</div>
+            <div style="font-size: 11px; color: #ddd; line-height: 1.4;">${card.description || ''}</div>
+          </div>`;
+      }
+
+      weaponCardHTML = `
+        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,165,0,0.3);">
+          <div style="font-size: 11px; color: #ffaa44; font-weight: bold; margin-bottom: 4px;">Weapon Card</div>
+          ${isUpgraded
+            ? buildCardBlock(baseCard, 'Base') + buildCardBlock(currentCard, 'Current')
+            : buildCardBlock(currentCard || baseCard, '')}
+        </div>`;
+    }
+  }
+
   // Build scaling item bonuses display (e.g., Beefy Ring)
   let scalingBonusHTML = '';
   if (item.type === 'Scaling' && item.name === 'Beefy Ring') {
@@ -1356,6 +1388,7 @@ function showItemTooltip(e, item) {
     </div>
     ${bonusesHTML}
     ${scalingBonusHTML}
+    ${weaponCardHTML}
     ${tagsHTML}
   `;
 
