@@ -1429,6 +1429,7 @@ function switchCollectionTab(tab) {
       {name:'Unplayable',desc:'This card cannot be played and has no energy cost',attachTo:'Cards',forms:''},
       {name:'Retain',desc:'This card is not discarded at the end of the turn',attachTo:'Cards',forms:''},
       {name:'Sequential Upgrade',desc:'This card can be upgraded any number of times. Each upgrade increases the damage by the specified amount (first upgrade also reduces cost).',attachTo:'Cards',forms:''},
+      {name:'Lifesteal',desc:'Heals the target equal to the amount of unblocked Dmg dealt.',attachTo:'All',forms:''},
     ];
 
     if (!window.refSubtab) window.refSubtab = 'statuses';

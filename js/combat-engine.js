@@ -1661,6 +1661,12 @@ function dealDamage(target, damage, addons = []) {
     target.health -= remainingDamage;
     addLog(`${target.name || 'Player'} took ${remainingDamage} damage`, 'danger');
 
+    // Lifesteal: heal player equal to unblocked damage dealt to enemies
+    if (target !== combatState.player && combatState._lifestealActive) {
+      healTarget(combatState.player, remainingDamage);
+      addLog(`Lifesteal: healed ${remainingDamage} HP`, 'success');
+    }
+
     // Plated Armor: lose 1 stack when taking unblocked damage
     if (target.statuses && target.statuses['plated_armor']) {
       target.statuses['plated_armor']--;
@@ -1783,6 +1789,17 @@ function addBlock(target, amount) {
   if (blockAmount <= 0) return;
   target.block = (target.block || 0) + blockAmount;
   addLog(`${target.name || 'Player'} gained ${blockAmount} block`, 'info');
+
+  // Juggernaut: when player gains block, deal damage to a random enemy
+  if (target === combatState.player && combatState.player.statuses && combatState.player.statuses['juggernaut']) {
+    const jugDmg = combatState.player.statuses['juggernaut'];
+    const jugLive = combatState.enemies.filter(e => e.health > 0);
+    if (jugLive.length > 0) {
+      const jugTarget = jugLive[Math.floor(Math.random() * jugLive.length)];
+      dealDamage(jugTarget, jugDmg, ['melee']);
+      addLog(`Juggernaut: ${jugDmg} Melee dmg to ${jugTarget.name}!`, 'success');
+    }
+  }
 }
 
 /**
@@ -1827,6 +1844,10 @@ function getEffectiveCost(card) {
   if (/Can only be played if every Card in your Hand is an Attack/i.test(desc)) {
     const hand = (combatState && combatState.hand) || [];
     if (hand.some(c => (c.type || '').toLowerCase() !== 'attack')) return 'No';
+  }
+  // Corruption: Skills cost 0
+  if (combatState && combatState.player && combatState.player.statuses && combatState.player.statuses['corruption']) {
+    if ((card.type || '').toLowerCase() === 'skill') cost = 0;
   }
   return cost;
 }
@@ -2283,6 +2304,20 @@ function processPlayerStartOfTurn() {
     addLog(`Gained ${gain} Power (Demon Form)`, 'success');
   }
 
+  // Berserk: gain energy at start of each turn
+  if (combatState.player.statuses['energy_per_turn']) {
+    const gain = combatState.player.statuses['energy_per_turn'];
+    combatState.player.energy += gain;
+    addLog(`Berserk: +${gain} Energy`, 'success');
+  }
+
+  // Brutality: lose 1 HP and draw 1 card at start of each turn
+  if (combatState.player.statuses['brutality']) {
+    loseHealth(1);
+    drawCards(1);
+    addLog('Brutality: lost 1 HP, drew 1 card', 'warning');
+  }
+
   // Noxious Fumes: inflict poison_per_turn to all enemies at start of turn
   if (combatState.player.statuses['poison_per_turn']) {
     const stacks = combatState.player.statuses['poison_per_turn'];
@@ -2470,11 +2505,22 @@ function endTurn() {
     }
   }
 
-  // Curse card end-of-turn effects (fire while cards are still in hand)
+  // Curse and Status card end-of-turn effects (fire while cards are still in hand)
   if (combatState.hand) {
     const handSnapshot = [...combatState.hand];
     for (const card of handSnapshot) {
-      if (!card.isCurse) continue;
+      if (!card.isCurse && !card.isStatusCard) continue;
+
+      // Status card end-of-turn effects (e.g. Burn: take N Dmg)
+      if (card.isStatusCard) {
+        const burnStatusM = card.description && card.description.match(/At the end of your turn, take (\d+) Dmg/i);
+        if (burnStatusM) {
+          const burnDmg = parseInt(burnStatusM[1]);
+          dealDamageToPlayer(burnDmg, ['self'], null);
+          addLog(`${card.name}: took ${burnDmg} damage!`, 'danger');
+        }
+        continue;
+      }
       const cdesc = (card.description || '').toLowerCase();
       // Decay: deals 2 Dmg to player
       if (/deals \d+ dmg to you/i.test(card.description)) {
@@ -3228,6 +3274,16 @@ function processStatusEffects(target, timing) {
       delete combatState._rageBlock;
     }
 
+    // Double Tap: clear unused stacks at end of turn
+    if (target === combatState.player && combatState._doubleTap) {
+      delete combatState._doubleTap;
+    }
+
+    // Fiend Fire: clear hand exhaust count at end of turn
+    if (target === combatState.player && combatState._exhaustedHandCount) {
+      delete combatState._exhaustedHandCount;
+    }
+
     // Combust: at end of player's turn, lose N HP and deal N×dmg to all enemies
     if (target === combatState.player && statuses['combust']) {
       const stacks = statuses['combust'];
@@ -3547,6 +3603,9 @@ function resolveCardEffect(card, target, options = {}) {
   const isCleaveCard = fullDescLower.includes('cleave');
   const isAoECard    = isCleaveCard || fullDescLower.includes('all enemies')
                     || fullDescLower.includes('indiscriminate');
+  // Lifesteal: flag so dealDamage can heal player equal to unblocked damage dealt
+  const isLifestealCard = fullDescLower.includes('lifesteal');
+  if (isLifestealCard) combatState._lifestealActive = true;
 
   // Heavy Blade: pre-scan for power multiplier (e.g. "Power affects this card x3 times")
   let _powerMultiplier = 1;
@@ -3907,6 +3966,108 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
+    // Berserk / similar: "At the start of your turn, Gain +N Energy" — register energy_per_turn
+    const energyPerTurnM = p.match(/At the start of your turn, Gain \+?(\d+) Energy/i);
+    if (energyPerTurnM) {
+      const gain = parseInt(energyPerTurnM[1]);
+      player.statuses['energy_per_turn'] = (player.statuses['energy_per_turn'] || 0) + gain;
+      addLog(`Berserk: +${gain} Energy per turn`, 'success');
+      continue;
+    }
+
+    // Brutality: "At the start of your turn, Lose N Health and Draw N Card"
+    const brutalityM = p.match(/At the start of your turn, Lose (\d+) Health and Draw (\d+) Card/i);
+    if (brutalityM) {
+      player.statuses['brutality'] = 1;
+      addLog('Brutality: will lose 1 HP and draw 1 card each turn', 'success');
+      continue;
+    }
+
+    // Corruption: "Skills cost 0 Energy. Whenever you play a Skill, Exhaust it."
+    if (/Skills cost 0 Energy/i.test(p) || /Whenever you play a Skill, Exhaust it/i.test(p)) {
+      player.statuses['corruption'] = 1;
+      addLog('Corruption: Skills cost 0 and exhaust on play', 'success');
+      continue;
+    }
+
+    // Double Tap: "This turn, your next [N] Attack[s] is/are played twice"
+    const doubleTapM = p.match(/This turn, your next (\d+ )?Attacks? (?:is|are) played twice/i);
+    if (doubleTapM) {
+      const taps = doubleTapM[1] ? parseInt(doubleTapM[1]) : 1;
+      combatState._doubleTap = (combatState._doubleTap || 0) + taps;
+      addLog(`Double Tap: next ${taps} Attack(s) will be played twice`, 'success');
+      continue;
+    }
+
+    // Exhume: "Put N Card(s) from your Exhaust to your Hand"
+    if (/Put \d+ Cards? from your Exhaust to your Hand/i.test(p)) {
+      if (combatState.exhaustPile.length > 0) {
+        combatState._pendingCardPick = { action: 'fromexhaust', pile: 'exhaust', count: 1 };
+      } else {
+        addLog('Exhume: exhaust pile is empty', 'info');
+      }
+      continue;
+    }
+
+    // Fiend Fire: "Exhaust All Cards in Hand" (count for subsequent damage)
+    if (/Exhaust All Cards in Hand/i.test(p)) {
+      const toExhaust = [...combatState.hand];
+      combatState.hand = [];
+      toExhaust.forEach(c => {
+        combatState.exhaustPile.push(c);
+        onCardExhausted(c);
+      });
+      combatState._exhaustedHandCount = toExhaust.length;
+      if (toExhaust.length > 0) addLog(`${card.name}: Exhausted ${toExhaust.length} card(s) from Hand`, 'info');
+      continue;
+    }
+
+    // Fiend Fire: "Deal NxX Dmg where X is equal to the amount of Cards Exhausted"
+    const fiendFireM = p.match(/Deal (\d+)[xX]X Dmg (Melee|Ranged) where X is equal to the amount of Cards Exhausted/i);
+    if (fiendFireM) {
+      const dmgPer = parseInt(fiendFireM[1]);
+      const isFiendRanged = fiendFireM[2].toLowerCase() === 'ranged';
+      const ffAddons = isFiendRanged ? ['ranged'] : ['melee'];
+      const exhaustedCount = combatState._exhaustedHandCount || 0;
+      let ffDmg = dmgPer + (player.statuses['power'] || 0);
+      if (player.statuses['weak']) ffDmg = Math.floor(ffDmg * 0.75);
+      const ffTargets = isAoECard
+        ? combatState.enemies.filter(e => e.health > 0)
+        : (target ? [target] : combatState.enemies.filter(e => e.health > 0).slice(0, 1));
+      ffTargets.forEach(t => {
+        for (let i = 0; i < exhaustedCount; i++) dealDamage(t, ffDmg, ffAddons);
+      });
+      combatState._exhaustedHandCount = 0;
+      addLog(`Fiend Fire: ${ffDmg}×${exhaustedCount} = ${ffDmg * exhaustedCount} dmg`, 'success');
+      continue;
+    }
+
+    // Gain Double Power (Limit Break)
+    if (/Gain Double Power/i.test(p)) {
+      const currentPow = player.statuses['power'] || 0;
+      player.statuses['power'] = currentPow * 2;
+      addLog(`Limit Break: Power ${currentPow} → ${player.statuses['power']}`, 'success');
+      continue;
+    }
+
+    // Juggernaut: "Whenever you Gain Block, Deal N Dmg Melee to a random enemy"
+    const juggernautRegM = p.match(/Whenever you Gain Block, Deal (\d+) Dmg Melee to a random enemy/i);
+    if (juggernautRegM) {
+      player.statuses['juggernaut'] = parseInt(juggernautRegM[1]);
+      addLog(`Juggernaut: will deal ${player.statuses['juggernaut']} Melee dmg on block gain`, 'success');
+      continue;
+    }
+
+    // Gain N [Vulnerable/Weak/Frail/...] on player (self-inflicted debuff, e.g. Berserk)
+    const gainSelfDebuffM = p.match(/Gain (\d+) (Vulnerable|Weak|Frail|Confused|Entangled)/i);
+    if (gainSelfDebuffM) {
+      const stacks = parseInt(gainSelfDebuffM[1]);
+      const key = gainSelfDebuffM[2].toLowerCase();
+      player.statuses[key] = (player.statuses[key] || 0) + stacks;
+      addLog(`Gained ${stacks} ${gainSelfDebuffM[2]} (self)`, 'warning');
+      continue;
+    }
+
     // Demon Form: "At the start of each turn, gain X Power"
     const demonMatch = p.match(/gain (\d+) Power/i);
     if (demonMatch && lower.includes('start')) {
@@ -3981,6 +4142,23 @@ function resolveCardEffect(card, target, options = {}) {
 
     // Fishing Weight (mark for fishing loot)
     if (lower.includes('fishing weight')) { addLog('Fishing Weight triggered', 'info'); continue; }
+
+    // Conjure N [CardName] to Discard (Immolate etc.) — before "copy of this card" handler
+    const conjureToDiscardMatch = p.match(/Conjure (\d+) (.+?) to Discard/i);
+    if (conjureToDiscardMatch && !/cop(?:y|ies) of this card/i.test(conjureToDiscardMatch[2])) {
+      const cDCount = parseInt(conjureToDiscardMatch[1]);
+      const cDName  = conjureToDiscardMatch[2].trim();
+      const cDTpl   = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name.toLowerCase() === cDName.toLowerCase()) : null;
+      if (cDTpl) {
+        for (let i = 0; i < cDCount; i++) {
+          combatState.discardPile.push({ ...cDTpl, _uid: `conjure_discard_${Date.now()}_${i}` });
+        }
+        addLog(`Conjured ${cDCount}x ${cDTpl.name} to Discard`, 'info');
+      } else {
+        addLog(`Conjure to Discard: "${cDName}" not found`, 'warning');
+      }
+      continue;
+    }
 
     // Conjure N copy/copies of this card to Discard (Anger)
     if (/Conjure \d+ cop(?:y|ies) of this card to Discard/i.test(p)) {
@@ -4740,6 +4918,9 @@ function resolveCardEffect(card, target, options = {}) {
     if (lower && lower !== 'n/a') addLog(`${card.name}: ${p}`, 'info');
   }
 
+  // Clear lifesteal flag after card resolution
+  if (isLifestealCard) delete combatState._lifestealActive;
+
   // Power-play triggers
   if ((card.type || '').toLowerCase() === 'power') {
     const invPow = typeof window.inventory !== 'undefined' ? window.inventory : [];
@@ -4880,7 +5061,19 @@ function playCard(handIndex, targetId = null) {
   // Resolve effects (pass xValue for X-cost cards like Doppelganger)
   // _inCardResolution: set true so loseHealth() can trigger Rupture during card resolution
   combatState._inCardResolution = true;
-  const shouldExhaust = resolveCardEffect(card, target, { xValue });
+  let shouldExhaust = resolveCardEffect(card, target, { xValue });
+
+  // Double Tap: next N attack(s) are played twice — replay effects
+  if (_cardType === 'attack' && combatState._doubleTap > 0) {
+    combatState._doubleTap--;
+    resolveCardEffect(card, target, { xValue });
+    addLog(`Double Tap: ${card.name} triggered again!`, 'success');
+  }
+
+  // Corruption: Skills are exhausted when played
+  if (combatState.player.statuses && combatState.player.statuses['corruption'] && _cardType === 'skill') {
+    shouldExhaust = true;
+  }
 
   // Burst: if player played a Skill and has burst stacks, replay the card's effects once
   if (_cardType === 'skill' && combatState.player.statuses['burst'] > 0) {

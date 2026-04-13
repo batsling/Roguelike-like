@@ -95,5 +95,15 @@ var ADDONS_DATA = {
     "name": "Sequential Upgrade",
     "description": "This card can be upgraded any number of times. Adding Dmg will allow the card to scale its damage by X each time.",
     "canBeAttachedTo": "Cards"
+  },
+  "retain": {
+    "name": "Retain",
+    "description": "This card is not discarded at the end of the turn.",
+    "canBeAttachedTo": "Cards"
+  },
+  "lifesteal": {
+    "name": "Lifesteal",
+    "description": "Heals the target equal to the amount of unblocked Dmg dealt.",
+    "canBeAttachedTo": "All"
   }
 };
