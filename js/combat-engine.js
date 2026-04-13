@@ -280,13 +280,6 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
       combatState._hornCleatPending = true;
     }
 
-    // Anchor: +10 Block at start of combat
-    const anchorCount = inventory.filter(i => i.name === 'Anchor').reduce((n, i) => n + (i.quantity || 1), 0);
-    if (anchorCount > 0) {
-      combatState.player.block = (combatState.player.block || 0) + 10 * anchorCount;
-      addLog(`Anchor: +${10 * anchorCount} Block`, 'info');
-    }
-
     // Bronze Scales: +3 Thorns at start of combat
     const bronzeScalesCount = inventory.filter(i => i.name === 'Bronze Scales').reduce((n, i) => n + (i.quantity || 1), 0);
     if (bronzeScalesCount > 0) {
@@ -345,6 +338,23 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
   // Transition to player status phase
   combatState.phase = 'player_status';
   processPlayerStartOfTurn();
+
+  // Items that grant block or draw at combat start must be applied AFTER processPlayerStartOfTurn
+  // clears the initial block and draws the starting hand.
+  if (typeof inventory !== 'undefined') {
+    // Anchor: +10 Block at start of combat (applied after start-of-turn block clear)
+    const anchorCount = inventory.filter(i => i.name === 'Anchor').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (anchorCount > 0) {
+      addBlock(combatState.player, 10 * anchorCount);
+      addLog(`Anchor: +${10 * anchorCount} Block!`, 'info');
+    }
+
+    // Ring of the Snake: draw 2 extra cards at combat start (applied after normal hand draw)
+    const snakeEffect = typeof ITEM_EFFECTS !== 'undefined' && ITEM_EFFECTS['Ring of the Snake'];
+    if (snakeEffect && snakeEffect.onCombatStart && inventory.some(i => i.name === 'Ring of the Snake')) {
+      snakeEffect.onCombatStart();
+    }
+  }
 
   return combatState;
 }

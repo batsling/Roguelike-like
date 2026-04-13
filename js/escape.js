@@ -651,7 +651,7 @@ function showRunHistory() {
 
 function showCollection() {
   const charCount = typeof CHARACTERS_DATA !== 'undefined' ? Object.keys(CHARACTERS_DATA).length : 0;
-  const cardCount = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.filter(c => c.rarity !== 'Starter' && c.type !== 'Status').length : 0;
+  const cardCount = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.filter(c => c.rarity !== 'Starter').length : 0;
   const spellCount = typeof SPELLS_DATA !== 'undefined' ? SPELLS_DATA.length : 0;
 
   const collectionHTML = `
@@ -866,8 +866,7 @@ function switchCollectionTab(tab) {
     if (typeof window.cardsSortType === 'undefined') window.cardsSortType = 'rarity';
 
     const allCards = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
-    // Exclude status cards and starters from main pool view
-    let filteredCards = allCards.filter(c => c.type !== 'Status');
+    let filteredCards = [...allCards];
 
     const searchTerm = window.cardsSearchTerm.toLowerCase();
     if (searchTerm) {
@@ -916,8 +915,8 @@ function switchCollectionTab(tab) {
       }
     };
 
-    const cardTypes = [...new Set(allCards.filter(c=>c.type!=='Status').map(c=>c.type).filter(Boolean))].sort();
-    const rarities = [...new Set(allCards.filter(c=>c.type!=='Status').map(c=>c.rarity).filter(Boolean))].sort();
+    const cardTypes = [...new Set(allCards.map(c=>c.type).filter(Boolean))].sort();
+    const rarities = [...new Set(allCards.map(c=>c.rarity).filter(Boolean))].sort();
 
     content.innerHTML = `
       <div style="flex:2; overflow-y:auto; padding:10px; display:flex; flex-direction:column;">
@@ -940,7 +939,7 @@ function switchCollectionTab(tab) {
           <button onclick="window.cardsSortType='type'; switchCollectionTab('cards');" style="padding:5px 9px; background:${window.cardsSortType==='type'?'#ff9800':'#444'}; border:none; border-radius:5px; color:white; cursor:pointer; font-size:11px; font-weight:bold;">Type</button>
           <button onclick="window.cardsSortType='cost'; switchCollectionTab('cards');" style="padding:5px 9px; background:${window.cardsSortType==='cost'?'#ff9800':'#444'}; border:none; border-radius:5px; color:white; cursor:pointer; font-size:11px; font-weight:bold;">Cost</button>
           <button onclick="window.cardsSortType='alpha'; switchCollectionTab('cards');" style="padding:5px 9px; background:${window.cardsSortType==='alpha'?'#ff9800':'#444'}; border:none; border-radius:5px; color:white; cursor:pointer; font-size:11px; font-weight:bold;">A-Z</button>
-          <span style="color:#555; font-size:11px; margin-left:auto;">${filteredCards.length}/${allCards.filter(c=>c.type!=='Status').length}</span>
+          <span style="color:#555; font-size:11px; margin-left:auto;">${filteredCards.length}/${allCards.length}</span>
         </div>
         <!-- Card grid -->
         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:10px; overflow-y:auto;">
@@ -1382,8 +1381,6 @@ function switchCollectionTab(tab) {
       {name:'Double Damage',desc:'Attacks deal double damage for X turns',type:'Buff',stackable:true,decay:'Down by 1 at end of turn',who:'Player',file:'DoubleDamage',rarity:'Rare'},
       {name:'Intangible',desc:'Reduce each instance of damage and health loss to 1',type:'Buff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Intangible',rarity:'Rare'},
       {name:'Evolve',desc:'Whenever you draw a Status card, draw X additional Cards',type:'Ability',stackable:true,decay:'None',who:'Player',file:'Evolve',rarity:''},
-      {name:'Combust',desc:'At the end of your turn, lose N Health and deal N×5 damage to all enemies (N = stacks)',type:'Ability',stackable:true,decay:'None',who:'Player',file:'Combust',rarity:''},
-      {name:'Dark Embrace',desc:'Whenever a card is Exhausted, draw X cards (X = stacks)',type:'Ability',stackable:true,decay:'None',who:'Player',file:'DarkEmbrace',rarity:''},
       {name:'Feel No Pain',desc:'Whenever a card is Exhausted, gain X Block (X = stacks)',type:'Ability',stackable:true,decay:'None',who:'Player',file:'FeelNoPain',rarity:''},
       {name:'Fire Breathing',desc:'Whenever you draw a Status or Curse card, deal X damage to all enemies (X = stacks)',type:'Ability',stackable:true,decay:'None',who:'Player',file:'FireBreathing',rarity:''},
       {name:'Plated Armor',desc:'At the end of your turn, Gain X Block. Loses 1 stack whenever you take unblocked damage.',type:'Buff',stackable:true,decay:'Down by 1 when receiving unblocked Dmg',who:'All',file:'PlatedArmor',rarity:'Uncommon'},
