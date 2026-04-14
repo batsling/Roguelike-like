@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 603 games, 764 connections
-// 527 connected, 163 influencers
+// 609 games, 775 connections
+// 531 connected, 166 influencers
 
 var GAMES_DATA = [
   {
@@ -467,7 +467,8 @@ var GAMES_DATA = [
       "Rogue Factory",
       "Dice A Million",
       "Menherarium",
-      "Raccoin: Coin Pusher Roguelike"
+      "Raccoin: Coin Pusher Roguelike",
+      "Cursed Words"
     ],
     "coverImage": "images/covers/balatro.jpg"
   },
@@ -730,9 +731,11 @@ var GAMES_DATA = [
     "year": 2022,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "Hive Blight"
+    ],
     "coverImage": "images/covers/bounty-of-one.jpg"
   },
   {
@@ -989,7 +992,7 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": ["gacha"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/chaos-zero-nightmare.jpg"
   },
@@ -1277,7 +1280,7 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": ["mecha"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/cryptark.jpg"
   },
@@ -2280,7 +2283,7 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": ["anime"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/fairy-tail-dungeons.jpg"
   },
@@ -2659,7 +2662,7 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": ["mecha"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/granvir.jpg"
   },
@@ -3085,7 +3088,8 @@ var GAMES_DATA = [
       "The Royal Writ",
       "My Card Is Better Than Your Card!",
       "Dicealot",
-      "From The Top"
+      "From The Top",
+      "Cursed Words"
     ],
     "coverImage": "images/covers/inscryption.jpg"
   },
@@ -3105,7 +3109,7 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": ["mecha"],
     "gamesInfluenced": [
       "Alina of the Arena",
       "Backpack Hero",
@@ -3194,7 +3198,7 @@ var GAMES_DATA = [
     "coverImage": "images/covers/just-king.jpg"
   },
   {
-    "name": "Kādomon: Hyper Auto Battlers",
+    "name": "K\u0101domon: Hyper Auto Battlers",
     "year": 2024,
     "type": "Strategy",
     "connected": true,
@@ -3202,16 +3206,6 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/k-domon-hyper-auto-battlers.jpg"
-  },
-  {
-    "name": "Keeper's Toll",
-    "year": 2023,
-    "type": "Action",
-    "connected": true,
-    "influenced": false,
-    "tags": [],
-    "gamesInfluenced": [],
-    "coverImage": "images/covers/keeper-s-toll.jpg"
   },
   {
     "name": "KeeperRL",
@@ -3222,6 +3216,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/keeperrl.jpg"
+  },
+  {
+    "name": "Keeper's Toll",
+    "year": 2023,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/keeper-s-toll.jpg"
   },
   {
     "name": "Kill the Brickman",
@@ -3835,7 +3839,7 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": ["mecha"],
     "gamesInfluenced": [
       "Mothergunship: Forge"
     ],
@@ -3847,7 +3851,7 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": ["mecha"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/mothergunship-forge.jpg"
   },
@@ -4089,9 +4093,11 @@ var GAMES_DATA = [
     "year": 2024,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "Cursed Words"
+    ],
     "coverImage": "images/covers/nubby-s-number-factory.jpg"
   },
   {
@@ -4252,7 +4258,7 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Kādomon: Hyper Auto Battlers"
+      "K\u0101domon: Hyper Auto Battlers"
     ],
     "coverImage": "images/covers/patch-quest.jpg"
   },
@@ -4371,7 +4377,7 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": ["anime"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pocket-crystal-league.jpg"
   },
@@ -4386,80 +4392,80 @@ var GAMES_DATA = [
     "coverImage": "images/covers/pogo-rogue.jpg"
   },
   {
-    "name": "Pokémon Mystery Dungeon: Explorers of Sky",
+    "name": "Pok\u00e9mon Mystery Dungeon: Explorers of Sky",
     "year": 2009,
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": ["anime"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-explorers-of-sky.jpg"
   },
   {
-    "name": "Pokémon Mystery Dungeon: Explorers of Time and Explorers of Darkness",
+    "name": "Pok\u00e9mon Mystery Dungeon: Explorers of Time and Explorers of Darkness",
     "year": 2007,
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": ["anime"],
     "gamesInfluenced": [
-      "Pokémon Mystery Dungeon: Explorers of Sky"
+      "Pok\u00e9mon Mystery Dungeon: Explorers of Sky"
     ],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-explorers-of-time-and-explorers-of-darkness.jpg"
   },
   {
-    "name": "Pokémon Mystery Dungeon: Gates to Infinity",
+    "name": "Pok\u00e9mon Mystery Dungeon: Gates to Infinity",
     "year": 2012,
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": ["anime"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-gates-to-infinity.jpg"
   },
   {
-    "name": "Pokémon Mystery Dungeon: Red and Blue Rescue Team",
+    "name": "Pok\u00e9mon Mystery Dungeon: Red and Blue Rescue Team",
     "year": 2005,
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": ["anime"],
     "gamesInfluenced": [
       "Paper Animal Adventure",
-      "Pokémon Mystery Dungeon: Explorers of Time and Explorers of Darkness",
-      "Pokémon Mystery Dungeon: Gates to Infinity",
-      "Pokémon Super Mystery Dungeon",
-      "Pokémon Mystery Dungeon: Rescue Team DX"
+      "Pok\u00e9mon Mystery Dungeon: Explorers of Time and Explorers of Darkness",
+      "Pok\u00e9mon Mystery Dungeon: Gates to Infinity",
+      "Pok\u00e9mon Super Mystery Dungeon",
+      "Pok\u00e9mon Mystery Dungeon: Rescue Team DX"
     ],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-red-and-blue-rescue-team.jpg"
   },
   {
-    "name": "Pokémon Mystery Dungeon: Rescue Team DX",
+    "name": "Pok\u00e9mon Mystery Dungeon: Rescue Team DX",
     "year": 2020,
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": ["anime"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-rescue-team-dx.jpg"
   },
   {
-    "name": "Pokémon Super Mystery Dungeon",
+    "name": "Pok\u00e9mon Super Mystery Dungeon",
     "year": 2015,
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": ["anime"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pok-mon-super-mystery-dungeon.jpg"
   },
   {
-    "name": "PokéRogue",
+    "name": "Pok\u00e9Rogue",
     "year": 2024,
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": ["anime"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pok-rogue.jpg"
   },
@@ -4535,7 +4541,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/raccoin-coin-pusher-roguelike.jpg"
+    "coverImage": "images/covers/raccoin-coin-pusher-roguelike.png"
   },
   {
     "name": "Rack and Slay",
@@ -4747,7 +4753,7 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Muck",
-      "PokéRogue",
+      "Pok\u00e9Rogue",
       "TerRoguelike",
       "Gatekeeper",
       "Megabonk",
@@ -4921,16 +4927,6 @@ var GAMES_DATA = [
     "coverImage": "images/covers/rogue-wizards.jpg"
   },
   {
-    "name": "Rogue-Fp",
-    "year": 2023,
-    "type": "Traditional",
-    "connected": true,
-    "influenced": false,
-    "tags": [],
-    "gamesInfluenced": [],
-    "coverImage": "images/covers/rogue-fp.jpg"
-  },
-  {
     "name": "Rogue: Genesia",
     "year": 2022,
     "type": "Action",
@@ -4951,6 +4947,16 @@ var GAMES_DATA = [
       "Dicefolk"
     ],
     "coverImage": "images/covers/roguebook.jpg"
+  },
+  {
+    "name": "Rogue-Fp",
+    "year": 2023,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/rogue-fp.jpg"
   },
   {
     "name": "RogueJack21",
@@ -5293,7 +5299,7 @@ var GAMES_DATA = [
       "Hadean Tactics",
       "Hellcard",
       "Iratus: Lord of the Dead",
-      "Kādomon: Hyper Auto Battlers",
+      "K\u0101domon: Hyper Auto Battlers",
       "Legend of Keepers: Career of a Dungeon Manager",
       "Luck be a Landlord",
       "Magicraft",
@@ -5359,7 +5365,10 @@ var GAMES_DATA = [
       "Hungry Horrors",
       "Slay the Spire 2",
       "Pluto",
-      "Lost In Fantaland"
+      "Lost In Fantaland",
+      "Hive Blight",
+      "Bounty of One",
+      "Cursed Words"
     ],
     "coverImage": "images/covers/slay-the-spire.jpg"
   },
@@ -5587,7 +5596,8 @@ var GAMES_DATA = [
       "GoNNER",
       "Dunjungle",
       "Mana Spark",
-      "Switchcars"
+      "Switchcars",
+      "Coin Crypt"
     ],
     "coverImage": "images/covers/spelunky-classic.jpg"
   },
@@ -5669,7 +5679,7 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": ["mecha"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/starvaders.jpg"
   },
@@ -5744,11 +5754,12 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [
       "Backpack Battles",
-      "Kādomon: Hyper Auto Battlers",
+      "K\u0101domon: Hyper Auto Battlers",
       "Knightica",
       "Nubby's Number Factory",
       "Merge Maestro",
-      "Facehand"
+      "Facehand",
+      "Cursed Words"
     ],
     "coverImage": "images/covers/super-auto-pets.jpg"
   },
@@ -5800,7 +5811,7 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": ["mecha"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/swarm-grinder.png"
   },
@@ -6032,7 +6043,7 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": ["anime"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-fable-manga-build-roguelike.jpg"
   },
@@ -6277,7 +6288,7 @@ var GAMES_DATA = [
       "Chocobo's Mysterious Dungeon",
       "Torneko: The Last Hope",
       "The Nightmare of Druaga",
-      "Pokémon Mystery Dungeon: Red and Blue Rescue Team",
+      "Pok\u00e9mon Mystery Dungeon: Red and Blue Rescue Team",
       "Dragon Quest: Young Yangus and the Mystery Dungeon",
       "Etrian Mystery Dungeon",
       "Izuna: Legend of the Unemployed Ninja",
@@ -6296,7 +6307,7 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": ["anime"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/touhou-crawl.jpg"
   },
@@ -6306,7 +6317,7 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": ["anime"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/touhou-lost-branch-of-legend.jpg"
   },
@@ -6388,7 +6399,7 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": ["anime", "gacha"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/uma-musume-pretty-derby.jpg"
   },
@@ -6398,7 +6409,7 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": ["mecha"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/underdogs.jpg"
   },
@@ -6550,7 +6561,8 @@ var GAMES_DATA = [
       "Swarm Grinder",
       "Army of Ruin",
       "Glyphica: Typing Survival",
-      "Rogue Factory"
+      "Rogue Factory",
+      "God Of Weapons"
     ],
     "coverImage": "images/covers/vampire-survivors.jpg"
   },
@@ -6570,7 +6582,7 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": ["mecha"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/vital-shell.jpg"
   },
@@ -6876,7 +6888,7 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": ["anime"],
     "gamesInfluenced": [],
     "coverImage": "images/covers/yohane-the-parhelion-numazu-in-the-mirage.jpg"
   },
@@ -6956,5 +6968,67 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/zorbus.jpg"
+  },
+  {
+    "name": "God of Weapons",
+    "year": 2023,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/god-of-weapons.png"
+  },
+  {
+    "name": "Moon Hunters",
+    "year": 2016,
+    "type": "Action",
+    "connected": false,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": [
+      "Boyfriend Dungeon"
+    ],
+    "coverImage": "images/covers/moon-hunters.png"
+  },
+  {
+    "name": "Boyfriend Dungeon",
+    "year": 2021,
+    "type": "Action",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/boyfriend-dungeon.png"
+  },
+  {
+    "name": "Hive Blight",
+    "year": 2026,
+    "type": "Strategy",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/hive-blight.png"
+  },
+  {
+    "name": "Coin Crypt",
+    "year": 2013,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/coin-crypt.png"
+  },
+  {
+    "name": "Cursed Words",
+    "year": 2026,
+    "type": "Strategy",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/cursed-words.png"
   }
 ];
