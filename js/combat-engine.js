@@ -3454,8 +3454,12 @@ function buildCombatDeck(characterData) {
   for (const entry of startingDeck) {
     const template = resolveStartingCardName(entry.cardName);
     if (template) {
-      const wasSmithUpgraded = !!upgradedStarting[entry.cardName];
-      for (let i = 0; i < entry.count; i++) {
+      const total = entry.count || 1;
+      const val = upgradedStarting[entry.cardName];
+      // Support both legacy boolean (upgrade all) and new count-based tracking
+      const upgradedCount = typeof val === 'number' ? Math.min(val, total) : (val ? total : 0);
+      for (let i = 0; i < total; i++) {
+        const wasSmithUpgraded = i < upgradedCount;
         const card = { ...template, upgraded: wasSmithUpgraded, _uid: `start_${uid++}` };
         if (wasSmithUpgraded) {
           if (card.upgradedDescription) card.description = card.upgradedDescription;

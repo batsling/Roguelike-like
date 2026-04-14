@@ -1010,12 +1010,15 @@ const ITEM_EFFECTS = {
         ? PLAYER_CHARACTERS[gameState.character] : null;
       const upgradedStarting = gameState.upgradedStartingCards || {};
       const pool = [];
-      // Starter deck attacks
+      // Starter deck attacks — track per-instance upgrade count
       ((charData && charData.startingDeck) || []).forEach(entry => {
         const tmpl = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
-        if (tmpl && (tmpl.type || '').toLowerCase() === 'attack' && tmpl.upgradedDescription && !upgradedStarting[entry.cardName]) {
-          const count = entry.count || 1;
-          for (let i = 0; i < count; i++) pool.push({ _isStarting: true, name: tmpl.name });
+        if (tmpl && (tmpl.type || '').toLowerCase() === 'attack' && tmpl.upgradedDescription) {
+          const total = entry.count || 1;
+          const val = upgradedStarting[entry.cardName];
+          const alreadyUpgraded = typeof val === 'number' ? Math.min(val, total) : (val ? total : 0);
+          const remaining = total - alreadyUpgraded;
+          for (let i = 0; i < remaining; i++) pool.push({ _isStarting: true, name: tmpl.name });
         }
       });
       // Collected deck attacks
@@ -1028,7 +1031,8 @@ const ITEM_EFFECTS = {
       targets.forEach(t => {
         if (t._isStarting) {
           if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
-          gameState.upgradedStartingCards[t.name] = true;
+          const prev = gameState.upgradedStartingCards[t.name];
+          gameState.upgradedStartingCards[t.name] = (typeof prev === 'number' ? prev : 0) + 1;
           names.push(t.name);
         } else {
           t.c.upgraded = true;
@@ -1051,12 +1055,14 @@ const ITEM_EFFECTS = {
         ? PLAYER_CHARACTERS[gameState.character] : null;
       const upgradedStarting = gameState.upgradedStartingCards || {};
       const pool = [];
-      // Starter deck skills
+      // Starter deck skills — track per-instance upgrade count
       ((charData && charData.startingDeck) || []).forEach(entry => {
         const tmpl = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
-        if (tmpl && (tmpl.type || '').toLowerCase() === 'skill' && tmpl.upgradedDescription && !upgradedStarting[entry.cardName]) {
-          const count = entry.count || 1;
-          for (let i = 0; i < count; i++) pool.push({ _isStarting: true, name: tmpl.name });
+        if (tmpl && (tmpl.type || '').toLowerCase() === 'skill' && tmpl.upgradedDescription) {
+          const total = entry.count || 1;
+          const alreadyUpgraded = getUpgradedStartingCount(upgradedStarting, entry.cardName, total);
+          const remaining = total - alreadyUpgraded;
+          for (let i = 0; i < remaining; i++) pool.push({ _isStarting: true, name: tmpl.name });
         }
       });
       // Collected deck skills
@@ -1069,7 +1075,8 @@ const ITEM_EFFECTS = {
       targets.forEach(t => {
         if (t._isStarting) {
           if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
-          gameState.upgradedStartingCards[t.name] = true;
+          const prev = gameState.upgradedStartingCards[t.name];
+          gameState.upgradedStartingCards[t.name] = (typeof prev === 'number' ? prev : 0) + 1;
           names.push(t.name);
         } else {
           t.c.upgraded = true;

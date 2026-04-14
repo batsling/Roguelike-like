@@ -345,18 +345,19 @@ function showDeckModal() {
       ? CARDS_DATA.find(c => c.name === entry.cardName || c.name.toLowerCase() === entry.cardName.toLowerCase())
       : null;
     if (template) {
-      const wasUpgraded = !!upgradedStarting[entry.cardName];
-      const card = wasUpgraded
-        ? {
-            ...template,
-            upgraded: true,
-            description: template.upgradedDescription || template.description,
-            cost: (template.upgradedCost !== null && template.upgradedCost !== undefined)
-              ? template.upgradedCost : template.cost
-          }
-        : template;
-      for (let i = 0; i < (entry.count || 1); i++) {
-        startingCards.push(card);
+      const total = entry.count || 1;
+      const val = upgradedStarting[entry.cardName];
+      // Support both legacy boolean (upgrade all) and new count-based tracking
+      const upgradedCount = typeof val === 'number' ? Math.min(val, total) : (val ? total : 0);
+      const upgradedCard = upgradedCount > 0 ? {
+        ...template,
+        upgraded: true,
+        description: template.upgradedDescription || template.description,
+        cost: (template.upgradedCost !== null && template.upgradedCost !== undefined)
+          ? template.upgradedCost : template.cost
+      } : null;
+      for (let i = 0; i < total; i++) {
+        startingCards.push(i < upgradedCount ? upgradedCard : template);
       }
     } else {
       // Card template not found — show a placeholder
