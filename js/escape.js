@@ -1154,13 +1154,16 @@ function switchCollectionTab(tab) {
     // Load the current sub-tab content
     switchLootSubTab(window.currentLootSubTab);
   } else if (tab === 'enemies') {
-    // Initialize sort state if not set
-    if (!window.enemySortType) {
-      window.enemySortType = 'name';
-    }
+    // Initialize sort/filter state
+    if (!window.enemySortType) window.enemySortType = 'name';
+    if (typeof window.enemyTagFilter === 'undefined') window.enemyTagFilter = 'all';
 
     // Filter out variants (they'll be shown in the details panel of their base enemy)
-    const baseEnemies = enemies.filter(e => !e.variantOf);
+    let baseEnemies = enemies.filter(e => !e.variantOf);
+    if (window.enemyTagFilter !== 'all') baseEnemies = baseEnemies.filter(e => e.tag === window.enemyTagFilter);
+
+    // Collect all unique tags for filter buttons
+    const allEnemyTags = [...new Set(enemies.filter(e => !e.variantOf && e.tag).map(e => e.tag))].sort();
 
     // Get difficulty color
     const getDifficultyColor = (difficulty) => {
@@ -1202,7 +1205,7 @@ function switchCollectionTab(tab) {
       <!-- Left side: Enemy grid (8 per row) -->
       <div id="enemies-grid-container" style="flex: 2; overflow-y: auto; padding: 10px;">
         <!-- Sort controls -->
-        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center;">
+        <div style="display: flex; gap: 10px; margin-bottom: 8px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center;">
           <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort:</span>
           <button onclick="sortEnemies('name')" id="enemy-sort-name" style="padding: 6px 12px; background: ${window.enemySortType === 'name' ? '#f44336' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Name</button>
           <button onclick="sortEnemies('type')" id="enemy-sort-type" style="padding: 6px 12px; background: ${window.enemySortType === 'type' ? '#f44336' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Type</button>
@@ -1210,6 +1213,13 @@ function switchCollectionTab(tab) {
           <button onclick="sortEnemies('difficulty')" id="enemy-sort-difficulty" style="padding: 6px 12px; background: ${window.enemySortType === 'difficulty' ? '#f44336' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Difficulty</button>
           <span style="color: #666; font-size: 11px; margin-left: auto;">${sortedEnemies.length} enemies</span>
         </div>
+        <!-- Tag filter -->
+        ${allEnemyTags.length > 0 ? `
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:8px; align-items:center;">
+          <span style="color:#888; font-size:11px; margin-right:2px;">Tag:</span>
+          <button style="padding:4px 10px;border:none;border-radius:12px;cursor:pointer;font-size:11px;font-weight:bold;background:${window.enemyTagFilter==='all'?'#f44336':'rgba(100,100,100,0.3)'};color:${window.enemyTagFilter==='all'?'#fff':'#ccc'};" onclick="window.enemyTagFilter='all'; switchCollectionTab('enemies');">All</button>
+          ${allEnemyTags.map(t => `<button style="padding:4px 10px;border:none;border-radius:12px;cursor:pointer;font-size:11px;font-weight:bold;background:${window.enemyTagFilter===t?'#f44336':'rgba(100,100,100,0.3)'};color:${window.enemyTagFilter===t?'#fff':'#ccc'};" onclick="window.enemyTagFilter=${JSON.stringify(t)}; switchCollectionTab('enemies');">${t}</button>`).join('')}
+        </div>` : ''}
         <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px;">
           ${sortedEnemies.map(enemy => {
             const diffColor = getDifficultyColor(enemy.difficulty);

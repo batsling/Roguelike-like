@@ -7588,6 +7588,9 @@ function showEnemyDetails(enemyName) {
             <div><strong>HP:</strong> ${enemy.hpMin != null ? (enemy.hpMin === enemy.hpMax ? enemy.hpMin : enemy.hpMin + '–' + enemy.hpMax) : (enemy.hp || '—')}</div>
             <div><strong>Game:</strong> ${enemy.game || '—'}</div>
             <div><strong>Location:</strong> ${enemy.location || '—'}</div>
+            ${enemy.tag ? `<div style="margin-top:4px;"><span style="font-size:11px;font-weight:bold;padding:2px 8px;border-radius:10px;background:rgba(155,89,182,0.18);border:1px solid rgba(155,89,182,0.4);color:#ba68c8;cursor:pointer;"
+              onclick="window.enemyTagFilter=${JSON.stringify(enemy.tag)}; switchCollectionTab('enemies');"
+              title="Filter by tag: ${enemy.tag}">${enemy.tag}</span></div>` : ''}
           </div>
         </div>
       </div>
