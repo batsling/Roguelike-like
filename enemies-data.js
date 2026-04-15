@@ -40,7 +40,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Lemurian.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Stone Golem",
@@ -80,7 +81,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/StoneGolem.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Elder Lemurian",
@@ -120,7 +122,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/ElderLemurian.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Pacer",
@@ -160,7 +163,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Pacer.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Gaper",
@@ -200,7 +204,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Gaper.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Gusher",
@@ -240,7 +245,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Gusher.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Double Vis",
@@ -280,7 +286,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/DoubleVis.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Tainted Pooter",
@@ -320,7 +327,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/TaintedPooter.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "bug"
   },
   {
     "name": "Mung",
@@ -360,7 +368,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Mung.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Mud Lung",
@@ -400,7 +409,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/MudLung.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Mungling Mud Lung",
@@ -440,7 +450,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/MunglingMudLung.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Mungie",
@@ -480,7 +491,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Mungie.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Revola",
@@ -520,7 +532,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Revola.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Revola (Standing)",
@@ -560,7 +573,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/RevolaStanding.png",
-    "variantOf": "Revola"
+    "variantOf": "Revola",
+    "tag": null
   },
   {
     "name": "Skinning Homunculus",
@@ -600,7 +614,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/SkinningHomunculus.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Hobgoblin",
@@ -640,7 +655,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Hobgoblin.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "goblin"
   },
   {
     "name": "Aquator",
@@ -680,7 +696,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Aquator.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Troll",
@@ -720,7 +737,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Troll.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Dragon",
@@ -760,7 +778,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Dragon.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "dragon"
   },
   {
     "name": "Cultist",
@@ -800,7 +819,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Cultist.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Snecko",
@@ -840,7 +860,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Snecko.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Transient",
@@ -880,7 +901,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Transient.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Bones",
@@ -920,7 +942,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Bones.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "undead"
   },
   {
     "name": "Fanatic",
@@ -960,7 +983,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Fanatic.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Spiker",
@@ -1000,7 +1024,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Spiker.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Jaw Worm",
@@ -1040,7 +1065,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/JawWorm.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Red Louse",
@@ -1080,7 +1106,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/RedLouse.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "bug"
   },
   {
     "name": "Green Louse",
@@ -1120,7 +1147,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/GreenLouse.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "bug"
   },
   {
     "name": "Acid Slime (L)",
@@ -1160,7 +1188,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/AcidSlime(L).png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "slime"
   },
   {
     "name": "Acid Slime (M)",
@@ -1200,7 +1229,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/AcidSlime(M).png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "slime"
   },
   {
     "name": "Acid Slime (S)",
@@ -1240,7 +1270,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/AcidSlime(S).png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "slime"
   },
   {
     "name": "Spike Slime (L)",
@@ -1280,7 +1311,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/SpikeSlime(L).png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "slime"
   },
   {
     "name": "Spike Slime (M)",
@@ -1320,7 +1352,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/SpikeSlime(M).png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "slime"
   },
   {
     "name": "Spike Slime (S)",
@@ -1360,6 +1393,7 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/SpikeSlime(S).png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "slime"
   }
 ];

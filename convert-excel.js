@@ -135,7 +135,7 @@ gamesData.forEach(row => {
     type: row['Type'] || 'Traditional',
     connected: row['Connected?'] === true || row['Connected?'] === 'TRUE',
     influenced: row['Influencer?'] === true || row['Influencer?'] === 'TRUE',
-    tags: [],
+    tags: row['Tags'] ? row['Tags'].split(',').map(t => t.trim()).filter(Boolean) : [],
     gamesInfluenced: [],
     coverImage: coverImage
   };
@@ -346,7 +346,8 @@ const enemies = enemiesData.map(row => {
     location: row['Location'] || 'General',
     dice: diceFaces,
     imageUrl: row['File'] ? `images/enemies/${row['File']}.png` : null,
-    variantOf: variantOf
+    variantOf: variantOf,
+    tag: row['Tag'] || null
   };
 });
 
@@ -409,7 +410,7 @@ if (weaponsSheet) {
       game: row['Reference'] || '',
       tags: tags,
       imageUrl: row['img'] ? `images/items/${row['img']}.png` : null,
-      unlockCondition: row['Unlock Condition'] || null
+      unlockCondition: (row['Requirement'] && row['Requirement'] !== 'N/A') ? row['Requirement'] : null
     };
   });
 
@@ -438,7 +439,7 @@ const items = itemsData.map(row => {
     game: row['Reference'] || '',  // UI expects 'game' not 'reference'
     tags: tags,
     image: row['File'] ? `images/items/${row['File']}.png` : null,  // UI expects 'image' not 'imageUrl'
-    unlockCondition: row['Unlock Condition'] || null
+    unlockCondition: (row['Requirement'] && row['Requirement'] !== 'N/A') ? row['Requirement'] : null
   };
 });
 
@@ -523,7 +524,7 @@ if (addonsSheet) {
     addons[key] = {
       name: name,
       description: row['Description'] || '',
-      canBeAttachedTo: row['Can Be Attatched To'] || 'All'
+      canBeAttachedTo: row['Can Be Attached To'] || 'All'
     };
   });
 

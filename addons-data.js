@@ -9,7 +9,7 @@ var ADDONS_DATA = {
   "ranged": {
     "name": "Ranged",
     "description": "Ignores effects come from contact",
-    "canBeAttachedTo": "All"
+    "canBeAttachedTo": "Attack, Status"
   },
   "multiplyx": {
     "name": "Multiply X",
@@ -34,12 +34,12 @@ var ADDONS_DATA = {
   "finesse": {
     "name": "Finesse",
     "description": "This weapon scales damage with Dexterity instead of Strength",
-    "canBeAttachedTo": "All"
+    "canBeAttachedTo": "Weapon"
   },
   "fishingweight": {
     "name": "Fishing Weight",
     "description": "Gain +1 Dmg for every 3 Common, 2 Uncommon, or 1 Rare fish in your loot inventory",
-    "canBeAttachedTo": "All"
+    "canBeAttachedTo": "Weapon"
   },
   "wealth": {
     "name": "Wealth",
@@ -74,32 +74,32 @@ var ADDONS_DATA = {
   "ethereal": {
     "name": "Ethereal",
     "description": "If an Ethereal card is in your hand at the end of your turn, it is Exhausted.",
-    "canBeAttachedTo": "All"
+    "canBeAttachedTo": "Cards"
   },
   "innate": {
     "name": "Innate",
     "description": "Place this card on the top of your deck at the start of combat",
-    "canBeAttachedTo": "All"
+    "canBeAttachedTo": "Cards"
   },
   "sly": {
     "name": "Sly",
     "description": "This Card is Unplayable, but gets played when it's discarded",
-    "canBeAttachedTo": "All"
+    "canBeAttachedTo": "Cards"
   },
   "unplayable": {
     "name": "Unplayable",
     "description": "This card cannot be played and has no mana cost",
-    "canBeAttachedTo": "All"
+    "canBeAttachedTo": "Cards"
   },
   "retain": {
     "name": "Retain",
     "description": "This card is not discarded at the end of the turn",
-    "canBeAttachedTo": "All"
+    "canBeAttachedTo": "Cards"
   },
   "sequentialupgrade": {
     "name": "Sequential Upgrade",
     "description": "This card can be upgraded any number of times. Adding Dmg will allow the card to scale it's damage by X each time",
-    "canBeAttachedTo": "All"
+    "canBeAttachedTo": "Cards"
   },
   "lifesteal": {
     "name": "Lifesteal",

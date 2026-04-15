@@ -75,7 +75,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "hell"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/99-levels-to-hell.jpg"
   },
@@ -212,7 +214,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "food"
+    ],
     "gamesInfluenced": [
       "Another Farm Roguelike: Rebirth"
     ],
@@ -224,7 +228,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "food"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/another-farm-roguelike-rebirth.jpg"
   },
@@ -234,7 +240,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mahjong"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/aotenjo-infinite-hands.jpg"
   },
@@ -244,7 +252,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/approaching-infinity.jpg"
   },
@@ -324,7 +334,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/asterogues.jpg"
   },
@@ -344,7 +356,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/astro-prospector.png"
   },
@@ -366,7 +380,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "food"
+    ],
     "gamesInfluenced": [
       "Pesticide Not Required"
     ],
@@ -438,7 +454,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "casino"
+    ],
     "gamesInfluenced": [
       "Aotenjo: Infinite Hands",
       "Bingle Bingle",
@@ -499,7 +517,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "casino"
+    ],
     "gamesInfluenced": [
       "Omelet You Cook",
       "Menherarium"
@@ -595,7 +615,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "rhythm"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/beat-blast.jpg"
   },
@@ -605,7 +627,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "tower defense"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/bella-wants-blood.png"
   },
@@ -645,7 +669,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "casino"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/bingle-bingle.jpg"
   },
@@ -677,7 +703,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "tower defense"
+    ],
     "gamesInfluenced": [
       "Block Tower TD 2"
     ],
@@ -689,7 +717,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "tower defense"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/block-tower-td-2.jpg"
   },
@@ -709,7 +739,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "tower defense"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/bloons-td-6-rogue-legends.png"
   },
@@ -753,7 +785,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "western"
+    ],
     "gamesInfluenced": [
       "Hive Blight"
     ],
@@ -914,7 +948,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "zombies"
+    ],
     "gamesInfluenced": [
       "Cataclysm: Bright Nights",
       "Cataclysm: Dark Days Ahead"
@@ -927,7 +963,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "zombies"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/cataclysm-bright-nights.jpg"
   },
@@ -937,7 +975,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "zombies"
+    ],
     "gamesInfluenced": [
       "Cataclysm: The Last Generation"
     ],
@@ -949,7 +989,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "zombies"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/cataclysm-the-last-generation.jpg"
   },
@@ -1023,7 +1065,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "gacha"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/chaos-zero-nightmare.jpg"
   },
@@ -1121,7 +1165,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "casino"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/cloverpit.jpg"
   },
@@ -1131,7 +1177,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "sports"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/clutchtime-basketball-deckbuilder.jpg"
   },
@@ -1141,7 +1189,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mining"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/coal-llc.jpg"
   },
@@ -1151,7 +1201,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/cobalt-core.jpg"
   },
@@ -1214,7 +1266,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "tower defense"
+    ],
     "gamesInfluenced": [
       "Bella Wants Blood"
     ],
@@ -1236,7 +1290,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "maritime"
+    ],
     "gamesInfluenced": [
       "Vellum",
       "Oddcore"
@@ -1269,7 +1325,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "food"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/crop-rotation.jpg"
   },
@@ -1319,7 +1377,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "rhythm"
+    ],
     "gamesInfluenced": [
       "BPM: Bullets Per Minute",
       "Shogun Showdown",
@@ -1333,7 +1393,10 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mecha",
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/cryptark.jpg"
   },
@@ -1400,7 +1463,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "words"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/cursed-words.png"
   },
@@ -1481,7 +1546,10 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "maritime",
+      "food"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dave-the-diver.jpg"
   },
@@ -1520,7 +1588,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "zombies"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dead-estate.jpg"
   },
@@ -1530,7 +1600,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "dice"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dead-finger-dice.jpg"
   },
@@ -1540,7 +1612,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "zombies"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/deadzone-rogue.jpg"
   },
@@ -1560,7 +1634,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "hell"
+    ],
     "gamesInfluenced": [
       "Jotunnslayer: Hordes of Hel",
       "The Spell Brigade",
@@ -1575,7 +1651,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "racing"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/death-roads-tournament.jpg"
   },
@@ -1615,7 +1693,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "mining"
+    ],
     "gamesInfluenced": [
       "The Spell Brigade"
     ],
@@ -1659,7 +1739,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mahjong"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/demonic-mahjong.jpg"
   },
@@ -1723,7 +1805,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "dice"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dice-fold.jpg"
   },
@@ -1733,7 +1817,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "dice"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dice-a-million.jpg"
   },
@@ -1743,7 +1829,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "dice"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dice-with-death.jpg"
   },
@@ -1753,7 +1841,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "dice"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dicealot.jpg"
   },
@@ -1763,7 +1853,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "dice"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dicefolk.jpg"
   },
@@ -1773,7 +1865,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "dice"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/diceomancer.jpg"
   },
@@ -1783,7 +1877,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "dice"
+    ],
     "gamesInfluenced": [
       "Backpack Hero",
       "Dice & Fold",
@@ -1801,7 +1897,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "dice"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/die-for-the-lich.jpg"
   },
@@ -1811,7 +1909,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "dice"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/die-in-the-dungeon.jpg"
   },
@@ -1871,7 +1971,10 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "space",
+      "mining"
+    ],
     "gamesInfluenced": [
       "Feed the Deep",
       "Wall World"
@@ -1995,7 +2098,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mining"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/drill-core.jpg"
   },
@@ -2025,7 +2130,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "casino"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dungeon-clawler.jpg"
   },
@@ -2054,7 +2161,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "sports"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dungeon-deathball.jpg"
   },
@@ -2096,7 +2205,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "casino"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/dungeons-degenerate-gamblers.jpg"
   },
@@ -2233,7 +2344,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "tower defense"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/emberward.jpg"
   },
@@ -2346,7 +2459,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/fairy-tail-dungeons.jpg"
   },
@@ -2376,7 +2491,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "maritime"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/feed-the-deep.jpg"
   },
@@ -2410,7 +2527,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "maritime"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/fish-fear-me.jpg"
   },
@@ -2442,7 +2561,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/flinthook.jpg"
   },
@@ -2452,7 +2573,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "sports"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/footgun-underground.jpg"
   },
@@ -2525,7 +2648,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [
       "Arcanium: Rise of Akhan",
       "Convoy",
@@ -2569,7 +2694,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/galactic-glitch.jpg"
   },
@@ -2643,7 +2770,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "tower defense"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/gnomes.jpg"
   },
@@ -2653,7 +2782,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "food"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/goblin-sushi.png"
   },
@@ -2745,7 +2876,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/granvir.jpg"
   },
@@ -2790,7 +2923,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [
       "Gunlocked 2"
     ],
@@ -2802,7 +2937,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/gunlocked-2.jpg"
   },
@@ -2826,7 +2963,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "hell"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/hadean-tactics.jpg"
   },
@@ -2836,7 +2975,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "hell"
+    ],
     "gamesInfluenced": [
       "[Redacted]",
       "Astral Ascent",
@@ -2882,7 +3023,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "hell"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/hades-ii.jpg"
   },
@@ -2892,7 +3035,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "hell"
+    ],
     "gamesInfluenced": [
       "Jotunnslayer: Hordes of Hel",
       "Be My Horde"
@@ -2927,7 +3072,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "sports"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/hangtime!.png"
   },
@@ -2957,7 +3104,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "hell"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/have-a-nice-death.jpg"
   },
@@ -3047,7 +3196,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "hell"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/heretic-s-fork.jpg"
   },
@@ -3113,7 +3264,10 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "zombies",
+      "horror"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/house-of-necrosis.jpg"
   },
@@ -3173,7 +3327,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/infra-arcana.jpg"
   },
@@ -3212,7 +3368,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [
       "Alina of the Arena",
       "Backpack Hero",
@@ -3286,7 +3444,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "food"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/juicy-realm.png"
   },
@@ -3296,7 +3456,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/jupiter-hell.jpg"
   },
@@ -3400,7 +3562,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "maritime"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/lake-of-creatures.jpg"
   },
@@ -3430,7 +3594,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "food"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/let-him-cook.jpg"
   },
@@ -3483,7 +3649,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/lonestar.jpg"
   },
@@ -3516,7 +3684,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "maritime"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/loot-river.jpg"
   },
@@ -3586,7 +3756,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "casino"
+    ],
     "gamesInfluenced": [
       "Backpack Hero",
       "Balatro",
@@ -3613,7 +3785,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "casino"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/lucky-hero.jpg"
   },
@@ -3976,7 +4150,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "gamesInfluenced": [
       "Mothergunship: Forge"
     ],
@@ -3988,7 +4164,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/mothergunship-forge.jpg"
   },
@@ -4064,7 +4242,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "zombies"
+    ],
     "gamesInfluenced": [
       "Necrosmith 2",
       "Be My Horde"
@@ -4077,7 +4257,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "zombies"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/necrosmith-2.jpg"
   },
@@ -4221,7 +4403,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/nova-drift.jpg"
   },
@@ -4323,7 +4507,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "food"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/omelet-you-cook.jpg"
   },
@@ -4393,7 +4579,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "chess"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/passant-a-chess-roguelike.png"
   },
@@ -4425,7 +4613,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "chess"
+    ],
     "gamesInfluenced": [
       "The Ouroboros King"
     ],
@@ -4471,7 +4661,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "dice"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pip-my-dice.jpg"
   },
@@ -4494,7 +4686,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "food"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/plateup.jpg"
   },
@@ -4504,7 +4698,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "casino"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/plinko-panic.jpg"
   },
@@ -4524,7 +4720,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "pokémon"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pocket-crystal-league.jpg"
   },
@@ -4544,7 +4742,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "pokémon"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-explorers-of-sky.jpg"
   },
@@ -4554,7 +4754,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "pokémon"
+    ],
     "gamesInfluenced": [
       "Pokémon Mystery Dungeon: Explorers of Sky"
     ],
@@ -4566,7 +4768,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "pokémon"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-gates-to-infinity.jpg"
   },
@@ -4576,7 +4780,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "pokémon"
+    ],
     "gamesInfluenced": [
       "Paper Animal Adventure",
       "Pokémon Mystery Dungeon: Explorers of Time and Explorers of Darkness",
@@ -4592,7 +4798,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "pokémon"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pok-mon-mystery-dungeon-rescue-team-dx.jpg"
   },
@@ -4602,7 +4810,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "pokémon"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pok-mon-super-mystery-dungeon.jpg"
   },
@@ -4612,7 +4822,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "pokémon"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/pok-rogue.jpg"
   },
@@ -4686,7 +4898,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "casino"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/raccoin-coin-pusher-roguelike.png"
   },
@@ -4748,7 +4962,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/reality-break.jpg"
   },
@@ -4879,7 +5095,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [
       "Dead Cells",
       "Putrid Shot Ultra",
@@ -4897,7 +5115,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [
       "Muck",
       "PokéRogue",
@@ -4916,7 +5136,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/risk-of-rain-returns.jpg"
   },
@@ -4949,7 +5171,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/rocket-rats.png"
   },
@@ -5056,7 +5280,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "tower defense"
+    ],
     "gamesInfluenced": [
       "Nordhold",
       "Tower Dominion"
@@ -5112,7 +5338,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "casino"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/roguejack21.png"
   },
@@ -5122,7 +5350,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "dice"
+    ],
     "gamesInfluenced": [
       "RollScape"
     ],
@@ -5134,7 +5364,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "dice"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/rollscape.jpg"
   },
@@ -5186,7 +5418,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "maritime"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/sea-of-survivors.jpg"
   },
@@ -5236,7 +5470,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "maritime"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/ship-of-fools.jpg"
   },
@@ -5359,7 +5595,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "chess"
+    ],
     "gamesInfluenced": [
       "Bingle Bingle",
       "The Ouroboros King"
@@ -5404,7 +5642,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mahjong"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/sky-s-the-limit-mah-jong.jpg"
   },
@@ -5539,7 +5779,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "dice"
+    ],
     "gamesInfluenced": [
       "Luck & Loot"
     ],
@@ -5561,7 +5803,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "casino"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/slot-dungeons.jpg"
   },
@@ -5571,7 +5815,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "casino"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/slots-daggers.jpg"
   },
@@ -5658,7 +5904,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/space-beast-terror-fright.jpg"
   },
@@ -5758,7 +6006,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "casino"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/spin-hero.jpg"
   },
@@ -5820,7 +6070,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/star-survivor.png"
   },
@@ -5840,7 +6092,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/starvaders.jpg"
   },
@@ -5880,7 +6134,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "zombies"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/stories-from-the-outbreak.png"
   },
@@ -5890,7 +6146,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [
       "Weird Worlds: Return to Infinite Space"
     ],
@@ -5982,7 +6240,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/swarm-grinder.png"
   },
@@ -6068,7 +6328,10 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "tower defense",
+      "food"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/tangy-td.png"
   },
@@ -6078,7 +6341,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "sports"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/tape-to-tape.jpg"
   },
@@ -6224,7 +6489,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-fable-manga-build-roguelike.jpg"
   },
@@ -6306,7 +6573,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "chess"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-ouroboros-king.jpg"
   },
@@ -6346,7 +6615,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "horror"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/the-spirit-lift.png"
   },
@@ -6376,7 +6647,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "tower defense"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/there-are-no-orcs.jpg"
   },
@@ -6498,7 +6771,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/touhou-crawl.jpg"
   },
@@ -6508,7 +6783,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/touhou-lost-branch-of-legend.jpg"
   },
@@ -6528,7 +6805,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "tower defense"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/tower-escape.png"
   },
@@ -6538,7 +6817,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "tower defense"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/tower-factory.jpg"
   },
@@ -6590,7 +6871,11 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "anime",
+      "gacha",
+      "racing"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/uma-musume-pretty-derby.jpg"
   },
@@ -6600,7 +6885,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/underdogs.jpg"
   },
@@ -6610,7 +6897,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "mining"
+    ],
     "gamesInfluenced": [
       "UnderMine 2"
     ],
@@ -6622,7 +6911,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mining"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/undermine-2.jpg"
   },
@@ -6774,7 +7065,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mecha"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/vital-shell.jpg"
   },
@@ -6806,7 +7099,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [
       "Wild Bastards"
     ],
@@ -6818,7 +7113,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/void-war.jpg"
   },
@@ -6848,7 +7145,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "mining"
+    ],
     "gamesInfluenced": [
       "Wall World 2"
     ],
@@ -6860,7 +7159,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "mining"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/wall-world-2.jpg"
   },
@@ -6870,7 +7171,9 @@ var GAMES_DATA = [
     "type": "Traditional",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/warpvector.jpg"
   },
@@ -6910,7 +7213,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": false,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "marine"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/we-need-to-go-deeper.jpg"
   },
@@ -6920,7 +7225,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": true,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [
       "Infinite Space III: Sea of Stars"
     ],
@@ -7030,7 +7337,9 @@ var GAMES_DATA = [
     "type": "Strategy",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "chess"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/wizardchess.jpg"
   },
@@ -7040,7 +7349,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "words"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/word-play.jpg"
   },
@@ -7050,7 +7361,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "words"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/wordatro.jpg"
   },
@@ -7060,7 +7373,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "words"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/words-can-kill.jpg"
   },
@@ -7070,7 +7385,9 @@ var GAMES_DATA = [
     "type": "Action",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "zombies"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/yet-another-zombie-survivors.jpg"
   },
@@ -7080,7 +7397,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "anime"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/yohane-the-parhelion-numazu-in-the-mirage.jpg"
   },
@@ -7114,7 +7433,9 @@ var GAMES_DATA = [
     "type": "Deckbuilding",
     "connected": true,
     "influenced": false,
-    "tags": [],
+    "tags": [
+      "space"
+    ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/zet-zillions.jpg"
   },
