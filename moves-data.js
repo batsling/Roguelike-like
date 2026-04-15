@@ -29,9 +29,9 @@ var MOVES_DATA = {
     "bonusStat": "No",
     "imageUrl": "images/moves/Health.png"
   },
-  "spawn": {
-    "name": "Spawn",
-    "description": "Spawn X Creature where X is the name of a creature. If used by enemies, the new enemy will have the Unknown intent showing \"Doing nothing\"",
+  "spawn x y": {
+    "name": "Spawn X Y",
+    "description": "Spawn X number of Y where X is the number of creatures and Y is the name of a creature. If used by enemies, the new enemy will have the Unknown intent showing \"Spawning\"",
     "preferredTarget": "Self",
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
@@ -73,7 +73,7 @@ var MOVES_DATA = {
   },
   "pain": {
     "name": "Pain",
-    "description": "Target Deals X damage to self (not Melee or Ranged)",
+    "description": "Target Loses X Health (not Melee or Ranged)",
     "preferredTarget": "Self",
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
@@ -92,9 +92,9 @@ var MOVES_DATA = {
     "bonusStat": "No",
     "imageUrl": "images/moves/Vitality.png"
   },
-  "add x to y": {
-    "name": "Add X to Y",
-    "description": "Target gives X card to your Y (Deck, Hand, or Discard)",
+  "add x y to z": {
+    "name": "Add X Y to Z",
+    "description": "Target gives X number of Y card to your Z (Deck, Hand, or Discard)",
     "preferredTarget": "Player",
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
@@ -116,6 +116,13 @@ var MOVES_DATA = {
   "lose": {
     "name": "Lose",
     "description": "Target loses X status Y times (# or All)",
+    "preferredTarget": "Self",
+    "bonusStat": "No",
+    "imageUrl": "images/moves/Status.png"
+  },
+  "conjure x y to z": {
+    "name": "Conjure X Y to Z",
+    "description": "Create X number of Y named Cards to your Z (Hand, Discard, Exhaust, Discard)",
     "preferredTarget": "Self",
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"

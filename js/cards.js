@@ -30,14 +30,22 @@ const CARD_RARITY_MAP = {
 /**
  * Select 3 random cards from the reward pool (non-Starter, non-Status).
  * Weighted by rarity using the luck system.
+ * @param {string|null} tagFilter - If provided, only cards with this tag are eligible.
  * @returns {Array} Array of up to 3 card objects
  */
-function selectCardRewards() {
+function selectCardRewards(tagFilter = null) {
   if (!cards || cards.length === 0) return [];
 
-  const pool = cards.filter(c =>
+  let pool = cards.filter(c =>
     c.rarity !== 'Starter' && !c.isStatusCard && !c.isCurse && c.rarity in CARD_RARITY_MAP
   );
+
+  if (tagFilter) {
+    const filtered = pool.filter(c => Array.isArray(c.tags) && c.tags.includes(tagFilter));
+    // Fall back to full pool if tag yields nothing (e.g. tag typo)
+    if (filtered.length > 0) pool = filtered;
+  }
+
   if (pool.length === 0) return [];
 
   const chosen = [];
@@ -211,8 +219,8 @@ function clearStatusCardsAfterCombat() {
  * Show the post-combat card reward modal.
  * Offers 3 random cards; player picks one to add to deck.
  */
-function showCardRewardModal() {
-  const rewardCards = selectCardRewards();
+function showCardRewardModal(onComplete, tagFilter = null) {
+  const rewardCards = selectCardRewards(tagFilter);
   if (rewardCards.length === 0) {
     if (typeof createNotification === 'function') {
       createNotification('No cards available!', '#888', '🃏');

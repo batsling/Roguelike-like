@@ -5094,7 +5094,41 @@ function confirmLevelUp() {
   updateTopBar();
   saveCurrentGame();
 
-  // Show stat bonuses, then offer card reward
+  // Determine the extra reward for this character
+  const reward = characterData.levelUpReward || { type: 'none' };
+
+  const rewardLabels = {
+    gold:  `💰 ${reward.amount} Gold`,
+    item:  '📦 Choose an Item',
+    card:  '🃏 Choose a Card',
+    spell: '✨ Choose a Spell',
+    none:  null,
+  };
+  const rewardLabel = rewardLabels[reward.type] || null;
+
+  const rewardBtnHTML = rewardLabel ? `
+    <button id="proceed-to-reward-btn" style="
+      padding: 12px 30px;
+      background: linear-gradient(145deg, #9b59b6, #7d3c98);
+      border: 2px solid #9b59b6;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 16px;
+    ">${rewardLabel}</button>
+  ` : `
+    <button id="proceed-to-reward-btn" style="
+      padding: 12px 30px;
+      background: #444;
+      border: 2px solid #666;
+      border-radius: 8px;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 16px;
+    ">Continue</button>
+  `;
+
   createGameModal(`
     <div style="text-align: center; padding: 20px; max-width: 500px;">
       <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
@@ -5114,26 +5148,54 @@ function confirmLevelUp() {
           `).join('') : '<div style="color: #888; font-size: 14px;">No stat bonuses</div>'}
         </div>
       </div>
-      <button id="proceed-to-card-reward-btn" style="
-        padding: 12px 30px;
-        background: linear-gradient(145deg, #9b59b6, #7d3c98);
-        border: 2px solid #9b59b6;
-        border-radius: 8px;
-        color: #fff;
-        font-weight: bold;
-        cursor: pointer;
-        font-size: 16px;
-      ">🃏 Choose Card Reward</button>
+      ${rewardBtnHTML}
     </div>
   `);
 
-  document.getElementById('proceed-to-card-reward-btn').onclick = () => {
+  document.getElementById('proceed-to-reward-btn').onclick = () => {
     closeGameModal();
-    if (typeof window.showCardRewardModal === 'function') {
-      window.showCardRewardModal();
-      saveCurrentGame();
-    } else {
-      console.error('[LevelUp] showCardRewardModal not found on window');
+    switch (reward.type) {
+      case 'gold':
+        gold = (gold || 0) + reward.amount;
+        gameState.gold = gold;
+        saveCurrentGame();
+        if (typeof updateTopBar === 'function') updateTopBar();
+        if (typeof createNotification === 'function') {
+          createNotification(`+${reward.amount} Gold!`, '#FFD700', '💰');
+        }
+        break;
+
+      case 'item':
+        if (typeof showItemChoiceModal === 'function') {
+          showItemChoiceModal(null, 'small');
+        }
+        break;
+
+      case 'card':
+        if (typeof window.showCardRewardModal === 'function') {
+          window.showCardRewardModal(null, reward.tag || null);
+          saveCurrentGame();
+        }
+        break;
+
+      case 'spell':
+        if (typeof createGameModal === 'function') {
+          createGameModal(`
+            <div style="text-align:center; padding:30px; max-width:400px;">
+              <h2 style="color:#9b59b6; margin-bottom:15px;">✨ Spell Reward</h2>
+              <p style="color:#aaa; margin-bottom:20px;">Spells are not yet implemented. Check back later!</p>
+              <button onclick="closeGameModal()" style="
+                padding:10px 24px; background:#444; border:none;
+                border-radius:8px; color:white; cursor:pointer; font-size:14px;
+              ">Close</button>
+            </div>
+          `);
+        }
+        break;
+
+      case 'none':
+      default:
+        break;
     }
   };
 }
@@ -5584,7 +5646,7 @@ function showDiceLevelUpChoiceModal(characterKey, onComplete) {
  * Luck shifts the rarity distribution toward Uncommon/Rare.
  * @param {Function} onComplete - Called after a card is chosen or skipped
  */
-function showCardRewardModal(onComplete) {
+function showCardRewardModal(onComplete, tagFilter = null) {
   const rarityColor = (rarity) => {
     switch (rarity) {
       case 'Rare':     return '#9b59b6';
@@ -5602,12 +5664,18 @@ function showCardRewardModal(onComplete) {
     const wRare     = Math.min(45,  5 + currentLuck);
     const total     = wCommon + wUncommon + wRare;
 
-    const pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
+    let pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
       .filter(c => c.rarity && c.rarity !== 'Starter' && c.rarity !== 'N/A'
                && (c.type || '').toLowerCase() !== 'training'
                && !c.isTraining
                && !(c.tags && c.tags.includes('weapon'))
                && !exclude.has(c.name));
+
+    if (tagFilter) {
+      const tagged = pool.filter(c => Array.isArray(c.tags) && c.tags.includes(tagFilter));
+      if (tagged.length > 0) pool = tagged;
+    }
+
     if (pool.length === 0) return null;
 
     let roll = Math.random() * total;
@@ -7890,10 +7958,10 @@ function showCharacterDetails(charName) {
     </div>
   ` : '';
 
-  const combatStartHTML = char.combatStart ? `
+  const combatStartHTML = char.combatStyle ? `
     <div style="margin-top: 10px; padding: 8px; background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.4); border-radius: 6px;">
-      <div style="color: #ff9800; font-size: 12px; font-weight: bold; margin-bottom: 3px;">⚡ Combat Start</div>
-      <div style="color: #ddd; font-size: 12px;">${char.combatStart}</div>
+      <div style="color: #ff9800; font-size: 12px; font-weight: bold; margin-bottom: 3px;">⚡ Combat Style</div>
+      <div style="color: #ddd; font-size: 12px;">${char.combatStyle}</div>
     </div>
   ` : '';
 

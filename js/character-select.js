@@ -180,10 +180,10 @@ function showIconCharacterDetails(charKey) {
           }).join('');
           return cardRows;
         })()}
-        ${character.combatStart ? `
+        ${character.combatStyle ? `
           <div style="margin-top:10px;padding:8px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.4);border-radius:6px;">
-            <div style="color:#ff9800;font-size:12px;font-weight:bold;margin-bottom:3px;">⚡ Combat Start</div>
-            <div style="color:#ddd;font-size:12px;">${character.combatStart}</div>
+            <div style="color:#ff9800;font-size:12px;font-weight:bold;margin-bottom:3px;">⚡ Combat Style</div>
+            <div style="color:#ddd;font-size:12px;">${character.combatStyle}</div>
           </div>
         ` : ''}
       </div>

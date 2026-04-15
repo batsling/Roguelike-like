@@ -197,6 +197,41 @@ function parseDeckColumn(deckStr) {
 }
 
 // ============== CHARACTERS ==============
+
+/**
+ * Parse the Reward column into a structured object.
+ * Examples:
+ *   "50 Gold"                  → { type: 'gold', amount: 50 }
+ *   "1 Small Chest"            → { type: 'item' }
+ *   "1 Ironclad Card Reward"   → { type: 'card', tag: 'ironclad' }
+ *   "1 Silent Card Reward"     → { type: 'card', tag: 'silent' }
+ *   "1 Spell"                  → { type: 'spell' }
+ *   "N/A" / empty              → { type: 'none' }
+ */
+function parseReward(rewardStr) {
+  if (!rewardStr || rewardStr.toString().trim() === 'N/A' || rewardStr.toString().trim() === '') {
+    return { type: 'none' };
+  }
+
+  const s = rewardStr.toString().trim();
+
+  // "50 Gold"
+  const goldMatch = s.match(/^(\d+)\s+Gold$/i);
+  if (goldMatch) return { type: 'gold', amount: parseInt(goldMatch[1]) };
+
+  // "1 Small Chest"
+  if (/small\s+chest/i.test(s)) return { type: 'item' };
+
+  // "1 Spell"
+  if (/spell/i.test(s)) return { type: 'spell' };
+
+  // "1 Ironclad Card Reward" / "1 Silent Card Reward" / etc.
+  const cardMatch = s.match(/1\s+(\w+)\s+Card\s+Reward/i);
+  if (cardMatch) return { type: 'card', tag: cardMatch[1].toLowerCase() };
+
+  return { type: 'none' };
+}
+
 const charactersSheet = workbook.Sheets['characters'];
 const charactersData = XLSX.utils.sheet_to_json(charactersSheet);
 
@@ -212,8 +247,18 @@ charactersData.forEach(row => {
     diceFaces.push(parseDiceFace(faceStr));
   }
 
-  // Parse starting deck
-  const startingDeck = parseDeckColumn(row['Deck'] || '');
+  // Build starting deck from Strikes + Defends columns
+  const startingDeck = [];
+  const strikeCount = parseInt(row['Strikes']);
+  const defendCount = parseInt(row['Defends']);
+  if (strikeCount > 0) startingDeck.push({ cardName: 'Strike', count: strikeCount });
+  if (defendCount > 0) startingDeck.push({ cardName: 'Defend', count: defendCount });
+
+  // Parse starting items ("N/A" or comma-separated names)
+  const rawItems = (row['Starting items'] || '').toString().trim();
+  const startingItems = (rawItems === '' || rawItems === 'N/A')
+    ? []
+    : rawItems.split(',').map(s => s.trim()).filter(Boolean);
 
   characters[key] = {
     name: name,
@@ -221,9 +266,9 @@ charactersData.forEach(row => {
     icon: `images/characters/Icon/${name}.png`,
     fullImage: `images/characters/Full/${name}.png`,
     energy: parseInt(row['Energy']) || 2,
-    mana: parseInt(row['Mana']) || 0,
     health: parseInt(row['Health']) || 80,
     levelUpCondition: row['Level Up'] || '',
+    levelUpReward: parseReward(row['Reward']),
     levelUpStats: {
       strength: parseInt(row['Str']) || 0,
       dexterity: parseInt(row['Dex']) || 0,
@@ -238,8 +283,9 @@ charactersData.forEach(row => {
       random: parseInt(row['Random']) || 0
     },
     description: row['Description'] || '',
-    combatStart: row['Combat Start'] || 'Cards',
+    combatStyle: row['Combat Style'] || 'Cards',
     startingDeck: startingDeck,
+    startingItems: startingItems,
     dice: diceFaces
   };
 });
