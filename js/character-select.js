@@ -187,6 +187,28 @@ function showIconCharacterDetails(charKey) {
           </div>
         ` : ''}
       </div>
+
+      ${(() => {
+        const startingItems = character.startingItems || [];
+        if (startingItems.length === 0) return '';
+        const itemRows = startingItems.map(itemName => {
+          const itemData = typeof items !== 'undefined' ? items.find(i => i.name === itemName) : null;
+          const rarityColor = itemData ? (itemData.rarity === 'Rare' ? '#9b59b6' : itemData.rarity === 'Uncommon' ? '#4CAF50' : '#888') : '#cc6600';
+          return `<div style="display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.3);border:1px solid ${rarityColor};border-radius:6px;padding:5px 8px;margin:3px 0;">
+            <span style="color:${rarityColor};font-weight:bold;font-size:16px;">★</span>
+            <div>
+              <div style="font-size:12px;color:white;font-weight:bold;">${itemName}</div>
+              ${itemData ? `<div style="font-size:10px;color:#aaa;">${itemData.rarity || ''} · ${itemData.type || ''}</div>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+        return `
+          <div class="details-traits-section">
+            <h3>Starting Item${startingItems.length > 1 ? 's' : ''}</h3>
+            ${itemRows}
+          </div>
+        `;
+      })()}
     `;
   } else {
     // Old traits-based format (fallback)

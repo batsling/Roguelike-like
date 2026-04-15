@@ -523,72 +523,6 @@ function updateInventory() {
                   Use${item.uses && item.uses > 1 ? ` x${item.uses}` : ''}
                 </button>
               ` : ''}
-              ${isWeapon ? (() => {
-                const isDuplicate = gameState.equippedWeapon && item.name === gameState.equippedWeapon.name;
-                const canUpgrade = isDuplicate && (gameState.weaponLevel || 1) < 3;
-
-                if (canUpgrade) {
-                  return `
-                    <div style="position: absolute; bottom: 2px; left: 2px; right: 2px; display: flex; gap: 1px; z-index: 10;">
-                      <button class="item-equip-button"
-                              data-item-index="${idx}"
-                              style="
-                                flex: 1;
-                                padding: 1px 2px;
-                                font-size: 8px;
-                                background: #ff9800;
-                                color: white;
-                                border: 1px solid #f57c00;
-                                border-radius: 2px;
-                                cursor: pointer;
-                                font-weight: bold;
-                                text-transform: uppercase;
-                              ">
-                        Equip
-                      </button>
-                      <button class="item-upgrade-button"
-                              data-item-index="${idx}"
-                              style="
-                                flex: 1;
-                                padding: 1px 2px;
-                                font-size: 8px;
-                                background: #4CAF50;
-                                color: white;
-                                border: 1px solid #2E7D32;
-                                border-radius: 2px;
-                                cursor: pointer;
-                                font-weight: bold;
-                                text-transform: uppercase;
-                              ">
-                        Upgrade
-                      </button>
-                    </div>
-                  `;
-                } else {
-                  return `
-                    <button class="item-equip-button"
-                            data-item-index="${idx}"
-                            style="
-                              position: absolute;
-                              bottom: 2px;
-                              left: 2px;
-                              right: 2px;
-                              padding: 1px 2px;
-                              font-size: 8px;
-                              background: #ff9800;
-                              color: white;
-                              border: 1px solid #f57c00;
-                              border-radius: 2px;
-                              cursor: pointer;
-                              font-weight: bold;
-                              text-transform: uppercase;
-                              z-index: 10;
-                            ">
-                      Equip
-                    </button>
-                  `;
-                }
-              })() : ''}
             </div>
           </div>
         `;
@@ -630,25 +564,6 @@ function updateInventory() {
         };
       });
 
-      // Add equip button event listeners
-      const equipButtons = gameItemsList.querySelectorAll('.item-equip-button');
-      equipButtons.forEach((button) => {
-        button.onclick = (e) => {
-          e.stopPropagation(); // Prevent triggering tooltip
-          const itemIndex = parseInt(button.dataset.itemIndex);
-          equipWeapon(itemIndex);
-        };
-      });
-
-      // Add upgrade button event listeners
-      const upgradeButtons = gameItemsList.querySelectorAll('.item-upgrade-button');
-      upgradeButtons.forEach((button) => {
-        button.onclick = (e) => {
-          e.stopPropagation(); // Prevent triggering tooltip
-          const itemIndex = parseInt(button.dataset.itemIndex);
-          upgradeWeapon(itemIndex);
-        };
-      });
     }
   }
 
@@ -1131,7 +1046,10 @@ function updateGameStats() {
   if (gameState && gameState.character && PLAYER_CHARACTERS[gameState.character]) {
     const character = PLAYER_CHARACTERS[gameState.character];
     if (characterIcon) characterIcon.src = character.fullImage || character.icon;
-    if (statsCharacterName) statsCharacterName.textContent = character.name;
+    if (statsCharacterName) {
+      const lv = (typeof gameState !== 'undefined' && gameState.playerLevel) ? gameState.playerLevel : 1;
+      statsCharacterName.innerHTML = `${character.name} <span style="color:#ff9800;font-size:13px;">Lv:${lv}</span>`;
+    }
   }
 
   // Use getTotalBonuses() to include all bonuses (scalable passives + weapon)
@@ -1410,6 +1328,38 @@ function showItemTooltip(e, item) {
     }
   }
 
+  // Build weapon card preview
+  let weaponCardHTML = '';
+  if (item.type === 'Weapon' && typeof CARDS_DATA !== 'undefined') {
+    const baseCard = CARDS_DATA.find(c => c.name === item.name && c.tags && c.tags.includes('weapon'));
+    if (baseCard) {
+      const rarityCardColors = { Rare: '#9b59b6', Uncommon: '#4CAF50', Common: '#aaa', Starter: '#888' };
+      const cardColor = rarityCardColors[baseCard.rarity] || '#aaa';
+
+      const currentCard = (gameState.deck && gameState.deck.find(c => c.name === item.name)) || null;
+      const isUpgraded = currentCard && (currentCard.upgraded || currentCard.description !== baseCard.description);
+
+      function buildCardBlock(card, label) {
+        const upgradedMark = card.upgraded ? ' +' : '';
+        return `
+          <div style="background: rgba(0,0,0,0.35); border: 1px solid ${cardColor}; border-radius: 6px; padding: 8px; margin-top: 4px;">
+            ${label ? `<div style="font-size: 10px; color: #888; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">${label}</div>` : ''}
+            <div style="font-weight: bold; color: ${cardColor}; font-size: 12px;">${card.name}${upgradedMark}</div>
+            <div style="font-size: 10px; color: #888; margin-bottom: 4px;">${card.rarity || ''} · ${card.type || ''} · Cost: ${card.cost !== undefined ? card.cost : '?'}</div>
+            <div style="font-size: 11px; color: #ddd; line-height: 1.4;">${card.description || ''}</div>
+          </div>`;
+      }
+
+      weaponCardHTML = `
+        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,165,0,0.3);">
+          <div style="font-size: 11px; color: #ffaa44; font-weight: bold; margin-bottom: 4px;">Weapon Card</div>
+          ${isUpgraded
+            ? buildCardBlock(baseCard, 'Base') + buildCardBlock(currentCard, 'Current')
+            : buildCardBlock(currentCard || baseCard, '')}
+        </div>`;
+    }
+  }
+
   // Build scaling item bonuses display (e.g., Beefy Ring)
   let scalingBonusHTML = '';
   if (item.type === 'Scaling' && item.name === 'Beefy Ring') {
@@ -1438,6 +1388,7 @@ function showItemTooltip(e, item) {
     </div>
     ${bonusesHTML}
     ${scalingBonusHTML}
+    ${weaponCardHTML}
     ${tagsHTML}
   `;
 

@@ -45,6 +45,72 @@ function rarityColor(rarity) {
   return C[(rarity || '').toLowerCase()] || C.common;
 }
 
+// ============== KEYWORD DICTIONARY ==============
+// Any term in a card description that matches a key (case-insensitive) will show
+// a definition panel to the right of the card on hover.
+const KEYWORD_DEFS = {
+  // Mechanics
+  'exhaust':          'Permanently removed from your deck for the rest of combat.',
+  'retain':           'Not discarded at end of turn.',
+  'innate':           'Placed in your hand at the start of combat.',
+  'ethereal':         'If still in hand at end of turn, this card is Exhausted.',
+  'sly':              'When discarded, triggers its Sly effect.',
+  'cleave':           'Hits all enemies and allies.',
+  'indiscriminate':   'Hits all enemies.',
+  'destroy':          'Permanently removed from your deck (not just this combat).',
+  'conjure':          'Adds a card directly to your hand.',
+  'melee':            'A close-range physical attack.',
+  'ranged':           'A long-range attack.',
+  'infuse':           'Gain the specified amount of mana.',
+  'unplayable':       'Cannot be played from hand.',
+  // Status effects
+  'weak':             'Reduces all outgoing damage by 25%.',
+  'vulnerable':       'Takes 50% more damage from all hits.',
+  'poison':           'Takes N damage at start of each turn. Stacks; each stack decays by 1 per turn.',
+  'burn':             'Takes N fire damage at start of each turn. Decays each turn.',
+  'thorns':           'Deals N damage back to melee attackers. Also adds N to your own melee attacks.',
+  'dodge':            'Negates the next N incoming hits entirely.',
+  'frail':            'Takes double damage.',
+  'stun':             'Cannot act for 1 turn.',
+  'blur':             'Block is preserved at the start of your next turn instead of clearing.',
+  'barricade':        'Block does not clear at the start of your turn.',
+  'brace':            'Reduces incoming damage by N per stack.',
+  'bruise':           'Incoming melee and ranged attacks deal +1 damage per stack.',
+  'choked':           'Takes extra damage when targeted.',
+  'shackled':         'Cannot gain block.',
+  'regeneration':     'Heals N HP at the start of each turn.',
+  'power':            'Increases outgoing damage (player) or incoming (enemy) by N stacks.',
+  'holy shield':      'Negates the next N hits entirely (before block).',
+  'soul link':        'Shares health loss with all other soul-linked entities.',
+  'leeches':          'Drains HP from the target on hit.',
+  'bleed':            'Deals damage over time.',
+  'oiled':            'Increases damage taken from fire.',
+  'ritual':           'Gains power stacks at end of each turn.',
+  'defense':          'Adds a flat bonus to all block gained.',
+  'block':            'Absorbs incoming damage before HP is lost. Clears at start of your turn.',
+  'next turn block':  'Gain N block at the start of your next turn.',
+  'next turn draw':   'Draw N extra cards at the start of your next turn.',
+  'next turn energy': 'Gain N extra energy at the start of your next turn.',
+  'well-laid plans':  'Retains up to N cards in hand at end of turn.',
+  'shiv':             '0-cost attack card that deals 4 damage. Exhaust.',
+  'assassinate':      'Deals double damage if the target is below 50% HP.',
+  'fishing weight':   'No additional effect.',
+};
+
+// Extract unique keywords found in a card description
+function getCardKeywords(card) {
+  const desc = (card.description || '').toLowerCase();
+  const found = [];
+  for (const [kw, def] of Object.entries(KEYWORD_DEFS)) {
+    // Use word-boundary–style check (preceded/followed by non-word or start/end)
+    const regex = new RegExp('(?:^|[^a-z])' + kw.replace(/[-]/g, '[- ]') + '(?:$|[^a-z])', 'i');
+    if (regex.test(desc)) {
+      found.push({ kw: kw.charAt(0).toUpperCase() + kw.slice(1), def });
+    }
+  }
+  return found;
+}
+
 // Status icon metadata
 const STATUS_META = {
   burn:           { img: 'Burn',        emoji: '🔥', label: 'Burn'         },
@@ -77,6 +143,18 @@ const STATUS_META = {
   regeneration:   { img: 'Regeneration',  emoji: '💚', label: 'Regeneration' },
   rust:           { img: 'Rust',          emoji: '⚙', label: 'Rust'         },
   soul_link:      { img: 'SoulLink',      emoji: '🔗', label: 'Soul Link'    },
+  split:          { img: 'Split',         emoji: '⚡', label: 'Split'        },
+  curl_up:        { img: 'CurlUp',        emoji: '🛡', label: 'Curl Up'      },
+  // Next-turn statuses (Separate stacking — stored as arrays)
+  next_turn_block:  { img: 'NextTurnBlock',   emoji: '🛡', label: 'Next Turn Block'   },
+  next_turn_draw:   { img: 'NextTurnDraw',    emoji: '🃏', label: 'Next Turn Draw'    },
+  next_turn_energy: { img: 'NextTurnEnergy',  emoji: '⚡', label: 'Next Turn Energy'  },
+  // Other statuses
+  blur:            { img: 'Blur',           emoji: '🌀', label: 'Blur'            },
+  choked:          { img: 'Choked',         emoji: '💀', label: 'Choked'          },
+  shackled:        { img: null,             emoji: '🔒', label: 'Shackled'        },
+  well_laid_plans: { img: 'Well-LaidPlans', emoji: '📋', label: 'Well-Laid Plans' },
+  shiv_per_turn:   { img: null,             emoji: '🗡', label: 'Shiv/Turn'       },
   // Temporary stat boosts (e.g. from pigment cards, "Gain +X Stat until end of combat")
   strength:       { img: null,            emoji: '💪', label: 'Strength'     },
   intelligence:   { img: null,            emoji: '🧠', label: 'Intelligence' },
@@ -433,7 +511,7 @@ function getIntentType(raw) {
   if (s.includes('heal'))  return 'heal';
   if (s.includes('ritual') || s.includes('get') || s.includes('power')) return 'buff';
   if (s.includes('inflict') || s.includes('burn') || s.includes('oiled')) return 'debuff';
-  if (s.includes('spawn')) return 'spawn';
+  if (s.includes('spawn') || s.includes('splitting')) return 'spawn';
   return 'attack';
 }
 
@@ -526,7 +604,7 @@ function renderIntentBadge(enemy) {
   ` : '';
 
   return `
-    <div title="${tooltipText.replace(/"/g, '&quot;')}" style="
+    <div data-intent-tooltip="${tooltipText.replace(/"/g, '&quot;')}" style="
       display:inline-flex; align-items:center; gap:4px;
       background:${style.bg}; border:1px solid ${style.border};
       border-radius:12px; padding:3px 8px;
@@ -554,87 +632,180 @@ function renderPlayerZone(combat) {
   const hpPct    = Math.max(0, (p.health / p.maxHealth) * 100);
   const hpColor  = hpPct > 50 ? '#27ae60' : hpPct > 25 ? '#f39c12' : '#c0392b';
 
+  const statusRowHTML = renderStatusRow(p.statuses, 'player');
+  const hasStatuses   = statusRowHTML.trim().length > 0;
+
   return `
     <div id="combat-player-zone" style="
-      height: 195px; flex-shrink: 0;
-      display: flex; align-items: flex-start;
-      padding: 8px 20px; gap: 16px;
+      flex-shrink: 0;
+      display: flex; flex-direction: column;
       background: rgba(0,0,0,0.35);
       border-top: 2px solid ${C.border};
     ">
-      <!-- Portrait + HP -->
-      <div style="display:flex; flex-direction:column; align-items:center; width:110px; flex-shrink:0;">
-        <div style="
-          width:110px; height:130px;
-          border-radius:8px; border:2px solid ${C.gold};
-          background:rgba(0,0,0,0.5);
-          overflow:hidden; display:flex; align-items:flex-end; justify-content:center;
-        ">
-          <img src="${portrait}" alt="${charKey}"
-            style="width:110px; object-fit:cover; object-position:top;"
-            onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=font-size:52px>🧙</span>'">
-        </div>
-        <div style="font-size:11px; color:${C.gold}; margin-top:4px; font-weight:bold;">${charKey}</div>
+      <!-- Main row: portrait | powers | actions -->
+      <div style="display:flex; align-items:flex-start; padding:8px 20px; gap:16px;">
 
-        <div style="
-          width:100%; margin-top:5px;
-          background:${C.hpBg}; border-radius:4px;
-          height:10px; overflow:hidden;
-          border:1px solid rgba(255,255,255,0.15);
-        ">
+        <!-- Portrait + name only -->
+        <div style="display:flex; flex-direction:column; align-items:center; width:100px; flex-shrink:0;">
           <div style="
-            width:${hpPct}%; height:100%;
-            background:linear-gradient(90deg,${hpColor},${hpColor}cc);
-            transition:width 0.3s; border-radius:4px;
-          "></div>
+            width:100px; height:120px;
+            border-radius:8px; border:2px solid ${C.gold};
+            background:rgba(0,0,0,0.5);
+            overflow:hidden; display:flex; align-items:flex-end; justify-content:center;
+          ">
+            <img src="${portrait}" alt="${charKey}"
+              style="width:100px; object-fit:cover; object-position:top;"
+              onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=font-size:52px>🧙</span>'">
+          </div>
+          <div style="font-size:11px; color:${C.gold}; margin-top:4px; font-weight:bold;">${charKey}</div>
         </div>
-        <div style="font-size:11px; color:${C.text}; margin-top:2px;">❤ ${p.health} / ${p.maxHealth}</div>
 
+        <!-- Powers zone -->
+        <div id="combat-powers-zone" style="
+          flex:1; display:flex; flex-wrap:wrap;
+          align-content:flex-start; gap:8px; padding:4px;
+          min-height:50px;
+        ">
+          ${renderPowersZone(combat)}
+        </div>
+
+        <!-- End turn + energy pips -->
+        ${renderActionsZone(combat)}
+      </div>
+
+      <!-- Bottom strip: HP bar | block | statuses — full width, never cramped -->
+      <div style="
+        display:flex; align-items:center; flex-wrap:wrap;
+        gap:6px; padding:4px 20px 8px;
+        border-top:1px solid rgba(255,255,255,0.08);
+      ">
+        <!-- HP bar + numbers -->
+        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+          <div style="
+            width:120px;
+            background:${C.hpBg}; border-radius:4px;
+            height:10px; overflow:hidden;
+            border:1px solid rgba(255,255,255,0.15);
+          ">
+            <div style="
+              width:${hpPct}%; height:100%;
+              background:linear-gradient(90deg,${hpColor},${hpColor}cc);
+              transition:width 0.3s; border-radius:4px;
+            "></div>
+          </div>
+          <span style="font-size:11px; color:${C.text}; white-space:nowrap;">❤ ${p.health} / ${p.maxHealth}</span>
+        </div>
+
+        <!-- Block badge (always visible when > 0) -->
         ${p.block > 0 ? `
           <div style="
-            margin-top:4px; display:flex; align-items:center; gap:4px;
+            display:flex; align-items:center; gap:4px;
             background:${C.blockBg}; border:1px solid ${C.block};
-            border-radius:8px; padding:2px 8px;
-            font-size:12px; font-weight:bold; color:#5dade2;
+            border-radius:8px; padding:2px 10px;
+            font-size:13px; font-weight:bold; color:#5dade2;
+            white-space:nowrap; flex-shrink:0;
           ">🛡 ${p.block}</div>
         ` : ''}
 
-        <div style="margin-top:4px;">${renderStatusRow(p.statuses, 'player')}</div>
-      </div>
+        <!-- Status icons — wrap freely in remaining space -->
+        ${hasStatuses ? statusRowHTML : ''}
 
-      <!-- Powers zone -->
-      <div id="combat-powers-zone" style="
-        flex:1; display:flex; flex-wrap:wrap;
-        align-content:flex-start; gap:8px; padding:4px;
-        min-height:50px;
-      ">
-        ${renderPowersZone(combat)}
+        <!-- Retained-card badge: shown when cards gained Retain that don't naturally have it -->
+        ${(() => {
+          const extraRetained = (combat.hand || []).filter(c => c._retain && !/\bretain\b/i.test(c.description || '')).length;
+          return extraRetained > 0
+            ? `<div style="display:flex;align-items:center;gap:4px;background:rgba(76,175,80,0.18);border:1px solid #4CAF50;border-radius:8px;padding:2px 8px;font-size:11px;color:#4CAF50;white-space:nowrap;flex-shrink:0;">🔒 ${extraRetained} Retained</div>`
+            : '';
+        })()}
       </div>
-
-      <!-- End turn + energy pips -->
-      ${renderActionsZone(combat)}
     </div>
   `;
 }
 
 function renderPowersZone(combat) {
-  const powers = combat.powers || [];
-  if (!powers.length) {
-    return `<div style="color:${C.textDim}; font-size:11px; padding:4px; align-self:center;">No active powers</div>`;
-  }
-  return powers.map(card => `
-    <div title="${card.description}" style="
-      background:rgba(142,68,173,0.25); border:1px solid #8e44ad;
-      border-radius:6px; padding:4px 8px;
-      font-size:11px; color:#d7bde2;
-      display:flex; align-items:center; gap:4px;
-      cursor:default;
-    ">
-      <span>✨</span>
-      <span style="font-weight:bold;">${card.name}${card.upgraded ? '+' : ''}</span>
-    </div>
-  `).join('');
+  const count = (combat.powers || []).length;
+  const label = count === 0 ? 'Powers' : `Powers (${count})`;
+  const active = count > 0;
+  return `
+    <button onclick="window._showCombatPowers && window._showCombatPowers()" style="
+      background:${active ? 'rgba(142,68,173,0.35)' : 'rgba(80,40,100,0.2)'};
+      border:1px solid ${active ? '#8e44ad' : '#5a3575'};
+      border-radius:8px; padding:5px 14px;
+      font-size:12px; color:${active ? '#d7bde2' : '#7a5a8a'};
+      cursor:pointer; transition:background 0.15s, border-color 0.15s;
+      display:flex; align-items:center; gap:5px;
+      align-self:center;
+    " onmouseenter="this.style.background='rgba(142,68,173,0.55)'"
+      onmouseleave="this.style.background='${active ? 'rgba(142,68,173,0.35)' : 'rgba(80,40,100,0.2)'}'"
+    >✨ ${label}</button>
+  `;
 }
+
+window._showCombatPowers = function() {
+  const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+  if (!combat) return;
+  const powers = combat.powers || [];
+
+  const existing = document.getElementById('combat-powers-overlay');
+  if (existing) { existing.remove(); return; }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'combat-powers-overlay';
+  overlay.style.cssText = `
+    position:fixed; inset:0; background:rgba(0,0,0,0.72);
+    display:flex; align-items:center; justify-content:center;
+    z-index:20000; font-family:'Georgia',serif;
+  `;
+
+  const cardsHTML = powers.length === 0
+    ? `<div style="color:#888; font-size:14px; padding:20px;">No powers played this combat.</div>`
+    : powers.map(card => {
+        const bc  = typeColor(card.type);
+        const bg  = cardTypeBg(card.type);
+        const img = card.imageUrl || '';
+        return `
+          <div style="
+            background:${bg}; border:2px solid ${bc}; border-radius:8px;
+            padding:8px; display:flex; flex-direction:column; align-items:center;
+            min-width:110px; max-width:130px; flex-shrink:0;
+          ">
+            <div style="width:100%;height:60px;background:rgba(0,0,0,0.3);border-radius:5px;
+              display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:6px;">
+              ${img
+                ? `<img src="${img}" style="width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;"
+                     onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:28px>✨</span>'">`
+                : `<span style="font-size:28px;">✨</span>`}
+            </div>
+            <div style="font-size:11px;font-weight:bold;color:white;text-align:center;margin-bottom:2px;">
+              ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
+            </div>
+            <div style="font-size:9px;color:#ddd;text-align:center;line-height:1.35;">${card.description}</div>
+          </div>
+        `;
+      }).join('');
+
+  overlay.innerHTML = `
+    <div style="
+      background:#12001e; border:2px solid #8e44ad; border-radius:12px;
+      padding:20px; max-width:680px; width:90vw; max-height:75vh;
+      display:flex; flex-direction:column;
+      box-shadow:0 10px 40px rgba(0,0,0,0.95);
+    ">
+      <h2 style="color:#d7bde2; text-align:center; margin:0 0 14px; font-size:17px;">✨ Active Powers</h2>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; overflow-y:auto; flex:1; padding:4px;">
+        ${cardsHTML}
+      </div>
+      <div style="text-align:center; margin-top:14px;">
+        <button onclick="document.getElementById('combat-powers-overlay')?.remove()" style="
+          padding:8px 24px; background:#444; border:none; border-radius:8px;
+          color:#aaa; cursor:pointer; font-size:13px; font-weight:bold;
+        ">Close</button>
+      </div>
+    </div>
+  `;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+};
 
 function renderActionsZone(combat) {
   const isPlayerTurn = combat.phase === 'player_action';
@@ -649,15 +820,17 @@ function renderActionsZone(combat) {
     ">
       <!-- Energy pips -->
       <div style="display:flex; align-items:center; gap:5px;">
-        ${Array.from({length: maxEnergy}, (_, i) => `
-          <div style="
+        ${Array.from({length: Math.max(maxEnergy, energy)}, (_, i) => {
+          const filled = i < energy;
+          const bonus  = i >= maxEnergy; // extra pip from Ice Cream carry-over
+          return `<div style="
             width:18px; height:18px; border-radius:50%;
-            background:${i < energy ? '#e67e22' : '#3d2b1a'};
-            border:2px solid ${i < energy ? '#f39c12' : '#5a3a1a'};
-            box-shadow:${i < energy ? '0 0 6px #f39c12' : 'none'};
+            background:${filled ? (bonus ? '#9b59b6' : '#e67e22') : '#3d2b1a'};
+            border:2px solid ${filled ? (bonus ? '#c39bd3' : '#f39c12') : '#5a3a1a'};
+            box-shadow:${filled ? (bonus ? '0 0 6px #c39bd3' : '0 0 6px #f39c12') : 'none'};
             transition:all 0.2s;
-          "></div>
-        `).join('')}
+          "></div>`;
+        }).join('')}
         <span style="color:${C.gold}; font-size:12px; margin-left:3px;">${energy}/${maxEnergy}</span>
       </div>
 
@@ -699,51 +872,111 @@ function typeEmoji(type) {
   return {attack:'⚔',skill:'✨',power:'💜',dice:'🎲',status:'⊘'}[(type||'').toLowerCase()] || '🃏';
 }
 
+// Check if a card's "If" condition is currently satisfied in combat state.
+// Returns true if condition is met (card should glow), false otherwise.
+function checkCardCondition(card, combat) {
+  const desc = card.description || '';
+  const player = combat.player;
+
+  // "If the target has [Status]" — check targeted enemy or any alive enemy
+  const targetStatusMatch = desc.match(/If the target has (\w+)/i);
+  if (targetStatusMatch) {
+    const statusKey = targetStatusMatch[1].toLowerCase();
+    // Use targeted enemy, fall back to first alive enemy
+    const target = combat.enemies.find(e => e.id === combat.targetedEnemyId && e.health > 0)
+                || combat.enemies.find(e => e.health > 0);
+    return !!(target && (target.statuses[statusKey] || 0) > 0);
+  }
+
+  // "If the target has Poison, deal ... instead" (Bane)
+  const baneCondMatch = desc.match(/If the target has (\w+),/i);
+  if (baneCondMatch) {
+    const statusKey = baneCondMatch[1].toLowerCase();
+    const target = combat.enemies.find(e => e.id === combat.targetedEnemyId && e.health > 0)
+                || combat.enemies.find(e => e.health > 0);
+    return !!(target && (target.statuses[statusKey] || 0) > 0);
+  }
+
+  // "If you have Discarded a Card this turn" (Sneaky Strike)
+  if (/If you have Discarded a Card this turn/i.test(desc)) {
+    return !!combat._discardedThisTurn;
+  }
+
+  return false;
+}
+
 function renderCardInHand(card, index, total, combat) {
-  const isSelected    = combat.selectedCardIndex === index;
-  const isPlayerTurn  = combat.phase === 'player_action';
-  const canAfford     = (card.cost || 0) <= (combat.player.energy || 0);
+  const isSelected   = combat.selectedCardIndex === index;
+  const isPlayerTurn = combat.phase === 'player_action';
+  const isXCost      = card.cost === 'X';
+  const isNoCost     = card.cost === 'No';
+  // Compute effective cost (accounts for Eviscerate / Masterful Stab / free-cost cards)
+  const effectiveCost = (window.CombatEngine && window.CombatEngine.getEffectiveCost)
+    ? window.CombatEngine.getEffectiveCost(card)
+    : (card._freeCost ? 0 : card.cost);
+  const displayCost = isXCost ? 'X' : isNoCost ? '—' : effectiveCost;
+  const canAfford    = !isNoCost && (isXCost || ((typeof effectiveCost === 'number' ? effectiveCost : card.cost) <= (combat.player.energy || 0)));
+
+  // Check if the card's "If" condition is currently met (highlight like STS)
+  const conditionMet = isPlayerTurn && /\bIf\b/i.test(card.description || '') && checkCardCondition(card, combat);
+
+  // Responsive card dimensions based on hand size
+  let cardW, cardH, marginL, artH, namePx, descPx, orbW;
+  if (total <= 5) {
+    cardW = 92; cardH = 134; marginL = -24; artH = 58; namePx = 10; descPx = 8.5; orbW = 27;
+  } else if (total <= 7) {
+    cardW = 80; cardH = 118; marginL = -18; artH = 50; namePx = 9;  descPx = 7.5; orbW = 25;
+  } else if (total <= 9) {
+    cardW = 70; cardH = 104; marginL = -14; artH = 44; namePx = 8.5; descPx = 7;  orbW = 23;
+  } else {
+    cardW = 62; cardH = 92;  marginL = -10; artH = 38; namePx = 8;   descPx = 6.5; orbW = 21;
+  }
 
   // Fan geometry — spread cards in an arc
-  const t         = total <= 1 ? 0 : (index - (total - 1) / 2) / ((total - 1) / 2);
-  const maxAngle  = Math.min(5 * (total - 1), 28);
-  const rotation  = t * (maxAngle / 2);
-  const yLift     = (1 - Math.abs(t)) * 8;  // center cards slightly higher
+  const t        = total <= 1 ? 0 : (index - (total - 1) / 2) / ((total - 1) / 2);
+  const maxAngle = Math.min(4 * (total - 1), 24);
+  const rotation = t * (maxAngle / 2);
+  const yLift    = (1 - Math.abs(t)) * 7;
 
-  const borderColor   = typeColor(card.type);
-  const bgColor       = cardTypeBg(card.type);
-  const costColor     = canAfford ? '#ffd700' : '#e74c3c';
-  const imgSrc        = card.imageUrl || 'images/cards/default.png';
+  const borderColor = typeColor(card.type);
+  const bgColor     = cardTypeBg(card.type);
+  const costColor   = canAfford ? '#ffd700' : '#e74c3c';
+  const imgSrc      = card.imageUrl || '';
 
   const baseTransform = `rotate(${rotation}deg) translateY(${-yLift}px)`;
-  const selTransform  = `rotate(${rotation * 0.3}deg) translateY(-32px) scale(1.18)`;
-  const hoverTrans    = `rotate(${rotation * 0.2}deg) translateY(-52px) scale(1.45)`;
+  const selTransform  = `rotate(${rotation * 0.3}deg) translateY(-30px) scale(1.18)`;
+  const hoverTrans    = `rotate(${rotation * 0.2}deg) translateY(-50px) scale(1.42)`;
 
+  // Condition-met glow: bright teal pulse when the "If" clause is satisfied
+  const condGlow  = '#00e5ff';
   const boxShadow = isSelected
-    ? `0 0 22px ${C.goldBright}aa`
-    : `0 4px 12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.07)`;
+    ? `0 0 20px ${C.goldBright}bb, 0 0 6px ${borderColor}88`
+    : conditionMet
+      ? `0 0 14px ${condGlow}cc, 0 0 5px ${condGlow}88, 0 4px 10px rgba(0,0,0,0.6)`
+      : `0 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)`;
+  const activeBorder = isSelected ? C.goldBright : conditionMet ? condGlow : borderColor;
 
-  const marginLeft = index > 0 ? 'margin-left:-22px;' : '';
+  const ml = index > 0 ? `margin-left:${marginL}px;` : '';
 
-  const hoJS = `this.style.transform='${hoverTrans}';this.style.zIndex='95';this.style.boxShadow='0 8px 28px rgba(0,0,0,0.75), 0 0 14px ${borderColor}77';`;
+  const hoJS  = `this.style.transform='${hoverTrans}';this.style.zIndex='95';this.style.boxShadow='0 10px 30px rgba(0,0,0,0.8), 0 0 16px ${conditionMet ? condGlow : borderColor}99';`;
   const hoOut = `this.style.transform='${isSelected ? selTransform : baseTransform}';this.style.zIndex='${isSelected ? 90 : 20 + index}';this.style.boxShadow='${boxShadow}';`;
 
   return `
     <div class="combat-hand-card" data-hand-index="${index}"
       style="
         position:relative;
-        width:90px; height:130px;
+        width:${cardW}px; height:${cardH}px;
         background:${bgColor};
-        border:2px solid ${isSelected ? C.goldBright : borderColor};
-        border-radius:8px;
-        ${marginLeft}
+        border:2px solid ${activeBorder};
+        border-radius:9px;
+        ${ml}
         flex-shrink:0;
         cursor:${isPlayerTurn ? 'pointer' : 'default'};
-        opacity:${isPlayerTurn && !canAfford ? 0.6 : 1};
+        opacity:${isPlayerTurn && !canAfford ? 0.55 : 1};
         transform-origin:bottom center;
         transform:${isSelected ? selTransform : baseTransform};
         z-index:${isSelected ? 90 : 20 + index};
-        transition:transform 0.15s, box-shadow 0.15s;
+        transition:transform 0.14s ease, box-shadow 0.14s ease, opacity 0.1s;
         box-shadow:${boxShadow};
         display:flex; flex-direction:column;
         overflow:hidden;
@@ -754,55 +987,75 @@ function renderCardInHand(card, index, total, combat) {
       <!-- Cost orb -->
       <div style="
         position:absolute; top:-1px; left:-1px;
-        width:26px; height:26px;
-        background:radial-gradient(circle at 40% 35%, #f7c03a, #b86000);
+        width:${orbW}px; height:${orbW}px;
+        background:radial-gradient(circle at 38% 32%, #f9cd45, #c07000, #7a3e00);
         border:2px solid ${costColor};
         border-radius:50%;
         display:flex; align-items:center; justify-content:center;
-        font-weight:bold; font-size:13px; color:white;
+        font-weight:bold; font-size:${orbW - 13}px; color:white;
         z-index:3;
-        box-shadow:0 0 6px ${costColor}99;
-      ">${card.cost}</div>
+        box-shadow:0 0 7px ${costColor}bb;
+        text-shadow:0 1px 2px rgba(0,0,0,0.7);
+      ">${isNoCost ? '🚫' : displayCost}</div>
 
       <!-- Art area -->
       <div style="
-        width:100%; height:54px;
-        background:rgba(0,0,0,0.35);
-        border-bottom:1px solid ${borderColor}44;
+        width:100%; height:${artH}px;
+        background:linear-gradient(180deg,rgba(0,0,0,0.45),rgba(0,0,0,0.25));
+        border-bottom:1px solid ${borderColor}55;
         display:flex; align-items:center; justify-content:center;
         overflow:hidden; flex-shrink:0;
       ">
-        <img src="${imgSrc}" alt="${card.name}"
-          style="max-width:80px; max-height:52px; object-fit:contain;"
-          onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:24px>${typeEmoji(card.type)}</span>'">
+        ${imgSrc
+          ? `<img src="${imgSrc}" alt=""
+               style="width:100%;height:100%;object-fit:contain;padding:3px;box-sizing:border-box;"
+               onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:${artH - 10}px>${typeEmoji(card.type)}</span>'">`
+          : `<span style="font-size:${artH - 10}px;">${typeEmoji(card.type)}</span>`}
       </div>
 
       <!-- Name -->
       <div style="
-        padding:3px 4px 1px; font-size:9.5px; font-weight:bold; color:white;
+        padding:3px 5px 1px;
+        font-size:${namePx}px; font-weight:700; color:#f0e8d8;
         text-align:center; line-height:1.2; flex-shrink:0;
-      ">${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}</div>
+        text-shadow:0 1px 3px rgba(0,0,0,0.8);
+        letter-spacing:0.2px;
+      ">${card.name}${card.upgraded ? `<span style="color:#4CAF50;font-size:${namePx + 1}px;">⁺</span>` : ''}</div>
 
       <!-- Divider -->
-      <div style="height:1px; background:${borderColor}55; margin:1px 4px; flex-shrink:0;"></div>
+      <div style="height:1px; background:linear-gradient(90deg,transparent,${borderColor}88,transparent); margin:1px 3px; flex-shrink:0;"></div>
 
       <!-- Description -->
       <div style="
-        flex:1; padding:2px 5px;
-        font-size:8px; color:#ddd;
-        text-align:center; line-height:1.3;
+        flex:1; padding:2px 4px;
+        font-size:${descPx}px; color:#ccc;
+        text-align:center; line-height:1.35;
         overflow:hidden;
-      ">${card.description}</div>
+      ">${card.description}${card._retain && !/\bretain\b/i.test(card.description) ? ' <span style="color:#4CAF50;font-size:' + (descPx - 0.5) + 'px;">Retain.</span>' : ''}</div>
 
       <!-- Type footer -->
       <div style="
         padding:2px 4px;
-        background:rgba(0,0,0,0.35);
+        background:${borderColor}22;
         border-top:1px solid ${borderColor}44;
-        font-size:8px; color:${borderColor};
+        font-size:${descPx - 0.5}px; color:${borderColor};
         text-align:center; flex-shrink:0;
-        text-transform:uppercase; letter-spacing:0.5px;
+        text-transform:uppercase; letter-spacing:0.6px; font-weight:600;
       ">${card.type || 'Card'}</div>
+
+      ${(() => {
+        const scalingBonus = combat._scalingCounters && combat._scalingCounters[card.name];
+        if (!scalingBonus) return '';
+        return `<div style="
+          position:absolute; bottom:22px; right:-1px;
+          background:#c0392b; border:1px solid #ff6b6b;
+          border-radius:6px 0 0 6px;
+          padding:1px 5px;
+          font-size:${descPx - 0.5}px; font-weight:bold; color:#fff;
+          pointer-events:none; z-index:4;
+          text-shadow:0 1px 2px rgba(0,0,0,0.7);
+        ">+${scalingBonus}</div>`;
+      })()}
     </div>
   `;
 }
@@ -943,21 +1196,32 @@ window._showCombatPile = function(pileType) {
   const existing = document.getElementById('combat-pile-overlay');
   if (existing) existing.remove();
 
-  const cardsHTML = pile.map(card => {
-    const bc = typeColor(card.type);
-    const bg = cardTypeBg(card.type);
+  const cardsHTML = pile.map((card, idx) => {
+    const bc  = typeColor(card.type);
+    const bg  = cardTypeBg(card.type);
+    const img = card.imageUrl || '';
     return `
-      <div style="
+      <div data-pile-card-idx="${idx}" style="
         background:${bg}; border:2px solid ${bc};
-        border-radius:8px; padding:8px 10px;
+        border-radius:8px; padding:6px 8px;
         display:flex; flex-direction:column; align-items:center;
         min-width:95px; max-width:115px; flex-shrink:0;
-      ">
-        <div style="font-size:10px; font-weight:bold; color:white; text-align:center; margin-bottom:3px;">
+        cursor:default; transition:transform 0.12s,box-shadow 0.12s;
+      "
+      onmouseenter="this.style.transform='scale(1.06)';this.style.boxShadow='0 4px 14px rgba(0,0,0,0.7)'"
+      onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div style="width:100%;height:54px;background:rgba(0,0,0,0.3);border-radius:5px;margin-bottom:5px;
+          display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+          ${img
+            ? `<img src="${img}" alt="" style="width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;"
+                 onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:26px>${typeEmoji(card.type)}</span>'">`
+            : `<span style="font-size:26px;">${typeEmoji(card.type)}</span>`}
+        </div>
+        <div style="font-size:10px; font-weight:bold; color:white; text-align:center; margin-bottom:2px;">
           ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
         </div>
-        <div style="font-size:9px; color:${bc}; margin-bottom:3px;">${card.type} · ${card.rarity || ''}</div>
-        <div style="font-size:8px; color:#ddd; text-align:center; margin-bottom:4px; min-height:24px; line-height:1.3;">${card.description}</div>
+        <div style="font-size:9px; color:${bc}; margin-bottom:2px;">${card.type} · ${card.rarity || ''}</div>
+        <div style="font-size:8px; color:#ddd; text-align:center; margin-bottom:3px; min-height:20px; line-height:1.3;">${card.description}</div>
         <div style="font-size:10px; color:#ffd700;">⚡${card.cost}</div>
       </div>
     `;
@@ -1002,6 +1266,14 @@ window._showCombatPile = function(pileType) {
   // Close on button click or backdrop click
   document.getElementById('combat-pile-close').addEventListener('click', () => overlay.remove());
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+  // Click card to zoom in
+  overlay.querySelectorAll('[data-pile-card-idx]').forEach(el => {
+    el.addEventListener('click', () => {
+      const card = pile[parseInt(el.dataset.pileCardIdx)];
+      if (card && typeof showCardZoomOverlay === 'function') showCardZoomOverlay(card);
+    });
+  });
 };
 
 // ============== COMBAT LOG PANEL ==============
@@ -1049,7 +1321,7 @@ function showStatusTooltip(event, key, val) {
     tip = document.createElement('div');
     tip.id = 'combat-status-tooltip';
     tip.style.cssText = `
-      position:fixed; z-index:25000; pointer-events:none;
+      position:fixed; z-index:9000; pointer-events:none;
       background:linear-gradient(145deg,rgba(20,20,30,0.97),rgba(15,15,25,0.97));
       border:2px solid #888; border-radius:8px; padding:10px 12px;
       max-width:240px; box-shadow:0 4px 20px rgba(0,0,0,0.8);
@@ -1064,13 +1336,22 @@ function showStatusTooltip(event, key, val) {
   const type = data ? data.type : '';
   const decay = data ? data.decay : '';
   const typeColor = type === 'Buff' ? '#4CAF50' : type === 'Debuff' ? '#e74c3c' : '#aaa';
+  const imgPath = meta.img ? `images/statuses/${meta.img}.png` : null;
   tip.innerHTML = `
-    <div style="font-weight:bold;font-size:13px;margin-bottom:4px;">
-      ${meta.emoji} ${name}
-      ${val > 0 ? `<span style="color:#ffcc44;margin-left:6px;">×${val}</span>` : ''}
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      ${imgPath
+        ? `<img src="${imgPath}" style="width:28px;height:28px;object-fit:contain;flex-shrink:0;"
+             onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=font-size:18px>${meta.emoji}</span>')">`
+        : `<span style="font-size:18px;">${meta.emoji}</span>`}
+      <div>
+        <div style="font-weight:bold;font-size:13px;">
+          ${name}
+          ${val > 0 ? `<span style="color:#ffcc44;margin-left:6px;">×${val}</span>` : ''}
+        </div>
+        ${type ? `<div style="color:${typeColor};font-size:10px;">${type}</div>` : ''}
+      </div>
     </div>
-    ${desc ? `<div style="color:#ccc;font-size:11px;margin-bottom:4px;">${desc}</div>` : ''}
-    ${type ? `<div style="color:${typeColor};font-size:10px;">${type}</div>` : ''}
+    ${desc ? `<div style="color:#ccc;font-size:11px;margin-bottom:4px;line-height:1.4;">${desc}</div>` : ''}
     ${decay && decay !== 'None' ? `<div style="color:#888;font-size:10px;margin-top:2px;">⏱ ${decay}</div>` : ''}
   `;
   const x = Math.min(event.clientX + 12, window.innerWidth - 260);
@@ -1087,7 +1368,16 @@ function hideStatusTooltip() {
 
 function renderStatusRow(statuses, _id) {
   if (!statuses) return '';
-  const entries = Object.entries(statuses).filter(([k, v]) => v > 0 && k !== 'block');
+  // Build entries, expanding array-type Separate statuses into one icon per instance
+  const entries = [];
+  Object.entries(statuses).forEach(([k, v]) => {
+    if (k === 'block') return;
+    if (Array.isArray(v)) {
+      v.forEach(instance => { if (instance > 0) entries.push([k, instance]); });
+    } else if (v > 0) {
+      entries.push([k, v]);
+    }
+  });
   if (!entries.length) return '';
   return `
     <div style="display:flex; flex-wrap:wrap; gap:3px; justify-content:center;">
@@ -1095,7 +1385,7 @@ function renderStatusRow(statuses, _id) {
         const meta    = STATUS_META[key] || { img:null, emoji:'•', label:key };
         const imgPath = meta.img ? `images/statuses/${meta.img}.png` : null;
         return `
-          <div style="
+          <div class="combat-status-icon" style="
             position:relative; width:22px; height:22px;
             display:flex; align-items:center; justify-content:center;
             background:rgba(0,0,0,0.5);
@@ -1147,12 +1437,22 @@ function attachCombatEventListeners(combat) {
   }
 
   // Enemy clicks + pattern hover tooltip
+  // Pattern tooltip shows only when NOT hovering status icons or the intent badge
   ensureEnemyPatternTooltip();
   document.querySelectorAll('.enemy-card').forEach(el => {
     el.addEventListener('click', () => handleEnemyClick(el.dataset.enemyId));
-    el.addEventListener('mouseenter', (e) => showEnemyPatternTooltip(el, e));
+    el.addEventListener('mouseenter', (e) => {
+      if (e.target.closest('[data-intent-tooltip]') || e.target.closest('.combat-status-icon')) return;
+      showEnemyPatternTooltip(el, e);
+    });
     el.addEventListener('mouseleave', () => hideEnemyPatternTooltip());
-    el.addEventListener('mousemove', (e) => positionEnemyPatternTooltip(e));
+    el.addEventListener('mousemove', (e) => {
+      if (e.target.closest('[data-intent-tooltip]') || e.target.closest('.combat-status-icon')) {
+        hideEnemyPatternTooltip();
+        return;
+      }
+      positionEnemyPatternTooltip(e);
+    });
   });
 
   // Card hand: click + drag mousedown + tooltip (all per-render)
@@ -1173,13 +1473,18 @@ function handleEnemyClick(enemyId) {
     // enemyId already has the full id (e.g. "enemy_0") — pass directly
     const result    = window.CombatEngine.playCard(cardIndex, enemyId);
     if (result && result.success) {
+      const hitLog = [...(combat._hitLog || [])];
+      combat._hitLog = [];
       combat.selectedCardIndex = null;
       animateCardPlay(cardIndex, enemyId, () => {
-        showHPDiffs(snap, combat);
+        showHPDiffs(snap, combat, hitLog.length > 0);
         checkAndFlashReshuffle(snap, combat);
-        updateCombatDisplay();
-        checkCombatEnd();
+        replayHits(hitLog, () => {
+          updateCombatDisplay();
+          checkCombatEnd();
+        });
       });
+      updateCombatDisplay(); // Immediately remove card from hand
     }
     return;
   }
@@ -1197,7 +1502,7 @@ function handleCardClick(index) {
   const card = hand[index];
   if (!card) return;
 
-  const canAfford = (card.cost || 0) <= (combat.player.energy || 0);
+  const canAfford = card.cost !== 'No' && (card.cost === 'X' || (card.cost || 0) <= (combat.player.energy || 0));
   if (!canAfford) {
     // Shake the card as visual feedback
     const cardEl = document.querySelector(`.combat-hand-card[data-hand-index="${index}"]`);
@@ -1225,13 +1530,18 @@ function handleCardClick(index) {
     const snap   = captureHPSnapshot(combat);
     const result = window.CombatEngine.playCard(index, null);
     if (result && result.success) {
+      const hitLog = [...(combat._hitLog || [])];
+      combat._hitLog = [];
       combat.selectedCardIndex = null;
       animateCardPlay(index, null, () => {
-        showHPDiffs(snap, combat);
+        showHPDiffs(snap, combat, hitLog.length > 0);
         checkAndFlashReshuffle(snap, combat);
-        updateCombatDisplay();
-        checkCombatEnd();
+        replayHits(hitLog, () => {
+          updateCombatDisplay();
+          checkCombatEnd();
+        });
       });
+      updateCombatDisplay(); // Immediately remove card from hand
     }
   }
 }
@@ -1334,7 +1644,7 @@ function ensureDragAndKeyListeners() {
     const card = (combat.hand || [])[cardIndex];
     if (!card) return;
 
-    const canAfford  = (card.cost || 0) <= (combat.player.energy || 0);
+    const canAfford  = card.cost !== 'No' && (card.cost === 'X' || (card.cost || 0) <= (combat.player.energy || 0));
     if (!canAfford) return;
 
     const needsTarget = window.CombatEngine.cardNeedsTarget
@@ -1423,7 +1733,7 @@ function attachCardTooltip() {
 
       const bc        = typeColor(card.type);
       const bg        = cardTypeBg(card.type);
-      const canAfford = (card.cost || 0) <= (combat.player.energy || 0);
+      const canAfford = card.cost !== 'No' && (card.cost === 'X' || (card.cost || 0) <= (combat.player.energy || 0));
       const costColor = canAfford ? '#ffd700' : '#e74c3c';
 
       const tt = getTooltip();
@@ -1455,7 +1765,7 @@ function attachCardTooltip() {
                 border:2px solid ${costColor}; border-radius:50%;
                 display:flex; align-items:center; justify-content:center;
                 font-weight:bold; font-size:15px; color:white;
-              ">${card.cost}</div>
+              ">${card.cost === 'No' ? '🚫' : card.cost}</div>
               <div>
                 <div style="font-size:12px; font-weight:bold; color:white; line-height:1.2;">
                   ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
@@ -1498,11 +1808,45 @@ function attachCardTooltip() {
       tt.style.left    = left + 'px';
       tt.style.top     = top  + 'px';
       tt.style.opacity = '1';
+
+      // Keyword panel — shown to the right of the card
+      const keywords = getCardKeywords(card);
+      let kwEl = document.getElementById('combat-card-keywords');
+      if (!kwEl) {
+        kwEl = document.createElement('div');
+        kwEl.id = 'combat-card-keywords';
+        kwEl.style.cssText = 'position:fixed;opacity:0;z-index:199;pointer-events:none;transition:opacity 0.12s;';
+        document.body.appendChild(kwEl);
+      }
+      if (keywords.length > 0) {
+        kwEl.innerHTML = `<div style="
+          background:rgba(10,10,20,0.97); border:1px solid rgba(255,255,255,0.15);
+          border-radius:8px; padding:6px 10px; max-width:180px;
+          box-shadow:0 6px 24px rgba(0,0,0,0.85);
+          display:flex; flex-direction:column; gap:6px;
+          font-family:'Georgia',serif;
+        ">${keywords.map(({ kw, def }) => `
+          <div>
+            <div style="font-size:10px; font-weight:bold; color:#f0c070; letter-spacing:0.3px;">${kw}</div>
+            <div style="font-size:9px; color:#bbb; line-height:1.4;">${def}</div>
+          </div>`).join('<div style="height:1px;background:rgba(255,255,255,0.08);"></div>')}</div>`;
+        const kwW  = 192;
+        const kwTop = rect.top;
+        let   kwLeft = rect.right + 8;
+        if (kwLeft + kwW > window.innerWidth - 6) kwLeft = rect.left - kwW - 8;
+        kwEl.style.left    = kwLeft + 'px';
+        kwEl.style.top     = kwTop  + 'px';
+        kwEl.style.opacity = '1';
+      } else {
+        kwEl.style.opacity = '0';
+      }
     });
 
     el.addEventListener('mouseleave', () => {
       _tooltipTimer = setTimeout(() => {
         if (_tooltipEl) _tooltipEl.style.opacity = '0';
+        const kwEl = document.getElementById('combat-card-keywords');
+        if (kwEl) kwEl.style.opacity = '0';
       }, 80);
     });
   });
@@ -1527,7 +1871,8 @@ function captureHPSnapshot(combat) {
 }
 
 // Show floating +/- numbers based on HP diff between snapshot and current state
-function showHPDiffs(oldSnap, combat) {
+// skipEnemyDmg: pass true when replayHits will handle per-hit enemy damage numbers
+function showHPDiffs(oldSnap, combat, skipEnemyDmg = false) {
   // Player
   const pHP = combat.player.health - oldSnap.playerHP;
   if (pHP < 0) showFloatingNumber('combat-player-zone', Math.abs(pHP), 'damage');
@@ -1535,7 +1880,8 @@ function showHPDiffs(oldSnap, combat) {
   const pBlk = (combat.player.block || 0) - oldSnap.playerBlock;
   if (pBlk > 0) showFloatingNumber('combat-player-zone', pBlk, 'block');
 
-  // Enemies
+  // Enemies — skip individual damage when replayHits will handle it
+  if (skipEnemyDmg) return;
   (combat.enemies || []).forEach(e => {
     const prev = oldSnap.enemies[e.id];
     if (!prev) return;
@@ -1748,6 +2094,46 @@ function showFloatingNumber(elementId, value, type) {
   setTimeout(() => f.remove(), 1000);
 }
 
+// Show a damage float near a specific combat target
+function showTargetedFloat(targetId, dmg) {
+  let el;
+  if (targetId === 'player') {
+    el = document.getElementById('combat-player-zone');
+  } else if (targetId) {
+    el = document.getElementById(`enemy-card-${targetId}`);
+  }
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const f = document.createElement('div');
+  f.style.cssText = `
+    position:fixed;
+    left:${rect.left + rect.width / 2}px;
+    top:${rect.top + rect.height * 0.25}px;
+    color:#e74c3c; font-size:18px; font-weight:bold;
+    pointer-events:none; z-index:99999;
+    text-shadow:0 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(231,76,60,0.5);
+    transform:translateX(-50%);
+    animation:floatUp 0.75s ease-out forwards;
+  `;
+  f.textContent = `-${dmg}`;
+  document.body.appendChild(f);
+  setTimeout(() => f.remove(), 780);
+}
+
+// Play back a multi-hit log with 160ms between each hit, then call onDone
+function replayHits(hitLog, onDone) {
+  const hits = (hitLog || []).filter(h => h && h.dmg > 0);
+  if (hits.length <= 1) { onDone && onDone(); return; }
+  let i = 0;
+  function next() {
+    if (i >= hits.length) { onDone && onDone(); return; }
+    showTargetedFloat(hits[i].targetId, hits[i].dmg);
+    i++;
+    setTimeout(next, 160);
+  }
+  next();
+}
+
 // ============== UPDATE / CHECK END ==============
 
 function updateCombatDisplay() {
@@ -1773,6 +2159,211 @@ function checkCombatEnd() {
     console.warn('[CombatUI] checkCombatEnd: phase =', combat.phase, '— no override active');
   }
 }
+
+// ============== CARD PICKER MODAL ==============
+// Shown when a card effect requires the player to choose card(s) from a pile.
+// options: { action: 'discard'|'exhaust', pile: 'hand'|'draw'|'discard'|'exhaust', count: N }
+
+window.showCardPickerModal = function(options) {
+  const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+  if (!combat) return;
+
+  const { action, pile, count } = options;
+  const actionLabel = action === 'discard' ? 'Discard' : action === 'setup' ? 'Setup' : action === 'nightmare' ? 'Choose' : action === 'topdraw' ? 'Top of Draw' : action === 'upgrade' ? 'Upgrade' : action === 'copy' ? 'Copy' : 'Exhaust';
+  const actionColor = action === 'discard' ? '#f39c12' : action === 'setup' ? '#4fc3f7' : action === 'nightmare' ? '#9b59b6' : action === 'topdraw' ? '#2ecc71' : action === 'upgrade' ? '#3498db' : action === 'copy' ? '#e67e22' : '#7f8c8d';
+
+  const pileMap = {
+    hand:    { cards: combat.hand || [],        label: 'Hand'         },
+    draw:    { cards: combat.drawPile || [],    label: 'Draw Pile'    },
+    discard: { cards: combat.discardPile || [], label: 'Discard Pile' },
+    exhaust: { cards: combat.exhaustPile || [], label: 'Exhaust Pile' },
+  };
+  let { cards: pileCards, label: pileLabel } = pileMap[pile] || pileMap.hand;
+
+  // Filter by allowed types if specified (Dual Wield — only Attack/Power cards)
+  if (options._typesAllowed) {
+    pileCards = pileCards.filter(c => options._typesAllowed.includes((c.type || '').toLowerCase()));
+  }
+
+  // If nothing to pick from, skip
+  if (pileCards.length === 0) return;
+
+  // Track selected indices
+  const selected = new Set();
+
+  // Remove any existing picker
+  const existing = document.getElementById('combat-card-picker');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'combat-card-picker';
+  overlay.style.cssText = `
+    position:fixed; inset:0; background:rgba(0,0,0,0.80);
+    display:flex; align-items:center; justify-content:center;
+    z-index:25000; font-family:'Georgia',serif;
+  `;
+
+  overlay.innerHTML = `
+    <div id="card-picker-panel" style="
+      background:#1a0808; border:2px solid ${actionColor};
+      border-radius:12px; padding:20px;
+      max-width:840px; width:92vw; max-height:82vh;
+      display:flex; flex-direction:column;
+      box-shadow:0 10px 40px rgba(0,0,0,0.95);
+    ">
+      <h2 style="color:${actionColor}; text-align:center; margin:0 0 6px; font-size:18px;">
+        ${actionLabel} ${count} Card${count !== 1 ? 's' : ''}
+      </h2>
+      <p style="color:#aaa; text-align:center; margin:0 0 14px; font-size:12px;">
+        ${action === 'nightmare' ? `Choose a card to conjure ${options._nightmareCount || 3} copies of next turn.` : action === 'topdraw' ? `Choose a card to place on top of your Draw Pile.` : action === 'upgrade' ? `Choose a card to upgrade for the rest of combat.` : action === 'copy' ? `Choose an Attack or Power card to conjure ${options._copyCount || 1} cop${(options._copyCount || 1) !== 1 ? 'ies' : 'y'} of to Hand.` : `Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to ${actionLabel.toLowerCase()}.`}
+      </p>
+      <div id="card-picker-grid" style="
+        display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+        overflow-y:auto; flex:1; padding:4px;
+      ">
+        ${pileCards.map((card, idx) => {
+          const bc = typeColor(card.type);
+          const bg = cardTypeBg(card.type);
+          const imgSrc = card.imageUrl || '';
+          return `
+            <div class="picker-card" data-picker-idx="${idx}" style="
+              background:${bg}; border:2px solid ${bc};
+              border-radius:8px; padding:6px 8px;
+              display:flex; flex-direction:column; align-items:center;
+              min-width:95px; max-width:115px; flex-shrink:0;
+              cursor:pointer; transition:transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+              user-select:none;
+            ">
+              <div style="width:100%; height:54px; background:rgba(0,0,0,0.35);
+                border-radius:5px; margin-bottom:5px;
+                display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0;">
+                ${imgSrc
+                  ? `<img src="${imgSrc}" alt="" style="width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;"
+                       onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:28px>${typeEmoji(card.type)}</span>'">`
+                  : `<span style="font-size:28px;">${typeEmoji(card.type)}</span>`}
+              </div>
+              <div style="font-size:10px; font-weight:bold; color:white; text-align:center; margin-bottom:2px;">
+                ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
+              </div>
+              <div style="font-size:9px; color:${bc}; margin-bottom:2px;">${card.type} · ${card.rarity || ''}</div>
+              <div style="font-size:8px; color:#ddd; text-align:center; margin-bottom:3px; min-height:20px; line-height:1.3;">${card.description}</div>
+              <div style="font-size:10px; color:#ffd700;">⚡${card.cost}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin-top:14px;">
+        <span id="picker-selected-count" style="color:#aaa; font-size:13px;">Selected: 0 / ${count}</span>
+        <button id="picker-confirm-btn" style="
+          padding:10px 28px; background:#555; border:2px solid #888;
+          border-radius:8px; color:#888; cursor:not-allowed;
+          font-size:14px; font-weight:bold; transition:all 0.15s;
+        " disabled>${actionLabel}</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const confirmBtn = document.getElementById('picker-confirm-btn');
+  const countLabel = document.getElementById('picker-selected-count');
+
+  function updateConfirmBtn() {
+    countLabel.textContent = `Selected: ${selected.size} / ${count}`;
+    const ready = selected.size === count;
+    confirmBtn.disabled = !ready;
+    confirmBtn.style.background = ready ? actionColor : '#555';
+    confirmBtn.style.borderColor = ready ? actionColor : '#888';
+    confirmBtn.style.color       = ready ? '#000' : '#888';
+    confirmBtn.style.cursor      = ready ? 'pointer' : 'not-allowed';
+  }
+
+  // Card click handler
+  overlay.querySelectorAll('.picker-card').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.pickerIdx);
+      if (selected.has(idx)) {
+        selected.delete(idx);
+        el.style.borderColor = typeColor(pileCards[idx].type);
+        el.style.boxShadow = '';
+        el.style.transform = '';
+      } else {
+        if (selected.size >= count) return; // Can't select more
+        selected.add(idx);
+        el.style.borderColor = actionColor;
+        el.style.boxShadow = `0 0 12px ${actionColor}88`;
+        el.style.transform = 'scale(1.05)';
+      }
+      updateConfirmBtn();
+    });
+  });
+
+  // Confirm handler
+  confirmBtn.addEventListener('click', () => {
+    if (selected.size !== count) return;
+
+    if (action === 'nightmare') {
+      // Nightmare: store chosen card for next-turn conjuring (don't remove from pile)
+      const idx = [...selected][0];
+      const card = pileCards[idx];
+      combat._nightmareCard = { ...card };
+      combat._nightmareCount = options._nightmareCount || 3;
+      window.CombatEngine && window.CombatEngine.addLog(`Nightmare: will conjure ${combat._nightmareCount}x ${card.name} next turn!`, 'success');
+    } else if (action === 'topdraw') {
+      // Top of Draw: remove card from source pile, put on top of draw pile
+      const idx = [...selected][0];
+      const card = pileCards.splice(idx, 1)[0];
+      combat.drawPile.unshift(card);
+      window.CombatEngine && window.CombatEngine.addLog(`${card.name} → top of Draw Pile`, 'info');
+    } else if (action === 'upgrade') {
+      // Upgrade: apply upgrade to the selected card in-place (don't move it)
+      const idx = [...selected][0];
+      const card = pileCards[idx];
+      if (!card.upgraded && card.upgradedDescription) {
+        card.upgraded = true;
+        card.description = card.upgradedDescription;
+        if (card.upgradedCost !== null && card.upgradedCost !== undefined) card.cost = card.upgradedCost;
+        window.CombatEngine && window.CombatEngine.addLog(`Armaments: upgraded ${card.name}!`, 'success');
+      }
+    } else if (action === 'copy') {
+      // Dual Wield: conjure N copies of the chosen card into hand (don't remove original)
+      const idx = [...selected][0];
+      const card = pileCards[idx];
+      const copyCount = options._copyCount || 1;
+      for (let i = 0; i < copyCount; i++) {
+        combat.hand.push({ ...card, _uid: `dual_wield_copy_${Date.now()}_${i}` });
+      }
+      window.CombatEngine && window.CombatEngine.addLog(`Dual Wield: conjured ${copyCount}x ${card.name} to Hand!`, 'success');
+    } else {
+      // Sort descending so splice doesn't shift indices
+      const sortedIdx = [...selected].sort((a, b) => b - a);
+      for (const idx of sortedIdx) {
+        const card = pileCards.splice(idx, 1)[0];
+        if (action === 'discard') {
+          combat.discardPile.push(card);
+          combat._discardedThisTurn = true;
+          combat._discardsThisTurn = (combat._discardsThisTurn || 0) + 1;
+          window.CombatEngine && window.CombatEngine.addLog(`Discarded ${card.name}`, 'info');
+        } else if (action === 'setup') {
+          card._freeCost = true;
+          combat.drawPile.unshift(card);
+          window.CombatEngine && window.CombatEngine.addLog(`Setup: ${card.name} → top of draw (costs 0)`, 'info');
+        } else {
+          // Exhaust
+          combat.exhaustPile.push(card);
+          window.CombatEngine && window.CombatEngine.addLog(`Exhausted ${card.name}`, 'info');
+          // Fire on-exhaust triggers (Dark Embrace, etc.)
+          if (window.CombatEngine && window.CombatEngine.onCardExhausted) {
+            window.CombatEngine.onCardExhausted(card);
+          }
+        }
+      }
+    }
+
+    overlay.remove();
+    if (typeof renderCombat === 'function') renderCombat();
+  });
+};
 
 // ============== STUBS ==============
 

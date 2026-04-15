@@ -26,7 +26,11 @@ var CHARACTERS_DATA = {
     },
     "description": "Now I abide here, searching endlessly for the precious Amulet... and finding a thousand horrors.",
     "combatStart": "Cards",
-    "startingDeck": [],
+    "startingItems": [],
+    "startingDeck": [
+      { "cardName": "Strike", "count": 5 },
+      { "cardName": "Defend", "count": 5 }
+    ],
     "dice": [
       {
         "isBlank": true,
@@ -78,7 +82,11 @@ var CHARACTERS_DATA = {
     },
     "description": "Who am I?",
     "combatStart": "Cards",
-    "startingDeck": [],
+    "startingItems": [],
+    "startingDeck": [
+      { "cardName": "Strike", "count": 5 },
+      { "cardName": "Defend", "count": 4 }
+    ],
     "dice": [
       {
         "isBlank": true,
@@ -130,7 +138,11 @@ var CHARACTERS_DATA = {
     },
     "description": "Express Delivery: Arrives with haste, before the world ends.",
     "combatStart": "Cards",
-    "startingDeck": [],
+    "startingItems": [],
+    "startingDeck": [
+      { "cardName": "Strike", "count": 5 },
+      { "cardName": "Defend", "count": 5 }
+    ],
     "dice": [
       {
         "isBlank": true,
@@ -182,7 +194,11 @@ var CHARACTERS_DATA = {
     },
     "description": "Why must you go destroying everything? Why? For glory? For your precious god of gods. Is it really worth all this? Is it? Is it really?",
     "combatStart": "Cards",
-    "startingDeck": [],
+    "startingItems": [],
+    "startingDeck": [
+      { "cardName": "Strike", "count": 5 },
+      { "cardName": "Defend", "count": 5 }
+    ],
     "dice": [
       {
         "isBlank": true,
@@ -234,7 +250,12 @@ var CHARACTERS_DATA = {
     },
     "description": "The remaining soldier of the Ironclads. Sold his soul to harness demonic energies.",
     "combatStart": "Cards",
-    "startingDeck": [],
+    "startingItems": ["Burning Blood"],
+    "startingDeck": [
+      { "cardName": "Strike", "count": 5 },
+      { "cardName": "Defend", "count": 4 },
+      { "cardName": "Bash", "count": 1 }
+    ],
     "dice": [
       {
         "isBlank": true,
@@ -260,6 +281,46 @@ var CHARACTERS_DATA = {
         "isBlank": true,
         "effects": []
       }
+    ]
+  },
+  "silent": {
+    "name": "Silent",
+    "game": "Slay the Spire",
+    "icon": "images/characters/Icon/Silent.png",
+    "fullImage": "images/characters/Full/Silent.png",
+    "energy": 3,
+    "mana": 0,
+    "health": 70,
+    "levelUpCondition": "Beat a game on a hard difficulty",
+    "levelUpStats": {
+      "strength": 0,
+      "dexterity": 1,
+      "intelligence": 0,
+      "charisma": 1,
+      "reroll": 0,
+      "dash": 0,
+      "skip": 0,
+      "discovery": 0,
+      "fov": 0,
+      "luck": 0,
+      "random": 0
+    },
+    "description": "A deadly huntress from the foglands. Eradicates foes with daggers and poisons.",
+    "combatStart": "Cards",
+    "startingItems": ["Ring of the Snake"],
+    "startingDeck": [
+      { "cardName": "Strike", "count": 5 },
+      { "cardName": "Defend", "count": 5 },
+      { "cardName": "Survivor", "count": 1 },
+      { "cardName": "Neutralize", "count": 1 }
+    ],
+    "dice": [
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] }
     ]
   }
 };

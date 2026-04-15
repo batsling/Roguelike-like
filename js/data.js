@@ -174,7 +174,23 @@ function initializeData() {
   }
 
   if (typeof ITEMS_DATA !== 'undefined') {
-    items = ITEMS_DATA;
+    items = ITEMS_DATA.slice();
+    // Merge weapons into item pool so they can appear in chests/loot
+    if (typeof WEAPONS_DATA !== 'undefined') {
+      WEAPONS_DATA.forEach(w => {
+        if (!items.find(i => i.name === w.name)) {
+          items.push({
+            name: w.name,
+            rarity: w.rarity,
+            type: 'Weapon',
+            description: w.upgradeEffect || '',
+            image: w.imageUrl,
+            reference: w.game,
+            tags: w.tags || [],
+          });
+        }
+      });
+    }
     console.log('✓ Items loaded:', items.length);
   } else {
     console.error('✗ ITEMS_DATA not found!');

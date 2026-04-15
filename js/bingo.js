@@ -343,16 +343,10 @@ function giveRandomItems(rarity, bingoCount = 1, bonusText = '') {
 
   // Number of choices = 2 + discovery (affected by discovery stat)
   const numChoices = Math.min(2 + discovery, rarityItems.length);
-  const choices = [];
 
-  // Generate random item choices (all from the same rarity, excluding already selected items)
-  for (let i = 0; i < numChoices && i < rarityItems.length; i++) {
-    let randomItem;
-    do {
-      randomItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
-    } while (choices.find(c => c.name === randomItem.name));
-    choices.push(randomItem);
-  }
+  // Shuffle a copy of the pool and slice — avoids infinite loop when items share empty names
+  const shuffled = [...rarityItems].sort(() => Math.random() - 0.5);
+  const choices = shuffled.slice(0, numChoices);
 
   const rarityColor = rarity === 'common' ? '#aaa' : rarity === 'uncommon' ? '#4CAF50' : '#9b59b6';
 

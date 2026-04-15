@@ -4,7 +4,7 @@
 // - Page initialization
 // - Event listener setup
 
-console.log('✅ MAIN.JS v45 loaded - inventory deep copy on save active');
+console.log('✅ MAIN.JS v49 loaded - weapons as items, unknown intent fix, all cards upgradeable');
 // - Excel file upload
 // - Save/load game system
 // - Tutorial and UI controls
@@ -13,26 +13,29 @@ console.log('✅ MAIN.JS v45 loaded - inventory deep copy on save active');
 // ===== Z-INDEX LAYERING SYSTEM =====
 // Organized from lowest to highest to prevent layering conflicts
 //
-// Layer 1 (Base): 1-99
+// Layer 1 (Base): 1-20
 //   - Map SVG arrows: 1
 //   - Item hover effects: 10
+//   - Combat hand cards: 20+
 //
-// Layer 2 (UI Panels): 100-999
-//   - (Reserved for future use)
+// Layer 2 (UI Chrome): 100
+//   - #top-bar, #game-stats, ability buttons
 //
-// Layer 3 (Side Panels): 1000-9999
-//   - Combat stats panel: 1000
-//   - Combat log panel: 1000
+// Layer 3 (Map / Dropdowns): 200
+//   - #save-list dropdown
 //
-// Layer 4 (Modals): 10000-19999
-//   - Modal backdrop: 10000 (from modals.js)
-//   - Map tooltip: 10000
-//   - Trait tooltips: 10000
-//   - Generic buttons: 10000
+// Layer 4 (Floating Panels): 300
+//   - #location-display-section, #goals-section, .floating-hud-complex, .box-zoom-popup
 //
-// Layer 5 (Tooltips & Overlays): 20000+
-//   - Combat item tooltip (#combat-item-tooltip): 20000
-//   - Main inventory tooltip (#item-tooltip from index.html): inherits from parent
+// Layer 5 (Hover Popovers): 400
+//   - #game-tooltip, #item-tooltip
+//
+// Layer 6 (Modals): 500
+//   - #game-modal (modals.js), #save-modal, #rewards-modal, .z-2000
+//
+// Layer 7 (Tooltips — always on top): 9000
+//   - #combat-item-tooltip, #combat-status-tooltip
+//   - #location-hover-tooltip, #game-stats .stat-tooltip::after
 //
 // ===== HELPER FUNCTIONS =====
 
@@ -338,31 +341,23 @@ function loadSavedGame(saveName) {
   if (gameState.equippedWeapon === undefined) {
     gameState.equippedWeapon = null;
   }
+  if (!gameState.deck) {
+    gameState.deck = [];
+  }
+  if (!gameState.postcombatChoicesUsed) {
+    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
+  }
 
   // Generate encounter types if they don't exist (for old saves)
   if (!gameState.encounterTypes) {
     gameState.encounterTypes = {};
-    const startingConnections = gameState.startGame && typeof getGameConnections === 'function'
-      ? getGameConnections(gameState.startGame.name)
-      : [];
-
     games.forEach(game => {
-      const roll = Math.random() * 100;
-      const isConnectedToStart = startingConnections.includes(game.name);
-
-      if (roll < 75) {
-        gameState.encounterTypes[game.name] = 'combat';
-      } else if (roll < 90) {
-        gameState.encounterTypes[game.name] = 'event';
-      } else {
-        // If this is connected to starting game, re-roll to combat or event
-        if (isConnectedToStart) {
-          const reroll = Math.random() * 100;
-          gameState.encounterTypes[game.name] = reroll < 83.33 ? 'combat' : 'event';
-        } else {
-          gameState.encounterTypes[game.name] = 'shop';
-        }
-      }
+      gameState.encounterTypes[game.name] = 'combat';
+    });
+  } else {
+    // Migrate old saves: change any non-combat encounters to combat
+    Object.keys(gameState.encounterTypes).forEach(gameName => {
+      gameState.encounterTypes[gameName] = 'combat';
     });
   }
 
@@ -585,32 +580,10 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   // Store character traits
   const characterTraits = character.traits || [];
 
-  // Generate random encounter types for this run
-  // Each game has: 75% combat, 15% event, 10% shop
-  // Shops cannot spawn on games directly connected to the starting game (would be useless)
+  // All encounters are combat — shops/events are now accessible via post-combat choices
   const encounterTypes = {};
-  const startingConnections = typeof getGameConnections === 'function'
-    ? getGameConnections(start.name)
-    : [];
-
   games.forEach(game => {
-    const roll = Math.random() * 100;
-    const isConnectedToStart = startingConnections.includes(game.name);
-
-    if (roll < 75) {
-      encounterTypes[game.name] = 'combat';
-    } else if (roll < 90) {
-      encounterTypes[game.name] = 'event';
-    } else {
-      // If this is connected to starting game, re-roll to combat or event
-      if (isConnectedToStart) {
-        const reroll = Math.random() * 100;
-        encounterTypes[game.name] = reroll < 83.33 ? 'combat' : 'event'; // 75/90 = 83.33%
-        console.log(`Prevented shop on ${game.name} (connected to start) - rerolled to ${encounterTypes[game.name]}`);
-      } else {
-        encounterTypes[game.name] = 'shop';
-      }
-    }
+    encounterTypes[game.name] = 'combat';
   });
 
   // Select a random location for this run (based on starting difficulty of 0)
@@ -649,7 +622,9 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     encounterTypes: encounterTypes, // Map of game names to encounter types for this run
     location: selectedLocation, // Current location for this run
     playerLevel: 1, // Character level for dice combat system
-    activeAllies: [] // Allies that provide dice in combat
+    activeAllies: [], // Allies that provide dice in combat
+    deck: [], // Cards collected during this run
+    postcombatChoicesUsed: { Low: [], Medium: [], High: [] } // Tracks which post-combat options have been used per difficulty tier
   };
 
   startGame = start;
@@ -691,6 +666,18 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
 
   // Generate new bingo grid for this run
   generateBingoGrid();
+
+  // Give character's starting items
+  const startingItemNames = character.startingItems || [];
+  startingItemNames.forEach(itemName => {
+    const itemData = items.find(i => i.name === itemName);
+    if (itemData && typeof acquireItem === 'function') {
+      acquireItem(itemData);
+      console.log(`Starting item granted: ${itemName}`);
+    } else {
+      console.warn(`Starting item not found in items list: ${itemName}`);
+    }
+  });
 
   saveCurrentGame();
   updateSaveList();
@@ -2978,7 +2965,7 @@ function showCombatModal() {
     border-radius: 8px;
     padding: 12px 15px;
     max-width: 300px;
-    z-index: 20000;
+    z-index: 9000;
     pointer-events: none;
     box-shadow: 0 4px 20px rgba(0,0,0,0.8);
   `;
@@ -4261,6 +4248,9 @@ function showDiceCombatModal() {
     };
   }).filter(Boolean);
 
+  // Clean up any lingering hover tooltips before combat starts
+  if (typeof hideAllTooltips === 'function') hideAllTooltips();
+
   // Initialize combat with all encounter enemies
   const combatState = window.CombatEngine.initCombat(encounterEnemies, characterData, weaponData, allies);
 
@@ -4312,7 +4302,7 @@ function showDiceCombatModal() {
       border-radius: 8px;
       padding: 12px 15px;
       max-width: 300px;
-      z-index: 20000;
+      z-index: 9000;
       pointer-events: auto;
       box-shadow: 0 4px 20px rgba(0,0,0,0.8);
     `;
@@ -4398,38 +4388,298 @@ function handleDiceCombatVictory(enemy) {
     timestamp: new Date().toLocaleString()
   });
   updateEncounterHistory();
+
+  // Reset post-combat choices when player first reaches Medium or Hard difficulty
+  if (!gameState.postcombatChoicesUsed) {
+    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
+  }
+  if (enemy.difficulty === 'Medium' && !gameState.firstMediumCombatWon) {
+    gameState.firstMediumCombatWon = true;
+    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
+    if (typeof createNotification === 'function') {
+      createNotification('Reached Medium difficulty — post-combat options reset!', '#f39c12', '⚔');
+    }
+  } else if (enemy.difficulty === 'High' && !gameState.firstHardCombatWon) {
+    gameState.firstHardCombatWon = true;
+    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
+    if (typeof createNotification === 'function') {
+      createNotification('Reached Hard difficulty — post-combat options reset!', '#c0392b', '💀');
+    }
+  }
+
   saveCurrentGame();
 
-  // Show victory screen with card reward option
+  // Show brief victory notification then go straight to card reward
   createGameModal(`
     <div style="text-align: center; padding: 30px;">
       <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">Victory!</h2>
       <h3 style="color: #fff; margin: 15px 0;">${enemy.name} defeated!</h3>
       <p style="color: #FFD700; font-size: 18px; margin: 20px 0;">+${goldReward} Gold</p>
-      <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-        <button onclick="closeGameModal()" style="
-          padding: 15px 30px;
-          background: linear-gradient(145deg, #4CAF50, #2E7D32);
-          border: none;
-          border-radius: 8px;
-          color: white;
-          cursor: pointer;
-          font-weight: bold;
-          font-size: 16px;
-        ">Continue</button>
-        <button onclick="closeGameModal(); if(typeof showCardRewardModal==='function') showCardRewardModal();" style="
-          padding: 15px 30px;
-          background: linear-gradient(145deg, #9b59b6, #6c3483);
-          border: none;
-          border-radius: 8px;
-          color: white;
-          cursor: pointer;
-          font-weight: bold;
-          font-size: 16px;
-        ">+ Add Card to Deck</button>
-      </div>
+      <button onclick="closeGameModal(); showCardRewardModal(() => showPostCombatChoiceModal('${enemy.difficulty || 'Low'}'));" style="
+        padding: 15px 40px;
+        background: linear-gradient(145deg, #4CAF50, #2E7D32);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+      ">Continue →</button>
     </div>
   `);
+}
+
+/**
+ * Show post-combat choice modal (Rest / Smith / Shop / Movement Event).
+ * Each option can only be used once per difficulty tier per run.
+ * @param {string} difficulty - 'Low' | 'Medium' | 'High'
+ */
+function showPostCombatChoiceModal(difficulty) {
+  const tier = difficulty || 'Low';
+  if (!gameState.postcombatChoicesUsed) {
+    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
+  }
+  const used = gameState.postcombatChoicesUsed[tier] || [];
+
+  const optionData = [
+    {
+      key: 'rest',
+      label: 'Rest',
+      icon: '🛌',
+      desc: 'Heal 50% of your max health.',
+      color: '#4CAF50',
+      action: () => {
+        const heal = Math.floor(maxHealth * 0.5);
+        health = Math.min(health + heal, maxHealth);
+        window.health = health;
+        gameState.health = health;
+        if (typeof updateTopBar === 'function') updateTopBar();
+        if (typeof saveCurrentGame === 'function') saveCurrentGame();
+        closeGameModal();
+        if (typeof createNotification === 'function') createNotification(`Rested: +${heal} Health`, '#4CAF50', '🛌');
+      }
+    },
+    {
+      key: 'smith',
+      label: 'Smith',
+      icon: '⚒️',
+      desc: 'Choose 2 cards from your deck to upgrade for free.',
+      color: '#FF9800',
+      action: () => {
+        closeGameModal();
+        showSmithChoiceModal();
+      }
+    },
+    {
+      key: 'shop',
+      label: 'Shop',
+      icon: '🛒',
+      desc: 'Visit the shop to buy items.',
+      color: '#FFD700',
+      action: () => {
+        closeGameModal();
+        // Reset shop state so fresh items appear
+        gameState.currentShopItems = null;
+        gameState.shopRerollCount = 0;
+        gameState.shopUpgradesUsed = 0;
+        gameState.shopRemovesUsed = 0;
+        if (typeof showShopModal === 'function') showShopModal();
+      }
+    },
+    {
+      key: 'movement',
+      label: 'Movement Event',
+      icon: '🗺️',
+      desc: 'A special event that helps you navigate difficult terrain. (Coming soon)',
+      color: '#9b59b6',
+      action: () => {
+        closeGameModal();
+        if (typeof createNotification === 'function') createNotification('Movement Event coming soon!', '#9b59b6', '🗺️');
+      }
+    }
+  ];
+
+  const buttonsHTML = optionData.map(opt => {
+    const isUsed = used.includes(opt.key);
+    return `
+      <div style="
+        background: ${isUsed ? '#1a1a1a' : '#2d2d2d'};
+        border: 2px solid ${isUsed ? '#444' : opt.color};
+        border-radius: 12px;
+        padding: 20px;
+        cursor: ${isUsed ? 'not-allowed' : 'pointer'};
+        opacity: ${isUsed ? '0.45' : '1'};
+        transition: transform 0.15s, box-shadow 0.15s;
+        text-align: center;
+        min-width: 140px;
+        max-width: 160px;
+        ${isUsed ? '' : `onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 20px ${opt.color}66'"`}
+      "
+      ${isUsed ? '' : `onclick="window._postcombatUseOption('${opt.key}', '${tier}')"`}
+      id="postcombat-opt-${opt.key}">
+        <div style="font-size:36px;margin-bottom:10px;">${opt.icon}</div>
+        <div style="font-weight:bold;color:${isUsed ? '#666' : 'white'};font-size:15px;margin-bottom:8px;">${opt.label}</div>
+        <div style="color:${isUsed ? '#555' : '#aaa'};font-size:12px;line-height:1.4;">${opt.desc}</div>
+        ${isUsed ? '<div style="color:#666;font-size:11px;margin-top:8px;font-style:italic;">Used this tier</div>' : ''}
+      </div>
+    `;
+  }).join('');
+
+  // Register option handler globally (modal scope)
+  window._postcombatUseOption = (key, t) => {
+    if (!gameState.postcombatChoicesUsed[t]) gameState.postcombatChoicesUsed[t] = [];
+    gameState.postcombatChoicesUsed[t].push(key);
+    if (typeof saveCurrentGame === 'function') saveCurrentGame();
+    const opt = optionData.find(o => o.key === key);
+    if (opt) opt.action();
+  };
+
+  createGameModal(`
+    <div style="text-align:center; padding:24px; max-width:760px;">
+      <h2 style="color:#FFD700; margin-top:0; margin-bottom:6px;">After Battle</h2>
+      <p style="color:#aaa; font-size:13px; margin-bottom:20px;">
+        Choose one option — each can be used <strong>once per difficulty tier</strong>.
+        Currently: <span style="color:#4CAF50;">${tier}</span> tier.
+      </p>
+      <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">
+        ${buttonsHTML}
+      </div>
+      <button onclick="closeGameModal()" style="
+        padding:10px 30px; background:#444; border:none; border-radius:8px;
+        color:#aaa; cursor:pointer; font-size:13px;
+      ">Skip</button>
+    </div>
+  `);
+}
+
+/**
+ * Show the Smith upgrade modal — player picks up to 2 cards to upgrade for free.
+ */
+function showSmithChoiceModal() {
+  // Include starter cards from character's starting deck that haven't been smith-upgraded yet
+  const upgradedStarting = gameState.upgradedStartingCards || {};
+  const charKey = gameState.character;
+  const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
+  const startingEntries = (charData && charData.startingDeck) ? charData.startingDeck : [];
+
+  const startingUpgradeable = [];
+  startingEntries.forEach(entry => {
+    const template = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
+    if (template && template.canUpgrade && !upgradedStarting[entry.cardName]) {
+      // Add one entry per copy so the player sees their full deck
+      const count = entry.count || 1;
+      for (let i = 0; i < count; i++) {
+        startingUpgradeable.push({ ...template, _isStarting: true });
+      }
+    }
+  });
+
+  const collectedUpgradeable = (gameState.deck || []).filter(c => c.canUpgrade && !c.upgraded);
+  const upgradeable = [...startingUpgradeable, ...collectedUpgradeable];
+
+  if (upgradeable.length === 0) {
+    if (typeof createNotification === 'function') createNotification('No upgradeable cards in deck!', '#FF9800', '⚒️');
+    return;
+  }
+
+  const MAX_UPGRADES = 2;
+  let selectedIndices = new Set();
+
+  function renderSmithModal() {
+    const cardsHTML = upgradeable.map((card, idx) => {
+      const sel = selectedIndices.has(idx);
+      const color = sel ? '#FF9800' : '#555';
+      return `
+        <div class="smith-card-option" data-smith-idx="${idx}" style="
+          background: ${sel ? '#3a2800' : '#2d2d2d'};
+          border: 2px solid ${color};
+          border-radius: 10px;
+          padding: 14px;
+          cursor: pointer;
+          display:flex; flex-direction:column; align-items:center;
+          min-width:130px; max-width:155px;
+          transition: transform 0.15s;
+        ">
+          <img src="${card.imageUrl || 'images/cards/default.png'}" alt="${card.name}"
+               style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;"
+               onerror="this.style.display='none'">
+          <div style="font-weight:bold;font-size:12px;color:white;text-align:center;">${card.name}</div>
+          <div style="font-size:10px;color:#aaa;margin-top:3px;">${card.rarity} · ${card.type}</div>
+          ${sel ? '<div style="color:#FF9800;font-size:11px;margin-top:4px;">✓ Selected</div>' : ''}
+        </div>
+      `;
+    }).join('');
+
+    createGameModal(`
+      <div style="text-align:center; padding:20px; max-width:820px;">
+        <h2 style="color:#FF9800; margin-top:0;">⚒️ Smith — Upgrade Cards</h2>
+        <p style="color:#aaa; font-size:13px; margin-bottom:16px;">
+          Select up to ${MAX_UPGRADES} cards to upgrade for free.
+          (${selectedIndices.size}/${MAX_UPGRADES} selected)
+        </p>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:20px;">
+          ${cardsHTML}
+        </div>
+        <div style="display:flex; gap:10px; justify-content:center;">
+          <button id="smith-confirm-btn" style="
+            padding:10px 28px; background:${selectedIndices.size > 0 ? '#FF9800' : '#555'};
+            border:none; border-radius:8px; color:white; cursor:pointer; font-weight:bold;
+          ">Upgrade (${selectedIndices.size})</button>
+          <button onclick="closeGameModal()" style="
+            padding:10px 24px; background:#444; border:none; border-radius:8px;
+            color:#aaa; cursor:pointer;
+          ">Cancel</button>
+        </div>
+      </div>
+    `);
+
+    document.querySelectorAll('.smith-card-option').forEach(el => {
+      el.onclick = () => {
+        const idx = parseInt(el.dataset.smithIdx);
+        if (selectedIndices.has(idx)) {
+          selectedIndices.delete(idx);
+        } else if (selectedIndices.size < MAX_UPGRADES) {
+          selectedIndices.add(idx);
+        }
+        renderSmithModal();
+      };
+    });
+
+    const confirmBtn = document.getElementById('smith-confirm-btn');
+    if (confirmBtn) {
+      confirmBtn.onclick = () => {
+        let upgradeCount = 0;
+        selectedIndices.forEach(idx => {
+          const card = upgradeable[idx];
+          if (card._isStarting) {
+            // Track starting card upgrades separately; applied in buildCombatDeck
+            if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
+            gameState.upgradedStartingCards[card.name] = true;
+            upgradeCount++;
+          } else {
+            const deckIdx = gameState.deck.findIndex(c => c === card || (c.name === card.name && !c.upgraded));
+            if (deckIdx !== -1) {
+              gameState.deck[deckIdx].upgraded = true;
+              if (gameState.deck[deckIdx].upgradedDescription) {
+                gameState.deck[deckIdx].description = gameState.deck[deckIdx].upgradedDescription;
+              }
+              if (gameState.deck[deckIdx].upgradedCost !== null && gameState.deck[deckIdx].upgradedCost !== undefined) {
+                gameState.deck[deckIdx].cost = gameState.deck[deckIdx].upgradedCost;
+              }
+              upgradeCount++;
+            }
+          }
+        });
+        if (typeof saveCurrentGame === 'function') saveCurrentGame();
+        closeGameModal();
+        if (typeof createNotification === 'function') {
+          createNotification(`Upgraded ${upgradeCount} card${upgradeCount !== 1 ? 's' : ''}!`, '#FF9800', '⚒️');
+        }
+      };
+    }
+  }
+
+  renderSmithModal();
 }
 
 /**
@@ -4541,6 +4791,48 @@ window.toggleCombatSystem = function() {
 
 // ============== DECK VIEWER ==============
 
+function showCardZoomOverlay(card) {
+  const existing = document.getElementById('card-zoom-overlay');
+  if (existing) existing.remove();
+
+  const rarityColors = { Rare: '#9b59b6', Uncommon: '#4CAF50', Common: '#aaa', Starter: '#888' };
+  const color = rarityColors[card.rarity] || '#888';
+  const imgSrc = card.imageUrl || '';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'card-zoom-overlay';
+  overlay.style.cssText = `
+    position:fixed; inset:0; background:rgba(0,0,0,0.75);
+    display:flex; align-items:center; justify-content:center;
+    z-index:10000; cursor:pointer;
+  `;
+  overlay.innerHTML = `
+    <div style="
+      background:#1e1e2e; border:3px solid ${color};
+      border-radius:16px; padding:28px 32px;
+      max-width:360px; width:90vw; text-align:center;
+      box-shadow:0 12px 50px rgba(0,0,0,0.9);
+      cursor:default;
+    " onclick="event.stopPropagation()">
+      ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}"
+        style="width:140px;height:140px;object-fit:contain;margin-bottom:14px;border-radius:8px;border:2px solid ${color}40;"
+        onerror="this.style.display='none'">` : ''}
+      <h2 style="margin:0 0 6px;color:white;font-size:20px;">${card.name}${card.upgraded ? ' <span style="color:#4CAF50">+</span>' : ''}</h2>
+      <div style="color:${color};font-size:13px;margin-bottom:10px;font-weight:bold;">${card.rarity || 'Starter'} · ${card.type || ''}</div>
+      <div style="color:#ddd;font-size:14px;line-height:1.6;margin-bottom:14px;">${card.description || ''}</div>
+      <div style="color:#ffd700;font-size:16px;font-weight:bold;">Cost: ${card.cost !== undefined ? card.cost : '?'}</div>
+      <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
+        margin-top:18px; padding:8px 24px;
+        background:#444; border:1px solid #666; border-radius:8px;
+        color:white; cursor:pointer; font-size:13px;
+      ">Close</button>
+    </div>
+  `;
+  overlay.addEventListener('click', () => overlay.remove());
+  document.body.appendChild(overlay);
+}
+window.showCardZoomOverlay = showCardZoomOverlay;
+
 function showDeckModal() {
   const charKey = (selectedCharacter) || (gameState && gameState.character) || null;
   const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
@@ -4554,13 +4846,16 @@ function showDeckModal() {
     }
   };
 
-  const cardHtml = (card, label) => {
+  const cardHtml = (card, label, idx) => {
     const color = getRarityColor(card.rarity);
     const imgSrc = card.imageUrl || '';
     return `
-      <div style="background:#2d2d2d;border:2px solid ${color};border-radius:8px;
+      <div data-deck-card-idx="${idx}" style="background:#2d2d2d;border:2px solid ${color};border-radius:8px;
         padding:12px;display:flex;flex-direction:column;align-items:center;
-        min-width:130px;max-width:160px;position:relative;">
+        min-width:130px;max-width:160px;position:relative;cursor:pointer;
+        transition:transform 0.15s,box-shadow 0.15s;"
+        onmouseenter="this.style.transform='scale(1.04)';this.style.boxShadow='0 6px 20px rgba(0,0,0,0.6)'"
+        onmouseleave="this.style.transform='';this.style.boxShadow=''">
         ${label ? `<div style="position:absolute;top:4px;right:4px;background:${color};color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:bold;">${label}</div>` : ''}
         ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
         <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:3px;">${card.name}${card.upgraded ? ' +' : ''}</div>
@@ -4584,12 +4879,15 @@ function showDeckModal() {
   const collectedCards = (gameState && gameState.deck) ? gameState.deck : [];
 
   const totalCount = startingCards.length + collectedCards.length;
-  const startingHTML = startingCards.map(c => cardHtml(c, 'Starting')).join('');
-  const collectedHTML = collectedCards.map(c => cardHtml(c, 'Acquired')).join('');
+  // Store all cards in order for click-to-zoom (starting first, then collected)
+  window._deckModalAllCards = [...startingCards, ...collectedCards];
+  const startingHTML = startingCards.map((c, i) => cardHtml(c, 'Starting', i)).join('');
+  const collectedHTML = collectedCards.map((c, i) => cardHtml(c, 'Acquired', startingCards.length + i)).join('');
 
   createGameModal(`
     <div style="padding:20px;max-width:1100px;margin:0 auto;">
       <h2 style="color:#9b59b6;text-align:center;margin-top:0;">🃏 Your Deck (${totalCount} cards)</h2>
+      <p style="text-align:center;color:#888;font-size:12px;margin:0 0 12px;">Click a card to zoom in</p>
       ${startingHTML ? `
         <h3 style="color:#888;margin:12px 0 8px;">Starting Deck (${startingCards.length})</h3>
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">${startingHTML}</div>
@@ -4603,6 +4901,15 @@ function showDeckModal() {
       </div>
     </div>
   `);
+
+  // Attach click-to-zoom on each card
+  document.querySelectorAll('[data-deck-card-idx]').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.deckCardIdx);
+      const card = window._deckModalAllCards && window._deckModalAllCards[idx];
+      if (card) showCardZoomOverlay(card);
+    });
+  });
 }
 window.showDeckModal = showDeckModal;
 
@@ -5299,6 +5606,7 @@ function showCardRewardModal(onComplete) {
       .filter(c => c.rarity && c.rarity !== 'Starter' && c.rarity !== 'N/A'
                && (c.type || '').toLowerCase() !== 'training'
                && !c.isTraining
+               && !(c.tags && c.tags.includes('weapon'))
                && !exclude.has(c.name));
     if (pool.length === 0) return null;
 
@@ -5357,7 +5665,7 @@ function showCardRewardModal(onComplete) {
       <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
         ${cardsHTML}
       </div>
-      <button onclick="closeGameModal()" style="
+      <button id="card-reward-skip-btn" style="
         margin-top:20px; padding:10px 24px;
         background:#444; border:none; border-radius:8px;
         color:#aaa; cursor:pointer; font-size:13px;
@@ -5365,10 +5673,31 @@ function showCardRewardModal(onComplete) {
     </div>
   `);
 
+  const skipBtn = document.getElementById('card-reward-skip-btn');
+  if (skipBtn) {
+    skipBtn.onclick = () => {
+      closeGameModal();
+      if (onComplete) onComplete();
+    };
+  }
+
   document.querySelectorAll('.card-reward-option').forEach(el => {
     el.onclick = () => {
       const card = chosen[parseInt(el.dataset.cardIdx)];
-      if (card && typeof addCardToDeck === 'function') addCardToDeck(card);
+      if (card) {
+        const addFn = window.addCardToDeck || (typeof addCardToDeck !== 'undefined' ? addCardToDeck : null);
+        if (addFn) {
+          addFn(card);
+        } else {
+          // Fallback: add directly to gameState.deck
+          if (!gameState.deck) gameState.deck = [];
+          gameState.deck.push({ ...card, upgraded: false });
+          saveCurrentGame();
+          if (typeof createNotification === 'function') {
+            createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
+          }
+        }
+      }
       closeGameModal();
       if (onComplete) onComplete();
     };
@@ -7568,6 +7897,44 @@ function showCharacterDetails(charName) {
     </div>
   ` : '';
 
+  const startingItemsList = char.startingItems || [];
+  const startingItemsHTML = startingItemsList.length > 0 ? `
+    <div style="margin-top: 15px;">
+      <strong style="color: #cc6600;">Starting Item${startingItemsList.length > 1 ? 's' : ''}:</strong>
+      <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;">
+        ${startingItemsList.map(itemName => {
+          const itemData = typeof items !== 'undefined' ? items.find(i => i.name === itemName) : null;
+          const rarityColor = itemData ? (itemData.rarity === 'Rare' ? '#9b59b6' : itemData.rarity === 'Uncommon' ? '#4CAF50' : itemData.rarity === 'Common' ? '#aaa' : '#888') : '#cc6600';
+          const imgSrc = itemData && itemData.image ? itemData.image : '';
+          const safeDesc = itemData && itemData.description ? itemData.description.replace(/"/g, '&quot;') : '';
+          const safeType = itemData && itemData.type ? itemData.type.replace(/"/g, '&quot;') : '';
+          const safeRef  = itemData && (itemData.reference || itemData.game) ? (itemData.reference || itemData.game).replace(/"/g, '&quot;') : '';
+          const safeItemName = itemName.replace(/"/g, '&quot;');
+          return `<div class="collection-starting-item"
+            data-item-name="${safeItemName}"
+            data-item-img="${imgSrc}"
+            data-item-desc="${safeDesc}"
+            data-item-type="${safeType}"
+            data-item-ref="${safeRef}"
+            data-item-color="${rarityColor}"
+            style="display:flex;align-items:center;gap:12px;background:rgba(0,0,0,0.3);border:1px solid ${rarityColor};border-radius:8px;padding:8px 10px;cursor:default;"
+            onmouseenter="showStartingItemTip(this, event)"
+            onmouseleave="hideStartingItemTip()">
+            ${imgSrc
+              ? `<img src="${imgSrc}" alt="${safeItemName}" style="width:52px;height:52px;object-fit:contain;border-radius:6px;border:1px solid ${rarityColor}40;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.display='none'">`
+              : `<div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;">📦</div>`
+            }
+            <div>
+              <div style="font-size:13px;color:white;font-weight:bold;">${itemName}</div>
+              ${itemData ? `<div style="font-size:11px;color:${rarityColor};font-weight:bold;text-transform:uppercase;">${itemData.rarity || ''}</div>` : ''}
+              ${itemData && itemData.type ? `<div style="font-size:10px;color:#aaa;">${itemData.type}</div>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+
   detailsPanel.innerHTML = `
     <div style="display: flex; flex-direction: column; gap: 15px;">
       <!-- Character Image - Centered -->
@@ -7616,6 +7983,7 @@ function showCharacterDetails(charName) {
       <!-- Starting Deck -->
       ${startingDeckHTML}
       ${combatStartHTML}
+      ${startingItemsHTML}
     </div>
   `;
 }
@@ -8981,6 +9349,46 @@ window.switchEnemyForm = switchEnemyForm;
     el.style.display = 'none';
   };
 })();
+
+window.showStartingItemTip = function(el, event) {
+  const name  = el.dataset.itemName  || '';
+  const img   = el.dataset.itemImg   || '';
+  const desc  = el.dataset.itemDesc  || '';
+  const type  = el.dataset.itemType  || '';
+  const ref   = el.dataset.itemRef   || '';
+  const color = el.dataset.itemColor || '#888';
+
+  let tip = document.getElementById('starting-item-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'starting-item-tip';
+    tip.style.cssText = 'position:fixed;z-index:9000;pointer-events:none;background:linear-gradient(145deg,rgba(20,20,30,0.97),rgba(15,15,25,0.97));border-radius:8px;padding:12px 14px;max-width:260px;box-shadow:0 4px 20px rgba(0,0,0,0.8);font-family:Georgia,serif;font-size:12px;color:#e6d5b8;display:none;';
+    document.body.appendChild(tip);
+  }
+  tip.style.border = '2px solid ' + color;
+  tip.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      ${img ? `<img src="${img}" style="width:36px;height:36px;object-fit:contain;flex-shrink:0;image-rendering:pixelated;" onerror="this.style.display='none'">` : ''}
+      <div>
+        <div style="font-weight:bold;font-size:13px;color:white;">${name}</div>
+        ${type ? `<div style="font-size:10px;color:${color};text-transform:uppercase;font-weight:bold;">${type}${ref ? ' · ' + ref : ''}</div>` : ''}
+      </div>
+    </div>
+    ${desc ? `<div style="color:#ccc;font-size:11px;line-height:1.5;">${desc}</div>` : ''}
+  `;
+  const r = el.getBoundingClientRect();
+  const tx = Math.min(r.right + 8, window.innerWidth - 270);
+  const ty = Math.min(r.top, window.innerHeight - 200);
+  tip.style.left = tx + 'px';
+  tip.style.top  = ty + 'px';
+  tip.style.display = 'block';
+};
+
+window.hideStartingItemTip = function() {
+  const tip = document.getElementById('starting-item-tip');
+  if (tip) tip.style.display = 'none';
+};
+
 window.getEnemyStats = getEnemyStats;
 window.recordEnemyDefeated = recordEnemyDefeated;
 window.recordPlayerKilledBy = recordPlayerKilledBy;

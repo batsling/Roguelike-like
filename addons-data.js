@@ -65,5 +65,45 @@ var ADDONS_DATA = {
     "name": "Destroy",
     "description": "Remove this from your deck permanently",
     "canBeAttachedTo": "All"
+  },
+  "determinedxy": {
+    "name": "Determined(X-Y)",
+    "description": "Counts as a number that is determined before combat to be a random number from X to Y",
+    "canBeAttachedTo": "All"
+  },
+  "ethereal": {
+    "name": "Ethereal",
+    "description": "If an Ethereal card is in your hand at the end of your turn, it is Exhausted.",
+    "canBeAttachedTo": "Cards"
+  },
+  "innate": {
+    "name": "Innate",
+    "description": "Place this card on the top of your deck at the start of combat",
+    "canBeAttachedTo": "Cards"
+  },
+  "sly": {
+    "name": "Sly",
+    "description": "This Card is Unplayable, but gets played when it's discarded",
+    "canBeAttachedTo": "Cards"
+  },
+  "unplayable": {
+    "name": "Unplayable",
+    "description": "This card cannot be played and has no mana cost",
+    "canBeAttachedTo": "Cards"
+  },
+  "sequentialupgrade": {
+    "name": "Sequential Upgrade",
+    "description": "This card can be upgraded any number of times. Adding Dmg will allow the card to scale its damage by X each time.",
+    "canBeAttachedTo": "Cards"
+  },
+  "retain": {
+    "name": "Retain",
+    "description": "This card is not discarded at the end of the turn.",
+    "canBeAttachedTo": "Cards"
+  },
+  "lifesteal": {
+    "name": "Lifesteal",
+    "description": "Heals the target equal to the amount of unblocked Dmg dealt.",
+    "canBeAttachedTo": "All"
   }
 };

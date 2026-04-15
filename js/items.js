@@ -241,8 +241,8 @@ const ITEM_EFFECTS = {
 
   "Lunch": {
     onAcquire: () => {
-      StateMutator.modifyMaxHealth(3);
-      StateMutator.modifyHealth(3);
+      StateMutator.modifyMaxHealth(5);
+      StateMutator.modifyHealth(5);
     }
   },
 
@@ -260,25 +260,25 @@ const ITEM_EFFECTS = {
 
   "Oddly Smooth Stone": {
     onAcquire: () => {
-      StateMutator.modifyStat('dexterity', 2);
+      StateMutator.modifyStat('dexterity', 3);
     }
   },
 
   "Empty Tome": {
     onAcquire: () => {
-      StateMutator.modifyStat('intelligence', 2);
+      StateMutator.modifyStat('intelligence', 3);
     }
   },
 
   "Hollow Heart": {
     onAcquire: () => {
-      StateMutator.modifyMaxHealth(5, { onlyMax: true });
+      StateMutator.modifyMaxHealth(8, { onlyMax: true });
     }
   },
 
   "Vajra": {
     onAcquire: () => {
-      StateMutator.modifyStat('strength', 2);
+      StateMutator.modifyStat('strength', 3);
     }
   },
 
@@ -286,29 +286,29 @@ const ITEM_EFFECTS = {
 
   "Bowler Hat": {
     onAcquire: () => {
-      StateMutator.modifyStat('charisma', 3);
-      StateMutator.modifyStat('dexterity', -1);
+      StateMutator.modifyStat('charisma', 6);
+      StateMutator.modifyStat('dexterity', -2);
     }
   },
 
   "Wings": {
     onAcquire: () => {
-      StateMutator.modifyStat('dexterity', 3);
-      StateMutator.modifyStat('intelligence', -1);
+      StateMutator.modifyStat('dexterity', 6);
+      StateMutator.modifyStat('intelligence', -2);
     }
   },
 
   "Campfire": {
     onAcquire: () => {
-      StateMutator.modifyStat('intelligence', 3);
-      StateMutator.modifyStat('dexterity', -1);
+      StateMutator.modifyStat('intelligence', 6);
+      StateMutator.modifyStat('dexterity', -2);
     }
   },
 
   "Wheat": {
     onAcquire: () => {
-      StateMutator.modifyStat('strength', 3);
-      StateMutator.modifyStat('intelligence', -1);
+      StateMutator.modifyStat('strength', 6);
+      StateMutator.modifyStat('intelligence', -2);
     }
   },
 
@@ -316,7 +316,7 @@ const ITEM_EFFECTS = {
     onAcquire: () => {
       StateMutator.modifyMaxHealth(20, { onlyMax: true });
       StateMutator.modifyStat('luck', 2);
-      StateMutator.modifyStat('strength', -2);
+      StateMutator.modifyStat('strength', -3);
     }
   },
 
@@ -538,10 +538,14 @@ const ITEM_EFFECTS = {
   },
 
   "Garlic": {
-    onAcquire: () => {
-      console.log('Acquired Garlic - damage taken will be reduced by 1 (minimum 1)');
+    onCombatStart: () => {
+      const copies = inventory.filter(i => i.name === 'Garlic').reduce((n, i) => n + (i.quantity || 1), 0);
+      if (typeof combatState !== 'undefined' && combatState && combatState.player) {
+        combatState.player.statuses = combatState.player.statuses || {};
+        combatState.player.statuses['Brace'] = (combatState.player.statuses['Brace'] || 0) + copies;
+      }
+      createNotification(`Garlic: +${copies} Brace`, '#66bb6a', '🧄');
     }
-    // Damage reduction is applied in the calculateDamageReduction function
   },
 
   // ===== BOONS =====
@@ -652,99 +656,104 @@ const ITEM_EFFECTS = {
       return gameState.phase === 'combat';
     },
     onUse: () => {
-      // Check for new dice combat system first
       const newCombatState = typeof window.CombatEngine !== 'undefined' && typeof window.CombatEngine.getCombatState === 'function'
         ? window.CombatEngine.getCombatState()
         : null;
-
-      // Fall back to old combat system
       const oldCombatState = typeof window.CombatState !== 'undefined' && typeof window.CombatState.getCombatState === 'function'
         ? window.CombatState.getCombatState()
         : null;
 
       const damage = 10;
 
-      // Handle new dice combat system
-      if (newCombatState && newCombatState.enemies && newCombatState.enemies.length > 0) {
-        const enemy = newCombatState.enemies.find(e => e.health > 0);
-        if (!enemy) {
-          console.error('Fire Potion: No living enemies');
-          return;
-        }
-
-        // Deal damage through block
+      // Helper: apply fire potion damage to a specific enemy (new combat system)
+      function applyFirePotionToEnemy(cs, enemy) {
         let actualDamage = damage;
         if (enemy.block > 0) {
-          const blockedDamage = Math.min(enemy.block, damage);
-          enemy.block -= blockedDamage;
-          actualDamage = damage - blockedDamage;
+          const blocked = Math.min(enemy.block, damage);
+          enemy.block -= blocked;
+          actualDamage = damage - blocked;
         }
         enemy.health -= actualDamage;
         if (enemy.health < 0) enemy.health = 0;
-
-        // Log using combat engine's log
-        if (newCombatState.log) {
-          newCombatState.log.push({
-            message: `Fire Potion! Dealt ${actualDamage} damage to ${enemy.name}`,
-            type: 'success'
-          });
-        }
-
-        // Update UI
+        if (cs.log) cs.log.push({ message: `Fire Potion! Dealt ${actualDamage} damage to ${enemy.name}`, type: 'success' });
         if (typeof window.CombatUI !== 'undefined' && typeof window.CombatUI.updateCombatDisplay === 'function') {
           window.CombatUI.updateCombatDisplay();
         }
-
-        // Check for victory
-        if (enemy.health <= 0) {
-          const allDead = newCombatState.enemies.every(e => e.health <= 0);
-          if (allDead) {
-            newCombatState.phase = 'victory';
-            if (typeof window.CombatUI !== 'undefined' && typeof window.CombatUI.checkCombatEnd === 'function') {
-              window.CombatUI.checkCombatEnd();
-            }
+        if (enemy.health <= 0 && cs.enemies.every(e => e.health <= 0)) {
+          cs.phase = 'victory';
+          if (typeof window.CombatUI !== 'undefined' && typeof window.CombatUI.checkCombatEnd === 'function') {
+            window.CombatUI.checkCombatEnd();
           }
         }
+      }
 
-        console.log(`Fire Potion used (dice combat): dealt ${actualDamage} damage, enemy health: ${enemy.health}`);
+      // Handle new dice combat system
+      if (newCombatState && newCombatState.enemies && newCombatState.enemies.length > 0) {
+        const living = newCombatState.enemies.filter(e => e.health > 0);
+        if (living.length === 0) { console.error('Fire Potion: No living enemies'); return; }
+
+        if (living.length === 1) {
+          // Only one target — apply directly
+          applyFirePotionToEnemy(newCombatState, living[0]);
+          return;
+        }
+
+        // Multiple targets — show selection modal
+        const targetsHTML = living.map((e, idx) => `
+          <button onclick="window._firePotionApply(${idx})" style="
+            display:flex; align-items:center; gap:12px;
+            padding:12px 20px; background:#2d2d2d; border:2px solid #e74c3c;
+            border-radius:8px; color:white; cursor:pointer; font-size:14px; font-weight:bold;
+            width:100%; margin-bottom:8px; transition:background 0.15s;
+          " onmouseenter="this.style.background='#4a1a1a'" onmouseleave="this.style.background='#2d2d2d'">
+            ${e.imageUrl ? `<img src="${e.imageUrl}" style="width:40px;height:40px;object-fit:contain;image-rendering:pixelated;" onerror="this.style.display='none'">` : ''}
+            <span>${e.name}</span>
+            <span style="margin-left:auto;color:#aaa;font-size:12px;">${e.health}/${e.maxHealth} HP</span>
+          </button>
+        `).join('');
+
+        window._firePotionApply = (idx) => {
+          delete window._firePotionApply;
+          if (typeof closeGameModal === 'function') closeGameModal();
+          applyFirePotionToEnemy(newCombatState, living[idx]);
+        };
+
+        if (typeof createGameModal === 'function') {
+          createGameModal(`
+            <div style="padding:24px; min-width:320px;">
+              <h3 style="color:#e74c3c; text-align:center; margin-top:0;">🔥 Fire Potion — Choose Target</h3>
+              <p style="color:#aaa; text-align:center; font-size:13px; margin-bottom:16px;">Deals ${damage} damage to one enemy.</p>
+              ${targetsHTML}
+              <button onclick="delete window._firePotionApply; closeGameModal();" style="
+                width:100%; padding:10px; background:#444; border:none; border-radius:6px;
+                color:#aaa; cursor:pointer; margin-top:4px;
+              ">Cancel</button>
+            </div>
+          `);
+        }
         return;
       }
 
-      // Handle old combat system
+      // Handle old combat system (single enemy only)
       if (oldCombatState && oldCombatState.enemy) {
         let damageResult = { healthLost: damage, blockConsumed: 0 };
-
         if (typeof window.CombatEffects !== 'undefined' && typeof window.CombatEffects.processDamageWithBlock === 'function') {
           damageResult = window.CombatEffects.processDamageWithBlock(oldCombatState.enemy, damage);
         } else {
           oldCombatState.enemy.health -= damage;
           if (oldCombatState.enemy.health < 0) oldCombatState.enemy.health = 0;
         }
-
         if (typeof window.CombatState !== 'undefined' && typeof window.CombatState.addCombatLog === 'function') {
-          window.CombatState.addCombatLog(
-            `Fire Potion! Dealt ${damageResult.healthLost} damage${
-              damageResult.blockConsumed > 0 ? ` (${damageResult.blockConsumed} blocked)` : ''
-            }`,
-            'success'
-          );
+          window.CombatState.addCombatLog(`Fire Potion! Dealt ${damageResult.healthLost} damage${damageResult.blockConsumed > 0 ? ` (${damageResult.blockConsumed} blocked)` : ''}`, 'success');
         }
-
-        if (typeof updateCombatUI === 'function') {
-          updateCombatUI();
-        }
-
+        if (typeof updateCombatUI === 'function') updateCombatUI();
         if (oldCombatState.enemy.health <= 0) {
           oldCombatState.phase = 'victory';
           if (typeof window.CombatState !== 'undefined' && typeof window.CombatState.addCombatLog === 'function') {
             window.CombatState.addCombatLog(`${oldCombatState.enemy.name} defeated by Fire Potion!`, 'success');
           }
-          if (typeof updateCombatUI === 'function') {
-            updateCombatUI();
-          }
+          if (typeof updateCombatUI === 'function') updateCombatUI();
         }
-
-        console.log(`Fire Potion used (old combat): dealt ${damageResult.healthLost} damage, enemy health: ${oldCombatState.enemy.health}`);
         return;
       }
 
@@ -789,6 +798,18 @@ const ITEM_EFFECTS = {
         if (typeof createNotification === 'function') {
           createNotification(`Meat on the Bone: +${healAmount} Health`, '#66bb6a', '🍖');
         }
+      }
+    }
+  },
+
+  "Ring of the Snake": {
+    onCombatStart: () => {
+      if (typeof drawCards === 'function') {
+        drawCards(2);
+        addLog('Ring of the Snake: Draw 2 extra cards!', 'success');
+      }
+      if (typeof createNotification === 'function') {
+        createNotification('Ring of the Snake: +2 cards drawn!', '#66bb6a', '🐍');
       }
     }
   },
@@ -984,19 +1005,44 @@ const ITEM_EFFECTS = {
 
   "Whetstone": {
     onAcquire: () => {
-      // Upgrade 2 random Attack cards in deck
-      if (!gameState.deck || gameState.deck.length === 0) return;
-      const attackCards = gameState.deck
-        .map((c, i) => ({ c, i }))
-        .filter(({ c }) => !c.upgraded && (c.type || '').toLowerCase() === 'attack' && c.upgradedDescription);
-      const targets = attackCards.sort(() => Math.random() - 0.5).slice(0, 2);
-      targets.forEach(({ c, i }) => {
-        c.upgraded = true;
-        c.description = c.upgradedDescription;
-        if (c.upgradedCost !== null && c.upgradedCost !== undefined) c.cost = c.upgradedCost;
+      // Build combined pool: starter Attack cards + collected Attack cards
+      const charData = (typeof PLAYER_CHARACTERS !== 'undefined' && gameState.character)
+        ? PLAYER_CHARACTERS[gameState.character] : null;
+      const upgradedStarting = gameState.upgradedStartingCards || {};
+      const pool = [];
+      // Starter deck attacks — track per-instance upgrade count
+      ((charData && charData.startingDeck) || []).forEach(entry => {
+        const tmpl = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
+        if (tmpl && (tmpl.type || '').toLowerCase() === 'attack' && tmpl.upgradedDescription) {
+          const total = entry.count || 1;
+          const val = upgradedStarting[entry.cardName];
+          const alreadyUpgraded = typeof val === 'number' ? Math.min(val, total) : (val ? total : 0);
+          const remaining = total - alreadyUpgraded;
+          for (let i = 0; i < remaining; i++) pool.push({ _isStarting: true, name: tmpl.name });
+        }
       });
-      if (targets.length > 0) {
-        createNotification(`Whetstone: upgraded ${targets.map(({ c }) => c.name).join(', ')}!`, COLORS.SUCCESS, '🪨');
+      // Collected deck attacks
+      (gameState.deck || []).forEach((c, i) => {
+        if (!c.upgraded && (c.type || '').toLowerCase() === 'attack' && c.upgradedDescription)
+          pool.push({ _isStarting: false, c, i });
+      });
+      const targets = pool.sort(() => Math.random() - 0.5).slice(0, 2);
+      const names = [];
+      targets.forEach(t => {
+        if (t._isStarting) {
+          if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
+          const prev = gameState.upgradedStartingCards[t.name];
+          gameState.upgradedStartingCards[t.name] = (typeof prev === 'number' ? prev : 0) + 1;
+          names.push(t.name);
+        } else {
+          t.c.upgraded = true;
+          t.c.description = t.c.upgradedDescription;
+          if (t.c.upgradedCost !== null && t.c.upgradedCost !== undefined) t.c.cost = t.c.upgradedCost;
+          names.push(t.c.name);
+        }
+      });
+      if (names.length > 0) {
+        createNotification(`Whetstone: upgraded ${names.join(', ')}!`, COLORS.SUCCESS, '🪨');
         saveCurrentGame();
       }
     }
@@ -1004,23 +1050,74 @@ const ITEM_EFFECTS = {
 
   "War Paint": {
     onAcquire: () => {
-      // Upgrade 2 random Skill cards in deck
-      if (!gameState.deck || gameState.deck.length === 0) return;
-      const skillCards = gameState.deck
-        .map((c, i) => ({ c, i }))
-        .filter(({ c }) => !c.upgraded && (c.type || '').toLowerCase() === 'skill' && c.upgradedDescription);
-      const targets = skillCards.sort(() => Math.random() - 0.5).slice(0, 2);
-      targets.forEach(({ c }) => {
-        c.upgraded = true;
-        c.description = c.upgradedDescription;
-        if (c.upgradedCost !== null && c.upgradedCost !== undefined) c.cost = c.upgradedCost;
+      // Build combined pool: starter Skill cards + collected Skill cards
+      const charData = (typeof PLAYER_CHARACTERS !== 'undefined' && gameState.character)
+        ? PLAYER_CHARACTERS[gameState.character] : null;
+      const upgradedStarting = gameState.upgradedStartingCards || {};
+      const pool = [];
+      // Starter deck skills — track per-instance upgrade count
+      ((charData && charData.startingDeck) || []).forEach(entry => {
+        const tmpl = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
+        if (tmpl && (tmpl.type || '').toLowerCase() === 'skill' && tmpl.upgradedDescription) {
+          const total = entry.count || 1;
+          const alreadyUpgraded = getUpgradedStartingCount(upgradedStarting, entry.cardName, total);
+          const remaining = total - alreadyUpgraded;
+          for (let i = 0; i < remaining; i++) pool.push({ _isStarting: true, name: tmpl.name });
+        }
       });
-      if (targets.length > 0) {
-        createNotification(`War Paint: upgraded ${targets.map(({ c }) => c.name).join(', ')}!`, COLORS.SUCCESS, '🎨');
+      // Collected deck skills
+      (gameState.deck || []).forEach((c, i) => {
+        if (!c.upgraded && (c.type || '').toLowerCase() === 'skill' && c.upgradedDescription)
+          pool.push({ _isStarting: false, c, i });
+      });
+      const targets = pool.sort(() => Math.random() - 0.5).slice(0, 2);
+      const names = [];
+      targets.forEach(t => {
+        if (t._isStarting) {
+          if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
+          const prev = gameState.upgradedStartingCards[t.name];
+          gameState.upgradedStartingCards[t.name] = (typeof prev === 'number' ? prev : 0) + 1;
+          names.push(t.name);
+        } else {
+          t.c.upgraded = true;
+          t.c.description = t.c.upgradedDescription;
+          if (t.c.upgradedCost !== null && t.c.upgradedCost !== undefined) t.c.cost = t.c.upgradedCost;
+          names.push(t.c.name);
+        }
+      });
+      if (names.length > 0) {
+        createNotification(`War Paint: upgraded ${names.join(', ')}!`, COLORS.SUCCESS, '🎨');
         saveCurrentGame();
       }
     }
-  }
+  },
+
+  "Old Coin": {
+    onAcquire: () => {
+      const gain = 100;
+      window.gold = (window.gold || 0) + gain;
+      if (typeof gameState !== 'undefined') gameState.gold = window.gold;
+      if (typeof saveCurrentGame === 'function') saveCurrentGame();
+      createNotification(`Old Coin: +${gain} Gold!`, COLORS.SUCCESS, '🪙');
+    }
+  },
+
+  "Mango": {
+    onAcquire: () => {
+      const gain = 14;
+      window.maxHealth = (window.maxHealth || 0) + gain;
+      window.health    = Math.min((window.health || 0) + gain, window.maxHealth);
+      if (typeof gameState !== 'undefined') {
+        gameState.maxHealth = window.maxHealth;
+        gameState.health    = window.health;
+      }
+      if (typeof saveCurrentGame === 'function') saveCurrentGame();
+      createNotification(`Mango: +${gain} Max Health and +${gain} Health!`, COLORS.SUCCESS, '🥭');
+    }
+  },
+
+  // Ice Cream: energy remaining at end of turn carries over to the next turn (tracked in combat engine)
+  "Ice Cream": {}
 };
 
 // ===== DAMAGE REDUCTION FUNCTION =====
@@ -1031,34 +1128,7 @@ const ITEM_EFFECTS = {
  * @returns {number} - The reduced damage amount
  */
 function calculateDamageReduction(incomingDamage) {
-  let finalDamage = incomingDamage;
-
-  // Count total Garlic items (considering quantity/stacks)
-  const garlicCount = inventory.reduce((count, item) => {
-    if (item.name === 'Garlic') {
-      return count + (item.quantity || 1);
-    }
-    return count;
-  }, 0);
-
-  if (garlicCount > 0 && finalDamage > 0) {
-    const oldDamage = finalDamage;
-    // Reduce damage by number of Garlic items, but always take at least 1 damage
-    finalDamage = Math.max(1, finalDamage - garlicCount);
-    console.log(`Garlic (x${garlicCount}): Reduced damage from ${oldDamage} to ${finalDamage}`);
-
-    // Show notification for damage reduction
-    if (oldDamage !== finalDamage) {
-      const damageReduced = oldDamage - finalDamage;
-      setTimeout(() => {
-        if (typeof createNotification === 'function') {
-          createNotification(`Garlic${garlicCount > 1 ? ` (x${garlicCount})` : ''}: -${damageReduced} Damage`, COLORS.SUCCESS, '🧄');
-        }
-      }, 50);
-    }
-  }
-
-  return finalDamage;
+  return incomingDamage;
 }
 
 // ===== ITEM ACQUISITION FUNCTION =====
@@ -1347,14 +1417,30 @@ function acquireItem(item) {
   let wasStacked = false;
 
   if (isWeapon) {
-    // Always add weapons as new entries (no stacking)
+    // Each copy is independent — always add a new inventory entry and a new deck card
     itemCopy.quantity = 1;
-    // Initialize weapon bonuses
     initializeWeaponBonuses(itemCopy);
     inventory.push(itemCopy);
     targetItemIndex = inventory.length - 1;
-    console.log('📥 Weapon added to inventory (no stacking):', itemCopy.name);
+    console.log('📥 Weapon added to inventory:', itemCopy.name);
     console.log(`✅ Acquired: ${itemCopy.name}`);
+    if (typeof CARDS_DATA !== 'undefined') {
+      const weaponCard = CARDS_DATA.find(c => c.name === itemCopy.name && c.tags && c.tags.includes('weapon'));
+      if (weaponCard) {
+        const addFn = window.addCardToDeck || (typeof addCardToDeck !== 'undefined' ? addCardToDeck : null);
+        if (addFn) {
+          addFn(weaponCard);
+        } else if (typeof gameState !== 'undefined') {
+          if (!gameState.deck) gameState.deck = [];
+          gameState.deck.push({ ...weaponCard, upgraded: false });
+          if (typeof saveCurrentGame === 'function') saveCurrentGame();
+        }
+        console.log(`🃏 Weapon card added to deck: ${weaponCard.name}`);
+        if (typeof createNotification === 'function') {
+          createNotification(`${weaponCard.name} card added to deck!`, '#4CAF50', '🃏');
+        }
+      }
+    }
   } else {
     // Check if item already exists in inventory (for stacking non-weapons)
     // For items with stat modifiers (upgraded/downgraded), only stack if modifiers match exactly

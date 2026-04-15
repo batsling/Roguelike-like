@@ -651,7 +651,7 @@ function showRunHistory() {
 
 function showCollection() {
   const charCount = typeof CHARACTERS_DATA !== 'undefined' ? Object.keys(CHARACTERS_DATA).length : 0;
-  const cardCount = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.filter(c => c.rarity !== 'Starter' && c.type !== 'Status').length : 0;
+  const cardCount = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.filter(c => c.rarity !== 'Starter').length : 0;
   const spellCount = typeof SPELLS_DATA !== 'undefined' ? SPELLS_DATA.length : 0;
 
   const collectionHTML = `
@@ -718,18 +718,28 @@ function switchCollectionTab(tab) {
   };
 
   if (tab === 'games') {
-    // Initialize search state
+    // Initialize search/filter state
     if (typeof window.gamesSearchTerm === 'undefined') window.gamesSearchTerm = '';
+    if (typeof window.gamesTagFilter === 'undefined') window.gamesTagFilter = 'all';
+    if (typeof window.gamesTypeFilter === 'undefined') window.gamesTypeFilter = 'all';
+
+    // Collect all unique tags and types for filter buttons
+    const allTags = [...new Set(games.flatMap(g => g.tags || []))].sort();
+    const allTypes = [...new Set(games.map(g => g.type).filter(Boolean))].sort();
 
     // Filter and sort games
     const searchTerm = window.gamesSearchTerm.toLowerCase();
-    let filteredGames = searchTerm
-      ? games.filter(g => g.name.toLowerCase().includes(searchTerm))
-      : [...games];
+    let filteredGames = [...games];
+    if (searchTerm) filteredGames = filteredGames.filter(g => g.name.toLowerCase().includes(searchTerm));
+    if (window.gamesTagFilter !== 'all') filteredGames = filteredGames.filter(g => (g.tags || []).includes(window.gamesTagFilter));
+    if (window.gamesTypeFilter !== 'all') filteredGames = filteredGames.filter(g => g.type === window.gamesTypeFilter);
     const sortedGames = filteredGames.sort((a, b) => a.name.localeCompare(b.name));
 
     // Get game stats for amulet icons
     const allStats = getGameStats();
+
+    const tagFilterBtnStyle = (active) => `padding:4px 10px; border:none; border-radius:12px; cursor:pointer; font-size:11px; font-weight:bold; background:${active?'#ff9800':'rgba(100,100,100,0.3)'}; color:${active?'#000':'#ccc'}; transition:background 0.15s;`;
+    const typeFilterBtnStyle = (active) => `padding:4px 10px; border:none; border-radius:12px; cursor:pointer; font-size:11px; font-weight:bold; background:${active?'#2196F3':'rgba(100,100,100,0.3)'}; color:${active?'#fff':'#ccc'}; transition:background 0.15s;`;
 
     content.innerHTML = `
       <!-- Left side: Game grid -->
@@ -742,6 +752,18 @@ function switchCollectionTab(tab) {
             style="flex: 1; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid #555; border-radius: 6px; color: white; font-size: 13px; outline: none;"
           />
           <span style="color: #666; font-size: 11px;">${sortedGames.length} of ${games.length}</span>
+        </div>
+        <!-- Type filter -->
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:8px; align-items:center;">
+          <span style="color:#888; font-size:11px; margin-right:2px;">Type:</span>
+          <button style="${typeFilterBtnStyle(window.gamesTypeFilter==='all')}" onclick="window.gamesTypeFilter='all'; switchCollectionTab('games');">All</button>
+          ${allTypes.map(t => `<button style="${typeFilterBtnStyle(window.gamesTypeFilter===t)}" onclick="window.gamesTypeFilter=${JSON.stringify(t)}; switchCollectionTab('games');">${t}</button>`).join('')}
+        </div>
+        <!-- Tag filter -->
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:8px; align-items:center;">
+          <span style="color:#888; font-size:11px; margin-right:2px;">Tag:</span>
+          <button style="${tagFilterBtnStyle(window.gamesTagFilter==='all')}" onclick="window.gamesTagFilter='all'; switchCollectionTab('games');">All</button>
+          ${allTags.map(t => `<button style="${tagFilterBtnStyle(window.gamesTagFilter===t)}" onclick="window.gamesTagFilter=${JSON.stringify(t)}; switchCollectionTab('games');">${t}</button>`).join('')}
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; overflow-y: auto;">
           ${sortedGames.map(game => {
@@ -866,8 +888,7 @@ function switchCollectionTab(tab) {
     if (typeof window.cardsSortType === 'undefined') window.cardsSortType = 'rarity';
 
     const allCards = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
-    // Exclude status cards and starters from main pool view
-    let filteredCards = allCards.filter(c => c.type !== 'Status');
+    let filteredCards = [...allCards];
 
     const searchTerm = window.cardsSearchTerm.toLowerCase();
     if (searchTerm) {
@@ -916,8 +937,8 @@ function switchCollectionTab(tab) {
       }
     };
 
-    const cardTypes = [...new Set(allCards.filter(c=>c.type!=='Status').map(c=>c.type).filter(Boolean))].sort();
-    const rarities = [...new Set(allCards.filter(c=>c.type!=='Status').map(c=>c.rarity).filter(Boolean))].sort();
+    const cardTypes = [...new Set(allCards.map(c=>c.type).filter(Boolean))].sort();
+    const rarities = [...new Set(allCards.map(c=>c.rarity).filter(Boolean))].sort();
 
     content.innerHTML = `
       <div style="flex:2; overflow-y:auto; padding:10px; display:flex; flex-direction:column;">
@@ -940,7 +961,7 @@ function switchCollectionTab(tab) {
           <button onclick="window.cardsSortType='type'; switchCollectionTab('cards');" style="padding:5px 9px; background:${window.cardsSortType==='type'?'#ff9800':'#444'}; border:none; border-radius:5px; color:white; cursor:pointer; font-size:11px; font-weight:bold;">Type</button>
           <button onclick="window.cardsSortType='cost'; switchCollectionTab('cards');" style="padding:5px 9px; background:${window.cardsSortType==='cost'?'#ff9800':'#444'}; border:none; border-radius:5px; color:white; cursor:pointer; font-size:11px; font-weight:bold;">Cost</button>
           <button onclick="window.cardsSortType='alpha'; switchCollectionTab('cards');" style="padding:5px 9px; background:${window.cardsSortType==='alpha'?'#ff9800':'#444'}; border:none; border-radius:5px; color:white; cursor:pointer; font-size:11px; font-weight:bold;">A-Z</button>
-          <span style="color:#555; font-size:11px; margin-left:auto;">${filteredCards.length}/${allCards.filter(c=>c.type!=='Status').length}</span>
+          <span style="color:#555; font-size:11px; margin-left:auto;">${filteredCards.length}/${allCards.length}</span>
         </div>
         <!-- Card grid -->
         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:10px; overflow-y:auto;">
@@ -1334,21 +1355,23 @@ function switchCollectionTab(tab) {
   } else if (tab === 'statuses') {
     // Embedded reference data from design spreadsheet
     const REF_STATUSES = [
-      {name:'Burn',desc:'Deals 3 damage to any target per stack at the end of turn',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Burn',rarity:'Common'},
+      {name:'Burn',desc:'Deals 3 damage to target at the end of turn',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Burn',rarity:'Common'},
       {name:'Poison',desc:'Deals X damage to any target where X is the stack at the start of turn',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Poison',rarity:'Common'},
       {name:'Dodge',desc:'Negate the next X sources of damage where X is the stack',type:'Buff',stackable:true,decay:'Down when player was going to lose health',who:'All',file:'Dodge',rarity:'Rare'},
       {name:'Power',desc:'Raise or Lower the damage dealt by this target by X',type:'Buff',stackable:true,decay:'None',who:'All',file:'Power',rarity:'Uncommon'},
+      {name:'Defense',desc:'Raise or Lower the Block gained by this target by X',type:'Buff',stackable:true,decay:'None',who:'All',file:'Defense',rarity:'Uncommon'},
       {name:'Oiled',desc:'Burn deals double damage, and at end of turn, Dex save 10 or Lose 1 Energy',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Oiled',rarity:''},
       {name:'Forgetful',desc:'This enemy cannot repeat any of its intents until it has performed all of them.',type:'Ability',stackable:false,decay:'Down by 1 when all sides have been rolled',who:'Enemy',file:'Forgetful',rarity:''},
-      {name:'Barricade',desc:'Block goes down by half at end of turn',type:'Ability',stackable:false,decay:'None',who:'All',file:'Barricade',rarity:'Rare'},
+      {name:'Barricade',desc:'Block is not removed at the start of each turn',type:'Ability',stackable:false,decay:'None',who:'All',file:'Barricade',rarity:'Rare'},
       {name:'Ruptured',desc:'Deals 3 damage to the player when they use a dash to gain dodge',type:'Debuff',stackable:true,decay:'Down by 1 when dash is used',who:'All',file:'Ruptured',rarity:''},
-      {name:'Frail',desc:'All damage deals double to target',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Frail',rarity:'Rare'},
+      {name:'Enfeebled',desc:'All damage deals double to target',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Enfeebled',rarity:'Rare'},
+      {name:'Frail',desc:'Reduces Block gained by 25%',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Frail',rarity:'Common'},
       {name:'Formless',desc:'When dealt damage, change its intent',type:'Ability',stackable:false,decay:'None',who:'Enemy',file:'Formless',rarity:''},
       {name:'Multi Attack X',desc:'This enemy has X amount of intents in a turn',type:'Ability',stackable:false,decay:'None',who:'Enemy',file:'MultiAttack',rarity:''},
       {name:'Ritual',desc:'At the end of its turn, gains X Power',type:'Buff',stackable:true,decay:'None',who:'All',file:'Ritual',rarity:'Rare'},
       {name:'Confused',desc:'Each Dice Energy Cost is randomized between 0 and your max energy every roll',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'Player',file:'Confused',rarity:''},
       {name:'Fading X',desc:'Dies in X turns',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Fading',rarity:''},
-      {name:'Shifting',desc:'Loses X Power where X is the amount of damage taken this turn',type:'Debuff',stackable:false,decay:'None',who:'All',file:'Shifting',rarity:''},
+      {name:'Shifting',desc:'Loses X Power where X is the amount of damage taken this turn. Gain X Shackled.',type:'Debuff',stackable:false,decay:'None',who:'All',file:'Shifting',rarity:''},
       {name:'Thorns',desc:'When a target with Thorns gets dealt or deals Melee Dmg, the target deals X Dmg to the attacker/recipient',type:'Buff',stackable:true,decay:'None',who:'All',file:'Thorns',rarity:'Uncommon'},
       {name:'Vulnerable',desc:'All damage deals 50% more to target',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Vulnerable',rarity:'Common'},
       {name:'Weak',desc:'Target deals 25% less damage.',type:'Debuff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Weak',rarity:'Common'},
@@ -1364,6 +1387,25 @@ function switchCollectionTab(tab) {
       {name:'Soul Link',desc:'Whenever a soul linked target loses health, all soul linked characters lose that health as well.',type:'Debuff',stackable:false,decay:'None',who:'All',file:'SoulLink',rarity:'Rare'},
       {name:'Holy Shield',desc:'The next time this unit gets hit, take no damage and lose 1 Holy Shield. This takes precedence over Block',type:'Buff',stackable:true,decay:'When the target would take damage',who:'All',file:'HolyShield',rarity:'Rare'},
       {name:'Regeneration',desc:'At the end of target\'s turn, it gains X health where X is the stack',type:'Buff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Regeneration',rarity:'Uncommon'},
+      {name:'Curl Up',desc:'Target Gains +X Block upon receiving first attack damage each turn',type:'Ability',stackable:false,decay:'None',who:'All',file:'CurlUp',rarity:''},
+      {name:'Split',desc:'When target\'s health is at or below 50%, its intent becomes "Splitting" and it Spawns X enemies with its current HP on its turn',type:'Ability',stackable:false,decay:'None',who:'Enemy',file:'Split',rarity:''},
+      {name:'Next Turn Block',desc:'Gain X Block at the start of your next turn',type:'Buff',stackable:true,decay:'Lose all when triggered',who:'Player',file:'NextTurnBlock',rarity:'Common'},
+      {name:'Next Turn Draw',desc:'Draw X Cards at the start of your next turn',type:'Buff',stackable:true,decay:'Lose all when triggered',who:'Player',file:'NextTurnDraw',rarity:'Rare'},
+      {name:'Next Turn Energy',desc:'Gain X Energy at the start of your next turn',type:'Buff',stackable:true,decay:'Lose all when triggered',who:'Player',file:'NextTurnEnergy',rarity:'Rare'},
+      {name:'Shackled',desc:'Regains X Power at the end of target\'s turn, then clears',type:'Buff',stackable:true,decay:'Lose all when triggered',who:'All',file:'Shackled',rarity:''},
+      {name:'Blur',desc:'Block is not removed at the start of your next X turns',type:'Buff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Blur',rarity:'Rare'},
+      {name:'Choked',desc:'Whenever you play a card this turn, target loses X Health',type:'Debuff',stackable:true,decay:'Lose all at end of turn',who:'Enemy',file:'Choked',rarity:''},
+      {name:'Well-Laid Plans',desc:'At the end of your turn, add Retain to up to X Cards',type:'Ability',stackable:true,decay:'None',who:'Player',file:'Well-LaidPlans',rarity:''},
+      {name:'No Draw',desc:'You cannot Draw Cards this turn',type:'Debuff',stackable:false,decay:'Down by 1 at end of turn',who:'Player',file:'NoDraw',rarity:''},
+      {name:'Burst',desc:'The next X Skills you play are triggered an additional time',type:'Buff',stackable:true,decay:'Lose all at end of turn',who:'Player',file:'Burst',rarity:'Rare'},
+      {name:'Corpse Explosion',desc:'On death, this enemy deals X times its Max Health to all other enemies',type:'Debuff',stackable:true,decay:'None',who:'Enemy',file:'CorpseExplosion',rarity:''},
+      {name:'Envenom',desc:'Whenever you deal unblocked attack damage, apply X Poison',type:'Ability',stackable:true,decay:'None',who:'Player',file:'Envenom',rarity:''},
+      {name:'Double Damage',desc:'Attacks deal double damage for X turns',type:'Buff',stackable:true,decay:'Down by 1 at end of turn',who:'Player',file:'DoubleDamage',rarity:'Rare'},
+      {name:'Intangible',desc:'Reduce each instance of damage and health loss to 1',type:'Buff',stackable:true,decay:'Down by 1 at end of turn',who:'All',file:'Intangible',rarity:'Rare'},
+      {name:'Evolve',desc:'Whenever you draw a Status card, draw X additional Cards',type:'Ability',stackable:true,decay:'None',who:'Player',file:'Evolve',rarity:''},
+      {name:'Feel No Pain',desc:'Whenever a card is Exhausted, gain X Block (X = stacks)',type:'Ability',stackable:true,decay:'None',who:'Player',file:'FeelNoPain',rarity:''},
+      {name:'Fire Breathing',desc:'Whenever you draw a Status or Curse card, deal X damage to all enemies (X = stacks)',type:'Ability',stackable:true,decay:'None',who:'Player',file:'FireBreathing',rarity:''},
+      {name:'Plated Armor',desc:'At the end of your turn, Gain X Block. Loses 1 stack whenever you take unblocked damage.',type:'Buff',stackable:true,decay:'Down by 1 when receiving unblocked Dmg',who:'All',file:'PlatedArmor',rarity:'Uncommon'},
     ];
     const REF_MOVES = [
       {name:'Dmg',desc:'Deals X damage to target',target:'Enemy',file:'Attack',scaling:'Strength',rarity:'Common'},
@@ -1383,13 +1425,14 @@ function switchCollectionTab(tab) {
       {name:'Steal X in Y',desc:'Enemy steals X card from the player\'s Y (Deck, Hand, Discard, Any) for the duration of the battle',target:'Player',file:'Status',scaling:'N/A',rarity:''},
       {name:'Consume X in Y for Z',desc:'Steal X from player\'s Y and destroy it permanently, then Get Z status if successful',target:'Player',file:'Status',scaling:'N/A',rarity:''},
       {name:'Lose',desc:'Lose X status Y times (# or All)',target:'Self',file:'Status',scaling:'N/A',rarity:''},
+      {name:'Conjure X Y to Z',desc:'Create X number of named Y cards and add them to your Z (Hand, Discard, or Draw)',target:'Self',file:'Status',scaling:'N/A',rarity:''},
     ];
     const REF_ADDONS = [
       {name:'Cantrip',desc:'Whenever this side is rolled, trigger its effect immediately (to a random preferred target)',attachTo:'All',forms:''},
       {name:'Ranged',desc:'Ignores effects that come from contact',attachTo:'Attack, Status',forms:''},
       {name:'Multiply X',desc:'Multiplies this side by X (Example: 2 Damage Multi 2)',attachTo:'All',forms:''},
       {name:'Overload',desc:'Applies this to every target (both player/allies and enemies). ExceptLeft/ExceptRight lets an enemy hit everything except neighbors.',attachTo:'All',forms:'OverloadExceptLeft, OverloadExceptRight'},
-      {name:'Cleave',desc:'Applies this to target and every target directly to its left and right',attachTo:'All',forms:''},
+      {name:'Cleave',desc:'Applies this to target and every target on its side (Allies or Enemies)',attachTo:'All',forms:''},
       {name:'Engage',desc:'x2 on targets with full health',attachTo:'All',forms:''},
       {name:'Finesse',desc:'This weapon scales damage with Dexterity instead of Strength',attachTo:'Weapon',forms:''},
       {name:'Fishing Weight',desc:'Gain +1 Dmg for every 3 Common, 2 Uncommon, or 1 Rare fish in your loot inventory',attachTo:'Weapon',forms:''},
@@ -1398,6 +1441,14 @@ function switchCollectionTab(tab) {
       {name:'Infuse X',desc:'If this kills an enemy, gain X Max Health',attachTo:'All',forms:''},
       {name:'Melee',desc:'Triggers effects from contact (Thorns, etc.)',attachTo:'All',forms:''},
       {name:'Destroy',desc:'Remove this from your deck permanently',attachTo:'All',forms:''},
+      {name:'Determined(X-Y)',desc:'Counts as a random number from X to Y, determined before combat begins',attachTo:'All',forms:''},
+      {name:'Ethereal',desc:'If this card is in your hand at the end of your turn, it is Exhausted',attachTo:'Cards',forms:''},
+      {name:'Innate',desc:'Place this card on the top of your deck at the start of combat',attachTo:'Cards',forms:''},
+      {name:'Sly',desc:'This card is Unplayable, but its effect triggers when it is discarded',attachTo:'Cards',forms:''},
+      {name:'Unplayable',desc:'This card cannot be played and has no energy cost',attachTo:'Cards',forms:''},
+      {name:'Retain',desc:'This card is not discarded at the end of the turn',attachTo:'Cards',forms:''},
+      {name:'Sequential Upgrade',desc:'This card can be upgraded any number of times. Each upgrade increases the damage by the specified amount (first upgrade also reduces cost).',attachTo:'Cards',forms:''},
+      {name:'Lifesteal',desc:'Heals the target equal to the amount of unblocked Dmg dealt.',attachTo:'All',forms:''},
     ];
 
     if (!window.refSubtab) window.refSubtab = 'statuses';

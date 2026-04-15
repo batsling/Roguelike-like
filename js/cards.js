@@ -36,7 +36,7 @@ function selectCardRewards() {
   if (!cards || cards.length === 0) return [];
 
   const pool = cards.filter(c =>
-    c.rarity !== 'Starter' && !c.isStatusCard && c.rarity in CARD_RARITY_MAP
+    c.rarity !== 'Starter' && !c.isStatusCard && !c.isCurse && c.rarity in CARD_RARITY_MAP
   );
   if (pool.length === 0) return [];
 
@@ -125,6 +125,8 @@ function removeCardFromDeck(index) {
 /**
  * Upgrade a card in the player's deck by index.
  * Status cards and cards without upgrade data cannot be upgraded.
+ * Cards with sequentialUpgrade:true can be upgraded unlimited times,
+ * adding damage each upgrade (parsed from "Sequential Upgrade Dmg +N" in description).
  * @param {number} index - Index in gameState.deck
  * @returns {boolean} True if upgrade succeeded
  */
@@ -138,6 +140,28 @@ function upgradeCardInDeck(index) {
     }
     return false;
   }
+
+  // Sequential upgrade: unlimited upgrades, each adds damage based on description
+  if (card.sequentialUpgrade) {
+    const level = card._seqLevel || 0;
+    // Apply cost change on first upgrade only
+    if (level === 0 && card.upgradedCost !== null && card.upgradedCost !== undefined) {
+      card.cost = card.upgradedCost;
+    }
+    // Parse upgrade bonus from description (e.g. "Sequential Upgrade Dmg +3" → 3)
+    const seqMatch = card.description.match(/Sequential Upgrade Dmg \+(\d+)/i);
+    const dmgBonus = seqMatch ? parseInt(seqMatch[1]) : 3;
+    // Update the damage number in description
+    card.description = card.description.replace(/Deal (\d+) Dmg/i, (_, n) => `Deal ${parseInt(n) + dmgBonus} Dmg`);
+    card._seqLevel = level + 1;
+    card.upgraded = true;
+    if (typeof createNotification === 'function') {
+      createNotification(`${card.name} upgraded! (Lv ${card._seqLevel})`, '#ff9800', '⬆️');
+    }
+    saveCurrentGame();
+    return true;
+  }
+
   if (!card.canUpgrade || card.upgraded) {
     if (typeof createNotification === 'function') {
       createNotification('This card cannot be upgraded further.', '#888', '❌');
@@ -314,14 +338,26 @@ function showDeckModal() {
   const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
   const startingEntries = (charData && charData.startingDeck) ? charData.startingDeck : [];
 
+  const upgradedStarting = (typeof gameState !== 'undefined' && gameState && gameState.upgradedStartingCards) || {};
   const startingCards = [];
   for (const entry of startingEntries) {
     const template = typeof CARDS_DATA !== 'undefined'
       ? CARDS_DATA.find(c => c.name === entry.cardName || c.name.toLowerCase() === entry.cardName.toLowerCase())
       : null;
     if (template) {
-      for (let i = 0; i < (entry.count || 1); i++) {
-        startingCards.push(template);
+      const total = entry.count || 1;
+      const val = upgradedStarting[entry.cardName];
+      // Support both legacy boolean (upgrade all) and new count-based tracking
+      const upgradedCount = typeof val === 'number' ? Math.min(val, total) : (val ? total : 0);
+      const upgradedCard = upgradedCount > 0 ? {
+        ...template,
+        upgraded: true,
+        description: template.upgradedDescription || template.description,
+        cost: (template.upgradedCost !== null && template.upgradedCost !== undefined)
+          ? template.upgradedCost : template.cost
+      } : null;
+      for (let i = 0; i < total; i++) {
+        startingCards.push(i < upgradedCount ? upgradedCard : template);
       }
     } else {
       // Card template not found — show a placeholder

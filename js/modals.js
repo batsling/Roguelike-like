@@ -16,9 +16,36 @@
  * - See main.js for full z-index layering system documentation
  */
 
+// ===== TOOLTIP CLEANUP =====
+
+// All known tooltip/hover-overlay element IDs across the app.
+// Called whenever the screen changes so stale tooltips don't linger.
+const TOOLTIP_IDS = [
+  'item-tooltip',
+  'game-tooltip',
+  'loot-tooltip',
+  'location-hover-tooltip',
+  'combat-item-tooltip',
+  'combat-status-tooltip',
+  'card-name-tooltip',
+  'starting-item-tip',
+  'collection-item-tip',
+];
+
+function hideAllTooltips() {
+  TOOLTIP_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  // Also hide the combat status tooltip via its own function if available
+  if (typeof hideStatusTooltip === 'function') hideStatusTooltip();
+}
+
 // ===== MODAL FUNCTIONS =====
 
 function createGameModal(content) {
+  hideAllTooltips();
+
   const existingModal = document.getElementById('game-modal');
   if (existingModal) existingModal.remove();
 
@@ -35,7 +62,7 @@ function createGameModal(content) {
     justify-content: center;
     align-items: flex-start;
     padding-top: 30px;
-    z-index: 10000;
+    z-index: 500;
     animation: fadeIn 0.3s;
   `;
 
@@ -62,13 +89,15 @@ function createGameModal(content) {
 }
 
 function closeGameModal() {
+  hideAllTooltips();
+
   const modal = document.getElementById('game-modal');
   if (modal) {
     modal.style.animation = 'fadeOut 0.3s';
     setTimeout(() => modal.remove(), 300);
   }
 
-  // Clean up combat tooltip if it exists
+  // Remove combat tooltip entirely (it gets recreated when needed)
   const combatTooltip = document.getElementById('combat-item-tooltip');
   if (combatTooltip) {
     combatTooltip.remove();
@@ -78,3 +107,4 @@ function closeGameModal() {
 // Export modal functions globally
 window.createGameModal = createGameModal;
 window.closeGameModal = closeGameModal;
+window.hideAllTooltips = hideAllTooltips;

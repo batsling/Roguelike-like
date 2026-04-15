@@ -129,7 +129,7 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     const isOrderedPattern = /Turn \d+:/i.test(patternStr);
     const parsedPattern = isOrderedPattern ? parseOrderedPattern(patternStr) : null;
 
-    return {
+    const enemyState = {
       id: `enemy_${index}`,
       name: enemy.name,
       type: enemy.type,
@@ -149,10 +149,14 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
       dice: enemy.dice,
       currentIntent: null,
       imageUrl: enemy.imageUrl,
-      position: index,           // Position for Cleave targeting
+      position: index,              // Position for Cleave targeting
       staggerThreshold: parseStaggerThreshold(enemy.ability),
-      rolledFaces: new Set()     // For Forgetful tracking
+      rolledFaces: new Set(),       // For Forgetful tracking
+      curlUpTriggeredThisTurn: false,
+      splitAbility: parseSplitAbility(enemy.ability)
     };
+    resolveDeterminedValues(enemyState);
+    return enemyState;
   });
 
   // Create ally states (for HP tracking)
@@ -200,6 +204,19 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
   combatState.selectedCardIndex = null;
   combatState.reshuffleQueued = false;
   combatState.lastPlayedCard = null;
+  combatState._scalingCounters = {}; // Tracks per-combat scaling bonuses (e.g. Claw damage bonus)
+  combatState._discardedThisTurn = false; // Tracks if player discarded a card this turn (Sneaky Strike)
+  combatState._discardsThisTurn = 0;      // Count of cards discarded this turn (Eviscerate cost)
+  combatState._playerHealthLossTimes = 0; // Times player took actual HP damage this combat (Masterful Stab)
+  // Flat attack bonus from items (Focus Crystal, Beefy Ring, etc.) — added per-hit to attack cards
+  combatState._hitLog = []; // Per-play hit records for multi-hit visual playback
+  combatState._flatAttackBonus = 0;
+  if (typeof recalculateScalablePassives === 'function') {
+    try {
+      const passiveBonuses = recalculateScalablePassives();
+      combatState._flatAttackBonus = passiveBonuses.attack || 0;
+    } catch (e) {}
+  }
   initCombatDeck(characterData);
 
   addLog('Combat started!', 'info');
@@ -263,13 +280,6 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
       combatState._hornCleatPending = true;
     }
 
-    // Anchor: +10 Block at start of combat
-    const anchorCount = inventory.filter(i => i.name === 'Anchor').reduce((n, i) => n + (i.quantity || 1), 0);
-    if (anchorCount > 0) {
-      combatState.player.block = (combatState.player.block || 0) + 10 * anchorCount;
-      addLog(`Anchor: +${10 * anchorCount} Block`, 'info');
-    }
-
     // Bronze Scales: +3 Thorns at start of combat
     const bronzeScalesCount = inventory.filter(i => i.name === 'Bronze Scales').reduce((n, i) => n + (i.quantity || 1), 0);
     if (bronzeScalesCount > 0) {
@@ -287,6 +297,12 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
         addLog(`Du-Vu Doll: +${powerGain} Power!`, 'info');
       }
     }
+
+    // Thread and Needle: +4 Plated Armor at start of combat
+    if (inventory.some(i => i.name === 'Thread and Needle')) {
+      combatState.player.statuses['plated_armor'] = (combatState.player.statuses['plated_armor'] || 0) + 4;
+      addLog('Thread and Needle: +4 Plated Armor', 'info');
+    }
   }
 
   // Initialize incremental item counters — attacksTotal persists across combats via gameState.runAttacks
@@ -296,12 +312,49 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     attacksThisTurn: 0,             // attacks played this turn (Ornamental Fan, Shuriken)
   };
 
+  // Curse of Weakness: start combat with 3 Weak
+  if (typeof CurseManager !== 'undefined') {
+    const weaknessCurses = CurseManager.findByType('weakness');
+    weaknessCurses.forEach(curse => {
+      combatState.player.statuses['weak'] = (combatState.player.statuses['weak'] || 0) + 3;
+      addLog(`Curse of Weakness: started with 3 Weak`, 'danger');
+    });
+
+    // Curse of Obstruction: all enemies gain Plated Armor at start of combat
+    const obstructionCurses = CurseManager.findByType('obstruction');
+    obstructionCurses.forEach(curse => {
+      const armorAmounts = { Low: 3, Medium: 5, High: 7 };
+      const armorAmt = armorAmounts[curse.power] || 3;
+      combatState.enemies.forEach(e => {
+        e.statuses['plated_armor'] = (e.statuses['plated_armor'] || 0) + armorAmt;
+      });
+      addLog(`Curse of Obstruction: all enemies gained +${armorAmounts[curse.power] || 3} Plated Armor`, 'danger');
+    });
+  }
+
   // Roll enemy intents
   rollAllEnemyIntents();
 
   // Transition to player status phase
   combatState.phase = 'player_status';
   processPlayerStartOfTurn();
+
+  // Items that grant block or draw at combat start must be applied AFTER processPlayerStartOfTurn
+  // clears the initial block and draws the starting hand.
+  if (typeof inventory !== 'undefined') {
+    // Anchor: +10 Block at start of combat (applied after start-of-turn block clear)
+    const anchorCount = inventory.filter(i => i.name === 'Anchor').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (anchorCount > 0) {
+      addBlock(combatState.player, 10 * anchorCount);
+      addLog(`Anchor: +${10 * anchorCount} Block!`, 'info');
+    }
+
+    // Ring of the Snake: draw 2 extra cards at combat start (applied after normal hand draw)
+    const snakeEffect = typeof ITEM_EFFECTS !== 'undefined' && ITEM_EFFECTS['Ring of the Snake'];
+    if (snakeEffect && snakeEffect.onCombatStart && inventory.some(i => i.name === 'Ring of the Snake')) {
+      snakeEffect.onCombatStart();
+    }
+  }
 
   return combatState;
 }
@@ -314,6 +367,7 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
 function parseStartingAbilities(abilityStr) {
   const statuses = {};
   if (!abilityStr) return statuses;
+  if (abilityStr.trim().toUpperCase() === 'N/A') return statuses;
 
   // Split by '/' to get individual clauses; then split non-"When" clauses by ',' too.
   // "When Defeated, ..." style clauses are left intact then skipped.
@@ -333,6 +387,24 @@ function parseStartingAbilities(abilityStr) {
     if (!seg) continue;
     // Skip defeat-trigger and "When another …" clauses entirely
     if (/^when\b/i.test(seg) || /defeat/i.test(seg)) continue;
+
+    // "Curl Up Determined(X-Y)" — roll block amount once at combat start
+    const curlUpDetMatch = seg.match(/^Curl\s+Up\s+Determined\((\d+)-(\d+)\)$/i);
+    if (curlUpDetMatch) {
+      const lo = parseInt(curlUpDetMatch[1]), hi = parseInt(curlUpDetMatch[2]);
+      statuses['curl_up'] = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+      continue;
+    }
+
+    // "Curl Up N" — fixed block amount
+    const curlUpFixedMatch = seg.match(/^Curl\s+Up\s+(\d+)$/i);
+    if (curlUpFixedMatch) { statuses['curl_up'] = parseInt(curlUpFixedMatch[1]); continue; }
+
+    // Plain "Curl Up" — treat as curl_up flag (will need curlUpValue from elsewhere)
+    if (/^Curl\s+Up$/i.test(seg)) { statuses['curl_up'] = 1; continue; }
+
+    // Skip "Split N Name" — handled separately via parseSplitAbility
+    if (/^Split\s+\d+/i.test(seg)) continue;
 
     // Fading N
     const fadingMatch = seg.match(/^Fading\s+(\d+)$/i);
@@ -380,6 +452,54 @@ function parseStaggerThreshold(abilityStr) {
 }
 
 /**
+ * Pre-roll all Determined(X-Y) values from an enemy's pattern string.
+ * Each unique "X-Y" range gets one fixed value for the whole combat.
+ * @param {Object} enemy - Enemy state object (must have .pattern)
+ */
+function resolveDeterminedValues(enemy) {
+  enemy.determinedValues = {};
+  const regex = /Determined\((\d+)-(\d+)\)/gi;
+  let m;
+  while ((m = regex.exec(enemy.pattern || '')) !== null) {
+    const key = `${m[1]}-${m[2]}`;
+    if (!(key in enemy.determinedValues)) {
+      const lo = parseInt(m[1]), hi = parseInt(m[2]);
+      enemy.determinedValues[key] = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+    }
+  }
+}
+
+/**
+ * Replace Determined(X-Y) tokens in a description with the enemy's pre-rolled values.
+ * @param {string} desc
+ * @param {Object} enemy
+ * @returns {string}
+ */
+function applyDetermined(desc, enemy) {
+  if (!desc || !enemy.determinedValues) return desc;
+  return desc.replace(/Determined\((\d+)-(\d+)\)/gi, (match, lo, hi) => {
+    const key = `${lo}-${hi}`;
+    if (enemy.determinedValues[key] !== undefined) return String(enemy.determinedValues[key]);
+    // Safety fallback: roll fresh if somehow not pre-rolled
+    const val = Math.floor(Math.random() * (parseInt(hi) - parseInt(lo) + 1)) + parseInt(lo);
+    enemy.determinedValues[key] = val;
+    return String(val);
+  });
+}
+
+/**
+ * Parse split ability from ability string.
+ * "Split 2 Acid Slime (M)" → { count: 2, spawnName: "Acid Slime (M)" }
+ * Returns null if no split ability.
+ */
+function parseSplitAbility(abilityStr) {
+  if (!abilityStr) return null;
+  const m = abilityStr.match(/\bSplit\s+(\d+)\s+(.+)/i);
+  if (!m) return null;
+  return { count: parseInt(m[1]), spawnName: m[2].trim(), triggered: false, splitting: false };
+}
+
+/**
  * Parse an ordered pattern string into an array of turn entries.
  * Pattern format: "Turn 1: <desc> | Turn 2: <desc> | Next: Repeat"
  * or              "Turn 1: <desc> | Next: <desc>"
@@ -407,13 +527,13 @@ function parseOrderedPattern(patternStr) {
  * Handles simple sequences:   "10 Dmg Ranged"  /  "6 Dmg Ranged 1 Burn"
  * Handles no-ops:             "Unknown Intent (\"Charging\")"
  */
-const PATTERN_ADDONS   = new Set(['ranged','melee','pierce','self','engage','trap','aoe','splash','overload','overloadexceptleft','overloadexceptright']);
+const PATTERN_ADDONS   = new Set(['ranged','melee','pierce','self','engage','trap','aoe','splash','overload','overloadexceptleft','overloadexceptright','cleave']);
 const PATTERN_STATUSES = new Set([
-  'burn','poison','weak','vulnerable','stun','oiled','dodge','power','frail','confused',
+  'burn','poison','weak','vulnerable','stun','oiled','dodge','power','frail','enfeebled','confused',
   'barricade','fading','thorns','shifting','formless','ritual','ruptured','bleed','slow','silence',
 ]);
 // Statuses that do not stack — applying again just sets to 1
-const NON_STACKABLE_STATUSES = new Set(['stun', 'dodge', 'silence', 'confusion', 'confused']);
+const NON_STACKABLE_STATUSES = new Set(['stun', 'dodge', 'silence', 'confused']);
 
 /**
  * Apply a status to a unit, respecting non-stackable caps.
@@ -421,7 +541,9 @@ const NON_STACKABLE_STATUSES = new Set(['stun', 'dodge', 'silence', 'confusion',
 // Add a random pigment/status card to the player's combat hand
 function addPigmentCardToHand() {
   if (!combatState) return;
-  const pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : []).filter(c => c.isStatusCard);
+  // Only pick cards explicitly tagged as pigments, never status cards like Slimed
+  const pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
+    .filter(c => c.isStatusCard && c.tags && c.tags.includes('pigment'));
   if (pool.length === 0) return;
   const card = { ...pool[Math.floor(Math.random() * pool.length)] };
   if (!combatState.hand) combatState.hand = [];
@@ -456,19 +578,20 @@ function evaluateScalingFormulas(desc) {
 }
 
 function parsePatternDescToEffects(desc) {
-  if (!desc || /unknown intent/i.test(desc)) return { effects: [], text: desc || '' };
+  if (!desc) return { effects: [], text: '' };
 
   // Evaluate turn-scaling formulas (e.g. Transient) before any other parsing
   desc = evaluateScalingFormulas(desc);
 
   // Probability split FIRST: "50% desc1 / 50% desc2"
-  // Must run before special-case checks so "Consume" inside a branch is handled per-branch
+  // Must run before unknown-intent check so each branch is resolved independently.
+  // e.g. "75% Unknown Intent ("Wandering") / 25% 6 Dmg Ranged" rolls and picks ONE.
   if (desc.includes('%') && desc.includes('/')) {
     const options = desc.split('/').map(s => s.trim());
     const weighted = [];
     for (const opt of options) {
-      const m = opt.match(/^(\d+)%\s*(.*)/);
-      if (m) weighted.push({ weight: parseInt(m[1]), text: m[2].trim() });
+      const m = opt.match(/^(\d+(?:\.\d+)?)%\s*(.*)/);
+      if (m) weighted.push({ weight: parseFloat(m[1]), text: m[2].trim() });
     }
     if (weighted.length > 0) {
       const total = weighted.reduce((s, o) => s + o.weight, 0);
@@ -480,6 +603,14 @@ function parsePatternDescToEffects(desc) {
       const last = weighted[weighted.length - 1];
       return parsePatternDescToEffects(last.text);
     }
+  }
+
+  // Unknown intent check AFTER probability split so each branch resolves independently.
+  // Extract the label from "Unknown Intent ("Label")" to show just the label.
+  if (/unknown intent/i.test(desc)) {
+    const labelMatch = desc.match(/unknown intent\s*\(\s*"?([^")]+)"?\s*\)/i);
+    const text = labelMatch ? labelMatch[1].trim() : desc;
+    return { effects: [], text };
   }
 
   // "Add N random Pigment ... to (your) deck/hand"
@@ -499,7 +630,8 @@ function parsePatternDescToEffects(desc) {
 
 function parseSimplePatternDesc(text) {
   const effects = [];
-  const tokens  = text.trim().split(/\s+/);
+  // Strip trailing commas from each token so "Ranged," is treated the same as "Ranged"
+  const tokens  = text.trim().split(/\s+/).map(t => t.replace(/,+$/, ''));
   let i = 0;
   while (i < tokens.length) {
     // NxM notation: "5x4 Dmg Ranged" → 5 damage, 4 times
@@ -563,6 +695,25 @@ function parseSimplePatternDesc(text) {
           target: statusName,
           all: loseAll
         });
+      }
+      continue;
+    }
+
+    // "Add N CardName to Discard" — e.g. "Add 2 Slimed to Discard"
+    if (tokens[i].toLowerCase() === 'add') {
+      i++;
+      if (i < tokens.length && /^\d+$/.test(tokens[i])) {
+        const count = parseInt(tokens[i++]);
+        const nameTokens = [];
+        while (i < tokens.length && tokens[i].toLowerCase() !== 'to') {
+          nameTokens.push(tokens[i++]);
+        }
+        if (i < tokens.length && tokens[i].toLowerCase() === 'to') i++;
+        if (i < tokens.length && tokens[i].toLowerCase() === 'discard') i++;
+        if (nameTokens.length > 0) {
+          const cardName = nameTokens.join(' ');
+          effects.push({ raw: `Add ${count} ${cardName} to Discard`, value: count, move: 'AddToDiscard', target: cardName, addons: [] });
+        }
       }
       continue;
     }
@@ -656,6 +807,12 @@ function resolveEffectValue(effect) {
 function rollAllEnemyIntents() {
   combatState.enemies.forEach(enemy => {
     if (enemy.health > 0) {
+      // Reset Curl Up trigger at the start of each new round
+      enemy.curlUpTriggeredThisTurn = false;
+      // Clear justSpawned flag so they act normally next turn, then roll their real intent
+      if (enemy.justSpawned) {
+        enemy.justSpawned = false;
+      }
       rollEnemyIntent(enemy);
     }
   });
@@ -709,7 +866,9 @@ function rollEnemyIntent(enemy) {
 
   } else {
     // Random: execute the pattern description (dice are the old design)
-    const patternDesc = (enemy.pattern || '').replace(/^Always:\s*/i, '').trim();
+    const rawPatternDesc = (enemy.pattern || '').replace(/^Always:\s*/i, '').trim();
+    // Substitute any Determined(X-Y) tokens with the pre-rolled combat values
+    const patternDesc = applyDetermined(rawPatternDesc, enemy);
     const multiAttack = enemy.statuses['multi_attack'] || 1;
     const isForgetful = !!enemy.statuses['forgetful'];
 
@@ -745,6 +904,22 @@ function rollEnemyIntent(enemy) {
       const pseudoFace = { isBlank, effects, raw: resolvedText };
       enemy.currentIntent.push({ faceIndex: 0, face: pseudoFace, resolved: false });
     }
+  }
+
+  // Split override: if HP ≤ 50% and split not yet triggered, override intent to Splitting
+  if (enemy.splitAbility && !enemy.splitAbility.triggered && enemy.health <= enemy.maxHealth * 0.5) {
+    enemy.currentIntent = [{
+      faceIndex: 0,
+      face: {
+        isBlank: false,
+        effects: [{ raw: 'Splitting', value: 0, move: 'Split', addons: [] }],
+        raw: `Splitting (×${enemy.splitAbility.count} ${enemy.splitAbility.spawnName})`
+      },
+      resolved: false
+    }];
+    enemy.splitAbility.splitting = true;
+    addLog(`${enemy.name} begins to split!`, 'warning');
+    return;
   }
 
   // Log intent (shows resolved text, not the full probability string)
@@ -1381,8 +1556,30 @@ function dealDamage(target, damage, addons = []) {
   let dmg = (typeof damage === 'number' && !isNaN(damage)) ? damage : 0;
   if (dmg <= 0) return;
 
+  // Flat melee attack bonus from items (Focus Crystal, Beefy Ring, etc.)
+  // Applied whenever a melee hit is dealt by the player
+  if (addons.includes('melee') && combatState._flatAttackBonus) {
+    dmg += combatState._flatAttackBonus;
+  }
+
+  // Offensive thorns: attacker's own thorns add to their melee damage
+  if (addons.includes('melee') && target !== combatState.player) {
+    const playerThorns = (combatState.player && combatState.player.statuses['thorns']) || 0;
+    if (playerThorns > 0) dmg += playerThorns;
+  }
+
+  // Record hit for multi-hit visual playback
+  if (combatState._hitLog !== undefined && target !== combatState.player && !addons.includes('self')) {
+    combatState._hitLog.push({ targetId: target.id || null, dmg });
+  }
+
   // Pen Nib: every 10th attack deals double damage
   if (combatState && combatState._penNibDouble) {
+    dmg *= 2;
+  }
+
+  // Double Damage: player's attacks deal double damage for X turns
+  if (!addons.includes('self') && target !== combatState.player && combatState.player.statuses['double_damage']) {
     dmg *= 2;
   }
 
@@ -1391,9 +1588,9 @@ function dealDamage(target, damage, addons = []) {
     dmg *= 2;
   }
 
-  // Check Frail (double damage)
-  const frailStacks = target.statuses['frail'] || 0;
-  if (frailStacks > 0) {
+  // Check Enfeebled (double damage taken)
+  const enfeebledStacks = target.statuses['enfeebled'] || 0;
+  if (enfeebledStacks > 0) {
     dmg *= 2;
   }
 
@@ -1432,6 +1629,15 @@ function dealDamage(target, damage, addons = []) {
   const powerStacks = target === combatState.player ? 0 : (target.statuses['power'] || 0);
   // Power affects outgoing damage, not incoming - skip for now
 
+  // Curl Up: gain block AFTER taking damage (first hit each turn, enemies only, not self-damage)
+  // Flag is set here so we know to apply it post-damage
+  const curlUpPending = target !== combatState.player && target.statuses
+      && target.statuses['curl_up'] > 0 && !target.curlUpTriggeredThisTurn
+      && !addons.includes('self');
+  if (curlUpPending) {
+    target.curlUpTriggeredThisTurn = true; // mark now so re-entrant hits don't double-trigger
+  }
+
   // Check Stagger — if this single hit is ≥ X% of the target's max HP, apply Stun
   if (target !== combatState.player && target.staggerThreshold && target.staggerThreshold > 0) {
     if (dmg >= target.staggerThreshold * target.maxHealth) {
@@ -1444,6 +1650,11 @@ function dealDamage(target, damage, addons = []) {
   const braceStacks = target.statuses['brace'] || 0;
   if (braceStacks > 0) {
     dmg = Math.max(1, dmg - braceStacks);
+  }
+
+  // Intangible: reduce all incoming damage to 1
+  if (target.statuses && target.statuses['intangible']) {
+    dmg = 1;
   }
 
   // Apply block first
@@ -1459,6 +1670,18 @@ function dealDamage(target, damage, addons = []) {
   if (remainingDamage > 0) {
     target.health -= remainingDamage;
     addLog(`${target.name || 'Player'} took ${remainingDamage} damage`, 'danger');
+
+    // Lifesteal: heal player equal to unblocked damage dealt to enemies
+    if (target !== combatState.player && combatState._lifestealActive) {
+      healTarget(combatState.player, remainingDamage);
+      addLog(`Lifesteal: healed ${remainingDamage} HP`, 'success');
+    }
+
+    // Plated Armor: lose 1 stack when taking unblocked damage
+    if (target.statuses && target.statuses['plated_armor']) {
+      target.statuses['plated_armor']--;
+      if (target.statuses['plated_armor'] <= 0) delete target.statuses['plated_armor'];
+    }
 
     // Pigment Rich — hitting this enemy adds a random pigment card to the player's hand
     if (target !== combatState.player && target.statuses['pigment_rich']) {
@@ -1478,9 +1701,18 @@ function dealDamage(target, damage, addons = []) {
       }
     }
 
-    // Check Shifting
+    // Check Shifting: loses Power equal to damage taken; Shackled so it regains that Power end-of-turn
     if (target.statuses['shifting']) {
-      target.statuses['power'] = (target.statuses['power'] || 0) - remainingDamage;
+      const loss = remainingDamage;
+      target.statuses['power'] = (target.statuses['power'] || 0) - loss;
+      target.statuses['shackled'] = (target.statuses['shackled'] || 0) + loss;
+    }
+
+    // Envenom: when player deals unblocked attack damage to an enemy, apply X Poison
+    if (target !== combatState.player && !addons.includes('self') && combatState.player.statuses['envenom']) {
+      const poisonAmt = combatState.player.statuses['envenom'];
+      target.statuses['poison'] = (target.statuses['poison'] || 0) + poisonAmt;
+      addLog(`Envenom: +${poisonAmt} Poison!`, 'warning');
     }
 
     // Check Formless
@@ -1503,6 +1735,13 @@ function dealDamage(target, damage, addons = []) {
       combatState._soulLinkPropagating = false;
     }
 
+    // Curl Up: gain block after receiving this hit (reactive block, doesn't absorb the triggering hit)
+    if (curlUpPending) {
+      const curlAmt = target.statuses['curl_up'];
+      addBlock(target, curlAmt);
+      addLog(`${target.name} curled up! Gained ${curlAmt} Block`, 'info');
+    }
+
     // Trigger on-death ability for enemies that just died
     if (target !== combatState.player && target.health <= 0) {
       onEnemyDefeated(target);
@@ -1519,18 +1758,18 @@ function dealDamage(target, damage, addons = []) {
             faceIndex: -1,
             face: {
               isBlank: false,
-              raw: '1 Frail Overload (reaction)',
+              raw: '1 Enfeebled Overload (reaction)',
               effects: [{
-                raw: '1 Frail',
+                raw: '1 Enfeebled',
                 value: 1,
                 move: 'Inflict',
                 addons: ['Overload'],
-                target: 'Frail'
+                target: 'Enfeebled'
               }]
             },
             resolved: false
           });
-          addLog(`${e.name} reacts: +1 Frail Overload added to intent!`, 'warning');
+          addLog(`${e.name} reacts: +1 Enfeebled Overload added to intent!`, 'warning');
         }
       });
     }
@@ -1548,11 +1787,79 @@ function dealDamage(target, damage, addons = []) {
  * @param {number} amount - Block amount
  */
 function addBlock(target, amount) {
-  // Validate amount is a valid number
-  const blockAmount = (typeof amount === 'number' && !isNaN(amount)) ? amount : 0;
+  const base = (typeof amount === 'number' && !isNaN(amount)) ? amount : 0;
+  if (base <= 0) return;
+  // Apply Defense status bonus (Footwork etc.)
+  const defense = (target.statuses && target.statuses['defense']) ? target.statuses['defense'] : 0;
+  let blockAmount = Math.max(0, base + defense);
+  // Frail (STS): reduces block gained by 25%
+  if (target.statuses && target.statuses['frail']) {
+    blockAmount = Math.floor(blockAmount * 0.75);
+  }
   if (blockAmount <= 0) return;
   target.block = (target.block || 0) + blockAmount;
   addLog(`${target.name || 'Player'} gained ${blockAmount} block`, 'info');
+
+  // Juggernaut: when player gains block, deal damage to a random enemy
+  if (target === combatState.player && combatState.player.statuses && combatState.player.statuses['juggernaut']) {
+    const jugDmg = combatState.player.statuses['juggernaut'];
+    const jugLive = combatState.enemies.filter(e => e.health > 0);
+    if (jugLive.length > 0) {
+      const jugTarget = jugLive[Math.floor(Math.random() * jugLive.length)];
+      dealDamage(jugTarget, jugDmg, ['melee']);
+      addLog(`Juggernaut: ${jugDmg} Melee dmg to ${jugTarget.name}!`, 'success');
+    }
+  }
+}
+
+/**
+ * Add a "Separate" status instance (stores as array, each entry is a distinct instance).
+ * Used for Next Turn Block / Draw / Energy which don't stack but create separate instances.
+ */
+function addSeparateStatus(target, key, amount) {
+  if (!Array.isArray(target.statuses[key])) {
+    target.statuses[key] = target.statuses[key] ? [target.statuses[key]] : [];
+  }
+  target.statuses[key].push(amount);
+}
+
+/**
+ * Compute the effective energy cost of a card, accounting for dynamic-cost effects.
+ * Returns 'X' or 'No' for special cost types, or a plain number otherwise.
+ */
+function getEffectiveCost(card) {
+  if (!card) return 0;
+  if (card._freeCost) return 0;
+  const raw = card.cost;
+  if (raw === 'X' || raw === 'No') return raw;
+  let cost = parseInt(raw) || 0;
+  const desc = card.description || '';
+  if (/Costs 1 less Energy for each Discarded Card this turn/i.test(desc)) {
+    cost = Math.max(0, cost - ((combatState && combatState._discardsThisTurn) || 0));
+  }
+  if (/Costs 1 more Energy for each time you've lost Health this combat/i.test(desc)) {
+    cost = cost + ((combatState && combatState._playerHealthLossTimes) || 0);
+  }
+  // Blood for Blood: costs 1 less per health loss event
+  if (/Costs 1 less Energy for each time you lost Health this combat/i.test(desc)) {
+    cost = Math.max(0, cost - ((combatState && combatState._playerHealthLossTimes) || 0));
+  }
+  // Grand Finale: can only be played with an empty draw pile
+  if (/Can only be played if there are no cards in your draw pile/i.test(desc)) {
+    if (combatState && combatState.drawPile && combatState.drawPile.length > 0) {
+      return 'No';
+    }
+  }
+  // Clash: unplayable if any card in hand is not an Attack
+  if (/Can only be played if every Card in your Hand is an Attack/i.test(desc)) {
+    const hand = (combatState && combatState.hand) || [];
+    if (hand.some(c => (c.type || '').toLowerCase() !== 'attack')) return 'No';
+  }
+  // Corruption: Skills cost 0
+  if (combatState && combatState.player && combatState.player.statuses && combatState.player.statuses['corruption']) {
+    if ((card.type || '').toLowerCase() === 'skill') cost = 0;
+  }
+  return cost;
 }
 
 /**
@@ -1579,12 +1886,42 @@ function healTarget(target, amount) {
 }
 
 /**
+ * Reduce player health via health-loss effects (Combust, Hemokinesis, etc.).
+ * Goes through block before affecting health. Respects Intangible.
+ * Counts toward _playerHealthLossTimes only when actual health is lost.
+ * Does NOT trigger take-damage-only effects (Thorns, Prayer Card, etc).
+ */
+function loseHealth(amount) {
+  const player = combatState.player;
+  let hp = amount;
+  if (player.statuses && player.statuses['intangible']) hp = 1;
+  if (hp <= 0) return;
+  // Consume block first
+  const blocked = Math.min(hp, player.block || 0);
+  if (blocked > 0) {
+    player.block -= blocked;
+    hp -= blocked;
+  }
+  if (hp <= 0) return;
+  player.health -= hp;
+  window.health = player.health;
+  combatState._playerHealthLossTimes = (combatState._playerHealthLossTimes || 0) + 1;
+  addLog(`Lost ${hp} Health`, 'danger');
+  // Rupture: gain power whenever health is lost from a card
+  if (combatState._inCardResolution && player.statuses && player.statuses['rupture_power']) {
+    const gain = player.statuses['rupture_power'];
+    player.statuses['power'] = (player.statuses['power'] || 0) + gain;
+    addLog(`Rupture: +${gain} Power`, 'success');
+  }
+}
+
+/**
  * Cleanse debuffs from a target
  * @param {Object} target - Target entity
  * @param {number} stacks - Stacks to remove per debuff
  */
 function cleanseDebuffs(target, stacks) {
-  const debuffs = ['burn', 'poison', 'oiled', 'frail', 'ruptured', 'confused', 'fading'];
+  const debuffs = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'ruptured', 'confused', 'fading'];
 
   debuffs.forEach(debuff => {
     if (target.statuses[debuff]) {
@@ -1742,8 +2079,19 @@ function spawnEnemyAtSlot(enemyName, position) {
     imageUrl: template.imageUrl,
     position: position,
     staggerThreshold: parseStaggerThreshold(template.ability),
-    rolledFaces: new Set()
+    rolledFaces: new Set(),
+    curlUpTriggeredThisTurn: false,
+    splitAbility: parseSplitAbility(template.ability)
   };
+  resolveDeterminedValues(newEnemy);
+
+  // Mark as just spawned: shows Unknown intent and skips action on spawn turn
+  newEnemy.justSpawned = true;
+  newEnemy.currentIntent = [{
+    faceIndex: 0,
+    face: { isBlank: true, effects: [], raw: 'Unknown' },
+    resolved: false
+  }];
 
   // Replace dead enemy at this position; otherwise append
   const idx = combatState.enemies.findIndex(e => e.position === position && e.health <= 0);
@@ -1754,8 +2102,64 @@ function spawnEnemyAtSlot(enemyName, position) {
     combatState.enemies.push(newEnemy);
   }
 
-  rollEnemyIntent(newEnemy);
   addLog(`${template.name} spawned!`, 'warning');
+  if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
+}
+
+/**
+ * Spawn a split copy of an enemy with a specific HP value (used by Split ability).
+ * @param {string} enemyName - Template name to look up
+ * @param {number} inheritedHp - HP to give the spawn (≤ template max)
+ */
+function spawnSplitEnemy(enemyName, inheritedHp) {
+  if (typeof ENEMIES_DATA === 'undefined') return;
+  const template = ENEMIES_DATA.find(e => e.name.toLowerCase() === enemyName.toLowerCase());
+  if (!template) {
+    addLog(`Split: cannot find template "${enemyName}"`, 'warning');
+    return;
+  }
+
+  const isOrdered = /Turn \d+:/i.test(template.pattern || '');
+  const spawnHp = Math.max(1, inheritedHp);
+  const position = combatState.enemies.length;
+  const newEnemy = {
+    id: `enemy_split_${position}_${Date.now()}`,
+    name: template.name,
+    type: template.type,
+    difficulty: template.difficulty,
+    weight: template.weight,
+    health: spawnHp,
+    maxHealth: template.hpMax || template.hp || spawnHp,
+    block: 0,
+    statuses: parseStartingAbilities(template.ability),
+    ability: template.ability,
+    pattern: template.pattern || '',
+    patternType: isOrdered ? 'ordered' : 'random',
+    patternTurns: isOrdered ? parseOrderedPattern(template.pattern) : null,
+    patternTurnIndex: 0,
+    game: template.game,
+    location: template.location,
+    dice: template.dice,
+    currentIntent: null,
+    imageUrl: template.imageUrl,
+    position,
+    staggerThreshold: parseStaggerThreshold(template.ability),
+    rolledFaces: new Set(),
+    curlUpTriggeredThisTurn: false,
+    splitAbility: parseSplitAbility(template.ability)
+  };
+  resolveDeterminedValues(newEnemy);
+
+  // Mark as just spawned: shows Unknown intent and skips action on spawn turn
+  newEnemy.justSpawned = true;
+  newEnemy.currentIntent = [{
+    faceIndex: 0,
+    face: { isBlank: true, effects: [], raw: 'Unknown' },
+    resolved: false
+  }];
+
+  combatState.enemies.push(newEnemy);
+  addLog(`${template.name} (${spawnHp} HP) emerges from the split!`, 'warning');
   if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
 }
 
@@ -1771,8 +2175,8 @@ function executeWhenDefeatedClause(enemy, clause) {
     const parts = text.split('/').map(s => s.trim());
     const weighted = [];
     for (const p of parts) {
-      const m = p.match(/^(\d+)%\s*(.*)/);
-      if (m) weighted.push({ weight: parseInt(m[1]), text: m[2].trim() });
+      const m = p.match(/^(\d+(?:\.\d+)?)%\s*(.*)/);
+      if (m) weighted.push({ weight: parseFloat(m[1]), text: m[2].trim() });
     }
     if (weighted.length > 0) {
       const total = weighted.reduce((s, o) => s + o.weight, 0);
@@ -1787,9 +2191,9 @@ function executeWhenDefeatedClause(enemy, clause) {
   }
 
   // Single probability: "50% chance to Spawn Mung"
-  const chancePct = text.match(/^(\d+)%\s*(?:chance\s+to\s+)?(.+)/i);
+  const chancePct = text.match(/^(\d+(?:\.\d+)?)%\s*(?:chance\s+to\s+)?(.+)/i);
   if (chancePct) {
-    if (Math.random() * 100 < parseInt(chancePct[1])) {
+    if (Math.random() * 100 < parseFloat(chancePct[1])) {
       executeWhenDefeatedClause(enemy, chancePct[2].trim());
     }
     return;
@@ -1860,6 +2264,18 @@ function onEnemyDefeated(enemy) {
     addLog('Gremlin Horn: +1 Energy, draw 1!', 'success');
   }
 
+  // Corpse Explosion: on death, deal X * maxHealth to all other living enemies
+  if (enemy.statuses && enemy.statuses['corpse_explosion']) {
+    const mult = enemy.statuses['corpse_explosion'];
+    const explodeDmg = Math.round(mult * (enemy.maxHealth || 0));
+    if (explodeDmg > 0) {
+      combatState.enemies.filter(e => e !== enemy && e.health > 0).forEach(e => {
+        dealDamage(e, explodeDmg, ['self']);
+      });
+      addLog(`Corpse Explosion: ${explodeDmg} damage to all other enemies!`, 'danger');
+    }
+  }
+
   if (!enemy.ability) return;
   const m = enemy.ability.match(/When Defeated,?\s*(.+)/i);
   if (!m) return;
@@ -1881,8 +2297,15 @@ function processPlayerStartOfTurn() {
   // Reset cooldowns
   combatState.spellCooldowns = {};
 
-  // Reset energy
+  // Reset energy to base max
   combatState.player.energy = combatState.player.maxEnergy;
+
+  // Ice Cream: add any carried-over energy from last turn (can exceed maxEnergy)
+  if (combatState._iceCreamCarryOver > 0) {
+    combatState.player.energy += combatState._iceCreamCarryOver;
+    addLog(`Ice Cream: +${combatState._iceCreamCarryOver} bonus energy!`, 'success');
+    combatState._iceCreamCarryOver = 0;
+  }
 
   // Apply power_per_turn (Demon Form etc.)
   if (combatState.player.statuses['power_per_turn']) {
@@ -1891,9 +2314,118 @@ function processPlayerStartOfTurn() {
     addLog(`Gained ${gain} Power (Demon Form)`, 'success');
   }
 
-  // Clear block at start of player turn (unless Barricade)
-  if (!combatState.player.statuses['barricade']) {
+  // Berserk: gain energy at start of each turn
+  if (combatState.player.statuses['energy_per_turn']) {
+    const gain = combatState.player.statuses['energy_per_turn'];
+    combatState.player.energy += gain;
+    addLog(`Berserk: +${gain} Energy`, 'success');
+  }
+
+  // Brutality: lose 1 HP and draw 1 card at start of each turn
+  if (combatState.player.statuses['brutality']) {
+    loseHealth(1);
+    drawCards(1);
+    addLog('Brutality: lost 1 HP, drew 1 card', 'warning');
+  }
+
+  // Noxious Fumes: inflict poison_per_turn to all enemies at start of turn
+  if (combatState.player.statuses['poison_per_turn']) {
+    const stacks = combatState.player.statuses['poison_per_turn'];
+    combatState.enemies.filter(e => e.health > 0).forEach(e => {
+      e.statuses['poison'] = (e.statuses['poison'] || 0) + stacks;
+    });
+    addLog(`Noxious Fumes: ${stacks} Poison to all enemies!`, 'warning');
+  }
+
+  // Clear block at start of player turn (unless Barricade or Blur)
+  if (!combatState.player.statuses['barricade'] && !combatState.player.statuses['blur']) {
     if (combatState.player.block > 0) combatState.player.block = 0;
+  } else if (combatState.player.statuses['blur'] > 0) {
+    // Blur: preserve block this turn, then decay the Blur stack
+    combatState.player.statuses['blur']--;
+    if (combatState.player.statuses['blur'] <= 0) delete combatState.player.statuses['blur'];
+    addLog('Blur: block preserved this turn!', 'success');
+  }
+
+  // Next Turn Block (Separate stacking — array of instances)
+  if (combatState.player.statuses['next_turn_block']) {
+    const instances = Array.isArray(combatState.player.statuses['next_turn_block'])
+      ? combatState.player.statuses['next_turn_block']
+      : [combatState.player.statuses['next_turn_block']];
+    instances.forEach(amt => addBlock(combatState.player, amt));
+    delete combatState.player.statuses['next_turn_block'];
+    const total = instances.reduce((a, b) => a + b, 0);
+    addLog(`Next Turn Block: +${total} Block!`, 'success');
+  }
+
+  // Next Turn Energy (Separate stacking — array of instances)
+  if (combatState.player.statuses['next_turn_energy']) {
+    const instances = Array.isArray(combatState.player.statuses['next_turn_energy'])
+      ? combatState.player.statuses['next_turn_energy']
+      : [combatState.player.statuses['next_turn_energy']];
+    instances.forEach(amt => { combatState.player.energy += amt; });
+    delete combatState.player.statuses['next_turn_energy'];
+    const total = instances.reduce((a, b) => a + b, 0);
+    addLog(`Next Turn Energy: +${total} Energy!`, 'success');
+  }
+
+  // Next Turn Draw (Separate stacking — array of instances)
+  if (combatState.player.statuses['next_turn_draw']) {
+    const instances = Array.isArray(combatState.player.statuses['next_turn_draw'])
+      ? combatState.player.statuses['next_turn_draw']
+      : [combatState.player.statuses['next_turn_draw']];
+    delete combatState.player.statuses['next_turn_draw'];
+    instances.forEach(amt => drawCards(amt));
+    const total = instances.reduce((a, b) => a + b, 0);
+    addLog(`Next Turn Draw: Drew ${total} card(s)!`, 'success');
+  }
+
+  // Reset discard-tracking flags for Sneaky Strike / Eviscerate etc.
+  combatState._discardedThisTurn = false;
+  combatState._discardsThisTurn = 0;
+
+  // Infinite Blades: conjure Shiv(s) to hand at start of each turn
+  if (combatState.player.statuses['shiv_per_turn']) {
+    const shivCount = combatState.player.statuses['shiv_per_turn'];
+    const shivTemplate = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === 'Shiv') : null;
+    if (shivTemplate) {
+      let conjured = 0;
+      for (let i = 0; i < shivCount && combatState.hand.length < HAND_SIZE_LIMIT; i++) {
+        combatState.hand.push({ ...shivTemplate, _uid: `shiv_ibl_${Date.now()}_${i}` });
+        conjured++;
+      }
+      if (conjured > 0) addLog(`Infinite Blades: Conjured ${conjured} Shiv(s)`, 'success');
+    }
+  }
+
+  // Tools of the Trade: draw 1, then discard 1 at start of each turn
+  if (combatState.player.statuses['tools_of_trade']) {
+    drawCards(1);
+    if (combatState.hand.length > 0) {
+      combatState._pendingCardPick = { action: 'discard', pile: 'hand', count: 1 };
+    }
+    addLog('Tools of the Trade: draw 1, discard 1', 'success');
+  }
+
+  // Wraith Form: lose 1 Defense at the start of each turn
+  if (combatState.player.statuses['wraith_form']) {
+    if (combatState.player.statuses['defense'] > 0) {
+      combatState.player.statuses['defense']--;
+      if (combatState.player.statuses['defense'] <= 0) delete combatState.player.statuses['defense'];
+    }
+    addLog('Wraith Form: lost 1 Defense', 'warning');
+  }
+
+  // Nightmare: conjure N copies of the chosen card to hand
+  if (combatState._nightmareCard) {
+    const nc = combatState._nightmareCard;
+    const nc_count = combatState._nightmareCount || 3;
+    delete combatState._nightmareCard;
+    delete combatState._nightmareCount;
+    for (let i = 0; i < nc_count && combatState.hand.length < HAND_SIZE_LIMIT; i++) {
+      combatState.hand.push({ ...nc, _uid: `nightmare_${Date.now()}_${i}` });
+    }
+    addLog(`Nightmare: conjured ${nc_count}x ${nc.name}!`, 'success');
   }
 
   // Horn Cleat: +14 Block at the start of the second turn
@@ -1959,12 +2491,96 @@ function endTurn() {
 
   combatState.phase = 'end_turn';
 
-  // Discard hand (unplayed cards go to discard)
-  if (combatState.hand) {
-    for (const card of combatState.hand) {
-      combatState.discardPile.push(card);
+  // Ice Cream: carry over leftover energy to next turn (player can exceed maxEnergy)
+  const iceCreamCount = typeof inventory !== 'undefined'
+    ? inventory.filter(i => i.name === 'Ice Cream').reduce((n, i) => n + (i.quantity || 1), 0)
+    : 0;
+  if (iceCreamCount > 0 && combatState.player.energy > 0) {
+    combatState._iceCreamCarryOver = (combatState._iceCreamCarryOver || 0) + combatState.player.energy;
+    addLog(`Ice Cream: ${combatState.player.energy} energy carried over!`, 'success');
+  }
+
+  // Clear Choked status from all enemies at end of player turn
+  combatState.enemies.forEach(e => {
+    if (e.statuses['choked']) delete e.statuses['choked'];
+  });
+
+  // Well-Laid Plans: mark up to X cards in hand with Retain before discarding
+  if (combatState.player.statuses['well_laid_plans'] > 0) {
+    const wlp = combatState.player.statuses['well_laid_plans'];
+    let retained = 0;
+    for (const hc of combatState.hand) {
+      if (retained >= wlp) break;
+      if (!hc._retain) { hc._retain = true; retained++; addLog(`Well-Laid Plans: ${hc.name} retained`, 'success'); }
     }
-    combatState.hand = [];
+  }
+
+  // Curse and Status card end-of-turn effects (fire while cards are still in hand)
+  if (combatState.hand) {
+    const handSnapshot = [...combatState.hand];
+    for (const card of handSnapshot) {
+      if (!card.isCurse && !card.isStatusCard) continue;
+
+      // Status card end-of-turn effects (e.g. Burn: take N Dmg)
+      if (card.isStatusCard) {
+        const burnStatusM = card.description && card.description.match(/At the end of your turn, take (\d+) Dmg/i);
+        if (burnStatusM) {
+          const burnDmg = parseInt(burnStatusM[1]);
+          dealDamageToPlayer(burnDmg, ['self'], null);
+          addLog(`${card.name}: took ${burnDmg} damage!`, 'danger');
+        }
+        continue;
+      }
+      const cdesc = (card.description || '').toLowerCase();
+      // Decay: deals 2 Dmg to player
+      if (/deals \d+ dmg to you/i.test(card.description)) {
+        const dmgMatch = card.description.match(/deals (\d+) Dmg to you/i);
+        const dmgAmt = dmgMatch ? parseInt(dmgMatch[1]) : 2;
+        dealDamageToPlayer(dmgAmt, ['self'], null);
+        addLog(`Decay: took ${dmgAmt} damage!`, 'danger');
+      }
+      // Doubt: gain 1 Weak
+      if (/gain \d+ weak/i.test(card.description)) {
+        const wkMatch = card.description.match(/Gain (\d+) Weak/i);
+        combatState.player.statuses['weak'] = (combatState.player.statuses['weak'] || 0) + (wkMatch ? parseInt(wkMatch[1]) : 1);
+        addLog(`Doubt: Gained 1 Weak`, 'warning');
+      }
+      // Shame: gain 1 Frail
+      if (/gain \d+ frail/i.test(card.description)) {
+        const frMatch = card.description.match(/Gain (\d+) Frail/i);
+        combatState.player.statuses['frail'] = (combatState.player.statuses['frail'] || 0) + (frMatch ? parseInt(frMatch[1]) : 1);
+        addLog(`Shame: Gained 1 Frail`, 'warning');
+      }
+      // Regret: lose 1 Health for each card in hand
+      if (/lose \d+ health for each card in hand/i.test(card.description)) {
+        const regretDmg = combatState.hand.length;
+        if (regretDmg > 0) {
+          loseHealth(regretDmg);
+          addLog(`Regret: Lost ${regretDmg} Health (${regretDmg} cards in hand)`, 'danger');
+        }
+      }
+    }
+  }
+
+  // Discard hand (Ethereal → exhaust; Sly → trigger; Retained → keep; others → discard)
+  if (combatState.hand) {
+    const kept = [];
+    for (const card of [...combatState.hand]) {
+      if (card._retain) { kept.push(card); continue; }
+      const descLower = (card.description || '').toLowerCase();
+      if (descLower.includes('ethereal')) {
+        combatState.exhaustPile.push(card);
+        addLog(`${card.name} exhausted (Ethereal)`, 'info');
+        onCardExhausted(card);
+      } else if (descLower.includes('sly')) {
+        addLog(`${card.name}: Sly — triggered on discard!`, 'success');
+        resolveCardEffect(card, null);
+        combatState.discardPile.push(card);
+      } else {
+        combatState.discardPile.push(card);
+      }
+    }
+    combatState.hand = kept;
     combatState.selectedCardIndex = null;
   }
 
@@ -2061,6 +2677,9 @@ function endTurn() {
 function executeEnemyActions() {
   combatState.enemies.forEach(enemy => {
     if (enemy.health <= 0) return;
+
+    // Spawned this turn — skip action (shows Unknown intent on spawn turn)
+    if (enemy.justSpawned) return;
 
     // Check Stun — skip turn and consume one stack
     if (enemy.statuses['stun'] && enemy.statuses['stun'] > 0) {
@@ -2237,6 +2856,22 @@ function executeEnemyActions() {
               }
               break;
 
+            case 'split': {
+              if (enemy.splitAbility && !enemy.splitAbility.triggered) {
+                enemy.splitAbility.triggered = true;
+                const { count, spawnName } = enemy.splitAbility;
+                const splitHp = Math.max(1, enemy.health);
+                addLog(`${enemy.name} splits into ${count} ${spawnName}!`, 'warning');
+                for (let s = 0; s < count; s++) {
+                  spawnSplitEnemy(spawnName, splitHp);
+                }
+                // Remove the original enemy
+                enemy.health = 0;
+                onEnemyDefeated(enemy);
+              }
+              break;
+            }
+
             case 'alter': {
               // Transform enemy into another form, keeping current HP
               const targetForm = effect.target;
@@ -2277,6 +2912,28 @@ function executeEnemyActions() {
                 if (typeof window.addRandomPigmentToHand === 'function') {
                   window.addRandomPigmentToHand();
                   addLog(`${enemy.name} added a Pigment card to your hand!`, 'warning');
+                }
+              }
+              break;
+            }
+
+            case 'addtodiscard': {
+              // Add N copies of a named card to the player's discard pile
+              const addCount = effect.value || 1;
+              const addName  = effect.target || '';
+              if (addName && typeof CARDS_DATA !== 'undefined') {
+                const tmpl = CARDS_DATA.find(c => c.name.toLowerCase() === addName.toLowerCase());
+                if (tmpl) {
+                  for (let ci = 0; ci < addCount; ci++) {
+                    combatState.discardPile.push({
+                      ...tmpl,
+                      id: `status_card_${Date.now()}_${ci}`,
+                      isStatusCard: false  // playable; description handles exhaust
+                    });
+                  }
+                  addLog(`${enemy.name} added ${addCount} ${addName} to your discard!`, 'warning');
+                } else {
+                  addLog(`${enemy.name}: could not find card "${addName}"`, 'info');
                 }
               }
               break;
@@ -2360,9 +3017,21 @@ function executeEnemyActions() {
  */
 function dealDamageToPlayer(damage, addons, enemy) {
   const player = combatState.player;
+  const isMeleeHit = !addons || (!addons.includes('Ranged') && !addons.includes('self'));
 
-  // Check Frail
-  if (player.statuses['frail']) {
+  // Offensive thorns: attacker's (enemy's) own thorns add to their melee attacks
+  if (enemy && isMeleeHit) {
+    const enemyThorns = (enemy.statuses && enemy.statuses['thorns']) || 0;
+    if (enemyThorns > 0) damage += enemyThorns;
+  }
+
+  // Record hit for multi-hit visual playback
+  if (combatState._hitLog !== undefined && isMeleeHit) {
+    combatState._hitLog.push({ targetId: 'player', dmg: damage });
+  }
+
+  // Check Enfeebled (double damage taken)
+  if (player.statuses['enfeebled']) {
     damage *= 2;
   }
 
@@ -2417,7 +3086,14 @@ function dealDamageToPlayer(damage, addons, enemy) {
   if (remaining > 0) {
     player.health -= remaining;
     window.health = player.health;
+    combatState._playerHealthLossTimes = (combatState._playerHealthLossTimes || 0) + 1;
     addLog(`${enemy ? enemy.name : 'Unknown'} dealt ${remaining} damage!`, 'danger');
+
+    // Plated Armor: lose 1 stack when taking unblocked damage
+    if (player.statuses && player.statuses['plated_armor']) {
+      player.statuses['plated_armor']--;
+      if (player.statuses['plated_armor'] <= 0) delete player.statuses['plated_armor'];
+    }
 
     // Soul Link — propagate health loss to all soul-linked enemies
     if (player.statuses['soul_link'] && !combatState._soulLinkPropagating) {
@@ -2573,7 +3249,7 @@ function processStatusEffects(target, timing) {
     }
 
     // Decay statuses
-    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration'];
+    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration', 'double_damage', 'intangible', 'no_draw'];
     decayStatuses.forEach(status => {
       if (statuses[status]) {
         statuses[status]--;
@@ -2583,6 +3259,65 @@ function processStatusEffects(target, timing) {
       }
     });
 
+    // Metallicize: gain block at end of player's turn per stack
+    if (target === combatState.player && statuses['metallicize']) {
+      addBlock(combatState.player, statuses['metallicize']);
+      addLog(`Metallicize: +${statuses['metallicize']} Block`, 'success');
+    }
+
+    // Plated Armor: gain X block at end of target's turn
+    if (statuses['plated_armor']) {
+      addBlock(target, statuses['plated_armor']);
+      addLog(`Plated Armor: +${statuses['plated_armor']} Block`, 'success');
+    }
+
+    // Flame Barrier: remove temporary Thorns at end of player's turn
+    if (target === combatState.player && combatState._flameBarrierThorns) {
+      const fb = combatState._flameBarrierThorns;
+      statuses['thorns'] = Math.max(0, (statuses['thorns'] || 0) - fb);
+      if ((statuses['thorns'] || 0) <= 0) delete statuses['thorns'];
+      delete combatState._flameBarrierThorns;
+    }
+
+    // Rage: clear per-turn attack block bonus
+    if (target === combatState.player && combatState._rageBlock) {
+      delete combatState._rageBlock;
+    }
+
+    // Double Tap: clear unused stacks at end of turn
+    if (target === combatState.player && combatState._doubleTap) {
+      delete combatState._doubleTap;
+    }
+
+    // Fiend Fire: clear hand exhaust count at end of turn
+    if (target === combatState.player && combatState._exhaustedHandCount) {
+      delete combatState._exhaustedHandCount;
+    }
+
+    // Combust: at end of player's turn, lose N HP and deal N×dmg to all enemies
+    if (target === combatState.player && statuses['combust']) {
+      const stacks = statuses['combust'];
+      const dmgPerStack = combatState._combustDmgPerStack || 5;
+      loseHealth(stacks);
+      combatState.enemies.filter(e => e.health > 0).forEach(e => {
+        dealDamage(e, stacks * dmgPerStack, ['ranged']);
+      });
+      addLog(`Combust: lost ${stacks} HP, dealt ${stacks * dmgPerStack} dmg to all enemies`, 'warning');
+    }
+
+    // Burst: clears completely at end of turn
+    if (target === combatState.player && statuses['burst']) {
+      delete statuses['burst'];
+    }
+
+    // Flex: remove temporary Power at end of player's turn
+    if (target === combatState.player && combatState._flexPower) {
+      const fp = combatState._flexPower;
+      statuses['power'] = Math.max(0, (statuses['power'] || 0) - fp);
+      if ((statuses['power'] || 0) <= 0) delete statuses['power'];
+      delete combatState._flexPower;
+    }
+
     // Fading
     if (statuses['fading']) {
       statuses['fading']--;
@@ -2591,6 +3326,14 @@ function processStatusEffects(target, timing) {
         addLog(`${target.name} faded away!`, 'info');
         if (target !== combatState.player) onEnemyDefeated(target);
       }
+    }
+
+    // Shackled: target regains X Power at end of their turn, then Shackled clears
+    if (statuses['shackled']) {
+      const regain = statuses['shackled'];
+      statuses['power'] = (statuses['power'] || 0) + regain;
+      delete statuses['shackled'];
+      addLog(`${target.name || 'Target'} regained ${regain} Power (Shackled expired)`, 'info');
     }
   }
 }
@@ -2707,11 +3450,22 @@ function buildCombatDeck(characterData) {
 
   // Starting deck from character data
   const startingDeck = characterData.startingDeck || [];
+  const upgradedStarting = (typeof gameState !== 'undefined' && gameState.upgradedStartingCards) || {};
   for (const entry of startingDeck) {
     const template = resolveStartingCardName(entry.cardName);
     if (template) {
-      for (let i = 0; i < entry.count; i++) {
-        deck.push({ ...template, upgraded: false, _uid: `start_${uid++}` });
+      const total = entry.count || 1;
+      const val = upgradedStarting[entry.cardName];
+      // Support both legacy boolean (upgrade all) and new count-based tracking
+      const upgradedCount = typeof val === 'number' ? Math.min(val, total) : (val ? total : 0);
+      for (let i = 0; i < total; i++) {
+        const wasSmithUpgraded = i < upgradedCount;
+        const card = { ...template, upgraded: wasSmithUpgraded, _uid: `start_${uid++}` };
+        if (wasSmithUpgraded) {
+          if (card.upgradedDescription) card.description = card.upgradedDescription;
+          if (card.upgradedCost !== null && card.upgradedCost !== undefined) card.cost = card.upgradedCost;
+        }
+        deck.push(card);
       }
     } else {
       console.warn('Starting deck card not found:', entry.cardName);
@@ -2741,7 +3495,11 @@ function shuffleArray(arr) {
  */
 function initCombatDeck(characterData) {
   const fullDeck = buildCombatDeck(characterData);
-  combatState.drawPile = shuffleArray(fullDeck);
+  const shuffled = shuffleArray(fullDeck);
+  // Innate: move Innate cards to the top of the draw pile
+  const innate = shuffled.filter(c => (c.description || '').toLowerCase().includes('innate'));
+  const rest   = shuffled.filter(c => !(c.description || '').toLowerCase().includes('innate'));
+  combatState.drawPile = [...innate, ...rest];
   combatState.hand = [];
   combatState.discardPile = [];
   combatState.exhaustPile = [];
@@ -2757,6 +3515,8 @@ function initCombatDeck(characterData) {
  */
 function drawCards(count = 1) {
   const drawn = [];
+  // No Draw: player cannot draw cards this turn
+  if (combatState.player.statuses['no_draw']) return drawn;
   for (let i = 0; i < count; i++) {
     if (combatState.hand.length >= HAND_SIZE_LIMIT) break;
 
@@ -2771,6 +3531,33 @@ function drawCards(count = 1) {
     const card = combatState.drawPile.shift();
     combatState.hand.push(card);
     drawn.push(card);
+    combatState._lastDrawnCard = card;
+
+    // Evolve: whenever a status card is drawn, draw X more cards
+    if (card.isStatusCard && !combatState._evolveFiring &&
+        combatState.player.statuses && combatState.player.statuses['evolve']) {
+      combatState._evolveFiring = true;
+      const evolveDraw = combatState.player.statuses['evolve'];
+      addLog(`Evolve: drew ${card.name} (status), drawing ${evolveDraw} more`, 'success');
+      drawCards(evolveDraw);
+      combatState._evolveFiring = false;
+    }
+
+    // Fire Breathing: whenever a status or curse card is drawn, deal AoE ranged damage
+    if ((card.isStatusCard || card.isCurse) && !combatState._fireBreathFiring &&
+        combatState.player.statuses && combatState.player.statuses['fire_breathing']) {
+      combatState._fireBreathFiring = true;
+      const fb = combatState.player.statuses['fire_breathing'];
+      combatState.enemies.filter(e => e.health > 0).forEach(e => dealDamage(e, fb, ['ranged']));
+      addLog(`Fire Breathing: ${fb} dmg to all enemies`, 'warning');
+      combatState._fireBreathFiring = false;
+    }
+
+    // Endless Agony: whenever drawn, add a copy to the draw pile
+    if (/Whenever you draw this card,.*(?:add a copy to your Draw Pile|Conjure.*copy.*to Draw)/i.test(card.description || '')) {
+      combatState.drawPile.push({ ...card, _uid: `ea_copy_${Date.now()}` });
+      addLog(`${card.name}: added a copy to the draw pile`, 'info');
+    }
   }
   return drawn;
 }
@@ -2801,10 +3588,11 @@ function parseDiceFacesForEngine(description) {
     .map(m => ({ num: parseInt(m[1]), text: m[2].trim() }));
 }
 
-function resolveCardEffect(card, target) {
+function resolveCardEffect(card, target, options = {}) {
   const desc = card.description || '';
   let shouldExhaust = false;
   const player = combatState.player;
+  const xValue = options.xValue || 0;
 
   // Status cards always exhaust (they are one-use pigments that clear after combat)
   if (card.isStatusCard) shouldExhaust = true;
@@ -2824,11 +3612,37 @@ function resolveCardEffect(card, target) {
 
   // Pre-scan the whole description for AoE keywords (they may be in a separate clause)
   const fullDescLower = desc.toLowerCase();
-  const isAoECard = fullDescLower.includes('cleave') || fullDescLower.includes('all enemies')
-                 || fullDescLower.includes('indiscriminate');
+  // Cleave hits all enemies AND all allies (sweeping AoE)
+  // Indiscriminate / "all enemies" hit only all enemies
+  const isCleaveCard = fullDescLower.includes('cleave');
+  const isAoECard    = isCleaveCard || fullDescLower.includes('all enemies')
+                    || fullDescLower.includes('indiscriminate');
+  // Lifesteal: flag so dealDamage can heal player equal to unblocked damage dealt
+  const isLifestealCard = fullDescLower.includes('lifesteal');
+  if (isLifestealCard) combatState._lifestealActive = true;
+
+  // Heavy Blade: pre-scan for power multiplier (e.g. "Power affects this card x3 times")
+  let _powerMultiplier = 1;
+  const _heavyBladeM = desc.match(/Power affects this card x(\d+) times?/i);
+  if (_heavyBladeM) _powerMultiplier = parseInt(_heavyBladeM[1]);
 
   // Split effects by '. ' to handle multi-effect cards
   const parts = desc.replace(/\.\s*$/, '').split(/\.\s+/);
+
+  // Combust Power: register stacks before part parsing (effect fires each end-of-turn, not immediately)
+  if (card.name === 'Combust') {
+    player.statuses['combust'] = (player.statuses['combust'] || 0) + 1;
+    const dmgM = desc.match(/Deal (\d+) Dmg/i);
+    if (dmgM) combatState._combustDmgPerStack = parseInt(dmgM[1]);
+    addLog(`Combust: ${player.statuses['combust']} stack(s) active`, 'info');
+  }
+
+  // Metallicize Power: register stacks before part parsing (end-of-turn block)
+  if (card.name === 'Metallicize') {
+    const mM = desc.match(/Gain \+?(\d+) Block/i);
+    player.statuses['metallicize'] = (player.statuses['metallicize'] || 0) + (mM ? parseInt(mM[1]) : 3);
+    addLog(`Metallicize: +${mM ? parseInt(mM[1]) : 3} Block each turn`, 'info');
+  }
 
   for (const part of parts) {
     const p = part.trim();
@@ -2836,32 +3650,193 @@ function resolveCardEffect(card, target) {
     const lower = p.toLowerCase();
 
     if (lower === 'exhaust') { shouldExhaust = true; continue; }
+    if (lower === 'ethereal') { continue; } // Ethereal exhausts at end of turn if still in hand, not on play
     if (lower === 'indiscriminate' || lower === 'cleave') { continue; } // handled above via isAoECard
+    if (lower === 'sly' || lower === 'innate' || lower === 'unplayable') { continue; }
 
-    // Deal X Dmg [Y times]
-    const dmgMatch = p.match(/Deal (\d+) Dmg(?:.*?(\d+) times?)?/i);
-    if (dmgMatch) {
-      let dmg = parseInt(dmgMatch[1]);
-      const times = dmgMatch[2] ? parseInt(dmgMatch[2]) : 1;
-      // Player Power bonus adds to outgoing damage
+    // Skip "at the end of your turn" clauses — recurring effects handled by processStatusEffects
+    if (/at the end of your turn/i.test(lower)) continue;
+
+    // Skip "Whenever you draw this card" clauses — draw-triggered effects handled in drawCards()
+    if (/whenever you draw this card/i.test(lower)) continue;
+
+    // Gain +N Thorns until the end of turn (Flame Barrier — temporary Thorns)
+    const tempThornsM = p.match(/Gain \+?(\d+) Thorns until the end of turn/i);
+    if (tempThornsM) {
+      const amt = parseInt(tempThornsM[1]);
+      player.statuses['thorns'] = (player.statuses['thorns'] || 0) + amt;
+      combatState._flameBarrierThorns = (combatState._flameBarrierThorns || 0) + amt;
+      addLog(`+${amt} Thorns (until end of turn)`, 'success');
+      continue;
+    }
+
+    // Gain +N Feel No Pain (register on-exhaust block)
+    const feelNoPainM = p.match(/Gain \+?(\d+) Feel No Pain/i);
+    if (feelNoPainM) {
+      player.statuses['feel_no_pain'] = (player.statuses['feel_no_pain'] || 0) + parseInt(feelNoPainM[1]);
+      addLog(`+${feelNoPainM[1]} Feel No Pain`, 'info');
+      continue;
+    }
+
+    // Gain +N Fire Breathing (register on-draw-status damage)
+    const fireBreathM = p.match(/Gain \+?(\d+) Fire Breathing/i);
+    if (fireBreathM) {
+      player.statuses['fire_breathing'] = (player.statuses['fire_breathing'] || 0) + parseInt(fireBreathM[1]);
+      addLog(`+${fireBreathM[1]} Fire Breathing`, 'info');
+      continue;
+    }
+
+    // Rupture Power: register "whenever you lose health from a card, gain +N power"
+    const ruptureM = p.match(/Whenever you lose Health from a Card, Gain \+?(\d+) Power/i);
+    if (ruptureM) {
+      player.statuses['rupture_power'] = (player.statuses['rupture_power'] || 0) + parseInt(ruptureM[1]);
+      addLog(`Rupture: will gain +${ruptureM[1]} Power per health loss from cards`, 'success');
+      continue;
+    }
+
+    // Skip "Sequential Upgrade Dmg +N" — informational flavor text, not an executable effect
+    if (/Sequential Upgrade Dmg \+\d+/i.test(p)) { continue; }
+
+    // Until the end of your turn, whenever you play an Attack, Gain +N Block (Rage)
+    const rageM = p.match(/Until the end of your turn.*whenever you play an Attack.*Gain \+?(\d+) Block/i);
+    if (rageM) {
+      combatState._rageBlock = (combatState._rageBlock || 0) + parseInt(rageM[1]);
+      addLog(`Rage: +${combatState._rageBlock} Block per Attack this turn`, 'success');
+      continue;
+    }
+
+    // Increase the Dmg of this Card by N this combat (Rampage self-scaling)
+    const selfScaleM = p.match(/Increase the Dmg of this Card by \+?(\d+) this combat/i);
+    if (selfScaleM) {
+      const inc = parseInt(selfScaleM[1]);
+      if (!combatState._scalingCounters) combatState._scalingCounters = {};
+      combatState._scalingCounters[card.name] = (combatState._scalingCounters[card.name] || 0) + inc;
+      addLog(`${card.name}: +${inc} Dmg this combat (total: +${combatState._scalingCounters[card.name]})`, 'success');
+      continue;
+    }
+
+    // Gain Double Block (Entrench)
+    if (/Gain Double Block/i.test(lower)) {
+      player.block = (player.block || 0) * 2;
+      addLog(`Entrench: Block doubled to ${player.block}`, 'success');
+      continue;
+    }
+
+    // Gain +N Evolve (Evolve card)
+    const evolveGainMatch = p.match(/Gain \+?(\d+) Evolve/i);
+    if (evolveGainMatch) {
+      player.statuses['evolve'] = (player.statuses['evolve'] || 0) + parseInt(evolveGainMatch[1]);
+      addLog(`+${evolveGainMatch[1]} Evolve`, 'info');
+      continue;
+    }
+
+    // Whenever a Card is Exhausted, Draw X Card(s) (Dark Embrace)
+    if (/Whenever a Card is Exhausted/i.test(p)) {
+      const drawM = p.match(/Draw (\d+) Card/i);
+      const draws = drawM ? parseInt(drawM[1]) : 1;
+      player.statuses['dark_embrace'] = (player.statuses['dark_embrace'] || 0) + draws;
+      addLog(`Dark Embrace: ${player.statuses['dark_embrace']} stack(s)`, 'info');
+      continue;
+    }
+
+    // If the target has Vulnerable, gain energy and draw (Dropkick)
+    if (/If the target has Vulnerable/i.test(p)) {
+      if (target && target.statuses && target.statuses['vulnerable']) {
+        const eM = p.match(/Gain \+?(\d+) Energy/i);
+        const dM = p.match(/Draw (\d+) Card/i);
+        if (eM) { player.energy += parseInt(eM[1]); addLog('Dropkick: +1 Energy!', 'success'); }
+        if (dM) drawCards(parseInt(dM[1]));
+      }
+      continue;
+    }
+
+    // Choose an Attack or Power Card (Dual Wield part 1 — handled by Conjure step below)
+    if (/Choose an Attack or Power Card/i.test(p)) continue;
+
+    // Conjure N Copy/Copies of that Card to Hand (Dual Wield) — before generic Conjure handler
+    if (/Conjure \d+ Cop(?:y|ies) of that Card to Hand/i.test(p)) {
+      const cM = p.match(/Conjure (\d+)/i);
+      const copyCount = cM ? parseInt(cM[1]) : 1;
+      const handFilterd = combatState.hand.filter(c => ['attack', 'power'].includes((c.type || '').toLowerCase()));
+      if (handFilterd.length > 0) {
+        combatState._pendingCardPick = {
+          action: 'copy',
+          pile: 'hand',
+          count: 1,
+          _copyCount: copyCount,
+          _typesAllowed: ['attack', 'power']
+        };
+      }
+      continue;
+    }
+
+    // Deal NxX Dmg — Skewer-style: N damage, X times where X = energy spent (xValue)
+    const dmgMatchNxX = p.match(/Deal (\d+)[xX]X Dmg/i);
+    if (dmgMatchNxX && xValue > 0) {
+      let dmg   = parseInt(dmgMatchNxX[1]);
+      const times = xValue;
       const playerPower = player.statuses['power'] || 0;
       if (playerPower !== 0) dmg += playerPower;
+      // Shiv bonus from Accuracy
+      if (card.name === 'Shiv' || (card.tags && card.tags.includes('shiv'))) {
+        dmg += player.statuses['shiv_damage_bonus'] || 0;
+      }
+      if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
+      // Pass melee/ranged addon so dealDamage can apply flat bonuses (e.g. Focus Crystal)
+      const nxxAddons = /melee/i.test(p) ? ['melee'] : /ranged/i.test(p) ? ['ranged'] : [];
+      if (isAoECard) {
+        combatState.enemies.filter(e => e.health > 0).forEach(e => {
+          for (let t = 0; t < times; t++) dealDamage(e, dmg, nxxAddons);
+        });
+      } else if (target) {
+        for (let t = 0; t < times; t++) dealDamage(target, dmg, nxxAddons);
+      }
+      addLog(`${card.name}: ${dmg} x${times} = ${dmg * times} damage`, 'info');
+      continue;
+    }
+
+    // Deal X Dmg [Y times] — supports both "Deal 5 Dmg 2 times" and "Deal 5x2 Dmg" (NxM notation)
+    const dmgMatchNxM = p.match(/Deal (\d+)[xX](\d+) Dmg/i);
+    const dmgMatch    = dmgMatchNxM || p.match(/Deal (\d+) Dmg(?:.*?(\d+) times?)?/i);
+    if (dmgMatch) {
+      let dmg = parseInt(dmgMatch[1]);
+      const times = dmgMatchNxM ? parseInt(dmgMatchNxM[2]) : (dmgMatch[2] ? parseInt(dmgMatch[2]) : 1);
+      // Player Power bonus adds to outgoing damage (Heavy Blade multiplies it)
+      const playerPower = player.statuses['power'] || 0;
+      if (playerPower !== 0) dmg += playerPower * _powerMultiplier;
       // Temporary combat stat boosts (from pigment cards: +Strength/Intelligence/Dexterity/Charisma)
       const statBonus = (player.statuses['strength']     || 0)
                       + (player.statuses['intelligence']  || 0)
                       + (player.statuses['dexterity']     || 0)
                       + (player.statuses['charisma']      || 0);
       if (statBonus !== 0) dmg += statBonus;
+      // Accuracy: Shiv cards deal bonus damage
+      if (card.name === 'Shiv' && player.statuses['shiv_damage_bonus']) {
+        dmg += player.statuses['shiv_damage_bonus'];
+      }
+      // Scaling cards: apply accumulated per-combat bonus (e.g. Claw +2 per play)
+      if (combatState._scalingCounters && combatState._scalingCounters[card.name]) {
+        dmg += combatState._scalingCounters[card.name];
+      }
       // Weak on player reduces outgoing damage by 25%
       if (player.statuses['weak']) {
         dmg = Math.floor(dmg * 0.75);
       }
+      // Pass melee/ranged addon so dealDamage can apply flat bonuses (e.g. Focus Crystal)
+      const hitAddons = /melee/i.test(p) ? ['melee'] : /ranged/i.test(p) ? ['ranged'] : [];
       if (isAoECard) {
         combatState.enemies.filter(e => e.health > 0).forEach(e => {
-          for (let t = 0; t < times; t++) dealDamage(e, dmg);
+          for (let t = 0; t < times; t++) dealDamage(e, dmg, hitAddons);
         });
+        // Cleave also hits all allies (sweeping attack that doesn't discriminate)
+        if (isCleaveCard && combatState.allies) {
+          combatState.allies.filter(a => a.isAlive).forEach(a => {
+            for (let t = 0; t < times; t++) dealDamage(a, dmg, hitAddons);
+          });
+          if (combatState.allies.some(a => a.isAlive)) addLog('Cleave hit all allies too!', 'warning');
+        }
       } else if (target) {
-        for (let t = 0; t < times; t++) dealDamage(target, dmg);
+        for (let t = 0; t < times; t++) dealDamage(target, dmg, hitAddons);
       }
 
       // Strike Dummy: Attack cards deal +3 damage
@@ -2904,26 +3879,59 @@ function resolveCardEffect(card, target) {
       continue;
     }
 
-    // Gain X Block
-    const blockMatch = p.match(/Gain (\d+) Block/i);
-    if (blockMatch) { addBlock(player, parseInt(blockMatch[1])); continue; }
+    // Gain X Block (handles "Gain 5 Block" and "Gain +5 Block")
+    const blockMatch = p.match(/Gain \+?(\d+) Block/i);
+    if (blockMatch) {
+      const blockAmt = parseInt(blockMatch[1]);
+      addBlock(player, blockAmt);
+      card._lastBlockGain = blockAmt; // used by Dodge and Roll "Next Turn Block equal to Block Gained"
+      continue;
+    }
 
     // Draw X card(s)
     const drawMatch = p.match(/Draw (\d+) cards?/i);
     if (drawMatch) { drawCards(parseInt(drawMatch[1])); continue; }
 
-    // Apply X [Status] (on target)
-    const applyMatch = p.match(/Apply (\d+) (\w+)/i);
-    if (applyMatch && target) {
-      const stacks = parseInt(applyMatch[1]);
-      const key = applyMatch[2].toLowerCase();
-      target.statuses[key] = (target.statuses[key] || 0) + stacks;
-      addLog(`Applied ${stacks} ${applyMatch[2]} to ${target.name}`, 'warning');
+    // Multi-status AoE: "Apply/Inflict N Status1 Cleave and [Apply/Inflict] N Status2 Cleave"
+    // (Shockwave, Crippling Cloud, Piercing Wail) — must be checked BEFORE generic applyMatch
+    const multiStatusAoE2 = p.match(/(?:Apply|Inflict) (-?\d+) (\w+) Cleave and (?:(?:Apply|Inflict) )?(-?\d+) (\w+) Cleave/i);
+    if (multiStatusAoE2) {
+      const enemies2 = combatState.enemies.filter(e => e.health > 0);
+      const [, n1raw, s1, n2raw, s2] = multiStatusAoE2;
+      const n1 = parseInt(n1raw), n2 = parseInt(n2raw);
+      enemies2.forEach(e => {
+        if (n1 < 0) {
+          e.statuses['power'] = (e.statuses['power'] || 0) + n1;
+        } else {
+          e.statuses[s1.toLowerCase()] = (e.statuses[s1.toLowerCase()] || 0) + n1;
+        }
+        if (n2 < 0) {
+          e.statuses['power'] = (e.statuses['power'] || 0) + n2;
+        } else {
+          e.statuses[s2.toLowerCase()] = (e.statuses[s2.toLowerCase()] || 0) + n2;
+        }
+      });
+      addLog(`${card.name}: ${n1} ${s1} + ${n2} ${s2} to all enemies`, 'warning');
       continue;
     }
 
-    // Gain X Energy
-    const energyMatch = p.match(/Gain (\d+) Energy/i);
+    // Apply / Inflict X [Status] (on current target or all enemies if AoE)
+    const applyMatch = p.match(/(?:Apply|Inflict) (\d+) (\w+)/i);
+    if (applyMatch) {
+      const stacks = parseInt(applyMatch[1]);
+      const key = applyMatch[2].toLowerCase();
+      const statusTargets = isAoECard
+        ? combatState.enemies.filter(e => e.health > 0)
+        : (target ? [target] : []);
+      statusTargets.forEach(t => {
+        t.statuses[key] = (t.statuses[key] || 0) + stacks;
+        addLog(`Applied ${stacks} ${applyMatch[2]} to ${t.name}`, 'warning');
+      });
+      continue;
+    }
+
+    // Gain X Energy (handles "Gain 1 Energy" and "Gain +1 Energy")
+    const energyMatch = p.match(/Gain \+?(\d+) Energy/i);
     if (energyMatch) {
       const e = parseInt(energyMatch[1]);
       player.energy += e;
@@ -2931,13 +3939,10 @@ function resolveCardEffect(card, target) {
       continue;
     }
 
-    // Lose X Health
+    // Lose X Health (direct health loss, not attack damage — triggers loseHealth)
     const loseHpMatch = p.match(/Lose (\d+) Health/i);
     if (loseHpMatch) {
-      const hp = parseInt(loseHpMatch[1]);
-      player.health -= hp;
-      window.health = player.health;
-      addLog(`Lost ${hp} Health`, 'danger');
+      loseHealth(parseInt(loseHpMatch[1]));
       continue;
     }
 
@@ -2957,12 +3962,139 @@ function resolveCardEffect(card, target) {
       continue;
     }
 
+    // Spot Weakness: "If the target enemy intends to attack, Gain +N Power"
+    const spotWeaknessM = p.match(/If the target enemy intends to attack, Gain \+?(\d+) Power/i);
+    if (spotWeaknessM) {
+      if (target) {
+        const isAttacking = target.currentIntent && target.currentIntent.some(
+          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg')
+        );
+        if (isAttacking) {
+          const gain = parseInt(spotWeaknessM[1]);
+          player.statuses['power'] = (player.statuses['power'] || 0) + gain;
+          addLog(`Spot Weakness: +${gain} Power (enemy intends to attack)!`, 'success');
+        } else {
+          addLog(`Spot Weakness: enemy not attacking this turn`, 'info');
+        }
+      }
+      continue;
+    }
+
+    // Berserk / similar: "At the start of your turn, Gain +N Energy" — register energy_per_turn
+    const energyPerTurnM = p.match(/At the start of your turn, Gain \+?(\d+) Energy/i);
+    if (energyPerTurnM) {
+      const gain = parseInt(energyPerTurnM[1]);
+      player.statuses['energy_per_turn'] = (player.statuses['energy_per_turn'] || 0) + gain;
+      addLog(`Berserk: +${gain} Energy per turn`, 'success');
+      continue;
+    }
+
+    // Brutality: "At the start of your turn, Lose N Health and Draw N Card"
+    const brutalityM = p.match(/At the start of your turn, Lose (\d+) Health and Draw (\d+) Card/i);
+    if (brutalityM) {
+      player.statuses['brutality'] = 1;
+      addLog('Brutality: will lose 1 HP and draw 1 card each turn', 'success');
+      continue;
+    }
+
+    // Corruption: "Skills cost 0 Energy. Whenever you play a Skill, Exhaust it."
+    if (/Skills cost 0 Energy/i.test(p) || /Whenever you play a Skill, Exhaust it/i.test(p)) {
+      player.statuses['corruption'] = 1;
+      addLog('Corruption: Skills cost 0 and exhaust on play', 'success');
+      continue;
+    }
+
+    // Double Tap: "This turn, your next [N] Attack[s] is/are played twice"
+    const doubleTapM = p.match(/This turn, your next (\d+ )?Attacks? (?:is|are) played twice/i);
+    if (doubleTapM) {
+      const taps = doubleTapM[1] ? parseInt(doubleTapM[1]) : 1;
+      combatState._doubleTap = (combatState._doubleTap || 0) + taps;
+      addLog(`Double Tap: next ${taps} Attack(s) will be played twice`, 'success');
+      continue;
+    }
+
+    // Exhume: "Put N Card(s) from your Exhaust to your Hand"
+    if (/Put \d+ Cards? from your Exhaust to your Hand/i.test(p)) {
+      if (combatState.exhaustPile.length > 0) {
+        combatState._pendingCardPick = { action: 'fromexhaust', pile: 'exhaust', count: 1 };
+      } else {
+        addLog('Exhume: exhaust pile is empty', 'info');
+      }
+      continue;
+    }
+
+    // Fiend Fire: "Exhaust All Cards in Hand" (count for subsequent damage)
+    if (/Exhaust All Cards in Hand/i.test(p)) {
+      const toExhaust = [...combatState.hand];
+      combatState.hand = [];
+      toExhaust.forEach(c => {
+        combatState.exhaustPile.push(c);
+        onCardExhausted(c);
+      });
+      combatState._exhaustedHandCount = toExhaust.length;
+      if (toExhaust.length > 0) addLog(`${card.name}: Exhausted ${toExhaust.length} card(s) from Hand`, 'info');
+      continue;
+    }
+
+    // Fiend Fire: "Deal NxX Dmg where X is equal to the amount of Cards Exhausted"
+    const fiendFireM = p.match(/Deal (\d+)[xX]X Dmg (Melee|Ranged) where X is equal to the amount of Cards Exhausted/i);
+    if (fiendFireM) {
+      const dmgPer = parseInt(fiendFireM[1]);
+      const isFiendRanged = fiendFireM[2].toLowerCase() === 'ranged';
+      const ffAddons = isFiendRanged ? ['ranged'] : ['melee'];
+      const exhaustedCount = combatState._exhaustedHandCount || 0;
+      let ffDmg = dmgPer + (player.statuses['power'] || 0);
+      if (player.statuses['weak']) ffDmg = Math.floor(ffDmg * 0.75);
+      const ffTargets = isAoECard
+        ? combatState.enemies.filter(e => e.health > 0)
+        : (target ? [target] : combatState.enemies.filter(e => e.health > 0).slice(0, 1));
+      ffTargets.forEach(t => {
+        for (let i = 0; i < exhaustedCount; i++) dealDamage(t, ffDmg, ffAddons);
+      });
+      combatState._exhaustedHandCount = 0;
+      addLog(`Fiend Fire: ${ffDmg}×${exhaustedCount} = ${ffDmg * exhaustedCount} dmg`, 'success');
+      continue;
+    }
+
+    // Gain Double Power (Limit Break)
+    if (/Gain Double Power/i.test(p)) {
+      const currentPow = player.statuses['power'] || 0;
+      player.statuses['power'] = currentPow * 2;
+      addLog(`Limit Break: Power ${currentPow} → ${player.statuses['power']}`, 'success');
+      continue;
+    }
+
+    // Juggernaut: "Whenever you Gain Block, Deal N Dmg Melee to a random enemy"
+    const juggernautRegM = p.match(/Whenever you Gain Block, Deal (\d+) Dmg Melee to a random enemy/i);
+    if (juggernautRegM) {
+      player.statuses['juggernaut'] = parseInt(juggernautRegM[1]);
+      addLog(`Juggernaut: will deal ${player.statuses['juggernaut']} Melee dmg on block gain`, 'success');
+      continue;
+    }
+
+    // Gain N [Vulnerable/Weak/Frail/...] on player (self-inflicted debuff, e.g. Berserk)
+    const gainSelfDebuffM = p.match(/Gain (\d+) (Vulnerable|Weak|Frail|Confused|Entangled)/i);
+    if (gainSelfDebuffM) {
+      const stacks = parseInt(gainSelfDebuffM[1]);
+      const key = gainSelfDebuffM[2].toLowerCase();
+      player.statuses[key] = (player.statuses[key] || 0) + stacks;
+      addLog(`Gained ${stacks} ${gainSelfDebuffM[2]} (self)`, 'warning');
+      continue;
+    }
+
     // Demon Form: "At the start of each turn, gain X Power"
     const demonMatch = p.match(/gain (\d+) Power/i);
     if (demonMatch && lower.includes('start')) {
       const perTurn = parseInt(demonMatch[1]);
       player.statuses['power_per_turn'] = (player.statuses['power_per_turn'] || 0) + perTurn;
       addLog(`Demon Form: +${perTurn} Power each turn`, 'success');
+      continue;
+    }
+    // Inflame / direct "Gain X Power" (immediate power gain, not per-turn)
+    if (demonMatch && !lower.includes('start')) {
+      const gain = parseInt(demonMatch[1]);
+      player.statuses['power'] = (player.statuses['power'] || 0) + gain;
+      addLog(`+${gain} Power`, 'success');
       continue;
     }
 
@@ -3025,9 +4157,783 @@ function resolveCardEffect(card, target) {
     // Fishing Weight (mark for fishing loot)
     if (lower.includes('fishing weight')) { addLog('Fishing Weight triggered', 'info'); continue; }
 
+    // Conjure N [CardName] to Discard (Immolate etc.) — before "copy of this card" handler
+    const conjureToDiscardMatch = p.match(/Conjure (\d+) (.+?) to Discard/i);
+    if (conjureToDiscardMatch && !/cop(?:y|ies) of this card/i.test(conjureToDiscardMatch[2])) {
+      const cDCount = parseInt(conjureToDiscardMatch[1]);
+      const cDName  = conjureToDiscardMatch[2].trim();
+      const cDTpl   = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name.toLowerCase() === cDName.toLowerCase()) : null;
+      if (cDTpl) {
+        for (let i = 0; i < cDCount; i++) {
+          combatState.discardPile.push({ ...cDTpl, _uid: `conjure_discard_${Date.now()}_${i}` });
+        }
+        addLog(`Conjured ${cDCount}x ${cDTpl.name} to Discard`, 'info');
+      } else {
+        addLog(`Conjure to Discard: "${cDName}" not found`, 'warning');
+      }
+      continue;
+    }
+
+    // Conjure N copy/copies of this card to Discard (Anger)
+    if (/Conjure \d+ cop(?:y|ies) of this card to Discard/i.test(p)) {
+      combatState.discardPile.push({ ...card, _uid: `copy_${Date.now()}` });
+      addLog(`${card.name}: added copy to Discard`, 'info');
+      continue;
+    }
+
+    // Conjure N CardName to Draw (Wild Strike: Wound to Draw)
+    const conjureToDrawMatch = p.match(/Conjure (\d+) (.+?) to Draw/i);
+    if (conjureToDrawMatch && !/copy of this card/i.test(conjureToDrawMatch[2])) {
+      const cTDCount = parseInt(conjureToDrawMatch[1]);
+      const cTDName  = conjureToDrawMatch[2].trim();
+      const cTDTpl   = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name.toLowerCase() === cTDName.toLowerCase()) : null;
+      if (cTDTpl) {
+        for (let i = 0; i < cTDCount; i++) {
+          combatState.drawPile.push({ ...cTDTpl, _uid: `conjure_draw_${Date.now()}_${i}` });
+        }
+        addLog(`Conjured ${cTDCount}x ${cTDTpl.name} into Draw Pile`, 'info');
+      } else {
+        addLog(`Conjure to Draw: card "${cTDName}" not found`, 'warning');
+      }
+      continue;
+    }
+
+    // Conjure N CardName to Hand — explicit hand destination (Cloak and Dagger, etc.)
+    const conjureToHandMatch = p.match(/Conjure (\d+) (.+?) to Hand/i);
+    if (conjureToHandMatch && !/cop(?:y|ies) of that card/i.test(conjureToHandMatch[2]) && !/random/i.test(conjureToHandMatch[2])) {
+      const cTHCount = parseInt(conjureToHandMatch[1]);
+      const cTHRaw   = conjureToHandMatch[2].trim();
+      const cTHName  = cTHRaw.replace(/s$/i, ''); // strip plural 's'
+      const cTHTpl   = typeof CARDS_DATA !== 'undefined'
+        ? CARDS_DATA.find(c => c.name.toLowerCase() === cTHName.toLowerCase()
+                           || c.name.toLowerCase() === cTHRaw.toLowerCase())
+        : null;
+      if (cTHTpl) {
+        for (let i = 0; i < cTHCount; i++) {
+          combatState.hand.push({ ...cTHTpl, _uid: `conjure_hand_${Date.now()}_${i}` });
+        }
+        addLog(`Conjured ${cTHCount}x ${cTHTpl.name} to Hand`, 'success');
+      } else {
+        addLog(`Conjure to Hand: "${cTHName}" not found`, 'warning');
+      }
+      continue;
+    }
+
+    // Deal X Dmg Melee, where X is equal to your current Block (Body Slam)
+    if (/Deal X Dmg Melee, where X is equal to your current Block/i.test(p)) {
+      const blockDmg = player.block || 0;
+      if (target) dealDamage(target, blockDmg, ['melee']);
+      addLog(`Body Slam: ${blockDmg} damage (= block)`, 'info');
+      continue;
+    }
+
+    // Deal N Dmg Ranged to a Random target (Sword Boomerang)
+    const sboomerangMatch = p.match(/Deal (\d+) Dmg Ranged to a Random target/i);
+    if (sboomerangMatch) {
+      let sbDmg = parseInt(sboomerangMatch[1]);
+      const sbPower = player.statuses['power'] || 0;
+      if (sbPower !== 0) sbDmg += sbPower;
+      if (player.statuses['weak']) sbDmg = Math.floor(sbDmg * 0.75);
+      const sbLive = combatState.enemies.filter(e => e.health > 0);
+      if (sbLive.length > 0) {
+        const sbHit = sbLive[Math.floor(Math.random() * sbLive.length)];
+        dealDamage(sbHit, sbDmg, ['ranged']);
+        combatState._lastRandomHit = { dmg: sbDmg, addons: ['ranged'] };
+      }
+      continue;
+    }
+
+    // Repeat N times (Sword Boomerang follow-up)
+    const repeatMatch = p.match(/^Repeat (\d+) times?$/i);
+    if (repeatMatch && combatState._lastRandomHit) {
+      const rpts = parseInt(repeatMatch[1]);
+      const { dmg: rDmg, addons: rAddons } = combatState._lastRandomHit;
+      const rLive = combatState.enemies.filter(e => e.health > 0);
+      for (let i = 0; i < rpts; i++) {
+        if (rLive.length > 0) {
+          const rHit = rLive[Math.floor(Math.random() * rLive.length)];
+          dealDamage(rHit, rDmg, rAddons);
+        }
+      }
+      delete combatState._lastRandomHit;
+      continue;
+    }
+
+    // Conjure X CardName — add cards to hand
+    const conjureMatch = p.match(/Conjure (\d+) (.+)/i);
+    if (conjureMatch) {
+      const count    = parseInt(conjureMatch[1]);
+      const nameRaw  = conjureMatch[2].trim().replace(/s$/i, ''); // strip trailing 's' for plural
+      const template = typeof CARDS_DATA !== 'undefined'
+        ? CARDS_DATA.find(c => c.name.toLowerCase() === nameRaw.toLowerCase()
+                             || c.name.toLowerCase() === conjureMatch[2].trim().toLowerCase())
+        : null;
+      if (template) {
+        for (let i = 0; i < count; i++) {
+          combatState.hand.push({ ...template, _uid: `conjure_${Date.now()}_${i}` });
+        }
+        addLog(`Conjured ${count}x ${template.name}`, 'success');
+      } else {
+        addLog(`Conjure: card "${nameRaw}" not found`, 'warning');
+      }
+      continue;
+    }
+
+    // Discard X Card(s) — queue a player card pick instead of random discard
+    const discardMatch = p.match(/Discard (\d+) Cards?/i);
+    if (discardMatch) {
+      const count = parseInt(discardMatch[1]);
+      if (combatState.hand.length > 0) {
+        // Queue a pending pick; the modal will be shown after resolveCardEffect returns
+        combatState._pendingCardPick = {
+          action: 'discard',
+          pile: 'hand',
+          count: Math.min(count, combatState.hand.length)
+        };
+      }
+      continue;
+    }
+
+    // Inflict -X Power (Disarm etc.)
+    const inflictNegPowerMatch = p.match(/Inflict -(\d+) Power/i);
+    if (inflictNegPowerMatch && target) {
+      const loss = parseInt(inflictNegPowerMatch[1]);
+      target.statuses['power'] = Math.max(0, (target.statuses['power'] || 0) - loss);
+      addLog(`${target.name} loses ${loss} Power`, 'warning');
+      continue;
+    }
+
+    // After Image: "Whenever you play a Card, Gain X Block"
+    const afterImageMatch = p.match(/Whenever you play a Card,?\s+Gain (\d+) Block/i);
+    if (afterImageMatch) {
+      const amt = parseInt(afterImageMatch[1]);
+      player.statuses['block_per_card_play'] = (player.statuses['block_per_card_play'] || 0) + amt;
+      addLog(`After Image: +${amt} Block per card played`, 'success');
+      continue;
+    }
+
+    // Noxious Fumes: "At the start of each turn, Inflict X Poison [Cleave]"
+    const noxFumesMatch = p.match(/Inflict (\d+) Poison/i);
+    if (noxFumesMatch && lower.includes('start')) {
+      const stacks = parseInt(noxFumesMatch[1]);
+      player.statuses['poison_per_turn'] = (player.statuses['poison_per_turn'] || 0) + stacks;
+      addLog(`Noxious Fumes: will inflict ${stacks} Poison each turn`, 'success');
+      continue;
+    }
+
+    // Doppelganger: "Gain X[+N] Next Turn Draw and Gain X[+N] Next Turn Energy"
+    const doppelMatch = p.match(/Gain X(?:\+(\d+))? Next Turn Draw and Gain X(?:\+(\d+))? Next Turn Energy/i);
+    if (doppelMatch) {
+      const drawBonus   = doppelMatch[1] ? parseInt(doppelMatch[1]) : 0;
+      const energyBonus = doppelMatch[2] ? parseInt(doppelMatch[2]) : 0;
+      const totalDraw   = xValue + drawBonus;
+      const totalEnergy = xValue + energyBonus;
+      addSeparateStatus(player, 'next_turn_draw',   totalDraw);
+      addSeparateStatus(player, 'next_turn_energy', totalEnergy);
+      addLog(`Doppelganger: +${totalDraw} Next Turn Draw, +${totalEnergy} Next Turn Energy`, 'success');
+      continue;
+    }
+
+    // "Gain +N Next Turn Energy" (Outmaneuver, Flying Knee, etc.)
+    const nextTurnEnergyMatch = p.match(/Gain \+?(\d+) Next Turn Energy/i);
+    if (nextTurnEnergyMatch) {
+      const gain = parseInt(nextTurnEnergyMatch[1]);
+      addSeparateStatus(player, 'next_turn_energy', gain);
+      addLog(`+${gain} Next Turn Energy`, 'success');
+      continue;
+    }
+
+    // "Gain +N Next Turn Draw"
+    const nextTurnDrawMatch = p.match(/Gain \+?(\d+) Next Turn Draw/i);
+    if (nextTurnDrawMatch) {
+      const gain = parseInt(nextTurnDrawMatch[1]);
+      addSeparateStatus(player, 'next_turn_draw', gain);
+      addLog(`+${gain} Next Turn Draw`, 'success');
+      continue;
+    }
+
+    // Accuracy: "Shivs deal +N Dmg" — store permanent shiv bonus for this combat
+    const accuracyMatch = p.match(/Shivs? deal \+?(\d+) Dmg/i);
+    if (accuracyMatch) {
+      const bonus = parseInt(accuracyMatch[1]);
+      player.statuses['shiv_damage_bonus'] = (player.statuses['shiv_damage_bonus'] || 0) + bonus;
+      addLog(`Accuracy: Shivs deal +${bonus} more damage`, 'success');
+      continue;
+    }
+
+    // Scaling cards: "Increase the damage of ALL X cards by N this combat"
+    // (e.g. Claw: each play raises all Claw damage by 2)
+    const scalingMatch = p.match(/Increase the damage of ALL (.+?) cards? by \+?(\d+) this combat/i);
+    if (scalingMatch) {
+      const scaledCardName = scalingMatch[1].trim();
+      const increment = parseInt(scalingMatch[2]);
+      if (!combatState._scalingCounters) combatState._scalingCounters = {};
+      combatState._scalingCounters[scaledCardName] = (combatState._scalingCounters[scaledCardName] || 0) + increment;
+      addLog(`${scaledCardName} damage +${increment} (total bonus: +${combatState._scalingCounters[scaledCardName]})`, 'success');
+      continue;
+    }
+
+    // Heel Hook: "If the target has [Status], [effect]"
+    const conditionalMatch = p.match(/If the target has (\w+),?\s+(.+)/i);
+    if (conditionalMatch && target) {
+      const statusKey = conditionalMatch[1].toLowerCase();
+      if ((target.statuses[statusKey] || 0) > 0) {
+        // Resolve the conditional effect string (split by " and " for compound effects)
+        const effects = conditionalMatch[2].split(/ and /i);
+        for (const eff of effects) {
+          resolveCardEffect({ ...card, description: eff.trim(), type: 'Skill', isStatusCard: false }, target, options);
+        }
+      }
+      continue;
+    }
+
+    // Bane: "If the target has Poison, deal NxM Dmg instead"
+    const baneMatch = p.match(/If the target has (\w+),\s+deal (\d+)[xX](\d+) Dmg(?: Melee| Ranged)? instead/i);
+    if (baneMatch && target) {
+      const statusKey = baneMatch[1].toLowerCase();
+      if ((target.statuses[statusKey] || 0) > 0) {
+        const dmgBase = parseInt(baneMatch[2]);
+        const times   = parseInt(baneMatch[3]);
+        let dmg = dmgBase;
+        const pp = player.statuses['power'] || 0;
+        if (pp !== 0) dmg += pp;
+        if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
+        if (combatState._scalingCounters && combatState._scalingCounters[card.name]) dmg += combatState._scalingCounters[card.name];
+        for (let t = 0; t < times; t++) dealDamage(target, dmg);
+        addLog(`${card.name}: ${statusKey} triggered — ${dmg}x${times} = ${dmg * times} dmg`, 'success');
+      }
+      continue;
+    }
+
+    // Dodge and Roll: "Gain Next Turn Block equal to Block Gained"
+    if (/Gain Next Turn Block equal to Block Gained/i.test(p)) {
+      const lastBlockGain = card._lastBlockGain || 0;
+      if (lastBlockGain > 0) {
+        addSeparateStatus(player, 'next_turn_block', lastBlockGain);
+        addLog(`Dodge and Roll: +${lastBlockGain} Block next turn!`, 'success');
+      }
+      continue;
+    }
+
+    // Second Wind / Sever Soul: "Exhaust all non-Attack Cards in Hand"
+    if (/Exhaust all non-Attack Cards in Hand/i.test(p)) {
+      const toExhaust = combatState.hand.filter(c => (c.type || '').toLowerCase() !== 'attack');
+      toExhaust.forEach(c => {
+        const idx = combatState.hand.indexOf(c);
+        if (idx !== -1) combatState.hand.splice(idx, 1);
+        combatState.exhaustPile.push(c);
+        onCardExhausted(c);
+      });
+      combatState._exhaustedNonAttackCount = (combatState._exhaustedNonAttackCount || 0) + toExhaust.length;
+      if (toExhaust.length > 0) addLog(`${card.name}: Exhausted ${toExhaust.length} non-Attack card(s)`, 'info');
+      continue;
+    }
+
+    // Second Wind: "Gain +N Block for each Card Exhausted"
+    const blockPerExhaustMatch = p.match(/Gain \+?(\d+) Block for each Card Exhausted/i);
+    if (blockPerExhaustMatch) {
+      const blockPer = parseInt(blockPerExhaustMatch[1]);
+      const exhaustCount = combatState._exhaustedNonAttackCount || 0;
+      if (exhaustCount > 0) {
+        addBlock(player, blockPer * exhaustCount);
+        addLog(`${card.name}: +${blockPer * exhaustCount} Block (${exhaustCount} exhausted)`, 'success');
+      }
+      combatState._exhaustedNonAttackCount = 0;
+      continue;
+    }
+
+    // Unload: "Discard All non-Attack Cards in your hand"
+    if (/Discard All non-Attack Cards in your hand/i.test(p)) {
+      const toDiscard = combatState.hand.filter(c => (c.type || '').toLowerCase() !== 'attack');
+      toDiscard.forEach(c => {
+        const idx = combatState.hand.indexOf(c);
+        if (idx !== -1) combatState.hand.splice(idx, 1);
+        combatState.discardPile.push(c);
+        combatState._discardedThisTurn = true;
+        combatState._discardsThisTurn = (combatState._discardsThisTurn || 0) + 1;
+      });
+      if (toDiscard.length > 0) addLog(`${card.name}: Discarded ${toDiscard.length} non-Attack card(s)`, 'info');
+      continue;
+    }
+
+    // Sneaky Strike: "If you have Discarded a Card this turn, Gain +N Energy"
+    const sneakyMatch = p.match(/If you have Discarded a Card this turn,\s+Gain \+?(\d+) Energy/i);
+    if (sneakyMatch) {
+      if (combatState._discardedThisTurn) {
+        const gain = parseInt(sneakyMatch[1]);
+        player.energy += gain;
+        addLog(`Sneaky Strike: +${gain} Energy (card discarded this turn)!`, 'success');
+      }
+      continue;
+    }
+
+    // Malaise: "Inflict -X Power and Inflict X Weak" (X = xValue)
+    const malaiseMatch = p.match(/Inflict -\(X(?:\+(\d+))?\) Power and Inflict X(?:\+(\d+))? Weak/i)
+                      || p.match(/Inflict -X(?:\+(\d+))? Power and Inflict X(?:\+(\d+))? Weak/i);
+    if (malaiseMatch && target) {
+      const bonus = parseInt(malaiseMatch[1] || malaiseMatch[2] || '0');
+      const total = xValue + bonus;
+      target.statuses['power'] = (target.statuses['power'] || 0) - total;
+      target.statuses['weak']  = (target.statuses['weak']  || 0) + total;
+      addLog(`${card.name}: -${total} Power, +${total} Weak`, 'warning');
+      continue;
+    }
+
+    // Gain +N Thorns (Caltrops)
+    const thornsMatch = p.match(/Gain \+?(\d+) Thorns/i);
+    if (thornsMatch) {
+      const t = parseInt(thornsMatch[1]);
+      player.statuses['thorns'] = (player.statuses['thorns'] || 0) + t;
+      addLog(`+${t} Thorns`, 'success');
+      continue;
+    }
+
+    // Gain N Blur
+    const blurGainMatch = p.match(/Gain (\d+) Blur/i);
+    if (blurGainMatch) {
+      const amt = parseInt(blurGainMatch[1]);
+      player.statuses['blur'] = (player.statuses['blur'] || 0) + amt;
+      addLog(`Gained ${amt} Blur`, 'success');
+      continue;
+    }
+
+    // Bouncing Flask: "Inflict N Status on Random target. Repeat M times."
+    const bouncingMatch = p.match(/Inflict (\d+) (\w+) on Random target\.?\s+Repeat (\d+) times?/i);
+    if (bouncingMatch) {
+      const amount    = parseInt(bouncingMatch[1]);
+      const statusKey = bouncingMatch[2].toLowerCase();
+      const repeats   = parseInt(bouncingMatch[3]);
+      const totalHits = repeats + 1;
+      const liveEnemies = combatState.enemies.filter(e => e.health > 0);
+      if (liveEnemies.length > 0) {
+        for (let i = 0; i < totalHits; i++) {
+          const hit = liveEnemies[Math.floor(Math.random() * liveEnemies.length)];
+          hit.statuses[statusKey] = (hit.statuses[statusKey] || 0) + amount;
+          addLog(`${card.name}: ${amount} ${statusKey} → ${hit.name}`, 'warning');
+        }
+      }
+      continue;
+    }
+
+    // Discard N Random Card(s) (All-Out Attack)
+    const discardRandomMatch = p.match(/Discard (\d+) Random Cards?/i);
+    if (discardRandomMatch) {
+      const count = parseInt(discardRandomMatch[1]);
+      for (let i = 0; i < count && combatState.hand.length > 0; i++) {
+        const idx = Math.floor(Math.random() * combatState.hand.length);
+        const gone = combatState.hand.splice(idx, 1)[0];
+        combatState.discardPile.push(gone);
+        combatState._discardedThisTurn = true;
+        combatState._discardsThisTurn = (combatState._discardsThisTurn || 0) + 1;
+        addLog(`${card.name}: discarded ${gone.name}`, 'info');
+      }
+      continue;
+    }
+
+    // Calculated Gamble: "Discard your hand, then Draw that many / X Cards..."
+    if (/Discard your hand,?\s+then Draw (?:that many|X) Cards?/i.test(p)) {
+      const handCount = combatState.hand.length;
+      combatState.hand.forEach(c => combatState.discardPile.push(c));
+      combatState.hand = [];
+      if (handCount > 0) { combatState._discardedThisTurn = true; combatState._discardsThisTurn = (combatState._discardsThisTurn || 0) + handCount; }
+      drawCards(handCount);
+      addLog(`Calculated Gamble: discarded ${handCount}, drew ${handCount}`, 'info');
+      continue;
+    }
+
+    // Catalyst: "Inflict Double/Triple Poison" — multiply target's current poison
+    const catalystMatch = p.match(/Inflict (Double|Triple) Poison/i);
+    if (catalystMatch && target) {
+      const mult = catalystMatch[1].toLowerCase() === 'triple' ? 3 : 2;
+      const cur = target.statuses['poison'] || 0;
+      if (cur > 0) {
+        target.statuses['poison'] = cur * mult;
+        addLog(`Catalyst: Poison ${cur} → ${cur * mult}`, 'warning');
+      } else {
+        addLog(`Catalyst: no poison to multiply`, 'info');
+      }
+      continue;
+    }
+
+    // Conjure N Random [Type] to/in Hand (Distract)
+    const conjureRandomTypeMatch = p.match(/Conjure (\d+) Random (\w+) (?:to|in) Hand/i);
+    if (conjureRandomTypeMatch) {
+      const count      = parseInt(conjureRandomTypeMatch[1]);
+      const typeFilter = conjureRandomTypeMatch[2].toLowerCase();
+      const makeFree   = /play it for free this turn/i.test(desc);
+      const pool = typeof CARDS_DATA !== 'undefined'
+        ? CARDS_DATA.filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard)
+        : [];
+      for (let i = 0; i < count; i++) {
+        if (pool.length === 0) break;
+        const picked = pool[Math.floor(Math.random() * pool.length)];
+        const conjured = { ...picked, _uid: `conjure_rnd_${Date.now()}_${i}` };
+        if (makeFree) conjured.cost = 0;
+        combatState.hand.push(conjured);
+        addLog(`Conjured ${conjured.name} (${typeFilter}${makeFree ? ', free' : ''})`, 'success');
+      }
+      continue;
+    }
+
+    // "You can play it for free this turn" — handled by the Conjure step above
+    if (/You can play it for free this turn/i.test(p)) { continue; }
+
+    // Escape Plan: "If it was a Skill, Gain +N Block"
+    const escapePlanMatch = p.match(/If it was a Skill,?\s+Gain \+?(\d+) Block/i);
+    if (escapePlanMatch) {
+      const blockAmt = parseInt(escapePlanMatch[1]);
+      if (combatState._lastDrawnCard && (combatState._lastDrawnCard.type || '').toLowerCase() === 'skill') {
+        addBlock(player, blockAmt);
+        addLog(`Escape Plan: drew a Skill — +${blockAmt} Block!`, 'success');
+      }
+      continue;
+    }
+
+    // Expertise: "Draw X Cards where X is equal to N - the amount of Cards in your Hand"
+    const expertiseMatch = p.match(/Draw X Cards where X is equal to (\d+) - the amount of Cards in your Hand/i);
+    if (expertiseMatch) {
+      const cap = parseInt(expertiseMatch[1]);
+      const toDraw = Math.max(0, cap - combatState.hand.length);
+      if (toDraw > 0) drawCards(toDraw);
+      addLog(`Expertise: Drew ${toDraw} card(s)`, 'success');
+      continue;
+    }
+
+    // Finisher: "Deal NxX Dmg Melee where X is equal to the amount of Attacks played this turn"
+    const finisherMatch = p.match(/Deal (\d+)xX Dmg (Melee|Ranged) where X is equal to the amount of Attacks played this turn/i);
+    if (finisherMatch && target) {
+      const dmgPer = parseInt(finisherMatch[1]);
+      const isFinisherRanged = finisherMatch[2].toLowerCase() === 'ranged';
+      const attackCount = (combatState.incrementals && combatState.incrementals.attacksThisTurn) || 0;
+      const addons = isFinisherRanged ? ['ranged'] : ['melee'];
+      for (let i = 0; i < attackCount; i++) dealDamage(target, dmgPer, addons);
+      addLog(`Finisher: ${dmgPer}×${attackCount} = ${dmgPer * attackCount} dmg`, 'success');
+      continue;
+    }
+
+    // Flechettes: "Deal NxX Dmg Ranged where X is equal to the amount of Skills in your Hand"
+    const flechettesMatch = p.match(/Deal (\d+)xX Dmg (Melee|Ranged) where X is equal to the amount of Skills in your Hand/i);
+    if (flechettesMatch && target) {
+      const dmgPer = parseInt(flechettesMatch[1]);
+      const isFleRanged = flechettesMatch[2].toLowerCase() === 'ranged';
+      const skillCount = combatState.hand.filter(c => (c.type || '').toLowerCase() === 'skill').length;
+      const addons = isFleRanged ? ['ranged'] : ['melee'];
+      for (let i = 0; i < skillCount; i++) dealDamage(target, dmgPer, addons);
+      addLog(`Flechettes: ${dmgPer}×${skillCount} = ${dmgPer * skillCount} dmg`, 'success');
+      continue;
+    }
+
+    // Gain +N Defense (Footwork)
+    const defenseGainMatch = p.match(/Gain \+?(\d+) Defense/i);
+    if (defenseGainMatch) {
+      const def = parseInt(defenseGainMatch[1]);
+      player.statuses['defense'] = (player.statuses['defense'] || 0) + def;
+      addLog(`+${def} Defense`, 'success');
+      continue;
+    }
+
+    // Infinite Blades: "At the start of your turn, Conjure N Shiv(s) to Hand"
+    if (/At the start of your turn,\s+Conjure (\d+) Shivs? to Hand/i.test(p)) {
+      const cnt = parseInt(p.match(/Conjure (\d+)/i)[1]);
+      player.statuses['shiv_per_turn'] = (player.statuses['shiv_per_turn'] || 0) + cnt;
+      addLog(`Infinite Blades: +${cnt} Shiv per turn`, 'success');
+      continue;
+    }
+
+    // Well-Laid Plans: "Gain +N Well-Laid Plans"
+    const wlpMatch = p.match(/Gain \+?(\d+) Well-Laid Plans/i);
+    if (wlpMatch) {
+      const stacks = parseInt(wlpMatch[1]);
+      player.statuses['well_laid_plans'] = (player.statuses['well_laid_plans'] || 0) + stacks;
+      addLog(`+${stacks} Well-Laid Plans`, 'success');
+      continue;
+    }
+
+    // Setup: "Put 1 Card from your Hand on top of your Draw Pile. It costs 0 until played."
+    if (/Put 1 Card from your Hand on top of your Draw Pile/i.test(p)) {
+      if (combatState.hand.length > 0) {
+        combatState._pendingCardPick = { action: 'setup', pile: 'hand', count: 1 };
+      }
+      continue;
+    }
+
+    // "It costs 0 until played" — handled by Setup pick action
+    if (/It costs 0 until played/i.test(p)) { continue; }
+
+    // Gain +N Burst (until end of turn)
+    const burstGainMatch = p.match(/Gain \+?(\d+) Burst/i);
+    if (burstGainMatch) {
+      const stacks = parseInt(burstGainMatch[1]);
+      player.statuses['burst'] = (player.statuses['burst'] || 0) + stacks;
+      addLog(`+${stacks} Burst`, 'success');
+      continue;
+    }
+
+    // Gain +N No Draw (Bullet Time)
+    const noDrawMatch = p.match(/Gain \+?(\d+) No Draw/i);
+    if (noDrawMatch) {
+      const stacks = parseInt(noDrawMatch[1]);
+      player.statuses['no_draw'] = (player.statuses['no_draw'] || 0) + stacks;
+      addLog(`+${stacks} No Draw`, 'info');
+      continue;
+    }
+
+    // All Cards in your Hand are free to play this turn (Bullet Time)
+    if (/All Cards in your Hand are free to play this turn/i.test(p)) {
+      (combatState.hand || []).forEach(c => { c._freeCost = true; });
+      addLog('Bullet Time: all hand cards cost 0 this turn!', 'success');
+      continue;
+    }
+
+    // Inflict N Corpse Explosion
+    const ceInflictMatch = p.match(/Inflict (\d+) Corpse Explosion/i);
+    if (ceInflictMatch) {
+      const targets = isAoECard
+        ? combatState.enemies.filter(e => e.health > 0)
+        : (target ? [target] : []);
+      const stacks = parseInt(ceInflictMatch[1]);
+      targets.forEach(t => {
+        t.statuses['corpse_explosion'] = (t.statuses['corpse_explosion'] || 0) + stacks;
+      });
+      addLog(`Inflicted ${stacks} Corpse Explosion`, 'warning');
+      continue;
+    }
+
+    // Gain +N Envenom (Power card)
+    const envenomGainMatch = p.match(/Gain \+?(\d+) Envenom/i);
+    if (envenomGainMatch) {
+      const stacks = parseInt(envenomGainMatch[1]);
+      player.statuses['envenom'] = (player.statuses['envenom'] || 0) + stacks;
+      addLog(`+${stacks} Envenom`, 'success');
+      continue;
+    }
+
+    // Decrease the Dmg of this Card by N this combat (Glass Knife)
+    const glassDecMatch = p.match(/Decrease the Dmg of this Card by (\d+) this combat/i);
+    if (glassDecMatch) {
+      const decrease = parseInt(glassDecMatch[1]);
+      card.description = card.description.replace(/(Deal )(\d+)(x\d+ Dmg)/i, (_m, pre, num, post) =>
+        pre + Math.max(0, parseInt(num) - decrease) + post
+      );
+      if (card.upgradedDescription) {
+        card.upgradedDescription = card.upgradedDescription.replace(/(Deal )(\d+)(x\d+ Dmg)/i, (_m, pre, num, post) =>
+          pre + Math.max(0, parseInt(num) - decrease) + post
+        );
+      }
+      addLog(`${card.name}: base damage -${decrease}`, 'info');
+      continue;
+    }
+
+    // Can only be played if draw pile is empty (Grand Finale condition text — skip)
+    if (/Can only be played if there are no cards in your draw pile/i.test(p)) { continue; }
+
+    // Choose a Card. Next turn, Conjure N copies of that Card to your Hand. (Nightmare)
+    const nightmarePickMatch = p.match(/Choose a Card\. Next turn, Conjure (\d+) copies of that Card to your Hand/i);
+    if (nightmarePickMatch) {
+      const nc = parseInt(nightmarePickMatch[1]);
+      if (combatState.hand.length > 0) {
+        combatState._pendingCardPick = { action: 'nightmare', pile: 'hand', count: 1, _nightmareCount: nc };
+      }
+      continue;
+    }
+
+    // Gain +N Double Damage (Phantasmal Killer)
+    const doubleDmgGainMatch = p.match(/Gain \+?(\d+) Double Damage/i);
+    if (doubleDmgGainMatch) {
+      const stacks = parseInt(doubleDmgGainMatch[1]);
+      player.statuses['double_damage'] = (player.statuses['double_damage'] || 0) + stacks;
+      addLog(`+${stacks} Double Damage`, 'success');
+      continue;
+    }
+
+    // Discard your Hand, then Conjure X [Upgraded] Shivs (Storm of Steel)
+    if (/Discard your Hand, then Conjure X (Upgraded )?Shivs/i.test(p)) {
+      const handCards = [...combatState.hand];
+      const handCount = handCards.length;
+      combatState.hand = [];
+      handCards.forEach(c => combatState.discardPile.push(c));
+      combatState._discardedThisTurn = true;
+      combatState._discardsThisTurn = (combatState._discardsThisTurn || 0) + handCount;
+      const shivTemplate = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === 'Shiv') : null;
+      if (shivTemplate) {
+        const isUpgradedShiv = /Upgraded Shivs/i.test(p);
+        for (let i = 0; i < handCount && combatState.hand.length < HAND_SIZE_LIMIT; i++) {
+          const shiv = { ...shivTemplate, _uid: `sos_${Date.now()}_${i}` };
+          if (isUpgradedShiv && shivTemplate.upgradedDescription) {
+            shiv.upgraded = true;
+            shiv.description = shivTemplate.upgradedDescription;
+            if (shivTemplate.upgradedCost !== undefined && shivTemplate.upgradedCost !== null) shiv.cost = shivTemplate.upgradedCost;
+          }
+          combatState.hand.push(shiv);
+        }
+      }
+      addLog(`Storm of Steel: discarded ${handCount}, conjured ${handCount} Shivs`, 'success');
+      continue;
+    }
+
+    // At the start of your turn, Draw N Card and Discard N Card (Tools of the Trade)
+    if (/At the start of your turn, Draw \d+ Card and Discard \d+ Card/i.test(p)) {
+      player.statuses['tools_of_trade'] = 1;
+      addLog('Tools of the Trade activated', 'success');
+      continue;
+    }
+
+    // Gain +N Intangible (Wraith Form)
+    const intangibleMatch = p.match(/Gain \+?(\d+) Intangible/i);
+    if (intangibleMatch) {
+      const stacks = parseInt(intangibleMatch[1]);
+      player.statuses['intangible'] = (player.statuses['intangible'] || 0) + stacks;
+      addLog(`+${stacks} Intangible`, 'success');
+      continue;
+    }
+
+    // At the start of the turn, Lose 1 Defense (Wraith Form passive)
+    if (/At the start of the turn, Lose 1 Defense/i.test(p)) {
+      player.statuses['wraith_form'] = 1;
+      addLog('Wraith Form: Defense will erode each turn', 'warning');
+      continue;
+    }
+
+    // Gain 1 Random Potion Item (Alchemize)
+    if (/Gain 1 Random Potion Item/i.test(p)) {
+      if (typeof ITEMS_DATA !== 'undefined') {
+        const potions = ITEMS_DATA.filter(i => i.tags && i.tags.includes('potion'));
+        if (potions.length > 0) {
+          const potion = potions[Math.floor(Math.random() * potions.length)];
+          if (typeof acquireItem === 'function') {
+            acquireItem(potion);
+          } else if (typeof window.inventory !== 'undefined') {
+            window.inventory.push({ ...potion, quantity: 1 });
+          }
+          addLog(`Alchemize: gained ${potion.name}!`, 'success');
+        }
+      }
+      continue;
+    }
+
+    // Until the end of the turn, Gain +N Power (Flex)
+    const flexMatch = p.match(/Until the end of the turn, Gain \+?(\d+) Power/i);
+    if (flexMatch) {
+      const fGain = parseInt(flexMatch[1]);
+      player.statuses['power'] = (player.statuses['power'] || 0) + fGain;
+      combatState._flexPower = (combatState._flexPower || 0) + fGain;
+      addLog(`Flex: +${fGain} Power until end of turn`, 'success');
+      continue;
+    }
+
+    // Play the top card of your Draw Pile and Exhaust it (Havoc)
+    if (/Play the top card of your Draw Pile and Exhaust it/i.test(p)) {
+      if (combatState.drawPile.length > 0) {
+        const topCard = combatState.drawPile.pop();
+        addLog(`Havoc: playing ${topCard.name}...`, 'info');
+        // For attack cards, auto-target a random living enemy
+        const havocTarget = (topCard.type || '').toLowerCase() === 'attack'
+          ? (combatState.enemies.filter(e => e.health > 0)[0] || null)
+          : null;
+        resolveCardEffect(topCard, havocTarget, {});
+        combatState.exhaustPile.push(topCard);
+        addLog(`Havoc: exhausted ${topCard.name}`, 'info');
+      }
+      continue;
+    }
+
+    // Put a Card from your Discard on the top of the Draw Pile (Headbutt)
+    if (/Put a Card from your Discard on the top of the Draw Pile/i.test(p)) {
+      if (combatState.discardPile.length > 0) {
+        combatState._pendingCardPick = { action: 'topdraw', pile: 'discard', count: 1 };
+      }
+      continue;
+    }
+
+    // Put a Card from your Hand on the top of the Draw Pile (Warcry)
+    if (/Put a Card from your Hand on the top of the Draw Pile/i.test(p)) {
+      if (combatState.hand.length > 0) {
+        combatState._pendingCardPick = { action: 'topdraw', pile: 'hand', count: 1 };
+      }
+      continue;
+    }
+
+    // Power affects this card xN times (Heavy Blade — handled by pre-scan, skip)
+    if (/Power affects this card x\d+ times?/i.test(p)) { continue; }
+
+    // Deals N additional damage for all Cards that contain "Strike" (Perfected Strike)
+    const perfectedMatch = p.match(/Deals (\d+) additional damage for All of your Cards that contain/i);
+    if (perfectedMatch) {
+      const bonusPer = parseInt(perfectedMatch[1]);
+      const allDeckCards = [
+        ...(combatState.drawPile || []),
+        ...(combatState.hand || []),
+        ...(combatState.discardPile || []),
+        ...(combatState.exhaustPile || [])
+      ];
+      const strikeCount = allDeckCards.filter(c => /strike/i.test(c.name)).length;
+      if (strikeCount > 0 && target) {
+        const bonusDmg = bonusPer * strikeCount;
+        dealDamage(target, bonusDmg, ['melee']);
+        addLog(`Perfected Strike: +${bonusDmg} bonus (${strikeCount} Strike cards)`, 'success');
+      }
+      continue;
+    }
+
+    // Upgrade a Card in your hand for the rest of combat (Armaments non-upgraded)
+    if (/Upgrade a Card in your hand for the rest of combat/i.test(p)) {
+      if (combatState.hand.length > 0) {
+        combatState._pendingCardPick = { action: 'upgrade', pile: 'hand', count: 1 };
+      }
+      continue;
+    }
+
+    // Upgrade all Cards in your hand for the rest of combat (Armaments upgraded)
+    if (/Upgrade all Cards in your hand for the rest of combat/i.test(p)) {
+      combatState.hand.forEach(c => {
+        if (!c.upgraded && c.upgradedDescription) {
+          c.upgraded = true;
+          c.description = c.upgradedDescription;
+          if (c.upgradedCost !== null && c.upgradedCost !== undefined) c.cost = c.upgradedCost;
+        }
+      });
+      addLog('Armaments: upgraded all hand cards!', 'success');
+      continue;
+    }
+
+    // Exhaust N Card(s) — player picks from hand (Burning Pact; not random, not "in your Hand")
+    if (/Exhaust \d+ Cards?/i.test(p) && !/random/i.test(lower) && !/in your hand/i.test(lower)) {
+      const cntM = p.match(/Exhaust (\d+)/i);
+      const cnt = cntM ? parseInt(cntM[1]) : 1;
+      if (combatState.hand.length > 0) {
+        combatState._pendingCardPick = { action: 'exhaust', pile: 'hand', count: Math.min(cnt, combatState.hand.length) };
+      }
+      continue;
+    }
+
+    // Exhaust a random Card in your Hand (True Grit non-upgraded) — check BEFORE generic
+    if (/Exhaust a random Card in your Hand/i.test(p)) {
+      if (combatState.hand.length > 0) {
+        const rIdx = Math.floor(Math.random() * combatState.hand.length);
+        const gone = combatState.hand.splice(rIdx, 1)[0];
+        combatState.exhaustPile.push(gone);
+        addLog(`True Grit: exhausted ${gone.name}`, 'info');
+      }
+      continue;
+    }
+
+    // Exhaust a Card in your Hand (True Grit upgraded — player chooses)
+    if (/Exhaust a Card in your Hand/i.test(p)) {
+      if (combatState.hand.length > 0) {
+        combatState._pendingCardPick = { action: 'exhaust', pile: 'hand', count: 1 };
+      }
+      continue;
+    }
+
+    // Can only be played if every Card in your Hand is an Attack (Clash condition — skip)
+    if (/Can only be played if every Card in your Hand is an Attack/i.test(p)) { continue; }
+
     // Unknown — log it
     if (lower && lower !== 'n/a') addLog(`${card.name}: ${p}`, 'info');
   }
+
+  // Clear lifesteal flag after card resolution
+  if (isLifestealCard) delete combatState._lifestealActive;
 
   // Power-play triggers
   if ((card.type || '').toLowerCase() === 'power') {
@@ -3114,9 +5020,21 @@ function playCard(handIndex, targetId = null) {
   const card = combatState.hand[handIndex];
   if (!card) return { success: false, error: 'Card not found' };
 
+  // Unplayable / Sly cards cannot be played directly
+  if (card.cost === 'No' || (card.description || '').toLowerCase().includes('unplayable')) {
+    return { success: false, error: 'This card is unplayable' };
+  }
+
+  // Compute effective cost (handles dynamic costs like Eviscerate / Masterful Stab / free cards)
+  let xValue = 0;
+  let cardCost = getEffectiveCost(card);
+  if (card.cost === 'X') {
+    xValue   = combatState.player.energy;
+    cardCost = xValue;
+  }
+
   // Confused: randomize card cost between 0 and maxEnergy
-  let cardCost = card.cost;
-  if (combatState.player.statuses['confused']) {
+  if (combatState.player.statuses['confused'] && card.cost !== 'No') {
     cardCost = Math.floor(Math.random() * (combatState.player.maxEnergy + 1));
     addLog(`Confused! ${card.name} costs ${cardCost} energy`, 'warning');
   }
@@ -3135,6 +5053,9 @@ function playCard(handIndex, targetId = null) {
   combatState.hand.splice(handIndex, 1);
   combatState.selectedCardIndex = null;
   combatState.lastPlayedCard = card;
+  // Clear transient flags (free-cost, retain) when a card is actually played
+  delete card._freeCost;
+  delete card._retain;
 
   // Incremental item tracking: update attack counters BEFORE resolveCardEffect so Pen Nib can double
   const _cardType = (card.type || '').toLowerCase();
@@ -3151,8 +5072,37 @@ function playCard(handIndex, targetId = null) {
     }
   }
 
-  // Resolve effects
-  const shouldExhaust = resolveCardEffect(card, target);
+  // Resolve effects (pass xValue for X-cost cards like Doppelganger)
+  // _inCardResolution: set true so loseHealth() can trigger Rupture during card resolution
+  combatState._inCardResolution = true;
+  let shouldExhaust = resolveCardEffect(card, target, { xValue });
+
+  // Double Tap: next N attack(s) are played twice — replay effects
+  if (_cardType === 'attack' && combatState._doubleTap > 0) {
+    combatState._doubleTap--;
+    resolveCardEffect(card, target, { xValue });
+    addLog(`Double Tap: ${card.name} triggered again!`, 'success');
+  }
+
+  // Corruption: Skills are exhausted when played
+  if (combatState.player.statuses && combatState.player.statuses['corruption'] && _cardType === 'skill') {
+    shouldExhaust = true;
+  }
+
+  // Burst: if player played a Skill and has burst stacks, replay the card's effects once
+  if (_cardType === 'skill' && combatState.player.statuses['burst'] > 0) {
+    combatState.player.statuses['burst']--;
+    if (combatState.player.statuses['burst'] <= 0) delete combatState.player.statuses['burst'];
+    resolveCardEffect(card, target, { xValue });
+    addLog(`Burst: ${card.name} triggered again!`, 'success');
+  }
+
+  // Choked: each card play deals X direct damage to the choked enemy
+  combatState.enemies.filter(e => e.health > 0 && e.statuses['choked']).forEach(e => {
+    const chokeDmg = e.statuses['choked'];
+    e.health -= chokeDmg;
+    addLog(`${e.name} takes ${chokeDmg} damage from Choked!`, 'danger');
+  });
 
   // Post-play incremental triggers for attack cards
   if (_cardType === 'attack') {
@@ -3175,17 +5125,38 @@ function playCard(handIndex, targetId = null) {
       addBlock(combatState.player, 4);
       addLog('Ornamental Fan: +4 Block!', 'success');
     }
+    // Rage: whenever an Attack is played this turn, gain block
+    if (combatState._rageBlock) {
+      addBlock(combatState.player, combatState._rageBlock);
+      addLog(`Rage: +${combatState._rageBlock} Block`, 'success');
+    }
   }
+
+  // Pain (curse card): if Pain is in hand while another card is played, lose 1 Health
+  if (!card.isCurse) {
+    const painInHand = combatState.hand.some(c => c.name === 'Pain' && c.isCurse);
+    if (painInHand) {
+      loseHealth(1);
+      addLog('Pain: Lost 1 Health', 'danger');
+    }
+  }
+  combatState._inCardResolution = false;
 
   // Route to appropriate pile
   if (shouldExhaust) {
     combatState.exhaustPile.push(card);
     addLog(`${card.name} exhausted`, 'info');
+    onCardExhausted(card); // Fire Dark Embrace and similar on-exhaust triggers
   } else if (card.type === 'Power') {
     combatState.powers.push(card);
     addLog(`${card.name} activated`, 'success');
   } else {
     combatState.discardPile.push(card);
+  }
+
+  // After Image: gain block for every card played (checked after routing so After Image itself counts)
+  if (combatState.player.statuses['block_per_card_play']) {
+    addBlock(combatState.player, combatState.player.statuses['block_per_card_play']);
   }
 
   addLog(`Played ${card.name}`, 'info');
@@ -3198,7 +5169,47 @@ function playCard(handIndex, targetId = null) {
     return { success: true, phase: 'victory' };
   }
 
+  // Show card picker modal if a pending pick was queued (e.g., "Discard 1 Card")
+  if (combatState._pendingCardPick) {
+    const pick = combatState._pendingCardPick;
+    combatState._pendingCardPick = null;
+    if (typeof window.showCardPickerModal === 'function') {
+      window.showCardPickerModal(pick);
+    }
+  }
+
   return { success: true };
+}
+
+/**
+ * Called whenever a card is exhausted (from engine routing or UI picker).
+ * Fires Dark Embrace ("whenever a card is exhausted, draw X") and similar triggers.
+ */
+function onCardExhausted(card) {
+  if (!combatState || !combatState.player) return;
+  const player = combatState.player;
+  // Dark Embrace: draw X cards whenever any card is exhausted
+  if (player.statuses && player.statuses['dark_embrace'] && !combatState._darkEmbraceFiring) {
+    const draws = player.statuses['dark_embrace'];
+    combatState._darkEmbraceFiring = true;
+    drawCards(draws);
+    addLog(`Dark Embrace: drew ${draws} card(s)`, 'success');
+    combatState._darkEmbraceFiring = false;
+  }
+  // Feel No Pain: gain block whenever any card is exhausted
+  if (player.statuses && player.statuses['feel_no_pain']) {
+    addBlock(player, player.statuses['feel_no_pain']);
+    addLog(`Feel No Pain: +${player.statuses['feel_no_pain']} Block`, 'success');
+  }
+  // Sentinel: "If this Card is Exhausted, Gain +N Energy"
+  if (card && card.description) {
+    const sentinelM = card.description.match(/If this Card is Exhausted, Gain \+?(\d+) Energy/i);
+    if (sentinelM) {
+      const energyGain = parseInt(sentinelM[1]);
+      player.energy += energyGain;
+      addLog(`Sentinel: +${energyGain} Energy`, 'success');
+    }
+  }
 }
 
 // ============== EXPORTS ==============
@@ -3218,6 +5229,8 @@ if (typeof window !== 'undefined') {
     endTurn,
     getCombatState,
     endCombat,
-    addLog
+    addLog,
+    getEffectiveCost,
+    onCardExhausted
   };
 }
