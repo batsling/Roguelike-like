@@ -95,6 +95,7 @@ const KEYWORD_DEFS = {
   'shiv':             '0-cost attack card that deals 4 damage. Exhaust.',
   'assassinate':      'Deals double damage if the target is below 50% HP.',
   'fishing weight':   'No additional effect.',
+  'wealth':           'Adds +1 damage for every 10 Gold you currently have.',
 };
 
 // Extract unique keywords found in a card description
@@ -109,6 +110,147 @@ function getCardKeywords(card) {
     }
   }
   return found;
+}
+
+// ============== DYNAMIC CARD VALUE HELPERS ==============
+
+/**
+ * Compute the actual damage a card would deal, factoring in all player stat modifiers.
+ * Mirrors the damage calculation in combat-engine.js playCard().
+ * @param {number} baseDmg - Base damage from card description
+ * @param {Object} card - Card data
+ * @param {Object} combat - Current combat state
+ * @param {Object|null} targetEnemy - Enemy being targeted (for Vulnerable/Bruise)
+ */
+function getCardDynamicDmg(baseDmg, card, combat, targetEnemy) {
+  if (!combat || !combat.player) return baseDmg;
+  const player = combat.player;
+  let dmg = baseDmg;
+
+  // Power bonus (Heavy Blade multiplier if applicable)
+  const playerPower = player.statuses['power'] || 0;
+  if (playerPower !== 0) {
+    const heavyM = (card.description || '').match(/Power affects this card x(\d+) times?/i);
+    dmg += playerPower * (heavyM ? parseInt(heavyM[1]) : 1);
+  }
+
+  // Combat stat bonuses (Strength/Intelligence/Dexterity/Charisma pigments)
+  dmg += (player.statuses['strength']    || 0)
+       + (player.statuses['intelligence'] || 0)
+       + (player.statuses['dexterity']    || 0)
+       + (player.statuses['charisma']     || 0);
+
+  // Scaling counter bonus (Claw, Rampage, etc.)
+  if (combat._scalingCounters && combat._scalingCounters[card.name]) {
+    dmg += combat._scalingCounters[card.name];
+  }
+
+  // Wealth: +1 per 10 gold
+  if ((card.description || '').toLowerCase().includes('wealth')) {
+    const g = typeof gold !== 'undefined' ? gold
+            : (typeof gameState !== 'undefined' ? (gameState.gold || 0) : 0);
+    dmg += Math.floor(g / 10);
+  }
+
+  // Weak on player: -25%
+  if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
+
+  // Target Vulnerable: +50% incoming damage
+  if (targetEnemy && targetEnemy.statuses && targetEnemy.statuses['vulnerable']) {
+    dmg = Math.ceil(dmg * 1.5);
+  }
+
+  // Target Bruise: +1 per stack for melee/ranged hits
+  if (targetEnemy && targetEnemy.statuses && targetEnemy.statuses['bruise']) {
+    dmg += targetEnemy.statuses['bruise'];
+  }
+
+  return Math.max(0, dmg);
+}
+
+/**
+ * Compute actual block a card would give, factoring in Defense status and Frail.
+ */
+function getCardDynamicBlock(baseBlock, combat) {
+  if (!combat || !combat.player) return baseBlock;
+  const player = combat.player;
+  let block = baseBlock + (player.statuses['defense'] || 0);
+  if (player.statuses['frail']) block = Math.floor(block * 0.75);
+  return Math.max(0, block);
+}
+
+/**
+ * Return card description HTML with dynamic numbers substituted where they differ from base.
+ * Modified numbers are highlighted: green = buffed, blue = block buffed, red = nerfed.
+ * @param {Object} card - Card data
+ * @param {Object} combat - Combat state
+ * @param {Object|null} targetEnemy - Enemy for Vulnerable/Bruise calculation (null = ignore)
+ */
+function getCardDisplayDescription(card, combat, targetEnemy) {
+  let desc = card.description || '';
+  if (!combat || !combat.player) return desc;
+  const player = combat.player;
+
+  // Quick check: any modifier active?
+  const hasMods = (player.statuses['power'] || 0) !== 0
+               || (player.statuses['strength'] || 0) !== 0
+               || (player.statuses['intelligence'] || 0) !== 0
+               || (player.statuses['dexterity'] || 0) !== 0
+               || (player.statuses['charisma'] || 0) !== 0
+               || !!player.statuses['weak']
+               || !!player.statuses['frail']
+               || (player.statuses['defense'] || 0) !== 0
+               || !!(combat._scalingCounters && combat._scalingCounters[card.name])
+               || desc.toLowerCase().includes('wealth')
+               || !!(targetEnemy && targetEnemy.statuses
+                    && (targetEnemy.statuses['vulnerable'] || targetEnemy.statuses['bruise']));
+  if (!hasMods) return desc;
+
+  // Replace NxM damage (e.g. "Deal 3x2 Dmg")
+  desc = desc.replace(/Deal (\d+)[xX](\d+) Dmg/gi, (match, d, t) => {
+    const base = parseInt(d), times = parseInt(t);
+    const computed = getCardDynamicDmg(base, card, combat, targetEnemy);
+    if (computed === base) return match;
+    const col = computed > base ? '#7dff7d' : '#ff7d7d';
+    return `Deal <span style="color:${col};font-weight:bold">${computed}</span>x${times} Dmg`;
+  });
+
+  // Replace plain damage (e.g. "Deal 5 Dmg")
+  desc = desc.replace(/Deal (\d+) Dmg/gi, (match, d) => {
+    const base = parseInt(d);
+    const computed = getCardDynamicDmg(base, card, combat, targetEnemy);
+    if (computed === base) return match;
+    const col = computed > base ? '#7dff7d' : '#ff7d7d';
+    return `Deal <span style="color:${col};font-weight:bold">${computed}</span> Dmg`;
+  });
+
+  // Replace block (e.g. "Gain 5 Block" or "Gain +5 Block")
+  desc = desc.replace(/Gain \+?(\d+) Block/gi, (match, b) => {
+    const base = parseInt(b);
+    const computed = getCardDynamicBlock(base, combat);
+    if (computed === base) return match;
+    const col = computed > base ? '#7dd4ff' : '#ff7d7d';
+    return `Gain <span style="color:${col};font-weight:bold">${computed}</span> Block`;
+  });
+
+  return desc;
+}
+
+// Lightweight re-render of just the hand zone (used when hovered enemy changes)
+function refreshCombatHand() {
+  const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+  const zone = document.getElementById('combat-hand-zone');
+  if (!combat || !zone) return;
+  const hand = combat.hand || [];
+  const n = hand.length;
+  zone.innerHTML = n === 0
+    ? `<div style="color:${C.textDim};font-size:12px;text-align:center;padding-top:65px;width:100%;">No cards in hand</div>`
+    : hand.map((card, i) => renderCardInHand(card, i, n, combat)).join('');
+  document.querySelectorAll('.combat-hand-card').forEach(el => {
+    el.addEventListener('click', () => handleCardClick(parseInt(el.dataset.handIndex)));
+  });
+  attachDragMouseDown();
+  attachCardTooltip();
 }
 
 // Status icon metadata
@@ -1031,7 +1173,7 @@ function renderCardInHand(card, index, total, combat) {
         font-size:${descPx}px; color:#ccc;
         text-align:center; line-height:1.35;
         overflow:hidden;
-      ">${card.description}${card._retain && !/\bretain\b/i.test(card.description) ? ' <span style="color:#4CAF50;font-size:' + (descPx - 0.5) + 'px;">Retain.</span>' : ''}</div>
+      ">${getCardDisplayDescription(card, combat, (() => { const eid = window._combatHoveredEnemyId; return eid && combat.enemies ? combat.enemies.find(e => e.id === eid) || null : null; })())}${card._retain && !/\bretain\b/i.test(card.description) ? ' <span style="color:#4CAF50;font-size:' + (descPx - 0.5) + 'px;">Retain.</span>' : ''}</div>
 
       <!-- Type footer -->
       <div style="
@@ -1442,10 +1584,17 @@ function attachCombatEventListeners(combat) {
   document.querySelectorAll('.enemy-card').forEach(el => {
     el.addEventListener('click', () => handleEnemyClick(el.dataset.enemyId));
     el.addEventListener('mouseenter', (e) => {
+      // Track hovered enemy for dynamic damage preview on hand cards
+      window._combatHoveredEnemyId = el.dataset.enemyId;
+      refreshCombatHand();
       if (e.target.closest('[data-intent-tooltip]') || e.target.closest('.combat-status-icon')) return;
       showEnemyPatternTooltip(el, e);
     });
-    el.addEventListener('mouseleave', () => hideEnemyPatternTooltip());
+    el.addEventListener('mouseleave', () => {
+      window._combatHoveredEnemyId = null;
+      refreshCombatHand();
+      hideEnemyPatternTooltip();
+    });
     el.addEventListener('mousemove', (e) => {
       if (e.target.closest('[data-intent-tooltip]') || e.target.closest('.combat-status-icon')) {
         hideEnemyPatternTooltip();
@@ -1736,6 +1885,12 @@ function attachCardTooltip() {
       const canAfford = card.cost !== 'No' && (card.cost === 'X' || (card.cost || 0) <= (combat.player.energy || 0));
       const costColor = canAfford ? '#ffd700' : '#e74c3c';
 
+      // Find the currently hovered or targeted enemy for damage preview
+      const _ttEnemyId = window._combatHoveredEnemyId || combat.targetedEnemyId;
+      const _ttEnemy   = _ttEnemyId && combat.enemies
+        ? combat.enemies.find(e => e.id === _ttEnemyId && e.health > 0) || null
+        : null;
+
       const tt = getTooltip();
 
       // Dice cards get a special face-grid tooltip
@@ -1779,8 +1934,27 @@ function attachCardTooltip() {
                 onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:36px>${typeEmoji(card.type)}</span>'">
             </div>
             <div style="padding:8px 10px; font-size:11px; color:#edd; line-height:1.55; text-align:center; min-height:36px;">
-              ${card.description}
+              ${getCardDisplayDescription(card, combat, _ttEnemy)}
             </div>
+            ${(() => {
+              // Show damage-vs-target preview if the enemy has relevant debuffs
+              if (!_ttEnemy) return '';
+              const vuln = _ttEnemy.statuses && _ttEnemy.statuses['vulnerable'];
+              const bruse = _ttEnemy.statuses && _ttEnemy.statuses['bruise'];
+              if (!vuln && !bruse) return '';
+              const dmgMatch = (card.description || '').match(/Deal (\d+)(?:[xX](\d+))? Dmg/i);
+              if (!dmgMatch) return '';
+              const base = parseInt(dmgMatch[1]);
+              const baseCalc = getCardDynamicDmg(base, card, combat, null);
+              const withTarget = getCardDynamicDmg(base, card, combat, _ttEnemy);
+              if (withTarget === baseCalc) return '';
+              const tags = [];
+              if (vuln) tags.push('💢 Vulnerable');
+              if (bruse) tags.push(`🩹 Bruise ×${_ttEnemy.statuses['bruise']}`);
+              return `<div style="background:rgba(255,100,0,0.15);border-top:1px solid rgba(255,100,0,0.3);padding:4px 8px;font-size:9px;color:#ffbb77;text-align:center;">
+                vs ${_ttEnemy.name}: <strong style="color:#ffdd99;font-size:11px;">${withTarget}</strong> dmg (${tags.join(', ')})
+              </div>`;
+            })()}
             <div style="
               padding:4px 10px 6px;
               display:flex; justify-content:space-between; align-items:center;

@@ -3626,6 +3626,11 @@ function resolveCardEffect(card, target, options = {}) {
   const _heavyBladeM = desc.match(/Power affects this card x(\d+) times?/i);
   if (_heavyBladeM) _powerMultiplier = parseInt(_heavyBladeM[1]);
 
+  // Wealth: +1 damage per 10 gold the player has
+  const _wealthBonus = fullDescLower.includes('wealth')
+    ? Math.floor((typeof gold !== 'undefined' ? gold : (gameState?.gold || 0)) / 10)
+    : 0;
+
   // Split effects by '. ' to handle multi-effect cards
   const parts = desc.replace(/\.\s*$/, '').split(/\.\s+/);
 
@@ -3818,6 +3823,8 @@ function resolveCardEffect(card, target, options = {}) {
       if (combatState._scalingCounters && combatState._scalingCounters[card.name]) {
         dmg += combatState._scalingCounters[card.name];
       }
+      // Wealth: +1 per 10 gold
+      if (_wealthBonus > 0) dmg += _wealthBonus;
       // Weak on player reduces outgoing damage by 25%
       if (player.statuses['weak']) {
         dmg = Math.floor(dmg * 0.75);
@@ -4107,13 +4114,8 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // Wealth (gain gold)
-    if (lower.includes('wealth')) {
-      const g = 5;
-      if (typeof window.gold !== 'undefined') { window.gold += g; if (gameState) gameState.gold = window.gold; }
-      addLog(`Wealth: +${g} Gold`, 'success');
-      continue;
-    }
+    // Wealth — damage modifier handled as _wealthBonus pre-scan above
+    if (lower.includes('wealth')) continue;
 
     // Heal X Health
     const healMatch = p.match(/Heal (\d+) Health/i);
