@@ -11,7 +11,8 @@ var CHARACTERS_DATA = {
     "health": 75,
     "levelUpCondition": "Beat a game without meta progression",
     "levelUpReward": {
-      "type": "none"
+      "type": "gold",
+      "amount": 50
     },
     "levelUpStats": {
       "strength": 0,
@@ -75,7 +76,7 @@ var CHARACTERS_DATA = {
     "health": 75,
     "levelUpCondition": "Unlock a new gameplay element",
     "levelUpReward": {
-      "type": "none"
+      "type": "item"
     },
     "levelUpStats": {
       "strength": 1,
