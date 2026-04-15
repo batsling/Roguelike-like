@@ -761,14 +761,14 @@ function switchCollectionTab(tab) {
         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:8px; align-items:center;">
           <span style="color:#888; font-size:11px; margin-right:2px;">Type:</span>
           <button style="${typeFilterBtnStyle(window.gamesTypeFilter==='all')}" onclick="window.gamesTypeFilter='all'; switchCollectionTab('games');">All</button>
-          ${allTypes.map(t => `<button style="${typeFilterBtnStyle(window.gamesTypeFilter===t)}" onclick="window.gamesTypeFilter=${JSON.stringify(t)}; switchCollectionTab('games');">${t}</button>`).join('')}
+          ${allTypes.map(t => `<button style="${typeFilterBtnStyle(window.gamesTypeFilter===t)}" onclick="window.gamesTypeFilter='${t.replace(/'/g, "\\'")}'; switchCollectionTab('games');">${t}</button>`).join('')}
         </div>
         <!-- Tag filter (separate from type) -->
         ${allTags.length > 0 ? `
         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:8px; align-items:center;">
           <span style="color:#888; font-size:11px; margin-right:2px;">Tag:</span>
           <button style="${typeFilterBtnStyle(window.gamesTagFilter==='all')}" onclick="window.gamesTagFilter='all'; switchCollectionTab('games');">All</button>
-          ${allTags.map(t => `<button style="${typeFilterBtnStyle(window.gamesTagFilter===t)}" onclick="window.gamesTagFilter=${JSON.stringify(t)}; switchCollectionTab('games');">${t}</button>`).join('')}
+          ${allTags.map(t => `<button style="${typeFilterBtnStyle(window.gamesTagFilter===t)}" onclick="window.gamesTagFilter='${t.replace(/'/g, "\\'")}'; switchCollectionTab('games');">${t}</button>`).join('')}
         </div>` : ''}
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; overflow-y: auto;">
           ${sortedGames.map(game => {
@@ -1218,7 +1218,7 @@ function switchCollectionTab(tab) {
         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:8px; align-items:center;">
           <span style="color:#888; font-size:11px; margin-right:2px;">Tag:</span>
           <button style="padding:4px 10px;border:none;border-radius:12px;cursor:pointer;font-size:11px;font-weight:bold;background:${window.enemyTagFilter==='all'?'#f44336':'rgba(100,100,100,0.3)'};color:${window.enemyTagFilter==='all'?'#fff':'#ccc'};" onclick="window.enemyTagFilter='all'; switchCollectionTab('enemies');">All</button>
-          ${allEnemyTags.map(t => `<button style="padding:4px 10px;border:none;border-radius:12px;cursor:pointer;font-size:11px;font-weight:bold;background:${window.enemyTagFilter===t?'#f44336':'rgba(100,100,100,0.3)'};color:${window.enemyTagFilter===t?'#fff':'#ccc'};" onclick="window.enemyTagFilter=${JSON.stringify(t)}; switchCollectionTab('enemies');">${t}</button>`).join('')}
+          ${allEnemyTags.map(t => `<button style="padding:4px 10px;border:none;border-radius:12px;cursor:pointer;font-size:11px;font-weight:bold;background:${window.enemyTagFilter===t?'#f44336':'rgba(100,100,100,0.3)'};color:${window.enemyTagFilter===t?'#fff':'#ccc'};" onclick="window.enemyTagFilter='${t.replace(/'/g, "\\'")}'; switchCollectionTab('enemies');">${t}</button>`).join('')}
         </div>` : ''}
         <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px;">
           ${sortedEnemies.map(enemy => {

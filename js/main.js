@@ -5021,7 +5021,7 @@ function showLevelUpPrompt() {
 /**
  * Confirm level up and apply bonuses
  */
-function confirmLevelUp() {
+function confirmLevelUp(onComplete) {
   const characterKey = selectedCharacter || gameState.character || 'Rodney';
   const characterData = PLAYER_CHARACTERS[characterKey];
 
@@ -5185,19 +5185,20 @@ function confirmLevelUp() {
         if (typeof createNotification === 'function') {
           createNotification(`+${reward.amount} Gold!`, '#FFD700', '💰');
         }
+        if (onComplete) onComplete();
         break;
 
       case 'item':
         if (typeof showItemChoiceModal === 'function') {
-          showItemChoiceModal(null, 'small');
-        }
+          showItemChoiceModal(onComplete || null, 'small');
+        } else if (onComplete) onComplete();
         break;
 
       case 'card':
         if (typeof window.showCardRewardModal === 'function') {
-          window.showCardRewardModal(null, reward.tag || null);
+          window.showCardRewardModal(onComplete || null, reward.tag || null);
           saveCurrentGame();
-        }
+        } else if (onComplete) onComplete();
         break;
 
       case 'spell':
@@ -5206,17 +5207,20 @@ function confirmLevelUp() {
             <div style="text-align:center; padding:30px; max-width:400px;">
               <h2 style="color:#9b59b6; margin-bottom:15px;">✨ Spell Reward</h2>
               <p style="color:#aaa; margin-bottom:20px;">Spells are not yet implemented. Check back later!</p>
-              <button onclick="closeGameModal()" style="
+              <button id="spell-reward-close-btn" style="
                 padding:10px 24px; background:#444; border:none;
                 border-radius:8px; color:white; cursor:pointer; font-size:14px;
               ">Close</button>
             </div>
           `);
-        }
+          const spellBtn = document.getElementById('spell-reward-close-btn');
+          if (spellBtn) spellBtn.onclick = () => { closeGameModal(); if (onComplete) onComplete(); };
+        } else if (onComplete) onComplete();
         break;
 
       case 'none':
       default:
+        if (onComplete) onComplete();
         break;
     }
   };

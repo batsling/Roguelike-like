@@ -1006,38 +1006,9 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
     let leveledUp = false;
     if (canLevelUp && characterData) {
       const levelUpRadio = document.querySelector('input[name="levelup-check"]:checked');
-      const didLevelUp = levelUpRadio && levelUpRadio.value === 'yes';
-      if (didLevelUp) {
-        // Level up the player
-        gameState.playerLevel = (gameState.playerLevel || 1) + 1;
+      if (levelUpRadio && levelUpRadio.value === 'yes') {
         leveledUp = true;
-
-        // Apply level up stats
-        if (characterData.levelUpStats) {
-          const stats = characterData.levelUpStats;
-          if (stats.strength) gameState.strength = (gameState.strength || 0) + stats.strength;
-          if (stats.dexterity) gameState.dexterity = (gameState.dexterity || 0) + stats.dexterity;
-          if (stats.intelligence) gameState.intelligence = (gameState.intelligence || 0) + stats.intelligence;
-          if (stats.charisma) gameState.charisma = (gameState.charisma || 0) + stats.charisma;
-          if (stats.reroll) gameState.rerolls = (gameState.rerolls || 0) + stats.reroll;
-          if (stats.dash) gameState.dash = (gameState.dash || 0) + stats.dash;
-          if (stats.skip) gameState.skip = (gameState.skip || 0) + stats.skip;
-          if (stats.discovery) gameState.discovery = (gameState.discovery || 0) + stats.discovery;
-          if (stats.fov) gameState.fov = (gameState.fov || 0) + stats.fov;
-          if (stats.luck) gameState.luck = (gameState.luck || 0) + stats.luck;
-        }
-
-        console.log(`⭐ Level up! Now level ${gameState.playerLevel}`);
-
-        // Update UI
-        if (typeof updateTopBar === 'function') updateTopBar();
-        if (typeof updateCharacterUI === 'function') updateCharacterUI();
-        if (typeof updateStatsDisplay === 'function') updateStatsDisplay();
-
-        // Show notification
-        if (typeof createNotification === 'function') {
-          createNotification(`⭐ Level Up! Now Lv.${gameState.playerLevel}`, 'success');
-        }
+        // Stats and reward modal are handled by confirmLevelUp() below
       }
     }
 
@@ -1205,8 +1176,13 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       }
     };
 
-    // Continue to item rewards (dice level-up removed; rewards handled by confirmLevelUp)
-    continueToRewards();
+    // If the player leveled up, show the confirmLevelUp modal (applies stats + reward),
+    // then continue to normal rewards. Otherwise go straight to rewards.
+    if (leveledUp && typeof window.confirmLevelUp === 'function') {
+      window.confirmLevelUp(continueToRewards);
+    } else {
+      continueToRewards();
+    }
   };
 }
 
