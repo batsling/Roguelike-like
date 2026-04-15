@@ -4533,8 +4533,8 @@ function showPostCombatChoiceModal(difficulty) {
         opacity: ${isUsed ? '0.45' : '1'};
         transition: transform 0.15s, box-shadow 0.15s;
         text-align: center;
-        min-width: 140px;
-        max-width: 160px;
+        min-width: 160px;
+        max-width: 200px;
         ${isUsed ? '' : `onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 20px ${opt.color}66'"`}
       "
       ${isUsed ? '' : `onclick="window._postcombatUseOption('${opt.key}', '${tier}')"`}
@@ -4557,7 +4557,7 @@ function showPostCombatChoiceModal(difficulty) {
   };
 
   createGameModal(`
-    <div style="text-align:center; padding:24px; max-width:760px;">
+    <div style="text-align:center; padding:24px; max-width:920px;">
       <h2 style="color:#FFD700; margin-top:0; margin-bottom:6px;">After Battle</h2>
       <p style="color:#aaa; font-size:13px; margin-bottom:20px;">
         Choose one option — each can be used <strong>once per difficulty tier</strong>.
@@ -4619,11 +4619,11 @@ function showSmithChoiceModal() {
           padding: 14px;
           cursor: pointer;
           display:flex; flex-direction:column; align-items:center;
-          min-width:130px; max-width:155px;
+          min-width:150px; max-width:180px;
           transition: transform 0.15s;
         ">
           <img src="${card.imageUrl || 'images/cards/default.png'}" alt="${card.name}"
-               style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;"
+               style="width:80px;height:80px;object-fit:contain;margin-bottom:8px;"
                onerror="this.style.display='none'">
           <div style="font-weight:bold;font-size:12px;color:white;text-align:center;">${card.name}</div>
           <div style="font-size:10px;color:#aaa;margin-top:3px;">${card.rarity} · ${card.type}</div>
@@ -4633,7 +4633,7 @@ function showSmithChoiceModal() {
     }).join('');
 
     createGameModal(`
-      <div style="text-align:center; padding:20px; max-width:820px;">
+      <div style="text-align:center; padding:20px; max-width:920px;">
         <h2 style="color:#FF9800; margin-top:0;">⚒️ Smith — Upgrade Cards</h2>
         <p style="color:#aaa; font-size:13px; margin-bottom:16px;">
           Select up to ${MAX_UPGRADES} cards to upgrade for free.
@@ -5741,23 +5741,23 @@ function showCardRewardModal(onComplete, tagFilter = null) {
       <div class="card-reward-option" data-card-idx="${idx}" style="
         background:#1e1e2e; border:2px solid ${color}; border-radius:12px;
         padding:16px; display:flex; flex-direction:column; align-items:center;
-        width:155px; cursor:pointer;
+        width:200px; cursor:pointer;
         transition: transform 0.15s, box-shadow 0.15s;
       " onmouseenter="this.style.transform='translateY(-6px)'; this.style.boxShadow='0 8px 24px ${color}66';"
          onmouseleave="this.style.transform=''; this.style.boxShadow='';">
         <img src="${imgSrc}" alt="${card.name}"
-             style="width:80px;height:80px;object-fit:contain;margin-bottom:10px;"
+             style="width:110px;height:110px;object-fit:contain;margin-bottom:10px;"
              onerror="this.style.display='none'">
-        <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:4px;">${card.name}</div>
-        <div style="color:${color};font-size:11px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
-        <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>
-        <div style="color:#ffd700;font-size:12px;font-weight:bold;">Cost: ${card.cost}</div>
+        <div style="font-weight:bold;font-size:15px;color:white;text-align:center;margin-bottom:4px;">${card.name}</div>
+        <div style="color:${color};font-size:12px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
+        <div style="font-size:12px;color:#ccc;text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>
+        <div style="color:#ffd700;font-size:13px;font-weight:bold;">Cost: ${card.cost}</div>
       </div>
     `;
   }).join('');
 
   createGameModal(`
-    <div style="text-align:center; padding:20px; max-width:640px;">
+    <div style="text-align:center; padding:20px; max-width:920px;">
       <h2 style="color:#FFD700; margin-top:0; margin-bottom:8px;">🃏 Card Reward</h2>
       <p style="color:#aaa; margin-bottom:20px; font-size:13px;">Choose a card to add to your deck:</p>
       <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
@@ -7083,7 +7083,7 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
     itemsHTML += `
       <div class="item-choice-card" data-index="${index}" style="
         flex: 1;
-        max-width: 250px;
+        max-width: 300px;
         padding: 20px;
         background: #2d2d2d;
         border: 3px solid ${rarityColor};
@@ -7092,7 +7092,7 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
         transition: all 0.3s;
         text-align: center;
       ">
-        ${item.image ? `<img src="${item.image}" style="width: 100px; height: 100px; object-fit: contain; image-rendering: pixelated; margin: 0 auto 15px; display: block; border-radius: 8px; border: 2px solid ${rarityColor};" alt="${item.name}" onerror="this.style.display='none';">` : ''}
+        ${item.image ? `<img src="${item.image}" style="width: 130px; height: 130px; object-fit: contain; image-rendering: pixelated; margin: 0 auto 15px; display: block; border-radius: 8px; border: 2px solid ${rarityColor};" alt="${item.name}" onerror="this.style.display='none';">` : ''}
         <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">${item.name}</div>
         <div style="color: ${rarityColor}; font-size: 14px; margin-bottom: 15px;">${item.rarity}</div>
         <div style="color: #ccc; font-size: 14px; line-height: 1.5;">${item.description}</div>
@@ -8084,6 +8084,19 @@ function showCardDetails(cardName) {
   `;
 }
 
+function formatLevelUpReward(reward) {
+  if (!reward || reward.type === 'none' || !reward.type) return null;
+  switch (reward.type) {
+    case 'gold':  return `💰 +${reward.amount} Gold`;
+    case 'item':  return `📦 Choose an Item`;
+    case 'card':  return reward.tag
+      ? `🃏 1 ${reward.tag.charAt(0).toUpperCase() + reward.tag.slice(1)} Card Reward`
+      : '🃏 Choose a Card';
+    case 'spell': return `✨ Choose a Spell`;
+    default:      return null;
+  }
+}
+
 function showCharacterDetails(charName) {
   const allChars = typeof CHARACTERS_DATA !== 'undefined' ? Object.values(CHARACTERS_DATA) : [];
   const char = allChars.find(c => c.name === charName);
@@ -8226,6 +8239,12 @@ function showCharacterDetails(charName) {
         <div style="font-size: 12px; color: #aaa;">
           <strong>Rewards:</strong> ${levelUpBonusesHTML}
         </div>
+        ${(() => {
+          const rewardText = formatLevelUpReward(char.levelUpReward);
+          return rewardText
+            ? `<div style="font-size:12px;color:#ccc;margin-top:5px;"><strong>Bonus:</strong> ${rewardText}</div>`
+            : '';
+        })()}
       </div>
 
       <!-- Starting Deck -->

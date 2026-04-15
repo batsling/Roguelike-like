@@ -251,30 +251,30 @@ function showCardRewardModal(onComplete, tagFilter = null) {
         display: flex;
         flex-direction: column;
         align-items: center;
-        min-width: 160px;
-        max-width: 200px;
+        min-width: 180px;
+        max-width: 240px;
       " onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 0 20px ${color}44'"
          onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">
         <div style="
-          width: 80px; height: 80px;
+          width: 110px; height: 110px;
           display: flex; align-items: center; justify-content: center;
           background: rgba(0,0,0,0.3); border-radius: 8px;
           border: 2px solid ${color}; margin-bottom: 12px;
         ">
-          <img src="${imgSrc}" alt="${card.name}" style="max-width:70px;max-height:70px;object-fit:contain;"
-               onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=font-size:32px>🃏</span>'">
+          <img src="${imgSrc}" alt="${card.name}" style="max-width:100px;max-height:100px;object-fit:contain;"
+               onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=font-size:48px>🃏</span>'">
         </div>
-        <div style="font-weight:bold;font-size:15px;color:white;text-align:center;margin-bottom:4px;">${card.name}</div>
-        <div style="color:${color};font-size:12px;text-transform:capitalize;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
-        <div style="font-size:12px;color:#ddd;text-align:center;margin-bottom:10px;min-height:50px;">${card.description}</div>
-        <div style="color:#ffd700;font-size:13px;font-weight:bold;">Cost: ${card.cost} Energy</div>
-        ${card.canUpgrade ? '<div style="color:#4CAF50;font-size:11px;margin-top:4px;">✓ Upgradeable</div>' : ''}
+        <div style="font-weight:bold;font-size:16px;color:white;text-align:center;margin-bottom:4px;">${card.name}</div>
+        <div style="color:${color};font-size:13px;text-transform:capitalize;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
+        <div style="font-size:13px;color:#ddd;text-align:center;margin-bottom:10px;min-height:50px;">${card.description}</div>
+        <div style="color:#ffd700;font-size:14px;font-weight:bold;">Cost: ${card.cost} Energy</div>
+        ${card.canUpgrade ? '<div style="color:#4CAF50;font-size:12px;margin-top:4px;">✓ Upgradeable</div>' : ''}
       </div>
     `;
   }).join('');
 
   createGameModal(`
-    <div style="text-align:center;padding:20px;max-width:700px;margin:0 auto;">
+    <div style="text-align:center;padding:20px;max-width:920px;margin:0 auto;">
       <h2 style="color:#9b59b6;margin-top:0;">🃏 Choose a Card</h2>
       <p style="color:#aaa;margin-bottom:20px;">Select one card to add to your deck</p>
       <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap;" id="card-reward-grid">

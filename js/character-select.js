@@ -90,6 +90,19 @@ function populateIconCharacterView() {
   });
 }
 
+function formatLevelUpReward(reward) {
+  if (!reward || reward.type === 'none' || !reward.type) return null;
+  switch (reward.type) {
+    case 'gold':  return `💰 +${reward.amount} Gold`;
+    case 'item':  return `📦 Choose an Item`;
+    case 'card':  return reward.tag
+      ? `🃏 1 ${reward.tag.charAt(0).toUpperCase() + reward.tag.slice(1)} Card Reward`
+      : '🃏 Choose a Card';
+    case 'spell': return `✨ Choose a Spell`;
+    default:      return null;
+  }
+}
+
 function showIconCharacterDetails(charKey) {
   const character = PLAYER_CHARACTERS[charKey];
   const detailsPanel = document.getElementById('icon-character-details');
@@ -195,6 +208,12 @@ function showIconCharacterDetails(charKey) {
           <div style="color: #ff9800; font-size: 14px; font-weight: bold; margin-bottom: 8px;">⬆️ Level Up Condition</div>
           <div style="color: #ddd; font-size: 13px; margin-bottom: 8px;">${levelUpCondition}</div>
           <div style="color: #aaa; font-size: 12px;"><strong>Rewards:</strong> ${levelUpHTML}</div>
+          ${(() => {
+            const rewardText = formatLevelUpReward(character.levelUpReward);
+            return rewardText
+              ? `<div style="color:#ccc;font-size:12px;margin-top:5px;"><strong>Bonus:</strong> ${rewardText}</div>`
+              : '';
+          })()}
         </div>
       ` : ''}
 
