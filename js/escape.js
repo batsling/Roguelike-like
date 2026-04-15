@@ -726,15 +726,18 @@ function switchCollectionTab(tab) {
     // Initialize search/filter state
     if (typeof window.gamesSearchTerm === 'undefined') window.gamesSearchTerm = '';
     if (typeof window.gamesTypeFilter === 'undefined') window.gamesTypeFilter = 'all';
+    if (typeof window.gamesTagFilter === 'undefined') window.gamesTagFilter = 'all';
 
-    // Collect all unique types for filter buttons
+    // Collect all unique types and tags for filter buttons
     const allTypes = [...new Set(games.map(g => g.type).filter(Boolean))].sort();
+    const allTags = [...new Set(games.flatMap(g => g.tags || []).filter(Boolean))].sort();
 
     // Filter and sort games
     const searchTerm = window.gamesSearchTerm.toLowerCase();
     let filteredGames = [...games];
     if (searchTerm) filteredGames = filteredGames.filter(g => g.name.toLowerCase().includes(searchTerm));
     if (window.gamesTypeFilter !== 'all') filteredGames = filteredGames.filter(g => g.type === window.gamesTypeFilter);
+    if (window.gamesTagFilter !== 'all') filteredGames = filteredGames.filter(g => g.tags && g.tags.includes(window.gamesTagFilter));
     const sortedGames = filteredGames.sort((a, b) => a.name.localeCompare(b.name));
 
     // Get game stats for amulet icons
@@ -754,12 +757,19 @@ function switchCollectionTab(tab) {
           />
           <span style="color: #666; font-size: 11px;">${sortedGames.length} of ${games.length}</span>
         </div>
-        <!-- Tag (type) filter -->
-        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:8px; align-items:center;">
-          <span style="color:#888; font-size:11px; margin-right:2px;">Tag:</span>
+        <!-- Type filter -->
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:8px; align-items:center;">
+          <span style="color:#888; font-size:11px; margin-right:2px;">Type:</span>
           <button style="${typeFilterBtnStyle(window.gamesTypeFilter==='all')}" onclick="window.gamesTypeFilter='all'; switchCollectionTab('games');">All</button>
           ${allTypes.map(t => `<button style="${typeFilterBtnStyle(window.gamesTypeFilter===t)}" onclick="window.gamesTypeFilter=${JSON.stringify(t)}; switchCollectionTab('games');">${t}</button>`).join('')}
         </div>
+        <!-- Tag filter (separate from type) -->
+        ${allTags.length > 0 ? `
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:8px; align-items:center;">
+          <span style="color:#888; font-size:11px; margin-right:2px;">Tag:</span>
+          <button style="${typeFilterBtnStyle(window.gamesTagFilter==='all')}" onclick="window.gamesTagFilter='all'; switchCollectionTab('games');">All</button>
+          ${allTags.map(t => `<button style="${typeFilterBtnStyle(window.gamesTagFilter===t)}" onclick="window.gamesTagFilter=${JSON.stringify(t)}; switchCollectionTab('games');">${t}</button>`).join('')}
+        </div>` : ''}
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; overflow-y: auto;">
           ${sortedGames.map(game => {
             const gameStats = allStats[game.name] || { beaten: 0, amulets: 0 };

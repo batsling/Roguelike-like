@@ -265,7 +265,7 @@ function loadState() {
 }
 
 let selectedCharacter = null;
-let selectedDeck = 'Random'; // Default deck for the current run selection
+var selectedDeck = 'Random'; // Default deck for the current run selection (var so window.selectedDeck works cross-file)
 
 // ===== DECK WIN TRACKING =====
 
@@ -7753,6 +7753,86 @@ function showItemDetails(itemName) {
 
       <!-- Dice (for weapons) -->
       ${diceHTML}
+
+      <!-- Weapon Card (for weapons, show card render from CARDS_DATA) -->
+      ${(() => {
+        if ((item.type || '').toLowerCase() !== 'weapon') return '';
+        const allCards = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
+        const card = allCards.find(c => c.name === item.name && c.tags && c.tags.includes('weapon'));
+        if (!card) return '';
+        const getRarityColorC = (r) => {
+          switch((r||'').toLowerCase()) {
+            case 'legendary': return '#ff6b00'; case 'rare': return '#9b59b6';
+            case 'uncommon': return '#4CAF50'; case 'common': return '#aaa';
+            case 'starter': return '#2196F3'; default: return '#666';
+          }
+        };
+        const rc = getRarityColorC(card.rarity);
+        const tc = typeColor; // reuse weapon red
+        return `
+          <div style="margin-top:5px;">
+            <div style="font-size:12px;font-weight:bold;color:#f44336;margin-bottom:8px;">🃏 Weapon Card</div>
+            <div style="border:2px solid ${rc};border-radius:12px;background:rgba(10,10,15,0.9);box-shadow:0 0 12px ${rc}55;overflow:hidden;max-width:220px;margin:0 auto;position:relative;">
+              <div style="position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:${tc};border:2px solid rgba(255,255,255,0.35);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;color:white;z-index:2;">
+                ${card.cost !== null && card.cost !== undefined ? card.cost : '?'}
+              </div>
+              ${card.imageUrl
+                ? '<img src="' + card.imageUrl + '" alt="' + card.name + '" style="width:100%;height:160px;object-fit:contain;background:rgba(0,0,0,0.3);display:block;" onerror="this.style.display=\'none\'"/>'
+                : '<div style="width:100%;height:160px;background:rgba(244,67,54,0.15);display:flex;align-items:center;justify-content:center;font-size:48px;color:#f4433688;">⚔</div>'
+              }
+              <div style="padding:10px;">
+                <div style="font-size:14px;font-weight:bold;color:#eee;margin-bottom:4px;">${card.name}</div>
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                  <span style="font-size:10px;color:${tc};text-transform:uppercase;font-weight:bold;">${card.type||''}</span>
+                  <span style="font-size:10px;color:${rc};text-transform:uppercase;">${card.rarity||''}</span>
+                </div>
+                <div style="font-size:12px;color:#ddd;line-height:1.5;">${card.description||'No description.'}</div>
+              </div>
+            </div>
+            ${card.canUpgrade && card.upgradedDescription ? `
+              <div style="margin-top:8px;padding:10px 12px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);border-radius:8px;max-width:220px;margin-left:auto;margin-right:auto;">
+                <div style="font-size:11px;font-weight:bold;color:#ff9800;margin-bottom:6px;">✦ Upgraded</div>
+                <div style="font-size:11px;color:#ccc;line-height:1.5;">${card.upgradedDescription}</div>
+              </div>` : ''}
+          </div>`;
+      })()}
+
+      <!-- Keywords -->
+      ${(() => {
+        const allText = (item.description || '').toLowerCase();
+        const statusData = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA : {};
+        const addonData  = typeof ADDONS_DATA  !== 'undefined' ? ADDONS_DATA  : {};
+        const matchedStatuses = Object.values(statusData).filter(s =>
+          new RegExp(`\\b${s.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`, 'i').test(allText)
+        );
+        const matchedAddons = Object.values(addonData).filter(a =>
+          new RegExp(`\\b${a.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`, 'i').test(allText)
+        );
+        if (matchedStatuses.length === 0 && matchedAddons.length === 0) return '';
+        const statusColor = s => s.preference === 'Positive' ? '#4CAF50' : s.preference === 'Negative' ? '#e74c3c' : '#888';
+        const statusBadge = s => `
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 9px;background:rgba(0,0,0,0.35);border:1px solid ${statusColor(s)}44;border-radius:7px;">
+            ${s.imageUrl ? `<img src="${s.imageUrl}" style="width:22px;height:22px;object-fit:contain;flex-shrink:0;border-radius:3px;" onerror="this.style.display='none'">` : `<span style="font-size:16px;line-height:1;flex-shrink:0;">${s.preference==='Positive'?'🟢':s.preference==='Negative'?'🔴':'⚪'}</span>`}
+            <div>
+              <div style="font-size:11px;font-weight:bold;color:${statusColor(s)};">${s.name}</div>
+              <div style="font-size:10px;color:#aaa;line-height:1.35;">${s.description}</div>
+            </div>
+          </div>`;
+        const addonBadge = a => `
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 9px;background:rgba(0,0,0,0.35);border:1px solid #9b59b644;border-radius:7px;">
+            <span style="font-size:16px;line-height:1;flex-shrink:0;">🔷</span>
+            <div>
+              <div style="font-size:11px;font-weight:bold;color:#9b59b6;">${a.name}</div>
+              <div style="font-size:10px;color:#aaa;line-height:1.35;">${a.description}</div>
+            </div>
+          </div>`;
+        return `
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <div style="font-size:11px;font-weight:bold;color:#aaa;margin-bottom:2px;">Keywords</div>
+            ${matchedStatuses.map(statusBadge).join('')}
+            ${matchedAddons.map(addonBadge).join('')}
+          </div>`;
+      })()}
     </div>
   `;
 }
@@ -8127,7 +8207,7 @@ function showCharacterDetails(charName) {
       <!-- Deck Beaten Checklist -->
       ${(() => {
         if (typeof AVAILABLE_DECKS === 'undefined' || !AVAILABLE_DECKS.length) return '';
-        const dw = (typeof getDeckWinsForCharacter === 'function') ? getDeckWinsForCharacter(charKey) : [];
+        const dw = (typeof getDeckWinsForCharacter === 'function') ? getDeckWinsForCharacter(charName) : [];
         const rows = AVAILABLE_DECKS.map(d => {
           const beaten = dw.includes(d.id);
           return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
