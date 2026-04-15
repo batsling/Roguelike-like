@@ -720,26 +720,22 @@ function switchCollectionTab(tab) {
   if (tab === 'games') {
     // Initialize search/filter state
     if (typeof window.gamesSearchTerm === 'undefined') window.gamesSearchTerm = '';
-    if (typeof window.gamesTagFilter === 'undefined') window.gamesTagFilter = 'all';
     if (typeof window.gamesTypeFilter === 'undefined') window.gamesTypeFilter = 'all';
 
-    // Collect all unique tags and types for filter buttons
-    const allTags = [...new Set(games.flatMap(g => g.tags || []))].sort();
+    // Collect all unique types for filter buttons
     const allTypes = [...new Set(games.map(g => g.type).filter(Boolean))].sort();
 
     // Filter and sort games
     const searchTerm = window.gamesSearchTerm.toLowerCase();
     let filteredGames = [...games];
     if (searchTerm) filteredGames = filteredGames.filter(g => g.name.toLowerCase().includes(searchTerm));
-    if (window.gamesTagFilter !== 'all') filteredGames = filteredGames.filter(g => (g.tags || []).includes(window.gamesTagFilter));
     if (window.gamesTypeFilter !== 'all') filteredGames = filteredGames.filter(g => g.type === window.gamesTypeFilter);
     const sortedGames = filteredGames.sort((a, b) => a.name.localeCompare(b.name));
 
     // Get game stats for amulet icons
     const allStats = getGameStats();
 
-    const tagFilterBtnStyle = (active) => `padding:4px 10px; border:none; border-radius:12px; cursor:pointer; font-size:11px; font-weight:bold; background:${active?'#ff9800':'rgba(100,100,100,0.3)'}; color:${active?'#000':'#ccc'}; transition:background 0.15s;`;
-    const typeFilterBtnStyle = (active) => `padding:4px 10px; border:none; border-radius:12px; cursor:pointer; font-size:11px; font-weight:bold; background:${active?'#2196F3':'rgba(100,100,100,0.3)'}; color:${active?'#fff':'#ccc'}; transition:background 0.15s;`;
+    const typeFilterBtnStyle = (active) => `padding:4px 10px; border:none; border-radius:12px; cursor:pointer; font-size:11px; font-weight:bold; background:${active?'#ff9800':'rgba(100,100,100,0.3)'}; color:${active?'#000':'#ccc'}; transition:background 0.15s;`;
 
     content.innerHTML = `
       <!-- Left side: Game grid -->
@@ -753,17 +749,11 @@ function switchCollectionTab(tab) {
           />
           <span style="color: #666; font-size: 11px;">${sortedGames.length} of ${games.length}</span>
         </div>
-        <!-- Type filter -->
-        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:8px; align-items:center;">
-          <span style="color:#888; font-size:11px; margin-right:2px;">Type:</span>
-          <button style="${typeFilterBtnStyle(window.gamesTypeFilter==='all')}" onclick="window.gamesTypeFilter='all'; switchCollectionTab('games');">All</button>
-          ${allTypes.map(t => `<button style="${typeFilterBtnStyle(window.gamesTypeFilter===t)}" onclick="window.gamesTypeFilter=${JSON.stringify(t)}; switchCollectionTab('games');">${t}</button>`).join('')}
-        </div>
-        <!-- Tag filter -->
+        <!-- Tag (type) filter -->
         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:8px; align-items:center;">
           <span style="color:#888; font-size:11px; margin-right:2px;">Tag:</span>
-          <button style="${tagFilterBtnStyle(window.gamesTagFilter==='all')}" onclick="window.gamesTagFilter='all'; switchCollectionTab('games');">All</button>
-          ${allTags.map(t => `<button style="${tagFilterBtnStyle(window.gamesTagFilter===t)}" onclick="window.gamesTagFilter=${JSON.stringify(t)}; switchCollectionTab('games');">${t}</button>`).join('')}
+          <button style="${typeFilterBtnStyle(window.gamesTypeFilter==='all')}" onclick="window.gamesTypeFilter='all'; switchCollectionTab('games');">All</button>
+          ${allTypes.map(t => `<button style="${typeFilterBtnStyle(window.gamesTypeFilter===t)}" onclick="window.gamesTypeFilter=${JSON.stringify(t)}; switchCollectionTab('games');">${t}</button>`).join('')}
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; overflow-y: auto;">
           ${sortedGames.map(game => {
@@ -820,8 +810,13 @@ function switchCollectionTab(tab) {
               <div style="text-align: center; font-size: 12px; font-weight: bold; color: #ddd; word-wrap: break-word; width: 100%;">
                 ${game.name}
               </div>
-              <div style="font-size: 10px; color: #888;">
-                ${game.year} • ${game.type}
+              <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap; justify-content:center;">
+                <span style="font-size:10px; color:#888;">${game.year}</span>
+                ${game.type ? `<span style="
+                  font-size:10px; font-weight:bold; padding:2px 7px;
+                  border-radius:10px; background:rgba(255,152,0,0.18);
+                  border:1px solid rgba(255,152,0,0.45); color:#ff9800;
+                ">${game.type}</span>` : ''}
               </div>
             </div>
           `;}).join('')}

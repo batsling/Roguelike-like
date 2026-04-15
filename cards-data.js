@@ -206,7 +206,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/cards/Barrel.png",
+    "imageUrl": "images/items/Barrel.png",
     "game": "Enter the Gungeon",
     "tags": [
       "weapon"
@@ -307,7 +307,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/cards/BlasmaPistol.png",
+    "imageUrl": "images/items/BlasmaPistol.png",
     "game": "Flinthook",
     "tags": [
       "weapon"
@@ -340,7 +340,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/cards/BloodMagic.png",
+    "imageUrl": "images/items/BloodMagic.png",
     "game": "Megabonk",
     "tags": [
       "weapon"
@@ -1001,7 +1001,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/cards/Dexecutioner.png",
+    "imageUrl": "images/items/Dexecutioner.png",
     "game": "Megabonk",
     "tags": [
       "weapon"
@@ -1838,7 +1838,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/cards/LilBomber.png",
+    "imageUrl": "images/items/LilBomber.png",
     "game": "Enter the Gungeon",
     "tags": [
       "weapon"

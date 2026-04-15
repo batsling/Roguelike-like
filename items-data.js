@@ -2,7 +2,7 @@
 
 var ITEMS_DATA = [
   {
-    "name": "",
+    "name": "Anchor",
     "rarity": "Common",
     "type": "Triggered",
     "description": "At the start of combat, Gain +10 Block",
@@ -15,7 +15,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Ballistic Boots",
     "rarity": "Rare",
     "type": "Passive",
     "description": "Gain +1 Dash",
@@ -28,7 +28,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Barrel",
     "rarity": "Uncommon",
     "type": "Weapon",
     "description": "Add the Card \"Barrel\" into your Deck. If you obtain at least 1 fish, Gain (1/2) random fish",
@@ -41,7 +41,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Beefy Ring",
     "rarity": "Rare",
     "type": "Scaling",
     "description": "Gain scaling +1 Strength per 20 max health ",
@@ -54,7 +54,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Bird Head",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "Your Strikes inflict Soul Link.",
@@ -67,7 +67,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Blasma Pistol",
     "rarity": "Common",
     "type": "Weapon",
     "description": "Add the Card \"Blasma Pistol\" into your Deck. If you open more than 10 chests, gain a (small/normal) chest",
@@ -79,7 +79,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Blood Magic",
     "rarity": "Rare",
     "type": "Weapon",
     "description": "Add the Card \"Blood Magic\" into your Deck. If you create or use a magic circle, \"Blood Magic\" Gains  (+1/+2/) Infuse",
@@ -89,7 +89,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Blood Vial",
     "rarity": "Common",
     "type": "Triggered",
     "description": "At the start of combat, gain +1 Health",
@@ -101,7 +101,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Boon of Aphrodite",
     "rarity": "N/A",
     "type": "Boon",
     "description": "If the player charms an enemy gain +1 to all combat roll bonus stats, but 20% chance for games to be Charmed",
@@ -111,7 +111,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Boon of Artemis",
     "rarity": "N/A",
     "type": "Boon",
     "description": "If the player uses ranged strategies primarlity to win the run gain +1 to all combat roll bonus stats, but 20% chance for games to be Marked",
@@ -121,7 +121,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Boon of Athena",
     "rarity": "N/A",
     "type": "Boon",
     "description": "If the player negates damage with a shield 5+ times gain +1 to all combat roll bonus stats, but 20% for games to be Shielded",
@@ -131,7 +131,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Boon of Hermes",
     "rarity": "N/A",
     "type": "Boon",
     "description": "If the player beats a game within an hour gain +1 to all combat roll bonus stats, but 20% chance for games to be Timed",
@@ -141,7 +141,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Boon of Poseidon",
     "rarity": "N/A",
     "type": "Boon",
     "description": "If the player defeats an enemy underwater gain +1 to all combat roll bonus stats, but 20% chance for games to be Soaked",
@@ -151,7 +151,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Boon of Zeus",
     "rarity": "N/A",
     "type": "Boon",
     "description": "If the player defeats an enemy with lightning in their run gain +1 to all combat roll bonus stats, but 20% chance for games to be Shocked",
@@ -161,7 +161,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Bowler Hat",
     "rarity": "Uncommon",
     "type": "Passive",
     "description": "Gain +6 Charisma, but -2 Dexterity",
@@ -174,7 +174,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Brain Candy",
     "rarity": "Common",
     "type": "Usable",
     "description": "Gain +5 Intelligence this combat/event",
@@ -188,7 +188,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Brass Knuckles",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "Your Strikes inflict Bruise",
@@ -198,7 +198,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Bronze Scales",
     "rarity": "Common",
     "type": "Triggered",
     "description": "At the start of combat, Gain +3 Thorns",
@@ -210,7 +210,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Burning Blood",
     "rarity": "Starter",
     "type": "Triggered",
     "description": "At the end of combat, Gain +6 Health",
@@ -220,7 +220,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Busted Crown",
     "rarity": "Rare",
     "type": "Passive",
     "description": "Gain +1 Max Energy, but -2 Discovery",
@@ -234,7 +234,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Campfire",
     "rarity": "Uncommon",
     "type": "Passive",
     "description": "Gain +6 Intelligence, but -2 Dexterity",
@@ -244,7 +244,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Captain's Wheel",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "Start the 3rd turn of combat with +18 Block",
@@ -257,7 +257,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Charm of the Vampire",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "When you defeat an enemy, 50% chance to Heal +3 Health",
@@ -267,7 +267,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Clover",
     "rarity": "Common",
     "type": "Usable",
     "description": "Gain +5 Luck this combat/event",
@@ -281,7 +281,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Clown Shoes",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "Whenever you don't Perfect a game, (beat a game/combat without losing a run) 50% chance to treat it like you did",
@@ -295,7 +295,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "D6",
     "rarity": "Uncommon",
     "type": "Passive",
     "description": "Gain +2 Rerolls",
@@ -305,7 +305,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Death Orb",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "When you play a power, deal X damage to each enemy where X is the amount of Curses you have",
@@ -318,7 +318,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Dexecutioner",
     "rarity": "Uncommon",
     "type": "Weapon",
     "description": "Add the Card \"Dexecutioner\" into your Deck. If you kill an enemy with a piercing attack at least one time, \"Dexecutioner\" gains (+1/+2) Assassinate",
@@ -328,7 +328,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Disco Biscuit",
     "rarity": "Common",
     "type": "Usable",
     "description": "Gain +5 Charisma this combat/event",
@@ -342,7 +342,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Du-Vu Doll",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "At the start of each combat, Gain X Power where X is the amount of curses you have",
@@ -354,7 +354,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Empty Tome",
     "rarity": "Common",
     "type": "Passive",
     "description": "Gain +3 Intelligence",
@@ -364,7 +364,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Fire Potion",
     "rarity": "Uncommon",
     "type": "Usable",
     "description": "In combat, deal 20 damage to a target enemy",
@@ -376,7 +376,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Focus Crystal",
     "rarity": "Common",
     "type": "Passive",
     "description": "Melee Attacks deal +1 Dmg",
@@ -388,7 +388,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Frozen Egg",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "Whenever you add a Power card to your deck, Upgrade it",
@@ -400,7 +400,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Garlic",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "At the start of combat, gain +1 Brace",
@@ -412,7 +412,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Golden Beetle",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "Whenever you get rid of a Curse, gain one Chest",
@@ -424,7 +424,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Gremlin Horn",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "When an enemy dies, Gain +1 Energy and Draw 1 card",
@@ -434,7 +434,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Happy Flower",
     "rarity": "Common",
     "type": "Incremental",
     "description": "Every 3 turns, Gain +1 energy",
@@ -446,7 +446,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Hollow Heart",
     "rarity": "Common",
     "type": "Pickup",
     "description": "Gain +8 Max Health",
@@ -456,7 +456,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Horn Cleat",
     "rarity": "Uncommon",
     "type": "Passive",
     "description": "Start the 2nd turn of combat with +14 Block",
@@ -469,7 +469,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Ice Cream",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "When you end your turn with energy, gain that much energy on your next energy",
@@ -481,7 +481,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Jar of Leeches",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "Your Strikes inflict Leeches",
@@ -494,7 +494,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Leech Brood",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "At the start of conflict, inflict +1 Leeches to all enemies. If you start combat above 50% health, lose 10 health",
@@ -506,7 +506,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Lil' Bomber",
     "rarity": "Common",
     "type": "Weapon",
     "description": "Add the Card \"Lil' Bomber\" into your Deck. If you kill an enemy with a bomb at least one time, \"Barrel\" Gains (+1/+2) Dmg",
@@ -518,7 +518,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Lucky Toe",
     "rarity": "Common",
     "type": "Passive",
     "description": "Gain +1 Luck",
@@ -528,7 +528,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Lunch",
     "rarity": "Common",
     "type": "Pickup",
     "description": "Gain +5 Max Health and +5 Health",
@@ -540,7 +540,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Mango",
     "rarity": "Rare",
     "type": "Pickup",
     "description": "Gain + 14 Max Health and +14 Health",
@@ -552,7 +552,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Meat on the Bone",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "Whenever your Health is at 50% or below Max Health at the end of combat, gain +12 Health",
@@ -565,7 +565,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Metal Plate",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "When you kill an enemy, Gain +1 Brace",
@@ -578,7 +578,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Molten Egg",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "Whenever you add an Attack card to your deck, Upgrade it",
@@ -590,7 +590,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "More Options",
     "rarity": "Uncommon",
     "type": "Passive",
     "description": "Gain +1 Field of View, get an extra option in the space choice",
@@ -600,7 +600,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Mummified Hand",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "When you play a power, a random card in your hand becomes free to play this turn",
@@ -612,7 +612,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Nunchaku",
     "rarity": "Common",
     "type": "Incremental",
     "description": "Every time you play 10 attacks, gain +1 Energy",
@@ -624,7 +624,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Oddly Smooth Stone",
     "rarity": "Common",
     "type": "Passive",
     "description": "Gain +3 Dexterity",
@@ -636,7 +636,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Old Coin",
     "rarity": "Rare",
     "type": "Pickup",
     "description": "Gain 100 Gold",
@@ -648,7 +648,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Ornamental Fan",
     "rarity": "Uncommon",
     "type": "Incremental",
     "description": "Every time you play 4 attacks in a single turn, Gain +4 Block",
@@ -660,7 +660,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Panda",
     "rarity": "Rare",
     "type": "Pickup",
     "description": "Gain +20 Max Health and +2 Luck, but -3 Strength",
@@ -670,7 +670,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Paper Bag",
     "rarity": "Rare",
     "type": "Scaling",
     "description": "Your Charisma is equal to your highest stat",
@@ -683,7 +683,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Pen Nib",
     "rarity": "Common",
     "type": "Incremental",
     "description": "Every 10th attack you play deals double damage",
@@ -693,7 +693,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Percs",
     "rarity": "Common",
     "type": "Usable",
     "description": "Gain +10 Block",
@@ -707,7 +707,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Performance Based Health Insurance",
     "rarity": "Common",
     "type": "Triggered",
     "description": "Whenever you perfect a game (beat a game/combat without losing a run), Gain +5 Health",
@@ -717,7 +717,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Philosopher's Stone",
     "rarity": "Rare",
     "type": "Passive",
     "description": "Gain +1 Max Energy, but all enemies start with 1 Power",
@@ -729,7 +729,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Prayer Beads",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "Whenever you take damage, Gain Temporary +3 Brace until end of your next turn",
@@ -743,7 +743,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Prayer Card",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "33% chance to gain +1 Holy Shield each time you take damage",
@@ -758,7 +758,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Raven Feather",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "At the start of conflict, inflict Soul Link on 2 random enemies",
@@ -770,7 +770,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Reactive Trauma Plate",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "If the player would take lethal damage, negate that damage and destroy this item",
@@ -782,7 +782,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Ride the Bus",
     "rarity": "Uncommon",
     "type": "Usable",
     "description": "Teleport to a random Deckbuilder space",
@@ -792,7 +792,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Ring of the Snake",
     "rarity": "Starter",
     "type": "Triggered",
     "description": "At the start of combat, Draw 2 Cards",
@@ -804,7 +804,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Roid Rage",
     "rarity": "Common",
     "type": "Usable",
     "description": "Gain +5 Strength this combat/event",
@@ -818,7 +818,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Scroll of Teleportation ",
     "rarity": "Common",
     "type": "Usable",
     "description": "Teleport to a random space",
@@ -828,7 +828,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Secret Technique Instructions",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "Whenever you perfect a game (beat a game/combat without losing a run), gain +1 Dash",
@@ -840,7 +840,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Shuriken",
     "rarity": "Uncommon",
     "type": "Incremental",
     "description": "Every time you play 3 attacks in a single turn, Gain +1 Power",
@@ -852,7 +852,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Speedball",
     "rarity": "Common",
     "type": "Usable",
     "description": "Gain +5 Dexterity this combat/event",
@@ -866,7 +866,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Stabilizer Arm Locks",
     "rarity": "Rare",
     "type": "Passive",
     "description": "Gain +6 Dexterity",
@@ -878,7 +878,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Steady Investment",
     "rarity": "Common",
     "type": "Triggered",
     "description": "Whenever you perfect a game (beat a game/combat without losing a run), Gain +5 Gold",
@@ -888,7 +888,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Stem Cells",
     "rarity": "Uncommon",
     "type": "Usable",
     "description": "Gain +3 Regeneration",
@@ -900,7 +900,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Stone Calendar",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "At the end of turn 7, Deal 52 Damage to all enemies",
@@ -912,7 +912,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Strike Dummy",
     "rarity": "Common",
     "type": "Triggered",
     "description": "Your Strikes Gain +3 Dmg",
@@ -924,7 +924,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Sunglasses",
     "rarity": "Common",
     "type": "Passive",
     "description": "Gain +2 Charisma",
@@ -937,7 +937,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "The Poop",
     "rarity": "Common",
     "type": "Usable",
     "description": "Poop on the current space, this space will not show up on the space choice in the future unless it's the only option (very stinky) ",
@@ -947,7 +947,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Thread and Needle",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "At the start of combat, Gain +4 Plated Armor",
@@ -957,7 +957,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Toxic Egg",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "Whenever you add a Skill card to your deck, Upgrade it",
@@ -969,7 +969,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Unstable Genome",
     "rarity": "Uncommon",
     "type": "Triggered",
     "description": "When you beat a game, there's a 33% chance for this item to be destroyed and you may gain 1 of 3 random items",
@@ -981,7 +981,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Vajra",
     "rarity": "Common",
     "type": "Passive",
     "description": "Gain +3 Strength",
@@ -991,7 +991,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Ventricle Razor",
     "rarity": "Rare",
     "type": "Usable",
     "description": "On the first use, create a portal. On second use, return to the space you created the portal on",
@@ -1001,7 +1001,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Vitality Orb",
     "rarity": "Rare",
     "type": "Triggered",
     "description": "Gain +8 Max Health whenever you obtain a Curse",
@@ -1013,7 +1013,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Wand of Wishing",
     "rarity": "Legendary",
     "type": "Usable",
     "description": "Obtain any one item in the game",
@@ -1023,7 +1023,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "War Paint",
     "rarity": "Common",
     "type": "Pickup",
     "description": "Upgrade 2 random Skills",
@@ -1033,7 +1033,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Wheat",
     "rarity": "Uncommon",
     "type": "Passive",
     "description": "Gain +6 Strength, but -2 Intelligence",
@@ -1045,7 +1045,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Whetstone",
     "rarity": "Common",
     "type": "Pickup",
     "description": "Upgrade 2 random Attacks",
@@ -1057,7 +1057,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Winged Boots",
     "rarity": "Rare",
     "type": "Usable",
     "description": "Move to a one of three games that share the year of the game you're currently on",
@@ -1070,7 +1070,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "",
+    "name": "Wings",
     "rarity": "Uncommon",
     "type": "Passive",
     "description": "Gain +6 Dexterity, but -2  Intelligence",
