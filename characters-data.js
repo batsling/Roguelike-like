@@ -100,6 +100,10 @@ var CHARACTERS_DATA = {
       {
         "cardName": "Defend",
         "count": 4
+      },
+      {
+        "cardName": "Isaac's D6",
+        "count": 1
       }
     ],
     "startingItems": [],
@@ -294,6 +298,10 @@ var CHARACTERS_DATA = {
       {
         "cardName": "Defend",
         "count": 4
+      },
+      {
+        "cardName": "Bash",
+        "count": 1
       }
     ],
     "startingItems": [
@@ -361,6 +369,14 @@ var CHARACTERS_DATA = {
       {
         "cardName": "Defend",
         "count": 5
+      },
+      {
+        "cardName": "Survivor",
+        "count": 1
+      },
+      {
+        "cardName": "Neutralize",
+        "count": 1
       }
     ],
     "startingItems": [

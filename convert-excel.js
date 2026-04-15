@@ -247,12 +247,16 @@ charactersData.forEach(row => {
     diceFaces.push(parseDiceFace(faceStr));
   }
 
-  // Build starting deck from Strikes + Defends columns
+  // Build starting deck from Strikes + Defends + up to 2 unique cards
   const startingDeck = [];
   const strikeCount = parseInt(row['Strikes']);
   const defendCount = parseInt(row['Defends']);
   if (strikeCount > 0) startingDeck.push({ cardName: 'Strike', count: strikeCount });
   if (defendCount > 0) startingDeck.push({ cardName: 'Defend', count: defendCount });
+  const unique1 = (row['Unique 1'] || '').toString().trim();
+  const unique2 = (row['Unique 2'] || '').toString().trim();
+  if (unique1 && unique1 !== 'N/A') startingDeck.push({ cardName: unique1, count: 1 });
+  if (unique2 && unique2 !== 'N/A') startingDeck.push({ cardName: unique2, count: 1 });
 
   // Parse starting items ("N/A" or comma-separated names)
   const rawItems = (row['Starting items'] || '').toString().trim();
