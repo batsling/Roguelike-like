@@ -317,16 +317,11 @@ const enemies = enemiesData.map(row => {
   // Get variant field - if it references another enemy, this is a variant of that enemy
   const variantOf = row['Variant'] && row['Variant'] !== 'N/A' ? row['Variant'] : null;
 
-  // Parse HP range "30-34" into { min, max }
-  const hpStr = String(row['HP'] || '10');
-  let hpMin, hpMax;
-  const hpMatch = hpStr.match(/^(\d+)-(\d+)$/);
-  if (hpMatch) {
-    hpMin = parseInt(hpMatch[1]);
-    hpMax = parseInt(hpMatch[2]);
-  } else {
-    hpMin = hpMax = parseInt(hpStr) || 10;
-  }
+  // Parse HP — columns are now 'Min HP' and 'Max HP' (previously a single 'HP' range column)
+  const rawMin = row['Min HP'];
+  const rawMax = row['Max HP'];
+  const hpMin = (rawMin !== undefined && rawMin !== '') ? (parseInt(rawMin) || 10) : 10;
+  const hpMax = (rawMax !== undefined && rawMax !== '') ? (parseInt(rawMax) || hpMin) : hpMin;
 
   // Parse weight - may be N/A for spawn-only enemies
   const rawWeight = row['Weight'];
