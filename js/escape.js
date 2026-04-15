@@ -792,7 +792,7 @@ function switchCollectionTab(tab) {
                 cursor: pointer;
               "
               onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#ff9800';"
-              onmouseout="this.style.transform=''; this.style.borderColor='#444';">
+              onmouseout="this.style.transform=''; if(!this.classList.contains('game-selected')) this.style.borderColor='#444';">
               ${gameStats.amulets > 0 ? `
                 <div style="
                   position: absolute;

@@ -7433,10 +7433,28 @@ function showGameDetails(gameName) {
         <h3 style="margin: 0 0 10px 0; color: #ff9800;">${game.name}</h3>
         <div style="color: #aaa; font-size: 13px; line-height: 1.6;">
           <div><strong>Release Year:</strong> ${game.year || '—'}</div>
-          <div><strong>Type:</strong> ${game.type || '—'}</div>
-          ${game.tags && game.tags.length > 0 ? `<div><strong>Tags:</strong> ${game.tags.join(', ')}</div>` : ''}
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <strong>Type:</strong>
+            ${game.type ? `<span style="font-size:11px;font-weight:bold;padding:2px 8px;border-radius:10px;background:rgba(255,152,0,0.18);border:1px solid rgba(255,152,0,0.45);color:#ff9800;cursor:pointer;"
+              onclick="window.gamesTypeFilter=${JSON.stringify(game.type)}; switchCollectionTab('games');"
+              title="Filter by ${game.type}">${game.type}</span>` : '—'}
+          </div>
         </div>
       </div>
+
+      <!-- Tags -->
+      ${game.tags && game.tags.length > 0 ? `
+        <div style="padding:10px 12px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.25);border-radius:8px;">
+          <div style="font-size:11px;font-weight:bold;color:#9b59b6;margin-bottom:8px;">🏷 Tags</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${game.tags.map(tag => `
+              <span style="font-size:11px;padding:3px 10px;border-radius:12px;background:rgba(155,89,182,0.18);border:1px solid rgba(155,89,182,0.4);color:#ba68c8;cursor:pointer;font-weight:bold;"
+                onclick="window.gamesTagFilter=${JSON.stringify(tag)}; switchCollectionTab('games');"
+                title="Filter by tag: ${tag}">${tag}</span>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
 
       <!-- Tracked Stats -->
       <div style="padding: 12px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 6px;">
@@ -7451,6 +7469,14 @@ function showGameDetails(gameName) {
       ${connectionsHTML}
     </div>
   `;
+
+  // Highlight the selected card in the grid
+  document.querySelectorAll('.collection-game-card').forEach(card => {
+    const isSel = card.dataset.gameName === gameName;
+    card.classList.toggle('game-selected', isSel);
+    card.style.borderColor = isSel ? '#ff9800' : '#444';
+    card.style.background  = isSel ? 'rgba(255,152,0,0.1)' : 'rgba(0,0,0,0.3)';
+  });
 }
 
 function showEnemyDetails(enemyName) {
