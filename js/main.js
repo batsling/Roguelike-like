@@ -265,6 +265,24 @@ function loadState() {
 }
 
 let selectedCharacter = null;
+let selectedDeck = 'Random'; // Default deck for the current run selection
+
+// ===== DECK WIN TRACKING =====
+
+function getDeckWinsForCharacter(charKey) {
+  const all = GameStorage.load(STORAGE_KEYS.DECK_WINS, {});
+  return all[charKey] || [];
+}
+
+function recordDeckWin(charKey, deckId) {
+  if (!charKey || !deckId) return;
+  const all = GameStorage.load(STORAGE_KEYS.DECK_WINS, {});
+  if (!all[charKey]) all[charKey] = [];
+  if (!all[charKey].includes(deckId)) {
+    all[charKey].push(deckId);
+    GameStorage.save(STORAGE_KEYS.DECK_WINS, all);
+  }
+}
 
 // Combat system toggle - set to true to use new dice-based combat
 let useDiceCombat = true;
@@ -483,6 +501,9 @@ document.getElementById('new-game-btn')?.addEventListener('click', () => {
   const characterKeys = Object.keys(PLAYER_CHARACTERS);
   selectedCharacter = characterKeys.length > 0 ? characterKeys[0] : null;
 
+  // Populate deck selection panel
+  if (typeof populateDeckView === 'function') populateDeckView();
+
   // Populate icon view
   populateIconCharacterView();
 
@@ -610,6 +631,7 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     amuletGame: amulet,
     currentY: 120,
     character: selectedCharacter,
+    selectedDeck: selectedDeck || 'Random',
     traits: characterTraits,
     strength: strength,
     dexterity: dexterity,
@@ -5647,6 +5669,14 @@ function showDiceLevelUpChoiceModal(characterKey, onComplete) {
  * @param {Function} onComplete - Called after a card is chosen or skipped
  */
 function showCardRewardModal(onComplete, tagFilter = null) {
+  // If no explicit tag was passed, derive from the run's chosen deck
+  if (tagFilter === null && typeof gameState !== 'undefined' && gameState.selectedDeck) {
+    const deckDef = (typeof AVAILABLE_DECKS !== 'undefined')
+      ? AVAILABLE_DECKS.find(d => d.id === gameState.selectedDeck)
+      : null;
+    if (deckDef && deckDef.tagFilter) tagFilter = deckDef.tagFilter;
+  }
+
   const rarityColor = (rarity) => {
     switch (rarity) {
       case 'Rare':     return '#9b59b6';
@@ -7900,6 +7930,47 @@ function showCardDetails(cardName) {
       ` : '')}
 
       ${card.game ? `<div style="font-size:11px;color:#666;">From: <span style="color:#888;">${card.game}</span></div>` : ''}
+
+      ${(() => {
+        // Scan description + upgraded description for known status and addon keywords
+        const allText = ((card.description || '') + ' ' + (card.upgradedDescription || '')).toLowerCase();
+        const statusData = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA : {};
+        const addonData  = typeof ADDONS_DATA  !== 'undefined' ? ADDONS_DATA  : {};
+
+        const matchedStatuses = Object.values(statusData).filter(s =>
+          new RegExp(`\\b${s.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`, 'i').test(allText)
+        );
+        const matchedAddons = Object.values(addonData).filter(a =>
+          new RegExp(`\\b${a.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`, 'i').test(allText)
+        );
+
+        if (matchedStatuses.length === 0 && matchedAddons.length === 0) return '';
+
+        const statusColor = s => s.preference === 'Positive' ? '#4CAF50' : s.preference === 'Negative' ? '#e74c3c' : '#888';
+        const statusBadge = s => `
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 9px;background:rgba(0,0,0,0.35);border:1px solid ${statusColor(s)}44;border-radius:7px;">
+            ${s.imageUrl ? `<img src="${s.imageUrl}" style="width:22px;height:22px;object-fit:contain;flex-shrink:0;border-radius:3px;" onerror="this.style.display='none'">` : `<span style="font-size:16px;line-height:1;flex-shrink:0;">${s.preference==='Positive'?'🟢':s.preference==='Negative'?'🔴':'⚪'}</span>`}
+            <div>
+              <div style="font-size:11px;font-weight:bold;color:${statusColor(s)};">${s.name}</div>
+              <div style="font-size:10px;color:#aaa;line-height:1.35;">${s.description}</div>
+            </div>
+          </div>`;
+        const addonBadge = a => `
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 9px;background:rgba(0,0,0,0.35);border:1px solid #9b59b644;border-radius:7px;">
+            <span style="font-size:16px;line-height:1;flex-shrink:0;">🔷</span>
+            <div>
+              <div style="font-size:11px;font-weight:bold;color:#9b59b6;">${a.name}</div>
+              <div style="font-size:10px;color:#aaa;line-height:1.35;">${a.description}</div>
+            </div>
+          </div>`;
+
+        return `
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <div style="font-size:11px;font-weight:bold;color:#aaa;margin-bottom:2px;">Keywords</div>
+            ${matchedStatuses.map(statusBadge).join('')}
+            ${matchedAddons.map(addonBadge).join('')}
+          </div>`;
+      })()}
     </div>
   `;
 }
@@ -7933,11 +8004,11 @@ function showCharacterDetails(charName) {
     ? levelUpBonuses.map(b => `<span style="color: ${b.color}; font-weight: bold;">+${b.value} ${b.stat}</span>`).join(', ')
     : '<span style="color: #888;">None</span>';
 
-  // Build starting deck HTML
+  // Build starting cards HTML
   const startingEntries = (char.startingDeck) ? char.startingDeck : [];
   const startingDeckHTML = startingEntries.length > 0 ? `
     <div style="margin-top: 15px;">
-      <strong style="color: #4CAF50;">Starting Deck:</strong>
+      <strong style="color: #4CAF50;">Starting Cards:</strong>
       <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 5px;">
         ${startingEntries.map(entry => {
           const template = typeof CARDS_DATA !== 'undefined'
@@ -8052,6 +8123,23 @@ function showCharacterDetails(charName) {
       ${startingDeckHTML}
       ${combatStartHTML}
       ${startingItemsHTML}
+
+      <!-- Deck Beaten Checklist -->
+      ${(() => {
+        if (typeof AVAILABLE_DECKS === 'undefined' || !AVAILABLE_DECKS.length) return '';
+        const dw = (typeof getDeckWinsForCharacter === 'function') ? getDeckWinsForCharacter(charKey) : [];
+        const rows = AVAILABLE_DECKS.map(d => {
+          const beaten = dw.includes(d.id);
+          return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+            <span style="font-size:14px;">${beaten ? '✅' : '⬜'}</span>
+            <span style="font-size:12px;color:${beaten ? '#4CAF50' : '#888'};">${d.name} Deck</span>
+          </div>`;
+        }).join('');
+        return `<div style="margin-top:15px;padding:12px;background:rgba(0,0,0,0.3);border:1px solid #333;border-radius:8px;">
+          <div style="font-size:12px;font-weight:bold;color:#aaa;margin-bottom:8px;">🏆 Beaten With Deck</div>
+          ${rows}
+        </div>`;
+      })()}
     </div>
   `;
 }

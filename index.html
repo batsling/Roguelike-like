@@ -335,14 +335,23 @@
       <!-- Save Name Input Modal -->
       <!-- Character Selection & Run Naming Modal -->
       <div id="save-modal" role="dialog" aria-modal="true" aria-labelledby="save-modal-title" style="overflow:hidden;">
-        <div class="flex gap-20" style="width:min(calc(100vw - 32px), 1020px); flex-wrap:nowrap; align-items:flex-start;">
+        <div class="flex gap-20" style="width:min(calc(100vw - 32px), 1260px); flex-wrap:nowrap; align-items:flex-start;">
+
+          <!-- Deck Selection Panel -->
+          <div id="deck-selection-panel" class="bg-panel p-20 border-radius-12 max-h-90vh overflow-y-auto" style="width:200px; min-width:200px; flex-shrink:0;">
+            <h3 class="mt-0 text-gold text-center" style="font-size:15px; margin-bottom:14px;">Choose Deck</h3>
+            <div id="deck-selection-grid" style="display:flex; flex-direction:column; gap:10px;">
+              <!-- Deck choices populated by JS -->
+            </div>
+          </div>
+
           <!-- Main Character Selection Panel -->
           <div class="bg-panel p-20 border-radius-12 max-h-90vh overflow-y-auto" style="flex:1.5; min-width:0;">
-            <h3 id="save-modal-title" class="mt-0 text-gold text-center">Start New Run</h3>
+            <h3 id="save-modal-title" class="mt-0 text-gold text-center">Choose Character</h3>
 
             <!-- Icon View Container -->
             <div id="icon-character-view" class="display-block mb-20">
-              <div id="icon-character-grid" class="grid p-10 bg-character-grid border-radius-12 h-550 overflow-y-auto" style="grid-template-columns:repeat(5,1fr); gap:8px; overflow-x:hidden; box-sizing:border-box;">
+              <div id="icon-character-grid" class="grid p-10 bg-character-grid border-radius-12 overflow-y-auto" style="grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:8px; overflow-x:hidden; box-sizing:border-box; align-content:start; max-height:520px;">
                 <!-- Character icons will be populated here -->
               </div>
             </div>
@@ -357,7 +366,7 @@
           </div>
 
           <!-- Character Details Panel -->
-          <div id="icon-character-details" class="flex bg-panel p-25 border-radius-12 max-h-90vh overflow-y-auto" style="flex:1; min-width:280px; max-width:420px;">
+          <div id="icon-character-details" class="flex bg-panel p-25 border-radius-12 max-h-90vh overflow-y-auto" style="flex:1; min-width:280px; max-width:400px;">
             <div id="icon-character-details-content">
               <!-- Character details will be populated here -->
             </div>

@@ -2,15 +2,55 @@
  * CHARACTER-SELECT.JS - Character Selection UI
  *
  * Responsibilities:
- * - Displaying character grid with icons
- * - Handling character selection
- * - Showing character details panel (stats, traits, description)
- * - Character card interactions
+ * - Displaying deck selection panel (left)
+ * - Displaying character grid with icons (centre)
+ * - Showing character details panel (right)
  *
  * Key Functions:
- * - populateIconCharacterView() - Populates character grid with icons
- * - showIconCharacterDetails(charKey) - Displays character info in side panel
+ * - populateDeckView()            - Populates deck selection panel
+ * - populateIconCharacterView()   - Populates character grid
+ * - showIconCharacterDetails()    - Displays character info in side panel
  */
+
+// ===== DECK SELECTION =====
+
+function populateDeckView() {
+  const grid = document.getElementById('deck-selection-grid');
+  if (!grid || typeof AVAILABLE_DECKS === 'undefined') return;
+
+  grid.innerHTML = AVAILABLE_DECKS.map(deck => {
+    const isSelected = (typeof selectedDeck !== 'undefined') && selectedDeck === deck.id;
+    return `
+      <div class="deck-select-card" data-deck-id="${deck.id}" onclick="selectDeck('${deck.id}')" style="
+        border-radius: 10px;
+        border: 2px solid ${isSelected ? '#FFD700' : '#444'};
+        background: ${isSelected ? 'rgba(255,215,0,0.08)' : 'rgba(0,0,0,0.3)'};
+        padding: 10px;
+        cursor: pointer;
+        text-align: center;
+        transition: border-color 0.2s, background 0.2s;
+      " onmouseover="if(!this.classList.contains('deck-selected')) this.style.borderColor='#888';"
+         onmouseout="if(!this.classList.contains('deck-selected')) this.style.borderColor='#444';">
+        <div style="width:100%; aspect-ratio:3/4; background:rgba(0,0,0,0.4); border-radius:6px; display:flex; align-items:center; justify-content:center; margin-bottom:8px; overflow:hidden;">
+          ${deck.image
+            ? `<img src="${deck.image}" alt="${deck.name}" style="width:100%; height:100%; object-fit:cover; border-radius:6px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"><div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:48px; color:#888;">?</div>`
+            : `<div style="font-size:48px; color:#888; line-height:1;">?</div>`
+          }
+        </div>
+        <div style="font-size:12px; font-weight:bold; color:${isSelected ? '#FFD700' : '#ddd'};">${deck.name}</div>
+        <div style="font-size:10px; color:#888; margin-top:3px; line-height:1.3;">${deck.description}</div>
+        ${isSelected ? '<div style="font-size:10px; color:#FFD700; margin-top:5px; font-weight:bold;">✓ Selected</div>' : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function selectDeck(deckId) {
+  if (typeof window.selectedDeck !== 'undefined') {
+    window.selectedDeck = deckId;
+  }
+  populateDeckView();
+}
 
 // ===== CHARACTER SELECTION FUNCTIONS =====
 
@@ -159,10 +199,10 @@ function showIconCharacterDetails(charKey) {
       ` : ''}
 
       <div class="details-traits-section">
-        <h3>Starting Deck</h3>
+        <h3>Starting Cards</h3>
         ${(() => {
           const startingDeck = character.startingDeck || [];
-          if (startingDeck.length === 0) return '<p style="color:#888;font-size:12px;">No starting deck</p>';
+          if (startingDeck.length === 0) return '<p style="color:#888;font-size:12px;">No starting cards</p>';
           const cardRows = startingDeck.map(entry => {
             const template = typeof CARDS_DATA !== 'undefined'
               ? CARDS_DATA.find(c => c.name === entry.cardName || c.name.toLowerCase() === entry.cardName.toLowerCase())
@@ -246,6 +286,25 @@ function showIconCharacterDetails(charKey) {
       <div class="details-traits-section">
         <h3>Traits</h3>
         ${traitsHTML || '<div>No traits</div>'}
+      </div>
+    `;
+  }
+
+  // Append deck beaten checklist
+  const deckWins = (typeof getDeckWinsForCharacter === 'function') ? getDeckWinsForCharacter(charKey) : [];
+  const decks = (typeof AVAILABLE_DECKS !== 'undefined') ? AVAILABLE_DECKS : [];
+  if (decks.length > 0) {
+    const deckRows = decks.map(d => {
+      const beaten = deckWins.includes(d.id);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+        <span style="font-size:14px;">${beaten ? '✅' : '⬜'}</span>
+        <span style="font-size:12px;color:${beaten ? '#4CAF50' : '#888'};">${d.name} Deck</span>
+      </div>`;
+    }).join('');
+    detailsHTML += `
+      <div style="margin-top:15px;padding:12px;background:rgba(0,0,0,0.3);border:1px solid #333;border-radius:8px;">
+        <div style="font-size:12px;font-weight:bold;color:#aaa;margin-bottom:8px;">🏆 Beaten With Deck</div>
+        ${deckRows}
       </div>
     `;
   }

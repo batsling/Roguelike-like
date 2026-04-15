@@ -542,6 +542,11 @@ function showVictoryScreen() {
     luck: luck
   });
 
+  // Record deck win for this character
+  if (gameState.character && gameState.selectedDeck && typeof recordDeckWin === 'function') {
+    recordDeckWin(gameState.character, gameState.selectedDeck);
+  }
+
   // Delete the current save since run is complete
   if (gameState.saveName && gameSaves[gameState.saveName]) {
     delete gameSaves[gameState.saveName];
