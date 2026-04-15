@@ -790,7 +790,7 @@ const ITEM_EFFECTS = {
       if (health <= maxHealth / 2) {
         // Count copies for stacking
         const copies = inventory.filter(i => i.name === 'Meat on the Bone').length;
-        const healAmount = 3 * copies;
+        const healAmount = 12 * copies;
 
         StateMutator.modifyHealth(healAmount);
         console.log(`Meat on the Bone${copies > 1 ? ` x${copies}` : ''}: Healed ${healAmount} HP (HP was at 50% or below)`);
@@ -798,6 +798,18 @@ const ITEM_EFFECTS = {
         if (typeof createNotification === 'function') {
           createNotification(`Meat on the Bone: +${healAmount} Health`, '#66bb6a', '🍖');
         }
+      }
+    }
+  },
+
+  "Burning Blood": {
+    onCombatEnd: (combatState) => {
+      const copies = inventory.filter(i => i.name === 'Burning Blood').reduce((n, i) => n + (i.quantity || 1), 0);
+      const heal = 6 * copies;
+      StateMutator.modifyHealth(heal);
+      console.log(`Burning Blood x${copies}: +${heal} Health`);
+      if (typeof createNotification === 'function') {
+        createNotification(`Burning Blood: +${heal} Health`, '#e74c3c', '🩸');
       }
     }
   },
@@ -1908,6 +1920,34 @@ function triggerOnEnemyDefeated() {
 }
 
 /**
+ * Trigger onCombatEnd effects for all items in inventory that have this trigger
+ * Call this function when the player wins a combat encounter
+ */
+function triggerOnCombatEnd(combatState) {
+  if (!inventory || inventory.length === 0) {
+    return;
+  }
+
+  console.log('Triggering onCombatEnd effects...');
+
+  // Track which item names have already been processed to avoid double-triggering
+  // when stacking is handled inside the effect itself
+  const processed = new Set();
+
+  inventory.forEach(item => {
+    if (!item || !item.name) return;
+    if (processed.has(item.name)) return;
+
+    const itemEffects = ITEM_EFFECTS[item.name];
+    if (itemEffects && typeof itemEffects.onCombatEnd === 'function') {
+      console.log(`Triggering ${item.name} onCombatEnd effect`);
+      itemEffects.onCombatEnd(combatState);
+      processed.add(item.name);
+    }
+  });
+}
+
+/**
  * Trigger onCurseAdded effects for all items in inventory that have this trigger
  * Call this function when the player obtains a new curse
  */
@@ -2532,6 +2572,7 @@ window.selectedTeleport = selectedTeleport; // Selected teleport with filters
 window.teleportToRandomGame = teleportToRandomGame;
 window.teleportToRandomDeckbuilder = teleportToRandomDeckbuilder;
 window.triggerOnEnemyDefeated = triggerOnEnemyDefeated; // Trigger onEnemyDefeated effects
+window.triggerOnCombatEnd = triggerOnCombatEnd; // Trigger onCombatEnd effects
 window.triggerOnCurseAdded = triggerOnCurseAdded; // Trigger onCurseAdded effects
 window.triggerOnCurseRemoved = triggerOnCurseRemoved; // Trigger onCurseRemoved effects
 window.triggerOnGameBeaten = triggerOnGameBeaten; // Trigger onGameBeaten effects

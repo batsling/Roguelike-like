@@ -3371,31 +3371,9 @@ function getCombatState() {
 function endCombat(victory) {
   if (!combatState) return null;
 
-  // Trigger onCombatEnd effects for items (before clearing combat state)
-  if (victory && typeof inventory !== 'undefined' && typeof ITEM_EFFECTS !== 'undefined') {
-    // Meat on the Bone: heal if HP <= 50%
-    const meatEffect = ITEM_EFFECTS['Meat on the Bone'];
-    if (meatEffect && meatEffect.onCombatEnd) {
-      const hasMeat = inventory.some(i => i.name === 'Meat on the Bone');
-      if (hasMeat) {
-        meatEffect.onCombatEnd(combatState);
-      }
-    }
-  }
-
-  // Burning Blood: at the end of combat, gain +6 Health
-  if (victory && typeof inventory !== 'undefined') {
-    const burningBloodCount = inventory.filter(i => i.name === 'Burning Blood').reduce((n, i) => n + (i.quantity || 1), 0);
-    if (burningBloodCount > 0) {
-      const heal = 6 * burningBloodCount;
-      if (typeof StateMutator !== 'undefined') {
-        StateMutator.modifyHealth(heal);
-      } else if (typeof gameState !== 'undefined') {
-        gameState.health = Math.min((gameState.maxHealth || 999), (gameState.health || 0) + heal);
-        if (typeof window.health !== 'undefined') window.health = gameState.health;
-      }
-      addLog(`Burning Blood: +${heal} Health!`, 'success');
-    }
+  // Trigger onCombatEnd effects for all items (before clearing combat state)
+  if (victory && typeof window.triggerOnCombatEnd === 'function') {
+    window.triggerOnCombatEnd(combatState);
   }
 
   // Permanently destroy Training cards played this combat
