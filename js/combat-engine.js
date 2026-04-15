@@ -57,6 +57,17 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     dash: window.dash || 0
   };
 
+  // Translate stat-derived bonuses into starting combat statuses so that card effects
+  // (which read statuses['power'] / statuses['defense']) benefit from the player's stats.
+  // _statPower tracks the str-derived portion so finesse weapons can subtract it back out.
+  if (statBonuses.strength > 0) {
+    player.statuses['power'] = statBonuses.strength;
+    player._statPower = statBonuses.strength;
+  }
+  if (statBonuses.dexterity > 0) {
+    player.statuses['defense'] = statBonuses.dexterity;
+  }
+
   // Create dice pool for player
   const playerDice = [];
 
@@ -220,6 +231,14 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
   initCombatDeck(characterData);
 
   addLog('Combat started!', 'info');
+
+  // Log stat-derived power/defense applied at combat start
+  if (statBonuses.strength > 0) {
+    addLog(`Power +${statBonuses.strength} (${playerStats.strength} Strength)`, 'success');
+  }
+  if (statBonuses.dexterity > 0) {
+    addLog(`Defense +${statBonuses.dexterity} (${playerStats.dexterity} Dexterity)`, 'success');
+  }
 
   // Check for Philosopher's Stone - enemies start with Power
   if (typeof inventory !== 'undefined') {
@@ -1408,7 +1427,8 @@ function calculateMoveValue(move, value, die) {
   const intBonus = bonuses.intelligence || 0;
   const chaBonus = bonuses.charisma || 0;
 
-  // Combat status bonuses (from items/attacks like Shuriken power, defense gains)
+  // Combat status bonuses — these now include stat-derived power/defense set at combat init
+  // (statuses['power'] = strBonus at start; statuses['defense'] = dexBonus at start)
   const playerStatuses = combatState.player.statuses || {};
   const combatPowerBonus = playerStatuses['power'] || 0;
   const combatDefenseBonus = playerStatuses['defense'] || 0;
@@ -1417,10 +1437,17 @@ function calculateMoveValue(move, value, die) {
     case 'dmg':
     case 'pain':
     case 'assassinate':
-      return baseValue + (hasFinesse ? dexBonus : strBonus) + combatPowerBonus;
+      if (hasFinesse) {
+        // Finesse weapons scale with Dexterity, not Strength.
+        // combatPowerBonus includes the str-derived _statPower; subtract that and add dex instead.
+        const statPowerOffset = combatState.player._statPower || 0;
+        return baseValue + dexBonus + Math.max(0, combatPowerBonus - statPowerOffset);
+      }
+      return baseValue + combatPowerBonus;
 
     case 'block':
-      return baseValue + dexBonus + combatDefenseBonus;
+      // combatDefenseBonus already includes dex-derived defense set at combat init
+      return baseValue + combatDefenseBonus;
 
     case 'heal':
     case 'mana':
