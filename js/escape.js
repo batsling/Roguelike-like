@@ -2124,3 +2124,7 @@ window.startEscapePhase = startEscapePhase;
 window.showVictoryScreen = showVictoryScreen;
 window.sortCollectionItems = sortCollectionItems;
 window.sortCollectionSpells = sortCollectionSpells;
+window.showCollection = showCollection;
+window.switchCollectionTab = switchCollectionTab;
+window.sortEnemies = sortEnemies;
+window.toggleItemsNA = toggleItemsNA;
