@@ -1205,29 +1205,8 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       }
     };
 
-    // If player leveled up, show dice level-up choices BEFORE item rewards
-    if (leveledUp) {
-      const characterKey = gameState.character || 'Rodney';
-      if (typeof showDiceLevelUpChoiceModal === 'function') {
-        // Small delay to let notifications appear first
-        setTimeout(() => {
-          showDiceLevelUpChoiceModal(characterKey, (diceResult) => {
-            if (diceResult && typeof createNotification === 'function') {
-              createNotification(diceResult, '#FFD700', '🎲');
-            }
-            if (typeof saveCurrentGame === 'function') saveCurrentGame();
-            // Now continue to item rewards
-            continueToRewards();
-          });
-        }, 300);
-      } else {
-        // Fallback if showDiceLevelUpChoiceModal not available
-        continueToRewards();
-      }
-    } else {
-      // No level up, continue directly to rewards
-      continueToRewards();
-    }
+    // Continue to item rewards (dice level-up removed; rewards handled by confirmLevelUp)
+    continueToRewards();
   };
 }
 

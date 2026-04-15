@@ -432,7 +432,7 @@ const items = itemsData.map(row => {
   const tags = row['tags'] ? row['tags'].split(',').map(t => t.trim()) : [];
 
   return {
-    name: row['Name'] || '',
+    name: (row['Name'] || '').toString().trim(),
     rarity: row['Rating'] || 'Common',  // UI expects 'rarity' not 'rating'
     type: row['Type'] || 'Passive',
     description: row['Description'] || '',
@@ -710,7 +710,7 @@ if (cardsSheet) {
         ? row['Upgraded Description'] : null,
       upgradedCost: (!isStatusCard && upgradedCost !== undefined && upgradedCost !== 'N/A')
         ? parseInt(upgradedCost) : null,
-      canUpgrade: !isStatusCard && row['Rarity'] !== 'Starter' && row['Upgraded Description'] !== 'N/A',
+      canUpgrade: !isStatusCard && !!(row['Upgraded Description'] && row['Upgraded Description'] !== 'N/A'),
       isStatusCard: isStatusCard,
       imageUrl: (row['Img'] && row['Img'] !== 'N/A')
         ? `images/${tags.includes('weapon') ? 'items' : 'cards'}/${row['Img']}.png`

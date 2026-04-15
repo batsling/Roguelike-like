@@ -818,7 +818,7 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "Scroll of Teleportation ",
+    "name": "Scroll of Teleportation",
     "rarity": "Common",
     "type": "Usable",
     "description": "Teleport to a random space",
