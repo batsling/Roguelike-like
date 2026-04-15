@@ -319,6 +319,7 @@ function renderCombatUI(combat, container) {
       color: ${C.text};
       user-select: none;
     ">
+      ${renderItemsBar(combat)}
       ${renderTopBar(combat)}
 
       <div style="flex:1; display:flex; overflow:hidden; position:relative; min-height:0;">
@@ -379,52 +380,63 @@ function renderItemsBar(combat) {
     const color = getRarityColor(item.rarity);
     const isUsable = item.type === 'Usable';
     const canUse = isUsable && typeof window.canUseItem === 'function' && window.canUseItem(item);
-    const onClick = canUse ? `onclick="window.useCombatItem(${idx})"` : '';
     const quantityBadge = item.quantity && item.quantity > 1
       ? `<div style="position:absolute;bottom:1px;right:1px;background:rgba(0,0,0,0.9);color:white;padding:1px 3px;border-radius:3px;font-size:9px;font-weight:bold;border:1px solid #ffaa00;">x${item.quantity}</div>`
       : '';
     const imgEl = imageUrl
-      ? `<img src="${imageUrl}" alt="${item.name}" style="width:100%;height:100%;object-fit:contain;border-radius:3px;" onerror="this.style.display='none'">`
-      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;">?</div>`;
+      ? `<img src="${imageUrl}" alt="${item.name}" style="width:32px;height:32px;object-fit:contain;border-radius:3px;" onerror="this.style.display='none'">`
+      : `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;">?</div>`;
+    const useBtn = canUse
+      ? `<button onclick="window.useCombatItem(${idx})" style="
+          margin-top:2px;padding:1px 5px;font-size:9px;font-weight:bold;
+          background:#e67e22;border:none;border-radius:3px;color:white;
+          cursor:pointer;white-space:nowrap;line-height:1.4;
+         ">Use</button>`
+      : '';
     return `
       <div style="
-        position:relative;width:40px;height:40px;
-        border:2px solid ${color};border-radius:5px;
-        background:rgba(0,0,0,0.5);cursor:${canUse ? 'pointer' : 'default'};
-        ${!canUse && isUsable ? 'opacity:0.5;' : ''}
+        display:flex;flex-direction:column;align-items:center;gap:1px;
         flex-shrink:0;
-      " ${onClick}
+      "
          onmouseenter="if(typeof window.showCombatItemTooltip==='function')window.showCombatItemTooltip(event,${idx})"
          onmouseleave="if(typeof window.hideCombatItemTooltip==='function')window.hideCombatItemTooltip()">
-        ${imgEl}${quantityBadge}${getIncrementalCounter(item)}
+        <div style="
+          position:relative;width:32px;height:32px;
+          border:2px solid ${color};border-radius:4px;
+          background:rgba(0,0,0,0.5);
+          ${!canUse && isUsable ? 'opacity:0.5;' : ''}
+        ">
+          ${imgEl}${quantityBadge}${getIncrementalCounter(item)}
+        </div>
+        ${useBtn}
       </div>
     `;
   }).join('');
 
   return `
     <div id="combat-items-bar" style="
-      background:rgba(0,0,0,0.6);
+      background:rgba(0,0,0,0.65);
       border-bottom:1px solid rgba(255,255,255,0.1);
-      padding:4px 16px;
-      display:flex;align-items:center;gap:6px;
+      padding:3px 16px;
+      display:flex;align-items:center;gap:8px;
       flex-shrink:0;overflow-x:auto;
     ">
-      <span style="color:#aaa;font-size:11px;white-space:nowrap;margin-right:4px;">Items:</span>
+      <span style="color:#aaa;font-size:10px;white-space:nowrap;margin-right:2px;">Items:</span>
       ${itemsHTML}
     </div>
   `;
 }
 
-// Called by useCombatItem after an item is used — re-renders the topbar (which contains inline items)
+// Called by useCombatItem after an item is used — re-renders the items bar
 function updateItemsBar() {
-  const topbar = document.getElementById('combat-topbar');
-  if (!topbar) return;
+  const itemsBar = document.getElementById('combat-items-bar');
+  if (!itemsBar) return;
   const combat = window.CombatEngine && window.CombatEngine.getCombatState();
   if (!combat) return;
   const tmp = document.createElement('div');
-  tmp.innerHTML = renderTopBar(combat);
+  tmp.innerHTML = renderItemsBar(combat);
   const newEl = tmp.firstElementChild;
-  if (newEl) topbar.replaceWith(newEl);
+  if (newEl) itemsBar.replaceWith(newEl);
 }
 
 // ============== TOP BAR ==============
@@ -1651,7 +1663,11 @@ function handleCardClick(index) {
   const card = hand[index];
   if (!card) return;
 
-  const canAfford = card.cost !== 'No' && (card.cost === 'X' || (card.cost || 0) <= (combat.player.energy || 0));
+  const effectiveCost = (window.CombatEngine && window.CombatEngine.getEffectiveCost)
+    ? window.CombatEngine.getEffectiveCost(card)
+    : (card._freeCost ? 0 : (card.cost || 0));
+  const costIsNo = effectiveCost === 'No' || card.cost === 'No';
+  const canAfford = !costIsNo && (card.cost === 'X' || (typeof effectiveCost === 'number' ? effectiveCost : 0) <= (combat.player.energy || 0));
   if (!canAfford) {
     // Shake the card as visual feedback
     const cardEl = document.querySelector(`.combat-hand-card[data-hand-index="${index}"]`);

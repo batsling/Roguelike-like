@@ -849,7 +849,14 @@ function rollEnemyIntent(enemy) {
   if (enemy.patternType === 'ordered' && enemy.patternTurns && enemy.patternTurns.length > 0) {
     // Advance through the ordered pattern
     const turns = enemy.patternTurns;
-    const idx = enemy.patternTurnIndex || 0;
+    let idx = enemy.patternTurnIndex || 0;
+
+    // "Next: Repeat" is a loop marker — skip it and jump to Turn 1 without executing it
+    const isRepeatMarker = (t) => t && t.label.toLowerCase() === 'next' && t.description.toLowerCase().trim() === 'repeat';
+    if (isRepeatMarker(turns[idx])) {
+      idx = 0;
+    }
+
     const current = turns[idx];
 
     // Build a pseudo-face by parsing the description into executable effects
@@ -858,29 +865,20 @@ function rollEnemyIntent(enemy) {
     const pseudoFace = { isBlank: isUnknownIntent, effects: parsedTurn.effects, raw: parsedTurn.text };
     enemy.currentIntent.push({ faceIndex: idx, face: pseudoFace, resolved: false });
 
-    // Advance index; "Next:" is the repeating loop point (not a skip target)
+    // Advance index for next turn
     let nextIdx = idx + 1;
     const isCurrentNext = current.label.toLowerCase() === 'next';
 
     if (isCurrentNext) {
-      // We just executed a "Next:" entry — check if it means "repeat from start"
-      const desc = current.description.toLowerCase().trim();
-      if (desc === 'repeat') {
-        nextIdx = 0; // "Next: Repeat" → loop back to Turn 1
-      } else {
-        nextIdx = idx; // Stay at this "Next:" entry (loop here forever)
-      }
+      // "Next: [action]" — stay here forever (looping action, not Repeat which was skipped above)
+      nextIdx = idx;
     } else if (nextIdx >= turns.length) {
-      // Ran past the end — find the Next: entry to loop at
-      const nextEntry = turns.findIndex(t => t.label.toLowerCase() === 'next');
-      if (nextEntry !== -1) {
-        const nextDesc = turns[nextEntry].description.toLowerCase().trim();
-        nextIdx = nextDesc === 'repeat' ? 0 : nextEntry;
-      } else {
-        nextIdx = 0;
-      }
+      // Ran past the end — loop back to Turn 1 (skipping any Repeat marker)
+      nextIdx = 0;
+    } else if (isRepeatMarker(turns[nextIdx])) {
+      // The very next entry is "Next: Repeat" — skip it and loop to Turn 1
+      nextIdx = 0;
     }
-    // (Do NOT skip "Next:" entries — they are executed as normal turns)
     enemy.patternTurnIndex = nextIdx;
 
   } else {
@@ -3456,10 +3454,13 @@ function buildCombatDeck(characterData) {
   // Starting deck from character data
   const startingDeck = characterData.startingDeck || [];
   const upgradedStarting = (typeof gameState !== 'undefined' && gameState.upgradedStartingCards) || {};
+  const removedStarting  = (typeof gameState !== 'undefined' && gameState.removedStartingCards)  || {};
   for (const entry of startingDeck) {
     const template = resolveStartingCardName(entry.cardName);
     if (template) {
-      const total = entry.count || 1;
+      const totalRaw = entry.count || 1;
+      const removed = removedStarting[entry.cardName] || 0;
+      const total = Math.max(0, totalRaw - removed);
       const val = upgradedStarting[entry.cardName];
       // Support both legacy boolean (upgrade all) and new count-based tracking
       const upgradedCount = typeof val === 'number' ? Math.min(val, total) : (val ? total : 0);
