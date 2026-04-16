@@ -68,6 +68,14 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     player.statuses['defense'] = statBonuses.dexterity;
   }
 
+  // Apply pending combat statuses from pre-combat events (e.g. Fear, Blind)
+  if (typeof gameState !== 'undefined' && Array.isArray(gameState.pendingCombatStatuses)) {
+    gameState.pendingCombatStatuses.forEach(({ status, stacks }) => {
+      player.statuses[status] = (player.statuses[status] || 0) + (stacks || 1);
+    });
+    gameState.pendingCombatStatuses = [];
+  }
+
   // Create dice pool for player
   const playerDice = [];
 

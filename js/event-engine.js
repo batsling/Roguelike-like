@@ -593,7 +593,9 @@ function _showOutcomeScreen(outcome, effectLines, rollMeta, onContinue) {
  * @param {Function}    onCombat  - called after the event fully resolves
  */
 function showEventModal(specificEvent, onCombat) {
-  const pool = typeof EVENTS_DATA !== 'undefined' ? EVENTS_DATA : [];
+  const allEvents = typeof EVENTS_DATA !== 'undefined' ? EVENTS_DATA : [];
+  // New-engine events have an `image` property; old-format events do not
+  const pool = allEvents.filter(e => e.image);
 
   // Default onCombat: start dice or old combat
   const startCombat = typeof onCombat === 'function' ? onCombat : () => {
@@ -605,7 +607,7 @@ function showEventModal(specificEvent, onCombat) {
   };
 
   if (pool.length === 0) {
-    console.warn('EVENT-ENGINE: No events in EVENTS_DATA — skipping to combat');
+    console.warn('EVENT-ENGINE: No new-format events in EVENTS_DATA — skipping to combat');
     startCombat();
     return;
   }
