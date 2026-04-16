@@ -512,10 +512,10 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           <p style="font-size: 13px; margin: 5px 0; color: #ddd;">${question} <em style="color:#ffb74d;">Reward: ${reward}</em></p>
           <div style="margin-top: 5px;">
             <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
-              <input type="radio" name="weapon-check-${wIdx}" value="yes" checked style="margin-right: 5px;">Yes
+              <input type="radio" name="weapon-check-${wIdx}" value="yes" style="margin-right: 5px;">Yes
             </label>
             <label style="font-size: 12px; color: #ccc;">
-              <input type="radio" name="weapon-check-${wIdx}" value="no" style="margin-right: 5px;">No
+              <input type="radio" name="weapon-check-${wIdx}" value="no" checked style="margin-right: 5px;">No
             </label>
           </div>
         </div>

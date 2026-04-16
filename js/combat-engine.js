@@ -2637,6 +2637,10 @@ function endTurn() {
     return { success: true, phase: 'victory' };
   }
 
+  // Decay player statuses at end of player's turn (BEFORE enemy actions so that statuses
+  // the enemy inflicts this turn persist for the player's full next turn)
+  processStatusEffects(combatState.player, 'end');
+
   // Execute enemy actions
   executeEnemyActions();
 
@@ -2684,9 +2688,6 @@ function endTurn() {
     window.health = combatState.player.health;
     addLog(`Leeches drained ${playerLeechHeal} health → healed player`, 'success');
   }
-
-  // Process player end of turn status effects
-  processStatusEffects(combatState.player, 'end');
 
   // Start new turn
   combatState.turn++;

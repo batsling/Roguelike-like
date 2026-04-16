@@ -181,6 +181,19 @@ function upgradeCardInDeck(index) {
   if (card.upgradedDescription) card.description = card.upgradedDescription;
   if (card.upgradedCost !== null && card.upgradedCost !== undefined) card.cost = card.upgradedCost;
 
+  // Weapon cards: upgrade their weapon item's level so the next verification effect is stronger
+  if (card.tags && card.tags.includes('weapon')) {
+    const weaponItem = (gameState.inventory || []).find(i => i.name === card.name && i.type === 'Weapon');
+    if (weaponItem) {
+      weaponItem.level = (weaponItem.level || 1) + 1;
+      if (typeof createNotification === 'function') {
+        createNotification(`${card.name} upgraded! Weapon effect now Lv${weaponItem.level}`, '#ff9800', '⬆️');
+      }
+      saveCurrentGame();
+      return true;
+    }
+  }
+
   if (typeof createNotification === 'function') {
     createNotification(`${card.name} upgraded!`, '#ff9800', '⬆️');
   }

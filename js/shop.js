@@ -130,7 +130,10 @@ function showShopModal(purchasedIndices = []) {
   const alreadyRemoved = gameState.shopRemovesUsed > 0;
 
   // Build upgrade selector — starter cards that haven't been fully upgraded; collected cards with canUpgrade
+  // Weapon cards are excluded (their effect is upgraded through the weapon item level instead)
+  const isWeaponCard = c => c.tags && c.tags.includes('weapon');
   const upgradeableCards = allDeckCards.filter(c => {
+    if (isWeaponCard(c)) return false;
     if (c._isStarting) {
       const alreadyUpgradedCount = upgradedStarting[c._startingName] || 0;
       const totalCount = startingEntries.find(e => e.cardName === c._startingName)?.count || 1;
