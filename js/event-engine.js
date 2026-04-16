@@ -3,7 +3,7 @@
  *
  * Pre-combat event system with two-roll D20 mechanics:
  *   Roll 1 — Success Check:  D20 + stat vs rollDifficulty (11/13/15 by difficulty tier)
- *   Roll 2 — Critical Check: D20 vs 11 (no stat bonus)
+ *   Roll 2 — Critical Check: D20 vs 18 (18/19/20 = critical, no stat bonus)
  *   Luck:   10% per luck point for advantage on each roll (roll 2 dice, take best)
  *
  * UI flow per stat-check choice:
@@ -405,7 +405,7 @@ function _showSuccessRollScreen(event, choice, onContinue) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
-  const CRIT_THRESHOLD = 11;
+  const CRIT_THRESHOLD = 18;
   const hasAdvantage   = _rollsAdvantage();
   const luckVal        = typeof luck !== 'undefined' ? luck : 0;
   const successColor   = wasSuccess ? '#2ecc71' : '#e74c3c';
@@ -427,7 +427,7 @@ function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
         CRITICAL CHECK
       </div>
       <div style="color:#fff;font-size:22px;font-weight:bold;margin-bottom:6px;">
-        Roll 11+ for a critical outcome
+        Roll 18+ for a critical outcome (18, 19, or 20)
       </div>
       <div style="color:#aaa;font-size:13px;margin-bottom:20px;">
         No stat bonus applies
@@ -453,7 +453,7 @@ function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
 
       _showRollAnimation(result.rolls, result.used, isCrit ? '#f1c40f' : '#aaa',
         isCrit ? 'CRITICAL' : 'NOT CRITICAL',
-        `Rolled ${rolled} vs 11`,
+        `Rolled ${rolled} vs 18`,
         () => {
           const effectLines = applyEventEffects(outcome.effects || []);
           _showOutcomeScreen(outcome, effectLines, { outcomeKey, wasSuccess, isCrit }, onContinue);

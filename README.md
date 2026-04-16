@@ -67,7 +67,7 @@ The codebase is organized into focused, maintainable modules. See [js/README.md]
 
 **New Event System:**
 - Every combat encounter is now preceded by a pre-combat event with meaningful choices
-- Two-roll D20 mechanics: Roll 1 = success check (D20 + stat vs difficulty), Roll 2 = critical check (D20 vs 11)
+- Two-roll D20 mechanics: Roll 1 = success check (D20 + stat vs difficulty), Roll 2 = critical check (D20 vs 18 — need 18, 19, or 20)
 - Luck advantage: each Luck point gives 10% chance to roll two dice and take the best, checked independently per roll
 - Difficulty thresholds scale with location: Easy = 11, Medium = 13, Hard = 15
 - Click-to-roll visual UI: player sees threshold needed, clicks die(s) to roll with spin animation
@@ -931,7 +931,7 @@ Every combat encounter is preceded by a **pre-combat event** — a short encount
 
 **Roll system:**
 - **Roll 1 (Success check):** D20 + your stat ≥ difficulty (11 Easy / 13 Medium / 15 Hard)
-- **Roll 2 (Critical check):** D20 ≥ 11 (no stat bonus)
+- **Roll 2 (Critical check):** D20 ≥ 18 — need an 18, 19, or 20 (no stat bonus)
 - **Luck advantage:** Each Luck point gives 10% chance to roll two dice and take the best, applied independently to each roll
 - Four outcomes: `crit_good` (success + critical), `good` (success), `bad` (fail), `crit_bad` (fail + critical)
 
