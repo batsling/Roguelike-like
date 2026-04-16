@@ -29,8 +29,7 @@ function showShopModal(purchasedIndices = []) {
     gameState.shopRerollCount = 0;
   }
 
-  // Initialize shop service counters if not present
-  if (gameState.shopUpgradesUsed === undefined) gameState.shopUpgradesUsed = 0;
+  // Initialize shop service counter if not present
   if (gameState.shopRemovesUsed === undefined) gameState.shopRemovesUsed = 0;
 
   // Store shop items in gameState if not already present (first time opening shop)
@@ -99,14 +98,12 @@ function showShopModal(purchasedIndices = []) {
   };
 
   // ===== CARD SERVICES PANEL =====
-  const CARD_UPGRADE_COST = 75;
   const CARD_REMOVE_COST = 50;
 
   // Build combined card list: starter cards + collected deck cards (excluding status cards)
   const charKeyCS = gameState.character;
   const charDataCS = charKeyCS && typeof PLAYER_CHARACTERS !== 'undefined' ? PLAYER_CHARACTERS[charKeyCS] : null;
   const startingEntries = (charDataCS && charDataCS.startingDeck) ? charDataCS.startingDeck : [];
-  const upgradedStarting = gameState.upgradedStartingCards || {};
   const removedStarting  = gameState.removedStartingCards  || {};
 
   // Starter cards — one entry per non-removed copy
@@ -126,40 +123,7 @@ function showShopModal(purchasedIndices = []) {
   // allDeckCards: starters first, then collected (indices 0..starterCards.length-1 are starters)
   const allDeckCards = [...starterCards, ...collectedDeckCards];
 
-  const alreadyUpgraded = gameState.shopUpgradesUsed > 0;
   const alreadyRemoved = gameState.shopRemovesUsed > 0;
-
-  // Build upgrade selector — starter cards that haven't been fully upgraded; collected cards with canUpgrade
-  // Weapon cards are excluded (their effect is upgraded through the weapon item level instead)
-  const isWeaponCard = c => c.tags && c.tags.includes('weapon');
-  const upgradeableCards = allDeckCards.filter(c => {
-    if (isWeaponCard(c)) return false;
-    if (c._isStarting) {
-      const alreadyUpgradedCount = upgradedStarting[c._startingName] || 0;
-      const totalCount = startingEntries.find(e => e.cardName === c._startingName)?.count || 1;
-      return c.canUpgrade && alreadyUpgradedCount < totalCount;
-    }
-    return c.canUpgrade && !c.upgraded;
-  });
-  let upgradeSelectHTML = '';
-  if (upgradeableCards.length > 0) {
-    upgradeSelectHTML = `
-      <select id="shop-card-upgrade-select" style="
-        background:#1a1a1a; color:white; border:1px solid #9b59b6;
-        border-radius:4px; padding:6px 10px; font-size:13px; width:100%;
-        margin-bottom:8px;
-      ">
-        <option value="">— Pick a card to upgrade —</option>
-        ${upgradeableCards.map((c) => {
-          const label = c._isStarting ? `${c.name} (Starter)` : `${c.name}${c.upgraded ? ' +' : ''} (${c.rarity})`;
-          const allIdx = allDeckCards.indexOf(c);
-          return `<option value="${allIdx}">${label}</option>`;
-        }).join('')}
-      </select>
-    `;
-  } else {
-    upgradeSelectHTML = `<p style="color:#888;font-size:12px;margin:4px 0;">No upgradeable cards in deck.</p>`;
-  }
 
   // Build remove selector — all deck cards (starters + collected)
   let removeSelectHTML = '';
@@ -190,21 +154,7 @@ function showShopModal(purchasedIndices = []) {
       margin-bottom: 20px;
     ">
       <h3 style="color: #9b59b6; margin-top: 0; text-align: center; font-size: 18px;">🃏 Card Services</h3>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-        <!-- Upgrade -->
-        <div>
-          <div style="color:#9b59b6;font-weight:bold;font-size:14px;margin-bottom:8px;">⬆️ Upgrade a Card (${CARD_UPGRADE_COST}💰)</div>
-          ${upgradeSelectHTML}
-          <button id="shop-card-upgrade-btn" style="
-            padding: 10px 16px;
-            background: ${alreadyUpgraded ? '#555' : (gold >= CARD_UPGRADE_COST && upgradeableCards.length > 0 ? '#9b59b6' : '#555')};
-            border: none; border-radius: 6px; color: white;
-            cursor: ${alreadyUpgraded || upgradeableCards.length === 0 || gold < CARD_UPGRADE_COST ? 'not-allowed' : 'pointer'};
-            font-weight: bold; font-size: 13px; width: 100%;
-          " ${alreadyUpgraded || upgradeableCards.length === 0 || gold < CARD_UPGRADE_COST ? 'disabled' : ''}>
-            ${alreadyUpgraded ? '✓ Upgraded This Shop' : `Upgrade (${CARD_UPGRADE_COST}💰)`}
-          </button>
-        </div>
+      <div>
         <!-- Remove -->
         <div>
           <div style="color:#e74c3c;font-weight:bold;font-size:14px;margin-bottom:8px;">🗑️ Remove a Card (${CARD_REMOVE_COST}💰)</div>
@@ -547,15 +497,13 @@ function showShopModal(purchasedIndices = []) {
     };
   });
 
-  // Card upgrade button handler
-  const cardUpgradeBtn = document.getElementById('shop-card-upgrade-btn');
-  // Re-build allDeckCards inside handlers (same logic as above) so indices are consistent
+  // Card remove button handler
+  // Re-build allDeckCards inside handler (same logic as above) so indices are consistent
   const getAllDeckCardsForHandlers = () => {
     const cKey = gameState.character;
     const cData = cKey && typeof PLAYER_CHARACTERS !== 'undefined' ? PLAYER_CHARACTERS[cKey] : null;
     const sEntries = (cData && cData.startingDeck) ? cData.startingDeck : [];
-    const upgSt = gameState.upgradedStartingCards || {};
-    const remSt = gameState.removedStartingCards  || {};
+    const remSt = gameState.removedStartingCards || {};
     const starters = [];
     sEntries.forEach(entry => {
       const tmpl = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
@@ -569,36 +517,6 @@ function showShopModal(purchasedIndices = []) {
     return [...starters, ...(gameState.deck || []).filter(c => !c.isStatusCard)];
   };
 
-  if (cardUpgradeBtn && gameState.shopUpgradesUsed === 0) {
-    cardUpgradeBtn.onclick = () => {
-      const sel = document.getElementById('shop-card-upgrade-select');
-      if (!sel || sel.value === '') {
-        createNotification('Select a card to upgrade first.', '#888', '⬆️');
-        return;
-      }
-      const cardIdx = parseInt(sel.value);
-      if (isNaN(cardIdx) || gold < CARD_UPGRADE_COST) return;
-      const allCards = getAllDeckCardsForHandlers();
-      if (cardIdx >= allCards.length) return;
-      const card = allCards[cardIdx];
-      gold -= CARD_UPGRADE_COST;
-      gameState.gold = gold;
-      gameState.shopUpgradesUsed++;
-      if (card._isStarting) {
-        // Upgrade a starter card: increment the upgraded count
-        if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
-        gameState.upgradedStartingCards[card._startingName] = (gameState.upgradedStartingCards[card._startingName] || 0) + 1;
-      } else {
-        const collected = (gameState.deck || []).filter(c => !c.isStatusCard);
-        const realIdx = (gameState.deck || []).indexOf(card);
-        if (typeof upgradeCardInDeck === 'function') upgradeCardInDeck(realIdx);
-      }
-      saveCurrentGame();
-      showShopModal(purchasedIndices);
-    };
-  }
-
-  // Card remove button handler
   const cardRemoveBtn = document.getElementById('shop-card-remove-btn');
   if (cardRemoveBtn && gameState.shopRemovesUsed === 0) {
     cardRemoveBtn.onclick = () => {
