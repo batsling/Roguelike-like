@@ -3024,5 +3024,38 @@ var CARDS_DATA = [
     "tags": [
       "pigment"
     ]
+  },
+  {
+    "name": "Bag o' Glitter",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "description": "Inflict 2 Blind. 10% chance to Exhaust.",
+    "upgradedDescription": "Inflict 2 Blind. 10% chance to Exhaust.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/BagO'Glitter.png",
+    "game": "Mewgenics",
+    "tags": [
+      "debuff",
+      "exhaust"
+    ]
+  },
+  {
+    "name": "Punctured Eye",
+    "rarity": "None",
+    "cost": "No",
+    "type": "Curse",
+    "description": "Unplayable. At the end of your turn, if this is in Hand, Gain 1 Blind.",
+    "upgradedDescription": null,
+    "upgradedCost": "No",
+    "canUpgrade": false,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/PuncturedEye.png",
+    "game": "Mewgenics",
+    "tags": [
+      "randomcurse"
+    ]
   }
 ];

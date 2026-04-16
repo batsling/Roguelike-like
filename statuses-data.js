@@ -561,5 +561,38 @@ var STATUSES_DATA = {
     "who": "Player",
     "preference": "Negative",
     "imageUrl": "images/statuses/Frail.png"
+  },
+  "fear": {
+    "name": "Fear",
+    "description": "Your non-Attack Cards cost 1 more Energy, lose 1 Fear whenever you play an Attack Card",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 on played Attack Card",
+    "who": "Player",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Fear.png"
+  },
+  "blind": {
+    "name": "Blind",
+    "description": "All Attacks have a 30% Miss Chance",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Blind.png"
+  },
+  "doom": {
+    "name": "Doom",
+    "description": "At the end of the target's turn, if that target has less health than it has Doom, it will die",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Doom.png"
   }
 };

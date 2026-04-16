@@ -1080,5 +1080,17 @@ var ITEMS_DATA = [
     ],
     "image": "images/items/Wings.png",
     "unlockCondition": null
+  },
+  {
+    "name": "Bag o' Glitter",
+    "rarity": "Uncommon",
+    "type": "Weapon",
+    "description": "Add the Card \"Bag o' Glitter\" into your Deck. If you obtain something glittery at least one time, \"Bag o' Glitter\" Gains (+1/+2) Blind",
+    "game": "Mewgenics",
+    "tags": [
+      "bag"
+    ],
+    "image": "images/items/BagO'Glitter.png",
+    "unlockCondition": null
   }
 ];

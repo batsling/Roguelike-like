@@ -297,6 +297,8 @@ const STATUS_META = {
   shackled:        { img: null,             emoji: '🔒', label: 'Shackled'        },
   well_laid_plans: { img: 'Well-LaidPlans', emoji: '📋', label: 'Well-Laid Plans' },
   shiv_per_turn:   { img: null,             emoji: '🗡', label: 'Shiv/Turn'       },
+  fear:           { img: 'Fear',          emoji: '😨', label: 'Fear'         },
+  blind:          { img: 'Blind',         emoji: '🙈', label: 'Blind'        },
   // Temporary stat boosts (e.g. from pigment cards, "Gain +X Stat until end of combat")
   strength:       { img: null,            emoji: '💪', label: 'Strength'     },
   intelligence:   { img: null,            emoji: '🧠', label: 'Intelligence' },
@@ -2607,7 +2609,8 @@ window.showCardPickerModal = function(options) {
     }
 
     overlay.remove();
-    if (typeof renderCombat === 'function') renderCombat();
+    updateCombatDisplay();
+    checkCombatEnd();
   });
 };
 

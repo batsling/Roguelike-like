@@ -176,7 +176,7 @@ function showShopModal(purchasedIndices = []) {
   // ===== CARDS FOR SALE =====
   // 4 cards from the player's character card pool + 2 from outside that pool
   if (!gameState.currentShopCards) {
-    const allCards = cards ? cards.filter(c => c.rarity !== 'Starter' && !c.isStatusCard && !c.isCurse) : [];
+    const allCards = cards ? cards.filter(c => c.rarity !== 'Starter' && !c.isStatusCard && !c.isCurse && (c.type || '').toLowerCase() !== 'curse') : [];
 
     // Determine character's card pool tag (e.g. 'ironclad', 'silent')
     const charKey = gameState.character;

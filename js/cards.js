@@ -37,7 +37,7 @@ function selectCardRewards(tagFilter = null) {
   if (!cards || cards.length === 0) return [];
 
   let pool = cards.filter(c =>
-    c.rarity !== 'Starter' && !c.isStatusCard && !c.isCurse && c.rarity in CARD_RARITY_MAP
+    c.rarity !== 'Starter' && !c.isStatusCard && !c.isCurse && (c.type || '').toLowerCase() !== 'curse' && c.rarity in CARD_RARITY_MAP
   );
 
   if (tagFilter) {

@@ -2577,7 +2577,8 @@ function endTurn() {
   if (combatState.hand) {
     const handSnapshot = [...combatState.hand];
     for (const card of handSnapshot) {
-      if (!card.isCurse && !card.isStatusCard) continue;
+      const isCardCurse = card.isCurse || (card.type || '').toLowerCase() === 'curse';
+      if (!isCardCurse && !card.isStatusCard) continue;
 
       // Status card end-of-turn effects (e.g. Burn: take N Dmg)
       if (card.isStatusCard) {
@@ -2616,6 +2617,13 @@ function endTurn() {
           loseHealth(regretDmg);
           addLog(`Regret: Lost ${regretDmg} Health (${regretDmg} cards in hand)`, 'danger');
         }
+      }
+      // Punctured Eye / Gain N Blind
+      if (/gain \d+ blind/i.test(card.description)) {
+        const blindMatch = card.description.match(/Gain (\d+) Blind/i);
+        const blindAmt = blindMatch ? parseInt(blindMatch[1]) : 1;
+        combatState.player.statuses['blind'] = (combatState.player.statuses['blind'] || 0) + blindAmt;
+        addLog(`${card.name}: Gained ${blindAmt} Blind`, 'warning');
       }
     }
   }
@@ -3594,7 +3602,7 @@ function drawCards(count = 1) {
     }
 
     // Fire Breathing: whenever a status or curse card is drawn, deal AoE ranged damage
-    if ((card.isStatusCard || card.isCurse) && !combatState._fireBreathFiring &&
+    if ((card.isStatusCard || card.isCurse || (card.type || '').toLowerCase() === 'curse') && !combatState._fireBreathFiring &&
         combatState.player.statuses && combatState.player.statuses['fire_breathing']) {
       combatState._fireBreathFiring = true;
       const fb = combatState.player.statuses['fire_breathing'];
@@ -5191,8 +5199,8 @@ function playCard(handIndex, targetId = null) {
   }
 
   // Pain (curse card): if Pain is in hand while another card is played, lose 1 Health
-  if (!card.isCurse) {
-    const painInHand = combatState.hand.some(c => c.name === 'Pain' && c.isCurse);
+  if (!card.isCurse && (card.type || '').toLowerCase() !== 'curse') {
+    const painInHand = combatState.hand.some(c => c.name === 'Pain' && (c.isCurse || (c.type || '').toLowerCase() === 'curse'));
     if (painInHand) {
       loseHealth(1);
       addLog('Pain: Lost 1 Health', 'danger');

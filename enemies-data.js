@@ -1395,5 +1395,28 @@ var ENEMIES_DATA = [
     "imageUrl": "images/enemies/SpikeSlime(S).png",
     "variantOf": null,
     "tag": "slime"
+  },
+  {
+    "name": "Scary",
+    "type": "Intelligence",
+    "difficulty": "High",
+    "weight": 1,
+    "hpMin": 20,
+    "hpMax": 24,
+    "ability": "N/A",
+    "pattern": "Always: 50% Inflict 10 Doom / 50% Inflict 2 Fear",
+    "game": "Mewgenics",
+    "location": "Undead",
+    "dice": [
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] },
+      { "isBlank": true, "effects": [] }
+    ],
+    "imageUrl": "images/enemies/Scary.png",
+    "variantOf": null,
+    "tag": "undead, ghost"
   }
 ];
