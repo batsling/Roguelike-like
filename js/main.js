@@ -7071,9 +7071,13 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
       attempts++;
     }
 
-    // If we couldn't find a unique item after max attempts, just add it anyway
+    // If we couldn't find a unique item after max attempts, only add if pool is truly exhausted
     if (attempts >= maxAttempts && selectedItem) {
-      choices.push(selectedItem);
+      const relevantPool = rarityFilter
+        ? itemPool.filter(item => item.rarity && item.rarity.toLowerCase() === rarityFilter.toLowerCase())
+        : itemPool;
+      const poolExhausted = relevantPool.every(item => choices.find(c => c.name === item.name));
+      if (poolExhausted) break; // Stop adding choices rather than show duplicates
     }
   }
 
@@ -7159,6 +7163,8 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
       e.currentTarget.style.boxShadow = '';
     };
     card.onclick = (e) => {
+      if (e.currentTarget.dataset.picked) return;
+      e.currentTarget.dataset.picked = '1';
       const itemIndex = parseInt(e.currentTarget.dataset.index);
       const item = choices[itemIndex];
 
