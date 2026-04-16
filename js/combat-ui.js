@@ -2077,6 +2077,18 @@ function captureHPSnapshot(combat) {
 // Show floating +/- numbers based on HP diff between snapshot and current state
 // skipEnemyDmg: pass true when replayHits will handle per-hit enemy damage numbers
 function showHPDiffs(oldSnap, combat, skipEnemyDmg = false) {
+  // Show MISS! popup if an attack was missed due to Blind
+  if (combat._lastMiss) {
+    if (combat._lastMiss === 'player') {
+      // Player missed — show on first living enemy
+      const firstEnemy = (combat.enemies || []).find(e => e.health > 0);
+      showMissFloat(firstEnemy ? `enemy-card-${firstEnemy.id}` : null);
+    } else {
+      showMissFloat('combat-player-zone');
+    }
+    combat._lastMiss = null;
+  }
+
   // Player
   const pHP = combat.player.health - oldSnap.playerHP;
   if (pHP < 0) showFloatingNumber('combat-player-zone', Math.abs(pHP), 'damage');
@@ -2124,6 +2136,36 @@ function showFloatingText(text, color) {
     animation:floatUp 1.1s ease-out forwards;
   `;
   f.textContent = text;
+  document.body.appendChild(f);
+  setTimeout(() => f.remove(), 1150);
+}
+
+// Show MISS! floating text anchored to a DOM element (or centered if not found)
+function showMissFloat(elementId) {
+  const el = elementId ? document.getElementById(elementId) : null;
+  const f = document.createElement('div');
+  if (el) {
+    const rect = el.getBoundingClientRect();
+    f.style.cssText = `
+      position:fixed;
+      left:${rect.left + rect.width / 2}px;
+      top:${rect.top + rect.height * 0.2}px;
+      transform:translateX(-50%);
+      color:#fff; font-size:22px; font-weight:bold;
+      pointer-events:none; z-index:99999;
+      text-shadow:0 1px 6px rgba(0,0,0,0.9), 0 0 10px rgba(255,200,0,0.7);
+      animation:floatUp 1.1s ease-out forwards;
+    `;
+  } else {
+    f.style.cssText = `
+      position:fixed; left:50%; top:42%; transform:translate(-50%,-50%);
+      color:#fff; font-size:22px; font-weight:bold;
+      pointer-events:none; z-index:99999;
+      text-shadow:0 1px 6px rgba(0,0,0,0.9), 0 0 10px rgba(255,200,0,0.7);
+      animation:floatUp 1.1s ease-out forwards;
+    `;
+  }
+  f.textContent = 'MISS!';
   document.body.appendChild(f);
   setTimeout(() => f.remove(), 1150);
 }

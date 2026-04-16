@@ -1581,6 +1581,16 @@ function dealDamage(target, damage, addons = []) {
   let dmg = (typeof damage === 'number' && !isNaN(damage)) ? damage : 0;
   if (dmg <= 0) return;
 
+  // Blind: player has 30% miss chance on attacks (not self-damage)
+  if (!addons.includes('self') && target !== combatState.player &&
+      combatState.player.statuses && combatState.player.statuses['blind'] > 0) {
+    if (Math.random() < 0.3) {
+      combatState._lastMiss = 'player';
+      addLog('Attack missed! (Blind)', 'warning');
+      return;
+    }
+  }
+
   // Flat melee attack bonus from items (Focus Crystal, Beefy Ring, etc.)
   // Applied whenever a melee hit is dealt by the player
   if (addons.includes('melee') && combatState._flatAttackBonus) {
@@ -1883,6 +1893,10 @@ function getEffectiveCost(card) {
   // Corruption: Skills cost 0
   if (combatState && combatState.player && combatState.player.statuses && combatState.player.statuses['corruption']) {
     if ((card.type || '').toLowerCase() === 'skill') cost = 0;
+  }
+  // Fear: non-Attack cards cost +1
+  if (combatState && combatState.player && combatState.player.statuses && combatState.player.statuses['fear']) {
+    if ((card.type || '').toLowerCase() !== 'attack' && typeof cost === 'number') cost += 1;
   }
   return cost;
 }
@@ -2462,8 +2476,19 @@ function processPlayerStartOfTurn() {
 
   // Draw cards for this turn
   if (combatState.drawPile !== undefined) {
-    // Discard any remaining hand first (shouldn't normally have any, but safety)
-    const drawCount = BASE_DRAW_PER_TURN;
+    let drawCount = BASE_DRAW_PER_TURN;
+    // Ambush/Ambushed: adjust first-turn draw count
+    if (combatState.turn === 1 && typeof gameState !== 'undefined') {
+      if (gameState.pendingAmbush) {
+        drawCount += 2;
+        addLog('Ambush! Drew 2 extra cards.', 'success');
+        gameState.pendingAmbush = false;
+      } else if (gameState.pendingAmbushed) {
+        drawCount = Math.max(0, drawCount - 2);
+        addLog('Ambushed! Drew 2 fewer cards.', 'danger');
+        gameState.pendingAmbushed = false;
+      }
+    }
     drawCards(drawCount);
   }
 
@@ -3044,6 +3069,16 @@ function executeEnemyActions() {
 function dealDamageToPlayer(damage, addons, enemy) {
   const player = combatState.player;
   const isMeleeHit = !addons || (!addons.includes('Ranged') && !addons.includes('self'));
+
+  // Blind: enemy has 30% miss chance on attacks (not self-damage)
+  if (enemy && (!addons || !addons.includes('self')) &&
+      enemy.statuses && enemy.statuses['blind'] > 0) {
+    if (Math.random() < 0.3) {
+      combatState._lastMiss = 'enemy';
+      addLog(`${enemy.name} missed! (Blind)`, 'info');
+      return;
+    }
+  }
 
   // Offensive thorns: attacker's (enemy's) own thorns add to their melee attacks
   if (enemy && isMeleeHit) {
@@ -5078,6 +5113,12 @@ function playCard(handIndex, targetId = null) {
     // Pen Nib: every 10th attack deals double damage — flag for dealDamage
     if (combatState.incrementals.attacksTotal % 10 === 0 && _incInv.some(i => i.name === 'Pen Nib')) {
       combatState._penNibDouble = true;
+    }
+    // Fear: lose 1 stack when an Attack card is played
+    if (combatState.player.statuses['fear'] > 0) {
+      combatState.player.statuses['fear']--;
+      if (combatState.player.statuses['fear'] <= 0) delete combatState.player.statuses['fear'];
+      addLog('Fear reduced by 1 (Attack played)', 'info');
     }
   }
 

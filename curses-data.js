@@ -456,5 +456,29 @@ var CURSES_DATA = [
     "duration": "3 Rolls",
     "description": "Gain Disadvantage on the next roll. Add Clumsy to your Deck.",
     "automatic": "Manual"
+  },
+  {
+    "name": "Curse of Ocular Trauma I",
+    "stat": "Charisma",
+    "power": "Low",
+    "duration": "Until 1 Game Beaten",
+    "description": "You are unable to wear headgear if possible. Add Punctured Eye to your Deck.",
+    "automatic": "Manual"
+  },
+  {
+    "name": "Curse of Ocular Trauma II",
+    "stat": "Charisma",
+    "power": "Medium",
+    "duration": "Until 2 Games Beaten",
+    "description": "You are unable to wear headgear if possible. Add Punctured Eye to your Deck.",
+    "automatic": "Manual"
+  },
+  {
+    "name": "Curse of Ocular Trauma III",
+    "stat": "Charisma",
+    "power": "High",
+    "duration": "Until 3 Games Beaten",
+    "description": "You are unable to wear headgear if possible. Add Punctured Eye to your Deck.",
+    "automatic": "Manual"
   }
 ];
