@@ -147,9 +147,10 @@ function showShopModal(purchasedIndices = []) {
         margin-bottom:8px;
       ">
         <option value="">— Pick a card to upgrade —</option>
-        ${upgradeableCards.map((c, i) => {
+        ${upgradeableCards.map((c) => {
           const label = c._isStarting ? `${c.name} (Starter)` : `${c.name}${c.upgraded ? ' +' : ''} (${c.rarity})`;
-          return `<option value="${i}">${label}</option>`;
+          const allIdx = allDeckCards.indexOf(c);
+          return `<option value="${allIdx}">${label}</option>`;
         }).join('')}
       </select>
     `;

@@ -248,7 +248,7 @@ const ITEM_EFFECTS = {
 
   "D6": {
     onAcquire: () => {
-      StateMutator.modifyAbility('reroll', 1);
+      StateMutator.modifyAbility('reroll', 2);
     }
   },
 

@@ -433,8 +433,14 @@ function updateItemsBar() {
   if (!itemsBar) return;
   const combat = window.CombatEngine && window.CombatEngine.getCombatState();
   if (!combat) return;
+  const html = renderItemsBar(combat);
+  if (!html) {
+    // No items left — remove the bar entirely
+    itemsBar.remove();
+    return;
+  }
   const tmp = document.createElement('div');
-  tmp.innerHTML = renderItemsBar(combat);
+  tmp.innerHTML = html;
   const newEl = tmp.firstElementChild;
   if (newEl) itemsBar.replaceWith(newEl);
 }
@@ -1586,6 +1592,14 @@ function attachCombatEventListeners(combat) {
         showHPDiffs(snap, combat);
         updateCombatDisplay();
         checkCombatEnd();
+        // Flush any pending card pick queued by start-of-turn effects (e.g. Tools of the Trade)
+        if (combat && combat._pendingCardPick) {
+          const pick = combat._pendingCardPick;
+          combat._pendingCardPick = null;
+          if (typeof window.showCardPickerModal === 'function') {
+            window.showCardPickerModal(pick);
+          }
+        }
       }
     });
   }
@@ -2558,7 +2572,6 @@ window.showCardPickerModal = function(options) {
 // ============== STUBS ==============
 
 function cleanup3DDice() {}
-function updateItemsBar() {}
 
 // ============== EXPORTS ==============
 
