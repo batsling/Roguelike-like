@@ -1100,6 +1100,8 @@ const ITEM_EFFECTS = {
       if (names.length > 0) {
         createNotification(`War Paint: upgraded ${names.join(', ')}!`, COLORS.SUCCESS, '🎨');
         saveCurrentGame();
+      } else {
+        createNotification('War Paint: no upgradeable Skill cards found.', COLORS.WARNING, '🎨');
       }
     }
   },

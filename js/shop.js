@@ -444,9 +444,9 @@ function showShopModal(purchasedIndices = []) {
   `);
 
   document.querySelectorAll('.shop-buy-btn').forEach(btn => {
-    btn.onclick = (e) => {
-      const itemIndex = parseInt(e.target.dataset.index);
-      const price = parseInt(e.target.dataset.price);
+    btn.onclick = () => {
+      const itemIndex = parseInt(btn.dataset.index);
+      const price = parseInt(btn.dataset.price);
       const item = shopItems[itemIndex];
 
       if (gold >= price) {
@@ -459,7 +459,6 @@ function showShopModal(purchasedIndices = []) {
           const weaponIndex = inventory.findIndex(i => i.name === item.name);
           if (weaponIndex !== -1 && typeof equipWeapon === 'function') {
             equipWeapon(weaponIndex);
-            console.log(`Auto-equipped weapon: ${item.name}`);
           }
         }
 
@@ -467,32 +466,17 @@ function showShopModal(purchasedIndices = []) {
         purchasedIndices.push(itemIndex);
 
         // Check for Curse of Frugality and remove only ONE after first purchase
-        let curseWasRemoved = false;
         const frugalityCurses = getCursesByType('frugality');
         if (frugalityCurses.length > 0) {
-          // Remove only the first frugality curse
           const curseIndex = gameState.activeCurses.indexOf(frugalityCurses[0]);
           if (curseIndex !== -1) {
             gameState.activeCurses.splice(curseIndex, 1);
-            curseWasRemoved = true;
             updateCurseUI();
           }
         }
 
         saveCurrentGame();
-
-        // If curse was removed, refresh the shop to show normal prices
-        if (curseWasRemoved) {
-          setTimeout(() => {
-            showShopModal(purchasedIndices);
-          }, 100);
-        } else {
-          // Otherwise just update button state
-          e.target.textContent = '✓ Purchased';
-          e.target.disabled = true;
-          e.target.style.background = '#555';
-          e.target.parentElement.style.opacity = '0.5';
-        }
+        showShopModal(purchasedIndices);
       }
     };
   });
@@ -548,9 +532,9 @@ function showShopModal(purchasedIndices = []) {
 
   // Card buy button handlers
   document.querySelectorAll('.shop-card-buy-btn').forEach(btn => {
-    btn.onclick = (e) => {
-      const cardIndex = parseInt(e.target.dataset.cardIndex);
-      const price = parseInt(e.target.dataset.price);
+    btn.onclick = () => {
+      const cardIndex = parseInt(btn.dataset.cardIndex);
+      const price = parseInt(btn.dataset.price);
       if (isNaN(cardIndex) || gold < price) return;
       const card = shopCards[cardIndex];
       if (!card) return;
