@@ -1082,6 +1082,16 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Holy Mantle",
+    "rarity": "Legendary",
+    "type": "Triggered",
+    "description": "At the start of combat, Gain +1 Holy Shield",
+    "game": "The Binding of Isaac",
+    "tags": ["holy"],
+    "image": "images/items/HolyMantle.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Dead Eye",
     "rarity": "Rare",
     "type": "Incremental",

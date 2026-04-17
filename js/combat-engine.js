@@ -376,6 +376,13 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
       addLog(`Anchor: +${10 * anchorCount} Block!`, 'info');
     }
 
+    // Holy Mantle: +1 Holy Shield at start of combat
+    const holyMantleCount = inventory.filter(i => i.name === 'Holy Mantle').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (holyMantleCount > 0) {
+      combatState.player.statuses['holy_shield'] = (combatState.player.statuses['holy_shield'] || 0) + holyMantleCount;
+      addLog(`Holy Mantle: +${holyMantleCount} Holy Shield!`, 'success');
+    }
+
     // Ring of the Snake: draw 2 extra cards at combat start (applied after normal hand draw)
     const snakeEffect = typeof ITEM_EFFECTS !== 'undefined' && ITEM_EFFECTS['Ring of the Snake'];
     if (snakeEffect && snakeEffect.onCombatStart && inventory.some(i => i.name === 'Ring of the Snake')) {
