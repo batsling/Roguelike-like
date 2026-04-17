@@ -370,48 +370,164 @@ function _showChoiceScreen(event, onContinue) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 3D DICE HELPERS (shared by roll screens)
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _activeEventRenderers = [];
+
+function _disposeEventRenderers() {
+  _activeEventRenderers.forEach(r => { try { r.dispose(); } catch (_) {} });
+  _activeEventRenderers = [];
+}
+
+function _makeD20EventData() {
+  if (typeof createD20 === 'function') return createD20();
+  const sides = [];
+  for (let i = 1; i <= 20; i++) {
+    sides.push({ value: i, texture: null, modifiers: [], displayValue: null });
+  }
+  return { type: 'd20', sides, globalModifiers: [], currentRoll: null };
+}
+
+/**
+ * Initialise one DiceRendererInstance per container id, all D20.
+ * Returns array of { renderer, data } objects in the same order as ids.
+ * Disposes any previously active event renderers first.
+ */
+function _initEventDice(containerIds) {
+  _disposeEventRenderers();
+  const d20Data = _makeD20EventData();
+  const instances = [];
+  containerIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.clientWidth === 0) return;
+    const r = new window.DiceRendererInstance();
+    r.init(el, 0x0d0d1a);  // match event modal background
+    r.createDice(d20Data);
+    instances.push({ renderer: r, data: d20Data, id });
+  });
+  _activeEventRenderers = instances.map(x => x.renderer);
+  return instances;
+}
+
+/** HTML for a die container slot. */
+function _dieSlotHTML(id, size) {
+  return `<div id="${id}" style="
+    width:${size}px; height:${size}px; cursor:pointer;
+    border-radius:10px; overflow:hidden;
+    border:2px solid #3a3a5a;
+    transition:border-color 0.3s;
+  "></div>`;
+}
+
+/** Highlight the winning die (for advantage) and dim the other. */
+function _highlightWinner(instances, rolls) {
+  if (instances.length < 2) return;
+  const best = Math.max(...rolls);
+  instances.forEach(({ id }, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (rolls[i] === best) {
+      el.style.borderColor = '#f1c40f';
+      el.style.boxShadow   = '0 0 14px #f1c40f88';
+    } else {
+      el.style.opacity     = '0.45';
+      el.style.borderColor = '#333';
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SCREEN 2 — SUCCESS ROLL
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _showSuccessRollScreen(event, choice, onContinue) {
-  const difficulty  = _getRollDifficulty();
-  const statVal     = _getStat(choice.stat);
-  const needed      = Math.max(1, difficulty - statVal);  // what the die itself must show
+  const difficulty   = _getRollDifficulty();
+  const statVal      = _getStat(choice.stat);
+  const needed       = Math.max(1, difficulty - statVal);
   const hasAdvantage = _rollsAdvantage();
-  const luckVal     = typeof luck !== 'undefined' ? luck : 0;
+  const luckVal      = typeof luck !== 'undefined' ? luck : 0;
+  const diceCount    = hasAdvantage ? 2 : 1;
+  const diceSize     = diceCount === 2 ? 175 : 210;
 
-  const diceHTML = _diceButtonsHTML(hasAdvantage, 'roll-success');
+  const dieSlots = Array.from({ length: diceCount }, (_, i) =>
+    _dieSlotHTML(`ev-die-s-${i}`, diceSize)
+  ).join('');
 
   _eventModal(`
     ${_imageStrip(event.image)}
-    <div style="padding:24px 28px;text-align:center;">
-      <div style="color:#e67e22;font-size:13px;font-weight:bold;letter-spacing:1px;margin-bottom:6px;">
+    <div style="padding:22px 26px;text-align:center;">
+      <div style="color:#e67e22;font-size:12px;font-weight:bold;letter-spacing:1.5px;margin-bottom:5px;">
         SUCCESS CHECK
       </div>
-      <div style="color:#fff;font-size:22px;font-weight:bold;margin-bottom:6px;">
+      <div style="color:#fff;font-size:20px;font-weight:bold;margin-bottom:5px;">
         Roll ${needed}+ to succeed
       </div>
-      <div style="color:#aaa;font-size:13px;margin-bottom:20px;">
-        ${STAT_ICONS[choice.stat]} ${_statLabel(choice.stat)}: +${statVal} bonus
-        (need ${difficulty} total, you add +${statVal})
-        ${luckVal > 0 ? `&nbsp;·&nbsp; 🍀 Luck ${luckVal} → ${hasAdvantage ? 'Advantage!' : 'No advantage this time'}` : ''}
+      <div style="color:#aaa;font-size:12px;margin-bottom:18px;">
+        ${STAT_ICONS[choice.stat] || '🎲'} ${_statLabel(choice.stat)}: +${statVal} bonus
+        &nbsp;·&nbsp; need ${difficulty} total
+        ${luckVal > 0 ? `&nbsp;·&nbsp; 🍀 Luck ${luckVal} → ${hasAdvantage ? '<span style="color:#f1c40f">Advantage!</span>' : 'No advantage'}` : ''}
       </div>
-      ${diceHTML}
+
+      <div id="ev-dice-area-s" style="
+        display:flex; gap:18px; justify-content:center; margin-bottom:14px;
+      ">${dieSlots}</div>
+
+      <p id="ev-prompt-s" style="color:#aaa;font-size:12px;margin:0 0 6px;">
+        ${hasAdvantage ? '🍀 Click a die to roll both — best of two' : 'Click the die to roll'}
+      </p>
+      <div id="ev-result-s" style="display:none;margin-top:10px;"></div>
     </div>
   `);
 
-  document.querySelectorAll('.ev-die-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const result = _rollD20(hasAdvantage);
-      const rolled = result.used;
-      const success = (rolled + statVal) >= difficulty;
+  const ids       = Array.from({ length: diceCount }, (_, i) => `ev-die-s-${i}`);
+  const instances = _initEventDice(ids);
+  let   rolled    = false;
 
-      _showRollAnimation(result.rolls, result.used, success ? '#2ecc71' : '#e74c3c',
-        success ? 'SUCCESS' : 'FAILURE',
-        `${rolled} + ${statVal} = ${rolled + statVal} vs ${difficulty}`,
-        () => _showCritRollScreen(event, choice, success, onContinue)
-      );
-    }, { once: true });
+  const doRoll = () => {
+    if (rolled) return;
+    rolled = true;
+    const prompt = document.getElementById('ev-prompt-s');
+    if (prompt) prompt.textContent = 'Rolling…';
+
+    const result = _rollD20(hasAdvantage);
+    let done = 0;
+
+    instances.forEach(({ renderer, data }, i) => {
+      const face = result.rolls[i] !== undefined ? result.rolls[i] : result.rolls[0];
+      renderer.rollDice(data, face, () => {
+        if (++done < instances.length) return;
+
+        // All dice have landed
+        if (hasAdvantage) _highlightWinner(instances, result.rolls);
+
+        const success = (result.used + statVal) >= difficulty;
+        const color   = success ? '#2ecc71' : '#e74c3c';
+        const label   = success ? 'SUCCESS' : 'FAILURE';
+
+        if (prompt) prompt.style.display = 'none';
+        const resultDiv = document.getElementById('ev-result-s');
+        if (resultDiv) {
+          resultDiv.style.display = 'block';
+          resultDiv.innerHTML = `
+            <div style="color:${color};font-size:26px;font-weight:bold;
+              text-shadow:0 0 18px ${color}88;margin-bottom:4px;">${label}</div>
+            <div style="color:#bbb;font-size:13px;">
+              Rolled ${result.used} + ${statVal} = ${result.used + statVal} vs ${difficulty}
+            </div>`;
+        }
+
+        setTimeout(() => {
+          _disposeEventRenderers();
+          _showCritRollScreen(event, choice, success, onContinue);
+        }, 1900);
+      });
+    });
+  };
+
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', doRoll, { once: true });
   });
 }
 
@@ -425,129 +541,101 @@ function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
   const luckVal        = typeof luck !== 'undefined' ? luck : 0;
   const successColor   = wasSuccess ? '#2ecc71' : '#e74c3c';
   const successLabel   = wasSuccess ? 'SUCCESS' : 'FAILURE';
+  const diceCount      = hasAdvantage ? 2 : 1;
+  const diceSize       = diceCount === 2 ? 175 : 210;
 
-  const diceHTML = _diceButtonsHTML(hasAdvantage, 'roll-crit');
+  const dieSlots = Array.from({ length: diceCount }, (_, i) =>
+    _dieSlotHTML(`ev-die-c-${i}`, diceSize)
+  ).join('');
 
   _eventModal(`
     ${_imageStrip(event.image)}
-    <div style="padding:24px 28px;text-align:center;">
+    <div style="padding:22px 26px;text-align:center;">
       <div style="
-        display:inline-block;
-        background:${successColor}22;
-        border:1px solid ${successColor};
-        border-radius:6px;padding:4px 14px;font-size:13px;
-        color:${successColor};font-weight:bold;margin-bottom:14px;
+        display:inline-block;margin-bottom:12px;
+        background:${successColor}22;border:1px solid ${successColor};
+        border-radius:6px;padding:3px 14px;font-size:12px;
+        color:${successColor};font-weight:bold;
       ">${successLabel}</div>
-      <div style="color:#c39bd3;font-size:13px;font-weight:bold;letter-spacing:1px;margin-bottom:6px;">
+
+      <div style="color:#c39bd3;font-size:12px;font-weight:bold;letter-spacing:1.5px;margin-bottom:5px;">
         CRITICAL CHECK
       </div>
-      <div style="color:#fff;font-size:22px;font-weight:bold;margin-bottom:6px;">
-        Roll 18+ for a critical outcome (18, 19, or 20)
+      <div style="color:#fff;font-size:20px;font-weight:bold;margin-bottom:5px;">
+        Roll 18+ for a critical outcome
       </div>
-      <div style="color:#aaa;font-size:13px;margin-bottom:20px;">
-        No stat bonus applies
-        ${luckVal > 0 ? `&nbsp;·&nbsp; 🍀 Luck ${luckVal} → ${hasAdvantage ? 'Advantage!' : 'No advantage this time'}` : ''}
+      <div style="color:#aaa;font-size:12px;margin-bottom:18px;">
+        No stat bonus — need 18, 19, or 20
+        ${luckVal > 0 ? `&nbsp;·&nbsp; 🍀 Luck ${luckVal} → ${hasAdvantage ? '<span style="color:#f1c40f">Advantage!</span>' : 'No advantage'}` : ''}
       </div>
-      ${diceHTML}
+
+      <div id="ev-dice-area-c" style="
+        display:flex; gap:18px; justify-content:center; margin-bottom:14px;
+      ">${dieSlots}</div>
+
+      <p id="ev-prompt-c" style="color:#aaa;font-size:12px;margin:0 0 6px;">
+        ${hasAdvantage ? '🍀 Click a die to roll both — best of two' : 'Click the die to roll'}
+      </p>
+      <div id="ev-result-c" style="display:none;margin-top:10px;"></div>
     </div>
   `);
 
-  document.querySelectorAll('.ev-die-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const result = _rollD20(hasAdvantage);
-      const rolled = result.used;
-      const isCrit = rolled >= CRIT_THRESHOLD;
+  const ids       = Array.from({ length: diceCount }, (_, i) => `ev-die-c-${i}`);
+  const instances = _initEventDice(ids);
+  let   rolled    = false;
 
-      let outcomeKey;
-      if (wasSuccess && isCrit)  outcomeKey = 'crit_good';
-      else if (wasSuccess)       outcomeKey = 'good';
-      else if (isCrit)           outcomeKey = 'crit_bad';
-      else                       outcomeKey = 'bad';
+  const doRoll = () => {
+    if (rolled) return;
+    rolled = true;
+    const prompt = document.getElementById('ev-prompt-c');
+    if (prompt) prompt.textContent = 'Rolling…';
 
-      const outcome = (choice.outcomes && choice.outcomes[outcomeKey]) || { description: 'Nothing happens.', effects: [] };
+    const result = _rollD20(hasAdvantage);
+    let done = 0;
 
-      _showRollAnimation(result.rolls, result.used, isCrit ? '#f1c40f' : '#aaa',
-        isCrit ? 'CRITICAL' : 'NOT CRITICAL',
-        `Rolled ${rolled} vs 18`,
-        () => {
+    instances.forEach(({ renderer, data }, i) => {
+      const face = result.rolls[i] !== undefined ? result.rolls[i] : result.rolls[0];
+      renderer.rollDice(data, face, () => {
+        if (++done < instances.length) return;
+
+        if (hasAdvantage) _highlightWinner(instances, result.rolls);
+
+        const isCrit = result.used >= CRIT_THRESHOLD;
+        const color  = isCrit ? '#f1c40f' : '#aaa';
+        const label  = isCrit ? '⚡ CRITICAL' : 'NOT CRITICAL';
+
+        let outcomeKey;
+        if (wasSuccess && isCrit)  outcomeKey = 'crit_good';
+        else if (wasSuccess)       outcomeKey = 'good';
+        else if (isCrit)           outcomeKey = 'crit_bad';
+        else                       outcomeKey = 'bad';
+
+        const outcome = (choice.outcomes && choice.outcomes[outcomeKey])
+          || { description: 'Nothing happens.', effects: [] };
+
+        if (prompt) prompt.style.display = 'none';
+        const resultDiv = document.getElementById('ev-result-c');
+        if (resultDiv) {
+          resultDiv.style.display = 'block';
+          resultDiv.innerHTML = `
+            <div style="color:${color};font-size:26px;font-weight:bold;
+              text-shadow:0 0 18px ${color}88;margin-bottom:4px;">${label}</div>
+            <div style="color:#bbb;font-size:13px;">Rolled ${result.used} vs 18</div>`;
+        }
+
+        setTimeout(() => {
+          _disposeEventRenderers();
           const effectLines = applyEventEffects(outcome.effects || []);
           _showOutcomeScreen(outcome, effectLines, { outcomeKey, wasSuccess, isCrit }, onContinue);
-        }
-      );
-    }, { once: true });
-  });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ROLL ANIMATION (shared)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function _diceButtonsHTML(hasAdvantage, cls) {
-  const dieface = `
-    <svg viewBox="0 0 40 40" width="60" height="60" fill="none">
-      <polygon points="20,2 38,38 2,38" stroke="#c39bd3" stroke-width="2" fill="#1a1a2e"/>
-      <text x="20" y="30" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">?</text>
-    </svg>`;
-  if (hasAdvantage) {
-    return `
-      <p style="color:#aaa;font-size:12px;margin-bottom:10px;">🍀 Advantage — click a die to roll both and take the best</p>
-      <div style="display:flex;gap:20px;justify-content:center;">
-        <button class="ev-die-btn ${cls}" style="${_dieBtnStyle()}">${dieface}</button>
-        <button class="ev-die-btn ${cls}" style="${_dieBtnStyle()}">${dieface}</button>
-      </div>`;
-  }
-  return `
-    <p style="color:#aaa;font-size:12px;margin-bottom:10px;">Click the die to roll</p>
-    <div style="display:flex;justify-content:center;">
-      <button class="ev-die-btn ${cls}" style="${_dieBtnStyle()}">${dieface}</button>
-    </div>`;
-}
-
-function _dieBtnStyle() {
-  return `background:none;border:none;cursor:pointer;padding:8px;
-    transition:transform 0.15s,filter 0.15s;filter:drop-shadow(0 0 8px #c39bd388);`
-    + `onmouseover:this.style.transform='scale(1.15)';onmouseout:this.style.transform='scale(1)'`;
-}
-
-function _showRollAnimation(rolls, used, color, label, subtitle, onDone) {
-  // Spinning number animation then lock on result
-  let frames = 0;
-  const SPIN_FRAMES = 18;
-
-  const buildHTML = (displayNums, settled) => `
-    <div style="padding:40px 28px;text-align:center;">
-      <div style="display:flex;gap:24px;justify-content:center;margin-bottom:20px;">
-        ${displayNums.map((n, i) => {
-          const isUsed = (n === used) && settled;
-          return `<div style="
-            font-size:72px;font-weight:bold;
-            color:${settled && isUsed ? color : '#fff'};
-            text-shadow:0 0 ${settled && isUsed ? '24px ' + color : '12px #ffffff88'};
-            transition:color 0.3s,text-shadow 0.3s;
-            ${settled && rolls.length > 1 && !isUsed ? 'opacity:0.35;' : ''}
-          ">${n}</div>`;
-        }).join('')}
-      </div>
-      ${settled ? `
-        <div style="color:${color};font-size:20px;font-weight:bold;margin-bottom:6px;">${label}</div>
-        <div style="color:#aaa;font-size:13px;">${subtitle}</div>
-      ` : ''}
-    </div>`;
-
-  _eventModal(buildHTML(rolls.map(() => '?'), false));
-
-  const tick = () => {
-    frames++;
-    const randNums = rolls.map(() => Math.floor(Math.random() * 20) + 1);
-    _eventModal(buildHTML(randNums, false));
-    if (frames < SPIN_FRAMES) {
-      setTimeout(tick, 40 + frames * 2);
-    } else {
-      _eventModal(buildHTML(rolls, true));
-      setTimeout(onDone, 1200);
-    }
+        }, 1900);
+      });
+    });
   };
-  setTimeout(tick, 60);
+
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', doRoll, { once: true });
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

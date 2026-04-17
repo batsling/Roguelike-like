@@ -26,13 +26,14 @@ class DiceRendererInstance {
   /**
    * Initialize the 3D dice renderer
    * @param {HTMLElement} container - DOM element to render into
+   * @param {number} [bgColor=0x1a1410] - Three.js scene background color
    */
-  init(container) {
+  init(container, bgColor = 0x1a1410) {
     this.container = container;
 
     // Create scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1a1410);
+    this.scene.background = new THREE.Color(bgColor);
 
     // Create camera
     const width = container.clientWidth;
