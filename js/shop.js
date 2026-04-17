@@ -15,6 +15,24 @@
 
 console.log('✅ SHOP.JS v4 loaded - card upgrade/remove system active');
 
+// Keeper's Sack: every 10 gold spent → +1 to a random stat
+function _keepersSackCheck(amountSpent) {
+  if (!inventory || !inventory.some(i => i.name === "Keeper's Sack")) return;
+  const prev = gameState.keepersSackGoldSpent || 0;
+  const next = prev + amountSpent;
+  const statsBefore = Math.floor(prev / 10);
+  const statsAfter  = Math.floor(next / 10);
+  gameState.keepersSackGoldSpent = next;
+  const gains = statsAfter - statsBefore;
+  if (gains <= 0) return;
+  const stats = ['strength', 'dexterity', 'intelligence', 'charisma'];
+  for (let g = 0; g < gains; g++) {
+    const stat = stats[Math.floor(Math.random() * stats.length)];
+    if (typeof StateMutator !== 'undefined') StateMutator.modifyStat(stat, 1);
+    if (typeof createNotification === 'function') createNotification(`Keeper's Sack: +1 ${stat.charAt(0).toUpperCase() + stat.slice(1)}!`, '#f1c40f', '💰');
+  }
+}
+
 // ===== SHOP SYSTEM =====
 
 function showShopModal(purchasedIndices = []) {
@@ -452,6 +470,7 @@ function showShopModal(purchasedIndices = []) {
       if (gold >= price) {
         gold -= price;
         gameState.gold = gold;
+        _keepersSackCheck(price);
         acquireItem(item);
 
         // Auto-equip weapon if no weapon is equipped
@@ -516,6 +535,7 @@ function showShopModal(purchasedIndices = []) {
       const card = allCards[cardIdx];
       gold -= CARD_REMOVE_COST;
       gameState.gold = gold;
+      _keepersSackCheck(CARD_REMOVE_COST);
       gameState.shopRemovesUsed++;
       if (card._isStarting) {
         // Remove a starter card: track via removedStartingCards
@@ -540,6 +560,7 @@ function showShopModal(purchasedIndices = []) {
       if (!card) return;
       gold -= price;
       gameState.gold = gold;
+      _keepersSackCheck(price);
       if (!gameState.purchasedShopCards) gameState.purchasedShopCards = [];
       gameState.purchasedShopCards.push(cardIndex);
       if (typeof addCardToDeck === 'function') addCardToDeck(card);
@@ -558,6 +579,7 @@ function showShopModal(purchasedIndices = []) {
         gold -= rerollCost;
         gameState.reroll = reroll;
         gameState.gold = gold;
+        _keepersSackCheck(rerollCost);
 
         // Increment reroll counter for next reroll
         gameState.shopRerollCount++;

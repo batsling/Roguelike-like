@@ -290,6 +290,15 @@ const ITEM_EFFECTS = {
     }
   },
 
+  "Keeper's Sack": {
+    onAcquire: () => {
+      gold = (gold || 0) + 5;
+      if (typeof gameState !== 'undefined') gameState.gold = gold;
+      if (typeof updateTopBar === 'function') updateTopBar();
+      if (typeof createNotification === 'function') createNotification("Keeper's Sack: +5 Gold!", '#f1c40f', '💰');
+    }
+  },
+
   // ===== ITEMS WITH TRADEOFFS =====
 
   "Bowler Hat": {

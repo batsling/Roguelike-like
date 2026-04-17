@@ -2330,6 +2330,19 @@ function onEnemyDefeated(enemy) {
     addLog('Gremlin Horn: +1 Energy, draw 1!', 'success');
   }
 
+  // Charm of the Vampire: 50% chance to heal +3 HP per copy on enemy defeat
+  const vampireCount = inv.filter(i => i.name === 'Charm of the Vampire').length;
+  if (vampireCount > 0 && Math.random() < 0.5) {
+    const healAmt = 3 * vampireCount;
+    if (typeof health !== 'undefined' && typeof maxHealth !== 'undefined') {
+      health = Math.min(maxHealth, health + healAmt);
+      if (typeof gameState !== 'undefined') gameState.health = health;
+      if (typeof updateTopBar === 'function') updateTopBar();
+    }
+    addLog(`Charm of the Vampire: +${healAmt} Health!`, 'success');
+    if (typeof createNotification === 'function') setTimeout(() => createNotification(`Charm of the Vampire: +${healAmt} HP!`, '#2ecc71', '🧛'), 100);
+  }
+
   // Corpse Explosion: on death, deal X * maxHealth to all other living enemies
   if (enemy.statuses && enemy.statuses['corpse_explosion']) {
     const mult = enemy.statuses['corpse_explosion'];

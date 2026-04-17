@@ -199,7 +199,7 @@ var ITEMS_DATA = [
   },
   {
     "name": "Bronze Scales",
-    "rarity": "Common",
+    "rarity": "Uncommon",
     "type": "Triggered",
     "description": "At the start of combat, Gain +3 Thorns",
     "game": "Slay the Spire",
@@ -1131,6 +1131,16 @@ var ITEMS_DATA = [
       "bag"
     ],
     "image": "images/items/BagO'Glitter.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Keeper's Sack",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "Gain 5 Gold. Whenever you spend 10 Gold, Gain +1 to a Random Stat",
+    "game": "The Binding of Isaac",
+    "tags": ["bag"],
+    "image": "images/items/KeepersSack.png",
     "unlockCondition": null
   }
 ];

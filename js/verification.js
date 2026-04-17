@@ -854,10 +854,10 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           console.log(`Secret Technique Instructions: +${secretTechniqueCount} Dash`);
         }
 
-        // Performance Based Health Insurance: +2 Health per copy
+        // Performance Based Health Insurance: +5 Health per copy
         const healthInsuranceCount = hastePerfectItems.filter(i => i.name === 'Performance Based Health Insurance').length;
         if (healthInsuranceCount > 0) {
-          const healthGain = 2 * healthInsuranceCount;
+          const healthGain = 5 * healthInsuranceCount;
           health = Math.min(maxHealth, health + healthGain);
           gameState.health = health;
           hastePerfectRewards.push(`+${healthGain} Health`);
