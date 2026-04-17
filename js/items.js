@@ -368,15 +368,10 @@ const ITEM_EFFECTS = {
       // Count all copies in inventory
       const copies = inventory.filter(i => i.name === 'Charm of the Vampire').length;
 
-      // 50% base chance + (5% * luck) - same chance regardless of copies
-      const baseChance = 0.50;
-      const luckBonus = (luck || 0) * 0.05;
-      const totalChance = baseChance + luckBonus;
+      // 50% base chance; luck grants MIN-advantage (10% per luck point chance to roll twice, take lower)
+      const roll = rollWithLuckAdvantage(undefined, false);
 
-      const roll = Math.random();
-      console.log(`Charm of the Vampire (x${copies}): rolled ${roll.toFixed(2)} vs ${totalChance.toFixed(2)} chance`);
-
-      if (roll < totalChance) {
+      if (roll < 0.5) {
         // Heal +1 health per copy (can't exceed max health)
         const healAmount = copies;
         const result = StateMutator.modifyHealth(healAmount);

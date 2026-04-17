@@ -389,7 +389,7 @@ Displays all 532 games in an alphabetical grid format:
 
 #### Items Tab
 
-Displays all 22 items with visual representations:
+Displays all items with visual representations:
 
 **Features:**
 - **Item Images**: Local PNG images from `images/items/`
@@ -768,7 +768,6 @@ After beating each game, a combined verification modal appears showing all activ
 - Dev tools for testing
 
 **Removing Curses:**
-- Use the Lucky Toe item (consume for +1 luck)
 - Curses self-remove when triggered/consumed
 - Dev tools "Clear All Curses" button
 

@@ -5692,12 +5692,6 @@ function showCardRewardModal(onComplete, tagFilter = null) {
 
   // Pick one card with luck-weighted rarity, excluding already-seen names
   function pickOne(exclude) {
-    const currentLuck = typeof luck !== 'undefined' ? luck : (gameState.luck || 0);
-    const wCommon   = Math.max(10, 70 - currentLuck * 3);
-    const wUncommon = Math.min(65, 25 + currentLuck * 2);
-    const wRare     = Math.min(45,  5 + currentLuck);
-    const total     = wCommon + wUncommon + wRare;
-
     let pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
       .filter(c => c.rarity && c.rarity !== 'Starter' && c.rarity !== 'N/A'
                && (c.type || '').toLowerCase() !== 'training'
@@ -5712,7 +5706,9 @@ function showCardRewardModal(onComplete, tagFilter = null) {
 
     if (pool.length === 0) return null;
 
-    let roll = Math.random() * total;
+    // Base weights 70/20/10; luck advantage biases the roll toward higher buckets
+    const wCommon = 70, wUncommon = 20, wRare = 10, total = 100;
+    const roll = rollWithLuckAdvantage() * total;
     let pickedRarity;
     if      (roll < wCommon)              pickedRarity = 'Common';
     else if (roll < wCommon + wUncommon)  pickedRarity = 'Uncommon';
