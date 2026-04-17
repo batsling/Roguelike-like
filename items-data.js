@@ -1082,6 +1082,36 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Dead Eye",
+    "rarity": "Rare",
+    "type": "Incremental",
+    "description": "Every time you hit with an Attack on the same target, every Attack Gains +1 Dmg. Bonus goes away when you miss or change targets.",
+    "game": "The Binding of Isaac",
+    "tags": ["eye"],
+    "image": "images/items/DeadEye.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Glass Eye",
+    "rarity": "Common",
+    "type": "Passive",
+    "description": "Gain +2 Strength and +1 Luck",
+    "game": "The Binding of Isaac",
+    "tags": ["eye", "glass"],
+    "image": "images/GlassEye.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Sacred Orb",
+    "rarity": "Legendary",
+    "type": "Triggered",
+    "description": "Whenever an item spawns, if it was Common, reroll it. If it was an Uncommon, there is a 25% chance to reroll it.",
+    "game": "The Binding of Isaac",
+    "tags": ["holy"],
+    "image": "images/items/SacredOrb.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Bag o' Glitter",
     "rarity": "Uncommon",
     "type": "Weapon",

@@ -7062,6 +7062,13 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
         break;
       }
 
+      // Sacred Orb: reroll Common items; 25% chance to reroll Uncommon
+      if (selectedItem && typeof inventory !== 'undefined' && inventory.some(i => i.name === 'Sacred Orb')) {
+        const r = (selectedItem.rarity || '').toLowerCase();
+        if (r === 'common') { attempts++; continue; }
+        if (r === 'uncommon' && Math.random() < 0.25) { attempts++; continue; }
+      }
+
       // Check if this item is already in choices
       if (!choices.find(c => c.name === selectedItem.name)) {
         choices.push(selectedItem);

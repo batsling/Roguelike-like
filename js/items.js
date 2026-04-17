@@ -282,6 +282,14 @@ const ITEM_EFFECTS = {
     }
   },
 
+  "Glass Eye": {
+    onAcquire: () => {
+      StateMutator.modifyStat('strength', 2);
+      luck += 1;
+      gameState.luck = luck;
+    }
+  },
+
   // ===== ITEMS WITH TRADEOFFS =====
 
   "Bowler Hat": {

@@ -1596,6 +1596,9 @@ function dealDamage(target, damage, addons = []) {
       if (combatState._hitLog !== undefined) {
         combatState._hitLog.push({ targetId: target.id || null, missed: true });
       }
+      // Dead Eye: miss resets the streak
+      combatState._deadEyeBonus = 0;
+      combatState._deadEyeTarget = null;
       addLog('Attack missed! (Blind)', 'warning');
       return;
     }
@@ -1817,6 +1820,17 @@ function dealDamage(target, damage, addons = []) {
           addLog(`${e.name} reacts: +1 Enfeebled Overload added to intent!`, 'warning');
         }
       });
+    }
+  }
+
+  // Dead Eye: track consecutive hits on same target — update streak after hit confirmed
+  if (target !== combatState.player && !addons.includes('self')) {
+    const _deInv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+    if (_deInv.some(i => i.name === 'Dead Eye')) {
+      const targetId = target.id || target.name;
+      if (combatState._deadEyeTarget !== targetId) combatState._deadEyeBonus = 0;
+      combatState._deadEyeTarget = targetId;
+      combatState._deadEyeBonus = (combatState._deadEyeBonus || 0) + 1;
     }
   }
 
@@ -3874,6 +3888,17 @@ function resolveCardEffect(card, target, options = {}) {
       const tempStr = player.statuses['strength'] || 0;
       const strBonus = Math.floor((baseStr + tempStr) / 3) - Math.floor(baseStr / 3);
       if (strBonus > 0) dmg += strBonus;
+      // Dead Eye: apply accumulated consecutive-hit bonus if attacking the same target
+      if (target && target !== player) {
+        const _deInv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+        if (_deInv.some(i => i.name === 'Dead Eye')) {
+          const targetId = target.id || target.name;
+          if (combatState._deadEyeTarget === targetId) {
+            dmg += combatState._deadEyeBonus || 0;
+          }
+          // Targeting a new enemy: bonus will be reset in dealDamage when streak changes
+        }
+      }
       // Accuracy: Shiv cards deal bonus damage
       if (card.name === 'Shiv' && player.statuses['shiv_damage_bonus']) {
         dmg += player.statuses['shiv_damage_bonus'];

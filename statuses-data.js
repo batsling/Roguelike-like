@@ -575,7 +575,7 @@ var STATUSES_DATA = {
   },
   "blind": {
     "name": "Blind",
-    "description": "All Attacks have a 30% Miss Chance",
+    "description": "Each hit from Attack Cards have a 30% Miss Chance",
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
