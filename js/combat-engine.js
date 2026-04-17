@@ -1721,6 +1721,15 @@ function dealDamage(target, damage, addons = []) {
     addLog(`${blocked} damage blocked`, 'info');
   }
 
+  // Enemy Thorns — fires on hit (regardless of how much block absorbed), not just on health loss.
+  // Routes back through dealDamageToPlayer so player's block can absorb it.
+  // Only melee hits (not self-damage, not ranged).
+  const _thornsRanged = addons.some(a => a.toLowerCase() === 'ranged');
+  if (target !== combatState.player && target.statuses['thorns'] && !addons.includes('self') && !_thornsRanged) {
+    dealDamageToPlayer(target.statuses['thorns'], ['self'], null);
+    addLog(`Thorns: ${target.statuses['thorns']} damage reflected!`, 'warning');
+  }
+
   // Deal remaining damage to health
   if (remainingDamage > 0) {
     target.health -= remainingDamage;
@@ -1741,19 +1750,6 @@ function dealDamage(target, damage, addons = []) {
     // Pigment Rich — hitting this enemy adds a random pigment card to the player's hand
     if (target !== combatState.player && target.statuses['pigment_rich']) {
       addPigmentCardToHand();
-    }
-
-    // Check Thorns — melee attacker takes X damage back from the target
-    if (target.statuses['thorns'] && !addons.includes('self') && !addons.includes('Ranged')) {
-      const thornsDamage = target.statuses['thorns'];
-      if (target === combatState.player) {
-        // Player has thorns — not applicable here (attacker is dealt with in dealDamageToPlayer)
-      } else {
-        // Enemy has thorns — player (the attacker) takes thorns damage
-        combatState.player.health -= thornsDamage;
-        window.health = combatState.player.health;
-        addLog(`Thorns dealt ${thornsDamage} damage to player!`, 'warning');
-      }
     }
 
     // Check Shifting: loses Power equal to damage taken; Shackled so it regains that Power end-of-turn
@@ -3107,7 +3103,8 @@ function executeEnemyActions() {
  */
 function dealDamageToPlayer(damage, addons, enemy) {
   const player = combatState.player;
-  const isMeleeHit = !addons || (!addons.includes('Ranged') && !addons.includes('self'));
+  const _hasRanged = addons && addons.some(a => a.toLowerCase() === 'ranged');
+  const isMeleeHit = !addons || (!_hasRanged && !addons.includes('self'));
 
   // Blind: enemy has 30% miss chance on attacks (not self-damage)
   if (enemy && (!addons || !addons.includes('self')) &&
@@ -3171,6 +3168,13 @@ function dealDamageToPlayer(damage, addons, enemy) {
     damage = Math.max(1, damage - braceStacks);
   }
 
+  // Player Thorns — fires on hit (regardless of block), not just on health loss.
+  // Routes through dealDamage so enemy's block can absorb it. Only melee, not self/ranged.
+  if (player.statuses['thorns'] && enemy && isMeleeHit) {
+    dealDamage(enemy, player.statuses['thorns'], ['self']);
+    addLog(`Thorns: ${player.statuses['thorns']} damage reflected to ${enemy.name}!`, 'info');
+  }
+
   // Apply block
   let remaining = damage;
   if (player.block > 0) {
@@ -3222,12 +3226,6 @@ function dealDamageToPlayer(damage, addons, enemy) {
       addLog('Prayer Beads: +3 temporary Brace!', 'success');
     }
 
-    // Player Thorns — melee attacker takes X damage back
-    if (player.statuses['thorns'] && enemy && !addons.includes('Ranged')) {
-      const thornsDamage = player.statuses['thorns'];
-      enemy.health -= thornsDamage;
-      addLog(`Thorns dealt ${thornsDamage} damage to ${enemy.name}!`, 'info');
-    }
 
     // Rust — downgrade a random passive item when this enemy deals HP damage
     if (enemy && enemy.statuses['rust']) {
