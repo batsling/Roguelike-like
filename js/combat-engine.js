@@ -3328,7 +3328,7 @@ function processStatusEffects(target, timing) {
     }
 
     // Decay statuses
-    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration', 'double_damage', 'intangible', 'no_draw'];
+    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration', 'double_damage', 'intangible', 'no_draw', 'blind'];
     decayStatuses.forEach(status => {
       if (statuses[status]) {
         statuses[status]--;
@@ -3869,12 +3869,11 @@ function resolveCardEffect(card, target, options = {}) {
       // Player Power bonus adds to outgoing damage (Heavy Blade multiplies it)
       const playerPower = player.statuses['power'] || 0;
       if (playerPower !== 0) dmg += playerPower * _powerMultiplier;
-      // Temporary combat stat boosts (from pigment cards: +Strength/Intelligence/Dexterity/Charisma)
-      const statBonus = (player.statuses['strength']     || 0)
-                      + (player.statuses['intelligence']  || 0)
-                      + (player.statuses['dexterity']     || 0)
-                      + (player.statuses['charisma']      || 0);
-      if (statBonus !== 0) dmg += statBonus;
+      // Pigment strength: only boost damage when it crosses the next /3 threshold
+      const baseStr = (player.stats && player.stats.strength) || 0;
+      const tempStr = player.statuses['strength'] || 0;
+      const strBonus = Math.floor((baseStr + tempStr) / 3) - Math.floor(baseStr / 3);
+      if (strBonus > 0) dmg += strBonus;
       // Accuracy: Shiv cards deal bonus damage
       if (card.name === 'Shiv' && player.statuses['shiv_damage_bonus']) {
         dmg += player.statuses['shiv_damage_bonus'];

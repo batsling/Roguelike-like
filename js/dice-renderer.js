@@ -189,9 +189,7 @@ class DiceRendererInstance {
    * @returns {THREE.Group} D20 as a group of face meshes
    */
   createD20Mesh(diceData) {
-    // Create base icosahedron geometry - larger for better visibility
-    // Use subdivision level 1 for smoother, more rounded appearance
-    const baseGeometry = new THREE.IcosahedronGeometry(1.6, 1);
+    const baseGeometry = new THREE.IcosahedronGeometry(1.6, 0);
 
     // Convert to non-indexed geometry if needed
     const geometry = baseGeometry.index ? baseGeometry.toNonIndexed() : baseGeometry;
