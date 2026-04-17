@@ -87,18 +87,24 @@ function showCurseVerificationModal(onComplete) {
  * @param {Array} hastePerfectItems - Array of Haste "perfect game" items in inventory
  */
 function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, canLevelUp = false, characterData = null, hastePerfectItems = []) {
-  // Group curses by type
-  const blindnessCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('blindness'));
-  const hubrisCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('hubris'));
-  const devotionCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('devotion'));
-  const greedCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('greed'));
-  const impulseCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('impulse'));
-  const hasteCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('haste'));
-  const guiltCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('guilt'));
-  const dazedCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('dazed'));
-  const affectionCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('affection'));
-  const hunterCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('hunter'));
-  const dampCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('damp'));
+  // Group curses by type in one pass (avoids 11 separate filter calls)
+  const _curseTypes = ['blindness','hubris','devotion','greed','impulse','haste','guilt','dazed','affection','hunter','damp'];
+  const _curseGroups = {};
+  for (const c of cursesToVerify) {
+    const lower = c.name.toLowerCase();
+    for (const t of _curseTypes) { if (lower.includes(t)) { (_curseGroups[t] = _curseGroups[t] || []).push(c); } }
+  }
+  const blindnessCurses  = _curseGroups.blindness  || [];
+  const hubrisCurses     = _curseGroups.hubris      || [];
+  const devotionCurses   = _curseGroups.devotion    || [];
+  const greedCurses      = _curseGroups.greed       || [];
+  const impulseCurses    = _curseGroups.impulse      || [];
+  const hasteCurses      = _curseGroups.haste        || [];
+  const guiltCurses      = _curseGroups.guilt        || [];
+  const dazedCurses      = _curseGroups.dazed        || [];
+  const affectionCurses  = _curseGroups.affection    || [];
+  const hunterCurses     = _curseGroups.hunter       || [];
+  const dampCurses       = _curseGroups.damp         || [];
 
   // Build the modal HTML with compact styling
   let modalHTML = `

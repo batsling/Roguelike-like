@@ -1797,14 +1797,15 @@ function ensureDragAndKeyListeners() {
       _dragState.clone.style.top  = (e.clientY - _dragState.offsetY) + 'px';
     }
 
-    // Highlight enemy under cursor while dragging
+    // Highlight enemy under cursor while dragging — use elementFromPoint (O(1)) instead of
+    // querying every enemy card and calling getBoundingClientRect on each (O(n) per frame)
     if (_dragState.moved) {
-      document.querySelectorAll('.enemy-card').forEach(el => {
-        const r    = el.getBoundingClientRect();
-        const over = e.clientX >= r.left && e.clientX <= r.right
-                  && e.clientY >= r.top  && e.clientY <= r.bottom;
-        el.style.outline = over ? `3px solid ${C.goldBright}` : '';
-      });
+      const pointEl = document.elementFromPoint(e.clientX, e.clientY)?.closest('.enemy-card');
+      if (pointEl !== _dragState.hoveredEnemy) {
+        if (_dragState.hoveredEnemy) _dragState.hoveredEnemy.style.outline = '';
+        if (pointEl) pointEl.style.outline = `3px solid ${C.goldBright}`;
+        _dragState.hoveredEnemy = pointEl || null;
+      }
     }
   });
 
