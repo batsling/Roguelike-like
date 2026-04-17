@@ -597,6 +597,22 @@ function applyStatus(unit, statusName, amount) {
 }
 
 /**
+ * Roll a uniform [0,1) value with optional luck-based advantage.
+ * Advantage = roll twice, take the higher value (better for the player — harder to fall below a miss threshold).
+ * Each luck point gives a 10% independent chance to grant advantage.
+ * Use wherever a player-favourable chance roll should scale with Luck.
+ *
+ * @param {number} [luckVal] - Player luck (defaults to global `luck`)
+ * @returns {number} A value in [0,1)
+ */
+function rollWithLuckAdvantage(luckVal) {
+  const lv = (luckVal !== undefined) ? luckVal : (typeof luck !== 'undefined' ? luck : 0);
+  const hasAdvantage = lv > 0 && Math.random() < lv * 0.1;
+  const r = Math.random();
+  return hasAdvantage ? Math.max(r, Math.random()) : r;
+}
+
+/**
  * Evaluate turn-scaling formulas in a pattern description.
  * Replaces "N + (Turn Number - A x B)" with the computed value for the current turn.
  * Example: "30 + (Turn Number - 1 x 10)" on turn 3 → "50"
@@ -1596,10 +1612,10 @@ function dealDamage(target, damage, addons = []) {
   let dmg = (typeof damage === 'number' && !isNaN(damage)) ? damage : 0;
   if (dmg <= 0) return;
 
-  // Blind: player has 30% miss chance per hit (not self-damage)
+  // Blind: player has 30% miss chance per hit (not self-damage); luck gives advantage (roll twice, take higher)
   if (!addons.includes('self') && target !== combatState.player &&
       combatState.player.statuses && combatState.player.statuses['blind'] > 0) {
-    if (Math.random() < 0.3) {
+    if (rollWithLuckAdvantage() < 0.3) {
       if (combatState._hitLog !== undefined) {
         combatState._hitLog.push({ targetId: target.id || null, missed: true });
       }
