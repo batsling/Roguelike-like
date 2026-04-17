@@ -266,7 +266,8 @@ function _eventModal(content) {
       position:relative;
       background:#1a1a2e;
       border-radius:12px;
-      max-width:700px;
+      max-width:760px;
+      width:92vw;
       margin:0 auto;
       overflow:hidden;
     ">
@@ -282,20 +283,34 @@ function _imageStrip(eventImageSrc) {
     <div style="
       display:flex;
       gap:0;
-      height:160px;
-      overflow:hidden;
+      max-height:320px;
       border-bottom:2px solid #333;
+      background:#0d0d1a;
     ">
       <div style="
         flex:1;
-        background:url('${eventImageSrc}') center/cover no-repeat;
+        display:flex;
+        align-items:center;
+        justify-content:center;
         min-width:0;
-      "></div>
+        overflow:hidden;
+      ">
+        <img src="${eventImageSrc}" alt="" style="
+          max-height:320px;
+          max-width:100%;
+          width:auto;
+          height:auto;
+          object-fit:contain;
+          display:block;
+          image-rendering:pixelated;
+        " onerror="this.style.display='none'">
+      </div>
       ${playerImg ? `<div style="
-        width:120px;
+        width:110px;
         flex-shrink:0;
         background:url('${playerImg}') center top/cover no-repeat;
         border-left:2px solid #333;
+        min-height:220px;
       "></div>` : ''}
     </div>
   `;

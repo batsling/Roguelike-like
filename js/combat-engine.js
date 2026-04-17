@@ -1589,11 +1589,13 @@ function dealDamage(target, damage, addons = []) {
   let dmg = (typeof damage === 'number' && !isNaN(damage)) ? damage : 0;
   if (dmg <= 0) return;
 
-  // Blind: player has 30% miss chance on attacks (not self-damage)
+  // Blind: player has 30% miss chance per hit (not self-damage)
   if (!addons.includes('self') && target !== combatState.player &&
       combatState.player.statuses && combatState.player.statuses['blind'] > 0) {
     if (Math.random() < 0.3) {
-      combatState._lastMiss = 'player';
+      if (combatState._hitLog !== undefined) {
+        combatState._hitLog.push({ targetId: target.id || null, missed: true });
+      }
       addLog('Attack missed! (Blind)', 'warning');
       return;
     }

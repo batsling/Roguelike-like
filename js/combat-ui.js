@@ -2079,15 +2079,11 @@ function captureHPSnapshot(combat) {
 // Show floating +/- numbers based on HP diff between snapshot and current state
 // skipEnemyDmg: pass true when replayHits will handle per-hit enemy damage numbers
 function showHPDiffs(oldSnap, combat, skipEnemyDmg = false) {
-  // Show MISS! popup if an attack was missed due to Blind
-  if (combat._lastMiss) {
-    if (combat._lastMiss === 'player') {
-      // Player missed — show on first living enemy
-      const firstEnemy = (combat.enemies || []).find(e => e.health > 0);
-      showMissFloat(firstEnemy ? `enemy-card-${firstEnemy.id}` : null);
-    } else {
-      showMissFloat('combat-player-zone');
-    }
+  // Show MISS! popup for enemy misses only (player misses are per-hit via replayHits)
+  if (combat._lastMiss === 'enemy') {
+    showMissFloat('combat-player-zone');
+    combat._lastMiss = null;
+  } else if (combat._lastMiss) {
     combat._lastMiss = null;
   }
 
@@ -2370,12 +2366,17 @@ function showTargetedFloat(targetId, dmg) {
 
 // Play back a multi-hit log with 160ms between each hit, then call onDone
 function replayHits(hitLog, onDone) {
-  const hits = (hitLog || []).filter(h => h && h.dmg > 0);
-  if (hits.length <= 1) { onDone && onDone(); return; }
+  const hits = (hitLog || []).filter(h => h && (h.dmg > 0 || h.missed));
+  if (hits.length === 0) { onDone && onDone(); return; }
   let i = 0;
   function next() {
     if (i >= hits.length) { onDone && onDone(); return; }
-    showTargetedFloat(hits[i].targetId, hits[i].dmg);
+    const h = hits[i];
+    if (h.missed) {
+      showMissFloat(h.targetId ? `enemy-card-${h.targetId}` : null);
+    } else {
+      showTargetedFloat(h.targetId, h.dmg);
+    }
     i++;
     setTimeout(next, 160);
   }
