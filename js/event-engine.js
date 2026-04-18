@@ -177,7 +177,11 @@ function applyEventEffects(effects) {
 
       case 'item_tagged': {
         const tag = (effect.tag || '').toLowerCase();
-        const pool = (typeof items !== 'undefined' ? items : []).filter(i =>
+        // Use ITEMS_DATA directly — it's the static source guaranteed to have tags.
+        // Fall back to the runtime `items` array if ITEMS_DATA isn't present.
+        const _src = typeof ITEMS_DATA !== 'undefined' ? ITEMS_DATA
+                   : (typeof items !== 'undefined' ? items : []);
+        const pool = _src.filter(i =>
           i.rarity && i.rarity !== 'N/A' &&
           Array.isArray(i.tags) && i.tags.some(t => t.toLowerCase() === tag)
         );
@@ -186,7 +190,7 @@ function applyEventEffects(effects) {
           if (typeof acquireItem === 'function') acquireItem(item);
           lines.push(`Item: ${item.name}`);
         } else {
-          lines.push(`No ${tag} item found`);
+          lines.push(`No "${tag}" item found`);
         }
         break;
       }
