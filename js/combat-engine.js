@@ -3312,15 +3312,16 @@ function processStatusEffects(target, timing) {
   const statuses = target.statuses;
 
   if (timing === 'start') {
-    // Burn deals damage at start (skipped if Immune to Burn)
+    // Burn deals damage at start (skipped if Immune to Burn); goes through block
     if (statuses['burn'] && !statuses['immune_burn']) {
       const burnDamage = 3 * statuses['burn'];
-      // Check Oiled (double burn damage)
       const multiplier = statuses['oiled'] ? 2 : 1;
-      target.health -= burnDamage * multiplier;
-      addLog(`Burn dealt ${burnDamage * multiplier} damage to ${target.name || 'Player'}`, 'danger');
+      const total = burnDamage * multiplier;
+      addLog(`Burn dealt ${total} damage to ${target.name || 'Player'}`, 'danger');
       if (target === combatState.player) {
-        window.health = target.health;
+        dealDamageToPlayer(total, ['self'], null);
+      } else {
+        dealDamage(target, total, ['self']);
       }
     }
 
