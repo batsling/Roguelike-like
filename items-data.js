@@ -1108,7 +1108,7 @@ var ITEMS_DATA = [
     "description": "Gain +2 Strength and +1 Luck",
     "game": "The Binding of Isaac",
     "tags": ["eye", "glass"],
-    "image": "images/GlassEye.png",
+    "image": "images/items/GlassEye.png",
     "unlockCondition": null
   },
   {

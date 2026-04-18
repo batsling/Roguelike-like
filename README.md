@@ -1013,9 +1013,10 @@ Paste any of these into an outcome's `effects` array (it's always an array, even
 #### Random item with a tag
 ```javascript
 { type: 'item_tagged', tag: 'coin' }  // award a random item tagged 'coin'
-{ type: 'item_tagged', tag: 'eye' }
+{ type: 'item_tagged', tag: 'eye' }   // award a random item tagged 'eye'
 ```
-The tag must match one of the item's tags in `items-data.js`.
+The tag must match one of the item's `tags` array values in `items-data.js` (case-insensitive).
+Items currently tagged `coin`: **Old Coin**. Items tagged `eye`: **Dead Eye**, **Glass Eye**.
 
 #### Curse (named)
 ```javascript
