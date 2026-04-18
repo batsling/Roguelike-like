@@ -5680,15 +5680,6 @@ function showCardRewardModal(onComplete, tagFilter = null) {
       : null;
     if (deckDef && deckDef.tagFilter) tagFilter = deckDef.tagFilter;
   }
-  // Fallback: use the character's own class tag so class-specific cards (e.g. Defect/Claw)
-  // never appear for characters with a defined card pool, even when deck is 'Random'.
-  if (tagFilter === null && typeof gameState !== 'undefined' && gameState.character) {
-    const _ch = typeof PLAYER_CHARACTERS !== 'undefined' ? PLAYER_CHARACTERS[gameState.character] : null;
-    if (_ch && _ch.levelUpReward && _ch.levelUpReward.type === 'card' && _ch.levelUpReward.tag) {
-      tagFilter = _ch.levelUpReward.tag;
-    }
-  }
-
   const rarityColor = (rarity) => {
     switch (rarity) {
       case 'Rare':     return '#9b59b6';
