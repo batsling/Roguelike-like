@@ -76,6 +76,30 @@ const OUTCOME_LABELS = {
 const STAT_ICONS = {
   strength: '💪', dexterity: '🤸', intelligence: '🧠', charisma: '💬'
 };
+
+/** Convert an effects array into a short human-readable summary string. */
+function _describeEffects(effects) {
+  if (!effects || !effects.length) return 'Nothing';
+  const parts = effects.map(e => {
+    switch (e.type) {
+      case 'none':            return null;
+      case 'heal':            return `+${e.value} HP`;
+      case 'damage':          return `-${e.value} HP`;
+      case 'gold':            return (e.value >= 0 ? `+${e.value}` : `${e.value}`) + ' Gold';
+      case 'gold_range':      return `+${e.min}–${e.max} Gold`;
+      case 'item_tagged':     return `Random ${e.tag} item`;
+      case 'curse':           return `Curse: ${e.value}`;
+      case 'curse_difficulty': return `Curse: ${e.curseBase} (scaled to difficulty)`;
+      case 'combat_status':   return `${e.stacks || 1}× ${e.status}`;
+      case 'combat_flag':
+        if (e.flag === 'ambush')   return 'Ambush — draw +2 cards turn 1';
+        if (e.flag === 'ambushed') return 'Ambushed — draw −2 cards turn 1';
+        return e.flag;
+      default:                return null;
+    }
+  }).filter(Boolean);
+  return parts.length ? parts.join(', ') : 'Nothing';
+}
 function _statLabel(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
 function _getStat(statName) {
@@ -347,14 +371,67 @@ function _showChoiceScreen(event, onContinue) {
       </button>`;
   }).join('');
 
+  // Build the outcomes preview panel (hidden by default)
+  const ORDER = ['crit_good', 'good', 'bad', 'crit_bad'];
+  const outcomesHTML = event.choices.map((choice, i) => {
+    const icon = STAT_ICONS[choice.stat] || '🎲';
+    const rows = ORDER.map(key => {
+      const outcome = choice.outcomes && choice.outcomes[key];
+      if (!outcome) return '';
+      const color  = OUTCOME_COLORS[key];
+      const label  = OUTCOME_LABELS[key];
+      const fx     = _describeEffects(outcome.effects);
+      const desc   = _fillName(outcome.description || '');
+      return `
+        <div style="display:flex;gap:10px;align-items:baseline;padding:5px 0;border-bottom:1px solid #2a2a3a;">
+          <span style="color:${color};font-size:11px;font-weight:bold;min-width:110px;flex-shrink:0;">${label}</span>
+          <span style="color:#bbb;font-size:12px;flex:1;line-height:1.4;">${desc}</span>
+          <span style="color:${color};font-size:11px;white-space:nowrap;flex-shrink:0;">${fx}</span>
+        </div>`;
+    }).join('');
+    return `
+      <div style="margin-bottom:14px;">
+        <div style="color:#e67e22;font-size:12px;font-weight:bold;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #444;">
+          ${icon} ${choice.text}
+        </div>
+        ${rows}
+      </div>`;
+  }).join('');
+
   _eventModal(`
     ${_imageStrip(event.image)}
     <div style="padding:22px 26px;">
       <h2 style="color:#c39bd3;margin:0 0 10px;font-size:20px;">❓ ${event.name}</h2>
       <p style="color:#ccc;font-size:14px;line-height:1.6;margin:0 0 18px;">${desc}</p>
       ${choicesHTML}
+      <div style="text-align:right;margin-top:4px;">
+        <button id="ev-outcomes-toggle" style="
+          background:none;border:1px solid #555;border-radius:6px;
+          color:#aaa;font-size:12px;padding:5px 12px;cursor:pointer;
+          transition:color 0.15s,border-color 0.15s;
+        "
+        onmouseover="this.style.color='#eee';this.style.borderColor='#888'"
+        onmouseout="this.style.color='#aaa';this.style.borderColor='#555'">
+          👁 Show Outcomes
+        </button>
+      </div>
+      <div id="ev-outcomes-panel" style="
+        display:none;margin-top:14px;padding:14px 16px;
+        background:#13131f;border:1px solid #333;border-radius:8px;
+      ">
+        ${outcomesHTML}
+      </div>
     </div>
   `);
+
+  document.getElementById('ev-outcomes-toggle').addEventListener('click', function() {
+    const panel = document.getElementById('ev-outcomes-panel');
+    const open  = panel.style.display === 'none';
+    panel.style.display  = open ? 'block' : 'none';
+    this.textContent     = open ? '👁 Hide Outcomes' : '👁 Show Outcomes';
+    this.style.color     = open ? '#c39bd3' : '#aaa';
+    this.style.borderColor = open ? '#c39bd3' : '#555';
+  });
 
   document.querySelectorAll('.ev-choice').forEach(btn => {
     btn.addEventListener('click', () => {
