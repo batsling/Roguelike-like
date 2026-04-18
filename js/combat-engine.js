@@ -3312,11 +3312,9 @@ function processStatusEffects(target, timing) {
   const statuses = target.statuses;
 
   if (timing === 'start') {
-    // Burn deals damage at start (skipped if Immune to Burn); goes through block
+    // Burn deals a flat 3 damage (not scaled by stacks); goes through block
     if (statuses['burn'] && !statuses['immune_burn']) {
-      const burnDamage = 3 * statuses['burn'];
-      const multiplier = statuses['oiled'] ? 2 : 1;
-      const total = burnDamage * multiplier;
+      const total = statuses['oiled'] ? 6 : 3;
       addLog(`Burn dealt ${total} damage to ${target.name || 'Player'}`, 'danger');
       if (target === combatState.player) {
         dealDamageToPlayer(total, ['self'], null);

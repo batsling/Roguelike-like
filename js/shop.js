@@ -202,8 +202,25 @@ function showShopModal(purchasedIndices = []) {
     const charTag = (charData && charData.levelUpReward && charData.levelUpReward.type === 'card')
       ? charData.levelUpReward.tag : null;
 
+    // Build the set of all known class-specific tags so the outside pool never
+    // shows another character's class cards (e.g. Claw/defect for a Silent run).
+    const _classTags = new Set(['defect']); // hardcoded extras without a character entry yet
+    if (typeof PLAYER_CHARACTERS !== 'undefined') {
+      Object.values(PLAYER_CHARACTERS).forEach(ch => {
+        if (ch.levelUpReward && ch.levelUpReward.type === 'card' && ch.levelUpReward.tag) {
+          _classTags.add(ch.levelUpReward.tag);
+        }
+      });
+    }
+
     const inPool  = charTag ? allCards.filter(c => Array.isArray(c.tags) && c.tags.includes(charTag)) : allCards;
-    const outPool = charTag ? allCards.filter(c => !(Array.isArray(c.tags) && c.tags.includes(charTag))) : [];
+    // Outside pool: not in character's class AND not in any other class-specific pool
+    const outPool = charTag
+      ? allCards.filter(c => {
+          const tags = Array.isArray(c.tags) ? c.tags : [];
+          return !tags.includes(charTag) && !tags.some(t => _classTags.has(t));
+        })
+      : [];
 
     const pickRandom = (pool, count, alreadyPicked) => {
       const picked = [];

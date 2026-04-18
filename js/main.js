@@ -5673,12 +5673,20 @@ function showDiceLevelUpChoiceModal(characterKey, onComplete) {
  * @param {Function} onComplete - Called after a card is chosen or skipped
  */
 function showCardRewardModal(onComplete, tagFilter = null) {
-  // If no explicit tag was passed, derive from the run's chosen deck
+  // Derive tagFilter from the run's chosen deck if not explicitly passed
   if (tagFilter === null && typeof gameState !== 'undefined' && gameState.selectedDeck) {
     const deckDef = (typeof AVAILABLE_DECKS !== 'undefined')
       ? AVAILABLE_DECKS.find(d => d.id === gameState.selectedDeck)
       : null;
     if (deckDef && deckDef.tagFilter) tagFilter = deckDef.tagFilter;
+  }
+  // Fallback: use the character's own class tag so class-specific cards (e.g. Defect/Claw)
+  // never appear for characters with a defined card pool, even when deck is 'Random'.
+  if (tagFilter === null && typeof gameState !== 'undefined' && gameState.character) {
+    const _ch = typeof PLAYER_CHARACTERS !== 'undefined' ? PLAYER_CHARACTERS[gameState.character] : null;
+    if (_ch && _ch.levelUpReward && _ch.levelUpReward.type === 'card' && _ch.levelUpReward.tag) {
+      tagFilter = _ch.levelUpReward.tag;
+    }
   }
 
   const rarityColor = (rarity) => {
