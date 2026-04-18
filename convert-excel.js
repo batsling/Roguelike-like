@@ -325,7 +325,7 @@ const enemies = enemiesData.map(row => {
 
   // Parse weight - may be N/A for spawn-only enemies
   const rawWeight = row['Weight'];
-  const weight = (rawWeight !== undefined && rawWeight !== 'N/A' && rawWeight !== '') ? parseInt(rawWeight) : null;
+  const weight = (rawWeight !== undefined && rawWeight !== 'N/A' && rawWeight !== '') ? parseFloat(rawWeight) : null;
 
   // Parse difficulty - may be N/A for spawn-only enemies
   const difficulty = (row['Difficulty'] && row['Difficulty'] !== 'N/A') ? row['Difficulty'] : null;

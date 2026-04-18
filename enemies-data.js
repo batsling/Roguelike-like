@@ -943,7 +943,7 @@ var ENEMIES_DATA = [
     ],
     "imageUrl": "images/enemies/Bones.png",
     "variantOf": null,
-    "tag": "undead"
+    "tag": "undead, skeleton"
   },
   {
     "name": "Fanatic",
@@ -1408,15 +1408,74 @@ var ENEMIES_DATA = [
     "game": "Mewgenics",
     "location": "Undead",
     "dice": [
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] }
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
     ],
     "imageUrl": "images/enemies/Scary.png",
     "variantOf": null,
     "tag": "undead, ghost"
+  },
+  {
+    "name": "Fly",
+    "type": "Intelligence",
+    "difficulty": "Low",
+    "weight": 0.5,
+    "hpMin": 4,
+    "hpMax": 6,
+    "ability": "N/A",
+    "pattern": "Always: 2 Dmg Melee",
+    "game": "Mewgenics",
+    "location": "N/A",
+    "dice": [
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
+    ],
+    "imageUrl": "images/enemies/Fly.png",
+    "variantOf": null,
+    "tag": "bug"
   }
 ];

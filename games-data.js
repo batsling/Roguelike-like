@@ -908,7 +908,7 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Cross Blitz"
     ],
-    "coverImage": "images/covers/candies-n-curses.jpg"
+    "coverImage": "images/covers/candies-'n-curses.jpg"
   },
   {
     "name": "Captain Forever Remix",
@@ -7214,7 +7214,7 @@ var GAMES_DATA = [
     "connected": false,
     "influenced": false,
     "tags": [
-      "marine"
+      "maritime"
     ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/we-need-to-go-deeper.jpg"

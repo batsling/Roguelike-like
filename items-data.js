@@ -15,6 +15,18 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Bag o' Glitter",
+    "rarity": "Uncommon",
+    "type": "Weapon",
+    "description": "Add the Card \"Bag o' Glitter\" into your Deck. If you obtain something glittery at least one time, \"Bag o' Glitter\" Gains (+1/+2) Blind",
+    "game": "Mewgenics",
+    "tags": [
+      "bag"
+    ],
+    "image": "images/items/BagO'Glitter.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Ballistic Boots",
     "rarity": "Rare",
     "type": "Passive",
@@ -305,6 +317,18 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Dead Eye",
+    "rarity": "Rare",
+    "type": "Incremental",
+    "description": "Every time you hit with an Attack on the same target, every Attack Gains +1 Dmg. Bonus goes away when you miss or change targets.",
+    "game": "The Binding of Isaac",
+    "tags": [
+      "eye"
+    ],
+    "image": "images/items/DeadEye.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Death Orb",
     "rarity": "Uncommon",
     "type": "Triggered",
@@ -412,6 +436,19 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Glass Eye",
+    "rarity": "Common",
+    "type": "Passive",
+    "description": "Gain +2 Strength and +1 Luck",
+    "game": "The Binding of Isaac",
+    "tags": [
+      "eye",
+      "glass"
+    ],
+    "image": "images/items/GlassEye.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Golden Beetle",
     "rarity": "Rare",
     "type": "Triggered",
@@ -456,6 +493,18 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Holy Mantle",
+    "rarity": "Legendary",
+    "type": "Triggered",
+    "description": "At the start of combat, Gain +1 Holy Shield",
+    "game": "The Binding of Isaac",
+    "tags": [
+      "holy"
+    ],
+    "image": "images/items/HolyMantle.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Horn Cleat",
     "rarity": "Uncommon",
     "type": "Passive",
@@ -494,6 +543,16 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Keeper's Sack",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "Gain 5 Gold. Whenever you spend 10 Gold, Gain +1 to a Random Stat",
+    "game": "The Binding of Isaac",
+    "tags": [],
+    "image": "images/items/Keeper'sSack.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Leech Brood",
     "rarity": "Rare",
     "type": "Triggered",
@@ -521,7 +580,7 @@ var ITEMS_DATA = [
     "name": "Lucky Toe",
     "rarity": "Common",
     "type": "Passive",
-    "description": "Gain +1 Luck",
+    "description": "Gain +2 Luck",
     "game": "The Binding of Isaac",
     "tags": [],
     "image": "images/items/LuckyToe.png",
@@ -818,6 +877,18 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Sacred Orb",
+    "rarity": "Legendary",
+    "type": "Triggered",
+    "description": "Whenever an item spawns, if it was Common, reroll it. If it was an Uncommon, there is a 25% chance to reroll it.",
+    "game": "The Binding of Isaac",
+    "tags": [
+      "holy"
+    ],
+    "image": "images/items/SacredOrb.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Scroll of Teleportation",
     "rarity": "Common",
     "type": "Usable",
@@ -1082,65 +1153,15 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "Holy Mantle",
-    "rarity": "Legendary",
-    "type": "Triggered",
-    "description": "At the start of combat, Gain +1 Holy Shield",
-    "game": "The Binding of Isaac",
-    "tags": ["holy"],
-    "image": "images/items/HolyMantle.png",
-    "unlockCondition": null
-  },
-  {
-    "name": "Dead Eye",
-    "rarity": "Rare",
-    "type": "Incremental",
-    "description": "Every time you hit with an Attack on the same target, every Attack Gains +1 Dmg. Bonus goes away when you miss or change targets.",
-    "game": "The Binding of Isaac",
-    "tags": ["eye"],
-    "image": "images/items/DeadEye.png",
-    "unlockCondition": null
-  },
-  {
-    "name": "Glass Eye",
-    "rarity": "Common",
-    "type": "Passive",
-    "description": "Gain +2 Strength and +1 Luck",
-    "game": "The Binding of Isaac",
-    "tags": ["eye", "glass"],
-    "image": "images/items/GlassEye.png",
-    "unlockCondition": null
-  },
-  {
-    "name": "Sacred Orb",
-    "rarity": "Legendary",
-    "type": "Triggered",
-    "description": "Whenever an item spawns, if it was Common, reroll it. If it was an Uncommon, there is a 25% chance to reroll it.",
-    "game": "The Binding of Isaac",
-    "tags": ["holy"],
-    "image": "images/items/SacredOrb.png",
-    "unlockCondition": null
-  },
-  {
-    "name": "Bag o' Glitter",
+    "name": "Leeching Seed",
     "rarity": "Uncommon",
-    "type": "Weapon",
-    "description": "Add the Card \"Bag o' Glitter\" into your Deck. If you obtain something glittery at least one time, \"Bag o' Glitter\" Gains (+1/+2) Blind",
-    "game": "Mewgenics",
+    "type": "Passive",
+    "description": "Your Strikes Gain Heal 1",
+    "game": "Risk of Rain 2",
     "tags": [
-      "bag"
+      "seed"
     ],
-    "image": "images/items/BagO'Glitter.png",
-    "unlockCondition": null
-  },
-  {
-    "name": "Keeper's Sack",
-    "rarity": "Rare",
-    "type": "Triggered",
-    "description": "Gain 5 Gold. Whenever you spend 10 Gold, Gain +1 to a Random Stat",
-    "game": "The Binding of Isaac",
-    "tags": ["bag"],
-    "image": "images/items/KeepersSack.png",
+    "image": "images/items/LeechingSeed.png",
     "unlockCondition": null
   }
 ];

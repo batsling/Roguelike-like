@@ -573,6 +573,17 @@ var STATUSES_DATA = {
     "preference": "Negative",
     "imageUrl": "images/statuses/Fear.png"
   },
+  "doom": {
+    "name": "Doom",
+    "description": "At the end the target's turn, if that target has less health than it has Doom, it will die",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Doom.png"
+  },
   "blind": {
     "name": "Blind",
     "description": "Each hit from Attack Cards have a 30% Miss Chance",
@@ -583,16 +594,5 @@ var STATUSES_DATA = {
     "who": "All",
     "preference": "Negative",
     "imageUrl": "images/statuses/Blind.png"
-  },
-  "doom": {
-    "name": "Doom",
-    "description": "At the end of the target's turn, if that target has less health than it has Doom, it will die",
-    "type": "Debuff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "None",
-    "who": "All",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Doom.png"
   }
 };

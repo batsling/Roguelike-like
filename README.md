@@ -995,10 +995,23 @@ Paste any of these into an outcome's `effects` array (it's always an array, even
 { type: 'none' }
 ```
 
-#### Heal HP
+#### Heal HP (flat)
 ```javascript
 { type: 'heal', value: 5 }   // restore 5 HP (capped at max)
 ```
+
+#### Heal HP (percentage of max)
+```javascript
+{ type: 'heal_percent', value: 50 }  // restore 50% of max HP
+{ type: 'heal_percent', value: 20 }  // restore 20% of max HP
+```
+Heals `round(maxHP × value/100)`, capped at missing HP.
+
+#### Spawn enemies in next fight (on top of weight limit)
+```javascript
+{ type: 'spawn_enemies', enemy: 'Fly', min: 6, max: 8 }
+```
+Adds `min`–`max` copies of the named enemy to the next combat encounter, bypassing the normal weight budget. The enemy name must match an entry in `enemies-data.js`.
 
 #### Gold (fixed)
 ```javascript
@@ -1016,7 +1029,7 @@ Paste any of these into an outcome's `effects` array (it's always an array, even
 { type: 'item_tagged', tag: 'eye' }   // award a random item tagged 'eye'
 ```
 The tag must match one of the item's `tags` array values in `items-data.js` (case-insensitive).
-Items currently tagged `coin`: **Old Coin**. Items tagged `eye`: **Dead Eye**, **Glass Eye**.
+Items currently tagged `coin`: **Old Coin**. Items tagged `eye`: **Dead Eye**, **Glass Eye**. Items tagged `seed`: **Leeching Seed**.
 
 #### Curse (named)
 ```javascript
@@ -1066,8 +1079,11 @@ effects: [
 | `dexterity` | Dexterity | 🤸 |
 | `intelligence` | Intelligence | 🧠 |
 | `charisma` | Charisma | 💬 |
+| `constitution` | Constitution | 🫀 |
 
 The player's stat value is added as a flat bonus to the d20 roll. Higher stat → lower effective target number shown to the player.
+
+**Constitution** is derived from gained max HP during the run: `floor((currentMaxHP − startingMaxHP) / 5)`. Starts at 0; every 5 max HP gained = +1 constitution. Constitution is displayed on the event choice screen whenever it's above 0.
 
 **Difficulty thresholds by location:**
 

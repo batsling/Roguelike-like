@@ -156,5 +156,13 @@ var BINGO_GOALS_DATA = [
   {
     "goal": "Use elements to your advantage",
     "difficulty": "normal"
+  },
+  {
+    "goal": "Steal 3 times in one game",
+    "difficulty": "normal"
+  },
+  {
+    "goal": "Get 100%+ crit chance",
+    "difficulty": "normal"
   }
 ];

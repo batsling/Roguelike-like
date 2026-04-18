@@ -632,6 +632,7 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     currentY: 120,
     character: selectedCharacter,
     selectedDeck: selectedDeck || 'Random',
+    startingMaxHealth: maxHealth,
     traits: characterTraits,
     strength: strength,
     dexterity: dexterity,
@@ -4225,6 +4226,18 @@ function showDiceCombatModal() {
   if (!encounterEnemies || encounterEnemies.length === 0) {
     console.error('No matching enemies found');
     return;
+  }
+
+  // Append any event-spawned enemies (on top of the weight budget)
+  if (Array.isArray(gameState.pendingSpawnEnemies) && gameState.pendingSpawnEnemies.length > 0) {
+    for (const spawn of gameState.pendingSpawnEnemies) {
+      const tmpl = ENEMIES_DATA.find(e => e.name.toLowerCase() === (spawn.enemy || '').toLowerCase());
+      if (tmpl) {
+        const count = spawn.min + Math.floor(Math.random() * (spawn.max - spawn.min + 1));
+        for (let s = 0; s < count; s++) encounterEnemies.push(tmpl);
+      }
+    }
+    gameState.pendingSpawnEnemies = [];
   }
 
   // Use the first enemy as the primary (multi-enemy support via array passed to initCombat)

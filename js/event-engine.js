@@ -74,8 +74,15 @@ const OUTCOME_LABELS = {
   crit_good: 'Critical Success'
 };
 const STAT_ICONS = {
-  strength: '💪', dexterity: '🤸', intelligence: '🧠', charisma: '💬'
+  strength: '💪', dexterity: '🤸', intelligence: '🧠', charisma: '💬', constitution: '🫀'
 };
+
+function _getConstitution() {
+  if (typeof gameState === 'undefined') return 0;
+  const base = gameState.startingMaxHealth || gameState.maxHealth || 0;
+  const cur  = gameState.maxHealth || 0;
+  return Math.floor(Math.max(0, cur - base) / 5);
+}
 
 /** Convert an effects array into a short human-readable summary string. */
 function _describeEffects(effects) {
@@ -91,6 +98,11 @@ function _describeEffects(effects) {
       case 'curse':           return `Curse: ${e.value}`;
       case 'curse_difficulty': return `Curse: ${e.curseBase} (scaled to difficulty)`;
       case 'combat_status':   return `${e.stacks || 1}× ${e.status}`;
+      case 'heal_percent':    return `+${e.value}% Max HP`;
+      case 'spawn_enemies': {
+        const r = e.min === e.max ? e.min : `${e.min}–${e.max}`;
+        return `+${r} ${e.enemy} next fight`;
+      }
       case 'combat_flag':
         if (e.flag === 'ambush')   return 'Ambush — draw +2 cards turn 1';
         if (e.flag === 'ambushed') return 'Ambushed — draw −2 cards turn 1';
@@ -102,7 +114,10 @@ function _describeEffects(effects) {
 }
 function _statLabel(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
+function _getConstitutionBonus() { return _getConstitution(); }
+
 function _getStat(statName) {
+  if ((statName || '').toLowerCase() === 'constitution') return _getConstitution();
   const map = {
     strength:     typeof strength     !== 'undefined' ? strength     : 0,
     dexterity:    typeof dexterity    !== 'undefined' ? dexterity    : 0,
@@ -132,6 +147,28 @@ function applyEventEffects(effects) {
             lines.push(`+${effect.value} HP`);
           }
         }
+        break;
+      }
+
+      case 'heal_percent': {
+        if (typeof health !== 'undefined' && typeof maxHealth !== 'undefined') {
+          const amount = Math.round(maxHealth * (effect.value / 100));
+          const gain   = Math.min(amount, maxHealth - health);
+          if (gain > 0) {
+            health = Math.min(maxHealth, health + gain);
+            if (typeof gameState !== 'undefined') gameState.health = health;
+            if (typeof updateTopBar === 'function') updateTopBar();
+          }
+          lines.push(`+${gain} HP (${effect.value}% of max)`);
+        }
+        break;
+      }
+
+      case 'spawn_enemies': {
+        if (!gameState.pendingSpawnEnemies) gameState.pendingSpawnEnemies = [];
+        gameState.pendingSpawnEnemies.push({ enemy: effect.enemy, min: effect.min, max: effect.max });
+        const range = effect.min === effect.max ? effect.min : `${effect.min}–${effect.max}`;
+        lines.push(`Next fight: +${range} ${effect.enemy}`);
         break;
       }
 
@@ -402,11 +439,17 @@ function _showChoiceScreen(event, onContinue) {
       </div>`;
   }).join('');
 
+  const con = _getConstitution();
+  const conBar = con > 0
+    ? `<div style="color:#7ec8e3;font-size:11px;margin-bottom:12px;">🫀 Constitution ${con} — +${con} to constitution rolls</div>`
+    : '';
+
   _eventModal(`
     ${_imageStrip(event.image)}
     <div style="padding:22px 26px;">
       <h2 style="color:#c39bd3;margin:0 0 10px;font-size:20px;">❓ ${event.name}</h2>
-      <p style="color:#ccc;font-size:14px;line-height:1.6;margin:0 0 18px;">${desc}</p>
+      <p style="color:#ccc;font-size:14px;line-height:1.6;margin:0 0 10px;">${desc}</p>
+      ${conBar}
       ${choicesHTML}
       <div style="text-align:right;margin-top:4px;">
         <button id="ev-outcomes-toggle" style="
