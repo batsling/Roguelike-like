@@ -3949,10 +3949,12 @@ function resolveCardEffect(card, target, options = {}) {
         for (let t = 0; t < times; t++) dealDamage(target, dmg, hitAddons);
       }
 
-      // Strike Dummy: Attack cards deal +3 damage
-      if ((card.type || '').toLowerCase() === 'attack') {
-        const invSD = typeof window.inventory !== 'undefined' ? window.inventory : [];
-        const strikeDummyCount = invSD.filter(i => i.name === 'Strike Dummy').reduce((n, i) => n + (i.quantity || 1), 0);
+      // Strike-only item triggers (card named exactly "Strike")
+      if ((card.name || '').toLowerCase() === 'strike') {
+        const inv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+
+        // Strike Dummy: +3 damage per copy
+        const strikeDummyCount = inv.filter(i => i.name === 'Strike Dummy').reduce((n, i) => n + (i.quantity || 1), 0);
         if (strikeDummyCount > 0) {
           const bonus = 3 * strikeDummyCount;
           if (isAoECard) {
@@ -3961,35 +3963,32 @@ function resolveCardEffect(card, target, options = {}) {
             dealDamage(target, bonus);
           }
         }
-      }
 
-      // Strike triggers (Attack cards dealing direct damage)
-      if ((card.type || '').toLowerCase() === 'attack' && target) {
-        const inv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+        if (target) {
+          // Bird Head: inflict Soul Link
+          if (inv.some(i => i.name === 'Bird Head')) {
+            target.statuses['soul_link'] = 1;
+            addLog(`Bird Head: ${target.name} is Soul Linked!`, 'warning');
+          }
 
-        // Bird Head: Strikes inflict Soul Link
-        if (inv.some(i => i.name === 'Bird Head')) {
-          target.statuses['soul_link'] = 1;
-          addLog(`Bird Head: ${target.name} is Soul Linked!`, 'warning');
+          // Brass Knuckles: inflict Bruise
+          if (inv.some(i => i.name === 'Brass Knuckles')) {
+            target.statuses['bruise'] = (target.statuses['bruise'] || 0) + 1;
+            addLog(`Brass Knuckles: ${target.name} gains 1 Bruise!`, 'warning');
+          }
+
+          // Jar of Leeches: inflict Leeches
+          if (inv.some(i => i.name === 'Jar of Leeches')) {
+            target.statuses['leeches'] = (target.statuses['leeches'] || 0) + 1;
+            target.statuses['leeches_owner'] = 'player';
+            addLog(`Jar of Leeches: ${target.name} gains 1 Leeches!`, 'warning');
+          }
         }
 
-        // Brass Knuckles: Strikes inflict Bruise
-        if (inv.some(i => i.name === 'Brass Knuckles')) {
-          target.statuses['bruise'] = (target.statuses['bruise'] || 0) + 1;
-          addLog(`Brass Knuckles: ${target.name} gains 1 Bruise!`, 'warning');
-        }
-
-        // Jar of Leeches: Strikes inflict Leeches
-        if (inv.some(i => i.name === 'Jar of Leeches')) {
-          target.statuses['leeches'] = (target.statuses['leeches'] || 0) + 1;
-          target.statuses['leeches_owner'] = 'player';
-          addLog(`Jar of Leeches: ${target.name} gains 1 Leeches!`, 'warning');
-        }
-
-        // Leeching Seed: Strike cards heal the player for 1
-        if (card.name && card.name.toLowerCase().includes('strike') && inv.some(i => i.name === 'Leeching Seed')) {
+        // Leeching Seed: heal player for 1
+        if (inv.some(i => i.name === 'Leeching Seed')) {
           healTarget(combatState.player, 1);
-          addLog(`Leeching Seed: ${card.name} healed you for 1!`, 'success');
+          addLog(`Leeching Seed: healed you for 1!`, 'success');
         }
       }
       continue;

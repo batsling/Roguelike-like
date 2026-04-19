@@ -187,29 +187,25 @@ function getCardItemSuffixes(card) {
   const inv = (typeof window.inventory !== 'undefined' ? window.inventory : []);
   if (!inv || !inv.length) return '';
 
-  const cardName = (card.name || '').toLowerCase();
-  const cardType = (card.type || '').toLowerCase();
-  const isStrike = cardName.includes('strike');
-  const isAttack = cardType === 'attack';
+  const isStrike = (card.name || '').toLowerCase() === 'strike';
 
   const parts = [];
 
-  if (isStrike && inv.some(i => i.name === 'Leeching Seed')) {
+  if (isStrike && inv.some(i => i.name === 'Leeching Seed'))
     parts.push(`<span style="color:#7dff7d">Heal 1</span>`);
-  }
 
-  if (isAttack) {
+  if (isStrike) {
     const sdCount = inv.filter(i => i.name === 'Strike Dummy').reduce((n, i) => n + (i.quantity || 1), 0);
     if (sdCount > 0) parts.push(`<span style="color:#7dff7d">+${sdCount * 3} Dmg</span>`);
   }
 
-  if (isAttack && inv.some(i => i.name === 'Bird Head'))
+  if (isStrike && inv.some(i => i.name === 'Bird Head'))
     parts.push(`<span style="color:#c39bd3">Soul Link</span>`);
 
-  if (isAttack && inv.some(i => i.name === 'Brass Knuckles'))
+  if (isStrike && inv.some(i => i.name === 'Brass Knuckles'))
     parts.push(`<span style="color:#a569bd">Bruise</span>`);
 
-  if (isAttack && inv.some(i => i.name === 'Jar of Leeches'))
+  if (isStrike && inv.some(i => i.name === 'Jar of Leeches'))
     parts.push(`<span style="color:#82e0aa">Leeches</span>`);
 
   if (!parts.length) return '';
