@@ -2634,3 +2634,15 @@ if (typeof window !== 'undefined') {
     hideStatusTooltip,
   };
 }
+
+window.cancelCombatDrag = function() {
+  if (_dragState) {
+    if (_dragState.clone)  _dragState.clone.remove();
+    if (_dragState.cardEl) _dragState.cardEl.style.opacity = '';
+    _dragState = null;
+  }
+  const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+  if (combat && combat.selectedCardIndex !== null && combat.selectedCardIndex !== undefined) {
+    combat.selectedCardIndex = null;
+  }
+};

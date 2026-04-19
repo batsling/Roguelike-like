@@ -91,6 +91,11 @@ function createGameModal(content) {
 function closeGameModal() {
   hideAllTooltips();
 
+  // Cancel any in-progress card drag so the clone doesn't linger after combat closes
+  const dragClone = document.getElementById('combat-drag-clone');
+  if (dragClone) dragClone.remove();
+  if (typeof window.cancelCombatDrag === 'function') window.cancelCombatDrag();
+
   const modal = document.getElementById('game-modal');
   if (modal) {
     modal.style.animation = 'fadeOut 0.3s';
