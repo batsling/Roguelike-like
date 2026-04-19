@@ -3985,6 +3985,12 @@ function resolveCardEffect(card, target, options = {}) {
           target.statuses['leeches_owner'] = 'player';
           addLog(`Jar of Leeches: ${target.name} gains 1 Leeches!`, 'warning');
         }
+
+        // Leeching Seed: Strike cards heal the player for 1
+        if (card.name && card.name.toLowerCase().includes('strike') && inv.some(i => i.name === 'Leeching Seed')) {
+          healTarget(combatState.player, 1);
+          addLog(`Leeching Seed: ${card.name} healed you for 1!`, 'success');
+        }
       }
       continue;
     }

@@ -180,6 +180,43 @@ function getCardDynamicBlock(baseBlock, combat) {
 }
 
 /**
+ * Returns bonus-effect HTML lines granted to a card by inventory items.
+ * Shown as small text appended to the card description.
+ */
+function getCardItemSuffixes(card) {
+  const inv = (typeof window.inventory !== 'undefined' ? window.inventory : []);
+  if (!inv || !inv.length) return '';
+
+  const cardName = (card.name || '').toLowerCase();
+  const cardType = (card.type || '').toLowerCase();
+  const isStrike = cardName.includes('strike');
+  const isAttack = cardType === 'attack';
+
+  const parts = [];
+
+  if (isStrike && inv.some(i => i.name === 'Leeching Seed')) {
+    parts.push(`<span style="color:#7dff7d">Heal 1</span>`);
+  }
+
+  if (isAttack) {
+    const sdCount = inv.filter(i => i.name === 'Strike Dummy').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (sdCount > 0) parts.push(`<span style="color:#7dff7d">+${sdCount * 3} Dmg</span>`);
+  }
+
+  if (isAttack && inv.some(i => i.name === 'Bird Head'))
+    parts.push(`<span style="color:#c39bd3">Soul Link</span>`);
+
+  if (isAttack && inv.some(i => i.name === 'Brass Knuckles'))
+    parts.push(`<span style="color:#a569bd">Bruise</span>`);
+
+  if (isAttack && inv.some(i => i.name === 'Jar of Leeches'))
+    parts.push(`<span style="color:#82e0aa">Leeches</span>`);
+
+  if (!parts.length) return '';
+  return `<br><span style="font-size:0.85em;opacity:0.9">${parts.join(' · ')}</span>`;
+}
+
+/**
  * Return card description HTML with dynamic numbers substituted where they differ from base.
  * Modified numbers are highlighted: green = buffed, blue = block buffed, red = nerfed.
  * @param {Object} card - Card data
@@ -191,8 +228,11 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
   if (!combat || !combat.player) return desc;
   const player = combat.player;
 
+  const itemSuffix = getCardItemSuffixes(card);
+
   // Quick check: any modifier active?
-  const hasMods = (player.statuses['power'] || 0) !== 0
+  const hasMods = itemSuffix.length > 0
+               || (player.statuses['power'] || 0) !== 0
                || (player.statuses['strength'] || 0) !== 0
                || (player.statuses['intelligence'] || 0) !== 0
                || (player.statuses['dexterity'] || 0) !== 0
@@ -233,7 +273,7 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
     return `Gain <span style="color:${col};font-weight:bold">${computed}</span> Block`;
   });
 
-  return desc;
+  return desc + itemSuffix;
 }
 
 // Lightweight re-render of just the hand zone (used when hovered enemy changes)
