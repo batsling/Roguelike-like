@@ -47,18 +47,23 @@ function _getRollDifficulty() {
   return 11; // Easy
 }
 
-/** Return true if this roll gets advantage (luck-based). */
-function _rollsAdvantage() {
-  const luckVal = typeof luck !== 'undefined' ? luck : 0;
-  return luckVal > 0 && Math.random() < luckVal * 0.1;
+/** Return 'advantage', 'disadvantage', or 'normal' based on luck. */
+function _getLuckMode() {
+  const lv = typeof luck !== 'undefined' ? luck : 0;
+  if (lv > 0 && Math.random() < lv * 0.1)          return 'advantage';
+  if (lv < 0 && Math.random() < Math.abs(lv) * 0.1) return 'disadvantage';
+  return 'normal';
 }
 
-/** Roll a d20, with optional advantage (roll twice take best). */
-function _rollD20(withAdvantage) {
+/** Roll a d20 with optional advantage or disadvantage. */
+function _rollD20(mode) {
   const a = Math.floor(Math.random() * 20) + 1;
-  if (!withAdvantage) return { used: a, rolls: [a] };
+  if (mode === 'normal') return { used: a, rolls: [a] };
   const b = Math.floor(Math.random() * 20) + 1;
-  return { used: Math.max(a, b), rolls: [a, b] };
+  return {
+    used: mode === 'advantage' ? Math.max(a, b) : Math.min(a, b),
+    rolls: [a, b]
+  };
 }
 
 const OUTCOME_COLORS = {
@@ -544,16 +549,17 @@ function _dieSlotHTML(id, size) {
   "></div>`;
 }
 
-/** Highlight the winning die (for advantage) and dim the other. */
-function _highlightWinner(instances, rolls) {
+/** Highlight the used die and dim the discarded one. */
+function _highlightWinner(instances, rolls, mode) {
   if (instances.length < 2) return;
-  const best = Math.max(...rolls);
+  const used  = mode === 'disadvantage' ? Math.min(...rolls) : Math.max(...rolls);
+  const color = mode === 'disadvantage' ? '#e74c3c' : '#f1c40f';
   instances.forEach(({ id }, i) => {
     const el = document.getElementById(id);
     if (!el) return;
-    if (rolls[i] === best) {
-      el.style.borderColor = '#f1c40f';
-      el.style.boxShadow   = '0 0 14px #f1c40f88';
+    if (rolls[i] === used) {
+      el.style.borderColor = color;
+      el.style.boxShadow   = `0 0 14px ${color}88`;
     } else {
       el.style.opacity     = '0.45';
       el.style.borderColor = '#333';
@@ -566,17 +572,29 @@ function _highlightWinner(instances, rolls) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _showSuccessRollScreen(event, choice, onContinue) {
-  const difficulty   = _getRollDifficulty();
-  const statVal      = _getStat(choice.stat);
-  const needed       = Math.max(1, difficulty - statVal);
-  const hasAdvantage = _rollsAdvantage();
-  const luckVal      = typeof luck !== 'undefined' ? luck : 0;
-  const diceCount    = hasAdvantage ? 2 : 1;
-  const diceSize     = diceCount === 2 ? 175 : 210;
+  const difficulty = _getRollDifficulty();
+  const statVal    = _getStat(choice.stat);
+  const needed     = Math.max(1, difficulty - statVal);
+  const luckMode   = _getLuckMode();
+  const luckVal    = typeof luck !== 'undefined' ? luck : 0;
+  const diceCount  = luckMode !== 'normal' ? 2 : 1;
+  const diceSize   = diceCount === 2 ? 175 : 210;
+
+  const luckHint = luckMode === 'advantage'
+    ? `&nbsp;·&nbsp; 🍀 Luck ${luckVal} → <span style="color:#f1c40f">Advantage!</span>`
+    : luckMode === 'disadvantage'
+      ? `&nbsp;·&nbsp; 🌑 Luck ${luckVal} → <span style="color:#e74c3c">Disadvantage!</span>`
+      : (luckVal !== 0 ? `&nbsp;·&nbsp; Luck ${luckVal} → No effect this roll` : '');
 
   const dieSlots = Array.from({ length: diceCount }, (_, i) =>
     _dieSlotHTML(`ev-die-s-${i}`, diceSize)
   ).join('');
+
+  const promptText = luckMode === 'advantage'
+    ? '🍀 Click a die to roll both — best of two'
+    : luckMode === 'disadvantage'
+      ? '🌑 Click a die to roll both — worst of two'
+      : 'Click the die to roll';
 
   _eventModal(`
     ${_imageStrip(event.image)}
@@ -590,16 +608,14 @@ function _showSuccessRollScreen(event, choice, onContinue) {
       <div style="color:#aaa;font-size:12px;margin-bottom:18px;">
         ${STAT_ICONS[choice.stat] || '🎲'} ${_statLabel(choice.stat)}: +${statVal} bonus
         &nbsp;·&nbsp; need ${difficulty} total
-        ${luckVal > 0 ? `&nbsp;·&nbsp; 🍀 Luck ${luckVal} → ${hasAdvantage ? '<span style="color:#f1c40f">Advantage!</span>' : 'No advantage'}` : ''}
+        ${luckHint}
       </div>
 
       <div id="ev-dice-area-s" style="
         display:flex; gap:18px; justify-content:center; margin-bottom:14px;
       ">${dieSlots}</div>
 
-      <p id="ev-prompt-s" style="color:#aaa;font-size:12px;margin:0 0 6px;">
-        ${hasAdvantage ? '🍀 Click a die to roll both — best of two' : 'Click the die to roll'}
-      </p>
+      <p id="ev-prompt-s" style="color:#aaa;font-size:12px;margin:0 0 6px;">${promptText}</p>
       <div id="ev-result-s" style="display:none;margin-top:10px;"></div>
     </div>
   `);
@@ -614,7 +630,7 @@ function _showSuccessRollScreen(event, choice, onContinue) {
     const prompt = document.getElementById('ev-prompt-s');
     if (prompt) prompt.textContent = 'Rolling…';
 
-    const result = _rollD20(hasAdvantage);
+    const result = _rollD20(luckMode);
     let done = 0;
 
     instances.forEach(({ renderer, data }, i) => {
@@ -622,8 +638,7 @@ function _showSuccessRollScreen(event, choice, onContinue) {
       renderer.rollDice(data, face, () => {
         if (++done < instances.length) return;
 
-        // All dice have landed
-        if (hasAdvantage) _highlightWinner(instances, result.rolls);
+        if (luckMode !== 'normal') _highlightWinner(instances, result.rolls, luckMode);
 
         const success = (result.used + statVal) >= difficulty;
         const color   = success ? '#2ecc71' : '#e74c3c';
@@ -661,12 +676,24 @@ function _showSuccessRollScreen(event, choice, onContinue) {
 
 function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
   const CRIT_THRESHOLD = 18;
-  const hasAdvantage   = _rollsAdvantage();
+  const luckMode       = _getLuckMode();
   const luckVal        = typeof luck !== 'undefined' ? luck : 0;
   const successColor   = wasSuccess ? '#2ecc71' : '#e74c3c';
   const successLabel   = wasSuccess ? 'SUCCESS' : 'FAILURE';
-  const diceCount      = hasAdvantage ? 2 : 1;
+  const diceCount      = luckMode !== 'normal' ? 2 : 1;
   const diceSize       = diceCount === 2 ? 175 : 210;
+
+  const luckHint = luckMode === 'advantage'
+    ? `&nbsp;·&nbsp; 🍀 Luck ${luckVal} → <span style="color:#f1c40f">Advantage!</span>`
+    : luckMode === 'disadvantage'
+      ? `&nbsp;·&nbsp; 🌑 Luck ${luckVal} → <span style="color:#e74c3c">Disadvantage!</span>`
+      : (luckVal !== 0 ? `&nbsp;·&nbsp; Luck ${luckVal} → No effect this roll` : '');
+
+  const promptText = luckMode === 'advantage'
+    ? '🍀 Click a die to roll both — best of two'
+    : luckMode === 'disadvantage'
+      ? '🌑 Click a die to roll both — worst of two'
+      : 'Click the die to roll';
 
   const dieSlots = Array.from({ length: diceCount }, (_, i) =>
     _dieSlotHTML(`ev-die-c-${i}`, diceSize)
@@ -690,16 +717,14 @@ function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
       </div>
       <div style="color:#aaa;font-size:12px;margin-bottom:18px;">
         No stat bonus — need 18, 19, or 20
-        ${luckVal > 0 ? `&nbsp;·&nbsp; 🍀 Luck ${luckVal} → ${hasAdvantage ? '<span style="color:#f1c40f">Advantage!</span>' : 'No advantage'}` : ''}
+        ${luckHint}
       </div>
 
       <div id="ev-dice-area-c" style="
         display:flex; gap:18px; justify-content:center; margin-bottom:14px;
       ">${dieSlots}</div>
 
-      <p id="ev-prompt-c" style="color:#aaa;font-size:12px;margin:0 0 6px;">
-        ${hasAdvantage ? '🍀 Click a die to roll both — best of two' : 'Click the die to roll'}
-      </p>
+      <p id="ev-prompt-c" style="color:#aaa;font-size:12px;margin:0 0 6px;">${promptText}</p>
       <div id="ev-result-c" style="display:none;margin-top:10px;"></div>
     </div>
   `);
@@ -714,7 +739,7 @@ function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
     const prompt = document.getElementById('ev-prompt-c');
     if (prompt) prompt.textContent = 'Rolling…';
 
-    const result = _rollD20(hasAdvantage);
+    const result = _rollD20(luckMode);
     let done = 0;
 
     instances.forEach(({ renderer, data }, i) => {
@@ -722,7 +747,7 @@ function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
       renderer.rollDice(data, face, () => {
         if (++done < instances.length) return;
 
-        if (hasAdvantage) _highlightWinner(instances, result.rolls);
+        if (luckMode !== 'normal') _highlightWinner(instances, result.rolls, luckMode);
 
         const isCrit = result.used >= CRIT_THRESHOLD;
         const color  = isCrit ? '#f1c40f' : '#aaa';

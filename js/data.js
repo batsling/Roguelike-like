@@ -303,11 +303,17 @@ initializeData();
  */
 function rollWithLuckAdvantage(luckVal, favorHigh = true) {
   const lv = (luckVal !== undefined) ? luckVal : (typeof luck !== 'undefined' ? luck : 0);
-  const hasAdvantage = lv > 0 && Math.random() < lv * 0.1;
   const r = Math.random();
-  if (!hasAdvantage) return r;
-  const r2 = Math.random();
-  return favorHigh ? Math.max(r, r2) : Math.min(r, r2);
+  if (lv > 0 && Math.random() < lv * 0.1) {
+    const r2 = Math.random();
+    return favorHigh ? Math.max(r, r2) : Math.min(r, r2);
+  }
+  if (lv < 0 && Math.random() < Math.abs(lv) * 0.1) {
+    const r2 = Math.random();
+    // disadvantage flips the preference
+    return favorHigh ? Math.min(r, r2) : Math.max(r, r2);
+  }
+  return r;
 }
 
 /**
