@@ -605,7 +605,8 @@ var ITEMS_DATA = [
     "description": "Gain + 14 Max Health and +14 Health",
     "game": "Slay the Spire",
     "tags": [
-      "food"
+      "food",
+      "fruit"
     ],
     "image": "images/items/Mango.png",
     "unlockCondition": null
@@ -791,7 +792,7 @@ var ITEMS_DATA = [
     "name": "Prayer Beads",
     "rarity": "Rare",
     "type": "Triggered",
-    "description": "Whenever you take damage, Gain Temporary +3 Brace until end of your next turn",
+    "description": "Whenever you take damage, Gain Temporary +3 Brace until end of this turn",
     "game": "Mewgenics",
     "tags": [
       "monk",

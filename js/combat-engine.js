@@ -2739,6 +2739,16 @@ function endTurn() {
     }
   });
 
+  // Prayer Beads: clear the temporary brace gained THIS turn now that all enemies have acted
+  {
+    const ps = combatState.player.statuses;
+    if (ps['brace_temp'] && ps['brace_temp'] > 0) {
+      ps['brace'] = Math.max(0, (ps['brace'] || 0) - ps['brace_temp']);
+      if (ps['brace'] <= 0) delete ps['brace'];
+      delete ps['brace_temp'];
+    }
+  }
+
   // Reset block (unless Barricade)
   if (!combatState.player.statuses['barricade']) {
     combatState.player.block = 0;
@@ -3348,14 +3358,6 @@ function processStatusEffects(target, timing) {
       target.health = Math.min(target.maxHealth, target.health + regenAmount);
       if (target === combatState.player) window.health = target.health;
       addLog(`${target.name || 'Player'} regenerated ${regenAmount} health`, 'success');
-    }
-
-    // Prayer Beads temporary Brace: remove the temp stacks accumulated this combat
-    if (target === combatState.player && statuses['brace_temp'] && statuses['brace_temp'] > 0) {
-      const tempBrace = statuses['brace_temp'];
-      statuses['brace'] = Math.max(0, (statuses['brace'] || 0) - tempBrace);
-      if (statuses['brace'] <= 0) delete statuses['brace'];
-      delete statuses['brace_temp'];
     }
 
     // Decay statuses
