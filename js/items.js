@@ -710,7 +710,16 @@ const ITEM_EFFECTS = {
           return;
         }
 
-        // Multiple targets — show selection modal
+        // Multiple targets — show an overlay inside the existing combat modal
+        const overlay = document.createElement('div');
+        overlay.id = 'fire-potion-overlay';
+        overlay.style.cssText = `
+          position:absolute; inset:0; z-index:999;
+          background:rgba(0,0,0,0.82);
+          display:flex; align-items:center; justify-content:center;
+          border-radius:inherit;
+        `;
+
         const targetsHTML = living.map((e, idx) => `
           <button onclick="window._firePotionApply(${idx})" style="
             display:flex; align-items:center; gap:12px;
@@ -724,24 +733,31 @@ const ITEM_EFFECTS = {
           </button>
         `).join('');
 
+        overlay.innerHTML = `
+          <div style="padding:24px; min-width:320px; max-width:420px; background:#1a1a2e; border-radius:12px; border:1px solid #e74c3c;">
+            <h3 style="color:#e74c3c; text-align:center; margin-top:0;">🔥 Fire Potion — Choose Target</h3>
+            <p style="color:#aaa; text-align:center; font-size:13px; margin-bottom:16px;">Deals ${damage} damage to one enemy.</p>
+            ${targetsHTML}
+            <button onclick="document.getElementById('fire-potion-overlay')?.remove(); delete window._firePotionApply;" style="
+              width:100%; padding:10px; background:#444; border:none; border-radius:6px;
+              color:#aaa; cursor:pointer; margin-top:4px;
+            ">Cancel</button>
+          </div>
+        `;
+
         window._firePotionApply = (idx) => {
           delete window._firePotionApply;
-          if (typeof closeGameModal === 'function') closeGameModal();
+          document.getElementById('fire-potion-overlay')?.remove();
           applyFirePotionToEnemy(newCombatState, living[idx]);
         };
 
-        if (typeof createGameModal === 'function') {
-          createGameModal(`
-            <div style="padding:24px; min-width:320px;">
-              <h3 style="color:#e74c3c; text-align:center; margin-top:0;">🔥 Fire Potion — Choose Target</h3>
-              <p style="color:#aaa; text-align:center; font-size:13px; margin-bottom:16px;">Deals ${damage} damage to one enemy.</p>
-              ${targetsHTML}
-              <button onclick="delete window._firePotionApply; closeGameModal();" style="
-                width:100%; padding:10px; background:#444; border:none; border-radius:6px;
-                color:#aaa; cursor:pointer; margin-top:4px;
-              ">Cancel</button>
-            </div>
-          `);
+        const combatModal = document.getElementById('dice-combat-modal');
+        const parent = combatModal ? combatModal.parentElement : document.body;
+        if (parent && combatModal) {
+          combatModal.style.position = 'relative';
+          combatModal.appendChild(overlay);
+        } else {
+          document.body.appendChild(overlay);
         }
         return;
       }
@@ -1084,7 +1100,7 @@ const ITEM_EFFECTS = {
         const tmpl = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
         if (tmpl && (tmpl.type || '').toLowerCase() === 'skill' && tmpl.upgradedDescription) {
           const total = entry.count || 1;
-          const alreadyUpgraded = getUpgradedStartingCount(upgradedStarting, entry.cardName, total);
+          const alreadyUpgraded = Math.min(upgradedStarting[entry.cardName] || 0, total);
           const remaining = total - alreadyUpgraded;
           for (let i = 0; i < remaining; i++) pool.push({ _isStarting: true, name: tmpl.name });
         }
