@@ -730,4 +730,28 @@ var CARDS_DATA = ${JSON.stringify(cards, null, 2)};
   console.log(`✅ Cards: ${cards.length} cards`);
 }
 
+// ============== DICE ==============
+const diceSheetRaw = workbook.Sheets['dice'];
+if (diceSheetRaw) {
+  const diceRows = XLSX.utils.sheet_to_json(diceSheetRaw);
+
+  const dice = diceRows.map(row => {
+    const sides = parseInt(row['Sides']) || 6;
+    const faces = [];
+    for (let i = 1; i <= sides; i++) {
+      faces.push({ face: i, text: (row[`Side ${i}`] || '').trim() });
+    }
+    return { name: (row['Name'] || '').trim(), sides, faces };
+  });
+
+  const diceOutput = `// Auto-generated from Roguelikes.xlsx - Dice
+// Each entry describes a named die card and its face outcomes.
+
+var DICE_DATA = ${JSON.stringify(dice, null, 2)};
+`;
+
+  fs.writeFileSync('dice-data.js', diceOutput);
+  console.log(`✅ Dice: ${dice.length} dice`);
+}
+
 console.log('\n✅ All data files generated successfully!');

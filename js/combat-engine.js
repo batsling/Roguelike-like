@@ -3690,16 +3690,8 @@ function resolveCardEffect(card, target, options = {}) {
   // Status cards always exhaust (they are one-use pigments that clear after combat)
   if (card.isStatusCard) shouldExhaust = true;
 
-  // Dice cards: roll a random face and resolve that face's text as a skill effect
+  // Dice cards: the UI handles pick + roll + transform; nothing to resolve here.
   if ((card.type || '').toLowerCase() === 'dice') {
-    const faces = parseDiceFacesForEngine(desc);
-    if (faces.length > 0) {
-      const rolled = Math.floor(Math.random() * faces.length);
-      const face   = faces[rolled];
-      addLog(`${card.name} → rolled ${face.num}: ${face.text}`, 'info');
-      // Resolve the face text as a temporary non-targeting skill
-      resolveCardEffect({ ...card, type: 'Skill', isStatusCard: false, description: face.text }, target);
-    }
     return shouldExhaust;
   }
 
