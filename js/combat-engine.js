@@ -2532,6 +2532,12 @@ function processPlayerStartOfTurn() {
     drawCards(drawCount);
   }
 
+  // Well-Laid Plans: clear old retain flags, then let player pick which cards to retain
+  if (combatState.player.statuses['well_laid_plans'] > 0 && combatState.hand.length > 0) {
+    for (const hc of combatState.hand) delete hc._retain;
+    combatState._pendingRetainPick = { count: combatState.player.statuses['well_laid_plans'] };
+  }
+
   // Check for Horn Cleat on turn 2 (stacks: +5 Block per copy)
   if (combatState.turn === 2 && typeof inventory !== 'undefined') {
     const hornCleatCount = inventory.filter(item => item.name === 'Horn Cleat').length;
@@ -2595,19 +2601,7 @@ function endTurn() {
     if (e.statuses['choked']) delete e.statuses['choked'];
   });
 
-  // Well-Laid Plans: clear old retain flags each turn, then re-mark up to X cards
-  if (combatState.player.statuses['well_laid_plans'] > 0) {
-    const wlp = combatState.player.statuses['well_laid_plans'];
-    // Clear any WLP retain flags from the previous turn so they don't accumulate
-    for (const hc of combatState.hand) delete hc._retain;
-    let retained = 0;
-    for (const hc of combatState.hand) {
-      if (retained >= wlp) break;
-      hc._retain = true;
-      retained++;
-      addLog(`Well-Laid Plans: ${hc.name} retained`, 'success');
-    }
-  }
+  // Well-Laid Plans: player picks which cards to retain — handled via start-of-turn picker
 
   // Curse and Status card end-of-turn effects (fire while cards are still in hand)
   if (combatState.hand) {

@@ -185,28 +185,32 @@ function getCardDynamicBlock(baseBlock, combat) {
  */
 function getCardItemSuffixes(card) {
   const inv = (typeof window.inventory !== 'undefined' ? window.inventory : []);
-  if (!inv || !inv.length) return '';
 
   const isStrike = (card.name || '').toLowerCase() === 'strike';
 
   const parts = [];
 
-  if (isStrike && inv.some(i => i.name === 'Leeching Seed'))
-    parts.push(`<span style="color:#7dff7d">Heal 1</span>`);
+  if (card._retain)
+    parts.push(`<span style="color:#7dff7d">Retain</span>`);
 
-  if (isStrike) {
-    const sdCount = inv.filter(i => i.name === 'Strike Dummy').reduce((n, i) => n + (i.quantity || 1), 0);
-    if (sdCount > 0) parts.push(`<span style="color:#7dff7d">+${sdCount * 3} Dmg</span>`);
+  if (inv && inv.length) {
+    if (isStrike && inv.some(i => i.name === 'Leeching Seed'))
+      parts.push(`<span style="color:#7dff7d">Heal 1</span>`);
+
+    if (isStrike) {
+      const sdCount = inv.filter(i => i.name === 'Strike Dummy').reduce((n, i) => n + (i.quantity || 1), 0);
+      if (sdCount > 0) parts.push(`<span style="color:#7dff7d">+${sdCount * 3} Dmg</span>`);
+    }
+
+    if (isStrike && inv.some(i => i.name === 'Bird Head'))
+      parts.push(`<span style="color:#c39bd3">Soul Link</span>`);
+
+    if (isStrike && inv.some(i => i.name === 'Brass Knuckles'))
+      parts.push(`<span style="color:#a569bd">Bruise</span>`);
+
+    if (isStrike && inv.some(i => i.name === 'Jar of Leeches'))
+      parts.push(`<span style="color:#82e0aa">Leeches</span>`);
   }
-
-  if (isStrike && inv.some(i => i.name === 'Bird Head'))
-    parts.push(`<span style="color:#c39bd3">Soul Link</span>`);
-
-  if (isStrike && inv.some(i => i.name === 'Brass Knuckles'))
-    parts.push(`<span style="color:#a569bd">Bruise</span>`);
-
-  if (isStrike && inv.some(i => i.name === 'Jar of Leeches'))
-    parts.push(`<span style="color:#82e0aa">Leeches</span>`);
 
   if (!parts.length) return '';
   return `<br><span style="font-size:0.85em;opacity:0.9">${parts.join(' · ')}</span>`;
@@ -1820,6 +1824,14 @@ function attachCombatEventListeners(combat) {
           combat._pendingCardPick = null;
           if (typeof window.showCardPickerModal === 'function') {
             window.showCardPickerModal(pick);
+            // If WLP also pending, it will be chained inside the modal's confirm handler
+          }
+        } else if (combat && combat._pendingRetainPick) {
+          // Well-Laid Plans: no other picker pending, show retain picker directly
+          const rp = combat._pendingRetainPick;
+          combat._pendingRetainPick = null;
+          if (typeof window.showCardPickerModal === 'function') {
+            window.showCardPickerModal({ action: 'retain', pile: 'hand', count: rp.count });
           }
         }
       }
@@ -2647,8 +2659,8 @@ window.showCardPickerModal = function(options) {
   if (!combat) return;
 
   const { action, pile, count } = options;
-  const actionLabel = action === 'discard' ? 'Discard' : action === 'setup' ? 'Setup' : action === 'nightmare' ? 'Choose' : action === 'topdraw' ? 'Top of Draw' : action === 'upgrade' ? 'Upgrade' : action === 'copy' ? 'Copy' : 'Exhaust';
-  const actionColor = action === 'discard' ? '#f39c12' : action === 'setup' ? '#4fc3f7' : action === 'nightmare' ? '#9b59b6' : action === 'topdraw' ? '#2ecc71' : action === 'upgrade' ? '#3498db' : action === 'copy' ? '#e67e22' : '#7f8c8d';
+  const actionLabel = action === 'discard' ? 'Discard' : action === 'setup' ? 'Setup' : action === 'nightmare' ? 'Choose' : action === 'topdraw' ? 'Top of Draw' : action === 'upgrade' ? 'Upgrade' : action === 'copy' ? 'Copy' : action === 'retain' ? 'Retain' : 'Exhaust';
+  const actionColor = action === 'discard' ? '#f39c12' : action === 'setup' ? '#4fc3f7' : action === 'nightmare' ? '#9b59b6' : action === 'topdraw' ? '#2ecc71' : action === 'upgrade' ? '#3498db' : action === 'copy' ? '#e67e22' : action === 'retain' ? '#2ecc71' : '#7f8c8d';
 
   const pileMap = {
     hand:    { cards: combat.hand || [],        label: 'Hand'         },
@@ -2690,10 +2702,10 @@ window.showCardPickerModal = function(options) {
       box-shadow:0 10px 40px rgba(0,0,0,0.95);
     ">
       <h2 style="color:${actionColor}; text-align:center; margin:0 0 6px; font-size:18px;">
-        ${actionLabel} ${count} Card${count !== 1 ? 's' : ''}
+        ${action === 'retain' ? `Well-Laid Plans` : `${actionLabel} ${count} Card${count !== 1 ? 's' : ''}`}
       </h2>
       <p style="color:#aaa; text-align:center; margin:0 0 14px; font-size:12px;">
-        ${action === 'nightmare' ? `Choose a card to conjure ${options._nightmareCount || 3} copies of next turn.` : action === 'topdraw' ? `Choose a card to place on top of your Draw Pile.` : action === 'upgrade' ? `Choose a card to upgrade for the rest of combat.` : action === 'copy' ? `Choose an Attack or Power card to conjure ${options._copyCount || 1} cop${(options._copyCount || 1) !== 1 ? 'ies' : 'y'} of to Hand.` : `Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to ${actionLabel.toLowerCase()}.`}
+        ${action === 'retain' ? `Choose up to ${count} card${count !== 1 ? 's' : ''} to keep in your hand next turn.` : action === 'nightmare' ? `Choose a card to conjure ${options._nightmareCount || 3} copies of next turn.` : action === 'topdraw' ? `Choose a card to place on top of your Draw Pile.` : action === 'upgrade' ? `Choose a card to upgrade for the rest of combat.` : action === 'copy' ? `Choose an Attack or Power card to conjure ${options._copyCount || 1} cop${(options._copyCount || 1) !== 1 ? 'ies' : 'y'} of to Hand.` : `Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to ${actionLabel.toLowerCase()}.`}
       </p>
       <div id="card-picker-grid" style="
         display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
@@ -2747,8 +2759,10 @@ window.showCardPickerModal = function(options) {
   const countLabel = document.getElementById('picker-selected-count');
 
   function updateConfirmBtn() {
-    countLabel.textContent = `Selected: ${selected.size} / ${count}`;
-    const ready = selected.size === count;
+    countLabel.textContent = action === 'retain'
+      ? `Selected: ${selected.size} / up to ${count}`
+      : `Selected: ${selected.size} / ${count}`;
+    const ready = action === 'retain' ? true : selected.size === count;
     confirmBtn.disabled = !ready;
     confirmBtn.style.background = ready ? actionColor : '#555';
     confirmBtn.style.borderColor = ready ? actionColor : '#888';
@@ -2778,9 +2792,15 @@ window.showCardPickerModal = function(options) {
 
   // Confirm handler
   confirmBtn.addEventListener('click', () => {
-    if (selected.size !== count) return;
+    if (action !== 'retain' && selected.size !== count) return;
 
-    if (action === 'nightmare') {
+    if (action === 'retain') {
+      // Well-Laid Plans: mark selected cards for retain (0–N allowed)
+      for (const idx of selected) {
+        pileCards[idx]._retain = true;
+        window.CombatEngine && window.CombatEngine.addLog(`Well-Laid Plans: ${pileCards[idx].name} retained`, 'success');
+      }
+    } else if (action === 'nightmare') {
       // Nightmare: store chosen card for next-turn conjuring (don't remove from pile)
       const idx = [...selected][0];
       const card = pileCards[idx];
@@ -2841,6 +2861,13 @@ window.showCardPickerModal = function(options) {
     overlay.remove();
     updateCombatDisplay();
     checkCombatEnd();
+
+    // Chain pending retain picker (e.g. both Tools of the Trade and Well-Laid Plans active)
+    if (action !== 'retain' && combat._pendingRetainPick) {
+      const rp = combat._pendingRetainPick;
+      combat._pendingRetainPick = null;
+      setTimeout(() => window.showCardPickerModal({ action: 'retain', pile: 'hand', count: rp.count }), 80);
+    }
   });
 };
 
