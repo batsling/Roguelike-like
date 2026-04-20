@@ -74,7 +74,7 @@ var CHARACTERS_DATA = {
     "fullImage": "images/characters/Full/Isaac.png",
     "energy": 3,
     "health": 75,
-    "levelUpCondition": "Unlock a new gameplay element",
+    "levelUpCondition": "Unlock a new Item",
     "levelUpReward": {
       "type": "item"
     },
@@ -96,11 +96,15 @@ var CHARACTERS_DATA = {
     "startingDeck": [
       {
         "cardName": "Strike",
-        "count": 5
+        "count": 4
       },
       {
         "cardName": "Defend",
         "count": 4
+      },
+      {
+        "cardName": "Isaac's D6",
+        "count": 1
       },
       {
         "cardName": "Isaac's D6",

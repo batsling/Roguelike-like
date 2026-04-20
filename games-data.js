@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 621 games, 783 connections
-// 536 connected, 168 influencers
+// 624 games, 787 connections
+// 539 connected, 169 influencers
 
 var GAMES_DATA = [
   {
@@ -188,7 +188,8 @@ var GAMES_DATA = [
       "Ultimate ADOM",
       "KeeperRL",
       "Soulash",
-      "Rogue Empire"
+      "Rogue Empire",
+      "Sproggiwood"
     ],
     "coverImage": "images/covers/ancient-domains-of-mystery.jpg"
   },
@@ -1025,7 +1026,8 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Approaching Infinity"
+      "Approaching Infinity",
+      "Sproggiwood"
     ],
     "coverImage": "images/covers/caves-of-qud.jpg"
   },
@@ -3013,7 +3015,8 @@ var GAMES_DATA = [
       "Reality Break",
       "Battle Shapers",
       "Brew",
-      "Garden of Witches"
+      "Garden of Witches",
+      "Yasha: Legends of the Demon Blade"
     ],
     "coverImage": "images/covers/hades.jpg"
   },
@@ -6043,6 +6046,18 @@ var GAMES_DATA = [
     "coverImage": "images/covers/spirits-abyss.jpg"
   },
   {
+    "name": "Sproggiwood",
+    "year": 2014,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": [
+      "Youdanji"
+    ],
+    "coverImage": "images/covers/sproggiwood.png"
+  },
+  {
     "name": "Stackflow",
     "year": 2025,
     "type": "Deckbuilding",
@@ -7380,6 +7395,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/words-can-kill.jpg"
   },
   {
+    "name": "Yasha: Legends of the Demon Blade",
+    "year": 2025,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/yasha-legends-of-the-demon-blade.png"
+  },
+  {
     "name": "Yet Another Zombie Survivors",
     "year": 2023,
     "type": "Action",
@@ -7402,6 +7427,16 @@ var GAMES_DATA = [
     ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/yohane-the-parhelion-numazu-in-the-mirage.jpg"
+  },
+  {
+    "name": "Youdanji",
+    "year": 2017,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/youdanji.png"
   },
   {
     "name": "Z.H.P. Unlosing Ranger VS Darkdeath Evilman",
