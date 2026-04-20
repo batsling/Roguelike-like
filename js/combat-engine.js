@@ -4020,6 +4020,20 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
+    // Inflict N Corpse Explosion (must be before general applyMatch to avoid "Corpse" single-word capture)
+    const ceInflictMatch = p.match(/Inflict (\d+) Corpse Explosion/i);
+    if (ceInflictMatch) {
+      const targets = isAoECard
+        ? combatState.enemies.filter(e => e.health > 0)
+        : (target ? [target] : []);
+      const stacks = parseInt(ceInflictMatch[1]);
+      targets.forEach(t => {
+        t.statuses['corpse_explosion'] = (t.statuses['corpse_explosion'] || 0) + stacks;
+      });
+      addLog(`Inflicted ${stacks} Corpse Explosion`, 'warning');
+      continue;
+    }
+
     // Apply / Inflict X [Status] (on current target or all enemies if AoE)
     const applyMatch = p.match(/(?:Apply|Inflict) (\d+) (\w+)/i);
     if (applyMatch) {
@@ -4792,19 +4806,6 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // Inflict N Corpse Explosion
-    const ceInflictMatch = p.match(/Inflict (\d+) Corpse Explosion/i);
-    if (ceInflictMatch) {
-      const targets = isAoECard
-        ? combatState.enemies.filter(e => e.health > 0)
-        : (target ? [target] : []);
-      const stacks = parseInt(ceInflictMatch[1]);
-      targets.forEach(t => {
-        t.statuses['corpse_explosion'] = (t.statuses['corpse_explosion'] || 0) + stacks;
-      });
-      addLog(`Inflicted ${stacks} Corpse Explosion`, 'warning');
-      continue;
-    }
 
     // Gain +N Envenom (Power card)
     const envenomGainMatch = p.match(/Gain \+?(\d+) Envenom/i);
