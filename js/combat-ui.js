@@ -1113,15 +1113,33 @@ function _disposeDiceHandRenderers() {
   _diceHandRenderers = [];
 }
 
+// Per-die color themes. sceneBg is the Three.js hex background color.
+const DICE_CARD_COLORS = {
+  "Isaac's D6": {
+    bg: '#4d0000', inner: '#6b0000', border: '#dd2222',
+    faceNum: '#ff7777', text: '#ffbbbb', outline: '#1a0000',
+    sceneBg: 0x1a0000,
+    cardBg: 'rgba(100,0,0,0.95)', cardBorder: '#dd2222', nameColor: '#ff9999'
+  }
+};
+const _DICE_DEFAULT_COLORS = {
+  bg: '#7a4800', inner: '#a86000', border: '#f0b030',
+  faceNum: '#ffd060', text: '#ffe8a0', outline: '#3a2000',
+  sceneBg: 0x1a0d00,
+  cardBg: 'rgba(100,60,10,0.95)', cardBorder: '#cc8800', nameColor: '#f0c850'
+};
+
 /**
  * Build a DICE_DATA-compatible object from a card whose type is 'Dice'.
  */
 function _makeDiceDataForCard(card) {
+  const colors = DICE_CARD_COLORS[card.name] || _DICE_DEFAULT_COLORS;
   const def = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === card.name);
   if (def) {
     return {
       type: 'd6-card',
-      sides: def.faces.map((f, i) => ({ face: f.face, text: f.text, value: f.face, displayText: f.text })),
+      colors,
+      sides: def.faces.map(f => ({ face: f.face, text: f.text, value: f.face, displayText: f.text })),
       globalModifiers: [],
       currentRoll: null
     };
@@ -1129,6 +1147,7 @@ function _makeDiceDataForCard(card) {
   // Fallback: generic 6-sided card die
   return {
     type: 'd6-card',
+    colors,
     sides: Array.from({ length: 6 }, (_, i) => ({ face: i + 1, text: String(i + 1), value: i + 1, displayText: String(i + 1) })),
     globalModifiers: [],
     currentRoll: null
@@ -1150,9 +1169,10 @@ function initDiceCardRenderers() {
     const card = combat.hand[idx];
     if (!card) return;
 
+    const diceData = _makeDiceDataForCard(card);
     const r = new DiceRendererInstance();
-    r.init(el, 0x1a0d00);
-    r.createDice(_makeDiceDataForCard(card));
+    r.init(el, diceData.colors.sceneBg || 0x1a0d00);
+    r.createDice(diceData);
     _diceHandRenderers.push(r);
   });
 }
@@ -1184,8 +1204,10 @@ function renderDiceCardInHand(card, index, total, combat) {
   const selTransform  = `rotate(${rotation * 0.3}deg) translateY(-30px) scale(1.18)`;
   const hoverTrans    = `rotate(${rotation * 0.2}deg) translateY(-50px) scale(1.42)`;
 
-  const borderColor = '#cc8800';
-  const bgColor     = 'rgba(100,60,10,0.95)';
+  const diceColors = (DICE_CARD_COLORS && DICE_CARD_COLORS[card.name]) || _DICE_DEFAULT_COLORS;
+  const borderColor  = diceColors.cardBorder;
+  const bgColor      = diceColors.cardBg;
+  const nameColor    = diceColors.nameColor;
   const boxShadow   = isSelected
     ? `0 0 20px ${C.goldBright}bb, 0 0 6px ${borderColor}88`
     : `0 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)`;
@@ -1247,10 +1269,10 @@ function renderDiceCardInHand(card, index, total, combat) {
       <!-- Name -->
       <div style="
         padding:2px 4px 3px;
-        font-size:${namePx}px; font-weight:700; color:#f0c850;
+        font-size:${namePx}px; font-weight:700; color:${nameColor};
         text-align:center; line-height:1.2; flex-shrink:0;
         text-shadow:0 1px 3px rgba(0,0,0,0.9);
-        border-top:1px solid #cc880066;
+        border-top:1px solid ${borderColor}55;
         background:rgba(0,0,0,0.35);
       ">${card.name}${card.upgraded ? `<span style="color:#4CAF50;font-size:${namePx+1}px;">⁺</span>` : ''}</div>
     </div>
@@ -2916,15 +2938,15 @@ function handleDiceCardPlay(diceCardIndex, combat) {
 function _showDiceRollOverlay(diceCard, pickedCard, newPickIdx) {
   const diceDef = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === diceCard.name);
   const sides   = diceDef ? diceDef.faces.length : 6;
-  const rolledN = Math.floor(Math.random() * sides) + 1;
-  const faceData = diceDef ? (diceDef.faces.find(f => f.face === rolledN) || diceDef.faces[0])
-                           : { face: rolledN, text: String(rolledN) };
 
   const combatModal = document.getElementById('dice-combat-modal');
-  const applyEffect = () => _applyDiceRollEffect(diceCard, pickedCard, newPickIdx, faceData);
 
   if (!combatModal || typeof DiceRendererInstance === 'undefined') {
-    applyEffect(); return;
+    const rolledN  = Math.floor(Math.random() * sides) + 1;
+    const faceData = diceDef ? (diceDef.faces.find(f => f.face === rolledN) || diceDef.faces[0])
+                             : { face: rolledN, text: String(rolledN) };
+    _applyDiceRollEffect(diceCard, pickedCard, newPickIdx, faceData);
+    return;
   }
 
   const overlay = document.createElement('div');
@@ -2935,32 +2957,68 @@ function _showDiceRollOverlay(diceCard, pickedCard, newPickIdx) {
   overlay.innerHTML = `
     <h2 style="color:#f0c850;margin:0 0 12px;font-size:20px;">🎲 Rolling ${diceCard.name}…</h2>
     <div id="dice-roll-3d" style="width:160px;height:160px;margin:0 auto;"></div>
-    <div id="dice-roll-label" style="color:#fff;font-size:15px;min-height:52px;margin-top:14px;text-align:center;"></div>`;
+    <div id="dice-roll-label" style="color:#fff;font-size:15px;min-height:52px;margin-top:14px;text-align:center;"></div>
+    <div id="dice-roll-btns" style="margin-top:16px;display:flex;gap:10px;"></div>`;
 
   combatModal.style.position = 'relative';
   combatModal.appendChild(overlay);
 
   requestAnimationFrame(() => {
     const container = document.getElementById('dice-roll-3d');
-    if (!container) { overlay.remove(); applyEffect(); return; }
+    if (!container) { overlay.remove(); _applyDiceRollEffect(diceCard, pickedCard, newPickIdx, { face: 1, text: '' }); return; }
 
-    const renderer = new DiceRendererInstance();
-    renderer.init(container, 0x0d0800);
+    const renderer   = new DiceRendererInstance();
     const diceData3d = _makeDiceDataForCard(diceCard);
+    renderer.init(container, diceData3d.colors ? diceData3d.colors.sceneBg : 0x0d0800);
     renderer.createDice(diceData3d);
 
-    renderer.rollDice(diceData3d, rolledN, () => {
-      const lbl = document.getElementById('dice-roll-label');
-      if (lbl) lbl.innerHTML =
-        `<div style="color:#f0c850;font-weight:bold;font-size:18px;">${faceData.text}</div>
-         <div style="color:#888;font-size:11px;margin-top:4px;">Face ${rolledN}</div>`;
+    const performRoll = (rolledN) => {
+      const faceData = diceDef ? (diceDef.faces.find(f => f.face === rolledN) || diceDef.faces[0])
+                               : { face: rolledN, text: String(rolledN) };
+      const lbl  = document.getElementById('dice-roll-label');
+      const btns = document.getElementById('dice-roll-btns');
+      if (lbl)  lbl.innerHTML = '';
+      if (btns) btns.innerHTML = '';
 
-      setTimeout(() => {
-        renderer.dispose();
-        overlay.remove();
-        applyEffect();
-      }, 2200);
-    });
+      renderer.rollDice(diceData3d, rolledN, () => {
+        if (lbl) lbl.innerHTML =
+          `<div style="color:#f0c850;font-weight:bold;font-size:18px;">${faceData.text}</div>
+           <div style="color:#888;font-size:11px;margin-top:4px;">Face ${rolledN}</div>`;
+
+        const finish = () => {
+          renderer.dispose();
+          overlay.remove();
+          _applyDiceRollEffect(diceCard, pickedCard, newPickIdx, faceData);
+        };
+
+        if (btns) {
+          const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+          const rerolls = combat && combat.player ? (combat.player.rerolls || 0) : 0;
+
+          const continueBtn = document.createElement('button');
+          continueBtn.textContent = 'Continue →';
+          continueBtn.style.cssText = `padding:8px 20px;background:#2a5c2a;border:1px solid #4a9c4a;
+            color:#fff;border-radius:6px;font-size:14px;cursor:pointer;`;
+          continueBtn.onclick = finish;
+          btns.appendChild(continueBtn);
+
+          if (rerolls > 0) {
+            const rerollBtn = document.createElement('button');
+            rerollBtn.textContent = `🔄 Reroll (${rerolls} left)`;
+            rerollBtn.style.cssText = `padding:8px 20px;background:#5c3a0a;border:1px solid #c07820;
+              color:#f0c850;border-radius:6px;font-size:14px;cursor:pointer;`;
+            rerollBtn.onclick = () => {
+              if (combat && combat.player) combat.player.rerolls = Math.max(0, (combat.player.rerolls || 0) - 1);
+              updateCombatDisplay();
+              performRoll(Math.floor(Math.random() * sides) + 1);
+            };
+            btns.insertBefore(rerollBtn, continueBtn);
+          }
+        }
+      });
+    };
+
+    performRoll(Math.floor(Math.random() * sides) + 1);
   });
 }
 

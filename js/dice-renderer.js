@@ -288,29 +288,26 @@ class DiceRendererInstance {
   }
 
   /**
-   * Create canvas texture for a card-dice face (golden theme, shows face number + label)
+   * Create canvas texture for a card-dice face.
+   * Colors come from diceData.colors (set per die name in _makeDiceDataForCard).
    */
-  createCardDiceFaceTexture(side) {
+  createCardDiceFaceTexture(side, colors) {
+    const c = colors || { bg: '#7a4800', inner: '#a86000', border: '#f0b030', faceNum: '#ffd060', text: '#ffe8a0', outline: '#3a2000' };
     const canvas = document.createElement('canvas');
     canvas.width = 128;
     canvas.height = 128;
     const ctx = canvas.getContext('2d');
 
-    // Gold/amber background matching Dice card type
-    ctx.fillStyle = '#7a4800';
+    ctx.fillStyle = c.bg;
     ctx.fillRect(0, 0, 128, 128);
-
-    // Inner highlight
-    ctx.fillStyle = '#a86000';
+    ctx.fillStyle = c.inner;
     ctx.fillRect(4, 4, 120, 120);
-
-    // Border
-    ctx.strokeStyle = '#f0b030';
+    ctx.strokeStyle = c.border;
     ctx.lineWidth = 4;
     ctx.strokeRect(2, 2, 124, 124);
 
     // Face number (top-left, small)
-    ctx.fillStyle = '#ffd060';
+    ctx.fillStyle = c.faceNum;
     ctx.font = 'bold 18px Arial';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
@@ -318,11 +315,11 @@ class DiceRendererInstance {
 
     // Label text (centered, wrapped)
     const label = side.text || String(side.face);
-    ctx.fillStyle = '#ffe8a0';
+    ctx.fillStyle = c.text;
     ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.strokeStyle = '#3a2000';
+    ctx.strokeStyle = c.outline;
     ctx.lineWidth = 3;
 
     // Word-wrap the label into max 2 lines
@@ -381,7 +378,7 @@ class DiceRendererInstance {
       // Use appropriate texture based on dice type
       let texture;
       if (isCardDice) {
-        texture = this.createCardDiceFaceTexture(side);
+        texture = this.createCardDiceFaceTexture(side, diceData.colors);
       } else if (isEnemyDice) {
         texture = this.createEnemyFaceTexture(side);
       } else {

@@ -2595,13 +2595,17 @@ function endTurn() {
     if (e.statuses['choked']) delete e.statuses['choked'];
   });
 
-  // Well-Laid Plans: mark up to X cards in hand with Retain before discarding
+  // Well-Laid Plans: clear old retain flags each turn, then re-mark up to X cards
   if (combatState.player.statuses['well_laid_plans'] > 0) {
     const wlp = combatState.player.statuses['well_laid_plans'];
+    // Clear any WLP retain flags from the previous turn so they don't accumulate
+    for (const hc of combatState.hand) delete hc._retain;
     let retained = 0;
     for (const hc of combatState.hand) {
       if (retained >= wlp) break;
-      if (!hc._retain) { hc._retain = true; retained++; addLog(`Well-Laid Plans: ${hc.name} retained`, 'success'); }
+      hc._retain = true;
+      retained++;
+      addLog(`Well-Laid Plans: ${hc.name} retained`, 'success');
     }
   }
 
@@ -4657,15 +4661,22 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // Conjure N Random [Type] to/in Hand (Distract)
+    // Conjure N Random [Type] to/in Hand (Distraction, Infernal Blade)
     const conjureRandomTypeMatch = p.match(/Conjure (\d+) Random (\w+) (?:to|in) Hand/i);
     if (conjureRandomTypeMatch) {
       const count      = parseInt(conjureRandomTypeMatch[1]);
       const typeFilter = conjureRandomTypeMatch[2].toLowerCase();
       const makeFree   = /play it for free this turn/i.test(desc);
-      const pool = typeof CARDS_DATA !== 'undefined'
+      // Draw from the player's own deck (draw + discard + hand), falling back to CARDS_DATA
+      const deckCards = [
+        ...(combatState.drawPile || []),
+        ...(combatState.discardPile || []),
+        ...(combatState.hand || []),
+      ].filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard);
+      const globalPool = typeof CARDS_DATA !== 'undefined'
         ? CARDS_DATA.filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard)
         : [];
+      const pool = deckCards.length > 0 ? deckCards : globalPool;
       for (let i = 0; i < count; i++) {
         if (pool.length === 0) break;
         const picked = pool[Math.floor(Math.random() * pool.length)];

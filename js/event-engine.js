@@ -630,38 +630,67 @@ function _showSuccessRollScreen(event, choice, onContinue) {
     const prompt = document.getElementById('ev-prompt-s');
     if (prompt) prompt.textContent = 'Rolling…';
 
-    const result = _rollD20(luckMode);
-    let done = 0;
+    const performRoll = () => {
+      const result = _rollD20(luckMode);
+      let done = 0;
 
-    instances.forEach(({ renderer, data }, i) => {
-      const face = result.rolls[i] !== undefined ? result.rolls[i] : result.rolls[0];
-      renderer.rollDice(data, face, () => {
-        if (++done < instances.length) return;
+      instances.forEach(({ renderer, data }, i) => {
+        const face = result.rolls[i] !== undefined ? result.rolls[i] : result.rolls[0];
+        renderer.rollDice(data, face, () => {
+          if (++done < instances.length) return;
 
-        if (luckMode !== 'normal') _highlightWinner(instances, result.rolls, luckMode);
+          if (luckMode !== 'normal') _highlightWinner(instances, result.rolls, luckMode);
 
-        const success = (result.used + statVal) >= difficulty;
-        const color   = success ? '#2ecc71' : '#e74c3c';
-        const label   = success ? 'SUCCESS' : 'FAILURE';
+          const success = (result.used + statVal) >= difficulty;
+          const color   = success ? '#2ecc71' : '#e74c3c';
+          const label   = success ? 'SUCCESS' : 'FAILURE';
 
-        if (prompt) prompt.style.display = 'none';
-        const resultDiv = document.getElementById('ev-result-s');
-        if (resultDiv) {
-          resultDiv.style.display = 'block';
-          resultDiv.innerHTML = `
-            <div style="color:${color};font-size:26px;font-weight:bold;
-              text-shadow:0 0 18px ${color}88;margin-bottom:4px;">${label}</div>
-            <div style="color:#bbb;font-size:13px;">
-              Rolled ${result.used} + ${statVal} = ${result.used + statVal} vs ${difficulty}
-            </div>`;
-        }
+          if (prompt) prompt.style.display = 'none';
+          const resultDiv = document.getElementById('ev-result-s');
+          if (resultDiv) {
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `
+              <div style="color:${color};font-size:26px;font-weight:bold;
+                text-shadow:0 0 18px ${color}88;margin-bottom:4px;">${label}</div>
+              <div style="color:#bbb;font-size:13px;">
+                Rolled ${result.used} + ${statVal} = ${result.used + statVal} vs ${difficulty}
+              </div>
+              <div id="ev-roll-btns-s" style="margin-top:14px;display:flex;gap:10px;justify-content:center;"></div>`;
 
-        setTimeout(() => {
-          _disposeEventRenderers();
-          _showCritRollScreen(event, choice, success, onContinue);
-        }, 1900);
+            const btnsDiv = document.getElementById('ev-roll-btns-s');
+            if (btnsDiv) {
+              const rerolls = typeof gameState !== 'undefined' ? (gameState.reroll || 0) : 0;
+
+              const continueBtn = document.createElement('button');
+              continueBtn.textContent = 'Continue →';
+              continueBtn.style.cssText = `padding:8px 20px;background:#2a5c2a;border:1px solid #4a9c4a;
+                color:#fff;border-radius:6px;font-size:14px;cursor:pointer;`;
+              continueBtn.onclick = () => {
+                _disposeEventRenderers();
+                _showCritRollScreen(event, choice, success, onContinue);
+              };
+              btnsDiv.appendChild(continueBtn);
+
+              if (rerolls > 0) {
+                const rerollBtn = document.createElement('button');
+                rerollBtn.textContent = `🔄 Reroll (${rerolls} left)`;
+                rerollBtn.style.cssText = `padding:8px 20px;background:#5c3a0a;border:1px solid #c07820;
+                  color:#f0c850;border-radius:6px;font-size:14px;cursor:pointer;`;
+                rerollBtn.onclick = () => {
+                  if (typeof gameState !== 'undefined') gameState.reroll = Math.max(0, (gameState.reroll || 0) - 1);
+                  resultDiv.style.display = 'none';
+                  if (prompt) { prompt.textContent = 'Rolling…'; prompt.style.display = ''; }
+                  performRoll();
+                };
+                btnsDiv.insertBefore(rerollBtn, continueBtn);
+              }
+            }
+          }
+        });
       });
-    });
+    };
+
+    performRoll();
   };
 
   ids.forEach(id => {
@@ -739,46 +768,75 @@ function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
     const prompt = document.getElementById('ev-prompt-c');
     if (prompt) prompt.textContent = 'Rolling…';
 
-    const result = _rollD20(luckMode);
-    let done = 0;
+    const performRoll = () => {
+      const result = _rollD20(luckMode);
+      let done = 0;
 
-    instances.forEach(({ renderer, data }, i) => {
-      const face = result.rolls[i] !== undefined ? result.rolls[i] : result.rolls[0];
-      renderer.rollDice(data, face, () => {
-        if (++done < instances.length) return;
+      instances.forEach(({ renderer, data }, i) => {
+        const face = result.rolls[i] !== undefined ? result.rolls[i] : result.rolls[0];
+        renderer.rollDice(data, face, () => {
+          if (++done < instances.length) return;
 
-        if (luckMode !== 'normal') _highlightWinner(instances, result.rolls, luckMode);
+          if (luckMode !== 'normal') _highlightWinner(instances, result.rolls, luckMode);
 
-        const isCrit = result.used >= CRIT_THRESHOLD;
-        const color  = isCrit ? '#f1c40f' : '#aaa';
-        const label  = isCrit ? '⚡ CRITICAL' : 'NOT CRITICAL';
+          const isCrit = result.used >= CRIT_THRESHOLD;
+          const color  = isCrit ? '#f1c40f' : '#aaa';
+          const label  = isCrit ? '⚡ CRITICAL' : 'NOT CRITICAL';
 
-        let outcomeKey;
-        if (wasSuccess && isCrit)  outcomeKey = 'crit_good';
-        else if (wasSuccess)       outcomeKey = 'good';
-        else if (isCrit)           outcomeKey = 'crit_bad';
-        else                       outcomeKey = 'bad';
+          let outcomeKey;
+          if (wasSuccess && isCrit)  outcomeKey = 'crit_good';
+          else if (wasSuccess)       outcomeKey = 'good';
+          else if (isCrit)           outcomeKey = 'crit_bad';
+          else                       outcomeKey = 'bad';
 
-        const outcome = (choice.outcomes && choice.outcomes[outcomeKey])
-          || { description: 'Nothing happens.', effects: [] };
+          const outcome = (choice.outcomes && choice.outcomes[outcomeKey])
+            || { description: 'Nothing happens.', effects: [] };
 
-        if (prompt) prompt.style.display = 'none';
-        const resultDiv = document.getElementById('ev-result-c');
-        if (resultDiv) {
-          resultDiv.style.display = 'block';
-          resultDiv.innerHTML = `
-            <div style="color:${color};font-size:26px;font-weight:bold;
-              text-shadow:0 0 18px ${color}88;margin-bottom:4px;">${label}</div>
-            <div style="color:#bbb;font-size:13px;">Rolled ${result.used} vs 18</div>`;
-        }
+          if (prompt) prompt.style.display = 'none';
+          const resultDiv = document.getElementById('ev-result-c');
+          if (resultDiv) {
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `
+              <div style="color:${color};font-size:26px;font-weight:bold;
+                text-shadow:0 0 18px ${color}88;margin-bottom:4px;">${label}</div>
+              <div style="color:#bbb;font-size:13px;">Rolled ${result.used} vs 18</div>
+              <div id="ev-roll-btns-c" style="margin-top:14px;display:flex;gap:10px;justify-content:center;"></div>`;
 
-        setTimeout(() => {
-          _disposeEventRenderers();
-          const effectLines = applyEventEffects(outcome.effects || []);
-          _showOutcomeScreen(outcome, effectLines, { outcomeKey, wasSuccess, isCrit }, onContinue);
-        }, 1900);
+            const btnsDiv = document.getElementById('ev-roll-btns-c');
+            if (btnsDiv) {
+              const rerolls = typeof gameState !== 'undefined' ? (gameState.reroll || 0) : 0;
+
+              const continueBtn = document.createElement('button');
+              continueBtn.textContent = 'Continue →';
+              continueBtn.style.cssText = `padding:8px 20px;background:#2a5c2a;border:1px solid #4a9c4a;
+                color:#fff;border-radius:6px;font-size:14px;cursor:pointer;`;
+              continueBtn.onclick = () => {
+                _disposeEventRenderers();
+                const effectLines = applyEventEffects(outcome.effects || []);
+                _showOutcomeScreen(outcome, effectLines, { outcomeKey, wasSuccess, isCrit }, onContinue);
+              };
+              btnsDiv.appendChild(continueBtn);
+
+              if (rerolls > 0) {
+                const rerollBtn = document.createElement('button');
+                rerollBtn.textContent = `🔄 Reroll (${rerolls} left)`;
+                rerollBtn.style.cssText = `padding:8px 20px;background:#5c3a0a;border:1px solid #c07820;
+                  color:#f0c850;border-radius:6px;font-size:14px;cursor:pointer;`;
+                rerollBtn.onclick = () => {
+                  if (typeof gameState !== 'undefined') gameState.reroll = Math.max(0, (gameState.reroll || 0) - 1);
+                  resultDiv.style.display = 'none';
+                  if (prompt) { prompt.textContent = 'Rolling…'; prompt.style.display = ''; }
+                  performRoll();
+                };
+                btnsDiv.insertBefore(rerollBtn, continueBtn);
+              }
+            }
+          }
+        });
       });
-    });
+    };
+
+    performRoll();
   };
 
   ids.forEach(id => {
