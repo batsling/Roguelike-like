@@ -150,7 +150,7 @@ var EVENTS_DATA = [
   {
     id: 'fruit_basket',
     name: 'Fruit Basket',
-    image: 'images/events/WatchingEyeballs.png',
+    image: 'images/events/FruitBasket.png',
     description: '{name} discovers a basket of fruit. The warm smell of fresh citrus and bananas lingers in the air. A refreshing reprieve!',
     game: 'Mewgenics',
     choices: [
@@ -158,7 +158,7 @@ var EVENTS_DATA = [
         id: 'fruit_eat',
         text: 'Eat',
         type: 'stat_check',
-        stat: 'charisma',
+        stat: 'constitution',
         rollDescription: '{name} reaches for the fruit...',
         outcomes: {
           crit_good: {

@@ -4099,6 +4099,25 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
+    // Go for the Eyes: "If target intends to attack, Inflict N Status"
+    const goForEyesMatch = p.match(/If target intends to attack, Inflict (\d+) (\w+)/i);
+    if (goForEyesMatch) {
+      const stacks = parseInt(goForEyesMatch[1]);
+      const statusKey = goForEyesMatch[2].toLowerCase();
+      if (target) {
+        const isAttacking = target.currentIntent && target.currentIntent.some(
+          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg')
+        );
+        if (isAttacking) {
+          target.statuses[statusKey] = (target.statuses[statusKey] || 0) + stacks;
+          addLog(`Go for the Eyes: ${stacks} ${goForEyesMatch[2]} (enemy intends to attack)!`, 'success');
+        } else {
+          addLog(`Go for the Eyes: enemy not attacking this turn`, 'info');
+        }
+      }
+      continue;
+    }
+
     // Spot Weakness: "If the target enemy intends to attack, Gain +N Power"
     const spotWeaknessM = p.match(/If the target enemy intends to attack, Gain \+?(\d+) Power/i);
     if (spotWeaknessM) {
@@ -4776,6 +4795,50 @@ function resolveCardEffect(card, target, options = {}) {
       const cnt = parseInt(p.match(/Conjure (\d+)/i)[1]);
       player.statuses['shiv_per_turn'] = (player.statuses['shiv_per_turn'] || 0) + cnt;
       addLog(`Infinite Blades: +${cnt} Shiv per turn`, 'success');
+      continue;
+    }
+
+    // Gain +N Buffer (Buffer card — grants the defensive Buffer status)
+    const gainBufferMatch = p.match(/Gain \+?(\d+) Buffer/i);
+    if (gainBufferMatch) {
+      const stacks = parseInt(gainBufferMatch[1]);
+      player.statuses['buffer'] = (player.statuses['buffer'] || 0) + stacks;
+      addLog(`Gained ${stacks} Buffer`, 'success');
+      continue;
+    }
+
+    // All for One: "Put all 0 cost Cards from Discard to Hand"
+    if (/Put all 0 cost Cards? from Discard to Hand/i.test(p)) {
+      const moved = [];
+      for (let i = combatState.discardPile.length - 1; i >= 0; i--) {
+        const c = combatState.discardPile[i];
+        const effectiveCost = c._freeCost ? 0 : (c.cost || 0);
+        if (effectiveCost === 0) {
+          combatState.discardPile.splice(i, 1);
+          combatState.hand.push(c);
+          moved.push(c.name);
+        }
+      }
+      if (moved.length > 0) addLog(`All for One: moved ${moved.length} zero-cost card(s) to hand!`, 'success');
+      else addLog(`All for One: no zero-cost cards in discard`, 'info');
+      continue;
+    }
+
+    // Hologram: "Put a Card from Discard to Hand"
+    if (/Put a Card from (?:your )?Discard to Hand/i.test(p)) {
+      if (combatState.discardPile.length > 0) {
+        combatState._pendingCardPick = { action: 'tohand', pile: 'discard', count: 1 };
+      }
+      continue;
+    }
+
+    // Seek: "Put N Cards from your Deck to Hand"
+    const seekMatch = p.match(/Put (\d+) Cards? from your Deck to Hand/i);
+    if (seekMatch) {
+      const count = Math.min(parseInt(seekMatch[1]), combatState.drawPile.length);
+      if (count > 0) {
+        combatState._pendingCardPick = { action: 'tohand', pile: 'draw', count };
+      }
       continue;
     }
 

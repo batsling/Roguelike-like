@@ -2660,8 +2660,8 @@ window.showCardPickerModal = function(options) {
   if (!combat) return;
 
   const { action, pile, count } = options;
-  const actionLabel = action === 'discard' ? 'Discard' : action === 'setup' ? 'Setup' : action === 'nightmare' ? 'Choose' : action === 'topdraw' ? 'Top of Draw' : action === 'upgrade' ? 'Upgrade' : action === 'copy' ? 'Copy' : action === 'retain' ? 'Retain' : 'Exhaust';
-  const actionColor = action === 'discard' ? '#f39c12' : action === 'setup' ? '#4fc3f7' : action === 'nightmare' ? '#9b59b6' : action === 'topdraw' ? '#2ecc71' : action === 'upgrade' ? '#3498db' : action === 'copy' ? '#e67e22' : action === 'retain' ? '#2ecc71' : '#7f8c8d';
+  const actionLabel = action === 'discard' ? 'Discard' : action === 'setup' ? 'Setup' : action === 'nightmare' ? 'Choose' : action === 'topdraw' ? 'Top of Draw' : action === 'upgrade' ? 'Upgrade' : action === 'copy' ? 'Copy' : action === 'retain' ? 'Retain' : action === 'tohand' ? 'Take to Hand' : 'Exhaust';
+  const actionColor = action === 'discard' ? '#f39c12' : action === 'setup' ? '#4fc3f7' : action === 'nightmare' ? '#9b59b6' : action === 'topdraw' ? '#2ecc71' : action === 'upgrade' ? '#3498db' : action === 'copy' ? '#e67e22' : action === 'retain' ? '#2ecc71' : action === 'tohand' ? '#4fc3f7' : '#7f8c8d';
 
   const pileMap = {
     hand:    { cards: combat.hand || [],        label: 'Hand'         },
@@ -2706,7 +2706,7 @@ window.showCardPickerModal = function(options) {
         ${action === 'retain' ? `Well-Laid Plans` : `${actionLabel} ${count} Card${count !== 1 ? 's' : ''}`}
       </h2>
       <p style="color:#aaa; text-align:center; margin:0 0 14px; font-size:12px;">
-        ${action === 'retain' ? `Choose up to ${count} card${count !== 1 ? 's' : ''} to keep in your hand next turn.` : action === 'nightmare' ? `Choose a card to conjure ${options._nightmareCount || 3} copies of next turn.` : action === 'topdraw' ? `Choose a card to place on top of your Draw Pile.` : action === 'upgrade' ? `Choose a card to upgrade for the rest of combat.` : action === 'copy' ? `Choose an Attack or Power card to conjure ${options._copyCount || 1} cop${(options._copyCount || 1) !== 1 ? 'ies' : 'y'} of to Hand.` : `Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to ${actionLabel.toLowerCase()}.`}
+        ${action === 'retain' ? `Choose up to ${count} card${count !== 1 ? 's' : ''} to keep in your hand next turn.` : action === 'nightmare' ? `Choose a card to conjure ${options._nightmareCount || 3} copies of next turn.` : action === 'topdraw' ? `Choose a card to place on top of your Draw Pile.` : action === 'upgrade' ? `Choose a card to upgrade for the rest of combat.` : action === 'copy' ? `Choose an Attack or Power card to conjure ${options._copyCount || 1} cop${(options._copyCount || 1) !== 1 ? 'ies' : 'y'} of to Hand.` : action === 'tohand' ? `Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to take into your Hand.` : `Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to ${actionLabel.toLowerCase()}.`}
       </p>
       <div id="card-picker-grid" style="
         display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
@@ -2833,6 +2833,14 @@ window.showCardPickerModal = function(options) {
         combat.hand.push({ ...card, _uid: `dual_wield_copy_${Date.now()}_${i}` });
       }
       window.CombatEngine && window.CombatEngine.addLog(`Dual Wield: conjured ${copyCount}x ${card.name} to Hand!`, 'success');
+    } else if (action === 'tohand') {
+      // Hologram / Seek: move selected cards from source pile directly into hand
+      const sortedIdx = [...selected].sort((a, b) => b - a);
+      for (const idx of sortedIdx) {
+        const card = pileCards.splice(idx, 1)[0];
+        combat.hand.push(card);
+        window.CombatEngine && window.CombatEngine.addLog(`${card.name} → Hand`, 'info');
+      }
     } else {
       // Sort descending so splice doesn't shift indices
       const sortedIdx = [...selected].sort((a, b) => b - a);
