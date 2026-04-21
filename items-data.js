@@ -307,6 +307,20 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Crown",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "When Levelling Up, 50% chance to Level Up an additional time",
+    "game": "Vampire Survivors",
+    "tags": [
+      "wearable",
+      "hat",
+      "crown"
+    ],
+    "image": "images/items/Crown.png",
+    "unlockCondition": null
+  },
+  {
     "name": "D6",
     "rarity": "Uncommon",
     "type": "Passive",
@@ -363,6 +377,19 @@ var ITEMS_DATA = [
       "consumable"
     ],
     "image": "images/items/DiscoBiscuit.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Duplicator",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "Your Weapon Attack Cards hit an extra time",
+    "game": "Vampire Survivors",
+    "tags": [
+      "wearable",
+      "ring"
+    ],
+    "image": "images/items/Duplicator.png",
     "unlockCondition": null
   },
   {
@@ -834,6 +861,18 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Pummarola",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "At the start of combat, Gain +1 Regeneration",
+    "game": "Vampire Survivors",
+    "tags": [
+      "heart"
+    ],
+    "image": "images/items/Pummarola.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Raven Feather",
     "rarity": "Rare",
     "type": "Triggered",
@@ -1170,42 +1209,15 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "Pummarola",
-    "rarity": "Uncommon",
-    "type": "Triggered",
-    "description": "At the start of combat, Gain +1 Regeneration",
-    "game": "Vampire Survivors",
-    "tags": [
-      "heart"
-    ],
-    "image": "images/items/Pummarola.png",
-    "unlockCondition": null
-  },
-  {
-    "name": "Duplicator",
+    "name": "Rock Bottom",
     "rarity": "Rare",
-    "type": "Triggered",
-    "description": "Your Weapon Attack Cards hit an extra time",
-    "game": "Vampire Survivors",
+    "type": "Scaling",
+    "description": "Prevents your Strength, Dexterity, Intelligence, Charisma, FoV, Discovery, and Luck from falling below their highest values reached.",
+    "game": "The Binding of Isaac",
     "tags": [
-      "wearable",
-      "ring"
+      "stone"
     ],
-    "image": "images/items/Duplicator.png",
-    "unlockCondition": null
-  },
-  {
-    "name": "Crown",
-    "rarity": "Uncommon",
-    "type": "Triggered",
-    "description": "When Levelling Up, 50% chance to Level Up an additional time",
-    "game": "Vampire Survivors",
-    "tags": [
-      "wearable",
-      "hat",
-      "crown"
-    ],
-    "image": "images/items/Crown.png",
+    "image": "images/items/RockBottom.png",
     "unlockCondition": null
   }
 ];

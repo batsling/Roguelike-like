@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 624 games, 787 connections
-// 539 connected, 169 influencers
+// 625 games, 788 connections
+// 540 connected, 169 influencers
 
 var GAMES_DATA = [
   {
@@ -6978,6 +6978,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/vagante.jpg"
   },
   {
+    "name": "Vampire Crawlers",
+    "year": 2026,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/vampire-crawlers.png"
+  },
+  {
     "name": "Vampire Hunters",
     "year": 2023,
     "type": "Action",
@@ -7060,7 +7070,8 @@ var GAMES_DATA = [
       "Glyphica: Typing Survival",
       "Rogue Factory",
       "God Of Weapons",
-      "Star Survivor"
+      "Star Survivor",
+      "Vampire Crawlers"
     ],
     "coverImage": "images/covers/vampire-survivors.jpg"
   },

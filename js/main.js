@@ -5139,6 +5139,15 @@ function confirmLevelUp(onComplete) {
   gameState.charisma = charisma;
   gameState.luck = luck;
 
+  // Rock Bottom: record new highs after level-up stat bonuses
+  if (typeof inventory !== 'undefined' && inventory.some(i => i.name === 'Rock Bottom')) {
+    if (!gameState.rockBottomBests) gameState.rockBottomBests = {};
+    for (const _s of ['strength', 'dexterity', 'intelligence', 'charisma', 'fov', 'discovery', 'luck']) {
+      const _cur = (typeof window[_s] !== 'undefined' ? window[_s] : 0) || 0;
+      if (_cur > (gameState.rockBottomBests[_s] || 0)) gameState.rockBottomBests[_s] = _cur;
+    }
+  }
+
   // Update UI
   updateTopBar();
   saveCurrentGame();

@@ -40,6 +40,7 @@ function createNotification(text, bgColor = '#8B4513', emoji = '') {
 
 // Update a stat and sync it with gameState
 function updateStat(statName, change) {
+  const preChangeValue = (typeof window[statName] !== 'undefined' ? window[statName] : 0) || 0;
   const statMap = {
     strength: () => { strength += change; gameState.strength = strength; },
     dexterity: () => { dexterity += change; gameState.dexterity = dexterity; },
@@ -52,14 +53,39 @@ function updateStat(statName, change) {
     fov: () => { fov += change; gameState.fov = fov; },
     luck: () => { luck += change; gameState.luck = luck; },
     block: () => {
-      // Block is not a persistent player stat - it's only tracked as an item modifier
-      // The actual block effect is applied during combat via the item's statModifiers
       console.log(`Block modifier changed by ${change} (item-specific, not a player stat)`);
     }
   };
 
   statMap[statName]?.();
+  enforceRockBottom(statName, preChangeValue);
   if (typeof updateGameStats === 'function') updateGameStats();
+}
+
+const _ROCK_BOTTOM_STATS = ['strength', 'dexterity', 'intelligence', 'charisma', 'fov', 'discovery', 'luck'];
+
+// Rock Bottom: prevent tracked stats from falling below their historical peak.
+// preChangeValue is the stat's value BEFORE the current change (used to seed the floor on first call).
+function enforceRockBottom(statName, preChangeValue) {
+  if (!_ROCK_BOTTOM_STATS.includes(statName)) return;
+  if (!inventory || !inventory.some(i => i.name === 'Rock Bottom')) return;
+
+  if (!gameState.rockBottomBests) gameState.rockBottomBests = {};
+
+  // Seed the floor from the pre-change value the first time this stat is tracked
+  if (gameState.rockBottomBests[statName] === undefined) {
+    gameState.rockBottomBests[statName] = preChangeValue;
+  }
+
+  const best = gameState.rockBottomBests[statName];
+  const current = (typeof window[statName] !== 'undefined' ? window[statName] : 0) || 0;
+
+  if (current > best) {
+    gameState.rockBottomBests[statName] = current;
+  } else if (current < best) {
+    window[statName] = best;
+    if (statName in gameState) gameState[statName] = best;
+  }
 }
 
 // ===== SCALABLE PASSIVE ITEM SYSTEM =====

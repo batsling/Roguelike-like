@@ -211,10 +211,16 @@ const StateMutator = {
     }
 
     const oldValue = window[statName] || 0;
-    const newValue = oldValue + delta;
+    let newValue = oldValue + delta;
 
     window[statName] = newValue;
     gameState[statName] = newValue;
+
+    // Rock Bottom: prevent stat from falling below its historical peak
+    if (typeof enforceRockBottom === 'function') {
+      enforceRockBottom(statName, oldValue);
+      newValue = (typeof window[statName] !== 'undefined' ? window[statName] : newValue) || newValue;
+    }
 
     if (updateUI) {
       if (typeof updateGameStats === 'function') updateGameStats();
