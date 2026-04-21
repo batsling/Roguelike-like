@@ -3055,5 +3055,202 @@ var CARDS_DATA = [
     "imageUrl": "images/cards/PuncturedEye.png",
     "game": "Mewgenics",
     "tags": []
+  },
+  {
+    "name": "White Noise",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "description": "Conjure 1 Random Power in Hand. You can play it for free this turn. Exhaust.",
+    "upgradedDescription": "Conjure 1 Random Power in Hand. You can play it for free this turn. Exhaust.",
+    "upgradedCost": 0,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/WhiteNoise.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "defect",
+      "draw",
+      "random",
+      "exhaust"
+    ]
+  },
+  {
+    "name": "All for One",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "description": "Deal 10 Dmg Melee. Put all 0 cost Cards from Discard to Hand.",
+    "upgradedDescription": "Deal 14 Dmg Melee. Put all 0 cost Cards from Discard to Hand.",
+    "upgradedCost": 2,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/AllForOne.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "defect",
+      "draw",
+      "offense"
+    ]
+  },
+  {
+    "name": "Machine Learning",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Power",
+    "description": "At the start of your turn, Gain +1 Next Turn Draw. ",
+    "upgradedDescription": "Innate. At the start of your turn, Gain +1 Next Turn Draw. ",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/MachineLearning.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "defect",
+      "draw"
+    ]
+  },
+  {
+    "name": "Seek",
+    "rarity": "Rare",
+    "cost": 0,
+    "type": "Skill",
+    "description": "Put 1 Card from your Deck to Hand. Exhaust.",
+    "upgradedDescription": "Put 2 Cards from your Deck to Hand. Exhaust.",
+    "upgradedCost": 0,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Seek.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "defect",
+      "draw",
+      "exhaust"
+    ]
+  },
+  {
+    "name": "Boot Sequence",
+    "rarity": "Uncommon",
+    "cost": 0,
+    "type": "Skill",
+    "description": "Innate. Gain 10 Block. Exhaust",
+    "upgradedDescription": "Innate. Gain 13 Block. Exhaust",
+    "upgradedCost": 0,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/BootSequence.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "defect",
+      "defense",
+      "exhaust"
+    ]
+  },
+  {
+    "name": "Sweeping Beam",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "description": "Deal 6 Dmg Ranged Cleave. Draw 1 Card.",
+    "upgradedDescription": "Deal 9 Dmg Ranged Cleave. Draw 1 Card.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/SweepingBeam.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "defect",
+      "offense",
+      "draw"
+    ]
+  },
+  {
+    "name": "Leap",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "description": "Gain +9 Block.",
+    "upgradedDescription": "Gain +12 Block.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Leap.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "defect",
+      "defense"
+    ]
+  },
+  {
+    "name": "Go for the Eyes",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Attack",
+    "description": "Deal 3 Dmg Melee. If target intends to attack, Inflict 1 Weak.",
+    "upgradedDescription": "Deal 4 Dmg Melee. If target intends to attack, Inflict 2 Weak.",
+    "upgradedCost": 0,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/GoForTheEyes.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "defect",
+      "offense",
+      "debuff"
+    ]
+  },
+  {
+    "name": "Beam Cell",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Attack",
+    "description": "Deal 3 Dmg Ranged. Inflict 1 Vulnerable.",
+    "upgradedDescription": "Deal 4 Dmg Ranged. Inflict 2 Vulnerable.",
+    "upgradedCost": 0,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/BeamCell.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "defect",
+      "offense",
+      "debuff"
+    ]
+  },
+  {
+    "name": "Hologram",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "description": "Gain +3 Block. Put a Card from Discard to Hand. Exhaust.",
+    "upgradedDescription": "Gain +5 Block. Put a Card from Discard to Hand.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Hologram.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "defect",
+      "defense",
+      "draw",
+      "exhaust"
+    ]
+  },
+  {
+    "name": "Buffer",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Power",
+    "description": "Gain +1 Buffer.",
+    "upgradedDescription": "Gain +2 Buffer.",
+    "upgradedCost": 2,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Buffer.png",
+    "game": "Slay the Spire",
+    "tags": [
+      "defect",
+      "defense"
+    ]
   }
 ];

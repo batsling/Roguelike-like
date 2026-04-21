@@ -80,7 +80,7 @@ const KEYWORD_DEFS = {
   'shackled':         'Cannot gain block.',
   'regeneration':     'Heals N HP at the start of each turn.',
   'power':            'Increases outgoing damage (player) or incoming (enemy) by N stacks.',
-  'holy shield':      'Negates the next N hits entirely (before block).',
+  'buffer':           'Negates the next N hits entirely (before block).',
   'soul link':        'Shares health loss with all other soul-linked entities.',
   'leeches':          'Drains HP from the target on hit.',
   'bleed':            'Deals damage over time.',
@@ -321,7 +321,8 @@ const STATUS_META = {
   brace:          { img: 'Brace',         emoji: '🛡', label: 'Brace'        },
   bruise:         { img: 'Bruise',        emoji: '🩹', label: 'Bruise'       },
   forgetful:      { img: 'Forgetful',     emoji: '🌀', label: 'Forgetful'    },
-  holy_shield:    { img: 'HolyShield',    emoji: '✨', label: 'Holy Shield'  },
+  buffer:         { img: 'Buffer',        emoji: '🛡', label: 'Buffer'       },
+  machine_learning: { img: 'MachineLearning', emoji: '🤖', label: 'Machine Learning' },
   leeches:        { img: 'Leeches',       emoji: '🩸', label: 'Leeches'      },
   pigment_rich:   { img: 'PigmentRich',   emoji: '🎨', label: 'Pigment Rich' },
   regeneration:   { img: 'Regeneration',  emoji: '💚', label: 'Regeneration' },
@@ -3082,11 +3083,11 @@ function _applyDiceRollEffect(diceCard, pickedCard, newPickIdx, faceData) {
 
   if (pool.length > 0 && targetIdx >= 0) {
     const newCard = { ...pool[Math.floor(Math.random() * pool.length)] };
-    if (makeFree) newCard._freeCost = true;
+    if (makeFree) newCard.cost = 0;
     const oldName = pickedCard.name;
     combat.hand[targetIdx] = newCard;
 
-    const freeStr = makeFree ? ' (free this turn!)' : '';
+    const freeStr = makeFree ? ' (free this combat!)' : '';
     if (combat.log) combat.log.push({
       text: `${diceCard.name}: ${oldName} → ${newCard.name}${freeStr}`,
       type: 'info'

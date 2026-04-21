@@ -309,16 +309,16 @@ var STATUSES_DATA = {
     "preference": "Negative",
     "imageUrl": "images/statuses/SoulLink.png"
   },
-  "holy_shield": {
-    "name": "Holy Shield",
-    "description": "The next time this unit gets hit, take no damage and lose 1 Holy Shield. This takes precedence over Block",
+  "buffer": {
+    "name": "Buffer",
+    "description": "The next time this unit gets hit, take no damage. This takes precedence over Block",
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
     "decay": "When the target would take damage",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/HolyShield.png"
+    "imageUrl": "images/statuses/Buffer.png"
   },
   "regeneration": {
     "name": "Regeneration",
@@ -399,7 +399,7 @@ var STATUSES_DATA = {
   },
   "next_turn_draw": {
     "name": "Next Turn Draw",
-    "description": "Draw X Cards at the start of your next turn",
+    "description": "Draw X Cards at the start of your turn",
     "type": "Buff",
     "stackable": false,
     "maxStack": null,
@@ -410,7 +410,7 @@ var STATUSES_DATA = {
   },
   "next_turn_energy": {
     "name": "Next Turn Energy",
-    "description": "Gain X Energy at the start of your next turn",
+    "description": "Gain X Energy at the start of your turn",
     "type": "Buff",
     "stackable": false,
     "maxStack": null,
@@ -564,11 +564,11 @@ var STATUSES_DATA = {
   },
   "fear": {
     "name": "Fear",
-    "description": "Your non-Attack Cards cost 1 more Energy, lose 1 Fear whenever you play an Attack Card",
+    "description": "Your non-Skill Cards cost 1 more Energy, lose 1 Fear whenever you play a Skill Card",
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
-    "decay": "Down by 1 on played Attack Card",
+    "decay": "Down by 1 on played Skill Card",
     "who": "Player",
     "preference": "Negative",
     "imageUrl": "images/statuses/Fear.png"

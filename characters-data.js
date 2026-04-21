@@ -79,11 +79,11 @@ var CHARACTERS_DATA = {
       "type": "item"
     },
     "levelUpStats": {
-      "strength": 1,
+      "strength": 0,
       "dexterity": 0,
       "intelligence": 0,
       "charisma": 0,
-      "reroll": 1,
+      "reroll": 2,
       "dash": 0,
       "skip": 0,
       "discovery": 0,

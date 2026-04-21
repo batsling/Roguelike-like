@@ -28,7 +28,7 @@ var DICE_DATA = [
       },
       {
         "face": 6,
-        "text": "Random Attack, Skill, or Power that is free to play this turn"
+        "text": "Random Attack, Skill, or Power that is free to play this combat"
       }
     ]
   }

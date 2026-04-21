@@ -496,7 +496,7 @@ var ITEMS_DATA = [
     "name": "Holy Mantle",
     "rarity": "Legendary",
     "type": "Triggered",
-    "description": "At the start of combat, Gain +1 Holy Shield",
+    "description": "At the start of combat, Gain +1 Buffer",
     "game": "The Binding of Isaac",
     "tags": [
       "holy"
@@ -806,7 +806,7 @@ var ITEMS_DATA = [
     "name": "Prayer Card",
     "rarity": "Rare",
     "type": "Triggered",
-    "description": "33% chance to gain +1 Holy Shield each time you take damage",
+    "description": "33% chance to gain +1 Buffer each time you take damage",
     "game": "Mewgenics",
     "tags": [
       "card",

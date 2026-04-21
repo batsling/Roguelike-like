@@ -322,7 +322,7 @@ function rollWithLuckAdvantage(luckVal, favorHigh = true) {
  * on the roll inside selectRandomRarity, biasing toward higher-value buckets.
  */
 function calculateRarityWeights() {
-  return { common: 70, uncommon: 20, rare: 10 };
+  return { common: 75, uncommon: 20, rare: 5 };
 }
 
 /**

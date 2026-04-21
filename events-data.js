@@ -150,6 +150,7 @@ var EVENTS_DATA = [
   {
     id: 'fruit_basket',
     name: 'Fruit Basket',
+    image: 'images/events/WatchingEyeballs.png',
     description: '{name} discovers a basket of fruit. The warm smell of fresh citrus and bananas lingers in the air. A refreshing reprieve!',
     game: 'Mewgenics',
     choices: [
@@ -212,7 +213,7 @@ var EVENTS_DATA = [
         outcomes: {
           crit_good: {
             description: 'Upon closer inspection, {name} notices that the fruit is shimmering in the dim light. {name} carefully bites into the ripe fruit... It\'s the most delicious thing they\'ve ever tasted!',
-            effects: [{ type: 'heal', value: 15 }, { type: 'combat_status', status: 'holy_shield', stacks: 1 }]
+            effects: [{ type: 'heal', value: 15 }, { type: 'combat_status', status: 'buffer', stacks: 1 }]
           },
           good: {
             description: '{name} examines the fruit in the basket and finds one that looks fresh.',

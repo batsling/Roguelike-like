@@ -379,8 +379,8 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     // Holy Mantle: +1 Holy Shield at start of combat
     const holyMantleCount = inventory.filter(i => i.name === 'Holy Mantle').reduce((n, i) => n + (i.quantity || 1), 0);
     if (holyMantleCount > 0) {
-      combatState.player.statuses['holy_shield'] = (combatState.player.statuses['holy_shield'] || 0) + holyMantleCount;
-      addLog(`Holy Mantle: +${holyMantleCount} Holy Shield!`, 'success');
+      combatState.player.statuses['buffer'] = (combatState.player.statuses['buffer'] || 0) + holyMantleCount;
+      addLog(`Holy Mantle: +${holyMantleCount} Buffer!`, 'success');
     }
 
     // Ring of the Snake: draw 2 extra cards at combat start (applied after normal hand draw)
@@ -1661,11 +1661,11 @@ function dealDamage(target, damage, addons = []) {
     dmg += bruiseStacks;
   }
 
-  // Check Holy Shield (negate the hit entirely, takes precedence over block)
-  if (target.statuses['holy_shield'] && target.statuses['holy_shield'] > 0 && !addons.includes('self')) {
-    target.statuses['holy_shield']--;
-    if (target.statuses['holy_shield'] <= 0) delete target.statuses['holy_shield'];
-    addLog(`${target.name || 'Player'}'s Holy Shield absorbed the hit!`, 'success');
+  // Check Buffer (negate the hit entirely, takes precedence over block)
+  if (target.statuses['buffer'] && target.statuses['buffer'] > 0 && !addons.includes('self')) {
+    target.statuses['buffer']--;
+    if (target.statuses['buffer'] <= 0) delete target.statuses['buffer'];
+    addLog(`${target.name || 'Player'}'s Buffer absorbed the hit!`, 'success');
     return;
   }
 
@@ -1921,9 +1921,9 @@ function getEffectiveCost(card) {
   if (combatState && combatState.player && combatState.player.statuses && combatState.player.statuses['corruption']) {
     if ((card.type || '').toLowerCase() === 'skill') cost = 0;
   }
-  // Fear: non-Attack cards cost +1
+  // Fear: non-Skill cards cost +1 (Skills reduce Fear, all others cost more)
   if (combatState && combatState.player && combatState.player.statuses && combatState.player.statuses['fear']) {
-    if ((card.type || '').toLowerCase() !== 'attack' && typeof cost === 'number') cost += 1;
+    if ((card.type || '').toLowerCase() !== 'skill' && typeof cost === 'number') cost += 1;
   }
   return cost;
 }
@@ -2530,6 +2530,13 @@ function processPlayerStartOfTurn() {
       }
     }
     drawCards(drawCount);
+  }
+
+  // Machine Learning: draw +1 card per stack at start of each turn
+  if (Array.isArray(combatState.player.statuses['machine_learning']) && combatState.player.statuses['machine_learning'].length > 0) {
+    const mlCount = combatState.player.statuses['machine_learning'].length;
+    drawCards(mlCount);
+    addLog(`Machine Learning: drew ${mlCount} extra card${mlCount !== 1 ? 's' : ''}!`, 'success');
   }
 
   // Well-Laid Plans: clear old retain flags, then let player pick which cards to retain
@@ -3165,11 +3172,11 @@ function dealDamageToPlayer(damage, addons, enemy) {
     damage += bruiseStacks;
   }
 
-  // Check Holy Shield (negate the hit entirely, takes precedence over block)
-  if (player.statuses['holy_shield'] && player.statuses['holy_shield'] > 0 && isDirectHit) {
-    player.statuses['holy_shield']--;
-    if (player.statuses['holy_shield'] <= 0) delete player.statuses['holy_shield'];
-    addLog('Holy Shield absorbed the hit!', 'success');
+  // Check Buffer (negate the hit entirely, takes precedence over block)
+  if (player.statuses['buffer'] && player.statuses['buffer'] > 0 && isDirectHit) {
+    player.statuses['buffer']--;
+    if (player.statuses['buffer'] <= 0) delete player.statuses['buffer'];
+    addLog('Buffer absorbed the hit!', 'success');
     return;
   }
 
@@ -3231,12 +3238,12 @@ function dealDamageToPlayer(damage, addons, enemy) {
       combatState._soulLinkPropagating = false;
     }
 
-    // Prayer Card — 33% chance to gain +1 Holy Shield when taking damage
+    // Prayer Card — 33% chance to gain +1 Buffer when taking damage
     const inv = typeof window.inventory !== 'undefined' ? window.inventory : [];
     if (inv.some(i => i.name === 'Prayer Card') && isDirectHit) {
       if (Math.random() < 0.33) {
-        player.statuses['holy_shield'] = (player.statuses['holy_shield'] || 0) + 1;
-        addLog('Prayer Card: +1 Holy Shield!', 'success');
+        player.statuses['buffer'] = (player.statuses['buffer'] || 0) + 1;
+        addLog('Prayer Card: +1 Buffer!', 'success');
       }
     }
 
@@ -3690,6 +3697,17 @@ function resolveCardEffect(card, target, options = {}) {
 
   // Dice cards: the UI handles pick + roll + transform; nothing to resolve here.
   if ((card.type || '').toLowerCase() === 'dice') {
+    return shouldExhaust;
+  }
+
+  // Machine Learning: grants +1 draw at the start of each turn (separate stacking)
+  if (card.name === 'Machine Learning') {
+    if (!Array.isArray(player.statuses['machine_learning'])) {
+      player.statuses['machine_learning'] = Array.isArray(player.statuses['machine_learning'])
+        ? player.statuses['machine_learning'] : [];
+    }
+    player.statuses['machine_learning'].push(1);
+    addLog('Machine Learning: +1 draw per turn!', 'success');
     return shouldExhaust;
   }
 
@@ -5178,12 +5196,13 @@ function playCard(handIndex, targetId = null) {
     if (combatState.incrementals.attacksTotal % 10 === 0 && _incInv.some(i => i.name === 'Pen Nib')) {
       combatState._penNibDouble = true;
     }
-    // Fear: lose 1 stack when an Attack card is played
-    if (combatState.player.statuses['fear'] > 0) {
-      combatState.player.statuses['fear']--;
-      if (combatState.player.statuses['fear'] <= 0) delete combatState.player.statuses['fear'];
-      addLog('Fear reduced by 1 (Attack played)', 'info');
-    }
+  }
+
+  // Fear: lose 1 stack when a Skill card is played
+  if (_cardType === 'skill' && combatState.player.statuses['fear'] > 0) {
+    combatState.player.statuses['fear']--;
+    if (combatState.player.statuses['fear'] <= 0) delete combatState.player.statuses['fear'];
+    addLog('Fear reduced by 1 (Skill played)', 'info');
   }
 
   // Resolve effects (pass xValue for X-cost cards like Doppelganger)

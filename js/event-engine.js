@@ -467,22 +467,48 @@ function _showChoiceScreen(event, onContinue) {
           👁 Show Outcomes
         </button>
       </div>
-      <div id="ev-outcomes-panel" style="
-        display:none;margin-top:14px;padding:14px 16px;
-        background:#13131f;border:1px solid #333;border-radius:8px;
-      ">
-        ${outcomesHTML}
-      </div>
     </div>
   `);
 
   document.getElementById('ev-outcomes-toggle').addEventListener('click', function() {
-    const panel = document.getElementById('ev-outcomes-panel');
-    const open  = panel.style.display === 'none';
-    panel.style.display  = open ? 'block' : 'none';
-    this.textContent     = open ? '👁 Hide Outcomes' : '👁 Show Outcomes';
-    this.style.color     = open ? '#c39bd3' : '#aaa';
-    this.style.borderColor = open ? '#c39bd3' : '#555';
+    const existing = document.getElementById('ev-outcomes-popup');
+    if (existing) {
+      existing.remove();
+      this.textContent   = '👁 Show Outcomes';
+      this.style.color   = '#aaa';
+      this.style.borderColor = '#555';
+      return;
+    }
+
+    this.textContent   = '👁 Hide Outcomes';
+    this.style.color   = '#c39bd3';
+    this.style.borderColor = '#c39bd3';
+
+    const popup = document.createElement('div');
+    popup.id = 'ev-outcomes-popup';
+    popup.style.cssText = `
+      position:fixed;
+      top:50%;
+      right:10px;
+      transform:translateY(-50%);
+      width:340px;
+      max-height:80vh;
+      overflow-y:auto;
+      background:#13131f;
+      border:1px solid #c39bd3;
+      border-radius:10px;
+      padding:16px;
+      z-index:30000;
+      box-shadow:0 8px 32px rgba(0,0,0,0.9);
+    `;
+    popup.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid #333;padding-bottom:8px;">
+        <span style="color:#c39bd3;font-weight:bold;font-size:14px;">📋 Possible Outcomes</span>
+        <button onclick="document.getElementById('ev-outcomes-popup').remove();document.getElementById('ev-outcomes-toggle').textContent='👁 Show Outcomes';document.getElementById('ev-outcomes-toggle').style.color='#aaa';document.getElementById('ev-outcomes-toggle').style.borderColor='#555';" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:16px;padding:0 4px;">✕</button>
+      </div>
+      ${outcomesHTML}
+    `;
+    document.body.appendChild(popup);
   });
 
   document.querySelectorAll('.ev-choice').forEach(btn => {
