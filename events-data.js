@@ -113,8 +113,11 @@ var EVENTS_DATA = [
             effects: [{ type: 'combat_status', status: 'fear', stacks: 2 }]
           },
           crit_bad: {
-            description: '{name} moves its face close to the hole and peers inside\u2026 {name} howls in pain as something sharp from within the hole lashes out and stabs its eye!',
-            effects: [{ type: 'curse_difficulty', curseBase: 'Curse of Ocular Trauma' }]
+            description: '{name} moves its face close to the hole and peers inside\u2026 {name} howls in pain as something sharp from within the hole lashes out and stabs its eye! Get an Eye Item.',
+            effects: [
+              { type: 'curse_difficulty', curseBase: 'Curse of Ocular Trauma' },
+              { type: 'item_tagged', tag: 'eye' }
+            ]
           }
         }
       },
@@ -136,8 +139,11 @@ var EVENTS_DATA = [
             effects: [{ type: 'combat_status', status: 'blind', stacks: 4 }]
           },
           crit_bad: {
-            description: '{name} reaches into the dark hole with its arm to swat at the eyes, but pokes themself in the face on the sharp edges of the hole instead!',
-            effects: [{ type: 'curse_difficulty', curseBase: 'Curse of Ocular Trauma' }]
+            description: '{name} reaches into the dark hole with its arm to swat at the eyes, but pokes themself in the face on the sharp edges of the hole instead! Get an Eye Item.',
+            effects: [
+              { type: 'curse_difficulty', curseBase: 'Curse of Ocular Trauma' },
+              { type: 'item_tagged', tag: 'eye' }
+            ]
           }
         }
       }
