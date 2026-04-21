@@ -330,6 +330,13 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
       combatState.player.statuses['plated_armor'] = (combatState.player.statuses['plated_armor'] || 0) + 4;
       addLog('Thread and Needle: +4 Plated Armor', 'info');
     }
+
+    // Pummarola: +1 Regeneration at start of combat (per copy)
+    const pummarolaCount = inventory.filter(i => i.name === 'Pummarola').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (pummarolaCount > 0) {
+      combatState.player.statuses['regeneration'] = (combatState.player.statuses['regeneration'] || 0) + pummarolaCount;
+      addLog(`Pummarola: +${pummarolaCount} Regeneration`, 'info');
+    }
   }
 
   // Initialize incremental item counters — attacksTotal persists across combats via gameState.runAttacks
@@ -5278,6 +5285,15 @@ function playCard(handIndex, targetId = null) {
     combatState._doubleTap--;
     resolveCardEffect(card, target, { xValue });
     addLog(`Double Tap: ${card.name} triggered again!`, 'success');
+  }
+
+  // Duplicator: weapon attack cards hit an extra time
+  if (_cardType === 'attack' && card.tags && card.tags.includes('weapon')) {
+    const _dupInv = typeof inventory !== 'undefined' ? inventory : [];
+    if (_dupInv.some(i => i.name === 'Duplicator')) {
+      resolveCardEffect(card, target, { xValue });
+      addLog(`Duplicator: ${card.name} hit an extra time!`, 'success');
+    }
   }
 
   // Corruption: Skills are exhausted when played

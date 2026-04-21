@@ -5043,6 +5043,20 @@ function confirmLevelUp(onComplete) {
     return;
   }
 
+  // Crown: 50% chance to level up an additional time after this one completes
+  const _crownInv = typeof inventory !== 'undefined' ? inventory : [];
+  const _crownCount = _crownInv.filter(i => i.name === 'Crown').length;
+  function _afterReward() {
+    if (_crownCount > 0 && Math.random() < 0.5) {
+      if (typeof createNotification === 'function') {
+        createNotification('Crown: Bonus Level Up!', '#FFD700', '👑');
+      }
+      confirmLevelUp(onComplete);
+    } else {
+      if (onComplete) onComplete();
+    }
+  }
+
   const oldLevel = gameState.playerLevel || 1;
   gameState.playerLevel = oldLevel + 1;
 
@@ -5198,20 +5212,20 @@ function confirmLevelUp(onComplete) {
         if (typeof createNotification === 'function') {
           createNotification(`+${reward.amount} Gold!`, '#FFD700', '💰');
         }
-        if (onComplete) onComplete();
+        _afterReward();
         break;
 
       case 'item':
         if (typeof showItemChoiceModal === 'function') {
-          showItemChoiceModal(onComplete || null, 'small');
-        } else if (onComplete) onComplete();
+          showItemChoiceModal(_afterReward, 'small');
+        } else _afterReward();
         break;
 
       case 'card':
         if (typeof window.showCardRewardModal === 'function') {
-          window.showCardRewardModal(onComplete || null, reward.tag || null);
+          window.showCardRewardModal(_afterReward, reward.tag || null);
           saveCurrentGame();
-        } else if (onComplete) onComplete();
+        } else _afterReward();
         break;
 
       case 'spell':
@@ -5227,13 +5241,13 @@ function confirmLevelUp(onComplete) {
             </div>
           `);
           const spellBtn = document.getElementById('spell-reward-close-btn');
-          if (spellBtn) spellBtn.onclick = () => { closeGameModal(); if (onComplete) onComplete(); };
-        } else if (onComplete) onComplete();
+          if (spellBtn) spellBtn.onclick = () => { closeGameModal(); _afterReward(); };
+        } else _afterReward();
         break;
 
       case 'none':
       default:
-        if (onComplete) onComplete();
+        _afterReward();
         break;
     }
   };

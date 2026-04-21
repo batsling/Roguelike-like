@@ -383,7 +383,9 @@ var ITEMS_DATA = [
     "type": "Passive",
     "description": "Gain +3 Intelligence",
     "game": "Vampire Survivors",
-    "tags": [],
+    "tags": [
+      "book"
+    ],
     "image": "images/items/EmptyTome.png",
     "unlockCondition": null
   },
@@ -488,7 +490,9 @@ var ITEMS_DATA = [
     "type": "Pickup",
     "description": "Gain +8 Max Health",
     "game": "Vampire Survivors",
-    "tags": [],
+    "tags": [
+      "heart"
+    ],
     "image": "images/items/HollowHeart.png",
     "unlockCondition": null
   },
@@ -562,6 +566,18 @@ var ITEMS_DATA = [
       "leech"
     ],
     "image": "images/items/LeechBrood.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Leeching Seed",
+    "rarity": "Uncommon",
+    "type": "Passive",
+    "description": "Your Strikes Gain Heal 1",
+    "game": "Risk of Rain 2",
+    "tags": [
+      "seed"
+    ],
+    "image": "images/items/LeechingSeed.png",
     "unlockCondition": null
   },
   {
@@ -1154,15 +1170,42 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "Leeching Seed",
+    "name": "Pummarola",
     "rarity": "Uncommon",
-    "type": "Passive",
-    "description": "Your Strikes Gain Heal 1",
-    "game": "Risk of Rain 2",
+    "type": "Triggered",
+    "description": "At the start of combat, Gain +1 Regeneration",
+    "game": "Vampire Survivors",
     "tags": [
-      "seed"
+      "heart"
     ],
-    "image": "images/items/LeechingSeed.png",
+    "image": "images/items/Pummarola.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Duplicator",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "Your Weapon Attack Cards hit an extra time",
+    "game": "Vampire Survivors",
+    "tags": [
+      "wearable",
+      "ring"
+    ],
+    "image": "images/items/Duplicator.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Crown",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "When Levelling Up, 50% chance to Level Up an additional time",
+    "game": "Vampire Survivors",
+    "tags": [
+      "wearable",
+      "hat",
+      "crown"
+    ],
+    "image": "images/items/Crown.png",
     "unlockCondition": null
   }
 ];

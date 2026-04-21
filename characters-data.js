@@ -111,7 +111,9 @@ var CHARACTERS_DATA = {
         "count": 1
       }
     ],
-    "startingItems": [],
+    "startingItems": [
+      "D6"
+    ],
     "dice": [
       {
         "isBlank": true,

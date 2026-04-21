@@ -230,8 +230,15 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
 
   const itemSuffix = getCardItemSuffixes(card);
 
+  // Duplicator: weapon attack cards show +1 hit count in description
+  const _dupInv = typeof inventory !== 'undefined' ? inventory : [];
+  const hasDuplicator = card.type && card.type.toLowerCase() === 'attack' &&
+                        card.tags && card.tags.includes('weapon') &&
+                        _dupInv.some(i => i.name === 'Duplicator');
+
   // Quick check: any modifier active?
   const hasMods = itemSuffix.length > 0
+               || hasDuplicator
                || (player.statuses['power'] || 0) !== 0
                || (player.statuses['strength'] || 0) !== 0
                || (player.statuses['intelligence'] || 0) !== 0
@@ -248,20 +255,22 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
 
   // Replace NxM damage (e.g. "Deal 3x2 Dmg")
   desc = desc.replace(/Deal (\d+)[xX](\d+) Dmg/gi, (match, d, t) => {
-    const base = parseInt(d), times = parseInt(t);
+    const base = parseInt(d), times = parseInt(t) + (hasDuplicator ? 1 : 0);
     const computed = getCardDynamicDmg(base, card, combat, targetEnemy);
-    if (computed === base) return match;
+    if (computed === base && !hasDuplicator) return match;
     const col = computed > base ? '#7dff7d' : '#ff7d7d';
-    return `Deal <span style="color:${col};font-weight:bold">${computed}</span>x${times} Dmg`;
+    const dmgStr = computed !== base ? `<span style="color:${col};font-weight:bold">${computed}</span>` : `${base}`;
+    return `Deal ${dmgStr}x${times} Dmg`;
   });
 
-  // Replace plain damage (e.g. "Deal 5 Dmg")
+  // Replace plain damage (e.g. "Deal 5 Dmg") — Duplicator adds x2 multiplier
   desc = desc.replace(/Deal (\d+) Dmg/gi, (match, d) => {
     const base = parseInt(d);
     const computed = getCardDynamicDmg(base, card, combat, targetEnemy);
-    if (computed === base) return match;
+    if (computed === base && !hasDuplicator) return match;
     const col = computed > base ? '#7dff7d' : '#ff7d7d';
-    return `Deal <span style="color:${col};font-weight:bold">${computed}</span> Dmg`;
+    const dmgStr = computed !== base ? `<span style="color:${col};font-weight:bold">${computed}</span>` : `${base}`;
+    return hasDuplicator ? `Deal ${dmgStr}x2 Dmg` : `Deal ${dmgStr} Dmg`;
   });
 
   // Replace block (e.g. "Gain 5 Block" or "Gain +5 Block")
