@@ -954,7 +954,7 @@ function switchCollectionTab(tab) {
       <div style="flex:2; overflow-y:auto; padding:10px; display:flex; flex-direction:column;">
         <!-- Controls -->
         <div style="display:flex; gap:6px; margin-bottom:12px; padding:8px 12px; background:rgba(0,0,0,0.35); border-radius:8px; align-items:center; flex-wrap:wrap;">
-          <input type="text" placeholder="🔍 Search cards…" value="${window.cardsSearchTerm}"
+          <input id="cards-search-input" type="text" placeholder="🔍 Search cards…" value="${window.cardsSearchTerm}"
             oninput="window.cardsSearchTerm=this.value; switchCollectionTab('cards');"
             style="flex:1; min-width:120px; padding:6px 10px; background:rgba(0,0,0,0.4); border:1px solid #444; border-radius:6px; color:white; font-size:12px; outline:none;"/>
           <span style="color:#555;">|</span>
@@ -1011,6 +1011,14 @@ function switchCollectionTab(tab) {
         <div style="text-align:center; color:#666; padding:40px 20px; font-size:13px;">Select a card to view details</div>
       </div>
     `;
+
+    // Re-focus search input if the user was typing (avoids focus loss on each keystroke)
+    if (window.cardsSearchTerm) {
+      requestAnimationFrame(() => {
+        const inp = document.getElementById('cards-search-input');
+        if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+      });
+    }
 
   } else if (tab === 'items') {
     // Initialize filter state if not set
@@ -1131,6 +1139,13 @@ function switchCollectionTab(tab) {
         <div style="text-align:center; color:#666; padding:40px 20px; font-size:13px;">Select an item to view details</div>
       </div>
     `;
+
+    if (window.itemsSearchTerm) {
+      requestAnimationFrame(() => {
+        const inp = document.getElementById('items-search');
+        if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+      });
+    }
   } else if (tab === 'loot') {
     // Initialize loot sub-tab if not set
     if (!window.currentLootSubTab) {
