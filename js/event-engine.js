@@ -36,7 +36,10 @@ function _getPlayerImage() {
 }
 
 function _fillName(text) {
-  return (text || '').replace(/\{name\}/gi, _getCharName());
+  const storedCard = (typeof gameState !== 'undefined' && gameState.noteForYourselfCard) || 'Iron Wave';
+  return (text || '')
+    .replace(/\{name\}/gi, _getCharName())
+    .replace(/\{storedCard\}/gi, storedCard);
 }
 
 /** Get roll difficulty threshold based on current location difficulty. */
@@ -112,6 +115,10 @@ function _describeEffects(effects) {
         if (e.flag === 'ambush')   return 'Ambush — draw +2 cards turn 1';
         if (e.flag === 'ambushed') return 'Ambushed — draw −2 cards turn 1';
         return e.flag;
+      case 'note_for_yourself': {
+        const cn = (typeof gameState !== 'undefined' && gameState.noteForYourselfCard) || (e.defaultCard || 'Iron Wave');
+        return `Retrieve ${cn} · store a card`;
+      }
       default:                return null;
     }
   }).filter(Boolean);
@@ -312,6 +319,25 @@ function applyEventEffects(effects) {
         } else if (effect.flag === 'ambushed') {
           gameState.pendingAmbushed = (gameState.pendingAmbushed || 0) + 1;
           lines.push('Ambushed! Draw 2 fewer cards first turn');
+        }
+        break;
+      }
+
+      case 'note_for_yourself': {
+        const defaultCardName = effect.defaultCard || 'Iron Wave';
+        const storedCardName  = (typeof gameState !== 'undefined' && gameState.noteForYourselfCard)
+          ? gameState.noteForYourselfCard
+          : defaultCardName;
+        const cardPool    = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
+        const cardTemplate = cardPool.find(c => c.name === storedCardName);
+        if (cardTemplate) {
+          if (typeof gameState !== 'undefined') {
+            if (!Array.isArray(gameState.deck)) gameState.deck = [];
+            gameState.deck.push({ ...cardTemplate });
+          }
+          lines.push(`Retrieved: ${storedCardName}`);
+        } else {
+          lines.push(`Card not found: ${storedCardName}`);
         }
         break;
       }
@@ -517,8 +543,11 @@ function _showChoiceScreen(event, onContinue) {
       if (choice.type === 'stat_check') {
         _showSuccessRollScreen(event, choice, onContinue);
       } else {
-        const lines = applyEventEffects(choice.outcome && choice.outcome.effects ? choice.outcome.effects : []);
-        _showOutcomeScreen(choice.outcome || {}, lines, null, onContinue);
+        const effects = (choice.outcome && choice.outcome.effects) || [];
+        const hasCardStore = effects.some(e => e.type === 'note_for_yourself');
+        const lines = applyEventEffects(effects);
+        const wrappedContinue = hasCardStore ? () => _showCardStoreScreen(onContinue) : onContinue;
+        _showOutcomeScreen(choice.outcome || {}, lines, null, wrappedContinue, hasCardStore ? 'Store a Card →' : null);
       }
     });
   });
@@ -875,7 +904,7 @@ function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
 // SCREEN 4 — OUTCOME
 // ─────────────────────────────────────────────────────────────────────────────
 
-function _showOutcomeScreen(outcome, effectLines, rollMeta, onContinue) {
+function _showOutcomeScreen(outcome, effectLines, rollMeta, onContinue, continueLabel) {
   const color = rollMeta ? OUTCOME_COLORS[rollMeta.outcomeKey] : '#aaa';
   const label = rollMeta ? OUTCOME_LABELS[rollMeta.outcomeKey] : '';
 
@@ -908,7 +937,7 @@ function _showOutcomeScreen(outcome, effectLines, rollMeta, onContinue) {
           border:none;border-radius:8px;color:#fff;font-weight:bold;
           font-size:15px;cursor:pointer;
           box-shadow:0 0 18px ${color ? color + '55' : '#0003'};
-        ">Continue to Combat</button>
+        ">${continueLabel || 'Continue to Combat'}</button>
       </div>
     </div>
   `);
@@ -917,6 +946,108 @@ function _showOutcomeScreen(outcome, effectLines, rollMeta, onContinue) {
     closeGameModal();
     if (typeof onContinue === 'function') onContinue();
   }, { once: true });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CARD STORE SCREEN — A Note For Yourself
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _showCardStoreScreen(onContinue) {
+  const deck = (typeof gameState !== 'undefined' && Array.isArray(gameState.deck)) ? gameState.deck : [];
+
+  // Nothing to store — skip the pick step
+  if (deck.length === 0) {
+    createGameModal(`
+      <div style="padding:28px 30px;text-align:center;max-width:480px;margin:0 auto;background:#1a1a2e;border-radius:12px;">
+        <div style="color:#c39bd3;font-size:20px;font-weight:bold;margin-bottom:12px;">📝 Store a Card</div>
+        <p style="color:#ccc;font-size:14px;line-height:1.6;margin:0 0 20px;">
+          You have no collected cards to leave behind. The note remains with only a question mark.
+        </p>
+        <button id="ev-store-skip-btn" style="
+          padding:11px 30px;background:#555;border:1px solid #777;border-radius:8px;
+          color:#fff;font-size:14px;cursor:pointer;">Continue to Combat</button>
+      </div>
+    `);
+    document.getElementById('ev-store-skip-btn').addEventListener('click', () => {
+      closeGameModal();
+      if (typeof onContinue === 'function') onContinue();
+    }, { once: true });
+    return;
+  }
+
+  const rarityColor = r => {
+    switch ((r || '').toLowerCase()) {
+      case 'legendary': return '#ff6b00';
+      case 'rare':      return '#9b59b6';
+      case 'uncommon':  return '#4CAF50';
+      case 'common':    return '#aaa';
+      default:          return '#888';
+    }
+  };
+  const typeColor = t => {
+    switch ((t || '').toLowerCase()) {
+      case 'attack':   return '#e74c3c';
+      case 'skill':    return '#3498db';
+      case 'power':    return '#9b59b6';
+      case 'dice':     return '#d35400';
+      case 'training': return '#27ae60';
+      default:         return '#888';
+    }
+  };
+
+  const cardsHTML = deck.map((card, i) => {
+    const rc = rarityColor(card.rarity);
+    const tc = typeColor(card.type);
+    return `
+      <div class="ev-store-card-opt" data-idx="${i}" style="
+        padding:10px 14px;background:#1e1e30;border:2px solid #444;border-radius:8px;
+        cursor:pointer;text-align:left;transition:border-color 0.15s,background 0.15s;
+        display:flex;align-items:center;gap:10px;
+      "
+      onmouseover="this.style.borderColor='#c39bd3';this.style.background='#2a2a40';"
+      onmouseout="this.style.borderColor='#444';this.style.background='#1e1e30';">
+        <span style="
+          min-width:24px;height:24px;border-radius:50%;background:${tc};
+          display:flex;align-items:center;justify-content:center;
+          font-size:12px;font-weight:bold;color:#fff;flex-shrink:0;">
+          ${card.cost !== null && card.cost !== undefined ? card.cost : '?'}
+        </span>
+        <div style="min-width:0;">
+          <div style="color:#eee;font-size:14px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${card.name}</div>
+          <div style="color:#aaa;font-size:11px;">${card.type || ''} · <span style="color:${rc}">${card.rarity || ''}</span></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  createGameModal(`
+    <div style="padding:24px 28px;max-width:500px;margin:0 auto;background:#1a1a2e;border-radius:12px;">
+      <div style="color:#c39bd3;font-size:20px;font-weight:bold;margin-bottom:6px;text-align:center;">📝 Store a Card</div>
+      <p style="color:#ccc;font-size:13px;line-height:1.6;margin:0 0 16px;text-align:center;">
+        Choose a card from your collected deck to leave behind for your future self.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;padding-right:4px;">
+        ${cardsHTML}
+      </div>
+    </div>
+  `);
+
+  document.querySelectorAll('.ev-store-card-opt').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx  = parseInt(el.dataset.idx);
+      const card = deck[idx];
+      if (typeof gameState !== 'undefined') {
+        gameState.noteForYourselfCard = card.name;
+        deck.splice(idx, 1);
+        gameState.deck = [...deck];
+        if (typeof saveCurrentGame === 'function') saveCurrentGame();
+        if (typeof createNotification === 'function') {
+          createNotification(`Stored: ${card.name}`, '#8e44ad', '📝');
+        }
+      }
+      closeGameModal();
+      if (typeof onContinue === 'function') onContinue();
+    });
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

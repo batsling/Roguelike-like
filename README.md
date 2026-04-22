@@ -986,6 +986,25 @@ That's it — no code changes. The event is automatically added to the pool and 
 
 ---
 
+### Simple Choices (No Roll)
+
+Not every choice needs a dice roll. Use `type: 'simple'` for choices that always produce the same outcome:
+
+```javascript
+{
+  text: 'Walk away',
+  type: 'simple',
+  outcome: {
+    description: 'You decide it isn\'t worth it.',
+    effects: [{ type: 'none' }]
+  }
+}
+```
+
+Simple choices have a **blue** left border (stat-check choices have orange). They skip both roll screens and go directly to the outcome screen.
+
+---
+
 ### Full Effect Type Reference
 
 Paste any of these into an outcome's `effects` array (it's always an array, even with one effect):
@@ -1061,6 +1080,24 @@ Any combat status name works here — it is applied to the player at the start o
 { type: 'combat_flag', flag: 'ambushed' }  // draw -2 cards on turn 1
 ```
 
+#### Retrieve a stored card and store a new one (A Note For Yourself)
+```javascript
+{ type: 'note_for_yourself', defaultCard: 'Iron Wave' }
+```
+Use this in a **`simple`** choice outcome. When triggered it:
+1. Retrieves the card stored in `gameState.noteForYourselfCard` (or `defaultCard` on the very first encounter in the save file) and adds it to the player's run deck.
+2. Opens a **card-picker screen** where the player selects a card from their collected deck to store for next time.
+3. Saves the chosen card name to `gameState.noteForYourselfCard` (persisted in the save file).
+
+Use `{storedCard}` in the outcome description to show the retrieved card's name in flavour text:
+```javascript
+outcome: {
+  description: 'You find {storedCard} inside. This is your handwriting.',
+  effects: [{ type: 'note_for_yourself', defaultCard: 'Iron Wave' }]
+}
+```
+If the player has no collected cards when the picker opens, the store step is skipped automatically.
+
 #### Multiple effects in one outcome
 ```javascript
 effects: [
@@ -1095,13 +1132,22 @@ The player's stat value is added as a flat bonus to the d20 roll. Higher stat �
 
 ---
 
-### Using `{name}` in Text
+### Text Placeholders
 
-Both `description` (the opening flavour text) and each outcome's `description` support `{name}`, which is replaced with the player character's name at display time.
+Both `description` (the opening flavour text) and each outcome's `description` support the following placeholders, replaced at display time:
+
+| Placeholder | Replaced with |
+|---|---|
+| `{name}` | The player character's name |
+| `{storedCard}` | The name of the card currently stored in `gameState.noteForYourselfCard` (defaults to `'Iron Wave'` on first encounter) |
 
 ```javascript
 description: '{name} stumbles upon a dark hole. Numerous eyes peer out from the darkness.'
 // → "Mitch stumbles upon a dark hole. Numerous eyes peer out from the darkness."
+
+description: 'You find a folded note and {storedCard} inside.'
+// → "You find a folded note and Iron Wave inside."  (on first encounter)
+// → "You find a folded note and Bash inside."       (if Bash was previously stored)
 ```
 
 ---

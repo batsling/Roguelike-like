@@ -9,9 +9,10 @@
  * {
  *   id: string           — unique identifier
  *   name: string         — display name
- *   description: string  — opening flavor text
+ *   description: string  — opening flavor text (supports {name} and {storedCard})
+ *   image: string        — path to event image (required to appear in event pool)
+ *   game: string         — optional source game name
  *   choices: Choice[]    — top-level choices
- *   nodes: {}            — optional sub-nodes keyed by id (for nested paths)
  * }
  *
  * Choice:
@@ -22,9 +23,11 @@
  *   type: 'simple' | 'stat_check'
  *
  *   — simple —
+ *   Shows the outcome directly with no dice roll. Blue left border.
  *   outcome: Outcome
  *
  *   — stat_check —
+ *   Triggers the two-roll D20 system. Orange left border.
  *   stat: 'strength'|'dexterity'|'intelligence'|'charisma'
  *   rollDescription: string       — flavor shown before roll
  *   outcomes: {
@@ -38,22 +41,34 @@
  * Outcome:
  * {
  *   description: string       — flavor text shown after choice / roll
+ *                               (supports {name} and {storedCard} placeholders)
  *   effects: Effect[]
  *   next: string | null       — node id to branch into, or null (= end event)
  * }
  *
+ * Description Placeholders:
+ *   {name}        — replaced with the player character's name
+ *   {storedCard}  — replaced with the name of the card stored in gameState.noteForYourselfCard
+ *                   (defaults to 'Iron Wave' on first encounter)
+ *
  * Effect:
- *   { type:'heal',            value: N }
- *   { type:'heal_percent',    value: N }          — heal N% of max HP
- *   { type:'damage',          value: N }
- *   { type:'gold',            value: N }
- *   { type:'gold_range',      min: N, max: N }
- *   { type:'item_tagged',     tag: string }
- *   { type:'curse',           value:'random'|curseName }
- *   { type:'curse_difficulty',curseBase: string }
- *   { type:'combat_status',   status: string, stacks: N }
- *   { type:'combat_flag',     flag:'ambush'|'ambushed' }
- *   { type:'spawn_enemies',   enemy: string, min: N, max: N }
+ *   { type:'heal',              value: N }
+ *   { type:'heal_percent',      value: N }              — heal N% of max HP
+ *   { type:'damage',            value: N }
+ *   { type:'gold',              value: N }
+ *   { type:'gold_range',        min: N, max: N }
+ *   { type:'item_tagged',       tag: string }
+ *   { type:'curse',             value:'random'|curseName }
+ *   { type:'curse_difficulty',  curseBase: string }
+ *   { type:'combat_status',     status: string, stacks: N }
+ *   { type:'combat_flag',       flag:'ambush'|'ambushed' }
+ *   { type:'spawn_enemies',     enemy: string, min: N, max: N }
+ *   { type:'note_for_yourself', defaultCard: string }
+ *     — Retrieves the card stored in gameState.noteForYourselfCard (or defaultCard on first
+ *       encounter) and adds it to the player's run deck. Then opens a card-picker screen
+ *       where the player must select a card from their collected deck to store for next time.
+ *       Use in a 'simple' choice outcome. The outcome description supports {storedCard} to
+ *       show the retrieved card's name in the flavour text.
  *   { type:'none' }
  */
 
@@ -145,6 +160,34 @@ var EVENTS_DATA = [
               { type: 'item_tagged', tag: 'eye' }
             ]
           }
+        }
+      }
+    ]
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  //  A NOTE FOR YOURSELF
+  // ─────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'note_for_yourself',
+    name: 'A Note For Yourself',
+    image: 'images/events/NoteForYourself.png',
+    description: 'You spot a loose brick within a pillar that catches your eye.',
+    choices: [
+      {
+        text: 'Take and Give',
+        type: 'simple',
+        outcome: {
+          description: 'You find a folded note and {storedCard} inside. It reads "The Heart awaits." This is your handwriting.',
+          effects: [{ type: 'note_for_yourself', defaultCard: 'Iron Wave' }]
+        }
+      },
+      {
+        text: 'Ignore',
+        type: 'simple',
+        outcome: {
+          description: '"What is going on?"',
+          effects: [{ type: 'none' }]
         }
       }
     ]
