@@ -295,26 +295,10 @@ const FISH_DATA = [
 function selectRandomFish(location) {
   // Step 1: Determine rarity (affected by luck)
   // Base: 50% Common, 30% Uncommon, 15% Rare, 5% Item with "fish" tag
-  let commonChance = 50;
-  let uncommonChance = 30;
-  let rareChance = 15;
-  let itemChance = 5;
+  // Luck grants advantage on the roll (10% per luck point chance to roll twice, take higher)
+  const commonChance = 50, uncommonChance = 30, rareChance = 15, itemChance = 5;
 
-  // Apply luck modifiers (-3%/+2%/+1% for common/uncommon/rare)
-  if (typeof luck !== 'undefined') {
-    commonChance = Math.max(0, commonChance - (luck * 3));
-    uncommonChance = Math.min(100, uncommonChance + (luck * 2));
-    rareChance = Math.min(100, rareChance + (luck * 1));
-  }
-
-  // Normalize to ensure total is 100%
-  const total = commonChance + uncommonChance + rareChance + itemChance;
-  commonChance = (commonChance / total) * 100;
-  uncommonChance = (uncommonChance / total) * 100;
-  rareChance = (rareChance / total) * 100;
-  itemChance = (itemChance / total) * 100;
-
-  const rarityRoll = Math.random() * 100;
+  const rarityRoll = rollWithLuckAdvantage() * 100;
   let selectedRarity;
 
   if (rarityRoll < itemChance) {
@@ -343,24 +327,10 @@ function selectRandomFish(location) {
 
   // Step 2: Determine size (affected by luck)
   // Base: 50% Small, 35% Medium, 15% Large
-  let smallChance = 50;
-  let mediumChance = 35;
-  let largeChance = 15;
+  // Luck grants advantage on the roll (10% per luck point chance to roll twice, take higher)
+  const smallChance = 50, mediumChance = 35, largeChance = 15;
 
-  // Apply luck modifiers (-3%/+2%/+1% for small/medium/large)
-  if (typeof luck !== 'undefined') {
-    smallChance = Math.max(0, smallChance - (luck * 3));
-    mediumChance = Math.min(100, mediumChance + (luck * 2));
-    largeChance = Math.min(100, largeChance + (luck * 1));
-  }
-
-  // Normalize
-  const sizeTotal = smallChance + mediumChance + largeChance;
-  smallChance = (smallChance / sizeTotal) * 100;
-  mediumChance = (mediumChance / sizeTotal) * 100;
-  largeChance = (largeChance / sizeTotal) * 100;
-
-  const sizeRoll = Math.random() * 100;
+  const sizeRoll = rollWithLuckAdvantage() * 100;
   let selectedSize;
 
   if (sizeRoll < largeChance) {

@@ -135,7 +135,7 @@ gamesData.forEach(row => {
     type: row['Type'] || 'Traditional',
     connected: row['Connected?'] === true || row['Connected?'] === 'TRUE',
     influenced: row['Influencer?'] === true || row['Influencer?'] === 'TRUE',
-    tags: [],
+    tags: row['Tags'] ? row['Tags'].split(',').map(t => t.trim()).filter(Boolean) : [],
     gamesInfluenced: [],
     coverImage: coverImage
   };
@@ -197,6 +197,41 @@ function parseDeckColumn(deckStr) {
 }
 
 // ============== CHARACTERS ==============
+
+/**
+ * Parse the Reward column into a structured object.
+ * Examples:
+ *   "50 Gold"                  → { type: 'gold', amount: 50 }
+ *   "1 Small Chest"            → { type: 'item' }
+ *   "1 Ironclad Card Reward"   → { type: 'card', tag: 'ironclad' }
+ *   "1 Silent Card Reward"     → { type: 'card', tag: 'silent' }
+ *   "1 Spell"                  → { type: 'spell' }
+ *   "N/A" / empty              → { type: 'none' }
+ */
+function parseReward(rewardStr) {
+  if (!rewardStr || rewardStr.toString().trim() === 'N/A' || rewardStr.toString().trim() === '') {
+    return { type: 'none' };
+  }
+
+  const s = rewardStr.toString().trim();
+
+  // "50 Gold"
+  const goldMatch = s.match(/^(\d+)\s+Gold$/i);
+  if (goldMatch) return { type: 'gold', amount: parseInt(goldMatch[1]) };
+
+  // "1 Small Chest"
+  if (/small\s+chest/i.test(s)) return { type: 'item' };
+
+  // "1 Spell"
+  if (/spell/i.test(s)) return { type: 'spell' };
+
+  // "1 Ironclad Card Reward" / "1 Silent Card Reward" / etc.
+  const cardMatch = s.match(/1\s+(\w+)\s+Card\s+Reward/i);
+  if (cardMatch) return { type: 'card', tag: cardMatch[1].toLowerCase() };
+
+  return { type: 'none' };
+}
+
 const charactersSheet = workbook.Sheets['characters'];
 const charactersData = XLSX.utils.sheet_to_json(charactersSheet);
 
@@ -212,8 +247,22 @@ charactersData.forEach(row => {
     diceFaces.push(parseDiceFace(faceStr));
   }
 
-  // Parse starting deck
-  const startingDeck = parseDeckColumn(row['Deck'] || '');
+  // Build starting deck from Strikes + Defends + up to 2 unique cards
+  const startingDeck = [];
+  const strikeCount = parseInt(row['Strikes']);
+  const defendCount = parseInt(row['Defends']);
+  if (strikeCount > 0) startingDeck.push({ cardName: 'Strike', count: strikeCount });
+  if (defendCount > 0) startingDeck.push({ cardName: 'Defend', count: defendCount });
+  const unique1 = (row['Unique 1'] || '').toString().trim();
+  const unique2 = (row['Unique 2'] || '').toString().trim();
+  if (unique1 && unique1 !== 'N/A') startingDeck.push({ cardName: unique1, count: 1 });
+  if (unique2 && unique2 !== 'N/A') startingDeck.push({ cardName: unique2, count: 1 });
+
+  // Parse starting items ("N/A" or comma-separated names)
+  const rawItems = (row['Starting items'] || '').toString().trim();
+  const startingItems = (rawItems === '' || rawItems === 'N/A')
+    ? []
+    : rawItems.split(',').map(s => s.trim()).filter(Boolean);
 
   characters[key] = {
     name: name,
@@ -221,9 +270,9 @@ charactersData.forEach(row => {
     icon: `images/characters/Icon/${name}.png`,
     fullImage: `images/characters/Full/${name}.png`,
     energy: parseInt(row['Energy']) || 2,
-    mana: parseInt(row['Mana']) || 0,
     health: parseInt(row['Health']) || 80,
     levelUpCondition: row['Level Up'] || '',
+    levelUpReward: parseReward(row['Reward']),
     levelUpStats: {
       strength: parseInt(row['Str']) || 0,
       dexterity: parseInt(row['Dex']) || 0,
@@ -238,8 +287,9 @@ charactersData.forEach(row => {
       random: parseInt(row['Random']) || 0
     },
     description: row['Description'] || '',
-    combatStart: row['Combat Start'] || 'Cards',
+    combatStyle: row['Combat Style'] || 'Cards',
     startingDeck: startingDeck,
+    startingItems: startingItems,
     dice: diceFaces
   };
 });
@@ -267,20 +317,15 @@ const enemies = enemiesData.map(row => {
   // Get variant field - if it references another enemy, this is a variant of that enemy
   const variantOf = row['Variant'] && row['Variant'] !== 'N/A' ? row['Variant'] : null;
 
-  // Parse HP range "30-34" into { min, max }
-  const hpStr = String(row['HP'] || '10');
-  let hpMin, hpMax;
-  const hpMatch = hpStr.match(/^(\d+)-(\d+)$/);
-  if (hpMatch) {
-    hpMin = parseInt(hpMatch[1]);
-    hpMax = parseInt(hpMatch[2]);
-  } else {
-    hpMin = hpMax = parseInt(hpStr) || 10;
-  }
+  // Parse HP — columns are now 'Min HP' and 'Max HP' (previously a single 'HP' range column)
+  const rawMin = row['Min HP'];
+  const rawMax = row['Max HP'];
+  const hpMin = (rawMin !== undefined && rawMin !== '') ? (parseInt(rawMin) || 10) : 10;
+  const hpMax = (rawMax !== undefined && rawMax !== '') ? (parseInt(rawMax) || hpMin) : hpMin;
 
   // Parse weight - may be N/A for spawn-only enemies
   const rawWeight = row['Weight'];
-  const weight = (rawWeight !== undefined && rawWeight !== 'N/A' && rawWeight !== '') ? parseInt(rawWeight) : null;
+  const weight = (rawWeight !== undefined && rawWeight !== 'N/A' && rawWeight !== '') ? parseFloat(rawWeight) : null;
 
   // Parse difficulty - may be N/A for spawn-only enemies
   const difficulty = (row['Difficulty'] && row['Difficulty'] !== 'N/A') ? row['Difficulty'] : null;
@@ -301,7 +346,8 @@ const enemies = enemiesData.map(row => {
     location: row['Location'] || 'General',
     dice: diceFaces,
     imageUrl: row['File'] ? `images/enemies/${row['File']}.png` : null,
-    variantOf: variantOf
+    variantOf: variantOf,
+    tag: row['Tag'] || null
   };
 });
 
@@ -364,7 +410,7 @@ if (weaponsSheet) {
       game: row['Reference'] || '',
       tags: tags,
       imageUrl: row['img'] ? `images/items/${row['img']}.png` : null,
-      unlockCondition: row['Unlock Condition'] || null
+      unlockCondition: (row['Requirement'] && row['Requirement'] !== 'N/A') ? row['Requirement'] : null
     };
   });
 
@@ -386,14 +432,14 @@ const items = itemsData.map(row => {
   const tags = row['tags'] ? row['tags'].split(',').map(t => t.trim()) : [];
 
   return {
-    name: row['Item'] || '',
+    name: (row['Name'] || '').toString().trim(),
     rarity: row['Rating'] || 'Common',  // UI expects 'rarity' not 'rating'
     type: row['Type'] || 'Passive',
     description: row['Description'] || '',
     game: row['Reference'] || '',  // UI expects 'game' not 'reference'
     tags: tags,
     image: row['File'] ? `images/items/${row['File']}.png` : null,  // UI expects 'image' not 'imageUrl'
-    unlockCondition: row['Unlock Condition'] || null
+    unlockCondition: (row['Requirement'] && row['Requirement'] !== 'N/A') ? row['Requirement'] : null
   };
 });
 
@@ -478,7 +524,7 @@ if (addonsSheet) {
     addons[key] = {
       name: name,
       description: row['Description'] || '',
-      canBeAttachedTo: row['Can Be Attatched To'] || 'All'
+      canBeAttachedTo: row['Can Be Attached To'] || 'All'
     };
   });
 
@@ -664,9 +710,17 @@ if (cardsSheet) {
         ? row['Upgraded Description'] : null,
       upgradedCost: (!isStatusCard && upgradedCost !== undefined && upgradedCost !== 'N/A')
         ? parseInt(upgradedCost) : null,
-      canUpgrade: !isStatusCard && row['Rarity'] !== 'Starter' && row['Upgraded Description'] !== 'N/A',
+      canUpgrade: !isStatusCard && !!(row['Upgraded Description'] && row['Upgraded Description'] !== 'N/A'),
       isStatusCard: isStatusCard,
-      imageUrl: (row['Img'] && row['Img'] !== 'N/A') ? `images/cards/${row['Img']}.png` : null,
+      imageUrl: (row['Img'] && row['Img'] !== 'N/A')
+        ? (() => {
+            const imgFile = row['Img'];
+            if (tags.includes('weapon')) return `images/items/${imgFile}.png`;
+            const cardsPath = `images/cards/${imgFile}.png`;
+            const itemsPath = `images/items/${imgFile}.png`;
+            return fs.existsSync(cardsPath) ? cardsPath : (fs.existsSync(itemsPath) ? itemsPath : cardsPath);
+          })()
+        : null,
       game: (row['Game'] && row['Game'] !== 'N/A') ? row['Game'] : null,
       tags: tags
     };
@@ -680,6 +734,30 @@ var CARDS_DATA = ${JSON.stringify(cards, null, 2)};
 
   fs.writeFileSync('cards-data.js', cardsOutput);
   console.log(`✅ Cards: ${cards.length} cards`);
+}
+
+// ============== DICE ==============
+const diceSheetRaw = workbook.Sheets['dice'];
+if (diceSheetRaw) {
+  const diceRows = XLSX.utils.sheet_to_json(diceSheetRaw);
+
+  const dice = diceRows.map(row => {
+    const sides = parseInt(row['Sides']) || 6;
+    const faces = [];
+    for (let i = 1; i <= sides; i++) {
+      faces.push({ face: i, text: (row[`Side ${i}`] || '').trim() });
+    }
+    return { name: (row['Name'] || '').trim(), sides, faces };
+  });
+
+  const diceOutput = `// Auto-generated from Roguelikes.xlsx - Dice
+// Each entry describes a named die card and its face outcomes.
+
+var DICE_DATA = ${JSON.stringify(dice, null, 2)};
+`;
+
+  fs.writeFileSync('dice-data.js', diceOutput);
+  console.log(`✅ Dice: ${dice.length} dice`);
 }
 
 console.log('\n✅ All data files generated successfully!');

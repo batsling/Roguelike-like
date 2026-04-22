@@ -265,6 +265,24 @@ function loadState() {
 }
 
 let selectedCharacter = null;
+var selectedDeck = 'Random'; // Default deck for the current run selection (var so window.selectedDeck works cross-file)
+
+// ===== DECK WIN TRACKING =====
+
+function getDeckWinsForCharacter(charKey) {
+  const all = GameStorage.load(STORAGE_KEYS.DECK_WINS, {});
+  return all[charKey] || [];
+}
+
+function recordDeckWin(charKey, deckId) {
+  if (!charKey || !deckId) return;
+  const all = GameStorage.load(STORAGE_KEYS.DECK_WINS, {});
+  if (!all[charKey]) all[charKey] = [];
+  if (!all[charKey].includes(deckId)) {
+    all[charKey].push(deckId);
+    GameStorage.save(STORAGE_KEYS.DECK_WINS, all);
+  }
+}
 
 // Combat system toggle - set to true to use new dice-based combat
 let useDiceCombat = true;
@@ -483,6 +501,9 @@ document.getElementById('new-game-btn')?.addEventListener('click', () => {
   const characterKeys = Object.keys(PLAYER_CHARACTERS);
   selectedCharacter = characterKeys.length > 0 ? characterKeys[0] : null;
 
+  // Populate deck selection panel
+  if (typeof populateDeckView === 'function') populateDeckView();
+
   // Populate icon view
   populateIconCharacterView();
 
@@ -610,6 +631,8 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     amuletGame: amulet,
     currentY: 120,
     character: selectedCharacter,
+    selectedDeck: selectedDeck || 'Random',
+    startingMaxHealth: maxHealth,
     traits: characterTraits,
     strength: strength,
     dexterity: dexterity,
@@ -4205,6 +4228,18 @@ function showDiceCombatModal() {
     return;
   }
 
+  // Append any event-spawned enemies (on top of the weight budget)
+  if (Array.isArray(gameState.pendingSpawnEnemies) && gameState.pendingSpawnEnemies.length > 0) {
+    for (const spawn of gameState.pendingSpawnEnemies) {
+      const tmpl = ENEMIES_DATA.find(e => e.name.toLowerCase() === (spawn.enemy || '').toLowerCase());
+      if (tmpl) {
+        const count = spawn.min + Math.floor(Math.random() * (spawn.max - spawn.min + 1));
+        for (let s = 0; s < count; s++) encounterEnemies.push(tmpl);
+      }
+    }
+    gameState.pendingSpawnEnemies = [];
+  }
+
   // Use the first enemy as the primary (multi-enemy support via array passed to initCombat)
   const enemyData = encounterEnemies[0];
 
@@ -4511,8 +4546,8 @@ function showPostCombatChoiceModal(difficulty) {
         opacity: ${isUsed ? '0.45' : '1'};
         transition: transform 0.15s, box-shadow 0.15s;
         text-align: center;
-        min-width: 140px;
-        max-width: 160px;
+        min-width: 160px;
+        max-width: 200px;
         ${isUsed ? '' : `onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 20px ${opt.color}66'"`}
       "
       ${isUsed ? '' : `onclick="window._postcombatUseOption('${opt.key}', '${tier}')"`}
@@ -4535,7 +4570,7 @@ function showPostCombatChoiceModal(difficulty) {
   };
 
   createGameModal(`
-    <div style="text-align:center; padding:24px; max-width:760px;">
+    <div style="text-align:center; padding:24px; max-width:920px;">
       <h2 style="color:#FFD700; margin-top:0; margin-bottom:6px;">After Battle</h2>
       <p style="color:#aaa; font-size:13px; margin-bottom:20px;">
         Choose one option — each can be used <strong>once per difficulty tier</strong>.
@@ -4597,11 +4632,11 @@ function showSmithChoiceModal() {
           padding: 14px;
           cursor: pointer;
           display:flex; flex-direction:column; align-items:center;
-          min-width:130px; max-width:155px;
+          min-width:150px; max-width:180px;
           transition: transform 0.15s;
         ">
           <img src="${card.imageUrl || 'images/cards/default.png'}" alt="${card.name}"
-               style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;"
+               style="width:80px;height:80px;object-fit:contain;margin-bottom:8px;"
                onerror="this.style.display='none'">
           <div style="font-weight:bold;font-size:12px;color:white;text-align:center;">${card.name}</div>
           <div style="font-size:10px;color:#aaa;margin-top:3px;">${card.rarity} · ${card.type}</div>
@@ -4611,7 +4646,7 @@ function showSmithChoiceModal() {
     }).join('');
 
     createGameModal(`
-      <div style="text-align:center; padding:20px; max-width:820px;">
+      <div style="text-align:center; padding:20px; max-width:920px;">
         <h2 style="color:#FF9800; margin-top:0;">⚒️ Smith — Upgrade Cards</h2>
         <p style="color:#aaa; font-size:13px; margin-bottom:16px;">
           Select up to ${MAX_UPGRADES} cards to upgrade for free.
@@ -4798,6 +4833,21 @@ function showCardZoomOverlay(card) {
   const rarityColors = { Rare: '#9b59b6', Uncommon: '#4CAF50', Common: '#aaa', Starter: '#888' };
   const color = rarityColors[card.rarity] || '#888';
   const imgSrc = card.imageUrl || '';
+  const isDiceCard = (card.type || '').toLowerCase() === 'dice';
+  const diceEntry = isDiceCard && typeof DICE_DATA !== 'undefined'
+    ? DICE_DATA.find(d => d.name === card.name)
+    : null;
+  const zoomDiceFacesHTML = diceEntry ? `
+    <div style="margin:12px 0;text-align:left;">
+      <div style="font-size:12px;font-weight:bold;color:${color};margin-bottom:6px;text-align:center;">🎲 Die Faces</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">
+        ${diceEntry.faces.map((f,i) => `
+          <div style="background:rgba(0,0,0,0.5);border:1px solid ${color}55;border-radius:5px;padding:5px 4px;text-align:center;">
+            <div style="font-size:9px;color:#888;">Face ${i+1}</div>
+            <div style="font-size:11px;color:${color};font-weight:bold;line-height:1.3;">${f.text || f.face || '?'}</div>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
 
   const overlay = document.createElement('div');
   overlay.id = 'card-zoom-overlay';
@@ -4816,10 +4866,11 @@ function showCardZoomOverlay(card) {
     " onclick="event.stopPropagation()">
       ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}"
         style="width:140px;height:140px;object-fit:contain;margin-bottom:14px;border-radius:8px;border:2px solid ${color}40;"
-        onerror="this.style.display='none'">` : ''}
+        onerror="this.style.display='none'">` : (isDiceCard ? `<div style="font-size:64px;margin-bottom:10px;">🎲</div>` : '')}
       <h2 style="margin:0 0 6px;color:white;font-size:20px;">${card.name}${card.upgraded ? ' <span style="color:#4CAF50">+</span>' : ''}</h2>
       <div style="color:${color};font-size:13px;margin-bottom:10px;font-weight:bold;">${card.rarity || 'Starter'} · ${card.type || ''}</div>
       <div style="color:#ddd;font-size:14px;line-height:1.6;margin-bottom:14px;">${card.description || ''}</div>
+      ${zoomDiceFacesHTML}
       <div style="color:#ffd700;font-size:16px;font-weight:bold;">Cost: ${card.cost !== undefined ? card.cost : '?'}</div>
       <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
         margin-top:18px; padding:8px 24px;
@@ -4849,6 +4900,10 @@ function showDeckModal() {
   const cardHtml = (card, label, idx) => {
     const color = getRarityColor(card.rarity);
     const imgSrc = card.imageUrl || '';
+    const _isDice = (card.type || '').toLowerCase() === 'dice';
+    const artHTML = imgSrc
+      ? `<img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;" onerror="this.style.display='none'">`
+      : (_isDice ? `<div style="font-size:36px;margin-bottom:6px;">🎲</div>` : '');
     return `
       <div data-deck-card-idx="${idx}" style="background:#2d2d2d;border:2px solid ${color};border-radius:8px;
         padding:12px;display:flex;flex-direction:column;align-items:center;
@@ -4857,7 +4912,7 @@ function showDeckModal() {
         onmouseenter="this.style.transform='scale(1.04)';this.style.boxShadow='0 6px 20px rgba(0,0,0,0.6)'"
         onmouseleave="this.style.transform='';this.style.boxShadow=''">
         ${label ? `<div style="position:absolute;top:4px;right:4px;background:${color};color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:bold;">${label}</div>` : ''}
-        ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
+        ${artHTML}
         <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:3px;">${card.name}${card.upgraded ? ' +' : ''}</div>
         <div style="color:${color};font-size:11px;margin-bottom:4px;">${card.rarity || 'Starter'} · ${card.type || ''}</div>
         <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:6px;">${card.description || ''}</div>
@@ -4999,13 +5054,27 @@ function showLevelUpPrompt() {
 /**
  * Confirm level up and apply bonuses
  */
-function confirmLevelUp() {
+function confirmLevelUp(onComplete) {
   const characterKey = selectedCharacter || gameState.character || 'Rodney';
   const characterData = PLAYER_CHARACTERS[characterKey];
 
   if (!characterData || !characterData.levelUpStats) {
     console.error('Character level-up data not found');
     return;
+  }
+
+  // Crown: 50% chance to level up an additional time after this one completes
+  const _crownInv = typeof inventory !== 'undefined' ? inventory : [];
+  const _crownCount = _crownInv.filter(i => i.name === 'Crown').length;
+  function _afterReward() {
+    if (_crownCount > 0 && Math.random() < 0.5) {
+      if (typeof createNotification === 'function') {
+        createNotification('Crown: Bonus Level Up!', '#FFD700', '👑');
+      }
+      confirmLevelUp(onComplete);
+    } else {
+      if (onComplete) onComplete();
+    }
   }
 
   const oldLevel = gameState.playerLevel || 1;
@@ -5090,11 +5159,54 @@ function confirmLevelUp() {
   gameState.charisma = charisma;
   gameState.luck = luck;
 
+  // Rock Bottom: record new highs after level-up stat bonuses
+  if (typeof inventory !== 'undefined' && inventory.some(i => i.name === 'Rock Bottom')) {
+    if (!gameState.rockBottomBests) gameState.rockBottomBests = {};
+    for (const _s of ['strength', 'dexterity', 'intelligence', 'charisma', 'fov', 'discovery', 'luck']) {
+      const _cur = (typeof window[_s] !== 'undefined' ? window[_s] : 0) || 0;
+      if (_cur > (gameState.rockBottomBests[_s] || 0)) gameState.rockBottomBests[_s] = _cur;
+    }
+  }
+
   // Update UI
   updateTopBar();
   saveCurrentGame();
 
-  // Show stat bonuses, then offer card reward
+  // Determine the extra reward for this character
+  const reward = characterData.levelUpReward || { type: 'none' };
+
+  const rewardLabels = {
+    gold:  `💰 ${reward.amount} Gold`,
+    item:  '📦 Choose an Item',
+    card:  '🃏 Choose a Card',
+    spell: '✨ Choose a Spell',
+    none:  null,
+  };
+  const rewardLabel = rewardLabels[reward.type] || null;
+
+  const rewardBtnHTML = rewardLabel ? `
+    <button id="proceed-to-reward-btn" style="
+      padding: 12px 30px;
+      background: linear-gradient(145deg, #9b59b6, #7d3c98);
+      border: 2px solid #9b59b6;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 16px;
+    ">${rewardLabel}</button>
+  ` : `
+    <button id="proceed-to-reward-btn" style="
+      padding: 12px 30px;
+      background: #444;
+      border: 2px solid #666;
+      border-radius: 8px;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 16px;
+    ">Continue</button>
+  `;
+
   createGameModal(`
     <div style="text-align: center; padding: 20px; max-width: 500px;">
       <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
@@ -5114,26 +5226,58 @@ function confirmLevelUp() {
           `).join('') : '<div style="color: #888; font-size: 14px;">No stat bonuses</div>'}
         </div>
       </div>
-      <button id="proceed-to-card-reward-btn" style="
-        padding: 12px 30px;
-        background: linear-gradient(145deg, #9b59b6, #7d3c98);
-        border: 2px solid #9b59b6;
-        border-radius: 8px;
-        color: #fff;
-        font-weight: bold;
-        cursor: pointer;
-        font-size: 16px;
-      ">🃏 Choose Card Reward</button>
+      ${rewardBtnHTML}
     </div>
   `);
 
-  document.getElementById('proceed-to-card-reward-btn').onclick = () => {
+  document.getElementById('proceed-to-reward-btn').onclick = () => {
     closeGameModal();
-    if (typeof window.showCardRewardModal === 'function') {
-      window.showCardRewardModal();
-      saveCurrentGame();
-    } else {
-      console.error('[LevelUp] showCardRewardModal not found on window');
+    switch (reward.type) {
+      case 'gold':
+        gold = (gold || 0) + reward.amount;
+        gameState.gold = gold;
+        saveCurrentGame();
+        if (typeof updateTopBar === 'function') updateTopBar();
+        if (typeof createNotification === 'function') {
+          createNotification(`+${reward.amount} Gold!`, '#FFD700', '💰');
+        }
+        _afterReward();
+        break;
+
+      case 'item':
+        if (typeof showItemChoiceModal === 'function') {
+          showItemChoiceModal(_afterReward, 'small');
+        } else _afterReward();
+        break;
+
+      case 'card':
+        if (typeof window.showCardRewardModal === 'function') {
+          window.showCardRewardModal(_afterReward, reward.tag || null);
+          saveCurrentGame();
+        } else _afterReward();
+        break;
+
+      case 'spell':
+        if (typeof createGameModal === 'function') {
+          createGameModal(`
+            <div style="text-align:center; padding:30px; max-width:400px;">
+              <h2 style="color:#9b59b6; margin-bottom:15px;">✨ Spell Reward</h2>
+              <p style="color:#aaa; margin-bottom:20px;">Spells are not yet implemented. Check back later!</p>
+              <button id="spell-reward-close-btn" style="
+                padding:10px 24px; background:#444; border:none;
+                border-radius:8px; color:white; cursor:pointer; font-size:14px;
+              ">Close</button>
+            </div>
+          `);
+          const spellBtn = document.getElementById('spell-reward-close-btn');
+          if (spellBtn) spellBtn.onclick = () => { closeGameModal(); _afterReward(); };
+        } else _afterReward();
+        break;
+
+      case 'none':
+      default:
+        _afterReward();
+        break;
     }
   };
 }
@@ -5584,7 +5728,14 @@ function showDiceLevelUpChoiceModal(characterKey, onComplete) {
  * Luck shifts the rarity distribution toward Uncommon/Rare.
  * @param {Function} onComplete - Called after a card is chosen or skipped
  */
-function showCardRewardModal(onComplete) {
+function showCardRewardModal(onComplete, tagFilter = null) {
+  // Derive tagFilter from the run's chosen deck if not explicitly passed
+  if (tagFilter === null && typeof gameState !== 'undefined' && gameState.selectedDeck) {
+    const deckDef = (typeof AVAILABLE_DECKS !== 'undefined')
+      ? AVAILABLE_DECKS.find(d => d.id === gameState.selectedDeck)
+      : null;
+    if (deckDef && deckDef.tagFilter) tagFilter = deckDef.tagFilter;
+  }
   const rarityColor = (rarity) => {
     switch (rarity) {
       case 'Rare':     return '#9b59b6';
@@ -5596,21 +5747,23 @@ function showCardRewardModal(onComplete) {
 
   // Pick one card with luck-weighted rarity, excluding already-seen names
   function pickOne(exclude) {
-    const currentLuck = typeof luck !== 'undefined' ? luck : (gameState.luck || 0);
-    const wCommon   = Math.max(10, 70 - currentLuck * 3);
-    const wUncommon = Math.min(65, 25 + currentLuck * 2);
-    const wRare     = Math.min(45,  5 + currentLuck);
-    const total     = wCommon + wUncommon + wRare;
-
-    const pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
+    let pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
       .filter(c => c.rarity && c.rarity !== 'Starter' && c.rarity !== 'N/A'
                && (c.type || '').toLowerCase() !== 'training'
                && !c.isTraining
                && !(c.tags && c.tags.includes('weapon'))
                && !exclude.has(c.name));
+
+    if (tagFilter) {
+      const tagged = pool.filter(c => Array.isArray(c.tags) && c.tags.includes(tagFilter));
+      if (tagged.length > 0) pool = tagged;
+    }
+
     if (pool.length === 0) return null;
 
-    let roll = Math.random() * total;
+    // Base weights 70/20/10; luck advantage biases the roll toward higher buckets
+    const wCommon = 70, wUncommon = 20, wRare = 10, total = 100;
+    const roll = rollWithLuckAdvantage() * total;
     let pickedRarity;
     if      (roll < wCommon)              pickedRarity = 'Common';
     else if (roll < wCommon + wUncommon)  pickedRarity = 'Uncommon';
@@ -5643,23 +5796,23 @@ function showCardRewardModal(onComplete) {
       <div class="card-reward-option" data-card-idx="${idx}" style="
         background:#1e1e2e; border:2px solid ${color}; border-radius:12px;
         padding:16px; display:flex; flex-direction:column; align-items:center;
-        width:155px; cursor:pointer;
+        width:200px; cursor:pointer;
         transition: transform 0.15s, box-shadow 0.15s;
       " onmouseenter="this.style.transform='translateY(-6px)'; this.style.boxShadow='0 8px 24px ${color}66';"
          onmouseleave="this.style.transform=''; this.style.boxShadow='';">
         <img src="${imgSrc}" alt="${card.name}"
-             style="width:80px;height:80px;object-fit:contain;margin-bottom:10px;"
+             style="width:110px;height:110px;object-fit:contain;margin-bottom:10px;"
              onerror="this.style.display='none'">
-        <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:4px;">${card.name}</div>
-        <div style="color:${color};font-size:11px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
-        <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>
-        <div style="color:#ffd700;font-size:12px;font-weight:bold;">Cost: ${card.cost}</div>
+        <div style="font-weight:bold;font-size:15px;color:white;text-align:center;margin-bottom:4px;">${card.name}</div>
+        <div style="color:${color};font-size:12px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
+        <div style="font-size:12px;color:#ccc;text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>
+        <div style="color:#ffd700;font-size:13px;font-weight:bold;">Cost: ${card.cost}</div>
       </div>
     `;
   }).join('');
 
   createGameModal(`
-    <div style="text-align:center; padding:20px; max-width:640px;">
+    <div style="text-align:center; padding:20px; max-width:920px;">
       <h2 style="color:#FFD700; margin-top:0; margin-bottom:8px;">🃏 Card Reward</h2>
       <p style="color:#aaa; margin-bottom:20px; font-size:13px;">Choose a card to add to your deck:</p>
       <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
@@ -6960,6 +7113,13 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
         break;
       }
 
+      // Sacred Orb: reroll Common items; 25% chance to reroll Uncommon
+      if (selectedItem && typeof inventory !== 'undefined' && inventory.some(i => i.name === 'Sacred Orb')) {
+        const r = (selectedItem.rarity || '').toLowerCase();
+        if (r === 'common') { attempts++; continue; }
+        if (r === 'uncommon' && Math.random() < 0.25) { attempts++; continue; }
+      }
+
       // Check if this item is already in choices
       if (!choices.find(c => c.name === selectedItem.name)) {
         choices.push(selectedItem);
@@ -6969,9 +7129,13 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
       attempts++;
     }
 
-    // If we couldn't find a unique item after max attempts, just add it anyway
+    // If we couldn't find a unique item after max attempts, only add if pool is truly exhausted
     if (attempts >= maxAttempts && selectedItem) {
-      choices.push(selectedItem);
+      const relevantPool = rarityFilter
+        ? itemPool.filter(item => item.rarity && item.rarity.toLowerCase() === rarityFilter.toLowerCase())
+        : itemPool;
+      const poolExhausted = relevantPool.every(item => choices.find(c => c.name === item.name));
+      if (poolExhausted) break; // Stop adding choices rather than show duplicates
     }
   }
 
@@ -6985,7 +7149,7 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
     itemsHTML += `
       <div class="item-choice-card" data-index="${index}" style="
         flex: 1;
-        max-width: 250px;
+        max-width: 300px;
         padding: 20px;
         background: #2d2d2d;
         border: 3px solid ${rarityColor};
@@ -6994,7 +7158,7 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
         transition: all 0.3s;
         text-align: center;
       ">
-        ${item.image ? `<img src="${item.image}" style="width: 100px; height: 100px; object-fit: contain; image-rendering: pixelated; margin: 0 auto 15px; display: block; border-radius: 8px; border: 2px solid ${rarityColor};" alt="${item.name}" onerror="this.style.display='none';">` : ''}
+        ${item.image ? `<img src="${item.image}" style="width: 130px; height: 130px; object-fit: contain; image-rendering: pixelated; margin: 0 auto 15px; display: block; border-radius: 8px; border: 2px solid ${rarityColor};" alt="${item.name}" onerror="this.style.display='none';">` : ''}
         <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">${item.name}</div>
         <div style="color: ${rarityColor}; font-size: 14px; margin-bottom: 15px;">${item.rarity}</div>
         <div style="color: #ccc; font-size: 14px; line-height: 1.5;">${item.description}</div>
@@ -7057,6 +7221,8 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
       e.currentTarget.style.boxShadow = '';
     };
     card.onclick = (e) => {
+      if (e.currentTarget.dataset.picked) return;
+      e.currentTarget.dataset.picked = '1';
       const itemIndex = parseInt(e.currentTarget.dataset.index);
       const item = choices[itemIndex];
 
@@ -7335,10 +7501,28 @@ function showGameDetails(gameName) {
         <h3 style="margin: 0 0 10px 0; color: #ff9800;">${game.name}</h3>
         <div style="color: #aaa; font-size: 13px; line-height: 1.6;">
           <div><strong>Release Year:</strong> ${game.year || '—'}</div>
-          <div><strong>Type:</strong> ${game.type || '—'}</div>
-          ${game.tags && game.tags.length > 0 ? `<div><strong>Tags:</strong> ${game.tags.join(', ')}</div>` : ''}
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <strong>Type:</strong>
+            ${game.type ? `<span style="font-size:11px;font-weight:bold;padding:2px 8px;border-radius:10px;background:rgba(255,152,0,0.18);border:1px solid rgba(255,152,0,0.45);color:#ff9800;cursor:pointer;"
+              onclick="window.gamesTypeFilter=${JSON.stringify(game.type)}; switchCollectionTab('games');"
+              title="Filter by ${game.type}">${game.type}</span>` : '—'}
+          </div>
         </div>
       </div>
+
+      <!-- Tags -->
+      ${game.tags && game.tags.length > 0 ? `
+        <div style="padding:10px 12px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.25);border-radius:8px;">
+          <div style="font-size:11px;font-weight:bold;color:#9b59b6;margin-bottom:8px;">🏷 Tags</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${game.tags.map(tag => `
+              <span style="font-size:11px;padding:3px 10px;border-radius:12px;background:rgba(155,89,182,0.18);border:1px solid rgba(155,89,182,0.4);color:#ba68c8;cursor:pointer;font-weight:bold;"
+                onclick="window.gamesTagFilter=${JSON.stringify(tag)}; switchCollectionTab('games');"
+                title="Filter by tag: ${tag}">${tag}</span>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
 
       <!-- Tracked Stats -->
       <div style="padding: 12px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 6px;">
@@ -7353,6 +7537,14 @@ function showGameDetails(gameName) {
       ${connectionsHTML}
     </div>
   `;
+
+  // Highlight the selected card in the grid
+  document.querySelectorAll('.collection-game-card').forEach(card => {
+    const isSel = card.dataset.gameName === gameName;
+    card.classList.toggle('game-selected', isSel);
+    card.style.borderColor = isSel ? '#ff9800' : '#444';
+    card.style.background  = isSel ? 'rgba(255,152,0,0.1)' : 'rgba(0,0,0,0.3)';
+  });
 }
 
 function showEnemyDetails(enemyName) {
@@ -7464,6 +7656,9 @@ function showEnemyDetails(enemyName) {
             <div><strong>HP:</strong> ${enemy.hpMin != null ? (enemy.hpMin === enemy.hpMax ? enemy.hpMin : enemy.hpMin + '–' + enemy.hpMax) : (enemy.hp || '—')}</div>
             <div><strong>Game:</strong> ${enemy.game || '—'}</div>
             <div><strong>Location:</strong> ${enemy.location || '—'}</div>
+            ${enemy.tag ? `<div style="margin-top:4px;"><span style="font-size:11px;font-weight:bold;padding:2px 8px;border-radius:10px;background:rgba(155,89,182,0.18);border:1px solid rgba(155,89,182,0.4);color:#ba68c8;cursor:pointer;"
+              onclick="window.enemyTagFilter=${JSON.stringify(enemy.tag)}; switchCollectionTab('enemies');"
+              title="Filter by tag: ${enemy.tag}">${enemy.tag}</span></div>` : ''}
           </div>
         </div>
       </div>
@@ -7655,6 +7850,86 @@ function showItemDetails(itemName) {
 
       <!-- Dice (for weapons) -->
       ${diceHTML}
+
+      <!-- Weapon Card (for weapons, show card render from CARDS_DATA) -->
+      ${(() => {
+        if ((item.type || '').toLowerCase() !== 'weapon') return '';
+        const allCards = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
+        const card = allCards.find(c => c.name === item.name && c.tags && c.tags.includes('weapon'));
+        if (!card) return '';
+        const getRarityColorC = (r) => {
+          switch((r||'').toLowerCase()) {
+            case 'legendary': return '#ff6b00'; case 'rare': return '#9b59b6';
+            case 'uncommon': return '#4CAF50'; case 'common': return '#aaa';
+            case 'starter': return '#2196F3'; default: return '#666';
+          }
+        };
+        const rc = getRarityColorC(card.rarity);
+        const tc = typeColor; // reuse weapon red
+        return `
+          <div style="margin-top:5px;">
+            <div style="font-size:12px;font-weight:bold;color:#f44336;margin-bottom:8px;">🃏 Weapon Card</div>
+            <div style="border:2px solid ${rc};border-radius:12px;background:rgba(10,10,15,0.9);box-shadow:0 0 12px ${rc}55;overflow:hidden;max-width:220px;margin:0 auto;position:relative;">
+              <div style="position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:${tc};border:2px solid rgba(255,255,255,0.35);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;color:white;z-index:2;">
+                ${card.cost !== null && card.cost !== undefined ? card.cost : '?'}
+              </div>
+              ${card.imageUrl
+                ? '<img src="' + card.imageUrl + '" alt="' + card.name + '" style="width:100%;height:160px;object-fit:contain;background:rgba(0,0,0,0.3);display:block;" onerror="this.style.display=\'none\'"/>'
+                : '<div style="width:100%;height:160px;background:rgba(244,67,54,0.15);display:flex;align-items:center;justify-content:center;font-size:48px;color:#f4433688;">⚔</div>'
+              }
+              <div style="padding:10px;">
+                <div style="font-size:14px;font-weight:bold;color:#eee;margin-bottom:4px;">${card.name}</div>
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                  <span style="font-size:10px;color:${tc};text-transform:uppercase;font-weight:bold;">${card.type||''}</span>
+                  <span style="font-size:10px;color:${rc};text-transform:uppercase;">${card.rarity||''}</span>
+                </div>
+                <div style="font-size:12px;color:#ddd;line-height:1.5;">${card.description||'No description.'}</div>
+              </div>
+            </div>
+            ${card.canUpgrade && card.upgradedDescription ? `
+              <div style="margin-top:8px;padding:10px 12px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);border-radius:8px;max-width:220px;margin-left:auto;margin-right:auto;">
+                <div style="font-size:11px;font-weight:bold;color:#ff9800;margin-bottom:6px;">✦ Upgraded</div>
+                <div style="font-size:11px;color:#ccc;line-height:1.5;">${card.upgradedDescription}</div>
+              </div>` : ''}
+          </div>`;
+      })()}
+
+      <!-- Keywords -->
+      ${(() => {
+        const allText = (item.description || '').toLowerCase();
+        const statusData = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA : {};
+        const addonData  = typeof ADDONS_DATA  !== 'undefined' ? ADDONS_DATA  : {};
+        const matchedStatuses = Object.values(statusData).filter(s =>
+          new RegExp(`\\b${s.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`, 'i').test(allText)
+        );
+        const matchedAddons = Object.values(addonData).filter(a =>
+          new RegExp(`\\b${a.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`, 'i').test(allText)
+        );
+        if (matchedStatuses.length === 0 && matchedAddons.length === 0) return '';
+        const statusColor = s => s.preference === 'Positive' ? '#4CAF50' : s.preference === 'Negative' ? '#e74c3c' : '#888';
+        const statusBadge = s => `
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 9px;background:rgba(0,0,0,0.35);border:1px solid ${statusColor(s)}44;border-radius:7px;">
+            ${s.imageUrl ? `<img src="${s.imageUrl}" style="width:22px;height:22px;object-fit:contain;flex-shrink:0;border-radius:3px;" onerror="this.style.display='none'">` : `<span style="font-size:16px;line-height:1;flex-shrink:0;">${s.preference==='Positive'?'🟢':s.preference==='Negative'?'🔴':'⚪'}</span>`}
+            <div>
+              <div style="font-size:11px;font-weight:bold;color:${statusColor(s)};">${s.name}</div>
+              <div style="font-size:10px;color:#aaa;line-height:1.35;">${s.description}</div>
+            </div>
+          </div>`;
+        const addonBadge = a => `
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 9px;background:rgba(0,0,0,0.35);border:1px solid #9b59b644;border-radius:7px;">
+            <span style="font-size:16px;line-height:1;flex-shrink:0;">🔷</span>
+            <div>
+              <div style="font-size:11px;font-weight:bold;color:#9b59b6;">${a.name}</div>
+              <div style="font-size:10px;color:#aaa;line-height:1.35;">${a.description}</div>
+            </div>
+          </div>`;
+        return `
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <div style="font-size:11px;font-weight:bold;color:#aaa;margin-bottom:2px;">Keywords</div>
+            ${matchedStatuses.map(statusBadge).join('')}
+            ${matchedAddons.map(addonBadge).join('')}
+          </div>`;
+      })()}
     </div>
   `;
 }
@@ -7793,9 +8068,24 @@ function showCardDetails(cardName) {
 
   const rc = getRarityColor(card.rarity);
   const tc = getTypeColor(card.type);
-  const typeEmoji = (card.type||'').toLowerCase() === 'attack' ? '⚔' :
-                    (card.type||'').toLowerCase() === 'skill' ? '🛡' :
-                    (card.type||'').toLowerCase() === 'power' ? '✨' : '🃏';
+  const isDice = (card.type||'').toLowerCase() === 'dice';
+  const typeEmoji = {attack:'⚔',skill:'🛡',power:'✨',dice:'🎲',training:'📖'}[(card.type||'').toLowerCase()] || '🃏';
+
+  // Build dice face grid for dice-type cards
+  const diceData = isDice && typeof DICE_DATA !== 'undefined'
+    ? DICE_DATA.find(d => d.name === card.name)
+    : null;
+  const diceFacesHTML = diceData ? `
+    <div style="margin-top:4px;">
+      <div style="font-size:11px;font-weight:bold;color:${tc};margin-bottom:6px;">🎲 Die Faces</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+        ${diceData.faces.map((f,i) => `
+          <div style="background:rgba(0,0,0,0.5);border:1px solid ${tc}66;border-radius:5px;padding:4px 3px;text-align:center;">
+            <div style="font-size:9px;color:#888;">Face ${i+1}</div>
+            <div style="font-size:10px;color:${tc};font-weight:bold;line-height:1.3;">${f.text || f.face || '?'}</div>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
 
   detailsPanel.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:14px;">
@@ -7815,6 +8105,7 @@ function showCardDetails(cardName) {
             <span style="font-size:10px;color:${rc};text-transform:uppercase;">${card.rarity||''}</span>
           </div>
           <div style="font-size:12px;color:#ddd;line-height:1.5;">${card.description||'No description.'}</div>
+          ${diceFacesHTML}
         </div>
       </div>
 
@@ -7832,8 +8123,62 @@ function showCardDetails(cardName) {
       ` : '')}
 
       ${card.game ? `<div style="font-size:11px;color:#666;">From: <span style="color:#888;">${card.game}</span></div>` : ''}
+
+      ${(() => {
+        // Scan description + upgraded description for known status and addon keywords
+        const allText = ((card.description || '') + ' ' + (card.upgradedDescription || '')).toLowerCase();
+        const statusData = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA : {};
+        const addonData  = typeof ADDONS_DATA  !== 'undefined' ? ADDONS_DATA  : {};
+
+        const matchedStatuses = Object.values(statusData).filter(s =>
+          new RegExp(`\\b${s.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`, 'i').test(allText)
+        );
+        const matchedAddons = Object.values(addonData).filter(a =>
+          new RegExp(`\\b${a.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`, 'i').test(allText)
+        );
+
+        if (matchedStatuses.length === 0 && matchedAddons.length === 0) return '';
+
+        const statusColor = s => s.preference === 'Positive' ? '#4CAF50' : s.preference === 'Negative' ? '#e74c3c' : '#888';
+        const statusBadge = s => `
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 9px;background:rgba(0,0,0,0.35);border:1px solid ${statusColor(s)}44;border-radius:7px;">
+            ${s.imageUrl ? `<img src="${s.imageUrl}" style="width:22px;height:22px;object-fit:contain;flex-shrink:0;border-radius:3px;" onerror="this.style.display='none'">` : `<span style="font-size:16px;line-height:1;flex-shrink:0;">${s.preference==='Positive'?'🟢':s.preference==='Negative'?'🔴':'⚪'}</span>`}
+            <div>
+              <div style="font-size:11px;font-weight:bold;color:${statusColor(s)};">${s.name}</div>
+              <div style="font-size:10px;color:#aaa;line-height:1.35;">${s.description}</div>
+            </div>
+          </div>`;
+        const addonBadge = a => `
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 9px;background:rgba(0,0,0,0.35);border:1px solid #9b59b644;border-radius:7px;">
+            <span style="font-size:16px;line-height:1;flex-shrink:0;">🔷</span>
+            <div>
+              <div style="font-size:11px;font-weight:bold;color:#9b59b6;">${a.name}</div>
+              <div style="font-size:10px;color:#aaa;line-height:1.35;">${a.description}</div>
+            </div>
+          </div>`;
+
+        return `
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <div style="font-size:11px;font-weight:bold;color:#aaa;margin-bottom:2px;">Keywords</div>
+            ${matchedStatuses.map(statusBadge).join('')}
+            ${matchedAddons.map(addonBadge).join('')}
+          </div>`;
+      })()}
     </div>
   `;
+}
+
+function formatLevelUpReward(reward) {
+  if (!reward || reward.type === 'none' || !reward.type) return null;
+  switch (reward.type) {
+    case 'gold':  return `💰 +${reward.amount} Gold`;
+    case 'item':  return `📦 Choose an Item`;
+    case 'card':  return reward.tag
+      ? `🃏 1 ${reward.tag.charAt(0).toUpperCase() + reward.tag.slice(1)} Card Reward`
+      : '🃏 Choose a Card';
+    case 'spell': return `✨ Choose a Spell`;
+    default:      return null;
+  }
 }
 
 function showCharacterDetails(charName) {
@@ -7865,11 +8210,11 @@ function showCharacterDetails(charName) {
     ? levelUpBonuses.map(b => `<span style="color: ${b.color}; font-weight: bold;">+${b.value} ${b.stat}</span>`).join(', ')
     : '<span style="color: #888;">None</span>';
 
-  // Build starting deck HTML
+  // Build starting cards HTML
   const startingEntries = (char.startingDeck) ? char.startingDeck : [];
   const startingDeckHTML = startingEntries.length > 0 ? `
     <div style="margin-top: 15px;">
-      <strong style="color: #4CAF50;">Starting Deck:</strong>
+      <strong style="color: #4CAF50;">Starting Cards:</strong>
       <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 5px;">
         ${startingEntries.map(entry => {
           const template = typeof CARDS_DATA !== 'undefined'
@@ -7890,10 +8235,10 @@ function showCharacterDetails(charName) {
     </div>
   ` : '';
 
-  const combatStartHTML = char.combatStart ? `
+  const combatStartHTML = char.combatStyle ? `
     <div style="margin-top: 10px; padding: 8px; background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.4); border-radius: 6px;">
-      <div style="color: #ff9800; font-size: 12px; font-weight: bold; margin-bottom: 3px;">⚡ Combat Start</div>
-      <div style="color: #ddd; font-size: 12px;">${char.combatStart}</div>
+      <div style="color: #ff9800; font-size: 12px; font-weight: bold; margin-bottom: 3px;">⚡ Combat Style</div>
+      <div style="color: #ddd; font-size: 12px;">${char.combatStyle}</div>
     </div>
   ` : '';
 
@@ -7978,12 +8323,35 @@ function showCharacterDetails(charName) {
         <div style="font-size: 12px; color: #aaa;">
           <strong>Rewards:</strong> ${levelUpBonusesHTML}
         </div>
+        ${(() => {
+          const rewardText = formatLevelUpReward(char.levelUpReward);
+          return rewardText
+            ? `<div style="font-size:12px;color:#ccc;margin-top:5px;"><strong>Bonus:</strong> ${rewardText}</div>`
+            : '';
+        })()}
       </div>
 
       <!-- Starting Deck -->
       ${startingDeckHTML}
       ${combatStartHTML}
       ${startingItemsHTML}
+
+      <!-- Deck Beaten Checklist -->
+      ${(() => {
+        if (typeof AVAILABLE_DECKS === 'undefined' || !AVAILABLE_DECKS.length) return '';
+        const dw = (typeof getDeckWinsForCharacter === 'function') ? getDeckWinsForCharacter(charName) : [];
+        const rows = AVAILABLE_DECKS.map(d => {
+          const beaten = dw.includes(d.id);
+          return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+            <span style="font-size:14px;">${beaten ? '✅' : '⬜'}</span>
+            <span style="font-size:12px;color:${beaten ? '#4CAF50' : '#888'};">${d.name} Deck</span>
+          </div>`;
+        }).join('');
+        return `<div style="margin-top:15px;padding:12px;background:rgba(0,0,0,0.3);border:1px solid #333;border-radius:8px;">
+          <div style="font-size:12px;font-weight:bold;color:#aaa;margin-bottom:8px;">🏆 Beaten With Deck</div>
+          ${rows}
+        </div>`;
+      })()}
     </div>
   `;
 }
@@ -9314,8 +9682,10 @@ window.switchEnemyForm = switchEnemyForm;
     const rc = card.rarity === 'Rare' ? '#9b59b6' : card.rarity === 'Uncommon' ? '#4CAF50' : card.rarity === 'Common' ? '#aaa' : '#888';
     const tc = (card.type||'').toLowerCase()==='attack' ? '#e74c3c'
              : (card.type||'').toLowerCase()==='skill'  ? '#2980b9'
-             : (card.type||'').toLowerCase()==='power'  ? '#8e44ad' : '#888';
+             : (card.type||'').toLowerCase()==='power'  ? '#8e44ad'
+             : (card.type||'').toLowerCase()==='dice'   ? '#d35400' : '#888';
     const imgSrc = card.imageUrl || '';
+    const _tipTypeEmoji = {attack:'⚔',skill:'🛡',power:'✨',dice:'🎲',training:'📖'}[(card.type||'').toLowerCase()] || '🃏';
 
     const el = _getTooltipEl();
     el.style.border = '2px solid ' + rc;
@@ -9324,7 +9694,7 @@ window.switchEnemyForm = switchEnemyForm;
         <div style="position:absolute;top:5px;left:5px;width:20px;height:20px;border-radius:50%;background:${tc};border:2px solid rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:white;z-index:2;">${card.cost !== null && card.cost !== undefined ? card.cost : '?'}</div>
         ${imgSrc
           ? `<img src="${imgSrc}" style="width:100%;height:120px;object-fit:contain;background:rgba(0,0,0,0.4);display:block;" onerror="this.style.display='none'">`
-          : `<div style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;font-size:36px;background:rgba(0,0,0,0.3);">${(card.type||'').toLowerCase()==='attack'?'⚔':(card.type||'').toLowerCase()==='skill'?'🛡':'✨'}</div>`}
+          : `<div style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;font-size:36px;background:rgba(0,0,0,0.3);">${_tipTypeEmoji}</div>`}
       </div>
       <div style="padding:8px;">
         <div style="font-size:12px;font-weight:bold;color:#eee;margin-bottom:3px;">${card.name}</div>

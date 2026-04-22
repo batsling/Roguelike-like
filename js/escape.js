@@ -542,6 +542,11 @@ function showVictoryScreen() {
     luck: luck
   });
 
+  // Record deck win for this character
+  if (gameState.character && gameState.selectedDeck && typeof recordDeckWin === 'function') {
+    recordDeckWin(gameState.character, gameState.selectedDeck);
+  }
+
   // Delete the current save since run is complete
   if (gameState.saveName && gameSaves[gameState.saveName]) {
     delete gameSaves[gameState.saveName];
@@ -720,26 +725,25 @@ function switchCollectionTab(tab) {
   if (tab === 'games') {
     // Initialize search/filter state
     if (typeof window.gamesSearchTerm === 'undefined') window.gamesSearchTerm = '';
-    if (typeof window.gamesTagFilter === 'undefined') window.gamesTagFilter = 'all';
     if (typeof window.gamesTypeFilter === 'undefined') window.gamesTypeFilter = 'all';
+    if (typeof window.gamesTagFilter === 'undefined') window.gamesTagFilter = 'all';
 
-    // Collect all unique tags and types for filter buttons
-    const allTags = [...new Set(games.flatMap(g => g.tags || []))].sort();
+    // Collect all unique types and tags for filter buttons
     const allTypes = [...new Set(games.map(g => g.type).filter(Boolean))].sort();
+    const allTags = [...new Set(games.flatMap(g => g.tags || []).filter(Boolean))].sort();
 
     // Filter and sort games
     const searchTerm = window.gamesSearchTerm.toLowerCase();
     let filteredGames = [...games];
     if (searchTerm) filteredGames = filteredGames.filter(g => g.name.toLowerCase().includes(searchTerm));
-    if (window.gamesTagFilter !== 'all') filteredGames = filteredGames.filter(g => (g.tags || []).includes(window.gamesTagFilter));
     if (window.gamesTypeFilter !== 'all') filteredGames = filteredGames.filter(g => g.type === window.gamesTypeFilter);
+    if (window.gamesTagFilter !== 'all') filteredGames = filteredGames.filter(g => g.tags && g.tags.includes(window.gamesTagFilter));
     const sortedGames = filteredGames.sort((a, b) => a.name.localeCompare(b.name));
 
     // Get game stats for amulet icons
     const allStats = getGameStats();
 
-    const tagFilterBtnStyle = (active) => `padding:4px 10px; border:none; border-radius:12px; cursor:pointer; font-size:11px; font-weight:bold; background:${active?'#ff9800':'rgba(100,100,100,0.3)'}; color:${active?'#000':'#ccc'}; transition:background 0.15s;`;
-    const typeFilterBtnStyle = (active) => `padding:4px 10px; border:none; border-radius:12px; cursor:pointer; font-size:11px; font-weight:bold; background:${active?'#2196F3':'rgba(100,100,100,0.3)'}; color:${active?'#fff':'#ccc'}; transition:background 0.15s;`;
+    const typeFilterBtnStyle = (active) => `padding:4px 10px; border:none; border-radius:12px; cursor:pointer; font-size:11px; font-weight:bold; background:${active?'#ff9800':'rgba(100,100,100,0.3)'}; color:${active?'#000':'#ccc'}; transition:background 0.15s;`;
 
     content.innerHTML = `
       <!-- Left side: Game grid -->
@@ -757,14 +761,15 @@ function switchCollectionTab(tab) {
         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:8px; align-items:center;">
           <span style="color:#888; font-size:11px; margin-right:2px;">Type:</span>
           <button style="${typeFilterBtnStyle(window.gamesTypeFilter==='all')}" onclick="window.gamesTypeFilter='all'; switchCollectionTab('games');">All</button>
-          ${allTypes.map(t => `<button style="${typeFilterBtnStyle(window.gamesTypeFilter===t)}" onclick="window.gamesTypeFilter=${JSON.stringify(t)}; switchCollectionTab('games');">${t}</button>`).join('')}
+          ${allTypes.map(t => `<button style="${typeFilterBtnStyle(window.gamesTypeFilter===t)}" onclick="window.gamesTypeFilter='${t.replace(/'/g, "\\'")}'; switchCollectionTab('games');">${t}</button>`).join('')}
         </div>
-        <!-- Tag filter -->
+        <!-- Tag filter (separate from type) -->
+        ${allTags.length > 0 ? `
         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:8px; align-items:center;">
           <span style="color:#888; font-size:11px; margin-right:2px;">Tag:</span>
-          <button style="${tagFilterBtnStyle(window.gamesTagFilter==='all')}" onclick="window.gamesTagFilter='all'; switchCollectionTab('games');">All</button>
-          ${allTags.map(t => `<button style="${tagFilterBtnStyle(window.gamesTagFilter===t)}" onclick="window.gamesTagFilter=${JSON.stringify(t)}; switchCollectionTab('games');">${t}</button>`).join('')}
-        </div>
+          <button style="${typeFilterBtnStyle(window.gamesTagFilter==='all')}" onclick="window.gamesTagFilter='all'; switchCollectionTab('games');">All</button>
+          ${allTags.map(t => `<button style="${typeFilterBtnStyle(window.gamesTagFilter===t)}" onclick="window.gamesTagFilter='${t.replace(/'/g, "\\'")}'; switchCollectionTab('games');">${t}</button>`).join('')}
+        </div>` : ''}
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; overflow-y: auto;">
           ${sortedGames.map(game => {
             const gameStats = allStats[game.name] || { beaten: 0, amulets: 0 };
@@ -787,7 +792,7 @@ function switchCollectionTab(tab) {
                 cursor: pointer;
               "
               onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='#ff9800';"
-              onmouseout="this.style.transform=''; this.style.borderColor='#444';">
+              onmouseout="this.style.transform=''; if(!this.classList.contains('game-selected')) this.style.borderColor='#444';">
               ${gameStats.amulets > 0 ? `
                 <div style="
                   position: absolute;
@@ -820,8 +825,13 @@ function switchCollectionTab(tab) {
               <div style="text-align: center; font-size: 12px; font-weight: bold; color: #ddd; word-wrap: break-word; width: 100%;">
                 ${game.name}
               </div>
-              <div style="font-size: 10px; color: #888;">
-                ${game.year} • ${game.type}
+              <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap; justify-content:center;">
+                <span style="font-size:10px; color:#888;">${game.year}</span>
+                ${game.type ? `<span style="
+                  font-size:10px; font-weight:bold; padding:2px 7px;
+                  border-radius:10px; background:rgba(255,152,0,0.18);
+                  border:1px solid rgba(255,152,0,0.45); color:#ff9800;
+                ">${game.type}</span>` : ''}
               </div>
             </div>
           `;}).join('')}
@@ -944,7 +954,7 @@ function switchCollectionTab(tab) {
       <div style="flex:2; overflow-y:auto; padding:10px; display:flex; flex-direction:column;">
         <!-- Controls -->
         <div style="display:flex; gap:6px; margin-bottom:12px; padding:8px 12px; background:rgba(0,0,0,0.35); border-radius:8px; align-items:center; flex-wrap:wrap;">
-          <input type="text" placeholder="🔍 Search cards…" value="${window.cardsSearchTerm}"
+          <input id="cards-search-input" type="text" placeholder="🔍 Search cards…" value="${window.cardsSearchTerm}"
             oninput="window.cardsSearchTerm=this.value; switchCollectionTab('cards');"
             style="flex:1; min-width:120px; padding:6px 10px; background:rgba(0,0,0,0.4); border:1px solid #444; border-radius:6px; color:white; font-size:12px; outline:none;"/>
           <span style="color:#555;">|</span>
@@ -985,7 +995,7 @@ function switchCollectionTab(tab) {
                   style="width:100%; height:80px; object-fit:contain; background:rgba(0,0,0,0.3); image-rendering:pixelated;"
                   onerror="this.style.display='none';"/>
               ` : `<div style="width:100%; height:80px; background:linear-gradient(135deg,${tc}33,${rc}22); display:flex; align-items:center; justify-content:center; font-size:28px; color:${tc}88;">
-                ${(card.type||'').toLowerCase()==='attack'?'⚔':(card.type||'').toLowerCase()==='skill'?'🛡':(card.type||'').toLowerCase()==='power'?'✨':'🃏'}
+                ${{attack:'⚔',skill:'🛡',power:'✨',dice:'🎲',training:'📖'}[(card.type||'').toLowerCase()]||'🃏'}
               </div>`}
               <!-- Card info -->
               <div style="padding:6px; flex:1; display:flex; flex-direction:column; gap:3px;">
@@ -1001,6 +1011,14 @@ function switchCollectionTab(tab) {
         <div style="text-align:center; color:#666; padding:40px 20px; font-size:13px;">Select a card to view details</div>
       </div>
     `;
+
+    // Re-focus search input if the user was typing (avoids focus loss on each keystroke)
+    if (window.cardsSearchTerm) {
+      requestAnimationFrame(() => {
+        const inp = document.getElementById('cards-search-input');
+        if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+      });
+    }
 
   } else if (tab === 'items') {
     // Initialize filter state if not set
@@ -1121,6 +1139,13 @@ function switchCollectionTab(tab) {
         <div style="text-align:center; color:#666; padding:40px 20px; font-size:13px;">Select an item to view details</div>
       </div>
     `;
+
+    if (window.itemsSearchTerm) {
+      requestAnimationFrame(() => {
+        const inp = document.getElementById('items-search');
+        if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+      });
+    }
   } else if (tab === 'loot') {
     // Initialize loot sub-tab if not set
     if (!window.currentLootSubTab) {
@@ -1144,13 +1169,16 @@ function switchCollectionTab(tab) {
     // Load the current sub-tab content
     switchLootSubTab(window.currentLootSubTab);
   } else if (tab === 'enemies') {
-    // Initialize sort state if not set
-    if (!window.enemySortType) {
-      window.enemySortType = 'name';
-    }
+    // Initialize sort/filter state
+    if (!window.enemySortType) window.enemySortType = 'name';
+    if (typeof window.enemyTagFilter === 'undefined') window.enemyTagFilter = 'all';
 
     // Filter out variants (they'll be shown in the details panel of their base enemy)
-    const baseEnemies = enemies.filter(e => !e.variantOf);
+    let baseEnemies = enemies.filter(e => !e.variantOf);
+    if (window.enemyTagFilter !== 'all') baseEnemies = baseEnemies.filter(e => e.tag === window.enemyTagFilter);
+
+    // Collect all unique tags for filter buttons
+    const allEnemyTags = [...new Set(enemies.filter(e => !e.variantOf && e.tag).map(e => e.tag))].sort();
 
     // Get difficulty color
     const getDifficultyColor = (difficulty) => {
@@ -1192,7 +1220,7 @@ function switchCollectionTab(tab) {
       <!-- Left side: Enemy grid (8 per row) -->
       <div id="enemies-grid-container" style="flex: 2; overflow-y: auto; padding: 10px;">
         <!-- Sort controls -->
-        <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center;">
+        <div style="display: flex; gap: 10px; margin-bottom: 8px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center;">
           <span style="color: #aaa; font-size: 13px; font-weight: bold;">Sort:</span>
           <button onclick="sortEnemies('name')" id="enemy-sort-name" style="padding: 6px 12px; background: ${window.enemySortType === 'name' ? '#f44336' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Name</button>
           <button onclick="sortEnemies('type')" id="enemy-sort-type" style="padding: 6px 12px; background: ${window.enemySortType === 'type' ? '#f44336' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Type</button>
@@ -1200,6 +1228,13 @@ function switchCollectionTab(tab) {
           <button onclick="sortEnemies('difficulty')" id="enemy-sort-difficulty" style="padding: 6px 12px; background: ${window.enemySortType === 'difficulty' ? '#f44336' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">Difficulty</button>
           <span style="color: #666; font-size: 11px; margin-left: auto;">${sortedEnemies.length} enemies</span>
         </div>
+        <!-- Tag filter -->
+        ${allEnemyTags.length > 0 ? `
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:8px; align-items:center;">
+          <span style="color:#888; font-size:11px; margin-right:2px;">Tag:</span>
+          <button style="padding:4px 10px;border:none;border-radius:12px;cursor:pointer;font-size:11px;font-weight:bold;background:${window.enemyTagFilter==='all'?'#f44336':'rgba(100,100,100,0.3)'};color:${window.enemyTagFilter==='all'?'#fff':'#ccc'};" onclick="window.enemyTagFilter='all'; switchCollectionTab('enemies');">All</button>
+          ${allEnemyTags.map(t => `<button style="padding:4px 10px;border:none;border-radius:12px;cursor:pointer;font-size:11px;font-weight:bold;background:${window.enemyTagFilter===t?'#f44336':'rgba(100,100,100,0.3)'};color:${window.enemyTagFilter===t?'#fff':'#ccc'};" onclick="window.enemyTagFilter='${t.replace(/'/g, "\\'")}'; switchCollectionTab('enemies');">${t}</button>`).join('')}
+        </div>` : ''}
         <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px;">
           ${sortedEnemies.map(enemy => {
             const diffColor = getDifficultyColor(enemy.difficulty);
@@ -2104,3 +2139,7 @@ window.startEscapePhase = startEscapePhase;
 window.showVictoryScreen = showVictoryScreen;
 window.sortCollectionItems = sortCollectionItems;
 window.sortCollectionSpells = sortCollectionSpells;
+window.showCollection = showCollection;
+window.switchCollectionTab = switchCollectionTab;
+window.sortEnemies = sortEnemies;
+window.toggleItemsNA = toggleItemsNA;

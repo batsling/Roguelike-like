@@ -335,14 +335,23 @@
       <!-- Save Name Input Modal -->
       <!-- Character Selection & Run Naming Modal -->
       <div id="save-modal" role="dialog" aria-modal="true" aria-labelledby="save-modal-title" style="overflow:hidden;">
-        <div class="flex gap-20" style="width:min(calc(100vw - 32px), 1020px); flex-wrap:nowrap; align-items:flex-start;">
+        <div class="flex gap-20" style="width:min(calc(100vw - 32px), 1260px); flex-wrap:nowrap; align-items:flex-start;">
+
+          <!-- Deck Selection Panel -->
+          <div id="deck-selection-panel" class="bg-panel p-20 border-radius-12 max-h-90vh overflow-y-auto" style="width:200px; min-width:200px; flex-shrink:0;">
+            <h3 class="mt-0 text-gold text-center" style="font-size:15px; margin-bottom:14px;">Choose Deck</h3>
+            <div id="deck-selection-grid" style="display:flex; flex-direction:column; gap:10px;">
+              <!-- Deck choices populated by JS -->
+            </div>
+          </div>
+
           <!-- Main Character Selection Panel -->
           <div class="bg-panel p-20 border-radius-12 max-h-90vh overflow-y-auto" style="flex:1.5; min-width:0;">
-            <h3 id="save-modal-title" class="mt-0 text-gold text-center">Start New Run</h3>
+            <h3 id="save-modal-title" class="mt-0 text-gold text-center">Choose Character</h3>
 
             <!-- Icon View Container -->
             <div id="icon-character-view" class="display-block mb-20">
-              <div id="icon-character-grid" class="grid p-10 bg-character-grid border-radius-12 h-550 overflow-y-auto" style="grid-template-columns:repeat(5,1fr); gap:8px; overflow-x:hidden; box-sizing:border-box;">
+              <div id="icon-character-grid" class="grid p-10 bg-character-grid border-radius-12 overflow-y-auto" style="grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:8px; overflow-x:hidden; box-sizing:border-box; align-content:start; max-height:520px;">
                 <!-- Character icons will be populated here -->
               </div>
             </div>
@@ -357,7 +366,7 @@
           </div>
 
           <!-- Character Details Panel -->
-          <div id="icon-character-details" class="flex bg-panel p-25 border-radius-12 max-h-90vh overflow-y-auto" style="flex:1; min-width:280px; max-width:420px;">
+          <div id="icon-character-details" class="flex bg-panel p-25 border-radius-12 max-h-90vh overflow-y-auto" style="flex:1; min-width:280px; max-width:400px;">
             <div id="icon-character-details-content">
               <!-- Character details will be populated here -->
             </div>
@@ -730,16 +739,17 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
   <!-- Load embedded data first (no CORS issues) -->
-  <script src="characters-data.js?v=23"></script>
-  <script src="games-data.js?v=36"></script>
-  <script src="items-data.js?v=28"></script>
-  <script src="enemies-data.js?v=23"></script>
-  <script src="events-data.js?v=19"></script>
+  <script src="characters-data.js?v=25"></script>
+  <script src="games-data.js?v=37"></script>
+  <script src="items-data.js?v=32"></script>
+  <script src="enemies-data.js?v=24"></script>
+  <script src="events-data.js?v=24"></script>
   <script src="curses-data.js?v=22"></script>
   <script src="allies-data.js?v=1"></script>
   <script src="weapons-data.js?v=4"></script>
-  <script src="cards-data.js?v=16"></script>
-  <script src="statuses-data.js?v=1"></script>
+  <script src="cards-data.js?v=20"></script>
+  <script src="dice-data.js?v=2"></script>
+  <script src="statuses-data.js?v=3"></script>
   <script src="moves-data.js?v=1"></script>
   <script src="addons-data.js?v=4"></script>
   <script src="spells-data.js?v=1"></script>
@@ -749,21 +759,21 @@
   <!-- Load utilities first (constants, storage, state management) -->
   <script src="js/constants.js?v=3"></script>
   <script src="js/storage.js?v=1"></script>
-  <script src="js/state-mutator.js?v=1"></script>
+  <script src="js/state-mutator.js?v=2"></script>
   <script src="js/curse-manager.js?v=1"></script>
   <script src="js/locations.js?v=1"></script>
-  <script src="js/loot.js?v=1"></script>
 
   <!-- Load game logic -->
-  <script src="js/data.js?v=25"></script>
-  <script src="js/items.js?v=33"></script>
+  <script src="js/data.js?v=26"></script>
+  <script src="js/loot.js?v=1"></script>
+  <script src="js/items.js?v=34"></script>
   <script src="js/ui.js?v=38"></script>
   <script src="js/combat-effects.js?v=1"></script>
   <script src="js/dice-system.js?v=1"></script>
-  <script src="js/dice-renderer.js?v=1"></script>
+  <script src="js/dice-renderer.js?v=3"></script>
   <script src="js/combat-state.js?v=1"></script>
-  <script src="js/combat-engine.js?v=28"></script>
-  <script src="js/combat-ui.js?v=17"></script>
+  <script src="js/combat-engine.js?v=37"></script>
+  <script src="js/combat-ui.js?v=25"></script>
   <script src="js/combat.js?v=23"></script>
   <script src="js/events.js?v=19"></script>
   <script src="js/gameplay.js?v=29"></script>
@@ -774,10 +784,10 @@
   <script src="js/cards.js?v=6"></script>
   <script src="js/character-select.js?v=1"></script>
   <script src="js/verification.js?v=11"></script>
-  <script src="js/escape.js?v=14"></script>
+  <script src="js/escape.js?v=16"></script>
   <script src="js/exploration.js?v=1"></script>
   <script src="js/bingo.js?v=2"></script>
-  <script src="js/main.js?v=52"></script>
-  <script src="js/event-engine.js?v=1"></script>
+  <script src="js/main.js?v=56"></script>
+  <script src="js/event-engine.js?v=5"></script>
 </body>
 </html>

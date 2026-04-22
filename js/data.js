@@ -287,50 +287,59 @@ initializeData();
 // ===== LUCK SYSTEM =====
 
 /**
- * Calculate rarity weights based on luck stat
- * Base weights: Common 70, Uncommon 20, Rare 10
- * Each point of Luck: Common -3, Uncommon +2, Rare +1
- * @param {number} luckValue - The player's luck stat
- * @returns {Object} Weights for each rarity tier
+ * Roll a uniform [0,1) value with optional luck-based advantage.
+ * Each luck point gives a 10% independent chance to grant advantage.
+ *
+ * favorHigh = true  (default): take the MAX of two rolls.
+ *   Use for avoidance/rarity — higher roll → harder to fall below a bad threshold,
+ *   more likely to land in uncommon/rare buckets.
+ *
+ * favorHigh = false: take the MIN of two rolls.
+ *   Use for procs/triggers — lower roll → more likely to fall below a proc threshold.
+ *
+ * @param {number} [luckVal] - Player luck (defaults to global `luck`)
+ * @param {boolean} [favorHigh=true]
+ * @returns {number} A value in [0,1)
  */
-function calculateRarityWeights(luckValue) {
-  const baseWeights = {
-    common: 70,
-    uncommon: 20,
-    rare: 10
-  };
-
-  const luckModifiers = {
-    common: -3,
-    uncommon: 2,
-    rare: 1
-  };
-
-  const weights = {
-    common: Math.max(1, baseWeights.common + (luckModifiers.common * luckValue)),
-    uncommon: baseWeights.uncommon + (luckModifiers.uncommon * luckValue),
-    rare: baseWeights.rare + (luckModifiers.rare * luckValue)
-  };
-
-  // Ensure no negative weights
-  weights.common = Math.max(1, weights.common);
-  weights.uncommon = Math.max(0, weights.uncommon);
-  weights.rare = Math.max(0, weights.rare);
-
-  return weights;
+function rollWithLuckAdvantage(luckVal, favorHigh = true) {
+  const lv = (luckVal !== undefined) ? luckVal : (typeof luck !== 'undefined' ? luck : 0);
+  const r = Math.random();
+  if (lv > 0 && Math.random() < lv * 0.1) {
+    const r2 = Math.random();
+    return favorHigh ? Math.max(r, r2) : Math.min(r, r2);
+  }
+  if (lv < 0 && Math.random() < Math.abs(lv) * 0.1) {
+    const r2 = Math.random();
+    // disadvantage flips the preference
+    return favorHigh ? Math.min(r, r2) : Math.max(r, r2);
+  }
+  return r;
 }
 
 /**
- * Select a random rarity based on weighted probabilities
- * Legendary items have a 1 in 10 chance when rare is selected
- * @param {number} luckValue - The player's luck stat (defaults to global luck variable)
- * @returns {string} Selected rarity ('common', 'uncommon', 'rare', or 'legendary')
+ * Base rarity weights — Common 70, Uncommon 20, Rare 10.
+ * Luck no longer shifts the weights directly; instead it grants advantage
+ * on the roll inside selectRandomRarity, biasing toward higher-value buckets.
  */
-function selectRandomRarity(luckValue = luck) {
-  const weights = calculateRarityWeights(luckValue);
+function calculateRarityWeights() {
+  return { common: 75, uncommon: 20, rare: 5 };
+}
+
+/**
+ * Select a random rarity.
+ * Base: Common 70%, Uncommon 20%, Rare 10%.
+ * Luck advantage (10% per luck point) biases the roll toward uncommon/rare.
+ * Legendary items have a 1-in-10 chance when rare is selected.
+ *
+ * @param {number} [luckVal] - Player luck (defaults to global `luck`)
+ * @returns {string} 'common' | 'uncommon' | 'rare' | 'legendary'
+ */
+function selectRandomRarity(luckVal) {
+  const weights = calculateRarityWeights();
   const totalWeight = weights.common + weights.uncommon + weights.rare;
 
-  const roll = Math.random() * totalWeight;
+  // Higher roll → more likely to land in uncommon/rare bucket
+  const roll = rollWithLuckAdvantage(luckVal) * totalWeight;
 
   let selectedRarity;
   if (roll < weights.common) {
@@ -341,12 +350,8 @@ function selectRandomRarity(luckValue = luck) {
     selectedRarity = 'rare';
   }
 
-  // If rare was selected, roll for legendary (10% chance)
-  if (selectedRarity === 'rare') {
-    const legendaryRoll = Math.random();
-    if (legendaryRoll < 0.1) {
-      selectedRarity = 'legendary';
-    }
+  if (selectedRarity === 'rare' && Math.random() < 0.1) {
+    selectedRarity = 'legendary';
   }
 
   return selectedRarity;
@@ -369,29 +374,25 @@ function rollD20WithLuck(luckBonus = luck) {
 }
 
 /**
- * Calculate proc chance with luck modifier
- * Each point of luck adds 5% to the base proc chance
- * @param {number} baseChance - Base proc chance as a percentage (0-100)
- * @param {number} luckValue - The player's luck stat (defaults to global luck variable)
- * @returns {number} Modified proc chance (capped at 100)
+ * Returns the base proc chance unchanged — luck is handled by rollWithLuckAdvantage.
+ * Kept for backward compatibility.
  */
-function calculateProcChance(baseChance, luckValue = luck) {
-  const modifiedChance = baseChance + (luckValue * 5);
-  return Math.min(100, modifiedChance);
+function calculateProcChance(baseChance) {
+  return baseChance;
 }
 
 /**
- * Check if a proc triggers based on base chance and luck
+ * Check if a proc triggers. Luck grants advantage (MIN roll), making procs more likely.
  * @param {number} baseChance - Base proc chance as a percentage (0-100)
- * @param {number} luckValue - The player's luck stat (defaults to global luck variable)
+ * @param {number} [luckVal] - Player luck (defaults to global `luck`)
  * @returns {boolean} True if proc triggers
  */
-function checkProc(baseChance, luckValue = luck) {
-  const finalChance = calculateProcChance(baseChance, luckValue);
-  return Math.random() * 100 < finalChance;
+function checkProc(baseChance, luckVal) {
+  return rollWithLuckAdvantage(luckVal, false) * 100 < baseChance;
 }
 
 // Export luck system functions to global scope
+window.rollWithLuckAdvantage = rollWithLuckAdvantage;
 window.calculateRarityWeights = calculateRarityWeights;
 window.selectRandomRarity = selectRandomRarity;
 window.rollD20WithLuck = rollD20WithLuck;

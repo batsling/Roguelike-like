@@ -3,7 +3,7 @@
 var STATUSES_DATA = {
   "burn": {
     "name": "Burn",
-    "description": "Deals 3 damage to any target per stack at the end of turn",
+    "description": "Deals 3 damage to target at the end of turn",
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
@@ -18,7 +18,7 @@ var STATUSES_DATA = {
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
-    "decay": "Down by 1 at end of turn",
+    "decay": "Down by 1 at start of turn",
     "who": "All",
     "preference": "Negative",
     "imageUrl": "images/statuses/Poison.png"
@@ -69,7 +69,7 @@ var STATUSES_DATA = {
   },
   "barricade": {
     "name": "Barricade",
-    "description": "Block goes down by half at end of turn",
+    "description": "Block is not removed at the start of each turn",
     "type": "Ability",
     "stackable": false,
     "maxStack": null,
@@ -89,8 +89,8 @@ var STATUSES_DATA = {
     "preference": "Negative",
     "imageUrl": "images/statuses/Ruptured.png"
   },
-  "frail": {
-    "name": "Frail",
+  "enfeebled": {
+    "name": "Enfeebled",
     "description": "All damage deals double to target",
     "type": "Debuff",
     "stackable": true,
@@ -98,7 +98,7 @@ var STATUSES_DATA = {
     "decay": "Down by 1 at end of turn",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Frail.png"
+    "imageUrl": "images/statuses/Enfeebled.png"
   },
   "formless": {
     "name": "Formless",
@@ -157,7 +157,7 @@ var STATUSES_DATA = {
   },
   "shifting": {
     "name": "Shifting",
-    "description": "Loses X Power where X is the amount of damage taken this turn",
+    "description": "Loses X Power where X is the amount of damage taken this turn. Gain X Shackled.",
     "type": "Debuff",
     "stackable": false,
     "maxStack": null,
@@ -309,16 +309,16 @@ var STATUSES_DATA = {
     "preference": "Negative",
     "imageUrl": "images/statuses/SoulLink.png"
   },
-  "holy_shield": {
-    "name": "Holy Shield",
-    "description": "The next time this unit gets hit, take no damage and lose 1 Holy Shield. This takes precedence over Block",
+  "buffer": {
+    "name": "Buffer",
+    "description": "The next time this unit gets hit, take no damage. This takes precedence over Block",
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
     "decay": "When the target would take damage",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/HolyShield.png"
+    "imageUrl": "images/statuses/Buffer.png"
   },
   "regeneration": {
     "name": "Regeneration",
@@ -341,5 +341,258 @@ var STATUSES_DATA = {
     "who": "All",
     "preference": "Positive",
     "imageUrl": "images/statuses/Defense.png"
+  },
+  "curl_up": {
+    "name": "Curl Up",
+    "description": "Target Gains +X Block upon receiving first attack damage each turn",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/CurlUp.png"
+  },
+  "split": {
+    "name": "Split",
+    "description": "When target's health is at or below 50%, it's intent will become Unknown Intent (\"Splitting\") and Spawn X Y with its current HP on it's turn",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Split.png"
+  },
+  "next_turn_block": {
+    "name": "Next Turn Block",
+    "description": "Gain X Block at the start of your next turn",
+    "type": "Buff",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "Lose all when triggered",
+    "who": "Player",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/NextTurnBlock.png"
+  },
+  "shackled": {
+    "name": "Shackled",
+    "description": "Regains X Power at the end of target's turn",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Lose all when triggered",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Shackled.png"
+  },
+  "blur": {
+    "name": "Blur",
+    "description": "Block is not removed at the start of your next X turns",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Blur.png"
+  },
+  "next_turn_draw": {
+    "name": "Next Turn Draw",
+    "description": "Draw X Cards at the start of your turn",
+    "type": "Buff",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "Lose all when triggered",
+    "who": "Player",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/NextTurnDraw.png"
+  },
+  "next_turn_energy": {
+    "name": "Next Turn Energy",
+    "description": "Gain X Energy at the start of your turn",
+    "type": "Buff",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "Lose all when triggered",
+    "who": "Player",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/NextTurnEnergy.png"
+  },
+  "choked": {
+    "name": "Choked",
+    "description": "Whenever you play a card this turn, target loses X Health",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Lose all at end of turn",
+    "who": "Enemy",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Choked.png"
+  },
+  "well-laid_plans": {
+    "name": "Well-Laid Plans",
+    "description": "At the end of your turn, add Retain to up to X Cards",
+    "type": "Ability",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Lose all at end of turn",
+    "who": "Player",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Well-LaidPlans.png"
+  },
+  "no_draw": {
+    "name": "No Draw",
+    "description": "You cannot Draw Cards this Turn",
+    "type": "Debuff",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "Player",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/NoDraw.png"
+  },
+  "burst": {
+    "name": "Burst",
+    "description": "The next X Skills are played an additional time",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Lose all at end of turn",
+    "who": "Player",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Burst.png"
+  },
+  "corpse_explosion": {
+    "name": "Corpse Explosion",
+    "description": "On death, this enemy deals X times it's Max Health to all other Enemies",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/CorpseExplosion.png"
+  },
+  "envenom": {
+    "name": "Envenom",
+    "description": "Whenever you deal unblocked attack damage, apply X poison",
+    "type": "Ability",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Player",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Envenom.png"
+  },
+  "double_damage": {
+    "name": "Double Damage",
+    "description": "Attacks deal double damage for X turns",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "Player",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/DoubleDamage.png"
+  },
+  "intangible": {
+    "name": "Intangible",
+    "description": "Reduce each instance of Dmg and Health loss to 1",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Intangible.png"
+  },
+  "evolve": {
+    "name": "Evolve",
+    "description": "Whenever you Draw a Status Card, Draw X Cards",
+    "type": "Ability",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Player",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Evolve.png"
+  },
+  "feel_no_pain": {
+    "name": "Feel No Pain",
+    "description": "Whenever a Card is Exhausted, Gain X Block",
+    "type": "Ability",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Player",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/FeelNoPain.png"
+  },
+  "fire_breathing": {
+    "name": "Fire Breathing",
+    "description": "Whenever you Draw a Status or Curse Card, Deal X Dmg Ranged Cleave",
+    "type": "Ability",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Player",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/FireBreathing.png"
+  },
+  "plated_armor": {
+    "name": "Plated Armor",
+    "description": "At the end of your turn, Gain X Block",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 when receiving unblocked Dmg",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/PlatedArmor.png"
+  },
+  "frail": {
+    "name": "Frail",
+    "description": "Block gained from Cards is reduced by 25%",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "Player",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Frail.png"
+  },
+  "fear": {
+    "name": "Fear",
+    "description": "Your non-Skill Cards cost 1 more Energy, lose 1 Fear whenever you play a Skill Card",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 on played Skill Card",
+    "who": "Player",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Fear.png"
+  },
+  "doom": {
+    "name": "Doom",
+    "description": "At the end the target's turn, if that target has less health than it has Doom, it will die",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Doom.png"
+  },
+  "blind": {
+    "name": "Blind",
+    "description": "Each hit from Attack Cards have a 30% Miss Chance",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Blind.png"
   }
 };

@@ -26,13 +26,14 @@ class DiceRendererInstance {
   /**
    * Initialize the 3D dice renderer
    * @param {HTMLElement} container - DOM element to render into
+   * @param {number} [bgColor=0x1a1410] - Three.js scene background color
    */
-  init(container) {
+  init(container, bgColor = 0x1a1410) {
     this.container = container;
 
     // Create scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1a1410);
+    this.scene.background = new THREE.Color(bgColor);
 
     // Create camera
     const width = container.clientWidth;
@@ -188,9 +189,7 @@ class DiceRendererInstance {
    * @returns {THREE.Group} D20 as a group of face meshes
    */
   createD20Mesh(diceData) {
-    // Create base icosahedron geometry - larger for better visibility
-    // Use subdivision level 1 for smoother, more rounded appearance
-    const baseGeometry = new THREE.IcosahedronGeometry(1.6, 1);
+    const baseGeometry = new THREE.IcosahedronGeometry(1.6, 0);
 
     // Convert to non-indexed geometry if needed
     const geometry = baseGeometry.index ? baseGeometry.toNonIndexed() : baseGeometry;
@@ -289,6 +288,63 @@ class DiceRendererInstance {
   }
 
   /**
+   * Create canvas texture for a card-dice face.
+   * Colors come from diceData.colors (set per die name in _makeDiceDataForCard).
+   */
+  createCardDiceFaceTexture(side, colors) {
+    const c = colors || { bg: '#7a4800', inner: '#a86000', border: '#f0b030', faceNum: '#ffd060', text: '#ffe8a0', outline: '#3a2000' };
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = c.bg;
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = c.inner;
+    ctx.fillRect(4, 4, 120, 120);
+    ctx.strokeStyle = c.border;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(2, 2, 124, 124);
+
+    // Face number (top-left, small)
+    ctx.fillStyle = c.faceNum;
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(String(side.face), 8, 6);
+
+    // Label text (centered, wrapped)
+    const label = side.text || String(side.face);
+    ctx.fillStyle = c.text;
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = c.outline;
+    ctx.lineWidth = 3;
+
+    // Word-wrap the label into max 2 lines
+    const words = label.split(' ');
+    const lines = [];
+    let cur = '';
+    for (const w of words) {
+      const test = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(test).width > 108 && cur) { lines.push(cur); cur = w; }
+      else cur = test;
+    }
+    if (cur) lines.push(cur);
+    const lineH = 20;
+    const startY = 64 - ((lines.length - 1) * lineH) / 2;
+    lines.forEach((line, li) => {
+      ctx.strokeText(line, 64, startY + li * lineH);
+      ctx.fillText(line, 64, startY + li * lineH);
+    });
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  /**
    * Create a D6 mesh with block value faces
    * @param {Object} diceData - Dice data from dice system (d6-defense or enemy dice)
    * @returns {THREE.Mesh} D6 cube mesh
@@ -314,13 +370,16 @@ class DiceRendererInstance {
 
     // Check if this is an enemy dice
     const isEnemyDice = diceData.type.startsWith('d6-enemy');
+    const isCardDice  = diceData.type === 'd6-card';
 
     for (let i = 0; i < 6; i++) {
       const side = diceData.sides[i];
 
       // Use appropriate texture based on dice type
       let texture;
-      if (isEnemyDice) {
+      if (isCardDice) {
+        texture = this.createCardDiceFaceTexture(side, diceData.colors);
+      } else if (isEnemyDice) {
         texture = this.createEnemyFaceTexture(side);
       } else {
         const blockValue = side.value;
@@ -383,7 +442,7 @@ class DiceRendererInstance {
     this.diceType = diceData.type;
 
     // Create new dice based on type
-    if (diceData.type === 'd6-defense' || diceData.type.startsWith('d6-enemy')) {
+    if (diceData.type === 'd6-defense' || diceData.type.startsWith('d6-enemy') || diceData.type === 'd6-card') {
       this.mesh = this.createD6Mesh(diceData);
     } else {
       // Default to D20
@@ -527,7 +586,7 @@ class DiceRendererInstance {
     // For D20, use the face number map
     let faceIndex;
 
-    if (this.diceType === 'd6-defense' || this.diceType.startsWith('d6-enemy')) {
+    if (this.diceType === 'd6-defense' || this.diceType.startsWith('d6-enemy') || this.diceType === 'd6-card') {
       faceIndex = faceNumber - 1;
     } else {
       // D20 face numbering mapping

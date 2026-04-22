@@ -9,7 +9,7 @@ var ADDONS_DATA = {
   "ranged": {
     "name": "Ranged",
     "description": "Ignores effects come from contact",
-    "canBeAttachedTo": "All"
+    "canBeAttachedTo": "Attack, Status"
   },
   "multiplyx": {
     "name": "Multiply X",
@@ -23,7 +23,7 @@ var ADDONS_DATA = {
   },
   "cleave": {
     "name": "Cleave",
-    "description": "Applies this to target and every target to it's direct left and right (Allies or Enemies)",
+    "description": "Applies this to target and every target on it's side (Allies or Enemies)",
     "canBeAttachedTo": "All"
   },
   "engage": {
@@ -34,12 +34,12 @@ var ADDONS_DATA = {
   "finesse": {
     "name": "Finesse",
     "description": "This weapon scales damage with Dexterity instead of Strength",
-    "canBeAttachedTo": "All"
+    "canBeAttachedTo": "Weapon"
   },
   "fishingweight": {
     "name": "Fishing Weight",
     "description": "Gain +1 Dmg for every 3 Common, 2 Uncommon, or 1 Rare fish in your loot inventory",
-    "canBeAttachedTo": "All"
+    "canBeAttachedTo": "Weapon"
   },
   "wealth": {
     "name": "Wealth",
@@ -91,19 +91,19 @@ var ADDONS_DATA = {
     "description": "This card cannot be played and has no mana cost",
     "canBeAttachedTo": "Cards"
   },
-  "sequentialupgrade": {
-    "name": "Sequential Upgrade",
-    "description": "This card can be upgraded any number of times. Adding Dmg will allow the card to scale its damage by X each time.",
-    "canBeAttachedTo": "Cards"
-  },
   "retain": {
     "name": "Retain",
-    "description": "This card is not discarded at the end of the turn.",
+    "description": "This card is not discarded at the end of the turn",
+    "canBeAttachedTo": "Cards"
+  },
+  "sequentialupgrade": {
+    "name": "Sequential Upgrade",
+    "description": "This card can be upgraded any number of times. Adding Dmg will allow the card to scale it's damage by X each time",
     "canBeAttachedTo": "Cards"
   },
   "lifesteal": {
     "name": "Lifesteal",
-    "description": "Heals the target equal to the amount of unblocked Dmg dealt.",
+    "description": "Heals the target equal to the amount of unblocked Dmg dealt",
     "canBeAttachedTo": "All"
   }
 };

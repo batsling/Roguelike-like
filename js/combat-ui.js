@@ -80,7 +80,7 @@ const KEYWORD_DEFS = {
   'shackled':         'Cannot gain block.',
   'regeneration':     'Heals N HP at the start of each turn.',
   'power':            'Increases outgoing damage (player) or incoming (enemy) by N stacks.',
-  'holy shield':      'Negates the next N hits entirely (before block).',
+  'buffer':           'Negates the next N hits entirely (before block).',
   'soul link':        'Shares health loss with all other soul-linked entities.',
   'leeches':          'Drains HP from the target on hit.',
   'bleed':            'Deals damage over time.',
@@ -95,6 +95,7 @@ const KEYWORD_DEFS = {
   'shiv':             '0-cost attack card that deals 4 damage. Exhaust.',
   'assassinate':      'Deals double damage if the target is below 50% HP.',
   'fishing weight':   'No additional effect.',
+  'wealth':           'Adds +1 damage for every 10 Gold you currently have.',
 };
 
 // Extract unique keywords found in a card description
@@ -109,6 +110,198 @@ function getCardKeywords(card) {
     }
   }
   return found;
+}
+
+// ============== DYNAMIC CARD VALUE HELPERS ==============
+
+/**
+ * Compute the actual damage a card would deal, factoring in all player stat modifiers.
+ * Mirrors the damage calculation in combat-engine.js playCard().
+ * @param {number} baseDmg - Base damage from card description
+ * @param {Object} card - Card data
+ * @param {Object} combat - Current combat state
+ * @param {Object|null} targetEnemy - Enemy being targeted (for Vulnerable/Bruise)
+ */
+function getCardDynamicDmg(baseDmg, card, combat, targetEnemy) {
+  if (!combat || !combat.player) return baseDmg;
+  const player = combat.player;
+  let dmg = baseDmg;
+
+  // Power bonus (Heavy Blade multiplier if applicable)
+  const playerPower = player.statuses['power'] || 0;
+  if (playerPower !== 0) {
+    const heavyM = (card.description || '').match(/Power affects this card x(\d+) times?/i);
+    dmg += playerPower * (heavyM ? parseInt(heavyM[1]) : 1);
+  }
+
+  // Combat stat bonuses (Strength/Intelligence/Dexterity/Charisma pigments)
+  dmg += (player.statuses['strength']    || 0)
+       + (player.statuses['intelligence'] || 0)
+       + (player.statuses['dexterity']    || 0)
+       + (player.statuses['charisma']     || 0);
+
+  // Scaling counter bonus (Claw, Rampage, etc.)
+  if (combat._scalingCounters && combat._scalingCounters[card.name]) {
+    dmg += combat._scalingCounters[card.name];
+  }
+
+  // Wealth: +1 per 10 gold
+  if ((card.description || '').toLowerCase().includes('wealth')) {
+    const g = typeof gold !== 'undefined' ? gold
+            : (typeof gameState !== 'undefined' ? (gameState.gold || 0) : 0);
+    dmg += Math.floor(g / 10);
+  }
+
+  // Weak on player: -25%
+  if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
+
+  // Target Vulnerable: +50% incoming damage
+  if (targetEnemy && targetEnemy.statuses && targetEnemy.statuses['vulnerable']) {
+    dmg = Math.ceil(dmg * 1.5);
+  }
+
+  // Target Bruise: +1 per stack for melee/ranged hits
+  if (targetEnemy && targetEnemy.statuses && targetEnemy.statuses['bruise']) {
+    dmg += targetEnemy.statuses['bruise'];
+  }
+
+  return Math.max(0, dmg);
+}
+
+/**
+ * Compute actual block a card would give, factoring in Defense status and Frail.
+ */
+function getCardDynamicBlock(baseBlock, combat) {
+  if (!combat || !combat.player) return baseBlock;
+  const player = combat.player;
+  let block = baseBlock + (player.statuses['defense'] || 0);
+  if (player.statuses['frail']) block = Math.floor(block * 0.75);
+  return Math.max(0, block);
+}
+
+/**
+ * Returns bonus-effect HTML lines granted to a card by inventory items.
+ * Shown as small text appended to the card description.
+ */
+function getCardItemSuffixes(card) {
+  const inv = (typeof window.inventory !== 'undefined' ? window.inventory : []);
+
+  const isStrike = (card.name || '').toLowerCase() === 'strike';
+
+  const parts = [];
+
+  if (card._retain)
+    parts.push(`<span style="color:#7dff7d">Retain</span>`);
+
+  if (inv && inv.length) {
+    if (isStrike && inv.some(i => i.name === 'Leeching Seed'))
+      parts.push(`<span style="color:#7dff7d">Heal 1</span>`);
+
+    if (isStrike) {
+      const sdCount = inv.filter(i => i.name === 'Strike Dummy').reduce((n, i) => n + (i.quantity || 1), 0);
+      if (sdCount > 0) parts.push(`<span style="color:#7dff7d">+${sdCount * 3} Dmg</span>`);
+    }
+
+    if (isStrike && inv.some(i => i.name === 'Bird Head'))
+      parts.push(`<span style="color:#c39bd3">Soul Link</span>`);
+
+    if (isStrike && inv.some(i => i.name === 'Brass Knuckles'))
+      parts.push(`<span style="color:#a569bd">Bruise</span>`);
+
+    if (isStrike && inv.some(i => i.name === 'Jar of Leeches'))
+      parts.push(`<span style="color:#82e0aa">Leeches</span>`);
+  }
+
+  if (!parts.length) return '';
+  return `<br><span style="font-size:0.85em;opacity:0.9">${parts.join(' · ')}</span>`;
+}
+
+/**
+ * Return card description HTML with dynamic numbers substituted where they differ from base.
+ * Modified numbers are highlighted: green = buffed, blue = block buffed, red = nerfed.
+ * @param {Object} card - Card data
+ * @param {Object} combat - Combat state
+ * @param {Object|null} targetEnemy - Enemy for Vulnerable/Bruise calculation (null = ignore)
+ */
+function getCardDisplayDescription(card, combat, targetEnemy) {
+  let desc = card.description || '';
+  if (!combat || !combat.player) return desc;
+  const player = combat.player;
+
+  const itemSuffix = getCardItemSuffixes(card);
+
+  // Duplicator: weapon attack cards show +1 hit count in description
+  const _dupInv = typeof inventory !== 'undefined' ? inventory : [];
+  const hasDuplicator = card.type && card.type.toLowerCase() === 'attack' &&
+                        card.tags && card.tags.includes('weapon') &&
+                        _dupInv.some(i => i.name === 'Duplicator');
+
+  // Quick check: any modifier active?
+  const hasMods = itemSuffix.length > 0
+               || hasDuplicator
+               || (player.statuses['power'] || 0) !== 0
+               || (player.statuses['strength'] || 0) !== 0
+               || (player.statuses['intelligence'] || 0) !== 0
+               || (player.statuses['dexterity'] || 0) !== 0
+               || (player.statuses['charisma'] || 0) !== 0
+               || !!player.statuses['weak']
+               || !!player.statuses['frail']
+               || (player.statuses['defense'] || 0) !== 0
+               || !!(combat._scalingCounters && combat._scalingCounters[card.name])
+               || desc.toLowerCase().includes('wealth')
+               || !!(targetEnemy && targetEnemy.statuses
+                    && (targetEnemy.statuses['vulnerable'] || targetEnemy.statuses['bruise']));
+  if (!hasMods) return desc;
+
+  // Replace NxM damage (e.g. "Deal 3x2 Dmg")
+  desc = desc.replace(/Deal (\d+)[xX](\d+) Dmg/gi, (match, d, t) => {
+    const base = parseInt(d), times = parseInt(t) + (hasDuplicator ? 1 : 0);
+    const computed = getCardDynamicDmg(base, card, combat, targetEnemy);
+    if (computed === base && !hasDuplicator) return match;
+    const col = computed > base ? '#7dff7d' : '#ff7d7d';
+    const dmgStr = computed !== base ? `<span style="color:${col};font-weight:bold">${computed}</span>` : `${base}`;
+    return `Deal ${dmgStr}x${times} Dmg`;
+  });
+
+  // Replace plain damage (e.g. "Deal 5 Dmg") — Duplicator adds x2 multiplier
+  desc = desc.replace(/Deal (\d+) Dmg/gi, (match, d) => {
+    const base = parseInt(d);
+    const computed = getCardDynamicDmg(base, card, combat, targetEnemy);
+    if (computed === base && !hasDuplicator) return match;
+    const col = computed > base ? '#7dff7d' : '#ff7d7d';
+    const dmgStr = computed !== base ? `<span style="color:${col};font-weight:bold">${computed}</span>` : `${base}`;
+    return hasDuplicator ? `Deal ${dmgStr}x2 Dmg` : `Deal ${dmgStr} Dmg`;
+  });
+
+  // Replace block (e.g. "Gain 5 Block" or "Gain +5 Block")
+  desc = desc.replace(/Gain \+?(\d+) Block/gi, (match, b) => {
+    const base = parseInt(b);
+    const computed = getCardDynamicBlock(base, combat);
+    if (computed === base) return match;
+    const col = computed > base ? '#7dd4ff' : '#ff7d7d';
+    return `Gain <span style="color:${col};font-weight:bold">${computed}</span> Block`;
+  });
+
+  return desc + itemSuffix;
+}
+
+// Lightweight re-render of just the hand zone (used when hovered enemy changes)
+function refreshCombatHand() {
+  const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+  const zone = document.getElementById('combat-hand-zone');
+  if (!combat || !zone) return;
+  const hand = combat.hand || [];
+  const n = hand.length;
+  _disposeDiceHandRenderers();
+  zone.innerHTML = n === 0
+    ? `<div style="color:${C.textDim};font-size:12px;text-align:center;padding-top:65px;width:100%;">No cards in hand</div>`
+    : hand.map((card, i) => renderCardInHand(card, i, n, combat)).join('');
+  document.querySelectorAll('.combat-hand-card').forEach(el => {
+    el.addEventListener('click', () => handleCardClick(parseInt(el.dataset.handIndex)));
+  });
+  attachDragMouseDown();
+  attachCardTooltip();
+  requestAnimationFrame(() => initDiceCardRenderers());
 }
 
 // Status icon metadata
@@ -137,7 +330,8 @@ const STATUS_META = {
   brace:          { img: 'Brace',         emoji: '🛡', label: 'Brace'        },
   bruise:         { img: 'Bruise',        emoji: '🩹', label: 'Bruise'       },
   forgetful:      { img: 'Forgetful',     emoji: '🌀', label: 'Forgetful'    },
-  holy_shield:    { img: 'HolyShield',    emoji: '✨', label: 'Holy Shield'  },
+  buffer:         { img: 'Buffer',        emoji: '🛡', label: 'Buffer'       },
+  machine_learning: { img: 'MachineLearning', emoji: '🤖', label: 'Machine Learning' },
   leeches:        { img: 'Leeches',       emoji: '🩸', label: 'Leeches'      },
   pigment_rich:   { img: 'PigmentRich',   emoji: '🎨', label: 'Pigment Rich' },
   regeneration:   { img: 'Regeneration',  emoji: '💚', label: 'Regeneration' },
@@ -155,6 +349,8 @@ const STATUS_META = {
   shackled:        { img: null,             emoji: '🔒', label: 'Shackled'        },
   well_laid_plans: { img: 'Well-LaidPlans', emoji: '📋', label: 'Well-Laid Plans' },
   shiv_per_turn:   { img: null,             emoji: '🗡', label: 'Shiv/Turn'       },
+  fear:           { img: 'Fear',          emoji: '😨', label: 'Fear'         },
+  blind:          { img: 'Blind',         emoji: '🙈', label: 'Blind'        },
   // Temporary stat boosts (e.g. from pigment cards, "Gain +X Stat until end of combat")
   strength:       { img: null,            emoji: '💪', label: 'Strength'     },
   intelligence:   { img: null,            emoji: '🧠', label: 'Intelligence' },
@@ -177,6 +373,7 @@ function renderCombatUI(combat, container) {
       color: ${C.text};
       user-select: none;
     ">
+      ${renderItemsBar(combat)}
       ${renderTopBar(combat)}
 
       <div style="flex:1; display:flex; overflow:hidden; position:relative; min-height:0;">
@@ -237,52 +434,69 @@ function renderItemsBar(combat) {
     const color = getRarityColor(item.rarity);
     const isUsable = item.type === 'Usable';
     const canUse = isUsable && typeof window.canUseItem === 'function' && window.canUseItem(item);
-    const onClick = canUse ? `onclick="window.useCombatItem(${idx})"` : '';
     const quantityBadge = item.quantity && item.quantity > 1
       ? `<div style="position:absolute;bottom:1px;right:1px;background:rgba(0,0,0,0.9);color:white;padding:1px 3px;border-radius:3px;font-size:9px;font-weight:bold;border:1px solid #ffaa00;">x${item.quantity}</div>`
       : '';
     const imgEl = imageUrl
-      ? `<img src="${imageUrl}" alt="${item.name}" style="width:100%;height:100%;object-fit:contain;border-radius:3px;" onerror="this.style.display='none'">`
-      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;">?</div>`;
+      ? `<img src="${imageUrl}" alt="${item.name}" style="width:32px;height:32px;object-fit:contain;border-radius:3px;" onerror="this.style.display='none'">`
+      : `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;">?</div>`;
+    const useBtn = canUse
+      ? `<button onclick="window.useCombatItem(${idx})" style="
+          margin-top:2px;padding:1px 5px;font-size:9px;font-weight:bold;
+          background:#e67e22;border:none;border-radius:3px;color:white;
+          cursor:pointer;white-space:nowrap;line-height:1.4;
+         ">Use</button>`
+      : '';
     return `
       <div style="
-        position:relative;width:40px;height:40px;
-        border:2px solid ${color};border-radius:5px;
-        background:rgba(0,0,0,0.5);cursor:${canUse ? 'pointer' : 'default'};
-        ${!canUse && isUsable ? 'opacity:0.5;' : ''}
+        display:flex;flex-direction:column;align-items:center;gap:1px;
         flex-shrink:0;
-      " ${onClick}
+      "
          onmouseenter="if(typeof window.showCombatItemTooltip==='function')window.showCombatItemTooltip(event,${idx})"
          onmouseleave="if(typeof window.hideCombatItemTooltip==='function')window.hideCombatItemTooltip()">
-        ${imgEl}${quantityBadge}${getIncrementalCounter(item)}
+        <div style="
+          position:relative;width:32px;height:32px;
+          border:2px solid ${color};border-radius:4px;
+          background:rgba(0,0,0,0.5);
+          ${!canUse && isUsable ? 'opacity:0.5;' : ''}
+        ">
+          ${imgEl}${quantityBadge}${getIncrementalCounter(item)}
+        </div>
+        ${useBtn}
       </div>
     `;
   }).join('');
 
   return `
     <div id="combat-items-bar" style="
-      background:rgba(0,0,0,0.6);
+      background:rgba(0,0,0,0.65);
       border-bottom:1px solid rgba(255,255,255,0.1);
-      padding:4px 16px;
-      display:flex;align-items:center;gap:6px;
+      padding:3px 16px;
+      display:flex;align-items:center;gap:8px;
       flex-shrink:0;overflow-x:auto;
     ">
-      <span style="color:#aaa;font-size:11px;white-space:nowrap;margin-right:4px;">Items:</span>
+      <span style="color:#aaa;font-size:10px;white-space:nowrap;margin-right:2px;">Items:</span>
       ${itemsHTML}
     </div>
   `;
 }
 
-// Called by useCombatItem after an item is used — re-renders the topbar (which contains inline items)
+// Called by useCombatItem after an item is used — re-renders the items bar
 function updateItemsBar() {
-  const topbar = document.getElementById('combat-topbar');
-  if (!topbar) return;
+  const itemsBar = document.getElementById('combat-items-bar');
+  if (!itemsBar) return;
   const combat = window.CombatEngine && window.CombatEngine.getCombatState();
   if (!combat) return;
+  const html = renderItemsBar(combat);
+  if (!html) {
+    // No items left — remove the bar entirely
+    itemsBar.remove();
+    return;
+  }
   const tmp = document.createElement('div');
-  tmp.innerHTML = renderTopBar(combat);
+  tmp.innerHTML = html;
   const newEl = tmp.firstElementChild;
-  if (newEl) topbar.replaceWith(newEl);
+  if (newEl) itemsBar.replaceWith(newEl);
 }
 
 // ============== TOP BAR ==============
@@ -905,7 +1119,186 @@ function checkCardCondition(card, combat) {
   return false;
 }
 
+// Track active Three.js renderers for dice cards in hand so they can be disposed.
+let _diceHandRenderers = [];
+
+function _disposeDiceHandRenderers() {
+  _diceHandRenderers.forEach(r => { try { r.dispose(); } catch(e) {} });
+  _diceHandRenderers = [];
+}
+
+// Per-die color themes. sceneBg is the Three.js hex background color.
+const DICE_CARD_COLORS = {
+  "Isaac's D6": {
+    bg: '#4d0000', inner: '#6b0000', border: '#dd2222',
+    faceNum: '#ff7777', text: '#ffbbbb', outline: '#1a0000',
+    sceneBg: 0x1a0000,
+    cardBg: 'rgba(100,0,0,0.95)', cardBorder: '#dd2222', nameColor: '#ff9999'
+  }
+};
+const _DICE_DEFAULT_COLORS = {
+  bg: '#7a4800', inner: '#a86000', border: '#f0b030',
+  faceNum: '#ffd060', text: '#ffe8a0', outline: '#3a2000',
+  sceneBg: 0x1a0d00,
+  cardBg: 'rgba(100,60,10,0.95)', cardBorder: '#cc8800', nameColor: '#f0c850'
+};
+
+/**
+ * Build a DICE_DATA-compatible object from a card whose type is 'Dice'.
+ */
+function _makeDiceDataForCard(card) {
+  const colors = DICE_CARD_COLORS[card.name] || _DICE_DEFAULT_COLORS;
+  const def = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === card.name);
+  if (def) {
+    return {
+      type: 'd6-card',
+      colors,
+      sides: def.faces.map(f => ({ face: f.face, text: f.text, value: f.face, displayText: f.text })),
+      globalModifiers: [],
+      currentRoll: null
+    };
+  }
+  // Fallback: generic 6-sided card die
+  return {
+    type: 'd6-card',
+    colors,
+    sides: Array.from({ length: 6 }, (_, i) => ({ face: i + 1, text: String(i + 1), value: i + 1, displayText: String(i + 1) })),
+    globalModifiers: [],
+    currentRoll: null
+  };
+}
+
+/**
+ * After hand HTML is injected, find `.dice-hand-3d` containers and spin up Three.js
+ * renderers for each dice card. Called from attachCombatEventListeners.
+ */
+function initDiceCardRenderers() {
+  _disposeDiceHandRenderers();
+  if (typeof DiceRendererInstance === 'undefined') return;
+
+  document.querySelectorAll('.dice-hand-3d[data-hand-index]').forEach(el => {
+    const idx   = parseInt(el.dataset.handIndex);
+    const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+    if (!combat) return;
+    const card = combat.hand[idx];
+    if (!card) return;
+
+    const diceData = _makeDiceDataForCard(card);
+    const r = new DiceRendererInstance();
+    r.init(el, diceData.colors.sceneBg || 0x1a0d00);
+    r.createDice(diceData);
+    _diceHandRenderers.push(r);
+  });
+}
+
+/**
+ * Render a dice-type card in hand as a 3D die (instead of a flat card).
+ */
+function renderDiceCardInHand(card, index, total, combat) {
+  const isSelected   = combat.selectedCardIndex === index;
+  const isPlayerTurn = combat.phase === 'player_action';
+  const effectiveCost = (window.CombatEngine && window.CombatEngine.getEffectiveCost)
+    ? window.CombatEngine.getEffectiveCost(card)
+    : (card._freeCost ? 0 : card.cost);
+  const canAfford = (typeof effectiveCost === 'number' ? effectiveCost : card.cost) <= (combat.player.energy || 0);
+  const costColor = canAfford ? '#ffd700' : '#e74c3c';
+
+  let cardW, cardH, marginL, orbW, namePx;
+  if (total <= 5)      { cardW = 92;  cardH = 134; marginL = -24; orbW = 27; namePx = 10; }
+  else if (total <= 7) { cardW = 80;  cardH = 118; marginL = -18; orbW = 25; namePx = 9;  }
+  else if (total <= 9) { cardW = 70;  cardH = 104; marginL = -14; orbW = 23; namePx = 8.5;}
+  else                 { cardW = 62;  cardH = 92;  marginL = -10; orbW = 21; namePx = 8;  }
+
+  const t        = total <= 1 ? 0 : (index - (total - 1) / 2) / ((total - 1) / 2);
+  const maxAngle = Math.min(4 * (total - 1), 24);
+  const rotation = t * (maxAngle / 2);
+  const yLift    = (1 - Math.abs(t)) * 7;
+
+  const baseTransform = `rotate(${rotation}deg) translateY(${-yLift}px)`;
+  const selTransform  = `rotate(${rotation * 0.3}deg) translateY(-30px) scale(1.18)`;
+  const hoverTrans    = `rotate(${rotation * 0.2}deg) translateY(-50px) scale(1.42)`;
+
+  const diceColors = (DICE_CARD_COLORS && DICE_CARD_COLORS[card.name]) || _DICE_DEFAULT_COLORS;
+  const borderColor  = diceColors.cardBorder;
+  const bgColor      = diceColors.cardBg;
+  const nameColor    = diceColors.nameColor;
+  const boxShadow   = isSelected
+    ? `0 0 20px ${C.goldBright}bb, 0 0 6px ${borderColor}88`
+    : `0 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)`;
+  const activeBorder = isSelected ? C.goldBright : borderColor;
+  const ml = index > 0 ? `margin-left:${marginL}px;` : '';
+
+  const hoJS  = `this.style.transform='${hoverTrans}';this.style.zIndex='95';this.style.boxShadow='0 10px 30px rgba(0,0,0,0.8),0 0 16px ${borderColor}99';`;
+  const hoOut = `this.style.transform='${isSelected ? selTransform : baseTransform}';this.style.zIndex='${isSelected ? 90 : 20 + index}';this.style.boxShadow='${boxShadow}';`;
+
+  // Build tooltip showing all faces
+  const faceDef = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === card.name);
+  const facesHtml = faceDef
+    ? faceDef.faces.map(f => `${f.face}: ${f.text}`).join('\n')
+    : '';
+
+  return `
+    <div class="combat-hand-card" data-hand-index="${index}"
+      title="${facesHtml}"
+      style="
+        position:relative;
+        width:${cardW}px; height:${cardH}px;
+        background:${bgColor};
+        border:2px solid ${activeBorder};
+        border-radius:9px;
+        ${ml}
+        flex-shrink:0;
+        cursor:${isPlayerTurn ? 'pointer' : 'default'};
+        opacity:${isPlayerTurn && !canAfford ? 0.55 : 1};
+        transform-origin:bottom center;
+        transform:${isSelected ? selTransform : baseTransform};
+        z-index:${isSelected ? 90 : 20 + index};
+        transition:transform 0.14s ease, box-shadow 0.14s ease, opacity 0.1s;
+        box-shadow:${boxShadow};
+        display:flex; flex-direction:column;
+        overflow:hidden;
+      "
+      onmouseover="${hoJS}"
+      onmouseout="${hoOut}"
+    >
+      <!-- Cost orb -->
+      <div style="
+        position:absolute; top:-1px; left:-1px;
+        width:${orbW}px; height:${orbW}px;
+        background:radial-gradient(circle at 38% 32%, #f9cd45, #c07000, #7a3e00);
+        border:2px solid ${costColor};
+        border-radius:50%;
+        display:flex; align-items:center; justify-content:center;
+        font-weight:bold; font-size:${orbW - 13}px; color:white;
+        z-index:3;
+        box-shadow:0 0 7px ${costColor}bb;
+        text-shadow:0 1px 2px rgba(0,0,0,0.7);
+      ">${effectiveCost}</div>
+
+      <!-- 3D die container -->
+      <div class="dice-hand-3d" data-hand-index="${index}" style="
+        width:100%; flex:1; min-height:0;
+      "></div>
+
+      <!-- Name -->
+      <div style="
+        padding:2px 4px 3px;
+        font-size:${namePx}px; font-weight:700; color:${nameColor};
+        text-align:center; line-height:1.2; flex-shrink:0;
+        text-shadow:0 1px 3px rgba(0,0,0,0.9);
+        border-top:1px solid ${borderColor}55;
+        background:rgba(0,0,0,0.35);
+      ">${card.name}${card.upgraded ? `<span style="color:#4CAF50;font-size:${namePx+1}px;">⁺</span>` : ''}</div>
+    </div>
+  `;
+}
+
 function renderCardInHand(card, index, total, combat) {
+  // Dice-type cards render as 3D dice
+  if ((card.type || '').toLowerCase() === 'dice') {
+    return renderDiceCardInHand(card, index, total, combat);
+  }
+
   const isSelected   = combat.selectedCardIndex === index;
   const isPlayerTurn = combat.phase === 'player_action';
   const isXCost      = card.cost === 'X';
@@ -1031,7 +1424,7 @@ function renderCardInHand(card, index, total, combat) {
         font-size:${descPx}px; color:#ccc;
         text-align:center; line-height:1.35;
         overflow:hidden;
-      ">${card.description}${card._retain && !/\bretain\b/i.test(card.description) ? ' <span style="color:#4CAF50;font-size:' + (descPx - 0.5) + 'px;">Retain.</span>' : ''}</div>
+      ">${getCardDisplayDescription(card, combat, (() => { const eid = window._combatHoveredEnemyId; return eid && combat.enemies ? combat.enemies.find(e => e.id === eid) || null : null; })())}${card._retain && !/\bretain\b/i.test(card.description) ? ' <span style="color:#4CAF50;font-size:' + (descPx - 0.5) + 'px;">Retain.</span>' : ''}</div>
 
       <!-- Type footer -->
       <div style="
@@ -1420,6 +1813,9 @@ function attachCombatEventListeners(combat) {
   injectCombatInteractionCSS();
   ensureDragAndKeyListeners();
 
+  // Init Three.js renderers for any dice-type cards in hand
+  requestAnimationFrame(() => initDiceCardRenderers());
+
   // End turn button
   const endBtn = document.getElementById('combat-end-turn-btn');
   if (endBtn) {
@@ -1432,6 +1828,22 @@ function attachCombatEventListeners(combat) {
         showHPDiffs(snap, combat);
         updateCombatDisplay();
         checkCombatEnd();
+        // Flush any pending card pick queued by start-of-turn effects (e.g. Tools of the Trade)
+        if (combat && combat._pendingCardPick) {
+          const pick = combat._pendingCardPick;
+          combat._pendingCardPick = null;
+          if (typeof window.showCardPickerModal === 'function') {
+            window.showCardPickerModal(pick);
+            // If WLP also pending, it will be chained inside the modal's confirm handler
+          }
+        } else if (combat && combat._pendingRetainPick) {
+          // Well-Laid Plans: no other picker pending, show retain picker directly
+          const rp = combat._pendingRetainPick;
+          combat._pendingRetainPick = null;
+          if (typeof window.showCardPickerModal === 'function') {
+            window.showCardPickerModal({ action: 'retain', pile: 'hand', count: rp.count });
+          }
+        }
       }
     });
   }
@@ -1442,10 +1854,17 @@ function attachCombatEventListeners(combat) {
   document.querySelectorAll('.enemy-card').forEach(el => {
     el.addEventListener('click', () => handleEnemyClick(el.dataset.enemyId));
     el.addEventListener('mouseenter', (e) => {
+      // Track hovered enemy for dynamic damage preview on hand cards
+      window._combatHoveredEnemyId = el.dataset.enemyId;
+      refreshCombatHand();
       if (e.target.closest('[data-intent-tooltip]') || e.target.closest('.combat-status-icon')) return;
       showEnemyPatternTooltip(el, e);
     });
-    el.addEventListener('mouseleave', () => hideEnemyPatternTooltip());
+    el.addEventListener('mouseleave', () => {
+      window._combatHoveredEnemyId = null;
+      refreshCombatHand();
+      hideEnemyPatternTooltip();
+    });
     el.addEventListener('mousemove', (e) => {
       if (e.target.closest('[data-intent-tooltip]') || e.target.closest('.combat-status-icon')) {
         hideEnemyPatternTooltip();
@@ -1502,7 +1921,11 @@ function handleCardClick(index) {
   const card = hand[index];
   if (!card) return;
 
-  const canAfford = card.cost !== 'No' && (card.cost === 'X' || (card.cost || 0) <= (combat.player.energy || 0));
+  const effectiveCost = (window.CombatEngine && window.CombatEngine.getEffectiveCost)
+    ? window.CombatEngine.getEffectiveCost(card)
+    : (card._freeCost ? 0 : (card.cost || 0));
+  const costIsNo = effectiveCost === 'No' || card.cost === 'No';
+  const canAfford = !costIsNo && (card.cost === 'X' || (typeof effectiveCost === 'number' ? effectiveCost : 0) <= (combat.player.energy || 0));
   if (!canAfford) {
     // Shake the card as visual feedback
     const cardEl = document.querySelector(`.combat-hand-card[data-hand-index="${index}"]`);
@@ -1512,6 +1935,12 @@ function handleCardClick(index) {
     }
     typeof createNotification === 'function' &&
       createNotification('Not enough energy!', '#e74c3c', '⚡');
+    return;
+  }
+
+  // Dice-type cards: show card picker, then roll
+  if ((card.type || '').toLowerCase() === 'dice') {
+    handleDiceCardPlay(index, combat);
     return;
   }
 
@@ -1616,14 +2045,15 @@ function ensureDragAndKeyListeners() {
       _dragState.clone.style.top  = (e.clientY - _dragState.offsetY) + 'px';
     }
 
-    // Highlight enemy under cursor while dragging
+    // Highlight enemy under cursor while dragging — use elementFromPoint (O(1)) instead of
+    // querying every enemy card and calling getBoundingClientRect on each (O(n) per frame)
     if (_dragState.moved) {
-      document.querySelectorAll('.enemy-card').forEach(el => {
-        const r    = el.getBoundingClientRect();
-        const over = e.clientX >= r.left && e.clientX <= r.right
-                  && e.clientY >= r.top  && e.clientY <= r.bottom;
-        el.style.outline = over ? `3px solid ${C.goldBright}` : '';
-      });
+      const pointEl = document.elementFromPoint(e.clientX, e.clientY)?.closest('.enemy-card');
+      if (pointEl !== _dragState.hoveredEnemy) {
+        if (_dragState.hoveredEnemy) _dragState.hoveredEnemy.style.outline = '';
+        if (pointEl) pointEl.style.outline = `3px solid ${C.goldBright}`;
+        _dragState.hoveredEnemy = pointEl || null;
+      }
     }
   });
 
@@ -1650,7 +2080,9 @@ function ensureDragAndKeyListeners() {
     const needsTarget = window.CombatEngine.cardNeedsTarget
       ? window.CombatEngine.cardNeedsTarget(card) : false;
 
-    if (needsTarget) {
+    if ((card.type || '').toLowerCase() === 'dice') {
+      handleDiceCardPlay(cardIndex, combat);
+    } else if (needsTarget) {
       // Must drop on an enemy
       const enemyEl = document.elementFromPoint(e.clientX, e.clientY)
                         ?.closest('.enemy-card');
@@ -1736,6 +2168,12 @@ function attachCardTooltip() {
       const canAfford = card.cost !== 'No' && (card.cost === 'X' || (card.cost || 0) <= (combat.player.energy || 0));
       const costColor = canAfford ? '#ffd700' : '#e74c3c';
 
+      // Find the currently hovered or targeted enemy for damage preview
+      const _ttEnemyId = window._combatHoveredEnemyId || combat.targetedEnemyId;
+      const _ttEnemy   = _ttEnemyId && combat.enemies
+        ? combat.enemies.find(e => e.id === _ttEnemyId && e.health > 0) || null
+        : null;
+
       const tt = getTooltip();
 
       // Dice cards get a special face-grid tooltip
@@ -1779,8 +2217,27 @@ function attachCardTooltip() {
                 onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:36px>${typeEmoji(card.type)}</span>'">
             </div>
             <div style="padding:8px 10px; font-size:11px; color:#edd; line-height:1.55; text-align:center; min-height:36px;">
-              ${card.description}
+              ${getCardDisplayDescription(card, combat, _ttEnemy)}
             </div>
+            ${(() => {
+              // Show damage-vs-target preview if the enemy has relevant debuffs
+              if (!_ttEnemy) return '';
+              const vuln = _ttEnemy.statuses && _ttEnemy.statuses['vulnerable'];
+              const bruse = _ttEnemy.statuses && _ttEnemy.statuses['bruise'];
+              if (!vuln && !bruse) return '';
+              const dmgMatch = (card.description || '').match(/Deal (\d+)(?:[xX](\d+))? Dmg/i);
+              if (!dmgMatch) return '';
+              const base = parseInt(dmgMatch[1]);
+              const baseCalc = getCardDynamicDmg(base, card, combat, null);
+              const withTarget = getCardDynamicDmg(base, card, combat, _ttEnemy);
+              if (withTarget === baseCalc) return '';
+              const tags = [];
+              if (vuln) tags.push('💢 Vulnerable');
+              if (bruse) tags.push(`🩹 Bruise ×${_ttEnemy.statuses['bruise']}`);
+              return `<div style="background:rgba(255,100,0,0.15);border-top:1px solid rgba(255,100,0,0.3);padding:4px 8px;font-size:9px;color:#ffbb77;text-align:center;">
+                vs ${_ttEnemy.name}: <strong style="color:#ffdd99;font-size:11px;">${withTarget}</strong> dmg (${tags.join(', ')})
+              </div>`;
+            })()}
             <div style="
               padding:4px 10px 6px;
               display:flex; justify-content:space-between; align-items:center;
@@ -1873,6 +2330,14 @@ function captureHPSnapshot(combat) {
 // Show floating +/- numbers based on HP diff between snapshot and current state
 // skipEnemyDmg: pass true when replayHits will handle per-hit enemy damage numbers
 function showHPDiffs(oldSnap, combat, skipEnemyDmg = false) {
+  // Show MISS! popup for enemy misses only (player misses are per-hit via replayHits)
+  if (combat._lastMiss === 'enemy') {
+    showMissFloat('combat-player-zone');
+    combat._lastMiss = null;
+  } else if (combat._lastMiss) {
+    combat._lastMiss = null;
+  }
+
   // Player
   const pHP = combat.player.health - oldSnap.playerHP;
   if (pHP < 0) showFloatingNumber('combat-player-zone', Math.abs(pHP), 'damage');
@@ -1920,6 +2385,36 @@ function showFloatingText(text, color) {
     animation:floatUp 1.1s ease-out forwards;
   `;
   f.textContent = text;
+  document.body.appendChild(f);
+  setTimeout(() => f.remove(), 1150);
+}
+
+// Show MISS! floating text anchored to a DOM element (or centered if not found)
+function showMissFloat(elementId) {
+  const el = elementId ? document.getElementById(elementId) : null;
+  const f = document.createElement('div');
+  if (el) {
+    const rect = el.getBoundingClientRect();
+    f.style.cssText = `
+      position:fixed;
+      left:${rect.left + rect.width / 2}px;
+      top:${rect.top + rect.height * 0.2}px;
+      transform:translateX(-50%);
+      color:#fff; font-size:22px; font-weight:bold;
+      pointer-events:none; z-index:99999;
+      text-shadow:0 1px 6px rgba(0,0,0,0.9), 0 0 10px rgba(255,200,0,0.7);
+      animation:floatUp 1.1s ease-out forwards;
+    `;
+  } else {
+    f.style.cssText = `
+      position:fixed; left:50%; top:42%; transform:translate(-50%,-50%);
+      color:#fff; font-size:22px; font-weight:bold;
+      pointer-events:none; z-index:99999;
+      text-shadow:0 1px 6px rgba(0,0,0,0.9), 0 0 10px rgba(255,200,0,0.7);
+      animation:floatUp 1.1s ease-out forwards;
+    `;
+  }
+  f.textContent = 'MISS!';
   document.body.appendChild(f);
   setTimeout(() => f.remove(), 1150);
 }
@@ -2122,12 +2617,17 @@ function showTargetedFloat(targetId, dmg) {
 
 // Play back a multi-hit log with 160ms between each hit, then call onDone
 function replayHits(hitLog, onDone) {
-  const hits = (hitLog || []).filter(h => h && h.dmg > 0);
-  if (hits.length <= 1) { onDone && onDone(); return; }
+  const hits = (hitLog || []).filter(h => h && (h.dmg > 0 || h.missed));
+  if (hits.length === 0) { onDone && onDone(); return; }
   let i = 0;
   function next() {
     if (i >= hits.length) { onDone && onDone(); return; }
-    showTargetedFloat(hits[i].targetId, hits[i].dmg);
+    const h = hits[i];
+    if (h.missed) {
+      showMissFloat(h.targetId ? `enemy-card-${h.targetId}` : null);
+    } else {
+      showTargetedFloat(h.targetId, h.dmg);
+    }
     i++;
     setTimeout(next, 160);
   }
@@ -2169,8 +2669,8 @@ window.showCardPickerModal = function(options) {
   if (!combat) return;
 
   const { action, pile, count } = options;
-  const actionLabel = action === 'discard' ? 'Discard' : action === 'setup' ? 'Setup' : action === 'nightmare' ? 'Choose' : action === 'topdraw' ? 'Top of Draw' : action === 'upgrade' ? 'Upgrade' : action === 'copy' ? 'Copy' : 'Exhaust';
-  const actionColor = action === 'discard' ? '#f39c12' : action === 'setup' ? '#4fc3f7' : action === 'nightmare' ? '#9b59b6' : action === 'topdraw' ? '#2ecc71' : action === 'upgrade' ? '#3498db' : action === 'copy' ? '#e67e22' : '#7f8c8d';
+  const actionLabel = action === 'discard' ? 'Discard' : action === 'setup' ? 'Setup' : action === 'nightmare' ? 'Choose' : action === 'topdraw' ? 'Top of Draw' : action === 'upgrade' ? 'Upgrade' : action === 'copy' ? 'Copy' : action === 'retain' ? 'Retain' : action === 'tohand' ? 'Take to Hand' : 'Exhaust';
+  const actionColor = action === 'discard' ? '#f39c12' : action === 'setup' ? '#4fc3f7' : action === 'nightmare' ? '#9b59b6' : action === 'topdraw' ? '#2ecc71' : action === 'upgrade' ? '#3498db' : action === 'copy' ? '#e67e22' : action === 'retain' ? '#2ecc71' : action === 'tohand' ? '#4fc3f7' : '#7f8c8d';
 
   const pileMap = {
     hand:    { cards: combat.hand || [],        label: 'Hand'         },
@@ -2212,10 +2712,10 @@ window.showCardPickerModal = function(options) {
       box-shadow:0 10px 40px rgba(0,0,0,0.95);
     ">
       <h2 style="color:${actionColor}; text-align:center; margin:0 0 6px; font-size:18px;">
-        ${actionLabel} ${count} Card${count !== 1 ? 's' : ''}
+        ${action === 'retain' ? `Well-Laid Plans` : `${actionLabel} ${count} Card${count !== 1 ? 's' : ''}`}
       </h2>
       <p style="color:#aaa; text-align:center; margin:0 0 14px; font-size:12px;">
-        ${action === 'nightmare' ? `Choose a card to conjure ${options._nightmareCount || 3} copies of next turn.` : action === 'topdraw' ? `Choose a card to place on top of your Draw Pile.` : action === 'upgrade' ? `Choose a card to upgrade for the rest of combat.` : action === 'copy' ? `Choose an Attack or Power card to conjure ${options._copyCount || 1} cop${(options._copyCount || 1) !== 1 ? 'ies' : 'y'} of to Hand.` : `Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to ${actionLabel.toLowerCase()}.`}
+        ${action === 'retain' ? `Choose up to ${count} card${count !== 1 ? 's' : ''} to keep in your hand next turn.` : action === 'nightmare' ? `Choose a card to conjure ${options._nightmareCount || 3} copies of next turn.` : action === 'topdraw' ? `Choose a card to place on top of your Draw Pile.` : action === 'upgrade' ? `Choose a card to upgrade for the rest of combat.` : action === 'copy' ? `Choose an Attack or Power card to conjure ${options._copyCount || 1} cop${(options._copyCount || 1) !== 1 ? 'ies' : 'y'} of to Hand.` : action === 'tohand' ? `Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to take into your Hand.` : `Choose ${count} card${count !== 1 ? 's' : ''} from your ${pileLabel} to ${actionLabel.toLowerCase()}.`}
       </p>
       <div id="card-picker-grid" style="
         display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
@@ -2269,8 +2769,10 @@ window.showCardPickerModal = function(options) {
   const countLabel = document.getElementById('picker-selected-count');
 
   function updateConfirmBtn() {
-    countLabel.textContent = `Selected: ${selected.size} / ${count}`;
-    const ready = selected.size === count;
+    countLabel.textContent = action === 'retain'
+      ? `Selected: ${selected.size} / up to ${count}`
+      : `Selected: ${selected.size} / ${count}`;
+    const ready = action === 'retain' ? true : selected.size === count;
     confirmBtn.disabled = !ready;
     confirmBtn.style.background = ready ? actionColor : '#555';
     confirmBtn.style.borderColor = ready ? actionColor : '#888';
@@ -2300,9 +2802,15 @@ window.showCardPickerModal = function(options) {
 
   // Confirm handler
   confirmBtn.addEventListener('click', () => {
-    if (selected.size !== count) return;
+    if (action !== 'retain' && selected.size !== count) return;
 
-    if (action === 'nightmare') {
+    if (action === 'retain') {
+      // Well-Laid Plans: mark selected cards for retain (0–N allowed)
+      for (const idx of selected) {
+        pileCards[idx]._retain = true;
+        window.CombatEngine && window.CombatEngine.addLog(`Well-Laid Plans: ${pileCards[idx].name} retained`, 'success');
+      }
+    } else if (action === 'nightmare') {
       // Nightmare: store chosen card for next-turn conjuring (don't remove from pile)
       const idx = [...selected][0];
       const card = pileCards[idx];
@@ -2334,6 +2842,14 @@ window.showCardPickerModal = function(options) {
         combat.hand.push({ ...card, _uid: `dual_wield_copy_${Date.now()}_${i}` });
       }
       window.CombatEngine && window.CombatEngine.addLog(`Dual Wield: conjured ${copyCount}x ${card.name} to Hand!`, 'success');
+    } else if (action === 'tohand') {
+      // Hologram / Seek: move selected cards from source pile directly into hand
+      const sortedIdx = [...selected].sort((a, b) => b - a);
+      for (const idx of sortedIdx) {
+        const card = pileCards.splice(idx, 1)[0];
+        combat.hand.push(card);
+        window.CombatEngine && window.CombatEngine.addLog(`${card.name} → Hand`, 'info');
+      }
     } else {
       // Sort descending so splice doesn't shift indices
       const sortedIdx = [...selected].sort((a, b) => b - a);
@@ -2361,14 +2877,246 @@ window.showCardPickerModal = function(options) {
     }
 
     overlay.remove();
-    if (typeof renderCombat === 'function') renderCombat();
+    updateCombatDisplay();
+    checkCombatEnd();
+
+    // Chain pending retain picker (e.g. both Tools of the Trade and Well-Laid Plans active)
+    if (action !== 'retain' && combat._pendingRetainPick) {
+      const rp = combat._pendingRetainPick;
+      combat._pendingRetainPick = null;
+      setTimeout(() => window.showCardPickerModal({ action: 'retain', pile: 'hand', count: rp.count }), 80);
+    }
   });
 };
 
 // ============== STUBS ==============
 
 function cleanup3DDice() {}
-function updateItemsBar() {}
+
+// ============================================================
+// ============== DICE CARD PLAY FLOW ==========================
+// ============================================================
+
+/**
+ * Called instead of normal play when a Dice-type card is clicked.
+ * Shows a hand picker, then the roll animation, then applies the transform.
+ */
+function handleDiceCardPlay(diceCardIndex, combat) {
+  const hand     = combat.hand || [];
+  const diceCard = hand[diceCardIndex];
+  if (!diceCard) return;
+
+  // Cards the player can choose to transform (everything in hand except the die itself)
+  const pickable = hand.map((c, i) => ({ card: c, handIdx: i })).filter(x => x.handIdx !== diceCardIndex);
+
+  if (pickable.length === 0) {
+    // Nothing to transform — just spend energy and discard
+    window.CombatEngine.playCard(diceCardIndex, null);
+    updateCombatDisplay();
+    return;
+  }
+
+  const combatModal = document.getElementById('dice-combat-modal');
+  if (!combatModal) return;
+  combatModal.style.position = 'relative';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'dice-card-pick-overlay';
+  overlay.style.cssText = `position:absolute;inset:0;z-index:999;background:rgba(0,0,0,0.88);
+    display:flex;align-items:center;justify-content:center;border-radius:inherit;`;
+
+  overlay.innerHTML = `
+    <div style="background:#1a1208;border:2px solid #cc8800;border-radius:12px;padding:20px;
+      max-width:700px;width:92%;text-align:center;">
+      <h2 style="color:#f0c850;margin:0 0 6px;font-size:18px;">🎲 ${diceCard.name}</h2>
+      <p style="color:#aaa;margin:0 0 14px;font-size:12px;">Choose a card to transform</p>
+      <div id="dice-pick-cards" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;
+        max-height:45vh;overflow-y:auto;padding:4px;">
+        ${pickable.map(({ card: c, handIdx }) => {
+          const bc = typeColor(c.type);
+          const bg = cardTypeBg(c.type);
+          const imgSrc = c.imageUrl || '';
+          return `<div class="dice-pick-card" data-hand-idx="${handIdx}"
+            style="background:${bg};border:2px solid ${bc};border-radius:8px;padding:8px;
+              cursor:pointer;min-width:90px;max-width:110px;text-align:center;
+              transition:transform 0.1s,box-shadow 0.1s;"
+            onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(0,0,0,0.6)'"
+            onmouseout="this.style.transform='';this.style.boxShadow=''">
+            <div style="width:100%;height:50px;display:flex;align-items:center;justify-content:center;
+              background:rgba(0,0,0,0.3);border-radius:5px;margin-bottom:5px;overflow:hidden;">
+              ${imgSrc
+                ? `<img src="${imgSrc}" style="width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;"
+                     onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:26px>${typeEmoji(c.type)}</span>'">`
+                : `<span style="font-size:26px;">${typeEmoji(c.type)}</span>`}
+            </div>
+            <div style="font-size:10px;font-weight:bold;color:#fff;">${c.name}${c.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}</div>
+            <div style="font-size:9px;color:#aaa;margin-top:2px;">${c.type}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <p style="color:#555;font-size:10px;margin:10px 0 0;">Click a card to transform it</p>
+    </div>`;
+
+  combatModal.appendChild(overlay);
+
+  overlay.querySelectorAll('.dice-pick-card').forEach(el => {
+    el.addEventListener('click', () => {
+      const pickedHandIdx = parseInt(el.dataset.handIdx);
+      const pickedCard    = hand[pickedHandIdx];
+      overlay.remove();
+
+      // Play the dice card: deduct energy, remove from hand, no gameplay effect yet
+      window.CombatEngine.playCard(diceCardIndex, null);
+
+      // The picked card's index may shift if diceCardIndex < pickedHandIdx
+      const newPickIdx = pickedHandIdx > diceCardIndex ? pickedHandIdx - 1 : pickedHandIdx;
+
+      updateCombatDisplay();
+      _showDiceRollOverlay(diceCard, pickedCard, newPickIdx);
+    });
+  });
+}
+
+/**
+ * Show the 3D die rolling, then apply the transform effect to pickedCard.
+ */
+function _showDiceRollOverlay(diceCard, pickedCard, newPickIdx) {
+  const diceDef = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === diceCard.name);
+  const sides   = diceDef ? diceDef.faces.length : 6;
+
+  const combatModal = document.getElementById('dice-combat-modal');
+
+  if (!combatModal || typeof DiceRendererInstance === 'undefined') {
+    const rolledN  = Math.floor(Math.random() * sides) + 1;
+    const faceData = diceDef ? (diceDef.faces.find(f => f.face === rolledN) || diceDef.faces[0])
+                             : { face: rolledN, text: String(rolledN) };
+    _applyDiceRollEffect(diceCard, pickedCard, newPickIdx, faceData);
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'dice-roll-overlay';
+  overlay.style.cssText = `position:absolute;inset:0;z-index:1000;background:rgba(0,0,0,0.9);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:inherit;`;
+
+  overlay.innerHTML = `
+    <h2 style="color:#f0c850;margin:0 0 12px;font-size:20px;">🎲 Rolling ${diceCard.name}…</h2>
+    <div id="dice-roll-3d" style="width:160px;height:160px;margin:0 auto;"></div>
+    <div id="dice-roll-label" style="color:#fff;font-size:15px;min-height:52px;margin-top:14px;text-align:center;"></div>
+    <div id="dice-roll-btns" style="margin-top:16px;display:flex;gap:10px;"></div>`;
+
+  combatModal.style.position = 'relative';
+  combatModal.appendChild(overlay);
+
+  requestAnimationFrame(() => {
+    const container = document.getElementById('dice-roll-3d');
+    if (!container) { overlay.remove(); _applyDiceRollEffect(diceCard, pickedCard, newPickIdx, { face: 1, text: '' }); return; }
+
+    const renderer   = new DiceRendererInstance();
+    const diceData3d = _makeDiceDataForCard(diceCard);
+    renderer.init(container, diceData3d.colors ? diceData3d.colors.sceneBg : 0x0d0800);
+    renderer.createDice(diceData3d);
+
+    const performRoll = (rolledN) => {
+      const faceData = diceDef ? (diceDef.faces.find(f => f.face === rolledN) || diceDef.faces[0])
+                               : { face: rolledN, text: String(rolledN) };
+      const lbl  = document.getElementById('dice-roll-label');
+      const btns = document.getElementById('dice-roll-btns');
+      if (lbl)  lbl.innerHTML = '';
+      if (btns) btns.innerHTML = '';
+
+      renderer.rollDice(diceData3d, rolledN, () => {
+        if (lbl) lbl.innerHTML =
+          `<div style="color:#f0c850;font-weight:bold;font-size:18px;">${faceData.text}</div>
+           <div style="color:#888;font-size:11px;margin-top:4px;">Face ${rolledN}</div>`;
+
+        const finish = () => {
+          renderer.dispose();
+          overlay.remove();
+          _applyDiceRollEffect(diceCard, pickedCard, newPickIdx, faceData);
+        };
+
+        if (btns) {
+          const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+          const rerolls = combat && combat.player ? (combat.player.rerolls || 0) : 0;
+
+          const continueBtn = document.createElement('button');
+          continueBtn.textContent = 'Continue →';
+          continueBtn.style.cssText = `padding:8px 20px;background:#2a5c2a;border:1px solid #4a9c4a;
+            color:#fff;border-radius:6px;font-size:14px;cursor:pointer;`;
+          continueBtn.onclick = finish;
+          btns.appendChild(continueBtn);
+
+          if (rerolls > 0) {
+            const rerollBtn = document.createElement('button');
+            rerollBtn.textContent = `🔄 Reroll (${rerolls} left)`;
+            rerollBtn.style.cssText = `padding:8px 20px;background:#5c3a0a;border:1px solid #c07820;
+              color:#f0c850;border-radius:6px;font-size:14px;cursor:pointer;`;
+            rerollBtn.onclick = () => {
+              if (combat && combat.player) combat.player.rerolls = Math.max(0, (combat.player.rerolls || 0) - 1);
+              updateCombatDisplay();
+              performRoll(Math.floor(Math.random() * sides) + 1);
+            };
+            btns.insertBefore(rerollBtn, continueBtn);
+          }
+        }
+      });
+    };
+
+    performRoll(Math.floor(Math.random() * sides) + 1);
+  });
+}
+
+/**
+ * Applies the transformation: replace pickedCard in hand with a random card of the rolled type.
+ */
+function _applyDiceRollEffect(diceCard, pickedCard, newPickIdx, faceData) {
+  const combat   = window.CombatEngine && window.CombatEngine.getCombatState();
+  if (!combat) return;
+
+  const faceText = (faceData.text || '').toLowerCase();
+  let types  = [];
+  let makeFree = false;
+
+  if      (faceText.includes('curse'))  types = ['curse'];
+  else if (faceText.includes('status')) types = ['status'];
+  else if (faceText.includes('skill'))  types = ['skill'];
+  else if (faceText.includes('power'))  types = ['power'];
+  else if (faceText.includes('attack')) types = ['attack'];
+  if (faceText.includes('free'))        makeFree = true;
+  // Face 6: "Random Attack, Skill, or Power that is free..."
+  if (makeFree && types.length === 1 && types[0] === 'attack') types = ['attack', 'skill', 'power'];
+
+  const allCards = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
+  const pool = allCards.filter(c =>
+    types.length === 0 || types.includes((c.type || '').toLowerCase())
+  );
+
+  // Find the target slot — first try stored index, then search by reference
+  let targetIdx = newPickIdx;
+  if (targetIdx < 0 || targetIdx >= combat.hand.length || combat.hand[targetIdx] !== pickedCard) {
+    targetIdx = combat.hand.indexOf(pickedCard);
+  }
+
+  if (pool.length > 0 && targetIdx >= 0) {
+    const newCard = { ...pool[Math.floor(Math.random() * pool.length)] };
+    if (makeFree) newCard.cost = 0;
+    const oldName = pickedCard.name;
+    combat.hand[targetIdx] = newCard;
+
+    const freeStr = makeFree ? ' (free this combat!)' : '';
+    if (combat.log) combat.log.push({
+      text: `${diceCard.name}: ${oldName} → ${newCard.name}${freeStr}`,
+      type: 'info'
+    });
+    if (typeof createNotification === 'function') {
+      createNotification(`${oldName} → ${newCard.name}${freeStr}`, '#f0c850', '🎲');
+    }
+  }
+
+  updateCombatDisplay();
+  checkCombatEnd();
+}
 
 // ============== EXPORTS ==============
 
@@ -2384,3 +3132,15 @@ if (typeof window !== 'undefined') {
     hideStatusTooltip,
   };
 }
+
+window.cancelCombatDrag = function() {
+  if (_dragState) {
+    if (_dragState.clone)  _dragState.clone.remove();
+    if (_dragState.cardEl) _dragState.cardEl.style.opacity = '';
+    _dragState = null;
+  }
+  const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+  if (combat && combat.selectedCardIndex !== null && combat.selectedCardIndex !== undefined) {
+    combat.selectedCardIndex = null;
+  }
+};

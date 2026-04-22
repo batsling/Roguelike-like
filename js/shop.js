@@ -15,6 +15,24 @@
 
 console.log('✅ SHOP.JS v4 loaded - card upgrade/remove system active');
 
+// Keeper's Sack: every 10 gold spent → +1 to a random stat
+function _keepersSackCheck(amountSpent) {
+  if (!inventory || !inventory.some(i => i.name === "Keeper's Sack")) return;
+  const prev = gameState.keepersSackGoldSpent || 0;
+  const next = prev + amountSpent;
+  const statsBefore = Math.floor(prev / 10);
+  const statsAfter  = Math.floor(next / 10);
+  gameState.keepersSackGoldSpent = next;
+  const gains = statsAfter - statsBefore;
+  if (gains <= 0) return;
+  const stats = ['strength', 'dexterity', 'intelligence', 'charisma'];
+  for (let g = 0; g < gains; g++) {
+    const stat = stats[Math.floor(Math.random() * stats.length)];
+    if (typeof StateMutator !== 'undefined') StateMutator.modifyStat(stat, 1);
+    if (typeof createNotification === 'function') createNotification(`Keeper's Sack: +1 ${stat.charAt(0).toUpperCase() + stat.slice(1)}!`, '#f1c40f', '💰');
+  }
+}
+
 // ===== SHOP SYSTEM =====
 
 function showShopModal(purchasedIndices = []) {
@@ -29,8 +47,7 @@ function showShopModal(purchasedIndices = []) {
     gameState.shopRerollCount = 0;
   }
 
-  // Initialize shop service counters if not present
-  if (gameState.shopUpgradesUsed === undefined) gameState.shopUpgradesUsed = 0;
+  // Initialize shop service counter if not present
   if (gameState.shopRemovesUsed === undefined) gameState.shopRemovesUsed = 0;
 
   // Store shop items in gameState if not already present (first time opening shop)
@@ -99,36 +116,36 @@ function showShopModal(purchasedIndices = []) {
   };
 
   // ===== CARD SERVICES PANEL =====
-  const CARD_UPGRADE_COST = 75;
   const CARD_REMOVE_COST = 50;
-  const deckCards = (gameState.deck || []).filter(c => !c.isStatusCard);
-  const alreadyUpgraded = gameState.shopUpgradesUsed > 0;
+
+  // Build combined card list: starter cards + collected deck cards (excluding status cards)
+  const charKeyCS = gameState.character;
+  const charDataCS = charKeyCS && typeof PLAYER_CHARACTERS !== 'undefined' ? PLAYER_CHARACTERS[charKeyCS] : null;
+  const startingEntries = (charDataCS && charDataCS.startingDeck) ? charDataCS.startingDeck : [];
+  const removedStarting  = gameState.removedStartingCards  || {};
+
+  // Starter cards — one entry per non-removed copy
+  const starterCards = [];
+  startingEntries.forEach(entry => {
+    const template = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
+    if (!template || template.isStatusCard) return;
+    const total = entry.count || 1;
+    const removed = removedStarting[entry.cardName] || 0;
+    const remaining = total - removed;
+    for (let i = 0; i < remaining; i++) {
+      starterCards.push({ ...template, _isStarting: true, _startingName: entry.cardName });
+    }
+  });
+
+  const collectedDeckCards = (gameState.deck || []).filter(c => !c.isStatusCard);
+  // allDeckCards: starters first, then collected (indices 0..starterCards.length-1 are starters)
+  const allDeckCards = [...starterCards, ...collectedDeckCards];
+
   const alreadyRemoved = gameState.shopRemovesUsed > 0;
 
-  // Build upgrade selector
-  const upgradeableCards = deckCards.filter(c => c.canUpgrade && !c.upgraded);
-  let upgradeSelectHTML = '';
-  if (upgradeableCards.length > 0) {
-    upgradeSelectHTML = `
-      <select id="shop-card-upgrade-select" style="
-        background:#1a1a1a; color:white; border:1px solid #9b59b6;
-        border-radius:4px; padding:6px 10px; font-size:13px; width:100%;
-        margin-bottom:8px;
-      ">
-        <option value="">— Pick a card to upgrade —</option>
-        ${upgradeableCards.map((c, i) => {
-          const realIdx = deckCards.indexOf(c);
-          return `<option value="${realIdx}">${c.name} (${c.rarity})</option>`;
-        }).join('')}
-      </select>
-    `;
-  } else {
-    upgradeSelectHTML = `<p style="color:#888;font-size:12px;margin:4px 0;">No upgradeable cards in deck.</p>`;
-  }
-
-  // Build remove selector
+  // Build remove selector — all deck cards (starters + collected)
   let removeSelectHTML = '';
-  if (deckCards.length > 0) {
+  if (allDeckCards.length > 0) {
     removeSelectHTML = `
       <select id="shop-card-remove-select" style="
         background:#1a1a1a; color:white; border:1px solid #e74c3c;
@@ -136,7 +153,10 @@ function showShopModal(purchasedIndices = []) {
         margin-bottom:8px;
       ">
         <option value="">— Pick a card to remove —</option>
-        ${deckCards.map((c, i) => `<option value="${i}">${c.name}${c.upgraded ? ' +' : ''} (${c.rarity})</option>`).join('')}
+        ${allDeckCards.map((c, i) => {
+          const label = c._isStarting ? `${c.name} (Starter)` : `${c.name}${c.upgraded ? ' +' : ''} (${c.rarity})`;
+          return `<option value="${i}">${label}</option>`;
+        }).join('')}
       </select>
     `;
   } else {
@@ -152,32 +172,18 @@ function showShopModal(purchasedIndices = []) {
       margin-bottom: 20px;
     ">
       <h3 style="color: #9b59b6; margin-top: 0; text-align: center; font-size: 18px;">🃏 Card Services</h3>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-        <!-- Upgrade -->
-        <div>
-          <div style="color:#9b59b6;font-weight:bold;font-size:14px;margin-bottom:8px;">⬆️ Upgrade a Card (${CARD_UPGRADE_COST}💰)</div>
-          ${upgradeSelectHTML}
-          <button id="shop-card-upgrade-btn" style="
-            padding: 10px 16px;
-            background: ${alreadyUpgraded ? '#555' : (gold >= CARD_UPGRADE_COST && upgradeableCards.length > 0 ? '#9b59b6' : '#555')};
-            border: none; border-radius: 6px; color: white;
-            cursor: ${alreadyUpgraded || upgradeableCards.length === 0 || gold < CARD_UPGRADE_COST ? 'not-allowed' : 'pointer'};
-            font-weight: bold; font-size: 13px; width: 100%;
-          " ${alreadyUpgraded || upgradeableCards.length === 0 || gold < CARD_UPGRADE_COST ? 'disabled' : ''}>
-            ${alreadyUpgraded ? '✓ Upgraded This Shop' : `Upgrade (${CARD_UPGRADE_COST}💰)`}
-          </button>
-        </div>
+      <div>
         <!-- Remove -->
         <div>
           <div style="color:#e74c3c;font-weight:bold;font-size:14px;margin-bottom:8px;">🗑️ Remove a Card (${CARD_REMOVE_COST}💰)</div>
           ${removeSelectHTML}
           <button id="shop-card-remove-btn" style="
             padding: 10px 16px;
-            background: ${alreadyRemoved ? '#555' : (gold >= CARD_REMOVE_COST && deckCards.length > 0 ? '#e74c3c' : '#555')};
+            background: ${alreadyRemoved ? '#555' : (gold >= CARD_REMOVE_COST && allDeckCards.length > 0 ? '#e74c3c' : '#555')};
             border: none; border-radius: 6px; color: white;
-            cursor: ${alreadyRemoved || deckCards.length === 0 || gold < CARD_REMOVE_COST ? 'not-allowed' : 'pointer'};
+            cursor: ${alreadyRemoved || allDeckCards.length === 0 || gold < CARD_REMOVE_COST ? 'not-allowed' : 'pointer'};
             font-weight: bold; font-size: 13px; width: 100%;
-          " ${alreadyRemoved || deckCards.length === 0 || gold < CARD_REMOVE_COST ? 'disabled' : ''}>
+          " ${alreadyRemoved || allDeckCards.length === 0 || gold < CARD_REMOVE_COST ? 'disabled' : ''}>
             ${alreadyRemoved ? '✓ Removed This Shop' : `Remove (${CARD_REMOVE_COST}💰)`}
           </button>
         </div>
@@ -186,27 +192,68 @@ function showShopModal(purchasedIndices = []) {
   `;
 
   // ===== CARDS FOR SALE =====
-  // Pick 2 random non-starter cards to sell in the shop
+  // 4 cards from the player's character card pool + 2 from outside that pool
   if (!gameState.currentShopCards) {
-    const cardPool = cards ? cards.filter(c => c.rarity !== 'Starter' && !c.isStatusCard && !c.isCurse) : [];
-    const shopCardCount = 2;
-    gameState.currentShopCards = [];
-    const attempts = 100;
-    for (let i = 0; i < shopCardCount; i++) {
-      let selected = null, tries = 0;
-      while (tries < attempts && cardPool.length > 0) {
-        const rarityKey = selectRandomRarity();
-        const rarityLabel = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare' }[rarityKey] || 'Common';
-        const pool = cardPool.filter(c => c.rarity === rarityLabel);
-        const candidates = pool.length > 0 ? pool : cardPool;
-        const candidate = candidates[Math.floor(Math.random() * candidates.length)];
-        if (!gameState.currentShopCards.find(c => c.name === candidate.name)) {
-          selected = candidate;
-          break;
+    const allCards = cards ? cards.filter(c => c.rarity !== 'Starter' && !c.isStatusCard && !c.isCurse && (c.type || '').toLowerCase() !== 'curse') : [];
+
+    // Determine character's card pool tag (e.g. 'ironclad', 'silent')
+    const charKey = gameState.character;
+    const charData = charKey && typeof PLAYER_CHARACTERS !== 'undefined' ? PLAYER_CHARACTERS[charKey] : null;
+    const charTag = (charData && charData.levelUpReward && charData.levelUpReward.type === 'card')
+      ? charData.levelUpReward.tag : null;
+
+    // Build the set of all known class-specific tags so the outside pool never
+    // shows another character's class cards (e.g. Claw/defect for a Silent run).
+    const _classTags = new Set(['defect']); // hardcoded extras without a character entry yet
+    if (typeof PLAYER_CHARACTERS !== 'undefined') {
+      Object.values(PLAYER_CHARACTERS).forEach(ch => {
+        if (ch.levelUpReward && ch.levelUpReward.type === 'card' && ch.levelUpReward.tag) {
+          _classTags.add(ch.levelUpReward.tag);
         }
-        tries++;
+      });
+    }
+
+    const inPool  = charTag ? allCards.filter(c => Array.isArray(c.tags) && c.tags.includes(charTag)) : allCards;
+    // Outside pool: not in character's class AND not in any other class-specific pool
+    const outPool = charTag
+      ? allCards.filter(c => {
+          const tags = Array.isArray(c.tags) ? c.tags : [];
+          return !tags.includes(charTag) && !tags.some(t => _classTags.has(t));
+        })
+      : [];
+
+    const pickRandom = (pool, count, alreadyPicked) => {
+      const picked = [];
+      const attempts = 100;
+      for (let i = 0; i < count; i++) {
+        let selected = null, tries = 0;
+        while (tries < attempts && pool.length > 0) {
+          const rarityKey = selectRandomRarity();
+          const rarityLabel = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare' }[rarityKey] || 'Common';
+          const rarityPool = pool.filter(c => c.rarity === rarityLabel);
+          const candidates = rarityPool.length > 0 ? rarityPool : pool;
+          const candidate = candidates[Math.floor(Math.random() * candidates.length)];
+          if (!alreadyPicked.find(c => c.name === candidate.name) && !picked.find(c => c.name === candidate.name)) {
+            selected = candidate;
+            break;
+          }
+          tries++;
+        }
+        if (selected) picked.push(selected);
       }
-      if (selected) gameState.currentShopCards.push(selected);
+      return picked;
+    };
+
+    gameState.currentShopCards = [];
+    const fromPool = pickRandom(inPool, 4, []);
+    gameState.currentShopCards.push(...fromPool);
+    if (outPool.length > 0) {
+      const fromOutside = pickRandom(outPool, 2, fromPool);
+      gameState.currentShopCards.push(...fromOutside);
+    } else {
+      // No distinct outside pool (character has no tag) — fill remaining from general pool
+      const extra = pickRandom(allCards, 2, fromPool);
+      gameState.currentShopCards.push(...extra);
     }
   }
   const shopCards = gameState.currentShopCards || [];
@@ -222,7 +269,7 @@ function showShopModal(purchasedIndices = []) {
     shopCardsHTML = `
       <div style="background:#2d2d2d;border-radius:12px;border:3px solid #9b59b6;padding:20px;margin-bottom:20px;">
         <h3 style="color:#9b59b6;margin-top:0;text-align:center;font-size:18px;">🃏 Cards for Sale</h3>
-        <div style="display:grid;grid-template-columns:repeat(${shopCards.length},1fr);gap:15px;">
+        <div style="display:grid;grid-template-columns:repeat(${Math.min(shopCards.length, 3)},1fr);gap:12px;">
     `;
     shopCards.forEach((card, idx) => {
       const isPurchased = purchasedCardIndices.includes(idx);
@@ -432,14 +479,15 @@ function showShopModal(purchasedIndices = []) {
   `);
 
   document.querySelectorAll('.shop-buy-btn').forEach(btn => {
-    btn.onclick = (e) => {
-      const itemIndex = parseInt(e.target.dataset.index);
-      const price = parseInt(e.target.dataset.price);
+    btn.onclick = () => {
+      const itemIndex = parseInt(btn.dataset.index);
+      const price = parseInt(btn.dataset.price);
       const item = shopItems[itemIndex];
 
       if (gold >= price) {
         gold -= price;
         gameState.gold = gold;
+        _keepersSackCheck(price);
         acquireItem(item);
 
         // Auto-equip weapon if no weapon is equipped
@@ -447,7 +495,6 @@ function showShopModal(purchasedIndices = []) {
           const weaponIndex = inventory.findIndex(i => i.name === item.name);
           if (weaponIndex !== -1 && typeof equipWeapon === 'function') {
             equipWeapon(weaponIndex);
-            console.log(`Auto-equipped weapon: ${item.name}`);
           }
         }
 
@@ -455,61 +502,41 @@ function showShopModal(purchasedIndices = []) {
         purchasedIndices.push(itemIndex);
 
         // Check for Curse of Frugality and remove only ONE after first purchase
-        let curseWasRemoved = false;
         const frugalityCurses = getCursesByType('frugality');
         if (frugalityCurses.length > 0) {
-          // Remove only the first frugality curse
           const curseIndex = gameState.activeCurses.indexOf(frugalityCurses[0]);
           if (curseIndex !== -1) {
             gameState.activeCurses.splice(curseIndex, 1);
-            curseWasRemoved = true;
             updateCurseUI();
           }
         }
 
         saveCurrentGame();
-
-        // If curse was removed, refresh the shop to show normal prices
-        if (curseWasRemoved) {
-          setTimeout(() => {
-            showShopModal(purchasedIndices);
-          }, 100);
-        } else {
-          // Otherwise just update button state
-          e.target.textContent = '✓ Purchased';
-          e.target.disabled = true;
-          e.target.style.background = '#555';
-          e.target.parentElement.style.opacity = '0.5';
-        }
+        showShopModal(purchasedIndices);
       }
     };
   });
 
-  // Card upgrade button handler
-  const cardUpgradeBtn = document.getElementById('shop-card-upgrade-btn');
-  if (cardUpgradeBtn && gameState.shopUpgradesUsed === 0) {
-    cardUpgradeBtn.onclick = () => {
-      const sel = document.getElementById('shop-card-upgrade-select');
-      if (!sel || sel.value === '') {
-        createNotification('Select a card to upgrade first.', '#888', '⬆️');
-        return;
-      }
-      const cardIdx = parseInt(sel.value);
-      if (isNaN(cardIdx) || gold < CARD_UPGRADE_COST) return;
-      const deckFiltered = (gameState.deck || []).filter(c => !c.isStatusCard);
-      if (cardIdx >= deckFiltered.length) return;
-      const realIdx = (gameState.deck || []).indexOf(deckFiltered[cardIdx]);
-      if (typeof upgradeCardInDeck === 'function' && upgradeCardInDeck(realIdx)) {
-        gold -= CARD_UPGRADE_COST;
-        gameState.gold = gold;
-        gameState.shopUpgradesUsed++;
-        saveCurrentGame();
-        showShopModal(purchasedIndices);
-      }
-    };
-  }
-
   // Card remove button handler
+  // Re-build allDeckCards inside handler (same logic as above) so indices are consistent
+  const getAllDeckCardsForHandlers = () => {
+    const cKey = gameState.character;
+    const cData = cKey && typeof PLAYER_CHARACTERS !== 'undefined' ? PLAYER_CHARACTERS[cKey] : null;
+    const sEntries = (cData && cData.startingDeck) ? cData.startingDeck : [];
+    const remSt = gameState.removedStartingCards || {};
+    const starters = [];
+    sEntries.forEach(entry => {
+      const tmpl = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
+      if (!tmpl || tmpl.isStatusCard) return;
+      const total = entry.count || 1;
+      const removed = remSt[entry.cardName] || 0;
+      for (let i = 0; i < total - removed; i++) {
+        starters.push({ ...tmpl, _isStarting: true, _startingName: entry.cardName });
+      }
+    });
+    return [...starters, ...(gameState.deck || []).filter(c => !c.isStatusCard)];
+  };
+
   const cardRemoveBtn = document.getElementById('shop-card-remove-btn');
   if (cardRemoveBtn && gameState.shopRemovesUsed === 0) {
     cardRemoveBtn.onclick = () => {
@@ -520,13 +547,21 @@ function showShopModal(purchasedIndices = []) {
       }
       const cardIdx = parseInt(sel.value);
       if (isNaN(cardIdx) || gold < CARD_REMOVE_COST) return;
-      const deckFiltered = (gameState.deck || []).filter(c => !c.isStatusCard);
-      if (cardIdx >= deckFiltered.length) return;
-      const realIdx = (gameState.deck || []).indexOf(deckFiltered[cardIdx]);
+      const allCards = getAllDeckCardsForHandlers();
+      if (cardIdx >= allCards.length) return;
+      const card = allCards[cardIdx];
       gold -= CARD_REMOVE_COST;
       gameState.gold = gold;
+      _keepersSackCheck(CARD_REMOVE_COST);
       gameState.shopRemovesUsed++;
-      if (typeof removeCardFromDeck === 'function') removeCardFromDeck(realIdx);
+      if (card._isStarting) {
+        // Remove a starter card: track via removedStartingCards
+        if (!gameState.removedStartingCards) gameState.removedStartingCards = {};
+        gameState.removedStartingCards[card._startingName] = (gameState.removedStartingCards[card._startingName] || 0) + 1;
+      } else {
+        const realIdx = (gameState.deck || []).indexOf(card);
+        if (typeof removeCardFromDeck === 'function') removeCardFromDeck(realIdx);
+      }
       saveCurrentGame();
       showShopModal(purchasedIndices);
     };
@@ -534,14 +569,15 @@ function showShopModal(purchasedIndices = []) {
 
   // Card buy button handlers
   document.querySelectorAll('.shop-card-buy-btn').forEach(btn => {
-    btn.onclick = (e) => {
-      const cardIndex = parseInt(e.target.dataset.cardIndex);
-      const price = parseInt(e.target.dataset.price);
+    btn.onclick = () => {
+      const cardIndex = parseInt(btn.dataset.cardIndex);
+      const price = parseInt(btn.dataset.price);
       if (isNaN(cardIndex) || gold < price) return;
       const card = shopCards[cardIndex];
       if (!card) return;
       gold -= price;
       gameState.gold = gold;
+      _keepersSackCheck(price);
       if (!gameState.purchasedShopCards) gameState.purchasedShopCards = [];
       gameState.purchasedShopCards.push(cardIndex);
       if (typeof addCardToDeck === 'function') addCardToDeck(card);
@@ -560,6 +596,7 @@ function showShopModal(purchasedIndices = []) {
         gold -= rerollCost;
         gameState.reroll = reroll;
         gameState.gold = gold;
+        _keepersSackCheck(rerollCost);
 
         // Increment reroll counter for next reroll
         gameState.shopRerollCount++;

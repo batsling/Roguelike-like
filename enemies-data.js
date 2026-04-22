@@ -6,7 +6,7 @@ var ENEMIES_DATA = [
     "name": "Lemurian",
     "type": "Strength",
     "difficulty": "Low",
-    "weight": 1,
+    "weight": 2,
     "hpMin": 30,
     "hpMax": 34,
     "ability": "Stagger 33%",
@@ -40,7 +40,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Lemurian.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Stone Golem",
@@ -50,7 +51,7 @@ var ENEMIES_DATA = [
     "hpMin": 64,
     "hpMax": 70,
     "ability": "Stagger 33%",
-    "pattern": "Turn 1: Unknown Intent (\"Charging\") | Turn 2: 50% 10 Dmg Ranged / 50% 7 Dmg Melee 2 Vulnerable | Next: Repeat",
+    "pattern": "Turn 1: Unknown Intent (\"Charging\") | Turn 2: 50% 20 Dmg Ranged / 50% 10 Dmg Melee 3 Vulnerable | Next: Repeat",
     "game": "Risk of Rain",
     "location": "General",
     "dice": [
@@ -80,15 +81,16 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/StoneGolem.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Elder Lemurian",
     "type": "Strength",
     "difficulty": "High",
     "weight": 7,
-    "hpMin": 200,
-    "hpMax": 220,
+    "hpMin": 150,
+    "hpMax": 160,
     "ability": "Stagger 33%",
     "pattern": "Always: 50% 3x5 Dmg Ranged / 50% 8 Dmg Melee 5 Burn",
     "game": "Risk of Rain",
@@ -120,7 +122,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/ElderLemurian.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Pacer",
@@ -160,13 +163,14 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Pacer.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Gaper",
     "type": "Strength",
     "difficulty": "Low",
-    "weight": 1,
+    "weight": 2,
     "hpMin": 20,
     "hpMax": 24,
     "ability": "When Defeated, 60% Spawn Pacer / 40% Spawn Gusher",
@@ -200,7 +204,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Gaper.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Gusher",
@@ -240,7 +245,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Gusher.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Double Vis",
@@ -280,7 +286,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/DoubleVis.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Tainted Pooter",
@@ -320,7 +327,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/TaintedPooter.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "bug"
   },
   {
     "name": "Mung",
@@ -360,7 +368,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Mung.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Mud Lung",
@@ -400,15 +409,16 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/MudLung.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Mungling Mud Lung",
     "type": "Intelligence",
     "difficulty": "Low",
     "weight": 3,
-    "hpMin": 48,
-    "hpMax": 54,
+    "hpMin": 40,
+    "hpMax": 44,
     "ability": "Pigment Rich / Multi Attack 2 / When Defeated, 50% chance to Spawn Mung",
     "pattern": "Always: 41% 6 Dmg Melee /  29% Consume 1 random Pigment Status card in Any for 3 Power, 6 Block / 30% 4 Pain, Spawn Mungie",
     "game": "Brutal Orchestra",
@@ -440,7 +450,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/MunglingMudLung.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Mungie",
@@ -480,7 +491,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Mungie.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Revola",
@@ -520,7 +532,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Revola.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Revola (Standing)",
@@ -530,7 +543,7 @@ var ENEMIES_DATA = [
     "hpMin": 130,
     "hpMax": 140,
     "ability": "Pigment Rich / Forgetful / Barricade",
-    "pattern": "Always: 77% 9 Dmg Melee, Inflict 3 Ruptured, 20 Block, Alter Revola, Lose All Enfeebled / 23% Unknown Intent (\"Stood up too fast, got a headrush\")",
+    "pattern": "Always: 77% 9 Dmg Melee, Inflict 3 Ruptured, 20 Block, Alter Revola, Lose All Frail / 23% Unknown Intent (\"Stood up too fast, got a headrush\")",
     "game": "Brutal Orchestra",
     "location": "Watery",
     "dice": [
@@ -560,7 +573,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/RevolaStanding.png",
-    "variantOf": "Revola"
+    "variantOf": "Revola",
+    "tag": null
   },
   {
     "name": "Skinning Homunculus",
@@ -600,13 +614,14 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/SkinningHomunculus.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Hobgoblin",
     "type": "Dexterity",
     "difficulty": "Low",
-    "weight": 1,
+    "weight": 2,
     "hpMin": 30,
     "hpMax": 34,
     "ability": "Rerollable",
@@ -640,7 +655,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Hobgoblin.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "goblin"
   },
   {
     "name": "Aquator",
@@ -680,7 +696,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Aquator.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Troll",
@@ -720,7 +737,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Troll.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Dragon",
@@ -760,7 +778,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Dragon.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "dragon"
   },
   {
     "name": "Cultist",
@@ -770,7 +789,7 @@ var ENEMIES_DATA = [
     "hpMin": 48,
     "hpMax": 54,
     "ability": "N/A",
-    "pattern": "Turn 1: Get 3 Ritual | Next: 6 Dmg Melee",
+    "pattern": "Turn 1: Gain 3 Ritual | Next: 6 Dmg Melee",
     "game": "Slay the Spire",
     "location": "General",
     "dice": [
@@ -800,7 +819,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Cultist.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Snecko",
@@ -840,7 +860,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Snecko.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Transient",
@@ -880,7 +901,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Transient.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Bones",
@@ -920,7 +942,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Bones.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "undead, skeleton"
   },
   {
     "name": "Fanatic",
@@ -960,15 +983,16 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Fanatic.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Spiker",
     "type": "Intelligence",
     "difficulty": "High",
     "weight": 3,
-    "hpMin": 48,
-    "hpMax": 54,
+    "hpMin": 60,
+    "hpMax": 66,
     "ability": "3 Thorns",
     "pattern": "Always: 60% 15 Dmg Melee / 40% 10 Dmg Ranged, Gain 1 Thorns",
     "game": "Slice & Dice",
@@ -1000,7 +1024,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/Spiker.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Jaw Worm",
@@ -1040,7 +1065,8 @@ var ENEMIES_DATA = [
       }
     ],
     "imageUrl": "images/enemies/JawWorm.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": null
   },
   {
     "name": "Red Louse",
@@ -1054,15 +1080,34 @@ var ENEMIES_DATA = [
     "game": "Slay the Spire",
     "location": "General",
     "dice": [
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] }
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
     ],
     "imageUrl": "images/enemies/RedLouse.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "bug"
   },
   {
     "name": "Green Louse",
@@ -1076,15 +1121,34 @@ var ENEMIES_DATA = [
     "game": "Slay the Spire",
     "location": "General",
     "dice": [
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] }
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
     ],
     "imageUrl": "images/enemies/GreenLouse.png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "bug"
   },
   {
     "name": "Acid Slime (L)",
@@ -1098,15 +1162,34 @@ var ENEMIES_DATA = [
     "game": "Slay the Spire",
     "location": "General",
     "dice": [
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] }
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
     ],
     "imageUrl": "images/enemies/AcidSlime(L).png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "slime"
   },
   {
     "name": "Acid Slime (M)",
@@ -1120,15 +1203,34 @@ var ENEMIES_DATA = [
     "game": "Slay the Spire",
     "location": "General",
     "dice": [
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] }
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
     ],
     "imageUrl": "images/enemies/AcidSlime(M).png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "slime"
   },
   {
     "name": "Acid Slime (S)",
@@ -1142,15 +1244,34 @@ var ENEMIES_DATA = [
     "game": "Slay the Spire",
     "location": "General",
     "dice": [
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] }
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
     ],
     "imageUrl": "images/enemies/AcidSlime(S).png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "slime"
   },
   {
     "name": "Spike Slime (L)",
@@ -1164,15 +1285,34 @@ var ENEMIES_DATA = [
     "game": "Slay the Spire",
     "location": "General",
     "dice": [
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] }
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
     ],
     "imageUrl": "images/enemies/SpikeSlime(L).png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "slime"
   },
   {
     "name": "Spike Slime (M)",
@@ -1186,15 +1326,34 @@ var ENEMIES_DATA = [
     "game": "Slay the Spire",
     "location": "General",
     "dice": [
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] }
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
     ],
     "imageUrl": "images/enemies/SpikeSlime(M).png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "slime"
   },
   {
     "name": "Spike Slime (S)",
@@ -1208,14 +1367,115 @@ var ENEMIES_DATA = [
     "game": "Slay the Spire",
     "location": "General",
     "dice": [
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] },
-      { "isBlank": true, "effects": [] }
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
     ],
     "imageUrl": "images/enemies/SpikeSlime(S).png",
-    "variantOf": null
+    "variantOf": null,
+    "tag": "slime"
+  },
+  {
+    "name": "Scary",
+    "type": "Intelligence",
+    "difficulty": "High",
+    "weight": 1,
+    "hpMin": 20,
+    "hpMax": 24,
+    "ability": "N/A",
+    "pattern": "Always: 50% Inflict 10 Doom / 50% Inflict 2 Fear",
+    "game": "Mewgenics",
+    "location": "Undead",
+    "dice": [
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
+    ],
+    "imageUrl": "images/enemies/Scary.png",
+    "variantOf": null,
+    "tag": "undead, ghost"
+  },
+  {
+    "name": "Fly",
+    "type": "Intelligence",
+    "difficulty": "Low",
+    "weight": 0.5,
+    "hpMin": 4,
+    "hpMax": 6,
+    "ability": "N/A",
+    "pattern": "Always: 2 Dmg Melee",
+    "game": "Mewgenics",
+    "location": "N/A",
+    "dice": [
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      },
+      {
+        "isBlank": true,
+        "effects": []
+      }
+    ],
+    "imageUrl": "images/enemies/Fly.png",
+    "variantOf": null,
+    "tag": "bug"
   }
 ];

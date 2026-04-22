@@ -40,6 +40,7 @@ function createNotification(text, bgColor = '#8B4513', emoji = '') {
 
 // Update a stat and sync it with gameState
 function updateStat(statName, change) {
+  const preChangeValue = (typeof window[statName] !== 'undefined' ? window[statName] : 0) || 0;
   const statMap = {
     strength: () => { strength += change; gameState.strength = strength; },
     dexterity: () => { dexterity += change; gameState.dexterity = dexterity; },
@@ -52,14 +53,39 @@ function updateStat(statName, change) {
     fov: () => { fov += change; gameState.fov = fov; },
     luck: () => { luck += change; gameState.luck = luck; },
     block: () => {
-      // Block is not a persistent player stat - it's only tracked as an item modifier
-      // The actual block effect is applied during combat via the item's statModifiers
       console.log(`Block modifier changed by ${change} (item-specific, not a player stat)`);
     }
   };
 
   statMap[statName]?.();
+  enforceRockBottom(statName, preChangeValue);
   if (typeof updateGameStats === 'function') updateGameStats();
+}
+
+const _ROCK_BOTTOM_STATS = ['strength', 'dexterity', 'intelligence', 'charisma', 'fov', 'discovery', 'luck'];
+
+// Rock Bottom: prevent tracked stats from falling below their historical peak.
+// preChangeValue is the stat's value BEFORE the current change (used to seed the floor on first call).
+function enforceRockBottom(statName, preChangeValue) {
+  if (!_ROCK_BOTTOM_STATS.includes(statName)) return;
+  if (!inventory || !inventory.some(i => i.name === 'Rock Bottom')) return;
+
+  if (!gameState.rockBottomBests) gameState.rockBottomBests = {};
+
+  // Seed the floor from the pre-change value the first time this stat is tracked
+  if (gameState.rockBottomBests[statName] === undefined) {
+    gameState.rockBottomBests[statName] = preChangeValue;
+  }
+
+  const best = gameState.rockBottomBests[statName];
+  const current = (typeof window[statName] !== 'undefined' ? window[statName] : 0) || 0;
+
+  if (current > best) {
+    gameState.rockBottomBests[statName] = current;
+  } else if (current < best) {
+    window[statName] = best;
+    if (statName in gameState) gameState[statName] = best;
+  }
 }
 
 // ===== SCALABLE PASSIVE ITEM SYSTEM =====
@@ -248,7 +274,7 @@ const ITEM_EFFECTS = {
 
   "D6": {
     onAcquire: () => {
-      StateMutator.modifyAbility('reroll', 1);
+      StateMutator.modifyAbility('reroll', 2);
     }
   },
 
@@ -279,6 +305,23 @@ const ITEM_EFFECTS = {
   "Vajra": {
     onAcquire: () => {
       StateMutator.modifyStat('strength', 3);
+    }
+  },
+
+  "Glass Eye": {
+    onAcquire: () => {
+      StateMutator.modifyStat('strength', 2);
+      luck += 1;
+      gameState.luck = luck;
+    }
+  },
+
+  "Keeper's Sack": {
+    onAcquire: () => {
+      gold = (gold || 0) + 5;
+      if (typeof gameState !== 'undefined') gameState.gold = gold;
+      if (typeof updateTopBar === 'function') updateTopBar();
+      if (typeof createNotification === 'function') createNotification("Keeper's Sack: +5 Gold!", '#f1c40f', '💰');
     }
   },
 
@@ -351,15 +394,10 @@ const ITEM_EFFECTS = {
       // Count all copies in inventory
       const copies = inventory.filter(i => i.name === 'Charm of the Vampire').length;
 
-      // 50% base chance + (5% * luck) - same chance regardless of copies
-      const baseChance = 0.50;
-      const luckBonus = (luck || 0) * 0.05;
-      const totalChance = baseChance + luckBonus;
+      // 50% base chance; luck grants MIN-advantage (10% per luck point chance to roll twice, take lower)
+      const roll = rollWithLuckAdvantage(undefined, false);
 
-      const roll = Math.random();
-      console.log(`Charm of the Vampire (x${copies}): rolled ${roll.toFixed(2)} vs ${totalChance.toFixed(2)} chance`);
-
-      if (roll < totalChance) {
+      if (roll < 0.5) {
         // Heal +1 health per copy (can't exceed max health)
         const healAmount = copies;
         const result = StateMutator.modifyHealth(healAmount);
@@ -698,7 +736,16 @@ const ITEM_EFFECTS = {
           return;
         }
 
-        // Multiple targets — show selection modal
+        // Multiple targets — show an overlay inside the existing combat modal
+        const overlay = document.createElement('div');
+        overlay.id = 'fire-potion-overlay';
+        overlay.style.cssText = `
+          position:absolute; inset:0; z-index:999;
+          background:rgba(0,0,0,0.82);
+          display:flex; align-items:center; justify-content:center;
+          border-radius:inherit;
+        `;
+
         const targetsHTML = living.map((e, idx) => `
           <button onclick="window._firePotionApply(${idx})" style="
             display:flex; align-items:center; gap:12px;
@@ -712,24 +759,31 @@ const ITEM_EFFECTS = {
           </button>
         `).join('');
 
+        overlay.innerHTML = `
+          <div style="padding:24px; min-width:320px; max-width:420px; background:#1a1a2e; border-radius:12px; border:1px solid #e74c3c;">
+            <h3 style="color:#e74c3c; text-align:center; margin-top:0;">🔥 Fire Potion — Choose Target</h3>
+            <p style="color:#aaa; text-align:center; font-size:13px; margin-bottom:16px;">Deals ${damage} damage to one enemy.</p>
+            ${targetsHTML}
+            <button onclick="document.getElementById('fire-potion-overlay')?.remove(); delete window._firePotionApply;" style="
+              width:100%; padding:10px; background:#444; border:none; border-radius:6px;
+              color:#aaa; cursor:pointer; margin-top:4px;
+            ">Cancel</button>
+          </div>
+        `;
+
         window._firePotionApply = (idx) => {
           delete window._firePotionApply;
-          if (typeof closeGameModal === 'function') closeGameModal();
+          document.getElementById('fire-potion-overlay')?.remove();
           applyFirePotionToEnemy(newCombatState, living[idx]);
         };
 
-        if (typeof createGameModal === 'function') {
-          createGameModal(`
-            <div style="padding:24px; min-width:320px;">
-              <h3 style="color:#e74c3c; text-align:center; margin-top:0;">🔥 Fire Potion — Choose Target</h3>
-              <p style="color:#aaa; text-align:center; font-size:13px; margin-bottom:16px;">Deals ${damage} damage to one enemy.</p>
-              ${targetsHTML}
-              <button onclick="delete window._firePotionApply; closeGameModal();" style="
-                width:100%; padding:10px; background:#444; border:none; border-radius:6px;
-                color:#aaa; cursor:pointer; margin-top:4px;
-              ">Cancel</button>
-            </div>
-          `);
+        const combatModal = document.getElementById('dice-combat-modal');
+        const parent = combatModal ? combatModal.parentElement : document.body;
+        if (parent && combatModal) {
+          combatModal.style.position = 'relative';
+          combatModal.appendChild(overlay);
+        } else {
+          document.body.appendChild(overlay);
         }
         return;
       }
@@ -790,7 +844,7 @@ const ITEM_EFFECTS = {
       if (health <= maxHealth / 2) {
         // Count copies for stacking
         const copies = inventory.filter(i => i.name === 'Meat on the Bone').length;
-        const healAmount = 3 * copies;
+        const healAmount = 12 * copies;
 
         StateMutator.modifyHealth(healAmount);
         console.log(`Meat on the Bone${copies > 1 ? ` x${copies}` : ''}: Healed ${healAmount} HP (HP was at 50% or below)`);
@@ -798,6 +852,18 @@ const ITEM_EFFECTS = {
         if (typeof createNotification === 'function') {
           createNotification(`Meat on the Bone: +${healAmount} Health`, '#66bb6a', '🍖');
         }
+      }
+    }
+  },
+
+  "Burning Blood": {
+    onCombatEnd: (combatState) => {
+      const copies = inventory.filter(i => i.name === 'Burning Blood').reduce((n, i) => n + (i.quantity || 1), 0);
+      const heal = 6 * copies;
+      StateMutator.modifyHealth(heal);
+      console.log(`Burning Blood x${copies}: +${heal} Health`);
+      if (typeof createNotification === 'function') {
+        createNotification(`Burning Blood: +${heal} Health`, '#e74c3c', '🩸');
       }
     }
   },
@@ -1060,7 +1126,7 @@ const ITEM_EFFECTS = {
         const tmpl = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
         if (tmpl && (tmpl.type || '').toLowerCase() === 'skill' && tmpl.upgradedDescription) {
           const total = entry.count || 1;
-          const alreadyUpgraded = getUpgradedStartingCount(upgradedStarting, entry.cardName, total);
+          const alreadyUpgraded = Math.min(upgradedStarting[entry.cardName] || 0, total);
           const remaining = total - alreadyUpgraded;
           for (let i = 0; i < remaining; i++) pool.push({ _isStarting: true, name: tmpl.name });
         }
@@ -1088,6 +1154,8 @@ const ITEM_EFFECTS = {
       if (names.length > 0) {
         createNotification(`War Paint: upgraded ${names.join(', ')}!`, COLORS.SUCCESS, '🎨');
         saveCurrentGame();
+      } else {
+        createNotification('War Paint: no upgradeable Skill cards found.', COLORS.WARNING, '🎨');
       }
     }
   },
@@ -1908,6 +1976,34 @@ function triggerOnEnemyDefeated() {
 }
 
 /**
+ * Trigger onCombatEnd effects for all items in inventory that have this trigger
+ * Call this function when the player wins a combat encounter
+ */
+function triggerOnCombatEnd(combatState) {
+  if (!inventory || inventory.length === 0) {
+    return;
+  }
+
+  console.log('Triggering onCombatEnd effects...');
+
+  // Track which item names have already been processed to avoid double-triggering
+  // when stacking is handled inside the effect itself
+  const processed = new Set();
+
+  inventory.forEach(item => {
+    if (!item || !item.name) return;
+    if (processed.has(item.name)) return;
+
+    const itemEffects = ITEM_EFFECTS[item.name];
+    if (itemEffects && typeof itemEffects.onCombatEnd === 'function') {
+      console.log(`Triggering ${item.name} onCombatEnd effect`);
+      itemEffects.onCombatEnd(combatState);
+      processed.add(item.name);
+    }
+  });
+}
+
+/**
  * Trigger onCurseAdded effects for all items in inventory that have this trigger
  * Call this function when the player obtains a new curse
  */
@@ -2532,6 +2628,7 @@ window.selectedTeleport = selectedTeleport; // Selected teleport with filters
 window.teleportToRandomGame = teleportToRandomGame;
 window.teleportToRandomDeckbuilder = teleportToRandomDeckbuilder;
 window.triggerOnEnemyDefeated = triggerOnEnemyDefeated; // Trigger onEnemyDefeated effects
+window.triggerOnCombatEnd = triggerOnCombatEnd; // Trigger onCombatEnd effects
 window.triggerOnCurseAdded = triggerOnCurseAdded; // Trigger onCurseAdded effects
 window.triggerOnCurseRemoved = triggerOnCurseRemoved; // Trigger onCurseRemoved effects
 window.triggerOnGameBeaten = triggerOnGameBeaten; // Trigger onGameBeaten effects

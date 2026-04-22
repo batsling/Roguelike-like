@@ -63,6 +63,34 @@ The codebase is organized into focused, maintainable modules. See [js/README.md]
 
 ## Recent Updates
 
+### Version 6.2 - Pre-Combat Event System (April 2026)
+
+**New Event System:**
+- Every combat encounter is now preceded by a pre-combat event with meaningful choices
+- Two-roll D20 mechanics: Roll 1 = success check (D20 + stat vs difficulty), Roll 2 = critical check (D20 vs 18 — need 18, 19, or 20)
+- Luck advantage: each Luck point gives 10% chance to roll two dice and take the best, checked independently per roll
+- Difficulty thresholds scale with location: Easy = 11, Medium = 13, Hard = 15
+- Click-to-roll visual UI: player sees threshold needed, clicks die(s) to roll with spin animation
+- Event image + player full image shown side-by-side on the choice screen
+
+**New Combat Statuses:**
+- **Fear**: non-Attack cards cost +1 energy; lose 1 Fear stack each time an Attack card is played
+- **Blind**: 30% miss chance on attacks; "MISS!" floating popup appears over the target on a miss
+
+**New Combat Flags:**
+- **Ambush**: player draws +2 extra cards on the first turn of the next combat
+- **Ambushed**: player draws 2 fewer cards on the first turn of the next combat
+
+**First Event — Watching Eyeballs (Mewgenics):**
+- Three choices: Sneak By (Dexterity), Examine (Intelligence), Bash (Strength)
+- 12 outcomes total covering ambush, fear, blind, gold, items, and Curse of Ocular Trauma
+
+**Adding Events:**
+- No code changes required — add an entry with an `image` property to `events-data.js` and it appears automatically
+- See the [Events System](#events-system) section for the full guide and effect type reference
+
+---
+
 ### Version 6.1 - Advanced Enemy Mechanics (March 2026)
 
 **Pattern-Based Execution (all enemies):**
@@ -361,7 +389,7 @@ Displays all 532 games in an alphabetical grid format:
 
 #### Items Tab
 
-Displays all 22 items with visual representations:
+Displays all items with visual representations:
 
 **Features:**
 - **Item Images**: Local PNG images from `images/items/`
@@ -740,7 +768,6 @@ After beating each game, a combined verification modal appears showing all activ
 - Dev tools for testing
 
 **Removing Curses:**
-- Use the Lucky Toe item (consume for +1 luck)
 - Curses self-remove when triggered/consumed
 - Dev tools "Clear All Curses" button
 
@@ -892,560 +919,365 @@ getGamesWithStatus(statusName)
 
 ### Overview
 
-Events are special encounters that offer meaningful choices and can lead to teleportation, item trading, or combat scenarios. The event system features a requirement system, multi-stage event flows, and integration with the generic combat system.
+Every combat encounter is preceded by a **pre-combat event** — a short encounter where the player makes a meaningful choice before fighting. Events use a two-roll D20 system and are defined entirely in `events-data.js` with no code changes needed.
 
-**Key Features:**
-- Event requirement validation (inventory checks, etc.)
-- Multi-stage events with state tracking
-- Generic combat integration for event-triggered fights
-- Teleportation without encounter triggers
-- Player choice modals with detailed option descriptions
+**How the flow works:**
+1. Player clicks a combat node on the map
+2. Event modal appears — shows an image, flavour text, and 2–4 choice buttons
+3. Player picks a choice → rolls D20 + stat vs difficulty threshold → rolls D20 for critical
+4. Outcome is shown (description + effect summary)
+5. Player clicks **Continue to Combat** → combat starts
+
+**Roll system:**
+- **Roll 1 (Success check):** D20 + your stat ≥ difficulty (11 Easy / 13 Medium / 15 Hard)
+- **Roll 2 (Critical check):** D20 ≥ 18 — need an 18, 19, or 20 (no stat bonus)
+- **Luck advantage:** Each Luck point gives 10% chance to roll two dice and take the best, applied independently to each roll
+- Four outcomes: `crit_good` (success + critical), `good` (success), `bad` (fail), `crit_bad` (fail + critical)
 
 ---
 
-### Event Structure
+### Adding a New Event (Step-by-Step)
 
-Events are defined in `events-data.js` and follow this structure:
+**Step 1 — Add the image**
+
+Put the event image in `images/events/YourEventName.png`. Any size works; it displays as a wide banner strip.
+
+**Step 2 — Add the event to `events-data.js`**
+
+Open `events-data.js` and paste a new entry inside the `EVENTS_DATA` array (before the closing `];`). Use this template:
 
 ```javascript
 {
-  name: "Event Name",
-  description: "Event description shown to player",
-  options: [
-    "Option 1 (Details about what happens)",
-    "Option 2 (Details about what happens)",
-    "Option 3 (Details about what happens)"
-  ],
-  requirement: {
-    type: "minItems",  // Requirement type
-    value: 4           // Requirement threshold
-  } // or null for no requirements
-}
-```
-
-### Event Requirements
-
-Events can specify requirements that must be met before appearing:
-
-**Supported Requirement Types:**
-- `minItems`: Player must have at least X items in inventory
-
-**Example:**
-```javascript
-requirement: {
-  type: "minItems",
-  value: 4
-}
-```
-
-**Implementation:**
-The `checkEventRequirement()` function validates requirements before showing events:
-```javascript
-function checkEventRequirement(event) {
-  if (!event.requirement) return true;
-
-  switch (event.requirement.type) {
-    case 'minItems':
-      return inventory.length >= event.requirement.value;
-    default:
-      return true;
-  }
-}
-```
-
-**To Add New Requirement Types:**
-1. Add new case to `checkEventRequirement()` in `js/main.js`
-2. Define requirement in event's `requirement` object
-
----
-
-### Built-in Events
-
-#### 1. **Primordial Teleporter** 🌀
-
-An ancient teleporter guarded by Stone Golems that offers three distinct paths.
-
-**Options:**
-1. **Enter the teleporter** (Teleport to random Action game)
-   - Immediately teleports to a random Action-type game
-   - No encounter triggers on arrival
-   - Quick escape option
-
-2. **Interact with the teleporter, then enter it** (Go back 3 difficulty, teleport to starting game)
-   - Reduces difficulty by removing 3 finished games from progress
-   - Teleports back to your starting game
-   - Useful for reducing difficulty when struggling
-
-3. **Fight off the Stone Golems** (Fight 3 Stone Golems in a row)
-   - Triggers 3 consecutive Stone Golem fights
-   - Each fight uses the generic combat system
-   - Success: Gain 10 gold per fight
-   - Failure: Take 2 damage per fight
-   - Cursed Slash properly triggers on victories
-
-**Implementation Details:**
-```javascript
-handlePrimordialTeleporter(optionIndex) {
-  if (optionIndex === 0) {
-    // Random Action game teleport
-    teleportToRandomGameOfType('Action');
-  } else if (optionIndex === 1) {
-    // Reduce difficulty + return to start
-    gameState.finishedGames = gameState.finishedGames.slice(0, -3);
-    advance(gameState.startGame.name, x, y, null);
-  } else if (optionIndex === 2) {
-    // 3 Stone Golem fights
-    gameState.stoneGolemFightsRemaining = 3;
-    triggerStoneGolemFight();
-  }
-}
-```
-
----
-
-#### 2. **A Wild Muncher Appears** 🟢
-
-A hungry green chest that trades items for luck-based rewards.
-
-**Requirements:**
-- Requires 4+ items in inventory to appear
-
-**Options:**
-1. **Feed it four items** (Trade 4 items for 2 items based on luck)
-   - Player selects 4 items from inventory
-   - Receives 2 items with rarity based on luck stat
-   - Higher luck = better chance at rare items
-
-2. **Feed it two items** (Trade 2 items for 1 item based on luck)
-   - Player selects 2 items from inventory
-   - Receives 1 item with rarity based on luck stat
-   - Lower investment, lower reward
-
-3. **Leave it hungry**
-   - No trade occurs
-   - Exit event with no changes
-
-**Item Selection:**
-- Modal shows all inventory items
-- Click to select/deselect items
-- Confirm button activates when exact count selected
-- Back button returns to event choices
-
-**Rarity Calculation:**
-```javascript
-function selectRandomRarity() {
-  const roll = Math.random() * 100;
-  const luckBonus = luck * 2; // Each luck point = 2% bonus
-
-  if (roll < 10 + luckBonus) return 'Legendary';
-  if (roll < 25 + luckBonus) return 'Epic';
-  if (roll < 50 + luckBonus) return 'Rare';
-  if (roll < 75) return 'Uncommon';
-  return 'Common';
-}
-```
-
-**Implementation Details:**
-```javascript
-handleWildMuncher(optionIndex) {
-  if (optionIndex === 0) {
-    showItemSelectionForMuncher(4, 2); // Trade 4 for 2
-  } else if (optionIndex === 1) {
-    showItemSelectionForMuncher(2, 1); // Trade 2 for 1
-  } else {
-    closeGameModal(); // Leave hungry
-  }
-}
-```
-
----
-
-#### 3. **The Colosseum** ⚔️
-
-A roaring arena that tests player skill through consecutive battles.
-
-**Stage 1: Initial Encounter**
-- Player is teleported to random unconnected Action game
-- Must beat the game to proceed
-- No encounter triggers on teleportation
-
-**Stage 2: The Choice** (After first victory)
-- **Escape the arena** (Return to original game)
-  - Safe exit with guaranteed item from victory
-  - Returns to game where event was triggered
-
-- **Challenge the Champion** (Fight another action game not connected to the rest of the map)
-  - Teleports to another random unconnected Action game
-  - Must beat the game, then verify attempts
-
-**Stage 3: Champion Verification** (If challenged)
-- Modal asks: "Did it take you three or less attempts?"
-- **Yes**: Receive 2 luck-based random items
-- **No**: Lose 3 health
-- Returns to original game after resolution
-
-**State Management:**
-```javascript
-gameState.colosseumState = {
-  stage: 'first_fight' | 'choice' | 'champion',
-  returnGame: gameName // Original game to return to
-}
-```
-
-**Flow Diagram:**
-```
-Event Trigger → First Fight → Beat Game → Item Choice →
-  ↓
-Show Choices Modal → Escape (return) OR Challenge Champion →
-  ↓
-Champion Fight → Beat Game → Item Choice → Attempts Verification →
-  ↓
-Rewards/Penalty → Return to Original Game
-```
-
-**Implementation Details:**
-```javascript
-handleColosseum(optionIndex) {
-  if (!gameState.colosseumState) {
-    // First encounter - start first fight
-    gameState.colosseumState = {
-      stage: 'first_fight',
-      returnGame: gameState.currentGame
-    };
-    // Teleport to unconnected game
-    const unconnectedGames = games.filter(g =>
-      !g.connected || g.name === gameState.amuletGame?.name
-    );
-    advance(randomGame.name, x, y, null);
-  } else if (gameState.colosseumState.stage === 'choice') {
-    if (optionIndex === 0) {
-      // Escape - return to original game
-      advance(returnGame.name, x, y, null);
-      delete gameState.colosseumState;
-    } else if (optionIndex === 1) {
-      // Challenge champion
-      gameState.colosseumState.stage = 'champion';
-      // Teleport to another unconnected game
+  id: 'your_event_id',          // unique, lowercase, underscores
+  name: 'Your Event Name',
+  description: '{name} walks into a situation. Something happens.',
+  image: 'images/events/YourEventName.png',
+  game: 'GameNameHere',         // optional — which game universe this belongs to
+  choices: [
+    {
+      text: 'Do the thing',
+      type: 'stat_check',
+      stat: 'strength',         // strength / dexterity / intelligence / charisma
+      outcomes: {
+        crit_good: {
+          description: '{name} does the thing perfectly!',
+          effects: [{ type: 'heal', value: 5 }]
+        },
+        good: {
+          description: '{name} does the thing well enough.',
+          effects: [{ type: 'none' }]
+        },
+        bad: {
+          description: '{name} fails to do the thing.',
+          effects: [{ type: 'combat_status', status: 'weak', stacks: 1 }]
+        },
+        crit_bad: {
+          description: '{name} fails spectacularly.',
+          effects: [{ type: 'combat_status', status: 'vulnerable', stacks: 2 }]
+        }
+      }
     }
-  }
+    // add more choices here, separated by commas
+  ]
 }
 ```
+
+That's it — no code changes. The event is automatically added to the pool and will appear before combats.
 
 ---
 
-### Generic Combat System
+### Simple Choices (No Roll)
 
-The event system includes a reusable combat function for event-triggered fights:
+Not every choice needs a dice roll. Use `type: 'simple'` for choices that always produce the same outcome:
 
-```javascript
-triggerCombat(enemy, onSuccess, onFailure, powerLevel)
-```
-
-**Parameters:**
-- `enemy` (object): Enemy data with name, stat, rollCheck, successReward, etc.
-- `onSuccess` (function|null): Callback when player wins combat
-- `onFailure` (function|null): Callback when player loses combat
-- `powerLevel` (string): 'Low', 'Medium', or 'High' for damage scaling
-
-**Features:**
-- Full integration with Cursed Slash and other triggered items
-- Consistent UI with regular combat encounters
-- Customizable success/failure behaviors
-- Automatic reward processing for gold
-
-**Example Usage:**
-```javascript
-const stoneGolem = enemies.find(e => e.name === 'Stone Golem');
-
-triggerCombat(
-  stoneGolem,
-  () => {
-    // Custom success behavior
-    createNotification('Victory!', '#4CAF50', '⚔️');
-    triggerNextFight();
-  },
-  () => {
-    // Custom failure behavior
-    createNotification('Defeated...', '#ff4444', '💀');
-    returnToEvent();
-  },
-  'Medium'
-);
-```
-
-**Combat Result Handling:**
-```javascript
-function handleGenericCombatResult(success, powerLevel) {
-  if (success) {
-    // Trigger item effects (e.g., Cursed Slash healing)
-    triggerOnEnemyDefeated();
-    // Apply rewards
-    // Call custom success callback
-  } else {
-    // Apply damage based on power level
-    const damage = powerLevel === 'Low' ? 1 :
-                   powerLevel === 'Medium' ? 2 : 3;
-    health = Math.max(0, health - damage);
-    // Call custom failure callback
-  }
-}
-```
-
----
-
-### Event Flow Management
-
-**Event Modal Display:**
-```javascript
-showEventModal(specificEvent)
-```
-- Displays event choices to player
-- Validates requirements before showing events
-- Stores current event in `gameState.currentEvent`
-- Filters available events based on requirements
-
-**Event Choice Handling:**
-```javascript
-handleEventChoice(event, option)
-```
-- Routes to specific event handler based on event name
-- Records choice in encounter history
-- Calls appropriate handler function
-
-**Multi-Stage Events:**
-Events can track state across multiple game completions using `gameState`:
-```javascript
-// Example: Colosseum tracking
-gameState.colosseumState = {
-  stage: 'first_fight',
-  returnGame: 'Starting Game Name'
-}
-
-// Check state in finished button handler
-if (gameState.colosseumState?.stage === 'first_fight') {
-  // Show item choice, then Colosseum choices
-  showItemChoiceModal(() => {
-    gameState.colosseumState.stage = 'choice';
-    showColosseumChoices();
-  });
-}
-```
-
-**Teleportation Without Encounters:**
-All event teleportations pass `null` as encounterType to skip combat/shop/event:
-```javascript
-advance(gameName, x, y, null); // null = skip encounter
-```
-
----
-
-### Creating New Events
-
-**Step 1: Define Event Data**
-
-Add event to `events-data.js`:
 ```javascript
 {
-  name: "Mysterious Merchant",
-  description: "A hooded figure offers strange wares...",
-  options: [
-    "Buy random item (10 gold)",
-    "Sell an item (5 gold)",
-    "Ignore merchant"
-  ],
-  requirement: {
-    type: "minGold",
-    value: 10
+  text: 'Walk away',
+  type: 'simple',
+  outcome: {
+    description: 'You decide it isn\'t worth it.',
+    effects: [{ type: 'none' }]
   }
 }
 ```
 
-**Step 2: Add Requirement Validation** (if needed)
+Simple choices have a **blue** left border (stat-check choices have orange). They skip both roll screens and go directly to the outcome screen.
 
-Update `checkEventRequirement()` in `js/main.js`:
+---
+
+### Full Effect Type Reference
+
+Paste any of these into an outcome's `effects` array (it's always an array, even with one effect):
+
+#### Nothing
 ```javascript
-case 'minGold':
-  return gold >= event.requirement.value;
+{ type: 'none' }
 ```
 
-**Step 3: Create Event Handler**
-
-Add handler function in `js/main.js`:
+#### Heal HP (flat)
 ```javascript
-function handleMysteriousMerchant(optionIndex) {
-  if (optionIndex === 0) {
-    // Buy item
-    if (gold >= 10) {
-      gold -= 10;
-      const randomItem = items[Math.floor(Math.random() * items.length)];
-      acquireItem(randomItem);
-      closeGameModal();
+{ type: 'heal', value: 5 }   // restore 5 HP (capped at max)
+```
+
+#### Heal HP (percentage of max)
+```javascript
+{ type: 'heal_percent', value: 50 }  // restore 50% of max HP
+{ type: 'heal_percent', value: 20 }  // restore 20% of max HP
+```
+Heals `round(maxHP × value/100)`, capped at missing HP.
+
+#### Spawn enemies in next fight (on top of weight limit)
+```javascript
+{ type: 'spawn_enemies', enemy: 'Fly', min: 6, max: 8 }
+```
+Adds `min`–`max` copies of the named enemy to the next combat encounter, bypassing the normal weight budget. The enemy name must match an entry in `enemies-data.js`.
+
+#### Gold (fixed)
+```javascript
+{ type: 'gold', value: 15 }  // gain 15 gold (negative = lose gold)
+```
+
+#### Gold (random range)
+```javascript
+{ type: 'gold_range', min: 10, max: 20 }  // gain 10–20 gold
+```
+
+#### Random item with a tag
+```javascript
+{ type: 'item_tagged', tag: 'coin' }  // award a random item tagged 'coin'
+{ type: 'item_tagged', tag: 'eye' }   // award a random item tagged 'eye'
+```
+The tag must match one of the item's `tags` array values in `items-data.js` (case-insensitive).
+Items currently tagged `coin`: **Old Coin**. Items tagged `eye`: **Dead Eye**, **Glass Eye**. Items tagged `seed`: **Leeching Seed**.
+
+#### Curse (named)
+```javascript
+{ type: 'curse', value: 'Curse of Frugality' }
+```
+
+#### Curse (scaled by location difficulty — Easy/Medium/Hard → I/II/III)
+```javascript
+{ type: 'curse_difficulty', curseBase: 'Curse of Ocular Trauma' }
+// gives "Curse of Ocular Trauma I" on Easy, "...II" on Medium, "...III" on Hard
+```
+Make sure the three tiers exist in `curses-data.js`.
+
+#### Combat status at start of next combat
+```javascript
+{ type: 'combat_status', status: 'fear',       stacks: 1 }
+{ type: 'combat_status', status: 'blind',      stacks: 4 }
+{ type: 'combat_status', status: 'weak',       stacks: 2 }
+{ type: 'combat_status', status: 'vulnerable', stacks: 1 }
+{ type: 'combat_status', status: 'frail',      stacks: 2 }
+{ type: 'combat_status', status: 'poison',     stacks: 3 }
+{ type: 'combat_status', status: 'burn',       stacks: 2 }
+```
+Any combat status name works here — it is applied to the player at the start of the next fight.
+
+#### Ambush / Ambushed (draw adjustment on turn 1)
+```javascript
+{ type: 'combat_flag', flag: 'ambush' }    // draw +2 cards on turn 1
+{ type: 'combat_flag', flag: 'ambushed' }  // draw -2 cards on turn 1
+```
+
+#### Retrieve a stored card and store a new one (A Note For Yourself)
+```javascript
+{ type: 'note_for_yourself', defaultCard: 'Iron Wave' }
+```
+Use this in a **`simple`** choice outcome. When triggered it:
+1. Retrieves the card stored in `gameState.noteForYourselfCard` (or `defaultCard` on the very first encounter in the save file) and adds it to the player's run deck.
+2. Opens a **card-picker screen** where the player selects a card from their collected deck to store for next time.
+3. Saves the chosen card name to `gameState.noteForYourselfCard` (persisted in the save file).
+
+Use `{storedCard}` in the outcome description to show the retrieved card's name in flavour text:
+```javascript
+outcome: {
+  description: 'You find {storedCard} inside. This is your handwriting.',
+  effects: [{ type: 'note_for_yourself', defaultCard: 'Iron Wave' }]
+}
+```
+If the player has no collected cards when the picker opens, the store step is skipped automatically.
+
+#### Multiple effects in one outcome
+```javascript
+effects: [
+  { type: 'combat_status', status: 'fear', stacks: 2 },
+  { type: 'combat_flag', flag: 'ambushed' }
+]
+```
+
+---
+
+### Stat Check Reference
+
+| `stat` value | Stat shown | Icon |
+|---|---|---|
+| `strength` | Strength | 💪 |
+| `dexterity` | Dexterity | 🤸 |
+| `intelligence` | Intelligence | 🧠 |
+| `charisma` | Charisma | 💬 |
+| `constitution` | Constitution | 🫀 |
+
+The player's stat value is added as a flat bonus to the d20 roll. Higher stat → lower effective target number shown to the player.
+
+**Constitution** is derived from gained max HP during the run: `floor((currentMaxHP − startingMaxHP) / 5)`. Starts at 0; every 5 max HP gained = +1 constitution. Constitution is displayed on the event choice screen whenever it's above 0.
+
+**Difficulty thresholds by location:**
+
+| Location difficulty | Roll needed (before stat bonus) |
+|---|---|
+| Easy | 11 |
+| Medium | 13 |
+| Hard | 15 |
+
+---
+
+### Text Placeholders
+
+Both `description` (the opening flavour text) and each outcome's `description` support the following placeholders, replaced at display time:
+
+| Placeholder | Replaced with |
+|---|---|
+| `{name}` | The player character's name |
+| `{storedCard}` | The name of the card currently stored in `gameState.noteForYourselfCard` (defaults to `'Iron Wave'` on first encounter) |
+
+```javascript
+description: '{name} stumbles upon a dark hole. Numerous eyes peer out from the darkness.'
+// → "Mitch stumbles upon a dark hole. Numerous eyes peer out from the darkness."
+
+description: 'You find a folded note and {storedCard} inside.'
+// → "You find a folded note and Iron Wave inside."  (on first encounter)
+// → "You find a folded note and Bash inside."       (if Bash was previously stored)
+```
+
+---
+
+### Complete Working Example
+
+This is the **Watching Eyeballs** event, already in the game. Use it as a reference:
+
+```javascript
+{
+  id: 'watching_eyeballs',
+  name: 'Watching Eyeballs',
+  description: '{name} stumbles upon a dark hole. Numerous eyes peer out from the darkness.',
+  image: 'images/events/WatchingEyeballs.png',
+  game: 'Mewgenics',
+  choices: [
+    {
+      text: 'Sneak By',
+      type: 'stat_check',
+      stat: 'dexterity',
+      outcomes: {
+        crit_good: {
+          description: '{name} sneaks by the spooky looking crack, getting into a position to ambush!',
+          effects: [{ type: 'combat_flag', flag: 'ambush' }]
+        },
+        good: {
+          description: '{name} carefully sneaks by the wall and nothing appears to happen.',
+          effects: [{ type: 'none' }]
+        },
+        bad: {
+          description: 'The eyes glare directly at {name}… {name} bolts into a sprint!',
+          effects: [{ type: 'combat_status', status: 'fear', stacks: 1 }]
+        },
+        crit_bad: {
+          description: 'The unnerving gaze terrifies {name}, running right into an ambush!',
+          effects: [
+            { type: 'combat_status', status: 'fear', stacks: 2 },
+            { type: 'combat_flag', flag: 'ambushed' }
+          ]
+        }
+      }
+    },
+    {
+      text: 'Examine',
+      type: 'stat_check',
+      stat: 'intelligence',
+      outcomes: {
+        crit_good: {
+          description: '{name} discovers the eyes were just large coins glinting in the dim light!',
+          effects: [{ type: 'item_tagged', tag: 'coin' }]
+        },
+        good: {
+          description: 'After closer examination — the eyes were coins!',
+          effects: [{ type: 'gold_range', min: 10, max: 20 }]
+        },
+        bad: {
+          description: '{name} locks eyes with the darkness and runs in terror!',
+          effects: [{ type: 'combat_status', status: 'fear', stacks: 2 }]
+        },
+        crit_bad: {
+          description: 'Something sharp lashes out and stabs {name}'s eye!',
+          effects: [{ type: 'curse_difficulty', curseBase: 'Curse of Ocular Trauma' }]
+        }
+      }
+    },
+    {
+      text: 'Bash',
+      type: 'stat_check',
+      stat: 'strength',
+      outcomes: {
+        crit_good: {
+          description: '{name} bats at the eyes with lightning fast strikes!',
+          effects: [{ type: 'item_tagged', tag: 'eye' }]
+        },
+        good: {
+          description: '{name} smashes the eyes into concave lumps of flesh!',
+          effects: [{ type: 'heal', value: 5 }]
+        },
+        bad: {
+          description: 'The eyes flash with a blinding brightness!',
+          effects: [{ type: 'combat_status', status: 'blind', stacks: 4 }]
+        },
+        crit_bad: {
+          description: '{name} reaches into the hole and pokes themself in the face on the sharp edges!',
+          effects: [{ type: 'curse_difficulty', curseBase: 'Curse of Ocular Trauma' }]
+        }
+      }
     }
-  } else if (optionIndex === 1) {
-    // Sell item
-    showItemSelectionModal((selectedIndex) => {
-      removeItem(selectedIndex);
-      gold += 5;
-      closeGameModal();
-    });
-  } else {
-    // Ignore
-    closeGameModal();
-  }
-}
-```
-
-**Step 4: Register Handler**
-
-Add to `handleEventChoice()` in `js/main.js`:
-```javascript
-if (event.name === "Mysterious Merchant") {
-  handleMysteriousMerchant(optionIndex);
-}
-```
-
-**Step 5: Export Functions** (if needed)
-
-Add to window exports at bottom of `js/main.js`:
-```javascript
-window.handleMysteriousMerchant = handleMysteriousMerchant;
-```
-
----
-
-### Event System Functions Reference
-
-**Core Functions:**
-```javascript
-// Show event modal to player
-showEventModal(specificEvent)
-
-// Handle player's event choice
-handleEventChoice(event, option)
-
-// Check if event requirements are met
-checkEventRequirement(event)
-
-// Generic combat for events
-triggerCombat(enemy, onSuccess, onFailure, powerLevel)
-
-// Handle combat results
-handleGenericCombatResult(success, powerLevel)
-```
-
-**Event-Specific Handlers:**
-```javascript
-// Primordial Teleporter
-handlePrimordialTeleporter(optionIndex)
-triggerStoneGolemFight()
-handleStoneGolemResult(success)
-
-// Wild Muncher
-handleWildMuncher(optionIndex)
-showItemSelectionForMuncher(itemsToFeed, itemsToReceive)
-feedMuncher(indices, itemsToReceive)
-
-// Colosseum
-handleColosseum(optionIndex)
-showColosseumChoices()
-handleChampionResult()
-completeChampionSuccess()
-completeChampionFailure()
-```
-
-**Helper Functions:**
-```javascript
-// Remove item and reverse its stat effects
-removeItemAndReverseStats(index)
-
-// Select rarity based on luck stat
-selectRandomRarity()
-
-// Teleport without triggering encounters
-advance(gameName, x, y, null)
-```
-
----
-
-### Event Requirements System
-
-**Built-in Requirement Types:**
-
-| Type | Description | Check |
-|------|-------------|-------|
-| `minItems` | Minimum inventory items | `inventory.length >= value` |
-
-**Example Requirement:**
-```javascript
-requirement: {
-  type: "minItems",
-  value: 4
-}
-```
-
-**Custom Requirements:**
-To add new requirement types, extend `checkEventRequirement()`:
-
-```javascript
-function checkEventRequirement(event) {
-  if (!event.requirement) return true;
-
-  switch (event.requirement.type) {
-    case 'minItems':
-      return inventory.length >= event.requirement.value;
-    case 'minGold':
-      return gold >= event.requirement.value;
-    case 'hasItem':
-      return inventory.some(item => item.name === event.requirement.value);
-    case 'minDifficulty':
-      return gameState.finishedGames?.length >= event.requirement.value;
-    default:
-      return true;
-  }
+  ]
 }
 ```
 
 ---
 
-### Event Best Practices
+### How `curse_difficulty` Works
 
-**Event Design:**
-- Provide meaningful choices with clear consequences
-- Include parenthetical details in option text
-- Consider risk/reward balance
-- Test multi-stage event flows thoroughly
+When you use `{ type: 'curse_difficulty', curseBase: 'Curse of Something' }`, the engine:
+1. Checks the current location's difficulty (Easy / Medium / Hard)
+2. Appends ` I`, ` II`, or ` III` to the base name
+3. Looks up that exact name in `curses-data.js` and applies it
+4. If the curse description contains `"Add X to your Deck"`, it also adds that card automatically
 
-**State Management:**
-- Use `gameState` for persistent event data
-- Clean up state after event completion
-- Verify state exists before accessing properties
-
-**Teleportation:**
-- Always pass `null` as encounterType for event teleports
-- Track return location for multi-stage events
-- Use unconnected games for special encounters
-
-**Combat Integration:**
-- Use `triggerCombat()` for consistent behavior
-- Include `triggerOnEnemyDefeated()` in success handlers
-- Provide custom callbacks for event-specific logic
-
-**UI/UX:**
-- Add Back buttons for item selection modals
-- Show detailed consequences in option text
-- Provide clear success/failure feedback
-- Update progress indicators (difficulty, distance)
+So for `curseBase: 'Curse of Ocular Trauma'`, you need all three in `curses-data.js`:
+- `Curse of Ocular Trauma I`
+- `Curse of Ocular Trauma II`
+- `Curse of Ocular Trauma III`
 
 ---
 
-### Event Difficulty
+### How Combat Statuses from Events Work
 
-For events that use stat checks (via generic combat):
-- **Low**: DC 8-12, 1 damage on failure
-- **Medium**: DC 13-16, 2 damage on failure
-- **High**: DC 17-20, 3 damage on failure
+`combat_status` effects are stored in `gameState.pendingCombatStatuses` after the event resolves. When the next combat starts (`initCombat`), they are applied to the player's starting statuses and the list is cleared. The player enters the fight already affected.
+
+**Fear** — non-Attack cards cost +1 energy; lose 1 Fear stack each time you play an Attack card.
+
+**Blind** — 30% miss chance on attacks. When a miss happens a "MISS!" popup appears over the target. Stacks = duration in turns.
 
 ---
+
+### Event Engine Files
+
+| File | Purpose |
+|---|---|
+| `events-data.js` | All event definitions — **this is the only file you edit** to add events |
+| `js/event-engine.js` | Renders the UI screens, rolls dice, applies effects |
+
+The engine only picks events that have an `image` property, so old-format entries in the same file are skipped automatically.
+
+---
+
 
 ## Combat System
 

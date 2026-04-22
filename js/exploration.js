@@ -515,11 +515,17 @@ function advance(game, x, y, encounterType) {
 
     // Trigger encounter based on type (these functions are in main.js)
     if (encounterType === 'combat') {
-      // Check if new dice combat system is enabled
-      if (window.useDiceCombat && typeof showDiceCombatModal === 'function') {
-        showDiceCombatModal();
-      } else if (typeof showCombatModal === 'function') {
-        showCombatModal();
+      const startCombat = () => {
+        if (window.useDiceCombat && typeof showDiceCombatModal === 'function') {
+          showDiceCombatModal();
+        } else if (typeof showCombatModal === 'function') {
+          showCombatModal();
+        }
+      };
+      if (typeof showEventModal === 'function') {
+        showEventModal(null, startCombat);
+      } else {
+        startCombat();
       }
     } else if (encounterType === 'event' && typeof showEventModal === 'function') {
       showEventModal();

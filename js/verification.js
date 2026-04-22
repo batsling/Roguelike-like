@@ -87,18 +87,24 @@ function showCurseVerificationModal(onComplete) {
  * @param {Array} hastePerfectItems - Array of Haste "perfect game" items in inventory
  */
 function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, canLevelUp = false, characterData = null, hastePerfectItems = []) {
-  // Group curses by type
-  const blindnessCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('blindness'));
-  const hubrisCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('hubris'));
-  const devotionCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('devotion'));
-  const greedCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('greed'));
-  const impulseCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('impulse'));
-  const hasteCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('haste'));
-  const guiltCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('guilt'));
-  const dazedCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('dazed'));
-  const affectionCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('affection'));
-  const hunterCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('hunter'));
-  const dampCurses = cursesToVerify.filter(c => c.name.toLowerCase().includes('damp'));
+  // Group curses by type in one pass (avoids 11 separate filter calls)
+  const _curseTypes = ['blindness','hubris','devotion','greed','impulse','haste','guilt','dazed','affection','hunter','damp'];
+  const _curseGroups = {};
+  for (const c of cursesToVerify) {
+    const lower = c.name.toLowerCase();
+    for (const t of _curseTypes) { if (lower.includes(t)) { (_curseGroups[t] = _curseGroups[t] || []).push(c); } }
+  }
+  const blindnessCurses  = _curseGroups.blindness  || [];
+  const hubrisCurses     = _curseGroups.hubris      || [];
+  const devotionCurses   = _curseGroups.devotion    || [];
+  const greedCurses      = _curseGroups.greed       || [];
+  const impulseCurses    = _curseGroups.impulse      || [];
+  const hasteCurses      = _curseGroups.haste        || [];
+  const guiltCurses      = _curseGroups.guilt        || [];
+  const dazedCurses      = _curseGroups.dazed        || [];
+  const affectionCurses  = _curseGroups.affection    || [];
+  const hunterCurses     = _curseGroups.hunter       || [];
+  const dampCurses       = _curseGroups.damp         || [];
 
   // Build the modal HTML with compact styling
   let modalHTML = `
@@ -512,10 +518,10 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           <p style="font-size: 13px; margin: 5px 0; color: #ddd;">${question} <em style="color:#ffb74d;">Reward: ${reward}</em></p>
           <div style="margin-top: 5px;">
             <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
-              <input type="radio" name="weapon-check-${wIdx}" value="yes" checked style="margin-right: 5px;">Yes
+              <input type="radio" name="weapon-check-${wIdx}" value="yes" style="margin-right: 5px;">Yes
             </label>
             <label style="font-size: 12px; color: #ccc;">
-              <input type="radio" name="weapon-check-${wIdx}" value="no" style="margin-right: 5px;">No
+              <input type="radio" name="weapon-check-${wIdx}" value="no" checked style="margin-right: 5px;">No
             </label>
           </div>
         </div>
@@ -854,10 +860,10 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           console.log(`Secret Technique Instructions: +${secretTechniqueCount} Dash`);
         }
 
-        // Performance Based Health Insurance: +2 Health per copy
+        // Performance Based Health Insurance: +5 Health per copy
         const healthInsuranceCount = hastePerfectItems.filter(i => i.name === 'Performance Based Health Insurance').length;
         if (healthInsuranceCount > 0) {
-          const healthGain = 2 * healthInsuranceCount;
+          const healthGain = 5 * healthInsuranceCount;
           health = Math.min(maxHealth, health + healthGain);
           gameState.health = health;
           hastePerfectRewards.push(`+${healthGain} Health`);
@@ -1006,38 +1012,9 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
     let leveledUp = false;
     if (canLevelUp && characterData) {
       const levelUpRadio = document.querySelector('input[name="levelup-check"]:checked');
-      const didLevelUp = levelUpRadio && levelUpRadio.value === 'yes';
-      if (didLevelUp) {
-        // Level up the player
-        gameState.playerLevel = (gameState.playerLevel || 1) + 1;
+      if (levelUpRadio && levelUpRadio.value === 'yes') {
         leveledUp = true;
-
-        // Apply level up stats
-        if (characterData.levelUpStats) {
-          const stats = characterData.levelUpStats;
-          if (stats.strength) gameState.strength = (gameState.strength || 0) + stats.strength;
-          if (stats.dexterity) gameState.dexterity = (gameState.dexterity || 0) + stats.dexterity;
-          if (stats.intelligence) gameState.intelligence = (gameState.intelligence || 0) + stats.intelligence;
-          if (stats.charisma) gameState.charisma = (gameState.charisma || 0) + stats.charisma;
-          if (stats.reroll) gameState.rerolls = (gameState.rerolls || 0) + stats.reroll;
-          if (stats.dash) gameState.dash = (gameState.dash || 0) + stats.dash;
-          if (stats.skip) gameState.skip = (gameState.skip || 0) + stats.skip;
-          if (stats.discovery) gameState.discovery = (gameState.discovery || 0) + stats.discovery;
-          if (stats.fov) gameState.fov = (gameState.fov || 0) + stats.fov;
-          if (stats.luck) gameState.luck = (gameState.luck || 0) + stats.luck;
-        }
-
-        console.log(`⭐ Level up! Now level ${gameState.playerLevel}`);
-
-        // Update UI
-        if (typeof updateTopBar === 'function') updateTopBar();
-        if (typeof updateCharacterUI === 'function') updateCharacterUI();
-        if (typeof updateStatsDisplay === 'function') updateStatsDisplay();
-
-        // Show notification
-        if (typeof createNotification === 'function') {
-          createNotification(`⭐ Level Up! Now Lv.${gameState.playerLevel}`, 'success');
-        }
+        // Stats and reward modal are handled by confirmLevelUp() below
       }
     }
 
@@ -1205,27 +1182,11 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       }
     };
 
-    // If player leveled up, show dice level-up choices BEFORE item rewards
-    if (leveledUp) {
-      const characterKey = gameState.character || 'Rodney';
-      if (typeof showDiceLevelUpChoiceModal === 'function') {
-        // Small delay to let notifications appear first
-        setTimeout(() => {
-          showDiceLevelUpChoiceModal(characterKey, (diceResult) => {
-            if (diceResult && typeof createNotification === 'function') {
-              createNotification(diceResult, '#FFD700', '🎲');
-            }
-            if (typeof saveCurrentGame === 'function') saveCurrentGame();
-            // Now continue to item rewards
-            continueToRewards();
-          });
-        }, 300);
-      } else {
-        // Fallback if showDiceLevelUpChoiceModal not available
-        continueToRewards();
-      }
+    // If the player leveled up, show the confirmLevelUp modal (applies stats + reward),
+    // then continue to normal rewards. Otherwise go straight to rewards.
+    if (leveledUp && typeof window.confirmLevelUp === 'function') {
+      window.confirmLevelUp(continueToRewards);
     } else {
-      // No level up, continue directly to rewards
       continueToRewards();
     }
   };

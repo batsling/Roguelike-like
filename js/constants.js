@@ -124,8 +124,36 @@ const STORAGE_KEYS = {
   SAVED_GAMES: 'roguelikeGameSaves',
   GAME_STATS: 'gameStats',
   RUN_HISTORY: 'runHistory',
-  FISH_STATS: 'fishStats'
+  FISH_STATS: 'fishStats',
+  DECK_WINS: 'deckWins'
 };
+
+// ===== AVAILABLE DECKS =====
+// Each deck filters the card reward pool by tag during a run.
+// tagFilter: null means all cards are eligible (Random).
+const AVAILABLE_DECKS = [
+  {
+    id: 'Random',
+    name: 'Random',
+    image: null,
+    tagFilter: null,
+    description: 'Cards from any pool may appear as rewards.'
+  },
+  {
+    id: 'Ironclad',
+    name: 'Ironclad',
+    image: 'images/decks/IroncladDeck.png',
+    tagFilter: 'ironclad',
+    description: 'Only Ironclad cards appear in combat rewards.'
+  },
+  {
+    id: 'Silent',
+    name: 'Silent',
+    image: 'images/decks/SilentDeck.png',
+    tagFilter: 'silent',
+    description: 'Only Silent cards appear in combat rewards.'
+  }
+];
 
 // ===== GAME PHASES =====
 const GAME_PHASES = {
@@ -243,6 +271,7 @@ if (typeof window !== 'undefined') {
   window.ICON_SIZES = ICON_SIZES;
   window.COLORS = COLORS;
   window.STORAGE_KEYS = STORAGE_KEYS;
+  window.AVAILABLE_DECKS = AVAILABLE_DECKS;
   window.GAME_PHASES = GAME_PHASES;
   window.RARITY_COLORS = RARITY_COLORS;
   window.ANIMATIONS = ANIMATIONS;
