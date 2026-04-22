@@ -4417,9 +4417,9 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // Conjure X CardName — add cards to hand
+    // Conjure X CardName — add cards to hand (skip "Random" patterns handled below)
     const conjureMatch = p.match(/Conjure (\d+) (.+)/i);
-    if (conjureMatch) {
+    if (conjureMatch && !/^random\b/i.test(conjureMatch[2].trim())) {
       const count    = parseInt(conjureMatch[1]);
       const nameRaw  = conjureMatch[2].trim().replace(/s$/i, ''); // strip trailing 's' for plural
       const template = typeof CARDS_DATA !== 'undefined'
@@ -4719,16 +4719,16 @@ function resolveCardEffect(card, target, options = {}) {
       const count      = parseInt(conjureRandomTypeMatch[1]);
       const typeFilter = conjureRandomTypeMatch[2].toLowerCase();
       const makeFree   = /play it for free this turn/i.test(desc);
-      // Use global CARDS_DATA pool (all cards of the type), falling back to player's combat deck
-      const globalPool = typeof CARDS_DATA !== 'undefined'
-        ? CARDS_DATA.filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard)
-        : [];
+      // Draw from the player's run deck (draw + discard + hand), falling back to CARDS_DATA
       const deckCards = [
         ...(combatState.drawPile || []),
         ...(combatState.discardPile || []),
         ...(combatState.hand || []),
       ].filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard);
-      const pool = globalPool.length > 0 ? globalPool : deckCards;
+      const globalPool = typeof CARDS_DATA !== 'undefined'
+        ? CARDS_DATA.filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard)
+        : [];
+      const pool = deckCards.length > 0 ? deckCards : globalPool;
       for (let i = 0; i < count; i++) {
         if (pool.length === 0) break;
         const picked = pool[Math.floor(Math.random() * pool.length)];
