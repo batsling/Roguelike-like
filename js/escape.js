@@ -995,7 +995,7 @@ function switchCollectionTab(tab) {
                   style="width:100%; height:80px; object-fit:contain; background:rgba(0,0,0,0.3); image-rendering:pixelated;"
                   onerror="this.style.display='none';"/>
               ` : `<div style="width:100%; height:80px; background:linear-gradient(135deg,${tc}33,${rc}22); display:flex; align-items:center; justify-content:center; font-size:28px; color:${tc}88;">
-                ${(card.type||'').toLowerCase()==='attack'?'⚔':(card.type||'').toLowerCase()==='skill'?'🛡':(card.type||'').toLowerCase()==='power'?'✨':'🃏'}
+                ${{attack:'⚔',skill:'🛡',power:'✨',dice:'🎲',training:'📖'}[(card.type||'').toLowerCase()]||'🃏'}
               </div>`}
               <!-- Card info -->
               <div style="padding:6px; flex:1; display:flex; flex-direction:column; gap:3px;">

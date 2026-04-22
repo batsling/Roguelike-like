@@ -4833,6 +4833,21 @@ function showCardZoomOverlay(card) {
   const rarityColors = { Rare: '#9b59b6', Uncommon: '#4CAF50', Common: '#aaa', Starter: '#888' };
   const color = rarityColors[card.rarity] || '#888';
   const imgSrc = card.imageUrl || '';
+  const isDiceCard = (card.type || '').toLowerCase() === 'dice';
+  const diceEntry = isDiceCard && typeof DICE_DATA !== 'undefined'
+    ? DICE_DATA.find(d => d.name === card.name)
+    : null;
+  const zoomDiceFacesHTML = diceEntry ? `
+    <div style="margin:12px 0;text-align:left;">
+      <div style="font-size:12px;font-weight:bold;color:${color};margin-bottom:6px;text-align:center;">🎲 Die Faces</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">
+        ${diceEntry.faces.map((f,i) => `
+          <div style="background:rgba(0,0,0,0.5);border:1px solid ${color}55;border-radius:5px;padding:5px 4px;text-align:center;">
+            <div style="font-size:9px;color:#888;">Face ${i+1}</div>
+            <div style="font-size:11px;color:${color};font-weight:bold;line-height:1.3;">${f.text || f.face || '?'}</div>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
 
   const overlay = document.createElement('div');
   overlay.id = 'card-zoom-overlay';
@@ -4851,10 +4866,11 @@ function showCardZoomOverlay(card) {
     " onclick="event.stopPropagation()">
       ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}"
         style="width:140px;height:140px;object-fit:contain;margin-bottom:14px;border-radius:8px;border:2px solid ${color}40;"
-        onerror="this.style.display='none'">` : ''}
+        onerror="this.style.display='none'">` : (isDiceCard ? `<div style="font-size:64px;margin-bottom:10px;">🎲</div>` : '')}
       <h2 style="margin:0 0 6px;color:white;font-size:20px;">${card.name}${card.upgraded ? ' <span style="color:#4CAF50">+</span>' : ''}</h2>
       <div style="color:${color};font-size:13px;margin-bottom:10px;font-weight:bold;">${card.rarity || 'Starter'} · ${card.type || ''}</div>
       <div style="color:#ddd;font-size:14px;line-height:1.6;margin-bottom:14px;">${card.description || ''}</div>
+      ${zoomDiceFacesHTML}
       <div style="color:#ffd700;font-size:16px;font-weight:bold;">Cost: ${card.cost !== undefined ? card.cost : '?'}</div>
       <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
         margin-top:18px; padding:8px 24px;
@@ -4884,6 +4900,10 @@ function showDeckModal() {
   const cardHtml = (card, label, idx) => {
     const color = getRarityColor(card.rarity);
     const imgSrc = card.imageUrl || '';
+    const _isDice = (card.type || '').toLowerCase() === 'dice';
+    const artHTML = imgSrc
+      ? `<img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;" onerror="this.style.display='none'">`
+      : (_isDice ? `<div style="font-size:36px;margin-bottom:6px;">🎲</div>` : '');
     return `
       <div data-deck-card-idx="${idx}" style="background:#2d2d2d;border:2px solid ${color};border-radius:8px;
         padding:12px;display:flex;flex-direction:column;align-items:center;
@@ -4892,7 +4912,7 @@ function showDeckModal() {
         onmouseenter="this.style.transform='scale(1.04)';this.style.boxShadow='0 6px 20px rgba(0,0,0,0.6)'"
         onmouseleave="this.style.transform='';this.style.boxShadow=''">
         ${label ? `<div style="position:absolute;top:4px;right:4px;background:${color};color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:bold;">${label}</div>` : ''}
-        ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
+        ${artHTML}
         <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:3px;">${card.name}${card.upgraded ? ' +' : ''}</div>
         <div style="color:${color};font-size:11px;margin-bottom:4px;">${card.rarity || 'Starter'} · ${card.type || ''}</div>
         <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:6px;">${card.description || ''}</div>
@@ -8048,9 +8068,24 @@ function showCardDetails(cardName) {
 
   const rc = getRarityColor(card.rarity);
   const tc = getTypeColor(card.type);
-  const typeEmoji = (card.type||'').toLowerCase() === 'attack' ? '⚔' :
-                    (card.type||'').toLowerCase() === 'skill' ? '🛡' :
-                    (card.type||'').toLowerCase() === 'power' ? '✨' : '🃏';
+  const isDice = (card.type||'').toLowerCase() === 'dice';
+  const typeEmoji = {attack:'⚔',skill:'🛡',power:'✨',dice:'🎲',training:'📖'}[(card.type||'').toLowerCase()] || '🃏';
+
+  // Build dice face grid for dice-type cards
+  const diceData = isDice && typeof DICE_DATA !== 'undefined'
+    ? DICE_DATA.find(d => d.name === card.name)
+    : null;
+  const diceFacesHTML = diceData ? `
+    <div style="margin-top:4px;">
+      <div style="font-size:11px;font-weight:bold;color:${tc};margin-bottom:6px;">🎲 Die Faces</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+        ${diceData.faces.map((f,i) => `
+          <div style="background:rgba(0,0,0,0.5);border:1px solid ${tc}66;border-radius:5px;padding:4px 3px;text-align:center;">
+            <div style="font-size:9px;color:#888;">Face ${i+1}</div>
+            <div style="font-size:10px;color:${tc};font-weight:bold;line-height:1.3;">${f.text || f.face || '?'}</div>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
 
   detailsPanel.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:14px;">
@@ -8070,6 +8105,7 @@ function showCardDetails(cardName) {
             <span style="font-size:10px;color:${rc};text-transform:uppercase;">${card.rarity||''}</span>
           </div>
           <div style="font-size:12px;color:#ddd;line-height:1.5;">${card.description||'No description.'}</div>
+          ${diceFacesHTML}
         </div>
       </div>
 
@@ -9646,8 +9682,10 @@ window.switchEnemyForm = switchEnemyForm;
     const rc = card.rarity === 'Rare' ? '#9b59b6' : card.rarity === 'Uncommon' ? '#4CAF50' : card.rarity === 'Common' ? '#aaa' : '#888';
     const tc = (card.type||'').toLowerCase()==='attack' ? '#e74c3c'
              : (card.type||'').toLowerCase()==='skill'  ? '#2980b9'
-             : (card.type||'').toLowerCase()==='power'  ? '#8e44ad' : '#888';
+             : (card.type||'').toLowerCase()==='power'  ? '#8e44ad'
+             : (card.type||'').toLowerCase()==='dice'   ? '#d35400' : '#888';
     const imgSrc = card.imageUrl || '';
+    const _tipTypeEmoji = {attack:'⚔',skill:'🛡',power:'✨',dice:'🎲',training:'📖'}[(card.type||'').toLowerCase()] || '🃏';
 
     const el = _getTooltipEl();
     el.style.border = '2px solid ' + rc;
@@ -9656,7 +9694,7 @@ window.switchEnemyForm = switchEnemyForm;
         <div style="position:absolute;top:5px;left:5px;width:20px;height:20px;border-radius:50%;background:${tc};border:2px solid rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:white;z-index:2;">${card.cost !== null && card.cost !== undefined ? card.cost : '?'}</div>
         ${imgSrc
           ? `<img src="${imgSrc}" style="width:100%;height:120px;object-fit:contain;background:rgba(0,0,0,0.4);display:block;" onerror="this.style.display='none'">`
-          : `<div style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;font-size:36px;background:rgba(0,0,0,0.3);">${(card.type||'').toLowerCase()==='attack'?'⚔':(card.type||'').toLowerCase()==='skill'?'🛡':'✨'}</div>`}
+          : `<div style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;font-size:36px;background:rgba(0,0,0,0.3);">${_tipTypeEmoji}</div>`}
       </div>
       <div style="padding:8px;">
         <div style="font-size:12px;font-weight:bold;color:#eee;margin-bottom:3px;">${card.name}</div>

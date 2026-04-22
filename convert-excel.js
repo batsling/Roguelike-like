@@ -713,7 +713,13 @@ if (cardsSheet) {
       canUpgrade: !isStatusCard && !!(row['Upgraded Description'] && row['Upgraded Description'] !== 'N/A'),
       isStatusCard: isStatusCard,
       imageUrl: (row['Img'] && row['Img'] !== 'N/A')
-        ? `images/${tags.includes('weapon') ? 'items' : 'cards'}/${row['Img']}.png`
+        ? (() => {
+            const imgFile = row['Img'];
+            if (tags.includes('weapon')) return `images/items/${imgFile}.png`;
+            const cardsPath = `images/cards/${imgFile}.png`;
+            const itemsPath = `images/items/${imgFile}.png`;
+            return fs.existsSync(cardsPath) ? cardsPath : (fs.existsSync(itemsPath) ? itemsPath : cardsPath);
+          })()
         : null,
       game: (row['Game'] && row['Game'] !== 'N/A') ? row['Game'] : null,
       tags: tags

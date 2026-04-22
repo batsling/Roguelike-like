@@ -206,7 +206,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/cards/BagO'Glitter.png",
+    "imageUrl": "images/items/BagO'Glitter.png",
     "game": "Mewgenics",
     "tags": [
       "debuff",
