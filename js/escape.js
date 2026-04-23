@@ -658,6 +658,7 @@ function showCollection() {
   const charCount = typeof CHARACTERS_DATA !== 'undefined' ? Object.keys(CHARACTERS_DATA).length : 0;
   const cardCount = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.filter(c => c.rarity !== 'Starter').length : 0;
   const spellCount = typeof SPELLS_DATA !== 'undefined' ? SPELLS_DATA.length : 0;
+  const eventCount = typeof EVENTS_DATA !== 'undefined' ? EVENTS_DATA.filter(e => e.image).length : 0;
 
   const collectionHTML = `
     <style>
@@ -681,6 +682,7 @@ function showCollection() {
         <button class="col-tab-btn" onclick="switchCollectionTab('curses')" id="tab-curses" style="background:#555;">Curses (${curses.length})</button>
         <button class="col-tab-btn" onclick="switchCollectionTab('statuses')" id="tab-statuses" style="background:#555;">Reference</button>
         <button class="col-tab-btn" onclick="switchCollectionTab('spells')" id="tab-spells" style="background:#555;">Spells (${spellCount})</button>
+        <button class="col-tab-btn" onclick="switchCollectionTab('events')" id="tab-events" style="background:#555;">Events (${eventCount})</button>
         <button class="col-tab-btn" onclick="closeGameModal();" style="background:#333; margin-left: 4px;">✕ Close</button>
       </div>
       <div id="collection-content" style="flex: 1; overflow: hidden; display: flex; gap: 16px;">
@@ -700,7 +702,7 @@ function switchCollectionTab(tab) {
   const selectionEnd = activeElement && activeElement.selectionEnd !== undefined ? activeElement.selectionEnd : null;
 
   // Update tab buttons
-  const tabs = ['games', 'characters', 'cards', 'items', 'loot', 'enemies', 'curses', 'statuses', 'spells'];
+  const tabs = ['games', 'characters', 'cards', 'items', 'loot', 'enemies', 'curses', 'statuses', 'spells', 'events'];
   tabs.forEach(t => {
     const btn = document.getElementById(`tab-${t}`);
     if (btn) btn.style.background = t === tab ? '#ff9800' : '#555';
@@ -1786,6 +1788,154 @@ function switchCollectionTab(tab) {
         </div>
       `;
     }
+  } else if (tab === 'events') {
+    if (typeof window.eventSortType === 'undefined') window.eventSortType = 'alphabetical';
+    if (typeof window.eventRarityFilter === 'undefined') window.eventRarityFilter = 'all';
+    if (typeof window.eventTypeFilter === 'undefined') window.eventTypeFilter = 'all';
+    if (typeof window.eventSearch === 'undefined') window.eventSearch = '';
+
+    const allEvents = (typeof EVENTS_DATA !== 'undefined' ? EVENTS_DATA : []).filter(e => e.image);
+
+    const getRarityColor = r => {
+      switch ((r || '').toLowerCase()) {
+        case 'legendary': return '#ff6b00';
+        case 'rare':      return '#9b59b6';
+        case 'uncommon':  return '#4CAF50';
+        case 'common':    return '#aaa';
+        default:          return '#888';
+      }
+    };
+
+    const allTypes    = [...new Set(allEvents.map(e => e.type).filter(Boolean))].sort();
+    const allRarities = ['Common', 'Uncommon', 'Rare', 'Legendary'].filter(r =>
+      allEvents.some(e => (e.rarity || '').toLowerCase() === r.toLowerCase())
+    );
+
+    const searchTerm = (window.eventSearch || '').toLowerCase();
+    let filtered = allEvents.filter(e => {
+      if (window.eventRarityFilter !== 'all' && (e.rarity || '').toLowerCase() !== window.eventRarityFilter.toLowerCase()) return false;
+      if (window.eventTypeFilter !== 'all' && (e.type || '') !== window.eventTypeFilter) return false;
+      if (searchTerm && !e.name.toLowerCase().includes(searchTerm) && !(e.game || '').toLowerCase().includes(searchTerm) && !(e.tags || []).some(t => t.toLowerCase().includes(searchTerm))) return false;
+      return true;
+    });
+
+    const rarityOrder = { legendary: 4, rare: 3, uncommon: 2, common: 1 };
+    if (window.eventSortType === 'rarity') {
+      filtered.sort((a, b) => {
+        const rd = (rarityOrder[(b.rarity || '').toLowerCase()] || 0) - (rarityOrder[(a.rarity || '').toLowerCase()] || 0);
+        return rd !== 0 ? rd : a.name.localeCompare(b.name);
+      });
+    } else if (window.eventSortType === 'game') {
+      filtered.sort((a, b) => {
+        const gd = (a.game || '').localeCompare(b.game || '');
+        return gd !== 0 ? gd : a.name.localeCompare(b.name);
+      });
+    } else {
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    const btnStyle = (active, color) =>
+      `padding:4px 10px;border:none;border-radius:12px;cursor:pointer;font-size:11px;font-weight:bold;` +
+      `background:${active ? (color || '#c39bd3') : 'rgba(100,100,100,0.3)'};` +
+      `color:${active ? '#fff' : '#ccc'};transition:background 0.15s;`;
+
+    const rarityBadge = r => {
+      const c = getRarityColor(r);
+      const isShimmer = ['rare', 'legendary'].includes((r || '').toLowerCase());
+      return `<span class="${isShimmer ? 'rarity-shimmer' : ''}" style="font-size:10px;font-weight:bold;color:${c};padding:2px 6px;background:${c}22;border-radius:4px;white-space:nowrap;">${r || ''}</span>`;
+    };
+
+    const tagBadge = t =>
+      `<span style="font-size:10px;padding:1px 6px;background:rgba(195,155,211,0.15);border:1px solid rgba(195,155,211,0.3);border-radius:10px;color:#c39bd3;">${t}</span>`;
+
+    const pillList = (label, items, color) =>
+      items && items.length
+        ? `<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:4px;">
+             <span style="font-size:10px;color:#888;flex-shrink:0;">${label}:</span>
+             ${items.map(s => `<span style="font-size:10px;padding:1px 6px;background:${color}22;border:1px solid ${color}55;border-radius:10px;color:${color};">${s}</span>`).join('')}
+           </div>`
+        : '';
+
+    content.innerHTML = `
+      <div style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;">
+        <!-- Controls bar -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;padding:10px;background:rgba(0,0,0,0.3);border-radius:8px;align-items:center;">
+          <span style="color:#aaa;font-size:13px;">🔍</span>
+          <input type="text" id="event-search" placeholder="Search events…" value="${window.eventSearch}"
+            oninput="window.eventSearch=this.value;switchCollectionTab('events');"
+            style="flex:1;min-width:120px;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid #555;border-radius:6px;color:white;font-size:13px;outline:none;"
+          />
+          <button onclick="window.eventSortType='alphabetical';switchCollectionTab('events');" style="${btnStyle(window.eventSortType==='alphabetical','#c39bd3')}">A–Z</button>
+          <button onclick="window.eventSortType='rarity';switchCollectionTab('events');" style="${btnStyle(window.eventSortType==='rarity','#c39bd3')}">Rarity</button>
+          <button onclick="window.eventSortType='game';switchCollectionTab('events');" style="${btnStyle(window.eventSortType==='game','#c39bd3')}">Game</button>
+          <span style="color:#666;font-size:11px;margin-left:auto;">${filtered.length} / ${allEvents.length}</span>
+        </div>
+        <!-- Rarity filter -->
+        ${allRarities.length > 1 ? `
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;padding:7px 10px;background:rgba(0,0,0,0.25);border-radius:8px;align-items:center;">
+          <span style="color:#888;font-size:11px;">Rarity:</span>
+          <button style="${btnStyle(window.eventRarityFilter==='all','#c39bd3')}" onclick="window.eventRarityFilter='all';switchCollectionTab('events');">All</button>
+          ${allRarities.map(r => `<button style="${btnStyle(window.eventRarityFilter===r,getRarityColor(r))}" onclick="window.eventRarityFilter='${r}';switchCollectionTab('events');">${r}</button>`).join('')}
+        </div>` : ''}
+        <!-- Type filter -->
+        ${allTypes.length > 1 ? `
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;padding:7px 10px;background:rgba(0,0,0,0.25);border-radius:8px;align-items:center;">
+          <span style="color:#888;font-size:11px;">Type:</span>
+          <button style="${btnStyle(window.eventTypeFilter==='all','#c39bd3')}" onclick="window.eventTypeFilter='all';switchCollectionTab('events');">All</button>
+          ${allTypes.map(t => `<button style="${btnStyle(window.eventTypeFilter===t,'#c39bd3')}" onclick="window.eventTypeFilter='${t.replace(/'/g,"\\'")}';switchCollectionTab('events');">${t}</button>`).join('')}
+        </div>` : ''}
+        <!-- Event grid -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;overflow-y:auto;">
+          ${filtered.length === 0
+            ? `<div style="grid-column:1/-1;text-align:center;color:#666;padding:40px;">No events match the current filters.</div>`
+            : filtered.map(ev => {
+                const rc = getRarityColor(ev.rarity);
+                return `
+                <div style="
+                  background:rgba(0,0,0,0.35);
+                  border:1px solid ${rc}55;
+                  border-top:3px solid ${rc};
+                  border-radius:8px;
+                  overflow:hidden;
+                  display:flex;flex-direction:column;
+                  transition:transform 0.15s,box-shadow 0.15s;
+                "
+                onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.6)';"
+                onmouseout="this.style.transform='';this.style.boxShadow='';">
+                  <!-- Image -->
+                  <div style="background:#0d0d1a;display:flex;align-items:center;justify-content:center;height:130px;overflow:hidden;">
+                    <img src="${ev.image}" alt="${ev.name}"
+                      onerror="this.style.opacity='0.2'"
+                      style="max-height:130px;max-width:100%;object-fit:contain;image-rendering:-webkit-optimize-contrast;image-rendering:smooth;"
+                    />
+                  </div>
+                  <!-- Info -->
+                  <div style="padding:10px 12px;display:flex;flex-direction:column;gap:6px;flex:1;">
+                    <!-- Name + rarity -->
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                      <span style="font-size:14px;font-weight:bold;color:#eee;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ev.name}</span>
+                      ${rarityBadge(ev.rarity)}
+                    </div>
+                    <!-- Game + type -->
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                      ${ev.game ? `<span style="font-size:11px;color:#aaa;">${ev.game}</span>` : ''}
+                      ${ev.type ? `<span style="font-size:10px;font-weight:bold;padding:2px 7px;border-radius:10px;background:rgba(195,155,211,0.15);border:1px solid rgba(195,155,211,0.35);color:#c39bd3;">${ev.type}</span>` : ''}
+                    </div>
+                    <!-- Inputs / Outputs -->
+                    ${pillList('Inputs', ev.inputs, '#e67e22')}
+                    ${pillList('Outputs', ev.outputs, '#2ecc71')}
+                    <!-- Tags -->
+                    ${ev.tags && ev.tags.length ? `
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px;">
+                      ${ev.tags.map(tagBadge).join('')}
+                    </div>` : ''}
+                  </div>
+                </div>`;
+              }).join('')
+          }
+        </div>
+      </div>
+    `;
   }
 
   // Restore focus after content update
