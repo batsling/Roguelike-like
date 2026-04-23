@@ -395,12 +395,6 @@ function updateInventory() {
           }
         });
 
-        name: x.item.name,
-        type: x.item.type,
-        rarity: x.item.rarity,
-        image: x.item.image
-      })));
-
       gameItemsList.innerHTML = sortedInventory.map(({ item, idx }) => {
         let imageUrl = item.image && item.image.trim() !== ''
           ? item.image
