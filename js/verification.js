@@ -15,7 +15,6 @@
  * - showDeathScreen(message, source) - Curse death screen
  */
 
-console.log('✅ VERIFICATION.JS v9 loaded - weapon verification trigger active');
 
 // ===== CURSE VERIFICATION SYSTEM =====
 
@@ -685,10 +684,8 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       if (hubrisHigh.length > 0) {
         const highRadio = document.querySelector('input[name="hubris-high-check"]:checked');
         const didImplement = highRadio && highRadio.value === 'yes';
-        console.log(`Hubris III verification: Found ${hubrisHigh.length} curses, didImplement=${didImplement}`);
         if (didImplement) {
           hubrisHigh.forEach(curse => {
-            console.log(`Adding Hubris III to restrictionCursesProcessed: ${curse.name} (ID: ${curse.id})`);
             gameState.restrictionCursesProcessed.push(curse.id);
           });
         }
@@ -822,7 +819,6 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         if (typeof updateTopBar === 'function') {
           updateTopBar();
         }
-        console.log('Precision Landing activated: +1 Dash');
         precisionLandingActivated = true;
       }
     }
@@ -842,7 +838,6 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           if (Math.random() < 0.5) {
             perfectGame = true;
             hastePerfectRewards.push('Clown Shoes activated!');
-            console.log('Clown Shoes activated: treating non-perfect as perfect');
             break;
           }
         }
@@ -857,7 +852,6 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           dash = Math.max(0, dash + secretTechniqueCount);
           gameState.dash = dash;
           hastePerfectRewards.push(`+${secretTechniqueCount} Dash`);
-          console.log(`Secret Technique Instructions: +${secretTechniqueCount} Dash`);
         }
 
         // Performance Based Health Insurance: +5 Health per copy
@@ -867,7 +861,6 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           health = Math.min(maxHealth, health + healthGain);
           gameState.health = health;
           hastePerfectRewards.push(`+${healthGain} Health`);
-          console.log(`Performance Based Health Insurance: +${healthGain} Health`);
         }
 
         // Steady Investment: +5 Gold per copy
@@ -877,7 +870,6 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           gold += goldGain;
           gameState.gold = gold;
           hastePerfectRewards.push(`+${goldGain} Gold`);
-          console.log(`Steady Investment: +${goldGain} Gold`);
         }
 
         if (typeof updateTopBar === 'function') {
@@ -914,14 +906,12 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         gameState._blasmaPistolChest = chestType;
         weaponRewardText = `${chestType.charAt(0).toUpperCase() + chestType.slice(1)} Chest`;
         weaponEffectActivated = true;
-        console.log(`${weapon.name} activated: will grant ${chestType} chest`);
 
       } else if (weapon.name === "Lil' Bomber") {
         // Add +N to the numeric damage value in the Lil' Bomber card description ("Deal X Dmg")
         applyCardBonus("Lil' Bomber", /Deal (\d+) Dmg/i, weaponLevel);
         weaponRewardText = `Lil' Bomber card gains +${weaponLevel} Dmg`;
         weaponEffectActivated = true;
-        console.log(`${weapon.name} card gains +${weaponLevel} Dmg (Lv${weaponLevel})`);
 
       } else if (weapon.name === "Barrel") {
         const fishCount = weaponLevel;
@@ -933,21 +923,18 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         }
         weaponRewardText = `${fishCount} random fish`;
         weaponEffectActivated = true;
-        console.log(`${weapon.name} activated: granted ${fishCount} random fish`);
 
       } else if (weapon.name === "Blood Magic") {
         // Add +N to the Infuse value in the Blood Magic card description
         applyCardBonus("Blood Magic", /(\d+) Infuse/i, weaponLevel);
         weaponRewardText = `Blood Magic card gains +${weaponLevel} Infuse`;
         weaponEffectActivated = true;
-        console.log(`${weapon.name} card gains +${weaponLevel} Infuse (Lv${weaponLevel})`);
 
       } else if (weapon.name === "Dexecutioner") {
         // Add +N to the Assassinate value in the Dexecutioner card description
         applyCardBonus("Dexecutioner", /(\d+) Assassinate/i, weaponLevel);
         weaponRewardText = `Dexecutioner card gains +${weaponLevel} Assassinate`;
         weaponEffectActivated = true;
-        console.log(`${weapon.name} card gains +${weaponLevel} Assassinate (Lv${weaponLevel})`);
       }
     });
 
@@ -969,7 +956,6 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           gameState.intelligence = intelligence;
           gameState.charisma = charisma;
 
-          console.log(`${boon.name} activated: +1 to all combat roll bonus stats`);
 
           // 20% chance to apply status effect to next game
           if (Math.random() < 0.2) {
@@ -981,7 +967,6 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
                 gameState.pendingLocationStatuses = [];
               }
               gameState.pendingLocationStatuses.push(statusName);
-              console.log(`${boon.name}: Next game will have status ${statusName}`);
             }
           }
 
@@ -1004,7 +989,6 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         // 50/50 chance to upgrade or downgrade
         const isUpgrade = Math.random() < 0.5;
         appearanceChangeResult = upgradeOrDowngradePassive(isUpgrade);
-        console.log(`Appearance changed in Caves of Qud: ${isUpgrade ? 'upgrade' : 'downgrade'} attempted`);
       }
     }
 
@@ -1039,7 +1023,6 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
             gameState.cursesTracker[trackerId] = { gamesBeaten: 0 };
           }
           gameState.cursesTracker[trackerId].gamesBeaten = (gameState.cursesTracker[trackerId].gamesBeaten || 0) + 1;
-          console.log(`✅ Immediately incremented curse ${curse.name} (${curse.id}): ${gameState.cursesTracker[trackerId].gamesBeaten} games beaten`);
 
           // Check if curse duration is complete
           if (curse.duration) {
@@ -1251,7 +1234,6 @@ function showPerfectGameVerificationModal(onComplete) {
       updateTopBar();
     }
 
-    console.log('Precision Landing activated: +1 Dash');
 
     // Show notification
     setTimeout(() => {
@@ -1266,7 +1248,6 @@ function showPerfectGameVerificationModal(onComplete) {
 
   // Handle No button
   document.getElementById('perfect-no-btn').onclick = () => {
-    console.log('Precision Landing not activated (player did not perfect the game)');
     closeGameModal();
     if (onComplete) onComplete();
   };

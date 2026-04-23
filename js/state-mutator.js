@@ -23,7 +23,6 @@ const StateMutator = {
     if (delta < 0 && (health + delta) <= 0) {
       const traumaPlateIndex = inventory.findIndex(item => item.name === 'Reactive Trauma Plate');
       if (traumaPlateIndex !== -1) {
-        console.log('Reactive Trauma Plate activated! Negating lethal damage.');
 
         // Remove the item
         if (inventory[traumaPlateIndex].quantity && inventory[traumaPlateIndex].quantity > 1) {
@@ -340,7 +339,6 @@ const StateMutator = {
     // Handle quantity for item stacking
     if (item.quantity && item.quantity > 1) {
       item.quantity--;
-      console.log(`${itemName} quantity decreased to ${item.quantity}`);
     } else {
       inventory.splice(index, 1);
     }

@@ -9,7 +9,6 @@
  *   Bottom bar   — draw pile | energy orb | discard | exhaust (Part 2)
  */
 
-console.log('✅ COMBAT-UI.JS (STS Parts 1+2+3+4) loaded');
 
 // ============== CONSTANTS & COLORS ==============
 

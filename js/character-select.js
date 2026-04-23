@@ -85,7 +85,6 @@ function populateIconCharacterView() {
       // Show character details in the side panel
       showIconCharacterDetails(charKey);
 
-      console.log('Character selected:', charKey);
     });
   });
 }

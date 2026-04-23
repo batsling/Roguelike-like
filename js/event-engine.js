@@ -13,7 +13,6 @@
  *   4. Outcome screen (description + effects + Continue to Combat)
  */
 
-console.log('✅ EVENT-ENGINE.JS v2 loaded');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS

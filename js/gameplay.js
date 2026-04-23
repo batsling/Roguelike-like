@@ -261,7 +261,6 @@ function findMultiplePaths(start, goal, maxPaths = 50) {
   // Sort paths by length (shortest first)
   paths.sort((a, b) => a.length - b.length);
 
-  console.log(`findMultiplePaths: Found ${paths.length} paths after ${searchCount} searches`);
 
   return paths;
 }
@@ -702,7 +701,6 @@ function drawAllGameConnections() {
   // Get only choice nodes (not past or current nodes)
   // This prevents drawing arrows to past nodes that might have the same game
   const choiceNodes = document.querySelectorAll('.node.choice');
-  console.log('Found', choiceNodes.length, 'choice node elements on screen');
 
   const nodeMap = new Map();
 
@@ -714,7 +712,6 @@ function drawAllGameConnections() {
     }
   });
 
-  console.log('Total choice nodes mapped:', nodeMap.size);
 
   // Draw connections for games that have influence relationships
   // BUT skip connections where BOTH games are in the current choice set
@@ -763,7 +760,6 @@ function drawAllGameConnections() {
 // ===== STATE RENDERING =====
 
 function renderGameState() {
-  console.log('=== RENDERING GAME STATE ===');
 
   // Clear previous content
   pathContainer.innerHTML = '';
@@ -775,11 +771,6 @@ function renderGameState() {
     return;
   }
 
-  console.log('Current game:', gameState.currentGame);
-  console.log('Amulet game:', gameState.amuletGame);
-  console.log('Visited games:', gameState.visitedGames);
-  console.log('Character:', gameState.character);
-  console.log('PLAYER_CHARACTERS available?', Object.keys(PLAYER_CHARACTERS).length);
 
   // Update HUD
   document.getElementById('game-health').textContent = `${health}/${maxHealth}`;
@@ -794,7 +785,6 @@ function renderGameState() {
   let currentY = 120;
   const nodes = [];
 
-  console.log('Creating nodes for', gameState.visitedGames.length, 'games');
 
   gameState.visitedGames.forEach((gameName, index) => {
     const isLast = index === gameState.visitedGames.length - 1;

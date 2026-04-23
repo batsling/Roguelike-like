@@ -70,7 +70,6 @@ function spawnChoices() {
       : [];
 
     if (portalGames.length > 0) {
-      console.log(`Adding portal connections: ${portalGames.join(', ')}`);
       gamesToChooseFrom = [...gamesToChooseFrom, ...portalGames];
     }
   }
@@ -134,7 +133,6 @@ function spawnChoices() {
 
   // Apply pending boon statuses to random games in this choice set
   if (gameState.pendingLocationStatuses && gameState.pendingLocationStatuses.length > 0) {
-    console.log('Applying pending boon statuses:', gameState.pendingLocationStatuses);
 
     // Apply each pending status to a random game in the choice set
     gameState.pendingLocationStatuses.forEach(statusName => {
@@ -145,7 +143,6 @@ function spawnChoices() {
         // Add the status to the game
         if (typeof addGameStatus === 'function') {
           addGameStatus(targetGame, statusName.toLowerCase());
-          console.log(`Applied ${statusName} status to ${targetGame} from boon effect`);
         }
       }
     });
@@ -274,7 +271,6 @@ function spawnChoices() {
 
   // Draw arrows after all nodes are added and browser has laid them out
   requestAnimationFrame(() => {
-    console.log('🎯 spawnChoices: requestAnimationFrame callback executing');
 
     // Draw background connection arrows (gray) for all game connections
     drawAllGameConnections();
@@ -502,7 +498,6 @@ function advance(game, x, y, encounterType) {
     if (encounterType !== 'combat' && typeof hasTrait === 'function' && hasTrait('regeneration')) {
       health = Math.min(health + 1, maxHealth);
       gameState.health = health;
-      console.log('Regeneration trait triggered: +1 Health');
       if (typeof updateTopBar === 'function') {
         updateTopBar();
       }
@@ -624,7 +619,6 @@ function showFinish(node, isAmuletGame = false) {
                 // Check if Unstable Genome triggered
                 const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
                 if (gameState.unstableGenomeTriggered) {
-                  console.log('Unstable Genome triggered - showing large chest');
                   gameState.unstableGenomeTriggered = false; // Clear flag
                 }
                 showItemChoiceModal(() => {
@@ -641,7 +635,6 @@ function showFinish(node, isAmuletGame = false) {
                 // Check if Unstable Genome triggered
                 const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
                 if (gameState.unstableGenomeTriggered) {
-                  console.log('Unstable Genome triggered - showing large chest');
                   gameState.unstableGenomeTriggered = false; // Clear flag
                 }
                 showItemChoiceModal(() => {
@@ -657,7 +650,6 @@ function showFinish(node, isAmuletGame = false) {
                 // Check if Unstable Genome triggered - if so, show large chest (3 items)
                 const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
                 if (gameState.unstableGenomeTriggered) {
-                  console.log('Unstable Genome triggered - showing large chest');
                   gameState.unstableGenomeTriggered = false; // Clear flag
                 }
                 showItemChoiceModal(null, chestType);
@@ -680,7 +672,6 @@ function showFinish(node, isAmuletGame = false) {
               // Check if Unstable Genome triggered
               const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
               if (gameState.unstableGenomeTriggered) {
-                console.log('Unstable Genome triggered - showing large chest');
                 gameState.unstableGenomeTriggered = false; // Clear flag
               }
               showItemChoiceModal(() => {
@@ -697,7 +688,6 @@ function showFinish(node, isAmuletGame = false) {
               // Check if Unstable Genome triggered
               const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
               if (gameState.unstableGenomeTriggered) {
-                console.log('Unstable Genome triggered - showing large chest');
                 gameState.unstableGenomeTriggered = false; // Clear flag
               }
               showItemChoiceModal(() => {
@@ -713,7 +703,6 @@ function showFinish(node, isAmuletGame = false) {
               // Check if Unstable Genome triggered - if so, show large chest (3 items)
               const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
               if (gameState.unstableGenomeTriggered) {
-                console.log('Unstable Genome triggered - showing large chest');
                 gameState.unstableGenomeTriggered = false; // Clear flag
               }
               showItemChoiceModal(null, chestType);

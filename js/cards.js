@@ -13,7 +13,6 @@
  * Status cards (type = 'Status') cannot be upgraded and are removed after combat.
  */
 
-console.log('✅ CARDS.JS loaded');
 
 const HAND_SIZE_LIMIT = 10;
 

@@ -448,7 +448,6 @@ function addToLoot(lootItem) {
   }
 
   gameState.loot.push(lootItem);
-  console.log('Added to loot:', lootItem);
 
   // Update loot display if it's open
   if (typeof updateLootDisplay === 'function') {
@@ -472,7 +471,6 @@ function triggerBarrelBonusFish(numFishObtained) {
   const weaponLevel = gameState.weaponLevel || 1;
   const bonusFishCount = weaponLevel; // Level 1 = 1 fish, Level 2 = 2 fish, Level 3 = 3 fish
 
-  console.log(`Barrel triggered! Giving ${bonusFishCount} bonus fish`);
 
   // Give bonus fish
   for (let i = 0; i < bonusFishCount; i++) {
@@ -497,7 +495,6 @@ function removeFromLoot(index) {
   }
 
   gameState.loot.splice(index, 1);
-  console.log('Removed from loot at index:', index);
 
   // Update loot display if it's open
   if (typeof updateLootDisplay === 'function') {

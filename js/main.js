@@ -4,7 +4,6 @@
 // - Page initialization
 // - Event listener setup
 
-console.log('✅ MAIN.JS v49 loaded - weapons as items, unknown intent fix, all cards upgradeable');
 // - Excel file upload
 // - Save/load game system
 // - Tutorial and UI controls
@@ -72,7 +71,6 @@ function updateCurseUI() {
 // ===== INITIALIZATION =====
 
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('Initializing Roguelike-Like...');
 
   // Initialize gameplay DOM references
   if (typeof initGameplayDOM === 'function') {
@@ -157,7 +155,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     lootBtn.addEventListener('click', showLootModal);
   }
 
-  console.log('Initialization complete');
 });
 
 // ===== SAVE/LOAD SYSTEM =====
@@ -336,7 +333,6 @@ function saveCurrentGame() {
     alert('Failed to save game: ' + result.error);
     return;
   }
-  console.log('Game saved:', gameState.saveName);
 }
 
 function loadSavedGame(saveName) {
@@ -451,7 +447,6 @@ function loadSavedGame(saveName) {
   updateCursesDisplay();
   updateGameStats();
 
-  console.log('Game loaded:', saveName);
 }
 
 // ===== TUTORIAL AND UI CONTROLS =====
@@ -485,9 +480,6 @@ let currentCharacterIndex = 0;
 let characterViewMode = 'horizontal'; // 'horizontal' or 'icon'
 
 document.getElementById('new-game-btn')?.addEventListener('click', () => {
-  console.log('=== START RUN CLICKED ===');
-  console.log('games.length:', games.length);
-  console.log('PLAYER_CHARACTERS keys:', Object.keys(PLAYER_CHARACTERS));
 
   if (games.length === 0) {
     alert('Game data is still loading... Please wait a moment and try again.');
@@ -562,9 +554,6 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   const amulet = candidates[Math.floor(Math.random() * candidates.length)];
 
   // Initialize game state with character
-  console.log('=== INITIALIZING NEW GAME ===');
-  console.log('Selected character:', selectedCharacter);
-  console.log('Character exists in PLAYER_CHARACTERS?', selectedCharacter in PLAYER_CHARACTERS);
 
   const character = PLAYER_CHARACTERS[selectedCharacter];
   if (!character) {
@@ -573,7 +562,6 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     return;
   }
 
-  console.log('Character data:', character);
 
   // Handle both old format (startingStats) and new format (no startingStats, all start at 0)
   const stats = character.startingStats || {};
@@ -696,7 +684,6 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     const itemData = items.find(i => i.name === itemName);
     if (itemData && typeof acquireItem === 'function') {
       acquireItem(itemData);
-      console.log(`Starting item granted: ${itemName}`);
     } else {
       console.warn(`Starting item not found in items list: ${itemName}`);
     }
@@ -707,7 +694,6 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
 
   // Check if starting location is a Hades location and show boon selection
   if (selectedLocation && selectedLocation.game === 'Hades' && typeof showHadesBoonSelection === 'function') {
-    console.log('Starting in Hades location, showing boon selection...');
     // Small delay to let the dungeon screen render first
     // Store the timeout ID so it can be cleared if player finishes game before it fires
     gameState.hadesStartBoonTimeout = setTimeout(() => {
@@ -1708,12 +1694,10 @@ function showMapModal() {
   const currentGame = typeof gameState.currentGame === 'string' ? gameState.currentGame : gameState.currentGame.name;
   const amuletGame = typeof gameState.amuletGame === 'string' ? gameState.amuletGame : gameState.amuletGame.name;
 
-  console.log('Map modal - Current game:', currentGame, 'Amulet game:', amuletGame);
 
   // Get shortest path info first
   const shortestPathData = findAllShortestPaths(currentGame, amuletGame);
 
-  console.log('Shortest path data:', shortestPathData);
 
   let mapHTML = '<div style="text-align: center;">';
   mapHTML += '<h2 style="color: gold; margin-bottom: 20px;">🗺️ Map to Amulet</h2>';
@@ -1859,7 +1843,6 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
 
   // Get all game boxes
   const gameBoxes = document.querySelectorAll('[data-game]');
-  console.log('Found game boxes:', gameBoxes.length);
   const boxPositions = new Map();
 
   // Get the game boxes container to use as reference
@@ -1877,14 +1860,11 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
       bottom: rect.bottom - containerRect.top,
       top: rect.top - containerRect.top
     });
-    console.log(`  Box "${gameName}": (${rect.left - containerRect.left + rect.width / 2}, ${rect.top - containerRect.top})`);
   });
 
-  console.log('Total box positions mapped:', boxPositions.size);
 
   // Draw arrows between connected games
   const layers = Array.from(pathData.layers.keys()).sort((a, b) => a - b);
-  console.log('Number of layers:', layers.length);
 
   let arrowsDrawn = 0;
 
@@ -1926,7 +1906,6 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
 
   layers.forEach((distance, layerIndex) => {
     const gamesAtLayer = pathData.layers.get(distance);
-    console.log(`Layer ${layerIndex} (distance ${distance}): ${gamesAtLayer.length} games`);
 
     gamesAtLayer.forEach(fromGameData => {
       const fromGame = fromGameData.name || fromGameData;
@@ -1938,12 +1917,10 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
 
       const fromPos = boxPositions.get(fromGame);
       if (!fromPos) {
-        console.log(`  ❌ No position for "${fromGame}"`);
         return;
       }
 
       const connections = getGameConnections(fromGame);
-      console.log(`  "${fromGame}" connections:`, connections);
 
       connections.forEach(toGame => {
         const toGameData = allGamesInMap.get(toGame);
@@ -1965,7 +1942,6 @@ function drawMapArrows(pathData, currentGame, amuletGame, gameToLayer = null) {
 
           const toPos = boxPositions.get(toGame);
           if (!toPos) {
-            console.log(`    ❌ No position for target "${toGame}"`);
             return;
           }
 
@@ -4813,14 +4789,12 @@ Object.defineProperty(window, 'useDiceCombat', {
   get: function() { return useDiceCombat; },
   set: function(val) {
     useDiceCombat = val;
-    console.log(`Combat system: ${val ? 'New Dice-Based' : 'Classic D20'}`);
   }
 });
 
 // Toggle combat system function
 window.toggleCombatSystem = function() {
   useDiceCombat = !useDiceCombat;
-  console.log(`Combat system switched to: ${useDiceCombat ? 'New Dice-Based' : 'Classic D20'}`);
   return useDiceCombat;
 };
 
@@ -5884,7 +5858,6 @@ function recruitAlly(allyName) {
 
   // Check if already recruited
   if (gameState.activeAllies.some(a => a.name === allyName)) {
-    console.log('Ally already recruited:', allyName);
     return false;
   }
 
@@ -5895,7 +5868,6 @@ function recruitAlly(allyName) {
   });
 
   saveCurrentGame();
-  console.log(`Recruited ally: ${allyName}`);
   return true;
 }
 
@@ -5913,7 +5885,6 @@ function dismissAlly(allyName) {
 
   gameState.activeAllies.splice(index, 1);
   saveCurrentGame();
-  console.log(`Dismissed ally: ${allyName}`);
   return true;
 }
 
@@ -5931,7 +5902,6 @@ function updateAllyHp(allyName, newHp) {
   // Remove ally if HP <= 0
   if (ally.currentHp <= 0) {
     dismissAlly(allyName);
-    console.log(`${allyName} has fallen!`);
   }
 }
 
@@ -6782,7 +6752,6 @@ function removeItemAndReverseStats(index) {
   // Remove from inventory (handle quantity)
   if (item.quantity && item.quantity > 1) {
     item.quantity--;
-    console.log(`${item.name} quantity decreased to ${item.quantity}`);
   } else {
     inventory.splice(index, 1);
   }
@@ -7374,12 +7343,10 @@ function incrementGameBeaten(gameName, hasAmulet = false) {
 
   if (hasAmulet) {
     stats[gameName].amulets = (stats[gameName].amulets || 0) + 1;
-    console.log(`${gameName} amulet collected! Total amulets: ${stats[gameName].amulets}`);
   }
 
   saveGameStats(stats);
 
-  console.log(`${gameName} beaten count: ${stats[gameName].beaten}`);
 }
 
 // ===== FISH STATS TRACKING SYSTEM =====
@@ -7436,7 +7403,6 @@ function incrementFishCaught(fishName, size = 'Medium') {
 
   saveFishStats(stats);
 
-  console.log(`${fishName} (${size}) caught count: ${stats[fishName].caught} (Small: ${stats[fishName].sizes.Small}, Medium: ${stats[fishName].sizes.Medium}, Large: ${stats[fishName].sizes.Large})`);
 }
 
 /**
@@ -8489,12 +8455,10 @@ function markGameFinished(gameName) {
 
   // Initialize totalGamesBeaten if it doesn't exist (backwards compatibility)
   if (typeof gameState.totalGamesBeaten !== 'number') {
-    console.log('⚠️ totalGamesBeaten was not a number, initializing to 0');
     gameState.totalGamesBeaten = 0;
   }
 
   // Log the state before increment for debugging
-  console.log(`📊 Before increment - totalGamesBeaten: ${gameState.totalGamesBeaten}`);
 
   // Increment beaten count (tracks all completions, even if player dies later)
   // NOTE: Amulet stat is only incremented on successful escape (in showVictoryScreen)
@@ -8503,12 +8467,10 @@ function markGameFinished(gameName) {
   // Increment total games beaten counter (counts ALL completions including duplicates)
   const previousDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
   gameState.totalGamesBeaten++;
-  console.log(`✅ Game finished: ${gameName}. Total games beaten: ${gameState.totalGamesBeaten} (was ${gameState.totalGamesBeaten - 1})`);
 
   // Reroller trait: Every time you beat a game, gain +1 Reroll
   if (hasTrait('reroller')) {
     reroll++;
-    console.log('Reroller trait triggered: +1 Reroll');
     if (typeof updateTopBar === 'function') {
       updateTopBar();
     }
@@ -8522,7 +8484,6 @@ function markGameFinished(gameName) {
   // Only add if not already in finishedGames array (for unique tracking)
   if (!gameState.finishedGames.includes(gameName)) {
     gameState.finishedGames.push(gameName);
-    console.log(`Unique game finished: ${gameName}. Total unique: ${gameState.finishedGames.length}`);
   }
 
   // Check if difficulty tier changed and update location (unless manually overridden via dev tools)
@@ -8532,7 +8493,6 @@ function markGameFinished(gameName) {
       const newLocation = getRandomLocation(newDifficulty);
       if (newLocation) {
         gameState.location = newLocation;
-        console.log(`Difficulty tier changed to ${newDifficulty}! New location: ${newLocation.name}`);
 
       // Update the location display
       if (typeof updateLocationDisplay === 'function') {
@@ -8542,7 +8502,6 @@ function markGameFinished(gameName) {
       // Flag if this is a Hades location - will be shown after item choice
       if (newLocation.game === 'Hades') {
         gameState.pendingHadesBoonSelection = true;
-        console.log('Hades location entered - boon selection will be shown after item choice');
       }
     }
     }
@@ -8635,7 +8594,6 @@ function checkCurseDurations(eventType = 'game_beaten') {
     // Increment the counter if needed
     if (shouldIncrement) {
       tracker.gamesBeaten = (tracker.gamesBeaten || 0) + 1;
-      console.log(`Incremented curse ${curse.name} (${curse.id}): ${tracker.gamesBeaten} games beaten`);
     }
 
     // Check if curse duration is complete
@@ -8644,7 +8602,6 @@ function checkCurseDurations(eventType = 'game_beaten') {
       if (match) {
         const requiredGames = parseInt(match[1]);
         if (tracker.gamesBeaten >= requiredGames) {
-          console.log(`Curse ${curse.name} duration complete (${tracker.gamesBeaten}/${requiredGames})`);
           cursesToRemove.push(curse);
         }
       }
@@ -8696,7 +8653,6 @@ function addGameStatus(gameName, statusName, icon) {
   // Check if status already exists
   const existing = gameState.gameStatusEffects[gameName].find(s => s.name === statusName);
   if (existing) {
-    console.log(`Status ${statusName} already exists on ${gameName}`);
     return;
   }
 
@@ -8722,7 +8678,6 @@ function addGameStatus(gameName, statusName, icon) {
     icon: icon
   });
 
-  console.log(`Added status ${statusName} to ${gameName} with icon ${icon}`);
 
   // Refresh the display if we're looking at this game
   if (typeof updateGameDisplay === 'function') {
@@ -8743,7 +8698,6 @@ function removeGameStatus(gameName, statusName) {
   const index = gameState.gameStatusEffects[gameName].findIndex(s => s.name === statusName);
   if (index !== -1) {
     gameState.gameStatusEffects[gameName].splice(index, 1);
-    console.log(`Removed status ${statusName} from ${gameName}`);
 
     // Clean up empty arrays
     if (gameState.gameStatusEffects[gameName].length === 0) {
@@ -8826,7 +8780,6 @@ function triggerGameStatusEffects(gameName) {
     curseSuffix = 'II';
   }
 
-  console.log(`Triggering status effects on ${gameName} (Difficulty: ${difficultyTier})`);
 
   // Process each status effect
   statuses.forEach(status => {
@@ -8932,7 +8885,6 @@ function triggerGameStatusEffects(gameName) {
     }
 
     if (message) {
-      console.log(message);
       showNotification(message, isPositive ? 'positive' : 'negative');
     }
   });
@@ -9510,7 +9462,6 @@ document.getElementById('setSelectedLocation')?.addEventListener('click', () => 
     setTimeout(() => { output.style.display = 'none'; }, 2000);
   }
 
-  console.log(`Dev Tools: Set location to ${selectedLocation.name} (${selectedLocation.difficulty} - ${selectedLocation.game}) - Manual override enabled`);
 });
 
 document.getElementById('setRandomLocation')?.addEventListener('click', () => {
@@ -9548,7 +9499,6 @@ document.getElementById('setRandomLocation')?.addEventListener('click', () => {
     setTimeout(() => { output.style.display = 'none'; }, 2000);
   }
 
-  console.log(`Dev Tools: Set random location to ${randomLocation.name} (${randomLocation.difficulty} - ${randomLocation.game}) - Manual override enabled`);
 });
 
 document.getElementById('enableAutoLocationChange')?.addEventListener('click', () => {
@@ -9567,7 +9517,6 @@ document.getElementById('enableAutoLocationChange')?.addEventListener('click', (
     setTimeout(() => { output.style.display = 'none'; }, 2000);
   }
 
-  console.log('Dev Tools: Manual location override disabled - location will now change automatically with difficulty');
 });
 
 // Specific Enemy Selection
@@ -9871,22 +9820,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  console.log('Inventory sort buttons setup:', {
-    sortAlphaBtn: !!sortAlphaBtn,
-    sortRarityBtn: !!sortRarityBtn,
-    sortTypeBtn: !!sortTypeBtn,
-    updateInventory: typeof window.updateInventory
-  });
-
   if (sortAlphaBtn) {
     sortAlphaBtn.addEventListener('click', () => {
-      console.log('Sort A-Z clicked, changing mode from', window.inventorySortMode, 'to alphabetical');
       window.inventorySortMode = 'alphabetical';
       updateSortButtons(sortAlphaBtn);
       if (typeof window.updateInventory === 'function') {
-        console.log('Calling updateInventory()');
         window.updateInventory();
-        console.log('updateInventory() completed');
       } else {
         console.error('updateInventory not found');
       }
@@ -9897,13 +9836,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (sortRarityBtn) {
     sortRarityBtn.addEventListener('click', () => {
-      console.log('Sort Rarity clicked, changing mode from', window.inventorySortMode, 'to rarity');
       window.inventorySortMode = 'rarity';
       updateSortButtons(sortRarityBtn);
       if (typeof window.updateInventory === 'function') {
-        console.log('Calling updateInventory()');
         window.updateInventory();
-        console.log('updateInventory() completed');
       } else {
         console.error('updateInventory not found');
       }
@@ -9914,13 +9850,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (sortTypeBtn) {
     sortTypeBtn.addEventListener('click', () => {
-      console.log('Sort Type clicked, changing mode from', window.inventorySortMode, 'to type');
       window.inventorySortMode = 'type';
       updateSortButtons(sortTypeBtn);
       if (typeof window.updateInventory === 'function') {
-        console.log('Calling updateInventory()');
         window.updateInventory();
-        console.log('updateInventory() completed');
       } else {
         console.error('updateInventory not found');
       }

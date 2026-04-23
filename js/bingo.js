@@ -66,7 +66,6 @@ const BINGO_GOALS = [
 
 function generateBingoGrid() {
   if (bingoGoals.length === 0) {
-    console.log('No bingo goals loaded');
     return;
   }
 
@@ -334,7 +333,6 @@ function giveRandomItems(rarity, bingoCount = 1, bonusText = '') {
   );
 
   if (rarityItems.length === 0) {
-    console.log(`No ${rarity} items available`);
     alert(`No ${rarity} items available!`);
     processingBingoReward = false;
     processNextBingoReward();

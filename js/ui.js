@@ -3,27 +3,6 @@
 // This module handles all visual updates to the UI including:
 // - Top bar (health, gold, rations)
 // - Inventory display
-
-console.log('✅ UI.JS v34 loaded - weapon deep copy fix active + comprehensive debugging');
-
-// Check for equipment slots on DOM ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    const weaponSlot = document.getElementById('weapon-slot');
-    const amuletSlot = document.getElementById('amulet-slot');
-    console.log('🎯 DOM Ready - Equipment slots check:', {
-      weaponSlot: !!weaponSlot,
-      amuletSlot: !!amuletSlot
-    });
-  });
-} else {
-  const weaponSlot = document.getElementById('weapon-slot');
-  const amuletSlot = document.getElementById('amulet-slot');
-  console.log('🎯 Immediate - Equipment slots check:', {
-    weaponSlot: !!weaponSlot,
-    amuletSlot: !!amuletSlot
-  });
-}
 // - Game lists and selections
 // - Encounter history
 // - Game state stats sidebar
@@ -392,7 +371,6 @@ function updateInventory() {
   // Update game items sidebar if it exists
   const gameItemsList = document.getElementById('game-items-list');
   if (gameItemsList) {
-    console.log('Updating game-items-list, inventory length:', inventory.length, 'sort mode:', window.inventorySortMode);
     if (inventory.length === 0) {
       gameItemsList.innerHTML = '<div class="empty-inventory">No items yet</div>';
     } else {
@@ -417,8 +395,6 @@ function updateInventory() {
           }
         });
 
-      console.log('Sorted inventory order:', sortedInventory.map(x => x.item.name).join(', '));
-      console.log('📦 First 3 items with full data:', sortedInventory.slice(0, 3).map(x => ({
         name: x.item.name,
         type: x.item.type,
         rarity: x.item.rarity,
@@ -1036,7 +1012,6 @@ function updateGameStats() {
     }
     const difficulty = gameState.totalGamesBeaten;
     statsDifficulty.textContent = difficulty;
-    console.log(`📊 Updating difficulty display: ${difficulty}`);
   }
 }
 
