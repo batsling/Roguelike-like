@@ -980,6 +980,17 @@ function updateGameStats() {
     }
   }
 
+  // Constitution derived stat — every 5 max HP above/below starting value = ±1 Constitution
+  const statsConstitution = document.getElementById('stats-constitution');
+  if (statsConstitution) {
+    const startingHP = typeof gameState !== 'undefined' && gameState.startingMaxHealth != null
+      ? gameState.startingMaxHealth
+      : (typeof maxHealth !== 'undefined' ? maxHealth : 0);
+    const currentMaxHP = typeof maxHealth !== 'undefined' ? maxHealth : 0;
+    const constitution = Math.floor((currentMaxHP - startingHP) / 5);
+    statsConstitution.textContent = constitution;
+  }
+
   if (statsReroll) statsReroll.textContent = reroll;
   if (statsDash) statsDash.textContent = dash;
   if (statsSkip) statsSkip.textContent = skip;
