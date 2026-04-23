@@ -1114,6 +1114,20 @@ function updateGameStats() {
     }
   }
 
+  // Arcane derived stat (every 3 Intelligence = 1 Arcane) + any combat arcane bonuses
+  const combatArcane = cs ? (cs.player.statuses['arcane'] || 0) : 0;
+  const statsArcane = document.getElementById('stats-arcane');
+  if (statsArcane) {
+    const effectiveIntelligenceForArcane = totalBonuses ? intelligence + totalBonuses.intelligence : intelligence;
+    const baseArcane = Math.floor(effectiveIntelligenceForArcane / 3);
+    const totalArcane = baseArcane + combatArcane;
+    if (combatArcane !== 0) {
+      statsArcane.textContent = `${totalArcane} (${baseArcane}+${combatArcane})`;
+    } else {
+      statsArcane.textContent = totalArcane;
+    }
+  }
+
   // Charisma stat with bonuses
   if (statsCharisma) {
     const effectiveCharisma = totalBonuses ? charisma + totalBonuses.charisma : charisma;
@@ -1123,6 +1137,21 @@ function updateGameStats() {
       statsCharisma.textContent = charisma;
     }
   }
+
+  // Persistence derived stat (every 5 Charisma = 1 Persistence) + any combat persistence bonuses
+  const combatPersistence = cs ? (cs.player.statuses['persistence'] || 0) : 0;
+  const statsPersistence = document.getElementById('stats-persistence');
+  if (statsPersistence) {
+    const effectiveCharismaForPersistence = totalBonuses ? charisma + totalBonuses.charisma : charisma;
+    const basePersistence = Math.floor(effectiveCharismaForPersistence / 5);
+    const totalPersistence = basePersistence + combatPersistence;
+    if (combatPersistence !== 0) {
+      statsPersistence.textContent = `${totalPersistence} (${basePersistence}+${combatPersistence})`;
+    } else {
+      statsPersistence.textContent = totalPersistence;
+    }
+  }
+
   if (statsReroll) statsReroll.textContent = reroll;
   if (statsDash) statsDash.textContent = dash;
   if (statsSkip) statsSkip.textContent = skip;

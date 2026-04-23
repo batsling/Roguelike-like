@@ -356,6 +356,10 @@ const STATUS_META = {
   intelligence:   { img: null,            emoji: '🧠', label: 'Intelligence' },
   dexterity:      { img: null,            emoji: '🏃', label: 'Dexterity'    },
   charisma:       { img: null,            emoji: '✨', label: 'Charisma'     },
+  // Derived combat stats
+  arcane:         { img: 'Arcane',        emoji: '🔷', label: 'Arcane'       },
+  persistence:    { img: 'Persistence',   emoji: '💠', label: 'Persistence'  },
+  flame_barrier:  { img: 'FlameBarrier',  emoji: '🔥', label: 'Flame Barrier'},
 };
 
 // ============== MAIN RENDER ENTRY POINT ==============

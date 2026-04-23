@@ -2156,6 +2156,16 @@ text, path, line, g {
   color: #66ffaa;
 }
 
+#game-stats .stat-color-arcane,
+.stat-color-arcane {
+  color: #88aaff;
+}
+
+#game-stats .stat-color-persistence,
+.stat-color-persistence {
+  color: #dd66ff;
+}
+
 /* Font Size Utilities */
 .font-size-11 {
   font-size: 11px;

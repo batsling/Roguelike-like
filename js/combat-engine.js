@@ -37,6 +37,8 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     intelligence: Math.floor((playerStats.intelligence || 0) / 3) || 0,
     charisma: Math.floor((playerStats.charisma || 0) / 3) || 0
   };
+  // Persistence uses a 5:1 ratio (every 5 Charisma = 1 Persistence)
+  const persistenceBonusInit = Math.floor((playerStats.charisma || 0) / 5);
 
   // Create player state - ensure health values are valid numbers
   const playerHealth = (typeof window.health === 'number' && !isNaN(window.health)) ? window.health : 10;
@@ -66,6 +68,12 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
   }
   if (statBonuses.dexterity > 0) {
     player.statuses['defense'] = statBonuses.dexterity;
+  }
+  if (statBonuses.intelligence > 0) {
+    player.statuses['arcane'] = statBonuses.intelligence;
+  }
+  if (persistenceBonusInit > 0) {
+    player.statuses['persistence'] = persistenceBonusInit;
   }
 
   // Apply pending combat statuses from pre-combat events (e.g. Fear, Blind)
@@ -240,12 +248,18 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
 
   addLog('Combat started!', 'info');
 
-  // Log stat-derived power/defense applied at combat start
+  // Log stat-derived power/defense/arcane/persistence applied at combat start
   if (statBonuses.strength > 0) {
     addLog(`Power +${statBonuses.strength} (${playerStats.strength} Strength)`, 'success');
   }
   if (statBonuses.dexterity > 0) {
     addLog(`Defense +${statBonuses.dexterity} (${playerStats.dexterity} Dexterity)`, 'success');
+  }
+  if (statBonuses.intelligence > 0) {
+    addLog(`Arcane +${statBonuses.intelligence} (${playerStats.intelligence} Intelligence)`, 'success');
+  }
+  if (persistenceBonusInit > 0) {
+    addLog(`Persistence +${persistenceBonusInit} (${playerStats.charisma} Charisma)`, 'success');
   }
 
   // Check for Philosopher's Stone - enemies start with Power
@@ -572,6 +586,7 @@ const PATTERN_ADDONS   = new Set(['ranged','melee','pierce','self','engage','tra
 const PATTERN_STATUSES = new Set([
   'burn','poison','weak','vulnerable','stun','oiled','dodge','power','frail','enfeebled','confused',
   'barricade','fading','thorns','shifting','formless','ritual','ruptured','bleed','slow','silence',
+  'arcane','persistence','flame_barrier',
 ]);
 // Statuses that do not stack — applying again just sets to 1
 const NON_STACKABLE_STATUSES = new Set(['stun', 'dodge', 'silence', 'confused']);
@@ -775,6 +790,18 @@ function parseSimplePatternDesc(text) {
         addons.push(tokens[i++]);
       }
       effects.push({ raw: `${value} ${move}`, value, move: 'Dmg', addons, target: null });
+    } else if (moveLow === 'magic' && i < tokens.length && tokens[i].toLowerCase() === 'dmg') {
+      i++; // consume 'Dmg'
+      const KNOWN_ELEMENTS = new Set(['fire']);
+      let element = null;
+      if (i < tokens.length && KNOWN_ELEMENTS.has(tokens[i].toLowerCase())) {
+        element = tokens[i++];
+      }
+      const addons = [];
+      while (i < tokens.length && PATTERN_ADDONS.has(tokens[i].toLowerCase())) {
+        addons.push(tokens[i++]);
+      }
+      effects.push({ raw: `${value} Magic Dmg${element ? ' ' + element : ''}`, value, move: 'Magic Dmg', element: element ? element.toLowerCase() : null, addons, target: null });
     } else if (moveLow === 'block') {
       effects.push({ raw: `${value} ${move}`, value, move: 'Block', addons: [], target: null });
     } else if (moveLow === 'heal') {
@@ -1332,6 +1359,14 @@ function processEffect(effect, die, targets, isCantrip = false) {
       });
       break;
 
+    case 'magic dmg':
+    case 'magic_dmg':
+      resolvedTargets.enemies.forEach(enemy => {
+        dealDamage(enemy, value, ['magic', ...(effect.addons || [])]);
+        if (effect.element === 'fire') applyFireElement(enemy);
+      });
+      break;
+
     case 'block':
       resolvedTargets.allies.forEach(ally => {
         addBlock(ally, value);
@@ -1465,20 +1500,30 @@ function calculateMoveValue(move, value, die) {
       }
       return baseValue + combatPowerBonus;
 
+    case 'magic dmg':
+    case 'magic_dmg':
+      // Magic damage scales with Arcane status (not Power)
+      return baseValue + (playerStatuses['arcane'] || 0);
+
     case 'block':
       // combatDefenseBonus already includes dex-derived defense set at combat init
       return baseValue + combatDefenseBonus;
 
     case 'heal':
-    case 'mana':
     case 'vitality':
       return baseValue + intBonus;
 
+    case 'mana':
+      return baseValue;
+
     case 'reroll':
+      return baseValue + chaBonus;
+
     case 'get':
     case 'inflict':
     case 'cleanse':
-      return baseValue + chaBonus;
+      // Persistence replaces direct charisma scaling for status applications
+      return baseValue + (playerStatuses['persistence'] || 0);
 
     default:
       return baseValue;
@@ -1593,6 +1638,18 @@ function getAutoTargets(effect) {
 // ============== COMBAT ACTIONS ==============
 
 /**
+ * Apply the Fire element effect: inflict 1 Burn if the target has none.
+ * @param {Object} target - Target entity
+ */
+function applyFireElement(target) {
+  if (!target || !target.statuses) return;
+  if (!(target.statuses['burn'] > 0)) {
+    applyStatus(target, 'burn', 1);
+    addLog(`Fire: ${target.name || 'Target'} ignited! +1 Burn`, 'warning');
+  }
+}
+
+/**
  * Deal damage to a target
  * @param {Object} target - Target entity
  * @param {number} damage - Damage amount
@@ -1661,9 +1718,10 @@ function dealDamage(target, damage, addons = []) {
     dmg = Math.ceil(dmg * 1.5);
   }
 
-  // Check Bruise (melee/ranged attacks deal +1 per stack)
+  // Check Bruise (melee/ranged attacks deal +1 per stack; pure magic damage is exempt)
   const bruiseStacks = target.statuses['bruise'] || 0;
-  const isMeleeOrRanged = !addons.includes('self');
+  const isMeleeOrRanged = !addons.includes('self') &&
+    (!addons.includes('magic') || addons.includes('melee') || addons.includes('ranged'));
   if (bruiseStacks > 0 && isMeleeOrRanged) {
     dmg += bruiseStacks;
   }
@@ -2846,9 +2904,12 @@ function executeEnemyActions() {
             }
           }
 
-          // Add power bonus to damage
+          // Add power bonus to Dmg, arcane bonus to Magic Dmg
           if (effect.move?.toLowerCase() === 'dmg') {
             value += powerBonus;
+          }
+          if (effect.move?.toLowerCase() === 'magic dmg') {
+            value += (enemy.statuses['arcane'] || 0);
           }
 
           // Process effect (targeting player)
@@ -2922,6 +2983,15 @@ function executeEnemyActions() {
                   }
                 }
               }
+              break;
+            }
+
+            case 'magic dmg': {
+              const magicAddons = ['magic', ...(effect.addons || [])];
+              let magicDmgVal = value;
+              if (enemy.statuses['weak']) magicDmgVal = Math.floor(magicDmgVal * 0.75);
+              dealDamageToPlayer(magicDmgVal, magicAddons, enemy);
+              if (effect.element === 'fire') applyFireElement(combatState.player);
               break;
             }
 
@@ -3210,6 +3280,14 @@ function dealDamageToPlayer(damage, addons, enemy) {
     addLog(`Thorns: ${player.statuses['thorns']} damage reflected to ${enemy.name}!`, 'info');
   }
 
+  // Flame Barrier — fires on any hit (not self-damage), deals Magic Dmg Fire to attacker
+  if (player.statuses['flame_barrier'] && enemy && !addons.includes('self')) {
+    const fbDmg = player.statuses['flame_barrier'];
+    dealDamage(enemy, fbDmg, ['magic', 'ranged']);
+    applyFireElement(enemy);
+    addLog(`Flame Barrier: ${fbDmg} Magic Dmg Fire reflected to ${enemy.name}!`, 'info');
+  }
+
   // Apply block
   let remaining = damage;
   if (player.block > 0) {
@@ -3395,12 +3473,9 @@ function processStatusEffects(target, timing) {
       addLog(`Plated Armor: +${statuses['plated_armor']} Block`, 'success');
     }
 
-    // Flame Barrier: remove temporary Thorns at end of player's turn
-    if (target === combatState.player && combatState._flameBarrierThorns) {
-      const fb = combatState._flameBarrierThorns;
-      statuses['thorns'] = Math.max(0, (statuses['thorns'] || 0) - fb);
-      if ((statuses['thorns'] || 0) <= 0) delete statuses['thorns'];
-      delete combatState._flameBarrierThorns;
+    // Flame Barrier: remove all stacks at end of player's turn
+    if (target === combatState.player && statuses['flame_barrier']) {
+      delete statuses['flame_barrier'];
     }
 
     // Rage: clear per-turn attack block bonus
@@ -3418,15 +3493,17 @@ function processStatusEffects(target, timing) {
       delete combatState._exhaustedHandCount;
     }
 
-    // Combust: at end of player's turn, lose N HP and deal N×dmg to all enemies
+    // Combust: at end of player's turn, lose N HP and deal N×dmg Magic Dmg Fire to all enemies
     if (target === combatState.player && statuses['combust']) {
       const stacks = statuses['combust'];
       const dmgPerStack = combatState._combustDmgPerStack || 5;
+      const combustTotal = stacks * dmgPerStack;
       loseHealth(stacks);
       combatState.enemies.filter(e => e.health > 0).forEach(e => {
-        dealDamage(e, stacks * dmgPerStack, ['ranged']);
+        dealDamage(e, combustTotal, ['magic', 'ranged']);
+        applyFireElement(e);
       });
-      addLog(`Combust: lost ${stacks} HP, dealt ${stacks * dmgPerStack} dmg to all enemies`, 'warning');
+      addLog(`Combust: lost ${stacks} HP, dealt ${combustTotal} Magic Dmg Fire to all enemies`, 'warning');
     }
 
     // Burst: clears completely at end of turn
@@ -3648,13 +3725,16 @@ function drawCards(count = 1) {
       combatState._evolveFiring = false;
     }
 
-    // Fire Breathing: whenever a status or curse card is drawn, deal AoE ranged damage
+    // Fire Breathing: whenever a status or curse card is drawn, deal Magic Dmg Fire AoE ranged
     if ((card.isStatusCard || card.isCurse || (card.type || '').toLowerCase() === 'curse') && !combatState._fireBreathFiring &&
         combatState.player.statuses && combatState.player.statuses['fire_breathing']) {
       combatState._fireBreathFiring = true;
       const fb = combatState.player.statuses['fire_breathing'];
-      combatState.enemies.filter(e => e.health > 0).forEach(e => dealDamage(e, fb, ['ranged']));
-      addLog(`Fire Breathing: ${fb} dmg to all enemies`, 'warning');
+      combatState.enemies.filter(e => e.health > 0).forEach(e => {
+        dealDamage(e, fb, ['magic', 'ranged']);
+        applyFireElement(e);
+      });
+      addLog(`Fire Breathing: ${fb} Magic Dmg Fire to all enemies`, 'warning');
       combatState._fireBreathFiring = false;
     }
 
@@ -3745,7 +3825,7 @@ function resolveCardEffect(card, target, options = {}) {
   // Combust Power: register stacks before part parsing (effect fires each end-of-turn, not immediately)
   if (card.name === 'Combust') {
     player.statuses['combust'] = (player.statuses['combust'] || 0) + 1;
-    const dmgM = desc.match(/Deal (\d+) Dmg/i);
+    const dmgM = desc.match(/Deal (\d+) Magic Dmg/i);
     if (dmgM) combatState._combustDmgPerStack = parseInt(dmgM[1]);
     addLog(`Combust: ${player.statuses['combust']} stack(s) active`, 'info');
   }
@@ -3773,13 +3853,12 @@ function resolveCardEffect(card, target, options = {}) {
     // Skip "Whenever you draw this card" clauses — draw-triggered effects handled in drawCards()
     if (/whenever you draw this card/i.test(lower)) continue;
 
-    // Gain +N Thorns until the end of turn (Flame Barrier — temporary Thorns)
-    const tempThornsM = p.match(/Gain \+?(\d+) Thorns until the end of turn/i);
-    if (tempThornsM) {
-      const amt = parseInt(tempThornsM[1]);
-      player.statuses['thorns'] = (player.statuses['thorns'] || 0) + amt;
-      combatState._flameBarrierThorns = (combatState._flameBarrierThorns || 0) + amt;
-      addLog(`+${amt} Thorns (until end of turn)`, 'success');
+    // Gain +N Flame Barrier (status that retaliates with Magic Dmg Fire, expires end of turn)
+    const flameBarrierM = p.match(/Gain \+?(\d+) Flame Barrier/i);
+    if (flameBarrierM) {
+      const amt = parseInt(flameBarrierM[1]);
+      player.statuses['flame_barrier'] = (player.statuses['flame_barrier'] || 0) + amt;
+      addLog(`+${amt} Flame Barrier`, 'success');
       continue;
     }
 
@@ -3807,8 +3886,8 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // Skip "Sequential Upgrade Dmg +N" — informational flavor text, not an executable effect
-    if (/Sequential Upgrade Dmg \+\d+/i.test(p)) { continue; }
+    // Skip "Sequential Upgrade Dmg/Magic Dmg +N" — informational flavor text, not an executable effect
+    if (/Sequential Upgrade (?:Magic )?Dmg \+\d+/i.test(p)) { continue; }
 
     // Until the end of your turn, whenever you play an Attack, Gain +N Block (Rage)
     const rageM = p.match(/Until the end of your turn.*whenever you play an Attack.*Gain \+?(\d+) Block/i);
@@ -3905,6 +3984,31 @@ function resolveCardEffect(card, target, options = {}) {
         for (let t = 0; t < times; t++) dealDamage(target, dmg, nxxAddons);
       }
       addLog(`${card.name}: ${dmg} x${times} = ${dmg * times} damage`, 'info');
+      continue;
+    }
+
+    // Deal N Magic Dmg [Element] — scales with Arcane (not Power), may trigger element effects
+    const magicDmgMatchNxM = p.match(/Deal (\d+)[xX](\d+) Magic Dmg(?:\s+(Fire|Ice|Lightning))?/i);
+    const magicDmgMatch    = magicDmgMatchNxM || p.match(/Deal (\d+) Magic Dmg(?:\s+(Fire|Ice|Lightning))?/i);
+    if (magicDmgMatch) {
+      let dmg = parseInt(magicDmgMatch[1]);
+      const times   = magicDmgMatchNxM ? parseInt(magicDmgMatchNxM[2]) : 1;
+      const element = (magicDmgMatchNxM ? magicDmgMatchNxM[3] : magicDmgMatch[2] || null);
+      const elementLow = element ? element.toLowerCase() : null;
+      // Arcane bonus instead of Power
+      const playerArcane = player.statuses['arcane'] || 0;
+      if (playerArcane !== 0) dmg += playerArcane;
+      // Weak reduces outgoing damage by 25%
+      if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
+      const magicHitAddons = /melee/i.test(p) ? ['magic', 'melee'] : /ranged/i.test(p) ? ['magic', 'ranged'] : ['magic'];
+      const magicTargets = isAoECard
+        ? combatState.enemies.filter(e => e.health > 0)
+        : (target ? [target] : []);
+      magicTargets.forEach(e => {
+        for (let t = 0; t < times; t++) dealDamage(e, dmg, magicHitAddons);
+        if (elementLow === 'fire') applyFireElement(e);
+      });
+      if (magicTargets.length > 0) addLog(`${card.name}: ${dmg} Magic Dmg${element ? ' ' + element : ''}`, 'info');
       continue;
     }
 
@@ -4062,8 +4166,16 @@ function resolveCardEffect(card, target, options = {}) {
     // Apply / Inflict X [Status] (on current target or all enemies if AoE)
     const applyMatch = p.match(/(?:Apply|Inflict) (\d+) (\w+)/i);
     if (applyMatch) {
-      const stacks = parseInt(applyMatch[1]);
+      const BASIC_STATS = new Set(['power', 'defense', 'arcane', 'persistence']);
       const key = applyMatch[2].toLowerCase();
+      let stacks = parseInt(applyMatch[1]);
+      // Persistence adds to non-basic buff/debuff status applications
+      if (!BASIC_STATS.has(key)) {
+        const statusDef = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA[key] : null;
+        if (statusDef && (statusDef.type === 'Buff' || statusDef.type === 'Debuff')) {
+          stacks += (player.statuses['persistence'] || 0);
+        }
+      }
       const statusTargets = isAoECard
         ? combatState.enemies.filter(e => e.health > 0)
         : (target ? [target] : []);

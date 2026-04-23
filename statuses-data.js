@@ -36,7 +36,7 @@ var STATUSES_DATA = {
   },
   "power": {
     "name": "Power",
-    "description": "Raise or Lower the damage dealth by this target by X",
+    "description": "Raise or Lower the Melee or Ranged damage dealt by this target by X",
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
@@ -531,7 +531,7 @@ var STATUSES_DATA = {
   },
   "fire_breathing": {
     "name": "Fire Breathing",
-    "description": "Whenever you Draw a Status or Curse Card, Deal X Dmg Ranged Cleave",
+    "description": "Whenever you Draw a Status or Curse Card, Deal X Magic Dmg Fire Ranged Cleave",
     "type": "Ability",
     "stackable": true,
     "maxStack": null,
@@ -594,5 +594,38 @@ var STATUSES_DATA = {
     "who": "All",
     "preference": "Negative",
     "imageUrl": "images/statuses/Blind.png"
+  },
+  "arcane": {
+    "name": "Arcane",
+    "description": "Raise or Lower the Magic damage dealt by this target by X",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Arcane.png"
+  },
+  "persistence": {
+    "name": "Persistence",
+    "description": "Raise or Lower the severity of all non-basic statuses gained or inflicted in combat by X",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Persistence.png"
+  },
+  "flame_barrier": {
+    "name": "Flame Barrier",
+    "description": "When this target gets dealt Dmg, deal X Magic Dmg Fire Ranged to the attacker",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Lose all at end of turn",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/FlameBarrier.png"
   }
 };
