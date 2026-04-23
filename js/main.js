@@ -6281,11 +6281,6 @@ function handleEventChoice(event, option) {
     handleWildMuncher(optionIndex);
   } else if (event.name === "The Colosseum") {
     handleColosseum(optionIndex);
-  } else if (event.name === "A Sushi Bar By The Blue Hole") {
-    closeGameModal();
-    if (typeof showSushiBarEvent === 'function') {
-      showSushiBarEvent();
-    }
   } else {
     // Default behavior for unknown events
     closeGameModal();

@@ -820,6 +820,8 @@ function switchCollectionTab(tab) {
                   object-fit: contain;
                   border-radius: 6px;
                   background: #1a1a1a;
+                  image-rendering: -webkit-optimize-contrast;
+                  image-rendering: smooth;
                 "
               />
               <div style="text-align: center; font-size: 12px; font-weight: bold; color: #ddd; word-wrap: break-word; width: 100%;">

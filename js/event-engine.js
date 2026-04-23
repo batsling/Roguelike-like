@@ -136,7 +136,7 @@ function _getStat(statName) {
     intelligence: typeof intelligence !== 'undefined' ? intelligence : 0,
     charisma:     typeof charisma     !== 'undefined' ? charisma     : 0
   };
-  return map[statName.toLowerCase()] || 0;
+  return map[(statName || '').toLowerCase()] || 0;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
