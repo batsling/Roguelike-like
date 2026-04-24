@@ -543,9 +543,22 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   }
 
   const start = eligible[Math.floor(Math.random() * eligible.length)];
-  const candidates = eligible.filter(g =>
+
+  // Base constraint: different decade and different genre
+  let candidates = eligible.filter(g =>
     Math.floor(g.year / 10) !== Math.floor(start.year / 10) && g.type !== start.type
   );
+
+  // Path-length constraint: keep runs within a playable range.
+  // Tune MIN_PATH_LENGTH and MAX_PATH_LENGTH to adjust typical run depth.
+  const MIN_PATH_LENGTH = 5;
+  const MAX_PATH_LENGTH = 12;
+  const pathFiltered = candidates.filter(g => {
+    const dist = bfs(start.name, g.name);
+    return typeof dist === 'number' && dist >= MIN_PATH_LENGTH && dist <= MAX_PATH_LENGTH;
+  });
+  // Fall back to unfiltered candidates if the path constraint leaves nothing
+  if (pathFiltered.length > 0) candidates = pathFiltered;
 
   if (candidates.length === 0) {
     alert('No valid amulet game');
@@ -8496,6 +8509,14 @@ function markGameFinished(gameName) {
   // Only add if not already in finishedGames array (for unique tracking)
   if (!gameState.finishedGames.includes(gameName)) {
     gameState.finishedGames.push(gameName);
+  } else {
+    // Revisiting a game already beaten — award 1 Dash so the player can escape a dead end
+    dash = (typeof dash !== 'undefined' ? dash : 0) + 1;
+    gameState.dash = (gameState.dash || 0) + 1;
+    if (typeof updateTopBar === 'function') updateTopBar();
+    if (typeof createNotification === 'function') {
+      createNotification('+1 Dash (revisited game)', '#3498db', '💨');
+    }
   }
 
   // Check if difficulty tier changed and update location (unless manually overridden via dev tools)
