@@ -231,6 +231,25 @@ function spawnChoices() {
 
     const n = addNode(g, 'choice', nx, ny);
 
+    // Revisit indicator: badge shown when the player has already beaten this game
+    if (gameState.finishedGames && gameState.finishedGames.includes(g)) {
+      const revisitBadge = document.createElement('span');
+      revisitBadge.title = 'Already beaten — revisiting grants +1 Dash';
+      revisitBadge.textContent = '💨';
+      revisitBadge.style.cssText = [
+        'position:absolute', 'top:-12px', 'left:-12px',
+        'width:26px', 'height:26px',
+        'background:#2980b9', 'color:#fff',
+        'border-radius:50%',
+        'display:flex', 'align-items:center', 'justify-content:center',
+        'font-size:14px',
+        'border:2px solid #000',
+        'box-shadow:0 2px 8px rgba(0,0,0,0.4)',
+        'cursor:default',
+      ].join(';');
+      n.appendChild(revisitBadge);
+    }
+
     // Check if this is the amulet game
     const isAmuletGame = (g === gameState.amuletGame.name);
 

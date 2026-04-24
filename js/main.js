@@ -552,7 +552,7 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   // Path-length constraint: keep runs within a playable range.
   // Tune MIN_PATH_LENGTH and MAX_PATH_LENGTH to adjust typical run depth.
   const MIN_PATH_LENGTH = 5;
-  const MAX_PATH_LENGTH = 12;
+  const MAX_PATH_LENGTH = 8;
   const pathFiltered = candidates.filter(g => {
     const dist = bfs(start.name, g.name);
     return typeof dist === 'number' && dist >= MIN_PATH_LENGTH && dist <= MAX_PATH_LENGTH;
