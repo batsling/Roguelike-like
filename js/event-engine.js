@@ -80,8 +80,13 @@ const OUTCOME_LABELS = {
   good:      'Success',
   crit_good: 'Critical Success'
 };
+const STAT_ICON_STYLE = 'width:22px;height:22px;vertical-align:middle;object-fit:contain;margin-right:2px;';
 const STAT_ICONS = {
-  strength: '💪', dexterity: '🤸', intelligence: '🧠', charisma: '💬', constitution: '🫀'
+  strength:     `<img src="images/Stats/Strength.png" style="${STAT_ICON_STYLE}" alt="Strength">`,
+  dexterity:    `<img src="images/Stats/Dexterity.png" style="${STAT_ICON_STYLE}" alt="Dexterity">`,
+  intelligence: `<img src="images/Stats/Intelligence.png" style="${STAT_ICON_STYLE}" alt="Intelligence">`,
+  charisma:     `<img src="images/Stats/Charisma.png" style="${STAT_ICON_STYLE}" alt="Charisma">`,
+  constitution: `<img src="images/Stats/Constitution.png" style="${STAT_ICON_STYLE}" alt="Constitution">`,
 };
 
 function _getConstitution() {
@@ -420,7 +425,7 @@ function _showChoiceScreen(event, onContinue) {
   const difficulty = _getRollDifficulty();
 
   const choicesHTML = event.choices.map((choice, i) => {
-    const icon = STAT_ICONS[choice.stat] || '🎲';
+    const icon = STAT_ICONS[choice.stat] || '';
     const statVal = _getStat(choice.stat);
     const effectiveNeeded = Math.max(1, difficulty - statVal);
     const hint = choice.type === 'stat_check'
@@ -445,7 +450,7 @@ function _showChoiceScreen(event, onContinue) {
   // Build the outcomes preview panel (hidden by default)
   const ORDER = ['crit_good', 'good', 'bad', 'crit_bad'];
   const outcomesHTML = event.choices.map((choice, i) => {
-    const icon = STAT_ICONS[choice.stat] || '🔷';
+    const icon = STAT_ICONS[choice.stat] || '';
 
     // Simple (no-roll) choices show their single fixed outcome
     if (choice.type !== 'stat_check') {
@@ -482,7 +487,7 @@ function _showChoiceScreen(event, onContinue) {
     return `
       <div style="margin-bottom:14px;">
         <div style="color:#e67e22;font-size:12px;font-weight:bold;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #444;">
-          ${STAT_ICONS[choice.stat] || '🎲'} ${choice.text}
+          ${STAT_ICONS[choice.stat] || ''} ${choice.text}
         </div>
         ${rows}
       </div>`;
@@ -490,7 +495,7 @@ function _showChoiceScreen(event, onContinue) {
 
   const con = _getConstitution();
   const conBar = con > 0
-    ? `<div style="color:#7ec8e3;font-size:11px;margin-bottom:12px;">🫀 Constitution ${con} — +${con} to constitution rolls</div>`
+    ? `<div style="color:#7ec8e3;font-size:11px;margin-bottom:12px;display:flex;align-items:center;gap:4px;">${STAT_ICONS.constitution} Constitution ${con} — +${con} to constitution rolls</div>`
     : '';
 
   _eventModal(`
@@ -679,7 +684,7 @@ function _showSuccessRollScreen(event, choice, onContinue) {
         Roll ${needed}+ to succeed
       </div>
       <div style="color:#aaa;font-size:12px;margin-bottom:18px;">
-        ${STAT_ICONS[choice.stat] || '🎲'} ${_statLabel(choice.stat)}: +${statVal} bonus
+        ${STAT_ICONS[choice.stat] || ''} ${_statLabel(choice.stat)}: +${statVal} bonus
         &nbsp;·&nbsp; need ${difficulty} total
         ${luckHint}
       </div>
@@ -971,15 +976,34 @@ function _showOutcomeScreen(outcome, effectLines, rollMeta, onContinue, continue
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _showCardStoreScreen(onContinue) {
-  const deck = (typeof gameState !== 'undefined' && Array.isArray(gameState.deck)) ? gameState.deck : [];
+  const collectedDeck = (typeof gameState !== 'undefined' && Array.isArray(gameState.deck)) ? gameState.deck : [];
+
+  // Build starter cards from character's starting deck
+  const charKey = typeof gameState !== 'undefined' ? gameState.character : null;
+  const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
+  const startingEntries = (charData && charData.startingDeck) ? charData.startingDeck : [];
+  const starterCards = [];
+  startingEntries.forEach(entry => {
+    const template = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
+    if (template) {
+      const count = entry.count || 1;
+      for (let i = 0; i < count; i++) starterCards.push({ ...template, _isStarter: true });
+    }
+  });
+
+  // All storeable cards: collected first, then starters
+  const allEntries = [
+    ...collectedDeck.map((card, deckIdx) => ({ card, deckIdx, isStarter: false })),
+    ...starterCards.map(card => ({ card, deckIdx: -1, isStarter: true }))
+  ];
 
   // Nothing to store — skip the pick step
-  if (deck.length === 0) {
+  if (allEntries.length === 0) {
     createGameModal(`
       <div style="padding:28px 30px;text-align:center;max-width:480px;margin:0 auto;background:#1a1a2e;border-radius:12px;">
         <div style="color:#c39bd3;font-size:20px;font-weight:bold;margin-bottom:12px;">📝 Store a Card</div>
         <p style="color:#ccc;font-size:14px;line-height:1.6;margin:0 0 20px;">
-          You have no collected cards to leave behind. The note remains with only a question mark.
+          You have no cards to leave behind. The note remains with only a question mark.
         </p>
         <button id="ev-store-skip-btn" style="
           padding:11px 30px;background:#555;border:1px solid #777;border-radius:8px;
@@ -1013,35 +1037,44 @@ function _showCardStoreScreen(onContinue) {
     }
   };
 
-  const cardsHTML = deck.map((card, i) => {
+  const cardsHTML = allEntries.map(({ card, isStarter }, i) => {
     const rc = rarityColor(card.rarity);
     const tc = typeColor(card.type);
+    const imgHTML = card.imageUrl
+      ? `<img src="${card.imageUrl}" alt="${card.name}" style="width:48px;height:48px;object-fit:contain;border-radius:4px;flex-shrink:0;background:rgba(0,0,0,0.3);" onerror="this.style.display='none'">`
+      : `<span style="width:48px;height:48px;flex-shrink:0;"></span>`;
+    const starterTag = isStarter
+      ? `<span style="color:#2196F3;font-size:10px;margin-left:4px;">(Starting)</span>`
+      : '';
     return `
       <div class="ev-store-card-opt" data-idx="${i}" style="
-        padding:10px 14px;background:#1e1e30;border:2px solid #444;border-radius:8px;
+        padding:8px 12px;background:#1e1e30;border:2px solid #444;border-radius:8px;
         cursor:pointer;text-align:left;transition:border-color 0.15s,background 0.15s;
         display:flex;align-items:center;gap:10px;
       "
       onmouseover="this.style.borderColor='#c39bd3';this.style.background='#2a2a40';"
       onmouseout="this.style.borderColor='#444';this.style.background='#1e1e30';">
+        ${imgHTML}
         <span style="
-          min-width:24px;height:24px;border-radius:50%;background:${tc};
+          min-width:22px;height:22px;border-radius:50%;background:${tc};
           display:flex;align-items:center;justify-content:center;
-          font-size:12px;font-weight:bold;color:#fff;flex-shrink:0;">
+          font-size:11px;font-weight:bold;color:#fff;flex-shrink:0;">
           ${card.cost !== null && card.cost !== undefined ? card.cost : '?'}
         </span>
         <div style="min-width:0;">
-          <div style="color:#eee;font-size:14px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${card.name}</div>
+          <div style="color:#eee;font-size:14px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${card.name}${starterTag}
+          </div>
           <div style="color:#aaa;font-size:11px;">${card.type || ''} · <span style="color:${rc}">${card.rarity || ''}</span></div>
         </div>
       </div>`;
   }).join('');
 
   createGameModal(`
-    <div style="padding:24px 28px;max-width:500px;margin:0 auto;background:#1a1a2e;border-radius:12px;">
+    <div style="padding:24px 28px;max-width:520px;margin:0 auto;background:#1a1a2e;border-radius:12px;">
       <div style="color:#c39bd3;font-size:20px;font-weight:bold;margin-bottom:6px;text-align:center;">📝 Store a Card</div>
       <p style="color:#ccc;font-size:13px;line-height:1.6;margin:0 0 16px;text-align:center;">
-        Choose a card from your collected deck to leave behind for your future self.
+        Choose any card from your deck to leave behind for your future self.
       </p>
       <div style="display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;padding-right:4px;">
         ${cardsHTML}
@@ -1051,12 +1084,17 @@ function _showCardStoreScreen(onContinue) {
 
   document.querySelectorAll('.ev-store-card-opt').forEach(el => {
     el.addEventListener('click', () => {
-      const idx  = parseInt(el.dataset.idx);
-      const card = deck[idx];
+      const idx   = parseInt(el.dataset.idx);
+      const entry = allEntries[idx];
+      if (!entry) return;
+      const { card, isStarter, deckIdx } = entry;
       if (typeof gameState !== 'undefined') {
         gameState.noteForYourselfCard = card.name;
-        deck.splice(idx, 1);
-        gameState.deck = [...deck];
+        // Only remove from collected deck; starter cards stay in the character's starting deck
+        if (!isStarter && deckIdx >= 0) {
+          collectedDeck.splice(deckIdx, 1);
+          gameState.deck = [...collectedDeck];
+        }
         if (typeof saveCurrentGame === 'function') saveCurrentGame();
         if (typeof createNotification === 'function') {
           createNotification(`Stored: ${card.name}`, '#8e44ad', '📝');

@@ -574,11 +574,13 @@ function renderEnemyCard(enemy, combat) {
   const imgSrc       = enemy.imageUrl || 'images/enemies/default.png';
 
   const safePattern = (enemy.pattern || '').replace(/"/g, '&quot;');
+  const safeAbility = (enemy.ability || '').replace(/"/g, '&quot;');
   return `
     <div id="enemy-card-${enemy.id}"
          class="enemy-card${isTargeting ? ' enemy-targetable' : ''}"
          data-enemy-id="${enemy.id}"
          data-full-pattern="${safePattern}"
+         data-full-ability="${safeAbility}"
          style="
       display: flex; flex-direction: column; align-items: center;
       opacity: ${isDead ? 0.2 : 1};
@@ -688,7 +690,13 @@ function formatEnemyPattern(pattern) {
 function showEnemyPatternTooltip(el, e) {
   const tip = document.getElementById('enemy-pattern-tooltip');
   if (!tip) return;
-  tip.textContent = formatEnemyPattern(el.dataset.fullPattern || '');
+  const patternText = formatEnemyPattern(el.dataset.fullPattern || '');
+  const ability = (el.dataset.fullAbility || '').trim();
+  let content = patternText;
+  if (ability && ability.toUpperCase() !== 'N/A') {
+    content += '\n\n★ Ability: ' + ability;
+  }
+  tip.textContent = content;
   tip.style.display = 'block';
   positionEnemyPatternTooltip(e);
 }

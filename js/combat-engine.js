@@ -3753,10 +3753,14 @@ function drawCards(count = 1) {
 function cardNeedsTarget(card) {
   const desc = (card.description || '').toLowerCase();
   const type = (card.type || '').toLowerCase();
-  if (type === 'skill' || type === 'power' || type === 'status') return false;
+  if (type === 'power' || type === 'status') return false;
   if (type === 'dice') return false;
   if (desc.includes('cleave') || desc.includes('all enemies') || desc.includes('indiscriminate')) return false;
-  return type === 'attack';
+  if (type === 'attack') return true;
+  // Skill cards that inflict/apply statuses on a single enemy need a target selection
+  // (excludes AoE keywords above; excludes "random target" which picks automatically)
+  if (type === 'skill' && /(?:inflict|apply)\s+/i.test(card.description || '') && !desc.includes('random target')) return true;
+  return false;
 }
 
 /**

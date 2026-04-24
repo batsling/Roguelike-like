@@ -866,7 +866,7 @@ text, path, line, g {
 #game-stats .stat-tooltip:hover::after {
   content: attr(data-tooltip);
   position: absolute;
-  right: calc(100% + 8px);
+  left: calc(100% + 8px);
   top: 50%;
   transform: translateY(-50%);
   padding: 8px 12px;

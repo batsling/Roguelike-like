@@ -4369,6 +4369,12 @@ function handleDiceCombatVictory(enemy) {
     window.CombatUI.cleanup3DDice();
   }
 
+  // Hide all floating combat tooltips
+  ['enemy-pattern-tooltip', 'combat-status-tooltip', 'combat-card-tooltip'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
   window.CombatEngine.endCombat(true);
 
   // Increment combat counter for weight system
@@ -4701,6 +4707,12 @@ function handleDiceCombatDefeat(enemy) {
   if (window.CombatUI && window.CombatUI.cleanup3DDice) {
     window.CombatUI.cleanup3DDice();
   }
+
+  // Hide all floating combat tooltips
+  ['enemy-pattern-tooltip', 'combat-status-tooltip', 'combat-card-tooltip'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
 
   window.CombatEngine.endCombat(false);
 
