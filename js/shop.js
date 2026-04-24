@@ -13,7 +13,6 @@
  * - leaveShop() - Closes shop and resets shop state
  */
 
-console.log('✅ SHOP.JS v4 loaded - card upgrade/remove system active');
 
 // Keeper's Sack: every 10 gold spent → +1 to a random stat
 function _keepersSackCheck(amountSpent) {

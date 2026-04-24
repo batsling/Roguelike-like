@@ -543,19 +543,16 @@ function applyIsaacModifiers(gameName, location) {
     // Apply Holy status
     if (typeof addGameStatus === 'function') {
       addGameStatus(gameName, 'holy', '✨');
-      console.log(`Isaac location effect: ${gameName} is now Holy!`);
     }
   } else if (roll < 0.20) {
     // Apply Devilish status
     if (typeof addGameStatus === 'function') {
       addGameStatus(gameName, 'devilish', '👹');
-      console.log(`Isaac location effect: ${gameName} is now Devilish!`);
     }
   } else if (roll < 0.30) {
     // Apply Stinky status
     if (typeof addGameStatus === 'function') {
       addGameStatus(gameName, 'stinky', '💩');
-      console.log(`Isaac location effect: ${gameName} is now Stinky!`);
     }
   }
 }
@@ -588,7 +585,6 @@ function applyRiskOfRainEffect(location) {
   // 50% chance to increase difficulty
   if (Math.random() < 0.5) {
     result.difficultyIncreased = true;
-    console.log('Risk of Rain location effect: Difficulty will increase!');
   }
 
   // Always offer extra chest for 10 gold
@@ -603,7 +599,6 @@ function applyRiskOfRainEffect(location) {
  * @param {boolean} shouldSpawnChoices - Whether to spawn next game choices after selection (default true)
  */
 function showHadesBoonSelection(shouldSpawnChoices = true) {
-  console.log('Showing Hades boon selection...');
 
   // Get all boon items
   const allBoons = items.filter(item => item.type === 'Boon');

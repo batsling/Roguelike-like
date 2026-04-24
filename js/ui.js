@@ -3,27 +3,6 @@
 // This module handles all visual updates to the UI including:
 // - Top bar (health, gold, rations)
 // - Inventory display
-
-console.log('✅ UI.JS v34 loaded - weapon deep copy fix active + comprehensive debugging');
-
-// Check for equipment slots on DOM ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    const weaponSlot = document.getElementById('weapon-slot');
-    const amuletSlot = document.getElementById('amulet-slot');
-    console.log('🎯 DOM Ready - Equipment slots check:', {
-      weaponSlot: !!weaponSlot,
-      amuletSlot: !!amuletSlot
-    });
-  });
-} else {
-  const weaponSlot = document.getElementById('weapon-slot');
-  const amuletSlot = document.getElementById('amulet-slot');
-  console.log('🎯 Immediate - Equipment slots check:', {
-    weaponSlot: !!weaponSlot,
-    amuletSlot: !!amuletSlot
-  });
-}
 // - Game lists and selections
 // - Encounter history
 // - Game state stats sidebar
@@ -392,7 +371,6 @@ function updateInventory() {
   // Update game items sidebar if it exists
   const gameItemsList = document.getElementById('game-items-list');
   if (gameItemsList) {
-    console.log('Updating game-items-list, inventory length:', inventory.length, 'sort mode:', window.inventorySortMode);
     if (inventory.length === 0) {
       gameItemsList.innerHTML = '<div class="empty-inventory">No items yet</div>';
     } else {
@@ -416,14 +394,6 @@ function updateInventory() {
             return aOrder - bOrder;
           }
         });
-
-      console.log('Sorted inventory order:', sortedInventory.map(x => x.item.name).join(', '));
-      console.log('📦 First 3 items with full data:', sortedInventory.slice(0, 3).map(x => ({
-        name: x.item.name,
-        type: x.item.type,
-        rarity: x.item.rarity,
-        image: x.item.image
-      })));
 
       gameItemsList.innerHTML = sortedInventory.map(({ item, idx }) => {
         let imageUrl = item.image && item.image.trim() !== ''
@@ -567,180 +537,8 @@ function updateInventory() {
     }
   }
 
-  // Update stats panel and equipment slots
   updateGameStats();
-  updateEquipmentSlots();
   updateSidebarItems();
-}
-
-// ===== WEAPON EQUIP/UNEQUIP FUNCTIONS =====
-
-function equipWeapon(itemIndex) {
-  console.log('🔫 equipWeapon called with index:', itemIndex, 'inventory length:', inventory.length);
-
-  if (itemIndex < 0 || itemIndex >= inventory.length) {
-    console.error('Invalid item index:', itemIndex);
-    return;
-  }
-
-  const weapon = inventory[itemIndex];
-  console.log('🔫 Weapon from inventory:', weapon);
-
-  if (weapon.type !== 'Weapon') {
-    console.error('Item is not a weapon:', weapon);
-    return;
-  }
-
-  // If there's already an equipped weapon, add it back to inventory
-  if (gameState.equippedWeapon) {
-    const previousWeapon = {
-      name: gameState.equippedWeapon.name,
-      type: gameState.equippedWeapon.type,
-      rarity: gameState.equippedWeapon.rarity,
-      description: gameState.equippedWeapon.description,
-      image: gameState.equippedWeapon.image,
-      reference: gameState.equippedWeapon.reference,
-      tags: gameState.equippedWeapon.tags,
-      quantity: 1,
-      level: gameState.weaponLevel || 1 // Store current weapon level
-    };
-    // Preserve accumulated bonuses if they exist
-    if (gameState.equippedWeapon.bonuses) {
-      previousWeapon.bonuses = {...gameState.equippedWeapon.bonuses};
-    }
-    inventory.push(previousWeapon);
-    console.log('🔫 Previous weapon returned to inventory with level:', previousWeapon.name, previousWeapon.level, 'bonuses:', previousWeapon.bonuses);
-  }
-
-  // Create a proper copy of the weapon to avoid reference issues
-  gameState.equippedWeapon = {
-    name: weapon.name,
-    type: weapon.type,
-    rarity: weapon.rarity,
-    description: weapon.description,
-    image: weapon.image,
-    reference: weapon.reference,
-    tags: weapon.tags,
-    quantity: 1
-  };
-  // Restore accumulated bonuses if they exist
-  if (weapon.bonuses) {
-    gameState.equippedWeapon.bonuses = {...weapon.bonuses};
-  }
-  gameState.weaponLevel = weapon.level || 1; // Restore weapon level or default to 1
-
-  // Remove weapon from inventory (since it's now equipped)
-  inventory.splice(itemIndex, 1);
-
-  console.log('🔫 Weapon equipped to gameState:', gameState.equippedWeapon);
-  console.log('🔫 Weapon level set to:', gameState.weaponLevel);
-  console.log('🔫 Weapon removed from inventory at index:', itemIndex);
-
-  // Update UI
-  updateInventory();
-  updateEquipmentSlots();
-
-  if (typeof createNotification === 'function') {
-    const levelText = gameState.weaponLevel > 1 ? ` (Lv${gameState.weaponLevel})` : '';
-    createNotification(`Equipped ${weapon.name}${levelText}`, '#ff9800', '⚔️');
-  }
-
-  console.log('✅ Weapon equipped successfully:', weapon.name, 'Level:', gameState.weaponLevel);
-}
-
-function upgradeWeapon(itemIndex) {
-  console.log('⬆️ upgradeWeapon called with index:', itemIndex);
-
-  if (itemIndex < 0 || itemIndex >= inventory.length) {
-    console.error('Invalid item index:', itemIndex);
-    return;
-  }
-
-  if (!gameState.equippedWeapon) {
-    console.error('No weapon equipped');
-    return;
-  }
-
-  const weapon = inventory[itemIndex];
-  console.log('⬆️ Weapon from inventory:', weapon);
-
-  if (weapon.type !== 'Weapon') {
-    console.error('Item is not a weapon:', weapon);
-    return;
-  }
-
-  if (weapon.name !== gameState.equippedWeapon.name) {
-    console.error('Weapon does not match equipped weapon');
-    return;
-  }
-
-  const currentLevel = gameState.weaponLevel || 1;
-
-  if (currentLevel >= 3) {
-    if (typeof createNotification === 'function') {
-      createNotification('Weapon is already max level!', '#ff6b6b', '⚠️');
-    }
-    return;
-  }
-
-  // Level up the weapon (both in gameState and on weapon object)
-  gameState.weaponLevel = currentLevel + 1;
-  gameState.equippedWeapon.level = gameState.weaponLevel; // Keep weapon.level in sync
-
-  // Remove the duplicate weapon from inventory
-  inventory.splice(itemIndex, 1);
-
-  // Update UI
-  updateInventory();
-  updateEquipmentSlots();
-
-  if (typeof createNotification === 'function') {
-    createNotification(`${weapon.name} upgraded to Level ${gameState.weaponLevel}!`, '#4CAF50', '⬆️');
-  }
-
-  console.log('✅ Weapon upgraded to level:', gameState.weaponLevel);
-}
-
-function unequipWeapon() {
-  if (!gameState.equippedWeapon) {
-    return;
-  }
-
-  // Add weapon back to inventory with its current level
-  const weaponToReturn = {
-    name: gameState.equippedWeapon.name,
-    type: gameState.equippedWeapon.type,
-    rarity: gameState.equippedWeapon.rarity,
-    description: gameState.equippedWeapon.description,
-    image: gameState.equippedWeapon.image,
-    reference: gameState.equippedWeapon.reference,
-    tags: gameState.equippedWeapon.tags,
-    quantity: 1,
-    level: gameState.weaponLevel || 1 // Store current weapon level
-  };
-  // Preserve accumulated bonuses if they exist
-  if (gameState.equippedWeapon.bonuses) {
-    weaponToReturn.bonuses = {...gameState.equippedWeapon.bonuses};
-  }
-  inventory.push(weaponToReturn);
-
-  const weaponName = gameState.equippedWeapon.name;
-  const weaponLevel = gameState.weaponLevel || 1;
-
-  gameState.equippedWeapon = null;
-  gameState.weaponLevel = 1;
-
-  // Update UI
-  updateInventory();
-  updateEquipmentSlots();
-
-  if (typeof createNotification === 'function') {
-    const levelText = weaponLevel > 1 ? ` (Lv${weaponLevel})` : '';
-    createNotification(`Unequipped ${weaponName}${levelText}`, '#888', '⚔️');
-  }
-
-  console.log('Unequipped weapon:', weaponName, 'Level:', weaponLevel);
-  console.log('Weapon returned to inventory with level:', weaponLevel);
 }
 
 // ===== CURSES DISPLAY =====
@@ -1114,6 +912,20 @@ function updateGameStats() {
     }
   }
 
+  // Arcane derived stat (every 3 Intelligence = 1 Arcane) + any combat arcane bonuses
+  const combatArcane = cs ? (cs.player.statuses['arcane'] || 0) : 0;
+  const statsArcane = document.getElementById('stats-arcane');
+  if (statsArcane) {
+    const effectiveIntelligenceForArcane = totalBonuses ? intelligence + totalBonuses.intelligence : intelligence;
+    const baseArcane = Math.floor(effectiveIntelligenceForArcane / 3);
+    const totalArcane = baseArcane + combatArcane;
+    if (combatArcane !== 0) {
+      statsArcane.textContent = `${totalArcane} (${baseArcane}+${combatArcane})`;
+    } else {
+      statsArcane.textContent = totalArcane;
+    }
+  }
+
   // Charisma stat with bonuses
   if (statsCharisma) {
     const effectiveCharisma = totalBonuses ? charisma + totalBonuses.charisma : charisma;
@@ -1123,6 +935,32 @@ function updateGameStats() {
       statsCharisma.textContent = charisma;
     }
   }
+
+  // Persistence derived stat (every 5 Charisma = 1 Persistence) + any combat persistence bonuses
+  const combatPersistence = cs ? (cs.player.statuses['persistence'] || 0) : 0;
+  const statsPersistence = document.getElementById('stats-persistence');
+  if (statsPersistence) {
+    const effectiveCharismaForPersistence = totalBonuses ? charisma + totalBonuses.charisma : charisma;
+    const basePersistence = Math.floor(effectiveCharismaForPersistence / 5);
+    const totalPersistence = basePersistence + combatPersistence;
+    if (combatPersistence !== 0) {
+      statsPersistence.textContent = `${totalPersistence} (${basePersistence}+${combatPersistence})`;
+    } else {
+      statsPersistence.textContent = totalPersistence;
+    }
+  }
+
+  // Constitution derived stat — every 5 max HP above/below starting value = ±1 Constitution
+  const statsConstitution = document.getElementById('stats-constitution');
+  if (statsConstitution) {
+    const startingHP = typeof gameState !== 'undefined' && gameState.startingMaxHealth != null
+      ? gameState.startingMaxHealth
+      : (typeof maxHealth !== 'undefined' ? maxHealth : 0);
+    const currentMaxHP = typeof maxHealth !== 'undefined' ? maxHealth : 0;
+    const constitution = Math.floor((currentMaxHP - startingHP) / 5);
+    statsConstitution.textContent = constitution;
+  }
+
   if (statsReroll) statsReroll.textContent = reroll;
   if (statsDash) statsDash.textContent = dash;
   if (statsSkip) statsSkip.textContent = skip;
@@ -1168,7 +1006,6 @@ function updateGameStats() {
     }
     const difficulty = gameState.totalGamesBeaten;
     statsDifficulty.textContent = difficulty;
-    console.log(`📊 Updating difficulty display: ${difficulty}`);
   }
 }
 
@@ -1440,157 +1277,6 @@ function hideItemTooltip() {
   }, 150);
 }
 
-// ===== EQUIPMENT SLOTS =====
-
-function updateEquipmentSlots() {
-  const weaponSlot = document.getElementById('weapon-slot');
-
-  console.log('🔧 updateEquipmentSlots called', {
-    weaponSlotExists: !!weaponSlot,
-    equippedWeapon: gameState.equippedWeapon?.name,
-    weaponLevel: gameState.weaponLevel
-  });
-
-  if (!weaponSlot) {
-    console.warn('⚠️ Weapon slot not found in DOM');
-    return;
-  }
-
-  // Update weapon slot
-  if (gameState.equippedWeapon) {
-    const weaponLevel = gameState.weaponLevel || 1;
-    const levelBadge = weaponLevel > 1 ? `
-      <div style="
-        position: absolute;
-        top: 2px;
-        right: 2px;
-        background: #ffaa44;
-        color: #000;
-        font-weight: bold;
-        font-size: 11px;
-        padding: 2px 5px;
-        border-radius: 4px;
-        line-height: 1;
-        z-index: 10;
-        pointer-events: none;
-      ">Lv${weaponLevel}</div>
-    ` : '';
-
-    console.log('✅ Updating weapon slot with:', gameState.equippedWeapon, 'Level:', weaponLevel);
-    weaponSlot.classList.add('equipped');
-    weaponSlot.innerHTML = `
-      <img src="${gameState.equippedWeapon.image}" alt="${gameState.equippedWeapon.name}"
-           onerror="this.style.display='none'">
-      ${levelBadge}
-      <button class="equipment-unequip-btn" onclick="unequipWeapon()">Unequip</button>
-    `;
-
-    // Add tooltip functionality
-    weaponSlot.onmouseenter = (e) => {
-      showWeaponTooltip(e, gameState.equippedWeapon);
-    };
-    weaponSlot.onmouseleave = () => {
-      hideWeaponTooltip();
-    };
-  } else {
-    weaponSlot.classList.remove('equipped');
-    weaponSlot.innerHTML = '<div class="equipment-slot-empty">Weapon</div>';
-    weaponSlot.onmouseenter = null;
-    weaponSlot.onmouseleave = null;
-  }
-}
-
-function showWeaponTooltip(event, weapon) {
-  const tooltip = initItemTooltip();
-  if (!tooltip || !weapon) return;
-
-  // Get rarity color
-  const rarityColors = {
-    common: '#aaa',
-    uncommon: '#4CAF50',
-    rare: '#9b59b6',
-    legendary: '#ff6b00'
-  };
-  const rarityColor = rarityColors[weapon.rarity?.toLowerCase()] || '#ffffff';
-
-  // Build tags HTML
-  let tagsHTML = '';
-  if (weapon.tags && weapon.tags.length > 0) {
-    tagsHTML = `
-      <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
-        <div style="font-size: 11px; color: #888; margin-bottom: 4px;">Tags:</div>
-        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-          ${weapon.tags.map(tag => `
-            <span style="
-              font-size: 10px;
-              padding: 2px 6px;
-              background: rgba(100, 100, 100, 0.3);
-              border: 1px solid rgba(150, 150, 150, 0.4);
-              border-radius: 3px;
-              color: #aaa;
-            ">${tag}</span>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }
-
-  // Capitalize rarity
-  const capitalizedRarity = weapon.rarity.charAt(0).toUpperCase() + weapon.rarity.slice(1);
-
-  // Get weapon level
-  const weaponLevel = gameState.weaponLevel || 1;
-  let weaponLevelText = '';
-  if (weaponLevel > 1) {
-    weaponLevelText = `<div style="color: #ffaa44; font-weight: bold;">Level ${weaponLevel}</div>`;
-  }
-
-  // Build weapon bonuses display
-  let bonusesHTML = '';
-  if (weapon.bonuses) {
-    const bonusEntries = [];
-    if (weapon.bonuses.attack) bonusEntries.push(`+${weapon.bonuses.attack} Attack`);
-    if (weapon.bonuses.strength) bonusEntries.push(`+${weapon.bonuses.strength} Strength`);
-    if (weapon.bonuses.dexterity) bonusEntries.push(`+${weapon.bonuses.dexterity} Dexterity`);
-    if (weapon.bonuses.intelligence) bonusEntries.push(`+${weapon.bonuses.intelligence} Intelligence`);
-    if (weapon.bonuses.charisma) bonusEntries.push(`+${weapon.bonuses.charisma} Charisma`);
-    if (weapon.bonuses.luck) bonusEntries.push(`+${weapon.bonuses.luck} Luck`);
-
-    if (bonusEntries.length > 0) {
-      bonusesHTML = `
-        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(76, 175, 80, 0.3);">
-          <div style="font-size: 12px; color: #4CAF50; font-weight: bold; margin-bottom: 4px;">Accumulated Bonuses:</div>
-          <div style="font-size: 12px; color: #8BC34A;">
-            ${bonusEntries.join(' • ')}
-          </div>
-        </div>
-      `;
-    }
-  }
-
-  tooltip.innerHTML = `
-    <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 18px;">${weapon.name}</h4>
-    <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
-      ${weapon.reference ? `<div>From: ${weapon.reference}</div>` : ''}
-      <div>${capitalizedRarity} ${weapon.type}</div>
-      ${weaponLevelText}
-    </div>
-    <div style="font-size: 13px; color: #e0d0b0; line-height: 1.4;">
-      ${weapon.description}
-    </div>
-    ${bonusesHTML}
-    ${tagsHTML}
-  `;
-
-  tooltip.style.opacity = 1;
-  tooltip.style.display = 'block';
-  moveItemTooltip(event);
-}
-
-function hideWeaponTooltip() {
-  hideItemTooltip();
-}
-
 function getRarityColor(rarity) {
   const rarityColors = {
     'Common': '#aaa',
@@ -1619,7 +1305,3 @@ window.updateEncounterHistory = updateEncounterHistory;
 window.updateGameStats = updateGameStats;
 window.updateSaveList = updateSaveList;
 window.populateEscapeGameDropdown = populateEscapeGameDropdown;
-window.updateEquipmentSlots = updateEquipmentSlots;
-window.equipWeapon = equipWeapon;
-window.upgradeWeapon = upgradeWeapon;
-window.unequipWeapon = unequipWeapon;

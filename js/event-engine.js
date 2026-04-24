@@ -13,7 +13,6 @@
  *   4. Outcome screen (description + effects + Continue to Combat)
  */
 
-console.log('✅ EVENT-ENGINE.JS v2 loaded');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -89,7 +88,7 @@ function _getConstitution() {
   if (typeof gameState === 'undefined') return 0;
   const base = gameState.startingMaxHealth || gameState.maxHealth || 0;
   const cur  = gameState.maxHealth || 0;
-  return Math.floor(Math.max(0, cur - base) / 5);
+  return Math.floor((cur - base) / 5);
 }
 
 /** Convert an effects array into a short human-readable summary string. */
@@ -136,7 +135,7 @@ function _getStat(statName) {
     intelligence: typeof intelligence !== 'undefined' ? intelligence : 0,
     charisma:     typeof charisma     !== 'undefined' ? charisma     : 0
   };
-  return map[statName.toLowerCase()] || 0;
+  return map[(statName || '').toLowerCase()] || 0;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -446,7 +445,26 @@ function _showChoiceScreen(event, onContinue) {
   // Build the outcomes preview panel (hidden by default)
   const ORDER = ['crit_good', 'good', 'bad', 'crit_bad'];
   const outcomesHTML = event.choices.map((choice, i) => {
-    const icon = STAT_ICONS[choice.stat] || '🎲';
+    const icon = STAT_ICONS[choice.stat] || '🔷';
+
+    // Simple (no-roll) choices show their single fixed outcome
+    if (choice.type !== 'stat_check') {
+      const outcome = choice.outcome || {};
+      const fx   = _describeEffects(outcome.effects);
+      const desc = _fillName(outcome.description || '');
+      return `
+        <div style="margin-bottom:14px;">
+          <div style="color:#3498db;font-size:12px;font-weight:bold;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #444;">
+            ${icon} ${choice.text}
+          </div>
+          <div style="display:flex;gap:10px;align-items:baseline;padding:5px 0;">
+            <span style="color:#2ecc71;font-size:11px;font-weight:bold;min-width:110px;flex-shrink:0;">Direct Effect</span>
+            <span style="color:#bbb;font-size:12px;flex:1;line-height:1.4;">${desc}</span>
+            <span style="color:#2ecc71;font-size:11px;white-space:nowrap;flex-shrink:0;">${fx}</span>
+          </div>
+        </div>`;
+    }
+
     const rows = ORDER.map(key => {
       const outcome = choice.outcomes && choice.outcomes[key];
       if (!outcome) return '';
@@ -464,7 +482,7 @@ function _showChoiceScreen(event, onContinue) {
     return `
       <div style="margin-bottom:14px;">
         <div style="color:#e67e22;font-size:12px;font-weight:bold;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #444;">
-          ${icon} ${choice.text}
+          ${STAT_ICONS[choice.stat] || '🎲'} ${choice.text}
         </div>
         ${rows}
       </div>`;
@@ -1084,7 +1102,24 @@ function showEventModal(specificEvent, onCombat) {
     event = pool.find(e => e.id === specificEvent || e.name === specificEvent);
   }
   if (!event) {
-    event = pool[Math.floor(Math.random() * pool.length)];
+    // Rarity-weighted selection — higher luck biases toward rarer events
+    const luckVal = typeof luck !== 'undefined' ? luck : 0;
+    const rarityOrder = ['legendary', 'rare', 'uncommon', 'common'];
+    let candidates = pool;
+    if (typeof selectRandomRarity === 'function') {
+      const targetRarity = selectRandomRarity(luckVal);
+      let matched = pool.filter(e => (e.rarity || 'common').toLowerCase() === targetRarity);
+      // Fall back through lower rarity tiers if no events exist at the rolled tier
+      if (matched.length === 0) {
+        const startIdx = rarityOrder.indexOf(targetRarity) + 1;
+        for (let i = startIdx; i < rarityOrder.length; i++) {
+          matched = pool.filter(e => (e.rarity || 'common').toLowerCase() === rarityOrder[i]);
+          if (matched.length > 0) break;
+        }
+      }
+      if (matched.length > 0) candidates = matched;
+    }
+    event = candidates[Math.floor(Math.random() * candidates.length)];
   }
 
   if (typeof gameState !== 'undefined') {

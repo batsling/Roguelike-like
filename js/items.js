@@ -5,7 +5,6 @@
 // - Modular item effects for easy extension
 // - Item stat modifications
 
-console.log('✅ ITEMS.JS v25 loaded - item acquisition debugging active');
 
 // ===== HELPER FUNCTIONS =====
 
@@ -53,7 +52,6 @@ function updateStat(statName, change) {
     fov: () => { fov += change; gameState.fov = fov; },
     luck: () => { luck += change; gameState.luck = luck; },
     block: () => {
-      console.log(`Block modifier changed by ${change} (item-specific, not a player stat)`);
     }
   };
 
@@ -111,7 +109,6 @@ function recalculateScalablePassives() {
   if (hasBeefyRing) {
     const beefyRingBonus = Math.floor(maxHealth / 20);
     bonuses.attack += beefyRingBonus;
-    console.log(`Beefy Ring: +${beefyRingBonus} attack (from ${maxHealth} max health)`);
   }
 
   // Check for Focus Crystal: +1 Attack if melee weapon equipped
@@ -121,7 +118,6 @@ function recalculateScalablePassives() {
     const isMeleeWeapon = weaponTags.includes('melee');
     if (isMeleeWeapon) {
       bonuses.attack += 1;
-      console.log(`Focus Crystal: +1 attack (melee weapon equipped)`);
     }
   }
 
@@ -368,7 +364,6 @@ const ITEM_EFFECTS = {
       // Scalable passive: +1 Attack per 10 max health
       // Effect is calculated dynamically in recalculateScalablePassives()
       // and applied in getEffectiveAttack()
-      console.log('Acquired Beefy Ring - grants +1 Attack per 10 max health (scalable)');
     }
     // Note: This item's effect is handled by the scalable passive system
     // No direct stat modification needed on acquire
@@ -380,7 +375,6 @@ const ITEM_EFFECTS = {
     _lastProcessedFrame: 0, // Track last processed frame to avoid duplicate triggers
     onAcquire: () => {
       // No immediate effect on acquire
-      console.log('Acquired Charm of the Vampire - will trigger on enemy defeats');
     },
     onEnemyDefeated: () => {
       // Use frame counter to only trigger once per defeat event
@@ -403,7 +397,6 @@ const ITEM_EFFECTS = {
         const result = StateMutator.modifyHealth(healAmount);
 
         if (result.changed) {
-          console.log(`Charm of the Vampire (x${copies}): Healed +${healAmount} health (${result.oldHealth} → ${result.newHealth})`);
           // Show notification
           setTimeout(() => {
             createNotification(`Charm of the Vampire: +${healAmount} Health!`, COLORS.SUCCESS, '🧛');
@@ -452,7 +445,6 @@ const ITEM_EFFECTS = {
       }
 
       const currentYear = currentGameObj.year;
-      console.log(`Using Winged Boots - Current year: ${currentYear}`);
 
       // Show selection of 3 games from the same year
       selectedTeleport({
@@ -501,7 +493,6 @@ const ITEM_EFFECTS = {
       // Add portal status to current game
       if (typeof addGameStatus === 'function') {
         addGameStatus(currentGame, 'portal', '🌀');
-        console.log(`Applied portal status to ${currentGame}`);
 
         // Refresh current node to show status icon
         if (typeof updateNodeStatusIcons === 'function') {
@@ -529,11 +520,9 @@ const ITEM_EFFECTS = {
 
   "Golden Beetle": {
     onAcquire: () => {
-      console.log('Acquired Golden Beetle - will trigger when curses are removed');
     },
     onCurseRemoved: () => {
       // Grant one chest
-      console.log('Golden Beetle: Curse removed, granting chest');
 
       // Show notification
       setTimeout(() => {
@@ -551,7 +540,6 @@ const ITEM_EFFECTS = {
 
   "Vitality Orb": {
     onAcquire: () => {
-      console.log('Acquired Vitality Orb - will trigger when curses are obtained');
     },
     onCurseAdded: () => {
       const maxHealthResult = StateMutator.modifyMaxHealth(8, { onlyMax: true });
@@ -592,42 +580,36 @@ const ITEM_EFFECTS = {
 
   "Boon of Hermes": {
     onAcquire: () => {
-      console.log('Acquired Boon of Hermes - condition: beat a game within an hour');
     }
     // Effect is applied in verification system
   },
 
   "Boon of Zeus": {
     onAcquire: () => {
-      console.log('Acquired Boon of Zeus - condition: defeat an enemy with lightning');
     }
     // Effect is applied in verification system
   },
 
   "Boon of Poseidon": {
     onAcquire: () => {
-      console.log('Acquired Boon of Poseidon - condition: defeat an enemy underwater');
     }
     // Effect is applied in verification system
   },
 
   "Boon of Artemis": {
     onAcquire: () => {
-      console.log('Acquired Boon of Artemis - condition: use ranged strategies primarily');
     }
     // Effect is applied in verification system
   },
 
   "Boon of Aphrodite": {
     onAcquire: () => {
-      console.log('Acquired Boon of Aphrodite - condition: charm an enemy');
     }
     // Effect is applied in verification system
   },
 
   "Boon of Athena": {
     onAcquire: () => {
-      console.log('Acquired Boon of Athena - condition: negate damage with shield 5+ times');
     }
     // Effect is applied in verification system
   },
@@ -636,7 +618,6 @@ const ITEM_EFFECTS = {
 
   "Reactive Trauma Plate": {
     onAcquire: () => {
-      console.log('Acquired Reactive Trauma Plate - will prevent lethal damage once');
     }
     // Effect is handled in damage calculation
   },
@@ -649,12 +630,10 @@ const ITEM_EFFECTS = {
 
   "Unstable Genome": {
     onAcquire: () => {
-      console.log('Acquired Unstable Genome - will trigger after beating games');
     },
     onGameBeaten: () => {
       // 33% chance to destroy this item and offer 3 random items
       const roll = Math.random();
-      console.log(`Unstable Genome: rolled ${roll.toFixed(2)} vs 0.33 chance`);
 
       if (roll < 0.33) {
         // Find and remove this item from inventory
@@ -668,7 +647,6 @@ const ITEM_EFFECTS = {
           }
           gameState.inventory = [...inventory];
 
-          console.log('Unstable Genome: Item destroyed, will offer 3 random items in normal flow');
 
           // Set flag to show large chest in the normal reward flow
           gameState.unstableGenomeTriggered = true;
@@ -821,7 +799,6 @@ const ITEM_EFFECTS = {
     onAcquire: () => {
       StateMutator.modifyMaxEnergy(1);
       StateMutator.modifyDiscovery(-2);
-      console.log('Acquired Busted Crown: +1 Max Energy, -2 Discovery');
     }
   },
 
@@ -829,7 +806,6 @@ const ITEM_EFFECTS = {
     onAcquire: () => {
       // +1 Max Energy (can be upgraded/downgraded)
       StateMutator.modifyMaxEnergy(1);
-      console.log("Acquired Philosopher's Stone: +1 Max Energy, enemies start with 1 Power");
       // Note: The enemy Power effect is handled in combat initialization
     }
     // Enemy Power effect is applied in combat-engine.js when combat starts
@@ -837,7 +813,6 @@ const ITEM_EFFECTS = {
 
   "Meat on the Bone": {
     onAcquire: () => {
-      console.log('Acquired Meat on the Bone - will trigger at end of combat if HP <= 50%');
     },
     onCombatEnd: (combatState) => {
       // Trigger if health is at 50% or below max
@@ -847,7 +822,6 @@ const ITEM_EFFECTS = {
         const healAmount = 12 * copies;
 
         StateMutator.modifyHealth(healAmount);
-        console.log(`Meat on the Bone${copies > 1 ? ` x${copies}` : ''}: Healed ${healAmount} HP (HP was at 50% or below)`);
 
         if (typeof createNotification === 'function') {
           createNotification(`Meat on the Bone: +${healAmount} Health`, '#66bb6a', '🍖');
@@ -861,7 +835,6 @@ const ITEM_EFFECTS = {
       const copies = inventory.filter(i => i.name === 'Burning Blood').reduce((n, i) => n + (i.quantity || 1), 0);
       const heal = 6 * copies;
       StateMutator.modifyHealth(heal);
-      console.log(`Burning Blood x${copies}: +${heal} Health`);
       if (typeof createNotification === 'function') {
         createNotification(`Burning Blood: +${heal} Health`, '#e74c3c', '🩸');
       }
@@ -882,7 +855,6 @@ const ITEM_EFFECTS = {
 
   "Blood Vial": {
     onAcquire: () => {
-      console.log('Acquired Blood Vial - will trigger when entering combat');
     },
     onCombatStart: () => {
       // Count copies for stacking
@@ -890,7 +862,6 @@ const ITEM_EFFECTS = {
       const healAmount = 1 * copies;
 
       StateMutator.modifyHealth(healAmount);
-      console.log(`Blood Vial${copies > 1 ? ` x${copies}` : ''}: Healed ${healAmount} HP on combat start`);
 
       if (typeof createNotification === 'function') {
         createNotification(`Blood Vial: +${healAmount} Health`, '#66bb6a', '🩸');
@@ -901,35 +872,30 @@ const ITEM_EFFECTS = {
   "Focus Crystal": {
     onAcquire: () => {
       // Effect is calculated dynamically in getEffectiveAttack()
-      console.log('Acquired Focus Crystal: +1 Attack when melee weapon equipped');
     }
   },
 
   "Horn Cleat": {
     onAcquire: () => {
       // Effect is applied in combat turn 2 via initCombat flag
-      console.log('Acquired Horn Cleat: +14 Block at start of turn 2');
     }
   },
 
   "Molten Egg": {
     onAcquire: () => {
       // Effect applied in addCardToDeck: auto-upgrades Attack cards added to deck
-      console.log('Acquired Molten Egg: Attack cards added to deck are auto-upgraded');
     }
   },
 
   "Toxic Egg": {
     onAcquire: () => {
       // Effect applied in addCardToDeck: auto-upgrades Skill cards added to deck
-      console.log('Acquired Toxic Egg: Skill cards added to deck are auto-upgraded');
     }
   },
 
   "Frozen Egg": {
     onAcquire: () => {
       // Effect applied in addCardToDeck: auto-upgrades Power cards added to deck
-      console.log('Acquired Frozen Egg: Power cards added to deck are auto-upgraded');
     }
   },
 
@@ -1031,14 +997,12 @@ const ITEM_EFFECTS = {
   "Anchor": {
     onAcquire: () => {
       // Effect applied in combat-engine.js initCombat
-      console.log('Acquired Anchor: +10 Block at start of combat');
     }
   },
 
   "Bronze Scales": {
     onAcquire: () => {
       // Effect applied in combat-engine.js initCombat
-      console.log('Acquired Bronze Scales: +3 Thorns at start of combat');
     }
   },
 
@@ -1047,14 +1011,12 @@ const ITEM_EFFECTS = {
   "Death Orb": {
     onAcquire: () => {
       // Effect applied in combat-engine.js resolveCardEffect on Power play
-      console.log('Acquired Death Orb: deals curse-count damage to all enemies when a Power is played');
     }
   },
 
   "Mummified Hand": {
     onAcquire: () => {
       // Effect applied in combat-engine.js resolveCardEffect on Power play
-      console.log('Acquired Mummified Hand: a random hand card becomes free when a Power is played');
     }
   },
 
@@ -1063,7 +1025,6 @@ const ITEM_EFFECTS = {
   "Strike Dummy": {
     onAcquire: () => {
       // Effect applied in combat-engine.js resolveCardEffect on Attack play
-      console.log('Acquired Strike Dummy: Strikes deal +3 damage');
     }
   },
 
@@ -1217,7 +1178,6 @@ function applyItemEffects(item) {
     // Apply onAcquire effect if it exists
     if (effects.onAcquire && typeof effects.onAcquire === 'function') {
       effects.onAcquire();
-      console.log(`Applied effects for: ${item.name}`);
     }
 
     // Update UI after applying effects
@@ -1225,7 +1185,6 @@ function applyItemEffects(item) {
     updateTopBar();
   } else {
     // No effects defined yet - this is fine for items without passive stats
-    console.log(`No effects defined for: ${item.name}`);
   }
 }
 
@@ -1409,7 +1368,6 @@ function downgradePassiveItem(item, downgradeAmount = -1) {
     }
 
     modifiedStats.push({ stat, change });
-    console.log(`⬇️ Downgraded ${item.originalName || item.name}: ${stat} ${change > 0 ? '+' : ''}${change}`);
   });
 
   // Update the display name
@@ -1446,15 +1404,6 @@ function downgradePassiveItem(item, downgradeAmount = -1) {
 function acquireItem(item) {
   if (!item) return;
 
-  console.log('📥 acquireItem called with:', item);
-  console.log('📥 Item properties:', {
-    name: item.name,
-    type: item.type,
-    rarity: item.rarity,
-    image: item.image,
-    description: item.description
-  });
-
   // Create a copy of the item
   // For weapons, exclude bonuses and level to ensure each instance is independent
   const itemCopy = { ...item };
@@ -1462,13 +1411,6 @@ function acquireItem(item) {
     delete itemCopy.bonuses;
     delete itemCopy.level;
   }
-
-  console.log('📥 Item copy created:', {
-    name: itemCopy.name,
-    type: itemCopy.type,
-    rarity: itemCopy.rarity,
-    image: itemCopy.image
-  });
 
   // Initialize uses for Usable items
   if (itemCopy.type === 'Usable') {
@@ -1490,8 +1432,6 @@ function acquireItem(item) {
     initializeWeaponBonuses(itemCopy);
     inventory.push(itemCopy);
     targetItemIndex = inventory.length - 1;
-    console.log('📥 Weapon added to inventory:', itemCopy.name);
-    console.log(`✅ Acquired: ${itemCopy.name}`);
     if (typeof CARDS_DATA !== 'undefined') {
       const weaponCard = CARDS_DATA.find(c => c.name === itemCopy.name && c.tags && c.tags.includes('weapon'));
       if (weaponCard) {
@@ -1503,7 +1443,6 @@ function acquireItem(item) {
           gameState.deck.push({ ...weaponCard, upgraded: false });
           if (typeof saveCurrentGame === 'function') saveCurrentGame();
         }
-        console.log(`🃏 Weapon card added to deck: ${weaponCard.name}`);
         if (typeof createNotification === 'function') {
           createNotification(`${weaponCard.name} card added to deck!`, '#4CAF50', '🃏');
         }
@@ -1556,19 +1495,16 @@ function acquireItem(item) {
       // Apply item effects for the additional copy (for Passive and Triggered items)
       applyItemEffects(itemCopy);
 
-      console.log(`✅ Acquired: ${itemCopy.name} (x${inventory[existingItemIndex].quantity})`);
     } else {
       // New item, add to inventory with quantity of 1
       itemCopy.quantity = 1;
       inventory.push(itemCopy);
       targetItemIndex = inventory.length - 1;
 
-      console.log('📥 Added to inventory. Inventory entry:', inventory[inventory.length - 1]);
 
       // Apply item effects (for Passive and Triggered items) - only on first acquisition
       applyItemEffects(itemCopy);
 
-      console.log(`✅ Acquired: ${itemCopy.name}${itemCopy.uses ? ` (${itemCopy.uses} uses)` : ''}`);
     }
   }
 
@@ -1608,7 +1544,6 @@ function acquireItem(item) {
 
         // Add the split item to inventory
         inventory.push(targetItem);
-        console.log(`Split ${existingItem.name} (quantity ${existingItem.quantity + 1} → ${existingItem.quantity} + 1 for downgrade)`);
       } else {
         // Item has quantity 1, downgrade it directly
         targetItem = existingItem;
@@ -1618,7 +1553,6 @@ function acquireItem(item) {
         // Calculate total downgrade amount (stacking curses)
         // Each decay curse applies -1, so 2 curses = -2, 3 curses = -3, etc.
         const totalDowngrade = -1 * decayCurses.length;
-        console.log(`😈 ${decayCurses.length} Decay curse(s) active: applying ${totalDowngrade} downgrade`);
 
         // Downgrade the item with stacked amount
         downgradePassiveItem(targetItem, totalDowngrade);
@@ -1642,11 +1576,9 @@ function acquireItem(item) {
         // Get max uses based on power level
         const maxUses = curse.power === 'High' ? 3 : curse.power === 'Medium' ? 2 : 1;
 
-        console.log(`😈 ${curse.name}: ${gameState.decayUses[curseKey]}/${maxUses} passive items obtained`);
 
         // Check if curse should be removed
         if (gameState.decayUses[curseKey] >= maxUses) {
-          console.log(`✨ ${curse.name} has been lifted!`);
           CurseManager.consume(curse, { updateUI: true, notify: true });
           delete gameState.decayUses[curseKey];
         }
@@ -1661,7 +1593,6 @@ function acquireItem(item) {
 
   gameState.inventory = [...inventory];
 
-  console.log('📥 gameState.inventory updated. Length:', gameState.inventory.length);
 
   // Update UI
   updateInventory();
@@ -1726,22 +1657,18 @@ function useItem(itemIndex) {
 
   const effects = ITEM_EFFECTS[item.name];
   if (effects && effects.onUse) {
-    console.log(`Using item: ${item.name} (${item.uses || 1} uses remaining)`);
     effects.onUse();
 
     // Decrement uses
     if (item.uses && item.uses > 1) {
       item.uses--;
       gameState.inventory = [...inventory];
-      console.log(`${item.name} used. ${item.uses} uses remaining.`);
     } else {
       // Remove item from inventory when uses reach 0 (handle quantity)
       if (item.quantity && item.quantity > 1) {
         item.quantity--;
-        console.log(`${item.name} quantity decreased to ${item.quantity}`);
       } else {
         inventory.splice(itemIndex, 1);
-        console.log(`Used and removed: ${item.name}`);
       }
       gameState.inventory = [...inventory];
     }
@@ -1766,13 +1693,11 @@ function teleportToRandomGameOfType(gameType = null) {
       g.type === gameType &&
       g.name !== gameState.currentGame
     );
-    console.log(`Looking for connected ${gameType} games (excluding current)...`);
   } else {
     filteredGames = games.filter(g =>
       g.connected === true &&
       g.name !== gameState.currentGame
     );
-    console.log('Looking for any connected games (excluding current)...');
   }
 
   if (filteredGames.length === 0) {
@@ -1790,7 +1715,6 @@ function teleportToRandomGameOfType(gameType = null) {
   const teleportMsg = gameType
     ? `Teleporting to ${gameType} game: ${randomGame.name}`
     : `Teleporting to: ${randomGame.name}`;
-  console.log(teleportMsg);
 
   // Generate position
   const x = 450; // Center position
@@ -1927,7 +1851,6 @@ function selectedTeleport(options = {}) {
       };
       choice.onclick = () => {
         const gameName = choice.dataset.gameName;
-        console.log(`Player selected: ${gameName}`);
 
         // Close modal
         if (typeof closeGameModal === 'function') {
@@ -1961,7 +1884,6 @@ function triggerOnEnemyDefeated() {
     return;
   }
 
-  console.log('Triggering onEnemyDefeated effects...');
 
   // Check each item in inventory for onEnemyDefeated trigger
   inventory.forEach(item => {
@@ -1969,7 +1891,6 @@ function triggerOnEnemyDefeated() {
 
     const itemEffects = ITEM_EFFECTS[item.name];
     if (itemEffects && typeof itemEffects.onEnemyDefeated === 'function') {
-      console.log(`Triggering ${item.name} onEnemyDefeated effect`);
       itemEffects.onEnemyDefeated();
     }
   });
@@ -1984,7 +1905,6 @@ function triggerOnCombatEnd(combatState) {
     return;
   }
 
-  console.log('Triggering onCombatEnd effects...');
 
   // Track which item names have already been processed to avoid double-triggering
   // when stacking is handled inside the effect itself
@@ -1996,7 +1916,6 @@ function triggerOnCombatEnd(combatState) {
 
     const itemEffects = ITEM_EFFECTS[item.name];
     if (itemEffects && typeof itemEffects.onCombatEnd === 'function') {
-      console.log(`Triggering ${item.name} onCombatEnd effect`);
       itemEffects.onCombatEnd(combatState);
       processed.add(item.name);
     }
@@ -2012,7 +1931,6 @@ function triggerOnCurseAdded() {
     return;
   }
 
-  console.log('Triggering onCurseAdded effects...');
 
   // Check each item in inventory for onCurseAdded trigger
   inventory.forEach(item => {
@@ -2020,7 +1938,6 @@ function triggerOnCurseAdded() {
 
     const itemEffects = ITEM_EFFECTS[item.name];
     if (itemEffects && typeof itemEffects.onCurseAdded === 'function') {
-      console.log(`Triggering ${item.name} onCurseAdded effect`);
       itemEffects.onCurseAdded();
     }
   });
@@ -2035,7 +1952,6 @@ function triggerOnCurseRemoved() {
     return;
   }
 
-  console.log('Triggering onCurseRemoved effects...');
 
   // Check each item in inventory for onCurseRemoved trigger
   inventory.forEach(item => {
@@ -2043,7 +1959,6 @@ function triggerOnCurseRemoved() {
 
     const itemEffects = ITEM_EFFECTS[item.name];
     if (itemEffects && typeof itemEffects.onCurseRemoved === 'function') {
-      console.log(`Triggering ${item.name} onCurseRemoved effect`);
       itemEffects.onCurseRemoved();
     }
   });
@@ -2058,7 +1973,6 @@ function triggerOnGameBeaten() {
     return;
   }
 
-  console.log('Triggering onGameBeaten effects...');
 
   // Check each item in inventory for onGameBeaten trigger
   // Use a copy of inventory array since items might be removed during iteration
@@ -2067,7 +1981,6 @@ function triggerOnGameBeaten() {
 
     const itemEffects = ITEM_EFFECTS[item.name];
     if (itemEffects && typeof itemEffects.onGameBeaten === 'function') {
-      console.log(`Triggering ${item.name} onGameBeaten effect`);
       itemEffects.onGameBeaten();
     }
   });
@@ -2188,7 +2101,6 @@ function showWandOfWishingSelection() {
         const selectedItem = items.find(i => i.name === itemName);
 
         if (selectedItem) {
-          console.log(`Wand of Wishing: Selected ${itemName}`);
 
           // Acquire the item
           acquireItem(selectedItem);
@@ -2328,12 +2240,10 @@ function showPoopSelection() {
         const selectedGameName = e.currentTarget.dataset.gameName;
 
         if (selectedGameName) {
-          console.log(`The Poop: Selected ${selectedGameName}`);
 
           // Apply stinky status
           if (typeof addGameStatus === 'function') {
             addGameStatus(selectedGameName, 'stinky', '💩');
-            console.log(`Applied stinky status to ${selectedGameName}`);
           }
 
           // Close modal
@@ -2452,7 +2362,6 @@ function upgradeOrDowngradePassive(isUpgrade) {
   const passiveItems = inventory.filter(item => item.type === 'Passive');
 
   if (passiveItems.length === 0) {
-    console.log('No passive items to modify');
     return { success: false };
   }
 
@@ -2487,7 +2396,6 @@ function upgradeOrDowngradePassive(isUpgrade) {
 
     // Add the split item to inventory
     inventory.push(itemToModify);
-    console.log(`Split ${randomItem.name} (quantity ${randomItem.quantity + 1} → ${randomItem.quantity} + 1 modified)`);
   }
 
   // Initialize modifiers if not present
@@ -2557,7 +2465,6 @@ function upgradeOrDowngradePassive(isUpgrade) {
     }
 
     modifiedStats.push({ stat, change });
-    console.log(`${isUpgrade ? '⬆️ Upgraded' : '⬇️ Downgraded'} ${itemToModify.originalName || itemToModify.name}: ${stat} ${change > 0 ? '+' : ''}${change}`);
   });
 
   // Update the display name
@@ -2610,7 +2517,6 @@ function removeItemStatEffects(item) {
   Object.entries(item.statModifiers).forEach(([stat, value]) => {
     if (value !== 0) {
       updateStat(stat, -value);
-      console.log(`Removed ${stat} modifier (${value}) from ${item.originalName || item.name}`);
     }
   });
 }

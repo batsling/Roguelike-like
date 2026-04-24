@@ -9,7 +9,6 @@
  *   Bottom bar   — draw pile | energy orb | discard | exhaust (Part 2)
  */
 
-console.log('✅ COMBAT-UI.JS (STS Parts 1+2+3+4) loaded');
 
 // ============== CONSTANTS & COLORS ==============
 
@@ -356,6 +355,10 @@ const STATUS_META = {
   intelligence:   { img: null,            emoji: '🧠', label: 'Intelligence' },
   dexterity:      { img: null,            emoji: '🏃', label: 'Dexterity'    },
   charisma:       { img: null,            emoji: '✨', label: 'Charisma'     },
+  // Derived combat stats
+  arcane:         { img: 'Arcane',        emoji: '🔷', label: 'Arcane'       },
+  persistence:    { img: 'Persistence',   emoji: '💠', label: 'Persistence'  },
+  flame_barrier:  { img: 'FlameBarrier',  emoji: '🔥', label: 'Flame Barrier'},
 };
 
 // ============== MAIN RENDER ENTRY POINT ==============
