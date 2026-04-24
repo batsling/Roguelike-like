@@ -260,7 +260,7 @@ function showShopModal(purchasedIndices = []) {
   const purchasedCardIndices = gameState.purchasedShopCards || [];
 
   const cardPriceFor = (c) => {
-    const base = c.rarity === 'Rare' ? 75 : c.rarity === 'Uncommon' ? 50 : 25;
+    const base = c.rarity === 'Rare' ? 50 : c.rarity === 'Uncommon' ? 30 : 15;
     return base + frugalityModifier;
   };
 
@@ -363,7 +363,7 @@ function showShopModal(purchasedIndices = []) {
   shopItems.forEach((item, index) => {
     const isPurchased = purchasedIndices.includes(index);
     const rarityLower = item.rarity ? item.rarity.toLowerCase() : 'common';
-    const basePrice = rarityLower === 'common' ? 10 : rarityLower === 'uncommon' ? 20 : rarityLower === 'rare' ? 30 : 50;
+    const basePrice = rarityLower === 'common' ? 8 : rarityLower === 'uncommon' ? 15 : rarityLower === 'rare' ? 25 : 40;
     const price = basePrice + frugalityModifier;
     const rarityColor = getRarityColor(item.rarity);
 
