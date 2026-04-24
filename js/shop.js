@@ -115,7 +115,8 @@ function showShopModal(purchasedIndices = []) {
   };
 
   // ===== CARD SERVICES PANEL =====
-  const CARD_REMOVE_COST = 50;
+  // Cost scales by 25g per removal done this run (50 → 75 → 100 …)
+  const CARD_REMOVE_COST = 50 + (gameState.cardsRemovedThisRun || 0) * 25;
 
   // Build combined card list: starter cards + collected deck cards (excluding status cards)
   const charKeyCS = gameState.character;
@@ -259,7 +260,7 @@ function showShopModal(purchasedIndices = []) {
   const purchasedCardIndices = gameState.purchasedShopCards || [];
 
   const cardPriceFor = (c) => {
-    const base = c.rarity === 'Rare' ? 60 : c.rarity === 'Uncommon' ? 40 : 20;
+    const base = c.rarity === 'Rare' ? 75 : c.rarity === 'Uncommon' ? 50 : 25;
     return base + frugalityModifier;
   };
 
@@ -553,6 +554,7 @@ function showShopModal(purchasedIndices = []) {
       gameState.gold = gold;
       _keepersSackCheck(CARD_REMOVE_COST);
       gameState.shopRemovesUsed++;
+      gameState.cardsRemovedThisRun = (gameState.cardsRemovedThisRun || 0) + 1;
       if (card._isStarting) {
         // Remove a starter card: track via removedStartingCards
         if (!gameState.removedStartingCards) gameState.removedStartingCards = {};

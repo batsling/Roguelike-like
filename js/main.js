@@ -4381,7 +4381,7 @@ function handleDiceCombatVictory(enemy) {
   gameState.totalCombatsCompleted = (gameState.totalCombatsCompleted || 0) + 1;
 
   // Award gold based on difficulty tier
-  const goldAmounts = { 'Low': 10, 'Medium': 20, 'High': 30 };
+  const goldAmounts = { 'Low': 20, 'Medium': 35, 'High': 55 };
   const goldReward = goldAmounts[enemy.difficulty] || 10;
   gold += goldReward;
   gameState.gold = gold;
