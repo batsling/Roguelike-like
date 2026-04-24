@@ -550,21 +550,17 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   const startPool = eligibleStarts.length > 0 ? eligibleStarts : eligible;
   const start = startPool[Math.floor(Math.random() * startPool.length)];
 
-  // Base constraint: different decade and different genre
-  let candidates = eligible.filter(g =>
-    Math.floor(g.year / 10) !== Math.floor(start.year / 10) && g.type !== start.type
-  );
-
   // Path-length constraint: keep runs within a playable range.
   // Tune MIN_PATH_LENGTH and MAX_PATH_LENGTH to adjust typical run depth.
   const MIN_PATH_LENGTH = 5;
   const MAX_PATH_LENGTH = 8;
-  const pathFiltered = candidates.filter(g => {
+  let candidates = eligible.filter(g => {
+    if (g.name === start.name) return false;
     const dist = bfs(start.name, g.name);
     return typeof dist === 'number' && dist >= MIN_PATH_LENGTH && dist <= MAX_PATH_LENGTH;
   });
-  // Fall back to unfiltered candidates if the path constraint leaves nothing
-  if (pathFiltered.length > 0) candidates = pathFiltered;
+  // Fall back to any connected game (excluding start) if path constraint leaves nothing
+  if (candidates.length === 0) candidates = eligible.filter(g => g.name !== start.name);
 
   if (candidates.length === 0) {
     alert('No valid amulet game');
