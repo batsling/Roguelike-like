@@ -542,7 +542,13 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     return;
   }
 
-  const start = eligible[Math.floor(Math.random() * eligible.length)];
+  // Start game must have at least 3 connections so the player always has opening choices
+  const eligibleStarts = eligible.filter(g => {
+    const conns = typeof getGameConnections === 'function' ? getGameConnections(g.name) : [];
+    return conns.length >= 3;
+  });
+  const startPool = eligibleStarts.length > 0 ? eligibleStarts : eligible;
+  const start = startPool[Math.floor(Math.random() * startPool.length)];
 
   // Base constraint: different decade and different genre
   let candidates = eligible.filter(g =>
