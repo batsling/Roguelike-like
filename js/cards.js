@@ -288,28 +288,62 @@ function showCardRewardModal(onComplete, tagFilter = null) {
   createGameModal(`
     <div style="text-align:center;padding:20px;max-width:920px;margin:0 auto;">
       <h2 style="color:#9b59b6;margin-top:0;">🃏 Choose a Card</h2>
-      <p style="color:#aaa;margin-bottom:20px;">Select one card to add to your deck</p>
+      <p style="color:#aaa;margin-bottom:20px;">Click a card to select it, then confirm your choice</p>
       <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap;" id="card-reward-grid">
         ${cardsHTML}
       </div>
-      <button onclick="closeGameModal()" style="
-        margin-top:25px;padding:12px 30px;
-        background:#555;border:none;border-radius:8px;
-        color:white;cursor:pointer;font-size:14px;font-weight:bold;
-      ">Skip</button>
+      <div style="margin-top:25px;display:flex;gap:14px;justify-content:center;align-items:center;">
+        <button id="card-reward-confirm" disabled style="
+          padding:12px 30px;
+          background:#555;border:2px solid #888;border-radius:8px;
+          color:#888;cursor:not-allowed;font-size:14px;font-weight:bold;
+          transition:all 0.15s;
+        ">✓ Add to Deck</button>
+        <button onclick="closeGameModal()" style="
+          padding:12px 30px;
+          background:#333;border:2px solid #555;border-radius:8px;
+          color:#aaa;cursor:pointer;font-size:14px;font-weight:bold;
+        ">Skip</button>
+      </div>
     </div>
   `);
 
-  // Bind click handlers
-  document.querySelectorAll('.card-reward-option').forEach(el => {
-    el.onclick = () => {
-      const idx = parseInt(el.dataset.index);
-      if (idx >= 0 && idx < rewardCards.length) {
-        addCardToDeck(rewardCards[idx]);
-        closeGameModal();
+  let selectedIdx = null;
+  const confirmBtn = document.getElementById('card-reward-confirm');
+
+  function setSelected(idx) {
+    selectedIdx = idx;
+    document.querySelectorAll('.card-reward-option').forEach(el => {
+      const i = parseInt(el.dataset.index);
+      const card = rewardCards[i];
+      const color = getRarityColor(card.rarity);
+      if (i === idx) {
+        el.style.border = `3px solid #ffd700`;
+        el.style.boxShadow = `0 0 22px #ffd70088`;
+        el.style.transform = 'scale(1.06)';
+      } else {
+        el.style.border = `3px solid ${color}`;
+        el.style.boxShadow = 'none';
+        el.style.transform = 'scale(1)';
       }
-    };
+    });
+    confirmBtn.disabled = false;
+    confirmBtn.style.background = 'linear-gradient(145deg, #9b59b6, #7d3c98)';
+    confirmBtn.style.borderColor = '#9b59b6';
+    confirmBtn.style.color = 'white';
+    confirmBtn.style.cursor = 'pointer';
+  }
+
+  document.querySelectorAll('.card-reward-option').forEach(el => {
+    el.onclick = () => setSelected(parseInt(el.dataset.index));
   });
+
+  confirmBtn.onclick = () => {
+    if (selectedIdx === null) return;
+    addCardToDeck(rewardCards[selectedIdx]);
+    closeGameModal();
+    if (typeof onComplete === 'function') onComplete();
+  };
 }
 
 // ===== DECK VIEWER MODAL =====

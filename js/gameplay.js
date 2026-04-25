@@ -542,30 +542,23 @@ function showTooltip(e, name) {
     ${tagsHTML}`;
   tooltip.style.opacity = 1;
   tooltip.style.display = 'block';
+  tooltip.style.width = '350px';
+  tooltip.style.maxWidth = '350px';
+  tooltip.style.maxHeight = (window.innerHeight - 80) + 'px';
+  tooltip.style.overflowY = 'auto';
   moveTooltip(e);
 }
 
 function moveTooltip(e) {
   const offset = 14;
-  const tooltipRect = tooltip.getBoundingClientRect();
+  const topBarHeight = 60;
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  const topBarHeight = 60; // Height of the fixed top bar
 
   // Calculate initial position
   let left = e.clientX + offset;
   let top = e.clientY + offset;
 
-  // Check if tooltip is too tall for viewport - make it wider to reduce height
-  if (tooltipRect.height > viewportHeight - topBarHeight - 40) {
-    tooltip.style.width = 'auto';
-    tooltip.style.maxWidth = '450px';
-  } else {
-    tooltip.style.width = '350px';
-    tooltip.style.maxWidth = '350px';
-  }
-
-  // Re-get rect after potential width change
   const updatedRect = tooltip.getBoundingClientRect();
 
   // Check if tooltip would go off the right edge

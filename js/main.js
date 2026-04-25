@@ -6056,6 +6056,29 @@ window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) 
   const isUsable = item.type === 'Usable';
   const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
 
+  // For Weapon items, find the card they add to the deck and show it
+  const isWeapon = (item.type || '').toLowerCase() === 'weapon';
+  let weaponCardHTML = '';
+  if (isWeapon && typeof cards !== 'undefined') {
+    const wCard = cards.find(c => c.name === item.name);
+    if (wCard) {
+      const wColor = wCard.type === 'Attack' ? '#e74c3c' : wCard.type === 'Skill' ? '#3498db' : wCard.type === 'Power' ? '#9b59b6' : '#aaa';
+      const wImg   = wCard.imageUrl || '';
+      weaponCardHTML = `
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #444;">
+          <div style="color:#aaa;font-size:11px;margin-bottom:6px;">Card added to deck:</div>
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            ${wImg ? `<img src="${wImg}" alt="${wCard.name}" style="width:52px;height:52px;object-fit:contain;border:2px solid ${wColor};border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">` : ''}
+            <div>
+              <div style="font-weight:bold;color:white;font-size:13px;">${wCard.name}${wCard.upgraded ? ' <span style="color:#4CAF50">+</span>' : ''}</div>
+              <div style="color:${wColor};font-size:11px;margin:2px 0;">${wCard.type} · ⚡${wCard.cost}</div>
+              <div style="color:#ccc;font-size:11px;line-height:1.4;">${wCard.description || ''}</div>
+            </div>
+          </div>
+        </div>`;
+    }
+  }
+
   tooltipContent.innerHTML = `
     <div style="min-width: 220px;">
       <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 16px; border-bottom: 2px solid ${rarityColor}; padding-bottom: 6px;">
@@ -6067,6 +6090,7 @@ window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) 
         <span style="color: #aaa; font-size: 13px;">${item.type || 'Item'}</span>
       </div>
       <p style="margin: 8px 0; color: #ccc; font-size: 13px; line-height: 1.4;">${item.description || 'No description'}</p>
+      ${weaponCardHTML}
       ${isUsable ? `
         <button ${canUse ? `onclick="useCombatItem(${itemIndex}); hideCombatItemTooltip();"` : 'disabled'} style="
           width: 100%;
@@ -6157,6 +6181,11 @@ window.useCombatItem = function useCombatItem(itemIndex) {
     // Update combat UI
     if (typeof updateCombatUI === 'function') {
       updateCombatUI();
+    }
+
+    // Full re-render so item effects (HP, statuses, etc.) appear immediately
+    if (window.CombatUI && typeof window.CombatUI.updateCombatDisplay === 'function') {
+      window.CombatUI.updateCombatDisplay();
     }
   }
 }
