@@ -181,6 +181,9 @@ function showLocationTooltip(e) {
 
   if (!locationTooltip || !locationType || !locationGame || !locationEffect) return;
 
+  // Reset inline display so the .visible CSS class can take effect
+  locationTooltip.style.display = '';
+
   const typeColors = {
     'Undead': '#9b59b6',
     'Firey': '#e74c3c',

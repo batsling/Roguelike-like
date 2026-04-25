@@ -442,6 +442,9 @@ function parseStartingAbilities(abilityStr) {
     if (!seg) continue;
     // Skip defeat-trigger and "When another …" clauses entirely
     if (/^when\b/i.test(seg) || /defeat/i.test(seg)) continue;
+    // Skip probability-prefixed segments that are death-trigger alternatives
+    // e.g. "40% Spawn Gusher" is the tail of "When Defeated, 60% X / 40% Y"
+    if (/^\d+%\s+/i.test(seg)) continue;
 
     // "Curl Up Determined(X-Y)" — roll block amount once at combat start
     const curlUpDetMatch = seg.match(/^Curl\s+Up\s+Determined\((\d+)-(\d+)\)$/i);
@@ -5391,6 +5394,10 @@ function playCard(handIndex, targetId = null) {
     addLog('Fear reduced by 1 (Skill played)', 'info');
   }
 
+  // Snapshot After Image block-per-play BEFORE resolving so a Power card
+  // doesn't count its own play (the status is set during resolveCardEffect for Powers).
+  const _blockPerPlay = combatState.player.statuses['block_per_card_play'] || 0;
+
   // Resolve effects (pass xValue for X-cost cards like Doppelganger)
   // _inCardResolution: set true so loseHealth() can trigger Rupture during card resolution
   combatState._inCardResolution = true;
@@ -5482,9 +5489,10 @@ function playCard(handIndex, targetId = null) {
     combatState.discardPile.push(card);
   }
 
-  // After Image: gain block for every card played (checked after routing so After Image itself counts)
-  if (combatState.player.statuses['block_per_card_play']) {
-    addBlock(combatState.player, combatState.player.statuses['block_per_card_play']);
+  // After Image: gain block for every card played, using the pre-play snapshot so
+  // playing After Image itself does not count (block_per_card_play is 0 before the Power resolves).
+  if (_blockPerPlay > 0) {
+    addBlock(combatState.player, _blockPerPlay);
   }
 
   addLog(`Played ${card.name}`, 'info');

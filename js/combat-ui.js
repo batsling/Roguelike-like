@@ -345,7 +345,7 @@ const STATUS_META = {
   // Other statuses
   blur:            { img: 'Blur',           emoji: '🌀', label: 'Blur'            },
   choked:          { img: 'Choked',         emoji: '💀', label: 'Choked'          },
-  shackled:        { img: null,             emoji: '🔒', label: 'Shackled'        },
+  shackled:        { img: 'Shackled',        emoji: '🔒', label: 'Shackled'        },
   well_laid_plans: { img: 'Well-LaidPlans', emoji: '📋', label: 'Well-Laid Plans' },
   shiv_per_turn:   { img: null,             emoji: '🗡', label: 'Shiv/Turn'       },
   fear:           { img: 'Fear',          emoji: '😨', label: 'Fear'         },
