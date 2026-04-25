@@ -171,7 +171,7 @@ var EVENTS_DATA = [
   {
     id: 'note_for_yourself',
     name: 'A Note For Yourself',
-    image: 'images/events/NoteForYourself.png',
+    image: 'images/events/ANoteForYourself.png',
     description: 'You spot a loose brick within a pillar that catches your eye.',
     choices: [
       {

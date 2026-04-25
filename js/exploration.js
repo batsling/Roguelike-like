@@ -231,23 +231,30 @@ function spawnChoices() {
 
     const n = addNode(g, 'choice', nx, ny);
 
-    // Revisit indicator: badge shown when the player has already beaten this game
+    // Revisit indicator: banner above the node when the player has already beaten this game
     if (gameState.finishedGames && gameState.finishedGames.includes(g)) {
-      const revisitBadge = document.createElement('span');
-      revisitBadge.title = 'Already beaten — revisiting grants +1 Dash';
-      revisitBadge.textContent = '💨';
-      revisitBadge.style.cssText = [
-        'position:absolute', 'top:-12px', 'left:-12px',
-        'width:26px', 'height:26px',
-        'background:#2980b9', 'color:#fff',
-        'border-radius:50%',
-        'display:flex', 'align-items:center', 'justify-content:center',
-        'font-size:14px',
-        'border:2px solid #000',
-        'box-shadow:0 2px 8px rgba(0,0,0,0.4)',
-        'cursor:default',
+      const revisitBanner = document.createElement('div');
+      revisitBanner.title = 'Already beaten — revisiting grants +1 Dash';
+      revisitBanner.textContent = '💨 +1 Dash on Revisit';
+      revisitBanner.style.cssText = [
+        'position:absolute',
+        'bottom:calc(100% + 6px)',
+        'left:50%',
+        'transform:translateX(-50%)',
+        'white-space:nowrap',
+        'background:#1a3a4a',
+        'color:#88ddff',
+        'border:1px solid #44aacc',
+        'border-radius:4px',
+        'padding:2px 8px',
+        'font-size:11px',
+        'font-weight:bold',
+        'letter-spacing:0.3px',
+        'box-shadow:0 2px 6px rgba(0,0,0,0.5)',
+        'pointer-events:none',
+        'z-index:5',
       ].join(';');
-      n.appendChild(revisitBadge);
+      n.appendChild(revisitBanner);
     }
 
     // Check if this is the amulet game

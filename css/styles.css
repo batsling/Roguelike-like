@@ -860,24 +860,21 @@ text, path, line, g {
 
 #game-stats .stat-tooltip {
   cursor: help;
-  position: relative;
 }
 
-#game-stats .stat-tooltip:hover::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  left: calc(100% + 8px);
-  top: 50%;
-  transform: translateY(-50%);
+#stat-tooltip-popup {
+  position: fixed;
+  z-index: 99999;
+  display: none;
   padding: 8px 12px;
   background: #2a2420;
   color: #e6d5b8;
   border: 2px solid #cc6600;
   border-radius: 6px;
   font-size: 12px;
+  font-family: 'Courier New', monospace;
   white-space: normal;
   width: 220px;
-  z-index: 9000;
   box-shadow: 0 4px 12px rgba(0,0,0,0.8);
   pointer-events: none;
   line-height: 1.4;
