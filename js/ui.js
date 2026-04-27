@@ -806,19 +806,6 @@ function updateSelectedGamesDisplay() {
   }
 }
 
-// ===== PACT OF PUNISHMENT =====
-
-function updateRoguePointsDisplay() {
-  document.getElementById('rogue-points-display').textContent = `Rogue Points: ${roguePoints}`;
-}
-
-function updateConditionCounts() {
-  document.getElementById('lessHealth-count').textContent = pactConditions.lessHealth;
-  document.getElementById('moreGames-count').textContent = pactConditions.moreGames;
-  document.getElementById('randomGame-count').textContent = pactConditions.randomGame;
-  document.getElementById('challengeRun-count').textContent = pactConditions.challengeRun;
-}
-
 // ===== ENCOUNTER HISTORY =====
 
 function updateEncounterHistory() {

@@ -10,20 +10,20 @@
 /* ===== DESIGN TOKENS ===== */
 :root {
   /* Brand accent: borders, scrollbars, dividers */
-  --color-accent:    var(--color-accent);
+  --color-accent:    #cc6600;
   /* Primary text highlight */
-  --color-gold:      var(--color-gold);
+  --color-gold:      #ffcc66;
   /* Bright highlight used for achievements, bingo, etc. */
-  --color-highlight: var(--color-highlight);
+  --color-highlight: #ffd700;
 
   /* Card / item rarity */
   --color-common:    #aaaaaa;
-  --color-uncommon:  var(--color-success);
-  --color-rare:      var(--color-rare);
+  --color-uncommon:  #4CAF50;
+  --color-rare:      #9b59b6;
   --color-legendary: #ff6b00;
 
   /* Semantic UI states */
-  --color-success:   var(--color-success);
+  --color-success:   #4CAF50;
   --color-danger:    #e74c3c;
 
   /* Surface backgrounds */
@@ -2632,6 +2632,62 @@ text, path, line, g {
   cursor: pointer;
   position: relative;
   transition: transform 0.15s, box-shadow 0.15s;
+}
+
+/* ===== SMITH MODAL ===== */
+.smith-card-option {
+  background: #2d2d2d;
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 170px;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  text-align: center;
+}
+.smith-card-option:hover {
+  transform: translateY(-3px);
+}
+.smith-current-block {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+}
+.smith-upgrade-block {
+  width: 100%;
+  background: rgba(46, 204, 113, 0.07);
+  border: 1px solid rgba(46, 204, 113, 0.25);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+}
+.smith-upgrade-label {
+  font-size: 10px;
+  color: #2ecc71;
+  font-weight: bold;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.smith-upgrade-cost {
+  font-size: 10px;
+  color: var(--color-highlight);
+  margin-bottom: 3px;
+}
+.smith-upgrade-desc {
+  font-size: 11px;
+  color: #7dffb0;
+  line-height: 1.4;
+}
+.smith-selected-badge {
+  color: #FF9800;
+  font-size: 11px;
+  font-weight: bold;
+  margin-top: 4px;
 }
 
 /* ===== DEV TOOLS ===== */

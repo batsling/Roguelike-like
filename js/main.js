@@ -170,8 +170,6 @@ function loadState() {
     beatenGames = state.beatenGames;
     selectedPhase2Games = state.selectedPhase2Games;
     excludedGames = state.excludedGames ?? [];
-    roguePoints = state.roguePoints;
-    pactConditions = state.pactConditions;
     startGame = state.startGame;
     amuletGame = state.amuletGame;
     encounterHistory = state.encounterHistory ?? [];
@@ -4508,10 +4506,10 @@ function showPostCombatChoiceModal(difficulty) {
       key: 'rest',
       label: 'Rest',
       icon: '🛌',
-      desc: 'Heal 50% of your max health.',
+      desc: 'Heal 33% of your max health.',
       color: '#4CAF50',
       action: () => {
-        const heal = Math.floor(maxHealth * 0.5);
+        const heal = Math.floor(maxHealth * 0.33);
         health = Math.min(health + heal, maxHealth);
         window.health = health;
         gameState.health = health;
@@ -4645,103 +4643,132 @@ function showSmithChoiceModal() {
   }
 
   const MAX_UPGRADES = 2;
-  let selectedIndices = new Set();
+  const selectedIndices = new Set();
 
-  function renderSmithModal() {
-    const cardsHTML = upgradeable.map((card, idx) => {
-      const sel = selectedIndices.has(idx);
-      const color = sel ? '#FF9800' : '#555';
-      return `
-        <div class="smith-card-option" data-smith-idx="${idx}" style="
-          background: ${sel ? '#3a2800' : '#2d2d2d'};
-          border: 2px solid ${color};
-          border-radius: 10px;
-          padding: 14px;
-          cursor: pointer;
-          display:flex; flex-direction:column; align-items:center;
-          min-width:150px; max-width:180px;
-          transition: transform 0.15s;
-        ">
-          <img src="${card.imageUrl || 'images/cards/default.png'}" alt="${card.name}"
-               style="width:80px;height:80px;object-fit:contain;margin-bottom:8px;"
-               onerror="this.style.display='none'">
-          <div style="font-weight:bold;font-size:12px;color:white;text-align:center;">${card.name}</div>
-          <div style="font-size:10px;color:#aaa;margin-top:3px;">${card.rarity} · ${card.type}</div>
-          ${sel ? '<div style="color:#FF9800;font-size:11px;margin-top:4px;">✓ Selected</div>' : ''}
-        </div>
-      `;
-    }).join('');
+  const rarityCol = r => {
+    if (r === 'Rare') return 'var(--color-rare)';
+    if (r === 'Uncommon') return 'var(--color-uncommon)';
+    return 'var(--color-common)';
+  };
 
-    createGameModal(`
-      <div style="text-align:center; padding:20px; max-width:920px;">
-        <h2 style="color:#FF9800; margin-top:0;">⚒️ Smith — Upgrade Cards</h2>
-        <p style="color:#aaa; font-size:13px; margin-bottom:16px;">
-          Select up to ${MAX_UPGRADES} cards to upgrade for free.
-          (${selectedIndices.size}/${MAX_UPGRADES} selected)
-        </p>
-        <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:20px;">
-          ${cardsHTML}
+  // Build each card HTML once — selection state toggled in-place via DOM
+  const cardsHTML = upgradeable.map((card, idx) => {
+    const rc = rarityCol(card.rarity);
+    const upgDesc = card.upgradedDescription
+      ? `<div class="smith-upgrade-block">
+           <div class="smith-upgrade-label">▶ Upgraded</div>
+           <div class="smith-upgrade-cost">${card.upgradedCost != null ? `Cost: ${card.upgradedCost}` : `Cost: ${card.cost}`}</div>
+           <div class="smith-upgrade-desc">${card.upgradedDescription}</div>
+         </div>`
+      : `<div class="smith-upgrade-block" style="color:#555;font-size:10px;font-style:italic;">No upgrade available</div>`;
+
+    return `
+      <div class="smith-card-option" data-smith-idx="${idx}"
+           style="border:2px solid #555;">
+        <img src="${card.imageUrl || 'images/cards/default.png'}" alt="${card.name}"
+             style="width:72px;height:72px;object-fit:contain;margin-bottom:6px;"
+             onerror="this.style.display='none'">
+        <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:2px;">${card.name}</div>
+        <div style="font-size:10px;color:${rc};margin-bottom:6px;">${card.rarity} · ${card.type}</div>
+
+        <div class="smith-current-block">
+          <div style="font-size:10px;color:#888;margin-bottom:2px;">Current — Cost: ${card.cost}</div>
+          <div style="font-size:11px;color:#ccc;line-height:1.4;">${card.description}</div>
         </div>
-        <div style="display:flex; gap:10px; justify-content:center;">
-          <button id="smith-confirm-btn" style="
-            padding:10px 28px; background:${selectedIndices.size > 0 ? '#FF9800' : '#555'};
-            border:none; border-radius:8px; color:white; cursor:pointer; font-weight:bold;
-          ">Upgrade (${selectedIndices.size})</button>
-          <button onclick="closeGameModal()" style="
-            padding:10px 24px; background:#444; border:none; border-radius:8px;
-            color:#aaa; cursor:pointer;
-          ">Cancel</button>
-        </div>
+
+        ${upgDesc}
+
+        <div class="smith-selected-badge" style="display:none;">✓ Selected</div>
       </div>
-    `);
+    `;
+  }).join('');
 
+  createGameModal(`
+    <div style="text-align:center; padding:20px; max-width:960px;">
+      <h2 style="color:#FF9800; margin-top:0; margin-bottom:4px;">⚒️ Smith</h2>
+      <p style="color:#aaa; font-size:13px; margin-bottom:16px;">
+        Select up to ${MAX_UPGRADES} cards to upgrade for free.
+        <span id="smith-counter" style="color:#FF9800; font-weight:bold;">0/${MAX_UPGRADES} selected</span>
+      </p>
+      <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:20px;">
+        ${cardsHTML}
+      </div>
+      <div style="display:flex; gap:10px; justify-content:center;">
+        <button id="smith-confirm-btn" disabled style="
+          padding:10px 28px; background:#555; border:none; border-radius:8px;
+          color:#999; cursor:not-allowed; font-weight:bold; font-size:14px;
+          transition: background 0.15s, color 0.15s;
+        ">Upgrade (0)</button>
+        <button onclick="closeGameModal()" style="
+          padding:10px 24px; background:#333; border:1px solid #555; border-radius:8px;
+          color:#aaa; cursor:pointer; font-size:14px;
+        ">Cancel</button>
+      </div>
+    </div>
+  `);
+
+  // Update selection visuals without re-rendering the modal
+  function updateSmithUI() {
     document.querySelectorAll('.smith-card-option').forEach(el => {
-      el.onclick = () => {
-        const idx = parseInt(el.dataset.smithIdx);
-        if (selectedIndices.has(idx)) {
-          selectedIndices.delete(idx);
-        } else if (selectedIndices.size < MAX_UPGRADES) {
-          selectedIndices.add(idx);
-        }
-        renderSmithModal();
-      };
+      const idx = parseInt(el.dataset.smithIdx);
+      const sel = selectedIndices.has(idx);
+      el.style.borderColor  = sel ? '#FF9800' : '#555';
+      el.style.background   = sel ? '#2a1a00' : '#2d2d2d';
+      el.querySelector('.smith-selected-badge').style.display = sel ? 'block' : 'none';
     });
-
-    const confirmBtn = document.getElementById('smith-confirm-btn');
-    if (confirmBtn) {
-      confirmBtn.onclick = () => {
-        let upgradeCount = 0;
-        selectedIndices.forEach(idx => {
-          const card = upgradeable[idx];
-          if (card._isStarting) {
-            // Track starting card upgrades separately; applied in buildCombatDeck
-            if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
-            gameState.upgradedStartingCards[card.name] = true;
-            upgradeCount++;
-          } else {
-            const deckIdx = gameState.deck.findIndex(c => c === card || (c.name === card.name && !c.upgraded));
-            if (deckIdx !== -1) {
-              gameState.deck[deckIdx].upgraded = true;
-              if (gameState.deck[deckIdx].upgradedDescription) {
-                gameState.deck[deckIdx].description = gameState.deck[deckIdx].upgradedDescription;
-              }
-              if (gameState.deck[deckIdx].upgradedCost !== null && gameState.deck[deckIdx].upgradedCost !== undefined) {
-                gameState.deck[deckIdx].cost = gameState.deck[deckIdx].upgradedCost;
-              }
-              upgradeCount++;
-            }
-          }
-        });
-        if (typeof saveCurrentGame === 'function') saveCurrentGame();
-        closeGameModal();
-        if (typeof createNotification === 'function') {
-          createNotification(`Upgraded ${upgradeCount} card${upgradeCount !== 1 ? 's' : ''}!`, '#FF9800', '⚒️');
-        }
-      };
+    const count = selectedIndices.size;
+    const counter = document.getElementById('smith-counter');
+    if (counter) counter.textContent = `${count}/${MAX_UPGRADES} selected`;
+    const btn = document.getElementById('smith-confirm-btn');
+    if (btn) {
+      btn.disabled      = count === 0;
+      btn.textContent   = `Upgrade (${count})`;
+      btn.style.background = count > 0 ? '#FF9800' : '#555';
+      btn.style.color      = count > 0 ? 'white'   : '#999';
+      btn.style.cursor     = count > 0 ? 'pointer' : 'not-allowed';
     }
   }
 
-  renderSmithModal();
+  document.querySelectorAll('.smith-card-option').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.smithIdx);
+      if (selectedIndices.has(idx)) {
+        selectedIndices.delete(idx);
+      } else if (selectedIndices.size < MAX_UPGRADES) {
+        selectedIndices.add(idx);
+      }
+      updateSmithUI();
+    });
+  });
+
+  document.getElementById('smith-confirm-btn').addEventListener('click', () => {
+    let upgradeCount = 0;
+    selectedIndices.forEach(idx => {
+      const card = upgradeable[idx];
+      if (card._isStarting) {
+        if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
+        gameState.upgradedStartingCards[card.name] = true;
+        upgradeCount++;
+      } else {
+        const deckIdx = gameState.deck.findIndex(c => c === card || (c.name === card.name && !c.upgraded));
+        if (deckIdx !== -1) {
+          gameState.deck[deckIdx].upgraded = true;
+          if (gameState.deck[deckIdx].upgradedDescription) {
+            gameState.deck[deckIdx].description = gameState.deck[deckIdx].upgradedDescription;
+          }
+          if (gameState.deck[deckIdx].upgradedCost !== null && gameState.deck[deckIdx].upgradedCost !== undefined) {
+            gameState.deck[deckIdx].cost = gameState.deck[deckIdx].upgradedCost;
+          }
+          upgradeCount++;
+        }
+      }
+    });
+    if (typeof saveCurrentGame === 'function') saveCurrentGame();
+    closeGameModal();
+    if (typeof createNotification === 'function') {
+      createNotification(`Upgraded ${upgradeCount} card${upgradeCount !== 1 ? 's' : ''}!`, '#FF9800', '⚒️');
+    }
+  });
 }
 
 /**
