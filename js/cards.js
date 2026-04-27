@@ -250,12 +250,14 @@ function showDeckModal() {
   function cardHtml(card, label) {
     const color = getRarityColor(card.rarity);
     const imgSrc = card.imageUrl || 'images/cards/default.png';
+    const upgBtn = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
     return `
       <div style="
         background:#2d2d2d;border:2px solid ${color};border-radius:8px;
         padding:12px;display:flex;flex-direction:column;align-items:center;
         min-width:130px;max-width:160px;position:relative;
       ">
+        ${upgBtn}
         ${label ? `<div style="position:absolute;top:4px;right:4px;background:${color};color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:bold;">${label}</div>` : ''}
         <img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;"
              onerror="this.style.display='none'">

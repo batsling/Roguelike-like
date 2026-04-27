@@ -4827,6 +4827,103 @@ window.toggleCombatSystem = function() {
 
 // ============== DECK VIEWER ==============
 
+// ===== CARD UPGRADE PREVIEW SYSTEM =====
+// Registry so inline onclick can reference card objects by index.
+window._cardPR = [];
+
+function _cardPreviewBtn(card) {
+  if (!card || !card.upgradedDescription) return '';
+  const idx = window._cardPR.push(card) - 1;
+  return `<button
+    onclick="event.stopPropagation();showCardUpgradeZoom(window._cardPR[${idx}])"
+    title="Preview Upgrade"
+    style="position:absolute;top:5px;left:5px;
+      width:22px;height:22px;padding:0;
+      background:rgba(39,174,96,0.92);border:1px solid #2ecc71;border-radius:5px;
+      color:white;cursor:pointer;font-size:13px;font-weight:bold;
+      display:flex;align-items:center;justify-content:center;
+      z-index:10;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,0.4);">↑</button>`;
+}
+window._cardPreviewBtn = _cardPreviewBtn;
+
+function showCardUpgradeZoom(card) {
+  const existing = document.getElementById('card-zoom-overlay');
+  if (existing) existing.remove();
+
+  const rarityColors = { Rare: '#9b59b6', Uncommon: '#4CAF50', Common: '#aaa', Starter: '#888' };
+  const color = rarityColors[card.rarity] || '#888';
+
+  const hasUpgrade = !!card.upgradedDescription;
+
+  function buildCardPanel(upgraded) {
+    const desc = upgraded && card.upgradedDescription ? card.upgradedDescription : (card.description || '');
+    const cost = upgraded && card.upgradedCost !== undefined && card.upgradedCost !== null
+      ? card.upgradedCost : card.cost;
+    const name = card.name + (upgraded ? ' <span style="color:#4CAF50;font-size:18px">+</span>' : '');
+    const imgSrc = card.imageUrl || '';
+    const descColor = upgraded ? '#7dffb0' : '#ddd';
+    const borderColor = upgraded ? '#2ecc71' : color;
+    return `
+      <div style="background:#1e1e2e;border:3px solid ${borderColor};border-radius:14px;
+        padding:26px 28px;max-width:320px;width:88vw;text-align:center;
+        box-shadow:0 12px 50px rgba(0,0,0,0.9);cursor:default;position:relative;"
+        onclick="event.stopPropagation()">
+        ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}"
+          style="width:130px;height:130px;object-fit:contain;margin-bottom:14px;border-radius:8px;border:2px solid ${borderColor}40;"
+          onerror="this.style.display='none'">` : ''}
+        <h2 style="margin:0 0 6px;color:white;font-size:20px;">${name}</h2>
+        <div style="color:${borderColor};font-size:13px;margin-bottom:10px;font-weight:bold;">
+          ${card.rarity || 'Starter'} · ${card.type || ''}
+        </div>
+        <div style="color:${descColor};font-size:14px;line-height:1.6;margin-bottom:14px;
+          ${upgraded ? 'background:rgba(46,204,113,0.08);border-radius:6px;padding:8px;border:1px solid rgba(46,204,113,0.2);' : ''}">
+          ${desc}
+        </div>
+        <div style="color:#ffd700;font-size:16px;font-weight:bold;">Cost: ${cost !== undefined ? cost : '?'}</div>
+      </div>`;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'card-zoom-overlay';
+  overlay.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.82);
+    display:flex;align-items:center;justify-content:center;
+    z-index:10000;cursor:pointer;flex-direction:column;gap:0;
+  `;
+
+  if (hasUpgrade && !card.upgraded) {
+    // Show base and upgraded side by side with labels
+    overlay.innerHTML = `
+      <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;justify-content:center;cursor:default;" onclick="event.stopPropagation()">
+        <div>
+          <div style="text-align:center;color:#aaa;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">BASE</div>
+          ${buildCardPanel(false)}
+        </div>
+        <div>
+          <div style="text-align:center;color:#4CAF50;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">UPGRADED ↑</div>
+          ${buildCardPanel(true)}
+        </div>
+      </div>
+      <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
+        margin-top:20px;padding:9px 28px;background:#333;border:1px solid #666;border-radius:8px;
+        color:#ccc;cursor:pointer;font-size:13px;">Close</button>
+    `;
+  } else {
+    // Card already upgraded or no upgrade — show single panel with base toggle if applicable
+    overlay.innerHTML = `
+      ${buildCardPanel(!!card.upgraded)}
+      ${hasUpgrade && card.upgraded ? `<div style="text-align:center;color:#aaa;font-size:11px;margin-top:6px;">(This card is upgraded)</div>` : ''}
+      <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
+        margin-top:16px;padding:9px 28px;background:#333;border:1px solid #666;border-radius:8px;
+        color:#ccc;cursor:pointer;font-size:13px;">Close</button>
+    `;
+  }
+
+  overlay.addEventListener('click', () => overlay.remove());
+  document.body.appendChild(overlay);
+}
+window.showCardUpgradeZoom = showCardUpgradeZoom;
+
 function showCardZoomOverlay(card) {
   const existing = document.getElementById('card-zoom-overlay');
   if (existing) existing.remove();
@@ -4905,6 +5002,7 @@ function showDeckModal() {
     const artHTML = imgSrc
       ? `<img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;" onerror="this.style.display='none'">`
       : (_isDice ? `<div style="font-size:36px;margin-bottom:6px;">🎲</div>` : '');
+    const upgBtn = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
     return `
       <div data-deck-card-idx="${idx}" style="background:#2d2d2d;border:2px solid ${color};border-radius:8px;
         padding:12px;display:flex;flex-direction:column;align-items:center;
@@ -4912,6 +5010,7 @@ function showDeckModal() {
         transition:transform 0.15s,box-shadow 0.15s;"
         onmouseenter="this.style.transform='scale(1.04)';this.style.boxShadow='0 6px 20px rgba(0,0,0,0.6)'"
         onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        ${upgBtn}
         ${label ? `<div style="position:absolute;top:4px;right:4px;background:${color};color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:bold;">${label}</div>` : ''}
         ${artHTML}
         <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:3px;">${card.name}${card.upgraded ? ' +' : ''}</div>
@@ -5791,16 +5890,18 @@ function showCardRewardModal(onComplete, tagFilter = null) {
   }
 
   const cardsHTML = chosen.map((card, idx) => {
-    const color  = rarityColor(card.rarity);
-    const imgSrc = card.imageUrl || 'images/cards/default.png';
+    const color   = rarityColor(card.rarity);
+    const imgSrc  = card.imageUrl || 'images/cards/default.png';
+    const upgBtn  = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
     return `
       <div class="card-reward-option" data-card-idx="${idx}" style="
         background:#1e1e2e; border:3px solid ${color}; border-radius:12px;
         padding:16px; display:flex; flex-direction:column; align-items:center;
-        width:200px; cursor:pointer;
+        width:200px; cursor:pointer; position:relative;
         transition: transform 0.15s, box-shadow 0.15s;
       " onmouseenter="if(!this.classList.contains('cr-selected')){this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px ${color}44';}"
          onmouseleave="if(!this.classList.contains('cr-selected')){this.style.transform='';this.style.boxShadow='';}">
+        ${upgBtn}
         <img src="${imgSrc}" alt="${card.name}"
              style="width:110px;height:110px;object-fit:contain;margin-bottom:10px;"
              onerror="this.style.display='none'">

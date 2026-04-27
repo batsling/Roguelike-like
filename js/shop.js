@@ -288,12 +288,15 @@ function showShopModal(purchasedIndices = []) {
       const price = cardPriceFor(card);
       const color = getRarityColor(card.rarity);
       const imgSrc = card.imageUrl || 'images/cards/default.png';
+      const upgBtn = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
       shopCardsHTML += `
         <div style="
           background:#1e1e2e;border:2px solid ${color};border-radius:10px;
           padding:15px;display:flex;flex-direction:column;align-items:center;
+          position:relative;
           ${isPurchased ? 'opacity:0.5;' : ''}
         ">
+          ${upgBtn}
           <img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;"
                onerror="this.style.display='none'">
           <div style="font-weight:bold;font-size:14px;color:white;text-align:center;margin-bottom:3px;">${card.name}</div>

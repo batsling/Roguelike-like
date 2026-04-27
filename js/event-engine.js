@@ -1059,13 +1059,14 @@ function _showCardStoreScreen(onContinue) {
       ? `<div style="position:absolute;top:5px;left:5px;background:#2196F3;color:#fff;font-size:9px;font-weight:bold;padding:2px 5px;border-radius:3px;line-height:1.2;">STARTER</div>`
       : '';
     const costOrb = `<div style="
-      position:absolute;top:5px;left:50%;transform:translateX(-50%);
+      position:absolute;bottom:40px;right:6px;
       width:22px;height:22px;border-radius:50%;background:${tc};
       display:flex;align-items:center;justify-content:center;
       font-size:11px;font-weight:bold;color:#fff;border:2px solid rgba(255,255,255,0.3);
       box-shadow:0 2px 4px rgba(0,0,0,0.5);">
       ${card.cost !== null && card.cost !== undefined ? card.cost : '?'}
     </div>`;
+    const upgBtn = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
     const desc = card.upgraded && card.upgradedDescription ? card.upgradedDescription : (card.description || '');
     return `
       <div class="ev-store-card-opt" data-idx="${i}" style="
@@ -1073,12 +1074,12 @@ function _showCardStoreScreen(onContinue) {
         background:#1e1e30;border:3px solid ${rc};border-radius:12px;
         cursor:pointer;text-align:center;transition:border-color 0.15s,box-shadow 0.15s,transform 0.15s;
         display:flex;flex-direction:column;align-items:center;
-        padding:32px 12px 14px;width:160px;flex-shrink:0;
+        padding:30px 12px 14px;width:160px;flex-shrink:0;
         box-sizing:border-box;
       "
       onmouseover="this.style.transform='scale(1.04)';this.style.boxShadow='0 0 16px ${rc}66';"
       onmouseout="if(!this.classList.contains('ev-store-selected')){this.style.transform='scale(1)';this.style.boxShadow='none';}">
-        ${costOrb}${upgradedBadge}${starterBadge}
+        ${upgBtn}${upgradedBadge}${starterBadge}${costOrb}
         <div style="width:100px;height:100px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.35);border-radius:8px;border:2px solid ${rc};margin-bottom:10px;">
           ${imgSrc
             ? `<img src="${imgSrc}" alt="${card.name}" style="max-width:96px;max-height:96px;object-fit:contain;" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=font-size:36px>🃏</span>')">`
