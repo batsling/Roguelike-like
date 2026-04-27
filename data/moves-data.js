@@ -127,9 +127,9 @@ var MOVES_DATA = {
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
   },
-  "magic_dmg": {
+  "magic dmg": {
     "name": "Magic Dmg",
-    "description": "Deals X Magic damage to target. Magic Damage can have different elements (e.g. Fire). Not affected by Power.",
+    "description": "Deals X Magic damage to target. Magic Damage can Have Different Elements (Fire).",
     "preferredTarget": "Enemy",
     "bonusStat": "No",
     "imageUrl": "images/moves/Attack.png"

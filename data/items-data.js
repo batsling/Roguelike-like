@@ -104,7 +104,7 @@ var ITEMS_DATA = [
     "name": "Blood Vial",
     "rarity": "Common",
     "type": "Triggered",
-    "description": "At the start of combat, gain +1 Health",
+    "description": "At the start of combat, gain +2 Health",
     "game": "Slay the Spire",
     "tags": [
       "blood"
@@ -346,7 +346,7 @@ var ITEMS_DATA = [
     "name": "Death Orb",
     "rarity": "Uncommon",
     "type": "Triggered",
-    "description": "When you play a power, deal X damage to each enemy where X is the amount of Curses you have",
+    "description": "When you play a power, deal Xx2 damage to each enemy where X is the amount of Curses you have",
     "game": "Forward: Escape the Fold",
     "tags": [
       "orb",
@@ -919,6 +919,18 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Rock Bottom",
+    "rarity": "Rare",
+    "type": "Scaling",
+    "description": "Prevents your Strength, Dexterity, Intelligence, Charisma, FoV, Discovery, and Luck from falling below their highest values reached.",
+    "game": "The Binding of Isaac",
+    "tags": [
+      "stone"
+    ],
+    "image": "images/items/RockBottom.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Roid Rage",
     "rarity": "Common",
     "type": "Usable",
@@ -1206,18 +1218,6 @@ var ITEMS_DATA = [
       "mutation"
     ],
     "image": "images/items/Wings.png",
-    "unlockCondition": null
-  },
-  {
-    "name": "Rock Bottom",
-    "rarity": "Rare",
-    "type": "Scaling",
-    "description": "Prevents your Strength, Dexterity, Intelligence, Charisma, FoV, Discovery, and Luck from falling below their highest values reached.",
-    "game": "The Binding of Isaac",
-    "tags": [
-      "stone"
-    ],
-    "image": "images/items/RockBottom.png",
     "unlockCondition": null
   }
 ];
