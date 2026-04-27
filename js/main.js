@@ -5879,7 +5879,7 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
     const card = candidates[Math.floor(Math.random() * candidates.length)];
 
     // Roll for pre-upgraded card
-    if (card && card.canUpgrade && upgradeChance > 0 && Math.random() < upgradeChance) {
+    if (card && card.canUpgrade && upgradeChance > 0 && rollWithLuckAdvantage(undefined, false) < upgradeChance) {
       return {
         ...card,
         description: card.upgradedDescription || card.description,
