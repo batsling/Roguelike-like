@@ -1051,69 +1051,116 @@ function _showCardStoreScreen(onContinue) {
   const cardsHTML = allEntries.map(({ card, isStarter }, i) => {
     const rc = rarityColor(card.rarity);
     const tc = typeColor(card.type);
-    const imgHTML = card.imageUrl
-      ? `<img src="${card.imageUrl}" alt="${card.name}" style="width:48px;height:48px;object-fit:contain;border-radius:4px;flex-shrink:0;background:rgba(0,0,0,0.3);" onerror="this.style.display='none'">`
-      : `<span style="width:48px;height:48px;flex-shrink:0;"></span>`;
-    const starterTag = isStarter
-      ? `<span style="color:#2196F3;font-size:10px;margin-left:4px;">(Starting)</span>`
+    const imgSrc = card.imageUrl || '';
+    const upgradedBadge = card.upgraded
+      ? `<div style="position:absolute;top:5px;right:5px;background:#27ae60;color:#fff;font-size:9px;font-weight:bold;padding:2px 5px;border-radius:3px;line-height:1.2;">UPGRADED</div>`
       : '';
+    const starterBadge = isStarter
+      ? `<div style="position:absolute;top:5px;left:5px;background:#2196F3;color:#fff;font-size:9px;font-weight:bold;padding:2px 5px;border-radius:3px;line-height:1.2;">STARTER</div>`
+      : '';
+    const costOrb = `<div style="
+      position:absolute;top:5px;left:50%;transform:translateX(-50%);
+      width:22px;height:22px;border-radius:50%;background:${tc};
+      display:flex;align-items:center;justify-content:center;
+      font-size:11px;font-weight:bold;color:#fff;border:2px solid rgba(255,255,255,0.3);
+      box-shadow:0 2px 4px rgba(0,0,0,0.5);">
+      ${card.cost !== null && card.cost !== undefined ? card.cost : '?'}
+    </div>`;
+    const desc = card.upgraded && card.upgradedDescription ? card.upgradedDescription : (card.description || '');
     return `
       <div class="ev-store-card-opt" data-idx="${i}" style="
-        padding:8px 12px;background:#1e1e30;border:2px solid #444;border-radius:8px;
-        cursor:pointer;text-align:left;transition:border-color 0.15s,background 0.15s;
-        display:flex;align-items:center;gap:10px;
+        position:relative;
+        background:#1e1e30;border:3px solid ${rc};border-radius:12px;
+        cursor:pointer;text-align:center;transition:border-color 0.15s,box-shadow 0.15s,transform 0.15s;
+        display:flex;flex-direction:column;align-items:center;
+        padding:32px 12px 14px;width:160px;flex-shrink:0;
+        box-sizing:border-box;
       "
-      onmouseover="this.style.borderColor='#c39bd3';this.style.background='#2a2a40';"
-      onmouseout="this.style.borderColor='#444';this.style.background='#1e1e30';">
-        ${imgHTML}
-        <span style="
-          min-width:22px;height:22px;border-radius:50%;background:${tc};
-          display:flex;align-items:center;justify-content:center;
-          font-size:11px;font-weight:bold;color:#fff;flex-shrink:0;">
-          ${card.cost !== null && card.cost !== undefined ? card.cost : '?'}
-        </span>
-        <div style="min-width:0;">
-          <div style="color:#eee;font-size:14px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-            ${card.name}${starterTag}
-          </div>
-          <div style="color:#aaa;font-size:11px;">${card.type || ''} · <span style="color:${rc}">${card.rarity || ''}</span></div>
+      onmouseover="this.style.transform='scale(1.04)';this.style.boxShadow='0 0 16px ${rc}66';"
+      onmouseout="if(!this.classList.contains('ev-store-selected')){this.style.transform='scale(1)';this.style.boxShadow='none';}">
+        ${costOrb}${upgradedBadge}${starterBadge}
+        <div style="width:100px;height:100px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.35);border-radius:8px;border:2px solid ${rc};margin-bottom:10px;">
+          ${imgSrc
+            ? `<img src="${imgSrc}" alt="${card.name}" style="max-width:96px;max-height:96px;object-fit:contain;" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=font-size:36px>🃏</span>')">`
+            : `<span style="font-size:36px;">🃏</span>`}
         </div>
+        <div style="font-weight:bold;font-size:13px;color:#eee;margin-bottom:3px;line-height:1.3;">
+          ${card.name}${card.upgraded ? ' <span style="color:#4CAF50">+</span>' : ''}
+        </div>
+        <div style="color:${rc};font-size:11px;margin-bottom:6px;">${card.rarity || ''} · <span style="color:${tc}">${card.type || ''}</span></div>
+        <div style="font-size:11px;color:#bbb;line-height:1.4;text-align:center;">${desc}</div>
       </div>`;
   }).join('');
 
   createGameModal(`
-    <div style="padding:24px 28px;max-width:520px;margin:0 auto;background:#1a1a2e;border-radius:12px;">
+    <div style="padding:24px 28px;max-width:960px;margin:0 auto;background:#1a1a2e;border-radius:12px;">
       <div style="color:#c39bd3;font-size:20px;font-weight:bold;margin-bottom:6px;text-align:center;">📝 Store a Card</div>
       <p style="color:#ccc;font-size:13px;line-height:1.6;margin:0 0 16px;text-align:center;">
-        Choose any card from your deck to leave behind for your future self.
+        Choose any card to leave behind for your future self — it will be there waiting next time.
       </p>
-      <div style="display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;padding-right:4px;">
+      <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:center;max-height:60vh;overflow-y:auto;padding:4px 4px 8px;">
         ${cardsHTML}
+      </div>
+      <div style="margin-top:20px;display:flex;gap:14px;justify-content:center;align-items:center;">
+        <button id="ev-store-confirm-btn" disabled style="
+          padding:11px 30px;background:#555;border:2px solid #888;border-radius:8px;
+          color:#888;cursor:not-allowed;font-size:14px;font-weight:bold;transition:all 0.15s;
+        ">📝 Store This Card</button>
       </div>
     </div>
   `);
 
-  document.querySelectorAll('.ev-store-card-opt').forEach(el => {
-    el.addEventListener('click', () => {
-      const idx   = parseInt(el.dataset.idx);
-      const entry = allEntries[idx];
-      if (!entry) return;
-      const { card, isStarter, deckIdx } = entry;
-      if (typeof gameState !== 'undefined') {
-        _setNoteCard(card.name);
-        // Only remove from collected deck; starter cards stay in the character's starting deck
-        if (!isStarter && deckIdx >= 0) {
-          collectedDeck.splice(deckIdx, 1);
-          gameState.deck = [...collectedDeck];
-        }
-        if (typeof saveCurrentGame === 'function') saveCurrentGame();
-        if (typeof createNotification === 'function') {
-          createNotification(`Stored: ${card.name}`, '#8e44ad', '📝');
-        }
+  let selectedStoreIdx = null;
+  const confirmBtn = document.getElementById('ev-store-confirm-btn');
+
+  function setStoreSelected(idx) {
+    selectedStoreIdx = idx;
+    document.querySelectorAll('.ev-store-card-opt').forEach(el => {
+      const i = parseInt(el.dataset.idx);
+      const entry = allEntries[i];
+      const rc = rarityColor(entry.card.rarity);
+      if (i === idx) {
+        el.classList.add('ev-store-selected');
+        el.style.borderColor = '#ffd700';
+        el.style.boxShadow = '0 0 22px #ffd70088';
+        el.style.transform = 'scale(1.06)';
+      } else {
+        el.classList.remove('ev-store-selected');
+        el.style.borderColor = rc;
+        el.style.boxShadow = 'none';
+        el.style.transform = 'scale(1)';
       }
-      closeGameModal();
-      if (typeof onContinue === 'function') onContinue();
     });
+    confirmBtn.disabled = false;
+    confirmBtn.style.background = 'linear-gradient(145deg, #8e44ad, #6c3483)';
+    confirmBtn.style.borderColor = '#c39bd3';
+    confirmBtn.style.color = '#fff';
+    confirmBtn.style.cursor = 'pointer';
+  }
+
+  document.querySelectorAll('.ev-store-card-opt').forEach(el => {
+    el.addEventListener('click', () => setStoreSelected(parseInt(el.dataset.idx)));
+  });
+
+  confirmBtn.addEventListener('click', () => {
+    if (selectedStoreIdx === null) return;
+    const idx   = selectedStoreIdx;
+    const entry = allEntries[idx];
+    if (!entry) return;
+    const { card, isStarter, deckIdx } = entry;
+    if (typeof gameState !== 'undefined') {
+      _setNoteCard(card.name);
+      if (!isStarter && deckIdx >= 0) {
+        collectedDeck.splice(deckIdx, 1);
+        gameState.deck = [...collectedDeck];
+      }
+      if (typeof saveCurrentGame === 'function') saveCurrentGame();
+      if (typeof createNotification === 'function') {
+        createNotification(`Stored: ${card.name}`, '#8e44ad', '📝');
+      }
+    }
+    closeGameModal();
+    if (typeof onContinue === 'function') onContinue();
   });
 }
 
