@@ -777,6 +777,20 @@ function parseSimplePatternDesc(text) {
       continue;
     }
 
+    // "Spawn <EnemyName>" — collect name tokens until next digit or end
+    if (tokens[i].toLowerCase() === 'spawn') {
+      i++;
+      const nameTokens = [];
+      while (i < tokens.length && !/^\d+$/.test(tokens[i])) {
+        nameTokens.push(tokens[i++]);
+      }
+      if (nameTokens.length > 0) {
+        const spawnName = nameTokens.join(' ');
+        effects.push({ raw: `Spawn ${spawnName}`, move: 'spawn', target: spawnName, value: 0, addons: [] });
+      }
+      continue;
+    }
+
     if (!tokens[i].match(/^\d+$/)) { i++; continue; }
     const numIdx  = i;                  // index of the number token
     const value   = parseInt(tokens[i++]);
@@ -809,6 +823,8 @@ function parseSimplePatternDesc(text) {
       effects.push({ raw: `${value} ${move}`, value, move: 'Block', addons: [], target: null });
     } else if (moveLow === 'heal') {
       effects.push({ raw: `${value} ${move}`, value, move: 'Heal', addons: [], target: null });
+    } else if (moveLow === 'pain') {
+      effects.push({ raw: `${value} Pain`, value, move: 'pain', addons: [], target: null });
     } else if (PATTERN_STATUSES.has(moveLow)) {
       // "Gain/Get X Status" → enemy self-buff (Get); otherwise inflict on player
       const moveType = isSelfBuff ? 'Get' : 'Inflict';
