@@ -379,7 +379,7 @@ function renderCombatUI(combat, container) {
       ${renderItemsBar(combat)}
       ${renderTopBar(combat)}
 
-      <div style="flex:1; display:flex; overflow:hidden; position:relative; min-height:0;">
+      <div style="flex:1; display:flex; overflow:visible; position:relative; min-height:0;">
         <div id="combat-main" style="flex:1; display:flex; flex-direction:column; min-width:0;">
           ${renderEnemiesZone(combat)}
           ${renderPlayerZone(combat)}
@@ -555,8 +555,8 @@ function renderEnemiesZone(combat) {
     <div id="combat-enemies-zone" style="
       flex:1; display:flex; position:relative;
       align-items:flex-end; justify-content:center;
-      padding:20px 20px 10px; gap:28px;
-      min-height:0;
+      padding:52px 20px 10px; gap:28px;
+      min-height:0; overflow:visible;
     ">
       ${banner}
       ${combat.enemies.map(e => renderEnemyCard(e, combat)).join('')}
