@@ -5762,8 +5762,8 @@ function showCardRewardModal(onComplete, tagFilter = null) {
 
     if (pool.length === 0) return null;
 
-    // Base weights 70/20/10; luck advantage biases the roll toward higher buckets
-    const wCommon = 70, wUncommon = 20, wRare = 10, total = 100;
+    // Base weights 75/20/5; luck advantage biases the roll toward higher buckets
+    const wCommon = 75, wUncommon = 20, wRare = 5, total = 100;
     const roll = rollWithLuckAdvantage() * total;
     let pickedRarity;
     if      (roll < wCommon)              pickedRarity = 'Common';
@@ -5795,12 +5795,12 @@ function showCardRewardModal(onComplete, tagFilter = null) {
     const imgSrc = card.imageUrl || 'images/cards/default.png';
     return `
       <div class="card-reward-option" data-card-idx="${idx}" style="
-        background:#1e1e2e; border:2px solid ${color}; border-radius:12px;
+        background:#1e1e2e; border:3px solid ${color}; border-radius:12px;
         padding:16px; display:flex; flex-direction:column; align-items:center;
         width:200px; cursor:pointer;
         transition: transform 0.15s, box-shadow 0.15s;
-      " onmouseenter="this.style.transform='translateY(-6px)'; this.style.boxShadow='0 8px 24px ${color}66';"
-         onmouseleave="this.style.transform=''; this.style.boxShadow='';">
+      " onmouseenter="if(!this.classList.contains('cr-selected')){this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px ${color}44';}"
+         onmouseleave="if(!this.classList.contains('cr-selected')){this.style.transform='';this.style.boxShadow='';}">
         <img src="${imgSrc}" alt="${card.name}"
              style="width:110px;height:110px;object-fit:contain;margin-bottom:10px;"
              onerror="this.style.display='none'">
@@ -5815,47 +5815,79 @@ function showCardRewardModal(onComplete, tagFilter = null) {
   createGameModal(`
     <div style="text-align:center; padding:20px; max-width:920px;">
       <h2 style="color:#FFD700; margin-top:0; margin-bottom:8px;">🃏 Card Reward</h2>
-      <p style="color:#aaa; margin-bottom:20px; font-size:13px;">Choose a card to add to your deck:</p>
+      <p style="color:#aaa; margin-bottom:20px; font-size:13px;">Click a card to select it, then confirm your choice</p>
       <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
         ${cardsHTML}
       </div>
-      <button id="card-reward-skip-btn" style="
-        margin-top:20px; padding:10px 24px;
-        background:#444; border:none; border-radius:8px;
-        color:#aaa; cursor:pointer; font-size:13px;
-      ">Skip</button>
+      <div style="margin-top:20px; display:flex; gap:14px; justify-content:center; align-items:center;">
+        <button id="card-reward-confirm-btn" disabled style="
+          padding:11px 28px; background:#555; border:2px solid #888; border-radius:8px;
+          color:#888; cursor:not-allowed; font-size:14px; font-weight:bold; transition:all 0.15s;
+        ">✓ Add to Deck</button>
+        <button id="card-reward-skip-btn" style="
+          padding:11px 28px; background:#333; border:2px solid #555; border-radius:8px;
+          color:#aaa; cursor:pointer; font-size:14px; font-weight:bold;
+        ">Skip</button>
+      </div>
     </div>
   `);
 
-  const skipBtn = document.getElementById('card-reward-skip-btn');
-  if (skipBtn) {
-    skipBtn.onclick = () => {
-      closeGameModal();
-      if (onComplete) onComplete();
-    };
+  let selectedCardIdx = null;
+  const confirmBtn = document.getElementById('card-reward-confirm-btn');
+  const skipBtn    = document.getElementById('card-reward-skip-btn');
+
+  function selectCard(idx) {
+    selectedCardIdx = idx;
+    document.querySelectorAll('.card-reward-option').forEach(el => {
+      const i = parseInt(el.dataset.cardIdx);
+      const c = chosen[i];
+      const col = rarityColor(c.rarity);
+      if (i === idx) {
+        el.classList.add('cr-selected');
+        el.style.borderColor = '#ffd700';
+        el.style.boxShadow   = '0 0 22px #ffd70088';
+        el.style.transform   = 'translateY(-6px) scale(1.04)';
+      } else {
+        el.classList.remove('cr-selected');
+        el.style.borderColor = col;
+        el.style.boxShadow   = 'none';
+        el.style.transform   = '';
+      }
+    });
+    confirmBtn.disabled          = false;
+    confirmBtn.style.background  = 'linear-gradient(145deg, #9b59b6, #7d3c98)';
+    confirmBtn.style.borderColor = '#9b59b6';
+    confirmBtn.style.color       = 'white';
+    confirmBtn.style.cursor      = 'pointer';
   }
 
   document.querySelectorAll('.card-reward-option').forEach(el => {
-    el.onclick = () => {
-      const card = chosen[parseInt(el.dataset.cardIdx)];
-      if (card) {
-        const addFn = window.addCardToDeck || (typeof addCardToDeck !== 'undefined' ? addCardToDeck : null);
-        if (addFn) {
-          addFn(card);
-        } else {
-          // Fallback: add directly to gameState.deck
-          if (!gameState.deck) gameState.deck = [];
-          gameState.deck.push({ ...card, upgraded: false });
-          saveCurrentGame();
-          if (typeof createNotification === 'function') {
-            createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
-          }
+    el.onclick = () => selectCard(parseInt(el.dataset.cardIdx));
+  });
+
+  if (skipBtn) {
+    skipBtn.onclick = () => { closeGameModal(); if (onComplete) onComplete(); };
+  }
+
+  confirmBtn.onclick = () => {
+    if (selectedCardIdx === null) return;
+    const card = chosen[selectedCardIdx];
+    if (card) {
+      const addFn = window.addCardToDeck || (typeof addCardToDeck !== 'undefined' ? addCardToDeck : null);
+      if (addFn) {
+        addFn(card);
+      } else {
+        if (!gameState.deck) gameState.deck = [];
+        gameState.deck.push({ ...card, upgraded: false });
+        saveCurrentGame();
+        if (typeof createNotification === 'function') {
+          createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
         }
       }
-      closeGameModal();
-      if (onComplete) onComplete();
-    };
-  });
+    }
+    closeGameModal();
+    if (onComplete) onComplete();
+  };
 }
 
 // Make level-up functions globally available
