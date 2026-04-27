@@ -740,12 +740,23 @@ const SETTINGS_KEY = 'roguelikeSettings';
 
 /** Load settings from localStorage, merging with defaults. */
 function loadSettings() {
-  const defaults = { specificEnemies: false };
+  const defaults = { specificEnemies: false, devToolsEnabled: false };
   try {
     const stored = localStorage.getItem(SETTINGS_KEY);
     return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
   } catch (e) {
     return defaults;
+  }
+}
+
+/** Show or hide the developer tools panel based on current settings. */
+function applyDevToolsVisibility() {
+  const panel = document.getElementById('dev-tools-panel');
+  if (!panel) return;
+  if (gameSettings.devToolsEnabled) {
+    panel.classList.remove('dev-tools-hidden');
+  } else {
+    panel.classList.add('dev-tools-hidden');
   }
 }
 
@@ -756,6 +767,8 @@ function saveSettings(settings) {
 
 /** Current in-memory settings (read once on load, written on change). */
 let gameSettings = loadSettings();
+// Apply visibility-driven settings as soon as the DOM is ready
+document.addEventListener('DOMContentLoaded', applyDevToolsVisibility);
 
 /** Show the settings modal. */
 function showSettingsModal() {
@@ -784,6 +797,21 @@ function showSettingsModal() {
         </label>
       </div>
 
+      <div style="margin-bottom:22px;">
+        <h3 style="margin:0 0 10px;font-size:14px;color:#aaa;text-transform:uppercase;letter-spacing:.05em;">Developer</h3>
+
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:10px;border-radius:8px;border:1px solid #333;background:#111;">
+          <input type="checkbox" id="setting-dev-tools" style="margin-top:3px;width:16px;height:16px;accent-color:#ff9800;flex-shrink:0;"
+            ${gameSettings.devToolsEnabled ? 'checked' : ''}>
+          <span>
+            <strong style="display:block;margin-bottom:4px;">Developer Tools</strong>
+            <span style="font-size:12px;color:#aaa;">
+              Show the developer panel for spawning enemies, adding items, and triggering encounters directly.
+            </span>
+          </span>
+        </label>
+      </div>
+
       <div style="display:flex;justify-content:flex-end;gap:10px;">
         <button id="settings-save" style="padding:8px 20px;background:#4CAF50;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Save</button>
         <button id="settings-cancel" style="padding:8px 20px;background:#555;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Cancel</button>
@@ -795,7 +823,9 @@ function showSettingsModal() {
 
   overlay.querySelector('#settings-save').addEventListener('click', () => {
     gameSettings.specificEnemies = overlay.querySelector('#setting-specific-enemies').checked;
+    gameSettings.devToolsEnabled = overlay.querySelector('#setting-dev-tools').checked;
     saveSettings(gameSettings);
+    applyDevToolsVisibility();
     overlay.remove();
   });
 
@@ -5919,13 +5949,10 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
       ? `<div style="position:absolute;top:8px;left:8px;background:#2ecc71;color:#000;font-size:10px;font-weight:bold;padding:2px 7px;border-radius:4px;">UPGRADED</div>`
       : '';
     return `
-      <div class="card-reward-option" data-card-idx="${idx}" style="
-        ${upgradedBg} border:3px solid ${upgradedBorder}; border-radius:12px;
-        background:#1e1e2e; padding:16px; display:flex; flex-direction:column; align-items:center;
-        width:200px; cursor:pointer; position:relative;
-        transition: transform 0.15s, box-shadow 0.15s;
-      " onmouseenter="if(!this.classList.contains('cr-selected')){this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px ${upgradedBorder}44';}"
-         onmouseleave="if(!this.classList.contains('cr-selected')){this.style.transform='';this.style.boxShadow='';}">
+      <div class="card-reward-option card-reward-card" data-card-idx="${idx}"
+        style="border:3px solid ${upgradedBorder};${upgradedBg}"
+        onmouseenter="if(!this.classList.contains('cr-selected')){this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px ${upgradedBorder}44';}"
+        onmouseleave="if(!this.classList.contains('cr-selected')){this.style.transform='';this.style.boxShadow='';}">
         ${upgradedBadge}
         ${upgBtn}
         <img src="${imgSrc}" alt="${card.name}"
@@ -5934,7 +5961,7 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
         <div style="font-weight:bold;font-size:15px;color:white;text-align:center;margin-bottom:4px;">${nameLabel}</div>
         <div style="color:${color};font-size:12px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
         <div style="font-size:12px;color:${card.preUpgraded ? '#7dffb0' : '#ccc'};text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>
-        <div style="color:#ffd700;font-size:13px;font-weight:bold;">Cost: ${card.cost}</div>
+        <div style="color:var(--color-highlight);font-size:13px;font-weight:bold;">Cost: ${card.cost}</div>
       </div>
     `;
   }).join('');

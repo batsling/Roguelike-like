@@ -1317,13 +1317,13 @@ function hideItemTooltip() {
 
 function getRarityColor(rarity) {
   const rarityColors = {
-    'Common': '#aaa',
-    'Uncommon': '#4CAF50',
-    'Rare': '#9b59b6',
-    'Epic': '#e91e63',
-    'Legendary': '#ff6b00'
+    'Common':    'var(--color-common)',
+    'Uncommon':  'var(--color-uncommon)',
+    'Rare':      'var(--color-rare)',
+    'Epic':      '#e91e63',
+    'Legendary': 'var(--color-legendary)'
   };
-  return rarityColors[rarity] || '#aaa';
+  return rarityColors[rarity] || 'var(--color-common)';
 }
 
 // Export functions to global scope for backwards compatibility
