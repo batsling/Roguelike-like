@@ -34,8 +34,22 @@ function _getPlayerImage() {
   return '';
 }
 
+function _getNoteCard() {
+  if (typeof GameStorage !== 'undefined' && typeof STORAGE_KEYS !== 'undefined') {
+    return GameStorage.load(STORAGE_KEYS.NOTE_FOR_YOURSELF, null) || 'Iron Wave';
+  }
+  return (typeof gameState !== 'undefined' && gameState.noteForYourselfCard) || 'Iron Wave';
+}
+
+function _setNoteCard(cardName) {
+  if (typeof GameStorage !== 'undefined' && typeof STORAGE_KEYS !== 'undefined') {
+    GameStorage.save(STORAGE_KEYS.NOTE_FOR_YOURSELF, cardName);
+  }
+  if (typeof gameState !== 'undefined') gameState.noteForYourselfCard = cardName;
+}
+
 function _fillName(text) {
-  const storedCard = (typeof gameState !== 'undefined' && gameState.noteForYourselfCard) || 'Iron Wave';
+  const storedCard = _getNoteCard();
   return (text || '')
     .replace(/\{name\}/gi, _getCharName())
     .replace(/\{storedCard\}/gi, storedCard);
@@ -120,7 +134,7 @@ function _describeEffects(effects) {
         if (e.flag === 'ambushed') return 'Ambushed — draw −2 cards turn 1';
         return e.flag;
       case 'note_for_yourself': {
-        const cn = (typeof gameState !== 'undefined' && gameState.noteForYourselfCard) || (e.defaultCard || 'Iron Wave');
+        const cn = _getNoteCard();
         return `Retrieve ${cn} · store a card`;
       }
       default:                return null;
@@ -328,10 +342,7 @@ function applyEventEffects(effects) {
       }
 
       case 'note_for_yourself': {
-        const defaultCardName = effect.defaultCard || 'Iron Wave';
-        const storedCardName  = (typeof gameState !== 'undefined' && gameState.noteForYourselfCard)
-          ? gameState.noteForYourselfCard
-          : defaultCardName;
+        const storedCardName = _getNoteCard();
         const cardPool    = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
         const cardTemplate = cardPool.find(c => c.name === storedCardName);
         if (cardTemplate) {
@@ -1089,7 +1100,7 @@ function _showCardStoreScreen(onContinue) {
       if (!entry) return;
       const { card, isStarter, deckIdx } = entry;
       if (typeof gameState !== 'undefined') {
-        gameState.noteForYourselfCard = card.name;
+        _setNoteCard(card.name);
         // Only remove from collected deck; starter cards stay in the character's starting deck
         if (!isStarter && deckIdx >= 0) {
           collectedDeck.splice(deckIdx, 1);

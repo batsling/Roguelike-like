@@ -125,7 +125,8 @@ const STORAGE_KEYS = {
   GAME_STATS: 'gameStats',
   RUN_HISTORY: 'runHistory',
   FISH_STATS: 'fishStats',
-  DECK_WINS: 'deckWins'
+  DECK_WINS: 'deckWins',
+  NOTE_FOR_YOURSELF: 'noteForYourselfCard'
 };
 
 // ===== AVAILABLE DECKS =====
