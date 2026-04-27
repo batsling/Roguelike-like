@@ -4447,7 +4447,7 @@ function handleDiceCombatVictory(enemy) {
       <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">Victory!</h2>
       <h3 style="color: #fff; margin: 15px 0;">${enemy.name} defeated!</h3>
       <p style="color: #FFD700; font-size: 18px; margin: 20px 0;">+${goldReward} Gold</p>
-      <button onclick="closeGameModal(); showCardRewardModal(() => showPostCombatChoiceModal('${enemy.difficulty || 'Low'}'));" style="
+      <button onclick="closeGameModal(); showCardRewardModal(() => showPostCombatChoiceModal('${enemy.difficulty || 'Low'}'), null, '${enemy.difficulty || 'Low'}');" style="
         padding: 15px 40px;
         background: linear-gradient(145deg, #4CAF50, #2E7D32);
         border: none;
@@ -5828,7 +5828,7 @@ function showDiceLevelUpChoiceModal(characterKey, onComplete) {
  * Luck shifts the rarity distribution toward Uncommon/Rare.
  * @param {Function} onComplete - Called after a card is chosen or skipped
  */
-function showCardRewardModal(onComplete, tagFilter = null) {
+function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null) {
   // Derive tagFilter from the run's chosen deck if not explicitly passed
   if (tagFilter === null && typeof gameState !== 'undefined' && gameState.selectedDeck) {
     const deckDef = (typeof AVAILABLE_DECKS !== 'undefined')
@@ -5836,6 +5836,11 @@ function showCardRewardModal(onComplete, tagFilter = null) {
       : null;
     if (deckDef && deckDef.tagFilter) tagFilter = deckDef.tagFilter;
   }
+
+  // Upgrade chance based on difficulty: Low=0%, Medium=25%, High=50%
+  const _diff = nodeDifficulty || (typeof gameState !== 'undefined' ? gameState.lastDifficultyTier : null) || 'Low';
+  const upgradeChance = _diff === 'High' ? 0.5 : _diff === 'Medium' ? 0.25 : 0;
+
   const rarityColor = (rarity) => {
     switch (rarity) {
       case 'Rare':     return '#9b59b6';
@@ -5871,7 +5876,19 @@ function showCardRewardModal(onComplete, tagFilter = null) {
 
     let candidates = pool.filter(c => c.rarity === pickedRarity);
     if (candidates.length === 0) candidates = pool;
-    return candidates[Math.floor(Math.random() * candidates.length)];
+    const card = candidates[Math.floor(Math.random() * candidates.length)];
+
+    // Roll for pre-upgraded card
+    if (card && card.canUpgrade && upgradeChance > 0 && Math.random() < upgradeChance) {
+      return {
+        ...card,
+        description: card.upgradedDescription || card.description,
+        cost: (card.upgradedCost !== null && card.upgradedCost !== undefined) ? card.upgradedCost : card.cost,
+        upgraded: true,
+        preUpgraded: true
+      };
+    }
+    return card;
   }
 
   // Pick 3 unique cards
@@ -5893,21 +5910,30 @@ function showCardRewardModal(onComplete, tagFilter = null) {
     const color   = rarityColor(card.rarity);
     const imgSrc  = card.imageUrl || 'images/cards/default.png';
     const upgBtn  = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
+    const upgradedBg    = card.preUpgraded ? 'background:rgba(46,204,113,0.06);' : '';
+    const upgradedBorder = card.preUpgraded ? '#2ecc71' : color;
+    const nameLabel = card.preUpgraded
+      ? `${card.name} <span style="color:#2ecc71;font-size:14px;font-weight:bold;">+</span>`
+      : card.name;
+    const upgradedBadge = card.preUpgraded
+      ? `<div style="position:absolute;top:8px;left:8px;background:#2ecc71;color:#000;font-size:10px;font-weight:bold;padding:2px 7px;border-radius:4px;">UPGRADED</div>`
+      : '';
     return `
       <div class="card-reward-option" data-card-idx="${idx}" style="
-        background:#1e1e2e; border:3px solid ${color}; border-radius:12px;
-        padding:16px; display:flex; flex-direction:column; align-items:center;
+        ${upgradedBg} border:3px solid ${upgradedBorder}; border-radius:12px;
+        background:#1e1e2e; padding:16px; display:flex; flex-direction:column; align-items:center;
         width:200px; cursor:pointer; position:relative;
         transition: transform 0.15s, box-shadow 0.15s;
-      " onmouseenter="if(!this.classList.contains('cr-selected')){this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px ${color}44';}"
+      " onmouseenter="if(!this.classList.contains('cr-selected')){this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px ${upgradedBorder}44';}"
          onmouseleave="if(!this.classList.contains('cr-selected')){this.style.transform='';this.style.boxShadow='';}">
+        ${upgradedBadge}
         ${upgBtn}
         <img src="${imgSrc}" alt="${card.name}"
              style="width:110px;height:110px;object-fit:contain;margin-bottom:10px;"
              onerror="this.style.display='none'">
-        <div style="font-weight:bold;font-size:15px;color:white;text-align:center;margin-bottom:4px;">${card.name}</div>
+        <div style="font-weight:bold;font-size:15px;color:white;text-align:center;margin-bottom:4px;">${nameLabel}</div>
         <div style="color:${color};font-size:12px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
-        <div style="font-size:12px;color:#ccc;text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>
+        <div style="font-size:12px;color:${card.preUpgraded ? '#7dffb0' : '#ccc'};text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>
         <div style="color:#ffd700;font-size:13px;font-weight:bold;">Cost: ${card.cost}</div>
       </div>
     `;
