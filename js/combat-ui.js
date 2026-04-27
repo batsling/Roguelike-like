@@ -345,7 +345,7 @@ const STATUS_META = {
   // Other statuses
   blur:            { img: 'Blur',           emoji: '🌀', label: 'Blur'            },
   choked:          { img: 'Choked',         emoji: '💀', label: 'Choked'          },
-  shackled:        { img: null,             emoji: '🔒', label: 'Shackled'        },
+  shackled:        { img: 'Shackled',        emoji: '🔒', label: 'Shackled'        },
   well_laid_plans: { img: 'Well-LaidPlans', emoji: '📋', label: 'Well-Laid Plans' },
   shiv_per_turn:   { img: null,             emoji: '🗡', label: 'Shiv/Turn'       },
   fear:           { img: 'Fear',          emoji: '😨', label: 'Fear'         },
@@ -379,7 +379,7 @@ function renderCombatUI(combat, container) {
       ${renderItemsBar(combat)}
       ${renderTopBar(combat)}
 
-      <div style="flex:1; display:flex; overflow:hidden; position:relative; min-height:0;">
+      <div style="flex:1; display:flex; overflow:visible; position:relative; min-height:0;">
         <div id="combat-main" style="flex:1; display:flex; flex-direction:column; min-width:0;">
           ${renderEnemiesZone(combat)}
           ${renderPlayerZone(combat)}
@@ -555,8 +555,8 @@ function renderEnemiesZone(combat) {
     <div id="combat-enemies-zone" style="
       flex:1; display:flex; position:relative;
       align-items:flex-end; justify-content:center;
-      padding:20px 20px 10px; gap:28px;
-      min-height:0;
+      padding:52px 20px 10px; gap:28px;
+      min-height:0; overflow:visible;
     ">
       ${banner}
       ${combat.enemies.map(e => renderEnemyCard(e, combat)).join('')}
@@ -574,11 +574,13 @@ function renderEnemyCard(enemy, combat) {
   const imgSrc       = enemy.imageUrl || 'images/enemies/default.png';
 
   const safePattern = (enemy.pattern || '').replace(/"/g, '&quot;');
+  const safeAbility = (enemy.ability || '').replace(/"/g, '&quot;');
   return `
     <div id="enemy-card-${enemy.id}"
          class="enemy-card${isTargeting ? ' enemy-targetable' : ''}"
          data-enemy-id="${enemy.id}"
          data-full-pattern="${safePattern}"
+         data-full-ability="${safeAbility}"
          style="
       display: flex; flex-direction: column; align-items: center;
       opacity: ${isDead ? 0.2 : 1};
@@ -688,7 +690,13 @@ function formatEnemyPattern(pattern) {
 function showEnemyPatternTooltip(el, e) {
   const tip = document.getElementById('enemy-pattern-tooltip');
   if (!tip) return;
-  tip.textContent = formatEnemyPattern(el.dataset.fullPattern || '');
+  const patternText = formatEnemyPattern(el.dataset.fullPattern || '');
+  const ability = (el.dataset.fullAbility || '').trim();
+  let content = patternText;
+  if (ability && ability.toUpperCase() !== 'N/A') {
+    content += '\n\n★ Ability: ' + ability;
+  }
+  tip.textContent = content;
   tip.style.display = 'block';
   positionEnemyPatternTooltip(e);
 }

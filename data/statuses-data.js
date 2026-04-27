@@ -111,6 +111,17 @@ var STATUSES_DATA = {
     "preference": "Neutral",
     "imageUrl": "images/statuses/Formless.png"
   },
+  "multi_attack": {
+    "name": "Multi-Attack",
+    "description": "This enemy executes its pattern multiple times per turn, once for each stack.",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Neutral",
+    "imageUrl": "images/statuses/MultiAttack.png"
+  },
   "multi_attack_x": {
     "name": "Multi Attack X",
     "description": "This enemy has X amount of intents in a turn",

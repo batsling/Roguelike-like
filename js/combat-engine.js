@@ -442,6 +442,9 @@ function parseStartingAbilities(abilityStr) {
     if (!seg) continue;
     // Skip defeat-trigger and "When another …" clauses entirely
     if (/^when\b/i.test(seg) || /defeat/i.test(seg)) continue;
+    // Skip probability-prefixed segments that are death-trigger alternatives
+    // e.g. "40% Spawn Gusher" is the tail of "When Defeated, 60% X / 40% Y"
+    if (/^\d+%\s+/i.test(seg)) continue;
 
     // "Curl Up Determined(X-Y)" — roll block amount once at combat start
     const curlUpDetMatch = seg.match(/^Curl\s+Up\s+Determined\((\d+)-(\d+)\)$/i);
@@ -774,6 +777,20 @@ function parseSimplePatternDesc(text) {
       continue;
     }
 
+    // "Spawn <EnemyName>" — collect name tokens until next digit or end
+    if (tokens[i].toLowerCase() === 'spawn') {
+      i++;
+      const nameTokens = [];
+      while (i < tokens.length && !/^\d+$/.test(tokens[i])) {
+        nameTokens.push(tokens[i++]);
+      }
+      if (nameTokens.length > 0) {
+        const spawnName = nameTokens.join(' ');
+        effects.push({ raw: `Spawn ${spawnName}`, move: 'spawn', target: spawnName, value: 0, addons: [] });
+      }
+      continue;
+    }
+
     if (!tokens[i].match(/^\d+$/)) { i++; continue; }
     const numIdx  = i;                  // index of the number token
     const value   = parseInt(tokens[i++]);
@@ -806,6 +823,8 @@ function parseSimplePatternDesc(text) {
       effects.push({ raw: `${value} ${move}`, value, move: 'Block', addons: [], target: null });
     } else if (moveLow === 'heal') {
       effects.push({ raw: `${value} ${move}`, value, move: 'Heal', addons: [], target: null });
+    } else if (moveLow === 'pain') {
+      effects.push({ raw: `${value} Pain`, value, move: 'pain', addons: [], target: null });
     } else if (PATTERN_STATUSES.has(moveLow)) {
       // "Gain/Get X Status" → enemy self-buff (Get); otherwise inflict on player
       const moveType = isSelfBuff ? 'Get' : 'Inflict';
@@ -3753,10 +3772,14 @@ function drawCards(count = 1) {
 function cardNeedsTarget(card) {
   const desc = (card.description || '').toLowerCase();
   const type = (card.type || '').toLowerCase();
-  if (type === 'skill' || type === 'power' || type === 'status') return false;
+  if (type === 'power' || type === 'status') return false;
   if (type === 'dice') return false;
   if (desc.includes('cleave') || desc.includes('all enemies') || desc.includes('indiscriminate')) return false;
-  return type === 'attack';
+  if (type === 'attack') return true;
+  // Skill cards that inflict/apply statuses on a single enemy need a target selection
+  // (excludes AoE keywords above; excludes "random target" which picks automatically)
+  if (type === 'skill' && /(?:inflict|apply)\s+/i.test(card.description || '') && !desc.includes('random target')) return true;
+  return false;
 }
 
 /**
@@ -5387,6 +5410,10 @@ function playCard(handIndex, targetId = null) {
     addLog('Fear reduced by 1 (Skill played)', 'info');
   }
 
+  // Snapshot After Image block-per-play BEFORE resolving so a Power card
+  // doesn't count its own play (the status is set during resolveCardEffect for Powers).
+  const _blockPerPlay = combatState.player.statuses['block_per_card_play'] || 0;
+
   // Resolve effects (pass xValue for X-cost cards like Doppelganger)
   // _inCardResolution: set true so loseHealth() can trigger Rupture during card resolution
   combatState._inCardResolution = true;
@@ -5478,9 +5505,10 @@ function playCard(handIndex, targetId = null) {
     combatState.discardPile.push(card);
   }
 
-  // After Image: gain block for every card played (checked after routing so After Image itself counts)
-  if (combatState.player.statuses['block_per_card_play']) {
-    addBlock(combatState.player, combatState.player.statuses['block_per_card_play']);
+  // After Image: gain block for every card played, using the pre-play snapshot so
+  // playing After Image itself does not count (block_per_card_play is 0 before the Power resolves).
+  if (_blockPerPlay > 0) {
+    addBlock(combatState.player, _blockPerPlay);
   }
 
   addLog(`Played ${card.name}`, 'info');

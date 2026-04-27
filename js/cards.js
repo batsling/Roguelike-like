@@ -227,90 +227,8 @@ function clearStatusCardsAfterCombat() {
 
 // ===== CARD REWARD MODAL =====
 
-/**
- * Show the post-combat card reward modal.
- * Offers 3 random cards; player picks one to add to deck.
- */
-function showCardRewardModal(onComplete, tagFilter = null) {
-  const rewardCards = selectCardRewards(tagFilter);
-  if (rewardCards.length === 0) {
-    if (typeof createNotification === 'function') {
-      createNotification('No cards available!', '#888', '🃏');
-    }
-    return;
-  }
-
-  const getRarityColor = (rarity) => {
-    switch (rarity) {
-      case 'Rare': return '#9b59b6';
-      case 'Uncommon': return '#4CAF50';
-      case 'Common': return '#aaa';
-      default: return '#888';
-    }
-  };
-
-  const cardsHTML = rewardCards.map((card, i) => {
-    const color = getRarityColor(card.rarity);
-    const imgSrc = card.imageUrl || 'images/cards/default.png';
-    return `
-      <div class="card-reward-option" data-index="${i}" style="
-        background: #2d2d2d;
-        border: 3px solid ${color};
-        border-radius: 12px;
-        padding: 20px;
-        cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        min-width: 180px;
-        max-width: 240px;
-      " onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 0 20px ${color}44'"
-         onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">
-        <div style="
-          width: 110px; height: 110px;
-          display: flex; align-items: center; justify-content: center;
-          background: rgba(0,0,0,0.3); border-radius: 8px;
-          border: 2px solid ${color}; margin-bottom: 12px;
-        ">
-          <img src="${imgSrc}" alt="${card.name}" style="max-width:100px;max-height:100px;object-fit:contain;"
-               onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=font-size:48px>🃏</span>'">
-        </div>
-        <div style="font-weight:bold;font-size:16px;color:white;text-align:center;margin-bottom:4px;">${card.name}</div>
-        <div style="color:${color};font-size:13px;text-transform:capitalize;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
-        <div style="font-size:13px;color:#ddd;text-align:center;margin-bottom:10px;min-height:50px;">${card.description}</div>
-        <div style="color:#ffd700;font-size:14px;font-weight:bold;">Cost: ${card.cost} Energy</div>
-        ${card.canUpgrade ? '<div style="color:#4CAF50;font-size:12px;margin-top:4px;">✓ Upgradeable</div>' : ''}
-      </div>
-    `;
-  }).join('');
-
-  createGameModal(`
-    <div style="text-align:center;padding:20px;max-width:920px;margin:0 auto;">
-      <h2 style="color:#9b59b6;margin-top:0;">🃏 Choose a Card</h2>
-      <p style="color:#aaa;margin-bottom:20px;">Select one card to add to your deck</p>
-      <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap;" id="card-reward-grid">
-        ${cardsHTML}
-      </div>
-      <button onclick="closeGameModal()" style="
-        margin-top:25px;padding:12px 30px;
-        background:#555;border:none;border-radius:8px;
-        color:white;cursor:pointer;font-size:14px;font-weight:bold;
-      ">Skip</button>
-    </div>
-  `);
-
-  // Bind click handlers
-  document.querySelectorAll('.card-reward-option').forEach(el => {
-    el.onclick = () => {
-      const idx = parseInt(el.dataset.index);
-      if (idx >= 0 && idx < rewardCards.length) {
-        addCardToDeck(rewardCards[idx]);
-        closeGameModal();
-      }
-    };
-  });
-}
+// showCardRewardModal is defined in main.js (loaded after this file) and
+// registered as window.showCardRewardModal there. Do not redefine it here.
 
 // ===== DECK VIEWER MODAL =====
 
@@ -332,12 +250,14 @@ function showDeckModal() {
   function cardHtml(card, label) {
     const color = getRarityColor(card.rarity);
     const imgSrc = card.imageUrl || 'images/cards/default.png';
+    const upgBtn = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
     return `
       <div style="
         background:#2d2d2d;border:2px solid ${color};border-radius:8px;
         padding:12px;display:flex;flex-direction:column;align-items:center;
         min-width:130px;max-width:160px;position:relative;
       ">
+        ${upgBtn}
         ${label ? `<div style="position:absolute;top:4px;right:4px;background:${color};color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:bold;">${label}</div>` : ''}
         <img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;"
              onerror="this.style.display='none'">

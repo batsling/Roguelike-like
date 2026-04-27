@@ -542,10 +542,25 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     return;
   }
 
-  const start = eligible[Math.floor(Math.random() * eligible.length)];
-  const candidates = eligible.filter(g =>
-    Math.floor(g.year / 10) !== Math.floor(start.year / 10) && g.type !== start.type
-  );
+  // Start game must have at least 3 connections so the player always has opening choices
+  const eligibleStarts = eligible.filter(g => {
+    const conns = typeof getGameConnections === 'function' ? getGameConnections(g.name) : [];
+    return conns.length >= 3;
+  });
+  const startPool = eligibleStarts.length > 0 ? eligibleStarts : eligible;
+  const start = startPool[Math.floor(Math.random() * startPool.length)];
+
+  // Path-length constraint: keep runs within a playable range.
+  // Tune MIN_PATH_LENGTH and MAX_PATH_LENGTH to adjust typical run depth.
+  const MIN_PATH_LENGTH = 5;
+  const MAX_PATH_LENGTH = 8;
+  let candidates = eligible.filter(g => {
+    if (g.name === start.name) return false;
+    const dist = bfs(start.name, g.name);
+    return typeof dist === 'number' && dist >= MIN_PATH_LENGTH && dist <= MAX_PATH_LENGTH;
+  });
+  // Fall back to any connected game (excluding start) if path constraint leaves nothing
+  if (candidates.length === 0) candidates = eligible.filter(g => g.name !== start.name);
 
   if (candidates.length === 0) {
     alert('No valid amulet game');
@@ -4369,13 +4384,19 @@ function handleDiceCombatVictory(enemy) {
     window.CombatUI.cleanup3DDice();
   }
 
+  // Hide all floating combat tooltips
+  ['enemy-pattern-tooltip', 'combat-status-tooltip', 'combat-card-tooltip'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
   window.CombatEngine.endCombat(true);
 
   // Increment combat counter for weight system
   gameState.totalCombatsCompleted = (gameState.totalCombatsCompleted || 0) + 1;
 
   // Award gold based on difficulty tier
-  const goldAmounts = { 'Low': 10, 'Medium': 20, 'High': 30 };
+  const goldAmounts = { 'Low': 20, 'Medium': 35, 'High': 55 };
   const goldReward = goldAmounts[enemy.difficulty] || 10;
   gold += goldReward;
   gameState.gold = gold;
@@ -4702,6 +4723,12 @@ function handleDiceCombatDefeat(enemy) {
     window.CombatUI.cleanup3DDice();
   }
 
+  // Hide all floating combat tooltips
+  ['enemy-pattern-tooltip', 'combat-status-tooltip', 'combat-card-tooltip'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
   window.CombatEngine.endCombat(false);
 
   // Clear items, curses, and allies on death
@@ -4800,6 +4827,103 @@ window.toggleCombatSystem = function() {
 
 // ============== DECK VIEWER ==============
 
+// ===== CARD UPGRADE PREVIEW SYSTEM =====
+// Registry so inline onclick can reference card objects by index.
+window._cardPR = [];
+
+function _cardPreviewBtn(card) {
+  if (!card || !card.upgradedDescription) return '';
+  const idx = window._cardPR.push(card) - 1;
+  return `<button
+    onclick="event.stopPropagation();showCardUpgradeZoom(window._cardPR[${idx}])"
+    title="Preview Upgrade"
+    style="position:absolute;top:5px;left:5px;
+      width:22px;height:22px;padding:0;
+      background:rgba(39,174,96,0.92);border:1px solid #2ecc71;border-radius:5px;
+      color:white;cursor:pointer;font-size:13px;font-weight:bold;
+      display:flex;align-items:center;justify-content:center;
+      z-index:10;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,0.4);">↑</button>`;
+}
+window._cardPreviewBtn = _cardPreviewBtn;
+
+function showCardUpgradeZoom(card) {
+  const existing = document.getElementById('card-zoom-overlay');
+  if (existing) existing.remove();
+
+  const rarityColors = { Rare: '#9b59b6', Uncommon: '#4CAF50', Common: '#aaa', Starter: '#888' };
+  const color = rarityColors[card.rarity] || '#888';
+
+  const hasUpgrade = !!card.upgradedDescription;
+
+  function buildCardPanel(upgraded) {
+    const desc = upgraded && card.upgradedDescription ? card.upgradedDescription : (card.description || '');
+    const cost = upgraded && card.upgradedCost !== undefined && card.upgradedCost !== null
+      ? card.upgradedCost : card.cost;
+    const name = card.name + (upgraded ? ' <span style="color:#4CAF50;font-size:18px">+</span>' : '');
+    const imgSrc = card.imageUrl || '';
+    const descColor = upgraded ? '#7dffb0' : '#ddd';
+    const borderColor = upgraded ? '#2ecc71' : color;
+    return `
+      <div style="background:#1e1e2e;border:3px solid ${borderColor};border-radius:14px;
+        padding:26px 28px;max-width:320px;width:88vw;text-align:center;
+        box-shadow:0 12px 50px rgba(0,0,0,0.9);cursor:default;position:relative;"
+        onclick="event.stopPropagation()">
+        ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}"
+          style="width:130px;height:130px;object-fit:contain;margin-bottom:14px;border-radius:8px;border:2px solid ${borderColor}40;"
+          onerror="this.style.display='none'">` : ''}
+        <h2 style="margin:0 0 6px;color:white;font-size:20px;">${name}</h2>
+        <div style="color:${borderColor};font-size:13px;margin-bottom:10px;font-weight:bold;">
+          ${card.rarity || 'Starter'} · ${card.type || ''}
+        </div>
+        <div style="color:${descColor};font-size:14px;line-height:1.6;margin-bottom:14px;
+          ${upgraded ? 'background:rgba(46,204,113,0.08);border-radius:6px;padding:8px;border:1px solid rgba(46,204,113,0.2);' : ''}">
+          ${desc}
+        </div>
+        <div style="color:#ffd700;font-size:16px;font-weight:bold;">Cost: ${cost !== undefined ? cost : '?'}</div>
+      </div>`;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'card-zoom-overlay';
+  overlay.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.82);
+    display:flex;align-items:center;justify-content:center;
+    z-index:10000;cursor:pointer;flex-direction:column;gap:0;
+  `;
+
+  if (hasUpgrade && !card.upgraded) {
+    // Show base and upgraded side by side with labels
+    overlay.innerHTML = `
+      <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;justify-content:center;cursor:default;" onclick="event.stopPropagation()">
+        <div>
+          <div style="text-align:center;color:#aaa;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">BASE</div>
+          ${buildCardPanel(false)}
+        </div>
+        <div>
+          <div style="text-align:center;color:#4CAF50;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">UPGRADED ↑</div>
+          ${buildCardPanel(true)}
+        </div>
+      </div>
+      <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
+        margin-top:20px;padding:9px 28px;background:#333;border:1px solid #666;border-radius:8px;
+        color:#ccc;cursor:pointer;font-size:13px;">Close</button>
+    `;
+  } else {
+    // Card already upgraded or no upgrade — show single panel with base toggle if applicable
+    overlay.innerHTML = `
+      ${buildCardPanel(!!card.upgraded)}
+      ${hasUpgrade && card.upgraded ? `<div style="text-align:center;color:#aaa;font-size:11px;margin-top:6px;">(This card is upgraded)</div>` : ''}
+      <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
+        margin-top:16px;padding:9px 28px;background:#333;border:1px solid #666;border-radius:8px;
+        color:#ccc;cursor:pointer;font-size:13px;">Close</button>
+    `;
+  }
+
+  overlay.addEventListener('click', () => overlay.remove());
+  document.body.appendChild(overlay);
+}
+window.showCardUpgradeZoom = showCardUpgradeZoom;
+
 function showCardZoomOverlay(card) {
   const existing = document.getElementById('card-zoom-overlay');
   if (existing) existing.remove();
@@ -4878,6 +5002,7 @@ function showDeckModal() {
     const artHTML = imgSrc
       ? `<img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;" onerror="this.style.display='none'">`
       : (_isDice ? `<div style="font-size:36px;margin-bottom:6px;">🎲</div>` : '');
+    const upgBtn = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
     return `
       <div data-deck-card-idx="${idx}" style="background:#2d2d2d;border:2px solid ${color};border-radius:8px;
         padding:12px;display:flex;flex-direction:column;align-items:center;
@@ -4885,6 +5010,7 @@ function showDeckModal() {
         transition:transform 0.15s,box-shadow 0.15s;"
         onmouseenter="this.style.transform='scale(1.04)';this.style.boxShadow='0 6px 20px rgba(0,0,0,0.6)'"
         onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        ${upgBtn}
         ${label ? `<div style="position:absolute;top:4px;right:4px;background:${color};color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:bold;">${label}</div>` : ''}
         ${artHTML}
         <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:3px;">${card.name}${card.upgraded ? ' +' : ''}</div>
@@ -5735,8 +5861,8 @@ function showCardRewardModal(onComplete, tagFilter = null) {
 
     if (pool.length === 0) return null;
 
-    // Base weights 70/20/10; luck advantage biases the roll toward higher buckets
-    const wCommon = 70, wUncommon = 20, wRare = 10, total = 100;
+    // Base weights 75/20/5; luck advantage biases the roll toward higher buckets
+    const wCommon = 75, wUncommon = 20, wRare = 5, total = 100;
     const roll = rollWithLuckAdvantage() * total;
     let pickedRarity;
     if      (roll < wCommon)              pickedRarity = 'Common';
@@ -5764,16 +5890,18 @@ function showCardRewardModal(onComplete, tagFilter = null) {
   }
 
   const cardsHTML = chosen.map((card, idx) => {
-    const color  = rarityColor(card.rarity);
-    const imgSrc = card.imageUrl || 'images/cards/default.png';
+    const color   = rarityColor(card.rarity);
+    const imgSrc  = card.imageUrl || 'images/cards/default.png';
+    const upgBtn  = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
     return `
       <div class="card-reward-option" data-card-idx="${idx}" style="
-        background:#1e1e2e; border:2px solid ${color}; border-radius:12px;
+        background:#1e1e2e; border:3px solid ${color}; border-radius:12px;
         padding:16px; display:flex; flex-direction:column; align-items:center;
-        width:200px; cursor:pointer;
+        width:200px; cursor:pointer; position:relative;
         transition: transform 0.15s, box-shadow 0.15s;
-      " onmouseenter="this.style.transform='translateY(-6px)'; this.style.boxShadow='0 8px 24px ${color}66';"
-         onmouseleave="this.style.transform=''; this.style.boxShadow='';">
+      " onmouseenter="if(!this.classList.contains('cr-selected')){this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px ${color}44';}"
+         onmouseleave="if(!this.classList.contains('cr-selected')){this.style.transform='';this.style.boxShadow='';}">
+        ${upgBtn}
         <img src="${imgSrc}" alt="${card.name}"
              style="width:110px;height:110px;object-fit:contain;margin-bottom:10px;"
              onerror="this.style.display='none'">
@@ -5788,47 +5916,79 @@ function showCardRewardModal(onComplete, tagFilter = null) {
   createGameModal(`
     <div style="text-align:center; padding:20px; max-width:920px;">
       <h2 style="color:#FFD700; margin-top:0; margin-bottom:8px;">🃏 Card Reward</h2>
-      <p style="color:#aaa; margin-bottom:20px; font-size:13px;">Choose a card to add to your deck:</p>
+      <p style="color:#aaa; margin-bottom:20px; font-size:13px;">Click a card to select it, then confirm your choice</p>
       <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
         ${cardsHTML}
       </div>
-      <button id="card-reward-skip-btn" style="
-        margin-top:20px; padding:10px 24px;
-        background:#444; border:none; border-radius:8px;
-        color:#aaa; cursor:pointer; font-size:13px;
-      ">Skip</button>
+      <div style="margin-top:20px; display:flex; gap:14px; justify-content:center; align-items:center;">
+        <button id="card-reward-confirm-btn" disabled style="
+          padding:11px 28px; background:#555; border:2px solid #888; border-radius:8px;
+          color:#888; cursor:not-allowed; font-size:14px; font-weight:bold; transition:all 0.15s;
+        ">✓ Add to Deck</button>
+        <button id="card-reward-skip-btn" style="
+          padding:11px 28px; background:#333; border:2px solid #555; border-radius:8px;
+          color:#aaa; cursor:pointer; font-size:14px; font-weight:bold;
+        ">Skip</button>
+      </div>
     </div>
   `);
 
-  const skipBtn = document.getElementById('card-reward-skip-btn');
-  if (skipBtn) {
-    skipBtn.onclick = () => {
-      closeGameModal();
-      if (onComplete) onComplete();
-    };
+  let selectedCardIdx = null;
+  const confirmBtn = document.getElementById('card-reward-confirm-btn');
+  const skipBtn    = document.getElementById('card-reward-skip-btn');
+
+  function selectCard(idx) {
+    selectedCardIdx = idx;
+    document.querySelectorAll('.card-reward-option').forEach(el => {
+      const i = parseInt(el.dataset.cardIdx);
+      const c = chosen[i];
+      const col = rarityColor(c.rarity);
+      if (i === idx) {
+        el.classList.add('cr-selected');
+        el.style.borderColor = '#ffd700';
+        el.style.boxShadow   = '0 0 22px #ffd70088';
+        el.style.transform   = 'translateY(-6px) scale(1.04)';
+      } else {
+        el.classList.remove('cr-selected');
+        el.style.borderColor = col;
+        el.style.boxShadow   = 'none';
+        el.style.transform   = '';
+      }
+    });
+    confirmBtn.disabled          = false;
+    confirmBtn.style.background  = 'linear-gradient(145deg, #9b59b6, #7d3c98)';
+    confirmBtn.style.borderColor = '#9b59b6';
+    confirmBtn.style.color       = 'white';
+    confirmBtn.style.cursor      = 'pointer';
   }
 
   document.querySelectorAll('.card-reward-option').forEach(el => {
-    el.onclick = () => {
-      const card = chosen[parseInt(el.dataset.cardIdx)];
-      if (card) {
-        const addFn = window.addCardToDeck || (typeof addCardToDeck !== 'undefined' ? addCardToDeck : null);
-        if (addFn) {
-          addFn(card);
-        } else {
-          // Fallback: add directly to gameState.deck
-          if (!gameState.deck) gameState.deck = [];
-          gameState.deck.push({ ...card, upgraded: false });
-          saveCurrentGame();
-          if (typeof createNotification === 'function') {
-            createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
-          }
+    el.onclick = () => selectCard(parseInt(el.dataset.cardIdx));
+  });
+
+  if (skipBtn) {
+    skipBtn.onclick = () => { closeGameModal(); if (onComplete) onComplete(); };
+  }
+
+  confirmBtn.onclick = () => {
+    if (selectedCardIdx === null) return;
+    const card = chosen[selectedCardIdx];
+    if (card) {
+      const addFn = window.addCardToDeck || (typeof addCardToDeck !== 'undefined' ? addCardToDeck : null);
+      if (addFn) {
+        addFn(card);
+      } else {
+        if (!gameState.deck) gameState.deck = [];
+        gameState.deck.push({ ...card, upgraded: false });
+        saveCurrentGame();
+        if (typeof createNotification === 'function') {
+          createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
         }
       }
-      closeGameModal();
-      if (onComplete) onComplete();
-    };
-  });
+    }
+    closeGameModal();
+    if (onComplete) onComplete();
+  };
 }
 
 // Make level-up functions globally available
@@ -6029,6 +6189,29 @@ window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) 
   const isUsable = item.type === 'Usable';
   const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
 
+  // For Weapon items, find the card they add to the deck and show it
+  const isWeapon = (item.type || '').toLowerCase() === 'weapon';
+  let weaponCardHTML = '';
+  if (isWeapon && typeof cards !== 'undefined') {
+    const wCard = cards.find(c => c.name === item.name);
+    if (wCard) {
+      const wColor = wCard.type === 'Attack' ? '#e74c3c' : wCard.type === 'Skill' ? '#3498db' : wCard.type === 'Power' ? '#9b59b6' : '#aaa';
+      const wImg   = wCard.imageUrl || '';
+      weaponCardHTML = `
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #444;">
+          <div style="color:#aaa;font-size:11px;margin-bottom:6px;">Card added to deck:</div>
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            ${wImg ? `<img src="${wImg}" alt="${wCard.name}" style="width:52px;height:52px;object-fit:contain;border:2px solid ${wColor};border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">` : ''}
+            <div>
+              <div style="font-weight:bold;color:white;font-size:13px;">${wCard.name}${wCard.upgraded ? ' <span style="color:#4CAF50">+</span>' : ''}</div>
+              <div style="color:${wColor};font-size:11px;margin:2px 0;">${wCard.type} · ⚡${wCard.cost}</div>
+              <div style="color:#ccc;font-size:11px;line-height:1.4;">${wCard.description || ''}</div>
+            </div>
+          </div>
+        </div>`;
+    }
+  }
+
   tooltipContent.innerHTML = `
     <div style="min-width: 220px;">
       <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 16px; border-bottom: 2px solid ${rarityColor}; padding-bottom: 6px;">
@@ -6040,6 +6223,7 @@ window.showCombatItemTooltip = function showCombatItemTooltip(event, itemIndex) 
         <span style="color: #aaa; font-size: 13px;">${item.type || 'Item'}</span>
       </div>
       <p style="margin: 8px 0; color: #ccc; font-size: 13px; line-height: 1.4;">${item.description || 'No description'}</p>
+      ${weaponCardHTML}
       ${isUsable ? `
         <button ${canUse ? `onclick="useCombatItem(${itemIndex}); hideCombatItemTooltip();"` : 'disabled'} style="
           width: 100%;
@@ -6130,6 +6314,11 @@ window.useCombatItem = function useCombatItem(itemIndex) {
     // Update combat UI
     if (typeof updateCombatUI === 'function') {
       updateCombatUI();
+    }
+
+    // Full re-render so item effects (HP, statuses, etc.) appear immediately
+    if (window.CombatUI && typeof window.CombatUI.updateCombatDisplay === 'function') {
+      window.CombatUI.updateCombatDisplay();
     }
   }
 }
@@ -8484,6 +8673,14 @@ function markGameFinished(gameName) {
   // Only add if not already in finishedGames array (for unique tracking)
   if (!gameState.finishedGames.includes(gameName)) {
     gameState.finishedGames.push(gameName);
+  } else {
+    // Revisiting a game already beaten — award 1 Dash so the player can escape a dead end
+    dash = (typeof dash !== 'undefined' ? dash : 0) + 1;
+    gameState.dash = (gameState.dash || 0) + 1;
+    if (typeof updateTopBar === 'function') updateTopBar();
+    if (typeof createNotification === 'function') {
+      createNotification('+1 Dash (revisited game)', '#3498db', '💨');
+    }
   }
 
   // Check if difficulty tier changed and update location (unless manually overridden via dev tools)

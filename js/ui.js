@@ -181,6 +181,9 @@ function showLocationTooltip(e) {
 
   if (!locationTooltip || !locationType || !locationGame || !locationEffect) return;
 
+  // Reset inline display so the .visible CSS class can take effect
+  locationTooltip.style.display = '';
+
   const typeColors = {
     'Undead': '#9b59b6',
     'Firey': '#e74c3c',
@@ -241,9 +244,44 @@ function hideLocationTooltip() {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     initLocationTooltip();
+    initStatTooltips();
   });
 } else {
   initLocationTooltip();
+  initStatTooltips();
+}
+
+// ===== STAT TOOLTIPS =====
+// Body-level tooltip bypasses the overflow-y:auto stacking context on #game-stats
+
+function initStatTooltips() {
+  const popup = document.createElement('div');
+  popup.id = 'stat-tooltip-popup';
+  document.body.appendChild(popup);
+
+  document.querySelectorAll('.stat-tooltip').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      const text = el.getAttribute('data-tooltip');
+      if (!text) return;
+      popup.textContent = text;
+      popup.style.display = 'block';
+    });
+    el.addEventListener('mousemove', (e) => {
+      const GAP = 14;
+      const pw = popup.offsetWidth;
+      const ph = popup.offsetHeight;
+      let left = e.clientX + GAP;
+      let top = e.clientY - ph / 2;
+      if (left + pw > window.innerWidth - 8) left = e.clientX - pw - GAP;
+      if (top < 8) top = 8;
+      if (top + ph > window.innerHeight - 8) top = window.innerHeight - ph - 8;
+      popup.style.left = left + 'px';
+      popup.style.top = top + 'px';
+    });
+    el.addEventListener('mouseleave', () => {
+      popup.style.display = 'none';
+    });
+  });
 }
 
 // ===== INVENTORY DISPLAY =====

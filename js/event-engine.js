@@ -34,8 +34,22 @@ function _getPlayerImage() {
   return '';
 }
 
+function _getNoteCard() {
+  if (typeof GameStorage !== 'undefined' && typeof STORAGE_KEYS !== 'undefined') {
+    return GameStorage.load(STORAGE_KEYS.NOTE_FOR_YOURSELF, null) || 'Iron Wave';
+  }
+  return (typeof gameState !== 'undefined' && gameState.noteForYourselfCard) || 'Iron Wave';
+}
+
+function _setNoteCard(cardName) {
+  if (typeof GameStorage !== 'undefined' && typeof STORAGE_KEYS !== 'undefined') {
+    GameStorage.save(STORAGE_KEYS.NOTE_FOR_YOURSELF, cardName);
+  }
+  if (typeof gameState !== 'undefined') gameState.noteForYourselfCard = cardName;
+}
+
 function _fillName(text) {
-  const storedCard = (typeof gameState !== 'undefined' && gameState.noteForYourselfCard) || 'Iron Wave';
+  const storedCard = _getNoteCard();
   return (text || '')
     .replace(/\{name\}/gi, _getCharName())
     .replace(/\{storedCard\}/gi, storedCard);
@@ -80,8 +94,13 @@ const OUTCOME_LABELS = {
   good:      'Success',
   crit_good: 'Critical Success'
 };
+const STAT_ICON_STYLE = 'width:22px;height:22px;vertical-align:middle;object-fit:contain;margin-right:2px;';
 const STAT_ICONS = {
-  strength: '💪', dexterity: '🤸', intelligence: '🧠', charisma: '💬', constitution: '🫀'
+  strength:     `<img src="images/Stats/Strength.png" style="${STAT_ICON_STYLE}" alt="Strength">`,
+  dexterity:    `<img src="images/Stats/Dexterity.png" style="${STAT_ICON_STYLE}" alt="Dexterity">`,
+  intelligence: `<img src="images/Stats/Intelligence.png" style="${STAT_ICON_STYLE}" alt="Intelligence">`,
+  charisma:     `<img src="images/Stats/Charisma.png" style="${STAT_ICON_STYLE}" alt="Charisma">`,
+  constitution: `<img src="images/Stats/Constitution.png" style="${STAT_ICON_STYLE}" alt="Constitution">`,
 };
 
 function _getConstitution() {
@@ -115,7 +134,7 @@ function _describeEffects(effects) {
         if (e.flag === 'ambushed') return 'Ambushed — draw −2 cards turn 1';
         return e.flag;
       case 'note_for_yourself': {
-        const cn = (typeof gameState !== 'undefined' && gameState.noteForYourselfCard) || (e.defaultCard || 'Iron Wave');
+        const cn = _getNoteCard();
         return `Retrieve ${cn} · store a card`;
       }
       default:                return null;
@@ -323,10 +342,7 @@ function applyEventEffects(effects) {
       }
 
       case 'note_for_yourself': {
-        const defaultCardName = effect.defaultCard || 'Iron Wave';
-        const storedCardName  = (typeof gameState !== 'undefined' && gameState.noteForYourselfCard)
-          ? gameState.noteForYourselfCard
-          : defaultCardName;
+        const storedCardName = _getNoteCard();
         const cardPool    = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
         const cardTemplate = cardPool.find(c => c.name === storedCardName);
         if (cardTemplate) {
@@ -420,7 +436,7 @@ function _showChoiceScreen(event, onContinue) {
   const difficulty = _getRollDifficulty();
 
   const choicesHTML = event.choices.map((choice, i) => {
-    const icon = STAT_ICONS[choice.stat] || '🎲';
+    const icon = STAT_ICONS[choice.stat] || '';
     const statVal = _getStat(choice.stat);
     const effectiveNeeded = Math.max(1, difficulty - statVal);
     const hint = choice.type === 'stat_check'
@@ -445,7 +461,7 @@ function _showChoiceScreen(event, onContinue) {
   // Build the outcomes preview panel (hidden by default)
   const ORDER = ['crit_good', 'good', 'bad', 'crit_bad'];
   const outcomesHTML = event.choices.map((choice, i) => {
-    const icon = STAT_ICONS[choice.stat] || '🔷';
+    const icon = STAT_ICONS[choice.stat] || '';
 
     // Simple (no-roll) choices show their single fixed outcome
     if (choice.type !== 'stat_check') {
@@ -482,7 +498,7 @@ function _showChoiceScreen(event, onContinue) {
     return `
       <div style="margin-bottom:14px;">
         <div style="color:#e67e22;font-size:12px;font-weight:bold;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #444;">
-          ${STAT_ICONS[choice.stat] || '🎲'} ${choice.text}
+          ${STAT_ICONS[choice.stat] || ''} ${choice.text}
         </div>
         ${rows}
       </div>`;
@@ -490,7 +506,7 @@ function _showChoiceScreen(event, onContinue) {
 
   const con = _getConstitution();
   const conBar = con > 0
-    ? `<div style="color:#7ec8e3;font-size:11px;margin-bottom:12px;">🫀 Constitution ${con} — +${con} to constitution rolls</div>`
+    ? `<div style="color:#7ec8e3;font-size:11px;margin-bottom:12px;display:flex;align-items:center;gap:4px;">${STAT_ICONS.constitution} Constitution ${con} — +${con} to constitution rolls</div>`
     : '';
 
   _eventModal(`
@@ -679,7 +695,7 @@ function _showSuccessRollScreen(event, choice, onContinue) {
         Roll ${needed}+ to succeed
       </div>
       <div style="color:#aaa;font-size:12px;margin-bottom:18px;">
-        ${STAT_ICONS[choice.stat] || '🎲'} ${_statLabel(choice.stat)}: +${statVal} bonus
+        ${STAT_ICONS[choice.stat] || ''} ${_statLabel(choice.stat)}: +${statVal} bonus
         &nbsp;·&nbsp; need ${difficulty} total
         ${luckHint}
       </div>
@@ -971,15 +987,34 @@ function _showOutcomeScreen(outcome, effectLines, rollMeta, onContinue, continue
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _showCardStoreScreen(onContinue) {
-  const deck = (typeof gameState !== 'undefined' && Array.isArray(gameState.deck)) ? gameState.deck : [];
+  const collectedDeck = (typeof gameState !== 'undefined' && Array.isArray(gameState.deck)) ? gameState.deck : [];
+
+  // Build starter cards from character's starting deck
+  const charKey = typeof gameState !== 'undefined' ? gameState.character : null;
+  const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
+  const startingEntries = (charData && charData.startingDeck) ? charData.startingDeck : [];
+  const starterCards = [];
+  startingEntries.forEach(entry => {
+    const template = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
+    if (template) {
+      const count = entry.count || 1;
+      for (let i = 0; i < count; i++) starterCards.push({ ...template, _isStarter: true });
+    }
+  });
+
+  // All storeable cards: collected first, then starters
+  const allEntries = [
+    ...collectedDeck.map((card, deckIdx) => ({ card, deckIdx, isStarter: false })),
+    ...starterCards.map(card => ({ card, deckIdx: -1, isStarter: true }))
+  ];
 
   // Nothing to store — skip the pick step
-  if (deck.length === 0) {
+  if (allEntries.length === 0) {
     createGameModal(`
       <div style="padding:28px 30px;text-align:center;max-width:480px;margin:0 auto;background:#1a1a2e;border-radius:12px;">
         <div style="color:#c39bd3;font-size:20px;font-weight:bold;margin-bottom:12px;">📝 Store a Card</div>
         <p style="color:#ccc;font-size:14px;line-height:1.6;margin:0 0 20px;">
-          You have no collected cards to leave behind. The note remains with only a question mark.
+          You have no cards to leave behind. The note remains with only a question mark.
         </p>
         <button id="ev-store-skip-btn" style="
           padding:11px 30px;background:#555;border:1px solid #777;border-radius:8px;
@@ -1013,58 +1048,120 @@ function _showCardStoreScreen(onContinue) {
     }
   };
 
-  const cardsHTML = deck.map((card, i) => {
+  const cardsHTML = allEntries.map(({ card, isStarter }, i) => {
     const rc = rarityColor(card.rarity);
     const tc = typeColor(card.type);
+    const imgSrc = card.imageUrl || '';
+    const upgradedBadge = card.upgraded
+      ? `<div style="position:absolute;top:5px;right:5px;background:#27ae60;color:#fff;font-size:9px;font-weight:bold;padding:2px 5px;border-radius:3px;line-height:1.2;">UPGRADED</div>`
+      : '';
+    const starterBadge = isStarter
+      ? `<div style="position:absolute;top:5px;left:5px;background:#2196F3;color:#fff;font-size:9px;font-weight:bold;padding:2px 5px;border-radius:3px;line-height:1.2;">STARTER</div>`
+      : '';
+    const costOrb = `<div style="
+      position:absolute;bottom:40px;right:6px;
+      width:22px;height:22px;border-radius:50%;background:${tc};
+      display:flex;align-items:center;justify-content:center;
+      font-size:11px;font-weight:bold;color:#fff;border:2px solid rgba(255,255,255,0.3);
+      box-shadow:0 2px 4px rgba(0,0,0,0.5);">
+      ${card.cost !== null && card.cost !== undefined ? card.cost : '?'}
+    </div>`;
+    const upgBtn = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
+    const desc = card.upgraded && card.upgradedDescription ? card.upgradedDescription : (card.description || '');
     return `
       <div class="ev-store-card-opt" data-idx="${i}" style="
-        padding:10px 14px;background:#1e1e30;border:2px solid #444;border-radius:8px;
-        cursor:pointer;text-align:left;transition:border-color 0.15s,background 0.15s;
-        display:flex;align-items:center;gap:10px;
+        position:relative;
+        background:#1e1e30;border:3px solid ${rc};border-radius:12px;
+        cursor:pointer;text-align:center;transition:border-color 0.15s,box-shadow 0.15s,transform 0.15s;
+        display:flex;flex-direction:column;align-items:center;
+        padding:30px 12px 14px;width:160px;flex-shrink:0;
+        box-sizing:border-box;
       "
-      onmouseover="this.style.borderColor='#c39bd3';this.style.background='#2a2a40';"
-      onmouseout="this.style.borderColor='#444';this.style.background='#1e1e30';">
-        <span style="
-          min-width:24px;height:24px;border-radius:50%;background:${tc};
-          display:flex;align-items:center;justify-content:center;
-          font-size:12px;font-weight:bold;color:#fff;flex-shrink:0;">
-          ${card.cost !== null && card.cost !== undefined ? card.cost : '?'}
-        </span>
-        <div style="min-width:0;">
-          <div style="color:#eee;font-size:14px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${card.name}</div>
-          <div style="color:#aaa;font-size:11px;">${card.type || ''} · <span style="color:${rc}">${card.rarity || ''}</span></div>
+      onmouseover="this.style.transform='scale(1.04)';this.style.boxShadow='0 0 16px ${rc}66';"
+      onmouseout="if(!this.classList.contains('ev-store-selected')){this.style.transform='scale(1)';this.style.boxShadow='none';}">
+        ${upgBtn}${upgradedBadge}${starterBadge}${costOrb}
+        <div style="width:100px;height:100px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.35);border-radius:8px;border:2px solid ${rc};margin-bottom:10px;">
+          ${imgSrc
+            ? `<img src="${imgSrc}" alt="${card.name}" style="max-width:96px;max-height:96px;object-fit:contain;" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=font-size:36px>🃏</span>')">`
+            : `<span style="font-size:36px;">🃏</span>`}
         </div>
+        <div style="font-weight:bold;font-size:13px;color:#eee;margin-bottom:3px;line-height:1.3;">
+          ${card.name}${card.upgraded ? ' <span style="color:#4CAF50">+</span>' : ''}
+        </div>
+        <div style="color:${rc};font-size:11px;margin-bottom:6px;">${card.rarity || ''} · <span style="color:${tc}">${card.type || ''}</span></div>
+        <div style="font-size:11px;color:#bbb;line-height:1.4;text-align:center;">${desc}</div>
       </div>`;
   }).join('');
 
   createGameModal(`
-    <div style="padding:24px 28px;max-width:500px;margin:0 auto;background:#1a1a2e;border-radius:12px;">
+    <div style="padding:24px 28px;max-width:960px;margin:0 auto;background:#1a1a2e;border-radius:12px;">
       <div style="color:#c39bd3;font-size:20px;font-weight:bold;margin-bottom:6px;text-align:center;">📝 Store a Card</div>
       <p style="color:#ccc;font-size:13px;line-height:1.6;margin:0 0 16px;text-align:center;">
-        Choose a card from your collected deck to leave behind for your future self.
+        Choose any card to leave behind for your future self — it will be there waiting next time.
       </p>
-      <div style="display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;padding-right:4px;">
+      <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:center;max-height:60vh;overflow-y:auto;padding:4px 4px 8px;">
         ${cardsHTML}
+      </div>
+      <div style="margin-top:20px;display:flex;gap:14px;justify-content:center;align-items:center;">
+        <button id="ev-store-confirm-btn" disabled style="
+          padding:11px 30px;background:#555;border:2px solid #888;border-radius:8px;
+          color:#888;cursor:not-allowed;font-size:14px;font-weight:bold;transition:all 0.15s;
+        ">📝 Store This Card</button>
       </div>
     </div>
   `);
 
-  document.querySelectorAll('.ev-store-card-opt').forEach(el => {
-    el.addEventListener('click', () => {
-      const idx  = parseInt(el.dataset.idx);
-      const card = deck[idx];
-      if (typeof gameState !== 'undefined') {
-        gameState.noteForYourselfCard = card.name;
-        deck.splice(idx, 1);
-        gameState.deck = [...deck];
-        if (typeof saveCurrentGame === 'function') saveCurrentGame();
-        if (typeof createNotification === 'function') {
-          createNotification(`Stored: ${card.name}`, '#8e44ad', '📝');
-        }
+  let selectedStoreIdx = null;
+  const confirmBtn = document.getElementById('ev-store-confirm-btn');
+
+  function setStoreSelected(idx) {
+    selectedStoreIdx = idx;
+    document.querySelectorAll('.ev-store-card-opt').forEach(el => {
+      const i = parseInt(el.dataset.idx);
+      const entry = allEntries[i];
+      const rc = rarityColor(entry.card.rarity);
+      if (i === idx) {
+        el.classList.add('ev-store-selected');
+        el.style.borderColor = '#ffd700';
+        el.style.boxShadow = '0 0 22px #ffd70088';
+        el.style.transform = 'scale(1.06)';
+      } else {
+        el.classList.remove('ev-store-selected');
+        el.style.borderColor = rc;
+        el.style.boxShadow = 'none';
+        el.style.transform = 'scale(1)';
       }
-      closeGameModal();
-      if (typeof onContinue === 'function') onContinue();
     });
+    confirmBtn.disabled = false;
+    confirmBtn.style.background = 'linear-gradient(145deg, #8e44ad, #6c3483)';
+    confirmBtn.style.borderColor = '#c39bd3';
+    confirmBtn.style.color = '#fff';
+    confirmBtn.style.cursor = 'pointer';
+  }
+
+  document.querySelectorAll('.ev-store-card-opt').forEach(el => {
+    el.addEventListener('click', () => setStoreSelected(parseInt(el.dataset.idx)));
+  });
+
+  confirmBtn.addEventListener('click', () => {
+    if (selectedStoreIdx === null) return;
+    const idx   = selectedStoreIdx;
+    const entry = allEntries[idx];
+    if (!entry) return;
+    const { card, isStarter, deckIdx } = entry;
+    if (typeof gameState !== 'undefined') {
+      _setNoteCard(card.name);
+      if (!isStarter && deckIdx >= 0) {
+        collectedDeck.splice(deckIdx, 1);
+        gameState.deck = [...collectedDeck];
+      }
+      if (typeof saveCurrentGame === 'function') saveCurrentGame();
+      if (typeof createNotification === 'function') {
+        createNotification(`Stored: ${card.name}`, '#8e44ad', '📝');
+      }
+    }
+    closeGameModal();
+    if (typeof onContinue === 'function') onContinue();
   });
 }
 

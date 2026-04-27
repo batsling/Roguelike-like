@@ -115,7 +115,8 @@ function showShopModal(purchasedIndices = []) {
   };
 
   // ===== CARD SERVICES PANEL =====
-  const CARD_REMOVE_COST = 50;
+  // Cost scales by 25g per removal done this run (50 → 75 → 100 …)
+  const CARD_REMOVE_COST = 50 + (gameState.cardsRemovedThisRun || 0) * 25;
 
   // Build combined card list: starter cards + collected deck cards (excluding status cards)
   const charKeyCS = gameState.character;
@@ -142,21 +143,33 @@ function showShopModal(purchasedIndices = []) {
 
   const alreadyRemoved = gameState.shopRemovesUsed > 0;
 
-  // Build remove selector — all deck cards (starters + collected)
+  // Build remove selector — visual card grid so players can see upgrade status
+  const _removeRarityColor = r => r === 'Rare' ? '#9b59b6' : r === 'Uncommon' ? '#4CAF50' : r === 'Starter' ? '#888' : '#aaa';
   let removeSelectHTML = '';
   if (allDeckCards.length > 0) {
     removeSelectHTML = `
-      <select id="shop-card-remove-select" style="
-        background:#1a1a1a; color:white; border:1px solid #e74c3c;
-        border-radius:4px; padding:6px 10px; font-size:13px; width:100%;
-        margin-bottom:8px;
+      <div id="shop-remove-card-grid" style="
+        display:flex;flex-wrap:wrap;gap:6px;
+        max-height:160px;overflow-y:auto;
+        padding:6px;margin-bottom:8px;
+        background:#1a1a1a;border:1px solid #444;border-radius:6px;
       ">
-        <option value="">— Pick a card to remove —</option>
         ${allDeckCards.map((c, i) => {
-          const label = c._isStarting ? `${c.name} (Starter)` : `${c.name}${c.upgraded ? ' +' : ''} (${c.rarity})`;
-          return `<option value="${i}">${label}</option>`;
+          const rc = _removeRarityColor(c._isStarting ? 'Starter' : c.rarity);
+          const label = c._isStarting ? 'Starter' : c.rarity;
+          const upgBadge = c.upgraded ? `<span style="color:#4CAF50;font-size:9px;font-weight:bold;"> +</span>` : '';
+          return `<div class="shop-remove-card-item" data-remove-idx="${i}" style="
+            cursor:pointer;padding:4px 8px;border-radius:5px;
+            border:2px solid ${rc};background:rgba(0,0,0,0.4);
+            font-size:11px;color:#ddd;white-space:nowrap;
+            transition:all 0.12s;user-select:none;
+          ">
+            ${c.name}${upgBadge}
+            <span style="color:${rc};font-size:9px;display:block;margin-top:1px;">${label}</span>
+          </div>`;
         }).join('')}
-      </select>
+      </div>
+      <input type="hidden" id="shop-card-remove-select" value="">
     `;
   } else {
     removeSelectHTML = `<p style="color:#888;font-size:12px;margin:4px 0;">No cards in deck to remove.</p>`;
@@ -259,7 +272,7 @@ function showShopModal(purchasedIndices = []) {
   const purchasedCardIndices = gameState.purchasedShopCards || [];
 
   const cardPriceFor = (c) => {
-    const base = c.rarity === 'Rare' ? 60 : c.rarity === 'Uncommon' ? 40 : 20;
+    const base = c.rarity === 'Rare' ? 50 : c.rarity === 'Uncommon' ? 30 : 15;
     return base + frugalityModifier;
   };
 
@@ -275,12 +288,15 @@ function showShopModal(purchasedIndices = []) {
       const price = cardPriceFor(card);
       const color = getRarityColor(card.rarity);
       const imgSrc = card.imageUrl || 'images/cards/default.png';
+      const upgBtn = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
       shopCardsHTML += `
         <div style="
           background:#1e1e2e;border:2px solid ${color};border-radius:10px;
           padding:15px;display:flex;flex-direction:column;align-items:center;
+          position:relative;
           ${isPurchased ? 'opacity:0.5;' : ''}
         ">
+          ${upgBtn}
           <img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;"
                onerror="this.style.display='none'">
           <div style="font-weight:bold;font-size:14px;color:white;text-align:center;margin-bottom:3px;">${card.name}</div>
@@ -362,7 +378,7 @@ function showShopModal(purchasedIndices = []) {
   shopItems.forEach((item, index) => {
     const isPurchased = purchasedIndices.includes(index);
     const rarityLower = item.rarity ? item.rarity.toLowerCase() : 'common';
-    const basePrice = rarityLower === 'common' ? 10 : rarityLower === 'uncommon' ? 20 : rarityLower === 'rare' ? 30 : 50;
+    const basePrice = rarityLower === 'common' ? 8 : rarityLower === 'uncommon' ? 15 : rarityLower === 'rare' ? 25 : 40;
     const price = basePrice + frugalityModifier;
     const rarityColor = getRarityColor(item.rarity);
 
@@ -536,6 +552,20 @@ function showShopModal(purchasedIndices = []) {
     return [...starters, ...(gameState.deck || []).filter(c => !c.isStatusCard)];
   };
 
+  // Wire up visual card grid selection
+  document.querySelectorAll('.shop-remove-card-item').forEach(el => {
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.shop-remove-card-item').forEach(x => {
+        x.style.background = 'rgba(0,0,0,0.4)';
+        x.style.boxShadow = '';
+      });
+      el.style.background = 'rgba(231,76,60,0.25)';
+      el.style.boxShadow = '0 0 8px rgba(231,76,60,0.6)';
+      const hiddenInput = document.getElementById('shop-card-remove-select');
+      if (hiddenInput) hiddenInput.value = el.dataset.removeIdx;
+    });
+  });
+
   const cardRemoveBtn = document.getElementById('shop-card-remove-btn');
   if (cardRemoveBtn && gameState.shopRemovesUsed === 0) {
     cardRemoveBtn.onclick = () => {
@@ -553,6 +583,7 @@ function showShopModal(purchasedIndices = []) {
       gameState.gold = gold;
       _keepersSackCheck(CARD_REMOVE_COST);
       gameState.shopRemovesUsed++;
+      gameState.cardsRemovedThisRun = (gameState.cardsRemovedThisRun || 0) + 1;
       if (card._isStarting) {
         // Remove a starter card: track via removedStartingCards
         if (!gameState.removedStartingCards) gameState.removedStartingCards = {};

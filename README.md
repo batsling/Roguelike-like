@@ -2,6 +2,20 @@
 
 ## Table of Contents
 - [Overview](#overview)
+- [How to Play](#how-to-play)
+  - [The Concept](#the-concept)
+  - [Characters](#characters)
+  - [Stats](#stats)
+  - [The Map & Navigation](#the-map--navigation)
+  - [Encounters](#encounters)
+  - [Pre-Combat Events](#pre-combat-events)
+  - [Combat](#combat)
+  - [Post-Combat Choices](#post-combat-choices)
+  - [The Shop](#the-shop)
+  - [Curses](#curses)
+  - [Items](#items)
+  - [The Escape Phase](#the-escape-phase)
+  - [Tips](#tips)
 - [Recent Updates](#recent-updates)
 - [Collection System](#collection-system)
 - [Curse System](#curse-system)
@@ -36,20 +50,18 @@
 
 ## Overview
 
-A roguelike game where players navigate through a graph of connected video games, encountering card-based combat, events, and shops. The game features a full Slay the Spire–style card system, a comprehensive curse system, item effects, and dynamic gameplay mechanics.
+A roguelike deckbuilder where players navigate a graph of over 600 real video games connected by influence relationships. Each run is a 5–8 game journey from a randomly chosen start game to a hidden Amulet game, fought through card-based combat, stat-check events, and a merchant shop.
 
 **Key Features:**
-- STS-style card-based combat (hand, energy, draw/discard/exhaust piles)
-- 11 unique curse types across 3 categories (Restriction, Manual, Automatic)
-- Player-verified curse tracking system with combined verification modal
-- Extensive item system (passive, usable, and triggered)
-- Card deck system (collect cards, upgrade, remove at shop)
-- Weight-based enemy encounter system with difficulty tiers
-- Game status effects (portals, stinky games)
-- Escape sequence after finding the amulet
-- Save/load system with multiple save slots
-- Comprehensive developer tools
-- Dynamic difficulty scaling based on progress
+- 625 games, 788 influence connections — the map is a real network of video game history
+- STS-style card combat: hand, energy, draw / discard / exhaust piles
+- Pre-combat events with a two-roll D20 system and four outcome tiers
+- 11 curse types across 3 categories (Automatic, Manual, Restriction)
+- Extensive item system (passive, usable, triggered, weapon)
+- Card deck management: collect from combat rewards and shops, upgrade at Smith, remove at shop
+- Weight-based enemy encounter system with three difficulty tiers
+- Escape sequence after reaching the Amulet
+- Save / load system with multiple save slots
 
 **Architecture:**
 The codebase is organized into focused, maintainable modules. See [js/README.md](js/README.md) for detailed module documentation.
@@ -58,6 +70,349 @@ The codebase is organized into focused, maintainable modules. See [js/README.md]
 - **combat-ui.js**: Fan-arc hand rendering, drag-to-play, targeting mode
 - **cards.js**: Deck management, card rewards, shop card services
 - **Better maintainability** for both humans and LLMs
+
+---
+
+## How to Play
+
+### The Concept
+
+Roguelike-like is a deckbuilding roguelike set on a map of real video games. Every node on the map is an actual game, connected to other games it influenced. At the start of a run the game picks a **Start** and an **Amulet** game 5–8 connections apart on that influence graph. Your goal: navigate from the Start to the Amulet, fighting enemies and building a card deck along the way, then fight your way back out to escape.
+
+---
+
+### Characters
+
+Pick one of six characters. Each has a unique starting deck, starting items, base HP, and a **level-up condition** — a real-world in-game action you perform while playing the roguelike that earns you a permanent bonus for that run.
+
+| Character | Base HP | Level-Up Condition | Level-Up Reward |
+|---|---|---|---|
+| **Rodney** | 75 | Beat any game | +3 random stats |
+| **Isaac** | 75 | Unlock a new item in-game | +2 Rerolls |
+| **Zoe** | 50 | Perfect a game (no damage taken) | +1 Dexterity, +1 Dash |
+| **Minä** | 60 | Craft or combine a spell | +1 Intelligence, +1 Charisma |
+| **Ironclad** | 80 | Unlock a new difficulty tier | Ironclad class card reward |
+| **Silent** | 70 | Unlock a new difficulty tier | Silent class card reward |
+
+---
+
+### Stats
+
+Your character has a set of stats that grow throughout the run through items, events, and level-ups.
+
+| Stat | What it does |
+|---|---|
+| **Strength** | Boosts Attack card damage; adds a flat bonus to Strength-based event rolls |
+| **Dexterity** | Boosts ranged attack damage; adds a flat bonus to Dexterity-based event rolls |
+| **Intelligence** | Adds a flat bonus to Intelligence-based event rolls |
+| **Charisma** | Adds a flat bonus to Charisma-based event rolls |
+| **Constitution** | Derived stat: every 5 max HP gained during the run = +1 Constitution. Adds a bonus to Constitution event rolls |
+| **Luck** | Each point gives a 10% independent chance to roll with advantage (roll twice, take the better result) on any dice roll — applies to both event rolls separately |
+| **FoV** | Field of View. Base 3 + FoV = how many location choices appear at each decision point |
+| **Dash** | Charges to teleport directly to any visible map location, bypassing the normal path |
+| **Reroll** | Charges to regenerate your location choices or reroll shop items |
+| **Skip** | Charges to skip the current location and return to the choice screen |
+| **Discovery** | Increases the number of item choices when collecting rewards |
+
+---
+
+### The Map & Navigation
+
+After each encounter you are shown a set of **location choices** — games connected to your current game on the influence graph. The number shown equals **3 + your FoV stat**.
+
+Each choice node shows:
+- The game name and cover art
+- An encounter type badge:
+  - 🔴 **!** — Combat (preceded by a pre-combat event)
+  - 🟣 **?** — Event
+  - 🟡 **$** — Shop
+  - 🏺 — The Amulet (your destination)
+- **💨 badge** — You have beaten this game before. Visiting it again awards **+1 Dash**.
+- **Distance counter** — Number of hops remaining to the Amulet
+
+**Three ability buttons are available from the choice screen:**
+
+| Button | Cost | Effect |
+|---|---|---|
+| **Dash ⚡** | 1 Dash charge | Teleport directly to any visible location |
+| **Reroll 🔄** | 1 Reroll charge + escalating gold (free → 5g → 10g → 15g…) | Regenerate all location choices. Resets each shop visit. |
+| **Skip ⏭** | 1 Skip charge | Skip the current location without completing it |
+
+---
+
+### Encounters
+
+#### Combat — 🔴 !
+
+Combat is the most common encounter. Before the fight begins, a **pre-combat event** fires (see below). When the event resolves you enter the card-based fight.
+
+**Difficulty scales with how many games you have beaten:**
+
+| Tier | Games beaten | Gold reward per win |
+|---|---|---|
+| Low | 0–4 | 20g |
+| Medium | 5–9 | 35g |
+| High | 10+ | 55g |
+
+The post-combat option set (Rest / Smith / Shop / Movement Event) resets each time you cross a tier boundary.
+
+#### Event — 🟣 ?
+
+A pure stat-check encounter with no combat. You choose an action, roll dice, and face an outcome. The resolution is the same as the pre-combat event system described below.
+
+#### Shop — 🟡 $
+
+A merchant visit. Identical to visiting the Shop as a post-combat choice (see the Shop section).
+
+---
+
+### Pre-Combat Events
+
+Every time you enter a combat location, an event fires first. You are shown a scenario image with 2–4 choices.
+
+**Stat-check choices** use a two-roll D20 system:
+
+**Roll 1 — Success check:** D20 + your relevant stat vs. the difficulty threshold.
+- Easy: need **11+** | Medium: need **13+** | Hard: need **15+**
+- Your stat is added as a flat bonus, so higher stats mean you effectively need a lower raw roll.
+- Luck advantage applies: each Luck point has a 10% independent chance to let you roll twice and take the better result.
+
+**Roll 2 — Critical check:** D20 vs. 18 (no stat bonus). Rolling 18, 19, or 20 = critical. Luck advantage applies independently.
+
+**Four outcomes per choice:**
+
+| Outcome | Condition | Typical effect |
+|---|---|---|
+| **Critical Success** | Passed both rolls | Best rewards: gold, items, strong combat buffs |
+| **Success** | Passed Roll 1, failed Roll 2 | Moderate positive effect or nothing |
+| **Failure** | Failed Roll 1, passed Roll 2 | Minor penalty: damage, debuff, or small curse |
+| **Critical Failure** | Failed both rolls | Worst outcome: heavy damage, strong curse, severe debuff |
+
+**Simple choices** (blue border) skip the dice entirely and always produce the same outcome.
+
+**Effects that carry into the next fight:**
+
+| Effect | Description |
+|---|---|
+| **Ambush** | Draw +2 cards on combat turn 1 |
+| **Ambushed** | Draw −2 cards on combat turn 1 |
+| **Combat status** | Fear, Blind, Weak, Vulnerable, Poison, Burn, etc. applied at combat start |
+| Gold, heal, items, curses | Applied immediately after the event resolves |
+
+---
+
+### Combat
+
+#### Your Turn
+
+- Each turn you start with **3 energy** (some items raise this maximum).
+- **5 cards** are drawn from your deck at the start of each turn.
+- Play cards by clicking or dragging them upward from your hand.
+- **Single-target cards** enter targeting mode — click an enemy to resolve.
+- **AoE cards** (keywords: Cleave, Indiscriminate, "all enemies") hit every enemy automatically.
+- Click **End Turn** when done. Your hand is discarded and enemies act.
+
+#### Card Types
+
+| Type | Description |
+|---|---|
+| **Attack** | Deals damage to one or all enemies. Boosted by Strength. |
+| **Skill** | Non-damage effects: block, draw, buffs, debuffs, healing |
+| **Power** | Persistent passive effect lasting until combat ends. Sent to the exhaust pile when played. |
+| **Dice** | Rolls a random face on play — each face has a different effect. |
+| **Status** | Temporary cards (Pigments, Curse cards) added to your deck by enemies or curses. Auto-exhaust when played and are removed from your deck after combat. |
+
+#### Card Rarities
+
+| Rarity | How obtained |
+|---|---|
+| **Starter** | Character's starting deck. Never offered as combat rewards. |
+| **Common** | Most frequent in reward pools and shops. |
+| **Uncommon** | Moderate chance; stronger effects. |
+| **Rare** | Rarest; most powerful. |
+
+Your **Luck** stat biases the rarity roll toward Uncommon and Rare.
+
+#### The Three Piles
+
+- **Draw pile** (bottom-left number): Cards still to draw. When empty, the discard pile is reshuffled into it.
+- **Discard pile** (bottom-right number): Cards you have played or discarded this turn.
+- **Exhaust pile**: Cards permanently removed for this combat — Power cards, Status cards, and cards with the Exhaust keyword. Never reshuffled.
+- Click either counter button to view the full contents of that pile.
+
+#### Block
+
+Block absorbs incoming damage before HP. **Block does not carry between turns** — any unspent block is removed at the start of each enemy turn.
+
+#### Combat Statuses
+
+| Status | Effect |
+|---|---|
+| **Burn** | Take damage at end of turn |
+| **Poison** | Take stacking damage each turn; stacks decrease by 1 each turn |
+| **Stun** | Target skips their next action |
+| **Weak** | Deal 25% less damage |
+| **Vulnerable** | Take 50% more damage |
+| **Frail** | Gain less block |
+| **Fear** | Non-Attack cards cost +1 energy; lose 1 Fear stack each time you play an Attack |
+| **Blind** | 30% miss chance on attacks; "MISS!" popup appears on a miss |
+
+#### Enemies
+
+Every enemy shows its **intent** — exactly what it will do — before it acts. Enemies have patterns that either cycle in order across turns or fire randomly based on weighted probabilities. Some enemies have special abilities:
+
+- **Fading N** — Dies automatically after N turns
+- **Multi Attack N** — Acts N times per turn
+- **Immune to X** — Cannot be affected by that status
+- **When Defeated** — Triggers an effect on death (spawning a new enemy, dealing damage to adjacent allies, etc.)
+
+#### Winning and Losing
+
+- **Victory:** All enemies reach 0 HP → receive gold (20 / 35 / 55g by tier) → choose 1 of 3 card rewards → choose a post-combat option.
+- **Defeat:** Your HP reaches 0 → run ends immediately.
+
+---
+
+### Post-Combat Choices
+
+After every combat, pick **one** of four options. Each option can only be used **once per difficulty tier** — crossing from Low → Medium or Medium → High resets all four options.
+
+| Choice | Effect |
+|---|---|
+| **Rest 🛌** | Heal 50% of your maximum HP |
+| **Smith ⚒️** | Choose up to 2 cards from your deck to upgrade for free |
+| **Shop 🛒** | Visit the merchant |
+| **Movement Event 🗺️** | A map-related encounter with item or stat rewards |
+
+---
+
+### The Shop
+
+You can reach the shop as a post-combat choice or by landing on a Shop node on the map. The shop resets on each visit.
+
+#### Items for Sale (3 shown)
+
+| Rarity | Price |
+|---|---|
+| Common | 8g |
+| Uncommon | 15g |
+| Rare | 25g |
+| Legendary | 40g |
+
+#### Cards for Sale
+
+| Rarity | Price |
+|---|---|
+| Common | 15g |
+| Uncommon | 30g |
+| Rare | 50g |
+
+#### Card Services (one of each per shop visit)
+
+| Service | Cost | Notes |
+|---|---|---|
+| **Remove a Card** | 50g → 75g → 100g… | Removes one card from your deck permanently. Cost increases by 25g per removal across the whole run. |
+| **Upgrade a Card** | Free (via Smith) or in-shop | Available through the Smith post-combat option |
+
+#### Rerolling Shop Items
+
+Uses one Reroll charge. The gold cost escalates per reroll within a single visit and resets on the next visit:
+
+| Reroll # | Gold cost |
+|---|---|
+| 1st | Free |
+| 2nd | 5g |
+| 3rd | 10g |
+| 4th | 15g |
+| … | +5g each |
+
+#### Selling Fish
+
+Fish caught from loot events can be sold in the shop.
+
+| Fish Rarity | Small | Medium | Large |
+|---|---|---|---|
+| Common | 5g | 10g | 20g |
+| Uncommon | 10g | 20g | 40g |
+| Rare | 25g | 50g | 100g |
+
+---
+
+### Curses
+
+Curses are persistent debuffs gained from events, combat failures, or certain choices. They come in three categories.
+
+#### Automatic Curses (fire on their own)
+
+| Curse | Effect | Consumed? |
+|---|---|---|
+| **Failure** | Rolling a natural 1 in combat triggers a critical failure and deals 2–4 HP damage | All instances consumed on trigger |
+| **Weakness** | Subtract 2–4 from one combat roll | One instance consumed per combat |
+| **Vulnerability** | When you gain a new curse, it is duplicated (1–3 uses) | Removed after uses run out |
+| **Shroud** | Hide one of your location choices from view (1–3 uses) | Removed after uses run out |
+| **Frugality** | All shop prices increase by +5 / +10 / +15g per curse level | One instance removed after your first purchase per shop visit |
+
+#### Manual Curses (you self-report after each game)
+
+| Curse | Penalty | Duration |
+|---|---|---|
+| **Devotion** | Lose 1–3 HP per run reset | 2 games |
+| **Greed** | Lose 1–3 HP per item or upgrade skipped in-game | 2 games |
+| **Impulse** | Lose 1–3 HP each time you didn't choose the topmost/leftmost option | 1 game |
+| **Haste** | Lose 2 HP if you didn't beat the game within 2–4 hours | 1 game |
+
+After beating each game, a **verification modal** appears so you can report your results for all active manual and restriction curses.
+
+#### Restriction Curses (require specific play behaviors)
+
+| Curse | Requirement | Duration |
+|---|---|---|
+| **Blindness** | Randomly choose your character/loadout at game start | 1–3 games |
+| **Hubris** | Raise the game's difficulty setting 1–3 times | 1 game |
+
+Multiple curses of the same type **stack** — a second Frugality curse doubles the price increase, a second Shroud hides two choices, etc.
+
+---
+
+### Items
+
+Items are permanent bonuses that persist for the rest of the run once acquired.
+
+| Type | Behavior |
+|---|---|
+| **Passive** | Always active; grant stats, block at combat start, or ongoing effects |
+| **Triggered** | Fire automatically on specific events (kill, damage taken, turn end, etc.) |
+| **Usable** | Manually activated at specific times |
+| **Weapon** | Equipping a weapon adds its matching card permanently to your deck |
+
+A few notable examples:
+
+| Item | Effect |
+|---|---|
+| **Keeper's Sack** | Every 10g you spend grants +1 to a random stat |
+| **More Options** | +1 FoV (one extra location choice) |
+| **Ballistic Boots** | +1 Dash charge |
+| **D6** | +2 Reroll charges |
+| **Philosopher's Stone** | +1 max energy, but enemies start each combat with 1 Power stack |
+| **Unstable Genome** | 33% chance on game completion to destroy itself and offer 3 random item choices |
+
+---
+
+### The Escape Phase
+
+When you defeat the Amulet game, the **escape phase** begins. You must fight your way back out through a final series of encounters. Completing the escape wins the run.
+
+---
+
+### Tips
+
+- **Remove Starter cards early.** Striking with Strike five times is mediocre. Thinning your starting deck dramatically increases how often you see your good cards. The first removal costs only 50g.
+- **Post-combat choices reset at tier transitions.** You get Rest, Smith, Shop, and Movement Event once per tier. If your HP is fine, bank Rest for when you really need it — or take Smith first since it is completely free.
+- **The 💨 revisit badge is an opportunity, not a warning.** Replaying a game awards +1 Dash, which lets you skip or shortcut later. Don't avoid revisits reflexively.
+- **Watch enemy intents.** Every enemy telegraphs its action before it acts. Stack block before a big hit; save your damage cards for turns when the enemy is buffing or healing.
+- **Luck stacks multiplicatively in practice.** With 3 Luck, every roll has a ~27% chance of getting advantage. Stack it and your event success rate climbs significantly.
+- **Frugality stacks are expensive but finite.** Each stack only survives until you make one purchase. If you're swimming in gold, buy the cheapest item first to pop a Frugality stack before buying what you actually want.
+- **Constitution is free.** Any time an item or event increases your max HP, your Constitution stat rises automatically. It quietly improves your odds on constitution-stat event checks throughout the rest of the run.
 
 ---
 
