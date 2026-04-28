@@ -293,6 +293,26 @@ function spawnChoices() {
     n.dataset.encounterType = encounterType;
 
     n.onclick = () => advance(g, nx, ny, encounterType);
+
+    // Map preview button — top-left corner, click to see path to amulet
+    if (!isAmuletGame) {
+      const previewBtn = document.createElement('button');
+      previewBtn.title = 'Preview map from here to amulet';
+      previewBtn.textContent = '🗺';
+      previewBtn.style.cssText = [
+        'position:absolute', 'top:-10px', 'left:-10px',
+        'width:22px', 'height:22px', 'padding:0',
+        'background:#1a3a4a', 'border:1px solid #44aacc', 'border-radius:50%',
+        'cursor:pointer', 'font-size:12px', 'line-height:1',
+        'display:flex', 'align-items:center', 'justify-content:center', 'z-index:10',
+      ].join(';');
+      const gCopy = g;
+      previewBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (typeof showGameMapPreview === 'function') showGameMapPreview(gCopy, null);
+      };
+      n.appendChild(previewBtn);
+    }
   });
 
   // Draw arrows after all nodes are added and browser has laid them out

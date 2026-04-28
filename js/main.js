@@ -598,6 +598,50 @@ function backToStartChoice() {
   showStartingChoiceModal(options, amulet, saveName);
 }
 
+// In-run map preview: shows the path from any game node to the amulet.
+// returnFn is called when the player clicks "← Back"; pass null to just close.
+let _previewMapReturnFn = null;
+
+function showGameMapPreview(gameName, returnFn) {
+  _previewMapReturnFn = returnFn || null;
+  if (!gameState || !gameState.amuletGame) return;
+  const amuletName = gameState.amuletGame.name;
+  const dFS = bfsAllDistances(gameName);
+  const shortestDist = dFS.get(amuletName) || 1;
+
+  let html = '<div style="padding:12px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">';
+  html += `<span style="color:var(--color-gold);font-weight:bold;font-size:14px;">${gameName} → ${amuletName}</span>`;
+  html += `<div style="display:flex;align-items:center;gap:8px;">
+    <button onclick="zoomMap(0.8)" style="padding:4px 10px;background:#555;border:none;border-radius:4px;color:#fff;cursor:pointer;font-weight:bold;">−</button>
+    <span id="map-zoom-level" style="color:#888;min-width:44px;text-align:center;">100%</span>
+    <button onclick="zoomMap(1.25)" style="padding:4px 10px;background:#555;border:none;border-radius:4px;color:#fff;cursor:pointer;font-weight:bold;">+</button>
+    <button onclick="resetMapZoom()" style="padding:4px 10px;background:#555;border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:10px;">Reset</button>
+    <button onclick="closeGameMapPreview()" style="padding:4px 14px;background:#444;border:none;border-radius:6px;color:#fff;cursor:pointer;font-weight:bold;">← Back</button>
+  </div>`;
+  html += '</div><div id="map-view-container">';
+  html += generateMapView(gameName, amuletName, shortestDist);
+  html += '</div></div>';
+
+  createGameModal(html);
+  currentMapZoom = 1.0;
+
+  const pathData = findPathsUpToDistance(gameName, amuletName, shortestDist);
+  setTimeout(() => {
+    const { gameToLayer } = reorganizeMapLayers(pathData);
+    drawMapArrows(pathData, gameName, amuletName, gameToLayer);
+  }, 150);
+}
+
+function closeGameMapPreview() {
+  const fn = _previewMapReturnFn;
+  _previewMapReturnFn = null;
+  if (fn) fn(); else closeGameModal();
+}
+
+window.showGameMapPreview = showGameMapPreview;
+window.closeGameMapPreview = closeGameMapPreview;
+
 // Returns a compact vertical bar chart of shortest-path DAG layer widths.
 function generateLayerPreview(startName, amuletName) {
   const dFS = bfsAllDistances(startName);
