@@ -558,6 +558,39 @@ function confirmStartChoice(index) {
   completeGameStart(chosen.start, amulet, saveName, chosen.type);
 }
 
+function previewStartMap(index) {
+  if (!_pendingStartOptions) return;
+  const { options, amulet } = _pendingStartOptions;
+  const opt = options[index];
+  const startName = opt.start.name;
+  const amuletName = amulet.name;
+  const dFS = bfsAllDistances(startName);
+  const shortestDist = dFS.get(amuletName) || 1;
+
+  let html = '<div style="padding:12px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
+  html += `<span style="color:var(--color-gold);font-weight:bold;font-size:14px;">${startName} → ${amuletName}</span>`;
+  html += '<button onclick="backToStartChoice()" style="padding:5px 14px;background:#555;border:none;border-radius:6px;color:#fff;cursor:pointer;font-weight:bold;">← Back</button>';
+  html += '</div>';
+  html += '<div id="map-view-container">';
+  html += generateMapView(startName, amuletName, shortestDist);
+  html += '</div></div>';
+
+  createGameModal(html);
+
+  const pathData = findPathsUpToDistance(startName, amuletName, shortestDist);
+  setTimeout(() => {
+    const { gameToLayer } = reorganizeMapLayers(pathData);
+    drawMapArrows(pathData, startName, amuletName, gameToLayer);
+  }, 150);
+}
+
+function backToStartChoice() {
+  if (!_pendingStartOptions) { closeGameModal(); return; }
+  const { options, amulet, saveName } = _pendingStartOptions;
+  showStartingChoiceModal(options, amulet, saveName);
+}
+
 // Returns a compact vertical bar chart of shortest-path DAG layer widths.
 function generateLayerPreview(startName, amuletName) {
   const dFS = bfsAllDistances(startName);
@@ -596,12 +629,16 @@ function showStartingChoiceModal(startOptions, amulet, saveName) {
   const bonusDesc  = { Action: '1 Weapon Reward', Traditional: '2 Item Rewards + 1 Curse', Strategy: '40 Gold', Deckbuilding: '2 Card Rewards' };
   const panels = startOptions.map((opt, i) => {
     const col = typeColors[opt.type] || '#555';
+    const dFS = bfsAllDistances(opt.start.name);
+    const pathLen = dFS.get(amulet.name) || '?';
     return `
       <div style="background:#222;border:2px solid ${col};border-radius:10px;padding:16px 12px;width:190px;display:flex;flex-direction:column;align-items:center;gap:8px;box-sizing:border-box;">
         <div style="background:${col};border-radius:4px;padding:2px 12px;font-size:11px;font-weight:bold;color:#fff;">${opt.type}</div>
         <div style="font-weight:bold;color:#e6d5b8;font-size:13px;text-align:center;line-height:1.3;">${opt.start.name}</div>
         <div style="font-size:11px;color:#777;">${opt.start.year || ''}</div>
+        <div style="font-size:11px;color:#aaa;">Shortest path: <strong style="color:var(--color-gold);">${pathLen} games</strong></div>
         ${generateLayerPreview(opt.start.name, amulet.name)}
+        <button onclick="previewStartMap(${i})" style="padding:4px 0;background:#333;border:1px solid #555;border-radius:5px;color:#bbb;cursor:pointer;font-size:11px;width:100%;">View Map</button>
         <div style="background:rgba(255,255,255,0.06);border-radius:6px;padding:7px;width:100%;box-sizing:border-box;text-align:center;font-size:11px;color:#ccc;">${bonusDesc[opt.type] || ''}</div>
         <button onclick="confirmStartChoice(${i})" style="padding:7px 0;background:${col};border:none;border-radius:6px;color:#fff;font-weight:bold;cursor:pointer;font-size:13px;width:100%;">Choose</button>
       </div>`;
@@ -815,11 +852,20 @@ function completeGameStart(start, amulet, saveName, startType) {
   applyStartingBonus(startType, () => {
     saveCurrentGame();
     updateSaveList();
+
+    const startCombat = () => {
+      if (window.useDiceCombat && typeof showDiceCombatModal === 'function') showDiceCombatModal();
+      else if (typeof showCombatModal === 'function') showCombatModal();
+    };
+
     if (selectedLocation && selectedLocation.game === 'Hades' && typeof showHadesBoonSelection === 'function') {
       gameState.hadesStartBoonTimeout = setTimeout(() => {
         gameState.hadesStartBoonTimeout = null;
         showHadesBoonSelection(false);
       }, 500);
+    } else {
+      if (typeof showEventModal === 'function') showEventModal(null, startCombat);
+      else startCombat();
     }
   });
 }

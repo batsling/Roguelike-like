@@ -109,6 +109,18 @@ const CurseManager = {
       return false;
     }
 
+    // Remove associated curse card from deck if any
+    const curseObj = gameState.activeCurses[index];
+    if (curseObj && curseObj._cardAdded && Array.isArray(gameState.deck)) {
+      const cardIdx = gameState.deck.findIndex(c => c.name === curseObj._cardAdded);
+      if (cardIdx !== -1) {
+        gameState.deck.splice(cardIdx, 1);
+        if (typeof createNotification === 'function') {
+          createNotification(`${curseObj._cardAdded} removed from deck.`, '#888', '🗑️');
+        }
+      }
+    }
+
     gameState.activeCurses.splice(index, 1);
 
     if (updateUI) {
