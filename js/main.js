@@ -581,27 +581,34 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     return d !== undefined && d >= MIN_PATH_LENGTH && d <= MAX_PATH_LENGTH;
   });
 
-  // Prefer amulet candidates where the valid-path subgraph has a fork somewhere:
-  // at least one BFS depth layer (between start and amulet) contains 2+ nodes
-  // that lie on valid paths (dFromStart + dToAmulet ≤ MAX_PATH_LENGTH), meaning
-  // the player faces a real choice at that point rather than a straight line.
-  const forkedCandidates = candidates.filter(g => {
-    const amuletDist = dFromStart.get(g.name);
-    const dToAmulet = bfsAllDistances(g.name);
+  // Score each candidate by how many intermediate layers in the exact shortest-path DAG
+  // have 2+ nodes — each such layer gives the player a real branching choice on the map.
+  // We use dFromStart + dToAmulet === amuletDist (exact shortest path) because that is
+  // exactly what the map displays.
+  function dagBranchScore(amuletName) {
+    const amuletDist = dFromStart.get(amuletName);
+    const dToAmulet = bfsAllDistances(amuletName);
     const countAtDepth = new Map();
     for (const [name, fromDist] of dFromStart) {
       if (fromDist === 0 || fromDist >= amuletDist) continue;
       const toDist = dToAmulet.get(name);
-      if (toDist !== undefined && fromDist + toDist <= MAX_PATH_LENGTH) {
+      if (toDist !== undefined && fromDist + toDist === amuletDist) {
         countAtDepth.set(fromDist, (countAtDepth.get(fromDist) || 0) + 1);
       }
     }
+    let branchedLayers = 0;
     for (const count of countAtDepth.values()) {
-      if (count >= 2) return true;
+      if (count >= 2) branchedLayers++;
     }
-    return false;
-  });
-  if (forkedCandidates.length > 0) candidates = forkedCandidates;
+    return branchedLayers;
+  }
+
+  const scored = candidates.map(g => ({ g, score: dagBranchScore(g.name) }));
+  const maxScore = scored.reduce((max, s) => Math.max(max, s.score), 0);
+  if (maxScore > 0) {
+    // Keep candidates within 1 branched-layer of the best to preserve run variety
+    candidates = scored.filter(s => s.score >= maxScore - 1).map(s => s.g);
+  }
 
   // Fall back to any connected game (excluding start) if path constraint leaves nothing
   if (candidates.length === 0) candidates = eligible.filter(g => g.name !== start.name);
