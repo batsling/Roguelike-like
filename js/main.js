@@ -568,15 +568,22 @@ function previewStartMap(index) {
   const shortestDist = dFS.get(amuletName) || 1;
 
   let html = '<div style="padding:12px;">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">';
   html += `<span style="color:var(--color-gold);font-weight:bold;font-size:14px;">${startName} → ${amuletName}</span>`;
-  html += '<button onclick="backToStartChoice()" style="padding:5px 14px;background:#555;border:none;border-radius:6px;color:#fff;cursor:pointer;font-weight:bold;">← Back</button>';
+  html += `<div style="display:flex;align-items:center;gap:8px;">
+    <button onclick="zoomMap(0.8)" style="padding:4px 10px;background:#555;border:none;border-radius:4px;color:#fff;cursor:pointer;font-weight:bold;">−</button>
+    <span id="map-zoom-level" style="color:#888;min-width:44px;text-align:center;">100%</span>
+    <button onclick="zoomMap(1.25)" style="padding:4px 10px;background:#555;border:none;border-radius:4px;color:#fff;cursor:pointer;font-weight:bold;">+</button>
+    <button onclick="resetMapZoom()" style="padding:4px 10px;background:#555;border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:10px;">Reset</button>
+    <button onclick="backToStartChoice()" style="padding:4px 14px;background:#444;border:none;border-radius:6px;color:#fff;cursor:pointer;font-weight:bold;">← Back</button>
+  </div>`;
   html += '</div>';
   html += '<div id="map-view-container">';
   html += generateMapView(startName, amuletName, shortestDist);
   html += '</div></div>';
 
   createGameModal(html);
+  currentMapZoom = 1.0;
 
   const pathData = findPathsUpToDistance(startName, amuletName, shortestDist);
   setTimeout(() => {
