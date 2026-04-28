@@ -6169,10 +6169,11 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
     return card;
   }
 
-  // Pick 3 unique cards
+  // Pick 3 + discovery unique cards
+  const numCardChoices = 3 + (typeof discovery !== 'undefined' ? discovery : 0);
   const chosen = [];
   const seen   = new Set();
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < numCardChoices; i++) {
     const card = pickOne(seen);
     if (!card) break;
     seen.add(card.name);
