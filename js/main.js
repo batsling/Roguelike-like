@@ -552,11 +552,57 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
   // Tune MIN_PATH_LENGTH and MAX_PATH_LENGTH to adjust typical run depth.
   const MIN_PATH_LENGTH = 5;
   const MAX_PATH_LENGTH = 8;
+
+  // BFS helper: returns a Map of { nodeName -> distance } for all reachable nodes.
+  function bfsAllDistances(startName) {
+    const dist = new Map();
+    dist.set(startName, 0);
+    const queue = [startName];
+    let qi = 0;
+    while (qi < queue.length) {
+      const cur = queue[qi++];
+      const curDist = dist.get(cur);
+      const neighbors = typeof getGameConnections === 'function' ? getGameConnections(cur) : [];
+      for (const nb of neighbors) {
+        if (!dist.has(nb)) {
+          dist.set(nb, curDist + 1);
+          queue.push(nb);
+        }
+      }
+    }
+    return dist;
+  }
+
+  const dFromStart = bfsAllDistances(start.name);
+
   let candidates = eligible.filter(g => {
     if (g.name === start.name) return false;
-    const dist = bfs(start.name, g.name);
-    return typeof dist === 'number' && dist >= MIN_PATH_LENGTH && dist <= MAX_PATH_LENGTH;
+    const d = dFromStart.get(g.name);
+    return d !== undefined && d >= MIN_PATH_LENGTH && d <= MAX_PATH_LENGTH;
   });
+
+  // Prefer amulet candidates where the valid-path subgraph has a fork somewhere:
+  // at least one BFS depth layer (between start and amulet) contains 2+ nodes
+  // that lie on valid paths (dFromStart + dToAmulet ≤ MAX_PATH_LENGTH), meaning
+  // the player faces a real choice at that point rather than a straight line.
+  const forkedCandidates = candidates.filter(g => {
+    const amuletDist = dFromStart.get(g.name);
+    const dToAmulet = bfsAllDistances(g.name);
+    const countAtDepth = new Map();
+    for (const [name, fromDist] of dFromStart) {
+      if (fromDist === 0 || fromDist >= amuletDist) continue;
+      const toDist = dToAmulet.get(name);
+      if (toDist !== undefined && fromDist + toDist <= MAX_PATH_LENGTH) {
+        countAtDepth.set(fromDist, (countAtDepth.get(fromDist) || 0) + 1);
+      }
+    }
+    for (const count of countAtDepth.values()) {
+      if (count >= 2) return true;
+    }
+    return false;
+  });
+  if (forkedCandidates.length > 0) candidates = forkedCandidates;
+
   // Fall back to any connected game (excluding start) if path constraint leaves nothing
   if (candidates.length === 0) candidates = eligible.filter(g => g.name !== start.name);
 
