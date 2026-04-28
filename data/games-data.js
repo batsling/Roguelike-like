@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 629 games, 791 connections
-// 542 connected, 169 influencers
+// 638 games, 804 connections
+// 549 connected, 173 influencers
 
 var GAMES_DATA = [
   {
@@ -21,7 +21,8 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Auro: A Monster-Bumping Adventure"
+      "Auro: A Monster-Bumping Adventure",
+      "Quest of Dungeons"
     ],
     "coverImage": "images/covers/100-rogues.jpg"
   },
@@ -299,7 +300,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/army-of-ruin.png"
+    "coverImage": "images/covers/army-of-ruin.jpg"
   },
   {
     "name": "Arrogue",
@@ -363,7 +364,7 @@ var GAMES_DATA = [
       "space"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/astro-prospector.png"
+    "coverImage": "images/covers/astro-prospector.jpg"
   },
   {
     "name": "Astronarch",
@@ -389,7 +390,7 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Pesticide Not Required"
     ],
-    "coverImage": "images/covers/atomicrops.png"
+    "coverImage": "images/covers/atomicrops.jpg"
   },
   {
     "name": "Auro: A Monster-Bumping Adventure",
@@ -490,7 +491,8 @@ var GAMES_DATA = [
       "Menherarium",
       "Raccoin: Coin Pusher Roguelike",
       "Cursed Words",
-      "Passant: A Chess Roguelike"
+      "Passant: A Chess Roguelike",
+      "Tic Tactic"
     ],
     "coverImage": "images/covers/balatro.jpg"
   },
@@ -634,7 +636,7 @@ var GAMES_DATA = [
       "tower defense"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/bella-wants-blood.png"
+    "coverImage": "images/covers/bella-wants-blood.jpg"
   },
   {
     "name": "Beneath Apple Manor",
@@ -744,7 +746,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/bloodshed.png"
+    "coverImage": "images/covers/bloodshed.jpg"
   },
   {
     "name": "Bloons TD 6: Rogue Legends",
@@ -756,7 +758,7 @@ var GAMES_DATA = [
       "tower defense"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/bloons-td-6-rogue-legends.png"
+    "coverImage": "images/covers/bloons-td-6-rogue-legends.jpg"
   },
   {
     "name": "Blue Prince",
@@ -814,7 +816,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/boyfriend-dungeon.png"
+    "coverImage": "images/covers/boyfriend-dungeon.jpg"
   },
   {
     "name": "BPM: Bullets Per Minute",
@@ -870,7 +872,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/broomsweeper.png"
+    "coverImage": "images/covers/broomsweeper.jpg"
   },
   {
     "name": "Brotato",
@@ -943,7 +945,7 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Dungeonmans"
     ],
-    "coverImage": "images/covers/castle-of-the-winds.png"
+    "coverImage": "images/covers/castle-of-the-winds.jpg"
   },
   {
     "name": "Cat God Ranch",
@@ -1242,7 +1244,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/coin-crypt.png"
+    "coverImage": "images/covers/coin-crypt.jpg"
   },
   {
     "name": "Colt Canyon",
@@ -1254,7 +1256,7 @@ var GAMES_DATA = [
       "western"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/colt-canyon.png"
+    "coverImage": "images/covers/colt-canyon.jpg"
   },
   {
     "name": "Commander Quest",
@@ -1298,7 +1300,7 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Bella Wants Blood"
     ],
-    "coverImage": "images/covers/core-defense.png"
+    "coverImage": "images/covers/core-defense.jpg"
   },
   {
     "name": "Corpse Keeper",
@@ -1493,7 +1495,7 @@ var GAMES_DATA = [
       "words"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/cursed-words.png"
+    "coverImage": "images/covers/cursed-words.jpg"
   },
   {
     "name": "Cursorblade",
@@ -1813,7 +1815,8 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Slime 3K: Rise Against Despot"
+      "Slime 3K: Rise Against Despot",
+      "Skull Horde"
     ],
     "coverImage": "images/covers/despot-s-game-dystopian-battle-simulator.jpg"
   },
@@ -2010,6 +2013,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/dome-keeper.jpg"
   },
   {
+    "name": "Don't Lose Aggro",
+    "year": 2026,
+    "type": "Action",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/don't-lose-aggro.jpg"
+  },
+  {
     "name": "Don't Starve",
     "year": 2013,
     "type": "Action",
@@ -2072,7 +2085,7 @@ var GAMES_DATA = [
       "beat 'em up"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/double-dragon-gaiden-rise-of-the-dragons.png"
+    "coverImage": "images/covers/double-dragon-gaiden-rise-of-the-dragons.jpg"
   },
   {
     "name": "Downwell",
@@ -2270,7 +2283,9 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "The Doors of Trithius"
+      "The Doors of Trithius",
+      "Quest of Dungeons",
+      "I Am Overburdened"
     ],
     "coverImage": "images/covers/dungeons-of-dredmor.jpg"
   },
@@ -2681,7 +2696,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/from-the-top.png"
+    "coverImage": "images/covers/from-the-top.jpg"
   },
   {
     "name": "FTL",
@@ -2827,7 +2842,7 @@ var GAMES_DATA = [
       "food"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/goblin-sushi.png"
+    "coverImage": "images/covers/goblin-sushi.jpg"
   },
   {
     "name": "God of Weapons",
@@ -2837,7 +2852,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/god-of-weapons.png"
+    "coverImage": "images/covers/god-of-weapons.jpg"
   },
   {
     "name": "Godbreakers",
@@ -2944,6 +2959,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/griftlands.jpg"
   },
   {
+    "name": "Gumballs & Dungeons",
+    "year": 2017,
+    "type": "Strategy",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/gumballs-&-dungeons.jpg"
+  },
+  {
     "name": "Gunfire Reborn",
     "year": 2020,
     "type": "Action",
@@ -2994,7 +3019,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Ancient Domains of Mystery",
       "Dwarf Fortress",
-      "NetHack"
+      "NetHack",
+      "Lost Labyrinth"
     ],
     "coverImage": "images/covers/hack.jpg"
   },
@@ -3118,7 +3144,7 @@ var GAMES_DATA = [
       "sports"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/hangtime!.png"
+    "coverImage": "images/covers/hangtime!.jpg"
   },
   {
     "name": "Has-Been Heroes",
@@ -3276,7 +3302,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/hive-blight.png"
+    "coverImage": "images/covers/hive-blight.jpg"
   },
   {
     "name": "HoloCure: Save the Fans!",
@@ -3298,7 +3324,7 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Into the Breach"
     ],
-    "coverImage": "images/covers/hoplite.png"
+    "coverImage": "images/covers/hoplite.jpg"
   },
   {
     "name": "House of Necrosis",
@@ -3321,7 +3347,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/hungry-horrors.png"
+    "coverImage": "images/covers/hungry-horrors.jpg"
   },
   {
     "name": "I Am Legion: Stand Survivors",
@@ -3332,6 +3358,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/i-am-legion-stand-survivors.jpg"
+  },
+  {
+    "name": "I Am Overburdened",
+    "year": 2017,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/i-am-overburdened.jpg"
   },
   {
     "name": "Icewall",
@@ -3490,7 +3526,7 @@ var GAMES_DATA = [
       "food"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/juicy-realm.png"
+    "coverImage": "images/covers/juicy-realm.jpg"
   },
   {
     "name": "Jupiter Hell",
@@ -3552,7 +3588,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/kill-the-brickman.png"
+    "coverImage": "images/covers/kill-the-brickman.jpg"
   },
   {
     "name": "Kingdom: New Lands",
@@ -3660,7 +3696,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/lethal-dungeon.png"
+    "coverImage": "images/covers/lethal-dungeon.jpg"
   },
   {
     "name": "Linley's Dungeon Crawl",
@@ -3750,7 +3786,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/lort.png"
+    "coverImage": "images/covers/lort.jpg"
   },
   {
     "name": "Lost Flame",
@@ -3770,7 +3806,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/lost-in-fantaland.png"
+    "coverImage": "images/covers/lost-in-fantaland.jpg"
   },
   {
     "name": "Lost in Random: The Eternal Die",
@@ -3781,6 +3817,18 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/lost-in-random-the-eternal-die.jpg"
+  },
+  {
+    "name": "Lost Labyrinth",
+    "year": 2001,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": [
+      "I Am Overburdened"
+    ],
+    "coverImage": "images/covers/lost-labyrinth.jpg"
   },
   {
     "name": "Luck & Loot",
@@ -4110,7 +4158,7 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Boyfriend Dungeon"
     ],
-    "coverImage": "images/covers/moon-hunters.png"
+    "coverImage": "images/covers/moon-hunters.jpg"
   },
   {
     "name": "Moon Watch",
@@ -4256,7 +4304,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/mythical-concept-starnaut.png"
+    "coverImage": "images/covers/mythical-concept-starnaut.jpg"
   },
   {
     "name": "NecroBouncer",
@@ -4360,7 +4408,8 @@ var GAMES_DATA = [
       "Iter Vehemens Ad Necem",
       "Lost Flame",
       "KeeperRL",
-      "UnReal World"
+      "UnReal World",
+      "WazHack"
     ],
     "coverImage": "images/covers/nethack.jpg"
   },
@@ -4384,7 +4433,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/nimrods.png"
+    "coverImage": "images/covers/nimrods.jpg"
   },
   {
     "name": "Noita",
@@ -4628,7 +4677,7 @@ var GAMES_DATA = [
       "chess"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/passant-a-chess-roguelike.png"
+    "coverImage": "images/covers/passant-a-chess-roguelike.jpg"
   },
   {
     "name": "Patch Quest",
@@ -4688,7 +4737,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/pesticide-not-required.png"
+    "coverImage": "images/covers/pesticide-not-required.jpg"
   },
   {
     "name": "Picayune Dreams",
@@ -4928,6 +4977,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/quasimorph.jpg"
   },
   {
+    "name": "Quest of Dungeons",
+    "year": 2014,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/quest-of-dungeons.jpg"
+  },
+  {
     "name": "Rabbit and Steel",
     "year": 2024,
     "type": "Action",
@@ -4947,7 +5006,7 @@ var GAMES_DATA = [
       "casino"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/raccoin-coin-pusher-roguelike.png"
+    "coverImage": "images/covers/raccoin-coin-pusher-roguelike.jpg"
   },
   {
     "name": "Rack and Slay",
@@ -5220,7 +5279,7 @@ var GAMES_DATA = [
       "space"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/rocket-rats.png"
+    "coverImage": "images/covers/rocket-rats.jpg"
   },
   {
     "name": "Rogue",
@@ -5266,7 +5325,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/rogue-factory.png"
+    "coverImage": "images/covers/rogue-factory.jpg"
   },
   {
     "name": "Rogue Flight",
@@ -5278,7 +5337,7 @@ var GAMES_DATA = [
       "space"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/rogue-flight.png"
+    "coverImage": "images/covers/rogue-flight.jpg"
   },
   {
     "name": "Rogue Heroes: Ruins of Tasos",
@@ -5401,7 +5460,7 @@ var GAMES_DATA = [
       "casino"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/roguejack21.png"
+    "coverImage": "images/covers/roguejack21.jpg"
   },
   {
     "name": "Roll",
@@ -5631,9 +5690,11 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "Tic Tactic"
+    ],
     "coverImage": "images/covers/shogun-showdown.jpg"
   },
   {
@@ -5694,6 +5755,16 @@ var GAMES_DATA = [
       "Realm of Ink"
     ],
     "coverImage": "images/covers/skul-the-hero-slayer.jpg"
+  },
+  {
+    "name": "Skull Horde",
+    "year": 2026,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/skull-horde.jpg"
   },
   {
     "name": "Sky's The Limit MAH-JONG",
@@ -5818,7 +5889,8 @@ var GAMES_DATA = [
       "Cursed Words",
       "Core Defense",
       "Bella Wants Blood",
-      "The Spirit Lift"
+      "The Spirit Lift",
+      "Tic Tactic"
     ],
     "coverImage": "images/covers/slay-the-spire.jpg"
   },
@@ -5830,7 +5902,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/slay-the-spire-2.png"
+    "coverImage": "images/covers/slay-the-spire-2.jpg"
   },
   {
     "name": "Slice & Dice",
@@ -5851,9 +5923,11 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "Skull Horde"
+    ],
     "coverImage": "images/covers/slime-3k-rise-against-despot.jpg"
   },
   {
@@ -6111,7 +6185,7 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Youdanji"
     ],
-    "coverImage": "images/covers/sproggiwood.png"
+    "coverImage": "images/covers/sproggiwood.jpg"
   },
   {
     "name": "Stackflow",
@@ -6145,7 +6219,7 @@ var GAMES_DATA = [
       "space"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/star-survivor.png"
+    "coverImage": "images/covers/star-survivor.jpg"
   },
   {
     "name": "Starlight Revolver",
@@ -6209,7 +6283,7 @@ var GAMES_DATA = [
       "zombies"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/stories-from-the-outbreak.png"
+    "coverImage": "images/covers/stories-from-the-outbreak.jpg"
   },
   {
     "name": "Strange Adventures in Infinite Space",
@@ -6315,7 +6389,7 @@ var GAMES_DATA = [
       "mecha"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/swarm-grinder.png"
+    "coverImage": "images/covers/swarm-grinder.jpg"
   },
   {
     "name": "Switchcars",
@@ -6404,7 +6478,7 @@ var GAMES_DATA = [
       "food"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/tangy-td.png"
+    "coverImage": "images/covers/tangy-td.jpg"
   },
   {
     "name": "Tape to Tape",
@@ -6690,7 +6764,7 @@ var GAMES_DATA = [
       "horror"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/the-spirit-lift.png"
+    "coverImage": "images/covers/the-spirit-lift.jpg"
   },
   {
     "name": "The Unliving",
@@ -6723,6 +6797,16 @@ var GAMES_DATA = [
     ],
     "gamesInfluenced": [],
     "coverImage": "images/covers/there-are-no-orcs.jpg"
+  },
+  {
+    "name": "Tic Tactic",
+    "year": 2025,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/tic-tactic.jpg"
   },
   {
     "name": "Time Wasters",
@@ -6880,7 +6964,7 @@ var GAMES_DATA = [
       "tower defense"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/tower-escape.png"
+    "coverImage": "images/covers/tower-escape.jpg"
   },
   {
     "name": "Tower Factory",
@@ -7043,7 +7127,7 @@ var GAMES_DATA = [
       "vampire"
     ],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/vampire-crawlers.png"
+    "coverImage": "images/covers/vampire-crawlers.jpg"
   },
   {
     "name": "Vampire Hunters",
@@ -7134,7 +7218,8 @@ var GAMES_DATA = [
       "God of Weapons",
       "Star Survivor",
       "Vampire Crawlers",
-      "Bloodshed"
+      "Bloodshed",
+      "Void Scrappers"
     ],
     "coverImage": "images/covers/vampire-survivors.jpg"
   },
@@ -7197,6 +7282,18 @@ var GAMES_DATA = [
     "coverImage": "images/covers/void-bastards.jpg"
   },
   {
+    "name": "Void Scrappers",
+    "year": 2022,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": [
+      "Skull Horde"
+    ],
+    "coverImage": "images/covers/void-scrappers.jpg"
+  },
+  {
     "name": "Void War",
     "year": 2024,
     "type": "Strategy",
@@ -7226,7 +7323,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/voids-vigil.png"
+    "coverImage": "images/covers/voids-vigil.jpg"
   },
   {
     "name": "Wall World",
@@ -7295,6 +7392,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/wayward.jpg"
+  },
+  {
+    "name": "WazHack",
+    "year": 2012,
+    "type": "Strategy",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/wazhack.jpg"
   },
   {
     "name": "We Need To Go Deeper",
@@ -7476,7 +7583,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/yasha-legends-of-the-demon-blade.png"
+    "coverImage": "images/covers/yasha-legends-of-the-demon-blade.jpg"
   },
   {
     "name": "Yet Another Zombie Survivors",
@@ -7510,7 +7617,7 @@ var GAMES_DATA = [
     "influenced": false,
     "tags": [],
     "gamesInfluenced": [],
-    "coverImage": "images/covers/youdanji.png"
+    "coverImage": "images/covers/youdanji.jpg"
   },
   {
     "name": "Z.H.P. Unlosing Ranger VS Darkdeath Evilman",
