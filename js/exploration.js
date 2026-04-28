@@ -294,17 +294,26 @@ function spawnChoices() {
 
     n.onclick = () => advance(g, nx, ny, encounterType);
 
-    // Map preview button — top-left corner, click to see path to amulet
+    // Map preview button — small pill below the choice node
     if (!isAmuletGame) {
       const previewBtn = document.createElement('button');
       previewBtn.title = 'Preview map from here to amulet';
-      previewBtn.textContent = '🗺';
+      previewBtn.textContent = 'Map';
       previewBtn.style.cssText = [
-        'position:absolute', 'top:-10px', 'left:-10px',
-        'width:22px', 'height:22px', 'padding:0',
-        'background:#1a3a4a', 'border:1px solid #44aacc', 'border-radius:50%',
-        'cursor:pointer', 'font-size:12px', 'line-height:1',
-        'display:flex', 'align-items:center', 'justify-content:center', 'z-index:10',
+        'position:absolute',
+        'top:calc(100% + 5px)',
+        'left:50%',
+        'transform:translateX(-50%)',
+        'padding:2px 10px',
+        'background:#1a3a4a',
+        'border:1px solid #44aacc',
+        'border-radius:4px',
+        'cursor:pointer',
+        'font-size:10px',
+        'font-weight:bold',
+        'color:#88ccff',
+        'white-space:nowrap',
+        'z-index:10',
       ].join(';');
       const gCopy = g;
       previewBtn.onclick = (e) => {
