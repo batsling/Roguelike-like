@@ -853,19 +853,36 @@ function completeGameStart(start, amulet, saveName, startType) {
     saveCurrentGame();
     updateSaveList();
 
-    const startCombat = () => {
-      if (window.useDiceCombat && typeof showDiceCombatModal === 'function') showDiceCombatModal();
-      else if (typeof showCombatModal === 'function') showCombatModal();
-    };
-
     if (selectedLocation && selectedLocation.game === 'Hades' && typeof showHadesBoonSelection === 'function') {
       gameState.hadesStartBoonTimeout = setTimeout(() => {
         gameState.hadesStartBoonTimeout = null;
         showHadesBoonSelection(false);
       }, 500);
     } else {
-      if (typeof showEventModal === 'function') showEventModal(null, startCombat);
-      else startCombat();
+      // Find the starting game node and add a Fight button the player clicks to begin
+      const allNodes = document.querySelectorAll('[data-game]');
+      let startNode = null;
+      for (const n of allNodes) {
+        if (n.dataset.game === start.name) { startNode = n; break; }
+      }
+      const triggerCombat = () => {
+        const startCombat = () => {
+          if (window.useDiceCombat && typeof showDiceCombatModal === 'function') showDiceCombatModal();
+          else if (typeof showCombatModal === 'function') showCombatModal();
+        };
+        if (typeof showEventModal === 'function') showEventModal(null, startCombat);
+        else startCombat();
+      };
+      if (startNode) {
+        const fightBtn = document.createElement('button');
+        fightBtn.className = 'finish';
+        fightBtn.textContent = 'Fight!';
+        fightBtn.style.background = '#c0392b';
+        fightBtn.onclick = () => { fightBtn.remove(); triggerCombat(); };
+        startNode.appendChild(fightBtn);
+      } else {
+        triggerCombat();
+      }
     }
   });
 }
