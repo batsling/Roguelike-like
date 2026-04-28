@@ -170,8 +170,6 @@ function loadState() {
     beatenGames = state.beatenGames;
     selectedPhase2Games = state.selectedPhase2Games;
     excludedGames = state.excludedGames ?? [];
-    roguePoints = state.roguePoints;
-    pactConditions = state.pactConditions;
     startGame = state.startGame;
     amuletGame = state.amuletGame;
     encounterHistory = state.encounterHistory ?? [];
@@ -513,6 +511,224 @@ document.getElementById('new-game-btn')?.addEventListener('click', () => {
 
 // ===== CHARACTER SELECTION FUNCTIONS =====
 
+// ===== STARTING GAME SELECTION =====
+
+function bfsAllDistances(startName) {
+  const dist = new Map();
+  dist.set(startName, 0);
+  const queue = [startName];
+  let qi = 0;
+  while (qi < queue.length) {
+    const cur = queue[qi++];
+    const curDist = dist.get(cur);
+    const neighbors = typeof getGameConnections === 'function' ? getGameConnections(cur) : [];
+    for (const nb of neighbors) {
+      if (!dist.has(nb)) { dist.set(nb, curDist + 1); queue.push(nb); }
+    }
+  }
+  return dist;
+}
+
+// Score a start→amulet pair by how many of the first earlyLayers have 2+ nodes in the
+// shortest-path DAG. Pass dToAmuletCache to avoid re-running BFS from the amulet.
+function dagBranchScoreEarly(dFromStart, amuletName, earlyLayers = 3, dToAmuletCache = null) {
+  const amuletDist = dFromStart.get(amuletName);
+  if (!amuletDist) return 0;
+  const dToAmulet = dToAmuletCache || bfsAllDistances(amuletName);
+  const countAtDepth = new Map();
+  for (const [name, fromDist] of dFromStart) {
+    if (fromDist === 0 || fromDist >= amuletDist || fromDist > earlyLayers) continue;
+    const toDist = dToAmulet.get(name);
+    if (toDist !== undefined && fromDist + toDist === amuletDist)
+      countAtDepth.set(fromDist, (countAtDepth.get(fromDist) || 0) + 1);
+  }
+  let branched = 0;
+  for (const c of countAtDepth.values()) if (c >= 2) branched++;
+  return branched;
+}
+
+let _pendingStartOptions = null;
+
+function confirmStartChoice(index) {
+  if (!_pendingStartOptions) return;
+  const { options, amulet, saveName } = _pendingStartOptions;
+  const chosen = options[index];
+  _pendingStartOptions = null;
+  closeGameModal();
+  completeGameStart(chosen.start, amulet, saveName, chosen.type);
+}
+
+function previewStartMap(index) {
+  if (!_pendingStartOptions) return;
+  const { options, amulet } = _pendingStartOptions;
+  const opt = options[index];
+  const startName = opt.start.name;
+  const amuletName = amulet.name;
+  const dFS = bfsAllDistances(startName);
+  const shortestDist = dFS.get(amuletName) || 1;
+
+  let html = '<div style="padding:12px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">';
+  html += `<span style="color:var(--color-gold);font-weight:bold;font-size:14px;">${startName} → ${amuletName}</span>`;
+  html += `<div style="display:flex;align-items:center;gap:8px;">
+    <button onclick="zoomMap(0.8)" style="padding:4px 10px;background:#555;border:none;border-radius:4px;color:#fff;cursor:pointer;font-weight:bold;">−</button>
+    <span id="map-zoom-level" style="color:#888;min-width:44px;text-align:center;">100%</span>
+    <button onclick="zoomMap(1.25)" style="padding:4px 10px;background:#555;border:none;border-radius:4px;color:#fff;cursor:pointer;font-weight:bold;">+</button>
+    <button onclick="resetMapZoom()" style="padding:4px 10px;background:#555;border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:10px;">Reset</button>
+    <button onclick="backToStartChoice()" style="padding:4px 14px;background:#444;border:none;border-radius:6px;color:#fff;cursor:pointer;font-weight:bold;">← Back</button>
+  </div>`;
+  html += '</div>';
+  html += '<div id="map-view-container">';
+  html += generateMapView(startName, amuletName, shortestDist);
+  html += '</div></div>';
+
+  createGameModal(html);
+  currentMapZoom = 1.0;
+
+  const pathData = findPathsUpToDistance(startName, amuletName, shortestDist);
+  setTimeout(() => {
+    const { gameToLayer } = reorganizeMapLayers(pathData);
+    drawMapArrows(pathData, startName, amuletName, gameToLayer);
+  }, 150);
+}
+
+function backToStartChoice() {
+  if (!_pendingStartOptions) { closeGameModal(); return; }
+  const { options, amulet, saveName } = _pendingStartOptions;
+  showStartingChoiceModal(options, amulet, saveName);
+}
+
+// In-run map preview: shows the path from any game node to the amulet.
+// returnFn is called when the player clicks "← Back"; pass null to just close.
+let _previewMapReturnFn = null;
+
+function showGameMapPreview(gameName, returnFn) {
+  _previewMapReturnFn = returnFn || null;
+  if (!gameState || !gameState.amuletGame) return;
+  const amuletName = gameState.amuletGame.name;
+  const dFS = bfsAllDistances(gameName);
+  const shortestDist = dFS.get(amuletName) || 1;
+
+  let html = '<div style="padding:12px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">';
+  html += `<span style="color:var(--color-gold);font-weight:bold;font-size:14px;">${gameName} → ${amuletName}</span>`;
+  html += `<div style="display:flex;align-items:center;gap:8px;">
+    <button onclick="zoomMap(0.8)" style="padding:4px 10px;background:#555;border:none;border-radius:4px;color:#fff;cursor:pointer;font-weight:bold;">−</button>
+    <span id="map-zoom-level" style="color:#888;min-width:44px;text-align:center;">100%</span>
+    <button onclick="zoomMap(1.25)" style="padding:4px 10px;background:#555;border:none;border-radius:4px;color:#fff;cursor:pointer;font-weight:bold;">+</button>
+    <button onclick="resetMapZoom()" style="padding:4px 10px;background:#555;border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:10px;">Reset</button>
+    <button onclick="closeGameMapPreview()" style="padding:4px 14px;background:#444;border:none;border-radius:6px;color:#fff;cursor:pointer;font-weight:bold;">← Back</button>
+  </div>`;
+  html += '</div><div id="map-view-container">';
+  html += generateMapView(gameName, amuletName, shortestDist);
+  html += '</div></div>';
+
+  createGameModal(html);
+  currentMapZoom = 1.0;
+
+  const pathData = findPathsUpToDistance(gameName, amuletName, shortestDist);
+  setTimeout(() => {
+    const { gameToLayer } = reorganizeMapLayers(pathData);
+    drawMapArrows(pathData, gameName, amuletName, gameToLayer);
+  }, 150);
+}
+
+function closeGameMapPreview() {
+  const fn = _previewMapReturnFn;
+  _previewMapReturnFn = null;
+  if (fn) fn(); else closeGameModal();
+}
+
+window.showGameMapPreview = showGameMapPreview;
+window.closeGameMapPreview = closeGameMapPreview;
+
+// Returns a compact vertical bar chart of shortest-path DAG layer widths.
+function generateLayerPreview(startName, amuletName) {
+  const dFS = bfsAllDistances(startName);
+  const amuletDist = dFS.get(amuletName);
+  if (!amuletDist) return '<div style="color:#888;font-size:11px;">No path</div>';
+  const dTA = bfsAllDistances(amuletName);
+  const countAtDepth = new Map();
+  for (const [name, fromDist] of dFS) {
+    if (fromDist === 0 || fromDist > amuletDist) continue;
+    const toDist = dTA.get(name);
+    if (toDist !== undefined && fromDist + toDist === amuletDist)
+      countAtDepth.set(fromDist, (countAtDepth.get(fromDist) || 0) + 1);
+  }
+  const maxCount = Math.max(1, ...countAtDepth.values());
+  let html = '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;">';
+  html += '<div style="background:var(--color-accent);border-radius:3px;padding:2px 8px;font-size:9px;font-weight:bold;color:#fff;min-width:60px;text-align:center;">START</div>';
+  for (let d = 1; d <= amuletDist; d++) {
+    html += '<div style="color:#444;font-size:9px;line-height:1;">↓</div>';
+    if (d === amuletDist) {
+      html += '<div style="background:var(--color-gold);border-radius:3px;padding:2px 8px;font-size:9px;font-weight:bold;color:#000;min-width:60px;text-align:center;">AMULET</div>';
+    } else {
+      const count = countAtDepth.get(d) || 1;
+      const w = Math.max(40, Math.round((count / maxCount) * 120));
+      const bg = count >= 3 ? '#2e7d32' : count === 2 ? '#388e3c' : '#333';
+      const label = count > 1 ? count + ' paths' : '';
+      html += `<div style="background:${bg};border-radius:2px;height:13px;width:${w}px;display:flex;align-items:center;justify-content:center;font-size:9px;color:${count > 1 ? '#a5d6a7' : '#555'};font-weight:bold;">${label}</div>`;
+    }
+  }
+  html += '</div>';
+  return html;
+}
+
+function showStartingChoiceModal(startOptions, amulet, saveName) {
+  _pendingStartOptions = { options: startOptions, amulet, saveName };
+  const typeColors = { Action: '#c0392b', Traditional: '#7d3c98', Strategy: '#1a5276', Deckbuilding: '#1e8449' };
+  const bonusDesc  = { Action: '1 Weapon Reward', Traditional: '2 Item Rewards + 1 Curse', Strategy: '40 Gold', Deckbuilding: '2 Card Rewards' };
+  const panels = startOptions.map((opt, i) => {
+    const col = typeColors[opt.type] || '#555';
+    const dFS = bfsAllDistances(opt.start.name);
+    const pathLen = dFS.get(amulet.name) || '?';
+    return `
+      <div style="background:#222;border:2px solid ${col};border-radius:10px;padding:16px 12px;width:190px;display:flex;flex-direction:column;align-items:center;gap:8px;box-sizing:border-box;">
+        <div style="background:${col};border-radius:4px;padding:2px 12px;font-size:11px;font-weight:bold;color:#fff;">${opt.type}</div>
+        <div style="font-weight:bold;color:#e6d5b8;font-size:13px;text-align:center;line-height:1.3;">${opt.start.name}</div>
+        <div style="font-size:11px;color:#777;">${opt.start.year || ''}</div>
+        <div style="font-size:11px;color:#aaa;">Shortest path: <strong style="color:var(--color-gold);">${pathLen} games</strong></div>
+        ${generateLayerPreview(opt.start.name, amulet.name)}
+        <button onclick="previewStartMap(${i})" style="padding:4px 0;background:#333;border:1px solid #555;border-radius:5px;color:#bbb;cursor:pointer;font-size:11px;width:100%;">View Map</button>
+        <div style="background:rgba(255,255,255,0.06);border-radius:6px;padding:7px;width:100%;box-sizing:border-box;text-align:center;font-size:11px;color:#ccc;">${bonusDesc[opt.type] || ''}</div>
+        <button onclick="confirmStartChoice(${i})" style="padding:7px 0;background:${col};border:none;border-radius:6px;color:#fff;font-weight:bold;cursor:pointer;font-size:13px;width:100%;">Choose</button>
+      </div>`;
+  }).join('');
+  createGameModal(`
+    <div style="text-align:center;padding:8px;">
+      <h2 style="color:var(--color-gold);margin-bottom:6px;">Choose Your Start</h2>
+      <p style="color:#aaa;font-size:13px;margin-bottom:18px;">All paths lead to: <strong style="color:var(--color-gold);">${amulet.name}</strong></p>
+      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">${panels}</div>
+    </div>`);
+}
+
+function applyStartingBonus(type, onComplete) {
+  switch (type) {
+    case 'Action':
+      showItemChoiceModal(onComplete, 'normal', 'Weapon');
+      break;
+    case 'Traditional':
+      showItemChoiceModal(() => {
+        showItemChoiceModal(() => {
+          const cursePool = typeof CURSES_DATA !== 'undefined' ? CURSES_DATA : [];
+          if (cursePool.length > 0) addCurse(cursePool[Math.floor(Math.random() * cursePool.length)]);
+          onComplete();
+        });
+      });
+      break;
+    case 'Strategy':
+      gold += 40;
+      if (gameState) gameState.gold = gold;
+      if (typeof updateGoldDisplay === 'function') updateGoldDisplay();
+      onComplete();
+      break;
+    case 'Deckbuilding':
+      showCardRewardModal(() => showCardRewardModal(onComplete));
+      break;
+    default:
+      onComplete();
+  }
+}
 
 document.getElementById('cancel-save')?.addEventListener('click', () => {
   document.getElementById('save-modal').style.display = 'none';
@@ -520,56 +736,69 @@ document.getElementById('cancel-save')?.addEventListener('click', () => {
 
 document.getElementById('confirm-save')?.addEventListener('click', () => {
   const saveName = document.getElementById('save-name-input').value.trim();
-  if (!saveName) {
-    alert('Please enter a save name');
-    return;
-  }
+  if (!saveName) { alert('Please enter a save name'); return; }
+  if (!selectedCharacter) { alert('Please select a character before starting your run'); return; }
+  if (gameSaves[saveName] && !confirm('Overwrite existing save?')) return;
 
-  // Check if a character has been selected
-  if (!selectedCharacter) {
-    alert('Please select a character before starting your run');
-    return;
-  }
-
-  if (gameSaves[saveName] && !confirm('Overwrite existing save?')) {
-    return;
-  }
-
-  // Pick random start and amulet
   const eligible = games.filter(g => g.connected);
-  if (eligible.length < 2) {
-    alert('Not enough games');
-    return;
-  }
+  if (eligible.length < 2) { alert('Not enough games'); return; }
 
-  // Start game must have at least 3 connections so the player always has opening choices
   const eligibleStarts = eligible.filter(g => {
     const conns = typeof getGameConnections === 'function' ? getGameConnections(g.name) : [];
     return conns.length >= 3;
   });
   const startPool = eligibleStarts.length > 0 ? eligibleStarts : eligible;
-  const start = startPool[Math.floor(Math.random() * startPool.length)];
 
-  // Path-length constraint: keep runs within a playable range.
-  // Tune MIN_PATH_LENGTH and MAX_PATH_LENGTH to adjust typical run depth.
   const MIN_PATH_LENGTH = 5;
   const MAX_PATH_LENGTH = 8;
-  let candidates = eligible.filter(g => {
-    if (g.name === start.name) return false;
-    const dist = bfs(start.name, g.name);
-    return typeof dist === 'number' && dist >= MIN_PATH_LENGTH && dist <= MAX_PATH_LENGTH;
+
+  // Pick amulet using a random reference start for anchoring
+  const refStart = startPool[Math.floor(Math.random() * startPool.length)];
+  const dFromRef = bfsAllDistances(refStart.name);
+
+  let amuletCandidates = eligible.filter(g => {
+    if (g.name === refStart.name) return false;
+    const d = dFromRef.get(g.name);
+    return d !== undefined && d >= MIN_PATH_LENGTH && d <= MAX_PATH_LENGTH;
   });
-  // Fall back to any connected game (excluding start) if path constraint leaves nothing
-  if (candidates.length === 0) candidates = eligible.filter(g => g.name !== start.name);
+  const amuletScored = amuletCandidates.map(g => ({ g, score: dagBranchScoreEarly(dFromRef, g.name) }));
+  const amuletMax = amuletScored.reduce((m, s) => Math.max(m, s.score), 0);
+  if (amuletMax > 0) amuletCandidates = amuletScored.filter(s => s.score >= amuletMax - 1).map(s => s.g);
+  if (amuletCandidates.length === 0) amuletCandidates = eligible.filter(g => g.name !== refStart.name);
+  if (amuletCandidates.length === 0) { alert('No valid amulet game'); return; }
+  const amulet = amuletCandidates[Math.floor(Math.random() * amuletCandidates.length)];
 
-  if (candidates.length === 0) {
-    alert('No valid amulet game');
-    return;
+  // Find the best eligible start per game type for this amulet, then show the top 3
+  const dToAmulet = bfsAllDistances(amulet.name);
+  const GAME_TYPES = ['Action', 'Traditional', 'Strategy', 'Deckbuilding'];
+  const bestPerType = {};
+  for (const type of GAME_TYPES) {
+    const typeStarts = eligibleStarts.filter(g => games.find(gg => gg.name === g.name)?.type === type);
+    const scored = typeStarts
+      .map(g => {
+        const dFS = bfsAllDistances(g.name);
+        const dist = dFS.get(amulet.name);
+        if (!dist || dist < MIN_PATH_LENGTH || dist > MAX_PATH_LENGTH) return null;
+        return { g, score: dagBranchScoreEarly(dFS, amulet.name, 3, dToAmulet) };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.score - a.score);
+    if (scored.length > 0) bestPerType[type] = scored[0];
   }
-  const amulet = candidates[Math.floor(Math.random() * candidates.length)];
 
-  // Initialize game state with character
+  const startOptions = GAME_TYPES
+    .filter(t => bestPerType[t])
+    .sort((a, b) => bestPerType[b].score - bestPerType[a].score)
+    .slice(0, 3)
+    .map(t => ({ type: t, start: bestPerType[t].g }));
 
+  if (startOptions.length === 0) { alert('Not enough start options found'); return; }
+
+  document.getElementById('save-modal').style.display = 'none';
+  showStartingChoiceModal(startOptions, amulet, saveName);
+});
+
+function completeGameStart(start, amulet, saveName, startType) {
   const character = PLAYER_CHARACTERS[selectedCharacter];
   if (!character) {
     console.error('ERROR: Character not found!', selectedCharacter);
@@ -577,58 +806,47 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     return;
   }
 
-
-  // Handle both old format (startingStats) and new format (no startingStats, all start at 0)
   const stats = character.startingStats || {};
-  strength = stats.strength || 0;
-  dexterity = stats.dexterity || 0;
-  intelligence = stats.intelligence || 0;
-  charisma = stats.charisma || 0;
-  attack = stats.attack || 0;
-  reroll = stats.reroll || 0;
-  dash = stats.dash || 0;
-  skip = stats.skip || 0;
-  discovery = stats.discovery || 0;
-  fov = stats.fov || 0;
-  luck = stats.luck || 0;
+  strength    = stats.strength    || 0;
+  dexterity   = stats.dexterity   || 0;
+  intelligence= stats.intelligence|| 0;
+  charisma    = stats.charisma    || 0;
+  attack      = stats.attack      || 0;
+  reroll      = stats.reroll      || 0;
+  dash        = stats.dash        || 0;
+  skip        = stats.skip        || 0;
+  discovery   = stats.discovery   || 0;
+  fov         = stats.fov         || 0;
+  luck        = stats.luck        || 0;
 
-  // Reset health and gold for new run — use character's base health if defined
   const baseHealth = character.health || 10;
   health = baseHealth;
   maxHealth = baseHealth;
   gold = 0;
-
-  // Clear inventory and curses for new run
   inventory = [];
 
-  // Store character traits
   const characterTraits = character.traits || [];
-
-  // All encounters are combat — shops/events are now accessible via post-combat choices
   const encounterTypes = {};
-  games.forEach(game => {
-    encounterTypes[game.name] = 'combat';
-  });
+  games.forEach(game => { encounterTypes[game.name] = 'combat'; });
 
-  // Select a random location for this run (based on starting difficulty of 0)
-  const initialDifficulty = getDifficultyTier(0); // Start with Easy tier
+  const initialDifficulty = getDifficultyTier(0);
   const selectedLocation = getRandomLocation(initialDifficulty);
 
   gameState = {
     currentGame: start.name,
     visitedGames: [start.name],
-    finishedGames: [], // Track unique games finished in this run
-    totalGamesBeaten: 0, // Track total number of game completions (including duplicates)
-    skippedGames: [], // Track games skipped in this run
+    finishedGames: [],
+    totalGamesBeaten: 0,
+    skippedGames: [],
     saveName: saveName,
     gameStarted: true,
     health: health,
     maxHealth: maxHealth,
     gold: gold,
     inventory: [],
-    loot: [], // Loot inventory for fish and sellable items
-    activeCurses: [], // Clear curses for new run
-    cursesTracker: {}, // Clear curse tracking for new run
+    loot: [],
+    activeCurses: [],
+    cursesTracker: {},
     beatenGames: [...beatenGames],
     startGame: start,
     amuletGame: amulet,
@@ -644,80 +862,81 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     escapePhase: false,
     escapeGames: [],
     escapeProgress: 0,
-    gameStatusEffects: {}, // Map of game names to arrays of status effects
-    encounterTypes: encounterTypes, // Map of game names to encounter types for this run
-    location: selectedLocation, // Current location for this run
-    playerLevel: 1, // Character level for dice combat system
-    activeAllies: [], // Allies that provide dice in combat
-    deck: [], // Cards collected during this run
-    postcombatChoicesUsed: { Low: [], Medium: [], High: [] } // Tracks which post-combat options have been used per difficulty tier
+    gameStatusEffects: {},
+    encounterTypes: encounterTypes,
+    location: selectedLocation,
+    playerLevel: 1,
+    activeAllies: [],
+    deck: [],
+    postcombatChoicesUsed: { Low: [], Medium: [], High: [] }
   };
 
   startGame = start;
   amuletGame = amulet;
 
-  // Invalidate BFS cache for new run (new start/amulet games)
-  if (typeof invalidateBFSCache === 'function') {
-    invalidateBFSCache();
-  }
+  if (typeof invalidateBFSCache === 'function') invalidateBFSCache();
 
-  // Clean up any escape container from previous run
   const escapeContainer = document.getElementById('escape-container');
-  if (escapeContainer) {
-    escapeContainer.remove();
-  }
+  if (escapeContainer) escapeContainer.remove();
 
-  // Hide modal and menu
-  document.getElementById('save-modal').style.display = 'none';
   document.getElementById('main-menu').style.display = 'none';
   document.getElementById('dungeon-screen').style.display = 'flex';
 
-  // Show top-right buttons when in game
   const topBarRight = document.getElementById('top-bar-right');
   if (topBarRight) topBarRight.style.display = 'flex';
 
-  // Show the normal game elements
   document.getElementById('path-viewport').style.display = 'block';
-  // Note: floating-hud is always visible, no need to show/hide
   document.getElementById('target').style.display = 'block';
 
-  // Render initial game state
-  if (typeof renderGameState === 'function') {
-    renderGameState();
-  }
-
-  // Update character UI
+  if (typeof renderGameState === 'function') renderGameState();
   updateCharacterUI();
   updateTraitsDisplay();
-
-  // Generate new bingo grid for this run
   generateBingoGrid();
 
-  // Give character's starting items
   const startingItemNames = character.startingItems || [];
   startingItemNames.forEach(itemName => {
     const itemData = items.find(i => i.name === itemName);
-    if (itemData && typeof acquireItem === 'function') {
-      acquireItem(itemData);
-    } else {
-      console.warn(`Starting item not found in items list: ${itemName}`);
-    }
+    if (itemData && typeof acquireItem === 'function') acquireItem(itemData);
+    else console.warn(`Starting item not found: ${itemName}`);
   });
 
-  saveCurrentGame();
-  updateSaveList();
+  applyStartingBonus(startType, () => {
+    saveCurrentGame();
+    updateSaveList();
 
-  // Check if starting location is a Hades location and show boon selection
-  if (selectedLocation && selectedLocation.game === 'Hades' && typeof showHadesBoonSelection === 'function') {
-    // Small delay to let the dungeon screen render first
-    // Store the timeout ID so it can be cleared if player finishes game before it fires
-    gameState.hadesStartBoonTimeout = setTimeout(() => {
-      gameState.hadesStartBoonTimeout = null;
-      // Pass false - starting boon shouldn't spawn choices, player is already at the starting location
-      showHadesBoonSelection(false);
-    }, 500);
-  }
-});
+    if (selectedLocation && selectedLocation.game === 'Hades' && typeof showHadesBoonSelection === 'function') {
+      gameState.hadesStartBoonTimeout = setTimeout(() => {
+        gameState.hadesStartBoonTimeout = null;
+        showHadesBoonSelection(false);
+      }, 500);
+    } else {
+      // Find the starting game node and add a Fight button the player clicks to begin
+      const allNodes = document.querySelectorAll('[data-game]');
+      let startNode = null;
+      for (const n of allNodes) {
+        if (n.dataset.game === start.name) { startNode = n; break; }
+      }
+      const triggerCombat = () => {
+        const startCombat = () => {
+          if (window.useDiceCombat && typeof showDiceCombatModal === 'function') showDiceCombatModal();
+          else if (typeof showCombatModal === 'function') showCombatModal();
+        };
+        if (typeof showEventModal === 'function') showEventModal(null, startCombat);
+        else startCombat();
+      };
+      if (startNode) {
+        const fightBtn = document.createElement('button');
+        fightBtn.className = 'finish';
+        fightBtn.textContent = 'Fight!';
+        fightBtn.style.background = '#c0392b';
+        fightBtn.onclick = () => { fightBtn.remove(); triggerCombat(); };
+        startNode.appendChild(fightBtn);
+      } else {
+        triggerCombat();
+      }
+    }
+  });
+}
 
 document.getElementById('continue-btn')?.addEventListener('click', () => {
   const saveList = document.getElementById('save-list');
@@ -740,12 +959,23 @@ const SETTINGS_KEY = 'roguelikeSettings';
 
 /** Load settings from localStorage, merging with defaults. */
 function loadSettings() {
-  const defaults = { specificEnemies: false };
+  const defaults = { specificEnemies: false, devToolsEnabled: false };
   try {
     const stored = localStorage.getItem(SETTINGS_KEY);
     return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
   } catch (e) {
     return defaults;
+  }
+}
+
+/** Show or hide the developer tools panel based on current settings. */
+function applyDevToolsVisibility() {
+  const panel = document.getElementById('dev-tools-panel');
+  if (!panel) return;
+  if (gameSettings.devToolsEnabled) {
+    panel.classList.remove('dev-tools-hidden');
+  } else {
+    panel.classList.add('dev-tools-hidden');
   }
 }
 
@@ -756,6 +986,8 @@ function saveSettings(settings) {
 
 /** Current in-memory settings (read once on load, written on change). */
 let gameSettings = loadSettings();
+// Apply visibility-driven settings as soon as the DOM is ready
+document.addEventListener('DOMContentLoaded', applyDevToolsVisibility);
 
 /** Show the settings modal. */
 function showSettingsModal() {
@@ -784,6 +1016,21 @@ function showSettingsModal() {
         </label>
       </div>
 
+      <div style="margin-bottom:22px;">
+        <h3 style="margin:0 0 10px;font-size:14px;color:#aaa;text-transform:uppercase;letter-spacing:.05em;">Developer</h3>
+
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:10px;border-radius:8px;border:1px solid #333;background:#111;">
+          <input type="checkbox" id="setting-dev-tools" style="margin-top:3px;width:16px;height:16px;accent-color:#ff9800;flex-shrink:0;"
+            ${gameSettings.devToolsEnabled ? 'checked' : ''}>
+          <span>
+            <strong style="display:block;margin-bottom:4px;">Developer Tools</strong>
+            <span style="font-size:12px;color:#aaa;">
+              Show the developer panel for spawning enemies, adding items, and triggering encounters directly.
+            </span>
+          </span>
+        </label>
+      </div>
+
       <div style="display:flex;justify-content:flex-end;gap:10px;">
         <button id="settings-save" style="padding:8px 20px;background:#4CAF50;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Save</button>
         <button id="settings-cancel" style="padding:8px 20px;background:#555;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Cancel</button>
@@ -795,7 +1042,9 @@ function showSettingsModal() {
 
   overlay.querySelector('#settings-save').addEventListener('click', () => {
     gameSettings.specificEnemies = overlay.querySelector('#setting-specific-enemies').checked;
+    gameSettings.devToolsEnabled = overlay.querySelector('#setting-dev-tools').checked;
     saveSettings(gameSettings);
+    applyDevToolsVisibility();
     overlay.remove();
   });
 
@@ -4447,7 +4696,7 @@ function handleDiceCombatVictory(enemy) {
       <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">Victory!</h2>
       <h3 style="color: #fff; margin: 15px 0;">${enemy.name} defeated!</h3>
       <p style="color: #FFD700; font-size: 18px; margin: 20px 0;">+${goldReward} Gold</p>
-      <button onclick="closeGameModal(); showCardRewardModal(() => showPostCombatChoiceModal('${enemy.difficulty || 'Low'}'));" style="
+      <button onclick="closeGameModal(); showCardRewardModal(() => showPostCombatChoiceModal('${enemy.difficulty || 'Low'}'), null, '${enemy.difficulty || 'Low'}');" style="
         padding: 15px 40px;
         background: linear-gradient(145deg, #4CAF50, #2E7D32);
         border: none;
@@ -4478,10 +4727,10 @@ function showPostCombatChoiceModal(difficulty) {
       key: 'rest',
       label: 'Rest',
       icon: '🛌',
-      desc: 'Heal 50% of your max health.',
+      desc: 'Heal 33% of your max health.',
       color: '#4CAF50',
       action: () => {
-        const heal = Math.floor(maxHealth * 0.5);
+        const heal = Math.floor(maxHealth * 0.33);
         health = Math.min(health + heal, maxHealth);
         window.health = health;
         gameState.health = health;
@@ -4615,103 +4864,132 @@ function showSmithChoiceModal() {
   }
 
   const MAX_UPGRADES = 2;
-  let selectedIndices = new Set();
+  const selectedIndices = new Set();
 
-  function renderSmithModal() {
-    const cardsHTML = upgradeable.map((card, idx) => {
-      const sel = selectedIndices.has(idx);
-      const color = sel ? '#FF9800' : '#555';
-      return `
-        <div class="smith-card-option" data-smith-idx="${idx}" style="
-          background: ${sel ? '#3a2800' : '#2d2d2d'};
-          border: 2px solid ${color};
-          border-radius: 10px;
-          padding: 14px;
-          cursor: pointer;
-          display:flex; flex-direction:column; align-items:center;
-          min-width:150px; max-width:180px;
-          transition: transform 0.15s;
-        ">
-          <img src="${card.imageUrl || 'images/cards/default.png'}" alt="${card.name}"
-               style="width:80px;height:80px;object-fit:contain;margin-bottom:8px;"
-               onerror="this.style.display='none'">
-          <div style="font-weight:bold;font-size:12px;color:white;text-align:center;">${card.name}</div>
-          <div style="font-size:10px;color:#aaa;margin-top:3px;">${card.rarity} · ${card.type}</div>
-          ${sel ? '<div style="color:#FF9800;font-size:11px;margin-top:4px;">✓ Selected</div>' : ''}
-        </div>
-      `;
-    }).join('');
+  const rarityCol = r => {
+    if (r === 'Rare') return 'var(--color-rare)';
+    if (r === 'Uncommon') return 'var(--color-uncommon)';
+    return 'var(--color-common)';
+  };
 
-    createGameModal(`
-      <div style="text-align:center; padding:20px; max-width:920px;">
-        <h2 style="color:#FF9800; margin-top:0;">⚒️ Smith — Upgrade Cards</h2>
-        <p style="color:#aaa; font-size:13px; margin-bottom:16px;">
-          Select up to ${MAX_UPGRADES} cards to upgrade for free.
-          (${selectedIndices.size}/${MAX_UPGRADES} selected)
-        </p>
-        <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:20px;">
-          ${cardsHTML}
+  // Build each card HTML once — selection state toggled in-place via DOM
+  const cardsHTML = upgradeable.map((card, idx) => {
+    const rc = rarityCol(card.rarity);
+    const upgDesc = card.upgradedDescription
+      ? `<div class="smith-upgrade-block">
+           <div class="smith-upgrade-label">▶ Upgraded</div>
+           <div class="smith-upgrade-cost">${card.upgradedCost != null ? `Cost: ${card.upgradedCost}` : `Cost: ${card.cost}`}</div>
+           <div class="smith-upgrade-desc">${card.upgradedDescription}</div>
+         </div>`
+      : `<div class="smith-upgrade-block" style="color:#555;font-size:10px;font-style:italic;">No upgrade available</div>`;
+
+    return `
+      <div class="smith-card-option" data-smith-idx="${idx}"
+           style="border:2px solid #555;">
+        <img src="${card.imageUrl || 'images/cards/default.png'}" alt="${card.name}"
+             style="width:72px;height:72px;object-fit:contain;margin-bottom:6px;"
+             onerror="this.style.display='none'">
+        <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:2px;">${card.name}</div>
+        <div style="font-size:10px;color:${rc};margin-bottom:6px;">${card.rarity} · ${card.type}</div>
+
+        <div class="smith-current-block">
+          <div style="font-size:10px;color:#888;margin-bottom:2px;">Current — Cost: ${card.cost}</div>
+          <div style="font-size:11px;color:#ccc;line-height:1.4;">${card.description}</div>
         </div>
-        <div style="display:flex; gap:10px; justify-content:center;">
-          <button id="smith-confirm-btn" style="
-            padding:10px 28px; background:${selectedIndices.size > 0 ? '#FF9800' : '#555'};
-            border:none; border-radius:8px; color:white; cursor:pointer; font-weight:bold;
-          ">Upgrade (${selectedIndices.size})</button>
-          <button onclick="closeGameModal()" style="
-            padding:10px 24px; background:#444; border:none; border-radius:8px;
-            color:#aaa; cursor:pointer;
-          ">Cancel</button>
-        </div>
+
+        ${upgDesc}
+
+        <div class="smith-selected-badge" style="display:none;">✓ Selected</div>
       </div>
-    `);
+    `;
+  }).join('');
 
+  createGameModal(`
+    <div style="text-align:center; padding:20px; max-width:960px;">
+      <h2 style="color:#FF9800; margin-top:0; margin-bottom:4px;">⚒️ Smith</h2>
+      <p style="color:#aaa; font-size:13px; margin-bottom:16px;">
+        Select up to ${MAX_UPGRADES} cards to upgrade for free.
+        <span id="smith-counter" style="color:#FF9800; font-weight:bold;">0/${MAX_UPGRADES} selected</span>
+      </p>
+      <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:20px;">
+        ${cardsHTML}
+      </div>
+      <div style="display:flex; gap:10px; justify-content:center;">
+        <button id="smith-confirm-btn" disabled style="
+          padding:10px 28px; background:#555; border:none; border-radius:8px;
+          color:#999; cursor:not-allowed; font-weight:bold; font-size:14px;
+          transition: background 0.15s, color 0.15s;
+        ">Upgrade (0)</button>
+        <button onclick="closeGameModal()" style="
+          padding:10px 24px; background:#333; border:1px solid #555; border-radius:8px;
+          color:#aaa; cursor:pointer; font-size:14px;
+        ">Cancel</button>
+      </div>
+    </div>
+  `);
+
+  // Update selection visuals without re-rendering the modal
+  function updateSmithUI() {
     document.querySelectorAll('.smith-card-option').forEach(el => {
-      el.onclick = () => {
-        const idx = parseInt(el.dataset.smithIdx);
-        if (selectedIndices.has(idx)) {
-          selectedIndices.delete(idx);
-        } else if (selectedIndices.size < MAX_UPGRADES) {
-          selectedIndices.add(idx);
-        }
-        renderSmithModal();
-      };
+      const idx = parseInt(el.dataset.smithIdx);
+      const sel = selectedIndices.has(idx);
+      el.style.borderColor  = sel ? '#FF9800' : '#555';
+      el.style.background   = sel ? '#2a1a00' : '#2d2d2d';
+      el.querySelector('.smith-selected-badge').style.display = sel ? 'block' : 'none';
     });
-
-    const confirmBtn = document.getElementById('smith-confirm-btn');
-    if (confirmBtn) {
-      confirmBtn.onclick = () => {
-        let upgradeCount = 0;
-        selectedIndices.forEach(idx => {
-          const card = upgradeable[idx];
-          if (card._isStarting) {
-            // Track starting card upgrades separately; applied in buildCombatDeck
-            if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
-            gameState.upgradedStartingCards[card.name] = true;
-            upgradeCount++;
-          } else {
-            const deckIdx = gameState.deck.findIndex(c => c === card || (c.name === card.name && !c.upgraded));
-            if (deckIdx !== -1) {
-              gameState.deck[deckIdx].upgraded = true;
-              if (gameState.deck[deckIdx].upgradedDescription) {
-                gameState.deck[deckIdx].description = gameState.deck[deckIdx].upgradedDescription;
-              }
-              if (gameState.deck[deckIdx].upgradedCost !== null && gameState.deck[deckIdx].upgradedCost !== undefined) {
-                gameState.deck[deckIdx].cost = gameState.deck[deckIdx].upgradedCost;
-              }
-              upgradeCount++;
-            }
-          }
-        });
-        if (typeof saveCurrentGame === 'function') saveCurrentGame();
-        closeGameModal();
-        if (typeof createNotification === 'function') {
-          createNotification(`Upgraded ${upgradeCount} card${upgradeCount !== 1 ? 's' : ''}!`, '#FF9800', '⚒️');
-        }
-      };
+    const count = selectedIndices.size;
+    const counter = document.getElementById('smith-counter');
+    if (counter) counter.textContent = `${count}/${MAX_UPGRADES} selected`;
+    const btn = document.getElementById('smith-confirm-btn');
+    if (btn) {
+      btn.disabled      = count === 0;
+      btn.textContent   = `Upgrade (${count})`;
+      btn.style.background = count > 0 ? '#FF9800' : '#555';
+      btn.style.color      = count > 0 ? 'white'   : '#999';
+      btn.style.cursor     = count > 0 ? 'pointer' : 'not-allowed';
     }
   }
 
-  renderSmithModal();
+  document.querySelectorAll('.smith-card-option').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.smithIdx);
+      if (selectedIndices.has(idx)) {
+        selectedIndices.delete(idx);
+      } else if (selectedIndices.size < MAX_UPGRADES) {
+        selectedIndices.add(idx);
+      }
+      updateSmithUI();
+    });
+  });
+
+  document.getElementById('smith-confirm-btn').addEventListener('click', () => {
+    let upgradeCount = 0;
+    selectedIndices.forEach(idx => {
+      const card = upgradeable[idx];
+      if (card._isStarting) {
+        if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
+        gameState.upgradedStartingCards[card.name] = true;
+        upgradeCount++;
+      } else {
+        const deckIdx = gameState.deck.findIndex(c => c === card || (c.name === card.name && !c.upgraded));
+        if (deckIdx !== -1) {
+          gameState.deck[deckIdx].upgraded = true;
+          if (gameState.deck[deckIdx].upgradedDescription) {
+            gameState.deck[deckIdx].description = gameState.deck[deckIdx].upgradedDescription;
+          }
+          if (gameState.deck[deckIdx].upgradedCost !== null && gameState.deck[deckIdx].upgradedCost !== undefined) {
+            gameState.deck[deckIdx].cost = gameState.deck[deckIdx].upgradedCost;
+          }
+          upgradeCount++;
+        }
+      }
+    });
+    if (typeof saveCurrentGame === 'function') saveCurrentGame();
+    closeGameModal();
+    if (typeof createNotification === 'function') {
+      createNotification(`Upgraded ${upgradeCount} card${upgradeCount !== 1 ? 's' : ''}!`, '#FF9800', '⚒️');
+    }
+  });
 }
 
 /**
@@ -5828,7 +6106,7 @@ function showDiceLevelUpChoiceModal(characterKey, onComplete) {
  * Luck shifts the rarity distribution toward Uncommon/Rare.
  * @param {Function} onComplete - Called after a card is chosen or skipped
  */
-function showCardRewardModal(onComplete, tagFilter = null) {
+function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null) {
   // Derive tagFilter from the run's chosen deck if not explicitly passed
   if (tagFilter === null && typeof gameState !== 'undefined' && gameState.selectedDeck) {
     const deckDef = (typeof AVAILABLE_DECKS !== 'undefined')
@@ -5836,6 +6114,11 @@ function showCardRewardModal(onComplete, tagFilter = null) {
       : null;
     if (deckDef && deckDef.tagFilter) tagFilter = deckDef.tagFilter;
   }
+
+  // Upgrade chance based on difficulty: Low=0%, Medium=25%, High=50%
+  const _diff = nodeDifficulty || (typeof gameState !== 'undefined' ? gameState.lastDifficultyTier : null) || 'Low';
+  const upgradeChance = _diff === 'High' ? 0.5 : _diff === 'Medium' ? 0.25 : 0;
+
   const rarityColor = (rarity) => {
     switch (rarity) {
       case 'Rare':     return '#9b59b6';
@@ -5871,13 +6154,26 @@ function showCardRewardModal(onComplete, tagFilter = null) {
 
     let candidates = pool.filter(c => c.rarity === pickedRarity);
     if (candidates.length === 0) candidates = pool;
-    return candidates[Math.floor(Math.random() * candidates.length)];
+    const card = candidates[Math.floor(Math.random() * candidates.length)];
+
+    // Roll for pre-upgraded card
+    if (card && card.canUpgrade && upgradeChance > 0 && rollWithLuckAdvantage(undefined, false) < upgradeChance) {
+      return {
+        ...card,
+        description: card.upgradedDescription || card.description,
+        cost: (card.upgradedCost !== null && card.upgradedCost !== undefined) ? card.upgradedCost : card.cost,
+        upgraded: true,
+        preUpgraded: true
+      };
+    }
+    return card;
   }
 
-  // Pick 3 unique cards
+  // Pick 3 + discovery unique cards
+  const numCardChoices = 3 + (typeof discovery !== 'undefined' ? discovery : 0);
   const chosen = [];
   const seen   = new Set();
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < numCardChoices; i++) {
     const card = pickOne(seen);
     if (!card) break;
     seen.add(card.name);
@@ -5893,22 +6189,28 @@ function showCardRewardModal(onComplete, tagFilter = null) {
     const color   = rarityColor(card.rarity);
     const imgSrc  = card.imageUrl || 'images/cards/default.png';
     const upgBtn  = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
+    const upgradedBg    = card.preUpgraded ? 'background:rgba(46,204,113,0.06);' : '';
+    const upgradedBorder = card.preUpgraded ? '#2ecc71' : color;
+    const nameLabel = card.preUpgraded
+      ? `${card.name} <span style="color:#2ecc71;font-size:14px;font-weight:bold;">+</span>`
+      : card.name;
+    const upgradedBadge = card.preUpgraded
+      ? `<div style="position:absolute;top:8px;left:8px;background:#2ecc71;color:#000;font-size:10px;font-weight:bold;padding:2px 7px;border-radius:4px;">UPGRADED</div>`
+      : '';
     return `
-      <div class="card-reward-option" data-card-idx="${idx}" style="
-        background:#1e1e2e; border:3px solid ${color}; border-radius:12px;
-        padding:16px; display:flex; flex-direction:column; align-items:center;
-        width:200px; cursor:pointer; position:relative;
-        transition: transform 0.15s, box-shadow 0.15s;
-      " onmouseenter="if(!this.classList.contains('cr-selected')){this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px ${color}44';}"
-         onmouseleave="if(!this.classList.contains('cr-selected')){this.style.transform='';this.style.boxShadow='';}">
+      <div class="card-reward-option card-reward-card" data-card-idx="${idx}"
+        style="border:3px solid ${upgradedBorder};${upgradedBg}"
+        onmouseenter="if(!this.classList.contains('cr-selected')){this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px ${upgradedBorder}44';}"
+        onmouseleave="if(!this.classList.contains('cr-selected')){this.style.transform='';this.style.boxShadow='';}">
+        ${upgradedBadge}
         ${upgBtn}
         <img src="${imgSrc}" alt="${card.name}"
              style="width:110px;height:110px;object-fit:contain;margin-bottom:10px;"
              onerror="this.style.display='none'">
-        <div style="font-weight:bold;font-size:15px;color:white;text-align:center;margin-bottom:4px;">${card.name}</div>
+        <div style="font-weight:bold;font-size:15px;color:white;text-align:center;margin-bottom:4px;">${nameLabel}</div>
         <div style="color:${color};font-size:12px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
-        <div style="font-size:12px;color:#ccc;text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>
-        <div style="color:#ffd700;font-size:13px;font-weight:bold;">Cost: ${card.cost}</div>
+        <div style="font-size:12px;color:${card.preUpgraded ? '#7dffb0' : '#ccc'};text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>
+        <div style="color:var(--color-highlight);font-size:13px;font-weight:bold;">Cost: ${card.cost}</div>
       </div>
     `;
   }).join('');
@@ -7179,7 +7481,7 @@ function completeChampionFailure() {
 }
 
 
-function showItemChoiceModal(onComplete, chestType = 'normal') {
+function showItemChoiceModal(onComplete, chestType = 'normal', typeFilter = null) {
   if (items.length === 0) {
     // If no items, just spawn choices or call callback
     if (typeof onComplete === 'function') {
@@ -7193,6 +7495,10 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
   // Apply location effects to item pool (e.g., gun spawn boost from Gungeon locations)
   // Exclude N/A rarity items (boons) from normal item pools
   let itemPool = items.filter(item => item.rarity !== 'N/A');
+  if (typeFilter) {
+    const filtered = itemPool.filter(item => item.type === typeFilter);
+    if (filtered.length > 0) itemPool = filtered;
+  }
   if (gameState?.location && typeof applyGunSpawnBoost === 'function') {
     itemPool = applyGunSpawnBoost(itemPool, gameState.location);
   }

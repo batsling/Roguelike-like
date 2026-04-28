@@ -1809,7 +1809,11 @@ function selectedTeleport(options = {}) {
       cursor: pointer;
       transition: all 0.2s ease;
       text-align: center;
+      position: relative;
     ">
+      <button class="map-preview-btn" data-preview-game="${game.name.replace(/"/g, '&quot;')}"
+        style="position:absolute;top:8px;left:8px;width:26px;height:26px;padding:0;background:#1a3a4a;border:1px solid #44aacc;border-radius:50%;cursor:pointer;font-size:14px;line-height:1;z-index:10;"
+        title="Preview map from here to amulet">🗺</button>
       <h3 style="color: #f39c12; margin: 0 0 10px 0; font-size: 18px;">${game.name}</h3>
       <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 10px;">
         <span style="color: #888; font-size: 14px;">📅 ${game.year}</span>
@@ -1834,6 +1838,17 @@ function selectedTeleport(options = {}) {
         </div>
       </div>
     `);
+
+    // Map preview button handlers for teleport choices
+    const teleportOpts = { numChoices, year, type, tags, title };
+    document.querySelectorAll('.map-preview-btn[data-preview-game]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        if (typeof showGameMapPreview === 'function') {
+          showGameMapPreview(btn.dataset.previewGame, () => selectedTeleport(teleportOpts));
+        }
+      };
+    });
 
     // Add click handlers to teleport choices
     document.querySelectorAll('.teleport-choice').forEach(choice => {
@@ -2185,6 +2200,9 @@ function showPoopSelection() {
         transition: all 0.2s;
         position: relative;
       ">
+        <button class="poop-preview-btn" data-preview-game="${gameName.replace(/"/g, '&quot;')}"
+          style="position:absolute;top:5px;left:5px;width:22px;height:22px;padding:0;background:#1a3a4a;border:1px solid #44aacc;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;z-index:10;"
+          title="Preview map from here to amulet">🗺</button>
         <div style="font-weight: bold; color: white; text-align: center; font-size: 14px;">
           ${gameName}
         </div>
@@ -2223,6 +2241,16 @@ function showPoopSelection() {
         </div>
       </div>
     `);
+
+    // Map preview button handlers for poop selection
+    document.querySelectorAll('.poop-preview-btn[data-preview-game]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        if (typeof showGameMapPreview === 'function') {
+          showGameMapPreview(btn.dataset.previewGame, () => showPoopSelection());
+        }
+      };
+    });
 
     // Add hover and click handlers
     document.querySelectorAll('.poop-game-card').forEach(card => {

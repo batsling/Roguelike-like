@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Roguelike-Like</title>
   <!-- External CSS -->
-  <link rel="stylesheet" href="css/styles.css?v=34">
+  <link rel="stylesheet" href="css/styles.css?v=36">
 </head>
 <body>
   <!-- Top Bar -->
@@ -135,7 +135,7 @@
                 <span class="stat-label stat-color-fov">FoV:</span>
                 <span class="stat-value" id="stats-fov">3</span>
               </div>
-              <div class="stat-item stat-tooltip" data-tooltip="Number of item choices when collecting rewards.">
+              <div class="stat-item stat-tooltip" data-tooltip="Number of extra choices when collecting rewards — applies to both item rewards and card rewards.">
                 <img src="images/Stats/Discovery.png" class="stat-icon" alt="Discovery">
                 <span class="stat-label stat-color-discovery">Discovery:</span>
                 <span class="stat-value" id="stats-discovery">2</span>
@@ -334,7 +334,7 @@
                 </div>
               </div>
               <p class="text-center mt-20 text-light-gray-aaa italic font-size-09em">
-                * Discovery stat increases the number of items you can choose from!
+                * Discovery stat increases the number of choices when collecting item rewards and card rewards!
               </p>
               <button id="close-rewards-btn" aria-label="Close rewards modal">Close</button>
             </div>
@@ -465,7 +465,7 @@
       </div>
 
     <!-- Dev Tools Section -->
-    <div class="three-column-layout">
+    <div id="dev-tools-panel" class="three-column-layout dev-tools-hidden">
       <div class="column-header text-center font-size-24 grid-col-span-full bg-dev-tools-header">
         🛠️ Developer Tools
       </div>
@@ -711,39 +711,6 @@
 
 
 
-    <!-- Pact of Punishment -->
-    <div id="pact-of-punishment">
-      <h2>Pact of Punishment</h2>
-      <label for="completions">Number of Times Beaten:</label>
-      <input type="number" id="completions" min="0" value="0">
-      <button id="calculateRoguePoints">Calculate Rogue Points</button>
-      <div id="rogue-points-display"></div>
-      <h3>Conditions</h3>
-      <div class="pact-condition">
-        <span>Start with less health (1 Rogue Point per health lost)</span>
-        <button id="lessHealth-minus">-</button>
-        <span id="lessHealth-count">0</span>
-        <button id="lessHealth-plus">+</button>
-      </div>
-      <div class="pact-condition">
-        <span>Require more games to escape (2 Rogue Point per extra game)</span>
-        <button id="moreGames-minus">-</button>
-        <span id="moreGames-count">0</span>
-        <button id="moreGames-plus">+</button>
-      </div>
-      <div class="pact-condition">
-        <span>Randomly select one required game (2 Rogue Point per random game)</span>
-        <button id="randomGame-minus">-</button>
-        <span id="randomGame-count">0</span>
-        <button id="randomGame-plus">+</button>
-      </div>
-      <div class="pact-condition">
-        <span>Add a "Challenge Run" (3 Rogue Point per challenge run)</span>
-        <button id="challengeRun-minus">-</button>
-        <span id="challengeRun-count">0</span>
-        <button id="challengeRun-plus">+</button>
-      </div>
-    </div>
   </div>
 
   <!-- Box Zoom -->
@@ -755,17 +722,17 @@
 
   <!-- Load embedded data first (no CORS issues) -->
   <script src="data/characters-data.js?v=25"></script>
-  <script src="data/games-data.js?v=37"></script>
-  <script src="data/items-data.js?v=32"></script>
-  <script src="data/enemies-data.js?v=24"></script>
+  <script src="data/games-data.js?v=38"></script>
+  <script src="data/items-data.js?v=33"></script>
+  <script src="data/enemies-data.js?v=25"></script>
   <script src="data/events-data.js?v=24"></script>
   <script src="data/curses-data.js?v=22"></script>
   <script src="data/allies-data.js?v=1"></script>
   <script src="data/weapons-data.js?v=4"></script>
-  <script src="data/cards-data.js?v=20"></script>
+  <script src="data/cards-data.js?v=21"></script>
   <script src="data/dice-data.js?v=2"></script>
-  <script src="data/statuses-data.js?v=3"></script>
-  <script src="data/moves-data.js?v=1"></script>
+  <script src="data/statuses-data.js?v=4"></script>
+  <script src="data/moves-data.js?v=2"></script>
   <script src="data/addons-data.js?v=4"></script>
   <script src="data/spells-data.js?v=1"></script>
   <script src="data/spell-keywords-data.js?v=1"></script>
@@ -774,15 +741,15 @@
   <!-- Load utilities first (constants, storage, state management) -->
   <script src="js/constants.js?v=3"></script>
   <script src="js/storage.js?v=1"></script>
-  <script src="js/state-mutator.js?v=2"></script>
-  <script src="js/curse-manager.js?v=1"></script>
+  <script src="js/state-mutator.js?v=3"></script>
+  <script src="js/curse-manager.js?v=2"></script>
   <script src="js/locations.js?v=1"></script>
 
   <!-- Load game logic -->
   <script src="js/data.js?v=26"></script>
   <script src="js/loot.js?v=1"></script>
-  <script src="js/items.js?v=34"></script>
-  <script src="js/ui.js?v=38"></script>
+  <script src="js/items.js?v=35"></script>
+  <script src="js/ui.js?v=40"></script>
   <script src="js/combat-effects.js?v=1"></script>
   <script src="js/dice-system.js?v=1"></script>
   <script src="js/dice-renderer.js?v=3"></script>
@@ -800,9 +767,9 @@
   <script src="js/character-select.js?v=1"></script>
   <script src="js/verification.js?v=11"></script>
   <script src="js/escape.js?v=16"></script>
-  <script src="js/exploration.js?v=1"></script>
+  <script src="js/exploration.js?v=2"></script>
   <script src="js/bingo.js?v=2"></script>
-  <script src="js/main.js?v=56"></script>
+  <script src="js/main.js?v=64"></script>
   <script src="js/event-engine.js?v=5"></script>
 </body>
 </html>

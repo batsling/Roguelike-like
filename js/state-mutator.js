@@ -389,6 +389,23 @@ const StateMutator = {
 
     gameState.activeCurses.push(curseInstance);
 
+    // Parse description for "Add X to (your) Deck" and add the card
+    const descMatch = (curseInstance.description || '').match(/[Aa]dd ([^.]+?) to(?: your)? [Dd]eck/);
+    if (descMatch) {
+      const cardRef = descMatch[1].trim();
+      let cardToAdd = null;
+      if (/a random curse/i.test(cardRef)) {
+        const curseCards = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : []).filter(c => c.type === 'Curse');
+        if (curseCards.length > 0) cardToAdd = curseCards[Math.floor(Math.random() * curseCards.length)];
+      } else {
+        cardToAdd = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : []).find(c => c.name === cardRef);
+      }
+      if (cardToAdd && typeof addCardToDeck === 'function') {
+        addCardToDeck({ ...cardToAdd });
+        curseInstance._cardAdded = cardToAdd.name;
+      }
+    }
+
     if (updateUI) {
       if (typeof updateCursesDisplay === 'function') updateCursesDisplay();
       if (typeof updateTopBar === 'function') updateTopBar();
@@ -419,6 +436,18 @@ const StateMutator = {
     const index = gameState.activeCurses.findIndex(c => c.name === curseName);
     if (index === -1) {
       return false;
+    }
+
+    // Remove associated curse card from deck if any
+    const curseObj = gameState.activeCurses[index];
+    if (curseObj && curseObj._cardAdded && Array.isArray(gameState.deck)) {
+      const cardIdx = gameState.deck.findIndex(c => c.name === curseObj._cardAdded);
+      if (cardIdx !== -1) {
+        gameState.deck.splice(cardIdx, 1);
+        if (typeof createNotification === 'function') {
+          createNotification(`${curseObj._cardAdded} removed from deck.`, '#888', '🗑️');
+        }
+      }
     }
 
     gameState.activeCurses.splice(index, 1);

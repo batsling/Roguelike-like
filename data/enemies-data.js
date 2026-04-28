@@ -10,7 +10,7 @@ var ENEMIES_DATA = [
     "hpMin": 30,
     "hpMax": 34,
     "ability": "Stagger 33%",
-    "pattern": "Always: 75% 6 Dmg Ranged, 1 Burn / 25% 9 Dmg Melee",
+    "pattern": "Always: 75% 6 Magic Dmg Fire / 25% 9 Dmg Melee",
     "game": "Risk of Rain",
     "location": "General",
     "dice": [
@@ -92,7 +92,7 @@ var ENEMIES_DATA = [
     "hpMin": 150,
     "hpMax": 160,
     "ability": "Stagger 33%",
-    "pattern": "Always: 50% 3x5 Dmg Ranged / 50% 8 Dmg Melee 5 Burn",
+    "pattern": "Always: 50% 3x5 Dmg Ranged / 50% 8 Magic Dmg Fire 5 Burn",
     "game": "Risk of Rain",
     "location": "General",
     "dice": [

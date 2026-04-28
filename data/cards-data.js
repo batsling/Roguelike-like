@@ -209,6 +209,7 @@ var CARDS_DATA = [
     "imageUrl": "images/items/BagO'Glitter.png",
     "game": "Mewgenics",
     "tags": [
+      "weapon",
       "debuff",
       "exhaust"
     ]
@@ -2230,8 +2231,8 @@ var CARDS_DATA = [
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
-    "description": "Inflict -6 Power Cleave and Inflict 6 Shackled Cleave.",
-    "upgradedDescription": "Inflict -8 Power Cleave and Inflict 8 Shackled Cleave.",
+    "description": "Inflict -6 Power Cleave and Inflict 6 Shackled Cleave. Exhaust.",
+    "upgradedDescription": "Inflict -8 Power Cleave and Inflict 8 Shackled Cleave. Exhaust.",
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
@@ -2239,7 +2240,8 @@ var CARDS_DATA = [
     "game": "Slay the Spire",
     "tags": [
       "silent",
-      "debuff"
+      "debuff",
+      "exhaust"
     ]
   },
   {

@@ -36,7 +36,7 @@ var STATUSES_DATA = {
   },
   "power": {
     "name": "Power",
-    "description": "Raise or Lower the Melee or Ranged damage dealt by this target by X",
+    "description": "Raise or Lower the Melee or Ranged damage dealth by this target by X",
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
@@ -110,17 +110,6 @@ var STATUSES_DATA = {
     "who": "Enemy",
     "preference": "Neutral",
     "imageUrl": "images/statuses/Formless.png"
-  },
-  "multi_attack": {
-    "name": "Multi-Attack",
-    "description": "This enemy executes its pattern multiple times per turn, once for each stack.",
-    "type": "Ability",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "None",
-    "who": "Enemy",
-    "preference": "Neutral",
-    "imageUrl": "images/statuses/MultiAttack.png"
   },
   "multi_attack_x": {
     "name": "Multi Attack X",
@@ -608,7 +597,7 @@ var STATUSES_DATA = {
   },
   "arcane": {
     "name": "Arcane",
-    "description": "Raise or Lower the Magic damage dealt by this target by X",
+    "description": "Raise or Lower the Magic damage dealth by this target by X",
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
@@ -619,7 +608,7 @@ var STATUSES_DATA = {
   },
   "persistence": {
     "name": "Persistence",
-    "description": "Raise or Lower the severity of all non-basic statuses gained or inflicted in combat by X",
+    "description": "Raise or Lower the severity of all non-basic statuses gained or inclifted in combat by X if possible",
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
@@ -630,7 +619,7 @@ var STATUSES_DATA = {
   },
   "flame_barrier": {
     "name": "Flame Barrier",
-    "description": "When this target gets dealt Dmg, deal X Magic Dmg Fire Ranged to the attacker",
+    "description": "When a target with Flame Barrier gets dealt Dmg, the target deals X Magic Dmg Fire Ranged to the attacker",
     "type": "Buff",
     "stackable": true,
     "maxStack": null,

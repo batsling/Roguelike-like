@@ -806,19 +806,6 @@ function updateSelectedGamesDisplay() {
   }
 }
 
-// ===== PACT OF PUNISHMENT =====
-
-function updateRoguePointsDisplay() {
-  document.getElementById('rogue-points-display').textContent = `Rogue Points: ${roguePoints}`;
-}
-
-function updateConditionCounts() {
-  document.getElementById('lessHealth-count').textContent = pactConditions.lessHealth;
-  document.getElementById('moreGames-count').textContent = pactConditions.moreGames;
-  document.getElementById('randomGame-count').textContent = pactConditions.randomGame;
-  document.getElementById('challengeRun-count').textContent = pactConditions.challengeRun;
-}
-
 // ===== ENCOUNTER HISTORY =====
 
 function updateEncounterHistory() {
@@ -1317,13 +1304,13 @@ function hideItemTooltip() {
 
 function getRarityColor(rarity) {
   const rarityColors = {
-    'Common': '#aaa',
-    'Uncommon': '#4CAF50',
-    'Rare': '#9b59b6',
-    'Epic': '#e91e63',
-    'Legendary': '#ff6b00'
+    'Common':    'var(--color-common)',
+    'Uncommon':  'var(--color-uncommon)',
+    'Rare':      'var(--color-rare)',
+    'Epic':      '#e91e63',
+    'Legendary': 'var(--color-legendary)'
   };
-  return rarityColors[rarity] || '#aaa';
+  return rarityColors[rarity] || 'var(--color-common)';
 }
 
 // Export functions to global scope for backwards compatibility
