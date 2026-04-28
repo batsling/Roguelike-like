@@ -511,6 +511,136 @@ document.getElementById('new-game-btn')?.addEventListener('click', () => {
 
 // ===== CHARACTER SELECTION FUNCTIONS =====
 
+// ===== STARTING GAME SELECTION =====
+
+function bfsAllDistances(startName) {
+  const dist = new Map();
+  dist.set(startName, 0);
+  const queue = [startName];
+  let qi = 0;
+  while (qi < queue.length) {
+    const cur = queue[qi++];
+    const curDist = dist.get(cur);
+    const neighbors = typeof getGameConnections === 'function' ? getGameConnections(cur) : [];
+    for (const nb of neighbors) {
+      if (!dist.has(nb)) { dist.set(nb, curDist + 1); queue.push(nb); }
+    }
+  }
+  return dist;
+}
+
+// Score a start→amulet pair by how many of the first earlyLayers have 2+ nodes in the
+// shortest-path DAG. Pass dToAmuletCache to avoid re-running BFS from the amulet.
+function dagBranchScoreEarly(dFromStart, amuletName, earlyLayers = 3, dToAmuletCache = null) {
+  const amuletDist = dFromStart.get(amuletName);
+  if (!amuletDist) return 0;
+  const dToAmulet = dToAmuletCache || bfsAllDistances(amuletName);
+  const countAtDepth = new Map();
+  for (const [name, fromDist] of dFromStart) {
+    if (fromDist === 0 || fromDist >= amuletDist || fromDist > earlyLayers) continue;
+    const toDist = dToAmulet.get(name);
+    if (toDist !== undefined && fromDist + toDist === amuletDist)
+      countAtDepth.set(fromDist, (countAtDepth.get(fromDist) || 0) + 1);
+  }
+  let branched = 0;
+  for (const c of countAtDepth.values()) if (c >= 2) branched++;
+  return branched;
+}
+
+let _pendingStartOptions = null;
+
+function confirmStartChoice(index) {
+  if (!_pendingStartOptions) return;
+  const { options, amulet, saveName } = _pendingStartOptions;
+  const chosen = options[index];
+  _pendingStartOptions = null;
+  closeGameModal();
+  completeGameStart(chosen.start, amulet, saveName, chosen.type);
+}
+
+// Returns a compact vertical bar chart of shortest-path DAG layer widths.
+function generateLayerPreview(startName, amuletName) {
+  const dFS = bfsAllDistances(startName);
+  const amuletDist = dFS.get(amuletName);
+  if (!amuletDist) return '<div style="color:#888;font-size:11px;">No path</div>';
+  const dTA = bfsAllDistances(amuletName);
+  const countAtDepth = new Map();
+  for (const [name, fromDist] of dFS) {
+    if (fromDist === 0 || fromDist > amuletDist) continue;
+    const toDist = dTA.get(name);
+    if (toDist !== undefined && fromDist + toDist === amuletDist)
+      countAtDepth.set(fromDist, (countAtDepth.get(fromDist) || 0) + 1);
+  }
+  const maxCount = Math.max(1, ...countAtDepth.values());
+  let html = '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;">';
+  html += '<div style="background:var(--color-accent);border-radius:3px;padding:2px 8px;font-size:9px;font-weight:bold;color:#fff;min-width:60px;text-align:center;">START</div>';
+  for (let d = 1; d <= amuletDist; d++) {
+    html += '<div style="color:#444;font-size:9px;line-height:1;">↓</div>';
+    if (d === amuletDist) {
+      html += '<div style="background:var(--color-gold);border-radius:3px;padding:2px 8px;font-size:9px;font-weight:bold;color:#000;min-width:60px;text-align:center;">AMULET</div>';
+    } else {
+      const count = countAtDepth.get(d) || 1;
+      const w = Math.max(40, Math.round((count / maxCount) * 120));
+      const bg = count >= 3 ? '#2e7d32' : count === 2 ? '#388e3c' : '#333';
+      const label = count > 1 ? count + ' paths' : '';
+      html += `<div style="background:${bg};border-radius:2px;height:13px;width:${w}px;display:flex;align-items:center;justify-content:center;font-size:9px;color:${count > 1 ? '#a5d6a7' : '#555'};font-weight:bold;">${label}</div>`;
+    }
+  }
+  html += '</div>';
+  return html;
+}
+
+function showStartingChoiceModal(startOptions, amulet, saveName) {
+  _pendingStartOptions = { options: startOptions, amulet, saveName };
+  const typeColors = { Action: '#c0392b', Traditional: '#7d3c98', Strategy: '#1a5276', Deckbuilding: '#1e8449' };
+  const bonusDesc  = { Action: '1 Weapon Reward', Traditional: '2 Item Rewards + 1 Curse', Strategy: '40 Gold', Deckbuilding: '2 Card Rewards' };
+  const panels = startOptions.map((opt, i) => {
+    const col = typeColors[opt.type] || '#555';
+    return `
+      <div style="background:#222;border:2px solid ${col};border-radius:10px;padding:16px 12px;width:190px;display:flex;flex-direction:column;align-items:center;gap:8px;box-sizing:border-box;">
+        <div style="background:${col};border-radius:4px;padding:2px 12px;font-size:11px;font-weight:bold;color:#fff;">${opt.type}</div>
+        <div style="font-weight:bold;color:#e6d5b8;font-size:13px;text-align:center;line-height:1.3;">${opt.start.name}</div>
+        <div style="font-size:11px;color:#777;">${opt.start.year || ''}</div>
+        ${generateLayerPreview(opt.start.name, amulet.name)}
+        <div style="background:rgba(255,255,255,0.06);border-radius:6px;padding:7px;width:100%;box-sizing:border-box;text-align:center;font-size:11px;color:#ccc;">${bonusDesc[opt.type] || ''}</div>
+        <button onclick="confirmStartChoice(${i})" style="padding:7px 0;background:${col};border:none;border-radius:6px;color:#fff;font-weight:bold;cursor:pointer;font-size:13px;width:100%;">Choose</button>
+      </div>`;
+  }).join('');
+  createGameModal(`
+    <div style="text-align:center;padding:8px;">
+      <h2 style="color:var(--color-gold);margin-bottom:6px;">Choose Your Start</h2>
+      <p style="color:#aaa;font-size:13px;margin-bottom:18px;">All paths lead to: <strong style="color:var(--color-gold);">${amulet.name}</strong></p>
+      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">${panels}</div>
+    </div>`);
+}
+
+function applyStartingBonus(type, onComplete) {
+  switch (type) {
+    case 'Action':
+      showItemChoiceModal(onComplete, 'normal', 'Weapon');
+      break;
+    case 'Traditional':
+      showItemChoiceModal(() => {
+        showItemChoiceModal(() => {
+          const cursePool = typeof CURSES_DATA !== 'undefined' ? CURSES_DATA : [];
+          if (cursePool.length > 0) addCurse(cursePool[Math.floor(Math.random() * cursePool.length)]);
+          onComplete();
+        });
+      });
+      break;
+    case 'Strategy':
+      gold += 40;
+      if (gameState) gameState.gold = gold;
+      if (typeof updateGoldDisplay === 'function') updateGoldDisplay();
+      onComplete();
+      break;
+    case 'Deckbuilding':
+      showCardRewardModal(() => showCardRewardModal(onComplete));
+      break;
+    default:
+      onComplete();
+  }
+}
 
 document.getElementById('cancel-save')?.addEventListener('click', () => {
   document.getElementById('save-modal').style.display = 'none';
@@ -518,109 +648,69 @@ document.getElementById('cancel-save')?.addEventListener('click', () => {
 
 document.getElementById('confirm-save')?.addEventListener('click', () => {
   const saveName = document.getElementById('save-name-input').value.trim();
-  if (!saveName) {
-    alert('Please enter a save name');
-    return;
-  }
+  if (!saveName) { alert('Please enter a save name'); return; }
+  if (!selectedCharacter) { alert('Please select a character before starting your run'); return; }
+  if (gameSaves[saveName] && !confirm('Overwrite existing save?')) return;
 
-  // Check if a character has been selected
-  if (!selectedCharacter) {
-    alert('Please select a character before starting your run');
-    return;
-  }
-
-  if (gameSaves[saveName] && !confirm('Overwrite existing save?')) {
-    return;
-  }
-
-  // Pick random start and amulet
   const eligible = games.filter(g => g.connected);
-  if (eligible.length < 2) {
-    alert('Not enough games');
-    return;
-  }
+  if (eligible.length < 2) { alert('Not enough games'); return; }
 
-  // Start game must have at least 3 connections so the player always has opening choices
   const eligibleStarts = eligible.filter(g => {
     const conns = typeof getGameConnections === 'function' ? getGameConnections(g.name) : [];
     return conns.length >= 3;
   });
   const startPool = eligibleStarts.length > 0 ? eligibleStarts : eligible;
-  const start = startPool[Math.floor(Math.random() * startPool.length)];
 
-  // Path-length constraint: keep runs within a playable range.
-  // Tune MIN_PATH_LENGTH and MAX_PATH_LENGTH to adjust typical run depth.
   const MIN_PATH_LENGTH = 5;
   const MAX_PATH_LENGTH = 8;
 
-  // BFS helper: returns a Map of { nodeName -> distance } for all reachable nodes.
-  function bfsAllDistances(startName) {
-    const dist = new Map();
-    dist.set(startName, 0);
-    const queue = [startName];
-    let qi = 0;
-    while (qi < queue.length) {
-      const cur = queue[qi++];
-      const curDist = dist.get(cur);
-      const neighbors = typeof getGameConnections === 'function' ? getGameConnections(cur) : [];
-      for (const nb of neighbors) {
-        if (!dist.has(nb)) {
-          dist.set(nb, curDist + 1);
-          queue.push(nb);
-        }
-      }
-    }
-    return dist;
-  }
+  // Pick amulet using a random reference start for anchoring
+  const refStart = startPool[Math.floor(Math.random() * startPool.length)];
+  const dFromRef = bfsAllDistances(refStart.name);
 
-  const dFromStart = bfsAllDistances(start.name);
-
-  let candidates = eligible.filter(g => {
-    if (g.name === start.name) return false;
-    const d = dFromStart.get(g.name);
+  let amuletCandidates = eligible.filter(g => {
+    if (g.name === refStart.name) return false;
+    const d = dFromRef.get(g.name);
     return d !== undefined && d >= MIN_PATH_LENGTH && d <= MAX_PATH_LENGTH;
   });
+  const amuletScored = amuletCandidates.map(g => ({ g, score: dagBranchScoreEarly(dFromRef, g.name) }));
+  const amuletMax = amuletScored.reduce((m, s) => Math.max(m, s.score), 0);
+  if (amuletMax > 0) amuletCandidates = amuletScored.filter(s => s.score >= amuletMax - 1).map(s => s.g);
+  if (amuletCandidates.length === 0) amuletCandidates = eligible.filter(g => g.name !== refStart.name);
+  if (amuletCandidates.length === 0) { alert('No valid amulet game'); return; }
+  const amulet = amuletCandidates[Math.floor(Math.random() * amuletCandidates.length)];
 
-  // Score each candidate by how many intermediate layers in the exact shortest-path DAG
-  // have 2+ nodes — each such layer gives the player a real branching choice on the map.
-  // We use dFromStart + dToAmulet === amuletDist (exact shortest path) because that is
-  // exactly what the map displays.
-  function dagBranchScore(amuletName) {
-    const amuletDist = dFromStart.get(amuletName);
-    const dToAmulet = bfsAllDistances(amuletName);
-    const countAtDepth = new Map();
-    for (const [name, fromDist] of dFromStart) {
-      if (fromDist === 0 || fromDist >= amuletDist) continue;
-      const toDist = dToAmulet.get(name);
-      if (toDist !== undefined && fromDist + toDist === amuletDist) {
-        countAtDepth.set(fromDist, (countAtDepth.get(fromDist) || 0) + 1);
-      }
-    }
-    let branchedLayers = 0;
-    for (const count of countAtDepth.values()) {
-      if (count >= 2) branchedLayers++;
-    }
-    return branchedLayers;
+  // Find the best eligible start per game type for this amulet, then show the top 3
+  const dToAmulet = bfsAllDistances(amulet.name);
+  const GAME_TYPES = ['Action', 'Traditional', 'Strategy', 'Deckbuilding'];
+  const bestPerType = {};
+  for (const type of GAME_TYPES) {
+    const typeStarts = eligibleStarts.filter(g => games.find(gg => gg.name === g.name)?.type === type);
+    const scored = typeStarts
+      .map(g => {
+        const dFS = bfsAllDistances(g.name);
+        const dist = dFS.get(amulet.name);
+        if (!dist || dist < MIN_PATH_LENGTH || dist > MAX_PATH_LENGTH) return null;
+        return { g, score: dagBranchScoreEarly(dFS, amulet.name, 3, dToAmulet) };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.score - a.score);
+    if (scored.length > 0) bestPerType[type] = scored[0];
   }
 
-  const scored = candidates.map(g => ({ g, score: dagBranchScore(g.name) }));
-  const maxScore = scored.reduce((max, s) => Math.max(max, s.score), 0);
-  if (maxScore > 0) {
-    // Keep candidates within 1 branched-layer of the best to preserve run variety
-    candidates = scored.filter(s => s.score >= maxScore - 1).map(s => s.g);
-  }
+  const startOptions = GAME_TYPES
+    .filter(t => bestPerType[t])
+    .sort((a, b) => bestPerType[b].score - bestPerType[a].score)
+    .slice(0, 3)
+    .map(t => ({ type: t, start: bestPerType[t].g }));
 
-  // Fall back to any connected game (excluding start) if path constraint leaves nothing
-  if (candidates.length === 0) candidates = eligible.filter(g => g.name !== start.name);
+  if (startOptions.length === 0) { alert('Not enough start options found'); return; }
 
-  if (candidates.length === 0) {
-    alert('No valid amulet game');
-    return;
-  }
-  const amulet = candidates[Math.floor(Math.random() * candidates.length)];
+  document.getElementById('save-modal').style.display = 'none';
+  showStartingChoiceModal(startOptions, amulet, saveName);
+});
 
-  // Initialize game state with character
-
+function completeGameStart(start, amulet, saveName, startType) {
   const character = PLAYER_CHARACTERS[selectedCharacter];
   if (!character) {
     console.error('ERROR: Character not found!', selectedCharacter);
@@ -628,58 +718,47 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     return;
   }
 
-
-  // Handle both old format (startingStats) and new format (no startingStats, all start at 0)
   const stats = character.startingStats || {};
-  strength = stats.strength || 0;
-  dexterity = stats.dexterity || 0;
-  intelligence = stats.intelligence || 0;
-  charisma = stats.charisma || 0;
-  attack = stats.attack || 0;
-  reroll = stats.reroll || 0;
-  dash = stats.dash || 0;
-  skip = stats.skip || 0;
-  discovery = stats.discovery || 0;
-  fov = stats.fov || 0;
-  luck = stats.luck || 0;
+  strength    = stats.strength    || 0;
+  dexterity   = stats.dexterity   || 0;
+  intelligence= stats.intelligence|| 0;
+  charisma    = stats.charisma    || 0;
+  attack      = stats.attack      || 0;
+  reroll      = stats.reroll      || 0;
+  dash        = stats.dash        || 0;
+  skip        = stats.skip        || 0;
+  discovery   = stats.discovery   || 0;
+  fov         = stats.fov         || 0;
+  luck        = stats.luck        || 0;
 
-  // Reset health and gold for new run — use character's base health if defined
   const baseHealth = character.health || 10;
   health = baseHealth;
   maxHealth = baseHealth;
   gold = 0;
-
-  // Clear inventory and curses for new run
   inventory = [];
 
-  // Store character traits
   const characterTraits = character.traits || [];
-
-  // All encounters are combat — shops/events are now accessible via post-combat choices
   const encounterTypes = {};
-  games.forEach(game => {
-    encounterTypes[game.name] = 'combat';
-  });
+  games.forEach(game => { encounterTypes[game.name] = 'combat'; });
 
-  // Select a random location for this run (based on starting difficulty of 0)
-  const initialDifficulty = getDifficultyTier(0); // Start with Easy tier
+  const initialDifficulty = getDifficultyTier(0);
   const selectedLocation = getRandomLocation(initialDifficulty);
 
   gameState = {
     currentGame: start.name,
     visitedGames: [start.name],
-    finishedGames: [], // Track unique games finished in this run
-    totalGamesBeaten: 0, // Track total number of game completions (including duplicates)
-    skippedGames: [], // Track games skipped in this run
+    finishedGames: [],
+    totalGamesBeaten: 0,
+    skippedGames: [],
     saveName: saveName,
     gameStarted: true,
     health: health,
     maxHealth: maxHealth,
     gold: gold,
     inventory: [],
-    loot: [], // Loot inventory for fish and sellable items
-    activeCurses: [], // Clear curses for new run
-    cursesTracker: {}, // Clear curse tracking for new run
+    loot: [],
+    activeCurses: [],
+    cursesTracker: {},
     beatenGames: [...beatenGames],
     startGame: start,
     amuletGame: amulet,
@@ -695,80 +774,55 @@ document.getElementById('confirm-save')?.addEventListener('click', () => {
     escapePhase: false,
     escapeGames: [],
     escapeProgress: 0,
-    gameStatusEffects: {}, // Map of game names to arrays of status effects
-    encounterTypes: encounterTypes, // Map of game names to encounter types for this run
-    location: selectedLocation, // Current location for this run
-    playerLevel: 1, // Character level for dice combat system
-    activeAllies: [], // Allies that provide dice in combat
-    deck: [], // Cards collected during this run
-    postcombatChoicesUsed: { Low: [], Medium: [], High: [] } // Tracks which post-combat options have been used per difficulty tier
+    gameStatusEffects: {},
+    encounterTypes: encounterTypes,
+    location: selectedLocation,
+    playerLevel: 1,
+    activeAllies: [],
+    deck: [],
+    postcombatChoicesUsed: { Low: [], Medium: [], High: [] }
   };
 
   startGame = start;
   amuletGame = amulet;
 
-  // Invalidate BFS cache for new run (new start/amulet games)
-  if (typeof invalidateBFSCache === 'function') {
-    invalidateBFSCache();
-  }
+  if (typeof invalidateBFSCache === 'function') invalidateBFSCache();
 
-  // Clean up any escape container from previous run
   const escapeContainer = document.getElementById('escape-container');
-  if (escapeContainer) {
-    escapeContainer.remove();
-  }
+  if (escapeContainer) escapeContainer.remove();
 
-  // Hide modal and menu
-  document.getElementById('save-modal').style.display = 'none';
   document.getElementById('main-menu').style.display = 'none';
   document.getElementById('dungeon-screen').style.display = 'flex';
 
-  // Show top-right buttons when in game
   const topBarRight = document.getElementById('top-bar-right');
   if (topBarRight) topBarRight.style.display = 'flex';
 
-  // Show the normal game elements
   document.getElementById('path-viewport').style.display = 'block';
-  // Note: floating-hud is always visible, no need to show/hide
   document.getElementById('target').style.display = 'block';
 
-  // Render initial game state
-  if (typeof renderGameState === 'function') {
-    renderGameState();
-  }
-
-  // Update character UI
+  if (typeof renderGameState === 'function') renderGameState();
   updateCharacterUI();
   updateTraitsDisplay();
-
-  // Generate new bingo grid for this run
   generateBingoGrid();
 
-  // Give character's starting items
   const startingItemNames = character.startingItems || [];
   startingItemNames.forEach(itemName => {
     const itemData = items.find(i => i.name === itemName);
-    if (itemData && typeof acquireItem === 'function') {
-      acquireItem(itemData);
-    } else {
-      console.warn(`Starting item not found in items list: ${itemName}`);
-    }
+    if (itemData && typeof acquireItem === 'function') acquireItem(itemData);
+    else console.warn(`Starting item not found: ${itemName}`);
   });
 
-  saveCurrentGame();
-  updateSaveList();
-
-  // Check if starting location is a Hades location and show boon selection
-  if (selectedLocation && selectedLocation.game === 'Hades' && typeof showHadesBoonSelection === 'function') {
-    // Small delay to let the dungeon screen render first
-    // Store the timeout ID so it can be cleared if player finishes game before it fires
-    gameState.hadesStartBoonTimeout = setTimeout(() => {
-      gameState.hadesStartBoonTimeout = null;
-      // Pass false - starting boon shouldn't spawn choices, player is already at the starting location
-      showHadesBoonSelection(false);
-    }, 500);
-  }
-});
+  applyStartingBonus(startType, () => {
+    saveCurrentGame();
+    updateSaveList();
+    if (selectedLocation && selectedLocation.game === 'Hades' && typeof showHadesBoonSelection === 'function') {
+      gameState.hadesStartBoonTimeout = setTimeout(() => {
+        gameState.hadesStartBoonTimeout = null;
+        showHadesBoonSelection(false);
+      }, 500);
+    }
+  });
+}
 
 document.getElementById('continue-btn')?.addEventListener('click', () => {
   const saveList = document.getElementById('save-list');
@@ -7312,7 +7366,7 @@ function completeChampionFailure() {
 }
 
 
-function showItemChoiceModal(onComplete, chestType = 'normal') {
+function showItemChoiceModal(onComplete, chestType = 'normal', typeFilter = null) {
   if (items.length === 0) {
     // If no items, just spawn choices or call callback
     if (typeof onComplete === 'function') {
@@ -7326,6 +7380,10 @@ function showItemChoiceModal(onComplete, chestType = 'normal') {
   // Apply location effects to item pool (e.g., gun spawn boost from Gungeon locations)
   // Exclude N/A rarity items (boons) from normal item pools
   let itemPool = items.filter(item => item.rarity !== 'N/A');
+  if (typeFilter) {
+    const filtered = itemPool.filter(item => item.type === typeFilter);
+    if (filtered.length > 0) itemPool = filtered;
+  }
   if (gameState?.location && typeof applyGunSpawnBoost === 'function') {
     itemPool = applyGunSpawnBoost(itemPool, gameState.location);
   }
