@@ -18,9 +18,9 @@ const GAME_BALANCE = {
 
   // Difficulty thresholds
   DIFFICULTY: {
-    HIGH: { threshold: 10, damage: 3, rollBonus: 4 },
-    MEDIUM: { threshold: 5, damage: 2, rollBonus: 2 },
-    LOW: { threshold: 0, damage: 1, rollBonus: 0 }
+    HIGH: { threshold: 10, damage: 3, rollNegative: 4 },
+    MEDIUM: { threshold: 5, damage: 2, rollNegative: 2 },
+    LOW: { threshold: 0, damage: 1, rollNegative: 0 }
   },
 
   // Encounter rates (must sum to 1.0)

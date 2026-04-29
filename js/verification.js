@@ -481,33 +481,31 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
   // Add Weapon Effect section for each weapon in inventory
   const inventoryWeapons = (gameState.inventory || []).filter(i => i.type === 'Weapon');
   if (inventoryWeapons.length > 0) {
-    const getWeaponVerification = (weaponName, level) => {
+    // Resolve (val1/val2/val3) level notation to the value at the given level
+    const resolveLevel = (desc, lv) => desc.replace(/\(([^)]+)\)/g, (_, inner) => {
+      const parts = inner.split('/').map(s => s.trim());
+      return parts[Math.min(lv - 1, parts.length - 1)] || parts[parts.length - 1];
+    });
+
+    const getWeaponVerification = (weapon, level) => {
       const lv = level || 1;
-      if (weaponName === "Lil' Bomber") {
-        return { question: 'Did you kill an enemy with a bomb at least one time?', reward: `+${lv} Dmg to Lil' Bomber card` };
-      }
-      if (weaponName === "Barrel") {
-        return { question: 'Did you obtain at least 1 fish?', reward: `${lv} random fish` };
-      }
-      if (weaponName === "Blood Magic") {
-        return { question: 'Did you create or use a magic circle?', reward: `+${lv} Infuse to Blood Magic card` };
-      }
-      if (weaponName === "Dexecutioner") {
-        return { question: 'Did you kill an enemy with a piercing attack at least one time?', reward: `+${lv} Assassinate to Dexecutioner card` };
-      }
-      if (weaponName === "Blasma Pistol") {
-        const chestSize = lv === 1 ? 'small' : 'normal';
-        return { question: 'Did you open more than 10 chests?', reward: `${chestSize} chest` };
-      }
-      // Generic: extract condition from description
-      const conditionMatch = (weaponName || '').match(/If you ([^,]+),/i);
-      const question = conditionMatch ? 'Did you ' + conditionMatch[1].trim() + '?' : 'Did you complete the weapon condition?';
-      return { question, reward: 'weapon reward' };
+      const weaponName = weapon.name;
+      // Try to derive question from the weapon's description using "If you …" pattern
+      const desc = weapon.description || '';
+      const conditionMatch = desc.match(/If you ([^,]+),/i);
+      const question = conditionMatch
+        ? 'Did you ' + conditionMatch[1].trim() + '?'
+        : 'Did you complete the weapon condition?';
+      // Resolve the reward text from the description's level notation
+      const resolvedDesc = resolveLevel(desc, lv);
+      // Extract the reward clause after the comma
+      const rewardClause = resolvedDesc.replace(/^[^,]+,\s*/i, '').replace(/^(gain|get)\s+/i, '');
+      return { question, reward: rewardClause || 'weapon reward' };
     };
 
     inventoryWeapons.forEach((weapon, wIdx) => {
       const weaponLevel = weapon.level || 1;
-      const { question, reward } = getWeaponVerification(weapon.name, weaponLevel);
+      const { question, reward } = getWeaponVerification(weapon, weaponLevel);
       modalHTML += `
         <div style="background: rgba(255, 152, 0, 0.1); border: 1px solid #ff9800; border-radius: 6px; padding: 10px; margin: 8px 0;">
           <h3 style="color: #ffb74d; margin: 0 0 5px 0; font-size: 15px;">⚔️ ${weapon.name}</h3>
@@ -901,16 +899,25 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         if (typeof saveCurrentGame === 'function') saveCurrentGame();
       };
 
+      // Helper to parse the level value from "(val1/val2/val3)" notation in weapon descriptions
+      const resolveWeaponLevel = (desc, lv) => desc.replace(/\(([^)]+)\)/g, (_, inner) => {
+        const parts = inner.split('/').map(s => s.trim());
+        return parts[Math.min(lv - 1, parts.length - 1)] || parts[parts.length - 1];
+      });
+      const resolvedEffectDesc = resolveWeaponLevel(weapon.description || '', weaponLevel);
+      // Extract the reward clause text (after the first comma)
+      const rewardClauseText = resolvedEffectDesc.replace(/^[^,]+,\s*/i, '').replace(/^(gain|get)\s+/i, '') || 'weapon reward';
+
       if (weapon.name === 'Blasma Pistol') {
+        // Resolved: "small" or "normal" from "(small/normal)"
         const chestType = weaponLevel === 1 ? 'small' : 'normal';
         gameState._blasmaPistolChest = chestType;
-        weaponRewardText = `${chestType.charAt(0).toUpperCase() + chestType.slice(1)} Chest`;
+        weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
 
       } else if (weapon.name === "Lil' Bomber") {
-        // Add +N to the numeric damage value in the Lil' Bomber card description ("Deal X Dmg")
         applyCardBonus("Lil' Bomber", /Deal (\d+) Dmg/i, weaponLevel);
-        weaponRewardText = `Lil' Bomber card gains +${weaponLevel} Dmg`;
+        weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
 
       } else if (weapon.name === "Barrel") {
@@ -921,19 +928,17 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
             addToLoot(fishResult);
           }
         }
-        weaponRewardText = `${fishCount} random fish`;
+        weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
 
       } else if (weapon.name === "Blood Magic") {
-        // Add +N to the Infuse value in the Blood Magic card description
         applyCardBonus("Blood Magic", /(\d+) Infuse/i, weaponLevel);
-        weaponRewardText = `Blood Magic card gains +${weaponLevel} Infuse`;
+        weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
 
       } else if (weapon.name === "Dexecutioner") {
-        // Add +N to the Assassinate value in the Dexecutioner card description
         applyCardBonus("Dexecutioner", /(\d+) Assassinate/i, weaponLevel);
-        weaponRewardText = `Dexecutioner card gains +${weaponLevel} Assassinate`;
+        weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
       }
     });
@@ -957,17 +962,14 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           gameState.charisma = charisma;
 
 
-          // 20% chance to apply status effect to next game
-          if (Math.random() < 0.2) {
-            // Extract status name from description
-            const statusMatch = boon.description.match(/to be (\w+)/);
-            if (statusMatch) {
-              const statusName = statusMatch[1];
-              if (!gameState.pendingLocationStatuses) {
-                gameState.pendingLocationStatuses = [];
-              }
-              gameState.pendingLocationStatuses.push(statusName);
+          // Guarantee at least 1 game choice will have the boon's status applied
+          const statusMatch = boon.description.match(/will be (\w+)/);
+          if (statusMatch) {
+            const statusName = statusMatch[1];
+            if (!gameState.pendingLocationStatuses) {
+              gameState.pendingLocationStatuses = [];
             }
+            gameState.pendingLocationStatuses.push(statusName);
           }
 
           activatedBoons.push(boon.name);

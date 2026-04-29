@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx
-// 629 games, 791 connections
-// 542 connected, 169 influencers
+// 638 games, 804 connections
+// 549 connected, 173 influencers
 
 var GAMES_DATA = [
   {
@@ -21,7 +21,8 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Auro: A Monster-Bumping Adventure"
+      "Auro: A Monster-Bumping Adventure",
+      "Quest of Dungeons"
     ],
     "coverImage": "images/covers/100-rogues.jpg"
   },
@@ -490,7 +491,8 @@ var GAMES_DATA = [
       "Menherarium",
       "Raccoin: Coin Pusher Roguelike",
       "Cursed Words",
-      "Passant: A Chess Roguelike"
+      "Passant: A Chess Roguelike",
+      "Tic Tactic"
     ],
     "coverImage": "images/covers/balatro.jpg"
   },
@@ -1813,7 +1815,8 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "Slime 3K: Rise Against Despot"
+      "Slime 3K: Rise Against Despot",
+      "Skull Horde"
     ],
     "coverImage": "images/covers/despot-s-game-dystopian-battle-simulator.jpg"
   },
@@ -2008,6 +2011,16 @@ var GAMES_DATA = [
       "Wall World"
     ],
     "coverImage": "images/covers/dome-keeper.jpg"
+  },
+  {
+    "name": "Don't Lose Aggro",
+    "year": 2026,
+    "type": "Action",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/don't-lose-aggro.png"
   },
   {
     "name": "Don't Starve",
@@ -2270,7 +2283,9 @@ var GAMES_DATA = [
     "influenced": true,
     "tags": [],
     "gamesInfluenced": [
-      "The Doors of Trithius"
+      "The Doors of Trithius",
+      "Quest of Dungeons",
+      "I Am Overburdened"
     ],
     "coverImage": "images/covers/dungeons-of-dredmor.jpg"
   },
@@ -2944,6 +2959,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/griftlands.jpg"
   },
   {
+    "name": "Gumballs & Dungeons",
+    "year": 2017,
+    "type": "Strategy",
+    "connected": false,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/gumballs-&-dungeons.png"
+  },
+  {
     "name": "Gunfire Reborn",
     "year": 2020,
     "type": "Action",
@@ -2994,7 +3019,8 @@ var GAMES_DATA = [
     "gamesInfluenced": [
       "Ancient Domains of Mystery",
       "Dwarf Fortress",
-      "NetHack"
+      "NetHack",
+      "Lost Labyrinth"
     ],
     "coverImage": "images/covers/hack.jpg"
   },
@@ -3332,6 +3358,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/i-am-legion-stand-survivors.jpg"
+  },
+  {
+    "name": "I Am Overburdened",
+    "year": 2017,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/i-am-overburdened.png"
   },
   {
     "name": "Icewall",
@@ -3781,6 +3817,18 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/lost-in-random-the-eternal-die.jpg"
+  },
+  {
+    "name": "Lost Labyrinth",
+    "year": 2001,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": [
+      "I Am Overburdened"
+    ],
+    "coverImage": "images/covers/lost-labyrinth.png"
   },
   {
     "name": "Luck & Loot",
@@ -4360,7 +4408,8 @@ var GAMES_DATA = [
       "Iter Vehemens Ad Necem",
       "Lost Flame",
       "KeeperRL",
-      "UnReal World"
+      "UnReal World",
+      "WazHack"
     ],
     "coverImage": "images/covers/nethack.jpg"
   },
@@ -4926,6 +4975,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/quasimorph.jpg"
+  },
+  {
+    "name": "Quest of Dungeons",
+    "year": 2014,
+    "type": "Traditional",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/quest-of-dungeons.png"
   },
   {
     "name": "Rabbit and Steel",
@@ -5631,9 +5690,11 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Strategy",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "Tic Tactic"
+    ],
     "coverImage": "images/covers/shogun-showdown.jpg"
   },
   {
@@ -5694,6 +5755,16 @@ var GAMES_DATA = [
       "Realm of Ink"
     ],
     "coverImage": "images/covers/skul-the-hero-slayer.jpg"
+  },
+  {
+    "name": "Skull Horde",
+    "year": 2026,
+    "type": "Action",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/skull-horde.png"
   },
   {
     "name": "Sky's The Limit MAH-JONG",
@@ -5818,7 +5889,8 @@ var GAMES_DATA = [
       "Cursed Words",
       "Core Defense",
       "Bella Wants Blood",
-      "The Spirit Lift"
+      "The Spirit Lift",
+      "Tic Tactic"
     ],
     "coverImage": "images/covers/slay-the-spire.jpg"
   },
@@ -5851,9 +5923,11 @@ var GAMES_DATA = [
     "year": 2023,
     "type": "Action",
     "connected": true,
-    "influenced": false,
+    "influenced": true,
     "tags": [],
-    "gamesInfluenced": [],
+    "gamesInfluenced": [
+      "Skull Horde"
+    ],
     "coverImage": "images/covers/slime-3k-rise-against-despot.jpg"
   },
   {
@@ -6725,6 +6799,16 @@ var GAMES_DATA = [
     "coverImage": "images/covers/there-are-no-orcs.jpg"
   },
   {
+    "name": "Tic Tactic",
+    "year": 2025,
+    "type": "Deckbuilding",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/tic-tactic.png"
+  },
+  {
     "name": "Time Wasters",
     "year": 2023,
     "type": "Action",
@@ -7134,7 +7218,8 @@ var GAMES_DATA = [
       "God of Weapons",
       "Star Survivor",
       "Vampire Crawlers",
-      "Bloodshed"
+      "Bloodshed",
+      "Void Scrappers"
     ],
     "coverImage": "images/covers/vampire-survivors.jpg"
   },
@@ -7195,6 +7280,18 @@ var GAMES_DATA = [
       "Wild Bastards"
     ],
     "coverImage": "images/covers/void-bastards.jpg"
+  },
+  {
+    "name": "Void Scrappers",
+    "year": 2022,
+    "type": "Action",
+    "connected": true,
+    "influenced": true,
+    "tags": [],
+    "gamesInfluenced": [
+      "Skull Horde"
+    ],
+    "coverImage": "images/covers/void-scrappers.png"
   },
   {
     "name": "Void War",
@@ -7295,6 +7392,16 @@ var GAMES_DATA = [
     "tags": [],
     "gamesInfluenced": [],
     "coverImage": "images/covers/wayward.jpg"
+  },
+  {
+    "name": "WazHack",
+    "year": 2012,
+    "type": "Strategy",
+    "connected": true,
+    "influenced": false,
+    "tags": [],
+    "gamesInfluenced": [],
+    "coverImage": "images/covers/wazhack.png"
   },
   {
     "name": "We Need To Go Deeper",

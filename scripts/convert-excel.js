@@ -1,9 +1,15 @@
 #!/usr/bin/env node
+// Run this script from the repo root: node scripts/convert-excel.js
+// Output files are written to data/ and images are resolved from images/covers/
 const XLSX = require('xlsx');
 const fs = require('fs');
+const path = require('path');
+
+// Resolve all paths relative to the repo root (where this script should be run from)
+const REPO_ROOT = process.cwd();
 
 // Read the Excel file
-const workbook = XLSX.readFile('Roguelikes.xlsx');
+const workbook = XLSX.readFile(path.join(REPO_ROOT, 'tools/Roguelikes.xlsx'));
 
 // Helper function to parse dice face strings like "2 Dmg", "3 Dmg, 3 Oiled", "Get 1 Dodge"
 function parseDiceFace(faceStr) {
@@ -123,7 +129,7 @@ gamesData.forEach(row => {
   const baseName = (fileName && fileName.toString().trim())
     ? fileName.toString().trim()
     : name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  if (fs.existsSync(`images/covers/${baseName}.png`)) {
+  if (fs.existsSync(`${REPO_ROOT}/images/covers/${baseName}.png`)) {
     coverImage = `images/covers/${baseName}.png`;
   } else {
     coverImage = `images/covers/${baseName}.jpg`;
@@ -176,7 +182,7 @@ const gamesOutput = `// Auto-generated from Roguelikes.xlsx
 var GAMES_DATA = ${JSON.stringify(games, null, 2)};
 `;
 
-fs.writeFileSync('games-data.js', gamesOutput);
+fs.writeFileSync(path.join(REPO_ROOT, 'data/games-data.js'), gamesOutput);
 console.log(`✅ Games: ${totalGames} games with ${totalConnections} connections`);
 
 // Parse starting deck from "5 Attacks, 4 Defends, 1 Bash" format
@@ -300,7 +306,7 @@ const charactersOutput = `// Auto-generated from Roguelikes.xlsx - Characters
 var CHARACTERS_DATA = ${JSON.stringify(characters, null, 2)};
 `;
 
-fs.writeFileSync('characters-data.js', charactersOutput);
+fs.writeFileSync(path.join(REPO_ROOT, 'data/characters-data.js'), charactersOutput);
 console.log(`✅ Characters: ${Object.keys(characters).length} characters`);
 
 // ============== ENEMIES ==============
@@ -357,7 +363,7 @@ const enemiesOutput = `// Auto-generated from Roguelikes.xlsx - Enemies
 var ENEMIES_DATA = ${JSON.stringify(enemies, null, 2)};
 `;
 
-fs.writeFileSync('enemies-data.js', enemiesOutput);
+fs.writeFileSync(path.join(REPO_ROOT, 'data/enemies-data.js'), enemiesOutput);
 console.log(`✅ Enemies: ${enemies.length} enemies`);
 
 // ============== ALLIES ==============
@@ -390,7 +396,7 @@ if (alliesSheet) {
 var ALLIES_DATA = ${JSON.stringify(allies, null, 2)};
 `;
 
-  fs.writeFileSync('allies-data.js', alliesOutput);
+  fs.writeFileSync(path.join(REPO_ROOT, 'data/allies-data.js'), alliesOutput);
   console.log(`✅ Allies: ${allies.length} allies`);
 }
 
@@ -420,7 +426,7 @@ if (weaponsSheet) {
 var WEAPONS_DATA = ${JSON.stringify(weapons, null, 2)};
 `;
 
-  fs.writeFileSync('weapons-data.js', weaponsOutput);
+  fs.writeFileSync(path.join(REPO_ROOT, 'data/weapons-data.js'), weaponsOutput);
   console.log(`✅ Weapons: ${weapons.length} weapons`);
 }
 
@@ -448,7 +454,7 @@ const itemsOutput = `// Auto-generated from Roguelikes.xlsx - Items
 var ITEMS_DATA = ${JSON.stringify(items, null, 2)};
 `;
 
-fs.writeFileSync('items-data.js', itemsOutput);
+fs.writeFileSync(path.join(REPO_ROOT, 'data/items-data.js'), itemsOutput);
 console.log(`✅ Items: ${items.length} items`);
 
 // ============== STATUSES ==============
@@ -479,7 +485,7 @@ if (statusesSheet) {
 var STATUSES_DATA = ${JSON.stringify(statuses, null, 2)};
 `;
 
-  fs.writeFileSync('statuses-data.js', statusesOutput);
+  fs.writeFileSync(path.join(REPO_ROOT, 'data/statuses-data.js'), statusesOutput);
   console.log(`✅ Statuses: ${Object.keys(statuses).length} statuses`);
 }
 
@@ -507,7 +513,7 @@ if (movesSheet) {
 var MOVES_DATA = ${JSON.stringify(moves, null, 2)};
 `;
 
-  fs.writeFileSync('moves-data.js', movesOutput);
+  fs.writeFileSync(path.join(REPO_ROOT, 'data/moves-data.js'), movesOutput);
   console.log(`✅ Moves: ${Object.keys(moves).length} moves`);
 }
 
@@ -533,7 +539,7 @@ if (addonsSheet) {
 var ADDONS_DATA = ${JSON.stringify(addons, null, 2)};
 `;
 
-  fs.writeFileSync('addons-data.js', addonsOutput);
+  fs.writeFileSync(path.join(REPO_ROOT, 'data/addons-data.js'), addonsOutput);
   console.log(`✅ Addons: ${Object.keys(addons).length} addons`);
 }
 
@@ -564,7 +570,7 @@ if (spellsSheet) {
 var SPELLS_DATA = ${JSON.stringify(spells, null, 2)};
 `;
 
-  fs.writeFileSync('spells-data.js', spellsOutput);
+  fs.writeFileSync(path.join(REPO_ROOT, 'data/spells-data.js'), spellsOutput);
   console.log(`✅ Spells: ${spells.length} spells`);
 }
 
@@ -589,7 +595,7 @@ if (spellKeywordsSheet) {
 var SPELL_KEYWORDS_DATA = ${JSON.stringify(spellKeywords, null, 2)};
 `;
 
-  fs.writeFileSync('spell-keywords-data.js', spellKeywordsOutput);
+  fs.writeFileSync(path.join(REPO_ROOT, 'data/spell-keywords-data.js'), spellKeywordsOutput);
   console.log(`✅ Spell Keywords: ${Object.keys(spellKeywords).length} keywords`);
 }
 
@@ -614,7 +620,7 @@ if (cursesSheet) {
 var CURSES_DATA = ${JSON.stringify(curses, null, 2)};
 `;
 
-  fs.writeFileSync('curses-data.js', cursesOutput);
+  fs.writeFileSync(path.join(REPO_ROOT, 'data/curses-data.js'), cursesOutput);
   console.log(`✅ Curses: ${curses.length} curses`);
 }
 
@@ -641,7 +647,7 @@ if (gameStatusesSheet) {
 var GAME_STATUSES_DATA = ${JSON.stringify(gameStatuses, null, 2)};
 `;
 
-  fs.writeFileSync('game-statuses-data.js', gameStatusesOutput);
+  fs.writeFileSync(path.join(REPO_ROOT, 'data/game-statuses-data.js'), gameStatusesOutput);
   console.log(`✅ Game Statuses: ${Object.keys(gameStatuses).length} game statuses`);
 }
 
@@ -665,7 +671,7 @@ if (fishSheet) {
 var FISH_DATA = ${JSON.stringify(fish, null, 2)};
 `;
 
-  fs.writeFileSync('fish-data.js', fishOutput);
+  fs.writeFileSync(path.join(REPO_ROOT, 'data/fish-data.js'), fishOutput);
   console.log(`✅ Fish: ${fish.length} fish`);
 }
 
@@ -686,7 +692,7 @@ if (bingoSheet) {
 var BINGO_GOALS_DATA = ${JSON.stringify(bingoGoals, null, 2)};
 `;
 
-  fs.writeFileSync('bingo-data.js', bingoOutput);
+  fs.writeFileSync(path.join(REPO_ROOT, 'data/bingo-data.js'), bingoOutput);
   console.log(`✅ Bingo: ${bingoGoals.length} goals`);
 }
 
@@ -718,7 +724,7 @@ if (cardsSheet) {
             if (tags.includes('weapon')) return `images/items/${imgFile}.png`;
             const cardsPath = `images/cards/${imgFile}.png`;
             const itemsPath = `images/items/${imgFile}.png`;
-            return fs.existsSync(cardsPath) ? cardsPath : (fs.existsSync(itemsPath) ? itemsPath : cardsPath);
+            return fs.existsSync(path.join(REPO_ROOT, cardsPath)) ? cardsPath : (fs.existsSync(path.join(REPO_ROOT, itemsPath)) ? itemsPath : cardsPath);
           })()
         : null,
       game: (row['Game'] && row['Game'] !== 'N/A') ? row['Game'] : null,
@@ -732,7 +738,7 @@ if (cardsSheet) {
 var CARDS_DATA = ${JSON.stringify(cards, null, 2)};
 `;
 
-  fs.writeFileSync('cards-data.js', cardsOutput);
+  fs.writeFileSync(path.join(REPO_ROOT, 'data/cards-data.js'), cardsOutput);
   console.log(`✅ Cards: ${cards.length} cards`);
 }
 
@@ -756,7 +762,7 @@ if (diceSheetRaw) {
 var DICE_DATA = ${JSON.stringify(dice, null, 2)};
 `;
 
-  fs.writeFileSync('dice-data.js', diceOutput);
+  fs.writeFileSync(path.join(REPO_ROOT, 'data/dice-data.js'), diceOutput);
   console.log(`✅ Dice: ${dice.length} dice`);
 }
 

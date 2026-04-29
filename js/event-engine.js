@@ -55,12 +55,23 @@ function _fillName(text) {
     .replace(/\{storedCard\}/gi, storedCard);
 }
 
-/** Get roll difficulty threshold based on current location difficulty. */
+/** Get roll difficulty threshold based on current location difficulty, scaled by progression tier. */
 function _getRollDifficulty() {
   const diff = (typeof gameState !== 'undefined' && gameState.location && gameState.location.difficulty) || 'Easy';
-  if (diff === 'Hard')   return 15;
-  if (diff === 'Medium') return 13;
-  return 11; // Easy
+  const base = diff === 'Hard' ? 15 : diff === 'Medium' ? 13 : 11;
+
+  // Add roll negative from progression tier (harder as more games are beaten)
+  let rollNeg = 0;
+  if (typeof GAME_CONSTANTS !== 'undefined' && GAME_CONSTANTS.DIFFICULTY) {
+    const beaten = (typeof gameState !== 'undefined' && gameState.totalGamesBeaten) || 0;
+    if (beaten >= GAME_CONSTANTS.DIFFICULTY.HIGH.threshold) {
+      rollNeg = GAME_CONSTANTS.DIFFICULTY.HIGH.rollNegative;
+    } else if (beaten >= GAME_CONSTANTS.DIFFICULTY.MEDIUM.threshold) {
+      rollNeg = GAME_CONSTANTS.DIFFICULTY.MEDIUM.rollNegative;
+    }
+  }
+
+  return base + rollNeg;
 }
 
 /** Return 'advantage', 'disadvantage', or 'normal' based on luck. */
@@ -342,18 +353,13 @@ function applyEventEffects(effects) {
       }
 
       case 'note_for_yourself': {
+        // Defer adding the retrieved card until AFTER the player stores a card,
+        // so they can't store back the card they just received.
         const storedCardName = _getNoteCard();
-        const cardPool    = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
-        const cardTemplate = cardPool.find(c => c.name === storedCardName);
-        if (cardTemplate) {
-          if (typeof gameState !== 'undefined') {
-            if (!Array.isArray(gameState.deck)) gameState.deck = [];
-            gameState.deck.push({ ...cardTemplate });
-          }
-          lines.push(`Retrieved: ${storedCardName}`);
-        } else {
-          lines.push(`Card not found: ${storedCardName}`);
+        if (typeof gameState !== 'undefined') {
+          gameState._pendingNoteRetrieve = storedCardName;
         }
+        lines.push(`Will retrieve: ${storedCardName}`);
         break;
       }
 
@@ -1023,6 +1029,20 @@ function _showCardStoreScreen(onContinue) {
     `);
     document.getElementById('ev-store-skip-btn').addEventListener('click', () => {
       closeGameModal();
+      // Still retrieve the pending card even if there's nothing to store
+      if (typeof gameState !== 'undefined' && gameState._pendingNoteRetrieve) {
+        const retrieveName = gameState._pendingNoteRetrieve;
+        delete gameState._pendingNoteRetrieve;
+        const cardPool = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
+        const cardTemplate = cardPool.find(c => c.name === retrieveName);
+        if (cardTemplate) {
+          if (!Array.isArray(gameState.deck)) gameState.deck = [];
+          gameState.deck.push({ ...cardTemplate });
+          if (typeof createNotification === 'function') {
+            createNotification(`Retrieved: ${retrieveName}`, '#c39bd3', '📋');
+          }
+        }
+      }
       if (typeof onContinue === 'function') onContinue();
     }, { once: true });
     return;
@@ -1155,6 +1175,22 @@ function _showCardStoreScreen(onContinue) {
         collectedDeck.splice(deckIdx, 1);
         gameState.deck = [...collectedDeck];
       }
+
+      // Now retrieve the previously stored card (deferred from applyEventEffects)
+      if (gameState._pendingNoteRetrieve) {
+        const retrieveName = gameState._pendingNoteRetrieve;
+        delete gameState._pendingNoteRetrieve;
+        const cardPool = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
+        const cardTemplate = cardPool.find(c => c.name === retrieveName);
+        if (cardTemplate) {
+          if (!Array.isArray(gameState.deck)) gameState.deck = [];
+          gameState.deck.push({ ...cardTemplate });
+          if (typeof createNotification === 'function') {
+            createNotification(`Retrieved: ${retrieveName}`, '#c39bd3', '📋');
+          }
+        }
+      }
+
       if (typeof saveCurrentGame === 'function') saveCurrentGame();
       if (typeof createNotification === 'function') {
         createNotification(`Stored: ${card.name}`, '#8e44ad', '📝');

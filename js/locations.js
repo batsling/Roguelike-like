@@ -594,6 +594,57 @@ function applyRiskOfRainEffect(location) {
 }
 
 /**
+ * Show Risk of Rain 2 extra chest offer — costs 10 Gold
+ * @param {Function} onComplete - Called after the player accepts or declines
+ */
+function showRoRExtraChestOffer(onComplete) {
+  const overlay = document.createElement('div');
+  overlay.id = 'ror-chest-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10000;display:flex;align-items:center;justify-content:center;';
+
+  const gold = (typeof gameState !== 'undefined' && gameState.gold) || 0;
+  const canAfford = gold >= 10;
+
+  overlay.innerHTML = `
+    <div style="background:#1a1a2e;border:2px solid #ff6600;border-radius:12px;padding:28px 32px;max-width:320px;text-align:center;color:white;box-shadow:0 8px 32px rgba(0,0,0,0.8);">
+      <div style="font-size:28px;margin-bottom:8px;">🌧️</div>
+      <div style="font-size:17px;font-weight:bold;color:#ff6600;margin-bottom:6px;">Risk of Rain 2</div>
+      <div style="font-size:13px;color:#ccc;margin-bottom:18px;">Open an extra chest?</div>
+      <div style="font-size:22px;color:#ffd700;font-weight:bold;margin-bottom:22px;">10 Gold ${canAfford ? '' : '<span style="font-size:12px;color:#f44336;">(not enough)</span>'}</div>
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <button id="ror-chest-yes" style="padding:9px 20px;background:${canAfford ? '#cc5500' : '#555'};border:none;border-radius:8px;color:white;font-size:14px;font-weight:bold;cursor:${canAfford ? 'pointer' : 'not-allowed'};opacity:${canAfford ? 1 : 0.6};">Open Chest</button>
+        <button id="ror-chest-no" style="padding:9px 20px;background:#333;border:1px solid #666;border-radius:8px;color:#ccc;font-size:14px;cursor:pointer;">Skip</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  const finish = () => {
+    overlay.remove();
+    if (typeof onComplete === 'function') onComplete();
+  };
+
+  document.getElementById('ror-chest-yes').onclick = () => {
+    const currentGold = (typeof gameState !== 'undefined' && gameState.gold) || 0;
+    if (currentGold < 10) {
+      if (typeof createNotification === 'function') createNotification('Not enough Gold!', '#f44336', '💰');
+      finish();
+      return;
+    }
+    gameState.gold -= 10;
+    if (typeof updateTopBar === 'function') updateTopBar();
+    overlay.remove();
+    if (typeof showItemChoiceModal === 'function') {
+      showItemChoiceModal(onComplete);
+    } else {
+      finish();
+    }
+  };
+
+  document.getElementById('ror-chest-no').onclick = finish;
+}
+
+/**
  * Show Hades boon selection - exactly 2 boons, cannot be rerolled
  * Displays when entering or arriving at a Hades location
  * @param {boolean} shouldSpawnChoices - Whether to spawn next game choices after selection (default true)
@@ -724,3 +775,4 @@ window.applyIsaacModifiers = applyIsaacModifiers;
 window.shouldOfferHadesBoon = shouldOfferHadesBoon;
 window.showHadesBoonSelection = showHadesBoonSelection;
 window.applyRiskOfRainEffect = applyRiskOfRainEffect;
+window.showRoRExtraChestOffer = showRoRExtraChestOffer;

@@ -53,7 +53,7 @@
 A roguelike deckbuilder where players navigate a graph of over 600 real video games connected by influence relationships. Each run is a 5–8 game journey from a randomly chosen start game to a hidden Amulet game, fought through card-based combat, stat-check events, and a merchant shop.
 
 **Key Features:**
-- 625 games, 788 influence connections — the map is a real network of video game history
+- 638 games, 804 influence connections — the map is a real network of video game history
 - STS-style card combat: hand, energy, draw / discard / exhaust piles
 - Pre-combat events with a two-roll D20 system and four outcome tiers
 - 11 curse types across 3 categories (Automatic, Manual, Restriction)
@@ -173,7 +173,8 @@ Every time you enter a combat location, an event fires first. You are shown a sc
 **Stat-check choices** use a two-roll D20 system:
 
 **Roll 1 — Success check:** D20 + your relevant stat vs. the difficulty threshold.
-- Easy: need **11+** | Medium: need **13+** | Hard: need **15+**
+- Base AC by location: Easy **11** | Medium **13** | Hard **15**
+- Run progression adds a penalty: Easy tier **+0** | Medium tier **+2** | Hard tier **+4**
 - Your stat is added as a flat bonus, so higher stats mean you effectively need a lower raw roll.
 - Luck advantage applies: each Luck point has a 10% independent chance to let you roll twice and take the better result.
 
@@ -417,6 +418,47 @@ When you defeat the Amulet game, the **escape phase** begins. You must fight you
 ---
 
 ## Recent Updates
+
+### Version 6.3 - Location Systems & Balance (April 2026)
+
+**Risk of Rain 2 Locations (now functional):**
+- After beating a game on a Risk of Rain 2 location, a 50% chance fires to accelerate difficulty — `totalGamesBeaten` is incremented an extra time, potentially triggering a tier transition earlier than normal
+- Regardless of the dice result, after the normal chest closes a prompt appears: "Open an extra chest for 10 Gold?" — the player can accept or decline
+- The extra chest offer runs before any pending Hades boon selection in the post-game flow
+
+**Hades Boons (reworked):**
+- Boon status application is now guaranteed instead of 20% chance — when a boon condition is met, the matching status (Charmed / Marked / Shielded / Timed / Soaked / Shocked) is always applied to one random game in the next set of choices
+- Boon descriptions updated to reflect this: "at least 1 of the game choices will be [Status]"
+
+**Weapon UI Clarity:**
+- Weapon tooltips now show a "Passive Effect" label above the upgrade description and an italic note: "Upgrading the weapon card levels up this passive."
+- The card upgrade zoom modal shows an amber banner for weapon cards: "Upgrading this card levels up the weapon's passive effect — not the card itself."
+
+**Event Roll Difficulty Scaling:**
+- Events now become harder as the run progresses. A `rollNegative` penalty is added to the success-check AC based on progression tier:
+
+| Progression tier | Games beaten | Roll penalty |
+|---|---|---|
+| Easy | 0–4 | +0 |
+| Medium | 5–9 | +2 |
+| Hard | 10+ | +4 |
+
+Effective thresholds (location base + rollNegative):
+
+| Location × Tier | Easy run | Medium run | Hard run |
+|---|---|---|---|
+| Easy location (base 11) | 11 | 13 | 15 |
+| Medium location (base 13) | 13 | 15 | 17 |
+| Hard location (base 15) | 15 | 17 | 19 |
+
+**Game Data Updates:**
+- 9 new games added (629 → 638 total), 13 new connections, 4 new influencers
+- Several cover images corrected from `.png` to `.jpg`
+
+**Constants cleanup:**
+- `rollBonus` renamed to `rollNegative` in `GAME_CONSTANTS.DIFFICULTY` to correctly reflect its purpose
+
+---
 
 ### Version 6.2 - Pre-Combat Event System (April 2026)
 
@@ -1477,13 +1519,15 @@ The player's stat value is added as a flat bonus to the d20 roll. Higher stat �
 
 **Constitution** is derived from gained max HP during the run: `floor((currentMaxHP − startingMaxHP) / 5)`. Starts at 0; every 5 max HP gained = +1 constitution. Constitution is displayed on the event choice screen whenever it's above 0.
 
-**Difficulty thresholds by location:**
+**Difficulty thresholds by location and run progression:**
 
-| Location difficulty | Roll needed (before stat bonus) |
-|---|---|
-| Easy | 11 |
-| Medium | 13 |
-| Hard | 15 |
+The base AC is set by location type, then increased by a `rollNegative` penalty based on how many games you have beaten this run:
+
+| | Easy run (0–4 beaten) | Medium run (5–9 beaten) | Hard run (10+ beaten) |
+|---|---|---|---|
+| Easy location | 11 | 13 | 15 |
+| Medium location | 13 | 15 | 17 |
+| Hard location | 15 | 17 | 19 |
 
 ---
 

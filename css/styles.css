@@ -609,6 +609,8 @@ text, path, line, g {
   background: #121212;
   overflow: hidden;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 #main-menu {
@@ -640,7 +642,7 @@ text, path, line, g {
   min-height: 800px;
   position: relative;
   padding: 40px 0;
-  padding-bottom: 100px;
+  padding-bottom: 300px;
 }
 
 /* #connection-lines styles are now inline in HTML (matches map approach) */
