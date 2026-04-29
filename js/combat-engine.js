@@ -4396,12 +4396,17 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // Assassinate: X Assassinate
+    // Assassinate: instantly kill target if its HP is at or below the threshold — deals no damage
     const assassinMatch = p.match(/(\d+) Assassinate/i);
     if (assassinMatch && target) {
-      const dmg = parseInt(assassinMatch[1]);
-      const bonus = target.health < target.maxHealth * 0.5 ? dmg * 2 : dmg;
-      dealDamage(target, bonus);
+      const threshold = parseInt(assassinMatch[1]);
+      if (target.health <= threshold) {
+        target.health = 0;
+        addLog(`Assassinated ${target.name}! (${threshold} HP threshold)`, 'success');
+        if (typeof onEnemyDefeated === 'function') onEnemyDefeated(target);
+      } else {
+        addLog(`Assassinate missed — ${target.name} has ${target.health} HP (threshold: ${threshold})`, 'info');
+      }
       continue;
     }
 

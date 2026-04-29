@@ -353,18 +353,13 @@ function applyEventEffects(effects) {
       }
 
       case 'note_for_yourself': {
+        // Defer adding the retrieved card until AFTER the player stores a card,
+        // so they can't store back the card they just received.
         const storedCardName = _getNoteCard();
-        const cardPool    = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
-        const cardTemplate = cardPool.find(c => c.name === storedCardName);
-        if (cardTemplate) {
-          if (typeof gameState !== 'undefined') {
-            if (!Array.isArray(gameState.deck)) gameState.deck = [];
-            gameState.deck.push({ ...cardTemplate });
-          }
-          lines.push(`Retrieved: ${storedCardName}`);
-        } else {
-          lines.push(`Card not found: ${storedCardName}`);
+        if (typeof gameState !== 'undefined') {
+          gameState._pendingNoteRetrieve = storedCardName;
         }
+        lines.push(`Will retrieve: ${storedCardName}`);
         break;
       }
 
@@ -1034,6 +1029,20 @@ function _showCardStoreScreen(onContinue) {
     `);
     document.getElementById('ev-store-skip-btn').addEventListener('click', () => {
       closeGameModal();
+      // Still retrieve the pending card even if there's nothing to store
+      if (typeof gameState !== 'undefined' && gameState._pendingNoteRetrieve) {
+        const retrieveName = gameState._pendingNoteRetrieve;
+        delete gameState._pendingNoteRetrieve;
+        const cardPool = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
+        const cardTemplate = cardPool.find(c => c.name === retrieveName);
+        if (cardTemplate) {
+          if (!Array.isArray(gameState.deck)) gameState.deck = [];
+          gameState.deck.push({ ...cardTemplate });
+          if (typeof createNotification === 'function') {
+            createNotification(`Retrieved: ${retrieveName}`, '#c39bd3', '📋');
+          }
+        }
+      }
       if (typeof onContinue === 'function') onContinue();
     }, { once: true });
     return;
@@ -1166,6 +1175,22 @@ function _showCardStoreScreen(onContinue) {
         collectedDeck.splice(deckIdx, 1);
         gameState.deck = [...collectedDeck];
       }
+
+      // Now retrieve the previously stored card (deferred from applyEventEffects)
+      if (gameState._pendingNoteRetrieve) {
+        const retrieveName = gameState._pendingNoteRetrieve;
+        delete gameState._pendingNoteRetrieve;
+        const cardPool = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
+        const cardTemplate = cardPool.find(c => c.name === retrieveName);
+        if (cardTemplate) {
+          if (!Array.isArray(gameState.deck)) gameState.deck = [];
+          gameState.deck.push({ ...cardTemplate });
+          if (typeof createNotification === 'function') {
+            createNotification(`Retrieved: ${retrieveName}`, '#c39bd3', '📋');
+          }
+        }
+      }
+
       if (typeof saveCurrentGame === 'function') saveCurrentGame();
       if (typeof createNotification === 'function') {
         createNotification(`Stored: ${card.name}`, '#8e44ad', '📝');

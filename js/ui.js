@@ -1152,15 +1152,26 @@ function showItemTooltip(e, item) {
 
   // Check if this is a weapon and get its level
   let weaponLevelText = '';
+  let weaponLevel = 1;
   if (item.type === 'Weapon') {
-    // Check if this is the equipped weapon
     const isEquipped = gameState.equippedWeapon && gameState.equippedWeapon.name === item.name;
-    const level = isEquipped ? (gameState.weaponLevel || 1) : (item.level || 1);
+    weaponLevel = isEquipped ? (gameState.weaponLevel || 1) : (item.level || 1);
 
-    if (level > 1) {
-      weaponLevelText = `<div style="color: #ffaa44; font-weight: bold;">Level ${level}</div>`;
+    if (weaponLevel > 1) {
+      weaponLevelText = `<div style="color: #ffaa44; font-weight: bold;">Level ${weaponLevel}</div>`;
     }
   }
+
+  // Resolve (val1/val2/val3) level notation in weapon descriptions
+  function resolveWeaponLevelText(desc, lv) {
+    return desc.replace(/\(([^)]+)\)/g, (_, inner) => {
+      const parts = inner.split('/').map(s => s.trim());
+      return parts[Math.min(lv - 1, parts.length - 1)] || parts[parts.length - 1];
+    });
+  }
+  const resolvedDescription = item.type === 'Weapon'
+    ? resolveWeaponLevelText(item.description || '', weaponLevel)
+    : (item.description || '');
 
   // Get display name (with stat modifiers for passive items)
   const displayName = (item.type === 'Passive' && typeof getPassiveDisplayName === 'function')
@@ -1249,7 +1260,7 @@ function showItemTooltip(e, item) {
       ? `<div style="font-size:10px;color:#ffaa44;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Passive Effect</div>`
       : ''}
     <div style="font-size: 13px; color: #e0d0b0; line-height: 1.4;">
-      ${item.description}
+      ${resolvedDescription}
     </div>
     ${item.type === 'Weapon'
       ? `<div style="font-size:10px;color:#888;margin-top:5px;font-style:italic;">Upgrading the weapon card levels up this passive.</div>`

@@ -773,6 +773,13 @@ function renderGameState() {
   const difficulty = gameState.totalGamesBeaten || 0;
   document.getElementById('distance-display').textContent = `Target: ${gameState.amuletGame.name} — ${distance} steps away | Difficulty: ${difficulty}`;
 
+  // Update the map button distance badge
+  const mapBadge = document.getElementById('map-distance-badge');
+  if (mapBadge) {
+    mapBadge.textContent = `${distance} step${distance === 1 ? '' : 's'} to amulet`;
+    mapBadge.style.display = '';
+  }
+
   // Reconstruct the path from visited games
   const cx = 450;
   let currentY = 120;
