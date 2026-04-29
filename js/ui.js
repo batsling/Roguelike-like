@@ -1245,9 +1245,15 @@ function showItemTooltip(e, item) {
       <div>${capitalizedRarity} ${item.type}</div>
       ${weaponLevelText}
     </div>
+    ${item.type === 'Weapon'
+      ? `<div style="font-size:10px;color:#ffaa44;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Passive Effect</div>`
+      : ''}
     <div style="font-size: 13px; color: #e0d0b0; line-height: 1.4;">
       ${item.description}
     </div>
+    ${item.type === 'Weapon'
+      ? `<div style="font-size:10px;color:#888;margin-top:5px;font-style:italic;">Upgrading the weapon card levels up this passive.</div>`
+      : ''}
     ${bonusesHTML}
     ${scalingBonusHTML}
     ${weaponCardHTML}

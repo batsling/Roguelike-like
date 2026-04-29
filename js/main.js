@@ -5169,6 +5169,13 @@ function showCardUpgradeZoom(card) {
     z-index:10000;cursor:pointer;flex-direction:column;gap:0;
   `;
 
+  const isWeaponCard = card.tags && card.tags.includes('weapon');
+  const weaponUpgradeNote = isWeaponCard
+    ? `<div style="margin-top:10px;padding:7px 14px;background:rgba(255,170,68,0.12);border:1px solid rgba(255,170,68,0.35);border-radius:7px;color:#ffaa44;font-size:11px;text-align:center;">
+        Upgrading this card levels up the weapon's passive effect — not the card itself.
+       </div>`
+    : '';
+
   if (hasUpgrade && !card.upgraded) {
     // Show base and upgraded side by side with labels
     overlay.innerHTML = `
@@ -5182,6 +5189,7 @@ function showCardUpgradeZoom(card) {
           ${buildCardPanel(true)}
         </div>
       </div>
+      ${weaponUpgradeNote}
       <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
         margin-top:20px;padding:9px 28px;background:#333;border:1px solid #666;border-radius:8px;
         color:#ccc;cursor:pointer;font-size:13px;">Close</button>
@@ -5191,6 +5199,7 @@ function showCardUpgradeZoom(card) {
     overlay.innerHTML = `
       ${buildCardPanel(!!card.upgraded)}
       ${hasUpgrade && card.upgraded ? `<div style="text-align:center;color:#aaa;font-size:11px;margin-top:6px;">(This card is upgraded)</div>` : ''}
+      ${weaponUpgradeNote}
       <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
         margin-top:16px;padding:9px 28px;background:#333;border:1px solid #666;border-radius:8px;
         color:#ccc;cursor:pointer;font-size:13px;">Close</button>
@@ -7709,14 +7718,29 @@ function showItemChoiceModal(onComplete, chestType = 'normal', typeFilter = null
         updateTopBar();
       }
 
+      // Check if we need to offer a Risk of Rain 2 extra chest first
+      if (gameState.pendingRoRExtraChest) {
+        gameState.pendingRoRExtraChest = false;
+        const afterRoR = () => {
+          if (gameState.pendingHadesBoonSelection) {
+            gameState.pendingHadesBoonSelection = false;
+            if (typeof showHadesBoonSelection === 'function') showHadesBoonSelection();
+          } else if (typeof onComplete === 'function') {
+            onComplete();
+          } else {
+            spawnChoices();
+          }
+        };
+        setTimeout(() => {
+          if (typeof showRoRExtraChestOffer === 'function') showRoRExtraChestOffer(afterRoR);
+          else afterRoR();
+        }, 300);
       // Check if we need to show Hades boon selection first
-      if (gameState.pendingHadesBoonSelection) {
+      } else if (gameState.pendingHadesBoonSelection) {
         gameState.pendingHadesBoonSelection = false;
         setTimeout(() => {
           if (typeof showHadesBoonSelection === 'function') {
             showHadesBoonSelection();
-            // After boon selection, spawn choices or call callback
-            // Note: The boon modal will handle spawning choices when it closes
           }
         }, 300);
       } else {
@@ -7768,14 +7792,29 @@ function showItemChoiceModal(onComplete, chestType = 'normal', typeFilter = null
         updateTopBar();
       }
 
+      // Check if we need to offer a Risk of Rain 2 extra chest first
+      if (gameState.pendingRoRExtraChest) {
+        gameState.pendingRoRExtraChest = false;
+        const afterRoR = () => {
+          if (gameState.pendingHadesBoonSelection) {
+            gameState.pendingHadesBoonSelection = false;
+            if (typeof showHadesBoonSelection === 'function') showHadesBoonSelection();
+          } else if (typeof onComplete === 'function') {
+            onComplete();
+          } else {
+            spawnChoices();
+          }
+        };
+        setTimeout(() => {
+          if (typeof showRoRExtraChestOffer === 'function') showRoRExtraChestOffer(afterRoR);
+          else afterRoR();
+        }, 300);
       // Check if we need to show Hades boon selection first
-      if (gameState.pendingHadesBoonSelection) {
+      } else if (gameState.pendingHadesBoonSelection) {
         gameState.pendingHadesBoonSelection = false;
         setTimeout(() => {
           if (typeof showHadesBoonSelection === 'function') {
             showHadesBoonSelection();
-            // After boon selection, spawn choices or call callback
-            // Note: The boon modal will handle spawning choices when it closes
           }
         }, 300);
       } else {
@@ -9008,6 +9047,27 @@ function markGameFinished(gameName) {
       }
     }
     }
+  }
+
+  // Risk of Rain 2 location effect: 50% chance to accelerate difficulty + offer extra chest
+  if (!gameState.manualLocationOverride && gameState.location &&
+      typeof hasScalingReward === 'function' && hasScalingReward(gameState.location)) {
+    const rorResult = applyRiskOfRainEffect(gameState.location);
+    if (rorResult.difficultyIncreased) {
+      const preRoR = getDifficultyTier(gameState.totalGamesBeaten);
+      gameState.totalGamesBeaten++;
+      const postRoR = getDifficultyTier(gameState.totalGamesBeaten);
+      if (preRoR !== postRoR) {
+        const escalatedLocation = getRandomLocation(postRoR);
+        if (escalatedLocation) {
+          gameState.location = escalatedLocation;
+          if (typeof updateLocationDisplay === 'function') updateLocationDisplay(gameState.currentGame);
+          if (escalatedLocation.game === 'Hades') gameState.pendingHadesBoonSelection = true;
+        }
+      }
+      if (typeof createNotification === 'function') createNotification('Difficulty escalated! (Risk of Rain 2)', '#ff6600', '⬆️');
+    }
+    if (rorResult.offerExtraChest) gameState.pendingRoRExtraChest = true;
   }
 
   // Check and update curse durations
