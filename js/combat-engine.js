@@ -1745,14 +1745,6 @@ function dealDamage(target, damage, addons = []) {
     dmg += bruiseStacks;
   }
 
-  // Check Buffer (negate the hit entirely, takes precedence over block)
-  if (target.statuses['buffer'] && target.statuses['buffer'] > 0 && !addons.includes('self')) {
-    target.statuses['buffer']--;
-    if (target.statuses['buffer'] <= 0) delete target.statuses['buffer'];
-    addLog(`${target.name || 'Player'}'s Buffer absorbed the hit!`, 'success');
-    return;
-  }
-
   // Check Dodge
   const dodgeStacks = target.statuses['dodge'] || 0;
   if (dodgeStacks > 0 && !addons.includes('self')) {
@@ -1816,6 +1808,14 @@ function dealDamage(target, damage, addons = []) {
 
   // Deal remaining damage to health
   if (remainingDamage > 0) {
+    // Buffer (Slay the Spire style): only triggers when target would lose health, not on blocked hits
+    if (target.statuses['buffer'] && target.statuses['buffer'] > 0 && !addons.includes('self')) {
+      target.statuses['buffer']--;
+      if (target.statuses['buffer'] <= 0) delete target.statuses['buffer'];
+      addLog(`${target.name || 'Player'}'s Buffer absorbed the health loss!`, 'success');
+      return;
+    }
+
     target.health -= remainingDamage;
     addLog(`${target.name || 'Player'} took ${remainingDamage} damage`, 'danger');
 
@@ -3268,14 +3268,6 @@ function dealDamageToPlayer(damage, addons, enemy) {
     damage += bruiseStacks;
   }
 
-  // Check Buffer (negate the hit entirely, takes precedence over block)
-  if (player.statuses['buffer'] && player.statuses['buffer'] > 0 && isDirectHit) {
-    player.statuses['buffer']--;
-    if (player.statuses['buffer'] <= 0) delete player.statuses['buffer'];
-    addLog('Buffer absorbed the hit!', 'success');
-    return;
-  }
-
   // Check Dodge
   if (player.statuses['dodge'] && player.statuses['dodge'] > 0) {
     player.statuses['dodge']--;
@@ -3320,6 +3312,14 @@ function dealDamageToPlayer(damage, addons, enemy) {
 
   // Deal damage
   if (remaining > 0) {
+    // Buffer (Slay the Spire style): only triggers when player would lose health, not on blocked hits
+    if (player.statuses['buffer'] && player.statuses['buffer'] > 0 && isDirectHit) {
+      player.statuses['buffer']--;
+      if (player.statuses['buffer'] <= 0) delete player.statuses['buffer'];
+      addLog('Buffer absorbed the health loss!', 'success');
+      return;
+    }
+
     player.health -= remaining;
     window.health = player.health;
     combatState._playerHealthLossTimes = (combatState._playerHealthLossTimes || 0) + 1;

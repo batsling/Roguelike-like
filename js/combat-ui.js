@@ -79,7 +79,7 @@ const KEYWORD_DEFS = {
   'shackled':         'Cannot gain block.',
   'regeneration':     'Heals N HP at the start of each turn.',
   'power':            'Increases outgoing damage (player) or incoming (enemy) by N stacks.',
-  'buffer':           'Negates the next N hits entirely (before block).',
+  'buffer':           'Prevents the next N times the target would lose Health (triggers after block).',
   'soul link':        'Shares health loss with all other soul-linked entities.',
   'leeches':          'Drains HP from the target on hit.',
   'bleed':            'Deals damage over time.',
