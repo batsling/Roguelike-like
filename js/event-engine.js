@@ -55,12 +55,23 @@ function _fillName(text) {
     .replace(/\{storedCard\}/gi, storedCard);
 }
 
-/** Get roll difficulty threshold based on current location difficulty. */
+/** Get roll difficulty threshold based on current location difficulty, scaled by progression tier. */
 function _getRollDifficulty() {
   const diff = (typeof gameState !== 'undefined' && gameState.location && gameState.location.difficulty) || 'Easy';
-  if (diff === 'Hard')   return 15;
-  if (diff === 'Medium') return 13;
-  return 11; // Easy
+  const base = diff === 'Hard' ? 15 : diff === 'Medium' ? 13 : 11;
+
+  // Add roll negative from progression tier (harder as more games are beaten)
+  let rollNeg = 0;
+  if (typeof GAME_CONSTANTS !== 'undefined' && GAME_CONSTANTS.DIFFICULTY) {
+    const beaten = (typeof gameState !== 'undefined' && gameState.totalGamesBeaten) || 0;
+    if (beaten >= GAME_CONSTANTS.DIFFICULTY.HIGH.threshold) {
+      rollNeg = GAME_CONSTANTS.DIFFICULTY.HIGH.rollNegative;
+    } else if (beaten >= GAME_CONSTANTS.DIFFICULTY.MEDIUM.threshold) {
+      rollNeg = GAME_CONSTANTS.DIFFICULTY.MEDIUM.rollNegative;
+    }
+  }
+
+  return base + rollNeg;
 }
 
 /** Return 'advantage', 'disadvantage', or 'normal' based on luck. */
