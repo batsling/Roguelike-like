@@ -957,17 +957,14 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           gameState.charisma = charisma;
 
 
-          // 20% chance to apply status effect to next game
-          if (Math.random() < 0.2) {
-            // Extract status name from description
-            const statusMatch = boon.description.match(/to be (\w+)/);
-            if (statusMatch) {
-              const statusName = statusMatch[1];
-              if (!gameState.pendingLocationStatuses) {
-                gameState.pendingLocationStatuses = [];
-              }
-              gameState.pendingLocationStatuses.push(statusName);
+          // Guarantee at least 1 game choice will have the boon's status applied
+          const statusMatch = boon.description.match(/will be (\w+)/);
+          if (statusMatch) {
+            const statusName = statusMatch[1];
+            if (!gameState.pendingLocationStatuses) {
+              gameState.pendingLocationStatuses = [];
             }
+            gameState.pendingLocationStatuses.push(statusName);
           }
 
           activatedBoons.push(boon.name);
