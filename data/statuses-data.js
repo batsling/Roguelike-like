@@ -311,11 +311,11 @@ var STATUSES_DATA = {
   },
   "buffer": {
     "name": "Buffer",
-    "description": "The next time this unit gets hit, take no damage. This takes precedence over Block",
+    "description": "Prevent the next X times the target would lose Health",
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
-    "decay": "When the target would take damage",
+    "decay": "When the target would lose Health",
     "who": "All",
     "preference": "Positive",
     "imageUrl": "images/statuses/Buffer.png"
