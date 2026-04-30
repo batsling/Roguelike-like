@@ -1219,5 +1219,49 @@ var ITEMS_DATA = [
     ],
     "image": "images/items/Wings.png",
     "unlockCondition": null
+  },
+  {
+    "name": "Bear Trap Mask",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "At combat start, gain 3 Bleed Thorns. When hit by melee, apply Bleed to the attacker.",
+    "game": "Don't Starve",
+    "tags": [
+      "wearable"
+    ],
+    "image": "images/items/BearTrapMask.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Broken Window",
+    "rarity": "Common",
+    "type": "Passive",
+    "description": "Gain +2 Luck, but all enemies gain +1 Power at combat start.",
+    "game": "Spelunky",
+    "tags": [],
+    "image": "images/items/BrokenWindow.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Empty Syringe",
+    "rarity": "Uncommon",
+    "type": "Usable",
+    "description": "Combat: Remove all Bleed from yourself and deal that much damage to a target enemy.",
+    "game": "Dead Cells",
+    "tags": [],
+    "image": "images/items/EmptySyringe.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Rusty Razor",
+    "rarity": "Common",
+    "type": "Triggered",
+    "description": "At combat start, apply 3 Bleed to all enemies.",
+    "game": "The Binding of Isaac",
+    "tags": [
+      "cursed"
+    ],
+    "image": "images/items/RustyRazor.png",
+    "unlockCondition": null
   }
 ];

@@ -627,5 +627,38 @@ var STATUSES_DATA = {
     "who": "All",
     "preference": "Positive",
     "imageUrl": "images/statuses/FlameBarrier.png"
+  },
+  "bleed": {
+    "name": "Bleed",
+    "description": "At the end of turn, target takes X damage where X is the stack count. Decays by 1 at end of turn.",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Bleed.png"
+  },
+  "bleed_thorns": {
+    "name": "Bleed Thorns",
+    "description": "When this target takes melee damage, apply X Bleed to the attacker where X is the stack count.",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/BleedThorns.png"
+  },
+  "wet": {
+    "name": "Wet",
+    "description": "Target takes 25% more magic damage. Fire effects on this target are extinguished. Decays by 1 at end of turn.",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Wet.png"
   }
 };

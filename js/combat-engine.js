@@ -222,6 +222,13 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     combatState.spells = [...window.playerSpells];
   }
 
+  // Ensure spell casters have a mana pool — give a base maxMana if character didn't define one
+  if (combatState.spells.length > 0 && combatState.player.maxMana === 0) {
+    const intBonus = (combatState.player.bonuses && combatState.player.bonuses.intelligence) || 0;
+    combatState.player.maxMana = 10 + intBonus * 2;
+    addLog(`Spell caster: mana pool set to ${combatState.player.maxMana}`, 'info');
+  }
+
   // Initialize card deck system
   combatState.drawPile = [];
   combatState.hand = [];
@@ -350,6 +357,30 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     if (pummarolaCount > 0) {
       combatState.player.statuses['regeneration'] = (combatState.player.statuses['regeneration'] || 0) + pummarolaCount;
       addLog(`Pummarola: +${pummarolaCount} Regeneration`, 'info');
+    }
+
+    // Bear Trap Mask: +3 Bleed Thorns at combat start
+    if (inventory.some(i => i.name === 'Bear Trap Mask')) {
+      combatState.player.statuses['bleed_thorns'] = (combatState.player.statuses['bleed_thorns'] || 0) + 3;
+      addLog('Bear Trap Mask: +3 Bleed Thorns', 'info');
+    }
+
+    // Broken Window: enemies gain +1 Power at combat start
+    if (inventory.some(i => i.name === 'Broken Window')) {
+      combatState.enemies.forEach(enemy => {
+        enemy.statuses['power'] = (enemy.statuses['power'] || 0) + 1;
+      });
+      addLog('Broken Window: all enemies gained +1 Power', 'warning');
+    }
+
+    // Rusty Razor: apply 3 Bleed to all enemies at combat start
+    const rustyRazorCount = inventory.filter(i => i.name === 'Rusty Razor').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (rustyRazorCount > 0) {
+      const bleedAmt = 3 * rustyRazorCount;
+      combatState.enemies.forEach(enemy => {
+        enemy.statuses['bleed'] = (enemy.statuses['bleed'] || 0) + bleedAmt;
+      });
+      addLog(`Rusty Razor: all enemies gained ${bleedAmt} Bleed`, 'warning');
     }
   }
 
@@ -589,7 +620,7 @@ const PATTERN_ADDONS   = new Set(['ranged','melee','pierce','self','engage','tra
 const PATTERN_STATUSES = new Set([
   'burn','poison','weak','vulnerable','stun','oiled','dodge','power','frail','enfeebled','confused',
   'barricade','fading','thorns','shifting','formless','ritual','ruptured','bleed','slow','silence',
-  'arcane','persistence','flame_barrier',
+  'arcane','persistence','flame_barrier','bleed_thorns','wet',
 ]);
 // Statuses that do not stack — applying again just sets to 1
 const NON_STACKABLE_STATUSES = new Set(['stun', 'dodge', 'silence', 'confused']);
@@ -1315,9 +1346,20 @@ function castSpell(spellName, targets = {}) {
 
   addLog(`Cast ${spellName}!`, 'info');
 
-  // Process spell effects
   // Calculate INT bonus if applicable
   const intBonus = spell.affectedByBonus ? combatState.player.bonuses.intelligence : 0;
+
+  // Future keyword: queue effects to fire at the start of next turn instead of now
+  if (spell.keywords.includes('Future')) {
+    if (!combatState.futureEffects) combatState.futureEffects = [];
+    spell.effects.forEach(effect => {
+      const modifiedEffect = { ...effect };
+      if (modifiedEffect.value && spell.affectedByBonus) modifiedEffect.value += intBonus;
+      combatState.futureEffects.push({ effect: modifiedEffect, spell, targets });
+    });
+    addLog(`${spellName}: effects queued for next turn!`, 'info');
+    return { success: true };
+  }
 
   spell.effects.forEach(effect => {
     // Clone effect and apply INT bonus
@@ -1327,12 +1369,6 @@ function castSpell(spellName, targets = {}) {
     }
     processSpellEffect(modifiedEffect, spell, targets);
   });
-
-  // Check for Future keyword - delay effect to next turn
-  if (spell.keywords.includes('Future')) {
-    // Effects are queued for next turn start
-    // This would need additional implementation
-  }
 
   return { success: true };
 }
@@ -1476,6 +1512,26 @@ function processEffect(effect, die, targets, isCantrip = false) {
       combatState.player.health += value;
       addLog(`Gained ${value} max health`, 'success');
       break;
+
+    case 'gain': {
+      // "Gain X Reroll" / "Gain X Mana" / "Gain X <StatusName>"
+      const gainWhat = (effect.addons || []).join(' ').toLowerCase();
+      const gainAmt = parseInt((effect.addons || [])[0]) || value || 1;
+      const gainThing = (effect.addons || []).slice(1).join(' ').toLowerCase();
+      if (gainThing === 'reroll' || gainWhat === 'reroll') {
+        const amt = typeof value === 'number' && value > 0 ? value : gainAmt;
+        combatState.player.rerolls += amt;
+        addLog(`Gained ${amt} reroll(s)`, 'info');
+      } else if (gainThing === 'mana' || gainWhat.includes('mana')) {
+        const manaAmt = gainAmt;
+        combatState.player.mana = Math.min(combatState.player.mana + manaAmt, combatState.player.maxMana);
+        addLog(`Gained ${manaAmt} mana`, 'info');
+      } else if (gainThing) {
+        applyStatus(combatState.player, gainThing.replace(/\s+/g, '_'), gainAmt);
+        addLog(`Gained ${gainAmt} ${gainThing}`, 'info');
+      }
+      break;
+    }
   }
 }
 
@@ -1737,6 +1793,18 @@ function dealDamage(target, damage, addons = []) {
     dmg = Math.ceil(dmg * 1.5);
   }
 
+  // Wet: +25% magic damage; fire effects are extinguished
+  if (target.statuses['wet'] && target !== combatState.player) {
+    if (addons.includes('magic') || addons.includes('overload')) {
+      dmg = Math.ceil(dmg * 1.25);
+      addLog(`Wet: magic damage amplified!`, 'info');
+    }
+    // Fire (Overload) is extinguished by Wet — cancel fire application for this hit
+    if (addons.includes('overload')) {
+      addons = addons.filter(a => a !== 'overload');
+    }
+  }
+
   // Check Bruise (melee/ranged attacks deal +1 per stack; pure magic damage is exempt)
   const bruiseStacks = target.statuses['bruise'] || 0;
   const isMeleeOrRanged = !addons.includes('self') &&
@@ -1804,6 +1872,13 @@ function dealDamage(target, damage, addons = []) {
   if (target !== combatState.player && target.statuses['thorns'] && !addons.includes('self') && !_thornsRanged) {
     dealDamageToPlayer(target.statuses['thorns'], ['self'], null);
     addLog(`Thorns: ${target.statuses['thorns']} damage reflected!`, 'warning');
+  }
+
+  // Bleed Thorns — enemy takes a melee hit, player (attacker) gains bleed
+  if (target !== combatState.player && target.statuses['bleed_thorns'] && !addons.includes('self') && !_thornsRanged) {
+    const bleedStacks = target.statuses['bleed_thorns'];
+    combatState.player.statuses['bleed'] = (combatState.player.statuses['bleed'] || 0) + bleedStacks;
+    addLog(`Bleed Thorns: you gained ${bleedStacks} Bleed!`, 'warning');
   }
 
   // Deal remaining damage to health
@@ -2155,6 +2230,24 @@ function processSpellEffect(effect, spell, targets) {
     return;
   }
 
+  // "Self/Ally gains X Status" — apply a status to player or chosen ally (e.g. Bind: 1 Dodge)
+  if (effect.move && effect.move.toLowerCase() === 'self/ally') {
+    const addons = effect.addons || [];
+    const numIdx = addons.findIndex(a => !isNaN(parseInt(a)));
+    const amount = numIdx !== -1 ? parseInt(addons[numIdx]) : 1;
+    const statusName = addons.slice(numIdx + 1).join('_').toLowerCase();
+    if (statusName) {
+      const applyTo = targets.allyId
+        ? combatState.allies.find(a => a.id === targets.allyId)
+        : combatState.player;
+      if (applyTo) {
+        applyStatus(applyTo, statusName, amount);
+        addLog(`Gained ${amount} ${statusName}`, 'success');
+      }
+    }
+    return;
+  }
+
   // Standard effect processing
   processEffect(effect, null, targets);
 }
@@ -2456,6 +2549,14 @@ function processPlayerStartOfTurn() {
 
   // Process player status effects
   processStatusEffects(combatState.player, 'start');
+
+  // Fire queued Future spell effects
+  if (combatState.futureEffects && combatState.futureEffects.length > 0) {
+    combatState.futureEffects.forEach(({ effect, spell, targets }) => {
+      processSpellEffect(effect, spell, targets);
+    });
+    combatState.futureEffects = [];
+  }
 
   // Reset cooldowns
   combatState.spellCooldowns = {};
@@ -3261,6 +3362,17 @@ function dealDamageToPlayer(damage, addons, enemy) {
     damage = Math.ceil(damage * 1.5);
   }
 
+  // Wet: +25% magic damage on player; fire effects extinguished
+  if (player.statuses['wet']) {
+    if (addons && (addons.includes('magic') || addons.includes('overload'))) {
+      damage = Math.ceil(damage * 1.25);
+      addLog('Wet: magic damage amplified!', 'info');
+    }
+    if (addons && addons.includes('overload')) {
+      addons = addons.filter(a => a !== 'overload');
+    }
+  }
+
   // Check Bruise (melee/ranged attacks deal +1 per stack)
   const bruiseStacks = player.statuses['bruise'] || 0;
   const isDirectHit = !addons || !addons.includes('self');
@@ -3289,6 +3401,13 @@ function dealDamageToPlayer(damage, addons, enemy) {
   if (player.statuses['thorns'] && enemy && isMeleeHit) {
     dealDamage(enemy, player.statuses['thorns'], ['self']);
     addLog(`Thorns: ${player.statuses['thorns']} damage reflected to ${enemy.name}!`, 'info');
+  }
+
+  // Player Bleed Thorns — enemy melee hit applies Bleed to the attacker
+  if (player.statuses['bleed_thorns'] && enemy && isMeleeHit) {
+    const bleedStacks = player.statuses['bleed_thorns'];
+    enemy.statuses['bleed'] = (enemy.statuses['bleed'] || 0) + bleedStacks;
+    addLog(`Bleed Thorns: ${enemy.name} gained ${bleedStacks} Bleed!`, 'warning');
   }
 
   // Flame Barrier — fires on any hit (not self-damage), deals Magic Dmg Fire to attacker
@@ -3454,6 +3573,17 @@ function processStatusEffects(target, timing) {
   }
 
   if (timing === 'end') {
+    // Bleed: deal X damage (= stack count) at end of turn, then decay
+    if (statuses['bleed'] && statuses['bleed'] > 0) {
+      const bleedDmg = statuses['bleed'];
+      addLog(`Bleed dealt ${bleedDmg} damage to ${target.name || 'Player'}`, 'danger');
+      if (target === combatState.player) {
+        dealDamageToPlayer(bleedDmg, ['self'], null);
+      } else {
+        dealDamage(target, bleedDmg, ['self']);
+      }
+    }
+
     // Oiled: lose 1 energy at end of turn
     if (statuses['oiled'] && target === combatState.player) {
       const current = combatState.player.energy || 0;
@@ -3470,7 +3600,7 @@ function processStatusEffects(target, timing) {
     }
 
     // Decay statuses
-    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration', 'double_damage', 'intangible', 'no_draw', 'blind'];
+    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration', 'double_damage', 'intangible', 'no_draw', 'blind', 'bleed', 'wet'];
     decayStatuses.forEach(status => {
       if (statuses[status]) {
         statuses[status]--;
@@ -4229,6 +4359,8 @@ function resolveCardEffect(card, target, options = {}) {
     const infuseMatch = p.match(/(?:(\d+)\s+Infuse|Infuse\s+(\d+))/i);
     if (infuseMatch) {
       const amt = parseInt(infuseMatch[1] || infuseMatch[2]) || 1;
+      // Grow maxMana if the player hasn't had their mana pool initialized yet
+      if (player.maxMana === 0) player.maxMana = amt;
       player.mana = Math.min(player.maxMana, (player.mana || 0) + amt);
       addLog(`Infused ${amt} Mana`, 'info');
       continue;
