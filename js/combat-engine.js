@@ -222,13 +222,6 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     combatState.spells = [...window.playerSpells];
   }
 
-  // Ensure spell casters have a mana pool — give a base maxMana if character didn't define one
-  if (combatState.spells.length > 0 && combatState.player.maxMana === 0) {
-    const intBonus = (combatState.player.bonuses && combatState.player.bonuses.intelligence) || 0;
-    combatState.player.maxMana = 10 + intBonus * 2;
-    addLog(`Spell caster: mana pool set to ${combatState.player.maxMana}`, 'info');
-  }
-
   // Initialize card deck system
   combatState.drawPile = [];
   combatState.hand = [];
@@ -359,29 +352,22 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
       addLog(`Pummarola: +${pummarolaCount} Regeneration`, 'info');
     }
 
-    // Bear Trap Mask: +3 Bleed Thorns at combat start
+    // Bear Trap Mask: +4 Shield and +1 Bleed Thorns at combat start
     if (inventory.some(i => i.name === 'Bear Trap Mask')) {
-      combatState.player.statuses['bleed_thorns'] = (combatState.player.statuses['bleed_thorns'] || 0) + 3;
-      addLog('Bear Trap Mask: +3 Bleed Thorns', 'info');
+      combatState.player.block = (combatState.player.block || 0) + 4;
+      combatState.player.statuses['bleed_thorns'] = (combatState.player.statuses['bleed_thorns'] || 0) + 1;
+      addLog('Bear Trap Mask: +4 Shield and +1 Bleed Thorns', 'info');
     }
 
-    // Broken Window: enemies gain +1 Power at combat start
+    // Broken Window: player gains +3 Bleed Thorns and +1 Bleed at combat start
     if (inventory.some(i => i.name === 'Broken Window')) {
-      combatState.enemies.forEach(enemy => {
-        enemy.statuses['power'] = (enemy.statuses['power'] || 0) + 1;
-      });
-      addLog('Broken Window: all enemies gained +1 Power', 'warning');
+      combatState.player.statuses['bleed_thorns'] = (combatState.player.statuses['bleed_thorns'] || 0) + 3;
+      combatState.player.statuses['bleed'] = (combatState.player.statuses['bleed'] || 0) + 1;
+      addLog('Broken Window: +3 Bleed Thorns and +1 Bleed', 'warning');
     }
 
-    // Rusty Razor: apply 3 Bleed to all enemies at combat start
-    const rustyRazorCount = inventory.filter(i => i.name === 'Rusty Razor').reduce((n, i) => n + (i.quantity || 1), 0);
-    if (rustyRazorCount > 0) {
-      const bleedAmt = 3 * rustyRazorCount;
-      combatState.enemies.forEach(enemy => {
-        enemy.statuses['bleed'] = (enemy.statuses['bleed'] || 0) + bleedAmt;
-      });
-      addLog(`Rusty Razor: all enemies gained ${bleedAmt} Bleed`, 'warning');
-    }
+    // Empty Syringe: passive flag — tracked in applyStatus
+    combatState._emptySyringeActive = inventory.some(i => i.name === 'Empty Syringe');
   }
 
   // Initialize incremental item counters — attacksTotal persists across combats via gameState.runAttacks
@@ -645,10 +631,26 @@ function addPigmentCardToHand() {
 function applyStatus(unit, statusName, amount) {
   if (!unit || !unit.statuses) return;
   const key = statusName.toLowerCase();
+
+  // Water-Fire interaction: applying Burn to a Wet target reduces Wet by 1 instead
+  if (key === 'burn' && unit.statuses['wet'] && unit.statuses['wet'] > 0) {
+    unit.statuses['wet'] = Math.max(0, unit.statuses['wet'] - 1);
+    if (unit.statuses['wet'] <= 0) delete unit.statuses['wet'];
+    addLog(`Burn blocked by Wet on ${unit.name || 'target'}! Wet reduced.`, 'info');
+    return;
+  }
+
   if (NON_STACKABLE_STATUSES.has(key)) {
     unit.statuses[key] = 1;
   } else {
     unit.statuses[key] = (unit.statuses[key] || 0) + amount;
+  }
+
+  // Empty Syringe: inflicting Bleed or Poison on an enemy adds +1 extra
+  if (combatState && combatState._emptySyringeActive && unit !== combatState.player
+      && (key === 'bleed' || key === 'poison')) {
+    unit.statuses[key] = (unit.statuses[key] || 0) + 1;
+    addLog(`Empty Syringe: +1 extra ${key} on ${unit.name || 'enemy'}!`, 'info');
   }
 }
 
@@ -1354,7 +1356,8 @@ function castSpell(spellName, targets = {}) {
     if (!combatState.futureEffects) combatState.futureEffects = [];
     spell.effects.forEach(effect => {
       const modifiedEffect = { ...effect };
-      if (modifiedEffect.value && spell.affectedByBonus) modifiedEffect.value += intBonus;
+      const isMagicDmgFuture = effect.move && ['magic dmg', 'magic_dmg'].includes(effect.move.toLowerCase());
+      if (modifiedEffect.value && spell.affectedByBonus && !isMagicDmgFuture) modifiedEffect.value += intBonus;
       combatState.futureEffects.push({ effect: modifiedEffect, spell, targets });
     });
     addLog(`${spellName}: effects queued for next turn!`, 'info');
@@ -1362,9 +1365,10 @@ function castSpell(spellName, targets = {}) {
   }
 
   spell.effects.forEach(effect => {
-    // Clone effect and apply INT bonus
+    // Clone effect and apply INT bonus (skip magic dmg — calculateMoveValue handles it via Arcane)
     const modifiedEffect = { ...effect };
-    if (modifiedEffect.value && spell.affectedByBonus) {
+    const isMagicDmg = effect.move && ['magic dmg', 'magic_dmg'].includes(effect.move.toLowerCase());
+    if (modifiedEffect.value && spell.affectedByBonus && !isMagicDmg) {
       modifiedEffect.value += intBonus;
     }
     processSpellEffect(modifiedEffect, spell, targets);
@@ -1415,12 +1419,16 @@ function processEffect(effect, die, targets, isCantrip = false) {
       break;
 
     case 'magic dmg':
-    case 'magic_dmg':
+    case 'magic_dmg': {
+      const magicAddons = (effect.addons || []).filter(a => !['DamagedEnemies', 'LeftmostRightmost'].includes(a));
       resolvedTargets.enemies.forEach(enemy => {
-        dealDamage(enemy, value, ['magic', ...(effect.addons || [])]);
-        if (effect.element === 'fire') applyFireElement(enemy);
+        dealDamage(enemy, value, ['magic', ...magicAddons]);
+        if (effect.element) {
+          applyElement(enemy, effect.element, value, magicAddons);
+        }
       });
       break;
+    }
 
     case 'block':
       resolvedTargets.allies.forEach(ally => {
@@ -1497,15 +1505,37 @@ function processEffect(effect, die, targets, isCantrip = false) {
       addLog(`Altered into ${effect.target || 'new form'}`, 'info');
       break;
 
-    case 'assassinate':
-      // Kill enemy if health <= value
+    case 'assassinate': {
       resolvedTargets.enemies.forEach(enemy => {
-        if (enemy.health <= value) {
+        const adds = (effect.addons || []).map(a => a.toLowerCase());
+        let threshold = value || 0;
+        if (adds.includes('halfmax')) {
+          threshold = Math.ceil(enemy.maxHealth / 2);
+        } else if (adds.includes('fullmax')) {
+          threshold = enemy.maxHealth;
+        }
+        if (enemy.health <= threshold) {
           enemy.health = 0;
           addLog(`Assassinated ${enemy.name}!`, 'success');
         }
       });
       break;
+    }
+
+    case 'set': {
+      // Set target's health to a fixed value (Mend spell)
+      const setVal = effect.value || value;
+      // Prefer ally target, then player
+      const setTarget = resolvedTargets.allies.length > 0
+        ? resolvedTargets.allies[0]
+        : (resolvedTargets.player ? combatState.player : null);
+      if (setTarget) {
+        setTarget.health = Math.min(setVal, setTarget.maxHealth);
+        if (setTarget === combatState.player) window.health = setTarget.health;
+        addLog(`Set ${setTarget.name || 'Player'} health to ${setVal}`, 'success');
+      }
+      break;
+    }
 
     case 'vitality':
       combatState.player.maxHealth += value;
@@ -1620,6 +1650,20 @@ function resolveTargets(effect, targets, isCantrip) {
   const moveData = typeof MOVES_DATA !== 'undefined' ? MOVES_DATA[effect.move?.toLowerCase()] : null;
   const preferredTarget = moveData?.preferredTarget || 'Enemy';
 
+  // DamagedEnemies: all enemies that have taken damage (below max health)
+  if (addons.includes('DamagedEnemies')) {
+    result.enemies = combatState.enemies.filter(e => e.health > 0 && e.health < e.maxHealth);
+    return result;
+  }
+
+  // LeftmostRightmost: leftmost and rightmost alive enemies by position
+  if (addons.includes('LeftmostRightmost')) {
+    const alive = combatState.enemies.filter(e => e.health > 0).sort((a, b) => (a.position || 0) - (b.position || 0));
+    if (alive.length > 0) result.enemies.push(alive[0]);
+    if (alive.length > 1) result.enemies.push(alive[alive.length - 1]);
+    return result;
+  }
+
   // Wide: all enemies (for damage) or all allies (for support)
   if (addons.includes('Wide')) {
     if (preferredTarget === 'Enemy') {
@@ -1717,10 +1761,65 @@ function getAutoTargets(effect) {
  * @param {Object} target - Target entity
  */
 function applyFireElement(target) {
-  if (!target || !target.statuses) return;
-  if (!(target.statuses['burn'] > 0)) {
-    applyStatus(target, 'burn', 1);
-    addLog(`Fire: ${target.name || 'Target'} ignited! +1 Burn`, 'warning');
+  applyElement(target, 'fire');
+}
+
+/**
+ * Apply an element's on-hit effect to a target.
+ * @param {Object} target - Target entity
+ * @param {string} element - Element name (fire/water/poison/dark/blood/electric/earth)
+ * @param {number} [electricDamage] - Damage to chain for electric element
+ * @param {Array} [electricAddons] - Addons to pass for electric chains
+ */
+function applyElement(target, element, electricDamage = 0, electricAddons = []) {
+  if (!target || !target.statuses || !element || element === 'n/a') return;
+  switch (element.toLowerCase()) {
+    case 'fire':
+      if (!(target.statuses['burn'] > 0)) {
+        applyStatus(target, 'burn', 1);
+        addLog(`Fire: ${target.name || 'Target'} ignited! +1 Burn`, 'warning');
+      }
+      break;
+    case 'water':
+      applyStatus(target, 'wet', 1);
+      addLog(`Water: ${target.name || 'Target'} is now Wet!`, 'info');
+      if (target.statuses['burn']) {
+        delete target.statuses['burn'];
+        addLog(`Water: Burn extinguished on ${target.name || 'Target'}!`, 'info');
+      }
+      break;
+    case 'poison':
+      applyStatus(target, 'poison', 1);
+      addLog(`Poison: ${target.name || 'Target'} poisoned! +1 Poison`, 'warning');
+      break;
+    case 'dark':
+      if (!(target.statuses['blind'] > 0)) {
+        applyStatus(target, 'blind', 1);
+        addLog(`Dark: ${target.name || 'Target'} blinded! +1 Blind`, 'warning');
+      }
+      break;
+    case 'blood':
+      if (!(target.statuses['bleed'] > 0)) {
+        applyStatus(target, 'bleed', 1);
+        addLog(`Blood: ${target.name || 'Target'} bleeding! +1 Bleed`, 'warning');
+      }
+      break;
+    case 'electric':
+      // Electric chains to adjacent Wet targets — handled at call site with electricDamage
+      if (electricDamage > 0 && target.statuses['wet'] && target.statuses['wet'] > 0) {
+        const pos = target.position;
+        combatState.enemies.forEach(adj => {
+          if (adj !== target && adj.health > 0 && adj.statuses && adj.statuses['wet']
+              && (adj.position === pos - 1 || adj.position === pos + 1)) {
+            dealDamage(adj, electricDamage, ['magic', ...electricAddons]);
+            addLog(`Electric: chained ${electricDamage} damage to ${adj.name}!`, 'info');
+          }
+        });
+      }
+      break;
+    case 'earth':
+      // No on-hit effect
+      break;
   }
 }
 
@@ -1793,17 +1892,8 @@ function dealDamage(target, damage, addons = []) {
     dmg = Math.ceil(dmg * 1.5);
   }
 
-  // Wet: +25% magic damage; fire effects are extinguished
-  if (target.statuses['wet'] && target !== combatState.player) {
-    if (addons.includes('magic') || addons.includes('overload')) {
-      dmg = Math.ceil(dmg * 1.25);
-      addLog(`Wet: magic damage amplified!`, 'info');
-    }
-    // Fire (Overload) is extinguished by Wet — cancel fire application for this hit
-    if (addons.includes('overload')) {
-      addons = addons.filter(a => a !== 'overload');
-    }
-  }
+  // Wet: fire immunity is handled via applyStatus interception (Burn blocked when Wet)
+  // Electric chaining is handled in applyElement
 
   // Check Bruise (melee/ranged attacks deal +1 per stack; pure magic damage is exempt)
   const bruiseStacks = target.statuses['bruise'] || 0;
@@ -2167,70 +2257,7 @@ function cleanseDebuffs(target, stacks) {
  * @param {Object} targets - Targets
  */
 function processSpellEffect(effect, spell, targets) {
-  // Handle special spell descriptions
-  const desc = spell.description.toLowerCase();
-
-  // Kill effects
-  if (desc.includes('kill an enemy')) {
-    const aliveEnemies = combatState.enemies.filter(e => e.health > 0);
-
-    if (desc.includes('with exactly 1 health')) {
-      aliveEnemies.forEach(e => {
-        if (e.health === 1) {
-          e.health = 0;
-          addLog(`${spell.name} killed ${e.name}!`, 'success');
-          // Harvest: gain mana
-          if (desc.includes('gain 3 mana')) {
-            combatState.player.mana = Math.min(combatState.player.mana + 3, combatState.player.maxMana);
-          }
-        }
-      });
-    } else if (desc.includes('with exactly 2 health')) {
-      aliveEnemies.forEach(e => {
-        if (e.health === 2) {
-          e.health = 0;
-          addLog(`${spell.name} killed ${e.name}!`, 'success');
-        }
-      });
-    } else if (desc.includes('half or less health')) {
-      const target = targets.enemyId ?
-        combatState.enemies.find(e => e.id === targets.enemyId) :
-        aliveEnemies[0];
-      if (target && target.health <= target.maxHealth / 2) {
-        target.health = 0;
-        addLog(`${spell.name} killed ${target.name}!`, 'success');
-      }
-    } else {
-      // Kill any enemy (Infinity)
-      const target = targets.enemyId ?
-        combatState.enemies.find(e => e.id === targets.enemyId) :
-        aliveEnemies[0];
-      if (target) {
-        target.health = 0;
-        addLog(`${spell.name} killed ${target.name}!`, 'success');
-      }
-    }
-    return;
-  }
-
-  // Set health effects (Mend)
-  if (desc.includes('set self/ally to')) {
-    const match = desc.match(/set self\/ally to (\d+) health/i);
-    if (match) {
-      const targetHealth = parseInt(match[1]);
-      if (targets.allyId) {
-        const ally = combatState.allies.find(a => a.id === targets.allyId);
-        if (ally) ally.health = Math.min(targetHealth, ally.maxHealth);
-      } else {
-        combatState.player.health = Math.min(targetHealth, combatState.player.maxHealth);
-        window.health = combatState.player.health;
-      }
-      addLog(`Set health to ${targetHealth}`, 'info');
-    }
-    return;
-  }
-
-  // "Self/Ally gains X Status" — apply a status to player or chosen ally (e.g. Bind: 1 Dodge)
+  // "Self/Ally gains X Status" — apply a status to player or chosen ally (e.g. Bind: 1 Buffer)
   if (effect.move && effect.move.toLowerCase() === 'self/ally') {
     const addons = effect.addons || [];
     const numIdx = addons.findIndex(a => !isNaN(parseInt(a)));
@@ -3111,7 +3138,7 @@ function executeEnemyActions() {
               let magicDmgVal = value;
               if (enemy.statuses['weak']) magicDmgVal = Math.floor(magicDmgVal * 0.75);
               dealDamageToPlayer(magicDmgVal, magicAddons, enemy);
-              if (effect.element === 'fire') applyFireElement(combatState.player);
+              if (effect.element) applyElement(combatState.player, effect.element);
               break;
             }
 
@@ -3362,16 +3389,7 @@ function dealDamageToPlayer(damage, addons, enemy) {
     damage = Math.ceil(damage * 1.5);
   }
 
-  // Wet: +25% magic damage on player; fire effects extinguished
-  if (player.statuses['wet']) {
-    if (addons && (addons.includes('magic') || addons.includes('overload'))) {
-      damage = Math.ceil(damage * 1.25);
-      addLog('Wet: magic damage amplified!', 'info');
-    }
-    if (addons && addons.includes('overload')) {
-      addons = addons.filter(a => a !== 'overload');
-    }
-  }
+  // Wet: fire immunity is handled via applyStatus interception (Burn blocked when Wet)
 
   // Check Bruise (melee/ranged attacks deal +1 per stack)
   const bruiseStacks = player.statuses['bruise'] || 0;
@@ -3573,7 +3591,7 @@ function processStatusEffects(target, timing) {
   }
 
   if (timing === 'end') {
-    // Bleed: deal X damage (= stack count) at end of turn, then decay
+    // Bleed: deal X damage (= stack count) at end of turn, then ESCALATE by 1
     if (statuses['bleed'] && statuses['bleed'] > 0) {
       const bleedDmg = statuses['bleed'];
       addLog(`Bleed dealt ${bleedDmg} damage to ${target.name || 'Player'}`, 'danger');
@@ -3582,6 +3600,8 @@ function processStatusEffects(target, timing) {
       } else {
         dealDamage(target, bleedDmg, ['self']);
       }
+      statuses['bleed']++;
+      addLog(`Bleed escalated to ${statuses['bleed']} on ${target.name || 'Player'}`, 'warning');
     }
 
     // Oiled: lose 1 energy at end of turn
@@ -3600,7 +3620,7 @@ function processStatusEffects(target, timing) {
     }
 
     // Decay statuses
-    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration', 'double_damage', 'intangible', 'no_draw', 'blind', 'bleed', 'wet'];
+    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration', 'double_damage', 'intangible', 'no_draw', 'blind', 'wet'];
     decayStatuses.forEach(status => {
       if (statuses[status]) {
         statuses[status]--;

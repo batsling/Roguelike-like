@@ -3,29 +3,9 @@
 var SPELLS_DATA = [
   {
     "name": "Poultice",
-    "cost": 1,
+    "cost": 2,
     "rarity": "Common",
-    "description": "3 Heal",
-    "keywords": [
-      "SingleCast"
-    ],
-    "affectedByBonus": true,
-    "effects": [
-      {
-        "raw": "3 Heal",
-        "value": 3,
-        "move": "Heal",
-        "addons": [],
-        "target": null
-      }
-    ],
-    "imageUrl": "images/Spells/Poultice.png"
-  },
-  {
-    "name": "Remedy",
-    "cost": 1,
-    "rarity": "Common",
-    "description": "2 Heal, 1 Cleanse",
+    "description": "Gain 2 Health",
     "keywords": [
       "SingleCast"
     ],
@@ -34,15 +14,38 @@ var SPELLS_DATA = [
       {
         "raw": "2 Heal",
         "value": 2,
-        "move": "Heal",
+        "move": "heal",
         "addons": [],
+        "element": "earth",
+        "target": null
+      }
+    ],
+    "imageUrl": "images/Spells/Poultice.png"
+  },
+  {
+    "name": "Remedy",
+    "cost": 2,
+    "rarity": "Common",
+    "description": "Gain 2 Health and Cleanse 1",
+    "keywords": [
+      "SingleCast"
+    ],
+    "affectedByBonus": true,
+    "effects": [
+      {
+        "raw": "2 Heal",
+        "value": 2,
+        "move": "heal",
+        "addons": [],
+        "element": "earth",
         "target": null
       },
       {
         "raw": "1 Cleanse",
         "value": 1,
-        "move": "Cleanse",
+        "move": "cleanse",
         "addons": [],
+        "element": null,
         "target": null
       }
     ],
@@ -50,19 +53,20 @@ var SPELLS_DATA = [
   },
   {
     "name": "Sprout",
-    "cost": 3,
+    "cost": 4,
     "rarity": "Common",
-    "description": "4 Heal",
+    "description": "Gain 3 Health",
     "keywords": [
       "Channel"
     ],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "4 Heal",
-        "value": 4,
-        "move": "Heal",
+        "raw": "3 Heal",
+        "value": 3,
+        "move": "heal",
         "addons": [],
+        "element": "earth",
         "target": null
       }
     ],
@@ -70,25 +74,20 @@ var SPELLS_DATA = [
   },
   {
     "name": "Abyss",
-    "cost": 4,
-    "rarity": "Uncommon",
-    "description": "Kill an enemy with half or less health",
+    "cost": 6,
+    "rarity": "Rare",
+    "description": "Assassinate X, where X is half of the target's Maximum Health",
     "keywords": [],
     "affectedByBonus": false,
     "effects": [
       {
-        "raw": "Kill an enemy with half or less health",
+        "raw": "Assassinate halfMax",
         "value": null,
-        "move": "Kill",
+        "move": "assassinate",
         "addons": [
-          "an",
-          "enemy",
-          "with",
-          "half",
-          "or",
-          "less",
-          "health"
+          "halfMax"
         ],
+        "element": "dark",
         "target": null
       }
     ],
@@ -96,20 +95,20 @@ var SPELLS_DATA = [
   },
   {
     "name": "Infinity",
-    "cost": 8,
+    "cost": 15,
     "rarity": "Rare",
-    "description": "Kill an enemy",
+    "description": "Assassinate X, where X is the target's Maximum Health",
     "keywords": [],
     "affectedByBonus": false,
     "effects": [
       {
-        "raw": "Kill an enemy",
+        "raw": "Assassinate fullMax",
         "value": null,
-        "move": "Kill",
+        "move": "assassinate",
         "addons": [
-          "an",
-          "enemy"
+          "fullMax"
         ],
+        "element": "dark",
         "target": null
       }
     ],
@@ -119,35 +118,28 @@ var SPELLS_DATA = [
     "name": "Harvest",
     "cost": 1,
     "rarity": "Rare",
-    "description": "Kill an enemy with exactly 1 health, then Gain 3 mana",
+    "description": "Assassinate 1, then Gain 3 mana",
     "keywords": [
       "Cooldown"
     ],
     "affectedByBonus": false,
     "effects": [
       {
-        "raw": "Kill an enemy with exactly 1 health",
-        "value": null,
-        "move": "Kill",
-        "addons": [
-          "an",
-          "enemy",
-          "with",
-          "exactly",
-          "1",
-          "health"
-        ],
+        "raw": "Assassinate 1",
+        "value": 1,
+        "move": "assassinate",
+        "addons": [],
+        "element": "blood",
         "target": null
       },
       {
-        "raw": "then Gain 3 mana",
-        "value": null,
-        "move": "then",
+        "raw": "Gain 3 mana",
+        "value": 3,
+        "move": "gain",
         "addons": [
-          "Gain",
-          "3",
           "mana"
         ],
+        "element": null,
         "target": null
       }
     ],
@@ -157,26 +149,18 @@ var SPELLS_DATA = [
     "name": "Miasma",
     "cost": 3,
     "rarity": "Rare",
-    "description": "2 Dmg Cleave, 2 Poison Cleave",
+    "description": "1 Magic Dmg Poison Cleave",
     "keywords": [],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "2 Dmg Cleave",
-        "value": 2,
-        "move": "Dmg",
+        "raw": "1 Magic Dmg Poison Cleave",
+        "value": 1,
+        "move": "magic dmg",
         "addons": [
           "Cleave"
         ],
-        "target": null
-      },
-      {
-        "raw": "2 Poison Cleave",
-        "value": 2,
-        "move": "Poison",
-        "addons": [
-          "Cleave"
-        ],
+        "element": "poison",
         "target": null
       }
     ],
@@ -186,20 +170,18 @@ var SPELLS_DATA = [
     "name": "Scald",
     "cost": 3,
     "rarity": "Uncommon",
-    "description": "3 Dmg to all damaged enemies",
+    "description": "2 Magic Dmg Water to all damaged enemies",
     "keywords": [],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "3 Dmg to all damaged enemies",
-        "value": 3,
-        "move": "Dmg",
+        "raw": "2 Magic Dmg Water DamagedEnemies",
+        "value": 2,
+        "move": "magic dmg",
         "addons": [
-          "to",
-          "all",
-          "damaged",
-          "enemies"
+          "DamagedEnemies"
         ],
+        "element": "water",
         "target": null
       }
     ],
@@ -207,17 +189,18 @@ var SPELLS_DATA = [
   },
   {
     "name": "Blaze",
-    "cost": 5,
+    "cost": 6,
     "rarity": "Rare",
-    "description": "10 Dmg",
+    "description": "13 Magic Dmg",
     "keywords": [],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "10 Dmg",
-        "value": 10,
-        "move": "Dmg",
+        "raw": "13 Magic Dmg",
+        "value": 13,
+        "move": "magic dmg",
         "addons": [],
+        "element": "fire",
         "target": null
       }
     ],
@@ -227,21 +210,18 @@ var SPELLS_DATA = [
     "name": "Crush",
     "cost": 3,
     "rarity": "Rare",
-    "description": "4 Dmg to leftmost and rightmost enemy",
+    "description": "3 Dmg to leftmost and rightmost enemy",
     "keywords": [],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "4 Dmg to leftmost and rightmost enemy",
-        "value": 4,
-        "move": "Dmg",
+        "raw": "3 Dmg LeftmostRightmost",
+        "value": 3,
+        "move": "dmg",
         "addons": [
-          "to",
-          "leftmost",
-          "and",
-          "rightmost",
-          "enemy"
+          "LeftmostRightmost"
         ],
+        "element": null,
         "target": null
       }
     ],
@@ -251,17 +231,18 @@ var SPELLS_DATA = [
     "name": "Burn",
     "cost": 1,
     "rarity": "Uncommon",
-    "description": "3 Dmg Overload",
+    "description": "1 Magic Dmg Fire Overload",
     "keywords": [],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "3 Dmg Overload",
-        "value": 3,
-        "move": "Dmg",
+        "raw": "1 Magic Dmg Fire Overload",
+        "value": 1,
+        "move": "magic dmg",
         "addons": [
           "Overload"
         ],
+        "element": "fire",
         "target": null
       }
     ],
@@ -269,23 +250,24 @@ var SPELLS_DATA = [
   },
   {
     "name": "Bind",
-    "cost": 2,
+    "cost": 3,
     "rarity": "Rare",
-    "description": "Self/Ally gains 1 Dodge",
+    "description": "Target gains 1 Buffer",
     "keywords": [
       "Deplete"
     ],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "Self/Ally gains 1 Dodge",
+        "raw": "Self/Ally gains 1 Buffer",
         "value": null,
         "move": "Self/Ally",
         "addons": [
           "gains",
           "1",
-          "Dodge"
+          "Buffer"
         ],
+        "element": null,
         "target": null
       }
     ],
@@ -295,17 +277,18 @@ var SPELLS_DATA = [
     "name": "Poke",
     "cost": 1,
     "rarity": "Common",
-    "description": "2 Dmg",
+    "description": "1 Magic Dmg",
     "keywords": [
       "Cooldown"
     ],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "2 Dmg",
-        "value": 2,
-        "move": "Dmg",
+        "raw": "1 Magic Dmg",
+        "value": 1,
+        "move": "magic dmg",
         "addons": [],
+        "element": null,
         "target": null
       }
     ],
@@ -315,19 +298,20 @@ var SPELLS_DATA = [
     "name": "Flick",
     "cost": 1,
     "rarity": "Uncommon",
-    "description": "2 Dmg Engage",
+    "description": "1 Magic Dmg Engage",
     "keywords": [
       "Cooldown"
     ],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "2 Dmg Engage",
-        "value": 2,
-        "move": "Dmg",
+        "raw": "1 Magic Dmg Engage",
+        "value": 1,
+        "move": "magic dmg",
         "addons": [
           "Engage"
         ],
+        "element": null,
         "target": null
       }
     ],
@@ -337,26 +321,26 @@ var SPELLS_DATA = [
     "name": "Balance",
     "cost": 3,
     "rarity": "Uncommon",
-    "description": "2 Dmg Wide, 2 Heal Wide",
+    "description": "1 Magic Dmg Cleave and Gain 1 Health",
     "keywords": [],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "2 Dmg Wide",
-        "value": 2,
-        "move": "Dmg",
+        "raw": "1 Magic Dmg Cleave",
+        "value": 1,
+        "move": "magic dmg",
         "addons": [
-          "Wide"
+          "Cleave"
         ],
+        "element": null,
         "target": null
       },
       {
-        "raw": "2 Heal Wide",
-        "value": 2,
-        "move": "Heal",
-        "addons": [
-          "Wide"
-        ],
+        "raw": "1 Heal",
+        "value": 1,
+        "move": "heal",
+        "addons": [],
+        "element": null,
         "target": null
       }
     ],
@@ -366,20 +350,18 @@ var SPELLS_DATA = [
     "name": "Mend",
     "cost": 2,
     "rarity": "Common",
-    "description": "Set self/ally to 7 Health",
+    "description": "Set friendly target's Health to 5",
     "keywords": [],
     "affectedByBonus": false,
     "effects": [
       {
-        "raw": "Set self/ally to 7 Health",
-        "value": null,
-        "move": "Set",
+        "raw": "Set health to 5",
+        "value": 5,
+        "move": "set",
         "addons": [
-          "self/ally",
-          "to",
-          "7",
-          "Health"
+          "health"
         ],
+        "element": "blood",
         "target": null
       }
     ],
@@ -387,21 +369,22 @@ var SPELLS_DATA = [
   },
   {
     "name": "Scorch",
-    "cost": 2,
+    "cost": 3,
     "rarity": "Common",
-    "description": "3 Dmg Cleave",
+    "description": "1 Magic Dmg Fire Cleave",
     "keywords": [
       "SingleCast"
     ],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "3 Dmg Cleave",
-        "value": 3,
-        "move": "Dmg",
+        "raw": "1 Magic Dmg Fire Cleave",
+        "value": 1,
+        "move": "magic dmg",
         "addons": [
           "Cleave"
         ],
+        "element": "fire",
         "target": null
       }
     ],
@@ -411,24 +394,18 @@ var SPELLS_DATA = [
     "name": "Zap",
     "cost": 2,
     "rarity": "Uncommon",
-    "description": "Kill an enemy with exactly 3 health",
+    "description": "Assassinate 2",
     "keywords": [
       "Cooldown"
     ],
     "affectedByBonus": false,
     "effects": [
       {
-        "raw": "Kill an enemy with exactly 3 health",
-        "value": null,
-        "move": "Kill",
-        "addons": [
-          "an",
-          "enemy",
-          "with",
-          "exactly",
-          "3",
-          "health"
-        ],
+        "raw": "Assassinate 2",
+        "value": 2,
+        "move": "assassinate",
+        "addons": [],
+        "element": "electric",
         "target": null
       }
     ],
@@ -436,20 +413,22 @@ var SPELLS_DATA = [
   },
   {
     "name": "Gaze",
-    "cost": 1,
+    "cost": 2,
     "rarity": "Common",
-    "description": "Gain 2 Reroll",
-    "keywords": [],
+    "description": "Gain +1 Reroll",
+    "keywords": [
+      "Future"
+    ],
     "affectedByBonus": false,
     "effects": [
       {
-        "raw": "Gain 2 Reroll",
-        "value": 2,
-        "move": "Gain",
+        "raw": "Gain 1 Reroll",
+        "value": 1,
+        "move": "gain",
         "addons": [
-          "2",
-          "Reroll"
+          "reroll"
         ],
+        "element": null,
         "target": null
       }
     ],

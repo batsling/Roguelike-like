@@ -571,42 +571,19 @@ const ITEM_EFFECTS = {
 
   "Broken Window": {
     onAcquire: () => {
-      updateStat('luck', 2);
-      createNotification('Broken Window: +2 Luck', '#f4c430', '🪟');
-    },
-    onRemove: () => {
-      updateStat('luck', -2);
+      // Combat effect (+3 BleedThorns, +1 Bleed to player) applied in combat-engine.js initCombat
     }
   },
 
   "Empty Syringe": {
-    uses: 1,
-    canUse: () => {
-      return typeof combatState !== 'undefined' && combatState && combatState.phase === 'player_action';
-    },
-    onUse: (targetId) => {
-      if (!combatState || !combatState.player) return;
-      const bleedStacks = combatState.player.statuses['bleed'] || 0;
-      if (bleedStacks <= 0) {
-        if (typeof createNotification === 'function') createNotification('Empty Syringe: no Bleed to draw!', '#888', '💉');
-        return;
-      }
-      delete combatState.player.statuses['bleed'];
-      const target = targetId
-        ? combatState.enemies.find(e => e.id === targetId && e.health > 0)
-        : combatState.enemies.find(e => e.health > 0);
-      if (target) {
-        if (typeof dealDamage === 'function') dealDamage(target, bleedStacks, ['self']);
-        if (typeof addLog === 'function') addLog(`Empty Syringe: injected ${bleedStacks} damage into ${target.name}!`, 'success');
-        if (typeof createNotification === 'function') createNotification(`Empty Syringe: ${bleedStacks} dmg!`, '#cc3333', '💉');
-      }
-      if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
+    onAcquire: () => {
+      // Passive effect: when inflicting Bleed or Poison, +1 extra — tracked via _emptySyringeActive in combat-engine.js
     }
   },
 
   "Rusty Razor": {
     onAcquire: () => {
-      // Combat effect (bleed enemies) applied in combat-engine.js initCombat
+      // Weapon: card added to deck via the weapon card system
     }
   },
 

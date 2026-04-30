@@ -630,11 +630,11 @@ var STATUSES_DATA = {
   },
   "bleed": {
     "name": "Bleed",
-    "description": "At the end of turn, target takes X damage where X is the stack count. Decays by 1 at end of turn.",
+    "description": "Target loses X Health at the end of their turn, where X is the stack count. Escalates by 1 each turn.",
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
-    "decay": "Down by 1 at end of turn",
+    "decay": "Up by 1 at end of turn",
     "who": "All",
     "preference": "Negative",
     "imageUrl": "images/statuses/Bleed.png"
@@ -652,13 +652,13 @@ var STATUSES_DATA = {
   },
   "wet": {
     "name": "Wet",
-    "description": "Target takes 25% more magic damage. Fire effects on this target are extinguished. Decays by 1 at end of turn.",
-    "type": "Debuff",
+    "description": "Cannot be Burned. Any Magic Dmg Electric dealt to adjacent Wet targets will be dealt to this target as well. Decays by 1 at end of turn.",
+    "type": "Ability",
     "stackable": true,
     "maxStack": null,
     "decay": "Down by 1 at end of turn",
     "who": "All",
-    "preference": "Negative",
+    "preference": "Neutral",
     "imageUrl": "images/statuses/Wet.png"
   }
 };

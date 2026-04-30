@@ -215,6 +215,22 @@ var CARDS_DATA = [
     ]
   },
   {
+    "name": "Rusty Razor",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "description": "Inflict 1 Bleed and 1 Poison.",
+    "upgradedDescription": "Inflict 1 Bleed and 1 Poison.",
+    "upgradedCost": 1,
+    "canUpgrade": false,
+    "isStatusCard": false,
+    "imageUrl": "images/items/RustyRazor.png",
+    "game": "Mewgenics",
+    "tags": [
+      "weapon"
+    ]
+  },
+  {
     "name": "Bane",
     "rarity": "Common",
     "cost": 1,

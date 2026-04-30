@@ -1224,43 +1224,47 @@ var ITEMS_DATA = [
     "name": "Bear Trap Mask",
     "rarity": "Uncommon",
     "type": "Triggered",
-    "description": "At combat start, gain 3 Bleed Thorns. When hit by melee, apply Bleed to the attacker.",
-    "game": "Don't Starve",
+    "description": "At the start of combat, Gain +4 Shield and +1 Bleed Thorns",
+    "game": "Mewgenics",
     "tags": [
-      "wearable"
+      "wearable",
+      "mask"
     ],
     "image": "images/items/BearTrapMask.png",
     "unlockCondition": null
   },
   {
     "name": "Broken Window",
-    "rarity": "Common",
-    "type": "Passive",
-    "description": "Gain +2 Luck, but all enemies gain +1 Power at combat start.",
-    "game": "Spelunky",
-    "tags": [],
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "At the start of combat, Gain +3 Bleed Thorns and +1 Bleed",
+    "game": "Mewgenics",
+    "tags": [
+      "glass",
+      "wood"
+    ],
     "image": "images/items/BrokenWindow.png",
     "unlockCondition": null
   },
   {
     "name": "Empty Syringe",
-    "rarity": "Uncommon",
-    "type": "Usable",
-    "description": "Combat: Remove all Bleed from yourself and deal that much damage to a target enemy.",
-    "game": "Dead Cells",
-    "tags": [],
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "When Inflicting Bleed or Poison, Inflict +1 Bleed or Poison",
+    "game": "Mewgenics",
+    "tags": [
+      "syringe"
+    ],
     "image": "images/items/EmptySyringe.png",
     "unlockCondition": null
   },
   {
     "name": "Rusty Razor",
-    "rarity": "Common",
-    "type": "Triggered",
-    "description": "At combat start, apply 3 Bleed to all enemies.",
-    "game": "The Binding of Isaac",
-    "tags": [
-      "cursed"
-    ],
+    "rarity": "Uncommon",
+    "type": "Weapon",
+    "description": "Add the Card \"Rusty Razor\" into your Deck. If you kill an enemy with a status affliction at least one time, \"Rusty Razor\" Gains (+1/+2) Dmg",
+    "game": "Mewgenics",
+    "tags": [],
     "image": "images/items/RustyRazor.png",
     "unlockCondition": null
   }
