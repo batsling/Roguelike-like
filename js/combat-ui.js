@@ -1155,11 +1155,37 @@ const _DICE_DEFAULT_COLORS = {
   cardBg: 'rgba(100,60,10,0.95)', cardBorder: '#cc8800', nameColor: '#f0c850'
 };
 
+// Color palette for S&D dice based on their tag color
+const _SD_TAG_COLORS = {
+  blue:   { hex: '#4488ff', sceneBg: 0x000820 },
+  red:    { hex: '#ff4444', sceneBg: 0x1a0000 },
+  orange: { hex: '#ff8800', sceneBg: 0x120600 },
+  gray:   { hex: '#aaaaaa', sceneBg: 0x0d0d0d },
+  yellow: { hex: '#ffdd00', sceneBg: 0x141000 },
+};
+
+/** Return color theme for a card. S&D dice get white-on-black with tag-colored border. */
+function _getDiceColors(card) {
+  if (DICE_CARD_COLORS[card.name]) return DICE_CARD_COLORS[card.name];
+  if (card.game === 'Slice & Dice') {
+    const tags = Array.isArray(card.tags) ? card.tags : [];
+    const tagEntry = tags.reduce((found, t) => found || _SD_TAG_COLORS[t], null);
+    const tc = tagEntry || { hex: '#aaaaaa', sceneBg: 0x0d0d0d };
+    return {
+      bg: '#111111', inner: '#222222', border: tc.hex,
+      faceNum: '#ffffff', text: '#ffffff', outline: '#000000',
+      sceneBg: tc.sceneBg,
+      cardBg: 'rgba(0,0,0,0.95)', cardBorder: tc.hex, nameColor: '#ffffff'
+    };
+  }
+  return _DICE_DEFAULT_COLORS;
+}
+
 /**
  * Build a DICE_DATA-compatible object from a card whose type is 'Dice'.
  */
 function _makeDiceDataForCard(card) {
-  const colors = DICE_CARD_COLORS[card.name] || _DICE_DEFAULT_COLORS;
+  const colors = _getDiceColors(card);
   const def = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === card.name);
   if (def) {
     return {
@@ -1230,7 +1256,7 @@ function renderDiceCardInHand(card, index, total, combat) {
   const selTransform  = `rotate(${rotation * 0.3}deg) translateY(-30px) scale(1.18)`;
   const hoverTrans    = `rotate(${rotation * 0.2}deg) translateY(-50px) scale(1.42)`;
 
-  const diceColors = (DICE_CARD_COLORS && DICE_CARD_COLORS[card.name]) || _DICE_DEFAULT_COLORS;
+  const diceColors = _getDiceColors(card);
   const borderColor  = diceColors.cardBorder;
   const bgColor      = diceColors.cardBg;
   const nameColor    = diceColors.nameColor;
@@ -2589,7 +2615,8 @@ function parseDiceFaces(description) {
 
 // Render 3D-style dice card tooltip content
 function renderDiceTooltipContent(card) {
-  const bc   = typeColor(card.type);
+  const dc   = _getDiceColors(card);
+  const bc   = dc.cardBorder;
   const desc = card.upgraded && card.upgradedDescription ? card.upgradedDescription : card.description;
   const faces = parseDiceFaces(desc);
   if (!faces.length) return null; // fall through to standard tooltip
@@ -2620,7 +2647,7 @@ function renderDiceTooltipContent(card) {
     html: `
       <div style="
         width:${width}px;
-        background:${cardTypeBg(card.type)};
+        background:${dc.cardBg};
         border:2px solid ${bc};
         border-radius:10px; overflow:hidden;
         box-shadow:0 10px 36px rgba(0,0,0,0.9), 0 0 18px ${bc}44;
@@ -3392,6 +3419,11 @@ function renderPendingDicePanel(combat) {
 
     const isSelected = window._selectedPendingId === entry.id;
 
+    // Use the die's own color scheme for the tile border
+    const srcCard = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
+    const dieColors = srcCard ? _getDiceColors(srcCard) : null;
+    const tagBorderColor = dieColors ? dieColors.cardBorder : null;
+
     const addonBadges = [
       isCantrip   ? `<span style="font-size:8px;background:#4a2c8a;color:#c09aff;border-radius:3px;padding:0 3px;">Cantrip</span>` : '',
       isSingleUse ? `<span style="font-size:8px;background:#8a2c2c;color:#ffaaaa;border-radius:3px;padding:0 3px;">1-Use</span>` : '',
@@ -3399,8 +3431,9 @@ function renderPendingDicePanel(combat) {
       needsTarget ? `<span style="font-size:8px;background:#5a3a00;color:#ffcc44;border-radius:3px;padding:0 3px;">Target</span>` : ''
     ].filter(Boolean).join(' ');
 
-    const tileColor = isBlank ? '#555' : (needsTarget ? '#8a3a20' : '#1a3a1a');
-    const tileBorder = isSelected ? gold : (isBlank ? '#444' : (needsTarget ? '#cc6633' : '#336633'));
+    const tileColor = isBlank ? '#555' : '#0d0d0d';
+    const defaultBorder = isBlank ? '#444' : (needsTarget ? '#cc6633' : (tagBorderColor || '#336633'));
+    const tileBorder = isSelected ? gold : defaultBorder;
 
     return `<div class="pending-die-tile" data-pending-id="${entry.id}"
       style="
