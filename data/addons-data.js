@@ -105,5 +105,15 @@ var ADDONS_DATA = {
     "name": "Lifesteal",
     "description": "Heals the target equal to the amount of unblocked Dmg dealt",
     "canBeAttachedTo": "All"
+  },
+  "singleUse": {
+    "name": "Single Use",
+    "description": "After this side is used, replace it with a blank for the rest of this combat",
+    "canBeAttachedTo": "Dice"
+  },
+  "druid": {
+    "name": "Druid",
+    "description": "Each time this side is used, its effect value increases by 3 for the rest of this combat",
+    "canBeAttachedTo": "Dice"
   }
 };

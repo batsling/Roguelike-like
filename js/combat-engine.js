@@ -214,11 +214,16 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     spellCasts: {}, // Track how many times each spell was cast (for Channel/Deplete)
     usedSingleCast: {}, // Track SingleCast spells used this combat
     pendingEffects: [], // Effects waiting to be resolved
-    turnHistory: []
+    turnHistory: [],
+    pendingDice: [],      // Rolled dice faces waiting to be used
+    _druidScaling: {},    // {cardName_faceIndex: bonusValue} — Druid scaling per face
+    _usedSingleUseFaces: {} // {cardName_faceIndex: true} — Single Use faces consumed this combat
   };
 
-  // Load player's spells
-  if (typeof window.playerSpells !== 'undefined') {
+  // Load player's spells from gameState (persisted across combats)
+  if (typeof gameState !== 'undefined' && Array.isArray(gameState.spells) && gameState.spells.length > 0) {
+    combatState.spells = [...gameState.spells];
+  } else if (typeof window.playerSpells !== 'undefined') {
     combatState.spells = [...window.playerSpells];
   }
 
@@ -2805,6 +2810,9 @@ function endTurn() {
   }
 
   combatState.phase = 'end_turn';
+
+  // Pending dice expire at end of turn
+  combatState.pendingDice = [];
 
   // Ice Cream: carry over leftover energy to next turn (player can exceed maxEnergy)
   const iceCreamCount = typeof inventory !== 'undefined'
@@ -5721,6 +5729,258 @@ function onCardExhausted(card) {
   }
 }
 
+// ============== PENDING DICE SYSTEM ==============
+
+/**
+ * Add a pending die entry after rolling a Dice-type card.
+ * Called by the UI after the 3D animation resolves.
+ * @param {string} cardName - Name of the die card rolled
+ * @param {number} faceIndex - 0-based index of the rolled face
+ * @returns {Object} The new pending entry
+ */
+function addPendingDie(cardName, faceIndex) {
+  if (!combatState) return null;
+
+  const diceDef = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === cardName);
+  if (!diceDef) return null;
+
+  const baseFace = diceDef.faces[faceIndex];
+  if (!baseFace) return null;
+
+  // Check if this face was made blank by Single Use
+  const suKey = cardName + '_' + faceIndex;
+  const isBlankFromSU = !!(combatState._usedSingleUseFaces && combatState._usedSingleUseFaces[suKey]);
+
+  const face = isBlankFromSU ? { ...baseFace, text: '—', isBlank: true, effects: [] } : { ...baseFace };
+
+  // Apply Druid scaling bonus to the effective value in each effect
+  const druidBonus = (combatState._druidScaling && combatState._druidScaling[suKey]) || 0;
+  let scaledEffects = face.effects || [];
+  if (druidBonus > 0 && (face.addons || []).includes('druid')) {
+    scaledEffects = scaledEffects.map(eff => ({ ...eff, value: (eff.value || 0) + druidBonus }));
+  }
+
+  const entry = {
+    id: 'pd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    cardName,
+    faceIndex,
+    face: { ...face, effects: scaledEffects },
+    scalingKey: suKey
+  };
+
+  combatState.pendingDice.push(entry);
+
+  // Cantrip: auto-fire to a random preferred target immediately; tile STAYS in panel for manual use
+  if (!face.isBlank && (face.addons || []).includes('cantrip')) {
+    _applyPendingDieFaceEffects(entry, null, true);
+    addLog(`${cardName}: Cantrip triggered automatically!`, 'info');
+  }
+
+  return entry;
+}
+
+/**
+ * Apply the effects of a pending die face.
+ * Internal helper; also called by usePendingDie.
+ * @param {Object} entry - The pending die entry
+ * @param {string|null} targetId - Enemy target id (for damage effects); null picks randomly
+ * @param {boolean} cantripMode - If true, picks random targets without removing the entry
+ */
+function _applyPendingDieFaceEffects(entry, targetId, cantripMode) {
+  if (!combatState) return;
+  const face = entry.face;
+  if (face.isBlank || !face.effects || face.effects.length === 0) return;
+
+  const player = combatState.player;
+  const livingEnemies = combatState.enemies.filter(e => e.health > 0);
+
+  for (const eff of face.effects) {
+    const move = (eff.move || '').toLowerCase();
+    const val  = eff.value || 0;
+    const addons = eff.addons || [];
+    const isCleave = addons.some(a => a.toLowerCase() === 'cleave');
+    const isMelee  = addons.some(a => a.toLowerCase() === 'melee');
+
+    if (move === 'dmg') {
+      // Resolve damage target(s)
+      let targets = [];
+      if (isCleave) {
+        targets = livingEnemies;
+      } else {
+        const t = targetId ? livingEnemies.find(e => e.id === targetId) : null;
+        const picked = t || (livingEnemies.length > 0 ? livingEnemies[Math.floor(Math.random() * livingEnemies.length)] : null);
+        if (picked) targets = [picked];
+      }
+      for (const tgt of targets) {
+        const power = player.statuses['power'] || 0;
+        const weak  = player.statuses['weak'] ? Math.ceil(val * 0.25) : 0;
+        const finalDmg = Math.max(0, val + power - weak);
+        if (typeof dealDamage === 'function') {
+          dealDamage(tgt, finalDmg, isMelee ? 'melee' : 'ranged');
+        } else {
+          tgt.health = Math.max(0, tgt.health - Math.max(0, finalDmg - (tgt.block || 0)));
+          tgt.block  = Math.max(0, (tgt.block || 0) - finalDmg);
+        }
+        addLog(`${entry.cardName}: ${tgt.name} takes ${finalDmg} damage`, 'success');
+      }
+    } else if (move === 'block') {
+      addBlock(player, val);
+      addLog(`${entry.cardName}: +${val} Block`, 'info');
+    } else if (move === 'heal') {
+      player.health = Math.min(player.maxHealth, player.health + val);
+      if (typeof window !== 'undefined') window.health = player.health;
+      addLog(`${entry.cardName}: +${val} Health`, 'success');
+    } else if (move === 'mana') {
+      player.mana = Math.min(player.maxMana || 99, (player.mana || 0) + val);
+      addLog(`${entry.cardName}: +${val} Mana`, 'info');
+    } else if (move === 'reroll') {
+      player.rerolls = (player.rerolls || 0) + val;
+      if (typeof window !== 'undefined') window.reroll = player.rerolls;
+      addLog(`${entry.cardName}: +${val} Reroll`, 'info');
+    } else if (move === 'pain') {
+      if (typeof loseHealth === 'function') {
+        loseHealth(val);
+      } else {
+        player.health = Math.max(0, player.health - val);
+        if (typeof window !== 'undefined') window.health = player.health;
+      }
+      addLog(`${entry.cardName}: took ${val} damage`, 'danger');
+    } else if (move === 'cleanse') {
+      if (typeof cleanseDebuffs === 'function') {
+        cleanseDebuffs(player, val);
+      }
+      addLog(`${entry.cardName}: Cleanse ${val}`, 'info');
+    } else if (move === 'get') {
+      const statusKey = eff.statusKey || '';
+      if (statusKey) {
+        player.statuses[statusKey] = (player.statuses[statusKey] || 0) + val;
+        addLog(`${entry.cardName}: +${val} ${statusKey}`, 'info');
+      }
+    }
+  }
+}
+
+/**
+ * Use a pending die by id, applying its face effects.
+ * @param {string} pendingId - The pending die entry id
+ * @param {string|null} targetId - Enemy target id (for damage faces)
+ * @returns {Object} Result
+ */
+function usePendingDie(pendingId, targetId) {
+  if (!combatState) return { success: false, error: 'No combat' };
+  if (combatState.phase !== 'player_action') return { success: false, error: 'Not player turn' };
+
+  const idx = combatState.pendingDice.findIndex(e => e.id === pendingId);
+  if (idx < 0) return { success: false, error: 'Pending die not found' };
+
+  const entry = combatState.pendingDice[idx];
+  const face  = entry.face;
+
+  // Remove from pending first so effects don't see it as active
+  combatState.pendingDice.splice(idx, 1);
+
+  if (!face.isBlank) {
+    // Check if dmg face needs a target
+    const needsTarget = (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+    if (needsTarget && !targetId) {
+      // Auto-pick random enemy
+      const living = combatState.enemies.filter(e => e.health > 0);
+      if (living.length > 0) targetId = living[Math.floor(Math.random() * living.length)].id;
+    }
+
+    _applyPendingDieFaceEffects(entry, targetId, false);
+
+    // Single Use: mark face as consumed for this combat
+    if ((face.addons || []).includes('singleUse')) {
+      combatState._usedSingleUseFaces[entry.scalingKey] = true;
+      addLog(`${entry.cardName}: Single Use face consumed`, 'info');
+    }
+
+    // Druid scaling: increment bonus by 3 for this face
+    if ((face.addons || []).includes('druid')) {
+      combatState._druidScaling[entry.scalingKey] = ((combatState._druidScaling[entry.scalingKey] || 0) + 3);
+      addLog(`${entry.cardName}: Druid — this face is now +3 stronger`, 'info');
+    }
+  } else {
+    addLog(`${entry.cardName}: blank face — nothing happens`, 'info');
+  }
+
+  // Check victory
+  const allDead = combatState.enemies.every(e => e.health <= 0);
+  if (allDead) {
+    combatState.phase = 'victory';
+    addLog('Victory!', 'success');
+    return { success: true, phase: 'victory' };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Reroll all pending dice at once.
+ * Costs 1 reroll. Each die rolls a new random face.
+ * @returns {Object} Result
+ */
+function rerollAllPending() {
+  if (!combatState) return { success: false, error: 'No combat' };
+  if (combatState.phase !== 'player_action') return { success: false, error: 'Not player turn' };
+  if ((combatState.player.rerolls || 0) < 1) return { success: false, error: 'No rerolls left' };
+  if (combatState.pendingDice.length === 0) return { success: false, error: 'No dice to reroll' };
+
+  combatState.player.rerolls--;
+  if (typeof window !== 'undefined') window.reroll = combatState.player.rerolls;
+
+  const newPending = [];
+  for (const entry of combatState.pendingDice) {
+    const diceDef = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === entry.cardName);
+    if (!diceDef) { newPending.push(entry); continue; }
+
+    const newFaceIndex = Math.floor(Math.random() * diceDef.faces.length);
+    const newEntry = addPendingDieRaw(entry.cardName, newFaceIndex);
+    if (newEntry) newPending.push(newEntry);
+  }
+
+  combatState.pendingDice = newPending;
+  addLog(`Rerolled all pending dice (${combatState.player.rerolls} rerolls remaining)`, 'info');
+  return { success: true };
+}
+
+/**
+ * Low-level helper: build a pending entry without pushing to pendingDice.
+ * Used by rerollAllPending to batch-replace entries.
+ */
+function addPendingDieRaw(cardName, faceIndex) {
+  const diceDef = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === cardName);
+  if (!diceDef) return null;
+  const baseFace = diceDef.faces[faceIndex];
+  if (!baseFace) return null;
+
+  const suKey = cardName + '_' + faceIndex;
+  const isBlankFromSU = !!(combatState._usedSingleUseFaces && combatState._usedSingleUseFaces[suKey]);
+  const face = isBlankFromSU ? { ...baseFace, text: '—', isBlank: true, effects: [] } : { ...baseFace };
+
+  const druidBonus = (combatState._druidScaling && combatState._druidScaling[suKey]) || 0;
+  let scaledEffects = face.effects || [];
+  if (druidBonus > 0 && (face.addons || []).includes('druid')) {
+    scaledEffects = scaledEffects.map(eff => ({ ...eff, value: (eff.value || 0) + druidBonus }));
+  }
+
+  const entry = {
+    id: 'pd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    cardName, faceIndex,
+    face: { ...face, effects: scaledEffects },
+    scalingKey: suKey
+  };
+
+  // Handle cantrip on reroll too
+  if (!face.isBlank && (face.addons || []).includes('cantrip')) {
+    _applyPendingDieFaceEffects(entry, null, true);
+    addLog(`${cardName}: Cantrip triggered on reroll!`, 'info');
+  }
+
+  return entry;
+}
+
 // ============== EXPORTS ==============
 
 if (typeof window !== 'undefined') {
@@ -5740,6 +6000,9 @@ if (typeof window !== 'undefined') {
     endCombat,
     addLog,
     getEffectiveCost,
-    onCardExhausted
+    onCardExhausted,
+    addPendingDie,
+    usePendingDie,
+    rerollAllPending
   };
 }

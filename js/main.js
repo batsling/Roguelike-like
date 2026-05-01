@@ -356,6 +356,9 @@ function loadSavedGame(saveName) {
   if (!gameState.deck) {
     gameState.deck = [];
   }
+  if (!gameState.spells) {
+    gameState.spells = [];
+  }
   if (!gameState.postcombatChoicesUsed) {
     gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
   }
@@ -868,6 +871,7 @@ function completeGameStart(start, amulet, saveName, startType) {
     playerLevel: 1,
     activeAllies: [],
     deck: [],
+    spells: [],
     postcombatChoicesUsed: { Low: [], Medium: [], High: [] }
   };
 

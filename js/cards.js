@@ -109,6 +109,22 @@ function addCardToDeck(card) {
     }
   }
 
+  // Learn spell on acquire (for Dice cards with a learn property)
+  if (card.learn && typeof SPELLS_DATA !== 'undefined') {
+    const spellName = card.learn;
+    const spellDef  = SPELLS_DATA.find(s => s.name === spellName);
+    if (spellDef) {
+      if (!gameState.spells) gameState.spells = [];
+      const alreadyLearned = gameState.spells.some(s => s.name === spellName);
+      if (!alreadyLearned) {
+        gameState.spells.push({ ...spellDef });
+        if (typeof createNotification === 'function') {
+          createNotification(`Learned: ${spellName}!`, '#c09aff', '✨');
+        }
+      }
+    }
+  }
+
   if (typeof createNotification === 'function') {
     createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
   }

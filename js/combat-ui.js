@@ -387,6 +387,7 @@ function renderCombatUI(combat, container) {
         ${renderLogPanel(combat)}
       </div>
 
+      ${renderPendingDicePanel(combat)}
       ${renderHandZone(combat)}
       ${renderBottomBar(combat)}
     </div>
@@ -1683,6 +1684,9 @@ window._showCombatPile = function(pileType) {
 // ============== COMBAT LOG PANEL ==============
 
 function renderLogPanel(combat) {
+  const activeTab = window._combatLogTab || 'log';
+  const spells    = (combat && combat.spells) || [];
+
   const logs    = (combat.log || []).slice(-40);
   const logHTML = logs.map(entry => {
     const color = { info:C.textDim, success:'#4CAF50', warning:'#f39c12', danger:'#e74c3c' }[entry.type] || C.text;
@@ -1692,6 +1696,36 @@ function renderLogPanel(combat) {
     ">${entry.message}</div>`;
   }).join('');
 
+  const spellsHtml = spells.length === 0
+    ? `<div style="color:${C.textDim};font-size:11px;padding:10px 8px;text-align:center;">No spells learned</div>`
+    : spells.map(sp => {
+        const mana = sp.manaCost || 0;
+        const cd   = combat.spellCooldowns && combat.spellCooldowns[sp.name] > 0
+          ? ` (CD ${combat.spellCooldowns[sp.name]})`
+          : '';
+        return `<div style="
+          padding:4px 8px; font-size:10px;
+          border-bottom:1px solid rgba(255,255,255,0.06);
+          cursor:pointer; transition:background 0.1s;
+        "
+        onmouseover="this.style.background='rgba(255,255,255,0.06)'"
+        onmouseout="this.style.background=''"
+        onclick="window._handleSpellbookCast && window._handleSpellbookCast('${sp.name}')">
+          <div style="font-weight:bold;color:#c09aff;">${sp.name}${cd}</div>
+          <div style="color:${C.textDim};font-size:9px;">${sp.description || ''}</div>
+          <div style="color:#6ab4ff;font-size:9px;margin-top:1px;">💧 ${mana} Mana</div>
+        </div>`;
+      }).join('');
+
+  const tabStyle = (tab) => `
+    flex:1; padding:5px 0; font-size:11px; font-weight:bold;
+    text-align:center; cursor:pointer;
+    color:${activeTab === tab ? C.gold : C.textDim};
+    border-bottom:2px solid ${activeTab === tab ? C.gold : 'transparent'};
+    background:${activeTab === tab ? 'rgba(255,255,255,0.05)' : 'transparent'};
+    transition:all 0.1s;
+  `;
+
   return `
     <div id="combat-log-panel" style="
       width:205px; flex-shrink:0;
@@ -1699,19 +1733,18 @@ function renderLogPanel(combat) {
       border-left:2px solid ${C.border};
       display:flex; flex-direction:column;
     ">
-      <div style="
-        padding:6px 10px; font-size:12px; font-weight:bold;
-        color:${C.gold}; border-bottom:1px solid ${C.border};
-        flex-shrink:0;
-      ">📜 Combat Log</div>
+      <div style="display:flex;border-bottom:1px solid ${C.border};flex-shrink:0;">
+        <div style="${tabStyle('log')}" onclick="window._combatLogTab='log';window.CombatUI&&window.CombatUI.updateCombatDisplay&&window.CombatUI.updateCombatDisplay()">📜 Log</div>
+        <div style="${tabStyle('spellbook')}" onclick="window._combatLogTab='spellbook';window.CombatUI&&window.CombatUI.updateCombatDisplay&&window.CombatUI.updateCombatDisplay()">✨ Spells</div>
+      </div>
       <div id="combat-log-entries" style="
         flex:1; overflow-y:auto;
-        display:flex; flex-direction:column-reverse;
+        display:flex; flex-direction:column${activeTab === 'log' ? '-reverse' : ''};
         padding:4px 0;
         scrollbar-width:thin;
         scrollbar-color:${C.border} transparent;
       ">
-        ${logHTML}
+        ${activeTab === 'log' ? logHTML : spellsHtml}
       </div>
     </div>
   `;
@@ -1891,11 +1924,72 @@ function attachCombatEventListeners(combat) {
   });
   attachDragMouseDown();
   attachCardTooltip();
+
+  // Pending dice tiles
+  document.querySelectorAll('.pending-die-tile').forEach(el => {
+    el.addEventListener('click', () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState();
+      if (!cs || cs.phase !== 'player_action') return;
+      const id = el.dataset.pendingId;
+      const entry = cs.pendingDice.find(e => e.id === id);
+      if (!entry) return;
+      const face = entry.face || {};
+      if (face.isBlank) {
+        // Dismiss blank
+        window.CombatEngine.usePendingDie(id, null);
+        window._selectedPendingId = null;
+        updateCombatDisplay();
+        checkCombatEnd();
+        return;
+      }
+      const needsTarget = (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+      if (needsTarget) {
+        // Toggle selection for target picking
+        window._selectedPendingId = (window._selectedPendingId === id) ? null : id;
+        updateCombatDisplay();
+      } else {
+        // Apply immediately
+        window._selectedPendingId = null;
+        const snap = captureHPSnapshot(cs);
+        window.CombatEngine.usePendingDie(id, null);
+        showHPDiffs(snap, cs);
+        updateCombatDisplay();
+        checkCombatEnd();
+      }
+    });
+  });
+
+  // Reroll All button
+  const rerollAllBtn = document.getElementById('pending-reroll-all-btn');
+  if (rerollAllBtn) {
+    rerollAllBtn.addEventListener('click', () => {
+      if (!window.CombatEngine) return;
+      const result = window.CombatEngine.rerollAllPending();
+      if (result && result.success) {
+        updateCombatDisplay();
+      } else if (result && result.error) {
+        typeof createNotification === 'function' &&
+          createNotification(result.error, '#e74c3c', '🎲');
+      }
+    });
+  }
 }
 
 function handleEnemyClick(enemyId) {
   const combat = window.CombatEngine && window.CombatEngine.getCombatState();
   if (!combat) return;
+
+  // Pending die targeting: if a pending die tile is selected and needs a target
+  if (window._selectedPendingId) {
+    const pendingId = window._selectedPendingId;
+    window._selectedPendingId = null;
+    const snap = captureHPSnapshot(combat);
+    window.CombatEngine.usePendingDie(pendingId, enemyId);
+    showHPDiffs(snap, combat);
+    updateCombatDisplay();
+    checkCombatEnd();
+    return;
+  }
 
   if (combat.selectedCardIndex !== null && combat.selectedCardIndex !== undefined) {
     const cardIndex = combat.selectedCardIndex;
@@ -2910,14 +3004,23 @@ function cleanup3DDice() {}
 
 /**
  * Called instead of normal play when a Dice-type card is clicked.
- * Shows a hand picker, then the roll animation, then applies the transform.
+ * Isaac's D6 → card picker + transform flow.
+ * All other Dice cards → roll and add to pending panel.
  */
 function handleDiceCardPlay(diceCardIndex, combat) {
   const hand     = combat.hand || [];
   const diceCard = hand[diceCardIndex];
   if (!diceCard) return;
 
-  // Cards the player can choose to transform (everything in hand except the die itself)
+  // S&D dice: roll and add to pending panel (no card picking)
+  if (diceCard.name !== "Isaac's D6") {
+    window.CombatEngine.playCard(diceCardIndex, null);
+    updateCombatDisplay();
+    _showDiceRollAndPend(diceCard, combat);
+    return;
+  }
+
+  // Isaac's D6: cards the player can choose to transform
   const pickable = hand.map((c, i) => ({ card: c, handIdx: i })).filter(x => x.handIdx !== diceCardIndex);
 
   if (pickable.length === 0) {
@@ -3129,6 +3232,211 @@ function _applyDiceRollEffect(diceCard, pickedCard, newPickIdx, faceData) {
   checkCombatEnd();
 }
 
+// ============================================================
+// ============== S&D DICE ROLL → PENDING PANEL ================
+// ============================================================
+
+/**
+ * Show 3D die rolling animation for an S&D dice card,
+ * then add the result to the pending dice panel.
+ */
+function _showDiceRollAndPend(diceCard, combat) {
+  const diceDef = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === diceCard.name);
+  const sides   = diceDef ? diceDef.faces.length : 6;
+
+  const combatModal = document.getElementById('dice-combat-modal');
+
+  const commitFace = (faceIndex) => {
+    if (window.CombatEngine && window.CombatEngine.addPendingDie) {
+      window.CombatEngine.addPendingDie(diceCard.name, faceIndex);
+    }
+    // Upgraded die: grant +1 Reroll when played
+    if (diceCard.upgraded && window.CombatEngine) {
+      const cs = window.CombatEngine.getCombatState();
+      if (cs) {
+        cs.player.rerolls = (cs.player.rerolls || 0) + 1;
+        if (typeof window !== 'undefined') window.reroll = cs.player.rerolls;
+        window.CombatEngine.addLog(`${diceCard.name}+: +1 Reroll`, 'info');
+      }
+    }
+    updateCombatDisplay();
+    checkCombatEnd();
+  };
+
+  if (!combatModal || typeof DiceRendererInstance === 'undefined') {
+    const faceIndex = Math.floor(Math.random() * sides);
+    commitFace(faceIndex);
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'dice-roll-overlay';
+  overlay.style.cssText = `position:absolute;inset:0;z-index:1000;background:rgba(0,0,0,0.9);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:inherit;`;
+
+  overlay.innerHTML = `
+    <h2 style="color:#f0c850;margin:0 0 12px;font-size:20px;">🎲 Rolling ${diceCard.name}…</h2>
+    <div id="dice-roll-3d" style="width:160px;height:160px;margin:0 auto;"></div>
+    <div id="dice-roll-label" style="color:#fff;font-size:15px;min-height:52px;margin-top:14px;text-align:center;"></div>
+    <div id="dice-roll-btns" style="margin-top:16px;display:flex;gap:10px;"></div>`;
+
+  combatModal.style.position = 'relative';
+  combatModal.appendChild(overlay);
+
+  requestAnimationFrame(() => {
+    const container = document.getElementById('dice-roll-3d');
+    if (!container) {
+      overlay.remove();
+      commitFace(Math.floor(Math.random() * sides));
+      return;
+    }
+
+    const renderer   = new DiceRendererInstance();
+    const diceData3d = _makeDiceDataForCard(diceCard);
+    renderer.init(container, diceData3d.colors ? diceData3d.colors.sceneBg : 0x0d0800);
+    renderer.createDice(diceData3d);
+
+    const performRoll = (faceIndex) => {
+      const rolledN  = faceIndex + 1; // face numbers are 1-based
+      const faceData = diceDef ? (diceDef.faces[faceIndex] || diceDef.faces[0]) : { face: rolledN, text: String(rolledN) };
+      const lbl  = document.getElementById('dice-roll-label');
+      const btns = document.getElementById('dice-roll-btns');
+      if (lbl)  lbl.innerHTML = '';
+      if (btns) btns.innerHTML = '';
+
+      renderer.rollDice(diceData3d, rolledN, () => {
+        const faceLabel = faceData.isBlank ? '— (blank)' : faceData.text;
+        if (lbl) lbl.innerHTML =
+          `<div style="color:#f0c850;font-weight:bold;font-size:18px;">${faceLabel}</div>
+           <div style="color:#888;font-size:11px;margin-top:4px;">Face ${rolledN}
+             ${faceData.addons && faceData.addons.length > 0 ? '· ' + faceData.addons.join(', ') : ''}
+           </div>`;
+
+        const finish = () => {
+          renderer.dispose();
+          overlay.remove();
+          commitFace(faceIndex);
+        };
+
+        if (btns) {
+          const cs = window.CombatEngine && window.CombatEngine.getCombatState();
+          const rerolls = cs && cs.player ? (cs.player.rerolls || 0) : 0;
+
+          const continueBtn = document.createElement('button');
+          continueBtn.textContent = 'Add to Panel →';
+          continueBtn.style.cssText = `padding:8px 20px;background:#2a5c2a;border:1px solid #4a9c4a;
+            color:#fff;border-radius:6px;font-size:14px;cursor:pointer;`;
+          continueBtn.onclick = finish;
+          btns.appendChild(continueBtn);
+
+          if (rerolls > 0) {
+            const rerollBtn = document.createElement('button');
+            rerollBtn.textContent = `🔄 Reroll (${rerolls} left)`;
+            rerollBtn.style.cssText = `padding:8px 20px;background:#5c3a0a;border:1px solid #c07820;
+              color:#f0c850;border-radius:6px;font-size:14px;cursor:pointer;`;
+            rerollBtn.onclick = () => {
+              if (cs && cs.player) {
+                cs.player.rerolls = Math.max(0, (cs.player.rerolls || 0) - 1);
+                if (typeof window !== 'undefined') window.reroll = cs.player.rerolls;
+              }
+              updateCombatDisplay();
+              performRoll(Math.floor(Math.random() * sides));
+            };
+            btns.insertBefore(rerollBtn, continueBtn);
+          }
+        }
+      });
+    };
+
+    performRoll(Math.floor(Math.random() * sides));
+  });
+}
+
+// ============================================================
+// ============== PENDING DICE PANEL ===========================
+// ============================================================
+
+/**
+ * Render the pending dice strip between the player zone and hand.
+ * Shows one tile per pending die entry. Cantrip tiles show that they already fired.
+ */
+function renderPendingDicePanel(combat) {
+  const pending = (combat && combat.pendingDice) || [];
+  if (pending.length === 0) return '';
+
+  const rerolls = (combat.player && combat.player.rerolls) || 0;
+  const gold   = C.gold   || '#f0c850';
+  const border = C.border || 'rgba(255,255,255,0.15)';
+
+  const tilesHtml = pending.map(entry => {
+    const face = entry.face || {};
+    const isBlank = face.isBlank;
+    const addons  = face.addons || [];
+    const isCantrip   = addons.includes('cantrip');
+    const isSingleUse = addons.includes('singleUse');
+    const isDruid     = addons.includes('druid');
+    const needsTarget = !isBlank && (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+
+    const isSelected = window._selectedPendingId === entry.id;
+
+    const addonBadges = [
+      isCantrip   ? `<span style="font-size:8px;background:#4a2c8a;color:#c09aff;border-radius:3px;padding:0 3px;">Cantrip</span>` : '',
+      isSingleUse ? `<span style="font-size:8px;background:#8a2c2c;color:#ffaaaa;border-radius:3px;padding:0 3px;">1-Use</span>` : '',
+      isDruid     ? `<span style="font-size:8px;background:#2c5a2c;color:#aaffaa;border-radius:3px;padding:0 3px;">Druid</span>` : '',
+      needsTarget ? `<span style="font-size:8px;background:#5a3a00;color:#ffcc44;border-radius:3px;padding:0 3px;">Target</span>` : ''
+    ].filter(Boolean).join(' ');
+
+    const tileColor = isBlank ? '#555' : (needsTarget ? '#8a3a20' : '#1a3a1a');
+    const tileBorder = isSelected ? gold : (isBlank ? '#444' : (needsTarget ? '#cc6633' : '#336633'));
+
+    return `<div class="pending-die-tile" data-pending-id="${entry.id}"
+      style="
+        min-width:80px; max-width:110px; padding:6px 8px;
+        background:${tileColor}; border:2px solid ${tileBorder};
+        border-radius:8px; cursor:${isBlank ? 'default' : 'pointer'};
+        display:flex; flex-direction:column; align-items:center; gap:3px;
+        flex-shrink:0;
+        ${isSelected ? `box-shadow:0 0 12px ${gold}88;` : ''}
+        transition:border-color 0.1s, box-shadow 0.1s;
+      ">
+      <div style="font-size:9px;color:#aaa;line-height:1;">${entry.cardName}</div>
+      <div style="font-size:12px;font-weight:bold;color:${isBlank ? '#666' : '#fff'};text-align:center;line-height:1.3;max-width:100px;">
+        ${face.text || '—'}
+      </div>
+      <div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">
+        ${addonBadges}
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div id="pending-dice-panel" style="
+      flex-shrink:0; padding:6px 10px;
+      background:rgba(0,0,0,0.4);
+      border-top:1px solid ${border};
+      display:flex; align-items:center; gap:8px;
+      overflow-x:auto;
+    ">
+      <div style="font-size:11px;font-weight:bold;color:${gold};flex-shrink:0;white-space:nowrap;">
+        🎲 Pending
+      </div>
+      <div style="display:flex;gap:8px;flex:1;overflow-x:auto;">
+        ${tilesHtml}
+      </div>
+      ${rerolls > 0 ? `
+        <button id="pending-reroll-all-btn" style="
+          flex-shrink:0; padding:5px 10px;
+          background:#5c3a0a; border:1px solid #c07820;
+          color:${gold}; border-radius:6px; font-size:11px; cursor:pointer;
+          white-space:nowrap;
+        ">🔄 Reroll All (${rerolls})</button>
+      ` : `
+        <div style="font-size:10px;color:#666;flex-shrink:0;">No rerolls</div>
+      `}
+    </div>
+  `;
+}
+
 // ============== EXPORTS ==============
 
 if (typeof window !== 'undefined') {
@@ -3143,6 +3451,20 @@ if (typeof window !== 'undefined') {
     hideStatusTooltip,
   };
 }
+
+// Spellbook tab: cast a spell by name
+window._handleSpellbookCast = function(spellName) {
+  const cs = window.CombatEngine && window.CombatEngine.getCombatState();
+  if (!cs || cs.phase !== 'player_action') return;
+  if (!window.CombatEngine.castSpell) return;
+  const result = window.CombatEngine.castSpell(spellName, null);
+  if (result && !result.success && result.error) {
+    typeof createNotification === 'function' &&
+      createNotification(result.error, '#e74c3c', '✨');
+  }
+  updateCombatDisplay();
+  checkCombatEnd();
+};
 
 window.cancelCombatDrag = function() {
   if (_dragState) {
