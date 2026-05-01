@@ -6151,8 +6151,11 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
                && !exclude.has(c.name));
 
     if (tagFilter) {
-      const tagged = pool.filter(c => Array.isArray(c.tags) && c.tags.includes(tagFilter));
-      if (tagged.length > 0) pool = tagged;
+      // Hero-tagged cards are universally available regardless of deck choice
+      const heroCards = pool.filter(c => Array.isArray(c.tags) && c.tags.includes('hero'));
+      const tagged    = pool.filter(c => Array.isArray(c.tags) && c.tags.includes(tagFilter));
+      const combined  = [...tagged, ...heroCards.filter(h => !tagged.find(t => t.name === h.name))];
+      if (combined.length > 0) pool = combined;
     }
 
     if (pool.length === 0) return null;

@@ -703,7 +703,7 @@ const ITEM_EFFECTS = {
         ? window.CombatState.getCombatState()
         : null;
 
-      const damage = 10;
+      const damage = 20;
 
       // Helper: apply fire potion damage to a specific enemy (new combat system)
       function applyFirePotionToEnemy(cs, enemy) {

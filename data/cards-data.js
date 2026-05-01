@@ -3284,7 +3284,7 @@ var CARDS_DATA = [
     "imageUrl": null,
     "game": "Slice & Dice",
     "learn": "Poke",
-    "tags": ["blue"]
+    "tags": ["blue", "hero"]
   },
   {
     "name": "Mystic Die",
@@ -3299,7 +3299,7 @@ var CARDS_DATA = [
     "imageUrl": null,
     "game": "Slice & Dice",
     "learn": "Gaze",
-    "tags": ["red"]
+    "tags": ["red", "hero"]
   },
   {
     "name": "Clumsy Die",
@@ -3313,7 +3313,7 @@ var CARDS_DATA = [
     "isStatusCard": false,
     "imageUrl": null,
     "game": "Slice & Dice",
-    "tags": ["orange"]
+    "tags": ["orange", "hero"]
   },
   {
     "name": "Gambler Die",
@@ -3327,7 +3327,7 @@ var CARDS_DATA = [
     "isStatusCard": false,
     "imageUrl": null,
     "game": "Slice & Dice",
-    "tags": ["orange"]
+    "tags": ["orange", "hero"]
   },
   {
     "name": "Dabblest Die",
@@ -3341,7 +3341,7 @@ var CARDS_DATA = [
     "isStatusCard": false,
     "imageUrl": null,
     "game": "Slice & Dice",
-    "tags": ["orange"]
+    "tags": ["orange", "hero"]
   },
   {
     "name": "Druid Die",
@@ -3356,7 +3356,7 @@ var CARDS_DATA = [
     "imageUrl": null,
     "game": "Slice & Dice",
     "learn": "Balance",
-    "tags": ["red"]
+    "tags": ["red", "hero"]
   },
   {
     "name": "Jester Die",
@@ -3371,7 +3371,7 @@ var CARDS_DATA = [
     "imageUrl": null,
     "game": "Slice & Dice",
     "learn": "Flick",
-    "tags": ["blue"]
+    "tags": ["blue", "hero"]
   },
   {
     "name": "Defender Die",
@@ -3385,7 +3385,7 @@ var CARDS_DATA = [
     "isStatusCard": false,
     "imageUrl": null,
     "game": "Slice & Dice",
-    "tags": ["gray"]
+    "tags": ["gray", "hero"]
   },
   {
     "name": "Warden Die",
@@ -3399,7 +3399,7 @@ var CARDS_DATA = [
     "isStatusCard": false,
     "imageUrl": null,
     "game": "Slice & Dice",
-    "tags": ["gray"]
+    "tags": ["gray", "hero"]
   },
   {
     "name": "Fighter Die",
@@ -3413,7 +3413,7 @@ var CARDS_DATA = [
     "isStatusCard": false,
     "imageUrl": null,
     "game": "Slice & Dice",
-    "tags": ["yellow"]
+    "tags": ["yellow", "hero"]
   },
   {
     "name": "Soldier Die",
@@ -3427,7 +3427,7 @@ var CARDS_DATA = [
     "isStatusCard": false,
     "imageUrl": null,
     "game": "Slice & Dice",
-    "tags": ["yellow"]
+    "tags": ["yellow", "hero"]
   },
   {
     "name": "Veteran Die",
@@ -3441,6 +3441,6 @@ var CARDS_DATA = [
     "isStatusCard": false,
     "imageUrl": null,
     "game": "Slice & Dice",
-    "tags": ["yellow"]
+    "tags": ["yellow", "hero"]
   }
 ];

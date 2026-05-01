@@ -1942,6 +1942,12 @@ function attachCombatEventListeners(combat) {
         checkCombatEnd();
         return;
       }
+      if (face.isaacsTransform) {
+        // Isaac's D6: show card picker then apply transform
+        window._selectedPendingId = null;
+        _showIsaacTransformPicker(face, cs, id);
+        return;
+      }
       const needsTarget = (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
       if (needsTarget) {
         // Toggle selection for target picking
@@ -2979,6 +2985,10 @@ window.showCardPickerModal = function(options) {
           }
         }
       }
+      // Burning Pact: draw deferred cards now that exhaust is resolved
+      if (options.drawAfter && options.drawAfter > 0 && window.CombatEngine && window.CombatEngine.drawCards) {
+        window.CombatEngine.drawCards(options.drawAfter);
+      }
     }
 
     overlay.remove();
@@ -3004,28 +3014,32 @@ function cleanup3DDice() {}
 
 /**
  * Called instead of normal play when a Dice-type card is clicked.
- * Isaac's D6 → card picker + transform flow.
- * All other Dice cards → roll and add to pending panel.
+ * All dice roll into the pending panel; Isaac's D6 transform is applied when the tile is clicked.
  */
 function handleDiceCardPlay(diceCardIndex, combat) {
   const hand     = combat.hand || [];
   const diceCard = hand[diceCardIndex];
   if (!diceCard) return;
 
-  // S&D dice: roll and add to pending panel (no card picking)
-  if (diceCard.name !== "Isaac's D6") {
-    window.CombatEngine.playCard(diceCardIndex, null);
-    updateCombatDisplay();
-    _showDiceRollAndPend(diceCard, combat);
-    return;
-  }
+  // All dice: roll into pending panel
+  window.CombatEngine.playCard(diceCardIndex, null);
+  updateCombatDisplay();
+  _showDiceRollAndPend(diceCard, combat);
+}
 
-  // Isaac's D6: cards the player can choose to transform
-  const pickable = hand.map((c, i) => ({ card: c, handIdx: i })).filter(x => x.handIdx !== diceCardIndex);
+/**
+ * Show card-picker for Isaac's D6 after the player clicks its pending tile.
+ * The die was already rolled and animated; we just need the player to choose
+ * which hand card to transform, then apply the effect and consume the pending entry.
+ */
+function _showIsaacTransformPicker(face, combat, pendingId) {
+  const pickable = (combat.hand || []).map((c, i) => ({ card: c, handIdx: i }));
 
   if (pickable.length === 0) {
-    // Nothing to transform — just spend energy and discard
-    window.CombatEngine.playCard(diceCardIndex, null);
+    // Nothing to transform — just consume the pending entry
+    if (pendingId && window.CombatEngine) {
+      combat.pendingDice = (combat.pendingDice || []).filter(e => e.id !== pendingId);
+    }
     updateCombatDisplay();
     return;
   }
@@ -3042,7 +3056,7 @@ function handleDiceCardPlay(diceCardIndex, combat) {
   overlay.innerHTML = `
     <div style="background:#1a1208;border:2px solid #cc8800;border-radius:12px;padding:20px;
       max-width:700px;width:92%;text-align:center;">
-      <h2 style="color:#f0c850;margin:0 0 6px;font-size:18px;">🎲 ${diceCard.name}</h2>
+      <h2 style="color:#f0c850;margin:0 0 6px;font-size:18px;">🎲 Isaac's D6</h2>
       <p style="color:#aaa;margin:0 0 14px;font-size:12px;">Choose a card to transform</p>
       <div id="dice-pick-cards" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;
         max-height:45vh;overflow-y:auto;padding:4px;">
@@ -3076,17 +3090,16 @@ function handleDiceCardPlay(diceCardIndex, combat) {
   overlay.querySelectorAll('.dice-pick-card').forEach(el => {
     el.addEventListener('click', () => {
       const pickedHandIdx = parseInt(el.dataset.handIdx);
-      const pickedCard    = hand[pickedHandIdx];
+      const pickedCard    = combat.hand[pickedHandIdx];
       overlay.remove();
 
-      // Play the dice card: deduct energy, remove from hand, no gameplay effect yet
-      window.CombatEngine.playCard(diceCardIndex, null);
+      // Consume the pending die entry
+      if (pendingId) {
+        combat.pendingDice = (combat.pendingDice || []).filter(e => e.id !== pendingId);
+      }
 
-      // The picked card's index may shift if diceCardIndex < pickedHandIdx
-      const newPickIdx = pickedHandIdx > diceCardIndex ? pickedHandIdx - 1 : pickedHandIdx;
-
-      updateCombatDisplay();
-      _showDiceRollOverlay(diceCard, pickedCard, newPickIdx);
+      // Apply the transform effect directly (die was already rolled + animated)
+      _applyDiceRollEffect({ name: "Isaac's D6" }, pickedCard, pickedHandIdx, face);
     });
   });
 }

@@ -4303,9 +4303,13 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // Draw X card(s)
+    // Draw X card(s) — skip if an earlier Exhaust clause will handle the draw via drawAfter
     const drawMatch = p.match(/Draw (\d+) cards?/i);
-    if (drawMatch) { drawCards(parseInt(drawMatch[1])); continue; }
+    if (drawMatch) {
+      const hasExhaustBefore = parts.slice(0, parts.indexOf(p)).some(pp => /Exhaust \d+ Cards?/i.test(pp) && !/random/i.test(pp) && !/in your hand/i.test(pp));
+      if (!hasExhaustBefore) drawCards(parseInt(drawMatch[1]));
+      continue;
+    }
 
     // Multi-status AoE: "Apply/Inflict N Status1 Cleave and [Apply/Inflict] N Status2 Cleave"
     // (Shockwave, Crippling Cloud, Piercing Wail) — must be checked BEFORE generic applyMatch
@@ -5396,8 +5400,13 @@ function resolveCardEffect(card, target, options = {}) {
     if (/Exhaust \d+ Cards?/i.test(p) && !/random/i.test(lower) && !/in your hand/i.test(lower)) {
       const cntM = p.match(/Exhaust (\d+)/i);
       const cnt = cntM ? parseInt(cntM[1]) : 1;
+      // Look ahead for a Draw N Cards clause in the remaining parts so we can draw AFTER exhausting
+      const drawAheadM = parts.slice(parts.indexOf(p) + 1).join(' ').match(/Draw (\d+) Cards?/i);
+      const drawAfter = drawAheadM ? parseInt(drawAheadM[1]) : 0;
       if (combatState.hand.length > 0) {
-        combatState._pendingCardPick = { action: 'exhaust', pile: 'hand', count: Math.min(cnt, combatState.hand.length) };
+        combatState._pendingCardPick = { action: 'exhaust', pile: 'hand', count: Math.min(cnt, combatState.hand.length), drawAfter };
+      } else if (drawAfter > 0) {
+        drawCards(drawAfter);
       }
       continue;
     }
