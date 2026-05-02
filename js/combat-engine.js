@@ -5820,10 +5820,12 @@ function _applyPendingDieFaceEffects(entry, targetId, cantripMode) {
         const picked = t || (livingEnemies.length > 0 ? livingEnemies[Math.floor(Math.random() * livingEnemies.length)] : null);
         if (picked) targets = [picked];
       }
+      const isEngage = addons.some(a => a.toLowerCase() === 'engage');
       for (const tgt of targets) {
         const power = player.statuses['power'] || 0;
         const weak  = player.statuses['weak'] ? Math.ceil(val * 0.25) : 0;
-        const finalDmg = Math.max(0, val + power - weak);
+        const engageMult = (isEngage && tgt.health >= tgt.maxHealth) ? 2 : 1;
+        const finalDmg = Math.max(0, (val + power - weak) * engageMult);
         if (typeof dealDamage === 'function') {
           dealDamage(tgt, finalDmg, isMelee ? 'melee' : 'ranged');
         } else {

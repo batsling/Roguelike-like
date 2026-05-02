@@ -316,7 +316,10 @@ function refreshCombatHand() {
   });
   attachDragMouseDown();
   attachCardTooltip();
-  requestAnimationFrame(() => initDiceCardRenderers());
+  requestAnimationFrame(() => {
+    initDiceCardRenderers();
+    initPendingDiceRenderers();
+  });
 }
 
 // Status icon metadata
@@ -1155,6 +1158,13 @@ function _disposeDiceHandRenderers() {
   _diceHandRenderers = [];
 }
 
+let _pendingDiceRenderers = [];
+
+function _disposePendingDiceRenderers() {
+  _pendingDiceRenderers.forEach(r => { try { r.dispose(); } catch(e) {} });
+  _pendingDiceRenderers = [];
+}
+
 // Per-die color themes. sceneBg is the Three.js hex background color.
 const DICE_CARD_COLORS = {
   "Isaac's D6": {
@@ -1283,6 +1293,31 @@ function initDiceCardRenderers() {
         clearTimeout(_hoverRollTimer);
       });
     }
+  });
+}
+
+function initPendingDiceRenderers() {
+  _disposePendingDiceRenderers();
+  if (typeof DiceRendererInstance === 'undefined') return;
+
+  document.querySelectorAll('.pending-dice-3d[data-pending-id]').forEach(el => {
+    const faceNum   = parseInt(el.dataset.faceNum) || 1;
+    const cardName  = el.dataset.cardName || '';
+
+    const srcCard = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === cardName) : null;
+    const diceData = srcCard ? _makeDiceDataForCard(srcCard) : null;
+    if (!diceData) return;
+
+    if (el.clientWidth === 0 || el.clientHeight === 0) {
+      el.style.width  = '66px';
+      el.style.height = '66px';
+    }
+
+    const r = new DiceRendererInstance();
+    r.init(el, diceData.colors ? diceData.colors.sceneBg : 0x0d0800);
+    r.createDice(diceData);
+    r.rollDice(diceData, faceNum, null);
+    _pendingDiceRenderers.push(r);
   });
 }
 
@@ -1940,8 +1975,11 @@ function attachCombatEventListeners(combat) {
   injectCombatInteractionCSS();
   ensureDragAndKeyListeners();
 
-  // Init Three.js renderers for any dice-type cards in hand
-  requestAnimationFrame(() => initDiceCardRenderers());
+  // Init Three.js renderers for dice cards in hand and pending tiles
+  requestAnimationFrame(() => {
+    initDiceCardRenderers();
+    initPendingDiceRenderers();
+  });
 
   // End turn button
   const endBtn = document.getElementById('combat-end-turn-btn');
@@ -2132,20 +2170,9 @@ function handleCardClick(index) {
     return;
   }
 
-  // Dice-type cards: must be dragged to the dice board to roll
+  // Dice-type cards: click to play directly
   if ((card.type || '').toLowerCase() === 'dice') {
-    // Flash the dice board to guide the player
-    const panel = document.getElementById('pending-dice-panel');
-    if (panel) {
-      panel.style.background = 'rgba(240,200,80,0.22)';
-      panel.style.borderTopColor = C.goldBright;
-      setTimeout(() => {
-        panel.style.background = '';
-        panel.style.borderTopColor = '';
-      }, 600);
-    }
-    typeof createNotification === 'function' &&
-      createNotification('Drag the die to the Dice Board to roll!', C.gold, '🎲');
+    handleDiceCardPlay(index, combat);
     return;
   }
 
@@ -2260,20 +2287,6 @@ function ensureDragAndKeyListeners() {
         _dragState.hoveredEnemy = pointEl || null;
       }
 
-      // Highlight dice board when dragging a dice card over it
-      if (_dragState.isDice) {
-        const overBoard = !!document.elementFromPoint(e.clientX, e.clientY)?.closest('#pending-dice-panel');
-        const panel = document.getElementById('pending-dice-panel');
-        if (panel) {
-          if (overBoard) {
-            panel.style.background = 'rgba(240,200,80,0.18)';
-            panel.style.borderTopColor = C.goldBright;
-          } else {
-            panel.style.background = 'rgba(0,0,0,0.4)';
-            panel.style.borderTopColor = '';
-          }
-        }
-      }
     }
   });
 
@@ -2305,12 +2318,7 @@ function ensureDragAndKeyListeners() {
       ? window.CombatEngine.cardNeedsTarget(card) : false;
 
     if ((card.type || '').toLowerCase() === 'dice') {
-      // Dice cards only play when dropped on the dice board
-      const onBoard = !!document.elementFromPoint(e.clientX, e.clientY)?.closest('#pending-dice-panel');
-      if (onBoard) {
-        handleDiceCardPlay(cardIndex, combat);
-      }
-      // Dropped elsewhere — silently cancel (card stays in hand)
+      handleDiceCardPlay(cardIndex, combat);
     } else if (needsTarget) {
       // Must drop on an enemy
       const enemyEl = document.elementFromPoint(e.clientX, e.clientY)
@@ -3287,28 +3295,12 @@ function _showDiceRollOverlay(diceCard, pickedCard, newPickIdx) {
         };
 
         if (btns) {
-          const combat = window.CombatEngine && window.CombatEngine.getCombatState();
-          const rerolls = combat && combat.player ? (combat.player.rerolls || 0) : 0;
-
           const continueBtn = document.createElement('button');
           continueBtn.textContent = 'Continue →';
           continueBtn.style.cssText = `padding:8px 20px;background:#2a5c2a;border:1px solid #4a9c4a;
             color:#fff;border-radius:6px;font-size:14px;cursor:pointer;`;
           continueBtn.onclick = finish;
           btns.appendChild(continueBtn);
-
-          if (rerolls > 0) {
-            const rerollBtn = document.createElement('button');
-            rerollBtn.textContent = `🔄 Reroll (${rerolls} left)`;
-            rerollBtn.style.cssText = `padding:8px 20px;background:#5c3a0a;border:1px solid #c07820;
-              color:#f0c850;border-radius:6px;font-size:14px;cursor:pointer;`;
-            rerollBtn.onclick = () => {
-              if (combat && combat.player) combat.player.rerolls = Math.max(0, (combat.player.rerolls || 0) - 1);
-              updateCombatDisplay();
-              performRoll(Math.floor(Math.random() * sides) + 1);
-            };
-            btns.insertBefore(rerollBtn, continueBtn);
-          }
         }
       });
     };
@@ -3455,31 +3447,12 @@ function _showDiceRollAndPend(diceCard, combat) {
         };
 
         if (btns) {
-          const cs = window.CombatEngine && window.CombatEngine.getCombatState();
-          const rerolls = cs && cs.player ? (cs.player.rerolls || 0) : 0;
-
           const continueBtn = document.createElement('button');
           continueBtn.textContent = 'Add to Panel →';
           continueBtn.style.cssText = `padding:8px 20px;background:#2a5c2a;border:1px solid #4a9c4a;
             color:#fff;border-radius:6px;font-size:14px;cursor:pointer;`;
           continueBtn.onclick = finish;
           btns.appendChild(continueBtn);
-
-          if (rerolls > 0) {
-            const rerollBtn = document.createElement('button');
-            rerollBtn.textContent = `🔄 Reroll (${rerolls} left)`;
-            rerollBtn.style.cssText = `padding:8px 20px;background:#5c3a0a;border:1px solid #c07820;
-              color:#f0c850;border-radius:6px;font-size:14px;cursor:pointer;`;
-            rerollBtn.onclick = () => {
-              if (cs && cs.player) {
-                cs.player.rerolls = Math.max(0, (cs.player.rerolls || 0) - 1);
-                if (typeof window !== 'undefined') window.reroll = cs.player.rerolls;
-              }
-              updateCombatDisplay();
-              performRoll(Math.floor(Math.random() * sides));
-            };
-            btns.insertBefore(rerollBtn, continueBtn);
-          }
         }
       });
     };
@@ -3536,16 +3509,22 @@ function renderPendingDicePanel(combat) {
 
     return `<div class="pending-die-tile" data-pending-id="${entry.id}"
       style="
-        min-width:80px; max-width:110px; padding:6px 8px;
+        min-width:80px; max-width:110px; padding:4px 6px;
         background:${tileColor}; border:2px solid ${tileBorder};
         border-radius:8px; cursor:${isBlank ? 'default' : 'pointer'};
-        display:flex; flex-direction:column; align-items:center; gap:3px;
+        display:flex; flex-direction:column; align-items:center; gap:2px;
         flex-shrink:0;
         ${isSelected ? `box-shadow:0 0 12px ${gold}88;` : ''}
         transition:border-color 0.1s, box-shadow 0.1s;
       ">
       <div style="font-size:9px;color:#aaa;line-height:1;">${entry.cardName}</div>
-      <div style="font-size:12px;font-weight:bold;color:${isBlank ? '#666' : '#fff'};text-align:center;line-height:1.3;max-width:100px;">
+      <div class="pending-dice-3d"
+        data-pending-id="${entry.id}"
+        data-face-num="${entry.faceIndex + 1}"
+        data-card-name="${entry.cardName}"
+        style="width:66px;height:66px;pointer-events:none;flex-shrink:0;">
+      </div>
+      <div style="font-size:10px;color:${isBlank ? '#666' : '#ddd'};text-align:center;line-height:1.2;max-width:100px;">
         ${face.text || '—'}
       </div>
       <div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">
@@ -3559,7 +3538,7 @@ function renderPendingDicePanel(combat) {
       flex:1; display:flex; align-items:center; justify-content:center;
       color:#555; font-size:12px; font-style:italic; pointer-events:none;
       padding:4px 0;
-    ">drag a die card here to roll</div>` : '';
+    ">click a die card to roll it</div>` : '';
 
   return `
     <div id="pending-dice-panel" style="

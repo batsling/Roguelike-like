@@ -287,5 +287,115 @@ var DICE_DATA = [
         "effects": [{ "move": "block", "value": 9, "addons": [], "target": "self" }],
         "addons": [], "isBlank": false }
     ]
+  },
+  {
+    "name": "Healer Die",
+    "sides": 6,
+    "faces": [
+      { "face": 1, "text": "Gain +2 Mana",
+        "effects": [{ "move": "mana", "value": 2, "addons": [], "target": "self" }],
+        "addons": [], "isBlank": false },
+      { "face": 2, "text": "Gain +1 Mana",
+        "effects": [{ "move": "mana", "value": 1, "addons": [], "target": "self" }],
+        "addons": [], "isBlank": false },
+      { "face": 3, "text": "Gain +4 Health",
+        "effects": [{ "move": "heal", "value": 4, "addons": [], "target": "self" }],
+        "addons": [], "isBlank": false },
+      { "face": 4, "text": "Gain +4 Health",
+        "effects": [{ "move": "heal", "value": 4, "addons": [], "target": "self" }],
+        "addons": [], "isBlank": false },
+      { "face": 5, "text": "Gain +1 Mana",
+        "effects": [{ "move": "mana", "value": 1, "addons": [], "target": "self" }],
+        "addons": [], "isBlank": false },
+      { "face": 6, "text": "—", "effects": [], "addons": [], "isBlank": true }
+    ]
+  },
+  {
+    "name": "Gladiator Die",
+    "sides": 6,
+    "faces": [
+      { "face": 1, "text": "Deal 6 Dmg Melee Engage",
+        "effects": [{ "move": "dmg", "value": 6, "addons": ["Melee", "Engage"], "target": "enemy" }],
+        "addons": ["engage"], "isBlank": false },
+      { "face": 2, "text": "Deal 3 Dmg Melee Engage",
+        "effects": [{ "move": "dmg", "value": 3, "addons": ["Melee", "Engage"], "target": "enemy" }],
+        "addons": ["engage"], "isBlank": false },
+      { "face": 3, "text": "Deal 6 Dmg Melee + Gain +6 Block",
+        "effects": [
+          { "move": "dmg", "value": 6, "addons": ["Melee"], "target": "enemy" },
+          { "move": "block", "value": 6, "addons": [], "target": "self" }
+        ],
+        "addons": [], "isBlank": false },
+      { "face": 4, "text": "Deal 6 Dmg Melee + Gain +6 Block",
+        "effects": [
+          { "move": "dmg", "value": 6, "addons": ["Melee"], "target": "enemy" },
+          { "move": "block", "value": 6, "addons": [], "target": "self" }
+        ],
+        "addons": [], "isBlank": false },
+      { "face": 5, "text": "Gain +6 Block",
+        "effects": [{ "move": "block", "value": 6, "addons": [], "target": "self" }],
+        "addons": [], "isBlank": false },
+      { "face": 6, "text": "—", "effects": [], "addons": [], "isBlank": true }
+    ]
+  },
+  {
+    "name": "Lazy Die",
+    "sides": 6,
+    "faces": [
+      { "face": 1, "text": "Deal 12 Dmg Melee",
+        "effects": [{ "move": "dmg", "value": 12, "addons": ["Melee"], "target": "enemy" }],
+        "addons": [], "isBlank": false },
+      { "face": 2, "text": "Gain +12 Block",
+        "effects": [{ "move": "block", "value": 12, "addons": [], "target": "self" }],
+        "addons": [], "isBlank": false },
+      { "face": 3, "text": "—", "effects": [], "addons": [], "isBlank": true },
+      { "face": 4, "text": "—", "effects": [], "addons": [], "isBlank": true },
+      { "face": 5, "text": "—", "effects": [], "addons": [], "isBlank": true },
+      { "face": 6, "text": "—", "effects": [], "addons": [], "isBlank": true }
+    ]
+  },
+  {
+    "name": "Juggler Die",
+    "sides": 6,
+    "faces": [
+      { "face": 1, "text": "Deal 6 Dmg Melee Cantrip",
+        "effects": [{ "move": "dmg", "value": 6, "addons": ["Melee"], "target": "enemy" }],
+        "addons": ["cantrip"], "isBlank": false },
+      { "face": 2, "text": "Deal 6 Dmg Melee Cantrip",
+        "effects": [{ "move": "dmg", "value": 6, "addons": ["Melee"], "target": "enemy" }],
+        "addons": ["cantrip"], "isBlank": false },
+      { "face": 3, "text": "Deal 3 Dmg Melee Cantrip",
+        "effects": [{ "move": "dmg", "value": 3, "addons": ["Melee"], "target": "enemy" }],
+        "addons": ["cantrip"], "isBlank": false },
+      { "face": 4, "text": "Deal 3 Dmg Melee Cantrip",
+        "effects": [{ "move": "dmg", "value": 3, "addons": ["Melee"], "target": "enemy" }],
+        "addons": ["cantrip"], "isBlank": false },
+      { "face": 5, "text": "Take 3 Dmg Cantrip",
+        "effects": [{ "move": "pain", "value": 3, "addons": [], "target": "self" }],
+        "addons": ["cantrip"], "isBlank": false },
+      { "face": 6, "text": "—", "effects": [], "addons": [], "isBlank": true }
+    ]
+  },
+  {
+    "name": "Ranger Die",
+    "sides": 6,
+    "faces": [
+      { "face": 1, "text": "Deal 6 Dmg Ranged Engage",
+        "effects": [{ "move": "dmg", "value": 6, "addons": ["Ranged", "Engage"], "target": "enemy" }],
+        "addons": ["engage"], "isBlank": false },
+      { "face": 2, "text": "Deal 3 Dmg Ranged Cleave",
+        "effects": [{ "move": "dmg", "value": 3, "addons": ["Ranged", "Cleave"], "target": "enemy" }],
+        "addons": [], "isBlank": false },
+      { "face": 3, "text": "Deal 3 Dmg Ranged Cleave",
+        "effects": [{ "move": "dmg", "value": 3, "addons": ["Ranged", "Cleave"], "target": "enemy" }],
+        "addons": [], "isBlank": false },
+      { "face": 4, "text": "Deal 3 Dmg Ranged Cleave",
+        "effects": [{ "move": "dmg", "value": 3, "addons": ["Ranged", "Cleave"], "target": "enemy" }],
+        "addons": [], "isBlank": false },
+      { "face": 5, "text": "Deal 6 Dmg Ranged",
+        "effects": [{ "move": "dmg", "value": 6, "addons": ["Ranged"], "target": "enemy" }],
+        "addons": [], "isBlank": false },
+      { "face": 6, "text": "—", "effects": [], "addons": [], "isBlank": true }
+    ]
   }
 ];
