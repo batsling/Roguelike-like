@@ -97,6 +97,22 @@ const KEYWORD_DEFS = {
   'wealth':           'Adds +1 damage for every 10 Gold you currently have.',
 };
 
+/**
+ * Return the best image URL for a card.
+ * Hero-tagged S&D dice cards use images/heroes/<FirstWord>.png.
+ * Falls back to card.imageUrl or empty string.
+ */
+function getCardImageUrl(card) {
+  if (!card) return '';
+  const tags = Array.isArray(card.tags) ? card.tags : [];
+  if (tags.includes('hero') && card.game === 'Slice & Dice') {
+    const firstName = (card.name || '').split(' ')[0];
+    if (firstName) return `images/heroes/${firstName}.png`;
+  }
+  return card.imageUrl || '';
+}
+window.getCardImageUrl = getCardImageUrl;
+
 // Extract unique keywords found in a card description
 function getCardKeywords(card) {
   const desc = (card.description || '').toLowerCase();
@@ -1184,14 +1200,30 @@ function _getDiceColors(card) {
 /**
  * Build a DICE_DATA-compatible object from a card whose type is 'Dice'.
  */
+// Abbreviated face text for dice whose actual text is too long to render on a die face
+const _DICE_FACE_ABBR = {
+  "Isaac's D6": {
+    'Random Curse':                               'Curse',
+    'Random Status':                              'Status',
+    'Random Skill':                               'Skill',
+    'Random Attack':                              'Attack',
+    'Random Power':                               'Power',
+    'Random Attack, Skill, or Power (free)':      'FREE!',
+  },
+};
+
 function _makeDiceDataForCard(card) {
   const colors = _getDiceColors(card);
   const def = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === card.name);
   if (def) {
+    const abbr = _DICE_FACE_ABBR[card.name] || {};
     return {
       type: 'd6-card',
       colors,
-      sides: def.faces.map(f => ({ face: f.face, text: f.text, value: f.face, displayText: f.text })),
+      sides: def.faces.map(f => {
+        const displayText = abbr[f.text] || f.text;
+        return { face: f.face, text: displayText, value: f.face, displayText };
+      }),
       globalModifiers: [],
       currentRoll: null
     };
@@ -1221,11 +1253,34 @@ function initDiceCardRenderers() {
     const card = combat.hand[idx];
     if (!card) return;
 
+    // Ensure the container has real dimensions before starting Three.js
+    if (el.clientWidth === 0 || el.clientHeight === 0) {
+      el.style.minHeight = '60px';
+    }
+
     const diceData = _makeDiceDataForCard(card);
     const r = new DiceRendererInstance();
     r.init(el, diceData.colors.sceneBg || 0x1a0d00);
     r.createDice(diceData);
     _diceHandRenderers.push(r);
+
+    // Hover-to-roll: spin the die when the player mouses over the card
+    const parentCard = el.closest('.combat-hand-card');
+    if (parentCard) {
+      let _hoverRollTimer = null;
+      parentCard.addEventListener('mouseenter', () => {
+        clearTimeout(_hoverRollTimer);
+        _hoverRollTimer = setTimeout(() => {
+          if (!r.isRolling) {
+            const faceNum = Math.floor(Math.random() * (diceData.sides ? diceData.sides.length : 6)) + 1;
+            r.rollDice(diceData, faceNum, null);
+          }
+        }, 120);
+      });
+      parentCard.addEventListener('mouseleave', () => {
+        clearTimeout(_hoverRollTimer);
+      });
+    }
   });
 }
 
