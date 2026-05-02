@@ -4549,24 +4549,18 @@ function showDiceCombatModal() {
     gameState.pendingCombatStatuses = [];
   }
 
-  // Create modal HTML container
-  const combatHTML = `
-    <div id="dice-combat-modal" style="
-      width: 95vw;
-      max-width: 1200px;
-      height: 90vh;
-      max-height: 800px;
-      display: flex;
-      flex-direction: column;
-      background: linear-gradient(135deg, #1a1410 0%, #2a1810 100%);
-      border-radius: 12px;
-      overflow: hidden;
-    ">
-      <div id="dice-combat-content" style="flex: 1; overflow: hidden;"></div>
+  // Full-screen combat — fill entire viewport, no modal chrome
+  const existingModal = document.getElementById('game-modal');
+  if (existingModal) existingModal.remove();
+  const modal = document.createElement('div');
+  modal.id = 'game-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:500;overflow:hidden;';
+  modal.innerHTML = `
+    <div id="dice-combat-modal" style="width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;">
+      <div id="dice-combat-content" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;"></div>
     </div>
   `;
-
-  createGameModal(combatHTML);
+  document.body.appendChild(modal);
 
   // Create tooltip element for item hover (reuse existing or create new)
   const existingTooltip = document.getElementById('combat-item-tooltip');

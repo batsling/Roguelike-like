@@ -387,7 +387,7 @@ function renderCombatUI(combat, container) {
 
   container.innerHTML = `
     <div id="combat-wrapper" style="
-      width: 100%; height: 100%;
+      flex: 1; min-height: 0; width: 100%;
       background: ${C.bg};
       display: flex; flex-direction: column;
       font-family: 'Georgia', serif;
@@ -880,8 +880,15 @@ function renderPlayerZone(combat) {
   const statusRowHTML = renderStatusRow(p.statuses, 'player');
   const hasStatuses   = statusRowHTML.trim().length > 0;
 
+  // Highlight player zone when a self-targeting card is selected
+  const selCard = (combat.selectedCardIndex !== null && combat.selectedCardIndex !== undefined)
+    ? (combat.hand || [])[combat.selectedCardIndex] : null;
+  const isPlayerTarget = !!(selCard
+    && (selCard.type || '').toLowerCase() !== 'dice'
+    && !(window.CombatEngine && window.CombatEngine.cardNeedsTarget && window.CombatEngine.cardNeedsTarget(selCard)));
+
   return `
-    <div id="combat-player-zone" style="
+    <div id="combat-player-zone" class="${isPlayerTarget ? 'player-targetable' : ''}" style="
       flex-shrink: 0;
       display: flex; flex-direction: column;
       background: rgba(0,0,0,0.35);
@@ -1804,6 +1811,7 @@ window._showCombatPile = function(pileType) {
 function renderLogPanel(combat) {
   const activeTab = window._combatLogTab || 'log';
   const spells    = (combat && combat.spells) || [];
+  const player    = (combat && combat.player) || {};
 
   const logs    = (combat.log || []).slice(-40);
   const logHTML = logs.map(entry => {
@@ -1835,25 +1843,72 @@ function renderLogPanel(combat) {
         </div>`;
       }).join('');
 
+  // Stats tab
+  const statRow = (label, value, color) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;
+      padding:3px 10px;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.04);">
+      <span style="color:${C.textDim};">${label}</span>
+      <span style="color:${color || C.text};font-weight:bold;">${value}</span>
+    </div>`;
+  const section = (title) =>
+    `<div style="font-size:10px;font-weight:bold;color:${C.gold};
+      padding:5px 10px 3px;background:rgba(255,255,255,0.04);
+      border-bottom:1px solid ${C.border};border-top:1px solid ${C.border};
+      margin-top:2px;">${title}</div>`;
+
+  const activeStatuses = Object.entries(player.statuses || {})
+    .filter(([, v]) => (Array.isArray(v) ? v.length : v) > 0);
+
+  const statsHtml = `
+    ${section('⚔ Combat')}
+    ${statRow('Health', `${player.health || 0} / ${player.maxHealth || 0}`, '#e74c3c')}
+    ${statRow('Block',  player.block || 0, '#2980b9')}
+    ${statRow('Energy', `${player.energy || 0} / ${player.maxEnergy || 0}`, '#f1c40f')}
+    ${(player.maxMana || 0) > 0 ? statRow('Mana', `${player.mana || 0} / ${player.maxMana}`, '#6ab4ff') : ''}
+    ${(player.rerolls || 0) > 0 ? statRow('Rerolls', player.rerolls, C.dice) : ''}
+    ${section('🃏 Deck')}
+    ${statRow('Hand',     (combat.hand        || []).length, C.textDim)}
+    ${statRow('Draw',     (combat.drawPile    || []).length, C.textDim)}
+    ${statRow('Discard',  (combat.discardPile || []).length, C.textDim)}
+    ${statRow('Exhaust',  (combat.exhaustPile || []).length, C.textDim)}
+    ${section('🌟 Base Stats')}
+    ${statRow('Strength',     window.strength     || 0, '#e74c3c')}
+    ${statRow('Dexterity',    window.dexterity    || 0, '#3498db')}
+    ${statRow('Intelligence', window.intelligence || 0, '#9b59b6')}
+    ${statRow('Charisma',     window.charisma     || 0, '#f1c40f')}
+    ${activeStatuses.length > 0 ? `
+      ${section('✨ Statuses')}
+      ${activeStatuses.map(([k, v]) => {
+        const meta = STATUS_META[k];
+        const label = meta ? `${meta.emoji} ${meta.label}` : k;
+        const val   = Array.isArray(v) ? v.length : v;
+        return statRow(label, val, '#aaa');
+      }).join('')}
+    ` : ''}
+  `;
+
   const tabStyle = (tab) => `
-    flex:1; padding:5px 0; font-size:11px; font-weight:bold;
+    flex:1; padding:5px 0; font-size:10px; font-weight:bold;
     text-align:center; cursor:pointer;
     color:${activeTab === tab ? C.gold : C.textDim};
     border-bottom:2px solid ${activeTab === tab ? C.gold : 'transparent'};
     background:${activeTab === tab ? 'rgba(255,255,255,0.05)' : 'transparent'};
     transition:all 0.1s;
   `;
+  const switchTab = (tab) =>
+    `window._combatLogTab='${tab}';window.CombatUI&&window.CombatUI.updateCombatDisplay&&window.CombatUI.updateCombatDisplay()`;
 
   return `
     <div id="combat-log-panel" style="
-      width:205px; flex-shrink:0;
+      width:220px; flex-shrink:0;
       background:rgba(0,0,0,0.55);
       border-left:2px solid ${C.border};
       display:flex; flex-direction:column;
     ">
       <div style="display:flex;border-bottom:1px solid ${C.border};flex-shrink:0;">
-        <div style="${tabStyle('log')}" onclick="window._combatLogTab='log';window.CombatUI&&window.CombatUI.updateCombatDisplay&&window.CombatUI.updateCombatDisplay()">📜 Log</div>
-        <div style="${tabStyle('spellbook')}" onclick="window._combatLogTab='spellbook';window.CombatUI&&window.CombatUI.updateCombatDisplay&&window.CombatUI.updateCombatDisplay()">✨ Spells</div>
+        <div style="${tabStyle('log')}"       onclick="${switchTab('log')}">📜 Log</div>
+        <div style="${tabStyle('spellbook')}" onclick="${switchTab('spellbook')}">✨ Spells</div>
+        <div style="${tabStyle('stats')}"     onclick="${switchTab('stats')}">📊 Stats</div>
       </div>
       <div id="combat-log-entries" style="
         flex:1; overflow-y:auto;
@@ -1862,7 +1917,7 @@ function renderLogPanel(combat) {
         scrollbar-width:thin;
         scrollbar-color:${C.border} transparent;
       ">
-        ${activeTab === 'log' ? logHTML : spellsHtml}
+        ${activeTab === 'log' ? logHTML : activeTab === 'spellbook' ? spellsHtml : statsHtml}
       </div>
     </div>
   `;
@@ -2100,6 +2155,22 @@ function attachCombatEventListeners(combat) {
       }
     });
   }
+
+  // Player zone click: confirm a selected self-targeting / power card
+  const playerZone = document.getElementById('combat-player-zone');
+  if (playerZone) {
+    playerZone.addEventListener('click', () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState();
+      if (!cs || cs.phase !== 'player_action') return;
+      const idx = cs.selectedCardIndex;
+      if (idx === null || idx === undefined) return;
+      const card = (cs.hand || [])[idx];
+      if (!card) return;
+      const needsEnemy = window.CombatEngine.cardNeedsTarget ? window.CombatEngine.cardNeedsTarget(card) : false;
+      if (needsEnemy || (card.type || '').toLowerCase() === 'dice') return;
+      _playSelectedSelfCard(cs, idx);
+    });
+  }
 }
 
 function handleEnemyClick(enemyId) {
@@ -2189,22 +2260,32 @@ function handleCardClick(index) {
     }
     updateCombatDisplay();
   } else {
-    const snap   = captureHPSnapshot(combat);
-    const result = window.CombatEngine.playCard(index, null);
-    if (result && result.success) {
-      const hitLog = [...(combat._hitLog || [])];
-      combat._hitLog = [];
+    // Self-targeting / power cards: select first, then click player zone to confirm
+    if (combat.selectedCardIndex === index) {
       combat.selectedCardIndex = null;
-      animateCardPlay(index, null, () => {
-        showHPDiffs(snap, combat, hitLog.length > 0);
-        checkAndFlashReshuffle(snap, combat);
-        replayHits(hitLog, () => {
-          updateCombatDisplay();
-          checkCombatEnd();
-        });
-      });
-      updateCombatDisplay(); // Immediately remove card from hand
+    } else {
+      combat.selectedCardIndex = index;
     }
+    updateCombatDisplay();
+  }
+}
+
+function _playSelectedSelfCard(combat, idx) {
+  const snap = captureHPSnapshot(combat);
+  const result = window.CombatEngine.playCard(idx, null);
+  if (result && result.success) {
+    const hitLog = [...(combat._hitLog || [])];
+    combat._hitLog = [];
+    combat.selectedCardIndex = null;
+    animateCardPlay(idx, null, () => {
+      showHPDiffs(snap, combat, hitLog.length > 0);
+      checkAndFlashReshuffle(snap, combat);
+      replayHits(hitLog, () => {
+        updateCombatDisplay();
+        checkCombatEnd();
+      });
+    });
+    updateCombatDisplay();
   }
 }
 
@@ -2220,6 +2301,11 @@ function injectCombatInteractionCSS() {
       50%      { box-shadow: 0 0 0 4px rgba(192,57,43,0.9), 0 0 18px rgba(231,76,60,0.6); }
     }
     .enemy-targetable { animation: targetPulse 1s ease-in-out infinite; cursor: crosshair !important; }
+    @keyframes playerTargetPulse {
+      0%,100% { box-shadow: 0 0 0 2px rgba(74,175,80,0.4); }
+      50%      { box-shadow: 0 0 0 5px rgba(74,175,80,0.8), 0 0 22px rgba(74,175,80,0.4); }
+    }
+    .player-targetable { animation: playerTargetPulse 1s ease-in-out infinite; cursor: pointer !important; }
     @keyframes combatShake {
       0%,100% { transform: translateX(0); }
       20%     { transform: translateX(-5px); }
