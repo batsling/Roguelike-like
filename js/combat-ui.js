@@ -1264,18 +1264,20 @@ function initDiceCardRenderers() {
     r.createDice(diceData);
     _diceHandRenderers.push(r);
 
-    // Hover-to-roll: spin the die when the player mouses over the card
+    // Spin die on hover as a visual preview (purely cosmetic, no game effect)
     const parentCard = el.closest('.combat-hand-card');
     if (parentCard) {
       let _hoverRollTimer = null;
+      // Only trigger spin when the player is actively hovering (not mid-drag)
       parentCard.addEventListener('mouseenter', () => {
+        if (_dragState && _dragState.moved) return; // skip during drag
         clearTimeout(_hoverRollTimer);
         _hoverRollTimer = setTimeout(() => {
           if (!r.isRolling) {
             const faceNum = Math.floor(Math.random() * (diceData.sides ? diceData.sides.length : 6)) + 1;
             r.rollDice(diceData, faceNum, null);
           }
-        }, 120);
+        }, 200);
       });
       parentCard.addEventListener('mouseleave', () => {
         clearTimeout(_hoverRollTimer);
@@ -2130,9 +2132,20 @@ function handleCardClick(index) {
     return;
   }
 
-  // Dice-type cards: show card picker, then roll
+  // Dice-type cards: must be dragged to the dice board to roll
   if ((card.type || '').toLowerCase() === 'dice') {
-    handleDiceCardPlay(index, combat);
+    // Flash the dice board to guide the player
+    const panel = document.getElementById('pending-dice-panel');
+    if (panel) {
+      panel.style.background = 'rgba(240,200,80,0.22)';
+      panel.style.borderTopColor = C.goldBright;
+      setTimeout(() => {
+        panel.style.background = '';
+        panel.style.borderTopColor = '';
+      }, 600);
+    }
+    typeof createNotification === 'function' &&
+      createNotification('Drag the die to the Dice Board to roll!', C.gold, '🎲');
     return;
   }
 
@@ -2246,6 +2259,21 @@ function ensureDragAndKeyListeners() {
         if (pointEl) pointEl.style.outline = `3px solid ${C.goldBright}`;
         _dragState.hoveredEnemy = pointEl || null;
       }
+
+      // Highlight dice board when dragging a dice card over it
+      if (_dragState.isDice) {
+        const overBoard = !!document.elementFromPoint(e.clientX, e.clientY)?.closest('#pending-dice-panel');
+        const panel = document.getElementById('pending-dice-panel');
+        if (panel) {
+          if (overBoard) {
+            panel.style.background = 'rgba(240,200,80,0.18)';
+            panel.style.borderTopColor = C.goldBright;
+          } else {
+            panel.style.background = 'rgba(0,0,0,0.4)';
+            panel.style.borderTopColor = '';
+          }
+        }
+      }
     }
   });
 
@@ -2257,6 +2285,10 @@ function ensureDragAndKeyListeners() {
     if (clone)   clone.remove();
     if (cardEl)  cardEl.style.opacity = '';
     document.querySelectorAll('.enemy-card').forEach(el => el.style.outline = '');
+
+    // Reset dice board highlight
+    const dicePanel = document.getElementById('pending-dice-panel');
+    if (dicePanel) { dicePanel.style.background = ''; dicePanel.style.borderTopColor = ''; }
 
     if (!moved) return; // not a drag — click handler will fire
 
@@ -2273,7 +2305,12 @@ function ensureDragAndKeyListeners() {
       ? window.CombatEngine.cardNeedsTarget(card) : false;
 
     if ((card.type || '').toLowerCase() === 'dice') {
-      handleDiceCardPlay(cardIndex, combat);
+      // Dice cards only play when dropped on the dice board
+      const onBoard = !!document.elementFromPoint(e.clientX, e.clientY)?.closest('#pending-dice-panel');
+      if (onBoard) {
+        handleDiceCardPlay(cardIndex, combat);
+      }
+      // Dropped elsewhere — silently cancel (card stays in hand)
     } else if (needsTarget) {
       // Must drop on an enemy
       const enemyEl = document.elementFromPoint(e.clientX, e.clientY)
@@ -2317,11 +2354,15 @@ function attachDragMouseDown() {
       if (e.button !== 0) return;
       e.preventDefault(); // prevent text selection during drag
       const rect    = el.getBoundingClientRect();
+      const combat  = window.CombatEngine && window.CombatEngine.getCombatState();
+      const card    = combat ? (combat.hand || [])[parseInt(el.dataset.handIndex)] : null;
+      const isDice  = card ? (card.type || '').toLowerCase() === 'dice' : false;
       _dragState = {
         cardIndex: parseInt(el.dataset.handIndex),
         cardEl:    el,
         clone:     null,
         moved:     false,
+        isDice,
         startX:    e.clientX,
         startY:    e.clientY,
         offsetX:   e.clientX - rect.left,
@@ -3457,7 +3498,10 @@ function _showDiceRollAndPend(diceCard, combat) {
  */
 function renderPendingDicePanel(combat) {
   const pending = (combat && combat.pendingDice) || [];
-  if (pending.length === 0) return '';
+  const hasDiceInHand = (combat && combat.hand || []).some(c => (c.type || '').toLowerCase() === 'dice');
+
+  // Hide entirely if no pending dice and no dice cards in hand
+  if (pending.length === 0 && !hasDiceInHand) return '';
 
   const rerolls = (combat.player && combat.player.rerolls) || 0;
   const gold   = C.gold   || '#f0c850';
@@ -3510,6 +3554,13 @@ function renderPendingDicePanel(combat) {
     </div>`;
   }).join('');
 
+  const emptyHint = pending.length === 0 ? `
+    <div id="dice-drop-hint" style="
+      flex:1; display:flex; align-items:center; justify-content:center;
+      color:#555; font-size:12px; font-style:italic; pointer-events:none;
+      padding:4px 0;
+    ">drag a die card here to roll</div>` : '';
+
   return `
     <div id="pending-dice-panel" style="
       flex-shrink:0; padding:6px 10px;
@@ -3517,12 +3568,13 @@ function renderPendingDicePanel(combat) {
       border-top:1px solid ${border};
       display:flex; align-items:center; gap:8px;
       overflow-x:auto;
+      transition:background 0.15s, border-color 0.15s;
     ">
       <div style="font-size:11px;font-weight:bold;color:${gold};flex-shrink:0;white-space:nowrap;">
-        🎲 Pending
+        🎲 Dice Board
       </div>
-      <div style="display:flex;gap:8px;flex:1;overflow-x:auto;">
-        ${tilesHtml}
+      <div id="dice-board-drop-zone" style="display:flex;gap:8px;flex:1;overflow-x:auto;min-height:36px;align-items:center;">
+        ${tilesHtml}${emptyHint}
       </div>
       ${rerolls > 0 ? `
         <button id="pending-reroll-all-btn" style="
