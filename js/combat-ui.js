@@ -2170,9 +2170,10 @@ function handleCardClick(index) {
     return;
   }
 
-  // Dice-type cards: click to play directly
+  // Dice-type cards: must be dragged to the Dice Board — clicking does nothing
   if ((card.type || '').toLowerCase() === 'dice') {
-    handleDiceCardPlay(index, combat);
+    typeof createNotification === 'function' &&
+      createNotification('Drag this die to the Dice Board to roll it', C.gold, '🎲');
     return;
   }
 
@@ -2287,6 +2288,20 @@ function ensureDragAndKeyListeners() {
         _dragState.hoveredEnemy = pointEl || null;
       }
 
+      // Highlight Dice Board when dragging a dice card over it
+      if (_dragState.isDice) {
+        const overBoard = !!document.elementFromPoint(e.clientX, e.clientY)?.closest('#pending-dice-panel');
+        const panel = document.getElementById('pending-dice-panel');
+        if (panel) {
+          if (overBoard) {
+            panel.style.background = 'rgba(240,200,80,0.18)';
+            panel.style.borderTopColor = C.goldBright;
+          } else {
+            panel.style.background = '';
+            panel.style.borderTopColor = '';
+          }
+        }
+      }
     }
   });
 
@@ -2318,7 +2333,9 @@ function ensureDragAndKeyListeners() {
       ? window.CombatEngine.cardNeedsTarget(card) : false;
 
     if ((card.type || '').toLowerCase() === 'dice') {
-      handleDiceCardPlay(cardIndex, combat);
+      // Only play when dropped on the Dice Board; cancel silently otherwise
+      const onBoard = !!document.elementFromPoint(e.clientX, e.clientY)?.closest('#pending-dice-panel');
+      if (onBoard) handleDiceCardPlay(cardIndex, combat);
     } else if (needsTarget) {
       // Must drop on an enemy
       const enemyEl = document.elementFromPoint(e.clientX, e.clientY)
@@ -3471,10 +3488,17 @@ function _showDiceRollAndPend(diceCard, combat) {
  */
 function renderPendingDicePanel(combat) {
   const pending = (combat && combat.pendingDice) || [];
-  const hasDiceInHand = (combat && combat.hand || []).some(c => (c.type || '').toLowerCase() === 'dice');
 
-  // Hide entirely if no pending dice and no dice cards in hand
-  if (pending.length === 0 && !hasDiceInHand) return '';
+  // Show whenever the player has a dice card anywhere in their deck
+  const isDieCard = c => (c.type || '').toLowerCase() === 'dice';
+  const hasDiceInDeck = (combat && (
+    (combat.hand        || []).some(isDieCard) ||
+    (combat.drawPile    || []).some(isDieCard) ||
+    (combat.discardPile || []).some(isDieCard) ||
+    (combat.exhaustPile || []).some(isDieCard)
+  ));
+
+  if (pending.length === 0 && !hasDiceInDeck) return '';
 
   const rerolls = (combat.player && combat.player.rerolls) || 0;
   const gold   = C.gold   || '#f0c850';
@@ -3538,7 +3562,7 @@ function renderPendingDicePanel(combat) {
       flex:1; display:flex; align-items:center; justify-content:center;
       color:#555; font-size:12px; font-style:italic; pointer-events:none;
       padding:4px 0;
-    ">click a die card to roll it</div>` : '';
+    ">drag a die card here to roll it</div>` : '';
 
   return `
     <div id="pending-dice-panel" style="
