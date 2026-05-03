@@ -959,16 +959,6 @@ function renderPlayerZone(combat) {
           ">🛡 ${p.block}</div>
         ` : ''}
 
-        <!-- Mana -->
-        ${(p.maxMana || 0) > 0 ? `
-          <div style="
-            display:flex; align-items:center; gap:4px;
-            background:rgba(30,60,120,0.5); border:1px solid #3a7bd5;
-            border-radius:8px; padding:2px 10px;
-            font-size:13px; font-weight:bold; color:#7ec8e3;
-            white-space:nowrap; flex-shrink:0;
-          ">💧 ${p.mana || 0}/${p.maxMana}</div>
-        ` : ''}
 
         <!-- Status icons — wrap freely in remaining space -->
         ${hasStatuses ? statusRowHTML : ''}
@@ -1097,7 +1087,7 @@ function renderActionsZone(combat) {
       gap:10px; width:130px; flex-shrink:0;
     ">
       <!-- Energy pips -->
-      <div style="display:flex; align-items:center; gap:5px;">
+      <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap; justify-content:center;">
         ${Array.from({length: Math.max(maxEnergy, energy)}, (_, i) => {
           const filled = i < energy;
           const bonus  = i >= maxEnergy; // extra pip from Ice Cream carry-over
@@ -1110,6 +1100,24 @@ function renderActionsZone(combat) {
           "></div>`;
         }).join('')}
         <span style="color:${C.gold}; font-size:12px; margin-left:3px;">${energy}/${maxEnergy}</span>
+      </div>
+
+      <!-- Mana display (next to energy) -->
+      ${(combat.player.maxMana || 0) > 0 ? `
+        <div style="display:flex; align-items:center; gap:4px;">
+          ${Array.from({length: combat.player.maxMana}, (_, i) => {
+            const filled = i < (combat.player.mana || 0);
+            return `<div style="
+              width:14px; height:14px; border-radius:50%;
+              background:${filled ? '#3a7bd5' : '#1a2a3a'};
+              border:2px solid ${filled ? '#6ab4ff' : '#2a3a5a'};
+              box-shadow:${filled ? '0 0 5px #6ab4ff88' : 'none'};
+              transition:all 0.2s;
+            "></div>`;
+          }).join('')}
+          <span style="color:#7ec8e3; font-size:11px; margin-left:2px;">💧${combat.player.mana || 0}/${combat.player.maxMana}</span>
+        </div>
+      ` : ''}
       </div>
 
       <!-- End Turn button -->
@@ -1851,19 +1859,23 @@ function renderLogPanel(combat) {
   const spellsHtml = spells.length === 0
     ? `<div style="color:${C.textDim};font-size:11px;padding:10px 8px;text-align:center;">No spells learned</div>`
     : spells.map(sp => {
-        const mana = sp.manaCost || 0;
+        const mana = sp.cost !== undefined ? sp.cost : (sp.manaCost || 0);
         const cd   = combat.spellCooldowns && combat.spellCooldowns[sp.name] > 0
           ? ` (CD ${combat.spellCooldowns[sp.name]})`
           : '';
+        const onCd = !!(combat.spellCooldowns && combat.spellCooldowns[sp.name] > 0);
+        const usedSingle = !!(sp.keywords && sp.keywords.includes('SingleCast') && combat.usedSingleCast && combat.usedSingleCast[sp.name]);
+        const canCast = !onCd && !usedSingle && (combat.player.mana || 0) >= mana && combat.phase === 'player_action';
         return `<div style="
           padding:4px 8px; font-size:10px;
           border-bottom:1px solid rgba(255,255,255,0.06);
-          cursor:pointer; transition:background 0.1s;
+          cursor:${canCast ? 'pointer' : 'default'}; transition:background 0.1s;
+          opacity:${canCast ? '1' : '0.5'};
         "
-        onmouseover="this.style.background='rgba(255,255,255,0.06)'"
-        onmouseout="this.style.background=''"
-        onclick="window._handleSpellbookCast && window._handleSpellbookCast('${sp.name}')">
-          <div style="font-weight:bold;color:#c09aff;">${sp.name}${cd}</div>
+        onmouseover="${canCast ? "this.style.background='rgba(255,255,255,0.06)'" : ''}"
+        onmouseout="${canCast ? "this.style.background=''" : ''}"
+        onclick="${canCast ? `window._handleSpellbookCast && window._handleSpellbookCast('${sp.name}')` : ''}">
+          <div style="font-weight:bold;color:#c09aff;">${sp.name}${cd}${usedSingle ? ' (used)' : ''}</div>
           <div style="color:${C.textDim};font-size:9px;">${sp.description || ''}</div>
           <div style="color:#6ab4ff;font-size:9px;margin-top:1px;">💧 ${mana} Mana</div>
         </div>`;
@@ -3290,91 +3302,23 @@ function handleDiceCardPlay(diceCardIndex, combat) {
   const diceCard = hand[diceCardIndex];
   if (!diceCard) return;
 
-  // Isaac's D6: single roll → immediately opens transform picker, no pending tile
+  // Isaac's D6: go straight to the board (no popup), tile click opens transform picker
   if (diceCard.name === "Isaac's D6") {
     window.CombatEngine.playCard(diceCardIndex, null);
+    const diceDef   = (typeof DICE_DATA !== 'undefined') ? DICE_DATA.find(d => d.name === diceCard.name) : null;
+    const sides     = diceDef ? diceDef.faces.length : 6;
+    const faceIndex = Math.floor(Math.random() * sides);
+    if (window.CombatEngine && window.CombatEngine.addPendingDie) {
+      window.CombatEngine.addPendingDie(diceCard.name, faceIndex);
+    }
     updateCombatDisplay();
-    _showIsaacD6DirectRoll(diceCard, combat);
     return;
   }
 
-  // All other dice: roll into pending panel
+  // All other dice: roll animation then add to panel
   window.CombatEngine.playCard(diceCardIndex, null);
   updateCombatDisplay();
   _showDiceRollAndPend(diceCard, combat);
-}
-
-/**
- * Isaac's D6: single roll animation → immediately open transform picker.
- * No pending tile is created; effect fires as soon as the player picks a card.
- */
-function _showIsaacD6DirectRoll(diceCard, combat) {
-  const combatModal = document.getElementById('dice-combat-modal');
-  const diceDef = (typeof DICE_DATA !== 'undefined') ? DICE_DATA.find(d => d.name === diceCard.name) : null;
-  const sides   = diceDef ? diceDef.faces.length : 6;
-
-  if (!combatModal || typeof DiceRendererInstance === 'undefined') {
-    const faceIndex = Math.floor(Math.random() * sides);
-    const faceData  = diceDef ? (diceDef.faces[faceIndex] || diceDef.faces[0]) : { face: faceIndex + 1, text: String(faceIndex + 1) };
-    _showIsaacTransformPicker(faceData, combat, null);
-    return;
-  }
-
-  const overlay = document.createElement('div');
-  overlay.id = 'dice-roll-overlay';
-  overlay.style.cssText = `position:absolute;inset:0;z-index:1000;background:rgba(0,0,0,0.9);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:inherit;`;
-
-  overlay.innerHTML = `
-    <h2 style="color:#f0c850;margin:0 0 12px;font-size:20px;">🎲 Rolling ${diceCard.name}…</h2>
-    <div id="dice-roll-3d" style="width:160px;height:160px;margin:0 auto;"></div>
-    <div id="dice-roll-label" style="color:#fff;font-size:15px;min-height:52px;margin-top:14px;text-align:center;"></div>
-    <div id="dice-roll-btns" style="margin-top:16px;display:flex;gap:10px;"></div>`;
-
-  combatModal.style.position = 'relative';
-  combatModal.appendChild(overlay);
-
-  requestAnimationFrame(() => {
-    const container = document.getElementById('dice-roll-3d');
-    if (!container) {
-      overlay.remove();
-      const fi = Math.floor(Math.random() * sides);
-      const fd = diceDef ? (diceDef.faces[fi] || diceDef.faces[0]) : { face: fi + 1, text: String(fi + 1) };
-      _showIsaacTransformPicker(fd, combat, null);
-      return;
-    }
-
-    const renderer   = new DiceRendererInstance();
-    const diceData3d = _makeDiceDataForCard(diceCard);
-    renderer.init(container, diceData3d.colors ? diceData3d.colors.sceneBg : 0x0d0800);
-    renderer.createDice(diceData3d);
-
-    const faceIndex = Math.floor(Math.random() * sides);
-    const faceData  = diceDef ? (diceDef.faces[faceIndex] || diceDef.faces[0]) : { face: faceIndex + 1, text: String(faceIndex + 1) };
-    const rolledN   = faceIndex + 1;
-    const lbl  = document.getElementById('dice-roll-label');
-    const btns = document.getElementById('dice-roll-btns');
-
-    renderer.rollDice(diceData3d, rolledN, () => {
-      const faceLabel = faceData.isBlank ? '— (blank)' : faceData.text;
-      if (lbl) lbl.innerHTML =
-        `<div style="color:#f0c850;font-weight:bold;font-size:18px;">${faceLabel}</div>
-         <div style="color:#888;font-size:11px;margin-top:4px;">Choose a card to transform</div>`;
-
-      if (btns) {
-        const pickBtn = document.createElement('button');
-        pickBtn.textContent = 'Choose Card →';
-        pickBtn.style.cssText = `padding:8px 20px;background:#2a5c2a;border:1px solid #4a9c4a;
-          color:#fff;border-radius:6px;font-size:14px;cursor:pointer;`;
-        pickBtn.onclick = () => {
-          renderer.dispose();
-          overlay.remove();
-          _showIsaacTransformPicker(faceData, combat, null);
-        };
-        btns.appendChild(pickBtn);
-      }
-    });
-  });
 }
 
 /**

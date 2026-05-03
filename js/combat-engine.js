@@ -220,11 +220,14 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     _usedSingleUseFaces: {} // {cardName_faceIndex: true} — Single Use faces consumed this combat
   };
 
-  // Load player's spells from gameState (persisted across combats)
-  if (typeof gameState !== 'undefined' && Array.isArray(gameState.spells) && gameState.spells.length > 0) {
-    combatState.spells = [...gameState.spells];
-  } else if (typeof window.playerSpells !== 'undefined') {
-    combatState.spells = [...window.playerSpells];
+  // Load player's spells — merge both sources (gameState and window.playerSpells) deduplicated by name
+  {
+    const seen = new Set();
+    const mergedSpells = [];
+    const addSpell = (sp) => { if (sp && sp.name && !seen.has(sp.name)) { seen.add(sp.name); mergedSpells.push(sp); } };
+    ((typeof gameState !== 'undefined' && Array.isArray(gameState.spells)) ? gameState.spells : []).forEach(addSpell);
+    (Array.isArray(window.playerSpells) ? window.playerSpells : []).forEach(addSpell);
+    if (mergedSpells.length > 0) combatState.spells = mergedSpells;
   }
 
   // Initialize card deck system
@@ -4412,7 +4415,7 @@ function resolveCardEffect(card, target, options = {}) {
       const statusKey = goForEyesMatch[2].toLowerCase();
       if (target) {
         const isAttacking = target.currentIntent && target.currentIntent.some(
-          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg')
+          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg' || e.move === 'Magic Dmg' || e.move === 'pain')
         );
         if (isAttacking) {
           target.statuses[statusKey] = (target.statuses[statusKey] || 0) + stacks;
@@ -4429,7 +4432,7 @@ function resolveCardEffect(card, target, options = {}) {
     if (spotWeaknessM) {
       if (target) {
         const isAttacking = target.currentIntent && target.currentIntent.some(
-          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg')
+          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg' || e.move === 'Magic Dmg' || e.move === 'pain')
         );
         if (isAttacking) {
           const gain = parseInt(spotWeaknessM[1]);

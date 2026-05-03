@@ -359,6 +359,7 @@ function loadSavedGame(saveName) {
   if (!gameState.spells) {
     gameState.spells = [];
   }
+  window.playerSpells = gameState.spells; // keep in sync with combat fallback
   if (!gameState.postcombatChoicesUsed) {
     gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
   }
@@ -874,6 +875,7 @@ function completeGameStart(start, amulet, saveName, startType) {
     spells: [],
     postcombatChoicesUsed: { Low: [], Medium: [], High: [] }
   };
+  window.playerSpells = gameState.spells;
 
   startGame = start;
   amuletGame = amulet;
@@ -1077,20 +1079,23 @@ document.getElementById('return-menu')?.addEventListener('click', () => {
 
 // Top bar menu button (same functionality)
 document.getElementById('return-menu-top')?.addEventListener('click', () => {
-  // Only show if in dungeon screen
-  if (document.getElementById('dungeon-screen').style.display !== 'none') {
-    if (confirm('Return to main menu? (Game will be saved)')) {
-      saveCurrentGame();
-      if (typeof clearAllArrows === 'function') {
-        clearAllArrows();
+  const inDungeon = document.getElementById('dungeon-screen').style.display !== 'none';
+  if (!inDungeon) return;
+  if (confirm('Return to main menu? (Game will be saved)')) {
+    // End combat first if active
+    const combatModal = document.getElementById('game-modal');
+    if (combatModal) {
+      if (window.CombatEngine && window.CombatEngine.endCombat) {
+        window.CombatEngine.endCombat(false);
       }
-      document.getElementById('dungeon-screen').style.display = 'none';
-      document.getElementById('main-menu').style.display = 'flex';
-
-      // Hide top-right buttons when in menu
-      const topBarRight = document.getElementById('top-bar-right');
-      if (topBarRight) topBarRight.style.display = 'none';
+      combatModal.remove();
     }
+    saveCurrentGame();
+    if (typeof clearAllArrows === 'function') clearAllArrows();
+    document.getElementById('dungeon-screen').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+    const topBarRight = document.getElementById('top-bar-right');
+    if (topBarRight) topBarRight.style.display = 'none';
   }
 });
 
