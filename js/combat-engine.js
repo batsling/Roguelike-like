@@ -636,6 +636,21 @@ function addPigmentCardToHand() {
   if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
 }
 
+/**
+ * Compute extra stacks from Persistence when the player applies a non-basic status.
+ * Only applies when the source is the player (not enemy self-buffs).
+ */
+const _PERSISTENCE_EXEMPT = new Set(['power', 'defense', 'arcane', 'persistence', 'energy_per_turn',
+  'barricade', 'brutality', 'corruption', 'double_damage', 'no_draw']);
+
+function getPersistenceBonus(key) {
+  if (!combatState || !combatState.player) return 0;
+  if (_PERSISTENCE_EXEMPT.has(key)) return 0;
+  const statusDef = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA[key] : null;
+  if (!statusDef || (statusDef.type !== 'Buff' && statusDef.type !== 'Debuff')) return 0;
+  return combatState.player.statuses['persistence'] || 0;
+}
+
 function applyStatus(unit, statusName, amount) {
   if (!unit || !unit.statuses) return;
   const key = statusName.toLowerCase();
@@ -4276,17 +4291,19 @@ function resolveCardEffect(card, target, options = {}) {
             addLog(`Bird Head: ${target.name} is Soul Linked!`, 'warning');
           }
 
-          // Brass Knuckles: inflict Bruise
+          // Brass Knuckles: inflict Bruise (scales with Persistence)
           if (inv.some(i => i.name === 'Brass Knuckles')) {
-            target.statuses['bruise'] = (target.statuses['bruise'] || 0) + 1;
-            addLog(`Brass Knuckles: ${target.name} gains 1 Bruise!`, 'warning');
+            const bruiseAmt = 1 + getPersistenceBonus('bruise');
+            target.statuses['bruise'] = (target.statuses['bruise'] || 0) + bruiseAmt;
+            addLog(`Brass Knuckles: ${target.name} gains ${bruiseAmt} Bruise!`, 'warning');
           }
 
-          // Jar of Leeches: inflict Leeches
+          // Jar of Leeches: inflict Leeches (scales with Persistence)
           if (inv.some(i => i.name === 'Jar of Leeches')) {
-            target.statuses['leeches'] = (target.statuses['leeches'] || 0) + 1;
+            const leechAmt = 1 + getPersistenceBonus('leeches');
+            target.statuses['leeches'] = (target.statuses['leeches'] || 0) + leechAmt;
             target.statuses['leeches_owner'] = 'player';
-            addLog(`Jar of Leeches: ${target.name} gains 1 Leeches!`, 'warning');
+            addLog(`Jar of Leeches: ${target.name} gains ${leechAmt} Leeches!`, 'warning');
           }
         }
 
@@ -5867,8 +5884,11 @@ function _applyPendingDieFaceEffects(entry, targetId, cantripMode) {
     } else if (move === 'get') {
       const statusKey = eff.statusKey || '';
       if (statusKey) {
-        player.statuses[statusKey] = (player.statuses[statusKey] || 0) + val;
-        addLog(`${entry.cardName}: +${val} ${statusKey}`, 'info');
+        const persBonus = getPersistenceBonus(statusKey);
+        const finalVal = val + persBonus;
+        player.statuses[statusKey] = (player.statuses[statusKey] || 0) + finalVal;
+        const persNote = persBonus > 0 ? ` (+${persBonus} Persistence)` : '';
+        addLog(`${entry.cardName}: +${finalVal} ${statusKey}${persNote}`, 'info');
       }
     }
   }

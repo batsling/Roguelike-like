@@ -251,6 +251,8 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
                         card.tags && card.tags.includes('weapon') &&
                         _dupInv.some(i => i.name === 'Duplicator');
 
+  const persistence = player.statuses['persistence'] || 0;
+
   // Quick check: any modifier active?
   const hasMods = itemSuffix.length > 0
                || hasDuplicator
@@ -264,6 +266,7 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
                || (player.statuses['defense'] || 0) !== 0
                || !!(combat._scalingCounters && combat._scalingCounters[card.name])
                || desc.toLowerCase().includes('wealth')
+               || persistence > 0
                || !!(targetEnemy && targetEnemy.statuses
                     && (targetEnemy.statuses['vulnerable'] || targetEnemy.statuses['bruise']));
   if (!hasMods) return desc;
@@ -296,6 +299,22 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
     const col = computed > base ? '#7dd4ff' : '#ff7d7d';
     return `Gain <span style="color:${col};font-weight:bold">${computed}</span> Block`;
   });
+
+  // Persistence bonus: show enhanced stack count on "Apply/Inflict N Status"
+  if (persistence > 0) {
+    desc = desc.replace(/(?:Apply|Inflict) (\d+) ([A-Za-z_]+)/gi, (match, n, statusName) => {
+      const key = statusName.toLowerCase();
+      const exempt = new Set(['power', 'defense', 'arcane', 'persistence', 'energy_per_turn',
+        'barricade', 'brutality', 'corruption', 'double_damage', 'no_draw']);
+      if (exempt.has(key)) return match;
+      const statusDef = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA[key] : null;
+      if (!statusDef || (statusDef.type !== 'Buff' && statusDef.type !== 'Debuff')) return match;
+      const base = parseInt(n);
+      const total = base + persistence;
+      const prefix = match.startsWith('Apply') ? 'Apply' : 'Inflict';
+      return `${prefix} <span style="color:#c09aff;font-weight:bold">${total}</span> ${statusName}`;
+    });
+  }
 
   return desc + itemSuffix;
 }
@@ -2172,9 +2191,21 @@ function attachCombatEventListeners(combat) {
       }
       const needsTarget = (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
       if (needsTarget) {
-        // Toggle selection for target picking
-        window._selectedPendingId = (window._selectedPendingId === id) ? null : id;
-        updateCombatDisplay();
+        // If a target is already selected (or there's only one enemy), fire immediately
+        const living = (cs.enemies || []).filter(e => e.health > 0);
+        const autoTarget = cs.targetedEnemyId || (living.length === 1 ? living[0].id : null);
+        if (autoTarget) {
+          window._selectedPendingId = null;
+          const snap = captureHPSnapshot(cs);
+          window.CombatEngine.usePendingDie(id, autoTarget);
+          showHPDiffs(snap, cs);
+          updateCombatDisplay();
+          checkCombatEnd();
+        } else {
+          // Toggle selection and wait for enemy click
+          window._selectedPendingId = (window._selectedPendingId === id) ? null : id;
+          updateCombatDisplay();
+        }
       } else {
         // Apply immediately
         window._selectedPendingId = null;
@@ -3309,8 +3340,9 @@ function handleDiceCardPlay(diceCardIndex, combat) {
   const diceCard = hand[diceCardIndex];
   if (!diceCard) return;
 
-  // Isaac's D6: go straight to the board (no popup), tile click opens transform picker
-  if (diceCard.name === "Isaac's D6") {
+  // Isaac's D6 and all Slice & Dice dice: go straight to the board (no popup)
+  const isInstantDie = diceCard.name === "Isaac's D6" || diceCard.game === 'Slice & Dice';
+  if (isInstantDie) {
     window.CombatEngine.playCard(diceCardIndex, null);
     const diceDef   = (typeof DICE_DATA !== 'undefined') ? DICE_DATA.find(d => d.name === diceCard.name) : null;
     const sides     = diceDef ? diceDef.faces.length : 6;
@@ -3636,6 +3668,53 @@ function _showDiceRollAndPend(diceCard, combat) {
 // ============================================================
 
 /**
+ * Return display text for a pending die face, applying stat bonuses to damage values
+ * and showing persistence bonus on status effects.
+ */
+function getDiceFaceDynamicText(face, combat) {
+  if (!face || !face.text || face.isBlank) return face ? (face.text || '—') : '—';
+  if (!combat || !combat.player) return face.text;
+
+  const effects = face.effects || [];
+  const player  = combat.player;
+  let text = face.text;
+
+  // Damage boost from power / weak
+  const hasDmg = effects.some(e => e.move === 'dmg');
+  if (hasDmg) {
+    const power = player.statuses['power'] || 0;
+    const weak  = player.statuses['weak'] ? 0.75 : 1;
+    text = text.replace(/(\d+) Dmg/gi, (_, n) => {
+      const base    = parseInt(n);
+      const boosted = Math.max(0, Math.floor((base + power) * weak));
+      if (boosted === base) return `${base} Dmg`;
+      const col = boosted > base ? '#7dff7d' : '#ff7d7d';
+      return `<span style="color:${col};font-weight:bold">${boosted}</span> Dmg`;
+    });
+  }
+
+  // Persistence bonus on `get` (player self-buff) status effects
+  const persistence = player.statuses['persistence'] || 0;
+  if (persistence > 0) {
+    const getEffect = effects.find(e => e.move === 'get' && e.statusKey);
+    if (getEffect) {
+      const exempt = new Set(['power', 'defense', 'arcane', 'persistence']);
+      const key = getEffect.statusKey.toLowerCase();
+      if (!exempt.has(key)) {
+        const statusDef = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA[key] : null;
+        if (statusDef && (statusDef.type === 'Buff' || statusDef.type === 'Debuff')) {
+          const base = getEffect.value || 0;
+          const total = base + persistence;
+          text = text.replace(new RegExp(`\\b${base}\\b`), `<span style="color:#c09aff;font-weight:bold">${total}</span>`);
+        }
+      }
+    }
+  }
+
+  return text;
+}
+
+/**
  * Render the pending dice strip between the player zone and hand.
  * Shows one tile per pending die entry. Cantrip tiles show that they already fired.
  */
@@ -3702,7 +3781,7 @@ function renderPendingDicePanel(combat) {
         style="width:66px;height:66px;pointer-events:none;flex-shrink:0;">
       </div>
       <div style="font-size:10px;color:${isBlank ? '#666' : '#ddd'};text-align:center;line-height:1.2;max-width:100px;">
-        ${face.text || '—'}
+        ${getDiceFaceDynamicText(face, combat)}
       </div>
       <div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">
         ${addonBadges}
@@ -3712,36 +3791,38 @@ function renderPendingDicePanel(combat) {
 
   const emptyHint = pending.length === 0 ? `
     <div id="dice-drop-hint" style="
-      flex:1; display:flex; align-items:center; justify-content:center;
+      grid-column:1/-1; display:flex; align-items:center; justify-content:center;
       color:#555; font-size:12px; font-style:italic; pointer-events:none;
-      padding:4px 0;
+      padding:8px 0; min-height:36px;
     ">drag a die card here to roll it</div>` : '';
 
   return `
     <div id="pending-dice-panel" style="
-      flex-shrink:0; padding:6px 10px;
+      flex-shrink:0; padding:6px 10px 8px;
       background:rgba(0,0,0,0.4);
       border-top:1px solid ${border};
-      display:flex; align-items:center; gap:8px;
-      overflow-x:auto;
       transition:background 0.15s, border-color 0.15s;
     ">
-      <div style="font-size:11px;font-weight:bold;color:${gold};flex-shrink:0;white-space:nowrap;">
-        🎲 Dice Board
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <div style="font-size:11px;font-weight:bold;color:${gold};">🎲 Dice Board</div>
+        ${rerolls > 0 ? `
+          <button id="pending-reroll-all-btn" style="
+            padding:3px 9px;
+            background:#5c3a0a; border:1px solid #c07820;
+            color:${gold}; border-radius:6px; font-size:10px; cursor:pointer;
+          ">🔄 Reroll All (${rerolls})</button>
+        ` : `
+          <div style="font-size:10px;color:#666;">No rerolls</div>
+        `}
       </div>
-      <div id="dice-board-drop-zone" style="display:flex;gap:8px;flex:1;overflow-x:auto;min-height:36px;align-items:center;">
+      <div id="dice-board-drop-zone" style="
+        display:grid;
+        grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
+        gap:6px;
+        min-height:36px;
+      ">
         ${tilesHtml}${emptyHint}
       </div>
-      ${rerolls > 0 ? `
-        <button id="pending-reroll-all-btn" style="
-          flex-shrink:0; padding:5px 10px;
-          background:#5c3a0a; border:1px solid #c07820;
-          color:${gold}; border-radius:6px; font-size:11px; cursor:pointer;
-          white-space:nowrap;
-        ">🔄 Reroll All (${rerolls})</button>
-      ` : `
-        <div style="font-size:10px;color:#666;flex-shrink:0;">No rerolls</div>
-      `}
     </div>
   `;
 }

@@ -119,6 +119,12 @@ function addCardToDeck(card) {
       if (!alreadyLearned) {
         gameState.spells.push({ ...spellDef });
         window.playerSpells = gameState.spells;
+        // Also inject into active combat if one is in progress
+        const _cs = window.CombatEngine && window.CombatEngine.getCombatState && window.CombatEngine.getCombatState();
+        if (_cs && !(_cs.spells || []).some(s => s.name === spellName)) {
+          _cs.spells = _cs.spells || [];
+          _cs.spells.push({ ...spellDef });
+        }
         if (typeof createNotification === 'function') {
           createNotification(`Learned: ${spellName}!`, '#c09aff', '✨');
         }
