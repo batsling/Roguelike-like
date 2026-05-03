@@ -118,6 +118,7 @@ function addCardToDeck(card) {
       const alreadyLearned = gameState.spells.some(s => s.name === spellName);
       if (!alreadyLearned) {
         gameState.spells.push({ ...spellDef });
+        window.playerSpells = gameState.spells;
         if (typeof createNotification === 'function') {
           createNotification(`Learned: ${spellName}!`, '#c09aff', '✨');
         }

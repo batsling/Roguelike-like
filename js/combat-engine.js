@@ -50,7 +50,7 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     energy: (typeof gameState !== 'undefined' && gameState.maxEnergy) || characterData.energy || 2,
     maxEnergy: (typeof gameState !== 'undefined' && gameState.maxEnergy) || characterData.energy || 2,
     mana: 0,
-    maxMana: characterData.mana || 0,
+    maxMana: (characterData.mana !== undefined && characterData.mana !== null) ? characterData.mana : 3,
     stats: playerStats,
     bonuses: statBonuses,
     block: 0,
@@ -5231,9 +5231,7 @@ function resolveCardEffect(card, target, options = {}) {
     const nightmarePickMatch = p.match(/Choose a Card\. Next turn, Conjure (\d+) copies of that Card to your Hand/i);
     if (nightmarePickMatch) {
       const nc = parseInt(nightmarePickMatch[1]);
-      if (combatState.hand.length > 0) {
-        combatState._pendingCardPick = { action: 'nightmare', pile: 'hand', count: 1, _nightmareCount: nc };
-      }
+      combatState._pendingCardPick = { action: 'nightmare', pile: 'hand', count: 1, _nightmareCount: nc };
       continue;
     }
 

@@ -959,6 +959,17 @@ function renderPlayerZone(combat) {
           ">🛡 ${p.block}</div>
         ` : ''}
 
+        <!-- Mana -->
+        ${(p.maxMana || 0) > 0 ? `
+          <div style="
+            display:flex; align-items:center; gap:4px;
+            background:rgba(30,60,120,0.5); border:1px solid #3a7bd5;
+            border-radius:8px; padding:2px 10px;
+            font-size:13px; font-weight:bold; color:#7ec8e3;
+            white-space:nowrap; flex-shrink:0;
+          ">💧 ${p.mana || 0}/${p.maxMana}</div>
+        ` : ''}
+
         <!-- Status icons — wrap freely in remaining space -->
         ${hasStatuses ? statusRowHTML : ''}
 
@@ -975,7 +986,9 @@ function renderPlayerZone(combat) {
 }
 
 function renderPowersZone(combat) {
-  const count = (combat.powers || []).length;
+  const mlStacks = Array.isArray(combat.player && combat.player.statuses && combat.player.statuses.machine_learning)
+    ? combat.player.statuses.machine_learning.length : 0;
+  const count = (combat.powers || []).length + (mlStacks > 0 ? 1 : 0);
   const label = count === 0 ? 'Powers' : `Powers (${count})`;
   const active = count > 0;
   return `
@@ -1009,9 +1022,22 @@ window._showCombatPowers = function() {
     z-index:20000; font-family:'Georgia',serif;
   `;
 
-  const cardsHTML = powers.length === 0
+  // Build ML virtual card if player has stacks
+  const mlStatuses = (combat.player && combat.player.statuses && combat.player.statuses.machine_learning) || [];
+  const mlStacks = Array.isArray(mlStatuses) ? mlStatuses.length : 0;
+  const mlCard = mlStacks > 0 ? [{
+    name: 'Machine Learning',
+    type: 'Power',
+    description: `Draw 1 extra card at the start of each turn. (${mlStacks} stack${mlStacks !== 1 ? 's' : ''})`,
+    imageUrl: 'images/statuses/MachineLearning.png',
+    _mlStacks: mlStacks,
+  }] : [];
+
+  const allPowers = [...mlCard, ...powers];
+
+  const cardsHTML = allPowers.length === 0
     ? `<div style="color:#888; font-size:14px; padding:20px;">No powers played this combat.</div>`
-    : powers.map(card => {
+    : allPowers.map(card => {
         const bc  = typeColor(card.type);
         const bg  = cardTypeBg(card.type);
         const img = card.imageUrl || '';
@@ -1982,6 +2008,7 @@ function renderStatusRow(statuses, _id) {
   const entries = [];
   Object.entries(statuses).forEach(([k, v]) => {
     if (k === 'block') return;
+    if (k === 'machine_learning') return; // shown in Powers overlay instead
     if (Array.isArray(v)) {
       v.forEach(instance => { if (instance > 0) entries.push([k, instance]); });
     } else if (v > 0) {
@@ -3025,6 +3052,14 @@ window.showCardPickerModal = function(options) {
   };
   let { cards: pileCards, label: pileLabel } = pileMap[pile] || pileMap.hand;
 
+  // Nightmare: if hand is empty, show all cards across hand+draw+discard (unique by name)
+  if (action === 'nightmare' && pileCards.length === 0) {
+    const allCards = [...(combat.hand || []), ...(combat.drawPile || []), ...(combat.discardPile || [])];
+    const seen = new Set();
+    pileCards = allCards.filter(c => { if (seen.has(c.name)) return false; seen.add(c.name); return true; });
+    pileLabel = 'Deck';
+  }
+
   // Filter by allowed types if specified (Dual Wield — only Attack/Power cards)
   if (options._typesAllowed) {
     pileCards = pileCards.filter(c => options._typesAllowed.includes((c.type || '').toLowerCase()));
@@ -3255,10 +3290,91 @@ function handleDiceCardPlay(diceCardIndex, combat) {
   const diceCard = hand[diceCardIndex];
   if (!diceCard) return;
 
-  // All dice: roll into pending panel
+  // Isaac's D6: single roll → immediately opens transform picker, no pending tile
+  if (diceCard.name === "Isaac's D6") {
+    window.CombatEngine.playCard(diceCardIndex, null);
+    updateCombatDisplay();
+    _showIsaacD6DirectRoll(diceCard, combat);
+    return;
+  }
+
+  // All other dice: roll into pending panel
   window.CombatEngine.playCard(diceCardIndex, null);
   updateCombatDisplay();
   _showDiceRollAndPend(diceCard, combat);
+}
+
+/**
+ * Isaac's D6: single roll animation → immediately open transform picker.
+ * No pending tile is created; effect fires as soon as the player picks a card.
+ */
+function _showIsaacD6DirectRoll(diceCard, combat) {
+  const combatModal = document.getElementById('dice-combat-modal');
+  const diceDef = (typeof DICE_DATA !== 'undefined') ? DICE_DATA.find(d => d.name === diceCard.name) : null;
+  const sides   = diceDef ? diceDef.faces.length : 6;
+
+  if (!combatModal || typeof DiceRendererInstance === 'undefined') {
+    const faceIndex = Math.floor(Math.random() * sides);
+    const faceData  = diceDef ? (diceDef.faces[faceIndex] || diceDef.faces[0]) : { face: faceIndex + 1, text: String(faceIndex + 1) };
+    _showIsaacTransformPicker(faceData, combat, null);
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'dice-roll-overlay';
+  overlay.style.cssText = `position:absolute;inset:0;z-index:1000;background:rgba(0,0,0,0.9);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:inherit;`;
+
+  overlay.innerHTML = `
+    <h2 style="color:#f0c850;margin:0 0 12px;font-size:20px;">🎲 Rolling ${diceCard.name}…</h2>
+    <div id="dice-roll-3d" style="width:160px;height:160px;margin:0 auto;"></div>
+    <div id="dice-roll-label" style="color:#fff;font-size:15px;min-height:52px;margin-top:14px;text-align:center;"></div>
+    <div id="dice-roll-btns" style="margin-top:16px;display:flex;gap:10px;"></div>`;
+
+  combatModal.style.position = 'relative';
+  combatModal.appendChild(overlay);
+
+  requestAnimationFrame(() => {
+    const container = document.getElementById('dice-roll-3d');
+    if (!container) {
+      overlay.remove();
+      const fi = Math.floor(Math.random() * sides);
+      const fd = diceDef ? (diceDef.faces[fi] || diceDef.faces[0]) : { face: fi + 1, text: String(fi + 1) };
+      _showIsaacTransformPicker(fd, combat, null);
+      return;
+    }
+
+    const renderer   = new DiceRendererInstance();
+    const diceData3d = _makeDiceDataForCard(diceCard);
+    renderer.init(container, diceData3d.colors ? diceData3d.colors.sceneBg : 0x0d0800);
+    renderer.createDice(diceData3d);
+
+    const faceIndex = Math.floor(Math.random() * sides);
+    const faceData  = diceDef ? (diceDef.faces[faceIndex] || diceDef.faces[0]) : { face: faceIndex + 1, text: String(faceIndex + 1) };
+    const rolledN   = faceIndex + 1;
+    const lbl  = document.getElementById('dice-roll-label');
+    const btns = document.getElementById('dice-roll-btns');
+
+    renderer.rollDice(diceData3d, rolledN, () => {
+      const faceLabel = faceData.isBlank ? '— (blank)' : faceData.text;
+      if (lbl) lbl.innerHTML =
+        `<div style="color:#f0c850;font-weight:bold;font-size:18px;">${faceLabel}</div>
+         <div style="color:#888;font-size:11px;margin-top:4px;">Choose a card to transform</div>`;
+
+      if (btns) {
+        const pickBtn = document.createElement('button');
+        pickBtn.textContent = 'Choose Card →';
+        pickBtn.style.cssText = `padding:8px 20px;background:#2a5c2a;border:1px solid #4a9c4a;
+          color:#fff;border-radius:6px;font-size:14px;cursor:pointer;`;
+        pickBtn.onclick = () => {
+          renderer.dispose();
+          overlay.remove();
+          _showIsaacTransformPicker(faceData, combat, null);
+        };
+        btns.appendChild(pickBtn);
+      }
+    });
+  });
 }
 
 /**

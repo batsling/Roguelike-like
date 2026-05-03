@@ -4554,7 +4554,9 @@ function showDiceCombatModal() {
   if (existingModal) existingModal.remove();
   const modal = document.createElement('div');
   modal.id = 'game-modal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:500;overflow:hidden;';
+  const _topBar = document.getElementById('top-bar');
+  const _topBarH = _topBar ? _topBar.offsetHeight : 0;
+  modal.style.cssText = `position:fixed;top:${_topBarH}px;left:0;right:0;bottom:0;z-index:500;overflow:hidden;`;
   modal.innerHTML = `
     <div id="dice-combat-modal" style="width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;">
       <div id="dice-combat-content" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;"></div>
