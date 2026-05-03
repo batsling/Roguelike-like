@@ -804,6 +804,34 @@ function applyIntentModifiers(rawStr, enemy) {
   return { text: modified, modified: changed, modifiers };
 }
 
+function _renderSingleIntentBadge(raw, enemy, maxLen) {
+  if (!raw) return '';
+  const type  = getIntentType(raw);
+  const style = INTENT_STYLES[type] || INTENT_STYLES.unknown;
+  const { text: displayRaw, modified, modifiers } = applyIntentModifiers(raw, enemy);
+  const tooltipText = modified ? `${raw} → ${displayRaw} (${modifiers.join(', ')})` : raw;
+  const limit = maxLen || 36;
+  const displayText = displayRaw.length > limit ? displayRaw.slice(0, limit - 2) + '…' : displayRaw;
+  const powerStacks = (enemy.statuses && enemy.statuses['power']) || 0;
+  const weakStacks  = (enemy.statuses && enemy.statuses['weak'])  || 0;
+  const modBadge = (powerStacks !== 0 || weakStacks > 0) && type === 'attack' ? `
+    <span style="font-size:9px;background:rgba(0,0,0,0.4);border-radius:6px;padding:1px 3px;color:#ffcc44;">
+      ${powerStacks !== 0 ? (powerStacks > 0 ? `+${powerStacks}⚡` : `${powerStacks}⚡`) : ''}${weakStacks > 0 ? '↓' : ''}
+    </span>` : '';
+  return `
+    <div data-intent-tooltip="${tooltipText.replace(/"/g, '&quot;')}" style="
+      display:inline-flex; align-items:center; gap:4px;
+      background:${style.bg}; border:1px solid ${style.border};
+      border-radius:12px; padding:3px 8px;
+      font-size:10px; white-space:nowrap; cursor:default;
+      max-width:180px; overflow:hidden;
+    ">
+      <span style="flex-shrink:0;">${style.emoji}</span>
+      <span style="color:white; overflow:hidden; text-overflow:ellipsis;">${displayText}</span>
+      ${modBadge}
+    </div>`;
+}
+
 function renderIntentBadge(enemy) {
   if (!enemy.currentIntent || enemy.currentIntent.length === 0) return '';
 
@@ -819,48 +847,25 @@ function renderIntentBadge(enemy) {
       ">
         <span style="flex-shrink:0;">💫</span>
         <span style="color:#ff9800; overflow:hidden; text-overflow:ellipsis;">Stunned</span>
-      </div>
-    `;
+      </div>`;
   }
 
-  // Get the raw description(s) exactly as written in the pattern column
-  const rawStr = enemy.currentIntent.map(i => i.face?.raw || '').filter(Boolean).join(' / ');
+  const intents = enemy.currentIntent;
+
+  // Multi-intent (Multi Attack): render each as its own badge
+  if (intents.length > 1) {
+    const badges = intents
+      .map(i => i.face?.raw || '')
+      .filter(Boolean)
+      .map(raw => _renderSingleIntentBadge(raw, enemy, 26))
+      .join('');
+    return `<div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;">${badges}</div>`;
+  }
+
+  // Single intent
+  const rawStr = intents[0]?.face?.raw || '';
   if (!rawStr) return '';
-
-  const type  = getIntentType(rawStr);
-  const style = INTENT_STYLES[type] || INTENT_STYLES.unknown;
-
-  // Apply power/weak modifiers to display text
-  const { text: displayRaw, modified, modifiers } = applyIntentModifiers(rawStr, enemy);
-  const tooltipText = modified
-    ? `${rawStr} → ${displayRaw} (${modifiers.join(', ')})`
-    : rawStr;
-
-  const displayText = displayRaw.length > 38 ? displayRaw.slice(0, 36) + '…' : displayRaw;
-
-  // Show modifier indicators in badge
-  const powerStacks = (enemy.statuses && enemy.statuses['power']) || 0;
-  const weakStacks  = (enemy.statuses && enemy.statuses['weak'])  || 0;
-  const modBadge = (powerStacks !== 0 || weakStacks > 0) && type === 'attack' ? `
-    <span style="
-      font-size:9px; background:rgba(0,0,0,0.4);
-      border-radius:6px; padding:1px 3px; color:#ffcc44;
-    ">${powerStacks !== 0 ? (powerStacks > 0 ? `+${powerStacks}⚡` : `${powerStacks}⚡`) : ''}${weakStacks > 0 ? '↓' : ''}</span>
-  ` : '';
-
-  return `
-    <div data-intent-tooltip="${tooltipText.replace(/"/g, '&quot;')}" style="
-      display:inline-flex; align-items:center; gap:4px;
-      background:${style.bg}; border:1px solid ${style.border};
-      border-radius:12px; padding:3px 8px;
-      font-size:10px; white-space:nowrap; cursor:default;
-      max-width:180px; overflow:hidden;
-    ">
-      <span style="flex-shrink:0;">${style.emoji}</span>
-      <span style="color:white; overflow:hidden; text-overflow:ellipsis;">${displayText}</span>
-      ${modBadge}
-    </div>
-  `;
+  return _renderSingleIntentBadge(rawStr, enemy, 38);
 }
 
 // ============== PLAYER ZONE ==============
@@ -1977,10 +1982,13 @@ function showStatusTooltip(event, key, val) {
     `;
     document.body.appendChild(tip);
   }
-  const data = (typeof STATUSES_DATA !== 'undefined') ? STATUSES_DATA[key] : null;
+  // Some STATUSES_DATA entries use a suffix (e.g. multi_attack_x for multi_attack)
+  const data = (typeof STATUSES_DATA !== 'undefined')
+    ? (STATUSES_DATA[key] || STATUSES_DATA[key + '_x'] || null)
+    : null;
   const meta = STATUS_META[key] || { emoji: '•', label: key };
-  const name = data ? data.name : meta.label;
-  const desc = data ? data.description : '';
+  const name = data ? data.name.replace(/ X$/, ` ${val}`) : meta.label;
+  const desc = data ? data.description.replace(/\bX\b/g, val) : '';
   const type = data ? data.type : '';
   const decay = data ? data.decay : '';
   const typeColor = type === 'Buff' ? '#4CAF50' : type === 'Debuff' ? '#e74c3c' : '#aaa';

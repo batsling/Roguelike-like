@@ -3937,9 +3937,11 @@ function cardNeedsTarget(card) {
   if (type === 'dice') return false;
   if (desc.includes('cleave') || desc.includes('all enemies') || desc.includes('indiscriminate')) return false;
   if (type === 'attack') return true;
-  // Skill cards that inflict/apply statuses on a single enemy need a target selection
-  // (excludes AoE keywords above; excludes "random target" which picks automatically)
-  if (type === 'skill' && /(?:inflict|apply)\s+/i.test(card.description || '') && !desc.includes('random target')) return true;
+  // Skill cards that target a specific enemy need target selection
+  if (type === 'skill' && !desc.includes('random target')) {
+    if (/(?:inflict|apply)\s+/i.test(card.description || '')) return true;
+    if (/target enemy/i.test(card.description || '')) return true;
+  }
   return false;
 }
 
@@ -4415,7 +4417,7 @@ function resolveCardEffect(card, target, options = {}) {
       const statusKey = goForEyesMatch[2].toLowerCase();
       if (target) {
         const isAttacking = target.currentIntent && target.currentIntent.some(
-          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg' || e.move === 'Magic Dmg' || e.move === 'pain')
+          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg' || e.move === 'Magic Dmg')
         );
         if (isAttacking) {
           target.statuses[statusKey] = (target.statuses[statusKey] || 0) + stacks;
@@ -4432,7 +4434,7 @@ function resolveCardEffect(card, target, options = {}) {
     if (spotWeaknessM) {
       if (target) {
         const isAttacking = target.currentIntent && target.currentIntent.some(
-          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg' || e.move === 'Magic Dmg' || e.move === 'pain')
+          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg' || e.move === 'Magic Dmg')
         );
         if (isAttacking) {
           const gain = parseInt(spotWeaknessM[1]);
