@@ -1123,7 +1123,6 @@ function renderActionsZone(combat) {
           <span style="color:#7ec8e3; font-size:11px; margin-left:2px;">💧${combat.player.mana || 0}/${combat.player.maxMana}</span>
         </div>
       ` : ''}
-      </div>
 
       <!-- End Turn button -->
       <button id="combat-end-turn-btn" style="
