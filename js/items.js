@@ -563,6 +563,30 @@ const ITEM_EFFECTS = {
     }
   },
 
+  "Bear Trap Mask": {
+    onAcquire: () => {
+      // Combat effect (bleed_thorns) applied in combat-engine.js initCombat
+    }
+  },
+
+  "Broken Window": {
+    onAcquire: () => {
+      // Combat effect (+3 BleedThorns, +1 Bleed to player) applied in combat-engine.js initCombat
+    }
+  },
+
+  "Empty Syringe": {
+    onAcquire: () => {
+      // Passive effect: when inflicting Bleed or Poison, +1 extra — tracked via _emptySyringeActive in combat-engine.js
+    }
+  },
+
+  "Rusty Razor": {
+    onAcquire: () => {
+      // Weapon: card added to deck via the weapon card system
+    }
+  },
+
   "Garlic": {
     onCombatStart: () => {
       const copies = inventory.filter(i => i.name === 'Garlic').reduce((n, i) => n + (i.quantity || 1), 0);
@@ -679,7 +703,7 @@ const ITEM_EFFECTS = {
         ? window.CombatState.getCombatState()
         : null;
 
-      const damage = 10;
+      const damage = 20;
 
       // Helper: apply fire potion damage to a specific enemy (new combat system)
       function applyFirePotionToEnemy(cs, enemy) {

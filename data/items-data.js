@@ -1219,5 +1219,53 @@ var ITEMS_DATA = [
     ],
     "image": "images/items/Wings.png",
     "unlockCondition": null
+  },
+  {
+    "name": "Bear Trap Mask",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "At the start of combat, Gain +4 Shield and +1 Bleed Thorns",
+    "game": "Mewgenics",
+    "tags": [
+      "wearable",
+      "mask"
+    ],
+    "image": "images/items/BearTrapMask.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Broken Window",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "At the start of combat, Gain +3 Bleed Thorns and +1 Bleed",
+    "game": "Mewgenics",
+    "tags": [
+      "glass",
+      "wood"
+    ],
+    "image": "images/items/BrokenWindow.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Empty Syringe",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "When Inflicting Bleed or Poison, Inflict +1 Bleed or Poison",
+    "game": "Mewgenics",
+    "tags": [
+      "syringe"
+    ],
+    "image": "images/items/EmptySyringe.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Rusty Razor",
+    "rarity": "Uncommon",
+    "type": "Weapon",
+    "description": "Add the Card \"Rusty Razor\" into your Deck. If you kill an enemy with a status affliction at least one time, \"Rusty Razor\" Gains (+1/+2) Dmg",
+    "game": "Mewgenics",
+    "tags": [],
+    "image": "images/items/RustyRazor.png",
+    "unlockCondition": null
   }
 ];

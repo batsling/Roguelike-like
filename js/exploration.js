@@ -345,6 +345,18 @@ function spawnChoices() {
 
   // Add Dash and Reroll buttons during choice selection
   addDashRerollButtons();
+
+  // Scroll viewport to ensure choice nodes are visible
+  requestAnimationFrame(() => {
+    const viewport = document.getElementById('path-viewport');
+    if (!viewport) return;
+    const baseY = gameState.currentY + 200;
+    const choiceBottom = baseY + 220; // node height ~60px + map btn ~25px + row spacing buffer
+    const viewBottom = viewport.scrollTop + viewport.clientHeight;
+    if (choiceBottom > viewBottom - 20) {
+      viewport.scrollTo({ top: choiceBottom - viewport.clientHeight + 80, behavior: 'smooth' });
+    }
+  });
 }
 
 // ===== ABILITY BUTTONS =====

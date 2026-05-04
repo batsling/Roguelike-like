@@ -356,6 +356,10 @@ function loadSavedGame(saveName) {
   if (!gameState.deck) {
     gameState.deck = [];
   }
+  if (!gameState.spells) {
+    gameState.spells = [];
+  }
+  window.playerSpells = gameState.spells; // keep in sync with combat fallback
   if (!gameState.postcombatChoicesUsed) {
     gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
   }
@@ -868,8 +872,10 @@ function completeGameStart(start, amulet, saveName, startType) {
     playerLevel: 1,
     activeAllies: [],
     deck: [],
+    spells: [],
     postcombatChoicesUsed: { Low: [], Medium: [], High: [] }
   };
+  window.playerSpells = gameState.spells;
 
   startGame = start;
   amuletGame = amulet;
@@ -1073,20 +1079,23 @@ document.getElementById('return-menu')?.addEventListener('click', () => {
 
 // Top bar menu button (same functionality)
 document.getElementById('return-menu-top')?.addEventListener('click', () => {
-  // Only show if in dungeon screen
-  if (document.getElementById('dungeon-screen').style.display !== 'none') {
-    if (confirm('Return to main menu? (Game will be saved)')) {
-      saveCurrentGame();
-      if (typeof clearAllArrows === 'function') {
-        clearAllArrows();
+  const inDungeon = document.getElementById('dungeon-screen').style.display !== 'none';
+  if (!inDungeon) return;
+  if (confirm('Return to main menu? (Game will be saved)')) {
+    // End combat first if active
+    const combatModal = document.getElementById('game-modal');
+    if (combatModal) {
+      if (window.CombatEngine && window.CombatEngine.endCombat) {
+        window.CombatEngine.endCombat(false);
       }
-      document.getElementById('dungeon-screen').style.display = 'none';
-      document.getElementById('main-menu').style.display = 'flex';
-
-      // Hide top-right buttons when in menu
-      const topBarRight = document.getElementById('top-bar-right');
-      if (topBarRight) topBarRight.style.display = 'none';
+      combatModal.remove();
     }
+    saveCurrentGame();
+    if (typeof clearAllArrows === 'function') clearAllArrows();
+    document.getElementById('dungeon-screen').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+    const topBarRight = document.getElementById('top-bar-right');
+    if (topBarRight) topBarRight.style.display = 'none';
   }
 });
 
@@ -4545,24 +4554,20 @@ function showDiceCombatModal() {
     gameState.pendingCombatStatuses = [];
   }
 
-  // Create modal HTML container
-  const combatHTML = `
-    <div id="dice-combat-modal" style="
-      width: 95vw;
-      max-width: 1200px;
-      height: 90vh;
-      max-height: 800px;
-      display: flex;
-      flex-direction: column;
-      background: linear-gradient(135deg, #1a1410 0%, #2a1810 100%);
-      border-radius: 12px;
-      overflow: hidden;
-    ">
-      <div id="dice-combat-content" style="flex: 1; overflow: hidden;"></div>
+  // Full-screen combat — fill entire viewport, no modal chrome
+  const existingModal = document.getElementById('game-modal');
+  if (existingModal) existingModal.remove();
+  const modal = document.createElement('div');
+  modal.id = 'game-modal';
+  const _topBar = document.getElementById('top-bar');
+  const _topBarH = _topBar ? _topBar.offsetHeight : 0;
+  modal.style.cssText = `position:fixed;top:${_topBarH}px;left:0;right:0;bottom:0;z-index:500;overflow:hidden;`;
+  modal.innerHTML = `
+    <div id="dice-combat-modal" style="width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;">
+      <div id="dice-combat-content" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;"></div>
     </div>
   `;
-
-  createGameModal(combatHTML);
+  document.body.appendChild(modal);
 
   // Create tooltip element for item hover (reuse existing or create new)
   const existingTooltip = document.getElementById('combat-item-tooltip');
@@ -4846,10 +4851,11 @@ function showSmithChoiceModal() {
   const startingUpgradeable = [];
   startingEntries.forEach(entry => {
     const template = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
-    if (template && template.canUpgrade && !upgradedStarting[entry.cardName]) {
-      // Add one entry per copy so the player sees their full deck
-      const count = entry.count || 1;
-      for (let i = 0; i < count; i++) {
+    if (template && template.canUpgrade) {
+      const totalCount   = entry.count || 1;
+      const upgradedCount = upgradedStarting[entry.cardName] || 0;
+      const remaining    = totalCount - upgradedCount;
+      for (let i = 0; i < remaining; i++) {
         startingUpgradeable.push({ ...template, _isStarting: true });
       }
     }
@@ -4968,10 +4974,10 @@ function showSmithChoiceModal() {
       const card = upgradeable[idx];
       if (card._isStarting) {
         if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
-        gameState.upgradedStartingCards[card.name] = true;
+        gameState.upgradedStartingCards[card.name] = (gameState.upgradedStartingCards[card.name] || 0) + 1;
         upgradeCount++;
       } else {
-        const deckIdx = gameState.deck.findIndex(c => c === card || (c.name === card.name && !c.upgraded));
+        const deckIdx = gameState.deck.findIndex(c => c === card);
         if (deckIdx !== -1) {
           gameState.deck[deckIdx].upgraded = true;
           if (gameState.deck[deckIdx].upgradedDescription) {
@@ -6147,8 +6153,11 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
                && !exclude.has(c.name));
 
     if (tagFilter) {
-      const tagged = pool.filter(c => Array.isArray(c.tags) && c.tags.includes(tagFilter));
-      if (tagged.length > 0) pool = tagged;
+      // Hero-tagged cards are universally available regardless of deck choice
+      const heroCards = pool.filter(c => Array.isArray(c.tags) && c.tags.includes('hero'));
+      const tagged    = pool.filter(c => Array.isArray(c.tags) && c.tags.includes(tagFilter));
+      const combined  = [...tagged, ...heroCards.filter(h => !tagged.find(t => t.name === h.name))];
+      if (combined.length > 0) pool = combined;
     }
 
     if (pool.length === 0) return null;

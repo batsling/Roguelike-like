@@ -97,6 +97,22 @@ const KEYWORD_DEFS = {
   'wealth':           'Adds +1 damage for every 10 Gold you currently have.',
 };
 
+/**
+ * Return the best image URL for a card.
+ * Hero-tagged S&D dice cards use images/heroes/<FirstWord>.png.
+ * Falls back to card.imageUrl or empty string.
+ */
+function getCardImageUrl(card) {
+  if (!card) return '';
+  const tags = Array.isArray(card.tags) ? card.tags : [];
+  if (tags.includes('hero') && card.game === 'Slice & Dice') {
+    const firstName = (card.name || '').split(' ')[0];
+    if (firstName) return `images/heroes/${firstName}.png`;
+  }
+  return card.imageUrl || '';
+}
+window.getCardImageUrl = getCardImageUrl;
+
 // Extract unique keywords found in a card description
 function getCardKeywords(card) {
   const desc = (card.description || '').toLowerCase();
@@ -235,6 +251,8 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
                         card.tags && card.tags.includes('weapon') &&
                         _dupInv.some(i => i.name === 'Duplicator');
 
+  const persistence = player.statuses['persistence'] || 0;
+
   // Quick check: any modifier active?
   const hasMods = itemSuffix.length > 0
                || hasDuplicator
@@ -248,6 +266,7 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
                || (player.statuses['defense'] || 0) !== 0
                || !!(combat._scalingCounters && combat._scalingCounters[card.name])
                || desc.toLowerCase().includes('wealth')
+               || persistence > 0
                || !!(targetEnemy && targetEnemy.statuses
                     && (targetEnemy.statuses['vulnerable'] || targetEnemy.statuses['bruise']));
   if (!hasMods) return desc;
@@ -281,6 +300,22 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
     return `Gain <span style="color:${col};font-weight:bold">${computed}</span> Block`;
   });
 
+  // Persistence bonus: show enhanced stack count on "Apply/Inflict N Status"
+  if (persistence > 0) {
+    desc = desc.replace(/(?:Apply|Inflict) (\d+) ([A-Za-z_]+)/gi, (match, n, statusName) => {
+      const key = statusName.toLowerCase();
+      const exempt = new Set(['power', 'defense', 'arcane', 'persistence', 'energy_per_turn',
+        'barricade', 'brutality', 'corruption', 'double_damage', 'no_draw']);
+      if (exempt.has(key)) return match;
+      const statusDef = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA[key] : null;
+      if (!statusDef || (statusDef.type !== 'Buff' && statusDef.type !== 'Debuff')) return match;
+      const base = parseInt(n);
+      const total = base + persistence;
+      const prefix = match.startsWith('Apply') ? 'Apply' : 'Inflict';
+      return `${prefix} <span style="color:#c09aff;font-weight:bold">${total}</span> ${statusName}`;
+    });
+  }
+
   return desc + itemSuffix;
 }
 
@@ -300,7 +335,10 @@ function refreshCombatHand() {
   });
   attachDragMouseDown();
   attachCardTooltip();
-  requestAnimationFrame(() => initDiceCardRenderers());
+  requestAnimationFrame(() => {
+    initDiceCardRenderers();
+    initPendingDiceRenderers();
+  });
 }
 
 // Status icon metadata
@@ -368,7 +406,7 @@ function renderCombatUI(combat, container) {
 
   container.innerHTML = `
     <div id="combat-wrapper" style="
-      width: 100%; height: 100%;
+      flex: 1; min-height: 0; width: 100%;
       background: ${C.bg};
       display: flex; flex-direction: column;
       font-family: 'Georgia', serif;
@@ -784,6 +822,34 @@ function applyIntentModifiers(rawStr, enemy) {
   return { text: modified, modified: changed, modifiers };
 }
 
+function _renderSingleIntentBadge(raw, enemy, maxLen) {
+  if (!raw) return '';
+  const type  = getIntentType(raw);
+  const style = INTENT_STYLES[type] || INTENT_STYLES.unknown;
+  const { text: displayRaw, modified, modifiers } = applyIntentModifiers(raw, enemy);
+  const tooltipText = modified ? `${raw} → ${displayRaw} (${modifiers.join(', ')})` : raw;
+  const limit = maxLen || 36;
+  const displayText = displayRaw.length > limit ? displayRaw.slice(0, limit - 2) + '…' : displayRaw;
+  const powerStacks = (enemy.statuses && enemy.statuses['power']) || 0;
+  const weakStacks  = (enemy.statuses && enemy.statuses['weak'])  || 0;
+  const modBadge = (powerStacks !== 0 || weakStacks > 0) && type === 'attack' ? `
+    <span style="font-size:9px;background:rgba(0,0,0,0.4);border-radius:6px;padding:1px 3px;color:#ffcc44;">
+      ${powerStacks !== 0 ? (powerStacks > 0 ? `+${powerStacks}⚡` : `${powerStacks}⚡`) : ''}${weakStacks > 0 ? '↓' : ''}
+    </span>` : '';
+  return `
+    <div data-intent-tooltip="${tooltipText.replace(/"/g, '&quot;')}" style="
+      display:inline-flex; align-items:center; gap:4px;
+      background:${style.bg}; border:1px solid ${style.border};
+      border-radius:12px; padding:3px 8px;
+      font-size:10px; white-space:nowrap; cursor:default;
+      max-width:180px; overflow:hidden;
+    ">
+      <span style="flex-shrink:0;">${style.emoji}</span>
+      <span style="color:white; overflow:hidden; text-overflow:ellipsis;">${displayText}</span>
+      ${modBadge}
+    </div>`;
+}
+
 function renderIntentBadge(enemy) {
   if (!enemy.currentIntent || enemy.currentIntent.length === 0) return '';
 
@@ -799,48 +865,25 @@ function renderIntentBadge(enemy) {
       ">
         <span style="flex-shrink:0;">💫</span>
         <span style="color:#ff9800; overflow:hidden; text-overflow:ellipsis;">Stunned</span>
-      </div>
-    `;
+      </div>`;
   }
 
-  // Get the raw description(s) exactly as written in the pattern column
-  const rawStr = enemy.currentIntent.map(i => i.face?.raw || '').filter(Boolean).join(' / ');
+  const intents = enemy.currentIntent;
+
+  // Multi-intent (Multi Attack): render each as its own badge
+  if (intents.length > 1) {
+    const badges = intents
+      .map(i => i.face?.raw || '')
+      .filter(Boolean)
+      .map(raw => _renderSingleIntentBadge(raw, enemy, 26))
+      .join('');
+    return `<div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;">${badges}</div>`;
+  }
+
+  // Single intent
+  const rawStr = intents[0]?.face?.raw || '';
   if (!rawStr) return '';
-
-  const type  = getIntentType(rawStr);
-  const style = INTENT_STYLES[type] || INTENT_STYLES.unknown;
-
-  // Apply power/weak modifiers to display text
-  const { text: displayRaw, modified, modifiers } = applyIntentModifiers(rawStr, enemy);
-  const tooltipText = modified
-    ? `${rawStr} → ${displayRaw} (${modifiers.join(', ')})`
-    : rawStr;
-
-  const displayText = displayRaw.length > 38 ? displayRaw.slice(0, 36) + '…' : displayRaw;
-
-  // Show modifier indicators in badge
-  const powerStacks = (enemy.statuses && enemy.statuses['power']) || 0;
-  const weakStacks  = (enemy.statuses && enemy.statuses['weak'])  || 0;
-  const modBadge = (powerStacks !== 0 || weakStacks > 0) && type === 'attack' ? `
-    <span style="
-      font-size:9px; background:rgba(0,0,0,0.4);
-      border-radius:6px; padding:1px 3px; color:#ffcc44;
-    ">${powerStacks !== 0 ? (powerStacks > 0 ? `+${powerStacks}⚡` : `${powerStacks}⚡`) : ''}${weakStacks > 0 ? '↓' : ''}</span>
-  ` : '';
-
-  return `
-    <div data-intent-tooltip="${tooltipText.replace(/"/g, '&quot;')}" style="
-      display:inline-flex; align-items:center; gap:4px;
-      background:${style.bg}; border:1px solid ${style.border};
-      border-radius:12px; padding:3px 8px;
-      font-size:10px; white-space:nowrap; cursor:default;
-      max-width:180px; overflow:hidden;
-    ">
-      <span style="flex-shrink:0;">${style.emoji}</span>
-      <span style="color:white; overflow:hidden; text-overflow:ellipsis;">${displayText}</span>
-      ${modBadge}
-    </div>
-  `;
+  return _renderSingleIntentBadge(rawStr, enemy, 38);
 }
 
 // ============== PLAYER ZONE ==============
@@ -860,8 +903,15 @@ function renderPlayerZone(combat) {
   const statusRowHTML = renderStatusRow(p.statuses, 'player');
   const hasStatuses   = statusRowHTML.trim().length > 0;
 
+  // Highlight player zone when a self-targeting card is selected
+  const selCard = (combat.selectedCardIndex !== null && combat.selectedCardIndex !== undefined)
+    ? (combat.hand || [])[combat.selectedCardIndex] : null;
+  const isPlayerTarget = !!(selCard
+    && (selCard.type || '').toLowerCase() !== 'dice'
+    && !(window.CombatEngine && window.CombatEngine.cardNeedsTarget && window.CombatEngine.cardNeedsTarget(selCard)));
+
   return `
-    <div id="combat-player-zone" style="
+    <div id="combat-player-zone" class="${isPlayerTarget ? 'player-targetable' : ''}" style="
       flex-shrink: 0;
       display: flex; flex-direction: column;
       background: rgba(0,0,0,0.35);
@@ -893,6 +943,9 @@ function renderPlayerZone(combat) {
         ">
           ${renderPowersZone(combat)}
         </div>
+
+        <!-- Dice board (between powers and actions) -->
+        ${renderInlineeDiceBoard(combat)}
 
         <!-- End turn + energy pips -->
         ${renderActionsZone(combat)}
@@ -932,6 +985,7 @@ function renderPlayerZone(combat) {
           ">🛡 ${p.block}</div>
         ` : ''}
 
+
         <!-- Status icons — wrap freely in remaining space -->
         ${hasStatuses ? statusRowHTML : ''}
 
@@ -948,7 +1002,9 @@ function renderPlayerZone(combat) {
 }
 
 function renderPowersZone(combat) {
-  const count = (combat.powers || []).length;
+  const mlStacks = Array.isArray(combat.player && combat.player.statuses && combat.player.statuses.machine_learning)
+    ? combat.player.statuses.machine_learning.length : 0;
+  const count = (combat.powers || []).length + (mlStacks > 0 ? 1 : 0);
   const label = count === 0 ? 'Powers' : `Powers (${count})`;
   const active = count > 0;
   return `
@@ -982,9 +1038,22 @@ window._showCombatPowers = function() {
     z-index:20000; font-family:'Georgia',serif;
   `;
 
-  const cardsHTML = powers.length === 0
+  // Build ML virtual card if player has stacks
+  const mlStatuses = (combat.player && combat.player.statuses && combat.player.statuses.machine_learning) || [];
+  const mlStacks = Array.isArray(mlStatuses) ? mlStatuses.length : 0;
+  const mlCard = mlStacks > 0 ? [{
+    name: 'Machine Learning',
+    type: 'Power',
+    description: `Draw 1 extra card at the start of each turn. (${mlStacks} stack${mlStacks !== 1 ? 's' : ''})`,
+    imageUrl: 'images/statuses/MachineLearning.png',
+    _mlStacks: mlStacks,
+  }] : [];
+
+  const allPowers = [...mlCard, ...powers];
+
+  const cardsHTML = allPowers.length === 0
     ? `<div style="color:#888; font-size:14px; padding:20px;">No powers played this combat.</div>`
-    : powers.map(card => {
+    : allPowers.map(card => {
         const bc  = typeColor(card.type);
         const bg  = cardTypeBg(card.type);
         const img = card.imageUrl || '';
@@ -1032,6 +1101,107 @@ window._showCombatPowers = function() {
   document.body.appendChild(overlay);
 };
 
+function renderInlineeDiceBoard(combat) {
+  const pending = (combat && combat.pendingDice) || [];
+
+  const isDieCard = c => (c.type || '').toLowerCase() === 'dice';
+  const hasDiceInDeck = combat && (
+    (combat.hand        || []).some(isDieCard) ||
+    (combat.drawPile    || []).some(isDieCard) ||
+    (combat.discardPile || []).some(isDieCard) ||
+    (combat.exhaustPile || []).some(isDieCard)
+  );
+
+  if (pending.length === 0 && !hasDiceInDeck) return '';
+
+  const rerolls = (combat.player && combat.player.rerolls) || 0;
+  const gold   = C.gold   || '#f0c850';
+  const border = C.border || 'rgba(255,255,255,0.15)';
+
+  const tilesHtml = pending.map(entry => {
+    const face = entry.face || {};
+    const addons  = face.addons || [];
+    const isBlank = face.isBlank;
+    const isCantrip   = addons.includes('cantrip');
+    const isSingleUse = addons.includes('singleUse');
+    const isDruid     = addons.includes('druid');
+    const needsTarget = !isBlank && (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+    const isSelected  = window._selectedPendingId === entry.id;
+
+    const addonBadges = [
+      isCantrip   ? `<span style="font-size:8px;background:#4a2c8a;color:#c09aff;border-radius:3px;padding:0 3px;">Cantrip</span>` : '',
+      isSingleUse ? `<span style="font-size:8px;background:#8a2c2c;color:#ffaaaa;border-radius:3px;padding:0 3px;">1-Use</span>` : '',
+      isDruid     ? `<span style="font-size:8px;background:#2c5a2c;color:#aaffaa;border-radius:3px;padding:0 3px;">Druid</span>` : '',
+      needsTarget ? `<span style="font-size:8px;background:#5a3a00;color:#ffcc44;border-radius:3px;padding:0 3px;">Target</span>` : ''
+    ].filter(Boolean).join(' ');
+
+    const selectedGlow = isSelected ? `box-shadow:0 0 16px ${gold}aa;` : '';
+
+    return `<div class="pending-die-tile" data-pending-id="${entry.id}"
+      style="
+        padding:4px 6px;
+        background:transparent;
+        border-radius:8px; cursor:${isBlank ? 'default' : 'pointer'};
+        display:flex; flex-direction:column; align-items:center; gap:2px;
+        ${selectedGlow}
+        transition:box-shadow 0.1s;
+      ">
+      <div style="font-size:9px;color:#aaa;line-height:1;">${entry.cardName}</div>
+      <div class="pending-dice-3d"
+        data-pending-id="${entry.id}"
+        data-face-num="${entry.faceIndex + 1}"
+        data-card-name="${entry.cardName}"
+        style="width:90px;height:90px;pointer-events:none;flex-shrink:0;">
+      </div>
+      <div style="font-size:10px;color:${isBlank ? '#666' : '#ddd'};text-align:center;line-height:1.2;max-width:110px;">
+        ${getDiceFaceDynamicText(face, combat)}
+      </div>
+      <div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">
+        ${addonBadges}
+      </div>
+    </div>`;
+  }).join('');
+
+  const emptyHint = pending.length === 0 ? `
+    <div style="
+      display:flex; align-items:center; justify-content:center;
+      color:#555; font-size:11px; font-style:italic; pointer-events:none;
+      padding:6px 0; min-height:36px; width:100%;
+    ">play dice cards to roll</div>` : '';
+
+  return `
+    <div id="pending-dice-panel" style="
+      flex:1; min-width:110px; max-width:320px;
+      display:flex; flex-direction:column;
+      background:rgba(0,0,0,0.35);
+      border-left:1px solid ${border};
+      border-right:1px solid ${border};
+      padding:6px 8px;
+      align-self:stretch;
+    ">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-shrink:0;">
+        <div style="font-size:10px;font-weight:bold;color:${gold};">🎲 Dice Board</div>
+        ${rerolls > 0 ? `
+          <button id="pending-reroll-all-btn" style="
+            padding:2px 7px;
+            background:#5c3a0a; border:1px solid #c07820;
+            color:${gold}; border-radius:5px; font-size:9px; cursor:pointer;
+          ">🔄 (${rerolls})</button>
+        ` : `<div style="font-size:9px;color:#666;">No rerolls</div>`}
+      </div>
+      <div id="dice-board-drop-zone" style="
+        display:grid;
+        grid-template-columns:repeat(auto-fill,minmax(90px,1fr));
+        gap:4px;
+        overflow-y:auto;
+        flex:1;
+      ">
+        ${tilesHtml}${emptyHint}
+      </div>
+    </div>
+  `;
+}
+
 function renderActionsZone(combat) {
   const isPlayerTurn = combat.phase === 'player_action';
   const energy    = combat.player.energy    || 0;
@@ -1044,7 +1214,7 @@ function renderActionsZone(combat) {
       gap:10px; width:130px; flex-shrink:0;
     ">
       <!-- Energy pips -->
-      <div style="display:flex; align-items:center; gap:5px;">
+      <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap; justify-content:center;">
         ${Array.from({length: Math.max(maxEnergy, energy)}, (_, i) => {
           const filled = i < energy;
           const bonus  = i >= maxEnergy; // extra pip from Ice Cream carry-over
@@ -1058,6 +1228,23 @@ function renderActionsZone(combat) {
         }).join('')}
         <span style="color:${C.gold}; font-size:12px; margin-left:3px;">${energy}/${maxEnergy}</span>
       </div>
+
+      <!-- Mana display (next to energy) -->
+      ${(combat.player.maxMana || 0) > 0 ? `
+        <div style="display:flex; align-items:center; gap:4px;">
+          ${Array.from({length: combat.player.maxMana}, (_, i) => {
+            const filled = i < (combat.player.mana || 0);
+            return `<div style="
+              width:14px; height:14px; border-radius:50%;
+              background:${filled ? '#3a7bd5' : '#1a2a3a'};
+              border:2px solid ${filled ? '#6ab4ff' : '#2a3a5a'};
+              box-shadow:${filled ? '0 0 5px #6ab4ff88' : 'none'};
+              transition:all 0.2s;
+            "></div>`;
+          }).join('')}
+          <span style="color:#7ec8e3; font-size:11px; margin-left:2px;">💧${combat.player.mana || 0}/${combat.player.maxMana}</span>
+        </div>
+      ` : ''}
 
       <!-- End Turn button -->
       <button id="combat-end-turn-btn" style="
@@ -1138,6 +1325,13 @@ function _disposeDiceHandRenderers() {
   _diceHandRenderers = [];
 }
 
+let _pendingDiceRenderers = [];
+
+function _disposePendingDiceRenderers() {
+  _pendingDiceRenderers.forEach(r => { try { r.dispose(); } catch(e) {} });
+  _pendingDiceRenderers = [];
+}
+
 // Per-die color themes. sceneBg is the Three.js hex background color.
 const DICE_CARD_COLORS = {
   "Isaac's D6": {
@@ -1154,17 +1348,59 @@ const _DICE_DEFAULT_COLORS = {
   cardBg: 'rgba(100,60,10,0.95)', cardBorder: '#cc8800', nameColor: '#f0c850'
 };
 
+// Color palette for S&D dice based on their tag color
+const _SD_TAG_COLORS = {
+  blue:   { hex: '#4488ff', sceneBg: 0x000820 },
+  red:    { hex: '#ff4444', sceneBg: 0x1a0000 },
+  orange: { hex: '#ff8800', sceneBg: 0x120600 },
+  gray:   { hex: '#aaaaaa', sceneBg: 0x0d0d0d },
+  yellow: { hex: '#ffdd00', sceneBg: 0x141000 },
+};
+
+/** Return color theme for a card. S&D dice get white-on-black with tag-colored border. */
+function _getDiceColors(card) {
+  if (DICE_CARD_COLORS[card.name]) return DICE_CARD_COLORS[card.name];
+  if (card.game === 'Slice & Dice') {
+    const tags = Array.isArray(card.tags) ? card.tags : [];
+    const tagEntry = tags.reduce((found, t) => found || _SD_TAG_COLORS[t], null);
+    const tc = tagEntry || { hex: '#aaaaaa', sceneBg: 0x0d0d0d };
+    return {
+      bg: '#111111', inner: '#222222', border: tc.hex,
+      faceNum: '#ffffff', text: '#ffffff', outline: '#000000',
+      sceneBg: tc.sceneBg,
+      cardBg: 'rgba(0,0,0,0.95)', cardBorder: tc.hex, nameColor: '#ffffff'
+    };
+  }
+  return _DICE_DEFAULT_COLORS;
+}
+
 /**
  * Build a DICE_DATA-compatible object from a card whose type is 'Dice'.
  */
+// Abbreviated face text for dice whose actual text is too long to render on a die face
+const _DICE_FACE_ABBR = {
+  "Isaac's D6": {
+    'Random Curse':                               'Curse',
+    'Random Status':                              'Status',
+    'Random Skill':                               'Skill',
+    'Random Attack':                              'Attack',
+    'Random Power':                               'Power',
+    'Random Attack, Skill, or Power (free)':      'FREE!',
+  },
+};
+
 function _makeDiceDataForCard(card) {
-  const colors = DICE_CARD_COLORS[card.name] || _DICE_DEFAULT_COLORS;
+  const colors = _getDiceColors(card);
   const def = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === card.name);
   if (def) {
+    const abbr = _DICE_FACE_ABBR[card.name] || {};
     return {
       type: 'd6-card',
       colors,
-      sides: def.faces.map(f => ({ face: f.face, text: f.text, value: f.face, displayText: f.text })),
+      sides: def.faces.map(f => {
+        const displayText = abbr[f.text] || f.text;
+        return { face: f.face, text: displayText, value: f.face, displayText };
+      }),
       globalModifiers: [],
       currentRoll: null
     };
@@ -1194,11 +1430,61 @@ function initDiceCardRenderers() {
     const card = combat.hand[idx];
     if (!card) return;
 
+    // Ensure the container has real dimensions before starting Three.js
+    if (el.clientWidth === 0 || el.clientHeight === 0) {
+      el.style.minHeight = '60px';
+    }
+
     const diceData = _makeDiceDataForCard(card);
     const r = new DiceRendererInstance();
     r.init(el, diceData.colors.sceneBg || 0x1a0d00);
     r.createDice(diceData);
     _diceHandRenderers.push(r);
+
+    // Spin die on hover as a visual preview (purely cosmetic, no game effect)
+    const parentCard = el.closest('.combat-hand-card');
+    if (parentCard) {
+      let _hoverRollTimer = null;
+      // Only trigger spin when the player is actively hovering (not mid-drag)
+      parentCard.addEventListener('mouseenter', () => {
+        if (_dragState && _dragState.moved) return; // skip during drag
+        clearTimeout(_hoverRollTimer);
+        _hoverRollTimer = setTimeout(() => {
+          if (!r.isRolling) {
+            const faceNum = Math.floor(Math.random() * (diceData.sides ? diceData.sides.length : 6)) + 1;
+            r.rollDice(diceData, faceNum, null);
+          }
+        }, 200);
+      });
+      parentCard.addEventListener('mouseleave', () => {
+        clearTimeout(_hoverRollTimer);
+      });
+    }
+  });
+}
+
+function initPendingDiceRenderers() {
+  _disposePendingDiceRenderers();
+  if (typeof DiceRendererInstance === 'undefined') return;
+
+  document.querySelectorAll('.pending-dice-3d[data-pending-id]').forEach(el => {
+    const faceNum   = parseInt(el.dataset.faceNum) || 1;
+    const cardName  = el.dataset.cardName || '';
+
+    const srcCard = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === cardName) : null;
+    const diceData = srcCard ? _makeDiceDataForCard(srcCard) : null;
+    if (!diceData) return;
+
+    if (el.clientWidth === 0 || el.clientHeight === 0) {
+      el.style.width  = '66px';
+      el.style.height = '66px';
+    }
+
+    const r = new DiceRendererInstance();
+    r.init(el, diceData.colors ? diceData.colors.sceneBg : 0x0d0800);
+    r.createDice(diceData);
+    r.rollDice(diceData, faceNum, null);
+    _pendingDiceRenderers.push(r);
   });
 }
 
@@ -1229,7 +1515,7 @@ function renderDiceCardInHand(card, index, total, combat) {
   const selTransform  = `rotate(${rotation * 0.3}deg) translateY(-30px) scale(1.18)`;
   const hoverTrans    = `rotate(${rotation * 0.2}deg) translateY(-50px) scale(1.42)`;
 
-  const diceColors = (DICE_CARD_COLORS && DICE_CARD_COLORS[card.name]) || _DICE_DEFAULT_COLORS;
+  const diceColors = _getDiceColors(card);
   const borderColor  = diceColors.cardBorder;
   const bgColor      = diceColors.cardBg;
   const nameColor    = diceColors.nameColor;
@@ -1683,6 +1969,10 @@ window._showCombatPile = function(pileType) {
 // ============== COMBAT LOG PANEL ==============
 
 function renderLogPanel(combat) {
+  const activeTab = window._combatLogTab || 'log';
+  const spells    = (combat && combat.spells) || [];
+  const player    = (combat && combat.player) || {};
+
   const logs    = (combat.log || []).slice(-40);
   const logHTML = logs.map(entry => {
     const color = { info:C.textDim, success:'#4CAF50', warning:'#f39c12', danger:'#e74c3c' }[entry.type] || C.text;
@@ -1692,26 +1982,106 @@ function renderLogPanel(combat) {
     ">${entry.message}</div>`;
   }).join('');
 
+  const spellsHtml = spells.length === 0
+    ? `<div style="color:${C.textDim};font-size:11px;padding:10px 8px;text-align:center;">No spells learned</div>`
+    : spells.map(sp => {
+        const mana = sp.cost !== undefined ? sp.cost : (sp.manaCost || 0);
+        const cd   = combat.spellCooldowns && combat.spellCooldowns[sp.name] > 0
+          ? ` (CD ${combat.spellCooldowns[sp.name]})`
+          : '';
+        const onCd = !!(combat.spellCooldowns && combat.spellCooldowns[sp.name] > 0);
+        const usedSingle = !!(sp.keywords && sp.keywords.includes('SingleCast') && combat.usedSingleCast && combat.usedSingleCast[sp.name]);
+        const canCast = !onCd && !usedSingle && (combat.player.mana || 0) >= mana && combat.phase === 'player_action';
+        return `<div style="
+          padding:4px 8px; font-size:10px;
+          border-bottom:1px solid rgba(255,255,255,0.06);
+          cursor:${canCast ? 'pointer' : 'default'}; transition:background 0.1s;
+          opacity:${canCast ? '1' : '0.5'};
+        "
+        onmouseover="${canCast ? "this.style.background='rgba(255,255,255,0.06)'" : ''}"
+        onmouseout="${canCast ? "this.style.background=''" : ''}"
+        onclick="${canCast ? `window._handleSpellbookCast && window._handleSpellbookCast('${sp.name}')` : ''}">
+          <div style="font-weight:bold;color:#c09aff;">${sp.name}${cd}${usedSingle ? ' (used)' : ''}</div>
+          <div style="color:${C.textDim};font-size:9px;">${sp.description || ''}</div>
+          <div style="color:#6ab4ff;font-size:9px;margin-top:1px;">💧 ${mana} Mana</div>
+        </div>`;
+      }).join('');
+
+  // Stats tab
+  const statRow = (label, value, color) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;
+      padding:3px 10px;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.04);">
+      <span style="color:${C.textDim};">${label}</span>
+      <span style="color:${color || C.text};font-weight:bold;">${value}</span>
+    </div>`;
+  const section = (title) =>
+    `<div style="font-size:10px;font-weight:bold;color:${C.gold};
+      padding:5px 10px 3px;background:rgba(255,255,255,0.04);
+      border-bottom:1px solid ${C.border};border-top:1px solid ${C.border};
+      margin-top:2px;">${title}</div>`;
+
+  const activeStatuses = Object.entries(player.statuses || {})
+    .filter(([, v]) => (Array.isArray(v) ? v.length : v) > 0);
+
+  const statsHtml = `
+    ${section('⚔ Combat')}
+    ${statRow('Health', `${player.health || 0} / ${player.maxHealth || 0}`, '#e74c3c')}
+    ${statRow('Block',  player.block || 0, '#2980b9')}
+    ${statRow('Energy', `${player.energy || 0} / ${player.maxEnergy || 0}`, '#f1c40f')}
+    ${(player.maxMana || 0) > 0 ? statRow('Mana', `${player.mana || 0} / ${player.maxMana}`, '#6ab4ff') : ''}
+    ${(player.rerolls || 0) > 0 ? statRow('Rerolls', player.rerolls, C.dice) : ''}
+    ${section('🃏 Deck')}
+    ${statRow('Hand',     (combat.hand        || []).length, C.textDim)}
+    ${statRow('Draw',     (combat.drawPile    || []).length, C.textDim)}
+    ${statRow('Discard',  (combat.discardPile || []).length, C.textDim)}
+    ${statRow('Exhaust',  (combat.exhaustPile || []).length, C.textDim)}
+    ${section('🌟 Base Stats')}
+    ${statRow('Strength',     window.strength     || 0, '#e74c3c')}
+    ${statRow('Dexterity',    window.dexterity    || 0, '#3498db')}
+    ${statRow('Intelligence', window.intelligence || 0, '#9b59b6')}
+    ${statRow('Charisma',     window.charisma     || 0, '#f1c40f')}
+    ${activeStatuses.length > 0 ? `
+      ${section('✨ Statuses')}
+      ${activeStatuses.map(([k, v]) => {
+        const meta = STATUS_META[k];
+        const label = meta ? `${meta.emoji} ${meta.label}` : k;
+        const val   = Array.isArray(v) ? v.length : v;
+        return statRow(label, val, '#aaa');
+      }).join('')}
+    ` : ''}
+  `;
+
+  const tabStyle = (tab) => `
+    flex:1; padding:5px 0; font-size:10px; font-weight:bold;
+    text-align:center; cursor:pointer;
+    color:${activeTab === tab ? C.gold : C.textDim};
+    border-bottom:2px solid ${activeTab === tab ? C.gold : 'transparent'};
+    background:${activeTab === tab ? 'rgba(255,255,255,0.05)' : 'transparent'};
+    transition:all 0.1s;
+  `;
+  const switchTab = (tab) =>
+    `window._combatLogTab='${tab}';window.CombatUI&&window.CombatUI.updateCombatDisplay&&window.CombatUI.updateCombatDisplay()`;
+
   return `
     <div id="combat-log-panel" style="
-      width:205px; flex-shrink:0;
+      width:220px; flex-shrink:0;
       background:rgba(0,0,0,0.55);
       border-left:2px solid ${C.border};
       display:flex; flex-direction:column;
     ">
-      <div style="
-        padding:6px 10px; font-size:12px; font-weight:bold;
-        color:${C.gold}; border-bottom:1px solid ${C.border};
-        flex-shrink:0;
-      ">📜 Combat Log</div>
+      <div style="display:flex;border-bottom:1px solid ${C.border};flex-shrink:0;">
+        <div style="${tabStyle('log')}"       onclick="${switchTab('log')}">📜 Log</div>
+        <div style="${tabStyle('spellbook')}" onclick="${switchTab('spellbook')}">✨ Spells</div>
+        <div style="${tabStyle('stats')}"     onclick="${switchTab('stats')}">📊 Stats</div>
+      </div>
       <div id="combat-log-entries" style="
         flex:1; overflow-y:auto;
-        display:flex; flex-direction:column-reverse;
+        display:flex; flex-direction:column${activeTab === 'log' ? '-reverse' : ''};
         padding:4px 0;
         scrollbar-width:thin;
         scrollbar-color:${C.border} transparent;
       ">
-        ${logHTML}
+        ${activeTab === 'log' ? logHTML : activeTab === 'spellbook' ? spellsHtml : statsHtml}
       </div>
     </div>
   `;
@@ -1733,10 +2103,13 @@ function showStatusTooltip(event, key, val) {
     `;
     document.body.appendChild(tip);
   }
-  const data = (typeof STATUSES_DATA !== 'undefined') ? STATUSES_DATA[key] : null;
+  // Some STATUSES_DATA entries use a suffix (e.g. multi_attack_x for multi_attack)
+  const data = (typeof STATUSES_DATA !== 'undefined')
+    ? (STATUSES_DATA[key] || STATUSES_DATA[key + '_x'] || null)
+    : null;
   const meta = STATUS_META[key] || { emoji: '•', label: key };
-  const name = data ? data.name : meta.label;
-  const desc = data ? data.description : '';
+  const name = data ? data.name.replace(/ X$/, ` ${val}`) : meta.label;
+  const desc = data ? data.description.replace(/\bX\b/g, val) : '';
   const type = data ? data.type : '';
   const decay = data ? data.decay : '';
   const typeColor = type === 'Buff' ? '#4CAF50' : type === 'Debuff' ? '#e74c3c' : '#aaa';
@@ -1776,6 +2149,7 @@ function renderStatusRow(statuses, _id) {
   const entries = [];
   Object.entries(statuses).forEach(([k, v]) => {
     if (k === 'block') return;
+    if (k === 'machine_learning') return; // shown in Powers overlay instead
     if (Array.isArray(v)) {
       v.forEach(instance => { if (instance > 0) entries.push([k, instance]); });
     } else if (v > 0) {
@@ -1824,8 +2198,11 @@ function attachCombatEventListeners(combat) {
   injectCombatInteractionCSS();
   ensureDragAndKeyListeners();
 
-  // Init Three.js renderers for any dice-type cards in hand
-  requestAnimationFrame(() => initDiceCardRenderers());
+  // Init Three.js renderers for dice cards in hand and pending tiles
+  requestAnimationFrame(() => {
+    initDiceCardRenderers();
+    initPendingDiceRenderers();
+  });
 
   // End turn button
   const endBtn = document.getElementById('combat-end-turn-btn');
@@ -1891,11 +2268,135 @@ function attachCombatEventListeners(combat) {
   });
   attachDragMouseDown();
   attachCardTooltip();
+
+  // Pending dice tiles
+  document.querySelectorAll('.pending-die-tile').forEach(el => {
+    el.addEventListener('click', () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState();
+      if (!cs || cs.phase !== 'player_action') return;
+      const id = el.dataset.pendingId;
+      const entry = cs.pendingDice.find(e => e.id === id);
+      if (!entry) return;
+      const face = entry.face || {};
+      if (face.isBlank) {
+        // Dismiss blank
+        window.CombatEngine.usePendingDie(id, null);
+        window._selectedPendingId = null;
+        updateCombatDisplay();
+        checkCombatEnd();
+        return;
+      }
+      if (face.isaacsTransform) {
+        // Isaac's D6: show card picker then apply transform
+        window._selectedPendingId = null;
+        _showIsaacTransformPicker(face, cs, id);
+        return;
+      }
+      const needsTarget = (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+      if (needsTarget) {
+        // If a target is already selected (or there's only one enemy), fire immediately
+        const living = (cs.enemies || []).filter(e => e.health > 0);
+        const autoTarget = cs.targetedEnemyId || (living.length === 1 ? living[0].id : null);
+        if (autoTarget) {
+          window._selectedPendingId = null;
+          const snap = captureHPSnapshot(cs);
+          window.CombatEngine.usePendingDie(id, autoTarget);
+          showHPDiffs(snap, cs);
+          updateCombatDisplay();
+          checkCombatEnd();
+        } else {
+          // Toggle selection and wait for enemy click
+          window._selectedPendingId = (window._selectedPendingId === id) ? null : id;
+          updateCombatDisplay();
+        }
+      } else {
+        // Apply immediately
+        window._selectedPendingId = null;
+        const snap = captureHPSnapshot(cs);
+        window.CombatEngine.usePendingDie(id, null);
+        showHPDiffs(snap, cs);
+        updateCombatDisplay();
+        checkCombatEnd();
+      }
+    });
+
+    // Drag die tile to enemy
+    el.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState();
+      if (!cs || cs.phase !== 'player_action') return;
+      const id = el.dataset.pendingId;
+      const entry = cs.pendingDice.find(en => en.id === id);
+      if (!entry) return;
+      const face = entry.face || {};
+      const needsTarget = !face.isBlank && (face.effects || []).some(ef => ef.move === 'dmg' && !(ef.addons || []).some(a => a.toLowerCase() === 'cleave'));
+      if (!needsTarget) return; // non-targeting tiles don't need drag
+      e.stopPropagation();
+      const rect = el.getBoundingClientRect();
+      _dragState = {
+        isDieTile: true,
+        pendingId: id,
+        tileEl: el,
+        startX: e.clientX,
+        startY: e.clientY,
+        offsetX: e.clientX - rect.left,
+        offsetY: e.clientY - rect.top,
+        clone: null,
+        moved: false,
+        hoveredEnemy: null,
+        cardEl: null,
+        isDice: false
+      };
+    });
+  });
+
+  // Reroll All button
+  const rerollAllBtn = document.getElementById('pending-reroll-all-btn');
+  if (rerollAllBtn) {
+    rerollAllBtn.addEventListener('click', () => {
+      if (!window.CombatEngine) return;
+      const result = window.CombatEngine.rerollAllPending();
+      if (result && result.success) {
+        updateCombatDisplay();
+      } else if (result && result.error) {
+        typeof createNotification === 'function' &&
+          createNotification(result.error, '#e74c3c', '🎲');
+      }
+    });
+  }
+
+  // Player zone click: confirm a selected self-targeting / power card
+  const playerZone = document.getElementById('combat-player-zone');
+  if (playerZone) {
+    playerZone.addEventListener('click', () => {
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState();
+      if (!cs || cs.phase !== 'player_action') return;
+      const idx = cs.selectedCardIndex;
+      if (idx === null || idx === undefined) return;
+      const card = (cs.hand || [])[idx];
+      if (!card) return;
+      const needsEnemy = window.CombatEngine.cardNeedsTarget ? window.CombatEngine.cardNeedsTarget(card) : false;
+      if (needsEnemy || (card.type || '').toLowerCase() === 'dice') return;
+      _playSelectedSelfCard(cs, idx);
+    });
+  }
 }
 
 function handleEnemyClick(enemyId) {
   const combat = window.CombatEngine && window.CombatEngine.getCombatState();
   if (!combat) return;
+
+  // Pending die targeting: if a pending die tile is selected and needs a target
+  if (window._selectedPendingId) {
+    const pendingId = window._selectedPendingId;
+    window._selectedPendingId = null;
+    const snap = captureHPSnapshot(combat);
+    window.CombatEngine.usePendingDie(pendingId, enemyId);
+    showHPDiffs(snap, combat);
+    updateCombatDisplay();
+    checkCombatEnd();
+    return;
+  }
 
   if (combat.selectedCardIndex !== null && combat.selectedCardIndex !== undefined) {
     const cardIndex = combat.selectedCardIndex;
@@ -1949,9 +2450,10 @@ function handleCardClick(index) {
     return;
   }
 
-  // Dice-type cards: show card picker, then roll
+  // Dice-type cards: must be dragged to the Dice Board — clicking does nothing
   if ((card.type || '').toLowerCase() === 'dice') {
-    handleDiceCardPlay(index, combat);
+    typeof createNotification === 'function' &&
+      createNotification('Drag this die to the Dice Board to roll it', C.gold, '🎲');
     return;
   }
 
@@ -1967,22 +2469,32 @@ function handleCardClick(index) {
     }
     updateCombatDisplay();
   } else {
-    const snap   = captureHPSnapshot(combat);
-    const result = window.CombatEngine.playCard(index, null);
-    if (result && result.success) {
-      const hitLog = [...(combat._hitLog || [])];
-      combat._hitLog = [];
+    // Self-targeting / power cards: select first, then click player zone to confirm
+    if (combat.selectedCardIndex === index) {
       combat.selectedCardIndex = null;
-      animateCardPlay(index, null, () => {
-        showHPDiffs(snap, combat, hitLog.length > 0);
-        checkAndFlashReshuffle(snap, combat);
-        replayHits(hitLog, () => {
-          updateCombatDisplay();
-          checkCombatEnd();
-        });
-      });
-      updateCombatDisplay(); // Immediately remove card from hand
+    } else {
+      combat.selectedCardIndex = index;
     }
+    updateCombatDisplay();
+  }
+}
+
+function _playSelectedSelfCard(combat, idx) {
+  const snap = captureHPSnapshot(combat);
+  const result = window.CombatEngine.playCard(idx, null);
+  if (result && result.success) {
+    const hitLog = [...(combat._hitLog || [])];
+    combat._hitLog = [];
+    combat.selectedCardIndex = null;
+    animateCardPlay(idx, null, () => {
+      showHPDiffs(snap, combat, hitLog.length > 0);
+      checkAndFlashReshuffle(snap, combat);
+      replayHits(hitLog, () => {
+        updateCombatDisplay();
+        checkCombatEnd();
+      });
+    });
+    updateCombatDisplay();
   }
 }
 
@@ -1998,6 +2510,11 @@ function injectCombatInteractionCSS() {
       50%      { box-shadow: 0 0 0 4px rgba(192,57,43,0.9), 0 0 18px rgba(231,76,60,0.6); }
     }
     .enemy-targetable { animation: targetPulse 1s ease-in-out infinite; cursor: crosshair !important; }
+    @keyframes playerTargetPulse {
+      0%,100% { box-shadow: 0 0 0 2px rgba(74,175,80,0.4); }
+      50%      { box-shadow: 0 0 0 5px rgba(74,175,80,0.8), 0 0 22px rgba(74,175,80,0.4); }
+    }
+    .player-targetable { animation: playerTargetPulse 1s ease-in-out infinite; cursor: pointer !important; }
     @keyframes combatShake {
       0%,100% { transform: translateX(0); }
       20%     { transform: translateX(-5px); }
@@ -2035,11 +2552,12 @@ function ensureDragAndKeyListeners() {
 
     if (!_dragState.moved && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
       _dragState.moved = true;
-      if (_dragState.cardEl) _dragState.cardEl.style.opacity = '0.3';
+      const sourceEl = _dragState.cardEl || _dragState.tileEl;
+      if (sourceEl) sourceEl.style.opacity = '0.3';
 
-      // Build clone from live DOM card element
-      const rect  = _dragState.cardEl.getBoundingClientRect();
-      const clone = _dragState.cardEl.cloneNode(true);
+      // Build clone from live DOM element (card or die tile)
+      const rect  = sourceEl ? sourceEl.getBoundingClientRect() : { width: 80, height: 80 };
+      const clone = sourceEl ? sourceEl.cloneNode(true) : document.createElement('div');
       clone.id    = 'combat-drag-clone';
       clone.removeAttribute('onmouseover');
       clone.removeAttribute('onmouseout');
@@ -2065,22 +2583,56 @@ function ensureDragAndKeyListeners() {
         if (pointEl) pointEl.style.outline = `3px solid ${C.goldBright}`;
         _dragState.hoveredEnemy = pointEl || null;
       }
+
+      // Highlight Dice Board when dragging a dice card over it
+      if (_dragState.isDice) {
+        const overBoard = !!document.elementFromPoint(e.clientX, e.clientY)?.closest('#pending-dice-panel');
+        const panel = document.getElementById('pending-dice-panel');
+        if (panel) {
+          if (overBoard) {
+            panel.style.background = 'rgba(240,200,80,0.18)';
+            panel.style.borderTopColor = C.goldBright;
+          } else {
+            panel.style.background = '';
+            panel.style.borderTopColor = '';
+          }
+        }
+      }
     }
   });
 
   // --- Mouse up: play card on enemy drop or cancel ---
   document.addEventListener('mouseup', e => {
     if (!_dragState) return;
-    const { cardIndex, clone, moved, cardEl } = _dragState;
+    const { cardIndex, clone, moved, cardEl, isDieTile, pendingId, tileEl } = _dragState;
     _dragState = null;
     if (clone)   clone.remove();
     if (cardEl)  cardEl.style.opacity = '';
+    if (tileEl)  tileEl.style.opacity = '';
     document.querySelectorAll('.enemy-card').forEach(el => el.style.outline = '');
+
+    // Reset dice board highlight
+    const dicePanel = document.getElementById('pending-dice-panel');
+    if (dicePanel) { dicePanel.style.background = ''; dicePanel.style.borderTopColor = ''; }
 
     if (!moved) return; // not a drag — click handler will fire
 
     const combat = window.CombatEngine && window.CombatEngine.getCombatState();
     if (!combat || combat.phase !== 'player_action') return;
+
+    // Pending die tile drag → drop on enemy
+    if (isDieTile) {
+      const enemyEl = document.elementFromPoint(e.clientX, e.clientY)?.closest('.enemy-card');
+      if (enemyEl) {
+        window._selectedPendingId = null;
+        const snap = captureHPSnapshot(combat);
+        window.CombatEngine.usePendingDie(pendingId, enemyEl.dataset.enemyId);
+        showHPDiffs(snap, combat);
+        updateCombatDisplay();
+        checkCombatEnd();
+      }
+      return;
+    }
 
     const card = (combat.hand || [])[cardIndex];
     if (!card) return;
@@ -2092,7 +2644,9 @@ function ensureDragAndKeyListeners() {
       ? window.CombatEngine.cardNeedsTarget(card) : false;
 
     if ((card.type || '').toLowerCase() === 'dice') {
-      handleDiceCardPlay(cardIndex, combat);
+      // Only play when dropped on the Dice Board; cancel silently otherwise
+      const onBoard = !!document.elementFromPoint(e.clientX, e.clientY)?.closest('#pending-dice-panel');
+      if (onBoard) handleDiceCardPlay(cardIndex, combat);
     } else if (needsTarget) {
       // Must drop on an enemy
       const enemyEl = document.elementFromPoint(e.clientX, e.clientY)
@@ -2136,11 +2690,15 @@ function attachDragMouseDown() {
       if (e.button !== 0) return;
       e.preventDefault(); // prevent text selection during drag
       const rect    = el.getBoundingClientRect();
+      const combat  = window.CombatEngine && window.CombatEngine.getCombatState();
+      const card    = combat ? (combat.hand || [])[parseInt(el.dataset.handIndex)] : null;
+      const isDice  = card ? (card.type || '').toLowerCase() === 'dice' : false;
       _dragState = {
         cardIndex: parseInt(el.dataset.handIndex),
         cardEl:    el,
         clone:     null,
         moved:     false,
+        isDice,
         startX:    e.clientX,
         startY:    e.clientY,
         offsetX:   e.clientX - rect.left,
@@ -2489,7 +3047,8 @@ function parseDiceFaces(description) {
 
 // Render 3D-style dice card tooltip content
 function renderDiceTooltipContent(card) {
-  const bc   = typeColor(card.type);
+  const dc   = _getDiceColors(card);
+  const bc   = dc.cardBorder;
   const desc = card.upgraded && card.upgradedDescription ? card.upgradedDescription : card.description;
   const faces = parseDiceFaces(desc);
   if (!faces.length) return null; // fall through to standard tooltip
@@ -2520,7 +3079,7 @@ function renderDiceTooltipContent(card) {
     html: `
       <div style="
         width:${width}px;
-        background:${cardTypeBg(card.type)};
+        background:${dc.cardBg};
         border:2px solid ${bc};
         border-radius:10px; overflow:hidden;
         box-shadow:0 10px 36px rgba(0,0,0,0.9), 0 0 18px ${bc}44;
@@ -2690,6 +3249,14 @@ window.showCardPickerModal = function(options) {
     exhaust: { cards: combat.exhaustPile || [], label: 'Exhaust Pile' },
   };
   let { cards: pileCards, label: pileLabel } = pileMap[pile] || pileMap.hand;
+
+  // Nightmare: if hand is empty, show all cards across hand+draw+discard (unique by name)
+  if (action === 'nightmare' && pileCards.length === 0) {
+    const allCards = [...(combat.hand || []), ...(combat.drawPile || []), ...(combat.discardPile || [])];
+    const seen = new Set();
+    pileCards = allCards.filter(c => { if (seen.has(c.name)) return false; seen.add(c.name); return true; });
+    pileLabel = 'Deck';
+  }
 
   // Filter by allowed types if specified (Dual Wield — only Attack/Power cards)
   if (options._typesAllowed) {
@@ -2885,6 +3452,10 @@ window.showCardPickerModal = function(options) {
           }
         }
       }
+      // Burning Pact: draw deferred cards now that exhaust is resolved
+      if (options.drawAfter && options.drawAfter > 0 && window.CombatEngine && window.CombatEngine.drawCards) {
+        window.CombatEngine.drawCards(options.drawAfter);
+      }
     }
 
     overlay.remove();
@@ -2910,19 +3481,37 @@ function cleanup3DDice() {}
 
 /**
  * Called instead of normal play when a Dice-type card is clicked.
- * Shows a hand picker, then the roll animation, then applies the transform.
+ * All dice go straight to the board — no popup.
+ * Isaac's D6 transform is applied when the tile is clicked.
  */
 function handleDiceCardPlay(diceCardIndex, combat) {
   const hand     = combat.hand || [];
   const diceCard = hand[diceCardIndex];
   if (!diceCard) return;
 
-  // Cards the player can choose to transform (everything in hand except the die itself)
-  const pickable = hand.map((c, i) => ({ card: c, handIdx: i })).filter(x => x.handIdx !== diceCardIndex);
+  window.CombatEngine.playCard(diceCardIndex, null);
+  const diceDef   = (typeof DICE_DATA !== 'undefined') ? DICE_DATA.find(d => d.name === diceCard.name) : null;
+  const sides     = diceDef ? diceDef.faces.length : 6;
+  const faceIndex = Math.floor(Math.random() * sides);
+  if (window.CombatEngine && window.CombatEngine.addPendingDie) {
+    window.CombatEngine.addPendingDie(diceCard.name, faceIndex);
+  }
+  updateCombatDisplay();
+}
+
+/**
+ * Show card-picker for Isaac's D6 after the player clicks its pending tile.
+ * The die was already rolled and animated; we just need the player to choose
+ * which hand card to transform, then apply the effect and consume the pending entry.
+ */
+function _showIsaacTransformPicker(face, combat, pendingId) {
+  const pickable = (combat.hand || []).map((c, i) => ({ card: c, handIdx: i }));
 
   if (pickable.length === 0) {
-    // Nothing to transform — just spend energy and discard
-    window.CombatEngine.playCard(diceCardIndex, null);
+    // Nothing to transform — just consume the pending entry
+    if (pendingId && window.CombatEngine) {
+      combat.pendingDice = (combat.pendingDice || []).filter(e => e.id !== pendingId);
+    }
     updateCombatDisplay();
     return;
   }
@@ -2939,7 +3528,7 @@ function handleDiceCardPlay(diceCardIndex, combat) {
   overlay.innerHTML = `
     <div style="background:#1a1208;border:2px solid #cc8800;border-radius:12px;padding:20px;
       max-width:700px;width:92%;text-align:center;">
-      <h2 style="color:#f0c850;margin:0 0 6px;font-size:18px;">🎲 ${diceCard.name}</h2>
+      <h2 style="color:#f0c850;margin:0 0 6px;font-size:18px;">🎲 Isaac's D6</h2>
       <p style="color:#aaa;margin:0 0 14px;font-size:12px;">Choose a card to transform</p>
       <div id="dice-pick-cards" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;
         max-height:45vh;overflow-y:auto;padding:4px;">
@@ -2973,17 +3562,16 @@ function handleDiceCardPlay(diceCardIndex, combat) {
   overlay.querySelectorAll('.dice-pick-card').forEach(el => {
     el.addEventListener('click', () => {
       const pickedHandIdx = parseInt(el.dataset.handIdx);
-      const pickedCard    = hand[pickedHandIdx];
+      const pickedCard    = combat.hand[pickedHandIdx];
       overlay.remove();
 
-      // Play the dice card: deduct energy, remove from hand, no gameplay effect yet
-      window.CombatEngine.playCard(diceCardIndex, null);
+      // Consume the pending die entry
+      if (pendingId) {
+        combat.pendingDice = (combat.pendingDice || []).filter(e => e.id !== pendingId);
+      }
 
-      // The picked card's index may shift if diceCardIndex < pickedHandIdx
-      const newPickIdx = pickedHandIdx > diceCardIndex ? pickedHandIdx - 1 : pickedHandIdx;
-
-      updateCombatDisplay();
-      _showDiceRollOverlay(diceCard, pickedCard, newPickIdx);
+      // Apply the transform effect directly (die was already rolled + animated)
+      _applyDiceRollEffect({ name: "Isaac's D6" }, pickedCard, pickedHandIdx, face);
     });
   });
 }
@@ -3048,28 +3636,12 @@ function _showDiceRollOverlay(diceCard, pickedCard, newPickIdx) {
         };
 
         if (btns) {
-          const combat = window.CombatEngine && window.CombatEngine.getCombatState();
-          const rerolls = combat && combat.player ? (combat.player.rerolls || 0) : 0;
-
           const continueBtn = document.createElement('button');
           continueBtn.textContent = 'Continue →';
           continueBtn.style.cssText = `padding:8px 20px;background:#2a5c2a;border:1px solid #4a9c4a;
             color:#fff;border-radius:6px;font-size:14px;cursor:pointer;`;
           continueBtn.onclick = finish;
           btns.appendChild(continueBtn);
-
-          if (rerolls > 0) {
-            const rerollBtn = document.createElement('button');
-            rerollBtn.textContent = `🔄 Reroll (${rerolls} left)`;
-            rerollBtn.style.cssText = `padding:8px 20px;background:#5c3a0a;border:1px solid #c07820;
-              color:#f0c850;border-radius:6px;font-size:14px;cursor:pointer;`;
-            rerollBtn.onclick = () => {
-              if (combat && combat.player) combat.player.rerolls = Math.max(0, (combat.player.rerolls || 0) - 1);
-              updateCombatDisplay();
-              performRoll(Math.floor(Math.random() * sides) + 1);
-            };
-            btns.insertBefore(rerollBtn, continueBtn);
-          }
         }
       });
     };
@@ -3129,6 +3701,268 @@ function _applyDiceRollEffect(diceCard, pickedCard, newPickIdx, faceData) {
   checkCombatEnd();
 }
 
+// ============================================================
+// ============== S&D DICE ROLL → PENDING PANEL ================
+// ============================================================
+
+/**
+ * Show 3D die rolling animation for an S&D dice card,
+ * then add the result to the pending dice panel.
+ */
+function _showDiceRollAndPend(diceCard, combat) {
+  const diceDef = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === diceCard.name);
+  const sides   = diceDef ? diceDef.faces.length : 6;
+
+  const combatModal = document.getElementById('dice-combat-modal');
+
+  const commitFace = (faceIndex) => {
+    if (window.CombatEngine && window.CombatEngine.addPendingDie) {
+      window.CombatEngine.addPendingDie(diceCard.name, faceIndex);
+    }
+    // Upgraded die: grant +1 Reroll when played
+    if (diceCard.upgraded && window.CombatEngine) {
+      const cs = window.CombatEngine.getCombatState();
+      if (cs) {
+        cs.player.rerolls = (cs.player.rerolls || 0) + 1;
+        if (typeof window !== 'undefined') window.reroll = cs.player.rerolls;
+        window.CombatEngine.addLog(`${diceCard.name}+: +1 Reroll`, 'info');
+      }
+    }
+    updateCombatDisplay();
+    checkCombatEnd();
+  };
+
+  if (!combatModal || typeof DiceRendererInstance === 'undefined') {
+    const faceIndex = Math.floor(Math.random() * sides);
+    commitFace(faceIndex);
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'dice-roll-overlay';
+  overlay.style.cssText = `position:absolute;inset:0;z-index:1000;background:rgba(0,0,0,0.9);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:inherit;`;
+
+  overlay.innerHTML = `
+    <h2 style="color:#f0c850;margin:0 0 12px;font-size:20px;">🎲 Rolling ${diceCard.name}…</h2>
+    <div id="dice-roll-3d" style="width:160px;height:160px;margin:0 auto;"></div>
+    <div id="dice-roll-label" style="color:#fff;font-size:15px;min-height:52px;margin-top:14px;text-align:center;"></div>
+    <div id="dice-roll-btns" style="margin-top:16px;display:flex;gap:10px;"></div>`;
+
+  combatModal.style.position = 'relative';
+  combatModal.appendChild(overlay);
+
+  requestAnimationFrame(() => {
+    const container = document.getElementById('dice-roll-3d');
+    if (!container) {
+      overlay.remove();
+      commitFace(Math.floor(Math.random() * sides));
+      return;
+    }
+
+    const renderer   = new DiceRendererInstance();
+    const diceData3d = _makeDiceDataForCard(diceCard);
+    renderer.init(container, diceData3d.colors ? diceData3d.colors.sceneBg : 0x0d0800);
+    renderer.createDice(diceData3d);
+
+    const performRoll = (faceIndex) => {
+      const rolledN  = faceIndex + 1; // face numbers are 1-based
+      const faceData = diceDef ? (diceDef.faces[faceIndex] || diceDef.faces[0]) : { face: rolledN, text: String(rolledN) };
+      const lbl  = document.getElementById('dice-roll-label');
+      const btns = document.getElementById('dice-roll-btns');
+      if (lbl)  lbl.innerHTML = '';
+      if (btns) btns.innerHTML = '';
+
+      renderer.rollDice(diceData3d, rolledN, () => {
+        const faceLabel = faceData.isBlank ? '— (blank)' : faceData.text;
+        if (lbl) lbl.innerHTML =
+          `<div style="color:#f0c850;font-weight:bold;font-size:18px;">${faceLabel}</div>
+           <div style="color:#888;font-size:11px;margin-top:4px;">Face ${rolledN}
+             ${faceData.addons && faceData.addons.length > 0 ? '· ' + faceData.addons.join(', ') : ''}
+           </div>`;
+
+        const finish = () => {
+          renderer.dispose();
+          overlay.remove();
+          commitFace(faceIndex);
+        };
+
+        if (btns) {
+          const continueBtn = document.createElement('button');
+          continueBtn.textContent = 'Add to Panel →';
+          continueBtn.style.cssText = `padding:8px 20px;background:#2a5c2a;border:1px solid #4a9c4a;
+            color:#fff;border-radius:6px;font-size:14px;cursor:pointer;`;
+          continueBtn.onclick = finish;
+          btns.appendChild(continueBtn);
+        }
+      });
+    };
+
+    performRoll(Math.floor(Math.random() * sides));
+  });
+}
+
+// ============================================================
+// ============== PENDING DICE PANEL ===========================
+// ============================================================
+
+/**
+ * Return display text for a pending die face, applying stat bonuses to damage values
+ * and showing persistence bonus on status effects.
+ */
+function getDiceFaceDynamicText(face, combat) {
+  if (!face || !face.text || face.isBlank) return face ? (face.text || '—') : '—';
+  if (!combat || !combat.player) return face.text;
+
+  const effects = face.effects || [];
+  const player  = combat.player;
+  let text = face.text;
+
+  // Damage boost from power / weak
+  const hasDmg = effects.some(e => e.move === 'dmg');
+  if (hasDmg) {
+    const power = player.statuses['power'] || 0;
+    const weak  = player.statuses['weak'] ? 0.75 : 1;
+    text = text.replace(/(\d+) Dmg/gi, (_, n) => {
+      const base    = parseInt(n);
+      const boosted = Math.max(0, Math.floor((base + power) * weak));
+      if (boosted === base) return `${base} Dmg`;
+      const col = boosted > base ? '#7dff7d' : '#ff7d7d';
+      return `<span style="color:${col};font-weight:bold">${boosted}</span> Dmg`;
+    });
+  }
+
+  // Persistence bonus on `get` (player self-buff) status effects
+  const persistence = player.statuses['persistence'] || 0;
+  if (persistence > 0) {
+    const getEffect = effects.find(e => e.move === 'get' && e.statusKey);
+    if (getEffect) {
+      const exempt = new Set(['power', 'defense', 'arcane', 'persistence']);
+      const key = getEffect.statusKey.toLowerCase();
+      if (!exempt.has(key)) {
+        const statusDef = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA[key] : null;
+        if (statusDef && (statusDef.type === 'Buff' || statusDef.type === 'Debuff')) {
+          const base = getEffect.value || 0;
+          const total = base + persistence;
+          text = text.replace(new RegExp(`\\b${base}\\b`), `<span style="color:#c09aff;font-weight:bold">${total}</span>`);
+        }
+      }
+    }
+  }
+
+  return text;
+}
+
+/**
+ * Render the pending dice strip between the player zone and hand.
+ * Shows one tile per pending die entry. Cantrip tiles show that they already fired.
+ */
+function renderPendingDicePanel(combat) {
+  const pending = (combat && combat.pendingDice) || [];
+
+  // Show whenever the player has a dice card anywhere in their deck
+  const isDieCard = c => (c.type || '').toLowerCase() === 'dice';
+  const hasDiceInDeck = (combat && (
+    (combat.hand        || []).some(isDieCard) ||
+    (combat.drawPile    || []).some(isDieCard) ||
+    (combat.discardPile || []).some(isDieCard) ||
+    (combat.exhaustPile || []).some(isDieCard)
+  ));
+
+  if (pending.length === 0 && !hasDiceInDeck) return '';
+
+  const rerolls = (combat.player && combat.player.rerolls) || 0;
+  const gold   = C.gold   || '#f0c850';
+  const border = C.border || 'rgba(255,255,255,0.15)';
+
+  const tilesHtml = pending.map(entry => {
+    const face = entry.face || {};
+    const isBlank = face.isBlank;
+    const addons  = face.addons || [];
+    const isCantrip   = addons.includes('cantrip');
+    const isSingleUse = addons.includes('singleUse');
+    const isDruid     = addons.includes('druid');
+    const needsTarget = !isBlank && (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+
+    const isSelected = window._selectedPendingId === entry.id;
+
+    // Use the die's own color scheme for the tile border
+    const srcCard = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
+    const dieColors = srcCard ? _getDiceColors(srcCard) : null;
+    const tagBorderColor = dieColors ? dieColors.cardBorder : null;
+
+    const addonBadges = [
+      isCantrip   ? `<span style="font-size:8px;background:#4a2c8a;color:#c09aff;border-radius:3px;padding:0 3px;">Cantrip</span>` : '',
+      isSingleUse ? `<span style="font-size:8px;background:#8a2c2c;color:#ffaaaa;border-radius:3px;padding:0 3px;">1-Use</span>` : '',
+      isDruid     ? `<span style="font-size:8px;background:#2c5a2c;color:#aaffaa;border-radius:3px;padding:0 3px;">Druid</span>` : '',
+      needsTarget ? `<span style="font-size:8px;background:#5a3a00;color:#ffcc44;border-radius:3px;padding:0 3px;">Target</span>` : ''
+    ].filter(Boolean).join(' ');
+
+    const selectedGlow = isSelected ? `box-shadow:0 0 16px ${gold}aa;` : '';
+
+    return `<div class="pending-die-tile" data-pending-id="${entry.id}"
+      style="
+        padding:4px 6px;
+        background:transparent;
+        border-radius:8px; cursor:${isBlank ? 'default' : 'pointer'};
+        display:flex; flex-direction:column; align-items:center; gap:2px;
+        ${selectedGlow}
+        transition:box-shadow 0.1s;
+      ">
+      <div style="font-size:9px;color:#aaa;line-height:1;">${entry.cardName}</div>
+      <div class="pending-dice-3d"
+        data-pending-id="${entry.id}"
+        data-face-num="${entry.faceIndex + 1}"
+        data-card-name="${entry.cardName}"
+        style="width:90px;height:90px;pointer-events:none;flex-shrink:0;">
+      </div>
+      <div style="font-size:10px;color:${isBlank ? '#666' : '#ddd'};text-align:center;line-height:1.2;max-width:110px;">
+        ${getDiceFaceDynamicText(face, combat)}
+      </div>
+      <div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">
+        ${addonBadges}
+      </div>
+    </div>`;
+  }).join('');
+
+  const emptyHint = pending.length === 0 ? `
+    <div id="dice-drop-hint" style="
+      grid-column:1/-1; display:flex; align-items:center; justify-content:center;
+      color:#555; font-size:12px; font-style:italic; pointer-events:none;
+      padding:8px 0; min-height:36px;
+    ">drag a die card here to roll it</div>` : '';
+
+  return `
+    <div id="pending-dice-panel" style="
+      flex-shrink:0; padding:6px 10px 8px;
+      background:rgba(0,0,0,0.4);
+      border-top:1px solid ${border};
+      transition:background 0.15s, border-color 0.15s;
+    ">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <div style="font-size:11px;font-weight:bold;color:${gold};">🎲 Dice Board</div>
+        ${rerolls > 0 ? `
+          <button id="pending-reroll-all-btn" style="
+            padding:3px 9px;
+            background:#5c3a0a; border:1px solid #c07820;
+            color:${gold}; border-radius:6px; font-size:10px; cursor:pointer;
+          ">🔄 Reroll All (${rerolls})</button>
+        ` : `
+          <div style="font-size:10px;color:#666;">No rerolls</div>
+        `}
+      </div>
+      <div id="dice-board-drop-zone" style="
+        display:grid;
+        grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
+        gap:6px;
+        min-height:36px;
+      ">
+        ${tilesHtml}${emptyHint}
+      </div>
+    </div>
+  `;
+}
+
 // ============== EXPORTS ==============
 
 if (typeof window !== 'undefined') {
@@ -3143,6 +3977,20 @@ if (typeof window !== 'undefined') {
     hideStatusTooltip,
   };
 }
+
+// Spellbook tab: cast a spell by name
+window._handleSpellbookCast = function(spellName) {
+  const cs = window.CombatEngine && window.CombatEngine.getCombatState();
+  if (!cs || cs.phase !== 'player_action') return;
+  if (!window.CombatEngine.castSpell) return;
+  const result = window.CombatEngine.castSpell(spellName, null);
+  if (result && !result.success && result.error) {
+    typeof createNotification === 'function' &&
+      createNotification(result.error, '#e74c3c', '✨');
+  }
+  updateCombatDisplay();
+  checkCombatEnd();
+};
 
 window.cancelCombatDrag = function() {
   if (_dragState) {

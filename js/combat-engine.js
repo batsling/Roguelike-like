@@ -50,7 +50,7 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     energy: (typeof gameState !== 'undefined' && gameState.maxEnergy) || characterData.energy || 2,
     maxEnergy: (typeof gameState !== 'undefined' && gameState.maxEnergy) || characterData.energy || 2,
     mana: 0,
-    maxMana: characterData.mana || 0,
+    maxMana: (characterData.mana !== undefined && characterData.mana !== null) ? characterData.mana : 3,
     stats: playerStats,
     bonuses: statBonuses,
     block: 0,
@@ -214,12 +214,20 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     spellCasts: {}, // Track how many times each spell was cast (for Channel/Deplete)
     usedSingleCast: {}, // Track SingleCast spells used this combat
     pendingEffects: [], // Effects waiting to be resolved
-    turnHistory: []
+    turnHistory: [],
+    pendingDice: [],      // Rolled dice faces waiting to be used
+    _druidScaling: {},    // {cardName_faceIndex: bonusValue} — Druid scaling per face
+    _usedSingleUseFaces: {} // {cardName_faceIndex: true} — Single Use faces consumed this combat
   };
 
-  // Load player's spells
-  if (typeof window.playerSpells !== 'undefined') {
-    combatState.spells = [...window.playerSpells];
+  // Load player's spells — merge both sources (gameState and window.playerSpells) deduplicated by name
+  {
+    const seen = new Set();
+    const mergedSpells = [];
+    const addSpell = (sp) => { if (sp && sp.name && !seen.has(sp.name)) { seen.add(sp.name); mergedSpells.push(sp); } };
+    ((typeof gameState !== 'undefined' && Array.isArray(gameState.spells)) ? gameState.spells : []).forEach(addSpell);
+    (Array.isArray(window.playerSpells) ? window.playerSpells : []).forEach(addSpell);
+    if (mergedSpells.length > 0) combatState.spells = mergedSpells;
   }
 
   // Initialize card deck system
@@ -351,6 +359,23 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
       combatState.player.statuses['regeneration'] = (combatState.player.statuses['regeneration'] || 0) + pummarolaCount;
       addLog(`Pummarola: +${pummarolaCount} Regeneration`, 'info');
     }
+
+    // Bear Trap Mask: +4 Shield and +1 Bleed Thorns at combat start
+    if (inventory.some(i => i.name === 'Bear Trap Mask')) {
+      combatState.player.block = (combatState.player.block || 0) + 4;
+      combatState.player.statuses['bleed_thorns'] = (combatState.player.statuses['bleed_thorns'] || 0) + 1;
+      addLog('Bear Trap Mask: +4 Shield and +1 Bleed Thorns', 'info');
+    }
+
+    // Broken Window: player gains +3 Bleed Thorns and +1 Bleed at combat start
+    if (inventory.some(i => i.name === 'Broken Window')) {
+      combatState.player.statuses['bleed_thorns'] = (combatState.player.statuses['bleed_thorns'] || 0) + 3;
+      combatState.player.statuses['bleed'] = (combatState.player.statuses['bleed'] || 0) + 1;
+      addLog('Broken Window: +3 Bleed Thorns and +1 Bleed', 'warning');
+    }
+
+    // Empty Syringe: passive flag — tracked in applyStatus
+    combatState._emptySyringeActive = inventory.some(i => i.name === 'Empty Syringe');
   }
 
   // Initialize incremental item counters — attacksTotal persists across combats via gameState.runAttacks
@@ -589,7 +614,7 @@ const PATTERN_ADDONS   = new Set(['ranged','melee','pierce','self','engage','tra
 const PATTERN_STATUSES = new Set([
   'burn','poison','weak','vulnerable','stun','oiled','dodge','power','frail','enfeebled','confused',
   'barricade','fading','thorns','shifting','formless','ritual','ruptured','bleed','slow','silence',
-  'arcane','persistence','flame_barrier',
+  'arcane','persistence','flame_barrier','bleed_thorns','wet',
 ]);
 // Statuses that do not stack — applying again just sets to 1
 const NON_STACKABLE_STATUSES = new Set(['stun', 'dodge', 'silence', 'confused']);
@@ -611,13 +636,44 @@ function addPigmentCardToHand() {
   if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
 }
 
+/**
+ * Compute extra stacks from Persistence when the player applies a non-basic status.
+ * Only applies when the source is the player (not enemy self-buffs).
+ */
+const _PERSISTENCE_EXEMPT = new Set(['power', 'defense', 'arcane', 'persistence', 'energy_per_turn',
+  'barricade', 'brutality', 'corruption', 'double_damage', 'no_draw']);
+
+function getPersistenceBonus(key) {
+  if (!combatState || !combatState.player) return 0;
+  if (_PERSISTENCE_EXEMPT.has(key)) return 0;
+  const statusDef = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA[key] : null;
+  if (!statusDef || (statusDef.type !== 'Buff' && statusDef.type !== 'Debuff')) return 0;
+  return combatState.player.statuses['persistence'] || 0;
+}
+
 function applyStatus(unit, statusName, amount) {
   if (!unit || !unit.statuses) return;
   const key = statusName.toLowerCase();
+
+  // Water-Fire interaction: applying Burn to a Wet target reduces Wet by 1 instead
+  if (key === 'burn' && unit.statuses['wet'] && unit.statuses['wet'] > 0) {
+    unit.statuses['wet'] = Math.max(0, unit.statuses['wet'] - 1);
+    if (unit.statuses['wet'] <= 0) delete unit.statuses['wet'];
+    addLog(`Burn blocked by Wet on ${unit.name || 'target'}! Wet reduced.`, 'info');
+    return;
+  }
+
   if (NON_STACKABLE_STATUSES.has(key)) {
     unit.statuses[key] = 1;
   } else {
     unit.statuses[key] = (unit.statuses[key] || 0) + amount;
+  }
+
+  // Empty Syringe: inflicting Bleed or Poison on an enemy adds +1 extra
+  if (combatState && combatState._emptySyringeActive && unit !== combatState.player
+      && (key === 'bleed' || key === 'poison')) {
+    unit.statuses[key] = (unit.statuses[key] || 0) + 1;
+    addLog(`Empty Syringe: +1 extra ${key} on ${unit.name || 'enemy'}!`, 'info');
   }
 }
 
@@ -1315,24 +1371,31 @@ function castSpell(spellName, targets = {}) {
 
   addLog(`Cast ${spellName}!`, 'info');
 
-  // Process spell effects
   // Calculate INT bonus if applicable
   const intBonus = spell.affectedByBonus ? combatState.player.bonuses.intelligence : 0;
 
+  // Future keyword: queue effects to fire at the start of next turn instead of now
+  if (spell.keywords.includes('Future')) {
+    if (!combatState.futureEffects) combatState.futureEffects = [];
+    spell.effects.forEach(effect => {
+      const modifiedEffect = { ...effect };
+      const isMagicDmgFuture = effect.move && ['magic dmg', 'magic_dmg'].includes(effect.move.toLowerCase());
+      if (modifiedEffect.value && spell.affectedByBonus && !isMagicDmgFuture) modifiedEffect.value += intBonus;
+      combatState.futureEffects.push({ effect: modifiedEffect, spell, targets });
+    });
+    addLog(`${spellName}: effects queued for next turn!`, 'info');
+    return { success: true };
+  }
+
   spell.effects.forEach(effect => {
-    // Clone effect and apply INT bonus
+    // Clone effect and apply INT bonus (skip magic dmg — calculateMoveValue handles it via Arcane)
     const modifiedEffect = { ...effect };
-    if (modifiedEffect.value && spell.affectedByBonus) {
+    const isMagicDmg = effect.move && ['magic dmg', 'magic_dmg'].includes(effect.move.toLowerCase());
+    if (modifiedEffect.value && spell.affectedByBonus && !isMagicDmg) {
       modifiedEffect.value += intBonus;
     }
     processSpellEffect(modifiedEffect, spell, targets);
   });
-
-  // Check for Future keyword - delay effect to next turn
-  if (spell.keywords.includes('Future')) {
-    // Effects are queued for next turn start
-    // This would need additional implementation
-  }
 
   return { success: true };
 }
@@ -1379,12 +1442,16 @@ function processEffect(effect, die, targets, isCantrip = false) {
       break;
 
     case 'magic dmg':
-    case 'magic_dmg':
+    case 'magic_dmg': {
+      const magicAddons = (effect.addons || []).filter(a => !['DamagedEnemies', 'LeftmostRightmost'].includes(a));
       resolvedTargets.enemies.forEach(enemy => {
-        dealDamage(enemy, value, ['magic', ...(effect.addons || [])]);
-        if (effect.element === 'fire') applyFireElement(enemy);
+        dealDamage(enemy, value, ['magic', ...magicAddons]);
+        if (effect.element) {
+          applyElement(enemy, effect.element, value, magicAddons);
+        }
       });
       break;
+    }
 
     case 'block':
       resolvedTargets.allies.forEach(ally => {
@@ -1461,21 +1528,63 @@ function processEffect(effect, die, targets, isCantrip = false) {
       addLog(`Altered into ${effect.target || 'new form'}`, 'info');
       break;
 
-    case 'assassinate':
-      // Kill enemy if health <= value
+    case 'assassinate': {
       resolvedTargets.enemies.forEach(enemy => {
-        if (enemy.health <= value) {
+        const adds = (effect.addons || []).map(a => a.toLowerCase());
+        let threshold = value || 0;
+        if (adds.includes('halfmax')) {
+          threshold = Math.ceil(enemy.maxHealth / 2);
+        } else if (adds.includes('fullmax')) {
+          threshold = enemy.maxHealth;
+        }
+        if (enemy.health <= threshold) {
           enemy.health = 0;
           addLog(`Assassinated ${enemy.name}!`, 'success');
         }
       });
       break;
+    }
+
+    case 'set': {
+      // Set target's health to a fixed value (Mend spell)
+      const setVal = effect.value || value;
+      // Prefer ally target, then player
+      const setTarget = resolvedTargets.allies.length > 0
+        ? resolvedTargets.allies[0]
+        : (resolvedTargets.player ? combatState.player : null);
+      if (setTarget) {
+        setTarget.health = Math.min(setVal, setTarget.maxHealth);
+        if (setTarget === combatState.player) window.health = setTarget.health;
+        addLog(`Set ${setTarget.name || 'Player'} health to ${setVal}`, 'success');
+      }
+      break;
+    }
 
     case 'vitality':
       combatState.player.maxHealth += value;
       combatState.player.health += value;
       addLog(`Gained ${value} max health`, 'success');
       break;
+
+    case 'gain': {
+      // "Gain X Reroll" / "Gain X Mana" / "Gain X <StatusName>"
+      const gainWhat = (effect.addons || []).join(' ').toLowerCase();
+      const gainAmt = parseInt((effect.addons || [])[0]) || value || 1;
+      const gainThing = (effect.addons || []).slice(1).join(' ').toLowerCase();
+      if (gainThing === 'reroll' || gainWhat === 'reroll') {
+        const amt = typeof value === 'number' && value > 0 ? value : gainAmt;
+        combatState.player.rerolls += amt;
+        addLog(`Gained ${amt} reroll(s)`, 'info');
+      } else if (gainThing === 'mana' || gainWhat.includes('mana')) {
+        const manaAmt = gainAmt;
+        combatState.player.mana = Math.min(combatState.player.mana + manaAmt, combatState.player.maxMana);
+        addLog(`Gained ${manaAmt} mana`, 'info');
+      } else if (gainThing) {
+        applyStatus(combatState.player, gainThing.replace(/\s+/g, '_'), gainAmt);
+        addLog(`Gained ${gainAmt} ${gainThing}`, 'info');
+      }
+      break;
+    }
   }
 }
 
@@ -1563,6 +1672,20 @@ function resolveTargets(effect, targets, isCantrip) {
   // Get preferred target from MOVES_DATA
   const moveData = typeof MOVES_DATA !== 'undefined' ? MOVES_DATA[effect.move?.toLowerCase()] : null;
   const preferredTarget = moveData?.preferredTarget || 'Enemy';
+
+  // DamagedEnemies: all enemies that have taken damage (below max health)
+  if (addons.includes('DamagedEnemies')) {
+    result.enemies = combatState.enemies.filter(e => e.health > 0 && e.health < e.maxHealth);
+    return result;
+  }
+
+  // LeftmostRightmost: leftmost and rightmost alive enemies by position
+  if (addons.includes('LeftmostRightmost')) {
+    const alive = combatState.enemies.filter(e => e.health > 0).sort((a, b) => (a.position || 0) - (b.position || 0));
+    if (alive.length > 0) result.enemies.push(alive[0]);
+    if (alive.length > 1) result.enemies.push(alive[alive.length - 1]);
+    return result;
+  }
 
   // Wide: all enemies (for damage) or all allies (for support)
   if (addons.includes('Wide')) {
@@ -1661,10 +1784,65 @@ function getAutoTargets(effect) {
  * @param {Object} target - Target entity
  */
 function applyFireElement(target) {
-  if (!target || !target.statuses) return;
-  if (!(target.statuses['burn'] > 0)) {
-    applyStatus(target, 'burn', 1);
-    addLog(`Fire: ${target.name || 'Target'} ignited! +1 Burn`, 'warning');
+  applyElement(target, 'fire');
+}
+
+/**
+ * Apply an element's on-hit effect to a target.
+ * @param {Object} target - Target entity
+ * @param {string} element - Element name (fire/water/poison/dark/blood/electric/earth)
+ * @param {number} [electricDamage] - Damage to chain for electric element
+ * @param {Array} [electricAddons] - Addons to pass for electric chains
+ */
+function applyElement(target, element, electricDamage = 0, electricAddons = []) {
+  if (!target || !target.statuses || !element || element === 'n/a') return;
+  switch (element.toLowerCase()) {
+    case 'fire':
+      if (!(target.statuses['burn'] > 0)) {
+        applyStatus(target, 'burn', 1);
+        addLog(`Fire: ${target.name || 'Target'} ignited! +1 Burn`, 'warning');
+      }
+      break;
+    case 'water':
+      applyStatus(target, 'wet', 1);
+      addLog(`Water: ${target.name || 'Target'} is now Wet!`, 'info');
+      if (target.statuses['burn']) {
+        delete target.statuses['burn'];
+        addLog(`Water: Burn extinguished on ${target.name || 'Target'}!`, 'info');
+      }
+      break;
+    case 'poison':
+      applyStatus(target, 'poison', 1);
+      addLog(`Poison: ${target.name || 'Target'} poisoned! +1 Poison`, 'warning');
+      break;
+    case 'dark':
+      if (!(target.statuses['blind'] > 0)) {
+        applyStatus(target, 'blind', 1);
+        addLog(`Dark: ${target.name || 'Target'} blinded! +1 Blind`, 'warning');
+      }
+      break;
+    case 'blood':
+      if (!(target.statuses['bleed'] > 0)) {
+        applyStatus(target, 'bleed', 1);
+        addLog(`Blood: ${target.name || 'Target'} bleeding! +1 Bleed`, 'warning');
+      }
+      break;
+    case 'electric':
+      // Electric chains to adjacent Wet targets — handled at call site with electricDamage
+      if (electricDamage > 0 && target.statuses['wet'] && target.statuses['wet'] > 0) {
+        const pos = target.position;
+        combatState.enemies.forEach(adj => {
+          if (adj !== target && adj.health > 0 && adj.statuses && adj.statuses['wet']
+              && (adj.position === pos - 1 || adj.position === pos + 1)) {
+            dealDamage(adj, electricDamage, ['magic', ...electricAddons]);
+            addLog(`Electric: chained ${electricDamage} damage to ${adj.name}!`, 'info');
+          }
+        });
+      }
+      break;
+    case 'earth':
+      // No on-hit effect
+      break;
   }
 }
 
@@ -1737,6 +1915,9 @@ function dealDamage(target, damage, addons = []) {
     dmg = Math.ceil(dmg * 1.5);
   }
 
+  // Wet: fire immunity is handled via applyStatus interception (Burn blocked when Wet)
+  // Electric chaining is handled in applyElement
+
   // Check Bruise (melee/ranged attacks deal +1 per stack; pure magic damage is exempt)
   const bruiseStacks = target.statuses['bruise'] || 0;
   const isMeleeOrRanged = !addons.includes('self') &&
@@ -1804,6 +1985,13 @@ function dealDamage(target, damage, addons = []) {
   if (target !== combatState.player && target.statuses['thorns'] && !addons.includes('self') && !_thornsRanged) {
     dealDamageToPlayer(target.statuses['thorns'], ['self'], null);
     addLog(`Thorns: ${target.statuses['thorns']} damage reflected!`, 'warning');
+  }
+
+  // Bleed Thorns — enemy takes a melee hit, player (attacker) gains bleed
+  if (target !== combatState.player && target.statuses['bleed_thorns'] && !addons.includes('self') && !_thornsRanged) {
+    const bleedStacks = target.statuses['bleed_thorns'];
+    combatState.player.statuses['bleed'] = (combatState.player.statuses['bleed'] || 0) + bleedStacks;
+    addLog(`Bleed Thorns: you gained ${bleedStacks} Bleed!`, 'warning');
   }
 
   // Deal remaining damage to health
@@ -2092,65 +2280,20 @@ function cleanseDebuffs(target, stacks) {
  * @param {Object} targets - Targets
  */
 function processSpellEffect(effect, spell, targets) {
-  // Handle special spell descriptions
-  const desc = spell.description.toLowerCase();
-
-  // Kill effects
-  if (desc.includes('kill an enemy')) {
-    const aliveEnemies = combatState.enemies.filter(e => e.health > 0);
-
-    if (desc.includes('with exactly 1 health')) {
-      aliveEnemies.forEach(e => {
-        if (e.health === 1) {
-          e.health = 0;
-          addLog(`${spell.name} killed ${e.name}!`, 'success');
-          // Harvest: gain mana
-          if (desc.includes('gain 3 mana')) {
-            combatState.player.mana = Math.min(combatState.player.mana + 3, combatState.player.maxMana);
-          }
-        }
-      });
-    } else if (desc.includes('with exactly 2 health')) {
-      aliveEnemies.forEach(e => {
-        if (e.health === 2) {
-          e.health = 0;
-          addLog(`${spell.name} killed ${e.name}!`, 'success');
-        }
-      });
-    } else if (desc.includes('half or less health')) {
-      const target = targets.enemyId ?
-        combatState.enemies.find(e => e.id === targets.enemyId) :
-        aliveEnemies[0];
-      if (target && target.health <= target.maxHealth / 2) {
-        target.health = 0;
-        addLog(`${spell.name} killed ${target.name}!`, 'success');
+  // "Self/Ally gains X Status" — apply a status to player or chosen ally (e.g. Bind: 1 Buffer)
+  if (effect.move && effect.move.toLowerCase() === 'self/ally') {
+    const addons = effect.addons || [];
+    const numIdx = addons.findIndex(a => !isNaN(parseInt(a)));
+    const amount = numIdx !== -1 ? parseInt(addons[numIdx]) : 1;
+    const statusName = addons.slice(numIdx + 1).join('_').toLowerCase();
+    if (statusName) {
+      const applyTo = targets.allyId
+        ? combatState.allies.find(a => a.id === targets.allyId)
+        : combatState.player;
+      if (applyTo) {
+        applyStatus(applyTo, statusName, amount);
+        addLog(`Gained ${amount} ${statusName}`, 'success');
       }
-    } else {
-      // Kill any enemy (Infinity)
-      const target = targets.enemyId ?
-        combatState.enemies.find(e => e.id === targets.enemyId) :
-        aliveEnemies[0];
-      if (target) {
-        target.health = 0;
-        addLog(`${spell.name} killed ${target.name}!`, 'success');
-      }
-    }
-    return;
-  }
-
-  // Set health effects (Mend)
-  if (desc.includes('set self/ally to')) {
-    const match = desc.match(/set self\/ally to (\d+) health/i);
-    if (match) {
-      const targetHealth = parseInt(match[1]);
-      if (targets.allyId) {
-        const ally = combatState.allies.find(a => a.id === targets.allyId);
-        if (ally) ally.health = Math.min(targetHealth, ally.maxHealth);
-      } else {
-        combatState.player.health = Math.min(targetHealth, combatState.player.maxHealth);
-        window.health = combatState.player.health;
-      }
-      addLog(`Set health to ${targetHealth}`, 'info');
     }
     return;
   }
@@ -2457,6 +2600,14 @@ function processPlayerStartOfTurn() {
   // Process player status effects
   processStatusEffects(combatState.player, 'start');
 
+  // Fire queued Future spell effects
+  if (combatState.futureEffects && combatState.futureEffects.length > 0) {
+    combatState.futureEffects.forEach(({ effect, spell, targets }) => {
+      processSpellEffect(effect, spell, targets);
+    });
+    combatState.futureEffects = [];
+  }
+
   // Reset cooldowns
   combatState.spellCooldowns = {};
 
@@ -2677,6 +2828,9 @@ function endTurn() {
   }
 
   combatState.phase = 'end_turn';
+
+  // Pending dice expire at end of turn
+  combatState.pendingDice = [];
 
   // Ice Cream: carry over leftover energy to next turn (player can exceed maxEnergy)
   const iceCreamCount = typeof inventory !== 'undefined'
@@ -3010,7 +3164,7 @@ function executeEnemyActions() {
               let magicDmgVal = value;
               if (enemy.statuses['weak']) magicDmgVal = Math.floor(magicDmgVal * 0.75);
               dealDamageToPlayer(magicDmgVal, magicAddons, enemy);
-              if (effect.element === 'fire') applyFireElement(combatState.player);
+              if (effect.element) applyElement(combatState.player, effect.element);
               break;
             }
 
@@ -3261,6 +3415,8 @@ function dealDamageToPlayer(damage, addons, enemy) {
     damage = Math.ceil(damage * 1.5);
   }
 
+  // Wet: fire immunity is handled via applyStatus interception (Burn blocked when Wet)
+
   // Check Bruise (melee/ranged attacks deal +1 per stack)
   const bruiseStacks = player.statuses['bruise'] || 0;
   const isDirectHit = !addons || !addons.includes('self');
@@ -3289,6 +3445,13 @@ function dealDamageToPlayer(damage, addons, enemy) {
   if (player.statuses['thorns'] && enemy && isMeleeHit) {
     dealDamage(enemy, player.statuses['thorns'], ['self']);
     addLog(`Thorns: ${player.statuses['thorns']} damage reflected to ${enemy.name}!`, 'info');
+  }
+
+  // Player Bleed Thorns — enemy melee hit applies Bleed to the attacker
+  if (player.statuses['bleed_thorns'] && enemy && isMeleeHit) {
+    const bleedStacks = player.statuses['bleed_thorns'];
+    enemy.statuses['bleed'] = (enemy.statuses['bleed'] || 0) + bleedStacks;
+    addLog(`Bleed Thorns: ${enemy.name} gained ${bleedStacks} Bleed!`, 'warning');
   }
 
   // Flame Barrier — fires on any hit (not self-damage), deals Magic Dmg Fire to attacker
@@ -3454,6 +3617,19 @@ function processStatusEffects(target, timing) {
   }
 
   if (timing === 'end') {
+    // Bleed: deal X damage (= stack count) at end of turn, then ESCALATE by 1
+    if (statuses['bleed'] && statuses['bleed'] > 0) {
+      const bleedDmg = statuses['bleed'];
+      addLog(`Bleed dealt ${bleedDmg} damage to ${target.name || 'Player'}`, 'danger');
+      if (target === combatState.player) {
+        dealDamageToPlayer(bleedDmg, ['self'], null);
+      } else {
+        dealDamage(target, bleedDmg, ['self']);
+      }
+      statuses['bleed']++;
+      addLog(`Bleed escalated to ${statuses['bleed']} on ${target.name || 'Player'}`, 'warning');
+    }
+
     // Oiled: lose 1 energy at end of turn
     if (statuses['oiled'] && target === combatState.player) {
       const current = combatState.player.energy || 0;
@@ -3470,7 +3646,7 @@ function processStatusEffects(target, timing) {
     }
 
     // Decay statuses
-    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration', 'double_damage', 'intangible', 'no_draw', 'blind'];
+    const decayStatuses = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'confused', 'barricade', 'vulnerable', 'weak', 'regeneration', 'double_damage', 'intangible', 'no_draw', 'blind', 'wet'];
     decayStatuses.forEach(status => {
       if (statuses[status]) {
         statuses[status]--;
@@ -3776,9 +3952,11 @@ function cardNeedsTarget(card) {
   if (type === 'dice') return false;
   if (desc.includes('cleave') || desc.includes('all enemies') || desc.includes('indiscriminate')) return false;
   if (type === 'attack') return true;
-  // Skill cards that inflict/apply statuses on a single enemy need a target selection
-  // (excludes AoE keywords above; excludes "random target" which picks automatically)
-  if (type === 'skill' && /(?:inflict|apply)\s+/i.test(card.description || '') && !desc.includes('random target')) return true;
+  // Skill cards that target a specific enemy need target selection
+  if (type === 'skill' && !desc.includes('random target')) {
+    if (/(?:inflict|apply)\s+/i.test(card.description || '')) return true;
+    if (/target enemy/i.test(card.description || '')) return true;
+  }
   return false;
 }
 
@@ -4113,17 +4291,19 @@ function resolveCardEffect(card, target, options = {}) {
             addLog(`Bird Head: ${target.name} is Soul Linked!`, 'warning');
           }
 
-          // Brass Knuckles: inflict Bruise
+          // Brass Knuckles: inflict Bruise (scales with Persistence)
           if (inv.some(i => i.name === 'Brass Knuckles')) {
-            target.statuses['bruise'] = (target.statuses['bruise'] || 0) + 1;
-            addLog(`Brass Knuckles: ${target.name} gains 1 Bruise!`, 'warning');
+            const bruiseAmt = 1 + getPersistenceBonus('bruise');
+            target.statuses['bruise'] = (target.statuses['bruise'] || 0) + bruiseAmt;
+            addLog(`Brass Knuckles: ${target.name} gains ${bruiseAmt} Bruise!`, 'warning');
           }
 
-          // Jar of Leeches: inflict Leeches
+          // Jar of Leeches: inflict Leeches (scales with Persistence)
           if (inv.some(i => i.name === 'Jar of Leeches')) {
-            target.statuses['leeches'] = (target.statuses['leeches'] || 0) + 1;
+            const leechAmt = 1 + getPersistenceBonus('leeches');
+            target.statuses['leeches'] = (target.statuses['leeches'] || 0) + leechAmt;
             target.statuses['leeches_owner'] = 'player';
-            addLog(`Jar of Leeches: ${target.name} gains 1 Leeches!`, 'warning');
+            addLog(`Jar of Leeches: ${target.name} gains ${leechAmt} Leeches!`, 'warning');
           }
         }
 
@@ -4145,9 +4325,13 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // Draw X card(s)
+    // Draw X card(s) — skip if an earlier Exhaust clause will handle the draw via drawAfter
     const drawMatch = p.match(/Draw (\d+) cards?/i);
-    if (drawMatch) { drawCards(parseInt(drawMatch[1])); continue; }
+    if (drawMatch) {
+      const hasExhaustBefore = parts.slice(0, parts.indexOf(p)).some(pp => /Exhaust \d+ Cards?/i.test(pp) && !/random/i.test(pp) && !/in your hand/i.test(pp));
+      if (!hasExhaustBefore) drawCards(parseInt(drawMatch[1]));
+      continue;
+    }
 
     // Multi-status AoE: "Apply/Inflict N Status1 Cleave and [Apply/Inflict] N Status2 Cleave"
     // (Shockwave, Crippling Cloud, Piercing Wail) — must be checked BEFORE generic applyMatch
@@ -4229,6 +4413,8 @@ function resolveCardEffect(card, target, options = {}) {
     const infuseMatch = p.match(/(?:(\d+)\s+Infuse|Infuse\s+(\d+))/i);
     if (infuseMatch) {
       const amt = parseInt(infuseMatch[1] || infuseMatch[2]) || 1;
+      // Grow maxMana if the player hasn't had their mana pool initialized yet
+      if (player.maxMana === 0) player.maxMana = amt;
       player.mana = Math.min(player.maxMana, (player.mana || 0) + amt);
       addLog(`Infused ${amt} Mana`, 'info');
       continue;
@@ -4248,7 +4434,7 @@ function resolveCardEffect(card, target, options = {}) {
       const statusKey = goForEyesMatch[2].toLowerCase();
       if (target) {
         const isAttacking = target.currentIntent && target.currentIntent.some(
-          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg')
+          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg' || e.move === 'Magic Dmg')
         );
         if (isAttacking) {
           target.statuses[statusKey] = (target.statuses[statusKey] || 0) + stacks;
@@ -4265,7 +4451,7 @@ function resolveCardEffect(card, target, options = {}) {
     if (spotWeaknessM) {
       if (target) {
         const isAttacking = target.currentIntent && target.currentIntent.some(
-          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg')
+          intent => intent.face && intent.face.effects && intent.face.effects.some(e => e.move === 'Dmg' || e.move === 'Magic Dmg')
         );
         if (isAttacking) {
           const gain = parseInt(spotWeaknessM[1]);
@@ -5067,9 +5253,7 @@ function resolveCardEffect(card, target, options = {}) {
     const nightmarePickMatch = p.match(/Choose a Card\. Next turn, Conjure (\d+) copies of that Card to your Hand/i);
     if (nightmarePickMatch) {
       const nc = parseInt(nightmarePickMatch[1]);
-      if (combatState.hand.length > 0) {
-        combatState._pendingCardPick = { action: 'nightmare', pile: 'hand', count: 1, _nightmareCount: nc };
-      }
+      combatState._pendingCardPick = { action: 'nightmare', pile: 'hand', count: 1, _nightmareCount: nc };
       continue;
     }
 
@@ -5236,8 +5420,13 @@ function resolveCardEffect(card, target, options = {}) {
     if (/Exhaust \d+ Cards?/i.test(p) && !/random/i.test(lower) && !/in your hand/i.test(lower)) {
       const cntM = p.match(/Exhaust (\d+)/i);
       const cnt = cntM ? parseInt(cntM[1]) : 1;
+      // Look ahead for a Draw N Cards clause in the remaining parts so we can draw AFTER exhausting
+      const drawAheadM = parts.slice(parts.indexOf(p) + 1).join(' ').match(/Draw (\d+) Cards?/i);
+      const drawAfter = drawAheadM ? parseInt(drawAheadM[1]) : 0;
       if (combatState.hand.length > 0) {
-        combatState._pendingCardPick = { action: 'exhaust', pile: 'hand', count: Math.min(cnt, combatState.hand.length) };
+        combatState._pendingCardPick = { action: 'exhaust', pile: 'hand', count: Math.min(cnt, combatState.hand.length), drawAfter };
+      } else if (drawAfter > 0) {
+        drawCards(drawAfter);
       }
       continue;
     }
@@ -5569,6 +5758,263 @@ function onCardExhausted(card) {
   }
 }
 
+// ============== PENDING DICE SYSTEM ==============
+
+/**
+ * Add a pending die entry after rolling a Dice-type card.
+ * Called by the UI after the 3D animation resolves.
+ * @param {string} cardName - Name of the die card rolled
+ * @param {number} faceIndex - 0-based index of the rolled face
+ * @returns {Object} The new pending entry
+ */
+function addPendingDie(cardName, faceIndex) {
+  if (!combatState) return null;
+
+  const diceDef = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === cardName);
+  if (!diceDef) return null;
+
+  const baseFace = diceDef.faces[faceIndex];
+  if (!baseFace) return null;
+
+  // Check if this face was made blank by Single Use
+  const suKey = cardName + '_' + faceIndex;
+  const isBlankFromSU = !!(combatState._usedSingleUseFaces && combatState._usedSingleUseFaces[suKey]);
+
+  const face = isBlankFromSU ? { ...baseFace, text: '—', isBlank: true, effects: [] } : { ...baseFace };
+
+  // Apply Druid scaling bonus to the effective value in each effect
+  const druidBonus = (combatState._druidScaling && combatState._druidScaling[suKey]) || 0;
+  let scaledEffects = face.effects || [];
+  if (druidBonus > 0 && (face.addons || []).includes('druid')) {
+    scaledEffects = scaledEffects.map(eff => ({ ...eff, value: (eff.value || 0) + druidBonus }));
+  }
+
+  const entry = {
+    id: 'pd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    cardName,
+    faceIndex,
+    face: { ...face, effects: scaledEffects },
+    scalingKey: suKey
+  };
+
+  combatState.pendingDice.push(entry);
+
+  // Cantrip: auto-fire to a random preferred target immediately; tile STAYS in panel for manual use
+  if (!face.isBlank && (face.addons || []).includes('cantrip')) {
+    _applyPendingDieFaceEffects(entry, null, true);
+    addLog(`${cardName}: Cantrip triggered automatically!`, 'info');
+  }
+
+  return entry;
+}
+
+/**
+ * Apply the effects of a pending die face.
+ * Internal helper; also called by usePendingDie.
+ * @param {Object} entry - The pending die entry
+ * @param {string|null} targetId - Enemy target id (for damage effects); null picks randomly
+ * @param {boolean} cantripMode - If true, picks random targets without removing the entry
+ */
+function _applyPendingDieFaceEffects(entry, targetId, cantripMode) {
+  if (!combatState) return;
+  const face = entry.face;
+  if (face.isBlank || !face.effects || face.effects.length === 0) return;
+
+  const player = combatState.player;
+  const livingEnemies = combatState.enemies.filter(e => e.health > 0);
+
+  for (const eff of face.effects) {
+    const move = (eff.move || '').toLowerCase();
+    const val  = eff.value || 0;
+    const addons = eff.addons || [];
+    const isCleave = addons.some(a => a.toLowerCase() === 'cleave');
+    const isMelee  = addons.some(a => a.toLowerCase() === 'melee');
+
+    if (move === 'dmg') {
+      // Resolve damage target(s)
+      let targets = [];
+      if (isCleave) {
+        targets = livingEnemies;
+      } else {
+        const t = targetId ? livingEnemies.find(e => e.id === targetId) : null;
+        const picked = t || (livingEnemies.length > 0 ? livingEnemies[Math.floor(Math.random() * livingEnemies.length)] : null);
+        if (picked) targets = [picked];
+      }
+      const isEngage = addons.some(a => a.toLowerCase() === 'engage');
+      for (const tgt of targets) {
+        const power = player.statuses['power'] || 0;
+        const weak  = player.statuses['weak'] ? Math.ceil(val * 0.25) : 0;
+        const engageMult = (isEngage && tgt.health >= tgt.maxHealth) ? 2 : 1;
+        const finalDmg = Math.max(0, (val + power - weak) * engageMult);
+        if (typeof dealDamage === 'function') {
+          dealDamage(tgt, finalDmg, isMelee ? 'melee' : 'ranged');
+        } else {
+          tgt.health = Math.max(0, tgt.health - Math.max(0, finalDmg - (tgt.block || 0)));
+          tgt.block  = Math.max(0, (tgt.block || 0) - finalDmg);
+        }
+        addLog(`${entry.cardName}: ${tgt.name} takes ${finalDmg} damage`, 'success');
+      }
+    } else if (move === 'block') {
+      addBlock(player, val);
+      addLog(`${entry.cardName}: +${val} Block`, 'info');
+    } else if (move === 'heal') {
+      player.health = Math.min(player.maxHealth, player.health + val);
+      if (typeof window !== 'undefined') window.health = player.health;
+      addLog(`${entry.cardName}: +${val} Health`, 'success');
+    } else if (move === 'mana') {
+      player.mana = Math.min(player.maxMana || 99, (player.mana || 0) + val);
+      addLog(`${entry.cardName}: +${val} Mana`, 'info');
+    } else if (move === 'reroll') {
+      player.rerolls = (player.rerolls || 0) + val;
+      if (typeof window !== 'undefined') window.reroll = player.rerolls;
+      addLog(`${entry.cardName}: +${val} Reroll`, 'info');
+    } else if (move === 'pain') {
+      if (typeof loseHealth === 'function') {
+        loseHealth(val);
+      } else {
+        player.health = Math.max(0, player.health - val);
+        if (typeof window !== 'undefined') window.health = player.health;
+      }
+      addLog(`${entry.cardName}: took ${val} damage`, 'danger');
+    } else if (move === 'cleanse') {
+      if (typeof cleanseDebuffs === 'function') {
+        cleanseDebuffs(player, val);
+      }
+      addLog(`${entry.cardName}: Cleanse ${val}`, 'info');
+    } else if (move === 'get') {
+      const statusKey = eff.statusKey || '';
+      if (statusKey) {
+        const persBonus = getPersistenceBonus(statusKey);
+        const finalVal = val + persBonus;
+        player.statuses[statusKey] = (player.statuses[statusKey] || 0) + finalVal;
+        const persNote = persBonus > 0 ? ` (+${persBonus} Persistence)` : '';
+        addLog(`${entry.cardName}: +${finalVal} ${statusKey}${persNote}`, 'info');
+      }
+    }
+  }
+}
+
+/**
+ * Use a pending die by id, applying its face effects.
+ * @param {string} pendingId - The pending die entry id
+ * @param {string|null} targetId - Enemy target id (for damage faces)
+ * @returns {Object} Result
+ */
+function usePendingDie(pendingId, targetId) {
+  if (!combatState) return { success: false, error: 'No combat' };
+  if (combatState.phase !== 'player_action') return { success: false, error: 'Not player turn' };
+
+  const idx = combatState.pendingDice.findIndex(e => e.id === pendingId);
+  if (idx < 0) return { success: false, error: 'Pending die not found' };
+
+  const entry = combatState.pendingDice[idx];
+  const face  = entry.face;
+
+  // Remove from pending first so effects don't see it as active
+  combatState.pendingDice.splice(idx, 1);
+
+  if (!face.isBlank) {
+    // Check if dmg face needs a target
+    const needsTarget = (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+    if (needsTarget && !targetId) {
+      // Auto-pick random enemy
+      const living = combatState.enemies.filter(e => e.health > 0);
+      if (living.length > 0) targetId = living[Math.floor(Math.random() * living.length)].id;
+    }
+
+    _applyPendingDieFaceEffects(entry, targetId, false);
+
+    // Single Use: mark face as consumed for this combat
+    if ((face.addons || []).includes('singleUse')) {
+      combatState._usedSingleUseFaces[entry.scalingKey] = true;
+      addLog(`${entry.cardName}: Single Use face consumed`, 'info');
+    }
+
+    // Druid scaling: increment bonus by 3 for this face
+    if ((face.addons || []).includes('druid')) {
+      combatState._druidScaling[entry.scalingKey] = ((combatState._druidScaling[entry.scalingKey] || 0) + 3);
+      addLog(`${entry.cardName}: Druid — this face is now +3 stronger`, 'info');
+    }
+  } else {
+    addLog(`${entry.cardName}: blank face — nothing happens`, 'info');
+  }
+
+  // Check victory
+  const allDead = combatState.enemies.every(e => e.health <= 0);
+  if (allDead) {
+    combatState.phase = 'victory';
+    addLog('Victory!', 'success');
+    return { success: true, phase: 'victory' };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Reroll all pending dice at once.
+ * Costs 1 reroll. Each die rolls a new random face.
+ * @returns {Object} Result
+ */
+function rerollAllPending() {
+  if (!combatState) return { success: false, error: 'No combat' };
+  if (combatState.phase !== 'player_action') return { success: false, error: 'Not player turn' };
+  if ((combatState.player.rerolls || 0) < 1) return { success: false, error: 'No rerolls left' };
+  if (combatState.pendingDice.length === 0) return { success: false, error: 'No dice to reroll' };
+
+  combatState.player.rerolls--;
+  if (typeof window !== 'undefined') window.reroll = combatState.player.rerolls;
+
+  const newPending = [];
+  for (const entry of combatState.pendingDice) {
+    const diceDef = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === entry.cardName);
+    if (!diceDef) { newPending.push(entry); continue; }
+
+    const newFaceIndex = Math.floor(Math.random() * diceDef.faces.length);
+    const newEntry = addPendingDieRaw(entry.cardName, newFaceIndex);
+    if (newEntry) newPending.push(newEntry);
+  }
+
+  combatState.pendingDice = newPending;
+  addLog(`Rerolled all pending dice (${combatState.player.rerolls} rerolls remaining)`, 'info');
+  return { success: true };
+}
+
+/**
+ * Low-level helper: build a pending entry without pushing to pendingDice.
+ * Used by rerollAllPending to batch-replace entries.
+ */
+function addPendingDieRaw(cardName, faceIndex) {
+  const diceDef = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === cardName);
+  if (!diceDef) return null;
+  const baseFace = diceDef.faces[faceIndex];
+  if (!baseFace) return null;
+
+  const suKey = cardName + '_' + faceIndex;
+  const isBlankFromSU = !!(combatState._usedSingleUseFaces && combatState._usedSingleUseFaces[suKey]);
+  const face = isBlankFromSU ? { ...baseFace, text: '—', isBlank: true, effects: [] } : { ...baseFace };
+
+  const druidBonus = (combatState._druidScaling && combatState._druidScaling[suKey]) || 0;
+  let scaledEffects = face.effects || [];
+  if (druidBonus > 0 && (face.addons || []).includes('druid')) {
+    scaledEffects = scaledEffects.map(eff => ({ ...eff, value: (eff.value || 0) + druidBonus }));
+  }
+
+  const entry = {
+    id: 'pd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    cardName, faceIndex,
+    face: { ...face, effects: scaledEffects },
+    scalingKey: suKey
+  };
+
+  // Handle cantrip on reroll too
+  if (!face.isBlank && (face.addons || []).includes('cantrip')) {
+    _applyPendingDieFaceEffects(entry, null, true);
+    addLog(`${cardName}: Cantrip triggered on reroll!`, 'info');
+  }
+
+  return entry;
+}
+
 // ============== EXPORTS ==============
 
 if (typeof window !== 'undefined') {
@@ -5588,6 +6034,9 @@ if (typeof window !== 'undefined') {
     endCombat,
     addLog,
     getEffectiveCost,
-    onCardExhausted
+    onCardExhausted,
+    addPendingDie,
+    usePendingDie,
+    rerollAllPending
   };
 }

@@ -940,6 +940,16 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         applyCardBonus("Dexecutioner", /(\d+) Assassinate/i, weaponLevel);
         weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
+
+      } else if (weapon.name === "Rusty Razor") {
+        applyCardBonus("Rusty Razor", /Inflict (\d+) Bleed/i, weaponLevel);
+        weaponRewardText = rewardClauseText;
+        weaponEffectActivated = true;
+
+      } else if (weapon.name === "Bag o' Glitter") {
+        applyCardBonus("Bag o' Glitter", /Inflict (\d+) Blind/i, weaponLevel);
+        weaponRewardText = rewardClauseText;
+        weaponEffectActivated = true;
       }
     });
 

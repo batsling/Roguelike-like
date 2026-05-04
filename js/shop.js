@@ -225,12 +225,17 @@ function showShopModal(purchasedIndices = []) {
       });
     }
 
-    const inPool  = charTag ? allCards.filter(c => Array.isArray(c.tags) && c.tags.includes(charTag)) : allCards;
-    // Outside pool: not in character's class AND not in any other class-specific pool
+    // Hero-tagged cards are always included in any character's pool
+    const heroCards = allCards.filter(c => Array.isArray(c.tags) && c.tags.includes('hero'));
+    const classPool = charTag ? allCards.filter(c => Array.isArray(c.tags) && c.tags.includes(charTag)) : allCards;
+    const inPool    = charTag
+      ? [...classPool, ...heroCards.filter(h => !classPool.find(c => c.name === h.name))]
+      : allCards;
+    // Outside pool: not in character's class AND not in any other class-specific pool AND not hero
     const outPool = charTag
       ? allCards.filter(c => {
           const tags = Array.isArray(c.tags) ? c.tags : [];
-          return !tags.includes(charTag) && !tags.some(t => _classTags.has(t));
+          return !tags.includes(charTag) && !tags.some(t => _classTags.has(t)) && !tags.includes('hero');
         })
       : [];
 
