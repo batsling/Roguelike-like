@@ -2216,6 +2216,35 @@ function attachCombatEventListeners(combat) {
         checkCombatEnd();
       }
     });
+
+    // Drag die tile to enemy
+    el.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      const cs = window.CombatEngine && window.CombatEngine.getCombatState();
+      if (!cs || cs.phase !== 'player_action') return;
+      const id = el.dataset.pendingId;
+      const entry = cs.pendingDice.find(en => en.id === id);
+      if (!entry) return;
+      const face = entry.face || {};
+      const needsTarget = !face.isBlank && (face.effects || []).some(ef => ef.move === 'dmg' && !(ef.addons || []).some(a => a.toLowerCase() === 'cleave'));
+      if (!needsTarget) return; // non-targeting tiles don't need drag
+      e.stopPropagation();
+      const rect = el.getBoundingClientRect();
+      _dragState = {
+        isDieTile: true,
+        pendingId: id,
+        tileEl: el,
+        startX: e.clientX,
+        startY: e.clientY,
+        offsetX: e.clientX - rect.left,
+        offsetY: e.clientY - rect.top,
+        clone: null,
+        moved: false,
+        hoveredEnemy: null,
+        cardEl: null,
+        isDice: false
+      };
+    });
   });
 
   // Reroll All button
@@ -2420,11 +2449,12 @@ function ensureDragAndKeyListeners() {
 
     if (!_dragState.moved && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
       _dragState.moved = true;
-      if (_dragState.cardEl) _dragState.cardEl.style.opacity = '0.3';
+      const sourceEl = _dragState.cardEl || _dragState.tileEl;
+      if (sourceEl) sourceEl.style.opacity = '0.3';
 
-      // Build clone from live DOM card element
-      const rect  = _dragState.cardEl.getBoundingClientRect();
-      const clone = _dragState.cardEl.cloneNode(true);
+      // Build clone from live DOM element (card or die tile)
+      const rect  = sourceEl ? sourceEl.getBoundingClientRect() : { width: 80, height: 80 };
+      const clone = sourceEl ? sourceEl.cloneNode(true) : document.createElement('div');
       clone.id    = 'combat-drag-clone';
       clone.removeAttribute('onmouseover');
       clone.removeAttribute('onmouseout');
@@ -2471,10 +2501,11 @@ function ensureDragAndKeyListeners() {
   // --- Mouse up: play card on enemy drop or cancel ---
   document.addEventListener('mouseup', e => {
     if (!_dragState) return;
-    const { cardIndex, clone, moved, cardEl } = _dragState;
+    const { cardIndex, clone, moved, cardEl, isDieTile, pendingId, tileEl } = _dragState;
     _dragState = null;
     if (clone)   clone.remove();
     if (cardEl)  cardEl.style.opacity = '';
+    if (tileEl)  tileEl.style.opacity = '';
     document.querySelectorAll('.enemy-card').forEach(el => el.style.outline = '');
 
     // Reset dice board highlight
@@ -2485,6 +2516,20 @@ function ensureDragAndKeyListeners() {
 
     const combat = window.CombatEngine && window.CombatEngine.getCombatState();
     if (!combat || combat.phase !== 'player_action') return;
+
+    // Pending die tile drag → drop on enemy
+    if (isDieTile) {
+      const enemyEl = document.elementFromPoint(e.clientX, e.clientY)?.closest('.enemy-card');
+      if (enemyEl) {
+        window._selectedPendingId = null;
+        const snap = captureHPSnapshot(combat);
+        window.CombatEngine.usePendingDie(pendingId, enemyEl.dataset.enemyId);
+        showHPDiffs(snap, combat);
+        updateCombatDisplay();
+        checkCombatEnd();
+      }
+      return;
+    }
 
     const card = (combat.hand || [])[cardIndex];
     if (!card) return;
@@ -3333,31 +3378,22 @@ function cleanup3DDice() {}
 
 /**
  * Called instead of normal play when a Dice-type card is clicked.
- * All dice roll into the pending panel; Isaac's D6 transform is applied when the tile is clicked.
+ * All dice go straight to the board — no popup.
+ * Isaac's D6 transform is applied when the tile is clicked.
  */
 function handleDiceCardPlay(diceCardIndex, combat) {
   const hand     = combat.hand || [];
   const diceCard = hand[diceCardIndex];
   if (!diceCard) return;
 
-  // Isaac's D6 and all Slice & Dice dice: go straight to the board (no popup)
-  const isInstantDie = diceCard.name === "Isaac's D6" || diceCard.game === 'Slice & Dice';
-  if (isInstantDie) {
-    window.CombatEngine.playCard(diceCardIndex, null);
-    const diceDef   = (typeof DICE_DATA !== 'undefined') ? DICE_DATA.find(d => d.name === diceCard.name) : null;
-    const sides     = diceDef ? diceDef.faces.length : 6;
-    const faceIndex = Math.floor(Math.random() * sides);
-    if (window.CombatEngine && window.CombatEngine.addPendingDie) {
-      window.CombatEngine.addPendingDie(diceCard.name, faceIndex);
-    }
-    updateCombatDisplay();
-    return;
-  }
-
-  // All other dice: roll animation then add to panel
   window.CombatEngine.playCard(diceCardIndex, null);
+  const diceDef   = (typeof DICE_DATA !== 'undefined') ? DICE_DATA.find(d => d.name === diceCard.name) : null;
+  const sides     = diceDef ? diceDef.faces.length : 6;
+  const faceIndex = Math.floor(Math.random() * sides);
+  if (window.CombatEngine && window.CombatEngine.addPendingDie) {
+    window.CombatEngine.addPendingDie(diceCard.name, faceIndex);
+  }
   updateCombatDisplay();
-  _showDiceRollAndPend(diceCard, combat);
 }
 
 /**
@@ -3759,28 +3795,25 @@ function renderPendingDicePanel(combat) {
       needsTarget ? `<span style="font-size:8px;background:#5a3a00;color:#ffcc44;border-radius:3px;padding:0 3px;">Target</span>` : ''
     ].filter(Boolean).join(' ');
 
-    const tileColor = isBlank ? '#555' : '#0d0d0d';
-    const defaultBorder = isBlank ? '#444' : (needsTarget ? '#cc6633' : (tagBorderColor || '#336633'));
-    const tileBorder = isSelected ? gold : defaultBorder;
+    const selectedGlow = isSelected ? `box-shadow:0 0 16px ${gold}aa;` : '';
 
     return `<div class="pending-die-tile" data-pending-id="${entry.id}"
       style="
-        min-width:80px; max-width:110px; padding:4px 6px;
-        background:${tileColor}; border:2px solid ${tileBorder};
+        padding:4px 6px;
+        background:transparent;
         border-radius:8px; cursor:${isBlank ? 'default' : 'pointer'};
         display:flex; flex-direction:column; align-items:center; gap:2px;
-        flex-shrink:0;
-        ${isSelected ? `box-shadow:0 0 12px ${gold}88;` : ''}
-        transition:border-color 0.1s, box-shadow 0.1s;
+        ${selectedGlow}
+        transition:box-shadow 0.1s;
       ">
       <div style="font-size:9px;color:#aaa;line-height:1;">${entry.cardName}</div>
       <div class="pending-dice-3d"
         data-pending-id="${entry.id}"
         data-face-num="${entry.faceIndex + 1}"
         data-card-name="${entry.cardName}"
-        style="width:66px;height:66px;pointer-events:none;flex-shrink:0;">
+        style="width:90px;height:90px;pointer-events:none;flex-shrink:0;">
       </div>
-      <div style="font-size:10px;color:${isBlank ? '#666' : '#ddd'};text-align:center;line-height:1.2;max-width:100px;">
+      <div style="font-size:10px;color:${isBlank ? '#666' : '#ddd'};text-align:center;line-height:1.2;max-width:110px;">
         ${getDiceFaceDynamicText(face, combat)}
       </div>
       <div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">
