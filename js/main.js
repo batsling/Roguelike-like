@@ -4851,10 +4851,11 @@ function showSmithChoiceModal() {
   const startingUpgradeable = [];
   startingEntries.forEach(entry => {
     const template = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA.find(c => c.name === entry.cardName) : null;
-    if (template && template.canUpgrade && !upgradedStarting[entry.cardName]) {
-      // Add one entry per copy so the player sees their full deck
-      const count = entry.count || 1;
-      for (let i = 0; i < count; i++) {
+    if (template && template.canUpgrade) {
+      const totalCount   = entry.count || 1;
+      const upgradedCount = upgradedStarting[entry.cardName] || 0;
+      const remaining    = totalCount - upgradedCount;
+      for (let i = 0; i < remaining; i++) {
         startingUpgradeable.push({ ...template, _isStarting: true });
       }
     }
@@ -4973,10 +4974,10 @@ function showSmithChoiceModal() {
       const card = upgradeable[idx];
       if (card._isStarting) {
         if (!gameState.upgradedStartingCards) gameState.upgradedStartingCards = {};
-        gameState.upgradedStartingCards[card.name] = true;
+        gameState.upgradedStartingCards[card.name] = (gameState.upgradedStartingCards[card.name] || 0) + 1;
         upgradeCount++;
       } else {
-        const deckIdx = gameState.deck.findIndex(c => c === card || (c.name === card.name && !c.upgraded));
+        const deckIdx = gameState.deck.findIndex(c => c === card);
         if (deckIdx !== -1) {
           gameState.deck[deckIdx].upgraded = true;
           if (gameState.deck[deckIdx].upgradedDescription) {

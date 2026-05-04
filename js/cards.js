@@ -388,7 +388,7 @@ function addRandomPigmentToHand() {
   if (!combat) return;
 
   const pigments = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
-    .filter(c => c.isStatusCard);
+    .filter(c => c.isStatusCard && c.tags && c.tags.includes('pigment'));
   if (pigments.length === 0) return;
 
   const card = { ...pigments[Math.floor(Math.random() * pigments.length)] };
@@ -407,11 +407,13 @@ function addRandomPigmentToDeck() {
   if (!combat) return;
 
   const pigments = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
-    .filter(c => c.isStatusCard);
+    .filter(c => c.isStatusCard && c.tags && c.tags.includes('pigment'));
   if (pigments.length === 0) return;
 
   const card = { ...pigments[Math.floor(Math.random() * pigments.length)] };
-  combat.discardPile.push(card);
+  // Insert at a random position in the draw pile so it can be drawn soon
+  const insertIdx = Math.floor(Math.random() * (combat.drawPile.length + 1));
+  combat.drawPile.splice(insertIdx, 0, card);
 
   if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
 }

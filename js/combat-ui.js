@@ -425,7 +425,6 @@ function renderCombatUI(combat, container) {
         ${renderLogPanel(combat)}
       </div>
 
-      ${renderPendingDicePanel(combat)}
       ${renderHandZone(combat)}
       ${renderBottomBar(combat)}
     </div>
@@ -945,6 +944,9 @@ function renderPlayerZone(combat) {
           ${renderPowersZone(combat)}
         </div>
 
+        <!-- Dice board (between powers and actions) -->
+        ${renderInlineeDiceBoard(combat)}
+
         <!-- End turn + energy pips -->
         ${renderActionsZone(combat)}
       </div>
@@ -1098,6 +1100,107 @@ window._showCombatPowers = function() {
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
 };
+
+function renderInlineeDiceBoard(combat) {
+  const pending = (combat && combat.pendingDice) || [];
+
+  const isDieCard = c => (c.type || '').toLowerCase() === 'dice';
+  const hasDiceInDeck = combat && (
+    (combat.hand        || []).some(isDieCard) ||
+    (combat.drawPile    || []).some(isDieCard) ||
+    (combat.discardPile || []).some(isDieCard) ||
+    (combat.exhaustPile || []).some(isDieCard)
+  );
+
+  if (pending.length === 0 && !hasDiceInDeck) return '';
+
+  const rerolls = (combat.player && combat.player.rerolls) || 0;
+  const gold   = C.gold   || '#f0c850';
+  const border = C.border || 'rgba(255,255,255,0.15)';
+
+  const tilesHtml = pending.map(entry => {
+    const face = entry.face || {};
+    const addons  = face.addons || [];
+    const isBlank = face.isBlank;
+    const isCantrip   = addons.includes('cantrip');
+    const isSingleUse = addons.includes('singleUse');
+    const isDruid     = addons.includes('druid');
+    const needsTarget = !isBlank && (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+    const isSelected  = window._selectedPendingId === entry.id;
+
+    const addonBadges = [
+      isCantrip   ? `<span style="font-size:8px;background:#4a2c8a;color:#c09aff;border-radius:3px;padding:0 3px;">Cantrip</span>` : '',
+      isSingleUse ? `<span style="font-size:8px;background:#8a2c2c;color:#ffaaaa;border-radius:3px;padding:0 3px;">1-Use</span>` : '',
+      isDruid     ? `<span style="font-size:8px;background:#2c5a2c;color:#aaffaa;border-radius:3px;padding:0 3px;">Druid</span>` : '',
+      needsTarget ? `<span style="font-size:8px;background:#5a3a00;color:#ffcc44;border-radius:3px;padding:0 3px;">Target</span>` : ''
+    ].filter(Boolean).join(' ');
+
+    const selectedGlow = isSelected ? `box-shadow:0 0 16px ${gold}aa;` : '';
+
+    return `<div class="pending-die-tile" data-pending-id="${entry.id}"
+      style="
+        padding:4px 6px;
+        background:transparent;
+        border-radius:8px; cursor:${isBlank ? 'default' : 'pointer'};
+        display:flex; flex-direction:column; align-items:center; gap:2px;
+        ${selectedGlow}
+        transition:box-shadow 0.1s;
+      ">
+      <div style="font-size:9px;color:#aaa;line-height:1;">${entry.cardName}</div>
+      <div class="pending-dice-3d"
+        data-pending-id="${entry.id}"
+        data-face-num="${entry.faceIndex + 1}"
+        data-card-name="${entry.cardName}"
+        style="width:90px;height:90px;pointer-events:none;flex-shrink:0;">
+      </div>
+      <div style="font-size:10px;color:${isBlank ? '#666' : '#ddd'};text-align:center;line-height:1.2;max-width:110px;">
+        ${getDiceFaceDynamicText(face, combat)}
+      </div>
+      <div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">
+        ${addonBadges}
+      </div>
+    </div>`;
+  }).join('');
+
+  const emptyHint = pending.length === 0 ? `
+    <div style="
+      display:flex; align-items:center; justify-content:center;
+      color:#555; font-size:11px; font-style:italic; pointer-events:none;
+      padding:6px 0; min-height:36px; width:100%;
+    ">play dice cards to roll</div>` : '';
+
+  return `
+    <div id="pending-dice-panel" style="
+      flex:1; min-width:110px; max-width:320px;
+      display:flex; flex-direction:column;
+      background:rgba(0,0,0,0.35);
+      border-left:1px solid ${border};
+      border-right:1px solid ${border};
+      padding:6px 8px;
+      align-self:stretch;
+    ">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-shrink:0;">
+        <div style="font-size:10px;font-weight:bold;color:${gold};">🎲 Dice Board</div>
+        ${rerolls > 0 ? `
+          <button id="pending-reroll-all-btn" style="
+            padding:2px 7px;
+            background:#5c3a0a; border:1px solid #c07820;
+            color:${gold}; border-radius:5px; font-size:9px; cursor:pointer;
+          ">🔄 (${rerolls})</button>
+        ` : `<div style="font-size:9px;color:#666;">No rerolls</div>`}
+      </div>
+      <div id="dice-board-drop-zone" style="
+        display:grid;
+        grid-template-columns:repeat(auto-fill,minmax(90px,1fr));
+        gap:4px;
+        overflow-y:auto;
+        flex:1;
+      ">
+        ${tilesHtml}${emptyHint}
+      </div>
+    </div>
+  `;
+}
 
 function renderActionsZone(combat) {
   const isPlayerTurn = combat.phase === 'player_action';
