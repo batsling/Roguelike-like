@@ -2827,6 +2827,14 @@ function endTurn() {
     return { success: false, error: 'Cannot end turn now' };
   }
 
+  // Block end turn if any pending die face has the mandatory addon
+  const mandatoryDie = (combatState.pendingDice || []).find(
+    entry => (entry.face && entry.face.addons || []).includes('mandatory')
+  );
+  if (mandatoryDie) {
+    return { success: false, error: 'mandatory_die', dieName: mandatoryDie.cardName };
+  }
+
   combatState.phase = 'end_turn';
 
   // Pending dice expire at end of turn

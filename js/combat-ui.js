@@ -1247,21 +1247,34 @@ function renderActionsZone(combat) {
       ` : ''}
 
       <!-- End Turn button -->
-      <button id="combat-end-turn-btn" style="
-        padding:12px 18px;
-        background:${isPlayerTurn
-          ? 'linear-gradient(145deg,#2e7d32,#1b5e20)'
-          : 'linear-gradient(145deg,#3d3d3d,#2a2a2a)'};
-        border:3px solid ${isPlayerTurn ? '#4CAF50' : '#555'};
-        border-radius:10px; color:white;
-        cursor:${isPlayerTurn ? 'pointer' : 'not-allowed'};
-        font-weight:bold; font-size:14px;
-        width:118px;
-        box-shadow:${isPlayerTurn ? '0 0 12px rgba(76,175,80,0.4)' : 'none'};
-        transition:all 0.15s; letter-spacing:0.5px;
-      " ${!isPlayerTurn ? 'disabled' : ''}>
-        ${isPlayerTurn ? 'End Turn' : 'Enemy Turn'}
-      </button>
+      ${(() => {
+        const hasMandatory = isPlayerTurn && (combat.pendingDice || []).some(
+          e => (e.face && e.face.addons || []).includes('mandatory')
+        );
+        const bg     = !isPlayerTurn  ? 'linear-gradient(145deg,#3d3d3d,#2a2a2a)'
+                     : hasMandatory   ? 'linear-gradient(145deg,#7a2a00,#4a1500)'
+                     :                  'linear-gradient(145deg,#2e7d32,#1b5e20)';
+        const bdr    = !isPlayerTurn  ? '#555'
+                     : hasMandatory   ? '#e74c3c'
+                     :                  '#4CAF50';
+        const shadow = !isPlayerTurn  ? 'none'
+                     : hasMandatory   ? '0 0 12px rgba(231,76,60,0.5)'
+                     :                  '0 0 12px rgba(76,175,80,0.4)';
+        const label  = !isPlayerTurn  ? 'Enemy Turn'
+                     : hasMandatory   ? '🎲 Use Die!'
+                     :                  'End Turn';
+        return `<button id="combat-end-turn-btn" style="
+          padding:12px 18px;
+          background:${bg};
+          border:3px solid ${bdr};
+          border-radius:10px; color:white;
+          cursor:${isPlayerTurn ? 'pointer' : 'not-allowed'};
+          font-weight:bold; font-size:14px;
+          width:118px;
+          box-shadow:${shadow};
+          transition:all 0.15s; letter-spacing:0.5px;
+        " ${!isPlayerTurn ? 'disabled' : ''}>${label}</button>`;
+      })()}
 
     </div>
   `;
@@ -2211,6 +2224,12 @@ function attachCombatEventListeners(combat) {
       if (!window.CombatEngine) return;
       const snap   = captureHPSnapshot(window.CombatEngine.getCombatState());
       const result = window.CombatEngine.endTurn();
+      if (result && result.error === 'mandatory_die') {
+        if (typeof createNotification === 'function') {
+          createNotification(`Must use ${result.dieName || 'pending die'} before ending turn!`, '#e74c3c', '🎲');
+        }
+        return;
+      }
       if (result && result.success) {
         const combat = window.CombatEngine.getCombatState();
         showHPDiffs(snap, combat);
