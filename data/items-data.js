@@ -43,7 +43,7 @@ var ITEMS_DATA = [
     "name": "Barrel",
     "rarity": "Uncommon",
     "type": "Weapon",
-    "description": "Add the Card \"Barrel\" into your Deck. If you obtain at least 1 fish, Gain (1/2) random fish",
+    "description": "Add the Card \"Barrel\" into your Deck. If you obtain at least 1 fish in the roguelike you're playing, Gain (1/2) random fish in this game",
     "game": "Enter the Gungeon",
     "tags": [
       "gun",

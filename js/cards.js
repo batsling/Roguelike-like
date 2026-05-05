@@ -221,19 +221,14 @@ function upgradeCardInDeck(index) {
   if (card.upgradedCost !== null && card.upgradedCost !== undefined) card.cost = card.upgradedCost;
 
   // Weapon cards: bump weapon level and update the Trigger indicator in the live description.
-  // Do NOT replace description with upgradedDescription — that would wipe accumulated bonuses.
+  // Weapon cards: bump level only. Do NOT replace description — accumulated bonus values must persist.
+  // The verification screen reads weapon.level to show the correct (+1/+2) reward automatically.
   if (card.tags && card.tags.includes('weapon')) {
     const weaponItem = (gameState.inventory || []).find(i => i.name === card.name && i.type === 'Weapon');
     if (weaponItem) {
       weaponItem.level = (weaponItem.level || 1) + 1;
-      // Swap the full "Trigger: ..." phrase from the upgraded template into the live description.
-      const upgTemplate = card.upgradedDescription || '';
-      const upgTrigger = upgTemplate.match(/Trigger: [^.]+\./);
-      if (upgTrigger) {
-        card.description = card.description.replace(/Trigger: [^.]+\./, upgTrigger[0]);
-      }
       if (typeof createNotification === 'function') {
-        createNotification(`${card.name} upgraded! Weapon trigger now Lv${weaponItem.level}`, '#ff9800', '⬆️');
+        createNotification(`${card.name} upgraded! Verification reward is now Lv${weaponItem.level}`, '#ff9800', '⬆️');
       }
       saveCurrentGame();
       return true;

@@ -912,11 +912,6 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
               pattern,
               (match, num) => match.replace(num, String(parseInt(num) + bonus))
             );
-            // Also update the "Trigger: +N" indicator if present
-            card.description = card.description.replace(
-              /Trigger: \+(\d+)/,
-              () => `Trigger: +${bonus}`
-            );
             updated = true;
           });
         if (updated && typeof saveCurrentGame === 'function') saveCurrentGame();
