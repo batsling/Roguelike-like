@@ -5424,12 +5424,12 @@ function showDiceTrayModal() {
     const faces = getFaceList(card);
     const facesHTML = faces.map(f => {
       const isBlank = f.isBlank || !f.text || f.text === 'X' || f.text === '—';
-      return `<div style="
+      const pip = ['⚀','⚁','⚂','⚃','⚄','⚅'][f.face-1] || '🎲';
+      return `<div data-face="${f.face}" style="
         background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
-        border-radius:6px;padding:4px 3px;display:flex;flex-direction:column;align-items:center;gap:2px;
-        min-width:54px;">
-        <div style="font-size:18px;line-height:1;">${['⚀','⚁','⚂','⚃','⚄','⚅'][f.face-1] || '🎲'}</div>
-        <div style="font-size:8px;color:${isBlank?'#555':'#ddd'};text-align:center;line-height:1.3;max-width:56px;word-break:break-word;">
+        border-radius:6px;padding:5px 7px;display:flex;flex-direction:row;align-items:center;gap:7px;">
+        <div style="font-size:20px;line-height:1;flex-shrink:0;">${pip}</div>
+        <div style="font-size:9px;color:${isBlank?'#444':'#ddd'};line-height:1.3;word-break:break-word;">
           ${isBlank ? '—' : (f.text || '—')}
         </div>
       </div>`;
@@ -5458,7 +5458,7 @@ function showDiceTrayModal() {
 
     return `
       <div style="background:rgba(10,8,5,0.85);border:2px solid #7d4e00;border-radius:12px;
-        padding:14px;display:flex;flex-direction:column;gap:10px;min-width:260px;max-width:320px;">
+        padding:14px;display:flex;flex-direction:column;gap:10px;min-width:300px;max-width:400px;">
         <div style="display:flex;align-items:center;gap:10px;">
           ${card.imageUrl
             ? `<img src="${card.imageUrl}" style="width:40px;height:40px;object-fit:contain;border-radius:6px;background:rgba(0,0,0,0.4);" onerror="this.style.display='none'">`
@@ -5469,7 +5469,7 @@ function showDiceTrayModal() {
           </div>
         </div>
         ${faces.length > 0 ? `
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">${facesHTML}</div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px;">${facesHTML}</div>
         ` : `<div style="font-size:10px;color:#555;text-align:center;">No face data</div>`}
         ${slotHTML}
       </div>`;
