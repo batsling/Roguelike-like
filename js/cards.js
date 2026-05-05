@@ -218,21 +218,34 @@ function upgradeCardInDeck(index) {
   }
 
   card.upgraded = true;
-  if (card.upgradedDescription) card.description = card.upgradedDescription;
   if (card.upgradedCost !== null && card.upgradedCost !== undefined) card.cost = card.upgradedCost;
 
-  // Weapon cards: upgrade their weapon item's level so the next verification effect is stronger
+  // Weapon cards: bump weapon level and update the Trigger indicator in the live description.
+  // Do NOT replace description with upgradedDescription — that would wipe accumulated bonuses.
   if (card.tags && card.tags.includes('weapon')) {
     const weaponItem = (gameState.inventory || []).find(i => i.name === card.name && i.type === 'Weapon');
     if (weaponItem) {
       weaponItem.level = (weaponItem.level || 1) + 1;
+      // Update "Trigger: +N" indicator to reflect the new per-trigger increment.
+      // Parse the new increment value from the upgradedDescription template.
+      const upgTemplate = card.upgradedDescription || '';
+      const triggerMatch = upgTemplate.match(/Trigger: \+?(\d+|[a-z]+ chest)/i);
+      if (triggerMatch) {
+        card.description = card.description.replace(
+          /Trigger: [^.]+\./,
+          `Trigger: ${triggerMatch[1].startsWith('+') ? '' : ''}${triggerMatch[0].replace('Trigger: ', '')}.`
+        );
+      }
       if (typeof createNotification === 'function') {
-        createNotification(`${card.name} upgraded! Weapon effect now Lv${weaponItem.level}`, '#ff9800', '⬆️');
+        createNotification(`${card.name} upgraded! Weapon trigger now Lv${weaponItem.level}`, '#ff9800', '⬆️');
       }
       saveCurrentGame();
       return true;
     }
   }
+
+  // Non-weapon cards: apply the upgraded description normally
+  if (card.upgradedDescription) card.description = card.upgradedDescription;
 
   if (typeof createNotification === 'function') {
     createNotification(`${card.name} upgraded!`, '#ff9800', '⬆️');

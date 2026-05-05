@@ -986,7 +986,7 @@ var ITEMS_DATA = [
     "name": "Rusty Razor",
     "rarity": "Uncommon",
     "type": "Weapon",
-    "description": "Add the Card \"Rusty Razor\" into your Deck. If you kill an enemy with a status affliction at least one time, \"Rusty Razor\" Gains (+1/+2) Dmg",
+    "description": "Add the Card \"Rusty Razor\" into your Deck. If you kill an enemy with a status affliction at least one time, \"Rusty Razor\" Gains (+1/+2) Bleed",
     "game": "Mewgenics",
     "tags": [],
     "image": "images/items/RustyRazor.png",

@@ -890,13 +890,36 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
 
       const weaponLevel = weapon.level || 1;
 
-      // Helper: find this weapon's card in gameState.deck and add a numeric bonus to a description value
+      // Parse the numeric increment for this level from "(+val1/+val2)" notation in the description.
+      const parseIncrement = (desc, lv) => {
+        const match = (desc || '').match(/\(\+?(\d+)\/\+?(\d+)[^)]*\)/);
+        if (match) {
+          const vals = [parseInt(match[1]), parseInt(match[2])];
+          return vals[Math.min(lv - 1, vals.length - 1)];
+        }
+        return lv; // fallback: level number
+      };
+      const increment = parseIncrement(weapon.description || '', weaponLevel);
+
+      // Update ALL copies of the weapon card in the deck (player may have multiples)
       const applyCardBonus = (cardName, pattern, bonus) => {
         if (!gameState.deck) return;
-        const card = gameState.deck.find(c => c.name === cardName && c.tags && c.tags.includes('weapon'));
-        if (!card) return;
-        card.description = card.description.replace(pattern, (match, num) => match.replace(num, String(parseInt(num) + bonus)));
-        if (typeof saveCurrentGame === 'function') saveCurrentGame();
+        let updated = false;
+        gameState.deck
+          .filter(c => c.name === cardName && (c.tags || []).includes('weapon'))
+          .forEach(card => {
+            card.description = card.description.replace(
+              pattern,
+              (match, num) => match.replace(num, String(parseInt(num) + bonus))
+            );
+            // Also update the "Trigger: +N" indicator if present
+            card.description = card.description.replace(
+              /Trigger: \+(\d+)/,
+              () => `Trigger: +${bonus}`
+            );
+            updated = true;
+          });
+        if (updated && typeof saveCurrentGame === 'function') saveCurrentGame();
       };
 
       // Helper to parse the level value from "(val1/val2/val3)" notation in weapon descriptions
@@ -909,19 +932,18 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       const rewardClauseText = resolvedEffectDesc.replace(/^[^,]+,\s*/i, '').replace(/^(gain|get)\s+/i, '') || 'weapon reward';
 
       if (weapon.name === 'Blasma Pistol') {
-        // Resolved: "small" or "normal" from "(small/normal)"
         const chestType = weaponLevel === 1 ? 'small' : 'normal';
         gameState._blasmaPistolChest = chestType;
         weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
 
       } else if (weapon.name === "Lil' Bomber") {
-        applyCardBonus("Lil' Bomber", /Deal (\d+) Dmg/i, weaponLevel);
+        applyCardBonus("Lil' Bomber", /Deal (\d+) Dmg/i, increment);
         weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
 
       } else if (weapon.name === "Barrel") {
-        const fishCount = weaponLevel;
+        const fishCount = increment;
         if (typeof selectRandomFish === 'function' && typeof addToLoot === 'function') {
           for (let i = 0; i < fishCount; i++) {
             const fishResult = selectRandomFish(gameState.location);
@@ -932,22 +954,22 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         weaponEffectActivated = true;
 
       } else if (weapon.name === "Blood Magic") {
-        applyCardBonus("Blood Magic", /(\d+) Infuse/i, weaponLevel);
+        applyCardBonus("Blood Magic", /(\d+) Infuse/i, increment);
         weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
 
       } else if (weapon.name === "Dexecutioner") {
-        applyCardBonus("Dexecutioner", /(\d+) Assassinate/i, weaponLevel);
+        applyCardBonus("Dexecutioner", /(\d+) Assassinate/i, increment);
         weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
 
       } else if (weapon.name === "Rusty Razor") {
-        applyCardBonus("Rusty Razor", /Inflict (\d+) Bleed/i, weaponLevel);
+        applyCardBonus("Rusty Razor", /Inflict (\d+) Bleed/i, increment);
         weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
 
       } else if (weapon.name === "Bag o' Glitter") {
-        applyCardBonus("Bag o' Glitter", /Inflict (\d+) Blind/i, weaponLevel);
+        applyCardBonus("Bag o' Glitter", /Inflict (\d+) Blind/i, increment);
         weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
       }
