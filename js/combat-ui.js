@@ -2292,7 +2292,7 @@ function attachCombatEventListeners(combat) {
         _showIsaacTransformPicker(face, cs, id);
         return;
       }
-      const needsTarget = (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+      const needsTarget = (face.effects || []).some(e => /^(dmg|magic_dmg|magic dmg)$/i.test(e.move || '') && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
       if (needsTarget) {
         // If a target is already selected (or there's only one enemy), fire immediately
         const living = (cs.enemies || []).filter(e => e.health > 0);
@@ -2329,7 +2329,7 @@ function attachCombatEventListeners(combat) {
       const entry = cs.pendingDice.find(en => en.id === id);
       if (!entry) return;
       const face = entry.face || {};
-      const needsTarget = !face.isBlank && (face.effects || []).some(ef => ef.move === 'dmg' && !(ef.addons || []).some(a => a.toLowerCase() === 'cleave'));
+      const needsTarget = !face.isBlank && (face.effects || []).some(ef => /^(dmg|magic_dmg|magic dmg)$/i.test(ef.move || '') && !(ef.addons || []).some(a => a.toLowerCase() === 'cleave'));
       if (!needsTarget) return; // non-targeting tiles don't need drag
       e.stopPropagation();
       const rect = el.getBoundingClientRect();

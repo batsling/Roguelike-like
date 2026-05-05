@@ -53,6 +53,19 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Bear Trap Mask",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "At the start of combat, Gain +4 Shield and +1 Bleed Thorns",
+    "game": "Mewgenics",
+    "tags": [
+      "wearable",
+      "mask"
+    ],
+    "image": "images/items/BearTrapMask.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Beefy Ring",
     "rarity": "Rare",
     "type": "Scaling",
@@ -116,7 +129,7 @@ var ITEMS_DATA = [
     "name": "Boon of Aphrodite",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player charms an enemy gain +1 to all combat roll bonus stats, but at least 1 of the game choices will be Charmed",
+    "description": "If the player charms an enemy gain +1 to all combat roll bonus stats, but 1 of the game choices will be Charmed",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfAphrodite.png",
@@ -126,7 +139,7 @@ var ITEMS_DATA = [
     "name": "Boon of Artemis",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player uses ranged strategies primarlity to win the run gain +1 to all combat roll bonus stats, but at least 1 of the game choices will be Marked",
+    "description": "If the player uses ranged strategies primarlity to win the run gain +1 to all combat roll bonus stats, but 1 of the game choices will be Marked",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfArtemis.png",
@@ -136,7 +149,7 @@ var ITEMS_DATA = [
     "name": "Boon of Athena",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player negates damage with a shield 5+ times gain +1 to all combat roll bonus stats, but at least 1 of the game choices will be Shielded",
+    "description": "If the player negates damage with a shield 5+ times gain +1 to all combat roll bonus stats, but 1 of the game choices will be Shielded",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfAthena.png",
@@ -146,7 +159,7 @@ var ITEMS_DATA = [
     "name": "Boon of Hermes",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player beats a game within an hour gain +1 to all combat roll bonus stats, but at least 1 of the game choices will be Timed",
+    "description": "If the player beats a game within an hour gain +1 to all combat roll bonus stats, but 1 of the game choices will be Timed",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfHermes.png",
@@ -156,7 +169,7 @@ var ITEMS_DATA = [
     "name": "Boon of Poseidon",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player defeats an enemy underwater gain +1 to all combat roll bonus stats, but at least 1 of the game choices will be Soaked",
+    "description": "If the player defeats an enemy underwater gain +1 to all combat roll bonus stats, but 1 of the game choices will be Soaked",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfPoseidon.png",
@@ -166,7 +179,7 @@ var ITEMS_DATA = [
     "name": "Boon of Zeus",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player defeats an enemy with lightning in their run gain +1 to all combat roll bonus stats, but at least 1 of the game choices will be Shocked",
+    "description": "If the player defeats an enemy with lightning in their run gain +1 to all combat roll bonus stats, but 1 of the game choices will be Shocked",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfZeus.png",
@@ -207,6 +220,19 @@ var ITEMS_DATA = [
     "game": "Mewgenics",
     "tags": [],
     "image": "images/items/BrassKnuckles.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Broken Window",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "At the start of combat, Gain +3 Bleed Thorns and +1 Bleed",
+    "game": "Mewgenics",
+    "tags": [
+      "glass",
+      "wood"
+    ],
+    "image": "images/items/BrokenWindow.png",
     "unlockCondition": null
   },
   {
@@ -402,6 +428,18 @@ var ITEMS_DATA = [
       "doll"
     ],
     "image": "images/items/Du-VuDoll.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Empty Syringe",
+    "rarity": "Rare",
+    "type": "Triggered",
+    "description": "When Inflicting Bleed or Poison, Inflict +1 Bleed or Poison",
+    "game": "Mewgenics",
+    "tags": [
+      "syringe"
+    ],
+    "image": "images/items/EmptySyringe.png",
     "unlockCondition": null
   },
   {
@@ -611,7 +649,7 @@ var ITEMS_DATA = [
     "name": "Lil' Bomber",
     "rarity": "Common",
     "type": "Weapon",
-    "description": "Add the Card \"Lil' Bomber\" into your Deck. If you kill an enemy with a bomb at least one time, \"Barrel\" Gains (+1/+2) Dmg",
+    "description": "Add the Card \"Lil' Bomber\" into your Deck. If you kill an enemy with a bomb at least one time, \"Lil' Bomber\" Gains (+1/+2) Dmg",
     "game": "Enter the Gungeon",
     "tags": [
       "gun"
@@ -862,7 +900,7 @@ var ITEMS_DATA = [
   },
   {
     "name": "Pummarola",
-    "rarity": "Uncommon",
+    "rarity": "Common",
     "type": "Triggered",
     "description": "At the start of combat, Gain +1 Regeneration",
     "game": "Vampire Survivors",
@@ -942,6 +980,16 @@ var ITEMS_DATA = [
       "consumable"
     ],
     "image": "images/items/RoidRage.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Rusty Razor",
+    "rarity": "Uncommon",
+    "type": "Weapon",
+    "description": "Add the Card \"Rusty Razor\" into your Deck. If you kill an enemy with a status affliction at least one time, \"Rusty Razor\" Gains (+1/+2) Dmg",
+    "game": "Mewgenics",
+    "tags": [],
+    "image": "images/items/RustyRazor.png",
     "unlockCondition": null
   },
   {
@@ -1218,54 +1266,6 @@ var ITEMS_DATA = [
       "mutation"
     ],
     "image": "images/items/Wings.png",
-    "unlockCondition": null
-  },
-  {
-    "name": "Bear Trap Mask",
-    "rarity": "Uncommon",
-    "type": "Triggered",
-    "description": "At the start of combat, Gain +4 Shield and +1 Bleed Thorns",
-    "game": "Mewgenics",
-    "tags": [
-      "wearable",
-      "mask"
-    ],
-    "image": "images/items/BearTrapMask.png",
-    "unlockCondition": null
-  },
-  {
-    "name": "Broken Window",
-    "rarity": "Rare",
-    "type": "Triggered",
-    "description": "At the start of combat, Gain +3 Bleed Thorns and +1 Bleed",
-    "game": "Mewgenics",
-    "tags": [
-      "glass",
-      "wood"
-    ],
-    "image": "images/items/BrokenWindow.png",
-    "unlockCondition": null
-  },
-  {
-    "name": "Empty Syringe",
-    "rarity": "Rare",
-    "type": "Triggered",
-    "description": "When Inflicting Bleed or Poison, Inflict +1 Bleed or Poison",
-    "game": "Mewgenics",
-    "tags": [
-      "syringe"
-    ],
-    "image": "images/items/EmptySyringe.png",
-    "unlockCondition": null
-  },
-  {
-    "name": "Rusty Razor",
-    "rarity": "Uncommon",
-    "type": "Weapon",
-    "description": "Add the Card \"Rusty Razor\" into your Deck. If you kill an enemy with a status affliction at least one time, \"Rusty Razor\" Gains (+1/+2) Dmg",
-    "game": "Mewgenics",
-    "tags": [],
-    "image": "images/items/RustyRazor.png",
     "unlockCondition": null
   }
 ];

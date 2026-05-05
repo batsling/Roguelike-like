@@ -12,11 +12,13 @@ var SPELLS_DATA = [
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "2 Heal",
-        "value": 2,
-        "move": "heal",
-        "addons": [],
-        "element": "earth",
+        "raw": "Gain 2 Health",
+        "value": null,
+        "move": "Gain",
+        "addons": [
+          "2",
+          "Health"
+        ],
         "target": null
       }
     ],
@@ -33,19 +35,16 @@ var SPELLS_DATA = [
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "2 Heal",
-        "value": 2,
-        "move": "heal",
-        "addons": [],
-        "element": "earth",
-        "target": null
-      },
-      {
-        "raw": "1 Cleanse",
-        "value": 1,
-        "move": "cleanse",
-        "addons": [],
-        "element": null,
+        "raw": "Gain 2 Health and Cleanse 1",
+        "value": null,
+        "move": "Gain",
+        "addons": [
+          "2",
+          "Health",
+          "and",
+          "Cleanse",
+          "1"
+        ],
         "target": null
       }
     ],
@@ -62,11 +61,13 @@ var SPELLS_DATA = [
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "3 Heal",
-        "value": 3,
-        "move": "heal",
-        "addons": [],
-        "element": "earth",
+        "raw": "Gain 3 Health",
+        "value": null,
+        "move": "Gain",
+        "addons": [
+          "3",
+          "Health"
+        ],
         "target": null
       }
     ],
@@ -81,13 +82,28 @@ var SPELLS_DATA = [
     "affectedByBonus": false,
     "effects": [
       {
-        "raw": "Assassinate halfMax",
+        "raw": "Assassinate X",
         "value": null,
-        "move": "assassinate",
+        "move": "Assassinate",
         "addons": [
-          "halfMax"
+          "X"
         ],
-        "element": "dark",
+        "target": null
+      },
+      {
+        "raw": "where X is half of the target's Maximum Health",
+        "value": null,
+        "move": "where",
+        "addons": [
+          "X",
+          "is",
+          "half",
+          "of",
+          "the",
+          "target's",
+          "Maximum",
+          "Health"
+        ],
         "target": null
       }
     ],
@@ -102,13 +118,26 @@ var SPELLS_DATA = [
     "affectedByBonus": false,
     "effects": [
       {
-        "raw": "Assassinate fullMax",
+        "raw": "Assassinate X",
         "value": null,
-        "move": "assassinate",
+        "move": "Assassinate",
         "addons": [
-          "fullMax"
+          "X"
         ],
-        "element": "dark",
+        "target": null
+      },
+      {
+        "raw": "where X is the target's Maximum Health",
+        "value": null,
+        "move": "where",
+        "addons": [
+          "X",
+          "is",
+          "the",
+          "target's",
+          "Maximum",
+          "Health"
+        ],
         "target": null
       }
     ],
@@ -126,20 +155,22 @@ var SPELLS_DATA = [
     "effects": [
       {
         "raw": "Assassinate 1",
-        "value": 1,
-        "move": "assassinate",
-        "addons": [],
-        "element": "blood",
+        "value": null,
+        "move": "Assassinate",
+        "addons": [
+          "1"
+        ],
         "target": null
       },
       {
-        "raw": "Gain 3 mana",
-        "value": 3,
-        "move": "gain",
+        "raw": "then Gain 3 mana",
+        "value": null,
+        "move": "then",
         "addons": [
+          "Gain",
+          "3",
           "mana"
         ],
-        "element": null,
         "target": null
       }
     ],
@@ -149,18 +180,20 @@ var SPELLS_DATA = [
     "name": "Miasma",
     "cost": 3,
     "rarity": "Rare",
-    "description": "1 Magic Dmg Poison Cleave",
+    "description": "1 Magic Dmg Poison Ranged Cleave",
     "keywords": [],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "1 Magic Dmg Poison Cleave",
+        "raw": "1 Magic Dmg Poison Ranged Cleave",
         "value": 1,
-        "move": "magic dmg",
+        "move": "Magic",
         "addons": [
+          "Dmg",
+          "Poison",
+          "Ranged",
           "Cleave"
         ],
-        "element": "poison",
         "target": null
       }
     ],
@@ -170,18 +203,23 @@ var SPELLS_DATA = [
     "name": "Scald",
     "cost": 3,
     "rarity": "Uncommon",
-    "description": "2 Magic Dmg Water to all damaged enemies",
+    "description": "2 Magic Dmg Water Ranged to all damaged enemies",
     "keywords": [],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "2 Magic Dmg Water DamagedEnemies",
+        "raw": "2 Magic Dmg Water Ranged to all damaged enemies",
         "value": 2,
-        "move": "magic dmg",
+        "move": "Magic",
         "addons": [
-          "DamagedEnemies"
+          "Dmg",
+          "Water",
+          "Ranged",
+          "to",
+          "all",
+          "damaged",
+          "enemies"
         ],
-        "element": "water",
         "target": null
       }
     ],
@@ -191,16 +229,19 @@ var SPELLS_DATA = [
     "name": "Blaze",
     "cost": 6,
     "rarity": "Rare",
-    "description": "13 Magic Dmg",
+    "description": "13 Magic Dmg Fire Ranged",
     "keywords": [],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "13 Magic Dmg",
+        "raw": "13 Magic Dmg Fire Ranged",
         "value": 13,
-        "move": "magic dmg",
-        "addons": [],
-        "element": "fire",
+        "move": "Magic",
+        "addons": [
+          "Dmg",
+          "Fire",
+          "Ranged"
+        ],
         "target": null
       }
     ],
@@ -215,13 +256,16 @@ var SPELLS_DATA = [
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "3 Dmg LeftmostRightmost",
+        "raw": "3 Dmg to leftmost and rightmost enemy",
         "value": 3,
-        "move": "dmg",
+        "move": "Dmg",
         "addons": [
-          "LeftmostRightmost"
+          "to",
+          "leftmost",
+          "and",
+          "rightmost",
+          "enemy"
         ],
-        "element": null,
         "target": null
       }
     ],
@@ -231,18 +275,20 @@ var SPELLS_DATA = [
     "name": "Burn",
     "cost": 1,
     "rarity": "Uncommon",
-    "description": "1 Magic Dmg Fire Overload",
+    "description": "1 Magic Dmg Fire Ranged Overload",
     "keywords": [],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "1 Magic Dmg Fire Overload",
+        "raw": "1 Magic Dmg Fire Ranged Overload",
         "value": 1,
-        "move": "magic dmg",
+        "move": "Magic",
         "addons": [
+          "Dmg",
+          "Fire",
+          "Ranged",
           "Overload"
         ],
-        "element": "fire",
         "target": null
       }
     ],
@@ -259,15 +305,14 @@ var SPELLS_DATA = [
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "Self/Ally gains 1 Buffer",
+        "raw": "Target gains 1 Buffer",
         "value": null,
-        "move": "Self/Ally",
+        "move": "Target",
         "addons": [
           "gains",
           "1",
           "Buffer"
         ],
-        "element": null,
         "target": null
       }
     ],
@@ -277,18 +322,20 @@ var SPELLS_DATA = [
     "name": "Poke",
     "cost": 1,
     "rarity": "Common",
-    "description": "1 Magic Dmg",
+    "description": "1 Magic Dmg Ranged",
     "keywords": [
       "Cooldown"
     ],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "1 Magic Dmg",
+        "raw": "1 Magic Dmg Ranged",
         "value": 1,
-        "move": "magic dmg",
-        "addons": [],
-        "element": null,
+        "move": "Magic",
+        "addons": [
+          "Dmg",
+          "Ranged"
+        ],
         "target": null
       }
     ],
@@ -298,20 +345,21 @@ var SPELLS_DATA = [
     "name": "Flick",
     "cost": 1,
     "rarity": "Uncommon",
-    "description": "1 Magic Dmg Engage",
+    "description": "1 Magic Dmg Engage Ranged",
     "keywords": [
       "Cooldown"
     ],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "1 Magic Dmg Engage",
+        "raw": "1 Magic Dmg Engage Ranged",
         "value": 1,
-        "move": "magic dmg",
+        "move": "Magic",
         "addons": [
-          "Engage"
+          "Dmg",
+          "Engage",
+          "Ranged"
         ],
-        "element": null,
         "target": null
       }
     ],
@@ -321,26 +369,23 @@ var SPELLS_DATA = [
     "name": "Balance",
     "cost": 3,
     "rarity": "Uncommon",
-    "description": "1 Magic Dmg Cleave and Gain 1 Health",
+    "description": "1 Magic Dmg Cleave Ranged and Gain 1 Health",
     "keywords": [],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "1 Magic Dmg Cleave",
+        "raw": "1 Magic Dmg Cleave Ranged and Gain 1 Health",
         "value": 1,
-        "move": "magic dmg",
+        "move": "Magic",
         "addons": [
-          "Cleave"
+          "Dmg",
+          "Cleave",
+          "Ranged",
+          "and",
+          "Gain",
+          "1",
+          "Health"
         ],
-        "element": null,
-        "target": null
-      },
-      {
-        "raw": "1 Heal",
-        "value": 1,
-        "move": "heal",
-        "addons": [],
-        "element": null,
         "target": null
       }
     ],
@@ -350,18 +395,21 @@ var SPELLS_DATA = [
     "name": "Mend",
     "cost": 2,
     "rarity": "Common",
-    "description": "Set friendly target's Health to 5",
+    "description": "Set friendly target's Health to 10",
     "keywords": [],
     "affectedByBonus": false,
     "effects": [
       {
-        "raw": "Set health to 5",
-        "value": 5,
-        "move": "set",
+        "raw": "Set friendly target's Health to 10",
+        "value": null,
+        "move": "Set",
         "addons": [
-          "health"
+          "friendly",
+          "target's",
+          "Health",
+          "to",
+          "10"
         ],
-        "element": "blood",
         "target": null
       }
     ],
@@ -371,20 +419,22 @@ var SPELLS_DATA = [
     "name": "Scorch",
     "cost": 3,
     "rarity": "Common",
-    "description": "1 Magic Dmg Fire Cleave",
+    "description": "1 Magic Dmg Fire Cleave Ranged",
     "keywords": [
       "SingleCast"
     ],
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "1 Magic Dmg Fire Cleave",
+        "raw": "1 Magic Dmg Fire Cleave Ranged",
         "value": 1,
-        "move": "magic dmg",
+        "move": "Magic",
         "addons": [
-          "Cleave"
+          "Dmg",
+          "Fire",
+          "Cleave",
+          "Ranged"
         ],
-        "element": "fire",
         "target": null
       }
     ],
@@ -402,10 +452,11 @@ var SPELLS_DATA = [
     "effects": [
       {
         "raw": "Assassinate 2",
-        "value": 2,
-        "move": "assassinate",
-        "addons": [],
-        "element": "electric",
+        "value": null,
+        "move": "Assassinate",
+        "addons": [
+          "2"
+        ],
         "target": null
       }
     ],
@@ -422,13 +473,13 @@ var SPELLS_DATA = [
     "affectedByBonus": false,
     "effects": [
       {
-        "raw": "Gain 1 Reroll",
-        "value": 1,
-        "move": "gain",
+        "raw": "Gain +1 Reroll",
+        "value": null,
+        "move": "Gain",
         "addons": [
-          "reroll"
+          "+1",
+          "Reroll"
         ],
-        "element": null,
         "target": null
       }
     ],

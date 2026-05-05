@@ -982,9 +982,8 @@ function switchCollectionTab(tab) {
           ${filteredCards.map(card => {
             const rc = getRarityColor(card.rarity);
             const tc = getTypeColor(card.type);
-            const isShimmer = (card.rarity||'').toLowerCase() === 'rare' || (card.rarity||'').toLowerCase() === 'legendary';
             return `
-            <div class="col-card-hover ${isShimmer?'rarity-shimmer':''}" onclick="showCardDetails('${card.name.replace(/'/g,"\\'")}') "
+            <div class="col-card-hover" onclick="showCardDetails('${card.name.replace(/'/g,"\\'")}') "
               style="border-radius:10px; border:2px solid ${rc}; background:rgba(10,10,15,0.8);
                      box-shadow: 0 0 8px ${rc}44; display:flex; flex-direction:column; overflow:hidden; min-height:160px; position:relative;">
               <!-- Cost bubble -->
@@ -1122,9 +1121,8 @@ function switchCollectionTab(tab) {
         <div id="items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; overflow-y: auto;">
           ${sortedItems.map(item => {
             const rarityColor = getRarityColor(item.rarity);
-            const isShimmer = ['legendary','rare'].includes((item.rarity||'').toLowerCase());
             return `
-            <div class="col-card-hover ${isShimmer?'rarity-shimmer':''}"
+            <div class="col-card-hover"
               onclick="showItemDetails('${item.name.replace(/'/g, "\\'")}')"
               style="background:rgba(10,10,15,0.8); border:2px solid ${rarityColor};
                      box-shadow:0 0 8px ${rarityColor}44; border-radius:10px; padding:10px;
@@ -1841,8 +1839,7 @@ function switchCollectionTab(tab) {
 
     const rarityBadge = r => {
       const c = getRarityColor(r);
-      const isShimmer = ['rare', 'legendary'].includes((r || '').toLowerCase());
-      return `<span class="${isShimmer ? 'rarity-shimmer' : ''}" style="font-size:10px;font-weight:bold;color:${c};padding:2px 6px;background:${c}22;border-radius:4px;white-space:nowrap;">${r || ''}</span>`;
+      return `<span style="font-size:10px;font-weight:bold;color:${c};padding:2px 6px;background:${c}22;border-radius:4px;white-space:nowrap;">${r || ''}</span>`;
     };
 
     const tagBadge = t =>

@@ -5046,13 +5046,15 @@ function resolveCardEffect(card, target, options = {}) {
       const typeFilter = conjureRandomTypeMatch[2].toLowerCase();
       const makeFree   = /play it for free this turn/i.test(desc);
       // Draw from the player's run deck (draw + discard + hand), falling back to CARDS_DATA
+      // Never conjure starter cards
+      const isNotStarter = c => (c.rarity || '').toLowerCase() !== 'starter';
       const deckCards = [
         ...(combatState.drawPile || []),
         ...(combatState.discardPile || []),
         ...(combatState.hand || []),
-      ].filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard);
+      ].filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard && isNotStarter(c));
       const globalPool = typeof CARDS_DATA !== 'undefined'
-        ? CARDS_DATA.filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard)
+        ? CARDS_DATA.filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard && isNotStarter(c))
         : [];
       const pool = deckCards.length > 0 ? deckCards : globalPool;
       for (let i = 0; i < count; i++) {
@@ -5830,7 +5832,8 @@ function _applyPendingDieFaceEffects(entry, targetId, cantripMode) {
     const isCleave = addons.some(a => a.toLowerCase() === 'cleave');
     const isMelee  = addons.some(a => a.toLowerCase() === 'melee');
 
-    if (move === 'dmg') {
+    if (move === 'dmg' || move === 'magic_dmg' || move === 'magic dmg') {
+      const isMagic = move !== 'dmg';
       // Resolve damage target(s)
       let targets = [];
       if (isCleave) {
@@ -5847,7 +5850,7 @@ function _applyPendingDieFaceEffects(entry, targetId, cantripMode) {
         const engageMult = (isEngage && tgt.health >= tgt.maxHealth) ? 2 : 1;
         const finalDmg = Math.max(0, (val + power - weak) * engageMult);
         if (typeof dealDamage === 'function') {
-          dealDamage(tgt, finalDmg, isMelee ? 'melee' : 'ranged');
+          dealDamage(tgt, finalDmg, isMagic ? ['magic'] : (isMelee ? ['melee'] : ['ranged']));
         } else {
           tgt.health = Math.max(0, tgt.health - Math.max(0, finalDmg - (tgt.block || 0)));
           tgt.block  = Math.max(0, (tgt.block || 0) - finalDmg);
@@ -5915,7 +5918,7 @@ function usePendingDie(pendingId, targetId) {
 
   if (!face.isBlank) {
     // Check if dmg face needs a target
-    const needsTarget = (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+    const needsTarget = (face.effects || []).some(e => /^(dmg|magic_dmg|magic dmg)$/i.test(e.move || '') && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
     if (needsTarget && !targetId) {
       // Auto-pick random enemy
       const living = combatState.enemies.filter(e => e.health > 0);
