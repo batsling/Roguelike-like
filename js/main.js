@@ -5422,15 +5422,41 @@ function showDiceTrayModal() {
     const uid   = card._dieUid || `anon_${idx}`;
     const slot  = gameState.diceSlots[uid] || null;
     const faces = getFaceList(card);
+    const _addonBadge = (label, bg, color) =>
+      `<span style="font-size:8px;background:${bg};color:${color};border-radius:3px;padding:1px 4px;white-space:nowrap;">${label}</span>`;
+    const _addonStyle = {
+      cantrip:   () => _addonBadge('Cantrip',   '#4a2c8a', '#c09aff'),
+      singleuse: () => _addonBadge('1-Use',      '#8a2c2c', '#ffaaaa'),
+      druid:     () => _addonBadge('Druid',      '#2c5a2c', '#aaffaa'),
+      mandatory: () => _addonBadge('Mandatory',  '#6a2222', '#ffaaaa'),
+      melee:     () => _addonBadge('Melee',      '#5a3a00', '#ffcc44'),
+      cleave:    () => _addonBadge('Cleave',     '#005a5a', '#44ffff'),
+      ranged:    () => _addonBadge('Ranged',     '#003a6a', '#44aaff'),
+      magic:     () => _addonBadge('Magic',      '#3a006a', '#cc88ff'),
+    };
+
     const facesHTML = faces.map(f => {
       const isBlank = f.isBlank || !f.text || f.text === 'X' || f.text === '—';
       const pip = ['⚀','⚁','⚂','⚃','⚄','⚅'][f.face-1] || '🎲';
+
+      // Collect addons from face level + all effect levels
+      const allAddons = new Set();
+      (f.addons || []).forEach(a => allAddons.add(a.toLowerCase()));
+      (f.effects || []).forEach(eff => (eff.addons || []).forEach(a => allAddons.add(a.toLowerCase())));
+
+      const badges = [...allAddons]
+        .map(a => (_addonStyle[a] ? _addonStyle[a]() : _addonBadge(a.charAt(0).toUpperCase()+a.slice(1), '#333', '#aaa')))
+        .join('');
+
       return `<div data-face="${f.face}" style="
         background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
-        border-radius:6px;padding:5px 7px;display:flex;flex-direction:row;align-items:center;gap:7px;">
-        <div style="font-size:20px;line-height:1;flex-shrink:0;">${pip}</div>
-        <div style="font-size:9px;color:${isBlank?'#444':'#ddd'};line-height:1.3;word-break:break-word;">
-          ${isBlank ? '—' : (f.text || '—')}
+        border-radius:6px;padding:5px 7px;display:flex;flex-direction:row;align-items:flex-start;gap:7px;">
+        <div style="font-size:20px;line-height:1.2;flex-shrink:0;">${pip}</div>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0;">
+          <div style="font-size:9px;color:${isBlank?'#444':'#ddd'};line-height:1.3;word-break:break-word;">
+            ${isBlank ? '—' : (f.text || '—')}
+          </div>
+          ${badges ? `<div style="display:flex;flex-wrap:wrap;gap:2px;">${badges}</div>` : ''}
         </div>
       </div>`;
     }).join('');
