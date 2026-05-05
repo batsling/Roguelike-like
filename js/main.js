@@ -155,6 +155,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     diceTrayBtn.addEventListener('click', showDiceTrayModal);
   }
 
+  const spellsBtn = document.getElementById('spells-btn');
+  if (spellsBtn) {
+    spellsBtn.addEventListener('click', showSpellsModal);
+  }
+
   const lootBtn = document.getElementById('loot-btn');
   if (lootBtn) {
     lootBtn.addEventListener('click', showLootModal);
@@ -5617,6 +5622,104 @@ function _diceTrayPickItem(dieUid) {
 }
 
 window.showDiceTrayModal = showDiceTrayModal;
+
+// ============== SPELLS MODAL ==============
+
+function showSpellsModal() {
+  const spells = (gameState && gameState.spells) ? gameState.spells : [];
+
+  const elementColor = el => {
+    switch ((el || '').toLowerCase()) {
+      case 'fire':     return '#ff6b35';
+      case 'water':    return '#4488ff';
+      case 'earth':    return '#88aa44';
+      case 'dark':     return '#a855f7';
+      case 'blood':    return '#cc2222';
+      case 'poison':   return '#44bb44';
+      case 'electric': return '#ffcc00';
+      default:         return '#888';
+    }
+  };
+
+  const rarityColor = r => {
+    switch ((r || '').toLowerCase()) {
+      case 'rare':     return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      case 'common':   return '#aaa';
+      default:         return '#888';
+    }
+  };
+
+  const spellCard = spell => {
+    const rc = rarityColor(spell.rarity);
+    const ec = elementColor(spell.element);
+    const keywordsHTML = (spell.keywords || []).map(k =>
+      `<span style="font-size:9px;padding:2px 7px;background:rgba(124,58,237,0.18);
+        border:1px solid rgba(124,58,237,0.4);border-radius:10px;color:#c4b5fd;">${k}</span>`
+    ).join('');
+
+    return `
+      <div style="background:rgba(10,5,20,0.9);border:2px solid ${rc};border-radius:12px;
+        padding:14px;display:flex;flex-direction:column;gap:8px;
+        min-width:190px;max-width:230px;position:relative;">
+        <!-- Cost badge -->
+        <div style="position:absolute;top:10px;right:10px;
+          background:rgba(99,102,241,0.25);border:1px solid #6366f1;
+          border-radius:50%;width:26px;height:26px;
+          display:flex;align-items:center;justify-content:center;
+          font-size:11px;font-weight:bold;color:#a5b4fc;" title="${spell.cost} Mana">
+          ${spell.cost}
+        </div>
+        <!-- Image -->
+        <div style="display:flex;gap:10px;align-items:center;">
+          <img src="${spell.imageUrl || spell.image || ''}"
+            style="width:44px;height:44px;object-fit:contain;border-radius:6px;
+              background:rgba(0,0,0,0.4);border:1px solid ${rc}55;flex-shrink:0;"
+            onerror="this.style.opacity='0.2'">
+          <div style="min-width:0;padding-right:28px;">
+            <div style="font-weight:bold;font-size:12px;color:#e9d5ff;
+              overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${spell.name}</div>
+            <div style="display:flex;gap:5px;margin-top:3px;flex-wrap:wrap;">
+              <span style="font-size:9px;color:${rc};font-weight:bold;text-transform:uppercase;">${spell.rarity || ''}</span>
+              ${spell.element && spell.element !== 'N/A'
+                ? `<span style="font-size:9px;color:${ec};font-weight:bold;">${spell.element}</span>` : ''}
+            </div>
+          </div>
+        </div>
+        <!-- Description -->
+        <div style="font-size:11px;color:#ccc;line-height:1.5;
+          background:rgba(124,58,237,0.08);border-radius:6px;padding:6px 8px;">
+          ${spell.description || 'No description.'}
+        </div>
+        ${keywordsHTML ? `<div style="display:flex;flex-wrap:wrap;gap:4px;">${keywordsHTML}</div>` : ''}
+        ${spell.game ? `<div style="font-size:9px;color:#555;">From: <span style="color:#666;">${spell.game}</span></div>` : ''}
+      </div>`;
+  };
+
+  const content = spells.length > 0
+    ? `<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;">
+        ${spells.map(spellCard).join('')}
+      </div>`
+    : `<div style="text-align:center;color:#555;padding:40px 0;">
+        <div style="font-size:40px;margin-bottom:12px;">✨</div>
+        <div>No spells learned yet.</div>
+        <div style="font-size:12px;color:#444;margin-top:6px;">Acquire dice cards with a "Learn:" effect to gain spells.</div>
+      </div>`;
+
+  createGameModal(`
+    <div style="padding:20px;max-width:1000px;margin:0 auto;">
+      <h2 style="color:#c4b5fd;text-align:center;margin-top:0;">✨ Your Spells (${spells.length})</h2>
+      ${content}
+      <div style="text-align:center;margin-top:20px;">
+        <button onclick="closeGameModal()" style="padding:12px 30px;background:#2d1a4e;
+          border:1px solid #7c3aed;border-radius:8px;color:#c4b5fd;cursor:pointer;font-weight:bold;">
+          Close
+        </button>
+      </div>
+    </div>
+  `);
+}
+window.showSpellsModal = showSpellsModal;
 
 // ============== LEVEL-UP SYSTEM ==============
 
