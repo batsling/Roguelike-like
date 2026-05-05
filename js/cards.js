@@ -226,15 +226,11 @@ function upgradeCardInDeck(index) {
     const weaponItem = (gameState.inventory || []).find(i => i.name === card.name && i.type === 'Weapon');
     if (weaponItem) {
       weaponItem.level = (weaponItem.level || 1) + 1;
-      // Update "Trigger: +N" indicator to reflect the new per-trigger increment.
-      // Parse the new increment value from the upgradedDescription template.
+      // Swap the full "Trigger: ..." phrase from the upgraded template into the live description.
       const upgTemplate = card.upgradedDescription || '';
-      const triggerMatch = upgTemplate.match(/Trigger: \+?(\d+|[a-z]+ chest)/i);
-      if (triggerMatch) {
-        card.description = card.description.replace(
-          /Trigger: [^.]+\./,
-          `Trigger: ${triggerMatch[1].startsWith('+') ? '' : ''}${triggerMatch[0].replace('Trigger: ', '')}.`
-        );
+      const upgTrigger = upgTemplate.match(/Trigger: [^.]+\./);
+      if (upgTrigger) {
+        card.description = card.description.replace(/Trigger: [^.]+\./, upgTrigger[0]);
       }
       if (typeof createNotification === 'function') {
         createNotification(`${card.name} upgraded! Weapon trigger now Lv${weaponItem.level}`, '#ff9800', '⬆️');

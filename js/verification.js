@@ -964,7 +964,9 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         weaponEffectActivated = true;
 
       } else if (weapon.name === "Rusty Razor") {
+        // Gains (+1/+2) Bleed AND Poison — apply to both stats
         applyCardBonus("Rusty Razor", /Inflict (\d+) Bleed/i, increment);
+        applyCardBonus("Rusty Razor", /and (\d+) Poison/i, increment);
         weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
 
