@@ -1125,7 +1125,7 @@ function renderInlineeDiceBoard(combat) {
     const isCantrip   = addons.includes('cantrip');
     const isSingleUse = addons.includes('singleUse');
     const isDruid     = addons.includes('druid');
-    const needsTarget = !isBlank && (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+    const needsTarget = !isBlank && (face.effects || []).some(e => /^(dmg|magic_dmg|magic dmg)$/i.test(e.move || '') && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
     const isSelected  = window._selectedPendingId === entry.id;
 
     const addonBadges = [
@@ -1380,12 +1380,12 @@ function _getDiceColors(card) {
 // Abbreviated face text for dice whose actual text is too long to render on a die face
 const _DICE_FACE_ABBR = {
   "Isaac's D6": {
-    'Random Curse':                               'Curse',
-    'Random Status':                              'Status',
-    'Random Skill':                               'Skill',
-    'Random Attack':                              'Attack',
-    'Random Power':                               'Power',
-    'Random Attack, Skill, or Power (free)':      'FREE!',
+    'Random Curse, Mandatory':                                                     'Curse',
+    'Random Status, Mandatory':                                                    'Status',
+    'Random Skill, Mandatory':                                                     'Skill',
+    'Random Attack, Mandatory':                                                    'Attack',
+    'Random Power, Mandatory':                                                     'Power',
+    'Random Attack, Skill, or Power that is free to play this combat, Mandatory': 'FREE!',
   },
 };
 
@@ -3882,7 +3882,7 @@ function renderPendingDicePanel(combat) {
     const isCantrip   = addons.includes('cantrip');
     const isSingleUse = addons.includes('singleUse');
     const isDruid     = addons.includes('druid');
-    const needsTarget = !isBlank && (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+    const needsTarget = !isBlank && (face.effects || []).some(e => /^(dmg|magic_dmg|magic dmg)$/i.test(e.move || '') && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
 
     const isSelected = window._selectedPendingId === entry.id;
 
