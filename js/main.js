@@ -150,6 +150,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     deckBtn.addEventListener('click', showDeckModal);
   }
 
+  const diceTrayBtn = document.getElementById('dice-tray-btn');
+  if (diceTrayBtn) {
+    diceTrayBtn.addEventListener('click', showDiceTrayModal);
+  }
+
   const lootBtn = document.getElementById('loot-btn');
   if (lootBtn) {
     lootBtn.addEventListener('click', showLootModal);
@@ -298,6 +303,17 @@ function saveCurrentGame() {
     uses: item.uses
   }));
 
+  // Deep copy diceSlots items for serialization
+  const copyItem = item => item ? ({
+    name: item.name, type: item.type, rarity: item.rarity,
+    description: item.description, image: item.image,
+    reference: item.reference, tags: item.tags, quantity: item.quantity, uses: item.uses
+  }) : null;
+  const diceSlotsSnapshot = {};
+  Object.entries(gameState.diceSlots || {}).forEach(([uid, item]) => {
+    diceSlotsSnapshot[uid] = copyItem(item);
+  });
+
   gameSaves[gameState.saveName] = {
     ...gameState,
     health: health,
@@ -305,6 +321,7 @@ function saveCurrentGame() {
     gold: gold,
     rations: rations,
     inventory: inventoryCopy,
+    diceSlots: diceSlotsSnapshot,
     beatenGames: [...beatenGames],
     strength: strength,
     dexterity: dexterity,
@@ -358,6 +375,9 @@ function loadSavedGame(saveName) {
   }
   if (!gameState.spells) {
     gameState.spells = [];
+  }
+  if (!gameState.diceSlots) {
+    gameState.diceSlots = {};
   }
   window.playerSpells = gameState.spells; // keep in sync with combat fallback
   if (!gameState.postcombatChoicesUsed) {
@@ -5361,6 +5381,243 @@ function showDeckModal() {
 }
 window.showDeckModal = showDeckModal;
 
+// ============== DICE TRAY ==============
+
+function showDiceTrayModal() {
+  if (!gameState.diceSlots) gameState.diceSlots = {};
+
+  const CDATA = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
+  const DDATA = typeof DICE_DATA   !== 'undefined' ? DICE_DATA   : [];
+
+  // Collect all dice cards: starting-deck dice + acquired dice
+  const charKey  = (typeof selectedCharacter !== 'undefined' && selectedCharacter)
+                 || (gameState && gameState.character) || null;
+  const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
+  const startingEntries = charData && charData.startingDeck ? charData.startingDeck : [];
+  const startingDiceCards = [];
+  for (const entry of startingEntries) {
+    const tmpl = CDATA.find(c => c.name === entry.cardName || c.name.toLowerCase() === entry.cardName.toLowerCase());
+    if (tmpl && (tmpl.type || '').toLowerCase() === 'dice') {
+      for (let i = 0; i < (entry.count || 1); i++) {
+        startingDiceCards.push({ ...tmpl, _isStarting: true, _dieUid: `starting_${tmpl.name}_${i}` });
+      }
+    }
+  }
+  const acquiredDiceCards = (gameState.deck || []).filter(c => (c.type || '').toLowerCase() === 'dice');
+
+  const allDice = [...startingDiceCards, ...acquiredDiceCards];
+
+  const getFaceList = (card) => {
+    const def = DDATA.find(d => d.name === card.name);
+    if (!def) return [];
+    return def.faces || [];
+  };
+
+  const dieCardHTML = (card, idx) => {
+    const uid   = card._dieUid || `anon_${idx}`;
+    const slot  = gameState.diceSlots[uid] || null;
+    const faces = getFaceList(card);
+    const facesHTML = faces.map(f => {
+      const isBlank = f.isBlank || !f.text || f.text === 'X' || f.text === '—';
+      return `<div style="
+        background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
+        border-radius:6px;padding:4px 3px;display:flex;flex-direction:column;align-items:center;gap:2px;
+        min-width:54px;">
+        <div style="font-size:18px;line-height:1;">${['⚀','⚁','⚂','⚃','⚄','⚅'][f.face-1] || '🎲'}</div>
+        <div style="font-size:8px;color:${isBlank?'#555':'#ddd'};text-align:center;line-height:1.3;max-width:56px;word-break:break-word;">
+          ${isBlank ? '—' : (f.text || '—')}
+        </div>
+      </div>`;
+    }).join('');
+
+    const slotHTML = slot
+      ? `<div class="die-item-slot filled" data-die-uid="${uid}" style="
+          display:flex;align-items:center;gap:8px;padding:6px 10px;
+          background:rgba(100,70,20,0.4);border:2px solid #d35400;border-radius:8px;
+          cursor:pointer;min-width:0;" title="Click to remove item">
+          <img src="${slot.image || ''}" style="width:28px;height:28px;object-fit:contain;flex-shrink:0;border-radius:4px;background:rgba(0,0,0,0.3);"
+            onerror="this.style.display='none'">
+          <div style="min-width:0;">
+            <div style="font-size:10px;font-weight:bold;color:#f0c850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${slot.name}</div>
+            <div style="font-size:9px;color:#aaa;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${slot.description || ''}</div>
+          </div>
+          <div style="margin-left:auto;color:#e74c3c;font-size:12px;flex-shrink:0;">✕</div>
+        </div>`
+      : `<div class="die-item-slot empty" data-die-uid="${uid}" style="
+          display:flex;align-items:center;justify-content:center;gap:6px;
+          padding:8px 12px;background:rgba(255,255,255,0.04);
+          border:2px dashed rgba(255,255,255,0.2);border-radius:8px;
+          cursor:pointer;color:#666;font-size:11px;" title="Click to equip an item">
+          <span style="font-size:16px;">+</span> Equip Item
+        </div>`;
+
+    return `
+      <div style="background:rgba(10,8,5,0.85);border:2px solid #7d4e00;border-radius:12px;
+        padding:14px;display:flex;flex-direction:column;gap:10px;min-width:260px;max-width:320px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${card.imageUrl
+            ? `<img src="${card.imageUrl}" style="width:40px;height:40px;object-fit:contain;border-radius:6px;background:rgba(0,0,0,0.4);" onerror="this.style.display='none'">`
+            : `<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:28px;border-radius:6px;background:rgba(0,0,0,0.3);">🎲</div>`}
+          <div>
+            <div style="font-weight:bold;font-size:13px;color:#f0c850;">${card.name}${card.upgraded ? ' +' : ''}</div>
+            <div style="font-size:10px;color:#888;">${card.rarity || 'Starter'} Dice${card._isStarting ? ' · Starting' : ''}</div>
+          </div>
+        </div>
+        ${faces.length > 0 ? `
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">${facesHTML}</div>
+        ` : `<div style="font-size:10px;color:#555;text-align:center;">No face data</div>`}
+        ${slotHTML}
+      </div>`;
+  };
+
+  const diceHTML = allDice.length > 0
+    ? allDice.map((c, i) => dieCardHTML(c, i)).join('')
+    : '<p style="color:#666;text-align:center;grid-column:1/-1;">No dice in your collection yet.</p>';
+
+  createGameModal(`
+    <div style="padding:20px;max-width:1100px;margin:0 auto;">
+      <h2 style="color:#d35400;text-align:center;margin-top:0;">🎲 Dice Tray (${allDice.length} dice)</h2>
+      <p style="text-align:center;color:#888;font-size:12px;margin:0 0 16px;">
+        Slot an item onto each die — items apply their effects when the die is played.
+        Slotted items are not shown in inventory during combat.
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:center;">
+        ${diceHTML}
+      </div>
+      <div style="text-align:center;margin-top:20px;">
+        <button onclick="closeGameModal()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
+      </div>
+    </div>
+  `);
+
+  // Wire up slot clicks
+  document.querySelectorAll('.die-item-slot.filled').forEach(el => {
+    el.addEventListener('click', () => {
+      const uid = el.dataset.dieUid;
+      _diceTrayUnequip(uid);
+      showDiceTrayModal();
+    });
+  });
+
+  document.querySelectorAll('.die-item-slot.empty').forEach(el => {
+    el.addEventListener('click', () => {
+      const uid = el.dataset.dieUid;
+      _diceTrayPickItem(uid);
+    });
+  });
+}
+
+function _diceTrayUnequip(dieUid) {
+  if (!gameState.diceSlots) gameState.diceSlots = {};
+  const item = gameState.diceSlots[dieUid];
+  if (!item) return;
+  // Return item to inventory
+  if (!gameState.inventory) gameState.inventory = [];
+  gameState.inventory.push(item);
+  if (typeof inventory !== 'undefined') inventory.push(item);
+  delete gameState.diceSlots[dieUid];
+  if (typeof createNotification === 'function') {
+    createNotification(`${item.name} unequipped from die.`, '#888', '📦');
+  }
+  saveCurrentGame();
+}
+
+function _diceTrayPickItem(dieUid) {
+  const inv = typeof inventory !== 'undefined' ? inventory : (gameState.inventory || []);
+  // Filter out items already slotted to other dice
+  const slottedNames = new Set(
+    Object.values(gameState.diceSlots || {}).filter(Boolean).map(i => i.name)
+  );
+  const available = inv.filter(item => !slottedNames.has(item.name));
+
+  if (available.length === 0) {
+    if (typeof createNotification === 'function') {
+      createNotification('No items available to equip.', '#888', '📦');
+    }
+    return;
+  }
+
+  const rarityColor = r => {
+    switch ((r || '').toLowerCase()) {
+      case 'legendary': return '#ff6b00';
+      case 'rare': return '#9b59b6';
+      case 'uncommon': return '#4CAF50';
+      default: return '#aaa';
+    }
+  };
+
+  const itemsHTML = available.map((item, idx) => `
+    <div class="dice-tray-item-pick" data-item-idx="${idx}" style="
+      display:flex;align-items:center;gap:10px;padding:8px 10px;
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);
+      border-radius:8px;cursor:pointer;transition:background 0.15s;"
+      onmouseover="this.style.background='rgba(211,84,0,0.18)'"
+      onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+      <img src="${item.image || ''}" style="width:32px;height:32px;object-fit:contain;flex-shrink:0;border-radius:4px;background:rgba(0,0,0,0.3);"
+        onerror="this.style.display='none'">
+      <div style="min-width:0;">
+        <div style="font-size:11px;font-weight:bold;color:${rarityColor(item.rarity)};">${item.name}</div>
+        <div style="font-size:9px;color:#aaa;line-height:1.3;">${item.description || ''}</div>
+      </div>
+    </div>`).join('');
+
+  // Show a picker overlay within the modal
+  const existingPicker = document.getElementById('dice-item-picker');
+  if (existingPicker) existingPicker.remove();
+
+  const gameModal = document.querySelector('.game-modal-content') || document.getElementById('game-modal');
+  if (!gameModal) return;
+
+  const picker = document.createElement('div');
+  picker.id = 'dice-item-picker';
+  picker.style.cssText = `position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.8);
+    display:flex;align-items:center;justify-content:center;`;
+  picker.innerHTML = `
+    <div style="background:#1a1208;border:2px solid #d35400;border-radius:14px;padding:20px;
+      max-width:500px;width:92%;max-height:75vh;display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <h3 style="color:#f0c850;margin:0;font-size:16px;">📦 Choose an Item</h3>
+        <button id="dice-item-picker-close" style="background:none;border:none;color:#aaa;font-size:20px;cursor:pointer;line-height:1;">✕</button>
+      </div>
+      <div style="overflow-y:auto;display:flex;flex-direction:column;gap:6px;max-height:55vh;">
+        ${itemsHTML}
+      </div>
+    </div>`;
+  document.body.appendChild(picker);
+
+  picker.querySelector('#dice-item-picker-close').addEventListener('click', () => picker.remove());
+  picker.addEventListener('click', e => { if (e.target === picker) picker.remove(); });
+
+  picker.querySelectorAll('.dice-tray-item-pick').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx  = parseInt(el.dataset.itemIdx);
+      const item = available[idx];
+      if (!item) return;
+      picker.remove();
+
+      // Remove from inventory, add to slot
+      const globalInv = typeof inventory !== 'undefined' ? inventory : (gameState.inventory || []);
+      const invIdx = globalInv.indexOf(item);
+      if (invIdx !== -1) {
+        globalInv.splice(invIdx, 1);
+        if (gameState.inventory && gameState.inventory !== globalInv) {
+          const gi = gameState.inventory.indexOf(item);
+          if (gi !== -1) gameState.inventory.splice(gi, 1);
+        }
+      }
+      if (!gameState.diceSlots) gameState.diceSlots = {};
+      gameState.diceSlots[dieUid] = item;
+      if (typeof createNotification === 'function') {
+        createNotification(`${item.name} equipped to die!`, '#d35400', '🎲');
+      }
+      saveCurrentGame();
+      showDiceTrayModal();
+    });
+  });
+}
+
+window.showDiceTrayModal = showDiceTrayModal;
+
 // ============== LEVEL-UP SYSTEM ==============
 
 /**
@@ -8633,10 +8890,28 @@ function showCardDetails(cardName) {
         const allText = ((card.description || '') + ' ' + (card.upgradedDescription || '')).toLowerCase();
         const statusData = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA : {};
         const addonData  = typeof ADDONS_DATA  !== 'undefined' ? ADDONS_DATA  : {};
+        const isPower    = (card.type || '').toLowerCase() === 'power';
 
-        const matchedStatuses = Object.values(statusData).filter(s =>
-          new RegExp(`\\b${s.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`, 'i').test(allText)
-        );
+        // For Power cards, only show statuses the card explicitly grants/inflicts
+        // (matches "Gain N StatusName" or "Inflict N StatusName" patterns)
+        const statusGrantPattern = /(?:gain|inflict|apply)\s+(?:\+?\d+\s+)?(\w[\w\s]*)/gi;
+        const explicitlyGranted = new Set();
+        if (isPower) {
+          let m;
+          while ((m = statusGrantPattern.exec(allText)) !== null) {
+            explicitlyGranted.add(m[1].trim().toLowerCase());
+          }
+        }
+
+        const matchedStatuses = Object.values(statusData).filter(s => {
+          const nameRe = new RegExp(`\\b${s.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`, 'i');
+          if (!nameRe.test(allText)) return false;
+          if (isPower) {
+            // Only include if the status name appears in an explicit grant/inflict context
+            return [...explicitlyGranted].some(g => g.includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(g.split(' ')[0]));
+          }
+          return true;
+        });
         const matchedAddons = Object.values(addonData).filter(a =>
           new RegExp(`\\b${a.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`, 'i').test(allText)
         );

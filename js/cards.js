@@ -81,7 +81,12 @@ function selectCardRewards(tagFilter = null) {
  */
 function addCardToDeck(card) {
   if (!gameState.deck) gameState.deck = [];
-  gameState.deck.push({ ...card, upgraded: false });
+  const cardCopy = { ...card, upgraded: false };
+  // Dice cards get a stable UID so item slots can reference them
+  if ((card.type || '').toLowerCase() === 'dice') {
+    cardCopy._dieUid = `die_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  }
+  gameState.deck.push(cardCopy);
 
   // Egg items: auto-upgrade the card if it matches the egg's type
   const inv = typeof inventory !== 'undefined' ? inventory : [];
@@ -145,6 +150,19 @@ function addCardToDeck(card) {
 function removeCardFromDeck(index) {
   if (!gameState.deck || index < 0 || index >= gameState.deck.length) return;
   const card = gameState.deck[index];
+
+  // Return any slotted item back to inventory when the die is removed
+  if (card._dieUid && gameState.diceSlots && gameState.diceSlots[card._dieUid]) {
+    const slottedItem = gameState.diceSlots[card._dieUid];
+    if (!gameState.inventory) gameState.inventory = [];
+    gameState.inventory.push(slottedItem);
+    if (typeof inventory !== 'undefined') inventory.push(slottedItem);
+    delete gameState.diceSlots[card._dieUid];
+    if (typeof createNotification === 'function') {
+      createNotification(`${slottedItem.name} returned to inventory.`, '#888', '📦');
+    }
+  }
+
   gameState.deck.splice(index, 1);
   if (typeof createNotification === 'function') {
     createNotification(`${card.name} removed from deck.`, '#888', '🗑️');
