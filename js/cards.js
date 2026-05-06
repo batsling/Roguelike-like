@@ -115,31 +115,35 @@ function addCardToDeck(card) {
   }
 
   // Learn spell on acquire (for Dice cards with a learn property or "Learn X" in description)
-  let _learnSpell = card.learn;
-  if (!_learnSpell && card.description) {
-    const _learnMatch = card.description.match(/\bLearn[:\s]+([A-Za-z][A-Za-z\s']*?)(?:[,.]|$)/i);
-    if (_learnMatch) _learnSpell = _learnMatch[1].trim();
-  }
-  if (_learnSpell && typeof SPELLS_DATA !== 'undefined') {
-    const spellName = _learnSpell;
-    const spellDef  = SPELLS_DATA.find(s => s.name === spellName);
-    if (spellDef) {
-      if (!gameState.spells) gameState.spells = [];
-      const alreadyLearned = gameState.spells.some(s => s.name === spellName);
-      if (!alreadyLearned) {
-        gameState.spells.push({ ...spellDef });
-        window.playerSpells = gameState.spells;
-        // Also inject into active combat if one is in progress
-        const _cs = window.CombatEngine && window.CombatEngine.getCombatState && window.CombatEngine.getCombatState();
-        if (_cs && !(_cs.spells || []).some(s => s.name === spellName)) {
-          _cs.spells = _cs.spells || [];
-          _cs.spells.push({ ...spellDef });
-        }
-        if (typeof createNotification === 'function') {
-          createNotification(`Learned: ${spellName}!`, '#c09aff', '✨');
+  try {
+    let _learnSpell = card.learn;
+    if (!_learnSpell && card.description) {
+      const _learnMatch = card.description.match(/\bLearn[:\s]+([A-Za-z][A-Za-z\s']*?)(?:[,.]|$)/i);
+      if (_learnMatch) _learnSpell = _learnMatch[1].trim();
+    }
+    if (_learnSpell && typeof SPELLS_DATA !== 'undefined') {
+      const spellName = _learnSpell;
+      const spellDef  = SPELLS_DATA.find(s => s.name === spellName);
+      if (spellDef) {
+        if (!gameState.spells) gameState.spells = [];
+        const alreadyLearned = gameState.spells.some(s => s.name === spellName);
+        if (!alreadyLearned) {
+          gameState.spells.push({ ...spellDef });
+          window.playerSpells = gameState.spells;
+          // Also inject into active combat if one is in progress
+          const _cs = window.CombatEngine && window.CombatEngine.getCombatState && window.CombatEngine.getCombatState();
+          if (_cs && !(_cs.spells || []).some(s => s.name === spellName)) {
+            _cs.spells = _cs.spells || [];
+            _cs.spells.push({ ...spellDef });
+          }
+          if (typeof createNotification === 'function') {
+            createNotification(`Learned: ${spellName}!`, '#c09aff', '✨');
+          }
         }
       }
     }
+  } catch (e) {
+    console.warn('[addCardToDeck] spell-learn error (card still added):', e);
   }
 
   if (typeof createNotification === 'function') {
