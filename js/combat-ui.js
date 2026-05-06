@@ -4023,7 +4023,7 @@ window._handleSpellbookCast = function(spellName) {
   const cs = window.CombatEngine && window.CombatEngine.getCombatState();
   if (!cs || cs.phase !== 'player_action') return;
   if (!window.CombatEngine.castSpell) return;
-  const result = window.CombatEngine.castSpell(spellName, null);
+  const result = window.CombatEngine.castSpell(spellName, {});
   if (result && !result.success && result.error) {
     typeof createNotification === 'function' &&
       createNotification(result.error, '#e74c3c', '✨');

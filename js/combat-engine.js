@@ -1442,15 +1442,23 @@ function processEffect(effect, die, targets, isCantrip = false) {
       });
       break;
 
+    case 'magic':
     case 'magic dmg':
     case 'magic_dmg': {
-      const magicAddons = (effect.addons || []).filter(a => !['DamagedEnemies', 'LeftmostRightmost'].includes(a));
+      const magicAddons = (effect.addons || []).filter(a => !['Dmg', 'DamagedEnemies', 'LeftmostRightmost'].includes(a));
       resolvedTargets.enemies.forEach(enemy => {
         dealDamage(enemy, value, ['magic', ...magicAddons]);
         if (effect.element) {
           applyElement(enemy, effect.element, value, magicAddons);
         }
       });
+      // Handle compound "and Gain X Health" embedded in magic addons (e.g. Balance)
+      const addonsStr = (effect.addons || []).join(' ');
+      const gainHealthMatch = addonsStr.match(/\bGain\s+(\d+)\s+Health\b/i);
+      if (gainHealthMatch) {
+        healTarget(combatState.player, parseInt(gainHealthMatch[1]));
+        addLog(`Gained ${gainHealthMatch[1]} Health`, 'success');
+      }
       break;
     }
 
@@ -1548,7 +1556,14 @@ function processEffect(effect, die, targets, isCantrip = false) {
 
     case 'set': {
       // Set target's health to a fixed value (Mend spell)
-      const setVal = effect.value || value;
+      // Parse from addons ("to 10") if effect.value is not set
+      let setVal = effect.value;
+      if (setVal === null || setVal === undefined || setVal === 0) {
+        const addonsArr = effect.addons || [];
+        const toIdx = addonsArr.findIndex(a => a.toLowerCase() === 'to');
+        if (toIdx !== -1 && addonsArr[toIdx + 1]) setVal = parseInt(addonsArr[toIdx + 1]) || value;
+        else setVal = value;
+      }
       // Prefer ally target, then player
       const setTarget = resolvedTargets.allies.length > 0
         ? resolvedTargets.allies[0]
@@ -1629,6 +1644,7 @@ function calculateMoveValue(move, value, die) {
       }
       return baseValue + combatPowerBonus;
 
+    case 'magic':
     case 'magic dmg':
     case 'magic_dmg':
       // Magic damage scales with Arcane status (not Power)
@@ -1667,6 +1683,7 @@ function calculateMoveValue(move, value, die) {
  */
 function resolveTargets(effect, targets, isCantrip) {
   const result = { enemies: [], allies: [], player: false };
+  targets = targets || {};
   const addons = effect.addons || [];
 
   // Get preferred target from MOVES_DATA
@@ -1706,18 +1723,32 @@ function resolveTargets(effect, targets, isCantrip) {
     return result;
   }
 
-  // Cleave: target + adjacent
-  if (addons.includes('Cleave') && targets.enemyId) {
-    const targetEnemy = combatState.enemies.find(e => e.id === targets.enemyId);
-    if (targetEnemy) {
-      result.enemies.push(targetEnemy);
-      // Add adjacent enemies
-      const pos = targetEnemy.position;
-      combatState.enemies.forEach(e => {
-        if (e.health > 0 && (e.position === pos - 1 || e.position === pos + 1)) {
-          result.enemies.push(e);
-        }
-      });
+  // "Friendly" addon: target player (or specified ally)
+  if (addons.some(a => a.toLowerCase() === 'friendly')) {
+    if (targets.allyId) {
+      const ally = combatState.allies.find(a => a.id === targets.allyId);
+      if (ally) result.allies.push(ally);
+    } else {
+      result.player = true;
+    }
+    return result;
+  }
+
+  // Cleave: if a specific enemy is targeted, hit it + adjacent; otherwise hit all enemies
+  if (addons.includes('Cleave')) {
+    if (targets.enemyId) {
+      const targetEnemy = combatState.enemies.find(e => e.id === targets.enemyId);
+      if (targetEnemy) {
+        result.enemies.push(targetEnemy);
+        const pos = targetEnemy.position;
+        combatState.enemies.forEach(e => {
+          if (e.health > 0 && (e.position === pos - 1 || e.position === pos + 1)) {
+            result.enemies.push(e);
+          }
+        });
+      }
+    } else {
+      result.enemies = combatState.enemies.filter(e => e.health > 0);
     }
     return result;
   }
@@ -1734,7 +1765,7 @@ function resolveTargets(effect, targets, isCantrip) {
       result.player = true;
     }
   } else {
-    // Use specified target
+    // Use specified target, or auto-target if none given
     if (targets.enemyId) {
       const enemy = combatState.enemies.find(e => e.id === targets.enemyId);
       if (enemy) result.enemies.push(enemy);
@@ -1745,6 +1776,13 @@ function resolveTargets(effect, targets, isCantrip) {
     }
     if (targets.self || preferredTarget.includes('Self')) {
       result.player = true;
+    }
+    // Auto-target first alive enemy when no specific target is given and move targets enemies
+    if (result.enemies.length === 0 && !result.player && !targets.allyId) {
+      if (preferredTarget === 'Enemy' || preferredTarget.includes('Enemy')) {
+        const first = combatState.enemies.find(e => e.health > 0);
+        if (first) result.enemies.push(first);
+      }
     }
   }
 
