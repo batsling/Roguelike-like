@@ -109,7 +109,76 @@ function closeGameModal() {
   }
 }
 
+// ===== SECONDARY (PANEL) OVERLAY =====
+// Used by Deck, Dice Tray, and Spells when a primary modal is already open.
+// Creates a separate overlay with a higher z-index so it layers on top without
+// destroying the primary modal (e.g. an in-progress event screen).
+
+function createPanelOverlay(content) {
+  hideAllTooltips();
+  const existing = document.getElementById('panel-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'panel-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.72);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 30px;
+    z-index: 20000;
+    animation: fadeIn 0.3s;
+  `;
+
+  const inner = document.createElement('div');
+  inner.className = 'panel-overlay-content';
+  inner.style.cssText = `
+    background: #2a2420;
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 1400px;
+    width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    color: #e6d5b8;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.9);
+    border: 2px solid #cc6600;
+  `;
+  inner.innerHTML = content;
+  overlay.appendChild(inner);
+  document.body.appendChild(overlay);
+
+  // Click backdrop to close
+  overlay.addEventListener('click', e => { if (e.target === overlay) closePanelOverlay(); });
+
+  return overlay;
+}
+
+function closePanelOverlay() {
+  const overlay = document.getElementById('panel-overlay');
+  if (overlay) {
+    overlay.style.animation = 'fadeOut 0.3s';
+    setTimeout(() => overlay.remove(), 300);
+  }
+}
+
+// Decide whether to open content as a panel overlay (when a modal is already open)
+// or as the primary game modal (when nothing is open).
+function openDeckDiceSpellsModal(content, usePanel) {
+  if (usePanel) {
+    createPanelOverlay(content);
+  } else {
+    createGameModal(content);
+  }
+}
+
 // Export modal functions globally
 window.createGameModal = createGameModal;
 window.closeGameModal = closeGameModal;
 window.hideAllTooltips = hideAllTooltips;
+window.createPanelOverlay = createPanelOverlay;
+window.closePanelOverlay = closePanelOverlay;
+window.openDeckDiceSpellsModal = openDeckDiceSpellsModal;

@@ -1087,8 +1087,14 @@ const ITEM_EFFECTS = {
           names.push(t.name);
         } else {
           t.c.upgraded = true;
-          t.c.description = t.c.upgradedDescription;
           if (t.c.upgradedCost !== null && t.c.upgradedCost !== undefined) t.c.cost = t.c.upgradedCost;
+          if ((t.c.tags || []).includes('weapon')) {
+            // Weapon cards: bump level only — never replace description so accumulated buffs survive
+            const weaponItem = (gameState.inventory || []).find(i => i.name === t.c.name && i.type === 'Weapon');
+            if (weaponItem) weaponItem.level = (weaponItem.level || 1) + 1;
+          } else {
+            t.c.description = t.c.upgradedDescription;
+          }
           names.push(t.c.name);
         }
       });
@@ -1131,8 +1137,14 @@ const ITEM_EFFECTS = {
           names.push(t.name);
         } else {
           t.c.upgraded = true;
-          t.c.description = t.c.upgradedDescription;
           if (t.c.upgradedCost !== null && t.c.upgradedCost !== undefined) t.c.cost = t.c.upgradedCost;
+          if ((t.c.tags || []).includes('weapon')) {
+            // Weapon cards: bump level only — never replace description so accumulated buffs survive
+            const weaponItem = (gameState.inventory || []).find(i => i.name === t.c.name && i.type === 'Weapon');
+            if (weaponItem) weaponItem.level = (weaponItem.level || 1) + 1;
+          } else {
+            t.c.description = t.c.upgradedDescription;
+          }
           names.push(t.c.name);
         }
       });

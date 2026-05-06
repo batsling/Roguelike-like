@@ -654,16 +654,17 @@ function showHadesBoonSelection(shouldSpawnChoices = true) {
   // Get all boon items
   const allBoons = items.filter(item => item.type === 'Boon');
 
-  if (allBoons.length < 2) {
+  const boonCount = 3;
+  if (allBoons.length < boonCount) {
     console.error('Not enough boons available!');
     return;
   }
 
-  // Select exactly 2 random boons
+  // Select exactly 3 random boons
   const selectedBoons = [];
   const availableBoons = [...allBoons];
 
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < boonCount; i++) {
     const randomIndex = Math.floor(Math.random() * availableBoons.length);
     selectedBoons.push(availableBoons[randomIndex]);
     availableBoons.splice(randomIndex, 1);
@@ -671,12 +672,12 @@ function showHadesBoonSelection(shouldSpawnChoices = true) {
 
   // Create modal HTML
   let modalHTML = `
-    <div style="text-align: center; max-width: 700px; margin: 0 auto;">
+    <div style="text-align: center; max-width: 1000px; margin: 0 auto;">
       <h2 style="color: #ba55d3; margin-top: 0; font-size: 28px;">🌟 Divine Boons 🌟</h2>
       <p style="color: #aaa; font-size: 16px; margin: 15px 0 25px 0;">
-        You've come across two different Gods that offer you assistance on your journey, with a cost of course.
+        Three Gods offer you their boons. Choose one — each boon applies a status to at least one game choice each round.
       </p>
-      <div style="display: flex; gap: 20px; justify-content: center; margin-top: 20px;">
+      <div style="display: flex; gap: 20px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
   `;
 
   selectedBoons.forEach((boon, index) => {
@@ -703,7 +704,7 @@ function showHadesBoonSelection(shouldSpawnChoices = true) {
   modalHTML += `
       </div>
       <p style="color: #888; font-size: 12px; margin-top: 20px; font-style: italic;">
-        Choose wisely - this selection cannot be rerolled
+        Choose wisely — this selection cannot be rerolled. Meeting your boon's condition rewards +1 Str, Dex, Int, Cha.
       </p>
     </div>
   `;

@@ -5270,7 +5270,7 @@ function showCardZoomOverlay(card) {
   overlay.style.cssText = `
     position:fixed; inset:0; background:rgba(0,0,0,0.75);
     display:flex; align-items:center; justify-content:center;
-    z-index:10000; cursor:pointer;
+    z-index:35000; cursor:pointer;
   `;
   overlay.innerHTML = `
     <div style="
@@ -5357,7 +5357,7 @@ function showDeckModal() {
   const startingHTML = startingCards.map((c, i) => cardHtml(c, 'Starting', i)).join('');
   const collectedHTML = collectedCards.map((c, i) => cardHtml(c, 'Acquired', startingCards.length + i)).join('');
 
-  createGameModal(`
+  createPanelOverlay(`
     <div style="padding:20px;max-width:1100px;margin:0 auto;">
       <h2 style="color:#9b59b6;text-align:center;margin-top:0;">🃏 Your Deck (${totalCount} cards)</h2>
       <p style="text-align:center;color:#888;font-size:12px;margin:0 0 12px;">Click a card to zoom in</p>
@@ -5370,7 +5370,7 @@ function showDeckModal() {
         <div style="display:flex;gap:12px;flex-wrap:wrap;">${collectedHTML}</div>
       ` : ''}
       <div style="text-align:center;margin-top:20px;">
-        <button onclick="closeGameModal()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
+        <button onclick="closePanelOverlay()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
       </div>
     </div>
   `);
@@ -5487,7 +5487,7 @@ function showDiceTrayModal() {
         padding:14px;display:flex;flex-direction:column;gap:10px;min-width:300px;max-width:400px;">
         <div style="display:flex;align-items:center;gap:10px;">
           ${card.imageUrl
-            ? `<img src="${card.imageUrl}" style="width:40px;height:40px;object-fit:contain;border-radius:6px;background:rgba(0,0,0,0.4);" onerror="this.style.display='none'">`
+            ? `<img src="${card.imageUrl}" style="width:40px;height:40px;object-fit:contain;border-radius:6px;background:rgba(0,0,0,0.4);" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\\'width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:28px;border-radius:6px;background:rgba(0,0,0,0.3);\\'>🎲</div>')">`
             : `<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:28px;border-radius:6px;background:rgba(0,0,0,0.3);">🎲</div>`}
           <div>
             <div style="font-weight:bold;font-size:13px;color:#f0c850;">${card.name}${card.upgraded ? ' +' : ''}</div>
@@ -5505,7 +5505,7 @@ function showDiceTrayModal() {
     ? allDice.map((c, i) => dieCardHTML(c, i)).join('')
     : '<p style="color:#666;text-align:center;grid-column:1/-1;">No dice in your collection yet.</p>';
 
-  createGameModal(`
+  createPanelOverlay(`
     <div style="padding:20px;max-width:1100px;margin:0 auto;">
       <h2 style="color:#d35400;text-align:center;margin-top:0;">🎲 Dice Tray (${allDice.length} dice)</h2>
       <p style="text-align:center;color:#888;font-size:12px;margin:0 0 16px;">
@@ -5516,7 +5516,7 @@ function showDiceTrayModal() {
         ${diceHTML}
       </div>
       <div style="text-align:center;margin-top:20px;">
-        <button onclick="closeGameModal()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
+        <button onclick="closePanelOverlay()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
       </div>
     </div>
   `);
@@ -5601,7 +5601,7 @@ function _diceTrayPickItem(dieUid) {
 
   const picker = document.createElement('div');
   picker.id = 'dice-item-picker';
-  picker.style.cssText = `position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.8);
+  picker.style.cssText = `position:fixed;inset:0;z-index:30000;background:rgba(0,0,0,0.8);
     display:flex;align-items:center;justify-content:center;`;
   picker.innerHTML = `
     <div style="background:#1a1208;border:2px solid #d35400;border-radius:14px;padding:20px;
@@ -5732,12 +5732,12 @@ function showSpellsModal() {
         <div style="font-size:12px;color:#444;margin-top:6px;">Acquire dice cards with a "Learn:" effect to gain spells.</div>
       </div>`;
 
-  createGameModal(`
+  createPanelOverlay(`
     <div style="padding:20px;max-width:1000px;margin:0 auto;">
       <h2 style="color:#c4b5fd;text-align:center;margin-top:0;">✨ Your Spells (${spells.length})</h2>
       ${content}
       <div style="text-align:center;margin-top:20px;">
-        <button onclick="closeGameModal()" style="padding:12px 30px;background:#2d1a4e;
+        <button onclick="closePanelOverlay()" style="padding:12px 30px;background:#2d1a4e;
           border:1px solid #7c3aed;border-radius:8px;color:#c4b5fd;cursor:pointer;font-weight:bold;">
           Close
         </button>
