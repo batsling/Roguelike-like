@@ -129,7 +129,7 @@ var ITEMS_DATA = [
     "name": "Boon of Aphrodite",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player charms an enemy gain +1 to Strength, Dexterity, Intelligence, and Charisma, but 1 of the game choices will be Charmed",
+    "description": "If the player charm an enemy gain +1 to Strength, Dexterity, Intelligence, and Charisma, but 1 of the game choices will be Charmed",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfAphrodite.png",

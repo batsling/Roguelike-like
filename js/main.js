@@ -160,6 +160,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     spellsBtn.addEventListener('click', showSpellsModal);
   }
 
+  const notifHistoryBtn = document.getElementById('notif-history-btn');
+  if (notifHistoryBtn) {
+    notifHistoryBtn.addEventListener('click', showNotificationHistory);
+  }
+
   const lootBtn = document.getElementById('loot-btn');
   if (lootBtn) {
     lootBtn.addEventListener('click', showLootModal);
@@ -706,7 +711,7 @@ function generateLayerPreview(startName, amuletName) {
 function showStartingChoiceModal(startOptions, amulet, saveName) {
   _pendingStartOptions = { options: startOptions, amulet, saveName };
   const typeColors = { Action: '#c0392b', Traditional: '#7d3c98', Strategy: '#1a5276', Deckbuilding: '#1e8449' };
-  const bonusDesc  = { Action: '1 Weapon Reward', Traditional: '2 Item Rewards + 1 Curse', Strategy: '40 Gold', Deckbuilding: '2 Card Rewards' };
+  const bonusDesc  = { Action: '1 Weapon Reward', Traditional: '1 Item Reward', Strategy: '40 Gold', Deckbuilding: '1 Card Reward' };
   const panels = startOptions.map((opt, i) => {
     const col = typeColors[opt.type] || '#555';
     const dFS = bfsAllDistances(opt.start.name);
@@ -737,13 +742,7 @@ function applyStartingBonus(type, onComplete) {
       showItemChoiceModal(onComplete, 'normal', 'Weapon');
       break;
     case 'Traditional':
-      showItemChoiceModal(() => {
-        showItemChoiceModal(() => {
-          const cursePool = typeof CURSES_DATA !== 'undefined' ? CURSES_DATA : [];
-          if (cursePool.length > 0) addCurse(cursePool[Math.floor(Math.random() * cursePool.length)]);
-          onComplete();
-        });
-      });
+      showItemChoiceModal(onComplete);
       break;
     case 'Strategy':
       gold += 40;
@@ -752,7 +751,7 @@ function applyStartingBonus(type, onComplete) {
       onComplete();
       break;
     case 'Deckbuilding':
-      showCardRewardModal(() => showCardRewardModal(onComplete));
+      showCardRewardModal(onComplete);
       break;
     default:
       onComplete();
@@ -5141,7 +5140,8 @@ window.toggleCombatSystem = function() {
 window._cardPR = [];
 
 function _cardPreviewBtn(card) {
-  if (!card || !card.upgradedDescription) return '';
+  const isWeapon = !!(card && card.tags && card.tags.includes('weapon'));
+  if (!card || (!card.upgradedDescription && !isWeapon)) return '';
   const idx = window._cardPR.push(card) - 1;
   return `<button
     onclick="event.stopPropagation();showCardUpgradeZoom(window._cardPR[${idx}])"
@@ -5183,7 +5183,7 @@ function showCardUpgradeZoom(card) {
     const weaponItem = (typeof gameState !== 'undefined' && gameState.inventory || [])
       .find(i => i.name === card.name && i.type === 'Weapon');
     const weaponDesc = weaponItem ? (weaponItem.description || '') : '';
-    const currentLevel = weaponItem ? (weaponItem.level || 1) : (card.upgraded ? 2 : 1);
+    const currentLevel = weaponItem ? (weaponItem.level || 1) : (card._weaponLevel || (card.upgraded ? 2 : 1));
     const nextLevel = currentLevel + 1;
 
     const conditionMatch = weaponDesc.match(/If you ([^,]+),/i);
@@ -5355,6 +5355,33 @@ function showCardZoomOverlay(card) {
 }
 window.showCardZoomOverlay = showCardZoomOverlay;
 
+function showNotificationHistory() {
+  const history = window._notificationHistory || [];
+  const rows = history.length === 0
+    ? '<p style="color:#888;text-align:center;margin:40px 0;">No notifications yet.</p>'
+    : [...history].reverse().map(e => `
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-bottom:1px solid #333;border-left:3px solid ${e.bgColor || '#555'};">
+          <span style="font-size:18px;line-height:1.4;">${e.emoji || ''}</span>
+          <div style="flex:1;">
+            <div style="color:#fff;font-size:14px;">${e.text}</div>
+            <div style="color:#666;font-size:11px;margin-top:2px;">${e.time || ''}</div>
+          </div>
+        </div>`).join('');
+
+  createPanelOverlay(`
+    <div style="max-width:520px;width:100%;margin:0 auto;">
+      <h2 style="text-align:center;color:#aed6f1;margin-bottom:16px;">📜 Notification History</h2>
+      <div style="max-height:60vh;overflow-y:auto;background:#1a1a2e;border-radius:8px;border:1px solid #333;">
+        ${rows}
+      </div>
+      <div style="text-align:center;margin-top:16px;">
+        <button onclick="closePanelOverlay()" style="padding:10px 28px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
+      </div>
+    </div>
+  `);
+}
+window.showNotificationHistory = showNotificationHistory;
+
 function showDeckModal() {
   const charKey = (selectedCharacter) || (gameState && gameState.character) || null;
   const charData = (charKey && typeof PLAYER_CHARACTERS !== 'undefined') ? PLAYER_CHARACTERS[charKey] : null;
@@ -5386,6 +5413,15 @@ function showDeckModal() {
         ${upgBtn}
         ${label ? `<div style="position:absolute;top:4px;right:4px;background:${color};color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:bold;">${label}</div>` : ''}
         ${artHTML}
+        ${(() => {
+          const isWpn = card.tags && card.tags.includes('weapon');
+          const wpnItem = isWpn && typeof gameState !== 'undefined'
+            ? (gameState.inventory || []).find(i => i.name === card.name && i.type === 'Weapon') : null;
+          const lvl = wpnItem ? (wpnItem.level || 1) : null;
+          return lvl && lvl > 1
+            ? `<div style="position:absolute;bottom:5px;right:5px;background:#cc6600;color:#fff;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:bold;">Lv${lvl}</div>`
+            : '';
+        })()}
         <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:3px;">${card.name}${card.upgraded ? ' +' : ''}</div>
         <div style="color:${color};font-size:11px;margin-bottom:4px;">${card.rarity || 'Starter'} · ${card.type || ''}</div>
         <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:6px;">${card.description || ''}</div>
@@ -5820,7 +5856,7 @@ function showLevelUpPrompt() {
   const levelUpCondition = characterData.levelUpCondition || 'Complete a special achievement';
 
   createGameModal(`
-    <div style="text-align: center; padding: 20px; max-width: 500px;">
+    <div style="text-align: center; padding: 20px; max-width: 500px; margin: 0 auto;">
       <h2 style="color: #FFD700; margin-bottom: 20px;">Level Up!</h2>
       <div style="
         background: rgba(0,0,0,0.4);
@@ -6042,7 +6078,7 @@ function confirmLevelUp(onComplete) {
   `;
 
   createGameModal(`
-    <div style="text-align: center; padding: 20px; max-width: 500px;">
+    <div style="text-align: center; padding: 20px; max-width: 500px; margin: 0 auto;">
       <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
       <div style="
         background: rgba(76,175,80,0.1);
@@ -6148,7 +6184,7 @@ function confirmLevelUpLegacy() {
   saveCurrentGame();
 
   createGameModal(`
-    <div style="text-align: center; padding: 20px; max-width: 500px;">
+    <div style="text-align: center; padding: 20px; max-width: 500px; margin: 0 auto;">
       <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
       <div style="
         background: rgba(76,175,80,0.1);

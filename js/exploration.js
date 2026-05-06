@@ -149,16 +149,16 @@ function spawnChoices() {
   // the boon's associated status (the "cost" listed in each boon description).
   if (gameState.location && typeof hasGodBoonChoice === 'function' && hasGodBoonChoice(gameState.location) && opts.length > 0) {
     const activeBoons = (gameState.inventory || []).filter(item => item.type === 'Boon');
+    const boonStatuses = [];
     activeBoons.forEach(boon => {
       const statusMatch = (boon.description || '').match(/will be (\w+)/i);
-      if (statusMatch) {
-        const statusName = statusMatch[1].toLowerCase();
-        const idx = Math.floor(Math.random() * opts.length);
-        if (typeof addGameStatus === 'function') {
-          addGameStatus(opts[idx], statusName);
-        }
-      }
+      if (statusMatch) boonStatuses.push(statusMatch[1].toLowerCase());
     });
+    if (boonStatuses.length > 0 && typeof addGameStatus === 'function') {
+      const statusName = boonStatuses[Math.floor(Math.random() * boonStatuses.length)];
+      const idx = Math.floor(Math.random() * opts.length);
+      addGameStatus(opts[idx], statusName);
+    }
   }
 
   // Store current choices so the map can highlight them

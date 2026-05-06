@@ -394,14 +394,18 @@ const StateMutator = {
     if (descMatch) {
       const cardRef = descMatch[1].trim();
       let cardToAdd = null;
+      const allCards = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
       if (/a random curse/i.test(cardRef)) {
-        const curseCards = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : []).filter(c => c.type === 'Curse');
+        const curseCards = allCards.filter(c => c.type === 'Curse');
         if (curseCards.length > 0) cardToAdd = curseCards[Math.floor(Math.random() * curseCards.length)];
       } else {
-        cardToAdd = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : []).find(c => c.name === cardRef);
+        cardToAdd = allCards.find(c => c.name === cardRef);
       }
-      if (cardToAdd && typeof addCardToDeck === 'function') {
-        addCardToDeck({ ...cardToAdd });
+      const addFn = (typeof window !== 'undefined' && typeof window.addCardToDeck === 'function')
+        ? window.addCardToDeck
+        : (typeof addCardToDeck === 'function' ? addCardToDeck : null);
+      if (cardToAdd && addFn) {
+        addFn({ ...cardToAdd });
         curseInstance._cardAdded = cardToAdd.name;
       }
     }
