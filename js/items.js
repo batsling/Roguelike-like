@@ -903,10 +903,11 @@ const ITEM_EFFECTS = {
     onCombatStart: () => {
       // Count copies for stacking
       const copies = inventory.filter(i => i.name === 'Blood Vial').length;
-      const healAmount = 1 * copies;
+      const healAmount = 2 * copies;
 
       StateMutator.modifyHealth(healAmount);
 
+      if (typeof addLog === 'function') addLog(`Blood Vial: +${healAmount} Health!`, 'success');
       if (typeof createNotification === 'function') {
         createNotification(`Blood Vial: +${healAmount} Health`, '#66bb6a', '🩸');
       }

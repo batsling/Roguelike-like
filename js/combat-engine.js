@@ -1903,6 +1903,15 @@ function dealDamage(target, damage, addons = []) {
     dmg *= 2;
   }
 
+  // Little Knife: attacks deal 25% more damage to targets with lower health than the player
+  if (target !== combatState.player && !addons.includes('self') &&
+      typeof inventory !== 'undefined' && inventory.some(i => i.name === 'Little Knife')) {
+    const playerHp = combatState.player.health;
+    if (target.health < playerHp) {
+      dmg = Math.ceil(dmg * 1.25);
+    }
+  }
+
   // Check Enfeebled (double damage taken)
   const enfeebledStacks = target.statuses['enfeebled'] || 0;
   if (enfeebledStacks > 0) {
@@ -2815,6 +2824,21 @@ function processPlayerStartOfTurn() {
         addLog(`Happy Flower: +${happyFlowerCount} Energy!`, 'success');
       }
     }
+
+    // Sulfa Powder: at the start of each turn, gain +D12 Block (luck applies)
+    const sulfaPowderCount = inventory.filter(i => i.name === 'Sulfa Powder').reduce((n, i) => n + (i.quantity || 1), 0);
+    if (sulfaPowderCount > 0) {
+      const luckVal = typeof playerStats !== 'undefined' ? (playerStats.luck || 0) : (typeof luck !== 'undefined' ? luck : 0);
+      let totalBlock = 0;
+      const rolls = [];
+      for (let k = 0; k < sulfaPowderCount; k++) {
+        const d12Roll = Math.floor(rollWithLuckAdvantage(luckVal, true) * 12) + 1;
+        totalBlock += d12Roll;
+        rolls.push(d12Roll);
+      }
+      addBlock(combatState.player, totalBlock);
+      addLog(`Sulfa Powder: +${totalBlock} Block (D12: ${rolls.join(', ')})!`, 'success');
+    }
   }
 
   // Reset per-turn attack counter for incremental items
@@ -2872,11 +2896,12 @@ function endTurn() {
 
       // Status card end-of-turn effects (e.g. Burn: take N Dmg)
       if (card.isStatusCard) {
-        const burnStatusM = card.description && card.description.match(/At the end of your turn, take (\d+) Dmg/i);
+        const burnStatusM = card.description && card.description.match(/At the end of your turn,.*?Take (\d+) Dmg/i);
         if (burnStatusM) {
           const burnDmg = parseInt(burnStatusM[1]);
           dealDamageToPlayer(burnDmg, ['self'], null);
-          addLog(`${card.name}: took ${burnDmg} damage!`, 'danger');
+          addLog(`${card.name}: took ${burnDmg} damage (held in hand)!`, 'danger');
+          card._exhaustAtEndOfTurn = true;
         }
         continue;
       }
@@ -2918,13 +2943,16 @@ function endTurn() {
     }
   }
 
-  // Discard hand (Ethereal → exhaust; Sly → trigger; Retained → keep; others → discard)
+  // Discard hand (Ethereal → exhaust; Sly → trigger; Retained → keep; _exhaustAtEndOfTurn → exhaust; others → discard)
   if (combatState.hand) {
     const kept = [];
     for (const card of [...combatState.hand]) {
       if (card._retain) { kept.push(card); continue; }
       const descLower = (card.description || '').toLowerCase();
-      if (descLower.includes('ethereal')) {
+      if (card._exhaustAtEndOfTurn) {
+        combatState.exhaustPile.push(card);
+        onCardExhausted(card);
+      } else if (descLower.includes('ethereal')) {
         combatState.exhaustPile.push(card);
         addLog(`${card.name} exhausted (Ethereal)`, 'info');
         onCardExhausted(card);
@@ -3729,6 +3757,15 @@ function processStatusEffects(target, timing) {
       delete combatState._flexPower;
     }
 
+    // Pigment temporaries: remove stat bonuses granted until end of turn
+    if (target === combatState.player && combatState._pigmentTemps) {
+      for (const [pgStat, pgAmt] of Object.entries(combatState._pigmentTemps)) {
+        statuses[pgStat] = Math.max(0, (statuses[pgStat] || 0) - pgAmt);
+        if ((statuses[pgStat] || 0) <= 0) delete statuses[pgStat];
+      }
+      delete combatState._pigmentTemps;
+    }
+
     // Fading
     if (statuses['fading']) {
       statuses['fading']--;
@@ -4250,8 +4287,9 @@ function resolveCardEffect(card, target, options = {}) {
         const _deInv = typeof window.inventory !== 'undefined' ? window.inventory : [];
         if (_deInv.some(i => i.name === 'Dead Eye')) {
           const targetId = target.id || target.name;
-          if (combatState._deadEyeTarget === targetId) {
-            dmg += combatState._deadEyeBonus || 0;
+          if (combatState._deadEyeTarget === targetId && (combatState._deadEyeBonus || 0) > 0) {
+            dmg += combatState._deadEyeBonus;
+            addLog(`Dead Eye: +${combatState._deadEyeBonus} Dmg (streak ${combatState._deadEyeBonus})!`, 'success');
           }
           // Targeting a new enemy: bonus will be reset in dealDamage when streak changes
         }
@@ -4300,6 +4338,7 @@ function resolveCardEffect(card, target, options = {}) {
           } else if (target) {
             dealDamage(target, bonus);
           }
+          addLog(`Strike Dummy: +${bonus} Dmg!`, 'success');
         }
 
         if (target) {
@@ -5386,6 +5425,18 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
+    // Pigment cards: Gain +N [Stat] until end of the turn
+    const pigmentMatch = p.match(/Gain \+?(\d+) (Arcane|Persistence|Power|Defense) until end of the turn/i);
+    if (pigmentMatch) {
+      const pgGain = parseInt(pigmentMatch[1]);
+      const pgStat = pigmentMatch[2].toLowerCase();
+      player.statuses[pgStat] = (player.statuses[pgStat] || 0) + pgGain;
+      combatState._pigmentTemps = combatState._pigmentTemps || {};
+      combatState._pigmentTemps[pgStat] = (combatState._pigmentTemps[pgStat] || 0) + pgGain;
+      addLog(`${card.name}: +${pgGain} ${pigmentMatch[2]} until end of turn`, 'success');
+      continue;
+    }
+
     // Play the top card of your Draw Pile and Exhaust it (Havoc)
     if (/Play the top card of your Draw Pile and Exhaust it/i.test(p)) {
       if (combatState.drawPile.length > 0) {
@@ -5639,6 +5690,7 @@ function playCard(handIndex, targetId = null) {
     // Pen Nib: every 10th attack deals double damage — flag for dealDamage
     if (combatState.incrementals.attacksTotal % 10 === 0 && _incInv.some(i => i.name === 'Pen Nib')) {
       combatState._penNibDouble = true;
+      addLog('Pen Nib: 10th attack — double damage!', 'success');
     }
   }
 
