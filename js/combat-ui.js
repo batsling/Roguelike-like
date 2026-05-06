@@ -1562,8 +1562,8 @@ function renderDiceCardInHand(card, index, total, combat) {
   // Build tooltip showing all faces
   const faceDef = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === card.name);
   const facesHtml = faceDef
-    ? `Click to roll\n` + faceDef.faces.map(f => `${f.face}: ${f.text}`).join('\n')
-    : 'Click to roll';
+    ? faceDef.faces.map(f => `${f.face}: ${f.text}`).join('\n')
+    : '';
 
   return `
     <div class="combat-hand-card" data-hand-index="${index}"
@@ -1608,7 +1608,7 @@ function renderDiceCardInHand(card, index, total, combat) {
         width:100%; flex:1; min-height:0;
       "></div>
 
-      <!-- Name + roll prompt -->
+      <!-- Name -->
       <div style="
         padding:2px 4px 3px;
         font-size:${namePx}px; font-weight:700; color:${nameColor};
@@ -1616,9 +1616,7 @@ function renderDiceCardInHand(card, index, total, combat) {
         text-shadow:0 1px 3px rgba(0,0,0,0.9);
         border-top:1px solid ${borderColor}55;
         background:rgba(0,0,0,0.35);
-      ">${card.name}${card.upgraded ? `<span style="color:#4CAF50;font-size:${namePx+1}px;">⁺</span>` : ''}
-      ${isPlayerTurn && canAfford ? `<div style="font-size:8px;color:#f0c850;margin-top:1px;letter-spacing:0.3px;">▶ click to roll</div>` : ''}
-      </div>
+      ">${card.name}${card.upgraded ? `<span style="color:#4CAF50;font-size:${namePx+1}px;">⁺</span>` : ''}</div>
     </div>
   `;
 }
@@ -2532,11 +2530,10 @@ function handleCardClick(index) {
     return;
   }
 
-  // Dice-type cards: click to roll (play immediately to the Dice Board)
+  // Dice-type cards: select/deselect only — drag to the Dice Board to roll
   if ((card.type || '').toLowerCase() === 'dice') {
-    handleDiceCardPlay(index, combat);
+    combat.selectedCardIndex = combat.selectedCardIndex === index ? null : index;
     updateCombatDisplay();
-    checkCombatEnd();
     return;
   }
 

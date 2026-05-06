@@ -80,6 +80,7 @@ function selectCardRewards(tagFilter = null) {
  * @param {Object} card - Card object from CARDS_DATA
  */
 function addCardToDeck(card) {
+  if (!card) { console.error('[addCardToDeck] called with null/undefined card'); return; }
   if (!gameState.deck) gameState.deck = [];
   const cardCopy = { ...card, upgraded: false };
   // Dice cards get a stable UID so item slots can reference them

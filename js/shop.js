@@ -620,7 +620,21 @@ function showShopModal(purchasedIndices = []) {
       _keepersSackCheck(price);
       if (!gameState.purchasedShopCards) gameState.purchasedShopCards = [];
       gameState.purchasedShopCards.push(cardIndex);
-      if (typeof addCardToDeck === 'function') addCardToDeck(card);
+      const deckBefore = (gameState.deck || []).length;
+      if (typeof addCardToDeck === 'function') {
+        addCardToDeck(card);
+      } else {
+        if (!gameState.deck) gameState.deck = [];
+        gameState.deck.push({ ...card, upgraded: false });
+        if (typeof createNotification === 'function') createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
+      }
+      // Fallback: if the card didn't land in the deck for any reason, push it directly
+      if ((gameState.deck || []).length <= deckBefore) {
+        console.warn('[Shop] addCardToDeck did not add card; pushing directly:', card.name);
+        if (!gameState.deck) gameState.deck = [];
+        gameState.deck.push({ ...card, upgraded: false });
+        if (typeof createNotification === 'function') createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
+      }
       saveCurrentGame();
       showShopModal(purchasedIndices);
     };
