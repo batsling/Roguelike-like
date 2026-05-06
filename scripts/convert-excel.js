@@ -709,13 +709,13 @@ if (cardsSheet) {
     return {
       name: row['Name'] || '',
       rarity: row['Rarity'] || 'Common',
-      cost: parseInt(row['Cost']) || 0,
+      cost: (String(row['Cost']).trim() === 'X') ? 'X' : (parseInt(row['Cost']) || 0),
       type: row['Type'] || 'Attack',
       description: row['Description'] || '',
       upgradedDescription: (!isStatusCard && row['Upgraded Description'] && row['Upgraded Description'] !== 'N/A')
         ? row['Upgraded Description'] : null,
       upgradedCost: (!isStatusCard && upgradedCost !== undefined && upgradedCost !== 'N/A')
-        ? parseInt(upgradedCost) : null,
+        ? (String(upgradedCost).trim() === 'X' ? 'X' : parseInt(upgradedCost)) : null,
       canUpgrade: !isStatusCard && !!(row['Upgraded Description'] && row['Upgraded Description'] !== 'N/A'),
       isStatusCard: isStatusCard,
       imageUrl: (row['Img'] && row['Img'] !== 'N/A')
@@ -743,6 +743,116 @@ var CARDS_DATA = ${JSON.stringify(cards, null, 2)};
 }
 
 // ============== DICE ==============
+// Parse a dice face text string (Excel format) into effects + addons
+function parseDiceFaceFromText(rawText) {
+  const text = (rawText || '').trim();
+  if (!text || text === 'X' || text === 'x' || text === '—') {
+    return { isBlank: true, effects: [], addons: [] };
+  }
+
+  const faceAddons = [];
+  const effects = [];
+
+  // Split by comma — addons like "Cantrip" appear after a comma
+  const parts = text.split(',').map(p => p.trim()).filter(Boolean);
+  const effectParts = [];
+
+  for (const part of parts) {
+    const lower = part.toLowerCase();
+    if (lower === 'cantrip') { faceAddons.push('cantrip'); continue; }
+    if (lower === 'single use') { faceAddons.push('singleUse'); continue; }
+    // "Increase the Dmg/Block of this Side by N" → druid scaling addon
+    if (/increase the (dmg|block|damage) of this side by/i.test(part)) {
+      faceAddons.push('druid');
+      continue;
+    }
+    effectParts.push(part);
+  }
+
+  for (const part of effectParts) {
+    let m;
+
+    // "Deal N Magic Dmg [Addons...]"
+    m = part.match(/^Deal\s+(\d+)\s+Magic\s+Dmg\s*(.*)?$/i);
+    if (m) {
+      const addons = (m[2] || '').trim().split(/\s+/).filter(Boolean);
+      effects.push({ move: 'magic_dmg', value: parseInt(m[1]), addons });
+      continue;
+    }
+
+    // "Deal N Dmg [Addons...]"
+    m = part.match(/^Deal\s+(\d+)\s+Dmg\s*(.*)?$/i);
+    if (m) {
+      const addons = (m[2] || '').trim().split(/\s+/).filter(Boolean);
+      effects.push({ move: 'dmg', value: parseInt(m[1]), addons });
+      continue;
+    }
+
+    // "Take N Dmg" → self damage
+    m = part.match(/^Take\s+(\d+)\s+Dmg/i);
+    if (m) {
+      effects.push({ move: 'pain', value: parseInt(m[1]), addons: [] });
+      continue;
+    }
+
+    // "Gain +N Block"
+    m = part.match(/^Gain\s+\+?(\d+)\s+Block/i);
+    if (m) {
+      effects.push({ move: 'block', value: parseInt(m[1]), addons: [] });
+      continue;
+    }
+
+    // "Gain +N Health"
+    m = part.match(/^Gain\s+\+?(\d+)\s+Health/i);
+    if (m) {
+      effects.push({ move: 'heal', value: parseInt(m[1]), addons: [] });
+      continue;
+    }
+
+    // "Gain +N Mana"
+    m = part.match(/^Gain\s+\+?(\d+)\s+Mana/i);
+    if (m) {
+      effects.push({ move: 'mana', value: parseInt(m[1]), addons: [] });
+      continue;
+    }
+
+    // "Gain +N Reroll"
+    m = part.match(/^Gain\s+\+?(\d+)\s+Reroll/i);
+    if (m) {
+      effects.push({ move: 'reroll', value: parseInt(m[1]), addons: [] });
+      continue;
+    }
+
+    // "Get N StatusName"
+    m = part.match(/^Get\s+(\d+)\s+(.+)$/i);
+    if (m) {
+      const statusName = m[2].trim();
+      effects.push({ move: 'get', value: parseInt(m[1]), target: statusName, statusKey: statusName.toLowerCase(), addons: [] });
+      continue;
+    }
+
+    // "Inflict N StatusName"
+    m = part.match(/^Inflict\s+(\d+)\s+(.+)$/i);
+    if (m) {
+      effects.push({ move: 'inflict', value: parseInt(m[1]), target: m[2].trim(), addons: [] });
+      continue;
+    }
+
+    // "Cleanse N"
+    m = part.match(/^Cleanse\s+(\d+)/i);
+    if (m) {
+      effects.push({ move: 'cleanse', value: parseInt(m[1]), addons: [] });
+      continue;
+    }
+  }
+
+  return {
+    isBlank: effects.length === 0 && faceAddons.length === 0,
+    effects,
+    addons: faceAddons
+  };
+}
+
 const diceSheetRaw = workbook.Sheets['dice'];
 if (diceSheetRaw) {
   const diceRows = XLSX.utils.sheet_to_json(diceSheetRaw);
@@ -751,7 +861,9 @@ if (diceSheetRaw) {
     const sides = parseInt(row['Sides']) || 6;
     const faces = [];
     for (let i = 1; i <= sides; i++) {
-      faces.push({ face: i, text: (row[`Side ${i}`] || '').trim() });
+      const rawText = (row[`Side ${i}`] || '').trim();
+      const parsed = parseDiceFaceFromText(rawText);
+      faces.push({ face: i, text: rawText, ...parsed });
     }
     return { name: (row['Name'] || '').trim(), sides, faces };
   });

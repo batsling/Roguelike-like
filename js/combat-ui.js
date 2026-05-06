@@ -1125,7 +1125,7 @@ function renderInlineeDiceBoard(combat) {
     const isCantrip   = addons.includes('cantrip');
     const isSingleUse = addons.includes('singleUse');
     const isDruid     = addons.includes('druid');
-    const needsTarget = !isBlank && (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+    const needsTarget = !isBlank && (face.effects || []).some(e => /^(dmg|magic_dmg|magic dmg)$/i.test(e.move || '') && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
     const isSelected  = window._selectedPendingId === entry.id;
 
     const addonBadges = [
@@ -1247,21 +1247,34 @@ function renderActionsZone(combat) {
       ` : ''}
 
       <!-- End Turn button -->
-      <button id="combat-end-turn-btn" style="
-        padding:12px 18px;
-        background:${isPlayerTurn
-          ? 'linear-gradient(145deg,#2e7d32,#1b5e20)'
-          : 'linear-gradient(145deg,#3d3d3d,#2a2a2a)'};
-        border:3px solid ${isPlayerTurn ? '#4CAF50' : '#555'};
-        border-radius:10px; color:white;
-        cursor:${isPlayerTurn ? 'pointer' : 'not-allowed'};
-        font-weight:bold; font-size:14px;
-        width:118px;
-        box-shadow:${isPlayerTurn ? '0 0 12px rgba(76,175,80,0.4)' : 'none'};
-        transition:all 0.15s; letter-spacing:0.5px;
-      " ${!isPlayerTurn ? 'disabled' : ''}>
-        ${isPlayerTurn ? 'End Turn' : 'Enemy Turn'}
-      </button>
+      ${(() => {
+        const hasMandatory = isPlayerTurn && (combat.pendingDice || []).some(
+          e => (e.face && e.face.addons || []).includes('mandatory')
+        );
+        const bg     = !isPlayerTurn  ? 'linear-gradient(145deg,#3d3d3d,#2a2a2a)'
+                     : hasMandatory   ? 'linear-gradient(145deg,#7a2a00,#4a1500)'
+                     :                  'linear-gradient(145deg,#2e7d32,#1b5e20)';
+        const bdr    = !isPlayerTurn  ? '#555'
+                     : hasMandatory   ? '#e74c3c'
+                     :                  '#4CAF50';
+        const shadow = !isPlayerTurn  ? 'none'
+                     : hasMandatory   ? '0 0 12px rgba(231,76,60,0.5)'
+                     :                  '0 0 12px rgba(76,175,80,0.4)';
+        const label  = !isPlayerTurn  ? 'Enemy Turn'
+                     : hasMandatory   ? '🎲 Use Die!'
+                     :                  'End Turn';
+        return `<button id="combat-end-turn-btn" style="
+          padding:12px 18px;
+          background:${bg};
+          border:3px solid ${bdr};
+          border-radius:10px; color:white;
+          cursor:${isPlayerTurn ? 'pointer' : 'not-allowed'};
+          font-weight:bold; font-size:14px;
+          width:118px;
+          box-shadow:${shadow};
+          transition:all 0.15s; letter-spacing:0.5px;
+        " ${!isPlayerTurn ? 'disabled' : ''}>${label}</button>`;
+      })()}
 
     </div>
   `;
@@ -1380,12 +1393,12 @@ function _getDiceColors(card) {
 // Abbreviated face text for dice whose actual text is too long to render on a die face
 const _DICE_FACE_ABBR = {
   "Isaac's D6": {
-    'Random Curse':                               'Curse',
-    'Random Status':                              'Status',
-    'Random Skill':                               'Skill',
-    'Random Attack':                              'Attack',
-    'Random Power':                               'Power',
-    'Random Attack, Skill, or Power (free)':      'FREE!',
+    'Random Curse, Mandatory':                                                     'Curse',
+    'Random Status, Mandatory':                                                    'Status',
+    'Random Skill, Mandatory':                                                     'Skill',
+    'Random Attack, Mandatory':                                                    'Attack',
+    'Random Power, Mandatory':                                                     'Power',
+    'Random Attack, Skill, or Power that is free to play this combat, Mandatory': 'FREE!',
   },
 };
 
@@ -2211,6 +2224,12 @@ function attachCombatEventListeners(combat) {
       if (!window.CombatEngine) return;
       const snap   = captureHPSnapshot(window.CombatEngine.getCombatState());
       const result = window.CombatEngine.endTurn();
+      if (result && result.error === 'mandatory_die') {
+        if (typeof createNotification === 'function') {
+          createNotification(`Must use ${result.dieName || 'pending die'} before ending turn!`, '#e74c3c', '🎲');
+        }
+        return;
+      }
       if (result && result.success) {
         const combat = window.CombatEngine.getCombatState();
         showHPDiffs(snap, combat);
@@ -2292,7 +2311,7 @@ function attachCombatEventListeners(combat) {
         _showIsaacTransformPicker(face, cs, id);
         return;
       }
-      const needsTarget = (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+      const needsTarget = (face.effects || []).some(e => /^(dmg|magic_dmg|magic dmg)$/i.test(e.move || '') && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
       if (needsTarget) {
         // If a target is already selected (or there's only one enemy), fire immediately
         const living = (cs.enemies || []).filter(e => e.health > 0);
@@ -2329,7 +2348,7 @@ function attachCombatEventListeners(combat) {
       const entry = cs.pendingDice.find(en => en.id === id);
       if (!entry) return;
       const face = entry.face || {};
-      const needsTarget = !face.isBlank && (face.effects || []).some(ef => ef.move === 'dmg' && !(ef.addons || []).some(a => a.toLowerCase() === 'cleave'));
+      const needsTarget = !face.isBlank && (face.effects || []).some(ef => /^(dmg|magic_dmg|magic dmg)$/i.test(ef.move || '') && !(ef.addons || []).some(a => a.toLowerCase() === 'cleave'));
       if (!needsTarget) return; // non-targeting tiles don't need drag
       e.stopPropagation();
       const rect = el.getBoundingClientRect();
@@ -3882,7 +3901,7 @@ function renderPendingDicePanel(combat) {
     const isCantrip   = addons.includes('cantrip');
     const isSingleUse = addons.includes('singleUse');
     const isDruid     = addons.includes('druid');
-    const needsTarget = !isBlank && (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+    const needsTarget = !isBlank && (face.effects || []).some(e => /^(dmg|magic_dmg|magic dmg)$/i.test(e.move || '') && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
 
     const isSelected = window._selectedPendingId === entry.id;
 

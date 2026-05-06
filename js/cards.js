@@ -81,7 +81,12 @@ function selectCardRewards(tagFilter = null) {
  */
 function addCardToDeck(card) {
   if (!gameState.deck) gameState.deck = [];
-  gameState.deck.push({ ...card, upgraded: false });
+  const cardCopy = { ...card, upgraded: false };
+  // Dice cards get a stable UID so item slots can reference them
+  if ((card.type || '').toLowerCase() === 'dice') {
+    cardCopy._dieUid = `die_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  }
+  gameState.deck.push(cardCopy);
 
   // Egg items: auto-upgrade the card if it matches the egg's type
   const inv = typeof inventory !== 'undefined' ? inventory : [];
@@ -145,6 +150,19 @@ function addCardToDeck(card) {
 function removeCardFromDeck(index) {
   if (!gameState.deck || index < 0 || index >= gameState.deck.length) return;
   const card = gameState.deck[index];
+
+  // Return any slotted item back to inventory when the die is removed
+  if (card._dieUid && gameState.diceSlots && gameState.diceSlots[card._dieUid]) {
+    const slottedItem = gameState.diceSlots[card._dieUid];
+    if (!gameState.inventory) gameState.inventory = [];
+    gameState.inventory.push(slottedItem);
+    if (typeof inventory !== 'undefined') inventory.push(slottedItem);
+    delete gameState.diceSlots[card._dieUid];
+    if (typeof createNotification === 'function') {
+      createNotification(`${slottedItem.name} returned to inventory.`, '#888', '📦');
+    }
+  }
+
   gameState.deck.splice(index, 1);
   if (typeof createNotification === 'function') {
     createNotification(`${card.name} removed from deck.`, '#888', '🗑️');
@@ -200,21 +218,25 @@ function upgradeCardInDeck(index) {
   }
 
   card.upgraded = true;
-  if (card.upgradedDescription) card.description = card.upgradedDescription;
   if (card.upgradedCost !== null && card.upgradedCost !== undefined) card.cost = card.upgradedCost;
 
-  // Weapon cards: upgrade their weapon item's level so the next verification effect is stronger
+  // Weapon cards: bump weapon level and update the Trigger indicator in the live description.
+  // Weapon cards: bump level only. Do NOT replace description — accumulated bonus values must persist.
+  // The verification screen reads weapon.level to show the correct (+1/+2) reward automatically.
   if (card.tags && card.tags.includes('weapon')) {
     const weaponItem = (gameState.inventory || []).find(i => i.name === card.name && i.type === 'Weapon');
     if (weaponItem) {
       weaponItem.level = (weaponItem.level || 1) + 1;
       if (typeof createNotification === 'function') {
-        createNotification(`${card.name} upgraded! Weapon effect now Lv${weaponItem.level}`, '#ff9800', '⬆️');
+        createNotification(`${card.name} upgraded! Verification reward is now Lv${weaponItem.level}`, '#ff9800', '⬆️');
       }
       saveCurrentGame();
       return true;
     }
   }
+
+  // Non-weapon cards: apply the upgraded description normally
+  if (card.upgradedDescription) card.description = card.upgradedDescription;
 
   if (typeof createNotification === 'function') {
     createNotification(`${card.name} upgraded!`, '#ff9800', '⬆️');

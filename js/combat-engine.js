@@ -1649,7 +1649,6 @@ function calculateMoveValue(move, value, die) {
 
     case 'get':
     case 'inflict':
-    case 'cleanse':
       // Persistence replaces direct charisma scaling for status applications
       return baseValue + (playerStatuses['persistence'] || 0);
 
@@ -2259,14 +2258,22 @@ function loseHealth(amount) {
  * @param {number} stacks - Stacks to remove per debuff
  */
 function cleanseDebuffs(target, stacks) {
-  const debuffs = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'ruptured', 'confused', 'fading'];
+  const debuffs = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'ruptured', 'confused', 'fading',
+    'weak', 'vulnerable', 'slow', 'silence', 'blind', 'bleed', 'ruptured'];
+  // Good stats that can go negative (e.g. from enemy effects); cleanse pushes them back toward 0.
+  const goodStats = ['power', 'defense', 'arcane', 'persistence'];
 
   debuffs.forEach(debuff => {
     if (target.statuses[debuff]) {
       target.statuses[debuff] = Math.max(0, target.statuses[debuff] - stacks);
-      if (target.statuses[debuff] <= 0) {
-        delete target.statuses[debuff];
-      }
+      if (target.statuses[debuff] <= 0) delete target.statuses[debuff];
+    }
+  });
+
+  goodStats.forEach(stat => {
+    if ((target.statuses[stat] || 0) < 0) {
+      target.statuses[stat] = Math.min(0, target.statuses[stat] + stacks);
+      if (target.statuses[stat] === 0) delete target.statuses[stat];
     }
   });
 
@@ -2825,6 +2832,14 @@ function processPlayerStartOfTurn() {
 function endTurn() {
   if (!combatState || combatState.phase !== 'player_action') {
     return { success: false, error: 'Cannot end turn now' };
+  }
+
+  // Block end turn if any pending die face has the mandatory addon
+  const mandatoryDie = (combatState.pendingDice || []).find(
+    entry => (entry.face && entry.face.addons || []).includes('mandatory')
+  );
+  if (mandatoryDie) {
+    return { success: false, error: 'mandatory_die', dieName: mandatoryDie.cardName };
   }
 
   combatState.phase = 'end_turn';
@@ -4373,7 +4388,8 @@ function resolveCardEffect(card, target, options = {}) {
     // Apply / Inflict X [Status] (on current target or all enemies if AoE)
     const applyMatch = p.match(/(?:Apply|Inflict) (\d+) (\w+)/i);
     if (applyMatch) {
-      const BASIC_STATS = new Set(['power', 'defense', 'arcane', 'persistence']);
+      const BASIC_STATS = new Set(['power', 'defense', 'arcane', 'persistence',
+        'energy_per_turn', 'barricade', 'brutality', 'corruption', 'double_damage', 'no_draw']);
       const key = applyMatch[2].toLowerCase();
       let stacks = parseInt(applyMatch[1]);
       // Persistence adds to non-basic buff/debuff status applications
@@ -5046,13 +5062,15 @@ function resolveCardEffect(card, target, options = {}) {
       const typeFilter = conjureRandomTypeMatch[2].toLowerCase();
       const makeFree   = /play it for free this turn/i.test(desc);
       // Draw from the player's run deck (draw + discard + hand), falling back to CARDS_DATA
+      // Never conjure starter cards
+      const isNotStarter = c => (c.rarity || '').toLowerCase() !== 'starter';
       const deckCards = [
         ...(combatState.drawPile || []),
         ...(combatState.discardPile || []),
         ...(combatState.hand || []),
-      ].filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard);
+      ].filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard && isNotStarter(c));
       const globalPool = typeof CARDS_DATA !== 'undefined'
-        ? CARDS_DATA.filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard)
+        ? CARDS_DATA.filter(c => (c.type || '').toLowerCase() === typeFilter && !c.isStatusCard && isNotStarter(c))
         : [];
       const pool = deckCards.length > 0 ? deckCards : globalPool;
       for (let i = 0; i < count; i++) {
@@ -5830,7 +5848,8 @@ function _applyPendingDieFaceEffects(entry, targetId, cantripMode) {
     const isCleave = addons.some(a => a.toLowerCase() === 'cleave');
     const isMelee  = addons.some(a => a.toLowerCase() === 'melee');
 
-    if (move === 'dmg') {
+    if (move === 'dmg' || move === 'magic_dmg' || move === 'magic dmg') {
+      const isMagic = move !== 'dmg';
       // Resolve damage target(s)
       let targets = [];
       if (isCleave) {
@@ -5847,7 +5866,7 @@ function _applyPendingDieFaceEffects(entry, targetId, cantripMode) {
         const engageMult = (isEngage && tgt.health >= tgt.maxHealth) ? 2 : 1;
         const finalDmg = Math.max(0, (val + power - weak) * engageMult);
         if (typeof dealDamage === 'function') {
-          dealDamage(tgt, finalDmg, isMelee ? 'melee' : 'ranged');
+          dealDamage(tgt, finalDmg, isMagic ? ['magic'] : (isMelee ? ['melee'] : ['ranged']));
         } else {
           tgt.health = Math.max(0, tgt.health - Math.max(0, finalDmg - (tgt.block || 0)));
           tgt.block  = Math.max(0, (tgt.block || 0) - finalDmg);
@@ -5915,7 +5934,7 @@ function usePendingDie(pendingId, targetId) {
 
   if (!face.isBlank) {
     // Check if dmg face needs a target
-    const needsTarget = (face.effects || []).some(e => e.move === 'dmg' && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
+    const needsTarget = (face.effects || []).some(e => /^(dmg|magic_dmg|magic dmg)$/i.test(e.move || '') && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
     if (needsTarget && !targetId) {
       // Auto-pick random enemy
       const living = combatState.enemies.filter(e => e.health > 0);

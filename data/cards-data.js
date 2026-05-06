@@ -215,22 +215,6 @@ var CARDS_DATA = [
     ]
   },
   {
-    "name": "Rusty Razor",
-    "rarity": "Uncommon",
-    "cost": 1,
-    "type": "Skill",
-    "description": "Inflict 1 Bleed and 1 Poison.",
-    "upgradedDescription": "Inflict 1 Bleed and 1 Poison.",
-    "upgradedCost": 1,
-    "canUpgrade": false,
-    "isStatusCard": false,
-    "imageUrl": "images/items/RustyRazor.png",
-    "game": "Mewgenics",
-    "tags": [
-      "weapon"
-    ]
-  },
-  {
     "name": "Bane",
     "rarity": "Common",
     "cost": 1,
@@ -841,6 +825,23 @@ var CARDS_DATA = [
     ]
   },
   {
+    "name": "Clumsy",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Clumsy.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "orange"
+    ]
+  },
+  {
     "name": "Combust",
     "rarity": "Uncommon",
     "cost": 1,
@@ -926,6 +927,23 @@ var CARDS_DATA = [
       "silent",
       "debuff",
       "aoe"
+    ]
+  },
+  {
+    "name": "Dabblest",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Dabblest.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "orange"
     ]
   },
   {
@@ -1063,6 +1081,23 @@ var CARDS_DATA = [
     "tags": []
   },
   {
+    "name": "Defender",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Defender.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "gray"
+    ]
+  },
+  {
     "name": "Deflect",
     "rarity": "Common",
     "cost": 0,
@@ -1187,11 +1222,11 @@ var CARDS_DATA = [
   {
     "name": "Doppelganger",
     "rarity": "Rare",
-    "cost": 0,
+    "cost": "X",
     "type": "Skill",
     "description": "Gain X Next Turn Draw and Gain X Next Turn Energy. Exhaust.",
     "upgradedDescription": "Gain X+1 Next Turn Draw and Gain X+1 Next Turn Energy. Exhaust.",
-    "upgradedCost": null,
+    "upgradedCost": "X",
     "canUpgrade": true,
     "isStatusCard": false,
     "imageUrl": "images/cards/Doppelganger.png",
@@ -1253,6 +1288,23 @@ var CARDS_DATA = [
       "offense",
       "draw",
       "energy"
+    ]
+  },
+  {
+    "name": "Druid",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die. When adding this Card to your Deck, Learn Balance.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll. When adding this Card to your Deck, Learn Balance.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Druid.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "red"
     ]
   },
   {
@@ -1468,6 +1520,23 @@ var CARDS_DATA = [
     ]
   },
   {
+    "name": "Fighter",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Fighter.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "yellow"
+    ]
+  },
+  {
     "name": "Finisher",
     "rarity": "Uncommon",
     "cost": 1,
@@ -1590,6 +1659,23 @@ var CARDS_DATA = [
     ]
   },
   {
+    "name": "Gambler",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Gambler.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "orange"
+    ]
+  },
+  {
     "name": "Ghostly Armor",
     "rarity": "Uncommon",
     "cost": 1,
@@ -1604,6 +1690,23 @@ var CARDS_DATA = [
     "tags": [
       "ironclad",
       "defense"
+    ]
+  },
+  {
+    "name": "Gladiator",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Gladiator.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "yellow"
     ]
   },
   {
@@ -1707,6 +1810,23 @@ var CARDS_DATA = [
     "tags": [
       "ironclad",
       "offense"
+    ]
+  },
+  {
+    "name": "Healer",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die. When adding this Card to your Deck, Learn Mend.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll. When adding this Card to your Deck, Learn Mend.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Healer.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "red"
     ]
   },
   {
@@ -1935,6 +2055,23 @@ var CARDS_DATA = [
     "tags": []
   },
   {
+    "name": "Jester",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die. When adding this Card to your Deck, Learn Flick.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll. When adding this Card to your Deck, Learn Flick.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Jester.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "blue"
+    ]
+  },
+  {
     "name": "Juggernaut",
     "rarity": "Rare",
     "cost": 2,
@@ -1950,6 +2087,40 @@ var CARDS_DATA = [
       "ironclad",
       "offense",
       "defense"
+    ]
+  },
+  {
+    "name": "Juggler",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Juggler.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "orange"
+    ]
+  },
+  {
+    "name": "Lazy",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Lazy.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "yellow"
     ]
   },
   {
@@ -2038,13 +2209,30 @@ var CARDS_DATA = [
     ]
   },
   {
+    "name": "Mage",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die. When adding this Card to your Deck, Learn Poke.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll. When adding this Card to your Deck, Learn Poke.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Mage.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "blue"
+    ]
+  },
+  {
     "name": "Malaise",
     "rarity": "Rare",
-    "cost": 0,
+    "cost": "X",
     "type": "Skill",
     "description": "Inflict -X Power and Inflict X Weak. Exhaust",
     "upgradedDescription": "Inflict -X-1 Power and Inflict X+1 Weak. Exhaust",
-    "upgradedCost": null,
+    "upgradedCost": "X",
     "canUpgrade": true,
     "isStatusCard": false,
     "imageUrl": "images/cards/Malaise.png",
@@ -2102,6 +2290,23 @@ var CARDS_DATA = [
     "imageUrl": "images/cards/MockBattle.png",
     "game": "Monmusu Gladiator",
     "tags": []
+  },
+  {
+    "name": "Mystic",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die. When adding this Card to your Deck, Learn Gaze.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll. When adding this Card to your Deck, Learn Gaze.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Mystic.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "red"
+    ]
   },
   {
     "name": "Neutralize",
@@ -2452,6 +2657,23 @@ var CARDS_DATA = [
     ]
   },
   {
+    "name": "Ranger",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Ranger.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "orange"
+    ]
+  },
+  {
     "name": "Reaper",
     "rarity": "Rare",
     "cost": 2,
@@ -2584,6 +2806,22 @@ var CARDS_DATA = [
     "tags": [
       "ironclad",
       "scaling"
+    ]
+  },
+  {
+    "name": "Rusty Razor",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "description": "Inflict 1 Bleed and 1 Poison.",
+    "upgradedDescription": "Inflict 1 Bleed and 1 Poison.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/items/RustyRazor.png",
+    "game": "Mewgenics",
+    "tags": [
+      "weapon"
     ]
   },
   {
@@ -2780,11 +3018,11 @@ var CARDS_DATA = [
   {
     "name": "Skewer",
     "rarity": "Uncommon",
-    "cost": 0,
+    "cost": "X",
     "type": "Attack",
     "description": "Deal 7xX Dmg Melee.",
     "upgradedDescription": "Deal 10xX Dmg Melee.",
-    "upgradedCost": null,
+    "upgradedCost": "X",
     "canUpgrade": true,
     "isStatusCard": false,
     "imageUrl": "images/cards/Skewer.png",
@@ -2841,6 +3079,23 @@ var CARDS_DATA = [
       "silent",
       "offense",
       "energy"
+    ]
+  },
+  {
+    "name": "Soldier",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Soldier.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "yellow"
     ]
   },
   {
@@ -3121,6 +3376,23 @@ var CARDS_DATA = [
     ]
   },
   {
+    "name": "Veteran",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Veteran.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "yellow"
+    ]
+  },
+  {
     "name": "Warcry",
     "rarity": "Common",
     "cost": 0,
@@ -3135,6 +3407,23 @@ var CARDS_DATA = [
     "tags": [
       "ironclad",
       "draw"
+    ]
+  },
+  {
+    "name": "Warden",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Dice",
+    "description": "Roll this die.",
+    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
+    "upgradedCost": 1,
+    "canUpgrade": true,
+    "isStatusCard": false,
+    "imageUrl": "images/cards/Warden.png",
+    "game": "Slice & Dice ",
+    "tags": [
+      "hero",
+      "gray"
     ]
   },
   {
@@ -3157,11 +3446,11 @@ var CARDS_DATA = [
   {
     "name": "Whirlwind",
     "rarity": "Uncommon",
-    "cost": 0,
+    "cost": "X",
     "type": "Attack",
     "description": "Deal 5xX Dmg Cleave.",
     "upgradedDescription": "Deal 8xX Dmg Cleave.",
-    "upgradedCost": null,
+    "upgradedCost": "X",
     "canUpgrade": true,
     "isStatusCard": false,
     "imageUrl": "images/cards/Whirlwind.png",
@@ -3270,248 +3559,5 @@ var CARDS_DATA = [
     "tags": [
       "pigment"
     ]
-  },
-  {
-    "name": "Mage Die",
-    "rarity": "Common",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die. When adding this card to your deck, Learn Poke.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll. When adding this card to your deck, Learn Poke.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Mage.png",
-    "game": "Slice & Dice",
-    "learn": "Poke",
-    "tags": ["blue", "hero"]
-  },
-  {
-    "name": "Mystic Die",
-    "rarity": "Common",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die. When adding this card to your deck, Learn Gaze.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll. When adding this card to your deck, Learn Gaze.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Mystic.png",
-    "game": "Slice & Dice",
-    "learn": "Gaze",
-    "tags": ["red", "hero"]
-  },
-  {
-    "name": "Clumsy Die",
-    "rarity": "Common",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Clumsy.png",
-    "game": "Slice & Dice",
-    "tags": ["orange", "hero"]
-  },
-  {
-    "name": "Gambler Die",
-    "rarity": "Uncommon",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Gambler.png",
-    "game": "Slice & Dice",
-    "tags": ["orange", "hero"]
-  },
-  {
-    "name": "Dabblest Die",
-    "rarity": "Rare",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Dabblest.png",
-    "game": "Slice & Dice",
-    "tags": ["orange", "hero"]
-  },
-  {
-    "name": "Druid Die",
-    "rarity": "Uncommon",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die. When adding this card to your deck, Learn Balance.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll. When adding this card to your deck, Learn Balance.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Druid.png",
-    "game": "Slice & Dice",
-    "learn": "Balance",
-    "tags": ["red", "hero"]
-  },
-  {
-    "name": "Jester Die",
-    "rarity": "Uncommon",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die. When adding this card to your deck, Learn Flick.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll. When adding this card to your deck, Learn Flick.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Jester.png",
-    "game": "Slice & Dice",
-    "learn": "Flick",
-    "tags": ["blue", "hero"]
-  },
-  {
-    "name": "Defender Die",
-    "rarity": "Common",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Defender.png",
-    "game": "Slice & Dice",
-    "tags": ["gray", "hero"]
-  },
-  {
-    "name": "Warden Die",
-    "rarity": "Uncommon",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Warden.png",
-    "game": "Slice & Dice",
-    "tags": ["gray", "hero"]
-  },
-  {
-    "name": "Fighter Die",
-    "rarity": "Common",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Fighter.png",
-    "game": "Slice & Dice",
-    "tags": ["yellow", "hero"]
-  },
-  {
-    "name": "Soldier Die",
-    "rarity": "Uncommon",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Soldier.png",
-    "game": "Slice & Dice",
-    "tags": ["yellow", "hero"]
-  },
-  {
-    "name": "Veteran Die",
-    "rarity": "Rare",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Veteran.png",
-    "game": "Slice & Dice",
-    "tags": ["yellow", "hero"]
-  },
-  {
-    "name": "Healer Die",
-    "rarity": "Common",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die. When adding this card to your deck, Learn Mend.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll. When adding this card to your deck, Learn Mend.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Healer.png",
-    "game": "Slice & Dice",
-    "learn": "Mend",
-    "tags": ["red", "hero"]
-  },
-  {
-    "name": "Gladiator Die",
-    "rarity": "Uncommon",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Gladiator.png",
-    "game": "Slice & Dice",
-    "tags": ["yellow", "hero"]
-  },
-  {
-    "name": "Lazy Die",
-    "rarity": "Common",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Lazy.png",
-    "game": "Slice & Dice",
-    "tags": ["yellow", "hero"]
-  },
-  {
-    "name": "Juggler Die",
-    "rarity": "Uncommon",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Juggler.png",
-    "game": "Slice & Dice",
-    "tags": ["orange", "hero"]
-  },
-  {
-    "name": "Ranger Die",
-    "rarity": "Uncommon",
-    "cost": 1,
-    "type": "Dice",
-    "description": "Roll this die.",
-    "upgradedDescription": "Roll this die. Gain +1 Reroll.",
-    "upgradedCost": 1,
-    "canUpgrade": true,
-    "isStatusCard": false,
-    "imageUrl": "images/heroes/Ranger.png",
-    "game": "Slice & Dice",
-    "tags": ["orange", "hero"]
   }
 ];

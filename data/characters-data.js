@@ -96,15 +96,11 @@ var CHARACTERS_DATA = {
     "startingDeck": [
       {
         "cardName": "Strike",
-        "count": 4
+        "count": 5
       },
       {
         "cardName": "Defend",
         "count": 4
-      },
-      {
-        "cardName": "Isaac's D6",
-        "count": 1
       },
       {
         "cardName": "Isaac's D6",

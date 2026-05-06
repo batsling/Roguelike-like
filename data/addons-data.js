@@ -106,14 +106,14 @@ var ADDONS_DATA = {
     "description": "Heals the target equal to the amount of unblocked Dmg dealt",
     "canBeAttachedTo": "All"
   },
-  "singleUse": {
+  "singleuse": {
     "name": "Single Use",
-    "description": "After this side is used, replace it with a blank for the rest of this combat",
+    "description": "After this Side is used, replace it with a blank this fight",
     "canBeAttachedTo": "Dice"
   },
-  "druid": {
-    "name": "Druid",
-    "description": "Each time this side is used, its effect value increases by 3 for the rest of this combat",
+  "mandatory": {
+    "name": "Mandatory",
+    "description": "This Side must be played before ending your turn",
     "canBeAttachedTo": "Dice"
   }
 };

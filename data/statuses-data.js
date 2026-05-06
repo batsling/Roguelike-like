@@ -111,8 +111,8 @@ var STATUSES_DATA = {
     "preference": "Neutral",
     "imageUrl": "images/statuses/Formless.png"
   },
-  "multi_attack_x": {
-    "name": "Multi Attack X",
+  "multi_attack": {
+    "name": "Multi Attack",
     "description": "This enemy has X amount of intents in a turn",
     "type": "Ability",
     "stackable": false,
@@ -315,7 +315,7 @@ var STATUSES_DATA = {
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
-    "decay": "When the target would lose Health",
+    "decay": "When the target would take damage",
     "who": "All",
     "preference": "Positive",
     "imageUrl": "images/statuses/Buffer.png"
@@ -628,31 +628,9 @@ var STATUSES_DATA = {
     "preference": "Positive",
     "imageUrl": "images/statuses/FlameBarrier.png"
   },
-  "bleed": {
-    "name": "Bleed",
-    "description": "Target loses X Health at the end of their turn, where X is the stack count. Escalates by 1 each turn.",
-    "type": "Debuff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "Up by 1 at end of turn",
-    "who": "All",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Bleed.png"
-  },
-  "bleed_thorns": {
-    "name": "Bleed Thorns",
-    "description": "When this target takes melee damage, apply X Bleed to the attacker where X is the stack count.",
-    "type": "Buff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "None",
-    "who": "All",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/BleedThorns.png"
-  },
   "wet": {
     "name": "Wet",
-    "description": "Cannot be Burned. Any Magic Dmg Electric dealt to adjacent Wet targets will be dealt to this target as well. Decays by 1 at end of turn.",
+    "description": "Cannot be Burned. Any Magic Dmg Electric dealt to adjacent Wet targets will be dealt to this target as well",
     "type": "Ability",
     "stackable": true,
     "maxStack": null,
@@ -660,5 +638,27 @@ var STATUSES_DATA = {
     "who": "All",
     "preference": "Neutral",
     "imageUrl": "images/statuses/Wet.png"
+  },
+  "bleed": {
+    "name": "Bleed",
+    "description": "Target loses 1 Health per stack at the end of their turn.",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "UP by 1 at the end of turn",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Bleed.png"
+  },
+  "bleed_thorns": {
+    "name": "Bleed Thorns",
+    "description": "When a target with Bleed Thorns gets dealt or deals Melee Dmg, the target Inflicts X Bleed to the attacker/recipient",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/BleedThorns.png"
   }
 };

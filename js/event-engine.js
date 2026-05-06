@@ -799,7 +799,8 @@ function _showSuccessRollScreen(event, choice, onContinue) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
-  const CRIT_THRESHOLD = 18;
+  const CRIT_THRESHOLD_GOOD = 18;
+  const CRIT_THRESHOLD_BAD  = 3;
   const luckMode       = _getLuckMode();
   const luckVal        = typeof luck !== 'undefined' ? luck : 0;
   const successColor   = wasSuccess ? '#2ecc71' : '#e74c3c';
@@ -837,10 +838,10 @@ function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
         CRITICAL CHECK
       </div>
       <div style="color:#fff;font-size:20px;font-weight:bold;margin-bottom:5px;">
-        Roll 18+ for a critical outcome
+        ${wasSuccess ? 'Roll 18+ for Critical Success' : 'Roll 1-3 for Critical Failure'}
       </div>
       <div style="color:#aaa;font-size:12px;margin-bottom:18px;">
-        No stat bonus — need 18, 19, or 20
+        No stat bonus — ${wasSuccess ? 'need 18, 19, or 20' : 'need 1, 2, or 3'}
         ${luckHint}
       </div>
 
@@ -874,15 +875,17 @@ function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
 
           if (luckMode !== 'normal') _highlightWinner(instances, result.rolls, luckMode);
 
-          const isCrit = result.used >= CRIT_THRESHOLD;
+          const isCritGood = wasSuccess  && result.used >= CRIT_THRESHOLD_GOOD;
+          const isCritBad  = !wasSuccess && result.used <= CRIT_THRESHOLD_BAD;
+          const isCrit     = isCritGood || isCritBad;
           const color  = isCrit ? '#f1c40f' : '#aaa';
           const label  = isCrit ? '⚡ CRITICAL' : 'NOT CRITICAL';
 
           let outcomeKey;
-          if (wasSuccess && isCrit)  outcomeKey = 'crit_good';
-          else if (wasSuccess)       outcomeKey = 'good';
-          else if (isCrit)           outcomeKey = 'crit_bad';
-          else                       outcomeKey = 'bad';
+          if (isCritGood)      outcomeKey = 'crit_good';
+          else if (wasSuccess) outcomeKey = 'good';
+          else if (isCritBad)  outcomeKey = 'crit_bad';
+          else                 outcomeKey = 'bad';
 
           const outcome = (choice.outcomes && choice.outcomes[outcomeKey])
             || { description: 'Nothing happens.', effects: [] };
@@ -894,7 +897,7 @@ function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
             resultDiv.innerHTML = `
               <div style="color:${color};font-size:26px;font-weight:bold;
                 text-shadow:0 0 18px ${color}88;margin-bottom:4px;">${label}</div>
-              <div style="color:#bbb;font-size:13px;">Rolled ${result.used} vs 18</div>
+              <div style="color:#bbb;font-size:13px;">Rolled ${result.used} ${wasSuccess ? '(need 18+ for crit)' : '(need 1-3 for crit)'}</div>
               <div id="ev-roll-btns-c" style="margin-top:14px;display:flex;gap:10px;justify-content:center;"></div>`;
 
             const btnsDiv = document.getElementById('ev-roll-btns-c');

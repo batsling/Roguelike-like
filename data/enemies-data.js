@@ -338,7 +338,7 @@ var ENEMIES_DATA = [
     "hpMin": 20,
     "hpMax": 24,
     "ability": "Pigment Rich",
-    "pattern": "Always: 50% 3 Dmg Melee / 50% Add 1 random Pigment Status card to your deck",
+    "pattern": "Always: 50% 5 Dmg Melee / 50% Add 1 random Pigment Status card to draw pile",
     "game": "Brutal Orchestra",
     "location": "Desert",
     "dice": [
@@ -909,10 +909,10 @@ var ENEMIES_DATA = [
     "type": "Intelligence",
     "difficulty": "Low",
     "weight": 1,
-    "hpMin": 30,
-    "hpMax": 34,
+    "hpMin": 20,
+    "hpMax": 24,
     "ability": "When Defeated, 5 Dmg to it's adjacent allies",
-    "pattern": "Always: 60% 9 Dmg Melee / 40% 6 Dmg Melee",
+    "pattern": "Always: 60% 8 Dmg Melee / 40% 6 Dmg Melee",
     "game": "Slice & Dice",
     "location": "Undead",
     "dice": [

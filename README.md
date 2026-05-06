@@ -40,6 +40,8 @@
   - [Shop Card Services](#shop-card-services)
   - [Weapons and Cards](#weapons-and-cards)
   - [Deck Management](#deck-management)
+  - [Dice Tray](#dice-tray)
+  - [Spells Panel](#spells-panel)
 - [Teleport System](#teleport-system)
 - [Developer Tools](#developer-tools)
 - [Code Optimization](#code-optimization)
@@ -53,12 +55,14 @@
 A roguelike deckbuilder where players navigate a graph of over 600 real video games connected by influence relationships. Each run is a 5–8 game journey from a randomly chosen start game to a hidden Amulet game, fought through card-based combat, stat-check events, and a merchant shop.
 
 **Key Features:**
-- 638 games, 804 influence connections — the map is a real network of video game history
+- 642 games, 811 influence connections — the map is a real network of video game history
 - STS-style card combat: hand, energy, draw / discard / exhaust piles
 - Pre-combat events with a two-roll D20 system and four outcome tiers
 - 11 curse types across 3 categories (Automatic, Manual, Restriction)
 - Extensive item system (passive, usable, triggered, weapon)
 - Card deck management: collect from combat rewards and shops, upgrade at Smith, remove at shop
+- **Dice tray**: slot items onto individual dice cards; items return to inventory if the die is removed
+- **Spells panel**: view all learned spells at a glance from the top bar
 - Weight-based enemy encounter system with three difficulty tiers
 - Escape sequence after reaching the Amulet
 - Save / load system with multiple save slots
@@ -178,16 +182,20 @@ Every time you enter a combat location, an event fires first. You are shown a sc
 - Your stat is added as a flat bonus, so higher stats mean you effectively need a lower raw roll.
 - Luck advantage applies: each Luck point has a 10% independent chance to let you roll twice and take the better result.
 
-**Roll 2 — Critical check:** D20 vs. 18 (no stat bonus). Rolling 18, 19, or 20 = critical. Luck advantage applies independently.
+**Roll 2 — Critical check:** D20 (no stat bonus). The critical threshold depends on Roll 1's outcome:
+- **Success** → rolling **18, 19, or 20** = Critical Success
+- **Failure** → rolling **1, 2, or 3** = Critical Failure
+
+Luck advantage applies independently.
 
 **Four outcomes per choice:**
 
 | Outcome | Condition | Typical effect |
 |---|---|---|
-| **Critical Success** | Passed both rolls | Best rewards: gold, items, strong combat buffs |
-| **Success** | Passed Roll 1, failed Roll 2 | Moderate positive effect or nothing |
-| **Failure** | Failed Roll 1, passed Roll 2 | Minor penalty: damage, debuff, or small curse |
-| **Critical Failure** | Failed both rolls | Worst outcome: heavy damage, strong curse, severe debuff |
+| **Critical Success** | Passed Roll 1 AND rolled 18–20 on Roll 2 | Best rewards: gold, items, strong combat buffs |
+| **Success** | Passed Roll 1, did not roll 18–20 on Roll 2 | Moderate positive effect or nothing |
+| **Failure** | Failed Roll 1, did not roll 1–3 on Roll 2 | Minor penalty: damage, debuff, or small curse |
+| **Critical Failure** | Failed Roll 1 AND rolled 1–3 on Roll 2 | Worst outcome: heavy damage, strong curse, severe debuff |
 
 **Simple choices** (blue border) skip the dice entirely and always produce the same outcome.
 
@@ -419,6 +427,39 @@ When you defeat the Amulet game, the **escape phase** begins. You must fight you
 
 ## Recent Updates
 
+### Version 6.4 - Dice Tray, Spells Panel & Combat Fixes (May 2026)
+
+**Dice Tray:**
+- New **🎲 Dice** button in the top bar (between Deck and Map) opens the Dice Tray modal
+- Shows all dice in your collection (starting deck + acquired), each displaying its full face grid
+- Each die has one **item slot**: click the slot to pick an item from your inventory; the item is removed from inventory and attached to the die
+- Click a filled slot to **unequip** the item — it returns to inventory immediately
+- If a die card is **removed from the deck** (shop removal, etc.) its slotted item automatically returns to inventory
+- Dice cards receive a stable `_dieUid` on acquisition so slots survive deck reordering
+- Slot state persisted with save/load; old saves default to empty slots
+
+**Spells Panel:**
+- New **✨ Spells** button in the top bar (between Dice and Map) opens a Spells modal
+- Displays every spell the player has learned as a card: image, mana cost badge, rarity, element, description, keywords (e.g. SingleCast), and source game — all colour-coded by rarity
+- Shows a helpful empty state when no spells are known, with a hint on how to gain spells (dice cards with a Learn: effect)
+- Visibility follows the other top-bar run buttons (hidden on main menu)
+
+**Bug Fixes:**
+- **Malaise / X-cost cards**: `convert-excel.js` was parsing `parseInt("X")` as `0`; fixed to preserve `"X"` as the literal cost. Malaise and other X-cost cards now correctly spend all remaining energy and use that amount as their X value
+- **Critical Failure check**: Critical check on a failed Roll 1 now triggers on **1, 2, or 3** (was incorrectly also using the 18+ threshold). Critical Success on a passed Roll 1 still requires 18, 19, or 20
+- **Dice targeting enemies**: `convert-excel.js` now parses die face text (e.g. `"Deal 3 Dmg Melee, Cantrip"`) into structured `effects` + `addons` arrays in `dice-data.js`. Previously faces only had raw text strings so effects were never applied. `needsTarget` checks are also now case-insensitive and cover `magic_dmg`
+- **Magic Dmg on dice**: `_applyPendingDieFaceEffects` now handles `magic_dmg` faces (previously only plain `dmg` was handled)
+- **Conjure Random card**: Random card conjure effects (Distraction, Infernal Blade, White Noise) no longer include Starter-rarity cards in their pool
+- **Collection shimmer removed**: The pulsing shimmer animation on Rare/Legendary cards and items in the Collection UI has been removed (cards grid, items grid, and rarity badges)
+- **Power cards keyword section**: Power-type cards in the card detail panel now only show status keyword badges for statuses the card **explicitly grants or inflicts** (detected via Gain/Inflict/Apply patterns). Previously any status name mentioned in the description was shown, cluttering Power card tooltips
+
+**Data Updates (from updated spreadsheet):**
+- 642 games, 811 connections (up from 638 / 804)
+- 36 enemies, 18 dice, 207 cards (dice-data now includes parsed face effects)
+- `convert-excel.js` updated: X costs preserved as strings; dice face parser generates `effects`, `addons`, and `isBlank` from text
+
+---
+
 ### Version 6.3 - Location Systems & Balance (April 2026)
 
 **Risk of Rain 2 Locations (now functional):**
@@ -464,7 +505,7 @@ Effective thresholds (location base + rollNegative):
 
 **New Event System:**
 - Every combat encounter is now preceded by a pre-combat event with meaningful choices
-- Two-roll D20 mechanics: Roll 1 = success check (D20 + stat vs difficulty), Roll 2 = critical check (D20 vs 18 — need 18, 19, or 20)
+- Two-roll D20 mechanics: Roll 1 = success check (D20 + stat vs difficulty), Roll 2 = critical check (D20 — 18–20 on a pass = crit_good; 1–3 on a fail = crit_bad)
 - Luck advantage: each Luck point gives 10% chance to roll two dice and take the best, checked independently per roll
 - Difficulty thresholds scale with location: Easy = 11, Medium = 13, Hard = 15
 - Click-to-roll visual UI: player sees threshold needed, clicks die(s) to roll with spin animation
@@ -1999,6 +2040,49 @@ gameState.discardPile // Cards played this combat
 | `consumeRandomPigmentCard()` | Removes a random `isStatusCard` card from any pile |
 | `dealDamage(target, amount, addons)` | Applies damage with block/thorns/dodge resolution; fires death trigger and reactive hooks |
 | `processStatusEffects(target)` | Applies per-turn status ticks (Burn, Poison, Fading, etc.) |
+
+---
+
+### Dice Tray
+
+The **Dice Tray** lets you attach items to individual dice cards. Access it via the **🎲 Dice** button in the top bar (visible whenever a run is active).
+
+**Layout:** Each die card is shown with its full face grid (pip icon + effect text per face) and one item slot beneath it.
+
+**Equipping an item:**
+1. Click the slot (`+ Equip Item` dashed box)
+2. A picker overlay lists all unslotted inventory items
+3. Clicking an item moves it **out of inventory** and into the slot — it is no longer in your general inventory
+
+**Unequipping:** Click the filled slot — the item is immediately returned to inventory.
+
+**Die removal:** If the die card is removed from your deck (via the shop or any other means) the slotted item is automatically returned to inventory with a notification.
+
+**Persistence:** Slot assignments are saved and loaded with the rest of the game state. Old saves without slot data default to all empty slots.
+
+**Technical notes:**
+- Each dice card receives a stable `_dieUid` string when it is added to the deck, so slot assignments survive deck reordering
+- `gameState.diceSlots` is a plain object keyed by `_dieUid`; values are the full item object or `null`
+- Starting-deck dice (not in `gameState.deck`) receive temporary UIDs prefixed with `starting_`; their slots are not persisted between sessions
+- `removeCardFromDeck` in `cards.js` checks for a slotted item and returns it before splicing the card out
+
+---
+
+### Spells Panel
+
+The **Spells Panel** shows every spell the player has currently learned. Access it via the **✨ Spells** button in the top bar.
+
+**Spell card layout:**
+- Spell image (top-left)
+- Mana cost badge (circle, top-right)
+- Name, rarity (colour-coded), and element
+- Effect description in a tinted block
+- Keywords (e.g. `SingleCast`) as pill badges
+- Source game attribution
+
+**Empty state:** If no spells have been learned, the panel shows a hint explaining that dice cards with a `Learn:` property teach spells when acquired.
+
+**Spells are learned** when a dice card that has a `learn` property is added to the deck — `addCardToDeck` in `cards.js` checks for this and pushes the spell into `gameState.spells` / `window.playerSpells`.
 
 ---
 

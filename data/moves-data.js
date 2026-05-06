@@ -134,25 +134,11 @@ var MOVES_DATA = {
     "bonusStat": "No",
     "imageUrl": "images/moves/Attack.png"
   },
-  "gain": {
-    "name": "Gain",
-    "description": "Gain a resource or status (reroll, mana, etc.)",
+  "learn": {
+    "name": "Learn",
+    "description": "Add X Spell to your Spellbook",
     "preferredTarget": "Self",
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
-  },
-  "set": {
-    "name": "Set",
-    "description": "Set target's Health to a fixed value",
-    "preferredTarget": "Ally/Self",
-    "bonusStat": "No",
-    "imageUrl": "images/moves/Health.png"
-  },
-  "assassinate": {
-    "name": "Assassinate",
-    "description": "Kill target enemy if their Health is at or below the threshold",
-    "preferredTarget": "Enemy",
-    "bonusStat": "No",
-    "imageUrl": "images/moves/Attack.png"
   }
 };

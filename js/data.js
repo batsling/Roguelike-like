@@ -132,7 +132,8 @@ var gameState = {
   // Shop per-visit services
   shopUpgradesUsed: 0,        // Card upgrade used this shop visit (max 1)
   shopRemovesUsed: 0,         // Card remove used this shop visit (max 1)
-  cardsRemovedThisRun: 0      // Total removals this run (used to scale removal cost)
+  cardsRemovedThisRun: 0,     // Total removals this run (used to scale removal cost)
+  diceSlots: {}               // { [dieUid]: item | null } — items slotted onto dice
 };
 
 var gameSaves = GameStorage.load(STORAGE_KEYS.SAVED_GAMES, {});
