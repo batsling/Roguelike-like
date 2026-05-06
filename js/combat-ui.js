@@ -2015,27 +2015,50 @@ function renderLogPanel(combat) {
   }).join('');
 
   const spellsHtml = spells.length === 0
-    ? `<div style="color:${C.textDim};font-size:11px;padding:10px 8px;text-align:center;">No spells learned</div>`
+    ? `<div style="color:${C.textDim};font-size:11px;padding:16px 8px;text-align:center;">No spells learned yet.<br><span style="font-size:9px;color:#444;">Buy hero dice cards to learn spells.</span></div>`
     : spells.map(sp => {
         const mana = sp.cost !== undefined ? sp.cost : (sp.manaCost || 0);
-        const cd   = combat.spellCooldowns && combat.spellCooldowns[sp.name] > 0
-          ? ` (CD ${combat.spellCooldowns[sp.name]})`
-          : '';
-        const onCd = !!(combat.spellCooldowns && combat.spellCooldowns[sp.name] > 0);
+        const cdLeft = combat.spellCooldowns && combat.spellCooldowns[sp.name] > 0 ? combat.spellCooldowns[sp.name] : 0;
+        const onCd = cdLeft > 0;
         const usedSingle = !!(sp.keywords && sp.keywords.includes('SingleCast') && combat.usedSingleCast && combat.usedSingleCast[sp.name]);
-        const canCast = !onCd && !usedSingle && (combat.player.mana || 0) >= mana && combat.phase === 'player_action';
+        const noMana = (combat.player.mana || 0) < mana;
+        const wrongPhase = combat.phase !== 'player_action';
+        const canCast = !onCd && !usedSingle && !noMana && !wrongPhase;
+        const statusText = onCd ? `CD: ${cdLeft}` : usedSingle ? 'Used' : noMana ? 'No Mana' : wrongPhase ? 'Wait' : '';
+        const imgSrc = sp.imageUrl || sp.image || '';
+        const rarityColor = ({Rare:'#9b59b6', Uncommon:'#4CAF50', Common:'#aaa'})[sp.rarity] || '#888';
         return `<div style="
-          padding:4px 8px; font-size:10px;
-          border-bottom:1px solid rgba(255,255,255,0.06);
-          cursor:${canCast ? 'pointer' : 'default'}; transition:background 0.1s;
-          opacity:${canCast ? '1' : '0.5'};
+          display:flex;flex-direction:column;gap:0;
+          margin:6px 6px 0;border-radius:8px;overflow:hidden;
+          border:1px solid ${canCast ? '#7c3aed' : 'rgba(255,255,255,0.1)'};
+          background:${canCast ? 'rgba(124,58,237,0.12)' : 'rgba(0,0,0,0.3)'};
+          opacity:${canCast ? '1' : '0.55'};
+          transition:border-color 0.15s,background 0.15s;
         "
-        onmouseover="${canCast ? "this.style.background='rgba(255,255,255,0.06)'" : ''}"
-        onmouseout="${canCast ? "this.style.background=''" : ''}"
-        onclick="${canCast ? `window._handleSpellbookCast && window._handleSpellbookCast('${sp.name}')` : ''}">
-          <div style="font-weight:bold;color:#c09aff;">${sp.name}${cd}${usedSingle ? ' (used)' : ''}</div>
-          <div style="color:${C.textDim};font-size:9px;">${sp.description || ''}</div>
-          <div style="color:#6ab4ff;font-size:9px;margin-top:1px;">💧 ${mana} Mana</div>
+        onmouseover="${canCast ? "this.style.borderColor='#a78bfa';this.style.background='rgba(124,58,237,0.22)'" : ''}"
+        onmouseout="${canCast ? "this.style.borderColor='#7c3aed';this.style.background='rgba(124,58,237,0.12)'" : ''}">
+          <div style="display:flex;align-items:center;gap:7px;padding:6px 7px 4px;">
+            ${imgSrc ? `<img src="${imgSrc}" alt="${sp.name}" style="width:34px;height:34px;object-fit:contain;border-radius:4px;background:rgba(0,0,0,0.4);border:1px solid ${rarityColor}44;flex-shrink:0;" onerror="this.style.opacity='0.2'">` : `<div style="width:34px;height:34px;border-radius:4px;background:#1a1a2e;flex-shrink:0;"></div>`}
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:bold;font-size:11px;color:#e9d5ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sp.name}</div>
+              <div style="display:flex;align-items:center;gap:4px;margin-top:2px;">
+                <span style="font-size:9px;font-weight:bold;color:#6ab4ff;background:rgba(99,102,241,0.2);border:1px solid #6366f155;border-radius:8px;padding:1px 5px;">💧${mana}</span>
+                ${sp.rarity ? `<span style="font-size:8px;color:${rarityColor};text-transform:uppercase;font-weight:bold;">${sp.rarity}</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <div style="font-size:9px;color:#bbb;padding:0 7px 5px;line-height:1.45;">${sp.description || ''}</div>
+          <div style="padding:0 7px 6px;">
+            ${canCast
+              ? `<button onclick="window._handleSpellbookCast && window._handleSpellbookCast('${sp.name}')"
+                  style="width:100%;padding:4px 0;background:linear-gradient(135deg,#7c3aed,#6d28d9);border:none;border-radius:5px;
+                    color:white;font-size:10px;font-weight:bold;cursor:pointer;letter-spacing:0.5px;">
+                  ✨ Cast
+                </button>`
+              : `<div style="width:100%;padding:3px 0;background:rgba(255,255,255,0.05);border-radius:5px;
+                  color:#666;font-size:9px;font-weight:bold;text-align:center;">${statusText}</div>`
+            }
+          </div>
         </div>`;
       }).join('');
 

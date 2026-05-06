@@ -608,8 +608,13 @@ function showShopModal(purchasedIndices = []) {
       const cardIndex = parseInt(btn.dataset.cardIndex);
       const price = parseInt(btn.dataset.price);
       if (isNaN(cardIndex) || gold < price) return;
-      const card = shopCards[cardIndex];
+      let card = shopCards[cardIndex];
       if (!card) return;
+      // Refresh from CARDS_DATA so saved/cached shop cards pick up latest properties (learn, imageUrl, etc.)
+      if (typeof CARDS_DATA !== 'undefined') {
+        const freshCard = CARDS_DATA.find(c => c.name === card.name);
+        if (freshCard) card = freshCard;
+      }
       gold -= price;
       gameState.gold = gold;
       _keepersSackCheck(price);

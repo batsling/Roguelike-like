@@ -331,8 +331,9 @@ var SPELLS_DATA = [
       {
         "raw": "1 Magic Dmg Ranged",
         "value": 1,
-        "move": "Magic Dmg",
+        "move": "Magic",
         "addons": [
+          "Dmg",
           "Ranged"
         ],
         "target": null
@@ -353,8 +354,9 @@ var SPELLS_DATA = [
       {
         "raw": "1 Magic Dmg Engage Ranged",
         "value": 1,
-        "move": "Magic Dmg",
+        "move": "Magic",
         "addons": [
+          "Dmg",
           "Engage",
           "Ranged"
         ],
