@@ -1649,7 +1649,6 @@ function calculateMoveValue(move, value, die) {
 
     case 'get':
     case 'inflict':
-    case 'cleanse':
       // Persistence replaces direct charisma scaling for status applications
       return baseValue + (playerStatuses['persistence'] || 0);
 
@@ -2259,14 +2258,22 @@ function loseHealth(amount) {
  * @param {number} stacks - Stacks to remove per debuff
  */
 function cleanseDebuffs(target, stacks) {
-  const debuffs = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'ruptured', 'confused', 'fading'];
+  const debuffs = ['burn', 'poison', 'oiled', 'frail', 'enfeebled', 'ruptured', 'confused', 'fading',
+    'weak', 'vulnerable', 'slow', 'silence', 'blind', 'bleed', 'ruptured'];
+  // Good stats that can go negative (e.g. from enemy effects); cleanse pushes them back toward 0.
+  const goodStats = ['power', 'defense', 'arcane', 'persistence'];
 
   debuffs.forEach(debuff => {
     if (target.statuses[debuff]) {
       target.statuses[debuff] = Math.max(0, target.statuses[debuff] - stacks);
-      if (target.statuses[debuff] <= 0) {
-        delete target.statuses[debuff];
-      }
+      if (target.statuses[debuff] <= 0) delete target.statuses[debuff];
+    }
+  });
+
+  goodStats.forEach(stat => {
+    if ((target.statuses[stat] || 0) < 0) {
+      target.statuses[stat] = Math.min(0, target.statuses[stat] + stacks);
+      if (target.statuses[stat] === 0) delete target.statuses[stat];
     }
   });
 
@@ -4381,7 +4388,8 @@ function resolveCardEffect(card, target, options = {}) {
     // Apply / Inflict X [Status] (on current target or all enemies if AoE)
     const applyMatch = p.match(/(?:Apply|Inflict) (\d+) (\w+)/i);
     if (applyMatch) {
-      const BASIC_STATS = new Set(['power', 'defense', 'arcane', 'persistence']);
+      const BASIC_STATS = new Set(['power', 'defense', 'arcane', 'persistence',
+        'energy_per_turn', 'barricade', 'brutality', 'corruption', 'double_damage', 'no_draw']);
       const key = applyMatch[2].toLowerCase();
       let stacks = parseInt(applyMatch[1]);
       // Persistence adds to non-basic buff/debuff status applications
