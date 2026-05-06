@@ -4014,6 +4014,9 @@ function resolveCardEffect(card, target, options = {}) {
     return shouldExhaust;
   }
 
+  // Power-type cards set up passive effects — stat bonuses (power/defense/arcane/persistence) don't boost them
+  const isPowerCard = (card.type || '').toLowerCase() === 'power';
+
   // Pre-scan the whole description for AoE keywords (they may be in a separate clause)
   const fullDescLower = desc.toLowerCase();
   // Cleave hits all enemies AND all allies (sweeping AoE)
@@ -4211,8 +4214,8 @@ function resolveCardEffect(card, target, options = {}) {
       const times   = magicDmgMatchNxM ? parseInt(magicDmgMatchNxM[2]) : 1;
       const element = (magicDmgMatchNxM ? magicDmgMatchNxM[3] : magicDmgMatch[2] || null);
       const elementLow = element ? element.toLowerCase() : null;
-      // Arcane bonus instead of Power
-      const playerArcane = player.statuses['arcane'] || 0;
+      // Arcane bonus instead of Power — skipped for Power-type cards
+      const playerArcane = isPowerCard ? 0 : (player.statuses['arcane'] || 0);
       if (playerArcane !== 0) dmg += playerArcane;
       // Weak reduces outgoing damage by 25%
       if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
@@ -4234,8 +4237,8 @@ function resolveCardEffect(card, target, options = {}) {
     if (dmgMatch) {
       let dmg = parseInt(dmgMatch[1]);
       const times = dmgMatchNxM ? parseInt(dmgMatchNxM[2]) : (dmgMatch[2] ? parseInt(dmgMatch[2]) : 1);
-      // Player Power bonus adds to outgoing damage (Heavy Blade multiplies it)
-      const playerPower = player.statuses['power'] || 0;
+      // Player Power bonus adds to outgoing damage (Heavy Blade multiplies it) — skipped for Power-type cards
+      const playerPower = isPowerCard ? 0 : (player.statuses['power'] || 0);
       if (playerPower !== 0) dmg += playerPower * _powerMultiplier;
       // Pigment strength: only boost damage when it crosses the next /3 threshold
       const baseStr = (player.stats && player.stats.strength) || 0;
@@ -4335,7 +4338,13 @@ function resolveCardEffect(card, target, options = {}) {
     const blockMatch = p.match(/Gain \+?(\d+) Block/i);
     if (blockMatch) {
       const blockAmt = parseInt(blockMatch[1]);
-      addBlock(player, blockAmt);
+      // Power-type cards set up passive effects — don't boost block with Defense status
+      if (isPowerCard) {
+        player.block = (player.block || 0) + blockAmt;
+        addLog(`${player.name || 'Player'} gained ${blockAmt} block`, 'info');
+      } else {
+        addBlock(player, blockAmt);
+      }
       card._lastBlockGain = blockAmt; // used by Dodge and Roll "Next Turn Block equal to Block Gained"
       continue;
     }
@@ -4385,6 +4394,24 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
+    // Inflict/Apply X Status1 and Y Status2 (e.g. "Inflict 1 Bleed and 1 Poison")
+    const dualStatusMatch = p.match(/(?:Apply|Inflict) (\d+) (\w+) and (\d+) (\w+)/i);
+    if (dualStatusMatch) {
+      const statusTargets = isAoECard
+        ? combatState.enemies.filter(e => e.health > 0)
+        : (target ? [target] : []);
+      [[dualStatusMatch[1], dualStatusMatch[2]], [dualStatusMatch[3], dualStatusMatch[4]]].forEach(([amt, name]) => {
+        const key = name.toLowerCase();
+        let stacks = parseInt(amt);
+        if (!isPowerCard) stacks += (player.statuses['persistence'] || 0);
+        statusTargets.forEach(t => {
+          t.statuses[key] = (t.statuses[key] || 0) + stacks;
+          addLog(`Applied ${stacks} ${name} to ${t.name}`, 'warning');
+        });
+      });
+      continue;
+    }
+
     // Apply / Inflict X [Status] (on current target or all enemies if AoE)
     const applyMatch = p.match(/(?:Apply|Inflict) (\d+) (\w+)/i);
     if (applyMatch) {
@@ -4392,8 +4419,8 @@ function resolveCardEffect(card, target, options = {}) {
         'energy_per_turn', 'barricade', 'brutality', 'corruption', 'double_damage', 'no_draw']);
       const key = applyMatch[2].toLowerCase();
       let stacks = parseInt(applyMatch[1]);
-      // Persistence adds to non-basic buff/debuff status applications
-      if (!BASIC_STATS.has(key)) {
+      // Persistence adds to non-basic buff/debuff status applications (skip for Power-type cards)
+      if (!isPowerCard && !BASIC_STATS.has(key)) {
         const statusDef = typeof STATUSES_DATA !== 'undefined' ? STATUSES_DATA[key] : null;
         if (statusDef && (statusDef.type === 'Buff' || statusDef.type === 'Debuff')) {
           stacks += (player.statuses['persistence'] || 0);

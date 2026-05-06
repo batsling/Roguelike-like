@@ -380,6 +380,8 @@ const STATUS_META = {
   next_turn_block:  { img: 'NextTurnBlock',   emoji: '🛡', label: 'Next Turn Block'   },
   next_turn_draw:   { img: 'NextTurnDraw',    emoji: '🃏', label: 'Next Turn Draw'    },
   next_turn_energy: { img: 'NextTurnEnergy',  emoji: '⚡', label: 'Next Turn Energy'  },
+  bleed:           { img: 'Bleed',          emoji: '🩸', label: 'Bleed'           },
+  bleed_thorns:    { img: 'BleedThorns',    emoji: '🩸', label: 'Bleed Thorns'    },
   // Other statuses
   blur:            { img: 'Blur',           emoji: '🌀', label: 'Blur'            },
   choked:          { img: 'Choked',         emoji: '💀', label: 'Choked'          },
@@ -651,12 +653,13 @@ function renderEnemyCard(enemy, combat) {
       <!-- Block badge overlay -->
       ${enemy.block > 0 ? `
         <div style="
-          position:absolute; top:56px; right:-10px;
+          position:absolute; top:50px; right:-14px;
           background:${C.block}; color:white;
-          border-radius:50%; width:26px; height:26px;
+          border-radius:50%; width:38px; height:38px;
           display:flex; align-items:center; justify-content:center;
-          font-size:10px; font-weight:bold;
-          border:2px solid #1a1a3a; line-height:1;
+          font-size:13px; font-weight:bold;
+          border:3px solid #1a1a3a; line-height:1;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.7);
         ">🛡${enemy.block}</div>
       ` : ''}
 
@@ -2676,7 +2679,9 @@ function ensureDragAndKeyListeners() {
       }
       // Dropped elsewhere — cancel silently
     } else {
-      // Non-targeted: play on drop anywhere
+      // Non-targeted: play on drop — but cancel if the card is dragged back over the hand
+      const droppedOnHand = !!document.elementFromPoint(e.clientX, e.clientY)?.closest('#combat-hand-zone');
+      if (droppedOnHand) return;
       const result = window.CombatEngine.playCard(cardIndex, null);
       if (result && result.success) {
         combat.selectedCardIndex = null;

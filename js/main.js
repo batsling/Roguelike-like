@@ -5161,36 +5161,14 @@ function showCardUpgradeZoom(card) {
 
   const rarityColors = { Rare: '#9b59b6', Uncommon: '#4CAF50', Common: '#aaa', Starter: '#888' };
   const color = rarityColors[card.rarity] || '#888';
+  const imgSrc = card.imageUrl || '';
+  const isWeaponCard = !!(card.tags && card.tags.includes('weapon'));
 
-  const hasUpgrade = !!card.upgradedDescription;
-
-  function buildCardPanel(upgraded) {
-    const desc = upgraded && card.upgradedDescription ? card.upgradedDescription : (card.description || '');
-    const cost = upgraded && card.upgradedCost !== undefined && card.upgradedCost !== null
-      ? card.upgradedCost : card.cost;
-    const name = card.name + (upgraded ? ' <span style="color:#4CAF50;font-size:18px">+</span>' : '');
-    const imgSrc = card.imageUrl || '';
-    const descColor = upgraded ? '#7dffb0' : '#ddd';
-    const borderColor = upgraded ? '#2ecc71' : color;
-    return `
-      <div style="background:#1e1e2e;border:3px solid ${borderColor};border-radius:14px;
-        padding:26px 28px;max-width:320px;width:88vw;text-align:center;
-        box-shadow:0 12px 50px rgba(0,0,0,0.9);cursor:default;position:relative;"
-        onclick="event.stopPropagation()">
-        ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}"
-          style="width:130px;height:130px;object-fit:contain;margin-bottom:14px;border-radius:8px;border:2px solid ${borderColor}40;"
-          onerror="this.style.display='none'">` : ''}
-        <h2 style="margin:0 0 6px;color:white;font-size:20px;">${name}</h2>
-        <div style="color:${borderColor};font-size:13px;margin-bottom:10px;font-weight:bold;">
-          ${card.rarity || 'Starter'} · ${card.type || ''}
-        </div>
-        <div style="color:${descColor};font-size:14px;line-height:1.6;margin-bottom:14px;
-          ${upgraded ? 'background:rgba(46,204,113,0.08);border-radius:6px;padding:8px;border:1px solid rgba(46,204,113,0.2);' : ''}">
-          ${desc}
-        </div>
-        <div style="color:#ffd700;font-size:16px;font-weight:bold;">Cost: ${cost !== undefined ? cost : '?'}</div>
-      </div>`;
-  }
+  // Resolve (val1/val2/val3) level notation to the value at the given level
+  const _resolveLevel = (desc, lv) => desc.replace(/\(([^)]+)\)/g, (_, inner) => {
+    const pts = inner.split('/').map(s => s.trim());
+    return pts[Math.min(lv - 1, pts.length - 1)] || pts[pts.length - 1];
+  });
 
   const overlay = document.createElement('div');
   overlay.id = 'card-zoom-overlay';
@@ -5200,41 +5178,118 @@ function showCardUpgradeZoom(card) {
     z-index:10000;cursor:pointer;flex-direction:column;gap:0;
   `;
 
-  const isWeaponCard = card.tags && card.tags.includes('weapon');
-  const weaponUpgradeNote = isWeaponCard
-    ? `<div style="margin-top:10px;padding:7px 14px;background:rgba(255,170,68,0.12);border:1px solid rgba(255,170,68,0.35);border-radius:7px;color:#ffaa44;font-size:11px;text-align:center;">
-        Upgrading this card levels up the weapon's passive effect — not the card itself.
-       </div>`
-    : '';
+  if (isWeaponCard) {
+    // For weapon cards: show trigger info (condition/reward) at current and next level
+    const weaponItem = (typeof gameState !== 'undefined' && gameState.inventory || [])
+      .find(i => i.name === card.name && i.type === 'Weapon');
+    const weaponDesc = weaponItem ? (weaponItem.description || '') : '';
+    const currentLevel = weaponItem ? (weaponItem.level || 1) : (card.upgraded ? 2 : 1);
+    const nextLevel = currentLevel + 1;
 
-  if (hasUpgrade && !card.upgraded) {
-    // Show base and upgraded side by side with labels
+    const conditionMatch = weaponDesc.match(/If you ([^,]+),/i);
+    const conditionText = conditionMatch ? 'If you ' + conditionMatch[1].trim() + ',' : '';
+    const rewardRaw = weaponDesc.replace(/^[^,]+,\s*/i, '');
+
+    const currentReward = _resolveLevel(rewardRaw, currentLevel).replace(/^(gain|get)\s+/i, '');
+    const nextReward = _resolveLevel(rewardRaw, nextLevel).replace(/^(gain|get)\s+/i, '');
+
+    function buildWeaponPanel(level, reward, isUpgraded) {
+      const borderColor = isUpgraded ? '#2ecc71' : color;
+      const descColor = isUpgraded ? '#7dffb0' : '#ddd';
+      const name = card.name + (isUpgraded ? ' <span style="color:#4CAF50;font-size:18px">+</span>' : '');
+      return `
+        <div style="background:#1e1e2e;border:3px solid ${borderColor};border-radius:14px;
+          padding:26px 28px;max-width:320px;width:88vw;text-align:center;
+          box-shadow:0 12px 50px rgba(0,0,0,0.9);cursor:default;" onclick="event.stopPropagation()">
+          ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}"
+            style="width:130px;height:130px;object-fit:contain;margin-bottom:14px;border-radius:8px;border:2px solid ${borderColor}40;"
+            onerror="this.style.display='none'">` : ''}
+          <h2 style="margin:0 0 6px;color:white;font-size:20px;">${name}</h2>
+          <div style="color:${borderColor};font-size:13px;margin-bottom:10px;font-weight:bold;">
+            ${card.rarity || 'Starter'} · Weapon (Lv${level})
+          </div>
+          <div style="color:#cc9966;font-size:12px;margin-bottom:8px;font-style:italic;">${conditionText}</div>
+          <div style="color:${descColor};font-size:14px;line-height:1.6;margin-bottom:14px;
+            ${isUpgraded ? 'background:rgba(46,204,113,0.08);border-radius:6px;padding:8px;border:1px solid rgba(46,204,113,0.2);' : ''}">
+            ${reward}
+          </div>
+          <div style="color:#ffd700;font-size:16px;font-weight:bold;">Cost: ${card.cost !== undefined ? card.cost : '?'}</div>
+        </div>`;
+    }
+
     overlay.innerHTML = `
       <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;justify-content:center;cursor:default;" onclick="event.stopPropagation()">
         <div>
-          <div style="text-align:center;color:#aaa;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">BASE</div>
-          ${buildCardPanel(false)}
+          <div style="text-align:center;color:#aaa;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">CURRENT (LV${currentLevel})</div>
+          ${buildWeaponPanel(currentLevel, currentReward, false)}
         </div>
         <div>
-          <div style="text-align:center;color:#4CAF50;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">UPGRADED ↑</div>
-          ${buildCardPanel(true)}
+          <div style="text-align:center;color:#4CAF50;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">UPGRADED (LV${nextLevel}) ↑</div>
+          ${buildWeaponPanel(nextLevel, nextReward, true)}
         </div>
       </div>
-      ${weaponUpgradeNote}
-      <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
-        margin-top:20px;padding:9px 28px;background:#333;border:1px solid #666;border-radius:8px;
-        color:#ccc;cursor:pointer;font-size:13px;">Close</button>
-    `;
-  } else {
-    // Card already upgraded or no upgrade — show single panel with base toggle if applicable
-    overlay.innerHTML = `
-      ${buildCardPanel(!!card.upgraded)}
-      ${hasUpgrade && card.upgraded ? `<div style="text-align:center;color:#aaa;font-size:11px;margin-top:6px;">(This card is upgraded)</div>` : ''}
-      ${weaponUpgradeNote}
+      <div style="margin-top:10px;padding:7px 14px;background:rgba(255,170,68,0.12);border:1px solid rgba(255,170,68,0.35);border-radius:7px;color:#ffaa44;font-size:11px;text-align:center;">
+        Upgrading levels up this weapon's trigger reward.
+      </div>
       <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
         margin-top:16px;padding:9px 28px;background:#333;border:1px solid #666;border-radius:8px;
         color:#ccc;cursor:pointer;font-size:13px;">Close</button>
     `;
+  } else {
+    const hasUpgrade = !!card.upgradedDescription;
+
+    function buildCardPanel(upgraded) {
+      const desc = upgraded && card.upgradedDescription ? card.upgradedDescription : (card.description || '');
+      const cost = upgraded && card.upgradedCost !== undefined && card.upgradedCost !== null
+        ? card.upgradedCost : card.cost;
+      const name = card.name + (upgraded ? ' <span style="color:#4CAF50;font-size:18px">+</span>' : '');
+      const descColor = upgraded ? '#7dffb0' : '#ddd';
+      const borderColor = upgraded ? '#2ecc71' : color;
+      return `
+        <div style="background:#1e1e2e;border:3px solid ${borderColor};border-radius:14px;
+          padding:26px 28px;max-width:320px;width:88vw;text-align:center;
+          box-shadow:0 12px 50px rgba(0,0,0,0.9);cursor:default;position:relative;"
+          onclick="event.stopPropagation()">
+          ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}"
+            style="width:130px;height:130px;object-fit:contain;margin-bottom:14px;border-radius:8px;border:2px solid ${borderColor}40;"
+            onerror="this.style.display='none'">` : ''}
+          <h2 style="margin:0 0 6px;color:white;font-size:20px;">${name}</h2>
+          <div style="color:${borderColor};font-size:13px;margin-bottom:10px;font-weight:bold;">
+            ${card.rarity || 'Starter'} · ${card.type || ''}
+          </div>
+          <div style="color:${descColor};font-size:14px;line-height:1.6;margin-bottom:14px;
+            ${upgraded ? 'background:rgba(46,204,113,0.08);border-radius:6px;padding:8px;border:1px solid rgba(46,204,113,0.2);' : ''}">
+            ${desc}
+          </div>
+          <div style="color:#ffd700;font-size:16px;font-weight:bold;">Cost: ${cost !== undefined ? cost : '?'}</div>
+        </div>`;
+    }
+
+    if (hasUpgrade && !card.upgraded) {
+      overlay.innerHTML = `
+        <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;justify-content:center;cursor:default;" onclick="event.stopPropagation()">
+          <div>
+            <div style="text-align:center;color:#aaa;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">BASE</div>
+            ${buildCardPanel(false)}
+          </div>
+          <div>
+            <div style="text-align:center;color:#4CAF50;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">UPGRADED ↑</div>
+            ${buildCardPanel(true)}
+          </div>
+        </div>
+        <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
+          margin-top:20px;padding:9px 28px;background:#333;border:1px solid #666;border-radius:8px;
+          color:#ccc;cursor:pointer;font-size:13px;">Close</button>
+      `;
+    } else {
+      overlay.innerHTML = `
+        ${buildCardPanel(!!card.upgraded)}
+        ${hasUpgrade && card.upgraded ? `<div style="text-align:center;color:#aaa;font-size:11px;margin-top:6px;">(This card is upgraded)</div>` : ''}
+        <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
+          margin-top:16px;padding:9px 28px;background:#333;border:1px solid #666;border-radius:8px;
+          color:#ccc;cursor:pointer;font-size:13px;">Close</button>
+      `;
+    }
   }
 
   overlay.addEventListener('click', () => overlay.remove());

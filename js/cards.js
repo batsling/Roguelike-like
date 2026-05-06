@@ -114,9 +114,14 @@ function addCardToDeck(card) {
     }
   }
 
-  // Learn spell on acquire (for Dice cards with a learn property)
-  if (card.learn && typeof SPELLS_DATA !== 'undefined') {
-    const spellName = card.learn;
+  // Learn spell on acquire (for Dice cards with a learn property or "Learn X" in description)
+  let _learnSpell = card.learn;
+  if (!_learnSpell && card.description) {
+    const _learnMatch = card.description.match(/\bLearn[:\s]+([A-Za-z][A-Za-z\s']*?)(?:[,.]|$)/i);
+    if (_learnMatch) _learnSpell = _learnMatch[1].trim();
+  }
+  if (_learnSpell && typeof SPELLS_DATA !== 'undefined') {
+    const spellName = _learnSpell;
     const spellDef  = SPELLS_DATA.find(s => s.name === spellName);
     if (spellDef) {
       if (!gameState.spells) gameState.spells = [];
