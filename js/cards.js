@@ -114,9 +114,14 @@ function addCardToDeck(card) {
     }
   }
 
-  // Learn spell on acquire (for Dice cards with a learn property)
-  if (card.learn && typeof SPELLS_DATA !== 'undefined') {
-    const spellName = card.learn;
+  // Learn spell on acquire (for Dice cards with a learn property or "Learn X" in description)
+  let _learnSpell = card.learn;
+  if (!_learnSpell && card.description) {
+    const _learnMatch = card.description.match(/\bLearn[:\s]+([A-Za-z][A-Za-z\s']*?)(?:[,.]|$)/i);
+    if (_learnMatch) _learnSpell = _learnMatch[1].trim();
+  }
+  if (_learnSpell && typeof SPELLS_DATA !== 'undefined') {
+    const spellName = _learnSpell;
     const spellDef  = SPELLS_DATA.find(s => s.name === spellName);
     if (spellDef) {
       if (!gameState.spells) gameState.spells = [];
@@ -359,7 +364,7 @@ function showDeckModal() {
   const startingHTML = startingCards.map(c => cardHtml(c, 'Starting')).join('');
   const collectedHTML = collectedCards.map(c => cardHtml(c, 'Acquired')).join('');
 
-  createGameModal(`
+  createPanelOverlay(`
     <div style="padding:20px;max-width:1100px;margin:0 auto;">
       <h2 style="color:#9b59b6;text-align:center;margin-top:0;">🃏 Your Deck (${totalCount} cards)</h2>
       ${startingHTML ? `
@@ -371,7 +376,7 @@ function showDeckModal() {
         <div style="display:flex;gap:12px;flex-wrap:wrap;">${collectedHTML}</div>
       ` : ''}
       <div style="text-align:center;margin-top:20px;">
-        <button onclick="closeGameModal()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
+        <button onclick="closePanelOverlay()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
       </div>
     </div>
   `);

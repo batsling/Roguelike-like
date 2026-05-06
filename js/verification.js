@@ -545,7 +545,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           <div style="color: #9370db; font-size: 11px; margin-bottom: 5px;">
             Boon Effect
           </div>
-          <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Did you ${condition}? Reward: +1 to all combat roll bonus stats</p>
+          <p style="font-size: 13px; margin: 5px 0; color: #ddd;">Did you ${condition}? Reward: +1 to Str, Dex, Int, Cha</p>
           <div style="margin-top: 5px;">
             <label style="font-size: 12px; color: #ccc; margin-right: 10px;">
               <input type="radio" name="boon-check-${index}" value="yes" style="margin-right: 5px;">Yes
@@ -1152,7 +1152,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       activatedBoons.forEach((boonName, index) => {
         setTimeout(() => {
           if (typeof createNotification === 'function') {
-            createNotification(`${boonName}: +1 to All Combat Roll Bonus Stats!`, '#8a2be2', '🌟');
+            createNotification(`${boonName}: +1 Str, Dex, Int, Cha!`, '#8a2be2', '🌟');
           }
         }, boonBaseDelay + (index * 100));
       });

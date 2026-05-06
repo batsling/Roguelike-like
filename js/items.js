@@ -8,33 +8,53 @@
 
 // ===== HELPER FUNCTIONS =====
 
-// Create and display a notification popup
+// Global notification history
+if (!window._notificationHistory) window._notificationHistory = [];
+
+// Track active notification count for stacking
+let _activeNotifCount = 0;
+
+// Create and display a notification popup (stacks top-right, no overlap)
 function createNotification(text, bgColor = '#8B4513', emoji = '') {
+  // Add to history
+  const ts = new Date();
+  const timeStr = ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  window._notificationHistory.push({ text, emoji, bgColor, time: timeStr });
+
+  const slot = _activeNotifCount++;
+  const TOP_OFFSET = 60;
+  const SLOT_HEIGHT = 54;
+
   const notification = document.createElement('div');
   notification.textContent = `${emoji} ${text}`;
   notification.style.cssText = `
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    padding: 30px 50px;
+    top: ${TOP_OFFSET + slot * SLOT_HEIGHT}px;
+    right: 16px;
+    padding: 10px 18px;
     background: ${bgColor};
     color: white;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    font-size: 24px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 10px;
+    font-size: 15px;
     font-weight: bold;
     z-index: 10000;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-    text-align: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    text-align: left;
+    max-width: 320px;
+    word-break: break-word;
     opacity: 0;
     transition: opacity 0.3s;
+    pointer-events: none;
   `;
   document.body.appendChild(notification);
 
   setTimeout(() => notification.style.opacity = '1', 10);
-  setTimeout(() => notification.style.opacity = '0', 1500);
-  setTimeout(() => notification.remove(), 1800);
+  setTimeout(() => notification.style.opacity = '0', 2200);
+  setTimeout(() => {
+    notification.remove();
+    _activeNotifCount = Math.max(0, _activeNotifCount - 1);
+  }, 2500);
 }
 
 // Update a stat and sync it with gameState
@@ -1087,8 +1107,15 @@ const ITEM_EFFECTS = {
           names.push(t.name);
         } else {
           t.c.upgraded = true;
-          t.c.description = t.c.upgradedDescription;
           if (t.c.upgradedCost !== null && t.c.upgradedCost !== undefined) t.c.cost = t.c.upgradedCost;
+          if ((t.c.tags || []).includes('weapon')) {
+            // Weapon cards: bump level only — never replace description so accumulated buffs survive
+            const weaponItem = (gameState.inventory || []).find(i => i.name === t.c.name && i.type === 'Weapon');
+            if (weaponItem) weaponItem.level = (weaponItem.level || 1) + 1;
+            else t.c._weaponLevel = (t.c._weaponLevel || 1) + 1;
+          } else {
+            t.c.description = t.c.upgradedDescription;
+          }
           names.push(t.c.name);
         }
       });
@@ -1131,8 +1158,16 @@ const ITEM_EFFECTS = {
           names.push(t.name);
         } else {
           t.c.upgraded = true;
-          t.c.description = t.c.upgradedDescription;
           if (t.c.upgradedCost !== null && t.c.upgradedCost !== undefined) t.c.cost = t.c.upgradedCost;
+          if ((t.c.tags || []).includes('weapon')) {
+            // Weapon cards: bump level only — never replace description so accumulated buffs survive
+            const weaponItem = (gameState.inventory || []).find(i => i.name === t.c.name && i.type === 'Weapon');
+            if (weaponItem) weaponItem.level = (weaponItem.level || 1) + 1;
+            // If item not in inventory, store level on card itself as fallback
+            else t.c._weaponLevel = (t.c._weaponLevel || 1) + 1;
+          } else {
+            t.c.description = t.c.upgradedDescription;
+          }
           names.push(t.c.name);
         }
       });

@@ -44,6 +44,7 @@ class DiceRendererInstance {
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(width, height);
+    this.renderer.domElement.style.pointerEvents = 'none';
     container.appendChild(this.renderer.domElement);
 
     // Add lights

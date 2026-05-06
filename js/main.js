@@ -160,6 +160,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     spellsBtn.addEventListener('click', showSpellsModal);
   }
 
+  const notifHistoryBtn = document.getElementById('notif-history-btn');
+  if (notifHistoryBtn) {
+    notifHistoryBtn.addEventListener('click', showNotificationHistory);
+  }
+
   const lootBtn = document.getElementById('loot-btn');
   if (lootBtn) {
     lootBtn.addEventListener('click', showLootModal);
@@ -706,7 +711,7 @@ function generateLayerPreview(startName, amuletName) {
 function showStartingChoiceModal(startOptions, amulet, saveName) {
   _pendingStartOptions = { options: startOptions, amulet, saveName };
   const typeColors = { Action: '#c0392b', Traditional: '#7d3c98', Strategy: '#1a5276', Deckbuilding: '#1e8449' };
-  const bonusDesc  = { Action: '1 Weapon Reward', Traditional: '2 Item Rewards + 1 Curse', Strategy: '40 Gold', Deckbuilding: '2 Card Rewards' };
+  const bonusDesc  = { Action: '1 Weapon Reward', Traditional: '1 Item Reward', Strategy: '40 Gold', Deckbuilding: '1 Card Reward' };
   const panels = startOptions.map((opt, i) => {
     const col = typeColors[opt.type] || '#555';
     const dFS = bfsAllDistances(opt.start.name);
@@ -737,13 +742,7 @@ function applyStartingBonus(type, onComplete) {
       showItemChoiceModal(onComplete, 'normal', 'Weapon');
       break;
     case 'Traditional':
-      showItemChoiceModal(() => {
-        showItemChoiceModal(() => {
-          const cursePool = typeof CURSES_DATA !== 'undefined' ? CURSES_DATA : [];
-          if (cursePool.length > 0) addCurse(cursePool[Math.floor(Math.random() * cursePool.length)]);
-          onComplete();
-        });
-      });
+      showItemChoiceModal(onComplete);
       break;
     case 'Strategy':
       gold += 40;
@@ -752,7 +751,7 @@ function applyStartingBonus(type, onComplete) {
       onComplete();
       break;
     case 'Deckbuilding':
-      showCardRewardModal(() => showCardRewardModal(onComplete));
+      showCardRewardModal(onComplete);
       break;
     default:
       onComplete();
@@ -5141,7 +5140,8 @@ window.toggleCombatSystem = function() {
 window._cardPR = [];
 
 function _cardPreviewBtn(card) {
-  if (!card || !card.upgradedDescription) return '';
+  const isWeapon = !!(card && card.tags && card.tags.includes('weapon'));
+  if (!card || (!card.upgradedDescription && !isWeapon)) return '';
   const idx = window._cardPR.push(card) - 1;
   return `<button
     onclick="event.stopPropagation();showCardUpgradeZoom(window._cardPR[${idx}])"
@@ -5161,36 +5161,14 @@ function showCardUpgradeZoom(card) {
 
   const rarityColors = { Rare: '#9b59b6', Uncommon: '#4CAF50', Common: '#aaa', Starter: '#888' };
   const color = rarityColors[card.rarity] || '#888';
+  const imgSrc = card.imageUrl || '';
+  const isWeaponCard = !!(card.tags && card.tags.includes('weapon'));
 
-  const hasUpgrade = !!card.upgradedDescription;
-
-  function buildCardPanel(upgraded) {
-    const desc = upgraded && card.upgradedDescription ? card.upgradedDescription : (card.description || '');
-    const cost = upgraded && card.upgradedCost !== undefined && card.upgradedCost !== null
-      ? card.upgradedCost : card.cost;
-    const name = card.name + (upgraded ? ' <span style="color:#4CAF50;font-size:18px">+</span>' : '');
-    const imgSrc = card.imageUrl || '';
-    const descColor = upgraded ? '#7dffb0' : '#ddd';
-    const borderColor = upgraded ? '#2ecc71' : color;
-    return `
-      <div style="background:#1e1e2e;border:3px solid ${borderColor};border-radius:14px;
-        padding:26px 28px;max-width:320px;width:88vw;text-align:center;
-        box-shadow:0 12px 50px rgba(0,0,0,0.9);cursor:default;position:relative;"
-        onclick="event.stopPropagation()">
-        ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}"
-          style="width:130px;height:130px;object-fit:contain;margin-bottom:14px;border-radius:8px;border:2px solid ${borderColor}40;"
-          onerror="this.style.display='none'">` : ''}
-        <h2 style="margin:0 0 6px;color:white;font-size:20px;">${name}</h2>
-        <div style="color:${borderColor};font-size:13px;margin-bottom:10px;font-weight:bold;">
-          ${card.rarity || 'Starter'} · ${card.type || ''}
-        </div>
-        <div style="color:${descColor};font-size:14px;line-height:1.6;margin-bottom:14px;
-          ${upgraded ? 'background:rgba(46,204,113,0.08);border-radius:6px;padding:8px;border:1px solid rgba(46,204,113,0.2);' : ''}">
-          ${desc}
-        </div>
-        <div style="color:#ffd700;font-size:16px;font-weight:bold;">Cost: ${cost !== undefined ? cost : '?'}</div>
-      </div>`;
-  }
+  // Resolve (val1/val2/val3) level notation to the value at the given level
+  const _resolveLevel = (desc, lv) => desc.replace(/\(([^)]+)\)/g, (_, inner) => {
+    const pts = inner.split('/').map(s => s.trim());
+    return pts[Math.min(lv - 1, pts.length - 1)] || pts[pts.length - 1];
+  });
 
   const overlay = document.createElement('div');
   overlay.id = 'card-zoom-overlay';
@@ -5200,41 +5178,118 @@ function showCardUpgradeZoom(card) {
     z-index:10000;cursor:pointer;flex-direction:column;gap:0;
   `;
 
-  const isWeaponCard = card.tags && card.tags.includes('weapon');
-  const weaponUpgradeNote = isWeaponCard
-    ? `<div style="margin-top:10px;padding:7px 14px;background:rgba(255,170,68,0.12);border:1px solid rgba(255,170,68,0.35);border-radius:7px;color:#ffaa44;font-size:11px;text-align:center;">
-        Upgrading this card levels up the weapon's passive effect — not the card itself.
-       </div>`
-    : '';
+  if (isWeaponCard) {
+    // For weapon cards: show trigger info (condition/reward) at current and next level
+    const weaponItem = (typeof gameState !== 'undefined' && gameState.inventory || [])
+      .find(i => i.name === card.name && i.type === 'Weapon');
+    const weaponDesc = weaponItem ? (weaponItem.description || '') : '';
+    const currentLevel = weaponItem ? (weaponItem.level || 1) : (card._weaponLevel || (card.upgraded ? 2 : 1));
+    const nextLevel = currentLevel + 1;
 
-  if (hasUpgrade && !card.upgraded) {
-    // Show base and upgraded side by side with labels
+    const conditionMatch = weaponDesc.match(/If you ([^,]+),/i);
+    const conditionText = conditionMatch ? 'If you ' + conditionMatch[1].trim() + ',' : '';
+    const rewardRaw = weaponDesc.replace(/^[^,]+,\s*/i, '');
+
+    const currentReward = _resolveLevel(rewardRaw, currentLevel).replace(/^(gain|get)\s+/i, '');
+    const nextReward = _resolveLevel(rewardRaw, nextLevel).replace(/^(gain|get)\s+/i, '');
+
+    function buildWeaponPanel(level, reward, isUpgraded) {
+      const borderColor = isUpgraded ? '#2ecc71' : color;
+      const descColor = isUpgraded ? '#7dffb0' : '#ddd';
+      const name = card.name + (isUpgraded ? ' <span style="color:#4CAF50;font-size:18px">+</span>' : '');
+      return `
+        <div style="background:#1e1e2e;border:3px solid ${borderColor};border-radius:14px;
+          padding:26px 28px;max-width:320px;width:88vw;text-align:center;
+          box-shadow:0 12px 50px rgba(0,0,0,0.9);cursor:default;" onclick="event.stopPropagation()">
+          ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}"
+            style="width:130px;height:130px;object-fit:contain;margin-bottom:14px;border-radius:8px;border:2px solid ${borderColor}40;"
+            onerror="this.style.display='none'">` : ''}
+          <h2 style="margin:0 0 6px;color:white;font-size:20px;">${name}</h2>
+          <div style="color:${borderColor};font-size:13px;margin-bottom:10px;font-weight:bold;">
+            ${card.rarity || 'Starter'} · Weapon (Lv${level})
+          </div>
+          <div style="color:#cc9966;font-size:12px;margin-bottom:8px;font-style:italic;">${conditionText}</div>
+          <div style="color:${descColor};font-size:14px;line-height:1.6;margin-bottom:14px;
+            ${isUpgraded ? 'background:rgba(46,204,113,0.08);border-radius:6px;padding:8px;border:1px solid rgba(46,204,113,0.2);' : ''}">
+            ${reward}
+          </div>
+          <div style="color:#ffd700;font-size:16px;font-weight:bold;">Cost: ${card.cost !== undefined ? card.cost : '?'}</div>
+        </div>`;
+    }
+
     overlay.innerHTML = `
       <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;justify-content:center;cursor:default;" onclick="event.stopPropagation()">
         <div>
-          <div style="text-align:center;color:#aaa;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">BASE</div>
-          ${buildCardPanel(false)}
+          <div style="text-align:center;color:#aaa;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">CURRENT (LV${currentLevel})</div>
+          ${buildWeaponPanel(currentLevel, currentReward, false)}
         </div>
         <div>
-          <div style="text-align:center;color:#4CAF50;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">UPGRADED ↑</div>
-          ${buildCardPanel(true)}
+          <div style="text-align:center;color:#4CAF50;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">UPGRADED (LV${nextLevel}) ↑</div>
+          ${buildWeaponPanel(nextLevel, nextReward, true)}
         </div>
       </div>
-      ${weaponUpgradeNote}
-      <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
-        margin-top:20px;padding:9px 28px;background:#333;border:1px solid #666;border-radius:8px;
-        color:#ccc;cursor:pointer;font-size:13px;">Close</button>
-    `;
-  } else {
-    // Card already upgraded or no upgrade — show single panel with base toggle if applicable
-    overlay.innerHTML = `
-      ${buildCardPanel(!!card.upgraded)}
-      ${hasUpgrade && card.upgraded ? `<div style="text-align:center;color:#aaa;font-size:11px;margin-top:6px;">(This card is upgraded)</div>` : ''}
-      ${weaponUpgradeNote}
+      <div style="margin-top:10px;padding:7px 14px;background:rgba(255,170,68,0.12);border:1px solid rgba(255,170,68,0.35);border-radius:7px;color:#ffaa44;font-size:11px;text-align:center;">
+        Upgrading levels up this weapon's trigger reward.
+      </div>
       <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
         margin-top:16px;padding:9px 28px;background:#333;border:1px solid #666;border-radius:8px;
         color:#ccc;cursor:pointer;font-size:13px;">Close</button>
     `;
+  } else {
+    const hasUpgrade = !!card.upgradedDescription;
+
+    function buildCardPanel(upgraded) {
+      const desc = upgraded && card.upgradedDescription ? card.upgradedDescription : (card.description || '');
+      const cost = upgraded && card.upgradedCost !== undefined && card.upgradedCost !== null
+        ? card.upgradedCost : card.cost;
+      const name = card.name + (upgraded ? ' <span style="color:#4CAF50;font-size:18px">+</span>' : '');
+      const descColor = upgraded ? '#7dffb0' : '#ddd';
+      const borderColor = upgraded ? '#2ecc71' : color;
+      return `
+        <div style="background:#1e1e2e;border:3px solid ${borderColor};border-radius:14px;
+          padding:26px 28px;max-width:320px;width:88vw;text-align:center;
+          box-shadow:0 12px 50px rgba(0,0,0,0.9);cursor:default;position:relative;"
+          onclick="event.stopPropagation()">
+          ${imgSrc ? `<img src="${imgSrc}" alt="${card.name}"
+            style="width:130px;height:130px;object-fit:contain;margin-bottom:14px;border-radius:8px;border:2px solid ${borderColor}40;"
+            onerror="this.style.display='none'">` : ''}
+          <h2 style="margin:0 0 6px;color:white;font-size:20px;">${name}</h2>
+          <div style="color:${borderColor};font-size:13px;margin-bottom:10px;font-weight:bold;">
+            ${card.rarity || 'Starter'} · ${card.type || ''}
+          </div>
+          <div style="color:${descColor};font-size:14px;line-height:1.6;margin-bottom:14px;
+            ${upgraded ? 'background:rgba(46,204,113,0.08);border-radius:6px;padding:8px;border:1px solid rgba(46,204,113,0.2);' : ''}">
+            ${desc}
+          </div>
+          <div style="color:#ffd700;font-size:16px;font-weight:bold;">Cost: ${cost !== undefined ? cost : '?'}</div>
+        </div>`;
+    }
+
+    if (hasUpgrade && !card.upgraded) {
+      overlay.innerHTML = `
+        <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;justify-content:center;cursor:default;" onclick="event.stopPropagation()">
+          <div>
+            <div style="text-align:center;color:#aaa;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">BASE</div>
+            ${buildCardPanel(false)}
+          </div>
+          <div>
+            <div style="text-align:center;color:#4CAF50;font-size:12px;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">UPGRADED ↑</div>
+            ${buildCardPanel(true)}
+          </div>
+        </div>
+        <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
+          margin-top:20px;padding:9px 28px;background:#333;border:1px solid #666;border-radius:8px;
+          color:#ccc;cursor:pointer;font-size:13px;">Close</button>
+      `;
+    } else {
+      overlay.innerHTML = `
+        ${buildCardPanel(!!card.upgraded)}
+        ${hasUpgrade && card.upgraded ? `<div style="text-align:center;color:#aaa;font-size:11px;margin-top:6px;">(This card is upgraded)</div>` : ''}
+        <button onclick="document.getElementById('card-zoom-overlay').remove()" style="
+          margin-top:16px;padding:9px 28px;background:#333;border:1px solid #666;border-radius:8px;
+          color:#ccc;cursor:pointer;font-size:13px;">Close</button>
+      `;
+    }
   }
 
   overlay.addEventListener('click', () => overlay.remove());
@@ -5270,7 +5325,7 @@ function showCardZoomOverlay(card) {
   overlay.style.cssText = `
     position:fixed; inset:0; background:rgba(0,0,0,0.75);
     display:flex; align-items:center; justify-content:center;
-    z-index:10000; cursor:pointer;
+    z-index:35000; cursor:pointer;
   `;
   overlay.innerHTML = `
     <div style="
@@ -5299,6 +5354,33 @@ function showCardZoomOverlay(card) {
   document.body.appendChild(overlay);
 }
 window.showCardZoomOverlay = showCardZoomOverlay;
+
+function showNotificationHistory() {
+  const history = window._notificationHistory || [];
+  const rows = history.length === 0
+    ? '<p style="color:#888;text-align:center;margin:40px 0;">No notifications yet.</p>'
+    : [...history].reverse().map(e => `
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-bottom:1px solid #333;border-left:3px solid ${e.bgColor || '#555'};">
+          <span style="font-size:18px;line-height:1.4;">${e.emoji || ''}</span>
+          <div style="flex:1;">
+            <div style="color:#fff;font-size:14px;">${e.text}</div>
+            <div style="color:#666;font-size:11px;margin-top:2px;">${e.time || ''}</div>
+          </div>
+        </div>`).join('');
+
+  createPanelOverlay(`
+    <div style="max-width:520px;width:100%;margin:0 auto;">
+      <h2 style="text-align:center;color:#aed6f1;margin-bottom:16px;">📜 Notification History</h2>
+      <div style="max-height:60vh;overflow-y:auto;background:#1a1a2e;border-radius:8px;border:1px solid #333;">
+        ${rows}
+      </div>
+      <div style="text-align:center;margin-top:16px;">
+        <button onclick="closePanelOverlay()" style="padding:10px 28px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
+      </div>
+    </div>
+  `);
+}
+window.showNotificationHistory = showNotificationHistory;
 
 function showDeckModal() {
   const charKey = (selectedCharacter) || (gameState && gameState.character) || null;
@@ -5331,6 +5413,15 @@ function showDeckModal() {
         ${upgBtn}
         ${label ? `<div style="position:absolute;top:4px;right:4px;background:${color};color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:bold;">${label}</div>` : ''}
         ${artHTML}
+        ${(() => {
+          const isWpn = card.tags && card.tags.includes('weapon');
+          const wpnItem = isWpn && typeof gameState !== 'undefined'
+            ? (gameState.inventory || []).find(i => i.name === card.name && i.type === 'Weapon') : null;
+          const lvl = wpnItem ? (wpnItem.level || 1) : null;
+          return lvl && lvl > 1
+            ? `<div style="position:absolute;bottom:5px;right:5px;background:#cc6600;color:#fff;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:bold;">Lv${lvl}</div>`
+            : '';
+        })()}
         <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:3px;">${card.name}${card.upgraded ? ' +' : ''}</div>
         <div style="color:${color};font-size:11px;margin-bottom:4px;">${card.rarity || 'Starter'} · ${card.type || ''}</div>
         <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:6px;">${card.description || ''}</div>
@@ -5357,7 +5448,7 @@ function showDeckModal() {
   const startingHTML = startingCards.map((c, i) => cardHtml(c, 'Starting', i)).join('');
   const collectedHTML = collectedCards.map((c, i) => cardHtml(c, 'Acquired', startingCards.length + i)).join('');
 
-  createGameModal(`
+  createPanelOverlay(`
     <div style="padding:20px;max-width:1100px;margin:0 auto;">
       <h2 style="color:#9b59b6;text-align:center;margin-top:0;">🃏 Your Deck (${totalCount} cards)</h2>
       <p style="text-align:center;color:#888;font-size:12px;margin:0 0 12px;">Click a card to zoom in</p>
@@ -5370,7 +5461,7 @@ function showDeckModal() {
         <div style="display:flex;gap:12px;flex-wrap:wrap;">${collectedHTML}</div>
       ` : ''}
       <div style="text-align:center;margin-top:20px;">
-        <button onclick="closeGameModal()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
+        <button onclick="closePanelOverlay()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
       </div>
     </div>
   `);
@@ -5487,7 +5578,7 @@ function showDiceTrayModal() {
         padding:14px;display:flex;flex-direction:column;gap:10px;min-width:300px;max-width:400px;">
         <div style="display:flex;align-items:center;gap:10px;">
           ${card.imageUrl
-            ? `<img src="${card.imageUrl}" style="width:40px;height:40px;object-fit:contain;border-radius:6px;background:rgba(0,0,0,0.4);" onerror="this.style.display='none'">`
+            ? `<img src="${card.imageUrl}" style="width:40px;height:40px;object-fit:contain;border-radius:6px;background:rgba(0,0,0,0.4);" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\\'width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:28px;border-radius:6px;background:rgba(0,0,0,0.3);\\'>🎲</div>')">`
             : `<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:28px;border-radius:6px;background:rgba(0,0,0,0.3);">🎲</div>`}
           <div>
             <div style="font-weight:bold;font-size:13px;color:#f0c850;">${card.name}${card.upgraded ? ' +' : ''}</div>
@@ -5505,7 +5596,7 @@ function showDiceTrayModal() {
     ? allDice.map((c, i) => dieCardHTML(c, i)).join('')
     : '<p style="color:#666;text-align:center;grid-column:1/-1;">No dice in your collection yet.</p>';
 
-  createGameModal(`
+  createPanelOverlay(`
     <div style="padding:20px;max-width:1100px;margin:0 auto;">
       <h2 style="color:#d35400;text-align:center;margin-top:0;">🎲 Dice Tray (${allDice.length} dice)</h2>
       <p style="text-align:center;color:#888;font-size:12px;margin:0 0 16px;">
@@ -5516,7 +5607,7 @@ function showDiceTrayModal() {
         ${diceHTML}
       </div>
       <div style="text-align:center;margin-top:20px;">
-        <button onclick="closeGameModal()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
+        <button onclick="closePanelOverlay()" style="padding:12px 30px;background:#555;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;">Close</button>
       </div>
     </div>
   `);
@@ -5601,7 +5692,7 @@ function _diceTrayPickItem(dieUid) {
 
   const picker = document.createElement('div');
   picker.id = 'dice-item-picker';
-  picker.style.cssText = `position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.8);
+  picker.style.cssText = `position:fixed;inset:0;z-index:30000;background:rgba(0,0,0,0.8);
     display:flex;align-items:center;justify-content:center;`;
   picker.innerHTML = `
     <div style="background:#1a1208;border:2px solid #d35400;border-radius:14px;padding:20px;
@@ -5732,12 +5823,12 @@ function showSpellsModal() {
         <div style="font-size:12px;color:#444;margin-top:6px;">Acquire dice cards with a "Learn:" effect to gain spells.</div>
       </div>`;
 
-  createGameModal(`
+  createPanelOverlay(`
     <div style="padding:20px;max-width:1000px;margin:0 auto;">
       <h2 style="color:#c4b5fd;text-align:center;margin-top:0;">✨ Your Spells (${spells.length})</h2>
       ${content}
       <div style="text-align:center;margin-top:20px;">
-        <button onclick="closeGameModal()" style="padding:12px 30px;background:#2d1a4e;
+        <button onclick="closePanelOverlay()" style="padding:12px 30px;background:#2d1a4e;
           border:1px solid #7c3aed;border-radius:8px;color:#c4b5fd;cursor:pointer;font-weight:bold;">
           Close
         </button>
@@ -5765,7 +5856,7 @@ function showLevelUpPrompt() {
   const levelUpCondition = characterData.levelUpCondition || 'Complete a special achievement';
 
   createGameModal(`
-    <div style="text-align: center; padding: 20px; max-width: 500px;">
+    <div style="text-align: center; padding: 20px; max-width: 500px; margin: 0 auto;">
       <h2 style="color: #FFD700; margin-bottom: 20px;">Level Up!</h2>
       <div style="
         background: rgba(0,0,0,0.4);
@@ -5987,7 +6078,7 @@ function confirmLevelUp(onComplete) {
   `;
 
   createGameModal(`
-    <div style="text-align: center; padding: 20px; max-width: 500px;">
+    <div style="text-align: center; padding: 20px; max-width: 500px; margin: 0 auto;">
       <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
       <div style="
         background: rgba(76,175,80,0.1);
@@ -6093,7 +6184,7 @@ function confirmLevelUpLegacy() {
   saveCurrentGame();
 
   createGameModal(`
-    <div style="text-align: center; padding: 20px; max-width: 500px;">
+    <div style="text-align: center; padding: 20px; max-width: 500px; margin: 0 auto;">
       <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
       <div style="
         background: rgba(76,175,80,0.1);

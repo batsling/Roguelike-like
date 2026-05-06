@@ -131,24 +131,34 @@ function spawnChoices() {
   const numChoices = Math.max(1, baseFov); // Use fov stat, default to 3
   const opts = shuffled.slice(0, Math.min(numChoices, shuffled.length));
 
-  // Apply pending boon statuses to random games in this choice set
+  // Apply pending one-shot statuses (e.g. from non-Hades effects) to game choices
   if (gameState.pendingLocationStatuses && gameState.pendingLocationStatuses.length > 0) {
-
-    // Apply each pending status to a random game in the choice set
     gameState.pendingLocationStatuses.forEach(statusName => {
       if (opts.length > 0) {
         const randomIndex = Math.floor(Math.random() * opts.length);
         const targetGame = opts[randomIndex];
-
-        // Add the status to the game
         if (typeof addGameStatus === 'function') {
           addGameStatus(targetGame, statusName.toLowerCase());
         }
       }
     });
-
-    // Clear pending statuses after applying
     gameState.pendingLocationStatuses = [];
+  }
+
+  // Hades location effect: while at a Hades location, at least one choice always gets
+  // the boon's associated status (the "cost" listed in each boon description).
+  if (gameState.location && typeof hasGodBoonChoice === 'function' && hasGodBoonChoice(gameState.location) && opts.length > 0) {
+    const activeBoons = (gameState.inventory || []).filter(item => item.type === 'Boon');
+    const boonStatuses = [];
+    activeBoons.forEach(boon => {
+      const statusMatch = (boon.description || '').match(/will be (\w+)/i);
+      if (statusMatch) boonStatuses.push(statusMatch[1].toLowerCase());
+    });
+    if (boonStatuses.length > 0 && typeof addGameStatus === 'function') {
+      const statusName = boonStatuses[Math.floor(Math.random() * boonStatuses.length)];
+      const idx = Math.floor(Math.random() * opts.length);
+      addGameStatus(opts[idx], statusName);
+    }
   }
 
   // Store current choices so the map can highlight them
