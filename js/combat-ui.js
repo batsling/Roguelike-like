@@ -180,6 +180,15 @@ function getCardDynamicDmg(baseDmg, card, combat, targetEnemy) {
     dmg += targetEnemy.statuses['bruise'];
   }
 
+  // Little Knife: +25% to attacks targeting enemies with lower HP than the player
+  if (targetEnemy && (card.type || '').toLowerCase() === 'attack') {
+    const _inv = typeof inventory !== 'undefined' ? inventory : [];
+    const hasLittleKnife = _inv.some(i => i.name === 'Little Knife');
+    if (hasLittleKnife && targetEnemy.health < (combat.player.health || 0)) {
+      dmg = Math.ceil(dmg * 1.25);
+    }
+  }
+
   return Math.max(0, dmg);
 }
 
@@ -253,9 +262,15 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
 
   const persistence = player.statuses['persistence'] || 0;
 
+  // Little Knife: active when targeting an enemy with lower HP than player, for attack cards
+  const hasLittleKnife = (card.type || '').toLowerCase() === 'attack' &&
+                         _dupInv.some(i => i.name === 'Little Knife') &&
+                         !!(targetEnemy && targetEnemy.health < (player.health || 0));
+
   // Quick check: any modifier active?
   const hasMods = itemSuffix.length > 0
                || hasDuplicator
+               || hasLittleKnife
                || (player.statuses['power'] || 0) !== 0
                || (player.statuses['strength'] || 0) !== 0
                || (player.statuses['intelligence'] || 0) !== 0

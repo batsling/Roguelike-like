@@ -4470,7 +4470,8 @@ function buildWeightedEncounter() {
     const targetWeight = Math.floor(Math.random() * maxWeight) + 1;
 
     // Find enemies with exactly that weight; if none, find closest lower weight
-    let weightCandidates = fittingCandidates.filter(e => e.weight === targetWeight);
+    // Use ceiling so fractional-weight enemies (e.g. Fly at 0.5) map into the nearest integer bucket
+    let weightCandidates = fittingCandidates.filter(e => Math.ceil(e.weight) === targetWeight);
     if (weightCandidates.length === 0) {
       // Pick any fitting enemy (fallback)
       weightCandidates = fittingCandidates;

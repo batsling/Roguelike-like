@@ -1267,5 +1267,27 @@ var ITEMS_DATA = [
     ],
     "image": "images/items/Wings.png",
     "unlockCondition": null
+  },
+  {
+    "name": "Sulfa Powder",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "At the start of your turn, Gain +D12 Block",
+    "game": "Brutal Orchestra",
+    "tags": [],
+    "image": "images/items/SulfaPowder.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Little Knife",
+    "rarity": "Uncommon",
+    "type": "Scaling",
+    "description": "Attacks deal 25% more Dmg to targets with lower Health",
+    "game": "Brutal Orchestra",
+    "tags": [
+      "knife"
+    ],
+    "image": "images/items/LittleKnife.png",
+    "unlockCondition": null
   }
 ];
