@@ -1157,6 +1157,7 @@ function rerollPlayerDie(diceId) {
 
   // Spend reroll
   combatState.player.rerolls--;
+  if (typeof window !== 'undefined') window.reroll = combatState.player.rerolls;
 
   // Reroll
   const faceIndex = Math.floor(Math.random() * die.faces.length);
@@ -3110,6 +3111,7 @@ function executeEnemyActions() {
             // Allow player to spend a reroll ONLY if this enemy has the Rerollable status
             if (enemy.statuses['rerollable'] && combatState.player.rerolls > 0) {
               combatState.player.rerolls--;
+              if (typeof window !== 'undefined') window.reroll = combatState.player.rerolls;
               const rerolled = rollDiceNotation(effect.raw || '');
               addLog(`Reroll used! New roll: ${rerolled.rolls.map(r=>`d${r.die}:${r.result}`).join(', ')} = ${rerolled.total}`, 'success');
               value = rerolled.total;
@@ -4300,6 +4302,12 @@ function resolveCardEffect(card, target, options = {}) {
       }
       // Wealth: +1 per 10 gold
       if (_wealthBonus > 0) dmg += _wealthBonus;
+      // Strike Dummy: +3 damage per copy, added to base damage so it scales with multi-hits
+      if ((card.name || '').toLowerCase() === 'strike') {
+        const _sdInv = typeof window.inventory !== 'undefined' ? window.inventory : [];
+        const strikeDummyCount = _sdInv.filter(i => i.name === 'Strike Dummy').reduce((n, i) => n + (i.quantity || 1), 0);
+        if (strikeDummyCount > 0) dmg += 3 * strikeDummyCount;
+      }
       // Weak on player reduces outgoing damage by 25%
       if (player.statuses['weak']) {
         dmg = Math.floor(dmg * 0.75);
@@ -4324,17 +4332,6 @@ function resolveCardEffect(card, target, options = {}) {
       // Strike-only item triggers (card named exactly "Strike")
       if ((card.name || '').toLowerCase() === 'strike') {
         const inv = typeof window.inventory !== 'undefined' ? window.inventory : [];
-
-        // Strike Dummy: +3 damage per copy
-        const strikeDummyCount = inv.filter(i => i.name === 'Strike Dummy').reduce((n, i) => n + (i.quantity || 1), 0);
-        if (strikeDummyCount > 0) {
-          const bonus = 3 * strikeDummyCount;
-          if (isAoECard) {
-            combatState.enemies.filter(e => e.health > 0).forEach(e => dealDamage(e, bonus));
-          } else if (target) {
-            dealDamage(target, bonus);
-          }
-        }
 
         if (target) {
           // Bird Head: inflict Soul Link

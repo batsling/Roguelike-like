@@ -105,7 +105,7 @@ const KEYWORD_DEFS = {
 function getCardImageUrl(card) {
   if (!card) return '';
   const tags = Array.isArray(card.tags) ? card.tags : [];
-  if (tags.includes('hero') && card.game === 'Slice & Dice') {
+  if (tags.includes('hero') && (card.game || '').trim() === 'Slice & Dice') {
     const firstName = (card.name || '').split(' ')[0];
     if (firstName) return `images/heroes/${firstName}.png`;
   }
@@ -1532,10 +1532,10 @@ function renderDiceCardInHand(card, index, total, combat) {
   const costColor = canAfford ? '#ffd700' : '#e74c3c';
 
   let cardW, cardH, marginL, orbW, namePx;
-  if (total <= 5)      { cardW = 92;  cardH = 134; marginL = -24; orbW = 27; namePx = 10; }
-  else if (total <= 7) { cardW = 80;  cardH = 118; marginL = -18; orbW = 25; namePx = 9;  }
-  else if (total <= 9) { cardW = 70;  cardH = 104; marginL = -14; orbW = 23; namePx = 8.5;}
-  else                 { cardW = 62;  cardH = 92;  marginL = -10; orbW = 21; namePx = 8;  }
+  if (total <= 5)      { cardW = 110; cardH = 160; marginL = -28; orbW = 31; namePx = 11; }
+  else if (total <= 7) { cardW = 96;  cardH = 142; marginL = -22; orbW = 29; namePx = 10; }
+  else if (total <= 9) { cardW = 84;  cardH = 124; marginL = -18; orbW = 27; namePx = 9.5;}
+  else                 { cardW = 74;  cardH = 110; marginL = -14; orbW = 25; namePx = 9;  }
 
   const t        = total <= 1 ? 0 : (index - (total - 1) / 2) / ((total - 1) / 2);
   const maxAngle = Math.min(4 * (total - 1), 24);
@@ -1644,13 +1644,13 @@ function renderCardInHand(card, index, total, combat) {
   // Responsive card dimensions based on hand size
   let cardW, cardH, marginL, artH, namePx, descPx, orbW;
   if (total <= 5) {
-    cardW = 92; cardH = 134; marginL = -24; artH = 58; namePx = 10; descPx = 8.5; orbW = 27;
+    cardW = 110; cardH = 160; marginL = -28; artH = 68; namePx = 11; descPx = 9.5; orbW = 31;
   } else if (total <= 7) {
-    cardW = 80; cardH = 118; marginL = -18; artH = 50; namePx = 9;  descPx = 7.5; orbW = 25;
+    cardW = 96;  cardH = 142; marginL = -22; artH = 58; namePx = 10; descPx = 8.5; orbW = 29;
   } else if (total <= 9) {
-    cardW = 70; cardH = 104; marginL = -14; artH = 44; namePx = 8.5; descPx = 7;  orbW = 23;
+    cardW = 84;  cardH = 124; marginL = -18; artH = 50; namePx = 9.5; descPx = 7.5; orbW = 27;
   } else {
-    cardW = 62; cardH = 92;  marginL = -10; artH = 38; namePx = 8;   descPx = 6.5; orbW = 21;
+    cardW = 74;  cardH = 110; marginL = -14; artH = 44; namePx = 9;   descPx = 7;   orbW = 25;
   }
 
   // Fan geometry — spread cards in an arc
@@ -1751,7 +1751,8 @@ function renderCardInHand(card, index, total, combat) {
         flex:1; padding:2px 4px;
         font-size:${descPx}px; color:#ccc;
         text-align:center; line-height:1.35;
-        overflow:hidden;
+        overflow-y:auto; overflow-x:hidden;
+        scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.2) transparent;
       ">${getCardDisplayDescription(card, combat, (() => { const eid = window._combatHoveredEnemyId; return eid && combat.enemies ? combat.enemies.find(e => e.id === eid) || null : null; })())}${card._retain && !/\bretain\b/i.test(card.description) ? ' <span style="color:#4CAF50;font-size:' + (descPx - 0.5) + 'px;">Retain.</span>' : ''}</div>
 
       <!-- Type footer -->
