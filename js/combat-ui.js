@@ -2014,6 +2014,20 @@ function renderLogPanel(combat) {
     ">${entry.message}</div>`;
   }).join('');
 
+  const _SPELL_ELEMENTS = ['Fire','Water','Poison','Earth','Dark','Blood','Electric','Ice','Thunder','Wind'];
+  const _ELEMENT_COLOR  = {fire:'#ff6b35',water:'#4488ff',poison:'#44bb44',earth:'#88aa44',dark:'#a855f7',blood:'#cc2222',electric:'#ffcc00',ice:'#88ddff',thunder:'#ffcc00',wind:'#aaddcc'};
+  const _ELEMENT_ICON   = {fire:'🔥',water:'💧',poison:'☠',earth:'🌿',dark:'🌑',blood:'🩸',electric:'⚡',ice:'❄',thunder:'⚡',wind:'💨'};
+  const _spellElement = sp => {
+    const el = sp.element;
+    if (el && el !== 'N/A') return el;
+    for (const eff of (sp.effects || [])) {
+      for (const addon of (eff.addons || [])) {
+        if (_SPELL_ELEMENTS.includes(addon)) return addon;
+      }
+    }
+    return null;
+  };
+
   const spellsHtml = spells.length === 0
     ? `<div style="color:${C.textDim};font-size:11px;padding:16px 8px;text-align:center;">No spells learned yet.<br><span style="font-size:9px;color:#444;">Buy hero dice cards to learn spells.</span></div>`
     : spells.map(sp => {
@@ -2027,6 +2041,10 @@ function renderLogPanel(combat) {
         const statusText = onCd ? `CD: ${cdLeft}` : usedSingle ? 'Used' : noMana ? 'No Mana' : wrongPhase ? 'Wait' : '';
         const imgSrc = sp.imageUrl || sp.image || '';
         const rarityColor = ({Rare:'#9b59b6', Uncommon:'#4CAF50', Common:'#aaa'})[sp.rarity] || '#888';
+        const el = _spellElement(sp);
+        const elKey = el ? el.toLowerCase() : null;
+        const elColor = elKey ? (_ELEMENT_COLOR[elKey] || '#888') : null;
+        const elIcon  = elKey ? (_ELEMENT_ICON[elKey]  || '✦')   : null;
         return `<div style="
           display:flex;flex-direction:column;gap:0;
           margin:6px 6px 0;border-radius:8px;overflow:hidden;
@@ -2041,9 +2059,10 @@ function renderLogPanel(combat) {
             ${imgSrc ? `<img src="${imgSrc}" alt="${sp.name}" style="width:34px;height:34px;object-fit:contain;border-radius:4px;background:rgba(0,0,0,0.4);border:1px solid ${rarityColor}44;flex-shrink:0;" onerror="this.style.opacity='0.2'">` : `<div style="width:34px;height:34px;border-radius:4px;background:#1a1a2e;flex-shrink:0;"></div>`}
             <div style="flex:1;min-width:0;">
               <div style="font-weight:bold;font-size:11px;color:#e9d5ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sp.name}</div>
-              <div style="display:flex;align-items:center;gap:4px;margin-top:2px;">
+              <div style="display:flex;align-items:center;gap:4px;margin-top:2px;flex-wrap:wrap;">
                 <span style="font-size:9px;font-weight:bold;color:#6ab4ff;background:rgba(99,102,241,0.2);border:1px solid #6366f155;border-radius:8px;padding:1px 5px;">💧${mana}</span>
                 ${sp.rarity ? `<span style="font-size:8px;color:${rarityColor};text-transform:uppercase;font-weight:bold;">${sp.rarity}</span>` : ''}
+                ${el ? `<span style="font-size:8px;font-weight:bold;color:${elColor};background:${elColor}22;border:1px solid ${elColor}44;border-radius:6px;padding:1px 4px;">${elIcon} ${el}</span>` : ''}
               </div>
             </div>
           </div>
