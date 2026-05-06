@@ -331,12 +331,7 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
     });
   }
 
-  // Little Knife: append indicator when targeting a lower-health enemy
-  const littleKnifeSuffix = hasLittleKnife
-    ? `<br><span style="color:#f9ca24;font-size:10px;">🔪 +25% (Little Knife)</span>`
-    : '';
-
-  return desc + itemSuffix + littleKnifeSuffix;
+  return desc + itemSuffix;
 }
 
 // Lightweight re-render of just the hand zone (used when hovered enemy changes)

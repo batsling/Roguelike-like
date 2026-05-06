@@ -2901,7 +2901,6 @@ function endTurn() {
           const burnDmg = parseInt(burnStatusM[1]);
           dealDamageToPlayer(burnDmg, ['self'], null);
           addLog(`${card.name}: took ${burnDmg} damage (held in hand)!`, 'danger');
-          card._exhaustAtEndOfTurn = true;
         }
         continue;
       }
@@ -2943,16 +2942,13 @@ function endTurn() {
     }
   }
 
-  // Discard hand (Ethereal → exhaust; Sly → trigger; Retained → keep; _exhaustAtEndOfTurn → exhaust; others → discard)
+  // Discard hand (Ethereal → exhaust; Sly → trigger; Retained → keep; others → discard)
   if (combatState.hand) {
     const kept = [];
     for (const card of [...combatState.hand]) {
       if (card._retain) { kept.push(card); continue; }
       const descLower = (card.description || '').toLowerCase();
-      if (card._exhaustAtEndOfTurn) {
-        combatState.exhaustPile.push(card);
-        onCardExhausted(card);
-      } else if (descLower.includes('ethereal')) {
+      if (descLower.includes('ethereal')) {
         combatState.exhaustPile.push(card);
         addLog(`${card.name} exhausted (Ethereal)`, 'info');
         onCardExhausted(card);
@@ -4338,7 +4334,6 @@ function resolveCardEffect(card, target, options = {}) {
           } else if (target) {
             dealDamage(target, bonus);
           }
-          addLog(`Strike Dummy: +${bonus} Dmg!`, 'success');
         }
 
         if (target) {
