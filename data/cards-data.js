@@ -1300,6 +1300,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
+    "learn": "Balance",
     "imageUrl": "images/heroes/Druid.png",
     "game": "Slice & Dice ",
     "tags": [
@@ -2065,6 +2066,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
+    "learn": "Flick",
     "imageUrl": "images/heroes/Jester.png",
     "game": "Slice & Dice ",
     "tags": [
@@ -2219,6 +2221,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
+    "learn": "Poke",
     "imageUrl": "images/heroes/Mage.png",
     "game": "Slice & Dice ",
     "tags": [
@@ -2302,6 +2305,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
+    "learn": "Gaze",
     "imageUrl": "images/heroes/Mystic.png",
     "game": "Slice & Dice ",
     "tags": [
