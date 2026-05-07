@@ -635,6 +635,8 @@ function showShopModal(purchasedIndices = []) {
         gameState.deck.push({ ...card, upgraded: false });
         if (typeof createNotification === 'function') createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
       }
+      // Ensure spell is learned regardless of which path added the card
+      if (typeof learnSpellFromCard === 'function') learnSpellFromCard(card);
       saveCurrentGame();
       showShopModal(purchasedIndices);
     };

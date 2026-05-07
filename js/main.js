@@ -6783,6 +6783,9 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
           createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
         }
       }
+      // Ensure spell is learned regardless of which path added the card
+      const learnFn = window.learnSpellFromCard || (typeof learnSpellFromCard !== 'undefined' ? learnSpellFromCard : null);
+      if (learnFn) learnFn(card);
     }
     closeGameModal();
     if (onComplete) onComplete();
