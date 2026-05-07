@@ -374,21 +374,19 @@ var SPELLS_DATA = [
     "affectedByBonus": true,
     "effects": [
       {
-        "raw": "1 Magic Dmg Cleave Ranged",
+        "raw": "1 Magic Dmg Cleave Ranged and Gain 1 Health",
         "value": 1,
-        "move": "Magic Dmg",
+        "move": "Magic",
         "addons": [
+          "Dmg",
           "Cleave",
-          "Ranged"
+          "Ranged",
+          "and",
+          "Gain",
+          "1",
+          "Health"
         ],
         "target": null
-      },
-      {
-        "raw": "Gain 1 Health",
-        "value": 1,
-        "move": "Heal",
-        "addons": [],
-        "target": "self"
       }
     ],
     "imageUrl": "images/Spells/Balance.png"
@@ -403,10 +401,12 @@ var SPELLS_DATA = [
     "effects": [
       {
         "raw": "Set friendly target's Health to 10",
-        "value": 10,
+        "value": null,
         "move": "Set",
         "addons": [
           "friendly",
+          "target's",
+          "Health",
           "to",
           "10"
         ],

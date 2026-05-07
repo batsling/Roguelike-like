@@ -237,8 +237,8 @@ var CARDS_DATA = [
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Attack",
-    "description": "Deal 5 Dmg Ranged. Fishing Weight.",
-    "upgradedDescription": "Deal 5 Dmg Ranged. Fishing Weight.",
+    "description": "Deal 6 Dmg Ranged. Fishing Weight.",
+    "upgradedDescription": "Deal 6 Dmg Ranged. Fishing Weight.",
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
@@ -356,8 +356,8 @@ var CARDS_DATA = [
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
-    "description": "Deal 4 Dmg Ranged. Wealth.",
-    "upgradedDescription": "Deal 4 Dmg Ranged. Wealth.",
+    "description": "Deal 5 Dmg Ranged. Wealth.",
+    "upgradedDescription": "Deal 5 Dmg Ranged. Wealth.",
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
@@ -834,7 +834,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/heroes/Clumsy.png",
+    "imageUrl": "images/cards/Clumsy.png",
     "game": "Slice & Dice ",
     "tags": [
       "hero",
@@ -939,7 +939,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/heroes/Dabblest.png",
+    "imageUrl": "images/cards/Dabblest.png",
     "game": "Slice & Dice ",
     "tags": [
       "hero",
@@ -1090,7 +1090,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/heroes/Defender.png",
+    "imageUrl": "images/cards/Defender.png",
     "game": "Slice & Dice ",
     "tags": [
       "hero",
@@ -1136,8 +1136,8 @@ var CARDS_DATA = [
     "rarity": "Uncommon",
     "cost": 0,
     "type": "Attack",
-    "description": "5 Assassinate.",
-    "upgradedDescription": "5 Assassinate.",
+    "description": "6 Assassinate.",
+    "upgradedDescription": "6 Assassinate.",
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
@@ -1300,8 +1300,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "learn": "Balance",
-    "imageUrl": "images/heroes/Druid.png",
+    "imageUrl": "images/cards/Druid.png",
     "game": "Slice & Dice ",
     "tags": [
       "hero",
@@ -1530,8 +1529,8 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/heroes/Fighter.png",
-    "game": "Slice & Dice ",
+    "imageUrl": "images/cards/Fighter.png",
+    "game": "Slice & Dice",
     "tags": [
       "hero",
       "yellow"
@@ -1669,8 +1668,8 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/heroes/Gambler.png",
-    "game": "Slice & Dice ",
+    "imageUrl": "images/cards/Gambler.png",
+    "game": "Slice & Dice",
     "tags": [
       "hero",
       "orange"
@@ -1703,8 +1702,8 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/heroes/Gladiator.png",
-    "game": "Slice & Dice ",
+    "imageUrl": "images/cards/Gladiator.png",
+    "game": "Slice & Dice",
     "tags": [
       "hero",
       "yellow"
@@ -1823,9 +1822,8 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "learn": "Mend",
-    "imageUrl": "images/heroes/Healer.png",
-    "game": "Slice & Dice ",
+    "imageUrl": "images/cards/Healer.png",
+    "game": "Slice & Dice",
     "tags": [
       "hero",
       "red"
@@ -2047,8 +2045,8 @@ var CARDS_DATA = [
     "rarity": "Starter",
     "cost": 1,
     "type": "Dice",
-    "description": "Roll this die to Transform a Card into X type of Card, where X is the die result.",
-    "upgradedDescription": "Roll this die to Transform a Card into X type of Card, where X is the die result.",
+    "description": "Roll this die. Choose a Card in your Hand, it transforms into a random Card of the rolled type.",
+    "upgradedDescription": "Roll this die. Choose a Card in your Hand, it transforms into a random Card of the rolled type.",
     "upgradedCost": 0,
     "canUpgrade": true,
     "isStatusCard": false,
@@ -2066,9 +2064,8 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "learn": "Flick",
-    "imageUrl": "images/heroes/Jester.png",
-    "game": "Slice & Dice ",
+    "imageUrl": "images/cards/Jester.png",
+    "game": "Slice & Dice",
     "tags": [
       "hero",
       "blue"
@@ -2102,8 +2099,8 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/heroes/Juggler.png",
-    "game": "Slice & Dice ",
+    "imageUrl": "images/cards/Juggler.png",
+    "game": "Slice & Dice",
     "tags": [
       "hero",
       "orange"
@@ -2119,8 +2116,8 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/heroes/Lazy.png",
-    "game": "Slice & Dice ",
+    "imageUrl": "images/cards/Lazy.png",
+    "game": "Slice & Dice",
     "tags": [
       "hero",
       "yellow"
@@ -2166,8 +2163,8 @@ var CARDS_DATA = [
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
-    "description": "Deal 3 Dmg Ranged.",
-    "upgradedDescription": "Deal 3 Dmg Ranged.",
+    "description": "Deal 5 Dmg Ranged.",
+    "upgradedDescription": "Deal 5 Dmg Ranged.",
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
@@ -2221,9 +2218,8 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "learn": "Poke",
-    "imageUrl": "images/heroes/Mage.png",
-    "game": "Slice & Dice ",
+    "imageUrl": "images/cards/Mage.png",
+    "game": "Slice & Dice",
     "tags": [
       "hero",
       "blue"
@@ -2305,9 +2301,8 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "learn": "Gaze",
-    "imageUrl": "images/heroes/Mystic.png",
-    "game": "Slice & Dice ",
+    "imageUrl": "images/cards/Mystic.png",
+    "game": "Slice & Dice",
     "tags": [
       "hero",
       "red"
@@ -2671,8 +2666,8 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/heroes/Ranger.png",
-    "game": "Slice & Dice ",
+    "imageUrl": "images/cards/Ranger.png",
+    "game": "Slice & Dice",
     "tags": [
       "hero",
       "orange"
@@ -3096,8 +3091,8 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/heroes/Soldier.png",
-    "game": "Slice & Dice ",
+    "imageUrl": "images/cards/Soldier.png",
+    "game": "Slice & Dice",
     "tags": [
       "hero",
       "yellow"
@@ -3390,8 +3385,8 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/heroes/Veteran.png",
-    "game": "Slice & Dice ",
+    "imageUrl": "images/cards/Veteran.png",
+    "game": "Slice & Dice",
     "tags": [
       "hero",
       "yellow"
@@ -3424,8 +3419,8 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/heroes/Warden.png",
-    "game": "Slice & Dice ",
+    "imageUrl": "images/cards/Warden.png",
+    "game": "Slice & Dice",
     "tags": [
       "hero",
       "gray"

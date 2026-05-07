@@ -43,7 +43,7 @@ var ITEMS_DATA = [
     "name": "Barrel",
     "rarity": "Uncommon",
     "type": "Weapon",
-    "description": "Add the Card \"Barrel\" into your Deck. If you obtain at least 1 fish in the roguelike you're playing, Gain (1/2) random fish in this game",
+    "description": "Add the Card \"Barrel\" into your Deck. If you obtain at least 1 fish, Gain (1/2) random fish",
     "game": "Enter the Gungeon",
     "tags": [
       "gun",
@@ -95,7 +95,7 @@ var ITEMS_DATA = [
     "name": "Blasma Pistol",
     "rarity": "Common",
     "type": "Weapon",
-    "description": "Add the Card \"Blasma Pistol\" into your Deck. If you open more than 10 chests, gain a (small/normal) chest",
+    "description": "Add the Card \"Blasma Pistol\" into your Deck. If you open more than 10 chests, Gain a (small/normal) chest",
     "game": "Flinthook",
     "tags": [
       "gun"
@@ -129,7 +129,7 @@ var ITEMS_DATA = [
     "name": "Boon of Aphrodite",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player charm an enemy gain +1 to Strength, Dexterity, Intelligence, and Charisma, but 1 of the game choices will be Charmed",
+    "description": "If the player charms an enemy gain +1 to all combat roll bonus stats, but 1 of the game choices will be Charmed",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfAphrodite.png",
@@ -139,7 +139,7 @@ var ITEMS_DATA = [
     "name": "Boon of Artemis",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player uses ranged strategies primarily to win the run gain +1 to Strength, Dexterity, Intelligence, and Charisma, but 1 of the game choices will be Marked",
+    "description": "If the player uses ranged strategies primarlity to win the run gain +1 to all combat roll bonus stats, but 1 of the game choices will be Marked",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfArtemis.png",
@@ -149,7 +149,7 @@ var ITEMS_DATA = [
     "name": "Boon of Athena",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player negates damage with a shield 5+ times gain +1 to Strength, Dexterity, Intelligence, and Charisma, but 1 of the game choices will be Shielded",
+    "description": "If the player negates damage with a shield 5+ times gain +1 to all combat roll bonus stats, but 1 of the game choices will be Shielded",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfAthena.png",
@@ -159,7 +159,7 @@ var ITEMS_DATA = [
     "name": "Boon of Hermes",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player beats a game within an hour gain +1 to Strength, Dexterity, Intelligence, and Charisma, but 1 of the game choices will be Timed",
+    "description": "If the player beats a game within an hour gain +1 to all combat roll bonus stats, but 1 of the game choices will be Timed",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfHermes.png",
@@ -169,7 +169,7 @@ var ITEMS_DATA = [
     "name": "Boon of Poseidon",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player defeats an enemy underwater gain +1 to Strength, Dexterity, Intelligence, and Charisma, but 1 of the game choices will be Soaked",
+    "description": "If the player defeats an enemy underwater gain +1 to all combat roll bonus stats, but 1 of the game choices will be Soaked",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfPoseidon.png",
@@ -179,7 +179,7 @@ var ITEMS_DATA = [
     "name": "Boon of Zeus",
     "rarity": "N/A",
     "type": "Boon",
-    "description": "If the player defeats an enemy with lightning in their run gain +1 to Strength, Dexterity, Intelligence, and Charisma, but 1 of the game choices will be Shocked",
+    "description": "If the player defeats an enemy with lightning in their run gain +1 to all combat roll bonus stats, but 1 of the game choices will be Shocked",
     "game": "Hades",
     "tags": [],
     "image": "images/items/BoonOfZeus.png",
@@ -385,7 +385,7 @@ var ITEMS_DATA = [
     "name": "Dexecutioner",
     "rarity": "Uncommon",
     "type": "Weapon",
-    "description": "Add the Card \"Dexecutioner\" into your Deck. If you kill an enemy with a piercing attack at least one time, \"Dexecutioner\" gains (+1/+2) Assassinate",
+    "description": "Add the Card \"Dexecutioner\" into your Deck. If you kill an enemy with a piercing attack at least one time, \"Dexecutioner\" Gains (+1/+2) Assassinate",
     "game": "Megabonk",
     "tags": [],
     "image": "images/items/Dexecutioner.png",
@@ -658,6 +658,18 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Little Knife",
+    "rarity": "Uncommon",
+    "type": "Scaling",
+    "description": "Attacks deal 25% more Dmg to targets with lower Health",
+    "game": "Brutal Orchestra",
+    "tags": [
+      "knife"
+    ],
+    "image": "images/items/LittleKnife.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Lucky Toe",
     "rarity": "Common",
     "type": "Passive",
@@ -803,7 +815,7 @@ var ITEMS_DATA = [
   {
     "name": "Panda",
     "rarity": "Rare",
-    "type": "Pickup",
+    "type": "Pickup, Passive",
     "description": "Gain +20 Max Health and +2 Luck, but -3 Strength",
     "game": "Brotato",
     "tags": [],
@@ -914,7 +926,7 @@ var ITEMS_DATA = [
     "name": "Raven Feather",
     "rarity": "Rare",
     "type": "Triggered",
-    "description": "At the start of conflict, inflict Soul Link on 2 random enemies",
+    "description": "At the start of combat, inflict Soul Link on 2 random enemies",
     "game": "Mewgenics",
     "tags": [
       "bird"
@@ -1111,10 +1123,20 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Sulfa Powder",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "At the start of your turn, Gain +D12 Block",
+    "game": "Brutal Orchestra",
+    "tags": [],
+    "image": "images/items/SulfaPowder.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Sunglasses",
     "rarity": "Common",
     "type": "Passive",
-    "description": "Gain +2 Charisma",
+    "description": "Gain +3 Charisma",
     "game": "Enter the Gungeon",
     "tags": [
       "wearable",
@@ -1269,25 +1291,28 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "Sulfa Powder",
-    "rarity": "Uncommon",
-    "type": "Triggered",
-    "description": "At the start of your turn, Gain +D12 Block",
-    "game": "Brutal Orchestra",
-    "tags": [],
-    "image": "images/items/SulfaPowder.png",
+    "name": "Alien Baby",
+    "rarity": "Rare",
+    "type": "Pickup, Scaling",
+    "description": "Gain +20 Max Health, but All Enemies start with +3 Health",
+    "game": "Brotato",
+    "tags": [
+      "alien"
+    ],
+    "image": "images/items/AlienBaby.png",
     "unlockCondition": null
   },
   {
-    "name": "Little Knife",
-    "rarity": "Uncommon",
-    "type": "Scaling",
-    "description": "Attacks deal 25% more Dmg to targets with lower Health",
-    "game": "Brutal Orchestra",
+    "name": "Propeller Hat",
+    "rarity": "Common",
+    "type": "Passive",
+    "description": "Gain +3 Luck, but -1 Strength",
+    "game": "Brotato",
     "tags": [
-      "knife"
+      "wearable",
+      "hat"
     ],
-    "image": "images/items/LittleKnife.png",
+    "image": "images/items/PropellerHat.png",
     "unlockCondition": null
   }
 ];

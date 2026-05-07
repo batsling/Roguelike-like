@@ -6,7 +6,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Low",
     "duration": "Until 2 Games Beaten",
-    "description": "Every time you reset a run, lose 1 health. Add a random Curse to your Deck.",
+    "description": "Every time you reset a run, lose 5 health. Add a random Curse to your Deck.",
     "automatic": "Manual"
   },
   {
@@ -14,7 +14,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
-    "description": "Every time you reset a run, lose 3 health. Add a random Curse to your Deck.",
+    "description": "Every time you reset a run, lose 10 health. Add a random Curse to your Deck.",
     "automatic": "Manual"
   },
   {
@@ -22,7 +22,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "High",
     "duration": "Until 2 Games Beaten",
-    "description": "Every time you reset a run, lose 5 health. Add a random Curse to your Deck.",
+    "description": "Every time you reset a run, lose 15 health. Add a random Curse to your Deck.",
     "automatic": "Manual"
   },
   {
@@ -30,7 +30,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Low",
     "duration": "Until 2 Games Beaten",
-    "description": "Every time you skip an upgrade/item choice in game, lose 1 Health. Add Doubt to your Deck.",
+    "description": "Every time you skip an upgrade/item choice in game, lose 5 Health. Add Doubt to your Deck.",
     "automatic": "Manual"
   },
   {
@@ -38,7 +38,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "Medium",
     "duration": "Until 2 Games Beaten",
-    "description": "Every time you skip an upgrade/item choice in game, lose 3 Health. Add Doubt to your Deck.",
+    "description": "Every time you skip an upgrade/item choice in game, lose 10 Health. Add Doubt to your Deck.",
     "automatic": "Manual"
   },
   {
@@ -46,7 +46,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "High",
     "duration": "Until 2 Games Beaten",
-    "description": "Every time you skip an upgrade/item choice in game, lose 5 Health. Add Doubt to your Deck.",
+    "description": "Every time you skip an upgrade/item choice in game, lose 15 Health. Add Doubt to your Deck.",
     "automatic": "Manual"
   },
   {
@@ -78,7 +78,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Low",
     "duration": "Until 1 Game Beaten",
-    "description": "If you don't beat the next game within 4 hours, lose 3 Health. Add a random Curse to your Deck.",
+    "description": "If you don't beat the next game within 4 hours, lose 5 Health. Add a random Curse to your Deck.",
     "automatic": "Manual"
   },
   {
@@ -86,7 +86,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Medium",
     "duration": "Until 1 Game Beaten",
-    "description": "If you don't beat the next game within 3 hours, lose 3 Health. Add a random Curse to your Deck.",
+    "description": "If you don't beat the next game within 3 hours, lose 5 Health. Add a random Curse to your Deck.",
     "automatic": "Manual"
   },
   {
@@ -94,7 +94,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "High",
     "duration": "Until 1 Game Beaten",
-    "description": "If you don't beat the next game within 2 hours, lose 3 Health. Add a random Curse to your Deck.",
+    "description": "If you don't beat the next game within 2 hours, lose 5 Health. Add a random Curse to your Deck.",
     "automatic": "Manual"
   },
   {
@@ -246,7 +246,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Low",
     "duration": "Until 1 is rolled",
-    "description": "When you roll a 1 on any roll (before adding to the roll), Fail the roll no matter what and take 2 damage. Add Clumsy to your Deck.",
+    "description": "When you roll a 1 on any roll (before adding to the roll), Fail the roll no matter what and take 5 damage. It can't be rerolled. Add Clumsy to your Deck.",
     "automatic": "Manual"
   },
   {
@@ -254,7 +254,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "Medium",
     "duration": "Until 1 is rolled",
-    "description": "When you roll a 1 on any roll (before adding to the roll), Fail the roll no matter what and take 3 damage. Add Clumsy to your Deck.",
+    "description": "When you roll a 1 on any roll (before adding to the roll), Fail the roll no matter what and take 5 damage. It can't be rerolled. Add Clumsy to your Deck.",
     "automatic": "Manual"
   },
   {
@@ -262,7 +262,7 @@ var CURSES_DATA = [
     "stat": "Dexterity",
     "power": "High",
     "duration": "Until 1 is rolled",
-    "description": "When you roll a 1 on any roll (before adding to the roll), Fail the roll no matter what and take 4 damage. Add Clumsy to your Deck.",
+    "description": "When you roll a 1 on any roll (before adding to the roll), Fail the roll no matter what and take 5 damage. It can't be rerolled. Add Clumsy to your Deck.",
     "automatic": "Manual"
   },
   {
@@ -317,7 +317,7 @@ var CURSES_DATA = [
     "name": "Curse of Affection I",
     "stat": "Charisma",
     "power": "Low",
-    "duration": "Until 1 Game Beaten",
+    "duration": "Until 3 Games Beaten",
     "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 5 Health. If not, lose 5 Health. Add a random Curse to your Deck.",
     "automatic": "Manual"
   },
@@ -325,8 +325,8 @@ var CURSES_DATA = [
     "name": "Curse of Affection II",
     "stat": "Charisma",
     "power": "Medium",
-    "duration": "Until 2 Games Beaten",
-    "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 5 Health. If not, lose 5 Health. Add a random Curse to your Deck.",
+    "duration": "Until 3 Games Beaten",
+    "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 5 Health. If not, lose 10 Health. Add a random Curse to your Deck.",
     "automatic": "Manual"
   },
   {
@@ -334,7 +334,7 @@ var CURSES_DATA = [
     "stat": "Charisma",
     "power": "High",
     "duration": "Until 3 Games Beaten",
-    "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 5 Health. If not, lose 5 Health. Add a random Curse to your Deck.",
+    "description": "After beating a game, if you would give it an 8+ out of 10, then Gain 5 Health. If not, lose 15 Health. Add a random Curse to your Deck.",
     "automatic": "Manual"
   },
   {

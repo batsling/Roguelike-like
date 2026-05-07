@@ -143,7 +143,7 @@ var CHARACTERS_DATA = {
     "icon": "images/characters/Icon/Zoe.png",
     "fullImage": "images/characters/Full/Zoe.png",
     "energy": 3,
-    "health": 50,
+    "health": 60,
     "levelUpCondition": "Perfect a Game",
     "levelUpReward": {
       "type": "gold",
