@@ -618,8 +618,6 @@ class DiceRendererInstance {
     const euler = new THREE.Euler();
     euler.setFromQuaternion(quaternion, 'XYZ');
 
-    console.log(`Face ${faceNumber} rotation:`, euler.x, euler.y, euler.z);
-
     return { x: euler.x, y: euler.y, z: euler.z };
   }
 
