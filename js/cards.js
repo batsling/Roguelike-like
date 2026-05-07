@@ -275,7 +275,6 @@ function showDeckModal() {
 
   function cardHtml(card, label) {
     const color = getRarityColor(card.rarity);
-    const imgSrc = card.imageUrl || 'images/cards/default.png';
     const upgBtn = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
     return `
       <div style="
@@ -285,8 +284,7 @@ function showDeckModal() {
       ">
         ${upgBtn}
         ${label ? `<div style="position:absolute;top:4px;right:4px;background:${color};color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:bold;">${label}</div>` : ''}
-        <img src="${imgSrc}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;"
-             onerror="this.style.display='none'">
+        ${card.imageUrl ? `<img src="${card.imageUrl}" alt="${card.name}" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
         <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:3px;">${card.name}${card.upgraded ? ' +' : ''}</div>
         <div style="color:${color};font-size:11px;margin-bottom:4px;">${card.rarity || 'Starter'} · ${card.type || ''}</div>
         <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:6px;">${card.description || ''}</div>
