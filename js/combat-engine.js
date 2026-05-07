@@ -2955,15 +2955,6 @@ function endTurn() {
           const burnDmg = parseInt(burnStatusM[1]);
           dealDamageToPlayer(burnDmg, ['self'], null);
           addLog(`${card.name}: took ${burnDmg} damage (held in hand)!`, 'danger');
-          // Exhaust if card says "Exhaust"
-          if (/\bExhaust\b/i.test(card.description)) {
-            const hi = combatState.hand.indexOf(card);
-            if (hi !== -1) {
-              combatState.hand.splice(hi, 1);
-              combatState.exhaustPile.push(card);
-              addLog(`${card.name}: exhausted.`, 'info');
-            }
-          }
         }
         continue;
       }
@@ -3824,11 +3815,15 @@ function processStatusEffects(target, timing) {
       delete combatState._flexPower;
     }
 
-    // Pigment temporaries: remove stat bonuses granted until end of turn
+    // Pigment temporaries: restore stats to pre-pigment snapshot
     if (target === combatState.player && combatState._pigmentTemps) {
-      for (const [pgStat, pgAmt] of Object.entries(combatState._pigmentTemps)) {
-        statuses[pgStat] = Math.max(0, (statuses[pgStat] || 0) - pgAmt);
-        if ((statuses[pgStat] || 0) <= 0) delete statuses[pgStat];
+      for (const [pgStat, entry] of Object.entries(combatState._pigmentTemps)) {
+        const preVal = entry.pre || 0;
+        if (preVal <= 0) {
+          delete statuses[pgStat];
+        } else {
+          statuses[pgStat] = preVal;
+        }
       }
       delete combatState._pigmentTemps;
     }
@@ -5492,9 +5487,13 @@ function resolveCardEffect(card, target, options = {}) {
     if (pigmentMatch) {
       const pgGain = parseInt(pigmentMatch[1]);
       const pgStat = pigmentMatch[2].toLowerCase();
-      player.statuses[pgStat] = (player.statuses[pgStat] || 0) + pgGain;
+      // Snapshot the pre-pigment value so we can restore exactly to it at end of turn
       combatState._pigmentTemps = combatState._pigmentTemps || {};
-      combatState._pigmentTemps[pgStat] = (combatState._pigmentTemps[pgStat] || 0) + pgGain;
+      if (!(pgStat in combatState._pigmentTemps)) {
+        combatState._pigmentTemps[pgStat] = { pre: player.statuses[pgStat] || 0, added: 0 };
+      }
+      combatState._pigmentTemps[pgStat].added += pgGain;
+      player.statuses[pgStat] = (player.statuses[pgStat] || 0) + pgGain;
       addLog(`${card.name}: +${pgGain} ${pigmentMatch[2]} until end of turn`, 'success');
       continue;
     }

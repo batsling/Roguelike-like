@@ -424,7 +424,7 @@ const STATUS_META = {
   arcane:         { img: 'Arcane',        emoji: '🔷', label: 'Arcane'       },
   persistence:    { img: 'Persistence',   emoji: '💠', label: 'Persistence'  },
   flame_barrier:  { img: 'FlameBarrier',  emoji: '🔥', label: 'Flame Barrier'},
-  double_damage:  { img: null,            emoji: '⚔⚔', label: 'Double Damage'},
+  double_damage:  { img: 'DoubleDamage',   emoji: '⚔⚔', label: 'Double Damage'},
   enfeebled:      { img: 'Enfeebled',     emoji: '💀', label: 'Enfeebled'    },
 };
 
