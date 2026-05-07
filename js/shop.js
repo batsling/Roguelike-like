@@ -636,8 +636,8 @@ function showShopModal(purchasedIndices = []) {
         if (typeof createNotification === 'function') createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
       }
       // Ensure spell is learned regardless of which path added the card
-      console.log('[Shop] card.learn=', card.learn, 'card.name=', card.name, 'learnSpellFromCard available:', typeof learnSpellFromCard);
-      if (typeof learnSpellFromCard === 'function') learnSpellFromCard(card);
+      const _learnFn = window.learnSpellFromCard || window._doLearnSpell || (typeof learnSpellFromCard === 'function' ? learnSpellFromCard : null);
+      if (_learnFn) _learnFn(card);
       saveCurrentGame();
       showShopModal(purchasedIndices);
     };

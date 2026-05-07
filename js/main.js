@@ -6594,6 +6594,37 @@ function showDiceLevelUpChoiceModal(characterKey, onComplete) {
   });
 }
 
+// Inline spell-learning used by card-acquire paths in this file.
+// Intentionally self-contained so it works regardless of cards.js cache state.
+function _doLearnSpell(card) {
+  if (!card) return;
+  let spellName = card.learn;
+  if (!spellName && card.description) {
+    const m = card.description.match(/\bLearn[:\s]+([A-Za-z][A-Za-z\s']*?)(?:[,.]|$)/i);
+    if (m) spellName = m[1].trim();
+  }
+  if (!spellName) return;
+  if (typeof SPELLS_DATA === 'undefined' || !Array.isArray(SPELLS_DATA)) {
+    console.warn('[_doLearnSpell] SPELLS_DATA not available');
+    return;
+  }
+  const spellDef = SPELLS_DATA.find(s => s.name === spellName);
+  if (!spellDef) { console.warn('[_doLearnSpell] spell not in SPELLS_DATA:', spellName); return; }
+  if (!gameState.spells) gameState.spells = [];
+  if (gameState.spells.some(s => s.name === spellName)) return; // already known
+  gameState.spells.push({ ...spellDef });
+  window.playerSpells = gameState.spells;
+  const _cs = window.CombatEngine && window.CombatEngine.getCombatState && window.CombatEngine.getCombatState();
+  if (_cs && !(_cs.spells || []).some(s => s.name === spellName)) {
+    _cs.spells = _cs.spells || [];
+    _cs.spells.push({ ...spellDef });
+  }
+  if (typeof createNotification === 'function') {
+    createNotification(`Learned: ${spellName}!`, '#c09aff', '✨');
+  }
+  if (typeof saveCurrentGame === 'function') saveCurrentGame();
+}
+
 /**
  * Show a card reward picker: player chooses 1 of 3 random cards.
  * Luck shifts the rarity distribution toward Uncommon/Rare.
@@ -6783,9 +6814,8 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
           createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
         }
       }
-      // Ensure spell is learned regardless of which path added the card
-      const learnFn = window.learnSpellFromCard || (typeof learnSpellFromCard !== 'undefined' ? learnSpellFromCard : null);
-      if (learnFn) learnFn(card);
+      // Inline spell-learning — runs regardless of cached helper availability
+      _doLearnSpell(card);
     }
     closeGameModal();
     if (onComplete) onComplete();
@@ -6797,6 +6827,7 @@ window.showLevelUpPrompt = showLevelUpPrompt;
 window.confirmLevelUp = confirmLevelUp;
 window.showCardRewardModal = showCardRewardModal;
 window.showDiceLevelUpChoiceModal = showDiceLevelUpChoiceModal;
+window._doLearnSpell = _doLearnSpell;
 
 // ============== ALLY SYSTEM ==============
 
