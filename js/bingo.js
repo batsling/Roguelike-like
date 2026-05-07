@@ -380,6 +380,17 @@ function giveRandomItems(rarity, bingoCount = 1, bonusText = '') {
   itemsHTML += '</div>';
   itemsHTML += '<p style="text-align: center; color: #888; margin-top: 20px; font-size: 14px;">Click an item to choose it</p>';
 
+  const skipHTML = skip > 0 ? `
+    <div style="text-align:center; margin-top: 10px;">
+      <button id="bingo-skip-reward-btn" style="
+        padding: 8px 24px; background: #555; border: 2px solid #888;
+        border-radius: 6px; color: #ccc; cursor: pointer; font-size: 13px;
+        transition: all 0.2s;
+      " onmouseover="this.style.background='#666'" onmouseout="this.style.background='#555'">
+        Skip Reward (${skip} skip${skip !== 1 ? 's' : ''} remaining)
+      </button>
+    </div>` : '';
+
   createGameModal(`
     <div>
       <h2 style="color: gold; margin-top: 0; text-align: center;">🎯 Bingo #${bingoCount} Complete!</h2>
@@ -387,8 +398,21 @@ function giveRandomItems(rarity, bingoCount = 1, bonusText = '') {
       <p style="text-align: center; color: #4CAF50; font-weight: bold; margin: 10px 0;">${bonusText}</p>
       <p style="text-align: center; color: #aaa;">Select one ${rarity} item to add to your inventory</p>
       ${itemsHTML}
+      ${skipHTML}
     </div>
   `);
+
+  const skipBtn = document.getElementById('bingo-skip-reward-btn');
+  if (skipBtn) {
+    skipBtn.onclick = () => {
+      skip -= 1;
+      if (typeof gameState !== 'undefined') gameState.skip = skip;
+      if (typeof saveCurrentGame === 'function') saveCurrentGame();
+      closeGameModal();
+      processingBingoReward = false;
+      processNextBingoReward();
+    };
+  }
 
   document.querySelectorAll('.bingo-item-choice-card').forEach(card => {
     card.onmouseenter = (e) => {

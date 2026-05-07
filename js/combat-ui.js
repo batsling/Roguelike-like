@@ -105,7 +105,7 @@ const KEYWORD_DEFS = {
 function getCardImageUrl(card) {
   if (!card) return '';
   const tags = Array.isArray(card.tags) ? card.tags : [];
-  if (tags.includes('hero') && card.game === 'Slice & Dice') {
+  if (tags.includes('hero') && (card.game || '').trim() === 'Slice & Dice') {
     const firstName = (card.name || '').split(' ')[0];
     if (firstName) return `images/heroes/${firstName}.png`;
   }
@@ -170,6 +170,9 @@ function getCardDynamicDmg(baseDmg, card, combat, targetEnemy) {
   // Weak on player: -25%
   if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
 
+  // Double Damage on player: x2
+  if (player.statuses['double_damage']) dmg = dmg * 2;
+
   // Target Vulnerable: +50% incoming damage
   if (targetEnemy && targetEnemy.statuses && targetEnemy.statuses['vulnerable']) {
     dmg = Math.ceil(dmg * 1.5);
@@ -232,8 +235,15 @@ function getCardItemSuffixes(card) {
     if (isStrike && inv.some(i => i.name === 'Brass Knuckles'))
       parts.push(`<span style="color:#a569bd">Bruise</span>`);
 
-    if (isStrike && inv.some(i => i.name === 'Jar of Leeches'))
-      parts.push(`<span style="color:#82e0aa">Leeches</span>`);
+    if (isStrike) {
+      const jarCount = inv.filter(i => i.name === 'Jar of Leeches').length;
+      if (jarCount > 0) {
+        const cs = window.CombatEngine && window.CombatEngine.getCombatState && window.CombatEngine.getCombatState();
+        const persistence = cs && cs.player ? (cs.player.statuses['persistence'] || 0) : 0;
+        const leechAmt = (1 + persistence) * jarCount;
+        parts.push(`<span style="color:#82e0aa">${leechAmt} Leeches</span>`);
+      }
+    }
   }
 
   if (!parts.length) return '';
@@ -414,6 +424,8 @@ const STATUS_META = {
   arcane:         { img: 'Arcane',        emoji: '🔷', label: 'Arcane'       },
   persistence:    { img: 'Persistence',   emoji: '💠', label: 'Persistence'  },
   flame_barrier:  { img: 'FlameBarrier',  emoji: '🔥', label: 'Flame Barrier'},
+  double_damage:  { img: 'DoubleDamage',   emoji: '⚔⚔', label: 'Double Damage'},
+  enfeebled:      { img: 'Enfeebled',     emoji: '💀', label: 'Enfeebled'    },
 };
 
 // ============== MAIN RENDER ENTRY POINT ==============
@@ -1532,10 +1544,10 @@ function renderDiceCardInHand(card, index, total, combat) {
   const costColor = canAfford ? '#ffd700' : '#e74c3c';
 
   let cardW, cardH, marginL, orbW, namePx;
-  if (total <= 5)      { cardW = 92;  cardH = 134; marginL = -24; orbW = 27; namePx = 10; }
-  else if (total <= 7) { cardW = 80;  cardH = 118; marginL = -18; orbW = 25; namePx = 9;  }
-  else if (total <= 9) { cardW = 70;  cardH = 104; marginL = -14; orbW = 23; namePx = 8.5;}
-  else                 { cardW = 62;  cardH = 92;  marginL = -10; orbW = 21; namePx = 8;  }
+  if (total <= 5)      { cardW = 110; cardH = 160; marginL = -28; orbW = 31; namePx = 11; }
+  else if (total <= 7) { cardW = 96;  cardH = 142; marginL = -22; orbW = 29; namePx = 10; }
+  else if (total <= 9) { cardW = 84;  cardH = 124; marginL = -18; orbW = 27; namePx = 9.5;}
+  else                 { cardW = 74;  cardH = 110; marginL = -14; orbW = 25; namePx = 9;  }
 
   const t        = total <= 1 ? 0 : (index - (total - 1) / 2) / ((total - 1) / 2);
   const maxAngle = Math.min(4 * (total - 1), 24);
@@ -1644,13 +1656,13 @@ function renderCardInHand(card, index, total, combat) {
   // Responsive card dimensions based on hand size
   let cardW, cardH, marginL, artH, namePx, descPx, orbW;
   if (total <= 5) {
-    cardW = 92; cardH = 134; marginL = -24; artH = 58; namePx = 10; descPx = 8.5; orbW = 27;
+    cardW = 110; cardH = 160; marginL = -28; artH = 68; namePx = 11; descPx = 9.5; orbW = 31;
   } else if (total <= 7) {
-    cardW = 80; cardH = 118; marginL = -18; artH = 50; namePx = 9;  descPx = 7.5; orbW = 25;
+    cardW = 96;  cardH = 142; marginL = -22; artH = 58; namePx = 10; descPx = 8.5; orbW = 29;
   } else if (total <= 9) {
-    cardW = 70; cardH = 104; marginL = -14; artH = 44; namePx = 8.5; descPx = 7;  orbW = 23;
+    cardW = 84;  cardH = 124; marginL = -18; artH = 50; namePx = 9.5; descPx = 7.5; orbW = 27;
   } else {
-    cardW = 62; cardH = 92;  marginL = -10; artH = 38; namePx = 8;   descPx = 6.5; orbW = 21;
+    cardW = 74;  cardH = 110; marginL = -14; artH = 44; namePx = 9;   descPx = 7;   orbW = 25;
   }
 
   // Fan geometry — spread cards in an arc
@@ -1751,7 +1763,8 @@ function renderCardInHand(card, index, total, combat) {
         flex:1; padding:2px 4px;
         font-size:${descPx}px; color:#ccc;
         text-align:center; line-height:1.35;
-        overflow:hidden;
+        overflow-y:auto; overflow-x:hidden;
+        scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.2) transparent;
       ">${getCardDisplayDescription(card, combat, (() => { const eid = window._combatHoveredEnemyId; return eid && combat.enemies ? combat.enemies.find(e => e.id === eid) || null : null; })())}${card._retain && !/\bretain\b/i.test(card.description) ? ' <span style="color:#4CAF50;font-size:' + (descPx - 0.5) + 'px;">Retain.</span>' : ''}</div>
 
       <!-- Type footer -->
@@ -2013,28 +2026,70 @@ function renderLogPanel(combat) {
     ">${entry.message}</div>`;
   }).join('');
 
+  const _SPELL_ELEMENTS = ['Fire','Water','Poison','Earth','Dark','Blood','Electric','Ice','Thunder','Wind'];
+  const _ELEMENT_COLOR  = {fire:'#ff6b35',water:'#4488ff',poison:'#44bb44',earth:'#88aa44',dark:'#a855f7',blood:'#cc2222',electric:'#ffcc00',ice:'#88ddff',thunder:'#ffcc00',wind:'#aaddcc'};
+  const _ELEMENT_ICON   = {fire:'🔥',water:'💧',poison:'☠',earth:'🌿',dark:'🌑',blood:'🩸',electric:'⚡',ice:'❄',thunder:'⚡',wind:'💨'};
+  const _spellElement = sp => {
+    const el = sp.element;
+    if (el && el !== 'N/A') return el;
+    for (const eff of (sp.effects || [])) {
+      for (const addon of (eff.addons || [])) {
+        if (_SPELL_ELEMENTS.includes(addon)) return addon;
+      }
+    }
+    return null;
+  };
+
   const spellsHtml = spells.length === 0
-    ? `<div style="color:${C.textDim};font-size:11px;padding:10px 8px;text-align:center;">No spells learned</div>`
+    ? `<div style="color:${C.textDim};font-size:11px;padding:16px 8px;text-align:center;">No spells learned yet.<br><span style="font-size:9px;color:#444;">Buy hero dice cards to learn spells.</span></div>`
     : spells.map(sp => {
         const mana = sp.cost !== undefined ? sp.cost : (sp.manaCost || 0);
-        const cd   = combat.spellCooldowns && combat.spellCooldowns[sp.name] > 0
-          ? ` (CD ${combat.spellCooldowns[sp.name]})`
-          : '';
-        const onCd = !!(combat.spellCooldowns && combat.spellCooldowns[sp.name] > 0);
+        const cdLeft = combat.spellCooldowns && combat.spellCooldowns[sp.name] > 0 ? combat.spellCooldowns[sp.name] : 0;
+        const onCd = cdLeft > 0;
         const usedSingle = !!(sp.keywords && sp.keywords.includes('SingleCast') && combat.usedSingleCast && combat.usedSingleCast[sp.name]);
-        const canCast = !onCd && !usedSingle && (combat.player.mana || 0) >= mana && combat.phase === 'player_action';
+        const noMana = (combat.player.mana || 0) < mana;
+        const wrongPhase = combat.phase !== 'player_action';
+        const canCast = !onCd && !usedSingle && !noMana && !wrongPhase;
+        const statusText = onCd ? `CD: ${cdLeft}` : usedSingle ? 'Used' : noMana ? 'No Mana' : wrongPhase ? 'Wait' : '';
+        const imgSrc = sp.imageUrl || sp.image || '';
+        const rarityColor = ({Rare:'#9b59b6', Uncommon:'#4CAF50', Common:'#aaa'})[sp.rarity] || '#888';
+        const el = _spellElement(sp);
+        const elKey = el ? el.toLowerCase() : null;
+        const elColor = elKey ? (_ELEMENT_COLOR[elKey] || '#888') : null;
+        const elIcon  = elKey ? (_ELEMENT_ICON[elKey]  || '✦')   : null;
         return `<div style="
-          padding:4px 8px; font-size:10px;
-          border-bottom:1px solid rgba(255,255,255,0.06);
-          cursor:${canCast ? 'pointer' : 'default'}; transition:background 0.1s;
-          opacity:${canCast ? '1' : '0.5'};
+          display:flex;flex-direction:column;gap:0;
+          margin:6px 6px 0;border-radius:8px;overflow:hidden;
+          border:1px solid ${canCast ? '#7c3aed' : 'rgba(255,255,255,0.1)'};
+          background:${canCast ? 'rgba(124,58,237,0.12)' : 'rgba(0,0,0,0.3)'};
+          opacity:${canCast ? '1' : '0.55'};
+          transition:border-color 0.15s,background 0.15s;
         "
-        onmouseover="${canCast ? "this.style.background='rgba(255,255,255,0.06)'" : ''}"
-        onmouseout="${canCast ? "this.style.background=''" : ''}"
-        onclick="${canCast ? `window._handleSpellbookCast && window._handleSpellbookCast('${sp.name}')` : ''}">
-          <div style="font-weight:bold;color:#c09aff;">${sp.name}${cd}${usedSingle ? ' (used)' : ''}</div>
-          <div style="color:${C.textDim};font-size:9px;">${sp.description || ''}</div>
-          <div style="color:#6ab4ff;font-size:9px;margin-top:1px;">💧 ${mana} Mana</div>
+        onmouseover="${canCast ? "this.style.borderColor='#a78bfa';this.style.background='rgba(124,58,237,0.22)'" : ''}"
+        onmouseout="${canCast ? "this.style.borderColor='#7c3aed';this.style.background='rgba(124,58,237,0.12)'" : ''}">
+          <div style="display:flex;align-items:center;gap:7px;padding:6px 7px 4px;">
+            ${imgSrc ? `<img src="${imgSrc}" alt="${sp.name}" style="width:34px;height:34px;object-fit:contain;border-radius:4px;background:rgba(0,0,0,0.4);border:1px solid ${rarityColor}44;flex-shrink:0;" onerror="this.style.opacity='0.2'">` : `<div style="width:34px;height:34px;border-radius:4px;background:#1a1a2e;flex-shrink:0;"></div>`}
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:bold;font-size:11px;color:#e9d5ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sp.name}</div>
+              <div style="display:flex;align-items:center;gap:4px;margin-top:2px;flex-wrap:wrap;">
+                <span style="font-size:9px;font-weight:bold;color:#6ab4ff;background:rgba(99,102,241,0.2);border:1px solid #6366f155;border-radius:8px;padding:1px 5px;">💧${mana}</span>
+                ${sp.rarity ? `<span style="font-size:8px;color:${rarityColor};text-transform:uppercase;font-weight:bold;">${sp.rarity}</span>` : ''}
+                ${el ? `<span style="font-size:8px;font-weight:bold;color:${elColor};background:${elColor}22;border:1px solid ${elColor}44;border-radius:6px;padding:1px 4px;">${elIcon} ${el}</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <div style="font-size:9px;color:#bbb;padding:0 7px 5px;line-height:1.45;">${sp.description || ''}</div>
+          <div style="padding:0 7px 6px;">
+            ${canCast
+              ? `<button onclick="window._handleSpellbookCast && window._handleSpellbookCast('${sp.name}')"
+                  style="width:100%;padding:4px 0;background:linear-gradient(135deg,#7c3aed,#6d28d9);border:none;border-radius:5px;
+                    color:white;font-size:10px;font-weight:bold;cursor:pointer;letter-spacing:0.5px;">
+                  ✨ Cast
+                </button>`
+              : `<div style="width:100%;padding:3px 0;background:rgba(255,255,255,0.05);border-radius:5px;
+                  color:#666;font-size:9px;font-weight:bold;text-align:center;">${statusText}</div>`
+            }
+          </div>
         </div>`;
       }).join('');
 
@@ -2487,10 +2542,10 @@ function handleCardClick(index) {
     return;
   }
 
-  // Dice-type cards: must be dragged to the Dice Board — clicking does nothing
+  // Dice-type cards: select/deselect only — drag to the Dice Board to roll
   if ((card.type || '').toLowerCase() === 'dice') {
-    typeof createNotification === 'function' &&
-      createNotification('Drag this die to the Dice Board to roll it', C.gold, '🎲');
+    combat.selectedCardIndex = combat.selectedCardIndex === index ? null : index;
+    refreshCombatHand();
     return;
   }
 
@@ -2504,7 +2559,7 @@ function handleCardClick(index) {
     } else {
       combat.selectedCardIndex = index;
     }
-    updateCombatDisplay();
+    refreshCombatHand();
   } else {
     // Self-targeting / power cards: select first, then click player zone to confirm
     if (combat.selectedCardIndex === index) {
@@ -2512,7 +2567,7 @@ function handleCardClick(index) {
     } else {
       combat.selectedCardIndex = index;
     }
-    updateCombatDisplay();
+    refreshCombatHand();
   }
 }
 
@@ -2828,22 +2883,30 @@ function attachCardTooltip() {
               ${getCardDisplayDescription(card, combat, _ttEnemy)}
             </div>
             ${(() => {
-              // Show damage-vs-target preview if the enemy has relevant debuffs
-              if (!_ttEnemy) return '';
-              const vuln = _ttEnemy.statuses && _ttEnemy.statuses['vulnerable'];
-              const bruse = _ttEnemy.statuses && _ttEnemy.statuses['bruise'];
-              if (!vuln && !bruse) return '';
+              // Show damage preview if the enemy or player has relevant statuses
               const dmgMatch = (card.description || '').match(/Deal (\d+)(?:[xX](\d+))? Dmg/i);
               if (!dmgMatch) return '';
               const base = parseInt(dmgMatch[1]);
-              const baseCalc = getCardDynamicDmg(base, card, combat, null);
-              const withTarget = getCardDynamicDmg(base, card, combat, _ttEnemy);
-              if (withTarget === baseCalc) return '';
+              const baseNoTarget = getCardDynamicDmg(base, card, combat, null);
+              const withTarget = _ttEnemy ? getCardDynamicDmg(base, card, combat, _ttEnemy) : baseNoTarget;
+              const playerStatuses = combat && combat.player && combat.player.statuses || {};
+              const vuln = _ttEnemy && _ttEnemy.statuses && _ttEnemy.statuses['vulnerable'];
+              const bruse = _ttEnemy && _ttEnemy.statuses && _ttEnemy.statuses['bruise'];
+              const weak = playerStatuses['weak'];
+              const dblDmg = playerStatuses['double_damage'];
+              const hasModifier = vuln || bruse || weak || dblDmg;
+              if (!hasModifier) return '';
+              // Compare vs base (no player or enemy buffs)
+              const rawBase = getCardDynamicDmg(base, { ...card, description: (card.description||'').replace(/Wealth/gi,'') }, { player: { statuses: {} } }, null);
+              if (withTarget === base && !hasModifier) return '';
               const tags = [];
+              if (weak) tags.push('🔻 Weak');
+              if (dblDmg) tags.push('⚔⚔ Double Dmg');
               if (vuln) tags.push('💢 Vulnerable');
               if (bruse) tags.push(`🩹 Bruise ×${_ttEnemy.statuses['bruise']}`);
+              const label = _ttEnemy ? `vs ${_ttEnemy.name}` : 'effective';
               return `<div style="background:rgba(255,100,0,0.15);border-top:1px solid rgba(255,100,0,0.3);padding:4px 8px;font-size:9px;color:#ffbb77;text-align:center;">
-                vs ${_ttEnemy.name}: <strong style="color:#ffdd99;font-size:11px;">${withTarget}</strong> dmg (${tags.join(', ')})
+                ${label}: <strong style="color:#ffdd99;font-size:11px;">${withTarget}</strong> dmg (${tags.join(', ')})
               </div>`;
             })()}
             <div style="
@@ -4022,7 +4085,7 @@ window._handleSpellbookCast = function(spellName) {
   const cs = window.CombatEngine && window.CombatEngine.getCombatState();
   if (!cs || cs.phase !== 'player_action') return;
   if (!window.CombatEngine.castSpell) return;
-  const result = window.CombatEngine.castSpell(spellName, null);
+  const result = window.CombatEngine.castSpell(spellName, {});
   if (result && !result.success && result.error) {
     typeof createNotification === 'function' &&
       createNotification(result.error, '#e74c3c', '✨');

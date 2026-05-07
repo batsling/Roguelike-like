@@ -80,6 +80,7 @@ function selectCardRewards(tagFilter = null) {
  * @param {Object} card - Card object from CARDS_DATA
  */
 function addCardToDeck(card) {
+  if (!card) { console.error('[addCardToDeck] called with null/undefined card'); return; }
   if (!gameState.deck) gameState.deck = [];
   const cardCopy = { ...card, upgraded: false };
   // Dice cards get a stable UID so item slots can reference them
@@ -115,32 +116,7 @@ function addCardToDeck(card) {
   }
 
   // Learn spell on acquire (for Dice cards with a learn property or "Learn X" in description)
-  let _learnSpell = card.learn;
-  if (!_learnSpell && card.description) {
-    const _learnMatch = card.description.match(/\bLearn[:\s]+([A-Za-z][A-Za-z\s']*?)(?:[,.]|$)/i);
-    if (_learnMatch) _learnSpell = _learnMatch[1].trim();
-  }
-  if (_learnSpell && typeof SPELLS_DATA !== 'undefined') {
-    const spellName = _learnSpell;
-    const spellDef  = SPELLS_DATA.find(s => s.name === spellName);
-    if (spellDef) {
-      if (!gameState.spells) gameState.spells = [];
-      const alreadyLearned = gameState.spells.some(s => s.name === spellName);
-      if (!alreadyLearned) {
-        gameState.spells.push({ ...spellDef });
-        window.playerSpells = gameState.spells;
-        // Also inject into active combat if one is in progress
-        const _cs = window.CombatEngine && window.CombatEngine.getCombatState && window.CombatEngine.getCombatState();
-        if (_cs && !(_cs.spells || []).some(s => s.name === spellName)) {
-          _cs.spells = _cs.spells || [];
-          _cs.spells.push({ ...spellDef });
-        }
-        if (typeof createNotification === 'function') {
-          createNotification(`Learned: ${spellName}!`, '#c09aff', '✨');
-        }
-      }
-    }
-  }
+  learnSpellFromCard(card);
 
   if (typeof createNotification === 'function') {
     createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
@@ -445,10 +421,45 @@ function addRandomPigmentToDeck() {
   if (typeof window.updateCombatDisplay === 'function') window.updateCombatDisplay();
 }
 
+/**
+ * Learn the spell tied to a card (if any), adding it to gameState.spells.
+ * Safe to call multiple times — skips if spell already learned.
+ * @param {Object} card - Card object that may have a learn property or "Learn X" in description
+ */
+function learnSpellFromCard(card) {
+  if (!card) { console.warn('[learnSpellFromCard] called with no card'); return; }
+  let spellName = card.learn;
+  if (!spellName && card.description) {
+    const m = card.description.match(/\bLearn[:\s]+([A-Za-z][A-Za-z\s']*?)(?:[,.]|$)/i);
+    if (m) spellName = m[1].trim();
+  }
+  if (!spellName) { console.log('[learnSpellFromCard] no learn property on', card.name); return; }
+  console.log('[learnSpellFromCard] trying to learn', spellName, '| SPELLS_DATA:', typeof SPELLS_DATA, '| spells before:', (gameState.spells||[]).length);
+  if (typeof SPELLS_DATA === 'undefined') { console.warn('[learnSpellFromCard] SPELLS_DATA not loaded!'); return; }
+  const spellDef = SPELLS_DATA.find(s => s.name === spellName);
+  if (!spellDef) { console.warn('[learnSpellFromCard] spell not found in SPELLS_DATA:', spellName); return; }
+  if (!gameState.spells) gameState.spells = [];
+  if (gameState.spells.some(s => s.name === spellName)) { console.log('[learnSpellFromCard]', spellName, 'already known'); return; }
+  gameState.spells.push({ ...spellDef });
+  window.playerSpells = gameState.spells;
+  console.log('[learnSpellFromCard] SUCCESS — learned', spellName, '| spells now:', gameState.spells.length);
+  // Inject into active combat if in progress
+  const _cs = window.CombatEngine && window.CombatEngine.getCombatState && window.CombatEngine.getCombatState();
+  if (_cs && !(_cs.spells || []).some(s => s.name === spellName)) {
+    _cs.spells = _cs.spells || [];
+    _cs.spells.push({ ...spellDef });
+  }
+  if (typeof createNotification === 'function') {
+    createNotification(`Learned: ${spellName}!`, '#c09aff', '✨');
+  }
+  if (typeof saveCurrentGame === 'function') saveCurrentGame();
+}
+
 // Export
 window.showCardRewardModal = showCardRewardModal;
 window.showDeckModal = showDeckModal;
 window.addCardToDeck = addCardToDeck;
+window.learnSpellFromCard = learnSpellFromCard;
 window.removeCardFromDeck = removeCardFromDeck;
 window.upgradeCardInDeck = upgradeCardInDeck;
 window.addWeaponCardToDeck = addWeaponCardToDeck;
