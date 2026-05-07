@@ -101,7 +101,8 @@ function showShopModal(purchasedIndices = []) {
 
   // Calculate reroll cost: free first time, then 5, 10, 15, etc.
   const rerollCost = gameState.shopRerollCount === 0 ? 0 : gameState.shopRerollCount * 5;
-  const canReroll = reroll > 0;
+  // First reroll is free (no token needed); subsequent rerolls require a reroll token
+  const canReroll = gameState.shopRerollCount === 0 || reroll > 0;
 
   // Get rarity color helper
   const getRarityColor = (rarity) => {
@@ -594,7 +595,11 @@ function showShopModal(purchasedIndices = []) {
         if (!gameState.removedStartingCards) gameState.removedStartingCards = {};
         gameState.removedStartingCards[card._startingName] = (gameState.removedStartingCards[card._startingName] || 0) + 1;
       } else {
-        const realIdx = (gameState.deck || []).indexOf(card);
+        // Find by name match since the card object may be a different reference
+        const deck = gameState.deck || [];
+        const realIdx = deck.findIndex(c =>
+          c.name === card.name && !!c.upgraded === !!card.upgraded && !c.isStatusCard
+        );
         if (typeof removeCardFromDeck === 'function') removeCardFromDeck(realIdx);
       }
       saveCurrentGame();
@@ -647,11 +652,13 @@ function showShopModal(purchasedIndices = []) {
   const rerollBtn = document.getElementById('shop-reroll-btn');
   if (rerollBtn) {
     rerollBtn.onclick = () => {
-      if (reroll > 0 && gold >= rerollCost) {
-        // Deduct reroll and gold
-        reroll -= 1;
+      if ((gameState.shopRerollCount === 0 || reroll > 0) && gold >= rerollCost) {
+        // Deduct reroll token only for paid rerolls; first reroll is free
+        if (rerollCost > 0) {
+          reroll -= 1;
+          gameState.reroll = reroll;
+        }
         gold -= rerollCost;
-        gameState.reroll = reroll;
         gameState.gold = gold;
         _keepersSackCheck(rerollCost);
 

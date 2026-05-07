@@ -170,6 +170,9 @@ function getCardDynamicDmg(baseDmg, card, combat, targetEnemy) {
   // Weak on player: -25%
   if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
 
+  // Double Damage on player: x2
+  if (player.statuses['double_damage']) dmg = dmg * 2;
+
   // Target Vulnerable: +50% incoming damage
   if (targetEnemy && targetEnemy.statuses && targetEnemy.statuses['vulnerable']) {
     dmg = Math.ceil(dmg * 1.5);
@@ -232,8 +235,15 @@ function getCardItemSuffixes(card) {
     if (isStrike && inv.some(i => i.name === 'Brass Knuckles'))
       parts.push(`<span style="color:#a569bd">Bruise</span>`);
 
-    if (isStrike && inv.some(i => i.name === 'Jar of Leeches'))
-      parts.push(`<span style="color:#82e0aa">Leeches</span>`);
+    if (isStrike) {
+      const jarCount = inv.filter(i => i.name === 'Jar of Leeches').length;
+      if (jarCount > 0) {
+        const cs = window.CombatEngine && window.CombatEngine.getCombatState && window.CombatEngine.getCombatState();
+        const persistence = cs && cs.player ? (cs.player.statuses['persistence'] || 0) : 0;
+        const leechAmt = (1 + persistence) * jarCount;
+        parts.push(`<span style="color:#82e0aa">${leechAmt} Leeches</span>`);
+      }
+    }
   }
 
   if (!parts.length) return '';
@@ -414,6 +424,8 @@ const STATUS_META = {
   arcane:         { img: 'Arcane',        emoji: '🔷', label: 'Arcane'       },
   persistence:    { img: 'Persistence',   emoji: '💠', label: 'Persistence'  },
   flame_barrier:  { img: 'FlameBarrier',  emoji: '🔥', label: 'Flame Barrier'},
+  double_damage:  { img: null,            emoji: '⚔⚔', label: 'Double Damage'},
+  enfeebled:      { img: 'Enfeebled',     emoji: '💀', label: 'Enfeebled'    },
 };
 
 // ============== MAIN RENDER ENTRY POINT ==============
@@ -2533,7 +2545,7 @@ function handleCardClick(index) {
   // Dice-type cards: select/deselect only — drag to the Dice Board to roll
   if ((card.type || '').toLowerCase() === 'dice') {
     combat.selectedCardIndex = combat.selectedCardIndex === index ? null : index;
-    updateCombatDisplay();
+    refreshCombatHand();
     return;
   }
 
@@ -2547,7 +2559,7 @@ function handleCardClick(index) {
     } else {
       combat.selectedCardIndex = index;
     }
-    updateCombatDisplay();
+    refreshCombatHand();
   } else {
     // Self-targeting / power cards: select first, then click player zone to confirm
     if (combat.selectedCardIndex === index) {
@@ -2555,7 +2567,7 @@ function handleCardClick(index) {
     } else {
       combat.selectedCardIndex = index;
     }
-    updateCombatDisplay();
+    refreshCombatHand();
   }
 }
 
@@ -2871,22 +2883,30 @@ function attachCardTooltip() {
               ${getCardDisplayDescription(card, combat, _ttEnemy)}
             </div>
             ${(() => {
-              // Show damage-vs-target preview if the enemy has relevant debuffs
-              if (!_ttEnemy) return '';
-              const vuln = _ttEnemy.statuses && _ttEnemy.statuses['vulnerable'];
-              const bruse = _ttEnemy.statuses && _ttEnemy.statuses['bruise'];
-              if (!vuln && !bruse) return '';
+              // Show damage preview if the enemy or player has relevant statuses
               const dmgMatch = (card.description || '').match(/Deal (\d+)(?:[xX](\d+))? Dmg/i);
               if (!dmgMatch) return '';
               const base = parseInt(dmgMatch[1]);
-              const baseCalc = getCardDynamicDmg(base, card, combat, null);
-              const withTarget = getCardDynamicDmg(base, card, combat, _ttEnemy);
-              if (withTarget === baseCalc) return '';
+              const baseNoTarget = getCardDynamicDmg(base, card, combat, null);
+              const withTarget = _ttEnemy ? getCardDynamicDmg(base, card, combat, _ttEnemy) : baseNoTarget;
+              const playerStatuses = combat && combat.player && combat.player.statuses || {};
+              const vuln = _ttEnemy && _ttEnemy.statuses && _ttEnemy.statuses['vulnerable'];
+              const bruse = _ttEnemy && _ttEnemy.statuses && _ttEnemy.statuses['bruise'];
+              const weak = playerStatuses['weak'];
+              const dblDmg = playerStatuses['double_damage'];
+              const hasModifier = vuln || bruse || weak || dblDmg;
+              if (!hasModifier) return '';
+              // Compare vs base (no player or enemy buffs)
+              const rawBase = getCardDynamicDmg(base, { ...card, description: (card.description||'').replace(/Wealth/gi,'') }, { player: { statuses: {} } }, null);
+              if (withTarget === base && !hasModifier) return '';
               const tags = [];
+              if (weak) tags.push('🔻 Weak');
+              if (dblDmg) tags.push('⚔⚔ Double Dmg');
               if (vuln) tags.push('💢 Vulnerable');
               if (bruse) tags.push(`🩹 Bruise ×${_ttEnemy.statuses['bruise']}`);
+              const label = _ttEnemy ? `vs ${_ttEnemy.name}` : 'effective';
               return `<div style="background:rgba(255,100,0,0.15);border-top:1px solid rgba(255,100,0,0.3);padding:4px 8px;font-size:9px;color:#ffbb77;text-align:center;">
-                vs ${_ttEnemy.name}: <strong style="color:#ffdd99;font-size:11px;">${withTarget}</strong> dmg (${tags.join(', ')})
+                ${label}: <strong style="color:#ffdd99;font-size:11px;">${withTarget}</strong> dmg (${tags.join(', ')})
               </div>`;
             })()}
             <div style="

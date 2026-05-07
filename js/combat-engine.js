@@ -847,6 +847,21 @@ function parseSimplePatternDesc(text) {
       continue;
     }
 
+    // "Alter <FormName>" — transform enemy into another form
+    if (tokens[i].toLowerCase() === 'alter') {
+      i++;
+      const _EFFECT_VERBS = new Set(['gain', 'get', 'inflict', 'lose', 'spawn', 'alter', 'add']);
+      const nameTokens = [];
+      while (i < tokens.length && !/^\d+$/.test(tokens[i]) && !_EFFECT_VERBS.has(tokens[i].toLowerCase())) {
+        nameTokens.push(tokens[i++]);
+      }
+      if (nameTokens.length > 0) {
+        const formName = nameTokens.join(' ');
+        effects.push({ raw: `Alter ${formName}`, move: 'alter', target: formName, value: 0, addons: [] });
+      }
+      continue;
+    }
+
     if (!tokens[i].match(/^\d+$/)) { i++; continue; }
     const numIdx  = i;                  // index of the number token
     const value   = parseInt(tokens[i++]);
@@ -2940,6 +2955,15 @@ function endTurn() {
           const burnDmg = parseInt(burnStatusM[1]);
           dealDamageToPlayer(burnDmg, ['self'], null);
           addLog(`${card.name}: took ${burnDmg} damage (held in hand)!`, 'danger');
+          // Exhaust if card says "Exhaust"
+          if (/\bExhaust\b/i.test(card.description)) {
+            const hi = combatState.hand.indexOf(card);
+            if (hi !== -1) {
+              combatState.hand.splice(hi, 1);
+              combatState.exhaustPile.push(card);
+              addLog(`${card.name}: exhausted.`, 'info');
+            }
+          }
         }
         continue;
       }
@@ -3091,6 +3115,13 @@ function endTurn() {
     combatState.player.health = Math.min(combatState.player.maxHealth, combatState.player.health + playerLeechHeal);
     window.health = combatState.player.health;
     addLog(`Leeches drained ${playerLeechHeal} health → healed player`, 'success');
+  }
+
+  // Check if leeches killed the last enemy
+  if (combatState.enemies.every(e => e.health <= 0)) {
+    combatState.phase = 'victory';
+    addLog('Victory!', 'success');
+    return { success: true, phase: 'victory' };
   }
 
   // Start new turn
@@ -4385,9 +4416,10 @@ function resolveCardEffect(card, target, options = {}) {
             addLog(`Brass Knuckles: ${target.name} gains ${bruiseAmt} Bruise!`, 'warning');
           }
 
-          // Jar of Leeches: inflict Leeches (scales with Persistence)
-          if (inv.some(i => i.name === 'Jar of Leeches')) {
-            const leechAmt = 1 + getPersistenceBonus('leeches');
+          // Jar of Leeches: inflict Leeches (scales with Persistence, stacks per jar)
+          const jarCount = inv.filter(i => i.name === 'Jar of Leeches').length;
+          if (jarCount > 0) {
+            const leechAmt = (1 + getPersistenceBonus('leeches')) * jarCount;
             target.statuses['leeches'] = (target.statuses['leeches'] || 0) + leechAmt;
             target.statuses['leeches_owner'] = 'player';
             addLog(`Jar of Leeches: ${target.name} gains ${leechAmt} Leeches!`, 'warning');
