@@ -379,7 +379,7 @@ var ENEMIES_DATA = [
     "hpMin": 30,
     "hpMax": 34,
     "ability": "Pigment Rich",
-    "pattern": "Always: 58% 6 Dmg Melee / 42% Consume 1 random Pigment Status card in Any for 3 Power, 6 Block",
+    "pattern": "Always: 58% 6 Dmg Melee / 42% Consume 1 random Pigment Status card in Any for 3 Power, 8 Block",
     "game": "Brutal Orchestra",
     "location": "Desert",
     "dice": [
@@ -420,7 +420,7 @@ var ENEMIES_DATA = [
     "hpMin": 40,
     "hpMax": 44,
     "ability": "Pigment Rich / Multi Attack 2 / When Defeated, 50% chance to Spawn Mung",
-    "pattern": "Always: 41% 6 Dmg Melee /  29% Consume 1 random Pigment Status card in Any for 3 Power, 6 Block / 30% 4 Pain, Spawn Mungie",
+    "pattern": "Always: 41% 6 Dmg Melee /  29% Consume 1 random Pigment Status card in Any for 3 Power, 8 Block / 30% 4 Pain, Spawn Mungie",
     "game": "Brutal Orchestra",
     "location": "Desert",
     "dice": [

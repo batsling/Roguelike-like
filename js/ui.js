@@ -376,7 +376,7 @@ function updateInventory() {
 
   inventory.forEach((item, index) => {
     // Get display name (with stat modifiers for passive items)
-    const displayName = (item.type === 'Passive' && typeof getPassiveDisplayName === 'function')
+    const displayName = ((item.type || '').includes('Passive') && typeof getPassiveDisplayName === 'function')
       ? getPassiveDisplayName(item)
       : (item.displayName || item.name);
 

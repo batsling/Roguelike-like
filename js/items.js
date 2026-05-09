@@ -372,10 +372,20 @@ const ITEM_EFFECTS = {
   },
 
   "Panda": {
+    passiveStatOverride: [
+      { stat: 'luck', direction: 1 },
+      { stat: 'strength', direction: -1 }
+    ],
     onAcquire: () => {
       StateMutator.modifyMaxHealth(20, { onlyMax: true });
       StateMutator.modifyStat('luck', 2);
       StateMutator.modifyStat('strength', -3);
+    }
+  },
+
+  "Alien Baby": {
+    onAcquire: () => {
+      StateMutator.modifyMaxHealth(20, { onlyMax: true });
     }
   },
 
@@ -1289,6 +1299,11 @@ function getItemStatModifications(itemName) {
     return [];
   }
 
+  // Multi-type items (e.g. "Pickup, Passive") can declare which stats are upgradeable
+  if (effects.passiveStatOverride) {
+    return effects.passiveStatOverride;
+  }
+
   const funcString = effects.onAcquire.toString();
   const modifications = [];
 
@@ -1569,7 +1584,7 @@ function acquireItem(item) {
   }
 
   // ===== CURSE OF DECAY: Downgrade Passive Items =====
-  if (itemCopy.type === 'Passive' && typeof CurseManager !== 'undefined') {
+  if ((itemCopy.type || '').includes('Passive') && typeof CurseManager !== 'undefined') {
     const decayCurses = CurseManager.findByType('decay');
 
     if (decayCurses.length > 0 && targetItemIndex !== -1) {
@@ -2390,7 +2405,7 @@ function initializePassiveModifiers(item) {
  * @returns {string} Display name with modifiers (e.g., "Wheat +1" or "Lunch -2")
  */
 function getPassiveDisplayName(item) {
-  if (item.type !== 'Passive' || !item.statModifiers) {
+  if (!(item.type || '').includes('Passive') || !item.statModifiers) {
     return item.name;
   }
 
@@ -2411,7 +2426,7 @@ function getPassiveDisplayName(item) {
  * @returns {string} Description of all active stat modifiers
  */
 function getPassiveModifierDescription(item) {
-  if (item.type !== 'Passive' || !item.statModifiers) {
+  if (!(item.type || '').includes('Passive') || !item.statModifiers) {
     return '';
   }
 
@@ -2447,7 +2462,7 @@ function getPassiveModifierDescription(item) {
  */
 function upgradeOrDowngradePassive(isUpgrade) {
   // Get all passive items in inventory
-  const passiveItems = inventory.filter(item => item.type === 'Passive');
+  const passiveItems = inventory.filter(item => (item.type || '').includes('Passive'));
 
   if (passiveItems.length === 0) {
     return { success: false };
@@ -2597,7 +2612,7 @@ function upgradeOrDowngradePassive(isUpgrade) {
  * @param {Object} item - The item being removed
  */
 function removeItemStatEffects(item) {
-  if (item.type !== 'Passive' || !item.statModifiers) {
+  if (!(item.type || '').includes('Passive') || !item.statModifiers) {
     return;
   }
 

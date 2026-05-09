@@ -405,6 +405,20 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     });
   }
 
+  // Alien Baby: all enemies (and spawned enemies) enter combat with +3 max health per copy
+  if (typeof inventory !== 'undefined') {
+    const alienBabyBonus = inventory
+      .filter(i => i.name === 'Alien Baby')
+      .reduce((n, i) => n + (i.quantity || 1), 0) * 3;
+    if (alienBabyBonus > 0) {
+      combatState.enemies.forEach(e => {
+        e.maxHealth += alienBabyBonus;
+        e.health += alienBabyBonus;
+      });
+      addLog(`Alien Baby: all enemies gained +${alienBabyBonus} Max Health!`, 'danger');
+    }
+  }
+
   // Roll enemy intents
   rollAllEnemyIntents();
 
@@ -1322,6 +1336,26 @@ function useDash() {
 }
 
 // ============== SPELL SYSTEM ==============
+
+/**
+ * Returns true if a spell requires the player to select a target enemy.
+ * AoE spells (Cleave, Overload, "all enemies", positional) cast without selecting.
+ */
+function spellNeedsTarget(spell) {
+  return (spell.effects || []).some(effect => {
+    const move   = (effect.move || '').toLowerCase();
+    const addons = (effect.addons || []).map(a => a.toLowerCase());
+    const isDmg  = (move === 'magic' && addons.includes('dmg'))
+                || move === 'dmg'
+                || move === 'assassinate';
+    if (!isDmg) return false;
+    if (addons.includes('cleave'))   return false;
+    if (addons.includes('overload')) return false;
+    if (addons.includes('all'))      return false;
+    if (addons.includes('leftmost') || addons.includes('rightmost')) return false;
+    return true;
+  });
+}
 
 /**
  * Cast a spell
@@ -2448,6 +2482,17 @@ function spawnEnemyAtSlot(enemyName, position) {
   };
   resolveDeterminedValues(newEnemy);
 
+  // Alien Baby: spawned enemies also enter with +3 max health per copy
+  if (typeof inventory !== 'undefined') {
+    const alienBabyBonus = inventory
+      .filter(i => i.name === 'Alien Baby')
+      .reduce((n, i) => n + (i.quantity || 1), 0) * 3;
+    if (alienBabyBonus > 0) {
+      newEnemy.maxHealth += alienBabyBonus;
+      newEnemy.health += alienBabyBonus;
+    }
+  }
+
   // Mark as just spawned: shows Unknown intent and skips action on spawn turn
   newEnemy.justSpawned = true;
   newEnemy.currentIntent = [{
@@ -2512,6 +2557,17 @@ function spawnSplitEnemy(enemyName, inheritedHp) {
     splitAbility: parseSplitAbility(template.ability)
   };
   resolveDeterminedValues(newEnemy);
+
+  // Alien Baby: spawned split enemies also enter with +3 max health per copy
+  if (typeof inventory !== 'undefined') {
+    const alienBabyBonus = inventory
+      .filter(i => i.name === 'Alien Baby')
+      .reduce((n, i) => n + (i.quantity || 1), 0) * 3;
+    if (alienBabyBonus > 0) {
+      newEnemy.maxHealth += alienBabyBonus;
+      newEnemy.health = Math.min(newEnemy.health + alienBabyBonus, newEnemy.maxHealth);
+    }
+  }
 
   // Mark as just spawned: shows Unknown intent and skips action on spawn turn
   newEnemy.justSpawned = true;
@@ -4065,6 +4121,7 @@ function cardNeedsTarget(card) {
   if (type === 'power' || type === 'status') return false;
   if (type === 'dice') return false;
   if (desc.includes('cleave') || desc.includes('all enemies') || desc.includes('indiscriminate')) return false;
+  if (desc.includes('random target') || desc.includes('random enemy')) return false;
   if (type === 'attack') return true;
   // Skill cards that target a specific enemy need target selection
   if (type === 'skill' && !desc.includes('random target')) {
@@ -6188,6 +6245,7 @@ if (typeof window !== 'undefined') {
     confirmDie,
     useDash,
     castSpell,
+    spellNeedsTarget,
     endTurn,
     getCombatState,
     endCombat,

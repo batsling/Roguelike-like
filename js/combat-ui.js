@@ -634,8 +634,10 @@ function renderEnemiesZone(combat) {
 function renderEnemyCard(enemy, combat) {
   const isDead       = enemy.health <= 0;
   const isTargeted   = combat.targetedEnemyId === enemy.id;
-  const isTargeting  = !isDead && combat.selectedCardIndex !== null
-                       && combat.selectedCardIndex !== undefined;
+  const isTargeting  = !isDead && (
+    (combat.selectedCardIndex !== null && combat.selectedCardIndex !== undefined)
+    || !!window._pendingSpellName
+  );
   const hpPct        = Math.max(0, (enemy.health / enemy.maxHealth) * 100);
   const hpColor      = hpPct > 50 ? '#27ae60' : hpPct > 25 ? '#f39c12' : '#c0392b';
   const imgSrc       = enemy.imageUrl || 'images/enemies/default.png';
@@ -2081,11 +2083,20 @@ function renderLogPanel(combat) {
           <div style="font-size:9px;color:#bbb;padding:0 7px 5px;line-height:1.45;">${sp.description || ''}</div>
           <div style="padding:0 7px 6px;">
             ${canCast
-              ? `<button onclick="window._handleSpellbookCast && window._handleSpellbookCast('${sp.name}')"
-                  style="width:100%;padding:4px 0;background:linear-gradient(135deg,#7c3aed,#6d28d9);border:none;border-radius:5px;
-                    color:white;font-size:10px;font-weight:bold;cursor:pointer;letter-spacing:0.5px;">
-                  ✨ Cast
-                </button>`
+              ? (() => {
+                  const isPending = window._pendingSpellName === sp.name;
+                  const needsTarget = window.CombatEngine && window.CombatEngine.spellNeedsTarget
+                    ? window.CombatEngine.spellNeedsTarget(sp) : false;
+                  const bg = isPending
+                    ? 'linear-gradient(135deg,#dc2626,#b91c1c)'
+                    : 'linear-gradient(135deg,#7c3aed,#6d28d9)';
+                  const label = isPending ? '✖ Cancel' : needsTarget ? '🎯 Target' : '✨ Cast';
+                  return `<button onclick="window._handleSpellbookCast && window._handleSpellbookCast('${sp.name}')"
+                    style="width:100%;padding:4px 0;background:${bg};border:none;border-radius:5px;
+                      color:white;font-size:10px;font-weight:bold;cursor:pointer;letter-spacing:0.5px;">
+                    ${label}
+                  </button>`;
+                })()
               : `<div style="width:100%;padding:3px 0;background:rgba(255,255,255,0.05);border-radius:5px;
                   color:#666;font-size:9px;font-weight:bold;text-align:center;">${statusText}</div>`
             }
@@ -2478,6 +2489,22 @@ function handleEnemyClick(enemyId) {
   const combat = window.CombatEngine && window.CombatEngine.getCombatState();
   if (!combat) return;
 
+  // Pending spell targeting: cast the queued spell against this enemy
+  if (window._pendingSpellName) {
+    const spellName = window._pendingSpellName;
+    window._pendingSpellName = null;
+    const result = window.CombatEngine.castSpell
+      ? window.CombatEngine.castSpell(spellName, { enemyId })
+      : { success: false };
+    if (result && !result.success && result.error) {
+      typeof createNotification === 'function' &&
+        createNotification(result.error, '#e74c3c', '✨');
+    }
+    updateCombatDisplay();
+    checkCombatEnd();
+    return;
+  }
+
   // Pending die targeting: if a pending die tile is selected and needs a target
   if (window._selectedPendingId) {
     const pendingId = window._selectedPendingId;
@@ -2761,14 +2788,20 @@ function ensureDragAndKeyListeners() {
     }
   });
 
-  // --- Escape: cancel card selection ---
+  // --- Escape: cancel card selection or pending spell targeting ---
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     const combat = window.CombatEngine && window.CombatEngine.getCombatState();
+    let needsRedraw = false;
     if (combat && combat.selectedCardIndex !== null && combat.selectedCardIndex !== undefined) {
       combat.selectedCardIndex = null;
-      updateCombatDisplay();
+      needsRedraw = true;
     }
+    if (window._pendingSpellName) {
+      window._pendingSpellName = null;
+      needsRedraw = true;
+    }
+    if (needsRedraw) updateCombatDisplay();
     if (_dragState) {
       if (_dragState.clone)  _dragState.clone.remove();
       if (_dragState.cardEl) _dragState.cardEl.style.opacity = '';
@@ -4080,10 +4113,27 @@ if (typeof window !== 'undefined') {
   };
 }
 
-// Spellbook tab: cast a spell by name
+// Spellbook tab: cast a spell by name (or enter targeting mode for single-target damage spells)
 window._handleSpellbookCast = function(spellName) {
   const cs = window.CombatEngine && window.CombatEngine.getCombatState();
   if (!cs || cs.phase !== 'player_action') return;
+
+  // Toggle off if this spell is already pending targeting
+  if (window._pendingSpellName === spellName) {
+    window._pendingSpellName = null;
+    updateCombatDisplay();
+    return;
+  }
+
+  const spell = (cs.spells || []).find(s => s.name === spellName);
+  if (!spell) return;
+
+  if (window.CombatEngine.spellNeedsTarget && window.CombatEngine.spellNeedsTarget(spell)) {
+    window._pendingSpellName = spellName;
+    updateCombatDisplay();
+    return;
+  }
+
   if (!window.CombatEngine.castSpell) return;
   const result = window.CombatEngine.castSpell(spellName, {});
   if (result && !result.success && result.error) {
