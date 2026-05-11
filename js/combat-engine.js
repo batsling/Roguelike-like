@@ -254,6 +254,11 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
   }
   initCombatDeck(characterData);
 
+  // Apply pending scroll/potion effects (enemy stun, power buffs, fire damage)
+  if (typeof applyPendingScrollEffects === 'function') {
+    applyPendingScrollEffects(combatState);
+  }
+
   addLog('Combat started!', 'info');
 
   // Log stat-derived power/defense/arcane/persistence applied at combat start

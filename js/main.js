@@ -4718,6 +4718,27 @@ function handleDiceCombatVictory(enemy) {
     }
   }
 
+  // Award one random potion or scroll
+  let lootRewardHTML = '';
+  if (typeof selectRandomPotionOrScroll === 'function' && typeof addScrollOrPotionToLoot === 'function') {
+    const lootReward = selectRandomPotionOrScroll();
+    addScrollOrPotionToLoot(lootReward);
+    const isScroll = lootReward.type === 'scroll';
+    const icon = isScroll ? '📜' : '🧪';
+    const displayName = isScroll ? 'Unidentified Scroll' : 'Unidentified Potion';
+    lootRewardHTML = `<p style="color:#c39be0; font-size:16px; margin:10px 0;">${icon} Found: ${displayName} (${lootReward.rarity})</p>`;
+    // Log to history
+    if (typeof encounterHistory !== 'undefined') {
+      encounterHistory.push({
+        type: 'loot',
+        name: displayName,
+        rarity: lootReward.rarity,
+        timestamp: new Date().toLocaleString()
+      });
+      if (typeof updateEncounterHistory === 'function') updateEncounterHistory();
+    }
+  }
+
   saveCurrentGame();
 
   // Show brief victory notification then go straight to card reward
@@ -4726,6 +4747,7 @@ function handleDiceCombatVictory(enemy) {
       <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">Victory!</h2>
       <h3 style="color: #fff; margin: 15px 0;">${enemy.name} defeated!</h3>
       <p style="color: #FFD700; font-size: 18px; margin: 20px 0;">+${goldReward} Gold</p>
+      ${lootRewardHTML}
       <button onclick="closeGameModal(); showCardRewardModal(() => showPostCombatChoiceModal('${enemy.difficulty || 'Low'}'), null, '${enemy.difficulty || 'Low'}');" style="
         padding: 15px 40px;
         background: linear-gradient(145deg, #4CAF50, #2E7D32);

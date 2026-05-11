@@ -2159,6 +2159,8 @@ function renderLogPanel(combat) {
   const switchTab = (tab) =>
     `window._combatLogTab='${tab}';window.CombatUI&&window.CombatUI.updateCombatDisplay&&window.CombatUI.updateCombatDisplay()`;
 
+  const lootHtml = _buildCombatLootHtml();
+
   return `
     <div id="combat-log-panel" style="
       width:220px; flex-shrink:0;
@@ -2170,6 +2172,7 @@ function renderLogPanel(combat) {
         <div style="${tabStyle('log')}"       onclick="${switchTab('log')}">📜 Log</div>
         <div style="${tabStyle('spellbook')}" onclick="${switchTab('spellbook')}">✨ Spells</div>
         <div style="${tabStyle('stats')}"     onclick="${switchTab('stats')}">📊 Stats</div>
+        <div style="${tabStyle('loot')}"      onclick="${switchTab('loot')}">🧪 Loot</div>
       </div>
       <div id="combat-log-entries" style="
         flex:1; overflow-y:auto;
@@ -2178,10 +2181,46 @@ function renderLogPanel(combat) {
         scrollbar-width:thin;
         scrollbar-color:${C.border} transparent;
       ">
-        ${activeTab === 'log' ? logHTML : activeTab === 'spellbook' ? spellsHtml : statsHtml}
+        ${activeTab === 'log' ? logHTML : activeTab === 'spellbook' ? spellsHtml : activeTab === 'loot' ? lootHtml : statsHtml}
       </div>
     </div>
   `;
+}
+
+function _buildCombatLootHtml() {
+  const loot = (typeof gameState !== 'undefined' && gameState.loot) ? gameState.loot : [];
+  const potions = loot.map((l, i) => ({ ...l, _idx: i })).filter(l => l.type === 'potion');
+
+  if (potions.length === 0) {
+    return `<div style="padding:14px;color:#666;font-size:11px;text-align:center;font-style:italic;">No potions in loot.</div>`;
+  }
+
+  return potions.map(item => {
+    const data = typeof POTIONS_DATA !== 'undefined' ? POTIONS_DATA.find(p => p.name === item.name) : null;
+    const displayName = typeof getPotionDisplayName === 'function' ? getPotionDisplayName(item.name) : item.name;
+    const imgPath = (data && typeof getPotionImagePath === 'function') ? getPotionImagePath(data) : 'images/potions/Unidentified.png';
+    const isId = typeof isPotionIdentified === 'function' ? isPotionIdentified(item.name) : false;
+    const effectText = (isId && data) ? data.effect : '???';
+    const rarityColor = typeof _rarityColor === 'function' ? _rarityColor(item.rarity) : '#aaa';
+
+    return `
+      <div style="padding:8px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;gap:8px;align-items:center;">
+        <img src="${imgPath}" style="width:36px;height:36px;object-fit:contain;flex-shrink:0;"
+          onerror="this.src='images/potions/Unidentified.png'">
+        <div style="flex:1;min-width:0;">
+          <div style="color:#6ab4ff;font-size:11px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${displayName}</div>
+          <div style="color:${rarityColor};font-size:10px;">${item.rarity}</div>
+          <div style="color:#999;font-size:10px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${effectText}</div>
+        </div>
+        <button onclick="usePotionFromLoot(${item._idx})" style="
+          padding:4px 8px;background:#3498db;border:none;border-radius:4px;
+          color:white;font-size:10px;font-weight:bold;cursor:pointer;flex-shrink:0;"
+          onmouseenter="this.style.background='#2980b9'" onmouseleave="this.style.background='#3498db'">
+          Use
+        </button>
+      </div>
+    `;
+  }).join('');
 }
 
 // ============== STATUS ROW ==============
