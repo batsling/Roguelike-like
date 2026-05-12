@@ -11,12 +11,7 @@
 // RARITY HELPERS
 // ========================================
 
-const RARITY_COLORS = {
-  Common:    '#aaa',
-  Uncommon:  '#4CAF50',
-  Rare:      '#9b59b6',
-  Legendary: '#ff6b00'
-};
+// RARITY_COLORS is defined in constants.js — do not redeclare here
 
 const RARITY_BORDER = {
   Common:    '#888',
@@ -25,7 +20,7 @@ const RARITY_BORDER = {
   Legendary: '#ff6b00'
 };
 
-function _rarityColor(r) { return RARITY_COLORS[r] || '#aaa'; }
+function _rarityColor(r) { return (window.RARITY_COLORS || {})[r] || '#aaa'; }
 function _rarityBorder(r) { return RARITY_BORDER[r] || '#888'; }
 
 // ========================================
