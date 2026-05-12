@@ -341,8 +341,7 @@ function showShopModal(purchasedIndices = []) {
     `;
 
     gameState.loot.forEach((lootItem, index) => {
-      if (lootItem.isItem) {
-        // Items from fish can't be sold here (they're in regular inventory)
+      if (lootItem.isItem || lootItem.type === 'scroll' || lootItem.type === 'potion') {
         return;
       }
 

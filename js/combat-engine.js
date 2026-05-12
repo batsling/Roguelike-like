@@ -3030,13 +3030,14 @@ function endTurn() {
       // Doubt: gain 1 Weak
       if (/gain \d+ weak/i.test(card.description)) {
         const wkMatch = card.description.match(/Gain (\d+) Weak/i);
-        combatState.player.statuses['weak'] = (combatState.player.statuses['weak'] || 0) + (wkMatch ? parseInt(wkMatch[1]) : 1);
+        // +1 extra so that after processStatusEffects tick-down the player starts next turn with the correct stacks
+        combatState.player.statuses['weak'] = (combatState.player.statuses['weak'] || 0) + (wkMatch ? parseInt(wkMatch[1]) : 1) + 1;
         addLog(`Doubt: Gained 1 Weak`, 'warning');
       }
       // Shame: gain 1 Frail
       if (/gain \d+ frail/i.test(card.description)) {
         const frMatch = card.description.match(/Gain (\d+) Frail/i);
-        combatState.player.statuses['frail'] = (combatState.player.statuses['frail'] || 0) + (frMatch ? parseInt(frMatch[1]) : 1);
+        combatState.player.statuses['frail'] = (combatState.player.statuses['frail'] || 0) + (frMatch ? parseInt(frMatch[1]) : 1) + 1;
         addLog(`Shame: Gained 1 Frail`, 'warning');
       }
       // Regret: lose 1 Health for each card in hand
@@ -3051,7 +3052,8 @@ function endTurn() {
       if (/gain \d+ blind/i.test(card.description)) {
         const blindMatch = card.description.match(/Gain (\d+) Blind/i);
         const blindAmt = blindMatch ? parseInt(blindMatch[1]) : 1;
-        combatState.player.statuses['blind'] = (combatState.player.statuses['blind'] || 0) + blindAmt;
+        // +1 extra so that after processStatusEffects tick-down the player starts next turn with the correct stacks
+        combatState.player.statuses['blind'] = (combatState.player.statuses['blind'] || 0) + blindAmt + 1;
         addLog(`${card.name}: Gained ${blindAmt} Blind`, 'warning');
       }
     }

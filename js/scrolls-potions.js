@@ -1108,15 +1108,27 @@ function _showCombatStunPicker(combatState, maxCount) {
     return;
   }
 
+  const overlayId = 'stun-picker-overlay';
   let chosen = [];
 
   function renderPicker() {
-    const html = `
-      <div style="text-align:center; padding:16px; min-width:280px;">
-        <h3 style="color:#f1c40f; margin-top:0;">😱 Scare Monster</h3>
-        <p style="color:#aaa; font-size:13px; margin-bottom:14px;">
+    let existing = document.getElementById(overlayId);
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = overlayId;
+    overlay.style.cssText = `
+      position:fixed; inset:0; z-index:20000;
+      background:rgba(0,0,0,0.75);
+      display:flex; align-items:center; justify-content:center;
+    `;
+    overlay.innerHTML = `
+      <div style="background:#1a1a2e; border-radius:12px; border:2px solid #f1c40f;
+        padding:22px; min-width:300px; max-width:400px; max-height:80vh; overflow-y:auto;">
+        <h3 style="color:#f1c40f; margin-top:0; text-align:center;">😱 Scare Monster</h3>
+        <p style="color:#aaa; font-size:13px; text-align:center; margin-bottom:14px;">
           Choose up to <strong style="color:#f1c40f;">${maxCount}</strong> enem${maxCount > 1 ? 'ies' : 'y'} to Stun
-          (${chosen.length}/${maxCount} chosen)
+          <span style="color:#888;">(${chosen.length}/${maxCount})</span>
         </p>
         <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
           ${living.map((e, i) => {
@@ -1124,21 +1136,23 @@ function _showCombatStunPicker(combatState, maxCount) {
             return `<div onclick="window._stunPickToggle(${i})" style="
               padding:10px 14px; border-radius:6px; cursor:pointer; user-select:none;
               border:2px solid ${isSel ? '#f1c40f' : '#555'};
-              background:${isSel ? 'rgba(241,196,15,0.18)' : '#2a2a2a'};
-              color:${isSel ? '#f1c40f' : '#ddd'}; font-size:14px; font-weight:bold;
-              transition:all 0.12s;">
-              ${isSel ? '⭐' : '👹'} ${e.name} <span style="font-size:11px;color:#888;">(${e.health} HP)</span>
+              background:${isSel ? 'rgba(241,196,15,0.15)' : '#2a2a2a'};
+              color:${isSel ? '#f1c40f' : '#ddd'}; font-size:13px; font-weight:bold;
+              display:flex; align-items:center; gap:10px; transition:all 0.12s;">
+              <span>${isSel ? '⭐' : '👹'}</span>
+              <span>${e.name}</span>
+              <span style="margin-left:auto;color:#888;font-size:11px;">${e.health} HP</span>
             </div>`;
           }).join('')}
         </div>
         <button onclick="window._stunPickConfirm()" style="
-          padding:10px 28px; background:#f1c40f; border:none; border-radius:6px;
+          width:100%; padding:10px; background:#f1c40f; border:none; border-radius:6px;
           color:#000; font-weight:bold; font-size:14px; cursor:pointer;">
           Confirm${chosen.length > 0 ? ` (${chosen.length})` : ''}
         </button>
       </div>
     `;
-    if (typeof createGameModal === 'function') createGameModal(html);
+    document.body.appendChild(overlay);
 
     window._stunPickToggle = (idx) => {
       if (chosen.includes(idx)) {
@@ -1152,7 +1166,7 @@ function _showCombatStunPicker(combatState, maxCount) {
     window._stunPickConfirm = () => {
       delete window._stunPickToggle;
       delete window._stunPickConfirm;
-      if (typeof closeGameModal === 'function') closeGameModal();
+      document.getElementById(overlayId)?.remove();
       chosen.forEach(idx => {
         const e = living[idx];
         e.statuses = e.statuses || {};

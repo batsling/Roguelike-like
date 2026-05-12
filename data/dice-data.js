@@ -701,7 +701,7 @@ var DICE_DATA = [
         "isBlank": false,
         "isaacsTransform": true,
         "effects": [],
-        "addons": []
+        "addons": ["mandatory"]
       },
       {
         "face": 2,
@@ -709,7 +709,7 @@ var DICE_DATA = [
         "isBlank": false,
         "isaacsTransform": true,
         "effects": [],
-        "addons": []
+        "addons": ["mandatory"]
       },
       {
         "face": 3,
@@ -717,7 +717,7 @@ var DICE_DATA = [
         "isBlank": false,
         "isaacsTransform": true,
         "effects": [],
-        "addons": []
+        "addons": ["mandatory"]
       },
       {
         "face": 4,
@@ -725,7 +725,7 @@ var DICE_DATA = [
         "isBlank": false,
         "isaacsTransform": true,
         "effects": [],
-        "addons": []
+        "addons": ["mandatory"]
       },
       {
         "face": 5,
@@ -733,7 +733,7 @@ var DICE_DATA = [
         "isBlank": false,
         "isaacsTransform": true,
         "effects": [],
-        "addons": []
+        "addons": ["mandatory"]
       },
       {
         "face": 6,
@@ -741,7 +741,7 @@ var DICE_DATA = [
         "isBlank": false,
         "isaacsTransform": true,
         "effects": [],
-        "addons": []
+        "addons": ["mandatory"]
       }
     ]
   },
