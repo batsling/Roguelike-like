@@ -996,7 +996,7 @@ function switchCollectionTab(tab) {
               ${card.imageUrl ? `
                 <img src="${card.imageUrl}" alt="${card.name}"
                   style="width:100%; height:80px; object-fit:contain; background:rgba(0,0,0,0.3); image-rendering:pixelated;"
-                  onerror="this.style.display='none';"/>
+                  onerror="if(this.dataset.t){this.style.display='none';}else{this.dataset.t=1;this.src='images/heroes/'+this.alt+'.png';}"/>
               ` : `<div style="width:100%; height:80px; background:linear-gradient(135deg,${tc}33,${rc}22); display:flex; align-items:center; justify-content:center; font-size:28px; color:${tc}88;">
                 ${{attack:'⚔',skill:'🛡',power:'✨',dice:'🎲',training:'📖'}[(card.type||'').toLowerCase()]||'🃏'}
               </div>`}
