@@ -1021,13 +1021,17 @@ function _applyPotionEffect(potionName, target, targetType, cs) {
     case 'Speed Potion': {
       target.statuses = target.statuses || {};
       target.statuses['defense'] = (target.statuses['defense'] || 0) + 5;
-      log(`Speed Potion: +5 Defense to ${target.name || 'target'}!`);
+      // Track for 1-turn removal at end of player turn
+      cs._speedDefense = (cs._speedDefense || 0) + 5;
+      log(`Speed Potion: +5 Defense (1 turn) to ${target.name || 'target'}!`);
       break;
     }
     case 'Flex Potion': {
       target.statuses = target.statuses || {};
       target.statuses['power'] = (target.statuses['power'] || 0) + 5;
-      log(`Flex Potion: +5 Power to ${target.name || 'target'}!`);
+      // Track for 1-turn removal at end of player turn (combat-engine removes _flexPower)
+      cs._flexPower = (cs._flexPower || 0) + 5;
+      log(`Flex Potion: +5 Power (1 turn) to ${target.name || 'target'}!`);
       break;
     }
     case 'Fruit Juice': {

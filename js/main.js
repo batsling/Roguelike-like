@@ -4720,9 +4720,9 @@ function handleDiceCombatVictory(enemy) {
 
   // Award one random potion or scroll
   let lootIcon = '', lootDisplayName = '', lootDisplayRarity = '';
-  if (typeof selectRandomPotionOrScroll === 'function' && typeof addScrollOrPotionToLoot === 'function') {
-    const lootReward = selectRandomPotionOrScroll();
-    addScrollOrPotionToLoot(lootReward);
+  if (typeof window.selectRandomPotionOrScroll === 'function' && typeof window.addScrollOrPotionToLoot === 'function') {
+    const lootReward = window.selectRandomPotionOrScroll();
+    window.addScrollOrPotionToLoot(lootReward);
     lootIcon = lootReward.type === 'scroll' ? '📜' : '🧪';
     lootDisplayName = lootReward.type === 'scroll' ? 'Unidentified Scroll' : 'Unidentified Potion';
     lootDisplayRarity = lootReward.rarity || '';
@@ -6845,7 +6845,7 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
         ${upgBtn}
         <img src="${imgSrc}" alt="${card.name}"
              style="width:110px;height:110px;object-fit:contain;margin-bottom:10px;"
-             onerror="this.style.display='none'">
+             onerror="if(this.dataset.t){this.style.display='none';}else{this.dataset.t=1;this.src='images/heroes/'+this.alt+'.png';}">
         <div style="font-weight:bold;font-size:15px;color:white;text-align:center;margin-bottom:4px;">${nameLabel}</div>
         <div style="color:${color};font-size:12px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
         <div style="font-size:12px;color:${card.preUpgraded ? '#7dffb0' : '#ccc'};text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>

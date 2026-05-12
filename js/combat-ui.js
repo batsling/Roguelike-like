@@ -3720,7 +3720,7 @@ function _showIsaacTransformPicker(face, combat, pendingId) {
               background:rgba(0,0,0,0.3);border-radius:5px;margin-bottom:5px;overflow:hidden;">
               ${imgSrc
                 ? `<img src="${imgSrc}" style="width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;"
-                     onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:26px>${typeEmoji(c.type)}</span>'">`
+                     onerror="if(this.dataset.t){this.style.display='none';this.parentElement.innerHTML='<span style=font-size:26px>${typeEmoji(c.type)}</span>';}else{this.dataset.t=1;this.src='images/heroes/${c.name}.png';}">`
                 : `<span style="font-size:26px;">${typeEmoji(c.type)}</span>`}
             </div>
             <div style="font-size:10px;font-weight:bold;color:#fff;">${c.name}${c.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}</div>

@@ -3868,6 +3868,14 @@ function processStatusEffects(target, timing) {
       delete statuses['burst'];
     }
 
+    // Speed Potion: remove temporary Defense at end of player's turn
+    if (target === combatState.player && combatState._speedDefense) {
+      const sd = combatState._speedDefense;
+      statuses['defense'] = Math.max(0, (statuses['defense'] || 0) - sd);
+      if ((statuses['defense'] || 0) <= 0) delete statuses['defense'];
+      delete combatState._speedDefense;
+    }
+
     // Flex: remove temporary Power at end of player's turn
     if (target === combatState.player && combatState._flexPower) {
       const fp = combatState._flexPower;
