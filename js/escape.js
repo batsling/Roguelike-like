@@ -12,7 +12,7 @@
  * - startEscapePhase() - Initiates escape phase with game selection
  * - showEscapeVisualization() - Creates visual escape interface
  * - recordLostRun(index) - Handles lost runs with HP penalty
- * - showVictoryScreen() - Displays victory with final stats
+ * - showEscapeVictoryScreen() - Displays victory with final stats
  * - showCollection() - Shows collection modal with tabs
  */
 
@@ -457,7 +457,7 @@ function completeEscapeGame(index) {
     // Move player to exit
     setTimeout(() => updatePlayerIconPosition(), 100);
     // Victory!
-    setTimeout(() => showVictoryScreen(), 800);
+    setTimeout(() => showEscapeVictoryScreen(), 800);
   } else {
     // Show buttons on next game
     const nextNode = document.querySelector(`.escape-game-node[data-index="${gameState.escapeProgress}"]`);
@@ -514,7 +514,7 @@ function completeEscapeGame(index) {
   saveCurrentGame();
 }
 
-function showVictoryScreen() {
+function showEscapeVictoryScreen() {
   const uniqueBeaten = new Set(gameState.visitedGames || []);
 
   // Increment amulet stat for successful escape
@@ -2346,7 +2346,7 @@ window.switchLootSubTab = switchLootSubTab;
 window.completeEscapeGame = completeEscapeGame;
 window.recordLostRun = recordLostRun;
 window.startEscapePhase = startEscapePhase;
-window.showVictoryScreen = showVictoryScreen;
+window.showEscapeVictoryScreen = showEscapeVictoryScreen;
 window.sortCollectionItems = sortCollectionItems;
 window.sortCollectionSpells = sortCollectionSpells;
 window.showCollection = showCollection;

@@ -5179,7 +5179,7 @@ function showCardUpgradeZoom(card) {
   overlay.style.cssText = `
     position:fixed;inset:0;background:rgba(0,0,0,0.82);
     display:flex;align-items:center;justify-content:center;
-    z-index:10000;cursor:pointer;flex-direction:column;gap:0;
+    z-index:25000;cursor:pointer;flex-direction:column;gap:0;
   `;
 
   if (isWeaponCard) {
@@ -6771,7 +6771,9 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
     let pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
       .filter(c => c.rarity && c.rarity !== 'Starter' && c.rarity !== 'N/A'
                && (c.type || '').toLowerCase() !== 'training'
+               && (c.type || '').toLowerCase() !== 'curse'
                && !c.isTraining
+               && !c.isStatusCard
                && !(c.tags && c.tags.includes('weapon'))
                && !exclude.has(c.name));
 

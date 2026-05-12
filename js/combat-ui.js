@@ -426,6 +426,14 @@ const STATUS_META = {
   flame_barrier:  { img: 'FlameBarrier',  emoji: '🔥', label: 'Flame Barrier'},
   double_damage:  { img: 'DoubleDamage',   emoji: '⚔⚔', label: 'Double Damage'},
   enfeebled:      { img: 'Enfeebled',     emoji: '💀', label: 'Enfeebled'    },
+  plated_armor:   { img: 'PlatedArmor',   emoji: '🛡', label: 'Plated Armor' },
+  wet:            { img: null,             emoji: '💧', label: 'Wet'          },
+  slow:           { img: null,             emoji: '🐢', label: 'Slow'         },
+  silence:        { img: null,             emoji: '🔇', label: 'Silence'      },
+  intangible:     { img: null,             emoji: '👻', label: 'Intangible'   },
+  no_draw:        { img: null,             emoji: '🚫', label: 'No Draw'      },
+  brutality:      { img: null,             emoji: '🩸', label: 'Brutality'   },
+  corruption:     { img: null,             emoji: '☠', label: 'Corruption'  },
 };
 
 // ============== MAIN RENDER ENTRY POINT ==============
