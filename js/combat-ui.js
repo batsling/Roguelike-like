@@ -1405,7 +1405,7 @@ const _SD_TAG_COLORS = {
 /** Return color theme for a card. S&D dice get white-on-black with tag-colored border. */
 function _getDiceColors(card) {
   if (DICE_CARD_COLORS[card.name]) return DICE_CARD_COLORS[card.name];
-  if (card.game === 'Slice & Dice') {
+  if ((card.game || '').trim() === 'Slice & Dice') {
     const tags = Array.isArray(card.tags) ? card.tags : [];
     const tagEntry = tags.reduce((found, t) => found || _SD_TAG_COLORS[t], null);
     const tc = tagEntry || { hex: '#aaaaaa', sceneBg: 0x0d0d0d };
@@ -2420,18 +2420,18 @@ function attachCombatEventListeners(combat) {
       const entry = cs.pendingDice.find(e => e.id === id);
       if (!entry) return;
       const face = entry.face || {};
+      if (face.isaacsTransform) {
+        // Isaac's D6: show card picker then apply transform
+        window._selectedPendingId = null;
+        _showIsaacTransformPicker(face, cs, id);
+        return;
+      }
       if (face.isBlank) {
         // Dismiss blank
         window.CombatEngine.usePendingDie(id, null);
         window._selectedPendingId = null;
         updateCombatDisplay();
         checkCombatEnd();
-        return;
-      }
-      if (face.isaacsTransform) {
-        // Isaac's D6: show card picker then apply transform
-        window._selectedPendingId = null;
-        _showIsaacTransformPicker(face, cs, id);
         return;
       }
       const needsTarget = (face.effects || []).some(e => /^(dmg|magic_dmg|magic dmg)$/i.test(e.move || '') && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));

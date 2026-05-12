@@ -4741,25 +4741,20 @@ function handleDiceCombatVictory(enemy) {
 
   saveCurrentGame();
 
-  // Show brief victory notification then go straight to card reward
-  createGameModal(`
-    <div style="text-align: center; padding: 30px;">
-      <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">Victory!</h2>
-      <h3 style="color: #fff; margin: 15px 0;">${enemy.name} defeated!</h3>
-      <p style="color: #FFD700; font-size: 18px; margin: 20px 0;">+${goldReward} Gold</p>
-      ${lootRewardHTML}
-      <button onclick="closeGameModal(); showCardRewardModal(() => showPostCombatChoiceModal('${enemy.difficulty || 'Low'}'), null, '${enemy.difficulty || 'Low'}');" style="
-        padding: 15px 40px;
-        background: linear-gradient(145deg, #4CAF50, #2E7D32);
-        border: none;
-        border-radius: 8px;
-        color: white;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 16px;
-      ">Continue →</button>
-    </div>
-  `);
+  // Build loot reward inline HTML for the combined victory+card screen
+  let lootInlineHTML = '';
+  if (lootRewardHTML) {
+    lootInlineHTML = lootRewardHTML;
+  }
+
+  // Show STS-style combined victory + card reward screen
+  const difficulty = enemy.difficulty || 'Low';
+  showCardRewardModal(
+    () => showPostCombatChoiceModal(difficulty),
+    null,
+    difficulty,
+    { enemyName: enemy.name, goldReward, lootHTML: lootInlineHTML }
+  );
 }
 
 /**
@@ -6652,7 +6647,7 @@ function _doLearnSpell(card) {
  * Luck shifts the rarity distribution toward Uncommon/Rare.
  * @param {Function} onComplete - Called after a card is chosen or skipped
  */
-function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null) {
+function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null, victoryInfo = null) {
   // Derive tagFilter from the run's chosen deck if not explicitly passed
   if (tagFilter === null && typeof gameState !== 'undefined' && gameState.selectedDeck) {
     const deckDef = (typeof AVAILABLE_DECKS !== 'undefined')
@@ -6764,8 +6759,20 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
     `;
   }).join('');
 
+  const victoryHeaderHTML = victoryInfo ? `
+    <div style="text-align:center; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid #333;">
+      <h2 style="color:#4CAF50; font-size:32px; margin:0 0 6px 0;">Victory!</h2>
+      <div style="color:#fff; font-size:18px; margin-bottom:8px;">${victoryInfo.enemyName} defeated!</div>
+      <div style="display:flex; justify-content:center; gap:24px; flex-wrap:wrap; align-items:center;">
+        <span style="color:#FFD700; font-size:18px; font-weight:bold;">+${victoryInfo.goldReward} Gold</span>
+        ${victoryInfo.lootHTML || ''}
+      </div>
+    </div>
+  ` : '';
+
   createGameModal(`
     <div style="text-align:center; padding:20px; max-width:920px;">
+      ${victoryHeaderHTML}
       <h2 style="color:#FFD700; margin-top:0; margin-bottom:8px;">🃏 Card Reward</h2>
       <p style="color:#aaa; margin-bottom:20px; font-size:13px;">Click a card to select it, then confirm your choice</p>
       <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">

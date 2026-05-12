@@ -407,6 +407,11 @@ const StateMutator = {
       if (cardToAdd && addFn) {
         addFn({ ...cardToAdd });
         curseInstance._cardAdded = cardToAdd.name;
+      } else if (cardToAdd) {
+        if (!gameState.deck) gameState.deck = [];
+        gameState.deck.push({ ...cardToAdd });
+        curseInstance._cardAdded = cardToAdd.name;
+        if (typeof saveCurrentGame === 'function') saveCurrentGame();
       }
     }
 
