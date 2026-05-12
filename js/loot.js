@@ -664,7 +664,7 @@ function _getScrollsLootHTML() {
         <button onclick="useScrollFromLoot(${item._idx})" ${canUse ? '' : 'disabled'} style="
           margin-top:10px; padding:6px 14px; border:none; border-radius:5px; font-size:12px;
           font-weight:bold; width:100%; ${useBtnStyle}">
-          📜 Use Scroll
+          ${canUse ? '📜 Use Scroll' : '🔒 Use outside combat'}
         </button>
       </div>
     `;
@@ -706,7 +706,7 @@ function _getPotionsLootHTML() {
         <button onclick="usePotionFromLoot(${item._idx})" ${canUse ? '' : 'disabled'} style="
           margin-top:10px; padding:6px 14px; border:none; border-radius:5px; font-size:12px;
           font-weight:bold; width:100%; ${useBtnStyle}">
-          🧪 Use Potion
+          ${canUse ? '🧪 Use Potion' : '🔒 Use in combat'}
         </button>
       </div>
     `;

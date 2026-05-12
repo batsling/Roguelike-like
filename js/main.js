@@ -4670,8 +4670,7 @@ function handleDiceCombatVictory(enemy) {
   });
 
   window.CombatEngine.endCombat(true);
-
-  // Increment combat counter for weight system
+  gameState.phase = 'selection'; // allow scrolls/items outside combat
   gameState.totalCombatsCompleted = (gameState.totalCombatsCompleted || 0) + 1;
 
   // Award gold based on difficulty tier
@@ -5042,6 +5041,7 @@ function handleDiceCombatDefeat(enemy) {
   });
 
   window.CombatEngine.endCombat(false);
+  gameState.phase = 'selection'; // allow scrolls/items outside combat
 
   // Clear items, curses, and allies on death
   inventory = [];
