@@ -4719,42 +4719,26 @@ function handleDiceCombatVictory(enemy) {
   }
 
   // Award one random potion or scroll
-  let lootRewardHTML = '';
+  let lootIcon = '', lootDisplayName = '', lootDisplayRarity = '';
   if (typeof selectRandomPotionOrScroll === 'function' && typeof addScrollOrPotionToLoot === 'function') {
     const lootReward = selectRandomPotionOrScroll();
     addScrollOrPotionToLoot(lootReward);
-    const isScroll = lootReward.type === 'scroll';
-    const icon = isScroll ? '📜' : '🧪';
-    const displayName = isScroll ? 'Unidentified Scroll' : 'Unidentified Potion';
-    lootRewardHTML = `<p style="color:#c39be0; font-size:16px; margin:10px 0;">${icon} Found: ${displayName} (${lootReward.rarity})</p>`;
-    // Log to history
-    if (typeof encounterHistory !== 'undefined') {
-      encounterHistory.push({
-        type: 'loot',
-        name: displayName,
-        rarity: lootReward.rarity,
-        timestamp: new Date().toLocaleString()
-      });
-      if (typeof updateEncounterHistory === 'function') updateEncounterHistory();
-    }
+    lootIcon = lootReward.type === 'scroll' ? '📜' : '🧪';
+    lootDisplayName = lootReward.type === 'scroll' ? 'Unidentified Scroll' : 'Unidentified Potion';
+    lootDisplayRarity = lootReward.rarity || '';
+    encounterHistory.push({
+      type: 'loot',
+      name: lootDisplayName,
+      rarity: lootDisplayRarity,
+      timestamp: new Date().toLocaleString()
+    });
+    if (typeof updateEncounterHistory === 'function') updateEncounterHistory();
   }
 
   saveCurrentGame();
 
-  // Build loot reward inline HTML for the combined victory+card screen
-  let lootInlineHTML = '';
-  if (lootRewardHTML) {
-    lootInlineHTML = lootRewardHTML;
-  }
-
-  // Show STS-style combined victory + card reward screen
   const difficulty = enemy.difficulty || 'Low';
-  showCardRewardModal(
-    () => showPostCombatChoiceModal(difficulty),
-    null,
-    difficulty,
-    { enemyName: enemy.name, goldReward, lootHTML: lootInlineHTML }
-  );
+  showVictoryScreen(enemy.name, goldReward, lootIcon, lootDisplayName, lootDisplayRarity, difficulty);
 }
 
 /**
@@ -6647,7 +6631,77 @@ function _doLearnSpell(card) {
  * Luck shifts the rarity distribution toward Uncommon/Rare.
  * @param {Function} onComplete - Called after a card is chosen or skipped
  */
-function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null, victoryInfo = null) {
+/**
+ * STS-style victory screen. Shows enemy/gold/loot reward, a "Card Reward"
+ * button that opens card selection and returns here when done, and a
+ * "Continue" button that proceeds to post-combat choices.
+ */
+function showVictoryScreen(enemyName, goldReward, lootIcon, lootName, lootRarity, difficulty) {
+  let cardsCollected = false;
+
+  function render() {
+    const cardBtnLabel = cardsCollected
+      ? `<span style="color:#4CAF50;">✓ Cards Collected</span>`
+      : '🃏 Card Reward';
+    const cardBtnStyle = cardsCollected
+      ? 'background:#1a3d1a; border:2px solid #4CAF50; color:#4CAF50; cursor:default;'
+      : 'background:linear-gradient(145deg,#9b59b6,#7d3c98); border:2px solid #9b59b6; color:white; cursor:pointer;';
+
+    const lootSection = lootName ? `
+      <div style="margin:12px 0; padding:10px 20px; background:rgba(100,60,180,0.15); border:1px solid rgba(155,89,182,0.4); border-radius:8px; display:inline-block;">
+        <span style="font-size:22px;">${lootIcon}</span>
+        <span style="color:#c39be0; font-size:15px; margin-left:8px;">${lootName}</span>
+        <span style="color:#888; font-size:12px; margin-left:8px;">(${lootRarity})</span>
+        <div style="color:#666; font-size:11px; margin-top:4px;">Added to your loot — identify at the shop</div>
+      </div>
+    ` : '';
+
+    createGameModal(`
+      <div style="text-align:center; padding:30px; min-width:420px;">
+        <h2 style="color:#4CAF50; font-size:36px; margin:0 0 8px 0;">Victory!</h2>
+        <div style="color:#fff; font-size:20px; margin-bottom:14px;">${enemyName} defeated!</div>
+        <div style="color:#FFD700; font-size:22px; font-weight:bold; margin-bottom:16px;">+${goldReward} Gold</div>
+        ${lootSection}
+        <div style="display:flex; flex-direction:column; gap:12px; align-items:center; margin-top:20px;">
+          <button id="victory-card-btn" style="
+            padding:12px 36px; ${cardBtnStyle}
+            border-radius:8px; font-size:15px; font-weight:bold; min-width:200px;
+          ">${cardBtnLabel}</button>
+          <button id="victory-continue-btn" style="
+            padding:12px 36px;
+            background:linear-gradient(145deg,#4CAF50,#2E7D32); border:none;
+            border-radius:8px; color:white; cursor:pointer;
+            font-size:15px; font-weight:bold; min-width:200px;
+          ">Continue →</button>
+        </div>
+      </div>
+    `);
+
+    const cardBtn = document.getElementById('victory-card-btn');
+    const continueBtn = document.getElementById('victory-continue-btn');
+
+    if (cardBtn && !cardsCollected) {
+      cardBtn.onclick = () => {
+        closeGameModal();
+        showCardRewardModal(() => {
+          cardsCollected = true;
+          render();
+        }, null, difficulty);
+      };
+    }
+
+    if (continueBtn) {
+      continueBtn.onclick = () => {
+        closeGameModal();
+        showPostCombatChoiceModal(difficulty);
+      };
+    }
+  }
+
+  render();
+}
+
+function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null) {
   // Derive tagFilter from the run's chosen deck if not explicitly passed
   if (tagFilter === null && typeof gameState !== 'undefined' && gameState.selectedDeck) {
     const deckDef = (typeof AVAILABLE_DECKS !== 'undefined')
@@ -6759,20 +6813,8 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
     `;
   }).join('');
 
-  const victoryHeaderHTML = victoryInfo ? `
-    <div style="text-align:center; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid #333;">
-      <h2 style="color:#4CAF50; font-size:32px; margin:0 0 6px 0;">Victory!</h2>
-      <div style="color:#fff; font-size:18px; margin-bottom:8px;">${victoryInfo.enemyName} defeated!</div>
-      <div style="display:flex; justify-content:center; gap:24px; flex-wrap:wrap; align-items:center;">
-        <span style="color:#FFD700; font-size:18px; font-weight:bold;">+${victoryInfo.goldReward} Gold</span>
-        ${victoryInfo.lootHTML || ''}
-      </div>
-    </div>
-  ` : '';
-
   createGameModal(`
     <div style="text-align:center; padding:20px; max-width:920px;">
-      ${victoryHeaderHTML}
       <h2 style="color:#FFD700; margin-top:0; margin-bottom:8px;">🃏 Card Reward</h2>
       <p style="color:#aaa; margin-bottom:20px; font-size:13px;">Click a card to select it, then confirm your choice</p>
       <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
@@ -6854,6 +6896,7 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
 // Make level-up functions globally available
 window.showLevelUpPrompt = showLevelUpPrompt;
 window.confirmLevelUp = confirmLevelUp;
+window.showVictoryScreen = showVictoryScreen;
 window.showCardRewardModal = showCardRewardModal;
 window.showDiceLevelUpChoiceModal = showDiceLevelUpChoiceModal;
 window._doLearnSpell = _doLearnSpell;

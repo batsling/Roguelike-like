@@ -1154,11 +1154,21 @@ function switchCollectionTab(tab) {
       window.currentLootSubTab = 'fish';
     }
 
+    const scrollCount = typeof SCROLLS_DATA !== 'undefined' ? SCROLLS_DATA.length : 0;
+    const potionCount = typeof POTIONS_DATA !== 'undefined' ? POTIONS_DATA.length : 0;
+
+    const lootTabBtn = (id, label, color) => {
+      const active = window.currentLootSubTab === id;
+      return `<button onclick="switchLootSubTab('${id}')" id="loot-subtab-${id}" style="padding:6px 14px; background:${active ? color : '#555'}; border:none; border-radius:6px; color:white; cursor:pointer; font-weight:bold; font-size:12px;">${label}</button>`;
+    };
+
     content.innerHTML = `
       <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
         <!-- Loot Sub-tabs -->
         <div style="display: flex; gap: 10px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #444;">
-          <button onclick="switchLootSubTab('fish')" id="loot-subtab-fish" style="padding: 6px 14px; background: ${window.currentLootSubTab === 'fish' ? '#66b3ff' : '#555'}; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; font-size: 12px;">🐟 Fish</button>
+          ${lootTabBtn('fish', '🐟 Fish', '#66b3ff')}
+          ${lootTabBtn('scrolls', `📜 Scrolls (${scrollCount})`, '#c39be0')}
+          ${lootTabBtn('potions', `🧪 Potions (${potionCount})`, '#e07b7b')}
         </div>
 
         <!-- Loot Sub-tab Content -->
@@ -1958,16 +1968,11 @@ function switchLootSubTab(subTab, sortType = null) {
   }
 
   // Update sub-tab buttons
-  const subTabBtn = document.getElementById(`loot-subtab-${subTab}`);
-  if (subTabBtn) {
-    // Reset all sub-tab buttons
-    ['fish'].forEach(t => {
-      const btn = document.getElementById(`loot-subtab-${t}`);
-      if (btn) {
-        btn.style.background = t === subTab ? '#66b3ff' : '#555';
-      }
-    });
-  }
+  const _lootTabColors = { fish: '#66b3ff', scrolls: '#c39be0', potions: '#e07b7b' };
+  ['fish', 'scrolls', 'potions'].forEach(t => {
+    const btn = document.getElementById(`loot-subtab-${t}`);
+    if (btn) btn.style.background = t === subTab ? (_lootTabColors[t] || '#66b3ff') : '#555';
+  });
 
   const subTabContent = document.getElementById('loot-subtab-content');
   if (!subTabContent) return;
@@ -2117,6 +2122,62 @@ function switchLootSubTab(subTab, sortType = null) {
                     </div>
                   </div>
                 ` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  } else if (subTab === 'scrolls') {
+    const scrolls = typeof SCROLLS_DATA !== 'undefined' ? SCROLLS_DATA : [];
+    const rarityColor = (r) => {
+      switch ((r || '').toLowerCase()) {
+        case 'legendary': return '#ff6b00';
+        case 'rare':      return '#9b59b6';
+        case 'uncommon':  return '#4CAF50';
+        default:          return '#aaa';
+      }
+    };
+    subTabContent.innerHTML = `
+      <div style="padding:10px;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px;">
+          ${scrolls.map(s => {
+            const col = rarityColor(s.rarity);
+            const imgPath = `images/scrolls/${s.file || s.name.replace(/\s+/g,'_')}.png`;
+            return `
+              <div style="background:rgba(0,0,0,0.35); border:2px solid ${col}; border-radius:8px; padding:14px; display:flex; flex-direction:column; align-items:center; gap:8px;">
+                <img src="${imgPath}" alt="${s.name}" style="width:80px;height:80px;object-fit:contain;" onerror="this.style.display='none'">
+                <div style="font-weight:bold;font-size:14px;color:${col};text-align:center;">${s.name}</div>
+                <div style="font-size:11px;color:${col};font-weight:bold;text-transform:uppercase;">${s.rarity}</div>
+                <div style="font-size:11px;color:#aaa;text-align:center;line-height:1.4;">${s.preference || ''}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  } else if (subTab === 'potions') {
+    const potions = typeof POTIONS_DATA !== 'undefined' ? POTIONS_DATA : [];
+    const rarityColor = (r) => {
+      switch ((r || '').toLowerCase()) {
+        case 'legendary': return '#ff6b00';
+        case 'rare':      return '#9b59b6';
+        case 'uncommon':  return '#4CAF50';
+        default:          return '#aaa';
+      }
+    };
+    subTabContent.innerHTML = `
+      <div style="padding:10px;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px;">
+          ${potions.map(p => {
+            const col = rarityColor(p.rarity);
+            const imgPath = `images/potions/${p.file || p.name.replace(/\s+/g,'_')}.png`;
+            return `
+              <div style="background:rgba(0,0,0,0.35); border:2px solid ${col}; border-radius:8px; padding:14px; display:flex; flex-direction:column; align-items:center; gap:8px;">
+                <img src="${imgPath}" alt="${p.name}" style="width:80px;height:80px;object-fit:contain;" onerror="this.style.display='none'">
+                <div style="font-weight:bold;font-size:14px;color:${col};text-align:center;">${p.name}</div>
+                <div style="font-size:11px;color:${col};font-weight:bold;text-transform:uppercase;">${p.rarity}</div>
+                <div style="font-size:11px;color:#ccc;text-align:center;line-height:1.4;">${p.effect || ''}</div>
               </div>
             `;
           }).join('')}
