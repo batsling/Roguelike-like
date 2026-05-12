@@ -4718,9 +4718,9 @@ function handleDiceCombatVictory(enemy) {
     }
   }
 
-  // Award one random potion or scroll
+  // Award one random potion or scroll (always runs; try/catch prevents silent failures)
   let lootIcon = '', lootDisplayName = '', lootDisplayRarity = '';
-  if (typeof window.selectRandomPotionOrScroll === 'function' && typeof window.addScrollOrPotionToLoot === 'function') {
+  try {
     const lootReward = window.selectRandomPotionOrScroll();
     window.addScrollOrPotionToLoot(lootReward);
     lootIcon = lootReward.type === 'scroll' ? '📜' : '🧪';
@@ -4733,6 +4733,8 @@ function handleDiceCombatVictory(enemy) {
       timestamp: new Date().toLocaleString()
     });
     if (typeof updateEncounterHistory === 'function') updateEncounterHistory();
+  } catch (e) {
+    console.error('Failed to award post-combat loot:', e);
   }
 
   saveCurrentGame();

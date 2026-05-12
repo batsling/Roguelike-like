@@ -510,7 +510,7 @@ function _applyVorpal(card, addDmgBonus) {
 
 // --- Scare Monster ---
 function _scrollScareMonster(outcomeKey) {
-  if (!gameState.pendingEnemyStartStun) gameState.pendingEnemyStartStun = { count: 0, all: false };
+  if (!gameState.pendingEnemyStartStun) gameState.pendingEnemyStartStun = { count: 0, choose: 0, all: false };
 
   if (outcomeKey === 'crit_good') {
     gameState.pendingEnemyStartStun.all = true;
@@ -519,9 +519,12 @@ function _scrollScareMonster(outcomeKey) {
     gameState.pendingEnemyStartStun.count = (gameState.pendingEnemyStartStun.count || 0) + 1;
     if (typeof createNotification === 'function') createNotification('1 random enemy will be Stunned next combat!', '#2ecc71', '😱');
   } else {
+    // good = choose up to 3, bad = choose 1 — picker shown at combat start
     const max = outcomeKey === 'good' ? 3 : 1;
-    gameState.pendingEnemyStartStun.count = (gameState.pendingEnemyStartStun.count || 0) + max;
-    if (typeof createNotification === 'function') createNotification(`Up to ${max} enem${max > 1 ? 'ies' : 'y'} will be Stunned next combat!`, '#2ecc71', '😱');
+    gameState.pendingEnemyStartStun.choose = (gameState.pendingEnemyStartStun.choose || 0) + max;
+    if (typeof createNotification === 'function') {
+      createNotification(`Choose up to ${max} enem${max > 1 ? 'ies' : 'y'} to Stun at combat start!`, '#2ecc71', '😱');
+    }
   }
 }
 
@@ -1093,6 +1096,84 @@ function _applyPotionEffect(potionName, target, targetType, cs) {
 }
 
 // ========================================
+// SCARE MONSTER — combat-start stun chooser
+// ========================================
+
+function _showCombatStunPicker(combatState, maxCount) {
+  const living = combatState.enemies.filter(e => e.health > 0);
+  if (living.length === 0) return;
+
+  // If fewer enemies than max, just stun them all
+  if (living.length <= maxCount) {
+    living.forEach(e => { e.statuses = e.statuses || {}; e.statuses['stun'] = 1; });
+    if (typeof createNotification === 'function') {
+      createNotification(`All ${living.length} enem${living.length > 1 ? 'ies' : 'y'} stunned!`, '#f1c40f', '😱');
+    }
+    if (window.CombatUI && typeof window.CombatUI.updateCombatDisplay === 'function') window.CombatUI.updateCombatDisplay();
+    return;
+  }
+
+  let chosen = [];
+
+  function renderPicker() {
+    const html = `
+      <div style="text-align:center; padding:16px; min-width:280px;">
+        <h3 style="color:#f1c40f; margin-top:0;">😱 Scare Monster</h3>
+        <p style="color:#aaa; font-size:13px; margin-bottom:14px;">
+          Choose up to <strong style="color:#f1c40f;">${maxCount}</strong> enem${maxCount > 1 ? 'ies' : 'y'} to Stun
+          (${chosen.length}/${maxCount} chosen)
+        </p>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+          ${living.map((e, i) => {
+            const isSel = chosen.includes(i);
+            return `<div onclick="window._stunPickToggle(${i})" style="
+              padding:10px 14px; border-radius:6px; cursor:pointer; user-select:none;
+              border:2px solid ${isSel ? '#f1c40f' : '#555'};
+              background:${isSel ? 'rgba(241,196,15,0.18)' : '#2a2a2a'};
+              color:${isSel ? '#f1c40f' : '#ddd'}; font-size:14px; font-weight:bold;
+              transition:all 0.12s;">
+              ${isSel ? '⭐' : '👹'} ${e.name} <span style="font-size:11px;color:#888;">(${e.health} HP)</span>
+            </div>`;
+          }).join('')}
+        </div>
+        <button onclick="window._stunPickConfirm()" style="
+          padding:10px 28px; background:#f1c40f; border:none; border-radius:6px;
+          color:#000; font-weight:bold; font-size:14px; cursor:pointer;">
+          Confirm${chosen.length > 0 ? ` (${chosen.length})` : ''}
+        </button>
+      </div>
+    `;
+    if (typeof createGameModal === 'function') createGameModal(html);
+
+    window._stunPickToggle = (idx) => {
+      if (chosen.includes(idx)) {
+        chosen = chosen.filter(i => i !== idx);
+      } else if (chosen.length < maxCount) {
+        chosen.push(idx);
+      }
+      renderPicker();
+    };
+
+    window._stunPickConfirm = () => {
+      delete window._stunPickToggle;
+      delete window._stunPickConfirm;
+      if (typeof closeGameModal === 'function') closeGameModal();
+      chosen.forEach(idx => {
+        const e = living[idx];
+        e.statuses = e.statuses || {};
+        e.statuses['stun'] = 1;
+      });
+      if (chosen.length > 0 && typeof createNotification === 'function') {
+        createNotification(`${chosen.length} enem${chosen.length > 1 ? 'ies' : 'y'} stunned!`, '#f1c40f', '😱');
+      }
+      if (window.CombatUI && typeof window.CombatUI.updateCombatDisplay === 'function') window.CombatUI.updateCombatDisplay();
+    };
+  }
+
+  renderPicker();
+}
+
+// ========================================
 // APPLY PENDING COMBAT EFFECTS AT COMBAT START
 // Called from combat-engine.js initCombat
 // ========================================
@@ -1104,6 +1185,10 @@ function applyPendingScrollEffects(combatState) {
     const living = combatState.enemies.filter(e => e.health > 0);
     if (stunData.all) {
       living.forEach(e => { e.statuses = e.statuses || {}; e.statuses['stun'] = 1; });
+    } else if ((stunData.choose || 0) > 0) {
+      // Player chooses which enemies to stun — show picker after combat UI renders
+      const chooseCount = stunData.choose;
+      setTimeout(() => _showCombatStunPicker(combatState, chooseCount), 800);
     } else if (stunData.count > 0) {
       const shuffled = living.slice().sort(() => Math.random() - 0.5);
       shuffled.slice(0, stunData.count).forEach(e => { e.statuses = e.statuses || {}; e.statuses['stun'] = 1; });
