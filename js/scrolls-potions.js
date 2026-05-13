@@ -24,6 +24,30 @@ function _rarityColor(r) { return (window.RARITY_COLORS || {})[r] || '#aaa'; }
 function _rarityBorder(r) { return RARITY_BORDER[r] || '#888'; }
 
 // ========================================
+// POTION COLOR ASSIGNMENT (per-run randomization)
+// ========================================
+
+const POTION_UNIDENTIFIED_COLORS = [
+  'Unidentified_Red', 'Unidentified_Orange', 'Unidentified_Yellow',
+  'Unidentified_Green', 'Unidentified_Cyan', 'Unidentified_Teal',
+  'Unidentified_Violet', 'Unidentified_Purple', 'Unidentified_Brown',
+  'Unidentified_Black', 'Unidentified_Gray', 'Unidentified_White'
+];
+
+function getPotionColorMap() {
+  if (!gameState.potionColorMap) {
+    const names = (window.POTIONS_DATA || []).map(p => p.name);
+    const shuffled = [...POTION_UNIDENTIFIED_COLORS].sort(() => Math.random() - 0.5);
+    gameState.potionColorMap = {};
+    names.forEach((name, i) => {
+      gameState.potionColorMap[name] = shuffled[i % shuffled.length];
+    });
+    if (typeof saveCurrentGame === 'function') saveCurrentGame();
+  }
+  return gameState.potionColorMap;
+}
+
+// ========================================
 // IDENTIFICATION STATE
 // ========================================
 
@@ -110,7 +134,9 @@ function getPotionImagePath(potionData) {
   if (isPotionIdentified(potionData.name) && potionData.file) {
     return `images/potions/${potionData.file}.png`;
   }
-  return 'images/potions/Unidentified.png';
+  const colorMap = getPotionColorMap();
+  const colorFile = colorMap[potionData.name] || 'Unidentified_Red';
+  return `images/potions/${colorFile}.png`;
 }
 
 // ========================================
@@ -1248,6 +1274,7 @@ window.getScrollDisplayName       = getScrollDisplayName;
 window.getScrollImagePath         = getScrollImagePath;
 window.getPotionDisplayName       = getPotionDisplayName;
 window.getPotionImagePath         = getPotionImagePath;
+window.getPotionColorMap          = getPotionColorMap;
 window.selectRandomPotionOrScroll = selectRandomPotionOrScroll;
 window.addScrollOrPotionToLoot    = addScrollOrPotionToLoot;
 window.useScrollFromLoot          = useScrollFromLoot;

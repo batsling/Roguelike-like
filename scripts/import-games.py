@@ -23,6 +23,10 @@ E: Source
 import openpyxl
 import json
 import re
+import os
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 
 def name_to_filename(name):
     """Convert game name to kebab-case filename"""
@@ -37,7 +41,8 @@ def name_to_filename(name):
 
 def import_games():
     # Load workbook
-    wb = openpyxl.load_workbook('Roguelikes.xlsx')
+    xlsx_path = os.path.join(PROJECT_ROOT, 'tools', 'Roguelikes.xlsx')
+    wb = openpyxl.load_workbook(xlsx_path)
 
     if 'games' not in wb.sheetnames or 'connections' not in wb.sheetnames:
         print(f"Error: Required sheets not found. Available sheets: {wb.sheetnames}")
@@ -86,12 +91,12 @@ def import_games():
 
         name = str(name).strip()
 
-        # Generate cover image path - use File column if available, otherwise generate from name
-        if file_name and str(file_name).strip():
-            cover_image = f"images/covers/{str(file_name).strip()}.jpg"
+        # Generate cover image path - check for .png first, fall back to .jpg
+        base = str(file_name).strip() if file_name and str(file_name).strip() else name_to_filename(name)
+        if os.path.exists(os.path.join(PROJECT_ROOT, 'images', 'covers', f'{base}.png')):
+            cover_image = f"images/covers/{base}.png"
         else:
-            filename = name_to_filename(name)
-            cover_image = f"images/covers/{filename}.jpg"
+            cover_image = f"images/covers/{base}.jpg"
 
         # Get games this game influenced
         games_influenced = connections_map.get(name, [])
@@ -142,11 +147,12 @@ def import_games():
 var GAMES_DATA = {json.dumps(games, indent=2)};
 """
 
-    # Write to file
-    with open('games-data.js', 'w', encoding='utf-8') as f:
+    # Write to data/games-data.js in the project root
+    out_path = os.path.join(PROJECT_ROOT, 'data', 'games-data.js')
+    with open(out_path, 'w', encoding='utf-8') as f:
         f.write(output)
 
-    print(f"\n✅ Successfully imported {len(games)} games and {len(all_connections)} connections to games-data.js")
+    print(f"\n✅ Successfully imported {len(games)} games and {len(all_connections)} connections to {out_path}")
 
     # Show first game as example
     if games:
