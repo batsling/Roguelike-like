@@ -645,12 +645,14 @@ function renderEnemyCard(enemy, combat) {
 
   const safePattern = (enemy.pattern || '').replace(/"/g, '&quot;');
   const safeAbility = (enemy.ability || '').replace(/"/g, '&quot;');
+  const safeWeight  = enemy.weight != null ? String(enemy.weight) : '';
   return `
     <div id="enemy-card-${enemy.id}"
          class="enemy-card${isTargeting ? ' enemy-targetable' : ''}"
          data-enemy-id="${enemy.id}"
          data-full-pattern="${safePattern}"
          data-full-ability="${safeAbility}"
+         data-full-weight="${safeWeight}"
          style="
       display: flex; flex-direction: column; align-items: center;
       opacity: ${isDead ? 0.2 : 1};
@@ -734,9 +736,9 @@ function ensureEnemyPatternTooltip() {
     tip.style.cssText = [
       'position:fixed', 'z-index:9999', 'pointer-events:none',
       'background:#1a1a2e', 'border:1px solid #9b59b6',
-      'border-radius:8px', 'padding:8px 12px',
-      'font-size:11px', 'color:#e0e0e0', 'line-height:1.7',
-      'max-width:280px', 'white-space:pre-wrap',
+      'border-radius:8px', 'padding:10px 14px',
+      'font-size:11px', 'color:#e0e0e0', 'line-height:1.6',
+      'max-width:290px',
       'box-shadow:0 4px 16px rgba(0,0,0,0.7)',
       'display:none',
     ].join(';');
@@ -744,32 +746,58 @@ function ensureEnemyPatternTooltip() {
   }
 }
 
-function formatEnemyPattern(pattern) {
-  if (!pattern) return 'No pattern data';
-  // Ordered: "Turn 1: X | Turn 2: Y | Next: Repeat"
+function formatEnemyPatternLines(pattern) {
+  if (!pattern) return [];
   if (/Turn \d+:/i.test(pattern)) {
-    return pattern.split('|').map(s => s.trim()).join('\n');
+    return pattern.split('|').map(s => s.trim()).filter(Boolean);
   }
-  // Random: "Always: 75% X / 25% Y"
   const body = pattern.replace(/^Always:\s*/i, '');
   if (body.includes('%') && body.includes('/')) {
-    return 'Always:\n' + body.split('/').map(s => '  ' + s.trim()).join('\n');
+    return ['Always:', ...body.split('/').map(s => '  ' + s.trim())];
   }
-  return pattern;
+  return [pattern.trim()];
 }
 
 function showEnemyPatternTooltip(el, e) {
   const tip = document.getElementById('enemy-pattern-tooltip');
   if (!tip) return;
-  const patternText = formatEnemyPattern(el.dataset.fullPattern || '');
-  const ability = (el.dataset.fullAbility || '').trim();
-  let content = patternText;
-  if (ability && ability.toUpperCase() !== 'N/A') {
-    content += '\n\n★ Ability: ' + ability;
+
+  const patternLines = formatEnemyPatternLines(el.dataset.fullPattern || '');
+  const ability      = (el.dataset.fullAbility || '').trim();
+  const weight       = (el.dataset.fullWeight  || '').trim();
+
+  const dim   = 'color:#aaa;font-size:10px;';
+  const label = 'color:#9b59b6;font-size:10px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;';
+  const divider = '<div style="border-top:1px solid rgba(255,255,255,0.1);margin:7px 0;"></div>';
+
+  let html = '';
+
+  // Weight row
+  if (weight !== '') {
+    html += `<div style="${dim}">⚖ Weight: <span style="color:#f1c40f;font-weight:bold;">${weight}</span></div>`;
+    html += divider;
   }
-  tip.textContent = content;
+
+  // Pattern section
+  html += `<div style="${label}">📋 Pattern</div>`;
+  html += patternLines.map(line =>
+    `<div style="color:#e0e0e0;">${_escHtml(line)}</div>`
+  ).join('');
+
+  // Ability section
+  if (ability && ability.toUpperCase() !== 'N/A') {
+    html += divider;
+    html += `<div style="${label}">★ Ability</div>`;
+    html += `<div style="color:#f39c12;">${_escHtml(ability)}</div>`;
+  }
+
+  tip.innerHTML = html;
   tip.style.display = 'block';
   positionEnemyPatternTooltip(e);
+}
+
+function _escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function hideEnemyPatternTooltip() {
