@@ -90,6 +90,10 @@ function identifyPotionType(name) {
     if (typeof createNotification === 'function') {
       createNotification(`Identified: ${name}!`, '#3498db', '🧪');
     }
+    if (typeof updateLootDisplay === 'function') updateLootDisplay();
+    if (window.CombatUI && typeof window.CombatUI.updateCombatDisplay === 'function') {
+      window.CombatUI.updateCombatDisplay();
+    }
   }
 }
 
@@ -108,6 +112,10 @@ function unidentifyPotionType(name) {
   if (idx !== -1) {
     list.splice(idx, 1);
     gameState.identifiedPotionTypes = list;
+    if (typeof updateLootDisplay === 'function') updateLootDisplay();
+    if (window.CombatUI && typeof window.CombatUI.updateCombatDisplay === 'function') {
+      window.CombatUI.updateCombatDisplay();
+    }
   }
 }
 
