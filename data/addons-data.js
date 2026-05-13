@@ -120,5 +120,30 @@ var ADDONS_DATA = {
     "name": "Vorpal",
     "description": "A random Enemy Type and Weight are chosen. This Weapon Deals +10 Dmg to Enemies that fit that Type and Weight",
     "canBeAttachedTo": "Weapon (Attack)"
+  },
+  "singlecast": {
+    "name": "SingleCast",
+    "description": "Only usable once per combat",
+    "canBeAttachedTo": "Spell"
+  },
+  "channel": {
+    "name": "Channel",
+    "description": "Costs 1 less mana each time it's cast (minimum 1)",
+    "canBeAttachedTo": "Spell"
+  },
+  "cooldown": {
+    "name": "Cooldown",
+    "description": "Only usable once per turn",
+    "canBeAttachedTo": "Spell"
+  },
+  "deplete": {
+    "name": "Deplete",
+    "description": "Costs 1 more mana each time it's cast",
+    "canBeAttachedTo": "Spell"
+  },
+  "future": {
+    "name": "Future",
+    "description": "Effect is delayed until the start of the next turn",
+    "canBeAttachedTo": "Spell"
   }
 };

@@ -5,7 +5,8 @@
  * - Displaying shop modal with items for purchase
  * - Handling item purchases and gold transactions
  * - Shop reroll system with escalating costs
- * - Curse of Frugality price modifications
+ * - Curse of Frugality price modifications (flat increase per curse)
+ * - Charisma discount: each point of Charisma = 1% off all shop prices
  * - Shop state management (items, reroll count)
  *
  * Key Functions:
@@ -98,6 +99,11 @@ function showShopModal(purchasedIndices = []) {
     sum + getPowerValue(curse.power, { Low: 5, Medium: 10, High: 15 }), 0
   );
   const hasFrugality = frugalityCurses.length > 0;
+
+  // Charisma discount: 1% off per Charisma point (applied after frugality)
+  const charismaStat = typeof charisma !== 'undefined' ? charisma : 0;
+  const hasCharismaDiscount = charismaStat > 0;
+  const applyDiscount = (raw) => Math.max(1, Math.floor(raw * (1 - charismaStat * 0.01)));
 
   // Calculate reroll cost: free first time, then 5, 10, 15, etc.
   const rerollCost = gameState.shopRerollCount === 0 ? 0 : gameState.shopRerollCount * 5;
@@ -281,8 +287,13 @@ function showShopModal(purchasedIndices = []) {
   const purchasedCardIndices = gameState.purchasedShopCards || [];
 
   const cardPriceFor = (c) => {
-    const base = c.rarity === 'Rare' ? 50 : c.rarity === 'Uncommon' ? 30 : 15;
-    return base + frugalityModifier;
+    const rawBase = c.rarity === 'Rare' ? 50 : c.rarity === 'Uncommon' ? 30 : 15;
+    const rawPrice = rawBase + frugalityModifier;
+    return applyDiscount(rawPrice);
+  };
+  const cardRawPriceFor = (c) => {
+    const rawBase = c.rarity === 'Rare' ? 50 : c.rarity === 'Uncommon' ? 30 : 15;
+    return rawBase + frugalityModifier;
   };
 
   let shopCardsHTML = '';
@@ -295,8 +306,12 @@ function showShopModal(purchasedIndices = []) {
     shopCards.forEach((card, idx) => {
       const isPurchased = purchasedCardIndices.includes(idx);
       const price = cardPriceFor(card);
+      const rawPrice = cardRawPriceFor(card);
       const color = getRarityColor(card.rarity);
       const upgBtn = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
+      const cardPriceDisplay = hasCharismaDiscount && price < rawPrice
+        ? `<span style="text-decoration:line-through;color:#888;margin-right:5px;font-size:11px;">${rawPrice}</span>${price}💰`
+        : `${price}💰`;
       shopCardsHTML += `
         <div style="
           background:#1e1e2e;border:2px solid ${color};border-radius:10px;
@@ -309,7 +324,7 @@ function showShopModal(purchasedIndices = []) {
           <div style="font-weight:bold;font-size:14px;color:white;text-align:center;margin-bottom:3px;">${card.name}</div>
           <div style="color:${color};font-size:11px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
           <div style="font-size:11px;color:#ccc;text-align:center;margin-bottom:8px;">${card.description}</div>
-          <div style="color:#ffd700;font-size:13px;font-weight:bold;margin-bottom:8px;">${price}💰</div>
+          <div style="color:#ffd700;font-size:13px;font-weight:bold;margin-bottom:8px;">${cardPriceDisplay}</div>
           <button class="shop-card-buy-btn" data-card-index="${idx}" data-price="${price}" style="
             padding:8px 16px;background:${isPurchased ? '#555' : (gold >= price ? '#9b59b6' : '#555')};
             border:none;border-radius:6px;color:white;
@@ -385,18 +400,21 @@ function showShopModal(purchasedIndices = []) {
     const isPurchased = purchasedIndices.includes(index);
     const rarityLower = item.rarity ? item.rarity.toLowerCase() : 'common';
     const basePrice = rarityLower === 'common' ? 8 : rarityLower === 'uncommon' ? 15 : rarityLower === 'rare' ? 25 : 40;
-    const price = basePrice + frugalityModifier;
+    const rawPrice = basePrice + frugalityModifier;
+    const price = applyDiscount(rawPrice);
     const rarityColor = getRarityColor(item.rarity);
 
     // Get item image
     let imageUrl = item.image && item.image.trim() !== '' ? item.image : 'images/items/default.png';
 
+    const showStrike = hasFrugality || (hasCharismaDiscount && price < rawPrice);
+    const strikeValue = hasFrugality ? basePrice : rawPrice;
     let priceDisplay = '';
-    if (hasFrugality) {
+    if (showStrike) {
       priceDisplay = `
         <div style="text-align: center; margin-top: 8px;">
           <div style="color: gold; font-weight: bold; font-size: 16px;">
-            <span style="text-decoration: line-through; color: #888; margin-right: 8px; font-size: 14px;">${basePrice}</span>
+            <span style="text-decoration: line-through; color: #888; margin-right: 8px; font-size: 14px;">${strikeValue}</span>
             ${price}💰
           </div>
         </div>

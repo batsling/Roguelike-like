@@ -1621,7 +1621,9 @@ function switchCollectionTab(tab) {
 
     // Get spells and keywords data
     const spellsData = typeof SPELLS_DATA !== 'undefined' ? SPELLS_DATA : [];
-    const keywordsData = typeof SPELL_KEYWORDS_DATA !== 'undefined' ? SPELL_KEYWORDS_DATA : {};
+    const keywordsData = typeof ADDONS_DATA !== 'undefined'
+      ? Object.fromEntries(Object.entries(ADDONS_DATA).filter(([, v]) => v.canBeAttachedTo === 'Spell'))
+      : (typeof SPELL_KEYWORDS_DATA !== 'undefined' ? SPELL_KEYWORDS_DATA : {});
     const searchTerm = window.spellsSearchTerm.toLowerCase();
 
     // Get unique elements for filter

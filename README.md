@@ -55,7 +55,7 @@
 A roguelike deckbuilder where players navigate a graph of over 600 real video games connected by influence relationships. Each run is a 5–8 game journey from a randomly chosen start game to a hidden Amulet game, fought through card-based combat, stat-check events, and a merchant shop.
 
 **Key Features:**
-- 642 games, 811 influence connections — the map is a real network of video game history
+- 653 games, 825 influence connections — the map is a real network of video game history
 - STS-style card combat: hand, energy, draw / discard / exhaust piles
 - Pre-combat events with a two-roll D20 system and four outcome tiers
 - 11 curse types across 3 categories (Automatic, Manual, Restriction)
@@ -109,7 +109,7 @@ Your character has a set of stats that grow throughout the run through items, ev
 | **Strength** | Boosts Attack card damage; adds a flat bonus to Strength-based event rolls |
 | **Dexterity** | Boosts ranged attack damage; adds a flat bonus to Dexterity-based event rolls |
 | **Intelligence** | Adds a flat bonus to Intelligence-based event rolls |
-| **Charisma** | Adds a flat bonus to Charisma-based event rolls |
+| **Charisma** | Adds a flat bonus to Charisma-based event rolls; each point gives 1% off all shop prices |
 | **Constitution** | Derived stat: every 5 max HP gained during the run = +1 Constitution. Adds a bonus to Constitution event rolls |
 | **Luck** | Each point gives a 10% independent chance to roll with advantage (roll twice, take the better result) on any dice roll — applies to both event rolls separately |
 | **FoV** | Field of View. Base 3 + FoV = how many location choices appear at each decision point |
@@ -323,6 +323,10 @@ You can reach the shop as a post-combat choice or by landing on a Shop node on t
 | **Remove a Card** | 50g → 75g → 100g… | Removes one card from your deck permanently. Cost increases by 25g per removal across the whole run. |
 | **Upgrade a Card** | Free (via Smith) or in-shop | Available through the Smith post-combat option |
 
+#### Charisma Discount
+
+Each point of **Charisma** reduces all shop prices by **1%** (applied after Frugality modifiers, rounded down, minimum 1g). A discounted price shows a struck-through original next to the final price, the same way Frugality increases are displayed.
+
 #### Rerolling Shop Items
 
 Uses one Reroll charge. The gold cost escalates per reroll within a single visit and resets on the next visit:
@@ -427,6 +431,42 @@ When you defeat the Amulet game, the **escape phase** begins. You must fight you
 
 ## Recent Updates
 
+### Version 6.5 - Scrolls & Potions, Charisma Discount, Data Updates (May 2026)
+
+**Scrolls & Potions Loot System:**
+- Two new loot categories alongside fish: **Scrolls** and **Potions**
+- **Scrolls** are usable outside combat and trigger a two-roll INT system (DC 10 + crit check), with four outcome tiers (Critical Success / Success / Failure / Critical Failure)
+- **Potions** are usable inside combat via a full target picker (player, allies, or enemies)
+- Both types start **unidentified** and are identified on first use
+- **Scrolls** all share a single unidentified appearance; identified scrolls show their unique artwork
+- **Potions** use a per-run random color system: at run start each potion type is assigned one of 12 colors (Red, Orange, Yellow, Green, Cyan, Teal, Violet, Purple, Brown, Black, Gray, White) — all potions of the same type share the same color for the run, but colors are reshuffled each new run. Identifying a potion immediately updates its image everywhere in the UI
+- **Scroll of Identify** (and similar future effects) that identify a potion type instantly refresh both the loot panel and combat loot sidebar
+- **Scroll of Amnesia** re-hides identified scrolls and potions
+
+**Implemented Scrolls:** Teleportation, Identify, Create Monster, Vorpalize Weapon, Scare Monster, Blank Scroll, Enchant Weapon, Sleep, Aggravate Monsters, Fire, Amnesia, Create Food
+
+**Implemented Potions:** Fire Potion, Block Potion, Energy Potion, Weak Potion, Vulnerable Potion, Speed Potion, Flex Potion, Fruit Juice, Dexterity Potion, Strength Potion, Explosive Ampoule, Liquid Bronze, Mana Potion
+
+**Vorpal Weapon Destruction:**
+- Vorpalizing a weapon that is already vorpalized **destroys** it (shatters from the overload), removing it from the deck permanently
+- A red 💥 notification fires: *"[Card] shattered! A weapon cannot be Vorpalized twice."*
+- The weapon card picker highlights already-vorpalized cards in red with an **⚠️ Already Vorpalized — will shatter!** warning for the player-choice outcomes
+
+**Charisma Shop Discount:**
+- Each point of Charisma gives **1% off** all shop prices (items and cards), applied after Frugality modifiers, rounded down, minimum 1g
+- Discounted prices show a struck-through original next to the final price, matching the Frugality display style
+
+**Spell Keywords → Addons:**
+- Spell keywords (SingleCast, Channel, Cooldown, Deplete, Future) moved from their own data file into `addons-data.js` under `canBeAttachedTo: "Spell"`
+- The Collection Spells panel Keywords sub-tab now reads directly from `ADDONS_DATA` filtered by the Spell parameter
+
+**Data Updates:**
+- 653 games, 825 connections (up from 642 / 811)
+- 11 new games: Beyond Words, Cinderia, Cropdeck, Endless Alice, Everything is Crab, Gambonanza, Lunchbreak Tactics, Morbid Metal, No-Skin, Oblivion Override, Overlooting
+- `import-games.py` updated to auto-detect `.png` vs `.jpg` cover images and write directly to `data/games-data.js`
+
+---
+
 ### Version 6.4 - Dice Tray, Spells Panel & Combat Fixes (May 2026)
 
 **Dice Tray:**
@@ -454,7 +494,7 @@ When you defeat the Amulet game, the **escape phase** begins. You must fight you
 - **Power cards keyword section**: Power-type cards in the card detail panel now only show status keyword badges for statuses the card **explicitly grants or inflicts** (detected via Gain/Inflict/Apply patterns). Previously any status name mentioned in the description was shown, cluttering Power card tooltips
 
 **Data Updates (from updated spreadsheet):**
-- 642 games, 811 connections (up from 638 / 804)
+- 642 games, 811 connections (up from 638 / 804) — see v6.5 for further updates
 - 36 enemies, 18 dice, 207 cards (dice-data now includes parsed face effects)
 - `convert-excel.js` updated: X costs preserved as strings; dice face parser generates `effects`, `addons`, and `isBlank` from text
 
