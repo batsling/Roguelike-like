@@ -427,6 +427,19 @@ const STATUS_META = {
   double_damage:  { img: 'DoubleDamage',   emoji: '⚔⚔', label: 'Double Damage'},
   enfeebled:      { img: 'Enfeebled',     emoji: '💀', label: 'Enfeebled'    },
   plated_armor:   { img: 'PlatedArmor',   emoji: '🛡', label: 'Plated Armor' },
+  // Intangible (applied by Wraith Form power card)
+  intangible:     { img: 'Intangible',    emoji: '👻', label: 'Intangible'   },
+  // Wraith Form passive marker — shown in Powers panel, not as a status icon
+  wraith_form:    { img: null,            emoji: '👻', label: 'Wraith Form'  },
+  // Other active statuses
+  wet:            { img: 'Wet',           emoji: '💧', label: 'Wet'          },
+  no_draw:        { img: 'NoDraw',        emoji: '🚫', label: 'No Draw'      },
+  burst:          { img: 'Burst',         emoji: '⚡', label: 'Burst'        },
+  envenom:        { img: 'Envenom',       emoji: '☠',  label: 'Envenom'      },
+  evolve:         { img: 'Evolve',        emoji: '🧬', label: 'Evolve'       },
+  feel_no_pain:   { img: 'FeelNoPain',    emoji: '💪', label: 'Feel No Pain' },
+  fire_breathing: { img: 'FireBreathing', emoji: '🐉', label: 'Fire Breathing'},
+  corpse_explosion: { img: 'CorpseExplosion', emoji: '💀', label: 'Corpse Explosion'},
 };
 
 // ============== MAIN RENDER ENTRY POINT ==============
@@ -2315,6 +2328,7 @@ function renderStatusRow(statuses, _id) {
   Object.entries(statuses).forEach(([k, v]) => {
     if (k === 'block') return;
     if (k === 'machine_learning') return; // shown in Powers overlay instead
+    if (k === 'wraith_form') return;      // passive marker — shown in Powers panel only
     if (Array.isArray(v)) {
       v.forEach(instance => { if (instance > 0) entries.push([k, instance]); });
     } else if (v > 0) {
