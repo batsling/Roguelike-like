@@ -516,15 +516,31 @@ function _scrollVorpalizeWeapon(outcomeKey) {
     }, 'Vorpalize a Weapon Attack Card');
   } else {
     const card = weaponCards[Math.floor(Math.random() * weaponCards.length)];
-    _applyVorpal(card, addBonus);
-    if (typeof createNotification === 'function') {
+    const destroyed = _applyVorpal(card, addBonus);
+    if (!destroyed && typeof createNotification === 'function') {
       createNotification(`${card.name} gained Vorpal${addBonus ? ' +5 Dmg' : ''}!`, '#f1c40f', '⚔️');
     }
   }
 }
 
+// Returns true if the card was destroyed (already had vorpal), false if vorpalized normally.
 function _applyVorpal(card, addDmgBonus) {
-  // Pick a random enemy type and weight for the Vorpal bonus
+  if (card.vorpal) {
+    // Already vorpalized — weapon shatters from the overload
+    const cardName = card.name;
+    const idx = (gameState.deck || []).indexOf(card);
+    if (idx !== -1 && typeof removeCardFromDeck === 'function') {
+      removeCardFromDeck(idx);
+    } else if (idx !== -1) {
+      gameState.deck.splice(idx, 1);
+    }
+    if (typeof saveCurrentGame === 'function') saveCurrentGame();
+    if (typeof createNotification === 'function') {
+      createNotification(`${cardName} shattered! A weapon cannot be Vorpalized twice.`, '#e74c3c', '💥');
+    }
+    return true;
+  }
+
   const types = ['Strength', 'Dexterity', 'Intelligence', 'Charisma'];
   const vorpalType = types[Math.floor(Math.random() * types.length)];
   const vorpalWeight = Math.floor(Math.random() * 5) + 1;
@@ -532,9 +548,9 @@ function _applyVorpal(card, addDmgBonus) {
   card.vorpal = { type: vorpalType, weight: vorpalWeight };
   if (addDmgBonus) card.vorpalDmgBonus = (card.vorpalDmgBonus || 0) + 5;
 
-  // Update description to reflect upgrade
   const badge = ` [Vorpal vs ${vorpalType} W${vorpalWeight}${addDmgBonus ? ' +5' : ''}]`;
   card.name = card.name.replace(/ \[Vorpal[^\]]*\]/, '') + badge;
+  return false;
 }
 
 // --- Scare Monster ---
@@ -600,15 +616,22 @@ function _applyEnchant(card, dmgBonus, addRetain) {
 
 // Helper: weapon card picker UI
 function _showWeaponCardPicker(cards, onSelect, title) {
-  const itemsHTML = cards.map((c, i) => `
+  const itemsHTML = cards.map((c, i) => {
+    const alreadyVorpal = !!c.vorpal;
+    const border = alreadyVorpal ? '#e74c3c' : '#e67e22';
+    const bg     = alreadyVorpal ? '#2a1a1a' : '#2a2a2a';
+    const bgHov  = alreadyVorpal ? '#3a1a1a' : '#3a2a1a';
+    const warn   = alreadyVorpal ? ' <span style="color:#e74c3c;font-size:11px;">⚠️ Already Vorpalized — will shatter!</span>' : '';
+    return `
     <div style="cursor:pointer; padding:10px 14px; border-radius:6px; margin-bottom:6px;
-      border:2px solid #e67e22; background:#2a2a2a; color:#ddd; font-size:13px;
+      border:2px solid ${border}; background:${bg}; color:#ddd; font-size:13px;
       transition:background 0.15s;"
-      onmouseenter="this.style.background='#3a2a1a'" onmouseleave="this.style.background='#2a2a2a'"
+      onmouseenter="this.style.background='${bgHov}'" onmouseleave="this.style.background='${bg}'"
       onclick="window._weaponPickSelect(${i})">
-      ⚔️ ${c.name}
+      ⚔️ ${c.name}${warn}
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   const html = `
     <div style="text-align:center; padding:10px;">
