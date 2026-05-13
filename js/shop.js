@@ -204,6 +204,9 @@ function showShopModal(purchasedIndices = []) {
     </div>
   `;
 
+  // ===== IDENTIFY SCROLLS & POTIONS =====
+  const identifyServiceHTML = _buildIdentifyServiceHTML();
+
   // ===== CARDS FOR SALE =====
   // 4 cards from the player's character card pool + 2 from outside that pool
   if (!gameState.currentShopCards) {
@@ -338,8 +341,7 @@ function showShopModal(purchasedIndices = []) {
     `;
 
     gameState.loot.forEach((lootItem, index) => {
-      if (lootItem.isItem) {
-        // Items from fish can't be sold here (they're in regular inventory)
+      if (lootItem.isItem || lootItem.type === 'scroll' || lootItem.type === 'potion') {
         return;
       }
 
@@ -465,6 +467,7 @@ function showShopModal(purchasedIndices = []) {
         <div style="color: #4CAF50; font-weight: bold; font-size: 18px;">🔄 Rerolls: ${reroll}</div>
       </div>
       ${cardServicesHTML}
+      ${identifyServiceHTML}
       ${shopCardsHTML}
       ${lootSellHTML}
       ${itemsHTML}
@@ -757,7 +760,90 @@ function sellLootItem(index) {
   showShopModal(purchasedIndices);
 }
 
+// ===== IDENTIFY SERVICE =====
+
+const IDENTIFY_COSTS = { Common: 5, Uncommon: 10, Rare: 20, Legendary: 30 };
+
+function _buildIdentifyServiceHTML() {
+  const loot = (typeof gameState !== 'undefined' && gameState.loot) ? gameState.loot : [];
+  const unidScrolls = loot
+    .map((l, i) => ({ ...l, _idx: i }))
+    .filter(l => l.type === 'scroll' && typeof isScrollIdentified === 'function' && !isScrollIdentified(l.name));
+  const unidPotions = loot
+    .map((l, i) => ({ ...l, _idx: i }))
+    .filter(l => l.type === 'potion' && typeof isPotionIdentified === 'function' && !isPotionIdentified(l.name));
+
+  const uniqueScrollTypes = [...new Set(unidScrolls.map(s => s.name))].map(name => {
+    const item = unidScrolls.find(s => s.name === name);
+    return { name, rarity: item.rarity, cost: IDENTIFY_COSTS[item.rarity] || 5 };
+  });
+  const uniquePotionTypes = [...new Set(unidPotions.map(p => p.name))].map(name => {
+    const item = unidPotions.find(p => p.name === name);
+    return { name, rarity: item.rarity, cost: IDENTIFY_COSTS[item.rarity] || 5 };
+  });
+
+  if (uniqueScrollTypes.length === 0 && uniquePotionTypes.length === 0) {
+    return `
+      <div style="background:#2d2d2d; border-radius:12px; border:3px solid #3498db; padding:20px; margin-bottom:20px;">
+        <h3 style="color:#3498db; margin:0 0 8px; text-align:center; font-size:18px;">🔍 Identify Service</h3>
+        <p style="color:#666; text-align:center; font-size:13px; margin:0;">No unidentified scrolls or potions to identify.</p>
+      </div>
+    `;
+  }
+
+  const makeRow = (type, item) => {
+    const canAfford = gold >= item.cost;
+    const fn = type === 'scroll' ? 'shopIdentifyScroll' : 'shopIdentifyPotion';
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #444;">
+        <span style="font-size:13px;">${type === 'scroll' ? '📜' : '🧪'} Unidentified ${type === 'scroll' ? 'Scroll' : 'Potion'}</span>
+        <span style="color:#aaa;font-size:12px;">(${item.rarity})</span>
+        <button onclick="${fn}('${item.name}', ${item.cost})" style="
+          margin-left:auto; padding:6px 12px; border:none; border-radius:5px; font-size:12px;
+          font-weight:bold; cursor:${canAfford ? 'pointer' : 'not-allowed'};
+          background:${canAfford ? '#3498db' : '#555'}; color:${canAfford ? 'white' : '#888'};"
+          ${canAfford ? '' : 'disabled'}>
+          ${item.cost}💰 Identify
+        </button>
+      </div>
+    `;
+  };
+
+  const scrollRows = uniqueScrollTypes.map(s => makeRow('scroll', s)).join('');
+  const potionRows = uniquePotionTypes.map(p => makeRow('potion', p)).join('');
+
+  return `
+    <div style="background:#2d2d2d; border-radius:12px; border:3px solid #3498db; padding:20px; margin-bottom:20px;">
+      <h3 style="color:#3498db; margin:0 0 14px; text-align:center; font-size:18px;">🔍 Identify Service</h3>
+      <p style="color:#888; font-size:12px; text-align:center; margin:0 0 12px;">Common 5g · Uncommon 10g · Rare 20g · Legendary 30g</p>
+      ${scrollRows}${potionRows}
+    </div>
+  `;
+}
+
+function shopIdentifyScroll(scrollName, cost) {
+  if (gold < cost) return;
+  gold -= cost;
+  gameState.gold = gold;
+  if (typeof updateTopBar === 'function') updateTopBar();
+  if (typeof _keepersSackCheck === 'function') _keepersSackCheck(cost);
+  if (typeof identifyScrollType === 'function') identifyScrollType(scrollName);
+  showShopModal();
+}
+
+function shopIdentifyPotion(potionName, cost) {
+  if (gold < cost) return;
+  gold -= cost;
+  gameState.gold = gold;
+  if (typeof updateTopBar === 'function') updateTopBar();
+  if (typeof _keepersSackCheck === 'function') _keepersSackCheck(cost);
+  if (typeof identifyPotionType === 'function') identifyPotionType(potionName);
+  showShopModal();
+}
+
 // Export shop functions
 window.showShopModal = showShopModal;
 window.leaveShop = leaveShop;
 window.sellLootItem = sellLootItem;
+window.shopIdentifyScroll = shopIdentifyScroll;
+window.shopIdentifyPotion = shopIdentifyPotion;

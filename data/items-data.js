@@ -455,18 +455,6 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "Fire Potion",
-    "rarity": "Uncommon",
-    "type": "Usable",
-    "description": "In combat, deal 20 damage to a target enemy",
-    "game": "Slay the Spire",
-    "tags": [
-      "potion"
-    ],
-    "image": "images/items/FirePotion.png",
-    "unlockCondition": null
-  },
-  {
     "name": "Focus Crystal",
     "rarity": "Common",
     "type": "Passive",
@@ -1014,16 +1002,6 @@ var ITEMS_DATA = [
       "holy"
     ],
     "image": "images/items/SacredOrb.png",
-    "unlockCondition": null
-  },
-  {
-    "name": "Scroll of Teleportation",
-    "rarity": "Common",
-    "type": "Usable",
-    "description": "Teleport to a random space",
-    "game": "Rogue",
-    "tags": [],
-    "image": "images/items/ScrollOfTeleportation.png",
     "unlockCondition": null
   },
   {

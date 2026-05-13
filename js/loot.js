@@ -507,23 +507,23 @@ function removeFromLoot(index) {
 // ========================================
 
 /**
- * Show the loot modal with all fish/items in the loot inventory
+ * Show the loot modal with tabbed display: Fish | Scrolls | Potions
  */
 function showLootModal() {
-  if (!gameState.loot) {
-    gameState.loot = [];
-  }
+  if (!gameState.loot) gameState.loot = [];
 
-  const lootHTML = getLootHTML();
+  window._lootModalTab = window._lootModalTab || 'fish';
 
   const modalHTML = `
     <div style="text-align: center;">
       <h2 style="color: #66ddff; margin-top: 0;">Loot Inventory</h2>
-      <p style="color: #aaa; margin-bottom: 20px;">
-        Fish and items that can be sold at shops
-      </p>
+      <div id="loot-tab-bar" style="display:flex; border-bottom:2px solid #444; margin-bottom:16px;">
+        ${_lootTabBtn('fish',    '🐟 Fish')}
+        ${_lootTabBtn('scrolls','📜 Scrolls')}
+        ${_lootTabBtn('potions','🧪 Potions')}
+      </div>
       <div id="loot-display" style="min-height: 200px;">
-        ${lootHTML}
+        ${getLootHTML(window._lootModalTab)}
       </div>
       <button onclick="closeGameModal()" style="margin-top: 20px; padding: 12px 24px; background: #555; border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px;">
         Close
@@ -534,12 +534,32 @@ function showLootModal() {
   createGameModal(modalHTML);
 }
 
+function _lootTabBtn(tab, label) {
+  const active = window._lootModalTab === tab;
+  return `<div onclick="window._lootModalTab='${tab}'; updateLootDisplay();" style="
+    flex:1; padding:10px 0; cursor:pointer; font-size:13px; font-weight:bold;
+    color:${active ? '#66ddff' : '#888'};
+    border-bottom:3px solid ${active ? '#66ddff' : 'transparent'};
+    transition:all 0.15s;">
+    ${label}
+  </div>`;
+}
+
 /**
- * Get HTML for displaying loot items
+ * Get HTML for displaying loot items by tab
+ * @param {string} tab - 'fish' | 'scrolls' | 'potions'
  * @returns {string} HTML string
  */
-function getLootHTML() {
-  if (!gameState.loot || gameState.loot.length === 0) {
+function getLootHTML(tab) {
+  tab = tab || window._lootModalTab || 'fish';
+  if (!gameState.loot) gameState.loot = [];
+
+  if (tab === 'scrolls') return _getScrollsLootHTML();
+  if (tab === 'potions') return _getPotionsLootHTML();
+
+  // Fish tab
+  const fishLoot = gameState.loot.filter(l => !l.type || l.type === 'fish' || l.isItem);
+  if (fishLoot.length === 0) {
     return `
       <div style="text-align: center; padding: 40px; color: #888; font-style: italic;">
         No loot yet - catch some fish!
@@ -550,6 +570,7 @@ function getLootHTML() {
   let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; padding: 20px;">';
 
   gameState.loot.forEach((lootItem, index) => {
+    if (lootItem.type === 'scroll' || lootItem.type === 'potion') return; // handled by other tabs
     if (lootItem.isItem) {
       // Regular item (from 5% chance)
       const item = lootItem.item;
@@ -613,13 +634,104 @@ function getLootHTML() {
   return html;
 }
 
+function _getScrollsLootHTML() {
+  const scrolls = (gameState.loot || []).map((l, i) => ({ ...l, _idx: i })).filter(l => l.type === 'scroll');
+  if (scrolls.length === 0) {
+    return `<div style="text-align:center; padding:40px; color:#888; font-style:italic;">No scrolls yet.</div>`;
+  }
+
+  let html = '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:15px; padding:20px;">';
+  scrolls.forEach(item => {
+    const data = typeof SCROLLS_DATA !== 'undefined' ? SCROLLS_DATA.find(s => s.name === item.name) : null;
+    const displayName = typeof getScrollDisplayName === 'function' ? getScrollDisplayName(item.name) : item.name;
+    const imgPath = (data && typeof getScrollImagePath === 'function') ? getScrollImagePath(data) : 'images/scrolls/Unidentified.png';
+    const borderColor = typeof _rarityBorder === 'function' ? _rarityBorder(item.rarity) : '#888';
+    const rarityColor = typeof _rarityColor === 'function' ? _rarityColor(item.rarity) : '#aaa';
+    const canUse = gameState.phase !== 'combat';
+    const useBtnStyle = canUse
+      ? 'background:#9b59b6; cursor:pointer; color:white;'
+      : 'background:#555; cursor:not-allowed; color:#888; opacity:0.6;';
+
+    html += `
+      <div style="
+        background:linear-gradient(135deg,rgba(100,50,150,0.18),rgba(50,25,75,0.18));
+        border:2px solid ${borderColor}; border-radius:8px; padding:15px; text-align:center;">
+        <img src="${imgPath}" alt="${displayName}" style="width:100%; height:110px; object-fit:contain;
+          border-radius:6px; background:rgba(0,0,0,0.3); padding:5px;"
+          onerror="this.src='images/scrolls/Unidentified.png'">
+        <div style="margin-top:8px; font-weight:bold; color:#c39be0; font-size:13px;">${displayName}</div>
+        <div style="color:${rarityColor}; font-size:11px; margin-top:3px;">${item.rarity}</div>
+        <button onclick="useScrollFromLoot(${item._idx})" ${canUse ? '' : 'disabled'} style="
+          margin-top:10px; padding:6px 14px; border:none; border-radius:5px; font-size:12px;
+          font-weight:bold; width:100%; ${useBtnStyle}">
+          ${canUse ? '📜 Use Scroll' : '🔒 Use outside combat'}
+        </button>
+      </div>
+    `;
+  });
+  html += '</div>';
+  return html;
+}
+
+function _getPotionsLootHTML() {
+  const potions = (gameState.loot || []).map((l, i) => ({ ...l, _idx: i })).filter(l => l.type === 'potion');
+  if (potions.length === 0) {
+    return `<div style="text-align:center; padding:40px; color:#888; font-style:italic;">No potions yet.</div>`;
+  }
+
+  let html = '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:15px; padding:20px;">';
+  potions.forEach(item => {
+    const data = typeof POTIONS_DATA !== 'undefined' ? POTIONS_DATA.find(p => p.name === item.name) : null;
+    const displayName = typeof getPotionDisplayName === 'function' ? getPotionDisplayName(item.name) : item.name;
+    const imgPath = (data && typeof getPotionImagePath === 'function') ? getPotionImagePath(data) : 'images/potions/Unidentified.png';
+    const borderColor = typeof _rarityBorder === 'function' ? _rarityBorder(item.rarity) : '#888';
+    const rarityColor = typeof _rarityColor === 'function' ? _rarityColor(item.rarity) : '#aaa';
+    const isIdentified = typeof isPotionIdentified === 'function' ? isPotionIdentified(item.name) : false;
+    const effectText = (isIdentified && data) ? data.effect : '???';
+    const canUse = gameState.phase === 'combat';
+    const useBtnStyle = canUse
+      ? 'background:#3498db; cursor:pointer; color:white;'
+      : 'background:#555; cursor:not-allowed; color:#888; opacity:0.6;';
+
+    html += `
+      <div style="
+        background:linear-gradient(135deg,rgba(50,100,150,0.18),rgba(25,50,75,0.18));
+        border:2px solid ${borderColor}; border-radius:8px; padding:15px; text-align:center;">
+        <img src="${imgPath}" alt="${displayName}" style="width:100%; height:110px; object-fit:contain;
+          border-radius:6px; background:rgba(0,0,0,0.3); padding:5px;"
+          onerror="this.src='images/potions/Unidentified.png'">
+        <div style="margin-top:8px; font-weight:bold; color:#6ab4ff; font-size:13px;">${displayName}</div>
+        <div style="color:${rarityColor}; font-size:11px; margin-top:3px;">${item.rarity}</div>
+        <div style="color:#aaa; font-size:11px; margin-top:4px; font-style:italic;">${effectText}</div>
+        <button onclick="usePotionFromLoot(${item._idx})" ${canUse ? '' : 'disabled'} style="
+          margin-top:10px; padding:6px 14px; border:none; border-radius:5px; font-size:12px;
+          font-weight:bold; width:100%; ${useBtnStyle}">
+          ${canUse ? '🧪 Use Potion' : '🔒 Use in combat'}
+        </button>
+      </div>
+    `;
+  });
+  html += '</div>';
+  return html;
+}
+
 /**
  * Update the loot display (if modal is open)
  */
 function updateLootDisplay() {
+  const tab = window._lootModalTab || 'fish';
+
+  const tabBar = document.getElementById('loot-tab-bar');
+  if (tabBar) {
+    tabBar.innerHTML =
+      _lootTabBtn('fish',    '🐟 Fish') +
+      _lootTabBtn('scrolls','📜 Scrolls') +
+      _lootTabBtn('potions','🧪 Potions');
+  }
+
   const lootDisplay = document.getElementById('loot-display');
   if (lootDisplay) {
-    lootDisplay.innerHTML = getLootHTML();
+    lootDisplay.innerHTML = getLootHTML(tab);
   }
 }
 
@@ -720,3 +832,6 @@ window.updateLootDisplay = updateLootDisplay;
 window.showLootTooltip = showLootTooltip;
 window.moveLootTooltip = moveLootTooltip;
 window.hideLootTooltip = hideLootTooltip;
+window._lootTabBtn = _lootTabBtn;
+window._getScrollsLootHTML = _getScrollsLootHTML;
+window._getPotionsLootHTML = _getPotionsLootHTML;

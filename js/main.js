@@ -4670,8 +4670,7 @@ function handleDiceCombatVictory(enemy) {
   });
 
   window.CombatEngine.endCombat(true);
-
-  // Increment combat counter for weight system
+  gameState.phase = 'selection'; // allow scrolls/items outside combat
   gameState.totalCombatsCompleted = (gameState.totalCombatsCompleted || 0) + 1;
 
   // Award gold based on difficulty tier
@@ -4718,26 +4717,29 @@ function handleDiceCombatVictory(enemy) {
     }
   }
 
+  // Award one random potion or scroll (always runs; try/catch prevents silent failures)
+  let lootIcon = '', lootDisplayName = '', lootDisplayRarity = '';
+  try {
+    const lootReward = window.selectRandomPotionOrScroll();
+    window.addScrollOrPotionToLoot(lootReward);
+    lootIcon = lootReward.type === 'scroll' ? '📜' : '🧪';
+    lootDisplayName = lootReward.type === 'scroll' ? 'Unidentified Scroll' : 'Unidentified Potion';
+    lootDisplayRarity = lootReward.rarity || '';
+    encounterHistory.push({
+      type: 'loot',
+      name: lootDisplayName,
+      rarity: lootDisplayRarity,
+      timestamp: new Date().toLocaleString()
+    });
+    if (typeof updateEncounterHistory === 'function') updateEncounterHistory();
+  } catch (e) {
+    console.error('Failed to award post-combat loot:', e);
+  }
+
   saveCurrentGame();
 
-  // Show brief victory notification then go straight to card reward
-  createGameModal(`
-    <div style="text-align: center; padding: 30px;">
-      <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">Victory!</h2>
-      <h3 style="color: #fff; margin: 15px 0;">${enemy.name} defeated!</h3>
-      <p style="color: #FFD700; font-size: 18px; margin: 20px 0;">+${goldReward} Gold</p>
-      <button onclick="closeGameModal(); showCardRewardModal(() => showPostCombatChoiceModal('${enemy.difficulty || 'Low'}'), null, '${enemy.difficulty || 'Low'}');" style="
-        padding: 15px 40px;
-        background: linear-gradient(145deg, #4CAF50, #2E7D32);
-        border: none;
-        border-radius: 8px;
-        color: white;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 16px;
-      ">Continue →</button>
-    </div>
-  `);
+  const difficulty = enemy.difficulty || 'Low';
+  showVictoryScreen(enemy.name, goldReward, lootIcon, lootDisplayName, lootDisplayRarity, difficulty);
 }
 
 /**
@@ -5039,6 +5041,7 @@ function handleDiceCombatDefeat(enemy) {
   });
 
   window.CombatEngine.endCombat(false);
+  gameState.phase = 'selection'; // allow scrolls/items outside combat
 
   // Clear items, curses, and allies on death
   inventory = [];
@@ -5176,7 +5179,7 @@ function showCardUpgradeZoom(card) {
   overlay.style.cssText = `
     position:fixed;inset:0;background:rgba(0,0,0,0.82);
     display:flex;align-items:center;justify-content:center;
-    z-index:10000;cursor:pointer;flex-direction:column;gap:0;
+    z-index:25000;cursor:pointer;flex-direction:column;gap:0;
   `;
 
   if (isWeaponCard) {
@@ -6626,10 +6629,121 @@ function _doLearnSpell(card) {
 }
 
 /**
- * Show a card reward picker: player chooses 1 of 3 random cards.
- * Luck shifts the rarity distribution toward Uncommon/Rare.
- * @param {Function} onComplete - Called after a card is chosen or skipped
+ * STS-style victory screen. Each reward (gold, loot, cards) is its own
+ * clickable tile. Clicking gold/loot marks them collected; clicking
+ * Card Reward opens the picker and returns here when done.
+ * Continue is always available.
  */
+function showVictoryScreen(enemyName, goldReward, lootIcon, lootName, lootRarity, difficulty) {
+  let goldCollected = false;
+  let lootCollected = false;
+  let cardsCollected = false;
+
+  function tileStyle(collected, accentColor) {
+    return collected
+      ? `background:rgba(0,0,0,0.25); border:2px solid ${accentColor}; opacity:0.55; cursor:default;`
+      : `background:rgba(0,0,0,0.35); border:2px solid ${accentColor}; cursor:pointer; transition:transform 0.15s,box-shadow 0.15s;`;
+  }
+
+  function render() {
+    const goldTileInner = goldCollected
+      ? `<div style="font-size:36px;">✓</div>
+         <div style="color:#FFD700; font-weight:bold; font-size:15px;">+${goldReward} Gold</div>
+         <div style="color:#888; font-size:11px; margin-top:4px;">Collected</div>`
+      : `<div style="font-size:36px;">💰</div>
+         <div style="color:#FFD700; font-weight:bold; font-size:15px;">+${goldReward} Gold</div>
+         <div style="color:#aaa; font-size:11px; margin-top:4px;">Click to collect</div>`;
+
+    const lootTileInner = lootName
+      ? (lootCollected
+        ? `<div style="font-size:36px;">✓</div>
+           <div style="color:#c39be0; font-weight:bold; font-size:14px;">${lootName}</div>
+           <div style="color:#888; font-size:11px;">${lootRarity}</div>
+           <div style="color:#888; font-size:11px; margin-top:4px;">Added to Loot</div>`
+        : `<div style="font-size:36px;">${lootIcon}</div>
+           <div style="color:#c39be0; font-weight:bold; font-size:14px;">${lootName}</div>
+           <div style="color:#888; font-size:11px;">${lootRarity}</div>
+           <div style="color:#aaa; font-size:11px; margin-top:4px;">Click to collect</div>`)
+      : '';
+
+    const cardTileInner = cardsCollected
+      ? `<div style="font-size:36px;">✓</div>
+         <div style="color:#4CAF50; font-weight:bold; font-size:15px;">Card Collected</div>
+         <div style="color:#888; font-size:11px; margin-top:4px;">Done</div>`
+      : `<div style="font-size:36px;">🃏</div>
+         <div style="color:#c39be0; font-weight:bold; font-size:15px;">Card Reward</div>
+         <div style="color:#aaa; font-size:11px; margin-top:4px;">Click to choose</div>`;
+
+    const tileBase = `padding:18px 20px; border-radius:10px; display:flex; flex-direction:column; align-items:center; gap:4px; min-width:130px; text-align:center;`;
+
+    const goldStyle   = tileBase + tileStyle(goldCollected, '#FFD700');
+    const lootStyle   = tileBase + tileStyle(lootCollected, '#9b59b6');
+    const cardStyle   = tileBase + tileStyle(cardsCollected, '#9b59b6');
+
+    const lootTile = lootName ? `
+      <div id="victory-loot-tile" style="${lootStyle}"
+        onmouseenter="if(!${lootCollected})this.style.transform='translateY(-4px)';this.style.boxShadow='0 6px 20px rgba(155,89,182,0.5)';"
+        onmouseleave="if(!${lootCollected})this.style.transform='';this.style.boxShadow='';">
+        ${lootTileInner}
+      </div>` : '';
+
+    createGameModal(`
+      <div style="text-align:center; padding:28px 36px; min-width:440px;">
+        <h2 style="color:#4CAF50; font-size:34px; margin:0 0 6px 0;">Victory!</h2>
+        <div style="color:#bbb; font-size:17px; margin-bottom:22px;">${enemyName} defeated!</div>
+
+        <div style="display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-bottom:24px;">
+          <!-- Gold tile -->
+          <div id="victory-gold-tile" style="${goldStyle}"
+            onmouseenter="if(!${goldCollected})this.style.transform='translateY(-4px)';this.style.boxShadow='0 6px 20px rgba(255,215,0,0.4)';"
+            onmouseleave="if(!${goldCollected})this.style.transform='';this.style.boxShadow='';">
+            ${goldTileInner}
+          </div>
+
+          ${lootTile}
+
+          <!-- Card reward tile -->
+          <div id="victory-card-tile" style="${cardStyle}"
+            onmouseenter="if(!${cardsCollected})this.style.transform='translateY(-4px)';this.style.boxShadow='0 6px 20px rgba(155,89,182,0.5)';"
+            onmouseleave="if(!${cardsCollected})this.style.transform='';this.style.boxShadow='';">
+            ${cardTileInner}
+          </div>
+        </div>
+
+        <button id="victory-continue-btn" style="
+          padding:12px 44px;
+          background:linear-gradient(145deg,#4CAF50,#2E7D32); border:none;
+          border-radius:8px; color:white; cursor:pointer;
+          font-size:15px; font-weight:bold;
+        ">Continue →</button>
+      </div>
+    `);
+
+    const goldTile = document.getElementById('victory-gold-tile');
+    const lootTile2 = document.getElementById('victory-loot-tile');
+    const cardTile = document.getElementById('victory-card-tile');
+    const continueBtn = document.getElementById('victory-continue-btn');
+
+    if (goldTile && !goldCollected) {
+      goldTile.onclick = () => { goldCollected = true; render(); };
+    }
+    if (lootTile2 && !lootCollected) {
+      lootTile2.onclick = () => { lootCollected = true; render(); };
+    }
+    if (cardTile && !cardsCollected) {
+      cardTile.onclick = () => {
+        closeGameModal();
+        showCardRewardModal(() => { cardsCollected = true; render(); }, null, difficulty);
+      };
+    }
+    if (continueBtn) {
+      continueBtn.onclick = () => { closeGameModal(); showPostCombatChoiceModal(difficulty); };
+    }
+  }
+
+  render();
+}
+
 function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null) {
   // Derive tagFilter from the run's chosen deck if not explicitly passed
   if (tagFilter === null && typeof gameState !== 'undefined' && gameState.selectedDeck) {
@@ -6657,7 +6771,9 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
     let pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
       .filter(c => c.rarity && c.rarity !== 'Starter' && c.rarity !== 'N/A'
                && (c.type || '').toLowerCase() !== 'training'
+               && (c.type || '').toLowerCase() !== 'curse'
                && !c.isTraining
+               && !c.isStatusCard
                && !(c.tags && c.tags.includes('weapon'))
                && !exclude.has(c.name));
 
@@ -6733,7 +6849,7 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
         ${upgBtn}
         <img src="${imgSrc}" alt="${card.name}"
              style="width:110px;height:110px;object-fit:contain;margin-bottom:10px;"
-             onerror="this.style.display='none'">
+             onerror="if(this.dataset.t){this.style.display='none';}else{this.dataset.t=1;this.src='images/heroes/'+this.alt+'.png';}">
         <div style="font-weight:bold;font-size:15px;color:white;text-align:center;margin-bottom:4px;">${nameLabel}</div>
         <div style="color:${color};font-size:12px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
         <div style="font-size:12px;color:${card.preUpgraded ? '#7dffb0' : '#ccc'};text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>
@@ -6825,6 +6941,7 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
 // Make level-up functions globally available
 window.showLevelUpPrompt = showLevelUpPrompt;
 window.confirmLevelUp = confirmLevelUp;
+window.showVictoryScreen = showVictoryScreen;
 window.showCardRewardModal = showCardRewardModal;
 window.showDiceLevelUpChoiceModal = showDiceLevelUpChoiceModal;
 window._doLearnSpell = _doLearnSpell;

@@ -115,5 +115,10 @@ var ADDONS_DATA = {
     "name": "Mandatory",
     "description": "This Side must be played before ending your turn",
     "canBeAttachedTo": "Dice"
+  },
+  "vorpal": {
+    "name": "Vorpal",
+    "description": "A random Enemy Type and Weight are chosen. This Weapon Deals +10 Dmg to Enemies that fit that Type and Weight",
+    "canBeAttachedTo": "Weapon (Attack)"
   }
 };

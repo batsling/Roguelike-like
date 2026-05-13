@@ -426,6 +426,7 @@ const STATUS_META = {
   flame_barrier:  { img: 'FlameBarrier',  emoji: '🔥', label: 'Flame Barrier'},
   double_damage:  { img: 'DoubleDamage',   emoji: '⚔⚔', label: 'Double Damage'},
   enfeebled:      { img: 'Enfeebled',     emoji: '💀', label: 'Enfeebled'    },
+  plated_armor:   { img: 'PlatedArmor',   emoji: '🛡', label: 'Plated Armor' },
 };
 
 // ============== MAIN RENDER ENTRY POINT ==============
@@ -1405,7 +1406,7 @@ const _SD_TAG_COLORS = {
 /** Return color theme for a card. S&D dice get white-on-black with tag-colored border. */
 function _getDiceColors(card) {
   if (DICE_CARD_COLORS[card.name]) return DICE_CARD_COLORS[card.name];
-  if (card.game === 'Slice & Dice') {
+  if ((card.game || '').trim() === 'Slice & Dice') {
     const tags = Array.isArray(card.tags) ? card.tags : [];
     const tagEntry = tags.reduce((found, t) => found || _SD_TAG_COLORS[t], null);
     const tc = tagEntry || { hex: '#aaaaaa', sceneBg: 0x0d0d0d };
@@ -2159,6 +2160,8 @@ function renderLogPanel(combat) {
   const switchTab = (tab) =>
     `window._combatLogTab='${tab}';window.CombatUI&&window.CombatUI.updateCombatDisplay&&window.CombatUI.updateCombatDisplay()`;
 
+  const lootHtml = _buildCombatLootHtml();
+
   return `
     <div id="combat-log-panel" style="
       width:220px; flex-shrink:0;
@@ -2170,6 +2173,7 @@ function renderLogPanel(combat) {
         <div style="${tabStyle('log')}"       onclick="${switchTab('log')}">📜 Log</div>
         <div style="${tabStyle('spellbook')}" onclick="${switchTab('spellbook')}">✨ Spells</div>
         <div style="${tabStyle('stats')}"     onclick="${switchTab('stats')}">📊 Stats</div>
+        <div style="${tabStyle('loot')}"      onclick="${switchTab('loot')}">🧪 Loot</div>
       </div>
       <div id="combat-log-entries" style="
         flex:1; overflow-y:auto;
@@ -2178,10 +2182,46 @@ function renderLogPanel(combat) {
         scrollbar-width:thin;
         scrollbar-color:${C.border} transparent;
       ">
-        ${activeTab === 'log' ? logHTML : activeTab === 'spellbook' ? spellsHtml : statsHtml}
+        ${activeTab === 'log' ? logHTML : activeTab === 'spellbook' ? spellsHtml : activeTab === 'loot' ? lootHtml : statsHtml}
       </div>
     </div>
   `;
+}
+
+function _buildCombatLootHtml() {
+  const loot = (typeof gameState !== 'undefined' && gameState.loot) ? gameState.loot : [];
+  const potions = loot.map((l, i) => ({ ...l, _idx: i })).filter(l => l.type === 'potion');
+
+  if (potions.length === 0) {
+    return `<div style="padding:14px;color:#666;font-size:11px;text-align:center;font-style:italic;">No potions in loot.</div>`;
+  }
+
+  return potions.map(item => {
+    const data = typeof POTIONS_DATA !== 'undefined' ? POTIONS_DATA.find(p => p.name === item.name) : null;
+    const displayName = typeof getPotionDisplayName === 'function' ? getPotionDisplayName(item.name) : item.name;
+    const imgPath = (data && typeof getPotionImagePath === 'function') ? getPotionImagePath(data) : 'images/potions/Unidentified.png';
+    const isId = typeof isPotionIdentified === 'function' ? isPotionIdentified(item.name) : false;
+    const effectText = (isId && data) ? data.effect : '???';
+    const rarityColor = typeof _rarityColor === 'function' ? _rarityColor(item.rarity) : '#aaa';
+
+    return `
+      <div style="padding:8px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;gap:8px;align-items:center;">
+        <img src="${imgPath}" style="width:36px;height:36px;object-fit:contain;flex-shrink:0;"
+          onerror="this.src='images/potions/Unidentified.png'">
+        <div style="flex:1;min-width:0;">
+          <div style="color:#6ab4ff;font-size:11px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${displayName}</div>
+          <div style="color:${rarityColor};font-size:10px;">${item.rarity}</div>
+          <div style="color:#999;font-size:10px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${effectText}</div>
+        </div>
+        <button onclick="usePotionFromLoot(${item._idx})" style="
+          padding:4px 8px;background:#3498db;border:none;border-radius:4px;
+          color:white;font-size:10px;font-weight:bold;cursor:pointer;flex-shrink:0;"
+          onmouseenter="this.style.background='#2980b9'" onmouseleave="this.style.background='#3498db'">
+          Use
+        </button>
+      </div>
+    `;
+  }).join('');
 }
 
 // ============== STATUS ROW ==============
@@ -2381,18 +2421,18 @@ function attachCombatEventListeners(combat) {
       const entry = cs.pendingDice.find(e => e.id === id);
       if (!entry) return;
       const face = entry.face || {};
+      if (face.isaacsTransform) {
+        // Isaac's D6: show card picker then apply transform
+        window._selectedPendingId = null;
+        _showIsaacTransformPicker(face, cs, id);
+        return;
+      }
       if (face.isBlank) {
         // Dismiss blank
         window.CombatEngine.usePendingDie(id, null);
         window._selectedPendingId = null;
         updateCombatDisplay();
         checkCombatEnd();
-        return;
-      }
-      if (face.isaacsTransform) {
-        // Isaac's D6: show card picker then apply transform
-        window._selectedPendingId = null;
-        _showIsaacTransformPicker(face, cs, id);
         return;
       }
       const needsTarget = (face.effects || []).some(e => /^(dmg|magic_dmg|magic dmg)$/i.test(e.move || '') && !(e.addons || []).some(a => a.toLowerCase() === 'cleave'));
@@ -3681,7 +3721,7 @@ function _showIsaacTransformPicker(face, combat, pendingId) {
               background:rgba(0,0,0,0.3);border-radius:5px;margin-bottom:5px;overflow:hidden;">
               ${imgSrc
                 ? `<img src="${imgSrc}" style="width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;"
-                     onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:26px>${typeEmoji(c.type)}</span>'">`
+                     onerror="if(this.dataset.t){this.style.display='none';this.parentElement.innerHTML='<span style=font-size:26px>${typeEmoji(c.type)}</span>';}else{this.dataset.t=1;this.src='images/heroes/${c.name}.png';}">`
                 : `<span style="font-size:26px;">${typeEmoji(c.type)}</span>`}
             </div>
             <div style="font-size:10px;font-weight:bold;color:#fff;">${c.name}${c.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}</div>
