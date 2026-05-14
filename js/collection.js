@@ -1631,6 +1631,7 @@ function switchCurseTier(cardIndex, tier) {
 }
 
 
+/**
  * Get game stats from localStorage
  * @returns {Object} Game stats object with game names as keys
  */
