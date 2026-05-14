@@ -1,19 +1,22 @@
 /**
- * ESCAPE.JS - Escape Phase, Victory, Run History, and Collection
+ * ESCAPE.JS - Escape Phase and Run History
  *
  * Responsibilities:
  * - Escape phase game selection and visualization
  * - Lost run tracking and death handling
- * - Victory screen and run history
- * - Collection viewing (games, items, enemies, curses)
- * - Sorting and filtering collections
+ * - Victory screen and final run stats
+ * - Run history saving and display
  *
  * Key Functions:
- * - startEscapePhase() - Initiates escape phase with game selection
+ * - startEscapePhase()       - Initiates escape phase with game selection
  * - showEscapeVisualization() - Creates visual escape interface
- * - recordLostRun(index) - Handles lost runs with HP penalty
+ * - recordLostRun(index)     - Handles lost runs with HP penalty
+ * - completeEscapeGame(index) - Completes a game during escape
  * - showEscapeVictoryScreen() - Displays victory with final stats
- * - showCollection() - Shows collection modal with tabs
+ * - saveRunToHistory(runData) - Persists completed run to localStorage
+ * - showRunHistory()         - Shows past run history modal
+ *
+ * Collection UI lives in collection.js.
  */
 
 // ===== ESCAPE PHASE =====

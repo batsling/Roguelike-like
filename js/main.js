@@ -1,13 +1,19 @@
-// ===== MAIN.JS - Initialization and Event Listeners =====
+// ===== MAIN.JS - Core Game Logic and Initialization =====
 //
 // This module handles:
-// - Page initialization
-// - Event listener setup
-
-// - Excel file upload
-// - Save/load game system
-// - Tutorial and UI controls
+// - Page initialization and event listener setup
+// - Excel file upload and data loading
+// - Save/load game system (localStorage via GameStorage)
+// - Top-bar and UI controls (gold, HP, energy, reroll, dash)
+// - Map generation and location management
+// - Item shop, card rewards, and loot drops
+// - Combat setup and post-combat flow
+// - Curse system, difficulty scaling, and game completion
+// - Tutorial, notifications, and modal orchestration
 // - Integration of all other modules
+//
+// Collection UI, stats tracking, and detail panels live in collection.js.
+// Escape phase and run history live in escape.js.
 
 // ===== Z-INDEX LAYERING SYSTEM =====
 // Organized from lowest to highest to prevent layering conflicts

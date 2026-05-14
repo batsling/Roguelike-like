@@ -1,5 +1,20 @@
-// collection.js — All collection UI and stats tracking
-// Extracted from escape.js and main.js
+// ===== COLLECTION.JS - Collection UI, Stats Tracking, and Detail Panels =====
+//
+// This module handles:
+// - Collection modal with tabs (Games, Characters, Cards, Items, Loot,
+//   Enemies, Curses, Reference, Spells, Events)
+// - Per-tab search, filtering, and sorting
+// - Loot sub-tabs (Fish, Scrolls, Potions)
+// - Reference tab — Statuses and Addons driven by Excel-generated data
+//   (STATUSES_DATA / ADDONS_DATA); Moves remain hardcoded
+// - Detail panels for games, enemies, items, spells, cards, characters, allies
+// - Game stats tracking (beaten count, amulets) via localStorage
+// - Fish stats tracking (caught count per size) via localStorage
+// - Enemy stats tracking (defeats / player kills) via gameState
+//
+// Depends on: modals.js (createGameModal/closeGameModal), main.js globals
+// (games, items, enemies, curses, gameState, saveCurrentGame, GameStorage),
+// and data files (STATUSES_DATA, ADDONS_DATA, CARDS_DATA, etc.)
 
 function showCollection() {
   const charCount = typeof CHARACTERS_DATA !== 'undefined' ? Object.keys(CHARACTERS_DATA).length : 0;
