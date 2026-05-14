@@ -1436,7 +1436,7 @@ function switchLootSubTab(subTab, sortType = null) {
             const imgPath = `images/scrolls/${s.file || s.name.replace(/\s+/g,'_')}.png`;
             return `
               <div style="background:rgba(0,0,0,0.35); border:2px solid ${col}; border-radius:8px; padding:14px; display:flex; flex-direction:column; align-items:center; gap:8px;">
-                <img src="${imgPath}" alt="${s.name}" style="width:80px;height:80px;object-fit:contain;" onerror="this.style.display='none'">
+                <img src="${imgPath}" alt="${s.name}" style="width:80px;height:80px;object-fit:contain;" onerror="this.src='images/scrolls/Unidentified.png'">
                 <div style="font-weight:bold;font-size:14px;color:${col};text-align:center;">${s.name}</div>
                 <div style="font-size:11px;color:${col};font-weight:bold;text-transform:uppercase;">${s.rarity}</div>
                 <div style="font-size:11px;color:#aaa;text-align:center;line-height:1.4;">${s.preference || ''}</div>

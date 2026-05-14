@@ -478,13 +478,26 @@ function _scrollCreateMonster(outcomeKey) {
   const counts = { crit_good: 1, good: 1, bad: 1, crit_bad: 2 };
   const maxWeights = { crit_good: 2, good: 3, bad: 5, crit_bad: 5 };
 
-  const count = counts[outcomeKey] || 1;
-  const maxW = maxWeights[outcomeKey] || 5;
+  const count  = counts[outcomeKey] || 1;
+  const maxW   = maxWeights[outcomeKey] || 5;
+
+  // Respect current difficulty tier so spawns feel appropriate
+  const gamesBeaten = (typeof gameState !== 'undefined' && gameState.totalGamesBeaten) || 0;
+  let tierMax;
+  if (gamesBeaten >= 10)     tierMax = 'High';
+  else if (gamesBeaten >= 5) tierMax = 'Medium';
+  else                       tierMax = 'Low';
+  const tierOrder = ['Low', 'Medium', 'High'];
+  const maxTierIdx = tierOrder.indexOf(tierMax);
 
   if (!gameState.pendingSpawnEnemies) gameState.pendingSpawnEnemies = [];
 
   for (let i = 0; i < count; i++) {
-    const eligible = ENEMIES_DATA.filter(e => e.weight != null && e.weight <= maxW);
+    const eligible = ENEMIES_DATA.filter(e =>
+      e.weight != null && e.weight <= maxW &&
+      e.difficulty != null &&
+      tierOrder.indexOf(e.difficulty) <= maxTierIdx
+    );
     if (eligible.length === 0) continue;
     const chosen = eligible[Math.floor(Math.random() * eligible.length)];
     gameState.pendingSpawnEnemies.push({ enemy: chosen.name, min: 1, max: 1 });
