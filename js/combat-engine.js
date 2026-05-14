@@ -1016,6 +1016,8 @@ function rollEnemyIntent(enemy) {
     }
 
     const current = turns[idx];
+    // Save the index used for this roll so a stun can rewind it (enemy repeats after stun)
+    enemy.patternTurnIndexAtRoll = idx;
 
     // Build a pseudo-face by parsing the description into executable effects
     const parsedTurn = parsePatternDescToEffects(current.description);
@@ -3201,6 +3203,10 @@ function executeEnemyActions() {
       enemy.statuses['stun']--;
       if (enemy.statuses['stun'] <= 0) delete enemy.statuses['stun'];
       addLog(`${enemy.name} is stunned and skips their turn!`, 'warning');
+      // Rewind pattern index so the enemy repeats the intended action next turn (not skips it)
+      if (enemy.patternType === 'ordered' && typeof enemy.patternTurnIndexAtRoll === 'number') {
+        enemy.patternTurnIndex = enemy.patternTurnIndexAtRoll;
+      }
       return;
     }
 

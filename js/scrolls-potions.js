@@ -24,6 +24,30 @@ function _rarityColor(r) { return (window.RARITY_COLORS || {})[r] || '#aaa'; }
 function _rarityBorder(r) { return RARITY_BORDER[r] || '#888'; }
 
 // ========================================
+// POTION COLOR ASSIGNMENT (per-run randomization)
+// ========================================
+
+const POTION_UNIDENTIFIED_COLORS = [
+  'Unidentified_Red', 'Unidentified_Orange', 'Unidentified_Yellow',
+  'Unidentified_Green', 'Unidentified_Cyan', 'Unidentified_Teal',
+  'Unidentified_Violet', 'Unidentified_Purple', 'Unidentified_Brown',
+  'Unidentified_Black', 'Unidentified_Gray', 'Unidentified_White'
+];
+
+function getPotionColorMap() {
+  if (!gameState.potionColorMap) {
+    const names = (window.POTIONS_DATA || []).map(p => p.name);
+    const shuffled = [...POTION_UNIDENTIFIED_COLORS].sort(() => Math.random() - 0.5);
+    gameState.potionColorMap = {};
+    names.forEach((name, i) => {
+      gameState.potionColorMap[name] = shuffled[i % shuffled.length];
+    });
+    if (typeof saveCurrentGame === 'function') saveCurrentGame();
+  }
+  return gameState.potionColorMap;
+}
+
+// ========================================
 // IDENTIFICATION STATE
 // ========================================
 
@@ -66,6 +90,10 @@ function identifyPotionType(name) {
     if (typeof createNotification === 'function') {
       createNotification(`Identified: ${name}!`, '#3498db', '🧪');
     }
+    if (typeof updateLootDisplay === 'function') updateLootDisplay();
+    if (window.CombatUI && typeof window.CombatUI.updateCombatDisplay === 'function') {
+      window.CombatUI.updateCombatDisplay();
+    }
   }
 }
 
@@ -84,6 +112,10 @@ function unidentifyPotionType(name) {
   if (idx !== -1) {
     list.splice(idx, 1);
     gameState.identifiedPotionTypes = list;
+    if (typeof updateLootDisplay === 'function') updateLootDisplay();
+    if (window.CombatUI && typeof window.CombatUI.updateCombatDisplay === 'function') {
+      window.CombatUI.updateCombatDisplay();
+    }
   }
 }
 
@@ -110,7 +142,9 @@ function getPotionImagePath(potionData) {
   if (isPotionIdentified(potionData.name) && potionData.file) {
     return `images/potions/${potionData.file}.png`;
   }
-  return 'images/potions/Unidentified.png';
+  const colorMap = getPotionColorMap();
+  const colorFile = colorMap[potionData.name] || 'Unidentified_Red';
+  return `images/potions/${colorFile}.png`;
 }
 
 // ========================================
@@ -444,13 +478,26 @@ function _scrollCreateMonster(outcomeKey) {
   const counts = { crit_good: 1, good: 1, bad: 1, crit_bad: 2 };
   const maxWeights = { crit_good: 2, good: 3, bad: 5, crit_bad: 5 };
 
-  const count = counts[outcomeKey] || 1;
-  const maxW = maxWeights[outcomeKey] || 5;
+  const count  = counts[outcomeKey] || 1;
+  const maxW   = maxWeights[outcomeKey] || 5;
+
+  // Respect current difficulty tier so spawns feel appropriate
+  const gamesBeaten = (typeof gameState !== 'undefined' && gameState.totalGamesBeaten) || 0;
+  let tierMax;
+  if (gamesBeaten >= 10)     tierMax = 'High';
+  else if (gamesBeaten >= 5) tierMax = 'Medium';
+  else                       tierMax = 'Low';
+  const tierOrder = ['Low', 'Medium', 'High'];
+  const maxTierIdx = tierOrder.indexOf(tierMax);
 
   if (!gameState.pendingSpawnEnemies) gameState.pendingSpawnEnemies = [];
 
   for (let i = 0; i < count; i++) {
-    const eligible = ENEMIES_DATA.filter(e => e.weight != null && e.weight <= maxW);
+    const eligible = ENEMIES_DATA.filter(e =>
+      e.weight != null && e.weight <= maxW &&
+      e.difficulty != null &&
+      tierOrder.indexOf(e.difficulty) <= maxTierIdx
+    );
     if (eligible.length === 0) continue;
     const chosen = eligible[Math.floor(Math.random() * eligible.length)];
     gameState.pendingSpawnEnemies.push({ enemy: chosen.name, min: 1, max: 1 });
@@ -482,15 +529,31 @@ function _scrollVorpalizeWeapon(outcomeKey) {
     }, 'Vorpalize a Weapon Attack Card');
   } else {
     const card = weaponCards[Math.floor(Math.random() * weaponCards.length)];
-    _applyVorpal(card, addBonus);
-    if (typeof createNotification === 'function') {
+    const destroyed = _applyVorpal(card, addBonus);
+    if (!destroyed && typeof createNotification === 'function') {
       createNotification(`${card.name} gained Vorpal${addBonus ? ' +5 Dmg' : ''}!`, '#f1c40f', '⚔️');
     }
   }
 }
 
+// Returns true if the card was destroyed (already had vorpal), false if vorpalized normally.
 function _applyVorpal(card, addDmgBonus) {
-  // Pick a random enemy type and weight for the Vorpal bonus
+  if (card.vorpal) {
+    // Already vorpalized — weapon shatters from the overload
+    const cardName = card.name;
+    const idx = (gameState.deck || []).indexOf(card);
+    if (idx !== -1 && typeof removeCardFromDeck === 'function') {
+      removeCardFromDeck(idx);
+    } else if (idx !== -1) {
+      gameState.deck.splice(idx, 1);
+    }
+    if (typeof saveCurrentGame === 'function') saveCurrentGame();
+    if (typeof createNotification === 'function') {
+      createNotification(`${cardName} shattered! A weapon cannot be Vorpalized twice.`, '#e74c3c', '💥');
+    }
+    return true;
+  }
+
   const types = ['Strength', 'Dexterity', 'Intelligence', 'Charisma'];
   const vorpalType = types[Math.floor(Math.random() * types.length)];
   const vorpalWeight = Math.floor(Math.random() * 5) + 1;
@@ -498,9 +561,9 @@ function _applyVorpal(card, addDmgBonus) {
   card.vorpal = { type: vorpalType, weight: vorpalWeight };
   if (addDmgBonus) card.vorpalDmgBonus = (card.vorpalDmgBonus || 0) + 5;
 
-  // Update description to reflect upgrade
   const badge = ` [Vorpal vs ${vorpalType} W${vorpalWeight}${addDmgBonus ? ' +5' : ''}]`;
   card.name = card.name.replace(/ \[Vorpal[^\]]*\]/, '') + badge;
+  return false;
 }
 
 // --- Scare Monster ---
@@ -566,15 +629,22 @@ function _applyEnchant(card, dmgBonus, addRetain) {
 
 // Helper: weapon card picker UI
 function _showWeaponCardPicker(cards, onSelect, title) {
-  const itemsHTML = cards.map((c, i) => `
+  const itemsHTML = cards.map((c, i) => {
+    const alreadyVorpal = !!c.vorpal;
+    const border = alreadyVorpal ? '#e74c3c' : '#e67e22';
+    const bg     = alreadyVorpal ? '#2a1a1a' : '#2a2a2a';
+    const bgHov  = alreadyVorpal ? '#3a1a1a' : '#3a2a1a';
+    const warn   = alreadyVorpal ? ' <span style="color:#e74c3c;font-size:11px;">⚠️ Already Vorpalized — will shatter!</span>' : '';
+    return `
     <div style="cursor:pointer; padding:10px 14px; border-radius:6px; margin-bottom:6px;
-      border:2px solid #e67e22; background:#2a2a2a; color:#ddd; font-size:13px;
+      border:2px solid ${border}; background:${bg}; color:#ddd; font-size:13px;
       transition:background 0.15s;"
-      onmouseenter="this.style.background='#3a2a1a'" onmouseleave="this.style.background='#2a2a2a'"
+      onmouseenter="this.style.background='${bgHov}'" onmouseleave="this.style.background='${bg}'"
       onclick="window._weaponPickSelect(${i})">
-      ⚔️ ${c.name}
+      ⚔️ ${c.name}${warn}
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   const html = `
     <div style="text-align:center; padding:10px;">
@@ -1248,6 +1318,7 @@ window.getScrollDisplayName       = getScrollDisplayName;
 window.getScrollImagePath         = getScrollImagePath;
 window.getPotionDisplayName       = getPotionDisplayName;
 window.getPotionImagePath         = getPotionImagePath;
+window.getPotionColorMap          = getPotionColorMap;
 window.selectRandomPotionOrScroll = selectRandomPotionOrScroll;
 window.addScrollOrPotionToLoot    = addScrollOrPotionToLoot;
 window.useScrollFromLoot          = useScrollFromLoot;

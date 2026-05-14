@@ -475,14 +475,14 @@ function _showChoiceScreen(event, onContinue) {
       const fx   = _describeEffects(outcome.effects);
       const desc = _fillName(outcome.description || '');
       return `
-        <div style="margin-bottom:14px;">
-          <div style="color:#3498db;font-size:12px;font-weight:bold;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #444;">
-            ${icon} ${choice.text}
+        <div style="margin-bottom:12px;background:rgba(52,152,219,0.07);border:1px solid rgba(52,152,219,0.25);border-radius:8px;overflow:hidden;">
+          <div style="background:rgba(52,152,219,0.15);color:#5dade2;font-size:12px;font-weight:bold;padding:7px 10px;display:flex;align-items:center;gap:6px;">
+            ${icon}<span>${choice.text}</span>
           </div>
-          <div style="display:flex;gap:10px;align-items:baseline;padding:5px 0;">
-            <span style="color:#2ecc71;font-size:11px;font-weight:bold;min-width:110px;flex-shrink:0;">Direct Effect</span>
-            <span style="color:#bbb;font-size:12px;flex:1;line-height:1.4;">${desc}</span>
-            <span style="color:#2ecc71;font-size:11px;white-space:nowrap;flex-shrink:0;">${fx}</span>
+          <div style="padding:8px 10px;">
+            <div style="display:inline-block;font-size:10px;font-weight:bold;color:#2ecc71;background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.3);border-radius:4px;padding:2px 7px;margin-bottom:5px;">Direct Effect</div>
+            ${desc ? `<div style="color:#ddd;font-size:12px;line-height:1.5;margin-bottom:4px;">${desc}</div>` : ''}
+            ${fx !== 'Nothing' ? `<div style="color:#2ecc71;font-size:11px;font-weight:bold;">${fx}</div>` : ''}
           </div>
         </div>`;
     }
@@ -494,17 +494,21 @@ function _showChoiceScreen(event, onContinue) {
       const label  = OUTCOME_LABELS[key];
       const fx     = _describeEffects(outcome.effects);
       const desc   = _fillName(outcome.description || '');
+      const BG_ALPHA = { crit_good: '0.10', good: '0.07', bad: '0.07', crit_bad: '0.10' };
+      const bg = `rgba(${key==='crit_good'?'241,196,15':key==='good'?'46,204,113':key==='bad'?'230,126,34':'231,76,60'},${BG_ALPHA[key]})`;
       return `
-        <div style="display:flex;gap:10px;align-items:baseline;padding:5px 0;border-bottom:1px solid #2a2a3a;">
-          <span style="color:${color};font-size:11px;font-weight:bold;min-width:110px;flex-shrink:0;">${label}</span>
-          <span style="color:#bbb;font-size:12px;flex:1;line-height:1.4;">${desc}</span>
-          <span style="color:${color};font-size:11px;white-space:nowrap;flex-shrink:0;">${fx}</span>
+        <div style="padding:7px 10px;border-bottom:1px solid #1e1e2e;background:${bg};">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+            <span style="display:inline-block;font-size:10px;font-weight:bold;color:${color};background:${color}22;border:1px solid ${color}55;border-radius:4px;padding:2px 7px;white-space:nowrap;">${label}</span>
+            ${fx !== 'Nothing' ? `<span style="color:${color};font-size:11px;font-weight:bold;margin-left:auto;white-space:nowrap;">${fx}</span>` : ''}
+          </div>
+          ${desc ? `<div style="color:#ccc;font-size:12px;line-height:1.5;">${desc}</div>` : ''}
         </div>`;
     }).join('');
     return `
-      <div style="margin-bottom:14px;">
-        <div style="color:#e67e22;font-size:12px;font-weight:bold;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #444;">
-          ${STAT_ICONS[choice.stat] || ''} ${choice.text}
+      <div style="margin-bottom:12px;background:rgba(230,126,34,0.07);border:1px solid rgba(230,126,34,0.25);border-radius:8px;overflow:hidden;">
+        <div style="background:rgba(230,126,34,0.15);color:#e67e22;font-size:12px;font-weight:bold;padding:7px 10px;display:flex;align-items:center;gap:6px;">
+          ${STAT_ICONS[choice.stat] || ''}<span>${choice.text}</span>
         </div>
         ${rows}
       </div>`;
@@ -555,17 +559,17 @@ function _showChoiceScreen(event, onContinue) {
     popup.style.cssText = `
       position:fixed;
       top:50%;
-      right:10px;
+      right:12px;
       transform:translateY(-50%);
-      width:340px;
-      max-height:80vh;
+      width:380px;
+      max-height:82vh;
       overflow-y:auto;
-      background:#13131f;
+      background:#0f0f1a;
       border:1px solid #c39bd3;
       border-radius:10px;
-      padding:16px;
+      padding:14px;
       z-index:30000;
-      box-shadow:0 8px 32px rgba(0,0,0,0.9);
+      box-shadow:0 8px 40px rgba(0,0,0,0.95);
     `;
     popup.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid #333;padding-bottom:8px;">
