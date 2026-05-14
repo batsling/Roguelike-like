@@ -207,6 +207,18 @@ function getCardDynamicBlock(baseBlock, combat) {
 }
 
 /**
+ * Compute actual magic damage a spell would deal, factoring in Arcane and Weak.
+ */
+function getCardDynamicMagicDmg(baseDmg, card, combat) {
+  if (!combat || !combat.player) return baseDmg;
+  const player = combat.player;
+  const isPowerCard = (card.type || '').toLowerCase() === 'power';
+  let dmg = baseDmg + (isPowerCard ? 0 : (player.statuses['arcane'] || 0));
+  if (player.statuses['weak']) dmg = Math.floor(dmg * 0.75);
+  return Math.max(0, dmg);
+}
+
+/**
  * Returns bonus-effect HTML lines granted to a card by inventory items.
  * Shown as small text appended to the card description.
  */
@@ -282,6 +294,7 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
                || hasDuplicator
                || hasLittleKnife
                || (player.statuses['power'] || 0) !== 0
+               || (player.statuses['arcane'] || 0) !== 0
                || (player.statuses['strength'] || 0) !== 0
                || (player.statuses['intelligence'] || 0) !== 0
                || (player.statuses['dexterity'] || 0) !== 0
@@ -314,6 +327,24 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
     const col = computed > base ? '#7dff7d' : '#ff7d7d';
     const dmgStr = computed !== base ? `<span style="color:${col};font-weight:bold">${computed}</span>` : `${base}`;
     return hasDuplicator ? `Deal ${dmgStr}x2 Dmg` : `Deal ${dmgStr} Dmg`;
+  });
+
+  // Replace NxM magic damage (e.g. "Deal 3x2 Magic Dmg")
+  desc = desc.replace(/Deal (\d+)[xX](\d+) Magic Dmg/gi, (match, d, t) => {
+    const base = parseInt(d);
+    const computed = getCardDynamicMagicDmg(base, card, combat);
+    if (computed === base) return match;
+    const col = computed > base ? '#7dff7d' : '#ff7d7d';
+    return `Deal <span style="color:${col};font-weight:bold">${computed}</span>x${t} Magic Dmg`;
+  });
+
+  // Replace plain magic damage (e.g. "Deal 5 Magic Dmg")
+  desc = desc.replace(/Deal (\d+) Magic Dmg/gi, (match, d) => {
+    const base = parseInt(d);
+    const computed = getCardDynamicMagicDmg(base, card, combat);
+    if (computed === base) return match;
+    const col = computed > base ? '#7dff7d' : '#ff7d7d';
+    return `Deal <span style="color:${col};font-weight:bold">${computed}</span> Magic Dmg`;
   });
 
   // Replace block (e.g. "Gain 5 Block" or "Gain +5 Block")
