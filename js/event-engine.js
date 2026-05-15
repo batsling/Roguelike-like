@@ -275,7 +275,7 @@ function applyEventEffects(effects) {
         let curseName = effect.value;
         if (effect.type === 'curse_difficulty') {
           const diff = (typeof gameState !== 'undefined' && gameState.location && gameState.location.difficulty) || 'Easy';
-          const tier = diff === 'Insane' ? 'IV' : diff === 'Hard' ? 'III' : diff === 'Medium' ? 'II' : 'I';
+          const tier = diff === 'Hard' || diff === 'Insane' ? 'III' : diff === 'Medium' ? 'II' : 'I';
           curseName = `${effect.curseBase} ${tier}`;
         }
         if (curseName === 'random') {
