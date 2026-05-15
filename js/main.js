@@ -974,26 +974,14 @@ function completeGameStart(start, amulet, saveName, startType) {
         else startCombat();
       };
       if (startNode) {
-        // Open node detail modal; Fight! inside the modal calls triggerCombat
-        const fightBtn = document.createElement('button');
-        fightBtn.className = 'finish';
-        fightBtn.textContent = 'Fight!';
-        fightBtn.style.background = '#c0392b';
-        fightBtn.onclick = () => {
-          if (typeof showNodeDetailModal === 'function') {
-            showNodeDetailModal(start.name, null, null, 'combat', {
-              onFight: () => { triggerCombat(); }
-            });
-          } else {
-            fightBtn.remove();
-            triggerCombat();
-          }
-        };
-        startNode.appendChild(fightBtn);
-        // Add Finished button so player can mark the start game done after combat
-        // (mirroring what advance() does for regular nodes)
-        if (typeof showFinish === 'function') {
-          showFinish(startNode);
+        // Wire start node to open the detail modal on click (same as choice nodes).
+        // showFinish() was already called by renderGameState() so no need to call again.
+        if (typeof showNodeDetailModal === 'function') {
+          startNode.onclick = () => showNodeDetailModal(start.name, null, null, 'combat', {
+            onFight: () => { startNode.onclick = null; triggerCombat(); }
+          });
+        } else {
+          startNode.onclick = () => triggerCombat();
         }
       } else {
         triggerCombat();
