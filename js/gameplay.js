@@ -430,9 +430,6 @@ function addNode(name, cls, x, y) {
     d.appendChild(statusContainer);
   }
 
-  d.onmouseenter = e => showTooltip(e, name);
-  d.onmousemove = e => moveTooltip(e);
-  d.onmouseleave = hideTooltip;
 
   pathContainer.appendChild(d);
   return d;
