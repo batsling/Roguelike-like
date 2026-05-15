@@ -341,12 +341,14 @@ function getRandomLocation(difficulty) {
   const difficultyKey = difficulty.toLowerCase();
   const locations = locationsByDifficulty[difficultyKey] || locationsByDifficulty.hard;
 
-  if (locations.length === 0) {
-    return null;
-  }
+  if (locations.length === 0) return null;
 
-  const randomIndex = Math.floor(Math.random() * locations.length);
-  return locations[randomIndex];
+  // Pick a random game first so each game gets equal representation,
+  // then pick a random location from that game.
+  const gameNames = [...new Set(locations.map(l => l.game))];
+  const chosenGame = gameNames[Math.floor(Math.random() * gameNames.length)];
+  const gameLocations = locations.filter(l => l.game === chosenGame);
+  return gameLocations[Math.floor(Math.random() * gameLocations.length)];
 }
 
 /**

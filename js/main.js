@@ -4752,7 +4752,9 @@ function handleDiceCombatVictory(enemy) {
   try {
     const lootReward = window.selectRandomPotionOrScroll();
     window.addScrollOrPotionToLoot(lootReward);
-    lootIcon = lootReward.type === 'scroll' ? '📜' : '🧪';
+    lootIcon = lootReward.type === 'scroll'
+      ? '<img src="images/scrolls/Unidentified.png" style="width:56px;height:56px;object-fit:contain;" onerror="this.style.display=\'none\'">'
+      : '<img src="images/potions/Unidentified.png" style="width:56px;height:56px;object-fit:contain;" onerror="this.style.display=\'none\'">';
     lootDisplayName = lootReward.type === 'scroll' ? 'Unidentified Scroll' : 'Unidentified Potion';
     lootDisplayRarity = lootReward.rarity || '';
     encounterHistory.push({
@@ -6686,7 +6688,7 @@ function showVictoryScreen(enemyName, goldReward, lootIcon, lootName, lootRarity
            <div style="color:#c39be0;font-weight:bold;font-size:14px;">${lootName}</div>
            <div style="color:#888;font-size:11px;">${lootRarity}</div>
            <div style="color:#888;font-size:11px;margin-top:4px;">Added to Loot</div>`
-        : `<div style="font-size:36px;">${lootIcon}</div>
+        : `<div style="height:56px;display:flex;align-items:center;justify-content:center;">${lootIcon}</div>
            <div style="color:#c39be0;font-weight:bold;font-size:14px;">${lootName}</div>
            <div style="color:#888;font-size:11px;">${lootRarity}</div>
            <div style="color:#aaa;font-size:11px;margin-top:4px;">Click to collect</div>`)
@@ -6696,9 +6698,16 @@ function showVictoryScreen(enemyName, goldReward, lootIcon, lootName, lootRarity
       ? `<div style="font-size:36px;">✓</div>
          <div style="color:#4CAF50;font-weight:bold;font-size:15px;">Card Collected</div>
          <div style="color:#888;font-size:11px;margin-top:4px;">Done</div>`
-      : `<div style="font-size:36px;">🃏</div>
+      : (() => {
+          const deckId = gameState.selectedDeck && gameState.selectedDeck !== 'Random' ? gameState.selectedDeck : null;
+          const deckImg = deckId ? `images/decks/${deckId}Deck.png` : null;
+          const iconHTML = deckImg
+            ? `<img src="${deckImg}" style="width:52px;height:52px;object-fit:contain;" onerror="this.outerHTML='<span style=\\'font-size:36px;\\'>🃏</span>'">`
+            : `<span style="font-size:36px;">🃏</span>`;
+          return `<div style="height:56px;display:flex;align-items:center;justify-content:center;">${iconHTML}</div>
          <div style="color:#c39be0;font-weight:bold;font-size:15px;">Card Reward</div>
          <div style="color:#aaa;font-size:11px;margin-top:4px;">Click to choose</div>`;
+        })();
 
     createGameModal(`
       <div style="text-align:center;padding:28px 36px;min-width:440px;">
