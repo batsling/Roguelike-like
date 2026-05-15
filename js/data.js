@@ -5,7 +5,6 @@ var inventory = [];
 var beatenGames = [];
 var selectedPhase2Games = [];
 var excludedGames = [];
-var rations = 10;
 var gold = 0;
 var health = 10;
 var maxHealth = 10;
@@ -15,18 +14,11 @@ var intelligence = 0;
 var charisma = 0;
 var attack = 0;
 var luck = 0;
-var roguePoints = 0;
 var reroll = 0;
 var dash = 0;
 var skip = 0;
 var discovery = 0; // Number of item choices when collecting rewards (base 2)
 var fov = 0; // Field of View - number of game choices shown (base 3)
-var pactConditions = {
-  lessHealth: 0,
-  moreGames: 0,
-  randomGame: 0,
-  challengeRun: 0,
-};
 var startGame = null;
 var amuletGame = null;
 var events = [];

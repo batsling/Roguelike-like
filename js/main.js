@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function loadState() {
   const state = GameStorage.load(STORAGE_KEYS.GAME_STATE);
   if (state) {
-    rations = state.rations;
+    if (gameState) gameState.rations = state.rations ?? 10;
     gold = state.gold ?? 0;
     health = state.health;
     maxHealth = state.maxHealth ?? 10;
@@ -335,7 +335,7 @@ function saveCurrentGame() {
     health: health,
     maxHealth: maxHealth,
     gold: gold,
-    rations: rations,
+    rations: gameState.rations ?? 10,
     inventory: inventoryCopy,
     diceSlots: diceSlotsSnapshot,
     beatenGames: [...beatenGames],
@@ -416,7 +416,7 @@ function loadSavedGame(saveName) {
   health = save.health;
   maxHealth = save.maxHealth;
   gold = save.gold;
-  rations = save.rations || 10;
+  if (gameState) gameState.rations = save.rations || 10;
   inventory = [...(save.inventory || [])];
   beatenGames = [...(save.beatenGames || [])];
   strength = save.strength || 0;
