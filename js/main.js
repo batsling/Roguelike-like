@@ -905,9 +905,20 @@ function completeGameStart(start, amulet, saveName, startType) {
     spells: [],
     postcombatChoicesUsed: { Low: [], Medium: [], High: [] },
     insaneBatteryFills: 0,
-    pendingInsaneHardCombat: false
+    pendingInsaneHardCombat: false,
+    choiceDetails: {}
   };
   window.playerSpells = gameState.spells;
+
+  // Pre-generate start node details so the node modal has data immediately
+  if (typeof preGenerateEnemiesForGame === 'function') {
+    gameState.choiceDetails[start.name] = {
+      enemies: preGenerateEnemiesForGame(start.name),
+      postCombatOptions: (typeof pickTwoPostCombatOptions === 'function')
+        ? pickTwoPostCombatOptions()
+        : ['rest', 'shop']
+    };
+  }
 
   startGame = start;
   amuletGame = amulet;
@@ -948,7 +959,7 @@ function completeGameStart(start, amulet, saveName, startType) {
         showHadesBoonSelection(false);
       }, 500);
     } else {
-      // Find the starting game node and add a Fight button the player clicks to begin
+      // Find the starting game node and wire up a click → node detail modal
       const allNodes = document.querySelectorAll('[data-game]');
       let startNode = null;
       for (const n of allNodes) {
@@ -963,11 +974,21 @@ function completeGameStart(start, amulet, saveName, startType) {
         else startCombat();
       };
       if (startNode) {
+        // Open node detail modal; Fight! inside the modal calls triggerCombat
         const fightBtn = document.createElement('button');
         fightBtn.className = 'finish';
         fightBtn.textContent = 'Fight!';
         fightBtn.style.background = '#c0392b';
-        fightBtn.onclick = () => { fightBtn.remove(); triggerCombat(); };
+        fightBtn.onclick = () => {
+          if (typeof showNodeDetailModal === 'function') {
+            showNodeDetailModal(start.name, null, null, 'combat', {
+              onFight: () => { triggerCombat(); }
+            });
+          } else {
+            fightBtn.remove();
+            triggerCombat();
+          }
+        };
         startNode.appendChild(fightBtn);
       } else {
         triggerCombat();
@@ -1934,12 +1955,27 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
       const choiceShadow = isChoice
         ? '0 0 10px rgba(255, 153, 0, 0.6), 0 3px 6px rgba(0,0,0,0.3)'
         : '0 3px 6px rgba(0,0,0,0.3)';
+      // Clicking a choice node in the map opens the read-only node detail modal
+      const safeGN = gameName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const mapClickHandler = isChoice
+        ? `onclick="if(typeof openNodeModalFromMap==='function') openNodeModalFromMap('${safeGN}')"`
+        : '';
+
+      // Game-type badge label for map view (replaces the !?$ encounter icons)
+      const gameTypeForBadge = game?.type || '';
+      const mapTypeColors = { action: '#c0392b', deckbuilding: '#7d3c98', strategy: '#1a6fa0', traditional: '#1e8449' };
+      const mapBadgeColor = isAmuletGame ? '#b7950b' : (mapTypeColors[gameTypeForBadge.toLowerCase()] || '#555');
+      const mapBadgeLabel = isAmuletGame ? '🏺' : (gameTypeForBadge || '');
+      const mapBadgeHTML = (mapBadgeLabel && isChoice)
+        ? `<span style="position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);background:${mapBadgeColor};color:white;border-radius:3px;padding:1px 5px;font-size:8px;font-weight:bold;white-space:nowrap;border:1px solid rgba(0,0,0,0.3);pointer-events:none;">${mapBadgeLabel}</span>`
+        : '';
 
       html += `
         <div class="map-game-box-${gameName.replace(/\s+/g, '-')}" data-game="${gameName}"${choiceAttr}
              onmouseenter="${choiceEnterHandler}"
              onmousemove="moveMapTooltip(event)"
              onmouseleave="${choiceLeaveHandler}"
+             ${mapClickHandler}
              style="
           background: ${boxColor};
           border: ${isChoice ? '3px' : '2px'} solid ${borderColor};
@@ -1959,9 +1995,10 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
           opacity: ${!isOnShortestPath && !isChoice && !isCurrentGame && !isAmuletGame ? '0.5' : '1'};
           transform: translateX(${horizontalOffset}px);
           position: relative;
+          margin-bottom: ${isChoice ? '10px' : '0'};
         ">
           ${isCurrentGame ? '📍 ' : ''}${isChoice ? '◆ ' : ''}${gameName}${isAmuletGame ? ' 🏆' : ''}${isOnShortestPath && !isCurrentGame && !isAmuletGame && !isChoice ? ' ⭐' : ''}
-          ${encounterIcon ? `<span style="position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; background: ${encounterColor}; color: ${encounterColor === '#ffd700' ? '#000' : '#fff'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid #000; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">${encounterIcon}</span>` : ''}
+          ${mapBadgeHTML}
         </div>
       `;
     });
@@ -4764,6 +4801,9 @@ function showPostCombatChoiceModal(difficulty) {
   }
   const used = gameState.postcombatChoicesUsed[tier] || [];
 
+  // Use the 2 pre-assigned options from the node modal if available for this game
+  const preAssigned = gameState.choiceDetails?.[gameState.currentGame]?.postCombatOptions || null;
+
   const optionData = [
     {
       key: 'rest',
@@ -4822,7 +4862,11 @@ function showPostCombatChoiceModal(difficulty) {
     }
   ];
 
-  const buttonsHTML = optionData.map(opt => {
+  // Filter to only the 2 pre-assigned options if the node modal set them
+  const _filtered = preAssigned ? optionData.filter(o => preAssigned.includes(o.key)) : optionData;
+  const visibleOptions = _filtered.length >= 2 ? _filtered : optionData;
+
+  const buttonsHTML = visibleOptions.map(opt => {
     const isUsed = used.includes(opt.key);
     return `
       <div style="
