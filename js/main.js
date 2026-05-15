@@ -396,10 +396,6 @@ function loadSavedGame(saveName) {
     gameState.diceSlots = {};
   }
   window.playerSpells = gameState.spells; // keep in sync with combat fallback
-  if (!gameState.postcombatChoicesUsed) {
-    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
-  }
-
   // Generate encounter types if they don't exist (for old saves)
   if (!gameState.encounterTypes) {
     gameState.encounterTypes = {};
@@ -903,7 +899,6 @@ function completeGameStart(start, amulet, saveName, startType) {
     activeAllies: [],
     deck: [],
     spells: [],
-    postcombatChoicesUsed: { Low: [], Medium: [], High: [] },
     insaneBatteryFills: 0,
     pendingInsaneHardCombat: false,
     choiceDetails: {}
@@ -4752,24 +4747,6 @@ function handleDiceCombatVictory(enemy) {
   });
   updateEncounterHistory();
 
-  // Reset post-combat choices when player first reaches Medium or Hard difficulty
-  if (!gameState.postcombatChoicesUsed) {
-    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
-  }
-  if (enemy.difficulty === 'Medium' && !gameState.firstMediumCombatWon) {
-    gameState.firstMediumCombatWon = true;
-    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
-    if (typeof createNotification === 'function') {
-      createNotification('Reached Medium difficulty — post-combat options reset!', '#f39c12', '⚔');
-    }
-  } else if (enemy.difficulty === 'High' && !gameState.firstHardCombatWon) {
-    gameState.firstHardCombatWon = true;
-    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
-    if (typeof createNotification === 'function') {
-      createNotification('Reached Hard difficulty — post-combat options reset!', '#c0392b', '💀');
-    }
-  }
-
   // Award one random potion or scroll (always runs; try/catch prevents silent failures)
   let lootIcon = '', lootDisplayName = '', lootDisplayRarity = '';
   try {
@@ -4802,10 +4779,6 @@ function handleDiceCombatVictory(enemy) {
  */
 function showPostCombatChoiceModal(difficulty) {
   const tier = difficulty || 'Low';
-  if (!gameState.postcombatChoicesUsed) {
-    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
-  }
-  const used = gameState.postcombatChoicesUsed[tier] || [];
 
   // Use the 2 pre-assigned options from the node modal if available for this game
   const preAssigned = gameState.choiceDetails?.[gameState.currentGame]?.postCombatOptions || null;
@@ -4872,36 +4845,29 @@ function showPostCombatChoiceModal(difficulty) {
   const _filtered = preAssigned ? optionData.filter(o => preAssigned.includes(o.key)) : optionData;
   const visibleOptions = _filtered.length >= 2 ? _filtered : optionData;
 
-  const buttonsHTML = visibleOptions.map(opt => {
-    const isUsed = used.includes(opt.key);
-    return `
+  const buttonsHTML = visibleOptions.map(opt => `
       <div style="
-        background: ${isUsed ? '#1a1a1a' : '#2d2d2d'};
-        border: 2px solid ${isUsed ? '#444' : opt.color};
+        background: #2d2d2d;
+        border: 2px solid ${opt.color};
         border-radius: 12px;
         padding: 20px;
-        cursor: ${isUsed ? 'not-allowed' : 'pointer'};
-        opacity: ${isUsed ? '0.45' : '1'};
+        cursor: pointer;
         transition: transform 0.15s, box-shadow 0.15s;
         text-align: center;
         min-width: 160px;
         max-width: 200px;
-        ${isUsed ? '' : `onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 20px ${opt.color}66'"`}
+        onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 20px ${opt.color}66'"
       "
-      ${isUsed ? '' : `onclick="window._postcombatUseOption('${opt.key}', '${tier}')"`}
+      onclick="window._postcombatUseOption('${opt.key}', '${tier}')"
       id="postcombat-opt-${opt.key}">
         <div style="font-size:36px;margin-bottom:10px;">${opt.icon}</div>
-        <div style="font-weight:bold;color:${isUsed ? '#666' : 'white'};font-size:15px;margin-bottom:8px;">${opt.label}</div>
-        <div style="color:${isUsed ? '#555' : '#aaa'};font-size:12px;line-height:1.4;">${opt.desc}</div>
-        ${isUsed ? '<div style="color:#666;font-size:11px;margin-top:8px;font-style:italic;">Used this tier</div>' : ''}
+        <div style="font-weight:bold;color:white;font-size:15px;margin-bottom:8px;">${opt.label}</div>
+        <div style="color:#aaa;font-size:12px;line-height:1.4;">${opt.desc}</div>
       </div>
-    `;
-  }).join('');
+    `).join('');
 
   // Register option handler globally (modal scope)
   window._postcombatUseOption = (key, t) => {
-    if (!gameState.postcombatChoicesUsed[t]) gameState.postcombatChoicesUsed[t] = [];
-    gameState.postcombatChoicesUsed[t].push(key);
     if (typeof saveCurrentGame === 'function') saveCurrentGame();
     const opt = optionData.find(o => o.key === key);
     if (opt) opt.action();
@@ -4910,10 +4876,7 @@ function showPostCombatChoiceModal(difficulty) {
   createGameModal(`
     <div style="text-align:center; padding:24px; max-width:920px;">
       <h2 style="color:#FFD700; margin-top:0; margin-bottom:6px;">After Battle</h2>
-      <p style="color:#aaa; font-size:13px; margin-bottom:20px;">
-        Choose one option — each can be used <strong>once per difficulty tier</strong>.
-        Currently: <span style="color:#4CAF50;">${tier}</span> tier.
-      </p>
+      <p style="color:#aaa; font-size:13px; margin-bottom:20px;">Choose your reward.</p>
       <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">
         ${buttonsHTML}
       </div>
