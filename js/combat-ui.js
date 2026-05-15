@@ -1703,7 +1703,7 @@ function renderDiceCardInHand(card, index, total, combat) {
         text-shadow:0 1px 3px rgba(0,0,0,0.9);
         border-top:1px solid ${borderColor}55;
         background:rgba(0,0,0,0.35);
-      ">${card.name}${card.upgraded ? `<span style="color:#4CAF50;font-size:${namePx+1}px;">⁺</span>` : ''}</div>
+      ">${card.name}${card.upgraded ? `<span style="color:#4CAF50;font-weight:bold;">+</span>` : ''}</div>
     </div>
   `;
 }
@@ -1828,7 +1828,7 @@ function renderCardInHand(card, index, total, combat) {
         text-align:center; line-height:1.2; flex-shrink:0;
         text-shadow:0 1px 3px rgba(0,0,0,0.8);
         letter-spacing:0.2px;
-      ">${card.name}${card.upgraded ? `<span style="color:#4CAF50;font-size:${namePx + 1}px;">⁺</span>` : ''}</div>
+      ">${card.name}${card.upgraded ? `<span style="color:#4CAF50;font-weight:bold;">+</span>` : ''}</div>
 
       <!-- Divider -->
       <div style="height:1px; background:linear-gradient(90deg,transparent,${borderColor}88,transparent); margin:1px 3px; flex-shrink:0;"></div>
@@ -1836,7 +1836,7 @@ function renderCardInHand(card, index, total, combat) {
       <!-- Description -->
       <div style="
         flex:1; padding:2px 4px;
-        font-size:${descPx}px; color:#ccc;
+        font-size:${descPx}px; color:${card.upgraded ? '#4CAF50' : '#ccc'};
         text-align:center; line-height:1.35;
         overflow-y:auto; overflow-x:hidden;
         scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.2) transparent;

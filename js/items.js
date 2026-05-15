@@ -131,14 +131,10 @@ function recalculateScalablePassives() {
     bonuses.attack += beefyRingBonus;
   }
 
-  // Check for Focus Crystal: +1 Attack if melee weapon equipped
+  // Check for Focus Crystal: +1 flat damage to all Melee attacks
   const hasFocusCrystal = inventory.some(item => item.name === 'Focus Crystal');
-  if (hasFocusCrystal && gameState.equippedWeapon) {
-    const weaponTags = gameState.equippedWeapon.tags || [];
-    const isMeleeWeapon = weaponTags.includes('melee');
-    if (isMeleeWeapon) {
-      bonuses.attack += 1;
-    }
+  if (hasFocusCrystal) {
+    bonuses.attack += 1;
   }
 
   // Paper Bag: Charisma equals the player's highest stat
