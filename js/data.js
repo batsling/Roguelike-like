@@ -129,6 +129,8 @@ var gameState = {
   // Combat encounter tracking (for weight-based system)
   totalCombatsCompleted: 0,   // How many combats have been completed this run
   lastDifficultyTier: null,   // 'Low', 'Medium', 'High' - tracks transitions
+  // Difficulty battery (Insane tier overheat tracking)
+  insaneBatteryFills: 0,      // How many times the Insane battery has fully filled
   // Shop per-visit services
   shopUpgradesUsed: 0,        // Card upgrade used this shop visit (max 1)
   shopRemovesUsed: 0,         // Card remove used this shop visit (max 1)

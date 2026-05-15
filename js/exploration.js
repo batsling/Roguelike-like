@@ -48,6 +48,15 @@ function clearAllArrows() {
 // ===== SPAWN CHOICES =====
 
 function spawnChoices() {
+  // Insane overheat: force a hard combat before showing movement choices
+  if (gameState.pendingInsaneHardCombat) {
+    gameState.pendingInsaneHardCombat = false;
+    if (typeof showCombatModal === 'function') {
+      showCombatModal();
+      return; // showCombatModal will call spawnChoices() on win via normal combat flow
+    }
+  }
+
   clearChoices();
 
   // Set phase to selection
@@ -194,7 +203,7 @@ function spawnChoices() {
     }
 
     // Get encounter type from gameState (randomly assigned per run)
-    let encounterType, encounterIcon, encounterColor;
+    let encounterType;
 
     // Find the game object
     const game = games.find(game => game.name === g);
@@ -202,41 +211,10 @@ function spawnChoices() {
     // Get encounter type from current run's assignments
     encounterType = gameState.encounterTypes?.[g];
 
-    if (game && encounterType) {
-      // Set icon and color based on encounter type
-      if (encounterType === 'combat') {
-        encounterIcon = '!';
-        // Get game type for color
-        switch(game.type.toLowerCase()) {
-          case 'action': encounterColor = 'red'; break;
-          case 'deckbuilding': encounterColor = 'purple'; break;
-          case 'strategy': encounterColor = 'blue'; break;
-          default: encounterColor = 'green'; break;
-        }
-      } else if (encounterType === 'event') {
-        encounterIcon = '?';
-        encounterColor = 'purple';
-      } else if (encounterType === 'shop') {
-        encounterIcon = '$';
-        encounterColor = 'gold';
-      }
-    } else {
-      // Fallback to random if encounterType not found (shouldn't happen)
-      console.warn(`No encounterType found for game: ${g}, using fallback random generation`);
-      const encounterRoll = Math.random() * 100;
-      if (encounterRoll < 75) {
-        encounterType = 'combat';
-        encounterIcon = '!';
-        encounterColor = 'red';
-      } else if (encounterRoll < 90) {
-        encounterType = 'event';
-        encounterIcon = '?';
-        encounterColor = 'purple';
-      } else {
-        encounterType = 'shop';
-        encounterIcon = '$';
-        encounterColor = 'gold';
-      }
+    if (!encounterType) {
+      // Fallback if encounterType not found (shouldn't happen)
+      console.warn(`No encounterType found for game: ${g}, using fallback`);
+      encounterType = 'combat';
     }
 
     const n = addNode(g, 'choice', nx, ny);
@@ -270,34 +248,35 @@ function spawnChoices() {
     // Check if this is the amulet game
     const isAmuletGame = (g === gameState.amuletGame.name);
 
-    // Override encounter type if it's the amulet game
     if (isAmuletGame) {
       encounterType = 'amulet';
-      encounterIcon = '🏺';
-      encounterColor = 'gold';
     }
 
-    // Add encounter icon to the node
-    const icon = document.createElement('span');
-    icon.textContent = encounterIcon;
-    icon.style.cssText = `
-      position: absolute;
-      top: -12px;
-      right: -12px;
-      width: 26px;
-      height: 26px;
-      background: ${encounterColor};
-      color: ${encounterColor === 'gold' ? '#000' : '#fff'};
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      font-weight: bold;
-      border: 2px solid #000;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-    `;
-    n.appendChild(icon);
+    // Game-type badge — colored pill showing mechanical type (Action/Deckbuilding/etc.)
+    const typeColors = { action: '#c0392b', deckbuilding: '#7d3c98', strategy: '#1a6fa0', traditional: '#1e8449' };
+    const badgeLabel = isAmuletGame ? '🏺 Amulet' : (game?.type || 'Unknown');
+    const badgeColor = isAmuletGame ? '#b7950b' : (typeColors[(game?.type || '').toLowerCase()] || '#555');
+    const typeBadge = document.createElement('span');
+    typeBadge.textContent = badgeLabel;
+    typeBadge.style.cssText = [
+      'position:absolute',
+      'bottom:-12px',
+      'left:50%',
+      'transform:translateX(-50%)',
+      'background:' + badgeColor,
+      'color:#fff',
+      'border-radius:4px',
+      'padding:2px 7px',
+      'font-size:9px',
+      'font-weight:bold',
+      'white-space:nowrap',
+      'border:1px solid rgba(0,0,0,0.35)',
+      'box-shadow:0 1px 4px rgba(0,0,0,0.4)',
+      'pointer-events:none',
+      'z-index:5',
+      'letter-spacing:0.3px',
+    ].join(';');
+    n.appendChild(typeBadge);
 
     // Store encounter type on the node
     n.dataset.encounterType = encounterType;

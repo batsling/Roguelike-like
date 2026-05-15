@@ -903,7 +903,9 @@ function completeGameStart(start, amulet, saveName, startType) {
     activeAllies: [],
     deck: [],
     spells: [],
-    postcombatChoicesUsed: { Low: [], Medium: [], High: [] }
+    postcombatChoicesUsed: { Low: [], Medium: [], High: [] },
+    insaneBatteryFills: 0,
+    pendingInsaneHardCombat: false
   };
   window.playerSpells = gameState.spells;
 
@@ -2530,12 +2532,13 @@ function showCombatModal() {
     }
   }
 
-  // Difficulty scales with number of games beaten
+  // Difficulty scales with number of games beaten (thresholds match getDifficultyTier)
   const gamesBeaten = gameState.totalGamesBeaten || 0;
+  const _thresholds = (typeof DIFFICULTY_THRESHOLDS !== 'undefined') ? DIFFICULTY_THRESHOLDS : { MEDIUM: 4, HARD: 8, INSANE: 12 };
   let powerText = 'Low';
-  if (gamesBeaten >= 10) {
+  if (gamesBeaten >= _thresholds.HARD) {
     powerText = 'High';
-  } else if (gamesBeaten >= 5) {
+  } else if (gamesBeaten >= _thresholds.MEDIUM) {
     powerText = 'Medium';
   }
 
@@ -4391,9 +4394,10 @@ function buildWeightedEncounter() {
   const combatsCompleted = gameState.totalCombatsCompleted || 0;
 
   // Determine current difficulty tier
+  const _enc_thresholds = (typeof DIFFICULTY_THRESHOLDS !== 'undefined') ? DIFFICULTY_THRESHOLDS : { MEDIUM: 4, HARD: 8, INSANE: 12 };
   let currentTier;
-  if (gamesBeaten >= 10) currentTier = 'High';
-  else if (gamesBeaten >= 5) currentTier = 'Medium';
+  if (gamesBeaten >= _enc_thresholds.HARD) currentTier = 'High';
+  else if (gamesBeaten >= _enc_thresholds.MEDIUM) currentTier = 'Medium';
   else currentTier = 'Low';
 
   // Detect first combat of a new tier
@@ -8504,6 +8508,9 @@ function markGameFinished(gameName) {
   if (typeof gameState.totalGamesBeaten !== 'number') {
     gameState.totalGamesBeaten = 0;
   }
+  if (typeof gameState.insaneBatteryFills !== 'number') {
+    gameState.insaneBatteryFills = 0;
+  }
 
   // Log the state before increment for debugging
 
@@ -8514,6 +8521,7 @@ function markGameFinished(gameName) {
   // Increment total games beaten counter (counts ALL completions including duplicates)
   const previousDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
   gameState.totalGamesBeaten++;
+  const newDifficultyAfterIncrement = getDifficultyTier(gameState.totalGamesBeaten);
 
   // Reroller trait: Every time you beat a game, gain +1 Reroll
   if (hasTrait('reroller')) {
@@ -8541,24 +8549,22 @@ function markGameFinished(gameName) {
     }
   }
 
+  // ---- Difficulty battery logic ----
+  handleDifficultyBatteryFill(previousDifficulty, newDifficultyAfterIncrement);
+
   // Check if difficulty tier changed and update location (unless manually overridden via dev tools)
   if (!gameState.manualLocationOverride) {
-    const newDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
-    if (previousDifficulty !== newDifficulty) {
-      const newLocation = getRandomLocation(newDifficulty);
+    if (previousDifficulty !== newDifficultyAfterIncrement) {
+      const newLocation = getRandomLocation(newDifficultyAfterIncrement);
       if (newLocation) {
         gameState.location = newLocation;
-
-      // Update the location display
-      if (typeof updateLocationDisplay === 'function') {
-        updateLocationDisplay(gameState.currentGame);
+        if (typeof updateLocationDisplay === 'function') {
+          updateLocationDisplay(gameState.currentGame);
+        }
+        if (newLocation.game === 'Hades') {
+          gameState.pendingHadesBoonSelection = true;
+        }
       }
-
-      // Flag if this is a Hades location - will be shown after item choice
-      if (newLocation.game === 'Hades') {
-        gameState.pendingHadesBoonSelection = true;
-      }
-    }
     }
   }
 
@@ -8570,6 +8576,8 @@ function markGameFinished(gameName) {
       const preRoR = getDifficultyTier(gameState.totalGamesBeaten);
       gameState.totalGamesBeaten++;
       const postRoR = getDifficultyTier(gameState.totalGamesBeaten);
+      // Update battery for the RoR-triggered increment
+      handleDifficultyBatteryFill(preRoR, postRoR);
       if (preRoR !== postRoR) {
         const escalatedLocation = getRandomLocation(postRoR);
         if (escalatedLocation) {
@@ -8593,6 +8601,61 @@ function markGameFinished(gameName) {
 
   updateGameStats();
   saveCurrentGame();
+}
+
+/**
+ * Called after each totalGamesBeaten increment to handle battery fill events.
+ * On a normal tier advance (Easy→Medium→Hard→Insane) the battery resets and shows
+ * a tier-up notification. When already in Insane and the battery fills again,
+ * it's an "overheat": escalating curses are applied and a hard combat is queued.
+ */
+function handleDifficultyBatteryFill(prevTier, newTier) {
+  const tierSize = (typeof DIFFICULTY_TIER_SIZE !== 'undefined') ? DIFFICULTY_TIER_SIZE : 4;
+  const filled = gameState.totalGamesBeaten % tierSize === 0 && gameState.totalGamesBeaten > 0;
+
+  if (!filled) {
+    // Battery gained a segment but didn't complete — just refresh the display
+    if (typeof updateLocationDisplay === 'function') updateLocationDisplay(gameState.currentGame);
+    return;
+  }
+
+  if (prevTier !== newTier) {
+    // Normal tier advancement — battery empties as we enter the new tier
+    const tierColors = { Easy: '#2ecc71', Medium: '#ff9800', Hard: '#f44336', Insane: '#aa44ff' };
+    const color = tierColors[newTier] || '#aaa';
+    if (typeof createNotification === 'function') {
+      createNotification(`Difficulty increased: ${newTier}!`, color, '⚠️');
+    }
+  } else if (newTier === 'Insane') {
+    // Insane overheat — battery filled without a tier change
+    if (typeof gameState.insaneBatteryFills !== 'number') gameState.insaneBatteryFills = 0;
+    gameState.insaneBatteryFills++;
+    const curseCount = gameState.insaneBatteryFills;
+
+    // Apply escalating curses
+    const availableCurses = (typeof curses !== 'undefined')
+      ? curses.filter(c => !gameState.activeCurses.some(ac => ac.name === c.name))
+      : [];
+    let cursesAdded = 0;
+    for (let i = 0; i < curseCount && availableCurses.length > 0; i++) {
+      const idx = Math.floor(Math.random() * availableCurses.length);
+      const chosen = availableCurses.splice(idx, 1)[0];
+      if (typeof addCurse === 'function') addCurse(chosen.name);
+      cursesAdded++;
+    }
+
+    if (typeof createNotification === 'function') {
+      createNotification(
+        `OVERHEAT! +${cursesAdded} curse${cursesAdded !== 1 ? 's' : ''} — Hard combat incoming!`,
+        '#cc00ff', '🔥'
+      );
+    }
+
+    // Queue a hard combat encounter before the next set of choices
+    gameState.pendingInsaneHardCombat = true;
+  }
+
+  if (typeof updateLocationDisplay === 'function') updateLocationDisplay(gameState.currentGame);
 }
 
 /**
@@ -8845,13 +8908,14 @@ function triggerGameStatusEffects(gameName) {
 
   // Calculate difficulty tier based on games beaten (same as combat)
   const gamesBeaten = gameState.totalGamesBeaten || 0;
+  const _status_thresholds = (typeof DIFFICULTY_THRESHOLDS !== 'undefined') ? DIFFICULTY_THRESHOLDS : { MEDIUM: 4, HARD: 8, INSANE: 12 };
   let difficultyTier = 'Low';
   let curseSuffix = 'I';
 
-  if (gamesBeaten >= 10) {
+  if (gamesBeaten >= _status_thresholds.HARD) {
     difficultyTier = 'High';
     curseSuffix = 'III';
-  } else if (gamesBeaten >= 5) {
+  } else if (gamesBeaten >= _status_thresholds.MEDIUM) {
     difficultyTier = 'Medium';
     curseSuffix = 'II';
   }
