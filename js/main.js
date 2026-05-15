@@ -2572,14 +2572,20 @@ function showCombatModal() {
     powerText = 'Medium';
   }
 
-  const matchingEnemies = enemies.filter(enemy =>
-    enemy.powerLevel === powerText && enemy.stat === requiredStat
-  );
-
-  if (matchingEnemies.length === 0) return;
-
-  const randomIndex = Math.floor(Math.random() * matchingEnemies.length);
-  const enemy = matchingEnemies[randomIndex];
+  // Use pre-assigned enemy from node modal if available, otherwise pick randomly
+  const _preAssigned = gameState.choiceDetails?.[gameState.currentGame]?.enemies;
+  let enemy;
+  if (_preAssigned && _preAssigned.length > 0) {
+    enemy = _preAssigned[0];
+    // Consume the pre-assigned slot so a retry generates fresh enemies
+    delete gameState.choiceDetails[gameState.currentGame].enemies;
+  } else {
+    const matchingEnemies = enemies.filter(e =>
+      e.powerLevel === powerText && e.stat === requiredStat
+    );
+    if (matchingEnemies.length === 0) return;
+    enemy = matchingEnemies[Math.floor(Math.random() * matchingEnemies.length)];
+  }
 
   // Initialize combat state
   const combat = window.CombatState.initializeCombat(enemy);
@@ -4535,8 +4541,15 @@ function showDiceCombatModal() {
   gameState.phase = 'combat';
   updateInventory();
 
-  // Build encounter using weight system
-  const encounterEnemies = buildWeightedEncounter();
+  // Use pre-assigned enemies from the node modal if available, otherwise generate fresh
+  const _preAssignedEnemies = gameState.choiceDetails?.[gameState.currentGame]?.enemies;
+  const encounterEnemies = (_preAssignedEnemies && _preAssignedEnemies.length > 0)
+    ? _preAssignedEnemies
+    : buildWeightedEncounter();
+  // Consume the pre-assigned slot so a retry generates fresh enemies
+  if (_preAssignedEnemies && gameState.choiceDetails?.[gameState.currentGame]) {
+    delete gameState.choiceDetails[gameState.currentGame].enemies;
+  }
   if (!encounterEnemies || encounterEnemies.length === 0) {
     console.error('No matching enemies found');
     return;
