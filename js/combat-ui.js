@@ -192,6 +192,11 @@ function getCardDynamicDmg(baseDmg, card, combat, targetEnemy) {
     }
   }
 
+  // Focus Crystal: +1 flat bonus to melee attacks
+  if (/melee/i.test(card.description || '') && combat._flatAttackBonus) {
+    dmg += combat._flatAttackBonus;
+  }
+
   return Math.max(0, dmg);
 }
 
@@ -305,6 +310,7 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
                || !!(combat._scalingCounters && combat._scalingCounters[card.name])
                || desc.toLowerCase().includes('wealth')
                || persistence > 0
+               || !!(combat._flatAttackBonus && /melee/i.test(desc))
                || !!(targetEnemy && targetEnemy.statuses
                     && (targetEnemy.statuses['vulnerable'] || targetEnemy.statuses['bruise']));
   if (!hasMods) return desc;
@@ -4066,14 +4072,16 @@ function getDiceFaceDynamicText(face, combat) {
   const player  = combat.player;
   let text = face.text;
 
-  // Damage boost from power / weak
+  // Damage boost from power / weak / flat melee bonus (Focus Crystal)
   const hasDmg = effects.some(e => e.move === 'dmg');
   if (hasDmg) {
     const power = player.statuses['power'] || 0;
     const weak  = player.statuses['weak'] ? 0.75 : 1;
+    const hasMeleeEffect = effects.some(e => e.move === 'dmg' && (e.addons || []).some(a => a.toLowerCase() === 'melee'));
+    const flatBonus = (hasMeleeEffect && combat._flatAttackBonus) ? combat._flatAttackBonus : 0;
     text = text.replace(/(\d+) Dmg/gi, (_, n) => {
       const base    = parseInt(n);
-      const boosted = Math.max(0, Math.floor((base + power) * weak));
+      const boosted = Math.max(0, Math.floor((base + power + flatBonus) * weak));
       if (boosted === base) return `${base} Dmg`;
       const col = boosted > base ? '#7dff7d' : '#ff7d7d';
       return `<span style="color:${col};font-weight:bold">${boosted}</span> Dmg`;
