@@ -1022,11 +1022,19 @@ function showNodeDetailModal(gameName, x, y, encounterType, opts = {}) {
     </div>
   `);
 
-  // Collapse the generic modal-content wrapper so the node modal is properly centred
+  // Centre the modal both horizontally and vertically
+  const overlay = document.getElementById('game-modal');
+  if (overlay) {
+    overlay.style.alignItems = 'center';
+    overlay.style.paddingTop = '0';
+    overlay.style.padding = '16px';
+  }
   const mc = document.querySelector('#game-modal .modal-content');
   if (mc) {
     mc.style.width = 'auto';
     mc.style.maxWidth = '95vw';
+    mc.style.maxHeight = '90vh';
+    mc.style.overflowY = 'auto';
     mc.style.padding = '0';
     mc.style.background = 'transparent';
     mc.style.border = 'none';
