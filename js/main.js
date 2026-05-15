@@ -960,10 +960,10 @@ function completeGameStart(start, amulet, saveName, startType) {
       }, 500);
     } else {
       // Find the starting game node and wire up a click → node detail modal
-      const allNodes = document.querySelectorAll('[data-game]');
+      const allNodes = document.querySelectorAll('[data-game-name]');
       let startNode = null;
       for (const n of allNodes) {
-        if (n.dataset.game === start.name) { startNode = n; break; }
+        if (n.dataset.gameName === start.name) { startNode = n; break; }
       }
       const triggerCombat = () => {
         const startCombat = () => {
@@ -990,6 +990,11 @@ function completeGameStart(start, amulet, saveName, startType) {
           }
         };
         startNode.appendChild(fightBtn);
+        // Add Finished button so player can mark the start game done after combat
+        // (mirroring what advance() does for regular nodes)
+        if (typeof showFinish === 'function') {
+          showFinish(startNode);
+        }
       } else {
         triggerCombat();
       }
