@@ -277,6 +277,13 @@ const ITEM_EFFECTS = {
     }
   },
 
+  "Propeller Hat": {
+    onAcquire: () => {
+      StateMutator.modifyStat('luck', 3);
+      StateMutator.modifyStat('strength', -1);
+    }
+  },
+
   "Lunch": {
     onAcquire: () => {
       StateMutator.modifyMaxHealth(5);
@@ -661,7 +668,7 @@ const ITEM_EFFECTS = {
     // Effect is handled in damage calculation
   },
 
-  "Stabilizar Arm Locks": {
+  "Stabilizer Arm Locks": {
     onAcquire: () => {
       StateMutator.modifyStat('dexterity', 6);
     }
