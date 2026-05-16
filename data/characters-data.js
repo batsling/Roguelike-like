@@ -11,8 +11,7 @@ var CHARACTERS_DATA = {
     "health": 75,
     "levelUpCondition": "Beat a game without meta progression",
     "levelUpReward": {
-      "type": "gold",
-      "amount": 50
+      "type": "none"
     },
     "levelUpStats": {
       "strength": 0,
@@ -28,7 +27,7 @@ var CHARACTERS_DATA = {
       "random": 3
     },
     "description": "Now I abide here, searching endlessly for the precious Amulet... and finding a thousand horrors.",
-    "combatStyle": "Identify",
+    "combatStyle": "Cards",
     "startingDeck": [
       {
         "cardName": "Strike",

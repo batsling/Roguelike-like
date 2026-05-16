@@ -2040,6 +2040,18 @@ function dealDamage(target, damage, addons = []) {
     return;
   }
 
+  // Head of the Keeper: 5% chance to gain 1 Gold when dealing damage to an enemy
+  if (target !== combatState.player && !addons.includes('self') &&
+      typeof inventory !== 'undefined' && inventory.some(i => i.name === 'Head of the Keeper')) {
+    if (Math.random() < 0.05) {
+      if (typeof gold !== 'undefined') gold += 1;
+      if (typeof gameState !== 'undefined' && gameState) gameState.gold = gold;
+      addLog('Head of the Keeper: +1 Gold!', 'success');
+      if (typeof createNotification === 'function') createNotification('Head of the Keeper: +1 Gold!', '#f1c40f', '🪙');
+      if (typeof updateTopBar === 'function') updateTopBar();
+    }
+  }
+
   // Apply Power modifier
   const powerStacks = target === combatState.player ? 0 : (target.statuses['power'] || 0);
   // Power affects outgoing damage, not incoming - skip for now

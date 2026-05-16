@@ -1,71 +1,16 @@
 // Auto-generated from Roguelikes.xlsx - Combat Statuses
 
 var STATUSES_DATA = {
-  "burn": {
-    "name": "Burn",
-    "description": "Deals 3 damage to target at the end of turn",
-    "type": "Debuff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "Down by 1 at end of turn",
-    "who": "All",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Burn.png"
-  },
-  "poison": {
-    "name": "Poison",
-    "description": "Deals X damage to any target where X is the stack at the start of turn",
-    "type": "Debuff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "Down by 1 at start of turn",
-    "who": "All",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Poison.png"
-  },
-  "dodge": {
-    "name": "Dodge",
-    "description": "Negate the next X sources of damage where X is the stack",
-    "type": "Buff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "Down when player was going to lose health",
-    "who": "All",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/Dodge.png"
-  },
-  "power": {
-    "name": "Power",
-    "description": "Raise or Lower the Melee or Ranged damage dealth by this target by X",
+  "arcane": {
+    "name": "Arcane",
+    "description": "Raise or Lower the Magic damage dealth by this target by X",
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
     "decay": "None",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/Power.png"
-  },
-  "oiled": {
-    "name": "Oiled",
-    "description": "Burn deals double damage, and at end of turn, Dex save 10 or Lose 1 Energy",
-    "type": "Debuff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "Down by 1 at end of turn",
-    "who": "All",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Oiled.png"
-  },
-  "forgetful": {
-    "name": "Forgetful",
-    "description": "This enemy cannot repeat any of its intents until it has performed all of them.",
-    "type": "Ability",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "Down by 1 when all sides have been rolled",
-    "who": "Enemy",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Forgetful.png"
+    "imageUrl": "images/statuses/Arcane.png"
   },
   "barricade": {
     "name": "Barricade",
@@ -78,192 +23,49 @@ var STATUSES_DATA = {
     "preference": "Positive",
     "imageUrl": "images/statuses/Barricade.png"
   },
-  "ruptured": {
-    "name": "Ruptured",
-    "description": "Deals 3 damage to the player when they use a dash to gain dodge",
+  "bleed": {
+    "name": "Bleed",
+    "description": "Target loses 1 Health per stack at the end of their turn.",
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
-    "decay": "Down by 1 when dash is used",
+    "decay": "UP by 1 at the end of turn",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Ruptured.png"
+    "imageUrl": "images/statuses/Bleed.png"
   },
-  "enfeebled": {
-    "name": "Enfeebled",
-    "description": "All damage deals double to target",
-    "type": "Debuff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "Down by 1 at end of turn",
-    "who": "All",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Enfeebled.png"
-  },
-  "formless": {
-    "name": "Formless",
-    "description": "When dealt damage, change it's intent",
-    "type": "Ability",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "None",
-    "who": "Enemy",
-    "preference": "Neutral",
-    "imageUrl": "images/statuses/Formless.png"
-  },
-  "multi_attack": {
-    "name": "Multi Attack",
-    "description": "This enemy has X amount of intents in a turn",
-    "type": "Ability",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "None",
-    "who": "Enemy",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/MultiAttack.png"
-  },
-  "ritual": {
-    "name": "Ritual",
-    "description": "At the end of its turn, gains X Power",
+  "bleed_thorns": {
+    "name": "Bleed Thorns",
+    "description": "When a target with Bleed Thorns gets dealt or deals Melee Dmg, the target Inflicts X Bleed to the attacker/recipient",
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
     "decay": "None",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/Ritual.png"
+    "imageUrl": "images/statuses/BleedThorns.png"
   },
-  "confused": {
-    "name": "Confused",
-    "description": "Each Dice Energy Cost is randomized between 0 and your max energy every roll",
-    "type": "Debuff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "Down by 1 at end of turn",
-    "who": "Player",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Confused.png"
-  },
-  "fading_x": {
-    "name": "Fading X",
-    "description": "Dies in X turns",
+  "blind": {
+    "name": "Blind",
+    "description": "Each hit from Attack Cards have a 30% Miss Chance",
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
     "decay": "Down by 1 at end of turn",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Fading.png"
+    "imageUrl": "images/statuses/Blind.png"
   },
-  "shifting": {
-    "name": "Shifting",
-    "description": "Loses X Power where X is the amount of damage taken this turn. Gain X Shackled.",
-    "type": "Debuff",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "None",
-    "who": "All",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Shifting.png"
-  },
-  "thorns": {
-    "name": "Thorns",
-    "description": "When a target with Thorns gets dealt or deals Melee Dmg, the target deals X Dmg to the attacker/recipient",
+  "blur": {
+    "name": "Blur",
+    "description": "Block is not removed at the start of your next X turns",
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
-    "decay": "None",
+    "decay": "Down by 1 at end of turn",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/Thorns.png"
-  },
-  "vulnerable": {
-    "name": "Vulnerable",
-    "description": "All damage deals 50% more to target ",
-    "type": "Debuff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "Down by 1 at end of turn",
-    "who": "All",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Vulnerable.png"
-  },
-  "weak": {
-    "name": "Weak",
-    "description": "Target deals 25% less damage.",
-    "type": "Debuff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "Down by 1 at end of turn",
-    "who": "All",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Weak.png"
-  },
-  "stun": {
-    "name": "Stun",
-    "description": "The enemy's intent will be changed to \"Stunned\" and will do nothing on this turn ",
-    "type": "Debuff",
-    "stackable": false,
-    "maxStack": 1,
-    "decay": "Down by 1 at end of turn",
-    "who": "Enemy",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Stun.png"
-  },
-  "unknown": {
-    "name": "Unknown",
-    "description": "This enemy intends to do something specific",
-    "type": "Intent",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "None",
-    "who": "Enemy",
-    "preference": "Neutral",
-    "imageUrl": "images/statuses/Unknown.png"
-  },
-  "stagger_x": {
-    "name": "Stagger X",
-    "description": "Target will gain Stun when hit with X% of Total Health lost in one hit",
-    "type": "Ability",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "None",
-    "who": "Enemy",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Stun.png"
-  },
-  "pigment_rich": {
-    "name": "Pigment Rich",
-    "description": "When hit, add a random pigment card to your hand.",
-    "type": "Ability",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "None",
-    "who": "Enemy",
-    "preference": "Neutral",
-    "imageUrl": "images/statuses/PigmentRich.png"
-  },
-  "rerollable": {
-    "name": "Rerollable",
-    "description": "Attacks from this enemy can be rerolled costing 1 Reroll",
-    "type": "Ability",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "None",
-    "who": "Enemy",
-    "preference": "Neutral",
-    "imageUrl": "images/statuses/Rerollable.png"
-  },
-  "rust": {
-    "name": "Rust",
-    "description": "If this enemy does damage that causes the player to lose health, Downgrade a random passive item",
-    "type": "Ability",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "None",
-    "who": "Enemy",
-    "preference": "Neutral",
-    "imageUrl": "images/statuses/Rust.png"
+    "imageUrl": "images/statuses/Blur.png"
   },
   "brace": {
     "name": "Brace",
@@ -287,28 +89,6 @@ var STATUSES_DATA = {
     "preference": "Negative",
     "imageUrl": "images/statuses/Bruise.png"
   },
-  "leeches": {
-    "name": "Leeches",
-    "description": "Drains 1 health per stack from all afflicted units at the end of the applier's turn and gives it to the applier. When hovering, it will say \"X's Leeches\"",
-    "type": "Debuff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "None",
-    "who": "All",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Leeches.png"
-  },
-  "soul_link": {
-    "name": "Soul Link",
-    "description": "Whenever a soul linked target loses health, all soul linked characters lose that health as well.",
-    "type": "Debuff",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "None",
-    "who": "All",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/SoulLink.png"
-  },
   "buffer": {
     "name": "Buffer",
     "description": "Prevent the next X times the target would lose Health",
@@ -320,137 +100,16 @@ var STATUSES_DATA = {
     "preference": "Positive",
     "imageUrl": "images/statuses/Buffer.png"
   },
-  "regeneration": {
-    "name": "Regeneration",
-    "description": "At the end of target's turn, it gains X health where X is the stack",
-    "type": "Buff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "Down by 1 at end of turn",
-    "who": "All",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/Regeneration.png"
-  },
-  "defense": {
-    "name": "Defense",
-    "description": "Raise or Lower the Block gained by this target by X",
-    "type": "Buff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "None",
-    "who": "All",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/Defense.png"
-  },
-  "curl_up": {
-    "name": "Curl Up",
-    "description": "Target Gains +X Block upon receiving first attack damage each turn",
-    "type": "Ability",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "None",
-    "who": "All",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/CurlUp.png"
-  },
-  "split": {
-    "name": "Split",
-    "description": "When target's health is at or below 50%, it's intent will become Unknown Intent (\"Splitting\") and Spawn X Y with its current HP on it's turn",
-    "type": "Ability",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "None",
-    "who": "Enemy",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/Split.png"
-  },
-  "next_turn_block": {
-    "name": "Next Turn Block",
-    "description": "Gain X Block at the start of your next turn",
-    "type": "Buff",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "Lose all when triggered",
-    "who": "Player",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/NextTurnBlock.png"
-  },
-  "shackled": {
-    "name": "Shackled",
-    "description": "Regains X Power at the end of target's turn",
-    "type": "Buff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "Lose all when triggered",
-    "who": "All",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/Shackled.png"
-  },
-  "blur": {
-    "name": "Blur",
-    "description": "Block is not removed at the start of your next X turns",
-    "type": "Buff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "Down by 1 at end of turn",
-    "who": "All",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/Blur.png"
-  },
-  "next_turn_draw": {
-    "name": "Next Turn Draw",
-    "description": "Draw X Cards at the start of your turn",
-    "type": "Buff",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "Lose all when triggered",
-    "who": "Player",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/NextTurnDraw.png"
-  },
-  "next_turn_energy": {
-    "name": "Next Turn Energy",
-    "description": "Gain X Energy at the start of your turn",
-    "type": "Buff",
-    "stackable": false,
-    "maxStack": null,
-    "decay": "Lose all when triggered",
-    "who": "Player",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/NextTurnEnergy.png"
-  },
-  "choked": {
-    "name": "Choked",
-    "description": "Whenever you play a card this turn, target loses X Health",
+  "burn": {
+    "name": "Burn",
+    "description": "Deals 3 damage to target at the end of turn",
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
-    "decay": "Lose all at end of turn",
-    "who": "Enemy",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Choked.png"
-  },
-  "well-laid_plans": {
-    "name": "Well-Laid Plans",
-    "description": "At the end of your turn, add Retain to up to X Cards",
-    "type": "Ability",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "Lose all at end of turn",
-    "who": "Player",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/Well-LaidPlans.png"
-  },
-  "no_draw": {
-    "name": "No Draw",
-    "description": "You cannot Draw Cards this Turn",
-    "type": "Debuff",
-    "stackable": false,
-    "maxStack": null,
     "decay": "Down by 1 at end of turn",
-    "who": "Player",
+    "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/NoDraw.png"
+    "imageUrl": "images/statuses/Burn.png"
   },
   "burst": {
     "name": "Burst",
@@ -463,6 +122,28 @@ var STATUSES_DATA = {
     "preference": "Positive",
     "imageUrl": "images/statuses/Burst.png"
   },
+  "choked": {
+    "name": "Choked",
+    "description": "Whenever you play a card this turn, target loses X Health",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Lose all at end of turn",
+    "who": "Enemy",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Choked.png"
+  },
+  "confused": {
+    "name": "Confused",
+    "description": "Each Dice Energy Cost is randomized between 0 and your max energy every roll",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "Player",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Confused.png"
+  },
   "corpse_explosion": {
     "name": "Corpse Explosion",
     "description": "On death, this enemy deals X times it's Max Health to all other Enemies",
@@ -474,16 +155,49 @@ var STATUSES_DATA = {
     "preference": "Negative",
     "imageUrl": "images/statuses/CorpseExplosion.png"
   },
-  "envenom": {
-    "name": "Envenom",
-    "description": "Whenever you deal unblocked attack damage, apply X poison",
+  "curl_up": {
+    "name": "Curl Up",
+    "description": "Target Gains +X Block upon receiving first attack damage each turn",
     "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/CurlUp.png"
+  },
+  "defense": {
+    "name": "Defense",
+    "description": "Raise or Lower the Block gained by this target by X",
+    "type": "Buff",
     "stackable": true,
     "maxStack": null,
     "decay": "None",
-    "who": "Player",
+    "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/Envenom.png"
+    "imageUrl": "images/statuses/Defense.png"
+  },
+  "dodge": {
+    "name": "Dodge",
+    "description": "Negate the next X sources of damage where X is the stack",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down when player was going to lose health",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Dodge.png"
+  },
+  "doom": {
+    "name": "Doom",
+    "description": "At the end the target's turn, if that target has less health than it has Doom, it will die",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Doom.png"
   },
   "double_damage": {
     "name": "Double Damage",
@@ -496,16 +210,27 @@ var STATUSES_DATA = {
     "preference": "Positive",
     "imageUrl": "images/statuses/DoubleDamage.png"
   },
-  "intangible": {
-    "name": "Intangible",
-    "description": "Reduce each instance of Dmg and Health loss to 1",
-    "type": "Buff",
+  "enfeebled": {
+    "name": "Enfeebled",
+    "description": "All damage deals double to target",
+    "type": "Debuff",
     "stackable": true,
     "maxStack": null,
     "decay": "Down by 1 at end of turn",
     "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Enfeebled.png"
+  },
+  "envenom": {
+    "name": "Envenom",
+    "description": "Whenever you deal unblocked attack damage, apply X poison",
+    "type": "Ability",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Player",
     "preference": "Positive",
-    "imageUrl": "images/statuses/Intangible.png"
+    "imageUrl": "images/statuses/Envenom.png"
   },
   "evolve": {
     "name": "Evolve",
@@ -517,6 +242,28 @@ var STATUSES_DATA = {
     "who": "Player",
     "preference": "Positive",
     "imageUrl": "images/statuses/Evolve.png"
+  },
+  "fading_x": {
+    "name": "Fading X",
+    "description": "Dies in X turns",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Fading.png"
+  },
+  "fear": {
+    "name": "Fear",
+    "description": "Your non-Skill Cards cost 1 more Energy, lose 1 Fear whenever you play a Skill Card",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 on played Skill Card",
+    "who": "Player",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Fear.png"
   },
   "feel_no_pain": {
     "name": "Feel No Pain",
@@ -540,16 +287,38 @@ var STATUSES_DATA = {
     "preference": "Positive",
     "imageUrl": "images/statuses/FireBreathing.png"
   },
-  "plated_armor": {
-    "name": "Plated Armor",
-    "description": "At the end of your turn, Gain X Block",
+  "flame_barrier": {
+    "name": "Flame Barrier",
+    "description": "When a target with Flame Barrier gets dealt Dmg, the target deals X Magic Dmg Fire Ranged to the attacker",
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
-    "decay": "Down by 1 when receiving unblocked Dmg",
+    "decay": "Lose all at end of turn",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/PlatedArmor.png"
+    "imageUrl": "images/statuses/FlameBarrier.png"
+  },
+  "forgetful": {
+    "name": "Forgetful",
+    "description": "This enemy cannot repeat any of its intents until it has performed all of them.",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "Down by 1 when all sides have been rolled",
+    "who": "Enemy",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Forgetful.png"
+  },
+  "formless": {
+    "name": "Formless",
+    "description": "When dealt damage, change it's intent",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Neutral",
+    "imageUrl": "images/statuses/Formless.png"
   },
   "frail": {
     "name": "Frail",
@@ -562,49 +331,93 @@ var STATUSES_DATA = {
     "preference": "Negative",
     "imageUrl": "images/statuses/Frail.png"
   },
-  "fear": {
-    "name": "Fear",
-    "description": "Your non-Skill Cards cost 1 more Energy, lose 1 Fear whenever you play a Skill Card",
-    "type": "Debuff",
+  "intangible": {
+    "name": "Intangible",
+    "description": "Reduce each instance of Dmg and Health loss to 1",
+    "type": "Buff",
     "stackable": true,
     "maxStack": null,
-    "decay": "Down by 1 on played Skill Card",
-    "who": "Player",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Fear.png"
+    "decay": "Down by 1 at end of turn",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Intangible.png"
   },
-  "doom": {
-    "name": "Doom",
-    "description": "At the end the target's turn, if that target has less health than it has Doom, it will die",
+  "leeches": {
+    "name": "Leeches",
+    "description": "Drains 1 health per stack from all afflicted units at the end of the applier's turn and gives it to the applier. When hovering, it will say \"X's Leeches\"",
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
     "decay": "None",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Doom.png"
+    "imageUrl": "images/statuses/Leeches.png"
   },
-  "blind": {
-    "name": "Blind",
-    "description": "Each hit from Attack Cards have a 30% Miss Chance",
+  "multi_attack": {
+    "name": "Multi Attack",
+    "description": "This enemy has X amount of intents in a turn",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/MultiAttack.png"
+  },
+  "next_turn_block": {
+    "name": "Next Turn Block",
+    "description": "Gain X Block at the start of your next turn",
+    "type": "Buff",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "Lose all when triggered",
+    "who": "Player",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/NextTurnBlock.png"
+  },
+  "next_turn_draw": {
+    "name": "Next Turn Draw",
+    "description": "Draw X Cards at the start of your turn",
+    "type": "Buff",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "Lose all when triggered",
+    "who": "Player",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/NextTurnDraw.png"
+  },
+  "next_turn_energy": {
+    "name": "Next Turn Energy",
+    "description": "Gain X Energy at the start of your turn",
+    "type": "Buff",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "Lose all when triggered",
+    "who": "Player",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/NextTurnEnergy.png"
+  },
+  "no_draw": {
+    "name": "No Draw",
+    "description": "You cannot Draw Cards this Turn",
+    "type": "Debuff",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "Player",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/NoDraw.png"
+  },
+  "oiled": {
+    "name": "Oiled",
+    "description": "Burn deals double damage, and at end of turn, Dex save 10 or Lose 1 Energy",
     "type": "Debuff",
     "stackable": true,
     "maxStack": null,
     "decay": "Down by 1 at end of turn",
     "who": "All",
     "preference": "Negative",
-    "imageUrl": "images/statuses/Blind.png"
-  },
-  "arcane": {
-    "name": "Arcane",
-    "description": "Raise or Lower the Magic damage dealth by this target by X",
-    "type": "Buff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "None",
-    "who": "All",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/Arcane.png"
+    "imageUrl": "images/statuses/Oiled.png"
   },
   "persistence": {
     "name": "Persistence",
@@ -617,16 +430,225 @@ var STATUSES_DATA = {
     "preference": "Positive",
     "imageUrl": "images/statuses/Persistence.png"
   },
-  "flame_barrier": {
-    "name": "Flame Barrier",
-    "description": "When a target with Flame Barrier gets dealt Dmg, the target deals X Magic Dmg Fire Ranged to the attacker",
+  "pigment_rich": {
+    "name": "Pigment Rich",
+    "description": "When hit, add a random pigment card to your hand.",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Neutral",
+    "imageUrl": "images/statuses/PigmentRich.png"
+  },
+  "plated_armor": {
+    "name": "Plated Armor",
+    "description": "At the end of your turn, Gain X Block",
     "type": "Buff",
     "stackable": true,
     "maxStack": null,
-    "decay": "Lose all at end of turn",
+    "decay": "Down by 1 when receiving unblocked Dmg",
     "who": "All",
     "preference": "Positive",
-    "imageUrl": "images/statuses/FlameBarrier.png"
+    "imageUrl": "images/statuses/PlatedArmor.png"
+  },
+  "poison": {
+    "name": "Poison",
+    "description": "Deals X damage to any target where X is the stack at the start of turn",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at start of turn",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Poison.png"
+  },
+  "power": {
+    "name": "Power",
+    "description": "Raise or Lower the Melee or Ranged damage dealth by this target by X",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Power.png"
+  },
+  "regeneration": {
+    "name": "Regeneration",
+    "description": "At the end of target's turn, it gains X health where X is the stack",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Regeneration.png"
+  },
+  "rerollable": {
+    "name": "Rerollable",
+    "description": "Attacks from this enemy can be rerolled costing 1 Reroll",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Neutral",
+    "imageUrl": "images/statuses/Rerollable.png"
+  },
+  "ritual": {
+    "name": "Ritual",
+    "description": "At the end of its turn, gains X Power",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Ritual.png"
+  },
+  "ruptured": {
+    "name": "Ruptured",
+    "description": "Deals 3 damage to the player when they use a dash to gain dodge",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 when dash is used",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Ruptured.png"
+  },
+  "rust": {
+    "name": "Rust",
+    "description": "If this enemy does damage that causes the player to lose health, Downgrade a random passive item",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Neutral",
+    "imageUrl": "images/statuses/Rust.png"
+  },
+  "shackled": {
+    "name": "Shackled",
+    "description": "Regains X Power at the end of target's turn",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Lose all when triggered",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Shackled.png"
+  },
+  "shifting": {
+    "name": "Shifting",
+    "description": "Loses X Power where X is the amount of damage taken this turn. Gain X Shackled.",
+    "type": "Debuff",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Shifting.png"
+  },
+  "soul_link": {
+    "name": "Soul Link",
+    "description": "Whenever a soul linked target loses health, all soul linked characters lose that health as well.",
+    "type": "Debuff",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/SoulLink.png"
+  },
+  "split": {
+    "name": "Split",
+    "description": "When target's health is at or below 50%, it's intent will become Unknown Intent (\"Splitting\") and Spawn X Y with its current HP on it's turn",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Split.png"
+  },
+  "stagger_x": {
+    "name": "Stagger X",
+    "description": "Target will gain Stun when hit with X% of Total Health lost in one hit",
+    "type": "Ability",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Stun.png"
+  },
+  "stun": {
+    "name": "Stun",
+    "description": "The enemy's intent will be changed to \"Stunned\" and will do nothing on this turn ",
+    "type": "Debuff",
+    "stackable": false,
+    "maxStack": 1,
+    "decay": "Down by 1 at end of turn",
+    "who": "Enemy",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Stun.png"
+  },
+  "thorns": {
+    "name": "Thorns",
+    "description": "When a target with Thorns gets dealt or deals Melee Dmg, the target deals X Dmg to the attacker/recipient",
+    "type": "Buff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "None",
+    "who": "All",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Thorns.png"
+  },
+  "unknown": {
+    "name": "Unknown",
+    "description": "This enemy intends to do something specific",
+    "type": "Intent",
+    "stackable": false,
+    "maxStack": null,
+    "decay": "None",
+    "who": "Enemy",
+    "preference": "Neutral",
+    "imageUrl": "images/statuses/Unknown.png"
+  },
+  "vulnerable": {
+    "name": "Vulnerable",
+    "description": "All damage deals 50% more to target ",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Vulnerable.png"
+  },
+  "weak": {
+    "name": "Weak",
+    "description": "Target deals 25% less damage.",
+    "type": "Debuff",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Down by 1 at end of turn",
+    "who": "All",
+    "preference": "Negative",
+    "imageUrl": "images/statuses/Weak.png"
+  },
+  "well-laid_plans": {
+    "name": "Well-Laid Plans",
+    "description": "At the end of your turn, add Retain to up to X Cards",
+    "type": "Ability",
+    "stackable": true,
+    "maxStack": null,
+    "decay": "Lose all at end of turn",
+    "who": "Player",
+    "preference": "Positive",
+    "imageUrl": "images/statuses/Well-LaidPlans.png"
   },
   "wet": {
     "name": "Wet",
@@ -638,27 +660,5 @@ var STATUSES_DATA = {
     "who": "All",
     "preference": "Neutral",
     "imageUrl": "images/statuses/Wet.png"
-  },
-  "bleed": {
-    "name": "Bleed",
-    "description": "Target loses 1 Health per stack at the end of their turn.",
-    "type": "Debuff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "UP by 1 at the end of turn",
-    "who": "All",
-    "preference": "Negative",
-    "imageUrl": "images/statuses/Bleed.png"
-  },
-  "bleed_thorns": {
-    "name": "Bleed Thorns",
-    "description": "When a target with Bleed Thorns gets dealt or deals Melee Dmg, the target Inflicts X Bleed to the attacker/recipient",
-    "type": "Buff",
-    "stackable": true,
-    "maxStack": null,
-    "decay": "None",
-    "who": "All",
-    "preference": "Positive",
-    "imageUrl": "images/statuses/BleedThorns.png"
   }
 };

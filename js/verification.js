@@ -969,6 +969,11 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         applyCardBonus("Bag o' Glitter", /Inflict (\d+) Blind/i, increment);
         weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
+
+      } else if (weapon.name === "Lower Case r") {
+        applyCardBonus("Lower Case r", /Deal (\d+) Dmg/i, increment);
+        weaponRewardText = rewardClauseText;
+        weaponEffectActivated = true;
       }
     });
 

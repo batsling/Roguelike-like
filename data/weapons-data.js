@@ -60,5 +60,17 @@ var WEAPONS_DATA = [
     ],
     "imageUrl": "images/items/Dexecutioner.png",
     "unlockCondition": "N/A"
+  },
+  {
+    "name": "Lower Case r",
+    "rarity": "Common",
+    "upgradeEffect": "If you beat a game with the letter \"R\" in the title, this weapon gains (+1/+2) Dmg",
+    "game": "Enter the Gungeon",
+    "tags": [
+      "gun",
+      "ranged"
+    ],
+    "imageUrl": "images/items/LowerCaseR.png",
+    "unlockCondition": "N/A"
   }
 ];

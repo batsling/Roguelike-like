@@ -9,12 +9,12 @@ var GAME_STATUSES_DATA = {
   },
   "devilish": {
     "name": "Devilish",
-    "description": "When landed on, lose +2 health",
+    "description": "When landed on, lose +5 health",
     "type": "Negative"
   },
   "holy": {
     "name": "Holy",
-    "description": "When landed on, gain +2 health",
+    "description": "When landed on, gain +5 health",
     "type": "Positive"
   },
   "marked": {
