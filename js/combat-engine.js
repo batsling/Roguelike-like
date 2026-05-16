@@ -4409,9 +4409,10 @@ function resolveCardEffect(card, target, options = {}) {
     }
 
     // Deal X Dmg [Y times] — supports both "Deal 5 Dmg 2 times" and "Deal 5x2 Dmg" (NxM notation)
+    // Skip "to a Random target" patterns — handled by the Sword Boomerang handler below
     const dmgMatchNxM = p.match(/Deal (\d+)[xX](\d+) Dmg/i);
     const dmgMatch    = dmgMatchNxM || p.match(/Deal (\d+) Dmg(?:.*?(\d+) times?)?/i);
-    if (dmgMatch) {
+    if (dmgMatch && !/to a random target/i.test(p)) {
       let dmg = parseInt(dmgMatch[1]);
       const times = dmgMatchNxM ? parseInt(dmgMatchNxM[2]) : (dmgMatch[2] ? parseInt(dmgMatch[2]) : 1);
       // Player Power bonus adds to outgoing damage (Heavy Blade multiplies it) — skipped for Power-type cards

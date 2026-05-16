@@ -512,20 +512,13 @@ function removeFromLoot(index) {
 function showLootModal() {
   if (!gameState.loot) gameState.loot = [];
 
-  window._lootModalTab = window._lootModalTab || 'fish';
-
   const modalHTML = `
-    <div style="text-align: center;">
-      <h2 style="color: #66ddff; margin-top: 0;">Loot Inventory</h2>
-      <div id="loot-tab-bar" style="display:flex; border-bottom:2px solid #444; margin-bottom:16px;">
-        ${_lootTabBtn('fish',    '🐟 Fish')}
-        ${_lootTabBtn('scrolls','📜 Scrolls')}
-        ${_lootTabBtn('potions','🧪 Potions')}
+    <div style="text-align:center; min-width:340px; max-width:700px;">
+      <h2 style="color:#66ddff; margin-top:0;">🎒 Loot</h2>
+      <div id="loot-display" style="min-height:200px; text-align:left;">
+        ${getLootHTML()}
       </div>
-      <div id="loot-display" style="min-height: 200px;">
-        ${getLootHTML(window._lootModalTab)}
-      </div>
-      <button onclick="closeGameModal()" style="margin-top: 20px; padding: 12px 24px; background: #555; border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px;">
+      <button onclick="closeGameModal()" style="margin-top:16px; padding:10px 24px; background:#555; border:none; color:white; border-radius:6px; cursor:pointer; font-weight:bold; font-size:14px;">
         Close
       </button>
     </div>
@@ -534,104 +527,56 @@ function showLootModal() {
   createGameModal(modalHTML);
 }
 
-function _lootTabBtn(tab, label) {
-  const active = window._lootModalTab === tab;
-  return `<div onclick="window._lootModalTab='${tab}'; updateLootDisplay();" style="
-    flex:1; padding:10px 0; cursor:pointer; font-size:13px; font-weight:bold;
-    color:${active ? '#66ddff' : '#888'};
-    border-bottom:3px solid ${active ? '#66ddff' : 'transparent'};
-    transition:all 0.15s;">
-    ${label}
-  </div>`;
-}
 
 /**
  * Get HTML for displaying loot items by tab
- * @param {string} tab - 'fish' | 'scrolls' | 'potions'
  * @returns {string} HTML string
  */
-function getLootHTML(tab) {
-  tab = tab || window._lootModalTab || 'fish';
+function getLootHTML() {
   if (!gameState.loot) gameState.loot = [];
-
-  if (tab === 'scrolls') return _getScrollsLootHTML();
-  if (tab === 'potions') return _getPotionsLootHTML();
-
-  // Fish tab
-  const fishLoot = gameState.loot.filter(l => !l.type || l.type === 'fish' || l.isItem);
-  if (fishLoot.length === 0) {
-    return `
-      <div style="text-align: center; padding: 40px; color: #888; font-style: italic;">
-        No loot yet - catch some fish!
-      </div>
-    `;
+  if (gameState.loot.length === 0) {
+    return `<div style="text-align:center;padding:40px;color:#888;font-style:italic;">No loot yet.</div>`;
   }
 
-  let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; padding: 20px;">';
+  const scrollsHTML = _getScrollsLootHTML();
+  const potionsHTML = _getPotionsLootHTML();
 
-  gameState.loot.forEach((lootItem, index) => {
-    if (lootItem.type === 'scroll' || lootItem.type === 'potion') return; // handled by other tabs
-    if (lootItem.isItem) {
-      // Regular item (from 5% chance)
-      const item = lootItem.item;
-      const imagePath = `images/items/${item.image}.png`;
+  // Fish / items section
 
-      html += `
-        <div class="loot-item" data-index="${index}" style="
-          background: linear-gradient(135deg, rgba(100, 50, 150, 0.2), rgba(50, 25, 75, 0.2));
-          border: 2px solid #8a2be2;
-          border-radius: 8px;
-          padding: 15px;
-          cursor: pointer;
-          transition: transform 0.2s, box-shadow 0.2s;
-        " onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(138, 43, 226, 0.5)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
-          <img src="${imagePath}" alt="${item.name}" style="width: 100%; height: 120px; object-fit: contain; object-position: center; border-radius: 6px; background: rgba(0,0,0,0.3); padding: 5px;">
-          <div style="margin-top: 10px; font-weight: bold; color: #ba55d3; font-size: 14px;">${item.name}</div>
-          <div style="margin-top: 5px; color: #888; font-size: 12px;">Item</div>
-        </div>
-      `;
-    } else {
-      // Fish
-      const fish = lootItem.fish;
-      const rarity = lootItem.rarity;
-      const size = lootItem.size;
-      const goldValue = getFishGoldValue(rarity, size);
-      const imagePath = `images/fish/${fish.image}.png`;
-
-      // Determine border color by rarity
-      let borderColor = '#666';
-      let rarityColor = '#aaa';
-      if (rarity === 'Rare') {
-        borderColor = '#ffd700';
-        rarityColor = '#ffd700';
-      } else if (rarity === 'Uncommon') {
-        borderColor = '#66ddff';
-        rarityColor = '#66ddff';
+  // Build fish/item cards
+  const fishLoot = gameState.loot.filter(l => !l.type || l.type === 'fish' || l.isItem);
+  let fishHTML = '';
+  if (fishLoot.length > 0) {
+    let cards = '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; padding:4px;">';
+    gameState.loot.forEach((lootItem, index) => {
+      if (lootItem.type === 'scroll' || lootItem.type === 'potion') return;
+      if (lootItem.isItem) {
+        const item = lootItem.item;
+        cards += `
+          <div style="background:linear-gradient(135deg,rgba(100,50,150,0.2),rgba(50,25,75,0.2));border:2px solid #8a2be2;border-radius:8px;padding:12px;text-align:center;">
+            <img src="images/items/${item.image}.png" alt="${item.name}" style="width:100%;height:90px;object-fit:contain;border-radius:6px;background:rgba(0,0,0,0.3);padding:4px;">
+            <div style="margin-top:8px;font-weight:bold;color:#ba55d3;font-size:13px;">${item.name}</div>
+          </div>`;
       } else {
-        borderColor = '#999';
-        rarityColor = '#999';
+        const fish = lootItem.fish, rarity = lootItem.rarity, size = lootItem.size;
+        const goldValue = getFishGoldValue(rarity, size);
+        const bc = rarity === 'Rare' ? '#ffd700' : rarity === 'Uncommon' ? '#66ddff' : '#999';
+        cards += `
+          <div style="background:linear-gradient(135deg,rgba(50,100,150,0.2),rgba(25,50,75,0.2));border:2px solid ${bc};border-radius:8px;padding:12px;text-align:center;" onmouseover="showLootTooltip(${index},event)" onmouseout="hideLootTooltip()" onmousemove="moveLootTooltip(event)">
+            <img src="images/fish/${fish.image}.png" alt="${fish.name}" style="width:100%;height:90px;object-fit:contain;border-radius:6px;background:rgba(0,0,0,0.3);padding:4px;">
+            <div style="margin-top:8px;font-weight:bold;color:#66ddff;font-size:13px;">${fish.name}</div>
+            <div style="color:${bc};font-size:11px;">${rarity} · ${size}</div>
+            <div style="color:#ffd700;font-size:12px;font-weight:bold;">💰 ${goldValue}g</div>
+          </div>`;
       }
+    });
+    cards += '</div>';
+    fishHTML = `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;">🐟 Fish &amp; Items</div>${cards}</div>`;
+  }
 
-      html += `
-        <div class="loot-item" data-index="${index}" style="
-          background: linear-gradient(135deg, rgba(50, 100, 150, 0.2), rgba(25, 50, 75, 0.2));
-          border: 2px solid ${borderColor};
-          border-radius: 8px;
-          padding: 15px;
-          cursor: pointer;
-          transition: transform 0.2s, box-shadow 0.2s;
-        " onmouseover="showLootTooltip(${index}, event)" onmouseout="hideLootTooltip()" onmousemove="moveLootTooltip(event)">
-          <img src="${imagePath}" alt="${fish.name}" style="width: 100%; height: 120px; object-fit: contain; object-position: center; border-radius: 6px; background: rgba(0,0,0,0.3); padding: 5px;">
-          <div style="margin-top: 10px; font-weight: bold; color: #66ddff; font-size: 14px;">${fish.name}</div>
-          <div style="margin-top: 5px; color: ${rarityColor}; font-size: 12px;">${rarity} - ${size}</div>
-          <div style="margin-top: 5px; color: #ffd700; font-size: 13px; font-weight: bold;">💰 ${goldValue}g</div>
-        </div>
-      `;
-    }
-  });
-
-  html += '</div>';
-  return html;
+  // Assemble sections
+  const sections = [potionsHTML, scrollsHTML, fishHTML].filter(Boolean).join('');
+  return `<div style="padding:16px;">${sections || '<div style="text-align:center;color:#888;font-style:italic;">No loot yet.</div>'}</div>`;
 }
 
 function _getScrollsLootHTML() {
@@ -640,7 +585,7 @@ function _getScrollsLootHTML() {
     return `<div style="text-align:center; padding:40px; color:#888; font-style:italic;">No scrolls yet.</div>`;
   }
 
-  let html = '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:15px; padding:20px;">';
+  let html = '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; padding:4px;">';
   scrolls.forEach(item => {
     const data = typeof SCROLLS_DATA !== 'undefined' ? SCROLLS_DATA.find(s => s.name === item.name) : null;
     const displayName = typeof getScrollDisplayName === 'function' ? getScrollDisplayName(item.name) : item.name;
@@ -648,91 +593,56 @@ function _getScrollsLootHTML() {
     const borderColor = typeof _rarityBorder === 'function' ? _rarityBorder(item.rarity) : '#888';
     const rarityColor = typeof _rarityColor === 'function' ? _rarityColor(item.rarity) : '#aaa';
     const canUse = gameState.phase !== 'combat';
-    const useBtnStyle = canUse
-      ? 'background:#9b59b6; cursor:pointer; color:white;'
-      : 'background:#555; cursor:not-allowed; color:#888; opacity:0.6;';
-
     html += `
-      <div style="
+      <div onclick="useScrollFromLoot(${item._idx})" style="
         background:linear-gradient(135deg,rgba(100,50,150,0.18),rgba(50,25,75,0.18));
-        border:2px solid ${borderColor}; border-radius:8px; padding:15px; text-align:center;">
-        <img src="${imgPath}" alt="${displayName}" style="width:100%; height:110px; object-fit:contain;
-          border-radius:6px; background:rgba(0,0,0,0.3); padding:5px;"
-          onerror="this.src='images/scrolls/Unidentified.png'">
-        <div style="margin-top:8px; font-weight:bold; color:#c39be0; font-size:13px;">${displayName}</div>
-        <div style="color:${rarityColor}; font-size:11px; margin-top:3px;">${item.rarity}</div>
-        <button onclick="useScrollFromLoot(${item._idx})" ${canUse ? '' : 'disabled'} style="
-          margin-top:10px; padding:6px 14px; border:none; border-radius:5px; font-size:12px;
-          font-weight:bold; width:100%; ${useBtnStyle}">
-          ${canUse ? '📜 Use Scroll' : '🔒 Use outside combat'}
-        </button>
-      </div>
-    `;
+        border:2px solid ${borderColor}; border-radius:8px; padding:12px; text-align:center;
+        cursor:${canUse ? 'pointer' : 'not-allowed'}; opacity:${canUse ? '1' : '0.55'};"
+        ${canUse ? `onmouseenter="this.style.borderColor='#c39be0'" onmouseleave="this.style.borderColor='${borderColor}'"` : ''}>
+        <img src="${imgPath}" alt="${displayName}" style="width:100%;height:80px;object-fit:contain;border-radius:6px;background:rgba(0,0,0,0.3);padding:4px;" onerror="this.src='images/scrolls/Unidentified.png'">
+        <div style="margin-top:6px;font-weight:bold;color:#c39be0;font-size:12px;">${displayName}</div>
+        <div style="color:${rarityColor};font-size:10px;margin-top:2px;">${item.rarity}</div>
+        <div style="color:#888;font-size:10px;margin-top:4px;">${canUse ? '📜 Click to use' : '🔒 Outside combat'}</div>
+      </div>`;
   });
   html += '</div>';
-  return html;
+  return `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;">📜 Scrolls</div>${html}</div>`;
 }
 
 function _getPotionsLootHTML() {
   const potions = (gameState.loot || []).map((l, i) => ({ ...l, _idx: i })).filter(l => l.type === 'potion');
-  if (potions.length === 0) {
-    return `<div style="text-align:center; padding:40px; color:#888; font-style:italic;">No potions yet.</div>`;
-  }
+  if (potions.length === 0) return '';
 
-  let html = '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:15px; padding:20px;">';
+  let html = '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; padding:4px;">';
   potions.forEach(item => {
     const data = typeof POTIONS_DATA !== 'undefined' ? POTIONS_DATA.find(p => p.name === item.name) : null;
-    const displayName = typeof getPotionDisplayName === 'function' ? getPotionDisplayName(item.name) : item.name;
+    const displayName = typeof getPotionDisplayName === 'function' ? getPotionDisplayName(item.name) : 'Unidentified Potion';
     const imgPath = (data && typeof getPotionImagePath === 'function') ? getPotionImagePath(data) : 'images/potions/Unidentified.png';
     const borderColor = typeof _rarityBorder === 'function' ? _rarityBorder(item.rarity) : '#888';
     const rarityColor = typeof _rarityColor === 'function' ? _rarityColor(item.rarity) : '#aaa';
-    const isIdentified = typeof isPotionIdentified === 'function' ? isPotionIdentified(item.name) : false;
-    const effectText = (isIdentified && data) ? data.effect : '???';
     const canUse = gameState.phase === 'combat';
-    const useBtnStyle = canUse
-      ? 'background:#3498db; cursor:pointer; color:white;'
-      : 'background:#555; cursor:not-allowed; color:#888; opacity:0.6;';
-
     html += `
-      <div style="
+      <div onclick="${canUse ? `usePotionFromLoot(${item._idx})` : ''}" style="
         background:linear-gradient(135deg,rgba(50,100,150,0.18),rgba(25,50,75,0.18));
-        border:2px solid ${borderColor}; border-radius:8px; padding:15px; text-align:center;">
-        <img src="${imgPath}" alt="${displayName}" style="width:100%; height:110px; object-fit:contain;
-          border-radius:6px; background:rgba(0,0,0,0.3); padding:5px;"
-          onerror="this.src='images/potions/Unidentified.png'">
-        <div style="margin-top:8px; font-weight:bold; color:#6ab4ff; font-size:13px;">${displayName}</div>
-        <div style="color:${rarityColor}; font-size:11px; margin-top:3px;">${item.rarity}</div>
-        <div style="color:#aaa; font-size:11px; margin-top:4px; font-style:italic;">${effectText}</div>
-        <button onclick="usePotionFromLoot(${item._idx})" ${canUse ? '' : 'disabled'} style="
-          margin-top:10px; padding:6px 14px; border:none; border-radius:5px; font-size:12px;
-          font-weight:bold; width:100%; ${useBtnStyle}">
-          ${canUse ? '🧪 Use Potion' : '🔒 Use in combat'}
-        </button>
-      </div>
-    `;
+        border:2px solid ${borderColor}; border-radius:8px; padding:12px; text-align:center;
+        cursor:${canUse ? 'pointer' : 'default'}; opacity:${canUse ? '1' : '0.7'};"
+        ${canUse ? `onmouseenter="this.style.borderColor='#6ab4ff'" onmouseleave="this.style.borderColor='${borderColor}'"` : ''}>
+        <img src="${imgPath}" alt="${displayName}" style="width:100%;height:80px;object-fit:contain;border-radius:6px;background:rgba(0,0,0,0.3);padding:4px;" onerror="this.src='images/potions/Unidentified.png'">
+        <div style="margin-top:6px;font-weight:bold;color:#6ab4ff;font-size:12px;">${displayName}</div>
+        <div style="color:${rarityColor};font-size:10px;margin-top:2px;">${item.rarity}</div>
+        <div style="color:#888;font-size:10px;margin-top:4px;">${canUse ? '🧪 Click to use' : '🔒 Use in combat'}</div>
+      </div>`;
   });
   html += '</div>';
-  return html;
+  return `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;">🧪 Potions</div>${html}</div>`;
 }
 
 /**
  * Update the loot display (if modal is open)
  */
 function updateLootDisplay() {
-  const tab = window._lootModalTab || 'fish';
-
-  const tabBar = document.getElementById('loot-tab-bar');
-  if (tabBar) {
-    tabBar.innerHTML =
-      _lootTabBtn('fish',    '🐟 Fish') +
-      _lootTabBtn('scrolls','📜 Scrolls') +
-      _lootTabBtn('potions','🧪 Potions');
-  }
-
   const lootDisplay = document.getElementById('loot-display');
-  if (lootDisplay) {
-    lootDisplay.innerHTML = getLootHTML(tab);
-  }
+  if (lootDisplay) lootDisplay.innerHTML = getLootHTML();
 }
 
 /**

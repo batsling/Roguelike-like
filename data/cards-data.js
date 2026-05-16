@@ -742,7 +742,7 @@ var CARDS_DATA = [
     "rarity": "Common",
     "cost": 0,
     "type": "Attack",
-    "description": "Deal 3 Dmg Melee. Increase the Dmg of ALL Claw Cards by 2 this combat.",
+    "description": "Deal 3 Dmg Melee. Increase the damage of ALL Claw cards by 2 this combat.",
     "upgradedDescription": "Deal 4 Dmg Melee. Increase the damage of ALL Claw cards by 3 this combat.",
     "upgradedCost": 0,
     "canUpgrade": true,

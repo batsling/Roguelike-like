@@ -124,25 +124,39 @@ function updateLocationDisplay(gameName, gameDescription) {
     }
   }
 
-  // Calculate difficulty tier
+  // Calculate difficulty tier using shared thresholds from locations.js
   const difficulty = gameState.totalGamesBeaten || 0;
-  let tier = 'easy';
-  let tierText = 'Easy';
-  let rangeText = '0-4';
+  const thresholds = (typeof DIFFICULTY_THRESHOLDS !== 'undefined')
+    ? DIFFICULTY_THRESHOLDS
+    : { MEDIUM: 4, HARD: 8, INSANE: 12 };
 
-  if (difficulty >= 10) {
-    tier = 'hard';
-    tierText = 'Hard';
-    rangeText = '10+';
-  } else if (difficulty >= 5) {
-    tier = 'medium';
-    tierText = 'Medium';
-    rangeText = '5-9';
+  let tier, tierText, rangeText;
+  if (difficulty >= thresholds.INSANE) {
+    tier = 'insane'; tierText = 'Insane'; rangeText = `${thresholds.INSANE}+`;
+  } else if (difficulty >= thresholds.HARD) {
+    tier = 'hard'; tierText = 'Hard'; rangeText = `${thresholds.HARD}-${thresholds.INSANE - 1}`;
+  } else if (difficulty >= thresholds.MEDIUM) {
+    tier = 'medium'; tierText = 'Medium'; rangeText = `${thresholds.MEDIUM}-${thresholds.HARD - 1}`;
+  } else {
+    tier = 'easy'; tierText = 'Easy'; rangeText = `0-${thresholds.MEDIUM - 1}`;
   }
 
-  // Update tier display with range inside
+  // Update tier label
   tierLabel.innerHTML = `${tierText}<br><span class="tier-range">${rangeText}</span>`;
   tierLabel.className = `tier-label ${tier}`;
+
+  // Update battery bar (position within current tier of 4 games)
+  const tierSize = (typeof DIFFICULTY_TIER_SIZE !== 'undefined') ? DIFFICULTY_TIER_SIZE : 4;
+  const fillCount = difficulty % tierSize;
+  for (let i = 0; i < 4; i++) {
+    const seg = document.getElementById(`battery-seg-${i}`);
+    if (!seg) continue;
+    if (i < fillCount) {
+      seg.className = `battery-segment filled ${tier}`;
+    } else {
+      seg.className = 'battery-segment';
+    }
+  }
 
   // Update current difficulty
   if (currentDifficulty) {

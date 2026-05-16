@@ -1431,15 +1431,25 @@ function switchLootSubTab(subTab, sortType = null) {
     subTabContent.innerHTML = `
       <div style="padding:10px;">
         <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px;">
-          ${scrolls.map(s => {
+          ${scrolls.map((s, si) => {
             const col = rarityColor(s.rarity);
             const imgPath = `images/scrolls/${s.file || s.name.replace(/\s+/g,'_')}.png`;
+            const safeId = `scroll-outcomes-${si}`;
+            const outcomesHTML = s.outcomes ? `
+              <div id="${safeId}" style="display:none;margin-top:8px;text-align:left;width:100%;border-top:1px solid ${col}44;padding-top:8px;">
+                ${[['🌟 Crit Good','crit_good','#4CAF50'],['✅ Good','good','#7dffb0'],['❌ Bad','bad','#ff9999'],['💀 Crit Bad','crit_bad','#ff4444']].filter(([,k]) => s.outcomes[k]).map(([label,k,c]) => `
+                  <div style="margin-bottom:6px;"><span style="color:${c};font-size:10px;font-weight:bold;">${label}:</span> <span style="color:#ccc;font-size:10px;">${s.outcomes[k]}</span></div>`).join('')}
+              </div>` : '';
             return `
-              <div style="background:rgba(0,0,0,0.35); border:2px solid ${col}; border-radius:8px; padding:14px; display:flex; flex-direction:column; align-items:center; gap:8px;">
+              <div onclick="const el=document.getElementById('${safeId}');if(el)el.style.display=el.style.display==='none'?'block':'none';"
+                style="background:rgba(0,0,0,0.35);border:2px solid ${col};border-radius:8px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;"
+                onmouseenter="this.style.borderColor='#fff'" onmouseleave="this.style.borderColor='${col}'">
                 <img src="${imgPath}" alt="${s.name}" style="width:80px;height:80px;object-fit:contain;" onerror="this.src='images/scrolls/Unidentified.png'">
                 <div style="font-weight:bold;font-size:14px;color:${col};text-align:center;">${s.name}</div>
                 <div style="font-size:11px;color:${col};font-weight:bold;text-transform:uppercase;">${s.rarity}</div>
                 <div style="font-size:11px;color:#aaa;text-align:center;line-height:1.4;">${s.preference || ''}</div>
+                ${s.outcomes ? '<div style="font-size:10px;color:#666;margin-top:2px;">Click to see outcomes ▾</div>' : ''}
+                ${outcomesHTML}
               </div>
             `;
           }).join('')}

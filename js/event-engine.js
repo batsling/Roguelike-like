@@ -58,18 +58,15 @@ function _fillName(text) {
 /** Get roll difficulty threshold based on current location difficulty, scaled by progression tier. */
 function _getRollDifficulty() {
   const diff = (typeof gameState !== 'undefined' && gameState.location && gameState.location.difficulty) || 'Easy';
-  const base = diff === 'Hard' ? 15 : diff === 'Medium' ? 13 : 11;
+  const base = diff === 'Insane' ? 17 : diff === 'Hard' ? 15 : diff === 'Medium' ? 13 : 11;
 
-  // Add roll negative from progression tier (harder as more games are beaten)
+  // Scale roll difficulty with progression tier (more games beaten = harder checks)
+  const _thresholds = (typeof DIFFICULTY_THRESHOLDS !== 'undefined') ? DIFFICULTY_THRESHOLDS : { MEDIUM: 4, HARD: 8, INSANE: 12 };
+  const beaten = (typeof gameState !== 'undefined' && gameState.totalGamesBeaten) || 0;
   let rollNeg = 0;
-  if (typeof GAME_CONSTANTS !== 'undefined' && GAME_CONSTANTS.DIFFICULTY) {
-    const beaten = (typeof gameState !== 'undefined' && gameState.totalGamesBeaten) || 0;
-    if (beaten >= GAME_CONSTANTS.DIFFICULTY.HIGH.threshold) {
-      rollNeg = GAME_CONSTANTS.DIFFICULTY.HIGH.rollNegative;
-    } else if (beaten >= GAME_CONSTANTS.DIFFICULTY.MEDIUM.threshold) {
-      rollNeg = GAME_CONSTANTS.DIFFICULTY.MEDIUM.rollNegative;
-    }
-  }
+  if (beaten >= _thresholds.INSANE)     rollNeg = 3;
+  else if (beaten >= _thresholds.HARD)  rollNeg = 2;
+  else if (beaten >= _thresholds.MEDIUM) rollNeg = 1;
 
   return base + rollNeg;
 }
@@ -278,7 +275,7 @@ function applyEventEffects(effects) {
         let curseName = effect.value;
         if (effect.type === 'curse_difficulty') {
           const diff = (typeof gameState !== 'undefined' && gameState.location && gameState.location.difficulty) || 'Easy';
-          const tier = diff === 'Hard' ? 'III' : diff === 'Medium' ? 'II' : 'I';
+          const tier = diff === 'Hard' || diff === 'Insane' ? 'III' : diff === 'Medium' ? 'II' : 'I';
           curseName = `${effect.curseBase} ${tier}`;
         }
         if (curseName === 'random') {

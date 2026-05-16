@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function loadState() {
   const state = GameStorage.load(STORAGE_KEYS.GAME_STATE);
   if (state) {
-    rations = state.rations;
+    if (gameState) gameState.rations = state.rations ?? 10;
     gold = state.gold ?? 0;
     health = state.health;
     maxHealth = state.maxHealth ?? 10;
@@ -335,7 +335,7 @@ function saveCurrentGame() {
     health: health,
     maxHealth: maxHealth,
     gold: gold,
-    rations: rations,
+    rations: gameState.rations ?? 10,
     inventory: inventoryCopy,
     diceSlots: diceSlotsSnapshot,
     beatenGames: [...beatenGames],
@@ -396,10 +396,6 @@ function loadSavedGame(saveName) {
     gameState.diceSlots = {};
   }
   window.playerSpells = gameState.spells; // keep in sync with combat fallback
-  if (!gameState.postcombatChoicesUsed) {
-    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
-  }
-
   // Generate encounter types if they don't exist (for old saves)
   if (!gameState.encounterTypes) {
     gameState.encounterTypes = {};
@@ -416,7 +412,7 @@ function loadSavedGame(saveName) {
   health = save.health;
   maxHealth = save.maxHealth;
   gold = save.gold;
-  rations = save.rations || 10;
+  if (gameState) gameState.rations = save.rations || 10;
   inventory = [...(save.inventory || [])];
   beatenGames = [...(save.beatenGames || [])];
   strength = save.strength || 0;
@@ -742,6 +738,58 @@ function showStartingChoiceModal(startOptions, amulet, saveName) {
     </div>`);
 }
 
+// Drives the "first game complete" progression without a Finished button:
+// curse verification → mark game finished → item choice → spawn next choices.
+function runStartProgression() {
+  const doFinish = () => {
+    setTimeout(() => {
+      const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
+      if (gameState.unstableGenomeTriggered) gameState.unstableGenomeTriggered = false;
+      if (typeof showItemChoiceModal === 'function') showItemChoiceModal(null, chestType);
+    }, 150);
+  };
+  if (typeof showCurseVerificationModal === 'function') {
+    showCurseVerificationModal(doFinish);
+  } else {
+    doFinish();
+  }
+}
+
+// Wire the first game node so clicking it → node preview → Fight → combat → post-combat → progression.
+// Called from both completeGameStart() and renderGameState() (for page reloads).
+window.wireStartNodeCombat = function() {
+  const startGameName = gameState.visitedGames && gameState.visitedGames[0];
+  if (!startGameName) return;
+  const allNodes = document.querySelectorAll('[data-game-name]');
+  let startNode = null;
+  for (const n of allNodes) {
+    if (n.dataset.gameName === startGameName) { startNode = n; break; }
+  }
+  if (!startNode) return;
+
+  startNode.classList.add('is-clickable');
+
+  const triggerCombat = () => {
+    const startCombat = () => {
+      startNode.onclick = null;
+      startNode.classList.remove('is-clickable');
+      window._postcombatOnComplete = runStartProgression;
+      if (window.useDiceCombat && typeof showDiceCombatModal === 'function') showDiceCombatModal();
+      else if (typeof showCombatModal === 'function') showCombatModal();
+    };
+    if (typeof showEventModal === 'function') showEventModal(null, startCombat);
+    else startCombat();
+  };
+
+  if (typeof showNodeDetailModal === 'function') {
+    startNode.onclick = () => showNodeDetailModal(startGameName, null, null, 'combat', {
+      onFight: () => triggerCombat()
+    });
+  } else {
+    startNode.onclick = () => triggerCombat();
+  }
+};
+
 function applyStartingBonus(type, onComplete) {
   switch (type) {
     case 'Action':
@@ -903,9 +951,21 @@ function completeGameStart(start, amulet, saveName, startType) {
     activeAllies: [],
     deck: [],
     spells: [],
-    postcombatChoicesUsed: { Low: [], Medium: [], High: [] }
+    insaneBatteryFills: 0,
+    pendingInsaneHardCombat: false,
+    choiceDetails: {}
   };
   window.playerSpells = gameState.spells;
+
+  // Pre-generate start node details so the node modal has data immediately
+  if (typeof preGenerateEnemiesForGame === 'function') {
+    gameState.choiceDetails[start.name] = {
+      enemies: preGenerateEnemiesForGame(start.name),
+      postCombatOptions: (typeof pickTwoPostCombatOptions === 'function')
+        ? pickTwoPostCombatOptions()
+        : ['rest', 'shop']
+    };
+  }
 
   startGame = start;
   amuletGame = amulet;
@@ -946,29 +1006,9 @@ function completeGameStart(start, amulet, saveName, startType) {
         showHadesBoonSelection(false);
       }, 500);
     } else {
-      // Find the starting game node and add a Fight button the player clicks to begin
-      const allNodes = document.querySelectorAll('[data-game]');
-      let startNode = null;
-      for (const n of allNodes) {
-        if (n.dataset.game === start.name) { startNode = n; break; }
-      }
-      const triggerCombat = () => {
-        const startCombat = () => {
-          if (window.useDiceCombat && typeof showDiceCombatModal === 'function') showDiceCombatModal();
-          else if (typeof showCombatModal === 'function') showCombatModal();
-        };
-        if (typeof showEventModal === 'function') showEventModal(null, startCombat);
-        else startCombat();
-      };
-      if (startNode) {
-        const fightBtn = document.createElement('button');
-        fightBtn.className = 'finish';
-        fightBtn.textContent = 'Fight!';
-        fightBtn.style.background = '#c0392b';
-        fightBtn.onclick = () => { fightBtn.remove(); triggerCombat(); };
-        startNode.appendChild(fightBtn);
-      } else {
-        triggerCombat();
+      // Wire start node via the shared helper (also called by renderGameState on reload).
+      if (typeof window.wireStartNodeCombat === 'function') {
+        window.wireStartNodeCombat();
       }
     }
   });
@@ -1932,12 +1972,27 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
       const choiceShadow = isChoice
         ? '0 0 10px rgba(255, 153, 0, 0.6), 0 3px 6px rgba(0,0,0,0.3)'
         : '0 3px 6px rgba(0,0,0,0.3)';
+      // Clicking a choice node in the map opens the read-only node detail modal
+      const safeGN = gameName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const mapClickHandler = isChoice
+        ? `onclick="if(typeof openNodeModalFromMap==='function') openNodeModalFromMap('${safeGN}')"`
+        : '';
+
+      // Game-type badge label for map view (replaces the !?$ encounter icons)
+      const gameTypeForBadge = game?.type || '';
+      const mapTypeColors = { action: '#c0392b', deckbuilding: '#7d3c98', strategy: '#1a6fa0', traditional: '#1e8449' };
+      const mapBadgeColor = isAmuletGame ? '#b7950b' : (mapTypeColors[gameTypeForBadge.toLowerCase()] || '#555');
+      const mapBadgeLabel = isAmuletGame ? '🏺' : (gameTypeForBadge || '');
+      const mapBadgeHTML = (mapBadgeLabel && isChoice)
+        ? `<span style="position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);background:${mapBadgeColor};color:white;border-radius:3px;padding:1px 5px;font-size:8px;font-weight:bold;white-space:nowrap;border:1px solid rgba(0,0,0,0.3);pointer-events:none;">${mapBadgeLabel}</span>`
+        : '';
 
       html += `
         <div class="map-game-box-${gameName.replace(/\s+/g, '-')}" data-game="${gameName}"${choiceAttr}
              onmouseenter="${choiceEnterHandler}"
              onmousemove="moveMapTooltip(event)"
              onmouseleave="${choiceLeaveHandler}"
+             ${mapClickHandler}
              style="
           background: ${boxColor};
           border: ${isChoice ? '3px' : '2px'} solid ${borderColor};
@@ -1957,9 +2012,10 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
           opacity: ${!isOnShortestPath && !isChoice && !isCurrentGame && !isAmuletGame ? '0.5' : '1'};
           transform: translateX(${horizontalOffset}px);
           position: relative;
+          margin-bottom: ${isChoice ? '10px' : '0'};
         ">
           ${isCurrentGame ? '📍 ' : ''}${isChoice ? '◆ ' : ''}${gameName}${isAmuletGame ? ' 🏆' : ''}${isOnShortestPath && !isCurrentGame && !isAmuletGame && !isChoice ? ' ⭐' : ''}
-          ${encounterIcon ? `<span style="position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; background: ${encounterColor}; color: ${encounterColor === '#ffd700' ? '#000' : '#fff'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid #000; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">${encounterIcon}</span>` : ''}
+          ${mapBadgeHTML}
         </div>
       `;
     });
@@ -2530,23 +2586,30 @@ function showCombatModal() {
     }
   }
 
-  // Difficulty scales with number of games beaten
+  // Difficulty scales with number of games beaten (thresholds match getDifficultyTier)
   const gamesBeaten = gameState.totalGamesBeaten || 0;
+  const _thresholds = (typeof DIFFICULTY_THRESHOLDS !== 'undefined') ? DIFFICULTY_THRESHOLDS : { MEDIUM: 4, HARD: 8, INSANE: 12 };
   let powerText = 'Low';
-  if (gamesBeaten >= 10) {
+  if (gamesBeaten >= _thresholds.HARD) {
     powerText = 'High';
-  } else if (gamesBeaten >= 5) {
+  } else if (gamesBeaten >= _thresholds.MEDIUM) {
     powerText = 'Medium';
   }
 
-  const matchingEnemies = enemies.filter(enemy =>
-    enemy.powerLevel === powerText && enemy.stat === requiredStat
-  );
-
-  if (matchingEnemies.length === 0) return;
-
-  const randomIndex = Math.floor(Math.random() * matchingEnemies.length);
-  const enemy = matchingEnemies[randomIndex];
+  // Use pre-assigned enemy from node modal if available, otherwise pick randomly
+  const _preAssigned = gameState.choiceDetails?.[gameState.currentGame]?.enemies;
+  let enemy;
+  if (_preAssigned && _preAssigned.length > 0) {
+    enemy = _preAssigned[0];
+    // Consume the pre-assigned slot so a retry generates fresh enemies
+    delete gameState.choiceDetails[gameState.currentGame].enemies;
+  } else {
+    const matchingEnemies = enemies.filter(e =>
+      e.powerLevel === powerText && e.stat === requiredStat
+    );
+    if (matchingEnemies.length === 0) return;
+    enemy = matchingEnemies[Math.floor(Math.random() * matchingEnemies.length)];
+  }
 
   // Initialize combat state
   const combat = window.CombatState.initializeCombat(enemy);
@@ -4235,16 +4298,23 @@ function showCombatModal() {
       timestamp: new Date().toLocaleString()
     });
     updateEncounterHistory();
+
+    // Increment difficulty immediately on combat win
+    if (typeof markGameFinished === 'function' && gameState.currentGame) {
+      markGameFinished(gameState.currentGame);
+    }
+
     saveCurrentGame();
 
     // Show victory screen
     setTimeout(() => {
+      const _cardVictoryDifficulty = enemy.difficulty || 'Low';
       createGameModal(`
         <div style="text-align: center;">
           <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">⚔️ VICTORY!</h2>
           <h3>${enemy.name} defeated!</h3>
           <p style="color: #4CAF50; font-size: 18px; margin: 20px 0;">${enemy.successReward}</p>
-          <button onclick="closeGameModal()" style="
+          <button id="card-victory-continue-btn" style="
             padding: 15px 30px;
             background: #4CAF50;
             border: none;
@@ -4256,6 +4326,13 @@ function showCombatModal() {
           ">Continue</button>
         </div>
       `);
+      const _btn = document.getElementById('card-victory-continue-btn');
+      if (_btn) {
+        _btn.addEventListener('click', () => {
+          closeGameModal();
+          showPostCombatChoiceModal(_cardVictoryDifficulty);
+        }, { once: true });
+      }
     }, 500);
 
     window.CombatState.endCombat(true);
@@ -4391,9 +4468,10 @@ function buildWeightedEncounter() {
   const combatsCompleted = gameState.totalCombatsCompleted || 0;
 
   // Determine current difficulty tier
+  const _enc_thresholds = (typeof DIFFICULTY_THRESHOLDS !== 'undefined') ? DIFFICULTY_THRESHOLDS : { MEDIUM: 4, HARD: 8, INSANE: 12 };
   let currentTier;
-  if (gamesBeaten >= 10) currentTier = 'High';
-  else if (gamesBeaten >= 5) currentTier = 'Medium';
+  if (gamesBeaten >= _enc_thresholds.HARD) currentTier = 'High';
+  else if (gamesBeaten >= _enc_thresholds.MEDIUM) currentTier = 'Medium';
   else currentTier = 'Low';
 
   // Detect first combat of a new tier
@@ -4501,8 +4579,15 @@ function showDiceCombatModal() {
   gameState.phase = 'combat';
   updateInventory();
 
-  // Build encounter using weight system
-  const encounterEnemies = buildWeightedEncounter();
+  // Use pre-assigned enemies from the node modal if available, otherwise generate fresh
+  const _preAssignedEnemies = gameState.choiceDetails?.[gameState.currentGame]?.enemies;
+  const encounterEnemies = (_preAssignedEnemies && _preAssignedEnemies.length > 0)
+    ? _preAssignedEnemies
+    : buildWeightedEncounter();
+  // Consume the pre-assigned slot so a retry generates fresh enemies
+  if (_preAssignedEnemies && gameState.choiceDetails?.[gameState.currentGame]) {
+    delete gameState.choiceDetails[gameState.currentGame].enemies;
+  }
   if (!encounterEnemies || encounterEnemies.length === 0) {
     console.error('No matching enemies found');
     return;
@@ -4705,22 +4790,9 @@ function handleDiceCombatVictory(enemy) {
   });
   updateEncounterHistory();
 
-  // Reset post-combat choices when player first reaches Medium or Hard difficulty
-  if (!gameState.postcombatChoicesUsed) {
-    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
-  }
-  if (enemy.difficulty === 'Medium' && !gameState.firstMediumCombatWon) {
-    gameState.firstMediumCombatWon = true;
-    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
-    if (typeof createNotification === 'function') {
-      createNotification('Reached Medium difficulty — post-combat options reset!', '#f39c12', '⚔');
-    }
-  } else if (enemy.difficulty === 'High' && !gameState.firstHardCombatWon) {
-    gameState.firstHardCombatWon = true;
-    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
-    if (typeof createNotification === 'function') {
-      createNotification('Reached Hard difficulty — post-combat options reset!', '#c0392b', '💀');
-    }
+  // Increment difficulty immediately on combat win
+  if (typeof markGameFinished === 'function' && gameState.currentGame) {
+    markGameFinished(gameState.currentGame);
   }
 
   // Award one random potion or scroll (always runs; try/catch prevents silent failures)
@@ -4728,8 +4800,15 @@ function handleDiceCombatVictory(enemy) {
   try {
     const lootReward = window.selectRandomPotionOrScroll();
     window.addScrollOrPotionToLoot(lootReward);
-    lootIcon = lootReward.type === 'scroll' ? '📜' : '🧪';
-    lootDisplayName = lootReward.type === 'scroll' ? 'Unidentified Scroll' : 'Unidentified Potion';
+    if (lootReward.type === 'scroll') {
+      const _scrollPath = typeof getScrollImagePath === 'function' ? getScrollImagePath(lootReward) : 'images/scrolls/Unidentified.png';
+      lootIcon = `<img src="${_scrollPath}" style="width:56px;height:56px;object-fit:contain;" onerror="this.style.display='none'">`;
+      lootDisplayName = typeof getScrollDisplayName === 'function' ? getScrollDisplayName(lootReward.name) : 'Unidentified Scroll';
+    } else {
+      const _potionPath = typeof getPotionImagePath === 'function' ? getPotionImagePath(lootReward) : 'images/potions/Unidentified.png';
+      lootIcon = `<img src="${_potionPath}" style="width:56px;height:56px;object-fit:contain;" onerror="this.style.display='none'">`;
+      lootDisplayName = typeof getPotionDisplayName === 'function' ? getPotionDisplayName(lootReward.name) : 'Unidentified Potion';
+    }
     lootDisplayRarity = lootReward.rarity || '';
     encounterHistory.push({
       type: 'loot',
@@ -4755,10 +4834,9 @@ function handleDiceCombatVictory(enemy) {
  */
 function showPostCombatChoiceModal(difficulty) {
   const tier = difficulty || 'Low';
-  if (!gameState.postcombatChoicesUsed) {
-    gameState.postcombatChoicesUsed = { Low: [], Medium: [], High: [] };
-  }
-  const used = gameState.postcombatChoicesUsed[tier] || [];
+
+  // Use the 2 pre-assigned options from the node modal if available for this game
+  const preAssigned = gameState.choiceDetails?.[gameState.currentGame]?.postCombatOptions || null;
 
   const optionData = [
     {
@@ -4776,13 +4854,14 @@ function showPostCombatChoiceModal(difficulty) {
         if (typeof saveCurrentGame === 'function') saveCurrentGame();
         closeGameModal();
         if (typeof createNotification === 'function') createNotification(`Rested: +${heal} Health`, '#4CAF50', '🛌');
+        if (window._postcombatOnComplete) { const cb = window._postcombatOnComplete; window._postcombatOnComplete = null; cb(); }
       }
     },
     {
       key: 'smith',
       label: 'Smith',
       icon: '⚒️',
-      desc: 'Choose 2 cards from your deck to upgrade for free.',
+      desc: 'Choose 1 card from your deck to upgrade for free.',
       color: '#FF9800',
       action: () => {
         closeGameModal();
@@ -4814,40 +4893,38 @@ function showPostCombatChoiceModal(difficulty) {
       action: () => {
         closeGameModal();
         if (typeof createNotification === 'function') createNotification('Movement Event coming soon!', '#9b59b6', '🗺️');
+        if (window._postcombatOnComplete) { const cb = window._postcombatOnComplete; window._postcombatOnComplete = null; cb(); }
       }
     }
   ];
 
-  const buttonsHTML = optionData.map(opt => {
-    const isUsed = used.includes(opt.key);
-    return `
+  // Filter to only the 2 pre-assigned options if the node modal set them
+  const _filtered = preAssigned ? optionData.filter(o => preAssigned.includes(o.key)) : optionData;
+  const visibleOptions = _filtered.length >= 2 ? _filtered : optionData;
+
+  const buttonsHTML = visibleOptions.map(opt => `
       <div style="
-        background: ${isUsed ? '#1a1a1a' : '#2d2d2d'};
-        border: 2px solid ${isUsed ? '#444' : opt.color};
+        background: #2d2d2d;
+        border: 2px solid ${opt.color};
         border-radius: 12px;
         padding: 20px;
-        cursor: ${isUsed ? 'not-allowed' : 'pointer'};
-        opacity: ${isUsed ? '0.45' : '1'};
+        cursor: pointer;
         transition: transform 0.15s, box-shadow 0.15s;
         text-align: center;
         min-width: 160px;
         max-width: 200px;
-        ${isUsed ? '' : `onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 20px ${opt.color}66'"`}
+        onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 20px ${opt.color}66'"
       "
-      ${isUsed ? '' : `onclick="window._postcombatUseOption('${opt.key}', '${tier}')"`}
+      onclick="window._postcombatUseOption('${opt.key}', '${tier}')"
       id="postcombat-opt-${opt.key}">
         <div style="font-size:36px;margin-bottom:10px;">${opt.icon}</div>
-        <div style="font-weight:bold;color:${isUsed ? '#666' : 'white'};font-size:15px;margin-bottom:8px;">${opt.label}</div>
-        <div style="color:${isUsed ? '#555' : '#aaa'};font-size:12px;line-height:1.4;">${opt.desc}</div>
-        ${isUsed ? '<div style="color:#666;font-size:11px;margin-top:8px;font-style:italic;">Used this tier</div>' : ''}
+        <div style="font-weight:bold;color:white;font-size:15px;margin-bottom:8px;">${opt.label}</div>
+        <div style="color:#aaa;font-size:12px;line-height:1.4;">${opt.desc}</div>
       </div>
-    `;
-  }).join('');
+    `).join('');
 
   // Register option handler globally (modal scope)
   window._postcombatUseOption = (key, t) => {
-    if (!gameState.postcombatChoicesUsed[t]) gameState.postcombatChoicesUsed[t] = [];
-    gameState.postcombatChoicesUsed[t].push(key);
     if (typeof saveCurrentGame === 'function') saveCurrentGame();
     const opt = optionData.find(o => o.key === key);
     if (opt) opt.action();
@@ -4856,14 +4933,11 @@ function showPostCombatChoiceModal(difficulty) {
   createGameModal(`
     <div style="text-align:center; padding:24px; max-width:920px;">
       <h2 style="color:#FFD700; margin-top:0; margin-bottom:6px;">After Battle</h2>
-      <p style="color:#aaa; font-size:13px; margin-bottom:20px;">
-        Choose one option — each can be used <strong>once per difficulty tier</strong>.
-        Currently: <span style="color:#4CAF50;">${tier}</span> tier.
-      </p>
+      <p style="color:#aaa; font-size:13px; margin-bottom:20px;">Choose your reward.</p>
       <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">
         ${buttonsHTML}
       </div>
-      <button onclick="closeGameModal()" style="
+      <button onclick="closeGameModal();if(window._postcombatOnComplete){var _cb=window._postcombatOnComplete;window._postcombatOnComplete=null;_cb();}" style="
         padding:10px 30px; background:#444; border:none; border-radius:8px;
         color:#aaa; cursor:pointer; font-size:13px;
       ">Skip</button>
@@ -4902,7 +4976,7 @@ function showSmithChoiceModal() {
     return;
   }
 
-  const MAX_UPGRADES = 2;
+  const MAX_UPGRADES = 1;
   const selectedIndices = new Set();
 
   const rarityCol = r => {
@@ -4959,7 +5033,7 @@ function showSmithChoiceModal() {
           color:#999; cursor:not-allowed; font-weight:bold; font-size:14px;
           transition: background 0.15s, color 0.15s;
         ">Upgrade (0)</button>
-        <button onclick="closeGameModal()" style="
+        <button onclick="closeGameModal();if(window._postcombatOnComplete){var _cb=window._postcombatOnComplete;window._postcombatOnComplete=null;_cb();}" style="
           padding:10px 24px; background:#333; border:1px solid #555; border-radius:8px;
           color:#aaa; cursor:pointer; font-size:14px;
         ">Cancel</button>
@@ -5028,6 +5102,7 @@ function showSmithChoiceModal() {
     if (typeof createNotification === 'function') {
       createNotification(`Upgraded ${upgradeCount} card${upgradeCount !== 1 ? 's' : ''}!`, '#FF9800', '⚒️');
     }
+    if (window._postcombatOnComplete) { const cb = window._postcombatOnComplete; window._postcombatOnComplete = null; cb(); }
   });
 }
 
@@ -6669,7 +6744,7 @@ function showVictoryScreen(enemyName, goldReward, lootIcon, lootName, lootRarity
            <div style="color:#c39be0;font-weight:bold;font-size:14px;">${lootName}</div>
            <div style="color:#888;font-size:11px;">${lootRarity}</div>
            <div style="color:#888;font-size:11px;margin-top:4px;">Added to Loot</div>`
-        : `<div style="font-size:36px;">${lootIcon}</div>
+        : `<div style="height:56px;display:flex;align-items:center;justify-content:center;">${lootIcon}</div>
            <div style="color:#c39be0;font-weight:bold;font-size:14px;">${lootName}</div>
            <div style="color:#888;font-size:11px;">${lootRarity}</div>
            <div style="color:#aaa;font-size:11px;margin-top:4px;">Click to collect</div>`)
@@ -6679,9 +6754,16 @@ function showVictoryScreen(enemyName, goldReward, lootIcon, lootName, lootRarity
       ? `<div style="font-size:36px;">✓</div>
          <div style="color:#4CAF50;font-weight:bold;font-size:15px;">Card Collected</div>
          <div style="color:#888;font-size:11px;margin-top:4px;">Done</div>`
-      : `<div style="font-size:36px;">🃏</div>
+      : (() => {
+          const deckId = gameState.selectedDeck && gameState.selectedDeck !== 'Random' ? gameState.selectedDeck : null;
+          const deckImg = deckId ? `images/decks/${deckId}Deck.png` : null;
+          const iconHTML = deckImg
+            ? `<img src="${deckImg}" style="width:52px;height:52px;object-fit:contain;" onerror="this.outerHTML='<span style=\\'font-size:36px;\\'>🃏</span>'">`
+            : `<span style="font-size:36px;">🃏</span>`;
+          return `<div style="height:56px;display:flex;align-items:center;justify-content:center;">${iconHTML}</div>
          <div style="color:#c39be0;font-weight:bold;font-size:15px;">Card Reward</div>
          <div style="color:#aaa;font-size:11px;margin-top:4px;">Click to choose</div>`;
+        })();
 
     createGameModal(`
       <div style="text-align:center;padding:28px 36px;min-width:440px;">
@@ -6791,8 +6873,10 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
                && !exclude.has(c.name));
 
     if (tagFilter) {
-      // Hero-tagged cards are universally available regardless of deck choice
-      const heroCards = pool.filter(c => Array.isArray(c.tags) && c.tags.includes('hero'));
+      // Hero-tagged cards are universally available regardless of deck choice,
+      // but dice cards (Slice & Dice) are excluded from specific-deck reward pools.
+      const heroCards = pool.filter(c => Array.isArray(c.tags) && c.tags.includes('hero')
+        && (c.type || '').toLowerCase() !== 'dice');
       const tagged    = pool.filter(c => Array.isArray(c.tags) && c.tags.includes(tagFilter));
       const combined  = [...tagged, ...heroCards.filter(h => !tagged.find(t => t.name === h.name))];
       if (combined.length > 0) pool = combined;
@@ -8504,6 +8588,9 @@ function markGameFinished(gameName) {
   if (typeof gameState.totalGamesBeaten !== 'number') {
     gameState.totalGamesBeaten = 0;
   }
+  if (typeof gameState.insaneBatteryFills !== 'number') {
+    gameState.insaneBatteryFills = 0;
+  }
 
   // Log the state before increment for debugging
 
@@ -8514,6 +8601,7 @@ function markGameFinished(gameName) {
   // Increment total games beaten counter (counts ALL completions including duplicates)
   const previousDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
   gameState.totalGamesBeaten++;
+  const newDifficultyAfterIncrement = getDifficultyTier(gameState.totalGamesBeaten);
 
   // Reroller trait: Every time you beat a game, gain +1 Reroll
   if (hasTrait('reroller')) {
@@ -8541,24 +8629,22 @@ function markGameFinished(gameName) {
     }
   }
 
+  // ---- Difficulty battery logic ----
+  handleDifficultyBatteryFill(previousDifficulty, newDifficultyAfterIncrement);
+
   // Check if difficulty tier changed and update location (unless manually overridden via dev tools)
   if (!gameState.manualLocationOverride) {
-    const newDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
-    if (previousDifficulty !== newDifficulty) {
-      const newLocation = getRandomLocation(newDifficulty);
+    if (previousDifficulty !== newDifficultyAfterIncrement) {
+      const newLocation = getRandomLocation(newDifficultyAfterIncrement);
       if (newLocation) {
         gameState.location = newLocation;
-
-      // Update the location display
-      if (typeof updateLocationDisplay === 'function') {
-        updateLocationDisplay(gameState.currentGame);
+        if (typeof updateLocationDisplay === 'function') {
+          updateLocationDisplay(gameState.currentGame);
+        }
+        if (newLocation.game === 'Hades') {
+          gameState.pendingHadesBoonSelection = true;
+        }
       }
-
-      // Flag if this is a Hades location - will be shown after item choice
-      if (newLocation.game === 'Hades') {
-        gameState.pendingHadesBoonSelection = true;
-      }
-    }
     }
   }
 
@@ -8570,6 +8656,8 @@ function markGameFinished(gameName) {
       const preRoR = getDifficultyTier(gameState.totalGamesBeaten);
       gameState.totalGamesBeaten++;
       const postRoR = getDifficultyTier(gameState.totalGamesBeaten);
+      // Update battery for the RoR-triggered increment
+      handleDifficultyBatteryFill(preRoR, postRoR);
       if (preRoR !== postRoR) {
         const escalatedLocation = getRandomLocation(postRoR);
         if (escalatedLocation) {
@@ -8592,7 +8680,70 @@ function markGameFinished(gameName) {
   }
 
   updateGameStats();
+
+  // Keep the top-bar difficulty readout in sync (renderGameState() sets it on full redraws)
+  const _distEl = document.getElementById('distance-display');
+  if (_distEl && typeof bfsCached === 'function' && gameState.currentGame && gameState.amuletGame) {
+    const _dist = bfsCached(gameState.currentGame, gameState.amuletGame.name);
+    _distEl.textContent = `Target: ${gameState.amuletGame.name} — ${_dist} steps away | Difficulty: ${gameState.totalGamesBeaten}`;
+  }
+
   saveCurrentGame();
+}
+
+/**
+ * Called after each totalGamesBeaten increment to handle battery fill events.
+ * On a normal tier advance (Easy→Medium→Hard→Insane) the battery resets and shows
+ * a tier-up notification. When already in Insane and the battery fills again,
+ * it's an "overheat": escalating curses are applied and a hard combat is queued.
+ */
+function handleDifficultyBatteryFill(prevTier, newTier) {
+  const tierSize = (typeof DIFFICULTY_TIER_SIZE !== 'undefined') ? DIFFICULTY_TIER_SIZE : 4;
+  const filled = gameState.totalGamesBeaten % tierSize === 0 && gameState.totalGamesBeaten > 0;
+
+  if (!filled) {
+    // Battery gained a segment but didn't complete — just refresh the display
+    if (typeof updateLocationDisplay === 'function') updateLocationDisplay(gameState.currentGame);
+    return;
+  }
+
+  if (prevTier !== newTier) {
+    // Normal tier advancement — battery empties as we enter the new tier
+    const tierColors = { Easy: '#2ecc71', Medium: '#ff9800', Hard: '#f44336', Insane: '#aa44ff' };
+    const color = tierColors[newTier] || '#aaa';
+    if (typeof createNotification === 'function') {
+      createNotification(`Difficulty increased: ${newTier}!`, color, '⚠️');
+    }
+  } else if (newTier === 'Insane') {
+    // Insane overheat — battery filled without a tier change
+    if (typeof gameState.insaneBatteryFills !== 'number') gameState.insaneBatteryFills = 0;
+    gameState.insaneBatteryFills++;
+    const curseCount = gameState.insaneBatteryFills;
+
+    // Apply escalating curses
+    const availableCurses = (typeof curses !== 'undefined')
+      ? curses.filter(c => !gameState.activeCurses.some(ac => ac.name === c.name))
+      : [];
+    let cursesAdded = 0;
+    for (let i = 0; i < curseCount && availableCurses.length > 0; i++) {
+      const idx = Math.floor(Math.random() * availableCurses.length);
+      const chosen = availableCurses.splice(idx, 1)[0];
+      if (typeof addCurse === 'function') addCurse(chosen.name);
+      cursesAdded++;
+    }
+
+    if (typeof createNotification === 'function') {
+      createNotification(
+        `OVERHEAT! +${cursesAdded} curse${cursesAdded !== 1 ? 's' : ''} — Hard combat incoming!`,
+        '#cc00ff', '🔥'
+      );
+    }
+
+    // Queue a hard combat encounter before the next set of choices
+    gameState.pendingInsaneHardCombat = true;
+  }
+
+  if (typeof updateLocationDisplay === 'function') updateLocationDisplay(gameState.currentGame);
 }
 
 /**
@@ -8845,13 +8996,14 @@ function triggerGameStatusEffects(gameName) {
 
   // Calculate difficulty tier based on games beaten (same as combat)
   const gamesBeaten = gameState.totalGamesBeaten || 0;
+  const _status_thresholds = (typeof DIFFICULTY_THRESHOLDS !== 'undefined') ? DIFFICULTY_THRESHOLDS : { MEDIUM: 4, HARD: 8, INSANE: 12 };
   let difficultyTier = 'Low';
   let curseSuffix = 'I';
 
-  if (gamesBeaten >= 10) {
+  if (gamesBeaten >= _status_thresholds.HARD) {
     difficultyTier = 'High';
     curseSuffix = 'III';
-  } else if (gamesBeaten >= 5) {
+  } else if (gamesBeaten >= _status_thresholds.MEDIUM) {
     difficultyTier = 'Medium';
     curseSuffix = 'II';
   }

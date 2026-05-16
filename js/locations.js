@@ -307,11 +307,16 @@ const LOCATIONS_DATA = [
 // LOCATION ORGANIZATION
 // ========================================
 
+// Games per difficulty tier before advancing
+const DIFFICULTY_TIER_SIZE = 4;
+const DIFFICULTY_THRESHOLDS = { MEDIUM: 4, HARD: 8, INSANE: 12 };
+
 // Organize locations by difficulty
 const locationsByDifficulty = {
   easy: LOCATIONS_DATA.filter(loc => loc.difficulty === 'Easy'),
   medium: LOCATIONS_DATA.filter(loc => loc.difficulty === 'Medium'),
-  hard: LOCATIONS_DATA.filter(loc => loc.difficulty === 'Hard')
+  hard: LOCATIONS_DATA.filter(loc => loc.difficulty === 'Hard'),
+  insane: LOCATIONS_DATA.filter(loc => loc.difficulty === 'Hard') // Insane reuses Hard locations
 };
 
 // Organize locations by game
@@ -329,33 +334,38 @@ const locationsByGame = {
 
 /**
  * Get a random location based on difficulty tier
- * @param {string} difficulty - 'Easy', 'Medium', or 'Hard'
+ * @param {string} difficulty - 'Easy', 'Medium', 'Hard', or 'Insane'
  * @returns {Object|null} Random location object or null if none available
  */
 function getRandomLocation(difficulty) {
   const difficultyKey = difficulty.toLowerCase();
-  const locations = locationsByDifficulty[difficultyKey] || locationsByDifficulty.easy;
+  const locations = locationsByDifficulty[difficultyKey] || locationsByDifficulty.hard;
 
-  if (locations.length === 0) {
-    return null;
-  }
+  if (locations.length === 0) return null;
 
-  const randomIndex = Math.floor(Math.random() * locations.length);
-  return locations[randomIndex];
+  // Pick a random game first so each game gets equal representation,
+  // then pick a random location from that game.
+  const gameNames = [...new Set(locations.map(l => l.game))];
+  const chosenGame = gameNames[Math.floor(Math.random() * gameNames.length)];
+  const gameLocations = locations.filter(l => l.game === chosenGame);
+  return gameLocations[Math.floor(Math.random() * gameLocations.length)];
 }
 
 /**
- * Get difficulty tier based on player progress
+ * Get difficulty tier based on player progress.
+ * Each tier spans DIFFICULTY_TIER_SIZE games.
  * @param {number} beatenGamesCount - Number of games the player has beaten
- * @returns {string} 'Easy', 'Medium', or 'Hard'
+ * @returns {string} 'Easy', 'Medium', 'Hard', or 'Insane'
  */
 function getDifficultyTier(beatenGamesCount) {
-  if (beatenGamesCount < 5) {
+  if (beatenGamesCount < DIFFICULTY_THRESHOLDS.MEDIUM) {
     return 'Easy';
-  } else if (beatenGamesCount < 10) {
+  } else if (beatenGamesCount < DIFFICULTY_THRESHOLDS.HARD) {
     return 'Medium';
-  } else {
+  } else if (beatenGamesCount < DIFFICULTY_THRESHOLDS.INSANE) {
     return 'Hard';
+  } else {
+    return 'Insane';
   }
 }
 
@@ -756,6 +766,8 @@ window.locationsByGame = locationsByGame;
 // Export selection functions
 window.getRandomLocation = getRandomLocation;
 window.getDifficultyTier = getDifficultyTier;
+window.DIFFICULTY_TIER_SIZE = DIFFICULTY_TIER_SIZE;
+window.DIFFICULTY_THRESHOLDS = DIFFICULTY_THRESHOLDS;
 
 // Export utility functions
 window.getLocationGame = getLocationGame;

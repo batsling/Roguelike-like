@@ -131,14 +131,10 @@ function recalculateScalablePassives() {
     bonuses.attack += beefyRingBonus;
   }
 
-  // Check for Focus Crystal: +1 Attack if melee weapon equipped
+  // Check for Focus Crystal: +1 flat damage to all Melee attacks
   const hasFocusCrystal = inventory.some(item => item.name === 'Focus Crystal');
-  if (hasFocusCrystal && gameState.equippedWeapon) {
-    const weaponTags = gameState.equippedWeapon.tags || [];
-    const isMeleeWeapon = weaponTags.includes('melee');
-    if (isMeleeWeapon) {
-      bonuses.attack += 1;
-    }
+  if (hasFocusCrystal) {
+    bonuses.attack += 1;
   }
 
   // Paper Bag: Charisma equals the player's highest stat
@@ -278,6 +274,13 @@ const ITEM_EFFECTS = {
     onAcquire: () => {
       luck += 1;
       gameState.luck = luck;
+    }
+  },
+
+  "Propeller Hat": {
+    onAcquire: () => {
+      StateMutator.modifyStat('luck', 3);
+      StateMutator.modifyStat('strength', -1);
     }
   },
 
@@ -665,7 +668,7 @@ const ITEM_EFFECTS = {
     // Effect is handled in damage calculation
   },
 
-  "Stabilizar Arm Locks": {
+  "Stabilizer Arm Locks": {
     onAcquire: () => {
       StateMutator.modifyStat('dexterity', 6);
     }
@@ -1077,7 +1080,68 @@ const ITEM_EFFECTS = {
   },
 
   // Ice Cream: energy remaining at end of turn carries over to the next turn (tracked in combat engine)
-  "Ice Cream": {}
+  "Ice Cream": { onAcquire: () => {} },
+
+  // ===== WEAPONS: card is added to deck via the weapon card system in acquireItem() =====
+  "Bag o' Glitter": { onAcquire: () => {} },
+  "Barrel":         { onAcquire: () => {} },
+  "Blasma Pistol":  { onAcquire: () => {} },
+  "Blood Magic":    { onAcquire: () => {} },
+  "Dexecutioner":   { onAcquire: () => {} },
+  "Lil' Bomber":    { onAcquire: () => {} },
+
+  // ===== TRIGGERED: effect applied in combat-engine.js initCombat() =====
+  "Holy Mantle":     { onAcquire: () => {} }, // +1 Buffer at start of combat
+  "Leech Brood":     { onAcquire: () => {} }, // +1 Leeches on all enemies; -10 HP if above 50% health
+  "Pummarola":       { onAcquire: () => {} }, // +1 Regeneration at start of combat
+  "Raven Feather":   { onAcquire: () => {} }, // Soul Link on 2 random enemies at start of combat
+  "Du-Vu Doll":      { onAcquire: () => {} }, // +X Power at start of combat where X = curse count
+  "Thread and Needle": { onAcquire: () => {} }, // +4 Plated Armor at start of combat
+
+  // ===== TRIGGERED: effect applied in combat-engine.js per-turn logic =====
+  "Captain's Wheel": { onAcquire: () => {} }, // +18 Block at start of turn 3
+  "Happy Flower":    { onAcquire: () => {} }, // +1 Energy every 3 turns
+  "Sulfa Powder":    { onAcquire: () => {} }, // +D12 Block at the start of each turn
+  "Stone Calendar":  { onAcquire: () => {} }, // 52 damage to all enemies at end of turn 7
+
+  // ===== TRIGGERED: effect applied in combat-engine.js on attack / on-hit =====
+  "Bird Head":       { onAcquire: () => {} }, // Strikes inflict Soul Link
+  "Brass Knuckles":  { onAcquire: () => {} }, // Strikes inflict Bruise
+  "Jar of Leeches":  { onAcquire: () => {} }, // Strikes inflict Leeches
+  "Leeching Seed":   { onAcquire: () => {} }, // Strikes heal player for 1
+  "Duplicator":      { onAcquire: () => {} }, // Weapon Attack cards hit an extra time
+  "Nunchaku":        { onAcquire: () => {} }, // Every 10 attacks: +1 Energy
+  "Ornamental Fan":  { onAcquire: () => {} }, // Every 4 attacks in a turn: +4 Block
+  "Pen Nib":         { onAcquire: () => {} }, // Every 10th attack deals double damage
+  "Shuriken":        { onAcquire: () => {} }, // Every 3 attacks in a turn: +1 Power
+
+  // ===== TRIGGERED: effect applied on enemy kill =====
+  "Gremlin Horn": { onAcquire: () => {} }, // +1 Energy and draw 1 card when an enemy dies
+  "Metal Plate":  { onAcquire: () => {} }, // +1 Brace when you kill an enemy
+
+  // ===== TRIGGERED: effect applied on taking damage =====
+  "Prayer Card":  { onAcquire: () => {} }, // 33% chance +1 Buffer when taking damage
+  "Prayer Beads": { onAcquire: () => {} }, // +3 temporary Brace until end of turn when taking damage
+
+  // ===== TRIGGERED: effect applied via Dead Eye tracking per-attack =====
+  "Dead Eye": { onAcquire: () => {} }, // Consecutive hits on same target gain +1 Dmg; resets on miss
+
+  // ===== TRIGGERED: effect applied on perfect-game via verification.js =====
+  "Performance Based Health Insurance": { onAcquire: () => {} }, // +5 Health on perfect game
+  "Secret Technique Instructions":      { onAcquire: () => {} }, // +1 Dash on perfect game
+  "Steady Investment":                  { onAcquire: () => {} }, // +5 Gold on perfect game
+  "Clown Shoes":                        { onAcquire: () => {} }, // 50% chance to treat non-perfect as perfect
+
+  // ===== TRIGGERED: effect applied on level-up in main.js =====
+  "Crown": { onAcquire: () => {} }, // 50% chance to level up an additional time
+
+  // ===== TRIGGERED: effect applied in main.js item-spawn logic =====
+  "Sacred Orb": { onAcquire: () => {} }, // Rerolls Common items; 25% chance to reroll Uncommon
+
+  // ===== SCALING / PASSIVE: effect applied dynamically in stat calculations =====
+  "Rock Bottom":  { onAcquire: () => {} }, // Stats cannot fall below their historical peak (enforced in StateMutator)
+  "Paper Bag":    { onAcquire: () => {} }, // Charisma = highest stat (enforced in getEffectiveStats)
+  "Little Knife": { onAcquire: () => {} }  // Attacks deal 25% more damage to lower-health targets
 };
 
 // ===== DAMAGE REDUCTION FUNCTION =====

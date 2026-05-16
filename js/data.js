@@ -5,7 +5,6 @@ var inventory = [];
 var beatenGames = [];
 var selectedPhase2Games = [];
 var excludedGames = [];
-var rations = 10;
 var gold = 0;
 var health = 10;
 var maxHealth = 10;
@@ -15,18 +14,11 @@ var intelligence = 0;
 var charisma = 0;
 var attack = 0;
 var luck = 0;
-var roguePoints = 0;
 var reroll = 0;
 var dash = 0;
 var skip = 0;
 var discovery = 0; // Number of item choices when collecting rewards (base 2)
 var fov = 0; // Field of View - number of game choices shown (base 3)
-var pactConditions = {
-  lessHealth: 0,
-  moreGames: 0,
-  randomGame: 0,
-  challengeRun: 0,
-};
 var startGame = null;
 var amuletGame = null;
 var events = [];
@@ -129,11 +121,16 @@ var gameState = {
   // Combat encounter tracking (for weight-based system)
   totalCombatsCompleted: 0,   // How many combats have been completed this run
   lastDifficultyTier: null,   // 'Low', 'Medium', 'High' - tracks transitions
+  // Difficulty battery (Insane tier overheat tracking)
+  insaneBatteryFills: 0,      // How many times the Insane battery has fully filled
   // Shop per-visit services
   shopUpgradesUsed: 0,        // Card upgrade used this shop visit (max 1)
   shopRemovesUsed: 0,         // Card remove used this shop visit (max 1)
   cardsRemovedThisRun: 0,     // Total removals this run (used to scale removal cost)
-  diceSlots: {}               // { [dieUid]: item | null } — items slotted onto dice
+  diceSlots: {},              // { [dieUid]: item | null } — items slotted onto dice
+  // Node detail system: pre-generated data per choice node
+  // { [gameName]: { enemies: Enemy[], postCombatOptions: string[] } }
+  choiceDetails: {}
 };
 
 var gameSaves = GameStorage.load(STORAGE_KEYS.SAVED_GAMES, {});

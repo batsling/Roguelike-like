@@ -48,6 +48,15 @@ function clearAllArrows() {
 // ===== SPAWN CHOICES =====
 
 function spawnChoices() {
+  // Insane overheat: force a hard combat before showing movement choices
+  if (gameState.pendingInsaneHardCombat) {
+    gameState.pendingInsaneHardCombat = false;
+    if (typeof showCombatModal === 'function') {
+      showCombatModal();
+      return; // showCombatModal will call spawnChoices() on win via normal combat flow
+    }
+  }
+
   clearChoices();
 
   // Set phase to selection
@@ -164,6 +173,17 @@ function spawnChoices() {
   // Store current choices so the map can highlight them
   gameState.currentChoices = [...opts];
 
+  // Pre-generate enemy encounters and post-combat options for each choice node
+  if (!gameState.choiceDetails) gameState.choiceDetails = {};
+  opts.forEach(g => {
+    if (!gameState.choiceDetails[g]) {
+      gameState.choiceDetails[g] = {
+        enemies: preGenerateEnemiesForGame(g),
+        postCombatOptions: pickTwoPostCombatOptions()
+      };
+    }
+  });
+
   // Dynamic positioning based on number of choices
   // Node max width = 220px + 56px padding + 6px border = ~282px
   // Use minimum spacing of 300px to ensure no overlap even with long names
@@ -194,7 +214,7 @@ function spawnChoices() {
     }
 
     // Get encounter type from gameState (randomly assigned per run)
-    let encounterType, encounterIcon, encounterColor;
+    let encounterType;
 
     // Find the game object
     const game = games.find(game => game.name === g);
@@ -202,41 +222,10 @@ function spawnChoices() {
     // Get encounter type from current run's assignments
     encounterType = gameState.encounterTypes?.[g];
 
-    if (game && encounterType) {
-      // Set icon and color based on encounter type
-      if (encounterType === 'combat') {
-        encounterIcon = '!';
-        // Get game type for color
-        switch(game.type.toLowerCase()) {
-          case 'action': encounterColor = 'red'; break;
-          case 'deckbuilding': encounterColor = 'purple'; break;
-          case 'strategy': encounterColor = 'blue'; break;
-          default: encounterColor = 'green'; break;
-        }
-      } else if (encounterType === 'event') {
-        encounterIcon = '?';
-        encounterColor = 'purple';
-      } else if (encounterType === 'shop') {
-        encounterIcon = '$';
-        encounterColor = 'gold';
-      }
-    } else {
-      // Fallback to random if encounterType not found (shouldn't happen)
-      console.warn(`No encounterType found for game: ${g}, using fallback random generation`);
-      const encounterRoll = Math.random() * 100;
-      if (encounterRoll < 75) {
-        encounterType = 'combat';
-        encounterIcon = '!';
-        encounterColor = 'red';
-      } else if (encounterRoll < 90) {
-        encounterType = 'event';
-        encounterIcon = '?';
-        encounterColor = 'purple';
-      } else {
-        encounterType = 'shop';
-        encounterIcon = '$';
-        encounterColor = 'gold';
-      }
+    if (!encounterType) {
+      // Fallback if encounterType not found (shouldn't happen)
+      console.warn(`No encounterType found for game: ${g}, using fallback`);
+      encounterType = 'combat';
     }
 
     const n = addNode(g, 'choice', nx, ny);
@@ -270,68 +259,42 @@ function spawnChoices() {
     // Check if this is the amulet game
     const isAmuletGame = (g === gameState.amuletGame.name);
 
-    // Override encounter type if it's the amulet game
     if (isAmuletGame) {
       encounterType = 'amulet';
-      encounterIcon = '🏺';
-      encounterColor = 'gold';
     }
 
-    // Add encounter icon to the node
-    const icon = document.createElement('span');
-    icon.textContent = encounterIcon;
-    icon.style.cssText = `
-      position: absolute;
-      top: -12px;
-      right: -12px;
-      width: 26px;
-      height: 26px;
-      background: ${encounterColor};
-      color: ${encounterColor === 'gold' ? '#000' : '#fff'};
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      font-weight: bold;
-      border: 2px solid #000;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-    `;
-    n.appendChild(icon);
+    // Game-type badge — colored pill showing mechanical type (Action/Deckbuilding/etc.)
+    const typeColors = { action: '#c0392b', deckbuilding: '#7d3c98', strategy: '#1a6fa0', traditional: '#1e8449' };
+    const badgeLabel = isAmuletGame ? '🏺 Amulet' : (game?.type || 'Unknown');
+    const badgeColor = isAmuletGame ? '#b7950b' : (typeColors[(game?.type || '').toLowerCase()] || '#555');
+    const typeBadge = document.createElement('span');
+    typeBadge.textContent = badgeLabel;
+    typeBadge.style.cssText = [
+      'position:absolute',
+      'bottom:-12px',
+      'left:50%',
+      'transform:translateX(-50%)',
+      'background:' + badgeColor,
+      'color:#fff',
+      'border-radius:4px',
+      'padding:2px 7px',
+      'font-size:9px',
+      'font-weight:bold',
+      'white-space:nowrap',
+      'border:1px solid rgba(0,0,0,0.35)',
+      'box-shadow:0 1px 4px rgba(0,0,0,0.4)',
+      'pointer-events:none',
+      'z-index:5',
+      'letter-spacing:0.3px',
+    ].join(';');
+    n.appendChild(typeBadge);
 
     // Store encounter type on the node
     n.dataset.encounterType = encounterType;
 
-    n.onclick = () => advance(g, nx, ny, encounterType);
-
-    // Map preview button — small pill below the choice node
-    if (!isAmuletGame) {
-      const previewBtn = document.createElement('button');
-      previewBtn.title = 'Preview map from here to amulet';
-      previewBtn.textContent = 'Map';
-      previewBtn.style.cssText = [
-        'position:absolute',
-        'top:calc(100% + 5px)',
-        'left:50%',
-        'transform:translateX(-50%)',
-        'padding:2px 10px',
-        'background:#1a3a4a',
-        'border:1px solid #44aacc',
-        'border-radius:4px',
-        'cursor:pointer',
-        'font-size:10px',
-        'font-weight:bold',
-        'color:#88ccff',
-        'white-space:nowrap',
-        'z-index:10',
-      ].join(';');
-      const gCopy = g;
-      previewBtn.onclick = (e) => {
-        e.stopPropagation();
-        if (typeof showGameMapPreview === 'function') showGameMapPreview(gCopy, null);
-      };
-      n.appendChild(previewBtn);
-    }
+    n.onclick = () => showNodeDetailModal(g, nx, ny, encounterType, {
+      onFight: () => advance(g, nx, ny, encounterType)
+    });
   });
 
   // Draw arrows after all nodes are added and browser has laid them out
@@ -361,7 +324,7 @@ function spawnChoices() {
     const viewport = document.getElementById('path-viewport');
     if (!viewport) return;
     const baseY = gameState.currentY + 200;
-    const choiceBottom = baseY + 220; // node height ~60px + map btn ~25px + row spacing buffer
+    const choiceBottom = baseY + 180; // node height ~60px + type badge ~12px + row spacing buffer
     const viewBottom = viewport.scrollTop + viewport.clientHeight;
     if (choiceBottom > viewBottom - 20) {
       viewport.scrollTo({ top: choiceBottom - viewport.clientHeight + 80, behavior: 'smooth' });
@@ -667,27 +630,17 @@ function showFinish(node, isAmuletGame = false) {
     }
 
     if (isAmuletGame) {
-      // Mark game as finished first
-      if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
-        markGameFinished(gameState.currentGame);
-      }
-      // Small delay to let difficulty counter update before escape phase
+      // Small delay before escape phase
       setTimeout(() => {
         if (typeof startEscapePhase === 'function') {
           startEscapePhase();
         }
       }, 150);
     } else {
-      // Show curse verification (includes Precision Landing trait), then mark finished, then item choice
+      // Show curse verification (Precision Landing trait), then item choice
       if (typeof showCurseVerificationModal === 'function') {
         showCurseVerificationModal(() => {
-          // After curse/trait verification, mark game as finished
-          if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
-            markGameFinished(gameState.currentGame);
-          }
-
-          // Small delay to let difficulty counter and other UI elements update visually
-          // before showing the next modal
+          // Small delay to let UI elements update visually before showing the next modal
           setTimeout(() => {
             // Check if we're in the middle of the Colosseum event
             if (gameState.colosseumState && gameState.colosseumState.stage === 'first_fight') {
@@ -735,12 +688,7 @@ function showFinish(node, isAmuletGame = false) {
           }, 150); // Small delay for UI to update
         });
       } else {
-        // Fallback if verification not available
-        if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
-          markGameFinished(gameState.currentGame);
-        }
-
-        // Small delay to let difficulty counter and other UI elements update visually
+        // Small delay to let UI elements update visually
         setTimeout(() => {
           // Check if we're in the middle of the Colosseum event
           if (gameState.colosseumState && gameState.colosseumState.stage === 'first_fight') {
@@ -848,6 +796,241 @@ function showFinish(node, isAmuletGame = false) {
   }
 }
 
+// ===== NODE DETAIL MODAL =====
+
+const _POST_COMBAT_META = {
+  rest:     { icon: '🛌', label: 'Rest',     desc: 'Heal 33% of max HP' },
+  smith:    { icon: '⚒️',  label: 'Smith',    desc: 'Upgrade 2 cards free' },
+  shop:     { icon: '🛒', label: 'Shop',     desc: 'Buy items' },
+  movement: { icon: '🗺️', label: 'Movement', desc: 'Navigate terrain' },
+};
+
+/**
+ * Pre-generate an enemy list for a given game node using the same weight-based
+ * logic as buildWeightedEncounter(), but parameterised by game name.
+ */
+function preGenerateEnemiesForGame(gameName) {
+  const gamesBeaten = gameState.totalGamesBeaten || 0;
+  const thresholds = (typeof DIFFICULTY_THRESHOLDS !== 'undefined')
+    ? DIFFICULTY_THRESHOLDS : { MEDIUM: 4, HARD: 8, INSANE: 12 };
+  let currentTier;
+  if (gamesBeaten >= thresholds.HARD) currentTier = 'High';
+  else if (gamesBeaten >= thresholds.MEDIUM) currentTier = 'Medium';
+  else currentTier = 'Low';
+
+  const TYPE_MAP = { Action: 'Strength', Deckbuilding: 'Charisma', Strategy: 'Intelligence', Traditional: 'Dexterity' };
+  const gameObj = typeof games !== 'undefined' ? games.find(g => g.name === gameName) : null;
+  const requiredType = gameObj ? (TYPE_MAP[gameObj.type] || null) : null;
+
+  const tierOrder = ['Low', 'Medium', 'High'];
+  const maxTierIdx = tierOrder.indexOf(currentTier);
+  const allEnemies = typeof ENEMIES_DATA !== 'undefined' ? ENEMIES_DATA : [];
+
+  let pool = allEnemies.filter(e =>
+    e.weight !== null && e.weight !== undefined && e.difficulty !== null &&
+    tierOrder.indexOf(e.difficulty) <= maxTierIdx &&
+    (!requiredType || e.type === requiredType)
+  );
+  if (pool.length === 0) {
+    pool = allEnemies.filter(e =>
+      e.weight !== null && e.weight !== undefined && e.difficulty !== null &&
+      tierOrder.indexOf(e.difficulty) <= maxTierIdx
+    );
+  }
+  if (pool.length === 0) return [];
+
+  const combatsCompleted = gameState.totalCombatsCompleted || 0;
+  let budget;
+  if (combatsCompleted === 0) budget = 2;
+  else if (currentTier === 'Low') budget = 4;
+  else if (currentTier === 'Medium') budget = 6;
+  else budget = 9;
+
+  const selected = [];
+  let remaining = budget;
+  while (remaining > 0 && selected.length < 4) {
+    const fitting = pool.filter(e => e.weight <= remaining);
+    if (fitting.length === 0) break;
+    const maxW = Math.max(...fitting.map(e => e.weight));
+    const targetW = Math.floor(Math.random() * maxW) + 1;
+    let cands = fitting.filter(e => Math.ceil(e.weight) === targetW);
+    if (cands.length === 0) cands = fitting;
+    const chosen = cands[Math.floor(Math.random() * cands.length)];
+    selected.push(chosen);
+    remaining -= chosen.weight;
+  }
+  return selected;
+}
+
+/** Pick 2 distinct post-combat option keys from the available pool. */
+function pickTwoPostCombatOptions() {
+  const keys = Object.keys(_POST_COMBAT_META);
+  // Shuffle and take first 2
+  for (let i = keys.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [keys[i], keys[j]] = [keys[j], keys[i]];
+  }
+  return keys.slice(0, 2);
+}
+
+/**
+ * Show the node detail modal for a game node.
+ * @param {string} gameName
+ * @param {number|null} x - Node x position (null for start/map nodes)
+ * @param {number|null} y - Node y position (null for start/map nodes)
+ * @param {string} encounterType - 'combat', 'event', 'shop', 'amulet'
+ * @param {Object} opts
+ *   opts.fromMap    {boolean} - Blur enemies, hide Fight! button (read-only map view)
+ *   opts.onFight    {function} - Callback when Fight! is clicked (if omitted, advance() is used)
+ */
+function showNodeDetailModal(gameName, x, y, encounterType, opts = {}) {
+  const fromMap = opts.fromMap || false;
+  const onFight = opts.onFight || null;
+
+  const game = typeof games !== 'undefined' ? games.find(g => g.name === gameName) : null;
+  const details = (gameState.choiceDetails && gameState.choiceDetails[gameName]) || {};
+  const enemies = details.enemies || preGenerateEnemiesForGame(gameName);
+  const postCombatOptions = details.postCombatOptions || pickTwoPostCombatOptions();
+
+  const coverImage = game?.coverImage || 'images/covers/no-cover.svg';
+  const gameType = game?.type || 'Unknown';
+  const typeColors = { Action: '#c0392b', Deckbuilding: '#7d3c98', Strategy: '#1a6fa0', Traditional: '#1e8449' };
+  const typeColor = typeColors[gameType] || '#555';
+
+  // ---- Enemy cards ----
+  const DIFF_COLORS = { Low: '#2ecc71', Medium: '#f39c12', High: '#e74c3c' };
+  const enemyCardsHTML = enemies.map(e => {
+    const imgPath = typeof getEnemyImagePath === 'function' ? getEnemyImagePath(e.name) : '';
+    const dc = DIFF_COLORS[e.difficulty] || '#888';
+    return `
+      <div style="background:#0d1b2a;border:1px solid #2a4a6a;border-radius:8px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;">
+        <img src="${imgPath}" alt="${e.name}"
+          style="width:52px;height:52px;object-fit:contain;border-radius:4px;background:#0a0f1a;flex-shrink:0;"
+          onerror="this.style.visibility='hidden'">
+        <div style="min-width:0;width:100%;">
+          <div style="font-weight:bold;color:#e6d5b8;font-size:12px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.name}</div>
+          <div style="color:#aaa;font-size:10px;margin-bottom:3px;">❤️ ${e.hpMin}–${e.hpMax} &nbsp;·&nbsp; ⚔️ ${e.type}</div>
+          <div style="font-size:10px;">
+            <span style="background:${dc}22;color:${dc};border:1px solid ${dc}44;border-radius:3px;padding:1px 5px;font-size:9px;">${e.difficulty}</span>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const blurWrap = fromMap
+    ? `style="filter:blur(5px);pointer-events:none;user-select:none;"`
+    : '';
+  const blurOverlay = fromMap ? `
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,0.35);border-radius:8px;display:flex;align-items:center;justify-content:center;z-index:2;">
+      <div style="color:#aaa;font-size:12px;text-align:center;padding:10px;">
+        <div style="font-size:20px;margin-bottom:6px;">🔍</div>
+        Scout from the exploration view to reveal enemies
+      </div>
+    </div>` : '';
+
+  // ---- Post-combat preview ----
+  const optCardsHTML = postCombatOptions.map(key => {
+    const m = _POST_COMBAT_META[key] || { icon: '❓', label: key, desc: '' };
+    return `
+      <div style="flex:1;background:#111e11;border:1px solid #2a4a2a;border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:26px;margin-bottom:5px;">${m.icon}</div>
+        <div style="font-weight:bold;color:#e6d5b8;font-size:12px;margin-bottom:3px;">${m.label}</div>
+        <div style="color:#777;font-size:10px;">${m.desc}</div>
+      </div>`;
+  }).join('');
+
+  // ---- Stash args for inline onclick reuse ----
+  window._ndmArgs = { gameName, x, y, encounterType, fromMap };
+
+  const mapBtnCode = `showGameMapPreview(window._ndmArgs.gameName, () => showNodeDetailModal(window._ndmArgs.gameName, window._ndmArgs.x, window._ndmArgs.y, window._ndmArgs.encounterType, {fromMap: window._ndmArgs.fromMap, onFight: window._ndmFight}))`;
+
+  // Fight button (only when not fromMap)
+  let fightBtnHTML = '';
+  if (!fromMap) {
+    window._ndmFight = onFight || (() => advance(gameName, x, y, encounterType));
+    fightBtnHTML = `
+      <button onclick="closeGameModal(); window._ndmFight && window._ndmFight();"
+        style="background:#c0392b;color:white;border:none;border-radius:6px;padding:10px 28px;font-size:14px;font-weight:bold;cursor:pointer;letter-spacing:0.4px;">
+        ⚔️ Fight!
+      </button>`;
+  }
+
+  const isAmulet = encounterType === 'amulet';
+
+  createGameModal(`
+    <div style="width:460px;max-width:92vw;overflow:hidden;border-radius:10px;background:#0f0f1a;">
+      <div style="position:relative;height:220px;overflow:hidden;background:#0a0f1a;">
+        <img src="${coverImage}" alt="${gameName}"
+          style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;"
+          onerror="this.style.display='none'">
+        <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.05) 40%,rgba(0,0,0,0.85) 100%);"></div>
+        <button onclick="${mapBtnCode}"
+          style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.55);border:1px solid #44aacc;border-radius:5px;color:#88ccff;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">
+          🗺 Map
+        </button>
+        <div style="position:absolute;bottom:12px;left:14px;right:60px;">
+          <div style="font-weight:bold;color:white;font-size:15px;text-shadow:0 2px 4px rgba(0,0,0,0.9);margin-bottom:5px;">${gameName}</div>
+          <span style="background:${typeColor};color:white;padding:2px 9px;border-radius:4px;font-size:10px;font-weight:bold;letter-spacing:0.3px;">${gameType}</span>
+          ${isAmulet ? '<span style="background:#b7950b;color:white;padding:2px 9px;border-radius:4px;font-size:10px;font-weight:bold;margin-left:6px;">🏺 Amulet</span>' : ''}
+        </div>
+      </div>
+
+      <div style="padding:16px;">
+        <div style="margin-bottom:14px;">
+          <div style="color:#e6d5b8;font-size:11px;font-weight:bold;letter-spacing:0.6px;margin-bottom:8px;text-transform:uppercase;opacity:0.65;">Enemies</div>
+          <div style="position:relative;">
+            <div ${blurWrap}>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+                ${enemies.length > 0 ? enemyCardsHTML : '<div style="color:#555;font-size:12px;text-align:center;padding:12px;grid-column:1/-1;">No enemy data available</div>'}
+              </div>
+            </div>
+            ${blurOverlay}
+          </div>
+        </div>
+
+        ${isAmulet ? '' : `
+        <div style="margin-bottom:14px;">
+          <div style="color:#e6d5b8;font-size:11px;font-weight:bold;letter-spacing:0.6px;margin-bottom:8px;text-transform:uppercase;opacity:0.65;">After Victory</div>
+          <div style="display:flex;gap:10px;">${optCardsHTML}</div>
+        </div>`}
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:4px;">
+          <button onclick="closeGameModal()"
+            style="background:#2a2a3a;color:#aaa;border:1px solid #444;border-radius:6px;padding:8px 20px;font-size:13px;cursor:pointer;">
+            ← Back
+          </button>
+          ${fightBtnHTML}
+        </div>
+      </div>
+    </div>
+  `);
+
+  // Centre the modal both horizontally and vertically
+  const overlay = document.getElementById('game-modal');
+  if (overlay) {
+    overlay.style.alignItems = 'center';
+    overlay.style.paddingTop = '0';
+    overlay.style.padding = '16px';
+  }
+  const mc = document.querySelector('#game-modal .modal-content');
+  if (mc) {
+    mc.style.width = 'auto';
+    mc.style.maxWidth = '95vw';
+    mc.style.maxHeight = '90vh';
+    mc.style.overflowY = 'auto';
+    mc.style.padding = '0';
+    mc.style.background = 'transparent';
+    mc.style.border = 'none';
+    mc.style.boxShadow = 'none';
+  }
+}
+
+/** Called from map-view onclick for choice nodes — opens modal in read-only mode. */
+function openNodeModalFromMap(gameName) {
+  const encounterType = gameState.encounterTypes?.[gameName] || 'combat';
+  showNodeDetailModal(gameName, null, null, encounterType, { fromMap: true });
+}
+
 // Export exploration functions globally
 window.clearChoices = clearChoices;
 window.clearAllArrows = clearAllArrows;
@@ -856,3 +1039,7 @@ window.addDashRerollButtons = addDashRerollButtons;
 window.removeDashRerollButtons = removeDashRerollButtons;
 window.advance = advance;
 window.showFinish = showFinish;
+window.showNodeDetailModal = showNodeDetailModal;
+window.openNodeModalFromMap = openNodeModalFromMap;
+window.preGenerateEnemiesForGame = preGenerateEnemiesForGame;
+window.pickTwoPostCombatOptions = pickTwoPostCombatOptions;

@@ -16,6 +16,7 @@
       <button id="deck-btn" class="btn-small btn-purple border-radius-6" aria-label="View your deck">🃏 Deck</button>
       <button id="dice-tray-btn" class="btn-small border-radius-6" style="background:#7d4e00;border:1px solid #d35400;color:#fff;" aria-label="View your dice">🎲 Dice</button>
       <button id="spells-btn" class="btn-small border-radius-6" style="background:#1a0d2e;border:1px solid #7c3aed;color:#c4b5fd;" aria-label="View your spells">✨ Spells</button>
+      <button id="loot-btn" class="btn-small border-radius-6" style="background:#1a3a2a;border:1px solid #4a9c6a;color:#7dffa0;" aria-label="Open loot inventory">🎒 Loot</button>
       <button id="map-btn" class="btn-small bg-info border-radius-6" aria-label="Open map view">🗺️ Map</button>
       <span id="map-distance-badge" style="display:none;background:#1a3a1a;border:1px solid #4a9c4a;color:#7dffb0;font-size:11px;font-weight:bold;padding:3px 8px;border-radius:10px;white-space:nowrap;"></span>
       <button id="notif-history-btn" class="btn-small border-radius-6" style="background:#1a2a3a;border:1px solid #4a7a9b;color:#aed6f1;" aria-label="View notification history">📜</button>
@@ -233,7 +234,6 @@
           <div id="game-items">
             <div class="flex-between mb-10">
               <h3 class="m-0">🎒 Inventory</h3>
-              <button id="loot-btn" class="btn-small bg-info border-radius-6" aria-label="Open loot inventory">Loot</button>
             </div>
             <div class="flex justify-center mb-10 gap-6" role="group" aria-label="Inventory sorting options">
               <button id="sort-alpha-btn" class="btn-mini bg-grey border-radius-4 border-solid-666 transition-bg" aria-label="Sort alphabetically" aria-pressed="false">A-Z</button>
@@ -268,7 +268,13 @@
             <!-- Difficulty Display -->
             <div class="difficulty-tier-display">
               <div class="difficulty-tier" id="difficulty-tier-indicator">
-                <span class="tier-label" id="tier-label">Easy<br><span class="tier-range">0-4</span></span>
+                <span class="tier-label" id="tier-label">Easy<br><span class="tier-range">0-3</span></span>
+                <div class="difficulty-battery" id="difficulty-battery">
+                  <div class="battery-segment" id="battery-seg-0"></div>
+                  <div class="battery-segment" id="battery-seg-1"></div>
+                  <div class="battery-segment" id="battery-seg-2"></div>
+                  <div class="battery-segment" id="battery-seg-3"></div>
+                </div>
               </div>
               <div class="current-difficulty" id="current-difficulty">Current Difficulty: 0</div>
             </div>
@@ -400,71 +406,117 @@
 
           <h3 id="tutorial-modal-title" class="text-gold text-center mt-0">🎮 How to Play</h3>
 
-          <p class="text-light-grey line-height-16"><strong>Goal:</strong> Enter the Dungeon of Roguelikes, grab the Amulet of Nivlac, and escape without dying.</p>
+          <p class="text-light-grey line-height-16"><strong>Goal:</strong> Navigate a dungeon built from real roguelikes, fight through encounters at each location, find the Amulet of Nivlac, and escape alive.</p>
 
-          <h4 class="text-green mt-20">🗺️ Exploration Phase</h4>
+          <h4 class="text-green mt-20">🗺️ The Map</h4>
           <ul class="text-grey-medium line-height-relaxed">
-            <li>Navigate a map of roguelikes connected through inspiration</li>
-            <li>Move one game at a time across the map</li>
-            <li>After beating a game, you get a <strong>random item choice</strong></li>
-            <li>Then you trigger the space's <strong>Encounter</strong>:
+            <li>The dungeon is a web of roguelike games connected by their real-world inspiration links</li>
+            <li>Click any <strong>adjacent, unlocked</strong> game node to move there — you can only move one step at a time</li>
+            <li>Clicking a node opens a <strong>preview card</strong> showing the enemies you'll face and the two post-combat options waiting for you if you win</li>
+            <li>Click <strong>Fight</strong> in the preview to enter the encounter</li>
+            <li>Find the node marked <span class="text-gold">🏺</span> — that's where the Amulet is hidden</li>
+            <li>Use <strong>🗺️ Map</strong> in the top bar to see the full graph at any time</li>
+          </ul>
+
+          <h4 class="text-red mt-20">⚔️ Encounters</h4>
+          <p class="text-grey-medium line-height-16">Each node has one encounter type shown as an icon:</p>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li><span class="text-red">⚔️ Combat</span> — Fight one or more enemies. You'll use either <strong>card combat</strong> or <strong>dice combat</strong> depending on the game. Win to collect gold, loot, and post-combat rewards</li>
+            <li><span class="text-purple">? Event</span> — A story situation. Most choices require a <strong>stat check</strong>: roll a D20, add your relevant stat, and beat the target number. Higher stats mean better odds. Results range from critical success to critical failure</li>
+            <li><span class="text-gold">$ Shop</span> — Spend gold on items. Charisma gives a small discount. You can reroll the stock (first reroll is free)</li>
+          </ul>
+
+          <h4 class="text-orange mt-20">🃏 Card Combat</h4>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li>Draw cards from your deck each turn and play them by spending <strong>Energy</strong> (2 per turn by default)</li>
+            <li>Cards deal damage, apply block, inflict status effects, or do both</li>
+            <li>Upgraded cards (shown with <span class="text-green"><strong>+</strong> green text</span>) have improved values</li>
+            <li>Remove or upgrade cards between fights to thin your deck and increase consistency</li>
+          </ul>
+
+          <h4 class="text-blue mt-20">🎲 Dice Combat</h4>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li>Each turn you roll your character die and weapon die — each face has a move (Damage, Block, Heal, etc.)</li>
+            <li>Select which rolled faces to use; each move costs 1 Energy</li>
+            <li>Some faces are <strong>Spells</strong> that cost Mana instead — you have up to 3 Mana per combat</li>
+            <li>Status effects like Burn, Poison, Stun, and Dodge carry over between turns</li>
+          </ul>
+
+          <h4 class="text-cyan mt-20">📊 Stats</h4>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li><strong>Strength</strong> → every 3 points = +1 <span class="text-red">Power</span> (bonus damage on attacks)</li>
+            <li><strong>Dexterity</strong> → every 3 points = +1 <span class="text-green">Defense</span> (bonus block)</li>
+            <li><strong>Intelligence</strong> → every 3 points = +1 <span class="text-blue">Arcane</span> (bonus magic damage)</li>
+            <li><strong>Charisma</strong> → every 5 points = +1 <span class="text-purple">Persistence</span> (buff/debuff intensity) + shop discounts</li>
+            <li>Stats also determine your bonus to event stat checks — higher is always better</li>
+          </ul>
+
+          <h4 class="text-green mt-20">🏆 After Combat</h4>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li>Winning a combat shows a <strong>victory screen</strong> with gold, loot, and optionally a new card</li>
+            <li>Then you choose one of <strong>two post-combat options</strong> (pre-assigned when you previewed the node):
               <ul class="mt-5-px">
-                <li><span class="text-red">!</span> = <strong>Enemy Combat</strong> (dice roll using your stats)</li>
-                <li><span class="text-purple">?</span> = <strong>Event</strong> (story choice)</li>
-                <li><span class="text-gold">$</span> = <strong>Shop</strong> (buy items with gold)</li>
+                <li>🛌 <strong>Rest</strong> — Heal 33% of your max health</li>
+                <li>⚒️ <strong>Smith</strong> — Choose 2 cards from your deck to upgrade for free</li>
+                <li>🛒 <strong>Shop</strong> — Open a fresh shop visit</li>
+                <li>🗺️ <strong>Movement Event</strong> — A special navigation reward</li>
               </ul>
             </li>
-            <li>The encounter type is shown as an icon in the top-right of each space</li>
-            <li>Find the game marked with <span class="text-gold">🏺</span> - that's where the Amulet is!</li>
+          </ul>
+
+          <h4 class="text-gold mt-20">🎒 Loot</h4>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li>Click <strong>🎒 Loot</strong> in the top bar to open your loot at any time</li>
+            <li><strong>Scrolls</strong> — Use outside of combat. Two D20 rolls determine the outcome (crit success / success / failure / crit failure). Intelligence improves your odds. Click a scroll in the Collection to see its possible outcomes</li>
+            <li><strong>Potions</strong> — Use during combat only. Click a potion, then click a target (or drag it onto one). You won't know what a potion does until you use it for the first time this run</li>
+            <li><strong>Fish</strong> — Caught from special fishing locations. Sell them in the shop for gold</li>
+          </ul>
+
+          <h4 class="text-light-red mt-20">📈 Difficulty Progression</h4>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li>Every 4 games beaten fills one segment of the <strong>difficulty battery</strong> and increases the tier</li>
+            <li>Tiers: <span class="text-green">Easy</span> (0–3) → <span class="text-gold">Medium</span> (4–7) → <span class="text-red">Hard</span> (8–11) → <span class="text-purple">Insane</span> (12+)</li>
+            <li>Higher tiers bring stronger enemies, harder event checks, and harder DC rolls</li>
+            <li>At <strong>Insane</strong>, filling each battery segment causes an <strong>Overheat</strong>: you gain escalating curses and a hard enemy is queued for your next combat</li>
+          </ul>
+
+          <h4 class="text-dark-purple mt-20">😈 Curses</h4>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li>Curses are debuffs that range from mild to crippling across three tiers (I, II, III)</li>
+            <li>They come from event failures, combat penalties, and Insane-tier overheats</li>
+            <li>Curses expire after a set number of games, uses, or spaces — track them in the <strong>📚 Collection</strong></li>
+          </ul>
+
+          <h4 class="text-light-red mt-20">🎯 Bingo</h4>
+          <ul class="text-grey-medium line-height-relaxed">
+            <li>A 3×3 grid of optional challenge goals sits on the right side of the screen</li>
+            <li>Mark a goal complete by clicking its cell; goals have Easy, Normal, and Hard difficulties</li>
+            <li>Complete a row, column, or diagonal to earn a reward — each reward grants stat bonuses, items, or run modifiers</li>
           </ul>
 
           <h4 class="text-red mt-20">🏃 Escape Phase</h4>
           <ul class="text-grey-medium line-height-relaxed">
-            <li>Once you beat the Amulet game, you enter the Escape Phase</li>
-            <li>Choose <strong>3 games you've already beaten</strong> to replay</li>
-            <li>For each game, you'll see two buttons:
+            <li>Once you beat the Amulet node, the Escape Phase begins</li>
+            <li>Choose <strong>3 games you've already visited</strong> to replay on your way out</li>
+            <li>For each game, actually go play it. Then record the result:
               <ul class="mt-5-px">
-                <li><strong>Lost Run</strong> - Click this each time you lose a run while playing that game (<strong>-1 health per loss</strong>)</li>
-                <li><strong>Finished</strong> - Click this when you beat the game to progress to the next one</li>
+                <li><strong>Lost Run</strong> — Press this every time you die in that game (<strong>−1 health each</strong>)</li>
+                <li><strong>Finished</strong> — Press this when you beat the game to advance</li>
               </ul>
             </li>
-            <li>Complete all 3 games without your health reaching 0 to escape with the Amulet!</li>
+            <li>If your health hits 0 during the escape, you lose. Survive all 3 to win!</li>
           </ul>
 
-          <h4 class="text-dark-purple mt-20">😈 Curses System</h4>
+          <h4 class="text-gold mt-20">📚 Collection</h4>
           <ul class="text-grey-medium line-height-relaxed">
-            <li>Curses are debuffs with three tiers (I, II, III) that get stronger each tier</li>
-            <li>Some curses are automatic (start of run), others trigger on events or combat failures</li>
-            <li>Curses have durations: track how many uses/games/spaces before they expire</li>
-            <li>View your curses collection in the <strong>📚 Collection</strong> menu</li>
+            <li><strong>Games</strong> — All roguelikes in the dungeon, their connections, and your history with them</li>
+            <li><strong>Items</strong> — Every item by rarity; hover to read effects</li>
+            <li><strong>Enemies</strong> — All enemies and their stats</li>
+            <li><strong>Curses</strong> — All curses across all tiers; click active curses to see full descriptions</li>
+            <li><strong>Scrolls</strong> — Click any scroll to see its four possible outcomes before using it</li>
           </ul>
 
-          <h4 class="text-light-red mt-20">🎯 Bingo Challenges</h4>
-          <ul class="text-grey-medium line-height-relaxed">
-            <li>Complete bingo goals by clicking cells in the 3x3 grid on the right</li>
-            <li>Goals have three difficulties: <span class="text-green">Easy</span>, <span class="text-blue">Normal</span>, <span class="text-red">Hard</span></li>
-            <li>Complete a row, column, or diagonal to earn rewards in order</li>
-            <li>All rewards give <strong>+1 to all combat stats</strong> plus items and bonuses</li>
-            <li>Click <strong>Rewards</strong> to see what each bingo completion grants</li>
-          </ul>
-
-          <h4 class="text-cyan mt-20">🗺️ Map Viewer</h4>
-          <ul class="text-grey-medium line-height-relaxed">
-            <li>Click <strong>View Map</strong> to see the full roguelike influence graph</li>
-            <li>Use <strong>+/-</strong> buttons to zoom in/out on the map</li>
-            <li>Games are color-coded: <span class="text-green">visited</span>, <span class="text-blue">available</span>, <span class="text-grey">locked</span></li>
-            <li>Hover over games to see shortest path distances</li>
-          </ul>
-
-          <h4 class="text-gold mt-20">📚 Collection Menu</h4>
-          <ul class="text-grey-medium line-height-relaxed">
-            <li><strong>Games</strong>: See all roguelikes, their connections, and stats (beaten count, amulets collected)</li>
-            <li><strong>Items</strong>: Browse all items by rarity (Common, Uncommon, Rare)</li>
-            <li><strong>Enemies</strong>: View all enemies and their stats</li>
-            <li><strong>Curses</strong>: Review all curses with tier tabs (I, II, III)</li>
-          </ul>
-
-          <p class="text-grey-dark font-size-14 mt-20 italic">💡 Tip: Build up health and items during exploration before grabbing the Amulet!</p>
+          <p class="text-grey-dark font-size-14 mt-20 italic">💡 Tip: The node preview shows you exactly which enemies are waiting and which two post-combat options are on offer — use that information to plan your route before committing to a fight.</p>
         </div>
       </div>
 

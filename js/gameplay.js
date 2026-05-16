@@ -430,9 +430,6 @@ function addNode(name, cls, x, y) {
     d.appendChild(statusContainer);
   }
 
-  d.onmouseenter = e => showTooltip(e, name);
-  d.onmousemove = e => moveTooltip(e);
-  d.onmouseleave = hideTooltip;
 
   pathContainer.appendChild(d);
   return d;
@@ -794,7 +791,9 @@ function renderGameState() {
 
     if (isLast) {
       gameState.currentY = currentY;
-      showFinish(node);
+      const _isFirstGame = gameState.visitedGames.length === 1;
+      const _alreadyFinished = (gameState.finishedGames || []).includes(gameState.currentGame);
+      if (!_isFirstGame || _alreadyFinished) showFinish(node);
 
       // Add player icon on current node (above the box)
       if (gameState.character && PLAYER_CHARACTERS[gameState.character]) {
@@ -841,6 +840,13 @@ function renderGameState() {
     const gameData = games.find(g => g.name === gameState.currentGame);
     const gameDescription = gameData?.description || 'No description available';
     updateLocationDisplay(gameState.currentGame, gameDescription);
+  }
+
+  // Re-wire start node on reload when the first game hasn't been finished yet
+  const _isFirstUnfinished = gameState.visitedGames.length === 1
+    && !(gameState.finishedGames || []).includes(gameState.currentGame);
+  if (_isFirstUnfinished && typeof window.wireStartNodeCombat === 'function') {
+    window.wireStartNodeCombat();
   }
 }
 

@@ -674,6 +674,18 @@ text, path, line, g {
   transform: translateY(-2px);
 }
 
+.node.is-clickable {
+  cursor: pointer;
+}
+
+.node.current.is-clickable:hover {
+  background: linear-gradient(145deg, #6b5522, #4f3d1a);
+  border-color: #ffdd66;
+  box-shadow: 0 0 28px rgba(255, 204, 102, 0.7);
+  color: #ffe97a;
+  transform: translateY(-3px);
+}
+
 .node.current {
   background: linear-gradient(145deg, #5a4720, #3f3215);
   border: 3px solid var(--color-gold);
@@ -1195,6 +1207,38 @@ text, path, line, g {
   color: white;
   border: 2px solid #ff6b6b;
 }
+
+.tier-label.insane {
+  background: #6a0dad;
+  color: #ff88ff;
+  border: 2px solid #aa44ff;
+  text-shadow: 0 0 8px rgba(255, 100, 255, 0.6);
+}
+
+.difficulty-battery {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  justify-content: center;
+}
+
+.battery-segment {
+  width: 26px;
+  height: 10px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+
+.battery-segment.filled {
+  box-shadow: 0 0 5px currentColor;
+}
+
+.battery-segment.filled.easy   { background: #2ecc71; border-color: #66bb6a; }
+.battery-segment.filled.medium { background: #ff9800; border-color: #ffb74d; }
+.battery-segment.filled.hard   { background: #f44336; border-color: #ff6b6b; }
+.battery-segment.filled.insane { background: #aa44ff; border-color: #cc88ff; }
 
 .current-difficulty {
   margin-top: 12px;
