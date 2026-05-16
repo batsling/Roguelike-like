@@ -962,6 +962,7 @@ function completeGameStart(start, amulet, saveName, startType) {
       }
       const triggerCombat = () => {
         const startCombat = () => {
+          startNode.onclick = null; // lock node only when combat actually starts
           if (window.useDiceCombat && typeof showDiceCombatModal === 'function') showDiceCombatModal();
           else if (typeof showCombatModal === 'function') showCombatModal();
         };
@@ -973,7 +974,7 @@ function completeGameStart(start, amulet, saveName, startType) {
         // showFinish() was already called by renderGameState() so no need to call again.
         if (typeof showNodeDetailModal === 'function') {
           startNode.onclick = () => showNodeDetailModal(start.name, null, null, 'combat', {
-            onFight: () => { startNode.onclick = null; triggerCombat(); }
+            onFight: () => triggerCombat()
           });
         } else {
           startNode.onclick = () => triggerCombat();
@@ -4273,12 +4274,13 @@ function showCombatModal() {
 
     // Show victory screen
     setTimeout(() => {
+      const _cardVictoryDifficulty = enemy.difficulty || 'Low';
       createGameModal(`
         <div style="text-align: center;">
           <h2 style="color: #4CAF50; font-size: 36px; margin: 20px 0;">⚔️ VICTORY!</h2>
           <h3>${enemy.name} defeated!</h3>
           <p style="color: #4CAF50; font-size: 18px; margin: 20px 0;">${enemy.successReward}</p>
-          <button onclick="closeGameModal()" style="
+          <button id="card-victory-continue-btn" style="
             padding: 15px 30px;
             background: #4CAF50;
             border: none;
@@ -4290,6 +4292,13 @@ function showCombatModal() {
           ">Continue</button>
         </div>
       `);
+      const _btn = document.getElementById('card-victory-continue-btn');
+      if (_btn) {
+        _btn.addEventListener('click', () => {
+          closeGameModal();
+          showPostCombatChoiceModal(_cardVictoryDifficulty);
+        }, { once: true });
+      }
     }, 500);
 
     window.CombatState.endCombat(true);
@@ -4752,10 +4761,15 @@ function handleDiceCombatVictory(enemy) {
   try {
     const lootReward = window.selectRandomPotionOrScroll();
     window.addScrollOrPotionToLoot(lootReward);
-    lootIcon = lootReward.type === 'scroll'
-      ? '<img src="images/scrolls/Unidentified.png" style="width:56px;height:56px;object-fit:contain;" onerror="this.style.display=\'none\'">'
-      : '<img src="images/potions/Unidentified.png" style="width:56px;height:56px;object-fit:contain;" onerror="this.style.display=\'none\'">';
-    lootDisplayName = lootReward.type === 'scroll' ? 'Unidentified Scroll' : 'Unidentified Potion';
+    if (lootReward.type === 'scroll') {
+      const _scrollPath = typeof getScrollImagePath === 'function' ? getScrollImagePath(lootReward) : 'images/scrolls/Unidentified.png';
+      lootIcon = `<img src="${_scrollPath}" style="width:56px;height:56px;object-fit:contain;" onerror="this.style.display='none'">`;
+      lootDisplayName = typeof getScrollDisplayName === 'function' ? getScrollDisplayName(lootReward.name) : 'Unidentified Scroll';
+    } else {
+      const _potionPath = typeof getPotionImagePath === 'function' ? getPotionImagePath(lootReward) : 'images/potions/Unidentified.png';
+      lootIcon = `<img src="${_potionPath}" style="width:56px;height:56px;object-fit:contain;" onerror="this.style.display='none'">`;
+      lootDisplayName = typeof getPotionDisplayName === 'function' ? getPotionDisplayName(lootReward.name) : 'Unidentified Potion';
+    }
     lootDisplayRarity = lootReward.rarity || '';
     encounterHistory.push({
       type: 'loot',
