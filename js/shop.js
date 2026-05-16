@@ -727,6 +727,7 @@ function leaveShop() {
   if (typeof updateInventory === 'function') {
     updateInventory();
   }
+  if (window._postcombatOnComplete) { const cb = window._postcombatOnComplete; window._postcombatOnComplete = null; cb(); }
 }
 
 // Clear shop items when closing shop modal

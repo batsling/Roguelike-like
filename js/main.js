@@ -738,6 +738,56 @@ function showStartingChoiceModal(startOptions, amulet, saveName) {
     </div>`);
 }
 
+// Drives the "first game complete" progression without a Finished button:
+// curse verification → mark game finished → item choice → spawn next choices.
+function runStartProgression() {
+  const doFinish = () => {
+    if (typeof markGameFinished === 'function') markGameFinished(gameState.currentGame);
+    setTimeout(() => {
+      const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
+      if (gameState.unstableGenomeTriggered) gameState.unstableGenomeTriggered = false;
+      if (typeof showItemChoiceModal === 'function') showItemChoiceModal(null, chestType);
+    }, 150);
+  };
+  if (typeof showCurseVerificationModal === 'function') {
+    showCurseVerificationModal(doFinish);
+  } else {
+    doFinish();
+  }
+}
+
+// Wire the first game node so clicking it → node preview → Fight → combat → post-combat → progression.
+// Called from both completeGameStart() and renderGameState() (for page reloads).
+window.wireStartNodeCombat = function() {
+  const startGameName = gameState.visitedGames && gameState.visitedGames[0];
+  if (!startGameName) return;
+  const allNodes = document.querySelectorAll('[data-game-name]');
+  let startNode = null;
+  for (const n of allNodes) {
+    if (n.dataset.gameName === startGameName) { startNode = n; break; }
+  }
+  if (!startNode) return;
+
+  const triggerCombat = () => {
+    const startCombat = () => {
+      startNode.onclick = null;
+      window._postcombatOnComplete = runStartProgression;
+      if (window.useDiceCombat && typeof showDiceCombatModal === 'function') showDiceCombatModal();
+      else if (typeof showCombatModal === 'function') showCombatModal();
+    };
+    if (typeof showEventModal === 'function') showEventModal(null, startCombat);
+    else startCombat();
+  };
+
+  if (typeof showNodeDetailModal === 'function') {
+    startNode.onclick = () => showNodeDetailModal(startGameName, null, null, 'combat', {
+      onFight: () => triggerCombat()
+    });
+  } else {
+    startNode.onclick = () => triggerCombat();
+  }
+};
+
 function applyStartingBonus(type, onComplete) {
   switch (type) {
     case 'Action':
@@ -954,33 +1004,9 @@ function completeGameStart(start, amulet, saveName, startType) {
         showHadesBoonSelection(false);
       }, 500);
     } else {
-      // Find the starting game node and wire up a click → node detail modal
-      const allNodes = document.querySelectorAll('[data-game-name]');
-      let startNode = null;
-      for (const n of allNodes) {
-        if (n.dataset.gameName === start.name) { startNode = n; break; }
-      }
-      const triggerCombat = () => {
-        const startCombat = () => {
-          startNode.onclick = null; // lock node only when combat actually starts
-          if (window.useDiceCombat && typeof showDiceCombatModal === 'function') showDiceCombatModal();
-          else if (typeof showCombatModal === 'function') showCombatModal();
-        };
-        if (typeof showEventModal === 'function') showEventModal(null, startCombat);
-        else startCombat();
-      };
-      if (startNode) {
-        // Wire start node to open the detail modal on click (same as choice nodes).
-        // showFinish() was already called by renderGameState() so no need to call again.
-        if (typeof showNodeDetailModal === 'function') {
-          startNode.onclick = () => showNodeDetailModal(start.name, null, null, 'combat', {
-            onFight: () => triggerCombat()
-          });
-        } else {
-          startNode.onclick = () => triggerCombat();
-        }
-      } else {
-        triggerCombat();
+      // Wire start node via the shared helper (also called by renderGameState on reload).
+      if (typeof window.wireStartNodeCombat === 'function') {
+        window.wireStartNodeCombat();
       }
     }
   });
@@ -4815,6 +4841,7 @@ function showPostCombatChoiceModal(difficulty) {
         if (typeof saveCurrentGame === 'function') saveCurrentGame();
         closeGameModal();
         if (typeof createNotification === 'function') createNotification(`Rested: +${heal} Health`, '#4CAF50', '🛌');
+        if (window._postcombatOnComplete) { const cb = window._postcombatOnComplete; window._postcombatOnComplete = null; cb(); }
       }
     },
     {
@@ -4853,6 +4880,7 @@ function showPostCombatChoiceModal(difficulty) {
       action: () => {
         closeGameModal();
         if (typeof createNotification === 'function') createNotification('Movement Event coming soon!', '#9b59b6', '🗺️');
+        if (window._postcombatOnComplete) { const cb = window._postcombatOnComplete; window._postcombatOnComplete = null; cb(); }
       }
     }
   ];
@@ -4896,7 +4924,7 @@ function showPostCombatChoiceModal(difficulty) {
       <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">
         ${buttonsHTML}
       </div>
-      <button onclick="closeGameModal()" style="
+      <button onclick="closeGameModal();if(window._postcombatOnComplete){var _cb=window._postcombatOnComplete;window._postcombatOnComplete=null;_cb();}" style="
         padding:10px 30px; background:#444; border:none; border-radius:8px;
         color:#aaa; cursor:pointer; font-size:13px;
       ">Skip</button>
@@ -5061,6 +5089,7 @@ function showSmithChoiceModal() {
     if (typeof createNotification === 'function') {
       createNotification(`Upgraded ${upgradeCount} card${upgradeCount !== 1 ? 's' : ''}!`, '#FF9800', '⚒️');
     }
+    if (window._postcombatOnComplete) { const cb = window._postcombatOnComplete; window._postcombatOnComplete = null; cb(); }
   });
 }
 
@@ -6831,8 +6860,10 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
                && !exclude.has(c.name));
 
     if (tagFilter) {
-      // Hero-tagged cards are universally available regardless of deck choice
-      const heroCards = pool.filter(c => Array.isArray(c.tags) && c.tags.includes('hero'));
+      // Hero-tagged cards are universally available regardless of deck choice,
+      // but dice cards (Slice & Dice) are excluded from specific-deck reward pools.
+      const heroCards = pool.filter(c => Array.isArray(c.tags) && c.tags.includes('hero')
+        && (c.type || '').toLowerCase() !== 'dice');
       const tagged    = pool.filter(c => Array.isArray(c.tags) && c.tags.includes(tagFilter));
       const combined  = [...tagged, ...heroCards.filter(h => !tagged.find(t => t.name === h.name))];
       if (combined.length > 0) pool = combined;
