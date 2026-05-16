@@ -1080,7 +1080,7 @@ const ITEM_EFFECTS = {
   },
 
   // Ice Cream: energy remaining at end of turn carries over to the next turn (tracked in combat engine)
-  "Ice Cream": {},
+  "Ice Cream": { onAcquire: () => {} },
 
   // ===== WEAPONS: card is added to deck via the weapon card system in acquireItem() =====
   "Bag o' Glitter": { onAcquire: () => {} },

@@ -5020,7 +5020,7 @@ function showSmithChoiceModal() {
           color:#999; cursor:not-allowed; font-weight:bold; font-size:14px;
           transition: background 0.15s, color 0.15s;
         ">Upgrade (0)</button>
-        <button onclick="closeGameModal()" style="
+        <button onclick="closeGameModal();if(window._postcombatOnComplete){var _cb=window._postcombatOnComplete;window._postcombatOnComplete=null;_cb();}" style="
           padding:10px 24px; background:#333; border:1px solid #555; border-radius:8px;
           color:#aaa; cursor:pointer; font-size:14px;
         ">Cancel</button>
