@@ -918,18 +918,16 @@ function showNodeDetailModal(gameName, x, y, encounterType, opts = {}) {
     const imgPath = typeof getEnemyImagePath === 'function' ? getEnemyImagePath(e.name) : '';
     const dc = DIFF_COLORS[e.difficulty] || '#888';
     return `
-      <div style="background:#0d1b2a;border:1px solid #2a4a6a;border-radius:8px;padding:10px;display:flex;gap:10px;align-items:flex-start;">
+      <div style="background:#0d1b2a;border:1px solid #2a4a6a;border-radius:8px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;">
         <img src="${imgPath}" alt="${e.name}"
-          style="width:48px;height:48px;object-fit:contain;border-radius:4px;background:#0a0f1a;flex-shrink:0;"
+          style="width:52px;height:52px;object-fit:contain;border-radius:4px;background:#0a0f1a;flex-shrink:0;"
           onerror="this.style.visibility='hidden'">
-        <div style="min-width:0;flex:1;">
-          <div style="font-weight:bold;color:#e6d5b8;font-size:13px;margin-bottom:3px;">${e.name}</div>
-          <div style="color:#aaa;font-size:11px;margin-bottom:3px;">❤️ ${e.hpMin}–${e.hpMax} &nbsp;|&nbsp; ⚔️ ${e.type}</div>
-          <div style="font-size:11px;margin-bottom:3px;">
-            <span style="background:${dc}22;color:${dc};border:1px solid ${dc}44;border-radius:3px;padding:1px 6px;font-size:10px;">${e.difficulty}</span>
-            &nbsp;Wt: ${e.weight ?? '—'}
+        <div style="min-width:0;width:100%;">
+          <div style="font-weight:bold;color:#e6d5b8;font-size:12px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.name}</div>
+          <div style="color:#aaa;font-size:10px;margin-bottom:3px;">❤️ ${e.hpMin}–${e.hpMax} &nbsp;·&nbsp; ⚔️ ${e.type}</div>
+          <div style="font-size:10px;">
+            <span style="background:${dc}22;color:${dc};border:1px solid ${dc}44;border-radius:3px;padding:1px 5px;font-size:9px;">${e.difficulty}</span>
           </div>
-          <div style="color:#888;font-size:10px;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${e.ability || ''}</div>
         </div>
       </div>`;
   }).join('');
@@ -976,11 +974,11 @@ function showNodeDetailModal(gameName, x, y, encounterType, opts = {}) {
 
   createGameModal(`
     <div style="width:460px;max-width:92vw;overflow:hidden;border-radius:10px;background:#0f0f1a;">
-      <div style="position:relative;height:150px;overflow:hidden;background:#0a0f1a;">
+      <div style="position:relative;height:220px;overflow:hidden;background:#0a0f1a;">
         <img src="${coverImage}" alt="${gameName}"
-          style="width:100%;height:100%;object-fit:cover;display:block;"
+          style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;"
           onerror="this.style.display='none'">
-        <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.15) 0%,rgba(0,0,0,0.78) 100%);"></div>
+        <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.05) 40%,rgba(0,0,0,0.85) 100%);"></div>
         <button onclick="${mapBtnCode}"
           style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.55);border:1px solid #44aacc;border-radius:5px;color:#88ccff;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">
           🗺 Map
@@ -997,8 +995,8 @@ function showNodeDetailModal(gameName, x, y, encounterType, opts = {}) {
           <div style="color:#e6d5b8;font-size:11px;font-weight:bold;letter-spacing:0.6px;margin-bottom:8px;text-transform:uppercase;opacity:0.65;">Enemies</div>
           <div style="position:relative;">
             <div ${blurWrap}>
-              <div style="display:flex;flex-direction:column;gap:7px;">
-                ${enemies.length > 0 ? enemyCardsHTML : '<div style="color:#555;font-size:12px;text-align:center;padding:12px;">No enemy data available</div>'}
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+                ${enemies.length > 0 ? enemyCardsHTML : '<div style="color:#555;font-size:12px;text-align:center;padding:12px;grid-column:1/-1;">No enemy data available</div>'}
               </div>
             </div>
             ${blurOverlay}
