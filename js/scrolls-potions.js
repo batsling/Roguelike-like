@@ -906,10 +906,7 @@ function usePotionFromLoot(lootIndex) {
   const cs = typeof window.CombatEngine !== 'undefined' ? window.CombatEngine.getCombatState() : null;
   if (!cs) return;
 
-  // Identify on use
-  identifyPotionType(lootItem.name);
-
-  // Show target picker
+  // Show target picker (identification happens after effect is applied)
   _showPotionTargetPicker(lootIndex, lootItem.name, cs);
 }
 
@@ -980,7 +977,7 @@ function _showPotionTargetPicker(lootIndex, potionName, cs) {
   overlay.innerHTML = `
     <div style="background:#1a1a2e; border-radius:12px; border:2px solid #9b59b6;
       padding:20px; min-width:300px; max-width:380px; max-height:80vh; overflow-y:auto;">
-      <h3 style="color:#9b59b6; margin-top:0; text-align:center;">🧪 ${potionName}</h3>
+      <h3 style="color:#9b59b6; margin-top:0; text-align:center;">🧪 ${typeof getPotionDisplayName === 'function' ? getPotionDisplayName(potionName) : potionName}</h3>
       <p style="color:#aaa; font-size:12px; text-align:center; margin-bottom:14px;">Choose a target</p>
       ${targetsHTML}
       <button onclick="document.getElementById('${overlayId}')?.remove(); delete window._potionTargetApply;" style="
@@ -1009,8 +1006,15 @@ function _showPotionTargetPicker(lootIndex, potionName, cs) {
     // Remove from loot
     gameState.loot.splice(lootIndex, 1);
 
-    // Apply effect
+    // Apply effect first, then identify so the player learns what it was on use
     _applyPotionEffect(potionName, target, targetType, cs);
+    if (typeof identifyPotionType === 'function') {
+      const wasUnknown = typeof isPotionIdentified === 'function' && !isPotionIdentified(potionName);
+      identifyPotionType(potionName);
+      if (wasUnknown && typeof createNotification === 'function') {
+        createNotification(`Identified: ${potionName}`, '#9b59b6', '🔍');
+      }
+    }
 
     // Log
     if (typeof encounterHistory !== 'undefined') {

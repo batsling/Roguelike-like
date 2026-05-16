@@ -4861,7 +4861,7 @@ function showPostCombatChoiceModal(difficulty) {
       key: 'smith',
       label: 'Smith',
       icon: '⚒️',
-      desc: 'Choose 2 cards from your deck to upgrade for free.',
+      desc: 'Choose 1 card from your deck to upgrade for free.',
       color: '#FF9800',
       action: () => {
         closeGameModal();
@@ -4976,7 +4976,7 @@ function showSmithChoiceModal() {
     return;
   }
 
-  const MAX_UPGRADES = 2;
+  const MAX_UPGRADES = 1;
   const selectedIndices = new Set();
 
   const rarityCol = r => {
