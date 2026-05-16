@@ -216,7 +216,20 @@ function showShopModal(purchasedIndices = []) {
   // ===== CARDS FOR SALE =====
   // 4 cards from the player's character card pool + 2 from outside that pool
   if (!gameState.currentShopCards) {
-    const allCards = cards ? cards.filter(c => c.rarity !== 'Starter' && !c.isStatusCard && !c.isCurse && (c.type || '').toLowerCase() !== 'curse') : [];
+    // Determine whether a specific deck (not Random) is active
+    const _shopDeckDef = (typeof AVAILABLE_DECKS !== 'undefined' && gameState.selectedDeck)
+      ? AVAILABLE_DECKS.find(dk => dk.id === gameState.selectedDeck)
+      : null;
+    const _shopDeckTagFilter = _shopDeckDef ? _shopDeckDef.tagFilter : null;
+
+    const allCards = cards ? cards.filter(c =>
+      c.rarity !== 'Starter' &&
+      !c.isStatusCard &&
+      !c.isCurse &&
+      (c.type || '').toLowerCase() !== 'curse' &&
+      // Dice cards only appear when the player chose Random (no deck tag filter)
+      (!_shopDeckTagFilter || (c.type || '').toLowerCase() !== 'dice')
+    ) : [];
 
     // Determine character's card pool tag (e.g. 'ironclad', 'silent')
     const charKey = gameState.character;
