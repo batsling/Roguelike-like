@@ -768,9 +768,12 @@ window.wireStartNodeCombat = function() {
   }
   if (!startNode) return;
 
+  startNode.classList.add('is-clickable');
+
   const triggerCombat = () => {
     const startCombat = () => {
       startNode.onclick = null;
+      startNode.classList.remove('is-clickable');
       window._postcombatOnComplete = runStartProgression;
       if (window.useDiceCombat && typeof showDiceCombatModal === 'function') showDiceCombatModal();
       else if (typeof showCombatModal === 'function') showCombatModal();
