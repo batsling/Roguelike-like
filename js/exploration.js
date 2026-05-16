@@ -630,27 +630,17 @@ function showFinish(node, isAmuletGame = false) {
     }
 
     if (isAmuletGame) {
-      // Mark game as finished first
-      if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
-        markGameFinished(gameState.currentGame);
-      }
-      // Small delay to let difficulty counter update before escape phase
+      // Small delay before escape phase
       setTimeout(() => {
         if (typeof startEscapePhase === 'function') {
           startEscapePhase();
         }
       }, 150);
     } else {
-      // Show curse verification (includes Precision Landing trait), then mark finished, then item choice
+      // Show curse verification (Precision Landing trait), then item choice
       if (typeof showCurseVerificationModal === 'function') {
         showCurseVerificationModal(() => {
-          // After curse/trait verification, mark game as finished
-          if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
-            markGameFinished(gameState.currentGame);
-          }
-
-          // Small delay to let difficulty counter and other UI elements update visually
-          // before showing the next modal
+          // Small delay to let UI elements update visually before showing the next modal
           setTimeout(() => {
             // Check if we're in the middle of the Colosseum event
             if (gameState.colosseumState && gameState.colosseumState.stage === 'first_fight') {
@@ -698,12 +688,7 @@ function showFinish(node, isAmuletGame = false) {
           }, 150); // Small delay for UI to update
         });
       } else {
-        // Fallback if verification not available
-        if (typeof markGameFinished === 'function' && gameState && gameState.currentGame) {
-          markGameFinished(gameState.currentGame);
-        }
-
-        // Small delay to let difficulty counter and other UI elements update visually
+        // Small delay to let UI elements update visually
         setTimeout(() => {
           // Check if we're in the middle of the Colosseum event
           if (gameState.colosseumState && gameState.colosseumState.stage === 'first_fight') {

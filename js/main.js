@@ -742,7 +742,6 @@ function showStartingChoiceModal(startOptions, amulet, saveName) {
 // curse verification → mark game finished → item choice → spawn next choices.
 function runStartProgression() {
   const doFinish = () => {
-    if (typeof markGameFinished === 'function') markGameFinished(gameState.currentGame);
     setTimeout(() => {
       const chestType = gameState.unstableGenomeTriggered ? 'large' : 'normal';
       if (gameState.unstableGenomeTriggered) gameState.unstableGenomeTriggered = false;
@@ -4299,6 +4298,12 @@ function showCombatModal() {
       timestamp: new Date().toLocaleString()
     });
     updateEncounterHistory();
+
+    // Increment difficulty immediately on combat win
+    if (typeof markGameFinished === 'function' && gameState.currentGame) {
+      markGameFinished(gameState.currentGame);
+    }
+
     saveCurrentGame();
 
     // Show victory screen
@@ -4784,6 +4789,11 @@ function handleDiceCombatVictory(enemy) {
     timestamp: new Date().toLocaleString()
   });
   updateEncounterHistory();
+
+  // Increment difficulty immediately on combat win
+  if (typeof markGameFinished === 'function' && gameState.currentGame) {
+    markGameFinished(gameState.currentGame);
+  }
 
   // Award one random potion or scroll (always runs; try/catch prevents silent failures)
   let lootIcon = '', lootDisplayName = '', lootDisplayRarity = '';
@@ -8670,6 +8680,14 @@ function markGameFinished(gameName) {
   }
 
   updateGameStats();
+
+  // Keep the top-bar difficulty readout in sync (renderGameState() sets it on full redraws)
+  const _distEl = document.getElementById('distance-display');
+  if (_distEl && typeof bfsCached === 'function' && gameState.currentGame && gameState.amuletGame) {
+    const _dist = bfsCached(gameState.currentGame, gameState.amuletGame.name);
+    _distEl.textContent = `Target: ${gameState.amuletGame.name} — ${_dist} steps away | Difficulty: ${gameState.totalGamesBeaten}`;
+  }
+
   saveCurrentGame();
 }
 
