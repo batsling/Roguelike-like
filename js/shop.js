@@ -35,7 +35,13 @@ function _keepersSackCheck(amountSpent) {
 
 // ===== SHOP SYSTEM =====
 
-function showShopModal(purchasedIndices = []) {
+function showShopModal(purchasedIndices = null) {
+  // Persist purchased item indices in gameState so modal refreshes (identify, etc.) don't reset them
+  if (purchasedIndices === null) {
+    purchasedIndices = gameState.purchasedShopItemIndices || [];
+  } else {
+    gameState.purchasedShopItemIndices = purchasedIndices;
+  }
   if (items.length === 0) return;
 
   // Set phase to shop
@@ -714,6 +720,7 @@ function leaveShop() {
   gameState.currentShopItems = null;
   gameState.currentShopCards = null;
   gameState.purchasedShopCards = null;
+  gameState.purchasedShopItemIndices = null;
   gameState.shopRerollCount = 0;
   gameState.shopUpgradesUsed = 0;
   gameState.shopRemovesUsed = 0;
@@ -780,16 +787,8 @@ function sellLootItem(index) {
   // Save game
   saveCurrentGame();
 
-  // Refresh shop to update gold and loot display
-  // Find currently purchased items by checking if buttons are disabled
-  const purchasedIndices = [];
-  document.querySelectorAll('.shop-buy-btn').forEach((btn, idx) => {
-    if (btn.disabled && btn.textContent === '✓ Purchased') {
-      purchasedIndices.push(idx);
-    }
-  });
-
-  showShopModal(purchasedIndices);
+  // Refresh shop to update gold and loot display (purchasedShopItemIndices in gameState is the source of truth)
+  showShopModal();
 }
 
 // ===== IDENTIFY SERVICE =====

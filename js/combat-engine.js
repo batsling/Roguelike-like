@@ -1646,6 +1646,7 @@ function processEffect(effect, die, targets, isCantrip = false) {
       if (gainThing === 'reroll' || gainWhat === 'reroll') {
         const amt = typeof value === 'number' && value > 0 ? value : gainAmt;
         combatState.player.rerolls += amt;
+        if (typeof window !== 'undefined') window.reroll = combatState.player.rerolls;
         addLog(`Gained ${amt} reroll(s)`, 'info');
       } else if (gainThing === 'mana' || gainWhat.includes('mana')) {
         const manaAmt = gainAmt;
@@ -4624,8 +4625,9 @@ function resolveCardEffect(card, target, options = {}) {
     }
 
     // Gain X Energy (handles "Gain 1 Energy" and "Gain +1 Energy")
+    // Skip if the part is conditional (e.g. "If you have Discarded a Card this turn, Gain +2 Energy")
     const energyMatch = p.match(/Gain \+?(\d+) Energy/i);
-    if (energyMatch) {
+    if (energyMatch && !/^If /i.test(p)) {
       const e = parseInt(energyMatch[1]);
       player.energy += e;
       addLog(`Gained ${e} Energy`, 'success');
