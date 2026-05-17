@@ -959,9 +959,9 @@ function showNodeDetailModal(gameName, x, y, encounterType, opts = {}) {
 
   createGameModal(`
     <div style="width:460px;max-width:92vw;overflow:hidden;border-radius:10px;background:#0f0f1a;">
-      <div style="position:relative;height:220px;overflow:hidden;background:#0a0f1a;">
+      <div style="position:relative;height:300px;overflow:hidden;background:#0a0f1a;">
         <img src="${coverImage}" alt="${gameName}"
-          style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;"
+          style="width:100%;height:100%;object-fit:cover;object-position:center center;display:block;"
           onerror="this.style.display='none'">
         <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.05) 40%,rgba(0,0,0,0.85) 100%);"></div>
         <button onclick="${mapBtnCode}"

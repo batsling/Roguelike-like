@@ -521,9 +521,10 @@ function showTooltip(e, name) {
         src="${gameCover}"
         alt="${name}"
         style="
-          width: 100px;
-          height: 150px;
-          object-fit: contain;
+          width: 110px;
+          height: 165px;
+          object-fit: cover;
+          object-position: center center;
           border-radius: 6px;
           background: #1a1a1a;
           flex-shrink: 0;
