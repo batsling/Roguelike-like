@@ -900,7 +900,7 @@ function showNodeDetailModal(gameName, x, y, encounterType, opts = {}) {
   // ---- Enemy cards ----
   const DIFF_COLORS = { Low: '#2ecc71', Medium: '#f39c12', High: '#e74c3c' };
   const enemyCardsHTML = enemies.map(e => {
-    const imgPath = typeof getEnemyImagePath === 'function' ? getEnemyImagePath(e.name) : '';
+    const imgPath = e.imageUrl || (typeof getEnemyImagePath === 'function' ? getEnemyImagePath(e.name) : '');
     const dc = DIFF_COLORS[e.difficulty] || '#888';
     return `
       <div style="background:#0d1b2a;border:1px solid #2a4a6a;border-radius:8px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;">

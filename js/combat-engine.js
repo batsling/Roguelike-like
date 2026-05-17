@@ -4601,8 +4601,9 @@ function resolveCardEffect(card, target, options = {}) {
     }
 
     // Apply / Inflict X [Status] (on current target or all enemies if AoE)
+    // Skip conditional parts like "If target intends to attack, Inflict N Status"
     const applyMatch = p.match(/(?:Apply|Inflict) (\d+) (\w+)/i);
-    if (applyMatch) {
+    if (applyMatch && !/^If /i.test(p)) {
       const BASIC_STATS = new Set(['power', 'defense', 'arcane', 'persistence',
         'energy_per_turn', 'barricade', 'brutality', 'corruption', 'double_damage', 'no_draw']);
       const key = applyMatch[2].toLowerCase();
