@@ -2160,6 +2160,13 @@ function dealDamage(target, damage, addons = []) {
       addLog(`${target.name} rerolled intent due to Formless`, 'info');
     }
 
+    // Check Split: immediately update intent when HP drops to ≤50%
+    if (target !== combatState.player && target.splitAbility &&
+        !target.splitAbility.triggered && !target.splitAbility.splitting &&
+        target.health > 0 && target.health <= target.maxHealth * 0.5) {
+      rollEnemyIntent(target);
+    }
+
     // Soul Link — propagate health loss to all other soul-linked units
     if (target.statuses['soul_link'] && !combatState._soulLinkPropagating) {
       combatState._soulLinkPropagating = true;

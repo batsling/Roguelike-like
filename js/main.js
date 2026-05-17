@@ -8602,6 +8602,9 @@ function markGameFinished(gameName) {
   const previousDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
   gameState.totalGamesBeaten++;
   const newDifficultyAfterIncrement = getDifficultyTier(gameState.totalGamesBeaten);
+  if (typeof createNotification === 'function') {
+    createNotification(`Difficulty: ${gameState.totalGamesBeaten} (${newDifficultyAfterIncrement})`, '#3498db', '📈');
+  }
 
   // Reroller trait: Every time you beat a game, gain +1 Reroll
   if (hasTrait('reroller')) {
