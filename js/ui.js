@@ -147,7 +147,7 @@ function updateLocationDisplay(gameName, gameDescription) {
 
   // Update battery bar (position within current tier of 4 games)
   const tierSize = (typeof DIFFICULTY_TIER_SIZE !== 'undefined') ? DIFFICULTY_TIER_SIZE : 4;
-  const fillCount = difficulty % tierSize;
+  const fillCount = difficulty === 0 ? 0 : ((difficulty - 1) % tierSize) + 1;
   for (let i = 0; i < 4; i++) {
     const seg = document.getElementById(`battery-seg-${i}`);
     if (!seg) continue;
