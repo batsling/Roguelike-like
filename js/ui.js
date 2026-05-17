@@ -66,65 +66,7 @@ function updateLocationDisplay(gameName, gameDescription) {
   const currentDifficulty = document.getElementById('current-difficulty');
   const locationSection = document.getElementById('location-display-section');
 
-  if (!locationName || !tierLabel) return;
-
-  // Get the current location from gameState
-  const location = gameState?.location;
-
-  if (location) {
-    // Update location name (the actual location name, not the game name)
-    locationName.textContent = location.name || 'Current Location';
-
-    // Update location type with color coding
-    if (locationType) {
-      const type = location.type || 'Unknown';
-      // Color code based on type
-      const typeColors = {
-        'Undead': '#9b59b6',
-        'Firey': '#e74c3c',
-        'Watery': '#3498db',
-        'Building': '#95a5a6',
-        'Chaos': '#e67e22',
-        'General': '#2ecc71'
-      };
-      const color = typeColors[type] || '#aaa';
-      locationType.textContent = type;
-      locationType.style.color = color;
-    }
-
-    // Update the source game
-    if (locationGame) {
-      locationGame.textContent = location.game;
-    }
-
-    // Update the location effect
-    if (locationEffect) {
-      locationEffect.textContent = location.effect || 'No effect';
-    }
-
-    // Store description for tooltip
-    if (locationSection) {
-      locationSection.dataset.description = location.effect || 'No effect';
-    }
-  } else {
-    // Fallback to game name if no location is set
-    locationName.textContent = gameName || 'Current Location';
-    if (locationType) {
-      locationType.textContent = 'Unknown';
-      locationType.style.color = '#aaa';
-    }
-    if (locationGame) {
-      locationGame.textContent = 'No location selected';
-    }
-    if (locationEffect) {
-      locationEffect.textContent = 'No effect';
-    }
-    if (locationSection) {
-      locationSection.dataset.description = gameDescription || 'No description available';
-    }
-  }
-
-  // Calculate difficulty tier using shared thresholds from locations.js
+  // Calculate difficulty tier first — needed for both battery and location label
   const difficulty = gameState.totalGamesBeaten || 0;
   const thresholds = (typeof DIFFICULTY_THRESHOLDS !== 'undefined')
     ? DIFFICULTY_THRESHOLDS
@@ -141,26 +83,50 @@ function updateLocationDisplay(gameName, gameDescription) {
     tier = 'easy'; tierText = 'Easy'; rangeText = `0-${thresholds.MEDIUM - 1}`;
   }
 
-  // Update tier label
-  tierLabel.innerHTML = `${tierText}<br><span class="tier-range">${rangeText}</span>`;
-  tierLabel.className = `tier-label ${tier}`;
-
-  // Update battery bar (position within current tier of 4 games)
+  // Always update battery bar — does not depend on location elements
   const tierSize = (typeof DIFFICULTY_TIER_SIZE !== 'undefined') ? DIFFICULTY_TIER_SIZE : 4;
   const fillCount = difficulty % tierSize;
   for (let i = 0; i < 4; i++) {
     const seg = document.getElementById(`battery-seg-${i}`);
     if (!seg) continue;
-    if (i < fillCount) {
-      seg.className = `battery-segment filled ${tier}`;
-    } else {
-      seg.className = 'battery-segment';
-    }
+    seg.className = i < fillCount ? `battery-segment filled ${tier}` : 'battery-segment';
   }
 
-  // Update current difficulty
   if (currentDifficulty) {
     currentDifficulty.textContent = `Current Difficulty: ${difficulty}`;
+  }
+
+  // Location name and tier label are optional — skip if elements absent
+  if (tierLabel) {
+    tierLabel.innerHTML = `${tierText}<br><span class="tier-range">${rangeText}</span>`;
+    tierLabel.className = `tier-label ${tier}`;
+  }
+
+  if (!locationName) return;
+
+  // Get the current location from gameState
+  const location = gameState?.location;
+
+  if (location) {
+    locationName.textContent = location.name || 'Current Location';
+    if (locationType) {
+      const type = location.type || 'Unknown';
+      const typeColors = {
+        'Undead': '#9b59b6', 'Firey': '#e74c3c', 'Watery': '#3498db',
+        'Building': '#95a5a6', 'Chaos': '#e67e22', 'General': '#2ecc71'
+      };
+      locationType.textContent = type;
+      locationType.style.color = typeColors[type] || '#aaa';
+    }
+    if (locationGame) locationGame.textContent = location.game;
+    if (locationEffect) locationEffect.textContent = location.effect || 'No effect';
+    if (locationSection) locationSection.dataset.description = location.effect || 'No effect';
+  } else {
+    locationName.textContent = gameName || 'Current Location';
+    if (locationType) { locationType.textContent = 'Unknown'; locationType.style.color = '#aaa'; }
+    if (locationGame) locationGame.textContent = 'No location selected';
+    if (locationEffect) locationEffect.textContent = 'No effect';
+    if (locationSection) locationSection.dataset.description = gameDescription || 'No description available';
   }
 }
 

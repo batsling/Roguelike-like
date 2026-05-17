@@ -1089,6 +1089,10 @@ const ITEM_EFFECTS = {
   "Blood Magic":    { onAcquire: () => {} },
   "Dexecutioner":   { onAcquire: () => {} },
   "Lil' Bomber":    { onAcquire: () => {} },
+  "Lower Case r":   { onAcquire: () => {} },
+
+  // ===== TRIGGERED: effect applied in combat-engine.js dealDamage() =====
+  "Head of the Keeper": { onAcquire: () => {} }, // 5% chance to gain 1 Gold when dealing damage to an enemy
 
   // ===== TRIGGERED: effect applied in combat-engine.js initCombat() =====
   "Holy Mantle":     { onAcquire: () => {} }, // +1 Buffer at start of combat

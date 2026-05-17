@@ -4300,8 +4300,8 @@ function showCombatModal() {
     updateEncounterHistory();
 
     // Increment difficulty immediately on combat win
-    if (typeof markGameFinished === 'function' && gameState.currentGame) {
-      markGameFinished(gameState.currentGame);
+    if (typeof markGameFinished === 'function') {
+      markGameFinished(gameState.currentGame || 'Random Encounter');
     }
 
     saveCurrentGame();
@@ -4791,8 +4791,8 @@ function handleDiceCombatVictory(enemy) {
   updateEncounterHistory();
 
   // Increment difficulty immediately on combat win
-  if (typeof markGameFinished === 'function' && gameState.currentGame) {
-    markGameFinished(gameState.currentGame);
+  if (typeof markGameFinished === 'function') {
+    markGameFinished(gameState.currentGame || 'Random Encounter');
   }
 
   // Award one random potion or scroll (always runs; try/catch prevents silent failures)
@@ -8602,6 +8602,9 @@ function markGameFinished(gameName) {
   const previousDifficulty = getDifficultyTier(gameState.totalGamesBeaten);
   gameState.totalGamesBeaten++;
   const newDifficultyAfterIncrement = getDifficultyTier(gameState.totalGamesBeaten);
+  if (typeof createNotification === 'function') {
+    createNotification(`Difficulty: ${gameState.totalGamesBeaten} (${newDifficultyAfterIncrement})`, '#3498db', '📈');
+  }
 
   // Reroller trait: Every time you beat a game, gain +1 Reroll
   if (hasTrait('reroller')) {

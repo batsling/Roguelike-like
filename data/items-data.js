@@ -2,6 +2,18 @@
 
 var ITEMS_DATA = [
   {
+    "name": "Alien Baby",
+    "rarity": "Rare",
+    "type": "Pickup, Scaling",
+    "description": "Gain +20 Max Health, but All Enemies start with +3 Health",
+    "game": "Brotato",
+    "tags": [
+      "alien"
+    ],
+    "image": "images/items/AlienBaby.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Anchor",
     "rarity": "Common",
     "type": "Triggered",
@@ -899,6 +911,19 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Propeller Hat",
+    "rarity": "Common",
+    "type": "Passive",
+    "description": "Gain +3 Luck, but -1 Strength",
+    "game": "Brotato",
+    "tags": [
+      "wearable",
+      "hat"
+    ],
+    "image": "images/items/PropellerHat.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Pummarola",
     "rarity": "Common",
     "type": "Triggered",
@@ -1269,28 +1294,27 @@ var ITEMS_DATA = [
     "unlockCondition": null
   },
   {
-    "name": "Alien Baby",
-    "rarity": "Rare",
-    "type": "Pickup, Scaling",
-    "description": "Gain +20 Max Health, but All Enemies start with +3 Health",
-    "game": "Brotato",
+    "name": "Head of the Keeper",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "When you deal Dmg to an Enemy, 5% to Gain 1 Gold",
+    "game": "The Binding of Isaac",
     "tags": [
-      "alien"
+      "Coin"
     ],
-    "image": "images/items/AlienBaby.png",
+    "image": "images/items/HeadOfTheKeeper.png",
     "unlockCondition": null
   },
   {
-    "name": "Propeller Hat",
+    "name": "Lower Case r",
     "rarity": "Common",
-    "type": "Passive",
-    "description": "Gain +3 Luck, but -1 Strength",
-    "game": "Brotato",
+    "type": "Weapon",
+    "description": "Add the Card \"Lower Case r\" into your Deck. If you beat a game with the letter \"R\" in the title, \"Lower Case r\" Gains (+1/+2) Dmg",
+    "game": "Enter the Gungeon",
     "tags": [
-      "wearable",
-      "hat"
+      "gun"
     ],
-    "image": "images/items/PropellerHat.png",
+    "image": "images/items/LowerCaseR.png",
     "unlockCondition": null
   }
 ];

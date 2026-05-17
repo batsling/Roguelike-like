@@ -900,7 +900,7 @@ function showNodeDetailModal(gameName, x, y, encounterType, opts = {}) {
   // ---- Enemy cards ----
   const DIFF_COLORS = { Low: '#2ecc71', Medium: '#f39c12', High: '#e74c3c' };
   const enemyCardsHTML = enemies.map(e => {
-    const imgPath = typeof getEnemyImagePath === 'function' ? getEnemyImagePath(e.name) : '';
+    const imgPath = e.imageUrl || (typeof getEnemyImagePath === 'function' ? getEnemyImagePath(e.name) : '');
     const dc = DIFF_COLORS[e.difficulty] || '#888';
     return `
       <div style="background:#0d1b2a;border:1px solid #2a4a6a;border-radius:8px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;">
@@ -959,9 +959,9 @@ function showNodeDetailModal(gameName, x, y, encounterType, opts = {}) {
 
   createGameModal(`
     <div style="width:460px;max-width:92vw;overflow:hidden;border-radius:10px;background:#0f0f1a;">
-      <div style="position:relative;height:220px;overflow:hidden;background:#0a0f1a;">
+      <div style="position:relative;height:300px;overflow:hidden;background:#0a0f1a;">
         <img src="${coverImage}" alt="${gameName}"
-          style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;"
+          style="width:100%;height:100%;object-fit:cover;object-position:center center;display:block;"
           onerror="this.style.display='none'">
         <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.05) 40%,rgba(0,0,0,0.85) 100%);"></div>
         <button onclick="${mapBtnCode}"

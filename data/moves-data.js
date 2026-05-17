@@ -1,12 +1,26 @@
 // Auto-generated from Roguelikes.xlsx - Combat Moves
 
 var MOVES_DATA = {
-  "dmg": {
-    "name": "Dmg",
-    "description": "Deals X damage to target",
+  "add x y to z": {
+    "name": "Add X Y to Z",
+    "description": "Target gives X number of Y card to your Z (Deck, Hand, or Discard)",
+    "preferredTarget": "Player",
+    "bonusStat": "No",
+    "imageUrl": "images/moves/Status.png"
+  },
+  "alter": {
+    "name": "Alter",
+    "description": "Alter target into X with the same Health as the original target, but Max Health of X",
+    "preferredTarget": "Self",
+    "bonusStat": "No",
+    "imageUrl": "images/moves/Status.png"
+  },
+  "assassinate": {
+    "name": "Assassinate",
+    "description": "Kill an enemy with at least X health left",
     "preferredTarget": "Enemy",
     "bonusStat": "No",
-    "imageUrl": "images/moves/Attack.png"
+    "imageUrl": "images/moves/Assassinate.png"
   },
   "block": {
     "name": "Block",
@@ -15,9 +29,37 @@ var MOVES_DATA = {
     "bonusStat": "No",
     "imageUrl": "images/moves/Defense.png"
   },
-  "reroll": {
-    "name": "Reroll",
-    "description": "Gains X rerolls",
+  "cleanse": {
+    "name": "Cleanse",
+    "description": "Removes X stacks of all debuff statuses",
+    "preferredTarget": "Ally/Self",
+    "bonusStat": "No",
+    "imageUrl": "images/moves/Status.png"
+  },
+  "conjure x y to z": {
+    "name": "Conjure X Y to Z",
+    "description": "Create X number of Y named Cards to your Z (Hand, Discard, Exhaust, Discard)",
+    "preferredTarget": "Self",
+    "bonusStat": "No",
+    "imageUrl": "images/moves/Status.png"
+  },
+  "consume x in y for z": {
+    "name": "Consume X in Y for Z",
+    "description": "Steal X from the player's Y(Deck, Hand, Discard, Any) and then destroy it permanently and then Get z status if succesfully stolen and destroyed",
+    "preferredTarget": "Player",
+    "bonusStat": "No",
+    "imageUrl": "images/moves/Status.png"
+  },
+  "dmg": {
+    "name": "Dmg",
+    "description": "Deals X damage to target",
+    "preferredTarget": "Enemy",
+    "bonusStat": "No",
+    "imageUrl": "images/moves/Attack.png"
+  },
+  "get": {
+    "name": "Get",
+    "description": "Give X status to self",
     "preferredTarget": "Self",
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
@@ -29,27 +71,6 @@ var MOVES_DATA = {
     "bonusStat": "No",
     "imageUrl": "images/moves/Health.png"
   },
-  "spawn x y": {
-    "name": "Spawn X Y",
-    "description": "Spawn X number of Y where X is the number of creatures and Y is the name of a creature. If used by enemies, the new enemy will have the Unknown intent showing \"Spawning\"",
-    "preferredTarget": "Self",
-    "bonusStat": "No",
-    "imageUrl": "images/moves/Status.png"
-  },
-  "alter": {
-    "name": "Alter",
-    "description": "Alter target into X with the same Health as the original target, but Max Health of X",
-    "preferredTarget": "Self",
-    "bonusStat": "No",
-    "imageUrl": "images/moves/Status.png"
-  },
-  "get": {
-    "name": "Get",
-    "description": "Give X status to self",
-    "preferredTarget": "Self",
-    "bonusStat": "No",
-    "imageUrl": "images/moves/Status.png"
-  },
   "inflict": {
     "name": "Inflict",
     "description": "Inflict X status to target",
@@ -57,12 +78,26 @@ var MOVES_DATA = {
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
   },
-  "cleanse": {
-    "name": "Cleanse",
-    "description": "Removes X stacks of all debuff statuses",
-    "preferredTarget": "Ally/Self",
+  "learn": {
+    "name": "Learn",
+    "description": "Add X Spell to your Spellbook",
+    "preferredTarget": "Self",
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
+  },
+  "lose": {
+    "name": "Lose",
+    "description": "Target loses X status Y times (# or All)",
+    "preferredTarget": "Self",
+    "bonusStat": "No",
+    "imageUrl": "images/moves/Status.png"
+  },
+  "magic dmg": {
+    "name": "Magic Dmg",
+    "description": "Deals X Magic damage to target. Magic Damage can Have Different Elements (Fire).",
+    "preferredTarget": "Enemy",
+    "bonusStat": "No",
+    "imageUrl": "images/moves/Attack.png"
   },
   "mana": {
     "name": "Mana",
@@ -78,24 +113,17 @@ var MOVES_DATA = {
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
   },
-  "assassinate": {
-    "name": "Assassinate",
-    "description": "Kill an enemy with at least X health left",
-    "preferredTarget": "Enemy",
+  "reroll": {
+    "name": "Reroll",
+    "description": "Gains X rerolls",
+    "preferredTarget": "Self",
     "bonusStat": "No",
-    "imageUrl": "images/moves/Assassinate.png"
+    "imageUrl": "images/moves/Status.png"
   },
-  "vitality": {
-    "name": "Vitality",
-    "description": "Gain X Max Health",
-    "preferredTarget": "Ally/Self",
-    "bonusStat": "No",
-    "imageUrl": "images/moves/Vitality.png"
-  },
-  "add x y to z": {
-    "name": "Add X Y to Z",
-    "description": "Target gives X number of Y card to your Z (Deck, Hand, or Discard)",
-    "preferredTarget": "Player",
+  "spawn x y": {
+    "name": "Spawn X Y",
+    "description": "Spawn X number of Y where X is the number of creatures and Y is the name of a creature. If used by enemies, the new enemy will have the Unknown intent showing \"Spawning\"",
+    "preferredTarget": "Self",
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
   },
@@ -106,39 +134,11 @@ var MOVES_DATA = {
     "bonusStat": "No",
     "imageUrl": "images/moves/Status.png"
   },
-  "consume x in y for z": {
-    "name": "Consume X in Y for Z",
-    "description": "Steal X from the player's Y(Deck, Hand, Discard, Any) and then destroy it permanently and then Get z status if succesfully stolen and destroyed",
-    "preferredTarget": "Player",
+  "vitality": {
+    "name": "Vitality",
+    "description": "Gain X Max Health",
+    "preferredTarget": "Ally/Self",
     "bonusStat": "No",
-    "imageUrl": "images/moves/Status.png"
-  },
-  "lose": {
-    "name": "Lose",
-    "description": "Target loses X status Y times (# or All)",
-    "preferredTarget": "Self",
-    "bonusStat": "No",
-    "imageUrl": "images/moves/Status.png"
-  },
-  "conjure x y to z": {
-    "name": "Conjure X Y to Z",
-    "description": "Create X number of Y named Cards to your Z (Hand, Discard, Exhaust, Discard)",
-    "preferredTarget": "Self",
-    "bonusStat": "No",
-    "imageUrl": "images/moves/Status.png"
-  },
-  "magic dmg": {
-    "name": "Magic Dmg",
-    "description": "Deals X Magic damage to target. Magic Damage can Have Different Elements (Fire).",
-    "preferredTarget": "Enemy",
-    "bonusStat": "No",
-    "imageUrl": "images/moves/Attack.png"
-  },
-  "learn": {
-    "name": "Learn",
-    "description": "Add X Spell to your Spellbook",
-    "preferredTarget": "Self",
-    "bonusStat": "No",
-    "imageUrl": "images/moves/Status.png"
+    "imageUrl": "images/moves/Vitality.png"
   }
 };
