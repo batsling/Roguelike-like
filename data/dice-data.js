@@ -698,44 +698,62 @@ var DICE_DATA = [
       {
         "face": 1,
         "text": "Random Attack, Skill, or Power that is free to play this combat, Mandatory",
-        "isBlank": true,
+        "isBlank": false,
+        "isaacsTransform": true,
         "effects": [],
-        "addons": []
+        "addons": [
+          "mandatory"
+        ]
       },
       {
         "face": 2,
         "text": "Random Power, Mandatory",
-        "isBlank": true,
+        "isBlank": false,
+        "isaacsTransform": true,
         "effects": [],
-        "addons": []
+        "addons": [
+          "mandatory"
+        ]
       },
       {
         "face": 3,
         "text": "Random Skill, Mandatory",
-        "isBlank": true,
+        "isBlank": false,
+        "isaacsTransform": true,
         "effects": [],
-        "addons": []
+        "addons": [
+          "mandatory"
+        ]
       },
       {
         "face": 4,
         "text": "Random Attack, Mandatory",
-        "isBlank": true,
+        "isBlank": false,
+        "isaacsTransform": true,
         "effects": [],
-        "addons": []
+        "addons": [
+          "mandatory"
+        ]
       },
       {
         "face": 5,
         "text": "Random Status, Mandatory",
-        "isBlank": true,
+        "isBlank": false,
+        "isaacsTransform": true,
         "effects": [],
-        "addons": []
+        "addons": [
+          "mandatory"
+        ]
       },
       {
         "face": 6,
         "text": "Random Curse, Mandatory",
-        "isBlank": true,
+        "isBlank": false,
+        "isaacsTransform": true,
         "effects": [],
-        "addons": []
+        "addons": [
+          "mandatory"
+        ]
       }
     ]
   },

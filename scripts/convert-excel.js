@@ -862,6 +862,16 @@ if (diceSheetRaw) {
     const faces = [];
     for (let i = 1; i <= sides; i++) {
       const rawText = (row[`Side ${i}`] || '').trim();
+      // "Random <Type>, Mandatory" faces (e.g. Isaac's D6) are special transforms
+      // that the effect parser can't handle — preserve them with isaacsTransform.
+      if (/^Random .+,?\s*Mandatory$/i.test(rawText)) {
+        faces.push({ face: i, text: rawText, isBlank: false, isaacsTransform: true, effects: [], addons: ['mandatory'] });
+        continue;
+      }
+      if (/^Random .+that is free .+,?\s*Mandatory$/i.test(rawText)) {
+        faces.push({ face: i, text: rawText, isBlank: false, isaacsTransform: true, effects: [], addons: ['mandatory'] });
+        continue;
+      }
       const parsed = parseDiceFaceFromText(rawText);
       faces.push({ face: i, text: rawText, ...parsed });
     }
