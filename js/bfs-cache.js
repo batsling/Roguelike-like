@@ -134,8 +134,3 @@ if (typeof window !== 'undefined') {
   window.bfsCached = bfsCached;
   window.invalidateBFSCache = invalidateBFSCache;
 }
-
-
-// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
-window.bfsCached = bfsCached;
-window.invalidateBFSCache = invalidateBFSCache;

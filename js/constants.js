@@ -283,14 +283,3 @@ if (typeof window !== 'undefined') {
   window.EVENT_CONFIG = EVENT_CONFIG;
   window.SHOP_CONFIG = SHOP_CONFIG;
 }
-
-
-// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
-window.ANIMATIONS = ANIMATIONS;
-window.AVAILABLE_DECKS = AVAILABLE_DECKS;
-window.COLORS = COLORS;
-window.COMBAT = COMBAT;
-window.CURSE_CONFIG = CURSE_CONFIG;
-window.LAYOUT = LAYOUT;
-window.RARITY_COLORS = RARITY_COLORS;
-window.STORAGE_KEYS = STORAGE_KEYS;

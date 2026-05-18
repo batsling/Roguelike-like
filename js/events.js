@@ -1063,12 +1063,3 @@ if (typeof window !== 'undefined') {
   window.completeChampionSuccess    = completeChampionSuccess;
   window.completeChampionFailure    = completeChampionFailure;
 }
-
-
-// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
-window.checkEventRequirement = checkEventRequirement;
-window.handleChampionResult = handleChampionResult;
-window.handleEventChoice = handleEventChoice;
-window.showColosseumChoices = showColosseumChoices;
-window.showEventModal = showEventModal;
-window.triggerCombat = triggerCombat;

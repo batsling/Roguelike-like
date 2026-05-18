@@ -660,8 +660,3 @@ window.completeEscapeGame = completeEscapeGame;
 window.recordLostRun = recordLostRun;
 window.startEscapePhase = startEscapePhase;
 window.showEscapeVictoryScreen = showEscapeVictoryScreen;
-
-
-// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
-window.showEscapeVisualization = showEscapeVisualization;
-window.showRunHistory = showRunHistory;

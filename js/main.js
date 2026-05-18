@@ -1212,20 +1212,3 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('sort-type-btn not found in DOM');
   }
 });
-
-
-// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
-window.connectionCache = connectionCache;
-window.getDeckWinsForCharacter = getDeckWinsForCharacter;
-window.getPlayerStat = getPlayerStat;
-window.getPowerValue = getPowerValue;
-window.getStatColor = getStatColor;
-window.loadSavedGame = loadSavedGame;
-window.markGameFinished = markGameFinished;
-window.recordDeckWin = recordDeckWin;
-window.saveCurrentGame = saveCurrentGame;
-window.selectedCharacter = selectedCharacter;
-window.selectedDeck = selectedDeck;
-window.showNotification = showNotification;
-window.updateCurseUI = updateCurseUI;
-window.useDiceCombat = useDiceCombat;

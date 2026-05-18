@@ -2665,11 +2665,3 @@ if (typeof window !== 'undefined') {
   window.showSmithChoiceModal      = showSmithChoiceModal;
   window.handleDiceCombatDefeat    = handleDiceCombatDefeat;
 }
-
-
-// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
-window.buildWeightedEncounter = buildWeightedEncounter;
-window.handleDiceCombatVictory = handleDiceCombatVictory;
-window.showDiceCombatModal = showDiceCombatModal;
-window.showPostCombatChoiceModal = showPostCombatChoiceModal;
-window.showSmithChoiceModal = showSmithChoiceModal;

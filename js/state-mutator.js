@@ -659,7 +659,3 @@ const StateMutator = {
 if (typeof window !== 'undefined') {
   window.StateMutator = StateMutator;
 }
-
-
-// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
-window.StateMutator = StateMutator;

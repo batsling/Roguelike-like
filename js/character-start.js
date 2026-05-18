@@ -502,11 +502,3 @@ if (typeof window !== 'undefined') {
   window.applyStartingBonus    = applyStartingBonus;
   window.completeGameStart     = completeGameStart;
 }
-
-
-// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
-window.applyStartingBonus = applyStartingBonus;
-window.bfsAllDistances = bfsAllDistances;
-window.completeGameStart = completeGameStart;
-window.runStartProgression = runStartProgression;
-window.showStartingChoiceModal = showStartingChoiceModal;

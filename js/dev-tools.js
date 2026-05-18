@@ -1020,17 +1020,3 @@ if (typeof window !== 'undefined') {
   window.updateActiveCursesList = updateActiveCursesList;
   window.enableButtons = enableButtons;
 }
-
-
-// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
-window.enableButtons = enableButtons;
-window.gameSettings = gameSettings;
-window.populateCurseSelects = populateCurseSelects;
-window.populateDifficultyLocationSelect = populateDifficultyLocationSelect;
-window.populateEnemySelect = populateEnemySelect;
-window.populateEventSelect = populateEventSelect;
-window.populateGameSelects = populateGameSelects;
-window.populateItemSelects = populateItemSelects;
-window.populateSpaceSelect = populateSpaceSelect;
-window.populateStatusGameSelect = populateStatusGameSelect;
-window.updateActiveCursesList = updateActiveCursesList;

@@ -4276,17 +4276,3 @@ window.cancelCombatDrag = function() {
     combat.selectedCardIndex = null;
   }
 };
-
-
-// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
-window.C = C;
-window._makeDiceDataForCard = _makeDiceDataForCard;
-window.checkCombatEnd = checkCombatEnd;
-window.cleanup3DDice = cleanup3DDice;
-window.hideStatusTooltip = hideStatusTooltip;
-window.rarityColor = rarityColor;
-window.renderCombatUI = renderCombatUI;
-window.typeColor = typeColor;
-window.typeEmoji = typeEmoji;
-window.updateCombatDisplay = updateCombatDisplay;
-window.updateItemsBar = updateItemsBar;
