@@ -251,8 +251,365 @@ function clearStatusCardsAfterCombat() {
 
 // ===== CARD REWARD MODAL =====
 
-// showCardRewardModal is defined in main.js (loaded after this file) and
-// registered as window.showCardRewardModal there. Do not redefine it here.
+// ============================================================
+// Card-reward modal, victory screen, spell-learn helper
+// (Phase 3 extraction from main.js)
+// ============================================================
+
+function _doLearnSpell(card) {
+  if (!card) return;
+  let spellName = card.learn;
+  if (!spellName && card.description) {
+    const m = card.description.match(/\bLearn[:\s]+([A-Za-z][A-Za-z\s']*?)(?:[,.]|$)/i);
+    if (m) spellName = m[1].trim();
+  }
+  if (!spellName) return;
+  if (typeof SPELLS_DATA === 'undefined' || !Array.isArray(SPELLS_DATA)) {
+    console.warn('[_doLearnSpell] SPELLS_DATA not available');
+    return;
+  }
+  const spellDef = SPELLS_DATA.find(s => s.name === spellName);
+  if (!spellDef) { console.warn('[_doLearnSpell] spell not in SPELLS_DATA:', spellName); return; }
+  if (!gameState.spells) gameState.spells = [];
+  if (gameState.spells.some(s => s.name === spellName)) return; // already known
+  gameState.spells.push({ ...spellDef });
+  window.playerSpells = gameState.spells;
+  const _cs = window.CombatEngine && window.CombatEngine.getCombatState && window.CombatEngine.getCombatState();
+  if (_cs && !(_cs.spells || []).some(s => s.name === spellName)) {
+    _cs.spells = _cs.spells || [];
+    _cs.spells.push({ ...spellDef });
+  }
+  if (typeof createNotification === 'function') {
+    createNotification(`Learned: ${spellName}!`, '#c09aff', '✨');
+  }
+  if (typeof saveCurrentGame === 'function') saveCurrentGame();
+}
+
+/**
+ * STS-style victory screen. Each reward (gold, loot, cards) is its own
+ * clickable tile. Clicking gold/loot marks them collected; clicking
+ * Card Reward opens the picker and returns here when done.
+ * Continue is always available.
+ */
+function showVictoryScreen(enemyName, goldReward, lootIcon, lootName, lootRarity, difficulty) {
+  let goldCollected = false;
+  let lootCollected = false;
+  let cardsCollected = false;
+
+  const tileBase = 'padding:18px 20px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:130px;text-align:center;';
+
+  function activeTileStyle(color) {
+    return `${tileBase}background:rgba(0,0,0,0.35);border:2px solid ${color};cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;`;
+  }
+  function doneStyle(color) {
+    return `${tileBase}background:rgba(0,0,0,0.25);border:2px solid ${color};opacity:0.55;cursor:default;`;
+  }
+
+  function buildModal() {
+    const goldInner = goldCollected
+      ? `<div style="font-size:36px;">✓</div>
+         <div style="color:#FFD700;font-weight:bold;font-size:15px;">+${goldReward} Gold</div>
+         <div style="color:#888;font-size:11px;margin-top:4px;">Collected</div>`
+      : `<div style="font-size:36px;">💰</div>
+         <div style="color:#FFD700;font-weight:bold;font-size:15px;">+${goldReward} Gold</div>
+         <div style="color:#aaa;font-size:11px;margin-top:4px;">Click to collect</div>`;
+
+    const lootInner = lootName
+      ? (lootCollected
+        ? `<div style="font-size:36px;">✓</div>
+           <div style="color:#c39be0;font-weight:bold;font-size:14px;">${lootName}</div>
+           <div style="color:#888;font-size:11px;">${lootRarity}</div>
+           <div style="color:#888;font-size:11px;margin-top:4px;">Added to Loot</div>`
+        : `<div style="height:56px;display:flex;align-items:center;justify-content:center;">${lootIcon}</div>
+           <div style="color:#c39be0;font-weight:bold;font-size:14px;">${lootName}</div>
+           <div style="color:#888;font-size:11px;">${lootRarity}</div>
+           <div style="color:#aaa;font-size:11px;margin-top:4px;">Click to collect</div>`)
+      : '';
+
+    const cardInner = cardsCollected
+      ? `<div style="font-size:36px;">✓</div>
+         <div style="color:#4CAF50;font-weight:bold;font-size:15px;">Card Collected</div>
+         <div style="color:#888;font-size:11px;margin-top:4px;">Done</div>`
+      : (() => {
+          const deckId = gameState.selectedDeck && gameState.selectedDeck !== 'Random' ? gameState.selectedDeck : null;
+          const deckImg = deckId ? `images/decks/${deckId}Deck.png` : null;
+          const iconHTML = deckImg
+            ? `<img src="${deckImg}" style="width:52px;height:52px;object-fit:contain;" onerror="this.outerHTML='<span style=\\'font-size:36px;\\'>🃏</span>'">`
+            : `<span style="font-size:36px;">🃏</span>`;
+          return `<div style="height:56px;display:flex;align-items:center;justify-content:center;">${iconHTML}</div>
+         <div style="color:#c39be0;font-weight:bold;font-size:15px;">Card Reward</div>
+         <div style="color:#aaa;font-size:11px;margin-top:4px;">Click to choose</div>`;
+        })();
+
+    createGameModal(`
+      <div style="text-align:center;padding:28px 36px;min-width:440px;">
+        <h2 style="color:#4CAF50;font-size:34px;margin:0 0 6px 0;">Victory!</h2>
+        <div style="color:#bbb;font-size:17px;margin-bottom:22px;">${enemyName} defeated!</div>
+        <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;">
+          <div id="victory-gold-tile" style="${goldCollected ? doneStyle('#FFD700') : activeTileStyle('#FFD700')}">
+            ${goldInner}
+          </div>
+          ${lootName ? `<div id="victory-loot-tile" style="${lootCollected ? doneStyle('#9b59b6') : activeTileStyle('#9b59b6')}">
+            ${lootInner}
+          </div>` : ''}
+          <div id="victory-card-tile" style="${cardsCollected ? doneStyle('#9b59b6') : activeTileStyle('#9b59b6')}">
+            ${cardInner}
+          </div>
+        </div>
+        <button id="victory-continue-btn" style="
+          padding:12px 44px;
+          background:linear-gradient(145deg,#4CAF50,#2E7D32);border:none;
+          border-radius:8px;color:white;cursor:pointer;
+          font-size:15px;font-weight:bold;">Continue →</button>
+      </div>
+    `);
+
+    attachListeners();
+  }
+
+  function attachListeners() {
+    const goldTile    = document.getElementById('victory-gold-tile');
+    const lootTile    = document.getElementById('victory-loot-tile');
+    const cardTile    = document.getElementById('victory-card-tile');
+    const continueBtn = document.getElementById('victory-continue-btn');
+
+    if (goldTile && !goldCollected) {
+      goldTile.addEventListener('mouseenter', () => { goldTile.style.transform = 'translateY(-4px)'; goldTile.style.boxShadow = '0 6px 20px rgba(255,215,0,0.4)'; });
+      goldTile.addEventListener('mouseleave', () => { goldTile.style.transform = ''; goldTile.style.boxShadow = ''; });
+      goldTile.addEventListener('click', () => {
+        goldCollected = true;
+        goldTile.style.cssText = doneStyle('#FFD700');
+        goldTile.innerHTML = `<div style="font-size:36px;">✓</div>
+          <div style="color:#FFD700;font-weight:bold;font-size:15px;">+${goldReward} Gold</div>
+          <div style="color:#888;font-size:11px;margin-top:4px;">Collected</div>`;
+      }, { once: true });
+    }
+
+    if (lootTile && !lootCollected) {
+      lootTile.addEventListener('mouseenter', () => { lootTile.style.transform = 'translateY(-4px)'; lootTile.style.boxShadow = '0 6px 20px rgba(155,89,182,0.5)'; });
+      lootTile.addEventListener('mouseleave', () => { lootTile.style.transform = ''; lootTile.style.boxShadow = ''; });
+      lootTile.addEventListener('click', () => {
+        lootCollected = true;
+        lootTile.style.cssText = doneStyle('#9b59b6');
+        lootTile.innerHTML = `<div style="font-size:36px;">✓</div>
+          <div style="color:#c39be0;font-weight:bold;font-size:14px;">${lootName}</div>
+          <div style="color:#888;font-size:11px;">${lootRarity}</div>
+          <div style="color:#888;font-size:11px;margin-top:4px;">Added to Loot</div>`;
+      }, { once: true });
+    }
+
+    if (cardTile && !cardsCollected) {
+      cardTile.addEventListener('mouseenter', () => { cardTile.style.transform = 'translateY(-4px)'; cardTile.style.boxShadow = '0 6px 20px rgba(155,89,182,0.5)'; });
+      cardTile.addEventListener('mouseleave', () => { cardTile.style.transform = ''; cardTile.style.boxShadow = ''; });
+      cardTile.addEventListener('click', () => {
+        closeGameModal();
+        showCardRewardModal(() => { cardsCollected = true; buildModal(); }, null, difficulty);
+      }, { once: true });
+    }
+
+    if (continueBtn) {
+      continueBtn.addEventListener('click', () => { closeGameModal(); showPostCombatChoiceModal(difficulty); }, { once: true });
+    }
+  }
+
+  buildModal();
+}
+
+function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null) {
+  // Derive tagFilter from the run's chosen deck if not explicitly passed
+  if (tagFilter === null && typeof gameState !== 'undefined' && gameState.selectedDeck) {
+    const deckDef = (typeof AVAILABLE_DECKS !== 'undefined')
+      ? AVAILABLE_DECKS.find(d => d.id === gameState.selectedDeck)
+      : null;
+    if (deckDef && deckDef.tagFilter) tagFilter = deckDef.tagFilter;
+  }
+
+  // Upgrade chance based on difficulty: Low=0%, Medium=25%, High=50%
+  const _diff = nodeDifficulty || (typeof gameState !== 'undefined' ? gameState.lastDifficultyTier : null) || 'Low';
+  const upgradeChance = _diff === 'High' ? 0.5 : _diff === 'Medium' ? 0.25 : 0;
+
+  const rarityColor = (rarity) => {
+    switch (rarity) {
+      case 'Rare':     return '#9b59b6';
+      case 'Uncommon': return '#4CAF50';
+      case 'Common':   return '#aaa';
+      default:         return '#666';
+    }
+  };
+
+  // Pick one card with luck-weighted rarity, excluding already-seen names
+  function pickOne(exclude) {
+    let pool = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [])
+      .filter(c => c.rarity && c.rarity !== 'Starter' && c.rarity !== 'N/A'
+               && (c.type || '').toLowerCase() !== 'training'
+               && (c.type || '').toLowerCase() !== 'curse'
+               && !c.isTraining
+               && !c.isStatusCard
+               && !(c.tags && c.tags.includes('weapon'))
+               && !exclude.has(c.name));
+
+    if (tagFilter) {
+      // Hero-tagged cards are universally available regardless of deck choice,
+      // but dice cards (Slice & Dice) are excluded from specific-deck reward pools.
+      const heroCards = pool.filter(c => Array.isArray(c.tags) && c.tags.includes('hero')
+        && (c.type || '').toLowerCase() !== 'dice');
+      const tagged    = pool.filter(c => Array.isArray(c.tags) && c.tags.includes(tagFilter));
+      const combined  = [...tagged, ...heroCards.filter(h => !tagged.find(t => t.name === h.name))];
+      if (combined.length > 0) pool = combined;
+    }
+
+    if (pool.length === 0) return null;
+
+    // Base weights 75/20/5; luck advantage biases the roll toward higher buckets
+    const wCommon = 75, wUncommon = 20, wRare = 5, total = 100;
+    const roll = rollWithLuckAdvantage() * total;
+    let pickedRarity;
+    if      (roll < wCommon)              pickedRarity = 'Common';
+    else if (roll < wCommon + wUncommon)  pickedRarity = 'Uncommon';
+    else                                  pickedRarity = 'Rare';
+
+    let candidates = pool.filter(c => c.rarity === pickedRarity);
+    if (candidates.length === 0) candidates = pool;
+    const card = candidates[Math.floor(Math.random() * candidates.length)];
+
+    // Roll for pre-upgraded card
+    if (card && card.canUpgrade && upgradeChance > 0 && rollWithLuckAdvantage(undefined, false) < upgradeChance) {
+      return {
+        ...card,
+        description: card.upgradedDescription || card.description,
+        cost: (card.upgradedCost !== null && card.upgradedCost !== undefined) ? card.upgradedCost : card.cost,
+        upgraded: true,
+        preUpgraded: true
+      };
+    }
+    return card;
+  }
+
+  // Pick 3 + discovery unique cards
+  const numCardChoices = 3 + (typeof discovery !== 'undefined' ? discovery : 0);
+  const chosen = [];
+  const seen   = new Set();
+  for (let i = 0; i < numCardChoices; i++) {
+    const card = pickOne(seen);
+    if (!card) break;
+    seen.add(card.name);
+    chosen.push(card);
+  }
+
+  if (chosen.length === 0) {
+    if (onComplete) onComplete();
+    return;
+  }
+
+  const cardsHTML = chosen.map((card, idx) => {
+    const color   = rarityColor(card.rarity);
+    const imgSrc  = card.imageUrl || 'images/cards/default.png';
+    const upgBtn  = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
+    const upgradedBg    = card.preUpgraded ? 'background:rgba(46,204,113,0.06);' : '';
+    const upgradedBorder = card.preUpgraded ? '#2ecc71' : color;
+    const nameLabel = card.preUpgraded
+      ? `${card.name} <span style="color:#2ecc71;font-size:14px;font-weight:bold;">+</span>`
+      : card.name;
+    const upgradedBadge = card.preUpgraded
+      ? `<div style="position:absolute;top:8px;left:8px;background:#2ecc71;color:#000;font-size:10px;font-weight:bold;padding:2px 7px;border-radius:4px;">UPGRADED</div>`
+      : '';
+    return `
+      <div class="card-reward-option card-reward-card" data-card-idx="${idx}"
+        style="border:3px solid ${upgradedBorder};${upgradedBg}"
+        onmouseenter="if(!this.classList.contains('cr-selected')){this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px ${upgradedBorder}44';}"
+        onmouseleave="if(!this.classList.contains('cr-selected')){this.style.transform='';this.style.boxShadow='';}">
+        ${upgradedBadge}
+        ${upgBtn}
+        <img src="${imgSrc}" alt="${card.name}"
+             style="width:110px;height:110px;object-fit:contain;margin-bottom:10px;"
+             onerror="if(this.dataset.t){this.style.display='none';}else{this.dataset.t=1;this.src='images/heroes/'+this.alt+'.png';}">
+        <div style="font-weight:bold;font-size:15px;color:white;text-align:center;margin-bottom:4px;">${nameLabel}</div>
+        <div style="color:${color};font-size:12px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
+        <div style="font-size:12px;color:${card.preUpgraded ? '#7dffb0' : '#ccc'};text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>
+        <div style="color:var(--color-highlight);font-size:13px;font-weight:bold;">Cost: ${card.cost}</div>
+      </div>
+    `;
+  }).join('');
+
+  createGameModal(`
+    <div style="text-align:center; padding:20px; max-width:920px;">
+      <h2 style="color:#FFD700; margin-top:0; margin-bottom:8px;">🃏 Card Reward</h2>
+      <p style="color:#aaa; margin-bottom:20px; font-size:13px;">Click a card to select it, then confirm your choice</p>
+      <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+        ${cardsHTML}
+      </div>
+      <div style="margin-top:20px; display:flex; gap:14px; justify-content:center; align-items:center;">
+        <button id="card-reward-confirm-btn" disabled style="
+          padding:11px 28px; background:#555; border:2px solid #888; border-radius:8px;
+          color:#888; cursor:not-allowed; font-size:14px; font-weight:bold; transition:all 0.15s;
+        ">✓ Add to Deck</button>
+        <button id="card-reward-skip-btn" style="
+          padding:11px 28px; background:#333; border:2px solid #555; border-radius:8px;
+          color:#aaa; cursor:pointer; font-size:14px; font-weight:bold;
+        ">Skip</button>
+      </div>
+    </div>
+  `);
+
+  let selectedCardIdx = null;
+  const confirmBtn = document.getElementById('card-reward-confirm-btn');
+  const skipBtn    = document.getElementById('card-reward-skip-btn');
+
+  function selectCard(idx) {
+    selectedCardIdx = idx;
+    document.querySelectorAll('.card-reward-option').forEach(el => {
+      const i = parseInt(el.dataset.cardIdx);
+      const c = chosen[i];
+      const col = rarityColor(c.rarity);
+      if (i === idx) {
+        el.classList.add('cr-selected');
+        el.style.borderColor = '#ffd700';
+        el.style.boxShadow   = '0 0 22px #ffd70088';
+        el.style.transform   = 'translateY(-6px) scale(1.04)';
+      } else {
+        el.classList.remove('cr-selected');
+        el.style.borderColor = col;
+        el.style.boxShadow   = 'none';
+        el.style.transform   = '';
+      }
+    });
+    confirmBtn.disabled          = false;
+    confirmBtn.style.background  = 'linear-gradient(145deg, #9b59b6, #7d3c98)';
+    confirmBtn.style.borderColor = '#9b59b6';
+    confirmBtn.style.color       = 'white';
+    confirmBtn.style.cursor      = 'pointer';
+  }
+
+  document.querySelectorAll('.card-reward-option').forEach(el => {
+    el.onclick = () => selectCard(parseInt(el.dataset.cardIdx));
+  });
+
+  if (skipBtn) {
+    skipBtn.onclick = () => { closeGameModal(); if (onComplete) onComplete(); };
+  }
+
+  confirmBtn.onclick = () => {
+    if (selectedCardIdx === null) return;
+    const card = chosen[selectedCardIdx];
+    if (card) {
+      const addFn = window.addCardToDeck || (typeof addCardToDeck !== 'undefined' ? addCardToDeck : null);
+      if (addFn) {
+        addFn(card);
+      } else {
+        if (!gameState.deck) gameState.deck = [];
+        gameState.deck.push({ ...card, upgraded: false });
+        saveCurrentGame();
+        if (typeof createNotification === 'function') {
+          createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
+        }
+      }
+      // Inline spell-learning — runs regardless of cached helper availability
+      _doLearnSpell(card);
+    }
+    closeGameModal();
+    if (onComplete) onComplete();
+  };
+}
 
 // ===== DECK VIEWER MODAL =====
 
@@ -453,6 +810,8 @@ function learnSpellFromCard(card) {
 
 // Export
 window.showCardRewardModal = showCardRewardModal;
+window.showVictoryScreen = showVictoryScreen;
+window._doLearnSpell = _doLearnSpell;
 window.showDeckModal = showDeckModal;
 window.addCardToDeck = addCardToDeck;
 window.learnSpellFromCard = learnSpellFromCard;
