@@ -124,8 +124,8 @@ Your character has a set of stats that grow throughout the run through items, ev
 
 | Stat | What it does |
 |---|---|
-| **Strength** | Boosts Attack card damage; adds a flat bonus to Strength-based event rolls |
-| **Dexterity** | Boosts ranged attack damage; adds a flat bonus to Dexterity-based event rolls |
+| **Strength** | Boosts all damage dealt; adds a flat bonus to Strength-based event rolls. Every 3 Strength = +1 Power on attack dice |
+| **Dexterity** | Boosts block gained; adds a flat bonus to Dexterity-based event rolls. Every 3 Dexterity = +1 Defense on defense dice |
 | **Intelligence** | Adds a flat bonus to Intelligence-based event rolls |
 | **Charisma** | Adds a flat bonus to Charisma-based event rolls; each point gives 1% off all shop prices |
 | **Constitution** | Derived stat: every 5 max HP gained during the run = +1 Constitution. Adds a bonus to Constitution event rolls |
