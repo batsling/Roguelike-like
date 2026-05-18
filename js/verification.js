@@ -810,11 +810,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       const precisionRadio = document.querySelector('input[name="precision-check"]:checked');
       const perfectGame = precisionRadio && precisionRadio.value === 'yes';
       if (perfectGame) {
-        dash = Math.max(0, dash + 1);
-        gameState.dash = dash;
-        if (typeof updateTopBar === 'function') {
-          updateTopBar();
-        }
+        StateMutator.modifyAbility('dash', 1);
         precisionLandingActivated = true;
       }
     }
@@ -845,8 +841,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         // Secret Technique Instructions: +1 Dash per copy
         const secretTechniqueCount = hastePerfectItems.filter(i => i.name === 'Secret Technique Instructions').length;
         if (secretTechniqueCount > 0) {
-          dash = Math.max(0, dash + secretTechniqueCount);
-          gameState.dash = dash;
+          StateMutator.modifyAbility('dash', secretTechniqueCount);
           hastePerfectRewards.push(`+${secretTechniqueCount} Dash`);
         }
 
@@ -1254,12 +1249,7 @@ function showPerfectGameVerificationModal(onComplete) {
   // Handle Yes button
   document.getElementById('perfect-yes-btn').onclick = () => {
     // Grant +1 Dash
-    dash += 1;
-    gameState.dash = dash;
-    if (typeof updateTopBar === 'function') {
-      updateTopBar();
-    }
-
+    StateMutator.modifyAbility('dash', 1);
 
     // Show notification
     setTimeout(() => {

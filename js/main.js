@@ -184,9 +184,11 @@ function loadState() {
   const state = GameStorage.load(STORAGE_KEYS.GAME_STATE);
   if (state) {
     if (gameState) gameState.rations = state.rations ?? 10;
-    gold = state.gold ?? 0;
-    health = state.health;
-    maxHealth = state.maxHealth ?? 10;
+    StateMutator.restoreState({
+      gold: state.gold ?? 0,
+      maxHealth: state.maxHealth ?? 10,
+      health: state.health,
+    });
     inventory = state.inventory;
     beatenGames = state.beatenGames;
     selectedPhase2Games = state.selectedPhase2Games;
@@ -409,20 +411,22 @@ function loadSavedGame(saveName) {
     });
   }
 
-  health = save.health;
-  maxHealth = save.maxHealth;
-  gold = save.gold;
   if (gameState) gameState.rations = save.rations || 10;
   inventory = [...(save.inventory || [])];
   beatenGames = [...(save.beatenGames || [])];
-  strength = save.strength || 0;
-  dexterity = save.dexterity || 0;
-  intelligence = save.intelligence || 0;
-  charisma = save.charisma || 0;
-  reroll = save.reroll || 0;
-  dash = save.dash || 0;
-  skip = save.skip || 0;
-  discovery = save.discovery || 0;
+  StateMutator.restoreState({
+    maxHealth: save.maxHealth,
+    health: save.health,
+    gold: save.gold,
+    strength: save.strength,
+    dexterity: save.dexterity,
+    intelligence: save.intelligence,
+    charisma: save.charisma,
+    reroll: save.reroll,
+    dash: save.dash,
+    skip: save.skip,
+    discovery: save.discovery,
+  });
 
   // Restore bingo state
   bingoGrid = save.bingoGrid ?? Array(9).fill(null);
@@ -799,9 +803,7 @@ function applyStartingBonus(type, onComplete) {
       showItemChoiceModal(onComplete);
       break;
     case 'Strategy':
-      gold += 40;
-      if (gameState) gameState.gold = gold;
-      if (typeof updateGoldDisplay === 'function') updateGoldDisplay();
+      StateMutator.modifyGold(40);
       onComplete();
       break;
     case 'Deckbuilding':
@@ -889,22 +891,23 @@ function completeGameStart(start, amulet, saveName, startType) {
   }
 
   const stats = character.startingStats || {};
-  strength    = stats.strength    || 0;
-  dexterity   = stats.dexterity   || 0;
-  intelligence= stats.intelligence|| 0;
-  charisma    = stats.charisma    || 0;
-  attack      = stats.attack      || 0;
-  reroll      = stats.reroll      || 0;
-  dash        = stats.dash        || 0;
-  skip        = stats.skip        || 0;
-  discovery   = stats.discovery   || 0;
-  fov         = stats.fov         || 0;
-  luck        = stats.luck        || 0;
-
+  attack = stats.attack || 0;
   const baseHealth = character.health || 10;
-  health = baseHealth;
-  maxHealth = baseHealth;
-  gold = 0;
+  StateMutator.restoreState({
+    strength: stats.strength,
+    dexterity: stats.dexterity,
+    intelligence: stats.intelligence,
+    charisma: stats.charisma,
+    reroll: stats.reroll,
+    dash: stats.dash,
+    skip: stats.skip,
+    discovery: stats.discovery,
+    fov: stats.fov,
+    luck: stats.luck,
+    maxHealth: baseHealth,
+    health: baseHealth,
+    gold: 0,
+  });
   inventory = [];
 
   const characterTraits = character.traits || [];
@@ -3924,8 +3927,7 @@ function showCombatModal() {
     updateCombatLog();
 
     // Update global health and sync with main UI
-    health = combat.player.health;
-    updateTopBar();
+    StateMutator.setHealth(combat.player.health);
 
     // Update inventory to reflect any changes
     updateCombatInventory();
@@ -4280,9 +4282,7 @@ function showCombatModal() {
     const goldMatch = enemy.successReward.match(/(\d+) Gold/);
     if (goldMatch) {
       const goldAmount = parseInt(goldMatch[1]);
-      gold += goldAmount;
-      gameState.gold = gold;
-      updateTopBar();
+      StateMutator.modifyGold(goldAmount);
     }
 
     // Trigger onEnemyDefeated effects
@@ -4767,9 +4767,7 @@ function handleDiceCombatVictory(enemy) {
   // Award gold based on difficulty tier
   const goldAmounts = { 'Low': 20, 'Medium': 35, 'High': 55 };
   const goldReward = goldAmounts[enemy.difficulty] || 10;
-  gold += goldReward;
-  gameState.gold = gold;
-  updateTopBar();
+  StateMutator.modifyGold(goldReward);
 
   // Trigger onEnemyDefeated effects
   if (typeof triggerOnEnemyDefeated === 'function') {
@@ -4847,10 +4845,7 @@ function showPostCombatChoiceModal(difficulty) {
       color: '#4CAF50',
       action: () => {
         const heal = Math.floor(maxHealth * 0.33);
-        health = Math.min(health + heal, maxHealth);
-        window.health = health;
-        gameState.health = health;
-        if (typeof updateTopBar === 'function') updateTopBar();
+        StateMutator.modifyHealth(heal);
         if (typeof saveCurrentGame === 'function') saveCurrentGame();
         closeGameModal();
         if (typeof createNotification === 'function') createNotification(`Rested: +${heal} Health`, '#4CAF50', '🛌');
@@ -5719,9 +5714,7 @@ function _diceTrayUnequip(dieUid) {
   const item = gameState.diceSlots[dieUid];
   if (!item) return;
   // Return item to inventory
-  if (!gameState.inventory) gameState.inventory = [];
-  gameState.inventory.push(item);
-  if (typeof inventory !== 'undefined') inventory.push(item);
+  StateMutator.addItem(item);
   delete gameState.diceSlots[dieUid];
   if (typeof createNotification === 'function') {
     createNotification(`${item.name} unequipped from die.`, '#888', '📦');
@@ -5803,15 +5796,7 @@ function _diceTrayPickItem(dieUid) {
       picker.remove();
 
       // Remove from inventory, add to slot
-      const globalInv = typeof inventory !== 'undefined' ? inventory : (gameState.inventory || []);
-      const invIdx = globalInv.indexOf(item);
-      if (invIdx !== -1) {
-        globalInv.splice(invIdx, 1);
-        if (gameState.inventory && gameState.inventory !== globalInv) {
-          const gi = gameState.inventory.indexOf(item);
-          if (gi !== -1) gameState.inventory.splice(gi, 1);
-        }
-      }
+      StateMutator.removeItem(item);
       if (!gameState.diceSlots) gameState.diceSlots = {};
       gameState.diceSlots[dieUid] = item;
       if (typeof createNotification === 'function') {
@@ -6039,56 +6024,29 @@ function confirmLevelUp(onComplete) {
   const appliedBonuses = [];
 
   // Apply stat bonuses
-  if (bonuses.strength) {
-    strength += bonuses.strength;
-    appliedBonuses.push(`+${bonuses.strength} Strength`);
+  const STAT_LABELS = {
+    strength: 'Strength', dexterity: 'Dexterity', intelligence: 'Intelligence',
+    charisma: 'Charisma', luck: 'Luck',
+  };
+  for (const stat of Object.keys(STAT_LABELS)) {
+    if (bonuses[stat]) {
+      StateMutator.modifyStat(stat, bonuses[stat]);
+      appliedBonuses.push(`+${bonuses[stat]} ${STAT_LABELS[stat]}`);
+    }
   }
-  if (bonuses.dexterity) {
-    dexterity += bonuses.dexterity;
-    appliedBonuses.push(`+${bonuses.dexterity} Dexterity`);
-  }
-  if (bonuses.intelligence) {
-    intelligence += bonuses.intelligence;
-    appliedBonuses.push(`+${bonuses.intelligence} Intelligence`);
-  }
-  if (bonuses.charisma) {
-    charisma += bonuses.charisma;
-    appliedBonuses.push(`+${bonuses.charisma} Charisma`);
-  }
-  if (bonuses.reroll) {
-    reroll += bonuses.reroll;
-    gameState.reroll = reroll;
-    appliedBonuses.push(`+${bonuses.reroll} Reroll`);
-  }
-  if (bonuses.dash) {
-    gameState.dash = (gameState.dash || 0) + bonuses.dash;
-    appliedBonuses.push(`+${bonuses.dash} Dash`);
-  }
-  if (bonuses.luck) {
-    luck += bonuses.luck;
-    gameState.luck = luck;
-    appliedBonuses.push(`+${bonuses.luck} Luck`);
-  }
-  if (bonuses.skip) {
-    skip += bonuses.skip;
-    gameState.skip = skip;
-    appliedBonuses.push(`+${bonuses.skip} Skip`);
-  }
-  if (bonuses.discovery) {
-    discovery += bonuses.discovery;
-    gameState.discovery = discovery;
-    appliedBonuses.push(`+${bonuses.discovery} Discovery`);
-  }
-  if (bonuses.fov) {
-    fov += bonuses.fov;
-    gameState.fov = fov;
-    appliedBonuses.push(`+${bonuses.fov} FoV`);
+  const ABILITY_LABELS = {
+    reroll: 'Reroll', dash: 'Dash', skip: 'Skip',
+    discovery: 'Discovery', fov: 'FoV',
+  };
+  for (const ability of Object.keys(ABILITY_LABELS)) {
+    if (bonuses[ability]) {
+      StateMutator.modifyAbility(ability, bonuses[ability]);
+      appliedBonuses.push(`+${bonuses[ability]} ${ABILITY_LABELS[ability]}`);
+    }
   }
   if (bonuses.maxHealth) {
-    maxHealth += bonuses.maxHealth;
-    health = Math.min(health + bonuses.maxHealth, maxHealth);
-    gameState.maxHealth = maxHealth;
-    gameState.health = health;
+    StateMutator.modifyMaxHealth(bonuses.maxHealth);
+    StateMutator.modifyHealth(bonuses.maxHealth);
     appliedBonuses.push(`+${bonuses.maxHealth} Max Health`);
   }
 
@@ -6189,10 +6147,8 @@ function confirmLevelUp(onComplete) {
     closeGameModal();
     switch (reward.type) {
       case 'gold':
-        gold = (gold || 0) + reward.amount;
-        gameState.gold = gold;
+        StateMutator.modifyGold(reward.amount);
         saveCurrentGame();
-        if (typeof updateTopBar === 'function') updateTopBar();
         if (typeof createNotification === 'function') {
           createNotification(`+${reward.amount} Gold!`, '#FFD700', '💰');
         }
@@ -7571,9 +7527,7 @@ function handleGenericCombatResult(success, powerLevel) {
       const goldMatch = enemy.successReward.match(/(\d+) Gold/);
       if (goldMatch) {
         const goldAmount = parseInt(goldMatch[1]);
-        gold += goldAmount;
-        gameState.gold = gold;
-        updateTopBar();
+        StateMutator.modifyGold(goldAmount);
       }
     }
 
@@ -7598,10 +7552,7 @@ function handleGenericCombatResult(success, powerLevel) {
       healthLoss = calculateDamageReduction(healthLoss);
     }
 
-    health = Math.max(0, health - healthLoss);
-    gameState.health = health;
-    updateHealthDisplay();
-    updateTopBar();
+    StateMutator.modifyHealth(-healthLoss);
 
     // Call custom failure callback
     if (callbacks.failure) {
@@ -7719,10 +7670,7 @@ function handleStoneGolemResult(success) {
   if (success) {
     // Give gold for defeating Stone Golem
     const goldReward = 10;
-    gold += goldReward;
-    gameState.gold = gold;
-    updateGoldDisplay();
-    updateTopBar();
+    StateMutator.modifyGold(goldReward);
     createNotification(`+${goldReward} gold for defeating Stone Golem!`, '#ffdd77', '💰');
 
     // Trigger onEnemyDefeated effects for triggered items
@@ -7738,10 +7686,7 @@ function handleStoneGolemResult(success) {
       damage = calculateDamageReduction(damage);
     }
 
-    health = Math.max(0, health - damage);
-    gameState.health = health;
-    updateHealthDisplay();
-    updateTopBar();
+    StateMutator.modifyHealth(-damage);
 
     // Add a random curse for losing to Stone Golem
     const availableCurses = curses.filter(c =>
@@ -7965,9 +7910,7 @@ function removeItemAndReverseStats(index) {
         // Reverse the stat change (but skip reroll, dash, skip, and maxHealth/health)
         if (stat !== 'reroll' && stat !== 'dash' && stat !== 'skip' && stat !== 'maxHealth') {
           if (stat === 'gold') {
-            gold = Math.max(0, gold - value);
-            gameState.gold = gold;
-            updateTopBar();
+            StateMutator.modifyGold(-value);
           } else {
             // Regular stats
             window[stat] = Math.max(0, window[stat] - value);
@@ -7985,13 +7928,7 @@ function removeItemAndReverseStats(index) {
   }
 
   // Remove from inventory (handle quantity)
-  if (item.quantity && item.quantity > 1) {
-    item.quantity--;
-  } else {
-    inventory.splice(index, 1);
-  }
-  gameState.inventory = inventory;
-  updateInventory();
+  StateMutator.removeItem(index);
 }
 
 // ----- Colosseum Event -----
@@ -8194,10 +8131,7 @@ function completeChampionFailure() {
     damage = calculateDamageReduction(damage);
   }
 
-  health = Math.max(0, health - damage);
-  gameState.health = health;
-  updateHealthDisplay();
-  updateTopBar();
+  StateMutator.modifyHealth(-damage);
 
   createNotification('Lost 3 health from failed challenge!', '#ff4444', '💔');
 
@@ -8624,9 +8558,7 @@ function markGameFinished(gameName) {
     gameState.finishedGames.push(gameName);
   } else {
     // Revisiting a game already beaten — award 1 Dash so the player can escape a dead end
-    dash = (typeof dash !== 'undefined' ? dash : 0) + 1;
-    gameState.dash = (gameState.dash || 0) + 1;
-    if (typeof updateTopBar === 'function') updateTopBar();
+    StateMutator.modifyAbility('dash', 1);
     if (typeof createNotification === 'function') {
       createNotification('+1 Dash (revisited game)', '#3498db', '💨');
     }
@@ -9032,19 +8964,18 @@ function triggerGameStatusEffects(gameName) {
 
       case 'devilish':
         // Lose 2 health
-        health = Math.max(0, health - 2);
-        gameState.health = health;
+        StateMutator.modifyHealth(-2);
         message = `${status.icon} Devilish aura deals 2 damage!`;
         break;
 
-      case 'holy':
+      case 'holy': {
         // Gain 2 health
         const oldHealth = health;
-        health = Math.min(health + 2, maxHealth);
-        gameState.health = health;
+        StateMutator.modifyHealth(2);
         message = `${status.icon} Holy blessing restores ${health - oldHealth} health!`;
         isPositive = true;
         break;
+      }
 
       case 'marked':
         // Give Curse of the Hunter scaled by difficulty
@@ -9127,8 +9058,7 @@ function triggerGameStatusEffects(gameName) {
 
   // Check for death
   if (health <= 0) {
-    health = 0;
-    gameState.health = 0;
+    StateMutator.setHealth(0);
     if (typeof handleDeath === 'function') {
       handleDeath('status effect');
     }
@@ -9261,11 +9191,8 @@ document.getElementById('removeSelectedItem')?.addEventListener('click', () => {
     return;
   }
 
-  const removed = inventory.splice(itemIndex, 1)[0];
-
-  if (typeof updateInventory === 'function') {
-    updateInventory();
-  }
+  const removed = inventory[itemIndex];
+  StateMutator.removeItem(itemIndex);
 
   const output = document.getElementById('removedItemOutput');
   if (output) {
@@ -9282,11 +9209,8 @@ document.getElementById('removeRandomItem')?.addEventListener('click', () => {
   }
 
   const randomIndex = Math.floor(Math.random() * inventory.length);
-  const removed = inventory.splice(randomIndex, 1)[0];
-
-  if (typeof updateInventory === 'function') {
-    updateInventory();
-  }
+  const removed = inventory[randomIndex];
+  StateMutator.removeItem(randomIndex);
 
   const output = document.getElementById('removedItemOutput');
   if (output) {

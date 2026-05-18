@@ -145,6 +145,83 @@ const StateMutator = {
   },
 
   /**
+   * Set a stat to an absolute value (save/load and new-game init use this).
+   * No notification — bulk restores would spam.
+   * @param {string} statName - 'strength' | 'dexterity' | 'intelligence' | 'charisma' | 'luck'
+   * @param {number} value
+   */
+  setStat(statName, value) {
+    const valid = ['strength', 'dexterity', 'intelligence', 'charisma', 'luck'];
+    if (!valid.includes(statName)) return;
+    const oldValue = window[statName] || 0;
+    window[statName] = value;
+    gameState[statName] = value;
+    if (oldValue !== value) this._notify(['stats', `stat:${statName}`]);
+  },
+
+  /**
+   * Set an ability count to an absolute value (skip / reroll / dash / fov /
+   * discovery). Same restore-friendly semantics as setStat.
+   */
+  setAbility(abilityName, value) {
+    const valid = ['skip', 'reroll', 'dash', 'fov', 'discovery'];
+    if (!valid.includes(abilityName)) return;
+    const oldValue = window[abilityName] || 0;
+    window[abilityName] = value;
+    gameState[abilityName] = value;
+    if (oldValue !== value) this._notify(['abilities', `ability:${abilityName}`]);
+  },
+
+  /**
+   * Set gold to an absolute value.
+   */
+  setGold(value) {
+    const oldGold = gold;
+    gold = Math.max(0, value);
+    gameState.gold = gold;
+    if (oldGold !== gold) this._notify('gold');
+  },
+
+  /**
+   * Set max health to an absolute value. Clamps current health if it would
+   * exceed the new max.
+   */
+  setMaxHealth(value) {
+    const oldMaxHealth = maxHealth;
+    maxHealth = Math.max(1, value);
+    gameState.maxHealth = maxHealth;
+    let healthClamped = false;
+    if (health > maxHealth) {
+      health = maxHealth;
+      gameState.health = health;
+      healthClamped = true;
+    }
+    if (oldMaxHealth !== maxHealth || healthClamped) {
+      this._notify(['maxHealth', 'health']);
+    }
+  },
+
+  /**
+   * Restore state in bulk from a snapshot object (save data or
+   * new-game initialization). Skips fields the snapshot doesn't carry.
+   * One coalesced notification fires after all writes.
+   *
+   * @param {Object} snapshot - { health, maxHealth, gold, strength, ... }
+   */
+  restoreState(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return;
+    if ('maxHealth' in snapshot) this.setMaxHealth(snapshot.maxHealth);
+    if ('health' in snapshot) this.setHealth(snapshot.health);
+    if ('gold' in snapshot) this.setGold(snapshot.gold);
+    for (const stat of ['strength', 'dexterity', 'intelligence', 'charisma', 'luck']) {
+      if (stat in snapshot) this.setStat(stat, snapshot[stat] || 0);
+    }
+    for (const ability of ['skip', 'reroll', 'dash', 'fov', 'discovery']) {
+      if (ability in snapshot) this.setAbility(ability, snapshot[ability] || 0);
+    }
+  },
+
+  /**
    * Modify maximum health with UI updates
    * @param {number} delta - Amount to change max health by
    * @param {Object} options - Configuration options
@@ -332,7 +409,7 @@ const StateMutator = {
   modifyAbility(abilityName, delta, options = {}) {
     const { updateUI = true, notify = false } = options;
 
-    const validAbilities = ['skip', 'reroll', 'dash'];
+    const validAbilities = ['skip', 'reroll', 'dash', 'discovery', 'fov'];
 
     if (!validAbilities.includes(abilityName)) {
       console.error(`Invalid ability name: ${abilityName}`);
