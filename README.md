@@ -68,12 +68,30 @@ A roguelike deckbuilder where players navigate a graph of over 600 real video ga
 - Save / load system with multiple save slots
 
 **Architecture:**
-The codebase is organized into focused, maintainable modules. See [js/README.md](js/README.md) for detailed module documentation.
-- **15+ JavaScript modules** with clear responsibilities
-- **combat-engine.js**: Card resolution, status effects, enemy AI
-- **combat-ui.js**: Fan-arc hand rendering, drag-to-play, targeting mode
-- **cards.js**: Deck management, card rewards, shop card services
-- **Better maintainability** for both humans and LLMs
+The codebase is organized into 38 focused JavaScript modules totalling ~42k lines. See [js/README.md](js/README.md) for the full module map.
+- **`main.js`** is now a thin orchestrator (1,214 lines) — initialization, save/load, and top-bar wiring
+- **`state-mutator.js`** owns all gameplay state changes with a pub/sub event bus that `ui.js` subscribes to
+- **`combat-engine.js`** / **`combat-ui.js`** / **`combat-flow.js`** split combat into rules, rendering, and orchestration
+- **`dev-tools.js`** is fully isolated — no other module imports from it
+- **Vitest** test suite (54 tests across 4 files) covers state mutation, data integrity, and combat helpers
+
+---
+
+## Running the Game
+
+**Play it (simplest):** Double-click `index.html`. It opens in your browser and works out of the box — no install, no server.
+
+**Run the tests:**
+```
+npm install     # one-time
+npm test
+```
+
+**Optional developer tooling** (Vite is set up but not required for play):
+- `npm run dev` — local dev server with live reload at `http://localhost:5173`
+- `npm run build` — produce a bundled `dist/` build
+
+You only need these if you want a dev server or a production bundle; everyday play and editing work fine off the filesystem with the double-click flow.
 
 ---
 
@@ -430,6 +448,53 @@ When you defeat the Amulet game, the **escape phase** begins. You must fight you
 ---
 
 ## Recent Updates
+
+### Version 6.6 - Architecture Refactor & Bug Fixes (May 2026)
+
+A multi-phase cleanup pass focused on the codebase's shape rather than gameplay. No feature changes.
+
+**Phase 0 — Tooling baseline:**
+- Added Vite + Vitest as devDependencies
+- New `tests/` directory with `setup.js` and the first suites (`state-mutator.test.js`, `data-integrity.test.js`, `combat-engine-helpers.test.js`)
+- `npm test` runs the full suite (currently 54 tests, all passing)
+
+**Phase 1 — pub/sub event bus on StateMutator:**
+- `StateMutator` now publishes events (`health-changed`, `gold-changed`, etc.) when state changes
+- `ui.js` subscribes to those events and refreshes only what changed
+- Replaces the previous pattern of every mutation call also calling `updateTopBar()` / `updateHealthDisplay()` by hand
+
+**Phase 2 — Funnel every mutation through StateMutator:**
+- ~111 direct-mutation bypass sites (`health = ...`, `gold += ...`) migrated to `StateMutator.applyDelta()` / `StateMutator.set()` (Phase 2a + 2b)
+- Single source of truth for state changes; the pub/sub bus from Phase 1 now actually fires on every change
+
+**Phase 3 — Decompose main.js (10,089 → 1,214 lines, an 88% reduction):**
+- **3a:** Settings panel + dev-tools panel HTML / wiring → `dev-tools.js`
+- **3b:** Map layout + rendering helpers → `map-render.js`
+- **3c:** Character / start-selection flow → `character-start.js`
+- **3d:** Allies system → `allies.js`
+- **3e:** Curse + game-status helpers → `curse-manager.js`
+- **3f:** Item-choice modal + chest helpers → `loot.js`
+- **3g:** Card reward / victory / spell-learn modals → `cards.js`
+- **3h:** Event modal + special encounter flows → `events.js`
+- **3i:** Combat-flow orchestration → `combat-flow.js`
+- **3j:** Run-time UI modals (deck, dice tray, spells, notification history) → `run-modals.js`
+
+**Phase 4 — Cleanup pass after extraction:**
+- **4a:** Dev-tools event listeners + dead `window.*` exports moved out of `main.js`
+- **4b:** Removed dead `console.log` debug statements and duplicated helpers
+- **4c:** Deleted ~7 truly dead duplicate function definitions in `cards.js`
+
+**Pre-existing bugs found and fixed during the refactor:**
+- Combat victory was not advancing to the victory screen (load-order regression surfaced by Phase 3)
+- Weapon items were adding two cards to the deck instead of one
+- `HAND_SIZE_LIMIT` was defined twice (duplicate `const` at module scope)
+- "Clumsy" appeared on both a Slice & Dice card and a curse — the dice card is now `Clumsy Die` to disambiguate
+- Latent reference to a non-existent `_lootTabBtn` in `loot.js`
+- `FISH_DATA` collision between `data/fish-data.js` and `data/loot-data.js` (the former is now dormant)
+
+**Phase 5 — Not done:** A planned conversion to ES modules with named imports was attempted and reverted. ES modules cannot load from `file://` URLs without a local server, which would have broken the "double-click `index.html`" workflow. The codebase still uses classic `<script>` tags and the `window.X = X` global-export pattern as a result. The 484 defensive `typeof X === 'function'` checks that pattern requires also remain.
+
+---
 
 ### Version 6.5 - Scrolls & Potions, Charisma Discount, Data Updates (May 2026)
 
@@ -2187,35 +2252,51 @@ The game includes comprehensive dev tools at the bottom of the page:
 
 ---
 
-## Code Optimization
+## Code Architecture Notes
 
-### Recent Performance Improvements
+### Where state changes live
 
-**Helper Functions Added:**
-- `getCursesByType()` - Unified curse filtering
-- `getPowerValue()` - Centralized power level conversions
-- `getPlayerStat()` - Simplified stat lookups
-- `updateCurseUI()` - Consolidated display updates
-- `createNotification()` - Reusable notification system
-- `determineEncounterType()` - Standard encounter generation
-- `shuffleArray()` - Fisher-Yates shuffle (better randomization)
+All gameplay state mutations should go through **`StateMutator`** (in `js/state-mutator.js`). It does three things:
 
-**Code Reduction:**
-- ~360 lines removed across 4 files
-- Eliminated duplicate notification blocks (4 instances)
-- Consolidated curse filtering (6 instances)
-- Removed deprecated functions (110+ lines)
+1. Applies the change to `gameState` (or the underlying module globals)
+2. Publishes a typed event (`health-changed`, `gold-changed`, `stat-changed`, etc.)
+3. `ui.js` subscribes to those events and refreshes only the affected DOM
 
-**Modern JavaScript Patterns:**
-- Optional chaining (`?.`) for safer null checks
-- Nullish coalescing (`??`) for better defaults
-- Array methods (reduce, filter, map) over forEach
-- Template literals for cleaner string building
+```javascript
+// Don't:
+gold += 5;
+updateTopBar();
 
-**Algorithm Improvements:**
-- Fisher-Yates shuffle replaces biased `.sort()` method
-- Better randomization distribution
-- Improved status icon management
+// Do:
+StateMutator.applyDelta('gold', 5);
+// UI refresh happens automatically via the pub/sub bus
+```
+
+If you find yourself writing `health = ...` or `gold += ...` directly, that's a bypass — there are still a handful in legacy paths, but new code should not add more.
+
+### Main module → orchestrator
+
+`main.js` is intentionally small (1,214 lines) and limited to:
+- `DOMContentLoaded` initialization
+- Save/load (`GameStorage` via `js/storage.js`)
+- Top-bar event wiring (deck, dice, spells, loot, map, menu buttons)
+- A few global coordination helpers (`getPowerValue`, `getPlayerStat`, `updateCurseUI`)
+
+Feature logic lives in its own module. If you're tempted to add a feature to `main.js`, prefer extending or creating a sibling module instead.
+
+### Global-export pattern
+
+Modules export their public surface via `window.X = X` at the bottom of the file. Consumers reach those exports through a `typeof X === 'function'` guard:
+
+```javascript
+if (typeof updateTopBar === 'function') updateTopBar();
+```
+
+This is verbose but keeps the "double-click `index.html`" workflow alive (see v6.6 Recent Updates for why ES modules were attempted and reverted). When adding a new function that other modules need to call, append the export at the bottom of your module.
+
+### Tests
+
+Run `npm test` to execute the Vitest suite. New tests go in `tests/`. The suite is small — extend it whenever you find a bug worth pinning down (e.g. a parser quirk, a state-mutator edge case).
 
 ---
 

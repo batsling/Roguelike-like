@@ -1,414 +1,245 @@
 # JavaScript Module Architecture
 
-This directory contains all JavaScript modules for the Roguelike-Like game. The codebase has been refactored into focused, maintainable modules with clear responsibilities.
+This directory contains all 38 JavaScript modules for Roguelike-Like. The codebase totals ~42k lines and is organized so each module has a single clear responsibility.
 
-## Module Overview
+## Quick stats
 
-### 📊 Total Stats
-- **15 modules** (down from massive single file)
-- **main.js reduced by 41.5%** (6,757 → 3,950 lines)
-- **Better maintainability** - Each module has clear responsibilities
-- **Easier for LLMs** - Smaller, focused files are easier to understand
-
----
-
-## Core Architecture
-
-### 🎮 Game Data & State
-- **`data.js`** - State management, game loading, save/load system
-  - All state variables (health, gold, inventory, etc.)
-  - Character data (PLAYER_CHARACTERS)
-  - JSON file loading
-  - Game state persistence
-
-### 🖼️ UI & Display
-- **`ui.js`** - All DOM manipulation and display updates
-  - `updateTopBar()` - Health, gold, stats display
-  - `updateInventory()` - Inventory rendering
-  - `updateHealthDisplay()` - Health bar visualization
-  - `updateGameStats()` - Stats sidebar
-  - All visual element updates
-
-### 🎨 Modal System (NEW - Extracted Jan 2025)
-- **`modals.js`** - Centralized modal utilities (48 lines)
-  - `createGameModal(content)` - Standard modal creation
-  - `closeGameModal()` - Modal closing with fade animation
-  - Used by all other modal-dependent systems
+| | |
+|---|---|
+| Modules | 38 |
+| Total lines | ~42,287 |
+| `main.js` size | 1,214 lines (down from 10,089 before the Phase 3 decomposition) |
+| Largest module | `combat-engine.js` (6,304 lines) |
+| Test files | 4 (54 tests) in `/tests/` |
 
 ---
 
-## Game Systems
+## Module map
 
-### ⚔️ Combat & Encounters
-- **`combat.js`** - Combat resolution and dice rolling
-  - Enemy generation logic
-  - D20 rolling with stat modifiers
-  - Critical failure handling (Curse of Failure)
-  - Success/failure outcomes
-  - Curse trigger logic during combat
+### Core data & state
 
-- **`events.js`** - Random events and special encounters
-  - Event selection and validation
-  - Requirement checking
-  - Multi-stage event flows
-  - Generic combat integration
-  - 3 built-in events: Primordial Teleporter, Wild Muncher, Colosseum
+| File | Lines | Responsibility |
+|------|-------|----------------|
+| `constants.js` | 285 | Storage keys, hand-size limits, z-index constants, magic numbers |
+| `storage.js` | 126 | `GameStorage` wrapper around `localStorage` (load / save / list slots) |
+| `state-mutator.js` | 661 | Single entry point for all state mutations + pub/sub event bus |
+| `data.js` | 373 | State variables (`gold`, `health`, `inventory`, …), JSON loading hooks, character data |
+| `bfs-cache.js` | 136 | Cached BFS pathfinder over the influence graph |
 
-- **`items.js`** - Item effects and interactions
-  - `ITEM_EFFECTS` object defining all item behaviors
-  - Passive, Usable, and Triggered item types
-  - Stat modification helpers
-  - Item acquisition/removal effects
+### Combat
 
-### 🛒 Shop System (NEW - Extracted Jan 2025)
-- **`shop.js`** - Complete shop system (309 lines)
-  - `showShopModal()` - Displays shop with 3 random items
-  - `leaveShop()` - Shop cleanup and state reset
-  - Shop reroll system (0 → 5 → 10 → 15 gold progression)
-  - Curse of Frugality price modifications
-  - Item purchasing with price calculations
+| File | Lines | Responsibility |
+|------|-------|----------------|
+| `combat-engine.js` | 6,304 | Card resolution, status effects, enemy AI, intent parsing, spawning, death triggers |
+| `combat-ui.js` | 4,278 | Fan-arc hand, drag-to-play, pile overlay, targeting mode, HP-diff animations |
+| `combat-flow.js` | 2,667 | Combat orchestration — pre-combat events, initialization, victory routing |
+| `combat-state.js` | 608 | Per-combat state container (energy, piles, statuses) |
+| `combat-effects.js` | 162 | Floating numbers, hit splashes, visual effect helpers |
+| `combat.js` | 323 | Legacy D20 rolling + critical-failure helpers used by the event engine |
+| `dice-system.js` | 327 | Dice mechanics — slot management, face resolution |
+| `dice-renderer.js` | 717 | Dice card rendering for the deck and dice tray |
+| `cards.js` | 676 | Deck management, card reward modal, shop card services, pigment helpers |
 
-### 😈 Curse & Verification Systems (NEW - Extracted Jan 2025)
-- **`verification.js`** - Curse and trait verification (625 lines)
-  - `showCurseVerificationModal()` - Entry point for all verifications
-  - `verifyCursesCombined()` - Combined modal for all curse types:
-    - **Restriction curses** (purple): Blindness, Hubris I/II/III
-    - **Manual curses** (orange): Devotion, Greed, Impulse, Haste, Guilt
-    - **Trait effects** (blue): Precision Landing
-  - `showPerfectGameVerificationModal()` - Legacy Precision Landing modal
-  - `showDeathScreen()` - Death screen for curse damage
-  - Helper functions: `getCurseMaxUses()`, `createCurseObject()`, `addCurse()`, `checkCurseDurations()`
+### Encounters, events & exploration
 
----
+| File | Lines | Responsibility |
+|------|-------|----------------|
+| `events.js` | 1,065 | Pre-combat / special event entry points, event modal orchestration |
+| `event-engine.js` | 1,263 | Two-roll D20 event resolver, outcome tiers, effect parsing |
+| `exploration.js` | 1,041 | Map exploration logic (FoV, choice generation, discovery) |
+| `gameplay.js` | 1,017 | Game progression, path node creation, encounter type determination |
+| `loot.js` | 1,106 | Loot rolls, chest opening, item-choice modal |
+| `scrolls-potions.js` | 1,322 | Scrolls and potions system (identification, color shuffling, target picker) |
+| `items.js` | 2,508 | `ITEM_EFFECTS` registry — every item's onAcquire / onUse / triggered behavior |
+| `shop.js` | 870 | Shop modal, reroll cost ladder, Charisma + Frugality price modifiers |
 
-## End-Game Systems
+### UI shell, screens & modals
 
-### 🚪 Escape Phase (NEW - Extracted Jan 2025)
-- **`escape.js`** - Escape sequence and end-game (1,086 lines)
-  - `startEscapePhase()` - Game selection modal (choose 3 games)
-  - `showEscapeVisualization()` - Visual escape interface with player icon
-  - `recordLostRun(index)` - Lost run tracking with HP penalty
-  - `completeEscapeGame(index)` - Advance to next escape game
-  - `updatePlayerIconPosition()` - Animated player movement
-  - `showVictoryScreen()` - Victory display with final stats
-  - `saveRunToHistory()` / `showRunHistory()` - Victory history tracking
+| File | Lines | Responsibility |
+|------|-------|----------------|
+| `ui.js` | 1,369 | DOM refresh — top bar, stats sidebar, inventory; subscribes to StateMutator events |
+| `modals.js` | 184 | `createGameModal()` / `closeGameModal()` utilities used by every other modal |
+| `run-modals.js` | 1,414 | Run-time top-bar modals — deck, dice tray, spells, notification history |
+| `map.js` | 215 | SVG map viewport — pan, zoom, marker placement |
+| `map-render.js` | 1,118 | Map layout + rendering — node positioning, arrows, location boxes |
+| `character-select.js` | 332 | Character grid + detail panel on main menu |
+| `character-start.js` | 504 | Start-game flow — phase 2 game selection, starting items, deck setup |
+| `verification.js` | 1,314 | Manual / restriction curse verification modals, death screen |
+| `curse-manager.js` | 674 | Curse storage, filtering, duration tracking, application helpers |
+| `escape.js` | 662 | Escape phase — game selection, visualization, victory screen |
+| `collection.js` | 2,828 | Collection viewer — Games / Items / Enemies / Curses / Spells tabs |
+| `bingo.js` | 469 | 3x3 bingo grid, goal generation, reward queue |
+| `allies.js` | 342 | Ally summoning, ally state, removal hooks |
+| `locations.js` | 791 | Location modifiers (Hades, Risk of Rain 2, etc.) |
+| `dev-tools.js` | 1,022 | Dev-tools panel + settings panel — fully isolated from gameplay modules |
 
-### 📚 Collection System (NEW - Extracted Jan 2025)
-- **`escape.js`** (also contains collection)
-  - `showCollection()` - Collection viewer modal
-  - `switchCollectionTab(tab)` - Switch between Games/Items/Enemies/Curses
-  - `sortCollectionItems(sortType)` - Sort items by A-Z, Rarity, Game
-  - `switchCurseTier(cardIndex, tier)` - Curse tier display (I, II, III)
-  - 4 collection tabs:
-    - **Games**: 532 games with covers and influence tooltips
-    - **Items**: 22 items with images and descriptions
-    - **Enemies**: All enemies with stats and images
-    - **Curses**: All curses grouped by base name with tier switching
+### Orchestration
 
-### 🎯 Bingo System (NEW - Extracted Jan 2025)
-- **`bingo.js`** - Bingo grid and rewards (436 lines)
-  - `BINGO_GOALS` - 40 goals (easy/normal/hard difficulty)
-  - `generateBingoGrid()` - Creates 3x3 grid with difficulty distribution
-    - 1 easy goal in center
-    - 2 hard goals in random positions
-    - 6 normal goals filling remaining spaces
-  - `renderBingoGrid()` - Renders grid HTML with difficulty badges
-  - `toggleBingoCell(index)` - Mark goals as complete
-  - `checkForBingo()` - Detect completed lines (rows/columns/diagonals)
-  - `grantBingoReward(bingoCount)` - Progressive reward system:
-    - **All rewards**: +1 to all combat stats
-    - **Reward 1-2**: Common items
-    - **Reward 3**: Common items + 2 Reroll
-    - **Reward 4**: Uncommon items
-    - **Reward 5**: Uncommon items + 1 Skip
-    - **Reward 6**: Rare items
-    - **Reward 7**: Rare items + FoV & Discovery
-    - **Reward 8**: Rare items + Dash
-  - `giveRandomItems(rarity, bingoCount, bonusText)` - Item selection modal
-  - Reward queue management for multiple bingos
+| File | Lines | Responsibility |
+|------|-------|----------------|
+| `main.js` | 1,214 | `DOMContentLoaded` init, save/load orchestration, top-bar wiring, a few cross-cutting helpers |
 
 ---
 
-## Player & Map Systems
+## Load order (from `index.html`)
 
-### 👤 Character Selection (NEW - Extracted Jan 2025)
-- **`character-select.js`** - Character selection UI (101 lines)
-  - `populateIconCharacterView()` - Character grid display
-  - `showIconCharacterDetails(charKey)` - Character info panel
-  - Displays character stats, traits, and descriptions
-  - Event listeners remain in main.js
+Scripts are classic `<script>` tags loaded in dependency order. The order below matches `index.html`:
 
-### 🗺️ Map & Navigation
-- **`map.js`** - SVG map visualization
-  - Map loading and rendering
-  - Pan and zoom controls
-  - Player/amulet marker placement
-  - Box highlighting for game locations
-  - Map interaction handlers
-  - Arrow system for visual connections
-
-- **`gameplay.js`** - Game progression and pathfinding
-  - `addNode()` - Creates visual path nodes
-  - `renderGamePath()` - Renders dungeon path
-  - `bfs()` - Breadth-first search for pathfinding
-  - `getConnectedGames()` - Gets adjacent games
-  - Node click handlers
-  - Game progression logic
-
----
-
-## Central Orchestration
-
-### 🎯 Main Controller
-- **`main.js`** - Game initialization and coordination (3,950 lines)
-  - Initialization code
-  - Event listener setup
-  - Excel file upload handler
-  - Tutorial toggle
-  - Global window exports
-  - Coordinates all other modules
-
-**Key Responsibilities:**
-- Sets up initial game state
-- Registers event listeners
-- Coordinates module interactions
-- Handles special game states
-- Manages global exports
-
----
-
-## Module Dependencies
-
-### Load Order (from index.html)
-```html
-<!-- Data first -->
-<script src="js/data.js"></script>
-
-<!-- Core systems -->
-<script src="js/items.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/combat.js"></script>
-<script src="js/events.js"></script>
-<script src="js/gameplay.js"></script>
-<script src="js/map.js"></script>
-
-<!-- UI modules (depend on core) -->
-<script src="js/modals.js"></script>
-<script src="js/shop.js"></script>
-<script src="js/character-select.js"></script>
-<script src="js/verification.js"></script>
-<script src="js/escape.js"></script>
-<script src="js/bingo.js"></script>
-
-<!-- Main orchestrator (depends on everything) -->
-<script src="js/main.js"></script>
+```
+1. constants.js, storage.js              → primitives, no dependencies
+2. state-mutator.js, curse-manager.js    → state plumbing
+3. locations.js, data.js                 → data layer
+4. loot.js, scrolls-potions.js, items.js → item / loot systems
+5. ui.js                                 → DOM refresh + StateMutator subscriber
+6. combat-effects.js, dice-system.js, dice-renderer.js,
+   combat-state.js, combat-engine.js, combat-ui.js,
+   combat.js, combat-flow.js             → combat stack
+7. events.js, gameplay.js, bfs-cache.js, map.js → encounters + map
+8. modals.js, shop.js, cards.js          → UI + deck/shop
+9. character-select.js, verification.js  → screens
+10. collection.js, escape.js, exploration.js, bingo.js → end-game / meta
+11. dev-tools.js, map-render.js, character-start.js,
+    allies.js, run-modals.js             → ancillary screens
+12. main.js                              → orchestrator
+13. event-engine.js                      → loaded last (used by events.js but with delayed entry)
 ```
 
-### Dependency Graph
-```
-data.js
-  ↓
-items.js, ui.js, combat.js, events.js, gameplay.js, map.js
-  ↓
-modals.js → shop.js, verification.js, escape.js, bingo.js
-  ↓
-character-select.js
-  ↓
-main.js (orchestrates everything)
-```
+If you add a new module, place its `<script>` tag just before `main.js` unless it has no dependencies on later modules.
 
 ---
 
-## Key Design Patterns
+## Key patterns
 
-### 1. Modal System
-All modals use the centralized `createGameModal()` and `closeGameModal()`:
+### 1. State mutation via StateMutator
+
+All gameplay state changes should flow through `StateMutator`. It applies the change, then publishes an event on its internal bus:
+
 ```javascript
-// Create modal
-createGameModal(`<div>Your HTML content here</div>`);
-
-// Close modal
-closeGameModal();
+StateMutator.applyDelta('gold', 5);        // gold += 5; publishes 'gold-changed'
+StateMutator.set('health', 10);            // health = 10; publishes 'health-changed'
+StateMutator.restoreState({...});          // bulk restore on load; publishes everything
 ```
 
-### 2. State Management
-All state stored in `gameState` object:
+`ui.js` subscribes during init and refreshes only what changed:
+
 ```javascript
-gameState = {
-  phase: 'selection',
-  currentGame: 'Game Name',
-  visitedGames: [],
-  finishedGames: [],
-  health: 10,
-  // ... more state
-};
+StateMutator.on('gold-changed', () => updateTopBar());
+StateMutator.on('health-changed', () => updateHealthDisplay());
 ```
 
-### 3. Global Exports
-Functions needed by other modules are exported to `window`:
+This removes the old pattern where every mutation site had to remember which UI updaters to call.
+
+### 2. Global exports for cross-module calls
+
+Each module attaches its public surface to `window` at the bottom of the file:
+
 ```javascript
-window.functionName = functionName;
+window.showDeckModal = showDeckModal;
+window.addCardToDeck = addCardToDeck;
 ```
 
-### 4. Helper Functions
-Utility functions reduce duplication:
-- `updateStat(statName, value)` - Modify stats safely
-- `createNotification(message, color, icon)` - Show notifications
-- `determineEncounterType()` - Random encounter generation
-- `getCursesByType(type)` - Filter curses
-- `getPowerValue(power, values)` - Convert power levels
+Consumers guard their calls so a missing export logs nothing:
+
+```javascript
+if (typeof updateTopBar === 'function') updateTopBar();
+```
+
+This pattern keeps the project loadable from a `file://` URL (double-click `index.html`) instead of requiring a dev server.
+
+### 3. Modal lifecycle
+
+All modals use `modals.js`:
+
+```javascript
+createGameModal(`<div>...</div>`);   // mounts a single full-screen modal
+closeGameModal();                    // fades it out and removes it
+```
+
+Don't write a one-off modal — use `createGameModal()` so the close behavior, z-index, and outside-click handler stay consistent.
+
+### 4. Pure helpers in main.js
+
+`main.js` exposes a few helpers used across modules:
+
+- `getPowerValue(power, scale)` — convert `"Low"`/`"Medium"`/`"High"` curse power strings to numeric
+- `getPlayerStat(statName)` — read a stat by name (`"Strength"` → `strength`)
+- `updateCurseUI()` — refresh all three curse displays at once
 
 ---
 
-## Module Statistics
+## Test infrastructure
 
-| Module | Lines | Purpose | Extracted |
-|--------|-------|---------|-----------|
-| `data.js` | ~800 | State & data loading | Pre-existing |
-| `ui.js` | ~600 | DOM updates | Pre-existing |
-| `combat.js` | ~500 | Combat resolution | Pre-existing |
-| `events.js` | ~700 | Event system | Pre-existing |
-| `gameplay.js` | ~900 | Game progression | Pre-existing |
-| `map.js` | ~400 | Map visualization | Pre-existing |
-| `items.js` | ~500 | Item effects | Pre-existing |
-| **`modals.js`** | **48** | **Modal utilities** | **Jan 2025** |
-| **`shop.js`** | **309** | **Shop system** | **Jan 2025** |
-| **`character-select.js`** | **101** | **Character UI** | **Jan 2025** |
-| **`verification.js`** | **625** | **Curse verification** | **Jan 2025** |
-| **`escape.js`** | **1,086** | **Escape & collection** | **Jan 2025** |
-| **`bingo.js`** | **436** | **Bingo system** | **Jan 2025** |
-| `main.js` | 3,950 | Orchestration | Reduced from 6,757 |
+Tests live in `/tests/`:
 
-**Total reduction:** 2,807 lines removed from main.js (41.5%)
+| File | What it covers |
+|------|----------------|
+| `setup.js` | jsdom environment + script loader for tests that need the full game |
+| `state-mutator.test.js` | StateMutator delta / set / event publishing |
+| `data-integrity.test.js` | Card / enemy / item data files (required fields, no duplicates) |
+| `combat-engine-helpers.test.js` | Pattern parsing, ability string parsing, effect resolution helpers |
+| `esm-data-smoke.test.js` | Smoke test that data files load and expose their globals |
 
----
+Run with:
 
-## Benefits of Current Architecture
+```
+npm install     # one-time
+npm test
+```
 
-### ✅ Maintainability
-- Each file has a single, clear responsibility
-- Easy to locate specific functionality
-- Changes are isolated to relevant modules
-
-### ✅ Readability
-- Smaller files are easier to understand
-- Clear module boundaries
-- Logical organization
-
-### ✅ LLM-Friendly
-- Smaller context windows needed
-- Focused modules reduce confusion
-- Clear dependencies
-
-### ✅ Collaboration
-- Multiple developers can work on different modules
-- Reduced merge conflicts
-- Clear ownership of functionality
-
-### ✅ Testing
-- Easier to test individual modules
-- Clear input/output boundaries
-- Isolated functionality
+Add a test whenever you fix a bug worth pinning down. The suite is intentionally small — better to have ten meaningful tests than a hundred shallow ones.
 
 ---
 
-## Adding New Features
+## Adding a new module
 
-### Example: Adding a New Modal-Based System
+1. Create the file in `js/` and write your code.
+2. Export your public functions at the bottom: `window.functionName = functionName;`
+3. Add a `<script>` tag in `index.html` just before `main.js`, respecting any dependencies.
+4. Document it in the module-map table above.
 
-1. **Create new module file** (e.g., `js/new-system.js`)
-2. **Import modal utilities:**
-   ```javascript
-   // Modal utilities already loaded via modals.js
-   createGameModal(content);
-   closeGameModal();
-   ```
-3. **Define your system:**
-   ```javascript
-   function showNewSystem() {
-     createGameModal(`
-       <div>
-         <h2>New System</h2>
-         <button onclick="handleNewSystemAction()">Action</button>
-       </div>
-     `);
-   }
-
-   function handleNewSystemAction() {
-     // Your logic here
-     closeGameModal();
-   }
-   ```
-4. **Export functions:**
-   ```javascript
-   window.showNewSystem = showNewSystem;
-   window.handleNewSystemAction = handleNewSystemAction;
-   ```
-5. **Add script tag to index.html** (before main.js):
-   ```html
-   <script src="js/new-system.js?v=1"></script>
-   ```
+Don't add an `import` / `export` declaration — modules are classic scripts, not ES modules. (See the v6.6 entry in the top-level README for why.)
 
 ---
 
-## Refactoring Guidelines
+## Where things live (cheat sheet)
 
-### When to Extract a Module
-- ✅ Functionality > 200 lines
-- ✅ Clear, single responsibility
-- ✅ Used by multiple parts of the codebase
-- ✅ Can be tested independently
-
-### When to Keep in main.js
-- ❌ Initialization code
-- ❌ Event listener setup
-- ❌ Global coordination logic
-- ❌ Small utility functions (< 50 lines)
-
-### Best Practices
-1. **Keep modules focused** - One responsibility per file
-2. **Document dependencies** - Note what each module needs
-3. **Export clearly** - Only export what's needed
-4. **Test thoroughly** - Verify nothing broke after extraction
-5. **Update documentation** - Keep this README current
-
----
-
-## Future Improvements
-
-### Potential Optimizations
-- **ES6 modules** - Convert to `import`/`export` syntax
-- **Module bundling** - Use webpack or vite for production
-- **Type safety** - Add JSDoc or TypeScript
-- **Testing** - Add unit tests for each module
-- **Documentation** - Add inline JSDoc comments
-
-### Not Recommended
-- **Over-modularization** - Don't split too much
-- **Circular dependencies** - Avoid modules depending on each other
-- **Global state pollution** - Keep exports minimal
+| Need to change… | Look in |
+|-----------------|---------|
+| Combat card resolution | `combat-engine.js` |
+| Combat rendering / drag-to-play | `combat-ui.js` |
+| Pre/post-combat flow | `combat-flow.js` |
+| Card / spell / shop services | `cards.js` |
+| Item behavior | `items.js` |
+| Pre-combat event outcome tiers | `event-engine.js` |
+| Specific events (Wild Muncher, Colosseum…) | `events.js` |
+| Map node placement & arrows | `map-render.js` |
+| Map pan / zoom | `map.js` |
+| Dice tray UI | `run-modals.js` |
+| Dice face resolution | `dice-system.js` |
+| Curse application & filtering | `curse-manager.js` |
+| Curse verification modals | `verification.js` |
+| Scrolls / potions identification | `scrolls-potions.js` |
+| Loot rolls / chest UI | `loot.js` |
+| Shop pricing | `shop.js` |
+| Collection viewer | `collection.js` |
+| Bingo goals & rewards | `bingo.js` |
+| Save / load | `storage.js` (storage) + `main.js` (orchestration) |
+| Dev tools panel | `dev-tools.js` |
+| Top bar / stats sidebar refresh | `ui.js` |
+| Any state mutation | `state-mutator.js` |
 
 ---
 
-## Troubleshooting
+## Common issues
 
-### Module Not Found
-- Check script tag order in index.html
-- Verify file path is correct
-- Check for typos in filename
+**`functionName is not defined`** — Check that the module exports `window.functionName = functionName` at the bottom and that its `<script>` tag in `index.html` loads *before* the caller's.
 
-### Function Not Defined
-- Ensure function is exported: `window.functionName = functionName`
-- Check script load order (dependencies first)
-- Look for typos in function name
+**State change doesn't trigger UI refresh** — You're probably bypassing `StateMutator` (e.g. `gold += 5` instead of `StateMutator.applyDelta('gold', 5)`). The pub/sub bus only fires when the mutation goes through the API.
 
-### Broken Functionality After Extraction
-- Verify all code was moved correctly
-- Check global variable dependencies
-- Test thoroughly in browser console
-- Review `gameState` access patterns
+**Modal closes the whole combat screen** — Use `createGameModal()` only for screens that should fully cover the game. For in-combat overlays (pile viewer, etc.) build a `position: fixed` div manually with `z-index: 20000`.
+
+**Test fails with `X is not defined` in jsdom** — `tests/setup.js` may not be loading the module you need. Add a load line for the relevant `js/*.js` file.
 
 ---
 
-**For detailed API documentation, see the root README.md**
-**For game feature documentation, see individual module comments**
+For game feature documentation see the top-level [README.md](../README.md).
