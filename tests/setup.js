@@ -1,50 +1,58 @@
 /**
- * Phase 0 test harness.
+ * Test harness.
  *
- * The existing codebase is loaded via <script> tags in the browser. The files
- * use `var` declarations at file scope and assume `globalThis === window`.
- * To run them under Vitest+jsdom we read each file and indirect-eval it in
- * global scope, which mirrors what a <script> tag does.
+ * Phase 5a (partial ESM migration): the data layer is now real ES
+ * modules. We import them via static `import` (each module's compat
+ * shim writes window.X, so globalThis.X is set after import).
  *
- * `loadGameScripts({ include })` lets each test load only the subset of files
- * it needs. The default `include` list is the minimum to exercise the combat
- * engine and data helpers — keep it small.
+ * The js/* files are still classic <script> bodies that use `var` at
+ * file scope and assume `globalThis === window`. To run them under
+ * Vitest+jsdom we read each file and indirect-eval it in global scope,
+ * which mirrors what a <script> tag does.
  *
- * When we adopt ESM in Phase 5, this whole file goes away in favor of plain
- * import statements.
+ * `loadGameScripts({ include })` lets each test load only the subset
+ * of *classic* JS files it needs. Data is already loaded by the static
+ * imports below.
+ *
+ * Later ESM phases (5b, 5c, ...) will convert the js/* files too and
+ * this whole eval-based loader will go away.
  */
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// Side-effect imports: each data module writes its global to window.
+import '../data/characters-data.js';
+import '../data/games-data.js';
+import '../data/items-data.js';
+import '../data/potions-data.js';
+import '../data/scrolls-data.js';
+import '../data/enemies-data.js';
+import '../data/events-data.js';
+import '../data/curses-data.js';
+import '../data/allies-data.js';
+import '../data/weapons-data.js';
+import '../data/cards-data.js';
+import '../data/dice-data.js';
+import '../data/statuses-data.js';
+import '../data/moves-data.js';
+import '../data/addons-data.js';
+import '../data/spells-data.js';
+import '../data/spell-keywords-data.js';
+import '../data/game-statuses-data.js';
+import '../data/fish-data.js';
+import '../data/bingo-data.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const ROOT = resolve(__filename, '..', '..');
 
-// Default load order matches the order in index.html. Trimmed to the
-// scripts that combat / data tests actually need.
+// Default load order matches the order in index.html. Only classic js/*
+// files now — data is handled by the static imports above.
 export const CORE_SCRIPTS = [
-  'data/spell-keywords-data.js',
-  'data/cards-data.js',
-  'data/dice-data.js',
-  'data/items-data.js',
-  'data/enemies-data.js',
-  'data/statuses-data.js',
-  'data/spells-data.js',
-  'data/moves-data.js',
-  'data/addons-data.js',
-  'data/characters-data.js',
-  'data/weapons-data.js',
-  'data/curses-data.js',
-  'data/game-statuses-data.js',
-  'data/scrolls-data.js',
-  'data/potions-data.js',
-  'data/allies-data.js',
-  'data/fish-data.js',
   'js/constants.js',
 ];
 
-// Indirect eval so `var` declarations attach to globalThis (= jsdom window).
 const evalGlobal = (src) => (0, eval)(src);
 
 export function loadGameScripts({ include = CORE_SCRIPTS } = {}) {
@@ -64,6 +72,4 @@ export function loadGameScripts({ include = CORE_SCRIPTS } = {}) {
   }
 }
 
-// Auto-load core data on import. Tests that need more (combat-engine etc.)
-// can call loadGameScripts({ include: [...] }) themselves.
 loadGameScripts();

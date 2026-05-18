@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx - Combat Moves
 
-var MOVES_DATA = {
+const MOVES_DATA = {
   "add x y to z": {
     "name": "Add X Y to Z",
     "description": "Target gives X number of Y card to your Z (Deck, Hand, or Discard)",
@@ -142,3 +142,6 @@ var MOVES_DATA = {
     "imageUrl": "images/moves/Vitality.png"
   }
 };
+
+export { MOVES_DATA };
+if (typeof window !== 'undefined') window.MOVES_DATA = MOVES_DATA;

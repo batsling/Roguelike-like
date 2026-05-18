@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx - Fish
 
-var FISH_DATA = [
+const FISH_DATA = [
   {
     "name": "Hellfish",
     "rarity": "Common",
@@ -344,3 +344,6 @@ var FISH_DATA = [
     "imageUrl": "images/fish/styxeon.png"
   }
 ];
+
+export { FISH_DATA };
+if (typeof window !== 'undefined') window.FISH_DATA = FISH_DATA;

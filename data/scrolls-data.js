@@ -1,4 +1,4 @@
-var SCROLLS_DATA = [
+const SCROLLS_DATA = [
   {
     name: "Scroll of Teleportation",
     rarity: "Common",
@@ -145,4 +145,6 @@ var SCROLLS_DATA = [
   }
 ];
 
-window.SCROLLS_DATA = SCROLLS_DATA;
+
+export { SCROLLS_DATA };
+if (typeof window !== 'undefined') window.SCROLLS_DATA = SCROLLS_DATA;

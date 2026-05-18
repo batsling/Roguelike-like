@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx - Spells
 
-var SPELLS_DATA = [
+const SPELLS_DATA = [
   {
     "name": "Abyss",
     "cost": 6,
@@ -486,3 +486,6 @@ var SPELLS_DATA = [
     "imageUrl": "images/Spells/Zap.png"
   }
 ];
+
+export { SPELLS_DATA };
+if (typeof window !== 'undefined') window.SPELLS_DATA = SPELLS_DATA;

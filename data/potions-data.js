@@ -1,4 +1,4 @@
-var POTIONS_DATA = [
+const POTIONS_DATA = [
   {
     name: "Fire Potion",
     rarity: "Common",
@@ -92,4 +92,6 @@ var POTIONS_DATA = [
   }
 ];
 
-window.POTIONS_DATA = POTIONS_DATA;
+
+export { POTIONS_DATA };
+if (typeof window !== 'undefined') window.POTIONS_DATA = POTIONS_DATA;

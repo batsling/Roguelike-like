@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx - Items
 
-var ITEMS_DATA = [
+const ITEMS_DATA = [
   {
     "name": "Alien Baby",
     "rarity": "Rare",
@@ -1318,3 +1318,6 @@ var ITEMS_DATA = [
     "unlockCondition": null
   }
 ];
+
+export { ITEMS_DATA };
+if (typeof window !== 'undefined') window.ITEMS_DATA = ITEMS_DATA;

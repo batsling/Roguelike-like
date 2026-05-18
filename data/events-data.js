@@ -72,7 +72,7 @@
  *   { type:'none' }
  */
 
-var EVENTS_DATA = [
+const EVENTS_DATA = [
 
   // ─────────────────────────────────────────────────────────────────────────────
   //  WATCHING EYEBALLS
@@ -282,3 +282,6 @@ var EVENTS_DATA = [
   }
 
 ];
+
+export { EVENTS_DATA };
+if (typeof window !== 'undefined') window.EVENTS_DATA = EVENTS_DATA;

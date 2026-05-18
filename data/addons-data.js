@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx - Combat Addons
 
-var ADDONS_DATA = {
+const ADDONS_DATA = {
   "cantrip": {
     "name": "Cantrip",
     "description": "Whenever this side is rolled, trigger its effect immediately (to a random preferred target)",
@@ -147,3 +147,6 @@ var ADDONS_DATA = {
     "canBeAttachedTo": "All"
   }
 };
+
+export { ADDONS_DATA };
+if (typeof window !== 'undefined') window.ADDONS_DATA = ADDONS_DATA;

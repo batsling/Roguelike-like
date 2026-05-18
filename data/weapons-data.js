@@ -1,7 +1,7 @@
 // Auto-generated from Roguelikes.xlsx - Weapons
 // Weapons are items that add a card to the deck when acquired; upgrade effect is the passive scaling condition
 
-var WEAPONS_DATA = [
+const WEAPONS_DATA = [
   {
     "name": "Barrel",
     "rarity": "Uncommon",
@@ -74,3 +74,6 @@ var WEAPONS_DATA = [
     "unlockCondition": "N/A"
   }
 ];
+
+export { WEAPONS_DATA };
+if (typeof window !== 'undefined') window.WEAPONS_DATA = WEAPONS_DATA;

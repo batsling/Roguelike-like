@@ -1,7 +1,7 @@
 // Auto-generated from Roguelikes.xlsx - Characters
 // Characters with dice-based combat
 
-var CHARACTERS_DATA = {
+const CHARACTERS_DATA = {
   "rodney": {
     "name": "Rodney",
     "game": "Rogue",
@@ -412,3 +412,6 @@ var CHARACTERS_DATA = {
     ]
   }
 };
+
+export { CHARACTERS_DATA };
+if (typeof window !== 'undefined') window.CHARACTERS_DATA = CHARACTERS_DATA;

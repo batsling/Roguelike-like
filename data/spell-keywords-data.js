@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx - Spell Keywords
 
-var SPELL_KEYWORDS_DATA = {
+const SPELL_KEYWORDS_DATA = {
   "singlecast": {
     "name": "SingleCast",
     "description": "Only usable once per combat"
@@ -22,3 +22,6 @@ var SPELL_KEYWORDS_DATA = {
     "description": "Effect is delayed until the start of the next turn"
   }
 };
+
+export { SPELL_KEYWORDS_DATA };
+if (typeof window !== 'undefined') window.SPELL_KEYWORDS_DATA = SPELL_KEYWORDS_DATA;

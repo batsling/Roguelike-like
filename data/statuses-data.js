@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx - Combat Statuses
 
-var STATUSES_DATA = {
+const STATUSES_DATA = {
   "arcane": {
     "name": "Arcane",
     "description": "Raise or Lower the Magic damage dealth by this target by X",
@@ -662,3 +662,6 @@ var STATUSES_DATA = {
     "imageUrl": "images/statuses/Wet.png"
   }
 };
+
+export { STATUSES_DATA };
+if (typeof window !== 'undefined') window.STATUSES_DATA = STATUSES_DATA;
