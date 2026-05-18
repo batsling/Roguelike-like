@@ -1,21 +1,22 @@
 /**
  * Test harness.
  *
- * Phase 5a (partial ESM migration): the data layer is now real ES
- * modules. We import them via static `import` (each module's compat
- * shim writes window.X, so globalThis.X is set after import).
+ * The 20 data files in data/*.js are dual-mode: they use `const X = ...`
+ * + `if (typeof window !== 'undefined') window.X = X;` at the bottom so
+ * they work both as classic <script> tags (in index.html) AND as ESM
+ * side-effect imports (here in the test setup).
  *
- * The js/* files are still classic <script> bodies that use `var` at
- * file scope and assume `globalThis === window`. To run them under
+ * Phase 5a tried to convert the data layer to a single <script
+ * type="module"> entry but discovered that classic <script defer> tags
+ * race the deferred module's async fetch tree — defer scripts may
+ * execute BEFORE the module's data imports complete, leaving data
+ * globals undefined. Reverted. Full Phase 5 will need to convert the
+ * whole js/* tree to modules at once.
+ *
+ * The js/* files are still classic <script> bodies. To run them under
  * Vitest+jsdom we read each file and indirect-eval it in global scope,
- * which mirrors what a <script> tag does.
- *
- * `loadGameScripts({ include })` lets each test load only the subset
- * of *classic* JS files it needs. Data is already loaded by the static
- * imports below.
- *
- * Later ESM phases (5b, 5c, ...) will convert the js/* files too and
- * this whole eval-based loader will go away.
+ * mirroring what a <script> tag does. Tests can call
+ * loadGameScripts({ include: [...] }) to load whichever subset they need.
  */
 
 import { readFileSync } from 'node:fs';

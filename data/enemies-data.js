@@ -1480,5 +1480,4 @@ const ENEMIES_DATA = [
   }
 ];
 
-export { ENEMIES_DATA };
 if (typeof window !== 'undefined') window.ENEMIES_DATA = ENEMIES_DATA;

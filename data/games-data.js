@@ -7881,5 +7881,4 @@ const GAMES_DATA = [
   }
 ];
 
-export { GAMES_DATA };
 if (typeof window !== 'undefined') window.GAMES_DATA = GAMES_DATA;

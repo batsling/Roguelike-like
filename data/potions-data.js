@@ -93,5 +93,4 @@ const POTIONS_DATA = [
 ];
 
 
-export { POTIONS_DATA };
 if (typeof window !== 'undefined') window.POTIONS_DATA = POTIONS_DATA;

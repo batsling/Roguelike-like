@@ -663,5 +663,4 @@ const STATUSES_DATA = {
   }
 };
 
-export { STATUSES_DATA };
 if (typeof window !== 'undefined') window.STATUSES_DATA = STATUSES_DATA;

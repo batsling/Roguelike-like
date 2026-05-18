@@ -487,5 +487,4 @@ const SPELLS_DATA = [
   }
 ];
 
-export { SPELLS_DATA };
 if (typeof window !== 'undefined') window.SPELLS_DATA = SPELLS_DATA;

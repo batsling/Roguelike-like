@@ -75,5 +75,4 @@ const WEAPONS_DATA = [
   }
 ];
 
-export { WEAPONS_DATA };
 if (typeof window !== 'undefined') window.WEAPONS_DATA = WEAPONS_DATA;

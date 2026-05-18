@@ -148,5 +148,4 @@ const ADDONS_DATA = {
   }
 };
 
-export { ADDONS_DATA };
 if (typeof window !== 'undefined') window.ADDONS_DATA = ADDONS_DATA;

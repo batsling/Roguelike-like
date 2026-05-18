@@ -776,50 +776,68 @@
   <!-- Three.js for 3D dice rendering -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-  <!-- Phase 5a: data layer is now a single ES module entry. -->
-  <!-- The 20 data files in data/* export named ESM constants AND set window.X for compat. -->
-  <script type="module" src="js/esm-data-entry.js?v=1"></script>
+  <!-- Load embedded data first (no CORS issues) -->
+  <script src="data/characters-data.js?v=26"></script>
+  <script src="data/games-data.js?v=39"></script>
+  <script src="data/items-data.js?v=35"></script>
+  <script src="data/potions-data.js?v=2"></script>
+  <script src="data/scrolls-data.js?v=2"></script>
+  <script src="data/enemies-data.js?v=26"></script>
+  <script src="data/events-data.js?v=25"></script>
+  <script src="data/curses-data.js?v=23"></script>
+  <script src="data/allies-data.js?v=2"></script>
+  <script src="data/weapons-data.js?v=5"></script>
+  <script src="data/cards-data.js?v=24"></script>
+  <script src="data/dice-data.js?v=3"></script>
+  <script src="data/statuses-data.js?v=5"></script>
+  <script src="data/moves-data.js?v=3"></script>
+  <script src="data/addons-data.js?v=5"></script>
+  <script src="data/spells-data.js?v=4"></script>
+  <script src="data/spell-keywords-data.js?v=2"></script>
+  <script src="data/game-statuses-data.js?v=2"></script>
+  <script src="data/fish-data.js?v=1"></script>
+  <script src="data/bingo-data.js?v=1"></script>
 
   <!-- Load utilities first (constants, storage, state management) -->
-  <script defer src="js/constants.js?v=3"></script>
-  <script defer src="js/storage.js?v=1"></script>
-  <script defer src="js/state-mutator.js?v=3"></script>
-  <script defer src="js/curse-manager.js?v=3"></script>
-  <script defer src="js/locations.js?v=1"></script>
+  <script src="js/constants.js?v=3"></script>
+  <script src="js/storage.js?v=1"></script>
+  <script src="js/state-mutator.js?v=3"></script>
+  <script src="js/curse-manager.js?v=3"></script>
+  <script src="js/locations.js?v=1"></script>
 
   <!-- Load game logic -->
-  <script defer src="js/data.js?v=26"></script>
-  <script defer src="js/loot.js?v=4"></script>
-  <script defer src="js/scrolls-potions.js?v=1"></script>
-  <script defer src="js/items.js?v=37"></script>
-  <script defer src="js/ui.js?v=41"></script>
-  <script defer src="js/combat-effects.js?v=1"></script>
-  <script defer src="js/dice-system.js?v=1"></script>
-  <script defer src="js/dice-renderer.js?v=4"></script>
-  <script defer src="js/combat-state.js?v=1"></script>
-  <script defer src="js/combat-engine.js?v=40"></script>
-  <script defer src="js/combat-ui.js?v=31"></script>
-  <script defer src="js/combat.js?v=23"></script>
-  <script defer src="js/combat-flow.js?v=2"></script>
-  <script defer src="js/events.js?v=20"></script>
-  <script defer src="js/gameplay.js?v=29"></script>
-  <script defer src="js/bfs-cache.js?v=2"></script>
-  <script defer src="js/map.js?v=19"></script>
-  <script defer src="js/modals.js?v=3"></script>
-  <script defer src="js/shop.js?v=12"></script>
-  <script defer src="js/cards.js?v=14"></script>
-  <script defer src="js/character-select.js?v=1"></script>
-  <script defer src="js/verification.js?v=11"></script>
-  <script defer src="js/collection.js?v=2"></script>
-  <script defer src="js/escape.js?v=16"></script>
-  <script defer src="js/exploration.js?v=2"></script>
-  <script defer src="js/bingo.js?v=3"></script>
-  <script defer src="js/dev-tools.js?v=2"></script>
-  <script defer src="js/map-render.js?v=1"></script>
-  <script defer src="js/character-start.js?v=1"></script>
-  <script defer src="js/allies.js?v=1"></script>
-  <script defer src="js/run-modals.js?v=2"></script>
-  <script defer src="js/main.js?v=79"></script>
-  <script defer src="js/event-engine.js?v=5"></script>
+  <script src="js/data.js?v=26"></script>
+  <script src="js/loot.js?v=4"></script>
+  <script src="js/scrolls-potions.js?v=1"></script>
+  <script src="js/items.js?v=37"></script>
+  <script src="js/ui.js?v=41"></script>
+  <script src="js/combat-effects.js?v=1"></script>
+  <script src="js/dice-system.js?v=1"></script>
+  <script src="js/dice-renderer.js?v=4"></script>
+  <script src="js/combat-state.js?v=1"></script>
+  <script src="js/combat-engine.js?v=40"></script>
+  <script src="js/combat-ui.js?v=31"></script>
+  <script src="js/combat.js?v=23"></script>
+  <script src="js/combat-flow.js?v=2"></script>
+  <script src="js/events.js?v=20"></script>
+  <script src="js/gameplay.js?v=29"></script>
+  <script src="js/bfs-cache.js?v=2"></script>
+  <script src="js/map.js?v=19"></script>
+  <script src="js/modals.js?v=3"></script>
+  <script src="js/shop.js?v=12"></script>
+  <script src="js/cards.js?v=14"></script>
+  <script src="js/character-select.js?v=1"></script>
+  <script src="js/verification.js?v=11"></script>
+  <script src="js/collection.js?v=2"></script>
+  <script src="js/escape.js?v=16"></script>
+  <script src="js/exploration.js?v=2"></script>
+  <script src="js/bingo.js?v=3"></script>
+  <script src="js/dev-tools.js?v=2"></script>
+  <script src="js/map-render.js?v=1"></script>
+  <script src="js/character-start.js?v=1"></script>
+  <script src="js/allies.js?v=1"></script>
+  <script src="js/run-modals.js?v=2"></script>
+  <script src="js/main.js?v=79"></script>
+  <script src="js/event-engine.js?v=5"></script>
 </body>
 </html>

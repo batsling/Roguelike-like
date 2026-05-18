@@ -23,5 +23,4 @@ const SPELL_KEYWORDS_DATA = {
   }
 };
 
-export { SPELL_KEYWORDS_DATA };
 if (typeof window !== 'undefined') window.SPELL_KEYWORDS_DATA = SPELL_KEYWORDS_DATA;

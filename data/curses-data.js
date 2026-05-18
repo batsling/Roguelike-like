@@ -483,5 +483,4 @@ const CURSES_DATA = [
   }
 ];
 
-export { CURSES_DATA };
 if (typeof window !== 'undefined') window.CURSES_DATA = CURSES_DATA;

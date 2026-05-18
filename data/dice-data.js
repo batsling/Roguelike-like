@@ -1534,5 +1534,4 @@ const DICE_DATA = [
   }
 ];
 
-export { DICE_DATA };
 if (typeof window !== 'undefined') window.DICE_DATA = DICE_DATA;

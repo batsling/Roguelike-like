@@ -345,5 +345,4 @@ const FISH_DATA = [
   }
 ];
 
-export { FISH_DATA };
 if (typeof window !== 'undefined') window.FISH_DATA = FISH_DATA;

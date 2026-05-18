@@ -143,5 +143,4 @@ const MOVES_DATA = {
   }
 };
 
-export { MOVES_DATA };
 if (typeof window !== 'undefined') window.MOVES_DATA = MOVES_DATA;

@@ -413,5 +413,4 @@ const CHARACTERS_DATA = {
   }
 };
 
-export { CHARACTERS_DATA };
 if (typeof window !== 'undefined') window.CHARACTERS_DATA = CHARACTERS_DATA;

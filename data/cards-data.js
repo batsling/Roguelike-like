@@ -3578,5 +3578,4 @@ const CARDS_DATA = [
   }
 ];
 
-export { CARDS_DATA };
 if (typeof window !== 'undefined') window.CARDS_DATA = CARDS_DATA;

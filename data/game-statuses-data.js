@@ -54,5 +54,4 @@ const GAME_STATUSES_DATA = {
   }
 };
 
-export { GAME_STATUSES_DATA };
 if (typeof window !== 'undefined') window.GAME_STATUSES_DATA = GAME_STATUSES_DATA;

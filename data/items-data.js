@@ -1319,5 +1319,4 @@ const ITEMS_DATA = [
   }
 ];
 
-export { ITEMS_DATA };
 if (typeof window !== 'undefined') window.ITEMS_DATA = ITEMS_DATA;

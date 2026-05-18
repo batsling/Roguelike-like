@@ -146,5 +146,4 @@ const SCROLLS_DATA = [
 ];
 
 
-export { SCROLLS_DATA };
 if (typeof window !== 'undefined') window.SCROLLS_DATA = SCROLLS_DATA;

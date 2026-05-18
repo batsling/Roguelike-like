@@ -220,5 +220,4 @@ const ALLIES_DATA = [
   }
 ];
 
-export { ALLIES_DATA };
 if (typeof window !== 'undefined') window.ALLIES_DATA = ALLIES_DATA;

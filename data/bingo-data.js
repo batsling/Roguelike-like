@@ -167,5 +167,4 @@ const BINGO_GOALS_DATA = [
   }
 ];
 
-export { BINGO_GOALS_DATA };
 if (typeof window !== 'undefined') window.BINGO_GOALS_DATA = BINGO_GOALS_DATA;
