@@ -742,7 +742,8 @@ window.updateLootDisplay = updateLootDisplay;
 window.showLootTooltip = showLootTooltip;
 window.moveLootTooltip = moveLootTooltip;
 window.hideLootTooltip = hideLootTooltip;
-window._lootTabBtn = _lootTabBtn;
+// _lootTabBtn was a dead reference in the original code — no such function
+// exists. Removed so the script doesn't ReferenceError mid-evaluation.
 window._getScrollsLootHTML = _getScrollsLootHTML;
 window._getPotionsLootHTML = _getPotionsLootHTML;
 

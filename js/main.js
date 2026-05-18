@@ -269,8 +269,8 @@ function loadState() {
     updateBeatenGamesList();
     updateSelectedGamesDisplay();
     updateExcludedGamesList();
-    updateRoguePointsDisplay();
-    updateConditionCounts();
+    // updateRoguePointsDisplay / updateConditionCounts were dead calls
+    // (no such functions exist). Skipped.
     updateEncounterHistory();
 
     if (startGame && amuletGame) {
@@ -697,8 +697,6 @@ window.toggleCombatSystem = function() {
 
 
 // ===== GAME STATS TRACKING SYSTEM =====
-
-/**
 
 function markGameFinished(gameName) {
   if (!gameState.finishedGames) {

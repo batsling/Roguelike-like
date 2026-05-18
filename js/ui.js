@@ -1321,8 +1321,9 @@ window.updateVerificationCursesDisplay = updateVerificationCursesDisplay;
 window.updateExcludedGamesList = updateExcludedGamesList;
 window.updateBeatenGamesList = updateBeatenGamesList;
 window.updateSelectedGamesDisplay = updateSelectedGamesDisplay;
-window.updateRoguePointsDisplay = updateRoguePointsDisplay;
-window.updateConditionCounts = updateConditionCounts;
+// updateRoguePointsDisplay and updateConditionCounts were dead references
+// in the original code — no such functions exist. Removed so this script
+// doesn't ReferenceError mid-evaluation.
 window.updateEncounterHistory = updateEncounterHistory;
 window.updateGameStats = updateGameStats;
 window.updateSaveList = updateSaveList;

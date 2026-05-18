@@ -4008,7 +4008,10 @@ function endCombat(victory) {
 
 // ============== CARD COMBAT SYSTEM ==============
 
-const HAND_SIZE_LIMIT = 10;
+// HAND_SIZE_LIMIT is declared in js/cards.js. cards.js loads after this
+// file, but the references below live inside function bodies that only
+// run during combat (well after cards.js has parsed), so the
+// script-scope lexical binding from cards.js is resolvable then.
 const BASE_DRAW_PER_TURN = 5;
 
 /**
