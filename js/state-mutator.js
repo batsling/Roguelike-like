@@ -1,9 +1,65 @@
 /**
  * State Mutator - Centralized state management utilities
  * Handles all game state mutations with consistent UI updates and notifications
+ *
+ * Phase 1 addition: pub/sub. Mutators call `_notify(tags)` at the end of
+ * each successful mutation. Subscribers registered via `subscribe(fn)`
+ * receive a Set of tags accumulated across all synchronous mutations in a
+ * batch (flushed in a queued microtask). This lets `ui.js` replace
+ * scattered explicit `updateTopBar()` calls with a single subscriber.
+ *
+ * The existing inline `if (typeof updateTopBar === 'function') updateTopBar()`
+ * calls in each mutator stay for now — Phase 1 intentionally double-renders
+ * to keep behavior identical. Phase 3/4 deletes them.
  */
 
 const StateMutator = {
+  // --- subscription / notify ---
+
+  _subscribers: new Set(),
+  _pendingTags: null,
+
+  /**
+   * Register a subscriber to be notified after state mutations.
+   * @param {Function} fn - Called with a Set<string> of tags. Should be cheap.
+   * @returns {Function} unsubscribe function
+   */
+  subscribe(fn) {
+    this._subscribers.add(fn);
+    return () => this._subscribers.delete(fn);
+  },
+
+  /**
+   * Internal: schedule a notification with the given tag(s).
+   * Multiple calls within the same microtask are coalesced into one
+   * subscriber invocation with the union of all tags.
+   * @param {string|string[]|null} tags
+   */
+  _notify(tags) {
+    if (!this._pendingTags) {
+      this._pendingTags = new Set();
+      const self = this;
+      queueMicrotask(() => {
+        const tagsToFlush = self._pendingTags;
+        self._pendingTags = null;
+        for (const fn of self._subscribers) {
+          try {
+            fn(tagsToFlush);
+          } catch (err) {
+            console.error('StateMutator subscriber error:', err);
+          }
+        }
+      });
+    }
+    if (Array.isArray(tags)) {
+      tags.forEach((t) => this._pendingTags.add(t));
+    } else if (tags) {
+      this._pendingTags.add(tags);
+    }
+  },
+
+  // --- field mutators (existing) ---
+
   /**
    * Modify player health with bounds checking and UI updates
    * @param {number} delta - Amount to change health by (positive or negative)
@@ -67,6 +123,8 @@ const StateMutator = {
       }
     }
 
+    if (oldHealth !== health) this._notify('health');
+
     return { oldHealth, newHealth: health, changed: oldHealth !== health };
   },
 
@@ -102,6 +160,8 @@ const StateMutator = {
       }
     }
 
+    if (oldMaxHealth !== maxHealth) this._notify(['maxHealth', 'health']);
+
     return { oldMaxHealth, newMaxHealth: maxHealth, changed: oldMaxHealth !== maxHealth };
   },
 
@@ -130,6 +190,8 @@ const StateMutator = {
       }
     }
 
+    if (oldMaxEnergy !== newMaxEnergy) this._notify('maxEnergy');
+
     return { oldMaxEnergy, newMaxEnergy, changed: oldMaxEnergy !== newMaxEnergy };
   },
 
@@ -157,6 +219,8 @@ const StateMutator = {
         createNotification(message, COLORS.INFO, '🔍');
       }
     }
+
+    if (oldValue !== discovery) this._notify('discovery');
 
     return { oldValue, newValue: discovery, changed: oldValue !== discovery };
   },
@@ -188,6 +252,8 @@ const StateMutator = {
         createNotification(message, color, icon);
       }
     }
+
+    if (oldGold !== gold) this._notify('gold');
 
     return { oldGold, newGold: gold, changed: oldGold !== gold };
   },
@@ -235,6 +301,8 @@ const StateMutator = {
       }
     }
 
+    if (oldValue !== newValue) this._notify(['stats', `stat:${statName}`]);
+
     return { oldValue, newValue, changed: oldValue !== newValue };
   },
 
@@ -274,6 +342,8 @@ const StateMutator = {
       }
     }
 
+    if (oldValue !== newValue) this._notify(['abilities', `ability:${abilityName}`]);
+
     return { oldValue, newValue, changed: oldValue !== newValue };
   },
 
@@ -303,6 +373,8 @@ const StateMutator = {
         createNotification(`Acquired: ${itemName}`, COLORS.SUCCESS, '📦');
       }
     }
+
+    this._notify('inventory');
 
     return true;
   },
@@ -353,6 +425,8 @@ const StateMutator = {
         createNotification(`Used: ${itemName}`, COLORS.WARNING, '✨');
       }
     }
+
+    this._notify('inventory');
 
     return true;
   },
@@ -426,6 +500,8 @@ const StateMutator = {
       }
     }
 
+    this._notify('curses');
+
     return true;
   },
 
@@ -476,6 +552,8 @@ const StateMutator = {
     if (typeof triggerOnCurseRemoved === 'function') {
       triggerOnCurseRemoved();
     }
+
+    this._notify('curses');
 
     return true;
   }
