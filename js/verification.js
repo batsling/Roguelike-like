@@ -765,9 +765,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       const rated8Plus = affectionRadio && affectionRadio.value === 'yes';
       if (rated8Plus) {
         // Gain 1 health per curse
-        health = Math.min(maxHealth, health + affectionCurses.length);
-        gameState.health = health;
-        updateTopBar?.();
+        StateMutator.modifyHealth(affectionCurses.length);
         // Mark curses for duration increment (rated 8+)
         affectionCurses.forEach(curse => {
           gameState.restrictionCursesProcessed.push(curse.id);
@@ -812,11 +810,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       const precisionRadio = document.querySelector('input[name="precision-check"]:checked');
       const perfectGame = precisionRadio && precisionRadio.value === 'yes';
       if (perfectGame) {
-        dash = Math.max(0, dash + 1);
-        gameState.dash = dash;
-        if (typeof updateTopBar === 'function') {
-          updateTopBar();
-        }
+        StateMutator.modifyAbility('dash', 1);
         precisionLandingActivated = true;
       }
     }
@@ -847,8 +841,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         // Secret Technique Instructions: +1 Dash per copy
         const secretTechniqueCount = hastePerfectItems.filter(i => i.name === 'Secret Technique Instructions').length;
         if (secretTechniqueCount > 0) {
-          dash = Math.max(0, dash + secretTechniqueCount);
-          gameState.dash = dash;
+          StateMutator.modifyAbility('dash', secretTechniqueCount);
           hastePerfectRewards.push(`+${secretTechniqueCount} Dash`);
         }
 
@@ -856,8 +849,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         const healthInsuranceCount = hastePerfectItems.filter(i => i.name === 'Performance Based Health Insurance').length;
         if (healthInsuranceCount > 0) {
           const healthGain = 5 * healthInsuranceCount;
-          health = Math.min(maxHealth, health + healthGain);
-          gameState.health = health;
+          StateMutator.modifyHealth(healthGain);
           hastePerfectRewards.push(`+${healthGain} Health`);
         }
 
@@ -865,8 +857,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         const steadyInvestmentCount = hastePerfectItems.filter(i => i.name === 'Steady Investment').length;
         if (steadyInvestmentCount > 0) {
           const goldGain = 5 * steadyInvestmentCount;
-          gold += goldGain;
-          gameState.gold = gold;
+          StateMutator.modifyGold(goldGain);
           hastePerfectRewards.push(`+${goldGain} Gold`);
         }
 
@@ -986,14 +977,10 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         const conditionMet = boonRadio && boonRadio.value === 'yes';
         if (conditionMet) {
           // Grant +1 to all combat roll bonus stats (Str/Dex/Int/Cha, not Attack)
-          strength += 1;
-          dexterity += 1;
-          intelligence += 1;
-          charisma += 1;
-          gameState.strength = strength;
-          gameState.dexterity = dexterity;
-          gameState.intelligence = intelligence;
-          gameState.charisma = charisma;
+          StateMutator.modifyStat('strength', 1);
+          StateMutator.modifyStat('dexterity', 1);
+          StateMutator.modifyStat('intelligence', 1);
+          StateMutator.modifyStat('charisma', 1);
 
 
           // Guarantee at least 1 game choice will have the boon's status applied
@@ -1104,9 +1091,7 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         totalDamage = calculateDamageReduction(totalDamage);
       }
 
-      health = Math.max(0, health - totalDamage);
-      gameState.health = health;
-      updateTopBar?.();
+      StateMutator.modifyHealth(-totalDamage);
 
       // Check for death
       if (health <= 0) {
@@ -1264,12 +1249,7 @@ function showPerfectGameVerificationModal(onComplete) {
   // Handle Yes button
   document.getElementById('perfect-yes-btn').onclick = () => {
     // Grant +1 Dash
-    dash += 1;
-    gameState.dash = dash;
-    if (typeof updateTopBar === 'function') {
-      updateTopBar();
-    }
-
+    StateMutator.modifyAbility('dash', 1);
 
     // Show notification
     setTimeout(() => {

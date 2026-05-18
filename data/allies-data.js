@@ -1,7 +1,7 @@
 // Auto-generated from Roguelikes.xlsx - Allies
 // Allies that provide dice in combat
 
-var ALLIES_DATA = [
+const ALLIES_DATA = [
   {
     "name": "Clumsy",
     "type": "Hero",
@@ -219,3 +219,5 @@ var ALLIES_DATA = [
     "imageUrl": "images/allies/Mystic.png"
   }
 ];
+
+if (typeof window !== 'undefined') window.ALLIES_DATA = ALLIES_DATA;

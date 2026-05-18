@@ -1,7 +1,7 @@
 // Auto-generated from Roguelikes.xlsx - Cards
 // Card deck system: players build a deck from this pool
 
-var CARDS_DATA = [
+const CARDS_DATA = [
   {
     "name": "Accuracy",
     "rarity": "Uncommon",
@@ -825,7 +825,7 @@ var CARDS_DATA = [
     ]
   },
   {
-    "name": "Clumsy",
+    "name": "Clumsy Die",
     "rarity": "Common",
     "cost": 1,
     "type": "Dice",
@@ -834,7 +834,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/cards/Clumsy.png",
+    "imageUrl": "images/heroes/Clumsy.png",
     "game": "Slice & Dice ",
     "tags": [
       "hero",
@@ -3577,3 +3577,5 @@ var CARDS_DATA = [
     ]
   }
 ];
+
+if (typeof window !== 'undefined') window.CARDS_DATA = CARDS_DATA;

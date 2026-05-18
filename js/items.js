@@ -257,23 +257,20 @@ const ITEM_EFFECTS = {
 
   "Ballistic Boots": {
     onAcquire: () => {
-      dash += 1;
-      gameState.dash = dash;
+      StateMutator.modifyAbility('dash', 1);
     }
   },
 
   "More Options": {
     onAcquire: () => {
-      fov += 1;
-      gameState.fov = fov;
+      StateMutator.modifyAbility('fov', 1);
       // Extra option in space choice is handled in game logic
     }
   },
 
   "Lucky Toe": {
     onAcquire: () => {
-      luck += 1;
-      gameState.luck = luck;
+      StateMutator.modifyStat('luck', 1);
     }
   },
 
@@ -330,16 +327,13 @@ const ITEM_EFFECTS = {
   "Glass Eye": {
     onAcquire: () => {
       StateMutator.modifyStat('strength', 2);
-      luck += 1;
-      gameState.luck = luck;
+      StateMutator.modifyStat('luck', 1);
     }
   },
 
   "Keeper's Sack": {
     onAcquire: () => {
-      gold = (gold || 0) + 5;
-      if (typeof gameState !== 'undefined') gameState.gold = gold;
-      if (typeof updateTopBar === 'function') updateTopBar();
+      StateMutator.modifyGold(5);
       if (typeof createNotification === 'function') createNotification("Keeper's Sack: +5 Gold!", '#f1c40f', '💰');
     }
   },
@@ -685,14 +679,7 @@ const ITEM_EFFECTS = {
         // Find and remove this item from inventory
         const itemIndex = inventory.findIndex(item => item.name === 'Unstable Genome');
         if (itemIndex !== -1) {
-          // Remove the item
-          if (inventory[itemIndex].quantity && inventory[itemIndex].quantity > 1) {
-            inventory[itemIndex].quantity--;
-          } else {
-            inventory.splice(itemIndex, 1);
-          }
-          gameState.inventory = [...inventory];
-
+          StateMutator.removeItem(itemIndex);
 
           // Set flag to show large chest in the normal reward flow
           gameState.unstableGenomeTriggered = true;
@@ -1058,8 +1045,7 @@ const ITEM_EFFECTS = {
   "Old Coin": {
     onAcquire: () => {
       const gain = 100;
-      window.gold = (window.gold || 0) + gain;
-      if (typeof gameState !== 'undefined') gameState.gold = window.gold;
+      StateMutator.modifyGold(gain);
       if (typeof saveCurrentGame === 'function') saveCurrentGame();
       createNotification(`Old Coin: +${gain} Gold!`, COLORS.SUCCESS, '🪙');
     }
@@ -1068,12 +1054,8 @@ const ITEM_EFFECTS = {
   "Mango": {
     onAcquire: () => {
       const gain = 14;
-      window.maxHealth = (window.maxHealth || 0) + gain;
-      window.health    = Math.min((window.health || 0) + gain, window.maxHealth);
-      if (typeof gameState !== 'undefined') {
-        gameState.maxHealth = window.maxHealth;
-        gameState.health    = window.health;
-      }
+      StateMutator.modifyMaxHealth(gain, { onlyMax: true });
+      StateMutator.modifyHealth(gain);
       if (typeof saveCurrentGame === 'function') saveCurrentGame();
       createNotification(`Mango: +${gain} Max Health and +${gain} Health!`, COLORS.SUCCESS, '🥭');
     }
@@ -1343,30 +1325,11 @@ function downgradePassiveItem(item, downgradeAmount = -1) {
 
     // Apply the stat change to the game state
     if (stat === 'maxHealth') {
-      // Handle max health specially
-      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyMaxHealth === 'function') {
-        StateMutator.modifyMaxHealth(change);
-      } else {
-        maxHealth += change;
-        gameState.maxHealth = maxHealth;
-        health = Math.min(health, maxHealth);
-        gameState.health = health;
-      }
+      StateMutator.modifyMaxHealth(change);
     } else if (stat === 'maxEnergy') {
-      // Handle max energy
-      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyMaxEnergy === 'function') {
-        StateMutator.modifyMaxEnergy(change);
-      } else {
-        gameState.maxEnergy = (gameState.maxEnergy || 2) + change;
-      }
+      StateMutator.modifyMaxEnergy(change);
     } else if (stat === 'discovery') {
-      // Handle discovery
-      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyDiscovery === 'function') {
-        StateMutator.modifyDiscovery(change);
-      } else {
-        discovery += change;
-        gameState.discovery = discovery;
-      }
+      StateMutator.modifyDiscovery(change);
     } else {
       updateStat(stat, change);
     }
@@ -1431,27 +1394,14 @@ function acquireItem(item) {
   let wasStacked = false;
 
   if (isWeapon) {
-    // Each copy is independent — always add a new inventory entry and a new deck card
+    // Each copy is independent — always add a new inventory entry.
+    // The matching weapon CARD is added to the deck by cards.js's wrapper
+    // around window.acquireItem (addWeaponCardToDeck). Adding it here too
+    // would duplicate the card in the deck.
     itemCopy.quantity = 1;
     initializeWeaponBonuses(itemCopy);
-    inventory.push(itemCopy);
+    StateMutator.addItem(itemCopy);
     targetItemIndex = inventory.length - 1;
-    if (typeof CARDS_DATA !== 'undefined') {
-      const weaponCard = CARDS_DATA.find(c => c.name === itemCopy.name && c.tags && c.tags.includes('weapon'));
-      if (weaponCard) {
-        const addFn = window.addCardToDeck || (typeof addCardToDeck !== 'undefined' ? addCardToDeck : null);
-        if (addFn) {
-          addFn(weaponCard);
-        } else if (typeof gameState !== 'undefined') {
-          if (!gameState.deck) gameState.deck = [];
-          gameState.deck.push({ ...weaponCard, upgraded: false });
-          if (typeof saveCurrentGame === 'function') saveCurrentGame();
-        }
-        if (typeof createNotification === 'function') {
-          createNotification(`${weaponCard.name} card added to deck!`, '#4CAF50', '🃏');
-        }
-      }
-    }
   } else {
     // Check if item already exists in inventory (for stacking non-weapons)
     // For items with stat modifiers (upgraded/downgraded), only stack if modifiers match exactly
@@ -1502,7 +1452,7 @@ function acquireItem(item) {
     } else {
       // New item, add to inventory with quantity of 1
       itemCopy.quantity = 1;
-      inventory.push(itemCopy);
+      StateMutator.addItem(itemCopy);
       targetItemIndex = inventory.length - 1;
 
 
@@ -1547,7 +1497,7 @@ function acquireItem(item) {
         };
 
         // Add the split item to inventory
-        inventory.push(targetItem);
+        StateMutator.addItem(targetItem);
       } else {
         // Item has quantity 1, downgrade it directly
         targetItem = existingItem;
@@ -1669,12 +1619,7 @@ function useItem(itemIndex) {
       gameState.inventory = [...inventory];
     } else {
       // Remove item from inventory when uses reach 0 (handle quantity)
-      if (item.quantity && item.quantity > 1) {
-        item.quantity--;
-      } else {
-        inventory.splice(itemIndex, 1);
-      }
-      gameState.inventory = [...inventory];
+      StateMutator.removeItem(itemIndex);
     }
 
     // Update UI
@@ -2427,7 +2372,7 @@ function upgradeOrDowngradePassive(isUpgrade) {
     };
 
     // Add the split item to inventory
-    inventory.push(itemToModify);
+    StateMutator.addItem(itemToModify);
   }
 
   // Initialize modifiers if not present
@@ -2468,30 +2413,11 @@ function upgradeOrDowngradePassive(isUpgrade) {
 
     // Apply the stat change to the game state
     if (stat === 'maxHealth') {
-      // Handle max health specially
-      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyMaxHealth === 'function') {
-        StateMutator.modifyMaxHealth(change);
-      } else {
-        maxHealth += change;
-        gameState.maxHealth = maxHealth;
-        health = Math.min(health, maxHealth);
-        gameState.health = health;
-      }
+      StateMutator.modifyMaxHealth(change);
     } else if (stat === 'maxEnergy') {
-      // Handle max energy
-      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyMaxEnergy === 'function') {
-        StateMutator.modifyMaxEnergy(change);
-      } else {
-        gameState.maxEnergy = (gameState.maxEnergy || 2) + change;
-      }
+      StateMutator.modifyMaxEnergy(change);
     } else if (stat === 'discovery') {
-      // Handle discovery
-      if (typeof StateMutator !== 'undefined' && typeof StateMutator.modifyDiscovery === 'function') {
-        StateMutator.modifyDiscovery(change);
-      } else {
-        discovery += change;
-        gameState.discovery = discovery;
-      }
+      StateMutator.modifyDiscovery(change);
     } else {
       updateStat(stat, change);
     }

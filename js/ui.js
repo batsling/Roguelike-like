@@ -1321,9 +1321,49 @@ window.updateVerificationCursesDisplay = updateVerificationCursesDisplay;
 window.updateExcludedGamesList = updateExcludedGamesList;
 window.updateBeatenGamesList = updateBeatenGamesList;
 window.updateSelectedGamesDisplay = updateSelectedGamesDisplay;
-window.updateRoguePointsDisplay = updateRoguePointsDisplay;
-window.updateConditionCounts = updateConditionCounts;
+// updateRoguePointsDisplay and updateConditionCounts were dead references
+// in the original code — no such functions exist. Removed so this script
+// doesn't ReferenceError mid-evaluation.
 window.updateEncounterHistory = updateEncounterHistory;
 window.updateGameStats = updateGameStats;
 window.updateSaveList = updateSaveList;
 window.populateEscapeGameDropdown = populateEscapeGameDropdown;
+
+// Phase 1 (refactor): subscribe to StateMutator notifications so future
+// callers can mutate state without remembering which UI functions to call.
+// Existing explicit updateTopBar() / updateInventory() calls scattered
+// across the codebase remain in place — they double-render with this
+// subscriber for now, which is harmless and lets us migrate call sites
+// incrementally. Phase 3/4 deletes the explicit calls.
+if (typeof window !== 'undefined' && window.StateMutator) {
+  window.StateMutator.subscribe((tags) => {
+    const t = tags || new Set();
+    if (
+      t.has('health') ||
+      t.has('maxHealth') ||
+      t.has('gold') ||
+      t.has('maxEnergy') ||
+      t.has('abilities') ||
+      t.has('stats') ||
+      t.has('curses')
+    ) {
+      if (typeof updateTopBar === 'function') updateTopBar();
+    }
+    if (
+      t.has('stats') ||
+      t.has('health') ||
+      t.has('maxHealth') ||
+      t.has('gold') ||
+      t.has('abilities') ||
+      t.has('discovery')
+    ) {
+      if (typeof updateGameStats === 'function') updateGameStats();
+    }
+    if (t.has('inventory')) {
+      if (typeof updateInventory === 'function') updateInventory();
+    }
+    if (t.has('curses')) {
+      if (typeof updateCursesDisplay === 'function') updateCursesDisplay();
+    }
+  });
+}

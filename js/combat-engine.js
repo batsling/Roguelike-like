@@ -312,7 +312,7 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
       addLog('Leech Brood: +1 Leeches on all enemies', 'warning');
       if (combatState.player.health > combatState.player.maxHealth * 0.5) {
         combatState.player.health = Math.max(1, combatState.player.health - 10);
-        window.health = combatState.player.health;
+        StateMutator.setHealth(combatState.player.health);
         addLog('Leech Brood: you were above 50% health — lost 10 HP!', 'danger');
       }
     }
@@ -2234,7 +2234,7 @@ function dealDamage(target, damage, addons = []) {
 
   // Update global health if player
   if (target === combatState.player) {
-    window.health = target.health;
+    StateMutator.setHealth(target.health);
   }
 }
 
@@ -2342,7 +2342,7 @@ function healTarget(target, amount) {
   addLog(`${target.name || 'Player'} healed ${healed}`, 'success');
 
   if (target === combatState.player) {
-    window.health = target.health;
+    StateMutator.setHealth(target.health);
   }
 }
 
@@ -2365,7 +2365,7 @@ function loseHealth(amount) {
   }
   if (hp <= 0) return;
   player.health -= hp;
-  window.health = player.health;
+  StateMutator.setHealth(player.health);
   combatState._playerHealthLossTimes = (combatState._playerHealthLossTimes || 0) + 1;
   addLog(`Lost ${hp} Health`, 'danger');
   // Rupture: gain power whenever health is lost from a card
@@ -2677,7 +2677,7 @@ function executeWhenDefeatedClause(enemy, clause) {
     addLog(`Strength Save DC${dc}: rolled ${roll} + ${strMod} mod = ${total}`, 'info');
     if (total < dc) {
       combatState.player.health -= dmg;
-      window.health = combatState.player.health;
+      StateMutator.setHealth(combatState.player.health);
       addLog(`Failed save! Took ${dmg} damage.`, 'danger');
     } else {
       addLog('Passed Strength Save!', 'success');
@@ -2715,9 +2715,7 @@ function onEnemyDefeated(enemy) {
   if (vampireCount > 0 && Math.random() < 0.5) {
     const healAmt = 3 * vampireCount;
     if (typeof health !== 'undefined' && typeof maxHealth !== 'undefined') {
-      health = Math.min(maxHealth, health + healAmt);
-      if (typeof gameState !== 'undefined') gameState.health = health;
-      if (typeof updateTopBar === 'function') updateTopBar();
+      StateMutator.modifyHealth(healAmt);
     }
     addLog(`Charm of the Vampire: +${healAmt} Health!`, 'success');
     if (typeof createNotification === 'function') setTimeout(() => createNotification(`Charm of the Vampire: +${healAmt} HP!`, '#2ecc71', '🧛'), 100);
@@ -3189,7 +3187,7 @@ function endTurn() {
   });
   if (playerLeechHeal > 0) {
     combatState.player.health = Math.min(combatState.player.maxHealth, combatState.player.health + playerLeechHeal);
-    window.health = combatState.player.health;
+    StateMutator.setHealth(combatState.player.health);
     addLog(`Leeches drained ${playerLeechHeal} health → healed player`, 'success');
   }
 
@@ -3674,7 +3672,7 @@ function dealDamageToPlayer(damage, addons, enemy) {
     }
 
     player.health -= remaining;
-    window.health = player.health;
+    StateMutator.setHealth(player.health);
     combatState._playerHealthLossTimes = (combatState._playerHealthLossTimes || 0) + 1;
     addLog(`${enemy ? enemy.name : 'Unknown'} dealt ${remaining} damage!`, 'danger');
 
@@ -3801,7 +3799,7 @@ function processStatusEffects(target, timing) {
       target.health -= poisonDamage;
       addLog(`Poison dealt ${poisonDamage} damage to ${target.name || 'Player'}`, 'danger');
       if (target === combatState.player) {
-        window.health = target.health;
+        StateMutator.setHealth(target.health);
       }
     }
   }
@@ -4010,7 +4008,10 @@ function endCombat(victory) {
 
 // ============== CARD COMBAT SYSTEM ==============
 
-const HAND_SIZE_LIMIT = 10;
+// HAND_SIZE_LIMIT is declared in js/cards.js. cards.js loads after this
+// file, but the references below live inside function bodies that only
+// run during combat (well after cards.js has parsed), so the
+// script-scope lexical binding from cards.js is resolvable then.
 const BASE_DRAW_PER_TURN = 5;
 
 /**
@@ -4844,7 +4845,7 @@ function resolveCardEffect(card, target, options = {}) {
     if (healMatch) {
       const hp = parseInt(healMatch[1]);
       player.health = Math.min(player.maxHealth, player.health + hp);
-      window.health = player.health;
+      StateMutator.setHealth(player.health);
       addLog(`Healed ${hp} Health`, 'success');
       continue;
     }
@@ -4854,7 +4855,7 @@ function resolveCardEffect(card, target, options = {}) {
     if (selfDmgMatch) {
       const dmg = parseInt(selfDmgMatch[1]);
       player.health -= dmg;
-      window.health = player.health;
+      StateMutator.setHealth(player.health);
       addLog(`Took ${dmg} damage`, 'danger');
       continue;
     }
@@ -5564,8 +5565,8 @@ function resolveCardEffect(card, target, options = {}) {
           const potion = potions[Math.floor(Math.random() * potions.length)];
           if (typeof acquireItem === 'function') {
             acquireItem(potion);
-          } else if (typeof window.inventory !== 'undefined') {
-            window.inventory.push({ ...potion, quantity: 1 });
+          } else {
+            StateMutator.addItem({ ...potion, quantity: 1 });
           }
           addLog(`Alchemize: gained ${potion.name}!`, 'success');
         }

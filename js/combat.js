@@ -37,8 +37,7 @@ function applyCombatOutcome(success) {
     const goldMatch = currentEnemy.successReward.match(/(\d+) gold/i);
     if (goldMatch) {
       const goldAmount = parseInt(goldMatch[1]);
-      gold += goldAmount;
-      updateTopBar();
+      StateMutator.modifyGold(goldAmount);
     }
 
     // Check for chest rewards (items)
@@ -66,10 +65,7 @@ function applyCombatOutcome(success) {
         healthLoss = calculateDamageReduction(healthLoss);
       }
 
-      const oldHealth = health;
-      health = Math.max(0, health - healthLoss);
-      gameState.health = health;
-      updateHealthDisplay();
+      StateMutator.modifyHealth(-healthLoss);
     } else {
       console.warn('No health loss found in failure text:', failureText);
     }
@@ -77,8 +73,7 @@ function applyCombatOutcome(success) {
     const goldMatch = failureText.match(/lose (\d+) gold/i);
     if (goldMatch) {
       const goldLoss = parseInt(goldMatch[1]);
-      gold = Math.max(0, gold - goldLoss);
-      updateTopBar();
+      StateMutator.modifyGold(-goldLoss);
     }
 
     outcomeText = `Failed against ${currentEnemy.name}: ${failureText}`;
@@ -314,21 +309,10 @@ function getPlayerStatValue(statName) {
 }
 
 function applyStatBonus(statName, amount) {
-  switch(statName.toLowerCase()) {
-    case 'strength':
-      strength += amount;
-      break;
-    case 'dexterity':
-      dexterity += amount;
-      break;
-    case 'intelligence':
-      intelligence += amount;
-      break;
-    case 'charisma':
-      charisma += amount;
-      break;
+  const stat = statName.toLowerCase();
+  if (['strength', 'dexterity', 'intelligence', 'charisma', 'luck'].includes(stat)) {
+    StateMutator.modifyStat(stat, amount);
   }
-  updateGameStats();
 }
 
 // Export to global scope

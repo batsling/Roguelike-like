@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx - Curses
 
-var CURSES_DATA = [
+const CURSES_DATA = [
   {
     "name": "Curse of Devotion I",
     "stat": "Charisma",
@@ -482,3 +482,5 @@ var CURSES_DATA = [
     "automatic": "Manual"
   }
 ];
+
+if (typeof window !== 'undefined') window.CURSES_DATA = CURSES_DATA;

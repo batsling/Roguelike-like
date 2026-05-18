@@ -286,7 +286,7 @@ function grantBingoReward(bingoCount) {
       break;
     case 3:
       // Common items + 2 Reroll
-      reroll += 2;
+      StateMutator.modifyAbility('reroll', 2);
       bingoReroll += 2;
       bonusText += ', +2 Reroll';
       giveRandomItems('common', bingoCount, bonusText);
@@ -297,7 +297,7 @@ function grantBingoReward(bingoCount) {
       break;
     case 5:
       // Uncommon items + 1 Skip
-      skip += 1;
+      StateMutator.modifyAbility('skip', 1);
       bingoSkip += 1;
       bonusText += ', +1 Skip';
       giveRandomItems('uncommon', bingoCount, bonusText);
@@ -308,8 +308,8 @@ function grantBingoReward(bingoCount) {
       break;
     case 7:
       // Rare items + FoV & Discovery
-      fov += 1;
-      discovery += 1;
+      StateMutator.modifyAbility('fov', 1);
+      StateMutator.modifyAbility('discovery', 1);
       bingoFoV += 1;
       bingoDiscovery += 1;
       bonusText += ', +1 FoV & Discovery';
@@ -317,7 +317,7 @@ function grantBingoReward(bingoCount) {
       break;
     case 8:
       // Rare items + Dash
-      dash += 1;
+      StateMutator.modifyAbility('dash', 1);
       bingoDash += 1;
       bonusText += ', +1 Dash';
       giveRandomItems('rare', bingoCount, bonusText);
@@ -405,8 +405,7 @@ function giveRandomItems(rarity, bingoCount = 1, bonusText = '') {
   const skipBtn = document.getElementById('bingo-skip-reward-btn');
   if (skipBtn) {
     skipBtn.onclick = () => {
-      skip -= 1;
-      if (typeof gameState !== 'undefined') gameState.skip = skip;
+      StateMutator.modifyAbility('skip', -1);
       if (typeof saveCurrentGame === 'function') saveCurrentGame();
       closeGameModal();
       processingBingoReward = false;

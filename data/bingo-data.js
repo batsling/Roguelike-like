@@ -1,6 +1,6 @@
 // Auto-generated from Roguelikes.xlsx - Bingo Goals
 
-var BINGO_GOALS_DATA = [
+const BINGO_GOALS_DATA = [
   {
     "goal": "Beat a boss with 1 Health left",
     "difficulty": "easy"
@@ -166,3 +166,5 @@ var BINGO_GOALS_DATA = [
     "difficulty": "normal"
   }
 ];
+
+if (typeof window !== 'undefined') window.BINGO_GOALS_DATA = BINGO_GOALS_DATA;

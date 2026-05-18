@@ -68,12 +68,30 @@ A roguelike deckbuilder where players navigate a graph of over 600 real video ga
 - Save / load system with multiple save slots
 
 **Architecture:**
-The codebase is organized into focused, maintainable modules. See [js/README.md](js/README.md) for detailed module documentation.
-- **15+ JavaScript modules** with clear responsibilities
-- **combat-engine.js**: Card resolution, status effects, enemy AI
-- **combat-ui.js**: Fan-arc hand rendering, drag-to-play, targeting mode
-- **cards.js**: Deck management, card rewards, shop card services
-- **Better maintainability** for both humans and LLMs
+The codebase is organized into 38 focused JavaScript modules totalling ~42k lines. See [js/README.md](js/README.md) for the full module map.
+- **`main.js`** is now a thin orchestrator (1,214 lines) — initialization, save/load, and top-bar wiring
+- **`state-mutator.js`** owns all gameplay state changes with a pub/sub event bus that `ui.js` subscribes to
+- **`combat-engine.js`** / **`combat-ui.js`** / **`combat-flow.js`** split combat into rules, rendering, and orchestration
+- **`dev-tools.js`** is fully isolated — no other module imports from it
+- **Vitest** test suite (54 tests across 4 files) covers state mutation, data integrity, and combat helpers
+
+---
+
+## Running the Game
+
+**Play it (simplest):** Double-click `index.html`. It opens in your browser and works out of the box — no install, no server.
+
+**Run the tests:**
+```
+npm install     # one-time
+npm test
+```
+
+**Optional developer tooling** (Vite is set up but not required for play):
+- `npm run dev` — local dev server with live reload at `http://localhost:5173`
+- `npm run build` — produce a bundled `dist/` build
+
+You only need these if you want a dev server or a production bundle; everyday play and editing work fine off the filesystem with the double-click flow.
 
 ---
 
@@ -106,17 +124,26 @@ Your character has a set of stats that grow throughout the run through items, ev
 
 | Stat | What it does |
 |---|---|
-| **Strength** | Boosts Attack card damage; adds a flat bonus to Strength-based event rolls |
-| **Dexterity** | Boosts ranged attack damage; adds a flat bonus to Dexterity-based event rolls |
-| **Intelligence** | Adds a flat bonus to Intelligence-based event rolls |
-| **Charisma** | Adds a flat bonus to Charisma-based event rolls; each point gives 1% off all shop prices |
-| **Constitution** | Derived stat: every 5 max HP gained during the run = +1 Constitution. Adds a bonus to Constitution event rolls |
-| **Luck** | Each point gives a 10% independent chance to roll with advantage (roll twice, take the better result) on any dice roll — applies to both event rolls separately |
-| **FoV** | Field of View. Base 3 + FoV = how many location choices appear at each decision point |
-| **Dash** | Charges to teleport directly to any visible map location, bypassing the normal path |
-| **Reroll** | Charges to regenerate your location choices or reroll shop items |
-| **Skip** | Charges to skip the current location and return to the choice screen |
-| **Discovery** | Increases the number of item choices when collecting rewards |
+| **Strength** | Adds to all physical damage dealt (Attack cards and dice melee faces). Adds a flat bonus to Strength-based event rolls. Every 3 Strength = +1 **Power** status at combat start. Does **not** boost Magic damage — that scales with Intelligence/Arcane. |
+| **Dexterity** | Adds to all block gained. Adds a flat bonus to Dexterity-based event rolls. Every 3 Dexterity = +1 **Defense** status at combat start. Finesse weapons use Dexterity instead of Strength for their damage. |
+| **Intelligence** | Adds a flat bonus to Intelligence-based event rolls. Every 3 Intelligence = +1 **Arcane** status at combat start, which boosts Magic damage and healing. |
+| **Charisma** | Each point gives 1% off all shop prices (rounded down, minimum 1g). Adds a flat bonus to Charisma-based event rolls. Every 5 Charisma = +1 **Persistence** status at combat start, which adds extra stacks when you inflict statuses. |
+| **Constitution** | Derived stat: every 5 max HP gained during the run = +1 Constitution. Adds a bonus to Constitution event rolls. Your starting max HP doesn't count — only HP gained mid-run. |
+| **Luck** | Each point gives a 10% independent chance to roll with **advantage** (roll twice, take the better) on any dice roll. Negative Luck does the same with **disadvantage**. Luck is checked separately for Roll 1 and Roll 2 of an event. |
+| **FoV** | Field of View. Base 3 + FoV = how many location choices appear at each decision point. |
+| **Dash** | Charges to teleport directly to any visible map location, bypassing the normal path. |
+| **Reroll** | Charges to regenerate your location choices or reroll shop items. |
+| **Skip** | Charges to skip the current location and return to the choice screen. |
+| **Discovery** | Increases the number of item choices when collecting rewards. |
+
+**Derived combat statuses (granted at the start of every combat):**
+
+| Status | From | Effect |
+|---|---|---|
+| **Power** | floor(Strength / 3) | Adds 1 damage per stack to attack actions |
+| **Defense** | floor(Dexterity / 3) | Adds 1 block per stack to block actions |
+| **Arcane** | floor(Intelligence / 3) | Adds 1 damage per stack to magic actions, and 1 healing per stack to heal actions |
+| **Persistence** | floor(Charisma / 5) | Adds 1 stack when you inflict a status on an enemy |
 
 ---
 
@@ -177,8 +204,8 @@ Every time you enter a combat location, an event fires first. You are shown a sc
 **Stat-check choices** use a two-roll D20 system:
 
 **Roll 1 — Success check:** D20 + your relevant stat vs. the difficulty threshold.
-- Base AC by location: Easy **11** | Medium **13** | Hard **15**
-- Run progression adds a penalty: Easy tier **+0** | Medium tier **+2** | Hard tier **+4**
+- Base DC by location difficulty: Easy **11** | Medium **13** | Hard **15** | Insane **17**
+- Run progression adds a penalty based on total games beaten so far: Low tier **+0** | Medium tier **+1** | Hard tier **+2** | Insane tier **+3**
 - Your stat is added as a flat bonus, so higher stats mean you effectively need a lower raw roll.
 - Luck advantage applies: each Luck point has a 10% independent chance to let you roll twice and take the better result.
 
@@ -225,11 +252,13 @@ Luck advantage applies independently.
 
 | Type | Description |
 |---|---|
-| **Attack** | Deals damage to one or all enemies. Boosted by Strength. |
-| **Skill** | Non-damage effects: block, draw, buffs, debuffs, healing |
+| **Attack** | Deals damage to one or all enemies. Physical damage is boosted by Strength; Magic damage by Arcane (Intelligence). |
+| **Skill** | Non-damage effects: block, draw, buffs, debuffs, healing. Block is boosted by Defense (Dexterity); healing by Arcane. |
 | **Power** | Persistent passive effect lasting until combat ends. Sent to the exhaust pile when played. |
-| **Dice** | Rolls a random face on play — each face has a different effect. |
-| **Status** | Temporary cards (Pigments, Curse cards) added to your deck by enemies or curses. Auto-exhaust when played and are removed from your deck after combat. |
+| **Dice** | Rolls a random face on play — each face has a different effect. Some faces target enemies; some buff the player. |
+| **Status** | Temporary cards (Pigments, end-of-turn debuffs) added to your deck mid-combat. Removed from your deck when combat ends. |
+| **Curse** | Bad cards added to your deck by curse effects. Usually Unplayable and trigger negative effects (e.g. damage to you) while sitting in your hand. Persist between combats until destroyed. |
+| **Training** | Permanently raise your stats (Strength / Dexterity / Intelligence / Charisma) when played, then **destroy themselves from your deck for the rest of the run**. |
 
 #### Card Rarities
 
@@ -255,6 +284,8 @@ Block absorbs incoming damage before HP. **Block does not carry between turns** 
 
 #### Combat Statuses
 
+The most common statuses you'll see (~40 more exist for specific cards / enemies — check the Collection panel for the full list):
+
 | Status | Effect |
 |---|---|
 | **Burn** | Take damage at end of turn |
@@ -265,6 +296,14 @@ Block absorbs incoming damage before HP. **Block does not carry between turns** 
 | **Frail** | Gain less block |
 | **Fear** | Non-Attack cards cost +1 energy; lose 1 Fear stack each time you play an Attack |
 | **Blind** | 30% miss chance on attacks; "MISS!" popup appears on a miss |
+| **Power** | +1 damage per stack on physical attacks. Granted by Strength at combat start. |
+| **Defense** | +1 block per stack when you gain block. Granted by Dexterity at combat start. |
+| **Arcane** | +1 damage per stack on magic attacks; +1 healing per stack when healing. Granted by Intelligence. |
+| **Persistence** | When you inflict a status, add this many extra stacks. Granted by Charisma. |
+| **Thorns** | Attackers take this much damage when they hit you |
+| **Dodge** | Avoid the next incoming attack; one stack consumed per dodge |
+| **Regeneration** | Heal this much at the start of your turn |
+| **Plated Armor** | Persistent block that does not reset between turns; loses 1 stack each time it absorbs damage |
 
 #### Enemies
 
@@ -353,35 +392,41 @@ Fish caught from loot events can be sold in the shop.
 
 ### Curses
 
-Curses are persistent debuffs gained from events, combat failures, or certain choices. They come in three categories.
+Curses are persistent debuffs gained from events, combat failures, or certain choices. There are 20 curses in the data; each has three power tiers (I / II / III). The game distinguishes them by **how they trigger**:
 
-#### Automatic Curses (fire on their own)
+#### Automatic Curses (fire on their own, no action needed)
 
-| Curse | Effect | Consumed? |
-|---|---|---|
-| **Failure** | Rolling a natural 1 in combat triggers a critical failure and deals 2–4 HP damage | All instances consumed on trigger |
-| **Weakness** | Subtract 2–4 from one combat roll | One instance consumed per combat |
-| **Vulnerability** | When you gain a new curse, it is duplicated (1–3 uses) | Removed after uses run out |
-| **Shroud** | Hide one of your location choices from view (1–3 uses) | Removed after uses run out |
-| **Frugality** | All shop prices increase by +5 / +10 / +15g per curse level | One instance removed after your first purchase per shop visit |
+| Curse | Effect |
+|---|---|
+| **the Failure** | Rolling a natural 1 on an event roll deals damage to you, and all Failure curses are consumed |
+| **Weakness** | Subtracts a flat penalty from one event roll, then is consumed |
+| **Vulnerability** | When you gain a new curse, it is duplicated. Removed after its uses run out. |
+| **Shroud** | Hides one of your location choices from view. Removed after its uses run out. |
+| **Frugality** | All shop prices increase by a flat gold amount. One stack removed after your first purchase per shop visit. |
+| **Misfortune** | Your next dice roll has disadvantage. Adds a Clumsy card to your deck. |
+| **Decay** | The next passive item you obtain is downgraded one rarity. Adds a Decay card to your deck. |
+| **Obstruction** | Enemies start the next combat with +3 Plated Armor each. |
 
-#### Manual Curses (you self-report after each game)
+#### Manual / Restriction Curses (require self-reporting or specific behavior)
 
-| Curse | Penalty | Duration |
-|---|---|---|
-| **Devotion** | Lose 1–3 HP per run reset | 2 games |
-| **Greed** | Lose 1–3 HP per item or upgrade skipped in-game | 2 games |
-| **Impulse** | Lose 1–3 HP each time you didn't choose the topmost/leftmost option | 1 game |
-| **Haste** | Lose 2 HP if you didn't beat the game within 2–4 hours | 1 game |
+After every game you beat, a **verification modal** opens listing each active manual/restriction curse with checkboxes and counters. You report what happened; the penalty applies if you did the bad thing.
 
-After beating each game, a **verification modal** appears so you can report your results for all active manual and restriction curses.
+| Curse | Trigger (you self-report) |
+|---|---|
+| **Devotion** | Lose HP per run reset in the real game |
+| **Greed** | Lose HP per item or upgrade you skipped |
+| **Impulse** | Lose HP each time you took anything except the topmost / leftmost / cursor-default option |
+| **Haste** | Lose HP if you didn't beat the game inside the time limit |
+| **Guilt** | Lose HP per ally / NPC you killed unnecessarily |
+| **Affection** | Restriction tied to relationship / dialogue choices |
+| **the Hunter** | Restriction tied to hunting / kill counts |
+| **the Damp** | Restriction tied to water / wet zones |
+| **the Dazed** | Restriction tied to status effects / control loss |
+| **Blindness** | Randomly choose your character or loadout at game start |
+| **Hubris** | Raise the game's difficulty setting one or more tiers |
+| **Ocular Trauma** | Don't wear any headgear / eye equipment |
 
-#### Restriction Curses (require specific play behaviors)
-
-| Curse | Requirement | Duration |
-|---|---|---|
-| **Blindness** | Randomly choose your character/loadout at game start | 1–3 games |
-| **Hubris** | Raise the game's difficulty setting 1–3 times | 1 game |
+Curse durations are typically expressed as **"Until N games beaten"** or **"Until N <thing>"** and tick down as you finish the relevant action. Manual curses tick on each beaten game; restriction curses only tick on games where you actually complied with the restriction (which is what the verification modal records).
 
 Multiple curses of the same type **stack** — a second Frugality curse doubles the price increase, a second Shroud hides two choices, etc.
 
@@ -413,7 +458,17 @@ A few notable examples:
 
 ### The Escape Phase
 
-When you defeat the Amulet game, the **escape phase** begins. You must fight your way back out through a final series of encounters. Completing the escape wins the run.
+When you defeat the Amulet game, the **escape phase** begins. This is the real-world capstone of the run.
+
+1. You pick **3 games** from your journey (any games you visited and beat) to replay.
+2. The escape screen shows the 3 games as nodes with a player icon that walks across them.
+3. For each game, you go play it in real life. Then:
+   - Click **Finished** if you beat it → player advances to the next game.
+   - Click **Lost Run** if you died or quit → you take **-1 HP** in the roguelike, and you can retry the same game as many times as you like.
+4. If your HP hits 0 from accumulated lost runs, the escape fails and the run ends.
+5. Completing all 3 games triggers the **victory screen** and the run is saved to history.
+
+The escape phase is honor-system play — there is no in-roguelike combat or dice during it. The pressure comes entirely from the HP cost of failed attempts at real games.
 
 ---
 
@@ -423,13 +478,60 @@ When you defeat the Amulet game, the **escape phase** begins. You must fight you
 - **Post-combat choices reset at tier transitions.** You get Rest, Smith, Shop, and Movement Event once per tier. If your HP is fine, bank Rest for when you really need it — or take Smith first since it is completely free.
 - **The 💨 revisit badge is an opportunity, not a warning.** Replaying a game awards +1 Dash, which lets you skip or shortcut later. Don't avoid revisits reflexively.
 - **Watch enemy intents.** Every enemy telegraphs its action before it acts. Stack block before a big hit; save your damage cards for turns when the enemy is buffing or healing.
-- **Luck stacks multiplicatively in practice.** With 3 Luck, every roll has a ~27% chance of getting advantage. Stack it and your event success rate climbs significantly.
+- **Luck is additive — and cheap.** Each Luck point adds 10 percentage points to the advantage chance on every roll. 3 Luck = 30% chance per roll; 10 Luck = guaranteed advantage. Because Luck checks fire independently on Roll 1 and Roll 2, the effective uplift compounds across the two-roll system.
 - **Frugality stacks are expensive but finite.** Each stack only survives until you make one purchase. If you're swimming in gold, buy the cheapest item first to pop a Frugality stack before buying what you actually want.
 - **Constitution is free.** Any time an item or event increases your max HP, your Constitution stat rises automatically. It quietly improves your odds on constitution-stat event checks throughout the rest of the run.
 
 ---
 
 ## Recent Updates
+
+### Version 6.6 - Architecture Refactor & Bug Fixes (May 2026)
+
+A multi-phase cleanup pass focused on the codebase's shape rather than gameplay. No feature changes.
+
+**Phase 0 — Tooling baseline:**
+- Added Vite + Vitest as devDependencies
+- New `tests/` directory with `setup.js` and the first suites (`state-mutator.test.js`, `data-integrity.test.js`, `combat-engine-helpers.test.js`)
+- `npm test` runs the full suite (currently 54 tests, all passing)
+
+**Phase 1 — pub/sub event bus on StateMutator:**
+- `StateMutator` now publishes events (`health-changed`, `gold-changed`, etc.) when state changes
+- `ui.js` subscribes to those events and refreshes only what changed
+- Replaces the previous pattern of every mutation call also calling `updateTopBar()` / `updateHealthDisplay()` by hand
+
+**Phase 2 — Funnel every mutation through StateMutator:**
+- ~111 direct-mutation bypass sites (`health = ...`, `gold += ...`) migrated to `StateMutator.applyDelta()` / `StateMutator.set()` (Phase 2a + 2b)
+- Single source of truth for state changes; the pub/sub bus from Phase 1 now actually fires on every change
+
+**Phase 3 — Decompose main.js (10,089 → 1,214 lines, an 88% reduction):**
+- **3a:** Settings panel + dev-tools panel HTML / wiring → `dev-tools.js`
+- **3b:** Map layout + rendering helpers → `map-render.js`
+- **3c:** Character / start-selection flow → `character-start.js`
+- **3d:** Allies system → `allies.js`
+- **3e:** Curse + game-status helpers → `curse-manager.js`
+- **3f:** Item-choice modal + chest helpers → `loot.js`
+- **3g:** Card reward / victory / spell-learn modals → `cards.js`
+- **3h:** Event modal + special encounter flows → `events.js`
+- **3i:** Combat-flow orchestration → `combat-flow.js`
+- **3j:** Run-time UI modals (deck, dice tray, spells, notification history) → `run-modals.js`
+
+**Phase 4 — Cleanup pass after extraction:**
+- **4a:** Dev-tools event listeners + dead `window.*` exports moved out of `main.js`
+- **4b:** Removed dead `console.log` debug statements and duplicated helpers
+- **4c:** Deleted ~7 truly dead duplicate function definitions in `cards.js`
+
+**Pre-existing bugs found and fixed during the refactor:**
+- Combat victory was not advancing to the victory screen (load-order regression surfaced by Phase 3)
+- Weapon items were adding two cards to the deck instead of one
+- `HAND_SIZE_LIMIT` was defined twice (duplicate `const` at module scope)
+- "Clumsy" appeared on both a Slice & Dice card and a curse — the dice card is now `Clumsy Die` to disambiguate
+- Latent reference to a non-existent `_lootTabBtn` in `loot.js`
+- `FISH_DATA` collision between `data/fish-data.js` and `data/loot-data.js` (the former is now dormant)
+
+**Phase 5 — Not done:** A planned conversion to ES modules with named imports was attempted and reverted. ES modules cannot load from `file://` URLs without a local server, which would have broken the "double-click `index.html`" workflow. The codebase still uses classic `<script>` tags and the `window.X = X` global-export pattern as a result. The 484 defensive `typeof X === 'function'` checks that pattern requires also remain.
+
+---
 
 ### Version 6.5 - Scrolls & Potions, Charisma Discount, Data Updates (May 2026)
 
@@ -2187,35 +2289,51 @@ The game includes comprehensive dev tools at the bottom of the page:
 
 ---
 
-## Code Optimization
+## Code Architecture Notes
 
-### Recent Performance Improvements
+### Where state changes live
 
-**Helper Functions Added:**
-- `getCursesByType()` - Unified curse filtering
-- `getPowerValue()` - Centralized power level conversions
-- `getPlayerStat()` - Simplified stat lookups
-- `updateCurseUI()` - Consolidated display updates
-- `createNotification()` - Reusable notification system
-- `determineEncounterType()` - Standard encounter generation
-- `shuffleArray()` - Fisher-Yates shuffle (better randomization)
+All gameplay state mutations should go through **`StateMutator`** (in `js/state-mutator.js`). It does three things:
 
-**Code Reduction:**
-- ~360 lines removed across 4 files
-- Eliminated duplicate notification blocks (4 instances)
-- Consolidated curse filtering (6 instances)
-- Removed deprecated functions (110+ lines)
+1. Applies the change to `gameState` (or the underlying module globals)
+2. Publishes a typed event (`health-changed`, `gold-changed`, `stat-changed`, etc.)
+3. `ui.js` subscribes to those events and refreshes only the affected DOM
 
-**Modern JavaScript Patterns:**
-- Optional chaining (`?.`) for safer null checks
-- Nullish coalescing (`??`) for better defaults
-- Array methods (reduce, filter, map) over forEach
-- Template literals for cleaner string building
+```javascript
+// Don't:
+gold += 5;
+updateTopBar();
 
-**Algorithm Improvements:**
-- Fisher-Yates shuffle replaces biased `.sort()` method
-- Better randomization distribution
-- Improved status icon management
+// Do:
+StateMutator.applyDelta('gold', 5);
+// UI refresh happens automatically via the pub/sub bus
+```
+
+If you find yourself writing `health = ...` or `gold += ...` directly, that's a bypass — there are still a handful in legacy paths, but new code should not add more.
+
+### Main module → orchestrator
+
+`main.js` is intentionally small (1,214 lines) and limited to:
+- `DOMContentLoaded` initialization
+- Save/load (`GameStorage` via `js/storage.js`)
+- Top-bar event wiring (deck, dice, spells, loot, map, menu buttons)
+- A few global coordination helpers (`getPowerValue`, `getPlayerStat`, `updateCurseUI`)
+
+Feature logic lives in its own module. If you're tempted to add a feature to `main.js`, prefer extending or creating a sibling module instead.
+
+### Global-export pattern
+
+Modules export their public surface via `window.X = X` at the bottom of the file. Consumers reach those exports through a `typeof X === 'function'` guard:
+
+```javascript
+if (typeof updateTopBar === 'function') updateTopBar();
+```
+
+This is verbose but keeps the "double-click `index.html`" workflow alive (see v6.6 Recent Updates for why ES modules were attempted and reverted). When adding a new function that other modules need to call, append the export at the bottom of your module.
+
+### Tests
+
+Run `npm test` to execute the Vitest suite. New tests go in `tests/`. The suite is small — extend it whenever you find a bug worth pinning down (e.g. a parser quirk, a state-mutator edge case).
 
 ---
 

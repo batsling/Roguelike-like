@@ -536,11 +536,7 @@ function advance(game, x, y, encounterType) {
   if (!isAmuletGame) {
     // Regeneration trait: Every time you choose a game whose encounter isn't enemy combat, heal +1
     if (encounterType !== 'combat' && typeof hasTrait === 'function' && hasTrait('regeneration')) {
-      health = Math.min(health + 1, maxHealth);
-      gameState.health = health;
-      if (typeof updateTopBar === 'function') {
-        updateTopBar();
-      }
+      StateMutator.modifyHealth(+1);
     }
 
     // Trigger game status effects on visit (scales by difficulty)

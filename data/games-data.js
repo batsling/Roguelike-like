@@ -2,7 +2,7 @@
 // 653 games, 825 connections
 // 562 connected, 175 influencers
 
-var GAMES_DATA = [
+const GAMES_DATA = [
   {
     "name": "[Redacted]",
     "year": 2024,
@@ -7880,3 +7880,5 @@ var GAMES_DATA = [
     "coverImage": "images/covers/zorbus.jpg"
   }
 ];
+
+if (typeof window !== 'undefined') window.GAMES_DATA = GAMES_DATA;

@@ -1,7 +1,7 @@
 // Auto-generated from Roguelikes.xlsx - Game Statuses
 // Statuses that can be applied to game spaces
 
-var GAME_STATUSES_DATA = {
+const GAME_STATUSES_DATA = {
   "charmed": {
     "name": "Charmed",
     "description": "When landed on, get Curse of Affection scaled by difficulty",
@@ -53,3 +53,5 @@ var GAME_STATUSES_DATA = {
     "type": "Negative"
   }
 };
+
+if (typeof window !== 'undefined') window.GAME_STATUSES_DATA = GAME_STATUSES_DATA;

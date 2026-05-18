@@ -1,7 +1,7 @@
 // Auto-generated from Roguelikes.xlsx - Enemies
 // Enemies with dice-based combat
 
-var ENEMIES_DATA = [
+const ENEMIES_DATA = [
   {
     "name": "Lemurian",
     "type": "Strength",
@@ -1479,3 +1479,5 @@ var ENEMIES_DATA = [
     "tag": "bug"
   }
 ];
+
+if (typeof window !== 'undefined') window.ENEMIES_DATA = ENEMIES_DATA;

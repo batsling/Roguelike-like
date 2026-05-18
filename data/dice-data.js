@@ -1,7 +1,7 @@
 // Auto-generated from Roguelikes.xlsx - Dice
 // Each entry describes a named die card and its face outcomes.
 
-var DICE_DATA = [
+const DICE_DATA = [
   {
     "name": "Clumsy",
     "sides": 6,
@@ -1533,3 +1533,5 @@ var DICE_DATA = [
     ]
   }
 ];
+
+if (typeof window !== 'undefined') window.DICE_DATA = DICE_DATA;
