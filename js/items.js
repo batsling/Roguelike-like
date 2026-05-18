@@ -1394,27 +1394,14 @@ function acquireItem(item) {
   let wasStacked = false;
 
   if (isWeapon) {
-    // Each copy is independent — always add a new inventory entry and a new deck card
+    // Each copy is independent — always add a new inventory entry.
+    // The matching weapon CARD is added to the deck by cards.js's wrapper
+    // around window.acquireItem (addWeaponCardToDeck). Adding it here too
+    // would duplicate the card in the deck.
     itemCopy.quantity = 1;
     initializeWeaponBonuses(itemCopy);
     StateMutator.addItem(itemCopy);
     targetItemIndex = inventory.length - 1;
-    if (typeof CARDS_DATA !== 'undefined') {
-      const weaponCard = CARDS_DATA.find(c => c.name === itemCopy.name && c.tags && c.tags.includes('weapon'));
-      if (weaponCard) {
-        const addFn = window.addCardToDeck || (typeof addCardToDeck !== 'undefined' ? addCardToDeck : null);
-        if (addFn) {
-          addFn(weaponCard);
-        } else if (typeof gameState !== 'undefined') {
-          if (!gameState.deck) gameState.deck = [];
-          gameState.deck.push({ ...weaponCard, upgraded: false });
-          if (typeof saveCurrentGame === 'function') saveCurrentGame();
-        }
-        if (typeof createNotification === 'function') {
-          createNotification(`${weaponCard.name} card added to deck!`, '#4CAF50', '🃏');
-        }
-      }
-    }
   } else {
     // Check if item already exists in inventory (for stacking non-weapons)
     // For items with stat modifiers (upgraded/downgraded), only stack if modifiers match exactly
