@@ -334,10 +334,7 @@ function recordLostRun(index) {
     damage = calculateDamageReduction(damage);
   }
 
-  health = Math.max(0, health - damage);
-  gameState.health = health;
-  updateHealthDisplay();
-  updateGameStats();
+  StateMutator.modifyHealth(-damage);
 
   // Update the lost runs display
   const lostRunsDiv = document.getElementById(`lost-runs-${index}`);

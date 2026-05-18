@@ -272,8 +272,7 @@ const ITEM_EFFECTS = {
 
   "Lucky Toe": {
     onAcquire: () => {
-      luck += 1;
-      gameState.luck = luck;
+      StateMutator.modifyStat('luck', 1);
     }
   },
 
@@ -330,16 +329,13 @@ const ITEM_EFFECTS = {
   "Glass Eye": {
     onAcquire: () => {
       StateMutator.modifyStat('strength', 2);
-      luck += 1;
-      gameState.luck = luck;
+      StateMutator.modifyStat('luck', 1);
     }
   },
 
   "Keeper's Sack": {
     onAcquire: () => {
-      gold = (gold || 0) + 5;
-      if (typeof gameState !== 'undefined') gameState.gold = gold;
-      if (typeof updateTopBar === 'function') updateTopBar();
+      StateMutator.modifyGold(5);
       if (typeof createNotification === 'function') createNotification("Keeper's Sack: +5 Gold!", '#f1c40f', '💰');
     }
   },
@@ -685,14 +681,7 @@ const ITEM_EFFECTS = {
         // Find and remove this item from inventory
         const itemIndex = inventory.findIndex(item => item.name === 'Unstable Genome');
         if (itemIndex !== -1) {
-          // Remove the item
-          if (inventory[itemIndex].quantity && inventory[itemIndex].quantity > 1) {
-            inventory[itemIndex].quantity--;
-          } else {
-            inventory.splice(itemIndex, 1);
-          }
-          gameState.inventory = [...inventory];
-
+          StateMutator.removeItem(itemIndex);
 
           // Set flag to show large chest in the normal reward flow
           gameState.unstableGenomeTriggered = true;
@@ -1058,8 +1047,7 @@ const ITEM_EFFECTS = {
   "Old Coin": {
     onAcquire: () => {
       const gain = 100;
-      window.gold = (window.gold || 0) + gain;
-      if (typeof gameState !== 'undefined') gameState.gold = window.gold;
+      StateMutator.modifyGold(gain);
       if (typeof saveCurrentGame === 'function') saveCurrentGame();
       createNotification(`Old Coin: +${gain} Gold!`, COLORS.SUCCESS, '🪙');
     }
@@ -1068,12 +1056,8 @@ const ITEM_EFFECTS = {
   "Mango": {
     onAcquire: () => {
       const gain = 14;
-      window.maxHealth = (window.maxHealth || 0) + gain;
-      window.health    = Math.min((window.health || 0) + gain, window.maxHealth);
-      if (typeof gameState !== 'undefined') {
-        gameState.maxHealth = window.maxHealth;
-        gameState.health    = window.health;
-      }
+      StateMutator.modifyMaxHealth(gain, { onlyMax: true });
+      StateMutator.modifyHealth(gain);
       if (typeof saveCurrentGame === 'function') saveCurrentGame();
       createNotification(`Mango: +${gain} Max Health and +${gain} Health!`, COLORS.SUCCESS, '🥭');
     }

@@ -87,12 +87,8 @@ function selectEncounterOption(eventIndex, optionIndex) {
   const goldMatch = option.match(/(\d+) gold/i);
   if (goldMatch) {
     const amount = parseInt(goldMatch[1]);
-    if (option.toLowerCase().includes('lose')) {
-      gold = Math.max(0, gold - amount);
-    } else {
-      gold += amount;
-    }
-    updateTopBar();
+    const delta = option.toLowerCase().includes('lose') ? -amount : amount;
+    StateMutator.modifyGold(delta);
   }
 
   // Health changes
@@ -100,16 +96,15 @@ function selectEncounterOption(eventIndex, optionIndex) {
   if (healthMatch) {
     let amount = parseInt(healthMatch[1]);
     if (amount > 0 || option.toLowerCase().includes('heal')) {
-      health = Math.min(maxHealth, health + Math.abs(amount));
+      StateMutator.modifyHealth(Math.abs(amount));
     } else {
       // Apply damage reduction from items (like Garlic)
       let damage = Math.abs(amount);
       if (typeof calculateDamageReduction === 'function') {
         damage = calculateDamageReduction(damage);
       }
-      health = Math.max(0, health - damage);
+      StateMutator.modifyHealth(-damage);
     }
-    updateHealthDisplay();
   }
 
   // Max health changes
@@ -117,9 +112,7 @@ function selectEncounterOption(eventIndex, optionIndex) {
     const maxHealthMatch = option.match(/([+-]?\d+) max health/i);
     if (maxHealthMatch) {
       const amount = parseInt(maxHealthMatch[1]);
-      maxHealth += amount;
-      if (health > maxHealth) health = maxHealth;
-      updateHealthDisplay();
+      StateMutator.modifyMaxHealth(amount);
     }
   }
 
@@ -187,8 +180,7 @@ function displayShop() {
 
 function purchaseItem(item, price) {
   if (gold >= price) {
-    gold -= price;
-    gameState.gold = gold;
+    StateMutator.modifyGold(-price);
     acquireItem(item);
     return true;
   }

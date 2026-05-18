@@ -129,6 +129,22 @@ const StateMutator = {
   },
 
   /**
+   * Set player health to an absolute value. Useful when combat-internal
+   * state needs to be synced back to the global (e.g. after enemy turns).
+   * Routes through modifyHealth so subscribers fire and bounds are enforced.
+   * @param {number} value - Target health value
+   * @param {Object} options - Same as modifyHealth options
+   * @returns {Object} - { oldHealth, newHealth, changed }
+   */
+  setHealth(value, options = {}) {
+    const delta = value - health;
+    if (delta === 0) {
+      return { oldHealth: health, newHealth: health, changed: false };
+    }
+    return this.modifyHealth(delta, options);
+  },
+
+  /**
    * Modify maximum health with UI updates
    * @param {number} delta - Amount to change max health by
    * @param {Object} options - Configuration options
@@ -362,7 +378,10 @@ const StateMutator = {
     }
 
     inventory.push(itemName);
-    gameState.inventory = inventory;
+    // Preserve the existing spread-copy convention so callers that compare
+    // gameState.inventory by reference (e.g. for change detection) keep
+    // working. Mutating bare `inventory` in place is still the source of truth.
+    gameState.inventory = [...inventory];
 
     if (updateUI && typeof updateInventory === 'function') {
       updateInventory();
@@ -414,7 +433,7 @@ const StateMutator = {
     } else {
       inventory.splice(index, 1);
     }
-    gameState.inventory = inventory;
+    gameState.inventory = [...inventory];
 
     if (updateUI && typeof updateInventory === 'function') {
       updateInventory();

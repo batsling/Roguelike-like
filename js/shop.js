@@ -544,8 +544,7 @@ function showShopModal(purchasedIndices = null) {
       const item = shopItems[itemIndex];
 
       if (gold >= price) {
-        gold -= price;
-        gameState.gold = gold;
+        StateMutator.modifyGold(-price);
         _keepersSackCheck(price);
         acquireItem(item);
 
@@ -623,8 +622,7 @@ function showShopModal(purchasedIndices = null) {
       const allCards = getAllDeckCardsForHandlers();
       if (cardIdx >= allCards.length) return;
       const card = allCards[cardIdx];
-      gold -= CARD_REMOVE_COST;
-      gameState.gold = gold;
+      StateMutator.modifyGold(-CARD_REMOVE_COST);
       _keepersSackCheck(CARD_REMOVE_COST);
       gameState.shopRemovesUsed++;
       gameState.cardsRemovedThisRun = (gameState.cardsRemovedThisRun || 0) + 1;
@@ -658,8 +656,7 @@ function showShopModal(purchasedIndices = null) {
         const freshCard = CARDS_DATA.find(c => c.name === card.name);
         if (freshCard) card = freshCard;
       }
-      gold -= price;
-      gameState.gold = gold;
+      StateMutator.modifyGold(-price);
       _keepersSackCheck(price);
       if (!gameState.purchasedShopCards) gameState.purchasedShopCards = [];
       gameState.purchasedShopCards.push(cardIndex);
@@ -693,11 +690,9 @@ function showShopModal(purchasedIndices = null) {
       if ((gameState.shopRerollCount === 0 || reroll > 0) && gold >= rerollCost) {
         // Deduct reroll token only for paid rerolls; first reroll is free
         if (rerollCost > 0) {
-          reroll -= 1;
-          gameState.reroll = reroll;
+          StateMutator.modifyAbility('reroll', -1);
         }
-        gold -= rerollCost;
-        gameState.gold = gold;
+        StateMutator.modifyGold(-rerollCost);
         _keepersSackCheck(rerollCost);
 
         // Increment reroll counter for next reroll
@@ -769,8 +764,7 @@ function sellLootItem(index) {
   const goldValue = getFishGoldValue(rarity, size);
 
   // Add gold
-  gold += goldValue;
-  gameState.gold = gold;
+  StateMutator.modifyGold(goldValue);
 
   // Remove from loot
   if (typeof removeFromLoot === 'function') {
@@ -854,9 +848,7 @@ function _buildIdentifyServiceHTML() {
 
 function shopIdentifyScroll(scrollName, cost) {
   if (gold < cost) return;
-  gold -= cost;
-  gameState.gold = gold;
-  if (typeof updateTopBar === 'function') updateTopBar();
+  StateMutator.modifyGold(-cost);
   if (typeof _keepersSackCheck === 'function') _keepersSackCheck(cost);
   if (typeof identifyScrollType === 'function') identifyScrollType(scrollName);
   showShopModal();
@@ -864,9 +856,7 @@ function shopIdentifyScroll(scrollName, cost) {
 
 function shopIdentifyPotion(potionName, cost) {
   if (gold < cost) return;
-  gold -= cost;
-  gameState.gold = gold;
-  if (typeof updateTopBar === 'function') updateTopBar();
+  StateMutator.modifyGold(-cost);
   if (typeof _keepersSackCheck === 'function') _keepersSackCheck(cost);
   if (typeof identifyPotionType === 'function') identifyPotionType(potionName);
   showShopModal();

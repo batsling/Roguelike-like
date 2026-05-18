@@ -674,10 +674,8 @@ function _scrollSleep(outcomeKey) {
 
   if (heal > 0) {
     if (typeof health !== 'undefined') {
-      window.health = Math.min(health + heal, maxHealth || health + heal);
-      gameState.health = window.health;
+      StateMutator.modifyHealth(heal);
     }
-    if (typeof updateTopBar === 'function') updateTopBar();
     if (typeof createNotification === 'function') createNotification(`Rested: +${heal} Health`, '#4CAF50', '😴');
   }
 
@@ -715,9 +713,7 @@ function _scrollFire(outcomeKey) {
   // Player takes 10 fire damage
   const dmg = 10;
   if (typeof health !== 'undefined') {
-    window.health = Math.max(0, health - dmg);
-    gameState.health = window.health;
-    if (typeof updateTopBar === 'function') updateTopBar();
+    StateMutator.modifyHealth(-dmg);
     if (typeof createNotification === 'function') createNotification(`Scroll of Fire dealt ${dmg} fire damage to you!`, '#e74c3c', '🔥');
   }
 
@@ -882,9 +878,7 @@ function _showFoodPicker(choices) {
 
 function _giveItem(item) {
   if (typeof inventory !== 'undefined') {
-    inventory.push({ ...item });
-    if (typeof gameState !== 'undefined') gameState.inventory = [...inventory];
-    if (typeof updateInventory === 'function') updateInventory();
+    StateMutator.addItem({ ...item });
     if (typeof createNotification === 'function') createNotification(`Received: ${item.name}!`, '#4CAF50', '🍎');
   }
 }
@@ -1109,15 +1103,11 @@ function _applyPotionEffect(potionName, target, targetType, cs) {
     case 'Fruit Juice': {
       // +5 max health and current health on target
       if (targetType === 'player') {
-        const newMax = (window.maxHealth || cs.player.maxHealth) + 5;
-        window.maxHealth = newMax;
-        gameState.maxHealth = newMax;
-        cs.player.maxHealth = newMax;
-        const newHp = Math.min(cs.player.health + 5, newMax);
-        cs.player.health = newHp;
-        window.health = newHp;
-        gameState.health = newHp;
-        if (typeof updateTopBar === 'function') updateTopBar();
+        StateMutator.modifyMaxHealth(5, { onlyMax: true });
+        StateMutator.modifyHealth(5);
+        // Mirror into combat-internal player snapshot too
+        cs.player.maxHealth = window.maxHealth;
+        cs.player.health = window.health;
       } else {
         target.maxHealth = (target.maxHealth || target.health) + 5;
         target.health = Math.min(target.health + 5, target.maxHealth);

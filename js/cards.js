@@ -135,9 +135,7 @@ function removeCardFromDeck(index) {
   // Return any slotted item back to inventory when the die is removed
   if (card._dieUid && gameState.diceSlots && gameState.diceSlots[card._dieUid]) {
     const slottedItem = gameState.diceSlots[card._dieUid];
-    if (!gameState.inventory) gameState.inventory = [];
-    gameState.inventory.push(slottedItem);
-    if (typeof inventory !== 'undefined') inventory.push(slottedItem);
+    StateMutator.addItem(slottedItem);
     delete gameState.diceSlots[card._dieUid];
     if (typeof createNotification === 'function') {
       createNotification(`${slottedItem.name} returned to inventory.`, '#888', '📦');

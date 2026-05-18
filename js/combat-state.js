@@ -359,7 +359,7 @@ function executeEnemyAction() {
     );
 
     // Update global health variable
-    health = player.health;
+    StateMutator.setHealth(player.health);
 
     return {
       type: 'attack',
@@ -484,14 +484,14 @@ function endPlayerTurn() {
   const poisonResult = window.CombatEffects.processPoisonDamage(activeCombat.player);
   if (poisonResult.poisonDamage > 0) {
     addCombatLog(`Poison dealt ${poisonResult.poisonDamage} damage!`, 'danger');
-    health = activeCombat.player.health;
+    StateMutator.setHealth(activeCombat.player.health);
   }
 
   // Check if player is defeated
   if (activeCombat.player.health <= 0) {
     activeCombat.phase = 'defeat';
     addCombatLog('You have been defeated!', 'danger');
-    health = 0;
+    StateMutator.setHealth(0);
     return {
       phase: 'defeat',
       enemyActionResult: enemyActionResult

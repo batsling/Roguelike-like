@@ -179,9 +179,7 @@ function applyEventEffects(effects) {
         if (typeof health !== 'undefined' && typeof maxHealth !== 'undefined') {
           const gain = Math.min(effect.value, maxHealth - health);
           if (gain > 0) {
-            health = Math.min(maxHealth, health + effect.value);
-            if (typeof gameState !== 'undefined') gameState.health = health;
-            if (typeof updateTopBar === 'function') updateTopBar();
+            StateMutator.modifyHealth(effect.value);
             lines.push(`+${effect.value} HP`);
           }
         }
@@ -193,9 +191,7 @@ function applyEventEffects(effects) {
           const amount = Math.round(maxHealth * (effect.value / 100));
           const gain   = Math.min(amount, maxHealth - health);
           if (gain > 0) {
-            health = Math.min(maxHealth, health + gain);
-            if (typeof gameState !== 'undefined') gameState.health = health;
-            if (typeof updateTopBar === 'function') updateTopBar();
+            StateMutator.modifyHealth(gain);
           }
           lines.push(`+${gain} HP (${effect.value}% of max)`);
         }
@@ -214,9 +210,7 @@ function applyEventEffects(effects) {
         let dmg = effect.value;
         if (typeof calculateDamageReduction === 'function') dmg = calculateDamageReduction(dmg);
         if (typeof health !== 'undefined') {
-          health = Math.max(0, health - dmg);
-          if (typeof gameState !== 'undefined') gameState.health = health;
-          if (typeof updateTopBar === 'function') updateTopBar();
+          StateMutator.modifyHealth(-dmg);
           lines.push(`-${dmg} HP`);
         }
         break;
@@ -226,15 +220,13 @@ function applyEventEffects(effects) {
         const g = effect.value || 0;
         if (typeof gold !== 'undefined') {
           if (g >= 0) {
-            gold = (gold || 0) + g;
+            StateMutator.modifyGold(g);
             lines.push(`+${g} Gold`);
           } else {
             const lost = Math.min(gold || 0, Math.abs(g));
-            gold = Math.max(0, (gold || 0) + g);
+            StateMutator.modifyGold(g);
             lines.push(`-${lost} Gold`);
           }
-          if (typeof gameState !== 'undefined') gameState.gold = gold;
-          if (typeof updateTopBar === 'function') updateTopBar();
         }
         break;
       }
@@ -242,9 +234,7 @@ function applyEventEffects(effects) {
       case 'gold_range': {
         const amount = Math.floor(Math.random() * (effect.max - effect.min + 1)) + effect.min;
         if (typeof gold !== 'undefined') {
-          gold = (gold || 0) + amount;
-          if (typeof gameState !== 'undefined') gameState.gold = gold;
-          if (typeof updateTopBar === 'function') updateTopBar();
+          StateMutator.modifyGold(amount);
           lines.push(`+${amount} Gold`);
         }
         break;
