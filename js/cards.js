@@ -786,16 +786,14 @@ function learnSpellFromCard(card) {
     const m = card.description.match(/\bLearn[:\s]+([A-Za-z][A-Za-z\s']*?)(?:[,.]|$)/i);
     if (m) spellName = m[1].trim();
   }
-  if (!spellName) { console.log('[learnSpellFromCard] no learn property on', card.name); return; }
-  console.log('[learnSpellFromCard] trying to learn', spellName, '| SPELLS_DATA:', typeof SPELLS_DATA, '| spells before:', (gameState.spells||[]).length);
+  if (!spellName) return;
   if (typeof SPELLS_DATA === 'undefined') { console.warn('[learnSpellFromCard] SPELLS_DATA not loaded!'); return; }
   const spellDef = SPELLS_DATA.find(s => s.name === spellName);
   if (!spellDef) { console.warn('[learnSpellFromCard] spell not found in SPELLS_DATA:', spellName); return; }
   if (!gameState.spells) gameState.spells = [];
-  if (gameState.spells.some(s => s.name === spellName)) { console.log('[learnSpellFromCard]', spellName, 'already known'); return; }
+  if (gameState.spells.some(s => s.name === spellName)) return;
   gameState.spells.push({ ...spellDef });
   window.playerSpells = gameState.spells;
-  console.log('[learnSpellFromCard] SUCCESS — learned', spellName, '| spells now:', gameState.spells.length);
   // Inject into active combat if in progress
   const _cs = window.CombatEngine && window.CombatEngine.getCombatState && window.CombatEngine.getCombatState();
   if (_cs && !(_cs.spells || []).some(s => s.name === spellName)) {

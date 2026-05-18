@@ -212,7 +212,6 @@ class DiceRendererInstance {
     // Reset face normals array
     this.faceNormals = [];
 
-    console.log('Creating D20 with', numFaces, 'faces from', positions.length, 'position values');
 
     // Create each face as a separate triangle mesh
     for (let faceIndex = 0; faceIndex < numFaces; faceIndex++) {
@@ -283,7 +282,6 @@ class DiceRendererInstance {
       d20Group.add(faceMesh);
     }
 
-    console.log('D20 created with', d20Group.children.length, 'face meshes');
 
     return d20Group;
   }
@@ -398,7 +396,6 @@ class DiceRendererInstance {
     }
 
     const mesh = new THREE.Mesh(geometry, materials);
-    console.log('D6 created with', materials.length, 'faces');
     return mesh;
   }
 

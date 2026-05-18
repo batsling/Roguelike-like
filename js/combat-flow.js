@@ -1052,7 +1052,7 @@ function showCombatModal() {
           const statModifier = window.CombatState.getStatModifier();
 
           // Check for Curse of Failure
-          const failureCurses = getCursesByType('failure');
+          const failureCurses = CurseManager.findByType('failure');
           let failureDamage = 0;
           if (failureCurses.length > 0 && result === 1) {
             // Curse of Failure: Roll of 1 is auto-miss and deals damage
@@ -1071,7 +1071,7 @@ function showCombatModal() {
           // Check for Curse of Weakness
           let cursePenalty = 0;
           let weaknessCurse = null;
-          const weaknessCurses = getCursesByType('weakness');
+          const weaknessCurses = CurseManager.findByType('weakness');
           if (weaknessCurses.length > 0) {
             weaknessCurse = weaknessCurses[0];
             cursePenalty = getPowerValue(weaknessCurse.power, { Low: 2, Medium: 3, High: 4 });

@@ -44,12 +44,8 @@
 //
 // ===== HELPER FUNCTIONS =====
 
-// Get curses by type from active curses
-function getCursesByType(curseType) {
-  return gameState?.activeCurses?.filter(c =>
-    c.name.toLowerCase().includes(curseType.toLowerCase())
-  ) || [];
-}
+// getCursesByType deleted in Phase 4 cleanup — CurseManager.findByType
+// (in js/curse-manager.js) is identical and is now the single caller path.
 
 // Get numeric value for curse power level
 function getPowerValue(power, scale = { Low: 1, Medium: 2, High: 3 }) {

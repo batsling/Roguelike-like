@@ -100,7 +100,7 @@ function showShopModal(purchasedIndices = null) {
   const shopItems = gameState.currentShopItems;
 
   // Check for Curse of Frugality - handle stacking
-  const frugalityCurses = getCursesByType('frugality');
+  const frugalityCurses = CurseManager.findByType('frugality');
   const frugalityModifier = frugalityCurses.reduce((sum, curse) =>
     sum + getPowerValue(curse.power, { Low: 5, Medium: 10, High: 15 }), 0
   );
@@ -560,7 +560,7 @@ function showShopModal(purchasedIndices = null) {
         purchasedIndices.push(itemIndex);
 
         // Check for Curse of Frugality and remove only ONE after first purchase
-        const frugalityCurses = getCursesByType('frugality');
+        const frugalityCurses = CurseManager.findByType('frugality');
         if (frugalityCurses.length > 0) {
           const curseIndex = gameState.activeCurses.indexOf(frugalityCurses[0]);
           if (curseIndex !== -1) {

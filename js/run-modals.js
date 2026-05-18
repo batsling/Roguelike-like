@@ -17,7 +17,7 @@
  *   - Dice tray: showDiceTrayModal, _diceTrayUnequip, _diceTrayPickItem
  *   - Spells panel: showSpellsModal
  *   - Level-up flow: showLevelUpPrompt, confirmLevelUp,
- *     confirmLevelUpLegacy (deprecated), and the dice-face upgrade
+ *     the dice-face upgrade
  *     subsystem: upgradeDiceFace, generateDiceLevelUpOptions,
  *     generateNewSideOption, applyDiceLevelUpOption,
  *     showDiceLevelUpChoiceModal
@@ -1005,68 +1005,6 @@ function confirmLevelUp(onComplete) {
   };
 }
 
-// Legacy function for backwards compatibility (random upgrade)
-function confirmLevelUpLegacy() {
-  const characterKey = selectedCharacter || gameState.character || 'Rodney';
-  const characterData = PLAYER_CHARACTERS[characterKey];
-
-  if (!characterData || !characterData.levelUpStats) {
-    console.error('Character level-up data not found');
-    return;
-  }
-
-  const oldLevel = gameState.playerLevel || 1;
-  gameState.playerLevel = oldLevel + 1;
-
-  const bonuses = characterData.levelUpStats;
-  const appliedBonuses = [];
-
-  // Apply stat bonuses (same as above)
-  if (bonuses.strength) { strength += bonuses.strength; appliedBonuses.push(`+${bonuses.strength} Strength`); }
-  if (bonuses.dexterity) { dexterity += bonuses.dexterity; appliedBonuses.push(`+${bonuses.dexterity} Dexterity`); }
-  if (bonuses.intelligence) { intelligence += bonuses.intelligence; appliedBonuses.push(`+${bonuses.intelligence} Intelligence`); }
-  if (bonuses.charisma) { charisma += bonuses.charisma; appliedBonuses.push(`+${bonuses.charisma} Charisma`); }
-  if (bonuses.reroll) { reroll += bonuses.reroll; gameState.reroll = reroll; appliedBonuses.push(`+${bonuses.reroll} Reroll`); }
-  if (bonuses.dash) { gameState.dash = (gameState.dash || 0) + bonuses.dash; appliedBonuses.push(`+${bonuses.dash} Dash`); }
-  if (bonuses.luck) { luck += bonuses.luck; appliedBonuses.push(`+${bonuses.luck} Luck`); }
-
-  // Upgrade a random dice face (old behavior)
-  const diceUpgraded = upgradeDiceFace(characterKey);
-
-  updateTopBar();
-  saveCurrentGame();
-
-  createGameModal(`
-    <div style="text-align: center; padding: 20px; max-width: 500px; margin: 0 auto;">
-      <h2 style="color: #FFD700; margin-bottom: 20px;">Level ${gameState.playerLevel}!</h2>
-      <div style="
-        background: rgba(76,175,80,0.1);
-        border: 2px solid #4CAF50;
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 20px;
-      ">
-        <p style="color: #4CAF50; font-size: 18px; margin-bottom: 15px; font-weight: bold;">
-          Bonuses Gained:
-        </p>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          ${appliedBonuses.map(b => `<div style="color: #fff; font-size: 14px;">${b}</div>`).join('')}
-          ${diceUpgraded ? `<div style="color: #FFD700; font-size: 14px; margin-top: 10px;">${diceUpgraded}</div>` : ''}
-        </div>
-      </div>
-      <button onclick="closeGameModal()" style="
-        padding: 12px 30px;
-        background: linear-gradient(145deg, #4CAF50, #2E7D32);
-        border: none;
-        border-radius: 8px;
-        color: white;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 16px;
-      ">Continue</button>
-    </div>
-  `);
-}
 
 /**
  * Upgrade a random dice face by increasing its value
@@ -1466,7 +1404,6 @@ if (typeof window !== 'undefined') {
   window.showDeckModal             = showDeckModal;
   window.showDiceTrayModal         = showDiceTrayModal;
   window.showSpellsModal           = showSpellsModal;
-  window.confirmLevelUpLegacy      = confirmLevelUpLegacy;
   window.upgradeDiceFace           = upgradeDiceFace;
   window.generateDiceLevelUpOptions = generateDiceLevelUpOptions;
   window.generateNewSideOption     = generateNewSideOption;

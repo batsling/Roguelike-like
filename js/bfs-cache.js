@@ -125,7 +125,6 @@ function bfsCached(start, goal) {
  */
 function invalidateBFSCache() {
   bfsCache.clear();
-  console.log('BFS cache invalidated');
 }
 
 // Export for use in other files
