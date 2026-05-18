@@ -825,7 +825,7 @@ var CARDS_DATA = [
     ]
   },
   {
-    "name": "Clumsy",
+    "name": "Clumsy Die",
     "rarity": "Common",
     "cost": 1,
     "type": "Dice",
@@ -834,7 +834,7 @@ var CARDS_DATA = [
     "upgradedCost": 1,
     "canUpgrade": true,
     "isStatusCard": false,
-    "imageUrl": "images/cards/Clumsy.png",
+    "imageUrl": "images/heroes/Clumsy.png",
     "game": "Slice & Dice ",
     "tags": [
       "hero",
