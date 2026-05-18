@@ -427,6 +427,582 @@ function enableButtons() {
 // Removed by Phase 5 when callers switch to import statements.
 // ============================================================
 
+// ===== DEV TOOLS EVENT LISTENERS =====
+
+// Item Add/Remove
+document.getElementById('giveSelectedItem')?.addEventListener('click', () => {
+  const itemSelect = document.getElementById('itemSelect');
+  const itemName = itemSelect?.value;
+
+  if (!itemName) {
+    alert('Please select an item');
+    return;
+  }
+
+  const item = items.find(i => i.name === itemName);
+  if (!item) {
+    alert('Item not found');
+    return;
+  }
+
+  if (typeof acquireItem === 'function') {
+    acquireItem(item);
+  }
+
+  const output = document.getElementById('output3');
+  if (output) {
+    output.textContent = `Added: ${itemName}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+});
+
+document.getElementById('pickRandomItem')?.addEventListener('click', () => {
+  if (!items || items.length === 0) {
+    alert('No items available');
+    return;
+  }
+
+  const randomItem = items[Math.floor(Math.random() * items.length)];
+
+  if (typeof acquireItem === 'function') {
+    acquireItem(randomItem);
+  }
+
+  const output = document.getElementById('output3');
+  if (output) {
+    output.textContent = `Added: ${randomItem.name}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+});
+
+document.getElementById('removeSelectedItem')?.addEventListener('click', () => {
+  const removeItemSelect = document.getElementById('removeItemSelect');
+  const itemIndex = parseInt(removeItemSelect?.value);
+
+  if (isNaN(itemIndex) || itemIndex < 0) {
+    alert('Please select an item to remove');
+    return;
+  }
+
+  if (!inventory || itemIndex >= inventory.length) {
+    alert('Invalid item selection');
+    return;
+  }
+
+  const removed = inventory[itemIndex];
+  StateMutator.removeItem(itemIndex);
+
+  const output = document.getElementById('removedItemOutput');
+  if (output) {
+    output.textContent = `Removed: ${removed.name}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+});
+
+document.getElementById('removeRandomItem')?.addEventListener('click', () => {
+  if (!inventory || inventory.length === 0) {
+    alert('No items to remove');
+    return;
+  }
+
+  const randomIndex = Math.floor(Math.random() * inventory.length);
+  const removed = inventory[randomIndex];
+  StateMutator.removeItem(randomIndex);
+
+  const output = document.getElementById('removedItemOutput');
+  if (output) {
+    output.textContent = `Removed: ${removed.name}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+});
+
+// Curse Add/Remove
+document.getElementById('addSelectedCurse')?.addEventListener('click', () => {
+  const curseSelect = document.getElementById('curseSelect');
+  const curseName = curseSelect?.value;
+
+  if (!curseName) {
+    alert('Please select a curse');
+    return;
+  }
+
+  const curseData = CURSES_DATA.find(c => c.name === curseName);
+  if (!curseData) {
+    alert('Curse not found');
+    return;
+  }
+
+  // Use addCurse helper to handle Vulnerability
+  const added = addCurse(curseData);
+
+  const output = document.getElementById('curseAddOutput');
+  if (output) {
+    output.textContent = added ? `Added: ${curseName}` : `Curse already active: ${curseName}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+});
+
+document.getElementById('addRandomCurse')?.addEventListener('click', () => {
+  if (!CURSES_DATA || CURSES_DATA.length === 0) {
+    alert('No curses available');
+    return;
+  }
+
+  const randomCurse = CURSES_DATA[Math.floor(Math.random() * CURSES_DATA.length)];
+
+  // Use addCurse helper to handle Vulnerability
+  const added = addCurse(randomCurse);
+
+  const output = document.getElementById('curseAddOutput');
+  if (output) {
+    output.textContent = added ? `Added: ${randomCurse.name}` : `Curse already active: ${randomCurse.name}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+});
+
+document.getElementById('removeSelectedCurse')?.addEventListener('click', () => {
+  const removeCurseSelect = document.getElementById('removeCurseSelect');
+  const curseIndex = parseInt(removeCurseSelect?.value);
+
+  if (isNaN(curseIndex) || curseIndex < 0) {
+    alert('Please select a curse to remove');
+    return;
+  }
+
+  if (!gameState.activeCurses || curseIndex >= gameState.activeCurses.length) {
+    alert('Invalid curse selection');
+    return;
+  }
+
+  const removed = gameState.activeCurses.splice(curseIndex, 1)[0];
+
+  // Trigger onCurseRemoved effects for triggered items (like Golden Beetle)
+  if (typeof triggerOnCurseRemoved === 'function') {
+    triggerOnCurseRemoved();
+  }
+
+  updateActiveCursesList();
+  if (typeof updateCursesDisplay === 'function') {
+    updateCursesDisplay();
+  }
+
+  const output = document.getElementById('curseRemoveOutput');
+  if (output) {
+    output.textContent = `Removed: ${removed.name}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+});
+
+document.getElementById('clearAllCurses')?.addEventListener('click', () => {
+  if (!gameState.activeCurses || gameState.activeCurses.length === 0) {
+    alert('No curses to clear');
+    return;
+  }
+
+  if (confirm('Remove all curses?')) {
+    gameState.activeCurses = [];
+    updateActiveCursesList();
+    if (typeof updateCursesDisplay === 'function') {
+      updateCursesDisplay();
+    }
+
+    const output = document.getElementById('curseRemoveOutput');
+    if (output) {
+      output.textContent = 'All curses cleared';
+      output.style.display = 'block';
+      setTimeout(() => { output.style.display = 'none'; }, 2000);
+    }
+  }
+});
+
+// Quick Actions
+document.getElementById('triggerShop')?.addEventListener('click', () => {
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first');
+    return;
+  }
+
+  if (typeof showShopModal === 'function') {
+    showShopModal();
+  } else {
+    alert('Shop system not available');
+  }
+});
+
+document.getElementById('triggerItemChoice')?.addEventListener('click', () => {
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first');
+    return;
+  }
+
+  if (typeof showItemChoiceModal === 'function') {
+    showItemChoiceModal();
+  } else {
+    alert('Item choice system not available');
+  }
+});
+
+// Event Triggers
+document.getElementById('triggerSelectedEvent')?.addEventListener('click', () => {
+  const eventSelect = document.getElementById('eventSelect');
+  const eventName = eventSelect?.value;
+
+  if (!eventName) {
+    alert('Please select an event');
+    return;
+  }
+
+  if (typeof showEventModal === 'function') {
+    showEventModal(eventName);
+  } else {
+    alert('Event system not available');
+  }
+});
+
+document.getElementById('checkEvent')?.addEventListener('click', () => {
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first to use Random Event');
+    return;
+  }
+
+  if (events.length === 0) {
+    alert('No events available');
+    return;
+  }
+
+  if (typeof showEventModal === 'function') {
+    showEventModal();
+  } else {
+    alert('Event system not available');
+  }
+});
+
+// Game Status Effects Dev Tools
+document.getElementById('addGameStatus')?.addEventListener('click', () => {
+  const gameSelect = document.getElementById('statusGameSelect');
+  const statusSelect = document.getElementById('statusEffectType');
+  const gameName = gameSelect?.value;
+  const statusType = statusSelect?.value;
+
+  if (!gameName) {
+    alert('Please select a game');
+    return;
+  }
+
+  if (!statusType) {
+    alert('Please select a status effect');
+    return;
+  }
+
+  // Map status type to icon
+  const statusIcons = {
+    'charmed': '💕',
+    'devilish': '👹',
+    'holy': '✨',
+    'marked': '🎯',
+    'portal': '🌀',
+    'shielded': '🛡️',
+    'shocked': '⚡',
+    'soaked': '💧',
+    'stinky': '💩',
+    'timed': '⏱️'
+  };
+
+  const icon = statusIcons[statusType] || '❓';
+  addGameStatus(gameName, statusType, icon);
+
+  const output = document.getElementById('statusOutput');
+  if (output) {
+    output.textContent = `Added ${icon} ${statusType} to ${gameName}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+
+  // Refresh the node display
+  if (typeof updateNodeStatusIcons === 'function') {
+    const nodes = document.querySelectorAll('.node');
+    nodes.forEach(node => {
+      const nodeGameName = node.textContent.replace(/[^\w\s:'-]/g, '').trim();
+      if (nodeGameName === gameName) {
+        updateNodeStatusIcons(node);
+      }
+    });
+  }
+});
+
+document.getElementById('removeGameStatus')?.addEventListener('click', () => {
+  const gameSelect = document.getElementById('statusGameSelect');
+  const statusSelect = document.getElementById('statusEffectType');
+  const gameName = gameSelect?.value;
+  const statusType = statusSelect?.value;
+
+  if (!gameName) {
+    alert('Please select a game');
+    return;
+  }
+
+  if (!statusType) {
+    alert('Please select a status effect');
+    return;
+  }
+
+  removeGameStatus(gameName, statusType);
+
+  const output = document.getElementById('statusOutput');
+  if (output) {
+    output.textContent = `Removed ${statusType} from ${gameName}`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+
+  // Refresh the node display
+  if (typeof updateNodeStatusIcons === 'function') {
+    const nodes = document.querySelectorAll('.node');
+    nodes.forEach(node => {
+      const nodeGameName = node.textContent.replace(/[^\w\s:'-]/g, '').trim();
+      if (nodeGameName === gameName) {
+        updateNodeStatusIcons(node);
+      }
+    });
+  }
+});
+
+document.getElementById('clearAllStatuses')?.addEventListener('click', () => {
+  if (confirm('Clear all status effects from all games?')) {
+    if (gameState.gameStatusEffects) {
+      gameState.gameStatusEffects = {};
+    }
+
+    const output = document.getElementById('statusOutput');
+    if (output) {
+      output.textContent = 'Cleared all status effects';
+      output.style.display = 'block';
+      setTimeout(() => { output.style.display = 'none'; }, 2000);
+    }
+
+    // Refresh all node displays
+    if (typeof updateNodeStatusIcons === 'function') {
+      const nodes = document.querySelectorAll('.node');
+      nodes.forEach(node => updateNodeStatusIcons(node));
+    }
+  }
+});
+
+// Space Movement Dev Tools
+document.getElementById('teleportToSelected')?.addEventListener('click', () => {
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first');
+    return;
+  }
+
+  const spaceSelect = document.getElementById('spaceSelect');
+  const gameName = spaceSelect?.value;
+
+  if (!gameName) {
+    alert('Please select a game');
+    return;
+  }
+
+  // Find the game to verify it exists
+  const game = games.find(g => g.name === gameName);
+  if (!game) {
+    alert('Game not found');
+    return;
+  }
+
+  // Teleport to the selected game (no encounter)
+  const x = 450; // Center position
+  const y = gameState.currentY + 200;
+
+  if (typeof advance === 'function') {
+    advance(gameName, x, y, null);
+
+    const output = document.getElementById('teleportOutput');
+    if (output) {
+      output.textContent = `Teleported to ${gameName}`;
+      output.style.display = 'block';
+      setTimeout(() => { output.style.display = 'none'; }, 2000);
+    }
+  } else {
+    alert('Teleport function not available');
+  }
+});
+
+document.getElementById('teleportToRandom')?.addEventListener('click', () => {
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first');
+    return;
+  }
+
+  if (!games || games.length === 0) {
+    alert('No games available');
+    return;
+  }
+
+  // Pick a random game excluding current game
+  const availableGames = games.filter(g => g.name !== gameState.currentGame);
+
+  if (availableGames.length === 0) {
+    alert('No other games available');
+    return;
+  }
+
+  const randomGame = availableGames[Math.floor(Math.random() * availableGames.length)];
+
+  // Teleport to the random game (no encounter)
+  const x = 450; // Center position
+  const y = gameState.currentY + 200;
+
+  if (typeof advance === 'function') {
+    advance(randomGame.name, x, y, null);
+
+    const output = document.getElementById('teleportOutput');
+    if (output) {
+      output.textContent = `Teleported to ${randomGame.name}`;
+      output.style.display = 'block';
+      setTimeout(() => { output.style.display = 'none'; }, 2000);
+    }
+  } else {
+    alert('Teleport function not available');
+  }
+});
+
+// Difficulty-Based Locations Dev Tools
+document.getElementById('setSelectedLocation')?.addEventListener('click', () => {
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first');
+    return;
+  }
+
+  const locationSelect = document.getElementById('difficultyLocationSelect');
+  const locationIndex = parseInt(locationSelect?.value);
+
+  if (isNaN(locationIndex) || locationIndex < 0) {
+    alert('Please select a location');
+    return;
+  }
+
+  if (!LOCATIONS_DATA || locationIndex >= LOCATIONS_DATA.length) {
+    alert('Invalid location selection');
+    return;
+  }
+
+  const selectedLocation = LOCATIONS_DATA[locationIndex];
+
+  // Set the location and enable manual override flag
+  gameState.location = selectedLocation;
+  gameState.manualLocationOverride = true;
+
+  // Update the location display if the function exists
+  if (typeof updateLocationDisplay === 'function') {
+    updateLocationDisplay(selectedLocation);
+  }
+
+  // Update the current location display in dev tools
+  if (typeof updateCurrentLocationDisplay === 'function') {
+    updateCurrentLocationDisplay();
+  }
+
+  const output = document.getElementById('locationOutput');
+  if (output) {
+    output.textContent = `Location set to ${selectedLocation.name} (auto-change disabled)`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+
+});
+
+document.getElementById('setRandomLocation')?.addEventListener('click', () => {
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first');
+    return;
+  }
+
+  if (!LOCATIONS_DATA || LOCATIONS_DATA.length === 0) {
+    alert('No locations available');
+    return;
+  }
+
+  // Pick a random location
+  const randomLocation = LOCATIONS_DATA[Math.floor(Math.random() * LOCATIONS_DATA.length)];
+
+  // Set the location and enable manual override flag
+  gameState.location = randomLocation;
+  gameState.manualLocationOverride = true;
+
+  // Update the location display if the function exists
+  if (typeof updateLocationDisplay === 'function') {
+    updateLocationDisplay(randomLocation);
+  }
+
+  // Update the current location display in dev tools
+  if (typeof updateCurrentLocationDisplay === 'function') {
+    updateCurrentLocationDisplay();
+  }
+
+  const output = document.getElementById('locationOutput');
+  if (output) {
+    output.textContent = `Location set to ${randomLocation.name} (auto-change disabled)`;
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+
+});
+
+document.getElementById('enableAutoLocationChange')?.addEventListener('click', () => {
+  if (!gameState) {
+    alert('No game state available');
+    return;
+  }
+
+  // Clear the manual override flag
+  gameState.manualLocationOverride = false;
+
+  const output = document.getElementById('locationOutput');
+  if (output) {
+    output.textContent = 'Auto location change enabled';
+    output.style.display = 'block';
+    setTimeout(() => { output.style.display = 'none'; }, 2000);
+  }
+
+});
+
+// Specific Enemy Selection
+document.getElementById('triggerSpecificEnemy')?.addEventListener('click', () => {
+  const enemySelect = document.getElementById('specificEnemySelect');
+  const enemyIndex = parseInt(enemySelect?.value);
+
+  if (isNaN(enemyIndex) || enemyIndex < 0) {
+    alert('Please select an enemy');
+    return;
+  }
+
+  if (!enemies || enemyIndex >= enemies.length) {
+    alert('Invalid enemy selection');
+    return;
+  }
+
+  if (!gameState || !gameState.gameStarted) {
+    alert('Please start a run first');
+    return;
+  }
+
+  const enemy = enemies[enemyIndex];
+
+  if (typeof showCombatModal === 'function') {
+    showCombatModal(enemy);
+  } else {
+    alert('Combat system not available');
+  }
+});
+
 if (typeof window !== 'undefined') {
   window.loadSettings = loadSettings;
   window.saveSettings = saveSettings;
