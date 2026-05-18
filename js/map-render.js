@@ -1116,3 +1116,11 @@ if (typeof window !== 'undefined') {
   window.moveMapTooltip = moveMapTooltip;
   window.hideMapTooltip = hideMapTooltip;
 }
+
+
+// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
+window.currentMapZoom = currentMapZoom;
+window.drawMapArrows = drawMapArrows;
+window.generateMapView = generateMapView;
+window.reorganizeMapLayers = reorganizeMapLayers;
+window.showMapModal = showMapModal;

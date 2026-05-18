@@ -1015,3 +1015,7 @@ window.useDash = useDash;
 window.useSkip = useSkip;
 window.useReroll = useReroll;
 window.updateNodeStatusIcons = updateNodeStatusIcons;
+
+
+// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
+window.findPathsUpToDistance = findPathsUpToDistance;

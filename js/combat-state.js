@@ -606,3 +606,13 @@ if (typeof window !== 'undefined') {
     getCombatState
   };
 }
+
+
+// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
+window.addCombatLog = addCombatLog;
+window.endCombat = endCombat;
+window.endPlayerTurn = endPlayerTurn;
+window.getCombatState = getCombatState;
+window.getStatModifier = getStatModifier;
+window.initializeCombat = initializeCombat;
+window.rollCombatDice = rollCombatDice;

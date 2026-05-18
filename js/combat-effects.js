@@ -160,3 +160,10 @@ if (typeof window !== 'undefined') {
     hasActiveEffects
   };
 }
+
+
+// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
+window.createEffects = createEffects;
+window.getEffectDescriptions = getEffectDescriptions;
+window.processDamageWithBlock = processDamageWithBlock;
+window.processPoisonDamage = processPoisonDamage;

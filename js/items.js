@@ -2506,3 +2506,7 @@ window.getPassiveModifierDescription = getPassiveModifierDescription; // Get mod
 window.upgradeOrDowngradePassive = upgradeOrDowngradePassive; // Upgrade/downgrade passive
 window.downgradeRandomPassiveItem = () => upgradeOrDowngradePassive(false); // Rust hook
 window.removeItemStatEffects = removeItemStatEffects; // Remove stat effects when item removed
+
+
+// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
+window.enforceRockBottom = enforceRockBottom;

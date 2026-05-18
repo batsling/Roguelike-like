@@ -467,3 +467,16 @@ function toggleBingo() {
     if (goalsButton) goalsButton.textContent = 'Show Bingo';
   }
 }
+
+
+// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
+window.BINGO_GOALS = BINGO_GOALS;
+window.checkForBingo = checkForBingo;
+window.generateBingoGrid = generateBingoGrid;
+window.giveRandomItems = giveRandomItems;
+window.grantBingoReward = grantBingoReward;
+window.renderBingoGrid = renderBingoGrid;
+window.showBingoRewards = showBingoRewards;
+window.toggleBingo = toggleBingo;
+window.toggleBingoCell = toggleBingoCell;
+window.updateBingoStatus = updateBingoStatus;

@@ -330,3 +330,9 @@ function showIconCharacterDetails(charKey) {
   content.innerHTML = detailsHTML;
   detailsPanel.style.display = 'block';
 }
+
+
+// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
+window.populateDeckView = populateDeckView;
+window.populateIconCharacterView = populateIconCharacterView;
+window.showIconCharacterDetails = showIconCharacterDetails;

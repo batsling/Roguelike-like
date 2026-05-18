@@ -672,3 +672,16 @@ if (typeof window !== 'undefined') {
   window.getGamesWithStatus       = getGamesWithStatus;
   window.triggerGameStatusEffects = triggerGameStatusEffects;
 }
+
+
+// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
+window.CurseManager = CurseManager;
+window.addCurse = addCurse;
+window.addGameStatus = addGameStatus;
+window.checkCurseDurations = checkCurseDurations;
+window.getCurseMaxUses = getCurseMaxUses;
+window.getGameStatuses = getGameStatuses;
+window.getGamesWithStatus = getGamesWithStatus;
+window.hasGameStatus = hasGameStatus;
+window.removeGameStatus = removeGameStatus;
+window.triggerGameStatusEffects = triggerGameStatusEffects;

@@ -1367,3 +1367,7 @@ if (typeof window !== 'undefined' && window.StateMutator) {
     }
   });
 }
+
+
+// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
+window.getRarityColor = getRarityColor;

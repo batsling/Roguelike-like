@@ -325,3 +325,13 @@ if (typeof window !== 'undefined') {
     resetDice
   };
 }
+
+
+// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
+window.createD20 = createD20;
+window.createDefenseD6 = createDefenseD6;
+window.createDice = createDice;
+window.createEnemyD6High = createEnemyD6High;
+window.createEnemyD6Low = createEnemyD6Low;
+window.createEnemyD6Medium = createEnemyD6Medium;
+window.rollDice = rollDice;

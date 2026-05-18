@@ -6302,3 +6302,27 @@ if (typeof window !== 'undefined') {
     rerollAllPending
   };
 }
+
+
+// Phase 5: window-exports added for ESM transition (functions/vars called cross-file).
+window.addBlock = addBlock;
+window.addLog = addLog;
+window.addPendingDie = addPendingDie;
+window.cardNeedsTarget = cardNeedsTarget;
+window.castSpell = castSpell;
+window.combatState = combatState;
+window.dealDamage = dealDamage;
+window.drawCards = drawCards;
+window.endCombat = endCombat;
+window.endTurn = endTurn;
+window.getCombatState = getCombatState;
+window.getEffectiveCost = getEffectiveCost;
+window.initCombat = initCombat;
+window.onCardExhausted = onCardExhausted;
+window.onEnemyDefeated = onEnemyDefeated;
+window.playCard = playCard;
+window.rerollAllPending = rerollAllPending;
+window.resolveCardEffect = resolveCardEffect;
+window.shuffleArray = shuffleArray;
+window.spellNeedsTarget = spellNeedsTarget;
+window.usePendingDie = usePendingDie;
