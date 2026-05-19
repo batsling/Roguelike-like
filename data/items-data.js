@@ -1316,6 +1316,18 @@ const ITEMS_DATA = [
     ],
     "image": "images/items/LowerCaseR.png",
     "unlockCondition": null
+  },
+  {
+    "name": "Snowball",
+    "rarity": "Uncommon",
+    "type": "Triggered",
+    "description": "Whenever you would Gain permanent Intelligence, Gain +1 Intelligence",
+    "game": "Brotato",
+    "tags": [
+      "snow"
+    ],
+    "image": "images/items/Snowball.png",
+    "unlockCondition": null
   }
 ];
 

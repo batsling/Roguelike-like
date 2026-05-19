@@ -306,12 +306,12 @@ function showShopModal(purchasedIndices = null) {
   const purchasedCardIndices = gameState.purchasedShopCards || [];
 
   const cardPriceFor = (c) => {
-    const rawBase = c.rarity === 'Rare' ? 50 : c.rarity === 'Uncommon' ? 30 : 15;
+    const rawBase = c.rarity === 'Rare' ? 45 : c.rarity === 'Uncommon' ? 30 : 15;
     const rawPrice = rawBase + frugalityModifier;
     return applyDiscount(rawPrice);
   };
   const cardRawPriceFor = (c) => {
-    const rawBase = c.rarity === 'Rare' ? 50 : c.rarity === 'Uncommon' ? 30 : 15;
+    const rawBase = c.rarity === 'Rare' ? 45 : c.rarity === 'Uncommon' ? 30 : 15;
     return rawBase + frugalityModifier;
   };
 
@@ -418,7 +418,7 @@ function showShopModal(purchasedIndices = null) {
   shopItems.forEach((item, index) => {
     const isPurchased = purchasedIndices.includes(index);
     const rarityLower = item.rarity ? item.rarity.toLowerCase() : 'common';
-    const basePrice = rarityLower === 'common' ? 8 : rarityLower === 'uncommon' ? 15 : rarityLower === 'rare' ? 25 : 40;
+    const basePrice = rarityLower === 'common' ? 20 : rarityLower === 'uncommon' ? 30 : rarityLower === 'rare' ? 50 : 60;
     const rawPrice = basePrice + frugalityModifier;
     const price = applyDiscount(rawPrice);
     const rarityColor = getRarityColor(item.rarity);
@@ -787,7 +787,7 @@ function sellLootItem(index) {
 
 // ===== IDENTIFY SERVICE =====
 
-const IDENTIFY_COSTS = { Common: 5, Uncommon: 10, Rare: 20, Legendary: 30 };
+const IDENTIFY_COSTS = { Common: 10, Uncommon: 15, Rare: 25, Legendary: 35 };
 
 function _buildIdentifyServiceHTML() {
   const loot = (typeof gameState !== 'undefined' && gameState.loot) ? gameState.loot : [];

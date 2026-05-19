@@ -325,6 +325,10 @@ function updateSidebarItems() {
     const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
     const incBadge = isIncremental ? getIncrementalBadge(item) : '';
 
+    const snowballBadge = item.name === 'Snowball' && (typeof gameState !== 'undefined') && (gameState.snowballTotal || 0) > 0
+      ? `<div style="position:absolute;bottom:1px;left:1px;background:rgba(0,0,0,0.9);color:#88ccff;padding:1px 3px;border-radius:3px;font-size:8px;font-weight:bold;border:1px solid #88ccff;">+${gameState.snowballTotal}</div>`
+      : '';
+
     const quantityBadge = item.quantity && item.quantity > 1
       ? `<div style="position:absolute;top:1px;right:1px;background:rgba(0,0,0,0.9);color:white;padding:1px 3px;border-radius:3px;font-size:8px;font-weight:bold;border:1px solid #ffaa00;">${item.quantity}</div>`
       : '';
@@ -337,7 +341,7 @@ function updateSidebarItems() {
       ${imgSrc
         ? `<img src="${imgSrc}" alt="${item.name}" style="width:100%;height:100%;object-fit:contain;border-radius:4px;" onerror="this.style.display='none'">`
         : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;">🎒</div>`}
-      ${quantityBadge}${incBadge}${useBtn}
+      ${quantityBadge}${incBadge}${snowballBadge}${useBtn}
     </div>`;
   }).join('');
 }
@@ -363,11 +367,15 @@ function updateInventory() {
     if (inventoryDiv) {
       const itemDiv = document.createElement('div');
       itemDiv.className = 'inventory-item';
+      const snowballLine = item.name === 'Snowball' && (gameState.snowballTotal || 0) > 0
+        ? `<p style="color: #88ccff;"><em>Intelligence granted this run: +${gameState.snowballTotal}</em></p>`
+        : '';
       itemDiv.innerHTML = `
         <strong>${displayName}</strong> (${item.rarity})
         <span class="remove-item" onclick="removeItem(${index})">×</span>
         <p>${item.description}</p>
         <p><em>Type: ${item.type}</em></p>
+        ${snowballLine}
       `;
       inventoryDiv.appendChild(itemDiv);
     }
@@ -1229,6 +1237,18 @@ function showItemTooltip(e, item) {
     }
   }
 
+  // Build Snowball intelligence total display
+  let snowballHTML = '';
+  if (item.name === 'Snowball') {
+    const total = (typeof gameState !== 'undefined' && gameState.snowballTotal) || 0;
+    snowballHTML = `
+      <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(136, 204, 255, 0.3);">
+        <div style="font-size: 12px; color: #88ccff; font-weight: bold; margin-bottom: 4px;">Intelligence Granted:</div>
+        <div style="font-size: 12px; color: #aaddff;">+${total} total this run</div>
+      </div>
+    `;
+  }
+
   tooltip.innerHTML = `
     <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 18px;">${displayName}</h4>
     <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
@@ -1247,6 +1267,7 @@ function showItemTooltip(e, item) {
       : ''}
     ${bonusesHTML}
     ${scalingBonusHTML}
+    ${snowballHTML}
     ${weaponCardHTML}
     ${tagsHTML}
   `;

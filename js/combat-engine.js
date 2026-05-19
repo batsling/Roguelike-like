@@ -4687,8 +4687,8 @@ function resolveCardEffect(card, target, options = {}) {
       continue;
     }
 
-    // Spot Weakness: "If the target enemy intends to attack, Gain +N Power"
-    const spotWeaknessM = p.match(/If the target enemy intends to attack, Gain \+?(\d+) Power/i);
+    // Spot Weakness: "If target enemy intends to attack, Gain +N Power"
+    const spotWeaknessM = p.match(/If (?:the )?target enemy intends to attack, Gain \+?(\d+) Power/i);
     if (spotWeaknessM) {
       if (target) {
         const isAttacking = target.currentIntent && target.currentIntent.some(

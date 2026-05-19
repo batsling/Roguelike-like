@@ -489,9 +489,11 @@ function switchCollectionTab(tab) {
               style="background:rgba(10,10,15,0.8); border:2px solid ${rarityColor};
                      box-shadow:0 0 8px ${rarityColor}44; border-radius:10px; padding:10px;
                      display:flex; flex-direction:column; align-items:center; gap:6px;">
-              <img src="${item.image || ''}" alt="${item.name}"
-                style="width:72px; height:72px; object-fit:contain; border-radius:6px; background:rgba(0,0,0,0.3); image-rendering:pixelated;"
-                onerror="this.style.display='none';"/>
+              <div style="width:72px; height:72px; border-radius:6px; background:rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <img src="${item.image || ''}" alt="${item.name}"
+                  style="width:66px; height:66px; object-fit:contain; border-radius:4px; image-rendering:pixelated;"
+                  onerror="this.style.display='none';"/>
+              </div>
               <div style="text-align:center; font-size:11px; font-weight:bold; color:${rarityColor}; word-break:break-word; width:100%;">${item.name}</div>
               <div style="font-size:9px; color:${rarityColor}; text-transform:uppercase; font-weight:bold;">${item.rarity||''}</div>
             </div>
