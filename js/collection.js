@@ -2689,6 +2689,7 @@ function formatLevelUpReward(reward) {
       ? `🃏 1 ${reward.tag.charAt(0).toUpperCase() + reward.tag.slice(1)} Card Reward`
       : '🃏 Choose a Card';
     case 'spell': return `✨ Choose a Spell`;
+    case 'scroll_and_potion': return `📜 1 Scroll + 🧪 1 Potion`;
     default:      return null;
   }
 }
