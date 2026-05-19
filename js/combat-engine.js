@@ -4193,8 +4193,12 @@ function resolveCardEffect(card, target, options = {}) {
   const player = combatState.player;
   const xValue = options.xValue || 0;
 
-  // Status cards always exhaust (they are one-use pigments that clear after combat)
-  if (card.isStatusCard) shouldExhaust = true;
+  // Status cards (pigments, Slimed) get their exhaust routing from the
+  // "Exhaust." keyword in their description, parsed below alongside every
+  // other card. Dazed (only "Ethereal.") therefore does NOT force-exhaust
+  // on play — Ethereal handles itself at end-of-turn. Unplayable status
+  // cards (Wound, Burn) never reach this function: playCard rejects them
+  // up front.
 
   // Dice cards: the UI handles pick + roll + transform; nothing to resolve here.
   if ((card.type || '').toLowerCase() === 'dice') {

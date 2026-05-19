@@ -678,11 +678,29 @@ describe('resolveCardEffect — Status cards & exhaust mechanics', () => {
     globalThis.combatState = makeCombatState();
   });
 
-  it('any Status card returns shouldExhaust=true regardless of effects', () => {
-    const burn = findCard('Burn');  // burn is a status pigment
-    if (!burn) return;
-    const should = globalThis.resolveCardEffect(burn, null, {});
+  // Status routing is determined purely by the description text. The engine
+  // no longer auto-exhausts every isStatusCard:true card — Slimed/pigments
+  // exhaust because they say "Exhaust." in the description, and Dazed only
+  // says "Ethereal" so it does NOT force-exhaust on play.
+
+  it('Slimed exhausts because its description says "Exhaust."', () => {
+    const slimed = findCard('Slimed');
+    const should = globalThis.resolveCardEffect(slimed, null, {});
     expect(should).toBe(true);
+  });
+
+  it('Red Pigment exhausts because its description says "Exhaust."', () => {
+    const pigment = globalThis.CARDS_DATA.find((c) => c.name === 'Red Pigment');
+    if (!pigment) return;
+    const should = globalThis.resolveCardEffect({ ...pigment }, null, {});
+    expect(should).toBe(true);
+  });
+
+  it('Dazed (Ethereal only, no "Exhaust." keyword) does NOT force-exhaust on play', () => {
+    const dazed = findCard('Dazed');
+    const should = globalThis.resolveCardEffect(dazed, null, {});
+    // Ethereal exhausts at end-of-turn if still in hand; not on play.
+    expect(should).toBe(false);
   });
 
   it('explicit "Exhaust." clause returns shouldExhaust=true', () => {
@@ -692,7 +710,7 @@ describe('resolveCardEffect — Status cards & exhaust mechanics', () => {
     expect(globalThis.combatState.player.block).toBe(5);
   });
 
-  it('"Ethereal" is NOT an immediate exhaust (only at end of turn)', () => {
+  it('"Ethereal" alone is NOT an immediate exhaust (only at end of turn)', () => {
     const card = { name: 'Test', type: 'Skill', cost: 1, description: 'Gain 5 Block. Ethereal.' };
     const should = globalThis.resolveCardEffect(card, null, {});
     expect(should).toBe(false);
