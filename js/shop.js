@@ -787,7 +787,7 @@ function sellLootItem(index) {
 
 // ===== IDENTIFY SERVICE =====
 
-const IDENTIFY_COSTS = { Common: 5, Uncommon: 10, Rare: 20, Legendary: 30 };
+const IDENTIFY_COSTS = { Common: 10, Uncommon: 15, Rare: 25, Legendary: 35 };
 
 function _buildIdentifyServiceHTML() {
   const loot = (typeof gameState !== 'undefined' && gameState.loot) ? gameState.loot : [];

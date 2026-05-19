@@ -1917,8 +1917,9 @@ window.showCombatModal = showCombatModal;
  * Total weight budgets:
  *   First combat ever: 2
  *   Low (rest): 4
- *   Medium (first of tier): 5  |  Medium (rest): 7
- *   High (first of tier): 8    |  High (rest): 10
+ *   Medium (first of tier): 5   |  Medium (rest): 7
+ *   High (first of tier): 8     |  High (rest): 10
+ *   Insane (first of tier): 12  |  Insane (rest): 14
  * Max 4 enemies per encounter.
  * Enemy selection: pick a target weight 1..remaining equally, then pick a random
  * enemy with that weight from the eligible pool. Repeat until budget exhausted.
@@ -1927,10 +1928,11 @@ function buildWeightedEncounter() {
   const gamesBeaten = gameState.totalGamesBeaten || 0;
   const combatsCompleted = gameState.totalCombatsCompleted || 0;
 
-  // Determine current difficulty tier
+  // Determine current difficulty tier (Insane maps to its own combat tier)
   const _enc_thresholds = (typeof DIFFICULTY_THRESHOLDS !== 'undefined') ? DIFFICULTY_THRESHOLDS : { MEDIUM: 4, HARD: 8, INSANE: 12 };
   let currentTier;
-  if (gamesBeaten >= _enc_thresholds.HARD) currentTier = 'High';
+  if (gamesBeaten >= _enc_thresholds.INSANE) currentTier = 'Insane';
+  else if (gamesBeaten >= _enc_thresholds.HARD) currentTier = 'High';
   else if (gamesBeaten >= _enc_thresholds.MEDIUM) currentTier = 'Medium';
   else currentTier = 'Low';
 
@@ -1947,16 +1949,20 @@ function buildWeightedEncounter() {
     budget = 4;
   } else if (currentTier === 'Medium') {
     budget = isFirstOfTier ? 5 : 7;
-  } else { // High
+  } else if (currentTier === 'High') {
     budget = isFirstOfTier ? 8 : 10;
+  } else { // Insane
+    budget = isFirstOfTier ? 12 : 14;
   }
 
   // Update tier tracking (will persist after combat)
   gameState.lastDifficultyTier = currentTier;
 
   // Build eligible pool: difficulty tier + game-type filter
+  // Insane reuses the full High enemy pool (no separate Insane enemies exist)
   const tierOrder = ['Low', 'Medium', 'High'];
-  const maxTierIdx = tierOrder.indexOf(currentTier);
+  const poolTier = currentTier === 'Insane' ? 'High' : currentTier;
+  const maxTierIdx = tierOrder.indexOf(poolTier);
 
   // Determine which enemy type matches the current game's category
   const GAME_TYPE_TO_ENEMY_TYPE = {
@@ -2225,7 +2231,7 @@ function handleDiceCombatVictory(enemy) {
   gameState.totalCombatsCompleted = (gameState.totalCombatsCompleted || 0) + 1;
 
   // Award gold based on difficulty tier
-  const goldAmounts = { 'Low': 20, 'Medium': 35, 'High': 55 };
+  const goldAmounts = { 'Low': 10, 'Medium': 15, 'High': 25, 'Insane': 35 };
   const goldReward = goldAmounts[enemy.difficulty] || 10;
   StateMutator.modifyGold(goldReward);
 
