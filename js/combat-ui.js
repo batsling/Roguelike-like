@@ -1655,37 +1655,54 @@ function _disposeEnemyDiceRenderers() {
 }
 
 /**
- * Build a 6-sided enemy-themed dice data with the result on the up-face.
- * Dice with more than 6 sides (D8, D10, D12, D20) are visually approximated
- * as a cube: the rolled number is printed on whichever face the mesh shows.
- * The displayed text is the authoritative result; the cube geometry is a hint.
+ * Build dice data for a Rerollable enemy die. Uses the unified polyhedral
+ * mesh path in dice-renderer.js so a real shape is rendered for the die's
+ * actual side count (d4 tetrahedron, d6 cube, d8 octahedron, d10 pentagonal
+ * trapezohedron, d12 dodecahedron, d20 icosahedron).
+ *
+ * Falls back to a 6-sided cube for unrecognized side counts so the UI never
+ * crashes — the rolled-result label below the die is always authoritative.
  */
 function _makeEnemyDieDiceData(entry) {
-  const sides = entry.sides;
-  const result = entry.result;
-  // Build 6 face labels. For D6 use 1..6; for larger dice pick a spread that
-  // includes the result so the face we land on shows the actual rolled value.
-  const cubeFaces = [];
-  for (let i = 1; i <= 6; i++) cubeFaces.push(i);
-  // Replace face 6 (or another non-1 face) with the actual result if it's >6
-  // — so when we rotate to "face 6" the number shown is the real roll.
-  if (result > 6 || result < 1) cubeFaces[5] = result;
+  const SUPPORTED = [4, 6, 8, 10, 12, 20];
+  const sides = SUPPORTED.includes(entry.sides) ? entry.sides : 6;
+  const usePolyhedral = sides !== 20;  // d20 keeps the existing dedicated path
 
-  const sidesArr = cubeFaces.map((value, idx) => ({
-    face: idx + 1,
-    text: String(value),
-    value,
-    displayText: String(value),
+  // Red-threatening theme. sceneBg is read by init(); the rest is read by
+  // createPolyhedralFaceTexture for the face-number canvas.
+  const colors = {
+    sceneBg: 0x1a0808,
+    bg:      '#cc3333',
+    border:  '#660000',
+    text:    '#ffffff',
+    outline: '#000000',
+  };
+
+  if (usePolyhedral) {
+    return {
+      shape: 'polyhedral',
+      type:  `d${sides}-enemy-red`,  // legacy tag; not used for routing once shape is set
+      sides,
+      colors,
+      _enemyResult: entry.result,
+    };
+  }
+
+  // d20: keep using the existing createD20Mesh path. Pass a faces array so
+  // the texture builder can find the rolled side.
+  const sidesArr = Array.from({ length: 20 }, (_, i) => ({
+    face: i + 1,
+    text: String(i + 1),
+    value: i + 1,
+    displayText: String(i + 1),
   }));
-
   return {
-    type: 'd6-enemy-red',
-    colors: { sceneBg: 0x1a0808 },
+    type: 'd20',
+    colors,
     sides: sidesArr,
     globalModifiers: [],
     currentRoll: null,
-    _enemyResult: result,
-    _enemyResultCubeFace: (result > 6 || result < 1) ? 6 : result,
+    _enemyResult: entry.result,
   };
 }
 
@@ -1709,7 +1726,10 @@ function initEnemyDiceRenderers() {
     const r = new DiceRendererInstance();
     r.init(el, diceData.colors.sceneBg);
     r.createDice(diceData);
-    r.rollDice(diceData, diceData._enemyResultCubeFace, null);
+    // For polyhedral dice the face values are assigned by the mesh builder
+    // via the opposite-sum-N+1 convention; rollDice can resolve any value
+    // in 1..sides directly. For d20 the legacy face-number map handles it.
+    r.rollDice(diceData, entry.result, null);
     _enemyDiceRenderers.push(r);
   });
 }
