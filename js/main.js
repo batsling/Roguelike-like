@@ -393,6 +393,10 @@ function loadSavedGame(saveName) {
   if (!gameState.diceSlots) {
     gameState.diceSlots = {};
   }
+  // Backfill the persistent d20 for saves created before this field existed.
+  if (!gameState.playerD20 && typeof createD20 === 'function') {
+    gameState.playerD20 = createD20();
+  }
   window.playerSpells = gameState.spells; // keep in sync with combat fallback
   // Generate encounter types if they don't exist (for old saves)
   if (!gameState.encounterTypes) {

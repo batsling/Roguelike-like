@@ -626,10 +626,14 @@ class DiceRendererInstance {
 
   /**
    * Create canvas texture for a numbered polyhedral face.
-   * Theme controls background, border, and number colors. Adds a small
-   * underscore for 6 and 9 (and for 8 on d10) to disambiguate orientation.
+   *
+   * `number` is the geometric face's conventional value (e.g. for a d6,
+   * the face positioned at geometric slot N gets value N by the
+   * opposites-sum-to-7 numbering). `side` (optional) is the
+   * dice-system per-side data — if it has `displayValue`, that's painted
+   * instead of `number`, allowing items to visibly alter individual faces.
    */
-  createPolyhedralFaceTexture(number, sides, theme) {
+  createPolyhedralFaceTexture(number, sides, theme, side = null) {
     const c = theme || {
       bg: '#cc3333', border: '#660000', text: '#ffffff', outline: '#000000',
     };
@@ -644,7 +648,11 @@ class DiceRendererInstance {
     ctx.lineWidth = 4;
     ctx.strokeRect(0, 0, 128, 128);
 
-    const text = String(number);
+    // Per-side displayValue overrides the conventional number so a modified
+    // face shows the new value (e.g. an item that turns face 1 into a 20).
+    const displayed = (side && side.displayValue !== null && side.displayValue !== undefined)
+      ? side.displayValue : number;
+    const text = String(displayed);
     ctx.font = 'bold 64px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -655,7 +663,8 @@ class DiceRendererInstance {
     ctx.fillText(text, 64, 64);
 
     // Underline 6/9 (and 8 on d10) so flipped orientation is unambiguous
-    const needsUnderline = (number === 6 || number === 9 || (sides === 10 && number === 8));
+    const numericDisplayed = Number(displayed);
+    const needsUnderline = (numericDisplayed === 6 || numericDisplayed === 9 || (sides === 10 && numericDisplayed === 8));
     if (needsUnderline) {
       ctx.fillStyle = c.text;
       ctx.fillRect(48, 100, 32, 4);
@@ -695,7 +704,11 @@ class DiceRendererInstance {
 
     faceData.faces.forEach((face, idx) => {
       const value = faceValues[idx];
-      const texture = this.createPolyhedralFaceTexture(value, sides, theme);
+      // Per-side overrides: items may set diceData.sides[i].displayValue to
+      // visually relabel a face. Conventional `value` keeps the rotation
+      // logic in calculateFaceRotation working.
+      const side = (Array.isArray(diceData.sides) && diceData.sides[value - 1]) || null;
+      const texture = this.createPolyhedralFaceTexture(value, sides, theme, side);
 
       // Build a triangle fan from the face vertices (works for triangles,
       // quads, kites, and pentagons alike). UVs map the number texture
@@ -985,8 +998,8 @@ class DiceRendererInstance {
   animate() {
     this.animationId = requestAnimationFrame(() => this.animate());
 
-    // Slow idle rotation when not rolling and hasn't been rolled yet
-    if (!this.isRolling && !this.hasRolled && this.mesh) {
+    // Slow idle rotation when not rolling, not being dragged, and hasn't been rolled yet
+    if (!this.isRolling && !this.hasRolled && !this.isDraggingUser && this.mesh) {
       this.mesh.rotation.x += 0.002;
       this.mesh.rotation.y += 0.003;
     }
@@ -994,6 +1007,76 @@ class DiceRendererInstance {
     if (this.renderer && this.scene && this.camera) {
       this.renderer.render(this.scene, this.camera);
     }
+  }
+
+  /**
+   * Enable click-drag rotation in place. Used by the dice tray modal so the
+   * player can inspect a die from every angle. Pauses idle auto-rotation
+   * while the user is dragging. Idempotent — safe to call multiple times,
+   * the second call replaces the previous listeners.
+   *
+   * No-op if a roll animation is in progress (the rolling sequence owns the
+   * rotation until it completes).
+   */
+  enableDragRotate() {
+    if (!this.container || !this.renderer) return;
+    if (this._dragHandlers) this.disableDragRotate();
+
+    const el = this.renderer.domElement;
+    el.style.pointerEvents = 'auto';
+    el.style.cursor = 'grab';
+
+    let dragging = false;
+    let lastX = 0, lastY = 0;
+
+    const onDown = (e) => {
+      if (this.isRolling) return;
+      dragging = true;
+      this.isDraggingUser = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      el.style.cursor = 'grabbing';
+      e.preventDefault();
+    };
+    const onMove = (e) => {
+      if (!dragging || !this.mesh) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      // Pixel→radian scale; tuned so a full container width gives ~1.5 rad
+      const k = 0.01;
+      this.mesh.rotation.y += dx * k;
+      this.mesh.rotation.x += dy * k;
+    };
+    const onUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      this.isDraggingUser = false;
+      el.style.cursor = 'grab';
+    };
+
+    el.addEventListener('mousedown', onDown);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    // Also handle pointer leaving the window mid-drag
+    window.addEventListener('mouseleave', onUp);
+
+    this._dragHandlers = { el, onDown, onMove, onUp };
+  }
+
+  /** Tear down drag listeners installed by enableDragRotate. */
+  disableDragRotate() {
+    if (!this._dragHandlers) return;
+    const { el, onDown, onMove, onUp } = this._dragHandlers;
+    el.removeEventListener('mousedown', onDown);
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('mouseleave', onUp);
+    el.style.cursor = '';
+    el.style.pointerEvents = 'none';
+    this._dragHandlers = null;
+    this.isDraggingUser = false;
   }
 
   /**
@@ -1017,6 +1100,9 @@ class DiceRendererInstance {
    * Clean up renderer resources
    */
   dispose() {
+    // Tear down any interactive listeners (drag-rotate, etc.) first
+    this.disableDragRotate();
+
     // Stop animation loop
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
