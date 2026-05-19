@@ -130,7 +130,9 @@ var gameState = {
   diceSlots: {},              // { [dieUid]: item | null } — items slotted onto dice
   // Node detail system: pre-generated data per choice node
   // { [gameName]: { enemies: Enemy[], postCombatOptions: string[] } }
-  choiceDetails: {}
+  choiceDetails: {},
+  // Per-run event appearance counts (keyed by event id) for run-limit enforcement
+  eventsSeenCounts: {}
 };
 
 var gameSaves = GameStorage.load(STORAGE_KEYS.SAVED_GAMES, {});

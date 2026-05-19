@@ -1156,7 +1156,8 @@ function switchCollectionTab(tab) {
         : '';
 
     content.innerHTML = `
-      <div style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;">
+      <!-- Left: grid + filters -->
+      <div style="flex:2;overflow-y:auto;padding:10px;display:flex;flex-direction:column;min-width:0;">
         <!-- Controls bar -->
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;padding:10px;background:rgba(0,0,0,0.3);border-radius:8px;align-items:center;">
           <span style="color:#aaa;font-size:13px;">🔍</span>
@@ -1184,13 +1185,14 @@ function switchCollectionTab(tab) {
           ${allTypes.map(t => `<button style="${btnStyle(window.eventTypeFilter===t,'#c39bd3')}" onclick="window.eventTypeFilter='${t.replace(/'/g,"\\'")}';switchCollectionTab('events');">${t}</button>`).join('')}
         </div>` : ''}
         <!-- Event grid -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;overflow-y:auto;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;overflow-y:auto;">
           ${filtered.length === 0
             ? `<div style="grid-column:1/-1;text-align:center;color:#666;padding:40px;">No events match the current filters.</div>`
             : filtered.map(ev => {
                 const rc = getRarityColor(ev.rarity);
+                const evId = (ev.id || ev.name).replace(/'/g, "\\'");
                 return `
-                <div style="
+                <div onclick="showEventDetails('${evId}')" style="
                   background:rgba(0,0,0,0.35);
                   border:1px solid ${rc}55;
                   border-top:3px solid ${rc};
@@ -1198,6 +1200,7 @@ function switchCollectionTab(tab) {
                   overflow:hidden;
                   display:flex;flex-direction:column;
                   transition:transform 0.15s,box-shadow 0.15s;
+                  cursor:pointer;
                 "
                 onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.6)';"
                 onmouseout="this.style.transform='';this.style.boxShadow='';">
@@ -1220,10 +1223,7 @@ function switchCollectionTab(tab) {
                       ${ev.game ? `<span style="font-size:11px;color:#aaa;">${ev.game}</span>` : ''}
                       ${ev.type ? `<span style="font-size:10px;font-weight:bold;padding:2px 7px;border-radius:10px;background:rgba(195,155,211,0.15);border:1px solid rgba(195,155,211,0.35);color:#c39bd3;">${ev.type}</span>` : ''}
                     </div>
-                    <!-- Inputs / Outputs -->
-                    ${pillList('Inputs', ev.inputs, '#e67e22')}
-                    ${pillList('Outputs', ev.outputs, '#2ecc71')}
-                    <!-- Tags -->
+                    <!-- Tags (compact summary on card) -->
                     ${ev.tags && ev.tags.length ? `
                     <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px;">
                       ${ev.tags.map(tagBadge).join('')}
@@ -1234,7 +1234,21 @@ function switchCollectionTab(tab) {
           }
         </div>
       </div>
+      <!-- Right: detail panel -->
+      <div id="event-details" style="flex:1;overflow-y:auto;padding:20px;background:rgba(0,0,0,0.2);border:1px solid #444;border-radius:8px;min-width:320px;">
+        <div style="text-align:center;color:#888;padding:40px 20px;">
+          <p>Click an event to view full details</p>
+        </div>
+      </div>
     `;
+
+    // If an event was previously selected, restore its detail view
+    if (window.selectedEventId) {
+      const stillVisible = filtered.some(e => (e.id || e.name) === window.selectedEventId);
+      if (stillVisible && typeof showEventDetails === 'function') {
+        showEventDetails(window.selectedEventId);
+      }
+    }
   }
 
   // Restore focus after content update
@@ -2482,6 +2496,190 @@ function showCardDetails(cardName) {
   `;
 }
 
+function _describeEventEffect(e) {
+  if (!e || !e.type) return '';
+  switch (e.type) {
+    case 'none':              return 'No effect';
+    case 'heal':              return `+${e.value} HP`;
+    case 'heal_percent':      return `+${e.value}% Max HP`;
+    case 'damage':            return `-${e.value} HP`;
+    case 'gold':              return (e.value >= 0 ? `+${e.value}` : `${e.value}`) + ' Gold';
+    case 'gold_range':        return `+${e.min}–${e.max} Gold`;
+    case 'item_tagged':       return `Random ${e.tag} item`;
+    case 'curse':             return `Curse: ${e.value}`;
+    case 'curse_difficulty':  return `Curse: ${e.curseBase} (scales with difficulty)`;
+    case 'combat_status':     return `${e.stacks || 1}× ${e.status} (next combat)`;
+    case 'combat_flag':
+      if (e.flag === 'ambush')   return 'Ambush — draw +2 cards turn 1';
+      if (e.flag === 'ambushed') return 'Ambushed — draw −2 cards turn 1';
+      return e.flag;
+    case 'spawn_enemies': {
+      const r = e.min === e.max ? e.min : `${e.min}–${e.max}`;
+      return `Spawn ${r}× ${e.enemy} next combat`;
+    }
+    case 'note_for_yourself': return `Retrieve stored card · pick a new one to store`;
+    default: return e.type;
+  }
+}
+
+function showEventDetails(eventId) {
+  const allEvents = typeof EVENTS_DATA !== 'undefined' ? EVENTS_DATA : [];
+  const ev = allEvents.find(e => e.id === eventId || e.name === eventId);
+  if (!ev) return;
+  window.selectedEventId = ev.id || ev.name;
+
+  const panel = document.getElementById('event-details');
+  if (!panel) return;
+
+  const getRarityColor = (r) => {
+    switch ((r || '').toLowerCase()) {
+      case 'legendary': return '#ff6b00';
+      case 'rare':      return '#9b59b6';
+      case 'uncommon':  return '#4CAF50';
+      case 'common':    return '#aaa';
+      default:          return '#888';
+    }
+  };
+  const rc = getRarityColor(ev.rarity);
+
+  const ALL_DIFFS = ['Easy', 'Medium', 'Hard', 'Insane'];
+  const diffArr = Array.isArray(ev.difficulty) ? ev.difficulty : (ev.difficulty ? [ev.difficulty] : []);
+  const isAllDiffs = diffArr.length === 0 || ALL_DIFFS.every(d => diffArr.includes(d));
+  const diffLabel = isAllDiffs ? 'All' : diffArr.join(', ');
+
+  const runLimitLabel = (ev.runLimit === null || ev.runLimit === undefined) ? 'Unlimited' : `${ev.runLimit} per run`;
+
+  const pill = (text, color) =>
+    `<span style="font-size:10px;padding:2px 8px;background:${color}22;border:1px solid ${color}55;border-radius:10px;color:${color};white-space:nowrap;">${text}</span>`;
+
+  const pillList = (label, items, color) =>
+    items && items.length
+      ? `<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+           <span style="font-size:11px;color:#888;flex-shrink:0;">${label}:</span>
+           ${items.map(s => pill(s, color)).join('')}
+         </div>`
+      : '';
+
+  const tagBadge = t =>
+    `<span style="font-size:10px;padding:2px 8px;background:rgba(195,155,211,0.15);border:1px solid rgba(195,155,211,0.3);border-radius:10px;color:#c39bd3;">${t}</span>`;
+
+  // Build choices/outcomes block
+  const STAT_ICON = { strength: '💪', dexterity: '🏃', intelligence: '🧠', charisma: '✨', constitution: '🫀' };
+  const OUT_LABEL = { crit_good: 'Critical Success', good: 'Success', bad: 'Failure', crit_bad: 'Critical Failure' };
+  const OUT_COLOR = { crit_good: '#f1c40f', good: '#2ecc71', bad: '#e67e22', crit_bad: '#e74c3c' };
+
+  const outcomeBlock = (key, outcome) => {
+    if (!outcome) return '';
+    const col = OUT_COLOR[key] || '#aaa';
+    const fxList = (outcome.effects || [])
+      .map(_describeEventEffect)
+      .filter(Boolean);
+    return `
+      <div style="margin-top:6px;padding:6px 9px;background:rgba(${col==='#f1c40f'?'241,196,15':col==='#2ecc71'?'46,204,113':col==='#e67e22'?'230,126,34':'231,76,60'},0.08);border-left:3px solid ${col};border-radius:4px;">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:3px;">
+          <span style="font-size:10px;font-weight:bold;color:${col};text-transform:uppercase;letter-spacing:0.5px;">${OUT_LABEL[key]}</span>
+          ${fxList.length ? `<span style="font-size:10px;color:${col};font-weight:bold;text-align:right;">${fxList.join(', ')}</span>` : ''}
+        </div>
+        ${outcome.description ? `<div style="font-size:11px;color:#ccc;font-style:italic;line-height:1.4;">${outcome.description}</div>` : ''}
+      </div>
+    `;
+  };
+
+  const choicesHTML = (ev.choices || []).map((c, i) => {
+    if (c.type === 'stat_check') {
+      const icon = STAT_ICON[(c.stat||'').toLowerCase()] || '🎲';
+      const stat = c.stat ? c.stat.charAt(0).toUpperCase() + c.stat.slice(1) : 'Roll';
+      const order = ['crit_good', 'good', 'bad', 'crit_bad'];
+      const outs = c.outcomes || {};
+      return `
+        <div style="background:rgba(0,0,0,0.3);border:1px solid #555;border-left:4px solid #e67e22;border-radius:6px;padding:10px 12px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <span style="font-size:13px;font-weight:bold;color:#fff;">${i+1}. ${c.text}</span>
+            <span style="font-size:10px;color:#e67e22;font-weight:bold;">${icon} ${stat} check</span>
+          </div>
+          ${c.rollDescription ? `<div style="font-size:11px;color:#999;font-style:italic;margin-bottom:4px;">${c.rollDescription}</div>` : ''}
+          ${order.map(k => outcomeBlock(k, outs[k])).join('')}
+        </div>
+      `;
+    }
+    const o = c.outcome || {};
+    const fxList = (o.effects || []).map(_describeEventEffect).filter(Boolean);
+    return `
+      <div style="background:rgba(0,0,0,0.3);border:1px solid #555;border-left:4px solid #3498db;border-radius:6px;padding:10px 12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:bold;color:#fff;">${i+1}. ${c.text}</span>
+          ${fxList.length ? `<span style="font-size:10px;color:#5dade2;font-weight:bold;text-align:right;">${fxList.join(', ')}</span>` : ''}
+        </div>
+        ${o.description ? `<div style="font-size:11px;color:#ccc;font-style:italic;line-height:1.4;">${o.description}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  panel.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <!-- Header -->
+      <div style="display:flex;gap:14px;align-items:flex-start;">
+        <img src="${ev.image}" alt="${ev.name}"
+             style="width:120px;height:120px;object-fit:contain;border-radius:8px;background:rgba(0,0,0,0.3);border:2px solid ${rc};"
+             onerror="this.style.opacity='0.3'"/>
+        <div style="flex:1;min-width:0;">
+          <h3 style="margin:0 0 6px 0;color:${rc};word-break:break-word;">${ev.name}</h3>
+          <div style="font-size:12px;color:#aaa;line-height:1.7;">
+            <div><strong style="color:#bbb;">Rarity:</strong> <span style="color:${rc};font-weight:bold;text-transform:uppercase;">${ev.rarity || '—'}</span></div>
+            <div><strong style="color:#bbb;">Game:</strong> ${ev.game || '—'}</div>
+            <div><strong style="color:#bbb;">Type:</strong> ${ev.type || '—'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      ${ev.description ? `
+      <div style="padding:10px 12px;background:rgba(0,0,0,0.25);border-left:3px solid ${rc};border-radius:4px;font-size:12px;color:#ddd;font-style:italic;line-height:1.5;">
+        ${ev.description}
+      </div>` : ''}
+
+      <!-- Spawn rules -->
+      <div style="display:flex;flex-direction:column;gap:6px;padding:10px 12px;background:rgba(0,0,0,0.25);border-radius:6px;">
+        <div style="font-size:11px;font-weight:bold;color:#c39bd3;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Spawn Rules</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <span style="font-size:11px;color:#888;">Difficulty:</span>
+          ${isAllDiffs ? pill('All', '#c39bd3') : diffArr.map(d => pill(d, '#c39bd3')).join('')}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <span style="font-size:11px;color:#888;">Difficulty Roll:</span>
+          ${pill((ev.difficultyRoll || 0) >= 0 ? `+${ev.difficultyRoll || 0}` : `${ev.difficultyRoll}`, '#e67e22')}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <span style="font-size:11px;color:#888;">Run Limit:</span>
+          ${pill(runLimitLabel, '#5dade2')}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <span style="font-size:11px;color:#888;">Requirement:</span>
+          ${pill(ev.requirement || 'None', '#aaa')}
+        </div>
+      </div>
+
+      <!-- Metadata pills -->
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${pillList('Possible Inputs', ev.inputs, '#e67e22')}
+        ${pillList('Possible Outputs', ev.outputs, '#2ecc71')}
+        ${ev.tags && ev.tags.length ? `
+        <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+          <span style="font-size:11px;color:#888;">Tags:</span>
+          ${ev.tags.map(tagBadge).join('')}
+        </div>` : ''}
+      </div>
+
+      <!-- Choices & outcomes -->
+      ${(ev.choices && ev.choices.length) ? `
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:11px;font-weight:bold;color:#c39bd3;text-transform:uppercase;letter-spacing:0.5px;">Decisions & Outcomes</div>
+        ${choicesHTML}
+      </div>` : ''}
+    </div>
+  `;
+}
+
 function formatLevelUpReward(reward) {
   if (!reward || reward.type === 'none' || !reward.type) return null;
   switch (reward.type) {
@@ -2816,6 +3014,7 @@ window.switchEnemyForm = switchEnemyForm;
 window.showItemDetails = showItemDetails;
 window.showSpellDetails = showSpellDetails;
 window.showCardDetails = showCardDetails;
+window.showEventDetails = showEventDetails;
 window.formatLevelUpReward = formatLevelUpReward;
 window.showCharacterDetails = showCharacterDetails;
 window.showAllyDetails = showAllyDetails;

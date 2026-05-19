@@ -56,7 +56,7 @@ function _fillName(text) {
 }
 
 /** Get roll difficulty threshold based on current location difficulty, scaled by progression tier. */
-function _getRollDifficulty() {
+function _getRollDifficulty(event) {
   const diff = (typeof gameState !== 'undefined' && gameState.location && gameState.location.difficulty) || 'Easy';
   const base = diff === 'Insane' ? 17 : diff === 'Hard' ? 15 : diff === 'Medium' ? 13 : 11;
 
@@ -68,7 +68,8 @@ function _getRollDifficulty() {
   else if (beaten >= _thresholds.HARD)  rollNeg = 2;
   else if (beaten >= _thresholds.MEDIUM) rollNeg = 1;
 
-  return base + rollNeg;
+  const eventBump = (event && typeof event.difficultyRoll === 'number') ? event.difficultyRoll : 0;
+  return base + rollNeg + eventBump;
 }
 
 /** Return 'advantage', 'disadvantage', or 'normal' based on luck. */
@@ -426,7 +427,7 @@ function _imageStrip(eventImageSrc) {
 
 function _showChoiceScreen(event, onContinue) {
   const desc = _fillName(event.description);
-  const difficulty = _getRollDifficulty();
+  const difficulty = _getRollDifficulty(event);
 
   const choicesHTML = event.choices.map((choice, i) => {
     const icon = STAT_ICONS[choice.stat] || '';
@@ -658,7 +659,7 @@ function _highlightWinner(instances, rolls, mode) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _showSuccessRollScreen(event, choice, onContinue) {
-  const difficulty = _getRollDifficulty();
+  const difficulty = _getRollDifficulty(event);
   const statVal    = _getStat(choice.stat);
   const needed     = Math.max(1, difficulty - statVal);
   const luckMode   = _getLuckMode();
@@ -1207,7 +1208,23 @@ function _showCardStoreScreen(onContinue) {
 function showEventModal(specificEvent, onCombat) {
   const allEvents = typeof EVENTS_DATA !== 'undefined' ? EVENTS_DATA : [];
   // New-engine events have an `image` property; old-format events do not
-  const pool = allEvents.filter(e => e.image);
+  const fullPool = allEvents.filter(e => e.image);
+
+  // Filter by current location difficulty and per-run appearance limits
+  const locDiff = (typeof gameState !== 'undefined' && gameState.location && gameState.location.difficulty) || 'Easy';
+  const seen = (typeof gameState !== 'undefined' && gameState.eventsSeenCounts) || {};
+  const pool = fullPool.filter(e => {
+    // Difficulty gate: array of allowed difficulties (missing = any)
+    if (Array.isArray(e.difficulty) && e.difficulty.length > 0 && !e.difficulty.includes(locDiff)) {
+      return false;
+    }
+    // Run limit gate: null/undefined means no cap
+    if (typeof e.runLimit === 'number' && e.runLimit > 0) {
+      const count = seen[e.id] || 0;
+      if (count >= e.runLimit) return false;
+    }
+    return true;
+  });
 
   // Default onCombat: start dice or old combat
   const startCombat = typeof onCombat === 'function' ? onCombat : () => {
@@ -1219,14 +1236,15 @@ function showEventModal(specificEvent, onCombat) {
   };
 
   if (pool.length === 0) {
-    console.warn('EVENT-ENGINE: No new-format events in EVENTS_DATA — skipping to combat');
+    console.warn('EVENT-ENGINE: No events available for current filters — skipping to combat');
     startCombat();
     return;
   }
 
   let event;
   if (specificEvent) {
-    event = pool.find(e => e.id === specificEvent || e.name === specificEvent);
+    // Specific lookups bypass difficulty/limit filtering (used by debug + tests)
+    event = fullPool.find(e => e.id === specificEvent || e.name === specificEvent);
   }
   if (!event) {
     // Rarity-weighted selection — higher luck biases toward rarer events
@@ -1252,6 +1270,8 @@ function showEventModal(specificEvent, onCombat) {
   if (typeof gameState !== 'undefined') {
     gameState.phase = 'event';
     gameState.currentEvent = event.name;
+    if (!gameState.eventsSeenCounts) gameState.eventsSeenCounts = {};
+    gameState.eventsSeenCounts[event.id] = (gameState.eventsSeenCounts[event.id] || 0) + 1;
   }
   if (typeof updateInventory === 'function') updateInventory();
 
