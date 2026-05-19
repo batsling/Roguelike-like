@@ -1214,6 +1214,7 @@ window._showCombatPowers = function() {
 
 function renderInlineeDiceBoard(combat) {
   const pending = (combat && combat.pendingDice) || [];
+  const enemyDice = (combat && combat.enemyDice) || [];
 
   const isDieCard = c => (c.type || '').toLowerCase() === 'dice';
   const hasDiceInDeck = combat && (
@@ -1223,7 +1224,8 @@ function renderInlineeDiceBoard(combat) {
     (combat.exhaustPile || []).some(isDieCard)
   );
 
-  if (pending.length === 0 && !hasDiceInDeck) return '';
+  // Surface the tray whenever there's anything on it — including enemy dice
+  if (pending.length === 0 && enemyDice.length === 0 && !hasDiceInDeck) return '';
 
   const rerolls = (combat.player && combat.player.rerolls) || 0;
   const gold   = C.gold   || '#f0c850';
@@ -1273,7 +1275,36 @@ function renderInlineeDiceBoard(combat) {
     </div>`;
   }).join('');
 
-  const emptyHint = pending.length === 0 ? `
+  // Enemy tiles: red-themed, no addons/badges; each tile carries the enemy id
+  // so the hover handler can highlight the corresponding enemy card.
+  const enemyTilesHtml = enemyDice.map(entry => {
+    const enemy = combat.enemies.find(e => e.id === entry.enemyId);
+    const enemyName = enemy ? enemy.name : 'Enemy';
+    return `<div class="pending-die-tile enemy-die-tile"
+      data-enemy-die-id="${entry.id}"
+      data-enemy-id="${entry.enemyId}"
+      style="
+        padding:4px 6px;
+        background:transparent;
+        border:1px solid #66000044;
+        border-radius:8px; cursor:pointer;
+        display:flex; flex-direction:column; align-items:center; gap:2px;
+        transition:box-shadow 0.12s, border-color 0.12s, background 0.12s;
+      ">
+      <div style="font-size:9px;color:#cc6666;line-height:1;">⚔ ${enemyName}</div>
+      <div class="enemy-dice-3d"
+        data-enemy-die-id="${entry.id}"
+        data-sides="${entry.sides}"
+        data-result="${entry.result}"
+        style="width:90px;height:90px;pointer-events:none;flex-shrink:0;">
+      </div>
+      <div style="font-size:10px;color:#ff8a8a;text-align:center;line-height:1.2;">
+        d${entry.sides}: ${entry.result}
+      </div>
+    </div>`;
+  }).join('');
+
+  const emptyHint = (pending.length === 0 && enemyDice.length === 0) ? `
     <div style="
       display:flex; align-items:center; justify-content:center;
       color:#555; font-size:11px; font-style:italic; pointer-events:none;
@@ -1307,7 +1338,7 @@ function renderInlineeDiceBoard(combat) {
         overflow-y:auto;
         flex:1;
       ">
-        ${tilesHtml}${emptyHint}
+        ${tilesHtml}${enemyTilesHtml}${emptyHint}
       </div>
     </div>
   `;
@@ -1609,6 +1640,77 @@ function initPendingDiceRenderers() {
     r.createDice(diceData);
     r.rollDice(diceData, faceNum, null);
     _pendingDiceRenderers.push(r);
+  });
+
+  // Enemy dice live in the same tray; render each red-themed cube and wire
+  // bidirectional hover highlight with the source enemy card.
+  initEnemyDiceRenderers();
+}
+
+let _enemyDiceRenderers = [];
+
+function _disposeEnemyDiceRenderers() {
+  _enemyDiceRenderers.forEach(r => { try { r.dispose(); } catch (e) {} });
+  _enemyDiceRenderers = [];
+}
+
+/**
+ * Build a 6-sided enemy-themed dice data with the result on the up-face.
+ * Dice with more than 6 sides (D8, D10, D12, D20) are visually approximated
+ * as a cube: the rolled number is printed on whichever face the mesh shows.
+ * The displayed text is the authoritative result; the cube geometry is a hint.
+ */
+function _makeEnemyDieDiceData(entry) {
+  const sides = entry.sides;
+  const result = entry.result;
+  // Build 6 face labels. For D6 use 1..6; for larger dice pick a spread that
+  // includes the result so the face we land on shows the actual rolled value.
+  const cubeFaces = [];
+  for (let i = 1; i <= 6; i++) cubeFaces.push(i);
+  // Replace face 6 (or another non-1 face) with the actual result if it's >6
+  // — so when we rotate to "face 6" the number shown is the real roll.
+  if (result > 6 || result < 1) cubeFaces[5] = result;
+
+  const sidesArr = cubeFaces.map((value, idx) => ({
+    face: idx + 1,
+    text: String(value),
+    value,
+    displayText: String(value),
+  }));
+
+  return {
+    type: 'd6-enemy-red',
+    colors: { sceneBg: 0x1a0808 },
+    sides: sidesArr,
+    globalModifiers: [],
+    currentRoll: null,
+    _enemyResult: result,
+    _enemyResultCubeFace: (result > 6 || result < 1) ? 6 : result,
+  };
+}
+
+function initEnemyDiceRenderers() {
+  _disposeEnemyDiceRenderers();
+  if (typeof DiceRendererInstance === 'undefined') return;
+  const cs = window.CombatEngine && window.CombatEngine.getCombatState && window.CombatEngine.getCombatState();
+  if (!cs || !Array.isArray(cs.enemyDice)) return;
+
+  document.querySelectorAll('.enemy-dice-3d[data-enemy-die-id]').forEach(el => {
+    const id = el.dataset.enemyDieId;
+    const entry = cs.enemyDice.find(d => d.id === id);
+    if (!entry) return;
+
+    const diceData = _makeEnemyDieDiceData(entry);
+    if (el.clientWidth === 0 || el.clientHeight === 0) {
+      el.style.width  = '66px';
+      el.style.height = '66px';
+    }
+
+    const r = new DiceRendererInstance();
+    r.init(el, diceData.colors.sceneBg);
+    r.createDice(diceData);
+    r.rollDice(diceData, diceData._enemyResultCubeFace, null);
+    _enemyDiceRenderers.push(r);
   });
 }
 
@@ -2587,6 +2689,8 @@ function attachCombatEventListeners(combat) {
     });
   }
 
+  attachEnemyDiceHighlightHandlers();
+
   // Player zone click: confirm a selected self-targeting / power card
   const playerZone = document.getElementById('combat-player-zone');
   if (playerZone) {
@@ -2602,6 +2706,61 @@ function attachCombatEventListeners(combat) {
       _playSelectedSelfCard(cs, idx);
     });
   }
+}
+
+/**
+ * Bidirectional hover/click highlight between a Rerollable enemy's dice in
+ * the tray and the enemy's card in the field. Re-attached after every render
+ * via attachCombatEventListeners.
+ */
+function attachEnemyDiceHighlightHandlers() {
+  const ENEMY_GLOW = '0 0 18px #ff3333cc, 0 0 6px #ff666688';
+  const TILE_BG    = 'rgba(204,51,51,0.18)';
+  const TILE_BORDER = '#ff5555';
+
+  // Tray die → enemy card
+  document.querySelectorAll('.enemy-die-tile').forEach(tile => {
+    const enemyId = tile.dataset.enemyId;
+    if (!enemyId) return;
+
+    const setHighlight = (on) => {
+      const card = document.getElementById(`enemy-card-${enemyId}`);
+      if (card) {
+        card.style.boxShadow = on ? ENEMY_GLOW : '';
+        card.style.transition = 'box-shadow 0.12s';
+      }
+      tile.style.background   = on ? TILE_BG : 'transparent';
+      tile.style.borderColor  = on ? TILE_BORDER : '#66000044';
+    };
+
+    tile.addEventListener('mouseenter', () => setHighlight(true));
+    tile.addEventListener('mouseleave', () => setHighlight(false));
+    tile.addEventListener('click', () => {
+      // Click flashes the enemy card so the user can spot it on a crowded field
+      const card = document.getElementById(`enemy-card-${enemyId}`);
+      if (!card) return;
+      card.style.boxShadow = ENEMY_GLOW;
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      setTimeout(() => { if (card.matches(':not(:hover)')) card.style.boxShadow = ''; }, 700);
+    });
+  });
+
+  // Enemy card → tray dice
+  document.querySelectorAll('.enemy-card[data-enemy-id]').forEach(card => {
+    const enemyId = card.dataset.enemyId;
+    const tiles = Array.from(document.querySelectorAll(`.enemy-die-tile[data-enemy-id="${enemyId}"]`));
+    if (tiles.length === 0) return;
+
+    const setHighlight = (on) => {
+      tiles.forEach(t => {
+        t.style.background   = on ? TILE_BG : 'transparent';
+        t.style.borderColor  = on ? TILE_BORDER : '#66000044';
+      });
+    };
+
+    card.addEventListener('mouseenter', () => setHighlight(true));
+    card.addEventListener('mouseleave', () => setHighlight(false));
+  });
 }
 
 function handleEnemyClick(enemyId) {
