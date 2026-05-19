@@ -216,6 +216,7 @@ function initCombat(enemies, characterData, weaponData = null, allies = []) {
     pendingEffects: [], // Effects waiting to be resolved
     turnHistory: [],
     pendingDice: [],      // Rolled dice faces waiting to be used
+    enemyDice: [],        // Pre-rolled dice from rerollable enemies — visible in the tray
     _druidScaling: {},    // {cardName_faceIndex: bonusValue} — Druid scaling per face
     _usedSingleUseFaces: {} // {cardName_faceIndex: true} — Single Use faces consumed this combat
   };
@@ -963,14 +964,23 @@ function rollDiceNotation(notation) {
 
 /**
  * Parse a damage value from an effect, resolving dice notation if present.
- * For dice attacks (D6/D8/etc.), rolls each die individually.
+ * For dice attacks (D6/D8/etc.), rolls each die individually — unless the
+ * effect has _lockedRolls from a pre-rolled rerollable enemy, in which case
+ * the locked values are used (the player can see/reroll them in the tray).
  * @param {Object} effect - Effect object
- * @param {Object} [options] - Options: { canReroll, rerollsAvailable }
  * @returns {{ value: number, isDiceAttack: boolean, rollDetails: string }}
  */
 function resolveEffectValue(effect) {
   const raw = effect.raw || '';
   if (hasDiceNotation(raw)) {
+    // Rerollable enemies pre-roll their dice at intent time so the player
+    // can see and reroll them. Use the locked-in result instead of a fresh roll.
+    if (Array.isArray(effect._lockedRolls)) {
+      const rolls = effect._lockedRolls;
+      const total = rolls.reduce((sum, r) => sum + r.result, 0);
+      const rollStr = rolls.map(r => `d${r.die}:${r.result}`).join(', ');
+      return { value: total, isDiceAttack: true, rollDetails: rollStr };
+    }
     const { total, rolls } = rollDiceNotation(raw);
     const rollStr = rolls.map(r => `d${r.die}:${r.result}`).join(', ');
     return { value: total, isDiceAttack: true, rollDetails: rollStr };
@@ -982,6 +992,10 @@ function resolveEffectValue(effect) {
  * Roll intent for all enemies
  */
 function rollAllEnemyIntents() {
+  // Clear the tray's pre-rolled enemy dice before re-rolling intents this round.
+  // (Dead enemies' dice are removed separately in onEnemyDefeated.)
+  if (combatState.enemyDice) combatState.enemyDice.length = 0;
+
   combatState.enemies.forEach(enemy => {
     if (enemy.health > 0) {
       // Reset Curl Up trigger at the start of each new round
@@ -991,7 +1005,57 @@ function rollAllEnemyIntents() {
         enemy.justSpawned = false;
       }
       rollEnemyIntent(enemy);
+      // Rerollable enemies pre-roll their dice attacks so the player can see
+      // and reroll them via the dice tray. Non-rerollable enemies keep the
+      // legacy "roll at execution time" path.
+      if (enemy.statuses && enemy.statuses['rerollable']) {
+        lockEnemyDiceForTray(enemy);
+      }
     }
+  });
+}
+
+/**
+ * Walk a rerollable enemy's current intent, pre-roll every dice-notation effect,
+ * stash the locked rolls on the effect (read by resolveEffectValue), and push
+ * one tray entry per individual die.
+ *
+ * Called from rollAllEnemyIntents and from rerollAllPending. Idempotent: any
+ * existing tray entries for this enemy are cleared first.
+ */
+function lockEnemyDiceForTray(enemy) {
+  if (!combatState.enemyDice) combatState.enemyDice = [];
+  // Drop existing entries owned by this enemy
+  combatState.enemyDice = combatState.enemyDice.filter(e => e.enemyId !== enemy.id);
+
+  const intent = enemy.currentIntent || [];
+  intent.forEach((entry, intentIdx) => {
+    const effects = (entry.face && entry.face.effects) || [];
+    effects.forEach((effect, effectIdx) => {
+      if (!Array.isArray(effect.diceGroups) || effect.diceGroups.length === 0) return;
+      // Roll each die in each group and store the results in order
+      const rolls = [];
+      for (const group of effect.diceGroups) {
+        const count = group.count || 1;
+        for (let i = 0; i < count; i++) {
+          const result = Math.floor(Math.random() * group.sides) + 1;
+          rolls.push({ die: group.sides, result });
+        }
+      }
+      effect._lockedRolls = rolls;
+      // One tray entry per individual die
+      rolls.forEach((roll, rollIdx) => {
+        combatState.enemyDice.push({
+          id: `enemy_die_${enemy.id}_${intentIdx}_${effectIdx}_${rollIdx}`,
+          enemyId: enemy.id,
+          intentIndex: intentIdx,
+          effectIndex: effectIdx,
+          rollIndex: rollIdx,
+          sides: roll.die,
+          result: roll.result,
+        });
+      });
+    });
   });
 }
 
@@ -1172,49 +1236,9 @@ function rollPlayerDie(diceId) {
   return { success: true, face: face, diceId: diceId, faceIndex: faceIndex };
 }
 
-/**
- * Reroll a player die
- * @param {string} diceId - ID of the die to reroll
- * @returns {Object} Result
- */
-function rerollPlayerDie(diceId) {
-  if (!combatState || combatState.phase !== 'player_action') {
-    return { success: false, error: 'Cannot reroll now' };
-  }
-
-  const die = combatState.playerDice.find(d => d.id === diceId);
-  if (!die || !die.isRolled || die.isConfirmed) {
-    return { success: false, error: 'Cannot reroll this die' };
-  }
-
-  if (combatState.player.rerolls < 1) {
-    return { success: false, error: 'No rerolls remaining' };
-  }
-
-  // Spend reroll
-  combatState.player.rerolls--;
-  if (typeof window !== 'undefined') window.reroll = combatState.player.rerolls;
-
-  // Reroll
-  const faceIndex = Math.floor(Math.random() * die.faces.length);
-  const face = die.faces[faceIndex];
-
-  die.currentFace = face;
-  die.currentFaceIndex = faceIndex;
-
-  addLog(`Rerolled ${die.name}: ${face.raw || 'Blank'}`, 'info');
-
-  // Process Cantrip effects
-  if (!face.isBlank) {
-    face.effects.forEach(effect => {
-      if (effect.addons && effect.addons.includes('Cantrip')) {
-        processCantripEffect(effect, die);
-      }
-    });
-  }
-
-  return { success: true, face: face, diceId: diceId, faceIndex: faceIndex };
-}
+// rerollPlayerDie removed: per-die reroll was replaced by rerollAllPending,
+// which now rerolls every player + Rerollable-enemy die on the tray at once
+// for the same 1-reroll cost. See js/combat-ui.js #pending-reroll-all-btn.
 
 /**
  * Confirm a die roll and apply effects
@@ -2695,6 +2719,11 @@ function onEnemyDefeated(enemy) {
   if (enemy.onDeathTriggered) return;
   enemy.onDeathTriggered = true;
 
+  // Drop this enemy's pre-rolled dice from the tray — the attack will not resolve.
+  if (combatState.enemyDice) {
+    combatState.enemyDice = combatState.enemyDice.filter(d => d.enemyId !== enemy.id);
+  }
+
   const inv = typeof window.inventory !== 'undefined' ? window.inventory : [];
 
   // Metal Plate: when you kill an enemy, gain +1 Brace
@@ -3250,19 +3279,13 @@ function executeEnemyActions() {
         const powerBonus = enemy.statuses['power'] || 0;
 
         face.effects.forEach(effect => {
-          // Resolve value - rolls dice if D6/D8/etc. notation present
+          // Resolve value - rolls dice if D6/D8/etc. notation present.
+          // For Rerollable enemies, the dice were pre-rolled at intent time
+          // and shown in the tray; resolveEffectValue uses those locked rolls.
           const resolved = resolveEffectValue(effect);
           let value = resolved.value;
           if (resolved.isDiceAttack) {
             addLog(`${enemy.name} rolls dice: ${resolved.rollDetails} = ${value}`, 'info');
-            // Allow player to spend a reroll ONLY if this enemy has the Rerollable status
-            if (enemy.statuses['rerollable'] && combatState.player.rerolls > 0) {
-              combatState.player.rerolls--;
-              if (typeof window !== 'undefined') window.reroll = combatState.player.rerolls;
-              const rerolled = rollDiceNotation(effect.raw || '');
-              addLog(`Reroll used! New roll: ${rerolled.rolls.map(r=>`d${r.die}:${r.result}`).join(', ')} = ${rerolled.total}`, 'success');
-              value = rerolled.total;
-            }
           }
 
           // Add power bonus to Dmg, arcane bonus to Magic Dmg
@@ -6224,11 +6247,15 @@ function rerollAllPending() {
   if (!combatState) return { success: false, error: 'No combat' };
   if (combatState.phase !== 'player_action') return { success: false, error: 'Not player turn' };
   if ((combatState.player.rerolls || 0) < 1) return { success: false, error: 'No rerolls left' };
-  if (combatState.pendingDice.length === 0) return { success: false, error: 'No dice to reroll' };
+  const enemyDice = combatState.enemyDice || [];
+  if (combatState.pendingDice.length === 0 && enemyDice.length === 0) {
+    return { success: false, error: 'No dice to reroll' };
+  }
 
   combatState.player.rerolls--;
   if (typeof window !== 'undefined') window.reroll = combatState.player.rerolls;
 
+  // Reroll player pending dice
   const newPending = [];
   for (const entry of combatState.pendingDice) {
     const diceDef = (typeof DICE_DATA !== 'undefined' ? DICE_DATA : []).find(d => d.name === entry.cardName);
@@ -6238,8 +6265,17 @@ function rerollAllPending() {
     const newEntry = addPendingDieRaw(entry.cardName, newFaceIndex);
     if (newEntry) newPending.push(newEntry);
   }
-
   combatState.pendingDice = newPending;
+
+  // Reroll every Rerollable enemy's tray dice. lockEnemyDiceForTray clears
+  // and re-pushes entries for that enemy, keeping effect._lockedRolls in sync.
+  const rerollableEnemies = combatState.enemies.filter(
+    e => e.health > 0 && e.statuses && e.statuses['rerollable']
+  );
+  for (const enemy of rerollableEnemies) {
+    lockEnemyDiceForTray(enemy);
+  }
+
   addLog(`Rerolled all pending dice (${combatState.player.rerolls} rerolls remaining)`, 'info');
   return { success: true };
 }
@@ -6290,7 +6326,6 @@ if (typeof window !== 'undefined') {
     playCard,
     cardNeedsTarget,
     rollPlayerDie,
-    rerollPlayerDie,
     confirmDie,
     useDash,
     castSpell,
