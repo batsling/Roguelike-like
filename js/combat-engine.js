@@ -3315,25 +3315,42 @@ function executeEnemyActions() {
               };
 
               if (effect.diceGroups && effect.diceGroups.length > 0) {
-                // Dice attack: each group is a separate batch of hits
-                const diceStr = effect.diceGroups.map(g => `${g.count}d${g.sides}`).join('+');
-                addLog(`${enemy.name} rolls ${diceStr}!`, 'info');
-                effect.diceGroups.forEach(group => {
-                  for (let t = 0; t < group.count; t++) {
-                    let roll = Math.floor(Math.random() * group.sides) + 1;
-                    if (enemy.statuses['weak']) roll = Math.floor(roll * 0.75);
-                    // Player hit (always)
-                    dealDamageToPlayer(roll, addons, enemy);
-                    // AoE: hit allies and other enemies
-                    if (isAoE) {
-                      (combatState.allies || []).forEach(a => { if (a.isAlive) dealDamage(a, roll, addons); });
-                      combatState.enemies.forEach(oe => {
-                        if (oe === enemy || oe.health <= 0) return;
-                        if (hasExceptLeft  && oe.position < enemy.position) return;
-                        if (hasExceptRight && oe.position > enemy.position) return;
-                        dealDamage(oe, roll, addons);
-                      });
+                // For Rerollable enemies, the dice were pre-rolled at intent
+                // time and are visible in the tray. Use those locked values
+                // so the tray and the damage agree. Non-Rerollable enemies
+                // (no _lockedRolls) keep the roll-fresh-at-attack-time path.
+                const useLocked = Array.isArray(effect._lockedRolls) && effect._lockedRolls.length > 0;
+                const rolls = [];
+                if (useLocked) {
+                  for (const r of effect._lockedRolls) rolls.push(r.result);
+                } else {
+                  for (const group of effect.diceGroups) {
+                    for (let i = 0; i < group.count; i++) {
+                      rolls.push(Math.floor(Math.random() * group.sides) + 1);
                     }
+                  }
+                }
+                const diceStr = effect.diceGroups.map(g => `${g.count}d${g.sides}`).join('+');
+                const rollSummary = rolls.join(', ');
+                addLog(`${enemy.name} rolls ${diceStr} → [${rollSummary}]`, 'info');
+
+                rolls.forEach(raw => {
+                  // Apply enemy-side outgoing modifiers per die: Weak reduces
+                  // by 25% (floor), Power adds the flat bonus. dealDamageToPlayer
+                  // applies the rest (enemy thorns, player vuln/bruise/etc.).
+                  let dmg = raw;
+                  if (enemy.statuses['weak']) dmg = Math.floor(dmg * 0.75);
+                  dmg += powerBonus;
+                  dealDamageToPlayer(dmg, addons, enemy);
+                  // AoE: hit allies and other enemies
+                  if (isAoE) {
+                    (combatState.allies || []).forEach(a => { if (a.isAlive) dealDamage(a, dmg, addons); });
+                    combatState.enemies.forEach(oe => {
+                      if (oe === enemy || oe.health <= 0) return;
+                      if (hasExceptLeft  && oe.position < enemy.position) return;
+                      if (hasExceptRight && oe.position > enemy.position) return;
+                      dealDamage(oe, dmg, addons);
+                    });
                   }
                 });
               } else {
@@ -3604,6 +3621,12 @@ function predictPlayerIncomingDamage(rawDamage, addons, enemy) {
 
   let damage = rawDamage;
 
+  // Enemy Weak: outgoing damage reduced by 25% (floored). Applied first,
+  // mirroring the per-die handling in executeEnemyActions.
+  if (enemy && enemy.statuses && enemy.statuses['weak']) {
+    damage = Math.floor(damage * 0.75);
+  }
+
   // Enemy Power adds to outgoing damage (applied by executeEnemyActions
   // before it calls dealDamageToPlayer, so we mirror it here)
   if (enemy && enemy.statuses) {
@@ -3704,6 +3727,13 @@ function dealDamageToPlayer(damage, addons, enemy) {
   const braceStacks = player.statuses['brace'] || 0;
   if (braceStacks > 0) {
     damage = Math.max(1, damage - braceStacks);
+  }
+
+  // Intangible clamps incoming damage to 1 (matches loseHealth behavior;
+  // also kept in sync with predictPlayerIncomingDamage so the displayed
+  // intent prediction matches what's actually dealt)
+  if (player.statuses['intangible'] && damage > 1) {
+    damage = 1;
   }
 
   // Player Thorns — fires on hit (regardless of block), not just on health loss.

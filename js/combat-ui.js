@@ -988,8 +988,14 @@ function _renderIntentDamageReadout(enemy) {
       if (!Array.isArray(effect._lockedRolls) || effect._lockedRolls.length === 0) continue;
       const move = (effect.move || '').toLowerCase();
       if (move !== 'dmg' && move !== 'magic dmg') continue;
-      const rawTotal = effect._lockedRolls.reduce((s, r) => s + r.result, 0);
-      totalPredicted += predict(rawTotal, effect.addons || [], enemy);
+      // The engine deals one damage call per die in the diceGroups path, so
+      // every per-die hit gets Power/Vulnerable/Bruise/etc. applied
+      // independently. Predict the same way: sum predictions per die rather
+      // than predicting once on the raw sum. This matches what
+      // dealDamageToPlayer actually does, side-effect for side-effect.
+      for (const r of effect._lockedRolls) {
+        totalPredicted += predict(r.result, effect.addons || [], enemy);
+      }
       // Build a compact roll summary, e.g. "d8:5" or "d8:5+d6:3"
       rolledParts.push(effect._lockedRolls.map(r => `d${r.die}:${r.result}`).join('+'));
     }

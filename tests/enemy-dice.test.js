@@ -391,6 +391,136 @@ describe('lockEnemyDiceForTray — entry shape stays stable for re-renders', () 
   });
 });
 
+describe('executeEnemyActions — actually uses locked dice rolls', () => {
+  // The cardinal bug: the engine USED to roll fresh dice at attack time,
+  // ignoring _lockedRolls. The dice tray and the damage dealt were two
+  // separate random numbers. This pins the fix.
+
+  function makeRunningCombat(enemy) {
+    return {
+      player: {
+        health: 100, maxHealth: 100, energy: 3, maxEnergy: 3,
+        block: 0, statuses: {},
+        stats: { strength: 0, dexterity: 0, intelligence: 0, charisma: 0 },
+        bonuses: { strength: 0, dexterity: 0, intelligence: 0, charisma: 0 },
+      },
+      enemies: [enemy],
+      allies: [],
+      playerDice: [],
+      turn: 1,
+      phase: 'enemy_actions',
+      log: [],
+      spells: [],
+      spellCooldowns: {},
+      spellCasts: {},
+      usedSingleCast: {},
+      pendingEffects: [],
+      turnHistory: [],
+      pendingDice: [],
+      enemyDice: [],
+      drawPile: [], hand: [], discardPile: [], exhaustPile: [], powers: [],
+      _hitLog: [], _flatAttackBonus: 0,
+      _druidScaling: {}, _usedSingleUseFaces: {},
+      incrementals: { attacksTotal: 0, attacksThisTurn: 0 },
+    };
+  }
+
+  it('damage dealt = sum of locked roll values (per-die-predicted)', () => {
+    const enemy = makeEnemy('Brute', 'Always: D6 Dmg Melee', 'Rerollable');
+    globalThis.combatState = makeRunningCombat(enemy);
+    // Force a deterministic locked roll
+    globalThis.rollAllEnemyIntents();
+    const locked = enemy.currentIntent[0].face.effects[0]._lockedRolls;
+    expect(locked.length).toBe(1);
+    const rolled = locked[0].result;
+
+    // Compute expected damage via the same predictor the UI shows
+    const expected = globalThis.predictPlayerIncomingDamage(
+      rolled, enemy.currentIntent[0].face.effects[0].addons || [], enemy
+    );
+
+    // Now run the actual enemy action. Stub Math.random so any stray fresh
+    // roll would land on a wildly different value (catches regression).
+    const origRandom = Math.random;
+    Math.random = () => 0.99;  // would roll 6 on a d6
+    try {
+      const beforeHp = globalThis.combatState.player.health;
+      globalThis.executeEnemyActions();
+      const taken = beforeHp - globalThis.combatState.player.health;
+      expect(taken).toBe(expected);
+    } finally {
+      Math.random = origRandom;
+    }
+  });
+
+  it('compound dice (D6x3) per-die hits — each die its own dealDamageToPlayer call', () => {
+    const enemy = makeEnemy('Brute', 'Always: D6x3 Dmg Melee', 'Rerollable');
+    globalThis.combatState = makeRunningCombat(enemy);
+    globalThis.rollAllEnemyIntents();
+    const locked = enemy.currentIntent[0].face.effects[0]._lockedRolls;
+    expect(locked.length).toBe(3);
+
+    // Block so we can measure per-die hits separately if needed
+    globalThis.combatState.player.block = 0;
+    const expected = locked.reduce(
+      (s, r) => s + globalThis.predictPlayerIncomingDamage(
+        r.result, enemy.currentIntent[0].face.effects[0].addons || [], enemy
+      ), 0
+    );
+
+    const beforeHp = globalThis.combatState.player.health;
+    globalThis.executeEnemyActions();
+    const taken = beforeHp - globalThis.combatState.player.health;
+    expect(taken).toBe(expected);
+  });
+
+  it('Power applies per die (was previously dropped for dice attacks)', () => {
+    const enemy = makeEnemy('Brute', 'Always: D6 Dmg Melee', 'Rerollable');
+    enemy.statuses['power'] = 3;
+    globalThis.combatState = makeRunningCombat(enemy);
+    globalThis.rollAllEnemyIntents();
+    const rolled = enemy.currentIntent[0].face.effects[0]._lockedRolls[0].result;
+
+    const beforeHp = globalThis.combatState.player.health;
+    globalThis.executeEnemyActions();
+    const taken = beforeHp - globalThis.combatState.player.health;
+    // raw + power, no other modifiers
+    expect(taken).toBe(rolled + 3);
+  });
+
+  it('Weak applies per die (floor 0.75)', () => {
+    const enemy = makeEnemy('Brute', 'Always: D6 Dmg Melee', 'Rerollable');
+    enemy.statuses['weak'] = 1;
+    globalThis.combatState = makeRunningCombat(enemy);
+    globalThis.rollAllEnemyIntents();
+    const rolled = enemy.currentIntent[0].face.effects[0]._lockedRolls[0].result;
+
+    const beforeHp = globalThis.combatState.player.health;
+    globalThis.executeEnemyActions();
+    const taken = beforeHp - globalThis.combatState.player.health;
+    expect(taken).toBe(Math.floor(rolled * 0.75));
+  });
+
+  it('non-Rerollable enemies still roll fresh dice at attack time (unchanged)', () => {
+    // No Rerollable status → no _lockedRolls → engine rolls fresh
+    const enemy = makeEnemy('Goblin', 'Always: D6 Dmg Melee', '');
+    globalThis.combatState = makeRunningCombat(enemy);
+    globalThis.rollAllEnemyIntents();
+    // No tray entries
+    expect(globalThis.combatState.enemyDice.length).toBe(0);
+    // No locked rolls on the effect
+    const eff = enemy.currentIntent[0].face.effects[0];
+    expect(eff._lockedRolls).toBeUndefined();
+
+    // Damage still happens (just via the fresh-roll path)
+    const beforeHp = globalThis.combatState.player.health;
+    globalThis.executeEnemyActions();
+    const taken = beforeHp - globalThis.combatState.player.health;
+    expect(taken).toBeGreaterThanOrEqual(1);
+    expect(taken).toBeLessThanOrEqual(6);
+  });
+});
+
 describe('exports — rerollPlayerDie is gone', () => {
   it('rerollPlayerDie is no longer attached to globalThis', () => {
     expect(typeof globalThis.rerollPlayerDie).toBe('undefined');

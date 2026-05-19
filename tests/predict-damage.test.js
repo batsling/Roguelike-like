@@ -108,10 +108,27 @@ describe('predictPlayerIncomingDamage — modifier chain', () => {
     expect(globalThis.predictPlayerIncomingDamage(50, ['melee'], e)).toBe(1);
   });
 
-  it('combines modifiers in the right order (Power → Vulnerable)', () => {
-    // raw 5, +Power 3 = 8, ×Vuln 1.5 = ceil(12) = 12, +Bruise 2 = 14
+  it('combines modifiers in the right order (Weak → Power → Vulnerable)', () => {
+    // raw 5, no Weak, +Power 3 = 8, ×Vuln 1.5 = ceil(12) = 12, +Bruise 2 = 14
     const e = makeState({ vulnerable: 1, bruise: 2 }, { power: 3 });
     expect(globalThis.predictPlayerIncomingDamage(5, ['melee'], e)).toBe(14);
+  });
+
+  it('enemy Weak reduces outgoing damage by 25% (floored)', () => {
+    // raw 5 with Weak → floor(5 * 0.75) = 3, no other mods → 3
+    const e = makeState({}, { weak: 1 });
+    expect(globalThis.predictPlayerIncomingDamage(5, ['melee'], e)).toBe(3);
+  });
+
+  it('Weak applies BEFORE Power (matches engine order)', () => {
+    // raw 4 → Weak floor(4 * 0.75) = 3 → +Power 2 = 5
+    const e = makeState({}, { weak: 1, power: 2 });
+    expect(globalThis.predictPlayerIncomingDamage(4, ['melee'], e)).toBe(5);
+  });
+
+  it('Intangible (player) clamps damage to 1 — matches dealDamageToPlayer fix', () => {
+    const e = makeState({ intangible: 1 }, { power: 5 });
+    expect(globalThis.predictPlayerIncomingDamage(20, ['melee'], e)).toBe(1);
   });
 
   it('matches what dealDamageToPlayer actually deals', () => {
@@ -124,11 +141,32 @@ describe('predictPlayerIncomingDamage — modifier chain', () => {
     // Snapshot player HP, run real damage, measure delta
     const before = globalThis.combatState.player.health;
     globalThis.combatState.player.block = 0;
-    // Mirror what executeEnemyActions does: add Power BEFORE calling
-    // dealDamageToPlayer. predictPlayerIncomingDamage folds it in, so we
-    // pass the raw+power value to keep them comparable.
+    // Mirror what executeEnemyActions does for dice attacks: apply Weak
+    // (none here) and add Power BEFORE calling dealDamageToPlayer.
+    // predictPlayerIncomingDamage folds both in, so we pass (raw + power)
+    // to dealDamageToPlayer to keep them comparable.
     globalThis.dealDamageToPlayer(6 + 2, ['melee'], e);
     const taken = before - globalThis.combatState.player.health;
     expect(taken).toBe(predicted);
+  });
+
+  it('per-die prediction sum equals per-die dealt damage', () => {
+    // Three dice rolling [3, 4, 5] with Power=2 and Vulnerable.
+    // Engine deals per-die: each hit = predict(roll). Sum = total taken.
+    const e = makeState({ vulnerable: 1 }, { power: 2 });
+    const rolls = [3, 4, 5];
+
+    const predictedSum = rolls.reduce(
+      (s, r) => s + globalThis.predictPlayerIncomingDamage(r, ['melee'], e), 0
+    );
+
+    const before = globalThis.combatState.player.health;
+    globalThis.combatState.player.block = 0;
+    for (const r of rolls) {
+      // Engine path: apply weak (none) + power per die, then dealDamageToPlayer
+      globalThis.dealDamageToPlayer(r + 2, ['melee'], e);
+    }
+    const taken = before - globalThis.combatState.player.health;
+    expect(taken).toBe(predictedSum);
   });
 });
