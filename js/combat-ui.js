@@ -1277,9 +1277,15 @@ function renderInlineeDiceBoard(combat) {
 
   // Enemy tiles: red-themed, no addons/badges; each tile carries the enemy id
   // so the hover handler can highlight the corresponding enemy card.
+  // Enemy tiles: red-themed, no addons/badges; each tile carries the enemy id
+  // so the hover handler can highlight the corresponding enemy card.
   const enemyTilesHtml = enemyDice.map(entry => {
     const enemy = combat.enemies.find(e => e.id === entry.enemyId);
     const enemyName = enemy ? enemy.name : 'Enemy';
+    const predicted = _predictEnemyDieDamage(entry, combat);
+    // The player asked for "die face = final damage" — paint the predicted
+    // value on the 3D mesh AND on the tile label. Sum across all of an
+    // enemy's dice = total damage they'll deal (pre-block).
     return `<div class="pending-die-tile enemy-die-tile"
       data-enemy-die-id="${entry.id}"
       data-enemy-id="${entry.enemyId}"
@@ -1296,10 +1302,14 @@ function renderInlineeDiceBoard(combat) {
         data-enemy-die-id="${entry.id}"
         data-sides="${entry.sides}"
         data-result="${entry.result}"
+        data-display-value="${predicted}"
         style="width:90px;height:90px;pointer-events:none;flex-shrink:0;">
       </div>
-      <div style="font-size:10px;color:#ff8a8a;text-align:center;line-height:1.2;">
-        d${entry.sides}: ${entry.result}
+      <div style="font-size:11px;font-weight:bold;color:#ff8a8a;text-align:center;line-height:1.2;">
+        ${predicted} dmg
+      </div>
+      <div style="font-size:9px;color:#7a4040;text-align:center;line-height:1;">
+        d${entry.sides} rolled ${entry.result}
       </div>
     </div>`;
   }).join('');
@@ -1655,6 +1665,62 @@ function _disposeEnemyDiceRenderers() {
 }
 
 /**
+ * Predict the final damage THIS die contributes to the player after every
+ * applicable enemy/player modifier (Power, Vulnerable, Brace, etc).
+ *
+ * For a single-die attack effect, the returned value = the entire predicted
+ * damage. For compound attacks (multiple dice in one effect like D8x2+D6x2),
+ * the per-effect prediction is allocated to each die proportionally by its
+ * raw share. Sum across all dice of one effect = the full attack damage.
+ *
+ * Used by the dice tray UI so "die face = final damage" (per the player's
+ * direction). Recomputed every render so it tracks live state.
+ */
+function _predictEnemyDieDamage(entry, combat) {
+  if (!combat || !window.CombatEngine || typeof window.CombatEngine.predictPlayerIncomingDamage !== 'function') {
+    return entry.result;
+  }
+  const enemy = combat.enemies.find(e => e.id === entry.enemyId);
+  if (!enemy) return entry.result;
+
+  const intent = (enemy.currentIntent || [])[entry.intentIndex];
+  const effect = intent && intent.face && intent.face.effects && intent.face.effects[entry.effectIndex];
+  if (!effect || !Array.isArray(effect._lockedRolls) || effect._lockedRolls.length === 0) {
+    return entry.result;
+  }
+
+  const move = (effect.move || '').toLowerCase();
+  // Only Dmg / Magic Dmg routes through dealDamageToPlayer's modifier chain.
+  // Anything else (Block, Heal, etc.) shouldn't claim to be "incoming dmg".
+  if (move !== 'dmg' && move !== 'magic dmg') return entry.result;
+
+  const rawTotal = effect._lockedRolls.reduce((s, r) => s + r.result, 0);
+  if (rawTotal <= 0) return entry.result;
+
+  const predictedTotal = window.CombatEngine.predictPlayerIncomingDamage(
+    rawTotal, effect.addons || [], enemy
+  );
+
+  // Single-die effect: the prediction is exactly this die's contribution.
+  if (effect._lockedRolls.length === 1) return predictedTotal;
+
+  // Compound effect: split the predicted total across dice by raw share.
+  // Round to int; the LAST die in display order absorbs any rounding error
+  // so the sum still equals predictedTotal exactly.
+  const share = entry.result / rawTotal;
+  const isLastDie = entry.rollIndex === effect._lockedRolls.length - 1;
+  if (!isLastDie) return Math.round(predictedTotal * share);
+
+  // Compute everyone else's rounded share, give us the remainder.
+  let usedSoFar = 0;
+  for (let i = 0; i < effect._lockedRolls.length - 1; i++) {
+    const r = effect._lockedRolls[i].result;
+    usedSoFar += Math.round(predictedTotal * (r / rawTotal));
+  }
+  return Math.max(0, predictedTotal - usedSoFar);
+}
+
+/**
  * Build dice data for a Rerollable enemy die. Uses the unified polyhedral
  * mesh path in dice-renderer.js so a real shape is rendered for the die's
  * actual side count (d4 tetrahedron, d6 cube, d8 octahedron, d10 pentagonal
@@ -1663,7 +1729,7 @@ function _disposeEnemyDiceRenderers() {
  * Falls back to a 6-sided cube for unrecognized side counts so the UI never
  * crashes — the rolled-result label below the die is always authoritative.
  */
-function _makeEnemyDieDiceData(entry) {
+function _makeEnemyDieDiceData(entry, displayValue) {
   const SUPPORTED = [4, 6, 8, 10, 12, 20];
   const sides = SUPPORTED.includes(entry.sides) ? entry.sides : 6;
   const usePolyhedral = sides !== 20;  // d20 keeps the existing dedicated path
@@ -1678,24 +1744,40 @@ function _makeEnemyDieDiceData(entry) {
     outline: '#000000',
   };
 
+  // Build a sides array where the face matching the raw roll has its
+  // displayValue overridden to the predicted final damage. The mesh still
+  // rotates to the raw-roll face (so it lands on the side the die actually
+  // rolled), but that face is painted with the final-damage number.
+  const sidesArr = Array.from({ length: sides }, (_, i) => ({
+    face: i + 1,
+    value: i + 1,
+    displayValue: null,
+    text: String(i + 1),
+    displayText: String(i + 1),
+    texture: null,
+    modifiers: [],
+  }));
+  const rawIdx = (entry.result >= 1 && entry.result <= sides) ? entry.result - 1 : 0;
+  if (displayValue !== undefined && displayValue !== null) {
+    sidesArr[rawIdx].displayValue = displayValue;
+    sidesArr[rawIdx].displayText = String(displayValue);
+  }
+
   if (usePolyhedral) {
     return {
       shape: 'polyhedral',
       type:  `d${sides}-enemy-red`,  // legacy tag; not used for routing once shape is set
       sides,
       colors,
+      sidesArray: sidesArr,           // keep raw array around for callers that want it
       _enemyResult: entry.result,
+      _displayValue: displayValue,
     };
   }
 
-  // d20: keep using the existing createD20Mesh path. Pass a faces array so
-  // the texture builder can find the rolled side.
-  const sidesArr = Array.from({ length: 20 }, (_, i) => ({
-    face: i + 1,
-    text: String(i + 1),
-    value: i + 1,
-    displayText: String(i + 1),
-  }));
+  // d20: keep using the existing createD20Mesh path. The d20 mesh reads
+  // sides[i].displayValue too (see createD20FaceTexture line ~315), so the
+  // override works the same way.
   return {
     type: 'd20',
     colors,
@@ -1703,6 +1785,7 @@ function _makeEnemyDieDiceData(entry) {
     globalModifiers: [],
     currentRoll: null,
     _enemyResult: entry.result,
+    _displayValue: displayValue,
   };
 }
 
@@ -1717,7 +1800,12 @@ function initEnemyDiceRenderers() {
     const entry = cs.enemyDice.find(d => d.id === id);
     if (!entry) return;
 
-    const diceData = _makeEnemyDieDiceData(entry);
+    // Predicted final damage — what the player will actually take from this
+    // die (per the "die face = final damage" decision). The renderer's
+    // texture builder reads displayValue from sidesArray for the rolled
+    // face, so the cube face shows the predicted number, not the raw roll.
+    const predicted = _predictEnemyDieDamage(entry, cs);
+    const diceData = _makeEnemyDieDiceData(entry, predicted);
     if (el.clientWidth === 0 || el.clientHeight === 0) {
       el.style.width  = '66px';
       el.style.height = '66px';
@@ -1726,9 +1814,9 @@ function initEnemyDiceRenderers() {
     const r = new DiceRendererInstance();
     r.init(el, diceData.colors.sceneBg);
     r.createDice(diceData);
-    // For polyhedral dice the face values are assigned by the mesh builder
-    // via the opposite-sum-N+1 convention; rollDice can resolve any value
-    // in 1..sides directly. For d20 the legacy face-number map handles it.
+    // rollDice rotates to the geometric face matching entry.result (the
+    // raw roll). That face has its displayValue overridden to the
+    // predicted damage, so the user sees the final number on top.
     r.rollDice(diceData, entry.result, null);
     _enemyDiceRenderers.push(r);
   });

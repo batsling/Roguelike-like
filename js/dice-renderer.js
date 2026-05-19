@@ -632,6 +632,10 @@ class DiceRendererInstance {
    * opposites-sum-to-7 numbering). `side` (optional) is the
    * dice-system per-side data — if it has `displayValue`, that's painted
    * instead of `number`, allowing items to visibly alter individual faces.
+   *
+   * Font size scales by face shape: triangular faces (d4, d8) and kite
+   * faces (d10) have less usable area than squares (d6) or pentagons (d12),
+   * so the printed digit shrinks to stay inside the visible polygon.
    */
   createPolyhedralFaceTexture(number, sides, theme, side = null) {
     const c = theme || {
@@ -653,21 +657,41 @@ class DiceRendererInstance {
     const displayed = (side && side.displayValue !== null && side.displayValue !== undefined)
       ? side.displayValue : number;
     const text = String(displayed);
-    ctx.font = 'bold 64px Arial';
+
+    // Font size by polyhedron — triangular faces (d4/d8) have ~50% of the
+    // canvas's usable area, kites (d10) are tall+narrow, pentagons (d12)
+    // are roomier than triangles but smaller than squares.
+    let fontPx;
+    let yOffset = 0;
+    switch (sides) {
+      case 4:  fontPx = 44; yOffset = 10; break;  // triangle face, nudge down so digit sits in the wider lower half
+      case 6:  fontPx = 56; break;                // square face
+      case 8:  fontPx = 44; yOffset = 10; break;  // triangle face
+      case 10: fontPx = 44; yOffset = 8;  break;  // kite face, slight nudge to centroid
+      case 12: fontPx = 50; break;                // pentagonal face
+      default: fontPx = 48;
+    }
+    // Long strings (item-set displayValue like "100" or "X") need shrinking
+    if (text.length >= 3) fontPx = Math.round(fontPx * 0.72);
+    else if (text.length === 2) fontPx = Math.round(fontPx * 0.88);
+
+    ctx.font = `bold ${fontPx}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.strokeStyle = c.outline;
-    ctx.lineWidth = 6;
-    ctx.strokeText(text, 64, 64);
+    ctx.lineWidth = Math.max(3, Math.round(fontPx * 0.1));
+    ctx.strokeText(text, 64, 64 + yOffset);
     ctx.fillStyle = c.text;
-    ctx.fillText(text, 64, 64);
+    ctx.fillText(text, 64, 64 + yOffset);
 
     // Underline 6/9 (and 8 on d10) so flipped orientation is unambiguous
     const numericDisplayed = Number(displayed);
     const needsUnderline = (numericDisplayed === 6 || numericDisplayed === 9 || (sides === 10 && numericDisplayed === 8));
     if (needsUnderline) {
       ctx.fillStyle = c.text;
-      ctx.fillRect(48, 100, 32, 4);
+      const underlineY = 64 + yOffset + Math.round(fontPx * 0.5) + 4;
+      const underlineW = Math.round(fontPx * 0.5);
+      ctx.fillRect(64 - underlineW / 2, underlineY, underlineW, 3);
     }
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -702,12 +726,15 @@ class DiceRendererInstance {
 
     const group = new THREE.Group();
 
+    // Per-face overrides come from diceData.sidesArray (an array of side
+    // objects from dice-system). The polyhedral path uses diceData.sides as
+    // the *count*, so we read the array from sidesArray instead. Items
+    // setting displayValue on a side here visibly relabel that face.
+    const overrides = Array.isArray(diceData.sidesArray) ? diceData.sidesArray : null;
+
     faceData.faces.forEach((face, idx) => {
       const value = faceValues[idx];
-      // Per-side overrides: items may set diceData.sides[i].displayValue to
-      // visually relabel a face. Conventional `value` keeps the rotation
-      // logic in calculateFaceRotation working.
-      const side = (Array.isArray(diceData.sides) && diceData.sides[value - 1]) || null;
+      const side = overrides ? (overrides[value - 1] || null) : null;
       const texture = this.createPolyhedralFaceTexture(value, sides, theme, side);
 
       // Build a triangle fan from the face vertices (works for triangles,

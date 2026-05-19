@@ -3585,6 +3585,61 @@ function executeEnemyActions() {
 }
 
 /**
+ * Predict the pre-block damage the player would take if `rawDamage` came
+ * in right now from `enemy`. Mirrors the modifier chain in
+ * dealDamageToPlayer except it doesn't actually mutate anything and stops
+ * before block absorption — block ≠ damage; the tray label is meant to tell
+ * the player "this is the hit you're about to receive, before your block".
+ *
+ * Used by the dice tray UI to show enemies' final incoming damage on each
+ * pre-rolled die so the player can plan blocks. The tile recomputes on
+ * every render so the displayed number reflects live state (Power gained
+ * mid-turn, Vulnerable applied, etc).
+ */
+function predictPlayerIncomingDamage(rawDamage, addons, enemy) {
+  if (!combatState || !combatState.player) return rawDamage;
+  const player = combatState.player;
+  const _hasRanged = addons && addons.some(a => (a || '').toLowerCase() === 'ranged');
+  const isMeleeHit = !addons || (!_hasRanged && !addons.includes('self'));
+
+  let damage = rawDamage;
+
+  // Enemy Power adds to outgoing damage (applied by executeEnemyActions
+  // before it calls dealDamageToPlayer, so we mirror it here)
+  if (enemy && enemy.statuses) {
+    damage += (enemy.statuses['power'] || 0);
+  }
+
+  // Enemy Thorns add to their melee damage (dealDamageToPlayer line ~3611)
+  if (enemy && isMeleeHit && enemy.statuses) {
+    damage += (enemy.statuses['thorns'] || 0);
+  }
+
+  // Player Enfeebled: incoming damage doubled
+  if (player.statuses['enfeebled']) damage *= 2;
+
+  // Player Vulnerable: incoming damage ×1.5 (ceil)
+  if (player.statuses['vulnerable']) damage = Math.ceil(damage * 1.5);
+
+  // Player Bruise: melee/ranged adds bruise stacks
+  const bruiseStacks = player.statuses['bruise'] || 0;
+  const isDirectHit = !addons || !addons.includes('self');
+  if (bruiseStacks > 0 && isDirectHit) damage += bruiseStacks;
+
+  // Player Dodge negates the entire hit
+  if (player.statuses['dodge'] && player.statuses['dodge'] > 0) return 0;
+
+  // Player Brace: damage = max(1, damage - braceStacks)
+  const braceStacks = player.statuses['brace'] || 0;
+  if (braceStacks > 0) damage = Math.max(1, damage - braceStacks);
+
+  // Player Intangible clamps incoming to 1
+  if (player.statuses['intangible'] && damage > 1) damage = 1;
+
+  return Math.max(0, damage);
+}
+
+/**
  * Deal damage to the player from an enemy
  * @param {number} damage - Damage amount
  * @param {Array} addons - Effect addons
@@ -6335,6 +6390,7 @@ if (typeof window !== 'undefined') {
     endCombat,
     addLog,
     getEffectiveCost,
+    predictPlayerIncomingDamage,
     onCardExhausted,
     addPendingDie,
     usePendingDie,
