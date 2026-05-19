@@ -11,7 +11,17 @@
  *   name: string         — display name
  *   description: string  — opening flavor text (supports {name} and {storedCard})
  *   image: string        — path to event image (required to appear in event pool)
- *   game: string         — optional source game name
+ *   game: string         — source game name
+ *   type: string         — game-design type (e.g. 'Strategy', 'Deckbuilder')
+ *   rarity: string       — 'Common' | 'Uncommon' | 'Rare' | 'Legendary'
+ *   difficulty: string[] — location difficulties the event may appear in
+ *                          (['Easy','Medium','Hard','Insane'] for "All")
+ *   difficultyRoll: number — added to the d20 threshold for all stat checks
+ *   runLimit: number|null  — max appearances per run (null = unlimited)
+ *   requirement: string  — display-only requirement text ('None' if unused)
+ *   inputs: string[]     — possible stat inputs (display/sorting metadata)
+ *   outputs: string[]    — possible outcome categories (display/sorting metadata)
+ *   tags: string[]       — free-form tags (display/sorting metadata)
  *   choices: Choice[]    — top-level choices
  * }
  *
@@ -83,6 +93,15 @@ const EVENTS_DATA = [
     description: '{name} stumbles upon a dark hole. Numerous eyes peer out from the darkness.',
     image: 'images/events/WatchingEyeballs.png',
     game: 'Mewgenics',
+    type: 'Strategy',
+    rarity: 'Common',
+    difficulty: ['Easy', 'Medium', 'Hard', 'Insane'],
+    difficultyRoll: 0,
+    runLimit: null,
+    requirement: 'None',
+    inputs: ['Dexterity', 'Intelligence', 'Strength'],
+    outputs: ['Ambush', 'Ambushed', 'Fear', 'Item', 'Gold', 'Curse', 'Health'],
+    tags: ['spooky', 'hole'],
     choices: [
       {
         text: 'Sneak By',
@@ -173,6 +192,16 @@ const EVENTS_DATA = [
     name: 'A Note For Yourself',
     image: 'images/events/ANoteForYourself.png',
     description: 'You spot a loose brick within a pillar that catches your eye.',
+    game: 'Slay the Spire',
+    type: 'Deckbuilder',
+    rarity: 'Uncommon',
+    difficulty: ['Easy', 'Medium', 'Hard', 'Insane'],
+    difficultyRoll: 0,
+    runLimit: 1,
+    requirement: 'None',
+    inputs: ['Card'],
+    outputs: ['Card'],
+    tags: [],
     choices: [
       {
         text: 'Take and Give',
@@ -202,6 +231,15 @@ const EVENTS_DATA = [
     image: 'images/events/FruitBasket.png',
     description: '{name} discovers a basket of fruit. The warm smell of fresh citrus and bananas lingers in the air. A refreshing reprieve!',
     game: 'Mewgenics',
+    type: 'Strategy',
+    rarity: 'Common',
+    difficulty: ['Easy', 'Medium', 'Hard', 'Insane'],
+    difficultyRoll: 0,
+    runLimit: null,
+    requirement: 'None',
+    inputs: ['Constitution', 'Strength', 'Intelligence'],
+    outputs: ['Health', 'Poison', 'Item', 'Enemy', 'Buffer', 'Ambushed', 'Fear'],
+    tags: ['food'],
     choices: [
       {
         id: 'fruit_eat',
@@ -276,6 +314,86 @@ const EVENTS_DATA = [
             description: '{name} picks up one of the strange fruits, and it rots in its hands! {name} jumps back in fear as the whole basket begins to rapidly decompose!',
             effects: [{ type: 'combat_status', status: 'fear', stacks: 5 }]
           }
+        }
+      }
+    ]
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  //  THE SSSSSERPENT
+  // ─────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'the_ssssserpent',
+    name: 'The Ssssserpent',
+    image: 'images/events/TheSsssserpent.png',
+    game: 'Slay the Spire',
+    type: 'Deckbuilder',
+    rarity: 'Common',
+    difficulty: ['Easy'],
+    difficultyRoll: 0,
+    runLimit: null,
+    requirement: 'None',
+    inputs: [],
+    outputs: ['Gold', 'Curse'],
+    tags: ['snake'],
+    description: 'You walk into a room to find a large hole in the ground. As you approach the hole, an enormous serpent creature appears from within. Serpent: "Ho hooo! Hello hello! what have we got here? Hello adventurer, I ask a simple question." Serpent: "The most fulfilling of lives is that in which you can buy anything!" Serpent: "Do you agree?"',
+    choices: [
+      {
+        id: 'serpent_agree',
+        text: 'Agree',
+        type: 'simple',
+        outcome: {
+          description: 'Serpent: "Yeeeeeeessssssssssessss" Serpent: "Thisss will all be worthhh it." Serpent: "..ssSSs..... ss... sssss....!" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.',
+          effects: [
+            { type: 'gold', value: 100 },
+            { type: 'curse', value: 'Curse of Greed II' }
+          ]
+        }
+      },
+      {
+        id: 'serpent_charm',
+        text: 'Charm',
+        type: 'stat_check',
+        stat: 'charisma',
+        rollDescription: 'You flash a winning smile at the serpent...',
+        outcomes: {
+          crit_good: {
+            description: 'Serpent: "Yeeeeeeessssssssssessss" Serpent: "Thisss will all be worthhh it." Serpent: "..ssSSs..... ss... sssss....!" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.',
+            effects: [
+              { type: 'gold', value: 150 },
+              { type: 'curse', value: 'Curse of Greed I' }
+            ]
+          },
+          good: {
+            description: 'Serpent: "Yeeeeeeessssssssssessss" Serpent: "Thisss will all be worthhh it." Serpent: "..ssSSs..... ss... sssss....!" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.',
+            effects: [
+              { type: 'gold', value: 125 },
+              { type: 'curse', value: 'Curse of Greed II' }
+            ]
+          },
+          bad: {
+            description: 'Serpent: "Yeeeeeeessssssssssessss" Serpent: "Thisss will all be worthhh it." Serpent: "..ssSSs..... ss... sssss....!" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.',
+            effects: [
+              { type: 'gold', value: 75 },
+              { type: 'curse', value: 'Curse of Greed III' }
+            ]
+          },
+          crit_bad: {
+            description: 'Serpent: "Yeeeeeeessssssssssessss" Serpent: "Thisss will all be worthhh it." Serpent: "..ssSSs..... ss... sssss....!" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.',
+            effects: [
+              { type: 'gold', value: 50 },
+              { type: 'curse', value: 'Curse of Greed III' }
+            ]
+          }
+        }
+      },
+      {
+        id: 'serpent_disagree',
+        text: 'Disagree',
+        type: 'simple',
+        outcome: {
+          description: 'The serpent stares at you with a look of extreme disappointment.',
+          effects: [{ type: 'none' }]
         }
       }
     ]

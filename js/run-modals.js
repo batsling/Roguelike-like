@@ -905,6 +905,7 @@ function confirmLevelUp(onComplete) {
     item:  '📦 Choose an Item',
     card:  '🃏 Choose a Card',
     spell: '✨ Choose a Spell',
+    scroll_and_potion: '📜 1 Scroll + 🧪 1 Potion',
     none:  null,
   };
   const rewardLabel = rewardLabels[reward.type] || null;
@@ -996,6 +997,32 @@ function confirmLevelUp(onComplete) {
           if (spellBtn) spellBtn.onclick = () => { closeGameModal(); _afterReward(); };
         } else _afterReward();
         break;
+
+      case 'scroll_and_potion': {
+        const scrollPool = (typeof SCROLLS_DATA !== 'undefined' ? SCROLLS_DATA : []);
+        const potionPool = (typeof POTIONS_DATA !== 'undefined' ? POTIONS_DATA : []);
+        const pickFrom = (pool) => {
+          if (!pool || pool.length === 0) return null;
+          const rarity = (typeof selectRandomRarity === 'function') ? selectRandomRarity() : 'common';
+          const matching = pool.filter(p => (p.rarity || '').toLowerCase() === rarity);
+          const candidates = matching.length > 0 ? matching : pool;
+          return candidates[Math.floor(Math.random() * candidates.length)];
+        };
+        const scrollPick = pickFrom(scrollPool);
+        const potionPick = pickFrom(potionPool);
+        if (scrollPick && typeof addScrollOrPotionToLoot === 'function') {
+          addScrollOrPotionToLoot({ type: 'scroll', name: scrollPick.name, rarity: scrollPick.rarity });
+        }
+        if (potionPick && typeof addScrollOrPotionToLoot === 'function') {
+          addScrollOrPotionToLoot({ type: 'potion', name: potionPick.name, rarity: potionPick.rarity });
+        }
+        saveCurrentGame();
+        if (typeof createNotification === 'function') {
+          createNotification('+1 Scroll, +1 Potion!', '#c39bd3', '📜');
+        }
+        _afterReward();
+        break;
+      }
 
       case 'none':
       default:

@@ -11,7 +11,7 @@ const CHARACTERS_DATA = {
     "health": 75,
     "levelUpCondition": "Beat a game without meta progression",
     "levelUpReward": {
-      "type": "none"
+      "type": "scroll_and_potion"
     },
     "levelUpStats": {
       "strength": 0,

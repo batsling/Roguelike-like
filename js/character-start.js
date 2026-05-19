@@ -428,7 +428,8 @@ function completeGameStart(start, amulet, saveName, startType) {
     spells: [],
     insaneBatteryFills: 0,
     pendingInsaneHardCombat: false,
-    choiceDetails: {}
+    choiceDetails: {},
+    eventsSeenCounts: {}
   };
   window.playerSpells = gameState.spells;
 
