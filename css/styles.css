@@ -37,6 +37,20 @@
   --z-popover:  400;
   --z-modal:    500;
   --z-tooltip:  9000;
+
+  /* Top-bar themed buttons */
+  --btn-dice-bg:     #3d2600;
+  --btn-dice-border: #d35400;
+  --btn-dice-text:   #ffbb77;
+  --btn-spells-bg:   #1a0d2e;
+  --btn-spells-border:#7c3aed;
+  --btn-spells-text: #c4b5fd;
+  --btn-loot-bg:     #0f2a1a;
+  --btn-loot-border: #4a9c6a;
+  --btn-loot-text:   #7dffa0;
+  --btn-notif-bg:    #0f1e2e;
+  --btn-notif-border:#4a7a9b;
+  --btn-notif-text:  #aed6f1;
 }
 
 /* Top Bar */
@@ -87,7 +101,7 @@
 .health-bar-container {
   width: 200px;
   height: 20px;
-  background-color: #ff0000;
+  background-color: #3a1010;
   position: relative;
   border: 1px solid #333;
   overflow: hidden;
@@ -95,7 +109,7 @@
 
 .health-bar {
   height: 100%;
-  background-color: #00ff00;
+  background-color: var(--color-danger);
   position: absolute;
   left: -20px;
   top: 0;
@@ -1904,6 +1918,11 @@ text, path, line, g {
   padding: 8px 16px;
   font-size: 14px;
 }
+
+.btn-dice   { background: var(--btn-dice-bg);   border: 1px solid var(--btn-dice-border);   color: var(--btn-dice-text);   }
+.btn-spells { background: var(--btn-spells-bg); border: 1px solid var(--btn-spells-border); color: var(--btn-spells-text); }
+.btn-loot   { background: var(--btn-loot-bg);   border: 1px solid var(--btn-loot-border);   color: var(--btn-loot-text);   }
+.btn-notif  { background: var(--btn-notif-bg);  border: 1px solid var(--btn-notif-border);  color: var(--btn-notif-text);  }
 
 .btn-medium {
   padding: 10px 20px;

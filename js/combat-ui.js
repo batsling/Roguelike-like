@@ -1823,8 +1823,8 @@ function renderCardInHand(card, index, total, combat) {
         ${imgSrc
           ? `<img src="${imgSrc}" alt=""
                style="width:100%;height:100%;object-fit:contain;padding:3px;box-sizing:border-box;"
-               onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:${artH - 10}px>${typeEmoji(card.type)}</span>'">`
-          : `<span style="font-size:${artH - 10}px;">${typeEmoji(card.type)}</span>`}
+               onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;opacity:0.25;\\'><svg viewBox=\\'0 0 60 80\\' width=\\'60%\\' fill=\\'#fff\\'><rect x=\\'2\\' y=\\'2\\' width=\\'56\\' height=\\'76\\' rx=\\'6\\' ry=\\'6\\' stroke=\\'#fff\\' stroke-width=\\'3\\' fill=\\'none\\'/></svg></div>')">`
+          : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;opacity:0.25;"><svg viewBox="0 0 60 80" width="60%" fill="#fff"><rect x="2" y="2" width="56" height="76" rx="6" ry="6" stroke="#fff" stroke-width="3" fill="none"/></svg></div>`}
       </div>
 
       <!-- Name -->
@@ -2029,8 +2029,8 @@ window._showCombatPile = function(pileType) {
           display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
           ${img
             ? `<img src="${img}" alt="" style="width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;"
-                 onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:26px>${typeEmoji(card.type)}</span>'">`
-            : `<span style="font-size:26px;">${typeEmoji(card.type)}</span>`}
+                 onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;opacity:0.25;\\'><svg viewBox=\\'0 0 60 80\\' width=\\'50%\\' fill=\\'#fff\\'><rect x=\\'2\\' y=\\'2\\' width=\\'56\\' height=\\'76\\' rx=\\'6\\' ry=\\'6\\' stroke=\\'#fff\\' stroke-width=\\'3\\' fill=\\'none\\'/></svg></div>')">`
+            : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;opacity:0.25;"><svg viewBox="0 0 60 80" width="50%" fill="#fff"><rect x="2" y="2" width="56" height="76" rx="6" ry="6" stroke="#fff" stroke-width="3" fill="none"/></svg></div>`}
         </div>
         <div style="font-size:10px; font-weight:bold; color:white; text-align:center; margin-bottom:2px;">
           ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
@@ -3029,7 +3029,7 @@ function attachCardTooltip() {
             <div style="height:80px; background:rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; overflow:hidden;">
               <img src="${card.imageUrl || 'images/cards/default.png'}"
                 style="max-width:160px; max-height:78px; object-fit:contain;"
-                onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:36px>${typeEmoji(card.type)}</span>'">
+                onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;opacity:0.25;\\'><svg viewBox=\\'0 0 60 80\\' width=\\'60\\' fill=\\'#fff\\'><rect x=\\'2\\' y=\\'2\\' width=\\'56\\' height=\\'76\\' rx=\\'6\\' ry=\\'6\\' stroke=\\'#fff\\' stroke-width=\\'3\\' fill=\\'none\\'/></svg></div>')"
             </div>
             <div style="padding:8px 10px; font-size:11px; color:#edd; line-height:1.55; text-align:center; min-height:36px;">
               ${getCardDisplayDescription(card, combat, _ttEnemy)}
@@ -3571,8 +3571,8 @@ window.showCardPickerModal = function(options) {
                 display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0;">
                 ${imgSrc
                   ? `<img src="${imgSrc}" alt="" style="width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;"
-                       onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:28px>${typeEmoji(card.type)}</span>'">`
-                  : `<span style="font-size:28px;">${typeEmoji(card.type)}</span>`}
+                       onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;opacity:0.25;\\'><svg viewBox=\\'0 0 60 80\\' width=\\'50%\\' fill=\\'#fff\\'><rect x=\\'2\\' y=\\'2\\' width=\\'56\\' height=\\'76\\' rx=\\'6\\' ry=\\'6\\' stroke=\\'#fff\\' stroke-width=\\'3\\' fill=\\'none\\'/></svg></div>')">`
+                  : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;opacity:0.25;"><svg viewBox="0 0 60 80" width="50%" fill="#fff"><rect x="2" y="2" width="56" height="76" rx="6" ry="6" stroke="#fff" stroke-width="3" fill="none"/></svg></div>`}
               </div>
               <div style="font-size:10px; font-weight:bold; color:white; text-align:center; margin-bottom:2px;">
                 ${card.name}${card.upgraded ? '<span style="color:#4CAF50">+</span>' : ''}
