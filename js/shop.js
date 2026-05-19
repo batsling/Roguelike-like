@@ -418,7 +418,7 @@ function showShopModal(purchasedIndices = null) {
   shopItems.forEach((item, index) => {
     const isPurchased = purchasedIndices.includes(index);
     const rarityLower = item.rarity ? item.rarity.toLowerCase() : 'common';
-    const basePrice = rarityLower === 'common' ? 8 : rarityLower === 'uncommon' ? 15 : rarityLower === 'rare' ? 25 : 40;
+    const basePrice = rarityLower === 'common' ? 20 : rarityLower === 'uncommon' ? 30 : rarityLower === 'rare' ? 45 : 60;
     const rawPrice = basePrice + frugalityModifier;
     const price = applyDiscount(rawPrice);
     const rarityColor = getRarityColor(item.rarity);
