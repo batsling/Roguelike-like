@@ -394,7 +394,12 @@ const StateMutator = {
       }
     }
 
-    if (oldValue !== newValue) this._notify(['stats', `stat:${statName}`]);
+    if (oldValue !== newValue) {
+      this._notify(['stats', `stat:${statName}`]);
+      if (delta > 0 && typeof window.triggerOnPermStatGain === 'function') {
+        window.triggerOnPermStatGain(statName, delta);
+      }
+    }
 
     return { oldValue, newValue, changed: oldValue !== newValue };
   },

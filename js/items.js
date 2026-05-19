@@ -1109,6 +1109,9 @@ const ITEM_EFFECTS = {
   "Prayer Card":  { onAcquire: () => {} }, // 33% chance +1 Buffer when taking damage
   "Prayer Beads": { onAcquire: () => {} }, // +3 temporary Brace until end of turn when taking damage
 
+  // ===== TRIGGERED: effect applied on permanent stat gain =====
+  "Snowball": { onAcquire: () => {} }, // Whenever you gain permanent Intelligence, gain +1 more
+
   // ===== TRIGGERED: effect applied via Dead Eye tracking per-attack =====
   "Dead Eye": { onAcquire: () => {} }, // Consecutive hits on same target gain +1 Dmg; resets on miss
 
@@ -1950,6 +1953,33 @@ function triggerOnGameBeaten() {
   });
 }
 
+// Guard to prevent Snowball from triggering itself recursively
+let _snowballProcessing = false;
+
+/**
+ * Trigger effects for items that react to permanent stat gains (e.g. Snowball).
+ * Called by StateMutator.modifyStat whenever a stat increases.
+ */
+function triggerOnPermStatGain(statName, delta) {
+  if (_snowballProcessing || !inventory || inventory.length === 0) return;
+  if (statName !== 'intelligence' || delta <= 0) return;
+
+  const hasSnowball = inventory.some(item => item && item.name === 'Snowball');
+  if (!hasSnowball) return;
+
+  _snowballProcessing = true;
+  try {
+    gameState.snowballTotal = (gameState.snowballTotal || 0) + 1;
+    StateMutator.modifyStat('intelligence', 1, { notify: true });
+    if (typeof createNotification === 'function') {
+      createNotification('Snowball: +1 Intelligence', '#88ccff', '❄');
+    }
+    if (typeof updateInventory === 'function') updateInventory();
+  } finally {
+    _snowballProcessing = false;
+  }
+}
+
 /**
  * Show Wand of Wishing item selection UI
  * Displays all unlocked items in a collection-style grid with hover tooltips
@@ -2496,6 +2526,7 @@ window.triggerOnCombatEnd = triggerOnCombatEnd; // Trigger onCombatEnd effects
 window.triggerOnCurseAdded = triggerOnCurseAdded; // Trigger onCurseAdded effects
 window.triggerOnCurseRemoved = triggerOnCurseRemoved; // Trigger onCurseRemoved effects
 window.triggerOnGameBeaten = triggerOnGameBeaten; // Trigger onGameBeaten effects
+window.triggerOnPermStatGain = triggerOnPermStatGain; // Trigger on permanent stat gain (e.g. Snowball)
 window.showWandOfWishingSelection = showWandOfWishingSelection; // Wand of Wishing UI
 window.showPoopSelection = showPoopSelection; // Poop selection UI
 window.calculateDamageReduction = calculateDamageReduction; // Damage reduction from items
