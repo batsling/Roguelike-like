@@ -279,6 +279,77 @@ const EVENTS_DATA = [
         }
       }
     ]
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  //  THE SSSSSERPENT
+  // ─────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'the_ssssserpent',
+    name: 'The Ssssserpent',
+    image: 'images/events/TheSsssserpent.png',
+    game: 'Slay the Spire',
+    description: 'You walk into a room to find a large hole in the ground. As you approach the hole, an enormous serpent creature appears from within. Serpent: "Ho hooo! Hello hello! what have we got here? Hello adventurer, I ask a simple question." Serpent: "The most fulfilling of lives is that in which you can buy anything!" Serpent: "Do you agree?"',
+    choices: [
+      {
+        id: 'serpent_agree',
+        text: 'Agree',
+        type: 'simple',
+        outcome: {
+          description: 'Serpent: "Yeeeeeeessssssssssessss" Serpent: "Thisss will all be worthhh it." Serpent: "..ssSSs..... ss... sssss....!" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.',
+          effects: [
+            { type: 'gold', value: 100 },
+            { type: 'curse', value: 'Curse of Greed II' }
+          ]
+        }
+      },
+      {
+        id: 'serpent_charm',
+        text: 'Charm',
+        type: 'stat_check',
+        stat: 'charisma',
+        rollDescription: 'You flash a winning smile at the serpent...',
+        outcomes: {
+          crit_good: {
+            description: 'Serpent: "Yeeeeeeessssssssssessss" Serpent: "Thisss will all be worthhh it." Serpent: "..ssSSs..... ss... sssss....!" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.',
+            effects: [
+              { type: 'gold', value: 150 },
+              { type: 'curse', value: 'Curse of Greed I' }
+            ]
+          },
+          good: {
+            description: 'Serpent: "Yeeeeeeessssssssssessss" Serpent: "Thisss will all be worthhh it." Serpent: "..ssSSs..... ss... sssss....!" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.',
+            effects: [
+              { type: 'gold', value: 125 },
+              { type: 'curse', value: 'Curse of Greed II' }
+            ]
+          },
+          bad: {
+            description: 'Serpent: "Yeeeeeeessssssssssessss" Serpent: "Thisss will all be worthhh it." Serpent: "..ssSSs..... ss... sssss....!" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.',
+            effects: [
+              { type: 'gold', value: 75 },
+              { type: 'curse', value: 'Curse of Greed III' }
+            ]
+          },
+          crit_bad: {
+            description: 'Serpent: "Yeeeeeeessssssssssessss" Serpent: "Thisss will all be worthhh it." Serpent: "..ssSSs..... ss... sssss....!" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.',
+            effects: [
+              { type: 'gold', value: 50 },
+              { type: 'curse', value: 'Curse of Greed III' }
+            ]
+          }
+        }
+      },
+      {
+        id: 'serpent_disagree',
+        text: 'Disagree',
+        type: 'simple',
+        outcome: {
+          description: 'The serpent stares at you with a look of extreme disappointment.',
+          effects: [{ type: 'none' }]
+        }
+      }
+    ]
   }
 
 ];
