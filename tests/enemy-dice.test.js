@@ -358,6 +358,39 @@ describe('onEnemyDefeated — clears the enemy\'s tray dice', () => {
 
 // =============================================================================
 
+describe('lockEnemyDiceForTray — entry shape stays stable for re-renders', () => {
+  it('the (entry.id, entry.result) pair stays the same across re-renders if dice are not re-rolled', () => {
+    const enemy = makeEnemy('Rat', 'Always: D8 Dmg Melee', 'Rerollable');
+    globalThis.combatState = makeCombatState([enemy]);
+    globalThis.rollAllEnemyIntents();
+    const before = globalThis.combatState.enemyDice.map(d => ({ id: d.id, result: d.result }));
+    // Same intent — simulating another UI render reading state mid-turn
+    const after = globalThis.combatState.enemyDice.map(d => ({ id: d.id, result: d.result }));
+    expect(after).toEqual(before);
+  });
+
+  it('rerolling produces a NEW result for the same id (so UI can detect re-animation)', () => {
+    const enemy = makeEnemy('Rat', 'Always: D8 Dmg Melee', 'Rerollable');
+    globalThis.combatState = makeCombatState([enemy]);
+    globalThis.combatState.player.rerolls = 1;
+    globalThis.rollAllEnemyIntents();
+    const beforeId = globalThis.combatState.enemyDice[0].id;
+    const beforeResult = globalThis.combatState.enemyDice[0].result;
+
+    // Force the reroll to land on a different result deterministically
+    const orig = Math.random;
+    Math.random = () => beforeResult === 1 ? 0.99 : 0.0;
+    try {
+      globalThis.rerollAllPending();
+    } finally {
+      Math.random = orig;
+    }
+
+    expect(globalThis.combatState.enemyDice[0].id).toBe(beforeId);
+    expect(globalThis.combatState.enemyDice[0].result).not.toBe(beforeResult);
+  });
+});
+
 describe('exports — rerollPlayerDie is gone', () => {
   it('rerollPlayerDie is no longer attached to globalThis', () => {
     expect(typeof globalThis.rerollPlayerDie).toBe('undefined');

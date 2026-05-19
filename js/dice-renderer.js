@@ -848,14 +848,31 @@ class DiceRendererInstance {
   }
 
   /**
-   * Roll the dice with animation
+   * Roll the dice with animation.
    * @param {Object} diceData - Dice data from dice system
    * @param {number} result - Pre-determined result from dice system
    * @param {Function} callback - Callback when roll completes
+   * @param {Object} [options] - Optional flags
+   * @param {boolean} [options.skipAnimation=false] - If true, snap the mesh
+   *   to the target face's rotation immediately, no spin animation. Used by
+   *   the dice tray when re-rendering an already-rolled die so it doesn't
+   *   replay the roll on every UI tick.
    */
-  rollDice(diceData, result, callback) {
+  rollDice(diceData, result, callback, options = {}) {
     if (this.isRolling) {
       console.warn('Dice is already rolling');
+      return;
+    }
+
+    // Snap into place without animation — caller is just re-mounting a die
+    // whose value we've already shown the player.
+    if (options.skipAnimation) {
+      this.hasRolled = true;
+      const targetRotation = this.calculateFaceRotation(result);
+      if (this.mesh) {
+        this.mesh.rotation.set(targetRotation.x, targetRotation.y, targetRotation.z);
+      }
+      if (callback) callback(result);
       return;
     }
 
