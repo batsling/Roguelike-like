@@ -411,12 +411,28 @@ function _imageStrip(eventImageSrc) {
         " onerror="this.style.display='none'">
       </div>
       ${playerImg ? `<div style="
-        width:110px;
+        width:140px;
         flex-shrink:0;
-        background:url('${playerImg}') center top/cover no-repeat;
+        display:flex;
+        align-items:flex-end;
+        justify-content:center;
+        background:linear-gradient(180deg,#0d0d1a 0%,#1a1a2a 100%);
         border-left:2px solid #333;
         min-height:220px;
-      "></div>` : ''}
+        padding:10px 8px 0;
+        overflow:hidden;
+      ">
+        <img src="${playerImg}" alt="" style="
+          max-width:100%;
+          max-height:300px;
+          width:auto;
+          height:auto;
+          object-fit:contain;
+          object-position:bottom center;
+          image-rendering:pixelated;
+          display:block;
+        " onerror="this.style.display='none'">
+      </div>` : ''}
     </div>
   `;
 }
