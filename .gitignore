@@ -7,6 +7,7 @@ games-data.js.backup
 
 # Import script output (canonical copy lives in data/)
 tools/games-data.js
+tools/items-data.js
 
 # Downloaded cover images (optional - uncomment to ignore)
 # images/covers/*.jpg
