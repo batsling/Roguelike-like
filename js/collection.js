@@ -2128,7 +2128,7 @@ function showItemDetails(itemName) {
         <img
           src="${item.image || 'images/items/no-item.svg'}"
           alt="${item.name}"
-          style="width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: rgba(0,0,0,0.3); border: 2px solid ${rarityColor}; image-rendering: pixelated;"
+          style="width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: rgba(255,255,255,0.08); border: 2px solid ${rarityColor}; image-rendering: pixelated;"
           onerror="this.style.opacity='0.3'"
         />
         <div style="flex: 1;">
