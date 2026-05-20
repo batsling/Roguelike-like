@@ -718,15 +718,22 @@ if (cardsSheet) {
         ? (String(upgradedCost).trim() === 'X' ? 'X' : parseInt(upgradedCost)) : null,
       canUpgrade: !isStatusCard && !!(row['Upgraded Description'] && row['Upgraded Description'] !== 'N/A'),
       isStatusCard: isStatusCard,
-      imageUrl: (row['Img'] && row['Img'] !== 'N/A')
-        ? (() => {
+      imageUrl: (() => {
+            const name = row['Name'] || '';
+            // Basic Strike/Defend use the generic move icons (no per-card art).
+            if (name === 'Strike') return 'images/moves/Attack.png';
+            if (name === 'Defend') return 'images/moves/Defense.png';
+            if (!row['Img'] || row['Img'] === 'N/A') return null;
             const imgFile = row['Img'];
             if (tags.includes('weapon')) return `images/items/${imgFile}.png`;
-            const cardsPath = `images/cards/${imgFile}.png`;
-            const itemsPath = `images/items/${imgFile}.png`;
-            return fs.existsSync(path.join(REPO_ROOT, cardsPath)) ? cardsPath : (fs.existsSync(path.join(REPO_ROOT, itemsPath)) ? itemsPath : cardsPath);
-          })()
-        : null,
+            const cardsPath  = `images/cards/${imgFile}.png`;
+            const itemsPath  = `images/items/${imgFile}.png`;
+            const heroesPath = `images/heroes/${imgFile}.png`;
+            if (fs.existsSync(path.join(REPO_ROOT, cardsPath)))  return cardsPath;
+            if (fs.existsSync(path.join(REPO_ROOT, itemsPath)))  return itemsPath;
+            if (fs.existsSync(path.join(REPO_ROOT, heroesPath))) return heroesPath;
+            return cardsPath;
+          })(),
       game: (row['Game'] && row['Game'] !== 'N/A') ? row['Game'] : null,
       tags: tags
     };

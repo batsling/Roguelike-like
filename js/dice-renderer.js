@@ -864,6 +864,15 @@ class DiceRendererInstance {
       return;
     }
 
+    // Mesh hasn't been built yet (createDice never ran, or dispose() cleared it).
+    // Without it there's no rotation to interpolate from, so just deliver the
+    // result and bail out.
+    if (!this.mesh) {
+      this.hasRolled = true;
+      if (callback) callback(result);
+      return;
+    }
+
     // Snap into place without animation — caller is just re-mounting a die
     // whose value we've already shown the player.
     if (options.skipAnimation) {

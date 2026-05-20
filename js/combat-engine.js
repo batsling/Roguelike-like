@@ -3200,12 +3200,9 @@ function endTurn() {
     }
   }
 
-  // Reset block (unless Barricade)
-  if (!combatState.player.statuses['barricade']) {
-    combatState.player.block = 0;
-  } else {
-    combatState.player.block = Math.floor(combatState.player.block / 2);
-  }
+  // Player block reset happens at the start of the next player turn (in
+  // processPlayerStartOfTurn) so that start-of-turn damage like Burn can be
+  // absorbed by any block remaining after enemy attacks.
 
   // Leeches: drain health from all enemies leeched by the player, heal the player
   let playerLeechHeal = 0;
@@ -3893,7 +3890,8 @@ function processStatusEffects(target, timing) {
   const statuses = target.statuses;
 
   if (timing === 'start') {
-    // Burn deals a flat 3 damage (not scaled by stacks); goes through block
+    // Burn deals a flat 3 damage (6 if Oiled). Routed through dealDamage/
+    // dealDamageToPlayer so any remaining block from the prior turn absorbs it.
     if (statuses['burn'] && !statuses['immune_burn']) {
       const total = statuses['oiled'] ? 6 : 3;
       addLog(`Burn dealt ${total} damage to ${target.name || 'Player'}`, 'danger');
@@ -6434,6 +6432,7 @@ if (typeof window !== 'undefined') {
     spellNeedsTarget,
     endTurn,
     getCombatState,
+    processEffect,
     endCombat,
     addLog,
     getEffectiveCost,

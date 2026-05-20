@@ -458,7 +458,6 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
 
   const cardsHTML = chosen.map((card, idx) => {
     const color   = rarityColor(card.rarity);
-    const imgSrc  = card.imageUrl || 'images/cards/default.png';
     const upgBtn  = typeof _cardPreviewBtn === 'function' ? _cardPreviewBtn(card) : '';
     const upgradedBg    = card.preUpgraded ? 'background:rgba(46,204,113,0.06);' : '';
     const upgradedBorder = card.preUpgraded ? '#2ecc71' : color;
@@ -468,6 +467,14 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
     const upgradedBadge = card.preUpgraded
       ? `<div style="position:absolute;top:8px;left:8px;background:#2ecc71;color:#000;font-size:10px;font-weight:bold;padding:2px 7px;border-radius:4px;">UPGRADED</div>`
       : '';
+    const _isDiceCard = (card.type || '').toLowerCase() === 'dice';
+    const artHTML = card.imageUrl
+      ? `<img src="${card.imageUrl}" alt="${card.name}"
+             style="width:110px;height:110px;object-fit:contain;margin-bottom:10px;"
+             onerror="if(this.dataset.t){this.style.display='none';}else{this.dataset.t=1;this.src='images/heroes/'+this.alt+'.png';}">`
+      : (_isDiceCard
+          ? `<div style="width:110px;height:110px;display:flex;align-items:center;justify-content:center;font-size:72px;margin-bottom:10px;">🎲</div>`
+          : `<div style="width:110px;height:110px;margin-bottom:10px;"></div>`);
     return `
       <div class="card-reward-option card-reward-card" data-card-idx="${idx}"
         style="border:3px solid ${upgradedBorder};${upgradedBg}"
@@ -475,9 +482,7 @@ function showCardRewardModal(onComplete, tagFilter = null, nodeDifficulty = null
         onmouseleave="if(!this.classList.contains('cr-selected')){this.style.transform='';this.style.boxShadow='';}">
         ${upgradedBadge}
         ${upgBtn}
-        <img src="${imgSrc}" alt="${card.name}"
-             style="width:110px;height:110px;object-fit:contain;margin-bottom:10px;"
-             onerror="if(this.dataset.t){this.style.display='none';}else{this.dataset.t=1;this.src='images/heroes/'+this.alt+'.png';}">
+        ${artHTML}
         <div style="font-weight:bold;font-size:15px;color:white;text-align:center;margin-bottom:4px;">${nameLabel}</div>
         <div style="color:${color};font-size:12px;margin-bottom:6px;">${card.rarity} · ${card.type}</div>
         <div style="font-size:12px;color:${card.preUpgraded ? '#7dffb0' : '#ccc'};text-align:center;margin-bottom:8px;line-height:1.4;">${card.description}</div>

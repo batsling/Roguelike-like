@@ -2474,12 +2474,18 @@ function showSmithChoiceModal() {
          </div>`
       : `<div class="smith-upgrade-block" style="color:#555;font-size:10px;font-style:italic;">No upgrade available</div>`;
 
+    const _smithArtHTML = card.imageUrl
+      ? `<img src="${card.imageUrl}" alt="${card.name}"
+             style="width:72px;height:72px;object-fit:contain;margin-bottom:6px;"
+             onerror="this.style.display='none'">`
+      : ((card.type || '').toLowerCase() === 'dice'
+          ? `<div style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;font-size:48px;margin-bottom:6px;">🎲</div>`
+          : `<div style="width:72px;height:72px;margin-bottom:6px;"></div>`);
+
     return `
       <div class="smith-card-option" data-smith-idx="${idx}"
            style="border:2px solid #555;">
-        <img src="${card.imageUrl || 'images/cards/default.png'}" alt="${card.name}"
-             style="width:72px;height:72px;object-fit:contain;margin-bottom:6px;"
-             onerror="this.style.display='none'">
+        ${_smithArtHTML}
         <div style="font-weight:bold;font-size:13px;color:white;text-align:center;margin-bottom:2px;">${card.name}</div>
         <div style="font-size:10px;color:${rc};margin-bottom:6px;">${card.rarity} · ${card.type}</div>
 
