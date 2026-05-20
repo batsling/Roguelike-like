@@ -466,11 +466,8 @@ function _renderEventItemsBar() {
         `).join('')}
       </div>` : '';
 
-    const desc = (item.description || '').replace(/"/g, '&quot;');
-
     return `
       <button class="ev-item-btn" data-idx="${idx}" ${canUse ? '' : 'disabled'}
-        title="${item.name}: ${desc}"
         style="
           display:flex;flex-direction:column;align-items:center;gap:2px;
           padding:4px;background:none;border:none;cursor:${canUse ? 'pointer' : 'not-allowed'};
@@ -504,10 +501,25 @@ function _renderEventItemsBar() {
 function _wireEventItemsBar() {
   const buttons = document.querySelectorAll('#ev-items-bar .ev-item-btn');
   buttons.forEach(btn => {
+    const idx = parseInt(btn.dataset.idx, 10);
+    const item = (!Number.isNaN(idx) && Array.isArray(window.inventory)) ? window.inventory[idx] : null;
+
+    if (item) {
+      btn.addEventListener('mouseenter', e => {
+        if (typeof window.showItemTooltip === 'function') window.showItemTooltip(e, item);
+      });
+      btn.addEventListener('mousemove', e => {
+        if (typeof window.moveItemTooltip === 'function') window.moveItemTooltip(e);
+      });
+      btn.addEventListener('mouseleave', () => {
+        if (typeof window.hideItemTooltip === 'function') window.hideItemTooltip();
+      });
+    }
+
     btn.addEventListener('click', () => {
-      const idx = parseInt(btn.dataset.idx, 10);
       if (Number.isNaN(idx)) return;
       if (typeof window.useItem !== 'function') return;
+      if (typeof window.hideItemTooltip === 'function') window.hideItemTooltip();
       window.useItem(idx);
       // Re-render just the items bar in place so charges/use-state update
       const bar = document.getElementById('ev-items-bar');
