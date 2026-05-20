@@ -72,9 +72,16 @@ function _getRollDifficulty(event) {
   return base + rollNeg + eventBump;
 }
 
-/** Return 'advantage', 'disadvantage', or 'normal' based on luck. */
+/** Effective luck for this scope: includes Clover-style pill bonus. */
+function _effectiveLuck() {
+  const base = typeof luck !== 'undefined' ? luck : 0;
+  const pill = (typeof getPillBonuses === 'function' ? getPillBonuses().luck : 0) || 0;
+  return base + pill;
+}
+
+/** Return 'advantage', 'disadvantage', or 'normal' based on effective luck. */
 function _getLuckMode() {
-  const lv = typeof luck !== 'undefined' ? luck : 0;
+  const lv = _effectiveLuck();
   if (lv > 0 && Math.random() < lv * 0.1)          return 'advantage';
   if (lv < 0 && Math.random() < Math.abs(lv) * 0.1) return 'disadvantage';
   return 'normal';
@@ -177,14 +184,21 @@ function _statLabel(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 function _getConstitutionBonus() { return _getConstitution(); }
 
 function _getStat(statName) {
-  if ((statName || '').toLowerCase() === 'constitution') return _getConstitution();
+  const key = (statName || '').toLowerCase();
+  if (key === 'constitution') return _getConstitution();
   const map = {
     strength:     typeof strength     !== 'undefined' ? strength     : 0,
     dexterity:    typeof dexterity    !== 'undefined' ? dexterity    : 0,
     intelligence: typeof intelligence !== 'undefined' ? intelligence : 0,
     charisma:     typeof charisma     !== 'undefined' ? charisma     : 0
   };
-  return map[(statName || '').toLowerCase()] || 0;
+  let base = map[key] || 0;
+  // Pill bonuses active during this event also count toward stat checks
+  if (typeof getPillBonuses === 'function') {
+    const pb = getPillBonuses();
+    base += (pb[key] || 0);
+  }
+  return base;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -296,22 +310,20 @@ function applyEventEffects(effects) {
         }
         if (curseName && curseName !== 'random') {
           if (typeof StateMutator !== 'undefined' && StateMutator.addCurse) {
+            // StateMutator.addCurse already parses "Add X to your Deck" from the
+            // curse description and pushes the matching card via addCardToDeck —
+            // do NOT re-parse here, that doubled curse cards in the deck.
             StateMutator.addCurse(curseName, { notify: false });
           } else if (typeof gameState !== 'undefined' && Array.isArray(gameState.activeCurses)) {
+            // Fallback path: replicate the StateMutator side effects manually
             const pool = typeof CURSES_DATA !== 'undefined' ? CURSES_DATA : [];
             const curseData = pool.find(c => c.name === curseName);
-            if (curseData) gameState.activeCurses.push({ ...curseData });
-          }
-          // Side-effect: "Add X to your Deck" curses add the named card
-          const pool2 = typeof CURSES_DATA !== 'undefined' ? CURSES_DATA : [];
-          const curseObj = pool2.find(c => c.name === curseName);
-          if (curseObj && curseObj.description) {
-            const addMatch = curseObj.description.match(/Add (.+?) to your Deck/i);
-            if (addMatch) {
-              const cardName = addMatch[1].trim();
-              if (typeof addCardToDeck === 'function') {
+            if (curseData) {
+              gameState.activeCurses.push({ ...curseData });
+              const addMatch = (curseData.description || '').match(/Add (.+?) to your Deck/i);
+              if (addMatch && typeof addCardToDeck === 'function') {
                 const cardPool = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : (typeof cards !== 'undefined' ? cards : []);
-                const cardTemplate = cardPool.find(c => c.name === cardName);
+                const cardTemplate = cardPool.find(c => c.name === addMatch[1].trim());
                 if (cardTemplate) addCardToDeck({ ...cardTemplate });
               }
             }
@@ -398,8 +410,120 @@ function _eventModal(content) {
       overflow:hidden;
     ">
       ${content}
+      ${_renderEventItemsBar()}
     </div>
   `);
+  _wireEventItemsBar();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EVENT ITEMS BAR — show Usable / Charged items during an event so the player
+// can pop a pill or trigger an item to influence an upcoming roll.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _getEventUsableItems() {
+  const inv = (typeof window.inventory !== 'undefined' ? window.inventory : []) || [];
+  return inv
+    .map((item, idx) => ({ item, idx }))
+    .filter(({ item }) => {
+      if (!item) return false;
+      const charged = typeof window.isChargedItem === 'function' && window.isChargedItem(item);
+      return item.type === 'Usable' || charged;
+    });
+}
+
+function _renderEventItemsBar() {
+  const entries = _getEventUsableItems();
+  if (entries.length === 0) return '';
+
+  const rarityColor = r => {
+    switch ((r || '').toLowerCase()) {
+      case 'legendary': return '#ff6b00';
+      case 'rare':      return '#9b59b6';
+      case 'uncommon':  return '#4CAF50';
+      case 'common':    return '#aaa';
+      default:          return '#888';
+    }
+  };
+
+  const cells = entries.map(({ item, idx }) => {
+    const color = rarityColor(item.rarity);
+    const canUse = typeof window.canUseItem === 'function' && window.canUseItem(item);
+    const charged = typeof window.isChargedItem === 'function' && window.isChargedItem(item);
+    const max = charged && typeof window.parseChargedMax === 'function' ? window.parseChargedMax(item.type) : 0;
+    const cur = charged ? (typeof item.charges === 'number' ? item.charges : max) : 0;
+
+    let imgSrc = item.image && item.image.trim() ? item.image : '';
+    if (imgSrc.includes('imgur.com/') && !imgSrc.includes('i.imgur.com')) {
+      imgSrc = imgSrc.replace('imgur.com/', 'i.imgur.com/');
+      if (!imgSrc.match(/\.(png|jpg|jpeg|gif)$/i)) imgSrc += '.png';
+    }
+
+    const chargeBar = charged && max > 0 ? `
+      <div style="display:flex;gap:1px;margin-top:2px;width:40px;">
+        ${Array.from({ length: max }, (_, i) => `
+          <div style="flex:1;height:4px;border-radius:1px;background:${i < cur ? '#f1c40f' : 'rgba(255,255,255,0.12)'};"></div>
+        `).join('')}
+      </div>` : '';
+
+    const desc = (item.description || '').replace(/"/g, '&quot;');
+
+    return `
+      <button class="ev-item-btn" data-idx="${idx}" ${canUse ? '' : 'disabled'}
+        title="${item.name}: ${desc}"
+        style="
+          display:flex;flex-direction:column;align-items:center;gap:2px;
+          padding:4px;background:none;border:none;cursor:${canUse ? 'pointer' : 'not-allowed'};
+          opacity:${canUse ? '1' : '0.45'};
+        ">
+        <div style="
+          position:relative;width:40px;height:40px;
+          border:2px solid ${color};border-radius:6px;
+          background:rgba(0,0,0,0.5);overflow:hidden;
+        ">
+          ${imgSrc
+            ? `<img src="${imgSrc}" alt="" style="width:100%;height:100%;object-fit:contain;" onerror="this.style.display='none'">`
+            : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:16px;">?</div>`}
+        </div>
+        ${chargeBar}
+      </button>`;
+  }).join('');
+
+  return `
+    <div id="ev-items-bar" style="
+      background:rgba(0,0,0,0.4);
+      border-top:1px solid rgba(255,255,255,0.08);
+      padding:8px 14px;
+      display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+    ">
+      <span style="color:#aaa;font-size:11px;margin-right:6px;">Items:</span>
+      ${cells}
+    </div>`;
+}
+
+function _wireEventItemsBar() {
+  const buttons = document.querySelectorAll('#ev-items-bar .ev-item-btn');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      if (Number.isNaN(idx)) return;
+      if (typeof window.useItem !== 'function') return;
+      window.useItem(idx);
+      // Re-render just the items bar in place so charges/use-state update
+      const bar = document.getElementById('ev-items-bar');
+      if (bar) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = _renderEventItemsBar();
+        const fresh = tmp.firstElementChild;
+        if (fresh) {
+          bar.replaceWith(fresh);
+          _wireEventItemsBar();
+        } else {
+          bar.remove();
+        }
+      }
+    });
+  });
 }
 
 // Image strip shown on choice screen
@@ -632,6 +756,12 @@ function _disposeEventRenderers() {
   _activeEventRenderers.forEach(r => { try { r.dispose(); } catch (_) {} });
   _activeEventRenderers = [];
 }
+// Exposed so modal creation can wipe leftover dice contexts if a sub-modal
+// replaces the event modal (e.g. Dead Sea Scrolls / Wand of Wishing on top
+// of an event roll screen).
+if (typeof window !== 'undefined') {
+  window._disposeEventRenderers = _disposeEventRenderers;
+}
 
 function _makeD20EventData() {
   // Use the persistent run-wide d20 so face modifications applied by items
@@ -705,7 +835,7 @@ function _showSuccessRollScreen(event, choice, onContinue) {
   const statVal    = _getStat(choice.stat);
   const needed     = Math.max(1, difficulty - statVal);
   const luckMode   = _getLuckMode();
-  const luckVal    = typeof luck !== 'undefined' ? luck : 0;
+  const luckVal = _effectiveLuck();
   const diceCount  = luckMode !== 'normal' ? 2 : 1;
   const diceSize   = diceCount === 2 ? 175 : 210;
 
@@ -836,7 +966,7 @@ function _showCritRollScreen(event, choice, wasSuccess, onContinue) {
   const CRIT_THRESHOLD_GOOD = 18;
   const CRIT_THRESHOLD_BAD  = 3;
   const luckMode       = _getLuckMode();
-  const luckVal        = typeof luck !== 'undefined' ? luck : 0;
+  const luckVal = _effectiveLuck();
   const successColor   = wasSuccess ? '#2ecc71' : '#e74c3c';
   const successLabel   = wasSuccess ? 'SUCCESS' : 'FAILURE';
   const diceCount      = luckMode !== 'normal' ? 2 : 1;
@@ -1004,9 +1134,6 @@ function _showOutcomeScreen(outcome, effectLines, rollMeta, onContinue, continue
   createGameModal(`
     <div style="padding:28px 30px;text-align:center;max-width:560px;margin:0 auto;">
       ${headerHTML}
-      <p style="color:#ddd;font-size:15px;line-height:1.65;margin:0 0 10px;">
-        ${_fillName(outcome.description || 'Nothing happens.')}
-      </p>
       ${effectsHTML}
       <div style="margin-top:22px;">
         <button id="ev-continue-btn" style="
@@ -1021,6 +1148,9 @@ function _showOutcomeScreen(outcome, effectLines, rollMeta, onContinue, continue
 
   document.getElementById('ev-continue-btn').addEventListener('click', () => {
     closeGameModal();
+    // The event is over — pill bonuses gained during the event end here
+    if (typeof window.clearPillBonuses === 'function') window.clearPillBonuses('event');
+    if (typeof updateGameStats === 'function') updateGameStats();
     if (typeof onContinue === 'function') onContinue();
   }, { once: true });
 }
@@ -1290,7 +1420,7 @@ function showEventModal(specificEvent, onCombat) {
   }
   if (!event) {
     // Rarity-weighted selection — higher luck biases toward rarer events
-    const luckVal = typeof luck !== 'undefined' ? luck : 0;
+    const luckVal = _effectiveLuck();
     const rarityOrder = ['legendary', 'rare', 'uncommon', 'common'];
     let candidates = pool;
     if (typeof selectRandomRarity === 'function') {
@@ -1315,6 +1445,8 @@ function showEventModal(specificEvent, onCombat) {
     if (!gameState.eventsSeenCounts) gameState.eventsSeenCounts = {};
     gameState.eventsSeenCounts[event.id] = (gameState.eventsSeenCounts[event.id] || 0) + 1;
   }
+  // Each event starts with a clean pill bonus slate
+  if (typeof window.clearPillBonuses === 'function') window.clearPillBonuses('event');
   if (typeof updateInventory === 'function') updateInventory();
 
   _showChoiceScreen(event, startCombat);

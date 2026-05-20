@@ -1647,7 +1647,8 @@ function showCombatModal() {
       };
 
       const rarityColor = getRarityColor(item.rarity);
-      const isUsable = item.type === 'Usable';
+      const isCharged = typeof isChargedItem === 'function' && isChargedItem(item);
+      const isUsable = item.type === 'Usable' || isCharged;
       const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
       const isWeapon = item.type === 'Weapon';
 
@@ -2306,6 +2307,10 @@ function handleDiceCombatVictory(enemy) {
  * @param {string} difficulty - 'Low' | 'Medium' | 'High'
  */
 function showPostCombatChoiceModal(difficulty) {
+  // Pull every panel back into sync before showing post-combat options —
+  // ensures Smith / Shop see the deck and inventory exactly as they are now,
+  // including cards added by the just-completed combat or its rewards.
+  if (typeof refreshAllUI === 'function') refreshAllUI();
   const tier = difficulty || 'Low';
 
   // Use the 2 pre-assigned options from the node modal if available for this game
@@ -2419,6 +2424,9 @@ function showPostCombatChoiceModal(difficulty) {
  * Show the Smith upgrade modal — player picks up to 2 cards to upgrade for free.
  */
 function showSmithChoiceModal() {
+  // Refresh UI + read fresh state — a card collected from the same combat's
+  // loot tile lives in gameState.deck by now and must be reflected here.
+  if (typeof refreshAllUI === 'function') refreshAllUI();
   // Include starter cards from character's starting deck that haven't been smith-upgraded yet
   const upgradedStarting = gameState.upgradedStartingCards || {};
   const charKey = gameState.character;
@@ -2569,6 +2577,7 @@ function showSmithChoiceModal() {
     });
     if (typeof saveCurrentGame === 'function') saveCurrentGame();
     closeGameModal();
+    if (typeof refreshAllUI === 'function') refreshAllUI();
     if (typeof createNotification === 'function') {
       createNotification(`Upgraded ${upgradeCount} card${upgradeCount !== 1 ? 's' : ''}!`, '#FF9800', '⚒️');
     }

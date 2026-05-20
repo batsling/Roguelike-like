@@ -320,7 +320,8 @@ function updateSidebarItems() {
       if (!imgSrc.match(/\.(png|jpg|jpeg|gif)$/i)) imgSrc += '.png';
     }
 
-    const isUsable = item.type === 'Usable' || item.type === 'Active';
+    const isCharged = typeof isChargedItem === 'function' && isChargedItem(item);
+    const isUsable = item.type === 'Usable' || item.type === 'Active' || isCharged;
     const isIncremental = (item.type || '').toLowerCase() === 'incremental';
     const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
     const incBadge = isIncremental ? getIncrementalBadge(item) : '';
@@ -333,15 +334,30 @@ function updateSidebarItems() {
       ? `<div style="position:absolute;top:1px;right:1px;background:rgba(0,0,0,0.9);color:white;padding:1px 3px;border-radius:3px;font-size:8px;font-weight:bold;border:1px solid #ffaa00;">${item.quantity}</div>`
       : '';
 
+    // Charged: render a segmented bar instead of an incremental counter
+    let chargeBar = '';
+    if (isCharged) {
+      const max = parseChargedMax(item.type);
+      const cur = typeof item.charges === 'number' ? item.charges : max;
+      const segments = Array.from({ length: max }, (_, i) =>
+        `<div style="flex:1;height:3px;border-radius:1px;background:${i < cur ? '#f1c40f' : 'rgba(255,255,255,0.15)'};"></div>`
+      ).join('');
+      chargeBar = `<div style="position:absolute;top:1px;left:1px;right:1px;display:flex;gap:1px;">${segments}</div>`;
+    }
+
     const useBtn = isUsable
       ? `<button onclick="event.stopPropagation(); if(typeof useItem==='function') useItem(${idx});" title="${canUse ? 'Use' : 'Cannot use now'}" style="position:absolute;bottom:0;left:0;right:0;font-size:8px;padding:1px;background:${canUse ? '#4CAF50' : '#555'};color:${canUse ? 'white' : '#888'};border:none;border-radius:0 0 4px 4px;cursor:${canUse ? 'pointer' : 'not-allowed'};font-weight:bold;${canUse ? '' : 'opacity:0.6;'}">${canUse ? 'USE' : '—'}</button>`
       : '';
 
-    return `<div title="${item.name}: ${item.description}" style="position:relative;width:40px;height:40px;border:2px solid ${color};border-radius:6px;background:rgba(0,0,0,0.5);overflow:visible;flex-shrink:0;">
+    const descText = isCharged && typeof getChargedDisplayDescription === 'function'
+      ? getChargedDisplayDescription(item)
+      : (item.description || '');
+
+    return `<div title="${item.name}: ${descText}" style="position:relative;width:40px;height:40px;border:2px solid ${color};border-radius:6px;background:rgba(0,0,0,0.5);overflow:visible;flex-shrink:0;">
       ${imgSrc
         ? `<img src="${imgSrc}" alt="${item.name}" style="width:100%;height:100%;object-fit:contain;border-radius:4px;" onerror="this.style.display='none'">`
         : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;">🎒</div>`}
-      ${quantityBadge}${incBadge}${snowballBadge}${useBtn}
+      ${quantityBadge}${incBadge}${snowballBadge}${chargeBar}${useBtn}
     </div>`;
   }).join('');
 }
@@ -370,11 +386,22 @@ function updateInventory() {
       const snowballLine = item.name === 'Snowball' && (gameState.snowballTotal || 0) > 0
         ? `<p style="color: #88ccff;"><em>Intelligence granted this run: +${gameState.snowballTotal}</em></p>`
         : '';
+      const isChargedInv = typeof isChargedItem === 'function' && isChargedItem(item);
+      const descText = isChargedInv && typeof getChargedDisplayDescription === 'function'
+        ? getChargedDisplayDescription(item)
+        : (item.description || '');
+      const chargeLine = isChargedInv ? (() => {
+        const max = parseChargedMax(item.type);
+        const cur = typeof item.charges === 'number' ? item.charges : max;
+        const scopeLabel = typeof getChargedScopeLabel === 'function' ? getChargedScopeLabel(item) : '';
+        return `<p><em style="color:#f1c40f;">Charges: ${cur}/${max}${scopeLabel ? ` · ${scopeLabel}` : ''}</em></p>`;
+      })() : '';
       itemDiv.innerHTML = `
         <strong>${displayName}</strong> (${item.rarity})
         <span class="remove-item" onclick="removeItem(${index})">×</span>
-        <p>${item.description}</p>
+        <p>${descText}</p>
         <p><em>Type: ${item.type}</em></p>
+        ${chargeLine}
         ${snowballLine}
       `;
       inventoryDiv.appendChild(itemDiv);
@@ -447,9 +474,31 @@ function updateInventory() {
 
         const rarityColor = getRarityColor(item.rarity);
 
-        const isUsable = item.type === 'Usable' || item.type === 'Active';
+        const isCharged = typeof isChargedItem === 'function' && isChargedItem(item);
+        const isUsable = item.type === 'Usable' || item.type === 'Active' || isCharged;
         const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
         const isWeapon = item.type === 'Weapon';
+        const maxCharges = isCharged ? parseChargedMax(item.type) : 0;
+        const curCharges = isCharged ? (typeof item.charges === 'number' ? item.charges : maxCharges) : 0;
+        const scopeLabel = isCharged && typeof getChargedScopeLabel === 'function' ? getChargedScopeLabel(item) : '';
+        const chargeBarHTML = isCharged && maxCharges > 0 ? `
+          <div style="
+            position:absolute; top:4px; left:4px; right:4px;
+            display:flex; gap:2px; z-index:14;
+          ">
+            ${Array.from({ length: maxCharges }, (_, i) => `
+              <div style="flex:1;height:5px;border-radius:2px;border:1px solid rgba(0,0,0,0.6);background:${i < curCharges ? '#f1c40f' : 'rgba(0,0,0,0.6)'};"></div>
+            `).join('')}
+          </div>` : '';
+        const scopePillHTML = isCharged && scopeLabel ? `
+          <div style="
+            position:absolute; top:20px; left:-2px; right:-2px;
+            text-align:center; font-size:8px; font-weight:bold;
+            color:#fff; background:rgba(0,0,0,0.7);
+            padding:1px 0; border-radius:3px; z-index:14;
+            border:1px solid rgba(255,255,255,0.2);
+            white-space:nowrap;
+          ">${scopeLabel}</div>` : '';
 
         return `
           <div class="item-display-container" data-item-index="${idx}" style="
@@ -496,6 +545,8 @@ function updateInventory() {
                   line-height: 1;
                 ">Lv${item.level}</div>
               ` : ''}
+              ${chargeBarHTML}
+              ${scopePillHTML}
               ${isUsable ? `
                 <button class="item-use-button"
                         data-item-index="${idx}"
@@ -516,7 +567,7 @@ function updateInventory() {
                           z-index: 10;
                         "
                         ${!canUse ? 'disabled' : ''}>
-                  Use${item.uses && item.uses > 1 ? ` x${item.uses}` : ''}
+                  ${isCharged ? `${curCharges}/${maxCharges}` : `Use${item.uses && item.uses > 1 ? ` x${item.uses}` : ''}`}
                 </button>
               ` : ''}
             </div>
@@ -865,15 +916,22 @@ function updateGameStats() {
 
   // Use getTotalBonuses() to include all bonuses (scalable passives + weapon)
   const totalBonuses = typeof getTotalBonuses === 'function' ? getTotalBonuses() : null;
+  // Pill bonuses (combat + event scope) — temporary and shown as extra +X
+  const pillBonuses = typeof getPillBonuses === 'function' ? getPillBonuses() : null;
+
+  function fmtStatLine(base, passive, pill) {
+    const total = base + passive + pill;
+    const parts = [String(base)];
+    if (passive) parts.push((passive >= 0 ? '+' : '') + passive);
+    if (pill)    parts.push((pill    >= 0 ? '+' : '') + pill);
+    return parts.length > 1 ? `${total} (${parts.join('')})` : String(total);
+  }
 
   // Strength stat with bonuses
   if (statsStrength) {
-    const effectiveStrength = totalBonuses ? strength + totalBonuses.strength : strength;
-    if (totalBonuses && totalBonuses.strength !== 0) {
-      statsStrength.textContent = `${effectiveStrength} (${strength}+${totalBonuses.strength})`;
-    } else {
-      statsStrength.textContent = strength;
-    }
+    const passive = totalBonuses ? totalBonuses.strength : 0;
+    const pill = pillBonuses ? pillBonuses.strength : 0;
+    statsStrength.textContent = fmtStatLine(strength, passive, pill);
   }
 
   // Get active combat state for combat-time status bonuses
@@ -881,13 +939,20 @@ function updateGameStats() {
   const combatPower = cs ? (cs.player.statuses['power'] || 0) : 0;
   const combatDefense = cs ? (cs.player.statuses['defense'] || 0) : 0;
 
-  // Power derived stat (every 3 Strength = 1 Power) + any combat/item power bonuses
+  // Power derived stat (every 3 Strength = 1 Power) + any combat/item power bonuses.
+  // Pill bonuses in combat are already folded into statuses['power'], so the
+  // base calculation only uses the persistent (non-pill) strength total — otherwise
+  // we'd double-count.
   if (statsPower) {
-    const effectiveStrength = totalBonuses ? strength + totalBonuses.strength : strength;
-    const basePower = Math.floor(effectiveStrength / 3);
-    const totalPower = basePower + combatPower;
+    const passiveStr = totalBonuses ? totalBonuses.strength : 0;
+    const pillStr = pillBonuses ? pillBonuses.strength : 0;
+    const basePower = Math.floor((strength + passiveStr) / 3);
+    const totalPower = basePower + combatPower + (cs ? 0 : pillStr ? Math.floor(pillStr / 3) : 0);
     if (combatPower !== 0) {
       statsPower.textContent = `${totalPower} (${basePower}+${combatPower})`;
+    } else if (pillStr && !cs) {
+      const extra = Math.floor(pillStr / 3);
+      statsPower.textContent = extra ? `${totalPower} (${basePower}+${extra})` : String(totalPower);
     } else {
       statsPower.textContent = totalPower;
     }
@@ -895,21 +960,22 @@ function updateGameStats() {
 
   // Dexterity stat with bonuses
   if (statsDexterity) {
-    const effectiveDexterity = totalBonuses ? dexterity + totalBonuses.dexterity : dexterity;
-    if (totalBonuses && totalBonuses.dexterity !== 0) {
-      statsDexterity.textContent = `${effectiveDexterity} (${dexterity}+${totalBonuses.dexterity})`;
-    } else {
-      statsDexterity.textContent = dexterity;
-    }
+    const passive = totalBonuses ? totalBonuses.dexterity : 0;
+    const pill = pillBonuses ? pillBonuses.dexterity : 0;
+    statsDexterity.textContent = fmtStatLine(dexterity, passive, pill);
   }
 
-  // Defense derived stat (every 3 Dexterity = 1 Defense) + any combat/item defense bonuses
+  // Defense derived stat
   if (statsDefense) {
-    const effectiveDexterity = totalBonuses ? dexterity + totalBonuses.dexterity : dexterity;
-    const baseDefense = Math.floor(effectiveDexterity / 3);
-    const totalDefense = baseDefense + combatDefense;
+    const passiveDex = totalBonuses ? totalBonuses.dexterity : 0;
+    const pillDex = pillBonuses ? pillBonuses.dexterity : 0;
+    const baseDefense = Math.floor((dexterity + passiveDex) / 3);
+    const totalDefense = baseDefense + combatDefense + (cs ? 0 : Math.floor(pillDex / 3));
     if (combatDefense !== 0) {
       statsDefense.textContent = `${totalDefense} (${baseDefense}+${combatDefense})`;
+    } else if (pillDex && !cs) {
+      const extra = Math.floor(pillDex / 3);
+      statsDefense.textContent = extra ? `${totalDefense} (${baseDefense}+${extra})` : String(totalDefense);
     } else {
       statsDefense.textContent = totalDefense;
     }
@@ -917,23 +983,24 @@ function updateGameStats() {
 
   // Intelligence stat with bonuses
   if (statsIntelligence) {
-    const effectiveIntelligence = totalBonuses ? intelligence + totalBonuses.intelligence : intelligence;
-    if (totalBonuses && totalBonuses.intelligence !== 0) {
-      statsIntelligence.textContent = `${effectiveIntelligence} (${intelligence}+${totalBonuses.intelligence})`;
-    } else {
-      statsIntelligence.textContent = intelligence;
-    }
+    const passive = totalBonuses ? totalBonuses.intelligence : 0;
+    const pill = pillBonuses ? pillBonuses.intelligence : 0;
+    statsIntelligence.textContent = fmtStatLine(intelligence, passive, pill);
   }
 
-  // Arcane derived stat (every 3 Intelligence = 1 Arcane) + any combat arcane bonuses
+  // Arcane derived stat
   const combatArcane = cs ? (cs.player.statuses['arcane'] || 0) : 0;
   const statsArcane = document.getElementById('stats-arcane');
   if (statsArcane) {
-    const effectiveIntelligenceForArcane = totalBonuses ? intelligence + totalBonuses.intelligence : intelligence;
-    const baseArcane = Math.floor(effectiveIntelligenceForArcane / 3);
-    const totalArcane = baseArcane + combatArcane;
+    const passiveInt = totalBonuses ? totalBonuses.intelligence : 0;
+    const pillInt = pillBonuses ? pillBonuses.intelligence : 0;
+    const baseArcane = Math.floor((intelligence + passiveInt) / 3);
+    const totalArcane = baseArcane + combatArcane + (cs ? 0 : Math.floor(pillInt / 3));
     if (combatArcane !== 0) {
       statsArcane.textContent = `${totalArcane} (${baseArcane}+${combatArcane})`;
+    } else if (pillInt && !cs) {
+      const extra = Math.floor(pillInt / 3);
+      statsArcane.textContent = extra ? `${totalArcane} (${baseArcane}+${extra})` : String(totalArcane);
     } else {
       statsArcane.textContent = totalArcane;
     }
@@ -941,23 +1008,24 @@ function updateGameStats() {
 
   // Charisma stat with bonuses
   if (statsCharisma) {
-    const effectiveCharisma = totalBonuses ? charisma + totalBonuses.charisma : charisma;
-    if (totalBonuses && totalBonuses.charisma !== 0) {
-      statsCharisma.textContent = `${effectiveCharisma} (${charisma}+${totalBonuses.charisma})`;
-    } else {
-      statsCharisma.textContent = charisma;
-    }
+    const passive = totalBonuses ? totalBonuses.charisma : 0;
+    const pill = pillBonuses ? pillBonuses.charisma : 0;
+    statsCharisma.textContent = fmtStatLine(charisma, passive, pill);
   }
 
-  // Persistence derived stat (every 5 Charisma = 1 Persistence) + any combat persistence bonuses
+  // Persistence derived stat (5:1 ratio)
   const combatPersistence = cs ? (cs.player.statuses['persistence'] || 0) : 0;
   const statsPersistence = document.getElementById('stats-persistence');
   if (statsPersistence) {
-    const effectiveCharismaForPersistence = totalBonuses ? charisma + totalBonuses.charisma : charisma;
-    const basePersistence = Math.floor(effectiveCharismaForPersistence / 5);
-    const totalPersistence = basePersistence + combatPersistence;
+    const passiveCha = totalBonuses ? totalBonuses.charisma : 0;
+    const pillCha = pillBonuses ? pillBonuses.charisma : 0;
+    const basePersistence = Math.floor((charisma + passiveCha) / 5);
+    const totalPersistence = basePersistence + combatPersistence + (cs ? 0 : Math.floor(pillCha / 5));
     if (combatPersistence !== 0) {
       statsPersistence.textContent = `${totalPersistence} (${basePersistence}+${combatPersistence})`;
+    } else if (pillCha && !cs) {
+      const extra = Math.floor(pillCha / 5);
+      statsPersistence.textContent = extra ? `${totalPersistence} (${basePersistence}+${extra})` : String(totalPersistence);
     } else {
       statsPersistence.textContent = totalPersistence;
     }
@@ -991,7 +1059,10 @@ function updateGameStats() {
     }
   }
 
-  if (statsLuck) statsLuck.textContent = luck;
+  if (statsLuck) {
+    const pillLuck = pillBonuses ? pillBonuses.luck : 0;
+    statsLuck.textContent = pillLuck ? `${luck + pillLuck} (${luck}${pillLuck >= 0 ? '+' : ''}${pillLuck})` : luck;
+  }
   if (statsItems) statsItems.textContent = inventory.length;
 
   // Games Beaten = total games beaten in this run (includes duplicates)
@@ -1157,9 +1228,12 @@ function showItemTooltip(e, item) {
       return parts[Math.min(lv - 1, parts.length - 1)] || parts[parts.length - 1];
     });
   }
+  const isChargedTip = typeof isChargedItem === 'function' && isChargedItem(item);
   const resolvedDescription = item.type === 'Weapon'
     ? resolveWeaponLevelText(item.description || '', weaponLevel)
-    : (item.description || '');
+    : isChargedTip && typeof getChargedDisplayDescription === 'function'
+      ? getChargedDisplayDescription(item)
+      : (item.description || '');
 
   // Get display name (with stat modifiers for passive items)
   const displayName = (item.type === 'Passive' && typeof getPassiveDisplayName === 'function')
@@ -1249,6 +1323,19 @@ function showItemTooltip(e, item) {
     `;
   }
 
+  // For charged items, render scope + charge count separately from description
+  let chargedTipHTML = '';
+  if (isChargedTip) {
+    const max = parseChargedMax(item.type);
+    const cur = typeof item.charges === 'number' ? item.charges : max;
+    const scopeLabel = typeof getChargedScopeLabel === 'function' ? getChargedScopeLabel(item) : '';
+    chargedTipHTML = `
+      <div style="font-size:11px;color:#f1c40f;margin-bottom:6px;">
+        <span style="font-weight:bold;">Charges:</span> ${cur} / ${max}
+        ${scopeLabel ? `<span style="margin-left:8px;color:#7ec8e3;">${scopeLabel}</span>` : ''}
+      </div>`;
+  }
+
   tooltip.innerHTML = `
     <h4 style="margin: 0 0 8px 0; color: ${rarityColor}; font-size: 18px;">${displayName}</h4>
     <div style="font-size: 12px; color: #b8a890; margin-bottom: 6px;">
@@ -1256,6 +1343,7 @@ function showItemTooltip(e, item) {
       <div>${capitalizedRarity} ${item.type}</div>
       ${weaponLevelText}
     </div>
+    ${chargedTipHTML}
     ${item.type === 'Weapon'
       ? `<div style="font-size:10px;color:#ffaa44;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Passive Effect</div>`
       : ''}
@@ -1332,6 +1420,25 @@ function getRarityColor(rarity) {
 }
 
 // Export functions to global scope for backwards compatibility
+/**
+ * Re-render every sidebar/top panel from current gameState. Cheap to call —
+ * each updater is idempotent and bails fast if its DOM target is missing.
+ * Useful around transitions (post-combat → smith / shop / next encounter)
+ * where stale state has been the source of "card I just got isn't showing up"
+ * bugs.
+ */
+function refreshAllUI() {
+  if (typeof updateTopBar === 'function')         updateTopBar();
+  if (typeof updateGameStats === 'function')      updateGameStats();
+  if (typeof updateHealthDisplay === 'function')  updateHealthDisplay();
+  if (typeof updateGoldDisplay === 'function')    updateGoldDisplay();
+  if (typeof updateInventory === 'function')      updateInventory();
+  if (typeof updateSidebarItems === 'function')   updateSidebarItems();
+  if (typeof updateCursesDisplay === 'function')  updateCursesDisplay();
+  if (typeof updateLootDisplay === 'function')    updateLootDisplay();
+}
+window.refreshAllUI = refreshAllUI;
+
 window.updateTopBar = updateTopBar;
 window.updateHealthDisplay = updateHealthDisplay;
 window.updateGoldDisplay = updateGoldDisplay;

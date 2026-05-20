@@ -22,6 +22,9 @@ var combatState = null;
  * @returns {Object} Combat state
  */
 function initCombat(enemies, characterData, weaponData = null, allies = []) {
+  // Event pill bonuses end as combat begins (a pill is one scope at a time)
+  if (typeof window.clearPillBonuses === 'function') window.clearPillBonuses('event');
+
   // Get player stats
   const playerStats = {
     strength: typeof getEffectiveStat === 'function' ? getEffectiveStat('strength') : (window.strength || 0),
@@ -4088,6 +4091,20 @@ function endCombat(victory) {
   if (victory && typeof window.triggerOnCombatEnd === 'function') {
     window.triggerOnCombatEnd(combatState);
   }
+
+  // Clear pill bonuses that only lasted this combat
+  if (typeof window.clearPillBonuses === 'function') {
+    window.clearPillBonuses('combat');
+  }
+
+  // Charged items: gain +1 charge per combat (capped at max)
+  if (typeof window.replenishChargedItems === 'function') {
+    window.replenishChargedItems();
+  }
+
+  // Force every panel to re-render from current state — prevents stale
+  // deck/inventory/curse counts from carrying over into post-combat menus
+  if (typeof window.refreshAllUI === 'function') window.refreshAllUI();
 
   // Permanently destroy Training cards played this combat
   if (combatState._destroyCards && combatState._destroyCards.length > 0 &&

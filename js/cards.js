@@ -34,7 +34,9 @@ const CARD_RARITY_MAP = {
 function addCardToDeck(card) {
   if (!card) { console.error('[addCardToDeck] called with null/undefined card'); return; }
   if (!gameState.deck) gameState.deck = [];
-  const cardCopy = { ...card, upgraded: false };
+  // Preserve preUpgraded state — a pre-upgraded card reward should remain
+  // marked as upgraded in the deck so Smith doesn't offer to upgrade it again
+  const cardCopy = { ...card, upgraded: card.preUpgraded === true || card.upgraded === true };
   // Dice cards get a stable UID so item slots can reference them
   if ((card.type || '').toLowerCase() === 'dice') {
     cardCopy._dieUid = `die_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -74,6 +76,7 @@ function addCardToDeck(card) {
     createNotification(`${card.name} added to deck!`, '#9b59b6', '🃏');
   }
   saveCurrentGame();
+  if (typeof refreshAllUI === 'function') refreshAllUI();
 }
 
 /**

@@ -577,6 +577,13 @@ function endCombat(victory) {
 
   activeCombat = null;
 
+  // Clear combat-scoped pill bonuses and replenish charged items
+  if (typeof window !== 'undefined') {
+    if (typeof window.clearPillBonuses === 'function') window.clearPillBonuses('combat');
+    if (typeof window.replenishChargedItems === 'function') window.replenishChargedItems();
+    if (typeof window.refreshAllUI === 'function') window.refreshAllUI();
+  }
+
   return result;
 }
 
