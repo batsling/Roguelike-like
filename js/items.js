@@ -976,6 +976,16 @@ const ITEM_EFFECTS = {
     onUse: () => triggerDeadSeaScrolls()
   },
 
+  "Wooden Nickel": {
+    canUse: () => true,
+    onUse: () => triggerWoodenNickel()
+  },
+
+  "The Necronomicon": {
+    canUse: () => true,
+    onUse: () => triggerNecronomicon()
+  },
+
   // ===== MEWGENICS USABLE ITEMS =====
 
   "Percs": {
@@ -2271,6 +2281,99 @@ function triggerDeadSeaScrolls() {
     }, 50);
   } else {
     createNotification(`Dead Sea Scrolls: ${rarityLabel} ${label}`, color, '📜');
+  }
+}
+
+function triggerWoodenNickel() {
+  const luckVal = typeof luck !== 'undefined' ? luck : 0;
+
+  // Roll 1: luck-advantaged 50/50 — does the player get any gold?
+  const procRoll = (typeof rollWithLuckAdvantage === 'function')
+    ? rollWithLuckAdvantage(luckVal, false)
+    : Math.random();
+  const gotGold = procRoll < 0.5;
+
+  // Roll 2: luck-advantaged common/uncommon/rare weighted roll for the amount.
+  // Uses the same weights as selectRandomRarity but skips its legendary upgrade,
+  // since the item only pays out 1 / 5 / 10 gold.
+  const weights = (typeof calculateRarityWeights === 'function')
+    ? calculateRarityWeights()
+    : { common: 75, uncommon: 20, rare: 5 };
+  const total = weights.common + weights.uncommon + weights.rare;
+  const tierRoll = (typeof rollWithLuckAdvantage === 'function')
+    ? rollWithLuckAdvantage(luckVal) * total
+    : Math.random() * total;
+  let tier;
+  if (tierRoll < weights.common) tier = 'common';
+  else if (tierRoll < weights.common + weights.uncommon) tier = 'uncommon';
+  else tier = 'rare';
+
+  const tierGold = { common: 1, uncommon: 5, rare: 10 };
+  const tierLabels = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare' };
+  const tierColors = { common: '#aaa', uncommon: '#4CAF50', rare: '#9b59b6' };
+  const amount = tierGold[tier];
+  const tierLabel = tierLabels[tier];
+  const tierColor = tierColors[tier];
+
+  if (gotGold) {
+    if (typeof StateMutator !== 'undefined') StateMutator.modifyGold(amount);
+    else if (typeof gold === 'number') { window.gold += amount; gameState.gold = gold; }
+  }
+
+  const outcomeLabel = gotGold ? `+${amount} Gold` : 'Nothing';
+  const outcomeColor = gotGold ? '#f1c40f' : '#888';
+
+  if (typeof createGameModal === 'function') {
+    createGameModal(`
+      <div style="text-align:center; padding:10px;">
+        <h2 style="color:#c9a253; margin-top:0;">🪙 Wooden Nickel</h2>
+        <div style="color:#aaa; font-size:13px; margin-bottom:14px;">
+          Roll 1: ${gotGold ? 'Heads — you win!' : 'Tails — no gold.'}
+        </div>
+        ${gotGold ? `
+          <div style="display:inline-block; background:${tierColor}22; border:1px solid ${tierColor};
+            border-radius:6px; padding:3px 12px; color:${tierColor}; font-weight:bold; margin-bottom:10px;">
+            ${tierLabel} Tier
+          </div>
+        ` : ''}
+        <div style="color:${outcomeColor}; font-size:22px; font-weight:bold; margin:8px 0;
+          text-shadow:0 0 16px ${outcomeColor}88;">${outcomeLabel}</div>
+        <div style="margin-top:18px;">
+          <button id="wn-close-btn" style="padding:10px 28px; background:${outcomeColor};
+            border:none; border-radius:8px; color:#000; font-weight:bold; font-size:14px;
+            cursor:pointer;">Continue</button>
+        </div>
+      </div>
+    `);
+    setTimeout(() => {
+      const btn = document.getElementById('wn-close-btn');
+      if (btn) btn.onclick = () => closeGameModal();
+    }, 50);
+  } else {
+    createNotification(`Wooden Nickel: ${outcomeLabel}`, outcomeColor, '🪙');
+  }
+}
+
+function triggerNecronomicon() {
+  const ce = window.CombatEngine;
+  if (!ce || !ce.getCombatState || !ce.processEffect) {
+    console.warn('The Necronomicon: combat engine not available');
+    return;
+  }
+  const cs = ce.getCombatState();
+  if (!cs || !Array.isArray(cs.enemies)) return;
+
+  ce.processEffect({
+    raw: '20 Magic Dmg Dark Cleave',
+    value: 20,
+    move: 'Magic Dmg',
+    element: 'dark',
+    addons: ['Cleave'],
+    target: null
+  }, null, {}, false);
+
+  if (typeof createNotification === 'function') {
+    createNotification('The Necronomicon: 20 Magic Dmg Dark Cleave!', '#9b59b6', '📖');
   }
 }
 

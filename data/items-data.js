@@ -1340,6 +1340,32 @@ const ITEMS_DATA = [
     ],
     "image": "images/items/Snowball.png",
     "unlockCondition": null
+  },
+  {
+    "name": "The Necronomicon",
+    "rarity": "Uncommon",
+    "type": "Charged, 4",
+    "description": "Deal 20 Magic Dmg Dark Cleave / Inside of Combat",
+    "game": "The Binding of Isaac",
+    "tags": [
+      "book",
+      "devilish"
+    ],
+    "image": "images/items/TheNecronomicon.png",
+    "unlockCondition": null
+  },
+  {
+    "name": "Wooden Nickel",
+    "rarity": "Common",
+    "type": "Charged, 1",
+    "description": "50% Chance to Gain 1, 5, or 10 Gold / Inside or Outside of Combat",
+    "game": "The Binding of Isaac",
+    "tags": [
+      "coin",
+      "wood"
+    ],
+    "image": "images/items/WoodenNickel.png",
+    "unlockCondition": null
   }
 ];
 

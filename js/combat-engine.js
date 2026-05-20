@@ -6434,6 +6434,7 @@ if (typeof window !== 'undefined') {
     spellNeedsTarget,
     endTurn,
     getCombatState,
+    processEffect,
     endCombat,
     addLog,
     getEffectiveCost,
