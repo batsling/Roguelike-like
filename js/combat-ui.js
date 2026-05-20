@@ -1386,6 +1386,7 @@ function renderInlineeDiceBoard(combat) {
       border-right:1px solid ${border};
       padding:6px 8px;
       align-self:stretch;
+      max-height:200px;
     ">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-shrink:0;">
         <div style="font-size:10px;font-weight:bold;color:${gold};">🎲 Dice Board</div>
@@ -1403,6 +1404,7 @@ function renderInlineeDiceBoard(combat) {
         gap:4px;
         overflow-y:auto;
         flex:1;
+        min-height:0;
       ">
         ${tilesHtml}${enemyTilesHtml}${emptyHint}
       </div>
