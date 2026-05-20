@@ -3085,6 +3085,9 @@ function ensureDragAndKeyListeners() {
         if (_dragState.hoveredEnemy) _dragState.hoveredEnemy.style.outline = '';
         if (pointEl) pointEl.style.outline = `3px solid ${C.goldBright}`;
         _dragState.hoveredEnemy = pointEl || null;
+        // Sync hovered-enemy for dynamic damage preview in card descriptions
+        window._combatHoveredEnemyId = pointEl ? pointEl.dataset.enemyId : null;
+        refreshCombatHand();
       }
 
       // Highlight Dice Board when dragging a dice card over it
@@ -3117,6 +3120,10 @@ function ensureDragAndKeyListeners() {
     // Reset dice board highlight
     const dicePanel = document.getElementById('pending-dice-panel');
     if (dicePanel) { dicePanel.style.background = ''; dicePanel.style.borderTopColor = ''; }
+
+    // Clear drag-hovered enemy so card descriptions return to neutral state
+    window._combatHoveredEnemyId = null;
+    refreshCombatHand();
 
     if (!moved) return; // not a drag — click handler will fire
 

@@ -2003,11 +2003,6 @@ function dealDamage(target, damage, addons = []) {
     if (playerThorns > 0) dmg += playerThorns;
   }
 
-  // Record hit for multi-hit visual playback
-  if (combatState._hitLog !== undefined && target !== combatState.player && !addons.includes('self')) {
-    combatState._hitLog.push({ targetId: target.id || null, dmg });
-  }
-
   // Pen Nib: every 10th attack deals double damage
   if (combatState && combatState._penNibDouble) {
     dmg *= 2;
@@ -2107,6 +2102,11 @@ function dealDamage(target, damage, addons = []) {
   // Intangible: reduce all incoming damage to 1
   if (target.statuses && target.statuses['intangible']) {
     dmg = 1;
+  }
+
+  // Record hit for multi-hit visual playback (after all modifiers, before block)
+  if (combatState._hitLog !== undefined && target !== combatState.player && !addons.includes('self')) {
+    combatState._hitLog.push({ targetId: target.id || null, dmg });
   }
 
   // Apply block first
@@ -3689,11 +3689,6 @@ function dealDamageToPlayer(damage, addons, enemy) {
     if (enemyThorns > 0) damage += enemyThorns;
   }
 
-  // Record hit for multi-hit visual playback
-  if (combatState._hitLog !== undefined && isMeleeHit) {
-    combatState._hitLog.push({ targetId: 'player', dmg: damage });
-  }
-
   // Check Enfeebled (double damage taken)
   if (player.statuses['enfeebled']) {
     damage *= 2;
@@ -3734,6 +3729,11 @@ function dealDamageToPlayer(damage, addons, enemy) {
   // intent prediction matches what's actually dealt)
   if (player.statuses['intangible'] && damage > 1) {
     damage = 1;
+  }
+
+  // Record hit for multi-hit visual playback (after all modifiers, before block)
+  if (combatState._hitLog !== undefined && isMeleeHit) {
+    combatState._hitLog.push({ targetId: 'player', dmg: damage });
   }
 
   // Player Thorns — fires on hit (regardless of block), not just on health loss.

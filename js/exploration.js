@@ -430,9 +430,7 @@ function addDashRerollButtons() {
 
     if (reroll > 0) {
       rerollBtn.onclick = () => {
-        if (confirm('Reroll the current choices?')) {
-          useReroll();
-        }
+        useReroll();
       };
     }
     currentNode.appendChild(rerollBtn);

@@ -1019,11 +1019,9 @@ function showItemChoiceModal(onComplete, chestType = 'normal', typeFilter = null
   const itemRerollBtn = document.getElementById('item-reroll-btn');
   if (itemRerollBtn && reroll > 0) {
     itemRerollBtn.onclick = () => {
-      if (confirm('Reroll chest contents?')) {
-        reroll--;
-        closeGameModal();
-        setTimeout(() => showItemChoiceModal(onComplete, chestType), 100);
-      }
+      reroll--;
+      closeGameModal();
+      setTimeout(() => showItemChoiceModal(onComplete, chestType), 100);
     };
   }
 
