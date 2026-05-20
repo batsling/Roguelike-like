@@ -429,7 +429,11 @@ function completeGameStart(start, amulet, saveName, startType) {
     insaneBatteryFills: 0,
     pendingInsaneHardCombat: false,
     choiceDetails: {},
-    eventsSeenCounts: {}
+    eventsSeenCounts: {},
+    // Persistent run-wide d20. Items mutate `sides[i].value` / displayValue
+    // to alter the die's face values; events read this die when prompting
+    // for a roll. Stays in gameState so changes persist through saves.
+    playerD20: (typeof createD20 === 'function') ? createD20() : null
   };
   window.playerSpells = gameState.spells;
 

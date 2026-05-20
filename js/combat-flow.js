@@ -2180,17 +2180,26 @@ function showDiceCombatModal() {
     window.CombatUI.renderCombatUI(combatState, container);
   }
 
-  // Override the checkCombatEnd to handle victory/defeat properly
+  // Override the checkCombatEnd to handle victory/defeat properly.
+  // checkCombatEnd fires from many call sites in combat-ui.js (every player/
+  // enemy action), and once `phase` flips to 'victory' it stays there — so
+  // without a one-shot guard, two calls in the same frame would each schedule
+  // a handleDiceCombatVictory, running markGameFinished twice and bumping
+  // difficulty by 2 per win.
   const originalCheckEnd = window.CombatUI.checkCombatEnd;
+  let _combatEndHandled = false;
   window.CombatUI.checkCombatEnd = function() {
+    if (_combatEndHandled) return;
     const combat = window.CombatEngine.getCombatState();
     if (!combat) return;
 
     if (combat.phase === 'victory') {
+      _combatEndHandled = true;
       setTimeout(() => {
         handleDiceCombatVictory(enemyData);
       }, 500);
     } else if (combat.phase === 'defeat') {
+      _combatEndHandled = true;
       setTimeout(() => {
         handleDiceCombatDefeat(enemyData);
       }, 500);

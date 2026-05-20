@@ -712,8 +712,9 @@ function renderEnemyCard(enemy, combat) {
       position: relative;
     ">
       <!-- Intent badge -->
-      <div style="min-height: 32px; margin-bottom: 6px; display:flex; align-items:center;">
+      <div style="min-height: 32px; margin-bottom: 6px; display:flex; flex-direction:column; align-items:center; gap:3px;">
         ${isDead ? '<span style="color:#e74c3c;font-size:11px;">Defeated</span>' : renderIntentBadge(enemy)}
+        ${isDead ? '' : _renderIntentDamageReadout(enemy)}
       </div>
 
       <!-- Portrait -->
@@ -958,6 +959,64 @@ function _renderSingleIntentBadge(raw, enemy, maxLen) {
       <span style="flex-shrink:0;">${style.emoji}</span>
       <span style="color:white; overflow:hidden; text-overflow:ellipsis;">${displayText}</span>
       ${modBadge}
+    </div>`;
+}
+
+/**
+ * For Rerollable enemies, summarise the dice rolled/rerolled and the final
+ * post-modifier damage they'll deal this turn. Sits just under the intent
+ * badge — the single source of truth for "how much will this hurt me".
+ *
+ * Returns an empty string for enemies without pre-rolled tray dice (no
+ * Rerollable status) so the layout doesn't shift for regular enemies.
+ */
+function _renderIntentDamageReadout(enemy) {
+  if (!enemy.currentIntent || enemy.currentIntent.length === 0) return '';
+  if (!enemy.statuses || !enemy.statuses['rerollable']) return '';
+
+  // Sum predicted damage across every Dmg / Magic Dmg effect that has
+  // locked rolls. For non-damage effects, skip (they don't contribute to
+  // the "X dmg" readout).
+  const predict = window.CombatEngine && window.CombatEngine.predictPlayerIncomingDamage;
+  if (typeof predict !== 'function') return '';
+
+  let totalPredicted = 0;
+  const rolledParts = [];
+  for (const intent of enemy.currentIntent) {
+    const effects = (intent.face && intent.face.effects) || [];
+    for (const effect of effects) {
+      if (!Array.isArray(effect._lockedRolls) || effect._lockedRolls.length === 0) continue;
+      const move = (effect.move || '').toLowerCase();
+      if (move !== 'dmg' && move !== 'magic dmg') continue;
+      // The engine deals one damage call per die in the diceGroups path, so
+      // every per-die hit gets Power/Vulnerable/Bruise/etc. applied
+      // independently. Predict the same way: sum predictions per die rather
+      // than predicting once on the raw sum. This matches what
+      // dealDamageToPlayer actually does, side-effect for side-effect.
+      for (const r of effect._lockedRolls) {
+        totalPredicted += predict(r.result, effect.addons || [], enemy);
+      }
+      // Build a compact roll summary, e.g. "d8:5" or "d8:5+d6:3"
+      rolledParts.push(effect._lockedRolls.map(r => `d${r.die}:${r.result}`).join('+'));
+    }
+  }
+
+  if (rolledParts.length === 0) return '';
+
+  // Compress the rolled-parts into one short string. Cap length so the
+  // intent column doesn't blow out for big multi-die attacks.
+  const rolledLabel = rolledParts.join(' / ');
+  const rolledShort = rolledLabel.length > 26 ? rolledLabel.slice(0, 24) + '…' : rolledLabel;
+
+  return `
+    <div title="Rolled: ${rolledLabel.replace(/"/g, '&quot;')}" style="
+      display:inline-flex; flex-direction:column; align-items:center;
+      gap:1px; line-height:1;
+      background:rgba(204,51,51,0.18); border:1px solid #cc3333;
+      border-radius:8px; padding:2px 6px;
+    ">
+      <div style="font-size:11px;font-weight:bold;color:#ff6666;">${totalPredicted} dmg</div>
+      <div style="font-size:8px;color:#cc8888;">${rolledShort}</div>
     </div>`;
 }
 
@@ -1214,6 +1273,7 @@ window._showCombatPowers = function() {
 
 function renderInlineeDiceBoard(combat) {
   const pending = (combat && combat.pendingDice) || [];
+  const enemyDice = (combat && combat.enemyDice) || [];
 
   const isDieCard = c => (c.type || '').toLowerCase() === 'dice';
   const hasDiceInDeck = combat && (
@@ -1223,7 +1283,8 @@ function renderInlineeDiceBoard(combat) {
     (combat.exhaustPile || []).some(isDieCard)
   );
 
-  if (pending.length === 0 && !hasDiceInDeck) return '';
+  // Surface the tray whenever there's anything on it — including enemy dice
+  if (pending.length === 0 && enemyDice.length === 0 && !hasDiceInDeck) return '';
 
   const rerolls = (combat.player && combat.player.rerolls) || 0;
   const gold   = C.gold   || '#f0c850';
@@ -1273,7 +1334,43 @@ function renderInlineeDiceBoard(combat) {
     </div>`;
   }).join('');
 
-  const emptyHint = pending.length === 0 ? `
+  // Enemy tiles: red-themed, no addons/badges; each tile carries the enemy id
+  // so the hover handler can highlight the corresponding enemy card.
+  // Enemy tiles: red-themed, no addons/badges; each tile carries the enemy id
+  // so the hover handler can highlight the corresponding enemy card.
+  //
+  // The die face shows the RAW rolled value (1..sides), because that's what
+  // the die literally rolled. Final post-modifier damage (Power, Vulnerable,
+  // Brace, etc.) is displayed prominently on the enemy's intent badge above
+  // — one source of truth per enemy avoids the confusing per-die-share math.
+  const enemyTilesHtml = enemyDice.map(entry => {
+    const enemy = combat.enemies.find(e => e.id === entry.enemyId);
+    const enemyName = enemy ? enemy.name : 'Enemy';
+    return `<div class="pending-die-tile enemy-die-tile"
+      data-enemy-die-id="${entry.id}"
+      data-enemy-id="${entry.enemyId}"
+      style="
+        padding:4px 6px;
+        background:transparent;
+        border:1px solid #66000044;
+        border-radius:8px; cursor:pointer;
+        display:flex; flex-direction:column; align-items:center; gap:2px;
+        transition:box-shadow 0.12s, border-color 0.12s, background 0.12s;
+      ">
+      <div style="font-size:9px;color:#cc6666;line-height:1;">⚔ ${enemyName}</div>
+      <div class="enemy-dice-3d"
+        data-enemy-die-id="${entry.id}"
+        data-sides="${entry.sides}"
+        data-result="${entry.result}"
+        style="width:90px;height:90px;pointer-events:none;flex-shrink:0;">
+      </div>
+      <div style="font-size:11px;font-weight:bold;color:#ff8a8a;text-align:center;line-height:1.2;">
+        d${entry.sides}: ${entry.result}
+      </div>
+    </div>`;
+  }).join('');
+
+  const emptyHint = (pending.length === 0 && enemyDice.length === 0) ? `
     <div style="
       display:flex; align-items:center; justify-content:center;
       color:#555; font-size:11px; font-style:italic; pointer-events:none;
@@ -1289,6 +1386,7 @@ function renderInlineeDiceBoard(combat) {
       border-right:1px solid ${border};
       padding:6px 8px;
       align-self:stretch;
+      max-height:200px;
     ">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-shrink:0;">
         <div style="font-size:10px;font-weight:bold;color:${gold};">🎲 Dice Board</div>
@@ -1306,8 +1404,9 @@ function renderInlineeDiceBoard(combat) {
         gap:4px;
         overflow-y:auto;
         flex:1;
+        min-height:0;
       ">
-        ${tilesHtml}${emptyHint}
+        ${tilesHtml}${enemyTilesHtml}${emptyHint}
       </div>
     </div>
   `;
@@ -1609,6 +1708,115 @@ function initPendingDiceRenderers() {
     r.createDice(diceData);
     r.rollDice(diceData, faceNum, null);
     _pendingDiceRenderers.push(r);
+  });
+
+  // Enemy dice live in the same tray; render each red-themed cube and wire
+  // bidirectional hover highlight with the source enemy card.
+  initEnemyDiceRenderers();
+}
+
+let _enemyDiceRenderers = [];
+// Tracks (entry.id + entry.result) pairs the player has already seen animate.
+// On subsequent re-renders we snap the mesh into place without the 1.5s
+// spin-and-settle, so the tray doesn't replay the roll on every UI tick.
+// A reroll changes entry.result → new key → animates again.
+const _animatedEnemyDieKeys = new Set();
+
+function _disposeEnemyDiceRenderers() {
+  _enemyDiceRenderers.forEach(r => { try { r.dispose(); } catch (e) {} });
+  _enemyDiceRenderers = [];
+}
+
+/**
+ * Build dice data for a Rerollable enemy die. Uses the unified polyhedral
+ * mesh path in dice-renderer.js so a real shape is rendered for the die's
+ * actual side count (d4 tetrahedron, d6 cube, d8 octahedron, d10 pentagonal
+ * trapezohedron, d12 dodecahedron, d20 icosahedron).
+ *
+ * Falls back to a 6-sided cube for unrecognized side counts so the UI never
+ * crashes — the rolled-result label below the die is always authoritative.
+ */
+function _makeEnemyDieDiceData(entry) {
+  const SUPPORTED = [4, 6, 8, 10, 12, 20];
+  const sides = SUPPORTED.includes(entry.sides) ? entry.sides : 6;
+  const usePolyhedral = sides !== 20;  // d20 keeps the existing dedicated path
+
+  // Red-threatening theme. sceneBg is read by init(); the rest is read by
+  // createPolyhedralFaceTexture for the face-number canvas.
+  const colors = {
+    sceneBg: 0x1a0808,
+    bg:      '#cc3333',
+    border:  '#660000',
+    text:    '#ffffff',
+    outline: '#000000',
+  };
+
+  // Default sides array — each face shows its conventional value (1..sides).
+  // Items that modify the die later (set sides[i].displayValue) will be
+  // honored by the texture builder; for now there are no overrides.
+  const sidesArr = Array.from({ length: sides }, (_, i) => ({
+    face: i + 1,
+    value: i + 1,
+    displayValue: null,
+    text: String(i + 1),
+    displayText: String(i + 1),
+    texture: null,
+    modifiers: [],
+  }));
+
+  if (usePolyhedral) {
+    return {
+      shape: 'polyhedral',
+      type:  `d${sides}-enemy-red`,
+      sides,
+      colors,
+      sidesArray: sidesArr,
+      _enemyResult: entry.result,
+    };
+  }
+
+  // d20: keep using the existing createD20Mesh path. It reads
+  // sides[i].displayValue if set (see createD20FaceTexture).
+  return {
+    type: 'd20',
+    colors,
+    sides: sidesArr,
+    globalModifiers: [],
+    currentRoll: null,
+    _enemyResult: entry.result,
+  };
+}
+
+function initEnemyDiceRenderers() {
+  _disposeEnemyDiceRenderers();
+  if (typeof DiceRendererInstance === 'undefined') return;
+  const cs = window.CombatEngine && window.CombatEngine.getCombatState && window.CombatEngine.getCombatState();
+  if (!cs || !Array.isArray(cs.enemyDice)) return;
+
+  document.querySelectorAll('.enemy-dice-3d[data-enemy-die-id]').forEach(el => {
+    const id = el.dataset.enemyDieId;
+    const entry = cs.enemyDice.find(d => d.id === id);
+    if (!entry) return;
+
+    const diceData = _makeEnemyDieDiceData(entry);
+    if (el.clientWidth === 0 || el.clientHeight === 0) {
+      el.style.width  = '66px';
+      el.style.height = '66px';
+    }
+
+    const r = new DiceRendererInstance();
+    r.init(el, diceData.colors.sceneBg);
+    r.createDice(diceData);
+    // Only animate the spin-and-settle sequence the FIRST time this exact
+    // (die id + rolled value) is shown. Subsequent re-renders snap to the
+    // settled rotation immediately so the tray doesn't auto-roll on every
+    // UI tick. Re-rolling via "Reroll All" produces a new result, gets a
+    // fresh key, and animates again.
+    const animKey = `${entry.id}_${entry.result}`;
+    const skipAnimation = _animatedEnemyDieKeys.has(animKey);
+    r.rollDice(diceData, entry.result, null, { skipAnimation });
+    _animatedEnemyDieKeys.add(animKey);
+    _enemyDiceRenderers.push(r);
   });
 }
 
@@ -2587,6 +2795,8 @@ function attachCombatEventListeners(combat) {
     });
   }
 
+  attachEnemyDiceHighlightHandlers();
+
   // Player zone click: confirm a selected self-targeting / power card
   const playerZone = document.getElementById('combat-player-zone');
   if (playerZone) {
@@ -2602,6 +2812,61 @@ function attachCombatEventListeners(combat) {
       _playSelectedSelfCard(cs, idx);
     });
   }
+}
+
+/**
+ * Bidirectional hover/click highlight between a Rerollable enemy's dice in
+ * the tray and the enemy's card in the field. Re-attached after every render
+ * via attachCombatEventListeners.
+ */
+function attachEnemyDiceHighlightHandlers() {
+  const ENEMY_GLOW = '0 0 18px #ff3333cc, 0 0 6px #ff666688';
+  const TILE_BG    = 'rgba(204,51,51,0.18)';
+  const TILE_BORDER = '#ff5555';
+
+  // Tray die → enemy card
+  document.querySelectorAll('.enemy-die-tile').forEach(tile => {
+    const enemyId = tile.dataset.enemyId;
+    if (!enemyId) return;
+
+    const setHighlight = (on) => {
+      const card = document.getElementById(`enemy-card-${enemyId}`);
+      if (card) {
+        card.style.boxShadow = on ? ENEMY_GLOW : '';
+        card.style.transition = 'box-shadow 0.12s';
+      }
+      tile.style.background   = on ? TILE_BG : 'transparent';
+      tile.style.borderColor  = on ? TILE_BORDER : '#66000044';
+    };
+
+    tile.addEventListener('mouseenter', () => setHighlight(true));
+    tile.addEventListener('mouseleave', () => setHighlight(false));
+    tile.addEventListener('click', () => {
+      // Click flashes the enemy card so the user can spot it on a crowded field
+      const card = document.getElementById(`enemy-card-${enemyId}`);
+      if (!card) return;
+      card.style.boxShadow = ENEMY_GLOW;
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      setTimeout(() => { if (card.matches(':not(:hover)')) card.style.boxShadow = ''; }, 700);
+    });
+  });
+
+  // Enemy card → tray dice
+  document.querySelectorAll('.enemy-card[data-enemy-id]').forEach(card => {
+    const enemyId = card.dataset.enemyId;
+    const tiles = Array.from(document.querySelectorAll(`.enemy-die-tile[data-enemy-id="${enemyId}"]`));
+    if (tiles.length === 0) return;
+
+    const setHighlight = (on) => {
+      tiles.forEach(t => {
+        t.style.background   = on ? TILE_BG : 'transparent';
+        t.style.borderColor  = on ? TILE_BORDER : '#66000044';
+      });
+    };
+
+    card.addEventListener('mouseenter', () => setHighlight(true));
+    card.addEventListener('mouseleave', () => setHighlight(false));
+  });
 }
 
 function handleEnemyClick(enemyId) {
@@ -2820,6 +3085,9 @@ function ensureDragAndKeyListeners() {
         if (_dragState.hoveredEnemy) _dragState.hoveredEnemy.style.outline = '';
         if (pointEl) pointEl.style.outline = `3px solid ${C.goldBright}`;
         _dragState.hoveredEnemy = pointEl || null;
+        // Sync hovered-enemy for dynamic damage preview in card descriptions
+        window._combatHoveredEnemyId = pointEl ? pointEl.dataset.enemyId : null;
+        refreshCombatHand();
       }
 
       // Highlight Dice Board when dragging a dice card over it
@@ -2852,6 +3120,10 @@ function ensureDragAndKeyListeners() {
     // Reset dice board highlight
     const dicePanel = document.getElementById('pending-dice-panel');
     if (dicePanel) { dicePanel.style.background = ''; dicePanel.style.borderTopColor = ''; }
+
+    // Clear drag-hovered enemy so card descriptions return to neutral state
+    window._combatHoveredEnemyId = null;
+    refreshCombatHand();
 
     if (!moved) return; // not a drag — click handler will fire
 

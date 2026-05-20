@@ -373,6 +373,10 @@ window.showDeckModal = showDeckModal;
 
 function showDiceTrayModal() {
   if (!gameState.diceSlots) gameState.diceSlots = {};
+  // Ensure the persistent d20 exists for older saves missing the field.
+  if (!gameState.playerD20 && typeof createD20 === 'function') {
+    gameState.playerD20 = createD20();
+  }
 
   const CDATA = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : [];
   const DDATA = typeof DICE_DATA   !== 'undefined' ? DICE_DATA   : [];
@@ -393,7 +397,18 @@ function showDiceTrayModal() {
   }
   const acquiredDiceCards = (gameState.deck || []).filter(c => (c.type || '').toLowerCase() === 'dice');
 
-  const allDice = [...startingDiceCards, ...acquiredDiceCards];
+  // The persistent d20 is rendered as a special tile at the front of the
+  // tray. It has no item slot today (item-slotting on d20 will be added
+  // alongside the future face-editing items).
+  const d20Entry = {
+    _isPlayerD20: true,
+    _dieUid: 'player_d20',
+    name: "Hero's d20",
+    type: 'Dice',
+    rarity: 'Persistent',
+  };
+
+  const allDice = [d20Entry, ...startingDiceCards, ...acquiredDiceCards];
 
   const getFaceList = (card) => {
     const def = DDATA.find(d => d.name === card.name);
@@ -405,6 +420,28 @@ function showDiceTrayModal() {
     const uid   = card._dieUid || `anon_${idx}`;
     const slot  = gameState.diceSlots[uid] || null;
     const faces = getFaceList(card);
+
+    // d20 has a different structure: no card image, no face-text grid (the
+    // numbered faces speak for themselves on the mesh), no item slot yet.
+    if (card._isPlayerD20) {
+      return `
+        <div style="background:rgba(10,8,5,0.85);border:2px solid #c07820;border-radius:12px;
+          padding:14px;display:flex;flex-direction:column;gap:10px;min-width:300px;max-width:400px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:28px;border-radius:6px;background:rgba(0,0,0,0.3);">🎲</div>
+            <div>
+              <div style="font-weight:bold;font-size:13px;color:#f0c850;">${card.name}</div>
+              <div style="font-size:10px;color:#888;">D20 · Used for event rolls</div>
+            </div>
+          </div>
+          <div class="dice-tray-3d" data-die-key="${uid}" data-die-kind="d20"
+               style="width:200px;height:200px;margin:0 auto;border-radius:8px;background:#0d0800;">
+          </div>
+          <div style="font-size:10px;color:#888;text-align:center;line-height:1.4;">
+            Click and drag the die to rotate. Future items will let you alter individual faces.
+          </div>
+        </div>`;
+    }
     const _addonBadge = (label, bg, color) =>
       `<span style="font-size:8px;background:${bg};color:${color};border-radius:3px;padding:1px 4px;white-space:nowrap;">${label}</span>`;
     const _addonStyle = {
@@ -477,6 +514,9 @@ function showDiceTrayModal() {
             <div style="font-size:10px;color:#888;">${card.rarity || 'Starter'} Dice${card._isStarting ? ' · Starting' : ''}</div>
           </div>
         </div>
+        <div class="dice-tray-3d" data-die-key="${uid}" data-die-kind="card" data-card-name="${card.name}"
+             style="width:160px;height:160px;margin:0 auto;border-radius:8px;background:#0d0800;">
+        </div>
         ${faces.length > 0 ? `
           <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px;">${facesHTML}</div>
         ` : `<div style="font-size:10px;color:#555;text-align:center;">No face data</div>`}
@@ -519,6 +559,67 @@ function showDiceTrayModal() {
       _diceTrayPickItem(uid);
     });
   });
+
+  // 3D dice meshes — one per .dice-tray-3d container. Click-drag rotates
+  // each die in place. Renderers are torn down when the modal closes.
+  _initDiceTray3DRenderers();
+}
+
+let _diceTray3DRenderers = [];
+
+function _disposeDiceTray3DRenderers() {
+  _diceTray3DRenderers.forEach(r => { try { r.dispose(); } catch (_) {} });
+  _diceTray3DRenderers = [];
+}
+
+function _initDiceTray3DRenderers() {
+  _disposeDiceTray3DRenderers();
+  if (typeof DiceRendererInstance === 'undefined') return;
+
+  document.querySelectorAll('.dice-tray-3d[data-die-key]').forEach(el => {
+    const kind = el.dataset.dieKind;
+    let diceData = null;
+
+    if (kind === 'd20') {
+      // Use the persistent d20 directly so any item-applied face changes
+      // (displayValue, value) show on the mesh.
+      diceData = (gameState && gameState.playerD20) ? gameState.playerD20 : null;
+      if (!diceData && typeof createD20 === 'function') diceData = createD20();
+    } else if (kind === 'card') {
+      const name = el.dataset.cardName;
+      const srcCard = (typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : []).find(c => c.name === name);
+      // _makeDiceDataForCard lives in combat-ui.js and builds a d6-card
+      // dice-data with custom face textures from DICE_DATA.
+      if (srcCard && typeof _makeDiceDataForCard === 'function') {
+        diceData = _makeDiceDataForCard(srcCard);
+      }
+    }
+    if (!diceData) return;
+
+    const r = new DiceRendererInstance();
+    const bgColor = (diceData.colors && diceData.colors.sceneBg) || 0x0d0800;
+    r.init(el, bgColor);
+    r.createDice(diceData);
+    // No roll animation in the tray — the die just sits there for inspection.
+    // Mark as hasRolled so the idle auto-rotation does run (looks more lively).
+    r.hasRolled = false;
+    r.enableDragRotate();
+    _diceTray3DRenderers.push(r);
+  });
+
+  // Dispose renderers when the panel overlay closes so we don't leak
+  // animation frames or WebGL contexts. The dice-tray modal uses
+  // createPanelOverlay; hook into its close button.
+  const overlay = document.querySelector('.panel-overlay');
+  if (overlay) {
+    const observer = new MutationObserver(() => {
+      if (!document.body.contains(overlay)) {
+        _disposeDiceTray3DRenderers();
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true });
+  }
 }
 
 function _diceTrayUnequip(dieUid) {

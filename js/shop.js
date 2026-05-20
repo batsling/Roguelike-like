@@ -639,6 +639,7 @@ function showShopModal(purchasedIndices = null) {
         if (typeof removeCardFromDeck === 'function') removeCardFromDeck(realIdx);
       }
       saveCurrentGame();
+      if (typeof updateCursesDisplay === 'function') updateCursesDisplay();
       showShopModal(purchasedIndices);
     };
   }

@@ -792,9 +792,7 @@ function renderGameState() {
 
     if (isLast) {
       gameState.currentY = currentY;
-      const _isFirstGame = gameState.visitedGames.length === 1;
-      const _alreadyFinished = (gameState.finishedGames || []).includes(gameState.currentGame);
-      if (!_isFirstGame || _alreadyFinished) showFinish(node);
+      showFinish(node);
 
       // Add player icon on current node (above the box)
       if (gameState.character && PLAYER_CHARACTERS[gameState.character]) {

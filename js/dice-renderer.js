@@ -1,9 +1,234 @@
 /**
  * 3D Dice Renderer
  * Renders and animates 3D dice using Three.js
- * Supports D20 and D6 (defense) with customizable face textures
- * Refactored to support multiple independent instances
+ * Supports proper-shape D4 (tetrahedron), D6 (cube), D8 (octahedron),
+ * D10 (pentagonal trapezohedron), D12 (dodecahedron), and D20 (icosahedron),
+ * each with per-face number textures using the real-die "opposites sum to
+ * N+1" numbering convention (where opposite faces exist).
+ *
+ * Refactored to support multiple independent instances.
  */
+
+/**
+ * Per-shape face data for d4/d8/d10/d12. Returns:
+ *   {
+ *     faces: [{
+ *       vertices: Array<THREE.Vector3>,  // 3+ vertices going around the face
+ *       centroid: THREE.Vector3,
+ *       normal:   THREE.Vector3,         // outward, unit length
+ *     }]
+ *   }
+ * Vertex order is CCW when viewed from outside (front-facing normal).
+ *
+ * `radius` is the circumradius (distance from center to any vertex).
+ * Face numbering (faceValues) is computed AFTER face data using the
+ * opposite-sum-to-(N+1) convention for shapes with parallel opposite faces.
+ */
+function _buildPolyhedronFaceData(sides, radius) {
+  const F = []; // accumulated faces
+  const phi = (1 + Math.sqrt(5)) / 2;
+
+  if (sides === 4) {
+    // Regular tetrahedron with vertices at alternating cube corners
+    // Edge length ~ 2*sqrt(2); scaled to fit circumradius
+    const r = radius / Math.sqrt(3);
+    const V = [
+      new THREE.Vector3( r,  r,  r),
+      new THREE.Vector3( r, -r, -r),
+      new THREE.Vector3(-r,  r, -r),
+      new THREE.Vector3(-r, -r,  r),
+    ];
+    // Each face opposes one vertex; vertex winding is CCW from outside.
+    const triplets = [
+      [1, 3, 2], // opposite V0
+      [0, 2, 3], // opposite V1
+      [0, 3, 1], // opposite V2
+      [0, 1, 2], // opposite V3
+    ];
+    for (const [a, b, c] of triplets) {
+      F.push({ vertices: [V[a], V[b], V[c]] });
+    }
+  } else if (sides === 6) {
+    // Cube: 6 square faces. Circumradius = side*sqrt(3)/2; pick side so r = radius.
+    const s = radius / Math.sqrt(3);
+    // CCW vertex order viewed from outside the face
+    const faces = [
+      // +X face
+      [[s, -s, -s], [s,  s, -s], [s,  s,  s], [s, -s,  s]],
+      // -X face
+      [[-s, -s,  s], [-s,  s,  s], [-s,  s, -s], [-s, -s, -s]],
+      // +Y face
+      [[-s,  s,  s], [ s,  s,  s], [ s,  s, -s], [-s,  s, -s]],
+      // -Y face
+      [[-s, -s, -s], [ s, -s, -s], [ s, -s,  s], [-s, -s,  s]],
+      // +Z face
+      [[-s, -s,  s], [ s, -s,  s], [ s,  s,  s], [-s,  s,  s]],
+      // -Z face
+      [[ s, -s, -s], [-s, -s, -s], [-s,  s, -s], [ s,  s, -s]],
+    ];
+    for (const verts of faces) {
+      F.push({ vertices: verts.map(v => new THREE.Vector3(v[0], v[1], v[2])) });
+    }
+  } else if (sides === 8) {
+    // Regular octahedron: 6 vertices at ±axes, 8 triangular faces
+    const r = radius;
+    const V = [
+      new THREE.Vector3( r,  0,  0), // 0 +X
+      new THREE.Vector3(-r,  0,  0), // 1 -X
+      new THREE.Vector3( 0,  r,  0), // 2 +Y
+      new THREE.Vector3( 0, -r,  0), // 3 -Y
+      new THREE.Vector3( 0,  0,  r), // 4 +Z
+      new THREE.Vector3( 0,  0, -r), // 5 -Z
+    ];
+    // 8 faces, one per octant, with CCW winding viewed from outside
+    const triplets = [
+      [0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4], // +Z hemisphere
+      [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5], // -Z hemisphere
+    ];
+    for (const [a, b, c] of triplets) {
+      F.push({ vertices: [V[a], V[b], V[c]] });
+    }
+  } else if (sides === 10) {
+    // Pentagonal trapezohedron: 2 apices + 10 equator vertices in two
+    // staggered pentagons. 10 kite faces. Real d10 shape.
+    const apexH = radius * 0.95;    // apex distance from center
+    const eqR   = radius * 0.78;    // equator ring radius
+    const eqH   = radius * 0.28;    // equator vertical offset
+    const N = new THREE.Vector3(0,  apexH, 0);
+    const S = new THREE.Vector3(0, -apexH, 0);
+    // 10 equator vertices, even-index = "up", odd-index = "down"
+    const eq = [];
+    for (let i = 0; i < 10; i++) {
+      const angle = i * (Math.PI / 5);     // 36° apart
+      const y = (i % 2 === 0) ? +eqH : -eqH;
+      eq.push(new THREE.Vector3(eqR * Math.cos(angle), y, eqR * Math.sin(angle)));
+    }
+    // 5 top kites (N apex). Each kite: [N, up_i, down_i, up_{i+1}] CCW from outside
+    for (let i = 0; i < 5; i++) {
+      const up_i   = eq[(2 * i) % 10];
+      const down_i = eq[(2 * i + 1) % 10];
+      const up_n   = eq[(2 * i + 2) % 10];
+      F.push({ vertices: [N, up_n, down_i, up_i] });
+    }
+    // 5 bottom kites (S apex). Each kite: [S, down_i, up_{i+1}, down_{i+1}] CCW from outside
+    for (let i = 0; i < 5; i++) {
+      const down_i = eq[(2 * i + 1) % 10];
+      const up_n   = eq[(2 * i + 2) % 10];
+      const down_n = eq[(2 * i + 3) % 10];
+      F.push({ vertices: [S, down_n, up_n, down_i] });
+    }
+  } else if (sides === 12) {
+    // Regular dodecahedron: 20 vertices, 12 pentagonal faces.
+    // Vertices at (±1,±1,±1) and cyclic permutations of (0, ±1/φ, ±φ).
+    const a = radius / Math.sqrt(3);   // scale so circumradius = radius
+    const b = a / phi;
+    const c = a * phi;
+    const V = [
+      new THREE.Vector3( a,  a,  a), new THREE.Vector3( a,  a, -a),
+      new THREE.Vector3( a, -a,  a), new THREE.Vector3( a, -a, -a),
+      new THREE.Vector3(-a,  a,  a), new THREE.Vector3(-a,  a, -a),
+      new THREE.Vector3(-a, -a,  a), new THREE.Vector3(-a, -a, -a),
+      new THREE.Vector3( 0,  b,  c), new THREE.Vector3( 0,  b, -c),
+      new THREE.Vector3( 0, -b,  c), new THREE.Vector3( 0, -b, -c),
+      new THREE.Vector3( b,  c,  0), new THREE.Vector3( b, -c,  0),
+      new THREE.Vector3(-b,  c,  0), new THREE.Vector3(-b, -c,  0),
+      new THREE.Vector3( c,  0,  b), new THREE.Vector3( c,  0, -b),
+      new THREE.Vector3(-c,  0,  b), new THREE.Vector3(-c,  0, -b),
+    ];
+    // 12 pentagonal faces, vertex indices CCW from outside.
+    const facesIdx = [
+      [ 0,  8, 10,  2, 16],  // +X+Y front
+      [ 0, 16, 17,  1, 12],  // +X+Y top
+      [12, 14,  4,  8,  0],  // +Y front (alt: visible)
+      [16,  2, 13,  3, 17],  // +X front-right
+      [ 9,  1, 17,  3, 11],  // +X back
+      [ 1,  9,  5, 14, 12],  // top back
+      [ 8,  4, 18,  6, 10],  // +Z left
+      [ 2, 10,  6, 15, 13],  // -Y front
+      [14,  5, 19, 18,  4],  // -X top
+      [ 5,  9, 11,  7, 19],  // back left
+      [ 3, 13, 15,  7, 11],  // -Y back
+      [ 6, 18, 19,  7, 15],  // -X back
+    ];
+    for (const ring of facesIdx) {
+      F.push({ vertices: ring.map(i => V[i]) });
+    }
+  } else {
+    throw new Error(`Unsupported polyhedron side count: ${sides}`);
+  }
+
+  // Compute centroid & outward normal for each face. Flip normal if it
+  // points inward (shouldn't happen with correct winding above, but be safe).
+  for (const face of F) {
+    const verts = face.vertices;
+    const centroid = new THREE.Vector3();
+    verts.forEach(v => centroid.add(v));
+    centroid.multiplyScalar(1 / verts.length);
+
+    // Normal from first 3 vertices (CCW winding → outward)
+    const e1 = new THREE.Vector3().subVectors(verts[1], verts[0]);
+    const e2 = new THREE.Vector3().subVectors(verts[2], verts[0]);
+    const normal = new THREE.Vector3().crossVectors(e1, e2).normalize();
+    // Sanity-check: outward normal should have positive dot with centroid
+    if (normal.dot(centroid) < 0) normal.negate();
+
+    face.centroid = centroid;
+    face.normal = normal;
+  }
+
+  return { faces: F };
+}
+
+/**
+ * Assign face values 1..N using the real-die "opposite faces sum to N+1"
+ * convention. For shapes without parallel opposite faces (tetrahedron),
+ * faces get sequential values 1..N.
+ *
+ * Returns an array `faceValues[i] = value` aligned to `faceData.faces[i]`.
+ */
+function _assignFaceValues(faceData, sides) {
+  const N = faceData.faces.length;
+  const values = new Array(N).fill(null);
+
+  if (sides === 4) {
+    // Tetrahedron: no opposite faces. Sequential.
+    for (let i = 0; i < N; i++) values[i] = i + 1;
+    return values;
+  }
+
+  // Build opposite-face map by anti-parallel normal lookup
+  const oppositeOf = new Array(N).fill(-1);
+  for (let i = 0; i < N; i++) {
+    if (oppositeOf[i] !== -1) continue;
+    for (let j = i + 1; j < N; j++) {
+      if (oppositeOf[j] !== -1) continue;
+      const dot = faceData.faces[i].normal.dot(faceData.faces[j].normal);
+      if (dot < -0.99) {  // anti-parallel within ~8° tolerance
+        oppositeOf[i] = j;
+        oppositeOf[j] = i;
+        break;
+      }
+    }
+  }
+
+  // Walk faces in order, assigning pairs (k, N+1-k).
+  let next = 1;
+  for (let i = 0; i < N; i++) {
+    if (values[i] !== null) continue;
+    const opp = oppositeOf[i];
+    if (opp === -1) {
+      // No detected opposite — fall back to sequential
+      values[i] = next++;
+    } else {
+      values[i] = next;
+      values[opp] = N + 1 - next;
+      next++;
+    }
+  }
+  return values;
+}
+
+
 
 /**
  * DiceRenderer class - creates independent dice renderer instances
@@ -400,6 +625,170 @@ class DiceRendererInstance {
   }
 
   /**
+   * Create canvas texture for a numbered polyhedral face.
+   *
+   * `number` is the geometric face's conventional value (e.g. for a d6,
+   * the face positioned at geometric slot N gets value N by the
+   * opposites-sum-to-7 numbering). `side` (optional) is the
+   * dice-system per-side data — if it has `displayValue`, that's painted
+   * instead of `number`, allowing items to visibly alter individual faces.
+   *
+   * Font size scales by face shape: triangular faces (d4, d8) and kite
+   * faces (d10) have less usable area than squares (d6) or pentagons (d12),
+   * so the printed digit shrinks to stay inside the visible polygon.
+   */
+  createPolyhedralFaceTexture(number, sides, theme, side = null) {
+    const c = theme || {
+      bg: '#cc3333', border: '#660000', text: '#ffffff', outline: '#000000',
+    };
+    const canvas = document.createElement('canvas');
+    canvas.width  = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = c.bg;
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.strokeStyle = c.border;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(0, 0, 128, 128);
+
+    // Per-side displayValue overrides the conventional number so a modified
+    // face shows the new value (e.g. an item that turns face 1 into a 20).
+    const displayed = (side && side.displayValue !== null && side.displayValue !== undefined)
+      ? side.displayValue : number;
+    const text = String(displayed);
+
+    // Font size by polyhedron — triangular faces (d4/d8) have ~50% of the
+    // canvas's usable area, kites (d10) are tall+narrow, pentagons (d12)
+    // are roomier than triangles but smaller than squares.
+    let fontPx;
+    let yOffset = 0;
+    switch (sides) {
+      case 4:  fontPx = 44; yOffset = 10; break;  // triangle face, nudge down so digit sits in the wider lower half
+      case 6:  fontPx = 56; break;                // square face
+      case 8:  fontPx = 44; yOffset = 10; break;  // triangle face
+      case 10: fontPx = 44; yOffset = 8;  break;  // kite face, slight nudge to centroid
+      case 12: fontPx = 50; break;                // pentagonal face
+      default: fontPx = 48;
+    }
+    // Long strings (item-set displayValue like "100" or "X") need shrinking
+    if (text.length >= 3) fontPx = Math.round(fontPx * 0.72);
+    else if (text.length === 2) fontPx = Math.round(fontPx * 0.88);
+
+    ctx.font = `bold ${fontPx}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = c.outline;
+    ctx.lineWidth = Math.max(3, Math.round(fontPx * 0.1));
+    ctx.strokeText(text, 64, 64 + yOffset);
+    ctx.fillStyle = c.text;
+    ctx.fillText(text, 64, 64 + yOffset);
+
+    // Underline 6/9 (and 8 on d10) so flipped orientation is unambiguous
+    const numericDisplayed = Number(displayed);
+    const needsUnderline = (numericDisplayed === 6 || numericDisplayed === 9 || (sides === 10 && numericDisplayed === 8));
+    if (needsUnderline) {
+      ctx.fillStyle = c.text;
+      const underlineY = 64 + yOffset + Math.round(fontPx * 0.5) + 4;
+      const underlineW = Math.round(fontPx * 0.5);
+      ctx.fillRect(64 - underlineW / 2, underlineY, underlineW, 3);
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  /**
+   * Build a Group containing one textured polygon mesh per face of the
+   * requested polyhedron. Real-die shapes are used (tetrahedron / cube /
+   * octahedron / pentagonal trapezohedron / dodecahedron). Face values
+   * follow the "opposite faces sum to N+1" convention where applicable.
+   *
+   * Requires diceData.shape === 'polyhedral' and diceData.sides in {4,6,8,10,12}.
+   * Optional: diceData.colors (theme: { bg, border, text, outline, sceneBg }),
+   *           diceData.radius (default 1.6 to match d20 scale).
+   */
+  createPolyhedralMesh(diceData) {
+    const sides = diceData.sides;
+    const radius = diceData.radius || 1.6;
+    const theme = diceData.colors || {
+      bg: '#cc3333', border: '#660000', text: '#ffffff', outline: '#000000',
+    };
+
+    const faceData = _buildPolyhedronFaceData(sides, radius);
+    const faceValues = _assignFaceValues(faceData, sides);
+
+    // Store normals indexed by face index so faceValueToIndex can recover
+    // the face for any given value (used by calculateFaceRotation).
+    this.faceNormals = faceData.faces.map(f => f.normal.clone());
+    this.diceFaceValues = faceValues.slice();
+
+    const group = new THREE.Group();
+
+    // Per-face overrides come from diceData.sidesArray (an array of side
+    // objects from dice-system). The polyhedral path uses diceData.sides as
+    // the *count*, so we read the array from sidesArray instead. Items
+    // setting displayValue on a side here visibly relabel that face.
+    const overrides = Array.isArray(diceData.sidesArray) ? diceData.sidesArray : null;
+
+    faceData.faces.forEach((face, idx) => {
+      const value = faceValues[idx];
+      const side = overrides ? (overrides[value - 1] || null) : null;
+      const texture = this.createPolyhedralFaceTexture(value, sides, theme, side);
+
+      // Build a triangle fan from the face vertices (works for triangles,
+      // quads, kites, and pentagons alike). UVs map the number texture
+      // across the face with a small inset so the digit sits near the center.
+      const verts = face.vertices;
+      const positions = [];
+      const uvs = [];
+
+      // Compute UV basis in face plane (right & up) around the centroid
+      // so we can project each vertex into 2D UV coordinates centered on
+      // the face. Then normalize to [inset, 1-inset].
+      const right = new THREE.Vector3().subVectors(verts[0], face.centroid).normalize();
+      const up = new THREE.Vector3().crossVectors(face.normal, right).normalize();
+      const proj = verts.map(v => {
+        const d = new THREE.Vector3().subVectors(v, face.centroid);
+        return { u: d.dot(right), v: d.dot(up) };
+      });
+      const maxAbs = proj.reduce((m, p) => Math.max(m, Math.abs(p.u), Math.abs(p.v)), 0.0001);
+      const inset = 0.12;
+      const uvScale = (0.5 - inset) / maxAbs;
+      const uvOf = (i) => [0.5 + proj[i].u * uvScale, 0.5 + proj[i].v * uvScale];
+
+      // Triangle-fan from vertex 0
+      for (let i = 1; i < verts.length - 1; i++) {
+        positions.push(verts[0].x, verts[0].y, verts[0].z);
+        positions.push(verts[i].x, verts[i].y, verts[i].z);
+        positions.push(verts[i + 1].x, verts[i + 1].y, verts[i + 1].z);
+        const [u0, v0] = uvOf(0);
+        const [u1, v1] = uvOf(i);
+        const [u2, v2] = uvOf(i + 1);
+        uvs.push(u0, v0, u1, v1, u2, v2);
+      }
+
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+      g.setAttribute('uv',       new THREE.BufferAttribute(new Float32Array(uvs), 2));
+      g.computeVertexNormals();
+
+      const m = new THREE.MeshStandardMaterial({
+        map: texture,
+        roughness: 0.55,
+        metalness: 0.1,
+        side: THREE.DoubleSide,
+      });
+
+      const faceMesh = new THREE.Mesh(g, m);
+      group.add(faceMesh);
+    });
+
+    return group;
+  }
+
+  /**
    * Create and add a dice to the scene
    * @param {Object} diceData - Dice data from dice system
    */
@@ -438,9 +827,17 @@ class DiceRendererInstance {
     // Reset roll state for new dice
     this.hasRolled = false;
     this.diceType = diceData.type;
+    this.diceSides = diceData.sides && typeof diceData.sides === 'number' ? diceData.sides : null;
+    this.diceFaceValues = null;  // populated by createPolyhedralMesh
 
-    // Create new dice based on type
-    if (diceData.type === 'd6-defense' || diceData.type.startsWith('d6-enemy') || diceData.type === 'd6-card') {
+    // Routing:
+    //   - shape:'polyhedral' + sides:N (4/6/8/10/12) → unified polyhedral builder
+    //   - legacy d6 variants (card faces with custom text, defense block textures,
+    //     red-enemy cube) stay on createD6Mesh
+    //   - everything else (including unflagged d20) → createD20Mesh
+    if (diceData.shape === 'polyhedral' && [4, 6, 8, 10, 12].includes(diceData.sides)) {
+      this.mesh = this.createPolyhedralMesh(diceData);
+    } else if (diceData.type === 'd6-defense' || diceData.type.startsWith('d6-enemy') || diceData.type === 'd6-card') {
       this.mesh = this.createD6Mesh(diceData);
     } else {
       // Default to D20
@@ -451,14 +848,31 @@ class DiceRendererInstance {
   }
 
   /**
-   * Roll the dice with animation
+   * Roll the dice with animation.
    * @param {Object} diceData - Dice data from dice system
    * @param {number} result - Pre-determined result from dice system
    * @param {Function} callback - Callback when roll completes
+   * @param {Object} [options] - Optional flags
+   * @param {boolean} [options.skipAnimation=false] - If true, snap the mesh
+   *   to the target face's rotation immediately, no spin animation. Used by
+   *   the dice tray when re-rendering an already-rolled die so it doesn't
+   *   replay the roll on every UI tick.
    */
-  rollDice(diceData, result, callback) {
+  rollDice(diceData, result, callback, options = {}) {
     if (this.isRolling) {
       console.warn('Dice is already rolling');
+      return;
+    }
+
+    // Snap into place without animation — caller is just re-mounting a die
+    // whose value we've already shown the player.
+    if (options.skipAnimation) {
+      this.hasRolled = true;
+      const targetRotation = this.calculateFaceRotation(result);
+      if (this.mesh) {
+        this.mesh.rotation.set(targetRotation.x, targetRotation.y, targetRotation.z);
+      }
+      if (callback) callback(result);
       return;
     }
 
@@ -580,11 +994,15 @@ class DiceRendererInstance {
    * @returns {Object} Rotation object {x, y, z}
    */
   calculateFaceRotation(faceNumber) {
-    // For D6 (defense or enemy), faceNumber is 1-6 and maps directly to face index 0-5
-    // For D20, use the face number map
     let faceIndex;
 
-    if (this.diceType === 'd6-defense' || this.diceType.startsWith('d6-enemy') || this.diceType === 'd6-card') {
+    if (this.diceFaceValues) {
+      // Polyhedral dice (d4/d6/d8/d10/d12) — face values are assigned during
+      // mesh build using the opposites-sum-to-N+1 convention. Look up the
+      // mesh index where this value lives.
+      faceIndex = this.diceFaceValues.indexOf(faceNumber);
+    } else if (this.diceType === 'd6-defense' || this.diceType.startsWith('d6-enemy') || this.diceType === 'd6-card') {
+      // Legacy d6: face index = value - 1
       faceIndex = faceNumber - 1;
     } else {
       // D20 face numbering mapping
@@ -624,8 +1042,8 @@ class DiceRendererInstance {
   animate() {
     this.animationId = requestAnimationFrame(() => this.animate());
 
-    // Slow idle rotation when not rolling and hasn't been rolled yet
-    if (!this.isRolling && !this.hasRolled && this.mesh) {
+    // Slow idle rotation when not rolling, not being dragged, and hasn't been rolled yet
+    if (!this.isRolling && !this.hasRolled && !this.isDraggingUser && this.mesh) {
       this.mesh.rotation.x += 0.002;
       this.mesh.rotation.y += 0.003;
     }
@@ -633,6 +1051,76 @@ class DiceRendererInstance {
     if (this.renderer && this.scene && this.camera) {
       this.renderer.render(this.scene, this.camera);
     }
+  }
+
+  /**
+   * Enable click-drag rotation in place. Used by the dice tray modal so the
+   * player can inspect a die from every angle. Pauses idle auto-rotation
+   * while the user is dragging. Idempotent — safe to call multiple times,
+   * the second call replaces the previous listeners.
+   *
+   * No-op if a roll animation is in progress (the rolling sequence owns the
+   * rotation until it completes).
+   */
+  enableDragRotate() {
+    if (!this.container || !this.renderer) return;
+    if (this._dragHandlers) this.disableDragRotate();
+
+    const el = this.renderer.domElement;
+    el.style.pointerEvents = 'auto';
+    el.style.cursor = 'grab';
+
+    let dragging = false;
+    let lastX = 0, lastY = 0;
+
+    const onDown = (e) => {
+      if (this.isRolling) return;
+      dragging = true;
+      this.isDraggingUser = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      el.style.cursor = 'grabbing';
+      e.preventDefault();
+    };
+    const onMove = (e) => {
+      if (!dragging || !this.mesh) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      // Pixel→radian scale; tuned so a full container width gives ~1.5 rad
+      const k = 0.01;
+      this.mesh.rotation.y += dx * k;
+      this.mesh.rotation.x += dy * k;
+    };
+    const onUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      this.isDraggingUser = false;
+      el.style.cursor = 'grab';
+    };
+
+    el.addEventListener('mousedown', onDown);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    // Also handle pointer leaving the window mid-drag
+    window.addEventListener('mouseleave', onUp);
+
+    this._dragHandlers = { el, onDown, onMove, onUp };
+  }
+
+  /** Tear down drag listeners installed by enableDragRotate. */
+  disableDragRotate() {
+    if (!this._dragHandlers) return;
+    const { el, onDown, onMove, onUp } = this._dragHandlers;
+    el.removeEventListener('mousedown', onDown);
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('mouseleave', onUp);
+    el.style.cursor = '';
+    el.style.pointerEvents = 'none';
+    this._dragHandlers = null;
+    this.isDraggingUser = false;
   }
 
   /**
@@ -656,6 +1144,9 @@ class DiceRendererInstance {
    * Clean up renderer resources
    */
   dispose() {
+    // Tear down any interactive listeners (drag-rotate, etc.) first
+    this.disableDragRotate();
+
     // Stop animation loop
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);

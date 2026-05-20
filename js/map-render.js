@@ -428,10 +428,12 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
     const gamesAtLayer = reorganizedLayers.get(distance);
     const numGames = gamesAtLayer.length;
 
-    // Calculate total width needed for this layer
-    const totalWidth = numGames * boxWidth + (numGames - 1) * horizontalGap;
-
-    html += `<div style="display: flex; justify-content: center; align-items: center; margin-bottom: ${verticalGap}px; position: relative; width: 100%; flex-wrap: nowrap; gap: ${horizontalGap}px;">`;
+    // Row uses absolute positioning driven purely by gameOffsets so that nodes
+    // never overlap regardless of how many are in a layer. Flexbox + gap +
+    // translateX was the previous approach; transforms stacked on top of flex
+    // gaps caused nodes with similar offsets to collide.
+    const rowHeight = boxHeight + 22; // extra for badge overflow
+    html += `<div style="position: relative; width: 100%; height: ${rowHeight}px; margin-bottom: ${verticalGap}px; overflow: visible;">`;
 
     gamesAtLayer.forEach((gameData, index) => {
       // gameData is now {name, isOnShortestPath}
@@ -543,9 +545,10 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
           box-shadow: ${choiceShadow};
           cursor: pointer;
           opacity: ${!isOnShortestPath && !isChoice && !isCurrentGame && !isAmuletGame ? '0.5' : '1'};
-          transform: translateX(${horizontalOffset}px);
-          position: relative;
-          margin-bottom: ${isChoice ? '10px' : '0'};
+          position: absolute;
+          left: calc(50% + ${horizontalOffset - boxWidth / 2}px);
+          top: 0;
+          box-sizing: border-box;
         ">
           ${isCurrentGame ? '📍 ' : ''}${isChoice ? '◆ ' : ''}${gameName}${isAmuletGame ? ' 🏆' : ''}${isOnShortestPath && !isCurrentGame && !isAmuletGame && !isChoice ? ' ⭐' : ''}
           ${mapBadgeHTML}

@@ -80,11 +80,32 @@ function _getLuckMode() {
   return 'normal';
 }
 
-/** Roll a d20 with optional advantage or disadvantage. */
+/**
+ * Roll a d20 with optional advantage or disadvantage.
+ *
+ * Each roll picks a face INDEX (0..19) and reads the value from the
+ * player's persistent d20 (gameState.playerD20.sides[i]). Items can mutate
+ * `sides[i].value` to change what that face is "worth" — e.g. an item that
+ * turns face 1 into a 20 makes a geometric-1 roll resolve as 20.
+ *
+ * Falls back to a plain 1..20 roll when no persistent d20 exists yet
+ * (test environments, or runs predating the playerD20 field).
+ */
 function _rollD20(mode) {
-  const a = Math.floor(Math.random() * 20) + 1;
+  const d20 = (typeof gameState !== 'undefined' && gameState && gameState.playerD20) || null;
+  const faceCount = d20 && Array.isArray(d20.sides) ? d20.sides.length : 20;
+  const valueAt = (idx) => {
+    if (!d20 || !d20.sides[idx]) return idx + 1;
+    const s = d20.sides[idx];
+    // displayValue overrides value for both visuals AND gameplay so items
+    // only need to set one field. value is the canonical fallback.
+    return (s.displayValue !== null && s.displayValue !== undefined) ? s.displayValue : s.value;
+  };
+  const rollOne = () => valueAt(Math.floor(Math.random() * faceCount));
+
+  const a = rollOne();
   if (mode === 'normal') return { used: a, rolls: [a] };
-  const b = Math.floor(Math.random() * 20) + 1;
+  const b = rollOne();
   return {
     used: mode === 'advantage' ? Math.max(a, b) : Math.min(a, b),
     rolls: [a, b]
@@ -613,6 +634,11 @@ function _disposeEventRenderers() {
 }
 
 function _makeD20EventData() {
+  // Use the persistent run-wide d20 so face modifications applied by items
+  // are visible during event rolls. Fall back to a fresh d20 if missing.
+  if (typeof gameState !== 'undefined' && gameState && gameState.playerD20) {
+    return gameState.playerD20;
+  }
   if (typeof createD20 === 'function') return createD20();
   const sides = [];
   for (let i = 1; i <= 20; i++) {
