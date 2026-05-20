@@ -1647,7 +1647,8 @@ function showCombatModal() {
       };
 
       const rarityColor = getRarityColor(item.rarity);
-      const isUsable = item.type === 'Usable';
+      const isCharged = typeof isChargedItem === 'function' && isChargedItem(item);
+      const isUsable = item.type === 'Usable' || isCharged;
       const canUse = isUsable && typeof canUseItem === 'function' && canUseItem(item);
       const isWeapon = item.type === 'Weapon';
 

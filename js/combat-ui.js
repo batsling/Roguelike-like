@@ -553,11 +553,21 @@ function renderItemsBar(combat) {
       if (!imageUrl.match(/\.(png|jpg|jpeg|gif)$/i)) imageUrl += '.png';
     }
     const color = getRarityColor(item.rarity);
-    const isUsable = item.type === 'Usable';
+    const isCharged = typeof window.isChargedItem === 'function' && window.isChargedItem(item);
+    const isUsable = item.type === 'Usable' || isCharged;
     const canUse = isUsable && typeof window.canUseItem === 'function' && window.canUseItem(item);
     const quantityBadge = item.quantity && item.quantity > 1
       ? `<div style="position:absolute;bottom:1px;right:1px;background:rgba(0,0,0,0.9);color:white;padding:1px 3px;border-radius:3px;font-size:9px;font-weight:bold;border:1px solid #ffaa00;">x${item.quantity}</div>`
       : '';
+    const chargeBar = isCharged ? (() => {
+      const max = window.parseChargedMax ? window.parseChargedMax(item.type) : 0;
+      const cur = typeof item.charges === 'number' ? item.charges : max;
+      if (max <= 0) return '';
+      const segs = Array.from({ length: max }, (_, i) =>
+        `<div style="flex:1;height:3px;border-radius:1px;background:${i < cur ? '#f1c40f' : 'rgba(255,255,255,0.18)'};"></div>`
+      ).join('');
+      return `<div style="position:absolute;top:1px;left:1px;right:1px;display:flex;gap:1px;z-index:5;">${segs}</div>`;
+    })() : '';
     const imgEl = imageUrl
       ? `<img src="${imageUrl}" alt="${item.name}" style="width:32px;height:32px;object-fit:contain;border-radius:3px;" onerror="this.style.display='none'">`
       : `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;">?</div>`;
@@ -581,7 +591,7 @@ function renderItemsBar(combat) {
           background:rgba(0,0,0,0.5);
           ${!canUse && isUsable ? 'opacity:0.5;' : ''}
         ">
-          ${imgEl}${quantityBadge}${getIncrementalCounter(item)}
+          ${imgEl}${quantityBadge}${getIncrementalCounter(item)}${chargeBar}
         </div>
         ${useBtn}
       </div>

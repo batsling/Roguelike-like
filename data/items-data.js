@@ -381,6 +381,18 @@ const ITEMS_DATA = [
     "unlockCondition": null
   },
   {
+    "name": "Dead Sea Scrolls",
+    "rarity": "Uncommon",
+    "type": "Charged, 2",
+    "description": "Trigger the effect of a Random Scroll / Outside of Combat",
+    "game": "The Binding of Isaac",
+    "tags": [
+      "historical"
+    ],
+    "image": "images/items/DeadSeaScrolls.png",
+    "unlockCondition": null
+  },
+  {
     "name": "Death Orb",
     "rarity": "Uncommon",
     "type": "Triggered",
@@ -1151,8 +1163,8 @@ const ITEMS_DATA = [
   {
     "name": "The Poop",
     "rarity": "Common",
-    "type": "Usable",
-    "description": "Poop on the current space, this space will not show up on the space choice in the future unless it's the only option (very stinky) ",
+    "type": "Charged, 1",
+    "description": "Poop on the current space, this space will not show up on the space choice in the future unless it's the only option (very stinky) / Outside of Combat",
     "game": "The Binding of Isaac",
     "tags": [],
     "image": "images/items/ThePoop.png",
@@ -1205,8 +1217,8 @@ const ITEMS_DATA = [
   {
     "name": "Ventricle Razor",
     "rarity": "Rare",
-    "type": "Usable",
-    "description": "On the first use, create a portal. On second use, return to the space you created the portal on",
+    "type": "Charged, 2",
+    "description": "On the first use, create a portal. On second use, return to the space you created the portal on / Outside of Combat",
     "game": "The Binding of Isaac",
     "tags": [],
     "image": "images/items/VentricleRazor.png",
@@ -1227,8 +1239,8 @@ const ITEMS_DATA = [
   {
     "name": "Wand of Wishing",
     "rarity": "Legendary",
-    "type": "Usable",
-    "description": "Obtain any one item in the game",
+    "type": "Charged, 10",
+    "description": "Obtain any one item in the game / Inside or Outside of Combat",
     "game": "NetHack",
     "tags": [],
     "image": "images/items/WandOfWishing.png",
@@ -1271,8 +1283,8 @@ const ITEMS_DATA = [
   {
     "name": "Winged Boots",
     "rarity": "Rare",
-    "type": "Usable",
-    "description": "Move to a one of three games that share the year of the game you're currently on",
+    "type": "Charged, 3",
+    "description": "Move to a one of three games that share the year of the game you're currently on / Outside of Combat",
     "game": "Slay the Spire",
     "tags": [
       "wearable",

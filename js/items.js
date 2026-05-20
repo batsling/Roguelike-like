@@ -242,12 +242,176 @@ function initializeWeaponBonuses(weapon) {
 }
 
 // Export scalable passive functions to global scope
+/**
+ * Aggregate pill stat bonuses currently active across combat + event scopes.
+ * Combat bonuses are cleared when combat ends; event bonuses are cleared when the
+ * event ends (or when combat begins, since events resolve before combat).
+ * @returns {Object} {strength, dexterity, intelligence, charisma, luck}
+ */
+function getPillBonuses() {
+  const empty = { strength: 0, dexterity: 0, intelligence: 0, charisma: 0, luck: 0 };
+  if (typeof gameState === 'undefined') return empty;
+  const cb = gameState.combatPillBonuses || empty;
+  const eb = gameState.eventPillBonuses || empty;
+  return {
+    strength:     (cb.strength     || 0) + (eb.strength     || 0),
+    dexterity:    (cb.dexterity    || 0) + (eb.dexterity    || 0),
+    intelligence: (cb.intelligence || 0) + (eb.intelligence || 0),
+    charisma:     (cb.charisma     || 0) + (eb.charisma     || 0),
+    luck:         (cb.luck         || 0) + (eb.luck         || 0)
+  };
+}
+
+/**
+ * Apply a pill stat bonus that lasts until the current combat OR event ends.
+ * In combat: also bumps the derived combat status (Power/Defense/Arcane/Persistence)
+ *            by the delta produced by the new strength/dex/int/cha total.
+ * Luck has no derived stat — it just affects subsequent rolls in the same scope.
+ * @returns {boolean} True if the bonus was applied
+ */
+function applyPillBonus(stat, amount, label, emoji) {
+  const phase = (typeof gameState !== 'undefined') ? gameState.phase : null;
+  const inCombat = phase === 'combat';
+  const inEvent  = phase === 'event';
+  if (!inCombat && !inEvent) return false;
+
+  const bucketKey = inCombat ? 'combatPillBonuses' : 'eventPillBonuses';
+  if (!gameState[bucketKey]) {
+    gameState[bucketKey] = { strength: 0, dexterity: 0, intelligence: 0, charisma: 0, luck: 0 };
+  }
+  const before = gameState[bucketKey][stat] || 0;
+  gameState[bucketKey][stat] = before + amount;
+
+  // In combat, also bump the derived combat status by the difference its delta produces
+  if (inCombat) {
+    const cs = window.CombatEngine && window.CombatEngine.getCombatState
+      ? window.CombatEngine.getCombatState() : null;
+    if (cs && cs.player) {
+      const derivedMap = { strength: 'power', dexterity: 'defense', intelligence: 'arcane', charisma: 'persistence' };
+      const ratioMap   = { strength: 3,       dexterity: 3,         intelligence: 3,       charisma: 5 };
+      const derived = derivedMap[stat];
+      if (derived) {
+        const passive = (typeof getTotalBonuses === 'function' ? getTotalBonuses()[stat] : 0) || 0;
+        const base    = (typeof window[stat] === 'number' ? window[stat] : 0) || 0;
+        const otherBucket = (inCombat ? gameState.eventPillBonuses : gameState.combatPillBonuses) || {};
+        const otherBonus = otherBucket[stat] || 0;
+        const effectiveBefore = base + passive + otherBonus + before;
+        const oldDerived = Math.floor(effectiveBefore / ratioMap[stat]);
+        const newDerived = Math.floor((effectiveBefore + amount) / ratioMap[stat]);
+        const delta = newDerived - oldDerived;
+        if (delta !== 0) {
+          cs.player.statuses[derived] = (cs.player.statuses[derived] || 0) + delta;
+        }
+      }
+    }
+  }
+
+  if (label) {
+    const scopeNote = inCombat ? 'this combat' : 'this event';
+    createNotification(`${label}: +${amount} ${stat.charAt(0).toUpperCase() + stat.slice(1)} ${scopeNote}!`, COLORS.SUCCESS, emoji || '💊');
+    const cs = window.CombatEngine && window.CombatEngine.getCombatState
+      ? window.CombatEngine.getCombatState() : null;
+    if (cs && cs.log) {
+      cs.log.push({ message: `${label}: +${amount} ${stat} ${scopeNote}!`, type: 'success' });
+    }
+  }
+
+  if (typeof updateGameStats === 'function') updateGameStats();
+  if (typeof updateInventory === 'function') updateInventory();
+  if (window.CombatUI && typeof window.CombatUI.updateCombatDisplay === 'function') {
+    window.CombatUI.updateCombatDisplay();
+  }
+  return true;
+}
+
+/**
+ * Clear all pill bonuses from a given scope. Called by combat end + event end.
+ */
+function clearPillBonuses(scope) {
+  if (typeof gameState === 'undefined') return;
+  const key = scope === 'combat' ? 'combatPillBonuses' : 'eventPillBonuses';
+  gameState[key] = { strength: 0, dexterity: 0, intelligence: 0, charisma: 0, luck: 0 };
+}
+
+// ===== CHARGED ITEM HELPERS =====
+
+/**
+ * Parse "Charged, N" type string into a max-charge count. Returns 0 if not Charged.
+ */
+function parseChargedMax(typeStr) {
+  if (!typeStr) return 0;
+  const m = String(typeStr).match(/^\s*Charged\s*,\s*(\d+)/i);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+function isChargedItem(item) {
+  return !!(item && parseChargedMax(item.type) > 0);
+}
+
+/**
+ * Determine which phases a charged item can be used in based on a " / X" suffix
+ * tacked on the description. Returns one of: 'combat', 'outside', 'both'.
+ * Defaults to 'both' if no suffix is found.
+ */
+function parseChargedScope(item) {
+  if (!item || !item.description) return 'both';
+  const m = item.description.match(/\/\s*([^/]+?)\s*$/);
+  if (!m) return 'both';
+  const tag = m[1].toLowerCase();
+  if (tag.includes('inside') && tag.includes('outside')) return 'both';
+  if (tag.includes('inside')) return 'combat';
+  if (tag.includes('outside')) return 'outside';
+  return 'both';
+}
+
+/**
+ * Strip the " / Inside/Outside of Combat" suffix from a charged item's description
+ * so we can render the scope separately on the icon.
+ */
+function getChargedDisplayDescription(item) {
+  if (!item || !item.description) return '';
+  return item.description.replace(/\s*\/\s*(Inside|Outside)[^/]*$/i, '').trim();
+}
+
+function getChargedScopeLabel(item) {
+  switch (parseChargedScope(item)) {
+    case 'combat':  return 'Inside Combat';
+    case 'outside': return 'Outside Combat';
+    case 'both':    return 'In/Outside Combat';
+    default:        return '';
+  }
+}
+
+/**
+ * Replenish charges on charged items after combat ends (+1 per combat, capped at max).
+ */
+function replenishChargedItems() {
+  if (!Array.isArray(inventory)) return;
+  inventory.forEach(it => {
+    const max = parseChargedMax(it.type);
+    if (max <= 0) return;
+    if (typeof it.charges !== 'number') it.charges = max;
+    it.charges = Math.min(max, (it.charges || 0) + 1);
+  });
+  if (typeof gameState !== 'undefined') gameState.inventory = inventory;
+  if (typeof updateInventory === 'function') updateInventory();
+}
+
 window.recalculateScalablePassives = recalculateScalablePassives;
 window.getWeaponBonuses = getWeaponBonuses;
 window.getTotalBonuses = getTotalBonuses;
 window.getEffectiveAttack = getEffectiveAttack;
 window.getEffectiveStat = getEffectiveStat;
 window.initializeWeaponBonuses = initializeWeaponBonuses;
+window.getPillBonuses = getPillBonuses;
+window.applyPillBonus = applyPillBonus;
+window.clearPillBonuses = clearPillBonuses;
+window.parseChargedMax = parseChargedMax;
+window.isChargedItem = isChargedItem;
+window.parseChargedScope = parseChargedScope;
+window.getChargedDisplayDescription = getChargedDisplayDescription;
+window.getChargedScopeLabel = getChargedScopeLabel;
+window.replenishChargedItems = replenishChargedItems;
 
 // ===== ITEM EFFECTS REGISTRY =====
 // Define all item effects here for easy maintenance and extension
@@ -805,6 +969,13 @@ const ITEM_EFFECTS = {
     }
   },
 
+  // ===== CHARGED ITEMS — Dead Sea Scrolls =====
+
+  "Dead Sea Scrolls": {
+    canUse: () => true,
+    onUse: () => triggerDeadSeaScrolls()
+  },
+
   // ===== MEWGENICS USABLE ITEMS =====
 
   "Percs": {
@@ -822,67 +993,32 @@ const ITEM_EFFECTS = {
 
   "Roid Rage": {
     uses: 1,
-    canUse: () => gameState.phase === 'combat',
-    onUse: () => {
-      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
-      if (cs && cs.player) {
-        cs.player.statuses['strength'] = (cs.player.statuses['strength'] || 0) + 5;
-        if (cs.log) cs.log.push({ message: 'Roid Rage: +5 Strength this combat!', type: 'success' });
-        createNotification('Roid Rage: +5 Strength!', COLORS.SUCCESS, '💊');
-      }
-    }
+    canUse: () => gameState.phase === 'combat' || gameState.phase === 'event',
+    onUse: () => applyPillBonus('strength', 5, 'Roid Rage', '💊')
   },
 
   "Speedball": {
     uses: 1,
-    canUse: () => gameState.phase === 'combat',
-    onUse: () => {
-      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
-      if (cs && cs.player) {
-        cs.player.statuses['dexterity'] = (cs.player.statuses['dexterity'] || 0) + 5;
-        if (cs.log) cs.log.push({ message: 'Speedball: +5 Dexterity this combat!', type: 'success' });
-        createNotification('Speedball: +5 Dexterity!', COLORS.SUCCESS, '💊');
-      }
-    }
+    canUse: () => gameState.phase === 'combat' || gameState.phase === 'event',
+    onUse: () => applyPillBonus('dexterity', 5, 'Speedball', '💊')
   },
 
   "Brain Candy": {
     uses: 1,
-    canUse: () => gameState.phase === 'combat',
-    onUse: () => {
-      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
-      if (cs && cs.player) {
-        cs.player.statuses['intelligence'] = (cs.player.statuses['intelligence'] || 0) + 5;
-        if (cs.log) cs.log.push({ message: 'Brain Candy: +5 Intelligence this combat!', type: 'success' });
-        createNotification('Brain Candy: +5 Intelligence!', COLORS.SUCCESS, '💊');
-      }
-    }
+    canUse: () => gameState.phase === 'combat' || gameState.phase === 'event',
+    onUse: () => applyPillBonus('intelligence', 5, 'Brain Candy', '💊')
   },
 
   "Clover": {
     uses: 1,
-    canUse: () => gameState.phase === 'combat',
-    onUse: () => {
-      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
-      if (cs && cs.player) {
-        cs.player.statuses['luck_bonus'] = (cs.player.statuses['luck_bonus'] || 0) + 5;
-        if (cs.log) cs.log.push({ message: 'Clover: +5 Luck this combat!', type: 'success' });
-        createNotification('Clover: +5 Luck!', COLORS.SUCCESS, '🍀');
-      }
-    }
+    canUse: () => gameState.phase === 'combat' || gameState.phase === 'event',
+    onUse: () => applyPillBonus('luck', 5, 'Clover', '🍀')
   },
 
   "Disco Biscuit": {
     uses: 1,
-    canUse: () => gameState.phase === 'combat',
-    onUse: () => {
-      const cs = window.CombatEngine && window.CombatEngine.getCombatState ? window.CombatEngine.getCombatState() : null;
-      if (cs && cs.player) {
-        cs.player.statuses['charisma'] = (cs.player.statuses['charisma'] || 0) + 5;
-        if (cs.log) cs.log.push({ message: 'Disco Biscuit: +5 Charisma this combat!', type: 'success' });
-        createNotification('Disco Biscuit: +5 Charisma!', COLORS.SUCCESS, '💊');
-      }
-    }
+    canUse: () => gameState.phase === 'combat' || gameState.phase === 'event',
+    onUse: () => applyPillBonus('charisma', 5, 'Disco Biscuit', '💊')
   },
 
   "Stem Cells": {
@@ -1389,6 +1525,12 @@ function acquireItem(item) {
     itemCopy.uses = (effects && effects.uses) || 1;
   }
 
+  // Initialize charges for Charged items (start full)
+  const maxCharges = parseChargedMax(itemCopy.type);
+  if (maxCharges > 0) {
+    itemCopy.charges = maxCharges;
+  }
+
   // Weapons do NOT stack - each weapon is a separate inventory entry
   const isWeapon = itemCopy.type === 'Weapon';
 
@@ -1583,7 +1725,21 @@ function hasItemEffects(itemName) {
  * @returns {boolean} True if the item can be used
  */
 function canUseItem(item) {
-  if (!item || item.type !== 'Usable') return false;
+  if (!item) return false;
+  const charged = isChargedItem(item);
+  if (item.type !== 'Usable' && !charged) return false;
+
+  // Charged items: gate by remaining charges and by scope (in/out of combat)
+  if (charged) {
+    const charges = typeof item.charges === 'number' ? item.charges : parseChargedMax(item.type);
+    if (charges <= 0) return false;
+    const scope = parseChargedScope(item);
+    const phase = (typeof gameState !== 'undefined') ? gameState.phase : null;
+    const inCombat = phase === 'combat';
+    if (scope === 'combat' && !inCombat) return false;
+    if (scope === 'outside' && inCombat) return false;
+    // 'both' allowed anywhere
+  }
 
   const effects = ITEM_EFFECTS[item.name];
   if (!effects || !effects.canUse) return false;
@@ -1602,7 +1758,8 @@ function useItem(itemIndex) {
   }
 
   const item = inventory[itemIndex];
-  if (item.type !== 'Usable') {
+  const charged = isChargedItem(item);
+  if (item.type !== 'Usable' && !charged) {
     console.warn('Item is not usable:', item.name);
     return;
   }
@@ -1616,8 +1773,12 @@ function useItem(itemIndex) {
   if (effects && effects.onUse) {
     effects.onUse();
 
-    // Decrement uses
-    if (item.uses && item.uses > 1) {
+    if (charged) {
+      // Charged items stay in inventory and recover charges between combats
+      if (typeof item.charges !== 'number') item.charges = parseChargedMax(item.type);
+      item.charges = Math.max(0, item.charges - 1);
+      gameState.inventory = [...inventory];
+    } else if (item.uses && item.uses > 1) {
       item.uses--;
       gameState.inventory = [...inventory];
     } else {
@@ -1977,6 +2138,139 @@ function triggerOnPermStatGain(statName, delta) {
     if (typeof updateInventory === 'function') updateInventory();
   } finally {
     _snowballProcessing = false;
+  }
+}
+
+// ===== DEAD SEA SCROLLS =====
+//
+// Rolls a luck-weighted rarity tier, then a luck-weighted D20 + INT check (DC 10)
+// to pick a generic outcome (crit_good / good / bad / crit_bad). Effects scale by
+// rarity tier — bigger rewards/penalties at higher tiers.
+
+function _deadSeaD20() {
+  const lv = typeof luck !== 'undefined' ? luck : 0;
+  const a = Math.floor(Math.random() * 20) + 1;
+  if (lv > 0 && Math.random() < lv * 0.1) {
+    return Math.max(a, Math.floor(Math.random() * 20) + 1);
+  }
+  if (lv < 0 && Math.random() < Math.abs(lv) * 0.1) {
+    return Math.min(a, Math.floor(Math.random() * 20) + 1);
+  }
+  return a;
+}
+
+function _deadSeaApplyEffect(rarity, outcomeKey) {
+  const tierScale = { common: 1, uncommon: 2, rare: 4, legendary: 8 };
+  const scale = tierScale[(rarity || 'common').toLowerCase()] || 1;
+  const lines = [];
+
+  switch (outcomeKey) {
+    case 'crit_good': {
+      const gainGold = 10 * scale;
+      const gainHp   = Math.min(5 * scale, (typeof maxHealth !== 'undefined' ? maxHealth - health : 0));
+      if (typeof StateMutator !== 'undefined') {
+        if (gainGold > 0) StateMutator.modifyGold(gainGold);
+        if (gainHp > 0)   StateMutator.modifyHealth(gainHp);
+      } else {
+        if (typeof gold === 'number')   { window.gold += gainGold; gameState.gold = gold; }
+        if (typeof health === 'number' && gainHp > 0) { window.health += gainHp; gameState.health = health; }
+      }
+      lines.push(`+${gainGold} Gold`);
+      if (gainHp > 0) lines.push(`+${gainHp} HP`);
+      break;
+    }
+    case 'good': {
+      const gainGold = 5 * scale;
+      if (typeof StateMutator !== 'undefined') StateMutator.modifyGold(gainGold);
+      else if (typeof gold === 'number') { window.gold += gainGold; gameState.gold = gold; }
+      lines.push(`+${gainGold} Gold`);
+      break;
+    }
+    case 'bad': {
+      const loss = Math.min(5 * scale, (typeof gold === 'number' ? gold : 0));
+      if (loss > 0) {
+        if (typeof StateMutator !== 'undefined') StateMutator.modifyGold(-loss);
+        else if (typeof gold === 'number') { window.gold -= loss; gameState.gold = gold; }
+        lines.push(`-${loss} Gold`);
+      } else {
+        lines.push('Nothing happens.');
+      }
+      break;
+    }
+    case 'crit_bad': {
+      const loss = Math.max(1, Math.floor(3 * scale));
+      if (typeof StateMutator !== 'undefined') StateMutator.modifyHealth(-loss);
+      else if (typeof health === 'number') { window.health = Math.max(0, window.health - loss); gameState.health = health; }
+      lines.push(`-${loss} HP`);
+      break;
+    }
+  }
+
+  if (typeof updateGameStats === 'function') updateGameStats();
+  if (typeof saveCurrentGame === 'function') saveCurrentGame();
+  return lines;
+}
+
+function triggerDeadSeaScrolls() {
+  const luckVal = typeof luck !== 'undefined' ? luck : 0;
+  const rarity = (typeof selectRandomRarity === 'function') ? selectRandomRarity(luckVal) : 'common';
+  const rarityLabel = rarity.charAt(0).toUpperCase() + rarity.slice(1);
+
+  // Two D20 rolls: success vs DC 10 + crit check, both luck-weighted
+  const DC = 10;
+  const intStat = typeof intelligence !== 'undefined' ? intelligence : 0;
+  const intBonus = intStat + (((typeof gameState !== 'undefined' && gameState.eventPillBonuses) || {}).intelligence || 0);
+  const r1 = _deadSeaD20();
+  const total1 = r1 + intBonus;
+  const success = total1 >= DC;
+  const r2 = _deadSeaD20();
+  const isCrit = success ? r2 >= 18 : r2 <= 3;
+  const outcomeKey = success && isCrit ? 'crit_good'
+                   : success           ? 'good'
+                   : isCrit            ? 'crit_bad'
+                   : 'bad';
+
+  const outcomeLabels = { crit_good: 'Critical Success', good: 'Success', bad: 'Failure', crit_bad: 'Critical Failure' };
+  const outcomeColors = { crit_good: '#f1c40f',          good: '#2ecc71', bad: '#e67e22', crit_bad: '#e74c3c' };
+  const rarityColors  = { common: '#aaa', uncommon: '#4CAF50', rare: '#9b59b6', legendary: '#ff6b00' };
+  const label = outcomeLabels[outcomeKey];
+  const color = outcomeColors[outcomeKey];
+  const rColor = rarityColors[rarity.toLowerCase()] || '#aaa';
+
+  const lines = _deadSeaApplyEffect(rarity, outcomeKey);
+
+  const successStr = success
+    ? `${r1} + ${intBonus} INT = ${total1} ≥ DC ${DC} ✓`
+    : `${r1} + ${intBonus} INT = ${total1} < DC ${DC} ✗`;
+  const critStr = isCrit ? `Rolled ${r2} — Critical!` : `Rolled ${r2} — Not Critical`;
+
+  if (typeof createGameModal === 'function') {
+    createGameModal(`
+      <div style="text-align:center; padding:10px;">
+        <h2 style="color:#9b59b6; margin-top:0;">📜 Dead Sea Scrolls</h2>
+        <div style="display:inline-block; background:${rColor}22; border:1px solid ${rColor};
+          border-radius:6px; padding:3px 12px; color:${rColor}; font-weight:bold; margin-bottom:10px;">
+          ${rarityLabel} Tier
+        </div>
+        <div style="color:${color}; font-size:22px; font-weight:bold; margin:8px 0;
+          text-shadow:0 0 16px ${color}88;">${label}</div>
+        <div style="color:#aaa; font-size:13px; margin-bottom:4px;">${successStr}</div>
+        <div style="color:#aaa; font-size:13px; margin-bottom:14px;">${critStr}</div>
+        <div style="background:rgba(255,255,255,0.06); border-radius:8px; padding:12px;
+          color:#ddd; font-size:14px; margin-bottom:18px; text-align:left; display:inline-block; min-width:180px;">
+          ${lines.map(l => `<div>• ${l}</div>`).join('')}
+        </div>
+        <div><button id="dss-close-btn" style="padding:10px 28px; background:${color};
+          border:none; border-radius:8px; color:#000; font-weight:bold; font-size:14px;
+          cursor:pointer;">Continue</button></div>
+      </div>
+    `);
+    setTimeout(() => {
+      const btn = document.getElementById('dss-close-btn');
+      if (btn) btn.onclick = () => closeGameModal();
+    }, 50);
+  } else {
+    createNotification(`Dead Sea Scrolls: ${rarityLabel} ${label}`, color, '📜');
   }
 }
 
