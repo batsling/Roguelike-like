@@ -1420,6 +1420,25 @@ function getRarityColor(rarity) {
 }
 
 // Export functions to global scope for backwards compatibility
+/**
+ * Re-render every sidebar/top panel from current gameState. Cheap to call —
+ * each updater is idempotent and bails fast if its DOM target is missing.
+ * Useful around transitions (post-combat → smith / shop / next encounter)
+ * where stale state has been the source of "card I just got isn't showing up"
+ * bugs.
+ */
+function refreshAllUI() {
+  if (typeof updateTopBar === 'function')         updateTopBar();
+  if (typeof updateGameStats === 'function')      updateGameStats();
+  if (typeof updateHealthDisplay === 'function')  updateHealthDisplay();
+  if (typeof updateGoldDisplay === 'function')    updateGoldDisplay();
+  if (typeof updateInventory === 'function')      updateInventory();
+  if (typeof updateSidebarItems === 'function')   updateSidebarItems();
+  if (typeof updateCursesDisplay === 'function')  updateCursesDisplay();
+  if (typeof updateLootDisplay === 'function')    updateLootDisplay();
+}
+window.refreshAllUI = refreshAllUI;
+
 window.updateTopBar = updateTopBar;
 window.updateHealthDisplay = updateHealthDisplay;
 window.updateGoldDisplay = updateGoldDisplay;

@@ -310,22 +310,20 @@ function applyEventEffects(effects) {
         }
         if (curseName && curseName !== 'random') {
           if (typeof StateMutator !== 'undefined' && StateMutator.addCurse) {
+            // StateMutator.addCurse already parses "Add X to your Deck" from the
+            // curse description and pushes the matching card via addCardToDeck —
+            // do NOT re-parse here, that doubled curse cards in the deck.
             StateMutator.addCurse(curseName, { notify: false });
           } else if (typeof gameState !== 'undefined' && Array.isArray(gameState.activeCurses)) {
+            // Fallback path: replicate the StateMutator side effects manually
             const pool = typeof CURSES_DATA !== 'undefined' ? CURSES_DATA : [];
             const curseData = pool.find(c => c.name === curseName);
-            if (curseData) gameState.activeCurses.push({ ...curseData });
-          }
-          // Side-effect: "Add X to your Deck" curses add the named card
-          const pool2 = typeof CURSES_DATA !== 'undefined' ? CURSES_DATA : [];
-          const curseObj = pool2.find(c => c.name === curseName);
-          if (curseObj && curseObj.description) {
-            const addMatch = curseObj.description.match(/Add (.+?) to your Deck/i);
-            if (addMatch) {
-              const cardName = addMatch[1].trim();
-              if (typeof addCardToDeck === 'function') {
+            if (curseData) {
+              gameState.activeCurses.push({ ...curseData });
+              const addMatch = (curseData.description || '').match(/Add (.+?) to your Deck/i);
+              if (addMatch && typeof addCardToDeck === 'function') {
                 const cardPool = typeof CARDS_DATA !== 'undefined' ? CARDS_DATA : (typeof cards !== 'undefined' ? cards : []);
-                const cardTemplate = cardPool.find(c => c.name === cardName);
+                const cardTemplate = cardPool.find(c => c.name === addMatch[1].trim());
                 if (cardTemplate) addCardToDeck({ ...cardTemplate });
               }
             }

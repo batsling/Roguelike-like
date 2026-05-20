@@ -4102,6 +4102,10 @@ function endCombat(victory) {
     window.replenishChargedItems();
   }
 
+  // Force every panel to re-render from current state — prevents stale
+  // deck/inventory/curse counts from carrying over into post-combat menus
+  if (typeof window.refreshAllUI === 'function') window.refreshAllUI();
+
   // Permanently destroy Training cards played this combat
   if (combatState._destroyCards && combatState._destroyCards.length > 0 &&
       typeof gameState !== 'undefined' && Array.isArray(gameState.deck)) {
