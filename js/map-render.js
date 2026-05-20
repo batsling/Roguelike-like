@@ -571,6 +571,13 @@ function generateMapView(currentGame, amuletGame, maxDistance, precomputedPathDa
 
 // Show map modal with all shortest paths to amulet game
 function showMapModal() {
+  // During combat the combat UI lives in #game-modal, so opening another
+  // createGameModal would tear it down and effectively end the fight. Layer
+  // the map on top via the panel overlay instead.
+  const inCombat = typeof gameState !== 'undefined' && gameState && gameState.phase === 'combat';
+  const openModal = inCombat && typeof createPanelOverlay === 'function' ? createPanelOverlay : createGameModal;
+  const closeFn = inCombat && typeof closePanelOverlay === 'function' ? 'closePanelOverlay()' : 'closeGameModal()';
+
   // Validate game state
   if (!gameState || !gameState.currentGame || !gameState.amuletGame) {
     console.error('Map modal validation failed:', {
@@ -580,7 +587,7 @@ function showMapModal() {
       currentGame: gameState?.currentGame,
       amuletGame: gameState?.amuletGame
     });
-    createGameModal('<div style="text-align: center;"><h2>Map Not Available</h2><p>Game state not properly initialized.</p><button onclick="closeGameModal()" style="padding: 10px 20px; margin-top: 20px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer;">Close</button></div>');
+    openModal(`<div style="text-align: center;"><h2>Map Not Available</h2><p>Game state not properly initialized.</p><button onclick="${closeFn}" style="padding: 10px 20px; margin-top: 20px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer;">Close</button></div>`);
     return;
   }
 
@@ -618,7 +625,7 @@ function showMapModal() {
       </div>
     `;
 
-    mapHTML += `<button onclick="closeGameModal()" style="padding: 8px 20px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>`;
+    mapHTML += `<button onclick="${closeFn}" style="padding: 8px 20px; background: #555; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold;">Close</button>`;
     mapHTML += '</div>';
 
     // Show shortest distance view only
@@ -628,7 +635,7 @@ function showMapModal() {
 
     mapHTML += '</div>';
 
-    createGameModal(mapHTML);
+    openModal(mapHTML);
 
     // Reset zoom level
     currentMapZoom = 1.0;
