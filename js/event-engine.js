@@ -758,6 +758,12 @@ function _disposeEventRenderers() {
   _activeEventRenderers.forEach(r => { try { r.dispose(); } catch (_) {} });
   _activeEventRenderers = [];
 }
+// Exposed so modal creation can wipe leftover dice contexts if a sub-modal
+// replaces the event modal (e.g. Dead Sea Scrolls / Wand of Wishing on top
+// of an event roll screen).
+if (typeof window !== 'undefined') {
+  window._disposeEventRenderers = _disposeEventRenderers;
+}
 
 function _makeD20EventData() {
   // Use the persistent run-wide d20 so face modifications applied by items
@@ -1130,9 +1136,6 @@ function _showOutcomeScreen(outcome, effectLines, rollMeta, onContinue, continue
   createGameModal(`
     <div style="padding:28px 30px;text-align:center;max-width:560px;margin:0 auto;">
       ${headerHTML}
-      <p style="color:#ddd;font-size:15px;line-height:1.65;margin:0 0 10px;">
-        ${_fillName(outcome.description || 'Nothing happens.')}
-      </p>
       ${effectsHTML}
       <div style="margin-top:22px;">
         <button id="ev-continue-btn" style="

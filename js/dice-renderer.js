@@ -901,6 +901,12 @@ class DiceRendererInstance {
     ).normalize();
 
     const animateRoll = () => {
+      // Bail if dispose() ran (or createDice swapped mesh) while we were queued
+      if (!this.mesh || !this.scene) {
+        this.isRolling = false;
+        this.rollCallback = null;
+        return;
+      }
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
 
@@ -960,12 +966,17 @@ class DiceRendererInstance {
    * @param {Function} callback - Callback when jump completes
    */
   animateDiceJump(callback) {
+    if (!this.mesh) {
+      if (typeof callback === 'function') callback();
+      return;
+    }
     const jumpHeight = 1.5;
     const jumpDuration = 300;
     const startY = this.mesh.position.y;
     const startTime = Date.now();
 
     const jump = () => {
+      if (!this.mesh) return;
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / jumpDuration, 1);
 

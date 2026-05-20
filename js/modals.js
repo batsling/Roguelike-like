@@ -47,7 +47,16 @@ function createGameModal(content) {
   hideAllTooltips();
 
   const existingModal = document.getElementById('game-modal');
-  if (existingModal) existingModal.remove();
+  if (existingModal) {
+    // If the modal being torn down hosted live event dice, release their
+    // WebGL contexts before yanking the DOM — otherwise the renderers leak
+    // and we eventually trip "Too many active WebGL contexts".
+    if (existingModal.querySelector('[id^="ev-die-"]') &&
+        typeof window._disposeEventRenderers === 'function') {
+      window._disposeEventRenderers();
+    }
+    existingModal.remove();
+  }
 
   const modal = document.createElement('div');
   modal.id = 'game-modal';
@@ -98,6 +107,12 @@ function closeGameModal() {
 
   const modal = document.getElementById('game-modal');
   if (modal) {
+    // Same WebGL-context cleanup as createGameModal — dispose live event dice
+    // before the fadeOut + remove, so contexts are released immediately.
+    if (modal.querySelector('[id^="ev-die-"]') &&
+        typeof window._disposeEventRenderers === 'function') {
+      window._disposeEventRenderers();
+    }
     modal.style.animation = 'fadeOut 0.3s';
     setTimeout(() => modal.remove(), 300);
   }
