@@ -353,6 +353,40 @@ describe('getEffectiveCost — dynamic conditions', () => {
     expect(globalThis.getEffectiveCost({ cost: 1, type: 'Attack', description: 'Deal 6 Dmg.' })).toBe(1);
   });
 
+  it('Playing Corruption then Defend on the same turn works (Defend is free, plays, grants block)', () => {
+    // Start with energy 3 (enough for Corruption)
+    globalThis.combatState.player.energy = 3;
+    globalThis.combatState.player.maxEnergy = 3;
+    const corruption = findCard('Corruption');
+    const defend = findCard('Defend');
+    globalThis.combatState.hand = [corruption, defend];
+    // Play Corruption
+    const r1 = globalThis.playCard(0, null);
+    expect(r1.success).toBe(true);
+    expect(globalThis.combatState.player.statuses['corruption']).toBe(1);
+    expect(globalThis.combatState.player.energy).toBe(0);
+    // Defend is now in hand index 0 after Corruption was spliced
+    expect(globalThis.combatState.hand[0].name).toBe('Defend');
+    // Effective cost is 0 thanks to Corruption
+    expect(globalThis.getEffectiveCost(globalThis.combatState.hand[0])).toBe(0);
+    // Play Defend (no target)
+    const r2 = globalThis.playCard(0, null);
+    expect(r2.success).toBe(true);
+    expect(globalThis.combatState.player.block).toBe(5);
+  });
+
+  it('Berserk only grants its energy at the start of the turn, not on play', () => {
+    globalThis.combatState.player.energy = 0;
+    globalThis.combatState.player.maxEnergy = 3;
+    const berserk = findCard('Berserk');
+    globalThis.combatState.hand = [berserk];
+    globalThis.playCard(0, null);
+    // Playing Berserk should not immediately grant energy
+    expect(globalThis.combatState.player.energy).toBe(0);
+    // It registers the energy_per_turn status instead
+    expect(globalThis.combatState.player.statuses['energy_per_turn']).toBe(1);
+  });
+
   it('Fear adds +1 to non-Skill cards', () => {
     globalThis.combatState.player.statuses['fear'] = 1;
     expect(globalThis.getEffectiveCost({ cost: 1, type: 'Attack', description: 'Deal 6 Dmg.' })).toBe(2);

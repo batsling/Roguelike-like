@@ -2570,12 +2570,19 @@ function showSmithChoiceModal() {
       } else {
         const deckIdx = gameState.deck.findIndex(c => c === card);
         if (deckIdx !== -1) {
-          gameState.deck[deckIdx].upgraded = true;
-          if (gameState.deck[deckIdx].upgradedDescription) {
-            gameState.deck[deckIdx].description = gameState.deck[deckIdx].upgradedDescription;
+          const deckCard = gameState.deck[deckIdx];
+          deckCard.upgraded = true;
+          if (deckCard.upgradedCost !== null && deckCard.upgradedCost !== undefined) {
+            deckCard.cost = deckCard.upgradedCost;
           }
-          if (gameState.deck[deckIdx].upgradedCost !== null && gameState.deck[deckIdx].upgradedCost !== undefined) {
-            gameState.deck[deckIdx].cost = gameState.deck[deckIdx].upgradedCost;
+          // Weapon cards: bump weapon level so the verification screen reflects the new tier
+          // (do NOT replace description — accumulated weapon bonus values must persist)
+          if ((deckCard.tags || []).includes('weapon')) {
+            const weaponItem = (gameState.inventory || []).find(i => i.name === deckCard.name && i.type === 'Weapon');
+            if (weaponItem) weaponItem.level = (weaponItem.level || 1) + 1;
+            else deckCard._weaponLevel = (deckCard._weaponLevel || 1) + 1;
+          } else if (deckCard.upgradedDescription) {
+            deckCard.description = deckCard.upgradedDescription;
           }
           upgradeCount++;
         }

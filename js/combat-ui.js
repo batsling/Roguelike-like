@@ -197,6 +197,20 @@ function getCardDynamicDmg(baseDmg, card, combat, targetEnemy) {
     dmg += combat._flatAttackBonus;
   }
 
+  // Perfected Strike: +N damage per card across all piles whose name contains "strike"
+  const perfectedM = (card.description || '').match(/Deals (\d+) additional damage for All of your Cards that contain/i);
+  if (perfectedM) {
+    const bonusPer = parseInt(perfectedM[1]);
+    const allCards = [
+      ...(combat.drawPile || []),
+      ...(combat.hand || []),
+      ...(combat.discardPile || []),
+      ...(combat.exhaustPile || [])
+    ];
+    const strikeCount = allCards.filter(c => /strike/i.test(c.name || '')).length;
+    dmg += bonusPer * strikeCount;
+  }
+
   return Math.max(0, dmg);
 }
 
@@ -294,10 +308,14 @@ function getCardDisplayDescription(card, combat, targetEnemy) {
                          _dupInv.some(i => i.name === 'Little Knife') &&
                          !!(targetEnemy && targetEnemy.health < (player.health || 0));
 
+  // Perfected Strike: bonus damage scales with Strike-named cards across all combat piles
+  const hasPerfectedStrike = /Deals \d+ additional damage for All of your Cards that contain/i.test(desc);
+
   // Quick check: any modifier active?
   const hasMods = itemSuffix.length > 0
                || hasDuplicator
                || hasLittleKnife
+               || hasPerfectedStrike
                || (player.statuses['power'] || 0) !== 0
                || (player.statuses['arcane'] || 0) !== 0
                || (player.statuses['strength'] || 0) !== 0
