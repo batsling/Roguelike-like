@@ -4762,8 +4762,9 @@ function resolveCardEffect(card, target, options = {}) {
 
     // Gain X Energy (handles "Gain 1 Energy" and "Gain +1 Energy")
     // Skip if the part is conditional (e.g. "If you have Discarded a Card this turn, Gain +2 Energy")
+    // Skip "At the start of your turn, Gain +N Energy" (Berserk) — handled below as energy_per_turn
     const energyMatch = p.match(/Gain \+?(\d+) Energy/i);
-    if (energyMatch && !/^If /i.test(p)) {
+    if (energyMatch && !/^If /i.test(p) && !/At the start of your turn/i.test(p)) {
       const e = parseInt(energyMatch[1]);
       player.energy += e;
       addLog(`Gained ${e} Energy`, 'success');

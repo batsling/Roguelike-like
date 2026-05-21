@@ -632,6 +632,11 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
   document.getElementById('verify-all-submit').onclick = () => {
     let totalDamage = 0;
 
+    // Collect a notification for each verification result so the user can see what each curse / weapon /
+    // boon / trait outcome did. They fire in sequence after the modal closes (and feed the history tab).
+    const verifyNotifs = [];
+    const noteVerify = (text, color, icon) => verifyNotifs.push({ text, color, icon });
+
     // Track which restriction curses should increment
     // (We'll mark them manually here, then skip them in checkCurseDurations)
     if (!gameState.restrictionCursesProcessed) {
@@ -648,6 +653,9 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         blindnessCurses.forEach(curse => {
           gameState.restrictionCursesProcessed.push(curse.id);
         });
+        noteVerify(`Blindness: implemented (${blindnessCurses.length}× progress)`, '#4caf50', '👁️');
+      } else {
+        noteVerify(`Blindness: not implemented`, '#888', '👁️');
       }
     }
 
@@ -666,6 +674,9 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           hubrisLow.forEach(curse => {
             gameState.restrictionCursesProcessed.push(curse.id);
           });
+          noteVerify(`Hubris (Low): implemented`, '#4caf50', '👑');
+        } else {
+          noteVerify(`Hubris (Low): not implemented`, '#888', '👑');
         }
       }
 
@@ -676,6 +687,9 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           hubrisMed.forEach(curse => {
             gameState.restrictionCursesProcessed.push(curse.id);
           });
+          noteVerify(`Hubris (Medium): implemented`, '#4caf50', '👑');
+        } else {
+          noteVerify(`Hubris (Medium): not implemented`, '#888', '👑');
         }
       }
 
@@ -686,6 +700,9 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           hubrisHigh.forEach(curse => {
             gameState.restrictionCursesProcessed.push(curse.id);
           });
+          noteVerify(`Hubris (High): implemented`, '#4caf50', '👑');
+        } else {
+          noteVerify(`Hubris (High): not implemented`, '#888', '👑');
         }
       }
     }
@@ -696,7 +713,13 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       const devotionDamagePerReset = devotionCurses.reduce((sum, curse) => {
         return sum + getPowerValue(curse.power, { Low: 1, Medium: 2, High: 3 });
       }, 0);
-      totalDamage += resetCount * devotionDamagePerReset;
+      const devotionDmg = resetCount * devotionDamagePerReset;
+      totalDamage += devotionDmg;
+      if (devotionDmg > 0) {
+        noteVerify(`Devotion: -${devotionDmg} HP (${resetCount} reset${resetCount === 1 ? '' : 's'})`, '#e74c3c', '🙏');
+      } else {
+        noteVerify(`Devotion: no resets`, '#888', '🙏');
+      }
     }
 
     // Process Greed curses
@@ -705,7 +728,13 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       const greedDamagePerSkip = greedCurses.reduce((sum, curse) => {
         return sum + getPowerValue(curse.power, { Low: 1, Medium: 2, High: 3 });
       }, 0);
-      totalDamage += skipCount * greedDamagePerSkip;
+      const greedDmg = skipCount * greedDamagePerSkip;
+      totalDamage += greedDmg;
+      if (greedDmg > 0) {
+        noteVerify(`Greed: -${greedDmg} HP (${skipCount} skip${skipCount === 1 ? '' : 's'})`, '#e74c3c', '💰');
+      } else {
+        noteVerify(`Greed: no skips`, '#888', '💰');
+      }
     }
 
     // Process Impulse curses
@@ -714,7 +743,13 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       const impulseDamagePerPick = impulseCurses.reduce((sum, curse) => {
         return sum + getPowerValue(curse.power, { Low: 1, Medium: 2, High: 3 });
       }, 0);
-      totalDamage += badPickCount * impulseDamagePerPick;
+      const impulseDmg = badPickCount * impulseDamagePerPick;
+      totalDamage += impulseDmg;
+      if (impulseDmg > 0) {
+        noteVerify(`Impulse: -${impulseDmg} HP (${badPickCount} bad pick${badPickCount === 1 ? '' : 's'})`, '#e74c3c', '⚡');
+      } else {
+        noteVerify(`Impulse: no bad picks`, '#888', '⚡');
+      }
     }
 
     // Process Haste curses (2 damage per curse if failed)
@@ -722,12 +757,14 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       const hasteRadio = document.querySelector('input[name="haste-check"]:checked');
       const beatInTime = hasteRadio && hasteRadio.value === 'yes';
       if (!beatInTime) {
-        totalDamage += 2 * hasteCurses.length; // 2 damage per Haste curse
+        const dmg = 2 * hasteCurses.length;
+        totalDamage += dmg;
+        noteVerify(`Haste: -${dmg} HP (didn't beat in time)`, '#e74c3c', '⏱️');
       } else {
-        // Mark curses for duration increment (completed successfully)
         hasteCurses.forEach(curse => {
           gameState.restrictionCursesProcessed.push(curse.id);
         });
+        noteVerify(`Haste: beat in time`, '#4caf50', '⏱️');
       }
     }
 
@@ -736,12 +773,14 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       const guiltRadio = document.querySelector('input[name="guilt-check"]:checked');
       const killedInnocents = guiltRadio && guiltRadio.value === 'yes';
       if (killedInnocents) {
-        totalDamage += 3 * guiltCurses.length; // 3 damage per Guilt curse
+        const dmg = 3 * guiltCurses.length;
+        totalDamage += dmg;
+        noteVerify(`Guilt: -${dmg} HP (killed innocents)`, '#e74c3c', '😔');
       } else {
-        // Mark curses for duration increment (didn't kill innocents)
         guiltCurses.forEach(curse => {
           gameState.restrictionCursesProcessed.push(curse.id);
         });
+        noteVerify(`Guilt: spared innocents`, '#4caf50', '😇');
       }
     }
 
@@ -750,12 +789,14 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       const dazedRadio = document.querySelector('input[name="dazed-check"]:checked');
       const beatTwice = dazedRadio && dazedRadio.value === 'yes';
       if (!beatTwice) {
-        totalDamage += 3 * dazedCurses.length; // 3 damage per Dazed curse
+        const dmg = 3 * dazedCurses.length;
+        totalDamage += dmg;
+        noteVerify(`Dazed: -${dmg} HP (didn't beat game twice)`, '#e74c3c', '😵');
       } else {
-        // Mark curses for duration increment (beat game twice)
         dazedCurses.forEach(curse => {
           gameState.restrictionCursesProcessed.push(curse.id);
         });
+        noteVerify(`Dazed: beat game twice`, '#4caf50', '😵');
       }
     }
 
@@ -764,15 +805,15 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       const affectionRadio = document.querySelector('input[name="affection-check"]:checked');
       const rated8Plus = affectionRadio && affectionRadio.value === 'yes';
       if (rated8Plus) {
-        // Gain 1 health per curse
         StateMutator.modifyHealth(affectionCurses.length);
-        // Mark curses for duration increment (rated 8+)
         affectionCurses.forEach(curse => {
           gameState.restrictionCursesProcessed.push(curse.id);
         });
+        noteVerify(`Affection: +${affectionCurses.length} HP (rated 8+)`, '#4caf50', '💖');
       } else {
-        // Lose 2 health per curse
-        totalDamage += 2 * affectionCurses.length;
+        const dmg = 2 * affectionCurses.length;
+        totalDamage += dmg;
+        noteVerify(`Affection: -${dmg} HP (rated below 8)`, '#e74c3c', '💔');
       }
     }
 
@@ -781,12 +822,14 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       const hunterRadio = document.querySelector('input[name="hunter-check"]:checked');
       const gotAchievement = hunterRadio && hunterRadio.value === 'yes';
       if (!gotAchievement) {
-        totalDamage += 2 * hunterCurses.length; // 2 damage per Hunter curse
+        const dmg = 2 * hunterCurses.length;
+        totalDamage += dmg;
+        noteVerify(`Hunter: -${dmg} HP (no achievement)`, '#e74c3c', '🏹');
       } else {
-        // Mark curses for duration increment (got achievement)
         hunterCurses.forEach(curse => {
           gameState.restrictionCursesProcessed.push(curse.id);
         });
+        noteVerify(`Hunter: got achievement`, '#4caf50', '🏹');
       }
     }
 
@@ -795,12 +838,14 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       const dampRadio = document.querySelector('input[name="damp-check"]:checked');
       const touchedWater = dampRadio && dampRadio.value === 'yes';
       if (!touchedWater) {
-        totalDamage += 3 * dampCurses.length; // 3 damage per Damp curse
+        const dmg = 3 * dampCurses.length;
+        totalDamage += dmg;
+        noteVerify(`Damp: -${dmg} HP (didn't touch water)`, '#e74c3c', '💧');
       } else {
-        // Mark curses for duration increment (touched water)
         dampCurses.forEach(curse => {
           gameState.restrictionCursesProcessed.push(curse.id);
         });
+        noteVerify(`Damp: touched water`, '#4caf50', '💧');
       }
     }
 
@@ -812,6 +857,9 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       if (perfectGame) {
         StateMutator.modifyAbility('dash', 1);
         precisionLandingActivated = true;
+        noteVerify(`Precision Landing: +1 Dash!`, '#00bfff', '🎯');
+      } else {
+        noteVerify(`Precision Landing: not a perfect game`, '#888', '🎯');
       }
     }
 
@@ -867,6 +915,9 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         if (typeof updateGameStats === 'function') {
           updateGameStats();
         }
+        noteVerify(`Perfect Game: ${hastePerfectRewards.join(', ')}!`, '#ffd700', '⚡');
+      } else {
+        noteVerify(`Perfect Game: not earned`, '#888', '⚡');
       }
     }
 
@@ -877,7 +928,10 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
     verifyInventoryWeapons.forEach((weapon, wIdx) => {
       const weaponRadio = document.querySelector(`input[name="weapon-check-${wIdx}"]:checked`);
       const conditionMet = weaponRadio && weaponRadio.value === 'yes';
-      if (!conditionMet) return;
+      if (!conditionMet) {
+        noteVerify(`${weapon.name}: condition not met`, '#888', '⚔️');
+        return;
+      }
 
       const weaponLevel = weapon.level || 1;
 
@@ -966,6 +1020,10 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         weaponRewardText = rewardClauseText;
         weaponEffectActivated = true;
       }
+
+      // Per-weapon success notification (one per earned weapon — distinct from the
+      // legacy single setTimeout below, which only captured the last weapon).
+      noteVerify(`${weapon.name}: Earned ${rewardClauseText}!`, '#ff9800', '⚔️');
     });
 
     // Process Boon verifications
@@ -994,6 +1052,9 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
           }
 
           activatedBoons.push(boon.name);
+          noteVerify(`${boon.name}: +1 Str, Dex, Int, Cha!`, '#8a2be2', '🌟');
+        } else {
+          noteVerify(`${boon.name}: condition not met`, '#888', '🌟');
         }
       });
 
@@ -1012,6 +1073,8 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
         // 50/50 chance to upgrade or downgrade
         const isUpgrade = Math.random() < 0.5;
         appearanceChangeResult = upgradeOrDowngradePassive(isUpgrade);
+      } else if (!changedAppearance) {
+        noteVerify(`Appearance Change: did not change`, '#888', '🧬');
       }
     }
 
@@ -1021,7 +1084,10 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       const levelUpRadio = document.querySelector('input[name="levelup-check"]:checked');
       if (levelUpRadio && levelUpRadio.value === 'yes') {
         leveledUp = true;
+        noteVerify(`Level Up: condition met!`, '#FFD700', '⭐');
         // Stats and reward modal are handled by confirmLevelUp() below
+      } else {
+        noteVerify(`Level Up: condition not met`, '#888', '⭐');
       }
     }
 
@@ -1108,60 +1174,25 @@ function verifyCursesCombined(cursesToVerify, hasPrecisionLanding, onComplete, c
       }
     }
 
-    // Show Precision Landing notification after modal closes
-    if (precisionLandingActivated) {
-      setTimeout(() => {
-        if (typeof createNotification === 'function') {
-          createNotification('Precision Landing: +1 Dash!', '#00bfff', '🎯');
-        }
-      }, 100);
-    }
-
-    // Show Haste perfect items notification after modal closes
-    if (hastePerfectActivated && hastePerfectRewards.length > 0) {
-      setTimeout(() => {
-        if (typeof createNotification === 'function') {
-          createNotification(`Perfect Game: ${hastePerfectRewards.join(', ')}!`, '#ffd700', '⚡');
-        }
-      }, precisionLandingActivated ? 200 : 100);
-    }
-
-    // Show weapon effect notification after modal closes
-    if (weaponEffectActivated) {
-      const weaponDelay = 100 + (precisionLandingActivated ? 100 : 0) + (hastePerfectActivated ? 100 : 0);
-      setTimeout(() => {
-        if (typeof createNotification === 'function') {
-          createNotification(`${gameState.equippedWeapon.name}: Earned ${weaponRewardText}!`, '#ff9800', '⚔️');
-        }
-      }, weaponDelay);
-    }
-
-    // Show boon notifications after modal closes
-    if (activatedBoons.length > 0) {
-      const boonBaseDelay = 100 + (precisionLandingActivated ? 100 : 0) + (hastePerfectActivated ? 100 : 0) + (weaponEffectActivated ? 100 : 0);
-      activatedBoons.forEach((boonName, index) => {
-        setTimeout(() => {
-          if (typeof createNotification === 'function') {
-            createNotification(`${boonName}: +1 Str, Dex, Int, Cha!`, '#8a2be2', '🌟');
-          }
-        }, boonBaseDelay + (index * 100));
-      });
-    }
-
-    // Show appearance change notification after modal closes
+    // Appearance change result has its own outcome details — push into the unified queue.
     if (appearanceChangeResult) {
-      const baseDelay = 100 + (precisionLandingActivated ? 100 : 0) + (hastePerfectActivated ? 100 : 0) + (weaponEffectActivated ? 100 : 0) + (activatedBoons.length * 100);
+      if (appearanceChangeResult.success) {
+        const actionText = appearanceChangeResult.isUpgrade ? 'Upgraded' : 'Downgraded';
+        noteVerify(`Appearance Changed: ${actionText} ${appearanceChangeResult.itemName}!`, '#66bb6a', '🧬');
+      } else {
+        noteVerify('Appearance Changed: No passive items to modify', '#888', '🧬');
+      }
+    }
+
+    // Fire all collected verification notifications in sequence so each one
+    // stacks visibly and lands in the notification history tab.
+    verifyNotifs.forEach((n, i) => {
       setTimeout(() => {
         if (typeof createNotification === 'function') {
-          if (appearanceChangeResult.success) {
-            const actionText = appearanceChangeResult.isUpgrade ? 'Upgraded' : 'Downgraded';
-            createNotification(`Appearance Changed: ${actionText} ${appearanceChangeResult.itemName}!`, '#66bb6a', '🧬');
-          } else {
-            createNotification('Appearance Changed: No passive items to modify', '#888', '🧬');
-          }
+          createNotification(n.text, n.color, n.icon);
         }
-      }, baseDelay);
-    }
+      }, 100 + i * 150);
+    });
 
     // Helper function to continue to rewards after all level-up stuff is done
     const continueToRewards = () => {
