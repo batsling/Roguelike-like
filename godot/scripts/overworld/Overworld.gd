@@ -175,11 +175,30 @@ func _on_event_closed(_should_continue: bool) -> void:
 func _start_combat() -> void:
 	GameState.phase = GameState.Phase.COMBAT
 	_active_combat = COMBAT_SCENE.instantiate()
-	# Phase 1b has one enemy in the pool; richer per-game enemy
-	# tables land alongside more enemies in 1c.
-	_active_combat.enemies_to_spawn = [&"jaw_worm"]
+	_active_combat.enemies_to_spawn = [_pick_enemy_for_combat()]
 	_active_combat.closed.connect(_on_combat_closed)
 	add_child(_active_combat)
+
+func _pick_enemy_for_combat() -> StringName:
+	# Phase 1c: prefer the current game's enemy_pool; fall back to the
+	# full Data.all_enemies() roster when the pool is empty (every game's
+	# pool is empty today, so this is effectively "random across all
+	# enemies"). Per-type pools land when action / strategy enemies
+	# arrive in Phase 3 / 4.
+	var pool: Array[StringName] = []
+	if _pending_game_id != &"":
+		var g: GameData = Data.get_game(_pending_game_id)
+		if g != null and not g.enemy_pool.is_empty():
+			for eid in g.enemy_pool:
+				pool.append(eid)
+	if pool.is_empty():
+		for e in Data.all_enemies():
+			if e is EnemyData:
+				pool.append(e.id)
+	if pool.is_empty():
+		push_warning("[Overworld] no enemies available; falling back to jaw_worm")
+		return &"jaw_worm"
+	return pool[_rng.randi() % pool.size()]
 
 func _on_combat_closed(was_victory: bool) -> void:
 	_active_combat = null
