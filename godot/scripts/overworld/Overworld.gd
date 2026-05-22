@@ -3,8 +3,12 @@ extends Node2D
 
 # Phase 1b overworld. Player walks between portals; each portal is a
 # game on the influence graph adjacent to the current game. Walking
-# onto a portal makes it the active one; pressing E enters its game.
-# (Commit 4 wires the enter to actually launch combat.)
+# onto a portal makes it the active one; pressing E enters its game,
+# which launches a deckbuilder combat. Victory advances the current
+# game and refreshes the portal set; defeat resets the run.
+#
+# Pre-combat events sit between portal entry and combat start in
+# commit 7.
 
 const TILE_SIZE := 32
 const GRID_W := 30
@@ -16,6 +20,7 @@ const PORTAL_SCENE := preload("res://scenes/overworld/Portal.tscn")
 # Portal row vertical position and horizontal spacing.
 const PORTAL_Y := 4
 const PORTAL_SPACING := 3
+const SPAWN_POS := Vector2i(GRID_W / 2, GRID_H - 3)
 
 signal portal_entered(game_id: StringName)
 
@@ -26,10 +31,11 @@ signal portal_entered(game_id: StringName)
 var _portals: Array[PortalNode] = []
 var _active_portal: PortalNode = null
 var _active_combat: DeckbuilderCombat = null
+var _pending_game_id: StringName = &""
 
 func _ready() -> void:
 	_floor_bg.size = Vector2(GRID_W * TILE_SIZE, GRID_H * TILE_SIZE)
-	_player.setup(Vector2i(GRID_W / 2, GRID_H - 3), Rect2i(0, 0, GRID_W, GRID_H))
+	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
 	_player.moved.connect(_on_player_moved)
 	GameState.phase = GameState.Phase.OVERWORLD
 	_spawn_portals_for_current_game()
@@ -55,7 +61,6 @@ func _spawn_portals_for_current_game() -> void:
 		GameLog.add("No connected games from %s." % current.display_name, Color(0.9, 0.7, 0.4))
 		return
 
-	# Center-align portals horizontally in the room.
 	var count := ids.size()
 	var span := (count - 1) * PORTAL_SPACING
 	var x_start: int = (GRID_W - span) / 2
@@ -72,9 +77,7 @@ func _spawn_portals_for_current_game() -> void:
 		Color(0.8, 0.9, 1.0))
 
 func _connected_game_ids(game_id: StringName) -> Array[StringName]:
-	# Undirected: outgoing edges from current + games that influenced it.
-	# Beaten games are still listed (the original game offers a revisit
-	# +1 Dash bonus — wired in later phases). Phase 1b just shows them.
+	# Undirected: outgoing edges + games that influenced this one.
 	var result: Array[StringName] = []
 	var src: GameData = Data.get_game(game_id)
 	if src != null:
@@ -105,42 +108,32 @@ func _on_player_moved(pos: Vector2i) -> void:
 			prev.set_highlight(false)
 		if _active_portal != null:
 			_active_portal.set_highlight(true)
-			GameLog.add("On %s portal. Press E to enter." % _active_portal.game_data.display_name,
-				Color(1.0, 0.9, 0.4))
 	_update_hint()
 
 func _update_hint() -> void:
 	if _active_portal != null:
-		_hint.text = "[E] Enter %s   |   WASD/arrows to walk   |   SPACE = debug combat" % _active_portal.game_data.display_name
+		_hint.text = "[E] Enter %s   |   WASD/arrows to walk" % _active_portal.game_data.display_name
 	else:
-		_hint.text = "WASD/arrows to walk to a portal   |   SPACE = debug combat"
+		_hint.text = "WASD/arrows to walk to a portal"
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed):
 		return
-	if event.keycode == KEY_SPACE:
-		_debug_start_combat()
-	elif event.keycode == KEY_E and _active_portal != null and _active_combat == null:
+	if event.keycode == KEY_E and _active_portal != null and _active_combat == null:
 		_enter_portal(_active_portal)
 
 # ------------------------------------------------------------------
-# Portal entry (combat trigger lands in commit 4)
+# Portal entry -> combat -> return
 # ------------------------------------------------------------------
 
 func _enter_portal(portal: PortalNode) -> void:
 	GameLog.add("Entering %s..." % portal.game_data.display_name, Color(0.6, 1.0, 0.7))
 	emit_signal("portal_entered", portal.game_data.id)
-	# Combat trigger and current_game_id update land in commit 4.
-
-# ------------------------------------------------------------------
-# Debug combat (keeps Phase 1a smoke test alive until portals land)
-# ------------------------------------------------------------------
-
-func _debug_start_combat() -> void:
-	if _active_combat != null:
-		return
+	_pending_game_id = portal.game_data.id
 	_player.set_input_locked(true)
 	_active_combat = COMBAT_SCENE.instantiate()
+	# Phase 1b has one enemy in the pool; richer per-game enemy
+	# tables land alongside more enemies in 1c.
 	_active_combat.enemies_to_spawn = [&"jaw_worm"]
 	_active_combat.closed.connect(_on_combat_closed)
 	add_child(_active_combat)
@@ -148,12 +141,38 @@ func _debug_start_combat() -> void:
 func _on_combat_closed(was_victory: bool) -> void:
 	_active_combat = null
 	_player.set_input_locked(false)
-	if not was_victory:
-		var ironclad: CharacterData = Data.get_character(&"ironclad")
-		GameState.reset_run()
-		GameState.apply_character(ironclad)
-		GameState.start_game_id = &"slay_the_spire"
-		GameState.amulet_game_id = &"hades"
-		GameState.current_game_id = GameState.start_game_id
-		GameLog.add("---- Run restarted ----", Color(0.9, 0.7, 0.7))
-		_spawn_portals_for_current_game()
+	if was_victory:
+		_handle_victory()
+	else:
+		_handle_defeat()
+	_pending_game_id = &""
+
+func _handle_victory() -> void:
+	if _pending_game_id == &"":
+		return
+	var gd: GameData = Data.get_game(_pending_game_id)
+	if not GameState.beaten_games.has(_pending_game_id):
+		GameState.beaten_games.append(_pending_game_id)
+	if not GameState.visited_games.has(_pending_game_id):
+		GameState.visited_games.append(_pending_game_id)
+	GameState.total_games_beaten += 1
+	GameState.current_game_id = _pending_game_id
+	GameLog.add("Defeated %s." % gd.display_name, Color(0.6, 1.0, 0.6))
+	if _pending_game_id == GameState.amulet_game_id:
+		GameLog.add("*** Amulet game reached! (Win screen lands in commit 8.) ***",
+			Color(1.0, 0.9, 0.3))
+	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
+	_spawn_portals_for_current_game()
+	_update_hint()
+
+func _handle_defeat() -> void:
+	GameLog.add("---- Run restarted ----", Color(0.9, 0.7, 0.7))
+	var ironclad: CharacterData = Data.get_character(&"ironclad")
+	GameState.reset_run()
+	GameState.apply_character(ironclad)
+	GameState.start_game_id = &"slay_the_spire"
+	GameState.amulet_game_id = &"hades"
+	GameState.current_game_id = GameState.start_game_id
+	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
+	_spawn_portals_for_current_game()
+	_update_hint()
