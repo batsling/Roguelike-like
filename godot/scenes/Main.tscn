@@ -1,0 +1,14 @@
+[gd_scene load_steps=4 format=3 uid="uid://broguelikeMain"]
+
+[ext_resource type="Script" path="res://scripts/Main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/DungeonRenderer.gd" id="2_renderer"]
+[ext_resource type="Script" path="res://scripts/HUD.gd" id="3_hud"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1_main")
+
+[node name="DungeonRenderer" type="Node2D" parent="."]
+script = ExtResource("2_renderer")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("3_hud")
