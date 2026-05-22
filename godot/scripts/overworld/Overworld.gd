@@ -32,6 +32,7 @@ var _portals: Array[PortalNode] = []
 var _active_portal: PortalNode = null
 var _active_combat: DeckbuilderCombat = null
 var _active_event: EventModal = null
+var _win_overlay: Control = null
 var _pending_game_id: StringName = &""
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -124,6 +125,22 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.keycode == KEY_E and _active_portal != null and _active_combat == null and _active_event == null:
 		_enter_portal(_active_portal)
+	elif event.keycode == KEY_F5 and _can_save_load():
+		if SaveSystem.save(0):
+			GameLog.add("Saved to slot 0.", Color(0.7, 0.9, 1.0))
+		else:
+			GameLog.add("Save failed.", Color(0.9, 0.5, 0.5))
+	elif event.keycode == KEY_F9 and _can_save_load():
+		if SaveSystem.load_slot(0):
+			GameLog.add("Loaded from slot 0.", Color(0.7, 0.9, 1.0))
+			_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
+			_spawn_portals_for_current_game()
+			_update_hint()
+		else:
+			GameLog.add("No save in slot 0.", Color(0.9, 0.7, 0.4))
+
+func _can_save_load() -> bool:
+	return _active_event == null and _active_combat == null and _win_overlay == null
 
 # ------------------------------------------------------------------
 # Portal entry -> combat -> return
@@ -184,15 +201,25 @@ func _handle_victory() -> void:
 	GameState.total_games_beaten += 1
 	GameState.current_game_id = _pending_game_id
 	GameLog.add("Defeated %s." % gd.display_name, Color(0.6, 1.0, 0.6))
+
+	# Amulet reached -> run complete; otherwise autosave and continue.
 	if _pending_game_id == GameState.amulet_game_id:
-		GameLog.add("*** Amulet game reached! (Win screen lands in commit 8.) ***",
-			Color(1.0, 0.9, 0.3))
+		GameState.phase = GameState.Phase.WIN
+		_show_win_overlay()
+		return
+
+	SaveSystem.save(0)
+	GameLog.add("Autosaved.", Color(0.7, 0.8, 1.0))
+	GameState.phase = GameState.Phase.OVERWORLD
 	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
 	_spawn_portals_for_current_game()
 	_update_hint()
 
 func _handle_defeat() -> void:
 	GameLog.add("---- Run restarted ----", Color(0.9, 0.7, 0.7))
+	_reset_run()
+
+func _reset_run() -> void:
 	var ironclad: CharacterData = Data.get_character(&"ironclad")
 	GameState.reset_run()
 	GameState.apply_character(ironclad)
@@ -202,3 +229,75 @@ func _handle_defeat() -> void:
 	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
 	_spawn_portals_for_current_game()
 	_update_hint()
+
+# ------------------------------------------------------------------
+# Win overlay (Amulet reached)
+# ------------------------------------------------------------------
+
+func _show_win_overlay() -> void:
+	if _win_overlay != null:
+		return
+	_player.set_input_locked(true)
+	# Delete the autosave so a finished run can't be reloaded into.
+	SaveSystem.delete_slot(0)
+
+	var overlay := Control.new()
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.08, 0.05, 0.02, 0.85)
+	overlay.add_child(dim)
+
+	var panel := Panel.new()
+	panel.size = Vector2(640, 360)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	overlay.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 32)
+	title.size = Vector2(600, 64)
+	title.text = "RUN COMPLETE"
+	title.add_theme_font_size_override("font_size", 44)
+	title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.position = Vector2(20, 108)
+	subtitle.size = Vector2(600, 32)
+	subtitle.text = "You reached the Amulet."
+	subtitle.add_theme_font_size_override("font_size", 18)
+	subtitle.add_theme_color_override("font_color", Color(0.9, 0.9, 1.0))
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(subtitle)
+
+	var stats := Label.new()
+	stats.position = Vector2(20, 160)
+	stats.size = Vector2(600, 64)
+	stats.text = "Floors cleared: %d   HP: %d / %d   Gold: %d" % [
+		GameState.total_games_beaten,
+		GameState.hp, GameState.max_hp, GameState.gold,
+	]
+	stats.add_theme_font_size_override("font_size", 16)
+	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stats.autowrap_mode = TextServer.AUTOWRAP_WORD
+	panel.add_child(stats)
+
+	var btn := Button.new()
+	btn.position = Vector2(220, 270)
+	btn.size = Vector2(200, 56)
+	btn.text = "New Run"
+	btn.pressed.connect(_on_new_run_pressed)
+	panel.add_child(btn)
+
+	add_child(overlay)
+	_win_overlay = overlay
+
+func _on_new_run_pressed() -> void:
+	if _win_overlay != null:
+		_win_overlay.queue_free()
+		_win_overlay = null
+	_player.set_input_locked(false)
+	_reset_run()
