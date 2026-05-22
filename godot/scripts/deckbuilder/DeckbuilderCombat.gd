@@ -221,8 +221,8 @@ func _check_combat_end() -> bool:
 		_fire_item_triggers("combat_ended")
 		TriggerBus.emit_signal("combat_ended", {"victory": true, "scene": self})
 		emit_signal("combat_ended", true)
-		_show_end_overlay(true)
 		_refresh_ui()
+		_show_reward_modal()
 		return true
 	return false
 
@@ -314,6 +314,120 @@ func _show_end_overlay(victory: bool) -> void:
 func _close(was_victory: bool) -> void:
 	emit_signal("closed", was_victory)
 	queue_free()
+
+# ------------------------------------------------------------------
+# Card reward modal — shown after victory, before the end overlay.
+# ------------------------------------------------------------------
+
+var _reward_modal: Control = null
+const REWARD_PICK_COUNT := 3
+
+func _show_reward_modal() -> void:
+	if _reward_modal != null:
+		return
+	var picks: Array = _roll_card_rewards(REWARD_PICK_COUNT)
+	if picks.is_empty():
+		_show_end_overlay(true)
+		return
+
+	var modal := Control.new()
+	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.65)
+	modal.add_child(dim)
+
+	var panel := Panel.new()
+	panel.size = Vector2(740, 420)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	modal.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 16)
+	title.size = Vector2(700, 32)
+	title.text = "Choose a card to add to your deck"
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	var cards_row := HBoxContainer.new()
+	cards_row.position = Vector2(20, 64)
+	cards_row.size = Vector2(700, 280)
+	cards_row.add_theme_constant_override("separation", 16)
+	cards_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	panel.add_child(cards_row)
+
+	for c in picks:
+		var card: CardData = c
+		var btn := Button.new()
+		btn.text = "[%d] %s\n%s\n\n%s" % [
+			card.cost, card.display_name, _rarity_label(card.rarity),
+			card.description,
+		]
+		btn.custom_minimum_size = Vector2(210, 260)
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD
+		btn.add_theme_color_override("font_color", _rarity_color(card.rarity))
+		btn.pressed.connect(func(): _on_reward_picked(card))
+		cards_row.add_child(btn)
+
+	var skip_btn := Button.new()
+	skip_btn.position = Vector2(290, 360)
+	skip_btn.size = Vector2(160, 44)
+	skip_btn.text = "Skip reward"
+	skip_btn.pressed.connect(func(): _on_reward_picked(null))
+	panel.add_child(skip_btn)
+
+	add_child(modal)
+	_reward_modal = modal
+
+func _roll_card_rewards(n: int) -> Array:
+	# All non-starter cards form the offer pool. Higher Luck biases
+	# toward Uncommon/Rare; Phase 1c leaves Luck at 0 so it's uniform.
+	var pool: Array = []
+	for c in Data.all_cards():
+		if c is CardData and c.rarity != CardData.Rarity.STARTER:
+			pool.append(c)
+	if pool.is_empty():
+		return []
+	var copy := pool.duplicate()
+	var picks: Array = []
+	for _i in range(mini(n, copy.size())):
+		var idx: int = _rng.randi() % copy.size()
+		picks.append(copy[idx])
+		copy.remove_at(idx)
+	return picks
+
+func _rarity_label(rarity: int) -> String:
+	match rarity:
+		0: return "Starter"
+		1: return "Common"
+		2: return "Uncommon"
+		3: return "Rare"
+		4: return "Legendary"
+		_: return "?"
+
+func _rarity_color(rarity: int) -> Color:
+	match rarity:
+		0: return Color(0.75, 0.75, 0.75)   # starter — grey
+		1: return Color(0.85, 0.85, 0.85)   # common — light grey
+		2: return Color(0.4, 0.75, 1.0)     # uncommon — blue
+		3: return Color(1.0, 0.85, 0.3)     # rare — gold
+		_: return Color(1.0, 0.5, 1.0)      # legendary — magenta
+
+func _on_reward_picked(card: CardData) -> void:
+	if card != null:
+		GameState.deck.append(card)
+		GameLog.add("Added %s to your deck." % card.display_name, Color(0.7, 1.0, 0.8))
+		GameState.emit_signal("deck_changed")
+	else:
+		GameLog.add("Skipped the card reward.", Color(0.8, 0.8, 0.8))
+	if _reward_modal != null:
+		_reward_modal.queue_free()
+		_reward_modal = null
+	_show_end_overlay(true)
 
 func _decay_statuses(actor: CombatActor) -> void:
 	for s in _DECAY_STATUSES:
