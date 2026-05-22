@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="EventData" load_steps=2 format=3 uid="uid://event_ancient_altar"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"ancient_altar"
+display_name = "An Ancient Altar"
+prompt = "Stone steps lead up to a worn altar carved with symbols you don't quite know. A faint warmth pulses from the centre. Coin marks the dust where others have offered before."
+choices = [{"id": "decipher", "text": "Try to decipher the inscriptions", "type": "stat_check", "stat": "intelligence", "outcomes": {"crit_good": {"description": "The symbols rearrange in your mind. Warm light floods you and a coin tumbles loose.", "effects": [{"type": "heal", "value": 12}, {"type": "gain_gold", "value": 5}]}, "good": {"description": "You read enough to channel the altar's blessing.", "effects": [{"type": "heal", "value": 7}]}, "bad": {"description": "The script slides off your eyes. Nothing happens.", "effects": []}, "crit_bad": {"description": "You mispronounce a single rune. The altar bites back.", "effects": [{"type": "lose_hp", "value": 4}]}}}, {"id": "offer", "text": "Make an offering (10g)", "type": "simple", "outcome": {"description": "Your coins ring against the stone. The altar warms in answer.", "effects": [{"type": "lose_gold", "value": 10}, {"type": "heal", "value": 14}]}}, {"id": "leave", "text": "Step away", "type": "simple", "outcome": {"description": "Some things are best left undisturbed.", "effects": []}}]
+difficulty_tags = PackedStringArray()
+run_limit = 0
+source_game = ""
+rarity = "Common"
+tags = PackedStringArray()
