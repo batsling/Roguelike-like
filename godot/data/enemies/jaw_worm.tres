@@ -17,10 +17,10 @@ pattern = [{
 "first_turn_only": true,
 "effects": [{"type": "dmg", "value": 11, "target": "player"}]
 }, {
-"display": "Bellow (+3 STR, +6 Block)",
+"display": "Bellow (+3 Power, +6 Block)",
 "weight": 45,
 "effects": [
-{"type": "status", "status": "strength", "stacks": 3, "target": "self"},
+{"type": "status", "status": "power", "stacks": 3, "target": "self"},
 {"type": "block", "value": 6, "target": "self"}
 ]
 }, {

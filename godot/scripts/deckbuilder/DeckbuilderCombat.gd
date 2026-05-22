@@ -1,17 +1,21 @@
 class_name DeckbuilderCombat
 extends Control
 
-# Phase 1a combat scene skeleton. Owns the per-combat state, lays out
-# the UI, and runs the draw/discard pile bookkeeping. Card play, effect
-# resolution, enemy AI, and win/lose are added in the next commits.
+# Phase 1a deckbuilder combat. Owns per-combat state, runs turn lifecycle,
+# resolves card play through the EffectSystem, applies damage/block with
+# the full status math (Vulnerable, Weak, Frail, Power, Defense, etc.)
+# matching the JS combat-engine rules.
 #
 # Entry point: pass an Array of EnemyData (or ids) via `enemies_to_spawn`
 # before adding to tree, or use `start_combat(enemies)` after _ready.
+#
+# Enemy AI execution lives in the next commit (commit 7); for now the
+# enemy plans a move on turn start but does not execute it.
 
 signal combat_ended(victory: bool)
 
 # Configuration set by the caller before _ready (or via start_combat).
-var enemies_to_spawn: Array = []     # Array[EnemyData] or Array[StringName]
+var enemies_to_spawn: Array = []
 
 # ------------------------------------------------------------------
 # Combat state — referenced by EffectSystem handlers via ctx.scene
@@ -29,9 +33,25 @@ var max_energy: int = 3
 var turn: int = 0
 var phase: String = "init"           # "init" | "player" | "enemy" | "won" | "lost"
 
+# Targeting mode (card selected, waiting for enemy click)
+var _selected_card: CardInstance = null
+var _targeting: bool = false
+
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
-# UI refs (assigned in _ready from the scene tree)
+# Status decay set — these statuses tick down by 1 at end of turn.
+const _DECAY_STATUSES := [
+	&"vulnerable", &"weak", &"frail",
+	&"burn", &"poison", &"regeneration",
+	&"dodge",   # dodge decays only on use in JS but treat 1/turn as safety
+]
+
+# Debuffs that get Persistence bonus when player inflicts them on enemies.
+const _DEBUFFS := [
+	&"vulnerable", &"weak", &"frail", &"poison", &"burn",
+]
+
+# UI refs
 @onready var _enemy_area: HBoxContainer = $Layout/EnemyArea
 @onready var _hand_area: HBoxContainer = $Layout/Bottom/HandRow/HandArea
 @onready var _end_turn_btn: Button = $Layout/Bottom/HandRow/EndTurnButton
@@ -87,15 +107,10 @@ func _init_deck() -> void:
 	_shuffle(draw_pile)
 
 func _apply_derived_statuses() -> void:
-	# STR/3 → Power, DEX/3 → Defense, INT/3 → Arcane, CHA/5 → Persistence
-	# Applied to player at combat start. Per the design spec these apply
-	# in every combat mode, but the deckbuilder is the only mode where
-	# they're authored right now.
 	player.add_status(&"power", GameState.strength / 3)
 	player.add_status(&"defense", GameState.dexterity / 3)
 	player.add_status(&"arcane", GameState.intelligence / 3)
 	player.add_status(&"persistence", GameState.charisma / 5)
-	# Pending statuses carried in from pre-combat events
 	for s in GameState.pending_combat_statuses:
 		player.add_status(s.get("status", &""), s.get("stacks", 0))
 	GameState.pending_combat_statuses.clear()
@@ -109,6 +124,7 @@ func _start_player_turn() -> void:
 	phase = "player"
 	energy = max_energy
 	player.block = 0
+	_cancel_targeting()
 	# Pre-roll enemy intents for this turn
 	for e in enemies:
 		if e.is_alive():
@@ -120,20 +136,207 @@ func _start_player_turn() -> void:
 func _on_end_turn() -> void:
 	if phase != "player":
 		return
-	# Player turn ends: discard hand, run enemy turn
+	_cancel_targeting()
+	# Discard hand (Ethereal exhausts; defer until those cards exist)
 	while not hand.is_empty():
 		discard_pile.append(hand.pop_back())
 	TriggerBus.emit_signal("turn_ended", {"turn": turn, "scene": self})
-	# Enemy AI executes in the next commit; for now we just go back to
-	# the player's next turn after a brief log line so the loop is alive.
+	# Decay player statuses BEFORE enemies act so they keep the debuffs
+	# they were just hit with through their own turn.
+	_decay_statuses(player)
+	# Enemy execution lands in commit 7 — for now log a placeholder and
+	# loop back to the player's next turn.
 	phase = "enemy"
 	_refresh_ui()
-	GameLog.add("(enemies act — AI lands in the next commit)", Color(0.7, 0.7, 0.7))
-	# Loop back to next player turn
+	GameLog.add("(enemies act — execution lands in commit 7)", Color(0.7, 0.7, 0.7))
+	# Decay enemy statuses (would normally happen after their actions)
+	for e in enemies:
+		if e.is_alive():
+			_decay_statuses(e)
 	_start_player_turn()
 
+func _decay_statuses(actor: CombatActor) -> void:
+	for s in _DECAY_STATUSES:
+		if actor.get_status(s) > 0:
+			actor.add_status(s, -1)
+
 # ------------------------------------------------------------------
-# Pile helpers — used by EffectSystem and card-play
+# Card play
+# ------------------------------------------------------------------
+
+func _try_play_card(card: CardInstance) -> void:
+	if phase != "player":
+		return
+	if card.get_cost() > energy:
+		GameLog.add("Not enough energy for %s." % card.get_display_name(), Color(0.9, 0.7, 0.3))
+		return
+	# If we're already targeting and the same card is clicked, cancel.
+	if _targeting and _selected_card == card:
+		_cancel_targeting()
+		return
+	if card.wants_target():
+		_selected_card = card
+		_targeting = true
+		GameLog.add("Choose a target for %s." % card.get_display_name(), Color(0.7, 0.9, 1.0))
+		_refresh_ui()
+	else:
+		_resolve_card(card, null)
+
+func _on_enemy_clicked(idx: int) -> void:
+	if not _targeting or _selected_card == null:
+		return
+	if idx < 0 or idx >= enemies.size():
+		return
+	var tgt: CombatActor = enemies[idx]
+	if not tgt.is_alive():
+		return
+	var card := _selected_card
+	_cancel_targeting()
+	_resolve_card(card, tgt)
+
+func _cancel_targeting() -> void:
+	_selected_card = null
+	_targeting = false
+	_refresh_ui()
+
+func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
+	energy -= card.get_cost()
+	TriggerBus.emit_signal("card_played", {
+		"card": card, "target": target_enemy, "scene": self,
+	})
+
+	for effect in card.get_effects():
+		var t_str: String = effect.get("target", "enemy")
+		var targets: Array = []
+		match t_str:
+			"enemy":
+				if target_enemy != null:
+					targets = [target_enemy]
+			"all_enemies":
+				for e in enemies:
+					if e.is_alive():
+						targets.append(e)
+			"self":
+				targets = [player]
+			"player":
+				targets = [player]
+			"random_enemy":
+				var live: Array = []
+				for e in enemies:
+					if e.is_alive():
+						live.append(e)
+				if not live.is_empty():
+					targets = [live[_rng.randi() % live.size()]]
+			_:
+				if target_enemy != null:
+					targets = [target_enemy]
+				else:
+					targets = [player]
+
+		for tgt in targets:
+			var ctx := {
+				"source": player,
+				"target": tgt,
+				"scene": self,
+				"card": card,
+			}
+			EffectSystem.apply(effect, ctx)
+
+	# Powers exhaust on play; cards with the exhaust flag exhaust; else discard.
+	if card.data.exhaust or card.is_power():
+		exhaust_card(card)
+	else:
+		discard_card(card)
+	_refresh_ui()
+
+# ------------------------------------------------------------------
+# Effect callbacks (invoked by EffectSystem handlers via ctx.scene)
+# ------------------------------------------------------------------
+
+func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, _effect: Dictionary) -> void:
+	if target == null or not target.is_alive():
+		return
+	var amount := base_amount
+
+	# Source outgoing modifiers
+	if source != null:
+		amount += source.get_status(&"power")
+		if source.get_status(&"weak") > 0:
+			amount = int(floor(amount * 0.75))
+
+	# Target incoming modifiers
+	if target.get_status(&"vulnerable") > 0:
+		amount = int(ceil(amount * 1.5))
+	if target.get_status(&"dodge") > 0:
+		target.add_status(&"dodge", -1)
+		GameLog.add("%s dodges!" % target.display_name, Color(0.7, 0.9, 1.0))
+		return
+	# (Frail affects block gained, not damage taken — handled in gain_block)
+
+	# Block absorption
+	var absorbed := mini(target.block, amount)
+	target.block -= absorbed
+	amount -= absorbed
+
+	if amount > 0:
+		if target.is_player:
+			GameState.change_hp(-amount)
+			target.hp = GameState.hp
+		else:
+			target.hp = maxi(0, target.hp - amount)
+		var who := "you" if target.is_player else target.display_name
+		GameLog.add("%s takes %d damage." % [who.capitalize(), amount], Color(1.0, 0.6, 0.6))
+		TriggerBus.emit_signal("damage_taken", {
+			"target": target, "attacker": source, "amount": amount, "scene": self,
+		})
+		if target.hp <= 0:
+			target.dead = true
+			GameLog.add("%s is defeated!" % target.display_name, Color(0.6, 1.0, 0.6))
+			if not target.is_player:
+				TriggerBus.emit_signal("enemy_killed", {"enemy": target, "scene": self})
+	elif absorbed > 0:
+		var who := "your" if target.is_player else (target.display_name + "'s")
+		GameLog.add("%s block absorbs %d." % [who, absorbed], Color(0.7, 0.8, 1.0))
+
+	TriggerBus.emit_signal("damage_dealt", {
+		"source": source, "target": target, "amount": amount, "scene": self,
+	})
+
+func gain_block(target: CombatActor, base_amount: int) -> void:
+	if target == null:
+		return
+	var amount := base_amount
+	amount += target.get_status(&"defense")
+	if target.get_status(&"frail") > 0:
+		amount = int(floor(amount * 0.75))
+	amount = maxi(0, amount)
+	target.block += amount
+
+func heal(target: CombatActor, amount: int) -> void:
+	if target == null or amount <= 0:
+		return
+	if target.is_player:
+		GameState.change_hp(amount)
+		target.hp = GameState.hp
+	else:
+		target.hp = mini(target.max_hp, target.hp + amount)
+
+func apply_status(target: CombatActor, status: StringName, stacks: int, source: CombatActor = null) -> void:
+	if target == null or stacks == 0:
+		return
+	var actual_stacks := stacks
+	# Player Persistence boosts debuffs the player applies to enemies.
+	if source != null and source.is_player and not target.is_player and status in _DEBUFFS:
+		var pers := source.get_status(&"persistence")
+		if pers > 0 and stacks > 0:
+			actual_stacks += pers
+	target.add_status(status, actual_stacks)
+	TriggerBus.emit_signal("status_applied", {
+		"target": target, "status": status, "stacks": actual_stacks, "scene": self,
+	})
+
+# ------------------------------------------------------------------
+# Pile helpers — also called from EffectSystem default handlers
 # ------------------------------------------------------------------
 
 func draw_cards(n: int) -> void:
@@ -141,7 +344,6 @@ func draw_cards(n: int) -> void:
 		if draw_pile.is_empty():
 			if discard_pile.is_empty():
 				break
-			# Reshuffle discard into draw
 			while not discard_pile.is_empty():
 				draw_pile.append(discard_pile.pop_back())
 			_shuffle(draw_pile)
@@ -174,7 +376,7 @@ func _shuffle(arr: Array) -> void:
 		arr[j] = tmp
 
 # ------------------------------------------------------------------
-# Enemy intent — picks the next planned move
+# Enemy intent
 # ------------------------------------------------------------------
 
 func _roll_intent(enemy: CombatActor) -> void:
@@ -190,7 +392,7 @@ func _roll_intent(enemy: CombatActor) -> void:
 				enemy.planned_move = m
 				return
 
-	# Otherwise weighted random selection ignoring first_turn_only moves.
+	# Weighted random selection ignoring first_turn_only moves.
 	var pool: Array = []
 	var total_weight := 0
 	for m in pattern:
@@ -212,40 +414,70 @@ func _roll_intent(enemy: CombatActor) -> void:
 	enemy.planned_move = pool[-1].move
 
 # ------------------------------------------------------------------
-# UI refresh (placeholder text-only rendering for the skeleton)
+# UI
 # ------------------------------------------------------------------
 
 func _refresh_ui() -> void:
-	_turn_label.text = "Turn %d   Phase: %s" % [turn, phase]
+	_turn_label.text = "Turn %d   Phase: %s%s" % [
+		turn, phase,
+		"   [TARGETING]" if _targeting else "",
+	]
 	_energy_label.text = "Energy: %d / %d" % [energy, max_energy]
 	_hp_label.text = "HP: %d / %d" % [player.hp if player else 0, player.max_hp if player else 0]
 	_block_label.text = "Block: %d" % (player.block if player else 0)
 	_draw_label.text = "Draw: %d" % draw_pile.size()
 	_discard_label.text = "Discard: %d" % discard_pile.size()
 
-	# Enemies — placeholder labels
+	# Enemies
 	for child in _enemy_area.get_children():
 		child.queue_free()
-	for e in enemies:
+	for i in range(enemies.size()):
+		var e: CombatActor = enemies[i]
 		if not e.is_alive():
 			continue
-		var lbl := Label.new()
+		var btn := Button.new()
 		var intent_text: String = e.planned_move.get("display", "?") if not e.planned_move.is_empty() else "?"
-		var status_str := ""
-		for s in e.statuses.keys():
-			status_str += " [%s:%d]" % [String(s), e.statuses[s]]
-		lbl.text = "%s\nHP %d/%d  Block %d\nIntent: %s%s" % [
-			e.display_name, e.hp, e.max_hp, e.block, intent_text, status_str
+		var status_str := _status_str(e)
+		btn.text = "%s\nHP %d/%d  Block %d\nIntent: %s%s" % [
+			e.display_name, e.hp, e.max_hp, e.block, intent_text,
+			("\n" + status_str) if status_str != "" else "",
 		]
-		lbl.add_theme_font_size_override("font_size", 14)
-		_enemy_area.add_child(lbl)
+		btn.custom_minimum_size = Vector2(220, 140)
+		btn.disabled = not _targeting
+		if _targeting:
+			# Capture i (int) so the lambda doesn't bind a stale loop var.
+			var idx := i
+			btn.pressed.connect(func(): _on_enemy_clicked(idx))
+		_enemy_area.add_child(btn)
 
-	# Hand — placeholder labels for now (real card views in the next commit)
+	# Hand
 	for child in _hand_area.get_children():
 		child.queue_free()
 	for c in hand:
+		var card := c     # capture per-iteration
 		var btn := Button.new()
-		btn.text = "[%d] %s\n%s" % [c.get_cost(), c.get_display_name(), c.get_description()]
-		btn.custom_minimum_size = Vector2(140, 100)
-		btn.disabled = true     # play wiring lands in the next commit
+		var status_marker: String = " ←" if (_targeting and _selected_card == card) else ""
+		btn.text = "[%d] %s%s\n%s" % [
+			card.get_cost(), card.get_display_name(), status_marker, card.get_description(),
+		]
+		btn.custom_minimum_size = Vector2(160, 110)
+		btn.disabled = (phase != "player") or (card.get_cost() > energy)
+		btn.pressed.connect(func(): _try_play_card(card))
 		_hand_area.add_child(btn)
+
+func _status_str(actor: CombatActor) -> String:
+	if actor.statuses.is_empty():
+		return ""
+	var parts: Array = []
+	for s in actor.statuses.keys():
+		parts.append("%s:%d" % [String(s), actor.statuses[s]])
+	return "[" + "  ".join(parts) + "]"
+
+func _input(event: InputEvent) -> void:
+	# Right-click or ESC cancels targeting.
+	if not _targeting:
+		return
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		_cancel_targeting()
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+		_cancel_targeting()
