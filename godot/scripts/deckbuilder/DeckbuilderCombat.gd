@@ -141,19 +141,80 @@ func _on_end_turn() -> void:
 	while not hand.is_empty():
 		discard_pile.append(hand.pop_back())
 	TriggerBus.emit_signal("turn_ended", {"turn": turn, "scene": self})
-	# Decay player statuses BEFORE enemies act so they keep the debuffs
-	# they were just hit with through their own turn.
+	# Decay player statuses BEFORE enemies act so debuffs the player
+	# just applied to enemies survive through the enemy turn.
 	_decay_statuses(player)
-	# Enemy execution lands in commit 7 — for now log a placeholder and
-	# loop back to the player's next turn.
 	phase = "enemy"
 	_refresh_ui()
-	GameLog.add("(enemies act — execution lands in commit 7)", Color(0.7, 0.7, 0.7))
-	# Decay enemy statuses (would normally happen after their actions)
+
+	_execute_enemy_turn()
+
+	if _check_combat_end():
+		return
+
+	# Decay enemy statuses after their actions.
 	for e in enemies:
 		if e.is_alive():
 			_decay_statuses(e)
+
 	_start_player_turn()
+
+func _execute_enemy_turn() -> void:
+	for enemy in enemies:
+		if not enemy.is_alive() or not player.is_alive():
+			continue
+		# Block resets at the start of the enemy's own action phase
+		# (matches JS rules; Barricade-style persistence deferred).
+		enemy.block = 0
+		var move: Dictionary = enemy.planned_move
+		if move.is_empty():
+			continue
+		GameLog.add("%s: %s" % [enemy.display_name, move.get("display", "?")],
+			Color(0.9, 0.8, 0.6))
+		var effects: Array = move.get("effects", [])
+		for effect in effects:
+			if not enemy.is_alive() or not player.is_alive():
+				break
+			var tgt: CombatActor = _resolve_enemy_effect_target(enemy, effect.get("target", "player"))
+			var ctx := {
+				"source": enemy,
+				"target": tgt,
+				"scene": self,
+				"card": null,
+			}
+			EffectSystem.apply(effect, ctx)
+
+func _resolve_enemy_effect_target(enemy: CombatActor, target_str: String) -> CombatActor:
+	match target_str:
+		"player":
+			return player
+		"self":
+			return enemy
+		_:
+			return player
+
+func _check_combat_end() -> bool:
+	if not player.is_alive():
+		phase = "lost"
+		GameState.phase = GameState.Phase.DEAD
+		GameLog.add("You have been defeated.", Color(1.0, 0.4, 0.4))
+		TriggerBus.emit_signal("combat_ended", {"victory": false, "scene": self})
+		emit_signal("combat_ended", false)
+		_refresh_ui()
+		return true
+	var any_alive := false
+	for e in enemies:
+		if e.is_alive():
+			any_alive = true
+			break
+	if not any_alive:
+		phase = "won"
+		GameLog.add("Victory!", Color(0.4, 1.0, 0.6))
+		TriggerBus.emit_signal("combat_ended", {"victory": true, "scene": self})
+		emit_signal("combat_ended", true)
+		_refresh_ui()
+		return true
+	return false
 
 func _decay_statuses(actor: CombatActor) -> void:
 	for s in _DECAY_STATUSES:
@@ -248,6 +309,8 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	else:
 		discard_card(card)
 	_refresh_ui()
+	# Killing the last enemy with a card ends combat immediately.
+	_check_combat_end()
 
 # ------------------------------------------------------------------
 # Effect callbacks (invoked by EffectSystem handlers via ctx.scene)
