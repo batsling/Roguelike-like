@@ -14,5 +14,12 @@ func _ready() -> void:
 		return
 	GameState.reset_run()
 	GameState.apply_character(ironclad)
+	GameState.start_game_id = &"slay_the_spire"
+	GameState.amulet_game_id = &"hades"
+	GameState.current_game_id = GameState.start_game_id
 	GameLog.add("---- New run: Ironclad ----", Color(0.7, 0.9, 1.0))
+	GameLog.add("Journey: %s -> %s" % [
+		Data.get_game(GameState.start_game_id).display_name,
+		Data.get_game(GameState.amulet_game_id).display_name,
+	], Color(0.8, 0.9, 1.0))
 	add_child(OVERWORLD_SCENE.instantiate())
