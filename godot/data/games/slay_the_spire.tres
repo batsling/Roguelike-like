@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_slay_the_spire"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/slay-the-spire.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"slay_the_spire"
+display_name = "Slay the Spire"
+year = 2017
+type = 2
+games_influenced = Array[StringName]([&"astral_ascent", &"backpack_hero", &"cobalt_core", &"dicefolk", &"dungeon_clawler", &"ember_knights", &"spiritfall", &"zet_zillions"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
