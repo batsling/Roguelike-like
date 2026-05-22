@@ -57,8 +57,8 @@ static func take_turn(enemy: StrategyEntity) -> void:
 	if not map.visible[player_fov_idx]:
 		return  # not in player's FOV, don't move
 
-	var dx = sign(player.grid_pos.x - enemy.grid_pos.x)
-	var dy = sign(player.grid_pos.y - enemy.grid_pos.y)
+	var dx := signi(player.grid_pos.x - enemy.grid_pos.x)
+	var dy := signi(player.grid_pos.y - enemy.grid_pos.y)
 
 	# Try to move toward player
 	var next = enemy.grid_pos + Vector2i(dx, dy)

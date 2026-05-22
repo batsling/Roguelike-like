@@ -7,7 +7,7 @@ extends Node
 const COMBAT_SCENE := preload("res://scenes/deckbuilder/DeckbuilderCombat.tscn")
 
 func _ready() -> void:
-	var ironclad := Data.get_character(&"ironclad")
+	var ironclad: CharacterData = Data.get_character(&"ironclad")
 	if ironclad == null:
 		push_error("[Main] Ironclad character data missing from res://data/characters/")
 		return
@@ -17,6 +17,6 @@ func _ready() -> void:
 	_start_combat([&"jaw_worm"])
 
 func _start_combat(enemy_ids: Array) -> void:
-	var combat = COMBAT_SCENE.instantiate()
+	var combat: DeckbuilderCombat = COMBAT_SCENE.instantiate()
 	combat.enemies_to_spawn = enemy_ids
 	add_child(combat)

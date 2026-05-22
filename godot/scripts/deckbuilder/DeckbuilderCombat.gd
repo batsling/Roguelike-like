@@ -1,3 +1,4 @@
+class_name DeckbuilderCombat
 extends Control
 
 # Phase 1a combat scene skeleton. Owns the per-combat state, lays out
@@ -168,7 +169,7 @@ func gain_energy(amount: int) -> void:
 func _shuffle(arr: Array) -> void:
 	for i in range(arr.size() - 1, 0, -1):
 		var j := _rng.randi_range(0, i)
-		var tmp = arr[i]
+		var tmp: Variant = arr[i]
 		arr[i] = arr[j]
 		arr[j] = tmp
 

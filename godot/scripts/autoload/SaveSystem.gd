@@ -156,7 +156,7 @@ func _item_ids(inv: Array) -> Array:
 func _resolve_cards(ids: Array) -> Array:
 	var out: Array = []
 	for s in ids:
-		var c := Data.get_card(StringName(s))
+		var c: CardData = Data.get_card(StringName(s))
 		if c != null:
 			out.append(c)
 	return out
@@ -164,7 +164,7 @@ func _resolve_cards(ids: Array) -> Array:
 func _resolve_items(ids: Array) -> Array:
 	var out: Array = []
 	for s in ids:
-		var it := Data.get_item(StringName(s))
+		var it: ItemData = Data.get_item(StringName(s))
 		if it != null:
 			out.append(it)
 	return out

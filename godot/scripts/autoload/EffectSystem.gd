@@ -61,48 +61,48 @@ func _register_defaults() -> void:
 	register("lose_hp", _h_lose_hp)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
-	var scene = ctx.get("scene")
+	var scene: Variant = ctx.get("scene")
 	if scene == null or not scene.has_method("deal_damage"):
 		return
 	scene.deal_damage(ctx.get("source"), ctx.get("target"), effect.get("value", 0), effect)
 
 func _h_block(effect: Dictionary, ctx: Dictionary) -> void:
-	var scene = ctx.get("scene")
+	var scene: Variant = ctx.get("scene")
 	if scene == null or not scene.has_method("gain_block"):
 		return
 	# Block defaults to gaining on self
-	var target = ctx.get("target") if effect.get("target", "self") != "self" else ctx.get("source")
+	var target: Variant = ctx.get("target") if effect.get("target", "self") != "self" else ctx.get("source")
 	scene.gain_block(target, effect.get("value", 0))
 
 func _h_heal(effect: Dictionary, ctx: Dictionary) -> void:
-	var scene = ctx.get("scene")
+	var scene: Variant = ctx.get("scene")
 	if scene == null or not scene.has_method("heal"):
 		return
-	var target = ctx.get("target") if effect.get("target", "self") != "self" else ctx.get("source")
+	var target: Variant = ctx.get("target") if effect.get("target", "self") != "self" else ctx.get("source")
 	scene.heal(target, effect.get("value", 0))
 
 func _h_draw(effect: Dictionary, ctx: Dictionary) -> void:
-	var scene = ctx.get("scene")
+	var scene: Variant = ctx.get("scene")
 	if scene == null or not scene.has_method("draw_cards"):
 		return
 	scene.draw_cards(effect.get("value", 1))
 
 func _h_gain_energy(effect: Dictionary, ctx: Dictionary) -> void:
-	var scene = ctx.get("scene")
+	var scene: Variant = ctx.get("scene")
 	if scene == null or not scene.has_method("gain_energy"):
 		return
 	scene.gain_energy(effect.get("value", 1))
 
 func _h_status(effect: Dictionary, ctx: Dictionary) -> void:
-	var scene = ctx.get("scene")
+	var scene: Variant = ctx.get("scene")
 	if scene == null or not scene.has_method("apply_status"):
 		return
-	var target = ctx.get("target") if effect.get("target", "enemy") != "self" else ctx.get("source")
+	var target: Variant = ctx.get("target") if effect.get("target", "enemy") != "self" else ctx.get("source")
 	scene.apply_status(target, effect.get("status", ""), effect.get("stacks", 1))
 
 func _h_exhaust_self(_effect: Dictionary, ctx: Dictionary) -> void:
-	var scene = ctx.get("scene")
-	var card = ctx.get("card")
+	var scene: Variant = ctx.get("scene")
+	var card: Variant = ctx.get("card")
 	if scene == null or card == null or not scene.has_method("exhaust_card"):
 		return
 	scene.exhaust_card(card)

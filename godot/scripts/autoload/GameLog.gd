@@ -17,7 +17,7 @@ func add(text: String, color: Color = Color.WHITE) -> void:
 	emit_signal("message_added", text, color)
 
 func get_recent(count: int) -> Array:
-	var start := max(0, messages.size() - count)
+	var start := maxi(0, messages.size() - count)
 	return messages.slice(start)
 
 func clear() -> void:

@@ -24,7 +24,7 @@ func is_alive() -> bool:
 	return hp > 0
 
 func take_damage(amount: int) -> int:
-	var dmg = max(0, amount - defense)
+	var dmg := maxi(0, amount - defense)
 	hp -= dmg
 	return dmg
 
@@ -42,6 +42,6 @@ func attack_entity(target: StrategyEntity) -> void:
 		StrategyState.remove_entity(target)
 
 func take_hit(target: StrategyEntity) -> int:
-	var dmg = max(0, attack - target.defense)
+	var dmg := maxi(0, attack - target.defense)
 	target.hp -= dmg
 	return dmg

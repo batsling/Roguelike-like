@@ -29,8 +29,8 @@ func _load_dir(path: String, target: Dictionary) -> void:
 	var fname := dir.get_next()
 	while fname != "":
 		if not dir.current_is_dir() and (fname.ends_with(".tres") or fname.ends_with(".res")):
-			var res := load(path + fname)
-			if res != null and res.has_method("get") and res.get("id") != null:
+			var res: Resource = load(path + fname)
+			if res != null and res.get("id") != null:
 				var id: StringName = res.id
 				if id != &"":
 					target[id] = res
