@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_iron_wave"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://assets/cards/IronWave.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"iron_wave"
+display_name = "Iron Wave"
+type = 0
+rarity = 1
+cost = 1
+description = "Gain 5 Block. Deal 5 damage."
+effects = [{
+"type": "block",
+"value": 5,
+"target": "self"
+}, {
+"type": "dmg",
+"value": 5,
+"target": "enemy"
+}]
+tags = PackedStringArray()
+source_game = "Slay the Spire"
+image = ExtResource("2_img")
+portrait_color = Color(0.75, 0.35, 0.35, 1)
+can_upgrade = true
+upgraded_description = "Gain 7 Block. Deal 7 damage."
+upgraded_cost = -999
+upgraded_effects = [{
+"type": "block",
+"value": 7,
+"target": "self"
+}, {
+"type": "dmg",
+"value": 7,
+"target": "enemy"
+}]

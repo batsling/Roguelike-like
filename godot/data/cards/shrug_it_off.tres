@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_shrug_it_off"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://assets/cards/ShrugItOff.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"shrug_it_off"
+display_name = "Shrug It Off"
+type = 1
+rarity = 1
+cost = 1
+description = "Gain 8 Block. Draw 1 card."
+effects = [{
+"type": "block",
+"value": 8,
+"target": "self"
+}, {
+"type": "draw",
+"value": 1
+}]
+tags = PackedStringArray()
+source_game = "Slay the Spire"
+image = ExtResource("2_img")
+portrait_color = Color(0.3, 0.5, 0.75, 1)
+can_upgrade = true
+upgraded_description = "Gain 11 Block. Draw 1 card."
+upgraded_cost = -999
+upgraded_effects = [{
+"type": "block",
+"value": 11,
+"target": "self"
+}, {
+"type": "draw",
+"value": 1
+}]
