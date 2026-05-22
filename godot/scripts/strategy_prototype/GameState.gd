@@ -1,5 +1,9 @@
 extends Node
 
+# DORMANT: prototype-era autoload, registered as `StrategyState` in project.godot.
+# Lives here so the rogue-prototype scene can still be run from the editor.
+# Will be re-integrated when Phase 3 (Strategy mode) ports the prototype.
+
 signal player_moved
 signal entity_died(entity)
 signal level_changed(floor_num)
@@ -10,8 +14,8 @@ enum GamePhase { PLAYING, INVENTORY, DEAD, WIN }
 
 var phase: GamePhase = GamePhase.PLAYING
 var dungeon_floor: int = 1
-var map: Map = null
-var player: Entity = null
+var map: StrategyMap = null
+var player: StrategyEntity = null
 var entities: Array = []  # all living entities including player
 
 func reset() -> void:
@@ -21,19 +25,19 @@ func reset() -> void:
 	player = null
 	map = null
 
-func get_entity_at(pos: Vector2i) -> Entity:
+func get_entity_at(pos: Vector2i) -> StrategyEntity:
 	for e in entities:
 		if e.grid_pos == pos and e != player:
 			return e
 	return null
 
-func get_blocking_entity_at(pos: Vector2i) -> Entity:
+func get_blocking_entity_at(pos: Vector2i) -> StrategyEntity:
 	for e in entities:
 		if e.grid_pos == pos and e.blocks_movement:
 			return e
 	return null
 
-func remove_entity(entity: Entity) -> void:
+func remove_entity(entity: StrategyEntity) -> void:
 	entities.erase(entity)
 	emit_signal("entity_died", entity)
 

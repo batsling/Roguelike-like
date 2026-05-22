@@ -1,4 +1,4 @@
-class_name Map
+class_name StrategyMap
 extends RefCounted
 
 const WIDTH = 80
@@ -17,7 +17,7 @@ func _init() -> void:
 	tiles.resize(WIDTH * HEIGHT)
 	visible.resize(WIDTH * HEIGHT)
 	explored.resize(WIDTH * HEIGHT)
-	tiles.fill(GameState.TileType.WALL)
+	tiles.fill(StrategyState.TileType.WALL)
 	visible.fill(false)
 	explored.fill(false)
 
@@ -26,7 +26,7 @@ func idx(x: int, y: int) -> int:
 
 func get_tile(x: int, y: int) -> int:
 	if x < 0 or x >= WIDTH or y < 0 or y >= HEIGHT:
-		return GameState.TileType.WALL
+		return StrategyState.TileType.WALL
 	return tiles[idx(x, y)]
 
 func set_tile(x: int, y: int, t: int) -> void:
@@ -36,14 +36,14 @@ func set_tile(x: int, y: int, t: int) -> void:
 
 func is_walkable(pos: Vector2i) -> bool:
 	var t = get_tile(pos.x, pos.y)
-	return t == GameState.TileType.FLOOR or t == GameState.TileType.CORRIDOR or t == GameState.TileType.STAIRS_DOWN
+	return t == StrategyState.TileType.FLOOR or t == StrategyState.TileType.CORRIDOR or t == StrategyState.TileType.STAIRS_DOWN
 
 func is_opaque(x: int, y: int) -> bool:
-	return get_tile(x, y) == GameState.TileType.WALL
+	return get_tile(x, y) == StrategyState.TileType.WALL
 
 func generate(rng: RandomNumberGenerator) -> void:
 	rooms.clear()
-	tiles.fill(GameState.TileType.WALL)
+	tiles.fill(StrategyState.TileType.WALL)
 	visible.fill(false)
 	explored.fill(false)
 
@@ -79,22 +79,22 @@ func generate(rng: RandomNumberGenerator) -> void:
 
 	# Place stairs in last room
 	var last_center = rooms[-1].get_center()
-	set_tile(last_center.x, last_center.y, GameState.TileType.STAIRS_DOWN)
+	set_tile(last_center.x, last_center.y, StrategyState.TileType.STAIRS_DOWN)
 
 func _carve_room(r: Rect2i) -> void:
 	for y in range(r.position.y, r.position.y + r.size.y):
 		for x in range(r.position.x, r.position.x + r.size.x):
-			set_tile(x, y, GameState.TileType.FLOOR)
+			set_tile(x, y, StrategyState.TileType.FLOOR)
 
 func _carve_h_tunnel(x1: int, x2: int, y: int) -> void:
 	for x in range(min(x1, x2), max(x1, x2) + 1):
-		if get_tile(x, y) == GameState.TileType.WALL:
-			set_tile(x, y, GameState.TileType.CORRIDOR)
+		if get_tile(x, y) == StrategyState.TileType.WALL:
+			set_tile(x, y, StrategyState.TileType.CORRIDOR)
 
 func _carve_v_tunnel(y1: int, y2: int, x: int) -> void:
 	for y in range(min(y1, y2), max(y1, y2) + 1):
-		if get_tile(x, y) == GameState.TileType.WALL:
-			set_tile(x, y, GameState.TileType.CORRIDOR)
+		if get_tile(x, y) == StrategyState.TileType.WALL:
+			set_tile(x, y, StrategyState.TileType.CORRIDOR)
 
 func get_start_pos() -> Vector2i:
 	return rooms[0].get_center()

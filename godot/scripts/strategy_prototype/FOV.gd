@@ -1,8 +1,8 @@
-class_name FOV
+class_name StrategyFOV
 extends RefCounted
 
 # Recursive shadowcasting FOV
-static func compute(map: Map, origin: Vector2i, radius: int) -> void:
+static func compute(map: StrategyMap, origin: Vector2i, radius: int) -> void:
 	var idx = map.idx(origin.x, origin.y)
 	map.visible.fill(false)
 	map.visible[idx] = true
@@ -11,7 +11,7 @@ static func compute(map: Map, origin: Vector2i, radius: int) -> void:
 	for octant in range(8):
 		_cast_light(map, origin, radius, 1, 1.0, 0.0, octant)
 
-static func _cast_light(map: Map, origin: Vector2i, radius: int, row: int, start_slope: float, end_slope: float, octant: int) -> void:
+static func _cast_light(map: StrategyMap, origin: Vector2i, radius: int, row: int, start_slope: float, end_slope: float, octant: int) -> void:
 	if start_slope < end_slope:
 		return
 
@@ -34,7 +34,7 @@ static func _cast_light(map: Map, origin: Vector2i, radius: int, row: int, start
 				break
 
 			if dx * dx + dy * dy <= radius * radius:
-				if lx >= 0 and lx < Map.WIDTH and ly >= 0 and ly < Map.HEIGHT:
+				if lx >= 0 and lx < StrategyMap.WIDTH and ly >= 0 and ly < StrategyMap.HEIGHT:
 					var i = map.idx(lx, ly)
 					map.visible[i] = true
 					map.explored[i] = true

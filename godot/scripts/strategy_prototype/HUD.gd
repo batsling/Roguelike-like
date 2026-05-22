@@ -1,4 +1,4 @@
-class_name HUD
+class_name StrategyHUD
 extends CanvasLayer
 
 const LOG_LINES = 5
@@ -45,13 +45,13 @@ func _ready() -> void:
 	_inventory_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_inventory_panel.add_child(_inventory_label)
 
-	MessageLog.connect("message_added", _on_message_added)
+	StrategyLog.connect("message_added", _on_message_added)
 
 func _on_message_added(_text: String, _color: Color) -> void:
 	_refresh_log()
 
 func _refresh_log() -> void:
-	var recent = MessageLog.get_recent(LOG_LINES)
+	var recent = StrategyLog.get_recent(LOG_LINES)
 	var lines = ""
 	for i in range(recent.size()):
 		var m = recent[i]
@@ -62,7 +62,7 @@ func _refresh_log() -> void:
 		lines += "[color=#%s%s]%s[/color]\n" % [hex, a_hex, m.text]
 	_log_label.text = lines
 
-func update_status(player: Entity, floor_num: int) -> void:
+func update_status(player: StrategyEntity, floor_num: int) -> void:
 	if player == null:
 		return
 	var hp_bar = _make_bar(player.hp, player.max_hp, 20)
@@ -76,7 +76,7 @@ func _make_bar(current: int, maximum: int, width: int) -> String:
 	filled = clamp(filled, 0, width)
 	return "[" + "|".repeat(filled) + ".".repeat(width - filled) + "]"
 
-func show_inventory(player: Entity) -> void:
+func show_inventory(player: StrategyEntity) -> void:
 	_inventory_panel.visible = true
 	if player.inventory.is_empty():
 		_inventory_label.text = "--- Inventory ---\n(empty)\n\nPress [i] to close"

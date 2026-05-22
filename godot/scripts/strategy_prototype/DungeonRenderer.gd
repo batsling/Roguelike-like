@@ -1,4 +1,4 @@
-class_name DungeonRenderer
+class_name StrategyDungeonRenderer
 extends Node2D
 
 const CELL_W = 12
@@ -21,14 +21,14 @@ func center_on(pos: Vector2i) -> void:
 		pos.x - cols / 2,
 		pos.y - rows / 2
 	)
-	cam_offset.x = clamp(cam_offset.x, 0, Map.WIDTH - cols)
-	cam_offset.y = clamp(cam_offset.y, 0, Map.HEIGHT - rows)
+	cam_offset.x = clamp(cam_offset.x, 0, StrategyMap.WIDTH - cols)
+	cam_offset.y = clamp(cam_offset.y, 0, StrategyMap.HEIGHT - rows)
 
 func _draw() -> void:
-	if GameState.map == null:
+	if StrategyState.map == null:
 		return
 
-	var map = GameState.map
+	var map = StrategyState.map
 	var vp = get_viewport_rect().size
 	var cols = int(vp.x / CELL_W) + 1
 	var rows = int(vp.y / CELL_H) + 1
@@ -37,7 +37,7 @@ func _draw() -> void:
 		for sx in range(cols):
 			var mx = cam_offset.x + sx
 			var my = cam_offset.y + sy
-			if mx < 0 or mx >= Map.WIDTH or my < 0 or my >= Map.HEIGHT:
+			if mx < 0 or mx >= StrategyMap.WIDTH or my < 0 or my >= StrategyMap.HEIGHT:
 				continue
 
 			var i = map.idx(mx, my)
@@ -50,16 +50,16 @@ func _draw() -> void:
 			var col: Color
 
 			match tile:
-				GameState.TileType.WALL:
+				StrategyState.TileType.WALL:
 					ch = "#"
 					col = Color(0.4, 0.4, 0.5) if vis else Color(0.2, 0.2, 0.25)
-				GameState.TileType.FLOOR:
+				StrategyState.TileType.FLOOR:
 					ch = "."
 					col = Color(0.6, 0.6, 0.55) if vis else Color(0.25, 0.25, 0.22)
-				GameState.TileType.CORRIDOR:
+				StrategyState.TileType.CORRIDOR:
 					ch = "."
 					col = Color(0.5, 0.5, 0.45) if vis else Color(0.22, 0.22, 0.2)
-				GameState.TileType.STAIRS_DOWN:
+				StrategyState.TileType.STAIRS_DOWN:
 					ch = ">"
 					col = Color(1.0, 1.0, 0.3) if vis else Color(0.4, 0.4, 0.1)
 				_:
@@ -70,7 +70,7 @@ func _draw() -> void:
 			draw_string(_font, draw_pos, ch, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, col)
 
 	# Draw items
-	for item in GameState.map.items:
+	for item in StrategyState.map.items:
 		var mi = map.idx(item.grid_pos.x, item.grid_pos.y)
 		if not map.visible[mi]:
 			continue
@@ -82,9 +82,9 @@ func _draw() -> void:
 		draw_string(_font, draw_pos, item.glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, item.color)
 
 	# Draw entities (player last so it renders on top)
-	var draw_order = GameState.entities.duplicate()
-	draw_order.erase(GameState.player)
-	draw_order.append(GameState.player)
+	var draw_order = StrategyState.entities.duplicate()
+	draw_order.erase(StrategyState.player)
+	draw_order.append(StrategyState.player)
 
 	for entity in draw_order:
 		if entity == null:

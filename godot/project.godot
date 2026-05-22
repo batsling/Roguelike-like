@@ -8,15 +8,15 @@ config_version=5
 
 config/name="Roguelike"
 config/description="A traditional turn-based roguelike"
-run/main_scene="res://scenes/Main.tscn"
+run/main_scene="res://scenes/strategy_prototype/StrategyPrototype.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
 
-GameState="*res://scripts/GameState.gd"
-TurnManager="*res://scripts/TurnManager.gd"
-MessageLog="*res://scripts/MessageLog.gd"
+StrategyState="*res://scripts/strategy_prototype/GameState.gd"
+StrategyTurnManager="*res://scripts/strategy_prototype/TurnManager.gd"
+StrategyLog="*res://scripts/strategy_prototype/MessageLog.gd"
 
 [display]
 

@@ -1,9 +1,9 @@
-class_name EnemyAI
+class_name StrategyEnemyAI
 extends RefCounted
 
 # Simple enemy definitions
-static func make_rat(pos: Vector2i) -> Entity:
-	var e = Entity.new()
+static func make_rat(pos: Vector2i) -> StrategyEntity:
+	var e = StrategyEntity.new()
 	e.grid_pos = pos
 	e.glyph = "r"
 	e.color = Color(0.6, 0.4, 0.2)
@@ -12,8 +12,8 @@ static func make_rat(pos: Vector2i) -> Entity:
 	e.attack = 2; e.defense = 0
 	return e
 
-static func make_orc(pos: Vector2i) -> Entity:
-	var e = Entity.new()
+static func make_orc(pos: Vector2i) -> StrategyEntity:
+	var e = StrategyEntity.new()
 	e.grid_pos = pos
 	e.glyph = "o"
 	e.color = Color(0.2, 0.7, 0.2)
@@ -22,8 +22,8 @@ static func make_orc(pos: Vector2i) -> Entity:
 	e.attack = 4; e.defense = 1
 	return e
 
-static func make_troll(pos: Vector2i) -> Entity:
-	var e = Entity.new()
+static func make_troll(pos: Vector2i) -> StrategyEntity:
+	var e = StrategyEntity.new()
 	e.grid_pos = pos
 	e.glyph = "T"
 	e.color = Color(0.0, 0.5, 0.0)
@@ -32,8 +32,8 @@ static func make_troll(pos: Vector2i) -> Entity:
 	e.attack = 6; e.defense = 2
 	return e
 
-static func make_snake(pos: Vector2i) -> Entity:
-	var e = Entity.new()
+static func make_snake(pos: Vector2i) -> StrategyEntity:
+	var e = StrategyEntity.new()
 	e.grid_pos = pos
 	e.glyph = "s"
 	e.color = Color(0.5, 0.8, 0.1)
@@ -43,15 +43,14 @@ static func make_snake(pos: Vector2i) -> Entity:
 	return e
 
 # Returns true if entity took its turn
-static func take_turn(enemy: Entity) -> void:
+static func take_turn(enemy: StrategyEntity) -> void:
 	if not enemy.is_alive():
 		return
-	var player = GameState.player
+	var player = StrategyState.player
 	if player == null or not player.is_alive():
 		return
 
-	var map = GameState.map
-	var visible_idx = map.idx(enemy.grid_pos.x, enemy.grid_pos.y)
+	var map = StrategyState.map
 
 	# Only act if player is visible from the map's player FOV
 	var player_fov_idx = map.idx(enemy.grid_pos.x, enemy.grid_pos.y)
@@ -80,6 +79,6 @@ static func take_turn(enemy: Entity) -> void:
 		if dest == player.grid_pos:
 			enemy.attack_entity(player)
 			return
-		if map.is_walkable(dest) and GameState.get_blocking_entity_at(dest) == null:
+		if map.is_walkable(dest) and StrategyState.get_blocking_entity_at(dest) == null:
 			enemy.grid_pos = dest
 			return

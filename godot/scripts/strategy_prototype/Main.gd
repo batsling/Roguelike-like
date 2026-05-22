@@ -1,31 +1,31 @@
 extends Node
 
-@onready var _renderer: DungeonRenderer = $DungeonRenderer
-@onready var _hud: HUD = $HUD
+@onready var _renderer: StrategyDungeonRenderer = $DungeonRenderer
+@onready var _hud: StrategyHUD = $HUD
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
 	_rng.randomize()
-	TurnManager.connect("enemy_turns_started", _run_enemy_turns)
+	StrategyTurnManager.connect("enemy_turns_started", _run_enemy_turns)
 	_new_game()
 
 func _new_game() -> void:
-	GameState.reset()
-	MessageLog.add("Welcome to the dungeon. Good luck.", Color(0.8, 0.8, 1.0))
-	MessageLog.add("Arrow/HJKL keys move. > descend stairs. , pick up. i inventory.", Color.GRAY)
+	StrategyState.reset()
+	StrategyLog.add("Welcome to the dungeon. Good luck.", Color(0.8, 0.8, 1.0))
+	StrategyLog.add("Arrow/HJKL keys move. > descend stairs. , pick up. i inventory.", Color.GRAY)
 	_load_floor()
 
 func _load_floor() -> void:
-	var map = Map.new()
+	var map = StrategyMap.new()
 	map.generate(_rng)
-	GameState.map = map
-	GameState.emit_signal("level_changed", GameState.dungeon_floor)
+	StrategyState.map = map
+	StrategyState.emit_signal("level_changed", StrategyState.dungeon_floor)
 
 	var start = map.get_start_pos()
 
-	if GameState.player == null:
-		var player = Entity.new()
+	if StrategyState.player == null:
+		var player = StrategyEntity.new()
 		player.grid_pos = start
 		player.glyph = "@"
 		player.color = Color.WHITE
@@ -33,22 +33,22 @@ func _load_floor() -> void:
 		player.is_player = true
 		player.max_hp = 30; player.hp = 30
 		player.attack = 5; player.defense = 1
-		GameState.player = player
-		GameState.entities.append(player)
+		StrategyState.player = player
+		StrategyState.entities.append(player)
 	else:
-		GameState.player.grid_pos = start
-		GameState.entities.clear()
-		GameState.entities.append(GameState.player)
+		StrategyState.player.grid_pos = start
+		StrategyState.entities.clear()
+		StrategyState.entities.append(StrategyState.player)
 
 	_spawn_enemies()
 	_spawn_items()
-	FOV.compute(GameState.map, GameState.player.grid_pos, 8)
+	StrategyFOV.compute(StrategyState.map, StrategyState.player.grid_pos, 8)
 	_refresh()
-	TurnManager.start_player_turn()
+	StrategyTurnManager.start_player_turn()
 
 func _spawn_enemies() -> void:
-	var floor_num = GameState.dungeon_floor
-	var rooms = GameState.map.rooms
+	var floor_num = StrategyState.dungeon_floor
+	var rooms = StrategyState.map.rooms
 	# Skip first room (player starts there)
 	for i in range(1, rooms.size()):
 		var room = rooms[i]
@@ -56,55 +56,55 @@ func _spawn_enemies() -> void:
 		for _j in range(count):
 			var pos = _random_floor_pos_in(room)
 			var roll = _rng.randi() % 10
-			var enemy: Entity
+			var enemy: StrategyEntity
 			if floor_num >= 4 and roll < 2:
-				enemy = EnemyAI.make_troll(pos)
+				enemy = StrategyEnemyAI.make_troll(pos)
 			elif floor_num >= 2 and roll < 4:
-				enemy = EnemyAI.make_orc(pos)
+				enemy = StrategyEnemyAI.make_orc(pos)
 			elif roll < 6:
-				enemy = EnemyAI.make_snake(pos)
+				enemy = StrategyEnemyAI.make_snake(pos)
 			else:
-				enemy = EnemyAI.make_rat(pos)
-			GameState.entities.append(enemy)
+				enemy = StrategyEnemyAI.make_rat(pos)
+			StrategyState.entities.append(enemy)
 
 func _spawn_items() -> void:
-	GameState.map.items.clear()
-	var rooms = GameState.map.rooms
+	StrategyState.map.items.clear()
+	var rooms = StrategyState.map.rooms
 	for room in rooms:
 		if _rng.randi() % 3 == 0:
 			var pos = _random_floor_pos_in(room)
 			var roll = _rng.randi() % 10
-			var item: Item
+			var item: StrategyItem
 			if roll < 6:
-				item = Item.make_health_potion(pos)
+				item = StrategyItem.make_health_potion(pos)
 			elif roll < 8:
-				item = Item.make_strength_scroll(pos)
+				item = StrategyItem.make_strength_scroll(pos)
 			else:
-				item = Item.make_lightning_scroll(pos)
-			GameState.map.items.append(item)
+				item = StrategyItem.make_lightning_scroll(pos)
+			StrategyState.map.items.append(item)
 
 func _random_floor_pos_in(room: Rect2i) -> Vector2i:
 	for _attempt in range(20):
 		var x = _rng.randi_range(room.position.x, room.position.x + room.size.x - 1)
 		var y = _rng.randi_range(room.position.y, room.position.y + room.size.y - 1)
 		var pos = Vector2i(x, y)
-		if GameState.map.is_walkable(pos) and GameState.get_blocking_entity_at(pos) == null:
+		if StrategyState.map.is_walkable(pos) and StrategyState.get_blocking_entity_at(pos) == null:
 			return pos
 	return room.get_center()
 
 func _input(event: InputEvent) -> void:
-	if GameState.phase == GameState.GamePhase.DEAD:
+	if StrategyState.phase == StrategyState.GamePhase.DEAD:
 		if event is InputEventKey and event.pressed and event.keycode == KEY_R:
 			_new_game()
 		return
 
-	if GameState.phase == GameState.GamePhase.WIN:
+	if StrategyState.phase == StrategyState.GamePhase.WIN:
 		return
 
-	if not TurnManager.is_player_turn():
+	if not StrategyTurnManager.is_player_turn():
 		return
 
-	var player = GameState.player
+	var player = StrategyState.player
 
 	# Inventory screen handling
 	if _hud.is_inventory_open():
@@ -117,7 +117,7 @@ func _input(event: InputEvent) -> void:
 					var item = player.inventory[idx]
 					var msg = item.use(player)
 					player.inventory.remove_at(idx)
-					MessageLog.add(msg, Color(0.8, 0.8, 1.0))
+					StrategyLog.add(msg, Color(0.8, 0.8, 1.0))
 					_hud.hide_inventory()
 					_end_player_turn()
 		return
@@ -132,7 +132,7 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed("move_downleft", true): dir = Vector2i(-1, 1)
 	elif event.is_action_pressed("move_downright", true): dir = Vector2i(1, 1)
 	elif event.is_action_pressed("wait", true):
-		MessageLog.add("You wait.", Color.GRAY)
+		StrategyLog.add("You wait.", Color.GRAY)
 		_end_player_turn()
 		return
 	elif event.is_action_pressed("descend", true):
@@ -149,66 +149,66 @@ func _input(event: InputEvent) -> void:
 		return
 
 	var dest = player.grid_pos + dir
-	var blocker = GameState.get_blocking_entity_at(dest)
+	var blocker = StrategyState.get_blocking_entity_at(dest)
 	if blocker != null:
 		player.attack_entity(blocker)
 		_end_player_turn()
-	elif GameState.map.is_walkable(dest):
+	elif StrategyState.map.is_walkable(dest):
 		player.grid_pos = dest
 		_end_player_turn()
 
 func _try_descend() -> void:
-	var tile = GameState.map.get_tile(GameState.player.grid_pos.x, GameState.player.grid_pos.y)
-	if tile == GameState.TileType.STAIRS_DOWN:
-		GameState.dungeon_floor += 1
-		MessageLog.add("You descend to floor %d." % GameState.dungeon_floor, Color(0.8, 1.0, 0.8))
+	var tile = StrategyState.map.get_tile(StrategyState.player.grid_pos.x, StrategyState.player.grid_pos.y)
+	if tile == StrategyState.TileType.STAIRS_DOWN:
+		StrategyState.dungeon_floor += 1
+		StrategyLog.add("You descend to floor %d." % StrategyState.dungeon_floor, Color(0.8, 1.0, 0.8))
 		_load_floor()
 	else:
-		MessageLog.add("There are no stairs here.", Color.GRAY)
+		StrategyLog.add("There are no stairs here.", Color.GRAY)
 
 func _try_pickup() -> void:
-	var player = GameState.player
-	var items = GameState.map.items
+	var player = StrategyState.player
+	var items = StrategyState.map.items
 	for i in range(items.size()):
 		if items[i].grid_pos == player.grid_pos:
-			if player.inventory.size() >= Entity.MAX_INVENTORY:
-				MessageLog.add("Your pack is full!", Color.RED)
+			if player.inventory.size() >= StrategyEntity.MAX_INVENTORY:
+				StrategyLog.add("Your pack is full!", Color.RED)
 				return
 			var item = items[i]
 			player.inventory.append(item)
 			items.remove_at(i)
-			MessageLog.add("You pick up the %s." % item.item_name, Color(0.8, 0.8, 1.0))
+			StrategyLog.add("You pick up the %s." % item.item_name, Color(0.8, 0.8, 1.0))
 			_end_player_turn()
 			return
-	MessageLog.add("There is nothing here to pick up.", Color.GRAY)
+	StrategyLog.add("There is nothing here to pick up.", Color.GRAY)
 
 func _end_player_turn() -> void:
-	var player = GameState.player
-	FOV.compute(GameState.map, player.grid_pos, 8)
+	var player = StrategyState.player
+	StrategyFOV.compute(StrategyState.map, player.grid_pos, 8)
 	_check_death()
-	if GameState.phase == GameState.GamePhase.PLAYING:
+	if StrategyState.phase == StrategyState.GamePhase.PLAYING:
 		_refresh()
-		TurnManager.end_player_turn()
+		StrategyTurnManager.end_player_turn()
 
 func _run_enemy_turns() -> void:
-	var enemies = GameState.entities.filter(func(e): return not e.is_player)
+	var enemies = StrategyState.entities.filter(func(e): return not e.is_player)
 	for enemy in enemies:
 		if enemy.is_alive():
-			EnemyAI.take_turn(enemy)
+			StrategyEnemyAI.take_turn(enemy)
 	_check_death()
 	_refresh()
-	TurnManager.end_enemy_turns()
+	StrategyTurnManager.end_enemy_turns()
 
 func _check_death() -> void:
-	var player = GameState.player
+	var player = StrategyState.player
 	if player == null or not player.is_alive():
-		GameState.phase = GameState.GamePhase.DEAD
-		MessageLog.add("You have died! Press [R] to restart.", Color.RED)
+		StrategyState.phase = StrategyState.GamePhase.DEAD
+		StrategyLog.add("You have died! Press [R] to restart.", Color.RED)
 		_refresh()
 
 func _refresh() -> void:
-	var player = GameState.player
+	var player = StrategyState.player
 	if player != null:
 		_renderer.center_on(player.grid_pos)
 	_renderer.queue_redraw()
-	_hud.update_status(player, GameState.dungeon_floor)
+	_hud.update_status(player, StrategyState.dungeon_floor)

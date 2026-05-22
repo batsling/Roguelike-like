@@ -1,4 +1,4 @@
-class_name Entity
+class_name StrategyEntity
 extends RefCounted
 
 var grid_pos: Vector2i = Vector2i.ZERO
@@ -14,7 +14,7 @@ var attack: int = 2
 var defense: int = 0
 
 # Inventory (player only)
-var inventory: Array = []  # Array of Item
+var inventory: Array = []  # Array of StrategyItem
 const MAX_INVENTORY = 26
 
 # AI
@@ -28,20 +28,20 @@ func take_damage(amount: int) -> int:
 	hp -= dmg
 	return dmg
 
-func attack_entity(target: Entity) -> void:
+func attack_entity(target: StrategyEntity) -> void:
 	var dmg = take_hit(target)
 	var attacker = name.capitalize()
 	var defender = target.name.capitalize()
 	if dmg > 0:
-		MessageLog.add("%s hits %s for %d damage." % [attacker, defender, dmg], Color.WHITE)
+		StrategyLog.add("%s hits %s for %d damage." % [attacker, defender, dmg], Color.WHITE)
 	else:
-		MessageLog.add("%s attacks %s but does no damage." % [attacker, defender], Color.GRAY)
+		StrategyLog.add("%s attacks %s but does no damage." % [attacker, defender], Color.GRAY)
 
 	if not target.is_alive():
-		MessageLog.add("%s is slain!" % defender, Color.RED)
-		GameState.remove_entity(target)
+		StrategyLog.add("%s is slain!" % defender, Color.RED)
+		StrategyState.remove_entity(target)
 
-func take_hit(target: Entity) -> int:
+func take_hit(target: StrategyEntity) -> int:
 	var dmg = max(0, attack - target.defense)
 	target.hp -= dmg
 	return dmg
