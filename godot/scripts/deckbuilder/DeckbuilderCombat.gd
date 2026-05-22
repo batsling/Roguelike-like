@@ -13,6 +13,7 @@ extends Control
 # enemy plans a move on turn start but does not execute it.
 
 signal combat_ended(victory: bool)
+signal closed(was_victory: bool)
 
 # Configuration set by the caller before _ready (or via start_combat).
 var enemies_to_spawn: Array = []
@@ -76,6 +77,7 @@ func start_combat(spawn_list: Array) -> void:
 	max_energy = GameState.max_energy
 	GameState.phase = GameState.Phase.COMBAT
 	TriggerBus.emit_signal("combat_started", {"scene": self})
+	_fire_item_triggers("combat_started")
 	_start_player_turn()
 
 # ------------------------------------------------------------------
@@ -131,6 +133,7 @@ func _start_player_turn() -> void:
 			_roll_intent(e)
 	draw_cards(GameState.hand_size)
 	TriggerBus.emit_signal("turn_started", {"turn": turn, "scene": self})
+	_fire_item_triggers("turn_started")
 	_refresh_ui()
 
 func _on_end_turn() -> void:
@@ -141,6 +144,7 @@ func _on_end_turn() -> void:
 	while not hand.is_empty():
 		discard_pile.append(hand.pop_back())
 	TriggerBus.emit_signal("turn_ended", {"turn": turn, "scene": self})
+	_fire_item_triggers("turn_ended")
 	# Decay player statuses BEFORE enemies act so debuffs the player
 	# just applied to enemies survive through the enemy turn.
 	_decay_statuses(player)
@@ -194,12 +198,15 @@ func _resolve_enemy_effect_target(enemy: CombatActor, target_str: String) -> Com
 			return player
 
 func _check_combat_end() -> bool:
+	if phase == "won" or phase == "lost":
+		return true
 	if not player.is_alive():
 		phase = "lost"
 		GameState.phase = GameState.Phase.DEAD
 		GameLog.add("You have been defeated.", Color(1.0, 0.4, 0.4))
 		TriggerBus.emit_signal("combat_ended", {"victory": false, "scene": self})
 		emit_signal("combat_ended", false)
+		_show_end_overlay(false)
 		_refresh_ui()
 		return true
 	var any_alive := false
@@ -210,11 +217,103 @@ func _check_combat_end() -> bool:
 	if not any_alive:
 		phase = "won"
 		GameLog.add("Victory!", Color(0.4, 1.0, 0.6))
+		# Items with combat_ended triggers fire on victory only.
+		_fire_item_triggers("combat_ended")
 		TriggerBus.emit_signal("combat_ended", {"victory": true, "scene": self})
 		emit_signal("combat_ended", true)
+		_show_end_overlay(true)
 		_refresh_ui()
 		return true
 	return false
+
+# ------------------------------------------------------------------
+# Item triggers — declarative ItemData.triggers fan-out
+# ------------------------------------------------------------------
+
+func _fire_item_triggers(trigger_name: String) -> void:
+	var sources: Array = []
+	sources.append_array(GameState.inventory)
+	if GameState.equipped_weapon != null:
+		sources.append(GameState.equipped_weapon)
+	for item in sources:
+		if not (item is ItemData):
+			continue
+		for trig in item.triggers:
+			if String(trig.get("on", "")) != trigger_name:
+				continue
+			GameLog.add("(%s triggers)" % item.display_name, Color(0.85, 0.9, 0.7))
+			for effect in trig.get("effects", []):
+				var t_str: String = effect.get("target", "self")
+				var tgt: CombatActor = player
+				if t_str == "all_enemies":
+					for e in enemies:
+						if e.is_alive():
+							var ctx_e := {
+								"source": player, "target": e, "scene": self, "card": null,
+							}
+							EffectSystem.apply(effect, ctx_e)
+					continue
+				var ctx := {
+					"source": player, "target": tgt, "scene": self, "card": null,
+				}
+				EffectSystem.apply(effect, ctx)
+
+# ------------------------------------------------------------------
+# End-of-combat overlay
+# ------------------------------------------------------------------
+
+var _end_overlay: Control = null
+
+func _show_end_overlay(victory: bool) -> void:
+	if _end_overlay != null:
+		return
+	var overlay := Control.new()
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.6)
+	overlay.add_child(dim)
+
+	var panel := Panel.new()
+	panel.size = Vector2(480, 260)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	overlay.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 24)
+	title.size = Vector2(440, 48)
+	title.text = "VICTORY!" if victory else "DEFEAT"
+	title.add_theme_font_size_override("font_size", 36)
+	title.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6) if victory else Color(1.0, 0.5, 0.5))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	var info := Label.new()
+	info.position = Vector2(20, 92)
+	info.size = Vector2(440, 60)
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD
+	if victory:
+		info.text = "HP %d / %d   Turn %d" % [GameState.hp, GameState.max_hp, turn]
+	else:
+		info.text = "The run ends. Restart to try again."
+	panel.add_child(info)
+
+	var btn := Button.new()
+	btn.position = Vector2(120, 180)
+	btn.size = Vector2(240, 56)
+	btn.text = "Next combat" if victory else "Restart run"
+	btn.pressed.connect(func(): _close(victory))
+	panel.add_child(btn)
+
+	add_child(overlay)
+	_end_overlay = overlay
+
+func _close(was_victory: bool) -> void:
+	emit_signal("closed", was_victory)
+	queue_free()
 
 func _decay_statuses(actor: CombatActor) -> void:
 	for s in _DECAY_STATUSES:
