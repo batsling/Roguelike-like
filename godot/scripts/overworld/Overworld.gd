@@ -31,9 +31,12 @@ signal portal_entered(game_id: StringName)
 var _portals: Array[PortalNode] = []
 var _active_portal: PortalNode = null
 var _active_combat: DeckbuilderCombat = null
+var _active_event: EventModal = null
 var _pending_game_id: StringName = &""
+var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
+	_rng.randomize()
 	_floor_bg.size = Vector2(GRID_W * TILE_SIZE, GRID_H * TILE_SIZE)
 	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
 	_player.moved.connect(_on_player_moved)
@@ -119,7 +122,7 @@ func _update_hint() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed):
 		return
-	if event.keycode == KEY_E and _active_portal != null and _active_combat == null:
+	if event.keycode == KEY_E and _active_portal != null and _active_combat == null and _active_event == null:
 		_enter_portal(_active_portal)
 
 # ------------------------------------------------------------------
@@ -131,6 +134,29 @@ func _enter_portal(portal: PortalNode) -> void:
 	emit_signal("portal_entered", portal.game_data.id)
 	_pending_game_id = portal.game_data.id
 	_player.set_input_locked(true)
+	GameState.phase = GameState.Phase.EVENT
+	_show_pre_combat_event()
+
+func _show_pre_combat_event() -> void:
+	var events: Array = Data.all_events()
+	if events.is_empty():
+		_start_combat()
+		return
+	var picked: EventData = events[_rng.randi() % events.size()]
+	_active_event = EventModal.new()
+	_active_event.closed.connect(_on_event_closed)
+	_active_event.setup(picked, "easy")
+	add_child(_active_event)
+
+func _on_event_closed(_should_continue: bool) -> void:
+	_active_event = null
+	if not _player.is_inside_tree():
+		# Defensive: scene tearing down.
+		return
+	_start_combat()
+
+func _start_combat() -> void:
+	GameState.phase = GameState.Phase.COMBAT
 	_active_combat = COMBAT_SCENE.instantiate()
 	# Phase 1b has one enemy in the pool; richer per-game enemy
 	# tables land alongside more enemies in 1c.
