@@ -1,0 +1,95 @@
+[gd_scene load_steps=2 format=3 uid="uid://bdeckbuilder_combat"]
+
+[ext_resource type="Script" path="res://scripts/deckbuilder/DeckbuilderCombat.gd" id="1_combat"]
+
+[node name="DeckbuilderCombat" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_combat")
+
+[node name="Background" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.08, 0.08, 0.12, 1)
+
+[node name="Layout" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+
+[node name="Top" type="HBoxContainer" parent="Layout"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+
+[node name="TurnLabel" type="Label" parent="Layout/Top"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Turn 0"
+
+[node name="EnemyArea" type="HBoxContainer" parent="Layout"]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+alignment = 1
+
+[node name="Spacer" type="Control" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Bottom" type="VBoxContainer" parent="Layout"]
+layout_mode = 2
+
+[node name="StatusBar" type="HBoxContainer" parent="Layout/Bottom"]
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+
+[node name="HPLabel" type="Label" parent="Layout/Bottom/StatusBar"]
+layout_mode = 2
+text = "HP: 0/0"
+
+[node name="Sep1" type="VSeparator" parent="Layout/Bottom/StatusBar"]
+layout_mode = 2
+
+[node name="BlockLabel" type="Label" parent="Layout/Bottom/StatusBar"]
+layout_mode = 2
+text = "Block: 0"
+
+[node name="Sep2" type="VSeparator" parent="Layout/Bottom/StatusBar"]
+layout_mode = 2
+
+[node name="EnergyLabel" type="Label" parent="Layout/Bottom/StatusBar"]
+layout_mode = 2
+text = "Energy: 0/0"
+
+[node name="Sep3" type="VSeparator" parent="Layout/Bottom/StatusBar"]
+layout_mode = 2
+
+[node name="DrawLabel" type="Label" parent="Layout/Bottom/StatusBar"]
+layout_mode = 2
+text = "Draw: 0"
+
+[node name="Sep4" type="VSeparator" parent="Layout/Bottom/StatusBar"]
+layout_mode = 2
+
+[node name="DiscardLabel" type="Label" parent="Layout/Bottom/StatusBar"]
+layout_mode = 2
+text = "Discard: 0"
+
+[node name="HandRow" type="HBoxContainer" parent="Layout/Bottom"]
+custom_minimum_size = Vector2(0, 130)
+layout_mode = 2
+
+[node name="HandArea" type="HBoxContainer" parent="Layout/Bottom/HandRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="EndTurnButton" type="Button" parent="Layout/Bottom/HandRow"]
+custom_minimum_size = Vector2(140, 80)
+layout_mode = 2
+text = "End Turn"
