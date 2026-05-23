@@ -55,7 +55,9 @@ func save(slot: int) -> bool:
 		"dexterity": GameState.dexterity,
 		"intelligence": GameState.intelligence,
 		"charisma": GameState.charisma,
+		"constitution": GameState.constitution,
 		"luck": GameState.luck,
+		"speed": GameState.speed,
 		"gold": GameState.gold,
 		# Deck stores per-card upgrade state; inventory stores ids.
 		"deck": _serialize_deck(GameState.deck),
@@ -63,7 +65,6 @@ func save(slot: int) -> bool:
 		"equipped_weapon_id": String(GameState.equipped_weapon.id) if GameState.equipped_weapon != null else "",
 		"dash": GameState.dash_charges,
 		"reroll": GameState.reroll_charges,
-		"skip": GameState.skip_charges,
 		"fov_bonus": GameState.fov_bonus,
 		"discovery": GameState.discovery,
 	}
@@ -94,7 +95,9 @@ func load_slot(slot: int) -> bool:
 	GameState.dexterity = data.get("dexterity", 0)
 	GameState.intelligence = data.get("intelligence", 0)
 	GameState.charisma = data.get("charisma", 0)
+	GameState.constitution = data.get("constitution", 0)
 	GameState.luck = data.get("luck", 0)
+	GameState.speed = data.get("speed", 0)
 	GameState.gold = data.get("gold", 0)
 	# Prefer the new "deck" key; fall back to legacy "deck_ids" for old saves.
 	if data.has("deck"):
@@ -106,7 +109,6 @@ func load_slot(slot: int) -> bool:
 	GameState.equipped_weapon = Data.get_item(StringName(weapon_id)) if weapon_id != "" else null
 	GameState.dash_charges = data.get("dash", 0)
 	GameState.reroll_charges = data.get("reroll", 0)
-	GameState.skip_charges = data.get("skip", 0)
 	GameState.fov_bonus = data.get("fov_bonus", 0)
 	GameState.discovery = data.get("discovery", 0)
 	# Broadcast a full sweep so HUDs / overlays subscribed to GameState

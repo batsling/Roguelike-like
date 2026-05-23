@@ -27,11 +27,18 @@ var max_energy: int = 3
 var hand_size: int = 5
 
 # === Stats ===
+# Strength / Dexterity / Intelligence / Charisma drive the derived
+# combat statuses (Power / Defense / Arcane / Persistence) and the
+# event-roll bonuses. Constitution is roll-only for now. Speed is
+# mode-interpreted (extra cards / move speed / tile-move speed) and
+# starts at 0 — gained via items / level-up only.
 var strength: int = 0
 var dexterity: int = 0
 var intelligence: int = 0
 var charisma: int = 0
+var constitution: int = 0
 var luck: int = 0
+var speed: int = 0
 
 # === Economy ===
 var gold: int = 99
@@ -45,9 +52,11 @@ var inventory: Array = []                # Array[ItemData]
 var equipped_weapon: ItemData = null
 
 # === Run-scope resources ===
+# Skip is removed from the stat set — the only "skip" is the
+# verification-screen "didn't play the real game" choice with the
+# fixed HP penalty.
 var dash_charges: int = 0
 var reroll_charges: int = 0
-var skip_charges: int = 0
 var fov_bonus: int = 0
 var discovery: int = 0
 
@@ -79,14 +88,15 @@ func reset_run() -> void:
 	dexterity = 0
 	intelligence = 0
 	charisma = 0
+	constitution = 0
 	luck = 0
+	speed = 0
 	gold = 99
 	deck.clear()
 	inventory.clear()
 	equipped_weapon = null
 	dash_charges = 0
 	reroll_charges = 0
-	skip_charges = 0
 	fov_bonus = 0
 	discovery = 0
 	active_curses.clear()
@@ -103,7 +113,9 @@ func apply_character(char_data: CharacterData) -> void:
 	dexterity = char_data.base_dexterity
 	intelligence = char_data.base_intelligence
 	charisma = char_data.base_charisma
+	constitution = char_data.base_constitution
 	luck = char_data.base_luck
+	speed = char_data.base_speed
 
 	deck.clear()
 	for card_id in char_data.starting_deck:

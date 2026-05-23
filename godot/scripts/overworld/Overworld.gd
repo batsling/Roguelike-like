@@ -211,7 +211,7 @@ func _reset_run() -> void:
 # Verification modal — honour-system prompt after each beaten game.
 # ------------------------------------------------------------------
 
-const VERIFICATION_SKIP_HP_PENALTY := 1
+const VERIFICATION_SKIP_HP_PENALTY := 33
 
 func _show_verification_modal(gd: GameData) -> void:
 	if _verification_modal != null:

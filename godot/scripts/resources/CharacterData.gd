@@ -11,7 +11,9 @@ extends Resource
 @export var base_dexterity: int = 0
 @export var base_intelligence: int = 0
 @export var base_charisma: int = 0
+@export var base_constitution: int = 0
 @export var base_luck: int = 0
+@export var base_speed: int = 0
 @export var base_max_energy: int = 3
 @export var base_hand_size: int = 5
 
