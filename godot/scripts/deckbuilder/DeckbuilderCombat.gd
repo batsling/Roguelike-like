@@ -109,10 +109,14 @@ func _init_deck() -> void:
 	_shuffle(draw_pile)
 
 func _apply_derived_statuses() -> void:
+	# Intentional integer floors: STR/3 -> Power, DEX/3 -> Defense,
+	# INT/3 -> Arcane, CHA/5 -> Persistence (matches the JS engine).
+	@warning_ignore_start("integer_division")
 	player.add_status(&"power", GameState.strength / 3)
 	player.add_status(&"defense", GameState.dexterity / 3)
 	player.add_status(&"arcane", GameState.intelligence / 3)
 	player.add_status(&"persistence", GameState.charisma / 5)
+	@warning_ignore_restore("integer_division")
 	for s in GameState.pending_combat_statuses:
 		player.add_status(s.get("status", &""), s.get("stacks", 0))
 	GameState.pending_combat_statuses.clear()
@@ -468,6 +472,7 @@ func _show_post_combat_options() -> void:
 	grid.add_theme_constant_override("v_separation", 16)
 	panel.add_child(grid)
 
+	@warning_ignore("integer_division")
 	var heal_amt: int = GameState.max_hp / 2
 	var options := [
 		{"key": "rest",     "title": "Rest",            "desc": "Heal %d HP (50%% of max)." % heal_amt},
@@ -493,7 +498,8 @@ func _handle_post_combat_option(opt: String) -> void:
 		_post_combat_modal = null
 	match opt:
 		"rest":
-			var heal_amt: int = GameState.max_hp / 2
+			@warning_ignore("integer_division")
+	var heal_amt: int = GameState.max_hp / 2
 			GameState.change_hp(heal_amt)
 			GameLog.add("You rest. (+%d HP)" % heal_amt, Color(0.7, 1.0, 0.7))
 			_close(true)

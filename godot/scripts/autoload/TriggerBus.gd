@@ -9,6 +9,10 @@ extends Node
 # handlers can inspect/modify what's happening.
 
 # --- Combat lifecycle ---
+# All signals on this bus are declared here but emitted from other
+# scripts (combat scene, overworld, event modal, etc.). Godot flags
+# them as unused locally, hence the warning block.
+@warning_ignore_start("unused_signal")
 signal combat_started(ctx: Dictionary)
 signal combat_ended(ctx: Dictionary)        # ctx.victory: bool
 
@@ -38,3 +42,4 @@ signal item_acquired(ctx: Dictionary)       # ctx.item
 signal item_lost(ctx: Dictionary)
 signal curse_applied(ctx: Dictionary)
 signal curse_removed(ctx: Dictionary)
+@warning_ignore_restore("unused_signal")

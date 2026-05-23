@@ -22,7 +22,7 @@ func list_slots() -> Array:
 		out.append({
 			"slot": i,
 			"exists": has_save(i),
-			"summary": _peek(i) if has_save(i) else null,
+			"summary": _peek(i) if has_save(i) else {},
 		})
 	return out
 

@@ -4,10 +4,15 @@ extends Node
 # Lives here so the rogue-prototype scene can still be run from the editor.
 # Will be re-integrated when Phase 3 (Strategy mode) ports the prototype.
 
+# player_moved / game_over are placeholder signals reserved for the
+# Phase 3 strategy-mode port; level_changed is emitted from Main.gd via
+# StrategyState.emit_signal so Godot misses it in the local scan.
+@warning_ignore_start("unused_signal")
 signal player_moved
 signal entity_died(entity)
 signal level_changed(floor_num)
 signal game_over(won: bool)
+@warning_ignore_restore("unused_signal")
 
 enum TileType { WALL, FLOOR, CORRIDOR, STAIRS_DOWN }
 enum GamePhase { PLAYING, INVENTORY, DEAD, WIN }

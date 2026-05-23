@@ -20,6 +20,7 @@ const PORTAL_SCENE := preload("res://scenes/overworld/Portal.tscn")
 # Portal row vertical position and horizontal spacing.
 const PORTAL_Y := 4
 const PORTAL_SPACING := 3
+@warning_ignore("integer_division")
 const SPAWN_POS := Vector2i(GRID_W / 2, GRID_H - 3)
 
 signal portal_entered(game_id: StringName)
@@ -68,6 +69,7 @@ func _spawn_portals_for_current_game() -> void:
 
 	var count := ids.size()
 	var span := (count - 1) * PORTAL_SPACING
+	@warning_ignore("integer_division")
 	var x_start: int = (GRID_W - span) / 2
 	for i in range(count):
 		var gd: GameData = Data.get_game(ids[i])
