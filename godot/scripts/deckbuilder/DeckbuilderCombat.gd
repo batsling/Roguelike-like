@@ -755,6 +755,7 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, _ef
 			GameLog.add("%s is defeated!" % target.display_name, Color(0.6, 1.0, 0.6))
 			if not target.is_player:
 				TriggerBus.emit_signal("enemy_killed", {"enemy": target, "scene": self})
+				_fire_item_triggers("enemy_killed")
 	elif absorbed > 0:
 		var who := "your" if target.is_player else (target.display_name + "'s")
 		GameLog.add("%s block absorbs %d." % [who, absorbed], Color(0.7, 0.8, 1.0))
