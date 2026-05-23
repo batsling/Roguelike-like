@@ -7,6 +7,7 @@ extends Node
 
 const OVERWORLD_SCENE := preload("res://scenes/overworld/Overworld.tscn")
 const COMBAT_SCENE := preload("res://scenes/deckbuilder/DeckbuilderCombat.tscn")
+const MAP_SCENE := preload("res://scenes/deckbuilder/GameMap.tscn")
 
 var _current_scene: Node = null
 # Carried across an Overworld free + reinstantiate so the new
@@ -52,9 +53,26 @@ func _show_overworld() -> void:
 	_swap_to(ow)
 
 func _on_portal_entered(game_id: StringName) -> void:
-	_show_combat(game_id)
+	# Phase 2: every portal routes through the deckbuilder mini-map.
+	# Action / strategy games will branch into their own per-floor
+	# flows in Phase 3 / 4.
+	_show_map(game_id)
+
+func _show_map(game_id: StringName) -> void:
+	GameState.phase = GameState.Phase.COMBAT     # placeholder until a MAP phase lands
+	var map_scene: GameMap = MAP_SCENE.instantiate()
+	map_scene.target_game_id = game_id
+	map_scene.closed.connect(_on_map_closed)
+	_swap_to(map_scene)
+
+func _on_map_closed(was_victory: bool, target_game_id: StringName) -> void:
+	_pending_outcome = {"victory": was_victory, "game_id": target_game_id}
+	_show_overworld()
 
 func _show_combat(game_id: StringName) -> void:
+	# Direct-combat entry (kept for action / strategy modes that won't
+	# use the mini-map). Phase 2 doesn't reach this path; commits 5+ will
+	# call it from inside GameMap when a combat node fires.
 	GameState.phase = GameState.Phase.COMBAT
 	var combat: DeckbuilderCombat = COMBAT_SCENE.instantiate()
 	combat.target_game_id = game_id
