@@ -427,7 +427,97 @@ func _on_reward_picked(card: CardData) -> void:
 	if _reward_modal != null:
 		_reward_modal.queue_free()
 		_reward_modal = null
-	_show_end_overlay(true)
+	_show_post_combat_options()
+
+# ------------------------------------------------------------------
+# Post-combat options modal (Rest / Smith / Shop / Movement Event)
+# ------------------------------------------------------------------
+
+var _post_combat_modal: Control = null
+
+func _show_post_combat_options() -> void:
+	if _post_combat_modal != null:
+		return
+	var modal := Control.new()
+	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.65)
+	modal.add_child(dim)
+
+	var panel := Panel.new()
+	panel.size = Vector2(640, 380)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	modal.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 16)
+	title.size = Vector2(600, 28)
+	title.text = "Post-combat: pick one"
+	title.add_theme_font_size_override("font_size", 20)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.position = Vector2(40, 60)
+	grid.size = Vector2(560, 280)
+	grid.add_theme_constant_override("h_separation", 16)
+	grid.add_theme_constant_override("v_separation", 16)
+	panel.add_child(grid)
+
+	var heal_amt: int = GameState.max_hp / 2
+	var options := [
+		{"key": "rest",     "title": "Rest",            "desc": "Heal %d HP (50%% of max)." % heal_amt},
+		{"key": "smith",    "title": "Smith",           "desc": "Upgrade up to 2 cards (placeholder)."},
+		{"key": "shop",     "title": "Shop",            "desc": "Buy items and cards (placeholder)."},
+		{"key": "movement", "title": "Movement Event",  "desc": "Trigger a wandering encounter."},
+	]
+	for opt in options:
+		var btn := Button.new()
+		btn.text = "%s\n\n%s" % [opt.title, opt.desc]
+		btn.custom_minimum_size = Vector2(260, 130)
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD
+		var key: String = opt.key
+		btn.pressed.connect(func(): _handle_post_combat_option(key))
+		grid.add_child(btn)
+
+	add_child(modal)
+	_post_combat_modal = modal
+
+func _handle_post_combat_option(opt: String) -> void:
+	if _post_combat_modal != null:
+		_post_combat_modal.queue_free()
+		_post_combat_modal = null
+	match opt:
+		"rest":
+			var heal_amt: int = GameState.max_hp / 2
+			GameState.change_hp(heal_amt)
+			GameLog.add("You rest. (+%d HP)" % heal_amt, Color(0.7, 1.0, 0.7))
+			_close(true)
+		"smith":
+			GameLog.add("(Smith upgrade picker lands in commit 5.)", Color(0.7, 0.7, 0.7))
+			_close(true)
+		"shop":
+			GameLog.add("(Shop scene lands in commit 5.)", Color(0.7, 0.7, 0.7))
+			_close(true)
+		"movement":
+			_show_movement_event()
+		_:
+			_close(true)
+
+func _show_movement_event() -> void:
+	var events: Array = Data.all_events()
+	if events.is_empty():
+		_close(true)
+		return
+	var picked: EventData = events[_rng.randi() % events.size()]
+	var modal := EventModal.new()
+	modal.closed.connect(func(_b: bool): _close(true))
+	modal.setup(picked, "easy")
+	add_child(modal)
 
 func _decay_statuses(actor: CombatActor) -> void:
 	for s in _DECAY_STATUSES:
