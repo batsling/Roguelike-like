@@ -141,6 +141,22 @@ func set_current_game(id: StringName) -> void:
 	current_game_id = id
 	emit_signal("current_game_changed", id)
 
+func set_max_hp(new_max: int, heal_to_full: bool = false) -> void:
+	# Routes through Stats so Constitution auto-gain fires off the
+	# delta. Pass heal_to_full=true to restore HP to the new max
+	# (e.g., on level-up). Otherwise current HP is just clamped.
+	var old_max: int = max_hp
+	max_hp = max(1, new_max)
+	if heal_to_full:
+		hp = max_hp
+	else:
+		hp = mini(hp, max_hp)
+	Stats.note_max_hp_change(max_hp, old_max)
+	emit_signal("hp_changed", hp, max_hp)
+
+func change_max_hp(delta: int) -> void:
+	set_max_hp(max_hp + delta)
+
 func set_hp(new_hp: int) -> void:
 	hp = clamp(new_hp, 0, max_hp)
 	emit_signal("hp_changed", hp, max_hp)

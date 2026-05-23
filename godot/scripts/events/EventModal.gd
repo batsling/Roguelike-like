@@ -190,25 +190,12 @@ func _crit_label(passed: bool, roll2: int) -> String:
 	return "no crit"
 
 func _roll_d20_with_luck() -> int:
-	# Each Luck point = +10 percentage points to roll with advantage
-	# (roll twice, take the higher). Negative Luck = disadvantage.
-	var luck: int = GameState.luck
-	var roll_a: int = _rng.randi_range(1, 20)
-	if luck == 0:
-		return roll_a
-	var pct: int = clampi(absi(luck) * 10, 0, 100)
-	if _rng.randi_range(0, 99) >= pct:
-		return roll_a
-	var roll_b: int = _rng.randi_range(1, 20)
-	return maxi(roll_a, roll_b) if luck > 0 else mini(roll_a, roll_b)
+	return Stats.roll_d20_with_luck(_rng)
 
 func _get_stat_value(stat_name: String) -> int:
-	match stat_name.to_lower():
-		"strength": return GameState.strength
-		"dexterity": return GameState.dexterity
-		"intelligence": return GameState.intelligence
-		"charisma": return GameState.charisma
-		_: return 0
+	# Delegated to Stats so adding a new rollable stat
+	# (e.g. constitution events) is a .tres edit, not a code change.
+	return Stats.event_roll_bonus(StringName(stat_name.to_lower()))
 
 # ------------------------------------------------------------------
 # Outcome resolution
