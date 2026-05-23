@@ -35,6 +35,10 @@ var max_energy: int = 3
 var turn: int = 0
 var phase: String = "init"           # "init" | "player" | "enemy" | "won" | "lost"
 
+# Persistent enemy view widgets (created in start_combat, refreshed by
+# _refresh_ui without rebuilding the row).
+var _enemy_views: Array[EnemyView] = []
+
 # Targeting mode (card selected, waiting for enemy click)
 var _selected_card: CardInstance = null
 var _targeting: bool = false
@@ -90,12 +94,25 @@ func start_combat(spawn_list: Array) -> void:
 	_init_actors(spawn_list)
 	_init_deck()
 	_apply_derived_statuses()
+	_build_enemy_views()
 	turn = 0
 	max_energy = GameState.max_energy
 	GameState.phase = GameState.Phase.COMBAT
 	TriggerBus.emit_signal("combat_started", {"scene": self})
 	_fire_item_triggers("combat_started")
 	_start_player_turn()
+
+func _build_enemy_views() -> void:
+	for child in _enemy_area.get_children():
+		child.queue_free()
+	_enemy_views.clear()
+	for i in range(enemies.size()):
+		var view := EnemyView.new()
+		view.setup(enemies[i])
+		var idx: int = i
+		view.clicked.connect(func(): _on_enemy_clicked(idx))
+		_enemy_area.add_child(view)
+		_enemy_views.append(view)
 
 # ------------------------------------------------------------------
 # Setup
@@ -1209,27 +1226,10 @@ func _refresh_ui() -> void:
 	_draw_label.text = "Draw: %d" % draw_pile.size()
 	_discard_label.text = "Discard: %d" % discard_pile.size()
 
-	# Enemies
-	for child in _enemy_area.get_children():
-		child.queue_free()
-	for i in range(enemies.size()):
-		var e: CombatActor = enemies[i]
-		if not e.is_alive():
-			continue
-		var btn := Button.new()
-		var intent_text: String = e.planned_move.get("display", "?") if not e.planned_move.is_empty() else "?"
-		var status_str := _status_str(e)
-		btn.text = "%s\nHP %d/%d  Block %d\nIntent: %s%s" % [
-			e.display_name, e.hp, e.max_hp, e.block, intent_text,
-			("\n" + status_str) if status_str != "" else "",
-		]
-		btn.custom_minimum_size = Vector2(220, 140)
-		btn.disabled = not _targeting
-		if _targeting:
-			# Capture i (int) so the lambda doesn't bind a stale loop var.
-			var idx := i
-			btn.pressed.connect(func(): _on_enemy_clicked(idx))
-		_enemy_area.add_child(btn)
+	# Enemies — refresh existing views instead of rebuilding.
+	for view in _enemy_views:
+		view.refresh()
+		view.set_targetable(_targeting)
 
 	# Hand
 	for child in _hand_area.get_children():
@@ -1246,13 +1246,6 @@ func _refresh_ui() -> void:
 		btn.pressed.connect(func(): _try_play_card(card))
 		_hand_area.add_child(btn)
 
-func _status_str(actor: CombatActor) -> String:
-	if actor.statuses.is_empty():
-		return ""
-	var parts: Array = []
-	for s in actor.statuses.keys():
-		parts.append("%s:%d" % [String(s), actor.statuses[s]])
-	return "[" + "  ".join(parts) + "]"
 
 func _input(event: InputEvent) -> void:
 	# Right-click or ESC cancels targeting.

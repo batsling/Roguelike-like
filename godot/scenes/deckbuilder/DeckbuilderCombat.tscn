@@ -33,7 +33,7 @@ size_flags_horizontal = 3
 text = "Turn 0"
 
 [node name="EnemyArea" type="HBoxContainer" parent="Layout"]
-custom_minimum_size = Vector2(0, 200)
+custom_minimum_size = Vector2(0, 340)
 layout_mode = 2
 alignment = 1
 
