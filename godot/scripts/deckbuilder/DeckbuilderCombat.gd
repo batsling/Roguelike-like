@@ -533,7 +533,7 @@ func _handle_post_combat_option(opt: String) -> void:
 	match opt:
 		"rest":
 			@warning_ignore("integer_division")
-	var heal_amt: int = GameState.max_hp / 2
+			var heal_amt: int = GameState.max_hp / 2
 			GameState.change_hp(heal_amt)
 			GameLog.add("You rest. (+%d HP)" % heal_amt, Color(0.7, 1.0, 0.7))
 			_close(true)
