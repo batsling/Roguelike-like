@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://boverworld"]
+[gd_scene load_steps=4 format=3 uid="uid://boverworld"]
 
 [ext_resource type="Script" path="res://scripts/overworld/Overworld.gd" id="1_over"]
 [ext_resource type="Script" path="res://scripts/overworld/PlayerWalker.gd" id="2_walker"]
+[ext_resource type="Script" path="res://scripts/overworld/OverworldHUD.gd" id="3_hud"]
 
 [node name="Overworld" type="Node2D"]
 script = ExtResource("1_over")
@@ -23,9 +24,12 @@ color = Color(0.95, 0.3, 0.3, 1)
 
 [node name="Hint" type="Label" parent="."]
 offset_left = 16.0
-offset_top = 16.0
+offset_top = 40.0
 offset_right = 944.0
-offset_bottom = 40.0
-text = "Overworld (Phase 1b skeleton).  WASD/arrows to walk.  SPACE = debug combat."
+offset_bottom = 64.0
+text = "WASD/arrows to walk."
 theme_override_colors/font_color = Color(0.9, 0.9, 0.95, 1)
 theme_override_font_sizes/font_size = 14
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("3_hud")

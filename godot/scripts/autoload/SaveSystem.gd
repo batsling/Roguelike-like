@@ -109,6 +109,14 @@ func load_slot(slot: int) -> bool:
 	GameState.skip_charges = data.get("skip", 0)
 	GameState.fov_bonus = data.get("fov_bonus", 0)
 	GameState.discovery = data.get("discovery", 0)
+	# Broadcast a full sweep so HUDs / overlays subscribed to GameState
+	# pick up the new state after a load.
+	GameState.emit_signal("hp_changed", GameState.hp, GameState.max_hp)
+	GameState.emit_signal("gold_changed", GameState.gold)
+	GameState.emit_signal("stats_changed")
+	GameState.emit_signal("deck_changed")
+	GameState.emit_signal("inventory_changed")
+	GameState.emit_signal("current_game_changed", GameState.current_game_id)
 	return true
 
 func _read(slot: int) -> Dictionary:

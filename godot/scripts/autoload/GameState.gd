@@ -125,6 +125,10 @@ func apply_character(char_data: CharacterData) -> void:
 	emit_signal("deck_changed")
 	emit_signal("inventory_changed")
 
+func set_current_game(id: StringName) -> void:
+	current_game_id = id
+	emit_signal("current_game_changed", id)
+
 func set_hp(new_hp: int) -> void:
 	hp = clamp(new_hp, 0, max_hp)
 	emit_signal("hp_changed", hp, max_hp)

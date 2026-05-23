@@ -219,7 +219,7 @@ func _handle_victory() -> void:
 	if not GameState.visited_games.has(_pending_game_id):
 		GameState.visited_games.append(_pending_game_id)
 	GameState.total_games_beaten += 1
-	GameState.current_game_id = _pending_game_id
+	GameState.set_current_game(_pending_game_id)
 	GameLog.add("Defeated %s." % gd.display_name, Color(0.6, 1.0, 0.6))
 
 	# Amulet reached -> run complete; verification skipped on the final
@@ -242,7 +242,7 @@ func _reset_run() -> void:
 	GameState.apply_character(ironclad)
 	GameState.start_game_id = &"slay_the_spire"
 	GameState.amulet_game_id = &"hades"
-	GameState.current_game_id = GameState.start_game_id
+	GameState.set_current_game(GameState.start_game_id)
 	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
 	_spawn_portals_for_current_game()
 	_update_hint()

@@ -21,7 +21,7 @@ func _ready() -> void:
 		GameState.apply_character(ironclad)
 		GameState.start_game_id = &"slay_the_spire"
 		GameState.amulet_game_id = &"hades"
-		GameState.current_game_id = GameState.start_game_id
+		GameState.set_current_game(GameState.start_game_id)
 		GameLog.add("---- New run: Ironclad ----", Color(0.7, 0.9, 1.0))
 
 	var start_game := Data.get_game(GameState.start_game_id)
