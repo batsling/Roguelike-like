@@ -151,6 +151,8 @@ func _dispatch_node(node: Dictionary) -> void:
 			_open_merchant(node)
 		DeckbuilderMap.NodeType.REST:
 			_open_rest(node)
+		DeckbuilderMap.NodeType.TREASURE:
+			_open_treasure(node)
 		_:
 			# Placeholder: just finish the map if elite was the click.
 			if map.is_finished():
@@ -255,6 +257,26 @@ func _on_rest_closed() -> void:
 	if _active_rest != null:
 		_active_rest.queue_free()
 		_active_rest = null
+	_refresh()
+	_update_header()
+
+# ---------------------------------------------------------------------------
+# Treasure node payload
+# ---------------------------------------------------------------------------
+
+var _active_treasure: TreasureRoom = null
+
+func _open_treasure(_node: Dictionary) -> void:
+	if _active_treasure != null:
+		return
+	_active_treasure = TreasureRoom.new()
+	_active_treasure.closed.connect(_on_treasure_closed)
+	add_child(_active_treasure)
+
+func _on_treasure_closed() -> void:
+	if _active_treasure != null:
+		_active_treasure.queue_free()
+		_active_treasure = null
 	_refresh()
 	_update_header()
 
