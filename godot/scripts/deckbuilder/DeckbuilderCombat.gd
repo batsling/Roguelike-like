@@ -147,17 +147,10 @@ func _init_deck() -> void:
 	_shuffle(draw_pile)
 
 func _apply_derived_statuses() -> void:
-	# Intentional integer floors: STR/3 -> Power, DEX/3 -> Defense,
-	# INT/3 -> Arcane, CHA/5 -> Persistence (matches the JS engine).
-	@warning_ignore_start("integer_division")
-	player.add_status(&"power", GameState.strength / 3)
-	player.add_status(&"defense", GameState.dexterity / 3)
-	player.add_status(&"arcane", GameState.intelligence / 3)
-	player.add_status(&"persistence", GameState.charisma / 5)
-	@warning_ignore_restore("integer_division")
-	for s in GameState.pending_combat_statuses:
-		player.add_status(s.get("status", &""), s.get("stacks", 0))
-	GameState.pending_combat_statuses.clear()
+	# Stats autoload owns the universal derived statuses + drains
+	# pending event statuses. Per-stat balance changes happen in the
+	# StatDefinition .tres files, not here.
+	Stats.apply_derived_statuses(player, Stats.Mode.DECKBUILDER)
 
 # ------------------------------------------------------------------
 # Turn lifecycle
@@ -173,7 +166,11 @@ func _start_player_turn() -> void:
 	for e in enemies:
 		if e.is_alive():
 			_roll_intent(e)
-	draw_cards(GameState.hand_size)
+	var draw_count: int = GameState.hand_size
+	if turn == 1:
+		# Speed grants extra cards on the opening hand only.
+		draw_count += Stats.deckbuilder_bonus_draws_turn_1()
+	draw_cards(draw_count)
 	TriggerBus.emit_signal("turn_started", {"turn": turn, "scene": self})
 	_fire_item_triggers("turn_started")
 	_refresh_ui()
@@ -598,14 +595,15 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 # Effect callbacks (invoked by EffectSystem handlers via ctx.scene)
 # ------------------------------------------------------------------
 
-func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, _effect: Dictionary) -> void:
+func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, effect: Dictionary) -> void:
 	if target == null or not target.is_alive():
 		return
 	var amount := base_amount
 
 	# Source outgoing modifiers
 	if source != null:
-		amount += source.get_status(&"power")
+		var damage_type: String = String(effect.get("damage_type", "melee"))
+		amount += Stats.damage_bonus(source, damage_type, Stats.Mode.DECKBUILDER)
 		if source.get_status(&"weak") > 0:
 			amount = int(floor(amount * 0.75))
 
