@@ -25,12 +25,15 @@ const FLOOR_STEP_Y := 100
 const COL_SPACING_X := 160
 const CENTER_X := 640
 
+const COMBAT_SCENE := preload("res://scenes/deckbuilder/DeckbuilderCombat.tscn")
+
 var target_game_id: StringName = &""
 var pending_combat_outcome: Dictionary = {}
 
 var map: DeckbuilderMap = null
 var _node_views: Dictionary = {}     # id -> MapNodeView
 var _node_centers: Dictionary = {}   # id -> Vector2 (for edge renderer)
+var _active_combat: DeckbuilderCombat = null
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 @onready var _bg: ColorRect = $Background
@@ -133,12 +136,68 @@ func _on_node_clicked(node: Dictionary) -> void:
 	], Color(0.7, 0.9, 1.0))
 	_refresh()
 	_update_header()
-	# Node payloads (combat / event / shop / rest / treasure / elite)
-	# land in commits 5-10. For now, the elite still closes the map so
-	# we can exercise the Main swap end-to-end.
+	_dispatch_node(node)
+
+func _dispatch_node(node: Dictionary) -> void:
+	# Routes each node type to its handler. Event / shop / rest /
+	# treasure land in commits 6-9. Combat + Elite share the same path
+	# today; elite-specific scaling lands in commit 10.
+	match int(node.type):
+		DeckbuilderMap.NodeType.COMBAT, DeckbuilderMap.NodeType.ELITE:
+			_start_combat_for_node(node)
+		_:
+			# Placeholder: just finish the map if elite was the click.
+			if map.is_finished():
+				emit_signal("closed", true, target_game_id)
+				queue_free()
+
+# ---------------------------------------------------------------------------
+# Combat node payload
+# ---------------------------------------------------------------------------
+
+func _start_combat_for_node(_node: Dictionary) -> void:
+	if _active_combat != null:
+		return
+	_active_combat = COMBAT_SCENE.instantiate()
+	_active_combat.target_game_id = target_game_id
+	_active_combat.enemies_to_spawn = [_pick_enemy_for_combat()]
+	_active_combat.closed.connect(_on_combat_closed)
+	# Added as a child of the map; combat's opaque background covers
+	# our visuals so the map stays in the tree but out of sight.
+	add_child(_active_combat)
+
+func _on_combat_closed(was_victory: bool, _game_id: StringName) -> void:
+	_active_combat = null
+	if not was_victory:
+		# Player died on a map combat -> map closes as a defeat,
+		# Main routes that back to the overworld with the existing
+		# run-restart flow.
+		emit_signal("closed", false, target_game_id)
+		queue_free()
+		return
+	_refresh()
+	_update_header()
+	# Elite cleared -> map finished -> close with victory.
 	if map.is_finished():
 		emit_signal("closed", true, target_game_id)
 		queue_free()
+
+func _pick_enemy_for_combat() -> StringName:
+	# Per-game enemy pool first, full roster as fallback. Mirrors the
+	# same logic Main used before the mini-map intercepted portal entry.
+	var pool: Array[StringName] = []
+	var g: GameData = Data.get_game(target_game_id)
+	if g != null and not g.enemy_pool.is_empty():
+		for eid in g.enemy_pool:
+			pool.append(eid)
+	if pool.is_empty():
+		for e in Data.all_enemies():
+			if e is EnemyData:
+				pool.append(e.id)
+	if pool.is_empty():
+		push_warning("[GameMap] no enemies available; falling back to jaw_worm")
+		return &"jaw_worm"
+	return pool[_rng.randi() % pool.size()]
 
 func _on_exit_pressed() -> void:
 	# Lets us bail out of the map during testing without finishing it.

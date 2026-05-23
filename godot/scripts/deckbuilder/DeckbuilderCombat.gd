@@ -71,24 +71,11 @@ const _DEBUFFS := [
 func _ready() -> void:
 	_rng.randomize()
 	_end_turn_btn.pressed.connect(_on_end_turn)
-	# Pre-combat event runs first, then the actual fight kicks off.
-	# Skip the event if no events are loaded.
-	_show_pre_combat_event_then_start()
-
-func _show_pre_combat_event_then_start() -> void:
-	var events: Array = Data.all_events()
-	if events.is_empty() or enemies_to_spawn.is_empty():
-		if not enemies_to_spawn.is_empty():
-			start_combat(enemies_to_spawn)
-		return
-	var picked: EventData = events[_rng.randi() % events.size()]
-	var modal := EventModal.new()
-	modal.closed.connect(func(_b: bool): _on_pre_event_closed())
-	modal.setup(picked, "easy")
-	add_child(modal)
-
-func _on_pre_event_closed() -> void:
-	start_combat(enemies_to_spawn)
+	# Pre-combat event used to fire here; events now live as dedicated
+	# map nodes in the deckbuilder mini-map (Phase 2). Combat starts
+	# immediately as long as the caller pre-populated enemies_to_spawn.
+	if not enemies_to_spawn.is_empty():
+		start_combat(enemies_to_spawn)
 
 func start_combat(spawn_list: Array) -> void:
 	_init_actors(spawn_list)
