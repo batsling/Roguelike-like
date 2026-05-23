@@ -147,6 +147,8 @@ func _dispatch_node(node: Dictionary) -> void:
 			_start_combat_for_node(node)
 		DeckbuilderMap.NodeType.EVENT:
 			_start_event_for_node(node)
+		DeckbuilderMap.NodeType.MERCHANT:
+			_open_merchant(node)
 		_:
 			# Placeholder: just finish the map if elite was the click.
 			if map.is_finished():
@@ -211,6 +213,26 @@ func _on_event_closed(_should_continue: bool) -> void:
 		emit_signal("closed", false, target_game_id)
 		queue_free()
 		return
+	_refresh()
+	_update_header()
+
+# ---------------------------------------------------------------------------
+# Merchant node payload
+# ---------------------------------------------------------------------------
+
+var _active_shop: Shop = null
+
+func _open_merchant(_node: Dictionary) -> void:
+	if _active_shop != null:
+		return
+	_active_shop = Shop.new()
+	_active_shop.closed.connect(_on_shop_closed)
+	add_child(_active_shop)
+
+func _on_shop_closed() -> void:
+	if _active_shop != null:
+		_active_shop.queue_free()
+		_active_shop = null
 	_refresh()
 	_update_header()
 
