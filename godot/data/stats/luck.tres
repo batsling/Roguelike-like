@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="StatDefinition" load_steps=2 format=3 uid="uid://stat_luck"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatDefinition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"luck"
+display_name = "Luck"
+description = "Each point grants 10% chance for advantage on D20 rolls and chance triggers. Negative Luck inverts to disadvantage."
+grants_event_roll_bonus = false
+derived_status = &""
+derived_per = 1
+mode_data = {
+"advantage_pct_per_point": 10,
+}

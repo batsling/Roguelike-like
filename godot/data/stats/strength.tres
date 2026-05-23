@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StatDefinition" load_steps=2 format=3 uid="uid://stat_strength"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatDefinition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"strength"
+display_name = "Strength"
+description = "+1 to Strength event rolls per point. Every 3 STR grants 1 Power (+1 to all damage) at combat start."
+grants_event_roll_bonus = true
+derived_status = &"power"
+derived_per = 3
+mode_data = {}

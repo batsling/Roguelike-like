@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StatDefinition" load_steps=2 format=3 uid="uid://stat_constitution"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatDefinition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"constitution"
+display_name = "Constitution"
+description = "+1 to Constitution event rolls per point. Auto-gained: every 5 max HP gained mid-run grants +1 Constitution."
+grants_event_roll_bonus = true
+derived_status = &""
+derived_per = 1
+mode_data = {}

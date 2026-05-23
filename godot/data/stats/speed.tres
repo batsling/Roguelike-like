@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="StatDefinition" load_steps=2 format=3 uid="uid://stat_speed"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatDefinition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"speed"
+display_name = "Speed"
+description = "Deckbuilder: every 3 Speed grants +1 bonus draw on turn 1. Action: +10 px/s movement per point (base 200). Strategy: +1 extra tile per turn per point (base 1)."
+grants_event_roll_bonus = false
+derived_status = &""
+derived_per = 1
+mode_data = {
+"deckbuilder_draws_per_3": 1,
+"action_base_movespeed": 200.0,
+"action_movespeed_per_point": 10.0,
+"strategy_base_tiles": 1,
+"strategy_tiles_per_point": 1,
+}
