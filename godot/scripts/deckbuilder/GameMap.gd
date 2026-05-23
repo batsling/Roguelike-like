@@ -139,12 +139,14 @@ func _on_node_clicked(node: Dictionary) -> void:
 	_dispatch_node(node)
 
 func _dispatch_node(node: Dictionary) -> void:
-	# Routes each node type to its handler. Event / shop / rest /
-	# treasure land in commits 6-9. Combat + Elite share the same path
-	# today; elite-specific scaling lands in commit 10.
+	# Routes each node type to its handler. Shop / rest / treasure land
+	# in commits 7-9. Combat + Elite share the same path today;
+	# elite-specific scaling lands in commit 10.
 	match int(node.type):
 		DeckbuilderMap.NodeType.COMBAT, DeckbuilderMap.NodeType.ELITE:
 			_start_combat_for_node(node)
+		DeckbuilderMap.NodeType.EVENT:
+			_start_event_for_node(node)
 		_:
 			# Placeholder: just finish the map if elite was the click.
 			if map.is_finished():
@@ -181,6 +183,40 @@ func _on_combat_closed(was_victory: bool, _game_id: StringName) -> void:
 	if map.is_finished():
 		emit_signal("closed", true, target_game_id)
 		queue_free()
+
+# ---------------------------------------------------------------------------
+# Event node payload
+# ---------------------------------------------------------------------------
+
+var _active_event: EventModal = null
+
+func _start_event_for_node(_node: Dictionary) -> void:
+	if _active_event != null:
+		return
+	var events: Array = Data.all_events()
+	if events.is_empty():
+		GameLog.add("(No events available.)", Color(0.7, 0.7, 0.7))
+		return
+	var picked: EventData = events[_rng.randi() % events.size()]
+	_active_event = EventModal.new()
+	_active_event.closed.connect(_on_event_closed)
+	_active_event.setup(picked, "easy")
+	add_child(_active_event)
+
+func _on_event_closed(_should_continue: bool) -> void:
+	_active_event = null
+	# Events can drop HP via lose_hp effects; bail out as a defeat if
+	# that just killed us.
+	if GameState.is_dead():
+		emit_signal("closed", false, target_game_id)
+		queue_free()
+		return
+	_refresh()
+	_update_header()
+
+# ---------------------------------------------------------------------------
+# Enemy pool helper
+# ---------------------------------------------------------------------------
 
 func _pick_enemy_for_combat() -> StringName:
 	# Per-game enemy pool first, full roster as fallback. Mirrors the
