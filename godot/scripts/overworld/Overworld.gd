@@ -33,6 +33,7 @@ var _active_portal: PortalNode = null
 var _active_combat: DeckbuilderCombat = null
 var _active_event: EventModal = null
 var _win_overlay: Control = null
+var _verification_modal: Control = null
 var _pending_game_id: StringName = &""
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -221,18 +222,15 @@ func _handle_victory() -> void:
 	GameState.current_game_id = _pending_game_id
 	GameLog.add("Defeated %s." % gd.display_name, Color(0.6, 1.0, 0.6))
 
-	# Amulet reached -> run complete; otherwise autosave and continue.
+	# Amulet reached -> run complete; verification skipped on the final
+	# game so we don't gate the win on an honour-system prompt.
 	if _pending_game_id == GameState.amulet_game_id:
 		GameState.phase = GameState.Phase.WIN
 		_show_win_overlay()
 		return
 
-	SaveSystem.save(0)
-	GameLog.add("Autosaved.", Color(0.7, 0.8, 1.0))
-	GameState.phase = GameState.Phase.OVERWORLD
-	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
-	_spawn_portals_for_current_game()
-	_update_hint()
+	# Honour-system verification: did you actually play the real game?
+	_show_verification_modal(gd)
 
 func _handle_defeat() -> void:
 	GameLog.add("---- Run restarted ----", Color(0.9, 0.7, 0.7))
@@ -245,6 +243,94 @@ func _reset_run() -> void:
 	GameState.start_game_id = &"slay_the_spire"
 	GameState.amulet_game_id = &"hades"
 	GameState.current_game_id = GameState.start_game_id
+	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
+	_spawn_portals_for_current_game()
+	_update_hint()
+
+# ------------------------------------------------------------------
+# Verification modal — honour-system prompt after each beaten game.
+# ------------------------------------------------------------------
+
+const VERIFICATION_SKIP_HP_PENALTY := 1
+
+func _show_verification_modal(gd: GameData) -> void:
+	if _verification_modal != null:
+		return
+	_player.set_input_locked(true)
+
+	var modal := Control.new()
+	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.6)
+	modal.add_child(dim)
+
+	var panel := Panel.new()
+	panel.size = Vector2(560, 320)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	modal.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 24)
+	title.size = Vector2(520, 32)
+	title.text = "Verification"
+	title.add_theme_font_size_override("font_size", 22)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	var prompt := Label.new()
+	prompt.position = Vector2(20, 72)
+	prompt.size = Vector2(520, 100)
+	prompt.text = "You defeated this floor's representation of %s. Did you play the real game?" % gd.display_name
+	prompt.autowrap_mode = TextServer.AUTOWRAP_WORD
+	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(prompt)
+
+	var yes_btn := Button.new()
+	yes_btn.position = Vector2(40, 220)
+	yes_btn.size = Vector2(220, 56)
+	yes_btn.text = "Yes — I played it"
+	yes_btn.pressed.connect(_on_verification_yes)
+	panel.add_child(yes_btn)
+
+	var skip_btn := Button.new()
+	skip_btn.position = Vector2(300, 220)
+	skip_btn.size = Vector2(220, 56)
+	skip_btn.text = "Skip  (-%d HP)" % VERIFICATION_SKIP_HP_PENALTY
+	skip_btn.pressed.connect(_on_verification_skip)
+	panel.add_child(skip_btn)
+
+	add_child(modal)
+	_verification_modal = modal
+
+func _on_verification_yes() -> void:
+	GameLog.add("Verified.", Color(0.7, 1.0, 0.7))
+	_close_verification()
+	_after_verification()
+
+func _on_verification_skip() -> void:
+	GameState.change_hp(-VERIFICATION_SKIP_HP_PENALTY)
+	GameLog.add("Skipped real game. (-%d HP)" % VERIFICATION_SKIP_HP_PENALTY,
+		Color(0.9, 0.6, 0.4))
+	_close_verification()
+	# A skip that brings HP to 0 ends the run.
+	if GameState.is_dead():
+		_handle_defeat()
+		return
+	_after_verification()
+
+func _close_verification() -> void:
+	if _verification_modal != null:
+		_verification_modal.queue_free()
+		_verification_modal = null
+
+func _after_verification() -> void:
+	SaveSystem.save(0)
+	GameLog.add("Autosaved.", Color(0.7, 0.8, 1.0))
+	GameState.phase = GameState.Phase.OVERWORLD
+	_player.set_input_locked(false)
 	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
 	_spawn_portals_for_current_game()
 	_update_hint()
