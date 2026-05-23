@@ -34,9 +34,3 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 
-[node name="ExitButton" type="Button" parent="."]
-offset_left = 1120.0
-offset_top = 8.0
-offset_right = 1264.0
-offset_bottom = 40.0
-text = "Exit (defeat)"

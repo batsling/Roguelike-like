@@ -18,6 +18,14 @@ signal closed(was_victory: bool, target_game_id: StringName)
 # Configuration set by the caller before _ready (or via start_combat).
 var enemies_to_spawn: Array = []
 var target_game_id: StringName = &""
+# Elite combats bump enemy HP, give the enemy a starting Power, and pay
+# out a larger gold reward. Set by GameMap before add_child.
+var is_elite: bool = false
+
+# Tuning constants for the elite multiplier — easy to dial in one place.
+const ELITE_HP_MULT := 1.5
+const ELITE_POWER_BONUS := 3
+const ELITE_GOLD_MULT := 1.5
 
 # ------------------------------------------------------------------
 # Combat state — referenced by EffectSystem handlers via ctx.scene
@@ -116,7 +124,15 @@ func _init_actors(spawn_list: Array) -> void:
 		elif entry is StringName or entry is String:
 			d = Data.get_enemy(StringName(entry))
 		if d != null:
-			enemies.append(CombatActor.from_enemy(d, _rng))
+			var actor: CombatActor = CombatActor.from_enemy(d, _rng)
+			if is_elite:
+				# Bump HP and grant a starting Power. Elite-specific
+				# enemy data with bespoke patterns lands later.
+				var bumped: int = int(actor.max_hp * ELITE_HP_MULT)
+				actor.max_hp = bumped
+				actor.hp = bumped
+				actor.add_status(&"power", ELITE_POWER_BONUS)
+			enemies.append(actor)
 
 func _init_deck() -> void:
 	draw_pile.clear()
@@ -264,6 +280,8 @@ func _award_combat_gold() -> void:
 		amt = 55
 	elif GameState.total_games_beaten >= 5:
 		amt = 35
+	if is_elite:
+		amt = int(amt * ELITE_GOLD_MULT)
 	_last_gold_award = amt
 	GameState.change_gold(amt)
 	GameLog.add("You loot %d gold." % amt, Color(1.0, 0.9, 0.3))

@@ -40,12 +40,10 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 @onready var _header: Label = $Header
 @onready var _edges: MapEdgeRenderer = $Edges
 @onready var _nodes_layer: Control = $Nodes
-@onready var _exit_btn: Button = $ExitButton
 
 func _ready() -> void:
 	_rng.randomize()
 	_bg.color = Color(0.06, 0.07, 0.10, 1.0)
-	_exit_btn.pressed.connect(_on_exit_pressed)
 	map = DeckbuilderMap.new()
 	map.generate(_rng)
 	_layout_nodes()
@@ -163,12 +161,13 @@ func _dispatch_node(node: Dictionary) -> void:
 # Combat node payload
 # ---------------------------------------------------------------------------
 
-func _start_combat_for_node(_node: Dictionary) -> void:
+func _start_combat_for_node(node: Dictionary) -> void:
 	if _active_combat != null:
 		return
 	_active_combat = COMBAT_SCENE.instantiate()
 	_active_combat.target_game_id = target_game_id
 	_active_combat.enemies_to_spawn = [_pick_enemy_for_combat()]
+	_active_combat.is_elite = (int(node.type) == DeckbuilderMap.NodeType.ELITE)
 	_active_combat.closed.connect(_on_combat_closed)
 	# Added as a child of the map; combat's opaque background covers
 	# our visuals so the map stays in the tree but out of sight.
@@ -301,8 +300,3 @@ func _pick_enemy_for_combat() -> StringName:
 		return &"jaw_worm"
 	return pool[_rng.randi() % pool.size()]
 
-func _on_exit_pressed() -> void:
-	# Lets us bail out of the map during testing without finishing it.
-	# Counted as a defeat so the run resets cleanly.
-	emit_signal("closed", false, target_game_id)
-	queue_free()
