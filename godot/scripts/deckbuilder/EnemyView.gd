@@ -196,8 +196,8 @@ func set_targetable(can_target: bool) -> void:
 	# Subtle outline tint when active target.
 	_frame.color = Color(0.32, 0.18, 0.10, 1.0) if can_target else Color(0.16, 0.13, 0.11, 1.0)
 
-func _status_color(name: String) -> Color:
-	match name:
+func _status_color(status_name: String) -> Color:
+	match status_name:
 		"vulnerable": return Color(1.0, 0.7, 0.4)
 		"weak": return Color(0.7, 0.9, 1.0)
 		"frail": return Color(0.85, 0.6, 1.0)

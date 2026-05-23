@@ -108,10 +108,11 @@ func _build_enemy_views() -> void:
 	_enemy_views.clear()
 	for i in range(enemies.size()):
 		var view := EnemyView.new()
-		view.setup(enemies[i])
 		var idx: int = i
 		view.clicked.connect(func(): _on_enemy_clicked(idx))
+		# add_child first so _ready builds the panel before setup() runs.
 		_enemy_area.add_child(view)
+		view.setup(enemies[i])
 		_enemy_views.append(view)
 
 # ------------------------------------------------------------------
@@ -1232,16 +1233,18 @@ func _refresh_ui() -> void:
 		view.set_targetable(_targeting)
 
 	# Hand — rebuild each refresh since draws / discards shuffle the row.
+	# add_child first so each CardView's _ready runs and builds its child
+	# controls before setup() / set_enabled() / set_selected() touch them.
 	for child in _hand_area.get_children():
 		child.queue_free()
 	for c in hand:
 		var card_inst := c     # capture per-iteration
 		var view := CardView.new()
+		view.play_requested.connect(_try_play_card)
+		_hand_area.add_child(view)
 		view.setup(card_inst)
 		view.set_enabled((phase == "player") and (card_inst.get_cost() <= energy))
 		view.set_selected(_targeting and _selected_card == card_inst)
-		view.play_requested.connect(_try_play_card)
-		_hand_area.add_child(view)
 
 
 func _input(event: InputEvent) -> void:
