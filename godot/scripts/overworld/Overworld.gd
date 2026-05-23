@@ -1,20 +1,19 @@
 class_name Overworld
 extends Node2D
 
-# Phase 1b overworld. Player walks between portals; each portal is a
-# game on the influence graph adjacent to the current game. Walking
-# onto a portal makes it the active one; pressing E enters its game,
-# which launches a deckbuilder combat. Victory advances the current
-# game and refreshes the portal set; defeat resets the run.
+# Overworld scene. Owns walking + portal selection + verification +
+# autosave + win/lose UI. Does NOT own combat — Main creates the combat
+# scene when this scene emits portal_entered.
 #
-# Pre-combat events sit between portal entry and combat start in
-# commit 7.
+# On scene init the pending_combat_outcome field (set by Main before
+# add_child) tells us "you just came back from a combat: it was a
+# victory/defeat for game X." That kicks off the verification flow or
+# the defeat reset.
 
 const TILE_SIZE := 32
 const GRID_W := 30
 const GRID_H := 18
 
-const COMBAT_SCENE := preload("res://scenes/deckbuilder/DeckbuilderCombat.tscn")
 const PORTAL_SCENE := preload("res://scenes/overworld/Portal.tscn")
 
 # Portal row vertical position and horizontal spacing.
@@ -29,13 +28,14 @@ signal portal_entered(game_id: StringName)
 @onready var _player: PlayerWalker = $Player
 @onready var _hint: Label = $Hint
 
+# Set by Main before add_child so the new scene knows what just
+# happened. Empty {} means "no pending — fresh entry".
+var pending_combat_outcome: Dictionary = {}
+
 var _portals: Array[PortalNode] = []
 var _active_portal: PortalNode = null
-var _active_combat: DeckbuilderCombat = null
-var _active_event: EventModal = null
 var _win_overlay: Control = null
 var _verification_modal: Control = null
-var _pending_game_id: StringName = &""
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -46,6 +46,11 @@ func _ready() -> void:
 	GameState.phase = GameState.Phase.OVERWORLD
 	_spawn_portals_for_current_game()
 	_update_hint()
+	# Process whatever Main just handed us (combat result), if any.
+	if not pending_combat_outcome.is_empty():
+		var outcome := pending_combat_outcome
+		pending_combat_outcome = {}
+		call_deferred("_process_combat_outcome", outcome)
 
 # ------------------------------------------------------------------
 # Portal placement
@@ -126,7 +131,7 @@ func _update_hint() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed):
 		return
-	if event.keycode == KEY_E and _active_portal != null and _active_combat == null and _active_event == null:
+	if event.keycode == KEY_E and _active_portal != null:
 		_enter_portal(_active_portal)
 	elif event.keycode == KEY_F5 and _can_save_load():
 		if SaveSystem.save(0):
@@ -143,95 +148,48 @@ func _unhandled_input(event: InputEvent) -> void:
 			GameLog.add("No save in slot 0.", Color(0.9, 0.7, 0.4))
 
 func _can_save_load() -> bool:
-	return _active_event == null and _active_combat == null and _win_overlay == null
+	return _verification_modal == null and _win_overlay == null
 
 # ------------------------------------------------------------------
-# Portal entry -> combat -> return
+# Portal entry — hands off to Main via signal, which builds the
+# Combat scene. Combat owns the pre-combat event from there on.
 # ------------------------------------------------------------------
 
 func _enter_portal(portal: PortalNode) -> void:
 	GameLog.add("Entering %s..." % portal.game_data.display_name, Color(0.6, 1.0, 0.7))
 	emit_signal("portal_entered", portal.game_data.id)
-	_pending_game_id = portal.game_data.id
-	_player.set_input_locked(true)
-	GameState.phase = GameState.Phase.EVENT
-	_show_pre_combat_event()
 
-func _show_pre_combat_event() -> void:
-	var events: Array = Data.all_events()
-	if events.is_empty():
-		_start_combat()
-		return
-	var picked: EventData = events[_rng.randi() % events.size()]
-	_active_event = EventModal.new()
-	_active_event.closed.connect(_on_event_closed)
-	_active_event.setup(picked, "easy")
-	add_child(_active_event)
+# ------------------------------------------------------------------
+# Pending outcome from Main (after a combat closes)
+# ------------------------------------------------------------------
 
-func _on_event_closed(_should_continue: bool) -> void:
-	_active_event = null
-	if not _player.is_inside_tree():
-		# Defensive: scene tearing down.
-		return
-	_start_combat()
-
-func _start_combat() -> void:
-	GameState.phase = GameState.Phase.COMBAT
-	_active_combat = COMBAT_SCENE.instantiate()
-	_active_combat.enemies_to_spawn = [_pick_enemy_for_combat()]
-	_active_combat.closed.connect(_on_combat_closed)
-	add_child(_active_combat)
-
-func _pick_enemy_for_combat() -> StringName:
-	# Phase 1c: prefer the current game's enemy_pool; fall back to the
-	# full Data.all_enemies() roster when the pool is empty (every game's
-	# pool is empty today, so this is effectively "random across all
-	# enemies"). Per-type pools land when action / strategy enemies
-	# arrive in Phase 3 / 4.
-	var pool: Array[StringName] = []
-	if _pending_game_id != &"":
-		var g: GameData = Data.get_game(_pending_game_id)
-		if g != null and not g.enemy_pool.is_empty():
-			for eid in g.enemy_pool:
-				pool.append(eid)
-	if pool.is_empty():
-		for e in Data.all_enemies():
-			if e is EnemyData:
-				pool.append(e.id)
-	if pool.is_empty():
-		push_warning("[Overworld] no enemies available; falling back to jaw_worm")
-		return &"jaw_worm"
-	return pool[_rng.randi() % pool.size()]
-
-func _on_combat_closed(was_victory: bool) -> void:
-	_active_combat = null
-	_player.set_input_locked(false)
+func _process_combat_outcome(outcome: Dictionary) -> void:
+	var was_victory: bool = outcome.get("victory", false)
+	var game_id: StringName = StringName(String(outcome.get("game_id", "")))
 	if was_victory:
-		_handle_victory()
+		_handle_victory_for(game_id)
 	else:
 		_handle_defeat()
-	_pending_game_id = &""
 
-func _handle_victory() -> void:
-	if _pending_game_id == &"":
+func _handle_victory_for(game_id: StringName) -> void:
+	if game_id == &"":
 		return
-	var gd: GameData = Data.get_game(_pending_game_id)
-	if not GameState.beaten_games.has(_pending_game_id):
-		GameState.beaten_games.append(_pending_game_id)
-	if not GameState.visited_games.has(_pending_game_id):
-		GameState.visited_games.append(_pending_game_id)
+	var gd: GameData = Data.get_game(game_id)
+	if not GameState.beaten_games.has(game_id):
+		GameState.beaten_games.append(game_id)
+	if not GameState.visited_games.has(game_id):
+		GameState.visited_games.append(game_id)
 	GameState.total_games_beaten += 1
-	GameState.set_current_game(_pending_game_id)
-	GameLog.add("Defeated %s." % gd.display_name, Color(0.6, 1.0, 0.6))
+	GameState.set_current_game(game_id)
+	if gd != null:
+		GameLog.add("Defeated %s." % gd.display_name, Color(0.6, 1.0, 0.6))
 
-	# Amulet reached -> run complete; verification skipped on the final
-	# game so we don't gate the win on an honour-system prompt.
-	if _pending_game_id == GameState.amulet_game_id:
+	# Amulet reached -> win overlay; skip verification on the last floor.
+	if game_id == GameState.amulet_game_id:
 		GameState.phase = GameState.Phase.WIN
 		_show_win_overlay()
 		return
 
-	# Honour-system verification: did you actually play the real game?
 	_show_verification_modal(gd)
 
 func _handle_defeat() -> void:
@@ -285,7 +243,8 @@ func _show_verification_modal(gd: GameData) -> void:
 	var prompt := Label.new()
 	prompt.position = Vector2(20, 72)
 	prompt.size = Vector2(520, 100)
-	prompt.text = "You defeated this floor's representation of %s. Did you play the real game?" % gd.display_name
+	var gd_name: String = gd.display_name if gd != null else "this game"
+	prompt.text = "You defeated this floor's representation of %s. Did you play the real game?" % gd_name
 	prompt.autowrap_mode = TextServer.AUTOWRAP_WORD
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(prompt)
@@ -317,7 +276,6 @@ func _on_verification_skip() -> void:
 	GameLog.add("Skipped real game. (-%d HP)" % VERIFICATION_SKIP_HP_PENALTY,
 		Color(0.9, 0.6, 0.4))
 	_close_verification()
-	# A skip that brings HP to 0 ends the run.
 	if GameState.is_dead():
 		_handle_defeat()
 		return

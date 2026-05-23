@@ -13,10 +13,11 @@ extends Control
 # enemy plans a move on turn start but does not execute it.
 
 signal combat_ended(victory: bool)
-signal closed(was_victory: bool)
+signal closed(was_victory: bool, target_game_id: StringName)
 
 # Configuration set by the caller before _ready (or via start_combat).
 var enemies_to_spawn: Array = []
+var target_game_id: StringName = &""
 
 # ------------------------------------------------------------------
 # Combat state — referenced by EffectSystem handlers via ctx.scene
@@ -66,8 +67,24 @@ const _DEBUFFS := [
 func _ready() -> void:
 	_rng.randomize()
 	_end_turn_btn.pressed.connect(_on_end_turn)
-	if not enemies_to_spawn.is_empty():
-		start_combat(enemies_to_spawn)
+	# Pre-combat event runs first, then the actual fight kicks off.
+	# Skip the event if no events are loaded.
+	_show_pre_combat_event_then_start()
+
+func _show_pre_combat_event_then_start() -> void:
+	var events: Array = Data.all_events()
+	if events.is_empty() or enemies_to_spawn.is_empty():
+		if not enemies_to_spawn.is_empty():
+			start_combat(enemies_to_spawn)
+		return
+	var picked: EventData = events[_rng.randi() % events.size()]
+	var modal := EventModal.new()
+	modal.closed.connect(func(_b: bool): _on_pre_event_closed())
+	modal.setup(picked, "easy")
+	add_child(modal)
+
+func _on_pre_event_closed() -> void:
+	start_combat(enemies_to_spawn)
 
 func start_combat(spawn_list: Array) -> void:
 	_init_actors(spawn_list)
@@ -316,7 +333,7 @@ func _show_end_overlay(victory: bool) -> void:
 	_end_overlay = overlay
 
 func _close(was_victory: bool) -> void:
-	emit_signal("closed", was_victory)
+	emit_signal("closed", was_victory, target_game_id)
 	queue_free()
 
 # ------------------------------------------------------------------
