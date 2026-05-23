@@ -1231,20 +1231,17 @@ func _refresh_ui() -> void:
 		view.refresh()
 		view.set_targetable(_targeting)
 
-	# Hand
+	# Hand — rebuild each refresh since draws / discards shuffle the row.
 	for child in _hand_area.get_children():
 		child.queue_free()
 	for c in hand:
-		var card := c     # capture per-iteration
-		var btn := Button.new()
-		var status_marker: String = " ←" if (_targeting and _selected_card == card) else ""
-		btn.text = "[%d] %s%s\n%s" % [
-			card.get_cost(), card.get_display_name(), status_marker, card.get_description(),
-		]
-		btn.custom_minimum_size = Vector2(160, 110)
-		btn.disabled = (phase != "player") or (card.get_cost() > energy)
-		btn.pressed.connect(func(): _try_play_card(card))
-		_hand_area.add_child(btn)
+		var card_inst := c     # capture per-iteration
+		var view := CardView.new()
+		view.setup(card_inst)
+		view.set_enabled((phase == "player") and (card_inst.get_cost() <= energy))
+		view.set_selected(_targeting and _selected_card == card_inst)
+		view.play_requested.connect(_try_play_card)
+		_hand_area.add_child(view)
 
 
 func _input(event: InputEvent) -> void:

@@ -81,7 +81,7 @@ layout_mode = 2
 text = "Discard: 0"
 
 [node name="HandRow" type="HBoxContainer" parent="Layout/Bottom"]
-custom_minimum_size = Vector2(0, 130)
+custom_minimum_size = Vector2(0, 232)
 layout_mode = 2
 
 [node name="HandArea" type="HBoxContainer" parent="Layout/Bottom/HandRow"]
