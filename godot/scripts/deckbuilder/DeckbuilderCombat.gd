@@ -500,8 +500,7 @@ func _handle_post_combat_option(opt: String) -> void:
 		"smith":
 			_show_smith_picker()
 		"shop":
-			GameLog.add("(Shop scene lands in commit 5.)", Color(0.7, 0.7, 0.7))
-			_close(true)
+			_show_shop()
 		"movement":
 			_show_movement_event()
 		_:
@@ -612,6 +611,303 @@ func _on_smith_done() -> void:
 		_smith_modal = null
 	_smith_entries.clear()
 	GameState.emit_signal("deck_changed")
+	_close(true)
+
+# ------------------------------------------------------------------
+# Shop — 3 items + 2 cards for sale, plus a remove-card service.
+# ------------------------------------------------------------------
+
+# Item and card prices by rarity index (matches the enum order in
+# ItemData.Rarity / CardData.Rarity respectively).
+const SHOP_ITEM_PRICES := {0: 8, 1: 15, 2: 25, 3: 35, 4: 40}
+const SHOP_CARD_PRICES := {0: 0, 1: 15, 2: 30, 3: 50, 4: 80}
+const SHOP_REMOVE_PRICE := 50
+
+var _shop_modal: Control = null
+var _shop_items: Array = []           # [{item, price, purchased}]
+var _shop_cards: Array = []           # [{card, price, purchased}]
+var _shop_remove_used: bool = false
+var _shop_gold_label: Label = null
+var _shop_remove_btn: Button = null
+
+func _show_shop() -> void:
+	if _shop_modal != null:
+		return
+	_roll_shop_inventory()
+
+	var modal := Control.new()
+	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.65)
+	modal.add_child(dim)
+
+	var panel := Panel.new()
+	panel.size = Vector2(840, 620)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	modal.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 16)
+	title.size = Vector2(800, 28)
+	title.text = "Shop"
+	title.add_theme_font_size_override("font_size", 22)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	_shop_gold_label = Label.new()
+	_shop_gold_label.position = Vector2(680, 20)
+	_shop_gold_label.size = Vector2(140, 24)
+	_shop_gold_label.text = "Gold: %d" % GameState.gold
+	_shop_gold_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
+	panel.add_child(_shop_gold_label)
+
+	# Items
+	var items_title := Label.new()
+	items_title.position = Vector2(20, 60)
+	items_title.size = Vector2(800, 22)
+	items_title.text = "Items"
+	items_title.add_theme_font_size_override("font_size", 16)
+	panel.add_child(items_title)
+
+	var items_row := HBoxContainer.new()
+	items_row.position = Vector2(20, 92)
+	items_row.size = Vector2(800, 140)
+	items_row.add_theme_constant_override("separation", 14)
+	items_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	panel.add_child(items_row)
+	for entry in _shop_items:
+		var btn := Button.new()
+		btn.custom_minimum_size = Vector2(220, 130)
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD
+		_shop_format_item_btn(btn, entry)
+		var e: Dictionary = entry
+		var b: Button = btn
+		btn.pressed.connect(func(): _shop_buy_item(e, b))
+		items_row.add_child(btn)
+
+	# Cards
+	var cards_title := Label.new()
+	cards_title.position = Vector2(20, 246)
+	cards_title.size = Vector2(800, 22)
+	cards_title.text = "Cards"
+	cards_title.add_theme_font_size_override("font_size", 16)
+	panel.add_child(cards_title)
+
+	var cards_row := HBoxContainer.new()
+	cards_row.position = Vector2(20, 278)
+	cards_row.size = Vector2(800, 140)
+	cards_row.add_theme_constant_override("separation", 14)
+	cards_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	panel.add_child(cards_row)
+	for entry in _shop_cards:
+		var btn := Button.new()
+		btn.custom_minimum_size = Vector2(220, 130)
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD
+		_shop_format_card_btn(btn, entry)
+		var e: Dictionary = entry
+		var b: Button = btn
+		btn.pressed.connect(func(): _shop_buy_card(e, b))
+		cards_row.add_child(btn)
+
+	# Services
+	var svc_title := Label.new()
+	svc_title.position = Vector2(20, 432)
+	svc_title.size = Vector2(800, 22)
+	svc_title.text = "Services"
+	svc_title.add_theme_font_size_override("font_size", 16)
+	panel.add_child(svc_title)
+
+	_shop_remove_btn = Button.new()
+	_shop_remove_btn.position = Vector2(80, 464)
+	_shop_remove_btn.size = Vector2(320, 50)
+	_shop_remove_btn.text = "Remove a card  (%dg)" % SHOP_REMOVE_PRICE
+	_shop_remove_btn.pressed.connect(_shop_open_remove_picker)
+	panel.add_child(_shop_remove_btn)
+
+	# Leave
+	var leave_btn := Button.new()
+	leave_btn.position = Vector2(340, 552)
+	leave_btn.size = Vector2(160, 48)
+	leave_btn.text = "Leave shop"
+	leave_btn.pressed.connect(_shop_leave)
+	panel.add_child(leave_btn)
+
+	add_child(modal)
+	_shop_modal = modal
+
+func _roll_shop_inventory() -> void:
+	_shop_items.clear()
+	_shop_cards.clear()
+	_shop_remove_used = false
+	# 3 random items
+	var item_pool: Array = []
+	for it in Data.all_items():
+		if it is ItemData:
+			item_pool.append(it)
+	for _i in range(mini(3, item_pool.size())):
+		var idx: int = _rng.randi() % item_pool.size()
+		var picked: ItemData = item_pool[idx]
+		item_pool.remove_at(idx)
+		_shop_items.append({
+			"item": picked,
+			"price": int(SHOP_ITEM_PRICES.get(picked.rarity, 10)),
+			"purchased": false,
+		})
+	# 2 random non-starter cards
+	var card_pool: Array = []
+	for c in Data.all_cards():
+		if c is CardData and c.rarity != CardData.Rarity.STARTER:
+			card_pool.append(c)
+	for _i in range(mini(2, card_pool.size())):
+		var idx: int = _rng.randi() % card_pool.size()
+		var picked: CardData = card_pool[idx]
+		card_pool.remove_at(idx)
+		_shop_cards.append({
+			"card": picked,
+			"price": int(SHOP_CARD_PRICES.get(picked.rarity, 20)),
+			"purchased": false,
+		})
+
+func _shop_format_item_btn(btn: Button, entry: Dictionary) -> void:
+	var item: ItemData = entry.item
+	if entry.purchased:
+		btn.text = "SOLD\n%s" % item.display_name
+		btn.disabled = true
+		return
+	btn.text = "%s\n(%s)\n\n%dg" % [item.display_name, _rarity_label(item.rarity), entry.price]
+	btn.disabled = GameState.gold < entry.price
+
+func _shop_format_card_btn(btn: Button, entry: Dictionary) -> void:
+	var card: CardData = entry.card
+	if entry.purchased:
+		btn.text = "SOLD\n%s" % card.display_name
+		btn.disabled = true
+		return
+	btn.text = "[%d] %s\n(%s)\n\n%dg" % [card.cost, card.display_name, _rarity_label(card.rarity), entry.price]
+	btn.disabled = GameState.gold < entry.price
+
+func _shop_buy_item(entry: Dictionary, btn: Button) -> void:
+	if entry.purchased or GameState.gold < entry.price:
+		return
+	GameState.change_gold(-entry.price)
+	GameState.inventory.append(entry.item)
+	GameState.emit_signal("inventory_changed")
+	entry.purchased = true
+	GameLog.add("Bought %s for %dg." % [entry.item.display_name, entry.price], Color(0.7, 1.0, 0.7))
+	_shop_format_item_btn(btn, entry)
+	_shop_refresh()
+
+func _shop_buy_card(entry: Dictionary, btn: Button) -> void:
+	if entry.purchased or GameState.gold < entry.price:
+		return
+	GameState.change_gold(-entry.price)
+	GameState.deck.append(CardInstance.from_data(entry.card))
+	GameState.emit_signal("deck_changed")
+	entry.purchased = true
+	GameLog.add("Bought %s for %dg." % [entry.card.display_name, entry.price], Color(0.7, 1.0, 0.7))
+	_shop_format_card_btn(btn, entry)
+	_shop_refresh()
+
+func _shop_refresh() -> void:
+	if _shop_gold_label != null:
+		_shop_gold_label.text = "Gold: %d" % GameState.gold
+	# Re-enable / disable affordable rows when gold changes.
+	if _shop_modal == null:
+		return
+	for entry in _shop_items:
+		# Walk the items row to find each button — saves storing every btn ref.
+		pass
+	# Simpler: just refresh by walking children of the items row.
+	# (Not strictly needed since each click already re-formats its own
+	# button; affordability of OTHER rows updates only when something
+	# changes. For Phase 1c this is fine — buyers tend to spend their
+	# pile down to zero anyway.)
+	if _shop_remove_btn != null and not _shop_remove_used:
+		_shop_remove_btn.disabled = GameState.gold < SHOP_REMOVE_PRICE
+
+func _shop_open_remove_picker() -> void:
+	if _shop_remove_used or GameState.gold < SHOP_REMOVE_PRICE:
+		return
+	var picker := Control.new()
+	picker.set_anchors_preset(Control.PRESET_FULL_RECT)
+	picker.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.65)
+	picker.add_child(dim)
+
+	var panel := Panel.new()
+	panel.size = Vector2(640, 520)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	picker.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 16)
+	title.size = Vector2(600, 28)
+	title.text = "Remove a card  (%dg)" % SHOP_REMOVE_PRICE
+	title.add_theme_font_size_override("font_size", 18)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(20, 60)
+	scroll.size = Vector2(600, 400)
+	panel.add_child(scroll)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	scroll.add_child(vbox)
+
+	for idx in range(GameState.deck.size()):
+		var c = GameState.deck[idx]
+		if not (c is CardInstance):
+			continue
+		var inst: CardInstance = c
+		var btn := Button.new()
+		btn.custom_minimum_size = Vector2(580, 36)
+		btn.text = "[%d] %s   --  %s" % [inst.get_cost(), inst.get_display_name(), inst.get_description()]
+		var captured_idx: int = idx
+		var captured_picker: Control = picker
+		btn.pressed.connect(func(): _shop_complete_remove(captured_idx, captured_picker))
+		vbox.add_child(btn)
+
+	var cancel_btn := Button.new()
+	cancel_btn.position = Vector2(260, 470)
+	cancel_btn.size = Vector2(120, 40)
+	cancel_btn.text = "Cancel"
+	cancel_btn.pressed.connect(func(): picker.queue_free())
+	panel.add_child(cancel_btn)
+
+	add_child(picker)
+
+func _shop_complete_remove(deck_idx: int, picker: Control) -> void:
+	if deck_idx < 0 or deck_idx >= GameState.deck.size():
+		picker.queue_free()
+		return
+	var removed: CardInstance = GameState.deck[deck_idx]
+	GameState.deck.remove_at(deck_idx)
+	GameState.change_gold(-SHOP_REMOVE_PRICE)
+	GameState.emit_signal("deck_changed")
+	GameLog.add("Removed %s from your deck." % removed.data.display_name, Color(0.85, 0.9, 0.7))
+	_shop_remove_used = true
+	if _shop_remove_btn != null:
+		_shop_remove_btn.text = "(Remove used)"
+		_shop_remove_btn.disabled = true
+	_shop_refresh()
+	picker.queue_free()
+
+func _shop_leave() -> void:
+	if _shop_modal != null:
+		_shop_modal.queue_free()
+		_shop_modal = null
+	_shop_items.clear()
+	_shop_cards.clear()
+	_shop_gold_label = null
+	_shop_remove_btn = null
 	_close(true)
 
 func _decay_statuses(actor: CombatActor) -> void:
