@@ -419,7 +419,7 @@ func _rarity_color(rarity: int) -> Color:
 
 func _on_reward_picked(card: CardData) -> void:
 	if card != null:
-		GameState.deck.append(card)
+		GameState.deck.append(CardInstance.from_data(card))
 		GameLog.add("Added %s to your deck." % card.display_name, Color(0.7, 1.0, 0.8))
 		GameState.emit_signal("deck_changed")
 	else:
@@ -498,8 +498,7 @@ func _handle_post_combat_option(opt: String) -> void:
 			GameLog.add("You rest. (+%d HP)" % heal_amt, Color(0.7, 1.0, 0.7))
 			_close(true)
 		"smith":
-			GameLog.add("(Smith upgrade picker lands in commit 5.)", Color(0.7, 0.7, 0.7))
-			_close(true)
+			_show_smith_picker()
 		"shop":
 			GameLog.add("(Shop scene lands in commit 5.)", Color(0.7, 0.7, 0.7))
 			_close(true)
@@ -518,6 +517,102 @@ func _show_movement_event() -> void:
 	modal.closed.connect(func(_b: bool): _close(true))
 	modal.setup(picked, "easy")
 	add_child(modal)
+
+# ------------------------------------------------------------------
+# Smith picker — upgrade up to MAX_SMITH_UPGRADES cards from the deck.
+# ------------------------------------------------------------------
+
+const MAX_SMITH_UPGRADES := 2
+var _smith_modal: Control = null
+var _smith_upgrades_used: int = 0
+var _smith_entries: Array = []   # Array of {btn: Button, inst: CardInstance}
+
+func _show_smith_picker() -> void:
+	if _smith_modal != null:
+		return
+	_smith_upgrades_used = 0
+	_smith_entries.clear()
+	var modal := Control.new()
+	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.65)
+	modal.add_child(dim)
+
+	var panel := Panel.new()
+	panel.size = Vector2(720, 540)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	modal.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 16)
+	title.size = Vector2(680, 28)
+	title.text = "Smith — upgrade up to %d cards" % MAX_SMITH_UPGRADES
+	title.add_theme_font_size_override("font_size", 20)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(20, 60)
+	scroll.size = Vector2(680, 400)
+	panel.add_child(scroll)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(vbox)
+
+	for c in GameState.deck:
+		if not (c is CardInstance):
+			continue
+		var inst: CardInstance = c
+		if not inst.data.can_upgrade:
+			continue
+		var btn := Button.new()
+		btn.custom_minimum_size = Vector2(660, 44)
+		_smith_refresh_btn(btn, inst)
+		var inst_ref := inst
+		var btn_ref := btn
+		btn.pressed.connect(func(): _on_smith_clicked(inst_ref, btn_ref))
+		vbox.add_child(btn)
+		_smith_entries.append({"btn": btn, "inst": inst})
+
+	var done_btn := Button.new()
+	done_btn.position = Vector2(280, 480)
+	done_btn.size = Vector2(160, 40)
+	done_btn.text = "Done"
+	done_btn.pressed.connect(_on_smith_done)
+	panel.add_child(done_btn)
+
+	add_child(modal)
+	_smith_modal = modal
+
+func _smith_refresh_btn(btn: Button, inst: CardInstance) -> void:
+	var prefix := "[UPGRADED] " if inst.upgraded else ""
+	btn.text = "%s[%d] %s   --  %s" % [
+		prefix, inst.get_cost(), inst.get_display_name(), inst.get_description(),
+	]
+	btn.disabled = inst.upgraded or _smith_upgrades_used >= MAX_SMITH_UPGRADES
+
+func _on_smith_clicked(inst: CardInstance, _btn: Button) -> void:
+	if inst.upgraded or _smith_upgrades_used >= MAX_SMITH_UPGRADES:
+		return
+	inst.upgraded = true
+	_smith_upgrades_used += 1
+	GameLog.add("Smith: %s upgraded." % inst.data.display_name, Color(1.0, 0.85, 0.4))
+	# Refresh all rows so cap-reached state propagates.
+	for entry in _smith_entries:
+		_smith_refresh_btn(entry.btn, entry.inst)
+
+func _on_smith_done() -> void:
+	if _smith_modal != null:
+		_smith_modal.queue_free()
+		_smith_modal = null
+	_smith_entries.clear()
+	GameState.emit_signal("deck_changed")
+	_close(true)
 
 func _decay_statuses(actor: CombatActor) -> void:
 	for s in _DECAY_STATUSES:

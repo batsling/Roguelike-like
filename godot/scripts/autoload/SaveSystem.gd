@@ -57,8 +57,8 @@ func save(slot: int) -> bool:
 		"charisma": GameState.charisma,
 		"luck": GameState.luck,
 		"gold": GameState.gold,
-		# Deck/inventory store ids; resolved against Data at load.
-		"deck_ids": _card_ids(GameState.deck),
+		# Deck stores per-card upgrade state; inventory stores ids.
+		"deck": _serialize_deck(GameState.deck),
 		"inventory_ids": _item_ids(GameState.inventory),
 		"equipped_weapon_id": String(GameState.equipped_weapon.id) if GameState.equipped_weapon != null else "",
 		"dash": GameState.dash_charges,
@@ -96,7 +96,11 @@ func load_slot(slot: int) -> bool:
 	GameState.charisma = data.get("charisma", 0)
 	GameState.luck = data.get("luck", 0)
 	GameState.gold = data.get("gold", 0)
-	GameState.deck = _resolve_cards(data.get("deck_ids", []))
+	# Prefer the new "deck" key; fall back to legacy "deck_ids" for old saves.
+	if data.has("deck"):
+		GameState.deck = _resolve_deck(data.get("deck", []))
+	else:
+		GameState.deck = _resolve_deck_legacy(data.get("deck_ids", []))
 	GameState.inventory = _resolve_items(data.get("inventory_ids", []))
 	var weapon_id := String(data.get("equipped_weapon_id", ""))
 	GameState.equipped_weapon = Data.get_item(StringName(weapon_id)) if weapon_id != "" else null
@@ -139,13 +143,6 @@ func _strings_to_stringnames(arr: Array) -> Array[StringName]:
 		out.append(StringName(s))
 	return out
 
-func _card_ids(deck: Array) -> Array:
-	var out: Array = []
-	for c in deck:
-		if c is CardData:
-			out.append(String(c.id))
-	return out
-
 func _item_ids(inv: Array) -> Array:
 	var out: Array = []
 	for it in inv:
@@ -153,12 +150,33 @@ func _item_ids(inv: Array) -> Array:
 			out.append(String(it.id))
 	return out
 
-func _resolve_cards(ids: Array) -> Array:
+func _serialize_deck(deck: Array) -> Array:
+	var out: Array = []
+	for c in deck:
+		if c is CardInstance:
+			out.append({"id": String(c.data.id), "upgraded": c.upgraded})
+		elif c is CardData:
+			# Defensive: handle bare CardData if anything still appends it.
+			out.append({"id": String(c.id), "upgraded": false})
+	return out
+
+func _resolve_deck(entries: Array) -> Array:
+	var out: Array = []
+	for e in entries:
+		if not (e is Dictionary):
+			continue
+		var c: CardData = Data.get_card(StringName(e.get("id", "")))
+		if c == null:
+			continue
+		out.append(CardInstance.from_data(c, bool(e.get("upgraded", false))))
+	return out
+
+func _resolve_deck_legacy(ids: Array) -> Array:
 	var out: Array = []
 	for s in ids:
 		var c: CardData = Data.get_card(StringName(s))
 		if c != null:
-			out.append(c)
+			out.append(CardInstance.from_data(c))
 	return out
 
 func _resolve_items(ids: Array) -> Array:

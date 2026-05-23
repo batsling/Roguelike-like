@@ -109,7 +109,7 @@ func apply_character(char_data: CharacterData) -> void:
 	for card_id in char_data.starting_deck:
 		var c: CardData = Data.get_card(card_id)
 		if c != null:
-			deck.append(c)
+			deck.append(CardInstance.from_data(c))
 
 	inventory.clear()
 	for item_id in char_data.starting_items:
