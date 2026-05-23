@@ -149,6 +149,8 @@ func _dispatch_node(node: Dictionary) -> void:
 			_start_event_for_node(node)
 		DeckbuilderMap.NodeType.MERCHANT:
 			_open_merchant(node)
+		DeckbuilderMap.NodeType.REST:
+			_open_rest(node)
 		_:
 			# Placeholder: just finish the map if elite was the click.
 			if map.is_finished():
@@ -233,6 +235,26 @@ func _on_shop_closed() -> void:
 	if _active_shop != null:
 		_active_shop.queue_free()
 		_active_shop = null
+	_refresh()
+	_update_header()
+
+# ---------------------------------------------------------------------------
+# Rest node payload
+# ---------------------------------------------------------------------------
+
+var _active_rest: RestSite = null
+
+func _open_rest(_node: Dictionary) -> void:
+	if _active_rest != null:
+		return
+	_active_rest = RestSite.new()
+	_active_rest.closed.connect(_on_rest_closed)
+	add_child(_active_rest)
+
+func _on_rest_closed() -> void:
+	if _active_rest != null:
+		_active_rest.queue_free()
+		_active_rest = null
 	_refresh()
 	_update_header()
 
