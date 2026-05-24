@@ -6,11 +6,11 @@
 script = ExtResource("1")
 id = &"dexterity"
 display_name = "Dexterity"
-description = "+1 to Dexterity event rolls per point. Every 3 DEX grants 1 Defense (+1 to all block gained) at combat start. Action: +5% attack speed per point. Strategy: +1 ranged damage per point."
+description = "+1 to Dexterity event rolls per point. Every 3 DEX grants 1 Defense (+1 to all block gained) at combat start. Action / Strategy: +1 ranged damage per point."
 grants_event_roll_bonus = true
 derived_status = &"defense"
 derived_per = 3
 mode_data = {
-"action_attack_speed_per_point": 0.05,
+"action_ranged_dmg_per_point": 1,
 "strategy_ranged_dmg_per_point": 1,
 }

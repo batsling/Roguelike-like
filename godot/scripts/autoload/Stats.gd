@@ -78,8 +78,12 @@ func damage_bonus(source: CombatActor, damage_type: String, mode: Mode) -> int:
 		"magic":
 			bonus += source.get_status(&"arcane")
 		"ranged":
+			# Dexterity drives ranged damage in both Action and Strategy.
+			# Deckbuilder has no ranged distinction — Power covers it.
 			if mode == Mode.STRATEGY:
 				bonus += _knob_int(&"dexterity", "strategy_ranged_dmg_per_point", 1) * get_value(&"dexterity")
+			elif mode == Mode.ACTION:
+				bonus += _knob_int(&"dexterity", "action_ranged_dmg_per_point", 1) * get_value(&"dexterity")
 		_:
 			# melee — Power already counted; STR per-point bonuses in
 			# action / strategy land when those modes do.
