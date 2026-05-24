@@ -49,7 +49,8 @@ var ability_max_cooldowns: Array[float] = [0.0, 0.0, 0.0]
 var player_max_block: int = 0
 
 # Range tuning for ability resolution.
-const ABILITY_SINGLE_RANGE := 240.0
+const ABILITY_MELEE_RANGE := 110.0      # slightly longer than basic
+const ABILITY_MELEE_ANGLE_DEG := 110.0  # slightly wider than basic
 const ABILITY_AOE_RADIUS := 140.0
 
 @onready var _hp_label: Label = $HPLabel
@@ -303,39 +304,57 @@ func _cooldown_for(card: CardData) -> float:
 	return 2.0 * float(maxi(0, card.cost)) + float(card.rarity)
 
 func _resolve_card_effects(card: CardData) -> void:
+	# Acquire target lists ONCE based on the card's targeting fields,
+	# then walk the effects so every effect on the same card hits the
+	# same set of enemies (no per-effect "pick nearest again" drift).
+	var cone_targets: Array = []
+	var aoe_targets: Array = []
+	var needs_cone := false
+	var needs_aoe := false
+	for effect in card.effects:
+		var tgt: String = String(effect.get("target", "enemy"))
+		if tgt == "enemy":
+			needs_cone = true
+		elif tgt == "all_enemies":
+			needs_aoe = true
+	if needs_cone:
+		cone_targets = _enemies_in_cone(ABILITY_MELEE_RANGE, ABILITY_MELEE_ANGLE_DEG)
+	if needs_aoe:
+		aoe_targets = _enemies_in_radius(ABILITY_AOE_RADIUS)
+
 	for effect in card.effects:
 		var t: String = String(effect.get("type", ""))
 		var tgt: String = String(effect.get("target", "enemy"))
 		match t:
 			"dmg":
-				_resolve_damage_effect(effect, tgt)
+				_apply_damage_effect(effect, tgt, cone_targets, aoe_targets)
 			"block":
-				_gain_block(int(effect.get("value", 0)))
+				if tgt == "self" or tgt == "player":
+					_gain_block(int(effect.get("value", 0)))
 			"status":
-				_resolve_status_effect(effect, tgt)
+				_apply_status_effect(effect, tgt, cone_targets, aoe_targets)
 			"heal":
-				_resolve_heal_effect(effect, tgt)
+				if tgt == "self" or tgt == "player":
+					_resolve_heal_self(int(effect.get("value", 0)))
 			# draw / gain_energy are deckbuilder-only; ignored in action.
 			_:
 				pass
 
-func _resolve_damage_effect(effect: Dictionary, tgt: String) -> void:
+func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array) -> void:
 	var value: int = int(effect.get("value", 0))
 	var dmg_type: String = String(effect.get("damage_type", "melee"))
+	var hit_list: Array
 	match tgt:
 		"enemy":
-			var nearest: Dictionary = _nearest_enemy_in_range(ABILITY_SINGLE_RANGE)
-			if not nearest.is_empty():
-				_deal_damage_to_enemy(nearest, value, dmg_type)
+			hit_list = cone_targets
 		"all_enemies":
-			for inst in enemies:
-				if not inst.actor.is_alive():
-					continue
-				if inst.pos.distance_to(player_pos) > ABILITY_AOE_RADIUS + inst.data.size:
-					continue
-				_deal_damage_to_enemy(inst, value, dmg_type)
+			hit_list = aoe_targets
+		_:
+			return
+	for inst in hit_list:
+		_deal_damage_to_enemy(inst, value, dmg_type)
 
-func _resolve_status_effect(effect: Dictionary, tgt: String) -> void:
+func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array) -> void:
 	var status: StringName = StringName(String(effect.get("status", "")))
 	var stacks: int = int(effect.get("stacks", 0))
 	if stacks == 0 or status == &"":
@@ -343,42 +362,55 @@ func _resolve_status_effect(effect: Dictionary, tgt: String) -> void:
 	# Player Persistence boosts debuffs applied to enemies (mirrors deckbuilder).
 	var pers: int = player_actor.get_status(&"persistence")
 	var debuffs := [&"vulnerable", &"weak", &"frail", &"poison", &"burn"]
-	match tgt:
-		"enemy":
-			var nearest: Dictionary = _nearest_enemy_in_range(ABILITY_SINGLE_RANGE)
-			if not nearest.is_empty():
-				var amt: int = stacks + (pers if status in debuffs else 0)
-				nearest.actor.add_status(status, amt)
-		"all_enemies":
-			for inst in enemies:
-				if not inst.actor.is_alive():
-					continue
-				if inst.pos.distance_to(player_pos) > ABILITY_AOE_RADIUS + inst.data.size:
-					continue
-				var amt: int = stacks + (pers if status in debuffs else 0)
-				inst.actor.add_status(status, amt)
-		"self":
-			player_actor.add_status(status, stacks)
+	if tgt == "self":
+		player_actor.add_status(status, stacks)
+		return
+	var hit_list: Array
+	if tgt == "enemy":
+		hit_list = cone_targets
+	elif tgt == "all_enemies":
+		hit_list = aoe_targets
+	else:
+		return
+	var amt: int = stacks + (pers if status in debuffs else 0)
+	for inst in hit_list:
+		inst.actor.add_status(status, amt)
 
-func _resolve_heal_effect(effect: Dictionary, tgt: String) -> void:
-	var value: int = int(effect.get("value", 0))
-	if tgt == "self" or tgt == "player":
-		GameState.change_hp(value)
-		player_actor.hp = GameState.hp
+func _resolve_heal_self(value: int) -> void:
+	if value <= 0:
+		return
+	GameState.change_hp(value)
+	player_actor.hp = GameState.hp
 
-func _nearest_enemy_in_range(range_px: float) -> Dictionary:
-	var best: Dictionary = {}
-	var best_dist: float = INF
+# ---------------------------------------------------------------------------
+# Targeting helpers
+# ---------------------------------------------------------------------------
+
+func _enemies_in_cone(range_px: float, angle_deg: float) -> Array:
+	var result: Array = []
+	var half: float = deg_to_rad(angle_deg * 0.5)
 	for inst in enemies:
 		if not inst.actor.is_alive():
 			continue
-		var d: float = inst.pos.distance_to(player_pos)
+		var to: Vector2 = inst.pos - player_pos
+		var d: float = to.length()
 		if d > range_px + inst.data.size:
 			continue
-		if d < best_dist:
-			best_dist = d
-			best = inst
-	return best
+		var ang: float = absf(player_facing.angle_to(to))
+		if ang > half:
+			continue
+		result.append(inst)
+	return result
+
+func _enemies_in_radius(radius: float) -> Array:
+	var result: Array = []
+	for inst in enemies:
+		if not inst.actor.is_alive():
+			continue
+		if inst.pos.distance_to(player_pos) > radius + inst.data.size:
+			continue
+		result.append(inst)
+	return result
 
 func _gain_block(base_amount: int) -> void:
 	var amt: int = base_amount + player_actor.get_status(&"defense")
