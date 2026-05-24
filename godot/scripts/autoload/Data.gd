@@ -3,22 +3,25 @@ extends Node
 # Loads all .tres data files at startup and exposes lookups by id.
 # Resources live under res://data/{cards,items,enemies,events,games,characters}/.
 
-var _cards: Dictionary = {}        # StringName -> CardData
-var _items: Dictionary = {}        # StringName -> ItemData
-var _enemies: Dictionary = {}      # StringName -> EnemyData
-var _events: Dictionary = {}       # StringName -> EventData
-var _games: Dictionary = {}        # StringName -> GameData
-var _characters: Dictionary = {}   # StringName -> CharacterData
+var _cards: Dictionary = {}             # StringName -> CardData
+var _items: Dictionary = {}             # StringName -> ItemData
+var _enemies: Dictionary = {}           # StringName -> EnemyData
+var _action_enemies: Dictionary = {}    # StringName -> ActionEnemyData
+var _events: Dictionary = {}            # StringName -> EventData
+var _games: Dictionary = {}             # StringName -> GameData
+var _characters: Dictionary = {}        # StringName -> CharacterData
 
 func _ready() -> void:
 	_load_dir("res://data/cards/", _cards)
 	_load_dir("res://data/items/", _items)
 	_load_dir("res://data/enemies/", _enemies)
+	_load_dir("res://data/action_enemies/", _action_enemies)
 	_load_dir("res://data/events/", _events)
 	_load_dir("res://data/games/", _games)
 	_load_dir("res://data/characters/", _characters)
-	print("[Data] Loaded %d cards, %d items, %d enemies, %d events, %d games, %d characters" % [
-		_cards.size(), _items.size(), _enemies.size(), _events.size(), _games.size(), _characters.size()
+	print("[Data] Loaded %d cards, %d items, %d enemies (+%d action), %d events, %d games, %d characters" % [
+		_cards.size(), _items.size(), _enemies.size(), _action_enemies.size(),
+		_events.size(), _games.size(), _characters.size()
 	])
 
 func _load_dir(path: String, target: Dictionary) -> void:
@@ -46,6 +49,9 @@ func get_item(id: StringName) -> ItemData:
 func get_enemy(id: StringName) -> EnemyData:
 	return _enemies.get(id)
 
+func get_action_enemy(id: StringName) -> ActionEnemyData:
+	return _action_enemies.get(id)
+
 func get_event(id: StringName) -> EventData:
 	return _events.get(id)
 
@@ -64,6 +70,9 @@ func all_items() -> Array:
 
 func all_enemies() -> Array:
 	return _enemies.values()
+
+func all_action_enemies() -> Array:
+	return _action_enemies.values()
 
 func all_events() -> Array:
 	return _events.values()
