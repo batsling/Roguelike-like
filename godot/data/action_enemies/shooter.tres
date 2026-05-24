@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ActionEnemyData" load_steps=2 format=3 uid="uid://action_enemy_shooter"]
+
+[ext_resource type="Script" path="res://scripts/resources/ActionEnemyData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"shooter"
+display_name = "Shooter"
+difficulty = 0
+weight = 10
+hp_min = 10
+hp_max = 14
+contact_damage = 6
+attack_cooldown = 1.8
+attack_range = 360.0
+preferred_distance = 260.0
+projectile_speed = 340.0
+move_speed = 90.0
+size = 22.0
+behavior = 1
+color = Color(0.75, 0.45, 0.95, 1)
+source_game = ""
+tags = PackedStringArray()

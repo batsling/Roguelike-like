@@ -59,6 +59,12 @@ const PLAYER_PROJECTILE_RADIUS := 7.0
 const PLAYER_PROJECTILE_LIFETIME := 2.0
 const PLAYER_PROJECTILE_COLOR := Color(1.0, 0.95, 0.4)
 
+# Enemy projectile defaults (used when ActionEnemyData fields are 0).
+const ENEMY_PROJECTILE_DEFAULT_SPEED := 340.0
+const ENEMY_PROJECTILE_RADIUS := 7.0
+const ENEMY_PROJECTILE_LIFETIME := 3.0
+const ENEMY_PROJECTILE_COLOR := Color(1.0, 0.45, 0.2)
+
 # Live projectiles (player- and enemy-owned). Each entry is a
 # Dictionary: {pos, velocity, owner, radius, color, lifetime, ...}
 var projectiles: Array = []
@@ -86,7 +92,9 @@ func _ready() -> void:
 		if iw != null:
 			GameState.deck.append(CardInstance.from_data(iw))
 	if enemies_to_spawn.is_empty():
-		enemies_to_spawn = [&"walker"]
+		# Default test fight has one of each behavior so movement +
+		# projectiles can be observed without setup.
+		enemies_to_spawn = [&"walker", &"shooter"]
 
 	_init_player()
 	_spawn_enemies()
@@ -286,17 +294,74 @@ func _process_enemies(delta: float) -> void:
 	for inst in enemies:
 		if not inst.actor.is_alive():
 			continue
-		var data: ActionEnemyData = inst.data
-		var to_player: Vector2 = player_pos - inst.pos
-		var dist: float = to_player.length()
-		# Walk toward player unless already inside attack range.
-		if dist > data.attack_range * 0.85:
-			inst.pos += to_player.normalized() * data.move_speed * delta
-		# Attack on cooldown when in range.
-		inst.cooldown = maxf(0.0, inst.cooldown - delta)
-		if dist <= data.attack_range and inst.cooldown <= 0.0:
-			_enemy_hit_player(inst)
-			inst.cooldown = data.attack_cooldown
+		match int(inst.data.behavior):
+			ActionEnemyData.BehaviorKind.SHOOTER:
+				_process_shooter(inst, delta)
+			ActionEnemyData.BehaviorKind.STATIONARY:
+				_process_stationary(inst, delta)
+			_:
+				_process_walker(inst, delta)
+		# Keep everyone inside the arena bounds.
+		inst.pos.x = clampf(inst.pos.x, inst.data.size, ARENA_W - inst.data.size)
+		inst.pos.y = clampf(inst.pos.y, inst.data.size, ARENA_H - inst.data.size)
+
+func _process_walker(inst: Dictionary, delta: float) -> void:
+	var data: ActionEnemyData = inst.data
+	var to_player: Vector2 = player_pos - inst.pos
+	var dist: float = to_player.length()
+	if dist > data.attack_range * 0.85:
+		inst.pos += to_player.normalized() * data.move_speed * delta
+	inst.cooldown = maxf(0.0, inst.cooldown - delta)
+	if dist <= data.attack_range and inst.cooldown <= 0.0:
+		_enemy_hit_player(inst)
+		inst.cooldown = data.attack_cooldown
+
+func _process_shooter(inst: Dictionary, delta: float) -> void:
+	var data: ActionEnemyData = inst.data
+	var to_player: Vector2 = player_pos - inst.pos
+	var dist: float = to_player.length()
+	var preferred: float = data.preferred_distance
+	if preferred <= 0.0:
+		preferred = data.attack_range * 0.7
+	var margin := 30.0
+	if dist < preferred - margin:
+		# Too close — retreat away from player.
+		inst.pos -= to_player.normalized() * data.move_speed * delta
+	elif dist > preferred + margin:
+		# Too far — close in until in firing range.
+		inst.pos += to_player.normalized() * data.move_speed * delta
+	# Fire when player is in range and cooldown ready.
+	inst.cooldown = maxf(0.0, inst.cooldown - delta)
+	if dist <= data.attack_range and inst.cooldown <= 0.0:
+		_enemy_fire_projectile(inst)
+		inst.cooldown = data.attack_cooldown
+
+func _process_stationary(inst: Dictionary, delta: float) -> void:
+	# Hold position; fire on cooldown if player is in range.
+	var data: ActionEnemyData = inst.data
+	var dist: float = player_pos.distance_to(inst.pos)
+	inst.cooldown = maxf(0.0, inst.cooldown - delta)
+	if dist <= data.attack_range and inst.cooldown <= 0.0:
+		_enemy_fire_projectile(inst)
+		inst.cooldown = data.attack_cooldown
+
+func _enemy_fire_projectile(inst: Dictionary) -> void:
+	var data: ActionEnemyData = inst.data
+	var dir: Vector2 = (player_pos - inst.pos).normalized()
+	if dir.length() == 0.0:
+		dir = Vector2.RIGHT
+	var speed: float = data.projectile_speed if data.projectile_speed > 0.0 else ENEMY_PROJECTILE_DEFAULT_SPEED
+	var proj: Dictionary = {
+		"pos": inst.pos + dir * (data.size + 4.0),
+		"velocity": dir * speed,
+		"owner": "enemy",
+		"radius": ENEMY_PROJECTILE_RADIUS,
+		"color": ENEMY_PROJECTILE_COLOR,
+		"lifetime": ENEMY_PROJECTILE_LIFETIME,
+		"damage": data.contact_damage,
+		"source_name": data.display_name,
+	}
+	projectiles.append(proj)
 
 # ---------------------------------------------------------------------------
 # Ability slot activation
@@ -493,24 +558,35 @@ func _process_projectiles(delta: float) -> void:
 		p.lifetime -= delta
 
 		var consumed := false
-		if String(p.owner) == "player":
-			for inst in enemies:
-				if not inst.actor.is_alive():
-					continue
-				if p.pos.distance_to(inst.pos) <= p.radius + inst.data.size:
-					_on_player_projectile_hit(p, inst)
+		match String(p.owner):
+			"player":
+				for inst in enemies:
+					if not inst.actor.is_alive():
+						continue
+					if p.pos.distance_to(inst.pos) <= p.radius + inst.data.size:
+						_on_player_projectile_hit(p, inst)
+						consumed = true
+						break
+			"enemy":
+				if p.pos.distance_to(player_pos) <= p.radius + PLAYER_RADIUS:
+					_on_enemy_projectile_hit(p)
 					consumed = true
-					break
 		# Out of bounds or expired
-		if p.pos.x < -32 or p.pos.x > ARENA_W + 32 or p.pos.y < -32 or p.pos.y > ARENA_H + 32:
-			consumed = true
-		if p.lifetime <= 0.0:
-			consumed = true
+		if not consumed:
+			if p.pos.x < -32 or p.pos.x > ARENA_W + 32 or p.pos.y < -32 or p.pos.y > ARENA_H + 32:
+				consumed = true
+			if p.lifetime <= 0.0:
+				consumed = true
 
 		if consumed:
 			projectiles.remove_at(i)
 		else:
 			i += 1
+
+func _on_enemy_projectile_hit(p: Dictionary) -> void:
+	var dmg: int = int(p.get("damage", 0))
+	var src: String = String(p.get("source_name", "Projectile"))
+	_apply_damage_to_player(dmg, src)
 
 func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 	var card: CardData = p.get("card")
@@ -609,19 +685,19 @@ func _refresh_slot_bar() -> void:
 # ---------------------------------------------------------------------------
 
 func _enemy_hit_player(inst: Dictionary) -> void:
+	_apply_damage_to_player(inst.data.contact_damage, inst.data.display_name)
+
+func _apply_damage_to_player(amount: int, source_name: String) -> void:
 	if player_iframes > 0.0:
 		return
-	var data: ActionEnemyData = inst.data
-	var dmg: int = data.contact_damage
-	# Block absorbs first; per-card block-cap math lands with the
-	# equipment screen in commit 7.
+	var dmg: int = amount
 	var absorbed: int = mini(player_actor.block, dmg)
 	player_actor.block -= absorbed
 	dmg -= absorbed
 	if dmg > 0:
 		GameState.change_hp(-dmg)
 		player_actor.hp = GameState.hp
-		GameLog.add("%s hits you for %d." % [data.display_name, dmg], Color(1.0, 0.6, 0.6))
+		GameLog.add("%s hits you for %d." % [source_name, dmg], Color(1.0, 0.6, 0.6))
 	player_iframes = PLAYER_IFRAME_DURATION
 
 # ---------------------------------------------------------------------------

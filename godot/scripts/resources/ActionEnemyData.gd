@@ -18,12 +18,18 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 @export var hp_min: int = 10
 @export var hp_max: int = 14
 
-# Melee contact damage applied when the enemy is in attack range and
-# the cooldown is ready. Ranged shooters land later — they'll use a
-# projectile_damage field on top of (or instead of) this.
+# Damage applied per touch (WALKER) or per projectile (SHOOTER).
 @export var contact_damage: int = 5
 @export var attack_cooldown: float = 1.0  # seconds between hits
-@export var attack_range: float = 50.0    # radius around enemy considered "in melee"
+@export var attack_range: float = 50.0    # melee radius / max firing distance
+
+# SHOOTER-only: distance the enemy tries to maintain from the player.
+# 0 falls back to 0.7 * attack_range at runtime. Ignored by walkers.
+@export var preferred_distance: float = 0.0
+
+# SHOOTER-only: projectile speed (px/s). 0 falls back to a sensible
+# default in ActionCombat.
+@export var projectile_speed: float = 0.0
 
 # Free-movement params
 @export var move_speed: float = 100.0     # pixels / second
