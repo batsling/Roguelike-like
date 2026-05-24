@@ -18,7 +18,8 @@ effects = [{
 }, {
 "type": "dmg",
 "value": 5,
-"target": "enemy"
+"target": "enemy",
+"damage_type": "ranged"
 }]
 tags = PackedStringArray()
 source_game = "Slay the Spire"
@@ -34,5 +35,6 @@ upgraded_effects = [{
 }, {
 "type": "dmg",
 "value": 7,
-"target": "enemy"
+"target": "enemy",
+"damage_type": "ranged"
 }]

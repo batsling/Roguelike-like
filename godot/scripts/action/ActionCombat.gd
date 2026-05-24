@@ -53,6 +53,16 @@ const ABILITY_MELEE_RANGE := 110.0      # slightly longer than basic
 const ABILITY_MELEE_ANGLE_DEG := 110.0  # slightly wider than basic
 const ABILITY_AOE_RADIUS := 140.0
 
+# Projectile tuning (player-fired ranged abilities).
+const PLAYER_PROJECTILE_SPEED := 620.0
+const PLAYER_PROJECTILE_RADIUS := 7.0
+const PLAYER_PROJECTILE_LIFETIME := 2.0
+const PLAYER_PROJECTILE_COLOR := Color(1.0, 0.95, 0.4)
+
+# Live projectiles (player- and enemy-owned). Each entry is a
+# Dictionary: {pos, velocity, owner, radius, color, lifetime, ...}
+var projectiles: Array = []
+
 @onready var _hp_label: Label = $HPLabel
 @onready var _hint_label: Label = $HintLabel
 
@@ -70,6 +80,11 @@ func _ready() -> void:
 			GameState.reset_run()
 			GameState.apply_character(ironclad)
 			GameState.set_current_game(&"hades")
+		# Add Iron Wave to the deck so the auto-picked loadout has a
+		# ranged ability to test the projectile system with.
+		var iw: CardData = Data.get_card(&"iron_wave")
+		if iw != null:
+			GameState.deck.append(CardInstance.from_data(iw))
 	if enemies_to_spawn.is_empty():
 		enemies_to_spawn = [&"walker"]
 
@@ -190,6 +205,7 @@ func _process(delta: float) -> void:
 		ability_cooldowns[i] = maxf(0.0, ability_cooldowns[i] - delta)
 	_process_player_input(delta)
 	_process_enemies(delta)
+	_process_projectiles(delta)
 	_check_combat_end()
 	_refresh_hud()
 	_refresh_slot_bar()
@@ -304,9 +320,19 @@ func _cooldown_for(card: CardData) -> float:
 	return 2.0 * float(maxi(0, card.cost)) + float(card.rarity)
 
 func _resolve_card_effects(card: CardData) -> void:
-	# Acquire target lists ONCE based on the card's targeting fields,
-	# then walk the effects so every effect on the same card hits the
-	# same set of enemies (no per-effect "pick nearest again" drift).
+	# Cards with any ranged-typed damage effect resolve via a
+	# projectile that carries every enemy-targeted effect on the card.
+	# Self-targeted effects (block / heal / self status) still apply at
+	# cast time.
+	if _card_has_ranged_damage(card):
+		_apply_self_effects(card)
+		_spawn_player_projectile(card)
+		return
+
+	# Otherwise melee/default resolution: acquire target lists ONCE
+	# based on the card's targeting fields, then walk the effects so
+	# every effect on the same card hits the same set of enemies (no
+	# per-effect "pick nearest again" drift).
 	var cone_targets: Array = []
 	var aoe_targets: Array = []
 	var needs_cone := false
@@ -339,6 +365,29 @@ func _resolve_card_effects(card: CardData) -> void:
 			# draw / gain_energy are deckbuilder-only; ignored in action.
 			_:
 				pass
+
+func _card_has_ranged_damage(card: CardData) -> bool:
+	for effect in card.effects:
+		if String(effect.get("type", "")) == "dmg" and String(effect.get("damage_type", "melee")) == "ranged":
+			return true
+	return false
+
+func _apply_self_effects(card: CardData) -> void:
+	# Used by the ranged path so block / heal / self statuses still
+	# fire even though the damage is in flight.
+	for effect in card.effects:
+		var tgt: String = String(effect.get("target", ""))
+		if tgt != "self" and tgt != "player":
+			continue
+		var t: String = String(effect.get("type", ""))
+		match t:
+			"block":
+				_gain_block(int(effect.get("value", 0)))
+			"heal":
+				_resolve_heal_self(int(effect.get("value", 0)))
+			"status":
+				var status: StringName = StringName(String(effect.get("status", "")))
+				player_actor.add_status(status, int(effect.get("stacks", 0)))
 
 func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array) -> void:
 	var value: int = int(effect.get("value", 0))
@@ -419,6 +468,75 @@ func _gain_block(base_amount: int) -> void:
 	if amt <= 0:
 		return
 	player_actor.block = mini(player_max_block, player_actor.block + amt)
+
+# ---------------------------------------------------------------------------
+# Projectiles
+# ---------------------------------------------------------------------------
+
+func _spawn_player_projectile(card: CardData) -> void:
+	var proj: Dictionary = {
+		"pos": player_pos + player_facing * (PLAYER_RADIUS + 4.0),
+		"velocity": player_facing * PLAYER_PROJECTILE_SPEED,
+		"owner": "player",
+		"radius": PLAYER_PROJECTILE_RADIUS,
+		"color": PLAYER_PROJECTILE_COLOR,
+		"lifetime": PLAYER_PROJECTILE_LIFETIME,
+		"card": card,
+	}
+	projectiles.append(proj)
+
+func _process_projectiles(delta: float) -> void:
+	var i := 0
+	while i < projectiles.size():
+		var p: Dictionary = projectiles[i]
+		p.pos += p.velocity * delta
+		p.lifetime -= delta
+
+		var consumed := false
+		if String(p.owner) == "player":
+			for inst in enemies:
+				if not inst.actor.is_alive():
+					continue
+				if p.pos.distance_to(inst.pos) <= p.radius + inst.data.size:
+					_on_player_projectile_hit(p, inst)
+					consumed = true
+					break
+		# Out of bounds or expired
+		if p.pos.x < -32 or p.pos.x > ARENA_W + 32 or p.pos.y < -32 or p.pos.y > ARENA_H + 32:
+			consumed = true
+		if p.lifetime <= 0.0:
+			consumed = true
+
+		if consumed:
+			projectiles.remove_at(i)
+		else:
+			i += 1
+
+func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
+	var card: CardData = p.get("card")
+	if card == null:
+		return
+	# Apply every enemy-targeted effect (dmg + status) to the hit
+	# enemy so multi-effect ranged cards (e.g., "deal X + apply Y")
+	# all resolve on the same victim.
+	var pers: int = player_actor.get_status(&"persistence")
+	var debuffs := [&"vulnerable", &"weak", &"frail", &"poison", &"burn"]
+	for effect in card.effects:
+		var tgt: String = String(effect.get("target", ""))
+		if tgt != "enemy":
+			continue
+		var t: String = String(effect.get("type", ""))
+		match t:
+			"dmg":
+				var value: int = int(effect.get("value", 0))
+				var dmg_type: String = String(effect.get("damage_type", "melee"))
+				_deal_damage_to_enemy(inst, value, dmg_type)
+			"status":
+				var status: StringName = StringName(String(effect.get("status", "")))
+				var stacks: int = int(effect.get("stacks", 0))
+				if stacks > 0 and status != &"":
+					var amt: int = stacks + (pers if status in debuffs else 0)
+					inst.actor.add_status(status, amt)
 
 # ---------------------------------------------------------------------------
 # Slot-bar UI (bottom-of-screen ability strip)
@@ -578,6 +696,13 @@ func _draw() -> void:
 	draw_circle(player_pos, PLAYER_RADIUS, col)
 	# Facing line
 	draw_line(player_pos, player_pos + player_facing * (PLAYER_RADIUS + 14), Color(1.0, 0.85, 0.3), 3.0)
+
+	# Projectiles (rendered last so they're on top)
+	for p in projectiles:
+		var pcol: Color = p.get("color", Color.WHITE)
+		draw_circle(p.pos, p.radius, pcol)
+		# Inner highlight
+		draw_circle(p.pos, p.radius * 0.5, pcol.lightened(0.5))
 
 func _draw_swing_cone() -> void:
 	var half_angle: float = deg_to_rad(BASIC_ATTACK_CONE_ANGLE_DEG * 0.5)
