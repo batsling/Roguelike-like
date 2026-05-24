@@ -14,7 +14,7 @@ signal closed(was_victory: bool, target_game_id: StringName)
 
 # --- Arena geometry --------------------------------------------------------
 const ARENA_W := 1280
-const ARENA_H := 660           # leaves 60px at top for the HUD strip
+const ARENA_H := 600           # leaves 120 px at bottom for slot bar + HUD
 
 # --- Player tuning ---------------------------------------------------------
 const PLAYER_RADIUS := 18.0
@@ -41,6 +41,17 @@ var phase: String = "init"       # "init" | "playing" | "won" | "lost"
 var _swing_remaining: float = 0.0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
+# --- Loadout ---------------------------------------------------------------
+var basic_card: CardData = null
+var ability_cards: Array = []                       # 3 entries (CardData or null)
+var ability_cooldowns: Array[float] = [0.0, 0.0, 0.0]
+var ability_max_cooldowns: Array[float] = [0.0, 0.0, 0.0]
+var player_max_block: int = 0
+
+# Range tuning for ability resolution.
+const ABILITY_SINGLE_RANGE := 240.0
+const ABILITY_AOE_RADIUS := 140.0
+
 @onready var _hp_label: Label = $HPLabel
 @onready var _hint_label: Label = $HintLabel
 
@@ -63,11 +74,30 @@ func _ready() -> void:
 
 	_init_player()
 	_spawn_enemies()
+	_load_loadout()
+	_build_slot_bar()
 	Stats.apply_derived_statuses(player_actor, Stats.Mode.ACTION)
 	GameState.phase = GameState.Phase.COMBAT
 	phase = "playing"
 	_refresh_hud()
 	set_process_input(true)
+
+func _load_loadout() -> void:
+	var loadout: Dictionary = GameState.get_action_loadout()
+	basic_card = loadout.basic
+	ability_cards = loadout.abilities
+	# Block cap = sum of block values across equipped ability cards.
+	player_max_block = 0
+	for c in ability_cards:
+		if c == null:
+			continue
+		for eff in c.effects:
+			if String(eff.get("type", "")) == "block":
+				player_max_block += int(eff.get("value", 0))
+	# Pre-compute ability cooldowns so the UI bar shows the max value.
+	for i in range(3):
+		var card: CardData = ability_cards[i]
+		ability_max_cooldowns[i] = _cooldown_for(card) if card != null else 0.0
 
 func _init_player() -> void:
 	player_actor = CombatActor.from_player()
@@ -115,10 +145,13 @@ func _process(delta: float) -> void:
 	player_attack_cooldown = maxf(0.0, player_attack_cooldown - delta)
 	player_iframes = maxf(0.0, player_iframes - delta)
 	_swing_remaining = maxf(0.0, _swing_remaining - delta)
+	for i in range(3):
+		ability_cooldowns[i] = maxf(0.0, ability_cooldowns[i] - delta)
 	_process_player_input(delta)
 	_process_enemies(delta)
 	_check_combat_end()
 	_refresh_hud()
+	_refresh_slot_bar()
 	queue_redraw()
 
 func _process_player_input(delta: float) -> void:
@@ -149,6 +182,14 @@ func _process_player_input(delta: float) -> void:
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and player_attack_cooldown <= 0.0:
 		_do_basic_attack()
 		player_attack_cooldown = BASIC_ATTACK_COOLDOWN
+
+	# Ability slots: 1 / 2 / 3 keys.
+	if Input.is_key_pressed(KEY_1) and ability_cooldowns[0] <= 0.0:
+		_activate_ability(0)
+	if Input.is_key_pressed(KEY_2) and ability_cooldowns[1] <= 0.0:
+		_activate_ability(1)
+	if Input.is_key_pressed(KEY_3) and ability_cooldowns[2] <= 0.0:
+		_activate_ability(2)
 
 func _do_basic_attack() -> void:
 	_swing_remaining = SWING_VISUAL_DURATION
@@ -199,6 +240,179 @@ func _process_enemies(delta: float) -> void:
 		if dist <= data.attack_range and inst.cooldown <= 0.0:
 			_enemy_hit_player(inst)
 			inst.cooldown = data.attack_cooldown
+
+# ---------------------------------------------------------------------------
+# Ability slot activation
+# ---------------------------------------------------------------------------
+
+func _activate_ability(idx: int) -> void:
+	var card: CardData = ability_cards[idx] if idx < ability_cards.size() else null
+	if card == null or card.is_power():
+		# Powers don't activate — they apply at combat start (commit 5).
+		return
+	_resolve_card_effects(card)
+	var cd: float = _cooldown_for(card)
+	ability_cooldowns[idx] = cd
+	ability_max_cooldowns[idx] = cd
+	GameLog.add("Cast %s." % card.display_name, Color(0.7, 0.95, 1.0))
+
+func _cooldown_for(card: CardData) -> float:
+	if card == null:
+		return 0.0
+	# 2 * energy_cost + rarity_modifier (0/1/2/3 for starter/common/uncommon/rare)
+	return 2.0 * float(maxi(0, card.cost)) + float(card.rarity)
+
+func _resolve_card_effects(card: CardData) -> void:
+	for effect in card.effects:
+		var t: String = String(effect.get("type", ""))
+		var tgt: String = String(effect.get("target", "enemy"))
+		match t:
+			"dmg":
+				_resolve_damage_effect(effect, tgt)
+			"block":
+				_gain_block(int(effect.get("value", 0)))
+			"status":
+				_resolve_status_effect(effect, tgt)
+			"heal":
+				_resolve_heal_effect(effect, tgt)
+			# draw / gain_energy are deckbuilder-only; ignored in action.
+			_:
+				pass
+
+func _resolve_damage_effect(effect: Dictionary, tgt: String) -> void:
+	var value: int = int(effect.get("value", 0))
+	var dmg_type: String = String(effect.get("damage_type", "melee"))
+	match tgt:
+		"enemy":
+			var nearest: Dictionary = _nearest_enemy_in_range(ABILITY_SINGLE_RANGE)
+			if not nearest.is_empty():
+				_deal_damage_to_enemy(nearest, value, dmg_type)
+		"all_enemies":
+			for inst in enemies:
+				if not inst.actor.is_alive():
+					continue
+				if inst.pos.distance_to(player_pos) > ABILITY_AOE_RADIUS + inst.data.size:
+					continue
+				_deal_damage_to_enemy(inst, value, dmg_type)
+
+func _resolve_status_effect(effect: Dictionary, tgt: String) -> void:
+	var status: StringName = StringName(String(effect.get("status", "")))
+	var stacks: int = int(effect.get("stacks", 0))
+	if stacks == 0 or status == &"":
+		return
+	# Player Persistence boosts debuffs applied to enemies (mirrors deckbuilder).
+	var pers: int = player_actor.get_status(&"persistence")
+	var debuffs := [&"vulnerable", &"weak", &"frail", &"poison", &"burn"]
+	match tgt:
+		"enemy":
+			var nearest: Dictionary = _nearest_enemy_in_range(ABILITY_SINGLE_RANGE)
+			if not nearest.is_empty():
+				var amt: int = stacks + (pers if status in debuffs else 0)
+				nearest.actor.add_status(status, amt)
+		"all_enemies":
+			for inst in enemies:
+				if not inst.actor.is_alive():
+					continue
+				if inst.pos.distance_to(player_pos) > ABILITY_AOE_RADIUS + inst.data.size:
+					continue
+				var amt: int = stacks + (pers if status in debuffs else 0)
+				inst.actor.add_status(status, amt)
+		"self":
+			player_actor.add_status(status, stacks)
+
+func _resolve_heal_effect(effect: Dictionary, tgt: String) -> void:
+	var value: int = int(effect.get("value", 0))
+	if tgt == "self" or tgt == "player":
+		GameState.change_hp(value)
+		player_actor.hp = GameState.hp
+
+func _nearest_enemy_in_range(range_px: float) -> Dictionary:
+	var best: Dictionary = {}
+	var best_dist: float = INF
+	for inst in enemies:
+		if not inst.actor.is_alive():
+			continue
+		var d: float = inst.pos.distance_to(player_pos)
+		if d > range_px + inst.data.size:
+			continue
+		if d < best_dist:
+			best_dist = d
+			best = inst
+	return best
+
+func _gain_block(base_amount: int) -> void:
+	var amt: int = base_amount + player_actor.get_status(&"defense")
+	if player_actor.get_status(&"frail") > 0:
+		amt = int(floor(amt * 0.75))
+	if amt <= 0:
+		return
+	player_actor.block = mini(player_max_block, player_actor.block + amt)
+
+# ---------------------------------------------------------------------------
+# Slot-bar UI (bottom-of-screen ability strip)
+# ---------------------------------------------------------------------------
+
+var _slot_panels: Array[Panel] = []
+var _slot_name_labels: Array[Label] = []
+var _slot_cd_labels: Array[Label] = []
+
+func _build_slot_bar() -> void:
+	var bar := HBoxContainer.new()
+	bar.position = Vector2((ARENA_W - 720) * 0.5, ARENA_H + 4)
+	bar.size = Vector2(720, 56)
+	bar.add_theme_constant_override("separation", 12)
+	add_child(bar)
+
+	# 4 slots: basic + 3 abilities. Index 0 = basic.
+	_slot_panels.clear()
+	_slot_name_labels.clear()
+	_slot_cd_labels.clear()
+	for i in range(4):
+		var panel := Panel.new()
+		panel.custom_minimum_size = Vector2(168, 56)
+		bar.add_child(panel)
+		var name_lbl := Label.new()
+		name_lbl.position = Vector2(8, 4)
+		name_lbl.size = Vector2(152, 20)
+		name_lbl.add_theme_font_size_override("font_size", 13)
+		name_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 1.0))
+		panel.add_child(name_lbl)
+		var cd_lbl := Label.new()
+		cd_lbl.position = Vector2(8, 26)
+		cd_lbl.size = Vector2(152, 26)
+		cd_lbl.add_theme_font_size_override("font_size", 12)
+		cd_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
+		panel.add_child(cd_lbl)
+		_slot_panels.append(panel)
+		_slot_name_labels.append(name_lbl)
+		_slot_cd_labels.append(cd_lbl)
+	_refresh_slot_bar()
+
+func _refresh_slot_bar() -> void:
+	if _slot_panels.is_empty():
+		return
+	# Slot 0 = basic attack
+	_slot_name_labels[0].text = "[LMB] %s" % (basic_card.display_name if basic_card != null else "—")
+	_slot_cd_labels[0].text = ("ready" if player_attack_cooldown <= 0.0
+		else "%.1fs" % player_attack_cooldown)
+	# Slots 1-3 = abilities
+	for i in range(3):
+		var card: CardData = ability_cards[i] if i < ability_cards.size() else null
+		var prefix := "[%d] " % (i + 1)
+		if card == null:
+			_slot_name_labels[i + 1].text = prefix + "(empty)"
+			_slot_cd_labels[i + 1].text = ""
+			continue
+		_slot_name_labels[i + 1].text = prefix + card.display_name
+		var cd: float = ability_cooldowns[i]
+		if cd > 0.0:
+			_slot_cd_labels[i + 1].text = "%.1fs / %.1fs" % [cd, ability_max_cooldowns[i]]
+			_slot_cd_labels[i + 1].add_theme_color_override("font_color", Color(0.9, 0.6, 0.4))
+		else:
+			_slot_cd_labels[i + 1].text = "ready"
+			_slot_cd_labels[i + 1].add_theme_color_override("font_color", Color(0.7, 1.0, 0.7))
+
+# ---------------------------------------------------------------------------
 
 func _enemy_hit_player(inst: Dictionary) -> void:
 	if player_iframes > 0.0:

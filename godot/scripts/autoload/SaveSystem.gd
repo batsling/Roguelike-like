@@ -67,6 +67,8 @@ func save(slot: int) -> bool:
 		"reroll": GameState.reroll_charges,
 		"fov_bonus": GameState.fov_bonus,
 		"discovery": GameState.discovery,
+		"action_basic_attack_id": String(GameState.action_basic_attack_id),
+		"action_ability_ids": _stringnames_to_strings(GameState.action_ability_ids),
 	}
 	var f := FileAccess.open(slot_path(slot), FileAccess.WRITE)
 	if f == null:
@@ -111,6 +113,8 @@ func load_slot(slot: int) -> bool:
 	GameState.reroll_charges = data.get("reroll", 0)
 	GameState.fov_bonus = data.get("fov_bonus", 0)
 	GameState.discovery = data.get("discovery", 0)
+	GameState.action_basic_attack_id = StringName(data.get("action_basic_attack_id", ""))
+	GameState.action_ability_ids = _strings_to_stringnames(data.get("action_ability_ids", []))
 	# Broadcast a full sweep so HUDs / overlays subscribed to GameState
 	# pick up the new state after a load.
 	GameState.emit_signal("hp_changed", GameState.hp, GameState.max_hp)

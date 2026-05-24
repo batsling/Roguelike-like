@@ -51,6 +51,11 @@ var deck: Array = []
 var inventory: Array = []                # Array[ItemData]
 var equipped_weapon: ItemData = null
 
+# === Action-mode loadout (StringName ids resolved via Data) ===
+# Empty / unset means "auto-pick from deck on combat start".
+var action_basic_attack_id: StringName = &""
+var action_ability_ids: Array[StringName] = []
+
 # === Run-scope resources ===
 # Skip is removed from the stat set — the only "skip" is the
 # verification-screen "didn't play the real game" choice with the
@@ -95,6 +100,8 @@ func reset_run() -> void:
 	deck.clear()
 	inventory.clear()
 	equipped_weapon = null
+	action_basic_attack_id = &""
+	action_ability_ids.clear()
 	dash_charges = 0
 	reroll_charges = 0
 	fov_bonus = 0
@@ -173,3 +180,56 @@ func change_gold(delta: int) -> void:
 
 func is_dead() -> bool:
 	return hp <= 0
+
+# ---------------------------------------------------------------------------
+# Action-mode loadout
+# ---------------------------------------------------------------------------
+
+const ACTION_ABILITY_SLOTS := 3
+
+# Returns { "basic": CardData, "abilities": Array of CardData|null (size 3) }.
+# If the player hasn't set a loadout, auto-fills from the deck so the
+# action arena is always playable. Equipment screen in commit 6 will
+# let the player customize.
+func get_action_loadout() -> Dictionary:
+	var basic: CardData = Data.get_card(action_basic_attack_id)
+	var abilities: Array = []
+	for id in action_ability_ids:
+		abilities.append(Data.get_card(id))
+	while abilities.size() < ACTION_ABILITY_SLOTS:
+		abilities.append(null)
+
+	if basic == null:
+		basic = _auto_pick_basic()
+	var taken: Array[StringName] = []
+	if basic != null:
+		taken.append(basic.id)
+	for i in range(ACTION_ABILITY_SLOTS):
+		if abilities[i] != null:
+			taken.append(abilities[i].id)
+			continue
+		var pick: CardData = _auto_pick_ability(taken)
+		if pick != null:
+			abilities[i] = pick
+			taken.append(pick.id)
+	return {"basic": basic, "abilities": abilities}
+
+func _auto_pick_basic() -> CardData:
+	# Prefer a Strike (its tags include "strike"); otherwise first
+	# Attack-type card in the deck.
+	for c in deck:
+		if c is CardInstance and c.data != null and c.data.tags.has("strike"):
+			return c.data
+	for c in deck:
+		if c is CardInstance and c.data != null and c.data.is_attack():
+			return c.data
+	return null
+
+func _auto_pick_ability(exclude_ids: Array[StringName]) -> CardData:
+	for c in deck:
+		if not (c is CardInstance) or c.data == null:
+			continue
+		if c.data.id in exclude_ids:
+			continue
+		return c.data
+	return null
