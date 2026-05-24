@@ -1,0 +1,28 @@
+[gd_scene load_steps=2 format=3 uid="uid://baction_combat"]
+
+[ext_resource type="Script" path="res://scripts/action/ActionCombat.gd" id="1_combat"]
+
+[node name="ActionCombat" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+script = ExtResource("1_combat")
+
+[node name="HPLabel" type="Label" parent="."]
+offset_left = 16.0
+offset_top = 668.0
+offset_right = 1264.0
+offset_bottom = 692.0
+text = "HP"
+theme_override_colors/font_color = Color(0.95, 0.95, 1, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="HintLabel" type="Label" parent="."]
+offset_left = 16.0
+offset_top = 694.0
+offset_right = 1264.0
+offset_bottom = 716.0
+text = "WASD / arrows to move   |   Mouse to aim   |   LMB to attack"
+theme_override_colors/font_color = Color(0.75, 0.75, 0.85, 1)
+theme_override_font_sizes/font_size = 13
