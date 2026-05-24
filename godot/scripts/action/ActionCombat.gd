@@ -77,10 +77,50 @@ func _ready() -> void:
 	_load_loadout()
 	_build_slot_bar()
 	Stats.apply_derived_statuses(player_actor, Stats.Mode.ACTION)
+	_apply_equipped_powers()
 	GameState.phase = GameState.Phase.COMBAT
 	phase = "playing"
 	_refresh_hud()
 	set_process_input(true)
+
+func _apply_equipped_powers() -> void:
+	# Power cards take up an ability slot but resolve their effects
+	# once at combat start instead of on key press. The slot shows
+	# PASSIVE in the UI; _activate_ability already returns early when
+	# the card is a Power.
+	for card in ability_cards:
+		if card == null or not card.is_power():
+			continue
+		for effect in card.effects:
+			var t: String = String(effect.get("type", ""))
+			var tgt: String = String(effect.get("target", "self"))
+			match t:
+				"status":
+					var status: StringName = StringName(String(effect.get("status", "")))
+					var stacks: int = int(effect.get("stacks", 0))
+					if tgt == "self":
+						player_actor.add_status(status, stacks)
+					elif tgt == "all_enemies":
+						for inst in enemies:
+							if inst.actor.is_alive():
+								inst.actor.add_status(status, stacks)
+				"block":
+					_gain_block(int(effect.get("value", 0)))
+				"heal":
+					if tgt == "self":
+						GameState.change_hp(int(effect.get("value", 0)))
+						player_actor.hp = GameState.hp
+				"dmg":
+					# AoE damage on entry (e.g. Static Discharge-style)
+					if tgt == "all_enemies":
+						var dmg_type: String = String(effect.get("damage_type", "melee"))
+						var value: int = int(effect.get("value", 0))
+						for inst in enemies:
+							if inst.actor.is_alive():
+								_deal_damage_to_enemy(inst, value, dmg_type)
+				_:
+					pass
+		GameLog.add("Power active: %s." % card.display_name, Color(1.0, 0.85, 0.4))
 
 func _load_loadout() -> void:
 	var loadout: Dictionary = GameState.get_action_loadout()
@@ -404,6 +444,10 @@ func _refresh_slot_bar() -> void:
 			_slot_cd_labels[i + 1].text = ""
 			continue
 		_slot_name_labels[i + 1].text = prefix + card.display_name
+		if card.is_power():
+			_slot_cd_labels[i + 1].text = "PASSIVE"
+			_slot_cd_labels[i + 1].add_theme_color_override("font_color", Color(0.85, 0.7, 1.0))
+			continue
 		var cd: float = ability_cooldowns[i]
 		if cd > 0.0:
 			_slot_cd_labels[i + 1].text = "%.1fs / %.1fs" % [cd, ability_max_cooldowns[i]]
