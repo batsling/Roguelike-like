@@ -79,11 +79,14 @@ New autoload `CombatSession`:
 > **Recommended session break point.** Phases 1 + 2 leave a working overworld where entering an enemy room transitions into a stub combat and back, with loot persistence. The strategy combat content (Phases 3+) can be built in a fresh session without losing context.
 
 ### Phase 3 — Tactical battlefield generation
-New `BattleMap.gd`:
-- Inputs: source room rect, encounter size class (S/M/L), biome.
+New `BattleMap.gd` (`godot/scripts/strategy/combat/BattleMap.gd`):
+- Inputs: source room rect, encounter (sized into S/M/L), biome, items.
 - Procedural rules: min cover %, choke points for M+, walkable paths between spawn zones.
-- Spawn zones: player edge, enemy edge.
+- Spawn zones: player edge (south), enemy edge (north).
 - Map source-room items onto battlefield tiles (scaled positions).
+- `CombatSession` builds a `BattleMap` at `enter_combat` and exposes it via `combat_started(room, encounter, battle_map)`. The placeholder overlay renders an ASCII preview until Phase 4-5 ships the real renderer.
+
+> **Session break point.** Phase 3 produces a data-complete battlefield (terrain + spawn zones + mapped items). Phase 4 turns it into a live battle by adding the initiative engine.
 
 ### Phase 4 — Initiative and turn engine
 New `BattleTurnManager.gd`:
