@@ -3,7 +3,7 @@ extends Node
 @onready var _renderer: StrategyDungeonRenderer = $DungeonRenderer
 @onready var _hud: StrategyHUD = $HUD
 
-const BattlePlaceholderScript := preload("res://scripts/strategy_prototype/BattlePlaceholder.gd")
+const BattleViewScript := preload("res://scripts/strategy/combat/BattleView.gd")
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _battle_overlay: CanvasLayer = null
@@ -238,7 +238,7 @@ func _trigger_combat(rd: StrategyRoomData) -> void:
 func _on_combat_started(room_data, encounter: Array, battle_map, turn_manager) -> void:
 	if _battle_overlay != null:
 		_battle_overlay.queue_free()
-	_battle_overlay = BattlePlaceholderScript.new()
+	_battle_overlay = BattleViewScript.new()
 	add_child(_battle_overlay)
 	_battle_overlay.set_encounter(room_data, encounter, battle_map, turn_manager)
 

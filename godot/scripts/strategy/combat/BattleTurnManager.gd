@@ -70,6 +70,15 @@ func end_current_turn() -> void:
 
 # Player API: spend the per-combat Dash to queue a bonus turn immediately
 # after the current one. Returns true if Dash was available and consumed.
+# Run the victory/defeat check now (rather than only at end-of-turn).
+# Callers invoke this after damage resolves so combat can wrap up
+# immediately when the last enemy or the player drops to 0 hp.
+# Returns true if the battle has ended (and `battle_ended` was emitted).
+func check_battle_end_now() -> bool:
+	if not _running:
+		return false
+	return _check_battle_end()
+
 func consume_dash() -> bool:
 	if current_unit == null or not current_unit.dash_available:
 		return false

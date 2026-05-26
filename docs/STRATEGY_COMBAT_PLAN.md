@@ -112,13 +112,24 @@ under `godot/scripts/strategy/combat/`:
   and listens to `battle_ended` to drive the outer overworld loop.
 
 ### Phase 5 — Player turn UI/UX
-- Grid input: highlight reachable tiles within `Speed`, click to move (path-preview).
-- Action bar:
-  - `[Attack]` / `[Defend]` — mutually exclusive per turn (`action_used` flag).
-  - `[Ability]` — opens ability picker showing all non-basic deck cards with cooldown status. Pick one (or pass) per turn.
-  - `[Spellbook]` — list of learned spells with mana costs. Cast any number while mana allows.
+New `BattleView.gd` + `BattleGridView.gd` (`godot/scripts/strategy/combat/`).
+The script-only ASCII placeholder is retired.
+- `BattleGridView` (Control): draws tiles (floor/wall/cover), items, units,
+  HP bars, the active-unit ring, reachable-tile overlay in move mode, path
+  preview, and target rings in attack mode. 4-directional BFS movement;
+  movement budget = `unit.speed`. Emits `move_requested(path)` and
+  `attack_requested(target)`.
+- `BattleView` (CanvasLayer): hosts the grid view, an initiative panel,
+  status line, and action bar:
+  - `[Move]` — opens reachability; chained moves allowed until budget = 0.
+  - `[Attack]` / `[Defend]` — mutually exclusive per turn (`_action_used`).
+  - `[Ability]` — opens picker (Phase-6 stub; closes immediately).
+  - `[Spellbook]` — opens picker (Phase-6 stub).
   - `[Dash]` — enabled if `dash_available`; consumes it for a bonus turn.
   - `[End Turn]`.
+- Damage applies through `block` first; killing the last enemy invokes
+  `BattleTurnManager.check_battle_end_now()` so combat wraps without
+  forcing the player to press End Turn.
 
 ### Phase 6 — Cards → Abilities; Spells → Spellbook
 New `AbilityPool.gd`:
