@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="EventData" load_steps=2 format=3 uid="uid://event_merchant_offer"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"merchant_offer"
+display_name = "The Merchant's Cart"
+prompt = "A merchant flags you down. \"Friend! A potion. A vial. A SECRET. Whatever you need.\" His grin is too wide. His prices, you suspect, are negotiable."
+choices = [{"id": "haggle", "text": "Haggle for a better deal", "type": "stat_check", "stat": "charisma", "outcomes": {"crit_good": {"description": "By the end he's PAYING you to take a vial off his hands.", "effects": [{"type": "gain_gold", "value": 15}]}, "good": {"description": "You wear him down. He throws in a small coin to seal the deal.", "effects": [{"type": "gain_gold", "value": 6}]}, "bad": {"description": "He smiles through your offer and changes the subject.", "effects": []}, "crit_bad": {"description": "His smile gets wider. You hand over coin you didn't mean to spend.", "effects": [{"type": "lose_gold", "value": 5}]}}}, {"id": "buy_potion", "text": "Buy a vial at full price (5g)", "type": "simple", "outcome": {"description": "He pockets your coin and hands over a vial. It tastes like iron and heals well.", "effects": [{"type": "lose_gold", "value": 5}, {"type": "heal", "value": 10}]}}, {"id": "walk", "text": "Walk away", "type": "simple", "outcome": {"description": "He shouts after you for a while. Then he stops.", "effects": []}}]
+difficulty_tags = PackedStringArray()
+run_limit = 0
+source_game = ""
+rarity = "Common"
+tags = PackedStringArray()

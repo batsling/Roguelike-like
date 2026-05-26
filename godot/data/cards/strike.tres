@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_strike"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://assets/cards/Strike.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"strike"
+display_name = "Strike"
+type = 0
+rarity = 0
+cost = 1
+description = "Deal 6 damage."
+effects = [{"type": "dmg", "value": 6, "target": "enemy"}]
+tags = PackedStringArray("strike")
+source_game = "Slay the Spire"
+image = ExtResource("2_img")
+portrait_color = Color(0.75, 0.25, 0.25, 1)
+can_upgrade = true
+upgraded_description = "Deal 9 damage."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 9, "target": "enemy"}]

@@ -1,0 +1,109 @@
+class_name OverworldHUD
+extends CanvasLayer
+
+# Persistent HUD for the overworld. Top bar shows player vitals + run
+# progress; bottom panel shows the last N GameLog messages. Subscribes
+# to GameState + GameLog signals so it stays in sync without anyone
+# having to call refresh() by hand.
+
+const LOG_LINES := 5
+const FONT_SIZE := 13
+
+var _top_label: Label
+var _log_label: RichTextLabel
+
+func _ready() -> void:
+	# Top bar
+	var top_bg := ColorRect.new()
+	top_bg.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	top_bg.offset_left = 0
+	top_bg.offset_right = 0
+	top_bg.offset_top = 0
+	top_bg.offset_bottom = 30
+	top_bg.color = Color(0.05, 0.06, 0.10, 0.85)
+	add_child(top_bg)
+
+	_top_label = Label.new()
+	_top_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_top_label.offset_left = 8
+	_top_label.offset_right = -8
+	_top_label.offset_top = 4
+	_top_label.offset_bottom = 26
+	_top_label.add_theme_font_size_override("font_size", FONT_SIZE)
+	_top_label.add_theme_color_override("font_color", Color(0.92, 0.94, 1.0))
+	add_child(_top_label)
+
+	# Bottom log
+	var log_bg := ColorRect.new()
+	log_bg.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	log_bg.offset_top = -100
+	log_bg.offset_bottom = 0
+	log_bg.offset_left = 0
+	log_bg.offset_right = 0
+	log_bg.color = Color(0.05, 0.06, 0.10, 0.85)
+	add_child(log_bg)
+
+	_log_label = RichTextLabel.new()
+	_log_label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_log_label.offset_top = -96
+	_log_label.offset_bottom = -4
+	_log_label.offset_left = 8
+	_log_label.offset_right = -8
+	_log_label.bbcode_enabled = true
+	_log_label.scroll_active = false
+	_log_label.add_theme_font_size_override("normal_font_size", FONT_SIZE)
+	add_child(_log_label)
+
+	# Hook signals so the HUD auto-refreshes.
+	GameState.hp_changed.connect(_on_state_changed)
+	GameState.gold_changed.connect(_on_state_changed)
+	GameState.stats_changed.connect(_on_state_changed)
+	GameState.deck_changed.connect(_on_state_changed)
+	GameState.inventory_changed.connect(_on_state_changed)
+	GameState.current_game_changed.connect(_on_state_changed)
+	GameLog.message_added.connect(_on_message)
+
+	_refresh_top()
+	_refresh_log()
+
+func _on_state_changed(_a = null, _b = null) -> void:
+	_refresh_top()
+
+func _on_message(_text: String, _color: Color) -> void:
+	_refresh_log()
+
+func _refresh_top() -> void:
+	var game_name := "?"
+	if GameState.current_game_id != &"":
+		var g: GameData = Data.get_game(GameState.current_game_id)
+		if g != null:
+			game_name = g.display_name
+	var amulet_name := "?"
+	if GameState.amulet_game_id != &"":
+		var a: GameData = Data.get_game(GameState.amulet_game_id)
+		if a != null:
+			amulet_name = a.display_name
+	_top_label.text = "HP %d/%d  Gold %d  Deck %d  Inv %d   |   STR %d DEX %d INT %d CHA %d CON %d LCK %d SPD %d   |   At: %s -> %s   |   Beaten: %d" % [
+		GameState.hp, GameState.max_hp,
+		GameState.gold,
+		GameState.deck.size(),
+		GameState.inventory.size(),
+		GameState.strength, GameState.dexterity, GameState.intelligence,
+		GameState.charisma, GameState.constitution, GameState.luck,
+		GameState.speed,
+		game_name, amulet_name,
+		GameState.total_games_beaten,
+	]
+
+func _refresh_log() -> void:
+	var recent: Array = GameLog.get_recent(LOG_LINES)
+	var lines := ""
+	for i in range(recent.size()):
+		var m: Dictionary = recent[i]
+		var col: Color = m.get("color", Color.WHITE)
+		var alpha: float = 1.0 - float(recent.size() - 1 - i) * 0.16
+		alpha = clampf(alpha, 0.4, 1.0)
+		var hex := col.to_html(false)
+		var a_hex := "%02x" % int(alpha * 255.0)
+		lines += "[color=#%s%s]%s[/color]\n" % [hex, a_hex, String(m.get("text", ""))]
+	_log_label.text = lines

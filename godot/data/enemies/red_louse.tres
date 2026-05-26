@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3 uid="uid://enemy_red_louse"]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://assets/enemies/RedLouse.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"red_louse"
+display_name = "Red Louse"
+difficulty = 0
+weight = 5
+hp_min = 10
+hp_max = 15
+pattern = [{
+"display": "Bite (6)",
+"weight": 75,
+"effects": [{"type": "dmg", "value": 6, "target": "player"}]
+}, {
+"display": "Grow (+3 Power)",
+"weight": 25,
+"effects": [{"type": "status", "status": "power", "stacks": 3, "target": "self"}]
+}]
+pattern_mode = "random"
+starting_abilities = PackedStringArray()
+source_game = "Slay the Spire"
+tags = PackedStringArray()
+image = ExtResource("2_img")
+portrait_color = Color(0.85, 0.35, 0.3, 1)
+glyph = "L"

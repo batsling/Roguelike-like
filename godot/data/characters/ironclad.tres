@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=3 format=3 uid="uid://char_ironclad"]
+
+[ext_resource type="Script" path="res://scripts/resources/CharacterData.gd" id="1_char"]
+[ext_resource type="Texture2D" path="res://assets/characters/Ironclad.png" id="2_portrait"]
+
+[resource]
+script = ExtResource("1_char")
+id = &"ironclad"
+display_name = "Ironclad"
+description = "The remaining soldier of the Ironclads. Sold his soul to harness demonic energies."
+base_max_hp = 80
+base_strength = 0
+base_dexterity = 0
+base_intelligence = 0
+base_charisma = 0
+base_luck = 0
+base_max_energy = 3
+base_hand_size = 5
+starting_deck = Array[StringName]([&"strike", &"strike", &"strike", &"strike", &"strike", &"defend", &"defend", &"defend", &"defend", &"bash"])
+starting_items = Array[StringName]([&"burning_blood"])
+starting_weapon = &""
+level_up_condition = "Unlock a new difficulty"
+level_up_reward = "Ironclad class card reward"
+portrait = ExtResource("2_portrait")
+portrait_color = Color(0.7, 0.15, 0.15, 1)

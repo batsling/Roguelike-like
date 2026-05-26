@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="EventData" load_steps=2 format=3 uid="uid://event_wandering_sage"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"wandering_sage"
+display_name = "A Wandering Sage"
+prompt = "A robed traveller sits cross-legged in your path, muttering to no one in particular. He looks up with sharp, knowing eyes. \"A coin for wisdom,\" he says. \"Or wisdom for a coin. The order matters.\""
+choices = [{"id": "listen", "text": "Listen carefully to his words", "type": "stat_check", "stat": "intelligence", "outcomes": {"crit_good": {"description": "His riddle clicks into place mid-speech. He laughs and tosses you a coin pouch.", "effects": [{"type": "heal", "value": 4}, {"type": "gain_gold", "value": 8}]}, "good": {"description": "His words are dense, but you catch enough to feel grounded.", "effects": [{"type": "heal", "value": 4}]}, "bad": {"description": "You nod along but understand nothing. He sighs and continues past you.", "effects": []}, "crit_bad": {"description": "He sees through your nodding. A sharp tap to your forehead leaves you reeling.", "effects": [{"type": "lose_hp", "value": 3}]}}}, {"id": "mock", "text": "Mock his rambling", "type": "simple", "outcome": {"description": "The sage's smile thins. A crack of light, and you stagger back, bruised.", "effects": [{"type": "lose_hp", "value": 3}]}}, {"id": "leave", "text": "Walk past in silence", "type": "simple", "outcome": {"description": "He watches you go, saying nothing.", "effects": []}}]
+difficulty_tags = PackedStringArray()
+run_limit = 0
+source_game = ""
+rarity = "Common"
+tags = PackedStringArray()

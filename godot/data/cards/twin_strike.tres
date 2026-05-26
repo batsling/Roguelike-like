@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_twin_strike"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://assets/cards/TwinStrike.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"twin_strike"
+display_name = "Twin Strike"
+type = 0
+rarity = 1
+cost = 1
+description = "Deal 5 damage twice."
+effects = [{
+"type": "dmg",
+"value": 5,
+"target": "enemy"
+}, {
+"type": "dmg",
+"value": 5,
+"target": "enemy"
+}]
+tags = PackedStringArray("strike")
+source_game = "Slay the Spire"
+image = ExtResource("2_img")
+portrait_color = Color(0.75, 0.25, 0.25, 1)
+can_upgrade = true
+upgraded_description = "Deal 7 damage twice."
+upgraded_cost = -999
+upgraded_effects = [{
+"type": "dmg",
+"value": 7,
+"target": "enemy"
+}, {
+"type": "dmg",
+"value": 7,
+"target": "enemy"
+}]

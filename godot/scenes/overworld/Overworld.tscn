@@ -1,0 +1,35 @@
+[gd_scene load_steps=4 format=3 uid="uid://boverworld"]
+
+[ext_resource type="Script" path="res://scripts/overworld/Overworld.gd" id="1_over"]
+[ext_resource type="Script" path="res://scripts/overworld/PlayerWalker.gd" id="2_walker"]
+[ext_resource type="Script" path="res://scripts/overworld/OverworldHUD.gd" id="3_hud"]
+
+[node name="Overworld" type="Node2D"]
+script = ExtResource("1_over")
+
+[node name="Floor" type="ColorRect" parent="."]
+offset_right = 960.0
+offset_bottom = 576.0
+color = Color(0.13, 0.13, 0.16, 1)
+
+[node name="Player" type="Node2D" parent="."]
+script = ExtResource("2_walker")
+
+[node name="Sprite" type="ColorRect" parent="Player"]
+offset_left = -12.0
+offset_top = -12.0
+offset_right = 12.0
+offset_bottom = 12.0
+color = Color(0.95, 0.3, 0.3, 1)
+
+[node name="Hint" type="Label" parent="."]
+offset_left = 16.0
+offset_top = 40.0
+offset_right = 944.0
+offset_bottom = 64.0
+text = "WASD/arrows to walk."
+theme_override_colors/font_color = Color(0.9, 0.9, 0.95, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("3_hud")

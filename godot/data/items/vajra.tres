@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_vajra"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://assets/items/Vajra.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"vajra"
+display_name = "Vajra"
+kind = 1
+rarity = 0
+description = "At the start of combat, gain 2 Power. (Subs for STS Vajra's +3 Strength until stat_bonuses are wired.)"
+triggers = [{
+"on": "combat_started",
+"effects": [{
+"type": "status",
+"status": "power",
+"stacks": 2,
+"target": "self"
+}]
+}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray()
+image = ExtResource("2_img")

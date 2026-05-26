@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StatDefinition" load_steps=2 format=3 uid="uid://stat_intelligence"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatDefinition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"intelligence"
+display_name = "Intelligence"
+description = "+1 to Intelligence event rolls per point (and scroll checks). Every 3 INT grants 1 Arcane (+1 magic damage and +1 healing per stack) at combat start."
+grants_event_roll_bonus = true
+derived_status = &"arcane"
+derived_per = 3
+mode_data = {}

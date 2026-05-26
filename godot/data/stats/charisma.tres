@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StatDefinition" load_steps=2 format=3 uid="uid://stat_charisma"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatDefinition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"charisma"
+display_name = "Charisma"
+description = "+1 to Charisma event rolls per point. Every 5 CHA grants 1 Persistence (+1 stack when inflicting/gaining non-Power statuses) at combat start."
+grants_event_roll_bonus = true
+derived_status = &"persistence"
+derived_per = 5
+mode_data = {}
