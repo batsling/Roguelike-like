@@ -79,27 +79,57 @@ New autoload `CombatSession`:
 > **Recommended session break point.** Phases 1 + 2 leave a working overworld where entering an enemy room transitions into a stub combat and back, with loot persistence. The strategy combat content (Phases 3+) can be built in a fresh session without losing context.
 
 ### Phase 3 — Tactical battlefield generation
-New `BattleMap.gd`:
-- Inputs: source room rect, encounter size class (S/M/L), biome.
+New `BattleMap.gd` (`godot/scripts/strategy/combat/BattleMap.gd`):
+- Inputs: source room rect, encounter (sized into S/M/L), biome, items.
 - Procedural rules: min cover %, choke points for M+, walkable paths between spawn zones.
-- Spawn zones: player edge, enemy edge.
+- Spawn zones: player edge (south), enemy edge (north).
 - Map source-room items onto battlefield tiles (scaled positions).
+- `CombatSession` builds a `BattleMap` at `enter_combat` and exposes it via `combat_started(room, encounter, battle_map)`. The placeholder overlay renders an ASCII preview until Phase 4-5 ships the real renderer.
+
+> **Session break point.** Phase 3 produces a data-complete battlefield (terrain + spawn zones + mapped items). Phase 4 turns it into a live battle by adding the initiative engine.
 
 ### Phase 4 — Initiative and turn engine
-New `BattleTurnManager.gd`:
-- `Unit` resource: `max_hp, hp, speed, dash_available, basic_attack_def, block, position, int_stat, cha_stat, mana, max_mana, mana_regen`.
-- Speed-based initiative: each unit has an act counter that ticks per round; when it overflows by its speed it gets a turn. Higher speed = more turns per round.
-- On unit's turn: emit `unit_turn_started`. On end: tick that unit's cooldowns.
-- Player turn start: apply `mana = min(mana + mana_regen, max_mana)`.
+New `Unit.gd` (class `BattleUnit`, `extends Resource`) and `BattleTurnManager.gd`
+under `godot/scripts/strategy/combat/`:
+- `BattleUnit` fields: `unit_name, is_player, max_hp, hp, speed, dash_available,
+  basic_attack_def, block, position, int_stat, cha_stat, mana, max_mana,
+  mana_regen, cooldowns, act_counter`. Factory helpers build units from the
+  overworld player (`from_player`) and enemy kind strings (`from_enemy_kind`,
+  with stat presets for rat/snake/orc/troll).
+- Speed-based initiative (Mewgenics/FFT-lite): every tick adds `speed` to
+  each living unit's `act_counter`. First counter to cross
+  `ACT_THRESHOLD = 100` takes a turn; the threshold is *subtracted* (not
+  zeroed) so excess speed carries over. Higher speed → more turns per round.
+- On unit's turn: emit `unit_turn_started`. On `end_current_turn`: tick the
+  unit's cooldowns, clear its `block`, emit `unit_turn_ended`, then check
+  battle end (player down → `defeat`, all enemies down → `victory`) before
+  advancing.
+- Player turn start: `mana = min(mana + mana_regen, max_mana)`.
+- Dash: `consume_dash()` queues a single bonus turn for the current unit
+  ahead of the natural initiative cycle.
+- `CombatSession` now builds units and a turn manager at `enter_combat`,
+  exposes them via `combat_started(room, encounter, battle_map, turn_manager)`,
+  and listens to `battle_ended` to drive the outer overworld loop.
 
 ### Phase 5 — Player turn UI/UX
-- Grid input: highlight reachable tiles within `Speed`, click to move (path-preview).
-- Action bar:
-  - `[Attack]` / `[Defend]` — mutually exclusive per turn (`action_used` flag).
-  - `[Ability]` — opens ability picker showing all non-basic deck cards with cooldown status. Pick one (or pass) per turn.
-  - `[Spellbook]` — list of learned spells with mana costs. Cast any number while mana allows.
+New `BattleView.gd` + `BattleGridView.gd` (`godot/scripts/strategy/combat/`).
+The script-only ASCII placeholder is retired.
+- `BattleGridView` (Control): draws tiles (floor/wall/cover), items, units,
+  HP bars, the active-unit ring, reachable-tile overlay in move mode, path
+  preview, and target rings in attack mode. 4-directional BFS movement;
+  movement budget = `unit.speed`. Emits `move_requested(path)` and
+  `attack_requested(target)`.
+- `BattleView` (CanvasLayer): hosts the grid view, an initiative panel,
+  status line, and action bar:
+  - `[Move]` — opens reachability; chained moves allowed until budget = 0.
+  - `[Attack]` / `[Defend]` — mutually exclusive per turn (`_action_used`).
+  - `[Ability]` — opens picker (Phase-6 stub; closes immediately).
+  - `[Spellbook]` — opens picker (Phase-6 stub).
   - `[Dash]` — enabled if `dash_available`; consumes it for a bonus turn.
   - `[End Turn]`.
+- Damage applies through `block` first; killing the last enemy invokes
+  `BattleTurnManager.check_battle_end_now()` so combat wraps without
+  forcing the player to press End Turn.
 
 ### Phase 6 — Cards → Abilities; Spells → Spellbook
 New `AbilityPool.gd`:
