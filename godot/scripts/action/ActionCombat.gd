@@ -39,6 +39,8 @@ var player_iframes: float = 0.0
 var enemies: Array = []          # Array of Dictionary: {data, actor, pos, cooldown}
 var phase: String = "init"       # "init" | "playing" | "won" | "lost"
 var _swing_remaining: float = 0.0
+var _ability_swing_remaining: float = 0.0
+var _ability_swing_facing: Vector2 = Vector2.RIGHT
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 # --- Loadout ---------------------------------------------------------------
@@ -70,7 +72,6 @@ const ENEMY_PROJECTILE_COLOR := Color(1.0, 0.45, 0.2)
 var projectiles: Array = []
 
 @onready var _hp_label: Label = $HPLabel
-@onready var _hint_label: Label = $HintLabel
 
 # ---------------------------------------------------------------------------
 
@@ -209,6 +210,7 @@ func _process(delta: float) -> void:
 	player_attack_cooldown = maxf(0.0, player_attack_cooldown - delta)
 	player_iframes = maxf(0.0, player_iframes - delta)
 	_swing_remaining = maxf(0.0, _swing_remaining - delta)
+	_ability_swing_remaining = maxf(0.0, _ability_swing_remaining - delta)
 	for i in range(3):
 		ability_cooldowns[i] = maxf(0.0, ability_cooldowns[i] - delta)
 	_process_player_input(delta)
@@ -410,6 +412,8 @@ func _resolve_card_effects(card: CardData) -> void:
 			needs_aoe = true
 	if needs_cone:
 		cone_targets = _enemies_in_cone(ABILITY_MELEE_RANGE, ABILITY_MELEE_ANGLE_DEG)
+		_ability_swing_remaining = SWING_VISUAL_DURATION
+		_ability_swing_facing = player_facing
 	if needs_aoe:
 		aoe_targets = _enemies_in_radius(ABILITY_AOE_RADIUS)
 
@@ -749,6 +753,8 @@ func _draw() -> void:
 	# Swing arc (drawn under enemies so the cone outline frames them)
 	if _swing_remaining > 0.0:
 		_draw_swing_cone()
+	if _ability_swing_remaining > 0.0:
+		_draw_ability_swing_cone()
 
 	# Enemies
 	for inst in enemies:
@@ -793,3 +799,16 @@ func _draw_swing_cone() -> void:
 	# Fade alpha by how long the swing has left
 	var alpha: float = clampf(_swing_remaining / SWING_VISUAL_DURATION, 0.0, 1.0) * 0.45
 	draw_polygon(points, PackedColorArray([Color(1.0, 1.0, 0.5, alpha)]))
+
+func _draw_ability_swing_cone() -> void:
+	var half_angle: float = deg_to_rad(ABILITY_MELEE_ANGLE_DEG * 0.5)
+	var base_angle: float = _ability_swing_facing.angle()
+	var steps := 16
+	var points := PackedVector2Array()
+	points.append(player_pos)
+	for i in range(steps + 1):
+		var t: float = float(i) / float(steps)
+		var ang: float = base_angle - half_angle + t * (half_angle * 2.0)
+		points.append(player_pos + Vector2.RIGHT.rotated(ang) * ABILITY_MELEE_RANGE)
+	var alpha: float = clampf(_ability_swing_remaining / SWING_VISUAL_DURATION, 0.0, 1.0) * 0.55
+	draw_polygon(points, PackedColorArray([Color(1.0, 0.55, 0.25, alpha)]))

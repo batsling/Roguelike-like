@@ -45,7 +45,7 @@ func _reachable_ids() -> Array:
 		ids.append(int(n.id))
 	return ids
 
-func _was_visited_link(from_node: Dictionary, to_id: int) -> bool:
+func _was_visited_link(_from_node: Dictionary, to_id: int) -> bool:
 	# True if both ends are visited; cheap heuristic so the player's
 	# actual route lights up without us having to track it explicitly.
 	var to: Dictionary = map.nodes_by_id.get(to_id, {})

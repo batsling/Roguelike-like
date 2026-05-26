@@ -33,7 +33,6 @@ var _active_modal: Control = null
 var _pending_reward_type: String = ""
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
-@onready var _bg: ColorRect = $Background
 @onready var _header: Label = $Header
 @onready var _nodes_layer: Control = $Nodes
 

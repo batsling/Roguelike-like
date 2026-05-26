@@ -23,7 +23,7 @@ var current_node_id: int = -1
 
 # ---------------------------------------------------------------------------
 
-func generate(rng: RandomNumberGenerator) -> void:
+func generate(_rng: RandomNumberGenerator) -> void:
 	floors.clear()
 	nodes_by_id.clear()
 	current_node_id = -1
