@@ -180,20 +180,20 @@ func _draw() -> void:
 
 	# Path preview dots
 	for pos in _path_preview:
-		var cx = pos.x * TILE_SIZE + TILE_SIZE / 2
-		var cy = pos.y * TILE_SIZE + TILE_SIZE / 2
+		var cx = pos.x * TILE_SIZE + TILE_SIZE * 0.5
+		var cy = pos.y * TILE_SIZE + TILE_SIZE * 0.5
 		draw_circle(Vector2(cx, cy), TILE_SIZE * 0.18, COLOR_PATH)
 
 	# Items
 	for entry in battle_map.items:
 		var p: Vector2i = entry.pos
-		var center := Vector2(p.x * TILE_SIZE + TILE_SIZE / 2, p.y * TILE_SIZE + TILE_SIZE / 2)
+		var center := Vector2(p.x * TILE_SIZE + TILE_SIZE * 0.5, p.y * TILE_SIZE + TILE_SIZE * 0.5)
 		draw_circle(center, TILE_SIZE * 0.22, COLOR_ITEM)
 
 	# Units (and active-unit ring)
 	for u in units:
 		var p: Vector2i = u.position
-		var center := Vector2(p.x * TILE_SIZE + TILE_SIZE / 2, p.y * TILE_SIZE + TILE_SIZE / 2)
+		var center := Vector2(p.x * TILE_SIZE + TILE_SIZE * 0.5, p.y * TILE_SIZE + TILE_SIZE * 0.5)
 		var col: Color = COLOR_DEAD
 		if u.is_alive():
 			col = COLOR_PLAYER if u.is_player else COLOR_ENEMY
@@ -223,7 +223,7 @@ func _draw() -> void:
 			if not _is_adjacent(active_unit.position, u.position):
 				continue
 			var p2: Vector2i = u.position
-			var center2 := Vector2(p2.x * TILE_SIZE + TILE_SIZE / 2, p2.y * TILE_SIZE + TILE_SIZE / 2)
+			var center2 := Vector2(p2.x * TILE_SIZE + TILE_SIZE * 0.5, p2.y * TILE_SIZE + TILE_SIZE * 0.5)
 			draw_arc(center2, TILE_SIZE * 0.48, 0.0, TAU, 32, COLOR_TARGET_RING, 3.0)
 
 # --- Input -------------------------------------------------------------
