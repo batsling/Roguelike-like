@@ -235,12 +235,12 @@ func _trigger_combat(rd: StrategyRoomData) -> void:
 	StrategyLog.add("Combat! %s" % enc_str, Color(1.0, 0.6, 0.4))
 	StrategyCombatSession.enter_combat(rd, rd.encounter)
 
-func _on_combat_started(room_data, encounter: Array, battle_map) -> void:
+func _on_combat_started(room_data, encounter: Array, battle_map, turn_manager) -> void:
 	if _battle_overlay != null:
 		_battle_overlay.queue_free()
 	_battle_overlay = BattlePlaceholderScript.new()
 	add_child(_battle_overlay)
-	_battle_overlay.set_encounter(room_data, encounter, battle_map)
+	_battle_overlay.set_encounter(room_data, encounter, battle_map, turn_manager)
 
 func _on_combat_ended(result: String) -> void:
 	if _battle_overlay != null:

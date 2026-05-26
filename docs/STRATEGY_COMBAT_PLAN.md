@@ -89,11 +89,27 @@ New `BattleMap.gd` (`godot/scripts/strategy/combat/BattleMap.gd`):
 > **Session break point.** Phase 3 produces a data-complete battlefield (terrain + spawn zones + mapped items). Phase 4 turns it into a live battle by adding the initiative engine.
 
 ### Phase 4 — Initiative and turn engine
-New `BattleTurnManager.gd`:
-- `Unit` resource: `max_hp, hp, speed, dash_available, basic_attack_def, block, position, int_stat, cha_stat, mana, max_mana, mana_regen`.
-- Speed-based initiative: each unit has an act counter that ticks per round; when it overflows by its speed it gets a turn. Higher speed = more turns per round.
-- On unit's turn: emit `unit_turn_started`. On end: tick that unit's cooldowns.
-- Player turn start: apply `mana = min(mana + mana_regen, max_mana)`.
+New `Unit.gd` (class `BattleUnit`, `extends Resource`) and `BattleTurnManager.gd`
+under `godot/scripts/strategy/combat/`:
+- `BattleUnit` fields: `unit_name, is_player, max_hp, hp, speed, dash_available,
+  basic_attack_def, block, position, int_stat, cha_stat, mana, max_mana,
+  mana_regen, cooldowns, act_counter`. Factory helpers build units from the
+  overworld player (`from_player`) and enemy kind strings (`from_enemy_kind`,
+  with stat presets for rat/snake/orc/troll).
+- Speed-based initiative (Mewgenics/FFT-lite): every tick adds `speed` to
+  each living unit's `act_counter`. First counter to cross
+  `ACT_THRESHOLD = 100` takes a turn; the threshold is *subtracted* (not
+  zeroed) so excess speed carries over. Higher speed → more turns per round.
+- On unit's turn: emit `unit_turn_started`. On `end_current_turn`: tick the
+  unit's cooldowns, clear its `block`, emit `unit_turn_ended`, then check
+  battle end (player down → `defeat`, all enemies down → `victory`) before
+  advancing.
+- Player turn start: `mana = min(mana + mana_regen, max_mana)`.
+- Dash: `consume_dash()` queues a single bonus turn for the current unit
+  ahead of the natural initiative cycle.
+- `CombatSession` now builds units and a turn manager at `enter_combat`,
+  exposes them via `combat_started(room, encounter, battle_map, turn_manager)`,
+  and listens to `battle_ended` to drive the outer overworld loop.
 
 ### Phase 5 — Player turn UI/UX
 - Grid input: highlight reachable tiles within `Speed`, click to move (path-preview).
