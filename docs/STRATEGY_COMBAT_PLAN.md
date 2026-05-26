@@ -132,17 +132,50 @@ The script-only ASCII placeholder is retired.
   forcing the player to press End Turn.
 
 ### Phase 6 — Cards → Abilities; Spells → Spellbook
-New `AbilityPool.gd`:
-- Built from the player's deck at combat start: filter out basic strikes/defends.
-- Computes each ability's cooldown (formula or override).
-- Casting flow: select ability → if targeted, enter targeting mode → resolve via shared card-effect runner → set cooldown.
+`AbilityPool.gd` (`godot/scripts/strategy/combat/`):
+- Built from `GameState.deck` at combat start; cards tagged `strike`
+  or `defend` are filtered (they live on the basic Attack/Defend
+  actions). Duplicates dedupe by id.
+- Cooldown = `card.cooldown_override` if `>= 0`, else
+  `AbilityCooldownConfig.compute(card)` =
+  `base + max(0, cost) * cost_weight + rarity_weights[rarity]` (defaults
+  `base=2, cost_weight=1, rarity_weights=[0,0,1,2,3]`).
+- Casting flow: open picker → pick ability → if any effect targets
+  `enemy`, enter `UNIT_TARGET` mode for an enemy click → resolve via
+  the shared `EffectSystem` (BattleView implements `deal_damage`,
+  `gain_block`, `heal`) → `set_cooldown` (writes `base_cooldown + 1`
+  so the end-of-turn tick lines up). Limited to one ability per turn
+  (`_ability_used`).
 
-New `Spellbook.gd`:
-- Built from `gameState.spells` (port `SPELLS_DATA` to a Godot resource).
-- Each spell has `cost` (mana), effects.
-- Casting flow: select spell → check mana → spend mana → resolve effects.
+`Spellbook.gd` (`godot/scripts/strategy/combat/`):
+- Built from `GameState.learned_spells` (Array of StringName ids
+  resolved via `SpellsCatalog.gd`, which ports the legacy
+  `SPELLS_DATA` to `SpellData` resources with structured effects).
+- Each spell has `cost` (mana) + structured `effects`.
+- Casting flow: open picker → pick spell → spend mana → if
+  `target_kind` is `enemy`/`friendly`, prompt for a click → resolve
+  effects (same EffectSystem path as abilities; `dmg_fraction_max_hp`
+  is registered locally for Abyss/Infinity). Unlimited casts per
+  turn while mana lasts; `BattleTurnManager` handles turn-start
+  regen.
 
-Card resource gets optional `cooldown_override: int = -1`.
+Plumbing:
+- `CardData` gains `cooldown_override: int = -1`.
+- `GameState` gains `learned_spells: Array[StringName]` (resets with
+  the run).
+- `SpellData.gd` + `AbilityCooldownConfig.gd` resources land under
+  `scripts/resources/`.
+- `BattleGridView` gains a `UNIT_TARGET` mode with `TargetFilter`
+  (enemy / ally / any) and right-click cancel; emits
+  `target_requested` / `target_cancelled`.
+- `BattleView` builds the pool + spellbook at `set_encounter`, holds
+  the `_pending_*` state during targeting, and replaces the Phase-5
+  stub dialogs with scrollable pickers that show cooldown / mana
+  costs.
+- For the standalone strategy prototype, `strategy_prototype/Main.gd`
+  seeds `GameState.deck` with the existing demo cards and
+  `GameState.learned_spells` with `SpellsCatalog.default_starter_ids()`
+  so the pickers have content immediately.
 
 ### Phase 7 — Enemy AI with hybrid intents
 Refactor `EnemyAI.gd`:

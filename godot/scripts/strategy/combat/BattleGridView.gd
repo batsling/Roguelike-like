@@ -26,11 +26,16 @@ const COLOR_DEAD         := Color(0.35, 0.35, 0.35)
 const COLOR_ACTIVE_RING  := Color(1.0,  1.0,  0.6)
 const COLOR_TARGET_RING  := Color(1.0,  0.3,  0.3, 0.9)
 
-enum Mode { IDLE, MOVE, ATTACK_TARGET }
+enum Mode { IDLE, MOVE, ATTACK_TARGET, UNIT_TARGET }
+enum TargetFilter { ENEMY, ALLY, ANY }
 
 signal move_requested(path: Array)        # Array[Vector2i], excluding start
-signal attack_requested(target)           # BattleUnit
+signal attack_requested(target)           # BattleUnit (adjacent only)
+signal target_requested(target)           # BattleUnit (any range, filter-aware)
+signal target_cancelled                   # right-click in UNIT_TARGET aborts
 signal hover_changed(pos: Vector2i)       # Vector2i(-1,-1) when outside grid
+
+var _target_filter: int = TargetFilter.ENEMY
 
 var battle_map = null
 var units: Array = []
@@ -72,6 +77,18 @@ func enter_attack_mode() -> void:
 	if active_unit == null:
 		return
 	mode = Mode.ATTACK_TARGET
+	_reach.clear()
+	_path_preview.clear()
+	queue_redraw()
+
+func enter_unit_target_mode(filter: int = TargetFilter.ENEMY) -> void:
+	# Range-less targeting used by abilities and spells. Filter decides
+	# which living units are clickable; the view only emits, so the
+	# caller still validates legality (mana, cooldown, etc.).
+	if active_unit == null:
+		return
+	mode = Mode.UNIT_TARGET
+	_target_filter = filter
 	_reach.clear()
 	_path_preview.clear()
 	queue_redraw()
@@ -146,6 +163,17 @@ func _unit_at(pos: Vector2i):
 
 func _is_adjacent(a: Vector2i, b: Vector2i) -> bool:
 	return absi(a.x - b.x) + absi(a.y - b.y) == 1
+
+func _target_allowed(u) -> bool:
+	if u == null or not u.is_alive() or u == active_unit:
+		return false
+	match _target_filter:
+		TargetFilter.ENEMY:
+			return u.is_player != active_unit.is_player
+		TargetFilter.ALLY:
+			return u.is_player == active_unit.is_player
+		_:
+			return true
 
 func _grid_pos_at(local_pos: Vector2) -> Vector2i:
 	if local_pos.x < 0 or local_pos.y < 0:
@@ -226,6 +254,15 @@ func _draw() -> void:
 			var center2 := Vector2(p2.x * TILE_SIZE + TILE_SIZE * 0.5, p2.y * TILE_SIZE + TILE_SIZE * 0.5)
 			draw_arc(center2, TILE_SIZE * 0.48, 0.0, TAU, 32, COLOR_TARGET_RING, 3.0)
 
+	# Ability/spell targeting: ring every filter-allowed unit.
+	if mode == Mode.UNIT_TARGET and active_unit != null:
+		for u in units:
+			if not _target_allowed(u):
+				continue
+			var p3: Vector2i = u.position
+			var center3 := Vector2(p3.x * TILE_SIZE + TILE_SIZE * 0.5, p3.y * TILE_SIZE + TILE_SIZE * 0.5)
+			draw_arc(center3, TILE_SIZE * 0.48, 0.0, TAU, 32, COLOR_TARGET_RING, 3.0)
+
 # --- Input -------------------------------------------------------------
 
 func _gui_input(event: InputEvent) -> void:
@@ -254,3 +291,10 @@ func _gui_input(event: InputEvent) -> void:
 			var tgt = _unit_at(pos)
 			if tgt != null and not tgt.is_player and _is_adjacent(active_unit.position, pos):
 				emit_signal("attack_requested", tgt)
+		elif mode == Mode.UNIT_TARGET:
+			var tgt2 = _unit_at(pos)
+			if _target_allowed(tgt2):
+				emit_signal("target_requested", tgt2)
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+		if mode == Mode.UNIT_TARGET:
+			emit_signal("target_cancelled")

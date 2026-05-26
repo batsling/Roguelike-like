@@ -1,28 +1,46 @@
 extends CanvasLayer
 
-# Phase 5: the tactical battle UI. Replaces the earlier ASCII placeholder.
-# Hosts the `BattleGridView` plus an action bar, initiative panel, and
-# stub pickers for the Phase-6 Ability and Spellbook flows.
+# Phase 5+6: the tactical battle UI. Hosts the BattleGridView, an action
+# bar, an initiative panel, and the Ability/Spellbook pickers wired to
+# Phase-6's `AbilityPool` and `Spellbook`.
 #
 # Player turn rules (from STRATEGY_COMBAT_PLAN.md):
 #   - Move up to `unit.speed` tiles (chained moves allowed).
-#   - One of Attack OR Defend (mutually exclusive, `_action_used`).
-#   - One non-basic Ability (Phase 6; `_ability_used`).
-#   - Any number of Spells while mana lasts (Phase 6).
-#   - Dash once per combat: spends `dash_available` for a bonus turn
-#     appended after this one.
+#   - One of Attack OR Defend (`_action_used`).
+#   - One non-basic Ability per turn (`_ability_used`), cooldown-gated.
+#   - Any number of Spells while mana lasts.
+#   - Dash once per combat: spends `dash_available` for a bonus turn.
 #   - End Turn closes out the turn.
-# Enemy turns auto-end on a short timer until Phase 7 lands enemy AI.
+# Enemy turns auto-end on a short timer until Phase 7 lands real AI.
+#
+# Effect resolution: ability and spell effects route through the
+# autoloaded `EffectSystem`, with `self` as the `scene` ctx so the
+# tactical implementations of deal_damage/gain_block/heal handle the
+# actual mutations.
 
 const BattleGridViewScript := preload("res://scripts/strategy/combat/BattleGridView.gd")
+const AbilityPoolScript := preload("res://scripts/strategy/combat/AbilityPool.gd")
+const SpellbookScript := preload("res://scripts/strategy/combat/Spellbook.gd")
+const SpellsCatalogScript := preload("res://scripts/strategy/combat/SpellsCatalog.gd")
 
 const ENEMY_TURN_DELAY := 0.45
 const DEFAULT_BASIC_ATTACK := 6
 const DEFAULT_BASIC_DEFEND := 6
 
+# What the player is currently selecting in the grid view.
+enum Pending { NONE, ABILITY, SPELL }
+
 var _battle_map = null
 var _turn_manager = null
 var _units: Array = []
+
+var _ability_pool = null   # AbilityPool
+var _spellbook = null      # Spellbook
+
+# Mid-action state: which ability/spell is mid-cast while we wait for a target click.
+var _pending_kind: int = Pending.NONE
+var _pending_ability = null  # AbilityPool.Ability
+var _pending_spell = null    # Spellbook.Entry
 
 var _grid_view: BattleGridView
 var _initiative_label: Label
@@ -40,7 +58,9 @@ var _btn_win: Button
 var _btn_lose: Button
 
 var _ability_dialog: Panel
+var _ability_list_container: VBoxContainer
 var _spell_dialog: Panel
+var _spell_list_container: VBoxContainer
 
 var _enemy_turn_timer: Timer
 
@@ -58,6 +78,9 @@ func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager 
 	_turn_manager = turn_manager
 	_units = turn_manager.units if turn_manager != null else []
 	_grid_view.set_battle(battle_map, _units)
+
+	_ability_pool = AbilityPoolScript.build_from_deck(GameState.deck)
+	_spellbook = SpellbookScript.build_from_ids(GameState.learned_spells)
 
 	_info_label.text = _format_info(room_data, encounter)
 
@@ -102,6 +125,8 @@ func _build_ui() -> void:
 	_grid_view.position = Vector2(20, 100)
 	_grid_view.move_requested.connect(_on_move_requested)
 	_grid_view.attack_requested.connect(_on_attack_requested)
+	_grid_view.target_requested.connect(_on_target_requested)
+	_grid_view.target_cancelled.connect(_on_target_cancelled)
 	panel.add_child(_grid_view)
 
 	_initiative_label = Label.new()
@@ -163,26 +188,20 @@ func _make_button(text: String, x: int, y: int, w: int, h: int, cb: Callable) ->
 	return b
 
 func _build_pickers() -> void:
-	_ability_dialog = _make_dialog(
-		"Abilities",
-		"No abilities yet — non-basic deck cards plug in during Phase 6.",
-		_close_ability_dialog,
-	)
+	_ability_dialog = _make_picker_dialog("Abilities", _close_ability_dialog)
+	_ability_list_container = _ability_dialog.get_meta("list")
 	add_child(_ability_dialog)
 	_ability_dialog.visible = false
 
-	_spell_dialog = _make_dialog(
-		"Spellbook",
-		"No spells yet — SPELLS_DATA is ported into a Godot resource in Phase 6.",
-		_close_spell_dialog,
-	)
+	_spell_dialog = _make_picker_dialog("Spellbook", _close_spell_dialog)
+	_spell_list_container = _spell_dialog.get_meta("list")
 	add_child(_spell_dialog)
 	_spell_dialog.visible = false
 
-func _make_dialog(title_text: String, body_text: String, close_cb: Callable) -> Panel:
+func _make_picker_dialog(title_text: String, close_cb: Callable) -> Panel:
 	var p := Panel.new()
-	p.position = Vector2(360, 200)
-	p.size = Vector2(560, 240)
+	p.position = Vector2(280, 140)
+	p.size = Vector2(640, 420)
 	var bg := StyleBoxFlat.new()
 	bg.bg_color = Color(0.10, 0.07, 0.14, 0.98)
 	bg.border_color = Color(0.6, 0.5, 0.3)
@@ -198,16 +217,18 @@ func _make_dialog(title_text: String, body_text: String, close_cb: Callable) -> 
 	t.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
 	p.add_child(t)
 
-	var b := Label.new()
-	b.text = body_text
-	b.position = Vector2(20, 60)
-	b.size = Vector2(520, 120)
-	b.autowrap_mode = TextServer.AUTOWRAP_WORD
-	b.add_theme_font_size_override("font_size", 14)
-	b.add_theme_color_override("font_color", Color.WHITE)
-	p.add_child(b)
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(20, 56)
+	scroll.size = Vector2(600, 290)
+	p.add_child(scroll)
 
-	var close := _make_button("Close", 230, 190, 100, 36, close_cb)
+	var vbox := VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 4)
+	scroll.add_child(vbox)
+	p.set_meta("list", vbox)
+
+	var close := _make_button("Close", 270, 366, 100, 36, close_cb)
 	p.add_child(close)
 	return p
 
@@ -222,6 +243,9 @@ func _on_unit_turn_started(unit) -> void:
 		_action_used = false
 		_ability_used = false
 		_move_remaining = unit.speed
+		_pending_kind = Pending.NONE
+		_pending_ability = null
+		_pending_spell = null
 		_status_label.text = "Your turn. Move %d  |  Mana %d/%d" % [
 			_move_remaining, unit.mana, unit.max_mana,
 		]
@@ -247,7 +271,7 @@ func _on_battle_ended(result) -> void:
 	_set_player_buttons_enabled(false)
 
 # ----------------------------------------------------------------------
-# Player actions
+# Player actions — basic
 # ----------------------------------------------------------------------
 
 func _on_move_button() -> void:
@@ -256,18 +280,21 @@ func _on_move_button() -> void:
 	if _move_remaining <= 0:
 		_status_label.text = "No movement left."
 		return
+	_clear_pending()
 	_grid_view.enter_move_mode()
 	_status_label.text = "Click a highlighted tile to move (%d tiles left)." % _move_remaining
 
 func _on_attack_button() -> void:
 	if not _is_player_turn() or _action_used:
 		return
+	_clear_pending()
 	_grid_view.enter_attack_mode()
 	_status_label.text = "Click an adjacent enemy to attack."
 
 func _on_defend_button() -> void:
 	if not _is_player_turn() or _action_used:
 		return
+	_clear_pending()
 	var u = _turn_manager.current_unit
 	u.block += DEFAULT_BASIC_DEFEND
 	_action_used = true
@@ -275,18 +302,6 @@ func _on_defend_button() -> void:
 	_status_label.text = "You brace. +%d block (now %d)." % [DEFAULT_BASIC_DEFEND, u.block]
 	_grid_view.notify_units_changed()
 	_refresh_button_states()
-
-func _on_ability_button() -> void:
-	if not _is_player_turn() or _ability_used:
-		return
-	_grid_view.enter_idle()
-	_ability_dialog.visible = true
-
-func _on_spell_button() -> void:
-	if not _is_player_turn():
-		return
-	_grid_view.enter_idle()
-	_spell_dialog.visible = true
 
 func _on_dash_button() -> void:
 	if not _is_player_turn():
@@ -299,21 +314,162 @@ func _on_dash_button() -> void:
 func _on_end_turn_button() -> void:
 	if not _is_player_turn():
 		return
+	_clear_pending()
 	_grid_view.enter_idle()
 	_set_player_buttons_enabled(false)
 	_turn_manager.end_current_turn()
-
-func _close_ability_dialog() -> void:
-	_ability_dialog.visible = false
-
-func _close_spell_dialog() -> void:
-	_spell_dialog.visible = false
 
 func _on_force_win() -> void:
 	StrategyCombatSession.resolve_combat("victory")
 
 func _on_force_lose() -> void:
 	StrategyCombatSession.resolve_combat("defeat")
+
+# ----------------------------------------------------------------------
+# Player actions — Ability
+# ----------------------------------------------------------------------
+
+func _on_ability_button() -> void:
+	if not _is_player_turn() or _ability_used:
+		return
+	_clear_pending()
+	_grid_view.enter_idle()
+	_populate_ability_picker()
+	_ability_dialog.visible = true
+	_spell_dialog.visible = false
+
+func _populate_ability_picker() -> void:
+	for child in _ability_list_container.get_children():
+		child.queue_free()
+	if _ability_pool == null or _ability_pool.abilities.is_empty():
+		_ability_list_container.add_child(_picker_note(
+			"No abilities in your deck. Non-basic cards become abilities."
+		))
+		return
+	var u = _turn_manager.current_unit
+	for ability in _ability_pool.abilities:
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var lbl := Label.new()
+		var cd: int = _ability_pool.remaining_cooldown(u, ability.id)
+		var ready: bool = cd <= 0
+		var status: String = "(CD %d)" % cd if not ready else "(CD %d on use)" % ability.base_cooldown
+		lbl.text = "%s  %s  —  %s" % [ability.display_name, status, ability.description]
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+		lbl.custom_minimum_size = Vector2(440, 0)
+		lbl.add_theme_font_size_override("font_size", 13)
+		row.add_child(lbl)
+		var btn := Button.new()
+		btn.text = "Cast"
+		btn.disabled = not ready
+		btn.pressed.connect(_on_pick_ability.bind(ability))
+		row.add_child(btn)
+		_ability_list_container.add_child(row)
+
+func _on_pick_ability(ability) -> void:
+	_ability_dialog.visible = false
+	_pending_kind = Pending.ABILITY
+	_pending_ability = ability
+	if ability.wants_target:
+		_grid_view.enter_unit_target_mode(BattleGridView.TargetFilter.ENEMY)
+		_status_label.text = "Casting %s — click an enemy (right-click to cancel)." % ability.display_name
+	else:
+		_resolve_ability_against(null)
+
+func _resolve_ability_against(target) -> void:
+	if _pending_ability == null:
+		return
+	var u = _turn_manager.current_unit
+	var ability = _pending_ability
+	_apply_card_or_spell_effects(ability.card.effects, u, target)
+	_ability_pool.set_cooldown(u, ability)
+	_ability_used = true
+	_pending_kind = Pending.NONE
+	_pending_ability = null
+	_grid_view.enter_idle()
+	_status_label.text = "Cast %s (cooldown %d)." % [ability.display_name, ability.base_cooldown]
+	_grid_view.notify_units_changed()
+	_refresh_initiative()
+	_refresh_button_states()
+	_check_battle_end_after_effect()
+
+# ----------------------------------------------------------------------
+# Player actions — Spell
+# ----------------------------------------------------------------------
+
+func _on_spell_button() -> void:
+	if not _is_player_turn():
+		return
+	_clear_pending()
+	_grid_view.enter_idle()
+	_populate_spell_picker()
+	_spell_dialog.visible = true
+	_ability_dialog.visible = false
+
+func _populate_spell_picker() -> void:
+	for child in _spell_list_container.get_children():
+		child.queue_free()
+	if _spellbook == null or _spellbook.spells.is_empty():
+		_spell_list_container.add_child(_picker_note(
+			"No spells learned. Learn spells from card rewards to populate."
+		))
+		return
+	var u = _turn_manager.current_unit
+	for entry in _spellbook.spells:
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var lbl := Label.new()
+		var affordable: bool = _spellbook.can_cast(u, entry)
+		lbl.text = "%s  (%d mana)  —  %s" % [
+			entry.data.display_name, entry.data.cost, entry.data.description,
+		]
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+		lbl.custom_minimum_size = Vector2(440, 0)
+		lbl.add_theme_font_size_override("font_size", 13)
+		row.add_child(lbl)
+		var btn := Button.new()
+		btn.text = "Cast"
+		btn.disabled = not affordable
+		btn.pressed.connect(_on_pick_spell.bind(entry))
+		row.add_child(btn)
+		_spell_list_container.add_child(row)
+
+func _on_pick_spell(entry) -> void:
+	_spell_dialog.visible = false
+	var u = _turn_manager.current_unit
+	if not _spellbook.can_cast(u, entry):
+		_status_label.text = "Not enough mana for %s." % entry.data.display_name
+		return
+	_pending_kind = Pending.SPELL
+	_pending_spell = entry
+	if entry.wants_target:
+		var filter: int = BattleGridView.TargetFilter.ENEMY
+		if entry.data.target_kind == "friendly":
+			filter = BattleGridView.TargetFilter.ALLY
+		_grid_view.enter_unit_target_mode(filter)
+		_status_label.text = "Casting %s — pick a target (right-click to cancel)." % entry.data.display_name
+	else:
+		_resolve_spell_against(null)
+
+func _resolve_spell_against(target) -> void:
+	if _pending_spell == null:
+		return
+	var u = _turn_manager.current_unit
+	var entry = _pending_spell
+	_spellbook.spend_mana(u, entry)
+	_apply_card_or_spell_effects(entry.data.effects, u, target)
+	_pending_kind = Pending.NONE
+	_pending_spell = null
+	_grid_view.enter_idle()
+	_status_label.text = "Cast %s (mana now %d/%d)." % [
+		entry.data.display_name, u.mana, u.max_mana,
+	]
+	_grid_view.notify_units_changed()
+	_refresh_initiative()
+	_refresh_button_states()
+	_check_battle_end_after_effect()
 
 # ----------------------------------------------------------------------
 # Grid-view callbacks
@@ -344,7 +500,7 @@ func _on_attack_requested(target) -> void:
 	var dmg := DEFAULT_BASIC_ATTACK
 	if attacker.basic_attack_def.has("damage"):
 		dmg = int(attacker.basic_attack_def["damage"])
-	_apply_damage(target, dmg)
+	_apply_damage(attacker, target, dmg)
 	_action_used = true
 	_grid_view.enter_idle()
 	_status_label.text = "You strike %s for %d." % [target.unit_name, dmg]
@@ -352,17 +508,141 @@ func _on_attack_requested(target) -> void:
 	_refresh_initiative()
 	_refresh_button_states()
 
-func _apply_damage(target, raw_dmg: int) -> void:
+func _on_target_requested(target) -> void:
+	if not _is_player_turn():
+		return
+	match _pending_kind:
+		Pending.ABILITY:
+			_resolve_ability_against(target)
+		Pending.SPELL:
+			_resolve_spell_against(target)
+		_:
+			pass
+
+func _on_target_cancelled() -> void:
+	if _pending_kind == Pending.NONE:
+		return
+	_clear_pending()
+	_grid_view.enter_idle()
+	_status_label.text = "Cancelled."
+
+func _clear_pending() -> void:
+	_pending_kind = Pending.NONE
+	_pending_ability = null
+	_pending_spell = null
+
+# ----------------------------------------------------------------------
+# Effect resolution (called by EffectSystem handlers via this scene)
+# ----------------------------------------------------------------------
+
+func _apply_card_or_spell_effects(effects: Array, source, target) -> void:
+	for effect in effects:
+		var resolved_targets: Array = _resolve_effect_targets(effect, source, target)
+		if resolved_targets.is_empty():
+			# self-only effects with no explicit target — treat source as target.
+			resolved_targets = [source]
+		for t in resolved_targets:
+			EffectSystem.apply(effect, {
+				"source": source,
+				"target": t,
+				"scene": self,
+				"card": null,
+			})
+
+func _resolve_effect_targets(effect: Dictionary, source, picked) -> Array:
+	var kind: String = str(effect.get("target", "self"))
+	match kind:
+		"self":
+			return [source]
+		"enemy":
+			return [picked] if picked != null else []
+		"all_enemies":
+			var out: Array = []
+			for u in _units:
+				if u.is_alive() and u.is_player != source.is_player:
+					out.append(u)
+			return out
+		"all_allies":
+			var out2: Array = []
+			for u in _units:
+				if u.is_alive() and u.is_player == source.is_player:
+					out2.append(u)
+			return out2
+		_:
+			return [picked] if picked != null else [source]
+
+# --- EffectSystem callbacks (named exactly as deckbuilder combat). ---
+
+func deal_damage(source, target, value: int, effect: Dictionary = {}) -> void:
+	if target == null:
+		return
+	var raw: int = int(value)
+	if effect.get("type", "") == "dmg_fraction_max_hp":
+		raw = int(round(target.max_hp * float(effect.get("value", 0))))
+	_apply_damage(source, target, raw)
+
+func gain_block(target, value: int) -> void:
+	if target == null:
+		return
+	target.block = maxi(0, target.block) + int(value)
+
+func heal(target, value: int) -> void:
+	if target == null:
+		return
+	target.hp = mini(target.max_hp, target.hp + int(value))
+
+# ----------------------------------------------------------------------
+# Damage / death helpers
+# ----------------------------------------------------------------------
+
+func _apply_damage(_source, target, raw_dmg: int) -> void:
+	if target == null or raw_dmg <= 0:
+		return
 	var absorbed := mini(target.block, raw_dmg)
 	target.block -= absorbed
 	var landed := raw_dmg - absorbed
 	target.hp = maxi(0, target.hp - landed)
-	if not target.is_alive():
-		# Let the engine wrap up immediately if the kill ended combat.
+
+func _check_battle_end_after_effect() -> void:
+	# Spells/abilities can finish a fight; let the engine wrap up
+	# immediately rather than waiting for End Turn.
+	if _turn_manager != null:
 		_turn_manager.check_battle_end_now()
 
+# Register handler for the custom max-HP-fraction damage type so SPELLS_DATA
+# spells (Abyss, Infinity) work without touching the global registry.
+# Called once per BattleView instance — safe because EffectSystem.register
+# is idempotent (last writer wins, and we always write the same callable).
+func _enter_tree() -> void:
+	EffectSystem.register("dmg_fraction_max_hp", _h_dmg_fraction_max_hp)
+
+func _h_dmg_fraction_max_hp(effect: Dictionary, ctx: Dictionary) -> void:
+	var target = ctx.get("target")
+	if target == null:
+		return
+	var raw: int = int(round(target.max_hp * float(effect.get("value", 0))))
+	deal_damage(ctx.get("source"), target, raw, effect)
+
 # ----------------------------------------------------------------------
-# Helpers
+# Picker helpers
+# ----------------------------------------------------------------------
+
+func _picker_note(text: String) -> Control:
+	var l := Label.new()
+	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+	return l
+
+func _close_ability_dialog() -> void:
+	_ability_dialog.visible = false
+
+func _close_spell_dialog() -> void:
+	_spell_dialog.visible = false
+
+# ----------------------------------------------------------------------
+# State refresh
 # ----------------------------------------------------------------------
 
 func _is_player_turn() -> bool:
@@ -390,7 +670,8 @@ func _refresh_button_states() -> void:
 	_btn_move.disabled = _move_remaining <= 0
 	_btn_attack.disabled = _action_used
 	_btn_defend.disabled = _action_used
-	_btn_ability.disabled = _ability_used
+	_btn_ability.disabled = _ability_used or _ability_pool == null or _ability_pool.abilities.is_empty()
+	_btn_spell.disabled = _spellbook == null or _spellbook.spells.is_empty()
 	_btn_dash.disabled = not u.dash_available
 
 func _refresh_initiative() -> void:
@@ -432,8 +713,9 @@ func _format_info(room_data, encounter: Array) -> String:
 		size_name = ["S", "M", "L"][_battle_map.size_class]
 		dims = "%dx%d" % [_battle_map.width, _battle_map.height]
 
+	var abil_count: int = _ability_pool.abilities.size() if _ability_pool != null else 0
+	var spell_count: int = _spellbook.spells.size() if _spellbook != null else 0
 	return (
 		"Room: %s  |  Encounter: %s  |  Field: %s (%s)\n"
-		+ "Move highlighted tiles, attack adjacent enemies. Abilities and "
-		+ "spells are stubbed until Phase 6 (enemy AI lands in Phase 7)."
-	) % [rect_str, enc_str, size_name, dims]
+		+ "Abilities: %d  |  Spellbook: %d  |  Enemy AI lands in Phase 7."
+	) % [rect_str, enc_str, size_name, dims, abil_count, spell_count]
