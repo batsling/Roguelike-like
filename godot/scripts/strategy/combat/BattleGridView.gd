@@ -164,6 +164,31 @@ func _unit_at(pos: Vector2i):
 func _is_adjacent(a: Vector2i, b: Vector2i) -> bool:
 	return absi(a.x - b.x) + absi(a.y - b.y) == 1
 
+func _draw_intent_telegraph(u, x: int, baseline_y: int) -> void:
+	# Compact "icon + value" badge so 4+ enemies don't smear into each
+	# other. The full intent name appears in the initiative panel.
+	var tel: Dictionary = u.intent_telegraph
+	var icon: String = str(tel.get("icon", "?"))
+	var value: int = int(tel.get("value", 0))
+	var color: Color = tel.get("color", Color(1, 0.7, 0.7))
+	var text: String = icon
+	if value > 0:
+		text = "%s%d" % [icon, value]
+	var font: Font = ThemeDB.fallback_font
+	var font_size: int = 10
+	var size: Vector2 = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var pad := 2
+	var badge := Rect2(
+		x - pad,
+		baseline_y - int(size.y) - pad,
+		int(size.x) + pad * 2,
+		int(size.y) + pad * 2,
+	)
+	draw_rect(badge, Color(0.06, 0.04, 0.08, 0.85), true)
+	draw_rect(badge, color, false, 1.0)
+	draw_string(font, Vector2(x, baseline_y - 2), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+
 func _target_allowed(u) -> bool:
 	if u == null or not u.is_alive() or u == active_unit:
 		return false
@@ -237,6 +262,11 @@ func _draw() -> void:
 			draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(0.15, 0.15, 0.15), true)
 			var hp_w: int = int(bar_w * float(u.hp) / float(maxi(1, u.max_hp)))
 			draw_rect(Rect2(bar_x, bar_y, hp_w, bar_h), Color(0.4, 0.9, 0.45), true)
+
+			# Phase 7: enemy intent telegraph rendered above the HP bar.
+			# Player units have no telegraph (player picks actions live).
+			if not u.is_player and not u.intent_telegraph.is_empty():
+				_draw_intent_telegraph(u, bar_x, bar_y - 2)
 
 	# Hover tile outline
 	if _hover.x >= 0 and battle_map.in_bounds(_hover):

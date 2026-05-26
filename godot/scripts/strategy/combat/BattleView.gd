@@ -262,8 +262,21 @@ func _on_unit_turn_ended(_unit) -> void:
 func _auto_end_enemy_turn() -> void:
 	if _turn_manager == null or _turn_manager.current_unit == null:
 		return
-	if _turn_manager.current_unit.is_player:
+	var enemy = _turn_manager.current_unit
+	if enemy.is_player:
 		return
+	if enemy.ai != null:
+		var msg: String = enemy.ai.execute_turn(self, _units, _battle_map)
+		_status_label.text = msg
+		_grid_view.notify_units_changed()
+		_refresh_initiative()
+		# Bail before re-telegraphing if the action ended the battle.
+		if _turn_manager.check_battle_end_now():
+			return
+		# Pick the next intent now so the player sees the updated
+		# telegraph for any survivor before their own turn starts.
+		enemy.ai.plan_next(_units)
+		_grid_view.notify_units_changed()
 	_turn_manager.end_current_turn()
 
 func _on_battle_ended(result) -> void:
@@ -535,6 +548,11 @@ func _clear_pending() -> void:
 # Effect resolution (called by EffectSystem handlers via this scene)
 # ----------------------------------------------------------------------
 
+# Public entry point used by both player flows (_apply_card_or_spell_effects)
+# and EnemyAI.execute_turn — keeps targeting + dispatch in one place.
+func apply_effects(effects: Array, source, target) -> void:
+	_apply_card_or_spell_effects(effects, source, target)
+
 func _apply_card_or_spell_effects(effects: Array, source, target) -> void:
 	for effect in effects:
 		var resolved_targets: Array = _resolve_effect_targets(effect, source, target)
@@ -693,6 +711,13 @@ func _refresh_initiative() -> void:
 			marker, u.unit_name, u.hp, u.max_hp, u.speed,
 			u.act_counter, mana, block, dead,
 		])
+		if u.is_alive() and not u.is_player and not u.intent_telegraph.is_empty():
+			var tel: Dictionary = u.intent_telegraph
+			var val: int = int(tel.get("value", 0))
+			var tail: String = " (%d)" % val if val > 0 else ""
+			lines.append("    next: %s %s%s" % [
+				str(tel.get("icon", "")), str(tel.get("name", "")), tail,
+			])
 	_initiative_label.text = "\n".join(lines)
 
 func _format_info(room_data, encounter: Array) -> String:

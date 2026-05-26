@@ -41,6 +41,14 @@ extends Resource
 # Internal initiative counter (managed by BattleTurnManager).
 @export var act_counter: int = 0
 
+# Runtime-only state attached after construction.
+# `ai`: an EnemyAI instance (RefCounted) for non-player units; null for player.
+# `intent_telegraph`: STS-style preview of the next action this unit will
+#   take. Keys: `id`, `name`, `icon`, `value` (damage/heal magnitude or 0),
+#   `color`. Empty dict = no telegraph (player, dead, or no valid action).
+var ai = null
+var intent_telegraph: Dictionary = {}
+
 func is_alive() -> bool:
 	return hp > 0
 
