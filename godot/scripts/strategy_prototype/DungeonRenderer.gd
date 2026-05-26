@@ -62,12 +62,42 @@ func _draw() -> void:
 				StrategyState.TileType.STAIRS_DOWN:
 					ch = ">"
 					col = Color(1.0, 1.0, 0.3) if vis else Color(0.4, 0.4, 0.1)
+				StrategyState.TileType.DOOR_LOCKED:
+					ch = "+"
+					col = Color(0.9, 0.6, 0.2) if vis else Color(0.4, 0.25, 0.1)
+				StrategyState.TileType.DOOR_OPEN:
+					ch = "/"
+					col = Color(0.7, 0.5, 0.2) if vis else Color(0.3, 0.2, 0.08)
+				StrategyState.TileType.TRAP_HIDDEN:
+					# Hidden traps look like the floor under them.
+					ch = "."
+					col = Color(0.6, 0.6, 0.55) if vis else Color(0.25, 0.25, 0.22)
+				StrategyState.TileType.TRAP_REVEALED:
+					ch = "^"
+					col = Color(1.0, 0.3, 0.3) if vis else Color(0.4, 0.15, 0.15)
 				_:
 					ch = " "
 					col = Color.BLACK
 
 			var draw_pos = Vector2(sx * CELL_W, sy * CELL_H + CELL_H - 4)
 			draw_string(_font, draw_pos, ch, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, col)
+
+	# Mark uncleared combat rooms with a "!" at their center when visible.
+	for rd in StrategyState.map.room_data:
+		if rd.tag != "combat" or rd.cleared:
+			continue
+		var center = rd.rect.get_center()
+		var ci = map.idx(center.x, center.y)
+		if ci < 0 or ci >= map.visible.size():
+			continue
+		if not map.visible[ci]:
+			continue
+		var sx = center.x - cam_offset.x
+		var sy = center.y - cam_offset.y
+		if sx < 0 or sx >= cols or sy < 0 or sy >= rows:
+			continue
+		var draw_pos = Vector2(sx * CELL_W, sy * CELL_H + CELL_H - 4)
+		draw_string(_font, draw_pos, "!", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, Color(1.0, 0.4, 0.4))
 
 	# Draw items
 	for item in StrategyState.map.items:

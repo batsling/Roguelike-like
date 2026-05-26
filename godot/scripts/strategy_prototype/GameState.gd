@@ -1,27 +1,39 @@
 extends Node
 
-# DORMANT: prototype-era autoload, registered as `StrategyState` in project.godot.
-# Lives here so the rogue-prototype scene can still be run from the editor.
-# Will be re-integrated when Phase 3 (Strategy mode) ports the prototype.
+# Autoload `StrategyState`. Holds the strategy/overworld run state.
+# Phases 1+2 of the Strategy Combat plan extend this with room tagging,
+# locked doors, traps, gold/keys, and a pending-combat signal.
 
-# player_moved / game_over are placeholder signals reserved for the
-# Phase 3 strategy-mode port; level_changed is emitted from Main.gd via
-# StrategyState.emit_signal so Godot misses it in the local scan.
 @warning_ignore_start("unused_signal")
 signal player_moved
 signal entity_died(entity)
 signal level_changed(floor_num)
 signal game_over(won: bool)
+signal room_cleared(room_data)
 @warning_ignore_restore("unused_signal")
 
-enum TileType { WALL, FLOOR, CORRIDOR, STAIRS_DOWN }
-enum GamePhase { PLAYING, INVENTORY, DEAD, WIN }
+enum TileType {
+	WALL,
+	FLOOR,
+	CORRIDOR,
+	STAIRS_DOWN,
+	DOOR_LOCKED,
+	DOOR_OPEN,
+	TRAP_HIDDEN,
+	TRAP_REVEALED,
+}
+
+enum GamePhase { PLAYING, INVENTORY, DEAD, WIN, COMBAT }
 
 var phase: GamePhase = GamePhase.PLAYING
 var dungeon_floor: int = 1
 var map: StrategyMap = null
 var player: StrategyEntity = null
-var entities: Array = []  # all living entities including player
+var entities: Array = []  # all living entities including player (floor scope)
+
+# Run-scope counters that persist across floors.
+var gold: int = 0
+var keys: int = 0
 
 func reset() -> void:
 	phase = GamePhase.PLAYING
@@ -29,6 +41,8 @@ func reset() -> void:
 	entities.clear()
 	player = null
 	map = null
+	gold = 0
+	keys = 0
 
 func get_entity_at(pos: Vector2i) -> StrategyEntity:
 	for e in entities:
@@ -50,3 +64,11 @@ func is_walkable(pos: Vector2i) -> bool:
 	if map == null:
 		return false
 	return map.is_walkable(pos) and get_blocking_entity_at(pos) == null
+
+func get_room_at(pos: Vector2i):
+	if map == null:
+		return null
+	for rd in map.room_data:
+		if rd.contains(pos):
+			return rd
+	return null

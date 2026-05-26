@@ -1,13 +1,23 @@
 class_name StrategyItem
 extends RefCounted
 
-enum ItemType { HEALTH_POTION, STRENGTH_SCROLL, LIGHTNING_SCROLL }
+enum ItemType {
+	HEALTH_POTION,
+	STRENGTH_SCROLL,
+	LIGHTNING_SCROLL,
+	KEY,
+	GOLD,
+}
 
 var grid_pos: Vector2i = Vector2i.ZERO
 var glyph: String = "?"
 var color: Color = Color.YELLOW
 var item_name: String = "item"
 var item_type: ItemType = ItemType.HEALTH_POTION
+var amount: int = 1  # for GOLD piles
+
+# Walking onto an auto-pickup item collects it without needing an inventory slot.
+var auto_pickup: bool = false
 
 static func make_health_potion(pos: Vector2i) -> StrategyItem:
 	var it = StrategyItem.new()
@@ -36,6 +46,27 @@ static func make_lightning_scroll(pos: Vector2i) -> StrategyItem:
 	it.item_type = ItemType.LIGHTNING_SCROLL
 	return it
 
+static func make_key(pos: Vector2i) -> StrategyItem:
+	var it = StrategyItem.new()
+	it.grid_pos = pos
+	it.glyph = "k"
+	it.color = Color(1.0, 0.85, 0.2)
+	it.item_name = "key"
+	it.item_type = ItemType.KEY
+	it.auto_pickup = true
+	return it
+
+static func make_gold(pos: Vector2i, amt: int) -> StrategyItem:
+	var it = StrategyItem.new()
+	it.grid_pos = pos
+	it.glyph = "$"
+	it.color = Color(1.0, 0.9, 0.3)
+	it.item_name = "%d gold" % amt
+	it.item_type = ItemType.GOLD
+	it.amount = amt
+	it.auto_pickup = true
+	return it
+
 func use(user: StrategyEntity) -> String:
 	match item_type:
 		ItemType.HEALTH_POTION:
@@ -46,8 +77,11 @@ func use(user: StrategyEntity) -> String:
 			user.attack += 2
 			return "You read the %s. Your arms feel stronger!" % item_name
 		ItemType.LIGHTNING_SCROLL:
-			# Hits nearest visible enemy
 			return _cast_lightning(user)
+		ItemType.KEY:
+			return "You can't use a key directly. Walk into a locked door."
+		ItemType.GOLD:
+			return ""
 	return ""
 
 func _cast_lightning(user: StrategyEntity) -> String:

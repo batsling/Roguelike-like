@@ -24,6 +24,7 @@ SaveSystem="*res://scripts/autoload/SaveSystem.gd"
 StrategyState="*res://scripts/strategy_prototype/GameState.gd"
 StrategyTurnManager="*res://scripts/strategy_prototype/TurnManager.gd"
 StrategyLog="*res://scripts/strategy_prototype/MessageLog.gd"
+StrategyCombatSession="*res://scripts/strategy_prototype/CombatSession.gd"
 
 [display]
 
