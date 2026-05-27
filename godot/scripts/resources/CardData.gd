@@ -43,6 +43,16 @@ enum Rarity { STARTER, COMMON, UNCOMMON, RARE, LEGENDARY }
 @export var retain: bool = false          # not discarded at end of turn
 @export var unplayable: bool = false      # cannot be played manually
 
+# Free-form addon names (Fishing Weight, future weapon traits, …). These
+# are the "compute" addons — addons with active behavior at play time
+# rather than the bool flags above. The card knows the names; the
+# active logic lives in Stats.apply_addons_to_effect (and friends) so
+# adding a new addon is one switch arm and a row in addonsnew, not a
+# field on every CardData. Authoring path: Keywords column on the
+# spreadsheet gets parsed into either a bool flag (known keyword) or
+# pushed into this array (unknown — treated as an addon name).
+@export var addons: PackedStringArray = PackedStringArray()
+
 # Strategy/tactical ability cooldown override. -1 means "use the formula in
 # AbilityCooldownConfig"; >=0 forces that exact cooldown. Lets designers
 # tune outliers without touching the global formula.

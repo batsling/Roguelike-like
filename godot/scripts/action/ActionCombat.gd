@@ -506,7 +506,8 @@ func _resolve_card_effects(card: CardData) -> void:
 	if needs_aoe:
 		aoe_targets = _enemies_in_radius(ABILITY_AOE_RADIUS)
 
-	for effect in card.effects:
+	for raw_effect in card.effects:
+		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
 		var t: String = String(effect.get("type", ""))
 		var tgt: String = String(effect.get("target", "enemy"))
 		match t:
@@ -901,7 +902,8 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 	# a fan — there is no explosion radius here.
 	var pers: int = player_actor.get_status(&"persistence")
 	var debuffs := [&"vulnerable", &"weak", &"frail", &"poison", &"burn"]
-	for effect in card.effects:
+	for raw_effect in card.effects:
+		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
 		var tgt: String = String(effect.get("target", ""))
 		if tgt != "enemy" and tgt != "all_enemies":
 			continue

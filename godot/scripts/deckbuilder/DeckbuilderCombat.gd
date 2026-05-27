@@ -584,6 +584,7 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 
 	for raw_effect in card.get_effects():
 		var effect: Dictionary = _apply_card_boosts(raw_effect, card)
+		effect = Stats.apply_addons_to_effect(effect, card.data)
 		var t_str: String = effect.get("target", "enemy")
 		var targets: Array = []
 		match t_str:

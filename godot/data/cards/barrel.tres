@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_barrel"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"barrel"
+display_name = "Barrel"
+type = 0
+rarity = 2
+cost = 1
+description = "Deal 6 Dmg Ranged. Fishing Weight."
+effects = [{
+"type": "dmg",
+"value": 6,
+"target": "enemy",
+"damage_type": "ranged"
+}]
+tags = PackedStringArray("weapon")
+source_game = "Enter the Gungeon"
+portrait_color = Color(0.55, 0.40, 0.30, 1)
+can_upgrade = false
+upgraded_cost = 1
+range_class = &"medium"
+addons = PackedStringArray("fishing_weight")

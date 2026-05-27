@@ -145,6 +145,73 @@ func action_max_dash_charges() -> int:
 func roll_d20_with_luck(rng: RandomNumberGenerator) -> int:
 	return _luck_roll(rng, 20)
 
+# ---------------------------------------------------------------------------
+# Addons (Fishing Weight et al)
+# ---------------------------------------------------------------------------
+#
+# "Addons" are named card modifiers from the Keywords column on the
+# cardsnew sheet — the compute-style ones with behavior at play time,
+# distinct from the bool flags (Exhaust, Ethereal, …) that have been
+# CardData fields since day one. Existing bool keywords stay on
+# CardData; new entries go into CardData.addons as free-form names
+# and dispatch through this file.
+#
+# The hook point is apply_addons_to_effect, called by each combat
+# mode at play resolution — same slot as the existing
+# `_apply_card_boosts`. It returns a (possibly new) effect dict with
+# any addon-driven values folded in. Damage downstream (Vulnerable,
+# Weak, Power) layers on top, matching how boost_cards already works.
+
+func apply_addons_to_effect(effect: Dictionary, card) -> Dictionary:
+	# Returns the effect dict, modified for any addons on the card.
+	# Today only `dmg` effects get touched (addon-driven block / heal /
+	# whatever can follow when a card needs it). The original effect
+	# is left alone when the card has no addons.
+	if card == null:
+		return effect
+	var addons: PackedStringArray = card.addons if "addons" in card else PackedStringArray()
+	if addons.is_empty():
+		return effect
+	if String(effect.get("type", "")) != "dmg":
+		return effect
+	var bonus: int = addon_damage_bonus(card, String(effect.get("damage_type", "")))
+	if bonus == 0:
+		return effect
+	var dup: Dictionary = effect.duplicate()
+	dup["value"] = int(dup.get("value", 0)) + bonus
+	return dup
+
+func addon_damage_bonus(card, _damage_type: String) -> int:
+	# Sum every addon-driven flat damage modifier on the card. Add a
+	# damage_type gate inside each arm if an addon should only apply
+	# to certain types (Fishing Weight is intentionally type-agnostic
+	# since the user said "more damage" — applies to whatever the
+	# card already deals).
+	if card == null or not ("addons" in card):
+		return 0
+	var total: int = 0
+	for addon_name in card.addons:
+		match String(addon_name):
+			"fishing_weight":
+				total += _fishing_weight_bonus()
+			_:
+				pass
+	return total
+
+func _fishing_weight_bonus() -> int:
+	# +1 dmg for every 3 Common, 2 Uncommon, or 1 Rare fish in the
+	# loot inventory. Fish loot doesn't exist yet, so this returns
+	# 0 today. When fish counters land in GameState.loot (or wherever
+	# fish-by-rarity tallies live), swap the body for the real
+	# formula — the rest of the pipeline is already wired:
+	#
+	#   var common: int = int(GameState.loot.get("fish_common", 0))
+	#   var uncommon: int = int(GameState.loot.get("fish_uncommon", 0))
+	#   var rare: int = int(GameState.loot.get("fish_rare", 0))
+	#   @warning_ignore("integer_division")
+	#   return common / 3 + uncommon / 2 + rare
+	return 0
+
 func decay_actor_statuses(actor: CombatActor) -> void:
 	# Step down every decaying status on this actor by 1. Called per
 	# actor at end-of-turn (deckbuilder, strategy when statuses land

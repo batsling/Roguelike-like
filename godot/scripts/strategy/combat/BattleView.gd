@@ -433,7 +433,7 @@ func _resolve_ability_against(target) -> void:
 	# casts come out of the energy budget at the card's cost.
 	if _ability_used:
 		_energy_budget = maxi(0, _energy_budget - maxi(0, int(ability.card.cost)))
-	_apply_card_or_spell_effects(ability.card.effects, u, target)
+	_apply_card_or_spell_effects(ability.card.effects, u, target, ability.card)
 	_ability_pool.set_cooldown(u, ability)
 	_ability_used = true
 	_pending_kind = Pending.NONE
@@ -510,7 +510,7 @@ func _resolve_spell_against(target) -> void:
 	var u = _turn_manager.current_unit
 	var entry = _pending_spell
 	_spellbook.spend_mana(u, entry)
-	_apply_card_or_spell_effects(entry.data.effects, u, target)
+	_apply_card_or_spell_effects(entry.data.effects, u, target, entry.data)
 	_pending_kind = Pending.NONE
 	_pending_spell = null
 	_grid_view.enter_idle()
@@ -641,11 +641,15 @@ func _clear_pending() -> void:
 
 # Public entry point used by both player flows (_apply_card_or_spell_effects)
 # and EnemyAI.execute_turn — keeps targeting + dispatch in one place.
-func apply_effects(effects: Array, source, target) -> void:
-	_apply_card_or_spell_effects(effects, source, target)
+# `card` is the CardData driving the effects (ability/spell card or
+# null for enemy AI moves); used by Stats.apply_addons_to_effect to
+# fold compute-addon bonuses (Fishing Weight et al) into dmg values.
+func apply_effects(effects: Array, source, target, card = null) -> void:
+	_apply_card_or_spell_effects(effects, source, target, card)
 
-func _apply_card_or_spell_effects(effects: Array, source, target) -> void:
-	for effect in effects:
+func _apply_card_or_spell_effects(effects: Array, source, target, card = null) -> void:
+	for raw_effect in effects:
+		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
 		var resolved_targets: Array = _resolve_effect_targets(effect, source, target)
 		if resolved_targets.is_empty():
 			# self-only effects with no explicit target — treat source as target.
@@ -655,7 +659,7 @@ func _apply_card_or_spell_effects(effects: Array, source, target) -> void:
 				"source": source,
 				"target": t,
 				"scene": self,
-				"card": null,
+				"card": card,
 			})
 
 func _resolve_effect_targets(effect: Dictionary, source, picked) -> Array:

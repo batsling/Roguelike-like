@@ -47,7 +47,16 @@ as long as they agree.)
 
 ## Keywords column
 
-Pipe-delimited list of behavior flags. Each becomes a bool on the card.
+Pipe-delimited list. Splits into two destinations on the card:
+
+1. **Bool flags** — known keywords with simple "is this card flagged?"
+   behavior. Each maps to a bool field on `CardData`.
+2. **Addons** — every other entry. Goes into `CardData.addons` (a
+   PackedStringArray) and is dispatched at play time by
+   `Stats.apply_addons_to_effect` (compute-style modifiers like
+   Fishing Weight). See the Addons section below.
+
+### Bool-flag keywords
 
 | Keyword | Field | Meaning |
 |---|---|---|
@@ -56,6 +65,26 @@ Pipe-delimited list of behavior flags. Each becomes a bool on the card.
 | `Innate` | `innate = true` | Always in starting hand. |
 | `Retain` | `retain = true` | Not discarded at end of turn. |
 | `Unplayable` | `unplayable = true` | Cannot be played manually. |
+
+## Addons (Fishing Weight et al)
+
+Anything in the Keywords column that isn't one of the bool-flag
+keywords above lands in `CardData.addons: PackedStringArray` and is
+treated as a compute addon — a named modifier with active behavior
+at play time, dispatched by `Stats.apply_addons_to_effect`. Same
+slot the existing `_apply_card_boosts` uses; runs before Vulnerable
+/ Weak / Power so addon bonuses stack with everything else.
+
+Documented per-mode in the `addonsnew` sheet. Engine wiring lives
+in `Stats.gd`'s addon block — one switch arm per addon name.
+
+| Addon | Behavior |
+|---|---|
+| `Fishing Weight` | `+1` dmg per `3 Common`, `2 Uncommon`, or `1 Rare` fish in the loot inventory. Stub returns 0 until fish loot lands (see `Stats._fishing_weight_bonus`); the rest of the pipeline is wired. |
+
+To ship a new addon: add a row to `addonsnew`, add a switch arm to
+`Stats.addon_damage_bonus` (or a sibling function for non-damage
+modifiers), and put the addon name in any card's Keywords column.
 
 ## Element column
 
@@ -340,6 +369,29 @@ in action / strategy), which is the right behaviour.
 own upgrade path (TBD), separate from the standard `+` upgrade that
 bumps a value. Until the weapon system lands, Bag o' Glitter simply
 doesn't accept the in-combat / smith-fire upgrade.
+
+### Barrel — `Uncommon Attack` cost 1
+```
+Description:  Deal 6 Dmg Ranged. Fishing Weight.
+Effects:      dmg:6:ranged
+Range:        Medium
+Keywords:     Fishing Weight
+Game:         Enter the Gungeon
+Tags:         weapon
+can_upgrade:  false
+```
+
+`Fishing Weight` isn't a bool keyword — it lands in `CardData.addons`
+and the engine computes the dmg bonus at play time via
+`Stats.addon_damage_bonus`. Fish loot doesn't exist yet so the
+bonus is currently 0; once the fish counters land
+(`GameState.loot.fish_common` / `_uncommon` / `_rare`), swap the
+stub body in `Stats._fishing_weight_bonus` for the real
+`common/3 + uncommon/2 + rare` formula and Barrel starts scaling
+without further plumbing.
+
+`can_upgrade = false` — Barrel is a weapon, same convention as Bag
+o' Glitter; the standard `+` upgrade path doesn't apply.
 
 ### Carnage — `Uncommon Attack` cost 2
 ```
