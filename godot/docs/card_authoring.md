@@ -518,6 +518,33 @@ buffs, Persistence, …) stick for the combat.
   every living actor. The tick is independent of Haste / Slow on
   purpose — debuff duration shouldn't accelerate with tempo.
 
+### Tick vs decay ordering (canonical)
+
+A status with both a per-turn tick (Burn deals 3, Poison deals X =
+stacks, Regen heals X = stacks) and a decay rule must resolve the
+tick **before** the decay. Otherwise Poison-5 at start of turn would
+deal 4 damage (decayed first), which is wrong.
+
+```
+turn_start:
+  1. fire every `on_turn_start` status effect with CURRENT stacks
+  2. decay every "start of turn" status by 1
+
+turn_end:
+  1. fire every `on_turn_end` status effect
+  2. decay every "end of turn" status by 1
+```
+
+The Decay column on the status sheet tells the engine **which
+boundary** the decay runs at; the tick verb's `on_turn_start` /
+`on_turn_end` says when the tick fires. They're expected to match
+(no card today has a tick on one boundary and decay on the other),
+but the boundaries are separate fields so an exotic future status
+can split them if needed.
+
+The rule lives in code at `Stats.decay_actor_statuses` — see the
+comment block there before wiring any tick / decay logic.
+
 ### Blind
 
 `Blind` is the canonical attacker-side debuff. Each Attack-typed

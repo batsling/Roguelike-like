@@ -149,6 +149,31 @@ func decay_actor_statuses(actor: CombatActor) -> void:
 	# Step down every decaying status on this actor by 1. Called per
 	# actor at end-of-turn (deckbuilder, strategy when statuses land
 	# there) and per ACTION_TURN_TICK in action mode.
+	#
+	# === Canonical turn-boundary ordering ===
+	# When the future status-loader wires per-turn ticks (Burn dealing
+	# 3, Poison dealing X = stacks, Regen healing X = stacks), the
+	# boundary handler MUST follow this order so a Poison stack always
+	# lands as damage before it decays:
+	#
+	#   At turn_start of an actor:
+	#     1. Fire every `on_turn_start` status effect using CURRENT
+	#        stack counts (so Poison ticks with the stacks it had at
+	#        end of previous turn).
+	#     2. Call this function to step every `Decay: at start of turn`
+	#        status down by 1.
+	#
+	#   At turn_end of an actor:
+	#     1. Fire every `on_turn_end` status effect (Burn flat damage,
+	#        Regen heal scaling by stacks).
+	#     2. Call this function to step every `Decay: at end of turn`
+	#        status down by 1.
+	#
+	# Today this function decays the entire DECAY_STATUSES list at
+	# whichever boundary callers invoke it from. Once Poison's
+	# start-of-turn split lands, the loader will partition the list by
+	# decay boundary and the order above is the contract. Don't tick
+	# AFTER decay or you'll undercount Poison/Regen damage by one stack.
 	if actor == null:
 		return
 	for s in DECAY_STATUSES:
