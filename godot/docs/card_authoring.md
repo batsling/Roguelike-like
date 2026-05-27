@@ -85,6 +85,8 @@ Semicolon-delimited list of effect lines. Each line is
 | `draw` | `N` | Draw N cards. In Action mode this instead chips a random ability cooldown by 25% per N. In Strategy, reduces a random ability CD by N. | `{type: "draw", value: N}` |
 | `discard` | `N` | Mirror of `draw`. Deckbuilder: discard N random cards from hand (excluding the played card). Action: +25% of max CD on the lowest-cooldown ability, per N. Strategy: +N on the lowest current CD. | `{type: "discard", value: N}` |
 | `boost_cards` | `<MATCH>:<STAT>:<VALUE>` | Persistent in-combat modifier. Every later card matching `MATCH` resolves with `STAT + VALUE`. `MATCH` is exactly one of `tag=X` / `type=X` / `id=X`. `STAT` is `dmg` or `block`. Deckbuilder only today. | `{type: "boost_cards", match_tag/match_type/match_id, stat, value}` |
+| `on_<EVENT>` | `<INNER_VERB>:<INNER_ARGS>` | Register a persistent in-combat listener. When the named event fires, the inner effect runs (source = player, target = player unless overridden). `<EVENT>` is a TriggerBus signal name (see Triggers section). After Image: `on_card_played:gain:block:1`. Deckbuilder only today. | `{type: "trigger", on: "<event>", effect: {…inner…}}` |
+| `gain_loot` | `<KIND>:<COUNT>` | Add COUNT loot of `KIND` (`potion` / `scroll` / `key`) to the run-scope counter on GameState. Concrete potion/scroll catalogs land later; the counter is the placeholder. Alchemize: `gain_loot:potion:1`. | `{type: "gain_loot", kind: "potion", value: 1}` |
 | `heal` | `VALUE[:self]` | Recover HP (defaults to self). | `{type: "heal", value, target: "self"}` |
 | `gain_energy` | `N` | Refund N energy in the deckbuilder. | `{type: "gain_energy", value: N}` |
 | `gain_gold` | `N` | Award N gold (rare on cards). | `{type: "gain_gold", value: N}` |
@@ -269,6 +271,96 @@ be set; the other two stay empty strings. Boosts clear at combat end.
 and Strategy ignore `boost_cards` effects (the scene method doesn't
 exist there yet); see the Future Work section below.
 
+## Triggers (After Image and friends)
+
+The `on_<EVENT>` verb (effect type `trigger` in the `.tres`) registers
+a listener that lives for the combat. When the event fires, the
+inner effect is dispatched through the same EffectSystem with the
+player as both source and target by default.
+
+```
+on_<EVENT>:<INNER_VERB>:<INNER_ARGS>
+```
+
+Available events (mirror of `TriggerBus` signals):
+
+| Event | Fires when |
+|---|---|
+| `combat_started` | Combat begins (after derived statuses applied). |
+| `turn_started` | Each player turn begins. |
+| `turn_ended` | Each player turn ends (after Ethereal exhausts). |
+| `card_played` | Any card resolves. Fires BEFORE the played card's own effects, so a Power doesn't self-trigger on the play that registers it. |
+| `card_drawn` | A card moves from draw pile to hand. |
+| `card_discarded` | A card moves from hand to discard pile. |
+| `card_exhausted` | A card moves to the exhaust pile (play-time or Ethereal end-of-turn). |
+| `damage_dealt` | The player deals damage that lands (post-block). |
+| `damage_taken` | Any actor takes damage that lands. |
+| `enemy_killed` | An enemy's HP hits 0. |
+| `status_applied` | A status finishes applying (`actual_stacks` includes Persistence). |
+
+Inner effect can be any verb the EffectSystem already understands —
+`gain`, `inflict`, `dmg`, `draw`, `discard`, `conjure`, `gain_loot`,
+even another `boost_cards`. Self-targeted defaults (no `target` field)
+resolve onto the player.
+
+Worked example — After Image:
+```
+Description:  Whenever you play a Card, Gain 1 Block.
+Effects:      on_card_played:gain:block:1
+Type:         Power
+Range:        Self
+Keywords:
+```
+
+`.tres`:
+```gdscript
+{
+  "type": "trigger",
+  "on": "card_played",
+  "effect": { "type": "block", "value": 1, "target": "self" },
+}
+```
+
+Worked example — Demon Form (sketched):
+```
+Description:  At the start of your turn, gain 2 Power.
+Effects:      on_turn_started:gain:power:2
+```
+
+**Mode coverage:** today only the deckbuilder fires power triggers.
+Action and Strategy don't register triggers (their handler no-ops via
+`has_method`), so a Power card with `on_card_played:...` in an action
+loadout is silently inert. See Future Work.
+
+## Loot (Alchemize and friends)
+
+`gain_loot` writes to `GameState.loot`, a Dictionary keyed by kind
+(`potion` / `scroll` / `key`) with int counts. The counter is the
+placeholder until the real potion/scroll/key catalogs and inventory
+UI exist; once they do, `add_loot` will roll a concrete id from the
+named kind and append to a real list.
+
+```
+gain_loot:<KIND>:<COUNT>
+```
+
+Worked example — Alchemize:
+```
+Description:  Gain 1 Potion Item. Exhaust.
+Effects:      gain_loot:potion:1
+Type:         Skill
+Range:        Self
+Keywords:     Exhaust
+```
+
+`.tres`:
+```gdscript
+{ "type": "gain_loot", "kind": "potion", "value": 1 }
+```
+
+The `Exhaust` keyword goes on the Keywords column (sets `exhaust =
+true`), not into the Effects DSL.
+
 ## Quick gotchas
 
 - **Don't double-encode damage type.** If the Range column says
@@ -318,6 +410,23 @@ Open questions to settle when implementing:
 - Whether action/strategy duplicate the deckbuilder's strip layout or
   each gets a mode-specific placement.
 
+### Action / Strategy trigger coverage
+
+`trigger` / `on_<event>` is deckbuilder-only today. Action and
+Strategy don't have an exact analog of `card_played` (action uses
+ability slot activations, strategy uses ability picks per turn), so
+the mapping needs design:
+
+- Action could fire `card_played` when an ability slot is activated,
+  and `turn_started` doesn't really apply — likely needs a fresh
+  event like `enemy_engaged` instead.
+- Strategy fires `turn_started` naturally per player turn; mapping
+  ability casts to `card_played` is reasonable.
+
+When this lands, both scenes need `register_trigger(on, effect)` plus
+the `_fire_power_triggers` calls wired into their respective signal
+points.
+
 ### Action / Strategy `boost_cards` coverage
 
 `boost_cards` is deckbuilder-only today. Equivalent semantics for the
@@ -332,6 +441,23 @@ other modes need:
 Both modes should reuse `card_boosts: Array` and the matcher helpers
 already in `DeckbuilderCombat` — pull them onto a small shared script
 or autoload when the second consumer lands.
+
+### Real potion / scroll / key catalogs
+
+`GameState.loot` is currently `{potion: int, scroll: int, key: int}`
+counters that `gain_loot` increments. Once concrete potion / scroll
+ids exist:
+
+- Replace the int values with `Array[StringName]` (or whatever id
+  type the catalog uses).
+- `add_loot` should roll a random id of the requested kind and
+  append to the list. Take care to keep the same method signature so
+  existing callers (Alchemize, future cards) don't break.
+- Build an inventory UI that lets the player consume loot during
+  combat / between rooms.
+- Plumb `gain_loot` into a more specific form for cards that grant a
+  *specific* potion: `{type: "gain_loot", id: "fire_potion"}` should
+  bypass the random roll.
 
 ### Discard polish
 

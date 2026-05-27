@@ -44,6 +44,13 @@ var exhaust_pile: Array[CardInstance] = []
 # dispatch. Cleared at the start of each combat.
 var card_boosts: Array = []
 
+# Persistent in-combat listeners registered by `trigger` effects
+# (After Image, Demon Form, etc). Each entry: {on, effect}. The combat
+# emit sites call `_fire_power_triggers(name, ctx_extras)` which walks
+# this list and routes matching ones through EffectSystem. Cleared at
+# combat start.
+var power_triggers: Array = []
+
 var energy: int = 0
 var max_energy: int = 3
 var turn: int = 0
@@ -105,6 +112,7 @@ func start_combat(spawn_list: Array) -> void:
 	GameState.phase = GameState.Phase.COMBAT
 	TriggerBus.emit_signal("combat_started", {"scene": self})
 	_fire_item_triggers("combat_started")
+	_fire_power_triggers("combat_started")
 	_start_player_turn()
 
 func _build_enemy_views() -> void:
@@ -150,6 +158,7 @@ func _init_deck() -> void:
 	discard_pile.clear()
 	exhaust_pile.clear()
 	card_boosts.clear()
+	power_triggers.clear()
 	for c in GameState.deck:
 		if c is CardData:
 			draw_pile.append(CardInstance.from_data(c))
@@ -184,6 +193,7 @@ func _start_player_turn() -> void:
 	draw_cards(draw_count)
 	TriggerBus.emit_signal("turn_started", {"turn": turn, "scene": self})
 	_fire_item_triggers("turn_started")
+	_fire_power_triggers("turn_started")
 	_refresh_ui()
 
 func _on_end_turn() -> void:
@@ -203,11 +213,13 @@ func _on_end_turn() -> void:
 			exhaust_pile.append(c)
 			GameLog.add("%s is Ethereal — exhausted." % c.data.display_name, Color(0.75, 0.85, 1.0))
 			TriggerBus.emit_signal("card_exhausted", {"card": c, "scene": self})
+			_fire_power_triggers("card_exhausted", {"card": c})
 		else:
 			discard_pile.append(c)
 	hand = kept
 	TriggerBus.emit_signal("turn_ended", {"turn": turn, "scene": self})
 	_fire_item_triggers("turn_ended")
+	_fire_power_triggers("turn_ended")
 	# Decay player statuses BEFORE enemies act so debuffs the player
 	# just applied to enemies survive through the enemy turn.
 	_decay_statuses(player)
@@ -568,6 +580,11 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	TriggerBus.emit_signal("card_played", {
 		"card": card, "target": target_enemy, "scene": self,
 	})
+	# Power-card triggers fire BEFORE the card's own effects resolve.
+	# This is the right order for "Whenever you play a card …" Powers
+	# because the Power being played hasn't registered its trigger
+	# yet, so it doesn't self-trigger.
+	_fire_power_triggers("card_played", {"card": card})
 
 	for raw_effect in card.get_effects():
 		var effect: Dictionary = _apply_card_boosts(raw_effect, card)
@@ -658,12 +675,14 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 		TriggerBus.emit_signal("damage_taken", {
 			"target": target, "attacker": source, "amount": amount, "scene": self,
 		})
+		_fire_power_triggers("damage_taken")
 		if target.hp <= 0:
 			target.dead = true
 			GameLog.add("%s is defeated!" % target.display_name, Color(0.6, 1.0, 0.6))
 			if not target.is_player:
 				TriggerBus.emit_signal("enemy_killed", {"enemy": target, "scene": self})
 				_fire_item_triggers("enemy_killed")
+				_fire_power_triggers("enemy_killed")
 	elif absorbed > 0:
 		var who := "your" if target.is_player else (target.display_name + "'s")
 		GameLog.add("%s block absorbs %d." % [who, absorbed], Color(0.7, 0.8, 1.0))
@@ -671,6 +690,7 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 	TriggerBus.emit_signal("damage_dealt", {
 		"source": source, "target": target, "amount": amount, "scene": self,
 	})
+	_fire_power_triggers("damage_dealt")
 
 func gain_block(target: CombatActor, base_amount: int) -> void:
 	if target == null:
@@ -704,6 +724,7 @@ func apply_status(target: CombatActor, status: StringName, stacks: int, source: 
 	TriggerBus.emit_signal("status_applied", {
 		"target": target, "status": status, "stacks": actual_stacks, "scene": self,
 	})
+	_fire_power_triggers("status_applied")
 
 # ------------------------------------------------------------------
 # Pile helpers — also called from EffectSystem default handlers
@@ -720,18 +741,21 @@ func draw_cards(n: int) -> void:
 		var c: CardInstance = draw_pile.pop_back()
 		hand.append(c)
 		TriggerBus.emit_signal("card_drawn", {"card": c, "scene": self})
+		_fire_power_triggers("card_drawn", {"card": c})
 	_refresh_ui()
 
 func discard_card(card: CardInstance) -> void:
 	hand.erase(card)
 	discard_pile.append(card)
 	TriggerBus.emit_signal("card_discarded", {"card": card, "scene": self})
+	_fire_power_triggers("card_discarded", {"card": card})
 	_refresh_ui()
 
 func exhaust_card(card: CardInstance) -> void:
 	hand.erase(card)
 	exhaust_pile.append(card)
 	TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
+	_fire_power_triggers("card_exhausted", {"card": card})
 	_refresh_ui()
 
 func conjure_card(card_id: StringName, destination: String, count: int, source_card, force_upgraded: bool = false) -> void:
@@ -819,6 +843,33 @@ func add_card_boost(boost: Dictionary) -> void:
 	card_boosts.append(boost)
 	var label: String = _boost_label(boost)
 	GameLog.add("Active boost: %s." % label, Color(0.7, 1.0, 0.7))
+
+func register_trigger(on: String, inner_effect: Dictionary) -> void:
+	if on == "" or inner_effect.is_empty():
+		return
+	power_triggers.append({"on": on, "effect": inner_effect})
+	GameLog.add("Trigger armed on %s." % on, Color(0.7, 1.0, 0.7))
+
+func _fire_power_triggers(event_name: String, ctx_extras: Dictionary = {}) -> void:
+	# Walks the power_triggers list and dispatches every entry whose
+	# `on` matches `event_name`. ctx_extras lets the caller pass
+	# event-specific bits (e.g. the card that was just played) into
+	# the inner effect's context.
+	if power_triggers.is_empty():
+		return
+	for trig in power_triggers:
+		if String(trig.get("on", "")) != event_name:
+			continue
+		var inner: Dictionary = trig.get("effect", {})
+		if inner.is_empty():
+			continue
+		var ctx: Dictionary = {
+			"source": player,
+			"target": player,
+			"scene": self,
+			"card": ctx_extras.get("card"),
+		}
+		EffectSystem.apply(inner, ctx)
 
 func _boost_label(boost: Dictionary) -> String:
 	var who := ""

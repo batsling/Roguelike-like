@@ -62,6 +62,8 @@ func _register_defaults() -> void:
 	register("conjure", _h_conjure)
 	register("discard", _h_discard)
 	register("boost_cards", _h_boost_cards)
+	register("gain_loot", _h_gain_loot)
+	register("trigger", _h_trigger)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -169,3 +171,28 @@ func _h_boost_cards(effect: Dictionary, ctx: Dictionary) -> void:
 		"stat": String(effect.get("stat", "dmg")),
 		"value": int(effect.get("value", 0)),
 	})
+
+func _h_gain_loot(effect: Dictionary, _ctx: Dictionary) -> void:
+	# Loot counters live on GameState so they persist across combats.
+	# `kind` is "potion" / "scroll" / "key"; `value` defaults to 1.
+	# Alchemize: {type: "gain_loot", kind: "potion", value: 1}.
+	var kind: String = String(effect.get("kind", ""))
+	if kind == "":
+		push_warning("EffectSystem.gain_loot: missing 'kind' on effect")
+		return
+	GameState.add_loot(kind, int(effect.get("value", 1)))
+
+func _h_trigger(effect: Dictionary, ctx: Dictionary) -> void:
+	# Persistent in-combat listener. `on` is a TriggerBus signal name
+	# (card_played, turn_started, …); `effect` is the inner effect
+	# dict to apply when that signal fires. After Image is the
+	# canonical example:
+	#   {type: "trigger", on: "card_played",
+	#    effect: {type: "block", value: 1, target: "self"}}
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("register_trigger"):
+		return
+	scene.register_trigger(
+		String(effect.get("on", "")),
+		effect.get("effect", {})
+	)
