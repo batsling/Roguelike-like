@@ -20,28 +20,51 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
 	_rng.randomize()
+	# MainMenu (or a Continue-load) is expected to have populated GameState
+	# before this scene is reached. If we land here cold (e.g. the user is
+	# running scenes/Main.tscn directly from the editor for testing), fall
+	# back to a default Ironclad run so the scene is still playable in
+	# isolation.
+	if GameState.character_id == &"" or GameState.start_game_id == &"" or GameState.amulet_game_id == &"":
+		_bootstrap_fallback_run()
+
+	_apply_pending_start_bonus()
+	_show_overworld()
+
+func _bootstrap_fallback_run() -> void:
 	var ironclad: CharacterData = Data.get_character(&"ironclad")
 	if ironclad == null:
-		push_error("[Main] Ironclad character data missing from res://data/characters/")
+		push_error("[Main] Ironclad character data missing and no run was configured.")
 		return
+	GameState.reset_run()
+	GameState.apply_character(ironclad)
+	GameState.save_name = "Debug Run"
+	GameState.start_game_id = &"slay_the_spire"
+	GameState.amulet_game_id = &"hades"
+	GameState.set_current_game(GameState.start_game_id)
+	GameLog.add("---- Debug run: Ironclad ----", Color(0.7, 0.9, 1.0))
 
-	if SaveSystem.has_save(0):
-		SaveSystem.load_slot(0)
-		GameLog.add("---- Resumed run (slot 0) ----", Color(0.7, 0.9, 1.0))
-	else:
-		GameState.reset_run()
-		GameState.apply_character(ironclad)
-		GameState.start_game_id = &"slay_the_spire"
-		GameState.amulet_game_id = &"hades"
-		GameState.set_current_game(GameState.start_game_id)
-		GameLog.add("---- New run: Ironclad ----", Color(0.7, 0.9, 1.0))
-
-	var start_game := Data.get_game(GameState.start_game_id)
-	var amulet_game := Data.get_game(GameState.amulet_game_id)
-	if start_game != null and amulet_game != null:
-		GameLog.add("Journey: %s -> %s" % [start_game.display_name, amulet_game.display_name],
-			Color(0.8, 0.9, 1.0))
-	_show_overworld()
+# Starting-game-type bonus: granted once, at the very start of the run.
+# MainMenu stashes the picked start type on GameState as meta; we read
+# and clear it here so a resumed save doesn't re-trigger.
+func _apply_pending_start_bonus() -> void:
+	if not GameState.has_meta("pending_start_bonus"):
+		return
+	var type_val: int = int(GameState.get_meta("pending_start_bonus"))
+	GameState.remove_meta("pending_start_bonus")
+	match type_val:
+		GameData.GameType.STRATEGY:
+			GameState.change_gold(40)
+			GameLog.add("Starting bonus: +40 gold.", Color(0.7, 1.0, 0.7))
+		GameData.GameType.DECKBUILDER:
+			# Card reward modal lands when the run scene gets a generic
+			# reward-overlay system. For now grant a starter card so the
+			# bonus is observable in the deck count.
+			GameLog.add("Starting bonus: card reward (placeholder).", Color(0.85, 0.9, 1.0))
+		GameData.GameType.TRADITIONAL:
+			GameLog.add("Starting bonus: item reward (placeholder).", Color(0.85, 0.9, 1.0))
+		GameData.GameType.ACTION:
+			GameLog.add("Starting bonus: weapon reward (placeholder).", Color(0.85, 0.9, 1.0))
 
 # ---------------------------------------------------------------------------
 # Scene switching

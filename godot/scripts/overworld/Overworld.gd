@@ -134,18 +134,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.keycode == KEY_E and _active_portal != null:
 		_enter_portal(_active_portal)
 	elif event.keycode == KEY_F5 and _can_save_load():
-		if SaveSystem.save(0):
-			GameLog.add("Saved to slot 0.", Color(0.7, 0.9, 1.0))
+		if _save_run():
+			GameLog.add("Saved.", Color(0.7, 0.9, 1.0))
 		else:
 			GameLog.add("Save failed.", Color(0.9, 0.5, 0.5))
-	elif event.keycode == KEY_F9 and _can_save_load():
-		if SaveSystem.load_slot(0):
-			GameLog.add("Loaded from slot 0.", Color(0.7, 0.9, 1.0))
-			_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
-			_spawn_portals_for_current_game()
-			_update_hint()
-		else:
-			GameLog.add("No save in slot 0.", Color(0.9, 0.7, 0.4))
+	elif event.keycode == KEY_ESCAPE and _can_save_load():
+		# Quick "back to menu" — autosaves first so the run lives on the
+		# Continue list.
+		_save_run()
+		get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
 
 func _can_save_load() -> bool:
 	return _verification_modal == null and _win_overlay == null
@@ -193,19 +190,21 @@ func _handle_victory_for(game_id: StringName) -> void:
 	_show_verification_modal(gd)
 
 func _handle_defeat() -> void:
-	GameLog.add("---- Run restarted ----", Color(0.9, 0.7, 0.7))
-	_reset_run()
+	GameLog.add("---- Run ended ----", Color(0.9, 0.7, 0.7))
+	# Delete the named save so a dead run can't be reloaded.
+	if GameState.save_name != "":
+		SaveSystem.delete_named(GameState.save_name)
+	SaveSystem.delete_slot(0)
+	# Defeat sends the player back to the main menu — picking another
+	# start/amulet pair is a menu action, not an overworld one.
+	get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
 
-func _reset_run() -> void:
-	var ironclad: CharacterData = Data.get_character(&"ironclad")
-	GameState.reset_run()
-	GameState.apply_character(ironclad)
-	GameState.start_game_id = &"slay_the_spire"
-	GameState.amulet_game_id = &"hades"
-	GameState.set_current_game(GameState.start_game_id)
-	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
-	_spawn_portals_for_current_game()
-	_update_hint()
+func _save_run() -> bool:
+	# Prefer the run's named save (set on New Game). Fall back to slot 0
+	# for the debug-bootstrap flow that runs scenes/Main.tscn directly.
+	if GameState.save_name != "":
+		return SaveSystem.save_named(GameState.save_name)
+	return SaveSystem.save(0)
 
 # ------------------------------------------------------------------
 # Verification modal — honour-system prompt after each beaten game.
@@ -287,7 +286,7 @@ func _close_verification() -> void:
 		_verification_modal = null
 
 func _after_verification() -> void:
-	SaveSystem.save(0)
+	_save_run()
 	GameLog.add("Autosaved.", Color(0.7, 0.8, 1.0))
 	GameState.phase = GameState.Phase.OVERWORLD
 	_player.set_input_locked(false)
@@ -305,6 +304,8 @@ func _show_win_overlay() -> void:
 	_player.set_input_locked(true)
 	# Delete the autosave so a finished run can't be reloaded into.
 	SaveSystem.delete_slot(0)
+	if GameState.save_name != "":
+		SaveSystem.delete_named(GameState.save_name)
 
 	var overlay := Control.new()
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -364,5 +365,6 @@ func _on_new_run_pressed() -> void:
 	if _win_overlay != null:
 		_win_overlay.queue_free()
 		_win_overlay = null
-	_player.set_input_locked(false)
-	_reset_run()
+	# New run flow is the menu's job — start/amulet/character selection
+	# happen there, not here.
+	get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
