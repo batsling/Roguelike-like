@@ -8,6 +8,28 @@ enum Mode { DECKBUILDER, ACTION, STRATEGY }
 
 const ACTION_DASH_REGEN_SECONDS := 4.0
 
+# Action mode runs "turns" on a real-time timer since there's no
+# discrete turn structure. One ACTION_TURN_TICK is the cadence at
+# which decaying statuses (Vulnerable, Weak, Frail, Burn, Blind …)
+# step down by 1 on every actor in the arena. Picked to feel like a
+# Slay-the-Spire-length turn (~15s of arena play ≈ one deckbuilder
+# turn of dialogue + planning).
+const ACTION_TURN_TICK_SECONDS := 15.0
+
+# Statuses that step down by 1 each turn (deckbuilder + strategy) or
+# each ACTION_TURN_TICK (action). Owned here so all three modes
+# decay the same set without re-declaring it.
+const DECAY_STATUSES: Array[StringName] = [
+	&"vulnerable", &"weak", &"frail",
+	&"burn", &"poison", &"regeneration",
+	&"dodge",   # dodge decays on use too; the 1/turn safety mirrors JS
+	&"blind",
+]
+
+# Blind: an attacker afflicted with Blind has BLIND_MISS_PCT% chance
+# to miss each hit. Roll routes through luck (see roll_blind_miss).
+const BLIND_MISS_PCT := 30
+
 var _stat_defs: Dictionary = {}     # StringName -> StatDefinition
 
 func _ready() -> void:
@@ -122,6 +144,27 @@ func action_max_dash_charges() -> int:
 
 func roll_d20_with_luck(rng: RandomNumberGenerator) -> int:
 	return _luck_roll(rng, 20)
+
+func decay_actor_statuses(actor: CombatActor) -> void:
+	# Step down every decaying status on this actor by 1. Called per
+	# actor at end-of-turn (deckbuilder, strategy when statuses land
+	# there) and per ACTION_TURN_TICK in action mode.
+	if actor == null:
+		return
+	for s in DECAY_STATUSES:
+		if actor.get_status(s) > 0:
+			actor.add_status(s, -1)
+
+func roll_blind_miss(rng: RandomNumberGenerator, source_is_player: bool) -> bool:
+	# Returns true if the attack misses. Player's luck always biases
+	# the outcome IN THE PLAYER'S FAVOR, regardless of who's swinging:
+	#  - Player attacking (player wants the hit): roll on the inverse
+	#    "hit chance" so luck advantage = more hits = fewer misses.
+	#  - Enemy attacking the player (player wants the miss): roll on
+	#    the miss chance directly so luck advantage = more misses.
+	if source_is_player:
+		return not roll_chance_with_luck(rng, 100 - BLIND_MISS_PCT)
+	return roll_chance_with_luck(rng, BLIND_MISS_PCT)
 
 func roll_chance_with_luck(rng: RandomNumberGenerator, percent: int) -> bool:
 	var r1: bool = rng.randi_range(0, 99) < percent

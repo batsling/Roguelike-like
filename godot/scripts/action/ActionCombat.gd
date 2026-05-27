@@ -60,6 +60,12 @@ const ENERGY_SLOW_MULT := 0.7
 var _haste_remaining: float = 0.0
 var _slow_remaining: float = 0.0
 
+# "Turn" tick — fires every Stats.ACTION_TURN_TICK_SECONDS of real
+# time and decays every actor's stack-based statuses by 1, the same
+# decay that runs at deckbuilder/strategy turn-end. Without this,
+# Vulnerable / Weak / Blind would stick forever in action mode.
+var _turn_tick_remaining: float = Stats.ACTION_TURN_TICK_SECONDS
+
 # Multi-hit (Twin Strike-style) pacing. Each entry is a Dictionary:
 #   {time: secs_until_fire, effect: Dictionary, facing: Vector2, mode: "cone"|"projectile"|"aoe"}
 # Built when a card with `hits > 1` resolves; ticked every frame.
@@ -260,6 +266,7 @@ func _process(delta: float) -> void:
 	_ability_swing_remaining = maxf(0.0, _ability_swing_remaining - delta)
 	for i in range(3):
 		ability_cooldowns[i] = maxf(0.0, ability_cooldowns[i] - scaled_delta)
+	_process_turn_tick(delta)
 	_process_player_input(delta)
 	_process_enemies(delta)
 	_process_projectiles(delta)
@@ -268,6 +275,21 @@ func _process(delta: float) -> void:
 	_refresh_hud()
 	_refresh_slot_bar()
 	queue_redraw()
+
+func _process_turn_tick(delta: float) -> void:
+	# Ticks on real-time delta (not tempo-scaled — status durations
+	# shouldn't speed up or slow down with Haste/Slow). Decays every
+	# living actor's stack-based statuses when the timer expires,
+	# then re-arms.
+	_turn_tick_remaining -= delta
+	if _turn_tick_remaining > 0.0:
+		return
+	_turn_tick_remaining += Stats.ACTION_TURN_TICK_SECONDS
+	if player_actor != null and player_actor.is_alive():
+		Stats.decay_actor_statuses(player_actor)
+	for inst in enemies:
+		if inst.actor.is_alive():
+			Stats.decay_actor_statuses(inst.actor)
 
 func _process_player_input(delta: float) -> void:
 	# Movement (WASD or arrows).
@@ -326,6 +348,13 @@ func _do_basic_attack() -> void:
 		GameLog.add("Basic attack hits %d." % hit_count, Color(0.85, 1.0, 0.7))
 
 func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, power_multiplier: int = 1) -> void:
+	# Blind: if the player is currently Blinded, each melee/ranged hit
+	# rolls to miss. Status / heal / block effects aren't routed
+	# through here so they aren't gated.
+	if (dmg_type == "melee" or dmg_type == "ranged") and player_actor.get_status(&"blind") > 0:
+		if Stats.roll_blind_miss(_rng, true):
+			GameLog.add("You swing blind and miss!", Color(0.85, 0.85, 0.55))
+			return
 	var amount: int = base_dmg
 	amount += Stats.damage_bonus(player_actor, dmg_type, Stats.Mode.ACTION, power_multiplier)
 	if player_actor.get_status(&"weak") > 0:
@@ -410,6 +439,7 @@ func _enemy_fire_projectile(inst: Dictionary) -> void:
 		"lifetime": ENEMY_PROJECTILE_LIFETIME,
 		"damage": data.contact_damage,
 		"source_name": data.display_name,
+		"attacker": inst.actor,
 	}
 	projectiles.append(proj)
 
@@ -859,7 +889,7 @@ func _process_projectiles(delta: float) -> void:
 func _on_enemy_projectile_hit(p: Dictionary) -> void:
 	var dmg: int = int(p.get("damage", 0))
 	var src: String = String(p.get("source_name", "Projectile"))
-	_apply_damage_to_player(dmg, src)
+	_apply_damage_to_player(dmg, src, p.get("attacker"))
 
 func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 	var card: CardData = p.get("card")
@@ -963,11 +993,17 @@ func _refresh_slot_bar() -> void:
 # ---------------------------------------------------------------------------
 
 func _enemy_hit_player(inst: Dictionary) -> void:
-	_apply_damage_to_player(inst.data.contact_damage, inst.data.display_name)
+	_apply_damage_to_player(inst.data.contact_damage, inst.data.display_name, inst.actor)
 
-func _apply_damage_to_player(amount: int, source_name: String) -> void:
+func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatActor = null) -> void:
 	if player_iframes > 0.0:
 		return
+	# Blind: if the attacker is Blinded, the hit can whiff. Player's
+	# luck biases toward the miss landing (good for the player).
+	if attacker != null and attacker.get_status(&"blind") > 0:
+		if Stats.roll_blind_miss(_rng, false):
+			GameLog.add("%s swings blind and misses!" % source_name, Color(0.85, 0.85, 0.55))
+			return
 	var dmg: int = amount
 	var absorbed: int = mini(player_actor.block, dmg)
 	player_actor.block -= absorbed

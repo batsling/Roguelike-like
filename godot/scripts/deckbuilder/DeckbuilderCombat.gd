@@ -66,12 +66,10 @@ var _targeting: bool = false
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
-# Status decay set — these statuses tick down by 1 at end of turn.
-const _DECAY_STATUSES := [
-	&"vulnerable", &"weak", &"frail",
-	&"burn", &"poison", &"regeneration",
-	&"dodge",   # dodge decays only on use in JS but treat 1/turn as safety
-]
+# Status decay list lives on Stats so action mode shares the same
+# set. Local copy kept only for the persistence-debuff filter below
+# (different concept — which statuses get the Persistence bonus when
+# the player inflicts them).
 
 # Debuffs that get Persistence bonus when player inflicts them on enemies.
 const _DEBUFFS := [
@@ -532,9 +530,7 @@ func _on_reward_picked(card: CardData) -> void:
 	_close(true)
 
 func _decay_statuses(actor: CombatActor) -> void:
-	for s in _DECAY_STATUSES:
-		if actor.get_status(s) > 0:
-			actor.add_status(s, -1)
+	Stats.decay_actor_statuses(actor)
 
 # ------------------------------------------------------------------
 # Card play
@@ -641,10 +637,20 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 	if target == null or not target.is_alive():
 		return
 	var amount := base_amount
+	var damage_type: String = String(effect.get("damage_type", "melee"))
+
+	# Blind: an attacker with Blind has a chance to miss each Attack
+	# hit. Gated to melee/ranged dmg so spell-damage and DoT ticks
+	# (when those land) aren't subject to it. Player's luck biases
+	# the outcome in the player's favor either direction.
+	if source != null and (damage_type == "melee" or damage_type == "ranged"):
+		if source.get_status(&"blind") > 0 and Stats.roll_blind_miss(_rng, source.is_player):
+			var who: String = "You" if source.is_player else source.display_name
+			GameLog.add("%s swings blind and misses!" % who, Color(0.85, 0.85, 0.55))
+			return
 
 	# Source outgoing modifiers
 	if source != null:
-		var damage_type: String = String(effect.get("damage_type", "melee"))
 		var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
 		amount += Stats.damage_bonus(source, damage_type, Stats.Mode.DECKBUILDER, power_mult)
 		if source.get_status(&"weak") > 0:

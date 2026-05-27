@@ -324,7 +324,8 @@ Description:  Inflict 2 Blind. 10% chance to Exhaust.
 Effects:      inflict:blind:2; chance:10:exhaust_self
 Range:        Medium
 Keywords:
-Tags:         debuff, blind
+Tags:         debuff, blind, weapon
+can_upgrade:  false
 ```
 
 The Exhaust keyword is deliberately empty — `Exhaust` in the Keywords
@@ -334,6 +335,11 @@ The `chance:10:exhaust_self` line routes through
 advantage roll on the exhaust check, same as events. Outside the
 deckbuilder the roll still fires but `exhaust_self` no-ops (no piles
 in action / strategy), which is the right behaviour.
+
+`can_upgrade = false` flags this card as a weapon — weapons get their
+own upgrade path (TBD), separate from the standard `+` upgrade that
+bumps a value. Until the weapon system lands, Bag o' Glitter simply
+doesn't accept the in-combat / smith-fire upgrade.
 
 ### Carnage — `Uncommon Attack` cost 2
 ```
@@ -477,6 +483,60 @@ Keywords:     Exhaust
 
 The `Exhaust` keyword goes on the Keywords column (sets `exhaust =
 true`), not into the Effects DSL.
+
+## Status decay & per-status engine logic
+
+Most statuses are stack-based ints on `CombatActor.statuses` keyed by
+StringName. Effects that touch them go through `inflict:` (debuff) or
+`gain:` (buff) — the engine never special-cases a status name there;
+the row in `statusesnew` and the engine logic for that status live
+side by side.
+
+The decay set — statuses that step down by 1 each turn — is owned
+once on `Stats.DECAY_STATUSES`:
+
+```
+vulnerable, weak, frail, burn, poison, regeneration, dodge, blind
+```
+
+Add a status to that list and every combat mode picks up the
+decay. Statuses **not** on the list (Power, Strength-like permanent
+buffs, Persistence, …) stick for the combat.
+
+**Per-mode timing:**
+
+- **Deckbuilder** — decay runs at end of the player's turn (player
+  decays before enemies act) and after each enemy's planned move.
+- **Strategy** — once the status system lands there, decay will run
+  in `BattleTurnManager.end_current_turn` so each unit decays at the
+  close of its own turn. Statuses don't apply in strategy today
+  because `BattleUnit` has no `statuses` dict — adding one is the
+  unlock for Bag o' Glitter and any other inflict-driven card in
+  tactical combat.
+- **Action** — there's no discrete turn, so a real-time "turn tick"
+  fires every `Stats.ACTION_TURN_TICK_SECONDS` (15s) and decays
+  every living actor. The tick is independent of Haste / Slow on
+  purpose — debuff duration shouldn't accelerate with tempo.
+
+### Blind
+
+`Blind` is the canonical attacker-side debuff. Each Attack-typed
+damage hit (`damage_type: melee` or `ranged`) rolls
+`Stats.roll_blind_miss`; on a miss the damage is suppressed entirely
+(no block consumption, no trigger fire). Spell / heal / status
+effects aren't gated.
+
+Luck biases the outcome in the player's favor either direction:
+
+- Player attacks with Blind → roll on the inverse hit chance so
+  Luck advantage = more hits land.
+- Enemy attacks the player with Blind → roll on the miss chance
+  directly so Luck advantage = more enemy whiffs.
+
+Miss chance is currently `Stats.BLIND_MISS_PCT = 30` regardless of
+stack count (matches the sheet's "30% Miss Chance" language; stacks
+extend duration, not magnitude). Bag o' Glitter applies 2 stacks
+(2 turns / 30s of action play before it wears off).
 
 ## Quick gotchas
 
