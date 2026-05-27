@@ -48,6 +48,12 @@ enum Rarity { STARTER, COMMON, UNCOMMON, RARE, LEGENDARY }
 # tune outliers without touching the global formula.
 @export var cooldown_override: int = -1
 
+# Action-mode reach for the card. Mirrors the "Range" column on the
+# spreadsheet: "" / "self" for non-projectiles, "short" / "medium" /
+# "large" to set how far across the arena a projectile travels (or
+# how long a melee swing reaches). Empty defaults to "medium".
+@export var range_class: StringName = &""
+
 func is_attack() -> bool:
 	return type == CardType.ATTACK
 

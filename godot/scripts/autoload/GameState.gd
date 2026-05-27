@@ -51,6 +51,17 @@ var deck: Array = []
 var inventory: Array = []                # Array[ItemData]
 var equipped_weapon: ItemData = null
 
+# Run-scope loot counters. Potions/scrolls aren't fleshed out yet, so
+# for now each kind is just an int count — cards like Alchemize bump
+# `loot.potion`. When the real potion/scroll catalogs land, these
+# values will become arrays of concrete ids; the API (`add_loot`,
+# `get_loot_count`) stays the same so consumers don't break.
+var loot: Dictionary = {
+	"potion": 0,
+	"scroll": 0,
+	"key": 0,
+}
+
 # Spells learned this run, addressed by SpellData.id. Drives the
 # strategy/tactical Spellbook (Phase 6). Spell defs live in
 # `SpellsCatalog` until designers ship .tres files for them.
@@ -105,6 +116,7 @@ func reset_run() -> void:
 	deck.clear()
 	inventory.clear()
 	equipped_weapon = null
+	loot = {"potion": 0, "scroll": 0, "key": 0}
 	learned_spells.clear()
 	action_basic_attack_id = &""
 	action_ability_ids.clear()
@@ -186,6 +198,22 @@ func change_gold(delta: int) -> void:
 
 func is_dead() -> bool:
 	return hp <= 0
+
+# ---------------------------------------------------------------------------
+# Loot (potions / scrolls / keys)
+# ---------------------------------------------------------------------------
+
+func add_loot(kind: String, amount: int = 1) -> void:
+	if amount == 0:
+		return
+	if not loot.has(kind):
+		push_warning("GameState.add_loot: unknown kind '%s'" % kind)
+		return
+	loot[kind] = maxi(0, int(loot[kind]) + amount)
+	emit_signal("inventory_changed")
+
+func get_loot_count(kind: String) -> int:
+	return int(loot.get(kind, 0))
 
 # ---------------------------------------------------------------------------
 # Action-mode loadout

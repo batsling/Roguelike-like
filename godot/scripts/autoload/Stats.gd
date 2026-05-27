@@ -70,10 +70,10 @@ func apply_derived_statuses(actor: CombatActor, _mode: Mode) -> void:
 # extras on top of source.power based on damage_type + current mode.
 # ---------------------------------------------------------------------------
 
-func damage_bonus(source: CombatActor, damage_type: String, mode: Mode) -> int:
+func damage_bonus(source: CombatActor, damage_type: String, mode: Mode, power_multiplier: int = 1) -> int:
 	if source == null:
 		return 0
-	var bonus: int = source.get_status(&"power")
+	var bonus: int = source.get_status(&"power") * power_multiplier
 	match damage_type:
 		"magic":
 			bonus += source.get_status(&"arcane")

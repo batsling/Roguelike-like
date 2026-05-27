@@ -50,6 +50,12 @@ var ability_cooldowns: Array[float] = [0.0, 0.0, 0.0]
 var ability_max_cooldowns: Array[float] = [0.0, 0.0, 0.0]
 var player_max_block: int = 0
 
+# Multi-hit (Twin Strike-style) pacing. Each entry is a Dictionary:
+#   {time: secs_until_fire, effect: Dictionary, facing: Vector2, mode: "cone"|"projectile"|"aoe"}
+# Built when a card with `hits > 1` resolves; ticked every frame.
+const MULTIHIT_INTERVAL := 0.10
+var _pending_hits: Array = []
+
 # Range tuning for ability resolution.
 const ABILITY_MELEE_RANGE := 110.0      # slightly longer than basic
 const ABILITY_MELEE_ANGLE_DEG := 110.0  # slightly wider than basic
@@ -58,8 +64,23 @@ const ABILITY_AOE_RADIUS := 140.0
 # Projectile tuning (player-fired ranged abilities).
 const PLAYER_PROJECTILE_SPEED := 620.0
 const PLAYER_PROJECTILE_RADIUS := 7.0
-const PLAYER_PROJECTILE_LIFETIME := 2.0
 const PLAYER_PROJECTILE_COLOR := Color(1.0, 0.95, 0.4)
+
+# Per-card travel distance, set by CardData.range_class. Speed is fixed
+# (PLAYER_PROJECTILE_SPEED); lifetime is computed as distance / speed
+# so the bolt visibly fizzles at the requested reach instead of flying
+# off-screen.
+const PROJECTILE_RANGE_PX := {
+	&"short": 320.0,
+	&"medium": 620.0,
+	&"large": 950.0,
+}
+const PROJECTILE_RANGE_DEFAULT_PX := 620.0
+
+# Ranged AOE (`damage_type: ranged` + `target: all_enemies`) fires a fan
+# of projectiles instead of a single bolt that explodes on impact.
+const RANGED_AOE_PROJECTILE_COUNT := 5
+const RANGED_AOE_FAN_DEG := 50.0
 
 # Enemy projectile defaults (used when ActionEnemyData fields are 0).
 const ENEMY_PROJECTILE_DEFAULT_SPEED := 340.0
@@ -160,9 +181,18 @@ func _load_loadout() -> void:
 			if String(eff.get("type", "")) == "block":
 				player_max_block += int(eff.get("value", 0))
 	# Pre-compute ability cooldowns so the UI bar shows the max value.
+	# Abilities start "charging" at combat start: each begins at full
+	# cooldown so the player must wait one cycle before the first cast.
+	# Power cards are passive and ignored.
 	for i in range(3):
 		var card: CardData = ability_cards[i]
-		ability_max_cooldowns[i] = _cooldown_for(card) if card != null else 0.0
+		if card == null or card.is_power():
+			ability_max_cooldowns[i] = 0.0
+			ability_cooldowns[i] = 0.0
+		else:
+			var cd: float = _cooldown_for(card)
+			ability_max_cooldowns[i] = cd
+			ability_cooldowns[i] = cd
 
 func _init_player() -> void:
 	player_actor = CombatActor.from_player()
@@ -216,6 +246,7 @@ func _process(delta: float) -> void:
 	_process_player_input(delta)
 	_process_enemies(delta)
 	_process_projectiles(delta)
+	_process_pending_hits(delta)
 	_check_combat_end()
 	_refresh_hud()
 	_refresh_slot_bar()
@@ -277,9 +308,9 @@ func _do_basic_attack() -> void:
 	if hit_count > 0:
 		GameLog.add("Basic attack hits %d." % hit_count, Color(0.85, 1.0, 0.7))
 
-func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String) -> void:
+func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, power_multiplier: int = 1) -> void:
 	var amount: int = base_dmg
-	amount += Stats.damage_bonus(player_actor, dmg_type, Stats.Mode.ACTION)
+	amount += Stats.damage_bonus(player_actor, dmg_type, Stats.Mode.ACTION, power_multiplier)
 	if player_actor.get_status(&"weak") > 0:
 		amount = int(floor(amount * 0.75))
 	inst.actor.hp = maxi(0, inst.actor.hp - amount)
@@ -394,6 +425,17 @@ func _resolve_card_effects(card: CardData) -> void:
 	if _card_has_ranged_damage(card):
 		_apply_self_effects(card)
 		_spawn_player_projectile(card)
+		# Multi-hit ranged (e.g. ranged version of Twin Strike): queue
+		# additional projectiles in lockstep with melee multi-hit.
+		var extra: int = _max_ranged_hits(card) - 1
+		for i in range(extra):
+			_pending_hits.append({
+				"time": MULTIHIT_INTERVAL * float(i + 1),
+				"effect": null,        # signal: spawn another projectile from the card
+				"card": card,
+				"facing": player_facing,
+				"mode": "projectile",
+			})
 		return
 
 	# Otherwise melee/default resolution: acquire target lists ONCE
@@ -431,7 +473,14 @@ func _resolve_card_effects(card: CardData) -> void:
 			"heal":
 				if tgt == "self" or tgt == "player":
 					_resolve_heal_self(int(effect.get("value", 0)))
-			# draw / gain_energy are deckbuilder-only; ignored in action.
+			"draw":
+				# In action, "draw cards" instead chips a random
+				# ability's cooldown — see draw_cards().
+				draw_cards(int(effect.get("value", 1)))
+			"discard":
+				# Mirror of draw — lengthens the lowest cooldown.
+				discard_cards(int(effect.get("value", 1)))
+			# gain_energy is deckbuilder-only; ignored in action.
 			_:
 				pass
 
@@ -441,14 +490,118 @@ func _card_has_ranged_damage(card: CardData) -> bool:
 			return true
 	return false
 
+func _max_ranged_hits(card: CardData) -> int:
+	# Highest `hits` value across this card's ranged dmg effects.
+	var best := 1
+	for effect in card.effects:
+		if String(effect.get("type", "")) != "dmg":
+			continue
+		if String(effect.get("damage_type", "melee")) != "ranged":
+			continue
+		best = maxi(best, int(effect.get("hits", 1)))
+	return best
+
+func _process_pending_hits(delta: float) -> void:
+	if _pending_hits.is_empty():
+		return
+	var i := 0
+	while i < _pending_hits.size():
+		var p: Dictionary = _pending_hits[i]
+		p.time -= delta
+		if p.time <= 0.0:
+			match String(p.mode):
+				"cone":
+					_resolve_delayed_cone_hit(p.effect)
+				"aoe":
+					_resolve_delayed_aoe_hit(p.effect)
+				"projectile":
+					_spawn_player_projectile(p.card)
+			_pending_hits.remove_at(i)
+		else:
+			i += 1
+
+func _resolve_delayed_cone_hit(effect: Dictionary) -> void:
+	# Re-acquire targets each swing so enemies that died between hits
+	# (or moved out of the cone) aren't hit a second time.
+	var targets: Array = _enemies_in_cone(ABILITY_MELEE_RANGE, ABILITY_MELEE_ANGLE_DEG)
+	_ability_swing_remaining = SWING_VISUAL_DURATION
+	_ability_swing_facing = player_facing
+	var value: int = int(effect.get("value", 0))
+	var dmg_type: String = String(effect.get("damage_type", "melee"))
+	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+	for inst in targets:
+		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
+
+func _resolve_delayed_aoe_hit(effect: Dictionary) -> void:
+	var targets: Array = _enemies_in_radius(ABILITY_AOE_RADIUS)
+	var value: int = int(effect.get("value", 0))
+	var dmg_type: String = String(effect.get("damage_type", "melee"))
+	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+	for inst in targets:
+		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
+
+func draw_cards(n: int) -> void:
+	# Action mode has no hand. Per design, each `draw` effect instead
+	# reduces a random ability's REMAINING cooldown by 25% of that
+	# ability's max cooldown. Per-draw, so a Draw 2 card collapses two
+	# cooldowns (potentially the same one twice).
+	if n <= 0:
+		return
+	for _i in range(n):
+		var indices: Array = []
+		for j in range(3):
+			if ability_cooldowns[j] > 0.0 and ability_max_cooldowns[j] > 0.0:
+				indices.append(j)
+		if indices.is_empty():
+			return
+		var pick: int = indices[_rng.randi() % indices.size()]
+		var reduction: float = ability_max_cooldowns[pick] * 0.25
+		ability_cooldowns[pick] = maxf(0.0, ability_cooldowns[pick] - reduction)
+		GameLog.add("Draw effect: -%.1fs on %s." % [reduction, ability_cards[pick].display_name],
+			Color(0.7, 0.95, 1.0))
+
+func discard_cards(n: int, _source_card = null) -> void:
+	# Mirror of `draw_cards`: each discard lengthens a random ability's
+	# cooldown by 25% of its max. To make the effect feel meaningful
+	# even when nothing is currently cooling, the ability with the
+	# LOWEST remaining cooldown is picked — that way a "ready"
+	# ability immediately goes on a partial CD instead of the effect
+	# silently doing nothing.
+	if n <= 0:
+		return
+	for _i in range(n):
+		var pick: int = -1
+		var lowest: float = INF
+		for j in range(3):
+			if ability_max_cooldowns[j] <= 0.0:
+				continue
+			if ability_cooldowns[j] < lowest:
+				lowest = ability_cooldowns[j]
+				pick = j
+		if pick < 0:
+			return
+		var addition: float = ability_max_cooldowns[pick] * 0.25
+		ability_cooldowns[pick] = minf(ability_max_cooldowns[pick], ability_cooldowns[pick] + addition)
+		GameLog.add("Discard: +%.1fs on %s." % [addition, ability_cards[pick].display_name],
+			Color(1.0, 0.7, 0.5))
+
 func _apply_self_effects(card: CardData) -> void:
 	# Used by the ranged path so block / heal / self statuses still
 	# fire even though the damage is in flight.
 	for effect in card.effects:
+		var t: String = String(effect.get("type", ""))
+		# Draw/discard are untargeted in deckbuilder; in action they
+		# resolve as cooldown changes regardless of `target`, so fire
+		# them here before the target gate.
+		if t == "draw":
+			draw_cards(int(effect.get("value", 1)))
+			continue
+		if t == "discard":
+			discard_cards(int(effect.get("value", 1)))
+			continue
 		var tgt: String = String(effect.get("target", ""))
 		if tgt != "self" and tgt != "player":
 			continue
-		var t: String = String(effect.get("type", ""))
 		match t:
 			"block":
 				_gain_block(int(effect.get("value", 0)))
@@ -461,6 +614,7 @@ func _apply_self_effects(card: CardData) -> void:
 func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array) -> void:
 	var value: int = int(effect.get("value", 0))
 	var dmg_type: String = String(effect.get("damage_type", "melee"))
+	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
 	var hit_list: Array
 	match tgt:
 		"enemy":
@@ -470,7 +624,18 @@ func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 		_:
 			return
 	for inst in hit_list:
-		_deal_damage_to_enemy(inst, value, dmg_type)
+		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
+	# Multi-hit cards (Twin Strike 5x2) queue the remaining swings so
+	# each lands as its own visible animation/event ~100ms apart.
+	var extra_hits: int = maxi(0, int(effect.get("hits", 1)) - 1)
+	for i in range(extra_hits):
+		_pending_hits.append({
+			"time": MULTIHIT_INTERVAL * float(i + 1),
+			"effect": effect,
+			"tgt": tgt,
+			"facing": player_facing,
+			"mode": "cone" if tgt == "enemy" else "aoe",
+		})
 
 func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array) -> void:
 	var status: StringName = StringName(String(effect.get("status", "")))
@@ -543,16 +708,50 @@ func _gain_block(base_amount: int) -> void:
 # ---------------------------------------------------------------------------
 
 func _spawn_player_projectile(card: CardData) -> void:
+	# Pull the travel distance off the card. Empty/unknown range_class
+	# falls back to "medium" so legacy cards still feel right.
+	var range_px: float = float(PROJECTILE_RANGE_PX.get(card.range_class, PROJECTILE_RANGE_DEFAULT_PX))
+	var lifetime: float = range_px / PLAYER_PROJECTILE_SPEED
+	# A ranged AOE card (Thunderclap: ranged + all_enemies) fans
+	# multiple bolts instead of one bolt that explodes. All bolts from
+	# the same cast share a `hit_set` so a clustered target doesn't
+	# eat 5x the listed damage when the spread converges on it.
+	if _is_ranged_aoe(card):
+		var shared_hits: Dictionary = {}
+		var count: int = RANGED_AOE_PROJECTILE_COUNT
+		var base_angle: float = player_facing.angle()
+		var fan: float = deg_to_rad(RANGED_AOE_FAN_DEG)
+		var half: float = fan * 0.5
+		for i in range(count):
+			var t: float = 0.5 if count <= 1 else float(i) / float(count - 1)
+			var angle: float = base_angle - half + t * fan
+			_spawn_single_projectile(card, Vector2.RIGHT.rotated(angle), range_px, lifetime, shared_hits)
+		return
+	_spawn_single_projectile(card, player_facing, range_px, lifetime, {})
+
+func _spawn_single_projectile(card: CardData, dir: Vector2, range_px: float, lifetime: float, hit_set: Dictionary) -> void:
 	var proj: Dictionary = {
-		"pos": player_pos + player_facing * (PLAYER_RADIUS + 4.0),
-		"velocity": player_facing * PLAYER_PROJECTILE_SPEED,
+		"pos": player_pos + dir * (PLAYER_RADIUS + 4.0),
+		"velocity": dir * PLAYER_PROJECTILE_SPEED,
 		"owner": "player",
 		"radius": PLAYER_PROJECTILE_RADIUS,
 		"color": PLAYER_PROJECTILE_COLOR,
-		"lifetime": PLAYER_PROJECTILE_LIFETIME,
+		"lifetime": lifetime,
+		"range_px": range_px,
 		"card": card,
+		"hit_set": hit_set,
 	}
 	projectiles.append(proj)
+
+func _is_ranged_aoe(card: CardData) -> bool:
+	for effect in card.effects:
+		if String(effect.get("type", "")) != "dmg":
+			continue
+		if String(effect.get("damage_type", "melee")) != "ranged":
+			continue
+		if String(effect.get("target", "enemy")) == "all_enemies":
+			return true
+	return false
 
 func _process_projectiles(delta: float) -> void:
 	var i := 0
@@ -564,13 +763,21 @@ func _process_projectiles(delta: float) -> void:
 		var consumed := false
 		match String(p.owner):
 			"player":
+				var hit_set: Dictionary = p.get("hit_set", {})
 				for inst in enemies:
 					if not inst.actor.is_alive():
 						continue
-					if p.pos.distance_to(inst.pos) <= p.radius + inst.data.size:
+					if p.pos.distance_to(inst.pos) > p.radius + inst.data.size:
+						continue
+					# Bolts from the same cast share a hit_set so a
+					# fan that converges on one enemy doesn't apply
+					# the card's effects multiple times to that
+					# enemy. The bolt still dies on contact.
+					if not hit_set.has(inst.actor):
+						hit_set[inst.actor] = true
 						_on_player_projectile_hit(p, inst)
-						consumed = true
-						break
+					consumed = true
+					break
 			"enemy":
 				if p.pos.distance_to(player_pos) <= p.radius + PLAYER_RADIUS:
 					_on_enemy_projectile_hit(p)
@@ -596,21 +803,23 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 	var card: CardData = p.get("card")
 	if card == null:
 		return
-	# Apply every enemy-targeted effect (dmg + status) to the hit
-	# enemy so multi-effect ranged cards (e.g., "deal X + apply Y")
-	# all resolve on the same victim.
+	# Each bolt is independent: dmg + status from the card's enemy-side
+	# effects land on whichever single enemy the bolt struck. Ranged
+	# AOE cards (Thunderclap) cover their area by FIRING MORE BOLTS in
+	# a fan — there is no explosion radius here.
 	var pers: int = player_actor.get_status(&"persistence")
 	var debuffs := [&"vulnerable", &"weak", &"frail", &"poison", &"burn"]
 	for effect in card.effects:
 		var tgt: String = String(effect.get("target", ""))
-		if tgt != "enemy":
+		if tgt != "enemy" and tgt != "all_enemies":
 			continue
 		var t: String = String(effect.get("type", ""))
 		match t:
 			"dmg":
 				var value: int = int(effect.get("value", 0))
 				var dmg_type: String = String(effect.get("damage_type", "melee"))
-				_deal_damage_to_enemy(inst, value, dmg_type)
+				var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+				_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
 			"status":
 				var status: StringName = StringName(String(effect.get("status", "")))
 				var stacks: int = int(effect.get("stacks", 0))

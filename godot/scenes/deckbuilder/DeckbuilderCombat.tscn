@@ -69,16 +69,29 @@ text = "Energy: 0/0"
 [node name="Sep3" type="VSeparator" parent="Layout/Bottom/StatusBar"]
 layout_mode = 2
 
-[node name="DrawLabel" type="Label" parent="Layout/Bottom/StatusBar"]
+[node name="DrawButton" type="Button" parent="Layout/Bottom/StatusBar"]
+custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
 text = "Draw: 0"
+tooltip_text = "Click to view the draw pile"
 
 [node name="Sep4" type="VSeparator" parent="Layout/Bottom/StatusBar"]
 layout_mode = 2
 
-[node name="DiscardLabel" type="Label" parent="Layout/Bottom/StatusBar"]
+[node name="DiscardButton" type="Button" parent="Layout/Bottom/StatusBar"]
+custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
 text = "Discard: 0"
+tooltip_text = "Click to view the discard pile"
+
+[node name="Sep5" type="VSeparator" parent="Layout/Bottom/StatusBar"]
+layout_mode = 2
+
+[node name="ExhaustButton" type="Button" parent="Layout/Bottom/StatusBar"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+text = "Exhaust: 0"
+tooltip_text = "Click to view the exhaust pile"
 
 [node name="HandRow" type="HBoxContainer" parent="Layout/Bottom"]
 custom_minimum_size = Vector2(0, 232)
