@@ -726,12 +726,42 @@ func exhaust_card(card: CardInstance) -> void:
 	TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 	_refresh_ui()
 
-func conjure_card_to_discard(card) -> void:
-	# Used by Anger's "conjure 1 copy of this card to Discard" effect.
-	if card == null or not (card is CardInstance):
-		return
-	var copy: CardInstance = CardInstance.from_data(card.data, card.upgraded)
-	discard_pile.append(copy)
+func conjure_card(card_id: StringName, destination: String, count: int, source_card) -> void:
+	# Generic conjure: drop `count` copies of `card_id` into the named
+	# pile. `card_id == &"self"` copies the played card (Anger). For any
+	# other id we look up the static CardData from `Data` so the same
+	# call works for status cards (Dazed, Wound), curses, etc.
+	#
+	# `destination`: "hand" / "draw" / "discard". An unknown destination
+	# logs a warning and is treated as discard so a typo in the sheet
+	# doesn't silently swallow the effect. Draw pile additions are
+	# shuffled in so the copy isn't deterministically on top.
+	var data: CardData = null
+	var upgraded := false
+	if card_id == &"self":
+		if source_card == null or not (source_card is CardInstance):
+			return
+		data = source_card.data
+		upgraded = source_card.upgraded
+	else:
+		data = Data.get_card(card_id)
+		if data == null:
+			push_warning("conjure_card: unknown card id '%s'" % card_id)
+			return
+	for _i in range(count):
+		var copy: CardInstance = CardInstance.from_data(data, upgraded)
+		match destination:
+			"hand":
+				hand.append(copy)
+			"draw":
+				draw_pile.append(copy)
+			"discard":
+				discard_pile.append(copy)
+			_:
+				push_warning("conjure_card: unknown destination '%s'" % destination)
+				discard_pile.append(copy)
+	if destination == "draw":
+		_shuffle(draw_pile)
 	_refresh_ui()
 
 func gain_energy(amount: int) -> void:

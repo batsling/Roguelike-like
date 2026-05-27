@@ -59,7 +59,7 @@ func _register_defaults() -> void:
 	register("exhaust_self", _h_exhaust_self)
 	register("gain_gold", _h_gain_gold)
 	register("lose_hp", _h_lose_hp)
-	register("conjure_self_to_discard", _h_conjure_self_to_discard)
+	register("conjure", _h_conjure)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -120,13 +120,17 @@ func _h_gain_gold(effect: Dictionary, _ctx: Dictionary) -> void:
 func _h_lose_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	GameState.change_hp(-effect.get("value", 0))
 
-func _h_conjure_self_to_discard(_effect: Dictionary, ctx: Dictionary) -> void:
-	# Used by Anger: drop a fresh copy of the played card into the
-	# discard pile. Only meaningful in the deckbuilder; action/strategy
-	# don't have a discard pile so we silently no-op.
+func _h_conjure(effect: Dictionary, ctx: Dictionary) -> void:
+	# Unified conjure handler. Args on the effect:
+	#   card_id:     StringName, or "self" to copy the played card
+	#   destination: "hand" / "draw" / "discard"
+	#   count:       int (default 1)
+	# Only meaningful in the deckbuilder; action/strategy have no piles
+	# to add to so the scene method just won't exist and we no-op.
 	var scene: Variant = ctx.get("scene")
-	var card: Variant = ctx.get("card")
-	if scene == null or card == null:
+	if scene == null or not scene.has_method("conjure_card"):
 		return
-	if scene.has_method("conjure_card_to_discard"):
-		scene.conjure_card_to_discard(card)
+	var card_id: StringName = StringName(String(effect.get("card_id", "self")))
+	var destination: String = String(effect.get("destination", "discard"))
+	var count: int = maxi(1, int(effect.get("count", 1)))
+	scene.conjure_card(card_id, destination, count, ctx.get("card"))

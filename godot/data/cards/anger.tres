@@ -17,7 +17,10 @@ effects = [{
 "target": "enemy",
 "damage_type": "melee"
 }, {
-"type": "conjure_self_to_discard"
+"type": "conjure",
+"card_id": "self",
+"destination": "discard",
+"count": 1
 }]
 tags = PackedStringArray()
 source_game = "Slay the Spire"
@@ -32,5 +35,8 @@ upgraded_effects = [{
 "target": "enemy",
 "damage_type": "melee"
 }, {
-"type": "conjure_self_to_discard"
+"type": "conjure",
+"card_id": "self",
+"destination": "discard",
+"count": 1
 }]

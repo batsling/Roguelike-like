@@ -88,7 +88,7 @@ Semicolon-delimited list of effect lines. Each line is
 | `gain_gold` | `N` | Award N gold (rare on cards). | `{type: "gain_gold", value: N}` |
 | `lose_hp` | `VALUE` | Pay HP as a cost. | `{type: "lose_hp", value}` |
 | `exhaust_self` | (none) | Exhaust the played card. Redundant if Keywords has `Exhaust`. | `{type: "exhaust_self"}` |
-| `conjure` | `CARD_ID:DESTINATION[:COUNT]` | Create COUNT copies of CARD_ID into the named pile. `CARD_ID` of `self` means "this card". `DESTINATION` is `hand` / `draw` / `discard`. COUNT defaults to 1. | `{type: "conjure_self_to_discard"}` etc. (one handler per destination today; see Conjure section) |
+| `conjure` | `CARD_ID:DESTINATION[:COUNT]` | Create COUNT copies of CARD_ID into the named pile. `CARD_ID` of `self` means "this card". `DESTINATION` is `hand` / `draw` / `discard`. COUNT defaults to 1. | `{type: "conjure", card_id, destination, count}` |
 | `power_multiplier` | `N` | Multiplies the Power stat's contribution to this card's damage by N. Applies to the preceding `dmg:` lines on the same row. | Added as `power_multiplier: N` on each `dmg` effect. |
 
 ### Argument shorthand for `dmg`
@@ -135,11 +135,13 @@ Examples:
 | `conjure:dazed:discard:2` | Add 2 Dazed cards to discard (status card). |
 | `conjure:wound:draw` | Shuffle 1 Wound into the draw pile. |
 
-In code today only the `self → discard` variant is implemented (effect
-type `conjure_self_to_discard`). When more conjure destinations land,
-the recommended path is a single effect type `conjure` with fields
-`{card_id, destination, count}` rather than a `conjure_<X>_to_<Y>`
-handler for every combination.
+In code the effect is a single type `conjure` with fields
+`{card_id, destination, count}`. `card_id` accepts `"self"` (copy the
+played card) or any id from `godot/data/cards/`. `destination` is
+`"hand"` / `"draw"` / `"discard"` — adds to draw pile are reshuffled
+so the conjured card isn't deterministically on top. `count` defaults
+to 1. Outside the deckbuilder (action / strategy) the effect no-ops
+because there are no piles to add to.
 
 ## Worked examples
 
