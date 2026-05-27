@@ -47,7 +47,16 @@ as long as they agree.)
 
 ## Keywords column
 
-Pipe-delimited list of behavior flags. Each becomes a bool on the card.
+Pipe-delimited list. Splits into two destinations on the card:
+
+1. **Bool flags** — known keywords with simple "is this card flagged?"
+   behavior. Each maps to a bool field on `CardData`.
+2. **Addons** — every other entry. Goes into `CardData.addons` (a
+   PackedStringArray) and is dispatched at play time by
+   `Stats.apply_addons_to_effect` (compute-style modifiers like
+   Fishing Weight). See the Addons section below.
+
+### Bool-flag keywords
 
 | Keyword | Field | Meaning |
 |---|---|---|
@@ -56,6 +65,26 @@ Pipe-delimited list of behavior flags. Each becomes a bool on the card.
 | `Innate` | `innate = true` | Always in starting hand. |
 | `Retain` | `retain = true` | Not discarded at end of turn. |
 | `Unplayable` | `unplayable = true` | Cannot be played manually. |
+
+## Addons (Fishing Weight et al)
+
+Anything in the Keywords column that isn't one of the bool-flag
+keywords above lands in `CardData.addons: PackedStringArray` and is
+treated as a compute addon — a named modifier with active behavior
+at play time, dispatched by `Stats.apply_addons_to_effect`. Same
+slot the existing `_apply_card_boosts` uses; runs before Vulnerable
+/ Weak / Power so addon bonuses stack with everything else.
+
+Documented per-mode in the `addonsnew` sheet. Engine wiring lives
+in `Stats.gd`'s addon block — one switch arm per addon name.
+
+| Addon | Behavior |
+|---|---|
+| `Fishing Weight` | `+1` dmg per `3 Common`, `2 Uncommon`, or `1 Rare` fish in the loot inventory. Stub returns 0 until fish loot lands (see `Stats._fishing_weight_bonus`); the rest of the pipeline is wired. |
+
+To ship a new addon: add a row to `addonsnew`, add a switch arm to
+`Stats.addon_damage_bonus` (or a sibling function for non-damage
+modifiers), and put the addon name in any card's Keywords column.
 
 ## Element column
 
@@ -79,21 +108,26 @@ Semicolon-delimited list of effect lines. Each line is
 
 | Verb | Arguments | Meaning | `.tres` form |
 |---|---|---|---|
-| `dmg` | `VALUE[xN]:DAMAGE_TYPE[:cleave]` | Deal damage. `xN` = multi-hit (Twin Strike). `cleave` = `target: all_enemies`. | `{type: "dmg", value, target, damage_type, hits?}` |
+| `dmg` | `VALUE[xN]:DAMAGE_TYPE[:cleave\|if_status=STATUS]` | Deal damage. `xN` = multi-hit (Twin Strike). `cleave` = `target: all_enemies`. `if_status=X` skips the hit per target when that target lacks status X (Bane's second hit). | `{type: "dmg", value, target, damage_type, hits?, if_target_status?}` |
 | `gain` | `STAT:VALUE` | Player gains the stat (block, power, defense, dodge, …). | `{type: "block"/"status", value, stacks, status, target: "self"}` |
 | `inflict` | `STATUS:STACKS[:cleave]` | Apply a debuff to the targeted enemy (or all enemies with `cleave`). | `{type: "status", status, stacks, target: "enemy"/"all_enemies"}` |
 | `draw` | `N` | Draw N cards. In Action mode this instead chips a random ability cooldown by 25% per N. In Strategy, reduces a random ability CD by N. | `{type: "draw", value: N}` |
-| `discard` | `N` | Mirror of `draw`. Deckbuilder: discard N random cards from hand (excluding the played card). Action: +25% of max CD on the lowest-cooldown ability, per N. Strategy: +N on the lowest current CD. | `{type: "discard", value: N}` |
+| `discard` | `N[:random]` | Mirror of `draw`. Deckbuilder: pick N from hand via the CardPickerModal (default — player chooses, like Acrobatics). Append `:random` for the engine-picked random variant (All-Out Attack). Always excludes the played card. Action: +25% of max CD on the lowest-cooldown ability, per N. Strategy: +N on the lowest current CD. | `{type: "discard", value: N, random?: bool}` |
+| `exhaust` | `N[:random]` | Deckbuilder mirror of `discard` but routes picks to the exhaust pile. Same player-choice default and `:random` flag. No-op in action/strategy. | `{type: "exhaust", value: N, random?: bool}` |
+| `recall` | `<FILTER>[:from=PILE][:to=PILE]` | Deckbuilder: move (not copy) every card in the source pile matching `FILTER` into the destination pile. `FILTER` today is `cost=N`; defaults are `from=discard`, `to=hand` (All for One). No-op in action/strategy. | `{type: "recall", from: PILE, to: PILE, filter: {…}}` |
+| `upgrade_hand` | `N\|all[:random]` | Deckbuilder: upgrade in-place. `upgrade_hand:1` opens the picker so the player chooses (Armaments); `upgrade_hand:all` upgrades every eligible card in hand silently (Armaments+). Append `:random` to skip the picker for the N form. Skips cards that are already upgraded or have `can_upgrade = false`. No-op in action/strategy. | `{type: "upgrade_hand", value: N\|"all", random?: bool}` |
 | `boost_cards` | `<MATCH>:<STAT>:<VALUE>` | Persistent in-combat modifier. Every later card matching `MATCH` resolves with `STAT + VALUE`. `MATCH` is exactly one of `tag=X` / `type=X` / `id=X`. `STAT` is `dmg` or `block`. Deckbuilder only today. | `{type: "boost_cards", match_tag/match_type/match_id, stat, value}` |
 | `on_<EVENT>` | `<INNER_VERB>:<INNER_ARGS>` | Register a persistent in-combat listener. When the named event fires, the inner effect runs (source = player, target = player unless overridden). `<EVENT>` is a TriggerBus signal name (see Triggers section). After Image: `on_card_played:gain:block:1`. Deckbuilder only today. | `{type: "trigger", on: "<event>", effect: {…inner…}}` |
 | `gain_loot` | `<KIND>:<COUNT>` | Add COUNT loot of `KIND` (`potion` / `scroll` / `key`) to the run-scope counter on GameState. Concrete potion/scroll catalogs land later; the counter is the placeholder. Alchemize: `gain_loot:potion:1`. | `{type: "gain_loot", kind: "potion", value: 1}` |
 | `heal` | `VALUE[:self]` | Recover HP (defaults to self). | `{type: "heal", value, target: "self"}` |
-| `gain_energy` | `N` | Refund N energy in the deckbuilder. | `{type: "gain_energy", value: N}` |
+| `gain_energy` | `N` | Deckbuilder: refund N energy. Action: ~N-second Haste window (1.3× movement, basic attack rate, ability cooldown ticking). Strategy: opens a per-turn budget of N for extra ability casts beyond the one-per-turn cap, paid out at the card's cost. | `{type: "gain_energy", value: N}` |
+| `lose_energy` | `N` | Mirror of `gain_energy`. Deckbuilder drops N from the pool (floored at 0). Action: ~N-second Slow window (0.7×). Strategy: eats the energy budget first, then locks the normal ability use for the turn if the budget would go negative. | `{type: "lose_energy", value: N}` |
 | `gain_gold` | `N` | Award N gold (rare on cards). | `{type: "gain_gold", value: N}` |
 | `lose_hp` | `VALUE` | Pay HP as a cost. | `{type: "lose_hp", value}` |
 | `exhaust_self` | (none) | Exhaust the played card. Redundant if Keywords has `Exhaust`. | `{type: "exhaust_self"}` |
 | `conjure` | `CARD_ID:DESTINATION[:COUNT]` | Create COUNT copies of CARD_ID into the named pile. `CARD_ID` of `self` means "this card" and inherits its upgrade state; append `+` (e.g. `shiv+`) to force the upgraded form of a fixed card. `DESTINATION` is `hand` / `draw` / `discard`. COUNT defaults to 1. | `{type: "conjure", card_id, destination, count, upgraded?}` |
 | `power_multiplier` | `N` | Multiplies the Power stat's contribution to this card's damage by N. Applies to the preceding `dmg:` lines on the same row. | Added as `power_multiplier: N` on each `dmg` effect. |
+| `chance` | `PCT:<INNER_VERB>:<INNER_ARGS>` | Roll PCT% on the shared luck-modified RNG (Stats.roll_chance_with_luck — every point of Luck adds a 10% advantage roll, mirroring how events roll). On success, dispatch the inner effect through the same EffectSystem with the same ctx. Inner can be any verb. Bag o' Glitter: `chance:10:exhaust_self`. | `{type: "chance", percent: N, effect: {…inner…}}` |
 
 ### Argument shorthand for `dmg`
 
@@ -107,6 +141,12 @@ Semicolon-delimited list of effect lines. Each line is
 
 `cleave` in slot 4 is the modifier that flips `target` from `enemy`
 to `all_enemies`. Anywhere else it's a tag.
+
+`if_status=STATUS` in slot 4 gates the hit per target — only enemies
+with at least 1 stack of STATUS take damage. Disambiguated from
+`cleave` by the `=` sign. Bane: `dmg:7:melee:if_status=poison`. If a
+future card needs both `cleave` AND `if_status` on the same line,
+the slot will switch to a pipe-delimited list (e.g. `cleave|if_status=burn`).
 
 ### Status verbs: `gain` vs `inflict`
 
@@ -167,6 +207,41 @@ without any extra work.
 Outside the deckbuilder (action / strategy) the effect no-ops because
 there are no piles to add to.
 
+## Picker modal (Discard / Exhaust / Upgrade / Recall)
+
+`CardPickerModal` is the shared mid-cast modal that opens whenever a
+card asks the player to choose from a pile. One reusable widget
+backs every "choose N from a set" effect: Acrobatics' discard,
+Armaments' upgrade, future Exhume / Headbutt / Wraith Form picks,
+etc. Deckbuilder-only — action and strategy silently no-op because
+there are no piles to pick from.
+
+**Default is player-choice.** Any verb that picks cards opens the
+picker by default. Append `:random` to the DSL line to skip the
+modal and let the engine roll instead. The convention is "if the
+sheet doesn't say random, the player picks":
+
+| DSL | Behavior |
+|---|---|
+| `discard:1` | Player picks 1 from hand to discard (Acrobatics). |
+| `discard:1:random` | Engine picks 1 from hand to discard (All-Out Attack). |
+| `exhaust:2` | Player picks 2 from hand to exhaust. |
+| `upgrade_hand:1` | Player picks 1 from hand to upgrade (Armaments). |
+| `upgrade_hand:all` | Whole hand upgrades silently (Armaments+). No picker. |
+
+`recall` doesn't use the picker — it moves every card in the source
+pile that matches the filter, so there's nothing to choose.
+
+The picker blocks card play from advancing — the rest of the played
+card's effects have already resolved by the time the modal opens
+(synchronous effect loop), so the player can pick at their own pace
+without the combat freezing visually. Confirming applies the picks;
+clicking outside does nothing (no skip — the modal must be resolved).
+
+If a future card needs two pickers on the same play, the effect
+system will need to switch to async `await` resolution — punted
+until that card exists.
+
 ## Worked examples
 
 ### Anger — `Common Attack` cost 0
@@ -217,6 +292,106 @@ Tags:         ironclad, offense, aoe
 A ranged `cleave` card fans 5 projectiles in Action mode (50° spread,
 short travel ≈ 320 px). In Deckbuilder/Strategy the `all_enemies`
 target just means "hit everyone".
+
+### Bane — `Common Attack` cost 1
+```
+Description:  Deal 7 Dmg Melee. If the target is Poisoned, deal 7 Dmg Melee again.
+Effects:      dmg:7:melee; dmg:7:melee:if_status=poison
+Range:        Medium
+Tags:         silent, offense, poison
+```
+
+Two `dmg` lines: the first always lands, the second is gated by the
+target's Poison stack count. Per-target gate, so a future cleave
+variant (`dmg:7:melee:cleave; dmg:7:melee:cleave|if_status=poison`)
+would hit every enemy with the first swing and only the Poisoned
+ones with the second.
+
+### All-Out Attack — `Uncommon Attack` cost 1
+```
+Description:  Deal 10 Dmg Melee Cleave. Discard 1 card at random.
+Effects:      dmg:10:melee:cleave; discard:1:random
+Range:        Medium
+Tags:         ironclad, offense, aoe
+```
+
+`:random` on the discard skips the picker. Drop the `:random` and
+the player would be prompted to pick a card to discard instead —
+that's Acrobatics, not All-Out Attack.
+
+### Armaments — `Common Skill` cost 1
+```
+Description:  Gain 5 Block. Upgrade a card in your hand for the rest of combat.
+Effects:      gain:block:5; upgrade_hand:1
+Upgraded Eff: gain:block:5; upgrade_hand:all
+Range:        Self
+Tags:         ironclad, defense
+```
+
+`upgrade_hand:1` opens the picker. `upgrade_hand:all` skips it and
+upgrades every eligible card in hand — already-upgraded cards and
+cards with `can_upgrade = false` (Dazed / Wound) are silently
+skipped.
+
+### All for One — `Rare Attack` cost 2
+```
+Description:  Deal 10 Dmg Melee. Put all 0-cost cards from your discard pile into your hand.
+Effects:      dmg:10:melee; recall:cost=0
+Range:        Medium
+Tags:         ironclad, offense
+```
+
+`recall` defaults to `from=discard:to=hand`, so the short form
+`recall:cost=0` is enough for the canonical "put 0-cost cards from
+discard back into hand" shape. To move from a different pile or to a
+different destination, spell them out: `recall:cost=0:from=draw:to=hand`.
+No picker — recall always grabs every match.
+
+### Bag o' Glitter — `Common Skill` cost 0
+```
+Description:  Inflict 2 Blind. 10% chance to Exhaust.
+Effects:      inflict:blind:2; chance:10:exhaust_self
+Range:        Medium
+Keywords:
+Tags:         debuff, blind, weapon
+can_upgrade:  false
+```
+
+The Exhaust keyword is deliberately empty — `Exhaust` in the Keywords
+column means "always exhausts," which would override the 10% roll.
+The `chance:10:exhaust_self` line routes through
+`Stats.roll_chance_with_luck`, so every point of Luck adds a 10%
+advantage roll on the exhaust check, same as events. Outside the
+deckbuilder the roll still fires but `exhaust_self` no-ops (no piles
+in action / strategy), which is the right behaviour.
+
+`can_upgrade = false` flags this card as a weapon — weapons get their
+own upgrade path (TBD), separate from the standard `+` upgrade that
+bumps a value. Until the weapon system lands, Bag o' Glitter simply
+doesn't accept the in-combat / smith-fire upgrade.
+
+### Barrel — `Uncommon Attack` cost 1
+```
+Description:  Deal 6 Dmg Ranged. Fishing Weight.
+Effects:      dmg:6:ranged
+Range:        Medium
+Keywords:     Fishing Weight
+Game:         Enter the Gungeon
+Tags:         weapon
+can_upgrade:  false
+```
+
+`Fishing Weight` isn't a bool keyword — it lands in `CardData.addons`
+and the engine computes the dmg bonus at play time via
+`Stats.addon_damage_bonus`. Fish loot doesn't exist yet so the
+bonus is currently 0; once the fish counters land
+(`GameState.loot.fish_common` / `_uncommon` / `_rare`), swap the
+stub body in `Stats._fishing_weight_bonus` for the real
+`common/3 + uncommon/2 + rare` formula and Barrel starts scaling
+without further plumbing.
+
+`can_upgrade = false` — Barrel is a weapon, same convention as Bag
+o' Glitter; the standard `+` upgrade path doesn't apply.
 
 ### Carnage — `Uncommon Attack` cost 2
 ```
@@ -361,6 +536,87 @@ Keywords:     Exhaust
 The `Exhaust` keyword goes on the Keywords column (sets `exhaust =
 true`), not into the Effects DSL.
 
+## Status decay & per-status engine logic
+
+Most statuses are stack-based ints on `CombatActor.statuses` keyed by
+StringName. Effects that touch them go through `inflict:` (debuff) or
+`gain:` (buff) — the engine never special-cases a status name there;
+the row in `statusesnew` and the engine logic for that status live
+side by side.
+
+The decay set — statuses that step down by 1 each turn — is owned
+once on `Stats.DECAY_STATUSES`:
+
+```
+vulnerable, weak, frail, burn, poison, regeneration, dodge, blind
+```
+
+Add a status to that list and every combat mode picks up the
+decay. Statuses **not** on the list (Power, Strength-like permanent
+buffs, Persistence, …) stick for the combat.
+
+**Per-mode timing:**
+
+- **Deckbuilder** — decay runs at end of the player's turn (player
+  decays before enemies act) and after each enemy's planned move.
+- **Strategy** — once the status system lands there, decay will run
+  in `BattleTurnManager.end_current_turn` so each unit decays at the
+  close of its own turn. Statuses don't apply in strategy today
+  because `BattleUnit` has no `statuses` dict — adding one is the
+  unlock for Bag o' Glitter and any other inflict-driven card in
+  tactical combat.
+- **Action** — there's no discrete turn, so a real-time "turn tick"
+  fires every `Stats.ACTION_TURN_TICK_SECONDS` (15s) and decays
+  every living actor. The tick is independent of Haste / Slow on
+  purpose — debuff duration shouldn't accelerate with tempo.
+
+### Tick vs decay ordering (canonical)
+
+A status with both a per-turn tick (Burn deals 3, Poison deals X =
+stacks, Regen heals X = stacks) and a decay rule must resolve the
+tick **before** the decay. Otherwise Poison-5 at start of turn would
+deal 4 damage (decayed first), which is wrong.
+
+```
+turn_start:
+  1. fire every `on_turn_start` status effect with CURRENT stacks
+  2. decay every "start of turn" status by 1
+
+turn_end:
+  1. fire every `on_turn_end` status effect
+  2. decay every "end of turn" status by 1
+```
+
+The Decay column on the status sheet tells the engine **which
+boundary** the decay runs at; the tick verb's `on_turn_start` /
+`on_turn_end` says when the tick fires. They're expected to match
+(no card today has a tick on one boundary and decay on the other),
+but the boundaries are separate fields so an exotic future status
+can split them if needed.
+
+The rule lives in code at `Stats.decay_actor_statuses` — see the
+comment block there before wiring any tick / decay logic.
+
+### Blind
+
+`Blind` is the canonical attacker-side debuff. Each Attack-typed
+damage hit (`damage_type: melee` or `ranged`) rolls
+`Stats.roll_blind_miss`; on a miss the damage is suppressed entirely
+(no block consumption, no trigger fire). Spell / heal / status
+effects aren't gated.
+
+Luck biases the outcome in the player's favor either direction:
+
+- Player attacks with Blind → roll on the inverse hit chance so
+  Luck advantage = more hits land.
+- Enemy attacks the player with Blind → roll on the miss chance
+  directly so Luck advantage = more enemy whiffs.
+
+Miss chance is currently `Stats.BLIND_MISS_PCT = 30` regardless of
+stack count (matches the sheet's "30% Miss Chance" language; stacks
+extend duration, not magnitude). Bag o' Glitter applies 2 stacks
+(2 turns / 30s of action play before it wears off).
+
 ## Quick gotchas
 
 - **Don't double-encode damage type.** If the Range column says
@@ -469,44 +725,23 @@ needs a small modal in deckbuilder and is a no-op in action/strategy.
 
 ### Energy gain / loss in Action and Strategy
 
-Deckbuilder already has `gain_energy:N` (and a future `lose_energy:N`)
-that bumps the per-turn energy pool. The same effect needs an analog
-in action and strategy. Agreed design, not yet implemented:
+Shipped. `gain_energy:N` / `lose_energy:N` now resolve in all three
+modes via `scene.gain_energy(n)` / `scene.lose_energy(n)`:
 
-**Action — brief Haste / Slow window.** All three speed dimensions
-move together so the effect feels like "more tempo" rather than a
-narrower draw-style cooldown shave:
+- **Deckbuilder** — `gain_energy` bumps the per-turn energy pool;
+  `lose_energy` drains it (floored at 0).
+- **Action** — `gain_energy:N` extends a Haste window by N seconds
+  (1.3× movement / basic attack / ability cooldown tick); `lose_energy:N`
+  extends a Slow window by N seconds (0.7×). Reapplying stacks
+  duration, not magnitude. If both Haste and Slow are live they
+  multiply, so a stray `lose_energy` while Haste is up nets to ~0.91×
+  rather than cancelling the buff.
+- **Strategy** — `gain_energy:N` adds N to a per-turn energy budget
+  that unlocks extra ability casts beyond the one-per-turn cap; each
+  extra cast pays the card's `cost` out of the budget. Budget resets
+  to 0 at turn start. `lose_energy:N` eats the budget first; if it
+  would go negative the remainder locks the normal ability use for
+  the turn.
 
-- `gain_energy:N` → brief Haste buff for ~N seconds: movement speed,
-  basic attack cooldown rate, and ability cooldown tick rate all run
-  at ~1.3×.
-- `lose_energy:N` → brief Slow buff for ~N seconds: same three
-  multipliers at ~0.7×.
-- Stacks duration (not magnitude) if reapplied — single tier keeps
-  it readable in the HUD.
-- Implementation will need a small extension to `CombatActor`
-  statuses (or a parallel timed-buff track) since current statuses
-  are stack-based, not duration-based.
-
-**Strategy — bonus ability uses, scaled by ability cost.** Mana is
-*not* the right hook because separate "gain mana" cards are planned
-and we don't want energy to silently overlap with that lever.
-Instead, each `gain_energy:N` opens a per-turn budget of `N` that
-can be spent on extra ability casts beyond the normal one-per-turn
-cap, with the budget consumed by the ability's deckbuilder `cost`:
-
-- Player has +2 energy this turn → can cast one extra ability whose
-  card cost ≤ 2, OR two extra abilities each costing 1, etc.
-- Budget resets at end of turn (energy is a per-turn resource, same
-  as deckbuilder).
-- Cooldowns still apply: the energy budget unlocks the *one-per-turn
-  cap*, it doesn't bypass an ability on cooldown.
-- `lose_energy:N` likely subtracts from the budget first, then locks
-  the normal ability use for the turn if it drives the budget below
-  zero. Exact semantics to settle when implementing.
-
-Both modes implement `gain_energy(n)` and `lose_energy(n)` on the
-scene; the EffectSystem just dispatches via `scene.gain_energy(n)` /
-`scene.lose_energy(n)` exactly like the deckbuilder. `lose_energy`
-isn't a registered EffectSystem verb yet and should be added in the
-same pass.
+Adrenaline (`gain_energy:1; draw:2`, Exhaust) is the canonical test
+card — it exercises the bare `gain_energy` path in all three modes.

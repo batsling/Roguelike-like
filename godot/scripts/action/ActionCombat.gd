@@ -50,6 +50,22 @@ var ability_cooldowns: Array[float] = [0.0, 0.0, 0.0]
 var ability_max_cooldowns: Array[float] = [0.0, 0.0, 0.0]
 var player_max_block: int = 0
 
+# Energy-driven timed buffs (Adrenaline et al). Duration-based rather
+# than stack-based because Haste/Slow need to feel like a tempo window
+# in real time, not a status charge. Single tier — magnitudes are fixed
+# constants below; reapplying extends the timer rather than stacking.
+const ENERGY_BUFF_SECS_PER_POINT := 1.0
+const ENERGY_HASTE_MULT := 1.3
+const ENERGY_SLOW_MULT := 0.7
+var _haste_remaining: float = 0.0
+var _slow_remaining: float = 0.0
+
+# "Turn" tick — fires every Stats.ACTION_TURN_TICK_SECONDS of real
+# time and decays every actor's stack-based statuses by 1, the same
+# decay that runs at deckbuilder/strategy turn-end. Without this,
+# Vulnerable / Weak / Blind would stick forever in action mode.
+var _turn_tick_remaining: float = Stats.ACTION_TURN_TICK_SECONDS
+
 # Multi-hit (Twin Strike-style) pacing. Each entry is a Dictionary:
 #   {time: secs_until_fire, effect: Dictionary, facing: Vector2, mode: "cone"|"projectile"|"aoe"}
 # Built when a card with `hits > 1` resolves; ticked every frame.
@@ -237,12 +253,20 @@ func _make_enemy_actor(data: ActionEnemyData) -> CombatActor:
 func _process(delta: float) -> void:
 	if phase != "playing":
 		return
-	player_attack_cooldown = maxf(0.0, player_attack_cooldown - delta)
+	# Haste/Slow tick on real-time delta so the window length matches the
+	# `gain_energy:N` / `lose_energy:N` value in seconds regardless of
+	# the player's tempo multiplier.
+	_haste_remaining = maxf(0.0, _haste_remaining - delta)
+	_slow_remaining = maxf(0.0, _slow_remaining - delta)
+	var tempo: float = _tempo_multiplier()
+	var scaled_delta: float = delta * tempo
+	player_attack_cooldown = maxf(0.0, player_attack_cooldown - scaled_delta)
 	player_iframes = maxf(0.0, player_iframes - delta)
 	_swing_remaining = maxf(0.0, _swing_remaining - delta)
 	_ability_swing_remaining = maxf(0.0, _ability_swing_remaining - delta)
 	for i in range(3):
-		ability_cooldowns[i] = maxf(0.0, ability_cooldowns[i] - delta)
+		ability_cooldowns[i] = maxf(0.0, ability_cooldowns[i] - scaled_delta)
+	_process_turn_tick(delta)
 	_process_player_input(delta)
 	_process_enemies(delta)
 	_process_projectiles(delta)
@@ -251,6 +275,21 @@ func _process(delta: float) -> void:
 	_refresh_hud()
 	_refresh_slot_bar()
 	queue_redraw()
+
+func _process_turn_tick(delta: float) -> void:
+	# Ticks on real-time delta (not tempo-scaled — status durations
+	# shouldn't speed up or slow down with Haste/Slow). Decays every
+	# living actor's stack-based statuses when the timer expires,
+	# then re-arms.
+	_turn_tick_remaining -= delta
+	if _turn_tick_remaining > 0.0:
+		return
+	_turn_tick_remaining += Stats.ACTION_TURN_TICK_SECONDS
+	if player_actor != null and player_actor.is_alive():
+		Stats.decay_actor_statuses(player_actor)
+	for inst in enemies:
+		if inst.actor.is_alive():
+			Stats.decay_actor_statuses(inst.actor)
 
 func _process_player_input(delta: float) -> void:
 	# Movement (WASD or arrows).
@@ -265,7 +304,7 @@ func _process_player_input(delta: float) -> void:
 		dir.x += 1
 	if dir != Vector2.ZERO:
 		dir = dir.normalized()
-		var move_speed: float = Stats.action_movement_speed()
+		var move_speed: float = Stats.action_movement_speed() * _tempo_multiplier()
 		player_pos += dir * move_speed * delta
 		player_pos.x = clampf(player_pos.x, PLAYER_RADIUS, ARENA_W - PLAYER_RADIUS)
 		player_pos.y = clampf(player_pos.y, PLAYER_RADIUS, ARENA_H - PLAYER_RADIUS)
@@ -309,6 +348,13 @@ func _do_basic_attack() -> void:
 		GameLog.add("Basic attack hits %d." % hit_count, Color(0.85, 1.0, 0.7))
 
 func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, power_multiplier: int = 1) -> void:
+	# Blind: if the player is currently Blinded, each melee/ranged hit
+	# rolls to miss. Status / heal / block effects aren't routed
+	# through here so they aren't gated.
+	if (dmg_type == "melee" or dmg_type == "ranged") and player_actor.get_status(&"blind") > 0:
+		if Stats.roll_blind_miss(_rng, true):
+			GameLog.add("You swing blind and miss!", Color(0.85, 0.85, 0.55))
+			return
 	var amount: int = base_dmg
 	amount += Stats.damage_bonus(player_actor, dmg_type, Stats.Mode.ACTION, power_multiplier)
 	if player_actor.get_status(&"weak") > 0:
@@ -393,6 +439,7 @@ func _enemy_fire_projectile(inst: Dictionary) -> void:
 		"lifetime": ENEMY_PROJECTILE_LIFETIME,
 		"damage": data.contact_damage,
 		"source_name": data.display_name,
+		"attacker": inst.actor,
 	}
 	projectiles.append(proj)
 
@@ -459,7 +506,8 @@ func _resolve_card_effects(card: CardData) -> void:
 	if needs_aoe:
 		aoe_targets = _enemies_in_radius(ABILITY_AOE_RADIUS)
 
-	for effect in card.effects:
+	for raw_effect in card.effects:
+		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
 		var t: String = String(effect.get("type", ""))
 		var tgt: String = String(effect.get("target", "enemy"))
 		match t:
@@ -480,7 +528,10 @@ func _resolve_card_effects(card: CardData) -> void:
 			"discard":
 				# Mirror of draw — lengthens the lowest cooldown.
 				discard_cards(int(effect.get("value", 1)))
-			# gain_energy is deckbuilder-only; ignored in action.
+			"gain_energy":
+				gain_energy(int(effect.get("value", 1)))
+			"lose_energy":
+				lose_energy(int(effect.get("value", 1)))
 			_:
 				pass
 
@@ -529,7 +580,10 @@ func _resolve_delayed_cone_hit(effect: Dictionary) -> void:
 	var value: int = int(effect.get("value", 0))
 	var dmg_type: String = String(effect.get("damage_type", "melee"))
 	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+	var gate: StringName = StringName(String(effect.get("if_target_status", "")))
 	for inst in targets:
+		if gate != &"" and inst.actor.get_status(gate) <= 0:
+			continue
 		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
 
 func _resolve_delayed_aoe_hit(effect: Dictionary) -> void:
@@ -537,7 +591,10 @@ func _resolve_delayed_aoe_hit(effect: Dictionary) -> void:
 	var value: int = int(effect.get("value", 0))
 	var dmg_type: String = String(effect.get("damage_type", "melee"))
 	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+	var gate: StringName = StringName(String(effect.get("if_target_status", "")))
 	for inst in targets:
+		if gate != &"" and inst.actor.get_status(gate) <= 0:
+			continue
 		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
 
 func draw_cards(n: int) -> void:
@@ -560,13 +617,14 @@ func draw_cards(n: int) -> void:
 		GameLog.add("Draw effect: -%.1fs on %s." % [reduction, ability_cards[pick].display_name],
 			Color(0.7, 0.95, 1.0))
 
-func discard_cards(n: int, _source_card = null) -> void:
+func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 	# Mirror of `draw_cards`: each discard lengthens a random ability's
 	# cooldown by 25% of its max. To make the effect feel meaningful
 	# even when nothing is currently cooling, the ability with the
 	# LOWEST remaining cooldown is picked — that way a "ready"
 	# ability immediately goes on a partial CD instead of the effect
-	# silently doing nothing.
+	# silently doing nothing. The `random` flag is meaningful in the
+	# deckbuilder; action ignores it.
 	if n <= 0:
 		return
 	for _i in range(n):
@@ -585,6 +643,32 @@ func discard_cards(n: int, _source_card = null) -> void:
 		GameLog.add("Discard: +%.1fs on %s." % [addition, ability_cards[pick].display_name],
 			Color(1.0, 0.7, 0.5))
 
+func _tempo_multiplier() -> float:
+	# Haste and Slow are mutually exclusive in display, but if both are
+	# live (e.g. gain_energy then lose_energy mid-window) we resolve to
+	# net by multiplying. Neither active => 1.0.
+	var mult: float = 1.0
+	if _haste_remaining > 0.0:
+		mult *= ENERGY_HASTE_MULT
+	if _slow_remaining > 0.0:
+		mult *= ENERGY_SLOW_MULT
+	return mult
+
+func gain_energy(n: int) -> void:
+	# Action analog of the deckbuilder energy pool: brief Haste window.
+	# Reapplying extends duration (single tier) — magnitude doesn't
+	# stack so the HUD stays readable.
+	if n <= 0:
+		return
+	_haste_remaining += float(n) * ENERGY_BUFF_SECS_PER_POINT
+	GameLog.add("Haste! +%ds." % n, Color(0.7, 1.0, 0.85))
+
+func lose_energy(n: int) -> void:
+	if n <= 0:
+		return
+	_slow_remaining += float(n) * ENERGY_BUFF_SECS_PER_POINT
+	GameLog.add("Slowed! -%ds." % n, Color(1.0, 0.7, 0.7))
+
 func _apply_self_effects(card: CardData) -> void:
 	# Used by the ranged path so block / heal / self statuses still
 	# fire even though the damage is in flight.
@@ -598,6 +682,12 @@ func _apply_self_effects(card: CardData) -> void:
 			continue
 		if t == "discard":
 			discard_cards(int(effect.get("value", 1)))
+			continue
+		if t == "gain_energy":
+			gain_energy(int(effect.get("value", 1)))
+			continue
+		if t == "lose_energy":
+			lose_energy(int(effect.get("value", 1)))
 			continue
 		var tgt: String = String(effect.get("target", ""))
 		if tgt != "self" and tgt != "player":
@@ -615,6 +705,7 @@ func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 	var value: int = int(effect.get("value", 0))
 	var dmg_type: String = String(effect.get("damage_type", "melee"))
 	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+	var gate: StringName = StringName(String(effect.get("if_target_status", "")))
 	var hit_list: Array
 	match tgt:
 		"enemy":
@@ -624,6 +715,8 @@ func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 		_:
 			return
 	for inst in hit_list:
+		if gate != &"" and inst.actor.get_status(gate) <= 0:
+			continue
 		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
 	# Multi-hit cards (Twin Strike 5x2) queue the remaining swings so
 	# each lands as its own visible animation/event ~100ms apart.
@@ -797,7 +890,7 @@ func _process_projectiles(delta: float) -> void:
 func _on_enemy_projectile_hit(p: Dictionary) -> void:
 	var dmg: int = int(p.get("damage", 0))
 	var src: String = String(p.get("source_name", "Projectile"))
-	_apply_damage_to_player(dmg, src)
+	_apply_damage_to_player(dmg, src, p.get("attacker"))
 
 func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 	var card: CardData = p.get("card")
@@ -809,13 +902,17 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 	# a fan — there is no explosion radius here.
 	var pers: int = player_actor.get_status(&"persistence")
 	var debuffs := [&"vulnerable", &"weak", &"frail", &"poison", &"burn"]
-	for effect in card.effects:
+	for raw_effect in card.effects:
+		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
 		var tgt: String = String(effect.get("target", ""))
 		if tgt != "enemy" and tgt != "all_enemies":
 			continue
 		var t: String = String(effect.get("type", ""))
 		match t:
 			"dmg":
+				var gate: StringName = StringName(String(effect.get("if_target_status", "")))
+				if gate != &"" and inst.actor.get_status(gate) <= 0:
+					continue
 				var value: int = int(effect.get("value", 0))
 				var dmg_type: String = String(effect.get("damage_type", "melee"))
 				var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
@@ -898,11 +995,17 @@ func _refresh_slot_bar() -> void:
 # ---------------------------------------------------------------------------
 
 func _enemy_hit_player(inst: Dictionary) -> void:
-	_apply_damage_to_player(inst.data.contact_damage, inst.data.display_name)
+	_apply_damage_to_player(inst.data.contact_damage, inst.data.display_name, inst.actor)
 
-func _apply_damage_to_player(amount: int, source_name: String) -> void:
+func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatActor = null) -> void:
 	if player_iframes > 0.0:
 		return
+	# Blind: if the attacker is Blinded, the hit can whiff. Player's
+	# luck biases toward the miss landing (good for the player).
+	if attacker != null and attacker.get_status(&"blind") > 0:
+		if Stats.roll_blind_miss(_rng, false):
+			GameLog.add("%s swings blind and misses!" % source_name, Color(0.85, 0.85, 0.55))
+			return
 	var dmg: int = amount
 	var absorbed: int = mini(player_actor.block, dmg)
 	player_actor.block -= absorbed
