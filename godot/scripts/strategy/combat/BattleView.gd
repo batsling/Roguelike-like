@@ -675,6 +675,24 @@ func heal(target, value: int) -> void:
 		return
 	target.hp = mini(target.max_hp, target.hp + int(value))
 
+func draw_cards(n: int) -> void:
+	# Strategy mode has no hand to draw into. Per design, each "draw"
+	# event reduces a random ability's remaining cooldown by 1 instead.
+	if _turn_manager == null or _ability_pool == null or n <= 0:
+		return
+	var unit = _turn_manager.current_unit
+	if unit == null:
+		return
+	for _i in range(n):
+		var ids_on_cd: Array = []
+		for ability in _ability_pool.abilities:
+			if int(unit.cooldowns.get(ability.id, 0)) > 0:
+				ids_on_cd.append(ability.id)
+		if ids_on_cd.is_empty():
+			break
+		var pick: StringName = ids_on_cd[randi() % ids_on_cd.size()]
+		unit.cooldowns[pick] = maxi(0, int(unit.cooldowns[pick]) - 1)
+
 # ----------------------------------------------------------------------
 # Damage / death helpers
 # ----------------------------------------------------------------------

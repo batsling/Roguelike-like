@@ -10,7 +10,7 @@ display_name = "Inflame"
 type = 2
 rarity = 2
 cost = 1
-description = "Gain 2 Power for the rest of combat."
+description = "Gain 2 Power."
 effects = [{
 "type": "status",
 "status": "power",
@@ -22,7 +22,7 @@ source_game = "Slay the Spire"
 image = ExtResource("2_img")
 portrait_color = Color(0.9, 0.5, 0.2, 1)
 can_upgrade = true
-upgraded_description = "Gain 3 Power for the rest of combat."
+upgraded_description = "Gain 3 Power."
 upgraded_cost = -999
 upgraded_effects = [{
 "type": "status",

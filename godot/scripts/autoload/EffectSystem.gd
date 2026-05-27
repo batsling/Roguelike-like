@@ -59,12 +59,19 @@ func _register_defaults() -> void:
 	register("exhaust_self", _h_exhaust_self)
 	register("gain_gold", _h_gain_gold)
 	register("lose_hp", _h_lose_hp)
+	register("conjure_self_to_discard", _h_conjure_self_to_discard)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
 	if scene == null or not scene.has_method("deal_damage"):
 		return
-	scene.deal_damage(ctx.get("source"), ctx.get("target"), effect.get("value", 0), effect)
+	# `hits` lets a single dmg effect resolve N times (Twin Strike 5x2).
+	# Action mode handles its own pacing via _resolve_card_effects and
+	# never reaches this path for multi-hit, so the loop here is purely
+	# for deckbuilder/strategy where instant N hits are fine.
+	var hits: int = maxi(1, int(effect.get("hits", 1)))
+	for _i in range(hits):
+		scene.deal_damage(ctx.get("source"), ctx.get("target"), effect.get("value", 0), effect)
 
 func _h_block(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -112,3 +119,14 @@ func _h_gain_gold(effect: Dictionary, _ctx: Dictionary) -> void:
 
 func _h_lose_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	GameState.change_hp(-effect.get("value", 0))
+
+func _h_conjure_self_to_discard(_effect: Dictionary, ctx: Dictionary) -> void:
+	# Used by Anger: drop a fresh copy of the played card into the
+	# discard pile. Only meaningful in the deckbuilder; action/strategy
+	# don't have a discard pile so we silently no-op.
+	var scene: Variant = ctx.get("scene")
+	var card: Variant = ctx.get("card")
+	if scene == null or card == null:
+		return
+	if scene.has_method("conjure_card_to_discard"):
+		scene.conjure_card_to_discard(card)

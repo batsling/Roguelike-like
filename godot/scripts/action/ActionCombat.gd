@@ -50,6 +50,12 @@ var ability_cooldowns: Array[float] = [0.0, 0.0, 0.0]
 var ability_max_cooldowns: Array[float] = [0.0, 0.0, 0.0]
 var player_max_block: int = 0
 
+# Multi-hit (Twin Strike-style) pacing. Each entry is a Dictionary:
+#   {time: secs_until_fire, effect: Dictionary, facing: Vector2, mode: "cone"|"projectile"|"aoe"}
+# Built when a card with `hits > 1` resolves; ticked every frame.
+const MULTIHIT_INTERVAL := 0.10
+var _pending_hits: Array = []
+
 # Range tuning for ability resolution.
 const ABILITY_MELEE_RANGE := 110.0      # slightly longer than basic
 const ABILITY_MELEE_ANGLE_DEG := 110.0  # slightly wider than basic
@@ -160,9 +166,18 @@ func _load_loadout() -> void:
 			if String(eff.get("type", "")) == "block":
 				player_max_block += int(eff.get("value", 0))
 	# Pre-compute ability cooldowns so the UI bar shows the max value.
+	# Abilities start "charging" at combat start: each begins at full
+	# cooldown so the player must wait one cycle before the first cast.
+	# Power cards are passive and ignored.
 	for i in range(3):
 		var card: CardData = ability_cards[i]
-		ability_max_cooldowns[i] = _cooldown_for(card) if card != null else 0.0
+		if card == null or card.is_power():
+			ability_max_cooldowns[i] = 0.0
+			ability_cooldowns[i] = 0.0
+		else:
+			var cd: float = _cooldown_for(card)
+			ability_max_cooldowns[i] = cd
+			ability_cooldowns[i] = cd
 
 func _init_player() -> void:
 	player_actor = CombatActor.from_player()
@@ -216,6 +231,7 @@ func _process(delta: float) -> void:
 	_process_player_input(delta)
 	_process_enemies(delta)
 	_process_projectiles(delta)
+	_process_pending_hits(delta)
 	_check_combat_end()
 	_refresh_hud()
 	_refresh_slot_bar()
@@ -277,9 +293,9 @@ func _do_basic_attack() -> void:
 	if hit_count > 0:
 		GameLog.add("Basic attack hits %d." % hit_count, Color(0.85, 1.0, 0.7))
 
-func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String) -> void:
+func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, power_multiplier: int = 1) -> void:
 	var amount: int = base_dmg
-	amount += Stats.damage_bonus(player_actor, dmg_type, Stats.Mode.ACTION)
+	amount += Stats.damage_bonus(player_actor, dmg_type, Stats.Mode.ACTION, power_multiplier)
 	if player_actor.get_status(&"weak") > 0:
 		amount = int(floor(amount * 0.75))
 	inst.actor.hp = maxi(0, inst.actor.hp - amount)
@@ -394,6 +410,17 @@ func _resolve_card_effects(card: CardData) -> void:
 	if _card_has_ranged_damage(card):
 		_apply_self_effects(card)
 		_spawn_player_projectile(card)
+		# Multi-hit ranged (e.g. ranged version of Twin Strike): queue
+		# additional projectiles in lockstep with melee multi-hit.
+		var extra: int = _max_ranged_hits(card) - 1
+		for i in range(extra):
+			_pending_hits.append({
+				"time": MULTIHIT_INTERVAL * float(i + 1),
+				"effect": null,        # signal: spawn another projectile from the card
+				"card": card,
+				"facing": player_facing,
+				"mode": "projectile",
+			})
 		return
 
 	# Otherwise melee/default resolution: acquire target lists ONCE
@@ -431,7 +458,11 @@ func _resolve_card_effects(card: CardData) -> void:
 			"heal":
 				if tgt == "self" or tgt == "player":
 					_resolve_heal_self(int(effect.get("value", 0)))
-			# draw / gain_energy are deckbuilder-only; ignored in action.
+			"draw":
+				# In action, "draw cards" instead chips a random
+				# ability's cooldown — see draw_cards().
+				draw_cards(int(effect.get("value", 1)))
+			# gain_energy is deckbuilder-only; ignored in action.
 			_:
 				pass
 
@@ -441,14 +472,89 @@ func _card_has_ranged_damage(card: CardData) -> bool:
 			return true
 	return false
 
+func _max_ranged_hits(card: CardData) -> int:
+	# Highest `hits` value across this card's ranged dmg effects.
+	var best := 1
+	for effect in card.effects:
+		if String(effect.get("type", "")) != "dmg":
+			continue
+		if String(effect.get("damage_type", "melee")) != "ranged":
+			continue
+		best = maxi(best, int(effect.get("hits", 1)))
+	return best
+
+func _process_pending_hits(delta: float) -> void:
+	if _pending_hits.is_empty():
+		return
+	var i := 0
+	while i < _pending_hits.size():
+		var p: Dictionary = _pending_hits[i]
+		p.time -= delta
+		if p.time <= 0.0:
+			match String(p.mode):
+				"cone":
+					_resolve_delayed_cone_hit(p.effect)
+				"aoe":
+					_resolve_delayed_aoe_hit(p.effect)
+				"projectile":
+					_spawn_player_projectile(p.card)
+			_pending_hits.remove_at(i)
+		else:
+			i += 1
+
+func _resolve_delayed_cone_hit(effect: Dictionary) -> void:
+	# Re-acquire targets each swing so enemies that died between hits
+	# (or moved out of the cone) aren't hit a second time.
+	var targets: Array = _enemies_in_cone(ABILITY_MELEE_RANGE, ABILITY_MELEE_ANGLE_DEG)
+	_ability_swing_remaining = SWING_VISUAL_DURATION
+	_ability_swing_facing = player_facing
+	var value: int = int(effect.get("value", 0))
+	var dmg_type: String = String(effect.get("damage_type", "melee"))
+	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+	for inst in targets:
+		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
+
+func _resolve_delayed_aoe_hit(effect: Dictionary) -> void:
+	var targets: Array = _enemies_in_radius(ABILITY_AOE_RADIUS)
+	var value: int = int(effect.get("value", 0))
+	var dmg_type: String = String(effect.get("damage_type", "melee"))
+	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+	for inst in targets:
+		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
+
+func draw_cards(n: int) -> void:
+	# Action mode has no hand. Per design, each `draw` effect instead
+	# reduces a random ability's REMAINING cooldown by 25% of that
+	# ability's max cooldown. Per-draw, so a Draw 2 card collapses two
+	# cooldowns (potentially the same one twice).
+	if n <= 0:
+		return
+	for _i in range(n):
+		var indices: Array = []
+		for j in range(3):
+			if ability_cooldowns[j] > 0.0 and ability_max_cooldowns[j] > 0.0:
+				indices.append(j)
+		if indices.is_empty():
+			return
+		var pick: int = indices[_rng.randi() % indices.size()]
+		var reduction: float = ability_max_cooldowns[pick] * 0.25
+		ability_cooldowns[pick] = maxf(0.0, ability_cooldowns[pick] - reduction)
+		GameLog.add("Draw effect: -%.1fs on %s." % [reduction, ability_cards[pick].display_name],
+			Color(0.7, 0.95, 1.0))
+
 func _apply_self_effects(card: CardData) -> void:
 	# Used by the ranged path so block / heal / self statuses still
 	# fire even though the damage is in flight.
 	for effect in card.effects:
+		var t: String = String(effect.get("type", ""))
+		# Draw is untargeted in deckbuilder; in action it shaves a
+		# random cooldown regardless of `target`, so fire it here.
+		if t == "draw":
+			draw_cards(int(effect.get("value", 1)))
+			continue
 		var tgt: String = String(effect.get("target", ""))
 		if tgt != "self" and tgt != "player":
 			continue
-		var t: String = String(effect.get("type", ""))
 		match t:
 			"block":
 				_gain_block(int(effect.get("value", 0)))
@@ -461,6 +567,7 @@ func _apply_self_effects(card: CardData) -> void:
 func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array) -> void:
 	var value: int = int(effect.get("value", 0))
 	var dmg_type: String = String(effect.get("damage_type", "melee"))
+	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
 	var hit_list: Array
 	match tgt:
 		"enemy":
@@ -470,7 +577,18 @@ func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 		_:
 			return
 	for inst in hit_list:
-		_deal_damage_to_enemy(inst, value, dmg_type)
+		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
+	# Multi-hit cards (Twin Strike 5x2) queue the remaining swings so
+	# each lands as its own visible animation/event ~100ms apart.
+	var extra_hits: int = maxi(0, int(effect.get("hits", 1)) - 1)
+	for i in range(extra_hits):
+		_pending_hits.append({
+			"time": MULTIHIT_INTERVAL * float(i + 1),
+			"effect": effect,
+			"tgt": tgt,
+			"facing": player_facing,
+			"mode": "cone" if tgt == "enemy" else "aoe",
+		})
 
 func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array) -> void:
 	var status: StringName = StringName(String(effect.get("status", "")))
@@ -596,27 +714,53 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 	var card: CardData = p.get("card")
 	if card == null:
 		return
-	# Apply every enemy-targeted effect (dmg + status) to the hit
-	# enemy so multi-effect ranged cards (e.g., "deal X + apply Y")
-	# all resolve on the same victim.
+	# Apply every enemy-targeted effect (dmg + status) on the card.
+	# Single-target effects (`target: enemy`) hit only the impacted
+	# enemy; AOE effects (`target: all_enemies`) burst over enemies
+	# within the AOE radius around the impact point (Thunderclap).
 	var pers: int = player_actor.get_status(&"persistence")
 	var debuffs := [&"vulnerable", &"weak", &"frail", &"poison", &"burn"]
+	var aoe_targets: Array = []
+	var have_aoe_list := false
 	for effect in card.effects:
 		var tgt: String = String(effect.get("target", ""))
-		if tgt != "enemy":
+		if tgt != "enemy" and tgt != "all_enemies":
 			continue
+		# Resolve hit list once per effect to avoid re-walking enemies
+		# inside the inner loop.
+		var hits: Array
+		if tgt == "enemy":
+			hits = [inst]
+		else:
+			if not have_aoe_list:
+				aoe_targets = _enemies_in_radius_at(p.pos, ABILITY_AOE_RADIUS)
+				have_aoe_list = true
+			hits = aoe_targets
 		var t: String = String(effect.get("type", ""))
 		match t:
 			"dmg":
 				var value: int = int(effect.get("value", 0))
 				var dmg_type: String = String(effect.get("damage_type", "melee"))
-				_deal_damage_to_enemy(inst, value, dmg_type)
+				var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+				for h in hits:
+					_deal_damage_to_enemy(h, value, dmg_type, power_mult)
 			"status":
 				var status: StringName = StringName(String(effect.get("status", "")))
 				var stacks: int = int(effect.get("stacks", 0))
 				if stacks > 0 and status != &"":
 					var amt: int = stacks + (pers if status in debuffs else 0)
-					inst.actor.add_status(status, amt)
+					for h in hits:
+						h.actor.add_status(status, amt)
+
+func _enemies_in_radius_at(center: Vector2, radius: float) -> Array:
+	var result: Array = []
+	for inst in enemies:
+		if not inst.actor.is_alive():
+			continue
+		if inst.pos.distance_to(center) > radius + inst.data.size:
+			continue
+		result.append(inst)
+	return result
 
 # ---------------------------------------------------------------------------
 # Slot-bar UI (bottom-of-screen ability strip)

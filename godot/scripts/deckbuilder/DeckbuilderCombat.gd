@@ -603,7 +603,8 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 	# Source outgoing modifiers
 	if source != null:
 		var damage_type: String = String(effect.get("damage_type", "melee"))
-		amount += Stats.damage_bonus(source, damage_type, Stats.Mode.DECKBUILDER)
+		var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+		amount += Stats.damage_bonus(source, damage_type, Stats.Mode.DECKBUILDER, power_mult)
 		if source.get_status(&"weak") > 0:
 			amount = int(floor(amount * 0.75))
 
@@ -706,6 +707,14 @@ func exhaust_card(card: CardInstance) -> void:
 	hand.erase(card)
 	exhaust_pile.append(card)
 	TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
+	_refresh_ui()
+
+func conjure_card_to_discard(card) -> void:
+	# Used by Anger's "conjure 1 copy of this card to Discard" effect.
+	if card == null or not (card is CardInstance):
+		return
+	var copy: CardInstance = CardInstance.from_data(card.data, card.upgraded)
+	discard_pile.append(copy)
 	_refresh_ui()
 
 func gain_energy(amount: int) -> void:
