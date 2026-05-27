@@ -98,6 +98,7 @@ Semicolon-delimited list of effect lines. Each line is
 | `exhaust_self` | (none) | Exhaust the played card. Redundant if Keywords has `Exhaust`. | `{type: "exhaust_self"}` |
 | `conjure` | `CARD_ID:DESTINATION[:COUNT]` | Create COUNT copies of CARD_ID into the named pile. `CARD_ID` of `self` means "this card" and inherits its upgrade state; append `+` (e.g. `shiv+`) to force the upgraded form of a fixed card. `DESTINATION` is `hand` / `draw` / `discard`. COUNT defaults to 1. | `{type: "conjure", card_id, destination, count, upgraded?}` |
 | `power_multiplier` | `N` | Multiplies the Power stat's contribution to this card's damage by N. Applies to the preceding `dmg:` lines on the same row. | Added as `power_multiplier: N` on each `dmg` effect. |
+| `chance` | `PCT:<INNER_VERB>:<INNER_ARGS>` | Roll PCT% on the shared luck-modified RNG (Stats.roll_chance_with_luck — every point of Luck adds a 10% advantage roll, mirroring how events roll). On success, dispatch the inner effect through the same EffectSystem with the same ctx. Inner can be any verb. Bag o' Glitter: `chance:10:exhaust_self`. | `{type: "chance", percent: N, effect: {…inner…}}` |
 
 ### Argument shorthand for `dmg`
 
@@ -316,6 +317,23 @@ Tags:         ironclad, offense
 discard back into hand" shape. To move from a different pile or to a
 different destination, spell them out: `recall:cost=0:from=draw:to=hand`.
 No picker — recall always grabs every match.
+
+### Bag o' Glitter — `Common Skill` cost 0
+```
+Description:  Inflict 2 Blind. 10% chance to Exhaust.
+Effects:      inflict:blind:2; chance:10:exhaust_self
+Range:        Medium
+Keywords:
+Tags:         debuff, blind
+```
+
+The Exhaust keyword is deliberately empty — `Exhaust` in the Keywords
+column means "always exhausts," which would override the 10% roll.
+The `chance:10:exhaust_self` line routes through
+`Stats.roll_chance_with_luck`, so every point of Luck adds a 10%
+advantage roll on the exhaust check, same as events. Outside the
+deckbuilder the roll still fires but `exhaust_self` no-ops (no piles
+in action / strategy), which is the right behaviour.
 
 ### Carnage — `Uncommon Attack` cost 2
 ```

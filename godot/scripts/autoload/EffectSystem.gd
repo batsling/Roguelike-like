@@ -21,8 +21,10 @@ extends Node
 # a warning but don't crash.
 
 var _handlers: Dictionary = {}  # type: String -> Callable
+var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
+	_rng.randomize()
 	_register_defaults()
 
 func register(effect_type: String, handler: Callable) -> void:
@@ -68,6 +70,7 @@ func _register_defaults() -> void:
 	register("boost_cards", _h_boost_cards)
 	register("gain_loot", _h_gain_loot)
 	register("trigger", _h_trigger)
+	register("chance", _h_chance)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -259,3 +262,19 @@ func _h_trigger(effect: Dictionary, ctx: Dictionary) -> void:
 		String(effect.get("on", "")),
 		effect.get("effect", {})
 	)
+
+func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
+	# Roll once on the EffectSystem RNG, with luck advantage applied
+	# the same way events do, and dispatch the inner effect if the
+	# roll succeeds. The inner inherits the outer call's ctx, so
+	# target / source / scene / card flow through unchanged — author
+	# the chance line with the same target you'd put on the inner
+	# effect if it weren't wrapped. Bag o' Glitter:
+	#   {type: "chance", percent: 10, effect: {type: "exhaust_self"}}
+	var percent: int = int(effect.get("percent", 0))
+	var inner: Dictionary = effect.get("effect", {})
+	if inner.is_empty():
+		return
+	if not Stats.roll_chance_with_luck(_rng, percent):
+		return
+	apply(inner, ctx)
