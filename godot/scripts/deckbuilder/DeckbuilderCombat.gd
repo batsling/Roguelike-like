@@ -726,11 +726,18 @@ func exhaust_card(card: CardInstance) -> void:
 	TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 	_refresh_ui()
 
-func conjure_card(card_id: StringName, destination: String, count: int, source_card) -> void:
+func conjure_card(card_id: StringName, destination: String, count: int, source_card, force_upgraded: bool = false) -> void:
 	# Generic conjure: drop `count` copies of `card_id` into the named
-	# pile. `card_id == &"self"` copies the played card (Anger). For any
-	# other id we look up the static CardData from `Data` so the same
-	# call works for status cards (Dazed, Wound), curses, etc.
+	# pile. `card_id == &"self"` copies the played card (Anger) and
+	# preserves its upgrade state — playing an upgraded Anger conjures
+	# an upgraded Anger. For any other id we look up the static
+	# CardData from `Data` so the same call works for status cards
+	# (Dazed, Wound), curses, etc.
+	#
+	# Upgrade flag for non-self conjures: either pass `force_upgraded`
+	# explicitly, or append "+" to the card_id (e.g. `&"shiv+"`).
+	# The "+" suffix matches the game's display convention so sheet
+	# authors can write `conjure:shiv+:hand:3` and have it Just Work.
 	#
 	# `destination`: "hand" / "draw" / "discard". An unknown destination
 	# logs a warning and is treated as discard so a typo in the sheet
@@ -744,10 +751,20 @@ func conjure_card(card_id: StringName, destination: String, count: int, source_c
 		data = source_card.data
 		upgraded = source_card.upgraded
 	else:
-		data = Data.get_card(card_id)
+		var id_str: String = String(card_id)
+		if id_str.ends_with("+"):
+			upgraded = true
+			id_str = id_str.substr(0, id_str.length() - 1)
+		if force_upgraded:
+			upgraded = true
+		data = Data.get_card(StringName(id_str))
 		if data == null:
 			push_warning("conjure_card: unknown card id '%s'" % card_id)
 			return
+		if upgraded and not data.can_upgrade:
+			# Asking for an upgraded form of a card that can't upgrade
+			# (e.g. status cards) — silently fall back to base form.
+			upgraded = false
 	for _i in range(count):
 		var copy: CardInstance = CardInstance.from_data(data, upgraded)
 		match destination:

@@ -88,7 +88,7 @@ Semicolon-delimited list of effect lines. Each line is
 | `gain_gold` | `N` | Award N gold (rare on cards). | `{type: "gain_gold", value: N}` |
 | `lose_hp` | `VALUE` | Pay HP as a cost. | `{type: "lose_hp", value}` |
 | `exhaust_self` | (none) | Exhaust the played card. Redundant if Keywords has `Exhaust`. | `{type: "exhaust_self"}` |
-| `conjure` | `CARD_ID:DESTINATION[:COUNT]` | Create COUNT copies of CARD_ID into the named pile. `CARD_ID` of `self` means "this card". `DESTINATION` is `hand` / `draw` / `discard`. COUNT defaults to 1. | `{type: "conjure", card_id, destination, count}` |
+| `conjure` | `CARD_ID:DESTINATION[:COUNT]` | Create COUNT copies of CARD_ID into the named pile. `CARD_ID` of `self` means "this card" and inherits its upgrade state; append `+` (e.g. `shiv+`) to force the upgraded form of a fixed card. `DESTINATION` is `hand` / `draw` / `discard`. COUNT defaults to 1. | `{type: "conjure", card_id, destination, count, upgraded?}` |
 | `power_multiplier` | `N` | Multiplies the Power stat's contribution to this card's damage by N. Applies to the preceding `dmg:` lines on the same row. | Added as `power_multiplier: N` on each `dmg` effect. |
 
 ### Argument shorthand for `dmg`
@@ -126,22 +126,42 @@ Spreadsheet uses one verb with positional args:
 conjure:CARD_ID:DESTINATION[:COUNT]
 ```
 
+Append `+` to `CARD_ID` to conjure the upgraded form.
+
 Examples:
 
 | Sheet | Meaning |
 |---|---|
-| `conjure:self:discard` | Anger — drop a copy of this card into discard. |
-| `conjure:self:hand` | Copy this card into hand (typically paired with `Keywords: Exhaust`). |
-| `conjure:dazed:discard:2` | Add 2 Dazed cards to discard (status card). |
-| `conjure:wound:draw` | Shuffle 1 Wound into the draw pile. |
+| `conjure:self:discard` | Anger — drop a copy of this card into discard. Inherits the played card's upgrade state automatically. |
+| `conjure:self:hand` | Copy this card into hand (typically paired with `Keywords: Exhaust`). Inherits upgrade. |
+| `conjure:dazed:discard:2` | Add 2 base-form Dazed cards to discard. |
+| `conjure:wound:draw` | Shuffle 1 base-form Wound into the draw pile. |
+| `conjure:shiv+:hand:3` | Add 3 **upgraded** Shivs to hand (e.g. Blade Dance+). |
 
 In code the effect is a single type `conjure` with fields
-`{card_id, destination, count}`. `card_id` accepts `"self"` (copy the
-played card) or any id from `godot/data/cards/`. `destination` is
-`"hand"` / `"draw"` / `"discard"` — adds to draw pile are reshuffled
-so the conjured card isn't deterministically on top. `count` defaults
-to 1. Outside the deckbuilder (action / strategy) the effect no-ops
-because there are no piles to add to.
+`{card_id, destination, count, upgraded?}`:
+
+- `card_id` accepts `"self"` (copy the played card and its current
+  upgrade state) or any id from `godot/data/cards/`. A trailing `+`
+  on the id (e.g. `"shiv+"`) is stripped and sets the upgrade flag —
+  this is the recommended form so it round-trips with the sheet DSL.
+- `destination` is `"hand"` / `"draw"` / `"discard"`. Adds to the draw
+  pile are reshuffled so the conjured card isn't deterministically on
+  top.
+- `count` defaults to 1.
+- `upgraded` (optional bool) is an alternative to the `+` suffix;
+  both routes set the same flag.
+
+If the resolved card can't upgrade (`can_upgrade = false`, e.g. status
+cards like Dazed/Wound), the upgrade flag is silently dropped so
+authoring mistakes don't crash anything.
+
+Self-conjures ignore the upgrade flag and always inherit the played
+card's state, so playing an upgraded Anger conjures an upgraded Anger
+without any extra work.
+
+Outside the deckbuilder (action / strategy) the effect no-ops because
+there are no piles to add to.
 
 ## Worked examples
 

@@ -122,9 +122,15 @@ func _h_lose_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 
 func _h_conjure(effect: Dictionary, ctx: Dictionary) -> void:
 	# Unified conjure handler. Args on the effect:
-	#   card_id:     StringName, or "self" to copy the played card
+	#   card_id:     StringName, or "self" to copy the played card.
+	#                Append "+" to force the upgraded form
+	#                (e.g. "shiv+"); ignored when card_id == "self"
+	#                because self conjures inherit the played card's
+	#                upgrade state.
 	#   destination: "hand" / "draw" / "discard"
 	#   count:       int (default 1)
+	#   upgraded:    bool (default false) — alternative to the "+"
+	#                suffix; both routes set the same flag.
 	# Only meaningful in the deckbuilder; action/strategy have no piles
 	# to add to so the scene method just won't exist and we no-op.
 	var scene: Variant = ctx.get("scene")
@@ -133,4 +139,5 @@ func _h_conjure(effect: Dictionary, ctx: Dictionary) -> void:
 	var card_id: StringName = StringName(String(effect.get("card_id", "self")))
 	var destination: String = String(effect.get("destination", "discard"))
 	var count: int = maxi(1, int(effect.get("count", 1)))
-	scene.conjure_card(card_id, destination, count, ctx.get("card"))
+	var force_upgraded: bool = bool(effect.get("upgraded", false))
+	scene.conjure_card(card_id, destination, count, ctx.get("card"), force_upgraded)
