@@ -79,11 +79,14 @@ Semicolon-delimited list of effect lines. Each line is
 
 | Verb | Arguments | Meaning | `.tres` form |
 |---|---|---|---|
-| `dmg` | `VALUE[xN]:DAMAGE_TYPE[:cleave]` | Deal damage. `xN` = multi-hit (Twin Strike). `cleave` = `target: all_enemies`. | `{type: "dmg", value, target, damage_type, hits?}` |
+| `dmg` | `VALUE[xN]:DAMAGE_TYPE[:cleave\|if_status=STATUS]` | Deal damage. `xN` = multi-hit (Twin Strike). `cleave` = `target: all_enemies`. `if_status=X` skips the hit per target when that target lacks status X (Bane's second hit). | `{type: "dmg", value, target, damage_type, hits?, if_target_status?}` |
 | `gain` | `STAT:VALUE` | Player gains the stat (block, power, defense, dodge, …). | `{type: "block"/"status", value, stacks, status, target: "self"}` |
 | `inflict` | `STATUS:STACKS[:cleave]` | Apply a debuff to the targeted enemy (or all enemies with `cleave`). | `{type: "status", status, stacks, target: "enemy"/"all_enemies"}` |
 | `draw` | `N` | Draw N cards. In Action mode this instead chips a random ability cooldown by 25% per N. In Strategy, reduces a random ability CD by N. | `{type: "draw", value: N}` |
-| `discard` | `N` | Mirror of `draw`. Deckbuilder: discard N random cards from hand (excluding the played card). Action: +25% of max CD on the lowest-cooldown ability, per N. Strategy: +N on the lowest current CD. | `{type: "discard", value: N}` |
+| `discard` | `N[:random]` | Mirror of `draw`. Deckbuilder: pick N from hand via the CardPickerModal (default — player chooses, like Acrobatics). Append `:random` for the engine-picked random variant (All-Out Attack). Always excludes the played card. Action: +25% of max CD on the lowest-cooldown ability, per N. Strategy: +N on the lowest current CD. | `{type: "discard", value: N, random?: bool}` |
+| `exhaust` | `N[:random]` | Deckbuilder mirror of `discard` but routes picks to the exhaust pile. Same player-choice default and `:random` flag. No-op in action/strategy. | `{type: "exhaust", value: N, random?: bool}` |
+| `recall` | `<FILTER>[:from=PILE][:to=PILE]` | Deckbuilder: move (not copy) every card in the source pile matching `FILTER` into the destination pile. `FILTER` today is `cost=N`; defaults are `from=discard`, `to=hand` (All for One). No-op in action/strategy. | `{type: "recall", from: PILE, to: PILE, filter: {…}}` |
+| `upgrade_hand` | `N\|all[:random]` | Deckbuilder: upgrade in-place. `upgrade_hand:1` opens the picker so the player chooses (Armaments); `upgrade_hand:all` upgrades every eligible card in hand silently (Armaments+). Append `:random` to skip the picker for the N form. Skips cards that are already upgraded or have `can_upgrade = false`. No-op in action/strategy. | `{type: "upgrade_hand", value: N\|"all", random?: bool}` |
 | `boost_cards` | `<MATCH>:<STAT>:<VALUE>` | Persistent in-combat modifier. Every later card matching `MATCH` resolves with `STAT + VALUE`. `MATCH` is exactly one of `tag=X` / `type=X` / `id=X`. `STAT` is `dmg` or `block`. Deckbuilder only today. | `{type: "boost_cards", match_tag/match_type/match_id, stat, value}` |
 | `on_<EVENT>` | `<INNER_VERB>:<INNER_ARGS>` | Register a persistent in-combat listener. When the named event fires, the inner effect runs (source = player, target = player unless overridden). `<EVENT>` is a TriggerBus signal name (see Triggers section). After Image: `on_card_played:gain:block:1`. Deckbuilder only today. | `{type: "trigger", on: "<event>", effect: {…inner…}}` |
 | `gain_loot` | `<KIND>:<COUNT>` | Add COUNT loot of `KIND` (`potion` / `scroll` / `key`) to the run-scope counter on GameState. Concrete potion/scroll catalogs land later; the counter is the placeholder. Alchemize: `gain_loot:potion:1`. | `{type: "gain_loot", kind: "potion", value: 1}` |
@@ -108,6 +111,12 @@ Semicolon-delimited list of effect lines. Each line is
 
 `cleave` in slot 4 is the modifier that flips `target` from `enemy`
 to `all_enemies`. Anywhere else it's a tag.
+
+`if_status=STATUS` in slot 4 gates the hit per target — only enemies
+with at least 1 stack of STATUS take damage. Disambiguated from
+`cleave` by the `=` sign. Bane: `dmg:7:melee:if_status=poison`. If a
+future card needs both `cleave` AND `if_status` on the same line,
+the slot will switch to a pipe-delimited list (e.g. `cleave|if_status=burn`).
 
 ### Status verbs: `gain` vs `inflict`
 
@@ -168,6 +177,41 @@ without any extra work.
 Outside the deckbuilder (action / strategy) the effect no-ops because
 there are no piles to add to.
 
+## Picker modal (Discard / Exhaust / Upgrade / Recall)
+
+`CardPickerModal` is the shared mid-cast modal that opens whenever a
+card asks the player to choose from a pile. One reusable widget
+backs every "choose N from a set" effect: Acrobatics' discard,
+Armaments' upgrade, future Exhume / Headbutt / Wraith Form picks,
+etc. Deckbuilder-only — action and strategy silently no-op because
+there are no piles to pick from.
+
+**Default is player-choice.** Any verb that picks cards opens the
+picker by default. Append `:random` to the DSL line to skip the
+modal and let the engine roll instead. The convention is "if the
+sheet doesn't say random, the player picks":
+
+| DSL | Behavior |
+|---|---|
+| `discard:1` | Player picks 1 from hand to discard (Acrobatics). |
+| `discard:1:random` | Engine picks 1 from hand to discard (All-Out Attack). |
+| `exhaust:2` | Player picks 2 from hand to exhaust. |
+| `upgrade_hand:1` | Player picks 1 from hand to upgrade (Armaments). |
+| `upgrade_hand:all` | Whole hand upgrades silently (Armaments+). No picker. |
+
+`recall` doesn't use the picker — it moves every card in the source
+pile that matches the filter, so there's nothing to choose.
+
+The picker blocks card play from advancing — the rest of the played
+card's effects have already resolved by the time the modal opens
+(synchronous effect loop), so the player can pick at their own pace
+without the combat freezing visually. Confirming applies the picks;
+clicking outside does nothing (no skip — the modal must be resolved).
+
+If a future card needs two pickers on the same play, the effect
+system will need to switch to async `await` resolution — punted
+until that card exists.
+
 ## Worked examples
 
 ### Anger — `Common Attack` cost 0
@@ -218,6 +262,60 @@ Tags:         ironclad, offense, aoe
 A ranged `cleave` card fans 5 projectiles in Action mode (50° spread,
 short travel ≈ 320 px). In Deckbuilder/Strategy the `all_enemies`
 target just means "hit everyone".
+
+### Bane — `Common Attack` cost 1
+```
+Description:  Deal 7 Dmg Melee. If the target is Poisoned, deal 7 Dmg Melee again.
+Effects:      dmg:7:melee; dmg:7:melee:if_status=poison
+Range:        Medium
+Tags:         silent, offense, poison
+```
+
+Two `dmg` lines: the first always lands, the second is gated by the
+target's Poison stack count. Per-target gate, so a future cleave
+variant (`dmg:7:melee:cleave; dmg:7:melee:cleave|if_status=poison`)
+would hit every enemy with the first swing and only the Poisoned
+ones with the second.
+
+### All-Out Attack — `Uncommon Attack` cost 1
+```
+Description:  Deal 10 Dmg Melee Cleave. Discard 1 card at random.
+Effects:      dmg:10:melee:cleave; discard:1:random
+Range:        Medium
+Tags:         ironclad, offense, aoe
+```
+
+`:random` on the discard skips the picker. Drop the `:random` and
+the player would be prompted to pick a card to discard instead —
+that's Acrobatics, not All-Out Attack.
+
+### Armaments — `Common Skill` cost 1
+```
+Description:  Gain 5 Block. Upgrade a card in your hand for the rest of combat.
+Effects:      gain:block:5; upgrade_hand:1
+Upgraded Eff: gain:block:5; upgrade_hand:all
+Range:        Self
+Tags:         ironclad, defense
+```
+
+`upgrade_hand:1` opens the picker. `upgrade_hand:all` skips it and
+upgrades every eligible card in hand — already-upgraded cards and
+cards with `can_upgrade = false` (Dazed / Wound) are silently
+skipped.
+
+### All for One — `Rare Attack` cost 2
+```
+Description:  Deal 10 Dmg Melee. Put all 0-cost cards from your discard pile into your hand.
+Effects:      dmg:10:melee; recall:cost=0
+Range:        Medium
+Tags:         ironclad, offense
+```
+
+`recall` defaults to `from=discard:to=hand`, so the short form
+`recall:cost=0` is enough for the canonical "put 0-cost cards from
+discard back into hand" shape. To move from a different pile or to a
+different destination, spell them out: `recall:cost=0:from=draw:to=hand`.
+No picker — recall always grabs every match.
 
 ### Carnage — `Uncommon Attack` cost 2
 ```

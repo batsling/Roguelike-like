@@ -549,7 +549,10 @@ func _resolve_delayed_cone_hit(effect: Dictionary) -> void:
 	var value: int = int(effect.get("value", 0))
 	var dmg_type: String = String(effect.get("damage_type", "melee"))
 	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+	var gate: StringName = StringName(String(effect.get("if_target_status", "")))
 	for inst in targets:
+		if gate != &"" and inst.actor.get_status(gate) <= 0:
+			continue
 		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
 
 func _resolve_delayed_aoe_hit(effect: Dictionary) -> void:
@@ -557,7 +560,10 @@ func _resolve_delayed_aoe_hit(effect: Dictionary) -> void:
 	var value: int = int(effect.get("value", 0))
 	var dmg_type: String = String(effect.get("damage_type", "melee"))
 	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+	var gate: StringName = StringName(String(effect.get("if_target_status", "")))
 	for inst in targets:
+		if gate != &"" and inst.actor.get_status(gate) <= 0:
+			continue
 		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
 
 func draw_cards(n: int) -> void:
@@ -580,13 +586,14 @@ func draw_cards(n: int) -> void:
 		GameLog.add("Draw effect: -%.1fs on %s." % [reduction, ability_cards[pick].display_name],
 			Color(0.7, 0.95, 1.0))
 
-func discard_cards(n: int, _source_card = null) -> void:
+func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 	# Mirror of `draw_cards`: each discard lengthens a random ability's
 	# cooldown by 25% of its max. To make the effect feel meaningful
 	# even when nothing is currently cooling, the ability with the
 	# LOWEST remaining cooldown is picked — that way a "ready"
 	# ability immediately goes on a partial CD instead of the effect
-	# silently doing nothing.
+	# silently doing nothing. The `random` flag is meaningful in the
+	# deckbuilder; action ignores it.
 	if n <= 0:
 		return
 	for _i in range(n):
@@ -667,6 +674,7 @@ func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 	var value: int = int(effect.get("value", 0))
 	var dmg_type: String = String(effect.get("damage_type", "melee"))
 	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+	var gate: StringName = StringName(String(effect.get("if_target_status", "")))
 	var hit_list: Array
 	match tgt:
 		"enemy":
@@ -676,6 +684,8 @@ func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 		_:
 			return
 	for inst in hit_list:
+		if gate != &"" and inst.actor.get_status(gate) <= 0:
+			continue
 		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
 	# Multi-hit cards (Twin Strike 5x2) queue the remaining swings so
 	# each lands as its own visible animation/event ~100ms apart.
@@ -868,6 +878,9 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 		var t: String = String(effect.get("type", ""))
 		match t:
 			"dmg":
+				var gate: StringName = StringName(String(effect.get("if_target_status", "")))
+				if gate != &"" and inst.actor.get_status(gate) <= 0:
+					continue
 				var value: int = int(effect.get("value", 0))
 				var dmg_type: String = String(effect.get("damage_type", "melee"))
 				var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))

@@ -739,7 +739,7 @@ func draw_cards(n: int) -> void:
 		var pick: StringName = ids_on_cd[randi() % ids_on_cd.size()]
 		unit.cooldowns[pick] = maxi(0, int(unit.cooldowns[pick]) - 1)
 
-func discard_cards(n: int, _source_card = null) -> void:
+func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 	# Mirror of `draw_cards`: each discard adds 1 to the ability with
 	# the LOWEST current cooldown so the effect lands even when
 	# everything is ready (a ready ability goes onto a 1-turn CD).

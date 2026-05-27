@@ -827,21 +827,190 @@ func lose_energy(amount: int) -> void:
 
 const _TYPE_NAMES: Array[String] = ["attack", "skill", "power", "dice", "status", "curse", "training"]
 
-func discard_cards(n: int, source_card = null) -> void:
-	# Random discard, excluding the card currently being played so a
-	# "Deal X. Discard 1." card doesn't double-route itself through
-	# discard. Skip silently when hand is empty / depleted.
-	for _i in range(n):
-		var pool: Array = []
-		for c in hand:
-			if c == source_card:
-				continue
-			pool.append(c)
-		if pool.is_empty():
-			return
-		var pick: CardInstance = pool[_rng.randi() % pool.size()]
+func discard_cards(n: int, source_card = null, random: bool = false) -> void:
+	# Two paths: random (All-Out Attack) silently picks; player-choice
+	# (Acrobatics et al, the default) opens the CardPickerModal. Both
+	# exclude the card being played so a "Deal X. Discard 1." card
+	# can't route itself through discard. Silently drops the request
+	# when the hand is empty.
+	if n <= 0:
+		return
+	var pool: Array = []
+	for c in hand:
+		if c == source_card:
+			continue
+		pool.append(c)
+	if pool.is_empty():
+		return
+	if random:
+		var picks: Array = []
+		for _i in range(n):
+			if pool.is_empty():
+				break
+			var pick: CardInstance = pool[_rng.randi() % pool.size()]
+			pool.erase(pick)
+			picks.append(pick)
+		_apply_discard_picks(picks)
+	else:
+		var count: int = mini(n, pool.size())
+		_open_picker({
+			"title": "Discard %d card%s" % [count, "s" if count > 1 else ""],
+			"candidates": pool,
+			"count": count,
+			"accent": _PILE_COLORS["discard"],
+			"confirm_label": "Discard",
+			"on_picked": Callable(self, "_apply_discard_picks"),
+		})
+
+func _apply_discard_picks(picks: Array) -> void:
+	for pick in picks:
 		discard_card(pick)
 		GameLog.add("Discarded %s." % pick.get_display_name(), Color(0.9, 0.7, 0.4))
+
+func exhaust_cards(n: int, source_card = null, random: bool = false) -> void:
+	# Mirror of `discard_cards` but routes picks to the exhaust pile.
+	# Same exclusion rule for the card being played.
+	if n <= 0:
+		return
+	var pool: Array = []
+	for c in hand:
+		if c == source_card:
+			continue
+		pool.append(c)
+	if pool.is_empty():
+		return
+	if random:
+		var picks: Array = []
+		for _i in range(n):
+			if pool.is_empty():
+				break
+			var pick: CardInstance = pool[_rng.randi() % pool.size()]
+			pool.erase(pick)
+			picks.append(pick)
+		_apply_exhaust_picks(picks)
+	else:
+		var count: int = mini(n, pool.size())
+		_open_picker({
+			"title": "Exhaust %d card%s" % [count, "s" if count > 1 else ""],
+			"candidates": pool,
+			"count": count,
+			"accent": _PILE_COLORS["exhaust"],
+			"confirm_label": "Exhaust",
+			"on_picked": Callable(self, "_apply_exhaust_picks"),
+		})
+
+func _apply_exhaust_picks(picks: Array) -> void:
+	for pick in picks:
+		exhaust_card(pick)
+		GameLog.add("Exhausted %s." % pick.get_display_name(), Color(0.7, 0.7, 0.8))
+
+func recall_cards(from_pile: String, to_pile: String, filter: Dictionary) -> void:
+	# Move (not copy) cards matching `filter` from `from_pile` to
+	# `to_pile`. The only shipped filter today is `{"cost": N}`
+	# (All for One). Extend with tag= / type= / id= when a second
+	# consumer needs them.
+	var src: Array = _pile_for(from_pile)
+	if src.is_empty():
+		return
+	var matched: Array = []
+	for inst in src:
+		if _filter_matches(inst, filter):
+			matched.append(inst)
+	if matched.is_empty():
+		return
+	for inst in matched:
+		src.erase(inst)
+		match to_pile:
+			"hand":
+				hand.append(inst)
+			"draw":
+				draw_pile.append(inst)
+			"discard":
+				discard_pile.append(inst)
+			_:
+				push_warning("recall_cards: unknown destination '%s'" % to_pile)
+				discard_pile.append(inst)
+	if to_pile == "draw":
+		_shuffle(draw_pile)
+	GameLog.add("Recalled %d card%s from %s." % [
+		matched.size(), "s" if matched.size() > 1 else "", from_pile,
+	], Color(0.6, 1.0, 0.8))
+	_refresh_ui()
+
+func _filter_matches(inst: CardInstance, filter: Dictionary) -> bool:
+	if filter == null or filter.is_empty():
+		return true
+	if filter.has("cost") and inst.get_cost() != int(filter["cost"]):
+		return false
+	if filter.has("tag") and not inst.data.tags.has(String(filter["tag"])):
+		return false
+	if filter.has("type") and inst.data.type != int(filter["type"]):
+		return false
+	if filter.has("id") and inst.data.id != StringName(String(filter["id"])):
+		return false
+	return true
+
+func upgrade_hand_cards(count_or_all, source_card = null, random: bool = false) -> void:
+	# `count_or_all` is an int (pick N) or the string "all" (skip the
+	# picker and upgrade everything eligible). Cards with
+	# `can_upgrade = false` (Dazed / Wound / status) are filtered out.
+	# Already-upgraded cards are also filtered so the player isn't
+	# offered no-op picks.
+	var pool: Array = []
+	for c in hand:
+		if c == source_card:
+			continue
+		if c.data == null or not c.data.can_upgrade:
+			continue
+		if c.upgraded:
+			continue
+		pool.append(c)
+	if pool.is_empty():
+		return
+	var all_mode: bool = (typeof(count_or_all) == TYPE_STRING and String(count_or_all).to_lower() == "all")
+	if all_mode:
+		_apply_upgrade_picks(pool)
+		return
+	var n: int = int(count_or_all)
+	if n <= 0:
+		return
+	if random:
+		var picks: Array = []
+		for _i in range(n):
+			if pool.is_empty():
+				break
+			var pick: CardInstance = pool[_rng.randi() % pool.size()]
+			pool.erase(pick)
+			picks.append(pick)
+		_apply_upgrade_picks(picks)
+	else:
+		var count: int = mini(n, pool.size())
+		_open_picker({
+			"title": "Upgrade %d card%s" % [count, "s" if count > 1 else ""],
+			"candidates": pool,
+			"count": count,
+			"accent": Color(0.6, 0.9, 1.0),
+			"confirm_label": "Upgrade",
+			"on_picked": Callable(self, "_apply_upgrade_picks"),
+		})
+
+func _apply_upgrade_picks(picks: Array) -> void:
+	for pick in picks:
+		pick.upgraded = true
+		GameLog.add("Upgraded %s." % pick.get_display_name(), Color(0.6, 0.9, 1.0))
+	_refresh_ui()
+
+func _open_picker(opts: Dictionary) -> void:
+	# One picker at a time; tear down any pre-existing modal so a
+	# chained mid-cast trigger (e.g. Power-armed Discard) can't stack
+	# two pickers on top of each other.
+	var prev := get_node_or_null("CardPickerModal")
+	if prev != null:
+		prev.queue_free()
+	var modal := CardPickerModal.new()
+	modal.name = "CardPickerModal"
+	add_child(modal)
+	modal.show_picker(opts)
 
 func add_card_boost(boost: Dictionary) -> void:
 	card_boosts.append(boost)

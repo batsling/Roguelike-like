@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_armaments"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"armaments"
+display_name = "Armaments"
+type = 1
+rarity = 1
+cost = 1
+description = "Gain 5 Block. Upgrade a card in your hand for the rest of combat."
+effects = [{
+"type": "block",
+"value": 5,
+"target": "self"
+}, {
+"type": "upgrade_hand",
+"value": 1
+}]
+tags = PackedStringArray("ironclad", "defense")
+source_game = "Slay the Spire"
+portrait_color = Color(0.40, 0.65, 0.80, 1)
+can_upgrade = true
+upgraded_description = "Gain 5 Block. Upgrade ALL cards in your hand for the rest of combat."
+upgraded_cost = -999
+upgraded_effects = [{
+"type": "block",
+"value": 5,
+"target": "self"
+}, {
+"type": "upgrade_hand",
+"value": "all"
+}]

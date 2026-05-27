@@ -62,6 +62,9 @@ func _register_defaults() -> void:
 	register("lose_hp", _h_lose_hp)
 	register("conjure", _h_conjure)
 	register("discard", _h_discard)
+	register("exhaust", _h_exhaust)
+	register("recall", _h_recall)
+	register("upgrade_hand", _h_upgrade_hand)
 	register("boost_cards", _h_boost_cards)
 	register("gain_loot", _h_gain_loot)
 	register("trigger", _h_trigger)
@@ -70,6 +73,16 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
 	if scene == null or not scene.has_method("deal_damage"):
 		return
+	# Conditional damage (Bane et al). `if_target_status: "poison"` skips
+	# the effect entirely when the target lacks that status. Per-target
+	# check so an `all_enemies` cleave can still hit only the poisoned
+	# half of the room. Action mode resolves dmg outside this handler
+	# and gates the same field in `_apply_damage_effect`.
+	var gate: String = String(effect.get("if_target_status", ""))
+	if gate != "":
+		var tgt = ctx.get("target")
+		if tgt == null or not tgt.has_method("get_status") or tgt.get_status(StringName(gate)) <= 0:
+			return
 	# `hits` lets a single dmg effect resolve N times (Twin Strike 5x2).
 	# Action mode handles its own pacing via _resolve_card_effects and
 	# never reaches this path for multi-hit, so the loop here is purely
@@ -161,11 +174,50 @@ func _h_discard(effect: Dictionary, ctx: Dictionary) -> void:
 	# Mirror of `draw`. Deckbuilder discards N cards from hand;
 	# action/strategy add to a random/lowest ability cooldown to
 	# slow the player down. Each scene that wants to react owns its
-	# own `discard_cards(n, source_card)` method.
+	# own `discard_cards(n, source_card, random)` method.
+	#
+	# `random` field flips between player-choice (the default — opens
+	# the CardPickerModal in deckbuilder) and engine-picked random
+	# (All-Out Attack et al). Action / Strategy ignore the flag.
 	var scene: Variant = ctx.get("scene")
 	if scene == null or not scene.has_method("discard_cards"):
 		return
-	scene.discard_cards(int(effect.get("value", 1)), ctx.get("card"))
+	scene.discard_cards(int(effect.get("value", 1)), ctx.get("card"), bool(effect.get("random", false)))
+
+func _h_exhaust(effect: Dictionary, ctx: Dictionary) -> void:
+	# Deckbuilder-only: pick N cards from hand to send to exhaust.
+	# `random: true` skips the picker. Other modes silently no-op.
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("exhaust_cards"):
+		return
+	scene.exhaust_cards(int(effect.get("value", 1)), ctx.get("card"), bool(effect.get("random", false)))
+
+func _h_recall(effect: Dictionary, ctx: Dictionary) -> void:
+	# Move cards between piles, no copies created. All for One:
+	# `{type: "recall", from: "discard", to: "hand", filter: {cost: 0}}`.
+	# Defaults wired for the canonical "All for One" shape so a sheet
+	# row of `recall:cost=0` works without spelling out from/to.
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("recall_cards"):
+		return
+	scene.recall_cards(
+		String(effect.get("from", "discard")),
+		String(effect.get("to", "hand")),
+		effect.get("filter", {}),
+	)
+
+func _h_upgrade_hand(effect: Dictionary, ctx: Dictionary) -> void:
+	# Deckbuilder-only: upgrade in-place (sets CardInstance.upgraded).
+	# `value` is the int count, or the string "all" to skip the picker
+	# and upgrade the entire hand (Armaments+).
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("upgrade_hand_cards"):
+		return
+	scene.upgrade_hand_cards(
+		effect.get("value", 1),
+		ctx.get("card"),
+		bool(effect.get("random", false)),
+	)
 
 func _h_boost_cards(effect: Dictionary, ctx: Dictionary) -> void:
 	# Register a persistent in-combat modifier that bumps a stat on
