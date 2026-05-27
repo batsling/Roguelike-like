@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_ftl"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/ftl.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"ftl"
+display_name = "FTL"
+year = 2012
+type = 1
+games_influenced = Array[StringName]([&"arcanium_rise_of_akhan", &"convoy", &"death_roads_tournament", &"deep_sky_derelicts", &"dicefolk", &"hand_of_fate", &"insurmountable", &"into_the_breach", &"monstrum", &"one_step_from_eden", &"road_not_taken", &"slay_the_spire", &"slice_dice", &"terraformers", &"warpvector", &"lonestar", &"shape_of_dreams", &"void_war", &"void_bastards", &"has_been_heroes", &"crying_suns", &"broomsweeper", &"switchcars"])
+tags = PackedStringArray("space")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

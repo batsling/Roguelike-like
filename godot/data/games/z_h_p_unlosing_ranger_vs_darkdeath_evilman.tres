@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_z_h_p_unlosing_ranger_vs_darkdeath_evilman"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/no-cover.svg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"z_h_p_unlosing_ranger_vs_darkdeath_evilman"
+display_name = "Z.H.P. Unlosing Ranger VS Darkdeath Evilman"
+year = 2010
+type = 1
+games_influenced = Array[StringName]([&"the_guided_fate_paradox"])
+tags = PackedStringArray("traditional")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

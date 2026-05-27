@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_hunter_x_hunter_nen_x_survivor"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/hunter-x-hunter-nen-x-survivor.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"hunter_x_hunter_nen_x_survivor"
+display_name = "Hunter X Hunter: Nen X Survivor"
+year = 2026
+type = 0
+games_influenced = Array[StringName]([])
+tags = PackedStringArray("anime", "gacha")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

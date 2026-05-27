@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_the_void_rains_upon_her_heart"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/the-void-rains-upon-her-heart.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"the_void_rains_upon_her_heart"
+display_name = "The Void Rains Upon Her Heart"
+year = 2018
+type = 0
+games_influenced = Array[StringName]([])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

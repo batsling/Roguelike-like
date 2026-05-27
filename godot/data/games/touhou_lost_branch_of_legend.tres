@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_touhou_lost_branch_of_legend"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/touhou-lost-branch-of-legend.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"touhou_lost_branch_of_legend"
+display_name = "Touhou: Lost Branch of Legend"
+year = 2022
+type = 2
+games_influenced = Array[StringName]([])
+tags = PackedStringArray("anime")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_into_the_breach"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/into-the-breach.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"into_the_breach"
+display_name = "Into the Breach"
+year = 2018
+type = 1
+games_influenced = Array[StringName]([&"alina_of_the_arena", &"backpack_hero", &"death_roads_tournament", &"dicefolk", &"fights_in_tight_spaces", &"shogun_showdown", &"the_last_spell", &"the_ouroboros_king", &"pawnbarian", &"metal_slug_tactics", &"spellmasons", &"cropdeck"])
+tags = PackedStringArray("space")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

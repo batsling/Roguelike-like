@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_pok_mon_mystery_dungeon_red_and_blue_rescue_team"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/no-cover.svg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"pok_mon_mystery_dungeon_red_and_blue_rescue_team"
+display_name = "Pokémon Mystery Dungeon: Red and Blue Rescue Team"
+year = 2005
+type = 1
+games_influenced = Array[StringName]([&"paper_animal_adventure", &"pok_mon_mystery_dungeon_explorers_of_time_and_explorers_of_darkness", &"pok_mon_mystery_dungeon_gates_to_infinity", &"pok_mon_super_mystery_dungeon", &"pok_mon_mystery_dungeon_rescue_team_dx"])
+tags = PackedStringArray("pokémon", "traditional")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

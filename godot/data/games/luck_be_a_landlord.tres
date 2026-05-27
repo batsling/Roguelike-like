@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_luck_be_a_landlord"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/luck-be-a-landlord.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"luck_be_a_landlord"
+display_name = "Luck be a Landlord"
+year = 2021
+type = 2
+games_influenced = Array[StringName]([&"backpack_hero", &"balatro", &"ballionaire", &"bingle_bingle", &"crop_rotation", &"dog_and_goblin", &"dungeons_degenerate_gamblers", &"endgame_of_devil", &"lucky_hero", &"plinko_panic", &"spin_hero", &"cat_god_ranch", &"omelet_you_cook", &"steve_s_warehouse_physics_roguelike_chaos", &"runeborn", &"broomsweeper", &"node_crown", &"super_tax_city"])
+tags = PackedStringArray("casino")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

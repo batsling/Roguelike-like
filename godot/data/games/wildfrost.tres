@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_wildfrost"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/wildfrost.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"wildfrost"
+display_name = "Wildfrost"
+year = 2023
+type = 2
+games_influenced = Array[StringName]([&"decktamer", &"hungry_horrors"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

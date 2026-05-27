@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_the_binding_of_isaac"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/the-binding-of-isaac.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"the_binding_of_isaac"
+display_name = "The Binding of Isaac"
+year = 2011
+type = 0
+games_influenced = Array[StringName]([&"99_levels_to_hell", &"a_robot_named_fight", &"beyond_the_long_night", &"blazing_beaks", &"brutal_orchestra", &"cavity_busters", &"conan_chop_chop", &"crypt_of_the_necrodancer", &"cult_of_the_lamb", &"dead_cells", &"dead_estate", &"devil_slayer_raksasi", &"dreamscaper", &"dungeons_of_blood_and_dream", &"ember_knights", &"enter_the_gungeon", &"freaky_awesome", &"golden_light", &"lake_of_creatures", &"magicraft", &"monstrum", &"neon_abyss", &"nova_drift", &"nubby_s_number_factory", &"paper_planet", &"patch_quest", &"revita", &"rogue_legacy", &"ship_of_fools", &"star_of_providence", &"streets_of_rogue", &"the_binding_of_isaac_rebirth", &"the_legend_of_bum_bo", &"the_void_rains_upon_her_heart", &"tiny_rogues", &"tombstar", &"tower_of_guns", &"ultima_ratio_regum", &"undermine", &"wildfrost", &"wizardchess", &"moonlighter", &"noobs_are_coming", &"has_been_heroes", &"lost_flame", &"asterogues", &"talented", &"20xx", &"mana_spark", &"mewgenics", &"dice_a_million", &"switchcars"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

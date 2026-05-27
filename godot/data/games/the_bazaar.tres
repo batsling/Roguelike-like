@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_the_bazaar"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/the-bazaar.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"the_bazaar"
+display_name = "The Bazaar"
+year = 2025
+type = 1
+games_influenced = Array[StringName]([&"oaken_tower"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

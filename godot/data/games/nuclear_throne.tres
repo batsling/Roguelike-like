@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_nuclear_throne"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/nuclear-throne.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"nuclear_throne"
+display_name = "Nuclear Throne"
+year = 2015
+type = 0
+games_influenced = Array[StringName]([&"ak_xolotl", &"blazing_beaks", &"enter_the_gungeon", &"lone_ruin", &"necrobouncer", &"odinfall", &"one_step_from_eden", &"ram_random_access_mayhem", &"repetendium", &"roboquest", &"streets_of_rogue", &"tiny_rogues", &"voidigo", &"gonner", &"atomicrops", &"astro_prospector", &"rocket_rats", &"colt_canyon"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

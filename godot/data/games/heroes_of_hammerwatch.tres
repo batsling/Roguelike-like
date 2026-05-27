@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_heroes_of_hammerwatch"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/heroes-of-hammerwatch.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"heroes_of_hammerwatch"
+display_name = "Heroes of Hammerwatch"
+year = 2018
+type = 0
+games_influenced = Array[StringName]([&"heroes_of_hammerwatch_ii", &"tower_factory", &"escape_the_mad_empire"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

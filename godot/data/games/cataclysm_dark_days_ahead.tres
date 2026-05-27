@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_cataclysm_dark_days_ahead"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/cataclysm-dark-days-ahead.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"cataclysm_dark_days_ahead"
+display_name = "Cataclysm: Dark Days Ahead"
+year = 2013
+type = 1
+games_influenced = Array[StringName]([&"cataclysm_the_last_generation"])
+tags = PackedStringArray("zombies", "traditional")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

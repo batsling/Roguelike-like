@@ -6,12 +6,10 @@ extends RefCounted
 # `getGameConnections` helper from the HTML build into GDScript so the
 # Godot main menu can drive the same start-game progression.
 
-# Path length tuning. The HTML build runs on a much larger game catalog
-# and uses 5..8. Godot's authored data set is currently ~15 games with a
-# very sparse influence graph (diameter ~2-3), so we start at 2 and
-# accept up to 8. When the catalog grows we can tighten the lower bound
-# to match the HTML feel.
-const MIN_PATH_LENGTH := 2
+# Path length tuning — matches js/character-start.js. With the full
+# imported catalog (~660 games, ~840 connections) the graph diameter is
+# large enough to support 5..8-step runs.
+const MIN_PATH_LENGTH := 5
 const MAX_PATH_LENGTH := 8
 const EARLY_LAYERS_FOR_SCORE := 3
 const NUM_START_OPTIONS := 3
@@ -32,25 +30,66 @@ const TYPE_ORDER: Array = [
 # Graph access — `games_influenced` is directed in the .tres files but
 # the HTML build treats it as undirected (you can travel back along
 # either direction). Mirror that here.
+#
+# The adjacency list is cached on first use so `neighbors()` is O(1)
+# instead of O(N). Without this, picking a start/amulet on the full
+# ~660-game catalog ran BFS thousands of times with O(N) per neighbor
+# lookup and could freeze the menu.
 # ---------------------------------------------------------------------------
 
-static func neighbors(game_id: StringName) -> Array[StringName]:
-	var out: Array[StringName] = []
-	var src: GameData = Data.get_game(game_id)
-	if src != null:
-		for gid in src.games_influenced:
-			if Data.get_game(gid) != null and not out.has(gid):
-				out.append(gid)
+static var _adj_cache: Dictionary = {}      # StringName -> Array[StringName]
+static var _adj_cache_built: bool = false
+static var _bfs_cache: Dictionary = {}       # StringName -> Dictionary (dist map)
+
+static func invalidate_cache() -> void:
+	_adj_cache.clear()
+	_adj_cache_built = false
+	_bfs_cache.clear()
+
+static func _build_adj() -> void:
+	if _adj_cache_built:
+		return
+	_adj_cache.clear()
+	# First pass — make sure every known game has an entry so a lookup on
+	# an isolated node returns [] instead of triggering a default.
 	for g in Data.all_games():
-		if g.id == game_id:
-			continue
+		_adj_cache[g.id] = []
+	# Second pass — add a forward and reverse edge per `games_influenced`
+	# entry. Dedup via a per-game seen-set so re-runs of the importer
+	# can't blow up the adjacency.
+	var seen: Dictionary = {}    # StringName -> Dictionary (set)
+	for g in Data.all_games():
+		if not seen.has(g.id):
+			seen[g.id] = {}
 		for influenced_id in g.games_influenced:
-			if influenced_id == game_id and not out.has(g.id):
-				out.append(g.id)
+			if not _adj_cache.has(influenced_id):
+				continue    # reference to a game we don't have
+			if not seen.has(influenced_id):
+				seen[influenced_id] = {}
+			if not seen[g.id].has(influenced_id):
+				seen[g.id][influenced_id] = true
+				(_adj_cache[g.id] as Array).append(influenced_id)
+			if not seen[influenced_id].has(g.id):
+				seen[influenced_id][g.id] = true
+				(_adj_cache[influenced_id] as Array).append(g.id)
+	_adj_cache_built = true
+
+static func neighbors(game_id: StringName) -> Array[StringName]:
+	_build_adj()
+	var out: Array[StringName] = []
+	var arr: Array = _adj_cache.get(game_id, [])
+	for n in arr:
+		out.append(n)
 	return out
 
-# Shortest-hop distance from start_id to every reachable game.
+# Shortest-hop distance from start_id to every reachable game. Memoized
+# — picking start/amulet on the full catalog runs BFS hundreds of times
+# from a handful of distinct origins, so recomputing is wasteful. Call
+# invalidate_cache() if the underlying game graph ever changes.
 static func bfs_distances(start_id: StringName) -> Dictionary:
+	if _bfs_cache.has(start_id):
+		return _bfs_cache[start_id]
+	_build_adj()
 	var dist: Dictionary = {}
 	dist[start_id] = 0
 	var queue: Array[StringName] = [start_id]
@@ -59,10 +98,12 @@ static func bfs_distances(start_id: StringName) -> Dictionary:
 		var cur: StringName = queue[qi]
 		qi += 1
 		var cur_d: int = dist[cur]
-		for nb in neighbors(cur):
+		var arr: Array = _adj_cache.get(cur, [])
+		for nb in arr:
 			if not dist.has(nb):
 				dist[nb] = cur_d + 1
 				queue.append(nb)
+	_bfs_cache[start_id] = dist
 	return dist
 
 # Score a start->amulet pair by how many of the first `early_layers`

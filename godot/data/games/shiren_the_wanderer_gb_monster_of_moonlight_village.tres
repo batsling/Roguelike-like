@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_shiren_the_wanderer_gb_monster_of_moonlight_village"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/no-cover.svg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"shiren_the_wanderer_gb_monster_of_moonlight_village"
+display_name = "Shiren the Wanderer GB: Monster of Moonlight Village"
+year = 1996
+type = 1
+games_influenced = Array[StringName]([&"shiren_the_wanderer_gb2_magic_castle_of_the_desert"])
+tags = PackedStringArray("traditional")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

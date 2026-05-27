@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_dungeon_crawl_stone_soup"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/dungeon-crawl-stone-soup.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"dungeon_crawl_stone_soup"
+display_name = "Dungeon Crawl Stone Soup"
+year = 2006
+type = 1
+games_influenced = Array[StringName]([&"cataclysm", &"cogmind", &"desktop_dungeons", &"dungeonmans", &"path_of_achra", &"vagante", &"golden_krone_hotel", &"touhou_crawl"])
+tags = PackedStringArray("traditional")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

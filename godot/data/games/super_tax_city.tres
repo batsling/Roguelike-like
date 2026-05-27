@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_super_tax_city"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/super-tax-city.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"super_tax_city"
+display_name = "Super Tax City"
+year = 2025
+type = 2
+games_influenced = Array[StringName]([&"node_crown"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

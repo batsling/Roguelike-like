@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_20_minutes_till_dawn"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/20-minutes-till-dawn.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"20_minutes_till_dawn"
+display_name = "20 Minutes Till Dawn"
+year = 2022
+type = 0
+games_influenced = Array[StringName]([&"disfigure", &"rogue_command"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

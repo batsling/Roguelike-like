@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_slice_dice"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/slice-dice.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"slice_dice"
+display_name = "Slice & Dice"
+year = 2018
+type = 1
+games_influenced = Array[StringName]([&"luck_loot"])
+tags = PackedStringArray("dice")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

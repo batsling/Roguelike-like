@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_rogue"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/rogue.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"rogue"
+display_name = "Rogue"
+year = 1980
+type = 1
+games_influenced = Array[StringName]([&"brogue", &"castle_of_the_winds", &"cave_noire", &"crypt_of_the_necrodancer", &"golden_light", &"hack", &"larn", &"moria", &"quasimorph", &"ragnarok", &"rogue_fp", &"toejam_earl", &"torneko_s_great_adventure_mystery_dungeon", &"infra_arcana", &"fatal_labyrinth"])
+tags = PackedStringArray("traditional")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

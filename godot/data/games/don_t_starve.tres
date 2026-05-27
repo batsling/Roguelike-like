@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_don_t_starve"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/don-t-starve.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"don_t_starve"
+display_name = "Don't Starve"
+year = 2013
+type = 0
+games_influenced = Array[StringName]([&"cult_of_the_lamb", &"road_not_taken", &"the_flame_in_the_flood", &"hungry_horrors", &"don_t_starve_together"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
