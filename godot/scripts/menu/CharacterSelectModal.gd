@@ -120,8 +120,8 @@ func _on_name_changed(_text: String) -> void:
 	_name_warning.visible = false
 
 func _on_begin() -> void:
-	var name := _name_input.text.strip_edges()
-	if name == "":
+	var save_name := _name_input.text.strip_edges()
+	if save_name == "":
 		_name_warning.text = "Enter a save name."
 		_name_warning.visible = true
 		return
@@ -129,19 +129,19 @@ func _on_begin() -> void:
 		_name_warning.text = "Pick a character."
 		_name_warning.visible = true
 		return
-	if SaveSystem.has_named_save(name):
+	if SaveSystem.has_named_save(save_name):
 		# Show a confirm dialog for overwrite.
 		var confirm := ConfirmationDialog.new()
-		confirm.dialog_text = "A save called \"%s\" already exists. Overwrite it?" % name
+		confirm.dialog_text = "A save called \"%s\" already exists. Overwrite it?" % save_name
 		confirm.confirmed.connect(func():
 			confirm.queue_free()
-			emit_signal("confirmed", _selected_id, name)
+			emit_signal("confirmed", _selected_id, save_name)
 		)
 		confirm.canceled.connect(func(): confirm.queue_free())
 		add_child(confirm)
 		confirm.popup_centered(Vector2i(440, 160))
 		return
-	emit_signal("confirmed", _selected_id, name)
+	emit_signal("confirmed", _selected_id, save_name)
 
 func _on_cancel() -> void:
 	emit_signal("cancelled")

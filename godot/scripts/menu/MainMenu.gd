@@ -153,14 +153,14 @@ func _populate_save_list() -> void:
 		row.add_child(del_btn)
 		_save_list_container.add_child(row)
 
-func _on_load_save(name: String) -> void:
-	if not SaveSystem.load_named(name):
-		_show_coming_soon("Load failed", "Could not load save: %s" % name)
+func _on_load_save(save_name: String) -> void:
+	if not SaveSystem.load_named(save_name):
+		_show_coming_soon("Load failed", "Could not load save: %s" % save_name)
 		return
 	get_tree().change_scene_to_file(RUN_SCENE_PATH)
 
-func _on_delete_save(name: String) -> void:
-	SaveSystem.delete_named(name)
+func _on_delete_save(save_name: String) -> void:
+	SaveSystem.delete_named(save_name)
 	_refresh_continue_button()
 	_populate_save_list()
 

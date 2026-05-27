@@ -199,9 +199,9 @@ func _make_chip(text: String, bg: Color, fg: Color, font_size: int = 12) -> Cont
 	style.content_margin_bottom = 2
 	pc.add_theme_stylebox_override("panel", style)
 	pc.add_child(lbl)
-	var wrap := CenterContainer.new()
-	wrap.add_child(pc)
-	return wrap
+	var wrapper := CenterContainer.new()
+	wrapper.add_child(pc)
+	return wrapper
 
 func _layer_bar(count: int, max_count: int) -> Control:
 	# Bar width scales with branch count; color goes greener as count rises.
@@ -234,9 +234,9 @@ func _layer_bar(count: int, max_count: int) -> Control:
 	inner.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bar.add_child(inner)
 
-	var wrap := CenterContainer.new()
-	wrap.add_child(bar)
-	return wrap
+	var wrapper := CenterContainer.new()
+	wrapper.add_child(bar)
+	return wrapper
 
 func _open_preview(start_id: StringName) -> void:
 	var modal: Node = MAP_PREVIEW_SCENE.instantiate()

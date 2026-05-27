@@ -171,8 +171,8 @@ func delete_slot(slot: int) -> void:
 # can render it as the player typed it.
 # ---------------------------------------------------------------------------
 
-func _sanitize_save_name(name: String) -> String:
-	var s := name.strip_edges().to_lower()
+func _sanitize_save_name(save_name: String) -> String:
+	var s := save_name.strip_edges().to_lower()
 	var out := ""
 	for i in s.length():
 		var c := s[i]
@@ -184,25 +184,25 @@ func _sanitize_save_name(name: String) -> String:
 		out = "save"
 	return out
 
-func named_save_path(name: String) -> String:
-	return NAMED_SAVE_DIR + _sanitize_save_name(name) + ".json"
+func named_save_path(save_name: String) -> String:
+	return NAMED_SAVE_DIR + _sanitize_save_name(save_name) + ".json"
 
-func has_named_save(name: String) -> bool:
-	return FileAccess.file_exists(named_save_path(name))
+func has_named_save(save_name: String) -> bool:
+	return FileAccess.file_exists(named_save_path(save_name))
 
-func save_named(name: String) -> bool:
-	GameState.save_name = name
-	return _write_save(named_save_path(name))
+func save_named(save_name: String) -> bool:
+	GameState.save_name = save_name
+	return _write_save(named_save_path(save_name))
 
-func load_named(name: String) -> bool:
-	var data := _read_path(named_save_path(name))
+func load_named(save_name: String) -> bool:
+	var data := _read_path(named_save_path(save_name))
 	if data.is_empty():
 		return false
 	_apply_save_data(data)
 	return true
 
-func delete_named(name: String) -> void:
-	var path := named_save_path(name)
+func delete_named(save_name: String) -> void:
+	var path := named_save_path(save_name)
 	if FileAccess.file_exists(path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
