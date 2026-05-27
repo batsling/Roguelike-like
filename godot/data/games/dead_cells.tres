@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_dead_cells"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/dead-cells.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"dead_cells"
+display_name = "Dead Cells"
+year = 2018
+type = 0
+games_influenced = Array[StringName]([&"astral_ascent", &"cult_of_the_lamb", &"devil_slayer_raksasi", &"dreamscaper", &"ember_knights", &"fury_unleashed", &"metal_unit", &"roboquest", &"the_rogue_prince_of_persia", &"undermine", &"windblown", &"absolum", &"aethermancer", &"dunjungle", &"reality_break", &"battle_shapers", &"galactic_glitch", &"scourgebringer", &"oblivion_override"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

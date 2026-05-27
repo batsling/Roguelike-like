@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_mothergunship"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/mothergunship.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"mothergunship"
+display_name = "Mothergunship"
+year = 2018
+type = 0
+games_influenced = Array[StringName]([&"mothergunship_forge"])
+tags = PackedStringArray("mecha")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

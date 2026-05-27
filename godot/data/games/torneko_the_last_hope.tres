@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_torneko_the_last_hope"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/no-cover.svg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"torneko_the_last_hope"
+display_name = "Torneko: The Last Hope"
+year = 1999
+type = 1
+games_influenced = Array[StringName]([&"torneko_s_great_adventure_3"])
+tags = PackedStringArray("traditional")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

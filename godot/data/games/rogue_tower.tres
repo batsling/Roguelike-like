@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_rogue_tower"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/rogue-tower.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"rogue_tower"
+display_name = "Rogue Tower"
+year = 2022
+type = 1
+games_influenced = Array[StringName]([&"nordhold", &"tower_dominion"])
+tags = PackedStringArray("tower defense")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

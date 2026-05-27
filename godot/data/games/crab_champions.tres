@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_crab_champions"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/crab-champions.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"crab_champions"
+display_name = "Crab Champions"
+year = 2023
+type = 0
+games_influenced = Array[StringName]([&"vellum", &"oddcore"])
+tags = PackedStringArray("maritime")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

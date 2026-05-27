@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_enter_the_gungeon"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/enter-the-gungeon.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"enter_the_gungeon"
+display_name = "Enter the Gungeon"
+year = 2016
+type = 0
+games_influenced = Array[StringName]([&"ak_xolotl", &"beyond_the_long_night", &"brutal_orchestra", &"cult_of_the_lamb", &"exit_the_gungeon", &"gunfire_reborn", &"lake_of_creatures", &"necrobouncer", &"odinfall", &"ram_random_access_mayhem", &"tiny_rogues", &"tombstar", &"escape_the_mad_empire", &"sephiria", &"the_unliving", &"abandoned_archive", &"asterogues", &"galactic_glitch", &"atomicrops", &"astro_prospector"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

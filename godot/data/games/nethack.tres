@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_nethack"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/nethack.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"nethack"
+display_name = "NetHack"
+year = 1987
+type = 1
+games_influenced = Array[StringName]([&"barony", &"deep_dungeons_of_doom", &"dragonslayer", &"dungeons_of_dredmor", &"elona", &"fear_hunger", &"linley_s_dungeon_crawl", &"moonring", &"powder", &"ragnarok", &"spelunky_classic", &"strange_adventures_in_infinite_space", &"iter_vehemens_ad_necem", &"lost_flame", &"keeperrl", &"unreal_world", &"wazhack", &"pathos_nethack_codex", &"gnollhack"])
+tags = PackedStringArray("traditional")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

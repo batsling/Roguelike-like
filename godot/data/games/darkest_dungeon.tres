@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_darkest_dungeon"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/darkest-dungeon.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"darkest_dungeon"
+display_name = "Darkest Dungeon"
+year = 2016
+type = 1
+games_influenced = Array[StringName]([&"chrono_ark", &"curse_of_the_dead_gods", &"dark_devotion", &"darkest_dungeon_2", &"deep_sky_derelicts", &"iratus_lord_of_the_dead", &"legend_of_keepers_career_of_a_dungeon_manager", &"shadowveil_legend_of_the_five_rings", &"shogun_showdown", &"stoneshard", &"tinyfolks", &"escape_the_mad_empire", &"as_we_descend", &"hell_clock", &"luck_loot", &"across_the_obelisk", &"die_for_the_lich", &"corpse_keeper"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

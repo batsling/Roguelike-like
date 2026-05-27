@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_dwarf_fortress"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/dwarf-fortress.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"dwarf_fortress"
+display_name = "Dwarf Fortress"
+year = 2006
+type = 1
+games_influenced = Array[StringName]([&"ultima_ratio_regum", &"warsim_the_realm_of_aslona", &"wayward", &"super_fantasy_kingdom", &"void_war", &"keeperrl", &"the_doors_of_trithius", &"soulash_2"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

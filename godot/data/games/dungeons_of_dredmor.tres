@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_dungeons_of_dredmor"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/dungeons-of-dredmor.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"dungeons_of_dredmor"
+display_name = "Dungeons of Dredmor"
+year = 2011
+type = 1
+games_influenced = Array[StringName]([&"the_doors_of_trithius", &"quest_of_dungeons", &"i_am_overburdened"])
+tags = PackedStringArray("traditional")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_dome_keeper"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/dome-keeper.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"dome_keeper"
+display_name = "Dome Keeper"
+year = 2022
+type = 1
+games_influenced = Array[StringName]([&"feed_the_deep", &"wall_world"])
+tags = PackedStringArray("space", "mining")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

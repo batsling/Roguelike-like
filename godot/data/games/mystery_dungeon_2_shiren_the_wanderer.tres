@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_mystery_dungeon_2_shiren_the_wanderer"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/no-cover.svg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"mystery_dungeon_2_shiren_the_wanderer"
+display_name = "Mystery Dungeon 2: Shiren the Wanderer"
+year = 1995
+type = 1
+games_influenced = Array[StringName]([&"shiren_the_wanderer_gb_monster_of_moonlight_village", &"shiren_the_wanderer_2_shiren_s_castle_and_the_oni_invasion", &"tangledeep", &"100_rogues", &"house_of_necrosis"])
+tags = PackedStringArray("traditional")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

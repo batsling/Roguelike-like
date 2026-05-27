@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_backpack_battles"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/backpack-battles.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"backpack_battles"
+display_name = "Backpack Battles"
+year = 2023
+type = 1
+games_influenced = Array[StringName]([&"knightica", &"he_is_coming", &"lootplot", &"toy_smash_kaboom", &"oaken_tower"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

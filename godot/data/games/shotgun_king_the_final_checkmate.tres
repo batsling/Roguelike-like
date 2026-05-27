@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_shotgun_king_the_final_checkmate"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/shotgun-king-the-final-checkmate.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"shotgun_king_the_final_checkmate"
+display_name = "Shotgun King: The Final Checkmate"
+year = 2022
+type = 1
+games_influenced = Array[StringName]([&"bingle_bingle", &"the_ouroboros_king"])
+tags = PackedStringArray("chess")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

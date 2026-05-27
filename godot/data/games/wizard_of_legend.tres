@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_wizard_of_legend"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/wizard-of-legend.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"wizard_of_legend"
+display_name = "Wizard of Legend"
+year = 2018
+type = 0
+games_influenced = Array[StringName]([&"astral_ascent", &"putrid_shot_ultra", &"wizard_of_legend_2", &"abandoned_archive"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

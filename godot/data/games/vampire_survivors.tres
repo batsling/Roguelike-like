@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_vampire_survivors"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/vampire-survivors.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"vampire_survivors"
+display_name = "Vampire Survivors"
+year = 2021
+type = 0
+games_influenced = Array[StringName]([&"20_minutes_till_dawn", &"archons", &"blooddome99", &"boneraiser_minions", &"bounty_of_one", &"brotato", &"crafty_survivors", &"death_must_die", &"deep_rock_galactic_survivor", &"elemental_survivors", &"fish_fear_me", &"flerp", &"goobies", &"gunlocked", &"halls_of_torment", &"heretic_s_fork", &"holocure_save_the_fans", &"icewall", &"jotunnslayer_hordes_of_hel", &"keeper_s_toll", &"let_him_cook", &"mortal_sin", &"neophyte", &"nomad_survival", &"nordic_ashes_survivors_of_ragnarok", &"nubby_s_number_factory", &"picayune_dreams", &"return_to_abyss", &"rogue_genesia", &"scarlet_tower", &"sea_of_survivors", &"slime_3k_rise_against_despot", &"soulstone_survivors", &"spellbook_demonslayers", &"spirit_hunters_infinite_horde", &"the_spell_brigade", &"time_wasters", &"tiny_rogues", &"tower_factory", &"vampire_hunters", &"temtem_swarm", &"asgard_s_fall_viking_survivors", &"maze_mice", &"ball_x_pit", &"megabonk", &"be_my_horde", &"sodaman", &"desktop_survivors_98", &"night_swarm", &"i_am_legion_stand_survivors", &"yet_another_zombie_survivors", &"greedland", &"whisker_squadron_survivor", &"disfigure", &"vital_shell", &"nimrods", &"mythical_concept_starnaut", &"choo_choo_survivor", &"pesticide_not_required", &"astro_prospector", &"swarm_grinder", &"army_of_ruin", &"glyphica_typing_survival", &"rogue_factory", &"god_of_weapons", &"star_survivor", &"vampire_crawlers", &"bloodshed", &"void_scrappers", &"mobmania", &"warhammer_survivors", &"hunter_x_hunter_nen_x_survivor"])
+tags = PackedStringArray("vampire")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

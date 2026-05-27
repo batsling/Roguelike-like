@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_i_am_overburdened"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/i-am-overburdened.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"i_am_overburdened"
+display_name = "I Am Overburdened"
+year = 2017
+type = 1
+games_influenced = Array[StringName]([])
+tags = PackedStringArray("traditional")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

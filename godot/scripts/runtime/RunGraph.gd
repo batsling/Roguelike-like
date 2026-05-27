@@ -6,12 +6,10 @@ extends RefCounted
 # `getGameConnections` helper from the HTML build into GDScript so the
 # Godot main menu can drive the same start-game progression.
 
-# Path length tuning. The HTML build runs on a much larger game catalog
-# and uses 5..8. Godot's authored data set is currently ~15 games with a
-# very sparse influence graph (diameter ~2-3), so we start at 2 and
-# accept up to 8. When the catalog grows we can tighten the lower bound
-# to match the HTML feel.
-const MIN_PATH_LENGTH := 2
+# Path length tuning — matches js/character-start.js. With the full
+# imported catalog (~660 games, ~840 connections) the graph diameter is
+# large enough to support 5..8-step runs.
+const MIN_PATH_LENGTH := 5
 const MAX_PATH_LENGTH := 8
 const EARLY_LAYERS_FOR_SCORE := 3
 const NUM_START_OPTIONS := 3

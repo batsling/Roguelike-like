@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_forward_escape_the_fold"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/forward-escape-the-fold.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"forward_escape_the_fold"
+display_name = "Forward: Escape the Fold"
+year = 2022
+type = 1
+games_influenced = Array[StringName]([])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

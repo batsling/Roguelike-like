@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_weird_worlds_return_to_infinite_space"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/weird-worlds-return-to-infinite-space.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"weird_worlds_return_to_infinite_space"
+display_name = "Weird Worlds: Return to Infinite Space"
+year = 2005
+type = 1
+games_influenced = Array[StringName]([&"infinite_space_iii_sea_of_stars"])
+tags = PackedStringArray("space")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")

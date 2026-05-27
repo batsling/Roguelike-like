@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_balatro"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/balatro.jpg" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"balatro"
+display_name = "Balatro"
+year = 2023
+type = 2
+games_influenced = Array[StringName]([&"aotenjo_infinite_hands", &"bingle_bingle", &"sky_s_the_limit_mah_jong", &"rollscape", &"drop_pockets", &"omelet_you_cook", &"pip_my_dice", &"the_royal_writ", &"steve_s_warehouse_physics_roguelike_chaos", &"clutchtime_basketball_deckbuilder", &"drop_duchy", &"cloverpit", &"runeborn", &"bazr", &"dicealot", &"wordatro", &"stackflow", &"sodaman", &"dogpile", &"word_play", &"lootplot", &"dead_finger_dice", &"roguejack21", &"hungry_horrors", &"rogue_factory", &"dice_a_million", &"menherarium", &"raccoin_coin_pusher_roguelike", &"cursed_words", &"passant_a_chess_roguelike", &"tic_tactic", &"beyond_words", &"gambonanza", &"cropdeck", &"slot_or_not"])
+tags = PackedStringArray("casino")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
