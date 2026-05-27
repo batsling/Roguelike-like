@@ -27,6 +27,16 @@ const ENEMY_TURN_DELAY := 0.45
 const DEFAULT_BASIC_ATTACK := 6
 const DEFAULT_BASIC_DEFEND := 6
 
+# Phase 8: per-archetype drop weights. Rolled when an enemy dies; the
+# spawned items go onto the battlefield and persist back to the source
+# room on combat end (see `CombatSession._sync_loot_back`).
+const ENEMY_LOOT_TABLE := {
+	"rat":   { "gold_chance": 0.50, "gold_min":  2, "gold_max":  6, "item_chance": 0.05 },
+	"snake": { "gold_chance": 0.50, "gold_min":  3, "gold_max":  8, "item_chance": 0.10 },
+	"orc":   { "gold_chance": 0.70, "gold_min":  6, "gold_max": 14, "item_chance": 0.20 },
+	"troll": { "gold_chance": 0.90, "gold_min": 12, "gold_max": 24, "item_chance": 0.35 },
+}
+
 # What the player is currently selecting in the grid view.
 enum Pending { NONE, ABILITY, SPELL }
 
@@ -69,8 +79,11 @@ var _action_used: bool = false
 var _ability_used: bool = false
 var _move_remaining: int = 0
 
+var _loot_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
 func _ready() -> void:
 	layer = 10
+	_loot_rng.randomize()
 	_build_ui()
 
 func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager = null) -> void:
@@ -497,14 +510,71 @@ func _on_move_requested(path: Array) -> void:
 		return
 	u.position = path[-1]
 	_move_remaining -= cost
+	# Phase 8: walking over an item collects it (auto-pickup goes to
+	# run-scope counters; non-auto goes to the overworld inventory while
+	# there's room). Each path step is checked so passing-by loot grabs.
+	var pickup_msgs: Array = []
+	for step in path:
+		_try_pickup_at(step, pickup_msgs)
 	_grid_view.set_active_unit(u, _move_remaining)
 	if _move_remaining > 0:
 		_grid_view.enter_move_mode()
 	else:
 		_grid_view.enter_idle()
-	_status_label.text = "Moved %d. %d move left." % [cost, _move_remaining]
+	var line: String = "Moved %d. %d move left." % [cost, _move_remaining]
+	if not pickup_msgs.is_empty():
+		line += "  " + ", ".join(pickup_msgs)
+	_status_label.text = line
+	_grid_view.notify_units_changed()
 	_refresh_initiative()
 	_refresh_button_states()
+
+func _try_pickup_at(pos: Vector2i, messages: Array) -> void:
+	if _battle_map == null:
+		return
+	# Snapshot first — `_collect_item` mutates `_battle_map.items`.
+	var hits: Array = []
+	for entry in _battle_map.items:
+		if entry.pos == pos:
+			hits.append(entry)
+	for entry in hits:
+		var msg: String = _collect_item(entry)
+		if msg != "":
+			messages.append(msg)
+
+# Returns a short message describing the pickup (empty string if nothing
+# happened, e.g. pack-full on a non-auto item).
+func _collect_item(entry: Dictionary) -> String:
+	var item = entry.item
+	var player_entity = StrategyState.player
+	if item.auto_pickup:
+		match item.item_type:
+			StrategyItem.ItemType.GOLD:
+				StrategyState.gold += int(item.amount)
+				_battle_map.remove_item_entry(entry)
+				if StrategyState.map != null:
+					StrategyState.map.items.erase(item)
+				return "+%d gold" % int(item.amount)
+			StrategyItem.ItemType.KEY:
+				StrategyState.keys += 1
+				_battle_map.remove_item_entry(entry)
+				if StrategyState.map != null:
+					StrategyState.map.items.erase(item)
+				return "+key"
+			_:
+				_battle_map.remove_item_entry(entry)
+				if StrategyState.map != null:
+					StrategyState.map.items.erase(item)
+				return "+%s" % str(item.item_name)
+	if player_entity == null:
+		return ""
+	if player_entity.inventory.size() >= StrategyEntity.MAX_INVENTORY:
+		return "(pack full: %s)" % str(item.item_name)
+	player_entity.inventory.append(item)
+	_battle_map.remove_item_entry(entry)
+	if StrategyState.map != null:
+		StrategyState.map.items.erase(item)
+	return "picked up %s" % str(item.item_name)
 
 func _on_attack_requested(target) -> void:
 	if not _is_player_turn() or _action_used:
@@ -616,10 +686,36 @@ func heal(target, value: int) -> void:
 func _apply_damage(_source, target, raw_dmg: int) -> void:
 	if target == null or raw_dmg <= 0:
 		return
+	var was_alive: bool = target.is_alive()
 	var absorbed := mini(target.block, raw_dmg)
 	target.block -= absorbed
 	var landed := raw_dmg - absorbed
 	target.hp = maxi(0, target.hp - landed)
+	# Phase 8: enemy death -> roll loot onto the tile it fell on.
+	if was_alive and not target.is_alive() and not target.is_player:
+		_drop_enemy_loot(target)
+
+func _drop_enemy_loot(unit) -> void:
+	if _battle_map == null:
+		return
+	var table = ENEMY_LOOT_TABLE.get(str(unit.unit_name))
+	if table == null:
+		return
+	var pos: Vector2i = unit.position
+	if _loot_rng.randf() < float(table.gold_chance):
+		var amt: int = _loot_rng.randi_range(int(table.gold_min), int(table.gold_max))
+		_battle_map.add_dropped_item(StrategyItem.make_gold(pos, amt), pos)
+	if _loot_rng.randf() < float(table.item_chance):
+		var roll: int = _loot_rng.randi() % 10
+		var it
+		if roll < 6:
+			it = StrategyItem.make_health_potion(pos)
+		elif roll < 9:
+			it = StrategyItem.make_strength_scroll(pos)
+		else:
+			it = StrategyItem.make_lightning_scroll(pos)
+		_battle_map.add_dropped_item(it, pos)
+	_grid_view.notify_units_changed()
 
 func _check_battle_end_after_effect() -> void:
 	# Spells/abilities can finish a fight; let the engine wrap up

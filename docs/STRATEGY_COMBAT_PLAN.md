@@ -211,9 +211,29 @@ Wiring:
   enemy with the full intent name.
 
 ### Phase 8 — Loot persistence
-- Items on the battlefield are real entities.
-- On combat end: surviving items map their tactical position back to the nearest valid room floor tile; become room items.
-- Loot dropped by killed enemies lands on the battlefield tile they died on; same persistence rule.
+- Items on the battlefield are real entities (`StrategyItem` instances
+  stored in `BattleMap.items` as `{item, pos, source_pos}` entries; the
+  `item` reference is shared with `StrategyState.map.items` for room
+  originals).
+- Pickup during combat: when the player's move path passes over an item
+  tile, `BattleView._try_pickup_at` collects it. Auto-pickup kinds
+  (gold, keys) go to `StrategyState.gold` / `StrategyState.keys`;
+  others go to `StrategyState.player.inventory` while there's room.
+  Items the player takes are removed from both the battlefield and the
+  overworld items list so they don't double-persist.
+- Enemy loot drops: `BattleView._apply_damage` detects the alive →
+  dead transition for non-player units and rolls
+  `ENEMY_LOOT_TABLE` (per-archetype gold/item odds). Drops are added
+  to the battlefield at `unit.position` via `BattleMap.add_dropped_item`
+  with a sentinel `source_pos = (-1, -1)`.
+- Persistence back: `CombatSession._sync_loot_back` runs in
+  `resolve_combat` after the player-HP sync. Each surviving battle
+  entry's tactical position is mapped back to a floor tile inside the
+  source room — preferring the original `source_pos` when still valid,
+  otherwise the inverse-mapped tile from
+  `BattleMap.battle_pos_to_source`, otherwise a spiral search. New
+  drops get appended to `StrategyState.map.items`; room originals
+  just have their `grid_pos` updated.
 
 ### Phase 9 — Death / end-of-run
 - On player death: `CombatSession` ends with `result = DEFEAT`; route to game-over screen; run is over (no retry).

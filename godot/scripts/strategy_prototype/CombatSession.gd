@@ -57,6 +57,9 @@ func resolve_combat(result: String) -> void:
 		StrategyState.emit_signal("room_cleared", active_room)
 	# Propagate player HP back to the overworld entity (defeat ends the run anyway).
 	_sync_player_hp_back()
+	# Phase 8: map surviving battlefield items (room originals + enemy
+	# drops) back onto valid floor tiles inside the source room.
+	_sync_loot_back()
 	active_room = null
 	active_encounter.clear()
 	active_battle_map = null
@@ -113,3 +116,64 @@ func _sync_player_hp_back() -> void:
 		if u.is_player:
 			StrategyState.player.hp = u.hp
 			return
+
+# Phase 8: map any items still on the battlefield back onto the source
+# room. Items that originated in the room (have a `source_pos`) prefer
+# their original tile; otherwise they're inverse-mapped from their
+# battlefield position. Enemy drops follow the same rule but are also
+# inserted into `StrategyState.map.items` since they're brand new.
+func _sync_loot_back() -> void:
+	if active_battle_map == null or active_room == null or StrategyState.map == null:
+		return
+	var occupied: Dictionary = {}
+	for it in StrategyState.map.items:
+		occupied[it.grid_pos] = true
+	for entry in active_battle_map.items:
+		var item = entry.item
+		if item == null:
+			continue
+		var source_pos: Vector2i = entry.get("source_pos", Vector2i(-1, -1))
+		var target_pos: Vector2i = _find_room_tile_for_item(
+			active_room.rect, source_pos, entry.pos, occupied
+		)
+		if target_pos == Vector2i(-1, -1):
+			continue
+		item.grid_pos = target_pos
+		occupied[target_pos] = true
+		if not StrategyState.map.items.has(item):
+			StrategyState.map.items.append(item)
+
+func _find_room_tile_for_item(
+	room_rect: Rect2i, source_pos: Vector2i, battle_pos: Vector2i, occupied: Dictionary
+) -> Vector2i:
+	# Prefer the item's original tile when it's still a valid spot.
+	if _is_room_tile_open(room_rect, source_pos, occupied):
+		return source_pos
+	var candidate: Vector2i = active_battle_map.battle_pos_to_source(battle_pos, room_rect)
+	if _is_room_tile_open(room_rect, candidate, occupied):
+		return candidate
+	# Spiral out from the inverse-mapped target until we find a free floor tile.
+	var clamped := Vector2i(
+		clampi(candidate.x, room_rect.position.x, room_rect.position.x + room_rect.size.x - 1),
+		clampi(candidate.y, room_rect.position.y, room_rect.position.y + room_rect.size.y - 1),
+	)
+	var max_r: int = maxi(room_rect.size.x, room_rect.size.y)
+	for radius in range(1, max_r + 1):
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				if absi(dx) != radius and absi(dy) != radius:
+					continue
+				var p: Vector2i = clamped + Vector2i(dx, dy)
+				if _is_room_tile_open(room_rect, p, occupied):
+					return p
+	return Vector2i(-1, -1)
+
+func _is_room_tile_open(room_rect: Rect2i, pos: Vector2i, occupied: Dictionary) -> bool:
+	if not room_rect.has_point(pos):
+		return false
+	if occupied.get(pos, false):
+		return false
+	var t: int = StrategyState.map.get_tile(pos.x, pos.y)
+	# Keep loot off doors, stairs, and traps so it can't visually merge or
+	# get covered by overworld interactables.
+	return t == StrategyState.TileType.FLOOR

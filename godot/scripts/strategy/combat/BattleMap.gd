@@ -309,3 +309,30 @@ func _find_open_tile_near(start: Vector2i, reserved: Dictionary, rng: RandomNumb
 		if not candidates.is_empty():
 			return candidates[rng.randi() % candidates.size()]
 	return Vector2i(-1, -1)
+
+# --- Phase 8: loot persistence helpers --------------------------------------
+
+# Inverse of `_map_items`'s forward mapping. Maps a battlefield tile back
+# to a candidate position inside the source room. Used by `CombatSession`
+# at combat end to put surviving items (and enemy drops) onto the overworld.
+func battle_pos_to_source(battle_pos: Vector2i, source_room: Rect2i) -> Vector2i:
+	var inner_w := maxi(1, width - 2)
+	var inner_h := maxi(1, height - 2)
+	var rx := float(clampi(battle_pos.x - 1, 0, inner_w - 1)) / float(inner_w)
+	var ry := float(clampi(battle_pos.y - 1, 0, inner_h - 1)) / float(inner_h)
+	var sx := source_room.position.x + int(rx * source_room.size.x)
+	var sy := source_room.position.y + int(ry * source_room.size.y)
+	return Vector2i(
+		clampi(sx, source_room.position.x, source_room.position.x + source_room.size.x - 1),
+		clampi(sy, source_room.position.y, source_room.position.y + source_room.size.y - 1),
+	)
+
+# Add a freshly-created item (enemy drop, etc) onto the battlefield. No
+# `source_pos`, since it didn't come from the overworld room — the sentinel
+# `Vector2i(-1, -1)` signals that to `CombatSession._sync_loot_back`.
+func add_dropped_item(item, pos: Vector2i) -> void:
+	items.append({ "item": item, "pos": pos, "source_pos": Vector2i(-1, -1) })
+
+# Remove a battle-items entry (picked up by the player mid-combat).
+func remove_item_entry(entry) -> void:
+	items.erase(entry)
