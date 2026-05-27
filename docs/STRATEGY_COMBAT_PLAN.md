@@ -236,7 +236,15 @@ Wiring:
   just have their `grid_pos` updated.
 
 ### Phase 9 — Death / end-of-run
-- On player death: `CombatSession` ends with `result = DEFEAT`; route to game-over screen; run is over (no retry).
+- `Main._on_player_defeated` is the single end-of-run entry point; both
+  the `CombatSession` `combat_ended("defeat")` signal and overworld
+  death (`_check_death` after trap damage, etc.) route through it.
+- Sets `StrategyState.phase = DEAD`, logs the death, and shows a
+  defeat overlay modeled on `DeckbuilderCombat._show_end_overlay`
+  (dimmed background, centered panel, "DEFEAT" title, current floor,
+  "Restart run" button). The `[R]` key still restarts.
+- `_new_game` clears the defeat overlay (and any lingering battle
+  overlay) before resetting `StrategyState`, so restart is clean.
 
 ### Phase 10 — Polish
 - Camera transition animation for room→battlefield.

@@ -16,6 +16,7 @@ const _DEMO_ABILITY_CARDS: Array[StringName] = [
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _battle_overlay: CanvasLayer = null
+var _game_over_overlay: CanvasLayer = null
 
 func _ready() -> void:
 	_rng.randomize()
@@ -25,6 +26,12 @@ func _ready() -> void:
 	_new_game()
 
 func _new_game() -> void:
+	if _game_over_overlay != null:
+		_game_over_overlay.queue_free()
+		_game_over_overlay = null
+	if _battle_overlay != null:
+		_battle_overlay.queue_free()
+		_battle_overlay = null
 	StrategyState.reset()
 	_seed_demo_loadout()
 	StrategyLog.add("Welcome to the dungeon. Good luck.", Color(0.8, 0.8, 1.0))
@@ -270,9 +277,7 @@ func _on_combat_ended(result: String) -> void:
 		_battle_overlay.queue_free()
 		_battle_overlay = null
 	if result == "defeat":
-		StrategyState.phase = StrategyState.GamePhase.DEAD
-		StrategyLog.add("You have died! Press [R] to restart.", Color.RED)
-		_refresh()
+		_on_player_defeated()
 		return
 	StrategyLog.add("Victory!", Color(0.6, 1.0, 0.6))
 	# Walking into the combat room consumed the player's step; finish that turn now.
@@ -325,9 +330,61 @@ func _run_enemy_turns() -> void:
 func _check_death() -> void:
 	var player = StrategyState.player
 	if player == null or not player.is_alive():
-		StrategyState.phase = StrategyState.GamePhase.DEAD
-		StrategyLog.add("You have died! Press [R] to restart.", Color.RED)
-		_refresh()
+		_on_player_defeated()
+
+# Phase 9: end-of-run path. Routed from both the combat-defeat signal and
+# overworld death (e.g. a trap finishing the player off). Sets DEAD, logs,
+# and shows the project-style defeat overlay matching DeckbuilderCombat.
+func _on_player_defeated() -> void:
+	if StrategyState.phase == StrategyState.GamePhase.DEAD and _game_over_overlay != null:
+		return
+	StrategyState.phase = StrategyState.GamePhase.DEAD
+	StrategyLog.add("You have died.", Color.RED)
+	_refresh()
+	_show_game_over_overlay()
+
+func _show_game_over_overlay() -> void:
+	if _game_over_overlay != null:
+		return
+	var layer := CanvasLayer.new()
+	layer.layer = 20  # above the battle overlay (which uses layer 10)
+	add_child(layer)
+	_game_over_overlay = layer
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.6)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(dim)
+
+	var panel := Panel.new()
+	panel.size = Vector2(480, 260)
+	panel.position = (get_viewport().get_visible_rect().size - panel.size) / 2.0
+	layer.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 24)
+	title.size = Vector2(440, 48)
+	title.text = "DEFEAT"
+	title.add_theme_font_size_override("font_size", 36)
+	title.add_theme_color_override("font_color", Color(1.0, 0.5, 0.5))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	var info := Label.new()
+	info.position = Vector2(20, 92)
+	info.size = Vector2(440, 60)
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD
+	info.text = "The run ends. Floor %d." % StrategyState.dungeon_floor
+	panel.add_child(info)
+
+	var btn := Button.new()
+	btn.position = Vector2(120, 180)
+	btn.size = Vector2(240, 56)
+	btn.text = "Restart run"
+	btn.pressed.connect(_new_game)
+	panel.add_child(btn)
 
 func _refresh() -> void:
 	var player = StrategyState.player
