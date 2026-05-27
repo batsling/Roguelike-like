@@ -1,5 +1,19 @@
 extends Node
 
+# Strategy floor entry point. Behaves two ways depending on how it's
+# launched:
+#   - Embedded (`GameState.character_id != &""`): one roguelike floor =
+#     one strategy "game". Reads HP/gold/deck/spells from GameState on
+#     entry; reaching the stairs signals `closed(true)` so the project
+#     `Main.gd` returns to the overworld for verification + next-game
+#     selection; player death signals `closed(false)` and the overworld
+#     resets the run (matches the deckbuilder/action flows).
+#   - Standalone (no character applied — running the scene from the
+#     editor): applies Ironclad and seeds the demo loadout so the
+#     prototype boots into something playable.
+
+signal closed(was_victory: bool, target_game_id: StringName)
+
 @onready var _renderer: StrategyDungeonRenderer = $DungeonRenderer
 @onready var _hud: StrategyHUD = $HUD
 
@@ -14,17 +28,37 @@ const _DEMO_ABILITY_CARDS: Array[StringName] = [
 	&"pommel_strike", &"heavy_blade", &"anger", &"shrug_it_off", &"inflame",
 ]
 
+var target_game_id: StringName = &""
+var _embedded: bool = false   # set in _ready; true when launched from project Main
+
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _battle_overlay: CanvasLayer = null
+var _game_over_overlay: CanvasLayer = null
 
 func _ready() -> void:
 	_rng.randomize()
+	_embedded = GameState.character_id != &""
+	if not _embedded:
+		# Standalone bootstrap: apply Ironclad so GameState has HP/deck to
+		# pull from. Mirrors ActionFloor's standalone path.
+		var ironclad: CharacterData = Data.get_character(&"ironclad")
+		if ironclad != null:
+			GameState.reset_run()
+			GameState.apply_character(ironclad)
+	if target_game_id == &"":
+		target_game_id = GameState.current_game_id
 	StrategyTurnManager.connect("enemy_turns_started", _run_enemy_turns)
 	StrategyCombatSession.connect("combat_started", _on_combat_started)
 	StrategyCombatSession.connect("combat_ended", _on_combat_ended)
 	_new_game()
 
 func _new_game() -> void:
+	if _game_over_overlay != null:
+		_game_over_overlay.queue_free()
+		_game_over_overlay = null
+	if _battle_overlay != null:
+		_battle_overlay.queue_free()
+		_battle_overlay = null
 	StrategyState.reset()
 	_seed_demo_loadout()
 	StrategyLog.add("Welcome to the dungeon. Good luck.", Color(0.8, 0.8, 1.0))
@@ -53,13 +87,18 @@ func _load_floor() -> void:
 	var start = map.get_start_pos()
 
 	if StrategyState.player == null:
+		# HP/MaxHP come from GameState so the strategy floor shares vitals
+		# with the deckbuilder/action sections. Attack/defense are still
+		# strategy-local since the tactical combat layer uses its own
+		# basic-attack constants (see BattleView.DEFAULT_BASIC_ATTACK).
 		var player = StrategyEntity.new()
 		player.grid_pos = start
 		player.glyph = "@"
 		player.color = Color.WHITE
 		player.name = "you"
 		player.is_player = true
-		player.max_hp = 30; player.hp = 30
+		player.max_hp = maxi(1, GameState.max_hp)
+		player.hp = clampi(GameState.hp, 0, player.max_hp)
 		player.attack = 5; player.defense = 1
 		StrategyState.player = player
 		StrategyState.entities.append(player)
@@ -137,7 +176,10 @@ func _random_floor_pos_in(room: Rect2i) -> Vector2i:
 
 func _input(event: InputEvent) -> void:
 	if StrategyState.phase == StrategyState.GamePhase.DEAD:
-		if event is InputEventKey and event.pressed and event.keycode == KEY_R:
+		# Embedded death routes through the overworld's run-reset flow —
+		# the player uses the Continue button on the defeat overlay. R-key
+		# in-place restart only makes sense for the standalone prototype.
+		if not _embedded and event is InputEventKey and event.pressed and event.keycode == KEY_R:
 			_new_game()
 		return
 
@@ -228,7 +270,8 @@ func _after_player_step(pos: Vector2i) -> void:
 	for it in picked:
 		match it.item_type:
 			StrategyItem.ItemType.GOLD:
-				StrategyState.gold += it.amount
+				# Gold persists across sections — route to the shared GameState.
+				GameState.change_gold(it.amount)
 				StrategyLog.add("You pick up %d gold." % it.amount, Color(1.0, 0.9, 0.3))
 			StrategyItem.ItemType.KEY:
 				StrategyState.keys += 1
@@ -270,9 +313,7 @@ func _on_combat_ended(result: String) -> void:
 		_battle_overlay.queue_free()
 		_battle_overlay = null
 	if result == "defeat":
-		StrategyState.phase = StrategyState.GamePhase.DEAD
-		StrategyLog.add("You have died! Press [R] to restart.", Color.RED)
-		_refresh()
+		_on_player_defeated()
 		return
 	StrategyLog.add("Victory!", Color(0.6, 1.0, 0.6))
 	# Walking into the combat room consumed the player's step; finish that turn now.
@@ -280,12 +321,19 @@ func _on_combat_ended(result: String) -> void:
 
 func _try_descend() -> void:
 	var tile = StrategyState.map.get_tile(StrategyState.player.grid_pos.x, StrategyState.player.grid_pos.y)
-	if tile == StrategyState.TileType.STAIRS_DOWN:
-		StrategyState.dungeon_floor += 1
-		StrategyLog.add("You descend to floor %d." % StrategyState.dungeon_floor, Color(0.8, 1.0, 0.8))
-		_load_floor()
-	else:
+	if tile != StrategyState.TileType.STAIRS_DOWN:
 		StrategyLog.add("There are no stairs here.", Color.GRAY)
+		return
+	# In the project flow one strategy game = one roguelike floor. The
+	# staircase closes the floor with a victory and the overworld handles
+	# verification + the next game. Standalone keeps the multi-floor demo
+	# loop so the prototype scene is still playable on its own.
+	if _embedded:
+		_close_floor(true)
+		return
+	StrategyState.dungeon_floor += 1
+	StrategyLog.add("You descend to floor %d." % StrategyState.dungeon_floor, Color(0.8, 1.0, 0.8))
+	_load_floor()
 
 func _try_pickup() -> void:
 	var player = StrategyState.player
@@ -325,9 +373,90 @@ func _run_enemy_turns() -> void:
 func _check_death() -> void:
 	var player = StrategyState.player
 	if player == null or not player.is_alive():
-		StrategyState.phase = StrategyState.GamePhase.DEAD
-		StrategyLog.add("You have died! Press [R] to restart.", Color.RED)
-		_refresh()
+		_on_player_defeated()
+
+# Phase 9: end-of-run path. Routed from both the combat-defeat signal and
+# overworld death (e.g. a trap finishing the player off). Sets DEAD, logs,
+# and shows the project-style defeat overlay matching DeckbuilderCombat.
+func _on_player_defeated() -> void:
+	if StrategyState.phase == StrategyState.GamePhase.DEAD and _game_over_overlay != null:
+		return
+	StrategyState.phase = StrategyState.GamePhase.DEAD
+	StrategyLog.add("You have died.", Color.RED)
+	_refresh()
+	_show_game_over_overlay()
+
+func _show_game_over_overlay() -> void:
+	if _game_over_overlay != null:
+		return
+	var layer := CanvasLayer.new()
+	layer.layer = 20  # above the battle overlay (which uses layer 10)
+	add_child(layer)
+	_game_over_overlay = layer
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.6)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(dim)
+
+	var panel := Panel.new()
+	panel.size = Vector2(480, 260)
+	panel.position = (get_viewport().get_visible_rect().size - panel.size) / 2.0
+	layer.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 24)
+	title.size = Vector2(440, 48)
+	title.text = "DEFEAT"
+	title.add_theme_font_size_override("font_size", 36)
+	title.add_theme_color_override("font_color", Color(1.0, 0.5, 0.5))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	var info := Label.new()
+	info.position = Vector2(20, 92)
+	info.size = Vector2(440, 60)
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD
+	info.text = "The run ends. Floor %d." % StrategyState.dungeon_floor
+	panel.add_child(info)
+
+	var btn := Button.new()
+	btn.position = Vector2(120, 180)
+	btn.size = Vector2(240, 56)
+	# Embedded floor: close back to the overworld so the project
+	# Main can run the standard defeat flow (run restart, etc).
+	# Standalone: in-place restart matching the prototype loop.
+	if _embedded:
+		btn.text = "Continue"
+		btn.pressed.connect(_close_defeat)
+	else:
+		btn.text = "Restart run"
+		btn.pressed.connect(_new_game)
+	panel.add_child(btn)
+
+func _close_defeat() -> void:
+	_close_floor(false)
+
+# Floor exit (stairs or defeat). Syncs vitals back to GameState, frees
+# any open overlays, and emits the close signal so project Main can
+# advance the overworld flow.
+func _close_floor(was_victory: bool) -> void:
+	_sync_vitals_to_gamestate()
+	if _battle_overlay != null:
+		_battle_overlay.queue_free()
+		_battle_overlay = null
+	if _game_over_overlay != null:
+		_game_over_overlay.queue_free()
+		_game_over_overlay = null
+	emit_signal("closed", was_victory, target_game_id)
+	queue_free()
+
+func _sync_vitals_to_gamestate() -> void:
+	if StrategyState.player == null:
+		return
+	GameState.set_hp(StrategyState.player.hp)
 
 func _refresh() -> void:
 	var player = StrategyState.player

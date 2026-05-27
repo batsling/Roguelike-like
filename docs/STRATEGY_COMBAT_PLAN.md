@@ -211,12 +211,69 @@ Wiring:
   enemy with the full intent name.
 
 ### Phase 8 — Loot persistence
-- Items on the battlefield are real entities.
-- On combat end: surviving items map their tactical position back to the nearest valid room floor tile; become room items.
-- Loot dropped by killed enemies lands on the battlefield tile they died on; same persistence rule.
+- Items on the battlefield are real entities (`StrategyItem` instances
+  stored in `BattleMap.items` as `{item, pos, source_pos}` entries; the
+  `item` reference is shared with `StrategyState.map.items` for room
+  originals).
+- Pickup during combat: when the player's move path passes over an item
+  tile, `BattleView._try_pickup_at` collects it. Gold goes to the shared
+  `GameState.gold` (live sync across sections); keys go to
+  `StrategyState.keys` (strategy-only mechanic); other items go to
+  `StrategyState.player.inventory` while there's room. Items the player
+  takes are removed from both the battlefield and the overworld items
+  list so they don't double-persist.
+- Enemy loot drops: `BattleView._apply_damage` detects the alive →
+  dead transition for non-player units and rolls
+  `ENEMY_LOOT_TABLE` (per-archetype gold/item odds). Drops are added
+  to the battlefield at `unit.position` via `BattleMap.add_dropped_item`
+  with a sentinel `source_pos = (-1, -1)`.
+- Persistence back: `CombatSession._sync_loot_back` runs in
+  `resolve_combat` after the player-HP sync. Each surviving battle
+  entry's tactical position is mapped back to a floor tile inside the
+  source room — preferring the original `source_pos` when still valid,
+  otherwise the inverse-mapped tile from
+  `BattleMap.battle_pos_to_source`, otherwise a spiral search. New
+  drops get appended to `StrategyState.map.items`; room originals
+  just have their `grid_pos` updated.
 
 ### Phase 9 — Death / end-of-run
-- On player death: `CombatSession` ends with `result = DEFEAT`; route to game-over screen; run is over (no retry).
+- `Main._on_player_defeated` is the single end-of-run entry point; both
+  the `CombatSession` `combat_ended("defeat")` signal and overworld
+  death (`_check_death` after trap damage, etc.) route through it.
+- Sets `StrategyState.phase = DEAD`, logs the death, and shows a
+  defeat overlay modeled on `DeckbuilderCombat._show_end_overlay`
+  (dimmed background, centered panel, "DEFEAT" title, current floor,
+  Continue/Restart button).
+- `_new_game` clears the defeat overlay (and any lingering battle
+  overlay) before resetting `StrategyState`, so restart is clean.
+
+### Project integration — overworld ↔ strategy
+- The strategy prototype scene now obeys the same close-on-finish
+  contract as `ActionFloor`: `signal closed(was_victory, target_game_id)`
+  + `target_game_id: StringName` field. Project `Main.gd` routes
+  `GameData.GameType.STRATEGY` portals to it via `_show_strategy_floor`
+  and listens for `closed` to return to the overworld with the standard
+  victory/defeat outcome.
+- One strategy "game" = one roguelike floor. The staircase calls
+  `_close_floor(true)`. Multi-floor descent only happens in standalone
+  mode (running the scene from the editor).
+- Shared vitals: HP and gold live on the run-wide `GameState`. Entry
+  reads `GameState.max_hp/hp` into the strategy player; gold pickups
+  (overworld + combat) call `GameState.change_gold` directly so the
+  number is live across sections; `_sync_vitals_to_gamestate` pushes
+  the strategy player's HP back to `GameState.set_hp` on close.
+- Cards and learned spells are already shared (the Phase 6
+  `AbilityPool` and `Spellbook` read from `GameState.deck` /
+  `GameState.learned_spells`). The standalone bootstrap applies the
+  Ironclad character and seeds the demo loadout so the prototype boots
+  into a playable state from the editor.
+- Strategy-local state stays local: `StrategyState.keys`,
+  `StrategyEntity.inventory` (`StrategyItem` types — distinct from the
+  deckbuilder's `ItemData`), `dungeon_floor`, generated map/entities.
+- The defeat overlay's button text is mode-aware: "Continue" (closes
+  to overworld for a project-level run reset) when embedded,
+  "Restart run" (in-place `_new_game`) when standalone. `[R]` is
+  standalone-only for the same reason.
 
 ### Phase 10 — Polish
 - Camera transition animation for room→battlefield.

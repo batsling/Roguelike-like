@@ -31,8 +31,9 @@ var map: StrategyMap = null
 var player: StrategyEntity = null
 var entities: Array = []  # all living entities including player (floor scope)
 
-# Run-scope counters that persist across floors.
-var gold: int = 0
+# Per-floor counters. Gold lives on the shared `GameState` autoload so it
+# survives going back to the overworld; keys are a strategy-only mechanic
+# (locked doors) and reset every floor.
 var keys: int = 0
 
 func reset() -> void:
@@ -41,7 +42,6 @@ func reset() -> void:
 	entities.clear()
 	player = null
 	map = null
-	gold = 0
 	keys = 0
 
 func get_entity_at(pos: Vector2i) -> StrategyEntity:
