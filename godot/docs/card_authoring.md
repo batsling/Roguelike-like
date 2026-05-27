@@ -88,7 +88,8 @@ Semicolon-delimited list of effect lines. Each line is
 | `on_<EVENT>` | `<INNER_VERB>:<INNER_ARGS>` | Register a persistent in-combat listener. When the named event fires, the inner effect runs (source = player, target = player unless overridden). `<EVENT>` is a TriggerBus signal name (see Triggers section). After Image: `on_card_played:gain:block:1`. Deckbuilder only today. | `{type: "trigger", on: "<event>", effect: {…inner…}}` |
 | `gain_loot` | `<KIND>:<COUNT>` | Add COUNT loot of `KIND` (`potion` / `scroll` / `key`) to the run-scope counter on GameState. Concrete potion/scroll catalogs land later; the counter is the placeholder. Alchemize: `gain_loot:potion:1`. | `{type: "gain_loot", kind: "potion", value: 1}` |
 | `heal` | `VALUE[:self]` | Recover HP (defaults to self). | `{type: "heal", value, target: "self"}` |
-| `gain_energy` | `N` | Refund N energy in the deckbuilder. | `{type: "gain_energy", value: N}` |
+| `gain_energy` | `N` | Deckbuilder: refund N energy. Action: ~N-second Haste window (1.3× movement, basic attack rate, ability cooldown ticking). Strategy: opens a per-turn budget of N for extra ability casts beyond the one-per-turn cap, paid out at the card's cost. | `{type: "gain_energy", value: N}` |
+| `lose_energy` | `N` | Mirror of `gain_energy`. Deckbuilder drops N from the pool (floored at 0). Action: ~N-second Slow window (0.7×). Strategy: eats the energy budget first, then locks the normal ability use for the turn if the budget would go negative. | `{type: "lose_energy", value: N}` |
 | `gain_gold` | `N` | Award N gold (rare on cards). | `{type: "gain_gold", value: N}` |
 | `lose_hp` | `VALUE` | Pay HP as a cost. | `{type: "lose_hp", value}` |
 | `exhaust_self` | (none) | Exhaust the played card. Redundant if Keywords has `Exhaust`. | `{type: "exhaust_self"}` |
@@ -469,44 +470,23 @@ needs a small modal in deckbuilder and is a no-op in action/strategy.
 
 ### Energy gain / loss in Action and Strategy
 
-Deckbuilder already has `gain_energy:N` (and a future `lose_energy:N`)
-that bumps the per-turn energy pool. The same effect needs an analog
-in action and strategy. Agreed design, not yet implemented:
+Shipped. `gain_energy:N` / `lose_energy:N` now resolve in all three
+modes via `scene.gain_energy(n)` / `scene.lose_energy(n)`:
 
-**Action — brief Haste / Slow window.** All three speed dimensions
-move together so the effect feels like "more tempo" rather than a
-narrower draw-style cooldown shave:
+- **Deckbuilder** — `gain_energy` bumps the per-turn energy pool;
+  `lose_energy` drains it (floored at 0).
+- **Action** — `gain_energy:N` extends a Haste window by N seconds
+  (1.3× movement / basic attack / ability cooldown tick); `lose_energy:N`
+  extends a Slow window by N seconds (0.7×). Reapplying stacks
+  duration, not magnitude. If both Haste and Slow are live they
+  multiply, so a stray `lose_energy` while Haste is up nets to ~0.91×
+  rather than cancelling the buff.
+- **Strategy** — `gain_energy:N` adds N to a per-turn energy budget
+  that unlocks extra ability casts beyond the one-per-turn cap; each
+  extra cast pays the card's `cost` out of the budget. Budget resets
+  to 0 at turn start. `lose_energy:N` eats the budget first; if it
+  would go negative the remainder locks the normal ability use for
+  the turn.
 
-- `gain_energy:N` → brief Haste buff for ~N seconds: movement speed,
-  basic attack cooldown rate, and ability cooldown tick rate all run
-  at ~1.3×.
-- `lose_energy:N` → brief Slow buff for ~N seconds: same three
-  multipliers at ~0.7×.
-- Stacks duration (not magnitude) if reapplied — single tier keeps
-  it readable in the HUD.
-- Implementation will need a small extension to `CombatActor`
-  statuses (or a parallel timed-buff track) since current statuses
-  are stack-based, not duration-based.
-
-**Strategy — bonus ability uses, scaled by ability cost.** Mana is
-*not* the right hook because separate "gain mana" cards are planned
-and we don't want energy to silently overlap with that lever.
-Instead, each `gain_energy:N` opens a per-turn budget of `N` that
-can be spent on extra ability casts beyond the normal one-per-turn
-cap, with the budget consumed by the ability's deckbuilder `cost`:
-
-- Player has +2 energy this turn → can cast one extra ability whose
-  card cost ≤ 2, OR two extra abilities each costing 1, etc.
-- Budget resets at end of turn (energy is a per-turn resource, same
-  as deckbuilder).
-- Cooldowns still apply: the energy budget unlocks the *one-per-turn
-  cap*, it doesn't bypass an ability on cooldown.
-- `lose_energy:N` likely subtracts from the budget first, then locks
-  the normal ability use for the turn if it drives the budget below
-  zero. Exact semantics to settle when implementing.
-
-Both modes implement `gain_energy(n)` and `lose_energy(n)` on the
-scene; the EffectSystem just dispatches via `scene.gain_energy(n)` /
-`scene.lose_energy(n)` exactly like the deckbuilder. `lose_energy`
-isn't a registered EffectSystem verb yet and should be added in the
-same pass.
+Adrenaline (`gain_energy:1; draw:2`, Exhaust) is the canonical test
+card — it exercises the bare `gain_energy` path in all three modes.

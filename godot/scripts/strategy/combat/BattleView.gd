@@ -79,6 +79,13 @@ var _action_used: bool = false
 var _ability_used: bool = false
 var _move_remaining: int = 0
 
+# Energy budget — Strategy analog of the deckbuilder energy pool. Each
+# `gain_energy:N` adds N to the budget; the budget lets the player cast
+# extra abilities beyond the normal one-per-turn cap, with each extra
+# cast paying its card cost out of the budget. Resets to 0 at turn
+# start (energy is a per-turn resource, same as deckbuilder).
+var _energy_budget: int = 0
+
 var _loot_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -256,6 +263,7 @@ func _on_unit_turn_started(unit) -> void:
 		_action_used = false
 		_ability_used = false
 		_move_remaining = unit.speed
+		_energy_budget = 0
 		_pending_kind = Pending.NONE
 		_pending_ability = null
 		_pending_spell = null
@@ -356,7 +364,13 @@ func _on_force_lose() -> void:
 # ----------------------------------------------------------------------
 
 func _on_ability_button() -> void:
-	if not _is_player_turn() or _ability_used:
+	if not _is_player_turn():
+		return
+	# The energy budget can unlock the picker even after the normal
+	# one-ability-per-turn cap has fired, as long as it covers some
+	# ability's cost. Picker rows still disable individually based on
+	# cooldown / affordability.
+	if _ability_used and _energy_budget <= 0:
 		return
 	_clear_pending()
 	_grid_view.enter_idle()
@@ -379,7 +393,14 @@ func _populate_ability_picker() -> void:
 		var lbl := Label.new()
 		var cd: int = _ability_pool.remaining_cooldown(u, ability.id)
 		var ready: bool = cd <= 0
+		var cost: int = maxi(0, int(ability.card.cost))
+		# When the normal one-ability-per-turn cap has been spent, only
+		# abilities whose cost the budget covers remain castable.
+		var affordable: bool = (not _ability_used) or _energy_budget >= cost
+		var castable: bool = ready and affordable
 		var status: String = "(CD %d)" % cd if not ready else "(CD %d on use)" % ability.base_cooldown
+		if _ability_used:
+			status += "  [energy %d/%d]" % [cost, _energy_budget]
 		lbl.text = "%s  %s  —  %s" % [ability.display_name, status, ability.description]
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -388,7 +409,7 @@ func _populate_ability_picker() -> void:
 		row.add_child(lbl)
 		var btn := Button.new()
 		btn.text = "Cast"
-		btn.disabled = not ready
+		btn.disabled = not castable
 		btn.pressed.connect(_on_pick_ability.bind(ability))
 		row.add_child(btn)
 		_ability_list_container.add_child(row)
@@ -408,6 +429,10 @@ func _resolve_ability_against(target) -> void:
 		return
 	var u = _turn_manager.current_unit
 	var ability = _pending_ability
+	# Pay the one-ability-per-turn cap first; once that's spent, extra
+	# casts come out of the energy budget at the card's cost.
+	if _ability_used:
+		_energy_budget = maxi(0, _energy_budget - maxi(0, int(ability.card.cost)))
 	_apply_card_or_spell_effects(ability.card.effects, u, target)
 	_ability_pool.set_cooldown(u, ability)
 	_ability_used = true
@@ -675,6 +700,27 @@ func heal(target, value: int) -> void:
 		return
 	target.hp = mini(target.max_hp, target.hp + int(value))
 
+func gain_energy(n: int) -> void:
+	# Strategy analog of the deckbuilder energy pool. Adds to a
+	# per-turn budget that lets the player cast extra abilities beyond
+	# the normal one-per-turn cap, paid out at the card's cost.
+	if n <= 0:
+		return
+	_energy_budget += n
+	_refresh_button_states()
+
+func lose_energy(n: int) -> void:
+	# Eat the budget first; any remainder locks the normal ability use
+	# for the turn (drives `_ability_used` true so the picker is gated
+	# until energy is regained).
+	if n <= 0:
+		return
+	var remainder: int = n - _energy_budget
+	_energy_budget = maxi(0, _energy_budget - n)
+	if remainder > 0:
+		_ability_used = true
+	_refresh_button_states()
+
 func draw_cards(n: int) -> void:
 	# Strategy mode has no hand to draw into. Per design, each "draw"
 	# event reduces a random ability's remaining cooldown by 1 instead.
@@ -819,7 +865,11 @@ func _refresh_button_states() -> void:
 	_btn_move.disabled = _move_remaining <= 0
 	_btn_attack.disabled = _action_used
 	_btn_defend.disabled = _action_used
-	_btn_ability.disabled = _ability_used or _ability_pool == null or _ability_pool.abilities.is_empty()
+	# Energy budget can keep the Ability button live even after the
+	# one-per-turn cap is spent — affordability/cooldown is gated
+	# per-row inside `_populate_ability_picker`.
+	var ability_locked: bool = _ability_pool == null or _ability_pool.abilities.is_empty()
+	_btn_ability.disabled = ability_locked or (_ability_used and _energy_budget <= 0)
 	_btn_spell.disabled = _spellbook == null or _spellbook.spells.is_empty()
 	_btn_dash.disabled = not u.dash_available
 

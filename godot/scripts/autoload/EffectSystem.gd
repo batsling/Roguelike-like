@@ -55,6 +55,7 @@ func _register_defaults() -> void:
 	register("heal", _h_heal)
 	register("draw", _h_draw)
 	register("gain_energy", _h_gain_energy)
+	register("lose_energy", _h_lose_energy)
 	register("status", _h_status)
 	register("exhaust_self", _h_exhaust_self)
 	register("gain_gold", _h_gain_gold)
@@ -103,6 +104,16 @@ func _h_gain_energy(effect: Dictionary, ctx: Dictionary) -> void:
 	if scene == null or not scene.has_method("gain_energy"):
 		return
 	scene.gain_energy(effect.get("value", 1))
+
+func _h_lose_energy(effect: Dictionary, ctx: Dictionary) -> void:
+	# Each scene implements its own semantics. Deckbuilder drops the
+	# per-turn energy pool; Action triggers a brief Slow window;
+	# Strategy eats the per-turn bonus-ability budget and then locks
+	# the normal ability use if the budget would go negative.
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("lose_energy"):
+		return
+	scene.lose_energy(effect.get("value", 1))
 
 func _h_status(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")

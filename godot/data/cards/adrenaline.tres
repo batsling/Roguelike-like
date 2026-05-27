@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_adrenaline"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"adrenaline"
+display_name = "Adrenaline"
+type = 1
+rarity = 3
+cost = 0
+description = "Gain 1 Energy. Draw 2 cards. Exhaust."
+effects = [{
+"type": "gain_energy",
+"value": 1
+}, {
+"type": "draw",
+"value": 2
+}]
+tags = PackedStringArray("silent", "energy", "draw")
+source_game = "Slay the Spire"
+portrait_color = Color(0.85, 0.55, 0.35, 1)
+can_upgrade = true
+upgraded_description = "Gain 2 Energy. Draw 2 cards. Exhaust."
+upgraded_cost = -999
+upgraded_effects = [{
+"type": "gain_energy",
+"value": 2
+}, {
+"type": "draw",
+"value": 2
+}]
+exhaust = true

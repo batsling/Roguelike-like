@@ -50,6 +50,16 @@ var ability_cooldowns: Array[float] = [0.0, 0.0, 0.0]
 var ability_max_cooldowns: Array[float] = [0.0, 0.0, 0.0]
 var player_max_block: int = 0
 
+# Energy-driven timed buffs (Adrenaline et al). Duration-based rather
+# than stack-based because Haste/Slow need to feel like a tempo window
+# in real time, not a status charge. Single tier — magnitudes are fixed
+# constants below; reapplying extends the timer rather than stacking.
+const ENERGY_BUFF_SECS_PER_POINT := 1.0
+const ENERGY_HASTE_MULT := 1.3
+const ENERGY_SLOW_MULT := 0.7
+var _haste_remaining: float = 0.0
+var _slow_remaining: float = 0.0
+
 # Multi-hit (Twin Strike-style) pacing. Each entry is a Dictionary:
 #   {time: secs_until_fire, effect: Dictionary, facing: Vector2, mode: "cone"|"projectile"|"aoe"}
 # Built when a card with `hits > 1` resolves; ticked every frame.
@@ -237,12 +247,19 @@ func _make_enemy_actor(data: ActionEnemyData) -> CombatActor:
 func _process(delta: float) -> void:
 	if phase != "playing":
 		return
-	player_attack_cooldown = maxf(0.0, player_attack_cooldown - delta)
+	# Haste/Slow tick on real-time delta so the window length matches the
+	# `gain_energy:N` / `lose_energy:N` value in seconds regardless of
+	# the player's tempo multiplier.
+	_haste_remaining = maxf(0.0, _haste_remaining - delta)
+	_slow_remaining = maxf(0.0, _slow_remaining - delta)
+	var tempo: float = _tempo_multiplier()
+	var scaled_delta: float = delta * tempo
+	player_attack_cooldown = maxf(0.0, player_attack_cooldown - scaled_delta)
 	player_iframes = maxf(0.0, player_iframes - delta)
 	_swing_remaining = maxf(0.0, _swing_remaining - delta)
 	_ability_swing_remaining = maxf(0.0, _ability_swing_remaining - delta)
 	for i in range(3):
-		ability_cooldowns[i] = maxf(0.0, ability_cooldowns[i] - delta)
+		ability_cooldowns[i] = maxf(0.0, ability_cooldowns[i] - scaled_delta)
 	_process_player_input(delta)
 	_process_enemies(delta)
 	_process_projectiles(delta)
@@ -265,7 +282,7 @@ func _process_player_input(delta: float) -> void:
 		dir.x += 1
 	if dir != Vector2.ZERO:
 		dir = dir.normalized()
-		var move_speed: float = Stats.action_movement_speed()
+		var move_speed: float = Stats.action_movement_speed() * _tempo_multiplier()
 		player_pos += dir * move_speed * delta
 		player_pos.x = clampf(player_pos.x, PLAYER_RADIUS, ARENA_W - PLAYER_RADIUS)
 		player_pos.y = clampf(player_pos.y, PLAYER_RADIUS, ARENA_H - PLAYER_RADIUS)
@@ -480,7 +497,10 @@ func _resolve_card_effects(card: CardData) -> void:
 			"discard":
 				# Mirror of draw — lengthens the lowest cooldown.
 				discard_cards(int(effect.get("value", 1)))
-			# gain_energy is deckbuilder-only; ignored in action.
+			"gain_energy":
+				gain_energy(int(effect.get("value", 1)))
+			"lose_energy":
+				lose_energy(int(effect.get("value", 1)))
 			_:
 				pass
 
@@ -585,6 +605,32 @@ func discard_cards(n: int, _source_card = null) -> void:
 		GameLog.add("Discard: +%.1fs on %s." % [addition, ability_cards[pick].display_name],
 			Color(1.0, 0.7, 0.5))
 
+func _tempo_multiplier() -> float:
+	# Haste and Slow are mutually exclusive in display, but if both are
+	# live (e.g. gain_energy then lose_energy mid-window) we resolve to
+	# net by multiplying. Neither active => 1.0.
+	var mult: float = 1.0
+	if _haste_remaining > 0.0:
+		mult *= ENERGY_HASTE_MULT
+	if _slow_remaining > 0.0:
+		mult *= ENERGY_SLOW_MULT
+	return mult
+
+func gain_energy(n: int) -> void:
+	# Action analog of the deckbuilder energy pool: brief Haste window.
+	# Reapplying extends duration (single tier) — magnitude doesn't
+	# stack so the HUD stays readable.
+	if n <= 0:
+		return
+	_haste_remaining += float(n) * ENERGY_BUFF_SECS_PER_POINT
+	GameLog.add("Haste! +%ds." % n, Color(0.7, 1.0, 0.85))
+
+func lose_energy(n: int) -> void:
+	if n <= 0:
+		return
+	_slow_remaining += float(n) * ENERGY_BUFF_SECS_PER_POINT
+	GameLog.add("Slowed! -%ds." % n, Color(1.0, 0.7, 0.7))
+
 func _apply_self_effects(card: CardData) -> void:
 	# Used by the ranged path so block / heal / self statuses still
 	# fire even though the damage is in flight.
@@ -598,6 +644,12 @@ func _apply_self_effects(card: CardData) -> void:
 			continue
 		if t == "discard":
 			discard_cards(int(effect.get("value", 1)))
+			continue
+		if t == "gain_energy":
+			gain_energy(int(effect.get("value", 1)))
+			continue
+		if t == "lose_energy":
+			lose_energy(int(effect.get("value", 1)))
 			continue
 		var tgt: String = String(effect.get("target", ""))
 		if tgt != "self" and tgt != "player":

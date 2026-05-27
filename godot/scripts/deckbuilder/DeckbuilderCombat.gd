@@ -817,6 +817,10 @@ func gain_energy(amount: int) -> void:
 	energy += amount
 	_refresh_ui()
 
+func lose_energy(amount: int) -> void:
+	energy = maxi(0, energy - amount)
+	_refresh_ui()
+
 # ------------------------------------------------------------------
 # Discard / card-boost effect plumbing (deckbuilder)
 # ------------------------------------------------------------------
