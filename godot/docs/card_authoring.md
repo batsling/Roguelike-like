@@ -83,6 +83,8 @@ Semicolon-delimited list of effect lines. Each line is
 | `gain` | `STAT:VALUE` | Player gains the stat (block, power, defense, dodge, …). | `{type: "block"/"status", value, stacks, status, target: "self"}` |
 | `inflict` | `STATUS:STACKS[:cleave]` | Apply a debuff to the targeted enemy (or all enemies with `cleave`). | `{type: "status", status, stacks, target: "enemy"/"all_enemies"}` |
 | `draw` | `N` | Draw N cards. In Action mode this instead chips a random ability cooldown by 25% per N. In Strategy, reduces a random ability CD by N. | `{type: "draw", value: N}` |
+| `discard` | `N` | Mirror of `draw`. Deckbuilder: discard N random cards from hand (excluding the played card). Action: +25% of max CD on the lowest-cooldown ability, per N. Strategy: +N on the lowest current CD. | `{type: "discard", value: N}` |
+| `boost_cards` | `<MATCH>:<STAT>:<VALUE>` | Persistent in-combat modifier. Every later card matching `MATCH` resolves with `STAT + VALUE`. `MATCH` is exactly one of `tag=X` / `type=X` / `id=X`. `STAT` is `dmg` or `block`. Deckbuilder only today. | `{type: "boost_cards", match_tag/match_type/match_id, stat, value}` |
 | `heal` | `VALUE[:self]` | Recover HP (defaults to self). | `{type: "heal", value, target: "self"}` |
 | `gain_energy` | `N` | Refund N energy in the deckbuilder. | `{type: "gain_energy", value: N}` |
 | `gain_gold` | `N` | Award N gold (rare on cards). | `{type: "gain_gold", value: N}` |
@@ -227,6 +229,46 @@ Tags:         ironclad, offense
 Carnage is still in hand at end of turn it exhausts; if played, it
 goes to discard like any normal card.
 
+## Card boosts (Accuracy and friends)
+
+`boost_cards` registers a persistent combat-scoped modifier. Every
+later card play matching the boost's filter resolves with the bonus
+folded into the listed stat *before* normal damage math (Vulnerable,
+Weak, Frail, Power, etc.) runs — so a boosted Shiv still gets
+Vulnerable'd and Power'd on top.
+
+```
+boost_cards:<MATCH>:<STAT>:<VALUE>
+```
+
+`MATCH` uses an explicit prefix so tag/type/id are never ambiguous:
+
+| Prefix | Meaning | Example |
+|---|---|---|
+| `tag=X` | Card has tag `X` in its `tags` array. | `tag=shiv` |
+| `type=X` | Card's `type` is `X` (`attack` / `skill` / `power`). | `type=attack` |
+| `id=X` | Card's `id` is exactly `X`. | `id=strike` |
+
+`STAT` is `dmg` or `block`. Cost boosts route through a different
+mechanism (`temp_cost_override`) and aren't supported here today.
+
+Worked example — Accuracy:
+```
+Description:  Shivs deal 4 additional damage.
+Effects:      boost_cards:tag=shiv:dmg:4
+Upgraded Eff: boost_cards:tag=shiv:dmg:6
+Range:        Self
+Keywords:
+Type:         Power
+```
+
+In `.tres` exactly one of `match_tag` / `match_type` / `match_id` must
+be set; the other two stay empty strings. Boosts clear at combat end.
+
+**Mode coverage:** today only the deckbuilder consumes boosts. Action
+and Strategy ignore `boost_cards` effects (the scene method doesn't
+exist there yet); see the Future Work section below.
+
 ## Quick gotchas
 
 - **Don't double-encode damage type.** If the Range column says
@@ -241,3 +283,60 @@ goes to discard like any normal card.
   of two dmg lines, that's a future change to the DSL.
 - **Conjure card ids use snake_case.** `dazed`, `slimed`, `wound`,
   `void`, `burn` — match the file name in `godot/data/cards/`.
+
+## Future work
+
+Tracked here so the design intent doesn't get lost between commits.
+
+### Power icons in combat HUDs
+
+Some Power cards need an icon that persists in the combat HUD so the
+player can see which non-status passives are active and hover them
+for a description. Cards whose entire effect is `gain:<status>:<n>`
+(Inflame, Demon Form, …) do **not** need a power icon because the
+status badge already represents them — icons are only for Powers
+with bespoke trigger logic.
+
+Authoring path (proposed when this lands):
+
+- Drop the icon at `images/powericons/<ImgName>Power.png` matching the
+  same `Img` column used for the card art (so Anger uses `AngerPower.png`).
+- Add a `power_icon: Texture2D` field on `CardData`. Either auto-link by
+  convention (image name + `Power` suffix) or set the field explicitly
+  in the `.tres`.
+- Combat scenes each grow a small "Active Powers" strip that shows
+  every Power with `power_icon != null` resolved this combat. Hover
+  uses Godot's built-in `tooltip_text` to show `display_name` + a
+  short description.
+
+Open questions to settle when implementing:
+
+- Strip placement (top-left near HP, beside the hand, above the
+  ability bar in action?).
+- Whether stacked copies of the same power show one icon with a count
+  badge or one icon per stack.
+- Whether action/strategy duplicate the deckbuilder's strip layout or
+  each gets a mode-specific placement.
+
+### Action / Strategy `boost_cards` coverage
+
+`boost_cards` is deckbuilder-only today. Equivalent semantics for the
+other modes need:
+
+- Action: a boost should bump the listed stat on matching ability
+  cards when they fire. Match logic is identical (tag/type/id on the
+  ability's `CardData`).
+- Strategy: same idea on the AbilityPool. Boosts wouldn't apply to
+  the basic Attack/Defend buttons unless they have matching tags.
+
+Both modes should reuse `card_boosts: Array` and the matcher helpers
+already in `DeckbuilderCombat` — pull them onto a small shared script
+or autoload when the second consumer lands.
+
+### Discard polish
+
+Today `discard` picks a random card from hand (deckbuilder) and the
+lowest-cooldown ability (action/strategy). A future "choose what to
+discard" variant would be useful for cards like Reckless Charge where
+the discard is part of the cost and the player should pick — this
+needs a small modal in deckbuilder and is a no-op in action/strategy.

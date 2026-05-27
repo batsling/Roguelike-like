@@ -60,6 +60,8 @@ func _register_defaults() -> void:
 	register("gain_gold", _h_gain_gold)
 	register("lose_hp", _h_lose_hp)
 	register("conjure", _h_conjure)
+	register("discard", _h_discard)
+	register("boost_cards", _h_boost_cards)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -141,3 +143,29 @@ func _h_conjure(effect: Dictionary, ctx: Dictionary) -> void:
 	var count: int = maxi(1, int(effect.get("count", 1)))
 	var force_upgraded: bool = bool(effect.get("upgraded", false))
 	scene.conjure_card(card_id, destination, count, ctx.get("card"), force_upgraded)
+
+func _h_discard(effect: Dictionary, ctx: Dictionary) -> void:
+	# Mirror of `draw`. Deckbuilder discards N cards from hand;
+	# action/strategy add to a random/lowest ability cooldown to
+	# slow the player down. Each scene that wants to react owns its
+	# own `discard_cards(n, source_card)` method.
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("discard_cards"):
+		return
+	scene.discard_cards(int(effect.get("value", 1)), ctx.get("card"))
+
+func _h_boost_cards(effect: Dictionary, ctx: Dictionary) -> void:
+	# Register a persistent in-combat modifier that bumps a stat on
+	# every future play of cards matching one of (match_tag,
+	# match_type, match_id). Accuracy is the canonical example:
+	# `boost_cards:tag=shiv:dmg:4`. Set exactly one matcher.
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("add_card_boost"):
+		return
+	scene.add_card_boost({
+		"match_tag": String(effect.get("match_tag", "")),
+		"match_type": String(effect.get("match_type", "")),
+		"match_id": String(effect.get("match_id", "")),
+		"stat": String(effect.get("stat", "dmg")),
+		"value": int(effect.get("value", 0)),
+	})

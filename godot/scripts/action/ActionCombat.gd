@@ -477,6 +477,9 @@ func _resolve_card_effects(card: CardData) -> void:
 				# In action, "draw cards" instead chips a random
 				# ability's cooldown — see draw_cards().
 				draw_cards(int(effect.get("value", 1)))
+			"discard":
+				# Mirror of draw — lengthens the lowest cooldown.
+				discard_cards(int(effect.get("value", 1)))
 			# gain_energy is deckbuilder-only; ignored in action.
 			_:
 				pass
@@ -557,15 +560,44 @@ func draw_cards(n: int) -> void:
 		GameLog.add("Draw effect: -%.1fs on %s." % [reduction, ability_cards[pick].display_name],
 			Color(0.7, 0.95, 1.0))
 
+func discard_cards(n: int, _source_card = null) -> void:
+	# Mirror of `draw_cards`: each discard lengthens a random ability's
+	# cooldown by 25% of its max. To make the effect feel meaningful
+	# even when nothing is currently cooling, the ability with the
+	# LOWEST remaining cooldown is picked — that way a "ready"
+	# ability immediately goes on a partial CD instead of the effect
+	# silently doing nothing.
+	if n <= 0:
+		return
+	for _i in range(n):
+		var pick: int = -1
+		var lowest: float = INF
+		for j in range(3):
+			if ability_max_cooldowns[j] <= 0.0:
+				continue
+			if ability_cooldowns[j] < lowest:
+				lowest = ability_cooldowns[j]
+				pick = j
+		if pick < 0:
+			return
+		var addition: float = ability_max_cooldowns[pick] * 0.25
+		ability_cooldowns[pick] = minf(ability_max_cooldowns[pick], ability_cooldowns[pick] + addition)
+		GameLog.add("Discard: +%.1fs on %s." % [addition, ability_cards[pick].display_name],
+			Color(1.0, 0.7, 0.5))
+
 func _apply_self_effects(card: CardData) -> void:
 	# Used by the ranged path so block / heal / self statuses still
 	# fire even though the damage is in flight.
 	for effect in card.effects:
 		var t: String = String(effect.get("type", ""))
-		# Draw is untargeted in deckbuilder; in action it shaves a
-		# random cooldown regardless of `target`, so fire it here.
+		# Draw/discard are untargeted in deckbuilder; in action they
+		# resolve as cooldown changes regardless of `target`, so fire
+		# them here before the target gate.
 		if t == "draw":
 			draw_cards(int(effect.get("value", 1)))
+			continue
+		if t == "discard":
+			discard_cards(int(effect.get("value", 1)))
 			continue
 		var tgt: String = String(effect.get("target", ""))
 		if tgt != "self" and tgt != "player":

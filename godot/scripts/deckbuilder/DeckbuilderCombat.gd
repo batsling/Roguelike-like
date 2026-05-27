@@ -38,6 +38,12 @@ var hand: Array[CardInstance] = []
 var discard_pile: Array[CardInstance] = []
 var exhaust_pile: Array[CardInstance] = []
 
+# Persistent in-combat modifiers registered by `boost_cards` effects.
+# Each entry: {match_tag, match_type, match_id, stat, value}. Consulted
+# in `_resolve_card` so the bonus folds into the effect's value before
+# dispatch. Cleared at the start of each combat.
+var card_boosts: Array = []
+
 var energy: int = 0
 var max_energy: int = 3
 var turn: int = 0
@@ -143,6 +149,7 @@ func _init_deck() -> void:
 	hand.clear()
 	discard_pile.clear()
 	exhaust_pile.clear()
+	card_boosts.clear()
 	for c in GameState.deck:
 		if c is CardData:
 			draw_pile.append(CardInstance.from_data(c))
@@ -562,7 +569,8 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 		"card": card, "target": target_enemy, "scene": self,
 	})
 
-	for effect in card.get_effects():
+	for raw_effect in card.get_effects():
+		var effect: Dictionary = _apply_card_boosts(raw_effect, card)
 		var t_str: String = effect.get("target", "enemy")
 		var targets: Array = []
 		match t_str:
@@ -784,6 +792,83 @@ func conjure_card(card_id: StringName, destination: String, count: int, source_c
 func gain_energy(amount: int) -> void:
 	energy += amount
 	_refresh_ui()
+
+# ------------------------------------------------------------------
+# Discard / card-boost effect plumbing (deckbuilder)
+# ------------------------------------------------------------------
+
+const _TYPE_NAMES: Array[String] = ["attack", "skill", "power", "dice", "status", "curse", "training"]
+
+func discard_cards(n: int, source_card = null) -> void:
+	# Random discard, excluding the card currently being played so a
+	# "Deal X. Discard 1." card doesn't double-route itself through
+	# discard. Skip silently when hand is empty / depleted.
+	for _i in range(n):
+		var pool: Array = []
+		for c in hand:
+			if c == source_card:
+				continue
+			pool.append(c)
+		if pool.is_empty():
+			return
+		var pick: CardInstance = pool[_rng.randi() % pool.size()]
+		discard_card(pick)
+		GameLog.add("Discarded %s." % pick.get_display_name(), Color(0.9, 0.7, 0.4))
+
+func add_card_boost(boost: Dictionary) -> void:
+	card_boosts.append(boost)
+	var label: String = _boost_label(boost)
+	GameLog.add("Active boost: %s." % label, Color(0.7, 1.0, 0.7))
+
+func _boost_label(boost: Dictionary) -> String:
+	var who := ""
+	if String(boost.get("match_tag", "")) != "":
+		who = "tag=%s" % boost.match_tag
+	elif String(boost.get("match_type", "")) != "":
+		who = "type=%s" % boost.match_type
+	elif String(boost.get("match_id", "")) != "":
+		who = "id=%s" % boost.match_id
+	return "%s %s +%d" % [who, boost.get("stat", "dmg"), int(boost.get("value", 0))]
+
+func _apply_card_boosts(effect: Dictionary, card: CardInstance) -> Dictionary:
+	# Returns either the original effect or a copy with the value bumped
+	# by every matching active boost. Only `dmg` and `block` effects
+	# scale today; cost boosts route through CardInstance.temp_cost_override.
+	if card_boosts.is_empty():
+		return effect
+	var effect_type: String = String(effect.get("type", ""))
+	if effect_type != "dmg" and effect_type != "block":
+		return effect
+	var bonus := 0
+	for boost in card_boosts:
+		if String(boost.get("stat", "")) != effect_type:
+			continue
+		if not _card_matches_boost(card, boost):
+			continue
+		bonus += int(boost.get("value", 0))
+	if bonus == 0:
+		return effect
+	var out: Dictionary = effect.duplicate(true)
+	out["value"] = int(out.get("value", 0)) + bonus
+	return out
+
+func _card_matches_boost(card: CardInstance, boost: Dictionary) -> bool:
+	var data: CardData = card.data
+	if data == null:
+		return false
+	var match_tag: String = String(boost.get("match_tag", ""))
+	var match_type: String = String(boost.get("match_type", ""))
+	var match_id: String = String(boost.get("match_id", ""))
+	if match_tag != "":
+		return data.tags.has(match_tag)
+	if match_type != "":
+		var idx: int = data.type
+		if idx < 0 or idx >= _TYPE_NAMES.size():
+			return false
+		return _TYPE_NAMES[idx] == match_type.to_lower()
+	if match_id != "":
+		return String(data.id) == match_id
+	return false
 
 func _shuffle(arr: Array) -> void:
 	for i in range(arr.size() - 1, 0, -1):
