@@ -40,3 +40,4 @@ upgraded_effects = [{
 "stacks": 1,
 "target": "all_enemies"
 }]
+range_class = &"short"

@@ -38,3 +38,4 @@ upgraded_effects = [{
 "target": "enemy",
 "damage_type": "ranged"
 }]
+range_class = &"medium"

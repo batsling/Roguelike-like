@@ -64,8 +64,23 @@ const ABILITY_AOE_RADIUS := 140.0
 # Projectile tuning (player-fired ranged abilities).
 const PLAYER_PROJECTILE_SPEED := 620.0
 const PLAYER_PROJECTILE_RADIUS := 7.0
-const PLAYER_PROJECTILE_LIFETIME := 2.0
 const PLAYER_PROJECTILE_COLOR := Color(1.0, 0.95, 0.4)
+
+# Per-card travel distance, set by CardData.range_class. Speed is fixed
+# (PLAYER_PROJECTILE_SPEED); lifetime is computed as distance / speed
+# so the bolt visibly fizzles at the requested reach instead of flying
+# off-screen.
+const PROJECTILE_RANGE_PX := {
+	&"short": 320.0,
+	&"medium": 620.0,
+	&"large": 950.0,
+}
+const PROJECTILE_RANGE_DEFAULT_PX := 620.0
+
+# Ranged AOE (`damage_type: ranged` + `target: all_enemies`) fires a fan
+# of projectiles instead of a single bolt that explodes on impact.
+const RANGED_AOE_PROJECTILE_COUNT := 5
+const RANGED_AOE_FAN_DEG := 50.0
 
 # Enemy projectile defaults (used when ActionEnemyData fields are 0).
 const ENEMY_PROJECTILE_DEFAULT_SPEED := 340.0
@@ -661,16 +676,50 @@ func _gain_block(base_amount: int) -> void:
 # ---------------------------------------------------------------------------
 
 func _spawn_player_projectile(card: CardData) -> void:
+	# Pull the travel distance off the card. Empty/unknown range_class
+	# falls back to "medium" so legacy cards still feel right.
+	var range_px: float = float(PROJECTILE_RANGE_PX.get(card.range_class, PROJECTILE_RANGE_DEFAULT_PX))
+	var lifetime: float = range_px / PLAYER_PROJECTILE_SPEED
+	# A ranged AOE card (Thunderclap: ranged + all_enemies) fans
+	# multiple bolts instead of one bolt that explodes. All bolts from
+	# the same cast share a `hit_set` so a clustered target doesn't
+	# eat 5x the listed damage when the spread converges on it.
+	if _is_ranged_aoe(card):
+		var shared_hits: Dictionary = {}
+		var count: int = RANGED_AOE_PROJECTILE_COUNT
+		var base_angle: float = player_facing.angle()
+		var fan: float = deg_to_rad(RANGED_AOE_FAN_DEG)
+		var half: float = fan * 0.5
+		for i in range(count):
+			var t: float = 0.5 if count <= 1 else float(i) / float(count - 1)
+			var angle: float = base_angle - half + t * fan
+			_spawn_single_projectile(card, Vector2.RIGHT.rotated(angle), range_px, lifetime, shared_hits)
+		return
+	_spawn_single_projectile(card, player_facing, range_px, lifetime, {})
+
+func _spawn_single_projectile(card: CardData, dir: Vector2, range_px: float, lifetime: float, hit_set: Dictionary) -> void:
 	var proj: Dictionary = {
-		"pos": player_pos + player_facing * (PLAYER_RADIUS + 4.0),
-		"velocity": player_facing * PLAYER_PROJECTILE_SPEED,
+		"pos": player_pos + dir * (PLAYER_RADIUS + 4.0),
+		"velocity": dir * PLAYER_PROJECTILE_SPEED,
 		"owner": "player",
 		"radius": PLAYER_PROJECTILE_RADIUS,
 		"color": PLAYER_PROJECTILE_COLOR,
-		"lifetime": PLAYER_PROJECTILE_LIFETIME,
+		"lifetime": lifetime,
+		"range_px": range_px,
 		"card": card,
+		"hit_set": hit_set,
 	}
 	projectiles.append(proj)
+
+func _is_ranged_aoe(card: CardData) -> bool:
+	for effect in card.effects:
+		if String(effect.get("type", "")) != "dmg":
+			continue
+		if String(effect.get("damage_type", "melee")) != "ranged":
+			continue
+		if String(effect.get("target", "enemy")) == "all_enemies":
+			return true
+	return false
 
 func _process_projectiles(delta: float) -> void:
 	var i := 0
@@ -682,13 +731,21 @@ func _process_projectiles(delta: float) -> void:
 		var consumed := false
 		match String(p.owner):
 			"player":
+				var hit_set: Dictionary = p.get("hit_set", {})
 				for inst in enemies:
 					if not inst.actor.is_alive():
 						continue
-					if p.pos.distance_to(inst.pos) <= p.radius + inst.data.size:
+					if p.pos.distance_to(inst.pos) > p.radius + inst.data.size:
+						continue
+					# Bolts from the same cast share a hit_set so a
+					# fan that converges on one enemy doesn't apply
+					# the card's effects multiple times to that
+					# enemy. The bolt still dies on contact.
+					if not hit_set.has(inst.actor):
+						hit_set[inst.actor] = true
 						_on_player_projectile_hit(p, inst)
-						consumed = true
-						break
+					consumed = true
+					break
 			"enemy":
 				if p.pos.distance_to(player_pos) <= p.radius + PLAYER_RADIUS:
 					_on_enemy_projectile_hit(p)
@@ -714,53 +771,29 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 	var card: CardData = p.get("card")
 	if card == null:
 		return
-	# Apply every enemy-targeted effect (dmg + status) on the card.
-	# Single-target effects (`target: enemy`) hit only the impacted
-	# enemy; AOE effects (`target: all_enemies`) burst over enemies
-	# within the AOE radius around the impact point (Thunderclap).
+	# Each bolt is independent: dmg + status from the card's enemy-side
+	# effects land on whichever single enemy the bolt struck. Ranged
+	# AOE cards (Thunderclap) cover their area by FIRING MORE BOLTS in
+	# a fan — there is no explosion radius here.
 	var pers: int = player_actor.get_status(&"persistence")
 	var debuffs := [&"vulnerable", &"weak", &"frail", &"poison", &"burn"]
-	var aoe_targets: Array = []
-	var have_aoe_list := false
 	for effect in card.effects:
 		var tgt: String = String(effect.get("target", ""))
 		if tgt != "enemy" and tgt != "all_enemies":
 			continue
-		# Resolve hit list once per effect to avoid re-walking enemies
-		# inside the inner loop.
-		var hits: Array
-		if tgt == "enemy":
-			hits = [inst]
-		else:
-			if not have_aoe_list:
-				aoe_targets = _enemies_in_radius_at(p.pos, ABILITY_AOE_RADIUS)
-				have_aoe_list = true
-			hits = aoe_targets
 		var t: String = String(effect.get("type", ""))
 		match t:
 			"dmg":
 				var value: int = int(effect.get("value", 0))
 				var dmg_type: String = String(effect.get("damage_type", "melee"))
 				var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
-				for h in hits:
-					_deal_damage_to_enemy(h, value, dmg_type, power_mult)
+				_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
 			"status":
 				var status: StringName = StringName(String(effect.get("status", "")))
 				var stacks: int = int(effect.get("stacks", 0))
 				if stacks > 0 and status != &"":
 					var amt: int = stacks + (pers if status in debuffs else 0)
-					for h in hits:
-						h.actor.add_status(status, amt)
-
-func _enemies_in_radius_at(center: Vector2, radius: float) -> Array:
-	var result: Array = []
-	for inst in enemies:
-		if not inst.actor.is_alive():
-			continue
-		if inst.pos.distance_to(center) > radius + inst.data.size:
-			continue
-		result.append(inst)
-	return result
+					inst.actor.add_status(status, amt)
 
 # ---------------------------------------------------------------------------
 # Slot-bar UI (bottom-of-screen ability strip)
