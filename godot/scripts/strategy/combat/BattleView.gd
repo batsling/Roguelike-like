@@ -553,7 +553,8 @@ func _collect_item(entry: Dictionary) -> String:
 	if item.auto_pickup:
 		match item.item_type:
 			StrategyItem.ItemType.GOLD:
-				StrategyState.gold += int(item.amount)
+				# Gold persists across sections — write straight to GameState.
+				GameState.change_gold(int(item.amount))
 				_battle_map.remove_item_entry(entry)
 				return "+%d gold" % int(item.amount)
 			StrategyItem.ItemType.KEY:

@@ -9,6 +9,7 @@ const OVERWORLD_SCENE := preload("res://scenes/overworld/Overworld.tscn")
 const COMBAT_SCENE := preload("res://scenes/deckbuilder/DeckbuilderCombat.tscn")
 const MAP_SCENE := preload("res://scenes/deckbuilder/GameMap.tscn")
 const ACTION_FLOOR_SCENE := preload("res://scenes/action/ActionFloor.tscn")
+const STRATEGY_FLOOR_SCENE := preload("res://scenes/strategy_prototype/StrategyPrototype.tscn")
 
 var _current_scene: Node = null
 # Carried across an Overworld free + reinstantiate so the new
@@ -54,12 +55,14 @@ func _show_overworld() -> void:
 	_swap_to(ow)
 
 func _on_portal_entered(game_id: StringName) -> void:
-	# Route by the target game's type. Strategy games will get their
-	# own floor in Phase 4; for now they fall back to the deckbuilder
-	# mini-map.
+	# Route by the target game's type. Strategy games get a one-floor
+	# roguelike via the strategy prototype; action games get the action
+	# floor; everything else falls back to the deckbuilder mini-map.
 	var g: GameData = Data.get_game(game_id)
 	if g != null and g.type == GameData.GameType.ACTION:
 		_show_action_floor(game_id)
+	elif g != null and g.type == GameData.GameType.STRATEGY:
+		_show_strategy_floor(game_id)
 	else:
 		_show_deckbuilder_map(game_id)
 
@@ -73,6 +76,13 @@ func _show_deckbuilder_map(game_id: StringName) -> void:
 func _show_action_floor(game_id: StringName) -> void:
 	GameState.phase = GameState.Phase.COMBAT
 	var floor_scene: ActionFloor = ACTION_FLOOR_SCENE.instantiate()
+	floor_scene.target_game_id = game_id
+	floor_scene.closed.connect(_on_floor_closed)
+	_swap_to(floor_scene)
+
+func _show_strategy_floor(game_id: StringName) -> void:
+	GameState.phase = GameState.Phase.COMBAT
+	var floor_scene: Node = STRATEGY_FLOOR_SCENE.instantiate()
 	floor_scene.target_game_id = game_id
 	floor_scene.closed.connect(_on_floor_closed)
 	_swap_to(floor_scene)

@@ -1,5 +1,19 @@
 extends Node
 
+# Strategy floor entry point. Behaves two ways depending on how it's
+# launched:
+#   - Embedded (`GameState.character_id != &""`): one roguelike floor =
+#     one strategy "game". Reads HP/gold/deck/spells from GameState on
+#     entry; reaching the stairs signals `closed(true)` so the project
+#     `Main.gd` returns to the overworld for verification + next-game
+#     selection; player death signals `closed(false)` and the overworld
+#     resets the run (matches the deckbuilder/action flows).
+#   - Standalone (no character applied — running the scene from the
+#     editor): applies Ironclad and seeds the demo loadout so the
+#     prototype boots into something playable.
+
+signal closed(was_victory: bool, target_game_id: StringName)
+
 @onready var _renderer: StrategyDungeonRenderer = $DungeonRenderer
 @onready var _hud: StrategyHUD = $HUD
 
@@ -14,12 +28,25 @@ const _DEMO_ABILITY_CARDS: Array[StringName] = [
 	&"pommel_strike", &"heavy_blade", &"anger", &"shrug_it_off", &"inflame",
 ]
 
+var target_game_id: StringName = &""
+var _embedded: bool = false   # set in _ready; true when launched from project Main
+
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _battle_overlay: CanvasLayer = null
 var _game_over_overlay: CanvasLayer = null
 
 func _ready() -> void:
 	_rng.randomize()
+	_embedded = GameState.character_id != &""
+	if not _embedded:
+		# Standalone bootstrap: apply Ironclad so GameState has HP/deck to
+		# pull from. Mirrors ActionFloor's standalone path.
+		var ironclad: CharacterData = Data.get_character(&"ironclad")
+		if ironclad != null:
+			GameState.reset_run()
+			GameState.apply_character(ironclad)
+	if target_game_id == &"":
+		target_game_id = GameState.current_game_id
 	StrategyTurnManager.connect("enemy_turns_started", _run_enemy_turns)
 	StrategyCombatSession.connect("combat_started", _on_combat_started)
 	StrategyCombatSession.connect("combat_ended", _on_combat_ended)
@@ -60,13 +87,18 @@ func _load_floor() -> void:
 	var start = map.get_start_pos()
 
 	if StrategyState.player == null:
+		# HP/MaxHP come from GameState so the strategy floor shares vitals
+		# with the deckbuilder/action sections. Attack/defense are still
+		# strategy-local since the tactical combat layer uses its own
+		# basic-attack constants (see BattleView.DEFAULT_BASIC_ATTACK).
 		var player = StrategyEntity.new()
 		player.grid_pos = start
 		player.glyph = "@"
 		player.color = Color.WHITE
 		player.name = "you"
 		player.is_player = true
-		player.max_hp = 30; player.hp = 30
+		player.max_hp = maxi(1, GameState.max_hp)
+		player.hp = clampi(GameState.hp, 0, player.max_hp)
 		player.attack = 5; player.defense = 1
 		StrategyState.player = player
 		StrategyState.entities.append(player)
@@ -144,7 +176,10 @@ func _random_floor_pos_in(room: Rect2i) -> Vector2i:
 
 func _input(event: InputEvent) -> void:
 	if StrategyState.phase == StrategyState.GamePhase.DEAD:
-		if event is InputEventKey and event.pressed and event.keycode == KEY_R:
+		# Embedded death routes through the overworld's run-reset flow —
+		# the player uses the Continue button on the defeat overlay. R-key
+		# in-place restart only makes sense for the standalone prototype.
+		if not _embedded and event is InputEventKey and event.pressed and event.keycode == KEY_R:
 			_new_game()
 		return
 
@@ -235,7 +270,8 @@ func _after_player_step(pos: Vector2i) -> void:
 	for it in picked:
 		match it.item_type:
 			StrategyItem.ItemType.GOLD:
-				StrategyState.gold += it.amount
+				# Gold persists across sections — route to the shared GameState.
+				GameState.change_gold(it.amount)
 				StrategyLog.add("You pick up %d gold." % it.amount, Color(1.0, 0.9, 0.3))
 			StrategyItem.ItemType.KEY:
 				StrategyState.keys += 1
@@ -285,12 +321,19 @@ func _on_combat_ended(result: String) -> void:
 
 func _try_descend() -> void:
 	var tile = StrategyState.map.get_tile(StrategyState.player.grid_pos.x, StrategyState.player.grid_pos.y)
-	if tile == StrategyState.TileType.STAIRS_DOWN:
-		StrategyState.dungeon_floor += 1
-		StrategyLog.add("You descend to floor %d." % StrategyState.dungeon_floor, Color(0.8, 1.0, 0.8))
-		_load_floor()
-	else:
+	if tile != StrategyState.TileType.STAIRS_DOWN:
 		StrategyLog.add("There are no stairs here.", Color.GRAY)
+		return
+	# In the project flow one strategy game = one roguelike floor. The
+	# staircase closes the floor with a victory and the overworld handles
+	# verification + the next game. Standalone keeps the multi-floor demo
+	# loop so the prototype scene is still playable on its own.
+	if _embedded:
+		_close_floor(true)
+		return
+	StrategyState.dungeon_floor += 1
+	StrategyLog.add("You descend to floor %d." % StrategyState.dungeon_floor, Color(0.8, 1.0, 0.8))
+	_load_floor()
 
 func _try_pickup() -> void:
 	var player = StrategyState.player
@@ -382,9 +425,38 @@ func _show_game_over_overlay() -> void:
 	var btn := Button.new()
 	btn.position = Vector2(120, 180)
 	btn.size = Vector2(240, 56)
-	btn.text = "Restart run"
-	btn.pressed.connect(_new_game)
+	# Embedded floor: close back to the overworld so the project
+	# Main can run the standard defeat flow (run restart, etc).
+	# Standalone: in-place restart matching the prototype loop.
+	if _embedded:
+		btn.text = "Continue"
+		btn.pressed.connect(_close_defeat)
+	else:
+		btn.text = "Restart run"
+		btn.pressed.connect(_new_game)
 	panel.add_child(btn)
+
+func _close_defeat() -> void:
+	_close_floor(false)
+
+# Floor exit (stairs or defeat). Syncs vitals back to GameState, frees
+# any open overlays, and emits the close signal so project Main can
+# advance the overworld flow.
+func _close_floor(was_victory: bool) -> void:
+	_sync_vitals_to_gamestate()
+	if _battle_overlay != null:
+		_battle_overlay.queue_free()
+		_battle_overlay = null
+	if _game_over_overlay != null:
+		_game_over_overlay.queue_free()
+		_game_over_overlay = null
+	emit_signal("closed", was_victory, target_game_id)
+	queue_free()
+
+func _sync_vitals_to_gamestate() -> void:
+	if StrategyState.player == null:
+		return
+	GameState.set_hp(StrategyState.player.hp)
 
 func _refresh() -> void:
 	var player = StrategyState.player
