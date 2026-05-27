@@ -543,7 +543,10 @@ func _try_pickup_at(pos: Vector2i, messages: Array) -> void:
 			messages.append(msg)
 
 # Returns a short message describing the pickup (empty string if nothing
-# happened, e.g. pack-full on a non-auto item).
+# happened, e.g. pack-full on a non-auto item). Battle items live only in
+# `_battle_map.items` during combat (CombatSession removes room originals
+# at combat start), so removing the entry there is enough to drop them
+# from the persistence-back pass.
 func _collect_item(entry: Dictionary) -> String:
 	var item = entry.item
 	var player_entity = StrategyState.player
@@ -552,19 +555,13 @@ func _collect_item(entry: Dictionary) -> String:
 			StrategyItem.ItemType.GOLD:
 				StrategyState.gold += int(item.amount)
 				_battle_map.remove_item_entry(entry)
-				if StrategyState.map != null:
-					StrategyState.map.items.erase(item)
 				return "+%d gold" % int(item.amount)
 			StrategyItem.ItemType.KEY:
 				StrategyState.keys += 1
 				_battle_map.remove_item_entry(entry)
-				if StrategyState.map != null:
-					StrategyState.map.items.erase(item)
 				return "+key"
 			_:
 				_battle_map.remove_item_entry(entry)
-				if StrategyState.map != null:
-					StrategyState.map.items.erase(item)
 				return "+%s" % str(item.item_name)
 	if player_entity == null:
 		return ""
@@ -572,8 +569,6 @@ func _collect_item(entry: Dictionary) -> String:
 		return "(pack full: %s)" % str(item.item_name)
 	player_entity.inventory.append(item)
 	_battle_map.remove_item_entry(entry)
-	if StrategyState.map != null:
-		StrategyState.map.items.erase(item)
 	return "picked up %s" % str(item.item_name)
 
 func _on_attack_requested(target) -> void:

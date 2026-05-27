@@ -237,11 +237,22 @@ func _draw() -> void:
 		var cy = pos.y * TILE_SIZE + TILE_SIZE * 0.5
 		draw_circle(Vector2(cx, cy), TILE_SIZE * 0.18, COLOR_PATH)
 
-	# Items
+	# Items — use each item's own glyph/color so kinds are distinguishable
+	# (gold/keys/potions/scrolls all rendered identically before Phase 8 fix).
+	var item_font: Font = ThemeDB.fallback_font
+	var item_font_size: int = 12
 	for entry in battle_map.items:
 		var p: Vector2i = entry.pos
 		var center := Vector2(p.x * TILE_SIZE + TILE_SIZE * 0.5, p.y * TILE_SIZE + TILE_SIZE * 0.5)
-		draw_circle(center, TILE_SIZE * 0.22, COLOR_ITEM)
+		var col: Color = entry.item.color if entry.item != null else COLOR_ITEM
+		draw_circle(center, TILE_SIZE * 0.24, Color(0.08, 0.06, 0.04, 0.85))
+		draw_arc(center, TILE_SIZE * 0.24, 0.0, TAU, 20, col, 1.5)
+		if entry.item != null:
+			var glyph: String = str(entry.item.glyph)
+			var gsize: Vector2 = item_font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, item_font_size)
+			draw_string(item_font,
+				center - Vector2(gsize.x * 0.5, -gsize.y * 0.35),
+				glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, item_font_size, col)
 
 	# Units (and active-unit ring)
 	for u in units:

@@ -79,6 +79,12 @@ func _build_battle_map(room_data: StrategyRoomData, encounter: Array):
 		for it in StrategyState.map.items:
 			if room_data.rect.has_point(it.grid_pos):
 				room_items.append(it)
+		# Phase 8: items moving into the battlefield are owned by `BattleMap`
+		# for the duration of combat — remove them from the overworld list
+		# so the source_pos preference in `_sync_loot_back` isn't blocked by
+		# the items "occupying" their own original tiles.
+		for it in room_items:
+			StrategyState.map.items.erase(it)
 	var bm = BattleMapScript.new()
 	bm.generate(room_data.rect, encounter, room_items, _rng, "dungeon")
 	return bm
