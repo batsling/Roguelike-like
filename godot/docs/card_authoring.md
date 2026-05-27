@@ -466,3 +466,47 @@ lowest-cooldown ability (action/strategy). A future "choose what to
 discard" variant would be useful for cards like Reckless Charge where
 the discard is part of the cost and the player should pick — this
 needs a small modal in deckbuilder and is a no-op in action/strategy.
+
+### Energy gain / loss in Action and Strategy
+
+Deckbuilder already has `gain_energy:N` (and a future `lose_energy:N`)
+that bumps the per-turn energy pool. The same effect needs an analog
+in action and strategy. Agreed design, not yet implemented:
+
+**Action — brief Haste / Slow window.** All three speed dimensions
+move together so the effect feels like "more tempo" rather than a
+narrower draw-style cooldown shave:
+
+- `gain_energy:N` → brief Haste buff for ~N seconds: movement speed,
+  basic attack cooldown rate, and ability cooldown tick rate all run
+  at ~1.3×.
+- `lose_energy:N` → brief Slow buff for ~N seconds: same three
+  multipliers at ~0.7×.
+- Stacks duration (not magnitude) if reapplied — single tier keeps
+  it readable in the HUD.
+- Implementation will need a small extension to `CombatActor`
+  statuses (or a parallel timed-buff track) since current statuses
+  are stack-based, not duration-based.
+
+**Strategy — bonus ability uses, scaled by ability cost.** Mana is
+*not* the right hook because separate "gain mana" cards are planned
+and we don't want energy to silently overlap with that lever.
+Instead, each `gain_energy:N` opens a per-turn budget of `N` that
+can be spent on extra ability casts beyond the normal one-per-turn
+cap, with the budget consumed by the ability's deckbuilder `cost`:
+
+- Player has +2 energy this turn → can cast one extra ability whose
+  card cost ≤ 2, OR two extra abilities each costing 1, etc.
+- Budget resets at end of turn (energy is a per-turn resource, same
+  as deckbuilder).
+- Cooldowns still apply: the energy budget unlocks the *one-per-turn
+  cap*, it doesn't bypass an ability on cooldown.
+- `lose_energy:N` likely subtracts from the budget first, then locks
+  the normal ability use for the turn if it drives the budget below
+  zero. Exact semantics to settle when implementing.
+
+Both modes implement `gain_energy(n)` and `lose_energy(n)` on the
+scene; the EffectSystem just dispatches via `scene.gain_energy(n)` /
+`scene.lose_energy(n)` exactly like the deckbuilder. `lose_energy`
+isn't a registered EffectSystem verb yet and should be added in the
+same pass.
