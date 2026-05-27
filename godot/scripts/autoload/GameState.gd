@@ -13,6 +13,7 @@ signal current_game_changed(game_id: StringName)
 
 # === Identity / progression ===
 var character_id: StringName = &""
+var save_name: String = ""
 var current_game_id: StringName = &""
 var start_game_id: StringName = &""
 var amulet_game_id: StringName = &""
@@ -95,6 +96,7 @@ var phase: Phase = Phase.MENU
 
 func reset_run() -> void:
 	character_id = &""
+	save_name = ""
 	current_game_id = &""
 	start_game_id = &""
 	amulet_game_id = &""

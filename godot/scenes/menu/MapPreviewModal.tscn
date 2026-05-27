@@ -1,0 +1,70 @@
+[gd_scene load_steps=3 format=3 uid="uid://mappreview_phase1"]
+
+[ext_resource type="Script" path="res://scripts/menu/MapPreviewModal.gd" id="1_mappreview"]
+[ext_resource type="Script" path="res://scripts/menu/MapPreviewCanvas.gd" id="2_mapcanvas"]
+
+[node name="MapPreviewModal" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1_mappreview")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.78)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Center"]
+layout_mode = 2
+custom_minimum_size = Vector2(900, 620)
+
+[node name="Margin" type="MarginContainer" parent="Center/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="V" type="VBoxContainer" parent="Center/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HeaderRow" type="HBoxContainer" parent="Center/Panel/Margin/V"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Center/Panel/Margin/V/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Start → Amulet"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(1, 0.85, 0.4, 1)
+
+[node name="CloseBtn" type="Button" parent="Center/Panel/Margin/V/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 32)
+text = "← Back"
+
+[node name="Canvas" type="Control" parent="Center/Panel/Margin/V"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(820, 520)
+script = ExtResource("2_mapcanvas")
