@@ -71,14 +71,18 @@ const _DEBUFFS := [
 @onready var _end_turn_btn: Button = $Layout/Bottom/HandRow/EndTurnButton
 @onready var _energy_label: Label = $Layout/Bottom/StatusBar/EnergyLabel
 @onready var _hp_label: Label = $Layout/Bottom/StatusBar/HPLabel
-@onready var _draw_label: Label = $Layout/Bottom/StatusBar/DrawLabel
-@onready var _discard_label: Label = $Layout/Bottom/StatusBar/DiscardLabel
+@onready var _draw_btn: Button = $Layout/Bottom/StatusBar/DrawButton
+@onready var _discard_btn: Button = $Layout/Bottom/StatusBar/DiscardButton
+@onready var _exhaust_btn: Button = $Layout/Bottom/StatusBar/ExhaustButton
 @onready var _block_label: Label = $Layout/Bottom/StatusBar/BlockLabel
 @onready var _turn_label: Label = $Layout/Top/TurnLabel
 
 func _ready() -> void:
 	_rng.randomize()
 	_end_turn_btn.pressed.connect(_on_end_turn)
+	_draw_btn.pressed.connect(_on_pile_clicked.bind("draw"))
+	_discard_btn.pressed.connect(_on_pile_clicked.bind("discard"))
+	_exhaust_btn.pressed.connect(_on_pile_clicked.bind("exhaust"))
 	# Pre-combat event used to fire here; events now live as dedicated
 	# map nodes in the deckbuilder mini-map (Phase 2). Combat starts
 	# immediately as long as the caller pre-populated enemies_to_spawn.
@@ -179,9 +183,22 @@ func _on_end_turn() -> void:
 	if phase != "player":
 		return
 	_cancel_targeting()
-	# Discard hand (Ethereal exhausts; defer until those cards exist)
+	# Discard hand. Ethereal cards exhaust instead of discarding if they
+	# would still be in hand at end of turn (Carnage). Retain cards stay
+	# in hand. The TriggerBus emit lets items react to each exhausted
+	# card (mirrors the deckbuilder's normal exhaust_card flow).
+	var kept: Array[CardInstance] = []
 	while not hand.is_empty():
-		discard_pile.append(hand.pop_back())
+		var c: CardInstance = hand.pop_back()
+		if c.data != null and c.data.retain:
+			kept.append(c)
+		elif c.data != null and c.data.ethereal:
+			exhaust_pile.append(c)
+			GameLog.add("%s is Ethereal — exhausted." % c.data.display_name, Color(0.75, 0.85, 1.0))
+			TriggerBus.emit_signal("card_exhausted", {"card": c, "scene": self})
+		else:
+			discard_pile.append(c)
+	hand = kept
 	TriggerBus.emit_signal("turn_ended", {"turn": turn, "scene": self})
 	_fire_item_triggers("turn_ended")
 	# Decay player statuses BEFORE enemies act so debuffs the player
@@ -778,8 +795,9 @@ func _refresh_ui() -> void:
 	_energy_label.text = "Energy: %d / %d" % [energy, max_energy]
 	_hp_label.text = "HP: %d / %d" % [player.hp if player else 0, player.max_hp if player else 0]
 	_block_label.text = "Block: %d" % (player.block if player else 0)
-	_draw_label.text = "Draw: %d" % draw_pile.size()
-	_discard_label.text = "Discard: %d" % discard_pile.size()
+	_draw_btn.text = "Draw: %d" % draw_pile.size()
+	_discard_btn.text = "Discard: %d" % discard_pile.size()
+	_exhaust_btn.text = "Exhaust: %d" % exhaust_pile.size()
 
 	# Enemies — refresh existing views instead of rebuilding.
 	for view in _enemy_views:
@@ -809,3 +827,143 @@ func _input(event: InputEvent) -> void:
 		_cancel_targeting()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		_cancel_targeting()
+
+# ------------------------------------------------------------------
+# Pile viewer overlay (Draw / Discard / Exhaust)
+# ------------------------------------------------------------------
+
+const _PILE_TITLES := {
+	"draw": "Draw Pile",
+	"discard": "Discard Pile",
+	"exhaust": "Exhaust Pile",
+}
+const _PILE_COLORS := {
+	"draw": Color(0.40, 0.85, 0.45),
+	"discard": Color(0.95, 0.70, 0.30),
+	"exhaust": Color(0.65, 0.65, 0.72),
+}
+
+func _pile_for(kind: String) -> Array:
+	match kind:
+		"draw": return draw_pile
+		"discard": return discard_pile
+		"exhaust": return exhaust_pile
+		_: return []
+
+func _on_pile_clicked(kind: String) -> void:
+	# Cancel any in-progress targeting so the modal doesn't trap input.
+	if _targeting:
+		_cancel_targeting()
+	_show_pile_overlay(kind)
+
+func _show_pile_overlay(kind: String) -> void:
+	# Tear down any existing overlay so re-clicking refreshes the view.
+	var prev := get_node_or_null("PileOverlay")
+	if prev != null:
+		prev.queue_free()
+
+	var pile: Array = _pile_for(kind)
+	var sorted_pile: Array = pile.duplicate()
+	# Draw pile is shuffled - sort alphabetically so the player can scan
+	# without inferring draw order (matches the JS behavior).
+	if kind == "draw":
+		sorted_pile.sort_custom(func(a, b):
+			return a.get_display_name().to_lower() < b.get_display_name().to_lower())
+
+	var overlay := Control.new()
+	overlay.name = "PileOverlay"
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(overlay)
+
+	var backdrop := ColorRect.new()
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backdrop.color = Color(0, 0, 0, 0.72)
+	overlay.add_child(backdrop)
+
+	# Click outside the panel closes the overlay.
+	var dismiss := Button.new()
+	dismiss.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dismiss.flat = true
+	dismiss.focus_mode = Control.FOCUS_NONE
+	dismiss.pressed.connect(func(): overlay.queue_free())
+	overlay.add_child(dismiss)
+
+	var color: Color = _PILE_COLORS.get(kind, Color.WHITE)
+	var title: String = _PILE_TITLES.get(kind, "Pile")
+
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.custom_minimum_size = Vector2(900, 560)
+	panel.size = Vector2(900, 560)
+	panel.position = -panel.size * 0.5
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.08, 0.12, 0.98)
+	sb.border_color = color
+	sb.border_width_left = 2
+	sb.border_width_right = 2
+	sb.border_width_top = 2
+	sb.border_width_bottom = 2
+	sb.corner_radius_top_left = 8
+	sb.corner_radius_top_right = 8
+	sb.corner_radius_bottom_left = 8
+	sb.corner_radius_bottom_right = 8
+	panel.add_theme_stylebox_override("panel", sb)
+	overlay.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	panel.add_child(vbox)
+
+	var header := Label.new()
+	header.text = "%s  (%d)" % [title, pile.size()]
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 20)
+	header.add_theme_color_override("font_color", color)
+	vbox.add_child(header)
+
+	if kind == "draw":
+		var note := Label.new()
+		note.text = "(sorted alphabetically — draw order is hidden)"
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		note.add_theme_font_size_override("font_size", 11)
+		note.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
+		vbox.add_child(note)
+
+	if sorted_pile.is_empty():
+		var empty_lbl := Label.new()
+		empty_lbl.text = "(empty)"
+		empty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_lbl.add_theme_font_size_override("font_size", 16)
+		empty_lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+		vbox.add_child(empty_lbl)
+	else:
+		var scroll := ScrollContainer.new()
+		scroll.custom_minimum_size = Vector2(880, 420)
+		scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		vbox.add_child(scroll)
+
+		var grid := HFlowContainer.new()
+		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_theme_constant_override("h_separation", 8)
+		grid.add_theme_constant_override("v_separation", 8)
+		scroll.add_child(grid)
+
+		for inst in sorted_pile:
+			var view := CardView.new()
+			grid.add_child(view)
+			view.setup(inst)
+			# Display-only — never enable play from the pile view.
+			view.set_enabled(false)
+			view.set_selected(false)
+
+	var close_row := HBoxContainer.new()
+	close_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_child(close_row)
+
+	var close_btn := Button.new()
+	close_btn.text = "Close"
+	close_btn.custom_minimum_size = Vector2(140, 36)
+	close_btn.pressed.connect(func(): overlay.queue_free())
+	close_row.add_child(close_btn)
