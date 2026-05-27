@@ -43,6 +43,11 @@ enum Rarity { STARTER, COMMON, UNCOMMON, RARE, LEGENDARY }
 @export var retain: bool = false          # not discarded at end of turn
 @export var unplayable: bool = false      # cannot be played manually
 
+# Strategy/tactical ability cooldown override. -1 means "use the formula in
+# AbilityCooldownConfig"; >=0 forces that exact cooldown. Lets designers
+# tune outliers without touching the global formula.
+@export var cooldown_override: int = -1
+
 func is_attack() -> bool:
 	return type == CardType.ATTACK
 

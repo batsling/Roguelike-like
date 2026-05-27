@@ -9,6 +9,7 @@ extends Node
 const BattleMapScript := preload("res://scripts/strategy/combat/BattleMap.gd")
 const BattleUnitScript := preload("res://scripts/strategy/combat/Unit.gd")
 const BattleTurnManagerScript := preload("res://scripts/strategy/combat/BattleTurnManager.gd")
+const EnemyAIScript := preload("res://scripts/strategy/combat/EnemyAI.gd")
 
 signal combat_started(room_data, encounter, battle_map, turn_manager)
 signal combat_ended(result)  # "victory" or "defeat"
@@ -34,6 +35,11 @@ func enter_combat(room_data: StrategyRoomData, encounter: Array) -> void:
 	active_encounter = encounter.duplicate()
 	active_battle_map = _build_battle_map(room_data, active_encounter)
 	active_units = _build_units(active_encounter, active_battle_map)
+	# Phase 7: each enemy plans + telegraphs its opening intent before
+	# the player sees the battle, so STS-style readability holds from turn 1.
+	for u in active_units:
+		if u.ai != null:
+			u.ai.plan_next(active_units)
 	active_turn_manager = BattleTurnManagerScript.new()
 	active_turn_manager.setup(active_units)
 	active_turn_manager.battle_ended.connect(_on_battle_ended)
@@ -82,9 +88,11 @@ func _build_units(encounter: Array, battle_map) -> Array:
 			pu.position = battle_map.player_spawns[0]
 		out.append(pu)
 	for i in range(encounter.size()):
-		var eu = BattleUnitScript.from_enemy_kind(str(encounter[i]))
+		var kind: String = str(encounter[i])
+		var eu = BattleUnitScript.from_enemy_kind(kind)
 		if i < battle_map.enemy_spawns.size():
 			eu.position = battle_map.enemy_spawns[i]
+		eu.ai = EnemyAIScript.build_for(eu, kind)
 		out.append(eu)
 	return out
 

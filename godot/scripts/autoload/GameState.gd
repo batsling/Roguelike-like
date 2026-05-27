@@ -51,6 +51,11 @@ var deck: Array = []
 var inventory: Array = []                # Array[ItemData]
 var equipped_weapon: ItemData = null
 
+# Spells learned this run, addressed by SpellData.id. Drives the
+# strategy/tactical Spellbook (Phase 6). Spell defs live in
+# `SpellsCatalog` until designers ship .tres files for them.
+var learned_spells: Array[StringName] = []
+
 # === Action-mode loadout (StringName ids resolved via Data) ===
 # Empty / unset means "auto-pick from deck on combat start".
 var action_basic_attack_id: StringName = &""
@@ -100,6 +105,7 @@ func reset_run() -> void:
 	deck.clear()
 	inventory.clear()
 	equipped_weapon = null
+	learned_spells.clear()
 	action_basic_attack_id = &""
 	action_ability_ids.clear()
 	dash_charges = 0

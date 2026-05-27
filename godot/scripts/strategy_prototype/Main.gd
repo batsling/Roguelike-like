@@ -4,6 +4,15 @@ extends Node
 @onready var _hud: StrategyHUD = $HUD
 
 const BattleViewScript := preload("res://scripts/strategy/combat/BattleView.gd")
+const SpellsCatalogScript := preload("res://scripts/strategy/combat/SpellsCatalog.gd")
+
+# Non-basic cards seeded into GameState.deck when the strategy prototype
+# launches standalone (no character apply has happened). Gives Phase 6's
+# Ability picker something to show until the full character flow is wired.
+const _DEMO_ABILITY_CARDS: Array[StringName] = [
+	&"cleave", &"twin_strike", &"iron_wave", &"thunderclap",
+	&"pommel_strike", &"heavy_blade", &"anger", &"shrug_it_off", &"inflame",
+]
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _battle_overlay: CanvasLayer = null
@@ -17,9 +26,23 @@ func _ready() -> void:
 
 func _new_game() -> void:
 	StrategyState.reset()
+	_seed_demo_loadout()
 	StrategyLog.add("Welcome to the dungeon. Good luck.", Color(0.8, 0.8, 1.0))
 	StrategyLog.add("Arrow/HJKL move. > descend. , pick up. i inventory.", Color.GRAY)
 	_load_floor()
+
+func _seed_demo_loadout() -> void:
+	# Strategy prototype runs without going through the deckbuilder
+	# character-select flow, so GameState.deck / learned_spells are
+	# empty. Seed both so Phase 6's Ability and Spellbook pickers have
+	# something to show. Real character flows replace this entirely.
+	if GameState.deck.is_empty():
+		for card_id in _DEMO_ABILITY_CARDS:
+			var c: CardData = Data.get_card(card_id)
+			if c != null:
+				GameState.deck.append(CardInstance.from_data(c))
+	if GameState.learned_spells.is_empty():
+		GameState.learned_spells = SpellsCatalogScript.default_starter_ids()
 
 func _load_floor() -> void:
 	var map = StrategyMap.new()

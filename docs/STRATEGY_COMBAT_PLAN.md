@@ -132,23 +132,83 @@ The script-only ASCII placeholder is retired.
   forcing the player to press End Turn.
 
 ### Phase 6 — Cards → Abilities; Spells → Spellbook
-New `AbilityPool.gd`:
-- Built from the player's deck at combat start: filter out basic strikes/defends.
-- Computes each ability's cooldown (formula or override).
-- Casting flow: select ability → if targeted, enter targeting mode → resolve via shared card-effect runner → set cooldown.
+`AbilityPool.gd` (`godot/scripts/strategy/combat/`):
+- Built from `GameState.deck` at combat start; cards tagged `strike`
+  or `defend` are filtered (they live on the basic Attack/Defend
+  actions). Duplicates dedupe by id.
+- Cooldown = `card.cooldown_override` if `>= 0`, else
+  `AbilityCooldownConfig.compute(card)` =
+  `base + max(0, cost) * cost_weight + rarity_weights[rarity]` (defaults
+  `base=2, cost_weight=1, rarity_weights=[0,0,1,2,3]`).
+- Casting flow: open picker → pick ability → if any effect targets
+  `enemy`, enter `UNIT_TARGET` mode for an enemy click → resolve via
+  the shared `EffectSystem` (BattleView implements `deal_damage`,
+  `gain_block`, `heal`) → `set_cooldown` (writes `base_cooldown + 1`
+  so the end-of-turn tick lines up). Limited to one ability per turn
+  (`_ability_used`).
 
-New `Spellbook.gd`:
-- Built from `gameState.spells` (port `SPELLS_DATA` to a Godot resource).
-- Each spell has `cost` (mana), effects.
-- Casting flow: select spell → check mana → spend mana → resolve effects.
+`Spellbook.gd` (`godot/scripts/strategy/combat/`):
+- Built from `GameState.learned_spells` (Array of StringName ids
+  resolved via `SpellsCatalog.gd`, which ports the legacy
+  `SPELLS_DATA` to `SpellData` resources with structured effects).
+- Each spell has `cost` (mana) + structured `effects`.
+- Casting flow: open picker → pick spell → spend mana → if
+  `target_kind` is `enemy`/`friendly`, prompt for a click → resolve
+  effects (same EffectSystem path as abilities; `dmg_fraction_max_hp`
+  is registered locally for Abyss/Infinity). Unlimited casts per
+  turn while mana lasts; `BattleTurnManager` handles turn-start
+  regen.
 
-Card resource gets optional `cooldown_override: int = -1`.
+Plumbing:
+- `CardData` gains `cooldown_override: int = -1`.
+- `GameState` gains `learned_spells: Array[StringName]` (resets with
+  the run).
+- `SpellData.gd` + `AbilityCooldownConfig.gd` resources land under
+  `scripts/resources/`.
+- `BattleGridView` gains a `UNIT_TARGET` mode with `TargetFilter`
+  (enemy / ally / any) and right-click cancel; emits
+  `target_requested` / `target_cancelled`.
+- `BattleView` builds the pool + spellbook at `set_encounter`, holds
+  the `_pending_*` state during targeting, and replaces the Phase-5
+  stub dialogs with scrollable pickers that show cooldown / mana
+  costs.
+- For the standalone strategy prototype, `strategy_prototype/Main.gd`
+  seeds `GameState.deck` with the existing demo cards and
+  `GameState.learned_spells` with `SpellsCatalog.default_starter_ids()`
+  so the pickers have content immediately.
 
 ### Phase 7 — Enemy AI with hybrid intents
-Refactor `EnemyAI.gd`:
-- Each enemy archetype owns a small ability list (cooldown-gated) plus a basic-attack fallback.
-- AI loop end-of-turn: pick highest-priority off-cooldown ability with a valid target; show telegraph for next turn.
-- HUD shows the telegraphed icon above the enemy sprite.
+Tactical AI lives under `godot/scripts/strategy/combat/` (the overworld
+`strategy_prototype/EnemyAI.gd` is kept for the legacy bump-attack flow
+and unrelated to combat AI):
+
+- `EnemyIntent.gd` — one declarative action: id, display name, short
+  icon glyph, range, cooldown, priority, target_kind, structured
+  effects, and an optional `condition` ("self_low_hp" for now).
+- `EnemyCatalog.gd` — per-archetype intent lists (rat, snake, orc,
+  troll). Unknown archetypes get a single melee fallback built from the
+  unit's `basic_attack_def`.
+- `EnemyAI.gd` — RefCounted attached to each non-player `BattleUnit`
+  via `unit.ai`. `plan_next(units)` picks the highest-priority
+  off-cooldown intent with a valid target and writes a telegraph dict
+  onto `unit.intent_telegraph` (`{id, name, icon, value, color}`).
+  `execute_turn(scene, units, battle_map)` resolves a fresh target,
+  BFS-steps into range (capped at `unit.speed`), applies effects
+  through `BattleView.apply_effects` (same EffectSystem path as the
+  player), and writes `unit.cooldowns[intent.id] = cooldown + 1` so
+  the engine's end-of-turn tick lines up.
+
+Wiring:
+- `BattleUnit` gains runtime fields `ai` and `intent_telegraph`.
+- `CombatSession.enter_combat` attaches an `EnemyAI` to each enemy
+  (`EnemyAI.build_for(unit, kind)`) and calls `plan_next` before
+  emitting `combat_started`, so the player sees telegraphs from turn 1.
+- `BattleView._auto_end_enemy_turn` is now the AI driver: execute →
+  refresh HUD → `check_battle_end_now` → `plan_next` → `end_current_turn`.
+- `BattleGridView` draws a compact `icon+value` badge above each
+  living enemy, colored by intent kind (red attack, orange AoE,
+  green self/buff). The initiative panel adds a `next:` line per
+  enemy with the full intent name.
 
 ### Phase 8 — Loot persistence
 - Items on the battlefield are real entities.
