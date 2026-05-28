@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://item_holy_mantle"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"holy_mantle"
+display_name = "Holy Mantle"
+kind = 1
+rarity = 4
+description = "At the start of combat, gain +1 Buffer."
+triggers = [{
+"on": "combat_started",
+"effects": [{
+"type": "status",
+"status": "buffer",
+"stacks": 1,
+"target": "self"
+}]
+}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("holy")

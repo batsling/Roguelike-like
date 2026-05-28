@@ -190,7 +190,7 @@ func _start_player_turn() -> void:
 		draw_count += Stats.deckbuilder_bonus_draws_turn_1()
 	draw_cards(draw_count)
 	TriggerBus.emit_signal("turn_started", {"turn": turn, "scene": self})
-	_fire_item_triggers("turn_started")
+	_fire_item_triggers("turn_started", {"turn": turn})
 	_fire_power_triggers("turn_started")
 	_refresh_ui()
 
@@ -359,6 +359,9 @@ func _fire_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -> v
 			var id_gate: String = String(trig.get("if_card_id", ""))
 			if id_gate != "" and (event_card == null or event_card.data == null \
 					or String(event_card.data.id) != id_gate):
+				continue
+			var turn_gate: int = int(trig.get("if_turn", 0))
+			if turn_gate != 0 and ctx_extras.get("turn", 0) != turn_gate:
 				continue
 			GameLog.add("(%s triggers)" % item.display_name, Color(0.85, 0.9, 0.7))
 			for effect in trig.get("effects", []):

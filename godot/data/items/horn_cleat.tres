@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://item_horn_cleat"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"horn_cleat"
+display_name = "Horn Cleat"
+kind = 0
+rarity = 1
+description = "Start the 2nd turn of combat with +14 Block."
+triggers = [{
+"on": "turn_started",
+"if_turn": 2,
+"effects": [{
+"type": "block",
+"value": 14,
+"target": "self"
+}]
+}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray("sea", "ship")
