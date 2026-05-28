@@ -49,6 +49,28 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # For Weapon items: the card to add to the deck when equipped
 @export var weapon_card_id: StringName = &""
 
+# Weapon-only: question shown on the per-game verification modal, the
+# bonus level (1 by default; bumped when the matching weapon card would
+# be "upgraded"), and the list of effects to apply when the player
+# answers Yes. The effects share the EffectSystem registry; bump_card_effect
+# is the canonical handler. Each effect can carry its own `increments`
+# list so a single weapon can scale multiple bonuses independently.
+#   Bag o' Glitter:
+#     verification_question = "Did you obtain something glittery?"
+#     verification_effects = [{type: "bump_card_effect",
+#                              effect_index: 0, field: "stacks",
+#                              increments: [1, 2]}]
+@export var weapon_level: int = 1
+@export var verification_question: String = ""
+@export var verification_effects: Array = []
+
+# Runtime-minted unique id per inventory slot (set by GameState.add_item).
+# Two duplicated copies of the same template get different instance_ids,
+# which is how weapon items pair with their granted CardInstance in the
+# deck (CardInstance.source_weapon_id). 0 means "not yet assigned" /
+# "not coupled to anything".
+@export var instance_id: int = 0
+
 # For Scaling items: a custom callable invoked from a registry by id.
 # (Most items shouldn't need this; declarative triggers cover the common case.)
 @export var custom_handler: StringName = &""

@@ -484,12 +484,10 @@ func _show_reward_modal() -> void:
 	_reward_modal = modal
 
 func _roll_card_rewards(n: int) -> Array:
-	# All non-starter cards form the offer pool. Higher Luck biases
-	# toward Uncommon/Rare; Phase 1c leaves Luck at 0 so it's uniform.
-	var pool: Array = []
-	for c in Data.all_cards():
-		if c is CardData and c.rarity != CardData.Rarity.STARTER:
-			pool.append(c)
+	# All non-starter, non-weapon cards form the offer pool. Higher
+	# Luck biases toward Uncommon/Rare; Phase 1c leaves Luck at 0 so
+	# it's uniform.
+	var pool: Array = Data.reward_card_pool()
 	if pool.is_empty():
 		return []
 	var copy := pool.duplicate()

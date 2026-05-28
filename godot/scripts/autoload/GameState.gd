@@ -67,6 +67,12 @@ var item_stat_bonus: Dictionary = {}
 var _applied_item_max_hp: int = 0
 var _applied_item_max_energy: int = 0
 
+# Monotonic id source for ItemData.instance_id. Each call to add_item
+# bumps this so duplicated weapon Resources can be paired with their
+# granted CardInstance (CardInstance.source_weapon_id) — and so save /
+# load can rehydrate the link without name collisions across slots.
+var _next_item_instance_id: int = 1
+
 # Run-scope loot counters. Potions/scrolls aren't fleshed out yet, so
 # for now each kind is just an int count — cards like Alchemize bump
 # `loot.potion`. When the real potion/scroll catalogs land, these
@@ -136,6 +142,7 @@ func reset_run() -> void:
 	item_stat_bonus = {}
 	_applied_item_max_hp = 0
 	_applied_item_max_energy = 0
+	_next_item_instance_id = 1
 	loot = {"potion": 0, "scroll": 0, "key": 0}
 	learned_spells.clear()
 	action_basic_attack_id = &""
@@ -172,16 +179,22 @@ func apply_character(char_data: CharacterData) -> void:
 	_applied_item_max_hp = 0
 	_applied_item_max_energy = 0
 	item_stat_bonus = {}
+	_next_item_instance_id = 1
 	for item_id in char_data.starting_items:
 		var it: ItemData = Data.get_item(item_id)
 		if it != null:
-			_append_item_internal(it, 0)
+			var inst: ItemData = _append_item_internal(it, 0)
+			# Starting weapon items grant their card too — apply_character
+			# already emits deck_changed at the end so we don't here.
+			_grant_weapon_card(inst)
 
 	equipped_weapon = null
 	if char_data.starting_weapon != &"":
 		var w: ItemData = Data.get_item(char_data.starting_weapon)
 		if w != null:
 			equipped_weapon = w.duplicate(true)
+			equipped_weapon.instance_id = _next_item_instance_id
+			_next_item_instance_id += 1
 
 	_recompute_item_bonuses()
 	# Starting items may have raised max_hp; heal to that new full pool
@@ -240,34 +253,102 @@ func is_dead() -> bool:
 func add_item(template: ItemData) -> ItemData:
 	# `template` is the shared Resource loaded from .tres. We duplicate
 	# deeply so triggers/tags/stat_bonuses can never alias between slots.
+	# Weapon items also append their linked CardInstance to the deck
+	# with source_weapon_id set, sealing the bidirectional pair.
 	if template == null:
 		return null
 	var inst: ItemData = _append_item_internal(template, 0)
+	if _grant_weapon_card(inst):
+		emit_signal("deck_changed")
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
 	return inst
 
+func _grant_weapon_card(inst: ItemData) -> bool:
+	# Internal: if `inst` is a weapon with a linked card_id, append a
+	# CardInstance tagged with the item's instance_id. Caller decides
+	# whether to fire deck_changed (apply_character batches the emit).
+	if inst == null:
+		return false
+	if inst.kind != ItemData.ItemKind.WEAPON or inst.weapon_card_id == &"":
+		return false
+	var card_def: CardData = Data.get_card(inst.weapon_card_id)
+	if card_def == null:
+		return false
+	var ci: CardInstance = CardInstance.from_data(card_def)
+	ci.source_weapon_id = inst.instance_id
+	deck.append(ci)
+	return true
+
 func remove_item_at(index: int) -> void:
 	if index < 0 or index >= inventory.size():
 		return
+	var removed: ItemData = inventory[index]
 	inventory.remove_at(index)
+	# Pair removal: a weapon item carries the source_weapon_id its card
+	# was tagged with. Strip every deck card pointing back at this slot.
+	if removed is ItemData and removed.kind == ItemData.ItemKind.WEAPON and removed.instance_id != 0:
+		_remove_deck_cards_for_weapon(removed.instance_id)
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
 
+func remove_card_at(deck_index: int) -> void:
+	# Inverse of the weapon-removes-card path. If the card was weapon-
+	# granted (source_weapon_id != 0), find and drop the paired item too
+	# so the pair never desyncs. Combat-only mutations (exhaust, discard)
+	# don't route through here — those operate on the per-combat piles.
+	if deck_index < 0 or deck_index >= deck.size():
+		return
+	var card = deck[deck_index]
+	deck.remove_at(deck_index)
+	var weapon_id: int = 0
+	if card is CardInstance:
+		weapon_id = card.source_weapon_id
+	if weapon_id != 0:
+		for i in range(inventory.size() - 1, -1, -1):
+			var it = inventory[i]
+			if it is ItemData and it.instance_id == weapon_id:
+				inventory.remove_at(i)
+				_recompute_item_bonuses()
+				emit_signal("inventory_changed")
+				break
+	emit_signal("deck_changed")
+
+func _remove_deck_cards_for_weapon(weapon_instance_id: int) -> void:
+	# Internal: drop every CardInstance whose source_weapon_id matches.
+	# Iterates back-to-front so removals don't invalidate the index.
+	var changed: bool = false
+	for i in range(deck.size() - 1, -1, -1):
+		var c = deck[i]
+		if c is CardInstance and c.source_weapon_id == weapon_instance_id:
+			deck.remove_at(i)
+			changed = true
+	if changed:
+		emit_signal("deck_changed")
+
 func set_equipped_weapon(template: ItemData) -> void:
 	# Same duplication contract as add_item — the equipped weapon also
-	# carries per-instance upgrade_level once the upgrade system grows
-	# to cover weapons.
-	equipped_weapon = template.duplicate(true) if template != null else null
+	# carries per-instance upgrade_level / instance_id so the future
+	# weapon-as-equipment flow can pair with its card the same way
+	# inventory weapons do.
+	if template == null:
+		equipped_weapon = null
+	else:
+		equipped_weapon = template.duplicate(true)
+		equipped_weapon.instance_id = _next_item_instance_id
+		_next_item_instance_id += 1
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
 
 func _append_item_internal(template: ItemData, upgrade_level: int) -> ItemData:
 	# Internal: duplicates and appends without firing the recompute /
 	# signal. apply_character batches several adds and recomputes once
-	# at the end.
+	# at the end. Always mints a fresh instance_id so weapon coupling
+	# survives even when add_item is bypassed.
 	var inst: ItemData = template.duplicate(true)
 	inst.upgrade_level = upgrade_level
+	inst.instance_id = _next_item_instance_id
+	_next_item_instance_id += 1
 	inventory.append(inst)
 	return inst
 

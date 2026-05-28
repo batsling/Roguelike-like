@@ -52,10 +52,7 @@ func _roll_inventory() -> void:
 			"purchased": false,
 		})
 
-	var card_pool: Array = []
-	for c in Data.all_cards():
-		if c is CardData and c.rarity != CardData.Rarity.STARTER:
-			card_pool.append(c)
+	var card_pool: Array = Data.reward_card_pool()
 	for _i in range(mini(2, card_pool.size())):
 		var idx: int = _rng.randi() % card_pool.size()
 		var picked: CardData = card_pool[idx]
