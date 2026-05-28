@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_blood_magic"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"blood_magic"
+display_name = "Blood Magic"
+type = 0
+rarity = 3
+cost = 1
+description = "Deal 2x3 Magic Dmg Ranged. Indiscriminate. 2 Infuse."
+effects = [{
+"type": "dmg",
+"value": 2,
+"hits": 3,
+"target": "enemy",
+"damage_type": "ranged",
+"infuse": 2
+}]
+tags = PackedStringArray("weapon")
+source_game = "Megabonk"
+portrait_color = Color(0.65, 0.2, 0.3, 1)
+can_upgrade = false
+upgraded_cost = 1
+range_class = &"large"
+addons = PackedStringArray("indiscriminate")

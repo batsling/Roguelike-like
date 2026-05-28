@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_blasma_pistol"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://assets/items/BlasmaPistol.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"blasma_pistol"
+display_name = "Blasma Pistol"
+kind = 3
+rarity = 0
+description = "Add the card \"Blasma Pistol\" to your deck. If you opened more than 10 chests, gain (10/20) gold."
+triggers = []
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+weapon_card_id = &"blasma_pistol"
+verification_question = "Did you open more than 10 chests?"
+verification_effects = [{
+"type": "gain_gold",
+"increments": [10, 20]
+}]
+source_game = "Flinthook"
+tags = PackedStringArray("gun")
+image = ExtResource("2_img")

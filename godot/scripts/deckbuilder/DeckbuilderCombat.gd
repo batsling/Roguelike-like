@@ -625,6 +625,11 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 		var effect: Dictionary = _apply_card_boosts(raw_effect, card)
 		effect = Stats.apply_addons_to_effect(effect, card.data)
 		var t_str: String = effect.get("target", "enemy")
+		# Indiscriminate (Blood Magic) skips the manual picker — re-route
+		# enemy-targeted dmg through random_enemy so a seed target lands
+		# and _h_dmg can re-roll per hit from there.
+		if effect.get("indiscriminate", false) and t_str == "enemy" and target_enemy == null:
+			t_str = "random_enemy"
 		var targets: Array = []
 		match t_str:
 			"enemy":
@@ -731,6 +736,15 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 		if target.hp <= 0:
 			target.dead = true
 			GameLog.add("%s is defeated!" % target.display_name, Color(0.6, 1.0, 0.6))
+			# Blood Magic / Infuse addon: when a dmg effect carrying
+			# `infuse: N` lands the killing blow, the player gains N
+			# Max HP. Deckbuilder + strategy fire on every kill; action
+			# rolls a 10% chance per hit in ActionCombat.
+			var infuse_stacks: int = int(effect.get("infuse", 0))
+			if infuse_stacks > 0 and source != null and source.is_player:
+				GameState.set_max_hp(GameState.max_hp + infuse_stacks, false)
+				GameLog.add("Infuse: gained %d Max HP." % infuse_stacks,
+					Color(0.85, 0.65, 1.0))
 			if not target.is_player:
 				TriggerBus.emit_signal("enemy_killed", {"enemy": target, "scene": self})
 				_fire_item_triggers("enemy_killed")
