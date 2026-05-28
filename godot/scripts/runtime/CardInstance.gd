@@ -50,6 +50,13 @@ func get_effects() -> Array:
 
 func get_description() -> String:
 	var base: String = data.get_effective_description(upgraded)
+	# Tack on any item-driven card_played triggers whose filter matches
+	# this card, so e.g. Bird Head ("strikes inflict Soul Link") makes
+	# every Strike-tagged card visibly read "Deal 6 Dmg Melee. Inflict
+	# Soul Link." in hand, shop, rest site, etc.
+	var trigger_extra: String = _format_card_played_trigger_addendum()
+	if trigger_extra != "":
+		base = "%s %s" % [base, trigger_extra]
 	if effect_bonuses.is_empty():
 		return base
 	# Annotate with a compact bonus summary so the player sees what the
@@ -63,6 +70,72 @@ func get_description() -> String:
 	if parts.is_empty():
 		return base
 	return "%s  [%s]" % [base, ", ".join(parts)]
+
+# Walks GameState.inventory + equipped_weapon and returns a description
+# fragment for every card_played item trigger whose `if_card_tag` /
+# `if_card_id` filter would let it fire on this card. Returns "" if
+# nothing applies. Mirrors the gate logic in
+# DeckbuilderCombat._fire_item_triggers — keep the two in sync.
+func _format_card_played_trigger_addendum() -> String:
+	if data == null:
+		return ""
+	var sources: Array = []
+	sources.append_array(GameState.inventory)
+	if GameState.equipped_weapon != null:
+		sources.append(GameState.equipped_weapon)
+	if sources.is_empty():
+		return ""
+	var fragments: PackedStringArray = PackedStringArray()
+	for item in sources:
+		if not (item is ItemData):
+			continue
+		for trig in item.triggers:
+			if String(trig.get("on", "")) != "card_played":
+				continue
+			var tag_gate: String = String(trig.get("if_card_tag", ""))
+			if tag_gate != "" and not data.tags.has(tag_gate):
+				continue
+			var id_gate: String = String(trig.get("if_card_id", ""))
+			if id_gate != "" and String(data.id) != id_gate:
+				continue
+			for effect in trig.get("effects", []):
+				var phrase: String = _effect_to_phrase(effect)
+				if phrase != "":
+					fragments.append(phrase)
+	if fragments.is_empty():
+		return ""
+	return " ".join(fragments)
+
+# Tiny English-ish renderer for the effect dicts we actually use as
+# item-trigger payloads today (status / block / dmg / heal). Kept inside
+# CardInstance because this is the only consumer; if a second site needs
+# it (combat log, tooltip, etc.) lift it onto a shared utility.
+static func _effect_to_phrase(effect: Dictionary) -> String:
+	match String(effect.get("type", "")):
+		"status":
+			var status_name: String = String(effect.get("status", ""))
+			if status_name == "":
+				return ""
+			var stacks: int = int(effect.get("stacks", 1))
+			var pretty: String = status_name.capitalize()
+			var verb: String = "Inflict" if String(effect.get("target", "enemy")) != "self" else "Gain"
+			if stacks <= 1:
+				return "%s %s." % [verb, pretty]
+			return "%s %d %s." % [verb, stacks, pretty]
+		"block":
+			return "Gain %d Block." % int(effect.get("value", 0))
+		"heal":
+			return "Heal %d HP." % int(effect.get("value", 0))
+		"dmg":
+			var v: int = int(effect.get("value", 0))
+			var hits: int = int(effect.get("hits", 1))
+			var dt: String = String(effect.get("damage_type", "")).capitalize()
+			var n: String = "%dx%d" % [v, hits] if hits > 1 else str(v)
+			if dt == "":
+				return "Deal %s Dmg." % n
+			return "Deal %s Dmg %s." % [n, dt]
+		_:
+			return ""
 
 func bump_effect(effect_index: int, field: String, amount: int) -> void:
 	# Mutate this instance's persistent bonus. Adds to any existing bonus
