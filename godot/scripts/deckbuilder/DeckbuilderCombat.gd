@@ -332,31 +332,60 @@ func _award_combat_gold() -> void:
 # Item triggers — declarative ItemData.triggers fan-out
 # ------------------------------------------------------------------
 
-func _fire_item_triggers(trigger_name: String) -> void:
+func _fire_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -> void:
+	# ctx_extras lets card-aware triggers (card_played) forward the played
+	# card and its target into the effect ctx. The trigger entry may carry
+	# `if_card_tag` / `if_card_id` filters that gate on ctx_extras.card so
+	# items like Bird Head ("Your Strikes inflict Soul Link") only fire on
+	# matching plays.
 	var sources: Array = []
 	sources.append_array(GameState.inventory)
 	if GameState.equipped_weapon != null:
 		sources.append(GameState.equipped_weapon)
+	var event_card: CardInstance = ctx_extras.get("card")
+	var event_target: CombatActor = ctx_extras.get("target")
 	for item in sources:
 		if not (item is ItemData):
 			continue
 		for trig in item.triggers:
 			if String(trig.get("on", "")) != trigger_name:
 				continue
+			var tag_gate: String = String(trig.get("if_card_tag", ""))
+			if tag_gate != "":
+				if event_card == null or event_card.data == null:
+					continue
+				if not event_card.data.tags.has(tag_gate):
+					continue
+			var id_gate: String = String(trig.get("if_card_id", ""))
+			if id_gate != "" and (event_card == null or event_card.data == null \
+					or String(event_card.data.id) != id_gate):
+				continue
 			GameLog.add("(%s triggers)" % item.display_name, Color(0.85, 0.9, 0.7))
 			for effect in trig.get("effects", []):
 				var t_str: String = effect.get("target", "self")
-				var tgt: CombatActor = player
 				if t_str == "all_enemies":
 					for e in enemies:
 						if e.is_alive():
 							var ctx_e := {
-								"source": player, "target": e, "scene": self, "card": null,
+								"source": player, "target": e, "scene": self, "card": event_card,
 							}
 							EffectSystem.apply(effect, ctx_e)
 					continue
+				var tgt: CombatActor = player
+				if t_str == "enemy":
+					# Use the card's target when available (card_played path);
+					# otherwise fall back to the first living enemy so a
+					# "target: enemy" effect on combat_start still has somewhere
+					# to land.
+					if event_target != null and event_target.is_alive():
+						tgt = event_target
+					else:
+						for e in enemies:
+							if e.is_alive():
+								tgt = e
+								break
 				var ctx := {
-					"source": player, "target": tgt, "scene": self, "card": null,
+					"source": player, "target": tgt, "scene": self, "card": event_card,
 				}
 				EffectSystem.apply(effect, ctx)
 
@@ -590,6 +619,7 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	# because the Power being played hasn't registered its trigger
 	# yet, so it doesn't self-trigger.
 	_fire_power_triggers("card_played", {"card": card})
+	_fire_item_triggers("card_played", {"card": card, "target": target_enemy})
 
 	for raw_effect in card.get_effects():
 		var effect: Dictionary = _apply_card_boosts(raw_effect, card)
@@ -692,6 +722,12 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 			"target": target, "attacker": source, "amount": amount, "scene": self,
 		})
 		_fire_power_triggers("damage_taken")
+		# Soul Link propagation. Bird Head's status: whenever a soul-linked
+		# actor loses HP, every other soul-linked actor takes the same raw
+		# loss. Guarded by effect.from_soul_link so the cascade can't loop
+		# back through itself.
+		if not effect.get("from_soul_link", false) and target.get_status(&"soul_link") > 0:
+			_propagate_soul_link(target, amount)
 		if target.hp <= 0:
 			target.dead = true
 			GameLog.add("%s is defeated!" % target.display_name, Color(0.6, 1.0, 0.6))
@@ -734,6 +770,8 @@ func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 	var who := "You" if target.is_player else target.display_name
 	GameLog.add("%s takes %d %s damage." % [who, amount, source_name],
 		Color(1.0, 0.5, 0.6))
+	if target.get_status(&"soul_link") > 0:
+		_propagate_soul_link(target, amount)
 	if target.hp <= 0:
 		target.dead = true
 		GameLog.add("%s is defeated!" % target.display_name, Color(0.6, 1.0, 0.6))
@@ -741,6 +779,43 @@ func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 			TriggerBus.emit_signal("enemy_killed", {"enemy": target, "scene": self})
 			_fire_item_triggers("enemy_killed")
 			_fire_power_triggers("enemy_killed")
+
+func _propagate_soul_link(origin: CombatActor, amount: int) -> void:
+	# Bird Head / Soul Link: every other actor carrying soul_link takes
+	# the same raw HP loss (block, weak, vulnerable, thorns are all
+	# bypassed — it's a sympathetic wound, not a hit). Damage routes
+	# through deal_damage with from_soul_link=true so this can't recurse
+	# back into the cascade. Block bypass is intentional: a soul-linked
+	# tank cannot absorb the chain hit for everyone else.
+	if amount <= 0:
+		return
+	var victims: Array = []
+	for e in enemies:
+		if e != origin and e.is_alive() and e.get_status(&"soul_link") > 0:
+			victims.append(e)
+	if player != origin and player.is_alive() and player.get_status(&"soul_link") > 0:
+		victims.append(player)
+	for v in victims:
+		# Bypass block, Weak, Vulnerable, and reactions — sympathetic loss,
+		# not a hit. A soul-linked tank cannot eat the chain damage for the
+		# rest of the link.
+		if v.is_player:
+			GameState.change_hp(-amount)
+			v.hp = GameState.hp
+		else:
+			v.hp = maxi(0, v.hp - amount)
+		var who_v := "you" if v.is_player else v.display_name
+		GameLog.add("Soul Link bleeds %d into %s." % [amount, who_v], Color(0.8, 0.5, 1.0))
+		TriggerBus.emit_signal("damage_taken", {
+			"target": v, "attacker": null, "amount": amount, "scene": self,
+		})
+		if v.hp <= 0:
+			v.dead = true
+			GameLog.add("%s is defeated!" % v.display_name, Color(0.6, 1.0, 0.6))
+			if not v.is_player:
+				TriggerBus.emit_signal("enemy_killed", {"enemy": v, "scene": self})
+				_fire_item_triggers("enemy_killed")
+				_fire_power_triggers("enemy_killed")
 
 func gain_block(target: CombatActor, base_amount: int) -> void:
 	if target == null:

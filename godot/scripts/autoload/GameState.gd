@@ -222,6 +222,11 @@ func set_max_hp(new_max: int, heal_to_full: bool = false) -> void:
 		hp = mini(hp, max_hp)
 	Stats.note_max_hp_change(max_hp, old_max)
 	emit_signal("hp_changed", hp, max_hp)
+	# SCALING items keyed off max_hp (Beefy Ring) need a refresh whenever
+	# the pool moves outside of the inventory-recompute path. Guarded by
+	# old_max != max_hp so a no-op set doesn't churn the cache.
+	if old_max != max_hp:
+		_recompute_item_bonuses()
 
 func change_max_hp(delta: int) -> void:
 	set_max_hp(max_hp + delta)
@@ -396,8 +401,7 @@ func _recompute_item_bonuses() -> void:
 			elif stat == "max_energy":
 				max_energy_total += v
 			else:
-				totals[stat] = int(totals.get(stat, 0)) + v
-	item_stat_bonus = totals
+				totals[stat] = int(totals.get(stat, 0) + v)
 
 	# Vitals are applied as direct deltas (NOT through set_max_hp) so we
 	# don't trigger Constitution auto-gain on every inventory mutation
@@ -414,6 +418,32 @@ func _recompute_item_bonuses() -> void:
 		max_energy = maxi(0, max_energy + en_delta)
 		_applied_item_max_energy = max_energy_total
 
+	# Second pass: SCALING items. Resolved against the post-vitals state so
+	# a Beefy Ring + Alien Baby combo sees the bumped max_hp. Output goes
+	# into item_stat_bonus alongside flat bonuses; reads through Stats see
+	# both transparently. Scaling never writes vitals — that would re-enter
+	# this function via set_max_hp and loop forever.
+	for it in sources:
+		if not (it is ItemData) or it.scaling.is_empty():
+			continue
+		for rule in it.scaling:
+			var out_stat: String = String(rule.get("stat", ""))
+			var per: int = int(rule.get("per", 0))
+			var per_val: int = int(rule.get("value", 0))
+			var src_stat: String = String(rule.get("of", ""))
+			if out_stat == "" or per <= 0 or per_val == 0 or src_stat == "":
+				continue
+			if out_stat == "max_hp" or out_stat == "max_energy":
+				push_warning("ItemData.scaling: '%s' cannot output vitals" % it.id)
+				continue
+			var src_amount: int = int(get(src_stat))
+			@warning_ignore("integer_division")
+			var stacks: int = src_amount / per
+			if stacks == 0:
+				continue
+			totals[out_stat] = int(totals.get(out_stat, 0)) + per_val * stacks
+
+	item_stat_bonus = totals
 	emit_signal("stats_changed")
 
 # ---------------------------------------------------------------------------

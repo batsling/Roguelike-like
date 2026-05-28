@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_bear_trap_mask"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://assets/items/BearTrapMask.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"bear_trap_mask"
+display_name = "Bear Trap Mask"
+kind = 1
+rarity = 1
+description = "At the start of combat, gain 4 Block and 1 Bleed Thorns."
+triggers = [{
+"on": "combat_started",
+"effects": [{
+"type": "block",
+"value": 4,
+"target": "self"
+}, {
+"type": "status",
+"status": "bleed_thorns",
+"stacks": 1,
+"target": "self"
+}]
+}]
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Mewgenics"
+tags = PackedStringArray("mask", "trap")
+image = ExtResource("2_img")
