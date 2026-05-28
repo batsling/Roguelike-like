@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_accuracy"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"accuracy"
+display_name = "Accuracy"
+type = 2
+rarity = 2
+cost = 1
+description = "Shivs deal 4 additional damage."
+effects = [{
+"type": "boost_cards",
+"match_tag": "shiv",
+"stat": "dmg",
+"value": 4
+}]
+tags = PackedStringArray("silent", "scaling")
+source_game = "Slay the Spire"
+portrait_color = Color(0.65, 0.65, 0.45, 1)
+can_upgrade = true
+upgraded_description = "Shivs deal 6 additional damage."
+upgraded_cost = -999
+upgraded_effects = [{
+"type": "boost_cards",
+"match_tag": "shiv",
+"stat": "dmg",
+"value": 6
+}]

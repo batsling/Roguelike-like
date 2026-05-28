@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_backstab"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"backstab"
+display_name = "Backstab"
+type = 0
+rarity = 2
+cost = 0
+description = "Innate. Deal 11 Dmg Melee. Exhaust."
+effects = [{
+"type": "dmg",
+"value": 11,
+"target": "enemy",
+"damage_type": "melee"
+}]
+tags = PackedStringArray("silent", "offense", "exhaust")
+source_game = "Slay the Spire"
+portrait_color = Color(0.55, 0.40, 0.55, 1)
+can_upgrade = true
+upgraded_description = "Innate. Deal 15 Dmg Melee. Exhaust."
+upgraded_cost = 0
+upgraded_effects = [{
+"type": "dmg",
+"value": 15,
+"target": "enemy",
+"damage_type": "melee"
+}]
+innate = true
+exhaust = true
+range_class = &"medium"

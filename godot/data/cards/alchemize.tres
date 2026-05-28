@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_alchemize"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"alchemize"
+display_name = "Alchemize"
+type = 1
+rarity = 3
+cost = 1
+description = "Gain 1 Potion Item. Exhaust."
+effects = [{
+"type": "gain_loot",
+"kind": "potion",
+"value": 1
+}]
+tags = PackedStringArray("silent", "item")
+source_game = "Slay the Spire"
+portrait_color = Color(0.65, 0.45, 0.70, 1)
+can_upgrade = true
+upgraded_description = "Gain 1 Potion Item. Exhaust."
+upgraded_cost = 0
+upgraded_effects = [{
+"type": "gain_loot",
+"kind": "potion",
+"value": 1
+}]
+exhaust = true

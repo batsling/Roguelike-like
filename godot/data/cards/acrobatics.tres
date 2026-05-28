@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_acrobatics"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"acrobatics"
+display_name = "Acrobatics"
+type = 1
+rarity = 1
+cost = 1
+description = "Draw 3 cards. Discard 1 card."
+effects = [{
+"type": "draw",
+"value": 3
+}, {
+"type": "discard",
+"value": 1
+}]
+tags = PackedStringArray("silent", "draw", "discard")
+source_game = "Slay the Spire"
+portrait_color = Color(0.55, 0.75, 0.45, 1)
+can_upgrade = true
+upgraded_description = "Draw 4 cards. Discard 1 card."
+upgraded_cost = -999
+upgraded_effects = [{
+"type": "draw",
+"value": 4
+}, {
+"type": "discard",
+"value": 1
+}]

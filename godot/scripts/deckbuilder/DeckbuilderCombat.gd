@@ -818,7 +818,7 @@ func _propagate_soul_link(origin: CombatActor, amount: int) -> void:
 			v.hp = GameState.hp
 		else:
 			v.hp = maxi(0, v.hp - amount)
-		var who_v := "you" if v.is_player else v.display_name
+		var who_v: String = "you" if v.is_player else v.display_name
 		GameLog.add("Soul Link bleeds %d into %s." % [amount, who_v], Color(0.8, 0.5, 1.0))
 		TriggerBus.emit_signal("damage_taken", {
 			"target": v, "attacker": null, "amount": amount, "scene": self,

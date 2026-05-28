@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_blade_dance"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"blade_dance"
+display_name = "Blade Dance"
+type = 1
+rarity = 1
+cost = 1
+description = "Conjure 3 Shivs to Hand."
+effects = [{
+"type": "conjure",
+"card_id": "shiv",
+"destination": "hand",
+"count": 3
+}]
+tags = PackedStringArray("silent", "offense")
+source_game = "Slay the Spire"
+portrait_color = Color(0.65, 0.55, 0.45, 1)
+can_upgrade = true
+upgraded_description = "Conjure 4 Shivs to Hand."
+upgraded_cost = -999
+upgraded_effects = [{
+"type": "conjure",
+"card_id": "shiv",
+"destination": "hand",
+"count": 4
+}]

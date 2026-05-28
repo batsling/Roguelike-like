@@ -9,7 +9,7 @@ id = &"alien_baby"
 display_name = "Alien Baby"
 kind = 0
 rarity = 2
-description = "Gain 20 Max HP, but all enemies spawn with +3 HP."
+description = "Gain 25 Max HP, but all enemies spawn with +3 HP."
 triggers = [{
 "on": "enemy_spawned",
 "effects": [{
@@ -18,7 +18,7 @@ triggers = [{
 }]
 }]
 stat_bonuses = {
-"max_hp": 20
+"max_hp": 25
 }
 max_uses = -1
 source_game = "Brotato"

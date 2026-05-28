@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_after_image"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"after_image"
+display_name = "After Image"
+type = 2
+rarity = 3
+cost = 1
+description = "Innate. Whenever you play a card, gain 1 Block."
+effects = [{
+"type": "trigger",
+"on": "card_played",
+"effect": {
+"type": "block",
+"value": 1,
+"target": "self"
+}
+}]
+tags = PackedStringArray("silent", "defense")
+source_game = "Slay the Spire"
+portrait_color = Color(0.50, 0.55, 0.70, 1)
+can_upgrade = true
+upgraded_description = "Innate. Whenever you play a card, gain 1 Block."
+upgraded_cost = 0
+upgraded_effects = [{
+"type": "trigger",
+"on": "card_played",
+"effect": {
+"type": "block",
+"value": 1,
+"target": "self"
+}
+}]
+innate = true

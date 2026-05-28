@@ -9,15 +9,15 @@ id = &"lunch"
 display_name = "Lunch"
 kind = 5
 rarity = 0
-description = "Gain 8 Max HP and 8 HP."
+description = "Gain 6 Max HP and 6 HP."
 triggers = [{
 "on": "item_acquired",
 "effects": [{
 "type": "gain_max_hp",
-"value": 8
+"value": 6
 }, {
 "type": "gain_hp",
-"value": 8
+"value": 6
 }]
 }]
 stat_bonuses = {}
