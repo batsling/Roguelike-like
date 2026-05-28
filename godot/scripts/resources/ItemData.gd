@@ -1,7 +1,7 @@
 class_name ItemData
 extends Resource
 
-enum ItemKind { PASSIVE, TRIGGERED, USABLE, WEAPON, SCALING }
+enum ItemKind { PASSIVE, TRIGGERED, USABLE, WEAPON, SCALING, PICKUP }
 enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 
 @export var id: StringName
@@ -28,14 +28,15 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #                      Alien Baby: [{type: "add_max_hp", value: 3}]
 #   item_acquired    — fires once when the item enters inventory, after
 #                      stat_bonuses are folded in. Scene-less; use
-#                      scene-free effects only (gain_hp, gain_gold, …).
-#                      Lunch: triggers = [{on: "item_acquired",
-#                                          effects: [{type: "gain_hp",
-#                                                     value: 8}]}]
-#                      Paired with stat_bonuses {max_hp: 8} to express
-#                      "+8 Max HP and +8 HP" — the stat bonus contributes
-#                      the headroom without auto-healing into it, and
-#                      gain_hp fills the new pool.
+#                      scene-free effects only (gain_hp, gain_max_hp,
+#                      gain_gold, …). PICKUP-kind items use this as
+#                      their primary effect slot — pickups are
+#                      conceptually consumed-on-acquire, so the bonus
+#                      should be a permanent player change, not a
+#                      stat_bonuses entry that vanishes if the item is
+#                      ever removed. Lunch: triggers = [{on:
+#                      "item_acquired", effects: [{type: "gain_max_hp",
+#                      value: 8}, {type: "gain_hp", value: 8}]}].
 #   card_played      — fires per card resolved. ctx carries the card and
 #                      its target. Combine with `if_card_tag:` /
 #                      `if_card_id:` on the trigger entry to gate. Effects

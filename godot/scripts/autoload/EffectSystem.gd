@@ -73,6 +73,7 @@ func _register_defaults() -> void:
 	register("chance", _h_chance)
 	register("add_max_hp", _h_add_max_hp)
 	register("gain_hp", _h_gain_hp)
+	register("gain_max_hp", _h_gain_max_hp)
 	register("bump_card_effect", _h_bump_card_effect)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
@@ -180,6 +181,19 @@ func _h_exhaust_self(_effect: Dictionary, ctx: Dictionary) -> void:
 	if scene == null or card == null or not scene.has_method("exhaust_card"):
 		return
 	scene.exhaust_card(card)
+
+func _h_gain_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
+	# Permanent player Max HP bump — survives the item being removed from
+	# inventory. Pickup-kind items use this in their item_acquired
+	# trigger instead of stat_bonuses {max_hp: N}, because pickups are
+	# consumed-on-acquire conceptually: the bonus belongs to the player
+	# now, not to the item slot. Does NOT auto-heal — matches the
+	# "Max HP and HP are independent" rule. Pair with gain_hp in the
+	# same trigger when the pickup also fills the new pool (Lunch).
+	var v: int = int(effect.get("value", 0))
+	if v == 0:
+		return
+	GameState.set_max_hp(GameState.max_hp + v, false)
 
 func _h_gain_hp(effect: Dictionary, ctx: Dictionary) -> void:
 	# Scene-less heal that goes directly to GameState. Used by Lunch's
