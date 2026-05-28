@@ -242,10 +242,7 @@ func _show_reward() -> void:
 			_open_equipment()
 
 func _show_card_reward() -> void:
-	var pool: Array = []
-	for c in Data.all_cards():
-		if c is CardData and c.rarity != CardData.Rarity.STARTER:
-			pool.append(c)
+	var pool: Array = Data.reward_card_pool()
 	if pool.is_empty():
 		_open_equipment()
 		return

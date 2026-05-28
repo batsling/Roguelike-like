@@ -62,9 +62,13 @@ func _build_payload() -> Dictionary:
 		"visited_games": _stringnames_to_strings(GameState.visited_games),
 		"beaten_games": _stringnames_to_strings(GameState.beaten_games),
 		"total_games_beaten": GameState.total_games_beaten,
-		"max_hp": GameState.max_hp,
+		# Save the BASE vitals (without item contribution). The item
+		# bonuses are re-applied on load through _recompute_item_bonuses,
+		# which would otherwise double-count whatever max_hp/max_energy
+		# items grant.
+		"max_hp": GameState.max_hp - GameState._applied_item_max_hp,
 		"hp": GameState.hp,
-		"max_energy": GameState.max_energy,
+		"max_energy": GameState.max_energy - GameState._applied_item_max_energy,
 		"hand_size": GameState.hand_size,
 		"strength": GameState.strength,
 		"dexterity": GameState.dexterity,
@@ -76,8 +80,18 @@ func _build_payload() -> Dictionary:
 		"gold": GameState.gold,
 		# Deck stores per-card upgrade state; inventory stores ids.
 		"deck": _serialize_deck(GameState.deck),
+		# Per-slot entries preserve upgrade_level so two copies of the
+		# same item keep their independent state across save/load.
+		# inventory_ids kept for legacy reads.
+		"inventory": _serialize_inventory(GameState.inventory),
 		"inventory_ids": _item_ids(GameState.inventory),
 		"equipped_weapon_id": String(GameState.equipped_weapon.id) if GameState.equipped_weapon != null else "",
+		"equipped_weapon_level": GameState.equipped_weapon.upgrade_level if GameState.equipped_weapon != null else 0,
+		"equipped_weapon_instance_id": GameState.equipped_weapon.instance_id if GameState.equipped_weapon != null else 0,
+		"equipped_weapon_lvl": GameState.equipped_weapon.weapon_level if GameState.equipped_weapon != null else 1,
+		# Persist the id counter so newly-added items after a load don't
+		# collide with weapon instance_ids on cards still in the deck.
+		"next_item_instance_id": GameState._next_item_instance_id,
 		"dash": GameState.dash_charges,
 		"reroll": GameState.reroll_charges,
 		"fov_bonus": GameState.fov_bonus,
@@ -128,9 +142,37 @@ func _apply_save_data(data: Dictionary) -> void:
 		GameState.deck = _resolve_deck(data.get("deck", []))
 	else:
 		GameState.deck = _resolve_deck_legacy(data.get("deck_ids", []))
-	GameState.inventory = _resolve_items(data.get("inventory_ids", []))
+	# Prefer the new per-slot inventory; fall back to legacy id list.
+	if data.has("inventory"):
+		GameState.inventory = _resolve_inventory(data.get("inventory", []))
+	else:
+		GameState.inventory = _resolve_items(data.get("inventory_ids", []))
 	var weapon_id := String(data.get("equipped_weapon_id", ""))
-	GameState.equipped_weapon = Data.get_item(StringName(weapon_id)) if weapon_id != "" else null
+	if weapon_id != "":
+		var w_tpl: ItemData = Data.get_item(StringName(weapon_id))
+		if w_tpl != null:
+			GameState.equipped_weapon = w_tpl.duplicate(true)
+			GameState.equipped_weapon.upgrade_level = int(data.get("equipped_weapon_level", 0))
+			GameState.equipped_weapon.instance_id = int(data.get("equipped_weapon_instance_id", 0))
+			GameState.equipped_weapon.weapon_level = int(data.get("equipped_weapon_lvl", 1))
+		else:
+			GameState.equipped_weapon = null
+	else:
+		GameState.equipped_weapon = null
+	# Restore the counter ABOVE the highest loaded id so future
+	# add_item calls don't recycle a value still referenced by a
+	# CardInstance.source_weapon_id.
+	GameState._next_item_instance_id = maxi(
+		int(data.get("next_item_instance_id", 1)),
+		_max_instance_id_in_state() + 1
+	)
+	# Reset the running item contribution so _recompute starts fresh
+	# against the saved base stats (which already had bonuses applied
+	# when the save was written, but we save the base — see below).
+	GameState._applied_item_max_hp = 0
+	GameState._applied_item_max_energy = 0
+	GameState.item_stat_bonus = {}
+	GameState._recompute_item_bonuses()
 	GameState.dash_charges = data.get("dash", 0)
 	GameState.reroll_charges = data.get("reroll", 0)
 	GameState.fov_bonus = data.get("fov_bonus", 0)
@@ -281,10 +323,18 @@ func _item_ids(inv: Array) -> Array:
 	return out
 
 func _serialize_deck(deck: Array) -> Array:
+	# Per-card payload: id, upgraded flag, weapon-link (source_weapon_id),
+	# persistent effect bonuses from verification. effect_bonuses keys are
+	# coerced to strings for JSON; resolver flips them back to ints.
 	var out: Array = []
 	for c in deck:
 		if c is CardInstance:
-			out.append({"id": String(c.data.id), "upgraded": c.upgraded})
+			out.append({
+				"id": String(c.data.id),
+				"upgraded": c.upgraded,
+				"source_weapon_id": c.source_weapon_id,
+				"effect_bonuses": _stringify_effect_bonus_keys(c.effect_bonuses),
+			})
 		elif c is CardData:
 			# Defensive: handle bare CardData if anything still appends it.
 			out.append({"id": String(c.id), "upgraded": false})
@@ -298,7 +348,44 @@ func _resolve_deck(entries: Array) -> Array:
 		var c: CardData = Data.get_card(StringName(e.get("id", "")))
 		if c == null:
 			continue
-		out.append(CardInstance.from_data(c, bool(e.get("upgraded", false))))
+		var ci: CardInstance = CardInstance.from_data(c, bool(e.get("upgraded", false)))
+		ci.source_weapon_id = int(e.get("source_weapon_id", 0))
+		ci.effect_bonuses = _intify_effect_bonus_keys(e.get("effect_bonuses", {}))
+		out.append(ci)
+	return out
+
+func _max_instance_id_in_state() -> int:
+	# Belt-and-suspenders: even if the saved counter is wrong, derive a
+	# safe minimum from whatever's actually in inventory / equipped /
+	# deck so newly-added items can't alias a live card's link.
+	var m: int = 0
+	for it in GameState.inventory:
+		if it is ItemData and it.instance_id > m:
+			m = it.instance_id
+	if GameState.equipped_weapon != null and GameState.equipped_weapon.instance_id > m:
+		m = GameState.equipped_weapon.instance_id
+	for c in GameState.deck:
+		if c is CardInstance and c.source_weapon_id > m:
+			m = c.source_weapon_id
+	return m
+
+func _stringify_effect_bonus_keys(d: Dictionary) -> Dictionary:
+	# JSON only allows string object keys, so int effect indices have to
+	# round-trip as strings ("0" -> { stacks: 1 }).
+	var out: Dictionary = {}
+	for k in d.keys():
+		out[str(k)] = d[k]
+	return out
+
+func _intify_effect_bonus_keys(d: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for k in d.keys():
+		var key: int = int(String(k))
+		var fields: Dictionary = {}
+		var src: Dictionary = d[k]
+		for fk in src.keys():
+			fields[String(fk)] = int(src[fk])
+		out[key] = fields
 	return out
 
 func _resolve_deck_legacy(ids: Array) -> Array:
@@ -310,9 +397,42 @@ func _resolve_deck_legacy(ids: Array) -> Array:
 	return out
 
 func _resolve_items(ids: Array) -> Array:
+	# Legacy id-list path. Each entry becomes a fresh duplicate at
+	# upgrade_level 0 so the per-slot contract still holds when loading
+	# pre-upgrade saves.
 	var out: Array = []
 	for s in ids:
 		var it: ItemData = Data.get_item(StringName(s))
 		if it != null:
-			out.append(it)
+			out.append(it.duplicate(true))
+	return out
+
+func _serialize_inventory(inv: Array) -> Array:
+	# Per-slot save: {id, upgrade_level, instance_id, weapon_level}.
+	# instance_id is the pairing key for CardInstance.source_weapon_id;
+	# both must round-trip together for weapon coupling to survive load.
+	var out: Array = []
+	for it in inv:
+		if it is ItemData:
+			out.append({
+				"id": String(it.id),
+				"upgrade_level": it.upgrade_level,
+				"instance_id": it.instance_id,
+				"weapon_level": it.weapon_level,
+			})
+	return out
+
+func _resolve_inventory(entries: Array) -> Array:
+	var out: Array = []
+	for e in entries:
+		if not (e is Dictionary):
+			continue
+		var tpl: ItemData = Data.get_item(StringName(e.get("id", "")))
+		if tpl == null:
+			continue
+		var inst: ItemData = tpl.duplicate(true)
+		inst.upgrade_level = int(e.get("upgrade_level", 0))
+		inst.instance_id = int(e.get("instance_id", 0))
+		inst.weapon_level = int(e.get("weapon_level", 1))
+		out.append(inst)
 	return out

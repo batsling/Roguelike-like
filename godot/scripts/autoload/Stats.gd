@@ -26,6 +26,15 @@ const DECAY_STATUSES: Array[StringName] = [
 	&"blind",
 ]
 
+# Statuses that GROW by 1 at end of turn (Bleed). Mirror of
+# DECAY_STATUSES — same callsites, opposite operation. Per-turn DoT
+# damage still happens BEFORE the grow (see tick_actor_statuses) so
+# the player takes the current-stack bite, then the next turn's bite
+# is one bigger.
+const GROW_STATUSES: Array[StringName] = [
+	&"bleed",
+]
+
 # Blind: an attacker afflicted with Blind has BLIND_MISS_PCT% chance
 # to miss each hit. Roll routes through luck (see roll_blind_miss).
 const BLIND_MISS_PCT := 30
@@ -54,9 +63,16 @@ func _load_stat_defs() -> void:
 # ---------------------------------------------------------------------------
 
 func get_value(stat_id: StringName) -> int:
-	# Reads the matching field on GameState by name. The stat id must
-	# match the GameState field exactly (strength / dexterity / etc.).
-	return int(GameState.get(String(stat_id)))
+	# Reads the matching field on GameState by name and adds any item
+	# bonus stored in GameState.item_stat_bonus (set by
+	# GameState._recompute_item_bonuses on every inventory change). The
+	# stat id must match the GameState field exactly
+	# (strength / dexterity / etc.). Vitals (max_hp, max_energy) are
+	# already applied via set_max_hp/max_energy so they're NOT in
+	# item_stat_bonus — direct reads return the right value.
+	var base: int = int(GameState.get(String(stat_id)))
+	var bonus: int = int(GameState.item_stat_bonus.get(String(stat_id), 0))
+	return base + bonus
 
 func get_definition(stat_id: StringName) -> StatDefinition:
 	return _stat_defs.get(stat_id)
@@ -212,6 +228,62 @@ func _fishing_weight_bonus() -> int:
 	#   return common / 3 + uncommon / 2 + rare
 	return 0
 
+func tick_actor_statuses(actor, scene) -> void:
+	# Per-turn damage / heal effects from statuses. MUST run BEFORE
+	# decay_actor_statuses on the same boundary so the bite uses the
+	# stack count the player has been carrying (and Bleed grows AFTER
+	# its bite, not before). Scene needs apply_dot(actor, amount,
+	# source_name) for raw-HP damage that bypasses block / weak /
+	# vulnerable and never re-triggers thorns. Other DoTs (Burn,
+	# Poison) land here too once their tick rules are authored — the
+	# canonical order in this function IS the contract.
+	#
+	# Untyped actor for cross-mode use: actor must expose
+	# is_alive() -> bool and get_status(name) -> int.
+	if actor == null or not actor.has_method("is_alive") or not actor.is_alive():
+		return
+	if scene == null or not scene.has_method("apply_dot") or not actor.has_method("get_status"):
+		return
+	var bleed: int = actor.get_status(&"bleed")
+	if bleed > 0:
+		scene.apply_dot(actor, bleed, "bleed")
+
+func fire_contact_reactions(target, attacker, scene) -> void:
+	# Cross-mode "actor A made physical contact with actor B" hook.
+	# Deckbuilder calls this after melee damage resolves; strategy
+	# combat will call it from trample / jump-on / knockback-into
+	# events once those land. The reactions reach back to the
+	# attacker, never to a third party — bystanders don't soak
+	# thorns even when an AoE blade sweeps through.
+	#
+	# Parameters are deliberately untyped: deckbuilder passes
+	# CombatActor, strategy passes BattleUnit. Both need to expose
+	# get_status(name) -> int and is_alive() -> bool for the gates;
+	# scene must expose deal_damage(source, target, amount, effect)
+	# and apply_status(target, status, stacks). Missing methods cause
+	# graceful no-ops, so strategy can opt in piecemeal — wire
+	# deal_damage on a unit first, get thorns; add apply_status, get
+	# bleed_thorns.
+	#
+	# Reactions pass effect.no_reaction = true so the thorns reflect
+	# doesn't recurse into the attacker's own thorns.
+	if target == null or attacker == null:
+		return
+	if not target.has_method("is_alive") or not target.is_alive():
+		return
+	if not target.has_method("get_status"):
+		return
+	var thorns: int = target.get_status(&"thorns")
+	if thorns > 0 and scene != null and scene.has_method("deal_damage"):
+		scene.deal_damage(target, attacker, thorns,
+			{"damage_type": "melee", "no_reaction": true})
+	# Attacker may have died from thorns above — bail before applying bleed.
+	if not attacker.has_method("is_alive") or not attacker.is_alive():
+		return
+	var bleed_thorns: int = target.get_status(&"bleed_thorns")
+	if bleed_thorns > 0 and scene != null and scene.has_method("apply_status"):
+		scene.apply_status(attacker, &"bleed", bleed_thorns)
+
 func decay_actor_statuses(actor: CombatActor) -> void:
 	# Step down every decaying status on this actor by 1. Called per
 	# actor at end-of-turn (deckbuilder, strategy when statuses land
@@ -246,6 +318,9 @@ func decay_actor_statuses(actor: CombatActor) -> void:
 	for s in DECAY_STATUSES:
 		if actor.get_status(s) > 0:
 			actor.add_status(s, -1)
+	for s in GROW_STATUSES:
+		if actor.get_status(s) > 0:
+			actor.add_status(s, 1)
 
 func roll_blind_miss(rng: RandomNumberGenerator, source_is_player: bool) -> bool:
 	# Returns true if the attack misses. Player's luck always biases

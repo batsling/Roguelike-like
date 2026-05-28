@@ -88,9 +88,9 @@ func _refresh_top() -> void:
 		GameState.gold,
 		GameState.deck.size(),
 		GameState.inventory.size(),
-		GameState.strength, GameState.dexterity, GameState.intelligence,
-		GameState.charisma, GameState.constitution, GameState.luck,
-		GameState.speed,
+		Stats.get_value(&"strength"), Stats.get_value(&"dexterity"), Stats.get_value(&"intelligence"),
+		Stats.get_value(&"charisma"), Stats.get_value(&"constitution"), Stats.get_value(&"luck"),
+		Stats.get_value(&"speed"),
 		game_name, amulet_name,
 		GameState.total_games_beaten,
 	]

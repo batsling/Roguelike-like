@@ -7,19 +7,13 @@
 script = ExtResource("1_item")
 id = &"vajra"
 display_name = "Vajra"
-kind = 1
+kind = 0
 rarity = 0
-description = "At the start of combat, gain 2 Power. (Subs for STS Vajra's +3 Strength until stat_bonuses are wired.)"
-triggers = [{
-"on": "combat_started",
-"effects": [{
-"type": "status",
-"status": "power",
-"stacks": 2,
-"target": "self"
-}]
-}]
-stat_bonuses = {}
+description = "Gain 3 Strength."
+triggers = []
+stat_bonuses = {
+"strength": 3
+}
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray()

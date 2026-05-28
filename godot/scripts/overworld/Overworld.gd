@@ -375,10 +375,16 @@ func _save_run() -> bool:
 
 const VERIFICATION_SKIP_HP_PENALTY := 33
 
+# Per-weapon Yes/No state held while the modal is open. Populated when
+# the modal builds the weapon section; consumed by _on_verification_yes
+# at submit time. Keyed by weapon's instance_id.
+var _weapon_verify_answers: Dictionary = {}
+
 func _show_verification_modal(gd: GameData) -> void:
 	if _verification_modal != null:
 		return
 	_player.set_input_locked(true)
+	_weapon_verify_answers = {}
 
 	var modal := Control.new()
 	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -389,14 +395,20 @@ func _show_verification_modal(gd: GameData) -> void:
 	dim.color = Color(0, 0, 0, 0.6)
 	modal.add_child(dim)
 
+	# Inventory weapons drive the modal height — base 340 + a row per
+	# weapon. The list keeps growing as weapon items get authored, so we
+	# size from data rather than hard-coding for two.
+	var weapons: Array = _collect_inventory_weapons()
+	var panel_h: int = 340 + weapons.size() * 80
+
 	var panel := Panel.new()
-	panel.size = Vector2(560, 320)
+	panel.size = Vector2(620, panel_h)
 	panel.position = (get_viewport_rect().size - panel.size) / 2.0
 	modal.add_child(panel)
 
 	var title := Label.new()
 	title.position = Vector2(20, 24)
-	title.size = Vector2(520, 32)
+	title.size = Vector2(580, 32)
 	title.text = "Verification"
 	title.add_theme_font_size_override("font_size", 22)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -404,23 +416,30 @@ func _show_verification_modal(gd: GameData) -> void:
 
 	var prompt := Label.new()
 	prompt.position = Vector2(20, 72)
-	prompt.size = Vector2(520, 100)
+	prompt.size = Vector2(580, 70)
 	var gd_name: String = gd.display_name if gd != null else "this game"
 	prompt.text = "You defeated this floor's representation of %s. Did you play the real game?" % gd_name
 	prompt.autowrap_mode = TextServer.AUTOWRAP_WORD
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(prompt)
 
+	# Weapon questions stack below the main prompt. Each row exposes a
+	# Yes / No pair whose pressed handler writes into _weapon_verify_answers.
+	var y: int = 150
+	for w in weapons:
+		_add_weapon_row(panel, w, y)
+		y += 80
+
 	var yes_btn := Button.new()
-	yes_btn.position = Vector2(40, 220)
-	yes_btn.size = Vector2(220, 56)
-	yes_btn.text = "Yes — I played it"
+	yes_btn.position = Vector2(40, panel_h - 80)
+	yes_btn.size = Vector2(260, 56)
+	yes_btn.text = "Confirm"
 	yes_btn.pressed.connect(_on_verification_yes)
 	panel.add_child(yes_btn)
 
 	var skip_btn := Button.new()
-	skip_btn.position = Vector2(300, 220)
-	skip_btn.size = Vector2(220, 56)
+	skip_btn.position = Vector2(320, panel_h - 80)
+	skip_btn.size = Vector2(260, 56)
 	skip_btn.text = "Skip  (-%d HP)" % VERIFICATION_SKIP_HP_PENALTY
 	skip_btn.pressed.connect(_on_verification_skip)
 	panel.add_child(skip_btn)
@@ -428,10 +447,74 @@ func _show_verification_modal(gd: GameData) -> void:
 	add_child(modal)
 	_verification_modal = modal
 
+func _collect_inventory_weapons() -> Array:
+	# Equipped weapon isn't a verification target today (no card-link
+	# pairing in inventory); only inventory weapon items count.
+	var out: Array = []
+	for it in GameState.inventory:
+		if it is ItemData and it.kind == ItemData.ItemKind.WEAPON and not it.verification_effects.is_empty():
+			out.append(it)
+	return out
+
+func _add_weapon_row(panel: Panel, weapon: ItemData, y: int) -> void:
+	var label := Label.new()
+	label.position = Vector2(20, y)
+	label.size = Vector2(580, 24)
+	var lvl_suffix: String = (" (Lv%d)" % weapon.weapon_level) if weapon.weapon_level > 1 else ""
+	label.text = "%s%s — %s" % [weapon.display_name, lvl_suffix, weapon.verification_question]
+	panel.add_child(label)
+
+	var group := ButtonGroup.new()
+
+	var yes := Button.new()
+	yes.position = Vector2(20, y + 28)
+	yes.size = Vector2(120, 40)
+	yes.text = "Yes"
+	yes.toggle_mode = true
+	yes.button_group = group
+	yes.toggled.connect(func(pressed: bool): _on_weapon_answer(weapon.instance_id, true, pressed))
+	panel.add_child(yes)
+
+	var no := Button.new()
+	no.position = Vector2(150, y + 28)
+	no.size = Vector2(120, 40)
+	no.text = "No"
+	no.toggle_mode = true
+	no.button_group = group
+	no.button_pressed = true
+	no.toggled.connect(func(pressed: bool): _on_weapon_answer(weapon.instance_id, false, pressed))
+	panel.add_child(no)
+	# Default: No, so failing to answer doesn't grant a free bonus.
+	_weapon_verify_answers[weapon.instance_id] = false
+
+func _on_weapon_answer(weapon_id: int, value: bool, pressed: bool) -> void:
+	if pressed:
+		_weapon_verify_answers[weapon_id] = value
+
 func _on_verification_yes() -> void:
 	GameLog.add("Verified.", Color(0.7, 1.0, 0.7))
+	_apply_weapon_verification_rewards()
 	_close_verification()
 	_after_verification()
+
+func _apply_weapon_verification_rewards() -> void:
+	# Walk inventory weapons; for each Yes, dispatch verification_effects
+	# through EffectSystem with the item's instance_id + weapon_level in
+	# context. Handlers (bump_card_effect) read those to find the paired
+	# CardInstance and apply the per-level bonus.
+	for it in GameState.inventory:
+		if not (it is ItemData) or it.kind != ItemData.ItemKind.WEAPON:
+			continue
+		if not _weapon_verify_answers.get(it.instance_id, false):
+			continue
+		var ctx: Dictionary = {
+			"source": null, "target": null, "scene": null, "card": null,
+			"source_weapon_instance_id": it.instance_id,
+			"level": it.weapon_level,
+		}
+		for eff in it.verification_effects:
+			EffectSystem.apply(eff, ctx)
+		GameLog.add("%s: earned reward!" % it.display_name, Color(1.0, 0.7, 0.3))
 
 func _on_verification_skip() -> void:
 	GameState.change_hp(-VERIFICATION_SKIP_HP_PENALTY)

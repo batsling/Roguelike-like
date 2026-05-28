@@ -65,6 +65,22 @@ func get_character(id: StringName) -> CharacterData:
 func all_cards() -> Array:
 	return _cards.values()
 
+# Cards eligible for random shop / reward / treasure draws. Excludes
+# starters (always in the character's opening deck) and weapon cards
+# (granted exclusively by their paired weapon item — see
+# ItemData.weapon_card_id and GameState._grant_weapon_card).
+func reward_card_pool() -> Array:
+	var out: Array = []
+	for c in _cards.values():
+		if not (c is CardData):
+			continue
+		if c.rarity == CardData.Rarity.STARTER:
+			continue
+		if c.tags.has("weapon"):
+			continue
+		out.append(c)
+	return out
+
 func all_items() -> Array:
 	return _items.values()
 

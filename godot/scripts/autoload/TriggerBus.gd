@@ -30,6 +30,8 @@ signal card_discarded(ctx: Dictionary)
 signal damage_dealt(ctx: Dictionary)        # ctx.source, ctx.target, ctx.amount
 signal damage_taken(ctx: Dictionary)        # ctx.target, ctx.attacker, ctx.amount
 signal enemy_killed(ctx: Dictionary)        # ctx.enemy
+signal enemy_spawned(ctx: Dictionary)       # ctx.enemy — fired from CombatActor.from_enemy
+                                            # after item modifiers (Alien Baby et al) apply
 
 # --- Status events ---
 signal status_applied(ctx: Dictionary)      # ctx.target, ctx.status, ctx.stacks

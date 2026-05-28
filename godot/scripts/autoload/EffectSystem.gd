@@ -71,6 +71,8 @@ func _register_defaults() -> void:
 	register("gain_loot", _h_gain_loot)
 	register("trigger", _h_trigger)
 	register("chance", _h_chance)
+	register("add_max_hp", _h_add_max_hp)
+	register("bump_card_effect", _h_bump_card_effect)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -132,11 +134,24 @@ func _h_lose_energy(effect: Dictionary, ctx: Dictionary) -> void:
 	scene.lose_energy(effect.get("value", 1))
 
 func _h_status(effect: Dictionary, ctx: Dictionary) -> void:
-	var scene: Variant = ctx.get("scene")
-	if scene == null or not scene.has_method("apply_status"):
-		return
 	var target: Variant = ctx.get("target") if effect.get("target", "enemy") != "self" else ctx.get("source")
-	scene.apply_status(target, effect.get("status", ""), effect.get("stacks", 1))
+	var status_id := StringName(effect.get("status", ""))
+	var stacks: int = int(effect.get("stacks", 1))
+	if status_id == &"" or stacks == 0 or target == null:
+		return
+	var scene: Variant = ctx.get("scene")
+	if scene != null and scene.has_method("apply_status"):
+		# In-combat path — fires status_applied, triggers Power reactions.
+		# Source intentionally not threaded through; scene-level Persistence
+		# handling lives outside this dispatcher to avoid double-applying.
+		scene.apply_status(target, status_id, stacks)
+		return
+	# Scene-less fallback — used by enemy_spawned / item-pickup hooks
+	# where we just want to decorate an actor before combat starts.
+	# Skips Persistence and the status_applied bus on purpose: this is
+	# baseline state, not the player actively casting.
+	if target.has_method("add_status"):
+		target.add_status(status_id, stacks)
 
 func _h_exhaust_self(_effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -262,6 +277,60 @@ func _h_trigger(effect: Dictionary, ctx: Dictionary) -> void:
 		String(effect.get("on", "")),
 		effect.get("effect", {})
 	)
+
+func _h_add_max_hp(effect: Dictionary, ctx: Dictionary) -> void:
+	# Adjust a CombatActor's max_hp (and hp on positive deltas) directly.
+	# Scene-less: operates on ctx.target. Canonical use is the
+	# enemy_spawned trigger — Alien Baby's "all enemies start with +3 HP".
+	# Works on any actor exposing max_hp / hp fields; negative values
+	# shrink the pool and clamp current hp down.
+	var target: Variant = ctx.get("target")
+	if target == null or not ("max_hp" in target):
+		return
+	var v: int = int(effect.get("value", 0))
+	if v == 0:
+		return
+	target.max_hp = maxi(1, int(target.max_hp) + v)
+	if "hp" in target:
+		if v > 0:
+			# Top up so the new headroom is real, not a phantom max
+			target.hp = mini(int(target.hp) + v, target.max_hp)
+		else:
+			target.hp = mini(int(target.hp), target.max_hp)
+
+func _h_bump_card_effect(effect: Dictionary, ctx: Dictionary) -> void:
+	# Apply a persistent additive bonus to a weapon-linked CardInstance's
+	# effect field. Canonical use is the verification reward path:
+	# overworld calls EffectSystem.apply with ctx carrying the weapon's
+	# instance_id and current weapon_level, and the effect's `increments`
+	# list picks the per-level bonus value.
+	#
+	# Required: ctx.source_weapon_instance_id (int)
+	# Optional: effect.effect_index (default 0), effect.field (default "value"),
+	#           effect.increments (Array[int], indexed by ctx.level - 1),
+	#           effect.value (int, used when increments missing)
+	var weapon_id: int = int(ctx.get("source_weapon_instance_id", 0))
+	if weapon_id == 0:
+		return
+	var idx: int = int(effect.get("effect_index", 0))
+	var field: String = String(effect.get("field", "value"))
+	var bonus: int = int(effect.get("value", 0))
+	var increments: Array = effect.get("increments", [])
+	if not increments.is_empty():
+		var lv: int = maxi(1, int(ctx.get("level", 1)))
+		bonus = int(increments[mini(lv - 1, increments.size() - 1)])
+	if bonus == 0:
+		return
+	var bumped: int = 0
+	for card in GameState.deck:
+		if not (card is CardInstance):
+			continue
+		if card.source_weapon_id != weapon_id:
+			continue
+		card.bump_effect(idx, field, bonus)
+		bumped += 1
+	if bumped > 0:
+		GameState.emit_signal("deck_changed")
 
 func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 	# Roll once on the EffectSystem RNG, with luck advantage applied

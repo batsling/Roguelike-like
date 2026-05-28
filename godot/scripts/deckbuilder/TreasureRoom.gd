@@ -138,10 +138,11 @@ func _make_offer_view(item: ItemData) -> Control:
 # ---------------------------------------------------------------------------
 
 func _on_take(item: ItemData) -> void:
-	GameState.inventory.append(item)
-	GameState.emit_signal("inventory_changed")
+	var inst: ItemData = GameState.add_item(item)
 	GameLog.add("Took %s." % item.display_name, Color(0.7, 1.0, 0.7))
-	TriggerBus.emit_signal("item_acquired", {"item": item})
+	# Hand the duplicated inventory instance to listeners (not the
+	# shared template) so any post-pickup logic targets the right slot.
+	TriggerBus.emit_signal("item_acquired", {"item": inst})
 	emit_signal("closed")
 
 func _on_skip() -> void:

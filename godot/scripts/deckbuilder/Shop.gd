@@ -52,10 +52,7 @@ func _roll_inventory() -> void:
 			"purchased": false,
 		})
 
-	var card_pool: Array = []
-	for c in Data.all_cards():
-		if c is CardData and c.rarity != CardData.Rarity.STARTER:
-			card_pool.append(c)
+	var card_pool: Array = Data.reward_card_pool()
 	for _i in range(mini(2, card_pool.size())):
 		var idx: int = _rng.randi() % card_pool.size()
 		var picked: CardData = card_pool[idx]
@@ -202,8 +199,7 @@ func _buy_item(entry: Dictionary, _btn: Button) -> void:
 	if entry.purchased or GameState.gold < entry.price:
 		return
 	GameState.change_gold(-entry.price)
-	GameState.inventory.append(entry.item)
-	GameState.emit_signal("inventory_changed")
+	GameState.add_item(entry.item)
 	entry.purchased = true
 	GameLog.add("Bought %s for %dg." % [entry.item.display_name, entry.price], Color(0.7, 1.0, 0.7))
 	_refresh_buttons()

@@ -7,20 +7,20 @@
 script = ExtResource("1_item")
 id = &"bag_o_glitter"
 display_name = "Bag o' Glitter"
-kind = 1
-rarity = 0
-description = "At the start of combat, apply 1 Vulnerable to ALL enemies."
-triggers = [{
-"on": "combat_started",
-"effects": [{
-"type": "status",
-"status": "vulnerable",
-"stacks": 1,
-"target": "all_enemies"
-}]
-}]
+kind = 3
+rarity = 1
+description = "Add the card \"Bag o' Glitter\" to your deck. If you obtain something glittery, it gains (+1/+2) Blind."
+triggers = []
 stat_bonuses = {}
 max_uses = -1
-source_game = "Slay the Spire"
-tags = PackedStringArray()
+weapon_card_id = &"bag_o_glitter"
+verification_question = "Did you obtain something glittery?"
+verification_effects = [{
+"type": "bump_card_effect",
+"effect_index": 0,
+"field": "stacks",
+"increments": [1, 2]
+}]
+source_game = "Mewgenics"
+tags = PackedStringArray("bag")
 image = ExtResource("2_img")

@@ -49,8 +49,29 @@ var gold: int = 99
 # CardInstance.gd in scripts/runtime/. For Phase 1a we'll allow raw
 # CardData here too and upgrade to wrappers when upgrades land.
 var deck: Array = []
-var inventory: Array = []                # Array[ItemData]
-var equipped_weapon: ItemData = null
+var inventory: Array = []                # Array[ItemData] — each entry is a duplicated Resource (see add_item)
+var equipped_weapon: ItemData = null     # Also a duplicated Resource
+
+# Cached sum of every inventory + equipped item's effective_stat_bonuses().
+# Stats.get_value() reads this so consumers see base + item bonuses
+# without each call site adding the bonus manually. Refreshed by
+# _recompute_item_bonuses() whenever inventory mutates or an item is
+# upgraded/downgraded. Excludes the health bucket — see _applied_item_*.
+var item_stat_bonus: Dictionary = {}
+
+# Health-bucket stats (max_hp, max_energy) are applied as direct
+# deltas to the GameState fields — never through item_stat_bonus — so
+# reads of GameState.max_hp / max_energy stay authoritative without
+# layering. The _applied_item_* fields remember our running
+# contribution so a recompute moves only the delta.
+var _applied_item_max_hp: int = 0
+var _applied_item_max_energy: int = 0
+
+# Monotonic id source for ItemData.instance_id. Each call to add_item
+# bumps this so duplicated weapon Resources can be paired with their
+# granted CardInstance (CardInstance.source_weapon_id) — and so save /
+# load can rehydrate the link without name collisions across slots.
+var _next_item_instance_id: int = 1
 
 # Run-scope loot counters. Potions/scrolls aren't fleshed out yet, so
 # for now each kind is just an int count — cards like Alchemize bump
@@ -118,6 +139,10 @@ func reset_run() -> void:
 	deck.clear()
 	inventory.clear()
 	equipped_weapon = null
+	item_stat_bonus = {}
+	_applied_item_max_hp = 0
+	_applied_item_max_energy = 0
+	_next_item_instance_id = 1
 	loot = {"potion": 0, "scroll": 0, "key": 0}
 	learned_spells.clear()
 	action_basic_attack_id = &""
@@ -151,13 +176,30 @@ func apply_character(char_data: CharacterData) -> void:
 			deck.append(CardInstance.from_data(c))
 
 	inventory.clear()
+	_applied_item_max_hp = 0
+	_applied_item_max_energy = 0
+	item_stat_bonus = {}
+	_next_item_instance_id = 1
 	for item_id in char_data.starting_items:
 		var it: ItemData = Data.get_item(item_id)
 		if it != null:
-			inventory.append(it)
+			var inst: ItemData = _append_item_internal(it, 0)
+			# Starting weapon items grant their card too — apply_character
+			# already emits deck_changed at the end so we don't here.
+			_grant_weapon_card(inst)
 
+	equipped_weapon = null
 	if char_data.starting_weapon != &"":
-		equipped_weapon = Data.get_item(char_data.starting_weapon)
+		var w: ItemData = Data.get_item(char_data.starting_weapon)
+		if w != null:
+			equipped_weapon = w.duplicate(true)
+			equipped_weapon.instance_id = _next_item_instance_id
+			_next_item_instance_id += 1
+
+	_recompute_item_bonuses()
+	# Starting items may have raised max_hp; heal to that new full pool
+	# so the player begins the run at full health regardless of bonuses.
+	hp = max_hp
 
 	emit_signal("stats_changed")
 	emit_signal("hp_changed", hp, max_hp)
@@ -200,6 +242,179 @@ func change_gold(delta: int) -> void:
 
 func is_dead() -> bool:
 	return hp <= 0
+
+# ---------------------------------------------------------------------------
+# Inventory mutation — every add goes through here so each entry is its
+# own duplicated Resource. Two copies of the same item never share state,
+# which lets the upgrade/downgrade mechanic (and any future per-item
+# interaction) target a single slot without leaking into the others.
+# ---------------------------------------------------------------------------
+
+func add_item(template: ItemData) -> ItemData:
+	# `template` is the shared Resource loaded from .tres. We duplicate
+	# deeply so triggers/tags/stat_bonuses can never alias between slots.
+	# Weapon items also append their linked CardInstance to the deck
+	# with source_weapon_id set, sealing the bidirectional pair.
+	if template == null:
+		return null
+	var inst: ItemData = _append_item_internal(template, 0)
+	if _grant_weapon_card(inst):
+		emit_signal("deck_changed")
+	_recompute_item_bonuses()
+	emit_signal("inventory_changed")
+	return inst
+
+func _grant_weapon_card(inst: ItemData) -> bool:
+	# Internal: if `inst` is a weapon with a linked card_id, append a
+	# CardInstance tagged with the item's instance_id. Caller decides
+	# whether to fire deck_changed (apply_character batches the emit).
+	if inst == null:
+		return false
+	if inst.kind != ItemData.ItemKind.WEAPON or inst.weapon_card_id == &"":
+		return false
+	var card_def: CardData = Data.get_card(inst.weapon_card_id)
+	if card_def == null:
+		return false
+	var ci: CardInstance = CardInstance.from_data(card_def)
+	ci.source_weapon_id = inst.instance_id
+	deck.append(ci)
+	return true
+
+func remove_item_at(index: int) -> void:
+	if index < 0 or index >= inventory.size():
+		return
+	var removed: ItemData = inventory[index]
+	inventory.remove_at(index)
+	# Pair removal: a weapon item carries the source_weapon_id its card
+	# was tagged with. Strip every deck card pointing back at this slot.
+	if removed is ItemData and removed.kind == ItemData.ItemKind.WEAPON and removed.instance_id != 0:
+		_remove_deck_cards_for_weapon(removed.instance_id)
+	_recompute_item_bonuses()
+	emit_signal("inventory_changed")
+
+func remove_card_at(deck_index: int) -> void:
+	# Inverse of the weapon-removes-card path. If the card was weapon-
+	# granted (source_weapon_id != 0), find and drop the paired item too
+	# so the pair never desyncs. Combat-only mutations (exhaust, discard)
+	# don't route through here — those operate on the per-combat piles.
+	if deck_index < 0 or deck_index >= deck.size():
+		return
+	var card = deck[deck_index]
+	deck.remove_at(deck_index)
+	var weapon_id: int = 0
+	if card is CardInstance:
+		weapon_id = card.source_weapon_id
+	if weapon_id != 0:
+		for i in range(inventory.size() - 1, -1, -1):
+			var it = inventory[i]
+			if it is ItemData and it.instance_id == weapon_id:
+				inventory.remove_at(i)
+				_recompute_item_bonuses()
+				emit_signal("inventory_changed")
+				break
+	emit_signal("deck_changed")
+
+func _remove_deck_cards_for_weapon(weapon_instance_id: int) -> void:
+	# Internal: drop every CardInstance whose source_weapon_id matches.
+	# Iterates back-to-front so removals don't invalidate the index.
+	var changed: bool = false
+	for i in range(deck.size() - 1, -1, -1):
+		var c = deck[i]
+		if c is CardInstance and c.source_weapon_id == weapon_instance_id:
+			deck.remove_at(i)
+			changed = true
+	if changed:
+		emit_signal("deck_changed")
+
+func set_equipped_weapon(template: ItemData) -> void:
+	# Same duplication contract as add_item — the equipped weapon also
+	# carries per-instance upgrade_level / instance_id so the future
+	# weapon-as-equipment flow can pair with its card the same way
+	# inventory weapons do.
+	if template == null:
+		equipped_weapon = null
+	else:
+		equipped_weapon = template.duplicate(true)
+		equipped_weapon.instance_id = _next_item_instance_id
+		_next_item_instance_id += 1
+	_recompute_item_bonuses()
+	emit_signal("inventory_changed")
+
+func _append_item_internal(template: ItemData, upgrade_level: int) -> ItemData:
+	# Internal: duplicates and appends without firing the recompute /
+	# signal. apply_character batches several adds and recomputes once
+	# at the end. Always mints a fresh instance_id so weapon coupling
+	# survives even when add_item is bypassed.
+	var inst: ItemData = template.duplicate(true)
+	inst.upgrade_level = upgrade_level
+	inst.instance_id = _next_item_instance_id
+	_next_item_instance_id += 1
+	inventory.append(inst)
+	return inst
+
+# Picks a random Passive (anything with a non-zero non-health stat bonus)
+# and bumps its upgrade_level by `delta`. Returns a dict with the chosen
+# item and its new level, or null if no eligible item exists. Save the
+# loop here for the future "Curse of Decay" / event reward hooks.
+func upgrade_random_passive(delta: int) -> Dictionary:
+	var eligible: Array = []
+	for it in inventory:
+		if it is ItemData and it.is_upgradeable_passive():
+			eligible.append(it)
+	if eligible.is_empty():
+		return {}
+	var picked: ItemData = eligible[randi() % eligible.size()]
+	picked.upgrade_level += delta
+	# Recompute already emits stats_changed; we add inventory_changed so
+	# HUDs that key off inventory state (Vajra+1 tooltips, etc.) refresh.
+	_recompute_item_bonuses()
+	emit_signal("inventory_changed")
+	return {"item": picked, "delta": delta, "new_level": picked.upgrade_level}
+
+# Walks inventory + equipped_weapon and rebuilds item_stat_bonus from
+# every effective_stat_bonuses() pass. Vitals (max_hp, max_energy) are
+# applied as direct deltas — the _applied_item_* fields track our
+# running contribution so an upgrade or remove only moves the change.
+func _recompute_item_bonuses() -> void:
+	var totals: Dictionary = {}
+	var max_hp_total: int = 0
+	var max_energy_total: int = 0
+	var sources: Array = []
+	sources.append_array(inventory)
+	if equipped_weapon != null:
+		sources.append(equipped_weapon)
+	for it in sources:
+		if not (it is ItemData):
+			continue
+		var eff: Dictionary = it.effective_stat_bonuses()
+		for stat in eff.keys():
+			var v: int = int(eff[stat])
+			if v == 0:
+				continue
+			if stat == "max_hp":
+				max_hp_total += v
+			elif stat == "max_energy":
+				max_energy_total += v
+			else:
+				totals[stat] = int(totals.get(stat, 0)) + v
+	item_stat_bonus = totals
+
+	# Vitals are applied as direct deltas (NOT through set_max_hp) so we
+	# don't trigger Constitution auto-gain on every inventory mutation
+	# or save load. Auto-gain stays reserved for level-up-style events.
+	var hp_delta: int = max_hp_total - _applied_item_max_hp
+	if hp_delta != 0:
+		max_hp = maxi(1, max_hp + hp_delta)
+		hp = mini(hp, max_hp)
+		_applied_item_max_hp = max_hp_total
+		emit_signal("hp_changed", hp, max_hp)
+
+	var en_delta: int = max_energy_total - _applied_item_max_energy
+	if en_delta != 0:
+		max_energy = maxi(0, max_energy + en_delta)
+		_applied_item_max_energy = max_energy_total
+
+	emit_signal("stats_changed")
 
 # ---------------------------------------------------------------------------
 # Loot (potions / scrolls / keys)
