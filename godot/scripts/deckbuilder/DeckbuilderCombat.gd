@@ -73,7 +73,7 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 # Debuffs that get Persistence bonus when player inflicts them on enemies.
 const _DEBUFFS := [
-	&"vulnerable", &"weak", &"frail", &"poison", &"burn",
+	&"vulnerable", &"weak", &"frail", &"poison", &"burn", &"bleed",
 ]
 
 # UI refs
@@ -218,21 +218,32 @@ func _on_end_turn() -> void:
 	TriggerBus.emit_signal("turn_ended", {"turn": turn, "scene": self})
 	_fire_item_triggers("turn_ended")
 	_fire_power_triggers("turn_ended")
+	# Per-turn DoT tick (Bleed today) BEFORE decay so the bite uses
+	# the carried stack count, then grow/decay applies.
+	Stats.tick_actor_statuses(player, self)
 	# Decay player statuses BEFORE enemies act so debuffs the player
 	# just applied to enemies survive through the enemy turn.
 	_decay_statuses(player)
 	phase = "enemy"
 	_refresh_ui()
 
+	if _check_combat_end():
+		return
+
 	_execute_enemy_turn()
 
 	if _check_combat_end():
 		return
 
-	# Decay enemy statuses after their actions.
+	# Enemies tick and decay after their actions.
 	for e in enemies:
 		if e.is_alive():
+			Stats.tick_actor_statuses(e, self)
 			_decay_statuses(e)
+
+	# An enemy may have died from their own Bleed tick — re-check.
+	if _check_combat_end():
+		return
 
 	_start_player_turn()
 
@@ -692,10 +703,44 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 		var who := "your" if target.is_player else (target.display_name + "'s")
 		GameLog.add("%s block absorbs %d." % [who, absorbed], Color(0.7, 0.8, 1.0))
 
+	# Thorns / Bleed Thorns: triggers on any LANDED melee hit (past
+	# miss and dodge), including fully-blocked ones. Routed through the
+	# Stats helper so strategy combat can call the same code from its
+	# trample / knockback / jump-on events later. no_reaction stops the
+	# attacker's own thorns from recursing back when this reflect hits.
+	var landed_melee: bool = (amount > 0 or absorbed > 0) \
+		and damage_type == "melee" \
+		and not effect.get("no_reaction", false) \
+		and source != null and source != target
+	if landed_melee:
+		Stats.fire_contact_reactions(target, source, self)
+
 	TriggerBus.emit_signal("damage_dealt", {
 		"source": source, "target": target, "amount": amount, "scene": self,
 	})
 	_fire_power_triggers("damage_dealt")
+
+func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
+	# Direct HP loss from end-of-turn status ticks (Bleed today; Burn /
+	# Poison once their ticks land). Bypasses block, Weak, Vulnerable,
+	# and never re-triggers thorns — DoTs are NOT contact events.
+	if target == null or not target.is_alive() or amount <= 0:
+		return
+	if target.is_player:
+		GameState.change_hp(-amount)
+		target.hp = GameState.hp
+	else:
+		target.hp = maxi(0, target.hp - amount)
+	var who := "You" if target.is_player else target.display_name
+	GameLog.add("%s takes %d %s damage." % [who, amount, source_name],
+		Color(1.0, 0.5, 0.6))
+	if target.hp <= 0:
+		target.dead = true
+		GameLog.add("%s is defeated!" % target.display_name, Color(0.6, 1.0, 0.6))
+		if not target.is_player:
+			TriggerBus.emit_signal("enemy_killed", {"enemy": target, "scene": self})
+			_fire_item_triggers("enemy_killed")
+			_fire_power_triggers("enemy_killed")
 
 func gain_block(target: CombatActor, base_amount: int) -> void:
 	if target == null:
