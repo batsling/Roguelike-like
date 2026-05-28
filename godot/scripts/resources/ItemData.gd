@@ -36,3 +36,37 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 @export var source_game: String = ""
 @export var tags: PackedStringArray = PackedStringArray()
 @export var image: Texture2D
+
+# Per-instance upgrade level. Lives on the duplicated Resource owned by
+# a single inventory slot — see GameState.add_item. Signed: +N upgrades
+# add N to every non-HEALTH_BUCKET stat in stat_bonuses; -N subtracts.
+# Two copies of the same item carry independent upgrade_levels.
+@export var upgrade_level: int = 0
+
+# Stats that are NOT scaled by upgrade_level. Health/energy live in the
+# "vitals" bucket and are intentionally excluded so an upgraded Lunch
+# doesn't quietly become a Hollow Heart.
+const HEALTH_BUCKET := ["max_hp", "max_energy"]
+
+# Returns this item's stat_bonuses with upgrade_level folded in for every
+# stat outside HEALTH_BUCKET. Pure read; never mutates stat_bonuses.
+func effective_stat_bonuses() -> Dictionary:
+	if upgrade_level == 0 or stat_bonuses.is_empty():
+		return stat_bonuses.duplicate()
+	var out: Dictionary = {}
+	for stat in stat_bonuses.keys():
+		var base: int = int(stat_bonuses[stat])
+		if stat in HEALTH_BUCKET:
+			out[stat] = base
+		else:
+			out[stat] = base + upgrade_level
+	return out
+
+# Whether this item is eligible for random upgrade/downgrade. Items with
+# at least one non-health stat bonus qualify; pure-trigger items (Anchor)
+# and pure-vital items don't.
+func is_upgradeable_passive() -> bool:
+	for stat in stat_bonuses.keys():
+		if not (stat in HEALTH_BUCKET) and int(stat_bonuses[stat]) != 0:
+			return true
+	return false

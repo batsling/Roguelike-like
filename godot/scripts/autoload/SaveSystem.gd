@@ -62,9 +62,13 @@ func _build_payload() -> Dictionary:
 		"visited_games": _stringnames_to_strings(GameState.visited_games),
 		"beaten_games": _stringnames_to_strings(GameState.beaten_games),
 		"total_games_beaten": GameState.total_games_beaten,
-		"max_hp": GameState.max_hp,
+		# Save the BASE vitals (without item contribution). The item
+		# bonuses are re-applied on load through _recompute_item_bonuses,
+		# which would otherwise double-count whatever max_hp/max_energy
+		# items grant.
+		"max_hp": GameState.max_hp - GameState._applied_item_max_hp,
 		"hp": GameState.hp,
-		"max_energy": GameState.max_energy,
+		"max_energy": GameState.max_energy - GameState._applied_item_max_energy,
 		"hand_size": GameState.hand_size,
 		"strength": GameState.strength,
 		"dexterity": GameState.dexterity,
@@ -76,8 +80,13 @@ func _build_payload() -> Dictionary:
 		"gold": GameState.gold,
 		# Deck stores per-card upgrade state; inventory stores ids.
 		"deck": _serialize_deck(GameState.deck),
+		# Per-slot entries preserve upgrade_level so two copies of the
+		# same item keep their independent state across save/load.
+		# inventory_ids kept for legacy reads.
+		"inventory": _serialize_inventory(GameState.inventory),
 		"inventory_ids": _item_ids(GameState.inventory),
 		"equipped_weapon_id": String(GameState.equipped_weapon.id) if GameState.equipped_weapon != null else "",
+		"equipped_weapon_level": GameState.equipped_weapon.upgrade_level if GameState.equipped_weapon != null else 0,
 		"dash": GameState.dash_charges,
 		"reroll": GameState.reroll_charges,
 		"fov_bonus": GameState.fov_bonus,
@@ -128,9 +137,28 @@ func _apply_save_data(data: Dictionary) -> void:
 		GameState.deck = _resolve_deck(data.get("deck", []))
 	else:
 		GameState.deck = _resolve_deck_legacy(data.get("deck_ids", []))
-	GameState.inventory = _resolve_items(data.get("inventory_ids", []))
+	# Prefer the new per-slot inventory; fall back to legacy id list.
+	if data.has("inventory"):
+		GameState.inventory = _resolve_inventory(data.get("inventory", []))
+	else:
+		GameState.inventory = _resolve_items(data.get("inventory_ids", []))
 	var weapon_id := String(data.get("equipped_weapon_id", ""))
-	GameState.equipped_weapon = Data.get_item(StringName(weapon_id)) if weapon_id != "" else null
+	if weapon_id != "":
+		var w_tpl: ItemData = Data.get_item(StringName(weapon_id))
+		if w_tpl != null:
+			GameState.equipped_weapon = w_tpl.duplicate(true)
+			GameState.equipped_weapon.upgrade_level = int(data.get("equipped_weapon_level", 0))
+		else:
+			GameState.equipped_weapon = null
+	else:
+		GameState.equipped_weapon = null
+	# Reset the running item contribution so _recompute starts fresh
+	# against the saved base stats (which already had bonuses applied
+	# when the save was written, but we save the base — see below).
+	GameState._applied_item_max_hp = 0
+	GameState._applied_item_max_energy = 0
+	GameState.item_stat_bonus = {}
+	GameState._recompute_item_bonuses()
 	GameState.dash_charges = data.get("dash", 0)
 	GameState.reroll_charges = data.get("reroll", 0)
 	GameState.fov_bonus = data.get("fov_bonus", 0)
@@ -310,9 +338,35 @@ func _resolve_deck_legacy(ids: Array) -> Array:
 	return out
 
 func _resolve_items(ids: Array) -> Array:
+	# Legacy id-list path. Each entry becomes a fresh duplicate at
+	# upgrade_level 0 so the per-slot contract still holds when loading
+	# pre-upgrade saves.
 	var out: Array = []
 	for s in ids:
 		var it: ItemData = Data.get_item(StringName(s))
 		if it != null:
-			out.append(it)
+			out.append(it.duplicate(true))
+	return out
+
+func _serialize_inventory(inv: Array) -> Array:
+	# Per-slot save: {id, upgrade_level}. Two copies of the same item
+	# serialize to two separate entries so independent upgrade state
+	# survives a round trip.
+	var out: Array = []
+	for it in inv:
+		if it is ItemData:
+			out.append({"id": String(it.id), "upgrade_level": it.upgrade_level})
+	return out
+
+func _resolve_inventory(entries: Array) -> Array:
+	var out: Array = []
+	for e in entries:
+		if not (e is Dictionary):
+			continue
+		var tpl: ItemData = Data.get_item(StringName(e.get("id", "")))
+		if tpl == null:
+			continue
+		var inst: ItemData = tpl.duplicate(true)
+		inst.upgrade_level = int(e.get("upgrade_level", 0))
+		out.append(inst)
 	return out

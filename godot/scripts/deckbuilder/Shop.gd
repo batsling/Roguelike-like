@@ -202,8 +202,7 @@ func _buy_item(entry: Dictionary, _btn: Button) -> void:
 	if entry.purchased or GameState.gold < entry.price:
 		return
 	GameState.change_gold(-entry.price)
-	GameState.inventory.append(entry.item)
-	GameState.emit_signal("inventory_changed")
+	GameState.add_item(entry.item)
 	entry.purchased = true
 	GameLog.add("Bought %s for %dg." % [entry.item.display_name, entry.price], Color(0.7, 1.0, 0.7))
 	_refresh_buttons()

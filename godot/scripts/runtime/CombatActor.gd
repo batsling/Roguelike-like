@@ -45,10 +45,12 @@ static func from_player() -> CombatActor:
 	a.display_name = "Player"
 	a.max_hp = GameState.max_hp
 	a.hp = GameState.hp
-	a.strength = GameState.strength
-	a.dexterity = GameState.dexterity
-	a.intelligence = GameState.intelligence
-	a.charisma = GameState.charisma
+	# Route through Stats so item_stat_bonus folds in. Max hp/energy go
+	# through the GameState setters and are already in max_hp above.
+	a.strength = Stats.get_value(&"strength")
+	a.dexterity = Stats.get_value(&"dexterity")
+	a.intelligence = Stats.get_value(&"intelligence")
+	a.charisma = Stats.get_value(&"charisma")
 	return a
 
 static func from_enemy(d: EnemyData, rng: RandomNumberGenerator) -> CombatActor:

@@ -54,9 +54,16 @@ func _load_stat_defs() -> void:
 # ---------------------------------------------------------------------------
 
 func get_value(stat_id: StringName) -> int:
-	# Reads the matching field on GameState by name. The stat id must
-	# match the GameState field exactly (strength / dexterity / etc.).
-	return int(GameState.get(String(stat_id)))
+	# Reads the matching field on GameState by name and adds any item
+	# bonus stored in GameState.item_stat_bonus (set by
+	# GameState._recompute_item_bonuses on every inventory change). The
+	# stat id must match the GameState field exactly
+	# (strength / dexterity / etc.). Vitals (max_hp, max_energy) are
+	# already applied via set_max_hp/max_energy so they're NOT in
+	# item_stat_bonus — direct reads return the right value.
+	var base: int = int(GameState.get(String(stat_id)))
+	var bonus: int = int(GameState.item_stat_bonus.get(String(stat_id), 0))
+	return base + bonus
 
 func get_definition(stat_id: StringName) -> StatDefinition:
 	return _stat_defs.get(stat_id)
