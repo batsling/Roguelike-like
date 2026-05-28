@@ -48,7 +48,7 @@ func set_highlight(active: bool) -> void:
 func _color_for_type(t: int) -> Color:
 	# Match GameData.GameType enum: ACTION=0, STRATEGY=1, DECKBUILDER=2, TRADITIONAL=3
 	match t:
-		0: return Color(0.85, 0.35, 0.25, 0.85)   # action — red-orange
-		1: return Color(0.35, 0.55, 0.85, 0.85)   # strategy — blue
+		0: return Color(0.85, 0.25, 0.25, 0.85)   # action — red
+		1: return Color(0.30, 0.75, 0.35, 0.85)   # strategy — green
 		2: return Color(0.55, 0.35, 0.85, 0.85)   # deckbuilder — purple
 		_: return Color(0.7, 0.7, 0.4, 0.85)      # traditional / unknown — yellow

@@ -32,10 +32,13 @@ signal portal_entered(game_id: StringName)
 # happened. Empty {} means "no pending — fresh entry".
 var pending_combat_outcome: Dictionary = {}
 
+const BASE_PORTAL_COUNT := 3
+
 var _portals: Array[PortalNode] = []
 var _active_portal: PortalNode = null
 var _win_overlay: Control = null
 var _verification_modal: Control = null
+var _dash_modal: Control = null
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -72,6 +75,20 @@ func _spawn_portals_for_current_game() -> void:
 		GameLog.add("No connected games from %s." % current.display_name, Color(0.9, 0.7, 0.4))
 		return
 
+	# Shuffle then take 3 ± FoV. Mirrors the HTML's spawnChoices logic.
+	_shuffle_ids(ids)
+	var target_count: int = maxi(1, BASE_PORTAL_COUNT + GameState.fov_bonus)
+	target_count = mini(target_count, ids.size())
+	var chosen: Array[StringName] = []
+	for i in range(target_count):
+		chosen.append(ids[i])
+
+	_place_portals(chosen)
+
+	GameLog.add("At %s. %d portals open." % [current.display_name, _portals.size()],
+		Color(0.8, 0.9, 1.0))
+
+func _place_portals(ids: Array[StringName]) -> void:
 	var count := ids.size()
 	var span := (count - 1) * PORTAL_SPACING
 	@warning_ignore("integer_division")
@@ -85,8 +102,12 @@ func _spawn_portals_for_current_game() -> void:
 		add_child(portal)
 		_portals.append(portal)
 
-	GameLog.add("At %s. %d portals open." % [current.display_name, _portals.size()],
-		Color(0.8, 0.9, 1.0))
+func _shuffle_ids(ids: Array[StringName]) -> void:
+	for i in range(ids.size() - 1, 0, -1):
+		var j: int = _rng.randi_range(0, i)
+		var tmp: StringName = ids[i]
+		ids[i] = ids[j]
+		ids[j] = tmp
 
 func _connected_game_ids(game_id: StringName) -> Array[StringName]:
 	# Undirected: outgoing edges + games that influenced this one.
@@ -123,29 +144,171 @@ func _on_player_moved(pos: Vector2i) -> void:
 	_update_hint()
 
 func _update_hint() -> void:
+	var actions := "WASD/arrows to walk"
 	if _active_portal != null:
-		_hint.text = "[E] Enter %s   |   WASD/arrows to walk" % _active_portal.game_data.display_name
-	else:
-		_hint.text = "WASD/arrows to walk to a portal"
+		actions = "[E] Enter %s   |   " % _active_portal.game_data.display_name + actions
+	actions += "   |   [R] Reroll (%d)   |   [Q] Dash (%d)" % [
+		GameState.reroll_charges, GameState.dash_charges,
+	]
+	_hint.text = actions
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed):
 		return
+	if not _can_act():
+		return
 	if event.keycode == KEY_E and _active_portal != null:
 		_enter_portal(_active_portal)
-	elif event.keycode == KEY_F5 and _can_save_load():
+	elif event.keycode == KEY_R:
+		_try_reroll()
+	elif event.keycode == KEY_Q:
+		_try_dash()
+	elif event.keycode == KEY_F5:
 		if _save_run():
 			GameLog.add("Saved.", Color(0.7, 0.9, 1.0))
 		else:
 			GameLog.add("Save failed.", Color(0.9, 0.5, 0.5))
-	elif event.keycode == KEY_ESCAPE and _can_save_load():
+	elif event.keycode == KEY_ESCAPE:
 		# Quick "back to menu" — autosaves first so the run lives on the
 		# Continue list.
 		_save_run()
 		get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
 
+func _can_act() -> bool:
+	return _verification_modal == null and _win_overlay == null and _dash_modal == null
+
 func _can_save_load() -> bool:
-	return _verification_modal == null and _win_overlay == null
+	return _can_act()
+
+# ------------------------------------------------------------------
+# Reroll — re-shuffle the portal selection. Costs 1 reroll charge.
+# ------------------------------------------------------------------
+
+func _try_reroll() -> void:
+	if GameState.reroll_charges <= 0:
+		GameLog.add("No rerolls available.", Color(0.9, 0.7, 0.4))
+		return
+	GameState.reroll_charges -= 1
+	GameLog.add("Rerolled portals. (%d left)" % GameState.reroll_charges,
+		Color(1.0, 0.85, 0.4))
+	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
+	_active_portal = null
+	_spawn_portals_for_current_game()
+	_update_hint()
+
+# ------------------------------------------------------------------
+# Dash — pick a connected game, spawn its portal, then enter it.
+# Costs 1 dash charge.
+# ------------------------------------------------------------------
+
+func _try_dash() -> void:
+	if GameState.dash_charges <= 0:
+		GameLog.add("No dashes available.", Color(0.9, 0.7, 0.4))
+		return
+	var current: GameData = Data.get_game(GameState.current_game_id)
+	if current == null:
+		return
+	var ids: Array[StringName] = _connected_game_ids(current.id)
+	if ids.is_empty():
+		GameLog.add("Nowhere to dash to.", Color(0.9, 0.7, 0.4))
+		return
+	_show_dash_modal(ids)
+
+func _show_dash_modal(ids: Array[StringName]) -> void:
+	if _dash_modal != null:
+		return
+	_player.set_input_locked(true)
+
+	var modal := Control.new()
+	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.6)
+	modal.add_child(dim)
+
+	var panel_w: float = 560.0
+	var panel_h: float = mini(560, 160 + ids.size() * 56)
+	var panel := Panel.new()
+	panel.size = Vector2(panel_w, panel_h)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	modal.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 20)
+	title.size = Vector2(panel_w - 40, 32)
+	title.text = "Dash — choose a connected game"
+	title.add_theme_font_size_override("font_size", 20)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(20, 64)
+	scroll.size = Vector2(panel_w - 40, panel_h - 132)
+	panel.add_child(scroll)
+
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 6)
+	scroll.add_child(list)
+
+	for gid in ids:
+		var gd: GameData = Data.get_game(gid)
+		if gd == null:
+			continue
+		var btn := Button.new()
+		btn.text = gd.display_name
+		btn.custom_minimum_size = Vector2(0, 44)
+		btn.pressed.connect(_on_dash_pick.bind(gid))
+		list.add_child(btn)
+
+	var cancel := Button.new()
+	cancel.position = Vector2(panel_w / 2.0 - 80, panel_h - 56)
+	cancel.size = Vector2(160, 40)
+	cancel.text = "Cancel"
+	cancel.pressed.connect(_on_dash_cancel)
+	panel.add_child(cancel)
+
+	add_child(modal)
+	_dash_modal = modal
+
+func _on_dash_cancel() -> void:
+	_close_dash_modal()
+	_player.set_input_locked(false)
+
+func _on_dash_pick(game_id: StringName) -> void:
+	_close_dash_modal()
+	var gd: GameData = Data.get_game(game_id)
+	if gd == null:
+		_player.set_input_locked(false)
+		return
+	GameState.dash_charges -= 1
+	GameLog.add("Dashed to %s. (%d left)" % [gd.display_name, GameState.dash_charges],
+		Color(0.5, 0.95, 1.0))
+	# Replace the current portal set with just the dashed-to game, then
+	# enter it. Visual: the chosen portal appears in the player's row of
+	# portals briefly before the scene transitions.
+	for p in _portals:
+		p.queue_free()
+	_portals.clear()
+	_active_portal = null
+	var only: Array[StringName] = [game_id]
+	_place_portals(only)
+	# Highlight the new portal, then enter after a short pause so the
+	# player sees what they picked.
+	if _portals.size() > 0:
+		_portals[0].set_highlight(true)
+	get_tree().create_timer(0.45).timeout.connect(_finish_dash.bind(game_id))
+
+func _finish_dash(game_id: StringName) -> void:
+	_player.set_input_locked(false)
+	emit_signal("portal_entered", game_id)
+
+func _close_dash_modal() -> void:
+	if _dash_modal != null:
+		_dash_modal.queue_free()
+		_dash_modal = null
 
 # ------------------------------------------------------------------
 # Portal entry — hands off to Main via signal, which builds the
