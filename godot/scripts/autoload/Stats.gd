@@ -191,10 +191,18 @@ func apply_addons_to_effect(effect: Dictionary, card) -> Dictionary:
 	if String(effect.get("type", "")) != "dmg":
 		return effect
 	var bonus: int = addon_damage_bonus(card, String(effect.get("damage_type", "")))
-	if bonus == 0:
+	var indiscriminate: bool = addons.has("indiscriminate")
+	if bonus == 0 and not indiscriminate:
 		return effect
 	var dup: Dictionary = effect.duplicate()
-	dup["value"] = int(dup.get("value", 0)) + bonus
+	if bonus != 0:
+		dup["value"] = int(dup.get("value", 0)) + bonus
+	if indiscriminate:
+		# Flag the effect so the dmg handler re-rolls the target per hit
+		# (Blood Magic's `2x3` becomes "2 dmg to 3 random enemies"). The
+		# flag also feeds CardInstance.wants_target so the play UI skips
+		# the manual target picker.
+		dup["indiscriminate"] = true
 	return dup
 
 func addon_damage_bonus(card, _damage_type: String) -> int:
@@ -210,6 +218,8 @@ func addon_damage_bonus(card, _damage_type: String) -> int:
 		match String(addon_name):
 			"fishing_weight":
 				total += _fishing_weight_bonus()
+			"wealth":
+				total += _wealth_bonus()
 			_:
 				pass
 	return total
@@ -227,6 +237,13 @@ func _fishing_weight_bonus() -> int:
 	#   @warning_ignore("integer_division")
 	#   return common / 3 + uncommon / 2 + rare
 	return 0
+
+func _wealth_bonus() -> int:
+	# Blasma Pistol's Wealth addon: +1 to the affected effect per 10 gold
+	# the player is sitting on. Type-agnostic — apply_addons_to_effect
+	# only routes dmg today, so callers see it as +1 dmg per 10 gold.
+	@warning_ignore("integer_division")
+	return int(GameState.gold) / 10
 
 func tick_actor_statuses(actor, scene) -> void:
 	# Per-turn damage / heal effects from statuses. MUST run BEFORE

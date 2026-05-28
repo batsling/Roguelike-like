@@ -692,7 +692,7 @@ func deal_damage(source, target, value: int, effect: Dictionary = {}) -> void:
 	var raw: int = int(value)
 	if effect.get("type", "") == "dmg_fraction_max_hp":
 		raw = int(round(target.max_hp * float(effect.get("value", 0))))
-	_apply_damage(source, target, raw)
+	_apply_damage(source, target, raw, effect)
 
 func gain_block(target, value: int) -> void:
 	if target == null:
@@ -768,7 +768,7 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 # Damage / death helpers
 # ----------------------------------------------------------------------
 
-func _apply_damage(_source, target, raw_dmg: int) -> void:
+func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> void:
 	if target == null or raw_dmg <= 0:
 		return
 	var was_alive: bool = target.is_alive()
@@ -776,8 +776,13 @@ func _apply_damage(_source, target, raw_dmg: int) -> void:
 	target.block -= absorbed
 	var landed := raw_dmg - absorbed
 	target.hp = maxi(0, target.hp - landed)
-	# Phase 8: enemy death -> roll loot onto the tile it fell on.
 	if was_alive and not target.is_alive() and not target.is_player:
+		# Infuse: strategy mirrors deckbuilder — every killing blow with
+		# infuse > 0 grants the player Max HP equal to the stack count.
+		var infuse_stacks: int = int(effect.get("infuse", 0))
+		if infuse_stacks > 0 and source != null and "is_player" in source and source.is_player:
+			GameState.set_max_hp(GameState.max_hp + infuse_stacks, false)
+		# Phase 8: enemy death -> roll loot onto the tile it fell on.
 		_drop_enemy_loot(target)
 
 func _drop_enemy_loot(unit) -> void:

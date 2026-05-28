@@ -72,6 +72,8 @@ func _register_defaults() -> void:
 	register("trigger", _h_trigger)
 	register("chance", _h_chance)
 	register("add_max_hp", _h_add_max_hp)
+	register("gain_hp", _h_gain_hp)
+	register("gain_max_hp", _h_gain_max_hp)
 	register("bump_card_effect", _h_bump_card_effect)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
@@ -92,9 +94,29 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	# Action mode handles its own pacing via _resolve_card_effects and
 	# never reaches this path for multi-hit, so the loop here is purely
 	# for deckbuilder/strategy where instant N hits are fine.
+	# Indiscriminate (Blood Magic's addon) re-rolls the target each
+	# iteration so a 3-hit attack lands on 3 random enemies instead of
+	# dumping all three into the same actor.
 	var hits: int = maxi(1, int(effect.get("hits", 1)))
+	var indiscriminate: bool = bool(effect.get("indiscriminate", false))
 	for _i in range(hits):
-		scene.deal_damage(ctx.get("source"), ctx.get("target"), effect.get("value", 0), effect)
+		var tgt: Variant = ctx.get("target")
+		if indiscriminate:
+			tgt = _pick_random_enemy(ctx.get("scene"))
+			if tgt == null:
+				return
+		scene.deal_damage(ctx.get("source"), tgt, effect.get("value", 0), effect)
+
+func _pick_random_enemy(scene: Variant) -> Variant:
+	if scene == null or not ("enemies" in scene):
+		return null
+	var live: Array = []
+	for e in scene.enemies:
+		if e != null and e.has_method("is_alive") and e.is_alive():
+			live.append(e)
+	if live.is_empty():
+		return null
+	return live[_rng.randi_range(0, live.size() - 1)]
 
 func _h_block(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -160,8 +182,46 @@ func _h_exhaust_self(_effect: Dictionary, ctx: Dictionary) -> void:
 		return
 	scene.exhaust_card(card)
 
-func _h_gain_gold(effect: Dictionary, _ctx: Dictionary) -> void:
-	GameState.change_gold(effect.get("value", 0))
+func _h_gain_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
+	# Permanent player Max HP bump — survives the item being removed from
+	# inventory. Pickup-kind items use this in their item_acquired
+	# trigger instead of stat_bonuses {max_hp: N}, because pickups are
+	# consumed-on-acquire conceptually: the bonus belongs to the player
+	# now, not to the item slot. Does NOT auto-heal — matches the
+	# "Max HP and HP are independent" rule. Pair with gain_hp in the
+	# same trigger when the pickup also fills the new pool (Lunch).
+	var v: int = int(effect.get("value", 0))
+	if v == 0:
+		return
+	GameState.set_max_hp(GameState.max_hp + v, false)
+
+func _h_gain_hp(effect: Dictionary, ctx: Dictionary) -> void:
+	# Scene-less heal that goes directly to GameState. Used by Lunch's
+	# item_acquired trigger to grant a one-shot +N HP on pickup without
+	# requiring an active combat scene. Distinct from `heal` (which
+	# routes through scene.heal so block / on-heal hooks fire) and from
+	# `add_max_hp` (which bumps the pool, never the current value).
+	# Caps at max_hp via GameState.change_hp.
+	var v: int = int(effect.get("value", 0))
+	if v == 0:
+		return
+	var target: Variant = ctx.get("target")
+	if target != null and not (target is Object and target == GameState) \
+			and "hp" in target and "max_hp" in target and not target.is_player:
+		target.hp = clampi(int(target.hp) + v, 0, int(target.max_hp))
+		return
+	GameState.change_hp(v)
+
+func _h_gain_gold(effect: Dictionary, ctx: Dictionary) -> void:
+	# Verification rewards (Blasma Pistol et al) pass a `level` in ctx and
+	# an `increments` list on the effect — picks the right tier amount
+	# when present, falls back to `value` otherwise.
+	var amount: int = int(effect.get("value", 0))
+	var increments: Array = effect.get("increments", [])
+	if not increments.is_empty():
+		var lv: int = maxi(1, int(ctx.get("level", 1)))
+		amount = int(increments[mini(lv - 1, increments.size() - 1)])
+	GameState.change_gold(amount)
 
 func _h_lose_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	GameState.change_hp(-effect.get("value", 0))

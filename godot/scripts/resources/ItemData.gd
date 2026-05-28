@@ -1,7 +1,7 @@
 class_name ItemData
 extends Resource
 
-enum ItemKind { PASSIVE, TRIGGERED, USABLE, WEAPON, SCALING }
+enum ItemKind { PASSIVE, TRIGGERED, USABLE, WEAPON, SCALING, PICKUP }
 enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 
 @export var id: StringName
@@ -26,6 +26,27 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #                      that operate directly on `ctx.target` work here
 #                      (add_max_hp, status with default-target, …).
 #                      Alien Baby: [{type: "add_max_hp", value: 3}]
+#   item_acquired    — fires once when the item enters inventory, after
+#                      stat_bonuses are folded in. Scene-less; use
+#                      scene-free effects only (gain_hp, gain_max_hp,
+#                      gain_gold, …). PICKUP-kind items use this as
+#                      their primary effect slot — pickups are
+#                      conceptually consumed-on-acquire, so the bonus
+#                      should be a permanent player change, not a
+#                      stat_bonuses entry that vanishes if the item is
+#                      ever removed. Lunch: triggers = [{on:
+#                      "item_acquired", effects: [{type: "gain_max_hp",
+#                      value: 8}, {type: "gain_hp", value: 8}]}].
+#   card_played      — fires per card resolved. ctx carries the card and
+#                      its target. Combine with `if_card_tag:` /
+#                      `if_card_id:` on the trigger entry to gate. Effects
+#                      with target "enemy" hit the card's target.
+#                      Bird Head: triggers = [{on: "card_played",
+#                                              if_card_tag: "strike",
+#                                              effects: [{type: "status",
+#                                                         status: "soul_link",
+#                                                         stacks: 1,
+#                                                         target: "enemy"}]}]
 #
 # `effects:` is a list of dicts dispatched through EffectSystem. Each entry
 # is `{type: <handler-name>, ...args}`. See EffectSystem.gd for the full
@@ -42,6 +63,14 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # Persistent stat bonuses applied while the item is in inventory.
 # Keys: strength, dexterity, intelligence, charisma, luck, max_hp, max_energy, etc.
 @export var stat_bonuses: Dictionary = {}
+
+# Declarative scaling rules for SCALING items. Each entry is a dict:
+#   {stat: <stat_id>, value: <int>, per: <int>, of: <source_stat>}
+# meaning "grant `value` `stat` per `per` points of `of`, rounded down."
+# Beefy Ring: [{stat: "strength", value: 1, per: 20, of: "max_hp"}]
+# `of` resolves against GameState fields (max_hp, hp, strength, gold, etc).
+# Output stats are folded into item_stat_bonus by _recompute_item_bonuses.
+@export var scaling: Array = []
 
 # For Usable items: how many uses (-1 = infinite)
 @export var max_uses: int = -1

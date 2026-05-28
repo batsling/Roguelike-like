@@ -91,6 +91,10 @@ func is_power() -> bool:
 func wants_target() -> bool:
 	# A card needs a single-enemy target if any of its effects has
 	# target = "enemy" (i.e., single-target) without being AoE.
+	# Indiscriminate (Blood Magic) re-rolls the target per hit, so the
+	# play UI doesn't need to ask — the engine picks for you.
+	if data != null and data.addons.has("indiscriminate"):
+		return false
 	for e in get_effects():
 		var t = e.get("target", "")
 		if t == "enemy":

@@ -179,7 +179,7 @@ func _apply_equipped_powers() -> void:
 						var value: int = int(effect.get("value", 0))
 						for inst in enemies:
 							if inst.actor.is_alive():
-								_deal_damage_to_enemy(inst, value, dmg_type)
+								_deal_damage_to_enemy(inst, value, dmg_type, 1, effect)
 				_:
 					pass
 		GameLog.add("Power active: %s." % card.display_name, Color(1.0, 0.85, 0.4))
@@ -347,7 +347,7 @@ func _do_basic_attack() -> void:
 	if hit_count > 0:
 		GameLog.add("Basic attack hits %d." % hit_count, Color(0.85, 1.0, 0.7))
 
-func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, power_multiplier: int = 1) -> void:
+func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, power_multiplier: int = 1, effect: Dictionary = {}) -> void:
 	# Blind: if the player is currently Blinded, each melee/ranged hit
 	# rolls to miss. Status / heal / block effects aren't routed
 	# through here so they aren't gated.
@@ -363,6 +363,14 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 	if inst.actor.hp <= 0:
 		inst.actor.dead = true
 		GameLog.add("%s defeated." % inst.actor.display_name, Color(0.6, 1.0, 0.6))
+		# Infuse: action mode keeps the keyword interesting in real-time
+		# play by gating it behind a 10% roll per killing hit, rather
+		# than the always-on deckbuilder/strategy form.
+		var infuse_stacks: int = int(effect.get("infuse", 0))
+		if infuse_stacks > 0 and Stats.roll_chance_with_luck(_rng, 10):
+			GameState.set_max_hp(GameState.max_hp + infuse_stacks, false)
+			GameLog.add("Infuse: gained %d Max HP." % infuse_stacks,
+				Color(0.85, 0.65, 1.0))
 		TriggerBus.emit_signal("enemy_killed", {"enemy": inst.actor, "scene": self})
 
 # ---------------------------------------------------------------------------
@@ -584,7 +592,7 @@ func _resolve_delayed_cone_hit(effect: Dictionary) -> void:
 	for inst in targets:
 		if gate != &"" and inst.actor.get_status(gate) <= 0:
 			continue
-		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
+		_deal_damage_to_enemy(inst, value, dmg_type, power_mult, effect)
 
 func _resolve_delayed_aoe_hit(effect: Dictionary) -> void:
 	var targets: Array = _enemies_in_radius(ABILITY_AOE_RADIUS)
@@ -595,7 +603,7 @@ func _resolve_delayed_aoe_hit(effect: Dictionary) -> void:
 	for inst in targets:
 		if gate != &"" and inst.actor.get_status(gate) <= 0:
 			continue
-		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
+		_deal_damage_to_enemy(inst, value, dmg_type, power_mult, effect)
 
 func draw_cards(n: int) -> void:
 	# Action mode has no hand. Per design, each `draw` effect instead
@@ -717,7 +725,7 @@ func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 	for inst in hit_list:
 		if gate != &"" and inst.actor.get_status(gate) <= 0:
 			continue
-		_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
+		_deal_damage_to_enemy(inst, value, dmg_type, power_mult, effect)
 	# Multi-hit cards (Twin Strike 5x2) queue the remaining swings so
 	# each lands as its own visible animation/event ~100ms apart.
 	var extra_hits: int = maxi(0, int(effect.get("hits", 1)) - 1)
@@ -916,7 +924,7 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 				var value: int = int(effect.get("value", 0))
 				var dmg_type: String = String(effect.get("damage_type", "melee"))
 				var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
-				_deal_damage_to_enemy(inst, value, dmg_type, power_mult)
+				_deal_damage_to_enemy(inst, value, dmg_type, power_mult, effect)
 			"status":
 				var status: StringName = StringName(String(effect.get("status", "")))
 				var stacks: int = int(effect.get("stacks", 0))

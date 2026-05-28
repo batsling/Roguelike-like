@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_lunch"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://assets/items/Lunch.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"lunch"
+display_name = "Lunch"
+kind = 5
+rarity = 0
+description = "Gain 8 Max HP and 8 HP."
+triggers = [{
+"on": "item_acquired",
+"effects": [{
+"type": "gain_max_hp",
+"value": 8
+}, {
+"type": "gain_hp",
+"value": 8
+}]
+}]
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("food")
+image = ExtResource("2_img")
