@@ -707,9 +707,9 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 	# Target incoming modifiers
 	if target.get_status(&"vulnerable") > 0:
 		amount = int(ceil(amount * 1.5))
-	if target.get_status(&"dodge") > 0:
-		target.add_status(&"dodge", -1)
-		GameLog.add("%s dodges!" % target.display_name, Color(0.7, 0.9, 1.0))
+	if target.get_status(&"buffer") > 0:
+		target.add_status(&"buffer", -1)
+		GameLog.add("%s's Buffer absorbs the hit!" % target.display_name, Color(0.7, 0.9, 1.0))
 		return
 	# (Frail affects block gained, not damage taken — handled in gain_block)
 
@@ -719,6 +719,10 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 	amount -= absorbed
 
 	if amount > 0:
+		if target.get_status(&"dodge") > 0:
+			target.add_status(&"dodge", -1)
+			GameLog.add("%s dodges!" % target.display_name, Color(0.7, 0.9, 1.0))
+			return
 		if target.is_player:
 			GameState.change_hp(-amount)
 			target.hp = GameState.hp
