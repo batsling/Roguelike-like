@@ -71,6 +71,7 @@ func _register_defaults() -> void:
 	register("gain_loot", _h_gain_loot)
 	register("trigger", _h_trigger)
 	register("chance", _h_chance)
+	register("add_max_hp", _h_add_max_hp)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -132,11 +133,24 @@ func _h_lose_energy(effect: Dictionary, ctx: Dictionary) -> void:
 	scene.lose_energy(effect.get("value", 1))
 
 func _h_status(effect: Dictionary, ctx: Dictionary) -> void:
-	var scene: Variant = ctx.get("scene")
-	if scene == null or not scene.has_method("apply_status"):
-		return
 	var target: Variant = ctx.get("target") if effect.get("target", "enemy") != "self" else ctx.get("source")
-	scene.apply_status(target, effect.get("status", ""), effect.get("stacks", 1))
+	var status_id := StringName(effect.get("status", ""))
+	var stacks: int = int(effect.get("stacks", 1))
+	if status_id == &"" or stacks == 0 or target == null:
+		return
+	var scene: Variant = ctx.get("scene")
+	if scene != null and scene.has_method("apply_status"):
+		# In-combat path — fires status_applied, triggers Power reactions.
+		# Source intentionally not threaded through; scene-level Persistence
+		# handling lives outside this dispatcher to avoid double-applying.
+		scene.apply_status(target, status_id, stacks)
+		return
+	# Scene-less fallback — used by enemy_spawned / item-pickup hooks
+	# where we just want to decorate an actor before combat starts.
+	# Skips Persistence and the status_applied bus on purpose: this is
+	# baseline state, not the player actively casting.
+	if target.has_method("add_status"):
+		target.add_status(status_id, stacks)
 
 func _h_exhaust_self(_effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -262,6 +276,26 @@ func _h_trigger(effect: Dictionary, ctx: Dictionary) -> void:
 		String(effect.get("on", "")),
 		effect.get("effect", {})
 	)
+
+func _h_add_max_hp(effect: Dictionary, ctx: Dictionary) -> void:
+	# Adjust a CombatActor's max_hp (and hp on positive deltas) directly.
+	# Scene-less: operates on ctx.target. Canonical use is the
+	# enemy_spawned trigger — Alien Baby's "all enemies start with +3 HP".
+	# Works on any actor exposing max_hp / hp fields; negative values
+	# shrink the pool and clamp current hp down.
+	var target: Variant = ctx.get("target")
+	if target == null or not ("max_hp" in target):
+		return
+	var v: int = int(effect.get("value", 0))
+	if v == 0:
+		return
+	target.max_hp = maxi(1, int(target.max_hp) + v)
+	if "hp" in target:
+		if v > 0:
+			# Top up so the new headroom is real, not a phantom max
+			target.hp = mini(int(target.hp) + v, target.max_hp)
+		else:
+			target.hp = mini(int(target.hp), target.max_hp)
 
 func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 	# Roll once on the EffectSystem RNG, with luck advantage applied

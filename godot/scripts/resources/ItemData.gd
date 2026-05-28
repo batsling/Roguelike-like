@@ -12,11 +12,31 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 
 # Trigger-driven items use the declarative form: a list of trigger hooks and
 # the effects to fire. Most items can be described this way.
-# Example:
-# triggers = [
-#   { "on": "combat_start", "effects": [{ "type": "gain_block", "value": 5 }] },
-#   { "on": "damage_taken", "effects": [{ "type": "dmg", "value": 2, "target": "attacker" }] }
-# ]
+#
+# === Authoring catalog ===
+# `on:` matches a TriggerBus signal name. Currently consumed by item code:
+#   combat_started   — fires once per combat at init. Target = player.
+#                      Anchor:  effects = [{type: "block", value: 10}]
+#   combat_ended     — fires once at combat end (victory or defeat).
+#                      Burning Blood: [{type: "heal", value: 6}]
+#   enemy_killed     — fires per enemy defeated. Target = player.
+#                      Charm of the Vampire: [{type: "heal", value: 3}]
+#   enemy_spawned    — fires per enemy as it spawns. Target = the new
+#                      enemy CombatActor. Scene-less; only effect types
+#                      that operate directly on `ctx.target` work here
+#                      (add_max_hp, status with default-target, …).
+#                      Alien Baby: [{type: "add_max_hp", value: 3}]
+#
+# `effects:` is a list of dicts dispatched through EffectSystem. Each entry
+# is `{type: <handler-name>, ...args}`. See EffectSystem.gd for the full
+# handler registry. The common ones for items:
+#   block / heal / dmg / status / gain_energy / gain_gold / draw /
+#   chance (wraps an inner effect with a % roll) / trigger (persistent
+#   in-combat listener) / add_max_hp (mutates target.max_hp directly).
+#
+# To add a new authoring vocabulary entry: register a handler in
+# EffectSystem._register_defaults and (if it needs a new trigger point)
+# declare the signal in TriggerBus + emit it from the relevant scene.
 @export var triggers: Array = []
 
 # Persistent stat bonuses applied while the item is in inventory.

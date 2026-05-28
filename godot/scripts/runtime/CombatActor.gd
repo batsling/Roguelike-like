@@ -60,7 +60,33 @@ static func from_enemy(d: EnemyData, rng: RandomNumberGenerator) -> CombatActor:
 	a.data = d
 	a.max_hp = rng.randi_range(d.hp_min, d.hp_max)
 	a.hp = a.max_hp
+	# Apply spawn-time item modifiers (Alien Baby's +3 HP, future
+	# "all enemies start with X" items). Runs against every consumer
+	# of from_enemy automatically, so action/strategy modes pick it
+	# up the moment they wire CombatActor in.
+	_apply_enemy_spawn_triggers(a)
+	TriggerBus.emit_signal("enemy_spawned", {"enemy": a})
 	return a
+
+static func _apply_enemy_spawn_triggers(actor: CombatActor) -> void:
+	# Walk inventory + equipped_weapon and run every effect whose trigger
+	# is `enemy_spawned`. Scene is intentionally null — handlers used
+	# here (add_max_hp, status, …) all support a scene-less code path
+	# so they apply to the new actor without needing a combat scene.
+	var sources: Array = []
+	sources.append_array(GameState.inventory)
+	if GameState.equipped_weapon != null:
+		sources.append(GameState.equipped_weapon)
+	for item in sources:
+		if not (item is ItemData):
+			continue
+		for trig in item.triggers:
+			if String(trig.get("on", "")) != "enemy_spawned":
+				continue
+			for effect in trig.get("effects", []):
+				EffectSystem.apply(effect, {
+					"source": null, "target": actor, "scene": null, "card": null,
+				})
 
 # ------------------------------------------------------------------
 # Mutation helpers
