@@ -72,6 +72,7 @@ func _register_defaults() -> void:
 	register("trigger", _h_trigger)
 	register("chance", _h_chance)
 	register("add_max_hp", _h_add_max_hp)
+	register("gain_hp", _h_gain_hp)
 	register("bump_card_effect", _h_bump_card_effect)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
@@ -179,6 +180,23 @@ func _h_exhaust_self(_effect: Dictionary, ctx: Dictionary) -> void:
 	if scene == null or card == null or not scene.has_method("exhaust_card"):
 		return
 	scene.exhaust_card(card)
+
+func _h_gain_hp(effect: Dictionary, ctx: Dictionary) -> void:
+	# Scene-less heal that goes directly to GameState. Used by Lunch's
+	# item_acquired trigger to grant a one-shot +N HP on pickup without
+	# requiring an active combat scene. Distinct from `heal` (which
+	# routes through scene.heal so block / on-heal hooks fire) and from
+	# `add_max_hp` (which bumps the pool, never the current value).
+	# Caps at max_hp via GameState.change_hp.
+	var v: int = int(effect.get("value", 0))
+	if v == 0:
+		return
+	var target: Variant = ctx.get("target")
+	if target != null and not (target is Object and target == GameState) \
+			and "hp" in target and "max_hp" in target and not target.is_player:
+		target.hp = clampi(int(target.hp) + v, 0, int(target.max_hp))
+		return
+	GameState.change_hp(v)
 
 func _h_gain_gold(effect: Dictionary, ctx: Dictionary) -> void:
 	# Verification rewards (Blasma Pistol et al) pass a `level` in ctx and

@@ -266,6 +266,19 @@ func add_item(template: ItemData) -> ItemData:
 	if _grant_weapon_card(inst):
 		emit_signal("deck_changed")
 	_recompute_item_bonuses()
+	# Fire item_acquired triggers AFTER the inventory + stat recompute so
+	# the pickup hook sees the new max_hp (Lunch's +8 HP lands on top of
+	# the +8 Max HP its stat_bonuses just contributed). Scene-less — only
+	# handlers that don't need a combat scene (gain_hp, gain_gold, …) are
+	# valid here.
+	for trig in inst.triggers:
+		if String(trig.get("on", "")) != "item_acquired":
+			continue
+		for effect in trig.get("effects", []):
+			EffectSystem.apply(effect, {
+				"source": null, "target": null, "scene": null, "card": null,
+			})
+	TriggerBus.emit_signal("item_acquired", {"item": inst})
 	emit_signal("inventory_changed")
 	return inst
 

@@ -26,6 +26,16 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #                      that operate directly on `ctx.target` work here
 #                      (add_max_hp, status with default-target, …).
 #                      Alien Baby: [{type: "add_max_hp", value: 3}]
+#   item_acquired    — fires once when the item enters inventory, after
+#                      stat_bonuses are folded in. Scene-less; use
+#                      scene-free effects only (gain_hp, gain_gold, …).
+#                      Lunch: triggers = [{on: "item_acquired",
+#                                          effects: [{type: "gain_hp",
+#                                                     value: 8}]}]
+#                      Paired with stat_bonuses {max_hp: 8} to express
+#                      "+8 Max HP and +8 HP" — the stat bonus contributes
+#                      the headroom without auto-healing into it, and
+#                      gain_hp fills the new pool.
 #   card_played      — fires per card resolved. ctx carries the card and
 #                      its target. Combine with `if_card_tag:` /
 #                      `if_card_id:` on the trigger entry to gate. Effects
