@@ -27,7 +27,10 @@ static func available_from_deck(deck: Array) -> Array:
 	var seen: Dictionary = {}
 	for entry in deck:
 		var card: CardData = _extract_card(entry)
-		if card == null or _is_basic(card) or is_weapon(card):
+		if card == null or _is_basic(card):
+			continue
+		# Weapons live in the weapon slot, not the card pool.
+		if is_weapon(card) or (entry is CardInstance and entry.source_weapon_id != 0):
 			continue
 		if seen.has(card.id):
 			continue
