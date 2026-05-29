@@ -13,18 +13,18 @@ func before_each() -> void:
 # --- room count formula ----------------------------------------------------
 
 func test_room_count_formula_floor() -> void:
-	# With no rng, bonus is the +3 floor: round(3.33*v) + 3.
-	assert_eq(IsaacFloorGenerator.room_count_for(1), 6)   # round(3.33)=3 +3
-	assert_eq(IsaacFloorGenerator.room_count_for(2), 10)  # round(6.66)=7 +3
-	assert_eq(IsaacFloorGenerator.room_count_for(3), 13)  # round(9.99)=10 +3
-	assert_eq(IsaacFloorGenerator.room_count_for(4), 16)  # round(13.32)=13 +3
+	# With no rng, bonus is the +5 floor: round(3.33*v) + 5.
+	assert_eq(IsaacFloorGenerator.room_count_for(1), 8)   # round(3.33)=3 +5
+	assert_eq(IsaacFloorGenerator.room_count_for(2), 12)  # round(6.66)=7 +5
+	assert_eq(IsaacFloorGenerator.room_count_for(3), 15)  # round(9.99)=10 +5
+	assert_eq(IsaacFloorGenerator.room_count_for(4), 18)  # round(13.32)=13 +5
 
-func test_room_count_bonus_is_three_or_four() -> void:
+func test_room_count_bonus_is_five_or_six() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
 	for _i in range(50):
 		var n: int = IsaacFloorGenerator.room_count_for(3, rng)
-		assert_between(n, 13, 14)
+		assert_between(n, 15, 16)
 
 func test_room_count_capped_at_twenty() -> void:
 	assert_lte(IsaacFloorGenerator.room_count_for(999), IsaacFloorGenerator.MAX_ROOMS)

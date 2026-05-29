@@ -21,7 +21,7 @@ extends RefCounted
 #     takes the farthest, then treasure, then shop.
 #
 # Room count scales with the difficulty tier value (1..4):
-#     NumberOfRooms = round(3.33 * tier_value) + (3 or 4)   (capped at 20)
+#     NumberOfRooms = round(3.33 * tier_value) + (5 or 6)   (capped at 20)
 #
 # Everything here is deterministic given a seed, returns plain
 # Dictionaries/Arrays, and touches no nodes — so it is fully unit
@@ -94,14 +94,14 @@ static func in_bounds(x: int, y: int) -> bool:
 # ---------------------------------------------------------------------------
 
 # Computes the target room count for a difficulty tier value (1..4).
-# NumberOfRooms = round(3.33 * tier_value) + rng[3..4], clamped to
-# [MIN_ROOMS, MAX_ROOMS]. `rng` may be null for the (3.33*v + 3) floor.
+# NumberOfRooms = round(3.33 * tier_value) + rng[5..6], clamped to
+# [MIN_ROOMS, MAX_ROOMS]. `rng` may be null for the (3.33*v + 5) floor.
 static func room_count_for(tier_value: int, rng: RandomNumberGenerator = null) -> int:
 	var v: int = maxi(1, tier_value)
 	var base: int = int(round(3.33 * float(v)))
-	var bonus: int = 3
+	var bonus: int = 5
 	if rng != null:
-		bonus = rng.randi_range(3, 4)
+		bonus = rng.randi_range(5, 6)
 	return clampi(base + bonus, MIN_ROOMS, MAX_ROOMS)
 
 # Generates a floor. Returns a Dictionary:

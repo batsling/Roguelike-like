@@ -46,8 +46,8 @@ func test_room_count_tracks_difficulty_tier() -> void:
 	var low: ActionFloor = _make_floor()
 	await get_tree().process_frame
 	var low_count: int = int(low._floor.room_count)
-	assert_between(low_count, IsaacFloorGenerator.MIN_ROOMS, 7,
-		"low-tier floor is small")
+	assert_between(low_count, 8, 9,
+		"low-tier floor is round(3.33)+5..6 = 8..9 rooms")
 
 	# Insane tier -> a bigger floor than low tier's target.
 	GameState.games_played = 30
