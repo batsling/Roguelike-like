@@ -11,12 +11,14 @@ This pass supersedes parts of the original design below. Where they
 conflict, this section wins.
 
 ### Movement / speed
-- **Base speed = 4 tiles** for the player, and enemies match it for now
-  (`BattleUnit.from_player` / `ENEMY_PRESETS`). Speed still doubles as the
-  initiative weight, so a flat 4 means a uniform turn cadence until enemy
-  speeds are differentiated again.
+- **Move range is separate from initiative.** `BattleUnit.move_range`
+  (tiles/turn) is decoupled from `BattleUnit.speed` (initiative weight).
+  Base move is **4 tiles**, shifted **±1 per point** of a speed/agility
+  stat: the player gets `4 + GameState.speed`; enemies use a per-archetype
+  `move` modifier (0 = 4). Initiative `speed` is flat 4 for now, so turn
+  cadence stays uniform.
 - **One move action per turn.** Movement no longer chains: committing a
-  move (up to `speed` tiles) locks further movement for the turn
+  move (up to `move_range` tiles) locks further movement for the turn
   (`BattleView._move_used`).
 
 ### Cards: uses + 3 slots (replaces the cooldown model)
@@ -26,35 +28,50 @@ Cooldown plumbing stays only for **enemy** intents (`unit.cooldowns`,
 `tick_cooldowns`, `EnemyAI`).
 
 - **Pre-combat loadout screen** (`BattleView` loadout overlay): the player
-  sees the enemy + telegraphed intents and slots up to **3 cards** chosen
-  from the run deck (non-basic, deduped — `CombatLoadout.available_from_deck`).
-  Confirming calls `StrategyCombatSession.begin_battle()` to start the
-  initiative engine (which `enter_combat` no longer auto-starts).
+  sees the enemy + telegraphed intents and picks a loadout — up to **3 cards**
+  plus an optional **weapon** — from the run deck. Confirming calls
+  `StrategyCombatSession.begin_battle()` to start the initiative engine
+  (which `enter_combat` no longer auto-starts).
+- **Weapon slot (Mewgenics-style).** One weapon per combat, chosen from
+  weapon cards in the deck (tagged `weapon` or granted by a weapon item —
+  `CombatLoadout.weapon_cards_from_deck`). The equipped weapon **replaces the
+  basic Attack action**: attacking resolves the weapon card's effects instead
+  of the flat strike. No weapon → default `DEFAULT_BASIC_ATTACK`. Unlimited
+  uses but once per turn (it's the Attack action, gated by `_action_used`).
+  Weapon cards are excluded from the 3-card pool. (Weapon range/shape still
+  uses melee-adjacent targeting; per-weapon range is future work.)
 - **Uses, not cooldowns.** Each card has a use count
-  (`CardData.max_uses`, default by rarity in
-  `GameState.DEFAULT_CARD_USES_BY_RARITY = [4,4,3,2,2]`). Playing a card
-  spends one use. **Uses are run-persistent**: stored on
-  `GameState.card_uses` (keyed by card id), they deplete across combats and
-  *save* across leaving/re-entering a strategy game within the run. Only
-  refilled by "draw"-style effects (and future rest hooks). Basic
-  Attack/Defend and mana spells are always available, so a depleted loadout
-  never soft-locks a fight.
+  (`CardData.max_uses`, else a rarity default `[4,4,3,2,2]` that **cost
+  shaves**: cost 0-1 keeps the full value, each point above 1 removes a use,
+  floor 1 — so stronger cards bring fewer uses). Playing a card spends one
+  use. **Uses are run-persistent**: stored on `GameState.card_uses` (keyed by
+  card id), they deplete across combats and *save* across leaving/re-entering
+  a strategy game within the run. Only refilled by "draw"-style effects (and
+  future rest hooks). Basic Attack/Defend and mana spells are always
+  available, so a depleted loadout never soft-locks a fight.
 - **Per-turn economy: one card play baseline** (`_card_plays_remaining`,
-  starts at 1). The reframed energy/draw effects:
-  - `gain_energy:N` → **+N card plays this turn** (sets up multi-card turns).
+  starts at 1). Reframed energy/draw effects:
+  - `gain_energy:N` → bank **N empower charge** (`_energy_charge`). It
+    persists across turns until the next card play consumes ALL of it,
+    amplifying that card (+N damage, +N block, +N status stacks). No extra
+    plays. `lose_energy:N` drains the charge.
   - `draw_cards:N` → **recharge N uses** on the slotted card(s) with the
     fewest current uses.
-  - `discard_cards:N` / `lose_energy:N` → **−N card plays this turn** (tempo cost).
+  - `discard_cards:N` → **−N card plays this turn** (tempo cost).
 
 ### Open follow-ups from this pass
+- **Status system in strategy combat** — empower's "+poison stacks" path is
+  wired (`status` effects bump `stacks`), but `BattleView` has no
+  `apply_status`/`get_status` yet, so status effects currently no-op.
+  Damage/block empower works today.
 - **Use refill points** (rest sites / shops / floor transitions) — uses
   currently only refill via draw effects; a between-fight refill path is
   likely wanted so long runs don't grind loadouts to zero.
-- **Typed / equipment-backed slots** — slots are 3 generic slots picked
-  from the deck for now; tying them to gear (cf. the action-mode
-  `EquipmentScreen`) is a future option.
-- **Decoupling move range from initiative speed**, once enemies need
-  distinct initiative without also moving farther.
+- **Per-weapon range/shape** — weapons resolve through the melee-adjacent
+  Attack targeting for now; ranged/AoE weapons want their own targeting.
+- **Typed / equipment-backed card slots** — the 3 card slots are generic
+  deck picks; tying them to gear (cf. the action-mode `EquipmentScreen`) is a
+  future option.
 
 ## Design summary
 

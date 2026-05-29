@@ -498,16 +498,22 @@ func get_loot_count(kind: String) -> int:
 # ---------------------------------------------------------------------------
 
 # Starting / maximum uses for a card: the per-card override when set,
-# otherwise the rarity-based default.
+# otherwise a rarity-based default that cost shaves down — stronger
+# (higher-cost) cards bring fewer uses. cost 0-1 keeps the full rarity
+# value; each point above 1 removes a use (X-cost cards count as 1).
 func max_card_uses(card: CardData) -> int:
 	if card == null:
 		return 0
 	if card.max_uses >= 0:
 		return card.max_uses
+	var base: int = 3
 	var r: int = card.rarity
 	if r >= 0 and r < DEFAULT_CARD_USES_BY_RARITY.size():
-		return DEFAULT_CARD_USES_BY_RARITY[r]
-	return 3
+		base = DEFAULT_CARD_USES_BY_RARITY[r]
+	var cost: int = card.cost
+	if cost < 0:  # X-cost
+		cost = 1
+	return maxi(1, base - maxi(0, cost - 1))
 
 # Remaining uses for a card, lazily seeded to its max on first read so a
 # freshly acquired card always starts full.

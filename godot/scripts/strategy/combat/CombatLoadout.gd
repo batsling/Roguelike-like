@@ -15,22 +15,44 @@ const MAX_SLOTS := 3
 
 # The chosen cards (Array[CardData], length 0..MAX_SLOTS).
 var cards: Array = []
+# The equipped weapon card (CardData) or null. One per combat; it replaces
+# the basic Attack action and is usable once per turn with no use depletion.
+var weapon: CardData = null
 
-# The choosable pool: every non-basic, deduped card in the deck. Basic
-# strikes/defends live on the basic Attack/Defend actions, so they're
-# filtered out (same rule the old AbilityPool used).
+# The choosable pool for the 3 slots: every non-basic, non-weapon, deduped
+# card in the deck. Basics live on Attack/Defend; weapons live in the weapon
+# slot (see weapon_cards_from_deck).
 static func available_from_deck(deck: Array) -> Array:
 	var out: Array = []
 	var seen: Dictionary = {}
 	for entry in deck:
 		var card: CardData = _extract_card(entry)
-		if card == null or _is_basic(card):
+		if card == null or _is_basic(card) or is_weapon(card):
 			continue
 		if seen.has(card.id):
 			continue
 		seen[card.id] = true
 		out.append(card)
 	return out
+
+# Weapon cards in the deck (deduped). A card is a weapon if it's tagged
+# "weapon" or was granted by a weapon item (CardInstance.source_weapon_id).
+static func weapon_cards_from_deck(deck: Array) -> Array:
+	var out: Array = []
+	var seen: Dictionary = {}
+	for entry in deck:
+		var card: CardData = _extract_card(entry)
+		if card == null:
+			continue
+		var is_w: bool = is_weapon(card) or (entry is CardInstance and entry.source_weapon_id != 0)
+		if not is_w or seen.has(card.id):
+			continue
+		seen[card.id] = true
+		out.append(card)
+	return out
+
+static func is_weapon(card: CardData) -> bool:
+	return card != null and card.tags.has("weapon")
 
 static func _extract_card(entry) -> CardData:
 	if entry == null:

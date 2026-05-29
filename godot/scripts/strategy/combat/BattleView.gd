@@ -51,9 +51,12 @@ var _units: Array = []
 var _room_data = null
 var _encounter: Array = []
 
-var _loadout = null        # CombatLoadout (the 3 chosen cards)
+var _loadout = null        # CombatLoadout (the 3 chosen cards + weapon)
 var _available_cards: Array = []  # choosable pool for the loadout screen
 var _selected_cards: Array = []   # mid-selection on the loadout screen
+var _available_weapons: Array = []  # weapon cards in the deck
+var _selected_weapon = null         # CardData chosen on the loadout screen
+var _weapon_card = null             # CardData equipped for this combat (or null)
 var _spellbook = null      # Spellbook
 
 # Mid-action state: which card/spell is mid-cast while we wait for a target click.
@@ -95,10 +98,17 @@ var _action_used: bool = false
 var _move_used: bool = false   # one Move action per turn (no chaining)
 var _move_remaining: int = 0
 
-# Card plays left this turn. Baseline 1 (one card per turn); gain-energy
-# effects add plays, discard effects subtract them. Each card play also
-# spends one of the card's run-persistent uses (GameState.spend_card_use).
+# Card plays left this turn. Baseline 1 (one card per turn); discard effects
+# subtract plays. Each card play spends one of the card's run-persistent uses
+# (GameState.spend_card_use).
 var _card_plays_remaining: int = 0
+
+# Energy charge banked from gain-energy effects. It persists across turns
+# within a combat until spent: the next card play consumes ALL of it and is
+# empowered by that amount (+dmg / +block / +status stacks), then it resets
+# to 0. gain_energy adds, lose_energy removes. Empower-only — energy grants
+# no extra plays.
+var _energy_charge: int = 0
 
 var _loot_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -116,8 +126,12 @@ func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager 
 	_grid_view.set_battle(battle_map, _units)
 
 	_available_cards = CombatLoadoutScript.available_from_deck(GameState.deck)
+	_available_weapons = CombatLoadoutScript.weapon_cards_from_deck(GameState.deck)
 	_loadout = CombatLoadoutScript.new()
 	_selected_cards = []
+	_selected_weapon = null
+	_weapon_card = null
+	_energy_charge = 0
 	_spellbook = SpellbookScript.build_from_ids(GameState.learned_spells)
 
 	_info_label.text = _format_info(room_data, encounter)
@@ -352,35 +366,67 @@ func _open_loadout_screen() -> void:
 func _populate_loadout_pool() -> void:
 	for child in _loadout_pool_container.get_children():
 		child.queue_free()
-	_loadout_slots_label.text = "Slots: %d / %d filled" % [_selected_cards.size(), CombatLoadout.MAX_SLOTS]
+	var weapon_name: String = _selected_weapon.display_name if _selected_weapon != null else "(none — default strike)"
+	_loadout_slots_label.text = "Weapon: %s   |   Card slots: %d / %d filled" % [
+		weapon_name, _selected_cards.size(), CombatLoadout.MAX_SLOTS,
+	]
+
+	# Weapon section (single-select; replaces the basic Attack action).
+	_loadout_pool_container.add_child(_make_loadout_header("WEAPON  (one; replaces your Attack, usable every turn)"))
+	if _available_weapons.is_empty():
+		_loadout_pool_container.add_child(_picker_note("No weapon cards in your deck — Attack will use the default strike."))
+	else:
+		for wcard in _available_weapons:
+			var equipped: bool = _selected_weapon == wcard
+			_loadout_pool_container.add_child(_make_loadout_row(
+				wcard, equipped, "Unequip" if equipped else "Equip",
+				_on_toggle_loadout_weapon, false,
+			))
+
+	# Card section (up to 3, limited uses).
+	_loadout_pool_container.add_child(_make_loadout_header("CARDS  (up to %d; each play spends a use)" % CombatLoadout.MAX_SLOTS))
 	if _available_cards.is_empty():
-		_loadout_pool_container.add_child(_picker_note(
-			"No cards available. You'll fight with basic Attack/Defend and spells."
-		))
+		_loadout_pool_container.add_child(_picker_note("No cards available. You'll fight with Attack/Defend and spells."))
 		return
 	for card in _available_cards:
-		var row := HBoxContainer.new()
-		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var chosen: bool = _selected_cards.has(card)
-		var uses: int = GameState.get_card_uses(card)
-		var cap: int = GameState.max_card_uses(card)
-		var lbl := Label.new()
-		var prefix: String = "[SLOTTED] " if chosen else ""
-		lbl.text = "%s%s  (uses %d/%d)  —  %s" % [prefix, card.display_name, uses, cap, card.description]
-		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
-		lbl.custom_minimum_size = Vector2(700, 0)
-		lbl.add_theme_font_size_override("font_size", 13)
-		if uses <= 0 and not chosen:
-			lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
-		row.add_child(lbl)
-		var btn := Button.new()
-		btn.text = "Remove" if chosen else "Slot"
-		# Can't slot a 4th card; can always remove an already-chosen one.
-		btn.disabled = (not chosen) and _selected_cards.size() >= CombatLoadout.MAX_SLOTS
-		btn.pressed.connect(_on_toggle_loadout_card.bind(card))
-		row.add_child(btn)
-		_loadout_pool_container.add_child(row)
+		var disabled: bool = (not chosen) and _selected_cards.size() >= CombatLoadout.MAX_SLOTS
+		_loadout_pool_container.add_child(_make_loadout_row(
+			card, chosen, "Remove" if chosen else "Slot",
+			_on_toggle_loadout_card, true, disabled,
+		))
+
+# Builds one selectable row for the loadout screen. `show_uses` adds the
+# "(uses x/max)" readout (cards only — weapons have unlimited uses).
+func _make_loadout_row(card, chosen: bool, btn_text: String, cb: Callable, show_uses: bool, btn_disabled: bool = false) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var lbl := Label.new()
+	var prefix: String = "[x] " if chosen else "[ ] "
+	var uses_str: String = ""
+	if show_uses:
+		uses_str = "  (uses %d/%d)" % [GameState.get_card_uses(card), GameState.max_card_uses(card)]
+	lbl.text = "%s%s%s  —  %s" % [prefix, card.display_name, uses_str, card.description]
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+	lbl.custom_minimum_size = Vector2(700, 0)
+	lbl.add_theme_font_size_override("font_size", 13)
+	if show_uses and GameState.get_card_uses(card) <= 0 and not chosen:
+		lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
+	row.add_child(lbl)
+	var btn := Button.new()
+	btn.text = btn_text
+	btn.disabled = btn_disabled
+	btn.pressed.connect(cb.bind(card))
+	row.add_child(btn)
+	return row
+
+func _make_loadout_header(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_color_override("font_color", Color(1.0, 0.85, 0.45))
+	return l
 
 func _on_toggle_loadout_card(card) -> void:
 	if _selected_cards.has(card):
@@ -389,8 +435,15 @@ func _on_toggle_loadout_card(card) -> void:
 		_selected_cards.append(card)
 	_populate_loadout_pool()
 
+func _on_toggle_loadout_weapon(card) -> void:
+	# Single weapon slot: toggling a new weapon replaces any previous pick.
+	_selected_weapon = null if _selected_weapon == card else card
+	_populate_loadout_pool()
+
 func _on_confirm_loadout() -> void:
 	_loadout.cards = _selected_cards.duplicate()
+	_loadout.weapon = _selected_weapon
+	_weapon_card = _selected_weapon
 	_loadout_overlay.visible = false
 	_info_label.text = _format_info(_room_data, _encounter)
 	_status_label.text = "Waiting for first turn..."
@@ -411,8 +464,9 @@ func _on_unit_turn_started(unit) -> void:
 		_pending_kind = Pending.NONE
 		_pending_card = null
 		_pending_spell = null
-		_status_label.text = "Your turn. Move %d  |  Plays %d  |  Mana %d/%d" % [
-			_move_remaining, _card_plays_remaining, unit.mana, unit.max_mana,
+		var charge_str: String = "  |  Charge %d" % _energy_charge if _energy_charge > 0 else ""
+		_status_label.text = "Your turn. Move %d  |  Plays %d  |  Mana %d/%d%s" % [
+			_move_remaining, _card_plays_remaining, unit.mana, unit.max_mana, charge_str,
 		]
 		_set_player_buttons_enabled(true)
 		_refresh_button_states()
@@ -470,7 +524,8 @@ func _on_attack_button() -> void:
 		return
 	_clear_pending()
 	_grid_view.enter_attack_mode()
-	_status_label.text = "Click an adjacent enemy to attack."
+	var with_what: String = _weapon_card.display_name if _weapon_card != null else "your strike"
+	_status_label.text = "Click an adjacent enemy to attack with %s." % with_what
 
 func _on_defend_button() -> void:
 	if not _is_player_turn() or _action_used:
@@ -579,12 +634,16 @@ func _resolve_ability_against(target) -> void:
 		_grid_view.enter_idle()
 		return
 	_card_plays_remaining -= 1
-	_apply_card_or_spell_effects(card.effects, u, target, card)
+	# Spend any banked energy charge to empower this card, then clear it.
+	var empower: int = _energy_charge
+	_energy_charge = 0
+	_apply_card_or_spell_effects(card.effects, u, target, card, empower)
 	_pending_kind = Pending.NONE
 	_pending_card = null
 	_grid_view.enter_idle()
-	_status_label.text = "Played %s. (%d uses left, %d plays left)" % [
-		card.display_name, GameState.get_card_uses(card), _card_plays_remaining,
+	var empower_str: String = "  (empowered +%d)" % empower if empower > 0 else ""
+	_status_label.text = "Played %s%s. (%d uses left, %d plays left)" % [
+		card.display_name, empower_str, GameState.get_card_uses(card), _card_plays_remaining,
 	]
 	_grid_view.notify_units_changed()
 	_refresh_initiative()
@@ -747,16 +806,25 @@ func _on_attack_requested(target) -> void:
 	if not _is_player_turn() or _action_used:
 		return
 	var attacker = _turn_manager.current_unit
-	var dmg := DEFAULT_BASIC_ATTACK
-	if attacker.basic_attack_def.has("damage"):
-		dmg = int(attacker.basic_attack_def["damage"])
-	_apply_damage(attacker, target, dmg)
+	if _weapon_card != null:
+		# Equipped weapon replaces the basic strike: its effects resolve once
+		# against the target. Unlimited uses, but once per turn (it's the
+		# Attack action, gated by _action_used). Energy empower applies to
+		# slotted cards only, not the weapon, so pass empower 0.
+		_apply_card_or_spell_effects(_weapon_card.effects, attacker, target, _weapon_card)
+		_status_label.text = "You attack %s with %s." % [target.unit_name, _weapon_card.display_name]
+	else:
+		var dmg := DEFAULT_BASIC_ATTACK
+		if attacker.basic_attack_def.has("damage"):
+			dmg = int(attacker.basic_attack_def["damage"])
+		_apply_damage(attacker, target, dmg)
+		_status_label.text = "You strike %s for %d." % [target.unit_name, dmg]
 	_action_used = true
 	_grid_view.enter_idle()
-	_status_label.text = "You strike %s for %d." % [target.unit_name, dmg]
 	_grid_view.notify_units_changed()
 	_refresh_initiative()
 	_refresh_button_states()
+	_check_battle_end_after_effect()
 
 func _on_target_requested(target) -> void:
 	if not _is_player_turn():
@@ -793,9 +861,11 @@ func _clear_pending() -> void:
 func apply_effects(effects: Array, source, target, card = null) -> void:
 	_apply_card_or_spell_effects(effects, source, target, card)
 
-func _apply_card_or_spell_effects(effects: Array, source, target, card = null) -> void:
+func _apply_card_or_spell_effects(effects: Array, source, target, card = null, empower: int = 0) -> void:
 	for raw_effect in effects:
 		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
+		if empower > 0:
+			effect = _empower_effect(effect, empower)
 		var resolved_targets: Array = _resolve_effect_targets(effect, source, target)
 		if resolved_targets.is_empty():
 			# self-only effects with no explicit target — treat source as target.
@@ -807,6 +877,18 @@ func _apply_card_or_spell_effects(effects: Array, source, target, card = null) -
 				"scene": self,
 				"card": card,
 			})
+
+# Energy empower: bump a damage/block effect's value or a status effect's
+# stacks by `amount`. Returns a fresh dict so the card's shared effect data
+# is never mutated. Effects with no scalable field pass through unchanged.
+func _empower_effect(effect: Dictionary, amount: int) -> Dictionary:
+	var out: Dictionary = effect.duplicate()
+	match str(out.get("type", "")):
+		"dmg", "block":
+			out["value"] = int(out.get("value", 0)) + amount
+		"status":
+			out["stacks"] = int(out.get("stacks", 1)) + amount
+	return out
 
 func _resolve_effect_targets(effect: Dictionary, source, picked) -> Array:
 	var kind: String = str(effect.get("target", "self"))
@@ -851,21 +933,20 @@ func heal(target, value: int) -> void:
 	target.hp = mini(target.max_hp, target.hp + int(value))
 
 func gain_energy(n: int) -> void:
-	# No per-turn energy pool in strategy: "gain energy" grants extra card
-	# plays this turn (one card play is the baseline). Lets gain-energy
-	# cards set up a multi-card turn.
+	# Energy is empower charge: it banks (across turns within the combat)
+	# until the next card play consumes ALL of it as a bonus (+dmg/+block/
+	# +status stacks). It grants no extra plays.
 	if n <= 0:
 		return
-	_card_plays_remaining += n
-	_status_label.text = "+%d card play this turn (%d total)." % [n, _card_plays_remaining]
+	_energy_charge += n
+	_status_label.text = "Energy +%d (charge %d). Empowers your next card." % [n, _energy_charge]
 	_refresh_button_states()
 
 func lose_energy(n: int) -> void:
-	# Symmetric to gain_energy: removes card plays this turn (tempo cost),
-	# floored at 0.
+	# Symmetric to gain_energy: drains banked empower charge, floored at 0.
 	if n <= 0:
 		return
-	_card_plays_remaining = maxi(0, _card_plays_remaining - n)
+	_energy_charge = maxi(0, _energy_charge - n)
 	_refresh_button_states()
 
 func draw_cards(n: int) -> void:
