@@ -1,40 +1,48 @@
 class_name ActionFloor
 extends Control
 
-# Action-game floor: branching map of arenas. Player walks the fork on
-# floor 0, picks one of 2 combat nodes on floor 1 (each with its own
-# reward type), then fights the elite on floor 2 to clear the floor.
-# Equipment screen pops on entry + between rooms so the player can swap
-# loadout between fights.
+# Action-game floor, Binding of Isaac style. The player spawns in the
+# start room of a generated floor (see IsaacFloorGenerator) and walks
+# room-to-room through doors in real time. Normal rooms lock their doors
+# until the enemies are cleared; shop and treasure rooms are safe and pop
+# their overlay on first entry; the boss room clears the floor when beaten.
+#
+# A single embedded ActionCombat instance is the live arena — ActionFloor
+# swaps the room contents into it on each transition rather than spawning
+# a fresh combat scene. A minimap top-right tracks explored rooms.
+#
+# Floor size scales with the run's difficulty tier (RunDifficulty), which
+# steps up every few games played.
 
 signal closed(was_victory: bool, target_game_id: StringName)
-
-# Layout (column-centered, fork at top)
-const FLOOR_TOP_Y := 110
-const FLOOR_STEP_Y := 170
-const COL_SPACING_X := 260
-const CENTER_X := 640
 
 const COMBAT_SCENE := preload("res://scenes/action/ActionCombat.tscn")
 const EQUIPMENT_SCENE := preload("res://scenes/action/EquipmentScreen.tscn")
 
-# Elite scaling (mirrors the deckbuilder elite philosophy: more enemies
-# / harder fight + bigger gold reward).
-const ELITE_ENEMY_COUNT := 2
+# Per-room enemy budget for normal rooms (count scales a little with tier).
+const NORMAL_MIN_ENEMIES := 1
+const NORMAL_MAX_ENEMIES := 3
+# Boss room: more enemies + an HP bump, mirroring the old elite handling.
+const BOSS_ENEMY_COUNT := 3
+const BOSS_HP_MULT := 1.6
 
 var target_game_id: StringName = &""
 
-var map: ActionFloorMap = null
-var _node_buttons: Dictionary = {}     # id -> Button
-var _node_centers: Dictionary = {}     # id -> Vector2 (in local coords)
-var _active_combat: ActionCombat = null
-var _active_equipment: EquipmentScreen = null
-var _active_modal: Control = null
-var _pending_reward_type: String = ""
+var _floor: Dictionary = {}
+# Per-room runtime state keyed by room index:
+#   { visited: bool, cleared: bool, enemies: Array[StringName],
+#     hp_mult: float, overlay_done: bool }
+var _runtime: Dictionary = {}
+var _current_index: int = -1
+var _visited: Dictionary = {}             # index -> true (for the minimap)
+
+var _arena: ActionCombat = null
+var _minimap: FloorMinimap = null
+var _active_overlay: Control = null
+var _floor_done: bool = false
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 @onready var _header: Label = $Header
-@onready var _nodes_layer: Control = $Nodes
 
 func _ready() -> void:
 	_rng.randomize()
@@ -47,76 +55,188 @@ func _ready() -> void:
 			GameState.set_current_game(&"hades")
 	if target_game_id == &"":
 		target_game_id = GameState.current_game_id
-	map = ActionFloorMap.new()
-	map.generate(_rng)
-	_layout_nodes()
-	_refresh()
+
+	_generate_floor()
+	_build_arena()
+	_build_minimap()
 	_update_header()
-	# Equipment screen on entry so the player can set up before the fork.
-	call_deferred("_open_equipment")
+	_enter_room(int(_floor.start_index), -1)
 
 # ---------------------------------------------------------------------------
-# Layout + render
+# Floor generation + per-room enemy assignment
 # ---------------------------------------------------------------------------
 
-func _layout_nodes() -> void:
-	for child in _nodes_layer.get_children():
-		child.queue_free()
-	_node_buttons.clear()
-	_node_centers.clear()
-	for floor_nodes in map.floors:
-		for node in floor_nodes:
-			var btn := Button.new()
-			btn.custom_minimum_size = Vector2(180, 96)
-			btn.autowrap_mode = TextServer.AUTOWRAP_WORD
-			_format_node_label(btn, node)
-			var center: Vector2 = _center_for_node(node)
-			btn.position = center - btn.custom_minimum_size * 0.5
-			var node_ref: Dictionary = node
-			btn.pressed.connect(func(): _on_node_clicked(node_ref))
-			_nodes_layer.add_child(btn)
-			_node_buttons[int(node.id)] = btn
-			_node_centers[int(node.id)] = center
+func _generate_floor() -> void:
+	var tier: int = RunDifficulty.current_tier()
+	var tier_value: int = RunDifficulty.tier_value(tier)
+	var gen := IsaacFloorGenerator.new()
+	_floor = gen.generate(_rng.randi(), tier_value)
 
-func _format_node_label(btn: Button, node: Dictionary) -> void:
-	var type_str: String = ActionFloorMap.type_name(int(node.type))
-	var reward: String = String(node.get("reward_type", ""))
-	if reward != "":
-		btn.text = "%s\n\nReward: %s" % [type_str, reward]
-	else:
-		btn.text = "%s\n" % type_str
+	var pool: Array[StringName] = _enemy_pool()
+	_runtime.clear()
+	for idx in _floor.rooms.keys():
+		var room: Dictionary = _floor.rooms[idx]
+		var rt := {
+			"visited": false, "cleared": false,
+			"enemies": [] as Array, "hp_mult": 1.0, "overlay_done": false,
+		}
+		match int(room.type):
+			IsaacFloorGenerator.RoomType.NORMAL:
+				var n: int = clampi(NORMAL_MIN_ENEMIES + tier_value - 1,
+					NORMAL_MIN_ENEMIES, NORMAL_MAX_ENEMIES)
+				rt.enemies = _pick_enemies(pool, _rng.randi_range(NORMAL_MIN_ENEMIES, n))
+			IsaacFloorGenerator.RoomType.BOSS:
+				rt.enemies = _pick_enemies(pool, BOSS_ENEMY_COUNT)
+				rt.hp_mult = BOSS_HP_MULT
+			_:
+				# START / SHOP / TREASURE are safe — no enemies, pre-cleared.
+				rt.cleared = true
+		_runtime[idx] = rt
 
-func _center_for_node(node: Dictionary) -> Vector2:
-	var fl: int = int(node.floor)
-	var y: float = FLOOR_TOP_Y + fl * FLOOR_STEP_Y
-	var fl_nodes: Array = map.floors[fl]
-	var n_cols: int = fl_nodes.size()
-	var col: int = int(node.col)
-	var x: float
-	if n_cols == 1:
-		x = CENTER_X
-	else:
-		var first_x: float = CENTER_X - (n_cols - 1) * COL_SPACING_X * 0.5
-		x = first_x + col * COL_SPACING_X
-	return Vector2(x, y)
+func _enemy_pool() -> Array[StringName]:
+	var pool: Array[StringName] = []
+	for e in Data.all_action_enemies():
+		if e is ActionEnemyData:
+			pool.append(e.id)
+	if pool.is_empty():
+		pool.append(&"walker")
+	return pool
 
-func _refresh() -> void:
-	var reachable_ids := {}
-	for n in map.get_reachable_next():
-		reachable_ids[int(n.id)] = true
-	for id_key in _node_buttons.keys():
-		var btn: Button = _node_buttons[id_key]
-		var node: Dictionary = map.nodes_by_id.get(int(id_key), {})
-		var is_reachable: bool = reachable_ids.has(int(id_key))
-		var is_visited: bool = bool(node.get("visited", false))
-		btn.disabled = not is_reachable or _has_active_overlay()
-		if is_visited:
-			btn.modulate = Color(0.55, 0.55, 0.55, 1.0)
-		elif is_reachable:
-			btn.modulate = Color(1.0, 0.95, 0.4, 1.0)
-		else:
-			btn.modulate = Color(1.0, 1.0, 1.0, 1.0)
-	queue_redraw()
+func _pick_enemies(pool: Array[StringName], count: int) -> Array:
+	var out: Array = []
+	for _i in range(maxi(1, count)):
+		out.append(pool[_rng.randi() % pool.size()])
+	return out
+
+# ---------------------------------------------------------------------------
+# Scene construction
+# ---------------------------------------------------------------------------
+
+func _build_arena() -> void:
+	_arena = COMBAT_SCENE.instantiate()
+	_arena.embedded = true
+	_arena.target_game_id = target_game_id
+	_arena.room_cleared.connect(_on_room_cleared)
+	_arena.player_died.connect(_on_player_died)
+	_arena.door_entered.connect(_on_door_entered)
+	add_child(_arena)
+
+func _build_minimap() -> void:
+	_minimap = FloorMinimap.new()
+	_minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Anchor top-right; offset in a little from the corner.
+	_minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_minimap.position = Vector2(-260, 36)
+	add_child(_minimap)
+	_minimap.setup(_floor)
+
+# ---------------------------------------------------------------------------
+# Room transitions
+# ---------------------------------------------------------------------------
+
+func _enter_room(index: int, entry_dir: int) -> void:
+	if not _floor.rooms.has(index):
+		return
+	_current_index = index
+	_visited[index] = true
+	var room: Dictionary = _floor.rooms[index]
+	var rt: Dictionary = _runtime[index]
+	rt.visited = true
+
+	var is_safe: bool = bool(rt.cleared)
+	var enemies: Array = [] if is_safe else rt.enemies
+	_arena.start_room(enemies, room.doors, is_safe, float(rt.hp_mult), entry_dir)
+
+	_update_header()
+	_refresh_minimap()
+
+	# Shop / treasure pop their overlay the first time the player walks in.
+	if not bool(rt.overlay_done):
+		match int(room.type):
+			IsaacFloorGenerator.RoomType.SHOP:
+				rt.overlay_done = true
+				_open_shop()
+			IsaacFloorGenerator.RoomType.TREASURE:
+				rt.overlay_done = true
+				_open_treasure()
+
+func _on_door_entered(dir: int) -> void:
+	if _floor_done or _active_overlay != null:
+		return
+	var room: Dictionary = _floor.rooms[_current_index]
+	if not room.neighbors.has(dir):
+		return
+	var dest: int = int(room.neighbors[dir])
+	# Arrive at the door on the opposite wall of the destination room.
+	_enter_room(dest, IsaacFloorGenerator.opposite(dir))
+
+func _on_room_cleared() -> void:
+	var rt: Dictionary = _runtime.get(_current_index, {})
+	if not rt.is_empty():
+		rt.cleared = true
+	_refresh_minimap()
+	# Beating the boss room clears the whole floor (= beating the game).
+	if int(_floor.rooms[_current_index].type) == IsaacFloorGenerator.RoomType.BOSS:
+		_finish_floor(true)
+
+func _on_player_died() -> void:
+	_finish_floor(false)
+
+func _finish_floor(was_victory: bool) -> void:
+	if _floor_done:
+		return
+	_floor_done = true
+	emit_signal("closed", was_victory, target_game_id)
+	queue_free()
+
+# ---------------------------------------------------------------------------
+# Overlays (equipment / shop / treasure) — pause the arena while open
+# ---------------------------------------------------------------------------
+
+func _input(event: InputEvent) -> void:
+	if _floor_done:
+		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB:
+		if _active_overlay == null:
+			_open_equipment()
+		get_viewport().set_input_as_handled()
+
+func _open_overlay(overlay: Control) -> void:
+	_active_overlay = overlay
+	if _arena != null:
+		_arena.paused = true
+	add_child(overlay)
+
+func _close_overlay() -> void:
+	if _active_overlay != null:
+		_active_overlay.queue_free()
+		_active_overlay = null
+	if _arena != null:
+		_arena.paused = false
+
+func _open_equipment() -> void:
+	var screen: EquipmentScreen = EQUIPMENT_SCENE.instantiate()
+	screen.closed.connect(_on_equipment_closed)
+	_open_overlay(screen)
+
+func _on_equipment_closed() -> void:
+	_close_overlay()
+	if _arena != null:
+		_arena.reload_loadout()
+
+func _open_shop() -> void:
+	var shop := Shop.new()
+	shop.closed.connect(_close_overlay)
+	_open_overlay(shop)
+
+func _open_treasure() -> void:
+	var room := TreasureRoom.new()
+	room.closed.connect(_close_overlay)
+	_open_overlay(room)
+
+# ---------------------------------------------------------------------------
+# HUD
+# ---------------------------------------------------------------------------
 
 func _update_header() -> void:
 	var game_name := "?"
@@ -124,239 +244,13 @@ func _update_header() -> void:
 		var g: GameData = Data.get_game(target_game_id)
 		if g != null:
 			game_name = g.display_name
-	var cleared := 0
-	var total := 0
-	for fl in map.floors:
-		for n in fl:
-			total += 1
-			if n.get("visited", false):
-				cleared += 1
-	_header.text = "%s  -  action floor   %d / %d cleared" % [game_name, cleared, total]
+	var tier_label: String = RunDifficulty.tier_name(RunDifficulty.current_tier())
+	var room: Dictionary = _floor.rooms.get(_current_index, {})
+	var room_label: String = IsaacFloorGenerator.type_name(int(room.get("type", -1)))
+	_header.text = "%s   -   %s room   |   Difficulty: %s   |   %d / %d rooms explored" % [
+		game_name, room_label, tier_label, _visited.size(), int(_floor.room_count),
+	]
 
-# Custom edge drawing under the node buttons.
-func _draw() -> void:
-	if map == null:
-		return
-	var reachable_ids := {}
-	for n in map.get_reachable_next():
-		reachable_ids[int(n.id)] = true
-	for fl in map.floors:
-		for node in fl:
-			var from_pos: Vector2 = _node_centers.get(int(node.id), Vector2.ZERO)
-			for nid in node.get("connections", []):
-				var to_pos: Vector2 = _node_centers.get(int(nid), Vector2.ZERO)
-				var color := Color(0.4, 0.42, 0.55, 0.6)
-				var width := 2.0
-				if int(node.id) == map.current_node_id and reachable_ids.has(int(nid)):
-					color = Color(1.0, 0.92, 0.4, 0.95)
-					width = 3.0
-				elif bool(node.get("visited", false)) and bool(map.nodes_by_id.get(int(nid), {}).get("visited", false)):
-					color = Color(0.65, 0.85, 0.55, 0.5)
-					width = 2.5
-				draw_line(from_pos, to_pos, color, width, true)
-
-func _has_active_overlay() -> bool:
-	return _active_combat != null or _active_equipment != null or _active_modal != null
-
-# ---------------------------------------------------------------------------
-# Node entry dispatch
-# ---------------------------------------------------------------------------
-
-func _on_node_clicked(node: Dictionary) -> void:
-	if _has_active_overlay():
-		return
-	map.enter(node)
-	GameLog.add("Entered %s." % ActionFloorMap.type_name(int(node.type)), Color(0.7, 0.9, 1.0))
-	_refresh()
-	_update_header()
-	_dispatch_node(node)
-
-func _dispatch_node(node: Dictionary) -> void:
-	match int(node.type):
-		ActionFloorMap.NodeType.PATH_CHOICE:
-			# Just a fork — nothing to resolve. Player picks next node.
-			pass
-		ActionFloorMap.NodeType.COMBAT, ActionFloorMap.NodeType.ELITE:
-			_pending_reward_type = String(node.get("reward_type", ""))
-			_start_combat(node)
-
-# ---------------------------------------------------------------------------
-# Combat
-# ---------------------------------------------------------------------------
-
-func _start_combat(node: Dictionary) -> void:
-	if _active_combat != null:
-		return
-	_active_combat = COMBAT_SCENE.instantiate()
-	_active_combat.target_game_id = target_game_id
-	var enemy_id: StringName = _pick_enemy_for_combat()
-	# Elite = spawn ELITE_ENEMY_COUNT copies for now (proper elite roster
-	# / stat bumps come with action-enemy data expansion later).
-	if int(node.type) == ActionFloorMap.NodeType.ELITE:
-		var list: Array = []
-		for i in range(ELITE_ENEMY_COUNT):
-			list.append(enemy_id)
-		_active_combat.enemies_to_spawn = list
-	else:
-		_active_combat.enemies_to_spawn = [enemy_id]
-	_active_combat.closed.connect(_on_combat_closed)
-	add_child(_active_combat)
-
-func _on_combat_closed(was_victory: bool, _game_id: StringName) -> void:
-	_active_combat = null
-	if not was_victory:
-		emit_signal("closed", false, target_game_id)
-		queue_free()
-		return
-	_refresh()
-	_update_header()
-	if map.is_finished():
-		# Elite cleared -> floor done with victory.
-		emit_signal("closed", true, target_game_id)
-		queue_free()
-		return
-	_show_reward()
-
-func _pick_enemy_for_combat() -> StringName:
-	var pool: Array[StringName] = []
-	for e in Data.all_action_enemies():
-		if e is ActionEnemyData:
-			pool.append(e.id)
-	if pool.is_empty():
-		return &"walker"
-	return pool[_rng.randi() % pool.size()]
-
-# ---------------------------------------------------------------------------
-# Rewards
-# ---------------------------------------------------------------------------
-
-func _show_reward() -> void:
-	match _pending_reward_type:
-		"card":
-			_show_card_reward()
-		"treasure":
-			_show_treasure_reward()
-		"event":
-			_show_event_reward()
-		_:
-			_open_equipment()
-
-func _show_card_reward() -> void:
-	var pool: Array = Data.reward_card_pool()
-	if pool.is_empty():
-		_open_equipment()
-		return
-	pool.shuffle()
-	var picks: Array = pool.slice(0, mini(3, pool.size()))
-	_open_card_picker(picks)
-
-func _open_card_picker(picks: Array) -> void:
-	var modal := Control.new()
-	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
-	modal.mouse_filter = Control.MOUSE_FILTER_STOP
-
-	var dim := ColorRect.new()
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0, 0, 0, 0.7)
-	modal.add_child(dim)
-
-	var panel := Panel.new()
-	panel.size = Vector2(740, 400)
-	panel.position = (get_viewport_rect().size - panel.size) * 0.5
-	modal.add_child(panel)
-
-	var title := Label.new()
-	title.position = Vector2(20, 16)
-	title.size = Vector2(700, 28)
-	title.text = "Pick a card"
-	title.add_theme_font_size_override("font_size", 20)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(title)
-
-	var row := HBoxContainer.new()
-	row.position = Vector2(20, 60)
-	row.size = Vector2(700, 280)
-	row.add_theme_constant_override("separation", 14)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	panel.add_child(row)
-	for card in picks:
-		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(210, 260)
-		btn.autowrap_mode = TextServer.AUTOWRAP_WORD
-		btn.text = "[%d] %s\n\n%s" % [card.cost, card.display_name, card.description]
-		var c_ref: CardData = card
-		btn.pressed.connect(func(): _on_card_picked(c_ref))
-		row.add_child(btn)
-
-	var skip := Button.new()
-	skip.position = Vector2(280, 350)
-	skip.size = Vector2(180, 40)
-	skip.text = "Skip"
-	skip.pressed.connect(func(): _on_card_picked(null))
-	panel.add_child(skip)
-
-	add_child(modal)
-	_active_modal = modal
-
-func _on_card_picked(card: CardData) -> void:
-	if card != null:
-		GameState.deck.append(CardInstance.from_data(card))
-		GameState.emit_signal("deck_changed")
-		GameLog.add("Added %s to your deck." % card.display_name, Color(0.7, 1.0, 0.7))
-	else:
-		GameLog.add("Skipped the card reward.", Color(0.8, 0.8, 0.8))
-	_close_modal()
-	_open_equipment()
-
-func _show_treasure_reward() -> void:
-	var room := TreasureRoom.new()
-	room.closed.connect(_on_modal_closed_then_equip)
-	add_child(room)
-	_active_modal = room
-
-func _show_event_reward() -> void:
-	var events: Array = Data.all_events()
-	if events.is_empty():
-		_open_equipment()
-		return
-	var picked: EventData = events[_rng.randi() % events.size()]
-	var modal := EventModal.new()
-	modal.closed.connect(_on_event_closed_then_equip)
-	modal.setup(picked, "easy")
-	add_child(modal)
-	_active_modal = modal
-
-func _on_modal_closed_then_equip() -> void:
-	_close_modal()
-	_open_equipment()
-
-func _on_event_closed_then_equip(_should_continue: bool) -> void:
-	_close_modal()
-	if GameState.is_dead():
-		emit_signal("closed", false, target_game_id)
-		queue_free()
-		return
-	_open_equipment()
-
-func _close_modal() -> void:
-	if _active_modal != null:
-		_active_modal.queue_free()
-		_active_modal = null
-
-# ---------------------------------------------------------------------------
-# Equipment screen between rooms
-# ---------------------------------------------------------------------------
-
-func _open_equipment() -> void:
-	if _active_equipment != null:
-		return
-	_active_equipment = EQUIPMENT_SCENE.instantiate()
-	_active_equipment.closed.connect(_on_equipment_closed)
-	add_child(_active_equipment)
-	_refresh()
-
-func _on_equipment_closed() -> void:
-	if _active_equipment != null:
-		_active_equipment.queue_free()
-		_active_equipment = null
-	_refresh()
+func _refresh_minimap() -> void:
+	if _minimap != null:
+		_minimap.refresh(_current_index, _visited)
