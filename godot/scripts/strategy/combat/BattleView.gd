@@ -77,6 +77,7 @@ var _enemy_turn_timer: Timer
 # Per-turn state.
 var _action_used: bool = false
 var _ability_used: bool = false
+var _move_used: bool = false   # one Move action per turn (no chaining)
 var _move_remaining: int = 0
 
 # Energy budget — Strategy analog of the deckbuilder energy pool. Each
@@ -262,6 +263,7 @@ func _on_unit_turn_started(unit) -> void:
 	if unit.is_player:
 		_action_used = false
 		_ability_used = false
+		_move_used = false
 		_move_remaining = unit.speed
 		_energy_budget = 0
 		_pending_kind = Pending.NONE
@@ -311,12 +313,15 @@ func _on_battle_ended(result) -> void:
 func _on_move_button() -> void:
 	if not _is_player_turn():
 		return
+	if _move_used:
+		_status_label.text = "You've already moved this turn."
+		return
 	if _move_remaining <= 0:
 		_status_label.text = "No movement left."
 		return
 	_clear_pending()
 	_grid_view.enter_move_mode()
-	_status_label.text = "Click a highlighted tile to move (%d tiles left)." % _move_remaining
+	_status_label.text = "Click a tile to move (up to %d tiles, one move per turn)." % _move_remaining
 
 func _on_attack_button() -> void:
 	if not _is_player_turn() or _action_used:
@@ -535,6 +540,9 @@ func _on_move_requested(path: Array) -> void:
 		return
 	u.position = path[-1]
 	_move_remaining -= cost
+	# One move action per turn (no chaining): lock movement once committed,
+	# even if tiles remain in the budget.
+	_move_used = true
 	# Phase 8: walking over an item collects it (auto-pickup goes to
 	# run-scope counters; non-auto goes to the overworld inventory while
 	# there's room). Each path step is checked so passing-by loot grabs.
@@ -542,11 +550,8 @@ func _on_move_requested(path: Array) -> void:
 	for step in path:
 		_try_pickup_at(step, pickup_msgs)
 	_grid_view.set_active_unit(u, _move_remaining)
-	if _move_remaining > 0:
-		_grid_view.enter_move_mode()
-	else:
-		_grid_view.enter_idle()
-	var line: String = "Moved %d. %d move left." % [cost, _move_remaining]
+	_grid_view.enter_idle()
+	var line: String = "Moved %d." % cost
 	if not pickup_msgs.is_empty():
 		line += "  " + ", ".join(pickup_msgs)
 	_status_label.text = line
@@ -871,7 +876,7 @@ func _refresh_button_states() -> void:
 	if not _is_player_turn():
 		return
 	var u = _turn_manager.current_unit
-	_btn_move.disabled = _move_remaining <= 0
+	_btn_move.disabled = _move_used or _move_remaining <= 0
 	_btn_attack.disabled = _action_used
 	_btn_defend.disabled = _action_used
 	# Energy budget can keep the Ability button live even after the

@@ -18,7 +18,11 @@ extends Resource
 
 @export var max_hp: int = 10
 @export var hp: int = 10
-@export var speed: int = 12  # initiative weight
+# `speed` doubles as the per-turn movement budget (in tiles) AND the
+# initiative weight. Base is 4: the player (and, for now, every enemy) moves
+# up to 4 tiles and they share the same initiative cadence. When enemies get
+# distinct speeds later this also reawakens the "faster units act more" curve.
+@export var speed: int = 4
 
 # Mewgenics-style mana drives the Spellbook (Phase 6).
 @export var int_stat: int = 0
@@ -73,7 +77,7 @@ static func from_player(entity: StrategyEntity) -> BattleUnit:
 	u.is_player = true
 	u.max_hp = entity.max_hp
 	u.hp = entity.hp
-	u.speed = 12
+	u.speed = 4
 	u.int_stat = 0
 	u.cha_stat = 0
 	u.recompute_mana_caps()
@@ -82,18 +86,21 @@ static func from_player(entity: StrategyEntity) -> BattleUnit:
 	u.block = 0
 	return u
 
+# Speeds are flattened to 4 "for now" so enemies match the player's move
+# range and share the same initiative cadence. The per-archetype hp/attack
+# spread is kept; revisit the speed column when differentiating initiative.
 const ENEMY_PRESETS := {
-	"rat":   { "max_hp":  8, "speed": 14, "attack": 3 },
-	"snake": { "max_hp": 10, "speed": 18, "attack": 4 },
-	"orc":   { "max_hp": 18, "speed": 10, "attack": 6 },
-	"troll": { "max_hp": 30, "speed":  8, "attack": 10 },
+	"rat":   { "max_hp":  8, "speed": 4, "attack": 3 },
+	"snake": { "max_hp": 10, "speed": 4, "attack": 4 },
+	"orc":   { "max_hp": 18, "speed": 4, "attack": 6 },
+	"troll": { "max_hp": 30, "speed": 4, "attack": 10 },
 }
 
 static func from_enemy_kind(kind: String) -> BattleUnit:
 	var u := BattleUnit.new()
 	u.unit_name = kind
 	u.is_player = false
-	var preset = ENEMY_PRESETS.get(kind, { "max_hp": 10, "speed": 12, "attack": 3 })
+	var preset = ENEMY_PRESETS.get(kind, { "max_hp": 10, "speed": 4, "attack": 3 })
 	u.max_hp = preset.max_hp
 	u.hp = preset.max_hp
 	u.speed = preset.speed
