@@ -141,7 +141,7 @@ func _resolve_target(intent: EnemyIntent, all_units: Array) -> BattleUnit:
 	return nearest
 
 # BFS toward any tile within `range_max` of the target, then walk up to
-# `unit.speed` steps along the shortest such path. Returns the number of
+# `unit.move_range` steps along the shortest such path. Returns the number of
 # tiles actually moved.
 func _step_into_range(target: BattleUnit, range_max: int, all_units: Array, battle_map) -> int:
 	if battle_map == null:
@@ -186,7 +186,7 @@ func _step_into_range(target: BattleUnit, range_max: int, all_units: Array, batt
 		path.append(cur2)
 		cur2 = parents[cur2]
 	path.reverse()
-	var steps: int = mini(path.size(), maxi(0, unit.speed))
+	var steps: int = mini(path.size(), maxi(0, unit.move_range))
 	if steps <= 0:
 		return 0
 	unit.position = path[steps - 1]

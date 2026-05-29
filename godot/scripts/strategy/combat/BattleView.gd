@@ -9,7 +9,7 @@ extends CanvasLayer
 # initiative engine (StrategyCombatSession.begin_battle).
 #
 # Player turn rules:
-#   - Move up to `unit.speed` tiles, ONE move action per turn (no chaining).
+#   - Move up to `unit.move_range` tiles, ONE move action per turn (no chaining).
 #   - One of Attack OR Defend (`_action_used`).
 #   - One slotted card play per turn baseline (`_card_plays_remaining`);
 #     each play spends one of the card's run-persistent uses (GameState).
@@ -344,7 +344,7 @@ func _open_loadout_screen() -> void:
 			var t: Dictionary = u.intent_telegraph
 			var val: int = int(t.get("value", 0))
 			tel = "  intends: %s%s" % [str(t.get("name", "")), (" (%d)" % val) if val > 0 else ""]
-		enemy_lines.append("  %s — hp %d/%d  spd %d%s" % [u.unit_name, u.hp, u.max_hp, u.speed, tel])
+		enemy_lines.append("  %s — hp %d/%d  move %d%s" % [u.unit_name, u.hp, u.max_hp, u.move_range, tel])
 	_loadout_enemy_label.text = "\n".join(enemy_lines)
 	_populate_loadout_pool()
 	_loadout_overlay.visible = true
@@ -401,12 +401,12 @@ func _on_confirm_loadout() -> void:
 # ----------------------------------------------------------------------
 
 func _on_unit_turn_started(unit) -> void:
-	_grid_view.set_active_unit(unit, unit.speed)
+	_grid_view.set_active_unit(unit, unit.move_range)
 	_refresh_initiative()
 	if unit.is_player:
 		_action_used = false
 		_move_used = false
-		_move_remaining = unit.speed
+		_move_remaining = unit.move_range
 		_card_plays_remaining = 1
 		_pending_kind = Pending.NONE
 		_pending_card = null
@@ -1040,8 +1040,8 @@ func _refresh_initiative() -> void:
 		var block = ""
 		if u.block > 0:
 			block = "  blk %d" % u.block
-		lines.append("%s %-8s hp %d/%d  spd %d  ctr %d%s%s%s" % [
-			marker, u.unit_name, u.hp, u.max_hp, u.speed,
+		lines.append("%s %-8s hp %d/%d  mv %d  ctr %d%s%s%s" % [
+			marker, u.unit_name, u.hp, u.max_hp, u.move_range,
 			u.act_counter, mana, block, dead,
 		])
 		if u.is_alive() and not u.is_player and not u.intent_telegraph.is_empty():

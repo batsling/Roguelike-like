@@ -6,9 +6,9 @@ extends Control
 # melee targets. Emits high-level signals (`move_requested`,
 # `attack_requested`) that `BattleView` translates into engine calls.
 #
-# 4-directional movement on a square grid (FFT-style). The active unit's
-# `unit.speed` doubles as movement budget; that's intentional per the
-# plan and can be split into a separate `move` stat later if needed.
+# 4-directional movement on a square grid (FFT-style). The movement budget
+# is the active unit's `move_range` (base 4 + speed stat), passed in via
+# `set_active_unit` — separate from the initiative `speed`.
 
 const TILE_SIZE := 24
 
