@@ -3,6 +3,59 @@
 Status: draft, agreed via design Q&A.
 Scope: the strategy/tactical pillar of the Godot port. Sits alongside the existing action and deckbuilder pillars.
 
+---
+
+## Revision — playability pass (2026-05)
+
+This pass supersedes parts of the original design below. Where they
+conflict, this section wins.
+
+### Movement / speed
+- **Base speed = 4 tiles** for the player, and enemies match it for now
+  (`BattleUnit.from_player` / `ENEMY_PRESETS`). Speed still doubles as the
+  initiative weight, so a flat 4 means a uniform turn cadence until enemy
+  speeds are differentiated again.
+- **One move action per turn.** Movement no longer chains: committing a
+  move (up to `speed` tiles) locks further movement for the turn
+  (`BattleView._move_used`).
+
+### Cards: uses + 3 slots (replaces the cooldown model)
+The old "whole deck → abilities with cooldowns" model
+(`AbilityPool` / `AbilityCooldownConfig`) is retired for the **player**.
+Cooldown plumbing stays only for **enemy** intents (`unit.cooldowns`,
+`tick_cooldowns`, `EnemyAI`).
+
+- **Pre-combat loadout screen** (`BattleView` loadout overlay): the player
+  sees the enemy + telegraphed intents and slots up to **3 cards** chosen
+  from the run deck (non-basic, deduped — `CombatLoadout.available_from_deck`).
+  Confirming calls `StrategyCombatSession.begin_battle()` to start the
+  initiative engine (which `enter_combat` no longer auto-starts).
+- **Uses, not cooldowns.** Each card has a use count
+  (`CardData.max_uses`, default by rarity in
+  `GameState.DEFAULT_CARD_USES_BY_RARITY = [4,4,3,2,2]`). Playing a card
+  spends one use. **Uses are run-persistent**: stored on
+  `GameState.card_uses` (keyed by card id), they deplete across combats and
+  *save* across leaving/re-entering a strategy game within the run. Only
+  refilled by "draw"-style effects (and future rest hooks). Basic
+  Attack/Defend and mana spells are always available, so a depleted loadout
+  never soft-locks a fight.
+- **Per-turn economy: one card play baseline** (`_card_plays_remaining`,
+  starts at 1). The reframed energy/draw effects:
+  - `gain_energy:N` → **+N card plays this turn** (sets up multi-card turns).
+  - `draw_cards:N` → **recharge N uses** on the slotted card(s) with the
+    fewest current uses.
+  - `discard_cards:N` / `lose_energy:N` → **−N card plays this turn** (tempo cost).
+
+### Open follow-ups from this pass
+- **Use refill points** (rest sites / shops / floor transitions) — uses
+  currently only refill via draw effects; a between-fight refill path is
+  likely wanted so long runs don't grind loadouts to zero.
+- **Typed / equipment-backed slots** — slots are 3 generic slots picked
+  from the deck for now; tying them to gear (cf. the action-mode
+  `EquipmentScreen`) is a future option.
+- **Decoupling move range from initiative speed**, once enemies need
+  distinct initiative without also moving farther.
+
 ## Design summary
 
 ### Loop shape
