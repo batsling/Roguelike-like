@@ -20,6 +20,11 @@ var amulet_game_id: StringName = &""
 var visited_games: Array[StringName] = []
 var beaten_games: Array[StringName] = []
 var total_games_beaten: int = 0
+# Count of games the player has *played* (entered + resolved, win or
+# lose), as opposed to beaten. Drives the difficulty tier — see
+# RunDifficulty.gd. The tier steps up every RunDifficulty.GAMES_PER_TIER
+# games played.
+var games_played: int = 0
 
 # === Player vitals ===
 var max_hp: int = 75
@@ -124,6 +129,7 @@ func reset_run() -> void:
 	visited_games.clear()
 	beaten_games.clear()
 	total_games_beaten = 0
+	games_played = 0
 	max_hp = 75
 	hp = 75
 	max_energy = 3

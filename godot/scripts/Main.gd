@@ -111,6 +111,10 @@ func _show_strategy_floor(game_id: StringName) -> void:
 	_swap_to(floor_scene)
 
 func _on_floor_closed(was_victory: bool, target_game_id: StringName) -> void:
+	# Every resolved game (win or lose) counts as one game "played" and
+	# feeds the difficulty tier — see RunDifficulty.gd. Incremented here, the
+	# single choke point every game-floor scene funnels back through.
+	GameState.games_played += 1
 	_pending_outcome = {"victory": was_victory, "game_id": target_game_id}
 	_show_overworld()
 

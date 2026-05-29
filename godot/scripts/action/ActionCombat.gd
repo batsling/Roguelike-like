@@ -12,9 +12,23 @@ extends Control
 
 signal closed(was_victory: bool, target_game_id: StringName)
 
+# Embedded-mode signals. When `embedded` is true (driven by ActionFloor),
+# the arena does NOT free itself or emit `closed`; instead it reports
+# room outcomes through these and keeps running so the player can walk
+# between rooms continuously.
+signal room_cleared                  # all enemies in the current room defeated
+signal player_died                   # player HP hit 0
+signal door_entered(dir: int)        # player walked into an open door (IsaacFloorGenerator.Dir)
+
 # --- Arena geometry --------------------------------------------------------
 const ARENA_W := 1280
 const ARENA_H := 600           # leaves 120 px at bottom for slot bar + HUD
+
+# Door geometry: a gap centered on each wall. The player triggers a
+# transition by walking into the gap once the room's doors are open.
+const DOOR_HALF_WIDTH := 56.0        # half-length of the visible door gap
+const DOOR_TRIGGER_DIST := 42.0      # how close to the wall counts as "in the door"
+const DOOR_ENTRY_INSET := 70.0       # how far inside the wall the player spawns on entry
 
 # --- Player tuning ---------------------------------------------------------
 const PLAYER_RADIUS := 18.0
@@ -29,6 +43,19 @@ const SWING_VISUAL_DURATION := 0.12
 # --- Caller-supplied configuration ----------------------------------------
 var target_game_id: StringName = &""
 var enemies_to_spawn: Array = []           # Array of ActionEnemyData ids
+
+# --- Embedded mode (driven by ActionFloor) --------------------------------
+# When true the arena is one room of a continuous Isaac-style floor: it
+# reports outcomes via room_cleared / player_died / door_entered and never
+# frees itself. When false it runs as a standalone one-off fight (editor
+# "Run Scene" / legacy callers) and self-frees on win or loss.
+var embedded: bool = false
+var paused: bool = false                   # set by ActionFloor while an overlay is open
+var doors: Array = []                      # Array[int] of IsaacFloorGenerator.Dir present this room
+var room_is_safe: bool = false             # safe rooms (start/shop/treasure/cleared) keep doors open
+var enemy_hp_mult: float = 1.0             # boss rooms scale enemy HP up
+var _room_resolved: bool = false           # room cleared this visit (don't re-emit)
+var _transitioning: bool = false           # door triggered, awaiting ActionFloor swap
 
 # --- Runtime state ---------------------------------------------------------
 var player_actor: CombatActor = null
@@ -115,35 +142,135 @@ var projectiles: Array = []
 func _ready() -> void:
 	_rng.randomize()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	# Standalone bootstrap: if a parent didn't apply a character / pick
-	# enemies, set up a default test fight so the scene is runnable from
-	# the Godot editor (right-click -> Run Scene).
-	if GameState.character_id == &"":
-		var ironclad: CharacterData = Data.get_character(&"ironclad")
-		if ironclad != null:
-			GameState.reset_run()
-			GameState.apply_character(ironclad)
-			GameState.set_current_game(&"hades")
-		# Add Iron Wave to the deck so the auto-picked loadout has a
-		# ranged ability to test the projectile system with.
-		var iw: CardData = Data.get_card(&"iron_wave")
-		if iw != null:
-			GameState.deck.append(CardInstance.from_data(iw))
-	if enemies_to_spawn.is_empty():
-		# Default test fight has one of each behavior so movement +
-		# projectiles can be observed without setup.
-		enemies_to_spawn = [&"walker", &"shooter"]
+	if not embedded:
+		# Standalone bootstrap: if a parent didn't apply a character / pick
+		# enemies, set up a default test fight so the scene is runnable from
+		# the Godot editor (right-click -> Run Scene).
+		if GameState.character_id == &"":
+			var ironclad: CharacterData = Data.get_character(&"ironclad")
+			if ironclad != null:
+				GameState.reset_run()
+				GameState.apply_character(ironclad)
+				GameState.set_current_game(&"hades")
+			# Add Iron Wave to the deck so the auto-picked loadout has a
+			# ranged ability to test the projectile system with.
+			var iw: CardData = Data.get_card(&"iron_wave")
+			if iw != null:
+				GameState.deck.append(CardInstance.from_data(iw))
+		if enemies_to_spawn.is_empty():
+			# Default test fight has one of each behavior so movement +
+			# projectiles can be observed without setup.
+			enemies_to_spawn = [&"walker", &"shooter"]
 
+	# Common setup (both modes): player actor, loadout, slot bar.
 	_init_player()
-	_spawn_enemies()
 	_load_loadout()
 	_build_slot_bar()
 	Stats.apply_derived_statuses(player_actor, Stats.Mode.ACTION)
+	set_process_input(true)
+
+	if embedded:
+		# ActionFloor drives us: it calls start_room() once the floor and
+		# the first room are ready. Idle until then.
+		phase = "init"
+		return
+
+	# Standalone one-off fight.
+	_spawn_enemies()
 	_apply_equipped_powers()
 	GameState.phase = GameState.Phase.COMBAT
 	phase = "playing"
 	_refresh_hud()
-	set_process_input(true)
+
+# ---------------------------------------------------------------------------
+# Embedded API — ActionFloor calls these to drive a continuous floor.
+# ---------------------------------------------------------------------------
+
+# Loads a room's contents. `enemy_ids` is spawned only when not `is_safe`;
+# `room_doors` are the open directions (IsaacFloorGenerator.Dir); the
+# player is placed just inside the door opposite `entry_dir` (the door
+# walked through to get here), or centered when entry_dir is -1.
+func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: float = 1.0, entry_dir: int = -1) -> void:
+	doors = room_doors.duplicate()
+	room_is_safe = is_safe
+	enemy_hp_mult = maxf(1.0, hp_mult)
+	enemies.clear()
+	projectiles.clear()
+	_pending_hits.clear()
+	_swing_remaining = 0.0
+	_ability_swing_remaining = 0.0
+	_haste_remaining = 0.0
+	_slow_remaining = 0.0
+	_room_resolved = false
+	_transitioning = false
+
+	# Each combat room is a fresh fight for transient state: drop block and
+	# statuses, then re-derive. HP persists across the whole floor via
+	# GameState. Reload the loadout so equipment swaps (Tab screen) apply,
+	# which also re-charges the ability cooldowns.
+	player_actor.hp = GameState.hp
+	player_actor.max_hp = GameState.max_hp
+	player_actor.block = 0
+	player_actor.statuses.clear()
+	Stats.apply_derived_statuses(player_actor, Stats.Mode.ACTION)
+	_load_loadout()
+
+	player_pos = _entry_position(entry_dir)
+	player_facing = Vector2.RIGHT
+	player_attack_cooldown = 0.0
+	player_iframes = PLAYER_IFRAME_DURATION    # brief grace on room entry
+
+	if not is_safe and not enemy_ids.is_empty():
+		enemies_to_spawn = enemy_ids.duplicate()
+		_spawn_enemies()
+		_apply_equipped_powers()
+
+	if _living_enemy_count() == 0:
+		# Safe room or already empty — doors stay open.
+		_room_resolved = true
+
+	paused = false
+	phase = "playing"
+	_refresh_hud()
+	_refresh_slot_bar()
+	queue_redraw()
+
+func _living_enemy_count() -> int:
+	var n := 0
+	for inst in enemies:
+		if inst.actor.is_alive():
+			n += 1
+	return n
+
+func doors_open() -> bool:
+	# Doors are passable in safe rooms or once the room is cleared.
+	return room_is_safe or _room_resolved
+
+# Player spawn position when entering through the door on side `entry_dir`
+# (i.e. the door we arrive at). Inset from that wall toward the centre.
+func _entry_position(entry_dir: int) -> Vector2:
+	var cx := ARENA_W * 0.5
+	var cy := ARENA_H * 0.5
+	match entry_dir:
+		IsaacFloorGenerator.Dir.N:
+			return Vector2(cx, DOOR_ENTRY_INSET)
+		IsaacFloorGenerator.Dir.S:
+			return Vector2(cx, ARENA_H - DOOR_ENTRY_INSET)
+		IsaacFloorGenerator.Dir.W:
+			return Vector2(DOOR_ENTRY_INSET, cy)
+		IsaacFloorGenerator.Dir.E:
+			return Vector2(ARENA_W - DOOR_ENTRY_INSET, cy)
+		_:
+			return Vector2(cx, cy)
+
+# Centre point of the door gap on side `dir`.
+func _door_point(dir: int) -> Vector2:
+	match dir:
+		IsaacFloorGenerator.Dir.N: return Vector2(ARENA_W * 0.5, 0.0)
+		IsaacFloorGenerator.Dir.S: return Vector2(ARENA_W * 0.5, ARENA_H)
+		IsaacFloorGenerator.Dir.W: return Vector2(0.0, ARENA_H * 0.5)
+		IsaacFloorGenerator.Dir.E: return Vector2(ARENA_W, ARENA_H * 0.5)
+		_: return Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
 
 func _apply_equipped_powers() -> void:
 	# Power cards take up an ability slot but resolve their effects
@@ -183,6 +310,12 @@ func _apply_equipped_powers() -> void:
 				_:
 					pass
 		GameLog.add("Power active: %s." % card.display_name, Color(1.0, 0.85, 0.4))
+
+# Public hook so ActionFloor can re-apply the loadout after the player
+# edits it on the equipment screen mid-floor.
+func reload_loadout() -> void:
+	_load_loadout()
+	_refresh_slot_bar()
 
 func _load_loadout() -> void:
 	var loadout: Dictionary = GameState.get_action_loadout()
@@ -239,7 +372,7 @@ func _spawn_enemies() -> void:
 		idx += 1
 
 func _make_enemy_actor(data: ActionEnemyData) -> CombatActor:
-	var hp: int = _rng.randi_range(data.hp_min, data.hp_max)
+	var hp: int = int(round(_rng.randi_range(data.hp_min, data.hp_max) * enemy_hp_mult))
 	var a := CombatActor.new()
 	a.display_name = data.display_name
 	a.max_hp = hp
@@ -252,6 +385,11 @@ func _make_enemy_actor(data: ActionEnemyData) -> CombatActor:
 
 func _process(delta: float) -> void:
 	if phase != "playing":
+		return
+	# Embedded: frozen while an overlay (equipment / shop / treasure) is up,
+	# or once a door has been triggered and we're waiting for the floor to
+	# swap rooms.
+	if paused or _transitioning:
 		return
 	# Haste/Slow tick on real-time delta so the window length matches the
 	# `gain_energy:N` / `lose_energy:N` value in seconds regardless of
@@ -268,6 +406,8 @@ func _process(delta: float) -> void:
 		ability_cooldowns[i] = maxf(0.0, ability_cooldowns[i] - scaled_delta)
 	_process_turn_tick(delta)
 	_process_player_input(delta)
+	if embedded:
+		_check_doors()
 	_process_enemies(delta)
 	_process_projectiles(delta)
 	_process_pending_hits(delta)
@@ -275,6 +415,17 @@ func _process(delta: float) -> void:
 	_refresh_hud()
 	_refresh_slot_bar()
 	queue_redraw()
+
+# Embedded only: if the player is standing in an open door, fire
+# door_entered once and freeze until ActionFloor swaps the room in.
+func _check_doors() -> void:
+	if _transitioning or not doors_open():
+		return
+	for dir in doors:
+		if player_pos.distance_to(_door_point(dir)) <= DOOR_TRIGGER_DIST + PLAYER_RADIUS:
+			_transitioning = true
+			emit_signal("door_entered", dir)
+			return
 
 func _process_turn_tick(delta: float) -> void:
 	# Ticks on real-time delta (not tempo-scaled — status durations
@@ -1032,21 +1183,32 @@ func _check_combat_end() -> void:
 	if not player_actor.is_alive():
 		phase = "lost"
 		GameLog.add("You died in the arena.", Color(1.0, 0.4, 0.4))
+		if embedded:
+			# ActionFloor owns the floor lifecycle — it closes the run.
+			emit_signal("player_died")
+			return
 		await get_tree().create_timer(0.6).timeout
 		emit_signal("closed", false, target_game_id)
 		queue_free()
 		return
-	var any_alive := false
-	for inst in enemies:
-		if inst.actor.is_alive():
-			any_alive = true
-			break
-	if not any_alive:
-		phase = "won"
-		GameLog.add("Arena cleared.", Color(0.4, 1.0, 0.6))
-		await get_tree().create_timer(0.6).timeout
-		emit_signal("closed", true, target_game_id)
-		queue_free()
+
+	if _living_enemy_count() > 0:
+		return
+
+	# All enemies down.
+	if embedded:
+		if not _room_resolved and not room_is_safe:
+			_room_resolved = true
+			GameLog.add("Room cleared.", Color(0.4, 1.0, 0.6))
+			emit_signal("room_cleared")
+		# Stay in "playing" so the player can walk out through a door.
+		return
+
+	phase = "won"
+	GameLog.add("Arena cleared.", Color(0.4, 1.0, 0.6))
+	await get_tree().create_timer(0.6).timeout
+	emit_signal("closed", true, target_game_id)
+	queue_free()
 
 # ---------------------------------------------------------------------------
 # HUD
@@ -1069,6 +1231,24 @@ func _draw() -> void:
 	draw_rect(Rect2(0, 0, ARENA_W, ARENA_H), Color(0.10, 0.12, 0.16), true)
 	# Arena border for visibility
 	draw_rect(Rect2(2, 2, ARENA_W - 4, ARENA_H - 4), Color(0.35, 0.40, 0.55), false, 2.0)
+
+	# Doors (embedded floors only). Green = open/passable, red = locked
+	# while the room still has enemies.
+	if embedded:
+		var open: bool = doors_open()
+		var door_col: Color = Color(0.4, 0.9, 0.5) if open else Color(0.9, 0.35, 0.3)
+		var thickness := 10.0
+		for dir in doors:
+			var p: Vector2 = _door_point(dir)
+			match dir:
+				IsaacFloorGenerator.Dir.N:
+					draw_rect(Rect2(p.x - DOOR_HALF_WIDTH, 0, DOOR_HALF_WIDTH * 2.0, thickness), door_col)
+				IsaacFloorGenerator.Dir.S:
+					draw_rect(Rect2(p.x - DOOR_HALF_WIDTH, ARENA_H - thickness, DOOR_HALF_WIDTH * 2.0, thickness), door_col)
+				IsaacFloorGenerator.Dir.W:
+					draw_rect(Rect2(0, p.y - DOOR_HALF_WIDTH, thickness, DOOR_HALF_WIDTH * 2.0), door_col)
+				IsaacFloorGenerator.Dir.E:
+					draw_rect(Rect2(ARENA_W - thickness, p.y - DOOR_HALF_WIDTH, thickness, DOOR_HALF_WIDTH * 2.0), door_col)
 
 	# Swing arc (drawn under enemies so the cone outline frames them)
 	if _swing_remaining > 0.0:
