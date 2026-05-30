@@ -2,7 +2,6 @@ extends Node
 
 signal player_turn_started
 signal enemy_turns_started
-signal enemy_turns_finished
 
 var _waiting_for_player: bool = true
 
@@ -18,5 +17,4 @@ func end_player_turn() -> void:
 	emit_signal("enemy_turns_started")
 
 func end_enemy_turns() -> void:
-	emit_signal("enemy_turns_finished")
 	start_player_turn()

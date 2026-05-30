@@ -133,12 +133,6 @@ const _DEFS: Array = [
 	},
 ]
 
-static func all() -> Array:
-	var out: Array = []
-	for d in _DEFS:
-		out.append(_build(d))
-	return out
-
 static func by_id(id: StringName) -> SpellData:
 	for d in _DEFS:
 		if StringName(d["id"]) == id:

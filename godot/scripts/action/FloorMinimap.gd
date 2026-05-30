@@ -15,10 +15,6 @@ var _floor: Dictionary = {}
 var _current_index: int = -1
 var _visited: Dictionary = {}        # index -> true
 
-# Cached draw window (grid bounds in cell coords).
-var _min_x := 0
-var _min_y := 0
-
 func setup(floor_data: Dictionary) -> void:
 	_floor = floor_data
 	queue_redraw()

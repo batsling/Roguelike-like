@@ -71,8 +71,7 @@ func execute_turn(scene, all_units: Array, battle_map) -> String:
 	scene.apply_effects(intent.effects, unit, target)
 	if intent.cooldown > 0:
 		# +1 so the end-of-turn tick lands us at exactly `cooldown` turns
-		# before the intent comes off cooldown (same convention as
-		# AbilityPool.set_cooldown).
+		# before the intent comes off cooldown.
 		unit.cooldowns[intent.id] = intent.cooldown + 1
 
 	var verb := intent.display_name
