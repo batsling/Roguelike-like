@@ -106,9 +106,12 @@ var card_uses: Dictionary = {}
 const DEFAULT_CARD_USES_BY_RARITY := [4, 4, 3, 2, 2]
 
 # === Action-mode loadout (StringName ids resolved via Data) ===
-# Empty / unset means "auto-pick from deck on combat start".
-var action_basic_attack_id: StringName = &""
-var action_ability_ids: Array[StringName] = []
+# Two manual click slots — left (LMB) and right (RMB). Only Strikes or
+# weapon-granted cards may be slotted here; everything else in the deck
+# plays automatically. Empty / unset means "auto-pick from deck on
+# combat start".
+var action_left_card_id: StringName = &""
+var action_right_card_id: StringName = &""
 
 # === Run-scope resources ===
 # Skip is removed from the stat set — the only "skip" is the
@@ -163,8 +166,8 @@ func reset_run() -> void:
 	loot = {"potion": 0, "scroll": 0, "key": 0}
 	learned_spells.clear()
 	card_uses.clear()
-	action_basic_attack_id = &""
-	action_ability_ids.clear()
+	action_left_card_id = &""
+	action_right_card_id = &""
 	dash_charges = 0
 	reroll_charges = 0
 	fov_bonus = 0
@@ -550,51 +553,72 @@ func recharge_card_use(card: CardData, n: int = 1) -> int:
 # Action-mode loadout
 # ---------------------------------------------------------------------------
 
-const ACTION_ABILITY_SLOTS := 3
-
-# Returns { "basic": CardData, "abilities": Array of CardData|null (size 3) }.
-# If the player hasn't set a loadout, auto-fills from the deck so the
-# action arena is always playable. Equipment screen in commit 6 will
-# let the player customize.
+# Returns { "left": CardData|null, "right": CardData|null, "auto": Array[CardData] }.
+#
+# `left`/`right` are the two manual click slots (LMB/RMB). Only Strikes or
+# weapon-granted cards are eligible; if unset, the first eligible deck card
+# is auto-picked so the arena is always playable. `auto` is the auto-play
+# pool: every other deck card except Powers (which apply passively at room
+# start) and non-playable types (Curse/Status/unplayable). Duplicates are
+# preserved — three Strikes in the deck means three entries in the pool.
 func get_action_loadout() -> Dictionary:
-	var basic: CardData = Data.get_card(action_basic_attack_id)
-	var abilities: Array = []
-	for id in action_ability_ids:
-		abilities.append(Data.get_card(id))
-	while abilities.size() < ACTION_ABILITY_SLOTS:
-		abilities.append(null)
+	var left: CardData = Data.get_card(action_left_card_id)
+	var right: CardData = Data.get_card(action_right_card_id)
+	if left == null:
+		left = _auto_pick_click(&"")
+	if right == null:
+		right = _auto_pick_click(left.id if left != null else &"")
 
-	if basic == null:
-		basic = _auto_pick_basic()
-	var taken: Array[StringName] = []
-	if basic != null:
-		taken.append(basic.id)
-	for i in range(ACTION_ABILITY_SLOTS):
-		if abilities[i] != null:
-			taken.append(abilities[i].id)
-			continue
-		var pick: CardData = _auto_pick_ability(taken)
-		if pick != null:
-			abilities[i] = pick
-			taken.append(pick.id)
-	return {"basic": basic, "abilities": abilities}
-
-func _auto_pick_basic() -> CardData:
-	# Prefer a Strike (its tags include "strike"); otherwise first
-	# Attack-type card in the deck.
-	for c in deck:
-		if c is CardInstance and c.data != null and c.data.tags.has("strike"):
-			return c.data
-	for c in deck:
-		if c is CardInstance and c.data != null and c.data.is_attack():
-			return c.data
-	return null
-
-func _auto_pick_ability(exclude_ids: Array[StringName]) -> CardData:
+	# Build the auto pool from the deck, holding back one copy each of the
+	# left/right cards (the rest of their copies still auto-play).
+	var skip_left: bool = left != null
+	var skip_right: bool = right != null
+	var auto: Array = []
 	for c in deck:
 		if not (c is CardInstance) or c.data == null:
 			continue
-		if c.data.id in exclude_ids:
+		var data: CardData = c.data
+		if skip_left and data.id == left.id:
+			skip_left = false  # consumed one copy for the left slot
 			continue
-		return c.data
+		if skip_right and data.id == right.id:
+			skip_right = false  # consumed one copy for the right slot
+			continue
+		if data.is_power() or data.unplayable:
+			continue
+		if data.type == CardData.CardType.CURSE or data.type == CardData.CardType.STATUS:
+			continue
+		auto.append(data)
+	return {"left": left, "right": right, "auto": auto}
+
+# True if the card id may be slotted into a click slot: it's a Strike
+# (tagged) or a weapon-granted card (some deck instance links to a weapon).
+func is_click_eligible(card_id: StringName) -> bool:
+	if card_id == &"":
+		return false
+	var card: CardData = Data.get_card(card_id)
+	if card != null and card.tags.has("strike"):
+		return true
+	for c in deck:
+		if c is CardInstance and c.data != null and c.data.id == card_id and c.source_weapon_id != 0:
+			return true
+	return false
+
+func _auto_pick_click(exclude_id: StringName) -> CardData:
+	# Prefer a Strike; otherwise the first weapon-granted card. Skips
+	# `exclude_id` so left and right don't auto-pick the same card.
+	for c in deck:
+		if not (c is CardInstance) or c.data == null:
+			continue
+		if c.data.id == exclude_id:
+			continue
+		if c.data.tags.has("strike"):
+			return c.data
+	for c in deck:
+		if not (c is CardInstance) or c.data == null:
+			continue
+		if c.data.id == exclude_id:
+			continue
+		if c.source_weapon_id != 0:
+			return c.data
 	return null

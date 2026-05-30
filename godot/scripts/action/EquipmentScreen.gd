@@ -1,20 +1,20 @@
 class_name EquipmentScreen
 extends Control
 
-# Action-mode equipment screen. Shows the 4 loadout slots (basic +
-# 3 abilities) and the player's deck; click a slot to select, then
-# click a card to assign. Continue persists the choices onto
-# GameState.action_basic_attack_id + GameState.action_ability_ids and
-# emits `closed`.
+# Action-mode equipment screen. Shows the 2 click slots (LMB / RMB) and the
+# player's deck; click a slot to select, then click a Strike or weapon card
+# to assign it. Everything else in the deck plays automatically and is shown
+# under an info header. Continue persists the choices onto
+# GameState.action_left_card_id / action_right_card_id and emits `closed`.
 #
 # Standalone Control like Shop / RestSite / TreasureRoom. The caller
 # (action floor map between rooms) free()s it on close.
 
 signal closed
 
-var _selected_slot: int = -1            # -1 = none, 0 = basic, 1-3 = abilities
-var _basic_card: CardData = null
-var _abilities: Array = [null, null, null]
+var _selected_slot: int = -1            # -1 = none, 0 = left (LMB), 1 = right (RMB)
+var _left_card: CardData = null
+var _right_card: CardData = null
 var _slot_btns: Array[Button] = []
 
 func _ready() -> void:
@@ -32,10 +32,8 @@ func _ready() -> void:
 
 func _load_current() -> void:
 	var loadout: Dictionary = GameState.get_action_loadout()
-	_basic_card = loadout.basic
-	_abilities = loadout.abilities.duplicate()
-	while _abilities.size() < 3:
-		_abilities.append(null)
+	_left_card = loadout.left
+	_right_card = loadout.right
 
 # ---------------------------------------------------------------------------
 
@@ -61,7 +59,7 @@ func _build_ui() -> void:
 	var hint := Label.new()
 	hint.position = Vector2(20, 48)
 	hint.size = Vector2(940, 22)
-	hint.text = "Click a slot, then click a card from your deck to assign it. Continue when done."
+	hint.text = "Click a click-slot (LMB/RMB), then a Strike or weapon to assign it. All other cards auto-play. Continue when done."
 	hint.add_theme_color_override("font_color", Color(0.82, 0.85, 0.92))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(hint)
@@ -74,9 +72,9 @@ func _build_ui() -> void:
 	slot_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	panel.add_child(slot_row)
 
-	for i in range(4):
+	for i in range(2):
 		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(212, 140)
+		btn.custom_minimum_size = Vector2(320, 140)
 		btn.autowrap_mode = TextServer.AUTOWRAP_WORD
 		var idx: int = i
 		btn.pressed.connect(func(): _on_slot_clicked(idx))
@@ -87,11 +85,13 @@ func _build_ui() -> void:
 	var deck_lbl := Label.new()
 	deck_lbl.position = Vector2(20, 248)
 	deck_lbl.size = Vector2(940, 22)
-	deck_lbl.text = "Your deck (click a card to assign it to the selected slot)"
+	deck_lbl.text = "Your deck — Strikes/weapons assign to a click slot; everything else auto-plays"
 	deck_lbl.add_theme_color_override("font_color", Color(0.82, 0.85, 0.92))
 	panel.add_child(deck_lbl)
 
-	# Scrollable deck list (deduped by card id)
+	# Scrollable deck list (deduped by card id). Strike/weapon cards are
+	# clickable (assign to the selected slot); the rest are shown greyed as
+	# auto-play so the player can see what's cycling automatically.
 	var scroll := ScrollContainer.new()
 	scroll.position = Vector2(20, 278)
 	scroll.size = Vector2(940, 280)
@@ -109,14 +109,19 @@ func _build_ui() -> void:
 		if seen.has(data.id):
 			continue
 		seen[data.id] = true
+		var eligible: bool = GameState.is_click_eligible(data.id)
+		var auto_tag: String = "click" if eligible else ("passive" if data.is_power() else "auto")
 		var btn := Button.new()
 		btn.custom_minimum_size = Vector2(920, 38)
 		btn.autowrap_mode = TextServer.AUTOWRAP_WORD
-		btn.text = "[%d] %s   (%s)   --  %s" % [
-			data.cost, data.display_name, _type_label(data.type), data.description,
+		btn.text = "[%d] %s   (%s, %s)   --  %s" % [
+			data.cost, data.display_name, _type_label(data.type), auto_tag, data.description,
 		]
-		var data_ref: CardData = data
-		btn.pressed.connect(func(): _on_card_clicked(data_ref))
+		if eligible:
+			var data_ref: CardData = data
+			btn.pressed.connect(func(): _on_card_clicked(data_ref))
+		else:
+			btn.disabled = true
 		vbox.add_child(btn)
 
 	# Clear-slot + Continue
@@ -137,9 +142,9 @@ func _build_ui() -> void:
 # ---------------------------------------------------------------------------
 
 func _refresh_slots() -> void:
-	var slot_titles := ["[LMB] Basic", "[1] Ability", "[2] Ability", "[3] Ability"]
-	for i in range(4):
-		var card: CardData = _basic_card if i == 0 else _abilities[i - 1]
+	var slot_titles := ["[LMB] Left click", "[RMB] Right click"]
+	for i in range(2):
+		var card: CardData = _left_card if i == 0 else _right_card
 		var content: String = "(empty)" if card == null else "%s\n(%s)" % [
 			card.display_name, _type_label(card.type),
 		]
@@ -153,31 +158,31 @@ func _on_slot_clicked(idx: int) -> void:
 
 func _on_card_clicked(card: CardData) -> void:
 	if _selected_slot < 0:
-		GameLog.add("Pick a slot first.", Color(0.85, 0.7, 0.4))
+		GameLog.add("Pick a click slot first.", Color(0.85, 0.7, 0.4))
+		return
+	if not GameState.is_click_eligible(card.id):
+		GameLog.add("Only Strikes or weapons can go in a click slot.", Color(0.85, 0.7, 0.4))
 		return
 	if _selected_slot == 0:
-		_basic_card = card
+		_left_card = card
 	else:
-		_abilities[_selected_slot - 1] = card
-	GameLog.add("Equipped %s to slot %d." % [card.display_name, _selected_slot], Color(0.7, 1.0, 0.7))
+		_right_card = card
+	GameLog.add("Equipped %s to %s." % [
+		card.display_name, "LMB" if _selected_slot == 0 else "RMB"], Color(0.7, 1.0, 0.7))
 	_refresh_slots()
 
 func _on_clear_slot() -> void:
 	if _selected_slot < 0:
 		return
 	if _selected_slot == 0:
-		_basic_card = null
+		_left_card = null
 	else:
-		_abilities[_selected_slot - 1] = null
+		_right_card = null
 	_refresh_slots()
 
 func _on_continue() -> void:
-	GameState.action_basic_attack_id = _basic_card.id if _basic_card != null else &""
-	var ids: Array[StringName] = []
-	for c in _abilities:
-		if c != null:
-			ids.append(c.id)
-	GameState.action_ability_ids = ids
+	GameState.action_left_card_id = _left_card.id if _left_card != null else &""
+	GameState.action_right_card_id = _right_card.id if _right_card != null else &""
 	GameLog.add("Loadout saved.", Color(0.7, 0.9, 1.0))
 	emit_signal("closed")
 
