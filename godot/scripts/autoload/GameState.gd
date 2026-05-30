@@ -159,10 +159,7 @@ func reset_run() -> void:
 	deck.clear()
 	inventory.clear()
 	equipped_weapon = null
-	item_stat_bonus = {}
-	_applied_item_max_hp = 0
-	_applied_item_max_energy = 0
-	_next_item_instance_id = 1
+	_reset_item_tracking()
 	loot = {"potion": 0, "scroll": 0, "key": 0}
 	learned_spells.clear()
 	card_uses.clear()
@@ -197,10 +194,7 @@ func apply_character(char_data: CharacterData) -> void:
 			deck.append(CardInstance.from_data(c))
 
 	inventory.clear()
-	_applied_item_max_hp = 0
-	_applied_item_max_energy = 0
-	item_stat_bonus = {}
-	_next_item_instance_id = 1
+	_reset_item_tracking()
 	for item_id in char_data.starting_items:
 		var it: ItemData = Data.get_item(item_id)
 		if it != null:
@@ -226,6 +220,14 @@ func apply_character(char_data: CharacterData) -> void:
 	emit_signal("hp_changed", hp, max_hp)
 	emit_signal("deck_changed")
 	emit_signal("inventory_changed")
+
+# Clears the bookkeeping that tracks item-granted bonuses and instance ids.
+# Shared by reset_run() and apply_character() so the two can't drift apart.
+func _reset_item_tracking() -> void:
+	item_stat_bonus = {}
+	_applied_item_max_hp = 0
+	_applied_item_max_energy = 0
+	_next_item_instance_id = 1
 
 func set_current_game(id: StringName) -> void:
 	current_game_id = id

@@ -1348,34 +1348,11 @@ func _show_pile_overlay(kind: String) -> void:
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(overlay)
 
-	var backdrop := ColorRect.new()
-	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	backdrop.color = Color(0, 0, 0, 0.72)
-	overlay.add_child(backdrop)
-
-	# Click outside the panel closes the overlay.
-	var dismiss := Button.new()
-	dismiss.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dismiss.flat = true
-	dismiss.focus_mode = Control.FOCUS_NONE
-	dismiss.pressed.connect(func(): overlay.queue_free())
-	overlay.add_child(dismiss)
-
 	var color: Color = _PILE_COLORS.get(kind, Color.WHITE)
 	var title: String = _PILE_TITLES.get(kind, "Pile")
 
-	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.custom_minimum_size = Vector2(900, 560)
-	panel.size = Vector2(900, 560)
-	panel.position = -panel.size * 0.5
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.10, 0.08, 0.12, 0.98)
-	sb.border_color = color
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(8)
-	panel.add_theme_stylebox_override("panel", sb)
-	overlay.add_child(panel)
+	# Click outside the panel closes the overlay.
+	var panel := ModalScaffold.build_panel(overlay, color, func(): overlay.queue_free())
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 10)
