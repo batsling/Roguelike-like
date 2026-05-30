@@ -66,7 +66,8 @@ var player_pos: Vector2 = Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
 var player_facing: Vector2 = Vector2.RIGHT
 var player_iframes: float = 0.0
 var enemies: Array = []          # Array of Dictionary: {data, actor, pos, cooldown}
-var phase: String = "init"       # "init" | "playing" | "won" | "lost"
+enum Phase { INIT, PLAYING, WON, LOST }
+var phase: Phase = Phase.INIT
 var _ability_swing_remaining: float = 0.0
 var _ability_swing_facing: Vector2 = Vector2.RIGHT
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -201,13 +202,13 @@ func _ready() -> void:
 	if embedded:
 		# ActionFloor drives us: it calls start_room() once the floor and
 		# the first room are ready. Idle until then.
-		phase = "init"
+		phase = Phase.INIT
 		return
 
 	# Standalone one-off fight.
 	_spawn_enemies()
 	GameState.phase = GameState.Phase.COMBAT
-	phase = "playing"
+	phase = Phase.PLAYING
 	_refresh_hud()
 
 # ---------------------------------------------------------------------------
@@ -259,7 +260,7 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 		_room_resolved = true
 
 	paused = false
-	phase = "playing"
+	phase = Phase.PLAYING
 	_refresh_hud()
 	_refresh_slot_bar()
 	queue_redraw()
@@ -405,7 +406,7 @@ func _make_enemy_actor(data: ActionEnemyData) -> CombatActor:
 # ---------------------------------------------------------------------------
 
 func _process(delta: float) -> void:
-	if phase != "playing":
+	if phase != Phase.PLAYING:
 		return
 	# Embedded: frozen while an overlay (equipment / shop / treasure) is up,
 	# or once a door has been triggered and we're waiting for the floor to
@@ -1534,7 +1535,7 @@ func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatA
 
 func _check_combat_end() -> void:
 	if not player_actor.is_alive():
-		phase = "lost"
+		phase = Phase.LOST
 		GameLog.add("You died in the arena.", Color(1.0, 0.4, 0.4))
 		if embedded:
 			# ActionFloor owns the floor lifecycle — it closes the run.
@@ -1554,10 +1555,10 @@ func _check_combat_end() -> void:
 			_room_resolved = true
 			GameLog.add("Room cleared.", Color(0.4, 1.0, 0.6))
 			emit_signal("room_cleared")
-		# Stay in "playing" so the player can walk out through a door.
+		# Stay in PLAYING so the player can walk out through a door.
 		return
 
-	phase = "won"
+	phase = Phase.WON
 	GameLog.add("Arena cleared.", Color(0.4, 1.0, 0.6))
 	await get_tree().create_timer(0.6).timeout
 	emit_signal("closed", true, target_game_id)

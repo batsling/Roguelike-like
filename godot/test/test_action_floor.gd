@@ -29,7 +29,7 @@ func test_floor_generates_and_boots_into_start_room() -> void:
 	assert_eq(f._current_index, int(f._floor.start_index), "starts in the start room")
 	assert_true(f._visited.has(int(f._floor.start_index)), "start room marked visited")
 	assert_not_null(f._arena, "embedded arena built")
-	assert_eq(f._arena.phase, "playing", "arena is live in the start room")
+	assert_eq(f._arena.phase, ActionCombat.Phase.PLAYING, "arena is live in the start room")
 	assert_true(f._arena.embedded, "arena runs in embedded mode")
 
 func test_start_room_is_safe_with_no_enemies() -> void:

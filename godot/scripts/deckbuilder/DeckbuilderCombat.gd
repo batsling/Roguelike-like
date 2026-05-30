@@ -54,7 +54,8 @@ var power_triggers: Array = []
 var energy: int = 0
 var max_energy: int = 3
 var turn: int = 0
-var phase: String = "init"           # "init" | "player" | "enemy" | "won" | "lost"
+enum Phase { INIT, PLAYER, ENEMY, WON, LOST }
+var phase: Phase = Phase.INIT
 
 # Persistent enemy view widgets (created in start_combat, refreshed by
 # _refresh_ui without rebuilding the row).
@@ -170,7 +171,7 @@ func _apply_derived_statuses() -> void:
 
 func _start_player_turn() -> void:
 	turn += 1
-	phase = "player"
+	phase = Phase.PLAYER
 	energy = max_energy
 	player.block = 0
 	_cancel_targeting()
@@ -189,7 +190,7 @@ func _start_player_turn() -> void:
 	_refresh_ui()
 
 func _on_end_turn() -> void:
-	if phase != "player":
+	if phase != Phase.PLAYER:
 		return
 	_cancel_targeting()
 	# Discard hand. Ethereal cards exhaust instead of discarding if they
@@ -218,7 +219,7 @@ func _on_end_turn() -> void:
 	# Decay player statuses BEFORE enemies act so debuffs the player
 	# just applied to enemies survive through the enemy turn.
 	_decay_statuses(player)
-	phase = "enemy"
+	phase = Phase.ENEMY
 	_refresh_ui()
 
 	if _check_combat_end():
@@ -276,10 +277,10 @@ func _resolve_enemy_effect_target(enemy: CombatActor, target_str: String) -> Com
 			return player
 
 func _check_combat_end() -> bool:
-	if phase == "won" or phase == "lost":
+	if phase == Phase.WON or phase == Phase.LOST:
 		return true
 	if not player.is_alive():
-		phase = "lost"
+		phase = Phase.LOST
 		GameState.phase = GameState.Phase.DEAD
 		GameLog.add("You have been defeated.", Color(1.0, 0.4, 0.4))
 		TriggerBus.emit_signal("combat_ended", {"victory": false, "scene": self})
@@ -293,7 +294,7 @@ func _check_combat_end() -> bool:
 			any_alive = true
 			break
 	if not any_alive:
-		phase = "won"
+		phase = Phase.WON
 		GameLog.add("Victory!", Color(0.4, 1.0, 0.6))
 		# Items with combat_ended triggers fire on victory only.
 		_fire_item_triggers("combat_ended")
@@ -574,7 +575,7 @@ func _decay_statuses(actor: CombatActor) -> void:
 # ------------------------------------------------------------------
 
 func _try_play_card(card: CardInstance) -> void:
-	if phase != "player":
+	if phase != Phase.PLAYER:
 		return
 	if card.get_cost() > energy:
 		GameLog.add("Not enough energy for %s." % card.get_display_name(), Color(0.9, 0.7, 0.3))
@@ -1259,9 +1260,19 @@ func _roll_intent(enemy: CombatActor) -> void:
 # UI
 # ------------------------------------------------------------------
 
+# Lowercase phase name for the turn HUD (preserves the pre-enum label text).
+func _phase_label() -> String:
+	match phase:
+		Phase.INIT: return "init"
+		Phase.PLAYER: return "player"
+		Phase.ENEMY: return "enemy"
+		Phase.WON: return "won"
+		Phase.LOST: return "lost"
+	return "?"
+
 func _refresh_ui() -> void:
 	_turn_label.text = "Turn %d   Phase: %s%s" % [
-		turn, phase,
+		turn, _phase_label(),
 		"   [TARGETING]" if _targeting else "",
 	]
 	_energy_label.text = "Energy: %d / %d" % [energy, max_energy]
@@ -1287,7 +1298,7 @@ func _refresh_ui() -> void:
 		view.play_requested.connect(_try_play_card)
 		_hand_area.add_child(view)
 		view.setup(card_inst)
-		view.set_enabled((phase == "player") and (card_inst.get_cost() <= energy))
+		view.set_enabled((phase == Phase.PLAYER) and (card_inst.get_cost() <= energy))
 		view.set_selected(_targeting and _selected_card == card_inst)
 
 
