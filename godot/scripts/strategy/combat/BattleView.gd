@@ -971,7 +971,9 @@ func deal_damage(source, target, value: int, effect: Dictionary = {}) -> void:
 func gain_block(target, value: int) -> void:
 	if target == null:
 		return
-	target.block = maxi(0, target.block) + int(value)
+	# Shared block math: Frail cuts gained block 25% (Stats.resolve_block).
+	# Strategy keeps Defense out (add_defense = false) to match prior balance.
+	target.block = maxi(0, target.block) + Stats.resolve_block(int(value), target, false)
 
 func heal(target, value: int) -> void:
 	if target == null:
@@ -1034,22 +1036,14 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> void:
 	if target == null or raw_dmg <= 0:
 		return
-	# Status scaling (mirrors deckbuilder/action so inflicted statuses bite):
-	# caster Power adds flat, Weak cuts the caster's output 25% (floor),
-	# Vulnerable raises the target's incoming damage 50% (ceil).
-	var dmg: int = raw_dmg
-	if source != null and source.has_method("get_status"):
-		dmg += source.get_status(&"power")
-		if source.get_status(&"weak") > 0:
-			dmg = int(floor(dmg * 0.75))
-	if target.has_method("get_status") and target.get_status(&"vulnerable") > 0:
-		dmg = int(ceil(dmg * 1.5))
-	dmg = maxi(0, dmg)
+	# Canonical damage math in Stats.resolve_damage (Power/Weak, Vulnerable,
+	# Blind, Dodge, block soak) so strategy matches deckbuilder/action. The
+	# death / Infuse / loot tail below stays strategy-specific.
 	var was_alive: bool = target.is_alive()
-	var absorbed := mini(target.block, dmg)
-	target.block -= absorbed
-	var landed := dmg - absorbed
-	target.hp = maxi(0, target.hp - landed)
+	var res := Stats.resolve_damage(source, target, raw_dmg, effect, Stats.Mode.STRATEGY)
+	if res.missed or res.dodged:
+		return
+	target.hp = maxi(0, target.hp - int(res.hp_loss))
 	if was_alive and not target.is_alive() and not target.is_player:
 		# Infuse: strategy mirrors deckbuilder — every killing blow with
 		# infuse > 0 grants the player Max HP equal to the stack count.

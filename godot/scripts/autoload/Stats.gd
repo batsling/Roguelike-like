@@ -12,9 +12,9 @@ const ACTION_DASH_REGEN_SECONDS := 4.0
 # discrete turn structure. One ACTION_TURN_TICK is the cadence at
 # which decaying statuses (Vulnerable, Weak, Frail, Burn, Blind …)
 # step down by 1 on every actor in the arena. Picked to feel like a
-# Slay-the-Spire-length turn (~15s of arena play ≈ one deckbuilder
+# Slay-the-Spire-length turn (~10s of arena play ≈ one deckbuilder
 # turn of dialogue + planning).
-const ACTION_TURN_TICK_SECONDS := 15.0
+const ACTION_TURN_TICK_SECONDS := 10.0
 
 # Statuses that step down by 1 each turn (deckbuilder + strategy) or
 # each ACTION_TURN_TICK (action). Owned here so all three modes
@@ -69,7 +69,21 @@ var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
 
 var _stat_defs: Dictionary = {}     # StringName -> StatDefinition
 
+# Fallback RNG for the shared combat resolvers when a caller doesn't pass
+# its own. Scenes normally hand in their seeded _rng so blind/dodge rolls
+# stay deterministic per scene; this just keeps resolve_damage callable
+# from anywhere.
+var _resolve_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
+# Debuffs whose applied stack count gets boosted by the source's
+# Persistence. Player-applied only (enforced in status_apply_stacks).
+# Shared so deckbuilder / action / strategy agree on which statuses scale.
+const PERSISTENCE_DEBUFFS: Array[StringName] = [
+	&"vulnerable", &"weak", &"frail", &"poison", &"burn", &"bleed",
+]
+
 func _ready() -> void:
+	_resolve_rng.randomize()
 	_load_stat_defs()
 
 func _load_stat_defs() -> void:
@@ -148,7 +162,9 @@ func apply_derived_statuses(actor: CombatActor, _mode: Mode) -> void:
 # extras on top of source.power based on damage_type + current mode.
 # ---------------------------------------------------------------------------
 
-func damage_bonus(source: CombatActor, damage_type: String, mode: Mode, power_multiplier: int = 1) -> int:
+func damage_bonus(source, damage_type: String, mode: Mode, power_multiplier: int = 1) -> int:
+	# Untyped source so both CombatActor (deckbuilder/action) and BattleUnit
+	# (strategy) flow through the one formula. Only get_status is read.
 	if source == null:
 		return 0
 	var bonus: int = source.get_status(&"power") * power_multiplier
@@ -167,6 +183,90 @@ func damage_bonus(source: CombatActor, damage_type: String, mode: Mode, power_mu
 			# action / strategy land when those modes do.
 			pass
 	return bonus
+
+# ---------------------------------------------------------------------------
+# Canonical combat resolvers — the single source of truth shared by all
+# three modes (deckbuilder / action / strategy). These are PURE math: they
+# read statuses, consume Dodge, and drain block, but they never write HP,
+# log, animate, or fire triggers. Each scene calls a resolver, then applies
+# the returned numbers and runs its own mode-specific tail (death, thorns,
+# soul-link, iframes, …). Keep the formula here and nowhere else.
+# ---------------------------------------------------------------------------
+
+# Resolve one hit. `base` is the raw card/attack value; `effect` may carry
+#   damage_type ("melee"/"ranged"/"magic"/"true"), power_multiplier (int),
+#   no_block (skip block soak — DoTs / piercing), ignore_dodge (bypass Dodge).
+# Returns { missed, dodged, blocked, hp_loss }:
+#   missed  — attacker whiffed via Blind (no dodge consumed, no damage)
+#   dodged  — target burned a Dodge stack to negate the hit
+#   blocked — amount soaked by block (already drained from target.block)
+#   hp_loss — final HP the caller should remove from the target
+func resolve_damage(
+		source, target, base: int, effect: Dictionary,
+		mode: Mode, rng: RandomNumberGenerator = null) -> Dictionary:
+	var out := {"missed": false, "dodged": false, "blocked": 0, "hp_loss": 0}
+	if target == null:
+		return out
+	var r: RandomNumberGenerator = rng if rng != null else _resolve_rng
+	var damage_type: String = String(effect.get("damage_type", "melee"))
+	var has_src: bool = source != null and source.has_method("get_status")
+	var has_tgt: bool = target.has_method("get_status")
+
+	# Blind: an attacker with Blind can whiff each melee/ranged swing.
+	# Spell damage and DoT ticks (true) are never gated by Blind.
+	if has_src and (damage_type == "melee" or damage_type == "ranged") \
+			and source.get_status(&"blind") > 0 and roll_blind_miss(r, source.is_player):
+		out.missed = true
+		return out
+
+	var amount: int = base
+	# Outgoing: Power (+arcane/dex via damage_bonus) then Weak (-25%, floor).
+	if has_src:
+		var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+		amount += damage_bonus(source, damage_type, mode, power_mult)
+		if source.get_status(&"weak") > 0:
+			amount = int(floor(amount * 0.75))
+	# Incoming: Vulnerable (+50%, ceil).
+	if has_tgt and target.get_status(&"vulnerable") > 0:
+		amount = int(ceil(amount * 1.5))
+
+	# Dodge negates the hit entirely and burns one stack.
+	if not bool(effect.get("ignore_dodge", false)) and has_tgt and target.get_status(&"dodge") > 0:
+		target.add_status(&"dodge", -1)
+		out.dodged = true
+		return out
+
+	amount = maxi(0, amount)
+	# Block absorption (skipped for no_block DoTs / piercing).
+	if not bool(effect.get("no_block", false)):
+		var absorbed: int = mini(maxi(0, target.block), amount)
+		target.block -= absorbed
+		amount -= absorbed
+		out.blocked = absorbed
+	out.hp_loss = maxi(0, amount)
+	return out
+
+# Resolve block gained. Frail cuts gained block 25% (floor) in every mode.
+# `add_defense` folds in the Defense status (Action's bespoke rule today);
+# the other modes pass false so behavior is unchanged for them.
+func resolve_block(base: int, target, add_defense: bool = false) -> int:
+	var amt: int = base
+	if target != null and target.has_method("get_status"):
+		if add_defense:
+			amt += target.get_status(&"defense")
+		if target.get_status(&"frail") > 0:
+			amt = int(floor(amt * 0.75))
+	return maxi(0, amt)
+
+# Persistence: a debuff the PLAYER inflicts lands with extra stacks equal to
+# the source's Persistence. Buffs and enemy-applied debuffs are unaffected.
+# Returns the adjusted stack count to feed into add_status.
+func status_apply_stacks(source, status: StringName, stacks: int) -> int:
+	if source != null and source.has_method("get_status") \
+			and ("is_player" in source) and source.is_player \
+			and stacks > 0 and status in PERSISTENCE_DEBUFFS:
+		return stacks + source.get_status(&"persistence")
+	return stacks
 
 # ---------------------------------------------------------------------------
 # Speed — mode-specific accessors
@@ -341,10 +441,15 @@ func fire_contact_reactions(target, attacker, scene) -> void:
 	if bleed_thorns > 0 and scene != null and scene.has_method("apply_status"):
 		scene.apply_status(attacker, &"bleed", bleed_thorns)
 
-func decay_actor_statuses(actor) -> void:
+func decay_actor_statuses(actor, do_grow: bool = true) -> void:
 	# Step down every decaying status on this actor by 1. Called per
 	# actor at end-of-turn (deckbuilder, strategy when statuses land
 	# there) and per ACTION_TURN_TICK in action mode.
+	#
+	# do_grow controls the GROW_STATUSES pass (Bleed +1). Deckbuilder /
+	# strategy leave it true. Action passes false because its Bleed has a
+	# different rule — it only ramps while you keep landing hits and clears
+	# the moment you stop (see action_bleed_step).
 	#
 	# === Canonical turn-boundary ordering ===
 	# When the future status-loader wires per-turn ticks (Burn dealing
@@ -375,9 +480,28 @@ func decay_actor_statuses(actor) -> void:
 	for s in DECAY_STATUSES:
 		if actor.get_status(s) > 0:
 			actor.add_status(s, -1)
-	for s in GROW_STATUSES:
-		if actor.get_status(s) > 0:
-			actor.add_status(s, 1)
+	if do_grow:
+		for s in GROW_STATUSES:
+			if actor.get_status(s) > 0:
+				actor.add_status(s, 1)
+
+# Action-only Bleed rule. In real-time play Bleed ramps while you keep the
+# pressure on and evaporates when you let up: each ACTION_TURN_TICK a
+# bleeding actor that took at least one hit during the window gains +1
+# stack, and one that wasn't hit loses ALL its stacks. The DoT bite itself
+# runs through tick_actor_statuses BEFORE this, so the actor still takes its
+# current-stack damage on the clearing tick (same ordering contract as the
+# deckbuilder: bite first, then adjust stacks).
+func action_bleed_step(actor, was_hit: bool) -> void:
+	if actor == null or not actor.has_method("get_status"):
+		return
+	var bleed: int = actor.get_status(&"bleed")
+	if bleed <= 0:
+		return
+	if was_hit:
+		actor.add_status(&"bleed", 1)
+	else:
+		actor.add_status(&"bleed", -bleed)
 
 func roll_blind_miss(rng: RandomNumberGenerator, source_is_player: bool) -> bool:
 	# Returns true if the attack misses. Player's luck always biases

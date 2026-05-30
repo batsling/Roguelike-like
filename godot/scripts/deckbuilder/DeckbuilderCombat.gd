@@ -66,15 +66,9 @@ var _targeting: bool = false
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
-# Status decay list lives on Stats so action mode shares the same
-# set. Local copy kept only for the persistence-debuff filter below
-# (different concept — which statuses get the Persistence bonus when
-# the player inflicts them).
-
-# Debuffs that get Persistence bonus when player inflicts them on enemies.
-const _DEBUFFS := [
-	&"vulnerable", &"weak", &"frail", &"poison", &"burn", &"bleed",
-]
+# Status decay list and the Persistence-debuff set both live on Stats now
+# (Stats.PERSISTENCE_DEBUFFS / Stats.status_apply_stacks), shared across all
+# three combat modes.
 
 # UI refs
 @onready var _enemy_area: HBoxContainer = $Layout/EnemyArea
@@ -686,39 +680,22 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, effect: Dictionary) -> void:
 	if target == null or not target.is_alive():
 		return
-	var amount := base_amount
 	var damage_type: String = String(effect.get("damage_type", "melee"))
 
-	# Blind: an attacker with Blind has a chance to miss each Attack
-	# hit. Gated to melee/ranged dmg so spell-damage and DoT ticks
-	# (when those land) aren't subject to it. Player's luck biases
-	# the outcome in the player's favor either direction.
-	if source != null and (damage_type == "melee" or damage_type == "ranged"):
-		if source.get_status(&"blind") > 0 and Stats.roll_blind_miss(_rng, source.is_player):
-			var who: String = "You" if source.is_player else source.display_name
-			GameLog.add("%s swings blind and misses!" % who, Color(0.85, 0.85, 0.55))
-			return
-
-	# Source outgoing modifiers
-	if source != null:
-		var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
-		amount += Stats.damage_bonus(source, damage_type, Stats.Mode.DECKBUILDER, power_mult)
-		if source.get_status(&"weak") > 0:
-			amount = int(floor(amount * 0.75))
-
-	# Target incoming modifiers
-	if target.get_status(&"vulnerable") > 0:
-		amount = int(ceil(amount * 1.5))
-	if target.get_status(&"dodge") > 0:
-		target.add_status(&"dodge", -1)
+	# Canonical damage math lives in Stats.resolve_damage (Blind whiff,
+	# Power/Weak, Vulnerable, Dodge, block soak) so all three modes agree.
+	# The scene-specific tail below — logging, triggers, Soul Link, death,
+	# Infuse, Thorns — stays here.
+	var res := Stats.resolve_damage(source, target, base_amount, effect, Stats.Mode.DECKBUILDER, _rng)
+	if res.missed:
+		var who: String = "You" if source.is_player else source.display_name
+		GameLog.add("%s swings blind and misses!" % who, Color(0.85, 0.85, 0.55))
+		return
+	if res.dodged:
 		GameLog.add("%s dodges!" % target.display_name, Color(0.7, 0.9, 1.0))
 		return
-	# (Frail affects block gained, not damage taken — handled in gain_block)
-
-	# Block absorption
-	var absorbed := mini(target.block, amount)
-	target.block -= absorbed
-	amount -= absorbed
+	var amount: int = int(res.hp_loss)
+	var absorbed: int = int(res.blocked)
 
 	if amount > 0:
 		if target.is_player:
@@ -839,12 +816,8 @@ func _propagate_soul_link(origin: CombatActor, amount: int) -> void:
 func gain_block(target: CombatActor, base_amount: int) -> void:
 	if target == null:
 		return
-	var amount := base_amount
-	amount += target.get_status(&"defense")
-	if target.get_status(&"frail") > 0:
-		amount = int(floor(amount * 0.75))
-	amount = maxi(0, amount)
-	target.block += amount
+	# Shared block math: Defense status adds, Frail cuts 25% (see Stats).
+	target.block += Stats.resolve_block(base_amount, target, true)
 
 func heal(target: CombatActor, amount: int) -> void:
 	if target == null or amount <= 0:
@@ -858,12 +831,11 @@ func heal(target: CombatActor, amount: int) -> void:
 func apply_status(target: CombatActor, status: StringName, stacks: int, source: CombatActor = null) -> void:
 	if target == null or stacks == 0:
 		return
+	# Player Persistence boosts debuffs the player applies to enemies
+	# (shared rule in Stats.status_apply_stacks). Buffs to self pass through.
 	var actual_stacks := stacks
-	# Player Persistence boosts debuffs the player applies to enemies.
-	if source != null and source.is_player and not target.is_player and status in _DEBUFFS:
-		var pers := source.get_status(&"persistence")
-		if pers > 0 and stacks > 0:
-			actual_stacks += pers
+	if not target.is_player:
+		actual_stacks = Stats.status_apply_stacks(source, status, stacks)
 	target.add_status(status, actual_stacks)
 	TriggerBus.emit_signal("status_applied", {
 		"target": target, "status": status, "stacks": actual_stacks, "scene": self,
