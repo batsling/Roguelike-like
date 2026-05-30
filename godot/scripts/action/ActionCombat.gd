@@ -51,6 +51,11 @@ var room_is_safe: bool = false             # safe rooms (start/shop/treasure/cle
 var enemy_hp_mult: float = 1.0             # boss rooms scale enemy HP up
 var _room_resolved: bool = false           # room cleared this visit (don't re-emit)
 var _transitioning: bool = false           # door triggered, awaiting ActionFloor swap
+# Action mode has no discrete turns, so each combat room counts as one
+# "turn" for turn-based items: the Nth combat room entered fires the
+# turn_started item triggers gated on if_turn == N (so Horn Cleat's
+# "+Block on the 2nd turn" lands when you enter the 2nd combat room).
+var _combat_room_index: int = 0
 
 # --- Runtime state ---------------------------------------------------------
 var player_actor: CombatActor = null
@@ -235,6 +240,10 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	if not is_safe and not enemy_ids.is_empty():
 		enemies_to_spawn = enemy_ids.duplicate()
 		_spawn_enemies()
+		# This is a real combat room — advance the "turn" counter and fire
+		# turn-based item triggers (e.g. Horn Cleat on the 2nd combat room).
+		_combat_room_index += 1
+		_fire_item_turn_triggers(_combat_room_index)
 
 	if _living_enemy_count() == 0:
 		# Safe room or already empty — doors stay open.
@@ -1096,6 +1105,41 @@ func _gain_block(base_amount: int) -> void:
 		return
 	player_actor.block = mini(player_max_block, player_actor.block + amt)
 
+# EffectSystem-compatible entry point (mirrors the deckbuilder's
+# gain_block(target, amount)). Item/effect-granted block raises the
+# card-derived soft cap first so it isn't immediately clamped away.
+func gain_block(_target, amount: int) -> void:
+	player_max_block += amount
+	_gain_block(amount)
+
+# Fires turn_started item triggers gated on if_turn == turn_number.
+# Effects resolve through EffectSystem against the player actor, so the
+# same declarative item data drives all three modes. Currently exercised
+# by Horn Cleat (+Block on the 2nd combat room).
+func _fire_item_turn_triggers(turn_number: int) -> void:
+	var sources: Array = []
+	sources.append_array(GameState.inventory)
+	if GameState.equipped_weapon != null:
+		sources.append(GameState.equipped_weapon)
+	for item in sources:
+		if not (item is ItemData):
+			continue
+		for trig in item.triggers:
+			if String(trig.get("on", "")) != "turn_started":
+				continue
+			var turn_gate: int = int(trig.get("if_turn", 0))
+			if turn_gate > 0 and turn_number != turn_gate:
+				continue
+			for effect in trig.get("effects", []):
+				var ctx := {
+					"source": player_actor,
+					"target": player_actor,
+					"scene": self,
+					"card": null,
+				}
+				EffectSystem.apply(effect, ctx)
+	_refresh_hud()
+
 # ---------------------------------------------------------------------------
 # Projectiles
 # ---------------------------------------------------------------------------
@@ -1496,6 +1540,8 @@ func _draw() -> void:
 		draw_rect(Rect2(inst.pos.x - bar_w * 0.5, bar_y, bar_w, 5), Color(0.05, 0.05, 0.05))
 		var frac: float = float(inst.actor.hp) / float(maxi(1, inst.actor.max_hp))
 		draw_rect(Rect2(inst.pos.x - bar_w * 0.5, bar_y, bar_w * frac, 5), Color(0.85, 0.30, 0.30))
+		# Status icons sit just above the HP bar, always visible.
+		_draw_status_icons(inst.actor, inst.pos.x, bar_y - 3)
 
 	# Player
 	var col := Color(0.95, 0.95, 0.95)
@@ -1514,6 +1560,37 @@ func _draw() -> void:
 		# Inner highlight
 		draw_circle(p.pos, p.radius * 0.5, pcol.lightened(0.5))
 
+
+# Draws an actor's active statuses as a centered row of small icons whose
+# bottom edge rests on `bottom_y`. Action-mode icons are intentionally
+# small (ACTION_STATUS_ICON_PX) and hover above the unit at all times.
+const ACTION_STATUS_ICON_PX := 16
+
+func _draw_status_icons(actor: CombatActor, center_x: float, bottom_y: float) -> void:
+	if actor == null:
+		return
+	var icons: Array = []
+	for s in actor.statuses.keys():
+		if int(actor.statuses[s]) <= 0:
+			continue
+		var tex: Texture2D = Stats.status_icon(s)
+		if tex != null:
+			icons.append({"tex": tex, "stacks": int(actor.statuses[s])})
+	if icons.is_empty():
+		return
+	var gap := 2.0
+	var size := float(ACTION_STATUS_ICON_PX)
+	var total_w: float = icons.size() * size + (icons.size() - 1) * gap
+	var x: float = center_x - total_w * 0.5
+	var top_y: float = bottom_y - size
+	var font: Font = ThemeDB.fallback_font
+	for entry in icons:
+		draw_texture_rect(entry["tex"], Rect2(x, top_y, size, size), false)
+		if entry["stacks"] > 1:
+			var label := str(entry["stacks"])
+			draw_string(font, Vector2(x + size - 4, top_y + size),
+				label, HORIZONTAL_ALIGNMENT_RIGHT, -1, 9, Color.WHITE)
+		x += size + gap
 
 func _draw_ability_swing_cone() -> void:
 	var half_angle: float = deg_to_rad(ABILITY_MELEE_ANGLE_DEG * 0.5)

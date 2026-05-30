@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_twin_strike"]
 
 [ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
-[ext_resource type="Texture2D" path="res://assets/cards/TwinStrike.png" id="2_img"]
+[ext_resource type="Texture2D" path="res://images/cards/TwinStrike.png" id="2_img"]
 
 [resource]
 script = ExtResource("1_card")

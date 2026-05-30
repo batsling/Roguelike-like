@@ -189,6 +189,35 @@ func _draw_intent_telegraph(u, x: int, baseline_y: int) -> void:
 	draw_string(font, Vector2(x, baseline_y - 2), text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
 
+const STATUS_ICON_PX := 18
+
+func _draw_unit_status_icons(u) -> void:
+	# Centered row of icons floated above the unit, shown on hover.
+	var icons: Array = []
+	for s in u.statuses.keys():
+		if int(u.statuses[s]) <= 0:
+			continue
+		var tex: Texture2D = Stats.status_icon(s)
+		if tex != null:
+			icons.append({"tex": tex, "stacks": int(u.statuses[s])})
+	if icons.is_empty():
+		return
+	var gap := 2.0
+	var sz := float(STATUS_ICON_PX)
+	var total_w: float = icons.size() * sz + (icons.size() - 1) * gap
+	var center_x: float = u.position.x * TILE_SIZE + TILE_SIZE * 0.5
+	# Sit above the HP bar / intent telegraph so nothing overlaps.
+	var bottom_y: float = u.position.y * TILE_SIZE - 16
+	var x: float = center_x - total_w * 0.5
+	var top_y: float = bottom_y - sz
+	var font: Font = ThemeDB.fallback_font
+	for entry in icons:
+		draw_texture_rect(entry["tex"], Rect2(x, top_y, sz, sz), false)
+		if entry["stacks"] > 1:
+			draw_string(font, Vector2(x + sz - 3, top_y + sz),
+				str(entry["stacks"]), HORIZONTAL_ALIGNMENT_RIGHT, -1, 9, Color.WHITE)
+		x += sz + gap
+
 func _target_allowed(u) -> bool:
 	if u == null or not u.is_alive() or u == active_unit:
 		return false
@@ -283,6 +312,11 @@ func _draw() -> void:
 	if _hover.x >= 0 and battle_map.in_bounds(_hover):
 		draw_rect(Rect2(_hover.x * TILE_SIZE, _hover.y * TILE_SIZE, TILE_SIZE, TILE_SIZE),
 			COLOR_HOVER, false, 2.0)
+		# Strategy shows status icons only while hovering a unit, floated
+		# above it (icon art shared with the other two modes via Stats).
+		var hovered = _unit_at(_hover)
+		if hovered != null and hovered.is_alive():
+			_draw_unit_status_icons(hovered)
 
 	# Attack mode: ring valid melee targets.
 	if mode == Mode.ATTACK_TARGET and active_unit != null:

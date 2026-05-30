@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://item_ballistic_boots"]
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_ballistic_boots"]
 
 [ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/BallisticBoots.png" id="2_img"]
 
 [resource]
 script = ExtResource("1_item")
@@ -17,3 +18,4 @@ scaling = []
 max_uses = -1
 source_game = "Enter the Gungeon"
 tags = PackedStringArray("wearable", "shoes")
+image = ExtResource("2_img")

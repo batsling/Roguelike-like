@@ -350,6 +350,11 @@ func _fire_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -> v
 		for trig in item.triggers:
 			if String(trig.get("on", "")) != trigger_name:
 				continue
+			# Turn-gated triggers (e.g. Horn Cleat: +Block on the 2nd
+			# turn only). if_turn = 0 / absent means "every time".
+			var turn_gate: int = int(trig.get("if_turn", 0))
+			if turn_gate > 0 and turn != turn_gate:
+				continue
 			var tag_gate: String = String(trig.get("if_card_tag", ""))
 			if tag_gate != "":
 				if event_card == null or event_card.data == null:

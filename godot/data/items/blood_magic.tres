@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_blood_magic"]
 
 [ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
-[ext_resource type="Texture2D" path="res://assets/items/BloodMagic.png" id="2_img"]
+[ext_resource type="Texture2D" path="res://images/items/BloodMagic.png" id="2_img"]
 
 [resource]
 script = ExtResource("1_item")

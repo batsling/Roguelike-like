@@ -173,18 +173,58 @@ func refresh() -> void:
 	_block_label.visible = actor.block > 0
 	_block_label.text = "BLK %d" % actor.block
 
-	# Statuses
+	# Statuses — icon badges below the enemy (icon art from
+	# res://images/statuses/ via Stats.status_icon).
 	for c in _status_row.get_children():
 		c.queue_free()
 	for s in actor.statuses.keys():
 		var stacks: int = int(actor.statuses[s])
 		if stacks <= 0:
 			continue
-		var chip := Label.new()
-		chip.text = "%s %d" % [String(s).capitalize(), stacks]
-		chip.add_theme_font_size_override("font_size", 11)
-		chip.add_theme_color_override("font_color", _status_color(String(s)))
-		_status_row.add_child(chip)
+		_status_row.add_child(_make_status_badge(s, stacks))
+
+const STATUS_ICON_SIZE := 22
+
+func _make_status_badge(status_name, stacks: int) -> Control:
+	# A small icon with the stack count overlaid in the bottom-right.
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(STATUS_ICON_SIZE, STATUS_ICON_SIZE)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.tooltip_text = "%s %d" % [String(status_name).capitalize(), stacks]
+
+	var tex: Texture2D = Stats.status_icon(status_name)
+	if tex != null:
+		var icon := TextureRect.new()
+		icon.texture = tex
+		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(icon)
+	else:
+		# No art — fall back to a coloured letter so the status is still visible.
+		var letter := Label.new()
+		letter.text = String(status_name).substr(0, 1).to_upper()
+		letter.set_anchors_preset(Control.PRESET_FULL_RECT)
+		letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		letter.add_theme_font_size_override("font_size", 12)
+		letter.add_theme_color_override("font_color", _status_color(String(status_name)))
+		letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(letter)
+
+	var count := Label.new()
+	count.text = str(stacks)
+	count.set_anchors_preset(Control.PRESET_FULL_RECT)
+	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	count.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	count.add_theme_font_size_override("font_size", 11)
+	count.add_theme_color_override("font_color", Color.WHITE)
+	count.add_theme_color_override("font_outline_color", Color.BLACK)
+	count.add_theme_constant_override("outline_size", 3)
+	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(count)
+	return holder
 
 func set_targetable(can_target: bool) -> void:
 	if actor == null or not actor.is_alive():

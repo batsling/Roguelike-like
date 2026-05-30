@@ -39,6 +39,34 @@ const GROW_STATUSES: Array[StringName] = [
 # to miss each hit. Roll routes through luck (see roll_blind_miss).
 const BLIND_MISS_PCT := 30
 
+# Status icon art lives in res://images/statuses/ as PascalCase PNGs.
+# Combat StringName keys are snake_case, so this table bridges the two.
+# Shared by all three combat modes (deckbuilder / action / strategy) so
+# the same status shows the same icon everywhere. Unmapped statuses fall
+# back to Unknown.png.
+const STATUS_ICON_DIR := "res://images/statuses/"
+const STATUS_ICONS := {
+	&"power": "Power.png",
+	&"strength": "Strength.png",
+	&"vulnerable": "Vulnerable.png",
+	&"weak": "Weak.png",
+	&"frail": "Frail.png",
+	&"poison": "Poison.png",
+	&"burn": "Burn.png",
+	&"bleed": "Bleed.png",
+	&"bleed_thorns": "BleedThorns.png",
+	&"dodge": "Dodge.png",
+	&"blind": "Blind.png",
+	&"defense": "Defense.png",
+	&"arcane": "Arcane.png",
+	&"regeneration": "Regeneration.png",
+	&"persistence": "Persistence.png",
+	&"thorns": "Thorns.png",
+	&"soul_link": "SoulLink.png",
+}
+
+var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
+
 var _stat_defs: Dictionary = {}     # StringName -> StatDefinition
 
 func _ready() -> void:
@@ -76,6 +104,18 @@ func get_value(stat_id: StringName) -> int:
 
 func get_definition(stat_id: StringName) -> StatDefinition:
 	return _stat_defs.get(stat_id)
+
+# Returns the icon Texture2D for a status (cached). Used by every combat
+# mode's status display. Falls back to Unknown.png for unmapped statuses.
+func status_icon(status_name) -> Texture2D:
+	var key := StringName(status_name)
+	if _status_icon_cache.has(key):
+		return _status_icon_cache[key]
+	var fname: String = STATUS_ICONS.get(key, "Unknown.png")
+	var path: String = STATUS_ICON_DIR + fname
+	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	_status_icon_cache[key] = tex
+	return tex
 
 func event_roll_bonus(stat_id: StringName) -> int:
 	var def: StatDefinition = _stat_defs.get(stat_id)
