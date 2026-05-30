@@ -78,12 +78,10 @@ var player_max_block: int = 0
 # Floor on click-slot cooldown so a 0-cost Strike can't fire every frame.
 const MIN_CLICK_COOLDOWN := 0.35
 
-# Power cards apply passively at room start (see _apply_equipped_powers).
-var power_cards: Array = []                          # Array of CardData
-
 # --- Auto-play deck --------------------------------------------------------
-# Everything in the deck that isn't a click card or a Power cycles through a
-# simulated draw/discard pile and fires at the nearest enemy (Brotato-style).
+# Everything in the deck that isn't a click card cycles through a simulated
+# draw/discard pile and fires at the nearest enemy (Brotato-style). Powers
+# are included too — they resolve on a cooldown like any other card.
 # Each "auto slot" holds one drawn card counting down its cooldown; when it
 # fires the card goes to discard and the slot draws the next. One permanent
 # slot always runs; `draw` effects spawn temporary extra slots for a burst.
@@ -91,6 +89,8 @@ var auto_draw: Array = []                            # Array of CardData (draw p
 var auto_discard: Array = []                         # Array of CardData (discard pile)
 var auto_slots: Array = []                           # Array of Dictionary {card, cooldown, max_cooldown, ttl}
 const DRAW_TEMP_SLOT_SECS := 6.0                     # lifetime of a draw-spawned auto slot
+# Discard with no temp slots left instead lengthens the base slot cooldown.
+const DISCARD_BASE_PENALTY := 1.5
 
 # Energy-driven timed buffs (Adrenaline et al). Duration-based rather
 # than stack-based because Haste/Slow need to feel like a tempo window
@@ -192,7 +192,6 @@ func _ready() -> void:
 
 	# Standalone one-off fight.
 	_spawn_enemies()
-	_apply_equipped_powers()
 	GameState.phase = GameState.Phase.COMBAT
 	phase = "playing"
 	_refresh_hud()
@@ -236,7 +235,6 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	if not is_safe and not enemy_ids.is_empty():
 		enemies_to_spawn = enemy_ids.duplicate()
 		_spawn_enemies()
-		_apply_equipped_powers()
 
 	if _living_enemy_count() == 0:
 		# Safe room or already empty — doors stay open.
@@ -285,43 +283,6 @@ func _door_point(dir: int) -> Vector2:
 		IsaacFloorGenerator.Dir.E: return Vector2(ARENA_W, ARENA_H * 0.5)
 		_: return Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
 
-func _apply_equipped_powers() -> void:
-	# Power cards never enter the auto deck; they resolve their effects
-	# once at combat start and otherwise sit passive.
-	for card in power_cards:
-		if card == null or not card.is_power():
-			continue
-		for effect in card.effects:
-			var t: String = String(effect.get("type", ""))
-			var tgt: String = String(effect.get("target", "self"))
-			match t:
-				"status":
-					var status: StringName = StringName(String(effect.get("status", "")))
-					var stacks: int = int(effect.get("stacks", 0))
-					if tgt == "self":
-						player_actor.add_status(status, stacks)
-					elif tgt == "all_enemies":
-						for inst in enemies:
-							if inst.actor.is_alive():
-								inst.actor.add_status(status, stacks)
-				"block":
-					_gain_block(int(effect.get("value", 0)))
-				"heal":
-					if tgt == "self":
-						GameState.change_hp(int(effect.get("value", 0)))
-						player_actor.hp = GameState.hp
-				"dmg":
-					# AoE damage on entry (e.g. Static Discharge-style)
-					if tgt == "all_enemies":
-						var dmg_type: String = String(effect.get("damage_type", "melee"))
-						var value: int = int(effect.get("value", 0))
-						for inst in enemies:
-							if inst.actor.is_alive():
-								_deal_damage_to_enemy(inst, value, dmg_type, 1, effect)
-				_:
-					pass
-		GameLog.add("Power active: %s." % card.display_name, Color(1.0, 0.85, 0.4))
-
 # Public hook so ActionFloor can re-apply the loadout after the player
 # edits it on the equipment screen mid-floor.
 func reload_loadout() -> void:
@@ -347,14 +308,6 @@ func _load_loadout() -> void:
 	left_card = loadout.left
 	right_card = loadout.right
 	var auto_pool: Array = loadout.auto
-
-	# Power cards apply passively at room start. The auto pool already
-	# excludes them (GameState.get_action_loadout), so gather them straight
-	# from the deck for _apply_equipped_powers.
-	power_cards.clear()
-	for c in GameState.deck:
-		if c is CardInstance and c.data != null and c.data.is_power():
-			power_cards.append(c.data)
 
 	# Block cap = sum of block values across every card that can grant block
 	# (click cards + auto pool), so block-granting auto-cards still raise it.
@@ -951,6 +904,7 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 	if n <= 0:
 		return
 	var removed := 0
+	var penalized := 0
 	for _i in range(n):
 		var idx := -1
 		for j in range(auto_slots.size()):
@@ -958,7 +912,11 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 				idx = j
 				break
 		if idx < 0:
-			break
+			# No temporary slots left to collapse — penalize the permanent
+			# base auto-slot by extending its current cooldown instead.
+			_penalize_base_slot()
+			penalized += 1
+			continue
 		var slot: Dictionary = auto_slots[idx]
 		if slot.card != null:
 			auto_discard.append(slot.card)
@@ -966,6 +924,18 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 		removed += 1
 	if removed > 0:
 		GameLog.add("Discard: -%d auto-cast." % removed, Color(1.0, 0.7, 0.5))
+	if penalized > 0:
+		GameLog.add("Discard: +%.1fs base cooldown." % (DISCARD_BASE_PENALTY * penalized),
+			Color(1.0, 0.7, 0.5))
+
+# Extend the permanent (ttl == INF) auto-slot's cooldown. Used as the
+# discard fallback when there are no temporary slots to collapse.
+func _penalize_base_slot() -> void:
+	for slot in auto_slots:
+		if slot.ttl == INF:
+			slot.cooldown += DISCARD_BASE_PENALTY
+			slot.max_cooldown = maxf(slot.max_cooldown, slot.cooldown)
+			return
 
 func _tempo_multiplier() -> float:
 	# Haste and Slow are mutually exclusive in display, but if both are

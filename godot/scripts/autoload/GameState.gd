@@ -558,9 +558,10 @@ func recharge_card_use(card: CardData, n: int = 1) -> int:
 # `left`/`right` are the two manual click slots (LMB/RMB). Only Strikes or
 # weapon-granted cards are eligible; if unset, the first eligible deck card
 # is auto-picked so the arena is always playable. `auto` is the auto-play
-# pool: every other deck card except Powers (which apply passively at room
-# start) and non-playable types (Curse/Status/unplayable). Duplicates are
-# preserved — three Strikes in the deck means three entries in the pool.
+# pool: every other deck card except non-playable types (Curse/Status/
+# unplayable). Powers are included — they cycle and resolve on a cooldown
+# like everything else. Duplicates are preserved (three Strikes in the deck
+# means three entries in the pool).
 func get_action_loadout() -> Dictionary:
 	var left: CardData = Data.get_card(action_left_card_id)
 	var right: CardData = Data.get_card(action_right_card_id)
@@ -584,7 +585,7 @@ func get_action_loadout() -> Dictionary:
 		if skip_right and data.id == right.id:
 			skip_right = false  # consumed one copy for the right slot
 			continue
-		if data.is_power() or data.unplayable:
+		if data.unplayable:
 			continue
 		if data.type == CardData.CardType.CURSE or data.type == CardData.CardType.STATUS:
 			continue
