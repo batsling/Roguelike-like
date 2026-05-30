@@ -13,6 +13,10 @@ extends RefCounted
 
 const EnemyCatalogScript := preload("res://scripts/strategy/combat/EnemyCatalog.gd")
 
+# Orthogonal neighbour offsets, hoisted so the move-into-range BFS doesn't
+# reallocate this array on every node expansion.
+const DIRS4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+
 var unit: BattleUnit
 var kind: String = ""
 var intents: Array = []        # Array[EnemyIntent]
@@ -161,7 +165,7 @@ func _step_into_range(target: BattleUnit, range_max: int, all_units: Array, batt
 		if _distance(cur, target.position) <= range_max and cur != start:
 			goal = cur
 			break
-		for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		for dir in DIRS4:
 			var nxt: Vector2i = cur + dir
 			if visited.has(nxt):
 				continue

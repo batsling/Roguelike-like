@@ -35,6 +35,9 @@ const PLAYER_RADIUS := 18.0
 const PLAYER_IFRAME_DURATION := 1.0
 const SWING_VISUAL_DURATION := 0.12
 
+# Statuses that count as debuffs for the player's Persistence stack bonus.
+const STATUS_DEBUFFS: Array[StringName] = [&"vulnerable", &"weak", &"frail", &"poison", &"burn"]
+
 # --- Caller-supplied configuration ----------------------------------------
 var target_game_id: StringName = &""
 var enemies_to_spawn: Array = []           # Array of ActionEnemyData ids
@@ -1317,7 +1320,6 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 	# AOE cards (Thunderclap) cover their area by FIRING MORE BOLTS in
 	# a fan — there is no explosion radius here.
 	var pers: int = player_actor.get_status(&"persistence")
-	var debuffs := [&"vulnerable", &"weak", &"frail", &"poison", &"burn"]
 	for raw_effect in card.effects:
 		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
 		var tgt: String = String(effect.get("target", ""))
@@ -1337,7 +1339,7 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 				var status: StringName = StringName(String(effect.get("status", "")))
 				var stacks: int = int(effect.get("stacks", 0))
 				if stacks > 0 and status != &"":
-					var amt: int = stacks + (pers if status in debuffs else 0)
+					var amt: int = stacks + (pers if status in STATUS_DEBUFFS else 0)
 					inst.actor.add_status(status, amt)
 
 # ---------------------------------------------------------------------------
@@ -1356,6 +1358,7 @@ var _click_swatch: Array[ColorRect] = []
 # art of the card currently counting down (the one "about to play").
 const AUTO_THUMB_MAX := 8
 var _auto_label: Label = null
+var _auto_label_last := Vector3i(-1, -1, -1)   # cached (slots, draw, discard) counts
 var _auto_thumbs: Array = []   # each: {panel, tex, swatch, name, cd}
 
 func _build_slot_bar() -> void:
@@ -1459,8 +1462,12 @@ func _refresh_slot_bar() -> void:
 	_refresh_click_slot(0, "[LMB] ", left_card, left_cd, left_max_cd)
 	_refresh_click_slot(1, "[RMB] ", right_card, right_cd, right_max_cd)
 	if _auto_label != null:
-		_auto_label.text = "Auto-cast x%d   (draw %d / discard %d)" % [
-			auto_slots.size(), auto_draw.size(), auto_discard.size()]
+		# Only the three deck sizes drive this label; skip the rebuild otherwise.
+		var counts := Vector3i(auto_slots.size(), auto_draw.size(), auto_discard.size())
+		if counts != _auto_label_last:
+			_auto_label_last = counts
+			_auto_label.text = "Auto-cast x%d   (draw %d / discard %d)" % [
+				counts.x, counts.y, counts.z]
 	# One thumbnail per active auto-slot, showing the card about to play.
 	for i in range(AUTO_THUMB_MAX):
 		var t: Dictionary = _auto_thumbs[i]
@@ -1560,9 +1567,20 @@ func _check_combat_end() -> void:
 # HUD
 # ---------------------------------------------------------------------------
 
+var _hud_last := {"hp": -1, "max_hp": -1, "block": -1, "iframes": -1.0}
+
 func _refresh_hud() -> void:
 	if _hp_label == null:
 		return
+	# Called every frame from _process; the HUD text only changes when one of
+	# these four inputs does, so skip the string build + assignment otherwise.
+	if player_actor.hp == _hud_last.hp and player_actor.max_hp == _hud_last.max_hp \
+			and player_actor.block == _hud_last.block and player_iframes == _hud_last.iframes:
+		return
+	_hud_last.hp = player_actor.hp
+	_hud_last.max_hp = player_actor.max_hp
+	_hud_last.block = player_actor.block
+	_hud_last.iframes = player_iframes
 	_hp_label.text = "HP %d / %d   |   Block %d   |   iFrames %.1fs" % [
 		player_actor.hp, player_actor.max_hp, player_actor.block,
 		player_iframes,
