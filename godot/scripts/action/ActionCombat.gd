@@ -33,11 +33,6 @@ const DOOR_ENTRY_INSET := 70.0       # how far inside the wall the player spawns
 # --- Player tuning ---------------------------------------------------------
 const PLAYER_RADIUS := 18.0
 const PLAYER_IFRAME_DURATION := 1.0
-# Base basic-attack values; Stats / equipped weapon card override these later.
-const BASIC_ATTACK_BASE_DAMAGE := 6
-const BASIC_ATTACK_COOLDOWN := 0.5
-const BASIC_ATTACK_CONE_RANGE := 90.0
-const BASIC_ATTACK_CONE_ANGLE_DEG := 90.0
 const SWING_VISUAL_DURATION := 0.12
 
 # --- Caller-supplied configuration ----------------------------------------
@@ -61,21 +56,41 @@ var _transitioning: bool = false           # door triggered, awaiting ActionFloo
 var player_actor: CombatActor = null
 var player_pos: Vector2 = Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
 var player_facing: Vector2 = Vector2.RIGHT
-var player_attack_cooldown: float = 0.0
 var player_iframes: float = 0.0
 var enemies: Array = []          # Array of Dictionary: {data, actor, pos, cooldown}
 var phase: String = "init"       # "init" | "playing" | "won" | "lost"
-var _swing_remaining: float = 0.0
 var _ability_swing_remaining: float = 0.0
 var _ability_swing_facing: Vector2 = Vector2.RIGHT
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 # --- Loadout ---------------------------------------------------------------
-var basic_card: CardData = null
-var ability_cards: Array = []                       # 3 entries (CardData or null)
-var ability_cooldowns: Array[float] = [0.0, 0.0, 0.0]
-var ability_max_cooldowns: Array[float] = [0.0, 0.0, 0.0]
+# Two manual click slots — left (LMB) and right (RMB). Only Strikes or
+# weapon-granted cards live here; they aim at the cursor and fire on click,
+# each on its own 2*cost+rarity cooldown.
+var left_card: CardData = null
+var right_card: CardData = null
+var left_cd: float = 0.0
+var left_max_cd: float = 0.0
+var right_cd: float = 0.0
+var right_max_cd: float = 0.0
 var player_max_block: int = 0
+
+# Floor on click-slot cooldown so a 0-cost Strike can't fire every frame.
+const MIN_CLICK_COOLDOWN := 0.35
+
+# --- Auto-play deck --------------------------------------------------------
+# Everything in the deck that isn't a click card cycles through a simulated
+# draw/discard pile and fires at the nearest enemy (Brotato-style). Powers
+# are included too — they resolve on a cooldown like any other card.
+# Each "auto slot" holds one drawn card counting down its cooldown; when it
+# fires the card goes to discard and the slot draws the next. One permanent
+# slot always runs; `draw` effects spawn temporary extra slots for a burst.
+var auto_draw: Array = []                            # Array of CardData (draw pile)
+var auto_discard: Array = []                         # Array of CardData (discard pile)
+var auto_slots: Array = []                           # Array of Dictionary {card, cooldown, max_cooldown, ttl}
+const DRAW_TEMP_SLOT_SECS := 6.0                     # lifetime of a draw-spawned auto slot
+# Discard with no temp slots left instead lengthens the base slot cooldown.
+const DISCARD_BASE_PENALTY := 1.5
 
 # Energy-driven timed buffs (Adrenaline et al). Duration-based rather
 # than stack-based because Haste/Slow need to feel like a tempo window
@@ -177,7 +192,6 @@ func _ready() -> void:
 
 	# Standalone one-off fight.
 	_spawn_enemies()
-	_apply_equipped_powers()
 	GameState.phase = GameState.Phase.COMBAT
 	phase = "playing"
 	_refresh_hud()
@@ -197,7 +211,6 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	enemies.clear()
 	projectiles.clear()
 	_pending_hits.clear()
-	_swing_remaining = 0.0
 	_ability_swing_remaining = 0.0
 	_haste_remaining = 0.0
 	_slow_remaining = 0.0
@@ -217,13 +230,11 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 
 	player_pos = _entry_position(entry_dir)
 	player_facing = Vector2.RIGHT
-	player_attack_cooldown = 0.0
 	player_iframes = PLAYER_IFRAME_DURATION    # brief grace on room entry
 
 	if not is_safe and not enemy_ids.is_empty():
 		enemies_to_spawn = enemy_ids.duplicate()
 		_spawn_enemies()
-		_apply_equipped_powers()
 
 	if _living_enemy_count() == 0:
 		# Safe room or already empty — doors stay open.
@@ -272,76 +283,68 @@ func _door_point(dir: int) -> Vector2:
 		IsaacFloorGenerator.Dir.E: return Vector2(ARENA_W, ARENA_H * 0.5)
 		_: return Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
 
-func _apply_equipped_powers() -> void:
-	# Power cards take up an ability slot but resolve their effects
-	# once at combat start instead of on key press. The slot shows
-	# PASSIVE in the UI; _activate_ability already returns early when
-	# the card is a Power.
-	for card in ability_cards:
-		if card == null or not card.is_power():
-			continue
-		for effect in card.effects:
-			var t: String = String(effect.get("type", ""))
-			var tgt: String = String(effect.get("target", "self"))
-			match t:
-				"status":
-					var status: StringName = StringName(String(effect.get("status", "")))
-					var stacks: int = int(effect.get("stacks", 0))
-					if tgt == "self":
-						player_actor.add_status(status, stacks)
-					elif tgt == "all_enemies":
-						for inst in enemies:
-							if inst.actor.is_alive():
-								inst.actor.add_status(status, stacks)
-				"block":
-					_gain_block(int(effect.get("value", 0)))
-				"heal":
-					if tgt == "self":
-						GameState.change_hp(int(effect.get("value", 0)))
-						player_actor.hp = GameState.hp
-				"dmg":
-					# AoE damage on entry (e.g. Static Discharge-style)
-					if tgt == "all_enemies":
-						var dmg_type: String = String(effect.get("damage_type", "melee"))
-						var value: int = int(effect.get("value", 0))
-						for inst in enemies:
-							if inst.actor.is_alive():
-								_deal_damage_to_enemy(inst, value, dmg_type, 1, effect)
-				_:
-					pass
-		GameLog.add("Power active: %s." % card.display_name, Color(1.0, 0.85, 0.4))
-
 # Public hook so ActionFloor can re-apply the loadout after the player
 # edits it on the equipment screen mid-floor.
 func reload_loadout() -> void:
 	_load_loadout()
 	_refresh_slot_bar()
 
+# Nearest living enemy inst, or {} if none. Used by the auto-runner so
+# auto-cards target the closest enemy without the player aiming.
+func _nearest_enemy() -> Dictionary:
+	var best: Dictionary = {}
+	var best_d: float = INF
+	for inst in enemies:
+		if not inst.actor.is_alive():
+			continue
+		var d: float = inst.pos.distance_to(player_pos)
+		if d < best_d:
+			best_d = d
+			best = inst
+	return best
+
 func _load_loadout() -> void:
 	var loadout: Dictionary = GameState.get_action_loadout()
-	basic_card = loadout.basic
-	ability_cards = loadout.abilities
-	# Block cap = sum of block values across equipped ability cards.
+	left_card = loadout.left
+	right_card = loadout.right
+	var auto_pool: Array = loadout.auto
+
+	# Block cap = sum of block values across every card that can grant block
+	# (click cards + auto pool), so block-granting auto-cards still raise it.
 	player_max_block = 0
-	for c in ability_cards:
-		if c == null:
-			continue
-		for eff in c.effects:
-			if String(eff.get("type", "")) == "block":
-				player_max_block += int(eff.get("value", 0))
-	# Pre-compute ability cooldowns so the UI bar shows the max value.
-	# Abilities start "charging" at combat start: each begins at full
-	# cooldown so the player must wait one cycle before the first cast.
-	# Power cards are passive and ignored.
-	for i in range(3):
-		var card: CardData = ability_cards[i]
-		if card == null or card.is_power():
-			ability_max_cooldowns[i] = 0.0
-			ability_cooldowns[i] = 0.0
-		else:
-			var cd: float = _cooldown_for(card)
-			ability_max_cooldowns[i] = cd
-			ability_cooldowns[i] = cd
+	for c in [left_card, right_card]:
+		_accumulate_block_cap(c)
+	for c in auto_pool:
+		_accumulate_block_cap(c)
+
+	# Click slots start ready (they replace the instant basic attack). A
+	# minimum cooldown keeps 0-cost Strikes from firing every frame.
+	left_max_cd = maxf(MIN_CLICK_COOLDOWN, _cooldown_for(left_card)) if left_card != null else 0.0
+	right_max_cd = maxf(MIN_CLICK_COOLDOWN, _cooldown_for(right_card)) if right_card != null else 0.0
+	left_cd = 0.0
+	right_cd = 0.0
+
+	# Build the auto-runner: shuffle the pool into the draw pile, clear the
+	# discard, and start with one permanent slot already drawing a card.
+	auto_draw = auto_pool.duplicate()
+	auto_draw.shuffle()
+	auto_discard.clear()
+	auto_slots.clear()
+	var first: CardData = _auto_draw_one()
+	if first != null:
+		auto_slots.append({
+			"card": first,
+			"cooldown": _auto_cd(first),
+			"max_cooldown": _auto_cd(first),
+			"ttl": INF,
+		})
+
+func _accumulate_block_cap(card: CardData) -> void:
+	if card == null:
+		return
+	for eff in card.effects:
+		if String(eff.get("type", "")) == "block":
+			player_max_block += int(eff.get("value", 0))
 
 func _init_player() -> void:
 	player_actor = CombatActor.from_player()
@@ -398,12 +401,11 @@ func _process(delta: float) -> void:
 	_slow_remaining = maxf(0.0, _slow_remaining - delta)
 	var tempo: float = _tempo_multiplier()
 	var scaled_delta: float = delta * tempo
-	player_attack_cooldown = maxf(0.0, player_attack_cooldown - scaled_delta)
 	player_iframes = maxf(0.0, player_iframes - delta)
-	_swing_remaining = maxf(0.0, _swing_remaining - delta)
 	_ability_swing_remaining = maxf(0.0, _ability_swing_remaining - delta)
-	for i in range(3):
-		ability_cooldowns[i] = maxf(0.0, ability_cooldowns[i] - scaled_delta)
+	left_cd = maxf(0.0, left_cd - scaled_delta)
+	right_cd = maxf(0.0, right_cd - scaled_delta)
+	_process_auto_slots(scaled_delta, delta)
 	_process_turn_tick(delta)
 	_process_player_input(delta)
 	if embedded:
@@ -466,37 +468,21 @@ func _process_player_input(delta: float) -> void:
 	if to_mouse.length() > 5.0:
 		player_facing = to_mouse.normalized()
 
-	# Basic attack on LMB (held = continuous).
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and player_attack_cooldown <= 0.0:
-		_do_basic_attack()
-		player_attack_cooldown = BASIC_ATTACK_COOLDOWN
+	# Click slots: LMB fires the left card, RMB the right card, each aimed
+	# at the cursor and gated by its own per-card cooldown (held = continuous).
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and left_cd <= 0.0 and left_card != null:
+		_fire_click_card(left_card)
+		left_cd = left_max_cd
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and right_cd <= 0.0 and right_card != null:
+		_fire_click_card(right_card)
+		right_cd = right_max_cd
 
-	# Ability slots: 1 / 2 / 3 keys.
-	if Input.is_key_pressed(KEY_1) and ability_cooldowns[0] <= 0.0:
-		_activate_ability(0)
-	if Input.is_key_pressed(KEY_2) and ability_cooldowns[1] <= 0.0:
-		_activate_ability(1)
-	if Input.is_key_pressed(KEY_3) and ability_cooldowns[2] <= 0.0:
-		_activate_ability(2)
-
-func _do_basic_attack() -> void:
-	_swing_remaining = SWING_VISUAL_DURATION
-	var hit_count := 0
-	var half_angle: float = deg_to_rad(BASIC_ATTACK_CONE_ANGLE_DEG * 0.5)
-	for inst in enemies:
-		if not inst.actor.is_alive():
-			continue
-		var to_enemy: Vector2 = inst.pos - player_pos
-		var dist: float = to_enemy.length()
-		if dist > BASIC_ATTACK_CONE_RANGE + inst.data.size:
-			continue
-		var angle: float = absf(player_facing.angle_to(to_enemy))
-		if angle > half_angle:
-			continue
-		_deal_damage_to_enemy(inst, BASIC_ATTACK_BASE_DAMAGE, "melee")
-		hit_count += 1
-	if hit_count > 0:
-		GameLog.add("Basic attack hits %d." % hit_count, Color(0.85, 1.0, 0.7))
+# Fire a click-slot card aimed at the cursor (player_facing). Reuses the
+# full card resolution so Strikes, weapons and any effects they carry all
+# behave the same as before — only the trigger (LMB/RMB) changed.
+func _fire_click_card(card: CardData) -> void:
+	_resolve_card_effects(card)
+	GameLog.add("%s." % card.display_name, Color(0.85, 1.0, 0.7))
 
 func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, power_multiplier: int = 1, effect: Dictionary = {}) -> void:
 	# Blind: if the player is currently Blinded, each melee/ranged hit
@@ -603,25 +589,70 @@ func _enemy_fire_projectile(inst: Dictionary) -> void:
 	projectiles.append(proj)
 
 # ---------------------------------------------------------------------------
-# Ability slot activation
+# Auto-play deck runner
 # ---------------------------------------------------------------------------
 
-func _activate_ability(idx: int) -> void:
-	var card: CardData = ability_cards[idx] if idx < ability_cards.size() else null
-	if card == null or card.is_power():
-		# Powers don't activate — they apply at combat start (commit 5).
-		return
-	_resolve_card_effects(card)
-	var cd: float = _cooldown_for(card)
-	ability_cooldowns[idx] = cd
-	ability_max_cooldowns[idx] = cd
-	GameLog.add("Cast %s." % card.display_name, Color(0.7, 0.95, 1.0))
+# Draw the next card from the auto pile, reshuffling the discard back in
+# when the draw pile runs dry. Returns null only when the pool is empty.
+func _auto_draw_one() -> CardData:
+	if auto_draw.is_empty():
+		if auto_discard.is_empty():
+			return null
+		auto_draw = auto_discard.duplicate()
+		auto_draw.shuffle()
+		auto_discard.clear()
+	return auto_draw.pop_back()
+
+# Advance every auto slot. Cooldowns decay on tempo-scaled time (so Haste/
+# Slow from energy affect them); temp-slot lifetimes decay on real time.
+func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
+	var i := 0
+	while i < auto_slots.size():
+		var slot: Dictionary = auto_slots[i]
+		# Temp slots expire on real time; when their lifetime ends the
+		# in-progress card returns to the discard and the slot is dropped.
+		if slot.ttl != INF:
+			slot.ttl -= real_delta
+			if slot.ttl <= 0.0:
+				if slot.card != null:
+					auto_discard.append(slot.card)
+				auto_slots.remove_at(i)
+				continue
+		if slot.card == null:
+			# Pool was empty when this slot last tried to draw; retry.
+			var redraw: CardData = _auto_draw_one()
+			if redraw != null:
+				slot.card = redraw
+				slot.cooldown = _auto_cd(redraw)
+				slot.max_cooldown = slot.cooldown
+			i += 1
+			continue
+		slot.cooldown = maxf(0.0, slot.cooldown - scaled_delta)
+		if slot.cooldown <= 0.0:
+			# Fire at the nearest enemy, then cycle this slot's card to the
+			# discard and draw the next one. With no enemies, hold the card
+			# ready (don't waste it on empty air).
+			if _living_enemy_count() > 0:
+				_resolve_card_effects_auto(slot.card)
+				auto_discard.append(slot.card)
+				var next: CardData = _auto_draw_one()
+				slot.card = next
+				slot.cooldown = _auto_cd(next)
+				slot.max_cooldown = slot.cooldown
+		i += 1
 
 func _cooldown_for(card: CardData) -> float:
 	if card == null:
 		return 0.0
 	# 2 * energy_cost + rarity_modifier (0/1/2/3 for starter/common/uncommon/rare)
 	return 2.0 * float(maxi(0, card.cost)) + float(card.rarity)
+
+# Auto-slot cooldown: the base formula, floored so a 0-cost card can't fire
+# every frame. Returns 0 for null (slot has no card to count down).
+func _auto_cd(card: CardData) -> float:
+	if card == null:
+		return 0.0
+	return maxf(MIN_CLICK_COOLDOWN, _cooldown_for(card))
 
 func _resolve_card_effects(card: CardData) -> void:
 	# Cards with any ranged-typed damage effect resolve via a
@@ -681,11 +712,11 @@ func _resolve_card_effects(card: CardData) -> void:
 				if tgt == "self" or tgt == "player":
 					_resolve_heal_self(int(effect.get("value", 0)))
 			"draw":
-				# In action, "draw cards" instead chips a random
-				# ability's cooldown — see draw_cards().
+				# In action, "draw cards" spawns temporary extra
+				# slots (see draw_cards).
 				draw_cards(int(effect.get("value", 1)))
 			"discard":
-				# Mirror of draw — lengthens the lowest cooldown.
+				# Mirror of draw: collapses a temporary auto-slot.
 				discard_cards(int(effect.get("value", 1)))
 			"gain_energy":
 				gain_energy(int(effect.get("value", 1)))
@@ -693,6 +724,100 @@ func _resolve_card_effects(card: CardData) -> void:
 				lose_energy(int(effect.get("value", 1)))
 			_:
 				pass
+
+# Auto-play resolution: same effects as _resolve_card_effects, but the
+# player isn't aiming — enemy-targeted effects lock onto the nearest living
+# enemy (single) and all_enemies hits everyone alive. Ranged damage fires a
+# bolt straight at the nearest enemy.
+func _resolve_card_effects_auto(card: CardData) -> void:
+	if _card_has_ranged_damage(card):
+		_apply_self_effects(card)
+		var tgt_inst: Dictionary = _nearest_enemy()
+		if tgt_inst.is_empty():
+			return
+		var aim: Vector2 = tgt_inst.pos - player_pos
+		aim = aim.normalized() if aim.length() > 0.01 else player_facing
+		_spawn_player_projectile(card, aim)
+		var extra: int = _max_ranged_hits(card) - 1
+		for i in range(extra):
+			_pending_hits.append({
+				"time": MULTIHIT_INTERVAL * float(i + 1),
+				"effect": null,        # signal: spawn another projectile from the card
+				"card": card,
+				"facing": aim,
+				"mode": "projectile",
+			})
+		return
+
+	# Melee / default. Pre-build the all_enemies list once (for status/aoe);
+	# single-target dmg re-picks the nearest enemy per hit so multi-hit cards
+	# don't keep pounding a corpse.
+	var all_alive: Array = []
+	for inst in enemies:
+		if inst.actor.is_alive():
+			all_alive.append(inst)
+	# Brief swing visual toward the nearest enemy if this card melees one.
+	var nearest: Dictionary = _nearest_enemy()
+	if not nearest.is_empty():
+		_ability_swing_facing = (nearest.pos - player_pos).normalized()
+		_ability_swing_remaining = SWING_VISUAL_DURATION
+
+	for raw_effect in card.effects:
+		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
+		var t: String = String(effect.get("type", ""))
+		var tgt: String = String(effect.get("target", "enemy"))
+		match t:
+			"dmg":
+				var value: int = int(effect.get("value", 0))
+				var dmg_type: String = String(effect.get("damage_type", "melee"))
+				var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+				var gate: StringName = StringName(String(effect.get("if_target_status", "")))
+				var hits: int = maxi(1, int(effect.get("hits", 1)))
+				for _h in range(hits):
+					for inst in _auto_targets_for(tgt):
+						if gate != &"" and inst.actor.get_status(gate) <= 0:
+							continue
+						_deal_damage_to_enemy(inst, value, dmg_type, power_mult, effect)
+			"block":
+				if tgt == "self" or tgt == "player":
+					_gain_block(int(effect.get("value", 0)))
+			"status":
+				# Reuse the shared status path: nearest as the "enemy" list,
+				# all living as the "all_enemies" list.
+				var single: Array = _auto_targets_for("enemy")
+				_apply_status_effect(effect, tgt, single, all_alive)
+			"heal":
+				if tgt == "self" or tgt == "player":
+					_resolve_heal_self(int(effect.get("value", 0)))
+			"draw":
+				draw_cards(int(effect.get("value", 1)))
+			"discard":
+				discard_cards(int(effect.get("value", 1)))
+			"gain_energy":
+				gain_energy(int(effect.get("value", 1)))
+			"lose_energy":
+				lose_energy(int(effect.get("value", 1)))
+			_:
+				pass
+
+# Auto-aim target list for a given effect `target` field: nearest single
+# living enemy for "enemy", everyone alive for "all_enemies", recomputed on
+# each call so multi-hit loops skip the dead.
+func _auto_targets_for(tgt: String) -> Array:
+	if tgt == "all_enemies":
+		# Melee AoE only reaches enemies inside the AoE radius.
+		var all: Array = []
+		for inst in enemies:
+			if inst.actor.is_alive() and inst.pos.distance_to(player_pos) <= ABILITY_AOE_RADIUS + inst.data.size:
+				all.append(inst)
+		return all
+	# Single-target melee: hit the nearest enemy only if it's in reach.
+	var n: Dictionary = _nearest_enemy()
+	if n.is_empty():
+		return []
+	if n.pos.distance_to(player_pos) > ABILITY_MELEE_RANGE + n.data.size:
+		return []
+	return [n]
 
 func _card_has_ranged_damage(card: CardData) -> bool:
 	for effect in card.effects:
@@ -725,7 +850,7 @@ func _process_pending_hits(delta: float) -> void:
 				"aoe":
 					_resolve_delayed_aoe_hit(p.effect)
 				"projectile":
-					_spawn_player_projectile(p.card)
+					_spawn_player_projectile(p.card, p.get("facing", Vector2.ZERO))
 			_pending_hits.remove_at(i)
 		else:
 			i += 1
@@ -757,50 +882,66 @@ func _resolve_delayed_aoe_hit(effect: Dictionary) -> void:
 		_deal_damage_to_enemy(inst, value, dmg_type, power_mult, effect)
 
 func draw_cards(n: int) -> void:
-	# Action mode has no hand. Per design, each `draw` effect instead
-	# reduces a random ability's REMAINING cooldown by 25% of that
-	# ability's max cooldown. Per-draw, so a Draw 2 card collapses two
-	# cooldowns (potentially the same one twice).
+	# Action design: each `draw` spawns a temporary extra auto-slot, so more
+	# cards from the auto deck cool down and fire in parallel for a short
+	# burst (DRAW_TEMP_SLOT_SECS). A Draw 2 adds two parallel slots.
 	if n <= 0:
 		return
+	var added := 0
 	for _i in range(n):
-		var indices: Array = []
-		for j in range(3):
-			if ability_cooldowns[j] > 0.0 and ability_max_cooldowns[j] > 0.0:
-				indices.append(j)
-		if indices.is_empty():
-			return
-		var pick: int = indices[_rng.randi() % indices.size()]
-		var reduction: float = ability_max_cooldowns[pick] * 0.25
-		ability_cooldowns[pick] = maxf(0.0, ability_cooldowns[pick] - reduction)
-		GameLog.add("Draw effect: -%.1fs on %s." % [reduction, ability_cards[pick].display_name],
+		var card: CardData = _auto_draw_one()
+		if card == null:
+			break  # auto pool exhausted (all in-flight) — nothing to add
+		auto_slots.append({
+			"card": card,
+			"cooldown": _auto_cd(card),
+			"max_cooldown": _auto_cd(card),
+			"ttl": DRAW_TEMP_SLOT_SECS,
+		})
+		added += 1
+	if added > 0:
+		GameLog.add("Draw: +%d auto-cast for %.0fs." % [added, DRAW_TEMP_SLOT_SECS],
 			Color(0.7, 0.95, 1.0))
 
 func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
-	# Mirror of `draw_cards`: each discard lengthens a random ability's
-	# cooldown by 25% of its max. To make the effect feel meaningful
-	# even when nothing is currently cooling, the ability with the
-	# LOWEST remaining cooldown is picked — that way a "ready"
-	# ability immediately goes on a partial CD instead of the effect
-	# silently doing nothing. The `random` flag is meaningful in the
-	# deckbuilder; action ignores it.
+	# Mirror of `draw_cards`: collapse temporary auto-slots back into the
+	# discard early. The permanent base slot (ttl == INF) is never removed.
+	# The `random` flag is meaningful in the deckbuilder; action ignores it.
 	if n <= 0:
 		return
+	var removed := 0
+	var penalized := 0
 	for _i in range(n):
-		var pick: int = -1
-		var lowest: float = INF
-		for j in range(3):
-			if ability_max_cooldowns[j] <= 0.0:
-				continue
-			if ability_cooldowns[j] < lowest:
-				lowest = ability_cooldowns[j]
-				pick = j
-		if pick < 0:
-			return
-		var addition: float = ability_max_cooldowns[pick] * 0.25
-		ability_cooldowns[pick] = minf(ability_max_cooldowns[pick], ability_cooldowns[pick] + addition)
-		GameLog.add("Discard: +%.1fs on %s." % [addition, ability_cards[pick].display_name],
+		var idx := -1
+		for j in range(auto_slots.size()):
+			if auto_slots[j].ttl != INF:
+				idx = j
+				break
+		if idx < 0:
+			# No temporary slots left to collapse — penalize the permanent
+			# base auto-slot by extending its current cooldown instead.
+			_penalize_base_slot()
+			penalized += 1
+			continue
+		var slot: Dictionary = auto_slots[idx]
+		if slot.card != null:
+			auto_discard.append(slot.card)
+		auto_slots.remove_at(idx)
+		removed += 1
+	if removed > 0:
+		GameLog.add("Discard: -%d auto-cast." % removed, Color(1.0, 0.7, 0.5))
+	if penalized > 0:
+		GameLog.add("Discard: +%.1fs base cooldown." % (DISCARD_BASE_PENALTY * penalized),
 			Color(1.0, 0.7, 0.5))
+
+# Extend the permanent (ttl == INF) auto-slot's cooldown. Used as the
+# discard fallback when there are no temporary slots to collapse.
+func _penalize_base_slot() -> void:
+	for slot in auto_slots:
+		if slot.ttl == INF:
+			slot.cooldown += DISCARD_BASE_PENALTY
+			slot.max_cooldown = maxf(slot.max_cooldown, slot.cooldown)
+			return
 
 func _tempo_multiplier() -> float:
 	# Haste and Slow are mutually exclusive in display, but if both are
@@ -959,7 +1100,11 @@ func _gain_block(base_amount: int) -> void:
 # Projectiles
 # ---------------------------------------------------------------------------
 
-func _spawn_player_projectile(card: CardData) -> void:
+func _spawn_player_projectile(card: CardData, aim_dir: Vector2 = Vector2.ZERO) -> void:
+	# `aim_dir` lets the auto-runner fire at the nearest enemy; the click
+	# path passes nothing and aims at the cursor (player_facing).
+	if aim_dir == Vector2.ZERO:
+		aim_dir = player_facing
 	# Pull the travel distance off the card. Empty/unknown range_class
 	# falls back to "medium" so legacy cards still feel right.
 	var range_px: float = float(PROJECTILE_RANGE_PX.get(card.range_class, PROJECTILE_RANGE_DEFAULT_PX))
@@ -971,7 +1116,7 @@ func _spawn_player_projectile(card: CardData) -> void:
 	if _is_ranged_aoe(card):
 		var shared_hits: Dictionary = {}
 		var count: int = RANGED_AOE_PROJECTILE_COUNT
-		var base_angle: float = player_facing.angle()
+		var base_angle: float = aim_dir.angle()
 		var fan: float = deg_to_rad(RANGED_AOE_FAN_DEG)
 		var half: float = fan * 0.5
 		for i in range(count):
@@ -979,7 +1124,7 @@ func _spawn_player_projectile(card: CardData) -> void:
 			var angle: float = base_angle - half + t * fan
 			_spawn_single_projectile(card, Vector2.RIGHT.rotated(angle), range_px, lifetime, shared_hits)
 		return
-	_spawn_single_projectile(card, player_facing, range_px, lifetime, {})
+	_spawn_single_projectile(card, aim_dir, range_px, lifetime, {})
 
 func _spawn_single_projectile(card: CardData, dir: Vector2, range_px: float, lifetime: float, hit_set: Dictionary) -> void:
 	var proj: Dictionary = {
@@ -1091,65 +1236,150 @@ var _slot_panels: Array[Panel] = []
 var _slot_name_labels: Array[Label] = []
 var _slot_cd_labels: Array[Label] = []
 
+# Card-art nodes for the two click slots (index 0 = LMB, 1 = RMB).
+var _click_tex: Array[TextureRect] = []
+var _click_swatch: Array[ColorRect] = []
+
+# Auto-cast thumbnail strip — one slot per active auto-cast, each showing the
+# art of the card currently counting down (the one "about to play").
+const AUTO_THUMB_MAX := 8
+var _auto_label: Label = null
+var _auto_thumbs: Array = []   # each: {panel, tex, swatch, name, cd}
+
 func _build_slot_bar() -> void:
+	# Header line above the bar with the live auto-deck counts.
+	_auto_label = Label.new()
+	_auto_label.position = Vector2(20, ARENA_H + 2)
+	_auto_label.add_theme_font_size_override("font_size", 11)
+	_auto_label.add_theme_color_override("font_color", Color(0.7, 0.9, 1.0))
+	add_child(_auto_label)
+
 	var bar := HBoxContainer.new()
-	bar.position = Vector2((ARENA_W - 720) * 0.5, ARENA_H + 4)
-	bar.size = Vector2(720, 56)
-	bar.add_theme_constant_override("separation", 12)
+	bar.position = Vector2(20, ARENA_H + 18)
+	bar.add_theme_constant_override("separation", 10)
 	add_child(bar)
 
-	# 4 slots: basic + 3 abilities. Index 0 = basic.
+	# Two click slots (LMB / RMB): card art on the left, name + cooldown right.
 	_slot_panels.clear()
 	_slot_name_labels.clear()
 	_slot_cd_labels.clear()
-	for i in range(4):
+	_click_tex.clear()
+	_click_swatch.clear()
+	for i in range(2):
 		var panel := Panel.new()
-		panel.custom_minimum_size = Vector2(168, 56)
+		panel.custom_minimum_size = Vector2(208, 58)
 		bar.add_child(panel)
+		var swatch := ColorRect.new()
+		swatch.position = Vector2(5, 7)
+		swatch.size = Vector2(44, 44)
+		panel.add_child(swatch)
+		var tex := TextureRect.new()
+		tex.position = Vector2(5, 7)
+		tex.size = Vector2(44, 44)
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		panel.add_child(tex)
 		var name_lbl := Label.new()
-		name_lbl.position = Vector2(8, 4)
-		name_lbl.size = Vector2(152, 20)
-		name_lbl.add_theme_font_size_override("font_size", 13)
+		name_lbl.position = Vector2(56, 6)
+		name_lbl.size = Vector2(146, 22)
+		name_lbl.add_theme_font_size_override("font_size", 12)
 		name_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 1.0))
 		panel.add_child(name_lbl)
 		var cd_lbl := Label.new()
-		cd_lbl.position = Vector2(8, 26)
-		cd_lbl.size = Vector2(152, 26)
+		cd_lbl.position = Vector2(56, 30)
+		cd_lbl.size = Vector2(146, 22)
 		cd_lbl.add_theme_font_size_override("font_size", 12)
 		cd_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
 		panel.add_child(cd_lbl)
 		_slot_panels.append(panel)
 		_slot_name_labels.append(name_lbl)
 		_slot_cd_labels.append(cd_lbl)
+		_click_tex.append(tex)
+		_click_swatch.append(swatch)
+
+	# Auto-cast thumbnails: a fixed pool we show/hide so node count is stable.
+	_auto_thumbs.clear()
+	for i in range(AUTO_THUMB_MAX):
+		var ap := Panel.new()
+		ap.custom_minimum_size = Vector2(50, 58)
+		bar.add_child(ap)
+		var asw := ColorRect.new()
+		asw.position = Vector2(3, 3)
+		asw.size = Vector2(44, 40)
+		ap.add_child(asw)
+		var atx := TextureRect.new()
+		atx.position = Vector2(3, 3)
+		atx.size = Vector2(44, 40)
+		atx.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		atx.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ap.add_child(atx)
+		var anm := Label.new()
+		anm.position = Vector2(3, 2)
+		anm.size = Vector2(44, 12)
+		anm.clip_text = true
+		anm.add_theme_font_size_override("font_size", 8)
+		anm.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+		ap.add_child(anm)
+		var acd := Label.new()
+		acd.position = Vector2(3, 42)
+		acd.size = Vector2(44, 14)
+		acd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		acd.add_theme_font_size_override("font_size", 10)
+		ap.add_child(acd)
+		_auto_thumbs.append({"panel": ap, "tex": atx, "swatch": asw, "name": anm, "cd": acd})
 	_refresh_slot_bar()
+
+# Show a card's art on a TextureRect, falling back to a portrait-colour swatch
+# when the card has no image (most prototype cards).
+func _apply_card_visual(tex: TextureRect, swatch: ColorRect, card: CardData) -> void:
+	if card != null and card.image != null:
+		tex.texture = card.image
+		tex.visible = true
+		swatch.visible = false
+	else:
+		swatch.color = card.portrait_color if card != null else Color(0.18, 0.20, 0.26)
+		swatch.visible = true
+		tex.visible = false
 
 func _refresh_slot_bar() -> void:
 	if _slot_panels.is_empty():
 		return
-	# Slot 0 = basic attack
-	_slot_name_labels[0].text = "[LMB] %s" % (basic_card.display_name if basic_card != null else "—")
-	_slot_cd_labels[0].text = ("ready" if player_attack_cooldown <= 0.0
-		else "%.1fs" % player_attack_cooldown)
-	# Slots 1-3 = abilities
-	for i in range(3):
-		var card: CardData = ability_cards[i] if i < ability_cards.size() else null
-		var prefix := "[%d] " % (i + 1)
-		if card == null:
-			_slot_name_labels[i + 1].text = prefix + "(empty)"
-			_slot_cd_labels[i + 1].text = ""
+	_refresh_click_slot(0, "[LMB] ", left_card, left_cd, left_max_cd)
+	_refresh_click_slot(1, "[RMB] ", right_card, right_cd, right_max_cd)
+	if _auto_label != null:
+		_auto_label.text = "Auto-cast x%d   (draw %d / discard %d)" % [
+			auto_slots.size(), auto_draw.size(), auto_discard.size()]
+	# One thumbnail per active auto-slot, showing the card about to play.
+	for i in range(AUTO_THUMB_MAX):
+		var t: Dictionary = _auto_thumbs[i]
+		if i >= auto_slots.size():
+			t.panel.visible = false
 			continue
-		_slot_name_labels[i + 1].text = prefix + card.display_name
-		if card.is_power():
-			_slot_cd_labels[i + 1].text = "PASSIVE"
-			_slot_cd_labels[i + 1].add_theme_color_override("font_color", Color(0.85, 0.7, 1.0))
-			continue
-		var cd: float = ability_cooldowns[i]
-		if cd > 0.0:
-			_slot_cd_labels[i + 1].text = "%.1fs / %.1fs" % [cd, ability_max_cooldowns[i]]
-			_slot_cd_labels[i + 1].add_theme_color_override("font_color", Color(0.9, 0.6, 0.4))
+		t.panel.visible = true
+		var slot: Dictionary = auto_slots[i]
+		var card: CardData = slot.card
+		_apply_card_visual(t.tex, t.swatch, card)
+		t.name.text = card.display_name if card != null else ""
+		if card != null:
+			t.cd.text = "%.1f" % slot.cooldown
+			t.cd.add_theme_color_override("font_color",
+				Color(0.7, 1.0, 0.7) if slot.ttl == INF else Color(1.0, 0.85, 0.4))
 		else:
-			_slot_cd_labels[i + 1].text = "ready"
-			_slot_cd_labels[i + 1].add_theme_color_override("font_color", Color(0.7, 1.0, 0.7))
+			t.cd.text = "--"
+
+func _refresh_click_slot(panel_idx: int, prefix: String, card: CardData, cd: float, max_cd: float) -> void:
+	_apply_card_visual(_click_tex[panel_idx], _click_swatch[panel_idx], card)
+	if card == null:
+		_slot_name_labels[panel_idx].text = prefix + "(empty)"
+		_slot_cd_labels[panel_idx].text = ""
+		return
+	_slot_name_labels[panel_idx].text = prefix + card.display_name
+	if cd > 0.0:
+		_slot_cd_labels[panel_idx].text = "%.1fs / %.1fs" % [cd, max_cd]
+		_slot_cd_labels[panel_idx].add_theme_color_override("font_color", Color(0.9, 0.6, 0.4))
+	else:
+		_slot_cd_labels[panel_idx].text = "ready"
+		_slot_cd_labels[panel_idx].add_theme_color_override("font_color", Color(0.7, 1.0, 0.7))
 
 # ---------------------------------------------------------------------------
 
@@ -1217,9 +1447,9 @@ func _check_combat_end() -> void:
 func _refresh_hud() -> void:
 	if _hp_label == null:
 		return
-	_hp_label.text = "HP %d / %d   |   Block %d   |   Attack CD %.1fs   |   iFrames %.1fs" % [
+	_hp_label.text = "HP %d / %d   |   Block %d   |   iFrames %.1fs" % [
 		player_actor.hp, player_actor.max_hp, player_actor.block,
-		player_attack_cooldown, player_iframes,
+		player_iframes,
 	]
 
 # ---------------------------------------------------------------------------
@@ -1251,8 +1481,6 @@ func _draw() -> void:
 					draw_rect(Rect2(ARENA_W - thickness, p.y - DOOR_HALF_WIDTH, thickness, DOOR_HALF_WIDTH * 2.0), door_col)
 
 	# Swing arc (drawn under enemies so the cone outline frames them)
-	if _swing_remaining > 0.0:
-		_draw_swing_cone()
 	if _ability_swing_remaining > 0.0:
 		_draw_ability_swing_cone()
 
@@ -1286,19 +1514,6 @@ func _draw() -> void:
 		# Inner highlight
 		draw_circle(p.pos, p.radius * 0.5, pcol.lightened(0.5))
 
-func _draw_swing_cone() -> void:
-	var half_angle: float = deg_to_rad(BASIC_ATTACK_CONE_ANGLE_DEG * 0.5)
-	var base_angle: float = player_facing.angle()
-	var steps := 14
-	var points := PackedVector2Array()
-	points.append(player_pos)
-	for i in range(steps + 1):
-		var t: float = float(i) / float(steps)
-		var ang: float = base_angle - half_angle + t * (half_angle * 2.0)
-		points.append(player_pos + Vector2.RIGHT.rotated(ang) * BASIC_ATTACK_CONE_RANGE)
-	# Fade alpha by how long the swing has left
-	var alpha: float = clampf(_swing_remaining / SWING_VISUAL_DURATION, 0.0, 1.0) * 0.45
-	draw_polygon(points, PackedColorArray([Color(1.0, 1.0, 0.5, alpha)]))
 
 func _draw_ability_swing_cone() -> void:
 	var half_angle: float = deg_to_rad(ABILITY_MELEE_ANGLE_DEG * 0.5)
