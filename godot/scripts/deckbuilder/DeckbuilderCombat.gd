@@ -60,6 +60,7 @@ var phase: Phase = Phase.INIT
 # Persistent enemy view widgets (created in start_combat, refreshed by
 # _refresh_ui without rebuilding the row).
 var _enemy_views: Array[EnemyView] = []
+var _hand_views: Array[CardView] = []
 
 # Targeting mode (card selected, waiting for enemy click)
 var _selected_card: CardInstance = null
@@ -1287,16 +1288,23 @@ func _refresh_ui() -> void:
 		view.refresh()
 		view.set_targetable(_targeting)
 
-	# Hand — rebuild each refresh since draws / discards shuffle the row.
-	# add_child first so each CardView's _ready runs and builds its child
-	# controls before setup() / set_enabled() / set_selected() touch them.
-	for child in _hand_area.get_children():
-		child.queue_free()
-	for c in hand:
-		var card_inst := c     # capture per-iteration
+	# Hand — reconcile views in place instead of freeing and rebuilding the
+	# whole row every refresh (which ran on every draw/discard/status tick).
+	# Grow or shrink _hand_views to match the hand, then re-point each
+	# surviving view at its current card; setup() -> refresh() repaints it.
+	while _hand_views.size() < hand.size():
 		var view := CardView.new()
 		view.play_requested.connect(_try_play_card)
+		# add_child first so _ready builds the child controls before setup().
 		_hand_area.add_child(view)
+		_hand_views.append(view)
+	while _hand_views.size() > hand.size():
+		var extra: CardView = _hand_views.pop_back()
+		_hand_area.remove_child(extra)
+		extra.queue_free()
+	for i in range(hand.size()):
+		var card_inst: CardInstance = hand[i]
+		var view: CardView = _hand_views[i]
 		view.setup(card_inst)
 		view.set_enabled((phase == Phase.PLAYER) and (card_inst.get_cost() <= energy))
 		view.set_selected(_targeting and _selected_card == card_inst)

@@ -126,8 +126,10 @@ func refresh() -> void:
 	_cost_label.text = str(card.get_cost())
 	_desc_label.text = "[center]%s[/center]" % card.get_description()
 	if card.data != null:
-		if card.data.image != null:
-			_art.texture = card.data.image
+		# Assign unconditionally (null clears it) so a reused view doesn't keep
+		# stale art when re-pointed at a card with no image — refresh() must be
+		# idempotent for the in-place hand reconcile in DeckbuilderCombat.
+		_art.texture = card.data.image
 		_type_label.text = _type_label_text(card.data.type)
 		_rarity_stripe.color = _rarity_color(card.data.rarity)
 	_update_frame()
