@@ -198,7 +198,12 @@ func _input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB:
 		if _active_overlay == null:
-			_open_equipment()
+			# Inventory only opens when the room has no living enemies
+			# (a cleared room, or a safe/empty room).
+			if _arena != null and _arena._living_enemy_count() > 0:
+				GameLog.add("Clear the room before opening your inventory.", Color(0.85, 0.7, 0.4))
+			else:
+				_open_equipment()
 		get_viewport().set_input_as_handled()
 
 func _open_overlay(overlay: Control) -> void:

@@ -805,13 +805,19 @@ func _resolve_card_effects_auto(card: CardData) -> void:
 # each call so multi-hit loops skip the dead.
 func _auto_targets_for(tgt: String) -> Array:
 	if tgt == "all_enemies":
+		# Melee AoE only reaches enemies inside the AoE radius.
 		var all: Array = []
 		for inst in enemies:
-			if inst.actor.is_alive():
+			if inst.actor.is_alive() and inst.pos.distance_to(player_pos) <= ABILITY_AOE_RADIUS + inst.data.size:
 				all.append(inst)
 		return all
+	# Single-target melee: hit the nearest enemy only if it's in reach.
 	var n: Dictionary = _nearest_enemy()
-	return [] if n.is_empty() else [n]
+	if n.is_empty():
+		return []
+	if n.pos.distance_to(player_pos) > ABILITY_MELEE_RANGE + n.data.size:
+		return []
+	return [n]
 
 func _card_has_ranged_damage(card: CardData) -> bool:
 	for effect in card.effects:
@@ -1230,49 +1236,139 @@ var _slot_panels: Array[Panel] = []
 var _slot_name_labels: Array[Label] = []
 var _slot_cd_labels: Array[Label] = []
 
+# Card-art nodes for the two click slots (index 0 = LMB, 1 = RMB).
+var _click_tex: Array[TextureRect] = []
+var _click_swatch: Array[ColorRect] = []
+
+# Auto-cast thumbnail strip — one slot per active auto-cast, each showing the
+# art of the card currently counting down (the one "about to play").
+const AUTO_THUMB_MAX := 8
+var _auto_label: Label = null
+var _auto_thumbs: Array = []   # each: {panel, tex, swatch, name, cd}
+
 func _build_slot_bar() -> void:
+	# Header line above the bar with the live auto-deck counts.
+	_auto_label = Label.new()
+	_auto_label.position = Vector2(20, ARENA_H + 2)
+	_auto_label.add_theme_font_size_override("font_size", 11)
+	_auto_label.add_theme_color_override("font_color", Color(0.7, 0.9, 1.0))
+	add_child(_auto_label)
+
 	var bar := HBoxContainer.new()
-	bar.position = Vector2((ARENA_W - 540) * 0.5, ARENA_H + 4)
-	bar.size = Vector2(540, 56)
-	bar.add_theme_constant_override("separation", 12)
+	bar.position = Vector2(20, ARENA_H + 18)
+	bar.add_theme_constant_override("separation", 10)
 	add_child(bar)
 
-	# 3 panels: [LMB] click slot, [RMB] click slot, and an Auto-deck readout.
+	# Two click slots (LMB / RMB): card art on the left, name + cooldown right.
 	_slot_panels.clear()
 	_slot_name_labels.clear()
 	_slot_cd_labels.clear()
-	for i in range(3):
+	_click_tex.clear()
+	_click_swatch.clear()
+	for i in range(2):
 		var panel := Panel.new()
-		panel.custom_minimum_size = Vector2(172, 56)
+		panel.custom_minimum_size = Vector2(208, 58)
 		bar.add_child(panel)
+		var swatch := ColorRect.new()
+		swatch.position = Vector2(5, 7)
+		swatch.size = Vector2(44, 44)
+		panel.add_child(swatch)
+		var tex := TextureRect.new()
+		tex.position = Vector2(5, 7)
+		tex.size = Vector2(44, 44)
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		panel.add_child(tex)
 		var name_lbl := Label.new()
-		name_lbl.position = Vector2(8, 4)
-		name_lbl.size = Vector2(156, 20)
-		name_lbl.add_theme_font_size_override("font_size", 13)
+		name_lbl.position = Vector2(56, 6)
+		name_lbl.size = Vector2(146, 22)
+		name_lbl.add_theme_font_size_override("font_size", 12)
 		name_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 1.0))
 		panel.add_child(name_lbl)
 		var cd_lbl := Label.new()
-		cd_lbl.position = Vector2(8, 26)
-		cd_lbl.size = Vector2(156, 26)
+		cd_lbl.position = Vector2(56, 30)
+		cd_lbl.size = Vector2(146, 22)
 		cd_lbl.add_theme_font_size_override("font_size", 12)
 		cd_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
 		panel.add_child(cd_lbl)
 		_slot_panels.append(panel)
 		_slot_name_labels.append(name_lbl)
 		_slot_cd_labels.append(cd_lbl)
+		_click_tex.append(tex)
+		_click_swatch.append(swatch)
+
+	# Auto-cast thumbnails: a fixed pool we show/hide so node count is stable.
+	_auto_thumbs.clear()
+	for i in range(AUTO_THUMB_MAX):
+		var ap := Panel.new()
+		ap.custom_minimum_size = Vector2(50, 58)
+		bar.add_child(ap)
+		var asw := ColorRect.new()
+		asw.position = Vector2(3, 3)
+		asw.size = Vector2(44, 40)
+		ap.add_child(asw)
+		var atx := TextureRect.new()
+		atx.position = Vector2(3, 3)
+		atx.size = Vector2(44, 40)
+		atx.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		atx.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ap.add_child(atx)
+		var anm := Label.new()
+		anm.position = Vector2(3, 2)
+		anm.size = Vector2(44, 12)
+		anm.clip_text = true
+		anm.add_theme_font_size_override("font_size", 8)
+		anm.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+		ap.add_child(anm)
+		var acd := Label.new()
+		acd.position = Vector2(3, 42)
+		acd.size = Vector2(44, 14)
+		acd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		acd.add_theme_font_size_override("font_size", 10)
+		ap.add_child(acd)
+		_auto_thumbs.append({"panel": ap, "tex": atx, "swatch": asw, "name": anm, "cd": acd})
 	_refresh_slot_bar()
+
+# Show a card's art on a TextureRect, falling back to a portrait-colour swatch
+# when the card has no image (most prototype cards).
+func _apply_card_visual(tex: TextureRect, swatch: ColorRect, card: CardData) -> void:
+	if card != null and card.image != null:
+		tex.texture = card.image
+		tex.visible = true
+		swatch.visible = false
+	else:
+		swatch.color = card.portrait_color if card != null else Color(0.18, 0.20, 0.26)
+		swatch.visible = true
+		tex.visible = false
 
 func _refresh_slot_bar() -> void:
 	if _slot_panels.is_empty():
 		return
 	_refresh_click_slot(0, "[LMB] ", left_card, left_cd, left_max_cd)
 	_refresh_click_slot(1, "[RMB] ", right_card, right_cd, right_max_cd)
-	# Slot 2 = auto-deck readout: active slot count + pile sizes.
-	_slot_name_labels[2].text = "Auto x%d" % auto_slots.size()
-	_slot_cd_labels[2].text = "draw %d / disc %d" % [auto_draw.size(), auto_discard.size()]
-	_slot_cd_labels[2].add_theme_color_override("font_color", Color(0.7, 0.9, 1.0))
+	if _auto_label != null:
+		_auto_label.text = "Auto-cast x%d   (draw %d / discard %d)" % [
+			auto_slots.size(), auto_draw.size(), auto_discard.size()]
+	# One thumbnail per active auto-slot, showing the card about to play.
+	for i in range(AUTO_THUMB_MAX):
+		var t: Dictionary = _auto_thumbs[i]
+		if i >= auto_slots.size():
+			t.panel.visible = false
+			continue
+		t.panel.visible = true
+		var slot: Dictionary = auto_slots[i]
+		var card: CardData = slot.card
+		_apply_card_visual(t.tex, t.swatch, card)
+		t.name.text = card.display_name if card != null else ""
+		if card != null:
+			t.cd.text = "%.1f" % slot.cooldown
+			t.cd.add_theme_color_override("font_color",
+				Color(0.7, 1.0, 0.7) if slot.ttl == INF else Color(1.0, 0.85, 0.4))
+		else:
+			t.cd.text = "--"
 
 func _refresh_click_slot(panel_idx: int, prefix: String, card: CardData, cd: float, max_cd: float) -> void:
+	_apply_card_visual(_click_tex[panel_idx], _click_swatch[panel_idx], card)
 	if card == null:
 		_slot_name_labels[panel_idx].text = prefix + "(empty)"
 		_slot_cd_labels[panel_idx].text = ""

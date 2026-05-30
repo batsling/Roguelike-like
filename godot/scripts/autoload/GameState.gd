@@ -568,7 +568,8 @@ func get_action_loadout() -> Dictionary:
 	if left == null:
 		left = _auto_pick_click(&"")
 	if right == null:
-		right = _auto_pick_click(left.id if left != null else &"")
+		var left_is_strike: bool = left != null and left.tags.has("strike")
+		right = _auto_pick_click(left.id if left != null else &"", left_is_strike)
 
 	# Build the auto pool from the deck, holding back one copy each of the
 	# left/right cards (the rest of their copies still auto-play).
@@ -605,16 +606,18 @@ func is_click_eligible(card_id: StringName) -> bool:
 			return true
 	return false
 
-func _auto_pick_click(exclude_id: StringName) -> CardData:
+func _auto_pick_click(exclude_id: StringName, forbid_strike: bool = false) -> CardData:
 	# Prefer a Strike; otherwise the first weapon-granted card. Skips
-	# `exclude_id` so left and right don't auto-pick the same card.
-	for c in deck:
-		if not (c is CardInstance) or c.data == null:
-			continue
-		if c.data.id == exclude_id:
-			continue
-		if c.data.tags.has("strike"):
-			return c.data
+	# `exclude_id` so left and right don't auto-pick the same card, and
+	# `forbid_strike` enforces one-Strike-at-a-time across the two slots.
+	if not forbid_strike:
+		for c in deck:
+			if not (c is CardInstance) or c.data == null:
+				continue
+			if c.data.id == exclude_id:
+				continue
+			if c.data.tags.has("strike"):
+				return c.data
 	for c in deck:
 		if not (c is CardInstance) or c.data == null:
 			continue

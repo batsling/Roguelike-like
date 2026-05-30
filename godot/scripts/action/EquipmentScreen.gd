@@ -163,6 +163,12 @@ func _on_card_clicked(card: CardData) -> void:
 	if not GameState.is_click_eligible(card.id):
 		GameLog.add("Only Strikes or weapons can go in a click slot.", Color(0.85, 0.7, 0.4))
 		return
+	# Only one Strike across the two click slots — no dual-wielding Strikes.
+	if card.tags.has("strike"):
+		var other: CardData = _right_card if _selected_slot == 0 else _left_card
+		if other != null and other.tags.has("strike"):
+			GameLog.add("You can only wield one Strike at a time.", Color(0.85, 0.7, 0.4))
+			return
 	if _selected_slot == 0:
 		_left_card = card
 	else:
