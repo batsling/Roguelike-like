@@ -1,25 +1,30 @@
 extends CanvasLayer
 
-# Phase 5+6: the tactical battle UI. Hosts the BattleGridView, an action
-# bar, an initiative panel, and the Ability/Spellbook pickers wired to
-# Phase-6's `AbilityPool` and `Spellbook`.
+# The tactical battle UI. Hosts a pre-combat loadout screen, the
+# BattleGridView, an action bar, an initiative panel, and the
+# Cards/Spellbook pickers.
 #
-# Player turn rules (from STRATEGY_COMBAT_PLAN.md):
-#   - Move up to `unit.speed` tiles (chained moves allowed).
+# Pre-combat: the player sees the enemy + telegraphed intents and slots up
+# to 3 cards from the deck into a `CombatLoadout`. Confirming kicks the
+# initiative engine (StrategyCombatSession.begin_battle).
+#
+# Player turn rules:
+#   - Move up to `unit.move_range` tiles, ONE move action per turn (no chaining).
 #   - One of Attack OR Defend (`_action_used`).
-#   - One non-basic Ability per turn (`_ability_used`), cooldown-gated.
+#   - One slotted card play per turn baseline (`_card_plays_remaining`);
+#     each play spends one of the card's run-persistent uses (GameState).
+#     gain-energy effects grant extra plays this turn; draw effects recharge
+#     a use; discard effects cost a play (tempo).
 #   - Any number of Spells while mana lasts.
 #   - Dash once per combat: spends `dash_available` for a bonus turn.
 #   - End Turn closes out the turn.
-# Enemy turns auto-end on a short timer until Phase 7 lands real AI.
 #
-# Effect resolution: ability and spell effects route through the
-# autoloaded `EffectSystem`, with `self` as the `scene` ctx so the
-# tactical implementations of deal_damage/gain_block/heal handle the
-# actual mutations.
+# Effect resolution: card and spell effects route through the autoloaded
+# `EffectSystem`, with `self` as the `scene` ctx so the tactical
+# implementations of deal_damage/gain_block/heal handle the actual mutations.
 
 const BattleGridViewScript := preload("res://scripts/strategy/combat/BattleGridView.gd")
-const AbilityPoolScript := preload("res://scripts/strategy/combat/AbilityPool.gd")
+const CombatLoadoutScript := preload("res://scripts/strategy/combat/CombatLoadout.gd")
 const SpellbookScript := preload("res://scripts/strategy/combat/Spellbook.gd")
 const SpellsCatalogScript := preload("res://scripts/strategy/combat/SpellsCatalog.gd")
 
@@ -43,13 +48,20 @@ enum Pending { NONE, ABILITY, SPELL }
 var _battle_map = null
 var _turn_manager = null
 var _units: Array = []
+var _room_data = null
+var _encounter: Array = []
 
-var _ability_pool = null   # AbilityPool
+var _loadout = null        # CombatLoadout (the 3 chosen cards + weapon)
+var _available_cards: Array = []  # choosable pool for the loadout screen
+var _selected_cards: Array = []   # mid-selection on the loadout screen
+var _available_weapons: Array = []  # weapon cards in the deck
+var _selected_weapon = null         # CardData chosen on the loadout screen
+var _weapon_card = null             # CardData equipped for this combat (or null)
 var _spellbook = null      # Spellbook
 
-# Mid-action state: which ability/spell is mid-cast while we wait for a target click.
+# Mid-action state: which card/spell is mid-cast while we wait for a target click.
 var _pending_kind: int = Pending.NONE
-var _pending_ability = null  # AbilityPool.Ability
+var _pending_card = null     # CardData (slotted loadout card)
 var _pending_spell = null    # Spellbook.Entry
 
 var _grid_view: BattleGridView
@@ -72,19 +84,31 @@ var _ability_list_container: VBoxContainer
 var _spell_dialog: Panel
 var _spell_list_container: VBoxContainer
 
+# Pre-combat loadout screen.
+var _loadout_overlay: Panel
+var _loadout_enemy_label: Label
+var _loadout_slots_label: Label
+var _loadout_pool_container: VBoxContainer
+var _loadout_start_btn: Button
+
 var _enemy_turn_timer: Timer
 
 # Per-turn state.
 var _action_used: bool = false
-var _ability_used: bool = false
+var _move_used: bool = false   # one Move action per turn (no chaining)
 var _move_remaining: int = 0
 
-# Energy budget — Strategy analog of the deckbuilder energy pool. Each
-# `gain_energy:N` adds N to the budget; the budget lets the player cast
-# extra abilities beyond the normal one-per-turn cap, with each extra
-# cast paying its card cost out of the budget. Resets to 0 at turn
-# start (energy is a per-turn resource, same as deckbuilder).
-var _energy_budget: int = 0
+# Card plays left this turn. Baseline 1 (one card per turn); discard effects
+# subtract plays. Each card play spends one of the card's run-persistent uses
+# (GameState.spend_card_use).
+var _card_plays_remaining: int = 0
+
+# Energy charge banked from gain-energy effects. It persists across turns
+# within a combat until spent: the next card play consumes ALL of it and is
+# empowered by that amount (+dmg / +block / +status stacks), then it resets
+# to 0. gain_energy adds, lose_energy removes. Empower-only — energy grants
+# no extra plays.
+var _energy_charge: int = 0
 
 var _loot_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -97,9 +121,17 @@ func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager 
 	_battle_map = battle_map
 	_turn_manager = turn_manager
 	_units = turn_manager.units if turn_manager != null else []
+	_room_data = room_data
+	_encounter = encounter
 	_grid_view.set_battle(battle_map, _units)
 
-	_ability_pool = AbilityPoolScript.build_from_deck(GameState.deck)
+	_available_cards = CombatLoadoutScript.available_from_deck(GameState.deck)
+	_available_weapons = CombatLoadoutScript.weapon_cards_from_deck(GameState.deck)
+	_loadout = CombatLoadoutScript.new()
+	_selected_cards = []
+	_selected_weapon = null
+	_weapon_card = null
+	_energy_charge = 0
 	_spellbook = SpellbookScript.build_from_ids(GameState.learned_spells)
 
 	_info_label.text = _format_info(room_data, encounter)
@@ -110,8 +142,9 @@ func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager 
 		turn_manager.battle_ended.connect(_on_battle_ended)
 
 	_refresh_initiative()
-	_status_label.text = "Waiting for first turn..."
 	_set_player_buttons_enabled(false)
+	# Show the pre-combat loadout screen; battle starts on confirm.
+	_open_loadout_screen()
 
 # ----------------------------------------------------------------------
 # UI construction
@@ -166,6 +199,7 @@ func _build_ui() -> void:
 
 	_build_action_bar(panel)
 	_build_pickers()
+	_build_loadout_overlay()
 
 	_enemy_turn_timer = Timer.new()
 	_enemy_turn_timer.one_shot = true
@@ -185,7 +219,7 @@ func _build_action_bar(panel: Panel) -> void:
 	panel.add_child(_btn_attack); x += 90 + spacing
 	_btn_defend = _make_button("Defend", x, bar_y, 90, btn_h, _on_defend_button)
 	panel.add_child(_btn_defend); x += 90 + spacing
-	_btn_ability = _make_button("Ability", x, bar_y, 90, btn_h, _on_ability_button)
+	_btn_ability = _make_button("Cards", x, bar_y, 90, btn_h, _on_ability_button)
 	panel.add_child(_btn_ability); x += 90 + spacing
 	_btn_spell = _make_button("Spellbook", x, bar_y, 110, btn_h, _on_spell_button)
 	panel.add_child(_btn_spell); x += 110 + spacing
@@ -253,22 +287,186 @@ func _make_picker_dialog(title_text: String, close_cb: Callable) -> Panel:
 	return p
 
 # ----------------------------------------------------------------------
+# Pre-combat loadout screen
+# ----------------------------------------------------------------------
+
+func _build_loadout_overlay() -> void:
+	_loadout_overlay = Panel.new()
+	_loadout_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_loadout_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.05, 0.03, 0.09, 0.98)
+	_loadout_overlay.add_theme_stylebox_override("panel", bg)
+
+	var title := Label.new()
+	title.text = "[ PREPARE FOR BATTLE ]"
+	title.position = Vector2(40, 30)
+	title.size = Vector2(700, 34)
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
+	_loadout_overlay.add_child(title)
+
+	_loadout_enemy_label = Label.new()
+	_loadout_enemy_label.position = Vector2(40, 74)
+	_loadout_enemy_label.size = Vector2(900, 70)
+	_loadout_enemy_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_loadout_enemy_label.add_theme_font_size_override("font_size", 14)
+	_loadout_enemy_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.7))
+	_loadout_overlay.add_child(_loadout_enemy_label)
+
+	var instr := Label.new()
+	instr.text = "Slot up to 3 cards. Each play spends one of the card's uses (uses carry over between fights)."
+	instr.position = Vector2(40, 150)
+	instr.size = Vector2(900, 40)
+	instr.autowrap_mode = TextServer.AUTOWRAP_WORD
+	instr.add_theme_font_size_override("font_size", 13)
+	instr.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
+	_loadout_overlay.add_child(instr)
+
+	_loadout_slots_label = Label.new()
+	_loadout_slots_label.position = Vector2(40, 190)
+	_loadout_slots_label.size = Vector2(900, 30)
+	_loadout_slots_label.add_theme_font_size_override("font_size", 15)
+	_loadout_slots_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.7))
+	_loadout_overlay.add_child(_loadout_slots_label)
+
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(40, 226)
+	scroll.size = Vector2(900, 330)
+	_loadout_overlay.add_child(scroll)
+	_loadout_pool_container = VBoxContainer.new()
+	_loadout_pool_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_loadout_pool_container.add_theme_constant_override("separation", 4)
+	scroll.add_child(_loadout_pool_container)
+
+	_loadout_start_btn = _make_button("Start Battle", 40, 566, 160, 40, _on_confirm_loadout)
+	_loadout_overlay.add_child(_loadout_start_btn)
+
+	add_child(_loadout_overlay)
+	_loadout_overlay.visible = false
+
+func _open_loadout_screen() -> void:
+	var names: Array = []
+	for e in _encounter:
+		names.append(str(e))
+	var enemy_lines: Array = ["Enemy: " + (", ".join(names) if not names.is_empty() else "(none)")]
+	for u in _units:
+		if u.is_player or not u.is_alive():
+			continue
+		var tel: String = ""
+		if not u.intent_telegraph.is_empty():
+			var t: Dictionary = u.intent_telegraph
+			var val: int = int(t.get("value", 0))
+			tel = "  intends: %s%s" % [str(t.get("name", "")), (" (%d)" % val) if val > 0 else ""]
+		enemy_lines.append("  %s — hp %d/%d  move %d%s" % [u.unit_name, u.hp, u.max_hp, u.move_range, tel])
+	_loadout_enemy_label.text = "\n".join(enemy_lines)
+	_populate_loadout_pool()
+	_loadout_overlay.visible = true
+
+func _populate_loadout_pool() -> void:
+	for child in _loadout_pool_container.get_children():
+		child.queue_free()
+	var weapon_name: String = _selected_weapon.display_name if _selected_weapon != null else "(none — default strike)"
+	_loadout_slots_label.text = "Weapon: %s   |   Card slots: %d / %d filled" % [
+		weapon_name, _selected_cards.size(), CombatLoadout.MAX_SLOTS,
+	]
+
+	# Weapon section (single-select; replaces the basic Attack action).
+	_loadout_pool_container.add_child(_make_loadout_header("WEAPON  (one; replaces your Attack, usable every turn)"))
+	if _available_weapons.is_empty():
+		_loadout_pool_container.add_child(_picker_note("No weapon cards in your deck — Attack will use the default strike."))
+	else:
+		for wcard in _available_weapons:
+			var equipped: bool = _selected_weapon == wcard
+			_loadout_pool_container.add_child(_make_loadout_row(
+				wcard, equipped, "Unequip" if equipped else "Equip",
+				_on_toggle_loadout_weapon, false,
+			))
+
+	# Card section (up to 3, limited uses).
+	_loadout_pool_container.add_child(_make_loadout_header("CARDS  (up to %d; each play spends a use)" % CombatLoadout.MAX_SLOTS))
+	if _available_cards.is_empty():
+		_loadout_pool_container.add_child(_picker_note("No cards available. You'll fight with Attack/Defend and spells."))
+		return
+	for card in _available_cards:
+		var chosen: bool = _selected_cards.has(card)
+		var disabled: bool = (not chosen) and _selected_cards.size() >= CombatLoadout.MAX_SLOTS
+		_loadout_pool_container.add_child(_make_loadout_row(
+			card, chosen, "Remove" if chosen else "Slot",
+			_on_toggle_loadout_card, true, disabled,
+		))
+
+# Builds one selectable row for the loadout screen. `show_uses` adds the
+# "(uses x/max)" readout (cards only — weapons have unlimited uses).
+func _make_loadout_row(card, chosen: bool, btn_text: String, cb: Callable, show_uses: bool, btn_disabled: bool = false) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var lbl := Label.new()
+	var prefix: String = "[x] " if chosen else "[ ] "
+	var uses_str: String = ""
+	if show_uses:
+		uses_str = "  (uses %d/%d)" % [GameState.get_card_uses(card), GameState.max_card_uses(card)]
+	lbl.text = "%s%s%s  —  %s" % [prefix, card.display_name, uses_str, card.description]
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+	lbl.custom_minimum_size = Vector2(700, 0)
+	lbl.add_theme_font_size_override("font_size", 13)
+	if show_uses and GameState.get_card_uses(card) <= 0 and not chosen:
+		lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
+	row.add_child(lbl)
+	var btn := Button.new()
+	btn.text = btn_text
+	btn.disabled = btn_disabled
+	btn.pressed.connect(cb.bind(card))
+	row.add_child(btn)
+	return row
+
+func _make_loadout_header(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_color_override("font_color", Color(1.0, 0.85, 0.45))
+	return l
+
+func _on_toggle_loadout_card(card) -> void:
+	if _selected_cards.has(card):
+		_selected_cards.erase(card)
+	elif _selected_cards.size() < CombatLoadout.MAX_SLOTS:
+		_selected_cards.append(card)
+	_populate_loadout_pool()
+
+func _on_toggle_loadout_weapon(card) -> void:
+	# Single weapon slot: toggling a new weapon replaces any previous pick.
+	_selected_weapon = null if _selected_weapon == card else card
+	_populate_loadout_pool()
+
+func _on_confirm_loadout() -> void:
+	_loadout.cards = _selected_cards.duplicate()
+	_loadout.weapon = _selected_weapon
+	_weapon_card = _selected_weapon
+	_loadout_overlay.visible = false
+	_info_label.text = _format_info(_room_data, _encounter)
+	_status_label.text = "Waiting for first turn..."
+	StrategyCombatSession.begin_battle()
+
+# ----------------------------------------------------------------------
 # Turn flow
 # ----------------------------------------------------------------------
 
 func _on_unit_turn_started(unit) -> void:
-	_grid_view.set_active_unit(unit, unit.speed)
+	_grid_view.set_active_unit(unit, unit.move_range)
 	_refresh_initiative()
 	if unit.is_player:
 		_action_used = false
-		_ability_used = false
-		_move_remaining = unit.speed
-		_energy_budget = 0
+		_move_used = false
+		_move_remaining = unit.move_range
+		_card_plays_remaining = 1
 		_pending_kind = Pending.NONE
-		_pending_ability = null
+		_pending_card = null
 		_pending_spell = null
-		_status_label.text = "Your turn. Move %d  |  Mana %d/%d" % [
-			_move_remaining, unit.mana, unit.max_mana,
+		var charge_str: String = "  |  Charge %d" % _energy_charge if _energy_charge > 0 else ""
+		_status_label.text = "Your turn. Move %d  |  Plays %d  |  Mana %d/%d%s" % [
+			_move_remaining, _card_plays_remaining, unit.mana, unit.max_mana, charge_str,
 		]
 		_set_player_buttons_enabled(true)
 		_refresh_button_states()
@@ -311,19 +509,23 @@ func _on_battle_ended(result) -> void:
 func _on_move_button() -> void:
 	if not _is_player_turn():
 		return
+	if _move_used:
+		_status_label.text = "You've already moved this turn."
+		return
 	if _move_remaining <= 0:
 		_status_label.text = "No movement left."
 		return
 	_clear_pending()
 	_grid_view.enter_move_mode()
-	_status_label.text = "Click a highlighted tile to move (%d tiles left)." % _move_remaining
+	_status_label.text = "Click a tile to move (up to %d tiles, one move per turn)." % _move_remaining
 
 func _on_attack_button() -> void:
 	if not _is_player_turn() or _action_used:
 		return
 	_clear_pending()
 	_grid_view.enter_attack_mode()
-	_status_label.text = "Click an adjacent enemy to attack."
+	var with_what: String = _weapon_card.display_name if _weapon_card != null else "your strike"
+	_status_label.text = "Click an adjacent enemy to attack with %s." % with_what
 
 func _on_defend_button() -> void:
 	if not _is_player_turn() or _action_used:
@@ -360,17 +562,14 @@ func _on_force_lose() -> void:
 	StrategyCombatSession.resolve_combat("defeat")
 
 # ----------------------------------------------------------------------
-# Player actions — Ability
+# Player actions — Cards (slotted loadout)
 # ----------------------------------------------------------------------
 
 func _on_ability_button() -> void:
 	if not _is_player_turn():
 		return
-	# The energy budget can unlock the picker even after the normal
-	# one-ability-per-turn cap has fired, as long as it covers some
-	# ability's cost. Picker rows still disable individually based on
-	# cooldown / affordability.
-	if _ability_used and _energy_budget <= 0:
+	if _card_plays_remaining <= 0:
+		_status_label.text = "No card plays left this turn."
 		return
 	_clear_pending()
 	_grid_view.enter_idle()
@@ -381,65 +580,71 @@ func _on_ability_button() -> void:
 func _populate_ability_picker() -> void:
 	for child in _ability_list_container.get_children():
 		child.queue_free()
-	if _ability_pool == null or _ability_pool.abilities.is_empty():
+	if _loadout == null or _loadout.cards.is_empty():
 		_ability_list_container.add_child(_picker_note(
-			"No abilities in your deck. Non-basic cards become abilities."
+			"No cards slotted. Pick a loadout before combat to bring cards."
 		))
 		return
-	var u = _turn_manager.current_unit
-	for ability in _ability_pool.abilities:
+	for card in _loadout.cards:
 		var row := HBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var lbl := Label.new()
-		var cd: int = _ability_pool.remaining_cooldown(u, ability.id)
-		var ready: bool = cd <= 0
-		var cost: int = maxi(0, int(ability.card.cost))
-		# When the normal one-ability-per-turn cap has been spent, only
-		# abilities whose cost the budget covers remain castable.
-		var affordable: bool = (not _ability_used) or _energy_budget >= cost
-		var castable: bool = ready and affordable
-		var status: String = "(CD %d)" % cd if not ready else "(CD %d on use)" % ability.base_cooldown
-		if _ability_used:
-			status += "  [energy %d/%d]" % [cost, _energy_budget]
-		lbl.text = "%s  %s  —  %s" % [ability.display_name, status, ability.description]
+		var uses: int = GameState.get_card_uses(card)
+		var cap: int = GameState.max_card_uses(card)
+		var castable: bool = uses > 0 and _card_plays_remaining > 0
+		lbl.text = "%s  (uses %d/%d)  —  %s" % [card.display_name, uses, cap, card.description]
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
 		lbl.custom_minimum_size = Vector2(440, 0)
 		lbl.add_theme_font_size_override("font_size", 13)
+		if uses <= 0:
+			lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
 		row.add_child(lbl)
 		var btn := Button.new()
-		btn.text = "Cast"
+		btn.text = "Play"
 		btn.disabled = not castable
-		btn.pressed.connect(_on_pick_ability.bind(ability))
+		btn.pressed.connect(_on_pick_ability.bind(card))
 		row.add_child(btn)
 		_ability_list_container.add_child(row)
 
-func _on_pick_ability(ability) -> void:
+func _on_pick_ability(card) -> void:
 	_ability_dialog.visible = false
+	# Re-check: the picker may have been left open across state changes.
+	if _card_plays_remaining <= 0 or GameState.get_card_uses(card) <= 0:
+		_status_label.text = "%s can't be played right now." % card.display_name
+		return
 	_pending_kind = Pending.ABILITY
-	_pending_ability = ability
-	if ability.wants_target:
+	_pending_card = card
+	if CombatLoadout.wants_enemy_target(card):
 		_grid_view.enter_unit_target_mode(BattleGridView.TargetFilter.ENEMY)
-		_status_label.text = "Casting %s — click an enemy (right-click to cancel)." % ability.display_name
+		_status_label.text = "Playing %s — click an enemy (right-click to cancel)." % card.display_name
 	else:
 		_resolve_ability_against(null)
 
 func _resolve_ability_against(target) -> void:
-	if _pending_ability == null:
+	if _pending_card == null:
 		return
 	var u = _turn_manager.current_unit
-	var ability = _pending_ability
-	# Pay the one-ability-per-turn cap first; once that's spent, extra
-	# casts come out of the energy budget at the card's cost.
-	if _ability_used:
-		_energy_budget = maxi(0, _energy_budget - maxi(0, int(ability.card.cost)))
-	_apply_card_or_spell_effects(ability.card.effects, u, target, ability.card)
-	_ability_pool.set_cooldown(u, ability)
-	_ability_used = true
+	var card = _pending_card
+	# Spend one of the card's run-persistent uses; bail if somehow empty.
+	if not GameState.spend_card_use(card):
+		_status_label.text = "%s is out of uses." % card.display_name
+		_pending_kind = Pending.NONE
+		_pending_card = null
+		_grid_view.enter_idle()
+		return
+	_card_plays_remaining -= 1
+	# Spend any banked energy charge to empower this card, then clear it.
+	var empower: int = _energy_charge
+	_energy_charge = 0
+	_apply_card_or_spell_effects(card.effects, u, target, card, empower)
 	_pending_kind = Pending.NONE
-	_pending_ability = null
+	_pending_card = null
 	_grid_view.enter_idle()
-	_status_label.text = "Cast %s (cooldown %d)." % [ability.display_name, ability.base_cooldown]
+	var empower_str: String = "  (empowered +%d)" % empower if empower > 0 else ""
+	_status_label.text = "Played %s%s. (%d uses left, %d plays left)" % [
+		card.display_name, empower_str, GameState.get_card_uses(card), _card_plays_remaining,
+	]
 	_grid_view.notify_units_changed()
 	_refresh_initiative()
 	_refresh_button_states()
@@ -535,6 +740,9 @@ func _on_move_requested(path: Array) -> void:
 		return
 	u.position = path[-1]
 	_move_remaining -= cost
+	# One move action per turn (no chaining): lock movement once committed,
+	# even if tiles remain in the budget.
+	_move_used = true
 	# Phase 8: walking over an item collects it (auto-pickup goes to
 	# run-scope counters; non-auto goes to the overworld inventory while
 	# there's room). Each path step is checked so passing-by loot grabs.
@@ -542,11 +750,8 @@ func _on_move_requested(path: Array) -> void:
 	for step in path:
 		_try_pickup_at(step, pickup_msgs)
 	_grid_view.set_active_unit(u, _move_remaining)
-	if _move_remaining > 0:
-		_grid_view.enter_move_mode()
-	else:
-		_grid_view.enter_idle()
-	var line: String = "Moved %d. %d move left." % [cost, _move_remaining]
+	_grid_view.enter_idle()
+	var line: String = "Moved %d." % cost
 	if not pickup_msgs.is_empty():
 		line += "  " + ", ".join(pickup_msgs)
 	_status_label.text = line
@@ -601,16 +806,25 @@ func _on_attack_requested(target) -> void:
 	if not _is_player_turn() or _action_used:
 		return
 	var attacker = _turn_manager.current_unit
-	var dmg := DEFAULT_BASIC_ATTACK
-	if attacker.basic_attack_def.has("damage"):
-		dmg = int(attacker.basic_attack_def["damage"])
-	_apply_damage(attacker, target, dmg)
+	if _weapon_card != null:
+		# Equipped weapon replaces the basic strike: its effects resolve once
+		# against the target. Unlimited uses, but once per turn (it's the
+		# Attack action, gated by _action_used). Energy empower applies to
+		# slotted cards only, not the weapon, so pass empower 0.
+		_apply_card_or_spell_effects(_weapon_card.effects, attacker, target, _weapon_card)
+		_status_label.text = "You attack %s with %s." % [target.unit_name, _weapon_card.display_name]
+	else:
+		var dmg := DEFAULT_BASIC_ATTACK
+		if attacker.basic_attack_def.has("damage"):
+			dmg = int(attacker.basic_attack_def["damage"])
+		_apply_damage(attacker, target, dmg)
+		_status_label.text = "You strike %s for %d." % [target.unit_name, dmg]
 	_action_used = true
 	_grid_view.enter_idle()
-	_status_label.text = "You strike %s for %d." % [target.unit_name, dmg]
 	_grid_view.notify_units_changed()
 	_refresh_initiative()
 	_refresh_button_states()
+	_check_battle_end_after_effect()
 
 func _on_target_requested(target) -> void:
 	if not _is_player_turn():
@@ -632,7 +846,7 @@ func _on_target_cancelled() -> void:
 
 func _clear_pending() -> void:
 	_pending_kind = Pending.NONE
-	_pending_ability = null
+	_pending_card = null
 	_pending_spell = null
 
 # ----------------------------------------------------------------------
@@ -647,9 +861,11 @@ func _clear_pending() -> void:
 func apply_effects(effects: Array, source, target, card = null) -> void:
 	_apply_card_or_spell_effects(effects, source, target, card)
 
-func _apply_card_or_spell_effects(effects: Array, source, target, card = null) -> void:
+func _apply_card_or_spell_effects(effects: Array, source, target, card = null, empower: int = 0) -> void:
 	for raw_effect in effects:
 		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
+		if empower > 0:
+			effect = _empower_effect(effect, empower)
 		var resolved_targets: Array = _resolve_effect_targets(effect, source, target)
 		if resolved_targets.is_empty():
 			# self-only effects with no explicit target — treat source as target.
@@ -661,6 +877,18 @@ func _apply_card_or_spell_effects(effects: Array, source, target, card = null) -
 				"scene": self,
 				"card": card,
 			})
+
+# Energy empower: bump a damage/block effect's value or a status effect's
+# stacks by `amount`. Returns a fresh dict so the card's shared effect data
+# is never mutated. Effects with no scalable field pass through unchanged.
+func _empower_effect(effect: Dictionary, amount: int) -> Dictionary:
+	var out: Dictionary = effect.duplicate()
+	match str(out.get("type", "")):
+		"dmg", "block":
+			out["value"] = int(out.get("value", 0)) + amount
+		"status":
+			out["stacks"] = int(out.get("stacks", 1)) + amount
+	return out
 
 func _resolve_effect_targets(effect: Dictionary, source, picked) -> Array:
 	var kind: String = str(effect.get("target", "self"))
@@ -705,64 +933,53 @@ func heal(target, value: int) -> void:
 	target.hp = mini(target.max_hp, target.hp + int(value))
 
 func gain_energy(n: int) -> void:
-	# Strategy analog of the deckbuilder energy pool. Adds to a
-	# per-turn budget that lets the player cast extra abilities beyond
-	# the normal one-per-turn cap, paid out at the card's cost.
+	# Energy is empower charge: it banks (across turns within the combat)
+	# until the next card play consumes ALL of it as a bonus (+dmg/+block/
+	# +status stacks). It grants no extra plays.
 	if n <= 0:
 		return
-	_energy_budget += n
+	_energy_charge += n
+	_status_label.text = "Energy +%d (charge %d). Empowers your next card." % [n, _energy_charge]
 	_refresh_button_states()
 
 func lose_energy(n: int) -> void:
-	# Eat the budget first; any remainder locks the normal ability use
-	# for the turn (drives `_ability_used` true so the picker is gated
-	# until energy is regained).
+	# Symmetric to gain_energy: drains banked empower charge, floored at 0.
 	if n <= 0:
 		return
-	var remainder: int = n - _energy_budget
-	_energy_budget = maxi(0, _energy_budget - n)
-	if remainder > 0:
-		_ability_used = true
+	_energy_charge = maxi(0, _energy_charge - n)
 	_refresh_button_states()
 
 func draw_cards(n: int) -> void:
-	# Strategy mode has no hand to draw into. Per design, each "draw"
-	# event reduces a random ability's remaining cooldown by 1 instead.
-	if _turn_manager == null or _ability_pool == null or n <= 0:
+	# Strategy mode has no hand to draw into. Per design, each "draw" event
+	# RECHARGES a use on a slotted card — restoring the card with the fewest
+	# current uses first so it lands meaningfully. Stops if every slotted
+	# card is already at max.
+	if _loadout == null or n <= 0:
 		return
-	var unit = _turn_manager.current_unit
-	if unit == null:
-		return
+	var restored_any: bool = false
 	for _i in range(n):
-		var ids_on_cd: Array = []
-		for ability in _ability_pool.abilities:
-			if int(unit.cooldowns.get(ability.id, 0)) > 0:
-				ids_on_cd.append(ability.id)
-		if ids_on_cd.is_empty():
+		var best_card = null
+		var best_uses: int = 1 << 30
+		for card in _loadout.cards:
+			var uses: int = GameState.get_card_uses(card)
+			if uses < GameState.max_card_uses(card) and uses < best_uses:
+				best_uses = uses
+				best_card = card
+		if best_card == null:
 			break
-		var pick: StringName = ids_on_cd[randi() % ids_on_cd.size()]
-		unit.cooldowns[pick] = maxi(0, int(unit.cooldowns[pick]) - 1)
+		if GameState.recharge_card_use(best_card, 1) > 0:
+			restored_any = true
+	if restored_any:
+		_status_label.text = "Recharged a card use."
+		_refresh_button_states()
 
 func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
-	# Mirror of `draw_cards`: each discard adds 1 to the ability with
-	# the LOWEST current cooldown so the effect lands even when
-	# everything is ready (a ready ability goes onto a 1-turn CD).
-	if _turn_manager == null or _ability_pool == null or n <= 0:
+	# No hand to discard. Strategy treats discard as a tempo cost: it spends
+	# card plays this turn (same as lose_energy), floored at 0.
+	if n <= 0:
 		return
-	var unit = _turn_manager.current_unit
-	if unit == null or _ability_pool.abilities.is_empty():
-		return
-	for _i in range(n):
-		var best_id: StringName = &""
-		var best_cd: int = 99999
-		for ability in _ability_pool.abilities:
-			var cd: int = int(unit.cooldowns.get(ability.id, 0))
-			if cd < best_cd:
-				best_cd = cd
-				best_id = ability.id
-		if best_id == &"":
-			return
-		unit.cooldowns[best_id] = best_cd + 1
+	_card_plays_remaining = maxi(0, _card_plays_remaining - n)
+	_refresh_button_states()
 
 # ----------------------------------------------------------------------
 # Damage / death helpers
@@ -871,16 +1088,23 @@ func _refresh_button_states() -> void:
 	if not _is_player_turn():
 		return
 	var u = _turn_manager.current_unit
-	_btn_move.disabled = _move_remaining <= 0
+	_btn_move.disabled = _move_used or _move_remaining <= 0
 	_btn_attack.disabled = _action_used
 	_btn_defend.disabled = _action_used
-	# Energy budget can keep the Ability button live even after the
-	# one-per-turn cap is spent — affordability/cooldown is gated
-	# per-row inside `_populate_ability_picker`.
-	var ability_locked: bool = _ability_pool == null or _ability_pool.abilities.is_empty()
-	_btn_ability.disabled = ability_locked or (_ability_used and _energy_budget <= 0)
+	# Cards button: live while plays remain and at least one slotted card
+	# still has uses. Per-card use/affordability is gated per-row in
+	# `_populate_ability_picker`.
+	_btn_ability.disabled = _card_plays_remaining <= 0 or not _has_playable_card()
 	_btn_spell.disabled = _spellbook == null or _spellbook.spells.is_empty()
 	_btn_dash.disabled = not u.dash_available
+
+func _has_playable_card() -> bool:
+	if _loadout == null:
+		return false
+	for card in _loadout.cards:
+		if GameState.get_card_uses(card) > 0:
+			return true
+	return false
 
 func _refresh_initiative() -> void:
 	if _turn_manager == null:
@@ -897,8 +1121,8 @@ func _refresh_initiative() -> void:
 		var block = ""
 		if u.block > 0:
 			block = "  blk %d" % u.block
-		lines.append("%s %-8s hp %d/%d  spd %d  ctr %d%s%s%s" % [
-			marker, u.unit_name, u.hp, u.max_hp, u.speed,
+		lines.append("%s %-8s hp %d/%d  mv %d  ctr %d%s%s%s" % [
+			marker, u.unit_name, u.hp, u.max_hp, u.move_range,
 			u.act_counter, mana, block, dead,
 		])
 		if u.is_alive() and not u.is_player and not u.intent_telegraph.is_empty():
@@ -928,9 +1152,9 @@ func _format_info(room_data, encounter: Array) -> String:
 		size_name = ["S", "M", "L"][_battle_map.size_class]
 		dims = "%dx%d" % [_battle_map.width, _battle_map.height]
 
-	var abil_count: int = _ability_pool.abilities.size() if _ability_pool != null else 0
+	var card_count: int = _loadout.cards.size() if _loadout != null else 0
 	var spell_count: int = _spellbook.spells.size() if _spellbook != null else 0
 	return (
 		"Room: %s  |  Encounter: %s  |  Field: %s (%s)\n"
-		+ "Abilities: %d  |  Spellbook: %d  |  Enemy AI lands in Phase 7."
-	) % [rect_str, enc_str, size_name, dims, abil_count, spell_count]
+		+ "Cards slotted: %d/%d  |  Spellbook: %d"
+	) % [rect_str, enc_str, size_name, dims, card_count, CombatLoadout.MAX_SLOTS, spell_count]

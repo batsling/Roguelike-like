@@ -94,6 +94,17 @@ var loot: Dictionary = {
 # `SpellsCatalog` until designers ship .tres files for them.
 var learned_spells: Array[StringName] = []
 
+# Strategy/tactical card uses. Run-persistent: a slotted card spends a use
+# each time it's played and the remaining count persists across combats AND
+# across leaving / re-entering a strategy game within the run. Only refilled
+# by "draw"-style effects (and future rest hooks). Keyed by CardData.id ->
+# remaining uses; lazily seeded to the card's max on first read.
+var card_uses: Dictionary = {}
+# Default starting/max uses by CardData.Rarity (STARTER, COMMON, UNCOMMON,
+# RARE, LEGENDARY). Stronger/rarer cards bring fewer uses. Overridden
+# per-card by CardData.max_uses (>= 0).
+const DEFAULT_CARD_USES_BY_RARITY := [4, 4, 3, 2, 2]
+
 # === Action-mode loadout (StringName ids resolved via Data) ===
 # Empty / unset means "auto-pick from deck on combat start".
 var action_basic_attack_id: StringName = &""
@@ -151,6 +162,7 @@ func reset_run() -> void:
 	_next_item_instance_id = 1
 	loot = {"potion": 0, "scroll": 0, "key": 0}
 	learned_spells.clear()
+	card_uses.clear()
 	action_basic_attack_id = &""
 	action_ability_ids.clear()
 	dash_charges = 0
@@ -480,6 +492,59 @@ func add_loot(kind: String, amount: int = 1) -> void:
 
 func get_loot_count(kind: String) -> int:
 	return int(loot.get(kind, 0))
+
+# ---------------------------------------------------------------------------
+# Strategy/tactical card uses (run-persistent)
+# ---------------------------------------------------------------------------
+
+# Starting / maximum uses for a card: the per-card override when set,
+# otherwise a rarity-based default that cost shaves down — stronger
+# (higher-cost) cards bring fewer uses. cost 0-1 keeps the full rarity
+# value; each point above 1 removes a use (X-cost cards count as 1).
+func max_card_uses(card: CardData) -> int:
+	if card == null:
+		return 0
+	if card.max_uses >= 0:
+		return card.max_uses
+	var base: int = 3
+	var r: int = card.rarity
+	if r >= 0 and r < DEFAULT_CARD_USES_BY_RARITY.size():
+		base = DEFAULT_CARD_USES_BY_RARITY[r]
+	var cost: int = card.cost
+	if cost < 0:  # X-cost
+		cost = 1
+	return maxi(1, base - maxi(0, cost - 1))
+
+# Remaining uses for a card, lazily seeded to its max on first read so a
+# freshly acquired card always starts full.
+func get_card_uses(card: CardData) -> int:
+	if card == null:
+		return 0
+	if not card_uses.has(card.id):
+		card_uses[card.id] = max_card_uses(card)
+	return int(card_uses[card.id])
+
+# Spend one use. Returns false (and changes nothing) if none remain.
+func spend_card_use(card: CardData) -> bool:
+	if card == null:
+		return false
+	var remaining: int = get_card_uses(card)
+	if remaining <= 0:
+		return false
+	card_uses[card.id] = remaining - 1
+	return true
+
+# Restore up to `n` uses, capped at the card's max. Returns how many were
+# actually restored (0 if already full).
+func recharge_card_use(card: CardData, n: int = 1) -> int:
+	if card == null or n <= 0:
+		return 0
+	var cur: int = get_card_uses(card)
+	var cap: int = max_card_uses(card)
+	var restored: int = mini(n, maxi(0, cap - cur))
+	if restored > 0:
+		card_uses[card.id] = cur + restored
+	return restored
 
 # ---------------------------------------------------------------------------
 # Action-mode loadout

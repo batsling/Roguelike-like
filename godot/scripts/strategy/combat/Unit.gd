@@ -18,7 +18,14 @@ extends Resource
 
 @export var max_hp: int = 10
 @export var hp: int = 10
-@export var speed: int = 12  # initiative weight
+# `speed` is the initiative weight (Mewgenics/FFT-lite turn cadence). It is
+# NOT the movement budget — that's `move_range` below. Flattened to a shared
+# base for now so turn order is uniform until enemies are differentiated.
+@export var speed: int = 4
+# Movement budget in tiles per turn. Base is 4; a speed/agility stat shifts
+# it by ±1 tile per point (see BASE_MOVE + the factory helpers). Clamped to
+# at least 1 so a heavy penalty can't pin a unit in place.
+@export var move_range: int = 4
 
 # Mewgenics-style mana drives the Spellbook (Phase 6).
 @export var int_stat: int = 0
@@ -40,6 +47,10 @@ extends Resource
 
 # Internal initiative counter (managed by BattleTurnManager).
 @export var act_counter: int = 0
+
+# Base movement before stat modifiers. The speed/agility stat adds/removes
+# 1 tile per point on top of this.
+const BASE_MOVE := 4
 
 # Runtime-only state attached after construction.
 # `ai`: an EnemyAI instance (RefCounted) for non-player units; null for player.
@@ -73,7 +84,9 @@ static func from_player(entity: StrategyEntity) -> BattleUnit:
 	u.is_player = true
 	u.max_hp = entity.max_hp
 	u.hp = entity.hp
-	u.speed = 12
+	u.speed = 4
+	# Base 4 tiles, +/-1 per point of the run-wide speed stat.
+	u.move_range = maxi(1, BASE_MOVE + GameState.speed)
 	u.int_stat = 0
 	u.cha_stat = 0
 	u.recompute_mana_caps()
@@ -82,21 +95,26 @@ static func from_player(entity: StrategyEntity) -> BattleUnit:
 	u.block = 0
 	return u
 
+# Initiative `speed` is flattened to 4 "for now" so turn order is uniform.
+# `move` is the tile budget modifier: base 4 + this value (0 = 4 tiles), so
+# a faster/slower archetype walks ±1 tile per point without touching turn
+# cadence. The per-archetype hp/attack spread is kept.
 const ENEMY_PRESETS := {
-	"rat":   { "max_hp":  8, "speed": 14, "attack": 3 },
-	"snake": { "max_hp": 10, "speed": 18, "attack": 4 },
-	"orc":   { "max_hp": 18, "speed": 10, "attack": 6 },
-	"troll": { "max_hp": 30, "speed":  8, "attack": 10 },
+	"rat":   { "max_hp":  8, "speed": 4, "move": 0, "attack": 3 },
+	"snake": { "max_hp": 10, "speed": 4, "move": 0, "attack": 4 },
+	"orc":   { "max_hp": 18, "speed": 4, "move": 0, "attack": 6 },
+	"troll": { "max_hp": 30, "speed": 4, "move": 0, "attack": 10 },
 }
 
 static func from_enemy_kind(kind: String) -> BattleUnit:
 	var u := BattleUnit.new()
 	u.unit_name = kind
 	u.is_player = false
-	var preset = ENEMY_PRESETS.get(kind, { "max_hp": 10, "speed": 12, "attack": 3 })
+	var preset = ENEMY_PRESETS.get(kind, { "max_hp": 10, "speed": 4, "move": 0, "attack": 3 })
 	u.max_hp = preset.max_hp
 	u.hp = preset.max_hp
 	u.speed = preset.speed
+	u.move_range = maxi(1, BASE_MOVE + int(preset.get("move", 0)))
 	u.basic_attack_def = { "damage": preset.attack, "range": 1, "shape": "melee" }
 	# Enemies don't use mana yet; cooldown abilities arrive in Phase 7.
 	u.max_mana = 0

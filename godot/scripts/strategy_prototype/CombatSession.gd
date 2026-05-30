@@ -45,8 +45,15 @@ func enter_combat(room_data: StrategyRoomData, encounter: Array) -> void:
 	active_turn_manager.battle_ended.connect(_on_battle_ended)
 	StrategyState.phase = StrategyState.GamePhase.COMBAT
 	phase = Phase.COMBAT
+	# The battle UI shows a pre-combat loadout screen first, then calls
+	# `begin_battle()` to kick the initiative engine. We don't auto-start
+	# here so the player gets to slot their 3 cards while seeing the enemy.
 	emit_signal("combat_started", room_data, active_encounter, active_battle_map, active_turn_manager)
-	active_turn_manager.start_battle()
+
+# Called by the battle UI once the player has confirmed their loadout.
+func begin_battle() -> void:
+	if active_turn_manager != null:
+		active_turn_manager.start_battle()
 
 func resolve_combat(result: String) -> void:
 	if phase != Phase.COMBAT:

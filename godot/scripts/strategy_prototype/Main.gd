@@ -75,6 +75,11 @@ func _seed_demo_loadout() -> void:
 			var c: CardData = Data.get_card(card_id)
 			if c != null:
 				GameState.deck.append(CardInstance.from_data(c))
+		# Grant a weapon item so the strategy loadout's weapon slot has
+		# something to equip standalone (add_item appends its weapon card).
+		var pistol: ItemData = Data.get_item(&"blasma_pistol")
+		if pistol != null:
+			GameState.add_item(pistol)
 	if GameState.learned_spells.is_empty():
 		GameState.learned_spells = SpellsCatalogScript.default_starter_ids()
 
