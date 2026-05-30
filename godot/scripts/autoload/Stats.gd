@@ -341,7 +341,7 @@ func fire_contact_reactions(target, attacker, scene) -> void:
 	if bleed_thorns > 0 and scene != null and scene.has_method("apply_status"):
 		scene.apply_status(attacker, &"bleed", bleed_thorns)
 
-func decay_actor_statuses(actor: CombatActor) -> void:
+func decay_actor_statuses(actor) -> void:
 	# Step down every decaying status on this actor by 1. Called per
 	# actor at end-of-turn (deckbuilder, strategy when statuses land
 	# there) and per ACTION_TURN_TICK in action mode.

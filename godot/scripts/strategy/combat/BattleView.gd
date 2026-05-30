@@ -483,7 +483,11 @@ func _on_unit_turn_started(unit) -> void:
 		_set_player_buttons_enabled(false)
 		_enemy_turn_timer.start()
 
-func _on_unit_turn_ended(_unit) -> void:
+func _on_unit_turn_ended(unit) -> void:
+	# Decay stack-based statuses at the end of the unit's own turn so
+	# Vulnerable / Weak / etc. count down like the other two modes.
+	if unit != null:
+		Stats.decay_actor_statuses(unit)
 	_refresh_initiative()
 
 # Applies turn-based item effects to the player unit at the start of its
@@ -1030,10 +1034,21 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> void:
 	if target == null or raw_dmg <= 0:
 		return
+	# Status scaling (mirrors deckbuilder/action so inflicted statuses bite):
+	# caster Power adds flat, Weak cuts the caster's output 25% (floor),
+	# Vulnerable raises the target's incoming damage 50% (ceil).
+	var dmg: int = raw_dmg
+	if source != null and source.has_method("get_status"):
+		dmg += source.get_status(&"power")
+		if source.get_status(&"weak") > 0:
+			dmg = int(floor(dmg * 0.75))
+	if target.has_method("get_status") and target.get_status(&"vulnerable") > 0:
+		dmg = int(ceil(dmg * 1.5))
+	dmg = maxi(0, dmg)
 	var was_alive: bool = target.is_alive()
-	var absorbed := mini(target.block, raw_dmg)
+	var absorbed := mini(target.block, dmg)
 	target.block -= absorbed
-	var landed := raw_dmg - absorbed
+	var landed := dmg - absorbed
 	target.hp = maxi(0, target.hp - landed)
 	if was_alive and not target.is_alive() and not target.is_player:
 		# Infuse: strategy mirrors deckbuilder — every killing blow with
