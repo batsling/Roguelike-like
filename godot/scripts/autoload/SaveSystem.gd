@@ -191,18 +191,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.emit_signal("current_game_changed", GameState.current_game_id)
 
 func _read(slot: int) -> Dictionary:
-	if not has_save(slot):
-		return {}
-	var f := FileAccess.open(slot_path(slot), FileAccess.READ)
-	if f == null:
-		return {}
-	var json := JSON.new()
-	var err := json.parse(f.get_as_text())
-	if err != OK:
-		return {}
-	if typeof(json.data) != TYPE_DICTIONARY:
-		return {}
-	return json.data
+	return _read_path(slot_path(slot))
 
 func delete_slot(slot: int) -> void:
 	if has_save(slot):

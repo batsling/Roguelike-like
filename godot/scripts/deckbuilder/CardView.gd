@@ -66,10 +66,7 @@ func _build() -> void:
 	var cost_style := StyleBoxFlat.new()
 	cost_style.bg_color = Color(0.2, 0.32, 0.55, 1.0)
 	cost_style.set_corner_radius_all(17)
-	cost_style.border_width_top = 1
-	cost_style.border_width_bottom = 1
-	cost_style.border_width_left = 1
-	cost_style.border_width_right = 1
+	cost_style.set_border_width_all(1)
 	cost_style.border_color = Color(0.7, 0.85, 1.0, 0.8)
 	_cost_circle.add_theme_stylebox_override("panel", cost_style)
 	add_child(_cost_circle)
