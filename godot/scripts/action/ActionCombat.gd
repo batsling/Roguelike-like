@@ -51,6 +51,11 @@ var room_is_safe: bool = false             # safe rooms (start/shop/treasure/cle
 var enemy_hp_mult: float = 1.0             # boss rooms scale enemy HP up
 var _room_resolved: bool = false           # room cleared this visit (don't re-emit)
 var _transitioning: bool = false           # door triggered, awaiting ActionFloor swap
+# Action mode has no discrete turns, so each combat room counts as one
+# "turn" for turn-based items: the Nth combat room entered fires the
+# turn_started item triggers gated on if_turn == N (so Horn Cleat's
+# "+Block on the 2nd turn" lands when you enter the 2nd combat room).
+var _combat_room_index: int = 0
 
 # --- Runtime state ---------------------------------------------------------
 var player_actor: CombatActor = null
@@ -107,6 +112,12 @@ var _slow_remaining: float = 0.0
 # decay that runs at deckbuilder/strategy turn-end. Without this,
 # Vulnerable / Weak / Blind would stick forever in action mode.
 var _turn_tick_remaining: float = Stats.ACTION_TURN_TICK_SECONDS
+
+# Bleed-in-action window flag. Set true whenever the player takes a landed
+# hit; read + reset each turn tick so Bleed ramps only while the player is
+# under fire and clears the moment they get clear (see _process_turn_tick).
+# Enemies track the same thing on their own `inst["was_hit"]` entry.
+var _player_was_hit: bool = false
 
 # Multi-hit (Twin Strike-style) pacing. Each entry is a Dictionary:
 #   {time: secs_until_fire, effect: Dictionary, facing: Vector2, mode: "cone"|"projectile"|"aoe"}
@@ -235,6 +246,10 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	if not is_safe and not enemy_ids.is_empty():
 		enemies_to_spawn = enemy_ids.duplicate()
 		_spawn_enemies()
+		# This is a real combat room — advance the "turn" counter and fire
+		# turn-based item triggers (e.g. Horn Cleat on the 2nd combat room).
+		_combat_room_index += 1
+		_fire_item_turn_triggers(_combat_room_index)
 
 	if _living_enemy_count() == 0:
 		# Safe room or already empty — doors stay open.
@@ -431,18 +446,32 @@ func _check_doors() -> void:
 
 func _process_turn_tick(delta: float) -> void:
 	# Ticks on real-time delta (not tempo-scaled — status durations
-	# shouldn't speed up or slow down with Haste/Slow). Decays every
-	# living actor's stack-based statuses when the timer expires,
-	# then re-arms.
+	# shouldn't speed up or slow down with Haste/Slow). One tick == one
+	# "turn" (ACTION_TURN_TICK_SECONDS). On each boundary every living
+	# actor takes its DoT bite, resolves Bleed, then decays — then re-arm.
 	_turn_tick_remaining -= delta
 	if _turn_tick_remaining > 0.0:
 		return
 	_turn_tick_remaining += Stats.ACTION_TURN_TICK_SECONDS
 	if player_actor != null and player_actor.is_alive():
-		Stats.decay_actor_statuses(player_actor)
+		_tick_actor_turn(player_actor, _player_was_hit)
+	_player_was_hit = false
 	for inst in enemies:
 		if inst.actor.is_alive():
-			Stats.decay_actor_statuses(inst.actor)
+			_tick_actor_turn(inst.actor, bool(inst.get("was_hit", false)))
+		inst["was_hit"] = false
+
+# One turn-boundary pass for a single actor, in the canonical order:
+#   1. DoT bite (Stats.tick_actor_statuses → apply_dot) using current stacks
+#   2. Bleed ramp/clear (action-only rule: grow while hit, wipe when not)
+#   3. Decay the rest of the stack-based statuses (Bleed grow skipped — it's
+#      handled in step 2, so do_grow = false)
+func _tick_actor_turn(actor: CombatActor, was_hit: bool) -> void:
+	Stats.tick_actor_statuses(actor, self)
+	if not actor.is_alive():
+		return
+	Stats.action_bleed_step(actor, was_hit)
+	Stats.decay_actor_statuses(actor, false)
 
 func _process_player_input(delta: float) -> void:
 	# Movement (WASD or arrows).
@@ -485,17 +514,25 @@ func _fire_click_card(card: CardData) -> void:
 	GameLog.add("%s." % card.display_name, Color(0.85, 1.0, 0.7))
 
 func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, power_multiplier: int = 1, effect: Dictionary = {}) -> void:
-	# Blind: if the player is currently Blinded, each melee/ranged hit
-	# rolls to miss. Status / heal / block effects aren't routed
-	# through here so they aren't gated.
-	if (dmg_type == "melee" or dmg_type == "ranged") and player_actor.get_status(&"blind") > 0:
-		if Stats.roll_blind_miss(_rng, true):
-			GameLog.add("You swing blind and miss!", Color(0.85, 0.85, 0.55))
-			return
-	var amount: int = base_dmg
-	amount += Stats.damage_bonus(player_actor, dmg_type, Stats.Mode.ACTION, power_multiplier)
-	if player_actor.get_status(&"weak") > 0:
-		amount = int(floor(amount * 0.75))
+	# Shared damage math (Stats.resolve_damage): player Blind whiff,
+	# Power/Weak, enemy Vulnerable/Dodge and block soak all match the other
+	# two modes now. Only the action-specific tail (Bleed hit-window, kill
+	# log, Infuse's 10% roll) lives here.
+	var atk: Dictionary = effect.duplicate()
+	atk["damage_type"] = dmg_type
+	atk["power_multiplier"] = power_multiplier
+	var res := Stats.resolve_damage(player_actor, inst.actor, base_dmg, atk, Stats.Mode.ACTION, _rng)
+	if res.missed:
+		GameLog.add("You swing blind and miss!", Color(0.85, 0.85, 0.55))
+		return
+	if res.dodged:
+		GameLog.add("%s dodges!" % inst.actor.display_name, Color(0.7, 0.9, 1.0))
+		return
+	# Any landed swing (even fully blocked) refreshes the enemy's Bleed window.
+	inst["was_hit"] = true
+	var amount: int = int(res.hp_loss)
+	if amount <= 0:
+		return
 	inst.actor.hp = maxi(0, inst.actor.hp - amount)
 	if inst.actor.hp <= 0:
 		inst.actor.dead = true
@@ -1035,9 +1072,6 @@ func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 	var stacks: int = int(effect.get("stacks", 0))
 	if stacks == 0 or status == &"":
 		return
-	# Player Persistence boosts debuffs applied to enemies (mirrors deckbuilder).
-	var pers: int = player_actor.get_status(&"persistence")
-	var debuffs := [&"vulnerable", &"weak", &"frail", &"poison", &"burn"]
 	if tgt == "self":
 		player_actor.add_status(status, stacks)
 		return
@@ -1048,7 +1082,9 @@ func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 		hit_list = aoe_targets
 	else:
 		return
-	var amt: int = stacks + (pers if status in debuffs else 0)
+	# Player Persistence boosts debuffs applied to enemies (shared rule in
+	# Stats.status_apply_stacks, matching deckbuilder).
+	var amt: int = Stats.status_apply_stacks(player_actor, status, stacks)
 	for inst in hit_list:
 		inst.actor.add_status(status, amt)
 
@@ -1057,6 +1093,48 @@ func _resolve_heal_self(value: int) -> void:
 		return
 	GameState.change_hp(value)
 	player_actor.hp = GameState.hp
+
+# Raw end-of-turn DoT loss (Bleed today; Burn / Poison when their ticks
+# land). Called by Stats.tick_actor_statuses each turn boundary. Bypasses
+# block, Weak and Vulnerable and never re-triggers reactions — DoTs aren't
+# contact hits. Mirrors the deckbuilder's apply_dot so the shared tick code
+# works in action too.
+func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
+	if target == null or not target.is_alive() or amount <= 0:
+		return
+	if target.is_player:
+		GameState.change_hp(-amount)
+		target.hp = GameState.hp
+	else:
+		target.hp = maxi(0, target.hp - amount)
+	var who := "You" if target.is_player else target.display_name
+	GameLog.add("%s takes %d %s damage." % [who, amount, source_name],
+		Color(1.0, 0.5, 0.6))
+	if target.hp <= 0:
+		target.dead = true
+		GameLog.add("%s defeated." % target.display_name, Color(0.6, 1.0, 0.6))
+		if not target.is_player:
+			TriggerBus.emit_signal("enemy_killed", {"enemy": target, "scene": self})
+
+# EffectSystem-compatible heal (mirrors deckbuilder/strategy heal). Lets
+# item/effect triggers that emit a `heal` effect resolve in action mode.
+func heal(target, value: int) -> void:
+	if target == null or int(value) <= 0:
+		return
+	if target.is_player:
+		GameState.change_hp(int(value))
+		player_actor.hp = GameState.hp
+	else:
+		target.hp = mini(target.max_hp, target.hp + int(value))
+
+# EffectSystem-compatible status apply (mirrors deckbuilder apply_status,
+# minus the deck/trigger plumbing). EffectSystem doesn't thread `source`,
+# so Persistence is handled by the card path in _apply_status_effect; this
+# entry is for source-less item/effect-driven statuses.
+func apply_status(target, status: StringName, stacks: int) -> void:
+	if target == null or stacks == 0 or status == &"":
+		return
+	target.add_status(status, stacks)
 
 # ---------------------------------------------------------------------------
 # Targeting helpers
@@ -1089,12 +1167,46 @@ func _enemies_in_radius(radius: float) -> Array:
 	return result
 
 func _gain_block(base_amount: int) -> void:
-	var amt: int = base_amount + player_actor.get_status(&"defense")
-	if player_actor.get_status(&"frail") > 0:
-		amt = int(floor(amt * 0.75))
+	# Shared block math (Defense adds, Frail cuts 25%) via Stats.resolve_block.
+	var amt: int = Stats.resolve_block(base_amount, player_actor, true)
 	if amt <= 0:
 		return
 	player_actor.block = mini(player_max_block, player_actor.block + amt)
+
+# EffectSystem-compatible entry point (mirrors the deckbuilder's
+# gain_block(target, amount)). Item/effect-granted block raises the
+# card-derived soft cap first so it isn't immediately clamped away.
+func gain_block(_target, amount: int) -> void:
+	player_max_block += amount
+	_gain_block(amount)
+
+# Fires turn_started item triggers gated on if_turn == turn_number.
+# Effects resolve through EffectSystem against the player actor, so the
+# same declarative item data drives all three modes. Currently exercised
+# by Horn Cleat (+Block on the 2nd combat room).
+func _fire_item_turn_triggers(turn_number: int) -> void:
+	var sources: Array = []
+	sources.append_array(GameState.inventory)
+	if GameState.equipped_weapon != null:
+		sources.append(GameState.equipped_weapon)
+	for item in sources:
+		if not (item is ItemData):
+			continue
+		for trig in item.triggers:
+			if String(trig.get("on", "")) != "turn_started":
+				continue
+			var turn_gate: int = int(trig.get("if_turn", 0))
+			if turn_gate > 0 and turn_number != turn_gate:
+				continue
+			for effect in trig.get("effects", []):
+				var ctx := {
+					"source": player_actor,
+					"target": player_actor,
+					"scene": self,
+					"card": null,
+				}
+				EffectSystem.apply(effect, ctx)
+	_refresh_hud()
 
 # ---------------------------------------------------------------------------
 # Projectiles
@@ -1389,16 +1501,20 @@ func _enemy_hit_player(inst: Dictionary) -> void:
 func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatActor = null) -> void:
 	if player_iframes > 0.0:
 		return
-	# Blind: if the attacker is Blinded, the hit can whiff. Player's
-	# luck biases toward the miss landing (good for the player).
-	if attacker != null and attacker.get_status(&"blind") > 0:
-		if Stats.roll_blind_miss(_rng, false):
-			GameLog.add("%s swings blind and misses!" % source_name, Color(0.85, 0.85, 0.55))
-			return
-	var dmg: int = amount
-	var absorbed: int = mini(player_actor.block, dmg)
-	player_actor.block -= absorbed
-	dmg -= absorbed
+	# Shared damage math (Stats.resolve_damage): attacker Blind whiff and
+	# Power/Weak, plus the player's own Vulnerable / Dodge / block soak —
+	# the same pipeline enemies face, so inflicted statuses cut both ways.
+	var res := Stats.resolve_damage(attacker, player_actor, amount, {"damage_type": "melee"}, Stats.Mode.ACTION, _rng)
+	if res.missed:
+		GameLog.add("%s swings blind and misses!" % source_name, Color(0.85, 0.85, 0.55))
+		return
+	if res.dodged:
+		GameLog.add("You dodge %s!" % source_name, Color(0.7, 0.9, 1.0))
+		player_iframes = PLAYER_IFRAME_DURATION
+		return
+	# Landed hit (even fully blocked) refreshes the player's Bleed window.
+	_player_was_hit = true
+	var dmg: int = int(res.hp_loss)
 	if dmg > 0:
 		GameState.change_hp(-dmg)
 		player_actor.hp = GameState.hp
@@ -1496,6 +1612,8 @@ func _draw() -> void:
 		draw_rect(Rect2(inst.pos.x - bar_w * 0.5, bar_y, bar_w, 5), Color(0.05, 0.05, 0.05))
 		var frac: float = float(inst.actor.hp) / float(maxi(1, inst.actor.max_hp))
 		draw_rect(Rect2(inst.pos.x - bar_w * 0.5, bar_y, bar_w * frac, 5), Color(0.85, 0.30, 0.30))
+		# Status icons sit just above the HP bar, always visible.
+		_draw_status_icons(inst.actor, inst.pos.x, bar_y - 3)
 
 	# Player
 	var col := Color(0.95, 0.95, 0.95)
@@ -1514,6 +1632,37 @@ func _draw() -> void:
 		# Inner highlight
 		draw_circle(p.pos, p.radius * 0.5, pcol.lightened(0.5))
 
+
+# Draws an actor's active statuses as a centered row of small icons whose
+# bottom edge rests on `bottom_y`. Action-mode icons are intentionally
+# small (ACTION_STATUS_ICON_PX) and hover above the unit at all times.
+const ACTION_STATUS_ICON_PX := 16
+
+func _draw_status_icons(actor: CombatActor, center_x: float, bottom_y: float) -> void:
+	if actor == null:
+		return
+	var icons: Array = []
+	for s in actor.statuses.keys():
+		if int(actor.statuses[s]) <= 0:
+			continue
+		var tex: Texture2D = Stats.status_icon(s)
+		if tex != null:
+			icons.append({"tex": tex, "stacks": int(actor.statuses[s])})
+	if icons.is_empty():
+		return
+	var gap := 2.0
+	var size := float(ACTION_STATUS_ICON_PX)
+	var total_w: float = icons.size() * size + (icons.size() - 1) * gap
+	var x: float = center_x - total_w * 0.5
+	var top_y: float = bottom_y - size
+	var font: Font = ThemeDB.fallback_font
+	for entry in icons:
+		draw_texture_rect(entry["tex"], Rect2(x, top_y, size, size), false)
+		if entry["stacks"] > 1:
+			var label := str(entry["stacks"])
+			draw_string(font, Vector2(x + size - 4, top_y + size),
+				label, HORIZONTAL_ALIGNMENT_RIGHT, -1, 9, Color.WHITE)
+		x += size + gap
 
 func _draw_ability_swing_cone() -> void:
 	var half_angle: float = deg_to_rad(ABILITY_MELEE_ANGLE_DEG * 0.5)

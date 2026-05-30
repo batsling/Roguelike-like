@@ -38,6 +38,10 @@ extends Resource
 @export var dash_available: bool = true     # one extra turn per combat
 @export var block: int = 0                  # incoming damage soak (Defend builds this)
 @export var basic_attack_def: Dictionary = {}  # class basic-attack pattern (Phase 5)
+# Stack-based statuses (vulnerable / weak / poison / …), shared in spirit
+# with the deckbuilder + action CombatActor model. Runtime-only, rebuilt
+# each combat; rendered as icons when the unit is hovered (BattleGridView).
+var statuses: Dictionary = {}               # StringName -> int stacks
 
 # Battlefield position (battle-grid coords, set by CombatSession).
 @export var position: Vector2i = Vector2i.ZERO
@@ -62,6 +66,16 @@ var intent_telegraph: Dictionary = {}
 
 func is_alive() -> bool:
 	return hp > 0
+
+func add_status(status_id: StringName, stacks: int) -> void:
+	if status_id == &"" or stacks == 0:
+		return
+	statuses[status_id] = int(statuses.get(status_id, 0)) + stacks
+	if statuses[status_id] <= 0:
+		statuses.erase(status_id)
+
+func get_status(status_id: StringName) -> int:
+	return int(statuses.get(status_id, 0))
 
 func recompute_mana_caps() -> void:
 	# Hooks for stat changes mid-combat (relic procs etc); idempotent.

@@ -110,6 +110,11 @@ var _card_plays_remaining: int = 0
 # no extra plays.
 var _energy_charge: int = 0
 
+# Counts the player unit's turns this combat so turn-based items (e.g.
+# Horn Cleat: +Block on the 2nd turn) fire on the right turn. Reset per
+# encounter; incremented at the start of each player turn.
+var _player_turn_count: int = 0
+
 var _loot_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -132,6 +137,7 @@ func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager 
 	_selected_weapon = null
 	_weapon_card = null
 	_energy_charge = 0
+	_player_turn_count = 0
 	_spellbook = SpellbookScript.build_from_ids(GameState.learned_spells)
 
 	_info_label.text = _format_info(room_data, encounter)
@@ -457,6 +463,8 @@ func _on_unit_turn_started(unit) -> void:
 	_grid_view.set_active_unit(unit, unit.move_range)
 	_refresh_initiative()
 	if unit.is_player:
+		_player_turn_count += 1
+		_fire_item_turn_triggers(unit, _player_turn_count)
 		_action_used = false
 		_move_used = false
 		_move_remaining = unit.move_range
@@ -475,8 +483,46 @@ func _on_unit_turn_started(unit) -> void:
 		_set_player_buttons_enabled(false)
 		_enemy_turn_timer.start()
 
-func _on_unit_turn_ended(_unit) -> void:
+func _on_unit_turn_ended(unit) -> void:
+	# Decay stack-based statuses at the end of the unit's own turn so
+	# Vulnerable / Weak / etc. count down like the other two modes.
+	if unit != null:
+		Stats.decay_actor_statuses(unit)
 	_refresh_initiative()
+
+# Applies turn-based item effects to the player unit at the start of its
+# turn. Strategy uses the BattleUnit model rather than the deckbuilder's
+# CombatActor/EffectSystem, so the common turn-based effect types (block /
+# status / heal) are applied directly here. Gated on if_turn like the
+# other modes (Horn Cleat: +14 Block on the 2nd turn).
+func _fire_item_turn_triggers(unit, turn_number: int) -> void:
+	if unit == null:
+		return
+	var sources: Array = []
+	sources.append_array(GameState.inventory)
+	if GameState.equipped_weapon != null:
+		sources.append(GameState.equipped_weapon)
+	for item in sources:
+		if not (item is ItemData):
+			continue
+		for trig in item.triggers:
+			if String(trig.get("on", "")) != "turn_started":
+				continue
+			var turn_gate: int = int(trig.get("if_turn", 0))
+			if turn_gate > 0 and turn_number != turn_gate:
+				continue
+			for effect in trig.get("effects", []):
+				_apply_turn_effect_to_unit(unit, effect)
+	_grid_view.notify_units_changed()
+
+func _apply_turn_effect_to_unit(unit, effect: Dictionary) -> void:
+	match String(effect.get("type", "")):
+		"block":
+			unit.block += int(effect.get("value", 0))
+		"status":
+			unit.add_status(StringName(effect.get("status", "")), int(effect.get("stacks", 1)))
+		"heal", "gain_hp":
+			unit.hp = mini(unit.max_hp, unit.hp + int(effect.get("value", 0)))
 
 func _auto_end_enemy_turn() -> void:
 	if _turn_manager == null or _turn_manager.current_unit == null:
@@ -925,7 +971,9 @@ func deal_damage(source, target, value: int, effect: Dictionary = {}) -> void:
 func gain_block(target, value: int) -> void:
 	if target == null:
 		return
-	target.block = maxi(0, target.block) + int(value)
+	# Shared block math: Frail cuts gained block 25% (Stats.resolve_block).
+	# Strategy keeps Defense out (add_defense = false) to match prior balance.
+	target.block = maxi(0, target.block) + Stats.resolve_block(int(value), target, false)
 
 func heal(target, value: int) -> void:
 	if target == null:
@@ -988,11 +1036,14 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> void:
 	if target == null or raw_dmg <= 0:
 		return
+	# Canonical damage math in Stats.resolve_damage (Power/Weak, Vulnerable,
+	# Blind, Dodge, block soak) so strategy matches deckbuilder/action. The
+	# death / Infuse / loot tail below stays strategy-specific.
 	var was_alive: bool = target.is_alive()
-	var absorbed := mini(target.block, raw_dmg)
-	target.block -= absorbed
-	var landed := raw_dmg - absorbed
-	target.hp = maxi(0, target.hp - landed)
+	var res := Stats.resolve_damage(source, target, raw_dmg, effect, Stats.Mode.STRATEGY)
+	if res.missed or res.dodged:
+		return
+	target.hp = maxi(0, target.hp - int(res.hp_loss))
 	if was_alive and not target.is_alive() and not target.is_player:
 		# Infuse: strategy mirrors deckbuilder — every killing blow with
 		# infuse > 0 grants the player Max HP equal to the stack count.

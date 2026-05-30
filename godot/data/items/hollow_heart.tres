@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://item_hollow_heart"]
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_hollow_heart"]
 
 [ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/HollowHeart.png" id="2_img"]
 
 [resource]
 script = ExtResource("1_item")
@@ -21,3 +22,4 @@ scaling = []
 max_uses = -1
 source_game = "Vampire Survivors"
 tags = PackedStringArray("heart")
+image = ExtResource("2_img")
