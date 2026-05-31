@@ -99,7 +99,7 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	# dumping all three into the same actor.
 	var hits: int = maxi(1, int(effect.get("hits", 1)))
 	var indiscriminate: bool = bool(effect.get("indiscriminate", false))
-	for _i in range(hits):
+	for _i in hits:
 		var tgt: Variant = ctx.get("target")
 		if indiscriminate:
 			tgt = _pick_random_enemy(ctx.get("scene"))

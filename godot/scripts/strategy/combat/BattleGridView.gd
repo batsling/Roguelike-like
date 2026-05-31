@@ -12,6 +12,10 @@ extends Control
 
 const TILE_SIZE := 24
 
+# Orthogonal neighbour offsets, hoisted so the BFS below doesn't reallocate
+# this array on every node expansion.
+const DIRS4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+
 const COLOR_FLOOR        := Color(0.18, 0.18, 0.22)
 const COLOR_FLOOR_ALT    := Color(0.22, 0.22, 0.26)
 const COLOR_WALL         := Color(0.08, 0.08, 0.10)
@@ -120,7 +124,7 @@ func _compute_reachable() -> void:
 		var d: int = _reach[cur]
 		if d >= move_remaining:
 			continue
-		for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		for dir in DIRS4:
 			var nxt: Vector2i = cur + dir
 			if not battle_map.in_bounds(nxt):
 				continue

@@ -66,10 +66,7 @@ func _build() -> void:
 	var cost_style := StyleBoxFlat.new()
 	cost_style.bg_color = Color(0.2, 0.32, 0.55, 1.0)
 	cost_style.set_corner_radius_all(17)
-	cost_style.border_width_top = 1
-	cost_style.border_width_bottom = 1
-	cost_style.border_width_left = 1
-	cost_style.border_width_right = 1
+	cost_style.set_border_width_all(1)
 	cost_style.border_color = Color(0.7, 0.85, 1.0, 0.8)
 	_cost_circle.add_theme_stylebox_override("panel", cost_style)
 	add_child(_cost_circle)
@@ -129,8 +126,10 @@ func refresh() -> void:
 	_cost_label.text = str(card.get_cost())
 	_desc_label.text = "[center]%s[/center]" % card.get_description()
 	if card.data != null:
-		if card.data.image != null:
-			_art.texture = card.data.image
+		# Assign unconditionally (null clears it) so a reused view doesn't keep
+		# stale art when re-pointed at a card with no image — refresh() must be
+		# idempotent for the in-place hand reconcile in DeckbuilderCombat.
+		_art.texture = card.data.image
 		_type_label.text = _type_label_text(card.data.type)
 		_rarity_stripe.color = _rarity_color(card.data.rarity)
 	_update_frame()

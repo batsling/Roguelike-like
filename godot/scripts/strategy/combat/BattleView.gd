@@ -265,8 +265,7 @@ func _make_picker_dialog(title_text: String, close_cb: Callable) -> Panel:
 	var bg := StyleBoxFlat.new()
 	bg.bg_color = Color(0.10, 0.07, 0.14, 0.98)
 	bg.border_color = Color(0.6, 0.5, 0.3)
-	bg.border_width_left = 2; bg.border_width_right = 2
-	bg.border_width_top = 2; bg.border_width_bottom = 2
+	bg.set_border_width_all(2)
 	p.add_theme_stylebox_override("panel", bg)
 
 	var t := Label.new()

@@ -27,6 +27,10 @@ extends RefCounted
 enum TileType { FLOOR, WALL, COVER }
 enum SizeClass { SMALL, MEDIUM, LARGE }
 
+# Orthogonal neighbour offsets, hoisted so the path-check BFS doesn't
+# reallocate this array on every node expansion.
+const DIRS4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+
 const SIZE_DIMENSIONS := {
 	SizeClass.SMALL: Vector2i(12, 12),
 	SizeClass.MEDIUM: Vector2i(16, 16),
@@ -225,7 +229,7 @@ func _path_exists(from_pos: Vector2i, to: Vector2i) -> bool:
 	visited[from_pos] = true
 	while not frontier.is_empty():
 		var cur: Vector2i = frontier.pop_front()
-		for d in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
+		for d in DIRS4:
 			var nxt = cur + d
 			if not in_bounds(nxt) or visited.has(nxt):
 				continue

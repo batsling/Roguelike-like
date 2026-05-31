@@ -47,38 +47,10 @@ func _build(title: String, accent: Color, confirm_label: String) -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
-	var backdrop := ColorRect.new()
-	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	backdrop.color = Color(0, 0, 0, 0.72)
-	add_child(backdrop)
-
-	# Click-through swallower behind the panel — clicking outside does
-	# NOT dismiss because the player must make a choice. Confirm or
-	# wait. (Future "optional skip" would add a cancel button here.)
-	var swallow := Button.new()
-	swallow.set_anchors_preset(Control.PRESET_FULL_RECT)
-	swallow.flat = true
-	swallow.focus_mode = Control.FOCUS_NONE
-	add_child(swallow)
-
-	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.custom_minimum_size = Vector2(900, 560)
-	panel.size = Vector2(900, 560)
-	panel.position = -panel.size * 0.5
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.10, 0.08, 0.12, 0.98)
-	sb.border_color = accent
-	sb.border_width_left = 2
-	sb.border_width_right = 2
-	sb.border_width_top = 2
-	sb.border_width_bottom = 2
-	sb.corner_radius_top_left = 8
-	sb.corner_radius_top_right = 8
-	sb.corner_radius_bottom_left = 8
-	sb.corner_radius_bottom_right = 8
-	panel.add_theme_stylebox_override("panel", sb)
-	add_child(panel)
+	# No dismiss callback: clicking outside must NOT close this modal because
+	# the player has to make a choice. The blocker just swallows the click.
+	# (Future "optional skip" would pass a dismiss Callable here.)
+	var panel := ModalScaffold.build_panel(self, accent)
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 10)
