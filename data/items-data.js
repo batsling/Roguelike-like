@@ -201,7 +201,7 @@ const ITEMS_DATA = [
     "name": "Bowler Hat",
     "rarity": "Uncommon",
     "type": "Passive",
-    "description": "Gain +6 Charisma, but -2 Dexterity",
+    "description": "Gain +3 Luck and +18 Harvesting, but -3% Crit Chance",
     "game": "Brotato",
     "tags": [
       "wearable",

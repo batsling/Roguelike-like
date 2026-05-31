@@ -279,3 +279,44 @@ Blade / etc. are all melee in their JS originals.
   reroll resource UI lands when dice cards do.
 - **Rarity rolls weighted by Luck**: current reward / shop rolls are
   uniform. Wire `roll_chance_with_luck` once we add a rarity ladder.
+
+---
+
+## Harvesting + Crit (Phase 3b)
+
+Three new run stats live on `GameState` (`harvesting`, `crit_chance`,
+`crit_damage`) with matching `.tres` under `data/stats/`. They flow
+through `item_stat_bonus` like every other stat, so item passives
+(Bowler Hat: `+3 luck, +18 harvesting, -3 crit_chance`) and per-item
+`upgrade_level` scaling apply automatically — `crit_chance` /
+`harvesting` are outside `HEALTH_BUCKET`, so an upgraded copy bumps them
+by `upgrade_level` with no special-casing.
+
+| Stat | Start | Behavior |
+|---|---|---|
+| Harvesting | 0 | On `TriggerBus.game_beaten` (emitted from `Overworld._handle_victory_for`), gain gold = Harvesting. Handled by `Stats._on_game_beaten`. |
+| Crit Chance | 0 | Base crit %, may be negative. |
+| Crit Damage | 100 | Bonus % a crit adds. 100 → crit deals double damage. |
+
+**Crit roll** (`Stats.crit_chance_percent`, player-only):
+
+```
+crit% = clamp( max(0, 2 × Luck) + crit_chance , 0, 100 )
+```
+
+Luck only ever helps (negative Luck contributes 0); `crit_chance` is
+added raw. Resolved in `Stats.resolve_damage`: a PLAIN rng roll (Luck is
+already folded into the percent, so it does NOT route through
+`roll_chance_with_luck`). On a crit, `amount` is multiplied by
+`1 + crit_damage/100` **pre-block** (block soaks the boosted hit), and
+only for direct attacks — DoTs go through `apply_dot` and never reach the
+resolver; `damage_type == "true"` is excluded. `resolve_damage` returns
+`crit: bool` for scenes that want to surface "CRIT!". Works in all three
+modes since every mode shares the resolver.
+
+**Crit Chance Up status**: display-only mirror of the player's POSITIVE
+`crit_chance`, seeded in `apply_derived_statuses` (deckbuilder / action;
+strategy doesn't seed combat-start statuses yet, but crits still roll).
+The Luck portion of the roll stays hidden, and a negative `crit_chance`
+lowers the roll without showing a status. Icon falls back to Unknown.png
+until `images/statuses/CritChanceUp.png` is added.

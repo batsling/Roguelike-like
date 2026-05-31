@@ -83,14 +83,14 @@ func _refresh_top() -> void:
 		var a: GameData = Data.get_game(GameState.amulet_game_id)
 		if a != null:
 			amulet_name = a.display_name
-	_top_label.text = "HP %d/%d  Gold %d  Deck %d  Inv %d   |   STR %d DEX %d INT %d CHA %d CON %d LCK %d SPD %d   |   At: %s -> %s   |   Beaten: %d" % [
+	_top_label.text = "HP %d/%d  Gold %d  Deck %d  Inv %d   |   STR %d DEX %d INT %d CHA %d CON %d LCK %d SPD %d HRV %d CRIT %d%%   |   At: %s -> %s   |   Beaten: %d" % [
 		GameState.hp, GameState.max_hp,
 		GameState.gold,
 		GameState.deck.size(),
 		GameState.inventory.size(),
 		Stats.get_value(&"strength"), Stats.get_value(&"dexterity"), Stats.get_value(&"intelligence"),
 		Stats.get_value(&"charisma"), Stats.get_value(&"constitution"), Stats.get_value(&"luck"),
-		Stats.get_value(&"speed"),
+		Stats.get_value(&"speed"), Stats.get_value(&"harvesting"), Stats.crit_chance_percent(),
 		game_name, amulet_name,
 		GameState.total_games_beaten,
 	]
