@@ -298,21 +298,26 @@ by `upgrade_level` with no special-casing.
 | Crit Chance | 0 | Base crit %, may be negative. |
 | Crit Damage | 100 | Bonus % a crit adds. 100 → crit deals double damage. |
 
-**Crit roll** (`Stats.crit_chance_percent`, player-only):
+**Crit roll** — per-actor via `Stats.actor_crit_percent(actor)`:
 
-```
-crit% = clamp( max(0, 2 × Luck) + crit_chance , 0, 100 )
-```
+- **Player**: `clamp( max(0, 2 × Luck) + crit_chance , 0, 100 )`
+  (`Stats.crit_chance_percent`). Luck only ever helps (negative Luck
+  contributes 0); `crit_chance` is added raw. **Luck only benefits the
+  player** — no other actor draws crit from the Luck stat.
+- **Enemy / non-player**: only the `crit_chance_up` status applied to it
+  in combat (no status ⇒ 0%, can't crit). So an enemy crits iff
+  something gives it Crit Chance Up.
 
-Luck only ever helps (negative Luck contributes 0); `crit_chance` is
-added raw. Resolved in `Stats.resolve_damage`: a PLAIN rng roll (Luck is
-already folded into the percent, so it does NOT route through
+Resolved in `Stats.resolve_damage`: a PLAIN rng roll (Luck is already
+folded into the percent, so it does NOT route through
 `roll_chance_with_luck`). On a crit, `amount` is multiplied by
-`1 + crit_damage/100` **pre-block** (block soaks the boosted hit), and
-only for direct attacks — DoTs go through `apply_dot` and never reach the
-resolver; `damage_type == "true"` is excluded. `resolve_damage` returns
-`crit: bool` for scenes that want to surface "CRIT!". Works in all three
-modes since every mode shares the resolver.
+`Stats.crit_multiplier(source)` **pre-block** (block soaks the boosted
+hit) — the player scales with `crit_damage` (100 ⇒ ×2), an enemy crit is
+a flat ×2. Fires on **every combat damage type — melee, ranged, and
+magic**; only DoT ticks are excluded (they use `"true"` damage and route
+through `apply_dot`, never reaching the resolver). `resolve_damage`
+returns `crit: bool` for scenes that want to surface "CRIT!". Works in
+all three modes since every mode shares the resolver.
 
 **Crit Chance Up status**: display-only mirror of the player's POSITIVE
 `crit_chance`, seeded in `apply_derived_statuses` (deckbuilder / action;
