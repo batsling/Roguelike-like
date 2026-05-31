@@ -341,6 +341,8 @@ func _handle_victory_for(game_id: StringName) -> void:
 		GameState.visited_games.append(game_id)
 	GameState.total_games_beaten += 1
 	GameState.set_current_game(game_id)
+	# Notify item / stat listeners (Harvesting gold payout lives in Stats).
+	TriggerBus.emit_signal("game_beaten", {"game_id": game_id})
 	if gd != null:
 		GameLog.add("Defeated %s." % gd.display_name, Color(0.6, 1.0, 0.6))
 

@@ -63,6 +63,7 @@ const STATUS_ICONS := {
 	&"persistence": "Persistence.png",
 	&"thorns": "Thorns.png",
 	&"soul_link": "SoulLink.png",
+	&"crit_chance_up": "CritChanceUp.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -85,6 +86,15 @@ const PERSISTENCE_DEBUFFS: Array[StringName] = [
 func _ready() -> void:
 	_resolve_rng.randomize()
 	_load_stat_defs()
+	# Harvesting payout: beating a game grants gold equal to the stat.
+	TriggerBus.game_beaten.connect(_on_game_beaten)
+
+func _on_game_beaten(_ctx: Dictionary) -> void:
+	var harvest: int = get_value(&"harvesting")
+	if harvest <= 0:
+		return
+	GameState.change_gold(harvest)
+	GameLog.add("Harvesting: +%d gold." % harvest, Color(1.0, 0.85, 0.3))
 
 func _load_stat_defs() -> void:
 	var dir := DirAccess.open("res://data/stats/")
@@ -153,6 +163,14 @@ func apply_derived_statuses(actor: CombatActor, _mode: Mode) -> void:
 		var stacks: int = get_value(stat_id) / per
 		if stacks > 0:
 			actor.add_status(def.derived_status, stacks)
+	# Crit Chance Up is the in-combat display of the player's POSITIVE
+	# crit_chance stat — shown only while above 0. The Luck portion of the
+	# crit roll (max(0, 2 x Luck)) stays hidden, and a negative crit_chance
+	# still lowers the roll in resolve_damage but is never surfaced here.
+	if actor != null and ("is_player" in actor) and actor.is_player:
+		var cc: int = get_value(&"crit_chance")
+		if cc > 0:
+			actor.add_status(&"crit_chance_up", cc)
 	for s in GameState.pending_combat_statuses:
 		actor.add_status(s.get("status", &""), s.get("stacks", 0))
 	GameState.pending_combat_statuses.clear()
@@ -204,7 +222,7 @@ func damage_bonus(source, damage_type: String, mode: Mode, power_multiplier: int
 func resolve_damage(
 		source, target, base: int, effect: Dictionary,
 		mode: Mode, rng: RandomNumberGenerator = null) -> Dictionary:
-	var out := {"missed": false, "dodged": false, "blocked": 0, "hp_loss": 0}
+	var out := {"missed": false, "dodged": false, "blocked": 0, "hp_loss": 0, "crit": false}
 	if target == null:
 		return out
 	var r: RandomNumberGenerator = rng if rng != null else _resolve_rng
@@ -237,6 +255,18 @@ func resolve_damage(
 		return out
 
 	amount = maxi(0, amount)
+	# Critical hit — applied PRE-block so block soaks the boosted hit. Any
+	# attacker can crit: the player from Luck + crit_chance, an enemy only if
+	# it carries a Crit Chance Up status (see actor_crit_percent). Fires on
+	# every combat damage type — melee, ranged, AND magic; only DoT ticks are
+	# excluded (they use "true" damage and route through apply_dot, never
+	# reaching this resolver). actor_crit_percent already folds Luck in for
+	# the player, so this is a PLAIN roll (no double-counting of advantage).
+	if has_src and damage_type != "true":
+		var cc: int = actor_crit_percent(source)
+		if cc > 0 and r.randi_range(0, 99) < cc:
+			out.crit = true
+			amount = int(floor(amount * crit_multiplier(source)))
 	# Block absorption (skipped for no_block DoTs / piercing).
 	if not bool(effect.get("no_block", false)):
 		var absorbed: int = mini(maxi(0, target.block), amount)
@@ -300,6 +330,39 @@ func action_max_dash_charges() -> int:
 
 func roll_d20_with_luck(rng: RandomNumberGenerator) -> int:
 	return _luck_roll(rng, 20)
+
+# ---------------------------------------------------------------------------
+# Crit
+# ---------------------------------------------------------------------------
+
+# The PLAYER's effective crit chance for one hit, as a percent in [0, 100].
+#   crit% = max(0, 2 x Luck) + crit_chance
+# Luck only ever helps (negative Luck contributes 0); the crit_chance stat is
+# added raw (it can be negative — e.g. Bowler Hat's -3). Going over 100 does
+# nothing. Used by the HUD and by actor_crit_percent for the player actor.
+func crit_chance_percent() -> int:
+	var luck_term: int = maxi(0, 2 * get_value(&"luck"))
+	return clampi(luck_term + get_value(&"crit_chance"), 0, 100)
+
+# Per-hit crit chance for ANY combat actor, in [0, 100].
+#   - Player: the Luck + crit_chance formula above. Luck only helps the
+#     PLAYER — no other actor draws crit from the Luck stat.
+#   - Enemies / non-player: crit purely from a Crit Chance Up status applied
+#     to them in combat. No status => 0% (they can't crit).
+func actor_crit_percent(actor) -> int:
+	if actor != null and ("is_player" in actor) and actor.is_player:
+		return crit_chance_percent()
+	if actor != null and actor.has_method("get_status"):
+		return clampi(actor.get_status(&"crit_chance_up"), 0, 100)
+	return 0
+
+# Damage multiplier applied on a crit. The PLAYER scales with the crit_damage
+# stat (100 => x2); enemies have no crit_damage stat, so an enemy crit is a
+# flat double. Give enemies a crit_damage source here if that ever changes.
+func crit_multiplier(source) -> float:
+	if source != null and ("is_player" in source) and source.is_player:
+		return 1.0 + float(get_value(&"crit_damage")) / 100.0
+	return 2.0
 
 # ---------------------------------------------------------------------------
 # Addons (Fishing Weight et al)

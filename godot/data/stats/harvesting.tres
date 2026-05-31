@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StatDefinition" load_steps=2 format=3 uid="uid://stat_harvesting"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatDefinition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"harvesting"
+display_name = "Harvesting"
+description = "After beating a game, gain gold equal to your Harvesting."
+grants_event_roll_bonus = false
+derived_status = &""
+derived_per = 1
+mode_data = {}

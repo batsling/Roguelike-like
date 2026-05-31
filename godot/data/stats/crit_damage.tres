@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StatDefinition" load_steps=2 format=3 uid="uid://stat_crit_damage"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatDefinition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"crit_damage"
+display_name = "Crit Damage"
+description = "Percent bonus damage a critical hit deals. 100 means a crit deals double damage."
+grants_event_roll_bonus = false
+derived_status = &""
+derived_per = 1
+mode_data = {}

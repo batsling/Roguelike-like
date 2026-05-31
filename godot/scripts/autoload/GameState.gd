@@ -46,6 +46,17 @@ var constitution: int = 0
 var luck: int = 0
 var speed: int = 0
 
+# Harvesting: after beating a game, the player gains gold equal to this
+# stat (paid out by Stats on TriggerBus.game_beaten). Item-granted.
+var harvesting: int = 0
+
+# Crit: crit_chance is the player's base crit % (item-granted, may be
+# negative). crit_damage is the % bonus a crit adds — 100 means a crit
+# deals double damage. The live per-hit roll folds Luck in via
+# Stats.crit_chance_percent(); see godot/docs/stat-dispatcher.md.
+var crit_chance: int = 0
+var crit_damage: int = 100
+
 # === Economy ===
 var gold: int = 99
 
@@ -155,6 +166,9 @@ func reset_run() -> void:
 	constitution = 0
 	luck = 0
 	speed = 0
+	harvesting = 0
+	crit_chance = 0
+	crit_damage = 100
 	gold = 99
 	deck.clear()
 	inventory.clear()

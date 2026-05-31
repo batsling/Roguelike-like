@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StatDefinition" load_steps=2 format=3 uid="uid://stat_crit_chance"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatDefinition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"crit_chance"
+display_name = "Crit Chance"
+description = "Base critical-hit chance. Per-hit roll is max(0, 2 x Luck) + Crit Chance, capped at 100%. A crit deals bonus damage equal to Crit Damage. Surfaced in combat as the Crit Chance Up status only while above 0."
+grants_event_roll_bonus = false
+derived_status = &""
+derived_per = 1
+mode_data = {}
