@@ -18,8 +18,14 @@ var _current_scene: Node = null
 var _pending_outcome: Dictionary = {}
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
+# Persistent backpack overlay, mounted on a high CanvasLayer so it floats
+# above whatever scene is swapped in (overworld / combat / map / events) and
+# survives those swaps. Toggled with the "backpack" action (Tab).
+var _backpack: Backpack = null
+
 func _ready() -> void:
 	_rng.randomize()
+	_mount_backpack()
 	# MainMenu (or a Continue-load) is expected to have populated GameState
 	# before this scene is reached. If we land here cold (e.g. the user is
 	# running scenes/Main.tscn directly from the editor for testing), fall
@@ -139,6 +145,30 @@ func _swap_to(new_scene: Node) -> void:
 		_current_scene = null
 	add_child(new_scene)
 	_current_scene = new_scene
+	# Keep the backpack overlay on top of the freshly added scene.
+	if _backpack != null:
+		move_child(_backpack.get_parent(), get_child_count() - 1)
+
+# ---------------------------------------------------------------------------
+# Backpack overlay
+# ---------------------------------------------------------------------------
+
+func _mount_backpack() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 128
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(layer)
+	_backpack = Backpack.new()
+	layer.add_child(_backpack)
+
+func _input(event: InputEvent) -> void:
+	# Tab toggles the backpack from anywhere in the run. Handled here (before
+	# GUI focus traversal) so Tab doesn't double as focus-next, and accepted
+	# so the active scene below doesn't also react.
+	if event.is_action_pressed("backpack"):
+		if _backpack != null:
+			_backpack.toggle()
+		get_viewport().set_input_as_handled()
 
 # ---------------------------------------------------------------------------
 # Enemy pool helper — currently mode-agnostic since every fight is

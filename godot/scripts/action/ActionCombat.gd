@@ -169,6 +169,13 @@ var projectiles: Array = []
 
 # ---------------------------------------------------------------------------
 
+func _exit_tree() -> void:
+	# Leaving the arena (floor cleared, died, or backed out) drops the live
+	# combat context and any consumable buffs still hanging around.
+	if GameState.combat_scene == self:
+		GameState.clear_combat_context()
+	GameState.clear_temp_buffs()
+
 func _ready() -> void:
 	_rng.randomize()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -236,12 +243,18 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	# statuses, then re-derive. HP persists across the whole floor via
 	# GameState. Reload the loadout so equipment swaps (Tab screen) apply,
 	# which also re-charges the ability cooldowns.
+	# Consumable buffs last exactly one room: clear them BEFORE re-deriving so
+	# a pill used last room doesn't get re-applied via apply_derived_statuses.
+	GameState.clear_temp_buffs()
 	player_actor.hp = GameState.hp
 	player_actor.max_hp = GameState.max_hp
 	player_actor.block = 0
 	player_actor.statuses.clear()
 	Stats.apply_derived_statuses(player_actor, Stats.Mode.ACTION)
 	_load_loadout()
+	# Register the live context so the backpack / active slot fire pills into
+	# this room with the player actor as target.
+	GameState.set_combat_context(self, player_actor)
 
 	player_pos = _entry_position(entry_dir)
 	player_facing = Vector2.RIGHT

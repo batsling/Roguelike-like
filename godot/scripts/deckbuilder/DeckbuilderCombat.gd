@@ -100,6 +100,9 @@ func start_combat(spawn_list: Array) -> void:
 	_init_actors(spawn_list)
 	_init_deck()
 	_apply_derived_statuses()
+	# Register the live context so the backpack can fire consumables into
+	# this fight; the player CombatActor is the use target.
+	GameState.set_combat_context(self, player)
 	_build_enemy_views()
 	turn = 0
 	max_energy = GameState.max_energy
@@ -286,6 +289,9 @@ func _check_combat_end() -> bool:
 		GameLog.add("You have been defeated.", Color(1.0, 0.4, 0.4))
 		TriggerBus.emit_signal("combat_ended", {"victory": false, "scene": self})
 		emit_signal("combat_ended", false)
+		# Consumable buffs last one combat — drop them and the live context.
+		GameState.clear_combat_context()
+		GameState.clear_temp_buffs()
 		_show_end_overlay(false)
 		_refresh_ui()
 		return true
@@ -302,6 +308,9 @@ func _check_combat_end() -> bool:
 		TriggerBus.emit_signal("combat_ended", {"victory": true, "scene": self})
 		emit_signal("combat_ended", true)
 		_award_combat_gold()
+		# Consumable buffs last one combat — drop them and the live context.
+		GameState.clear_combat_context()
+		GameState.clear_temp_buffs()
 		_refresh_ui()
 		_show_reward_modal()
 		return true
