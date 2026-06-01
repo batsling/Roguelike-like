@@ -312,8 +312,14 @@ func _on_combat_started(room_data, encounter: Array, battle_map, turn_manager) -
 	_battle_overlay = BattleViewScript.new()
 	add_child(_battle_overlay)
 	_battle_overlay.set_encounter(room_data, encounter, battle_map, turn_manager)
+	# Register the live context so the backpack can fire pills into this
+	# battle, targeting the player unit.
+	GameState.set_combat_context(_battle_overlay, _battle_overlay.get_player_unit())
 
 func _on_combat_ended(result: String) -> void:
+	# Consumable buffs last one battle.
+	GameState.clear_combat_context()
+	GameState.clear_temp_buffs()
 	if _battle_overlay != null:
 		_battle_overlay.queue_free()
 		_battle_overlay = null

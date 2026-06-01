@@ -122,6 +122,14 @@ func _ready() -> void:
 	_loot_rng.randomize()
 	_build_ui()
 
+# The player-controlled unit in this battle, or null. Used by the backpack /
+# consumable system to target pill effects at the player.
+func get_player_unit():
+	for u in _units:
+		if u != null and u.is_player:
+			return u
+	return null
+
 func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager = null) -> void:
 	_battle_map = battle_map
 	_turn_manager = turn_manager
