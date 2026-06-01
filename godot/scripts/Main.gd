@@ -122,7 +122,31 @@ func _on_floor_closed(was_victory: bool, target_game_id: StringName) -> void:
 	# single choke point every game-floor scene funnels back through.
 	GameState.games_played += 1
 	_pending_outcome = {"victory": was_victory, "game_id": target_game_id}
-	_show_overworld()
+	# Beating a section (any of the three modes) pays out a reward: gold +
+	# one item choice, mirroring the HTML prototype. Defeat ends the run, so
+	# it skips straight back to the overworld.
+	if was_victory:
+		_show_section_reward()
+	else:
+		_show_overworld()
+
+# Gold by run difficulty tier — matches the HTML prototype's per-victory
+# table (Low 10 / Medium 15 / High 25 / Insane 35), keyed off the run tier
+# rather than a single enemy's difficulty.
+const SECTION_GOLD_BY_TIER := [10, 15, 25, 35]
+
+func _show_section_reward() -> void:
+	var tier: int = RunDifficulty.current_tier()
+	var gold: int = SECTION_GOLD_BY_TIER[clampi(tier, 0, SECTION_GOLD_BY_TIER.size() - 1)]
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	add_child(layer)
+	var reward := RewardScreen.new()
+	layer.add_child(reward)
+	reward.closed.connect(func():
+		layer.queue_free()
+		_show_overworld())
+	reward.setup(gold)
 
 func _show_combat(game_id: StringName) -> void:
 	# Direct-combat entry (kept for action / strategy modes that won't
