@@ -65,6 +65,8 @@ var _hand_views: Array[CardView] = []
 # Targeting mode (card selected, waiting for enemy click)
 var _selected_card: CardInstance = null
 var _targeting: bool = false
+# Following arrow shown while choosing an enemy target for a card.
+var _targeting_arrow: TargetingArrow = null
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -86,6 +88,10 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
 	_rng.randomize()
+	# Targeting arrow overlay (added last so it draws on top; ignores mouse so
+	# enemy clicks still land).
+	_targeting_arrow = TargetingArrow.new()
+	add_child(_targeting_arrow)
 	_end_turn_btn.pressed.connect(_on_end_turn)
 	_draw_btn.pressed.connect(_on_pile_clicked.bind("draw"))
 	_discard_btn.pressed.connect(_on_pile_clicked.bind("discard"))
@@ -597,6 +603,9 @@ func _try_play_card(card: CardInstance) -> void:
 	if card.wants_target():
 		_selected_card = card
 		_targeting = true
+		if _targeting_arrow != null:
+			# Origin near the hand (bottom-center); the arrow tracks the cursor.
+			_targeting_arrow.start(Vector2(size.x * 0.5, size.y - 80.0))
 		GameLog.add("Choose a target for %s." % card.get_display_name(), Color(0.7, 0.9, 1.0))
 		_refresh_ui()
 	else:
@@ -617,6 +626,8 @@ func _on_enemy_clicked(idx: int) -> void:
 func _cancel_targeting() -> void:
 	_selected_card = null
 	_targeting = false
+	if _targeting_arrow != null:
+		_targeting_arrow.stop()
 	_refresh_ui()
 
 func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
