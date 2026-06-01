@@ -75,6 +75,7 @@ func _register_defaults() -> void:
 	register("gain_hp", _h_gain_hp)
 	register("gain_max_hp", _h_gain_max_hp)
 	register("bump_card_effect", _h_bump_card_effect)
+	register("temp_stat", _h_temp_stat)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -120,11 +121,15 @@ func _pick_random_enemy(scene: Variant) -> Variant:
 
 func _h_block(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
-	if scene == null or not scene.has_method("gain_block"):
+	if scene != null:
+		if scene.has_method("gain_block"):
+			# Block defaults to gaining on self
+			var target: Variant = ctx.get("target") if effect.get("target", "self") != "self" else ctx.get("source")
+			scene.gain_block(target, effect.get("value", 0))
 		return
-	# Block defaults to gaining on self
-	var target: Variant = ctx.get("target") if effect.get("target", "self") != "self" else ctx.get("source")
-	scene.gain_block(target, effect.get("value", 0))
+	# Scene-less (event use): bank the block so the next chunk of event
+	# damage is soaked. Percs uses this path when played from the event bar.
+	GameState.add_event_block(int(effect.get("value", 0)))
 
 func _h_heal(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -391,6 +396,33 @@ func _h_bump_card_effect(effect: Dictionary, ctx: Dictionary) -> void:
 		bumped += 1
 	if bumped > 0:
 		GameState.emit_signal("deck_changed")
+
+func _h_temp_stat(effect: Dictionary, ctx: Dictionary) -> void:
+	# Temporary stat buff from a consumable (pills). Adds to the persistent
+	# temp layer so event rolls and the next combat-start derived-status pass
+	# both see it. When used MID-COMBAT, also applies the equivalent derived
+	# status delta to the player actor right now — apply_derived_statuses only
+	# runs at combat start, so a pill popped mid-fight wouldn't otherwise
+	# convert (5 STR -> +1 Power, 5 DEX -> +1 Defense, 5 INT -> +1 Arcane,
+	# 5 CHA -> +1 Persistence). Luck/Speed have no derived status and are read
+	# live from get_value() by their consumers.
+	var stat := StringName(String(effect.get("stat", "")))
+	var value: int = int(effect.get("value", 0))
+	if stat == &"" or value == 0:
+		return
+	GameState.add_temp_stat(stat, value)
+	var actor: Variant = ctx.get("source")
+	if actor == null or not actor.has_method("add_status"):
+		return
+	var def: StatDefinition = Stats.get_definition(stat)
+	if def == null or def.derived_status == &"":
+		return
+	var per: int = maxi(1, def.derived_per)
+	var total: int = Stats.get_value(stat)
+	@warning_ignore("integer_division")
+	var delta: int = total / per - (total - value) / per
+	if delta != 0:
+		actor.add_status(def.derived_status, delta)
 
 func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 	# Roll once on the EffectSystem RNG, with luck advantage applied

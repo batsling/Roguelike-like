@@ -65,6 +65,8 @@ var _hand_views: Array[CardView] = []
 # Targeting mode (card selected, waiting for enemy click)
 var _selected_card: CardInstance = null
 var _targeting: bool = false
+# Following arrow shown while choosing an enemy target for a card.
+var _targeting_arrow: TargetingArrow = null
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -86,6 +88,10 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
 	_rng.randomize()
+	# Targeting arrow overlay (added last so it draws on top; ignores mouse so
+	# enemy clicks still land).
+	_targeting_arrow = TargetingArrow.new()
+	add_child(_targeting_arrow)
 	_end_turn_btn.pressed.connect(_on_end_turn)
 	_draw_btn.pressed.connect(_on_pile_clicked.bind("draw"))
 	_discard_btn.pressed.connect(_on_pile_clicked.bind("discard"))
@@ -100,6 +106,9 @@ func start_combat(spawn_list: Array) -> void:
 	_init_actors(spawn_list)
 	_init_deck()
 	_apply_derived_statuses()
+	# Register the live context so the backpack can fire consumables into
+	# this fight; the player CombatActor is the use target.
+	GameState.set_combat_context(self, player)
 	_build_enemy_views()
 	turn = 0
 	max_energy = GameState.max_energy
@@ -286,6 +295,9 @@ func _check_combat_end() -> bool:
 		GameLog.add("You have been defeated.", Color(1.0, 0.4, 0.4))
 		TriggerBus.emit_signal("combat_ended", {"victory": false, "scene": self})
 		emit_signal("combat_ended", false)
+		# Consumable buffs last one combat — drop them and the live context.
+		GameState.clear_combat_context()
+		GameState.clear_temp_buffs()
 		_show_end_overlay(false)
 		_refresh_ui()
 		return true
@@ -302,6 +314,9 @@ func _check_combat_end() -> bool:
 		TriggerBus.emit_signal("combat_ended", {"victory": true, "scene": self})
 		emit_signal("combat_ended", true)
 		_award_combat_gold()
+		# Consumable buffs last one combat — drop them and the live context.
+		GameState.clear_combat_context()
+		GameState.clear_temp_buffs()
 		_refresh_ui()
 		_show_reward_modal()
 		return true
@@ -588,6 +603,9 @@ func _try_play_card(card: CardInstance) -> void:
 	if card.wants_target():
 		_selected_card = card
 		_targeting = true
+		if _targeting_arrow != null:
+			# Origin near the hand (bottom-center); the arrow tracks the cursor.
+			_targeting_arrow.start(Vector2(size.x * 0.5, size.y - 80.0))
 		GameLog.add("Choose a target for %s." % card.get_display_name(), Color(0.7, 0.9, 1.0))
 		_refresh_ui()
 	else:
@@ -608,6 +626,8 @@ func _on_enemy_clicked(idx: int) -> void:
 func _cancel_targeting() -> void:
 	_selected_card = null
 	_targeting = false
+	if _targeting_arrow != null:
+		_targeting_arrow.stop()
 	_refresh_ui()
 
 func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:

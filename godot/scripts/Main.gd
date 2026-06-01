@@ -18,8 +18,14 @@ var _current_scene: Node = null
 var _pending_outcome: Dictionary = {}
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
+# Persistent backpack overlay, mounted on a high CanvasLayer so it floats
+# above whatever scene is swapped in (overworld / combat / map / events) and
+# survives those swaps. Toggled with the "backpack" action (Tab).
+var _backpack: Backpack = null
+
 func _ready() -> void:
 	_rng.randomize()
+	_mount_backpack()
 	# MainMenu (or a Continue-load) is expected to have populated GameState
 	# before this scene is reached. If we land here cold (e.g. the user is
 	# running scenes/Main.tscn directly from the editor for testing), fall
@@ -116,7 +122,31 @@ func _on_floor_closed(was_victory: bool, target_game_id: StringName) -> void:
 	# single choke point every game-floor scene funnels back through.
 	GameState.games_played += 1
 	_pending_outcome = {"victory": was_victory, "game_id": target_game_id}
-	_show_overworld()
+	# Beating a section (any of the three modes) pays out a reward: gold +
+	# one item choice, mirroring the HTML prototype. Defeat ends the run, so
+	# it skips straight back to the overworld.
+	if was_victory:
+		_show_section_reward()
+	else:
+		_show_overworld()
+
+# Gold by run difficulty tier — matches the HTML prototype's per-victory
+# table (Low 10 / Medium 15 / High 25 / Insane 35), keyed off the run tier
+# rather than a single enemy's difficulty.
+const SECTION_GOLD_BY_TIER := [10, 15, 25, 35]
+
+func _show_section_reward() -> void:
+	var tier: int = RunDifficulty.current_tier()
+	var gold: int = SECTION_GOLD_BY_TIER[clampi(tier, 0, SECTION_GOLD_BY_TIER.size() - 1)]
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	add_child(layer)
+	var reward := RewardScreen.new()
+	layer.add_child(reward)
+	reward.closed.connect(func():
+		layer.queue_free()
+		_show_overworld())
+	reward.setup(gold)
 
 func _show_combat(game_id: StringName) -> void:
 	# Direct-combat entry (kept for action / strategy modes that won't
@@ -139,6 +169,30 @@ func _swap_to(new_scene: Node) -> void:
 		_current_scene = null
 	add_child(new_scene)
 	_current_scene = new_scene
+	# Keep the backpack overlay on top of the freshly added scene.
+	if _backpack != null:
+		move_child(_backpack.get_parent(), get_child_count() - 1)
+
+# ---------------------------------------------------------------------------
+# Backpack overlay
+# ---------------------------------------------------------------------------
+
+func _mount_backpack() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 128
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(layer)
+	_backpack = Backpack.new()
+	layer.add_child(_backpack)
+
+func _input(event: InputEvent) -> void:
+	# Tab toggles the backpack from anywhere in the run. Handled here (before
+	# GUI focus traversal) so Tab doesn't double as focus-next, and accepted
+	# so the active scene below doesn't also react.
+	if event.is_action_pressed("backpack"):
+		if _backpack != null:
+			_backpack.toggle()
+		get_viewport().set_input_as_handled()
 
 # ---------------------------------------------------------------------------
 # Enemy pool helper — currently mode-agnostic since every fight is

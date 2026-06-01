@@ -124,7 +124,10 @@ func get_value(stat_id: StringName) -> int:
 	# item_stat_bonus — direct reads return the right value.
 	var base: int = int(GameState.get(String(stat_id)))
 	var bonus: int = int(GameState.item_stat_bonus.get(String(stat_id), 0))
-	return base + bonus
+	# Temporary consumable buffs (pills) layer on top; cleared at the
+	# combat/room/event boundary by GameState.clear_temp_buffs().
+	var temp: int = int(GameState.temp_stat_bonus.get(String(stat_id), 0))
+	return base + bonus + temp
 
 func get_definition(stat_id: StringName) -> StatDefinition:
 	return _stat_defs.get(stat_id)
