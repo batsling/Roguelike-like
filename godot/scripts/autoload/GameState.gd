@@ -124,6 +124,30 @@ const DEFAULT_CARD_USES_BY_RARITY := [4, 4, 3, 2, 2]
 var action_left_card_id: StringName = &""
 var action_right_card_id: StringName = &""
 
+# Pre-combat usable "active slot" for action mode — one USABLE consumable
+# id, fired with Q during action combat. Cleared when the item is spent.
+var action_active_item_id: StringName = &""
+
+# === Temporary (consumable) buffs ===
+# Layers on top of base + item bonuses in Stats.get_value(). Populated by
+# the `temp_stat` effect when a pill is used; lasts one combat
+# (deckbuilder/strategy), one room (action), or until an event closes — then
+# cleared by clear_temp_buffs() at the matching boundary.
+var temp_stat_bonus: Dictionary = {}
+# Block granted by a consumable (Percs) while resolving an event. Combat
+# block lives on the player CombatActor; events have no actor, so this pool
+# soaks the next chunk of event damage. Cleared with the temp buffs.
+var event_block: int = 0
+
+# Live combat context, registered by whichever combat scene is running so
+# globally-invoked item uses (backpack / active slot) route their effects
+# into the running fight. Empty when not in combat.
+var combat_scene = null
+var combat_player = null
+# True while an EventModal is open — the only non-combat place a pill may be
+# used (gates the backpack's Use button).
+var event_active: bool = false
+
 # === Run-scope resources ===
 # Skip is removed from the stat set — the only "skip" is the
 # verification-screen "didn't play the real game" choice with the
@@ -179,6 +203,12 @@ func reset_run() -> void:
 	card_uses.clear()
 	action_left_card_id = &""
 	action_right_card_id = &""
+	action_active_item_id = &""
+	temp_stat_bonus.clear()
+	event_block = 0
+	combat_scene = null
+	combat_player = null
+	event_active = false
 	dash_charges = 0
 	reroll_charges = 0
 	fov_bonus = 0
@@ -284,6 +314,97 @@ func change_gold(delta: int) -> void:
 
 func is_dead() -> bool:
 	return hp <= 0
+
+# ---------------------------------------------------------------------------
+# Usable consumables + temporary buffs
+# ---------------------------------------------------------------------------
+
+# Combat scenes register themselves here at start (and clear at end) so the
+# global backpack / action active-slot can fire a pill's effects into the
+# live fight without holding a direct reference to the scene.
+func set_combat_context(scene, player) -> void:
+	combat_scene = scene
+	combat_player = player
+
+func clear_combat_context() -> void:
+	combat_scene = null
+	combat_player = null
+
+# Pills may only be used in combat or while an event roll is open.
+func can_use_items() -> bool:
+	return combat_scene != null or event_active
+
+# Activates a USABLE consumable from inventory: fires its item_used triggers
+# through EffectSystem (routed into the live combat scene when one is
+# registered, else scene-less for events), spends a use, and removes the item
+# when depleted. Returns true if the item was used.
+func use_item(item: ItemData) -> bool:
+	if item == null or item.kind != ItemData.ItemKind.USABLE:
+		return false
+	if not can_use_items():
+		return false
+	if inventory.find(item) == -1:
+		return false
+	var ctx := {
+		"source": combat_player,
+		"target": combat_player,
+		"scene": combat_scene,
+		"card": null,
+		"item": item,
+	}
+	for trig in item.triggers:
+		if String(trig.get("on", "")) != "item_used":
+			continue
+		EffectSystem.apply_all(trig.get("effects", []), ctx)
+	TriggerBus.emit_signal("item_used", {"item": item})
+	# Spend a use; -1 is infinite. When the last use is spent, drop the item
+	# (and clear the action slot if it pointed at the final copy).
+	if item.max_uses > 0:
+		item.max_uses -= 1
+		if item.max_uses <= 0:
+			if action_active_item_id == item.id and _count_items(item.id) <= 1:
+				action_active_item_id = &""
+			inventory.erase(item)
+	_recompute_item_bonuses()
+	emit_signal("inventory_changed")
+	return true
+
+func _count_items(id: StringName) -> int:
+	var n: int = 0
+	for it in inventory:
+		if it is ItemData and it.id == id:
+			n += 1
+	return n
+
+# Adds to the temporary stat layer that Stats.get_value() folds in. Used by
+# the `temp_stat` effect; cleared at the combat/room/event boundary.
+func add_temp_stat(stat: StringName, amount: int) -> void:
+	if amount == 0:
+		return
+	var key := String(stat)
+	temp_stat_bonus[key] = int(temp_stat_bonus.get(key, 0)) + amount
+	emit_signal("stats_changed")
+
+func add_event_block(amount: int) -> void:
+	event_block = maxi(0, event_block + amount)
+
+# Drains event_block against incoming event damage, returning the HP loss
+# left after the shield soaks what it can.
+func absorb_event_damage(amount: int) -> int:
+	if amount <= 0 or event_block <= 0:
+		return maxi(0, amount)
+	var soaked: int = mini(event_block, amount)
+	event_block -= soaked
+	return amount - soaked
+
+# Wipes consumable buffs. Called at combat end (deckbuilder/strategy), on
+# leaving a room (action), and when an event closes.
+func clear_temp_buffs() -> void:
+	if temp_stat_bonus.is_empty() and event_block == 0:
+		return
+	temp_stat_bonus.clear()
+	event_block = 0
+	emit_signal("stats_changed")
 
 # ---------------------------------------------------------------------------
 # Inventory mutation — every add goes through here so each entry is its

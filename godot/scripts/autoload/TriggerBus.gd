@@ -42,6 +42,7 @@ signal game_beaten(ctx: Dictionary)         # ctx.game_id
 signal floor_entered(ctx: Dictionary)       # ctx.game_id
 signal item_acquired(ctx: Dictionary)       # ctx.item
 signal item_lost(ctx: Dictionary)
+signal item_used(ctx: Dictionary)           # ctx.item — a USABLE consumable was activated
 signal curse_applied(ctx: Dictionary)
 signal curse_removed(ctx: Dictionary)
 @warning_ignore_restore("unused_signal")

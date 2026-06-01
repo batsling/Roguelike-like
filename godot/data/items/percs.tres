@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_percs"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/Percs.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"percs"
+display_name = "Percs"
+kind = 2
+rarity = 0
+description = "Gain +10 Block. In combat it shields you; in an event it absorbs the next 10 damage."
+triggers = [{
+"on": "item_used",
+"effects": [{
+"type": "block",
+"value": 10,
+"target": "self"
+}]
+}]
+stat_bonuses = {}
+scaling = []
+max_uses = 1
+source_game = "Mewgenics"
+tags = PackedStringArray("drug", "pill", "consumable")
+image = ExtResource("2_img")
