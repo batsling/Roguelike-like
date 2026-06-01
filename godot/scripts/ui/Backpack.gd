@@ -13,7 +13,7 @@ extends Control
 # PROCESS_MODE_ALWAYS and pauses the tree while open so real-time action
 # combat freezes behind it.
 
-enum Tab { ITEMS, LOOT }
+enum Tab { ITEMS, LOOT, GEAR }
 enum SortMode { PICKUP, RARITY, NAME }
 
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
@@ -32,6 +32,7 @@ var _sort: SortMode = SortMode.PICKUP
 var _panel: PanelContainer
 var _tab_items_btn: Button
 var _tab_loot_btn: Button
+var _tab_gear_btn: Button
 var _sort_bar: HBoxContainer
 var _list_vbox: VBoxContainer
 var _hint_label: Label
@@ -120,6 +121,11 @@ func _build_ui() -> void:
 	_tab_loot_btn.toggle_mode = true
 	_tab_loot_btn.pressed.connect(func(): _set_tab(Tab.LOOT))
 	tabs.add_child(_tab_loot_btn)
+	_tab_gear_btn = Button.new()
+	_tab_gear_btn.text = "Gear"
+	_tab_gear_btn.toggle_mode = true
+	_tab_gear_btn.pressed.connect(func(): _set_tab(Tab.GEAR))
+	tabs.add_child(_tab_gear_btn)
 
 	# Sort bar (Items tab only).
 	_sort_bar = HBoxContainer.new()
@@ -169,16 +175,20 @@ func _set_sort(mode: SortMode) -> void:
 func _refresh() -> void:
 	_tab_items_btn.button_pressed = _tab == Tab.ITEMS
 	_tab_loot_btn.button_pressed = _tab == Tab.LOOT
+	_tab_gear_btn.button_pressed = _tab == Tab.GEAR
 	_sort_bar.visible = _tab == Tab.ITEMS
 	for b in _sort_bar.get_children():
 		if b is Button and b.has_meta("sort_mode"):
 			b.modulate = Color(1, 1, 0.6) if int(b.get_meta("sort_mode")) == int(_sort) else Color.WHITE
 	for child in _list_vbox.get_children():
 		child.queue_free()
-	if _tab == Tab.ITEMS:
-		_render_items()
-	else:
-		_render_loot()
+	match _tab:
+		Tab.ITEMS:
+			_render_items()
+		Tab.LOOT:
+			_render_loot()
+		Tab.GEAR:
+			_render_gear()
 
 func _render_items() -> void:
 	var items: Array = _sorted_items()
@@ -293,3 +303,124 @@ func _render_loot() -> void:
 		empty.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 		_list_vbox.add_child(empty)
 	_hint_label.text = "Potions, scrolls, keys and other findings."
+
+# ------------------------------------------------------------------
+# Gear tab — action-combat loadout (doubles as the equipment screen).
+# Equipment can't be changed mid-combat (the action rule); the rows go
+# read-only whenever a combat is live.
+# ------------------------------------------------------------------
+
+func _render_gear() -> void:
+	var locked: bool = GameState.combat_scene != null
+	if locked:
+		var note := Label.new()
+		note.text = "You can't change equipment during combat."
+		note.add_theme_color_override("font_color", Color(1.0, 0.7, 0.5))
+		_list_vbox.add_child(note)
+	_list_vbox.add_child(_gear_row(
+		"Left click (LMB)", _card_name(GameState.action_left_card_id),
+		func(): _cycle_click_slot(0), locked))
+	_list_vbox.add_child(_gear_row(
+		"Right click (RMB)", _card_name(GameState.action_right_card_id),
+		func(): _cycle_click_slot(1), locked))
+	_list_vbox.add_child(_gear_row(
+		"Active item (Q)", _item_name(GameState.action_active_item_id),
+		_cycle_active_item, locked))
+	_hint_label.text = "Locked while fighting." if locked \
+		else "Set your action-combat click cards and the consumable you pop with Q. Strikes/weapons only in click slots."
+
+func _gear_row(label_text: String, value_text: String, on_change: Callable, locked: bool) -> Control:
+	var row := PanelContainer.new()
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 10)
+	row.add_child(hbox)
+	var lbl := Label.new()
+	lbl.text = label_text
+	lbl.custom_minimum_size = Vector2(180, 0)
+	hbox.add_child(lbl)
+	var val := Label.new()
+	val.text = value_text
+	val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	val.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+	hbox.add_child(val)
+	var btn := Button.new()
+	btn.text = "Change"
+	btn.disabled = locked
+	btn.pressed.connect(on_change)
+	hbox.add_child(btn)
+	return row
+
+func _card_name(id: StringName) -> String:
+	if id == &"":
+		return "(none)"
+	var c: CardData = Data.get_card(id)
+	return c.display_name if c != null else String(id)
+
+func _item_name(id: StringName) -> String:
+	if id == &"":
+		return "(none)"
+	var it: ItemData = Data.get_item(id)
+	return it.display_name if it != null else String(id)
+
+func _usable_item_ids() -> Array:
+	var out: Array = []
+	for it in GameState.inventory:
+		if it is ItemData and it.kind == ItemData.ItemKind.USABLE and not out.has(it.id):
+			out.append(it.id)
+	return out
+
+func _eligible_click_ids() -> Array:
+	var out: Array = []
+	for c in GameState.deck:
+		if c is CardInstance and c.data != null:
+			var id: StringName = c.data.id
+			if not out.has(id) and GameState.is_click_eligible(id):
+				out.append(id)
+	return out
+
+func _would_dual_strike(slot: int, cand: StringName) -> bool:
+	# Only one Strike across the two click slots (mirrors EquipmentScreen).
+	if cand == &"":
+		return false
+	var cd: CardData = Data.get_card(cand)
+	if cd == null or not cd.tags.has("strike"):
+		return false
+	var other_id: StringName = GameState.action_right_card_id if slot == 0 else GameState.action_left_card_id
+	var oc: CardData = Data.get_card(other_id)
+	return oc != null and oc.tags.has("strike")
+
+func _cycle_click_slot(slot: int) -> void:
+	var ids: Array = _eligible_click_ids()
+	if ids.is_empty():
+		GameLog.add("No Strikes or weapons in your deck to slot.", Color(0.85, 0.7, 0.4))
+		return
+	var options: Array = ids.duplicate()
+	options.push_front(&"")
+	var cur_id: StringName = GameState.action_left_card_id if slot == 0 else GameState.action_right_card_id
+	var idx: int = options.find(cur_id)
+	if idx == -1:
+		idx = 0
+	var n: int = options.size()
+	for step in range(1, n + 1):
+		var cand: StringName = options[(idx + step) % n]
+		if _would_dual_strike(slot, cand):
+			continue
+		if slot == 0:
+			GameState.action_left_card_id = cand
+		else:
+			GameState.action_right_card_id = cand
+		break
+	_refresh()
+
+func _cycle_active_item() -> void:
+	var ids: Array = _usable_item_ids()
+	if ids.is_empty():
+		GameLog.add("No usable items to slot.", Color(0.85, 0.7, 0.4))
+		return
+	var options: Array = ids.duplicate()
+	options.push_front(&"")
+	var cur: int = options.find(GameState.action_active_item_id)
+	if cur == -1:
+		cur = 0
+	GameState.action_active_item_id = options[(cur + 1) % options.size()]
+	_refresh()
