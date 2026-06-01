@@ -523,6 +523,27 @@ func _process_player_input(delta: float) -> void:
 		_fire_click_card(right_card)
 		right_cd = right_max_cd
 
+	# Q pops the pre-assigned active consumable (pill). just_pressed so a held
+	# key fires once; use_item sees the live combat context set in start_room.
+	if Input.is_action_just_pressed("use_active_item"):
+		_use_active_item()
+
+func _use_active_item() -> void:
+	if GameState.action_active_item_id == &"":
+		GameLog.add("No active item slotted (assign one on the equipment screen).", Color(0.85, 0.7, 0.4))
+		return
+	var item: ItemData = null
+	for it in GameState.inventory:
+		if it is ItemData and it.id == GameState.action_active_item_id and it.kind == ItemData.ItemKind.USABLE:
+			item = it
+			break
+	if item == null:
+		GameLog.add("Active item is no longer in your backpack.", Color(0.85, 0.7, 0.4))
+		GameState.action_active_item_id = &""
+		return
+	if GameState.use_item(item):
+		GameLog.add("Used %s." % item.display_name, Color(0.85, 1.0, 0.7))
+
 # Fire a click-slot card aimed at the cursor (player_facing). Reuses the
 # full card resolution so Strikes, weapons and any effects they carry all
 # behave the same as before — only the trigger (LMB/RMB) changed.

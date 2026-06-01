@@ -16,6 +16,10 @@ var _selected_slot: int = -1            # -1 = none, 0 = left (LMB), 1 = right (
 var _left_card: CardData = null
 var _right_card: CardData = null
 var _slot_btns: Array[Button] = []
+# Pre-assigned active consumable, fired with Q during action combat. Stored
+# by item id; cycled through the player's usable items on the slot button.
+var _active_item_id: StringName = &""
+var _active_btn: Button = null
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -34,6 +38,10 @@ func _load_current() -> void:
 	var loadout: Dictionary = GameState.get_action_loadout()
 	_left_card = loadout.left
 	_right_card = loadout.right
+	# Restore the active item only if the player still owns a usable copy.
+	_active_item_id = GameState.action_active_item_id
+	if _active_item_id != &"" and not _usable_item_ids().has(_active_item_id):
+		_active_item_id = &""
 
 # ---------------------------------------------------------------------------
 
@@ -59,7 +67,7 @@ func _build_ui() -> void:
 	var hint := Label.new()
 	hint.position = Vector2(20, 48)
 	hint.size = Vector2(940, 22)
-	hint.text = "Click a click-slot (LMB/RMB), then a Strike or weapon to assign it. All other cards auto-play. Continue when done."
+	hint.text = "Click a click-slot (LMB/RMB), then a Strike or weapon to assign it. All other cards auto-play. The Active Item (Q) slot holds a consumable to pop mid-room. Continue when done."
 	hint.add_theme_color_override("font_color", Color(0.82, 0.85, 0.92))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(hint)
@@ -74,12 +82,20 @@ func _build_ui() -> void:
 
 	for i in range(2):
 		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(320, 140)
+		btn.custom_minimum_size = Vector2(300, 140)
 		btn.autowrap_mode = TextServer.AUTOWRAP_WORD
 		var idx: int = i
 		btn.pressed.connect(func(): _on_slot_clicked(idx))
 		slot_row.add_child(btn)
 		_slot_btns.append(btn)
+
+	# Active consumable slot — click to cycle through the usable items the
+	# player currently holds (None -> item1 -> item2 -> ... -> None).
+	_active_btn = Button.new()
+	_active_btn.custom_minimum_size = Vector2(300, 140)
+	_active_btn.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_active_btn.pressed.connect(_on_active_clicked)
+	slot_row.add_child(_active_btn)
 
 	# Deck list label
 	var deck_lbl := Label.new()
@@ -151,6 +167,34 @@ func _refresh_slots() -> void:
 		var tail: String = "\n<-- selected" if _selected_slot == i else ""
 		_slot_btns[i].text = "%s\n\n%s%s" % [slot_titles[i], content, tail]
 		_slot_btns[i].modulate = Color(1.0, 0.85, 0.35) if _selected_slot == i else Color.WHITE
+	if _active_btn != null:
+		var active_name: String = "(none)"
+		if _active_item_id != &"":
+			var it: ItemData = Data.get_item(_active_item_id)
+			if it != null:
+				active_name = it.display_name
+		_active_btn.text = "[Q] Active Item\n\n%s\n\nClick to cycle" % active_name
+
+func _usable_item_ids() -> Array:
+	var out: Array = []
+	for it in GameState.inventory:
+		if it is ItemData and it.kind == ItemData.ItemKind.USABLE and not out.has(it.id):
+			out.append(it.id)
+	return out
+
+func _on_active_clicked() -> void:
+	var ids: Array = _usable_item_ids()
+	if ids.is_empty():
+		GameLog.add("No usable items in your backpack to slot.", Color(0.85, 0.7, 0.4))
+		return
+	# Cycle: none -> ids[0] -> ids[1] -> ... -> none.
+	var options: Array = ids.duplicate()
+	options.push_front(&"")
+	var cur: int = options.find(_active_item_id)
+	if cur == -1:
+		cur = 0
+	_active_item_id = options[(cur + 1) % options.size()]
+	_refresh_slots()
 
 func _on_slot_clicked(idx: int) -> void:
 	_selected_slot = idx
@@ -189,6 +233,7 @@ func _on_clear_slot() -> void:
 func _on_continue() -> void:
 	GameState.action_left_card_id = _left_card.id if _left_card != null else &""
 	GameState.action_right_card_id = _right_card.id if _right_card != null else &""
+	GameState.action_active_item_id = _active_item_id
 	GameLog.add("Loadout saved.", Color(0.7, 0.9, 1.0))
 	emit_signal("closed")
 
