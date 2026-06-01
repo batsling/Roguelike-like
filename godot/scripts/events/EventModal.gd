@@ -28,10 +28,14 @@ const DIFFICULTY_DC := {
 var _event: EventData
 var _difficulty: String = "easy"
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+# True while the choice buttons are showing — pills may only be used before a
+# choice is locked in. Flipped off the moment a choice resolves.
+var _choosing: bool = true
 
 # UI refs (built in code).
 var _title_label: Label
 var _prompt_label: RichTextLabel
+var _use_bar: HBoxContainer
 var _choices_vbox: VBoxContainer
 var _outcome_panel: PanelContainer
 var _outcome_label: RichTextLabel
@@ -40,9 +44,17 @@ var _continue_btn: Button
 
 func _ready() -> void:
 	_rng.randomize()
+	# Mark the event open so the backpack / use-bar allow consuming pills, and
+	# so a temp buff used here lasts until the event closes.
+	GameState.event_active = true
 	_build_ui()
 	if _event != null:
 		_refresh()
+
+func _exit_tree() -> void:
+	# Safety net: whatever path closes the modal, the event is over.
+	GameState.event_active = false
+	GameState.clear_temp_buffs()
 
 func setup(event: EventData, difficulty: String = "easy") -> void:
 	_event = event
@@ -87,6 +99,12 @@ func _build_ui() -> void:
 	_prompt_label.add_theme_font_size_override("normal_font_size", 14)
 	vbox.add_child(_prompt_label)
 
+	# Consumable use-bar — pills the player can pop before committing to a
+	# choice. A stat pill raises the matching roll for the rest of the event.
+	_use_bar = HBoxContainer.new()
+	_use_bar.add_theme_constant_override("separation", 6)
+	vbox.add_child(_use_bar)
+
 	_choices_vbox = VBoxContainer.new()
 	_choices_vbox.add_theme_constant_override("separation", 6)
 	vbox.add_child(_choices_vbox)
@@ -122,6 +140,7 @@ func _build_ui() -> void:
 # ------------------------------------------------------------------
 
 func _refresh() -> void:
+	_choosing = true
 	_title_label.text = _event.display_name
 	_prompt_label.text = _event.prompt
 	_outcome_panel.visible = false
@@ -134,6 +153,43 @@ func _refresh() -> void:
 		var c: Dictionary = choice
 		btn.pressed.connect(func(): _on_choice_selected(c))
 		_choices_vbox.add_child(btn)
+	_refresh_use_bar()
+
+# Rebuilds the pill use-bar. Visible only during the choosing phase and only
+# when the player actually holds usable consumables.
+func _refresh_use_bar() -> void:
+	for c in _use_bar.get_children():
+		c.queue_free()
+	var usables: Array = _usable_pills()
+	if not _choosing or usables.is_empty():
+		_use_bar.visible = false
+		return
+	_use_bar.visible = true
+	var lbl := Label.new()
+	lbl.text = "Use:"
+	lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 1.0))
+	_use_bar.add_child(lbl)
+	for item in usables:
+		var b := Button.new()
+		b.text = item.display_name
+		b.tooltip_text = item.description
+		var it: ItemData = item
+		b.pressed.connect(func(): _on_event_use(it))
+		_use_bar.add_child(b)
+
+func _usable_pills() -> Array:
+	var out: Array = []
+	for it in GameState.inventory:
+		if it is ItemData and it.kind == ItemData.ItemKind.USABLE:
+			out.append(it)
+	return out
+
+func _on_event_use(item: ItemData) -> void:
+	if GameState.use_item(item):
+		GameLog.add("Used %s." % item.display_name, Color(0.8, 0.9, 1.0))
+	# Re-render: a stat pill changes the roll a choice needs, so the choice
+	# labels and the use-bar both refresh.
+	_refresh()
 
 func _format_choice_text(choice: Dictionary) -> String:
 	var text: String = String(choice.get("text", "?"))
@@ -145,6 +201,9 @@ func _format_choice_text(choice: Dictionary) -> String:
 	return text
 
 func _on_choice_selected(choice: Dictionary) -> void:
+	# Lock in the choice: no more pill use past this point.
+	_choosing = false
+	_refresh_use_bar()
 	for btn in _choices_vbox.get_children():
 		btn.queue_free()
 	if String(choice.get("type", "simple")) == "stat_check":
@@ -221,8 +280,13 @@ func _apply_event_effect(effect: Dictionary) -> void:
 			GameLog.add("You heal %d HP." % n, Color(0.6, 1.0, 0.6))
 		"lose_hp":
 			var n2: int = int(effect.get("value", 0))
-			GameState.change_hp(-n2)
-			GameLog.add("You take %d damage." % n2, Color(1.0, 0.5, 0.5))
+			# Percs (event block) soaks damage before it reaches HP.
+			var dealt: int = GameState.absorb_event_damage(n2)
+			if dealt < n2:
+				GameLog.add("Block absorbs %d damage." % (n2 - dealt), Color(0.7, 0.85, 1.0))
+			if dealt > 0:
+				GameState.change_hp(-dealt)
+				GameLog.add("You take %d damage." % dealt, Color(1.0, 0.5, 0.5))
 		"gain_gold":
 			var n3: int = int(effect.get("value", 0))
 			GameState.change_gold(n3)
@@ -244,5 +308,9 @@ func _apply_event_effect(effect: Dictionary) -> void:
 			GameLog.add("(unhandled event effect: %s)" % t, Color(0.6, 0.6, 0.6))
 
 func _on_continue() -> void:
+	# Event is over: pill buffs end here (also handled in _exit_tree as a
+	# safety net for any other close path).
+	GameState.event_active = false
+	GameState.clear_temp_buffs()
 	emit_signal("closed", true)
 	queue_free()
