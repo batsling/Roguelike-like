@@ -2,12 +2,16 @@ class_name Backpack
 extends Control
 
 # Global backpack popup. Mounted once on a high CanvasLayer by Main and
-# toggled with Tab from anywhere in a run. Two tabs:
+# toggled with Tab from anywhere in a run. An always-visible Stats hub fills
+# the left column (vitals, attributes + their derived combat stats, and the
+# combat / exploration stats), with tabbed content on the right:
 #   Items — every ItemData in GameState.inventory. USABLE consumables (pills)
 #           get a Use button, enabled only when GameState.can_use_items()
 #           (i.e. in combat or while an event roll is open). Sortable by
 #           pickup order, rarity, or name.
 #   Loot  — the run-scope loot counters (potions / scrolls / keys / fish …).
+#   Gear  — the action-combat loadout (doubles as the equipment screen).
+#   Deck  — every card in the run deck, deduped with copy counts.
 #
 # Built entirely in code so it has no scene-file node dependencies. Runs with
 # PROCESS_MODE_ALWAYS and pauses the tree while open so real-time action
@@ -18,6 +22,10 @@ enum SortMode { PICKUP, RARITY, NAME }
 
 # Card-type labels for the Deck tab.
 const CARD_TYPE_LABELS := ["Attack", "Skill", "Power", "Dice", "Status", "Curse", "Training"]
+
+# Base overworld portal count (mirrors Overworld.BASE_PORTAL_COUNT); the FoV
+# stat shown in the hub is this plus GameState.fov_bonus.
+const BASE_FOV := 3
 
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 const RARITY_COLORS := [
@@ -40,6 +48,7 @@ var _tab_deck_btn: Button
 var _sort_bar: HBoxContainer
 var _list_vbox: VBoxContainer
 var _hint_label: Label
+var _stats_vbox: VBoxContainer
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -109,7 +118,7 @@ func _build_ui() -> void:
 	add_child(dim)
 
 	_panel = PanelContainer.new()
-	_panel.size = Vector2(760, 580)
+	_panel.size = Vector2(1060, 600)
 	_panel.position = (get_viewport_rect().size - _panel.size) / 2.0
 	add_child(_panel)
 
@@ -131,10 +140,43 @@ func _build_ui() -> void:
 	close_btn.pressed.connect(close)
 	header.add_child(close_btn)
 
+	# Body: always-visible player-stats hub on the left, tabbed content right.
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 12)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(body)
+
+	# --- Left column: live stats hub ---
+	var stats_col := VBoxContainer.new()
+	stats_col.custom_minimum_size = Vector2(310, 0)
+	stats_col.add_theme_constant_override("separation", 4)
+	body.add_child(stats_col)
+	var stats_title := Label.new()
+	stats_title.text = "Stats"
+	stats_title.add_theme_font_size_override("font_size", 18)
+	stats_title.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
+	stats_col.add_child(stats_title)
+	var stats_scroll := ScrollContainer.new()
+	stats_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stats_scroll.custom_minimum_size = Vector2(310, 500)
+	stats_col.add_child(stats_scroll)
+	_stats_vbox = VBoxContainer.new()
+	_stats_vbox.add_theme_constant_override("separation", 2)
+	_stats_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_scroll.add_child(_stats_vbox)
+
+	body.add_child(VSeparator.new())
+
+	# --- Right column: the existing tabbed content ---
+	var main := VBoxContainer.new()
+	main.add_theme_constant_override("separation", 10)
+	main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(main)
+
 	# Tab buttons.
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
-	root.add_child(tabs)
+	main.add_child(tabs)
 	_tab_items_btn = Button.new()
 	_tab_items_btn.text = "Items"
 	_tab_items_btn.toggle_mode = true
@@ -159,7 +201,7 @@ func _build_ui() -> void:
 	# Sort bar (Items tab only).
 	_sort_bar = HBoxContainer.new()
 	_sort_bar.add_theme_constant_override("separation", 6)
-	root.add_child(_sort_bar)
+	main.add_child(_sort_bar)
 	var sort_lbl := Label.new()
 	sort_lbl.text = "Sort:"
 	_sort_bar.add_child(sort_lbl)
@@ -170,8 +212,8 @@ func _build_ui() -> void:
 	# Scrollable list.
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(720, 440)
-	root.add_child(scroll)
+	scroll.custom_minimum_size = Vector2(700, 440)
+	main.add_child(scroll)
 	_list_vbox = VBoxContainer.new()
 	_list_vbox.add_theme_constant_override("separation", 6)
 	_list_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -180,7 +222,7 @@ func _build_ui() -> void:
 	_hint_label = Label.new()
 	_hint_label.add_theme_font_size_override("font_size", 12)
 	_hint_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
-	root.add_child(_hint_label)
+	main.add_child(_hint_label)
 
 func _add_sort_button(text: String, mode: SortMode) -> void:
 	var b := Button.new()
@@ -202,6 +244,7 @@ func _set_sort(mode: SortMode) -> void:
 # ------------------------------------------------------------------
 
 func _refresh() -> void:
+	_refresh_stats()
 	_tab_items_btn.button_pressed = _tab == Tab.ITEMS
 	_tab_loot_btn.button_pressed = _tab == Tab.LOOT
 	_tab_gear_btn.button_pressed = _tab == Tab.GEAR
@@ -221,6 +264,105 @@ func _refresh() -> void:
 			_render_gear()
 		Tab.DECK:
 			_render_deck()
+
+# ------------------------------------------------------------------
+# Stats hub — always-visible left column. Mirrors the old HTML sidebar:
+# vitals, attributes paired with their derived combat stats, then the
+# combat and exploration stats this project adds on top. Values show the
+# total with the item/temp-bonus breakdown when there is one.
+# ------------------------------------------------------------------
+
+func _refresh_stats() -> void:
+	if _stats_vbox == null:
+		return
+	for c in _stats_vbox.get_children():
+		c.queue_free()
+
+	_stats_vbox.add_child(_stat_header("Vitals"))
+	_stats_vbox.add_child(_stat_row("Health", "%d / %d" % [GameState.hp, GameState.max_hp], Color(0.95, 0.5, 0.5)))
+	_stats_vbox.add_child(_stat_row("Energy", str(GameState.max_energy), Color(0.6, 0.85, 1.0)))
+	_stats_vbox.add_child(_stat_row("Hand Size", str(GameState.hand_size), Color(0.8, 0.85, 0.95)))
+	_stats_vbox.add_child(_stat_row("Gold", str(GameState.gold), Color(1.0, 0.85, 0.35)))
+
+	_stats_vbox.add_child(_stat_header("Attributes"))
+	_add_attribute(&"strength", Color(0.95, 0.55, 0.45))
+	_add_attribute(&"dexterity", Color(0.55, 0.85, 0.55))
+	_add_attribute(&"intelligence", Color(0.6, 0.7, 1.0))
+	_add_attribute(&"charisma", Color(0.9, 0.6, 0.95))
+	_add_attribute(&"constitution", Color(0.85, 0.7, 0.5))
+
+	_stats_vbox.add_child(_stat_header("Combat"))
+	_add_attribute(&"crit_chance", Color(1.0, 0.8, 0.4), "%")
+	# Crit Chance Up = the effective per-hit crit chance (folds Luck in).
+	_stats_vbox.add_child(_stat_row(
+		"Crit Chance Up", "%d%%" % Stats.crit_chance_percent(), Color(1.0, 0.85, 0.55),
+		"Effective per-hit crit chance: max(0, 2 x Luck) + Crit Chance, capped at 100%.", true))
+	_add_attribute(&"crit_damage", Color(1.0, 0.7, 0.4), "%")
+	_add_attribute(&"luck", Color(0.7, 1.0, 0.7))
+	_add_attribute(&"speed", Color(0.6, 0.9, 1.0))
+	_add_attribute(&"harvesting", Color(1.0, 0.85, 0.4))
+
+	_stats_vbox.add_child(_stat_header("Exploration"))
+	_stats_vbox.add_child(_stat_row("FoV", str(BASE_FOV + GameState.fov_bonus), Color(0.7, 0.85, 1.0),
+		"Number of game portals shown on the overworld."))
+	_stats_vbox.add_child(_stat_row("Discovery", str(GameState.discovery), Color(0.8, 0.8, 1.0),
+		"Extra choices when collecting item and card rewards."))
+	_stats_vbox.add_child(_stat_row("Dash", str(GameState.dash_charges), Color(0.85, 0.9, 1.0),
+		"Charges to dash to any connected game node."))
+	_stats_vbox.add_child(_stat_row("Reroll", str(GameState.reroll_charges), Color(0.85, 0.9, 1.0),
+		"Charges to re-roll the overworld portal choices."))
+
+# Adds a base-stat row (with item/temp breakdown + tooltip from its
+# StatDefinition), then an indented derived-status row if the stat has one
+# (e.g. Strength -> Power). `suffix` appends a unit like "%".
+func _add_attribute(stat_id: StringName, color: Color, suffix: String = "") -> void:
+	var def: StatDefinition = Stats.get_definition(stat_id)
+	var label: String = def.display_name if def != null and def.display_name != "" else String(stat_id).capitalize()
+	var tip: String = def.description if def != null else ""
+	_stats_vbox.add_child(_stat_row(label, _stat_value_text(stat_id, suffix), color, tip))
+	if def != null and def.derived_status != &"":
+		var per: int = maxi(1, def.derived_per)
+		var stacks: int = int(floor(float(Stats.get_value(stat_id)) / float(per)))
+		var dname: String = String(def.derived_status).capitalize()
+		_stats_vbox.add_child(_stat_row(dname, str(stacks), Color(0.6, 0.8, 0.95), "", true))
+
+# "total" or "total  (base +bonus)" when item/temp bonuses are present.
+func _stat_value_text(stat_id: StringName, suffix: String = "") -> String:
+	var field := String(stat_id)
+	var base: int = int(GameState.get(field))
+	var bonus: int = int(GameState.item_stat_bonus.get(field, 0)) + int(GameState.temp_stat_bonus.get(field, 0))
+	var total: int = base + bonus
+	if bonus == 0:
+		return "%d%s" % [total, suffix]
+	return "%d%s  (%d %+d)" % [total, suffix, base, bonus]
+
+func _stat_header(text: String) -> Control:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.5))
+	return lbl
+
+func _stat_row(label_text: String, value_text: String, color: Color, tooltip: String = "", derived: bool = false) -> Control:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if tooltip != "":
+		row.tooltip_text = tooltip
+		row.mouse_filter = Control.MOUSE_FILTER_STOP
+	var lbl := Label.new()
+	lbl.text = ("    " if derived else "") + label_text
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl.add_theme_color_override("font_color", color if not derived else color.lerp(Color(0.6, 0.6, 0.6), 0.35))
+	var val := Label.new()
+	val.text = value_text
+	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	val.add_theme_color_override("font_color", Color(0.96, 0.96, 0.96))
+	if derived:
+		lbl.add_theme_font_size_override("font_size", 12)
+		val.add_theme_font_size_override("font_size", 12)
+	row.add_child(lbl)
+	row.add_child(val)
+	return row
 
 func _render_items() -> void:
 	var items: Array = _sorted_items()
