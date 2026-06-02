@@ -405,10 +405,10 @@ func _show_verification_modal(gd: GameData) -> void:
 	dim.color = Color(0, 0, 0, 0.6)
 	modal.add_child(dim)
 
-	# Optional extra question rows: a "perfect game" row when the player owns
-	# any perfect-aware item (Clown Shoes et al), and a "level up" row when
-	# the character has a level-up condition.
-	var show_perfect: bool = _has_perfect_items()
+	# Optional extra question rows: the "perfect game" row is always shown
+	# (beating without losing a run pays a flat gold bonus); the "level up"
+	# row appears when the character has a level-up condition.
+	var show_perfect: bool = true
 	var char_data: CharacterData = Data.get_character(GameState.character_id)
 	var show_levelup: bool = char_data != null and char_data.level_up_condition != ""
 
@@ -451,8 +451,8 @@ func _show_verification_modal(gd: GameData) -> void:
 
 	if show_perfect:
 		_add_question_row(panel,
-			"Did you Perfect this game? (beat it without losing a run)", y,
-			func(value: bool): _perfect_answer = value)
+			"Did you Perfect this game? (beat it without losing a run) — +%d gold" % PERFECT_GOLD_BONUS,
+			y, func(value: bool): _perfect_answer = value)
 		y += 80
 
 	if show_levelup:
@@ -592,18 +592,14 @@ func _apply_weapon_verification_rewards() -> void:
 # Perfect-game verification — "beat without losing a run".
 # ------------------------------------------------------------------
 
-# True if any inventory item participates in the perfect-game question.
-func _has_perfect_items() -> bool:
-	for it in GameState.inventory:
-		if it is ItemData and it.perfect_aware:
-			return true
-	return false
+# Flat gold paid out whenever the player perfects a game. Perfect-aware
+# items (Clown Shoes et al) stack their own rewards on top of this.
+const PERFECT_GOLD_BONUS := 10
 
 # Reads the perfect question answer, applies Clown-Shoes-style saves, records
-# the outcome on GameState, and fires every perfect-aware item's reward.
+# the outcome on GameState, pays the flat gold bonus, and fires every
+# perfect-aware item's reward. Asked after every game.
 func _resolve_perfect_game() -> void:
-	if not _has_perfect_items():
-		return
 	var perfected: bool = _perfect_answer
 	# Clown Shoes: each copy gets a chance to upgrade a "No" into a perfect.
 	if not perfected:
@@ -619,7 +615,8 @@ func _resolve_perfect_game() -> void:
 	if not perfected:
 		GameLog.add("Not a perfect game.", Color(0.7, 0.7, 0.7))
 		return
-	GameLog.add("Perfect game!", Color(1.0, 0.85, 0.3))
+	GameState.change_gold(PERFECT_GOLD_BONUS)
+	GameLog.add("Perfect game! +%d gold." % PERFECT_GOLD_BONUS, Color(1.0, 0.85, 0.3))
 	# Fire every perfect-aware item's reward effects (scene-less context).
 	var ctx: Dictionary = {"source": null, "target": null, "scene": null, "card": null}
 	for it in GameState.inventory:
