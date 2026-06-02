@@ -68,3 +68,33 @@ func test_default_item_has_no_perfect_or_levelup_flags() -> void:
 	assert_false(it.perfect_aware)
 	assert_eq(it.perfect_save_chance, 0.0)
 	assert_eq(it.bonus_level_up_chance, 0.0)
+
+# --- Card reward pool ---
+
+func test_reward_card_pool_excludes_starters_and_weapons() -> void:
+	var pool: Array = Data.reward_card_pool()
+	assert_gt(pool.size(), 0, "reward pool should be non-empty")
+	for c in pool:
+		assert_ne(int(c.rarity), int(CardData.Rarity.STARTER),
+			"%s is a starter and should be excluded" % c.id)
+		assert_false(c.tags.has("weapon"),
+			"%s is a weapon card and should be excluded" % c.id)
+		assert_ne(int(c.type), int(CardData.CardType.CURSE))
+		assert_ne(int(c.type), int(CardData.CardType.STATUS))
+		assert_ne(int(c.type), int(CardData.CardType.TRAINING))
+
+func test_reward_card_pool_ironclad_tag_filters_to_class() -> void:
+	var pool: Array = Data.reward_card_pool(&"ironclad")
+	assert_gt(pool.size(), 0, "ironclad pool should be non-empty (class cards exist)")
+	# Every card is either Ironclad-tagged or a universal hero card.
+	for c in pool:
+		assert_true(c.tags.has("ironclad") or c.tags.has("hero"),
+			"%s should be ironclad- or hero-tagged" % c.id)
+
+func test_ironclad_character_levelup_data() -> void:
+	var ic: CharacterData = Data.get_character(&"ironclad")
+	assert_not_null(ic)
+	assert_eq(int(ic.level_up_stats.get("strength", 0)), 1)
+	assert_eq(int(ic.level_up_stats.get("dexterity", 0)), 1)
+	assert_eq(String(ic.level_up_reward_type), "card")
+	assert_eq(String(ic.level_up_card_tag), "ironclad")

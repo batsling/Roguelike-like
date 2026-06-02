@@ -669,22 +669,22 @@ func _grant_level_up_reward(char_data: CharacterData, on_done: Callable) -> void
 			GameLog.add("Level-up reward: +1 Scroll, +1 Potion.", Color(0.8, 0.9, 1.0))
 			on_done.call()
 		"card":
-			_grant_random_reward_card()
-			on_done.call()
+			_show_level_up_card_reward(char_data.level_up_card_tag, on_done)
 		"item":
 			_show_level_up_item_reward(on_done)
 		_:
 			on_done.call()
 
-func _grant_random_reward_card() -> void:
-	var pool: Array = Data.reward_card_pool()
-	if pool.is_empty():
-		return
-	var card: CardData = pool[randi() % pool.size()]
-	GameState.deck.append(CardInstance.from_data(card))
-	GameState.emit_signal("deck_changed")
-	GameLog.add("Level-up reward: added %s to your deck." % card.display_name,
-		Color(0.85, 0.9, 1.0))
+func _show_level_up_card_reward(tag_filter: StringName, on_done: Callable) -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	add_child(layer)
+	var reward := CardRewardScreen.new()
+	layer.add_child(reward)
+	reward.closed.connect(func():
+		layer.queue_free()
+		on_done.call())
+	reward.setup(tag_filter)
 
 func _show_level_up_item_reward(on_done: Callable) -> void:
 	var layer := CanvasLayer.new()

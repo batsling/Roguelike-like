@@ -27,5 +27,6 @@ level_up_stats = {
 }
 level_up_reward_type = &"card"
 level_up_reward_amount = 0
+level_up_card_tag = &"ironclad"
 portrait = ExtResource("2_portrait")
 portrait_color = Color(0.7, 0.15, 0.15, 1)

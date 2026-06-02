@@ -68,8 +68,14 @@ func all_cards() -> Array:
 # Cards eligible for random shop / reward / treasure draws. Excludes
 # starters (always in the character's opening deck) and weapon cards
 # (granted exclusively by their paired weapon item — see
-# ItemData.weapon_card_id and GameState._grant_weapon_card).
-func reward_card_pool() -> Array:
+# ItemData.weapon_card_id and GameState._grant_weapon_card). Curse / Status /
+# Training cards are never rewards either.
+#
+# When `tag_filter` is set (e.g. &"ironclad"), the pool narrows to that
+# class's cards plus universal "hero" cards (Dice excluded), mirroring the
+# HTML showCardRewardModal pool. If that combination is empty the unfiltered
+# pool is returned so a reward is always offerable.
+func reward_card_pool(tag_filter: StringName = &"") -> Array:
 	var out: Array = []
 	for c in _cards.values():
 		if not (c is CardData):
@@ -78,8 +84,30 @@ func reward_card_pool() -> Array:
 			continue
 		if c.tags.has("weapon"):
 			continue
+		if c.type == CardData.CardType.CURSE \
+				or c.type == CardData.CardType.STATUS \
+				or c.type == CardData.CardType.TRAINING:
+			continue
 		out.append(c)
-	return out
+	if tag_filter == &"":
+		return out
+	var tagged: Array = []
+	var heroes: Array = []
+	for c in out:
+		if c.tags.has(tag_filter):
+			tagged.append(c)
+		elif c.tags.has("hero") and c.type != CardData.CardType.DICE:
+			heroes.append(c)
+	var combined: Array = tagged.duplicate()
+	for h in heroes:
+		var dup: bool = false
+		for t in tagged:
+			if t.id == h.id:
+				dup = true
+				break
+		if not dup:
+			combined.append(h)
+	return combined if not combined.is_empty() else out
 
 func all_items() -> Array:
 	return _items.values()

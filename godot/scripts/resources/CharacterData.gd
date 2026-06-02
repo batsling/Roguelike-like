@@ -46,6 +46,9 @@ extends Resource
 # the &"gold" type.
 @export var level_up_reward_type: StringName = &"none"
 @export var level_up_reward_amount: int = 0
+# For the &"card" reward: the class tag the offered cards are drawn from
+# (e.g. &"ironclad"). Empty = the full reward pool. See Data.reward_card_pool.
+@export var level_up_card_tag: StringName = &""
 
 # Visuals
 @export var portrait: Texture2D
