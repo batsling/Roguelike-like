@@ -57,6 +57,10 @@ var harvesting: int = 0
 var crit_chance: int = 0
 var crit_damage: int = 100
 
+# Regeneration: at the start of combat the player gains Regeneration status
+# equal to this stat (1 HP healed per stack at end of turn). Item-granted.
+var regeneration: int = 0
+
 # === Economy ===
 var gold: int = 99
 
@@ -213,8 +217,10 @@ func reset_run() -> void:
 	reroll_charges = 0
 	fov_bonus = 0
 	discovery = 0
+	regeneration = 0
 	active_curses.clear()
 	pending_combat_statuses.clear()
+	Notifications.clear()
 	phase = Phase.MENU
 
 func apply_character(char_data: CharacterData) -> void:

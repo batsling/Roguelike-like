@@ -66,10 +66,10 @@ func update_status(player: StrategyEntity, floor_num: int) -> void:
 	if player == null:
 		return
 	var hp_bar = _make_bar(player.hp, player.max_hp, 20)
-	_status_label.text = "HP: %s %d/%d   ATK: %d   DEF: %d   Gold: %d   Keys: %d   Floor: %d" % [
+	_status_label.text = "HP: %s %d/%d   ATK: %d   DEF: %d   Gold: %d   Floor: %d" % [
 		hp_bar, player.hp, player.max_hp,
 		player.attack, player.defense,
-		GameState.gold, StrategyState.keys,
+		GameState.gold,
 		floor_num
 	]
 

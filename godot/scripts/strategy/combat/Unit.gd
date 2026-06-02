@@ -52,8 +52,8 @@ var statuses: Dictionary = {}               # StringName -> int stacks
 # Internal initiative counter (managed by BattleTurnManager).
 @export var act_counter: int = 0
 
-# Base movement before stat modifiers. The speed/agility stat adds/removes
-# 1 tile per point on top of this.
+# Base movement before stat modifiers. The run-wide speed stat adds 1 tile
+# per 2 points on top of this.
 const BASE_MOVE := 4
 
 # Runtime-only state attached after construction.
@@ -99,8 +99,9 @@ static func from_player(entity: StrategyEntity) -> BattleUnit:
 	u.max_hp = entity.max_hp
 	u.hp = entity.hp
 	u.speed = 4
-	# Base 4 tiles, +/-1 per point of the run-wide speed stat.
-	u.move_range = maxi(1, BASE_MOVE + GameState.speed)
+	# Base 4 tiles, +1 tile per 2 points of the run-wide speed stat.
+	@warning_ignore("integer_division")
+	u.move_range = maxi(1, BASE_MOVE + GameState.speed / 2)
 	u.int_stat = 0
 	u.cha_stat = 0
 	u.recompute_mana_caps()

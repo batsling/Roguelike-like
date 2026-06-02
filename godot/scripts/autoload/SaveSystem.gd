@@ -81,6 +81,7 @@ func _build_payload() -> Dictionary:
 		"harvesting": GameState.harvesting,
 		"crit_chance": GameState.crit_chance,
 		"crit_damage": GameState.crit_damage,
+		"regeneration": GameState.regeneration,
 		"gold": GameState.gold,
 		# Deck stores per-card upgrade state; inventory stores ids.
 		"deck": _serialize_deck(GameState.deck),
@@ -144,6 +145,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.harvesting = data.get("harvesting", 0)
 	GameState.crit_chance = data.get("crit_chance", 0)
 	GameState.crit_damage = data.get("crit_damage", 100)
+	GameState.regeneration = data.get("regeneration", 0)
 	GameState.gold = data.get("gold", 0)
 	# Prefer the new "deck" key; fall back to legacy "deck_ids" for old saves.
 	if data.has("deck"):

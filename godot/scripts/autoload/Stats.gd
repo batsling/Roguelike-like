@@ -64,6 +64,7 @@ const STATUS_ICONS := {
 	&"thorns": "Thorns.png",
 	&"soul_link": "SoulLink.png",
 	&"crit_chance_up": "CritChanceUp.png",
+	&"bruise": "Bruise.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -80,7 +81,7 @@ var _resolve_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 # Persistence. Player-applied only (enforced in status_apply_stacks).
 # Shared so deckbuilder / action / strategy agree on which statuses scale.
 const PERSISTENCE_DEBUFFS: Array[StringName] = [
-	&"vulnerable", &"weak", &"frail", &"poison", &"burn", &"bleed",
+	&"vulnerable", &"weak", &"frail", &"poison", &"burn", &"bleed", &"bruise",
 ]
 
 func _ready() -> void:
@@ -250,6 +251,10 @@ func resolve_damage(
 	# Incoming: Vulnerable (+50%, ceil).
 	if has_tgt and target.get_status(&"vulnerable") > 0:
 		amount = int(ceil(amount * 1.5))
+	# Incoming: Bruise (+1 flat per stack), melee/ranged only — never magic
+	# or DoT ("true") damage. Applied after Vulnerable's multiplier.
+	if has_tgt and (damage_type == "melee" or damage_type == "ranged"):
+		amount += target.get_status(&"bruise")
 
 	# Dodge negates the hit entirely and burns one stack.
 	if not bool(effect.get("ignore_dodge", false)) and has_tgt and target.get_status(&"dodge") > 0:

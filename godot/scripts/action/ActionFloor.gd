@@ -17,7 +17,6 @@ extends Control
 signal closed(was_victory: bool, target_game_id: StringName)
 
 const COMBAT_SCENE := preload("res://scenes/action/ActionCombat.tscn")
-const EQUIPMENT_SCENE := preload("res://scenes/action/EquipmentScreen.tscn")
 
 # Per-room enemy budget for normal rooms (count scales a little with tier).
 const NORMAL_MIN_ENEMIES := 1
@@ -190,21 +189,10 @@ func _finish_floor(was_victory: bool) -> void:
 	queue_free()
 
 # ---------------------------------------------------------------------------
-# Overlays (equipment / shop / treasure) — pause the arena while open
+# Overlays (shop / treasure) — pause the arena while open. Equipment is now
+# handled by the global Backpack (Gear tab), toggled with Tab from Main; it
+# guards against opening mid-fight and re-applies the loadout on close.
 # ---------------------------------------------------------------------------
-
-func _input(event: InputEvent) -> void:
-	if _floor_done:
-		return
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB:
-		if _active_overlay == null:
-			# Inventory only opens when the room has no living enemies
-			# (a cleared room, or a safe/empty room).
-			if _arena != null and _arena._living_enemy_count() > 0:
-				GameLog.add("Clear the room before opening your inventory.", Color(0.85, 0.7, 0.4))
-			else:
-				_open_equipment()
-		get_viewport().set_input_as_handled()
 
 func _open_overlay(overlay: Control) -> void:
 	_active_overlay = overlay
@@ -218,16 +206,6 @@ func _close_overlay() -> void:
 		_active_overlay = null
 	if _arena != null:
 		_arena.paused = false
-
-func _open_equipment() -> void:
-	var screen: EquipmentScreen = EQUIPMENT_SCENE.instantiate()
-	screen.closed.connect(_on_equipment_closed)
-	_open_overlay(screen)
-
-func _on_equipment_closed() -> void:
-	_close_overlay()
-	if _arena != null:
-		_arena.reload_loadout()
 
 func _open_shop() -> void:
 	var shop := Shop.new()

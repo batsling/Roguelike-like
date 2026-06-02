@@ -31,13 +31,13 @@ func _process(delta: float) -> void:
 	if _move_cooldown > 0.0:
 		return
 	var dir := Vector2i.ZERO
-	if Input.is_action_pressed("ui_left"):
+	if Input.is_action_pressed("move_left"):
 		dir.x = -1
-	elif Input.is_action_pressed("ui_right"):
+	elif Input.is_action_pressed("move_right"):
 		dir.x = 1
-	if Input.is_action_pressed("ui_up"):
+	if Input.is_action_pressed("move_up"):
 		dir.y = -1
-	elif Input.is_action_pressed("ui_down"):
+	elif Input.is_action_pressed("move_down"):
 		dir.y = 1
 	if dir == Vector2i.ZERO:
 		return

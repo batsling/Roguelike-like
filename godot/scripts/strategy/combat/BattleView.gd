@@ -130,6 +130,37 @@ func get_player_unit():
 			return u
 	return null
 
+# Shared item-trigger fire for the non-turn triggers (combat start/end, enemy
+# kill). turn_started keeps its own direct path (_fire_item_turn_triggers).
+func _fire_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -> void:
+	ItemTriggers.fire(trigger_name, self, get_player_unit(), _living_enemy_units(),
+		ctx_extras, _player_turn_count)
+	if _grid_view != null:
+		_grid_view.notify_units_changed()
+
+func _living_enemy_units() -> Array:
+	var out: Array = []
+	for u in _units:
+		if u != null and u.is_alive() and not u.is_player:
+			out.append(u)
+	return out
+
+# A card's base effects + item-granted ones (Brass Knuckles etc.). Strategy
+# resolves CardData directly, so grants are merged here (deckbuilder gets them
+# via CardInstance.get_effects()).
+func _effective_card_effects(card: CardData) -> Array:
+	var grants: Array = CardMods.granted_effects(card)
+	if grants.is_empty():
+		return card.effects
+	var out: Array = card.effects.duplicate()
+	out.append_array(grants)
+	return out
+
+# Card text with the granted-effect line appended, for display.
+func _card_desc(card: CardData) -> String:
+	var extra: String = CardMods.describe(card)
+	return card.description if extra == "" else "%s %s" % [card.description, extra]
+
 func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager = null) -> void:
 	_battle_map = battle_map
 	_turn_manager = turn_manager
@@ -419,7 +450,7 @@ func _make_loadout_row(card, chosen: bool, btn_text: String, cb: Callable, show_
 	var uses_str: String = ""
 	if show_uses:
 		uses_str = "  (uses %d/%d)" % [GameState.get_card_uses(card), GameState.max_card_uses(card)]
-	lbl.text = "%s%s%s  —  %s" % [prefix, card.display_name, uses_str, card.description]
+	lbl.text = "%s%s%s  —  %s" % [prefix, card.display_name, uses_str, _card_desc(card)]
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
 	lbl.custom_minimum_size = Vector2(700, 0)
@@ -460,6 +491,7 @@ func _on_confirm_loadout() -> void:
 	_loadout_overlay.visible = false
 	_info_label.text = _format_info(_room_data, _encounter)
 	_status_label.text = "Waiting for first turn..."
+	_fire_item_triggers("combat_started")
 	StrategyCombatSession.begin_battle()
 
 # ----------------------------------------------------------------------
@@ -554,6 +586,7 @@ func _auto_end_enemy_turn() -> void:
 func _on_battle_ended(result) -> void:
 	_status_label.text = "Battle ended: %s" % result
 	_set_player_buttons_enabled(false)
+	_fire_item_triggers("combat_ended")
 
 # ----------------------------------------------------------------------
 # Player actions — basic
@@ -645,7 +678,7 @@ func _populate_ability_picker() -> void:
 		var uses: int = GameState.get_card_uses(card)
 		var cap: int = GameState.max_card_uses(card)
 		var castable: bool = uses > 0 and _card_plays_remaining > 0
-		lbl.text = "%s  (uses %d/%d)  —  %s" % [card.display_name, uses, cap, card.description]
+		lbl.text = "%s  (uses %d/%d)  —  %s" % [card.display_name, uses, cap, _card_desc(card)]
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
 		lbl.custom_minimum_size = Vector2(440, 0)
@@ -690,7 +723,7 @@ func _resolve_ability_against(target) -> void:
 	# Spend any banked energy charge to empower this card, then clear it.
 	var empower: int = _energy_charge
 	_energy_charge = 0
-	_apply_card_or_spell_effects(card.effects, u, target, card, empower)
+	_apply_card_or_spell_effects(_effective_card_effects(card), u, target, card, empower)
 	_pending_kind = Pending.NONE
 	_pending_card = null
 	_grid_view.enter_idle()
@@ -731,7 +764,7 @@ func _populate_spell_picker() -> void:
 		var lbl := Label.new()
 		var affordable: bool = _spellbook.can_cast(u, entry)
 		lbl.text = "%s  (%d mana)  —  %s" % [
-			entry.data.display_name, entry.data.cost, entry.data.description,
+			entry.data.display_name, entry.data.cost, _card_desc(entry.data),
 		]
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -768,7 +801,7 @@ func _resolve_spell_against(target) -> void:
 	var u = _turn_manager.current_unit
 	var entry = _pending_spell
 	_spellbook.spend_mana(u, entry)
-	_apply_card_or_spell_effects(entry.data.effects, u, target, entry.data)
+	_apply_card_or_spell_effects(_effective_card_effects(entry.data), u, target, entry.data)
 	_pending_kind = Pending.NONE
 	_pending_spell = null
 	_grid_view.enter_idle()
@@ -864,7 +897,7 @@ func _on_attack_requested(target) -> void:
 		# against the target. Unlimited uses, but once per turn (it's the
 		# Attack action, gated by _action_used). Energy empower applies to
 		# slotted cards only, not the weapon, so pass empower 0.
-		_apply_card_or_spell_effects(_weapon_card.effects, attacker, target, _weapon_card)
+		_apply_card_or_spell_effects(_effective_card_effects(_weapon_card), attacker, target, _weapon_card)
 		_status_label.text = "You attack %s with %s." % [target.unit_name, _weapon_card.display_name]
 	else:
 		var dmg := DEFAULT_BASIC_ATTACK
@@ -1057,6 +1090,8 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 		var infuse_stacks: int = int(effect.get("infuse", 0))
 		if infuse_stacks > 0 and source != null and "is_player" in source and source.is_player:
 			GameState.set_max_hp(GameState.max_hp + infuse_stacks, false)
+		# Item procs on a kill (Charm of the Vampire, …).
+		_fire_item_triggers("enemy_killed")
 		# Phase 8: enemy death -> roll loot onto the tile it fell on.
 		_drop_enemy_loot(target)
 

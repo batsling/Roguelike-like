@@ -263,10 +263,11 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	if not is_safe and not enemy_ids.is_empty():
 		enemies_to_spawn = enemy_ids.duplicate()
 		_spawn_enemies()
-		# This is a real combat room — advance the "turn" counter and fire
-		# turn-based item triggers (e.g. Horn Cleat on the 2nd combat room).
+		# A combat room is one fight: advance the "turn" counter and fire the
+		# start-of-combat + turn item triggers (Anchor block, Horn Cleat, …).
 		_combat_room_index += 1
-		_fire_item_turn_triggers(_combat_room_index)
+		_fire_item_triggers("combat_started")
+		_fire_item_triggers("turn_started")
 
 	if _living_enemy_count() == 0:
 		# Safe room or already empty — doors stay open.
@@ -277,6 +278,11 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	_refresh_hud()
 	_refresh_slot_bar()
 	queue_redraw()
+
+# Public: true while the current room still has at least one living enemy.
+# The global Backpack uses this to keep equipment swaps to between rooms.
+func has_live_enemies() -> bool:
+	return _living_enemy_count() > 0
 
 func _living_enemy_count() -> int:
 	var n := 0
@@ -584,6 +590,7 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 			GameLog.add("Infuse: gained %d Max HP." % infuse_stacks,
 				Color(0.85, 0.65, 1.0))
 		TriggerBus.emit_signal("enemy_killed", {"enemy": inst.actor, "scene": self})
+		_fire_item_triggers("enemy_killed")
 
 # ---------------------------------------------------------------------------
 # Enemy AI
@@ -729,6 +736,17 @@ func _auto_cd(card: CardData) -> float:
 		return 0.0
 	return maxf(MIN_CLICK_COOLDOWN, _cooldown_for(card))
 
+# A card's base effects plus any item-granted ones (Brass Knuckles -> strikes
+# inflict Bruise). Action reads CardData directly, so grants are merged here
+# rather than via CardInstance.get_effects() (the deckbuilder path).
+func _effective_effects(card: CardData) -> Array:
+	var grants: Array = CardMods.granted_effects(card)
+	if grants.is_empty():
+		return card.effects
+	var out: Array = card.effects.duplicate()
+	out.append_array(grants)
+	return out
+
 func _resolve_card_effects(card: CardData) -> void:
 	# Cards with any ranged-typed damage effect resolve via a
 	# projectile that carries every enemy-targeted effect on the card.
@@ -758,7 +776,8 @@ func _resolve_card_effects(card: CardData) -> void:
 	var aoe_targets: Array = []
 	var needs_cone := false
 	var needs_aoe := false
-	for effect in card.effects:
+	var effs: Array = _effective_effects(card)
+	for effect in effs:
 		var tgt: String = String(effect.get("target", "enemy"))
 		if tgt == "enemy":
 			needs_cone = true
@@ -771,7 +790,7 @@ func _resolve_card_effects(card: CardData) -> void:
 	if needs_aoe:
 		aoe_targets = _enemies_in_radius(ABILITY_AOE_RADIUS)
 
-	for raw_effect in card.effects:
+	for raw_effect in effs:
 		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
 		var t: String = String(effect.get("type", ""))
 		var tgt: String = String(effect.get("target", "enemy"))
@@ -837,7 +856,7 @@ func _resolve_card_effects_auto(card: CardData) -> void:
 		_ability_swing_facing = (nearest.pos - player_pos).normalized()
 		_ability_swing_remaining = SWING_VISUAL_DURATION
 
-	for raw_effect in card.effects:
+	for raw_effect in _effective_effects(card):
 		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
 		var t: String = String(effect.get("type", ""))
 		var tgt: String = String(effect.get("target", "enemy"))
@@ -1153,6 +1172,7 @@ func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 		GameLog.add("%s defeated." % target.display_name, Color(0.6, 1.0, 0.6))
 		if not target.is_player:
 			TriggerBus.emit_signal("enemy_killed", {"enemy": target, "scene": self})
+			_fire_item_triggers("enemy_killed")
 
 # EffectSystem-compatible heal (mirrors deckbuilder/strategy heal). Lets
 # item/effect triggers that emit a `heal` effect resolve in action mode.
@@ -1218,33 +1238,20 @@ func gain_block(_target, amount: int) -> void:
 	player_max_block += amount
 	_gain_block(amount)
 
-# Fires turn_started item triggers gated on if_turn == turn_number.
-# Effects resolve through EffectSystem against the player actor, so the
-# same declarative item data drives all three modes. Currently exercised
-# by Horn Cleat (+Block on the 2nd combat room).
-func _fire_item_turn_triggers(turn_number: int) -> void:
-	var sources: Array = []
-	sources.append_array(GameState.inventory)
-	if GameState.equipped_weapon != null:
-		sources.append(GameState.equipped_weapon)
-	for item in sources:
-		if not (item is ItemData):
-			continue
-		for trig in item.triggers:
-			if String(trig.get("on", "")) != "turn_started":
-				continue
-			var turn_gate: int = int(trig.get("if_turn", 0))
-			if turn_gate > 0 and turn_number != turn_gate:
-				continue
-			for effect in trig.get("effects", []):
-				var ctx := {
-					"source": player_actor,
-					"target": player_actor,
-					"scene": self,
-					"card": null,
-				}
-				EffectSystem.apply(effect, ctx)
+# Fires item triggers through the shared runner so the same declarative item
+# data drives all three modes. `_combat_room_index` is the action-mode "turn"
+# for if_turn gating (Horn Cleat: +Block on the 2nd combat room).
+func _fire_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -> void:
+	ItemTriggers.fire(trigger_name, self, player_actor, _living_enemy_actors(),
+		ctx_extras, _combat_room_index)
 	_refresh_hud()
+
+func _living_enemy_actors() -> Array:
+	var out: Array = []
+	for inst in enemies:
+		if inst.actor != null and inst.actor.is_alive():
+			out.append(inst.actor)
+	return out
 
 # ---------------------------------------------------------------------------
 # Projectiles
@@ -1588,6 +1595,8 @@ func _check_combat_end() -> void:
 		if not _room_resolved and not room_is_safe:
 			_room_resolved = true
 			GameLog.add("Room cleared.", Color(0.4, 1.0, 0.6))
+			# Each cleared combat room is one finished fight (Burning Blood, …).
+			_fire_item_triggers("combat_ended")
 			emit_signal("room_cleared")
 		# Stay in PLAYING so the player can walk out through a door.
 		return

@@ -2,19 +2,30 @@ class_name Backpack
 extends Control
 
 # Global backpack popup. Mounted once on a high CanvasLayer by Main and
-# toggled with Tab from anywhere in a run. Two tabs:
+# toggled with Tab from anywhere in a run. An always-visible Stats hub fills
+# the left column (vitals, attributes + their derived combat stats, and the
+# combat / exploration stats), with tabbed content on the right:
 #   Items — every ItemData in GameState.inventory. USABLE consumables (pills)
 #           get a Use button, enabled only when GameState.can_use_items()
 #           (i.e. in combat or while an event roll is open). Sortable by
 #           pickup order, rarity, or name.
 #   Loot  — the run-scope loot counters (potions / scrolls / keys / fish …).
+#   Gear  — the action-combat loadout (doubles as the equipment screen).
+#   Deck  — every card in the run deck, deduped with copy counts.
 #
 # Built entirely in code so it has no scene-file node dependencies. Runs with
 # PROCESS_MODE_ALWAYS and pauses the tree while open so real-time action
 # combat freezes behind it.
 
-enum Tab { ITEMS, LOOT, GEAR }
+enum Tab { ITEMS, LOOT, GEAR, DECK, HISTORY }
 enum SortMode { PICKUP, RARITY, NAME }
+
+# Card-type labels for the Deck tab.
+const CARD_TYPE_LABELS := ["Attack", "Skill", "Power", "Dice", "Status", "Curse", "Training"]
+
+# Base overworld portal count (mirrors Overworld.BASE_PORTAL_COUNT); the FoV
+# stat shown in the hub is this plus GameState.fov_bonus.
+const BASE_FOV := 3
 
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 const RARITY_COLORS := [
@@ -33,9 +44,12 @@ var _panel: PanelContainer
 var _tab_items_btn: Button
 var _tab_loot_btn: Button
 var _tab_gear_btn: Button
+var _tab_deck_btn: Button
+var _tab_history_btn: Button
 var _sort_bar: HBoxContainer
 var _list_vbox: VBoxContainer
 var _hint_label: Label
+var _stats_vbox: VBoxContainer
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -44,9 +58,24 @@ func _ready() -> void:
 	_build_ui()
 	GameState.inventory_changed.connect(_on_state_changed)
 	GameState.stats_changed.connect(_on_state_changed)
+	GameState.deck_changed.connect(_on_state_changed)
+	Notifications.notified.connect(_on_notified)
+
+# Tab toggles the backpack from anywhere in a run. Handled here (rather than
+# in Main) because the backpack runs PROCESS_MODE_ALWAYS, so it keeps working
+# while the tree is paused (i.e. so Tab also closes it once it's open).
+func _input(event: InputEvent) -> void:
+	if event.is_action_pressed("backpack"):
+		toggle()
+		get_viewport().set_input_as_handled()
 
 func _on_state_changed() -> void:
 	if visible:
+		_refresh()
+
+func _on_notified(_text: String, _color: Color) -> void:
+	# Keep the History tab live while it's open; other tabs don't care.
+	if visible and _tab == Tab.HISTORY:
 		_refresh()
 
 # ------------------------------------------------------------------
@@ -63,6 +92,12 @@ func toggle() -> void:
 		open()
 
 func open() -> void:
+	# In action mode the backpack doubles as the equipment screen, but gear is
+	# only meant to change between rooms — refuse to open over a live fight.
+	var scene = GameState.combat_scene
+	if scene != null and scene.has_method("has_live_enemies") and scene.has_live_enemies():
+		GameLog.add("Clear the room before opening your backpack.", Color(0.85, 0.7, 0.4))
+		return
 	visible = true
 	get_tree().paused = true
 	_refresh()
@@ -70,6 +105,11 @@ func open() -> void:
 func close() -> void:
 	visible = false
 	get_tree().paused = false
+	# Re-apply the action loadout so any gear swap made here takes effect
+	# immediately (recharges cooldowns too). No-op outside action combat.
+	var scene = GameState.combat_scene
+	if scene != null and scene.has_method("reload_loadout"):
+		scene.reload_loadout()
 
 # ------------------------------------------------------------------
 # UI construction
@@ -85,7 +125,7 @@ func _build_ui() -> void:
 	add_child(dim)
 
 	_panel = PanelContainer.new()
-	_panel.size = Vector2(760, 580)
+	_panel.size = Vector2(1060, 600)
 	_panel.position = (get_viewport_rect().size - _panel.size) / 2.0
 	add_child(_panel)
 
@@ -107,10 +147,43 @@ func _build_ui() -> void:
 	close_btn.pressed.connect(close)
 	header.add_child(close_btn)
 
+	# Body: always-visible player-stats hub on the left, tabbed content right.
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 12)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(body)
+
+	# --- Left column: live stats hub ---
+	var stats_col := VBoxContainer.new()
+	stats_col.custom_minimum_size = Vector2(310, 0)
+	stats_col.add_theme_constant_override("separation", 4)
+	body.add_child(stats_col)
+	var stats_title := Label.new()
+	stats_title.text = "Stats"
+	stats_title.add_theme_font_size_override("font_size", 18)
+	stats_title.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
+	stats_col.add_child(stats_title)
+	var stats_scroll := ScrollContainer.new()
+	stats_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stats_scroll.custom_minimum_size = Vector2(310, 500)
+	stats_col.add_child(stats_scroll)
+	_stats_vbox = VBoxContainer.new()
+	_stats_vbox.add_theme_constant_override("separation", 2)
+	_stats_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_scroll.add_child(_stats_vbox)
+
+	body.add_child(VSeparator.new())
+
+	# --- Right column: the existing tabbed content ---
+	var main := VBoxContainer.new()
+	main.add_theme_constant_override("separation", 10)
+	main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(main)
+
 	# Tab buttons.
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
-	root.add_child(tabs)
+	main.add_child(tabs)
 	_tab_items_btn = Button.new()
 	_tab_items_btn.text = "Items"
 	_tab_items_btn.toggle_mode = true
@@ -126,11 +199,21 @@ func _build_ui() -> void:
 	_tab_gear_btn.toggle_mode = true
 	_tab_gear_btn.pressed.connect(func(): _set_tab(Tab.GEAR))
 	tabs.add_child(_tab_gear_btn)
+	_tab_deck_btn = Button.new()
+	_tab_deck_btn.text = "Deck"
+	_tab_deck_btn.toggle_mode = true
+	_tab_deck_btn.pressed.connect(func(): _set_tab(Tab.DECK))
+	tabs.add_child(_tab_deck_btn)
+	_tab_history_btn = Button.new()
+	_tab_history_btn.text = "History"
+	_tab_history_btn.toggle_mode = true
+	_tab_history_btn.pressed.connect(func(): _set_tab(Tab.HISTORY))
+	tabs.add_child(_tab_history_btn)
 
 	# Sort bar (Items tab only).
 	_sort_bar = HBoxContainer.new()
 	_sort_bar.add_theme_constant_override("separation", 6)
-	root.add_child(_sort_bar)
+	main.add_child(_sort_bar)
 	var sort_lbl := Label.new()
 	sort_lbl.text = "Sort:"
 	_sort_bar.add_child(sort_lbl)
@@ -141,8 +224,8 @@ func _build_ui() -> void:
 	# Scrollable list.
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(720, 440)
-	root.add_child(scroll)
+	scroll.custom_minimum_size = Vector2(700, 440)
+	main.add_child(scroll)
 	_list_vbox = VBoxContainer.new()
 	_list_vbox.add_theme_constant_override("separation", 6)
 	_list_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -151,7 +234,7 @@ func _build_ui() -> void:
 	_hint_label = Label.new()
 	_hint_label.add_theme_font_size_override("font_size", 12)
 	_hint_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
-	root.add_child(_hint_label)
+	main.add_child(_hint_label)
 
 func _add_sort_button(text: String, mode: SortMode) -> void:
 	var b := Button.new()
@@ -173,9 +256,12 @@ func _set_sort(mode: SortMode) -> void:
 # ------------------------------------------------------------------
 
 func _refresh() -> void:
+	_refresh_stats()
 	_tab_items_btn.button_pressed = _tab == Tab.ITEMS
 	_tab_loot_btn.button_pressed = _tab == Tab.LOOT
 	_tab_gear_btn.button_pressed = _tab == Tab.GEAR
+	_tab_deck_btn.button_pressed = _tab == Tab.DECK
+	_tab_history_btn.button_pressed = _tab == Tab.HISTORY
 	_sort_bar.visible = _tab == Tab.ITEMS
 	for b in _sort_bar.get_children():
 		if b is Button and b.has_meta("sort_mode"):
@@ -189,6 +275,151 @@ func _refresh() -> void:
 			_render_loot()
 		Tab.GEAR:
 			_render_gear()
+		Tab.DECK:
+			_render_deck()
+		Tab.HISTORY:
+			_render_history()
+
+# ------------------------------------------------------------------
+# Stats hub — always-visible left column. Mirrors the old HTML sidebar:
+# vitals, attributes paired with their derived combat stats, then the
+# combat and exploration stats this project adds on top. Values show the
+# total with the item/temp-bonus breakdown when there is one.
+# ------------------------------------------------------------------
+
+func _refresh_stats() -> void:
+	if _stats_vbox == null:
+		return
+	for c in _stats_vbox.get_children():
+		c.queue_free()
+
+	_stats_vbox.add_child(_stat_header("Vitals"))
+	_stats_vbox.add_child(_stat_row("Health", "%d / %d" % [GameState.hp, GameState.max_hp], Color(0.95, 0.5, 0.5)))
+	var energy_def: StatDefinition = Stats.get_definition(&"max_energy")
+	_stats_vbox.add_child(_stat_row("Energy", str(GameState.max_energy), Color(0.6, 0.85, 1.0),
+		energy_def.description if energy_def != null else ""))
+	_stats_vbox.add_child(_stat_row("Hand Size", str(GameState.hand_size), Color(0.8, 0.85, 0.95)))
+	_stats_vbox.add_child(_stat_row("Gold", str(GameState.gold), Color(1.0, 0.85, 0.35)))
+
+	_stats_vbox.add_child(_stat_header("Attributes"))
+	_add_attribute(&"strength", Color(0.95, 0.55, 0.45))
+	_add_attribute(&"dexterity", Color(0.55, 0.85, 0.55))
+	_add_attribute(&"intelligence", Color(0.6, 0.7, 1.0))
+	_add_attribute(&"charisma", Color(0.9, 0.6, 0.95))
+	_add_attribute(&"constitution", Color(0.85, 0.7, 0.5))
+
+	_stats_vbox.add_child(_stat_header("Combat"))
+	_add_attribute(&"crit_chance", Color(1.0, 0.8, 0.4), "%")
+	# Crit Chance Up = the effective per-hit crit chance (folds Luck in).
+	_stats_vbox.add_child(_stat_row(
+		"Crit Chance Up", "%d%%" % Stats.crit_chance_percent(), Color(1.0, 0.85, 0.55),
+		"Effective per-hit crit chance: max(0, 2 x Luck) + Crit Chance, capped at 100%.", true))
+	_add_attribute(&"crit_damage", Color(1.0, 0.7, 0.4), "%")
+	_add_attribute(&"luck", Color(0.7, 1.0, 0.7))
+	_add_attribute(&"speed", Color(0.6, 0.9, 1.0))
+	_add_attribute(&"harvesting", Color(1.0, 0.85, 0.4))
+	_add_attribute(&"regeneration", Color(0.55, 0.95, 0.7))
+
+	_stats_vbox.add_child(_stat_header("Exploration"))
+	_stats_vbox.add_child(_stat_row("FoV", str(BASE_FOV + GameState.fov_bonus), Color(0.7, 0.85, 1.0),
+		"Number of game portals shown on the overworld."))
+	_stats_vbox.add_child(_stat_row("Discovery", str(GameState.discovery), Color(0.8, 0.8, 1.0),
+		"Extra choices when collecting item and card rewards."))
+	_stats_vbox.add_child(_stat_row("Dash", str(GameState.dash_charges), Color(0.85, 0.9, 1.0),
+		"Charges to dash to any connected game node."))
+	_stats_vbox.add_child(_stat_row("Reroll", str(GameState.reroll_charges), Color(0.85, 0.9, 1.0),
+		"Charges to re-roll the overworld portal choices."))
+
+# Adds a base-stat row (with item/temp breakdown + tooltip from its
+# StatDefinition), then an indented derived-status row if the stat has one
+# (e.g. Strength -> Power). `suffix` appends a unit like "%".
+func _add_attribute(stat_id: StringName, color: Color, suffix: String = "") -> void:
+	var def: StatDefinition = Stats.get_definition(stat_id)
+	var label: String = def.display_name if def != null and def.display_name != "" else String(stat_id).capitalize()
+	var tip: String = def.description if def != null else ""
+	_stats_vbox.add_child(_stat_row(label, _stat_value_text(stat_id, suffix), color, tip))
+	if def != null and def.derived_status != &"":
+		var dname: String = String(def.derived_status).capitalize()
+		# Skip the indented derived row when it would just repeat the stat
+		# (e.g. the Regeneration stat derives the Regeneration status 1:1).
+		if dname != label:
+			var per: int = maxi(1, def.derived_per)
+			var stacks: int = int(floor(float(Stats.get_value(stat_id)) / float(per)))
+			_stats_vbox.add_child(_stat_row(dname, str(stacks), Color(0.6, 0.8, 0.95), "", true))
+
+# "total" or "total  (base +bonus)" when item/temp bonuses are present.
+func _stat_value_text(stat_id: StringName, suffix: String = "") -> String:
+	var field := String(stat_id)
+	var base: int = int(GameState.get(field))
+	var bonus: int = int(GameState.item_stat_bonus.get(field, 0)) + int(GameState.temp_stat_bonus.get(field, 0))
+	var total: int = base + bonus
+	if bonus == 0:
+		return "%d%s" % [total, suffix]
+	return "%d%s  (%d %+d)" % [total, suffix, base, bonus]
+
+func _stat_header(text: String) -> Control:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.5))
+	return lbl
+
+func _stat_row(label_text: String, value_text: String, color: Color, tooltip: String = "", derived: bool = false) -> Control:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if tooltip != "":
+		row.tooltip_text = tooltip
+		row.mouse_filter = Control.MOUSE_FILTER_STOP
+	var lbl := Label.new()
+	lbl.text = ("    " if derived else "") + label_text
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl.add_theme_color_override("font_color", color if not derived else color.lerp(Color(0.6, 0.6, 0.6), 0.35))
+	var val := Label.new()
+	val.text = value_text
+	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	val.add_theme_color_override("font_color", Color(0.96, 0.96, 0.96))
+	if derived:
+		lbl.add_theme_font_size_override("font_size", 12)
+		val.add_theme_font_size_override("font_size", 12)
+	row.add_child(lbl)
+	row.add_child(val)
+	return row
+
+# ------------------------------------------------------------------
+# History tab — the Notifications channel log (item procs, pickups, run
+# milestones), newest first. Text + color, mirroring the entry's toast.
+# ------------------------------------------------------------------
+
+func _render_history() -> void:
+	var entries: Array = Notifications.history
+	if entries.is_empty():
+		var empty := Label.new()
+		empty.text = "No notifications yet."
+		empty.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+		_list_vbox.add_child(empty)
+		_hint_label.text = "Important events show here as they happen."
+		return
+	# Newest first.
+	for i in range(entries.size() - 1, -1, -1):
+		var e: Dictionary = entries[i]
+		var row := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.12, 0.12, 0.16, 0.6)
+		sb.border_color = e.get("color", Color(0.5, 0.5, 0.5))
+		sb.border_width_left = 3
+		sb.content_margin_left = 10
+		sb.content_margin_right = 10
+		sb.content_margin_top = 5
+		sb.content_margin_bottom = 5
+		row.add_theme_stylebox_override("panel", sb)
+		var lbl := Label.new()
+		lbl.text = String(e.get("text", ""))
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl.custom_minimum_size = Vector2(640, 0)
+		lbl.add_theme_color_override("font_color", e.get("color", Color.WHITE))
+		row.add_child(lbl)
+		_list_vbox.add_child(row)
+	_hint_label.text = "%d notifications this run (newest first)." % entries.size()
 
 func _render_items() -> void:
 	var items: Array = _sorted_items()
@@ -305,13 +536,85 @@ func _render_loot() -> void:
 	_hint_label.text = "Potions, scrolls, keys and other findings."
 
 # ------------------------------------------------------------------
+# Deck tab — every card the player currently owns, deduped by card id
+# with a count, so the run's whole deck is viewable from anywhere.
+# ------------------------------------------------------------------
+
+func _render_deck() -> void:
+	# Group the deck by card id, preserving first-seen order, and count copies.
+	var counts: Dictionary = {}
+	var order: Array = []
+	var total := 0
+	for c in GameState.deck:
+		if not (c is CardInstance) or c.data == null:
+			continue
+		total += 1
+		var id: StringName = c.data.id
+		if counts.has(id):
+			counts[id] += 1
+		else:
+			counts[id] = 1
+			order.append(c.data)
+	if order.is_empty():
+		var empty := Label.new()
+		empty.text = "Your deck is empty."
+		empty.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+		_list_vbox.add_child(empty)
+		_hint_label.text = "Every card in your run deck."
+		return
+	for data in order:
+		_list_vbox.add_child(_build_card_row(data, int(counts[data.id])))
+	_hint_label.text = "%d cards across %d unique." % [total, order.size()]
+
+func _build_card_row(card: CardData, count: int) -> Control:
+	var row := PanelContainer.new()
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 10)
+	row.add_child(hbox)
+
+	# Cost chip.
+	var cost := Label.new()
+	cost.text = "X" if card.cost < 0 else str(card.cost)
+	cost.custom_minimum_size = Vector2(28, 0)
+	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cost.add_theme_color_override("font_color", Color(0.6, 0.85, 1.0))
+	hbox.add_child(cost)
+
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(info)
+
+	var name_lbl := Label.new()
+	var type_idx: int = clampi(int(card.type), 0, CARD_TYPE_LABELS.size() - 1)
+	var rarity_idx: int = clampi(int(card.rarity), 0, RARITY_COLORS.size() - 1)
+	var copies: String = ("   x%d" % count) if count > 1 else ""
+	name_lbl.text = "%s%s   [%s]" % [card.display_name, copies, CARD_TYPE_LABELS[type_idx]]
+	name_lbl.add_theme_color_override("font_color", RARITY_COLORS[rarity_idx])
+	info.add_child(name_lbl)
+
+	var desc_lbl := Label.new()
+	var grant_extra: String = CardMods.describe(card)
+	desc_lbl.text = card.description if grant_extra == "" else "%s %s" % [card.description, grant_extra]
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.custom_minimum_size = Vector2(560, 0)
+	desc_lbl.add_theme_font_size_override("font_size", 12)
+	desc_lbl.add_theme_color_override("font_color", Color(0.82, 0.82, 0.82))
+	info.add_child(desc_lbl)
+
+	return row
+
+# ------------------------------------------------------------------
 # Gear tab — action-combat loadout (doubles as the equipment screen).
 # Equipment can't be changed mid-combat (the action rule); the rows go
 # read-only whenever a combat is live.
 # ------------------------------------------------------------------
 
 func _render_gear() -> void:
-	var locked: bool = GameState.combat_scene != null
+	# Action combat exposes reload_loadout(); the backpack only opens there
+	# between rooms, so gear stays editable. Turn-based card combats keep the
+	# action loadout locked while a fight is live.
+	var scene = GameState.combat_scene
+	var locked: bool = scene != null and not scene.has_method("reload_loadout")
 	if locked:
 		var note := Label.new()
 		note.text = "You can't change equipment during combat."

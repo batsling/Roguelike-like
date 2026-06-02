@@ -184,15 +184,16 @@ func _mount_backpack() -> void:
 	add_child(layer)
 	_backpack = Backpack.new()
 	layer.add_child(_backpack)
+	# Tab toggling lives in Backpack itself (it runs PROCESS_MODE_ALWAYS so it
+	# keeps receiving input while the tree is paused with the bag open).
 
-func _input(event: InputEvent) -> void:
-	# Tab toggles the backpack from anywhere in the run. Handled here (before
-	# GUI focus traversal) so Tab doesn't double as focus-next, and accepted
-	# so the active scene below doesn't also react.
-	if event.is_action_pressed("backpack"):
-		if _backpack != null:
-			_backpack.toggle()
-		get_viewport().set_input_as_handled()
+	# Notification toasts sit on their own layer above everything (even the
+	# backpack) so important events stay visible wherever they fire.
+	var toast_layer := CanvasLayer.new()
+	toast_layer.layer = 200
+	toast_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(toast_layer)
+	toast_layer.add_child(NotificationToasts.new())
 
 # ---------------------------------------------------------------------------
 # Enemy pool helper — currently mode-agnostic since every fight is
