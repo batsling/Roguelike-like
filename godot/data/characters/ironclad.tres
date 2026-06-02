@@ -20,9 +20,9 @@ starting_deck = Array[StringName]([&"strike", &"strike", &"strike", &"strike", &
 starting_items = Array[StringName]([&"burning_blood"])
 starting_weapon = &""
 level_up_condition = "Unlock a new difficulty"
-level_up_reward = "+1 Strength, +5 Max HP, and a card"
+level_up_reward = "1 Ironclad Card Reward"
 level_up_stats = {
-"max_hp": 5,
+"dexterity": 1,
 "strength": 1
 }
 level_up_reward_type = &"card"
