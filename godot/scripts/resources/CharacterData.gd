@@ -26,9 +26,26 @@ extends Resource
 # Starting weapon id (or &"" for none)
 @export var starting_weapon: StringName = &""
 
-# Level-up trigger (description; mechanic added later)
+# === Level-up mechanic ===
+# Each character levels up by meeting `level_up_condition` — an honour-system
+# Yes/No question shown on the post-game verification modal. On a level-up the
+# `level_up_stats` are applied and a reward of `level_up_reward_type` is granted.
+# `level_up_reward` stays as the human-readable summary shown on the modal.
 @export var level_up_condition: String = ""
 @export var level_up_reward: String = ""
+
+# Stat/ability bonuses granted per level-up. Keys are GameState stat/ability
+# ids (strength, dexterity, intelligence, charisma, constitution, luck, speed,
+# dash, reroll, fov, discovery, max_hp). The special key "random" grants N
+# random points spread across strength/dexterity/intelligence/charisma.
+#   Zoe: {"dexterity": 1, "dash": 1}
+@export var level_up_stats: Dictionary = {}
+
+# Reward handed out on level-up. One of: &"none", &"gold", &"item", &"card",
+# &"scroll_and_potion". `level_up_reward_amount` carries the gold amount for
+# the &"gold" type.
+@export var level_up_reward_type: StringName = &"none"
+@export var level_up_reward_amount: int = 0
 
 # Visuals
 @export var portrait: Texture2D

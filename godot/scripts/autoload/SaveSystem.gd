@@ -63,6 +63,7 @@ func _build_payload() -> Dictionary:
 		"beaten_games": _stringnames_to_strings(GameState.beaten_games),
 		"total_games_beaten": GameState.total_games_beaten,
 		"games_played": GameState.games_played,
+		"player_level": GameState.player_level,
 		# Save the BASE vitals (without item contribution). The item
 		# bonuses are re-applied on load through _recompute_item_bonuses,
 		# which would otherwise double-count whatever max_hp/max_energy
@@ -131,6 +132,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.beaten_games = _strings_to_stringnames(data.get("beaten_games", []))
 	GameState.total_games_beaten = data.get("total_games_beaten", 0)
 	GameState.games_played = data.get("games_played", 0)
+	GameState.player_level = data.get("player_level", 1)
 	GameState.max_hp = data.get("max_hp", 75)
 	GameState.hp = data.get("hp", GameState.max_hp)
 	GameState.max_energy = data.get("max_energy", 3)

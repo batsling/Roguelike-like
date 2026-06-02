@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_clown_shoes"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/ClownShoes.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"clown_shoes"
+display_name = "Clown Shoes"
+kind = 1
+rarity = 1
+description = "Whenever you don't Perfect a game (beat a game without losing a run), 50% chance to treat it like you did."
+triggers = []
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+perfect_aware = true
+perfect_save_chance = 0.5
+source_game = "Haste"
+tags = PackedStringArray("wearable", "shoes", "clown")
+image = ExtResource("2_img")
