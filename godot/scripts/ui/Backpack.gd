@@ -13,8 +13,11 @@ extends Control
 # PROCESS_MODE_ALWAYS and pauses the tree while open so real-time action
 # combat freezes behind it.
 
-enum Tab { ITEMS, LOOT, GEAR }
+enum Tab { ITEMS, LOOT, GEAR, DECK }
 enum SortMode { PICKUP, RARITY, NAME }
+
+# Card-type labels for the Deck tab.
+const CARD_TYPE_LABELS := ["Attack", "Skill", "Power", "Dice", "Status", "Curse", "Training"]
 
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 const RARITY_COLORS := [
@@ -33,6 +36,7 @@ var _panel: PanelContainer
 var _tab_items_btn: Button
 var _tab_loot_btn: Button
 var _tab_gear_btn: Button
+var _tab_deck_btn: Button
 var _sort_bar: HBoxContainer
 var _list_vbox: VBoxContainer
 var _hint_label: Label
@@ -44,6 +48,15 @@ func _ready() -> void:
 	_build_ui()
 	GameState.inventory_changed.connect(_on_state_changed)
 	GameState.stats_changed.connect(_on_state_changed)
+	GameState.deck_changed.connect(_on_state_changed)
+
+# Tab toggles the backpack from anywhere in a run. Handled here (rather than
+# in Main) because the backpack runs PROCESS_MODE_ALWAYS, so it keeps working
+# while the tree is paused (i.e. so Tab also closes it once it's open).
+func _input(event: InputEvent) -> void:
+	if event.is_action_pressed("backpack"):
+		toggle()
+		get_viewport().set_input_as_handled()
 
 func _on_state_changed() -> void:
 	if visible:
@@ -63,6 +76,12 @@ func toggle() -> void:
 		open()
 
 func open() -> void:
+	# In action mode the backpack doubles as the equipment screen, but gear is
+	# only meant to change between rooms — refuse to open over a live fight.
+	var scene = GameState.combat_scene
+	if scene != null and scene.has_method("has_live_enemies") and scene.has_live_enemies():
+		GameLog.add("Clear the room before opening your backpack.", Color(0.85, 0.7, 0.4))
+		return
 	visible = true
 	get_tree().paused = true
 	_refresh()
@@ -70,6 +89,11 @@ func open() -> void:
 func close() -> void:
 	visible = false
 	get_tree().paused = false
+	# Re-apply the action loadout so any gear swap made here takes effect
+	# immediately (recharges cooldowns too). No-op outside action combat.
+	var scene = GameState.combat_scene
+	if scene != null and scene.has_method("reload_loadout"):
+		scene.reload_loadout()
 
 # ------------------------------------------------------------------
 # UI construction
@@ -126,6 +150,11 @@ func _build_ui() -> void:
 	_tab_gear_btn.toggle_mode = true
 	_tab_gear_btn.pressed.connect(func(): _set_tab(Tab.GEAR))
 	tabs.add_child(_tab_gear_btn)
+	_tab_deck_btn = Button.new()
+	_tab_deck_btn.text = "Deck"
+	_tab_deck_btn.toggle_mode = true
+	_tab_deck_btn.pressed.connect(func(): _set_tab(Tab.DECK))
+	tabs.add_child(_tab_deck_btn)
 
 	# Sort bar (Items tab only).
 	_sort_bar = HBoxContainer.new()
@@ -176,6 +205,7 @@ func _refresh() -> void:
 	_tab_items_btn.button_pressed = _tab == Tab.ITEMS
 	_tab_loot_btn.button_pressed = _tab == Tab.LOOT
 	_tab_gear_btn.button_pressed = _tab == Tab.GEAR
+	_tab_deck_btn.button_pressed = _tab == Tab.DECK
 	_sort_bar.visible = _tab == Tab.ITEMS
 	for b in _sort_bar.get_children():
 		if b is Button and b.has_meta("sort_mode"):
@@ -189,6 +219,8 @@ func _refresh() -> void:
 			_render_loot()
 		Tab.GEAR:
 			_render_gear()
+		Tab.DECK:
+			_render_deck()
 
 func _render_items() -> void:
 	var items: Array = _sorted_items()
@@ -305,13 +337,84 @@ func _render_loot() -> void:
 	_hint_label.text = "Potions, scrolls, keys and other findings."
 
 # ------------------------------------------------------------------
+# Deck tab — every card the player currently owns, deduped by card id
+# with a count, so the run's whole deck is viewable from anywhere.
+# ------------------------------------------------------------------
+
+func _render_deck() -> void:
+	# Group the deck by card id, preserving first-seen order, and count copies.
+	var counts: Dictionary = {}
+	var order: Array = []
+	var total := 0
+	for c in GameState.deck:
+		if not (c is CardInstance) or c.data == null:
+			continue
+		total += 1
+		var id: StringName = c.data.id
+		if counts.has(id):
+			counts[id] += 1
+		else:
+			counts[id] = 1
+			order.append(c.data)
+	if order.is_empty():
+		var empty := Label.new()
+		empty.text = "Your deck is empty."
+		empty.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+		_list_vbox.add_child(empty)
+		_hint_label.text = "Every card in your run deck."
+		return
+	for data in order:
+		_list_vbox.add_child(_build_card_row(data, int(counts[data.id])))
+	_hint_label.text = "%d cards across %d unique." % [total, order.size()]
+
+func _build_card_row(card: CardData, count: int) -> Control:
+	var row := PanelContainer.new()
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 10)
+	row.add_child(hbox)
+
+	# Cost chip.
+	var cost := Label.new()
+	cost.text = "X" if card.cost < 0 else str(card.cost)
+	cost.custom_minimum_size = Vector2(28, 0)
+	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cost.add_theme_color_override("font_color", Color(0.6, 0.85, 1.0))
+	hbox.add_child(cost)
+
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(info)
+
+	var name_lbl := Label.new()
+	var type_idx: int = clampi(int(card.type), 0, CARD_TYPE_LABELS.size() - 1)
+	var rarity_idx: int = clampi(int(card.rarity), 0, RARITY_COLORS.size() - 1)
+	var copies: String = ("   x%d" % count) if count > 1 else ""
+	name_lbl.text = "%s%s   [%s]" % [card.display_name, copies, CARD_TYPE_LABELS[type_idx]]
+	name_lbl.add_theme_color_override("font_color", RARITY_COLORS[rarity_idx])
+	info.add_child(name_lbl)
+
+	var desc_lbl := Label.new()
+	desc_lbl.text = card.description
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.custom_minimum_size = Vector2(560, 0)
+	desc_lbl.add_theme_font_size_override("font_size", 12)
+	desc_lbl.add_theme_color_override("font_color", Color(0.82, 0.82, 0.82))
+	info.add_child(desc_lbl)
+
+	return row
+
+# ------------------------------------------------------------------
 # Gear tab — action-combat loadout (doubles as the equipment screen).
 # Equipment can't be changed mid-combat (the action rule); the rows go
 # read-only whenever a combat is live.
 # ------------------------------------------------------------------
 
 func _render_gear() -> void:
-	var locked: bool = GameState.combat_scene != null
+	# Action combat exposes reload_loadout(); the backpack only opens there
+	# between rooms, so gear stays editable. Turn-based card combats keep the
+	# action loadout locked while a fight is live.
+	var scene = GameState.combat_scene
+	var locked: bool = scene != null and not scene.has_method("reload_loadout")
 	if locked:
 		var note := Label.new()
 		note.text = "You can't change equipment during combat."

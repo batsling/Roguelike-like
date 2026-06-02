@@ -278,6 +278,11 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	_refresh_slot_bar()
 	queue_redraw()
 
+# Public: true while the current room still has at least one living enemy.
+# The global Backpack uses this to keep equipment swaps to between rooms.
+func has_live_enemies() -> bool:
+	return _living_enemy_count() > 0
+
 func _living_enemy_count() -> int:
 	var n := 0
 	for inst in enemies:

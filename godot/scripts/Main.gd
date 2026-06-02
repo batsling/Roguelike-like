@@ -184,15 +184,8 @@ func _mount_backpack() -> void:
 	add_child(layer)
 	_backpack = Backpack.new()
 	layer.add_child(_backpack)
-
-func _input(event: InputEvent) -> void:
-	# Tab toggles the backpack from anywhere in the run. Handled here (before
-	# GUI focus traversal) so Tab doesn't double as focus-next, and accepted
-	# so the active scene below doesn't also react.
-	if event.is_action_pressed("backpack"):
-		if _backpack != null:
-			_backpack.toggle()
-		get_viewport().set_input_as_handled()
+	# Tab toggling lives in Backpack itself (it runs PROCESS_MODE_ALWAYS so it
+	# keeps receiving input while the tree is paused with the bag open).
 
 # ---------------------------------------------------------------------------
 # Enemy pool helper — currently mode-agnostic since every fight is
