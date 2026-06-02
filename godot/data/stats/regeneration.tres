@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StatDefinition" load_steps=2 format=3 uid="uid://stat_regeneration"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatDefinition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"regeneration"
+display_name = "Regeneration"
+description = "At the start of combat, gain Regeneration status equal to your Regeneration (heals 1 HP per stack at the end of each turn). Item-granted."
+grants_event_roll_bonus = false
+derived_status = &"regeneration"
+derived_per = 1
+mode_data = {}

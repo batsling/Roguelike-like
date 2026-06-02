@@ -280,7 +280,9 @@ func _refresh_stats() -> void:
 
 	_stats_vbox.add_child(_stat_header("Vitals"))
 	_stats_vbox.add_child(_stat_row("Health", "%d / %d" % [GameState.hp, GameState.max_hp], Color(0.95, 0.5, 0.5)))
-	_stats_vbox.add_child(_stat_row("Energy", str(GameState.max_energy), Color(0.6, 0.85, 1.0)))
+	var energy_def: StatDefinition = Stats.get_definition(&"max_energy")
+	_stats_vbox.add_child(_stat_row("Energy", str(GameState.max_energy), Color(0.6, 0.85, 1.0),
+		energy_def.description if energy_def != null else ""))
 	_stats_vbox.add_child(_stat_row("Hand Size", str(GameState.hand_size), Color(0.8, 0.85, 0.95)))
 	_stats_vbox.add_child(_stat_row("Gold", str(GameState.gold), Color(1.0, 0.85, 0.35)))
 
@@ -301,6 +303,7 @@ func _refresh_stats() -> void:
 	_add_attribute(&"luck", Color(0.7, 1.0, 0.7))
 	_add_attribute(&"speed", Color(0.6, 0.9, 1.0))
 	_add_attribute(&"harvesting", Color(1.0, 0.85, 0.4))
+	_add_attribute(&"regeneration", Color(0.55, 0.95, 0.7))
 
 	_stats_vbox.add_child(_stat_header("Exploration"))
 	_stats_vbox.add_child(_stat_row("FoV", str(BASE_FOV + GameState.fov_bonus), Color(0.7, 0.85, 1.0),
@@ -321,10 +324,13 @@ func _add_attribute(stat_id: StringName, color: Color, suffix: String = "") -> v
 	var tip: String = def.description if def != null else ""
 	_stats_vbox.add_child(_stat_row(label, _stat_value_text(stat_id, suffix), color, tip))
 	if def != null and def.derived_status != &"":
-		var per: int = maxi(1, def.derived_per)
-		var stacks: int = int(floor(float(Stats.get_value(stat_id)) / float(per)))
 		var dname: String = String(def.derived_status).capitalize()
-		_stats_vbox.add_child(_stat_row(dname, str(stacks), Color(0.6, 0.8, 0.95), "", true))
+		# Skip the indented derived row when it would just repeat the stat
+		# (e.g. the Regeneration stat derives the Regeneration status 1:1).
+		if dname != label:
+			var per: int = maxi(1, def.derived_per)
+			var stacks: int = int(floor(float(Stats.get_value(stat_id)) / float(per)))
+			_stats_vbox.add_child(_stat_row(dname, str(stacks), Color(0.6, 0.8, 0.95), "", true))
 
 # "total" or "total  (base +bonus)" when item/temp bonuses are present.
 func _stat_value_text(stat_id: StringName, suffix: String = "") -> String:
