@@ -9,13 +9,18 @@ id = &"charm_of_the_vampire"
 display_name = "Charm of the Vampire"
 kind = 1
 rarity = 1
-description = "When you defeat an enemy, heal 3 HP."
+description = "When you defeat an enemy, 50% chance to heal 2 HP."
 triggers = [{
 "on": "enemy_killed",
 "effects": [{
+"type": "chance",
+"percent": 50,
+"effect": {
 "type": "heal",
-"value": 3,
-"target": "self"
+"value": 2,
+"target": "self",
+"notify": "Charm of the Vampire: +2 HP"
+}
 }]
 }]
 stat_bonuses = {}

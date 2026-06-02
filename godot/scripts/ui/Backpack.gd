@@ -17,7 +17,7 @@ extends Control
 # PROCESS_MODE_ALWAYS and pauses the tree while open so real-time action
 # combat freezes behind it.
 
-enum Tab { ITEMS, LOOT, GEAR, DECK }
+enum Tab { ITEMS, LOOT, GEAR, DECK, HISTORY }
 enum SortMode { PICKUP, RARITY, NAME }
 
 # Card-type labels for the Deck tab.
@@ -45,6 +45,7 @@ var _tab_items_btn: Button
 var _tab_loot_btn: Button
 var _tab_gear_btn: Button
 var _tab_deck_btn: Button
+var _tab_history_btn: Button
 var _sort_bar: HBoxContainer
 var _list_vbox: VBoxContainer
 var _hint_label: Label
@@ -58,6 +59,7 @@ func _ready() -> void:
 	GameState.inventory_changed.connect(_on_state_changed)
 	GameState.stats_changed.connect(_on_state_changed)
 	GameState.deck_changed.connect(_on_state_changed)
+	Notifications.notified.connect(_on_notified)
 
 # Tab toggles the backpack from anywhere in a run. Handled here (rather than
 # in Main) because the backpack runs PROCESS_MODE_ALWAYS, so it keeps working
@@ -69,6 +71,11 @@ func _input(event: InputEvent) -> void:
 
 func _on_state_changed() -> void:
 	if visible:
+		_refresh()
+
+func _on_notified(_text: String, _color: Color) -> void:
+	# Keep the History tab live while it's open; other tabs don't care.
+	if visible and _tab == Tab.HISTORY:
 		_refresh()
 
 # ------------------------------------------------------------------
@@ -197,6 +204,11 @@ func _build_ui() -> void:
 	_tab_deck_btn.toggle_mode = true
 	_tab_deck_btn.pressed.connect(func(): _set_tab(Tab.DECK))
 	tabs.add_child(_tab_deck_btn)
+	_tab_history_btn = Button.new()
+	_tab_history_btn.text = "History"
+	_tab_history_btn.toggle_mode = true
+	_tab_history_btn.pressed.connect(func(): _set_tab(Tab.HISTORY))
+	tabs.add_child(_tab_history_btn)
 
 	# Sort bar (Items tab only).
 	_sort_bar = HBoxContainer.new()
@@ -249,6 +261,7 @@ func _refresh() -> void:
 	_tab_loot_btn.button_pressed = _tab == Tab.LOOT
 	_tab_gear_btn.button_pressed = _tab == Tab.GEAR
 	_tab_deck_btn.button_pressed = _tab == Tab.DECK
+	_tab_history_btn.button_pressed = _tab == Tab.HISTORY
 	_sort_bar.visible = _tab == Tab.ITEMS
 	for b in _sort_bar.get_children():
 		if b is Button and b.has_meta("sort_mode"):
@@ -264,6 +277,8 @@ func _refresh() -> void:
 			_render_gear()
 		Tab.DECK:
 			_render_deck()
+		Tab.HISTORY:
+			_render_history()
 
 # ------------------------------------------------------------------
 # Stats hub — always-visible left column. Mirrors the old HTML sidebar:
@@ -369,6 +384,42 @@ func _stat_row(label_text: String, value_text: String, color: Color, tooltip: St
 	row.add_child(lbl)
 	row.add_child(val)
 	return row
+
+# ------------------------------------------------------------------
+# History tab — the Notifications channel log (item procs, pickups, run
+# milestones), newest first. Text + color, mirroring the entry's toast.
+# ------------------------------------------------------------------
+
+func _render_history() -> void:
+	var entries: Array = Notifications.history
+	if entries.is_empty():
+		var empty := Label.new()
+		empty.text = "No notifications yet."
+		empty.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+		_list_vbox.add_child(empty)
+		_hint_label.text = "Important events show here as they happen."
+		return
+	# Newest first.
+	for i in range(entries.size() - 1, -1, -1):
+		var e: Dictionary = entries[i]
+		var row := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.12, 0.12, 0.16, 0.6)
+		sb.border_color = e.get("color", Color(0.5, 0.5, 0.5))
+		sb.border_width_left = 3
+		sb.content_margin_left = 10
+		sb.content_margin_right = 10
+		sb.content_margin_top = 5
+		sb.content_margin_bottom = 5
+		row.add_theme_stylebox_override("panel", sb)
+		var lbl := Label.new()
+		lbl.text = String(e.get("text", ""))
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl.custom_minimum_size = Vector2(640, 0)
+		lbl.add_theme_color_override("font_color", e.get("color", Color.WHITE))
+		row.add_child(lbl)
+		_list_vbox.add_child(row)
+	_hint_label.text = "%d notifications this run (newest first)." % entries.size()
 
 func _render_items() -> void:
 	var items: Array = _sorted_items()

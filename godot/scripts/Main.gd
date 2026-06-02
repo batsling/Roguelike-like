@@ -187,6 +187,14 @@ func _mount_backpack() -> void:
 	# Tab toggling lives in Backpack itself (it runs PROCESS_MODE_ALWAYS so it
 	# keeps receiving input while the tree is paused with the bag open).
 
+	# Notification toasts sit on their own layer above everything (even the
+	# backpack) so important events stay visible wherever they fire.
+	var toast_layer := CanvasLayer.new()
+	toast_layer.layer = 200
+	toast_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(toast_layer)
+	toast_layer.add_child(NotificationToasts.new())
+
 # ---------------------------------------------------------------------------
 # Enemy pool helper — currently mode-agnostic since every fight is
 # deckbuilder; per-game/per-mode enemy pools land in Phase 3/4.

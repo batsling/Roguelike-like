@@ -220,6 +220,7 @@ func reset_run() -> void:
 	regeneration = 0
 	active_curses.clear()
 	pending_combat_statuses.clear()
+	Notifications.clear()
 	phase = Phase.MENU
 
 func apply_character(char_data: CharacterData) -> void:

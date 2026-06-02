@@ -40,6 +40,11 @@ func apply(effect: Dictionary, ctx: Dictionary) -> void:
 		push_warning("EffectSystem.apply: no handler for type '%s'" % t)
 		return
 	h.call(effect, ctx)
+	# Opt-in player-facing notification. Authored as a `notify` field on the
+	# effect dict; for a chance-wrapped proc this lives on the INNER effect, so
+	# it only posts when the (luck-rolled) chance actually passes.
+	if effect.has("notify"):
+		Notifications.notify(String(effect["notify"]), Color(0.6, 1.0, 0.7))
 
 func apply_all(effects: Array, ctx: Dictionary) -> void:
 	for e in effects:
