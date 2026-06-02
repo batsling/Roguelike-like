@@ -547,8 +547,9 @@ func _try_play_card(card: CardInstance) -> void:
 		_selected_card = card
 		_targeting = true
 		if _targeting_arrow != null:
-			# Origin near the hand (bottom-center); the arrow tracks the cursor.
-			_targeting_arrow.start(Vector2(size.x * 0.5, size.y - 80.0))
+			# Stem the arrow from the played card itself (top-center of its
+			# hand view) so it visibly originates from the card.
+			_targeting_arrow.start(_card_arrow_origin(card))
 		GameLog.add("Choose a target for %s." % card.get_display_name(), Color(0.7, 0.9, 1.0))
 		_refresh_ui()
 	else:
@@ -565,6 +566,16 @@ func _on_enemy_clicked(idx: int) -> void:
 	var card := _selected_card
 	_cancel_targeting()
 	_resolve_card(card, tgt)
+
+# Global point the targeting arrow stems from: the top-center (edge facing the
+# enemies) of the played card's hand view. Falls back to the hand row's
+# bottom-center if the view can't be located.
+func _card_arrow_origin(card: CardInstance) -> Vector2:
+	for view in _hand_views:
+		if view.card == card:
+			var r: Rect2 = view.get_global_rect()
+			return Vector2(r.position.x + r.size.x * 0.5, r.position.y)
+	return global_position + Vector2(size.x * 0.5, size.y - 80.0)
 
 func _cancel_targeting() -> void:
 	_selected_card = null
