@@ -736,6 +736,17 @@ func _auto_cd(card: CardData) -> float:
 		return 0.0
 	return maxf(MIN_CLICK_COOLDOWN, _cooldown_for(card))
 
+# A card's base effects plus any item-granted ones (Brass Knuckles -> strikes
+# inflict Bruise). Action reads CardData directly, so grants are merged here
+# rather than via CardInstance.get_effects() (the deckbuilder path).
+func _effective_effects(card: CardData) -> Array:
+	var grants: Array = CardMods.granted_effects(card)
+	if grants.is_empty():
+		return card.effects
+	var out: Array = card.effects.duplicate()
+	out.append_array(grants)
+	return out
+
 func _resolve_card_effects(card: CardData) -> void:
 	# Cards with any ranged-typed damage effect resolve via a
 	# projectile that carries every enemy-targeted effect on the card.
@@ -765,7 +776,8 @@ func _resolve_card_effects(card: CardData) -> void:
 	var aoe_targets: Array = []
 	var needs_cone := false
 	var needs_aoe := false
-	for effect in card.effects:
+	var effs: Array = _effective_effects(card)
+	for effect in effs:
 		var tgt: String = String(effect.get("target", "enemy"))
 		if tgt == "enemy":
 			needs_cone = true
@@ -778,7 +790,7 @@ func _resolve_card_effects(card: CardData) -> void:
 	if needs_aoe:
 		aoe_targets = _enemies_in_radius(ABILITY_AOE_RADIUS)
 
-	for raw_effect in card.effects:
+	for raw_effect in effs:
 		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
 		var t: String = String(effect.get("type", ""))
 		var tgt: String = String(effect.get("target", "enemy"))
@@ -844,7 +856,7 @@ func _resolve_card_effects_auto(card: CardData) -> void:
 		_ability_swing_facing = (nearest.pos - player_pos).normalized()
 		_ability_swing_remaining = SWING_VISUAL_DURATION
 
-	for raw_effect in card.effects:
+	for raw_effect in _effective_effects(card):
 		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
 		var t: String = String(effect.get("type", ""))
 		var tgt: String = String(effect.get("target", "enemy"))

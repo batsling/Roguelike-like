@@ -593,7 +593,8 @@ func _build_card_row(card: CardData, count: int) -> Control:
 	info.add_child(name_lbl)
 
 	var desc_lbl := Label.new()
-	desc_lbl.text = card.description
+	var grant_extra: String = CardMods.describe(card)
+	desc_lbl.text = card.description if grant_extra == "" else "%s %s" % [card.description, grant_extra]
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.custom_minimum_size = Vector2(560, 0)
 	desc_lbl.add_theme_font_size_override("font_size", 12)

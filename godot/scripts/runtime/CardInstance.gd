@@ -34,10 +34,12 @@ func get_cost() -> int:
 
 func get_effects() -> Array:
 	# Layer per-instance effect_bonuses on top of CardData's effects
-	# without mutating the shared Resource. Empty bonuses path returns
-	# the base array directly so the hot path stays allocation-free.
+	# without mutating the shared Resource, then append any item-granted
+	# effects (Brass Knuckles etc.). Empty bonuses + no grants returns the
+	# base array directly so the hot path stays allocation-free.
 	var base: Array = data.get_effective_effects(upgraded)
-	if effect_bonuses.is_empty():
+	var grants: Array = CardMods.granted_effects(data)
+	if effect_bonuses.is_empty() and grants.is_empty():
 		return base
 	var out: Array = []
 	for i in range(base.size()):
@@ -46,6 +48,7 @@ func get_effects() -> Array:
 			for field in effect_bonuses[i].keys():
 				e[field] = int(e.get(field, 0)) + int(effect_bonuses[i][field])
 		out.append(e)
+	out.append_array(grants)
 	return out
 
 func get_description() -> String:
@@ -57,6 +60,10 @@ func get_description() -> String:
 	var trigger_extra: String = _format_card_played_trigger_addendum()
 	if trigger_extra != "":
 		base = "%s %s" % [base, trigger_extra]
+	# Item "card gains effect" grants (Brass Knuckles -> "Inflict Bruise.").
+	var grant_extra: String = CardMods.describe(data)
+	if grant_extra != "":
+		base = "%s %s" % [base, grant_extra]
 	if effect_bonuses.is_empty():
 		return base
 	# Annotate with a compact bonus summary so the player sees what the
@@ -99,43 +106,12 @@ func _format_card_played_trigger_addendum() -> String:
 			if id_gate != "" and String(data.id) != id_gate:
 				continue
 			for effect in trig.get("effects", []):
-				var phrase: String = _effect_to_phrase(effect)
+				var phrase: String = CardMods._effect_to_phrase(effect)
 				if phrase != "":
 					fragments.append(phrase)
 	if fragments.is_empty():
 		return ""
 	return " ".join(fragments)
-
-# Tiny English-ish renderer for the effect dicts we actually use as
-# item-trigger payloads today (status / block / dmg / heal). Kept inside
-# CardInstance because this is the only consumer; if a second site needs
-# it (combat log, tooltip, etc.) lift it onto a shared utility.
-static func _effect_to_phrase(effect: Dictionary) -> String:
-	match String(effect.get("type", "")):
-		"status":
-			var status_name: String = String(effect.get("status", ""))
-			if status_name == "":
-				return ""
-			var stacks: int = int(effect.get("stacks", 1))
-			var pretty: String = status_name.capitalize()
-			var verb: String = "Inflict" if String(effect.get("target", "enemy")) != "self" else "Gain"
-			if stacks <= 1:
-				return "%s %s." % [verb, pretty]
-			return "%s %d %s." % [verb, stacks, pretty]
-		"block":
-			return "Gain %d Block." % int(effect.get("value", 0))
-		"heal":
-			return "Heal %d HP." % int(effect.get("value", 0))
-		"dmg":
-			var v: int = int(effect.get("value", 0))
-			var hits: int = int(effect.get("hits", 1))
-			var dt: String = String(effect.get("damage_type", "")).capitalize()
-			var n: String = "%dx%d" % [v, hits] if hits > 1 else str(v)
-			if dt == "":
-				return "Deal %s Dmg." % n
-			return "Deal %s Dmg %s." % [n, dt]
-		_:
-			return ""
 
 func bump_effect(effect_index: int, field: String, amount: int) -> void:
 	# Mutate this instance's persistent bonus. Adds to any existing bonus

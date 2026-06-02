@@ -60,6 +60,15 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # declare the signal in TriggerBus + emit it from the relevant scene.
 @export var triggers: Array = []
 
+# "Card gains effect" grants ("X gains Y"). Each entry adds its `effects` to
+# every owned card matching `if_card_tag` / `if_card_id`, baked into the
+# card's resolved effects (so it fires in EVERY combat mode) and shown in the
+# card's text wherever it's displayed. Resolved by CardMods.
+#   Brass Knuckles: card_grants = [{ if_card_tag: "strike",
+#       effects: [{ type: "status", status: "bruise", stacks: 1,
+#                   target: "enemy" }] }]
+@export var card_grants: Array = []
+
 # Persistent stat bonuses applied while the item is in inventory.
 # Keys: strength, dexterity, intelligence, charisma, luck, max_hp, max_energy, etc.
 @export var stat_bonuses: Dictionary = {}

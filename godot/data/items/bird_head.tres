@@ -10,8 +10,8 @@ display_name = "Bird Head"
 kind = 1
 rarity = 2
 description = "Your Strikes inflict Soul Link."
-triggers = [{
-"on": "card_played",
+triggers = []
+card_grants = [{
 "if_card_tag": "strike",
 "effects": [{
 "type": "status",

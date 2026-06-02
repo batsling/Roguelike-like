@@ -10,8 +10,8 @@ display_name = "Brass Knuckles"
 kind = 1
 rarity = 2
 description = "Your Strikes inflict Bruise."
-triggers = [{
-"on": "card_played",
+triggers = []
+card_grants = [{
 "if_card_tag": "strike",
 "effects": [{
 "type": "status",
