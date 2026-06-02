@@ -6,6 +6,13 @@ const HEIGHT = 43
 const MAX_ROOMS = 15
 const ROOM_MIN = 5
 const ROOM_MAX = 12
+# Placement attempts per floor. We try many candidate rooms and keep the
+# non-overlapping ones until MAX_ROOMS is reached, so floors come out dense
+# rather than the handful the old 15-attempt loop tended to yield.
+const ROOM_ATTEMPTS = 80
+# Extra "loop" corridors only join rooms whose centres are within this many
+# tiles, so loops stay local instead of cutting long lines across the map.
+const LOOP_MAX_DIST = 28.0
 
 # Enemy archetype pool used by room encounters. Floor number gates rarer kinds.
 const ENEMY_POOL = [
@@ -66,7 +73,9 @@ func generate(rng: RandomNumberGenerator) -> void:
 	visible.fill(false)
 	explored.fill(false)
 
-	for _i in range(MAX_ROOMS):
+	for _i in range(ROOM_ATTEMPTS):
+		if rooms.size() >= MAX_ROOMS:
+			break
 		var w = rng.randi_range(ROOM_MIN, ROOM_MAX)
 		var h = rng.randi_range(ROOM_MIN, ROOM_MAX)
 		var x = rng.randi_range(1, WIDTH - w - 2)
@@ -84,25 +93,80 @@ func generate(rng: RandomNumberGenerator) -> void:
 
 		_carve_room(new_room)
 
+		# Tunnel to the NEAREST existing room rather than the previous one in
+		# placement order. Short, local corridors look far more deliberate than
+		# the long zig-zags the chain-to-previous approach produced, while still
+		# guaranteeing the new room joins the connected set.
 		if rooms.size() > 0:
-			var prev_center = rooms[-1].get_center()
-			var new_center = new_room.get_center()
-			if rng.randi() % 2 == 0:
-				_carve_h_tunnel(prev_center.x, new_center.x, prev_center.y)
-				_carve_v_tunnel(prev_center.y, new_center.y, new_center.x)
-			else:
-				_carve_v_tunnel(prev_center.y, new_center.y, prev_center.x)
-				_carve_h_tunnel(prev_center.x, new_center.x, new_center.y)
+			_connect_rooms(rng, rooms[_nearest_room_index(new_room)], new_room)
 
 		rooms.append(new_room)
 
-	# Place stairs in last room
-	var last_center = rooms[-1].get_center()
-	set_tile(last_center.x, last_center.y, StrategyState.TileType.STAIRS_DOWN)
+	# A handful of extra corridors between nearby rooms turn the spanning tree
+	# into a layout with loops, so the floor isn't a string of dead ends.
+	_add_loops(rng)
 
-	_tag_rooms(rng)
-	_place_doors(rng)
+	# Stairs go in the room farthest from the start, so descending always means
+	# crossing the floor instead of landing next to the exit.
+	var stairs_index = _farthest_room_from_start()
+	var stairs_center = rooms[stairs_index].get_center()
+	set_tile(stairs_center.x, stairs_center.y, StrategyState.TileType.STAIRS_DOWN)
+
+	_tag_rooms(rng, stairs_index)
 	_place_traps(rng)
+
+# Index of the placed room whose centre is closest to `room`'s centre.
+func _nearest_room_index(room: Rect2i) -> int:
+	var center = room.get_center()
+	var best := 0
+	var best_dist := INF
+	for i in range(rooms.size()):
+		var d = Vector2(rooms[i].get_center()).distance_squared_to(Vector2(center))
+		if d < best_dist:
+			best_dist = d
+			best = i
+	return best
+
+# Index of the room farthest from the start room (rooms[0]).
+func _farthest_room_from_start() -> int:
+	if rooms.size() <= 1:
+		return rooms.size() - 1
+	var start_center = Vector2(rooms[0].get_center())
+	var best := 1
+	var best_dist := -1.0
+	for i in range(1, rooms.size()):
+		var d = Vector2(rooms[i].get_center()).distance_squared_to(start_center)
+		if d > best_dist:
+			best_dist = d
+			best = i
+	return best
+
+# L-shaped corridor between two rooms, with a random elbow orientation.
+func _connect_rooms(rng: RandomNumberGenerator, a: Rect2i, b: Rect2i) -> void:
+	var ca = a.get_center()
+	var cb = b.get_center()
+	if rng.randi() % 2 == 0:
+		_carve_h_tunnel(ca.x, cb.x, ca.y)
+		_carve_v_tunnel(ca.y, cb.y, cb.x)
+	else:
+		_carve_v_tunnel(ca.y, cb.y, ca.x)
+		_carve_h_tunnel(ca.x, cb.x, cb.y)
+
+# Add a few loop corridors between nearby room pairs.
+func _add_loops(rng: RandomNumberGenerator) -> void:
+	if rooms.size() < 3:
+		return
+	@warning_ignore("integer_division")
+	var loop_count = clampi(rooms.size() / 4, 1, 4)
+	for _i in range(loop_count):
+		var a = rng.randi() % rooms.size()
+		var b = rng.randi() % rooms.size()
+		if a == b:
+			continue
+		var dist = Vector2(rooms[a].get_center()).distance_to(Vector2(rooms[b].get_center()))
+		if dist > LOOP_MAX_DIST:
+			continue
+		_connect_rooms(rng, rooms[a], rooms[b])
 
 func _carve_room(r: Rect2i) -> void:
 	for y in range(r.position.y, r.position.y + r.size.y):
@@ -124,7 +188,7 @@ func get_start_pos() -> Vector2i:
 
 # --- Phase 1 generation helpers ---
 
-func _tag_rooms(rng: RandomNumberGenerator) -> void:
+func _tag_rooms(rng: RandomNumberGenerator, stairs_index: int) -> void:
 	var floor_num = StrategyState.dungeon_floor
 	for i in range(rooms.size()):
 		var rd = StrategyRoomData.new()
@@ -132,7 +196,7 @@ func _tag_rooms(rng: RandomNumberGenerator) -> void:
 		if i == 0:
 			rd.tag = "start"
 			rd.cleared = true
-		elif i == rooms.size() - 1:
+		elif i == stairs_index:
 			rd.tag = "stairs"
 			rd.cleared = true
 		else:
@@ -162,36 +226,6 @@ func _roll_encounter(rng: RandomNumberGenerator, floor_num: int) -> Array:
 				encounter.append(e.kind)
 				break
 	return encounter
-
-func _place_doors(rng: RandomNumberGenerator) -> void:
-	# Treasure rooms get a single locked door at one of their entrances.
-	for rd in room_data:
-		if rd.tag != "treasure":
-			continue
-		var entrances = _find_room_entrances(rd.rect)
-		if entrances.is_empty():
-			continue
-		var pick = entrances[rng.randi() % entrances.size()]
-		set_tile(pick.x, pick.y, StrategyState.TileType.DOOR_LOCKED)
-
-func _find_room_entrances(rect: Rect2i) -> Array:
-	# Corridor tiles directly adjacent to the room's outer wall, on cardinal axes.
-	var out: Array = []
-	for x in range(rect.position.x, rect.position.x + rect.size.x):
-		var top = Vector2i(x, rect.position.y - 1)
-		if get_tile(top.x, top.y) == StrategyState.TileType.CORRIDOR:
-			out.append(top)
-		var bot = Vector2i(x, rect.position.y + rect.size.y)
-		if get_tile(bot.x, bot.y) == StrategyState.TileType.CORRIDOR:
-			out.append(bot)
-	for y in range(rect.position.y, rect.position.y + rect.size.y):
-		var left = Vector2i(rect.position.x - 1, y)
-		if get_tile(left.x, left.y) == StrategyState.TileType.CORRIDOR:
-			out.append(left)
-		var right = Vector2i(rect.position.x + rect.size.x, y)
-		if get_tile(right.x, right.y) == StrategyState.TileType.CORRIDOR:
-			out.append(right)
-	return out
 
 func _place_traps(rng: RandomNumberGenerator) -> void:
 	# Sprinkle hidden traps on corridor tiles and in non-start, non-treasure rooms.

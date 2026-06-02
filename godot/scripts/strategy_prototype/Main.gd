@@ -119,10 +119,7 @@ func _load_floor() -> void:
 
 func _spawn_items() -> void:
 	StrategyState.map.items.clear()
-	var has_treasure = false
 	for rd in StrategyState.map.room_data:
-		if rd.tag == "treasure":
-			has_treasure = true
 		match rd.tag:
 			"start":
 				continue
@@ -141,17 +138,6 @@ func _spawn_items() -> void:
 					_spawn_special_item_in(rd.rect)
 				if _rng.randi() % 3 == 0:
 					_spawn_gold_in(rd.rect, _rng.randi_range(5, 20))
-
-	# Place at least one key somewhere reachable if there's a locked door.
-	if has_treasure:
-		var key_rooms := []
-		for rd2 in StrategyState.map.room_data:
-			if rd2.tag != "treasure":
-				key_rooms.append(rd2.rect)
-		if not key_rooms.is_empty():
-			var pick = key_rooms[_rng.randi() % key_rooms.size()]
-			var pos = _random_floor_pos_in(pick)
-			StrategyState.map.items.append(StrategyItem.make_key(pos))
 
 func _spawn_special_item_in(room: Rect2i) -> void:
 	var pos = _random_floor_pos_in(room)
@@ -246,18 +232,6 @@ func _input(event: InputEvent) -> void:
 
 func _try_move(player: StrategyEntity, dir: Vector2i) -> void:
 	var dest = player.grid_pos + dir
-	var dest_tile = StrategyState.map.get_tile(dest.x, dest.y)
-
-	# Locked door: try to open with a key.
-	if dest_tile == StrategyState.TileType.DOOR_LOCKED:
-		if StrategyState.keys > 0:
-			StrategyState.keys -= 1
-			StrategyState.map.set_tile(dest.x, dest.y, StrategyState.TileType.DOOR_OPEN)
-			StrategyLog.add("You unlock the door.", Color(1.0, 0.85, 0.3))
-			_end_player_turn()
-		else:
-			StrategyLog.add("The door is locked. You need a key.", Color.GRAY)
-		return
 
 	if not StrategyState.map.is_walkable(dest):
 		return
@@ -267,7 +241,7 @@ func _try_move(player: StrategyEntity, dir: Vector2i) -> void:
 	_end_player_turn()
 
 func _after_player_step(pos: Vector2i) -> void:
-	# Auto-pickup (gold, keys).
+	# Auto-pickup (gold).
 	var picked: Array = []
 	for it in StrategyState.map.items:
 		if it.grid_pos == pos and it.auto_pickup:
@@ -278,9 +252,6 @@ func _after_player_step(pos: Vector2i) -> void:
 				# Gold persists across sections — route to the shared GameState.
 				GameState.change_gold(it.amount)
 				StrategyLog.add("You pick up %d gold." % it.amount, Color(1.0, 0.9, 0.3))
-			StrategyItem.ItemType.KEY:
-				StrategyState.keys += 1
-				StrategyLog.add("You pick up a key.", Color(1.0, 0.85, 0.3))
 		StrategyState.map.items.erase(it)
 
 	# Trap reveal/trigger.
