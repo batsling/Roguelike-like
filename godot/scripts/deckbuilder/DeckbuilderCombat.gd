@@ -344,66 +344,9 @@ func _award_combat_gold() -> void:
 # ------------------------------------------------------------------
 
 func _fire_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -> void:
-	# ctx_extras lets card-aware triggers (card_played) forward the played
-	# card and its target into the effect ctx. The trigger entry may carry
-	# `if_card_tag` / `if_card_id` filters that gate on ctx_extras.card so
-	# items like Bird Head ("Your Strikes inflict Soul Link") only fire on
-	# matching plays.
-	var sources: Array = []
-	sources.append_array(GameState.inventory)
-	if GameState.equipped_weapon != null:
-		sources.append(GameState.equipped_weapon)
-	var event_card: CardInstance = ctx_extras.get("card")
-	var event_target: CombatActor = ctx_extras.get("target")
-	for item in sources:
-		if not (item is ItemData):
-			continue
-		for trig in item.triggers:
-			if String(trig.get("on", "")) != trigger_name:
-				continue
-			# Turn-gated triggers (e.g. Horn Cleat: +Block on the 2nd
-			# turn only). if_turn = 0 / absent means "every time".
-			var turn_gate: int = int(trig.get("if_turn", 0))
-			if turn_gate > 0 and turn != turn_gate:
-				continue
-			var tag_gate: String = String(trig.get("if_card_tag", ""))
-			if tag_gate != "":
-				if event_card == null or event_card.data == null:
-					continue
-				if not event_card.data.tags.has(tag_gate):
-					continue
-			var id_gate: String = String(trig.get("if_card_id", ""))
-			if id_gate != "" and (event_card == null or event_card.data == null \
-					or String(event_card.data.id) != id_gate):
-				continue
-			GameLog.add("(%s triggers)" % item.display_name, Color(0.85, 0.9, 0.7))
-			for effect in trig.get("effects", []):
-				var t_str: String = effect.get("target", "self")
-				if t_str == "all_enemies":
-					for e in enemies:
-						if e.is_alive():
-							var ctx_e := {
-								"source": player, "target": e, "scene": self, "card": event_card,
-							}
-							EffectSystem.apply(effect, ctx_e)
-					continue
-				var tgt: CombatActor = player
-				if t_str == "enemy":
-					# Use the card's target when available (card_played path);
-					# otherwise fall back to the first living enemy so a
-					# "target: enemy" effect on combat_start still has somewhere
-					# to land.
-					if event_target != null and event_target.is_alive():
-						tgt = event_target
-					else:
-						for e in enemies:
-							if e.is_alive():
-								tgt = e
-								break
-				var ctx := {
-					"source": player, "target": tgt, "scene": self, "card": event_card,
-				}
-				EffectSystem.apply(effect, ctx)
+	# Delegates to the shared runner so every combat mode fires items the same
+	# way. ctx_extras forwards the played card / its target for card_played.
+	ItemTriggers.fire(trigger_name, self, player, enemies, ctx_extras, turn)
 
 # ------------------------------------------------------------------
 # End-of-combat overlay

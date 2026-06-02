@@ -1,0 +1,70 @@
+class_name ItemTriggers
+extends RefCounted
+
+# Shared item-trigger runner used by every combat mode (deckbuilder, action,
+# strategy) so the same declarative item data fires identically everywhere.
+# Each mode calls fire() at the matching moment, passing its own scene (which
+# exposes the EffectSystem callbacks heal / deal_damage / gain_block / …), the
+# player actor used as the effect `source`, and the living-enemy list used to
+# resolve `target: enemy` / `all_enemies`.
+#
+# Extracted from DeckbuilderCombat._fire_item_triggers; behaviour is identical.
+
+static func fire(trigger_name: String, scene, player, enemies: Array,
+		ctx_extras: Dictionary = {}, turn: int = 0) -> void:
+	var sources: Array = []
+	sources.append_array(GameState.inventory)
+	if GameState.equipped_weapon != null:
+		sources.append(GameState.equipped_weapon)
+	var event_card = ctx_extras.get("card")
+	var event_target = ctx_extras.get("target")
+	for item in sources:
+		if not (item is ItemData):
+			continue
+		for trig in item.triggers:
+			if String(trig.get("on", "")) != trigger_name:
+				continue
+			# Turn-gated triggers (Horn Cleat: +Block on the Nth turn). if_turn
+			# = 0 / absent means "every time".
+			var turn_gate: int = int(trig.get("if_turn", 0))
+			if turn_gate > 0 and turn != turn_gate:
+				continue
+			# card_played filters (Bird Head / Brass Knuckles): gate on the
+			# played card's tag / id.
+			var tag_gate: String = String(trig.get("if_card_tag", ""))
+			if tag_gate != "":
+				if event_card == null or event_card.data == null \
+						or not event_card.data.tags.has(tag_gate):
+					continue
+			var id_gate: String = String(trig.get("if_card_id", ""))
+			if id_gate != "" and (event_card == null or event_card.data == null \
+					or String(event_card.data.id) != id_gate):
+				continue
+			GameLog.add("(%s triggers)" % item.display_name, Color(0.85, 0.9, 0.7))
+			for effect in trig.get("effects", []):
+				_apply(effect, scene, player, enemies, event_card, event_target)
+
+static func _apply(effect: Dictionary, scene, player, enemies: Array,
+		event_card, event_target) -> void:
+	var t_str: String = effect.get("target", "self")
+	if t_str == "all_enemies":
+		for e in enemies:
+			if e != null and e.is_alive():
+				EffectSystem.apply(effect, {
+					"source": player, "target": e, "scene": scene, "card": event_card,
+				})
+		return
+	var tgt = player
+	if t_str == "enemy":
+		# Prefer the card's target (card_played path); otherwise the first
+		# living enemy so a "target: enemy" proc still lands somewhere.
+		if event_target != null and event_target.is_alive():
+			tgt = event_target
+		else:
+			for e in enemies:
+				if e != null and e.is_alive():
+					tgt = e
+					break
+	EffectSystem.apply(effect, {
+		"source": player, "target": tgt, "scene": scene, "card": event_card,
+	})

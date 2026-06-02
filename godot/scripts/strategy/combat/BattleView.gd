@@ -130,6 +130,21 @@ func get_player_unit():
 			return u
 	return null
 
+# Shared item-trigger fire for the non-turn triggers (combat start/end, enemy
+# kill). turn_started keeps its own direct path (_fire_item_turn_triggers).
+func _fire_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -> void:
+	ItemTriggers.fire(trigger_name, self, get_player_unit(), _living_enemy_units(),
+		ctx_extras, _player_turn_count)
+	if _grid_view != null:
+		_grid_view.notify_units_changed()
+
+func _living_enemy_units() -> Array:
+	var out: Array = []
+	for u in _units:
+		if u != null and u.is_alive() and not u.is_player:
+			out.append(u)
+	return out
+
 func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager = null) -> void:
 	_battle_map = battle_map
 	_turn_manager = turn_manager
@@ -460,6 +475,7 @@ func _on_confirm_loadout() -> void:
 	_loadout_overlay.visible = false
 	_info_label.text = _format_info(_room_data, _encounter)
 	_status_label.text = "Waiting for first turn..."
+	_fire_item_triggers("combat_started")
 	StrategyCombatSession.begin_battle()
 
 # ----------------------------------------------------------------------
@@ -554,6 +570,7 @@ func _auto_end_enemy_turn() -> void:
 func _on_battle_ended(result) -> void:
 	_status_label.text = "Battle ended: %s" % result
 	_set_player_buttons_enabled(false)
+	_fire_item_triggers("combat_ended")
 
 # ----------------------------------------------------------------------
 # Player actions — basic
@@ -1057,6 +1074,8 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 		var infuse_stacks: int = int(effect.get("infuse", 0))
 		if infuse_stacks > 0 and source != null and "is_player" in source and source.is_player:
 			GameState.set_max_hp(GameState.max_hp + infuse_stacks, false)
+		# Item procs on a kill (Charm of the Vampire, …).
+		_fire_item_triggers("enemy_killed")
 		# Phase 8: enemy death -> roll loot onto the tile it fell on.
 		_drop_enemy_loot(target)
 
