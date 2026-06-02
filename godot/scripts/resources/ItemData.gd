@@ -102,6 +102,30 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 @export var verification_question: String = ""
 @export var verification_effects: Array = []
 
+# === Perfect-game verification ===
+# A game is "perfected" when the player beats it without losing a run.
+# When the player owns ANY item with perfect_aware = true, the post-game
+# verification modal shows a "Did you perfect this game?" question. On a
+# perfected game, every perfect_aware item's perfect_effects fire through
+# EffectSystem (scene-less — use gain_hp / gain_gold / gain_max_hp / …).
+# GameState.last_game_perfected records the outcome so other systems can
+# read it. Example (Performance Based Health Insurance):
+#   perfect_aware = true
+#   perfect_effects = [{type: "gain_max_hp", value: 5}, {type: "gain_hp", value: 5}]
+@export var perfect_aware: bool = false
+@export var perfect_effects: Array = []
+
+# Clown Shoes: when the player answers "No" to the perfect question, each
+# copy gets this probability to upgrade the answer into a perfect (treats a
+# non-perfected game as perfected). 0 = never. Stacks across copies.
+@export var perfect_save_chance: float = 0.0
+
+# === Level-up interaction ===
+# Crown: when the player levels up (see CharacterData level-up fields), each
+# copy gets this probability to grant an additional level-up. 0 = never.
+# The bonus level-up itself re-rolls this, so copies can chain.
+@export var bonus_level_up_chance: float = 0.0
+
 # Runtime-minted unique id per inventory slot (set by GameState.add_item).
 # Two duplicated copies of the same template get different instance_ids,
 # which is how weapon items pair with their granted CardInstance in the

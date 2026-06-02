@@ -26,6 +26,16 @@ var total_games_beaten: int = 0
 # games played.
 var games_played: int = 0
 
+# Character level. Starts at 1; bumped when the player meets their
+# character's level_up_condition on the verification modal (see Overworld's
+# level-up flow and CharacterData level-up fields).
+var player_level: int = 1
+
+# Whether the most recently beaten game was "perfected" (beaten without
+# losing a run). Set by the perfect-game verification step; read by
+# perfect-aware items / future systems. Transient — not saved.
+var last_game_perfected: bool = false
+
 # === Player vitals ===
 var max_hp: int = 75
 var hp: int = 75
@@ -183,6 +193,8 @@ func reset_run() -> void:
 	beaten_games.clear()
 	total_games_beaten = 0
 	games_played = 0
+	player_level = 1
+	last_game_perfected = false
 	max_hp = 75
 	hp = 75
 	max_energy = 3
@@ -320,6 +332,63 @@ func change_gold(delta: int) -> void:
 
 func is_dead() -> bool:
 	return hp <= 0
+
+# ---------------------------------------------------------------------------
+# Level-up
+# ---------------------------------------------------------------------------
+
+# Core stats that live as direct GameState fields and can be levelled.
+const _LEVEL_UP_DIRECT_STATS := [
+	"strength", "dexterity", "intelligence", "charisma",
+	"constitution", "luck", "speed",
+]
+# Ability keys that map onto a differently-named run-scope field.
+const _LEVEL_UP_ABILITY_FIELDS := {
+	"dash": "dash_charges",
+	"reroll": "reroll_charges",
+	"fov": "fov_bonus",
+	"discovery": "discovery",
+}
+# Stats eligible for the "random" allocation bucket.
+const _LEVEL_UP_RANDOM_POOL := ["strength", "dexterity", "intelligence", "charisma"]
+
+# Applies a level-up stat block (see CharacterData.level_up_stats). Returns a
+# list of human-readable "+N Stat" strings for logging / notifications. Stat
+# changes emit stats_changed; max_hp routes through set_max_hp and heals the
+# new pool so a level-up always feels like a full top-up of the gained HP.
+func apply_level_up_stats(stats: Dictionary) -> Array:
+	var applied: Array = []
+	var touched: bool = false
+	for stat in _LEVEL_UP_DIRECT_STATS:
+		var v: int = int(stats.get(stat, 0))
+		if v != 0:
+			set(stat, int(get(stat)) + v)
+			applied.append("+%d %s" % [v, _pretty_stat(stat)])
+			touched = true
+	for key in _LEVEL_UP_ABILITY_FIELDS.keys():
+		var av: int = int(stats.get(key, 0))
+		if av != 0:
+			var field: String = _LEVEL_UP_ABILITY_FIELDS[key]
+			set(field, int(get(field)) + av)
+			applied.append("+%d %s" % [av, _pretty_stat(key)])
+			touched = true
+	var hp_gain: int = int(stats.get("max_hp", 0))
+	if hp_gain != 0:
+		change_max_hp(hp_gain)
+		change_hp(hp_gain)
+		applied.append("+%d Max HP" % hp_gain)
+	var random_n: int = int(stats.get("random", 0))
+	for _i in range(maxi(0, random_n)):
+		var pick: String = _LEVEL_UP_RANDOM_POOL[randi() % _LEVEL_UP_RANDOM_POOL.size()]
+		set(pick, int(get(pick)) + 1)
+		applied.append("+1 %s (random)" % _pretty_stat(pick))
+		touched = true
+	if touched:
+		emit_signal("stats_changed")
+	return applied
+
+func _pretty_stat(stat: String) -> String:
+	return stat.capitalize()
 
 # ---------------------------------------------------------------------------
 # Usable consumables + temporary buffs

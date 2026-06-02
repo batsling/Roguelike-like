@@ -382,11 +382,19 @@ const VERIFICATION_SKIP_HP_PENALTY := 33
 # at submit time. Keyed by weapon's instance_id.
 var _weapon_verify_answers: Dictionary = {}
 
+# Yes/No state for the optional perfect-game and level-up questions on the
+# verification modal. Default false (No) so an unanswered question grants
+# nothing. Reset each time the modal opens.
+var _perfect_answer: bool = false
+var _levelup_answer: bool = false
+
 func _show_verification_modal(gd: GameData) -> void:
 	if _verification_modal != null:
 		return
 	_player.set_input_locked(true)
 	_weapon_verify_answers = {}
+	_perfect_answer = false
+	_levelup_answer = false
 
 	var modal := Control.new()
 	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -397,11 +405,20 @@ func _show_verification_modal(gd: GameData) -> void:
 	dim.color = Color(0, 0, 0, 0.6)
 	modal.add_child(dim)
 
+	# Optional extra question rows: the "perfect game" row is always shown
+	# (beating without losing a run pays a flat gold bonus); the "level up"
+	# row appears when the character has a level-up condition.
+	var show_perfect: bool = true
+	var char_data: CharacterData = Data.get_character(GameState.character_id)
+	var show_levelup: bool = char_data != null and char_data.level_up_condition != ""
+
 	# Inventory weapons drive the modal height — base 340 + a row per
 	# weapon. The list keeps growing as weapon items get authored, so we
-	# size from data rather than hard-coding for two.
+	# size from data rather than hard-coding for two. Perfect and level-up
+	# rows add their own 80px slices.
 	var weapons: Array = _collect_inventory_weapons()
-	var panel_h: int = 340 + weapons.size() * 80
+	var extra_rows: int = weapons.size() + int(show_perfect) + int(show_levelup)
+	var panel_h: int = 340 + extra_rows * 80
 
 	var panel := Panel.new()
 	panel.size = Vector2(620, panel_h)
@@ -430,6 +447,19 @@ func _show_verification_modal(gd: GameData) -> void:
 	var y: int = 150
 	for w in weapons:
 		_add_weapon_row(panel, w, y)
+		y += 80
+
+	if show_perfect:
+		_add_question_row(panel,
+			"Did you Perfect this game? (beat it without losing a run) — +%d gold" % PERFECT_GOLD_BONUS,
+			y, func(value: bool): _perfect_answer = value)
+		y += 80
+
+	if show_levelup:
+		var lvl_text: String = "Level Up (Lv.%d) — %s" % [
+			GameState.player_level, char_data.level_up_condition]
+		_add_question_row(panel, lvl_text, y,
+			func(value: bool): _levelup_answer = value)
 		y += 80
 
 	var yes_btn := Button.new()
@@ -493,11 +523,51 @@ func _on_weapon_answer(weapon_id: int, value: bool, pressed: bool) -> void:
 	if pressed:
 		_weapon_verify_answers[weapon_id] = value
 
+# Generic Yes/No toggle row used by the perfect-game and level-up questions.
+# `setter` receives the chosen bool whenever a button is pressed. Defaults to
+# No (calls setter(false)) so an unanswered question grants nothing.
+func _add_question_row(panel: Panel, text: String, y: int, setter: Callable) -> void:
+	var label := Label.new()
+	label.position = Vector2(20, y)
+	label.size = Vector2(580, 24)
+	label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	panel.add_child(label)
+
+	var group := ButtonGroup.new()
+
+	var yes := Button.new()
+	yes.position = Vector2(20, y + 28)
+	yes.size = Vector2(120, 40)
+	yes.text = "Yes"
+	yes.toggle_mode = true
+	yes.button_group = group
+	yes.toggled.connect(func(pressed: bool):
+		if pressed:
+			setter.call(true))
+	panel.add_child(yes)
+
+	var no := Button.new()
+	no.position = Vector2(150, y + 28)
+	no.size = Vector2(120, 40)
+	no.text = "No"
+	no.toggle_mode = true
+	no.button_group = group
+	no.button_pressed = true
+	no.toggled.connect(func(pressed: bool):
+		if pressed:
+			setter.call(false))
+	panel.add_child(no)
+	setter.call(false)
+
 func _on_verification_yes() -> void:
 	GameLog.add("Verified.", Color(0.7, 1.0, 0.7))
 	_apply_weapon_verification_rewards()
+	_resolve_perfect_game()
 	_close_verification()
-	_after_verification()
+	# Level-up can open its own (async) reward UI, so we hand it a callback
+	# that finishes verification once the whole level-up chain resolves.
+	_resolve_level_up(_after_verification)
 
 func _apply_weapon_verification_rewards() -> void:
 	# Walk inventory weapons; for each Yes, dispatch verification_effects
@@ -517,6 +587,125 @@ func _apply_weapon_verification_rewards() -> void:
 		for eff in it.verification_effects:
 			EffectSystem.apply(eff, ctx)
 		GameLog.add("%s: earned reward!" % it.display_name, Color(1.0, 0.7, 0.3))
+
+# ------------------------------------------------------------------
+# Perfect-game verification — "beat without losing a run".
+# ------------------------------------------------------------------
+
+# Flat gold paid out whenever the player perfects a game. Perfect-aware
+# items (Clown Shoes et al) stack their own rewards on top of this.
+const PERFECT_GOLD_BONUS := 10
+
+# Reads the perfect question answer, applies Clown-Shoes-style saves, records
+# the outcome on GameState, pays the flat gold bonus, and fires every
+# perfect-aware item's reward. Asked after every game.
+func _resolve_perfect_game() -> void:
+	var perfected: bool = _perfect_answer
+	# Clown Shoes: each copy gets a chance to upgrade a "No" into a perfect.
+	if not perfected:
+		for it in GameState.inventory:
+			if not (it is ItemData) or it.perfect_save_chance <= 0.0:
+				continue
+			if randf() < it.perfect_save_chance:
+				perfected = true
+				Notifications.notify("%s: treated as a Perfect!" % it.display_name,
+					Color(1.0, 0.85, 0.3))
+				break
+	GameState.last_game_perfected = perfected
+	if not perfected:
+		GameLog.add("Not a perfect game.", Color(0.7, 0.7, 0.7))
+		return
+	GameState.change_gold(PERFECT_GOLD_BONUS)
+	GameLog.add("Perfect game! +%d gold." % PERFECT_GOLD_BONUS, Color(1.0, 0.85, 0.3))
+	# Fire every perfect-aware item's reward effects (scene-less context).
+	var ctx: Dictionary = {"source": null, "target": null, "scene": null, "card": null}
+	for it in GameState.inventory:
+		if it is ItemData and it.perfect_aware and not it.perfect_effects.is_empty():
+			EffectSystem.apply_all(it.perfect_effects, ctx)
+			GameLog.add("%s: earned reward!" % it.display_name, Color(1.0, 0.7, 0.3))
+
+# ------------------------------------------------------------------
+# Level-up — character-specific stats + reward, with Crown bonus chance.
+# ------------------------------------------------------------------
+
+# Runs the level-up chain if the player answered Yes, then calls on_done.
+# Always invokes on_done exactly once (synchronously when there's no level-up,
+# asynchronously when a reward UI is involved).
+func _resolve_level_up(on_done: Callable) -> void:
+	var char_data: CharacterData = Data.get_character(GameState.character_id)
+	if char_data == null or char_data.level_up_condition == "" or not _levelup_answer:
+		on_done.call()
+		return
+	_level_up_once(char_data, on_done)
+
+# Applies one level-up (stats + reward), then rolls the Crown bonus: on a hit
+# it recurses for another level, otherwise calls on_done.
+func _level_up_once(char_data: CharacterData, on_done: Callable) -> void:
+	GameState.player_level += 1
+	var applied: Array = GameState.apply_level_up_stats(char_data.level_up_stats)
+	var summary: String = (": " + ", ".join(applied)) if not applied.is_empty() else ""
+	GameLog.add("Level Up! (Lv.%d)%s" % [GameState.player_level, summary],
+		Color(1.0, 0.85, 0.3))
+	Notifications.notify("Level Up! Lv.%d" % GameState.player_level, Color(1.0, 0.85, 0.3))
+	_grant_level_up_reward(char_data, func():
+		if _roll_bonus_level_up():
+			Notifications.notify("Crown: Bonus Level Up!", Color(1.0, 0.85, 0.3))
+			_level_up_once(char_data, on_done)
+		else:
+			on_done.call())
+
+# Grants the character's level-up reward. Simple rewards resolve inline;
+# `item` opens a RewardScreen and defers on_done to its closed signal.
+func _grant_level_up_reward(char_data: CharacterData, on_done: Callable) -> void:
+	match String(char_data.level_up_reward_type):
+		"gold":
+			var amount: int = maxi(0, char_data.level_up_reward_amount)
+			GameState.change_gold(amount)
+			GameLog.add("Level-up reward: +%d gold." % amount, Color(1.0, 0.9, 0.3))
+			on_done.call()
+		"scroll_and_potion":
+			GameState.add_loot("scroll", 1)
+			GameState.add_loot("potion", 1)
+			GameLog.add("Level-up reward: +1 Scroll, +1 Potion.", Color(0.8, 0.9, 1.0))
+			on_done.call()
+		"card":
+			_show_level_up_card_reward(char_data.level_up_card_tag, on_done)
+		"item":
+			_show_level_up_item_reward(on_done)
+		_:
+			on_done.call()
+
+func _show_level_up_card_reward(tag_filter: StringName, on_done: Callable) -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	add_child(layer)
+	var reward := CardRewardScreen.new()
+	layer.add_child(reward)
+	reward.closed.connect(func():
+		layer.queue_free()
+		on_done.call())
+	reward.setup(tag_filter)
+
+func _show_level_up_item_reward(on_done: Callable) -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	add_child(layer)
+	var reward := RewardScreen.new()
+	layer.add_child(reward)
+	reward.closed.connect(func():
+		layer.queue_free()
+		on_done.call())
+	# No gold component — the level-up gold table is separate (this is the
+	# item-choice reward only).
+	reward.setup(0)
+
+# Rolls every Crown-style item's bonus_level_up_chance; returns true if any hit.
+func _roll_bonus_level_up() -> bool:
+	for it in GameState.inventory:
+		if it is ItemData and it.bonus_level_up_chance > 0.0:
+			if randf() < it.bonus_level_up_chance:
+				return true
+	return false
 
 func _on_verification_skip() -> void:
 	GameState.change_hp(-VERIFICATION_SKIP_HP_PENALTY)

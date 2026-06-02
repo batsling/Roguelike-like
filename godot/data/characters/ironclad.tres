@@ -20,6 +20,13 @@ starting_deck = Array[StringName]([&"strike", &"strike", &"strike", &"strike", &
 starting_items = Array[StringName]([&"burning_blood"])
 starting_weapon = &""
 level_up_condition = "Unlock a new difficulty"
-level_up_reward = "Ironclad class card reward"
+level_up_reward = "1 Ironclad Card Reward"
+level_up_stats = {
+"dexterity": 1,
+"strength": 1
+}
+level_up_reward_type = &"card"
+level_up_reward_amount = 0
+level_up_card_tag = &"ironclad"
 portrait = ExtResource("2_portrait")
 portrait_color = Color(0.7, 0.15, 0.15, 1)
