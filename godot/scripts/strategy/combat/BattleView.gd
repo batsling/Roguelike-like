@@ -948,21 +948,28 @@ func apply_effects(effects: Array, source, target, card = null) -> void:
 	_apply_card_or_spell_effects(effects, source, target, card)
 
 func _apply_card_or_spell_effects(effects: Array, source, target, card = null, empower: int = 0) -> void:
-	for raw_effect in effects:
-		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
-		if empower > 0:
-			effect = _empower_effect(effect, empower)
-		var resolved_targets: Array = _resolve_effect_targets(effect, source, target)
-		if resolved_targets.is_empty():
-			# self-only effects with no explicit target — treat source as target.
-			resolved_targets = [source]
-		for t in resolved_targets:
-			EffectSystem.apply(effect, {
-				"source": source,
-				"target": t,
-				"scene": self,
-				"card": card,
-			})
+	# Replay addon: a card with Replay X resolves its full effect list X extra
+	# times. `card` is null for enemy AI moves (CardMods.replay_count(null) is
+	# 0), so only player cards / abilities / spells / weapon attacks replay.
+	# Duplicator grants Replay 1 to weapon attack cards — the strategy weapon
+	# attack (above) routes through here, so it picks the extra play up too.
+	var plays: int = 1 + CardMods.replay_count(card)
+	for _play in plays:
+		for raw_effect in effects:
+			var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
+			if empower > 0:
+				effect = _empower_effect(effect, empower)
+			var resolved_targets: Array = _resolve_effect_targets(effect, source, target)
+			if resolved_targets.is_empty():
+				# self-only effects with no explicit target — treat source as target.
+				resolved_targets = [source]
+			for t in resolved_targets:
+				EffectSystem.apply(effect, {
+					"source": source,
+					"target": t,
+					"scene": self,
+					"card": card,
+				})
 
 # Energy empower: bump a damage/block effect's value or a status effect's
 # stacks by `amount`. Returns a fresh dict so the card's shared effect data
