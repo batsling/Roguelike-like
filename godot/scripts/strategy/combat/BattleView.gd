@@ -102,6 +102,9 @@ var _move_remaining: int = 0
 # subtract plays. Each card play spends one of the card's run-persistent uses
 # (GameState.spend_card_use).
 var _card_plays_remaining: int = 0
+# Ice Cream: did the player resolve an ability card this turn? A turn that
+# ends without one banks an empower charge (see _on_unit_turn_ended).
+var _ability_used_this_turn: bool = false
 
 # Energy charge banked from gain-energy effects. It persists across turns
 # within a combat until spent: the next card play consumes ALL of it and is
@@ -508,6 +511,7 @@ func _on_unit_turn_started(unit) -> void:
 		_move_used = false
 		_move_remaining = unit.move_range
 		_card_plays_remaining = 1
+		_ability_used_this_turn = false
 		_pending_kind = Pending.NONE
 		_pending_card = null
 		_pending_spell = null
@@ -523,6 +527,14 @@ func _on_unit_turn_started(unit) -> void:
 		_enemy_turn_timer.start()
 
 func _on_unit_turn_ended(unit) -> void:
+	# Ice Cream: a player turn that ends without an ability play banks an
+	# empower charge that carries into future turns (it stacks each skipped
+	# turn). Strategy has no per-turn energy pool, so this is its analogue of
+	# the deckbuilder's leftover-energy carry-over.
+	if unit != null and unit.is_player and not _ability_used_this_turn \
+			and GameState.has_energy_carryover_item():
+		_energy_charge += 1
+		_status_label.text = "Ice Cream: banked an empower charge (now %d)." % _energy_charge
 	# Decay stack-based statuses at the end of the unit's own turn so
 	# Vulnerable / Weak / etc. count down like the other two modes.
 	if unit != null:
@@ -720,6 +732,7 @@ func _resolve_ability_against(target) -> void:
 		_grid_view.enter_idle()
 		return
 	_card_plays_remaining -= 1
+	_ability_used_this_turn = true
 	# Spend any banked energy charge to empower this card, then clear it.
 	var empower: int = _energy_charge
 	_energy_charge = 0

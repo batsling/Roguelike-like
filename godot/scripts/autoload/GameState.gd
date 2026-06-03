@@ -560,6 +560,23 @@ func _deck_add_should_upgrade(card_data: CardData) -> bool:
 				return true
 	return false
 
+# Flat per-hit damage every owned item grants to the player's attacks of the
+# given damage_type (Focus Crystal -> +1 melee). Read by Stats.damage_bonus.
+func attack_damage_bonus(damage_type: String) -> int:
+	var bonus: int = 0
+	for item in inventory:
+		if item is ItemData and not item.attack_damage_bonus.is_empty():
+			bonus += int(item.attack_damage_bonus.get(damage_type, 0))
+	return bonus
+
+# True when any owned item carries leftover energy across turns (Ice Cream).
+# Combat scenes gate their per-turn energy carry-over on this.
+func has_energy_carryover_item() -> bool:
+	for item in inventory:
+		if item is ItemData and item.carries_leftover_energy:
+			return true
+	return false
+
 func _grant_weapon_card(inst: ItemData) -> bool:
 	# Internal: if `inst` is a weapon with a linked card_id, append a
 	# CardInstance tagged with the item's instance_id. Caller decides

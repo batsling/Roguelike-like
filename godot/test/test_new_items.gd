@@ -129,3 +129,51 @@ func test_no_egg_means_no_upgrade() -> void:
 	GameState.reset_run()
 	var added: CardInstance = GameState.add_card_to_deck(Data.get_card(&"strike"))
 	assert_false(added.upgraded, "no egg owned -> card added unupgraded")
+
+# --- Focus Crystal -------------------------------------------------------
+
+func test_focus_crystal_loads_with_melee_bonus() -> void:
+	var it: ItemData = Data.get_item(&"focus_crystal")
+	assert_not_null(it, "focus_crystal.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.PASSIVE)
+	assert_eq(int(it.attack_damage_bonus.get("melee", 0)), 1)
+
+func test_focus_crystal_adds_flat_melee_for_player_only() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"focus_crystal"))
+	assert_eq(GameState.attack_damage_bonus("melee"), 1)
+	assert_eq(GameState.attack_damage_bonus("ranged"), 0, "only melee is boosted")
+	# Folded into Stats.damage_bonus for a player source (no Power -> just +1).
+	var player := CombatActor.from_player()
+	assert_eq(Stats.damage_bonus(player, "melee", Stats.Mode.DECKBUILDER), 1)
+	# Enemies never get the player's Focus Crystal bonus.
+	var enemy := CombatActor.new()
+	assert_eq(Stats.damage_bonus(enemy, "melee", Stats.Mode.DECKBUILDER), 0)
+
+# --- Gremlin Horn --------------------------------------------------------
+
+func test_gremlin_horn_loads_with_enemy_killed_trigger() -> void:
+	var it: ItemData = Data.get_item(&"gremlin_horn")
+	assert_not_null(it, "gremlin_horn.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	var killed: Dictionary = _trigger_for(it, "enemy_killed")
+	assert_false(killed.is_empty(), "Gremlin Horn listens on enemy_killed")
+	var types: Array = []
+	for e in killed.get("effects", []):
+		types.append(String(e.get("type", "")))
+	assert_true(types.has("gain_energy"), "grants energy on kill")
+	assert_true(types.has("draw"), "draws a card on kill")
+
+# --- Ice Cream -----------------------------------------------------------
+
+func test_ice_cream_loads_with_energy_carryover() -> void:
+	var it: ItemData = Data.get_item(&"ice_cream")
+	assert_not_null(it, "ice_cream.tres should load")
+	assert_eq(it.rarity, ItemData.Rarity.RARE)
+	assert_true(it.carries_leftover_energy)
+
+func test_energy_carryover_flag_reflects_ownership() -> void:
+	GameState.reset_run()
+	assert_false(GameState.has_energy_carryover_item(), "none owned yet")
+	GameState.add_item(Data.get_item(&"ice_cream"))
+	assert_true(GameState.has_energy_carryover_item())

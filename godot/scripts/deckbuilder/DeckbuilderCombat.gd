@@ -60,6 +60,9 @@ var _streaks: Dictionary = {}
 
 var energy: int = 0
 var max_energy: int = 3
+# Ice Cream: energy left unspent at end of turn, re-added at the start of the
+# next turn (can push energy above max_energy). Cleared at combat start.
+var _energy_carryover: int = 0
 var turn: int = 0
 enum Phase { INIT, PLAYER, ENEMY, WON, LOST }
 var phase: Phase = Phase.INIT
@@ -170,6 +173,7 @@ func _init_deck() -> void:
 	card_boosts.clear()
 	power_triggers.clear()
 	_streaks.clear()
+	_energy_carryover = 0
 	for c in GameState.deck:
 		if c is CardData:
 			draw_pile.append(CardInstance.from_data(c))
@@ -191,6 +195,11 @@ func _start_player_turn() -> void:
 	turn += 1
 	phase = Phase.PLAYER
 	energy = max_energy
+	# Ice Cream: pour last turn's leftover energy on top (may exceed max).
+	if _energy_carryover > 0:
+		energy += _energy_carryover
+		GameLog.add("Ice Cream: +%d bonus energy!" % _energy_carryover, Color(0.7, 1.0, 0.7))
+		_energy_carryover = 0
 	player.block = 0
 	_cancel_targeting()
 	# Pre-roll enemy intents for this turn
@@ -211,6 +220,9 @@ func _on_end_turn() -> void:
 	if phase != Phase.PLAYER:
 		return
 	_cancel_targeting()
+	# Ice Cream: bank whatever energy is still unspent for next turn.
+	if energy > 0 and GameState.has_energy_carryover_item():
+		_energy_carryover = energy
 	# Discard hand. Ethereal cards exhaust instead of discarding if they
 	# would still be in hand at end of turn (Carnage). Retain cards stay
 	# in hand. The TriggerBus emit lets items react to each exhausted

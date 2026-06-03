@@ -122,6 +122,17 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # Frozen Egg: ["power"].
 @export var upgrade_card_types: PackedStringArray = PackedStringArray()
 
+# Flat damage the player's attacks gain per hit, keyed by damage_type
+# (melee / ranged / magic). Folded into Stats.damage_bonus for player sources
+# only, so it lands in every combat mode. Focus Crystal: { "melee": 1 }.
+@export var attack_damage_bonus: Dictionary = {}
+
+# Ice Cream: leftover energy carries into the next turn (deckbuilder), and in
+# strategy a turn where the player skips their ability banks an empower
+# charge. Action has no per-turn energy pool, so it ignores this. Checked via
+# GameState.has_energy_carryover_item().
+@export var carries_leftover_energy: bool = false
+
 # For Usable items: how many uses (-1 = infinite)
 @export var max_uses: int = -1
 

@@ -204,6 +204,10 @@ func damage_bonus(source, damage_type: String, mode: Mode, power_multiplier: int
 			# melee — Power already counted; STR per-point bonuses in
 			# action / strategy land when those modes do.
 			pass
+	# Flat item bonus to the player's attacks (Focus Crystal: +1 melee).
+	# Player-only and not multiplied by power_multiplier — it's a flat add.
+	if ("is_player" in source) and source.is_player:
+		bonus += GameState.attack_damage_bonus(damage_type)
 	return bonus
 
 # ---------------------------------------------------------------------------
