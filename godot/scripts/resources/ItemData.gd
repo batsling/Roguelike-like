@@ -37,23 +37,49 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #                      ever removed. Lunch: triggers = [{on:
 #                      "item_acquired", effects: [{type: "gain_max_hp",
 #                      value: 8}, {type: "gain_hp", value: 8}]}].
-#   card_played      — fires per card resolved. ctx carries the card and
-#                      its target. Combine with `if_card_tag:` /
-#                      `if_card_id:` on the trigger entry to gate. Effects
-#                      with target "enemy" hit the card's target.
+#   card_played      — fires per card BEFORE its effects resolve. ctx
+#                      carries the card and its target. Combine with
+#                      `if_card_tag:` / `if_card_id:` / `if_card_type:`
+#                      on the trigger entry to gate. Effects with target
+#                      "enemy" hit the card's target.
 #                      Bird Head: triggers = [{on: "card_played",
 #                                              if_card_tag: "strike",
 #                                              effects: [{type: "status",
 #                                                         status: "soul_link",
 #                                                         stacks: 1,
 #                                                         target: "enemy"}]}]
+#   card_resolved    — fires per card AFTER its effects land (before
+#                      discard/exhaust). Use for replay-style items so the
+#                      extra hit follows the first. Same gates as
+#                      card_played. Duplicator: triggers = [{on:
+#                      "card_resolved", if_card_tag: "weapon",
+#                      if_card_type: "attack", effects: [{type:
+#                      "replay_card", times: 1, target: "enemy"}]}]
+#   attack_landed    — fires when a player melee/ranged attack connects
+#                      (block counts; miss/dodge don't). Target = the enemy
+#                      hit. Dead Eye grows its streak here.
+#   attack_missed    — fires when a player attack whiffs (Blind). Dead Eye
+#                      resets here.
+#                      Dead Eye: triggers = [
+#                        {on: "attack_landed", silent: true, effects: [{type:
+#                          "streak_hit", key: "dead_eye", attack_bonus: true,
+#                          label: "Dead Eye", target: "enemy"}]},
+#                        {on: "attack_missed", silent: true, effects: [{type:
+#                          "streak_reset", key: "dead_eye"}]}]
+#
+# Trigger-entry gates / flags (all optional): if_turn, if_card_tag,
+# if_card_id, if_card_type (attack/skill/power/…), and silent (skip the
+# generic "(X triggers)" log line for high-frequency hooks like Dead Eye).
 #
 # `effects:` is a list of dicts dispatched through EffectSystem. Each entry
 # is `{type: <handler-name>, ...args}`. See EffectSystem.gd for the full
 # handler registry. The common ones for items:
 #   block / heal / dmg / status / gain_energy / gain_gold / draw /
 #   chance (wraps an inner effect with a % roll) / trigger (persistent
-#   in-combat listener) / add_max_hp (mutates target.max_hp directly).
+#   in-combat listener) / add_max_hp (mutates target.max_hp directly) /
+#   replay_card (re-run the played card's effects N times — Duplicator) /
+#   streak_hit + streak_reset (named consecutive-hit counter that adds to
+#   outgoing player attacks — Dead Eye).
 #
 # To add a new authoring vocabulary entry: register a handler in
 # EffectSystem._register_defaults and (if it needs a new trigger point)

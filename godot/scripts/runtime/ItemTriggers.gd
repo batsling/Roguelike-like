@@ -40,7 +40,18 @@ static func fire(trigger_name: String, scene, player, enemies: Array,
 			if id_gate != "" and (event_card == null or event_card.data == null \
 					or String(event_card.data.id) != id_gate):
 				continue
-			GameLog.add("(%s triggers)" % item.display_name, Color(0.85, 0.9, 0.7))
+			# card_type gate (Duplicator: weapon ATTACK cards only). Matches
+			# against CardData's type enum name (attack / skill / power / …).
+			var type_gate: String = String(trig.get("if_card_type", ""))
+			if type_gate != "":
+				if event_card == null or event_card.data == null \
+						or not _card_type_is(event_card.data, type_gate):
+					continue
+			# High-frequency triggers (Dead Eye fires on every landed attack)
+			# opt out of the generic "(X triggers)" line to keep the log clean;
+			# they post their own targeted message from the effect handler.
+			if not bool(trig.get("silent", false)):
+				GameLog.add("(%s triggers)" % item.display_name, Color(0.85, 0.9, 0.7))
 			for effect in trig.get("effects", []):
 				_apply(effect, scene, player, enemies, event_card, event_target)
 
@@ -68,3 +79,17 @@ static func _apply(effect: Dictionary, scene, player, enemies: Array,
 	EffectSystem.apply(effect, {
 		"source": player, "target": tgt, "scene": scene, "card": event_card,
 	})
+
+# Maps a CardData.type enum index to its lowercase name and compares against
+# `wanted` (e.g. "attack"). Keeps the if_card_type gate readable in item data.
+const _TYPE_NAMES: Array[String] = [
+	"attack", "skill", "power", "dice", "status", "curse", "training",
+]
+
+static func _card_type_is(data, wanted: String) -> bool:
+	if data == null:
+		return false
+	var idx: int = int(data.type)
+	if idx < 0 or idx >= _TYPE_NAMES.size():
+		return false
+	return _TYPE_NAMES[idx] == wanted.to_lower()

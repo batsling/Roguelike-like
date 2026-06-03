@@ -81,6 +81,9 @@ func _register_defaults() -> void:
 	register("gain_max_hp", _h_gain_max_hp)
 	register("bump_card_effect", _h_bump_card_effect)
 	register("temp_stat", _h_temp_stat)
+	register("replay_card", _h_replay_card)
+	register("streak_hit", _h_streak_hit)
+	register("streak_reset", _h_streak_reset)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -444,3 +447,43 @@ func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 	if not Stats.roll_chance_with_luck(_rng, percent):
 		return
 	apply(inner, ctx)
+
+func _h_replay_card(effect: Dictionary, ctx: Dictionary) -> void:
+	# Re-resolve the just-played card's own effects N extra times so it
+	# "hits an extra time" (Duplicator). Authored on a `card_resolved`
+	# item trigger gated to weapon attacks. Calls back into the scene's
+	# effect-only path so the replay does NOT re-fire card_resolved (no
+	# recursion) and does NOT re-pay energy or re-discard.
+	#   {type: "replay_card", times: 1}
+	var scene: Variant = ctx.get("scene")
+	var card: Variant = ctx.get("card")
+	if scene == null or card == null or not scene.has_method("replay_card_effects"):
+		return
+	var times: int = maxi(1, int(effect.get("times", 1)))
+	for _i in times:
+		scene.replay_card_effects(card, ctx.get("target"))
+
+func _h_streak_hit(effect: Dictionary, ctx: Dictionary) -> void:
+	# Grow a named consecutive-hit streak against the current target
+	# (Dead Eye). Switching targets resets the count first; an outgoing
+	# attack picks the count up via the scene's streak bonus (see
+	# DeckbuilderCombat.deal_damage). `attack_bonus` marks the streak as
+	# one that adds its count to outgoing player attacks; `label` is the
+	# name shown when the bonus lands.
+	#   {type: "streak_hit", key: "dead_eye", attack_bonus: true, label: "Dead Eye"}
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("streak_register_hit"):
+		return
+	scene.streak_register_hit(
+		String(effect.get("key", "")),
+		ctx.get("target"),
+		bool(effect.get("attack_bonus", false)),
+		String(effect.get("label", "")),
+	)
+
+func _h_streak_reset(effect: Dictionary, ctx: Dictionary) -> void:
+	# Clear a named streak (Dead Eye on a Blind whiff). {type: "streak_reset", key: "dead_eye"}
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("streak_reset"):
+		return
+	scene.streak_reset(String(effect.get("key", "")))
