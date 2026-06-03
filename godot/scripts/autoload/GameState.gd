@@ -290,6 +290,7 @@ func _reset_item_tracking() -> void:
 	_applied_item_max_hp = 0
 	_applied_item_max_energy = 0
 	_next_item_instance_id = 1
+	_gold_spent_accum = 0
 
 func set_current_game(id: StringName) -> void:
 	current_game_id = id
@@ -329,6 +330,45 @@ func set_gold(new_gold: int) -> void:
 
 func change_gold(delta: int) -> void:
 	set_gold(gold + delta)
+	if delta < 0:
+		_track_gold_spent(-delta)
+
+# Keeper's Sack: accumulate gold spent and grant +1 to a random core stat for
+# every `gold_spend_stat_per` gold crossed. Cumulative so small spends add up.
+var _gold_spent_accum: int = 0
+
+func _track_gold_spent(amount: int) -> void:
+	var per: int = _gold_spend_stat_per()
+	if per <= 0 or amount <= 0:
+		return
+	@warning_ignore("integer_division")
+	var before: int = _gold_spent_accum / per
+	_gold_spent_accum += amount
+	@warning_ignore("integer_division")
+	var after: int = _gold_spent_accum / per
+	var gains: int = after - before
+	if gains > 0:
+		apply_level_up_stats({"random": gains})
+		Notifications.notify("Keeper's Sack: +%d random stat!" % gains, Color(1.0, 0.85, 0.3))
+
+# Smallest positive gold-spend threshold among owned items (Keeper's Sack: 10).
+# 0 when no such item is owned.
+func _gold_spend_stat_per() -> int:
+	var best: int = 0
+	for item in inventory:
+		if item is ItemData and item.gold_spend_stat_per > 0:
+			if best == 0 or item.gold_spend_stat_per < best:
+				best = item.gold_spend_stat_per
+	return best
+
+# Combined Little Knife multiplier: the player's attacks deal this much extra
+# to lower-HP targets. 1.0 when no such item is owned. Read by resolve_damage.
+func lower_hp_damage_mult() -> float:
+	var mult: float = 1.0
+	for item in inventory:
+		if item is ItemData and item.lower_hp_damage_mult > 1.0:
+			mult *= item.lower_hp_damage_mult
+	return mult
 
 func is_dead() -> bool:
 	return hp <= 0

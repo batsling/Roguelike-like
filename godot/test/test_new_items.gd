@@ -177,3 +177,92 @@ func test_energy_carryover_flag_reflects_ownership() -> void:
 	assert_false(GameState.has_energy_carryover_item(), "none owned yet")
 	GameState.add_item(Data.get_item(&"ice_cream"))
 	assert_true(GameState.has_energy_carryover_item())
+
+# --- Jar of Leeches & Leeching Seed (Strike grants) ----------------------
+
+func test_jar_of_leeches_grants_leeches_to_strikes() -> void:
+	var it: ItemData = Data.get_item(&"jar_of_leeches")
+	assert_not_null(it, "jar_of_leeches.tres should load")
+	assert_eq(it.card_grants.size(), 1)
+	var grant: Dictionary = it.card_grants[0]
+	assert_eq(String(grant.get("if_card_tag", "")), "strike")
+	var e: Dictionary = grant.get("effects", [{}])[0]
+	assert_eq(String(e.get("type", "")), "status")
+	assert_eq(String(e.get("status", "")), "leeches")
+	assert_eq(String(e.get("target", "")), "enemy")
+
+func test_leeching_seed_grants_heal_to_strikes() -> void:
+	var it: ItemData = Data.get_item(&"leeching_seed")
+	assert_not_null(it, "leeching_seed.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.PASSIVE)
+	var grant: Dictionary = it.card_grants[0]
+	assert_eq(String(grant.get("if_card_tag", "")), "strike")
+	var e: Dictionary = grant.get("effects", [{}])[0]
+	assert_eq(String(e.get("type", "")), "heal")
+	assert_eq(int(e.get("value", 0)), 1)
+	assert_eq(String(e.get("target", "")), "self")
+
+func test_leeches_grant_shows_on_strike_text_when_owned() -> void:
+	# The grant should fold into a Strike's resolved effects + text.
+	GameState.reset_run()
+	var strike: CardData = Data.get_card(&"strike")
+	GameState.add_item(Data.get_item(&"jar_of_leeches"))
+	GameState.add_item(Data.get_item(&"leeching_seed"))
+	var ci := CardInstance.from_data(strike)
+	var types: Array = []
+	for e in ci.get_effects():
+		types.append("%s/%s" % [String(e.get("type", "")), String(e.get("status", ""))])
+	assert_true(types.has("status/leeches"), "Strike now inflicts Leeches")
+	assert_true(types.has("heal/"), "Strike now heals")
+
+# --- Keeper's Sack -------------------------------------------------------
+
+func test_keepers_sack_loads_with_acquire_gold_and_spend_threshold() -> void:
+	var it: ItemData = Data.get_item(&"keepers_sack")
+	assert_not_null(it, "keepers_sack.tres should load")
+	assert_eq(it.gold_spend_stat_per, 10)
+	var acq: Dictionary = _trigger_for(it, "item_acquired")
+	assert_false(acq.is_empty(), "grants gold on acquire")
+	assert_eq(String(acq.get("effects", [{}])[0].get("type", "")), "gain_gold")
+
+func test_keepers_sack_grants_stat_every_10_gold_spent() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"keepers_sack"))
+	var core_before: int = GameState.strength + GameState.dexterity \
+		+ GameState.intelligence + GameState.charisma
+	GameState.change_gold(-10)
+	var core_after: int = GameState.strength + GameState.dexterity \
+		+ GameState.intelligence + GameState.charisma
+	assert_eq(core_after - core_before, 1, "spending 10 gold grants +1 random stat")
+	# A 5-gold spend doesn't cross the next threshold.
+	GameState.change_gold(-5)
+	var core_now: int = GameState.strength + GameState.dexterity \
+		+ GameState.intelligence + GameState.charisma
+	assert_eq(core_now, core_after, "partial spend banks but grants nothing yet")
+
+# --- Little Knife --------------------------------------------------------
+
+func test_little_knife_loads_with_multiplier() -> void:
+	var it: ItemData = Data.get_item(&"little_knife")
+	assert_not_null(it, "little_knife.tres should load")
+	assert_almost_eq(it.lower_hp_damage_mult, 1.25, 0.001)
+
+func test_little_knife_boosts_damage_to_lower_hp_targets() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"little_knife"))
+	assert_almost_eq(GameState.lower_hp_damage_mult(), 1.25, 0.001)
+	var player := CombatActor.from_player()   # hp == GameState.hp (75)
+	var weak := CombatActor.new()
+	weak.max_hp = 10
+	weak.hp = 10
+	# 8 melee -> ceil(8 * 1.25) = 10 because the target's HP is below the player's.
+	var res: Dictionary = Stats.resolve_damage(
+		player, weak, 8, {"damage_type": "melee"}, Stats.Mode.DECKBUILDER)
+	assert_eq(int(res.hp_loss), 10)
+	# A target at/above the player's HP takes the unmodified hit.
+	var tough := CombatActor.new()
+	tough.max_hp = 99
+	tough.hp = 99
+	var res2: Dictionary = Stats.resolve_damage(
+		player, tough, 8, {"damage_type": "melee"}, Stats.Mode.DECKBUILDER)
+	assert_eq(int(res2.hp_loss), 8)

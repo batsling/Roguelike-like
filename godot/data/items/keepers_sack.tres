@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_keepers_sack"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/Keeper'sSack.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"keepers_sack"
+kind = 1
+rarity = 2
+display_name = "Keeper's Sack"
+description = "Gain 5 Gold. Whenever you spend 10 Gold, gain +1 to a random stat."
+triggers = [{
+"on": "item_acquired",
+"effects": [{
+"type": "gain_gold",
+"value": 5
+}]
+}]
+card_grants = []
+stat_bonuses = {}
+scaling = []
+gold_spend_stat_per = 10
+max_uses = -1
+source_game = "The Binding of Isaac"
+tags = PackedStringArray()
+image = ExtResource("2_img")

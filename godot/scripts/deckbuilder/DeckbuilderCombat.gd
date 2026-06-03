@@ -843,6 +843,14 @@ func heal(target: CombatActor, amount: int) -> void:
 	else:
 		target.hp = mini(target.max_hp, target.hp + amount)
 
+# Leeches drain -> player heal. Called by Stats.tick_actor_statuses when a
+# leeched enemy bleeds HP into the player (Jar of Leeches).
+func leech_to_player(amount: int) -> void:
+	if amount <= 0:
+		return
+	heal(player, amount)
+	GameLog.add("Leeches drain %d into you." % amount, Color(0.7, 1.0, 0.7))
+
 func apply_status(target: CombatActor, status: StringName, stacks: int, source: CombatActor = null) -> void:
 	if target == null or stacks == 0:
 		return

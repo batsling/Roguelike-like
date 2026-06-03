@@ -133,6 +133,16 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # GameState.has_energy_carryover_item().
 @export var carries_leftover_energy: bool = false
 
+# Little Knife: the player's attacks deal this multiplier extra damage to a
+# target whose HP is below the player's. 1.0 = no bonus; 1.25 = +25%. Folded
+# into Stats.resolve_damage for player attacks, so it applies in every mode.
+@export var lower_hp_damage_mult: float = 1.0
+
+# Keeper's Sack: for every `gold_spend_stat_per` gold the player spends, grant
+# +1 to a random core stat. 0 = off. Tracked cumulatively in
+# GameState.change_gold.
+@export var gold_spend_stat_per: int = 0
+
 # For Usable items: how many uses (-1 = infinite)
 @export var max_uses: int = -1
 

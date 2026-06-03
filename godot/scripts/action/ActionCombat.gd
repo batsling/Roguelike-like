@@ -1194,6 +1194,14 @@ func heal(target, value: int) -> void:
 	else:
 		target.hp = mini(target.max_hp, target.hp + int(value))
 
+# Leeches drain -> player heal (Jar of Leeches). Called by
+# Stats.tick_actor_statuses when a leeched enemy bleeds HP into the player.
+func leech_to_player(amount: int) -> void:
+	if amount <= 0:
+		return
+	heal(player_actor, amount)
+	GameLog.add("Leeches drain %d into you." % amount, Color(0.7, 1.0, 0.7))
+
 # EffectSystem-compatible status apply (mirrors deckbuilder apply_status,
 # minus the deck/trigger plumbing). EffectSystem doesn't thread `source`,
 # so Persistence is handled by the card path in _apply_status_effect; this
