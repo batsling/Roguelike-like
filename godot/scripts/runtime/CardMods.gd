@@ -20,6 +20,38 @@ static func granted_effects(card: CardData) -> Array:
 				out.append_array(grant.get("effects", []))
 	return out
 
+# Addon keywords granted to `card` by the player's current items. Parallels
+# granted_effects — Duplicator gives weapon attack cards the "replay" addon.
+static func granted_addons(card: CardData) -> Array:
+	var out: Array = []
+	if card == null:
+		return out
+	for item in _sources():
+		for grant in item.card_grants:
+			if _matches(grant, card):
+				for a in grant.get("addons", []):
+					out.append(String(a))
+	return out
+
+# Total Replay value on a card: how many EXTRA times it re-resolves its own
+# effects. Counts native addons (CardData.addons) AND item-granted ones. A
+# bare "replay" entry is worth 1; "replay:N" is worth N (so a card can print
+# Replay 2 natively and an item can still stack +1 on top).
+static func replay_count(card: CardData) -> int:
+	if card == null:
+		return 0
+	return _replay_in(card.addons) + _replay_in(granted_addons(card))
+
+static func _replay_in(addons) -> int:
+	var total: int = 0
+	for a in addons:
+		var s: String = String(a)
+		if s == "replay":
+			total += 1
+		elif s.begins_with("replay:"):
+			total += maxi(0, s.substr(7).to_int())
+	return total
+
 # English-ish description fragment for the granted effects (e.g. "Inflict
 # Bruise."), appended to the card's text. "" when nothing applies.
 static func describe(card: CardData) -> String:
@@ -33,6 +65,10 @@ static func describe(card: CardData) -> String:
 					var phrase: String = _effect_to_phrase(e)
 					if phrase != "":
 						frags.append(phrase)
+	# Granted addons read as keyword tags (Duplicator -> "Replay 1.").
+	var granted_replay: int = _replay_in(granted_addons(card))
+	if granted_replay > 0:
+		frags.append("Replay %d." % granted_replay)
 	if frags.is_empty():
 		return ""
 	return " ".join(frags)
@@ -83,5 +119,9 @@ static func _matches(grant: Dictionary, card: CardData) -> bool:
 		return false
 	var id_gate: String = String(grant.get("if_card_id", ""))
 	if id_gate != "" and String(card.id) != id_gate:
+		return false
+	# Duplicator gates on weapon ATTACK cards — reuse the shared type matcher.
+	var type_gate: String = String(grant.get("if_card_type", ""))
+	if type_gate != "" and not ItemTriggers._card_type_is(card, type_gate):
 		return false
 	return true

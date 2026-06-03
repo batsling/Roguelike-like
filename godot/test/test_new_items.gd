@@ -35,23 +35,36 @@ func test_dead_eye_loads_with_streak_triggers() -> void:
 	assert_eq(String(reset.get("type", "")), "streak_reset")
 	assert_eq(String(reset.get("key", "")), "dead_eye")
 
-func test_duplicator_loads_with_replay_trigger() -> void:
+func test_duplicator_grants_replay_to_weapon_attacks() -> void:
 	var it: ItemData = Data.get_item(&"duplicator")
 	assert_not_null(it, "duplicator.tres should load")
 	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
 	assert_eq(it.rarity, ItemData.Rarity.RARE)
 
-	var resolved: Dictionary = _trigger_for(it, "card_resolved")
-	assert_false(resolved.is_empty(), "Duplicator listens on card_resolved")
-	assert_eq(String(resolved.get("if_card_tag", "")), "weapon")
-	assert_eq(String(resolved.get("if_card_type", "")), "attack")
-	var replay: Dictionary = resolved.get("effects", [{}])[0]
-	assert_eq(String(replay.get("type", "")), "replay_card")
-	assert_eq(int(replay.get("times", 0)), 1)
+	assert_eq(it.card_grants.size(), 1, "Duplicator grants via card_grants")
+	var grant: Dictionary = it.card_grants[0]
+	assert_eq(String(grant.get("if_card_tag", "")), "weapon")
+	assert_eq(String(grant.get("if_card_type", "")), "attack")
+	assert_true(grant.get("addons", []).has("replay"),
+		"grant hands out the replay addon")
+
+func test_replay_count_folds_native_and_granted() -> void:
+	# A bare "replay" addon is worth 1; "replay:N" is worth N. Duplicator in
+	# inventory stacks +1 onto a matching weapon attack card.
+	GameState.reset_run()
+	var weapon_attack: CardData = Data.get_card(&"blasma_pistol")
+	assert_not_null(weapon_attack, "blasma_pistol.tres should load")
+	assert_eq(CardMods.replay_count(weapon_attack), 0,
+		"no Replay before Duplicator is owned")
+	GameState.add_item(Data.get_item(&"duplicator"))
+	assert_eq(CardMods.replay_count(weapon_attack), 1,
+		"Duplicator grants Replay 1 to weapon attacks")
+	# A non-weapon card (Strike) is untouched by Duplicator.
+	assert_eq(CardMods.replay_count(Data.get_card(&"strike")), 0)
 
 func test_card_type_gate_matches_attack_cards() -> void:
-	# The if_card_type gate Duplicator leans on must resolve a weapon attack
-	# card (type ATTACK) to "attack" and reject other types.
+	# The if_card_type gate Duplicator's grant leans on must resolve a weapon
+	# attack card (type ATTACK) to "attack" and reject other types.
 	var strike: CardData = Data.get_card(&"strike")
 	assert_not_null(strike, "strike.tres should load")
 	assert_true(ItemTriggers._card_type_is(strike, "attack"))

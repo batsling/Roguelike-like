@@ -81,7 +81,6 @@ func _register_defaults() -> void:
 	register("gain_max_hp", _h_gain_max_hp)
 	register("bump_card_effect", _h_bump_card_effect)
 	register("temp_stat", _h_temp_stat)
-	register("replay_card", _h_replay_card)
 	register("streak_hit", _h_streak_hit)
 	register("streak_reset", _h_streak_reset)
 
@@ -447,21 +446,6 @@ func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 	if not Stats.roll_chance_with_luck(_rng, percent):
 		return
 	apply(inner, ctx)
-
-func _h_replay_card(effect: Dictionary, ctx: Dictionary) -> void:
-	# Re-resolve the just-played card's own effects N extra times so it
-	# "hits an extra time" (Duplicator). Authored on a `card_resolved`
-	# item trigger gated to weapon attacks. Calls back into the scene's
-	# effect-only path so the replay does NOT re-fire card_resolved (no
-	# recursion) and does NOT re-pay energy or re-discard.
-	#   {type: "replay_card", times: 1}
-	var scene: Variant = ctx.get("scene")
-	var card: Variant = ctx.get("card")
-	if scene == null or card == null or not scene.has_method("replay_card_effects"):
-		return
-	var times: int = maxi(1, int(effect.get("times", 1)))
-	for _i in times:
-		scene.replay_card_effects(card, ctx.get("target"))
 
 func _h_streak_hit(effect: Dictionary, ctx: Dictionary) -> void:
 	# Grow a named consecutive-hit streak against the current target

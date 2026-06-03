@@ -433,7 +433,7 @@ const ITEMS_DATA = [
     "name": "Duplicator",
     "rarity": "Rare",
     "type": "Triggered",
-    "description": "Your Weapon Attack Cards hit an extra time",
+    "description": "Your Weapon Attack Cards gain Replay 1",
     "game": "Vampire Survivors",
     "tags": [
       "wearable",

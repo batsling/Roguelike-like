@@ -49,12 +49,10 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #                                                         stacks: 1,
 #                                                         target: "enemy"}]}]
 #   card_resolved    — fires per card AFTER its effects land (before
-#                      discard/exhaust). Use for replay-style items so the
-#                      extra hit follows the first. Same gates as
-#                      card_played. Duplicator: triggers = [{on:
-#                      "card_resolved", if_card_tag: "weapon",
-#                      if_card_type: "attack", effects: [{type:
-#                      "replay_card", times: 1, target: "enemy"}]}]
+#                      discard/exhaust). General post-resolution hook,
+#                      same gates as card_played. (Replay-style "hit
+#                      again" items are now data-driven via the `replay`
+#                      addon + card_grants, not a trigger — see below.)
 #   attack_landed    — fires when a player melee/ranged attack connects
 #                      (block counts; miss/dodge don't). Target = the enemy
 #                      hit. Dead Eye grows its streak here.
@@ -77,7 +75,6 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #   block / heal / dmg / status / gain_energy / gain_gold / draw /
 #   chance (wraps an inner effect with a % roll) / trigger (persistent
 #   in-combat listener) / add_max_hp (mutates target.max_hp directly) /
-#   replay_card (re-run the played card's effects N times — Duplicator) /
 #   streak_hit + streak_reset (named consecutive-hit counter that adds to
 #   outgoing player attacks — Dead Eye).
 #
@@ -87,12 +84,17 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 @export var triggers: Array = []
 
 # "Card gains effect" grants ("X gains Y"). Each entry adds its `effects` to
-# every owned card matching `if_card_tag` / `if_card_id`, baked into the
-# card's resolved effects (so it fires in EVERY combat mode) and shown in the
-# card's text wherever it's displayed. Resolved by CardMods.
+# every owned card matching `if_card_tag` / `if_card_id` / `if_card_type`,
+# baked into the card's resolved effects (so it fires in EVERY combat mode)
+# and shown in the card's text wherever it's displayed. Resolved by CardMods.
 #   Brass Knuckles: card_grants = [{ if_card_tag: "strike",
 #       effects: [{ type: "status", status: "bruise", stacks: 1,
 #                   target: "enemy" }] }]
+# A grant can also hand out addon keywords via `addons`. The Replay addon
+# ("replay" = +1, or "replay:N") makes a card re-resolve its effects that
+# many extra times.
+#   Duplicator: card_grants = [{ if_card_tag: "weapon",
+#       if_card_type: "attack", addons: ["replay"] }]
 @export var card_grants: Array = []
 
 # Persistent stat bonuses applied while the item is in inventory.

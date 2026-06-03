@@ -9,18 +9,13 @@ id = &"duplicator"
 kind = 1
 rarity = 2
 display_name = "Duplicator"
-description = "Your Weapon Attack Cards hit an extra time."
-triggers = [{
-"on": "card_resolved",
+description = "Your Weapon Attack Cards gain Replay 1."
+triggers = []
+card_grants = [{
 "if_card_tag": "weapon",
 "if_card_type": "attack",
-"effects": [{
-"type": "replay_card",
-"times": 1,
-"target": "enemy"
+"addons": ["replay"]
 }]
-}]
-card_grants = []
 stat_bonuses = {}
 scaling = []
 max_uses = -1

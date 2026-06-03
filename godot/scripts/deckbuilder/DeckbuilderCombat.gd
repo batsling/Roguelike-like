@@ -515,13 +515,21 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 
 	_apply_card_effects(card, target_enemy)
 
-	# The card has fully resolved its own effects. card_resolved fires here
-	# (after card_played + the effects, before discard/exhaust) so replay
-	# items like Duplicator land their extra hit AFTER the first one.
+	# The card has fully resolved its primary play. card_resolved is a
+	# general post-resolution hook (after card_played + the effects, before
+	# discard/exhaust); fired once, not per Replay.
 	TriggerBus.emit_signal("card_resolved", {
 		"card": card, "target": target_enemy, "scene": self,
 	})
 	_fire_item_triggers("card_resolved", {"card": card, "target": target_enemy})
+
+	# Replay addon: the card re-resolves its own effects N extra times.
+	# Carried natively (CardData.addons) or granted by an item — Duplicator
+	# gives weapon attack cards Replay 1. Resolved through CardMods so the
+	# count folds native + granted in one place.
+	var replays: int = CardMods.replay_count(card.data)
+	for _i in replays:
+		replay_card_effects(card, target_enemy)
 
 	# Powers exhaust on play; cards with the exhaust flag exhaust; else discard.
 	if card.data.exhaust or card.is_power():
@@ -534,8 +542,8 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 
 func _apply_card_effects(card: CardInstance, target_enemy: CombatActor) -> void:
 	# Resolves a card's own effect list against the picked target. Split out
-	# of _resolve_card so Duplicator's replay_card can re-run JUST the
-	# effects (no energy cost, no card_resolved emit, no discard).
+	# of _resolve_card so the Replay addon can re-run JUST the effects (no
+	# energy cost, no card_resolved emit, no discard).
 	for raw_effect in card.get_effects():
 		var effect: Dictionary = _apply_card_boosts(raw_effect, card)
 		effect = Stats.apply_addons_to_effect(effect, card.data)
@@ -581,23 +589,22 @@ func _apply_card_effects(card: CardInstance, target_enemy: CombatActor) -> void:
 			EffectSystem.apply(effect, ctx)
 
 func replay_card_effects(card: CardInstance, target_enemy) -> void:
-	# Duplicator: re-run a card's effects one extra time so it "hits an
-	# extra time." Effects only — the card has already paid its cost and
-	# fired card_resolved, so this just re-resolves the hit(s). If the
-	# first pass already cleared the room, the dmg handlers no-op on the
-	# dead target.
+	# Replay addon: re-run a card's effects one extra time. Effects only —
+	# the card has already paid its cost and fired card_resolved, so this
+	# just re-resolves the hit(s)/block/etc. If the first pass already
+	# cleared the room, the dmg handlers no-op on the dead target.
 	if card == null:
 		return
-	# Only ever replay onto a living enemy. If the first hit cleared the
-	# picked target, pass null: single-target effects no-op, while
-	# all_enemies effects still sweep whatever enemies remain. This also
-	# guards the case where item target-resolution handed us the player
-	# (no enemies left) — we must never replay an attack onto ourselves.
+	# Only ever replay damage onto a living enemy. If the first hit cleared
+	# the picked target, pass null: single-target effects no-op, while
+	# all_enemies effects still sweep whatever enemies remain, and self
+	# effects (block/heal) always re-apply. This also guards the case where
+	# no enemies are left — we must never replay an attack onto ourselves.
 	var tgt: CombatActor = null
 	if target_enemy is CombatActor and not target_enemy.is_player and target_enemy.is_alive():
 		tgt = target_enemy
 	_apply_card_effects(card, tgt)
-	GameLog.add("%s hits an extra time!" % card.data.display_name, Color(0.7, 1.0, 0.7))
+	GameLog.add("%s replays!" % card.data.display_name, Color(0.7, 1.0, 0.7))
 	_check_combat_end()
 
 # ------------------------------------------------------------------
