@@ -109,6 +109,19 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # Output stats are folded into item_stat_bonus by _recompute_item_bonuses.
 @export var scaling: Array = []
 
+# Status-amplify rules. Maps a status id -> extra stacks added whenever that
+# status is inflicted (positive stacks) on a NON-player actor while this item
+# is owned. Applied in CombatActor.add_status, so it lands in every combat
+# mode. Empty Syringe: { "bleed": 1, "poison": 1 }.
+@export var status_amplify: Dictionary = {}
+
+# Card types that get auto-upgraded the moment a matching card is added to the
+# deck while this item is owned (the "egg" items). Entries are CardData type
+# names (attack / skill / power / dice / status / curse / training). Resolved
+# in GameState.add_card_to_deck. Molten Egg: ["attack"]; Toxic Egg: ["skill"];
+# Frozen Egg: ["power"].
+@export var upgrade_card_types: PackedStringArray = PackedStringArray()
+
 # For Usable items: how many uses (-1 = infinite)
 @export var max_uses: int = -1
 

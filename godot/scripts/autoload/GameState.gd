@@ -515,6 +515,51 @@ func add_item(template: ItemData) -> ItemData:
 	emit_signal("inventory_changed")
 	return inst
 
+# Total bonus stacks any owned status-amplify item adds when `status_id` is
+# inflicted on an enemy (Empty Syringe -> +1 Bleed / Poison). Called from
+# CombatActor.add_status so it works across every combat mode.
+func status_amplify_bonus(status_id: StringName) -> int:
+	var key: String = String(status_id)
+	var bonus: int = 0
+	for item in inventory:
+		if item is ItemData and not item.status_amplify.is_empty():
+			bonus += int(item.status_amplify.get(key, 0))
+	return bonus
+
+# Canonical "add a card to the player's deck" entry. Accepts a CardInstance
+# or a CardData (wrapped into a fresh instance). Applies egg auto-upgrades
+# (upgrade_card_types) before the card lands, appends, and fires deck_changed.
+# Card rewards and shop purchases route through here; the starting deck and
+# weapon-granted cards stay direct (no eggs at character start, and weapon
+# cards are a managed pair).
+func add_card_to_deck(card) -> CardInstance:
+	var ci: CardInstance = null
+	if card is CardInstance:
+		ci = card
+	elif card is CardData:
+		ci = CardInstance.from_data(card)
+	if ci == null:
+		return null
+	# Egg items auto-upgrade a freshly added card whose type matches, as long
+	# as the card supports upgrading and isn't already upgraded.
+	if not ci.upgraded and ci.data != null and ci.data.can_upgrade \
+			and _deck_add_should_upgrade(ci.data):
+		ci.upgraded = true
+		Notifications.notify("%s was upgraded by an Egg!" % ci.data.display_name,
+			Color(1.0, 0.72, 0.3))
+	deck.append(ci)
+	emit_signal("deck_changed")
+	return ci
+
+func _deck_add_should_upgrade(card_data: CardData) -> bool:
+	for item in inventory:
+		if not (item is ItemData) or item.upgrade_card_types.is_empty():
+			continue
+		for t in item.upgrade_card_types:
+			if ItemTriggers._card_type_is(card_data, String(t)):
+				return true
+	return false
+
 func _grant_weapon_card(inst: ItemData) -> bool:
 	# Internal: if `inst` is a weapon with a linked card_id, append a
 	# CardInstance tagged with the item's instance_id. Caller decides

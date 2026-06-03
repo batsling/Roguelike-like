@@ -208,8 +208,7 @@ func _buy_card(entry: Dictionary, _btn: Button) -> void:
 	if entry.purchased or GameState.gold < entry.price:
 		return
 	GameState.change_gold(-entry.price)
-	GameState.deck.append(CardInstance.from_data(entry.card))
-	GameState.emit_signal("deck_changed")
+	GameState.add_card_to_deck(entry.card)
 	entry.purchased = true
 	GameLog.add("Bought %s for %dg." % [entry.card.display_name, entry.price], Color(0.7, 1.0, 0.7))
 	_refresh_buttons()

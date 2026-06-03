@@ -211,8 +211,7 @@ func _on_confirm() -> void:
 	if _resolved or _selected == null:
 		return
 	_resolved = true
-	GameState.deck.append(_selected)
-	GameState.emit_signal("deck_changed")
+	GameState.add_card_to_deck(_selected)
 	GameLog.add("Added %s to your deck." % _selected.get_display_name(),
 		Color(0.7, 1.0, 0.8))
 	_finish()

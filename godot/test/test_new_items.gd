@@ -1,10 +1,11 @@
 extends GutTest
 
-# Validates the declarative wiring for Dead Eye and Duplicator — the two
-# items that needed new engine vocabulary (attack_landed/attack_missed +
-# streak_hit/streak_reset for Dead Eye; card_resolved + replay_card for
-# Duplicator). These guard against .tres typos and enum drift; the runtime
-# streak/replay behaviour is driven by DeckbuilderCombat at play time.
+# Validates the declarative wiring for the custom items that needed new
+# engine vocabulary: Dead Eye (attack_landed/attack_missed + streak_hit/
+# streak_reset), Duplicator (the Replay addon via card_grants), Empty Syringe
+# (status_amplify), and the eggs (upgrade_card_types). These guard against
+# .tres typos and enum drift; the deeper runtime behaviour is driven by the
+# combat scenes / GameState at play time.
 
 func _trigger_for(item: ItemData, on_name: String) -> Dictionary:
 	for t in item.triggers:
@@ -69,3 +70,62 @@ func test_card_type_gate_matches_attack_cards() -> void:
 	assert_not_null(strike, "strike.tres should load")
 	assert_true(ItemTriggers._card_type_is(strike, "attack"))
 	assert_false(ItemTriggers._card_type_is(strike, "skill"))
+
+# --- Empty Syringe -------------------------------------------------------
+
+func test_empty_syringe_loads_with_status_amplify() -> void:
+	var it: ItemData = Data.get_item(&"empty_syringe")
+	assert_not_null(it, "empty_syringe.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.rarity, ItemData.Rarity.RARE)
+	assert_eq(int(it.status_amplify.get("bleed", 0)), 1)
+	assert_eq(int(it.status_amplify.get("poison", 0)), 1)
+
+func test_status_amplify_bonus_sums_owned_items() -> void:
+	GameState.reset_run()
+	assert_eq(GameState.status_amplify_bonus(&"bleed"), 0, "nothing owned yet")
+	GameState.add_item(Data.get_item(&"empty_syringe"))
+	assert_eq(GameState.status_amplify_bonus(&"bleed"), 1)
+	assert_eq(GameState.status_amplify_bonus(&"poison"), 1)
+	assert_eq(GameState.status_amplify_bonus(&"burn"), 0, "only Bleed/Poison amplified")
+
+func test_empty_syringe_amplifies_bleed_on_enemy_not_player() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"empty_syringe"))
+	# Enemy (is_player defaults false): inflicting +2 Bleed lands as 3.
+	var enemy := CombatActor.new()
+	enemy.add_status(&"bleed", 2)
+	assert_eq(enemy.get_status(&"bleed"), 3, "Empty Syringe adds +1 on an enemy")
+	# Player buffs are never amplified.
+	var player := CombatActor.from_player()
+	player.add_status(&"bleed", 2)
+	assert_eq(player.get_status(&"bleed"), 2, "no amplify on the player")
+	# Decay (negative stacks) is never amplified.
+	enemy.add_status(&"bleed", -3)
+	assert_eq(enemy.get_status(&"bleed"), 0)
+
+# --- Eggs ----------------------------------------------------------------
+
+func test_eggs_load_with_upgrade_card_types() -> void:
+	for pair in [["molten_egg", "attack"], ["toxic_egg", "skill"], ["frozen_egg", "power"]]:
+		var it: ItemData = Data.get_item(StringName(pair[0]))
+		assert_not_null(it, "%s.tres should load" % pair[0])
+		assert_eq(it.rarity, ItemData.Rarity.UNCOMMON)
+		assert_true(it.upgrade_card_types.has(pair[1]),
+			"%s upgrades %s cards" % [pair[0], pair[1]])
+
+func test_molten_egg_upgrades_attack_card_on_add() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"molten_egg"))
+	# An Attack card (Strike) is upgraded the moment it enters the deck.
+	var added: CardInstance = GameState.add_card_to_deck(Data.get_card(&"strike"))
+	assert_not_null(added)
+	assert_true(added.upgraded, "Molten Egg upgrades a freshly added Attack card")
+	# A non-Attack card (Defend, a Skill) is left alone.
+	var skill: CardInstance = GameState.add_card_to_deck(Data.get_card(&"defend"))
+	assert_false(skill.upgraded, "Molten Egg ignores non-Attack cards")
+
+func test_no_egg_means_no_upgrade() -> void:
+	GameState.reset_run()
+	var added: CardInstance = GameState.add_card_to_deck(Data.get_card(&"strike"))
+	assert_false(added.upgraded, "no egg owned -> card added unupgraded")
