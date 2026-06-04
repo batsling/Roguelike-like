@@ -307,3 +307,64 @@ func test_tick_actor_statuses_drains_bleed_and_leeches() -> void:
 	Stats.decay_actor_statuses(enemy)
 	assert_eq(enemy.get_status(&"leeches"), 2, "Leeches persists")
 	assert_eq(enemy.get_status(&"bleed"), 4, "Bleed ramps up each turn")
+
+# --- if_hp conditional effect (Meat on the Bone / Leech Brood) -----------
+
+func test_if_hp_below_fires_only_when_at_or_under_threshold() -> void:
+	GameState.reset_run()   # hp 75 / max 75
+	GameState.hp = 30       # 40%
+	EffectSystem.apply({"type": "if_hp", "below": 0.5,
+		"effect": {"type": "gain_hp", "value": 12}}, {})
+	assert_eq(GameState.hp, 42, "heals when at/below 50%")
+	GameState.hp = 60       # 80%
+	EffectSystem.apply({"type": "if_hp", "below": 0.5,
+		"effect": {"type": "gain_hp", "value": 12}}, {})
+	assert_eq(GameState.hp, 60, "no heal when above 50%")
+
+func test_if_hp_above_fires_only_when_over_threshold() -> void:
+	GameState.reset_run()   # hp 75 / max 75 -> 100%
+	EffectSystem.apply({"type": "if_hp", "above": 0.5,
+		"effect": {"type": "lose_hp", "value": 10}}, {})
+	assert_eq(GameState.hp, 65, "loses HP when above 50%")
+	GameState.hp = 30       # 40%
+	EffectSystem.apply({"type": "if_hp", "above": 0.5,
+		"effect": {"type": "lose_hp", "value": 10}}, {})
+	assert_eq(GameState.hp, 30, "no loss when at/below 50%")
+
+# --- Leech Brood / Meat on the Bone / Mummified Hand wiring ---------------
+
+func test_leech_brood_loads_with_leeches_and_conditional_loss() -> void:
+	var it: ItemData = Data.get_item(&"leech_brood")
+	assert_not_null(it, "leech_brood.tres should load")
+	var t: Dictionary = _trigger_for(it, "combat_started")
+	assert_false(t.is_empty(), "fires at combat start")
+	var effs: Array = t.get("effects", [])
+	var found_leeches := false
+	var found_if_hp := false
+	for e in effs:
+		if String(e.get("type", "")) == "status" and String(e.get("status", "")) == "leeches":
+			found_leeches = true
+			assert_eq(String(e.get("target", "")), "all_enemies")
+		if String(e.get("type", "")) == "if_hp":
+			found_if_hp = true
+			assert_almost_eq(float(e.get("above", 0.0)), 0.5, 0.001)
+			assert_eq(String(e.get("effect", {}).get("type", "")), "lose_hp")
+	assert_true(found_leeches and found_if_hp)
+
+func test_meat_on_the_bone_loads_with_combat_end_heal() -> void:
+	var it: ItemData = Data.get_item(&"meat_on_the_bone")
+	assert_not_null(it, "meat_on_the_bone.tres should load")
+	var t: Dictionary = _trigger_for(it, "combat_ended")
+	assert_false(t.is_empty(), "fires at combat end")
+	var e: Dictionary = t.get("effects", [{}])[0]
+	assert_eq(String(e.get("type", "")), "if_hp")
+	assert_almost_eq(float(e.get("below", 0.0)), 0.5, 0.001)
+	assert_eq(int(e.get("effect", {}).get("value", 0)), 12)
+
+func test_mummified_hand_loads_with_power_gate() -> void:
+	var it: ItemData = Data.get_item(&"mummified_hand")
+	assert_not_null(it, "mummified_hand.tres should load")
+	var t: Dictionary = _trigger_for(it, "card_played")
+	assert_false(t.is_empty(), "fires on card_played")
+	assert_eq(String(t.get("if_card_type", "")), "power")
+	assert_eq(String(t.get("effects", [{}])[0].get("type", "")), "free_random_hand_card")

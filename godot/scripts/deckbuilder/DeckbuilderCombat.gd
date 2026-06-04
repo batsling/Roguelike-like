@@ -230,6 +230,9 @@ func _on_end_turn() -> void:
 	var kept: Array[CardInstance] = []
 	while not hand.is_empty():
 		var c: CardInstance = hand.pop_back()
+		# Mummified Hand's "free this turn" discount expires now (clear it on
+		# every card leaving hand, retained ones included).
+		c.temp_cost_override = -999
 		if c.data != null and c.data.retain:
 			kept.append(c)
 		elif c.data != null and c.data.ethereal:
@@ -958,6 +961,24 @@ func gain_energy(amount: int) -> void:
 
 func lose_energy(amount: int) -> void:
 	energy = maxi(0, energy - amount)
+	_refresh_ui()
+
+func make_random_hand_card_free(exclude = null) -> void:
+	# Mummified Hand: pick a random card in hand (other than the power that
+	# just triggered this) whose cost is above 0 and set it to cost 0 for the
+	# rest of the turn. Cleared when the card leaves hand (see _on_end_turn).
+	var candidates: Array = []
+	for c in hand:
+		if c == exclude:
+			continue
+		if c.get_cost() > 0:
+			candidates.append(c)
+	if candidates.is_empty():
+		return
+	var pick: CardInstance = candidates[_rng.randi() % candidates.size()]
+	pick.temp_cost_override = 0
+	GameLog.add("Mummified Hand: %s costs 0 this turn!" % pick.data.display_name,
+		Color(0.7, 1.0, 0.7))
 	_refresh_ui()
 
 # ------------------------------------------------------------------

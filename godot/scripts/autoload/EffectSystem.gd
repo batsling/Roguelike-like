@@ -83,6 +83,8 @@ func _register_defaults() -> void:
 	register("temp_stat", _h_temp_stat)
 	register("streak_hit", _h_streak_hit)
 	register("streak_reset", _h_streak_reset)
+	register("if_hp", _h_if_hp)
+	register("free_random_hand_card", _h_free_random_hand_card)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -471,3 +473,32 @@ func _h_streak_reset(effect: Dictionary, ctx: Dictionary) -> void:
 	if scene == null or not scene.has_method("streak_reset"):
 		return
 	scene.streak_reset(String(effect.get("key", "")))
+
+func _h_if_hp(effect: Dictionary, ctx: Dictionary) -> void:
+	# Conditional on the PLAYER's current HP fraction. Fires the inner effect
+	# only when the threshold passes. `below: f` -> hp <= max*f (Meat on the
+	# Bone: heal when at/below 50%); `above: f` -> hp > max*f (Leech Brood:
+	# lose HP only when above 50%). The two are complementary at the boundary.
+	#   {type: "if_hp", below: 0.5, effect: {type: "gain_hp", value: 12}}
+	if GameState.max_hp <= 0:
+		return
+	var inner: Dictionary = effect.get("effect", {})
+	if inner.is_empty():
+		return
+	var frac: float = float(GameState.hp) / float(GameState.max_hp)
+	var ok: bool = true
+	if effect.has("below"):
+		ok = frac <= float(effect["below"])
+	elif effect.has("above"):
+		ok = frac > float(effect["above"])
+	if ok:
+		apply(inner, ctx)
+
+func _h_free_random_hand_card(_effect: Dictionary, ctx: Dictionary) -> void:
+	# Mummified Hand: a random card in hand costs 0 for the rest of the turn.
+	# Deckbuilder-only (no hand elsewhere); the played card is excluded so the
+	# discount doesn't land on the power that's already resolving.
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("make_random_hand_card_free"):
+		return
+	scene.make_random_hand_card_free(ctx.get("card"))
