@@ -22,7 +22,8 @@ triggers = [{
 "above": 0.5,
 "effect": {
 "type": "lose_hp",
-"value": 10
+"value": 10,
+"non_lethal": true
 }
 }]
 }]

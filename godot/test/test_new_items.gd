@@ -331,6 +331,16 @@ func test_if_hp_above_fires_only_when_over_threshold() -> void:
 		"effect": {"type": "lose_hp", "value": 10}}, {})
 	assert_eq(GameState.hp, 30, "no loss when at/below 50%")
 
+func test_lose_hp_non_lethal_never_kills() -> void:
+	GameState.reset_run()
+	GameState.hp = 6
+	EffectSystem.apply({"type": "lose_hp", "value": 10, "non_lethal": true}, {})
+	assert_eq(GameState.hp, 1, "non-lethal loss clamps to 1 HP")
+	# A plain lose_hp is uncapped and can floor at 0.
+	GameState.hp = 6
+	EffectSystem.apply({"type": "lose_hp", "value": 10}, {})
+	assert_eq(GameState.hp, 0, "lethal loss is not clamped")
+
 # --- Leech Brood / Meat on the Bone / Mummified Hand wiring ---------------
 
 func test_leech_brood_loads_with_leeches_and_conditional_loss() -> void:
@@ -349,6 +359,8 @@ func test_leech_brood_loads_with_leeches_and_conditional_loss() -> void:
 			found_if_hp = true
 			assert_almost_eq(float(e.get("above", 0.0)), 0.5, 0.001)
 			assert_eq(String(e.get("effect", {}).get("type", "")), "lose_hp")
+			assert_true(bool(e.get("effect", {}).get("non_lethal", false)),
+				"the HP tax can't kill the player")
 	assert_true(found_leeches and found_if_hp)
 
 func test_meat_on_the_bone_loads_with_combat_end_heal() -> void:

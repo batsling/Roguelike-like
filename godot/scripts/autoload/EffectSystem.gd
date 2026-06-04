@@ -238,7 +238,14 @@ func _h_gain_gold(effect: Dictionary, ctx: Dictionary) -> void:
 	GameState.change_gold(amount)
 
 func _h_lose_hp(effect: Dictionary, _ctx: Dictionary) -> void:
-	GameState.change_hp(-effect.get("value", 0))
+	# `non_lethal: true` clamps the loss so it can never drop the player below
+	# 1 HP (Leech Brood's start-of-combat tax shouldn't be able to kill).
+	var v: int = int(effect.get("value", 0))
+	if v <= 0:
+		return
+	if bool(effect.get("non_lethal", false)):
+		v = mini(v, maxi(0, GameState.hp - 1))
+	GameState.change_hp(-v)
 
 func _h_conjure(effect: Dictionary, ctx: Dictionary) -> void:
 	# Unified conjure handler. Args on the effect:
