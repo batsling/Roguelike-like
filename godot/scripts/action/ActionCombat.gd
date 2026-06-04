@@ -554,6 +554,7 @@ func _use_active_item() -> void:
 # full card resolution so Strikes, weapons and any effects they carry all
 # behave the same as before — only the trigger (LMB/RMB) changed.
 func _fire_click_card(card: CardData) -> void:
+	_fire_item_triggers("card_played", {"card": card})
 	_resolve_card_effects(card)
 	GameLog.add("%s." % card.display_name, Color(0.85, 1.0, 0.7))
 	# Replay addon (Duplicator grants it to weapon attacks): fire the card's
@@ -720,6 +721,7 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 			# discard and draw the next one. With no enemies, hold the card
 			# ready (don't waste it on empty air).
 			if _living_enemy_count() > 0:
+				_fire_item_triggers("card_played", {"card": slot.card})
 				_resolve_card_effects_auto(slot.card)
 				# Replay addon: auto-fired cards replay too.
 				for _r in CardMods.replay_count(slot.card):
@@ -1201,6 +1203,17 @@ func leech_to_player(amount: int) -> void:
 		return
 	heal(player_actor, amount)
 	GameLog.add("Leeches drain %d into you." % amount, Color(0.7, 1.0, 0.7))
+
+# Mummified Hand (action analogue of "a card becomes free"): playing a Power
+# slashes cooldowns so the next attacks come up fast — click slots become
+# ready and every auto slot has its remaining cooldown halved. The played
+# card is unused here (there's no hand to exclude from).
+func make_random_hand_card_free(_card = null) -> void:
+	left_cd = 0.0
+	right_cd = 0.0
+	for slot in auto_slots:
+		slot.cooldown = maxf(0.0, float(slot.cooldown) * 0.5)
+	GameLog.add("Mummified Hand: cooldowns slashed!", Color(0.7, 1.0, 0.7))
 
 # EffectSystem-compatible status apply (mirrors deckbuilder apply_status,
 # minus the deck/trigger plumbing). EffectSystem doesn't thread `source`,

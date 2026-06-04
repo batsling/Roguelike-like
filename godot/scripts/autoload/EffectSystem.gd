@@ -502,9 +502,10 @@ func _h_if_hp(effect: Dictionary, ctx: Dictionary) -> void:
 		apply(inner, ctx)
 
 func _h_free_random_hand_card(_effect: Dictionary, ctx: Dictionary) -> void:
-	# Mummified Hand: a random card in hand costs 0 for the rest of the turn.
-	# Deckbuilder-only (no hand elsewhere); the played card is excluded so the
-	# discount doesn't land on the power that's already resolving.
+	# Mummified Hand. Each mode interprets "a card becomes free" its own way:
+	# deckbuilder zeroes a random hand card's cost this turn; strategy frees a
+	# random other slotted ability (no per-turn play cost); action slashes
+	# attack cooldowns. The played card is passed so scenes can exclude it.
 	var scene: Variant = ctx.get("scene")
 	if scene == null or not scene.has_method("make_random_hand_card_free"):
 		return

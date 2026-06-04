@@ -380,3 +380,15 @@ func test_mummified_hand_loads_with_power_gate() -> void:
 	assert_false(t.is_empty(), "fires on card_played")
 	assert_eq(String(t.get("if_card_type", "")), "power")
 	assert_eq(String(t.get("effects", [{}])[0].get("type", "")), "free_random_hand_card")
+
+func test_card_played_gate_accepts_carddata_and_cardinstance() -> void:
+	# Mummified Hand fires in action/strategy, which pass raw CardData (not a
+	# CardInstance) as the played card — the gate must resolve both.
+	var power: CardData = Data.get_card(&"inflame")
+	assert_not_null(power, "inflame.tres (a Power) should load")
+	assert_eq(ItemTriggers._event_card_data(power), power, "raw CardData passes through")
+	var ci := CardInstance.from_data(power)
+	assert_eq(ItemTriggers._event_card_data(ci), power, "CardInstance resolves to its data")
+	assert_null(ItemTriggers._event_card_data(null))
+	assert_true(ItemTriggers._card_type_is(power, "power"))
+	assert_false(ItemTriggers._card_type_is(power, "attack"))

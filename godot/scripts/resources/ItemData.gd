@@ -80,8 +80,9 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #   if_hp (wraps an inner effect, fires it on a player HP-fraction test:
 #   `below: f` => hp <= max*f, `above: f` => hp > max*f — Meat on the Bone,
 #   Leech Brood) /
-#   free_random_hand_card (deckbuilder: a random hand card costs 0 this
-#   turn — Mummified Hand).
+#   free_random_hand_card (Mummified Hand: deckbuilder zeroes a random hand
+#   card's cost this turn; strategy frees a random other slotted ability;
+#   action slashes attack cooldowns — each scene implements its own).
 #
 # To add a new authoring vocabulary entry: register a handler in
 # EffectSystem._register_defaults and (if it needs a new trigger point)

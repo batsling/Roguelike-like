@@ -105,6 +105,9 @@ var _card_plays_remaining: int = 0
 # Ice Cream: did the player resolve an ability card this turn? A turn that
 # ends without one banks an empower charge (see _on_unit_turn_ended).
 var _ability_used_this_turn: bool = false
+# Mummified Hand: a slotted ability that costs no per-turn play this turn (it
+# still spends a use). &"" = none. Reset each turn.
+var _free_ability_id: StringName = &""
 
 # Energy charge banked from gain-energy effects. It persists across turns
 # within a combat until spent: the next card play consumes ALL of it and is
@@ -512,6 +515,7 @@ func _on_unit_turn_started(unit) -> void:
 		_move_remaining = unit.move_range
 		_card_plays_remaining = 1
 		_ability_used_this_turn = false
+		_free_ability_id = &""
 		_pending_kind = Pending.NONE
 		_pending_card = null
 		_pending_spell = null
@@ -694,8 +698,10 @@ func _populate_ability_picker() -> void:
 		var lbl := Label.new()
 		var uses: int = GameState.get_card_uses(card)
 		var cap: int = GameState.max_card_uses(card)
-		var castable: bool = uses > 0 and _card_plays_remaining > 0
-		lbl.text = "%s  (uses %d/%d)  —  %s" % [card.display_name, uses, cap, _card_desc(card)]
+		var is_free: bool = String(card.id) == String(_free_ability_id)
+		var castable: bool = uses > 0 and (_card_plays_remaining > 0 or is_free)
+		var free_tag: String = "  [FREE]" if is_free else ""
+		lbl.text = "%s%s  (uses %d/%d)  —  %s" % [card.display_name, free_tag, uses, cap, _card_desc(card)]
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
 		lbl.custom_minimum_size = Vector2(440, 0)
@@ -712,8 +718,10 @@ func _populate_ability_picker() -> void:
 
 func _on_pick_ability(card) -> void:
 	_ability_dialog.visible = false
-	# Re-check: the picker may have been left open across state changes.
-	if _card_plays_remaining <= 0 or GameState.get_card_uses(card) <= 0:
+	# Re-check: the picker may have been left open across state changes. A
+	# Mummified-Hand free ability is playable even with no plays remaining.
+	var is_free: bool = String(card.id) == String(_free_ability_id)
+	if GameState.get_card_uses(card) <= 0 or (_card_plays_remaining <= 0 and not is_free):
 		_status_label.text = "%s can't be played right now." % card.display_name
 		return
 	_pending_kind = Pending.ABILITY
@@ -736,7 +744,12 @@ func _resolve_ability_against(target) -> void:
 		_pending_card = null
 		_grid_view.enter_idle()
 		return
-	_card_plays_remaining -= 1
+	# Mummified Hand: if this is the ability the item made free, it costs no
+	# per-turn play (the use was still spent above); otherwise spend a play.
+	if String(card.id) == String(_free_ability_id):
+		_free_ability_id = &""
+	else:
+		_card_plays_remaining -= 1
 	_ability_used_this_turn = true
 	# Spend any banked energy charge to empower this card, then clear it.
 	var empower: int = _energy_charge
@@ -749,6 +762,9 @@ func _resolve_ability_against(target) -> void:
 	_status_label.text = "Played %s%s. (%d uses left, %d plays left)" % [
 		card.display_name, empower_str, GameState.get_card_uses(card), _card_plays_remaining,
 	]
+	# Power plays may grant a free ability (Mummified Hand) via card_played.
+	# Fired last so the item's own status text wins over "Played …".
+	_fire_item_triggers("card_played", {"card": card})
 	_grid_view.notify_units_changed()
 	_refresh_initiative()
 	_refresh_button_states()
@@ -1141,6 +1157,24 @@ func leech_to_player(amount: int) -> void:
 	if p != null:
 		heal(p, amount)
 
+# Mummified Hand (strategy analogue of "a card becomes free"): playing a Power
+# ability marks a random OTHER slotted ability free to play this turn — it
+# costs no per-turn play, though it still spends one of its uses. `played_card`
+# is the power that triggered this and is excluded from the pick.
+func make_random_hand_card_free(played_card = null) -> void:
+	if _loadout == null:
+		return
+	var played_id: String = String(played_card.id) if played_card != null and ("id" in played_card) else ""
+	var candidates: Array = []
+	for c in _loadout.cards:
+		if c != null and String(c.id) != played_id:
+			candidates.append(c)
+	if candidates.is_empty():
+		return
+	var pick = candidates[randi() % candidates.size()]
+	_free_ability_id = pick.id
+	_status_label.text = "Mummified Hand: %s is free to play this turn!" % pick.display_name
+
 func _drop_enemy_loot(unit) -> void:
 	if _battle_map == null:
 		return
@@ -1233,7 +1267,8 @@ func _refresh_button_states() -> void:
 	# Cards button: live while plays remain and at least one slotted card
 	# still has uses. Per-card use/affordability is gated per-row in
 	# `_populate_ability_picker`.
-	_btn_ability.disabled = _card_plays_remaining <= 0 or not _has_playable_card()
+	_btn_ability.disabled = (_card_plays_remaining <= 0 and _free_ability_id == &"") \
+		or not _has_playable_card()
 	_btn_spell.disabled = _spellbook == null or _spellbook.spells.is_empty()
 	_btn_dash.disabled = not u.dash_available
 
