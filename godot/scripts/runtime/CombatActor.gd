@@ -98,6 +98,12 @@ func is_alive() -> bool:
 func add_status(status: StringName, stacks: int) -> void:
 	if stacks == 0:
 		return
+	# Status-amplify items (Empty Syringe): inflicting positive stacks of a
+	# matching status on a non-player actor adds the item's bonus. Reads the
+	# player's inventory, so only the player's amplifiers count, and never
+	# fires on decay (stacks < 0) or on the player's own buffs.
+	if stacks > 0 and not is_player:
+		stacks += GameState.status_amplify_bonus(status)
 	var cur := int(statuses.get(status, 0))
 	var new_val := cur + stacks
 	if new_val <= 0:

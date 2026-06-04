@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_little_knife"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/LittleKnife.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"little_knife"
+kind = 4
+rarity = 1
+display_name = "Little Knife"
+description = "Attacks deal 25% more Dmg to targets with lower Health than you."
+triggers = []
+card_grants = []
+stat_bonuses = {}
+scaling = []
+lower_hp_damage_mult = 1.25
+max_uses = -1
+source_game = "Brutal Orchestra"
+tags = PackedStringArray("knife")
+image = ExtResource("2_img")

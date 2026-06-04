@@ -37,23 +37,52 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #                      ever removed. Lunch: triggers = [{on:
 #                      "item_acquired", effects: [{type: "gain_max_hp",
 #                      value: 8}, {type: "gain_hp", value: 8}]}].
-#   card_played      — fires per card resolved. ctx carries the card and
-#                      its target. Combine with `if_card_tag:` /
-#                      `if_card_id:` on the trigger entry to gate. Effects
-#                      with target "enemy" hit the card's target.
+#   card_played      — fires per card BEFORE its effects resolve. ctx
+#                      carries the card and its target. Combine with
+#                      `if_card_tag:` / `if_card_id:` / `if_card_type:`
+#                      on the trigger entry to gate. Effects with target
+#                      "enemy" hit the card's target.
 #                      Bird Head: triggers = [{on: "card_played",
 #                                              if_card_tag: "strike",
 #                                              effects: [{type: "status",
 #                                                         status: "soul_link",
 #                                                         stacks: 1,
 #                                                         target: "enemy"}]}]
+#   card_resolved    — fires per card AFTER its effects land (before
+#                      discard/exhaust). General post-resolution hook,
+#                      same gates as card_played. (Replay-style "hit
+#                      again" items are now data-driven via the `replay`
+#                      addon + card_grants, not a trigger — see below.)
+#   attack_landed    — fires when a player melee/ranged attack connects
+#                      (block counts; miss/dodge don't). Target = the enemy
+#                      hit. Dead Eye grows its streak here.
+#   attack_missed    — fires when a player attack whiffs (Blind). Dead Eye
+#                      resets here.
+#                      Dead Eye: triggers = [
+#                        {on: "attack_landed", silent: true, effects: [{type:
+#                          "streak_hit", key: "dead_eye", attack_bonus: true,
+#                          label: "Dead Eye", target: "enemy"}]},
+#                        {on: "attack_missed", silent: true, effects: [{type:
+#                          "streak_reset", key: "dead_eye"}]}]
+#
+# Trigger-entry gates / flags (all optional): if_turn, if_card_tag,
+# if_card_id, if_card_type (attack/skill/power/…), and silent (skip the
+# generic "(X triggers)" log line for high-frequency hooks like Dead Eye).
 #
 # `effects:` is a list of dicts dispatched through EffectSystem. Each entry
 # is `{type: <handler-name>, ...args}`. See EffectSystem.gd for the full
 # handler registry. The common ones for items:
 #   block / heal / dmg / status / gain_energy / gain_gold / draw /
 #   chance (wraps an inner effect with a % roll) / trigger (persistent
-#   in-combat listener) / add_max_hp (mutates target.max_hp directly).
+#   in-combat listener) / add_max_hp (mutates target.max_hp directly) /
+#   streak_hit + streak_reset (named consecutive-hit counter that adds to
+#   outgoing player attacks — Dead Eye) /
+#   if_hp (wraps an inner effect, fires it on a player HP-fraction test:
+#   `below: f` => hp <= max*f, `above: f` => hp > max*f — Meat on the Bone,
+#   Leech Brood) /
+#   free_random_hand_card (Mummified Hand: deckbuilder zeroes a random hand
+#   card's cost this turn; strategy frees a random other slotted ability;
+#   action slashes attack cooldowns — each scene implements its own).
 #
 # To add a new authoring vocabulary entry: register a handler in
 # EffectSystem._register_defaults and (if it needs a new trigger point)
@@ -61,12 +90,17 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 @export var triggers: Array = []
 
 # "Card gains effect" grants ("X gains Y"). Each entry adds its `effects` to
-# every owned card matching `if_card_tag` / `if_card_id`, baked into the
-# card's resolved effects (so it fires in EVERY combat mode) and shown in the
-# card's text wherever it's displayed. Resolved by CardMods.
+# every owned card matching `if_card_tag` / `if_card_id` / `if_card_type`,
+# baked into the card's resolved effects (so it fires in EVERY combat mode)
+# and shown in the card's text wherever it's displayed. Resolved by CardMods.
 #   Brass Knuckles: card_grants = [{ if_card_tag: "strike",
 #       effects: [{ type: "status", status: "bruise", stacks: 1,
 #                   target: "enemy" }] }]
+# A grant can also hand out addon keywords via `addons`. The Replay addon
+# ("replay" = +1, or "replay:N") makes a card re-resolve its effects that
+# many extra times.
+#   Duplicator: card_grants = [{ if_card_tag: "weapon",
+#       if_card_type: "attack", addons: ["replay"] }]
 @export var card_grants: Array = []
 
 # Persistent stat bonuses applied while the item is in inventory.
@@ -80,6 +114,40 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # `of` resolves against GameState fields (max_hp, hp, strength, gold, etc).
 # Output stats are folded into item_stat_bonus by _recompute_item_bonuses.
 @export var scaling: Array = []
+
+# Status-amplify rules. Maps a status id -> extra stacks added whenever that
+# status is inflicted (positive stacks) on a NON-player actor while this item
+# is owned. Applied in CombatActor.add_status, so it lands in every combat
+# mode. Empty Syringe: { "bleed": 1, "poison": 1 }.
+@export var status_amplify: Dictionary = {}
+
+# Card types that get auto-upgraded the moment a matching card is added to the
+# deck while this item is owned (the "egg" items). Entries are CardData type
+# names (attack / skill / power / dice / status / curse / training). Resolved
+# in GameState.add_card_to_deck. Molten Egg: ["attack"]; Toxic Egg: ["skill"];
+# Frozen Egg: ["power"].
+@export var upgrade_card_types: PackedStringArray = PackedStringArray()
+
+# Flat damage the player's attacks gain per hit, keyed by damage_type
+# (melee / ranged / magic). Folded into Stats.damage_bonus for player sources
+# only, so it lands in every combat mode. Focus Crystal: { "melee": 1 }.
+@export var attack_damage_bonus: Dictionary = {}
+
+# Ice Cream: leftover energy carries into the next turn (deckbuilder), and in
+# strategy a turn where the player skips their ability banks an empower
+# charge. Action has no per-turn energy pool, so it ignores this. Checked via
+# GameState.has_energy_carryover_item().
+@export var carries_leftover_energy: bool = false
+
+# Little Knife: the player's attacks deal this multiplier extra damage to a
+# target whose HP is below the player's. 1.0 = no bonus; 1.25 = +25%. Folded
+# into Stats.resolve_damage for player attacks, so it applies in every mode.
+@export var lower_hp_damage_mult: float = 1.0
+
+# Keeper's Sack: for every `gold_spend_stat_per` gold the player spends, grant
+# +1 to a random core stat. 0 = off. Counts only gold the player actively
+# spends via GameState.spend_gold — gold lost to events/curses doesn't count.
+@export var gold_spend_stat_per: int = 0
 
 # For Usable items: how many uses (-1 = infinite)
 @export var max_uses: int = -1

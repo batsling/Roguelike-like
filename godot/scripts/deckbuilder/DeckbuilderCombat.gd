@@ -51,8 +51,18 @@ var card_boosts: Array = []
 # combat start.
 var power_triggers: Array = []
 
+# Named consecutive-hit streaks (Dead Eye). key -> {count, target,
+# attack_bonus, label}. Grown by `streak_hit` effects on attack_landed,
+# wiped by `streak_reset` on attack_missed, and read in deal_damage so an
+# attack_bonus streak adds its count to outgoing player attacks vs the
+# tracked target. Cleared at combat start.
+var _streaks: Dictionary = {}
+
 var energy: int = 0
 var max_energy: int = 3
+# Ice Cream: energy left unspent at end of turn, re-added at the start of the
+# next turn (can push energy above max_energy). Cleared at combat start.
+var _energy_carryover: int = 0
 var turn: int = 0
 enum Phase { INIT, PLAYER, ENEMY, WON, LOST }
 var phase: Phase = Phase.INIT
@@ -162,6 +172,8 @@ func _init_deck() -> void:
 	exhaust_pile.clear()
 	card_boosts.clear()
 	power_triggers.clear()
+	_streaks.clear()
+	_energy_carryover = 0
 	for c in GameState.deck:
 		if c is CardData:
 			draw_pile.append(CardInstance.from_data(c))
@@ -183,6 +195,11 @@ func _start_player_turn() -> void:
 	turn += 1
 	phase = Phase.PLAYER
 	energy = max_energy
+	# Ice Cream: pour last turn's leftover energy on top (may exceed max).
+	if _energy_carryover > 0:
+		energy += _energy_carryover
+		GameLog.add("Ice Cream: +%d bonus energy!" % _energy_carryover, Color(0.7, 1.0, 0.7))
+		_energy_carryover = 0
 	player.block = 0
 	_cancel_targeting()
 	# Pre-roll enemy intents for this turn
@@ -203,6 +220,9 @@ func _on_end_turn() -> void:
 	if phase != Phase.PLAYER:
 		return
 	_cancel_targeting()
+	# Ice Cream: bank whatever energy is still unspent for next turn.
+	if energy > 0 and GameState.has_energy_carryover_item():
+		_energy_carryover = energy
 	# Discard hand. Ethereal cards exhaust instead of discarding if they
 	# would still be in hand at end of turn (Carnage). Retain cards stay
 	# in hand. The TriggerBus emit lets items react to each exhausted
@@ -210,6 +230,9 @@ func _on_end_turn() -> void:
 	var kept: Array[CardInstance] = []
 	while not hand.is_empty():
 		var c: CardInstance = hand.pop_back()
+		# Mummified Hand's "free this turn" discount expires now (clear it on
+		# every card leaving hand, retained ones included).
+		c.temp_cost_override = -999
 		if c.data != null and c.data.retain:
 			kept.append(c)
 		elif c.data != null and c.data.ethereal:
@@ -505,6 +528,37 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	_fire_power_triggers("card_played", {"card": card})
 	_fire_item_triggers("card_played", {"card": card, "target": target_enemy})
 
+	_apply_card_effects(card, target_enemy)
+
+	# The card has fully resolved its primary play. card_resolved is a
+	# general post-resolution hook (after card_played + the effects, before
+	# discard/exhaust); fired once, not per Replay.
+	TriggerBus.emit_signal("card_resolved", {
+		"card": card, "target": target_enemy, "scene": self,
+	})
+	_fire_item_triggers("card_resolved", {"card": card, "target": target_enemy})
+
+	# Replay addon: the card re-resolves its own effects N extra times.
+	# Carried natively (CardData.addons) or granted by an item — Duplicator
+	# gives weapon attack cards Replay 1. Resolved through CardMods so the
+	# count folds native + granted in one place.
+	var replays: int = CardMods.replay_count(card.data)
+	for _i in replays:
+		replay_card_effects(card, target_enemy)
+
+	# Powers exhaust on play; cards with the exhaust flag exhaust; else discard.
+	if card.data.exhaust or card.is_power():
+		exhaust_card(card)
+	else:
+		discard_card(card)
+	_refresh_ui()
+	# Killing the last enemy with a card ends combat immediately.
+	_check_combat_end()
+
+func _apply_card_effects(card: CardInstance, target_enemy: CombatActor) -> void:
+	# Resolves a card's own effect list against the picked target. Split out
+	# of _resolve_card so the Replay addon can re-run JUST the effects (no
+	# energy cost, no card_resolved emit, no discard).
 	for raw_effect in card.get_effects():
 		var effect: Dictionary = _apply_card_boosts(raw_effect, card)
 		effect = Stats.apply_addons_to_effect(effect, card.data)
@@ -549,14 +603,69 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 			}
 			EffectSystem.apply(effect, ctx)
 
-	# Powers exhaust on play; cards with the exhaust flag exhaust; else discard.
-	if card.data.exhaust or card.is_power():
-		exhaust_card(card)
-	else:
-		discard_card(card)
-	_refresh_ui()
-	# Killing the last enemy with a card ends combat immediately.
+func replay_card_effects(card: CardInstance, target_enemy) -> void:
+	# Replay addon: re-run a card's effects one extra time. Effects only —
+	# the card has already paid its cost and fired card_resolved, so this
+	# just re-resolves the hit(s)/block/etc. If the first pass already
+	# cleared the room, the dmg handlers no-op on the dead target.
+	if card == null:
+		return
+	# Only ever replay damage onto a living enemy. If the first hit cleared
+	# the picked target, pass null: single-target effects no-op, while
+	# all_enemies effects still sweep whatever enemies remain, and self
+	# effects (block/heal) always re-apply. This also guards the case where
+	# no enemies are left — we must never replay an attack onto ourselves.
+	var tgt: CombatActor = null
+	if target_enemy is CombatActor and not target_enemy.is_player and target_enemy.is_alive():
+		tgt = target_enemy
+	_apply_card_effects(card, tgt)
+	GameLog.add("%s replays!" % card.data.display_name, Color(0.7, 1.0, 0.7))
 	_check_combat_end()
+
+# ------------------------------------------------------------------
+# Streak tracking (Dead Eye)
+# ------------------------------------------------------------------
+
+func streak_register_hit(key: String, target, attack_bonus: bool, label: String) -> void:
+	# A landed player attack grows the named streak. Switching targets
+	# resets the count first (so the bonus only rewards staying on one
+	# enemy), then this hit counts as 1.
+	if key == "" or target == null:
+		return
+	var s: Dictionary = _streaks.get(key, {"count": 0, "target": null})
+	if s.get("target") != target:
+		s["count"] = 0
+	s["target"] = target
+	s["attack_bonus"] = attack_bonus
+	s["label"] = label
+	s["count"] = int(s.get("count", 0)) + 1
+	_streaks[key] = s
+
+func streak_reset(key: String) -> void:
+	# A whiff (Blind) wipes the streak entirely.
+	if key == "":
+		return
+	_streaks.erase(key)
+
+func _streak_attack_bonus(target) -> int:
+	# Sum every attack_bonus streak currently locked onto `target`. Logged
+	# here so the player sees the exact bonus that just landed.
+	if _streaks.is_empty():
+		return 0
+	var bonus: int = 0
+	for key in _streaks:
+		var s: Dictionary = _streaks[key]
+		if not bool(s.get("attack_bonus", false)) or s.get("target") != target:
+			continue
+		var n: int = int(s.get("count", 0))
+		if n <= 0:
+			continue
+		bonus += n
+		var label: String = String(s.get("label", ""))
+		if label == "":
+			label = String(key)
+		GameLog.add("%s: +%d Dmg (streak %d)!" % [label, n, n], Color(0.7, 1.0, 0.7))
+	return bonus
 
 # ------------------------------------------------------------------
 # Effect callbacks (invoked by EffectSystem handlers via ctx.scene)
@@ -567,6 +676,15 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 		return
 	var damage_type: String = String(effect.get("damage_type", "melee"))
 
+	# A player melee/ranged swing at an enemy is an "attack" for streak
+	# items (Dead Eye). Fold any active streak bonus into the swing BEFORE
+	# resolving so Power/Weak/Vulnerable treat it like the rest of the hit.
+	var is_player_attack: bool = source != null and source.is_player \
+		and (damage_type == "melee" or damage_type == "ranged") \
+		and not target.is_player
+	if is_player_attack:
+		base_amount += _streak_attack_bonus(target)
+
 	# Canonical damage math lives in Stats.resolve_damage (Blind whiff,
 	# Power/Weak, Vulnerable, Dodge, block soak) so all three modes agree.
 	# The scene-specific tail below — logging, triggers, Soul Link, death,
@@ -575,6 +693,11 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 	if res.missed:
 		var who: String = "You" if source.is_player else source.display_name
 		GameLog.add("%s swings blind and misses!" % who, Color(0.85, 0.85, 0.55))
+		# A whiff breaks Dead Eye's streak.
+		if is_player_attack:
+			TriggerBus.emit_signal("attack_missed",
+				{"source": source, "target": target, "scene": self})
+			_fire_item_triggers("attack_missed", {"target": target})
 		return
 	if res.dodged:
 		GameLog.add("%s dodges!" % target.display_name, Color(0.7, 0.9, 1.0))
@@ -636,6 +759,16 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 		"source": source, "target": target, "amount": amount, "scene": self,
 	})
 	_fire_power_triggers("damage_dealt")
+
+	# The attack connected (block counts; miss/dodge already returned above).
+	# Dead Eye's streak grows here. Skip a killing blow — the streak against a
+	# dead enemy is never read (the next hit is a new target, which resets),
+	# and emitting with a corpse would make item target-resolution fall back
+	# to a different living enemy.
+	if is_player_attack and target.is_alive():
+		TriggerBus.emit_signal("attack_landed",
+			{"source": source, "target": target, "scene": self})
+		_fire_item_triggers("attack_landed", {"target": target})
 
 func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 	# Direct HP loss from end-of-turn status ticks (Bleed today; Burn /
@@ -712,6 +845,14 @@ func heal(target: CombatActor, amount: int) -> void:
 		target.hp = GameState.hp
 	else:
 		target.hp = mini(target.max_hp, target.hp + amount)
+
+# Leeches drain -> player heal. Called by Stats.tick_actor_statuses when a
+# leeched enemy bleeds HP into the player (Jar of Leeches).
+func leech_to_player(amount: int) -> void:
+	if amount <= 0:
+		return
+	heal(player, amount)
+	GameLog.add("Leeches drain %d into you." % amount, Color(0.7, 1.0, 0.7))
 
 func apply_status(target: CombatActor, status: StringName, stacks: int, source: CombatActor = null) -> void:
 	if target == null or stacks == 0:
@@ -820,6 +961,24 @@ func gain_energy(amount: int) -> void:
 
 func lose_energy(amount: int) -> void:
 	energy = maxi(0, energy - amount)
+	_refresh_ui()
+
+func make_random_hand_card_free(exclude = null) -> void:
+	# Mummified Hand: pick a random card in hand (other than the power that
+	# just triggered this) whose cost is above 0 and set it to cost 0 for the
+	# rest of the turn. Cleared when the card leaves hand (see _on_end_turn).
+	var candidates: Array = []
+	for c in hand:
+		if c == exclude:
+			continue
+		if c.get_cost() > 0:
+			candidates.append(c)
+	if candidates.is_empty():
+		return
+	var pick: CardInstance = candidates[_rng.randi() % candidates.size()]
+	pick.temp_cost_override = 0
+	GameLog.add("Mummified Hand: %s costs 0 this turn!" % pick.data.display_name,
+		Color(0.7, 1.0, 0.7))
 	_refresh_ui()
 
 # ------------------------------------------------------------------

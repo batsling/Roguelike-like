@@ -554,8 +554,14 @@ func _use_active_item() -> void:
 # full card resolution so Strikes, weapons and any effects they carry all
 # behave the same as before — only the trigger (LMB/RMB) changed.
 func _fire_click_card(card: CardData) -> void:
+	_fire_item_triggers("card_played", {"card": card})
 	_resolve_card_effects(card)
 	GameLog.add("%s." % card.display_name, Color(0.85, 1.0, 0.7))
+	# Replay addon (Duplicator grants it to weapon attacks): fire the card's
+	# effects again N times. replay_count folds native + item-granted Replay.
+	for _i in CardMods.replay_count(card):
+		_resolve_card_effects(card)
+		GameLog.add("%s replays!" % card.display_name, Color(0.7, 1.0, 0.7))
 
 func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, power_multiplier: int = 1, effect: Dictionary = {}) -> void:
 	# Shared damage math (Stats.resolve_damage): player Blind whiff,
@@ -715,7 +721,12 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 			# discard and draw the next one. With no enemies, hold the card
 			# ready (don't waste it on empty air).
 			if _living_enemy_count() > 0:
+				_fire_item_triggers("card_played", {"card": slot.card})
 				_resolve_card_effects_auto(slot.card)
+				# Replay addon: auto-fired cards replay too.
+				for _r in CardMods.replay_count(slot.card):
+					_resolve_card_effects_auto(slot.card)
+					GameLog.add("%s replays!" % slot.card.display_name, Color(0.7, 1.0, 0.7))
 				auto_discard.append(slot.card)
 				var next: CardData = _auto_draw_one()
 				slot.card = next
@@ -1184,6 +1195,25 @@ func heal(target, value: int) -> void:
 		player_actor.hp = GameState.hp
 	else:
 		target.hp = mini(target.max_hp, target.hp + int(value))
+
+# Leeches drain -> player heal (Jar of Leeches). Called by
+# Stats.tick_actor_statuses when a leeched enemy bleeds HP into the player.
+func leech_to_player(amount: int) -> void:
+	if amount <= 0:
+		return
+	heal(player_actor, amount)
+	GameLog.add("Leeches drain %d into you." % amount, Color(0.7, 1.0, 0.7))
+
+# Mummified Hand (action analogue of "a card becomes free"): playing a Power
+# slashes cooldowns so the next attacks come up fast — click slots become
+# ready and every auto slot has its remaining cooldown halved. The played
+# card is unused here (there's no hand to exclude from).
+func make_random_hand_card_free(_card = null) -> void:
+	left_cd = 0.0
+	right_cd = 0.0
+	for slot in auto_slots:
+		slot.cooldown = maxf(0.0, float(slot.cooldown) * 0.5)
+	GameLog.add("Mummified Hand: cooldowns slashed!", Color(0.7, 1.0, 0.7))
 
 # EffectSystem-compatible status apply (mirrors deckbuilder apply_status,
 # minus the deck/trigger plumbing). EffectSystem doesn't thread `source`,

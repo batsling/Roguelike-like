@@ -22,13 +22,23 @@ signal turn_ended(ctx: Dictionary)
 
 # --- Card events ---
 signal card_drawn(ctx: Dictionary)          # ctx.card
-signal card_played(ctx: Dictionary)         # ctx.card, ctx.target
+signal card_played(ctx: Dictionary)         # ctx.card, ctx.target — fires BEFORE the
+                                            # card's own effects resolve
+signal card_resolved(ctx: Dictionary)       # ctx.card, ctx.target — fires AFTER the
+                                            # card's effects land, before discard/exhaust.
+                                            # Duplicator listens here to replay weapon
+                                            # attacks so the extra hit follows the first.
 signal card_exhausted(ctx: Dictionary)
 signal card_discarded(ctx: Dictionary)
 
 # --- Damage events ---
 signal damage_dealt(ctx: Dictionary)        # ctx.source, ctx.target, ctx.amount
 signal damage_taken(ctx: Dictionary)        # ctx.target, ctx.attacker, ctx.amount
+signal attack_landed(ctx: Dictionary)       # ctx.source, ctx.target — a melee/ranged
+                                            # attack connected (block counts, miss/dodge
+                                            # don't). Dead Eye's streak grows here.
+signal attack_missed(ctx: Dictionary)       # ctx.source, ctx.target — a melee/ranged
+                                            # attack whiffed (Blind). Dead Eye resets here.
 signal enemy_killed(ctx: Dictionary)        # ctx.enemy
 signal enemy_spawned(ctx: Dictionary)       # ctx.enemy — fired from CombatActor.from_enemy
                                             # after item modifiers (Alien Baby et al) apply

@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_leech_brood"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/LeechBrood.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"leech_brood"
+kind = 1
+rarity = 2
+display_name = "Leech Brood"
+description = "At the start of combat, inflict +1 Leeches to all enemies. If you start combat above 50% Health, lose 10 Health."
+triggers = [{
+"on": "combat_started",
+"effects": [{
+"type": "status",
+"status": "leeches",
+"stacks": 1,
+"target": "all_enemies"
+}, {
+"type": "if_hp",
+"above": 0.5,
+"effect": {
+"type": "lose_hp",
+"value": 10,
+"non_lethal": true
+}
+}]
+}]
+card_grants = []
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Mewgenics"
+tags = PackedStringArray("leech")
+image = ExtResource("2_img")

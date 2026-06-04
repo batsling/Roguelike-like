@@ -102,6 +102,12 @@ var _move_remaining: int = 0
 # subtract plays. Each card play spends one of the card's run-persistent uses
 # (GameState.spend_card_use).
 var _card_plays_remaining: int = 0
+# Ice Cream: did the player resolve an ability card this turn? A turn that
+# ends without one banks an empower charge (see _on_unit_turn_ended).
+var _ability_used_this_turn: bool = false
+# Mummified Hand: a slotted ability that costs no per-turn play this turn (it
+# still spends a use). &"" = none. Reset each turn.
+var _free_ability_id: StringName = &""
 
 # Energy charge banked from gain-energy effects. It persists across turns
 # within a combat until spent: the next card play consumes ALL of it and is
@@ -508,6 +514,8 @@ func _on_unit_turn_started(unit) -> void:
 		_move_used = false
 		_move_remaining = unit.move_range
 		_card_plays_remaining = 1
+		_ability_used_this_turn = false
+		_free_ability_id = &""
 		_pending_kind = Pending.NONE
 		_pending_card = null
 		_pending_spell = null
@@ -523,11 +531,24 @@ func _on_unit_turn_started(unit) -> void:
 		_enemy_turn_timer.start()
 
 func _on_unit_turn_ended(unit) -> void:
-	# Decay stack-based statuses at the end of the unit's own turn so
-	# Vulnerable / Weak / etc. count down like the other two modes.
+	# Ice Cream: a player turn that ends without an ability play banks an
+	# empower charge that carries into future turns (it stacks each skipped
+	# turn). Strategy has no per-turn energy pool, so this is its analogue of
+	# the deckbuilder's leftover-energy carry-over.
+	if unit != null and unit.is_player and not _ability_used_this_turn \
+			and GameState.has_energy_carryover_item():
+		_energy_charge += 1
+		_status_label.text = "Ice Cream: banked an empower charge (now %d)." % _energy_charge
+	# Damage-over-time bite (Bleed, Leeches) at the end of the unit's own turn,
+	# BEFORE decay so the bite uses the current stack count (then Bleed ramps
+	# via decay's grow pass). Mirrors the deckbuilder/action contract.
 	if unit != null:
-		Stats.decay_actor_statuses(unit)
+		Stats.tick_actor_statuses(unit, self)
+		if unit.is_alive():
+			Stats.decay_actor_statuses(unit)
+	_grid_view.notify_units_changed()
 	_refresh_initiative()
+	_check_battle_end_after_effect()
 
 # Applies turn-based item effects to the player unit at the start of its
 # turn. Strategy uses the BattleUnit model rather than the deckbuilder's
@@ -677,8 +698,10 @@ func _populate_ability_picker() -> void:
 		var lbl := Label.new()
 		var uses: int = GameState.get_card_uses(card)
 		var cap: int = GameState.max_card_uses(card)
-		var castable: bool = uses > 0 and _card_plays_remaining > 0
-		lbl.text = "%s  (uses %d/%d)  —  %s" % [card.display_name, uses, cap, _card_desc(card)]
+		var is_free: bool = String(card.id) == String(_free_ability_id)
+		var castable: bool = uses > 0 and (_card_plays_remaining > 0 or is_free)
+		var free_tag: String = "  [FREE]" if is_free else ""
+		lbl.text = "%s%s  (uses %d/%d)  —  %s" % [card.display_name, free_tag, uses, cap, _card_desc(card)]
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
 		lbl.custom_minimum_size = Vector2(440, 0)
@@ -695,8 +718,10 @@ func _populate_ability_picker() -> void:
 
 func _on_pick_ability(card) -> void:
 	_ability_dialog.visible = false
-	# Re-check: the picker may have been left open across state changes.
-	if _card_plays_remaining <= 0 or GameState.get_card_uses(card) <= 0:
+	# Re-check: the picker may have been left open across state changes. A
+	# Mummified-Hand free ability is playable even with no plays remaining.
+	var is_free: bool = String(card.id) == String(_free_ability_id)
+	if GameState.get_card_uses(card) <= 0 or (_card_plays_remaining <= 0 and not is_free):
 		_status_label.text = "%s can't be played right now." % card.display_name
 		return
 	_pending_kind = Pending.ABILITY
@@ -719,7 +744,13 @@ func _resolve_ability_against(target) -> void:
 		_pending_card = null
 		_grid_view.enter_idle()
 		return
-	_card_plays_remaining -= 1
+	# Mummified Hand: if this is the ability the item made free, it costs no
+	# per-turn play (the use was still spent above); otherwise spend a play.
+	if String(card.id) == String(_free_ability_id):
+		_free_ability_id = &""
+	else:
+		_card_plays_remaining -= 1
+	_ability_used_this_turn = true
 	# Spend any banked energy charge to empower this card, then clear it.
 	var empower: int = _energy_charge
 	_energy_charge = 0
@@ -731,6 +762,9 @@ func _resolve_ability_against(target) -> void:
 	_status_label.text = "Played %s%s. (%d uses left, %d plays left)" % [
 		card.display_name, empower_str, GameState.get_card_uses(card), _card_plays_remaining,
 	]
+	# Power plays may grant a free ability (Mummified Hand) via card_played.
+	# Fired last so the item's own status text wins over "Played …".
+	_fire_item_triggers("card_played", {"card": card})
 	_grid_view.notify_units_changed()
 	_refresh_initiative()
 	_refresh_button_states()
@@ -948,21 +982,28 @@ func apply_effects(effects: Array, source, target, card = null) -> void:
 	_apply_card_or_spell_effects(effects, source, target, card)
 
 func _apply_card_or_spell_effects(effects: Array, source, target, card = null, empower: int = 0) -> void:
-	for raw_effect in effects:
-		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
-		if empower > 0:
-			effect = _empower_effect(effect, empower)
-		var resolved_targets: Array = _resolve_effect_targets(effect, source, target)
-		if resolved_targets.is_empty():
-			# self-only effects with no explicit target — treat source as target.
-			resolved_targets = [source]
-		for t in resolved_targets:
-			EffectSystem.apply(effect, {
-				"source": source,
-				"target": t,
-				"scene": self,
-				"card": card,
-			})
+	# Replay addon: a card with Replay X resolves its full effect list X extra
+	# times. `card` is null for enemy AI moves (CardMods.replay_count(null) is
+	# 0), so only player cards / abilities / spells / weapon attacks replay.
+	# Duplicator grants Replay 1 to weapon attack cards — the strategy weapon
+	# attack (above) routes through here, so it picks the extra play up too.
+	var plays: int = 1 + CardMods.replay_count(card)
+	for _play in plays:
+		for raw_effect in effects:
+			var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
+			if empower > 0:
+				effect = _empower_effect(effect, empower)
+			var resolved_targets: Array = _resolve_effect_targets(effect, source, target)
+			if resolved_targets.is_empty():
+				# self-only effects with no explicit target — treat source as target.
+				resolved_targets = [source]
+			for t in resolved_targets:
+				EffectSystem.apply(effect, {
+					"source": source,
+					"target": t,
+					"scene": self,
+					"card": card,
+				})
 
 # Energy empower: bump a damage/block effect's value or a status effect's
 # stacks by `amount`. Returns a fresh dict so the card's shared effect data
@@ -1095,6 +1136,45 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 		# Phase 8: enemy death -> roll loot onto the tile it fell on.
 		_drop_enemy_loot(target)
 
+# Raw HP loss from a damage-over-time status (Bleed, Leeches). Bypasses block /
+# Weak / Vulnerable and never re-triggers reactions — matches the
+# deckbuilder/action DoT contract. Called by Stats.tick_actor_statuses at each
+# unit's turn end (see _on_unit_turn_ended).
+func apply_dot(target, amount: int, _source_name: String) -> void:
+	if target == null or not target.is_alive() or amount <= 0:
+		return
+	target.hp = maxi(0, target.hp - amount)
+	if not target.is_alive() and not target.is_player:
+		_fire_item_triggers("enemy_killed")
+		_drop_enemy_loot(target)
+
+# Leeches drain -> player heal (Jar of Leeches). Called by
+# Stats.tick_actor_statuses when a leeched enemy bleeds HP into the player.
+func leech_to_player(amount: int) -> void:
+	if amount <= 0:
+		return
+	var p = get_player_unit()
+	if p != null:
+		heal(p, amount)
+
+# Mummified Hand (strategy analogue of "a card becomes free"): playing a Power
+# ability marks a random OTHER slotted ability free to play this turn — it
+# costs no per-turn play, though it still spends one of its uses. `played_card`
+# is the power that triggered this and is excluded from the pick.
+func make_random_hand_card_free(played_card = null) -> void:
+	if _loadout == null:
+		return
+	var played_id: String = String(played_card.id) if played_card != null and ("id" in played_card) else ""
+	var candidates: Array = []
+	for c in _loadout.cards:
+		if c != null and String(c.id) != played_id:
+			candidates.append(c)
+	if candidates.is_empty():
+		return
+	var pick = candidates[randi() % candidates.size()]
+	_free_ability_id = pick.id
+	_status_label.text = "Mummified Hand: %s is free to play this turn!" % pick.display_name
+
 func _drop_enemy_loot(unit) -> void:
 	if _battle_map == null:
 		return
@@ -1187,7 +1267,8 @@ func _refresh_button_states() -> void:
 	# Cards button: live while plays remain and at least one slotted card
 	# still has uses. Per-card use/affordability is gated per-row in
 	# `_populate_ability_picker`.
-	_btn_ability.disabled = _card_plays_remaining <= 0 or not _has_playable_card()
+	_btn_ability.disabled = (_card_plays_remaining <= 0 and _free_ability_id == &"") \
+		or not _has_playable_card()
 	_btn_spell.disabled = _spellbook == null or _spellbook.spells.is_empty()
 	_btn_dash.disabled = not u.dash_available
 

@@ -81,6 +81,10 @@ func _register_defaults() -> void:
 	register("gain_max_hp", _h_gain_max_hp)
 	register("bump_card_effect", _h_bump_card_effect)
 	register("temp_stat", _h_temp_stat)
+	register("streak_hit", _h_streak_hit)
+	register("streak_reset", _h_streak_reset)
+	register("if_hp", _h_if_hp)
+	register("free_random_hand_card", _h_free_random_hand_card)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -234,7 +238,14 @@ func _h_gain_gold(effect: Dictionary, ctx: Dictionary) -> void:
 	GameState.change_gold(amount)
 
 func _h_lose_hp(effect: Dictionary, _ctx: Dictionary) -> void:
-	GameState.change_hp(-effect.get("value", 0))
+	# `non_lethal: true` clamps the loss so it can never drop the player below
+	# 1 HP (Leech Brood's start-of-combat tax shouldn't be able to kill).
+	var v: int = int(effect.get("value", 0))
+	if v <= 0:
+		return
+	if bool(effect.get("non_lethal", false)):
+		v = mini(v, maxi(0, GameState.hp - 1))
+	GameState.change_hp(-v)
 
 func _h_conjure(effect: Dictionary, ctx: Dictionary) -> void:
 	# Unified conjure handler. Args on the effect:
@@ -444,3 +455,58 @@ func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 	if not Stats.roll_chance_with_luck(_rng, percent):
 		return
 	apply(inner, ctx)
+
+func _h_streak_hit(effect: Dictionary, ctx: Dictionary) -> void:
+	# Grow a named consecutive-hit streak against the current target
+	# (Dead Eye). Switching targets resets the count first; an outgoing
+	# attack picks the count up via the scene's streak bonus (see
+	# DeckbuilderCombat.deal_damage). `attack_bonus` marks the streak as
+	# one that adds its count to outgoing player attacks; `label` is the
+	# name shown when the bonus lands.
+	#   {type: "streak_hit", key: "dead_eye", attack_bonus: true, label: "Dead Eye"}
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("streak_register_hit"):
+		return
+	scene.streak_register_hit(
+		String(effect.get("key", "")),
+		ctx.get("target"),
+		bool(effect.get("attack_bonus", false)),
+		String(effect.get("label", "")),
+	)
+
+func _h_streak_reset(effect: Dictionary, ctx: Dictionary) -> void:
+	# Clear a named streak (Dead Eye on a Blind whiff). {type: "streak_reset", key: "dead_eye"}
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("streak_reset"):
+		return
+	scene.streak_reset(String(effect.get("key", "")))
+
+func _h_if_hp(effect: Dictionary, ctx: Dictionary) -> void:
+	# Conditional on the PLAYER's current HP fraction. Fires the inner effect
+	# only when the threshold passes. `below: f` -> hp <= max*f (Meat on the
+	# Bone: heal when at/below 50%); `above: f` -> hp > max*f (Leech Brood:
+	# lose HP only when above 50%). The two are complementary at the boundary.
+	#   {type: "if_hp", below: 0.5, effect: {type: "gain_hp", value: 12}}
+	if GameState.max_hp <= 0:
+		return
+	var inner: Dictionary = effect.get("effect", {})
+	if inner.is_empty():
+		return
+	var frac: float = float(GameState.hp) / float(GameState.max_hp)
+	var ok: bool = true
+	if effect.has("below"):
+		ok = frac <= float(effect["below"])
+	elif effect.has("above"):
+		ok = frac > float(effect["above"])
+	if ok:
+		apply(inner, ctx)
+
+func _h_free_random_hand_card(_effect: Dictionary, ctx: Dictionary) -> void:
+	# Mummified Hand. Each mode interprets "a card becomes free" its own way:
+	# deckbuilder zeroes a random hand card's cost this turn; strategy frees a
+	# random other slotted ability (no per-turn play cost); action slashes
+	# attack cooldowns. The played card is passed so scenes can exclude it.
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("make_random_hand_card_free"):
+		return
+	scene.make_random_hand_card_free(ctx.get("card"))

@@ -65,6 +65,7 @@ const STATUS_ICONS := {
 	&"soul_link": "SoulLink.png",
 	&"crit_chance_up": "CritChanceUp.png",
 	&"bruise": "Bruise.png",
+	&"leeches": "Leeches.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -82,6 +83,7 @@ var _resolve_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 # Shared so deckbuilder / action / strategy agree on which statuses scale.
 const PERSISTENCE_DEBUFFS: Array[StringName] = [
 	&"vulnerable", &"weak", &"frail", &"poison", &"burn", &"bleed", &"bruise",
+	&"leeches",
 ]
 
 func _ready() -> void:
@@ -204,6 +206,10 @@ func damage_bonus(source, damage_type: String, mode: Mode, power_multiplier: int
 			# melee — Power already counted; STR per-point bonuses in
 			# action / strategy land when those modes do.
 			pass
+	# Flat item bonus to the player's attacks (Focus Crystal: +1 melee).
+	# Player-only and not multiplied by power_multiplier — it's a flat add.
+	if ("is_player" in source) and source.is_player:
+		bonus += GameState.attack_damage_bonus(damage_type)
 	return bonus
 
 # ---------------------------------------------------------------------------
@@ -263,6 +269,13 @@ func resolve_damage(
 		return out
 
 	amount = maxi(0, amount)
+	# Little Knife: the player's attacks hit a lower-HP target 25% harder
+	# (ceil). source.hp is the player's current HP when the player attacks.
+	if has_src and ("is_player" in source) and source.is_player \
+			and ("hp" in target) and ("hp" in source):
+		var lk_mult: float = GameState.lower_hp_damage_mult()
+		if lk_mult > 1.0 and int(target.hp) < int(source.hp):
+			amount = int(ceil(amount * lk_mult))
 	# Critical hit — applied PRE-block so block soaks the boosted hit. Any
 	# attacker can crit: the player from Luck + crit_chance, an enemy only if
 	# it carries a Crit Chance Up status (see actor_crit_percent). Fires on
@@ -475,6 +488,15 @@ func tick_actor_statuses(actor, scene) -> void:
 	var bleed: int = actor.get_status(&"bleed")
 	if bleed > 0:
 		scene.apply_dot(actor, bleed, "bleed")
+	# Leeches (Jar of Leeches): a leeched ENEMY loses HP equal to its stacks
+	# each turn and the player heals the same. Doesn't decay — the drain
+	# repeats every turn until the enemy dies. Player-owned only (no Godot
+	# enemy inflicts Leeches today), so we just drain non-player actors.
+	var leeches: int = actor.get_status(&"leeches")
+	if leeches > 0 and ("is_player" in actor) and not actor.is_player:
+		scene.apply_dot(actor, leeches, "leeches")
+		if scene.has_method("leech_to_player"):
+			scene.leech_to_player(leeches)
 
 func fire_contact_reactions(target, attacker, scene) -> void:
 	# Cross-mode "actor A made physical contact with actor B" hook.

@@ -290,6 +290,7 @@ func _reset_item_tracking() -> void:
 	_applied_item_max_hp = 0
 	_applied_item_max_energy = 0
 	_next_item_instance_id = 1
+	_gold_spent_accum = 0
 
 func set_current_game(id: StringName) -> void:
 	current_game_id = id
@@ -329,6 +330,53 @@ func set_gold(new_gold: int) -> void:
 
 func change_gold(delta: int) -> void:
 	set_gold(gold + delta)
+
+# Gold the player actively SPENDS (shop purchases, card removal, …). Deducts
+# and counts toward Keeper's Sack. Use this — NOT change_gold — wherever the
+# player chooses to pay: gold lost to events / curses must not count as
+# "spending."
+func spend_gold(amount: int) -> void:
+	if amount <= 0:
+		return
+	change_gold(-amount)
+	_track_gold_spent(amount)
+
+# Keeper's Sack: accumulate gold spent and grant +1 to a random core stat for
+# every `gold_spend_stat_per` gold crossed. Cumulative so small spends add up.
+var _gold_spent_accum: int = 0
+
+func _track_gold_spent(amount: int) -> void:
+	var per: int = _gold_spend_stat_per()
+	if per <= 0 or amount <= 0:
+		return
+	@warning_ignore("integer_division")
+	var before: int = _gold_spent_accum / per
+	_gold_spent_accum += amount
+	@warning_ignore("integer_division")
+	var after: int = _gold_spent_accum / per
+	var gains: int = after - before
+	if gains > 0:
+		apply_level_up_stats({"random": gains})
+		Notifications.notify("Keeper's Sack: +%d random stat!" % gains, Color(1.0, 0.85, 0.3))
+
+# Smallest positive gold-spend threshold among owned items (Keeper's Sack: 10).
+# 0 when no such item is owned.
+func _gold_spend_stat_per() -> int:
+	var best: int = 0
+	for item in inventory:
+		if item is ItemData and item.gold_spend_stat_per > 0:
+			if best == 0 or item.gold_spend_stat_per < best:
+				best = item.gold_spend_stat_per
+	return best
+
+# Combined Little Knife multiplier: the player's attacks deal this much extra
+# to lower-HP targets. 1.0 when no such item is owned. Read by resolve_damage.
+func lower_hp_damage_mult() -> float:
+	var mult: float = 1.0
+	for item in inventory:
+		if item is ItemData and item.lower_hp_damage_mult > 1.0:
+			mult *= item.lower_hp_damage_mult
+	return mult
 
 func is_dead() -> bool:
 	return hp <= 0
@@ -514,6 +562,68 @@ func add_item(template: ItemData) -> ItemData:
 	TriggerBus.emit_signal("item_acquired", {"item": inst})
 	emit_signal("inventory_changed")
 	return inst
+
+# Total bonus stacks any owned status-amplify item adds when `status_id` is
+# inflicted on an enemy (Empty Syringe -> +1 Bleed / Poison). Called from
+# CombatActor.add_status so it works across every combat mode.
+func status_amplify_bonus(status_id: StringName) -> int:
+	var key: String = String(status_id)
+	var bonus: int = 0
+	for item in inventory:
+		if item is ItemData and not item.status_amplify.is_empty():
+			bonus += int(item.status_amplify.get(key, 0))
+	return bonus
+
+# Canonical "add a card to the player's deck" entry. Accepts a CardInstance
+# or a CardData (wrapped into a fresh instance). Applies egg auto-upgrades
+# (upgrade_card_types) before the card lands, appends, and fires deck_changed.
+# Card rewards and shop purchases route through here; the starting deck and
+# weapon-granted cards stay direct (no eggs at character start, and weapon
+# cards are a managed pair).
+func add_card_to_deck(card) -> CardInstance:
+	var ci: CardInstance = null
+	if card is CardInstance:
+		ci = card
+	elif card is CardData:
+		ci = CardInstance.from_data(card)
+	if ci == null:
+		return null
+	# Egg items auto-upgrade a freshly added card whose type matches, as long
+	# as the card supports upgrading and isn't already upgraded.
+	if not ci.upgraded and ci.data != null and ci.data.can_upgrade \
+			and _deck_add_should_upgrade(ci.data):
+		ci.upgraded = true
+		Notifications.notify("%s was upgraded by an Egg!" % ci.data.display_name,
+			Color(1.0, 0.72, 0.3))
+	deck.append(ci)
+	emit_signal("deck_changed")
+	return ci
+
+func _deck_add_should_upgrade(card_data: CardData) -> bool:
+	for item in inventory:
+		if not (item is ItemData) or item.upgrade_card_types.is_empty():
+			continue
+		for t in item.upgrade_card_types:
+			if ItemTriggers._card_type_is(card_data, String(t)):
+				return true
+	return false
+
+# Flat per-hit damage every owned item grants to the player's attacks of the
+# given damage_type (Focus Crystal -> +1 melee). Read by Stats.damage_bonus.
+func attack_damage_bonus(damage_type: String) -> int:
+	var bonus: int = 0
+	for item in inventory:
+		if item is ItemData and not item.attack_damage_bonus.is_empty():
+			bonus += int(item.attack_damage_bonus.get(damage_type, 0))
+	return bonus
+
+# True when any owned item carries leftover energy across turns (Ice Cream).
+# Combat scenes gate their per-turn energy carry-over on this.
+func has_energy_carryover_item() -> bool:
+	for item in inventory:
+		if item is ItemData and item.carries_leftover_energy:
+			return true
+	return false
 
 func _grant_weapon_card(inst: ItemData) -> bool:
 	# Internal: if `inst` is a weapon with a linked card_id, append a

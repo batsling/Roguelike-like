@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_gremlin_horn"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/GremlinHorn.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"gremlin_horn"
+kind = 1
+rarity = 1
+display_name = "Gremlin Horn"
+description = "When an enemy dies, Gain +1 Energy and Draw 1 card."
+triggers = [{
+"on": "enemy_killed",
+"effects": [{
+"type": "gain_energy",
+"value": 1
+}, {
+"type": "draw",
+"value": 1
+}]
+}]
+card_grants = []
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray()
+image = ExtResource("2_img")

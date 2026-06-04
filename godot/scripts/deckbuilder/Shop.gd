@@ -198,7 +198,7 @@ func _format_card_btn(btn: Button, entry: Dictionary) -> void:
 func _buy_item(entry: Dictionary, _btn: Button) -> void:
 	if entry.purchased or GameState.gold < entry.price:
 		return
-	GameState.change_gold(-entry.price)
+	GameState.spend_gold(entry.price)
 	GameState.add_item(entry.item)
 	entry.purchased = true
 	GameLog.add("Bought %s for %dg." % [entry.item.display_name, entry.price], Color(0.7, 1.0, 0.7))
@@ -207,9 +207,8 @@ func _buy_item(entry: Dictionary, _btn: Button) -> void:
 func _buy_card(entry: Dictionary, _btn: Button) -> void:
 	if entry.purchased or GameState.gold < entry.price:
 		return
-	GameState.change_gold(-entry.price)
-	GameState.deck.append(CardInstance.from_data(entry.card))
-	GameState.emit_signal("deck_changed")
+	GameState.spend_gold(entry.price)
+	GameState.add_card_to_deck(entry.card)
 	entry.purchased = true
 	GameLog.add("Bought %s for %dg." % [entry.card.display_name, entry.price], Color(0.7, 1.0, 0.7))
 	_refresh_buttons()
@@ -280,7 +279,7 @@ func _complete_remove(deck_idx: int, picker: Control) -> void:
 		return
 	var removed: CardInstance = GameState.deck[deck_idx]
 	GameState.deck.remove_at(deck_idx)
-	GameState.change_gold(-REMOVE_PRICE)
+	GameState.spend_gold(REMOVE_PRICE)
 	GameState.emit_signal("deck_changed")
 	GameLog.add("Removed %s from your deck." % removed.data.display_name, Color(0.85, 0.9, 0.7))
 	_remove_used = true

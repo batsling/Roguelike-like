@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_duplicator"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/Duplicator.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"duplicator"
+kind = 1
+rarity = 2
+display_name = "Duplicator"
+description = "Your Weapon Attack Cards gain Replay 1."
+triggers = []
+card_grants = [{
+"if_card_tag": "weapon",
+"if_card_type": "attack",
+"addons": ["replay"]
+}]
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Vampire Survivors"
+tags = PackedStringArray("wearable", "ring")
+image = ExtResource("2_img")
