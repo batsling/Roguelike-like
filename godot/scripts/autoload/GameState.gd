@@ -330,8 +330,16 @@ func set_gold(new_gold: int) -> void:
 
 func change_gold(delta: int) -> void:
 	set_gold(gold + delta)
-	if delta < 0:
-		_track_gold_spent(-delta)
+
+# Gold the player actively SPENDS (shop purchases, card removal, …). Deducts
+# and counts toward Keeper's Sack. Use this — NOT change_gold — wherever the
+# player chooses to pay: gold lost to events / curses must not count as
+# "spending."
+func spend_gold(amount: int) -> void:
+	if amount <= 0:
+		return
+	change_gold(-amount)
+	_track_gold_spent(amount)
 
 # Keeper's Sack: accumulate gold spent and grant +1 to a random core stat for
 # every `gold_spend_stat_per` gold crossed. Cumulative so small spends add up.

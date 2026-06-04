@@ -230,15 +230,27 @@ func test_keepers_sack_grants_stat_every_10_gold_spent() -> void:
 	GameState.add_item(Data.get_item(&"keepers_sack"))
 	var core_before: int = GameState.strength + GameState.dexterity \
 		+ GameState.intelligence + GameState.charisma
-	GameState.change_gold(-10)
+	GameState.spend_gold(10)
 	var core_after: int = GameState.strength + GameState.dexterity \
 		+ GameState.intelligence + GameState.charisma
 	assert_eq(core_after - core_before, 1, "spending 10 gold grants +1 random stat")
 	# A 5-gold spend doesn't cross the next threshold.
-	GameState.change_gold(-5)
+	GameState.spend_gold(5)
 	var core_now: int = GameState.strength + GameState.dexterity \
 		+ GameState.intelligence + GameState.charisma
 	assert_eq(core_now, core_after, "partial spend banks but grants nothing yet")
+
+func test_keepers_sack_ignores_gold_taken_by_events() -> void:
+	# Gold lost via change_gold (events / curses) is NOT spending, so it must
+	# not advance Keeper's Sack.
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"keepers_sack"))
+	var core_before: int = GameState.strength + GameState.dexterity \
+		+ GameState.intelligence + GameState.charisma
+	GameState.change_gold(-50)
+	var core_after: int = GameState.strength + GameState.dexterity \
+		+ GameState.intelligence + GameState.charisma
+	assert_eq(core_after, core_before, "event gold loss grants no stat")
 
 # --- Little Knife --------------------------------------------------------
 
@@ -266,3 +278,32 @@ func test_little_knife_boosts_damage_to_lower_hp_targets() -> void:
 	var res2: Dictionary = Stats.resolve_damage(
 		player, tough, 8, {"damage_type": "melee"}, Stats.Mode.DECKBUILDER)
 	assert_eq(int(res2.hp_loss), 8)
+
+# --- DoT tick contract (shared by deckbuilder / action / strategy) -------
+
+# Minimal scene stub exposing the apply_dot / leech_to_player callbacks that
+# Stats.tick_actor_statuses drives, so the DoT contract can be tested without
+# spinning up a real combat scene.
+class _DotScene:
+	extends RefCounted
+	var leech_total: int = 0
+	func apply_dot(target, amount: int, _source_name: String) -> void:
+		target.hp = maxi(0, target.hp - amount)
+	func leech_to_player(amount: int) -> void:
+		leech_total += amount
+
+func test_tick_actor_statuses_drains_bleed_and_leeches() -> void:
+	GameState.reset_run()   # clear inventory so no amplifier interferes
+	var enemy := CombatActor.new()
+	enemy.max_hp = 20
+	enemy.hp = 20
+	enemy.add_status(&"bleed", 3)
+	enemy.add_status(&"leeches", 2)
+	var scene := _DotScene.new()
+	Stats.tick_actor_statuses(enemy, scene)
+	assert_eq(enemy.hp, 15, "Bleed (3) + Leeches (2) both bite the enemy")
+	assert_eq(scene.leech_total, 2, "Leeches heal the player by the stack count")
+	# Leeches does not decay; Bleed grows via the decay pass.
+	Stats.decay_actor_statuses(enemy)
+	assert_eq(enemy.get_status(&"leeches"), 2, "Leeches persists")
+	assert_eq(enemy.get_status(&"bleed"), 4, "Bleed ramps up each turn")

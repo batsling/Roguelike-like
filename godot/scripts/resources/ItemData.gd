@@ -139,8 +139,8 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 @export var lower_hp_damage_mult: float = 1.0
 
 # Keeper's Sack: for every `gold_spend_stat_per` gold the player spends, grant
-# +1 to a random core stat. 0 = off. Tracked cumulatively in
-# GameState.change_gold.
+# +1 to a random core stat. 0 = off. Counts only gold the player actively
+# spends via GameState.spend_gold — gold lost to events/curses doesn't count.
 @export var gold_spend_stat_per: int = 0
 
 # For Usable items: how many uses (-1 = infinite)

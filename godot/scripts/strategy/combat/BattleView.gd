@@ -535,11 +535,16 @@ func _on_unit_turn_ended(unit) -> void:
 			and GameState.has_energy_carryover_item():
 		_energy_charge += 1
 		_status_label.text = "Ice Cream: banked an empower charge (now %d)." % _energy_charge
-	# Decay stack-based statuses at the end of the unit's own turn so
-	# Vulnerable / Weak / etc. count down like the other two modes.
+	# Damage-over-time bite (Bleed, Leeches) at the end of the unit's own turn,
+	# BEFORE decay so the bite uses the current stack count (then Bleed ramps
+	# via decay's grow pass). Mirrors the deckbuilder/action contract.
 	if unit != null:
-		Stats.decay_actor_statuses(unit)
+		Stats.tick_actor_statuses(unit, self)
+		if unit.is_alive():
+			Stats.decay_actor_statuses(unit)
+	_grid_view.notify_units_changed()
 	_refresh_initiative()
+	_check_battle_end_after_effect()
 
 # Applies turn-based item effects to the player unit at the start of its
 # turn. Strategy uses the BattleUnit model rather than the deckbuilder's
@@ -1114,6 +1119,27 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 		_fire_item_triggers("enemy_killed")
 		# Phase 8: enemy death -> roll loot onto the tile it fell on.
 		_drop_enemy_loot(target)
+
+# Raw HP loss from a damage-over-time status (Bleed, Leeches). Bypasses block /
+# Weak / Vulnerable and never re-triggers reactions — matches the
+# deckbuilder/action DoT contract. Called by Stats.tick_actor_statuses at each
+# unit's turn end (see _on_unit_turn_ended).
+func apply_dot(target, amount: int, _source_name: String) -> void:
+	if target == null or not target.is_alive() or amount <= 0:
+		return
+	target.hp = maxi(0, target.hp - amount)
+	if not target.is_alive() and not target.is_player:
+		_fire_item_triggers("enemy_killed")
+		_drop_enemy_loot(target)
+
+# Leeches drain -> player heal (Jar of Leeches). Called by
+# Stats.tick_actor_statuses when a leeched enemy bleeds HP into the player.
+func leech_to_player(amount: int) -> void:
+	if amount <= 0:
+		return
+	var p = get_player_unit()
+	if p != null:
+		heal(p, amount)
 
 func _drop_enemy_loot(unit) -> void:
 	if _battle_map == null:
