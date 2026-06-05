@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_captains_wheel"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/Captain'sWheel.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"captains_wheel"
+display_name = "Captain's Wheel"
+kind = 1
+rarity = 2
+description = "Start the 3rd turn of combat with 18 Block."
+triggers = [{
+"on": "turn_started",
+"if_turn": 3,
+"effects": [{
+"type": "block",
+"value": 18,
+"target": "self"
+}]
+}]
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray("sea", "ship")
+image = ExtResource("2_img")
