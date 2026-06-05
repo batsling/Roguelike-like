@@ -406,7 +406,7 @@ func _counter_effect(item: ItemData) -> Dictionary:
 
 func test_incremental_items_load_with_counter_effects() -> void:
 	var expected := {
-		"happy_flower":   {"on": "turns",            "every": 3,  "trig": "turn_started", "rarity": ItemData.Rarity.COMMON},
+		"happy_flower":   {"on": "turns",            "every": 3,  "trig": "turn_tick",    "rarity": ItemData.Rarity.COMMON},
 		"nunchaku":       {"on": "attacks_total",    "every": 10, "trig": "card_played",  "rarity": ItemData.Rarity.COMMON},
 		"ornamental_fan": {"on": "attacks_this_turn","every": 4,  "trig": "card_played",  "rarity": ItemData.Rarity.UNCOMMON},
 		"shuriken":       {"on": "attacks_this_turn","every": 3,  "trig": "card_played",  "rarity": ItemData.Rarity.UNCOMMON},
@@ -454,18 +454,37 @@ func test_counter_effect_fires_only_on_threshold() -> void:
 	EffectSystem.apply(payload, {})
 	assert_eq(GameState.gold, 10, "payout repeats every 10th")
 
-func test_per_turn_counter_resets_each_turn() -> void:
+func test_per_turn_window_resets_on_turn_tick_not_room() -> void:
+	# Ornamental Fan / Shuriken count attacks within the per-turn window, which
+	# now rides the turn_tick heartbeat (timer-based in Action) rather than
+	# turn_started (room entry). A room/turn START alone must NOT reset it.
 	GameState.reset_run()
 	GameState.incremental_on_attack()
 	GameState.incremental_on_attack()
 	assert_eq(GameState.incremental_value("attacks_this_turn"), 2)
 	assert_eq(GameState.incremental_value("attacks_total"), 2)
+	# A discrete turn / room start (Horn Cleat's clock) leaves the window alone.
 	GameState.incremental_on_turn_started(2)
+	assert_eq(GameState.incremental_value("attacks_this_turn"), 2,
+		"entering a room does NOT reset the per-turn attack window")
+	# The recurring heartbeat is what resets it.
+	GameState.incremental_on_turn_tick()
 	assert_eq(GameState.incremental_value("attacks_this_turn"), 0,
-		"per-turn tally clears on a new turn")
+		"the turn_tick heartbeat clears the per-turn window")
 	assert_eq(GameState.incremental_value("attacks_total"), 2,
 		"run-wide tally carries across turns")
-	assert_eq(GameState.incremental_value("turns"), 2)
+
+func test_happy_flower_turns_count_rides_the_heartbeat() -> void:
+	# "Every 3 turns" counts turn_tick pulses, so in Action it advances on the
+	# timer, not on room entry. Room starts must not advance it.
+	GameState.reset_run()
+	GameState.incremental_on_turn_started(5)  # rooms/turns don't move the pulse
+	assert_eq(GameState.incremental_value("turns"), 0,
+		"room/turn start does not advance the 'turns' heartbeat count")
+	GameState.incremental_on_turn_tick()
+	GameState.incremental_on_turn_tick()
+	GameState.incremental_on_turn_tick()
+	assert_eq(GameState.incremental_value("turns"), 3, "each heartbeat advances it")
 
 func test_attacks_total_persists_across_combats_resets_on_run() -> void:
 	GameState.reset_run()

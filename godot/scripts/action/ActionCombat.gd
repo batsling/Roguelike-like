@@ -481,6 +481,13 @@ func _process_turn_tick(delta: float) -> void:
 	if _turn_tick_remaining > 0.0:
 		return
 	_turn_tick_remaining += _tr.turn_tick_secs
+	# Recurring turn heartbeat: in Action this is the timer (not room entry), so
+	# per-turn effects (Ornamental Fan / Shuriken window reset, Happy Flower)
+	# are paced by time like status decay. "On the Nth turn" one-shots still
+	# ride turn_started at room entry (room-based). Gated to active combat so it
+	# doesn't tick while walking a cleared/safe room.
+	if _living_enemy_count() > 0:
+		_fire_item_triggers("turn_tick")
 	if player_actor != null and player_actor.is_alive():
 		_tick_actor_turn(player_actor, _player_was_hit)
 	_player_was_hit = false

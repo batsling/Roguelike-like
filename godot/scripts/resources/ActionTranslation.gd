@@ -11,13 +11,16 @@ extends Resource
 # Reference it from anywhere via Data.action_translation.
 #
 # === Concept map ===
-#   Turn            -> Combat room. Entering the Nth combat room counts as the
-#                      Nth "turn" for turn-gated items (Horn Cleat's "2nd
-#                      turn", Happy Flower's "every 3 turns"). Toggle with
-#                      room_is_turn.
-#   Turn (decay)    -> A real-time tick every turn_tick_secs seconds that
-#                      decays stack statuses (Vulnerable/Weak/Blind/…), the
-#                      same decay deckbuilder/strategy run at turn-end.
+#   Turn (one-shot) -> Combat room. Entering the Nth combat room counts as the
+#                      Nth "turn" for turn-NUMBER-gated one-shots (Horn Cleat's
+#                      "2nd turn", if_turn). Toggle with room_is_turn.
+#   Turn (recurring)-> A real-time tick every turn_tick_secs seconds (the
+#                      turn_tick heartbeat). Decays stack statuses
+#                      (Vulnerable/Weak/Blind/…) AND paces recurring per-turn
+#                      item effects — the per-turn attack window (Ornamental
+#                      Fan / Shuriken) and "every N turns" grants (Happy
+#                      Flower) — so they're time-based, not tied to room
+#                      transitions. Matches the deckbuilder/strategy turn cadence.
 #   Energy (gain)   -> Haste window. Each point grants energy_buff_secs_per_point
 #                      seconds during which every cooldown ticks haste_multiplier
 #                      faster (Adrenaline, Nunchaku/Happy Flower's +Energy).

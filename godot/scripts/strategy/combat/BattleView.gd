@@ -510,6 +510,10 @@ func _on_unit_turn_started(unit) -> void:
 	if unit.is_player:
 		_player_turn_count += 1
 		_fire_item_turn_triggers(unit, _player_turn_count)
+		# Recurring turn heartbeat through the shared item path (EffectSystem):
+		# resets the per-turn attack window and procs Happy Flower's "every N
+		# turns" counter, which the custom turn-trigger path above doesn't cover.
+		_fire_item_triggers("turn_tick")
 		_action_used = false
 		_move_used = false
 		_move_remaining = unit.move_range

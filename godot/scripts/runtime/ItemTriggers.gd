@@ -22,6 +22,8 @@ static func fire(trigger_name: String, scene, player, enemies: Array,
 			GameState.incremental_on_combat_started()
 		"turn_started":
 			GameState.incremental_on_turn_started(turn)
+		"turn_tick":
+			GameState.incremental_on_turn_tick()
 		"card_played":
 			# A new card play ends the previous card's Pen Nib window.
 			GameState.pen_nib_double_active = false

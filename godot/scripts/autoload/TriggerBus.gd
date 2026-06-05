@@ -17,7 +17,17 @@ signal combat_started(ctx: Dictionary)
 signal combat_ended(ctx: Dictionary)        # ctx.victory: bool
 
 # --- Turn lifecycle ---
-signal turn_started(ctx: Dictionary)        # ctx.turn: int
+signal turn_started(ctx: Dictionary)        # ctx.turn: int — a discrete turn /
+                                            # combat ROOM begins. Drives "on the
+                                            # Nth turn" one-shots (Horn Cleat,
+                                            # if_turn). Room-based in Action.
+signal turn_tick(ctx: Dictionary)           # the recurring "a turn elapsed"
+                                            # heartbeat. Fires once per turn in
+                                            # deckbuilder/strategy and on the
+                                            # real-time turn-tick timer in Action.
+                                            # Drives recurring per-turn effects
+                                            # (Happy Flower; the per-turn attack
+                                            # window for Ornamental Fan / Shuriken).
 signal turn_ended(ctx: Dictionary)
 
 # --- Card events ---

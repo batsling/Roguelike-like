@@ -212,6 +212,10 @@ func _start_player_turn() -> void:
 	TriggerBus.emit_signal("turn_started", {"turn": turn, "scene": self})
 	_fire_item_triggers("turn_started")
 	_fire_power_triggers("turn_started")
+	# Recurring turn heartbeat (here it coincides with turn start; Action runs
+	# it off a timer). Drives Happy Flower + the per-turn attack-window reset.
+	TriggerBus.emit_signal("turn_tick", {"turn": turn, "scene": self})
+	_fire_item_triggers("turn_tick")
 	_refresh_ui()
 
 func _on_end_turn() -> void:

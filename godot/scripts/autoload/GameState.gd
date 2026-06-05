@@ -120,14 +120,30 @@ var loot: Dictionary = {
 # one is to its next proc. Bumped centrally by ItemTriggers.fire so every
 # combat mode (deckbuilder card play, action loop, strategy ability) feeds the
 # same counters; read back by EffectSystem's `counter` handler.
+#
+# Two "turn" clocks (they coincide in deckbuilder/strategy; they diverge in
+# Action, which has no discrete turns):
+#   * turn_started — a discrete turn / combat ROOM. Drives "on the Nth turn"
+#     one-shots via if_turn (Horn Cleat). Room-based in Action.
+#   * turn_tick    — the recurring heartbeat. Once per turn in deckbuilder/
+#     strategy; on the real-time turn-tick timer in Action. Drives recurring
+#     per-turn effects so they're paced by the timer, not by room transitions.
+#
 #   incremental_attacks_total  — Attacks played this RUN (persists across
 #                                combats; reset only by reset_run). Nunchaku /
 #                                Pen Nib read this.
-#   incremental_attacks_turn   — Attacks played this turn (reset every
-#                                turn_started). Ornamental Fan / Shuriken.
-#   incremental_turn           — Current combat turn number (Happy Flower).
+#   incremental_attacks_turn   — Attacks played within the current turn window
+#                                (reset every turn_tick — so timer-based in
+#                                Action). Ornamental Fan / Shuriken.
+#   incremental_turn_pulses    — Count of turn_tick heartbeats this combat
+#                                (Happy Flower's "every N turns"). Read as the
+#                                "turns" counter.
+#   incremental_turn           — Current discrete turn / room number (set on
+#                                turn_started). Not read by recurring counters;
+#                                kept for display / debug.
 var incremental_attacks_total: int = 0
 var incremental_attacks_turn: int = 0
+var incremental_turn_pulses: int = 0
 var incremental_turn: int = 0
 
 # Pen Nib: set true while the player's current (10th) Attack resolves so
@@ -327,6 +343,7 @@ func _reset_item_tracking() -> void:
 	_gold_spent_accum = 0
 	incremental_attacks_total = 0
 	incremental_attacks_turn = 0
+	incremental_turn_pulses = 0
 	incremental_turn = 0
 	pen_nib_double_active = false
 	_streaks.clear()
@@ -341,17 +358,25 @@ func incremental_on_attack() -> void:
 	incremental_attacks_total += 1
 	incremental_attacks_turn += 1
 
-# A new turn began: remember the turn number (Happy Flower) and clear the
-# per-turn attack tally (Ornamental Fan / Shuriken count within one turn).
+# A discrete turn / combat room began: remember its number for if_turn-gated
+# one-shots (room-based in Action). Does NOT touch the recurring per-turn
+# window — that rides turn_tick so it can be timer-based in Action.
 func incremental_on_turn_started(turn_no: int) -> void:
 	incremental_turn = turn_no
-	incremental_attacks_turn = 0
 	pen_nib_double_active = false
+
+# The recurring turn heartbeat fired (once per turn in deckbuilder/strategy; on
+# the real-time turn-tick timer in Action). Advances Happy Flower's "turns"
+# count and resets the per-turn attack window (Ornamental Fan / Shuriken).
+func incremental_on_turn_tick() -> void:
+	incremental_turn_pulses += 1
+	incremental_attacks_turn = 0
 
 # A fresh combat began: per-combat counters restart; the run-wide attack
 # total carries over.
 func incremental_on_combat_started() -> void:
 	incremental_turn = 0
+	incremental_turn_pulses = 0
 	incremental_attacks_turn = 0
 	pen_nib_double_active = false
 	streak_clear()
@@ -365,7 +390,7 @@ func incremental_value(key: String) -> int:
 		"attacks_this_turn":
 			return incremental_attacks_turn
 		"turns":
-			return incremental_turn
+			return incremental_turn_pulses
 	return 0
 
 # === Streak API (Dead Eye) ===

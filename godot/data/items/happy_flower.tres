@@ -11,7 +11,7 @@ rarity = 0
 display_name = "Happy Flower"
 description = "Every 3 turns, Gain +1 Energy."
 triggers = [{
-"on": "turn_started",
+"on": "turn_tick",
 "silent": true,
 "effects": [{
 "type": "counter",
