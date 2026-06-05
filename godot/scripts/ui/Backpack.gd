@@ -492,6 +492,17 @@ func _build_item_row(item: ItemData) -> Control:
 	desc_lbl.add_theme_color_override("font_color", Color(0.82, 0.82, 0.82))
 	info.add_child(desc_lbl)
 
+	# Incremental progress badge — shows how close an "every Nth …" item is to
+	# its next proc (e.g. 7/10), and Dead Eye's live streak bonus (+3 Dmg).
+	var badge: String = _incremental_badge(item)
+	if badge != "":
+		var badge_lbl := Label.new()
+		badge_lbl.text = badge
+		badge_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		badge_lbl.add_theme_color_override("font_color", Color(1.0, 0.8, 0.27))
+		badge_lbl.add_theme_font_size_override("font_size", 16)
+		hbox.add_child(badge_lbl)
+
 	if item.kind == ItemData.ItemKind.USABLE:
 		var use_btn := Button.new()
 		use_btn.text = "Use"
@@ -503,6 +514,25 @@ func _build_item_row(item: ItemData) -> Control:
 		hbox.add_child(use_btn)
 
 	return row
+
+# Progress text for incremental items. Counter items (Happy Flower, Nunchaku,
+# Ornamental Fan, Shuriken, Pen Nib) advertise their counter via a `counter`
+# effect in their triggers, so the badge is derived from the item data rather
+# than a hard-coded name list. Dead Eye is a streak, not a counter, so it shows
+# its current bonus instead. Returns "" for non-incremental items.
+func _incremental_badge(item: ItemData) -> String:
+	if item == null:
+		return ""
+	if String(item.id) == "dead_eye":
+		var n: int = GameState.dead_eye_streak
+		return "+%d Dmg" % n if n > 0 else "+0 Dmg"
+	for trig in item.triggers:
+		for eff in trig.get("effects", []):
+			if typeof(eff) == TYPE_DICTIONARY and String(eff.get("type", "")) == "counter":
+				var every: int = maxi(1, int(eff.get("every", 1)))
+				var cur: int = GameState.incremental_value(String(eff.get("key", ""))) % every
+				return "%d/%d" % [cur, every]
+	return ""
 
 func _on_use_pressed(item: ItemData) -> void:
 	if GameState.use_item(item):

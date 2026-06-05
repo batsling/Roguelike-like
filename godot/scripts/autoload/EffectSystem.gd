@@ -83,6 +83,8 @@ func _register_defaults() -> void:
 	register("temp_stat", _h_temp_stat)
 	register("streak_hit", _h_streak_hit)
 	register("streak_reset", _h_streak_reset)
+	register("counter", _h_counter)
+	register("attack_double", _h_attack_double)
 	register("if_hp", _h_if_hp)
 	register("free_random_hand_card", _h_free_random_hand_card)
 
@@ -480,6 +482,31 @@ func _h_streak_reset(effect: Dictionary, ctx: Dictionary) -> void:
 	if scene == null or not scene.has_method("streak_reset"):
 		return
 	scene.streak_reset(String(effect.get("key", "")))
+
+func _h_counter(effect: Dictionary, ctx: Dictionary) -> void:
+	# "Every Nth …" incremental items (Happy Flower, Nunchaku, Ornamental Fan,
+	# Shuriken, Pen Nib). Reads a shared GameState counter (bumped centrally by
+	# ItemTriggers.fire) and fires the nested `effects` only when the counter
+	# rolls past `every`. The counter itself is NOT incremented here — that
+	# happens once per event regardless of how many counter items are owned —
+	# so two Nunchakus don't double-count the same attack.
+	#   {type: "counter", key: "attacks_total", every: 10, label: "Nunchaku",
+	#    effects: [{type: "gain_energy", value: 1}]}
+	var every: int = maxi(1, int(effect.get("every", 1)))
+	var value: int = GameState.incremental_value(String(effect.get("key", "")))
+	if value <= 0 or value % every != 0:
+		return
+	var label: String = String(effect.get("label", ""))
+	if label != "":
+		GameLog.add("%s triggers!" % label, Color(0.7, 1.0, 0.7))
+	for inner in effect.get("effects", []):
+		apply(inner, ctx)
+
+func _h_attack_double(_effect: Dictionary, _ctx: Dictionary) -> void:
+	# Pen Nib. Arms the double-damage window for the Attack currently being
+	# played; Stats.resolve_damage reads pen_nib_double_active and doubles each
+	# of the card's hits. Cleared at the next card play / turn / combat.
+	GameState.pen_nib_double_active = true
 
 func _h_if_hp(effect: Dictionary, ctx: Dictionary) -> void:
 	# Conditional on the PLAYER's current HP fraction. Fires the inner effect

@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_ornamental_fan"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/OrnamentalFan.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"ornamental_fan"
+kind = 1
+rarity = 1
+display_name = "Ornamental Fan"
+description = "Every time you play 4 Attacks in a single turn, Gain +4 Block."
+triggers = [{
+"on": "card_played",
+"if_card_type": "attack",
+"silent": true,
+"effects": [{
+"type": "counter",
+"key": "attacks_this_turn",
+"every": 4,
+"label": "Ornamental Fan",
+"effects": [{
+"type": "block",
+"value": 4,
+"target": "self"
+}]
+}]
+}]
+card_grants = []
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray("japan")
+image = ExtResource("2_img")

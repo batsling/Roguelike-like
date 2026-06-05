@@ -640,12 +640,20 @@ func streak_register_hit(key: String, target, attack_bonus: bool, label: String)
 	s["label"] = label
 	s["count"] = int(s.get("count", 0)) + 1
 	_streaks[key] = s
+	_sync_streak_display()
 
 func streak_reset(key: String) -> void:
 	# A whiff (Blind) wipes the streak entirely.
 	if key == "":
 		return
 	_streaks.erase(key)
+	_sync_streak_display()
+
+func _sync_streak_display() -> void:
+	# Mirror Dead Eye's live streak into GameState so the Backpack can show the
+	# current "+N Dmg" number, the same way the counter items show progress.
+	var s: Dictionary = _streaks.get("dead_eye", {})
+	GameState.dead_eye_streak = int(s.get("count", 0))
 
 func _streak_attack_bonus(target) -> int:
 	# Sum every attack_bonus streak currently locked onto `target`. Logged

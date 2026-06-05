@@ -276,6 +276,13 @@ func resolve_damage(
 		var lk_mult: float = GameState.lower_hp_damage_mult()
 		if lk_mult > 1.0 and int(target.hp) < int(source.hp):
 			amount = int(ceil(amount * lk_mult))
+	# Pen Nib: every 10th Attack the player plays deals double damage. The
+	# window is armed by the attack_double effect when the counter trips and
+	# stays up for all of that card's hits (cleared at the next card play).
+	# DoT ticks ("true") never carry an attack card, so they're excluded.
+	if has_src and ("is_player" in source) and source.is_player \
+			and damage_type != "true" and GameState.pen_nib_double_active:
+		amount *= 2
 	# Critical hit — applied PRE-block so block soaks the boosted hit. Any
 	# attacker can crit: the player from Luck + crit_chance, an enemy only if
 	# it carries a Crit Chance Up status (see actor_crit_percent). Fires on

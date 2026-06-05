@@ -392,3 +392,106 @@ func test_card_played_gate_accepts_carddata_and_cardinstance() -> void:
 	assert_null(ItemTriggers._event_card_data(null))
 	assert_true(ItemTriggers._card_type_is(power, "power"))
 	assert_false(ItemTriggers._card_type_is(power, "attack"))
+
+# --- Incremental counter items (Happy Flower / Nunchaku / Ornamental Fan /
+#     Shuriken / Pen Nib) + the shared `counter` effect -------------------
+
+func _counter_effect(item: ItemData) -> Dictionary:
+	# Pull the single `counter` effect out of an incremental item's triggers.
+	for t in item.triggers:
+		for e in t.get("effects", []):
+			if typeof(e) == TYPE_DICTIONARY and String(e.get("type", "")) == "counter":
+				return e
+	return {}
+
+func test_incremental_items_load_with_counter_effects() -> void:
+	var expected := {
+		"happy_flower":   {"on": "turns",            "every": 3,  "trig": "turn_started", "rarity": ItemData.Rarity.COMMON},
+		"nunchaku":       {"on": "attacks_total",    "every": 10, "trig": "card_played",  "rarity": ItemData.Rarity.COMMON},
+		"ornamental_fan": {"on": "attacks_this_turn","every": 4,  "trig": "card_played",  "rarity": ItemData.Rarity.UNCOMMON},
+		"shuriken":       {"on": "attacks_this_turn","every": 3,  "trig": "card_played",  "rarity": ItemData.Rarity.UNCOMMON},
+		"pen_nib":        {"on": "attacks_total",    "every": 10, "trig": "card_played",  "rarity": ItemData.Rarity.COMMON},
+	}
+	for id in expected.keys():
+		var it: ItemData = Data.get_item(StringName(id))
+		assert_not_null(it, "%s.tres should load" % id)
+		assert_eq(it.kind, ItemData.ItemKind.TRIGGERED, "%s is triggered" % id)
+		assert_eq(it.rarity, expected[id]["rarity"], "%s rarity" % id)
+		var trig: Dictionary = _trigger_for(it, expected[id]["trig"])
+		assert_false(trig.is_empty(), "%s listens on %s" % [id, expected[id]["trig"]])
+		assert_true(bool(trig.get("silent", false)), "%s counter hook is silent" % id)
+		var c: Dictionary = _counter_effect(it)
+		assert_eq(String(c.get("key", "")), expected[id]["on"], "%s counter key" % id)
+		assert_eq(int(c.get("every", 0)), expected[id]["every"], "%s threshold" % id)
+		assert_false(c.get("effects", []).is_empty(), "%s has a payload" % id)
+
+func test_attack_counter_items_gate_on_attack_type() -> void:
+	for id in ["nunchaku", "ornamental_fan", "shuriken", "pen_nib"]:
+		var it: ItemData = Data.get_item(StringName(id))
+		var trig: Dictionary = _trigger_for(it, "card_played")
+		assert_eq(String(trig.get("if_card_type", "")), "attack",
+			"%s only counts Attacks" % id)
+
+func test_counter_effect_fires_only_on_threshold() -> void:
+	# The `counter` handler reads a GameState counter and fires its payload
+	# only when value % every == 0. Drive the counter manually.
+	GameState.reset_run()
+	GameState.gold = 0
+	var payload := {"type": "counter", "key": "attacks_total", "every": 10,
+		"effects": [{"type": "gain_gold", "value": 5}]}
+	for i in range(9):
+		GameState.incremental_on_attack()
+		EffectSystem.apply(payload, {})
+	assert_eq(GameState.gold, 0, "no payout before the 10th attack")
+	GameState.incremental_on_attack()  # 10th
+	EffectSystem.apply(payload, {})
+	assert_eq(GameState.gold, 5, "payout lands exactly on the 10th")
+	for i in range(9):
+		GameState.incremental_on_attack()
+		EffectSystem.apply(payload, {})
+	assert_eq(GameState.gold, 5, "still nothing on 11..19")
+	GameState.incremental_on_attack()  # 20th
+	EffectSystem.apply(payload, {})
+	assert_eq(GameState.gold, 10, "payout repeats every 10th")
+
+func test_per_turn_counter_resets_each_turn() -> void:
+	GameState.reset_run()
+	GameState.incremental_on_attack()
+	GameState.incremental_on_attack()
+	assert_eq(GameState.incremental_value("attacks_this_turn"), 2)
+	assert_eq(GameState.incremental_value("attacks_total"), 2)
+	GameState.incremental_on_turn_started(2)
+	assert_eq(GameState.incremental_value("attacks_this_turn"), 0,
+		"per-turn tally clears on a new turn")
+	assert_eq(GameState.incremental_value("attacks_total"), 2,
+		"run-wide tally carries across turns")
+	assert_eq(GameState.incremental_value("turns"), 2)
+
+func test_attacks_total_persists_across_combats_resets_on_run() -> void:
+	GameState.reset_run()
+	GameState.incremental_on_attack()
+	GameState.incremental_on_attack()
+	GameState.incremental_on_combat_started()  # new combat, same run
+	assert_eq(GameState.incremental_value("attacks_total"), 2,
+		"run-wide attacks survive a new combat")
+	assert_eq(GameState.incremental_value("turns"), 0, "turn counter restarts")
+	GameState.reset_run()
+	assert_eq(GameState.incremental_value("attacks_total"), 0,
+		"a fresh run zeroes the run-wide tally")
+
+func test_pen_nib_doubles_only_the_armed_attack() -> void:
+	GameState.reset_run()
+	assert_false(GameState.pen_nib_double_active)
+	EffectSystem.apply({"type": "attack_double"}, {})
+	assert_true(GameState.pen_nib_double_active, "attack_double arms the window")
+	# A fresh card play clears the window (mirrors ItemTriggers.fire).
+	GameState.pen_nib_double_active = false
+	assert_false(GameState.pen_nib_double_active)
+
+func test_dead_eye_streak_mirrors_to_gamestate_for_display() -> void:
+	# The Backpack reads GameState.dead_eye_streak to show the live bonus.
+	GameState.reset_run()
+	assert_eq(GameState.dead_eye_streak, 0)
+	GameState.dead_eye_streak = 3
+	GameState.incremental_on_combat_started()
+	assert_eq(GameState.dead_eye_streak, 0, "a new combat clears the streak")

@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_nunchaku"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/Nunchaku.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"nunchaku"
+kind = 1
+rarity = 0
+display_name = "Nunchaku"
+description = "Every time you play 10 Attacks, Gain +1 Energy."
+triggers = [{
+"on": "card_played",
+"if_card_type": "attack",
+"silent": true,
+"effects": [{
+"type": "counter",
+"key": "attacks_total",
+"every": 10,
+"label": "Nunchaku",
+"effects": [{
+"type": "gain_energy",
+"value": 1
+}]
+}]
+}]
+card_grants = []
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray("ninja")
+image = ExtResource("2_img")

@@ -114,6 +114,32 @@ var loot: Dictionary = {
 	"key": 0,
 }
 
+# === Incremental-item counters ===
+# Progress counters that drive "every Nth …" items (Happy Flower, Nunchaku,
+# Ornamental Fan, Shuriken, Pen Nib) and let the Backpack show how close each
+# one is to its next proc. Bumped centrally by ItemTriggers.fire so every
+# combat mode (deckbuilder card play, action loop, strategy ability) feeds the
+# same counters; read back by EffectSystem's `counter` handler.
+#   incremental_attacks_total  — Attacks played this RUN (persists across
+#                                combats; reset only by reset_run). Nunchaku /
+#                                Pen Nib read this.
+#   incremental_attacks_turn   — Attacks played this turn (reset every
+#                                turn_started). Ornamental Fan / Shuriken.
+#   incremental_turn           — Current combat turn number (Happy Flower).
+var incremental_attacks_total: int = 0
+var incremental_attacks_turn: int = 0
+var incremental_turn: int = 0
+
+# Pen Nib: set true while the player's current (10th) Attack resolves so
+# Stats.resolve_damage doubles its hits. Cleared at the start of the next
+# card play and on combat/turn boundaries.
+var pen_nib_double_active: bool = false
+
+# Dead Eye: the current consecutive-hit streak, mirrored out of the combat
+# scene so the Backpack can show the live "+N Dmg" number like the other
+# incremental items. 0 when no streak is active.
+var dead_eye_streak: int = 0
+
 # Spells learned this run, addressed by SpellData.id. Drives the
 # strategy/tactical Spellbook (Phase 6). Spell defs live in
 # `SpellsCatalog` until designers ship .tres files for them.
@@ -291,6 +317,47 @@ func _reset_item_tracking() -> void:
 	_applied_item_max_energy = 0
 	_next_item_instance_id = 1
 	_gold_spent_accum = 0
+	incremental_attacks_total = 0
+	incremental_attacks_turn = 0
+	incremental_turn = 0
+	pen_nib_double_active = false
+	dead_eye_streak = 0
+
+# === Incremental-item counter API ===
+# Called from ItemTriggers.fire so every combat mode keeps the same counters.
+
+# A player Attack was played (deckbuilder card, action-loop card, strategy
+# ability). Bumps the run-wide and per-turn attack tallies.
+func incremental_on_attack() -> void:
+	incremental_attacks_total += 1
+	incremental_attacks_turn += 1
+
+# A new turn began: remember the turn number (Happy Flower) and clear the
+# per-turn attack tally (Ornamental Fan / Shuriken count within one turn).
+func incremental_on_turn_started(turn_no: int) -> void:
+	incremental_turn = turn_no
+	incremental_attacks_turn = 0
+	pen_nib_double_active = false
+
+# A fresh combat began: per-combat counters restart; the run-wide attack
+# total carries over.
+func incremental_on_combat_started() -> void:
+	incremental_turn = 0
+	incremental_attacks_turn = 0
+	pen_nib_double_active = false
+	dead_eye_streak = 0
+
+# Current value of a named counter, used by the `counter` effect handler and
+# the Backpack progress badge.
+func incremental_value(key: String) -> int:
+	match key:
+		"attacks_total":
+			return incremental_attacks_total
+		"attacks_this_turn":
+			return incremental_attacks_turn
+		"turns":
+			return incremental_turn
+	return 0
 
 func set_current_game(id: StringName) -> void:
 	current_game_id = id

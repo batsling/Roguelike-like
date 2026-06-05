@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_shuriken"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/Shuriken.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"shuriken"
+kind = 1
+rarity = 1
+display_name = "Shuriken"
+description = "Every time you play 3 Attacks in a single turn, Gain +1 Power."
+triggers = [{
+"on": "card_played",
+"if_card_type": "attack",
+"silent": true,
+"effects": [{
+"type": "counter",
+"key": "attacks_this_turn",
+"every": 3,
+"label": "Shuriken",
+"effects": [{
+"type": "status",
+"status": "power",
+"stacks": 1,
+"target": "self"
+}]
+}]
+}]
+card_grants = []
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray("ninja")
+image = ExtResource("2_img")

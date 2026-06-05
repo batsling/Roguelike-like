@@ -98,6 +98,9 @@ func _build_payload() -> Dictionary:
 		# Persist the id counter so newly-added items after a load don't
 		# collide with weapon instance_ids on cards still in the deck.
 		"next_item_instance_id": GameState._next_item_instance_id,
+		# Run-wide Attack tally for incremental items (Nunchaku / Pen Nib);
+		# per-turn / per-combat counters are combat-scoped and not saved.
+		"incremental_attacks_total": GameState.incremental_attacks_total,
 		"dash": GameState.dash_charges,
 		"reroll": GameState.reroll_charges,
 		"fov_bonus": GameState.fov_bonus,
@@ -149,6 +152,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.crit_damage = data.get("crit_damage", 100)
 	GameState.regeneration = data.get("regeneration", 0)
 	GameState.gold = data.get("gold", 0)
+	GameState.incremental_attacks_total = int(data.get("incremental_attacks_total", 0))
 	# Prefer the new "deck" key; fall back to legacy "deck_ids" for old saves.
 	if data.has("deck"):
 		GameState.deck = _resolve_deck(data.get("deck", []))
