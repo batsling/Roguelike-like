@@ -142,7 +142,7 @@ func wants_target() -> bool:
 	# target = "enemy" (i.e., single-target) without being AoE.
 	# Indiscriminate (Blood Magic) re-rolls the target per hit, so the
 	# play UI doesn't need to ask — the engine picks for you.
-	if data != null and data.addons.has("indiscriminate"):
+	if data != null and (data.addons.has("indiscriminate") or data.addons.has("cleave")):
 		return false
 	for e in get_effects():
 		var t = e.get("target", "")
