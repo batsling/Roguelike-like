@@ -548,13 +548,16 @@ func _on_unit_turn_started(unit) -> void:
 		_enemy_turn_timer.start()
 
 func _on_unit_turn_ended(unit) -> void:
-	# Ice Cream: a player turn that ends without an ability play banks an
-	# empower charge that carries into future turns (it stacks each skipped
-	# turn). Strategy has no per-turn energy pool, so this is its analogue of
-	# the deckbuilder's leftover-energy carry-over.
+	# Ice Cream: a player turn that ends without an ability play banks empower
+	# charge. It accumulates with no cap and persists indefinitely — skip any
+	# number of turns and bank that many charges — until a card play spends the
+	# whole charge at once. Strategy has no per-turn energy pool, so this is its
+	# analogue of the deckbuilder's leftover-energy carry-over. The carryover
+	# item also forces _energy_charge to survive turn starts (see
+	# _on_unit_turn_started), so banked charge is never silently wiped.
 	if unit != null and unit.is_player and not _ability_used_this_turn \
 			and GameState.has_energy_carryover_item():
-		_energy_charge += 1
+		_energy_charge += _tr.empower_per_skipped_turn
 		_status_label.text = "Ice Cream: banked an empower charge (now %d)." % _energy_charge
 	# Damage-over-time bite (Bleed, Leeches) at the end of the unit's own turn,
 	# BEFORE decay so the bite uses the current stack count (then Bleed ramps

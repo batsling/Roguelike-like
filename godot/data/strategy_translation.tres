@@ -7,5 +7,6 @@ script = ExtResource("1_st")
 empower_per_energy = 1
 empower_scales_status = true
 energy_banks_across_turns = true
+empower_per_skipped_turn = 1
 draw_recharges_per_point = 1
 discard_plays_per_point = 1

@@ -27,8 +27,11 @@ extends Resource
 #   Discard 1       -> Tempo cost: spend discard_plays_per_point card play(s)
 #                      this turn.
 #   Ice Cream       -> "Energy carries over": a player turn ending without an
-#                      ability play banks one empower charge (handled in
-#                      BattleView via GameState.has_energy_carryover_item()).
+#                      ability play banks empower_per_skipped_turn charge. This
+#                      accumulates with no cap and persists indefinitely — wait
+#                      any number of turns and bank that many charges — until a
+#                      card play spends the whole charge at once. (Handled in
+#                      BattleView via GameState.has_energy_carryover_item().)
 #
 # To translate a NEW concept: add a tunable + (if useful) a helper below, wire
 # the matching scene callback in BattleView to read it, and document the row.
@@ -40,8 +43,12 @@ extends Resource
 # damage/block value).
 @export var empower_scales_status: bool = true
 # Whether unspent empower charge persists across your turns (true) or is wiped
-# at the end of each of your turns (false).
+# at the end of each of your turns (false). The energy-carryover item (Ice
+# Cream) forces persistence regardless, so its banked charge always carries.
 @export var energy_banks_across_turns: bool = true
+# Ice Cream: empower charge banked each player turn that ends without an ability
+# play. Accumulates indefinitely (no cap) and is held until spent.
+@export var empower_per_skipped_turn: int = 1
 
 # --- Draw / discard ---
 # Card-use recharges granted per point of `draw`.

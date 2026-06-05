@@ -16,8 +16,26 @@ func test_tres_loads_with_expected_defaults() -> void:
 	assert_eq(tr.empower_per_energy, 1)
 	assert_true(tr.empower_scales_status, "status stacks scale by default")
 	assert_true(tr.energy_banks_across_turns, "charge banks across turns by default")
+	assert_eq(tr.empower_per_skipped_turn, 1, "Ice Cream banks 1 charge per skipped turn")
 	assert_eq(tr.draw_recharges_per_point, 1)
 	assert_eq(tr.discard_plays_per_point, 1)
+
+func test_skipped_turn_banking_accumulates_indefinitely() -> void:
+	# Models BattleView's Ice Cream bank: each skipped player turn adds
+	# empower_per_skipped_turn, with no cap, held until a card spends it all.
+	var tr := StrategyTranslation.new()
+	var charge: int = 0
+	for _turn in range(7):           # wait 7 turns
+		charge += tr.empower_per_skipped_turn
+	assert_eq(charge, 7, "7 skipped turns -> 7 banked charges, uncapped")
+	# Spent all at once on the next card: +7 to a damage effect.
+	assert_eq(int(tr.apply_empower({"type": "dmg", "value": 4}, charge)["value"]), 11)
+	# Retunable rate.
+	tr.empower_per_skipped_turn = 2
+	charge = 0
+	for _turn in range(3):
+		charge += tr.empower_per_skipped_turn
+	assert_eq(charge, 6, "3 skipped turns at 2/turn -> 6 charges")
 
 func test_empower_amount_scales_with_points() -> void:
 	var tr := StrategyTranslation.new()
