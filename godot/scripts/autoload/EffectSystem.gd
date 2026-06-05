@@ -460,28 +460,22 @@ func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 
 func _h_streak_hit(effect: Dictionary, ctx: Dictionary) -> void:
 	# Grow a named consecutive-hit streak against the current target
-	# (Dead Eye). Switching targets resets the count first; an outgoing
-	# attack picks the count up via the scene's streak bonus (see
-	# DeckbuilderCombat.deal_damage). `attack_bonus` marks the streak as
-	# one that adds its count to outgoing player attacks; `label` is the
-	# name shown when the bonus lands.
+	# (Dead Eye). The streak lives on GameState so it works in every combat
+	# mode; an outgoing attack picks the count up via GameState.streak_attack_bonus
+	# (called from each scene's attack path). `attack_bonus` marks the streak as
+	# one that adds its count to outgoing player attacks; `label` is the name
+	# shown when the bonus lands.
 	#   {type: "streak_hit", key: "dead_eye", attack_bonus: true, label: "Dead Eye"}
-	var scene: Variant = ctx.get("scene")
-	if scene == null or not scene.has_method("streak_register_hit"):
-		return
-	scene.streak_register_hit(
+	GameState.streak_register_hit(
 		String(effect.get("key", "")),
 		ctx.get("target"),
 		bool(effect.get("attack_bonus", false)),
 		String(effect.get("label", "")),
 	)
 
-func _h_streak_reset(effect: Dictionary, ctx: Dictionary) -> void:
+func _h_streak_reset(effect: Dictionary, _ctx: Dictionary) -> void:
 	# Clear a named streak (Dead Eye on a Blind whiff). {type: "streak_reset", key: "dead_eye"}
-	var scene: Variant = ctx.get("scene")
-	if scene == null or not scene.has_method("streak_reset"):
-		return
-	scene.streak_reset(String(effect.get("key", "")))
+	GameState.streak_reset(String(effect.get("key", "")))
 
 func _h_counter(effect: Dictionary, ctx: Dictionary) -> void:
 	# "Every Nth …" incremental items (Happy Flower, Nunchaku, Ornamental Fan,

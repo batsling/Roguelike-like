@@ -754,17 +754,20 @@ func _resolve_ability_against(target) -> void:
 	# Spend any banked energy charge to empower this card, then clear it.
 	var empower: int = _energy_charge
 	_energy_charge = 0
-	_apply_card_or_spell_effects(_effective_card_effects(card), u, target, card, empower)
-	_pending_kind = Pending.NONE
-	_pending_card = null
-	_grid_view.enter_idle()
+	# card_played fires BEFORE the ability's effects resolve (the documented
+	# contract, and what the other two modes do) so attack counters / Pen Nib's
+	# double-damage window arm in time for this attack. The "Played …" status
+	# text is set first so a card_played item that posts its own message
+	# (Mummified Hand) still wins.
 	var empower_str: String = "  (empowered +%d)" % empower if empower > 0 else ""
 	_status_label.text = "Played %s%s. (%d uses left, %d plays left)" % [
 		card.display_name, empower_str, GameState.get_card_uses(card), _card_plays_remaining,
 	]
-	# Power plays may grant a free ability (Mummified Hand) via card_played.
-	# Fired last so the item's own status text wins over "Played …".
 	_fire_item_triggers("card_played", {"card": card})
+	_apply_card_or_spell_effects(_effective_card_effects(card), u, target, card, empower)
+	_pending_kind = Pending.NONE
+	_pending_card = null
+	_grid_view.enter_idle()
 	_grid_view.notify_units_changed()
 	_refresh_initiative()
 	_refresh_button_states()
@@ -1117,14 +1120,35 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> void:
 	if target == null or raw_dmg <= 0:
 		return
+	# A player melee/ranged swing is an "attack" for streak items (Dead Eye):
+	# fold the active streak bonus in before resolving, same as the other modes.
+	var dmg_type: String = String(effect.get("damage_type", "melee"))
+	var is_player_attack: bool = (dmg_type == "melee" or dmg_type == "ranged") \
+		and source != null and "is_player" in source and source.is_player \
+		and not target.is_player
+	if is_player_attack:
+		raw_dmg += GameState.streak_attack_bonus(target)
 	# Canonical damage math in Stats.resolve_damage (Power/Weak, Vulnerable,
 	# Blind, Dodge, block soak) so strategy matches deckbuilder/action. The
 	# death / Infuse / loot tail below stays strategy-specific.
 	var was_alive: bool = target.is_alive()
 	var res := Stats.resolve_damage(source, target, raw_dmg, effect, Stats.Mode.STRATEGY)
-	if res.missed or res.dodged:
+	if res.missed:
+		# A whiff breaks Dead Eye's streak.
+		if is_player_attack:
+			TriggerBus.emit_signal("attack_missed",
+				{"source": source, "target": target, "scene": self})
+			_fire_item_triggers("attack_missed", {"target": target})
+		return
+	if res.dodged:
 		return
 	target.hp = maxi(0, target.hp - int(res.hp_loss))
+	# The attack connected (block counts). Dead Eye's streak grows here, skipped
+	# on a killing blow (the streak against a corpse is never read).
+	if is_player_attack and target.is_alive():
+		TriggerBus.emit_signal("attack_landed",
+			{"source": source, "target": target, "scene": self})
+		_fire_item_triggers("attack_landed", {"target": target})
 	if was_alive and not target.is_alive() and not target.is_player:
 		# Infuse: strategy mirrors deckbuilder — every killing blow with
 		# infuse > 0 grants the player Max HP equal to the stack count.

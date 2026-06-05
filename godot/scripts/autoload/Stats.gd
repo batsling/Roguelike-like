@@ -281,10 +281,14 @@ func resolve_damage(
 			amount = int(ceil(amount * lk_mult))
 	# Pen Nib: every 10th Attack the player plays deals double damage. The
 	# window is armed by the attack_double effect when the counter trips and
-	# stays up for all of that card's hits (cleared at the next card play).
-	# DoT ticks ("true") never carry an attack card, so they're excluded.
+	# stays up for all of that card's hits. Synchronous hits (deckbuilder /
+	# strategy / action melee) read the live global flag; Action projectiles
+	# carry a fire-time snapshot on the effect (`pen_nib_double`) so an in-flight
+	# bolt still doubles even after the flag is cleared. DoT ticks ("true")
+	# never carry an attack card, so they're excluded.
 	if has_src and ("is_player" in source) and source.is_player \
-			and damage_type != "true" and GameState.pen_nib_double_active:
+			and damage_type != "true" \
+			and (GameState.pen_nib_double_active or bool(effect.get("pen_nib_double", false))):
 		amount *= 2
 	# Critical hit — applied PRE-block so block soaks the boosted hit. Any
 	# attacker can crit: the player from Luck + crit_chance, an enemy only if

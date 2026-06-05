@@ -576,9 +576,20 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 	var atk: Dictionary = effect.duplicate()
 	atk["damage_type"] = dmg_type
 	atk["power_multiplier"] = power_multiplier
+	# A player melee/ranged swing is an "attack" for streak items (Dead Eye):
+	# fold any active streak bonus in BEFORE resolving so Power/Weak/Vulnerable
+	# treat it like the rest of the hit, the same as the other modes.
+	var is_player_attack: bool = (dmg_type == "melee" or dmg_type == "ranged")
+	if is_player_attack:
+		base_dmg += GameState.streak_attack_bonus(inst.actor)
 	var res := Stats.resolve_damage(player_actor, inst.actor, base_dmg, atk, Stats.Mode.ACTION, _rng)
 	if res.missed:
 		GameLog.add("You swing blind and miss!", Color(0.85, 0.85, 0.55))
+		# A whiff breaks Dead Eye's streak.
+		if is_player_attack:
+			TriggerBus.emit_signal("attack_missed",
+				{"source": player_actor, "target": inst.actor, "scene": self})
+			_fire_item_triggers("attack_missed", {"target": inst.actor})
 		return
 	if res.dodged:
 		GameLog.add("%s dodges!" % inst.actor.display_name, Color(0.7, 0.9, 1.0))
@@ -586,22 +597,28 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 	# Any landed swing (even fully blocked) refreshes the enemy's Bleed window.
 	inst["was_hit"] = true
 	var amount: int = int(res.hp_loss)
-	if amount <= 0:
-		return
-	inst.actor.hp = maxi(0, inst.actor.hp - amount)
-	if inst.actor.hp <= 0:
-		inst.actor.dead = true
-		GameLog.add("%s defeated." % inst.actor.display_name, Color(0.6, 1.0, 0.6))
-		# Infuse: action mode keeps the keyword interesting in real-time
-		# play by gating it behind a 10% roll per killing hit, rather
-		# than the always-on deckbuilder/strategy form.
-		var infuse_stacks: int = int(effect.get("infuse", 0))
-		if infuse_stacks > 0 and Stats.roll_chance_with_luck(_rng, 10):
-			GameState.set_max_hp(GameState.max_hp + infuse_stacks, false)
-			GameLog.add("Infuse: gained %d Max HP." % infuse_stacks,
-				Color(0.85, 0.65, 1.0))
-		TriggerBus.emit_signal("enemy_killed", {"enemy": inst.actor, "scene": self})
-		_fire_item_triggers("enemy_killed")
+	if amount > 0:
+		inst.actor.hp = maxi(0, inst.actor.hp - amount)
+		if inst.actor.hp <= 0:
+			inst.actor.dead = true
+			GameLog.add("%s defeated." % inst.actor.display_name, Color(0.6, 1.0, 0.6))
+			# Infuse: action mode keeps the keyword interesting in real-time
+			# play by gating it behind a 10% roll per killing hit, rather
+			# than the always-on deckbuilder/strategy form.
+			var infuse_stacks: int = int(effect.get("infuse", 0))
+			if infuse_stacks > 0 and Stats.roll_chance_with_luck(_rng, 10):
+				GameState.set_max_hp(GameState.max_hp + infuse_stacks, false)
+				GameLog.add("Infuse: gained %d Max HP." % infuse_stacks,
+					Color(0.85, 0.65, 1.0))
+			TriggerBus.emit_signal("enemy_killed", {"enemy": inst.actor, "scene": self})
+			_fire_item_triggers("enemy_killed")
+	# The attack connected (block counts; miss/dodge returned above). Dead Eye's
+	# streak grows here — skipped on a killing blow, since the streak against a
+	# corpse is never read (the next hit is a new target, which resets).
+	if is_player_attack and inst.actor.is_alive():
+		TriggerBus.emit_signal("attack_landed",
+			{"source": player_actor, "target": inst.actor, "scene": self})
+		_fire_item_triggers("attack_landed", {"target": inst.actor})
 
 # ---------------------------------------------------------------------------
 # Enemy AI
@@ -1324,6 +1341,10 @@ func _spawn_single_projectile(card: CardData, dir: Vector2, range_px: float, lif
 		"range_px": range_px,
 		"card": card,
 		"hit_set": hit_set,
+		# Pen Nib: snapshot the double-damage window at FIRE time so the bolt
+		# still doubles on impact even if the global flag is cleared by another
+		# card played while it's in flight.
+		"pen_nib_double": GameState.pen_nib_double_active,
 	}
 	projectiles.append(proj)
 
@@ -1406,6 +1427,9 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 				var value: int = int(effect.get("value", 0))
 				var dmg_type: String = String(effect.get("damage_type", "melee"))
 				var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+				# Carry the fire-time Pen Nib window onto this bolt's hit.
+				if p.get("pen_nib_double", false):
+					effect["pen_nib_double"] = true
 				_deal_damage_to_enemy(inst, value, dmg_type, power_mult, effect)
 			"status":
 				var status: StringName = StringName(String(effect.get("status", "")))

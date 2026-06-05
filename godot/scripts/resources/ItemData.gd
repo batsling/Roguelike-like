@@ -76,7 +76,10 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #   chance (wraps an inner effect with a % roll) / trigger (persistent
 #   in-combat listener) / add_max_hp (mutates target.max_hp directly) /
 #   streak_hit + streak_reset (named consecutive-hit counter that adds to
-#   outgoing player attacks — Dead Eye) /
+#   outgoing player attacks — Dead Eye. Lives on GameState.streak_* so it
+#   works in every mode: each scene's attack path folds the bonus in via
+#   GameState.streak_attack_bonus and fires attack_landed/attack_missed to
+#   grow/reset it) /
 #   if_hp (wraps an inner effect, fires it on a player HP-fraction test:
 #   `below: f` => hp <= max*f, `above: f` => hp > max*f — Meat on the Bone,
 #   Leech Brood) /

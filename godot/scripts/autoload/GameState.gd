@@ -135,10 +135,18 @@ var incremental_turn: int = 0
 # card play and on combat/turn boundaries.
 var pen_nib_double_active: bool = false
 
-# Dead Eye: the current consecutive-hit streak, mirrored out of the combat
-# scene so the Backpack can show the live "+N Dmg" number like the other
-# incremental items. 0 when no streak is active.
+# Dead Eye: the current consecutive-hit streak, mirrored here so the Backpack
+# can show the live "+N Dmg" number like the other incremental items. 0 when no
+# streak is active. Derived from _streaks below.
 var dead_eye_streak: int = 0
+
+# Named consecutive-hit streaks (Dead Eye), centralized here so every combat
+# mode (deckbuilder, action, strategy) grows and reads the same streak through
+# EffectSystem + each scene's attack path — not just the deckbuilder. Keyed by
+# streak id -> {count, target, attack_bonus, label}. The `target` is whatever
+# actor object the scene passed (CombatActor / Unit); identity comparison
+# detects target switches. Cleared at combat start.
+var _streaks: Dictionary = {}
 
 # Spells learned this run, addressed by SpellData.id. Drives the
 # strategy/tactical Spellbook (Phase 6). Spell defs live in
@@ -321,6 +329,7 @@ func _reset_item_tracking() -> void:
 	incremental_attacks_turn = 0
 	incremental_turn = 0
 	pen_nib_double_active = false
+	_streaks.clear()
 	dead_eye_streak = 0
 
 # === Incremental-item counter API ===
@@ -345,7 +354,7 @@ func incremental_on_combat_started() -> void:
 	incremental_turn = 0
 	incremental_attacks_turn = 0
 	pen_nib_double_active = false
-	dead_eye_streak = 0
+	streak_clear()
 
 # Current value of a named counter, used by the `counter` effect handler and
 # the Backpack progress badge.
@@ -358,6 +367,63 @@ func incremental_value(key: String) -> int:
 		"turns":
 			return incremental_turn
 	return 0
+
+# === Streak API (Dead Eye) ===
+# Shared by every combat mode through EffectSystem's streak_hit / streak_reset
+# handlers and each scene's attack path. A landed player attack grows the
+# streak against the hit target; switching targets or whiffing resets it; the
+# streak's count is folded into outgoing player attacks vs the same target.
+
+# A landed player attack grows the named streak. Switching targets resets the
+# count first (the bonus only rewards staying on one enemy), then this hit
+# counts as 1.
+func streak_register_hit(key: String, target, attack_bonus: bool, label: String) -> void:
+	if key == "" or target == null:
+		return
+	var s: Dictionary = _streaks.get(key, {"count": 0, "target": null})
+	if s.get("target") != target:
+		s["count"] = 0
+	s["target"] = target
+	s["attack_bonus"] = attack_bonus
+	s["label"] = label
+	s["count"] = int(s.get("count", 0)) + 1
+	_streaks[key] = s
+	_sync_dead_eye_streak()
+
+# A whiff (Blind) or target switch wipes the named streak entirely.
+func streak_reset(key: String) -> void:
+	if key == "":
+		return
+	_streaks.erase(key)
+	_sync_dead_eye_streak()
+
+# Sum every attack_bonus streak currently locked onto `target`, to fold into an
+# outgoing attack. Logs the exact bonus so the player sees what just landed.
+func streak_attack_bonus(target) -> int:
+	if _streaks.is_empty() or target == null:
+		return 0
+	var bonus: int = 0
+	for key in _streaks:
+		var s: Dictionary = _streaks[key]
+		if not bool(s.get("attack_bonus", false)) or s.get("target") != target:
+			continue
+		var n: int = int(s.get("count", 0))
+		if n <= 0:
+			continue
+		bonus += n
+		var label: String = String(s.get("label", ""))
+		if label == "":
+			label = String(key)
+		GameLog.add("%s: +%d Dmg (streak %d)!" % [label, n, n], Color(0.7, 1.0, 0.7))
+	return bonus
+
+func streak_clear() -> void:
+	_streaks.clear()
+	dead_eye_streak = 0
+
+func _sync_dead_eye_streak() -> void:
+	var s: Dictionary = _streaks.get("dead_eye", {})
+	dead_eye_streak = int(s.get("count", 0))
 
 func set_current_game(id: StringName) -> void:
 	current_game_id = id
