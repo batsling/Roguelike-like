@@ -83,6 +83,8 @@ func _register_defaults() -> void:
 	register("temp_stat", _h_temp_stat)
 	register("streak_hit", _h_streak_hit)
 	register("streak_reset", _h_streak_reset)
+	register("counter", _h_counter)
+	register("attack_double", _h_attack_double)
 	register("if_hp", _h_if_hp)
 	register("free_random_hand_card", _h_free_random_hand_card)
 
@@ -458,28 +460,47 @@ func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 
 func _h_streak_hit(effect: Dictionary, ctx: Dictionary) -> void:
 	# Grow a named consecutive-hit streak against the current target
-	# (Dead Eye). Switching targets resets the count first; an outgoing
-	# attack picks the count up via the scene's streak bonus (see
-	# DeckbuilderCombat.deal_damage). `attack_bonus` marks the streak as
-	# one that adds its count to outgoing player attacks; `label` is the
-	# name shown when the bonus lands.
+	# (Dead Eye). The streak lives on GameState so it works in every combat
+	# mode; an outgoing attack picks the count up via GameState.streak_attack_bonus
+	# (called from each scene's attack path). `attack_bonus` marks the streak as
+	# one that adds its count to outgoing player attacks; `label` is the name
+	# shown when the bonus lands.
 	#   {type: "streak_hit", key: "dead_eye", attack_bonus: true, label: "Dead Eye"}
-	var scene: Variant = ctx.get("scene")
-	if scene == null or not scene.has_method("streak_register_hit"):
-		return
-	scene.streak_register_hit(
+	GameState.streak_register_hit(
 		String(effect.get("key", "")),
 		ctx.get("target"),
 		bool(effect.get("attack_bonus", false)),
 		String(effect.get("label", "")),
 	)
 
-func _h_streak_reset(effect: Dictionary, ctx: Dictionary) -> void:
+func _h_streak_reset(effect: Dictionary, _ctx: Dictionary) -> void:
 	# Clear a named streak (Dead Eye on a Blind whiff). {type: "streak_reset", key: "dead_eye"}
-	var scene: Variant = ctx.get("scene")
-	if scene == null or not scene.has_method("streak_reset"):
+	GameState.streak_reset(String(effect.get("key", "")))
+
+func _h_counter(effect: Dictionary, ctx: Dictionary) -> void:
+	# "Every Nth …" incremental items (Happy Flower, Nunchaku, Ornamental Fan,
+	# Shuriken, Pen Nib). Reads a shared GameState counter (bumped centrally by
+	# ItemTriggers.fire) and fires the nested `effects` only when the counter
+	# rolls past `every`. The counter itself is NOT incremented here — that
+	# happens once per event regardless of how many counter items are owned —
+	# so two Nunchakus don't double-count the same attack.
+	#   {type: "counter", key: "attacks_total", every: 10, label: "Nunchaku",
+	#    effects: [{type: "gain_energy", value: 1}]}
+	var every: int = maxi(1, int(effect.get("every", 1)))
+	var value: int = GameState.incremental_value(String(effect.get("key", "")))
+	if value <= 0 or value % every != 0:
 		return
-	scene.streak_reset(String(effect.get("key", "")))
+	var label: String = String(effect.get("label", ""))
+	if label != "":
+		GameLog.add("%s triggers!" % label, Color(0.7, 1.0, 0.7))
+	for inner in effect.get("effects", []):
+		apply(inner, ctx)
+
+func _h_attack_double(_effect: Dictionary, _ctx: Dictionary) -> void:
+	# Pen Nib. Arms the double-damage window for the Attack currently being
+	# played; Stats.resolve_damage reads pen_nib_double_active and doubles each
+	# of the card's hits. Cleared at the next card play / turn / combat.
+	GameState.pen_nib_double_active = true
 
 func _h_if_hp(effect: Dictionary, ctx: Dictionary) -> void:
 	# Conditional on the PLAYER's current HP fraction. Fires the inner effect

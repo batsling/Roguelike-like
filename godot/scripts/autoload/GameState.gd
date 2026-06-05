@@ -114,6 +114,56 @@ var loot: Dictionary = {
 	"key": 0,
 }
 
+# === Incremental-item counters ===
+# Progress counters that drive "every Nth …" items (Happy Flower, Nunchaku,
+# Ornamental Fan, Shuriken, Pen Nib) and let the Backpack show how close each
+# one is to its next proc. Bumped centrally by ItemTriggers.fire so every
+# combat mode (deckbuilder card play, action loop, strategy ability) feeds the
+# same counters; read back by EffectSystem's `counter` handler.
+#
+# Two "turn" clocks (they coincide in deckbuilder/strategy; they diverge in
+# Action, which has no discrete turns):
+#   * turn_started — a discrete turn / combat ROOM. Drives "on the Nth turn"
+#     one-shots via if_turn (Horn Cleat). Room-based in Action.
+#   * turn_tick    — the recurring heartbeat. Once per turn in deckbuilder/
+#     strategy; on the real-time turn-tick timer in Action. Drives recurring
+#     per-turn effects so they're paced by the timer, not by room transitions.
+#
+#   incremental_attacks_total  — Attacks played this RUN (persists across
+#                                combats; reset only by reset_run). Nunchaku /
+#                                Pen Nib read this.
+#   incremental_attacks_turn   — Attacks played within the current turn window
+#                                (reset every turn_tick — so timer-based in
+#                                Action). Ornamental Fan / Shuriken.
+#   incremental_turn_pulses    — Count of turn_tick heartbeats this combat
+#                                (Happy Flower's "every N turns"). Read as the
+#                                "turns" counter.
+#   incremental_turn           — Current discrete turn / room number (set on
+#                                turn_started). Not read by recurring counters;
+#                                kept for display / debug.
+var incremental_attacks_total: int = 0
+var incremental_attacks_turn: int = 0
+var incremental_turn_pulses: int = 0
+var incremental_turn: int = 0
+
+# Pen Nib: set true while the player's current (10th) Attack resolves so
+# Stats.resolve_damage doubles its hits. Cleared at the start of the next
+# card play and on combat/turn boundaries.
+var pen_nib_double_active: bool = false
+
+# Dead Eye: the current consecutive-hit streak, mirrored here so the Backpack
+# can show the live "+N Dmg" number like the other incremental items. 0 when no
+# streak is active. Derived from _streaks below.
+var dead_eye_streak: int = 0
+
+# Named consecutive-hit streaks (Dead Eye), centralized here so every combat
+# mode (deckbuilder, action, strategy) grows and reads the same streak through
+# EffectSystem + each scene's attack path — not just the deckbuilder. Keyed by
+# streak id -> {count, target, attack_bonus, label}. The `target` is whatever
+# actor object the scene passed (CombatActor / Unit); identity comparison
+# detects target switches. Cleared at combat start.
+var _streaks: Dictionary = {}
+
 # Spells learned this run, addressed by SpellData.id. Drives the
 # strategy/tactical Spellbook (Phase 6). Spell defs live in
 # `SpellsCatalog` until designers ship .tres files for them.
@@ -291,6 +341,114 @@ func _reset_item_tracking() -> void:
 	_applied_item_max_energy = 0
 	_next_item_instance_id = 1
 	_gold_spent_accum = 0
+	incremental_attacks_total = 0
+	incremental_attacks_turn = 0
+	incremental_turn_pulses = 0
+	incremental_turn = 0
+	pen_nib_double_active = false
+	_streaks.clear()
+	dead_eye_streak = 0
+
+# === Incremental-item counter API ===
+# Called from ItemTriggers.fire so every combat mode keeps the same counters.
+
+# A player Attack was played (deckbuilder card, action-loop card, strategy
+# ability). Bumps the run-wide and per-turn attack tallies.
+func incremental_on_attack() -> void:
+	incremental_attacks_total += 1
+	incremental_attacks_turn += 1
+
+# A discrete turn / combat room began: remember its number for if_turn-gated
+# one-shots (room-based in Action). Does NOT touch the recurring per-turn
+# window — that rides turn_tick so it can be timer-based in Action.
+func incremental_on_turn_started(turn_no: int) -> void:
+	incremental_turn = turn_no
+	pen_nib_double_active = false
+
+# The recurring turn heartbeat fired (once per turn in deckbuilder/strategy; on
+# the real-time turn-tick timer in Action). Advances Happy Flower's "turns"
+# count and resets the per-turn attack window (Ornamental Fan / Shuriken).
+func incremental_on_turn_tick() -> void:
+	incremental_turn_pulses += 1
+	incremental_attacks_turn = 0
+
+# A fresh combat began: per-combat counters restart; the run-wide attack
+# total carries over.
+func incremental_on_combat_started() -> void:
+	incremental_turn = 0
+	incremental_turn_pulses = 0
+	incremental_attacks_turn = 0
+	pen_nib_double_active = false
+	streak_clear()
+
+# Current value of a named counter, used by the `counter` effect handler and
+# the Backpack progress badge.
+func incremental_value(key: String) -> int:
+	match key:
+		"attacks_total":
+			return incremental_attacks_total
+		"attacks_this_turn":
+			return incremental_attacks_turn
+		"turns":
+			return incremental_turn_pulses
+	return 0
+
+# === Streak API (Dead Eye) ===
+# Shared by every combat mode through EffectSystem's streak_hit / streak_reset
+# handlers and each scene's attack path. A landed player attack grows the
+# streak against the hit target; switching targets or whiffing resets it; the
+# streak's count is folded into outgoing player attacks vs the same target.
+
+# A landed player attack grows the named streak. Switching targets resets the
+# count first (the bonus only rewards staying on one enemy), then this hit
+# counts as 1.
+func streak_register_hit(key: String, target, attack_bonus: bool, label: String) -> void:
+	if key == "" or target == null:
+		return
+	var s: Dictionary = _streaks.get(key, {"count": 0, "target": null})
+	if s.get("target") != target:
+		s["count"] = 0
+	s["target"] = target
+	s["attack_bonus"] = attack_bonus
+	s["label"] = label
+	s["count"] = int(s.get("count", 0)) + 1
+	_streaks[key] = s
+	_sync_dead_eye_streak()
+
+# A whiff (Blind) or target switch wipes the named streak entirely.
+func streak_reset(key: String) -> void:
+	if key == "":
+		return
+	_streaks.erase(key)
+	_sync_dead_eye_streak()
+
+# Sum every attack_bonus streak currently locked onto `target`, to fold into an
+# outgoing attack. Logs the exact bonus so the player sees what just landed.
+func streak_attack_bonus(target) -> int:
+	if _streaks.is_empty() or target == null:
+		return 0
+	var bonus: int = 0
+	for key in _streaks:
+		var s: Dictionary = _streaks[key]
+		if not bool(s.get("attack_bonus", false)) or s.get("target") != target:
+			continue
+		var n: int = int(s.get("count", 0))
+		if n <= 0:
+			continue
+		bonus += n
+		var label: String = String(s.get("label", ""))
+		if label == "":
+			label = String(key)
+		GameLog.add("%s: +%d Dmg (streak %d)!" % [label, n, n], Color(0.7, 1.0, 0.7))
+	return bonus
+
+func streak_clear() -> void:
+	_streaks.clear()
+	dead_eye_streak = 0
+
+func _sync_dead_eye_streak() -> void:
+	var s: Dictionary = _streaks.get("dead_eye", {})
+	dead_eye_streak = int(s.get("count", 0))
 
 func set_current_game(id: StringName) -> void:
 	current_game_id = id

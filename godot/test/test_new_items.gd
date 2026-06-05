@@ -392,3 +392,192 @@ func test_card_played_gate_accepts_carddata_and_cardinstance() -> void:
 	assert_null(ItemTriggers._event_card_data(null))
 	assert_true(ItemTriggers._card_type_is(power, "power"))
 	assert_false(ItemTriggers._card_type_is(power, "attack"))
+
+# --- Incremental counter items (Happy Flower / Nunchaku / Ornamental Fan /
+#     Shuriken / Pen Nib) + the shared `counter` effect -------------------
+
+func _counter_effect(item: ItemData) -> Dictionary:
+	# Pull the single `counter` effect out of an incremental item's triggers.
+	for t in item.triggers:
+		for e in t.get("effects", []):
+			if typeof(e) == TYPE_DICTIONARY and String(e.get("type", "")) == "counter":
+				return e
+	return {}
+
+func test_incremental_items_load_with_counter_effects() -> void:
+	var expected := {
+		"happy_flower":   {"on": "turns",            "every": 3,  "trig": "turn_tick",    "rarity": ItemData.Rarity.COMMON},
+		"nunchaku":       {"on": "attacks_total",    "every": 10, "trig": "card_played",  "rarity": ItemData.Rarity.COMMON},
+		"ornamental_fan": {"on": "attacks_this_turn","every": 4,  "trig": "card_played",  "rarity": ItemData.Rarity.UNCOMMON},
+		"shuriken":       {"on": "attacks_this_turn","every": 3,  "trig": "card_played",  "rarity": ItemData.Rarity.UNCOMMON},
+		"pen_nib":        {"on": "attacks_total",    "every": 10, "trig": "card_played",  "rarity": ItemData.Rarity.COMMON},
+	}
+	for id in expected.keys():
+		var it: ItemData = Data.get_item(StringName(id))
+		assert_not_null(it, "%s.tres should load" % id)
+		assert_eq(it.kind, ItemData.ItemKind.TRIGGERED, "%s is triggered" % id)
+		assert_eq(it.rarity, expected[id]["rarity"], "%s rarity" % id)
+		var trig: Dictionary = _trigger_for(it, expected[id]["trig"])
+		assert_false(trig.is_empty(), "%s listens on %s" % [id, expected[id]["trig"]])
+		assert_true(bool(trig.get("silent", false)), "%s counter hook is silent" % id)
+		var c: Dictionary = _counter_effect(it)
+		assert_eq(String(c.get("key", "")), expected[id]["on"], "%s counter key" % id)
+		assert_eq(int(c.get("every", 0)), expected[id]["every"], "%s threshold" % id)
+		assert_false(c.get("effects", []).is_empty(), "%s has a payload" % id)
+
+func test_attack_counter_items_gate_on_attack_type() -> void:
+	for id in ["nunchaku", "ornamental_fan", "shuriken", "pen_nib"]:
+		var it: ItemData = Data.get_item(StringName(id))
+		var trig: Dictionary = _trigger_for(it, "card_played")
+		assert_eq(String(trig.get("if_card_type", "")), "attack",
+			"%s only counts Attacks" % id)
+
+func test_counter_effect_fires_only_on_threshold() -> void:
+	# The `counter` handler reads a GameState counter and fires its payload
+	# only when value % every == 0. Drive the counter manually.
+	GameState.reset_run()
+	GameState.gold = 0
+	var payload := {"type": "counter", "key": "attacks_total", "every": 10,
+		"effects": [{"type": "gain_gold", "value": 5}]}
+	for i in range(9):
+		GameState.incremental_on_attack()
+		EffectSystem.apply(payload, {})
+	assert_eq(GameState.gold, 0, "no payout before the 10th attack")
+	GameState.incremental_on_attack()  # 10th
+	EffectSystem.apply(payload, {})
+	assert_eq(GameState.gold, 5, "payout lands exactly on the 10th")
+	for i in range(9):
+		GameState.incremental_on_attack()
+		EffectSystem.apply(payload, {})
+	assert_eq(GameState.gold, 5, "still nothing on 11..19")
+	GameState.incremental_on_attack()  # 20th
+	EffectSystem.apply(payload, {})
+	assert_eq(GameState.gold, 10, "payout repeats every 10th")
+
+func test_per_turn_window_resets_on_turn_tick_not_room() -> void:
+	# Ornamental Fan / Shuriken count attacks within the per-turn window, which
+	# now rides the turn_tick heartbeat (timer-based in Action) rather than
+	# turn_started (room entry). A room/turn START alone must NOT reset it.
+	GameState.reset_run()
+	GameState.incremental_on_attack()
+	GameState.incremental_on_attack()
+	assert_eq(GameState.incremental_value("attacks_this_turn"), 2)
+	assert_eq(GameState.incremental_value("attacks_total"), 2)
+	# A discrete turn / room start (Horn Cleat's clock) leaves the window alone.
+	GameState.incremental_on_turn_started(2)
+	assert_eq(GameState.incremental_value("attacks_this_turn"), 2,
+		"entering a room does NOT reset the per-turn attack window")
+	# The recurring heartbeat is what resets it.
+	GameState.incremental_on_turn_tick()
+	assert_eq(GameState.incremental_value("attacks_this_turn"), 0,
+		"the turn_tick heartbeat clears the per-turn window")
+	assert_eq(GameState.incremental_value("attacks_total"), 2,
+		"run-wide tally carries across turns")
+
+func test_happy_flower_turns_count_rides_the_heartbeat() -> void:
+	# "Every 3 turns" counts turn_tick pulses, so in Action it advances on the
+	# timer, not on room entry. Room starts must not advance it.
+	GameState.reset_run()
+	GameState.incremental_on_turn_started(5)  # rooms/turns don't move the pulse
+	assert_eq(GameState.incremental_value("turns"), 0,
+		"room/turn start does not advance the 'turns' heartbeat count")
+	GameState.incremental_on_turn_tick()
+	GameState.incremental_on_turn_tick()
+	GameState.incremental_on_turn_tick()
+	assert_eq(GameState.incremental_value("turns"), 3, "each heartbeat advances it")
+
+func test_attacks_total_persists_across_combats_resets_on_run() -> void:
+	GameState.reset_run()
+	GameState.incremental_on_attack()
+	GameState.incremental_on_attack()
+	GameState.incremental_on_combat_started()  # new combat, same run
+	assert_eq(GameState.incremental_value("attacks_total"), 2,
+		"run-wide attacks survive a new combat")
+	assert_eq(GameState.incremental_value("turns"), 0, "turn counter restarts")
+	GameState.reset_run()
+	assert_eq(GameState.incremental_value("attacks_total"), 0,
+		"a fresh run zeroes the run-wide tally")
+
+func test_pen_nib_doubles_only_the_armed_attack() -> void:
+	GameState.reset_run()
+	assert_false(GameState.pen_nib_double_active)
+	EffectSystem.apply({"type": "attack_double"}, {})
+	assert_true(GameState.pen_nib_double_active, "attack_double arms the window")
+	# A fresh card play clears the window (mirrors ItemTriggers.fire).
+	GameState.pen_nib_double_active = false
+	assert_false(GameState.pen_nib_double_active)
+
+func test_dead_eye_streak_mirrors_to_gamestate_for_display() -> void:
+	# The Backpack reads GameState.dead_eye_streak to show the live bonus.
+	GameState.reset_run()
+	assert_eq(GameState.dead_eye_streak, 0)
+	GameState.dead_eye_streak = 3
+	GameState.incremental_on_combat_started()
+	assert_eq(GameState.dead_eye_streak, 0, "a new combat clears the streak")
+
+# --- Centralized streak API (Dead Eye works in every mode via GameState) ----
+
+func test_streak_grows_on_same_target_and_resets_on_switch() -> void:
+	GameState.reset_run()
+	var enemy_a := RefCounted.new()
+	var enemy_b := RefCounted.new()
+	GameState.streak_register_hit("dead_eye", enemy_a, true, "Dead Eye")
+	GameState.streak_register_hit("dead_eye", enemy_a, true, "Dead Eye")
+	assert_eq(GameState.dead_eye_streak, 2, "consecutive hits on one target grow")
+	assert_eq(GameState.streak_attack_bonus(enemy_a), 2, "bonus equals the streak")
+	# A different target resets the count before counting this hit.
+	GameState.streak_register_hit("dead_eye", enemy_b, true, "Dead Eye")
+	assert_eq(GameState.dead_eye_streak, 1, "switching targets resets the streak")
+	assert_eq(GameState.streak_attack_bonus(enemy_a), 0,
+		"the old target no longer carries a bonus")
+
+func test_streak_reset_clears_the_bonus() -> void:
+	GameState.reset_run()
+	var enemy := RefCounted.new()
+	GameState.streak_register_hit("dead_eye", enemy, true, "Dead Eye")
+	GameState.streak_register_hit("dead_eye", enemy, true, "Dead Eye")
+	GameState.streak_reset("dead_eye")
+	assert_eq(GameState.dead_eye_streak, 0, "a whiff wipes the streak")
+	assert_eq(GameState.streak_attack_bonus(enemy), 0)
+
+func test_streak_effects_route_through_gamestate_in_any_mode() -> void:
+	# EffectSystem's streak handlers now write to GameState (no scene needed),
+	# which is what makes Dead Eye fire in action/strategy, not just deckbuilder.
+	GameState.reset_run()
+	var enemy := RefCounted.new()
+	EffectSystem.apply({"type": "streak_hit", "key": "dead_eye",
+		"attack_bonus": true, "label": "Dead Eye"}, {"target": enemy})
+	assert_eq(GameState.dead_eye_streak, 1, "streak_hit grows with no scene")
+	EffectSystem.apply({"type": "streak_reset", "key": "dead_eye"}, {})
+	assert_eq(GameState.dead_eye_streak, 0, "streak_reset clears with no scene")
+
+func test_streak_clear_wipes_everything() -> void:
+	GameState.reset_run()
+	var enemy := RefCounted.new()
+	GameState.streak_register_hit("dead_eye", enemy, true, "Dead Eye")
+	GameState.streak_clear()
+	assert_eq(GameState.dead_eye_streak, 0)
+	assert_eq(GameState.streak_attack_bonus(enemy), 0)
+
+func test_pen_nib_per_effect_marker_doubles_in_flight_bolt() -> void:
+	# Action projectiles snapshot the Pen Nib window at fire time and carry it
+	# on the effect, so Stats.resolve_damage doubles even if the global flag
+	# was cleared mid-flight.
+	GameState.reset_run()
+	GameState.pen_nib_double_active = false
+	var src := CombatActor.new()
+	src.is_player = true
+	src.hp = 50
+	src.max_hp = 50
+	var tgt := CombatActor.new()
+	tgt.is_player = false
+	tgt.hp = 100
+	tgt.max_hp = 100
+	# No global flag, but the bolt carries its own marker -> still doubles.
+	var res := Stats.resolve_damage(src, tgt, 10,
+		{"damage_type": "ranged", "pen_nib_double": true}, Stats.Mode.ACTION)
+	assert_eq(int(res.hp_loss), 20, "in-flight Pen Nib bolt doubles via the marker")
+	# Without the marker and without the flag, no doubling.
+	var res2 := Stats.resolve_damage(src, tgt, 10,
+		{"damage_type": "ranged"}, Stats.Mode.ACTION)
+	assert_eq(int(res2.hp_loss), 10, "no marker, no global flag -> normal damage")

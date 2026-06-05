@@ -11,6 +11,14 @@ var _events: Dictionary = {}            # StringName -> EventData
 var _games: Dictionary = {}             # StringName -> GameData
 var _characters: Dictionary = {}        # StringName -> CharacterData
 
+# Single shared config resources mapping turn-based combat concepts to each
+# mode's equivalents — Action (turns->rooms, energy->Haste, draw->auto-slots)
+# and Strategy (energy->empower charge, draw->card-use recharge). Edit the
+# matching data/*_translation.tres to retune; reference via
+# Data.action_translation / Data.strategy_translation from anywhere.
+var action_translation: ActionTranslation = null
+var strategy_translation: StrategyTranslation = null
+
 func _ready() -> void:
 	_load_dir("res://data/cards/", _cards)
 	_load_dir("res://data/items/", _items)
@@ -19,10 +27,30 @@ func _ready() -> void:
 	_load_dir("res://data/events/", _events)
 	_load_dir("res://data/games/", _games)
 	_load_dir("res://data/characters/", _characters)
+	# Per-mode concept translators. Fall back to script defaults if the .tres is
+	# missing so combat never crashes for a missing tunable file.
+	action_translation = (_load_config("res://data/action_translation.tres") as ActionTranslation)
+	if action_translation == null:
+		action_translation = ActionTranslation.new()
+	strategy_translation = (_load_config("res://data/strategy_translation.tres") as StrategyTranslation)
+	if strategy_translation == null:
+		strategy_translation = StrategyTranslation.new()
 	print("[Data] Loaded %d cards, %d items, %d enemies (+%d action), %d events, %d games, %d characters" % [
 		_cards.size(), _items.size(), _enemies.size(), _action_enemies.size(),
 		_events.size(), _games.size(), _characters.size()
 	])
+
+# Loads a single config .tres, returning null (with a warning) if missing or
+# malformed; callers supply a typed default.
+func _load_config(path: String) -> Resource:
+	if ResourceLoader.exists(path):
+		var res = load(path)
+		if res != null:
+			return res
+		push_warning("[Data] failed to load %s; using defaults." % path)
+	else:
+		push_warning("[Data] %s missing; using defaults." % path)
+	return null
 
 func _load_dir(path: String, target: Dictionary) -> void:
 	var dir := DirAccess.open(path)

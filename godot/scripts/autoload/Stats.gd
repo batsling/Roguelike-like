@@ -9,11 +9,14 @@ enum Mode { DECKBUILDER, ACTION, STRATEGY }
 const ACTION_DASH_REGEN_SECONDS := 4.0
 
 # Action mode runs "turns" on a real-time timer since there's no
-# discrete turn structure. One ACTION_TURN_TICK is the cadence at
-# which decaying statuses (Vulnerable, Weak, Frail, Burn, Blind …)
-# step down by 1 on every actor in the arena. Picked to feel like a
-# Slay-the-Spire-length turn (~10s of arena play ≈ one deckbuilder
-# turn of dialogue + planning).
+# discrete turn structure. One tick is the cadence at which decaying
+# statuses (Vulnerable, Weak, Frail, Burn, Blind …) step down by 1 on
+# every actor in the arena. Picked to feel like a Slay-the-Spire-length
+# turn (~10s of arena play ≈ one deckbuilder turn of dialogue + planning).
+#
+# This is the default; the live cadence ActionCombat uses is the editable
+# ActionTranslation.turn_tick_secs (data/action_translation.tres), which is
+# where all turn-based -> Action concept mappings now live.
 const ACTION_TURN_TICK_SECONDS := 10.0
 
 # Statuses that step down by 1 each turn (deckbuilder + strategy) or
@@ -276,6 +279,17 @@ func resolve_damage(
 		var lk_mult: float = GameState.lower_hp_damage_mult()
 		if lk_mult > 1.0 and int(target.hp) < int(source.hp):
 			amount = int(ceil(amount * lk_mult))
+	# Pen Nib: every 10th Attack the player plays deals double damage. The
+	# window is armed by the attack_double effect when the counter trips and
+	# stays up for all of that card's hits. Synchronous hits (deckbuilder /
+	# strategy / action melee) read the live global flag; Action projectiles
+	# carry a fire-time snapshot on the effect (`pen_nib_double`) so an in-flight
+	# bolt still doubles even after the flag is cleared. DoT ticks ("true")
+	# never carry an attack card, so they're excluded.
+	if has_src and ("is_player" in source) and source.is_player \
+			and damage_type != "true" \
+			and (GameState.pen_nib_double_active or bool(effect.get("pen_nib_double", false))):
+		amount *= 2
 	# Critical hit — applied PRE-block so block soaks the boosted hit. Any
 	# attacker can crit: the player from Luck + crit_chance, an enemy only if
 	# it carries a Crit Chance Up status (see actor_crit_percent). Fires on

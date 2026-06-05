@@ -51,12 +51,10 @@ var card_boosts: Array = []
 # combat start.
 var power_triggers: Array = []
 
-# Named consecutive-hit streaks (Dead Eye). key -> {count, target,
-# attack_bonus, label}. Grown by `streak_hit` effects on attack_landed,
-# wiped by `streak_reset` on attack_missed, and read in deal_damage so an
-# attack_bonus streak adds its count to outgoing player attacks vs the
-# tracked target. Cleared at combat start.
-var _streaks: Dictionary = {}
+# Consecutive-hit streaks (Dead Eye) now live on GameState so every combat
+# mode shares them; see GameState.streak_* . deal_damage folds the bonus in via
+# GameState.streak_attack_bonus and the attack_landed/attack_missed triggers
+# grow/reset it through EffectSystem.
 
 var energy: int = 0
 var max_energy: int = 3
@@ -172,7 +170,7 @@ func _init_deck() -> void:
 	exhaust_pile.clear()
 	card_boosts.clear()
 	power_triggers.clear()
-	_streaks.clear()
+	GameState.streak_clear()
 	_energy_carryover = 0
 	for c in GameState.deck:
 		if c is CardData:
@@ -214,6 +212,10 @@ func _start_player_turn() -> void:
 	TriggerBus.emit_signal("turn_started", {"turn": turn, "scene": self})
 	_fire_item_triggers("turn_started")
 	_fire_power_triggers("turn_started")
+	# Recurring turn heartbeat (here it coincides with turn start; Action runs
+	# it off a timer). Drives Happy Flower + the per-turn attack-window reset.
+	TriggerBus.emit_signal("turn_tick", {"turn": turn, "scene": self})
+	_fire_item_triggers("turn_tick")
 	_refresh_ui()
 
 func _on_end_turn() -> void:
@@ -623,51 +625,6 @@ func replay_card_effects(card: CardInstance, target_enemy) -> void:
 	_check_combat_end()
 
 # ------------------------------------------------------------------
-# Streak tracking (Dead Eye)
-# ------------------------------------------------------------------
-
-func streak_register_hit(key: String, target, attack_bonus: bool, label: String) -> void:
-	# A landed player attack grows the named streak. Switching targets
-	# resets the count first (so the bonus only rewards staying on one
-	# enemy), then this hit counts as 1.
-	if key == "" or target == null:
-		return
-	var s: Dictionary = _streaks.get(key, {"count": 0, "target": null})
-	if s.get("target") != target:
-		s["count"] = 0
-	s["target"] = target
-	s["attack_bonus"] = attack_bonus
-	s["label"] = label
-	s["count"] = int(s.get("count", 0)) + 1
-	_streaks[key] = s
-
-func streak_reset(key: String) -> void:
-	# A whiff (Blind) wipes the streak entirely.
-	if key == "":
-		return
-	_streaks.erase(key)
-
-func _streak_attack_bonus(target) -> int:
-	# Sum every attack_bonus streak currently locked onto `target`. Logged
-	# here so the player sees the exact bonus that just landed.
-	if _streaks.is_empty():
-		return 0
-	var bonus: int = 0
-	for key in _streaks:
-		var s: Dictionary = _streaks[key]
-		if not bool(s.get("attack_bonus", false)) or s.get("target") != target:
-			continue
-		var n: int = int(s.get("count", 0))
-		if n <= 0:
-			continue
-		bonus += n
-		var label: String = String(s.get("label", ""))
-		if label == "":
-			label = String(key)
-		GameLog.add("%s: +%d Dmg (streak %d)!" % [label, n, n], Color(0.7, 1.0, 0.7))
-	return bonus
-
-# ------------------------------------------------------------------
 # Effect callbacks (invoked by EffectSystem handlers via ctx.scene)
 # ------------------------------------------------------------------
 
@@ -683,7 +640,7 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 		and (damage_type == "melee" or damage_type == "ranged") \
 		and not target.is_player
 	if is_player_attack:
-		base_amount += _streak_attack_bonus(target)
+		base_amount += GameState.streak_attack_bonus(target)
 
 	# Canonical damage math lives in Stats.resolve_damage (Blind whiff,
 	# Power/Weak, Vulnerable, Dodge, block soak) so all three modes agree.

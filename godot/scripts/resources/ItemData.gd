@@ -76,13 +76,30 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #   chance (wraps an inner effect with a % roll) / trigger (persistent
 #   in-combat listener) / add_max_hp (mutates target.max_hp directly) /
 #   streak_hit + streak_reset (named consecutive-hit counter that adds to
-#   outgoing player attacks — Dead Eye) /
+#   outgoing player attacks — Dead Eye. Lives on GameState.streak_* so it
+#   works in every mode: each scene's attack path folds the bonus in via
+#   GameState.streak_attack_bonus and fires attack_landed/attack_missed to
+#   grow/reset it) /
 #   if_hp (wraps an inner effect, fires it on a player HP-fraction test:
 #   `below: f` => hp <= max*f, `above: f` => hp > max*f — Meat on the Bone,
 #   Leech Brood) /
 #   free_random_hand_card (Mummified Hand: deckbuilder zeroes a random hand
 #   card's cost this turn; strategy frees a random other slotted ability;
-#   action slashes attack cooldowns — each scene implements its own).
+#   action slashes attack cooldowns — each scene implements its own) /
+#   counter (the "every Nth …" incremental items — Happy Flower, Nunchaku,
+#   Ornamental Fan, Shuriken, Pen Nib — fires its nested `effects` only when a
+#   shared GameState progress counter trips. The counter itself is bumped
+#   centrally by ItemTriggers.fire (turn_started / card_played[attack]) so two
+#   copies don't double-count one event, and so every combat mode feeds the
+#   same tally. `key` picks the counter: "attacks_total" (this run),
+#   "attacks_this_turn" (cleared each turn), or "turns"; `every` is the
+#   threshold; `label` names the log line.
+#     Nunchaku: triggers = [{on: "card_played", if_card_type: "attack",
+#       silent: true, effects: [{type: "counter", key: "attacks_total",
+#       every: 10, label: "Nunchaku", effects: [{type: "gain_energy",
+#       value: 1}]}]}]) /
+#   attack_double (Pen Nib's payload — arms a one-card window that doubles the
+#   current player Attack's hits via Stats.resolve_damage).
 #
 # To add a new authoring vocabulary entry: register a handler in
 # EffectSystem._register_defaults and (if it needs a new trigger point)

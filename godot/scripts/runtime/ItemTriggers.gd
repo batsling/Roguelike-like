@@ -12,6 +12,24 @@ extends RefCounted
 
 static func fire(trigger_name: String, scene, player, enemies: Array,
 		ctx_extras: Dictionary = {}, turn: int = 0) -> void:
+	# Centralized incremental-item counters. Bumped here (once per event,
+	# before any item fires) so the same card_played / turn_started hooks feed
+	# the counters identically in every combat mode — the `counter` effect
+	# handler then reads them back. Done unconditionally; it's a couple of int
+	# adds whether or not an incremental item is owned.
+	match trigger_name:
+		"combat_started":
+			GameState.incremental_on_combat_started()
+		"turn_started":
+			GameState.incremental_on_turn_started(turn)
+		"turn_tick":
+			GameState.incremental_on_turn_tick()
+		"card_played":
+			# A new card play ends the previous card's Pen Nib window.
+			GameState.pen_nib_double_active = false
+			if _card_type_is(_event_card_data(ctx_extras.get("card")), "attack"):
+				GameState.incremental_on_attack()
+
 	var sources: Array = []
 	sources.append_array(GameState.inventory)
 	if GameState.equipped_weapon != null:

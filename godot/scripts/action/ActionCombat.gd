@@ -84,8 +84,10 @@ var right_cd: float = 0.0
 var right_max_cd: float = 0.0
 var player_max_block: int = 0
 
-# Floor on click-slot cooldown so a 0-cost Strike can't fire every frame.
-const MIN_CLICK_COOLDOWN := 0.35
+# Turn-based -> Action concept mapping (turns->rooms, energy->Haste,
+# draw->auto-slots, click-cooldown floor, …). Single editable source of truth;
+# see ActionTranslation.gd / data/action_translation.tres. Cached in _ready.
+var _tr: ActionTranslation
 
 # --- Auto-play deck --------------------------------------------------------
 # Everything in the deck that isn't a click card cycles through a simulated
@@ -97,25 +99,22 @@ const MIN_CLICK_COOLDOWN := 0.35
 var auto_draw: Array = []                            # Array of CardData (draw pile)
 var auto_discard: Array = []                         # Array of CardData (discard pile)
 var auto_slots: Array = []                           # Array of Dictionary {card, cooldown, max_cooldown, ttl}
-const DRAW_TEMP_SLOT_SECS := 6.0                     # lifetime of a draw-spawned auto slot
-# Discard with no temp slots left instead lengthens the base slot cooldown.
-const DISCARD_BASE_PENALTY := 1.5
+# draw -> temporary auto-slot lifetime, and the discard fallback cooldown
+# penalty, both live in ActionTranslation (_tr.draw_temp_slot_secs /
+# _tr.discard_base_penalty).
 
 # Energy-driven timed buffs (Adrenaline et al). Duration-based rather
 # than stack-based because Haste/Slow need to feel like a tempo window
-# in real time, not a status charge. Single tier — magnitudes are fixed
-# constants below; reapplying extends the timer rather than stacking.
-const ENERGY_BUFF_SECS_PER_POINT := 1.0
-const ENERGY_HASTE_MULT := 1.3
-const ENERGY_SLOW_MULT := 0.7
+# in real time, not a status charge. Single tier — magnitudes come from
+# ActionTranslation (_tr.energy_*); reapplying extends the timer.
 var _haste_remaining: float = 0.0
 var _slow_remaining: float = 0.0
 
-# "Turn" tick — fires every Stats.ACTION_TURN_TICK_SECONDS of real
-# time and decays every actor's stack-based statuses by 1, the same
-# decay that runs at deckbuilder/strategy turn-end. Without this,
-# Vulnerable / Weak / Blind would stick forever in action mode.
-var _turn_tick_remaining: float = Stats.ACTION_TURN_TICK_SECONDS
+# "Turn" tick — fires every _tr.turn_tick_secs of real time and decays every
+# actor's stack-based statuses by 1, the same decay that runs at
+# deckbuilder/strategy turn-end. Without this, Vulnerable / Weak / Blind would
+# stick forever in action mode. Initialised in _ready once _tr is cached.
+var _turn_tick_remaining: float = 0.0
 
 # Bleed-in-action window flag. Set true whenever the player takes a landed
 # hit; read + reset each turn tick so Bleed ramps only while the player is
@@ -178,6 +177,10 @@ func _exit_tree() -> void:
 
 func _ready() -> void:
 	_rng.randomize()
+	_tr = Data.action_translation
+	if _tr == null:
+		_tr = ActionTranslation.new()  # defensive: never run without the map
+	_turn_tick_remaining = _tr.turn_tick_secs
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	if not embedded:
 		# Standalone bootstrap: if a parent didn't apply a character / pick
@@ -263,9 +266,11 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	if not is_safe and not enemy_ids.is_empty():
 		enemies_to_spawn = enemy_ids.duplicate()
 		_spawn_enemies()
-		# A combat room is one fight: advance the "turn" counter and fire the
-		# start-of-combat + turn item triggers (Anchor block, Horn Cleat, …).
-		_combat_room_index += 1
+		# A combat room is one fight: advance the "turn" counter (when the
+		# translation maps rooms to turns) and fire the start-of-combat + turn
+		# item triggers (Anchor block, Horn Cleat, …).
+		if _tr.room_is_turn:
+			_combat_room_index += 1
 		_fire_item_triggers("combat_started")
 		_fire_item_triggers("turn_started")
 
@@ -357,8 +362,8 @@ func _load_loadout() -> void:
 
 	# Click slots start ready (they replace the instant basic attack). A
 	# minimum cooldown keeps 0-cost Strikes from firing every frame.
-	left_max_cd = maxf(MIN_CLICK_COOLDOWN, _cooldown_for(left_card)) if left_card != null else 0.0
-	right_max_cd = maxf(MIN_CLICK_COOLDOWN, _cooldown_for(right_card)) if right_card != null else 0.0
+	left_max_cd = maxf(_tr.min_click_cooldown, _cooldown_for(left_card)) if left_card != null else 0.0
+	right_max_cd = maxf(_tr.min_click_cooldown, _cooldown_for(right_card)) if right_card != null else 0.0
 	left_cd = 0.0
 	right_cd = 0.0
 
@@ -470,12 +475,19 @@ func _check_doors() -> void:
 func _process_turn_tick(delta: float) -> void:
 	# Ticks on real-time delta (not tempo-scaled — status durations
 	# shouldn't speed up or slow down with Haste/Slow). One tick == one
-	# "turn" (ACTION_TURN_TICK_SECONDS). On each boundary every living
-	# actor takes its DoT bite, resolves Bleed, then decays — then re-arm.
+	# "turn" (_tr.turn_tick_secs). On each boundary every living actor takes
+	# its DoT bite, resolves Bleed, then decays — then re-arm.
 	_turn_tick_remaining -= delta
 	if _turn_tick_remaining > 0.0:
 		return
-	_turn_tick_remaining += Stats.ACTION_TURN_TICK_SECONDS
+	_turn_tick_remaining += _tr.turn_tick_secs
+	# Recurring turn heartbeat: in Action this is the timer (not room entry), so
+	# per-turn effects (Ornamental Fan / Shuriken window reset, Happy Flower)
+	# are paced by time like status decay. "On the Nth turn" one-shots still
+	# ride turn_started at room entry (room-based). Gated to active combat so it
+	# doesn't tick while walking a cleared/safe room.
+	if _living_enemy_count() > 0:
+		_fire_item_triggers("turn_tick")
 	if player_actor != null and player_actor.is_alive():
 		_tick_actor_turn(player_actor, _player_was_hit)
 	_player_was_hit = false
@@ -571,9 +583,20 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 	var atk: Dictionary = effect.duplicate()
 	atk["damage_type"] = dmg_type
 	atk["power_multiplier"] = power_multiplier
+	# A player melee/ranged swing is an "attack" for streak items (Dead Eye):
+	# fold any active streak bonus in BEFORE resolving so Power/Weak/Vulnerable
+	# treat it like the rest of the hit, the same as the other modes.
+	var is_player_attack: bool = (dmg_type == "melee" or dmg_type == "ranged")
+	if is_player_attack:
+		base_dmg += GameState.streak_attack_bonus(inst.actor)
 	var res := Stats.resolve_damage(player_actor, inst.actor, base_dmg, atk, Stats.Mode.ACTION, _rng)
 	if res.missed:
 		GameLog.add("You swing blind and miss!", Color(0.85, 0.85, 0.55))
+		# A whiff breaks Dead Eye's streak.
+		if is_player_attack:
+			TriggerBus.emit_signal("attack_missed",
+				{"source": player_actor, "target": inst.actor, "scene": self})
+			_fire_item_triggers("attack_missed", {"target": inst.actor})
 		return
 	if res.dodged:
 		GameLog.add("%s dodges!" % inst.actor.display_name, Color(0.7, 0.9, 1.0))
@@ -581,22 +604,28 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 	# Any landed swing (even fully blocked) refreshes the enemy's Bleed window.
 	inst["was_hit"] = true
 	var amount: int = int(res.hp_loss)
-	if amount <= 0:
-		return
-	inst.actor.hp = maxi(0, inst.actor.hp - amount)
-	if inst.actor.hp <= 0:
-		inst.actor.dead = true
-		GameLog.add("%s defeated." % inst.actor.display_name, Color(0.6, 1.0, 0.6))
-		# Infuse: action mode keeps the keyword interesting in real-time
-		# play by gating it behind a 10% roll per killing hit, rather
-		# than the always-on deckbuilder/strategy form.
-		var infuse_stacks: int = int(effect.get("infuse", 0))
-		if infuse_stacks > 0 and Stats.roll_chance_with_luck(_rng, 10):
-			GameState.set_max_hp(GameState.max_hp + infuse_stacks, false)
-			GameLog.add("Infuse: gained %d Max HP." % infuse_stacks,
-				Color(0.85, 0.65, 1.0))
-		TriggerBus.emit_signal("enemy_killed", {"enemy": inst.actor, "scene": self})
-		_fire_item_triggers("enemy_killed")
+	if amount > 0:
+		inst.actor.hp = maxi(0, inst.actor.hp - amount)
+		if inst.actor.hp <= 0:
+			inst.actor.dead = true
+			GameLog.add("%s defeated." % inst.actor.display_name, Color(0.6, 1.0, 0.6))
+			# Infuse: action mode keeps the keyword interesting in real-time
+			# play by gating it behind a 10% roll per killing hit, rather
+			# than the always-on deckbuilder/strategy form.
+			var infuse_stacks: int = int(effect.get("infuse", 0))
+			if infuse_stacks > 0 and Stats.roll_chance_with_luck(_rng, 10):
+				GameState.set_max_hp(GameState.max_hp + infuse_stacks, false)
+				GameLog.add("Infuse: gained %d Max HP." % infuse_stacks,
+					Color(0.85, 0.65, 1.0))
+			TriggerBus.emit_signal("enemy_killed", {"enemy": inst.actor, "scene": self})
+			_fire_item_triggers("enemy_killed")
+	# The attack connected (block counts; miss/dodge returned above). Dead Eye's
+	# streak grows here — skipped on a killing blow, since the streak against a
+	# corpse is never read (the next hit is a new target, which resets).
+	if is_player_attack and inst.actor.is_alive():
+		TriggerBus.emit_signal("attack_landed",
+			{"source": player_actor, "target": inst.actor, "scene": self})
+		_fire_item_triggers("attack_landed", {"target": inst.actor})
 
 # ---------------------------------------------------------------------------
 # Enemy AI
@@ -745,7 +774,7 @@ func _cooldown_for(card: CardData) -> float:
 func _auto_cd(card: CardData) -> float:
 	if card == null:
 		return 0.0
-	return maxf(MIN_CLICK_COOLDOWN, _cooldown_for(card))
+	return maxf(_tr.min_click_cooldown, _cooldown_for(card))
 
 # A card's base effects plus any item-granted ones (Brass Knuckles -> strikes
 # inflict Bruise). Action reads CardData directly, so grants are merged here
@@ -989,7 +1018,7 @@ func _resolve_delayed_aoe_hit(effect: Dictionary) -> void:
 func draw_cards(n: int) -> void:
 	# Action design: each `draw` spawns a temporary extra auto-slot, so more
 	# cards from the auto deck cool down and fire in parallel for a short
-	# burst (DRAW_TEMP_SLOT_SECS). A Draw 2 adds two parallel slots.
+	# burst (_tr.draw_temp_slot_secs). A Draw 2 adds two parallel slots.
 	if n <= 0:
 		return
 	var added := 0
@@ -1001,11 +1030,11 @@ func draw_cards(n: int) -> void:
 			"card": card,
 			"cooldown": _auto_cd(card),
 			"max_cooldown": _auto_cd(card),
-			"ttl": DRAW_TEMP_SLOT_SECS,
+			"ttl": _tr.draw_temp_slot_secs,
 		})
 		added += 1
 	if added > 0:
-		GameLog.add("Draw: +%d auto-cast for %.0fs." % [added, DRAW_TEMP_SLOT_SECS],
+		GameLog.add("Draw: +%d auto-cast for %.0fs." % [added, _tr.draw_temp_slot_secs],
 			Color(0.7, 0.95, 1.0))
 
 func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
@@ -1036,7 +1065,7 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 	if removed > 0:
 		GameLog.add("Discard: -%d auto-cast." % removed, Color(1.0, 0.7, 0.5))
 	if penalized > 0:
-		GameLog.add("Discard: +%.1fs base cooldown." % (DISCARD_BASE_PENALTY * penalized),
+		GameLog.add("Discard: +%.1fs base cooldown." % (_tr.discard_base_penalty * penalized),
 			Color(1.0, 0.7, 0.5))
 
 # Extend the permanent (ttl == INF) auto-slot's cooldown. Used as the
@@ -1044,20 +1073,15 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 func _penalize_base_slot() -> void:
 	for slot in auto_slots:
 		if slot.ttl == INF:
-			slot.cooldown += DISCARD_BASE_PENALTY
+			slot.cooldown += _tr.discard_base_penalty
 			slot.max_cooldown = maxf(slot.max_cooldown, slot.cooldown)
 			return
 
 func _tempo_multiplier() -> float:
 	# Haste and Slow are mutually exclusive in display, but if both are
 	# live (e.g. gain_energy then lose_energy mid-window) we resolve to
-	# net by multiplying. Neither active => 1.0.
-	var mult: float = 1.0
-	if _haste_remaining > 0.0:
-		mult *= ENERGY_HASTE_MULT
-	if _slow_remaining > 0.0:
-		mult *= ENERGY_SLOW_MULT
-	return mult
+	# net by multiplying. Neither active => 1.0. Magnitudes from _tr.
+	return _tr.tempo_multiplier(_haste_remaining > 0.0, _slow_remaining > 0.0)
 
 func gain_energy(n: int) -> void:
 	# Action analog of the deckbuilder energy pool: brief Haste window.
@@ -1065,13 +1089,13 @@ func gain_energy(n: int) -> void:
 	# stack so the HUD stays readable.
 	if n <= 0:
 		return
-	_haste_remaining += float(n) * ENERGY_BUFF_SECS_PER_POINT
+	_haste_remaining += _tr.energy_to_seconds(n)
 	GameLog.add("Haste! +%ds." % n, Color(0.7, 1.0, 0.85))
 
 func lose_energy(n: int) -> void:
 	if n <= 0:
 		return
-	_slow_remaining += float(n) * ENERGY_BUFF_SECS_PER_POINT
+	_slow_remaining += _tr.energy_to_seconds(n)
 	GameLog.add("Slowed! -%ds." % n, Color(1.0, 0.7, 0.7))
 
 func _apply_self_effects(card: CardData) -> void:
@@ -1324,6 +1348,10 @@ func _spawn_single_projectile(card: CardData, dir: Vector2, range_px: float, lif
 		"range_px": range_px,
 		"card": card,
 		"hit_set": hit_set,
+		# Pen Nib: snapshot the double-damage window at FIRE time so the bolt
+		# still doubles on impact even if the global flag is cleared by another
+		# card played while it's in flight.
+		"pen_nib_double": GameState.pen_nib_double_active,
 	}
 	projectiles.append(proj)
 
@@ -1406,6 +1434,9 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 				var value: int = int(effect.get("value", 0))
 				var dmg_type: String = String(effect.get("damage_type", "melee"))
 				var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+				# Carry the fire-time Pen Nib window onto this bolt's hit.
+				if p.get("pen_nib_double", false):
+					effect["pen_nib_double"] = true
 				_deal_damage_to_enemy(inst, value, dmg_type, power_mult, effect)
 			"status":
 				var status: StringName = StringName(String(effect.get("status", "")))
