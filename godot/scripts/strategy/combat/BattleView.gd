@@ -116,6 +116,11 @@ var _free_ability_id: StringName = &""
 # no extra plays.
 var _energy_charge: int = 0
 
+# Turn-based -> Strategy concept mapping (energy->empower charge, draw->card-use
+# recharge, discard->tempo). Single editable source of truth; see
+# StrategyTranslation.gd / data/strategy_translation.tres. Cached in _ready.
+var _tr: StrategyTranslation
+
 # Counts the player unit's turns this combat so turn-based items (e.g.
 # Horn Cleat: +Block on the 2nd turn) fire on the right turn. Reset per
 # encounter; incremented at the start of each player turn.
@@ -126,6 +131,9 @@ var _loot_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 func _ready() -> void:
 	layer = 10
 	_loot_rng.randomize()
+	_tr = Data.strategy_translation
+	if _tr == null:
+		_tr = StrategyTranslation.new()  # defensive: never run without the map
 	_build_ui()
 
 # The player-controlled unit in this battle, or null. Used by the backpack /
@@ -509,6 +517,11 @@ func _on_unit_turn_started(unit) -> void:
 	_refresh_initiative()
 	if unit.is_player:
 		_player_turn_count += 1
+		# Energy (empower charge): unless it banks across turns, leftover charge
+		# from last turn is lost at the start of this one — the energy-carryover
+		# item (Ice Cream) overrides that, mirroring the deckbuilder.
+		if not _tr.energy_banks_across_turns and not GameState.has_energy_carryover_item():
+			_energy_charge = 0
 		_fire_item_turn_triggers(unit, _player_turn_count)
 		# Recurring turn heartbeat through the shared item path (EffectSystem):
 		# resets the per-turn attack window and procs Happy Flower's "every N
@@ -999,7 +1012,7 @@ func _apply_card_or_spell_effects(effects: Array, source, target, card = null, e
 		for raw_effect in effects:
 			var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
 			if empower > 0:
-				effect = _empower_effect(effect, empower)
+				effect = _tr.apply_empower(effect, empower)
 			var resolved_targets: Array = _resolve_effect_targets(effect, source, target)
 			if resolved_targets.is_empty():
 				# self-only effects with no explicit target — treat source as target.
@@ -1011,18 +1024,6 @@ func _apply_card_or_spell_effects(effects: Array, source, target, card = null, e
 					"scene": self,
 					"card": card,
 				})
-
-# Energy empower: bump a damage/block effect's value or a status effect's
-# stacks by `amount`. Returns a fresh dict so the card's shared effect data
-# is never mutated. Effects with no scalable field pass through unchanged.
-func _empower_effect(effect: Dictionary, amount: int) -> Dictionary:
-	var out: Dictionary = effect.duplicate()
-	match str(out.get("type", "")):
-		"dmg", "block":
-			out["value"] = int(out.get("value", 0)) + amount
-		"status":
-			out["stacks"] = int(out.get("stacks", 1)) + amount
-	return out
 
 func _resolve_effect_targets(effect: Dictionary, source, picked) -> Array:
 	var kind: String = str(effect.get("target", "self"))
@@ -1086,14 +1087,15 @@ func lose_energy(n: int) -> void:
 	_refresh_button_states()
 
 func draw_cards(n: int) -> void:
-	# Strategy mode has no hand to draw into. Per design, each "draw" event
-	# RECHARGES a use on a slotted card — restoring the card with the fewest
-	# current uses first so it lands meaningfully. Stops if every slotted
-	# card is already at max.
+	# Strategy mode has no hand to draw into. Per the translator, each "draw"
+	# event RECHARGES _tr.draw_recharges_per_point use(s) on a slotted card —
+	# restoring the card with the fewest current uses first so it lands
+	# meaningfully. Stops if every slotted card is already at max.
 	if _loadout == null or n <= 0:
 		return
+	var restores: int = n * _tr.draw_recharges_per_point
 	var restored_any: bool = false
-	for _i in range(n):
+	for _i in range(restores):
 		var best_card = null
 		var best_uses: int = 1 << 30
 		for card in _loadout.cards:
@@ -1111,10 +1113,10 @@ func draw_cards(n: int) -> void:
 
 func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 	# No hand to discard. Strategy treats discard as a tempo cost: it spends
-	# card plays this turn (same as lose_energy), floored at 0.
+	# _tr.discard_plays_per_point card play(s) this turn, floored at 0.
 	if n <= 0:
 		return
-	_card_plays_remaining = maxi(0, _card_plays_remaining - n)
+	_card_plays_remaining = maxi(0, _card_plays_remaining - n * _tr.discard_plays_per_point)
 	_refresh_button_states()
 
 # ----------------------------------------------------------------------
