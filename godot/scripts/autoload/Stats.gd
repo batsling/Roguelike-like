@@ -9,11 +9,14 @@ enum Mode { DECKBUILDER, ACTION, STRATEGY }
 const ACTION_DASH_REGEN_SECONDS := 4.0
 
 # Action mode runs "turns" on a real-time timer since there's no
-# discrete turn structure. One ACTION_TURN_TICK is the cadence at
-# which decaying statuses (Vulnerable, Weak, Frail, Burn, Blind …)
-# step down by 1 on every actor in the arena. Picked to feel like a
-# Slay-the-Spire-length turn (~10s of arena play ≈ one deckbuilder
-# turn of dialogue + planning).
+# discrete turn structure. One tick is the cadence at which decaying
+# statuses (Vulnerable, Weak, Frail, Burn, Blind …) step down by 1 on
+# every actor in the arena. Picked to feel like a Slay-the-Spire-length
+# turn (~10s of arena play ≈ one deckbuilder turn of dialogue + planning).
+#
+# This is the default; the live cadence ActionCombat uses is the editable
+# ActionTranslation.turn_tick_secs (data/action_translation.tres), which is
+# where all turn-based -> Action concept mappings now live.
 const ACTION_TURN_TICK_SECONDS := 10.0
 
 # Statuses that step down by 1 each turn (deckbuilder + strategy) or

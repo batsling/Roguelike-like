@@ -11,6 +11,12 @@ var _events: Dictionary = {}            # StringName -> EventData
 var _games: Dictionary = {}             # StringName -> GameData
 var _characters: Dictionary = {}        # StringName -> CharacterData
 
+# Single shared config resource mapping turn-based combat concepts to their
+# Action-combat equivalents (turns->rooms, energy->Haste, draw->auto-slots, …).
+# Edit data/action_translation.tres to retune; reference via
+# Data.action_translation from anywhere.
+var action_translation: ActionTranslation = null
+
 func _ready() -> void:
 	_load_dir("res://data/cards/", _cards)
 	_load_dir("res://data/items/", _items)
@@ -19,10 +25,24 @@ func _ready() -> void:
 	_load_dir("res://data/events/", _events)
 	_load_dir("res://data/games/", _games)
 	_load_dir("res://data/characters/", _characters)
+	action_translation = _load_action_translation()
 	print("[Data] Loaded %d cards, %d items, %d enemies (+%d action), %d events, %d games, %d characters" % [
 		_cards.size(), _items.size(), _enemies.size(), _action_enemies.size(),
 		_events.size(), _games.size(), _characters.size()
 	])
+
+# Loads the action-translation config, falling back to script defaults if the
+# .tres is missing so Action combat never crashes for a missing tunable file.
+func _load_action_translation() -> ActionTranslation:
+	var path := "res://data/action_translation.tres"
+	if ResourceLoader.exists(path):
+		var res = load(path)
+		if res is ActionTranslation:
+			return res
+		push_warning("[Data] %s is not an ActionTranslation; using defaults." % path)
+	else:
+		push_warning("[Data] %s missing; using ActionTranslation defaults." % path)
+	return ActionTranslation.new()
 
 func _load_dir(path: String, target: Dictionary) -> void:
 	var dir := DirAccess.open(path)

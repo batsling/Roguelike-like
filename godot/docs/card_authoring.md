@@ -566,9 +566,12 @@ buffs, Persistence, …) stick for the combat.
   unlock for Bag o' Glitter and any other inflict-driven card in
   tactical combat.
 - **Action** — there's no discrete turn, so a real-time "turn tick"
-  fires every `Stats.ACTION_TURN_TICK_SECONDS` (15s) and decays
-  every living actor. The tick is independent of Haste / Slow on
-  purpose — debuff duration shouldn't accelerate with tempo.
+  fires every `ActionTranslation.turn_tick_secs` (10s, edit
+  `data/action_translation.tres`) and decays every living actor. The
+  tick is independent of Haste / Slow on purpose — debuff duration
+  shouldn't accelerate with tempo. That resource also centralises the
+  other turn-based → Action mappings (energy → Haste, draw → auto-cast
+  slots, turns → rooms).
 
 ### Tick vs decay ordering (canonical)
 
