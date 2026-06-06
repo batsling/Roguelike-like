@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_stabilizer_arm_locks"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/StabilizerArmLocks.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"stabilizer_arm_locks"
+display_name = "Stabilizer Arm Locks"
+kind = 0
+rarity = 2
+description = "Gain +6 Dexterity."
+triggers = []
+stat_bonuses = {
+"dexterity": 6
+}
+scaling = []
+max_uses = -1
+source_game = "Caves of Qud"
+tags = PackedStringArray("cybernetics")
+image = ExtResource("2_img")

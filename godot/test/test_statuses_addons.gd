@@ -1,0 +1,179 @@
+extends GutTest
+
+# Coverage for the statusesnew / addonsnew wiring that was missing or
+# incomplete: the per-turn Burn / Poison / Regeneration ticks, the Buffer
+# damage-prevention status, and the Defense block bonus now shared by every
+# combat mode. The deeper per-scene behaviour (innate opening hand, etc.) is
+# exercised at play time; these guard the shared Stats resolvers/ticks that
+# all three modes route through.
+
+# Scene stub exposing the callbacks Stats.tick_actor_statuses drives. Unlike
+# test_new_items' _DotScene this also implements heal(), so Regeneration's
+# turn-boundary heal can be exercised.
+class _TickScene:
+	extends RefCounted
+	func apply_dot(target, amount: int, _source_name: String) -> void:
+		if target.is_player:
+			GameState.change_hp(-amount)
+			target.hp = GameState.hp
+		else:
+			target.hp = maxi(0, target.hp - amount)
+	func heal(target, value: int) -> void:
+		if target.is_player:
+			GameState.change_hp(value)
+			target.hp = GameState.hp
+		else:
+			target.hp = mini(target.max_hp, target.hp + value)
+	func leech_to_player(_amount: int) -> void:
+		pass
+
+# --- Burn / Poison / Regeneration ticks ----------------------------------
+
+func test_burn_bites_flat_three_and_decays() -> void:
+	GameState.reset_run()
+	var enemy := CombatActor.new()
+	enemy.max_hp = 20
+	enemy.hp = 20
+	enemy.add_status(&"burn", 5)
+	var scene := _TickScene.new()
+	Stats.tick_actor_statuses(enemy, scene)
+	assert_eq(enemy.hp, 17, "Burn deals a flat 3 regardless of stack count")
+	Stats.decay_actor_statuses(enemy, false)
+	assert_eq(enemy.get_status(&"burn"), 4, "Burn steps down by 1 each turn")
+
+func test_poison_bites_for_stack_count_and_decays() -> void:
+	GameState.reset_run()
+	var enemy := CombatActor.new()
+	enemy.max_hp = 20
+	enemy.hp = 20
+	enemy.add_status(&"poison", 4)
+	var scene := _TickScene.new()
+	Stats.tick_actor_statuses(enemy, scene)
+	assert_eq(enemy.hp, 16, "Poison bites for X = current stacks")
+	Stats.decay_actor_statuses(enemy, false)
+	assert_eq(enemy.get_status(&"poison"), 3, "Poison steps down by 1 each turn")
+
+func test_regeneration_heals_for_stack_count_and_decays() -> void:
+	GameState.reset_run()
+	var enemy := CombatActor.new()
+	enemy.max_hp = 20
+	enemy.hp = 12
+	enemy.add_status(&"regeneration", 3)
+	var scene := _TickScene.new()
+	Stats.tick_actor_statuses(enemy, scene)
+	assert_eq(enemy.hp, 15, "Regeneration heals X = current stacks")
+	Stats.decay_actor_statuses(enemy, false)
+	assert_eq(enemy.get_status(&"regeneration"), 2, "Regeneration decays each turn")
+
+func test_regeneration_never_overheals_past_max() -> void:
+	GameState.reset_run()
+	var enemy := CombatActor.new()
+	enemy.max_hp = 20
+	enemy.hp = 19
+	enemy.add_status(&"regeneration", 5)
+	Stats.tick_actor_statuses(enemy, _TickScene.new())
+	assert_eq(enemy.hp, 20, "Heal clamps to max_hp")
+
+func test_lethal_dot_short_circuits_later_ticks() -> void:
+	# A Bleed bite that kills the actor must stop Poison/Burn from "hitting"
+	# a corpse and Regeneration from reviving it.
+	GameState.reset_run()
+	var enemy := CombatActor.new()
+	enemy.max_hp = 20
+	enemy.hp = 3
+	enemy.add_status(&"bleed", 5)        # lethal
+	enemy.add_status(&"regeneration", 4) # must NOT revive
+	Stats.tick_actor_statuses(enemy, _TickScene.new())
+	assert_eq(enemy.hp, 0, "Regeneration can't undo a lethal DoT")
+	assert_false(enemy.is_alive())
+
+# --- Buffer --------------------------------------------------------------
+
+func test_buffer_negates_hp_loss_and_consumes_one_stack() -> void:
+	var enemy := CombatActor.new()
+	enemy.max_hp = 20
+	enemy.hp = 20
+	enemy.add_status(&"buffer", 2)
+	var res: Dictionary = Stats.resolve_damage(
+		null, enemy, 8, {"damage_type": "melee"}, Stats.Mode.DECKBUILDER)
+	assert_eq(int(res.hp_loss), 0, "Buffer prevents the HP loss entirely")
+	assert_true(bool(res.buffered), "the resolver reports a buffered hit")
+	assert_eq(enemy.get_status(&"buffer"), 1, "exactly one Buffer stack is burned")
+
+func test_buffer_not_consumed_when_block_soaks_the_hit() -> void:
+	var enemy := CombatActor.new()
+	enemy.max_hp = 20
+	enemy.hp = 20
+	enemy.block = 50
+	enemy.add_status(&"buffer", 1)
+	var res: Dictionary = Stats.resolve_damage(
+		null, enemy, 8, {"damage_type": "melee"}, Stats.Mode.DECKBUILDER)
+	assert_eq(int(res.hp_loss), 0)
+	assert_false(bool(res.buffered), "a fully-blocked hit never reaches HP")
+	assert_eq(enemy.get_status(&"buffer"), 1, "Buffer charge is preserved")
+
+func test_buffer_covers_piercing_no_block_hits() -> void:
+	var enemy := CombatActor.new()
+	enemy.max_hp = 20
+	enemy.hp = 20
+	enemy.block = 50
+	enemy.add_status(&"buffer", 1)
+	var res: Dictionary = Stats.resolve_damage(
+		null, enemy, 8, {"damage_type": "melee", "no_block": true},
+		Stats.Mode.DECKBUILDER)
+	assert_eq(int(res.hp_loss), 0, "Buffer stops a block-piercing hit")
+	assert_true(bool(res.buffered))
+	assert_eq(enemy.get_status(&"buffer"), 0)
+
+# --- Defense (now shared by all three modes) -----------------------------
+
+func test_defense_adds_to_block_gained() -> void:
+	var actor := CombatActor.new()
+	actor.add_status(&"defense", 3)
+	assert_eq(Stats.resolve_block(5, actor, true), 8,
+		"Defense raises block gained by its stack count")
+
+func test_defense_then_frail_order() -> void:
+	var actor := CombatActor.new()
+	actor.add_status(&"defense", 3)
+	actor.add_status(&"frail", 1)
+	# Defense adds first (5 + 3 = 8), then Frail cuts 25% -> floor(6.0) = 6.
+	assert_eq(Stats.resolve_block(5, actor, true), 6)
+
+func test_buffer_has_an_icon_mapping() -> void:
+	# Guards against the status rendering as Unknown.png in the HUD.
+	assert_true(Stats.STATUS_ICONS.has(&"buffer"),
+		"Buffer needs an entry in STATUS_ICONS")
+
+# --- Cleave addon --------------------------------------------------------
+
+func test_cleave_rewrites_single_enemy_target_to_all_enemies() -> void:
+	var card := CardData.new()
+	card.addons = PackedStringArray(["cleave"])
+	var effect := {"type": "dmg", "value": 6, "target": "enemy", "damage_type": "melee"}
+	var out: Dictionary = Stats.apply_addons_to_effect(effect, card)
+	assert_eq(String(out.get("target", "")), "all_enemies",
+		"Cleave fans the hit across the whole enemy side")
+	assert_eq(int(out.get("value", 0)), 6, "Cleave doesn't change the damage value")
+	assert_eq(String(effect.get("target", "")), "enemy",
+		"the original effect dict is left untouched (duplicate returned)")
+
+func test_cleave_leaves_self_and_non_dmg_effects_alone() -> void:
+	var card := CardData.new()
+	card.addons = PackedStringArray(["cleave"])
+	# A self-targeted block effect is not an enemy hit — Cleave must not touch it.
+	var block_eff := {"type": "block", "value": 5, "target": "self"}
+	assert_eq(String(Stats.apply_addons_to_effect(block_eff, card).get("target", "")),
+		"self")
+	# An effect already aimed at the whole side stays there (no harm).
+	var aoe := {"type": "dmg", "value": 3, "target": "all_enemies"}
+	assert_eq(String(Stats.apply_addons_to_effect(aoe, card).get("target", "")),
+		"all_enemies")
+
+func test_cleave_card_skips_the_target_picker() -> void:
+	var card := CardData.new()
+	card.addons = PackedStringArray(["cleave"])
+	card.effects = [{"type": "dmg", "value": 4, "target": "enemy"}]
+	var inst: CardInstance = CardInstance.from_data(card)
+	assert_false(inst.wants_target(),
+		"a Cleave card auto-targets the whole side, so no manual pick is needed")

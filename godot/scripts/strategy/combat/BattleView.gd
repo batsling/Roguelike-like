@@ -1063,9 +1063,10 @@ func deal_damage(source, target, value: int, effect: Dictionary = {}) -> void:
 func gain_block(target, value: int) -> void:
 	if target == null:
 		return
-	# Shared block math: Frail cuts gained block 25% (Stats.resolve_block).
-	# Strategy keeps Defense out (add_defense = false) to match prior balance.
-	target.block = maxi(0, target.block) + Stats.resolve_block(int(value), target, false)
+	# Shared block math: Defense status adds, Frail cuts gained block 25%
+	# (Stats.resolve_block) — same rule as deckbuilder/action so Defense
+	# works in every mode.
+	target.block = maxi(0, target.block) + Stats.resolve_block(int(value), target, true)
 
 func heal(target, value: int) -> void:
 	if target == null:

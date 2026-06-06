@@ -178,6 +178,26 @@ func _init_deck() -> void:
 		elif c is CardInstance:
 			draw_pile.append(c)
 	_shuffle(draw_pile)
+	_promote_innate()
+
+# Innate: cards flagged innate start in the opening hand. draw_cards pulls
+# from the BACK of draw_pile (pop_back), so moving the innate cards to the
+# end after shuffling guarantees they're the first cards drawn on turn 1.
+# Order among innate cards themselves is preserved. If more cards are innate
+# than the opening hand size, the overflow stays on top and is simply drawn
+# first on later turns — matching the "place on top of deck" wording.
+func _promote_innate() -> void:
+	var innate: Array[CardInstance] = []
+	var rest: Array[CardInstance] = []
+	for ci in draw_pile:
+		if ci != null and ci.data != null and ci.data.innate:
+			innate.append(ci)
+		else:
+			rest.append(ci)
+	if innate.is_empty():
+		return
+	rest.append_array(innate)
+	draw_pile = rest
 
 func _apply_derived_statuses() -> void:
 	# Stats autoload owns the universal derived statuses + drains
@@ -659,6 +679,9 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 	if res.dodged:
 		GameLog.add("%s dodges!" % target.display_name, Color(0.7, 0.9, 1.0))
 		return
+	if res.get("buffered", false):
+		var bwho: String = "You" if target.is_player else target.display_name
+		GameLog.add("%s's Buffer absorbs the blow!" % bwho, Color(0.8, 0.9, 1.0))
 	var amount: int = int(res.hp_loss)
 	var absorbed: int = int(res.blocked)
 

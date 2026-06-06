@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_busted_crown"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/BustedCrown.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"busted_crown"
+display_name = "Busted Crown"
+kind = 0
+rarity = 2
+description = "Gain +1 Max Energy, but -2 Discovery."
+triggers = []
+stat_bonuses = {
+"discovery": -2,
+"max_energy": 1
+}
+scaling = []
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray("wearable", "hat", "crown")
+image = ExtResource("2_img")

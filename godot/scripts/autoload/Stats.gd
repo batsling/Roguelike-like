@@ -42,6 +42,12 @@ const GROW_STATUSES: Array[StringName] = [
 # to miss each hit. Roll routes through luck (see roll_blind_miss).
 const BLIND_MISS_PCT := 30
 
+# Burn: a flat HP bite each turn boundary while the status is up (it then
+# decays by 1 like the other DoTs). Unlike Poison/Bleed the bite does NOT
+# scale with the stack count — the stack count is just how many turns it
+# lasts. Matches the statusesnew sheet ("Deals 3 damage at the end of turn").
+const BURN_DMG := 3
+
 # Status icon art lives in res://images/statuses/ as PascalCase PNGs.
 # Combat StringName keys are snake_case, so this table bridges the two.
 # Shared by all three combat modes (deckbuilder / action / strategy) so
@@ -69,6 +75,7 @@ const STATUS_ICONS := {
 	&"crit_chance_up": "CritChanceUp.png",
 	&"bruise": "Bruise.png",
 	&"leeches": "Leeches.png",
+	&"buffer": "Buffer.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -235,7 +242,7 @@ func damage_bonus(source, damage_type: String, mode: Mode, power_multiplier: int
 func resolve_damage(
 		source, target, base: int, effect: Dictionary,
 		mode: Mode, rng: RandomNumberGenerator = null) -> Dictionary:
-	var out := {"missed": false, "dodged": false, "blocked": 0, "hp_loss": 0, "crit": false}
+	var out := {"missed": false, "dodged": false, "blocked": 0, "hp_loss": 0, "crit": false, "buffered": false}
 	if target == null:
 		return out
 	var r: RandomNumberGenerator = rng if rng != null else _resolve_rng
@@ -308,6 +315,15 @@ func resolve_damage(
 		target.block -= absorbed
 		amount -= absorbed
 		out.blocked = absorbed
+	# Buffer (StS-style): prevents the next instance of HP loss outright,
+	# burning one stack. Checked AFTER block so a fully-soaked hit doesn't
+	# waste a charge — buffer only fires when damage would actually reach HP.
+	# Lives here next to Dodge so every mode's resolver shares one rule; it
+	# also covers piercing/no_block hits, which Dodge does too.
+	if amount > 0 and has_tgt and target.get_status(&"buffer") > 0:
+		target.add_status(&"buffer", -1)
+		out.buffered = true
+		amount = 0
 	out.hp_loss = maxi(0, amount)
 	return out
 
@@ -430,7 +446,15 @@ func apply_addons_to_effect(effect: Dictionary, card) -> Dictionary:
 		return effect
 	var bonus: int = addon_damage_bonus(card, String(effect.get("damage_type", "")))
 	var indiscriminate: bool = addons.has("indiscriminate")
-	if bonus == 0 and not indiscriminate:
+	# Cleave: spread a single-target hit across the whole recipient side. Every
+	# mode's effect resolver already fans "all_enemies" over its living enemies
+	# (deckbuilder sweep, action radius, strategy AoE), so Cleave is just a
+	# target rewrite from the single "enemy" to "all_enemies". Like
+	# Indiscriminate it also lets the play UI skip the manual target picker
+	# (see CardInstance.wants_target).
+	var cleave: bool = addons.has("cleave") \
+		and String(effect.get("target", "enemy")) == "enemy"
+	if bonus == 0 and not indiscriminate and not cleave:
 		return effect
 	var dup: Dictionary = effect.duplicate()
 	if bonus != 0:
@@ -441,6 +465,8 @@ func apply_addons_to_effect(effect: Dictionary, card) -> Dictionary:
 		# flag also feeds CardInstance.wants_target so the play UI skips
 		# the manual target picker.
 		dup["indiscriminate"] = true
+	if cleave:
+		dup["target"] = "all_enemies"
 	return dup
 
 func addon_damage_bonus(card, _damage_type: String) -> int:
@@ -502,6 +528,21 @@ func tick_actor_statuses(actor, scene) -> void:
 	var bleed: int = actor.get_status(&"bleed")
 	if bleed > 0:
 		scene.apply_dot(actor, bleed, "bleed")
+	# Poison: bites for X = current stacks (the sheet's start-of-turn DoT).
+	# apply_dot no-ops on a dead actor, so a lethal Bleed above short-circuits
+	# the rest safely.
+	var poison: int = actor.get_status(&"poison")
+	if poison > 0:
+		scene.apply_dot(actor, poison, "poison")
+	# Burn: flat BURN_DMG each turn while burning (does not scale with stacks).
+	if actor.get_status(&"burn") > 0:
+		scene.apply_dot(actor, BURN_DMG, "burn")
+	# Regeneration: heals X = current stacks at the turn boundary. Guard on
+	# is_alive() so a DoT that just killed the actor can't be undone by Regen,
+	# and only call heal where the scene provides it.
+	var regen: int = actor.get_status(&"regeneration")
+	if regen > 0 and actor.is_alive() and scene.has_method("heal"):
+		scene.heal(actor, regen)
 	# Leeches (Jar of Leeches): a leeched ENEMY loses HP equal to its stacks
 	# each turn and the player heals the same. Doesn't decay — the drain
 	# repeats every turn until the enemy dies. Player-owned only (no Godot

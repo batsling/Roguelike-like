@@ -4,10 +4,10 @@ extends Control
 # (CharacterSelectModal -> ChooseYourStartModal -> change_scene into the
 # Run scene) plus the Continue list backed by SaveSystem.list_named().
 #
-# Buttons that don't yet have a backing system (Run History, Collection,
-# Settings, How to Play) raise a simple "Coming Soon" stub modal so the
-# layout is feature-complete vs. the HTML build without committing to
-# half-built systems. They become real screens as those systems land.
+# Collection opens the real compendium (Collection.gd). The remaining
+# system-less buttons (Run History, Settings, How to Play) raise a simple
+# "Coming Soon" stub modal so the layout is feature-complete vs. the HTML
+# build without committing to half-built systems.
 
 const CHARACTER_SELECT_SCENE := preload("res://scenes/menu/CharacterSelectModal.tscn")
 const CHOOSE_START_SCENE := preload("res://scenes/menu/ChooseYourStartModal.tscn")
@@ -172,7 +172,7 @@ func _on_run_history() -> void:
 	_show_coming_soon("Run History", "Run history will live here once we track finished runs in Godot.")
 
 func _on_collection() -> void:
-	_show_coming_soon("Collection", "Cards, items, allies, and spells unlock screens go here.")
+	Collection.open(_modal_layer)
 
 func _on_settings() -> void:
 	_show_coming_soon("Settings", "Audio, visual, and dev-tool toggles will land here.")
