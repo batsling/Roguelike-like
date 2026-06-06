@@ -577,7 +577,8 @@ func _render_loot() -> void:
 
 # ------------------------------------------------------------------
 # Deck tab — every card the player currently owns, deduped by card id
-# with a count, so the run's whole deck is viewable from anywhere.
+# with a count, shown as a grid of the real in-game card visuals
+# (CardView) so the deck reads the same way it does in a fight.
 # ------------------------------------------------------------------
 
 func _render_deck() -> void:
@@ -602,46 +603,47 @@ func _render_deck() -> void:
 		_list_vbox.add_child(empty)
 		_hint_label.text = "Every card in your run deck."
 		return
+	# A wrapping grid of card visuals rather than a vertical list of rows.
+	var grid := HFlowContainer.new()
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_list_vbox.add_child(grid)
 	for data in order:
-		_list_vbox.add_child(_build_card_row(data, int(counts[data.id])))
+		grid.add_child(_build_card_cell(data, int(counts[data.id])))
 	_hint_label.text = "%d cards across %d unique." % [total, order.size()]
 
-func _build_card_row(card: CardData, count: int) -> Control:
-	var row := PanelContainer.new()
-	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 10)
-	row.add_child(hbox)
+# A single deck-grid cell: the actual in-game CardView for this card, with a
+# small "xN" badge in the corner when the deck holds more than one copy.
+func _build_card_cell(card: CardData, count: int) -> Control:
+	var wrapper := Control.new()
+	wrapper.custom_minimum_size = Vector2(CardView.CARD_W, CardView.CARD_H)
 
-	# Cost chip.
-	var cost := Label.new()
-	cost.text = "X" if card.cost < 0 else str(card.cost)
-	cost.custom_minimum_size = Vector2(28, 0)
-	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cost.add_theme_color_override("font_color", Color(0.6, 0.85, 1.0))
-	hbox.add_child(cost)
+	var view := CardView.new()
+	view.set_anchors_preset(Control.PRESET_FULL_RECT)
+	view.setup(CardInstance.from_data(card))
+	wrapper.add_child(view)
 
-	var info := VBoxContainer.new()
-	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hbox.add_child(info)
+	if count > 1:
+		var bg := StyleBoxFlat.new()
+		bg.bg_color = Color(0.1, 0.1, 0.14, 0.92)
+		bg.set_corner_radius_all(10)
+		bg.set_border_width_all(1)
+		bg.border_color = Color(1.0, 0.85, 0.4, 0.9)
+		bg.set_content_margin_all(4)
+		var lbl := Label.new()
+		lbl.text = "x%d" % count
+		lbl.add_theme_font_size_override("font_size", 15)
+		lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.7))
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var panel := PanelContainer.new()
+		panel.add_theme_stylebox_override("panel", bg)
+		panel.add_child(lbl)
+		panel.position = Vector2(CardView.CARD_W - 44, 6)
+		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		wrapper.add_child(panel)
 
-	var name_lbl := Label.new()
-	var type_idx: int = clampi(int(card.type), 0, CARD_TYPE_LABELS.size() - 1)
-	var rarity_idx: int = clampi(int(card.rarity), 0, RARITY_COLORS.size() - 1)
-	var copies: String = ("   x%d" % count) if count > 1 else ""
-	name_lbl.text = "%s%s   [%s]" % [card.display_name, copies, CARD_TYPE_LABELS[type_idx]]
-	name_lbl.add_theme_color_override("font_color", RARITY_COLORS[rarity_idx])
-	info.add_child(name_lbl)
-
-	var desc_lbl := Label.new()
-	var grant_extra: String = CardMods.describe(card)
-	desc_lbl.text = card.description if grant_extra == "" else "%s %s" % [card.description, grant_extra]
-	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_lbl.custom_minimum_size = Vector2(560, 0)
-	desc_lbl.add_theme_font_size_override("font_size", 12)
-	desc_lbl.add_theme_color_override("font_color", Color(0.82, 0.82, 0.82))
-	info.add_child(desc_lbl)
-
-	return row
+	return wrapper
 
 # ------------------------------------------------------------------
 # Gear tab — action-combat loadout (doubles as the equipment screen).

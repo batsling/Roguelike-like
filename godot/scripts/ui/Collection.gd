@@ -114,7 +114,7 @@ func _build_shell() -> void:
 	root.add_child(header)
 	var title := Label.new()
 	title.text = "Collection"
-	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_font_size_override("font_size", 30)
 	title.add_theme_color_override("font_color", Color(1, 0.85, 0.45))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
@@ -259,14 +259,14 @@ func _new_grid() -> ScrollContainer:
 func _new_detail_panel() -> PanelContainer:
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", _flat(Color(0.06, 0.06, 0.09, 0.95)))
-	p.custom_minimum_size = Vector2(300, 0)
+	p.custom_minimum_size = Vector2(360, 0)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	p.add_child(scroll)
 	_detail_box = VBoxContainer.new()
 	_detail_box.add_theme_constant_override("separation", 6)
 	_detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_detail_box.custom_minimum_size = Vector2(280, 0)
+	_detail_box.custom_minimum_size = Vector2(340, 0)
 	scroll.add_child(_detail_box)
 	_detail_placeholder("Select an entry to view details")
 	return p
@@ -399,7 +399,7 @@ func _status_type_color(t: String) -> Color:
 func _status_card(s: Dictionary) -> Control:
 	var tc := _status_type_color(String(s.get("type", "")))
 	var cell := _cell(tc, Callable())
-	cell.panel.custom_minimum_size = Vector2(330, 0)
+	cell.panel.custom_minimum_size = Vector2(380, 0)
 	var vb: VBoxContainer = cell.vbox
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 8)
@@ -408,7 +408,7 @@ func _status_card(s: Dictionary) -> Control:
 	var path := "res://images/statuses/%s.png" % icon
 	var tex: Texture2D = load(path) if (icon != "" and ResourceLoader.exists(path)) else null
 	if tex != null:
-		top.add_child(_tex_rect(tex, 40))
+		top.add_child(_tex_rect(tex, 48))
 	var head := VBoxContainer.new()
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(head)
@@ -436,7 +436,7 @@ func _status_card(s: Dictionary) -> Control:
 func _addon_card(a: Dictionary) -> Control:
 	var gold := Color(0.85, 0.66, 0.22)
 	var cell := _cell(gold, Callable())
-	cell.panel.custom_minimum_size = Vector2(330, 0)
+	cell.panel.custom_minimum_size = Vector2(380, 0)
 	var vb: VBoxContainer = cell.vbox
 	var head := HBoxContainer.new()
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -528,17 +528,17 @@ func _item_rarity_color(r: int) -> Color:
 func _item_cell(it: ItemData) -> Control:
 	var rc := _item_rarity_color(int(it.rarity))
 	var cell := _cell(rc, func(): _show_item_detail(it))
-	cell.panel.custom_minimum_size = Vector2(118, 0)
+	cell.panel.custom_minimum_size = Vector2(158, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	if it.image != null:
-		var tr := _tex_rect(it.image, 66)
+		var tr := _tex_rect(it.image, 100)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vb.add_child(tr)
-	var nm := _label(it.display_name, rc, 11, true, true)
+	var nm := _label(it.display_name, rc, 13, true, true)
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vb.add_child(nm)
-	vb.add_child(_label(ITEM_RARITY_NAMES[clampi(int(it.rarity), 0, 4)].to_upper(), rc, 9, true))
+	vb.add_child(_label(ITEM_RARITY_NAMES[clampi(int(it.rarity), 0, 4)].to_upper(), rc, 11, true))
 	return cell.panel
 
 func _show_item_detail(it: ItemData) -> void:
@@ -598,15 +598,15 @@ func _populate_characters() -> void:
 func _character_cell(ch: CharacterData) -> Control:
 	var green := Color(0.4, 0.78, 0.4)
 	var cell := _cell(green, func(): _show_character_detail(ch))
-	cell.panel.custom_minimum_size = Vector2(150, 0)
+	cell.panel.custom_minimum_size = Vector2(182, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	if ch.portrait != null:
-		var tr := _tex_rect(ch.portrait, 90)
+		var tr := _tex_rect(ch.portrait, 120)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vb.add_child(tr)
-	vb.add_child(_label(ch.display_name, green, 12, true, true))
-	vb.add_child(_label("❤ %d   ⚡ %d" % [ch.base_max_hp, ch.base_max_energy], Color(0.7, 0.7, 0.75), 10, true))
+	vb.add_child(_label(ch.display_name, green, 14, true, true))
+	vb.add_child(_label("❤ %d   ⚡ %d" % [ch.base_max_hp, ch.base_max_energy], Color(0.7, 0.7, 0.75), 12, true))
 	return cell.panel
 
 func _show_character_detail(ch: CharacterData) -> void:
@@ -730,12 +730,12 @@ func _card_cell(cd: CardData) -> Control:
 	var rc := _card_rarity_color(int(cd.rarity))
 	var tc := _card_type_color(int(cd.type))
 	var cell := _cell(rc, func(): _show_card_detail(cd))
-	cell.panel.custom_minimum_size = Vector2(124, 0)
+	cell.panel.custom_minimum_size = Vector2(164, 0)
 	var vb: VBoxContainer = cell.vbox
 	var top := HBoxContainer.new()
 	top.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vb.add_child(top)
-	var cost := _label("X" if cd.cost < 0 else str(cd.cost), Color(0.95, 0.95, 0.95), 12)
+	var cost := _label("X" if cd.cost < 0 else str(cd.cost), Color(0.95, 0.95, 0.95), 15)
 	cost.add_theme_color_override("font_color", Color.WHITE)
 	var cost_panel := PanelContainer.new()
 	cost_panel.add_theme_stylebox_override("panel", _flat(tc))
@@ -743,12 +743,12 @@ func _card_cell(cd: CardData) -> Control:
 	top.add_child(cost_panel)
 	top.add_child(_label("", Color.WHITE, 1))  # spacer
 	if cd.image != null:
-		var tr := _tex_rect(cd.image, 64)
+		var tr := _tex_rect(cd.image, 108)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vb.add_child(tr)
-	vb.add_child(_label(cd.display_name, Color(0.92, 0.92, 0.92), 11, false, true))
-	vb.add_child(_label(CARD_TYPE_NAMES[clampi(int(cd.type), 0, 6)].to_upper(), tc, 9))
-	vb.add_child(_label(CARD_RARITY_NAMES[clampi(int(cd.rarity), 0, 4)].to_upper(), rc, 9))
+	vb.add_child(_label(cd.display_name, Color(0.92, 0.92, 0.92), 13, false, true))
+	vb.add_child(_label(CARD_TYPE_NAMES[clampi(int(cd.type), 0, 6)].to_upper(), tc, 11))
+	vb.add_child(_label(CARD_RARITY_NAMES[clampi(int(cd.rarity), 0, 4)].to_upper(), rc, 11))
 	return cell.panel
 
 func _show_card_detail(cd: CardData) -> void:
