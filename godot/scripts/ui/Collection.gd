@@ -66,10 +66,25 @@ static func open(parent: Node) -> Collection:
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Float as a true full-screen overlay regardless of where we're parented.
+	# Opened over the backpack the parent Control's rect isn't guaranteed to
+	# cover the viewport, which left the panel rendering tiny — top_level +
+	# an explicit viewport fit (re-applied on resize) anchors us to the screen
+	# instead of inheriting the parent's size.
+	top_level = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_fit_to_viewport()
+	get_viewport().size_changed.connect(_fit_to_viewport)
 	_build_shell()
 	_refresh()
+
+# Force the overlay to exactly cover the viewport. Anchors are relative to the
+# viewport because we're top_level, so a full-rect preset plus a zeroed
+# position/size keeps us pinned even as the window resizes.
+func _fit_to_viewport() -> void:
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	position = Vector2.ZERO
+	size = get_viewport_rect().size
 
 func _input(event: InputEvent) -> void:
 	# Esc closes; also swallow the backpack toggle so Tab doesn't reach the
