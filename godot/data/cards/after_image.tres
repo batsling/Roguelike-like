@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_after_image"]
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_after_image"]
 
 [ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/AfterImage.png" id="2_img"]
 
 [resource]
 script = ExtResource("1_card")
+image = ExtResource("2_img")
 id = &"after_image"
 display_name = "After Image"
 type = 2

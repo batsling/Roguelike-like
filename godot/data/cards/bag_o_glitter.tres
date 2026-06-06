@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_bag_o_glitter"]
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_bag_o_glitter"]
 
 [ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/items/BagO'Glitter.png" id="2_img"]
 
 [resource]
 script = ExtResource("1_card")
+image = ExtResource("2_img")
 id = &"bag_o_glitter"
 display_name = "Bag o' Glitter"
 type = 1
