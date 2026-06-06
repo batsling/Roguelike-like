@@ -142,6 +142,10 @@ func _build_ui() -> void:
 	title.add_theme_color_override("font_color", Color(1, 0.9, 0.7))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
+	var collection_btn := Button.new()
+	collection_btn.text = "📚 Collection"
+	collection_btn.pressed.connect(_open_collection)
+	header.add_child(collection_btn)
 	var close_btn := Button.new()
 	close_btn.text = "Close (Tab)"
 	close_btn.pressed.connect(close)
@@ -235,6 +239,12 @@ func _build_ui() -> void:
 	_hint_label.add_theme_font_size_override("font_size", 12)
 	_hint_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
 	main.add_child(_hint_label)
+
+# Opens the Collection compendium on top of the backpack. Added as a child of
+# the backpack (which runs PROCESS_MODE_ALWAYS and stays visible underneath) so
+# closing the collection returns here without un-pausing the run.
+func _open_collection() -> void:
+	Collection.open(self)
 
 func _add_sort_button(text: String, mode: SortMode) -> void:
 	var b := Button.new()
