@@ -22,7 +22,7 @@ effects = [{
 "stacks": 1,
 "target": "all_enemies"
 }]
-tags = PackedStringArray("aoe", "cleave", "electric")
+tags = PackedStringArray("ironclad", "aoe", "cleave", "electric", "offense", "debuff")
 source_game = "Slay the Spire"
 image = ExtResource("2_img")
 portrait_color = Color(0.7, 0.35, 0.7, 1)

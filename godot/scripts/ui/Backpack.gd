@@ -172,7 +172,7 @@ func _build_ui() -> void:
 	stats_scroll.custom_minimum_size = Vector2(310, 500)
 	stats_col.add_child(stats_scroll)
 	_stats_vbox = VBoxContainer.new()
-	_stats_vbox.add_theme_constant_override("separation", 2)
+	_stats_vbox.add_theme_constant_override("separation", 8)
 	_stats_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stats_scroll.add_child(_stats_vbox)
 
@@ -297,57 +297,89 @@ func _refresh() -> void:
 # total with the item/temp-bonus breakdown when there is one.
 # ------------------------------------------------------------------
 
+const STAT_ICON_SIZE := 22
+
 func _refresh_stats() -> void:
 	if _stats_vbox == null:
 		return
 	for c in _stats_vbox.get_children():
 		c.queue_free()
 
-	_stats_vbox.add_child(_stat_header("Vitals"))
-	_stats_vbox.add_child(_stat_row("Health", "%d / %d" % [GameState.hp, GameState.max_hp], Color(0.95, 0.5, 0.5)))
+	var vitals := _stat_section("Vitals")
+	vitals.add_child(_stat_widget("Health", "%d / %d" % [GameState.hp, GameState.max_hp],
+		Color(0.95, 0.5, 0.5), "Your current and maximum hit points. Reach 0 and the run ends."))
 	var energy_def: StatDefinition = Stats.get_definition(&"max_energy")
-	_stats_vbox.add_child(_stat_row("Energy", str(GameState.max_energy), Color(0.6, 0.85, 1.0),
-		energy_def.description if energy_def != null else ""))
-	_stats_vbox.add_child(_stat_row("Hand Size", str(GameState.hand_size), Color(0.8, 0.85, 0.95)))
-	_stats_vbox.add_child(_stat_row("Gold", str(GameState.gold), Color(1.0, 0.85, 0.35)))
+	vitals.add_child(_stat_widget("Energy", str(GameState.max_energy), Color(0.6, 0.85, 1.0),
+		energy_def.description if energy_def != null else "Energy spent to play cards each combat turn."))
+	vitals.add_child(_stat_widget("Hand Size", str(GameState.hand_size), Color(0.8, 0.85, 0.95),
+		"Cards drawn at the start of each of your combat turns."))
+	vitals.add_child(_stat_widget("Gold", str(GameState.gold), Color(1.0, 0.85, 0.35),
+		"Currency spent in shops on cards, items, and removals."))
 
-	_stats_vbox.add_child(_stat_header("Attributes"))
-	_add_attribute(&"strength", Color(0.95, 0.55, 0.45))
-	_add_attribute(&"dexterity", Color(0.55, 0.85, 0.55))
-	_add_attribute(&"intelligence", Color(0.6, 0.7, 1.0))
-	_add_attribute(&"charisma", Color(0.9, 0.6, 0.95))
-	_add_attribute(&"constitution", Color(0.85, 0.7, 0.5))
+	var attrs := _stat_section("Attributes")
+	_add_attribute(attrs, &"strength", Color(0.95, 0.55, 0.45))
+	_add_attribute(attrs, &"dexterity", Color(0.55, 0.85, 0.55))
+	_add_attribute(attrs, &"intelligence", Color(0.6, 0.7, 1.0))
+	_add_attribute(attrs, &"charisma", Color(0.9, 0.6, 0.95))
+	_add_attribute(attrs, &"constitution", Color(0.85, 0.7, 0.5))
 
-	_stats_vbox.add_child(_stat_header("Combat"))
-	_add_attribute(&"crit_chance", Color(1.0, 0.8, 0.4), "%")
+	var combat := _stat_section("Combat")
+	_add_attribute(combat, &"crit_chance", Color(1.0, 0.8, 0.4), "%")
 	# Crit Chance Up = the effective per-hit crit chance (folds Luck in).
-	_stats_vbox.add_child(_stat_row(
-		"Crit Chance Up", "%d%%" % Stats.crit_chance_percent(), Color(1.0, 0.85, 0.55),
+	combat.add_child(_stat_widget("Crit Chance Up", "%d%%" % Stats.crit_chance_percent(),
+		Color(1.0, 0.85, 0.55),
 		"Effective per-hit crit chance: max(0, 2 x Luck) + Crit Chance, capped at 100%.", true))
-	_add_attribute(&"crit_damage", Color(1.0, 0.7, 0.4), "%")
-	_add_attribute(&"luck", Color(0.7, 1.0, 0.7))
-	_add_attribute(&"speed", Color(0.6, 0.9, 1.0))
-	_add_attribute(&"harvesting", Color(1.0, 0.85, 0.4))
-	_add_attribute(&"regeneration", Color(0.55, 0.95, 0.7))
+	_add_attribute(combat, &"crit_damage", Color(1.0, 0.7, 0.4), "%")
+	_add_attribute(combat, &"luck", Color(0.7, 1.0, 0.7))
+	_add_attribute(combat, &"speed", Color(0.6, 0.9, 1.0))
+	_add_attribute(combat, &"harvesting", Color(1.0, 0.85, 0.4))
+	_add_attribute(combat, &"regeneration", Color(0.55, 0.95, 0.7))
 
-	_stats_vbox.add_child(_stat_header("Exploration"))
-	_stats_vbox.add_child(_stat_row("FoV", str(BASE_FOV + GameState.fov_bonus), Color(0.7, 0.85, 1.0),
+	var explore := _stat_section("Exploration")
+	explore.add_child(_stat_widget("FoV", str(BASE_FOV + GameState.fov_bonus), Color(0.7, 0.85, 1.0),
 		"Number of game portals shown on the overworld."))
-	_stats_vbox.add_child(_stat_row("Discovery", str(GameState.discovery), Color(0.8, 0.8, 1.0),
+	explore.add_child(_stat_widget("Discovery", str(GameState.discovery), Color(0.8, 0.8, 1.0),
 		"Extra choices when collecting item and card rewards."))
-	_stats_vbox.add_child(_stat_row("Dash", str(GameState.dash_charges), Color(0.85, 0.9, 1.0),
+	explore.add_child(_stat_widget("Dash", str(GameState.dash_charges), Color(0.85, 0.9, 1.0),
 		"Charges to dash to any connected game node."))
-	_stats_vbox.add_child(_stat_row("Reroll", str(GameState.reroll_charges), Color(0.85, 0.9, 1.0),
+	explore.add_child(_stat_widget("Reroll", str(GameState.reroll_charges), Color(0.85, 0.9, 1.0),
 		"Charges to re-roll the overworld portal choices."))
 
-# Adds a base-stat row (with item/temp breakdown + tooltip from its
+# A titled, rounded "stat card" panel. Adds it to the hub and returns the
+# inner VBox so the caller can append its rows.
+func _stat_section(title: String) -> VBoxContainer:
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.11, 0.12, 0.16, 0.85)
+	sb.set_corner_radius_all(10)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(1, 1, 1, 0.06)
+	sb.content_margin_left = 10
+	sb.content_margin_right = 10
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
+	card.add_theme_stylebox_override("panel", sb)
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 3)
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(body)
+	var head := Label.new()
+	head.text = title.to_upper()
+	head.add_theme_font_size_override("font_size", 12)
+	head.add_theme_color_override("font_color", Color(1.0, 0.78, 0.4))
+	body.add_child(head)
+	body.add_child(HSeparator.new())
+	_stats_vbox.add_child(card)
+	return body
+
+# Adds a base-stat row (value with item/temp breakdown + a tooltip from its
 # StatDefinition), then an indented derived-status row if the stat has one
 # (e.g. Strength -> Power). `suffix` appends a unit like "%".
-func _add_attribute(stat_id: StringName, color: Color, suffix: String = "") -> void:
+func _add_attribute(body: VBoxContainer, stat_id: StringName, color: Color, suffix: String = "") -> void:
 	var def: StatDefinition = Stats.get_definition(stat_id)
 	var label: String = def.display_name if def != null and def.display_name != "" else String(stat_id).capitalize()
 	var tip: String = def.description if def != null else ""
-	_stats_vbox.add_child(_stat_row(label, _stat_value_text(stat_id, suffix), color, tip))
+	body.add_child(_stat_widget(label, _stat_value_text(stat_id, suffix), color, tip))
 	if def != null and def.derived_status != &"":
 		var dname: String = String(def.derived_status).capitalize()
 		# Skip the indented derived row when it would just repeat the stat
@@ -355,7 +387,104 @@ func _add_attribute(stat_id: StringName, color: Color, suffix: String = "") -> v
 		if dname != label:
 			var per: int = maxi(1, def.derived_per)
 			var stacks: int = int(floor(float(Stats.get_value(stat_id)) / float(per)))
-			_stats_vbox.add_child(_stat_row(dname, str(stacks), Color(0.6, 0.8, 0.95), "", true))
+			var ddesc := "Granted by %s at combat start: 1 stack per %d point%s." % [
+				label, per, "s" if per != 1 else ""]
+			body.add_child(_stat_widget(dname, str(stacks), Color(0.6, 0.8, 0.95), ddesc, true))
+
+# Builds one stat row: icon (or a colour dot) + label + value chip, wrapped in
+# a StatRow that owns the hover highlight and the themed description tooltip.
+# `derived` indents/dims the row (e.g. Strength's Power) and drops the icon.
+func _stat_widget(label: String, value: String, color: Color, desc: String = "", derived: bool = false) -> StatRow:
+	var row := StatRow.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.stat_title = label
+	row.stat_desc = desc
+	# A non-empty tooltip_text is what makes Godot call our _make_custom_tooltip.
+	row.tooltip_text = desc if desc != "" else label
+
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 8)
+	hb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(hb)
+
+	hb.add_child(_icon_or_dot(label, color, derived))
+
+	var lbl := Label.new()
+	lbl.text = label
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.add_theme_color_override("font_color",
+		color if not derived else color.lerp(Color(0.6, 0.6, 0.6), 0.4))
+	if derived:
+		lbl.add_theme_font_size_override("font_size", 12)
+	hb.add_child(lbl)
+
+	hb.add_child(_value_chip(value, derived))
+	return row
+
+# Stat icon from the old HTML set (res://images/Stats/<Name>.png), or null when
+# the stat doesn't have one yet — callers fall back to a colour dot.
+func _stat_icon(icon_name: String) -> Texture2D:
+	if icon_name == "":
+		return null
+	var path := "res://images/Stats/%s.png" % icon_name
+	return load(path) if ResourceLoader.exists(path) else null
+
+# A fixed-size leading cell: the stat's icon if one exists, otherwise a small
+# colour dot tinted to the stat. Derived rows get a blank spacer so their
+# label still lines up under the parent stat.
+func _icon_or_dot(label: String, color: Color, derived: bool) -> Control:
+	var box := Control.new()
+	box.custom_minimum_size = Vector2(STAT_ICON_SIZE, STAT_ICON_SIZE)
+	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if derived:
+		return box
+	var tex := _stat_icon(label.replace(" ", ""))
+	if tex != null:
+		var tr := TextureRect.new()
+		tr.texture = tex
+		tr.set_anchors_preset(Control.PRESET_FULL_RECT)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(tr)
+	else:
+		var dot := Panel.new()
+		var ds := StyleBoxFlat.new()
+		ds.bg_color = color
+		ds.set_corner_radius_all(6)
+		dot.add_theme_stylebox_override("panel", ds)
+		dot.size = Vector2(12, 12)
+		dot.position = Vector2((STAT_ICON_SIZE - 12) / 2.0, (STAT_ICON_SIZE - 12) / 2.0)
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(dot)
+	return box
+
+# Right-aligned value in a subtle dark rounded chip.
+func _value_chip(text: String, derived: bool) -> Control:
+	var chip := PanelContainer.new()
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0.32)
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 1
+	sb.content_margin_bottom = 1
+	chip.add_theme_stylebox_override("panel", sb)
+	var l := Label.new()
+	l.text = text
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.add_theme_color_override("font_color", Color(0.97, 0.97, 0.97))
+	if derived:
+		l.add_theme_font_size_override("font_size", 12)
+	chip.add_child(l)
+	return chip
 
 # "total" or "total  (base +bonus)" when item/temp bonuses are present.
 func _stat_value_text(stat_id: StringName, suffix: String = "") -> String:
@@ -366,34 +495,6 @@ func _stat_value_text(stat_id: StringName, suffix: String = "") -> String:
 	if bonus == 0:
 		return "%d%s" % [total, suffix]
 	return "%d%s  (%d %+d)" % [total, suffix, base, bonus]
-
-func _stat_header(text: String) -> Control:
-	var lbl := Label.new()
-	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", 13)
-	lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.5))
-	return lbl
-
-func _stat_row(label_text: String, value_text: String, color: Color, tooltip: String = "", derived: bool = false) -> Control:
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	if tooltip != "":
-		row.tooltip_text = tooltip
-		row.mouse_filter = Control.MOUSE_FILTER_STOP
-	var lbl := Label.new()
-	lbl.text = ("    " if derived else "") + label_text
-	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lbl.add_theme_color_override("font_color", color if not derived else color.lerp(Color(0.6, 0.6, 0.6), 0.35))
-	var val := Label.new()
-	val.text = value_text
-	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	val.add_theme_color_override("font_color", Color(0.96, 0.96, 0.96))
-	if derived:
-		lbl.add_theme_font_size_override("font_size", 12)
-		val.add_theme_font_size_override("font_size", 12)
-	row.add_child(lbl)
-	row.add_child(val)
-	return row
 
 # ------------------------------------------------------------------
 # History tab — the Notifications channel log (item procs, pickups, run
@@ -577,7 +678,8 @@ func _render_loot() -> void:
 
 # ------------------------------------------------------------------
 # Deck tab — every card the player currently owns, deduped by card id
-# with a count, so the run's whole deck is viewable from anywhere.
+# with a count, shown as a grid of the real in-game card visuals
+# (CardView) so the deck reads the same way it does in a fight.
 # ------------------------------------------------------------------
 
 func _render_deck() -> void:
@@ -602,46 +704,47 @@ func _render_deck() -> void:
 		_list_vbox.add_child(empty)
 		_hint_label.text = "Every card in your run deck."
 		return
+	# A wrapping grid of card visuals rather than a vertical list of rows.
+	var grid := HFlowContainer.new()
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_list_vbox.add_child(grid)
 	for data in order:
-		_list_vbox.add_child(_build_card_row(data, int(counts[data.id])))
+		grid.add_child(_build_card_cell(data, int(counts[data.id])))
 	_hint_label.text = "%d cards across %d unique." % [total, order.size()]
 
-func _build_card_row(card: CardData, count: int) -> Control:
-	var row := PanelContainer.new()
-	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 10)
-	row.add_child(hbox)
+# A single deck-grid cell: the actual in-game CardView for this card, with a
+# small "xN" badge in the corner when the deck holds more than one copy.
+func _build_card_cell(card: CardData, count: int) -> Control:
+	var wrapper := Control.new()
+	wrapper.custom_minimum_size = Vector2(CardView.CARD_W, CardView.CARD_H)
 
-	# Cost chip.
-	var cost := Label.new()
-	cost.text = "X" if card.cost < 0 else str(card.cost)
-	cost.custom_minimum_size = Vector2(28, 0)
-	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cost.add_theme_color_override("font_color", Color(0.6, 0.85, 1.0))
-	hbox.add_child(cost)
+	var view := CardView.new()
+	view.set_anchors_preset(Control.PRESET_FULL_RECT)
+	view.setup(CardInstance.from_data(card))
+	wrapper.add_child(view)
 
-	var info := VBoxContainer.new()
-	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hbox.add_child(info)
+	if count > 1:
+		var bg := StyleBoxFlat.new()
+		bg.bg_color = Color(0.1, 0.1, 0.14, 0.92)
+		bg.set_corner_radius_all(10)
+		bg.set_border_width_all(1)
+		bg.border_color = Color(1.0, 0.85, 0.4, 0.9)
+		bg.set_content_margin_all(4)
+		var lbl := Label.new()
+		lbl.text = "x%d" % count
+		lbl.add_theme_font_size_override("font_size", 15)
+		lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.7))
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var panel := PanelContainer.new()
+		panel.add_theme_stylebox_override("panel", bg)
+		panel.add_child(lbl)
+		panel.position = Vector2(CardView.CARD_W - 44, 6)
+		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		wrapper.add_child(panel)
 
-	var name_lbl := Label.new()
-	var type_idx: int = clampi(int(card.type), 0, CARD_TYPE_LABELS.size() - 1)
-	var rarity_idx: int = clampi(int(card.rarity), 0, RARITY_COLORS.size() - 1)
-	var copies: String = ("   x%d" % count) if count > 1 else ""
-	name_lbl.text = "%s%s   [%s]" % [card.display_name, copies, CARD_TYPE_LABELS[type_idx]]
-	name_lbl.add_theme_color_override("font_color", RARITY_COLORS[rarity_idx])
-	info.add_child(name_lbl)
-
-	var desc_lbl := Label.new()
-	var grant_extra: String = CardMods.describe(card)
-	desc_lbl.text = card.description if grant_extra == "" else "%s %s" % [card.description, grant_extra]
-	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_lbl.custom_minimum_size = Vector2(560, 0)
-	desc_lbl.add_theme_font_size_override("font_size", 12)
-	desc_lbl.add_theme_color_override("font_color", Color(0.82, 0.82, 0.82))
-	info.add_child(desc_lbl)
-
-	return row
+	return wrapper
 
 # ------------------------------------------------------------------
 # Gear tab — action-combat loadout (doubles as the equipment screen).

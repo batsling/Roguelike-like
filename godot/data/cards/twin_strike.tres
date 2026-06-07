@@ -18,7 +18,7 @@ effects = [{
 "damage_type": "melee",
 "hits": 2
 }]
-tags = PackedStringArray("strike")
+tags = PackedStringArray("ironclad", "strike", "offense")
 source_game = "Slay the Spire"
 image = ExtResource("2_img")
 portrait_color = Color(0.75, 0.25, 0.25, 1)

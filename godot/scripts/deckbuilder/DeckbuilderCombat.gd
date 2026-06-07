@@ -476,9 +476,10 @@ func _show_reward_modal() -> void:
 			_reward_modal.queue_free()
 			_reward_modal = null
 		_close(true))
-	# Full reward pool — combat rewards aren't class-scoped (no deck choice
-	# in the Godot port yet); pass a tag here to narrow them later.
-	reward.setup()
+	# Scope the offered cards to the player's class (e.g. Ironclad sees
+	# ironclad-tagged cards) via the character's class tag. Empty tag (no class
+	# pool) falls back to the full reward pool inside reward_card_pool().
+	reward.setup(GameState.card_reward_tag())
 
 func _decay_statuses(actor: CombatActor) -> void:
 	Stats.decay_actor_statuses(actor)

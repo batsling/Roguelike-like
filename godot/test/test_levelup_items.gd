@@ -98,3 +98,24 @@ func test_ironclad_character_levelup_data() -> void:
 	assert_eq(int(ic.level_up_stats.get("dexterity", 0)), 1)
 	assert_eq(String(ic.level_up_reward_type), "card")
 	assert_eq(String(ic.level_up_card_tag), "ironclad")
+
+# The class card pool must actually be populated (the Ironclad cards carry the
+# tag), and must NOT leak other classes' cards — e.g. All for One (Defect) and
+# All-Out Attack (Silent) are not Ironclad and shouldn't appear.
+func test_ironclad_pool_contains_class_cards_and_excludes_others() -> void:
+	var ids := {}
+	for c in Data.reward_card_pool(&"ironclad"):
+		ids[String(c.id)] = true
+	# A representative spread of Ironclad cards that previously lacked the tag.
+	for id in ["anger", "carnage", "cleave", "heavy_blade", "iron_wave",
+			"twin_strike", "bludgeon", "armaments"]:
+		assert_true(ids.has(id), "%s should be in the Ironclad reward pool" % id)
+	for id in ["all_for_one", "all_out_attack", "accuracy", "beam_cell"]:
+		assert_false(ids.has(id), "%s is not Ironclad and should be excluded" % id)
+
+# General combat rewards scope to the active character's class via the tag
+# returned by GameState.card_reward_tag().
+func test_card_reward_tag_follows_active_character() -> void:
+	assert_eq(String(GameState.card_reward_tag()), "", "no character = unscoped pool")
+	GameState.apply_character(Data.get_character(&"ironclad"))
+	assert_eq(String(GameState.card_reward_tag()), "ironclad")

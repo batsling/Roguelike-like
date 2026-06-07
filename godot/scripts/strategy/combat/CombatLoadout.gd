@@ -13,58 +13,43 @@ extends RefCounted
 
 const MAX_SLOTS := 3
 
-# The chosen cards (Array[CardData], length 0..MAX_SLOTS).
+# The chosen card INSTANCES (Array[CardInstance], length 0..MAX_SLOTS). Each is
+# a distinct physical card from the deck, so two copies of the same card are
+# two independent slots with their own uses (CardInstance.uses).
 var cards: Array = []
-# The equipped weapon card (CardData) or null. One per combat; it replaces
-# the basic Attack action and is usable once per turn with no use depletion.
-var weapon: CardData = null
+# The equipped weapon card INSTANCE or null. One per combat; it replaces the
+# basic Attack action and is usable once per turn with no use depletion.
+var weapon: CardInstance = null
 
-# The choosable pool for the 3 slots: every non-basic, non-weapon, deduped
-# card in the deck. Basics live on Attack/Defend; weapons live in the weapon
-# slot (see weapon_cards_from_deck).
+# The choosable pool for the 3 slots: every non-basic, non-weapon card INSTANCE
+# in the deck. NOT deduped — each copy is its own slottable card. Basics live on
+# Attack/Defend; weapons live in the weapon slot (see weapon_cards_from_deck).
 static func available_from_deck(deck: Array) -> Array:
 	var out: Array = []
-	var seen: Dictionary = {}
 	for entry in deck:
-		var card: CardData = _extract_card(entry)
-		if card == null or _is_basic(card):
+		if not (entry is CardInstance) or entry.data == null:
+			continue
+		if _is_basic(entry.data):
 			continue
 		# Weapons live in the weapon slot, not the card pool.
-		if is_weapon(card) or (entry is CardInstance and entry.source_weapon_id != 0):
+		if is_weapon(entry.data) or entry.source_weapon_id != 0:
 			continue
-		if seen.has(card.id):
-			continue
-		seen[card.id] = true
-		out.append(card)
+		out.append(entry)
 	return out
 
-# Weapon cards in the deck (deduped). A card is a weapon if it's tagged
-# "weapon" or was granted by a weapon item (CardInstance.source_weapon_id).
+# Weapon card INSTANCES in the deck (each copy listed). A card is a weapon if
+# it's tagged "weapon" or was granted by a weapon item (source_weapon_id).
 static func weapon_cards_from_deck(deck: Array) -> Array:
 	var out: Array = []
-	var seen: Dictionary = {}
 	for entry in deck:
-		var card: CardData = _extract_card(entry)
-		if card == null:
+		if not (entry is CardInstance) or entry.data == null:
 			continue
-		var is_w: bool = is_weapon(card) or (entry is CardInstance and entry.source_weapon_id != 0)
-		if not is_w or seen.has(card.id):
-			continue
-		seen[card.id] = true
-		out.append(card)
+		if is_weapon(entry.data) or entry.source_weapon_id != 0:
+			out.append(entry)
 	return out
 
 static func is_weapon(card: CardData) -> bool:
 	return card != null and card.tags.has("weapon")
-
-static func _extract_card(entry) -> CardData:
-	if entry == null:
-		return null
-	if entry is CardData:
-		return entry
-	if entry is CardInstance and entry.data is CardData:
-		return entry.data
-	return null
 
 static func _is_basic(card: CardData) -> bool:
 	return card.tags.has("strike") or card.tags.has("defend")
