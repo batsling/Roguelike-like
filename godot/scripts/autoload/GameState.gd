@@ -1037,6 +1037,36 @@ func recharge_card_use(card: CardData, n: int = 1) -> int:
 		card_uses[card.id] = cur + restored
 	return restored
 
+# --- Per-INSTANCE uses (strategy loadout). Each CardInstance carries its own
+# remaining uses (CardInstance.uses), so two copies of the same card are
+# independent. Max is still derived from the card data (max_card_uses). ---
+
+func card_uses_max(inst: CardInstance) -> int:
+	return max_card_uses(inst.data) if inst != null else 0
+
+func card_uses_remaining(inst: CardInstance) -> int:
+	if inst == null or inst.data == null:
+		return 0
+	if inst.uses < 0:
+		inst.uses = max_card_uses(inst.data)
+	return inst.uses
+
+func spend_card_use_inst(inst: CardInstance) -> bool:
+	if card_uses_remaining(inst) <= 0:
+		return false
+	inst.uses -= 1
+	return true
+
+func recharge_card_use_inst(inst: CardInstance, n: int = 1) -> int:
+	if inst == null or inst.data == null or n <= 0:
+		return 0
+	var cap: int = max_card_uses(inst.data)
+	var cur: int = card_uses_remaining(inst)
+	var restored: int = mini(n, maxi(0, cap - cur))
+	if restored > 0:
+		inst.uses = cur + restored
+	return restored
+
 # ---------------------------------------------------------------------------
 # Action-mode loadout
 # ---------------------------------------------------------------------------

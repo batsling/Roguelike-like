@@ -32,6 +32,19 @@ const ENEMY_TURN_DELAY := 0.45
 const DEFAULT_BASIC_ATTACK := 6
 const DEFAULT_BASIC_DEFEND := 6
 
+# Layout (designed against the 1280x720 base viewport). The board fills the
+# big left panel; the turn order + log stack on the right; the action bar runs
+# along the bottom.
+const BOARD_RECT := Rect2(14, 78, 902, 566)
+const TURN_RECT := Rect2(928, 78, 338, 360)
+const LOG_RECT := Rect2(928, 446, 338, 198)
+const BAR_Y := 656
+
+# Shared palette for the chrome.
+const ACCENT := Color(1.0, 0.78, 0.36)
+const PANEL_BG := Color(0.09, 0.07, 0.13, 0.96)
+const PANEL_BORDER := Color(0.42, 0.33, 0.55, 0.9)
+
 # Phase 8: per-archetype drop weights. Rolled when an enemy dies; the
 # spawned items go onto the battlefield and persist back to the source
 # room on combat end (see `CombatSession._sync_loot_back`).
@@ -68,6 +81,12 @@ var _grid_view: BattleGridView
 var _initiative_label: Label
 var _status_label: Label
 var _info_label: Label
+var _root_panel: Panel
+
+# Floating Mewgenics-style enemy info card, populated on hover.
+var _enemy_tooltip: Panel
+var _enemy_tooltip_name: Label
+var _enemy_tooltip_body: Label
 
 var _btn_move: Button
 var _btn_attack: Button
@@ -105,9 +124,9 @@ var _card_plays_remaining: int = 0
 # Ice Cream: did the player resolve an ability card this turn? A turn that
 # ends without one banks an empower charge (see _on_unit_turn_ended).
 var _ability_used_this_turn: bool = false
-# Mummified Hand: a slotted ability that costs no per-turn play this turn (it
-# still spends a use). &"" = none. Reset each turn.
-var _free_ability_id: StringName = &""
+# Mummified Hand: a slotted ability INSTANCE that costs no per-turn play this
+# turn (it still spends a use). null = none. Reset each turn.
+var _free_ability_card = null
 
 # Energy charge banked from gain-energy effects. It persists across turns
 # within a combat until spent: the next card play consumes ALL of it and is
@@ -182,6 +201,7 @@ func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager 
 	_room_data = room_data
 	_encounter = encounter
 	_grid_view.set_battle(battle_map, _units)
+	_layout_board()
 
 	_available_cards = CombatLoadoutScript.available_from_deck(GameState.deck)
 	_available_weapons = CombatLoadoutScript.weapon_cards_from_deck(GameState.deck)
@@ -213,52 +233,64 @@ func _build_ui() -> void:
 	var panel := Panel.new()
 	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.04, 0.02, 0.07, 0.96)
+	bg.bg_color = Color(0.05, 0.04, 0.08, 1.0)
 	panel.add_theme_stylebox_override("panel", bg)
 	add_child(panel)
+	_root_panel = panel
 
 	var title := Label.new()
-	title.text = "[ TACTICAL BATTLE ]"
-	title.position = Vector2(20, 8)
-	title.size = Vector2(420, 30)
-	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
+	title.text = "⚔  TACTICAL BATTLE"
+	title.position = Vector2(18, 10)
+	title.size = Vector2(520, 32)
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", ACCENT)
 	panel.add_child(title)
 
 	_info_label = Label.new()
-	_info_label.position = Vector2(20, 40)
-	_info_label.size = Vector2(820, 50)
-	_info_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_info_label.position = Vector2(20, 48)
+	_info_label.size = Vector2(880, 26)
+	_info_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_info_label.add_theme_font_size_override("font_size", 12)
-	_info_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
+	_info_label.add_theme_color_override("font_color", Color(0.72, 0.74, 0.82))
 	panel.add_child(_info_label)
 
+	# Board backdrop.
+	panel.add_child(_section_panel(BOARD_RECT))
+
 	_grid_view = BattleGridViewScript.new()
-	_grid_view.position = Vector2(20, 100)
+	_grid_view.position = BOARD_RECT.position + Vector2(14, 14)
 	_grid_view.move_requested.connect(_on_move_requested)
 	_grid_view.attack_requested.connect(_on_attack_requested)
 	_grid_view.target_requested.connect(_on_target_requested)
 	_grid_view.target_cancelled.connect(_on_target_cancelled)
+	_grid_view.hover_changed.connect(_on_grid_hover)
 	panel.add_child(_grid_view)
 
+	# Turn-order panel.
+	panel.add_child(_section_panel(TURN_RECT))
+	panel.add_child(_section_header("TURN ORDER", TURN_RECT))
 	_initiative_label = Label.new()
-	_initiative_label.position = Vector2(580, 100)
-	_initiative_label.size = Vector2(340, 420)
+	_initiative_label.position = TURN_RECT.position + Vector2(14, 42)
+	_initiative_label.size = Vector2(TURN_RECT.size.x - 28, TURN_RECT.size.y - 56)
 	_initiative_label.add_theme_font_size_override("font_size", 13)
-	_initiative_label.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+	_initiative_label.add_theme_color_override("font_color", Color(0.88, 0.92, 1.0))
 	panel.add_child(_initiative_label)
 
+	# Status / log panel.
+	panel.add_child(_section_panel(LOG_RECT))
+	panel.add_child(_section_header("STATUS", LOG_RECT))
 	_status_label = Label.new()
-	_status_label.position = Vector2(580, 530)
-	_status_label.size = Vector2(340, 60)
-	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_status_label.position = LOG_RECT.position + Vector2(14, 42)
+	_status_label.size = Vector2(LOG_RECT.size.x - 28, LOG_RECT.size.y - 56)
+	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status_label.add_theme_font_size_override("font_size", 13)
-	_status_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
+	_status_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.5))
 	panel.add_child(_status_label)
 
 	_build_action_bar(panel)
 	_build_pickers()
 	_build_loadout_overlay()
+	_build_enemy_tooltip()
 
 	_enemy_turn_timer = Timer.new()
 	_enemy_turn_timer.one_shot = true
@@ -266,39 +298,176 @@ func _build_ui() -> void:
 	_enemy_turn_timer.timeout.connect(_auto_end_enemy_turn)
 	add_child(_enemy_turn_timer)
 
+# --- Chrome helpers ----------------------------------------------------
+
+func _panel_stylebox(fill: Color, border: Color, border_w: int = 2, radius: int = 10) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = fill
+	sb.set_corner_radius_all(radius)
+	sb.set_border_width_all(border_w)
+	sb.border_color = border
+	return sb
+
+func _section_panel(rect: Rect2) -> Panel:
+	var p := Panel.new()
+	p.position = rect.position
+	p.size = rect.size
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_theme_stylebox_override("panel", _panel_stylebox(PANEL_BG, PANEL_BORDER))
+	return p
+
+func _section_header(text: String, rect: Rect2) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.position = rect.position + Vector2(14, 10)
+	l.size = Vector2(rect.size.x - 28, 22)
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", ACCENT)
+	return l
+
 func _build_action_bar(panel: Panel) -> void:
-	var bar_y := 620
-	var x := 20
-	var spacing := 6
-	var btn_h := 36
+	var x := 16
+	var spacing := 8
+	var btn_h := 40
+	var specs := [
+		["Move", 84, _on_move_button], ["Attack", 92, _on_attack_button],
+		["Defend", 92, _on_defend_button], ["Cards", 92, _on_ability_button],
+		["Spellbook", 112, _on_spell_button], ["Dash", 84, _on_dash_button],
+		["End Turn", 104, _on_end_turn_button],
+	]
+	var btns := []
+	for spec in specs:
+		var b := _make_button(spec[0], x, BAR_Y, spec[1], btn_h, spec[2])
+		panel.add_child(b)
+		btns.append(b)
+		x += spec[1] + spacing
+	_btn_move = btns[0]; _btn_attack = btns[1]; _btn_defend = btns[2]
+	_btn_ability = btns[3]; _btn_spell = btns[4]; _btn_dash = btns[5]; _btn_end = btns[6]
 
-	_btn_move = _make_button("Move", x, bar_y, 80, btn_h, _on_move_button)
-	panel.add_child(_btn_move); x += 80 + spacing
-	_btn_attack = _make_button("Attack", x, bar_y, 90, btn_h, _on_attack_button)
-	panel.add_child(_btn_attack); x += 90 + spacing
-	_btn_defend = _make_button("Defend", x, bar_y, 90, btn_h, _on_defend_button)
-	panel.add_child(_btn_defend); x += 90 + spacing
-	_btn_ability = _make_button("Cards", x, bar_y, 90, btn_h, _on_ability_button)
-	panel.add_child(_btn_ability); x += 90 + spacing
-	_btn_spell = _make_button("Spellbook", x, bar_y, 110, btn_h, _on_spell_button)
-	panel.add_child(_btn_spell); x += 110 + spacing
-	_btn_dash = _make_button("Dash", x, bar_y, 80, btn_h, _on_dash_button)
-	panel.add_child(_btn_dash); x += 80 + spacing
-	_btn_end = _make_button("End Turn", x, bar_y, 100, btn_h, _on_end_turn_button)
-	panel.add_child(_btn_end); x += 100 + spacing
-
-	_btn_win = _make_button("(debug) Win", 1080, 620, 90, btn_h, _on_force_win)
+	_btn_win = _make_button("Win▸", 1110, BAR_Y, 72, btn_h, _on_force_win, true)
 	panel.add_child(_btn_win)
-	_btn_lose = _make_button("(debug) Lose", 1180, 620, 90, btn_h, _on_force_lose)
+	_btn_lose = _make_button("Lose▸", 1190, BAR_Y, 72, btn_h, _on_force_lose, true)
 	panel.add_child(_btn_lose)
 
-func _make_button(text: String, x: int, y: int, w: int, h: int, cb: Callable) -> Button:
+func _make_button(text: String, x: int, y: int, w: int, h: int, cb: Callable, subtle: bool = false) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.position = Vector2(x, y)
 	b.size = Vector2(w, h)
 	b.pressed.connect(cb)
+	b.focus_mode = Control.FOCUS_NONE
+	var base: Color = Color(0.14, 0.12, 0.2) if not subtle else Color(0.1, 0.09, 0.12)
+	var border: Color = PANEL_BORDER if not subtle else Color(0.3, 0.25, 0.3)
+	b.add_theme_stylebox_override("normal", _panel_stylebox(base, border, 1, 8))
+	b.add_theme_stylebox_override("hover", _panel_stylebox(base.lightened(0.18), ACCENT, 1, 8))
+	b.add_theme_stylebox_override("pressed", _panel_stylebox(base.darkened(0.2), ACCENT, 1, 8))
+	var disabled_sb := _panel_stylebox(Color(0.09, 0.08, 0.1), Color(0.2, 0.2, 0.22), 1, 8)
+	b.add_theme_stylebox_override("disabled", disabled_sb)
+	b.add_theme_color_override("font_color", Color(0.92, 0.9, 0.96))
+	b.add_theme_color_override("font_hover_color", Color(1, 0.95, 0.8))
+	b.add_theme_color_override("font_disabled_color", Color(0.45, 0.45, 0.5))
 	return b
+
+# --- Enemy hover tooltip ----------------------------------------------
+
+func _build_enemy_tooltip() -> void:
+	_enemy_tooltip = Panel.new()
+	_enemy_tooltip.size = Vector2(248, 10)
+	_enemy_tooltip.visible = false
+	_enemy_tooltip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_enemy_tooltip.add_theme_stylebox_override("panel",
+		_panel_stylebox(Color(0.07, 0.06, 0.1, 0.98), ACCENT, 1, 8))
+	_enemy_tooltip_name = Label.new()
+	_enemy_tooltip_name.position = Vector2(12, 8)
+	_enemy_tooltip_name.size = Vector2(224, 22)
+	_enemy_tooltip_name.add_theme_font_size_override("font_size", 15)
+	_enemy_tooltip_name.add_theme_color_override("font_color", Color(1.0, 0.6, 0.55))
+	_enemy_tooltip.add_child(_enemy_tooltip_name)
+	_enemy_tooltip_body = Label.new()
+	_enemy_tooltip_body.position = Vector2(12, 34)
+	_enemy_tooltip_body.size = Vector2(224, 10)
+	_enemy_tooltip_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_enemy_tooltip_body.add_theme_font_size_override("font_size", 12)
+	_enemy_tooltip_body.add_theme_color_override("font_color", Color(0.86, 0.86, 0.9))
+	_enemy_tooltip.add_child(_enemy_tooltip_body)
+	add_child(_enemy_tooltip)
+
+func _unit_at_grid(pos: Vector2i):
+	for u in _units:
+		if u != null and u.is_alive() and u.position == pos:
+			return u
+	return null
+
+func _on_grid_hover(pos: Vector2i) -> void:
+	var u = _unit_at_grid(pos)
+	if u == null or u.is_player or not u.is_alive():
+		_enemy_tooltip.visible = false
+		return
+	_enemy_tooltip_name.text = "%s    %d/%d HP" % [str(u.unit_name).capitalize(), u.hp, u.max_hp]
+	_enemy_tooltip_body.text = _enemy_tooltip_text(u)
+	# Size from the line count (pattern lines are short and rarely wrap), then
+	# place near the hovered tile, clamped on-screen.
+	var n_lines: int = _enemy_tooltip_body.text.count("\n") + 1
+	var body_h: int = n_lines * 17 + 4
+	_enemy_tooltip_body.size.y = body_h
+	_enemy_tooltip.size.y = 40 + body_h + 10
+	var screen := _grid_view.position + Vector2(
+		pos.x * _grid_view.tile_size + _grid_view.tile_size + 8,
+		pos.y * _grid_view.tile_size)
+	var vp := get_viewport().get_visible_rect().size
+	screen.x = clampf(screen.x, 8, vp.x - _enemy_tooltip.size.x - 8)
+	screen.y = clampf(screen.y, 8, vp.y - _enemy_tooltip.size.y - 8)
+	_enemy_tooltip.position = screen
+	_enemy_tooltip.visible = true
+
+# Multi-line body: ranges + the full intent "pattern" with the telegraphed
+# next move flagged, then any active statuses.
+func _enemy_tooltip_text(u) -> String:
+	var lines: Array = []
+	lines.append("Move range: %d" % u.move_range)
+	lines.append("Attack range: %d" % _grid_view.enemy_attack_range(u))
+	lines.append("")
+	lines.append("Pattern:")
+	var next_id: String = String(u.intent_telegraph.get("id", "")) if not u.intent_telegraph.is_empty() else ""
+	if u.ai != null and "intents" in u.ai and not u.ai.intents.is_empty():
+		for it in u.ai.intents:
+			if it == null:
+				continue
+			var marker: String = "▶ " if String(it.id) == next_id else "   "
+			var val: int = it.headline_value()
+			var parts: Array = []
+			if val > 0:
+				parts.append("%d dmg" % val if it.target_kind != "self" else "%d" % val)
+			parts.append("rng %d" % it.range_max)
+			if it.cooldown > 0:
+				parts.append("cd %d" % it.cooldown)
+			lines.append("%s%s  (%s)" % [marker, it.display_name, ", ".join(parts)])
+	else:
+		lines.append("   Basic attack")
+	var statuses: Array = []
+	for s in u.statuses.keys():
+		if int(u.statuses[s]) > 0:
+			statuses.append("%s %d" % [String(s).capitalize(), int(u.statuses[s])])
+	if not statuses.is_empty():
+		lines.append("")
+		lines.append("Status: " + ", ".join(statuses))
+	return "\n".join(lines)
+
+# Scale the board to fill the board panel and center it within.
+func _layout_board() -> void:
+	if _battle_map == null:
+		return
+	var pad := 16
+	var avail_w: int = int(BOARD_RECT.size.x) - pad * 2
+	var avail_h: int = int(BOARD_RECT.size.y) - pad * 2
+	@warning_ignore("integer_division")
+	var ts: int = mini(avail_w / maxi(1, _battle_map.width), avail_h / maxi(1, _battle_map.height))
+	ts = clampi(ts, 14, 54)
+	_grid_view.set_tile_size(ts)
+	var gw: int = _battle_map.width * ts
+	var gh: int = _battle_map.height * ts
+	_grid_view.position = BOARD_RECT.position + Vector2(
+		(BOARD_RECT.size.x - gw) / 2.0, (BOARD_RECT.size.y - gh) / 2.0)
 
 func _build_pickers() -> void:
 	_ability_dialog = _make_picker_dialog("Abilities", _close_ability_dialog)
@@ -313,13 +482,9 @@ func _build_pickers() -> void:
 
 func _make_picker_dialog(title_text: String, close_cb: Callable) -> Panel:
 	var p := Panel.new()
-	p.position = Vector2(280, 140)
+	p.position = Vector2(300, 150)
 	p.size = Vector2(640, 420)
-	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.10, 0.07, 0.14, 0.98)
-	bg.border_color = Color(0.6, 0.5, 0.3)
-	bg.set_border_width_all(2)
-	p.add_theme_stylebox_override("panel", bg)
+	p.add_theme_stylebox_override("panel", _panel_stylebox(Color(0.1, 0.08, 0.15, 0.99), ACCENT, 2, 12))
 
 	var t := Label.new()
 	t.text = title_text
@@ -353,11 +518,11 @@ func _build_loadout_overlay() -> void:
 	_loadout_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_loadout_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.05, 0.03, 0.09, 0.98)
+	bg.bg_color = Color(0.05, 0.04, 0.09, 0.99)
 	_loadout_overlay.add_theme_stylebox_override("panel", bg)
 
 	var title := Label.new()
-	title.text = "[ PREPARE FOR BATTLE ]"
+	title.text = "⚔  PREPARE FOR BATTLE"
 	title.position = Vector2(40, 30)
 	title.size = Vector2(700, 34)
 	title.add_theme_font_size_override("font_size", 24)
@@ -424,7 +589,7 @@ func _open_loadout_screen() -> void:
 func _populate_loadout_pool() -> void:
 	for child in _loadout_pool_container.get_children():
 		child.queue_free()
-	var weapon_name: String = _selected_weapon.display_name if _selected_weapon != null else "(none — default strike)"
+	var weapon_name: String = _selected_weapon.data.display_name if _selected_weapon != null else "(none — default strike)"
 	_loadout_slots_label.text = "Weapon: %s   |   Card slots: %d / %d filled" % [
 		weapon_name, _selected_cards.size(), CombatLoadout.MAX_SLOTS,
 	]
@@ -446,36 +611,47 @@ func _populate_loadout_pool() -> void:
 	if _available_cards.is_empty():
 		_loadout_pool_container.add_child(_picker_note("No cards available. You'll fight with Attack/Defend and spells."))
 		return
+	# Number duplicate copies so two of the same card read as distinct slots.
+	var totals: Dictionary = {}
+	for c in _available_cards:
+		totals[c.data.id] = int(totals.get(c.data.id, 0)) + 1
+	var seen_counts: Dictionary = {}
 	for card in _available_cards:
 		var chosen: bool = _selected_cards.has(card)
 		var disabled: bool = (not chosen) and _selected_cards.size() >= CombatLoadout.MAX_SLOTS
+		var suffix: String = ""
+		if int(totals.get(card.data.id, 1)) > 1:
+			var k: int = int(seen_counts.get(card.data.id, 0)) + 1
+			seen_counts[card.data.id] = k
+			suffix = "  (copy %d)" % k
 		_loadout_pool_container.add_child(_make_loadout_row(
 			card, chosen, "Remove" if chosen else "Slot",
-			_on_toggle_loadout_card, true, disabled,
+			_on_toggle_loadout_card, true, disabled, suffix,
 		))
 
-# Builds one selectable row for the loadout screen. `show_uses` adds the
-# "(uses x/max)" readout (cards only — weapons have unlimited uses).
-func _make_loadout_row(card, chosen: bool, btn_text: String, cb: Callable, show_uses: bool, btn_disabled: bool = false) -> HBoxContainer:
+# Builds one selectable row for the loadout screen. `inst` is a CardInstance;
+# `show_uses` adds the per-instance "(uses x/max)" readout (cards only —
+# weapons have unlimited uses).
+func _make_loadout_row(inst, chosen: bool, btn_text: String, cb: Callable, show_uses: bool, btn_disabled: bool = false, name_suffix: String = "") -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var lbl := Label.new()
 	var prefix: String = "[x] " if chosen else "[ ] "
 	var uses_str: String = ""
 	if show_uses:
-		uses_str = "  (uses %d/%d)" % [GameState.get_card_uses(card), GameState.max_card_uses(card)]
-	lbl.text = "%s%s%s  —  %s" % [prefix, card.display_name, uses_str, _card_desc(card)]
+		uses_str = "  (uses %d/%d)" % [GameState.card_uses_remaining(inst), GameState.card_uses_max(inst)]
+	lbl.text = "%s%s%s%s  —  %s" % [prefix, inst.data.display_name, name_suffix, uses_str, _card_desc(inst.data)]
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
 	lbl.custom_minimum_size = Vector2(700, 0)
 	lbl.add_theme_font_size_override("font_size", 13)
-	if show_uses and GameState.get_card_uses(card) <= 0 and not chosen:
+	if show_uses and GameState.card_uses_remaining(inst) <= 0 and not chosen:
 		lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
 	row.add_child(lbl)
 	var btn := Button.new()
 	btn.text = btn_text
 	btn.disabled = btn_disabled
-	btn.pressed.connect(cb.bind(card))
+	btn.pressed.connect(cb.bind(inst))
 	row.add_child(btn)
 	return row
 
@@ -532,7 +708,7 @@ func _on_unit_turn_started(unit) -> void:
 		_move_remaining = unit.move_range
 		_card_plays_remaining = 1
 		_ability_used_this_turn = false
-		_free_ability_id = &""
+		_free_ability_card = null
 		_pending_kind = Pending.NONE
 		_pending_card = null
 		_pending_spell = null
@@ -651,7 +827,7 @@ func _on_attack_button() -> void:
 		return
 	_clear_pending()
 	_grid_view.enter_attack_mode()
-	var with_what: String = _weapon_card.display_name if _weapon_card != null else "your strike"
+	var with_what: String = _weapon_card.data.display_name if _weapon_card != null else "your strike"
 	_status_label.text = "Click an adjacent enemy to attack with %s." % with_what
 
 func _on_defend_button() -> void:
@@ -712,16 +888,25 @@ func _populate_ability_picker() -> void:
 			"No cards slotted. Pick a loadout before combat to bring cards."
 		))
 		return
+	var totals: Dictionary = {}
+	for c in _loadout.cards:
+		totals[c.data.id] = int(totals.get(c.data.id, 0)) + 1
+	var seen_counts: Dictionary = {}
 	for card in _loadout.cards:
 		var row := HBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var lbl := Label.new()
-		var uses: int = GameState.get_card_uses(card)
-		var cap: int = GameState.max_card_uses(card)
-		var is_free: bool = String(card.id) == String(_free_ability_id)
+		var uses: int = GameState.card_uses_remaining(card)
+		var cap: int = GameState.card_uses_max(card)
+		var is_free: bool = card == _free_ability_card
 		var castable: bool = uses > 0 and (_card_plays_remaining > 0 or is_free)
 		var free_tag: String = "  [FREE]" if is_free else ""
-		lbl.text = "%s%s  (uses %d/%d)  —  %s" % [card.display_name, free_tag, uses, cap, _card_desc(card)]
+		var copy_tag: String = ""
+		if int(totals.get(card.data.id, 1)) > 1:
+			var k: int = int(seen_counts.get(card.data.id, 0)) + 1
+			seen_counts[card.data.id] = k
+			copy_tag = "  (copy %d)" % k
+		lbl.text = "%s%s%s  (uses %d/%d)  —  %s" % [card.data.display_name, copy_tag, free_tag, uses, cap, _card_desc(card.data)]
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
 		lbl.custom_minimum_size = Vector2(440, 0)
@@ -740,15 +925,15 @@ func _on_pick_ability(card) -> void:
 	_ability_dialog.visible = false
 	# Re-check: the picker may have been left open across state changes. A
 	# Mummified-Hand free ability is playable even with no plays remaining.
-	var is_free: bool = String(card.id) == String(_free_ability_id)
-	if GameState.get_card_uses(card) <= 0 or (_card_plays_remaining <= 0 and not is_free):
-		_status_label.text = "%s can't be played right now." % card.display_name
+	var is_free: bool = card == _free_ability_card
+	if GameState.card_uses_remaining(card) <= 0 or (_card_plays_remaining <= 0 and not is_free):
+		_status_label.text = "%s can't be played right now." % card.data.display_name
 		return
 	_pending_kind = Pending.ABILITY
 	_pending_card = card
-	if CombatLoadout.wants_enemy_target(card):
+	if CombatLoadout.wants_enemy_target(card.data):
 		_grid_view.enter_unit_target_mode(BattleGridView.TargetFilter.ENEMY)
-		_status_label.text = "Playing %s — click an enemy (right-click to cancel)." % card.display_name
+		_status_label.text = "Playing %s — click an enemy (right-click to cancel)." % card.data.display_name
 	else:
 		_resolve_ability_against(null)
 
@@ -757,17 +942,17 @@ func _resolve_ability_against(target) -> void:
 		return
 	var u = _turn_manager.current_unit
 	var card = _pending_card
-	# Spend one of the card's run-persistent uses; bail if somehow empty.
-	if not GameState.spend_card_use(card):
-		_status_label.text = "%s is out of uses." % card.display_name
+	# Spend one of this instance's uses; bail if somehow empty.
+	if not GameState.spend_card_use_inst(card):
+		_status_label.text = "%s is out of uses." % card.data.display_name
 		_pending_kind = Pending.NONE
 		_pending_card = null
 		_grid_view.enter_idle()
 		return
 	# Mummified Hand: if this is the ability the item made free, it costs no
 	# per-turn play (the use was still spent above); otherwise spend a play.
-	if String(card.id) == String(_free_ability_id):
-		_free_ability_id = &""
+	if card == _free_ability_card:
+		_free_ability_card = null
 	else:
 		_card_plays_remaining -= 1
 	_ability_used_this_turn = true
@@ -781,10 +966,10 @@ func _resolve_ability_against(target) -> void:
 	# (Mummified Hand) still wins.
 	var empower_str: String = "  (empowered +%d)" % empower if empower > 0 else ""
 	_status_label.text = "Played %s%s. (%d uses left, %d plays left)" % [
-		card.display_name, empower_str, GameState.get_card_uses(card), _card_plays_remaining,
+		card.data.display_name, empower_str, GameState.card_uses_remaining(card), _card_plays_remaining,
 	]
-	_fire_item_triggers("card_played", {"card": card})
-	_apply_card_or_spell_effects(_effective_card_effects(card), u, target, card, empower)
+	_fire_item_triggers("card_played", {"card": card.data})
+	_apply_card_or_spell_effects(_effective_card_effects(card.data), u, target, card.data, empower)
 	_pending_kind = Pending.NONE
 	_pending_card = null
 	_grid_view.enter_idle()
@@ -954,8 +1139,8 @@ func _on_attack_requested(target) -> void:
 		# against the target. Unlimited uses, but once per turn (it's the
 		# Attack action, gated by _action_used). Energy empower applies to
 		# slotted cards only, not the weapon, so pass empower 0.
-		_apply_card_or_spell_effects(_effective_card_effects(_weapon_card), attacker, target, _weapon_card)
-		_status_label.text = "You attack %s with %s." % [target.unit_name, _weapon_card.display_name]
+		_apply_card_or_spell_effects(_effective_card_effects(_weapon_card.data), attacker, target, _weapon_card.data)
+		_status_label.text = "You attack %s with %s." % [target.unit_name, _weapon_card.data.display_name]
 	else:
 		var dmg := DEFAULT_BASIC_ATTACK
 		if attacker.basic_attack_def.has("damage"):
@@ -1103,13 +1288,13 @@ func draw_cards(n: int) -> void:
 		var best_card = null
 		var best_uses: int = 1 << 30
 		for card in _loadout.cards:
-			var uses: int = GameState.get_card_uses(card)
-			if uses < GameState.max_card_uses(card) and uses < best_uses:
+			var uses: int = GameState.card_uses_remaining(card)
+			if uses < GameState.card_uses_max(card) and uses < best_uses:
 				best_uses = uses
 				best_card = card
 		if best_card == null:
 			break
-		if GameState.recharge_card_use(best_card, 1) > 0:
+		if GameState.recharge_card_use_inst(best_card, 1) > 0:
 			restored_any = true
 	if restored_any:
 		_status_label.text = "Recharged a card use."
@@ -1198,16 +1383,19 @@ func leech_to_player(amount: int) -> void:
 func make_random_hand_card_free(played_card = null) -> void:
 	if _loadout == null:
 		return
+	# `played_card` is the CardData that triggered this; exclude slotted copies
+	# of it from the free pick (with duplicate copies, all copies are excluded —
+	# an acceptable edge for a rare item interaction).
 	var played_id: String = String(played_card.id) if played_card != null and ("id" in played_card) else ""
 	var candidates: Array = []
 	for c in _loadout.cards:
-		if c != null and String(c.id) != played_id:
+		if c != null and c.data != null and String(c.data.id) != played_id:
 			candidates.append(c)
 	if candidates.is_empty():
 		return
 	var pick = candidates[randi() % candidates.size()]
-	_free_ability_id = pick.id
-	_status_label.text = "Mummified Hand: %s is free to play this turn!" % pick.display_name
+	_free_ability_card = pick
+	_status_label.text = "Mummified Hand: %s is free to play this turn!" % pick.data.display_name
 
 func _drop_enemy_loot(unit) -> void:
 	if _battle_map == null:
@@ -1301,7 +1489,7 @@ func _refresh_button_states() -> void:
 	# Cards button: live while plays remain and at least one slotted card
 	# still has uses. Per-card use/affordability is gated per-row in
 	# `_populate_ability_picker`.
-	_btn_ability.disabled = (_card_plays_remaining <= 0 and _free_ability_id == &"") \
+	_btn_ability.disabled = (_card_plays_remaining <= 0 and _free_ability_card == null) \
 		or not _has_playable_card()
 	_btn_spell.disabled = _spellbook == null or _spellbook.spells.is_empty()
 	_btn_dash.disabled = not u.dash_available
@@ -1310,7 +1498,7 @@ func _has_playable_card() -> bool:
 	if _loadout == null:
 		return false
 	for card in _loadout.cards:
-		if GameState.get_card_uses(card) > 0:
+		if GameState.card_uses_remaining(card) > 0:
 			return true
 	return false
 
@@ -1342,11 +1530,7 @@ func _refresh_initiative() -> void:
 			])
 	_initiative_label.text = "\n".join(lines)
 
-func _format_info(room_data, encounter: Array) -> String:
-	var rect_str := "(%d,%d %dx%d)" % [
-		room_data.rect.position.x, room_data.rect.position.y,
-		room_data.rect.size.x, room_data.rect.size.y,
-	]
+func _format_info(_room_data, encounter: Array) -> String:
 	var enc_str := "(empty)"
 	if not encounter.is_empty():
 		enc_str = ""
@@ -1363,6 +1547,5 @@ func _format_info(room_data, encounter: Array) -> String:
 	var card_count: int = _loadout.cards.size() if _loadout != null else 0
 	var spell_count: int = _spellbook.spells.size() if _spellbook != null else 0
 	return (
-		"Room: %s  |  Encounter: %s  |  Field: %s (%s)\n"
-		+ "Cards slotted: %d/%d  |  Spellbook: %d"
-	) % [rect_str, enc_str, size_name, dims, card_count, CombatLoadout.MAX_SLOTS, spell_count]
+		"Encounter: %s   |   Field: %s (%s)   |   Cards slotted: %d/%d   |   Spellbook: %d"
+	) % [enc_str, size_name, dims, card_count, CombatLoadout.MAX_SLOTS, spell_count]

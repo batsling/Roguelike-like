@@ -9,6 +9,12 @@ var data: CardData = null
 var upgraded: bool = false
 var temp_cost_override: int = -999      # -999 sentinel = no override
 
+# Strategy-mode remaining uses for THIS physical card. -1 = not yet seeded
+# (lazily set to the card's max on first read). Lives on the instance — not a
+# shared GameState.card_uses[id] pool — so two copies of the same card each
+# carry their own uses, and uses persist with the deck across fights.
+var uses: int = -1
+
 # Persistent additive bonuses to specific effect fields, set by weapon
 # verification (and any future "this card permanently gains +N" hook).
 # Shape: { effect_index(int) -> { field(String) -> bonus(int) } }
