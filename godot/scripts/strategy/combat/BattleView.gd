@@ -344,6 +344,16 @@ func _build_action_bar(panel: Panel) -> void:
 	_btn_move = btns[0]; _btn_attack = btns[1]; _btn_defend = btns[2]
 	_btn_ability = btns[3]; _btn_spell = btns[4]; _btn_dash = btns[5]; _btn_end = btns[6]
 
+	# Hovering an action button previews the relevant ranges on the board:
+	# Move/Attack show movement + strike reach; Cards/Spellbook show movement +
+	# every enemy you could target. Mouse-out clears the preview.
+	for b in [_btn_move, _btn_attack]:
+		b.mouse_entered.connect(_on_hover_attack_preview)
+		b.mouse_exited.connect(_on_hover_preview_end)
+	for b in [_btn_ability, _btn_spell]:
+		b.mouse_entered.connect(_on_hover_targets_preview)
+		b.mouse_exited.connect(_on_hover_preview_end)
+
 	_btn_win = _make_button("Win▸", 1110, BAR_Y, 72, btn_h, _on_force_win, true)
 	panel.add_child(_btn_win)
 	_btn_lose = _make_button("Lose▸", 1190, BAR_Y, 72, btn_h, _on_force_lose, true)
@@ -399,15 +409,27 @@ func _unit_at_grid(pos: Vector2i):
 	return null
 
 func _on_grid_hover(pos: Vector2i) -> void:
+	# Enemies show their stat/intent card; battlefield items (loot, gold, keys,
+	# scrolls) show what they are. Anything else hides the tooltip.
 	var u = _unit_at_grid(pos)
-	if u == null or u.is_player or not u.is_alive():
-		_enemy_tooltip.visible = false
+	if u != null and not u.is_player and u.is_alive():
+		_enemy_tooltip_name.add_theme_color_override("font_color", Color(1.0, 0.6, 0.55))
+		_show_tooltip("%s    %d/%d HP" % [str(u.unit_name).capitalize(), u.hp, u.max_hp],
+			_enemy_tooltip_text(u), pos)
 		return
-	_enemy_tooltip_name.text = "%s    %d/%d HP" % [str(u.unit_name).capitalize(), u.hp, u.max_hp]
-	_enemy_tooltip_body.text = _enemy_tooltip_text(u)
-	# Size from the line count (pattern lines are short and rarely wrap), then
-	# place near the hovered tile, clamped on-screen.
-	var n_lines: int = _enemy_tooltip_body.text.count("\n") + 1
+	var entry := _item_entry_at_grid(pos)
+	if not entry.is_empty():
+		_enemy_tooltip_name.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
+		_show_tooltip(str(entry.item.item_name).capitalize(), _item_tooltip_text(entry.item), pos)
+		return
+	_enemy_tooltip.visible = false
+
+# Sizes the shared tooltip from its body line count and parks it next to the
+# hovered tile, clamped on-screen.
+func _show_tooltip(name_text: String, body_text: String, pos: Vector2i) -> void:
+	_enemy_tooltip_name.text = name_text
+	_enemy_tooltip_body.text = body_text
+	var n_lines: int = body_text.count("\n") + 1
 	var body_h: int = n_lines * 17 + 4
 	_enemy_tooltip_body.size.y = body_h
 	_enemy_tooltip.size.y = 40 + body_h + 10
@@ -419,6 +441,87 @@ func _on_grid_hover(pos: Vector2i) -> void:
 	screen.y = clampf(screen.y, 8, vp.y - _enemy_tooltip.size.y - 8)
 	_enemy_tooltip.position = screen
 	_enemy_tooltip.visible = true
+
+# --- Hover range previews ---------------------------------------------
+
+# Movement budget still available for a preview: 0 once the turn's single move
+# is spent, otherwise the remaining tiles.
+func _hover_move_budget() -> int:
+	return 0 if _move_used else _move_remaining
+
+# The player's strike reach in tiles (weapon range, or the basic-attack range,
+# default melee/1).
+func _player_attack_range() -> int:
+	if _weapon_card != null:
+		if "range" in _weapon_card.data:
+			return maxi(1, int(_weapon_card.data.range))
+		return 1
+	var u = get_player_unit()
+	if u != null and u.basic_attack_def.has("range"):
+		return int(u.basic_attack_def.get("range", 1))
+	return 1
+
+func _enemy_positions() -> Array:
+	var out: Array = []
+	for u in _units:
+		if u != null and u.is_alive() and not u.is_player:
+			out.append(u.position)
+	return out
+
+func _on_hover_attack_preview() -> void:
+	if not _is_player_turn():
+		return
+	_grid_view.show_range_preview(_hover_move_budget(), _player_attack_range())
+
+func _on_hover_targets_preview() -> void:
+	if not _is_player_turn():
+		return
+	# Cards/spells target any enemy on the field — flag them all as reachable.
+	_grid_view.show_range_preview(_hover_move_budget(), 0, _enemy_positions())
+
+# Card/spell row hover: movement plus the targets that ability could hit.
+func _on_hover_card_preview(targets_enemies: bool) -> void:
+	if not _is_player_turn():
+		return
+	var targets: Array = _enemy_positions() if targets_enemies else []
+	_grid_view.show_range_preview(_hover_move_budget(), 0, targets)
+
+func _on_hover_preview_end() -> void:
+	_grid_view.clear_range_preview()
+
+func _item_entry_at_grid(pos: Vector2i) -> Dictionary:
+	if _battle_map == null:
+		return {}
+	for entry in _battle_map.items:
+		if entry.pos == pos:
+			return entry
+	return {}
+
+# Short "what is this" blurb for a battlefield item, by kind.
+func _item_tooltip_text(item) -> String:
+	var lines: Array = []
+	match item.item_type:
+		StrategyItem.ItemType.HEALTH_POTION:
+			lines.append("Health potion.")
+			lines.append("Restores HP when used.")
+		StrategyItem.ItemType.STRENGTH_SCROLL:
+			lines.append("Scroll of strength.")
+			lines.append("Permanently raises attack.")
+		StrategyItem.ItemType.LIGHTNING_SCROLL:
+			lines.append("Scroll of lightning.")
+			lines.append("Strikes the nearest visible foe.")
+		StrategyItem.ItemType.KEY:
+			lines.append("Key.")
+			lines.append("Opens a locked door.")
+		StrategyItem.ItemType.GOLD:
+			lines.append("%d gold." % int(item.amount))
+		_:
+			lines.append(str(item.item_name))
+	if item.auto_pickup:
+		lines.append("Walk over it to collect.")
+	else:
+		lines.append("Walk over it to pick up (needs a pack slot).")
+	return "\n".join(lines)
 
 # Multi-line body: ranges + the full intent "pattern" with the telegraphed
 # next move flagged, then any active statuses.
@@ -480,23 +583,27 @@ func _build_pickers() -> void:
 	add_child(_spell_dialog)
 	_spell_dialog.visible = false
 
+# The pickers dock over the right-hand column (turn order / status) so the
+# battlefield stays fully visible while choosing a card or spell — letting the
+# on-hover range preview read against the board.
 func _make_picker_dialog(title_text: String, close_cb: Callable) -> Panel:
 	var p := Panel.new()
-	p.position = Vector2(300, 150)
-	p.size = Vector2(640, 420)
+	p.position = Vector2(922, 74)
+	p.size = Vector2(352, 578)
 	p.add_theme_stylebox_override("panel", _panel_stylebox(Color(0.1, 0.08, 0.15, 0.99), ACCENT, 2, 12))
 
 	var t := Label.new()
 	t.text = title_text
-	t.position = Vector2(20, 14)
-	t.size = Vector2(520, 30)
+	t.position = Vector2(16, 12)
+	t.size = Vector2(320, 30)
 	t.add_theme_font_size_override("font_size", 20)
 	t.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
 	p.add_child(t)
 
 	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(20, 56)
-	scroll.size = Vector2(600, 290)
+	scroll.position = Vector2(14, 48)
+	scroll.size = Vector2(324, 478)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	p.add_child(scroll)
 
 	var vbox := VBoxContainer.new()
@@ -505,7 +612,7 @@ func _make_picker_dialog(title_text: String, close_cb: Callable) -> Panel:
 	scroll.add_child(vbox)
 	p.set_meta("list", vbox)
 
-	var close := _make_button("Close", 270, 366, 100, 36, close_cb)
+	var close := _make_button("Close", 126, 534, 100, 36, close_cb)
 	p.add_child(close)
 	return p
 
@@ -909,10 +1016,15 @@ func _populate_ability_picker() -> void:
 		lbl.text = "%s%s%s  (uses %d/%d)  —  %s" % [card.data.display_name, copy_tag, free_tag, uses, cap, _card_desc(card.data)]
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
-		lbl.custom_minimum_size = Vector2(440, 0)
+		lbl.custom_minimum_size = Vector2(196, 0)
 		lbl.add_theme_font_size_override("font_size", 13)
 		if uses <= 0:
 			lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
+		# Hovering the row previews movement + this card's targets on the board.
+		var hits_enemy: bool = CombatLoadout.wants_enemy_target(card.data)
+		lbl.mouse_filter = Control.MOUSE_FILTER_STOP
+		lbl.mouse_entered.connect(_on_hover_card_preview.bind(hits_enemy))
+		lbl.mouse_exited.connect(_on_hover_preview_end)
 		row.add_child(lbl)
 		var btn := Button.new()
 		btn.text = "Play"
@@ -1010,8 +1122,13 @@ func _populate_spell_picker() -> void:
 		]
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
-		lbl.custom_minimum_size = Vector2(440, 0)
+		lbl.custom_minimum_size = Vector2(196, 0)
 		lbl.add_theme_font_size_override("font_size", 13)
+		# Hovering the row previews movement + this spell's targets on the board.
+		var hits_enemy: bool = entry.wants_target and entry.data.target_kind != "friendly"
+		lbl.mouse_filter = Control.MOUSE_FILTER_STOP
+		lbl.mouse_entered.connect(_on_hover_card_preview.bind(hits_enemy))
+		lbl.mouse_exited.connect(_on_hover_preview_end)
 		row.add_child(lbl)
 		var btn := Button.new()
 		btn.text = "Cast"

@@ -36,6 +36,10 @@ const COLOR_TARGET_RING  := Color(1.0,  0.3,  0.3, 0.9)
 # Mewgenics-style threat overlay drawn when an enemy is hovered.
 const COLOR_THREAT_MOVE  := Color(0.35, 0.55, 1.0, 0.20)
 const COLOR_THREAT_ATK   := Color(1.0,  0.35, 0.32, 0.24)
+# Player range preview (shown on action-button / card hover): reachable tiles
+# in blue, the attack reach that extends BEYOND movement in orange.
+const COLOR_PREVIEW_MOVE := Color(0.2,  0.7,  1.0, 0.28)
+const COLOR_PREVIEW_ATK  := Color(1.0,  0.55, 0.2, 0.34)
 
 enum Mode { IDLE, MOVE, ATTACK_TARGET, UNIT_TARGET }
 enum TargetFilter { ENEMY, ALLY, ANY }
@@ -61,12 +65,23 @@ var _parents: Dictionary = {}    # Vector2i -> Vector2i, BFS parent
 var _path_preview: Array = []    # Array[Vector2i]
 var _hover: Vector2i = Vector2i(-1, -1)
 
+# Character avatar drawn as the player token (null = plain circle).
+var _player_icon: Texture2D = null
+
+# Hover-driven range preview (action buttons / card rows). `_preview_move` is
+# the set of reachable tiles; `_preview_attack` is the attack reach that lies
+# OUTSIDE movement so the two read as distinct bands. Only drawn while IDLE.
+var _preview_active: bool = false
+var _preview_move: Dictionary = {}
+var _preview_attack: Dictionary = {}
+
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 func set_battle(map, unit_list: Array) -> void:
 	battle_map = map
 	units = unit_list
+	_player_icon = GameState.player_icon_texture()
 	_update_size()
 	queue_redraw()
 
@@ -89,6 +104,9 @@ func set_active_unit(unit, budget: int) -> void:
 	mode = Mode.IDLE
 	_reach.clear()
 	_path_preview.clear()
+	_preview_active = false
+	_preview_move.clear()
+	_preview_attack.clear()
 	queue_redraw()
 
 func enter_move_mode() -> void:
@@ -129,6 +147,48 @@ func notify_units_changed() -> void:
 	if mode == Mode.MOVE:
 		_compute_reachable()
 	queue_redraw()
+
+# Hover preview (no mode change): blue = tiles the player can still reach this
+# turn from `move_budget`; orange = where they could strike from, drawn only on
+# tiles OUTSIDE the move band so attack range reads as a ring around movement.
+# `extra_target_tiles` flags range-less ability targets (e.g. every enemy) red.
+func show_range_preview(move_budget: int, attack_range: int, extra_target_tiles: Array = []) -> void:
+	if active_unit == null:
+		return
+	_preview_active = true
+	_preview_move = _reachable_from(active_unit, maxi(0, move_budget))
+	_preview_attack = _attack_tiles_outside(_preview_move, attack_range)
+	for t in extra_target_tiles:
+		if not _preview_move.has(t):
+			_preview_attack[t] = true
+	queue_redraw()
+
+func clear_range_preview() -> void:
+	if not _preview_active:
+		return
+	_preview_active = false
+	_preview_move.clear()
+	_preview_attack.clear()
+	queue_redraw()
+
+# Every tile within Manhattan `atk` of a reachable tile that isn't itself
+# reachable — i.e. the swing range that extends past where you can walk.
+func _attack_tiles_outside(move_tiles: Dictionary, atk: int) -> Dictionary:
+	var out: Dictionary = {}
+	if atk <= 0 or battle_map == null:
+		return out
+	for base in move_tiles.keys():
+		for dy in range(-atk, atk + 1):
+			for dx in range(-atk, atk + 1):
+				var man: int = absi(dx) + absi(dy)
+				if man == 0 or man > atk:
+					continue
+				var p: Vector2i = base + Vector2i(dx, dy)
+				if move_tiles.has(p):
+					continue
+				if battle_map.in_bounds(p):
+					out[p] = true
+	return out
 
 # --- Internals ---------------------------------------------------------
 
@@ -282,22 +342,18 @@ func _draw_unit_status_icons(u) -> void:
 		x += sz + gap
 
 # Mewgenics-style threat preview for a hovered enemy: every tile it could move
-# to (blue) and every tile it could strike from where it stands (red).
+# to (blue), and the strike reach that extends BEYOND that movement (red) — so
+# the red band shows exactly the extra tiles it threatens after moving, without
+# overlapping the move tiles.
 func _draw_enemy_threat(u) -> void:
 	var reach: Dictionary = _reachable_from(u, u.move_range)
 	for pos in reach.keys():
 		if pos == u.position:
 			continue
 		draw_rect(Rect2(pos.x * tile_size, pos.y * tile_size, tile_size, tile_size), COLOR_THREAT_MOVE, true)
-	var rng: int = enemy_attack_range(u)
-	for dy in range(-rng, rng + 1):
-		for dx in range(-rng, rng + 1):
-			var man: int = absi(dx) + absi(dy)
-			if man == 0 or man > rng:
-				continue
-			var p: Vector2i = u.position + Vector2i(dx, dy)
-			if battle_map != null and battle_map.in_bounds(p):
-				draw_rect(Rect2(p.x * tile_size, p.y * tile_size, tile_size, tile_size), COLOR_THREAT_ATK, true)
+	var atk: Dictionary = _attack_tiles_outside(reach, enemy_attack_range(u))
+	for pos in atk.keys():
+		draw_rect(Rect2(pos.x * tile_size, pos.y * tile_size, tile_size, tile_size), COLOR_THREAT_ATK, true)
 
 func _target_allowed(u) -> bool:
 	if u == null or not u.is_alive() or u == active_unit:
@@ -343,6 +399,15 @@ func _draw() -> void:
 				continue
 			draw_rect(Rect2(pos.x * ts, pos.y * ts, ts, ts), COLOR_REACH, true)
 
+	# Hover range preview (movement band + attack ring outside it).
+	if mode == Mode.IDLE and _preview_active:
+		for pos in _preview_move.keys():
+			if active_unit != null and pos == active_unit.position:
+				continue
+			draw_rect(Rect2(pos.x * ts, pos.y * ts, ts, ts), COLOR_PREVIEW_MOVE, true)
+		for pos in _preview_attack.keys():
+			draw_rect(Rect2(pos.x * ts, pos.y * ts, ts, ts), COLOR_PREVIEW_ATK, true)
+
 	# Threat overlay for a hovered enemy (under the path preview & units).
 	if mode == Mode.IDLE:
 		var pre = _unit_at(_hover)
@@ -378,9 +443,15 @@ func _draw() -> void:
 		var col: Color = COLOR_DEAD
 		if u.is_alive():
 			col = COLOR_PLAYER if u.is_player else COLOR_ENEMY
-		draw_circle(center, ts * 0.36, col)
+		var token_r: float = ts * 0.36
+		if u.is_player and u.is_alive() and _player_icon != null:
+			# Character avatar token (a touch larger than the plain marker).
+			token_r = ts * 0.42
+			DrawUtil.draw_circular_texture(self, center, token_r, _player_icon)
+		else:
+			draw_circle(center, token_r, col)
 		# Subtle outline so tokens read against the floor.
-		draw_arc(center, ts * 0.36, 0.0, TAU, 28, Color(0, 0, 0, 0.45), 1.5)
+		draw_arc(center, token_r, 0.0, TAU, 28, Color(0, 0, 0, 0.45), 1.5)
 		if u == active_unit and u.is_alive():
 			draw_arc(center, ts * 0.46, 0.0, TAU, 32, COLOR_ACTIVE_RING, 2.0)
 		if u.is_alive():

@@ -98,7 +98,7 @@ func _load_floor() -> void:
 		# basic-attack constants (see BattleView.DEFAULT_BASIC_ATTACK).
 		var player = StrategyEntity.new()
 		player.grid_pos = start
-		player.glyph = "@"
+		player.glyph = GameState.player_initial()
 		player.color = Color.WHITE
 		player.name = "you"
 		player.is_player = true

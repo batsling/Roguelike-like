@@ -52,4 +52,7 @@ extends Resource
 
 # Visuals
 @export var portrait: Texture2D
+# Small token image used for the player marker in action & tactical combat
+# (the round in-world avatar). Falls back to `portrait` when unset.
+@export var icon: Texture2D
 @export var portrait_color: Color = Color.WHITE
