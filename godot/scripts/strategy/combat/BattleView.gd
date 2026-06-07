@@ -44,6 +44,9 @@ const BAR_Y := 656
 const ACCENT := Color(1.0, 0.78, 0.36)
 const PANEL_BG := Color(0.09, 0.07, 0.13, 0.96)
 const PANEL_BORDER := Color(0.42, 0.33, 0.55, 0.9)
+# Full-screen backdrop behind both the battle UI and the loadout screen, so the
+# two read as one cohesive screen.
+const BACKDROP := Color(0.04, 0.035, 0.07, 1.0)
 
 # Phase 8: per-archetype drop weights. Rolled when an enemy dies; the
 # spawned items go onto the battlefield and persist back to the source
@@ -235,16 +238,16 @@ func _build_ui() -> void:
 	var panel := Panel.new()
 	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.05, 0.04, 0.08, 1.0)
+	bg.bg_color = BACKDROP
 	panel.add_theme_stylebox_override("panel", bg)
 	add_child(panel)
 	_root_panel = panel
 
 	var title := Label.new()
 	title.text = "⚔  TACTICAL BATTLE"
-	title.position = Vector2(18, 10)
-	title.size = Vector2(520, 32)
-	title.add_theme_font_size_override("font_size", 24)
+	title.position = Vector2(18, 8)
+	title.size = Vector2(520, 36)
+	title.add_theme_font_size_override("font_size", 26)
 	title.add_theme_color_override("font_color", ACCENT)
 	panel.add_child(title)
 
@@ -328,6 +331,9 @@ func _section_header(text: String, rect: Rect2) -> Label:
 	return l
 
 func _build_action_bar(panel: Panel) -> void:
+	# Framed strip behind the action buttons so the bar reads as a panel like the
+	# rest of the chrome (mouse-ignored, so it doesn't eat button clicks).
+	panel.add_child(_section_panel(Rect2(8, BAR_Y - 8, 730, 56)))
 	var x := 16
 	var spacing := 8
 	var btn_h := 40
@@ -345,6 +351,9 @@ func _build_action_bar(panel: Panel) -> void:
 		x += spec[1] + spacing
 	_btn_move = btns[0]; _btn_attack = btns[1]; _btn_defend = btns[2]
 	_btn_ability = btns[3]; _btn_spell = btns[4]; _btn_dash = btns[5]; _btn_end = btns[6]
+	# End Turn is the main per-turn confirm — give it the same gold CTA look as
+	# the loadout screen's Start Battle.
+	_style_primary(_btn_end)
 
 	# Hovering an action button previews the relevant ranges on the board:
 	# Move/Attack show movement + strike reach; Cards/Spellbook show movement +
@@ -368,12 +377,12 @@ func _make_button(text: String, x: int, y: int, w: int, h: int, cb: Callable, su
 	b.size = Vector2(w, h)
 	b.pressed.connect(cb)
 	b.focus_mode = Control.FOCUS_NONE
-	var base: Color = Color(0.14, 0.12, 0.2) if not subtle else Color(0.1, 0.09, 0.12)
+	var base: Color = Color(0.15, 0.13, 0.2) if not subtle else Color(0.1, 0.09, 0.12)
 	var border: Color = PANEL_BORDER if not subtle else Color(0.3, 0.25, 0.3)
-	b.add_theme_stylebox_override("normal", _panel_stylebox(base, border, 1, 8))
-	b.add_theme_stylebox_override("hover", _panel_stylebox(base.lightened(0.18), ACCENT, 1, 8))
-	b.add_theme_stylebox_override("pressed", _panel_stylebox(base.darkened(0.2), ACCENT, 1, 8))
-	var disabled_sb := _panel_stylebox(Color(0.09, 0.08, 0.1), Color(0.2, 0.2, 0.22), 1, 8)
+	b.add_theme_stylebox_override("normal", _panel_stylebox(base, border, 1, 10))
+	b.add_theme_stylebox_override("hover", _panel_stylebox(base.lightened(0.18), ACCENT, 2, 10))
+	b.add_theme_stylebox_override("pressed", _panel_stylebox(base.darkened(0.2), ACCENT, 2, 10))
+	var disabled_sb := _panel_stylebox(Color(0.09, 0.08, 0.1), Color(0.2, 0.2, 0.22), 1, 10)
 	b.add_theme_stylebox_override("disabled", disabled_sb)
 	b.add_theme_color_override("font_color", Color(0.92, 0.9, 0.96))
 	b.add_theme_color_override("font_hover_color", Color(1, 0.95, 0.8))
@@ -633,7 +642,7 @@ func _build_loadout_overlay() -> void:
 	_loadout_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_loadout_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.04, 0.035, 0.07, 1.0)
+	bg.bg_color = BACKDROP
 	_loadout_overlay.add_theme_stylebox_override("panel", bg)
 
 	# Header band.
@@ -718,13 +727,20 @@ func _build_loadout_overlay() -> void:
 # A gold, high-emphasis variant of the action button for the primary CTA.
 func _make_primary_button(text: String, x: int, y: int, w: int, h: int, cb: Callable) -> Button:
 	var b := _make_button(text, x, y, w, h, cb)
+	_style_primary(b, 18)
+	return b
+
+# Repaints an existing button as the gold primary CTA. Shared by the loadout's
+# "Start Battle" and the in-combat "End Turn" so the main confirm action looks
+# the same on both screens.
+func _style_primary(b: Button, font_size: int = 16) -> void:
 	b.add_theme_stylebox_override("normal", _panel_stylebox(Color(0.5, 0.36, 0.12), ACCENT, 2, 10))
 	b.add_theme_stylebox_override("hover", _panel_stylebox(Color(0.64, 0.46, 0.16), Color(1, 0.92, 0.55), 2, 10))
 	b.add_theme_stylebox_override("pressed", _panel_stylebox(Color(0.42, 0.3, 0.1), ACCENT, 2, 10))
 	b.add_theme_color_override("font_color", Color(1, 0.97, 0.86))
 	b.add_theme_color_override("font_hover_color", Color(1, 1, 0.92))
-	b.add_theme_font_size_override("font_size", 18)
-	return b
+	b.add_theme_color_override("font_disabled_color", Color(0.55, 0.5, 0.42))
+	b.add_theme_font_size_override("font_size", font_size)
 
 func _open_loadout_screen() -> void:
 	_loadout_field_label.text = _format_field_summary()
