@@ -24,7 +24,7 @@ effects = [{
 "damage_type": "melee",
 "if_target_status": "poison"
 }]
-tags = PackedStringArray("silent", "offense", "poison")
+tags = PackedStringArray("silent", "offense", "poison", "debuff")
 source_game = "Slay the Spire"
 portrait_color = Color(0.55, 0.75, 0.40, 1)
 can_upgrade = true

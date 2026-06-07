@@ -285,6 +285,14 @@ func reset_run() -> void:
 	Notifications.clear()
 	phase = Phase.MENU
 
+# The current character's class card tag (e.g. &"ironclad"), used to scope card
+# rewards to that class. Sourced from the character's level_up_card_tag — the
+# canonical "cards are drawn from this class" tag — so both level-up and general
+# combat rewards draw from the same class pool. Empty = the full reward pool.
+func card_reward_tag() -> StringName:
+	var cd: CharacterData = Data.get_character(character_id)
+	return cd.level_up_card_tag if cd != null else &""
+
 func apply_character(char_data: CharacterData) -> void:
 	character_id = char_data.id
 	max_hp = char_data.base_max_hp

@@ -20,7 +20,7 @@ effects = [{
 "type": "draw",
 "value": 1
 }]
-tags = PackedStringArray("strike")
+tags = PackedStringArray("ironclad", "strike", "offense", "draw")
 source_game = "Slay the Spire"
 image = ExtResource("2_img")
 portrait_color = Color(0.75, 0.25, 0.25, 1)

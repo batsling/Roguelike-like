@@ -21,7 +21,7 @@ effects = [{
 "target": "enemy",
 "damage_type": "ranged"
 }]
-tags = PackedStringArray()
+tags = PackedStringArray("ironclad", "offense", "defense")
 source_game = "Slay the Spire"
 image = ExtResource("2_img")
 portrait_color = Color(0.75, 0.35, 0.35, 1)
