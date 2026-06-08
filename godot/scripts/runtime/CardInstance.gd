@@ -61,7 +61,24 @@ func get_effects() -> Array:
 	return CardMods.resolved_effects(bumped, data)
 
 func get_description() -> String:
+	return _decorate(data.get_effective_description(upgraded))
+
+# Like get_description, but with the card's Dmg / Block / inflicted-status
+# numbers rewritten to reflect `player`'s live combat scaling (Power / Arcane /
+# Defense / Persistence) — see CardScaling. Used by the in-combat hand view so
+# the displayed numbers match what actually resolves. `player` null (out of
+# combat) falls back to the authored text. `rich` toggles BBCode colouring.
+func combat_description(player, rich: bool = true) -> String:
 	var base: String = data.get_effective_description(upgraded)
+	if player != null:
+		base = CardScaling.scale_text(base, player, rich)
+	return _decorate(base)
+
+# Appends the item-driven addenda (card_played trigger preview, granted effects,
+# granted boosts, weapon effect_bonuses) onto a base description string. Shared
+# by get_description and combat_description so the two read identically apart
+# from the scaled numbers.
+func _decorate(base: String) -> String:
 	# Tack on any item-driven card_played triggers whose filter matches
 	# this card, so e.g. Bird Head ("strikes inflict Soul Link") makes
 	# every Strike-tagged card visibly read "Deal 6 Dmg Melee. Inflict

@@ -190,9 +190,11 @@ func _living_enemy_units() -> Array:
 func _effective_card_effects(card: CardData) -> Array:
 	return CardMods.resolved_effects(card.effects, card)
 
-# Card text with the granted-effect line + boost annotation appended, for display.
+# Card text with live stat scaling folded into the numbers (Power / Arcane /
+# Defense / Persistence — rich=false since these are plain Labels) plus the
+# granted-effect line + boost annotation appended, for display.
 func _card_desc(card: CardData) -> String:
-	var out: String = card.description
+	var out: String = CardScaling.scale_text(card.description, get_player_unit(), false)
 	var extra: String = CardMods.describe(card)
 	if extra != "":
 		out = "%s %s" % [out, extra]

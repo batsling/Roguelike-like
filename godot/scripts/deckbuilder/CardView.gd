@@ -124,7 +124,10 @@ func refresh() -> void:
 		return
 	_name_label.text = card.get_display_name()
 	_cost_label.text = str(card.get_cost())
-	_desc_label.text = "[center]%s[/center]" % card.get_description()
+	# In combat, fold the player's live Power / Arcane / Defense / Persistence
+	# into the shown numbers (GameState.combat_player is null outside combat, so
+	# this reads as the authored text in shop / rest / collection).
+	_desc_label.text = "[center]%s[/center]" % card.combat_description(GameState.combat_player)
 	if card.data != null:
 		# Assign unconditionally (null clears it) so a reused view doesn't keep
 		# stale art when re-pointed at a card with no image — refresh() must be
