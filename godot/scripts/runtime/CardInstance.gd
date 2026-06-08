@@ -44,18 +44,21 @@ func get_effects() -> Array:
 	# effects (Brass Knuckles etc.). Empty bonuses + no grants returns the
 	# base array directly so the hot path stays allocation-free.
 	var base: Array = data.get_effective_effects(upgraded)
-	var grants: Array = CardMods.granted_effects(data)
-	if effect_bonuses.is_empty() and grants.is_empty():
-		return base
-	var out: Array = []
+	# No per-instance bumps: CardMods folds in item boosts + appended grants
+	# (and short-circuits to `base` untouched when neither applies).
+	if effect_bonuses.is_empty():
+		return CardMods.resolved_effects(base, data)
+	# Layer this instance's persistent effect_bonuses onto a duplicated base
+	# first (weapon verifications), then hand off to CardMods for the shared
+	# item boost/grant pass.
+	var bumped: Array = []
 	for i in range(base.size()):
 		var e: Dictionary = (base[i] as Dictionary).duplicate()
 		if effect_bonuses.has(i):
 			for field in effect_bonuses[i].keys():
 				e[field] = int(e.get(field, 0)) + int(effect_bonuses[i][field])
-		out.append(e)
-	out.append_array(grants)
-	return out
+		bumped.append(e)
+	return CardMods.resolved_effects(bumped, data)
 
 func get_description() -> String:
 	var base: String = data.get_effective_description(upgraded)
@@ -70,6 +73,10 @@ func get_description() -> String:
 	var grant_extra: String = CardMods.describe(data)
 	if grant_extra != "":
 		base = "%s %s" % [base, grant_extra]
+	# Item boosts to the card's own numbers (Strike Dummy -> "[+3 Dmg]").
+	var boost_extra: String = CardMods.describe_boosts(data)
+	if boost_extra != "":
+		base = "%s %s" % [base, boost_extra]
 	if effect_bonuses.is_empty():
 		return base
 	# Annotate with a compact bonus summary so the player sees what the

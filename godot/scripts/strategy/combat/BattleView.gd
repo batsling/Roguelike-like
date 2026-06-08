@@ -183,21 +183,23 @@ func _living_enemy_units() -> Array:
 			out.append(u)
 	return out
 
-# A card's base effects + item-granted ones (Brass Knuckles etc.). Strategy
-# resolves CardData directly, so grants are merged here (deckbuilder gets them
-# via CardInstance.get_effects()).
+# A card's base effects with item boosts folded in (Strike Dummy) plus any
+# appended granted effects (Brass Knuckles etc.). Strategy resolves CardData
+# directly, so the shared CardMods pass is applied here (deckbuilder gets it via
+# CardInstance.get_effects()).
 func _effective_card_effects(card: CardData) -> Array:
-	var grants: Array = CardMods.granted_effects(card)
-	if grants.is_empty():
-		return card.effects
-	var out: Array = card.effects.duplicate()
-	out.append_array(grants)
-	return out
+	return CardMods.resolved_effects(card.effects, card)
 
-# Card text with the granted-effect line appended, for display.
+# Card text with the granted-effect line + boost annotation appended, for display.
 func _card_desc(card: CardData) -> String:
+	var out: String = card.description
 	var extra: String = CardMods.describe(card)
-	return card.description if extra == "" else "%s %s" % [card.description, extra]
+	if extra != "":
+		out = "%s %s" % [out, extra]
+	var boost: String = CardMods.describe_boosts(card)
+	if boost != "":
+		out = "%s %s" % [out, boost]
+	return out
 
 func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager = null) -> void:
 	_battle_map = battle_map

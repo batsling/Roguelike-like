@@ -14,7 +14,9 @@ triggers = []
 card_grants = []
 stat_bonuses = {}
 scaling = []
-charisma_equals_highest_stat = true
+stat_mirror = {
+"charisma": ["strength", "dexterity", "intelligence", "charisma"]
+}
 max_uses = -1
 source_game = "Mewgenics"
 tags = PackedStringArray("wearable", "paper")

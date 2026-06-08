@@ -166,13 +166,16 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # spends via GameState.spend_gold — gold lost to events/curses doesn't count.
 @export var gold_spend_stat_per: int = 0
 
-# Paper Bag: while owned, the player's Charisma is read as the maximum of the
-# four core stats (Strength / Dexterity / Intelligence / Charisma). It is NOT a
-# stored bonus — Stats.get_value(&"charisma") derives it live on every read, so
-# a temporary buff that makes another stat the largest (a pill, an event) raises
-# Charisma for exactly as long as that buff lasts, and Charisma falls back the
-# moment it ends. Multiple copies are redundant (max of a max).
-@export var charisma_equals_highest_stat: bool = false
+# Paper Bag and any "this stat reads as the highest of a pool" item. Maps a
+# target stat -> the Array of stat ids whose maximum it mirrors. The value is
+# NOT stored — Stats.get_value() derives it live on every read, so a temporary
+# buff to any pool member (a pill, an event) raises the target for exactly as
+# long as that buff lasts, then it falls back. Generic: any stat can mirror any
+# pool, and pools merge across owned items.
+#   Paper Bag: { "charisma": ["strength", "dexterity", "intelligence", "charisma"] }
+# (Listing the target in its own pool is harmless — it just restates the floor,
+# since the target's own natural value is always the starting point.)
+@export var stat_mirror: Dictionary = {}
 
 # For Usable items: how many uses (-1 = infinite)
 @export var max_uses: int = -1

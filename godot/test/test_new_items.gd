@@ -592,43 +592,70 @@ func test_ring_of_the_snake_loads_with_combat_start_draw() -> void:
 
 # --- Strike Dummy --------------------------------------------------------
 
-func test_strike_dummy_grants_dmg_to_strikes() -> void:
+func test_strike_dummy_boosts_strikes() -> void:
 	var it: ItemData = Data.get_item(&"strike_dummy")
 	assert_not_null(it, "strike_dummy.tres should load")
 	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
 	assert_eq(it.card_grants.size(), 1, "Strike Dummy buffs via card_grants")
 	var grant: Dictionary = it.card_grants[0]
 	assert_eq(String(grant.get("if_card_tag", "")), "strike")
-	var e: Dictionary = grant.get("effects", [{}])[0]
-	assert_eq(String(e.get("type", "")), "dmg")
-	assert_eq(int(e.get("value", 0)), 3)
-	assert_eq(String(e.get("target", "")), "enemy")
+	# StS-style: a boost raises the card's own Dmg, not a separate hit.
+	assert_true(grant.has("boost"), "Strike Dummy uses a boost, not an appended effect")
+	var b: Dictionary = grant.get("boost", [{}])[0]
+	assert_eq(String(b.get("type", "")), "dmg")
+	assert_eq(int(b.get("amount", 0)), 3)
 
-func test_strike_dummy_dmg_folds_into_strike_effects_when_owned() -> void:
+func test_strike_dummy_raises_strike_damage_as_one_hit() -> void:
+	GameState.reset_run()
+	var strike: CardData = Data.get_card(&"strike")  # base "Deal 6 Dmg"
+	# Before owning it, the Strike is a single 6-Dmg effect.
+	var before := CardInstance.from_data(strike).get_effects()
+	assert_eq(before.size(), 1, "Strike has one effect")
+	assert_eq(int(before[0].get("value", 0)), 6)
+	GameState.add_item(Data.get_item(&"strike_dummy"))
+	var after := CardInstance.from_data(strike).get_effects()
+	assert_eq(after.size(), 1, "still ONE effect — no separate hit was appended")
+	assert_eq(int(after[0].get("value", 0)), 9, "the Strike's own Dmg rose 6 -> 9")
+	assert_eq(String(after[0].get("damage_type", "")), "melee",
+		"the boost rides the Strike's existing melee hit")
+
+func test_strike_dummy_stacks_and_respects_upgrade() -> void:
 	GameState.reset_run()
 	var strike: CardData = Data.get_card(&"strike")
 	GameState.add_item(Data.get_item(&"strike_dummy"))
-	var ci := CardInstance.from_data(strike)
-	var extra_dmg := 0
-	for e in ci.get_effects():
-		if String(e.get("type", "")) == "dmg" and int(e.get("value", 0)) == 3:
-			extra_dmg += 1
-	assert_eq(extra_dmg, 1, "owning Strike Dummy adds a +3 Dmg effect to Strikes")
+	GameState.add_item(Data.get_item(&"strike_dummy"))
+	# Two copies: +6 on top of the upgraded base (9 -> 15).
+	var up := CardInstance.from_data(strike, true)
+	assert_eq(int(up.get_effects()[0].get("value", 0)), 15,
+		"boosts stack and apply on top of the upgraded value")
+
+func test_strike_dummy_boost_shows_in_card_text() -> void:
+	GameState.reset_run()
+	var strike: CardData = Data.get_card(&"strike")
+	GameState.add_item(Data.get_item(&"strike_dummy"))
+	var desc := CardInstance.from_data(strike).get_description()
+	assert_true(desc.contains("+3 Dmg"), "the +3 boost is annotated on the card text")
 
 # --- Paper Bag (Charisma mirrors the highest core stat) ------------------
 
-func test_paper_bag_loads_with_mirror_flag() -> void:
+func test_paper_bag_loads_with_stat_mirror() -> void:
 	var it: ItemData = Data.get_item(&"paper_bag")
 	assert_not_null(it, "paper_bag.tres should load")
 	assert_eq(it.kind, ItemData.ItemKind.SCALING)
 	assert_eq(it.rarity, ItemData.Rarity.RARE)
-	assert_true(it.charisma_equals_highest_stat)
+	assert_true(it.stat_mirror.has("charisma"), "Paper Bag mirrors Charisma")
+	var pool: Array = it.stat_mirror["charisma"]
+	for s in ["strength", "dexterity", "intelligence"]:
+		assert_true(pool.has(s), "Charisma's pool includes %s" % s)
 
-func test_charisma_mirror_flag_reflects_ownership() -> void:
+func test_stat_mirror_pool_reflects_ownership() -> void:
 	GameState.reset_run()
-	assert_false(GameState.has_charisma_mirror_item(), "none owned yet")
+	assert_true(GameState.stat_mirror_pool(&"charisma").is_empty(), "none owned yet")
 	GameState.add_item(Data.get_item(&"paper_bag"))
-	assert_true(GameState.has_charisma_mirror_item())
+	var pool: Array = GameState.stat_mirror_pool(&"charisma")
+	assert_true(pool.has(&"strength"), "owning Paper Bag exposes the Charisma pool")
+	assert_true(GameState.stat_mirror_pool(&"strength").is_empty(),
+		"only the mapped target (Charisma) has a pool")
 
 func test_paper_bag_raises_charisma_to_highest_core_stat() -> void:
 	GameState.reset_run()

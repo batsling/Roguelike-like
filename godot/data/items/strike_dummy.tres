@@ -13,10 +13,10 @@ description = "Your Strikes Gain +3 Dmg."
 triggers = []
 card_grants = [{
 "if_card_tag": "strike",
-"effects": [{
+"boost": [{
 "type": "dmg",
-"value": 3,
-"target": "enemy"
+"field": "value",
+"amount": 3
 }]
 }]
 stat_bonuses = {}

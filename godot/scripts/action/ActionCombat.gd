@@ -784,16 +784,12 @@ func _auto_cd(card: CardData) -> float:
 		return 0.0
 	return maxf(_tr.min_click_cooldown, _cooldown_for(card))
 
-# A card's base effects plus any item-granted ones (Brass Knuckles -> strikes
-# inflict Bruise). Action reads CardData directly, so grants are merged here
-# rather than via CardInstance.get_effects() (the deckbuilder path).
+# A card's base effects with item boosts folded in (Strike Dummy -> +3 to a
+# Strike's Dmg) plus any appended granted effects (Brass Knuckles -> strikes
+# inflict Bruise). Action reads CardData directly, so the shared CardMods pass is
+# applied here rather than via CardInstance.get_effects() (the deckbuilder path).
 func _effective_effects(card: CardData) -> Array:
-	var grants: Array = CardMods.granted_effects(card)
-	if grants.is_empty():
-		return card.effects
-	var out: Array = card.effects.duplicate()
-	out.append_array(grants)
-	return out
+	return CardMods.resolved_effects(card.effects, card)
 
 func _resolve_card_effects(card: CardData) -> void:
 	# Cards with any ranged-typed damage effect resolve via a

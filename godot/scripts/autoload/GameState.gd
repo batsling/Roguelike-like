@@ -89,6 +89,11 @@ var equipped_weapon: ItemData = null     # Also a duplicated Resource
 # upgraded/downgraded. Excludes the health bucket — see _applied_item_*.
 var item_stat_bonus: Dictionary = {}
 
+# Fast guard for Stats.get_value: true while any owned item declares a
+# stat_mirror (Paper Bag). Refreshed by _recompute_item_bonuses so the hot
+# stat-read path can skip the inventory scan entirely when no mirror is owned.
+var stat_mirror_active: bool = false
+
 # Health-bucket stats (max_hp, max_energy) are applied as direct
 # deltas to the GameState fields — never through item_stat_bonus — so
 # reads of GameState.max_hp / max_energy stay authoritative without
@@ -808,15 +813,24 @@ func has_energy_carryover_item() -> bool:
 			return true
 	return false
 
-# Paper Bag: true while any owned item mirrors Charisma onto the highest core
-# stat. Read by Stats.get_value(&"charisma") on every Charisma lookup, so the
-# derived value tracks temporary buffs live. Weapon slot can't hold a Paper Bag,
-# so inventory is the only source.
-func has_charisma_mirror_item() -> bool:
+# Paper Bag (and any future mirror item): the pool of stat ids whose maximum
+# `stat_id` reads as while owned, merged across every owned item. Empty when no
+# item mirrors this stat. Read by Stats.get_value() on every lookup, so the
+# derived value tracks temporary buffs live. Weapon slot can't hold a mirror
+# item, so inventory is the only source.
+func stat_mirror_pool(stat_id: StringName) -> Array:
+	var pool: Array = []
+	var key := String(stat_id)
 	for item in inventory:
-		if item is ItemData and item.charisma_equals_highest_stat:
-			return true
-	return false
+		if not (item is ItemData) or item.stat_mirror.is_empty():
+			continue
+		if not item.stat_mirror.has(key):
+			continue
+		for s in item.stat_mirror[key]:
+			var sn := StringName(s)
+			if not pool.has(sn):
+				pool.append(sn)
+	return pool
 
 func _grant_weapon_card(inst: ItemData) -> bool:
 	# Internal: if `inst` is a weapon with a linked card_id, append a
@@ -993,6 +1007,13 @@ func _recompute_item_bonuses() -> void:
 			totals[out_stat] = int(totals.get(out_stat, 0)) + per_val * stacks
 
 	item_stat_bonus = totals
+	# Cache whether any owned item mirrors a stat onto a pool (Paper Bag), so
+	# Stats.get_value can skip the per-read inventory scan in the common case.
+	stat_mirror_active = false
+	for it in sources:
+		if it is ItemData and not it.stat_mirror.is_empty():
+			stat_mirror_active = true
+			break
 	emit_signal("stats_changed")
 
 # ---------------------------------------------------------------------------
