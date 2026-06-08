@@ -39,6 +39,7 @@ var _active_portal: PortalNode = null
 var _win_overlay: Control = null
 var _verification_modal: Control = null
 var _dash_modal: Control = null
+var _map_view: RunMapView = null
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -147,7 +148,7 @@ func _update_hint() -> void:
 	var actions := "WASD/arrows to walk"
 	if _active_portal != null:
 		actions = "[E] Enter %s   |   " % _active_portal.game_data.display_name + actions
-	actions += "   |   [R] Reroll (%d)   |   [Q] Dash (%d)" % [
+	actions += "   |   [R] Reroll (%d)   |   [Q] Dash (%d)   |   [M] Map" % [
 		GameState.reroll_charges, GameState.dash_charges,
 	]
 	_hint.text = actions
@@ -163,6 +164,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_try_reroll()
 	elif event.keycode == KEY_Q:
 		_try_dash()
+	elif event.keycode == KEY_M:
+		_show_map()
 	elif event.keycode == KEY_F5:
 		if _save_run():
 			GameLog.add("Saved.", Color(0.7, 0.9, 1.0))
@@ -175,7 +178,24 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
 
 func _can_act() -> bool:
-	return _verification_modal == null and _win_overlay == null and _dash_modal == null
+	return _verification_modal == null and _win_overlay == null and _dash_modal == null and _map_view == null
+
+# ------------------------------------------------------------------
+# Run map — view-only overview of the route to the Amulet. Pauses the
+# walker while open; closes back via the map's own M / Esc / Close.
+# ------------------------------------------------------------------
+
+func _show_map() -> void:
+	if _map_view != null:
+		return
+	_player.set_input_locked(true)
+	_map_view = RunMapView.new()
+	_map_view.closed.connect(_on_map_closed)
+	add_child(_map_view)
+
+func _on_map_closed() -> void:
+	_map_view = null
+	_player.set_input_locked(false)
 
 func _can_save_load() -> bool:
 	return _can_act()
