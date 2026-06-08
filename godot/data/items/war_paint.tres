@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_war_paint"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/WarPaint.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"war_paint"
+display_name = "War Paint"
+kind = 5
+rarity = 0
+description = "Upgrade 2 random Skills."
+triggers = [{
+"on": "item_acquired",
+"effects": [{
+"type": "upgrade_random_cards",
+"card_type": "skill",
+"count": 2
+}]
+}]
+card_grants = []
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray()
+image = ExtResource("2_img")

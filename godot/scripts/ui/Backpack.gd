@@ -490,8 +490,12 @@ func _value_chip(text: String, derived: bool) -> Control:
 func _stat_value_text(stat_id: StringName, suffix: String = "") -> String:
 	var field := String(stat_id)
 	var base: int = int(GameState.get(field))
-	var bonus: int = int(GameState.item_stat_bonus.get(field, 0)) + int(GameState.temp_stat_bonus.get(field, 0))
-	var total: int = base + bonus
+	# Route the total through Stats so derived contributions show too — most
+	# notably Paper Bag, which mirrors Charisma onto the highest core stat
+	# without ever landing in item_stat_bonus. For every other stat this equals
+	# base + item/temp bonus, so the breakdown below is unchanged.
+	var total: int = Stats.get_value(stat_id)
+	var bonus: int = total - base
 	if bonus == 0:
 		return "%d%s" % [total, suffix]
 	return "%d%s  (%d %+d)" % [total, suffix, base, bonus]

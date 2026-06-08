@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_paper_bag"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/PaperBag.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"paper_bag"
+display_name = "Paper Bag"
+kind = 4
+rarity = 2
+description = "Your Charisma is equal to your highest stat."
+triggers = []
+card_grants = []
+stat_bonuses = {}
+scaling = []
+stat_mirror = {
+"charisma": ["strength", "dexterity", "intelligence", "charisma"]
+}
+max_uses = -1
+source_game = "Mewgenics"
+tags = PackedStringArray("wearable", "paper")
+image = ExtResource("2_img")

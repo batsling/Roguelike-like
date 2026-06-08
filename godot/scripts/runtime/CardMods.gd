@@ -20,6 +20,53 @@ static func granted_effects(card: CardData) -> Array:
 				out.append_array(grant.get("effects", []))
 	return out
 
+# Stat boosts an item folds into `card`'s OWN effects (Strike Dummy: "+3 Dmg" to
+# Strikes). Unlike granted_effects (which appends a separate effect / extra hit),
+# a boost raises the value of the card's existing matching effect, so it rides
+# one scaling instance — the StS "deals N additional damage" behaviour. Each
+# entry is { type: <effect type>, field: <field, default "value">, amount: <int> }.
+# Applied by CardInstance.get_effects; merged across owned items, so two copies
+# of a boosting item stack.
+static func granted_boosts(card: CardData) -> Array:
+	var out: Array = []
+	if card == null:
+		return out
+	for item in _sources():
+		for grant in item.card_grants:
+			if _matches(grant, card):
+				out.append_array(grant.get("boost", []))
+	return out
+
+# The card's resolved effect list under the player's current items: `base` with
+# item boosts folded into matching effects (Strike Dummy: +3 to the Strike's own
+# Dmg) and appended granted effects (Brass Knuckles: a separate Bruise) added.
+# Every combat mode routes through this so items behave identically — deckbuilder
+# passes its upgrade + per-instance-bumped effects as `base`; action/strategy
+# pass the raw CardData.effects. `base` is never mutated (it may be a shared
+# Resource array): when anything applies, a duplicate is returned.
+static func resolved_effects(base: Array, card: CardData) -> Array:
+	var boosts: Array = granted_boosts(card)
+	var grants: Array = granted_effects(card)
+	if boosts.is_empty() and grants.is_empty():
+		return base
+	var out: Array = []
+	for e in base:
+		out.append((e as Dictionary).duplicate())
+	# A boost lands on the FIRST effect of its type so it rides that hit as one
+	# scaling instance rather than adding a separate hit.
+	for b in boosts:
+		var btype: String = String(b.get("type", ""))
+		var bfield: String = String(b.get("field", "value"))
+		var bamt: int = int(b.get("amount", 0))
+		if btype == "" or bamt == 0:
+			continue
+		for e in out:
+			if String(e.get("type", "")) == btype:
+				e[bfield] = int(e.get(bfield, 0)) + bamt
+				break
+	out.append_array(grants)
+	return out
+
 # Addon keywords granted to `card` by the player's current items. Parallels
 # granted_effects — Duplicator gives weapon attack cards the "replay" addon.
 static func granted_addons(card: CardData) -> Array:
@@ -72,6 +119,10 @@ static func describe(card: CardData) -> String:
 	if frags.is_empty():
 		return ""
 	return " ".join(frags)
+
+# NOTE: granted boosts are no longer rendered as a "[+3 Dmg]" suffix — CardScaling
+# folds them straight into the card's Dmg/Block number (see CardInstance), so the
+# player reads one combined value.
 
 # Tiny English-ish renderer for the effect dicts used as item payloads
 # (status / block / dmg / heal). Shared by CardInstance's card_played

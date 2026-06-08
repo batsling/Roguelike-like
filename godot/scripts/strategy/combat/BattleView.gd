@@ -183,21 +183,22 @@ func _living_enemy_units() -> Array:
 			out.append(u)
 	return out
 
-# A card's base effects + item-granted ones (Brass Knuckles etc.). Strategy
-# resolves CardData directly, so grants are merged here (deckbuilder gets them
-# via CardInstance.get_effects()).
+# A card's base effects with item boosts folded in (Strike Dummy) plus any
+# appended granted effects (Brass Knuckles etc.). Strategy resolves CardData
+# directly, so the shared CardMods pass is applied here (deckbuilder gets it via
+# CardInstance.get_effects()).
 func _effective_card_effects(card: CardData) -> Array:
-	var grants: Array = CardMods.granted_effects(card)
-	if grants.is_empty():
-		return card.effects
-	var out: Array = card.effects.duplicate()
-	out.append_array(grants)
-	return out
+	return CardMods.resolved_effects(card.effects, card)
 
-# Card text with the granted-effect line appended, for display.
+# Card text with live stat scaling AND item boosts folded into the numbers
+# (Power / Arcane / Defense / Persistence + Strike Dummy — rich=false since these
+# are plain Labels) plus the granted-effect line appended, for display.
 func _card_desc(card: CardData) -> String:
+	var out: String = CardScaling.scale_text(card.description, get_player_unit(), false, card)
 	var extra: String = CardMods.describe(card)
-	return card.description if extra == "" else "%s %s" % [card.description, extra]
+	if extra != "":
+		out = "%s %s" % [out, extra]
+	return out
 
 func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager = null) -> void:
 	_battle_map = battle_map
@@ -1095,7 +1096,9 @@ func _apply_turn_effect_to_unit(unit, effect: Dictionary) -> void:
 		"status":
 			unit.add_status(StringName(effect.get("status", "")), int(effect.get("stacks", 1)))
 		"heal", "gain_hp":
+			var before: int = unit.hp
 			unit.hp = mini(unit.max_hp, unit.hp + int(effect.get("value", 0)))
+			_float_number(unit, unit.hp - before, FloatingNumbers.HEAL_COLOR)
 
 func _auto_end_enemy_turn() -> void:
 	if _turn_manager == null or _turn_manager.current_unit == null:
@@ -1572,6 +1575,20 @@ func deal_damage(source, target, value: int, effect: Dictionary = {}) -> void:
 		raw = int(round(target.max_hp * float(effect.get("value", 0))))
 	_apply_damage(source, target, raw, effect)
 
+# Pops a floating number over a unit (red for HP lost, green for HP healed),
+# parented to the grid view at the unit's tile centre (units carry a Vector2i
+# grid position).
+func _float_number(target, amount: int, color: Color = FloatingNumbers.DAMAGE_COLOR) -> void:
+	if amount <= 0 or _grid_view == null or not _grid_view.is_inside_tree():
+		return
+	if target == null or not ("position" in target):
+		return
+	var ts: int = _grid_view.tile_size
+	var center := Vector2(
+		target.position.x * ts + ts * 0.5,
+		target.position.y * ts + ts * 0.5)
+	FloatingNumbers.spawn(_grid_view, center, amount, color)
+
 func gain_block(target, value: int) -> void:
 	if target == null:
 		return
@@ -1583,7 +1600,9 @@ func gain_block(target, value: int) -> void:
 func heal(target, value: int) -> void:
 	if target == null:
 		return
+	var before: int = target.hp
 	target.hp = mini(target.max_hp, target.hp + int(value))
+	_float_number(target, target.hp - before, FloatingNumbers.HEAL_COLOR)
 
 func gain_energy(n: int) -> void:
 	# Energy is empower charge: it banks (across turns within the combat)
@@ -1665,6 +1684,7 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 	if res.dodged:
 		return
 	target.hp = maxi(0, target.hp - int(res.hp_loss))
+	_float_number(target, int(res.hp_loss))
 	# The attack connected (block counts). Dead Eye's streak grows here, skipped
 	# on a killing blow (the streak against a corpse is never read).
 	if is_player_attack and target.is_alive():
@@ -1690,6 +1710,7 @@ func apply_dot(target, amount: int, _source_name: String) -> void:
 	if target == null or not target.is_alive() or amount <= 0:
 		return
 	target.hp = maxi(0, target.hp - amount)
+	_float_number(target, amount)
 	if not target.is_alive() and not target.is_player:
 		_fire_item_triggers("enemy_killed")
 		_drop_enemy_loot(target)

@@ -135,11 +135,27 @@ func get_value(stat_id: StringName) -> int:
 	# (strength / dexterity / etc.). Vitals (max_hp, max_energy) are
 	# already applied via set_max_hp/max_energy so they're NOT in
 	# item_stat_bonus — direct reads return the right value.
-	var base: int = int(GameState.get(String(stat_id)))
-	var bonus: int = int(GameState.item_stat_bonus.get(String(stat_id), 0))
+	var total: int = _natural_stat_value(stat_id)
+	# Mirror items (Paper Bag): this stat reads as the highest of a declared pool
+	# while such an item is owned. Derived here (not stored) so it always tracks
+	# the pool's current values — including temporary buffs — and falls back the
+	# instant they clear. Peers are read at their NATURAL value (no mirror), which
+	# keeps this allocation-light and free of any mirror-to-mirror recursion. The
+	# stat_mirror_active guard skips the inventory scan on the common no-mirror path.
+	if GameState.stat_mirror_active:
+		for peer in GameState.stat_mirror_pool(stat_id):
+			total = maxi(total, _natural_stat_value(peer))
+	return total
+
+# A stat's stored value: its GameState field + flat item bonus + temporary
+# (pill) buff. This is what get_value returns before any mirror derivation.
+func _natural_stat_value(stat_id: StringName) -> int:
+	var field := String(stat_id)
+	var base: int = int(GameState.get(field))
+	var bonus: int = int(GameState.item_stat_bonus.get(field, 0))
 	# Temporary consumable buffs (pills) layer on top; cleared at the
 	# combat/room/event boundary by GameState.clear_temp_buffs().
-	var temp: int = int(GameState.temp_stat_bonus.get(String(stat_id), 0))
+	var temp: int = int(GameState.temp_stat_bonus.get(field, 0))
 	return base + bonus + temp
 
 func get_definition(stat_id: StringName) -> StatDefinition:

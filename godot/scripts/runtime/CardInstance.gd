@@ -44,21 +44,43 @@ func get_effects() -> Array:
 	# effects (Brass Knuckles etc.). Empty bonuses + no grants returns the
 	# base array directly so the hot path stays allocation-free.
 	var base: Array = data.get_effective_effects(upgraded)
-	var grants: Array = CardMods.granted_effects(data)
-	if effect_bonuses.is_empty() and grants.is_empty():
-		return base
-	var out: Array = []
+	# No per-instance bumps: CardMods folds in item boosts + appended grants
+	# (and short-circuits to `base` untouched when neither applies).
+	if effect_bonuses.is_empty():
+		return CardMods.resolved_effects(base, data)
+	# Layer this instance's persistent effect_bonuses onto a duplicated base
+	# first (weapon verifications), then hand off to CardMods for the shared
+	# item boost/grant pass.
+	var bumped: Array = []
 	for i in range(base.size()):
 		var e: Dictionary = (base[i] as Dictionary).duplicate()
 		if effect_bonuses.has(i):
 			for field in effect_bonuses[i].keys():
 				e[field] = int(e.get(field, 0)) + int(effect_bonuses[i][field])
-		out.append(e)
-	out.append_array(grants)
-	return out
+		bumped.append(e)
+	return CardMods.resolved_effects(bumped, data)
 
+# Out-of-combat text: no player scaling, but item boosts that raise the card's
+# own numbers (Strike Dummy: +3 Dmg) are still folded in so the shown number is
+# the real one everywhere (shop / rest / collection). Plain (no BBCode).
 func get_description() -> String:
-	var base: String = data.get_effective_description(upgraded)
+	return _decorate(CardScaling.scale_text(
+		data.get_effective_description(upgraded), null, false, data))
+
+# Like get_description, but with the card's Dmg / Block / inflicted-status
+# numbers rewritten to reflect `player`'s live combat scaling (Power / Arcane /
+# Defense / Persistence) on top of any item boosts — see CardScaling. Used by the
+# in-combat hand view so the displayed numbers match what actually resolves.
+# `rich` toggles BBCode colouring.
+func combat_description(player, rich: bool = true) -> String:
+	return _decorate(CardScaling.scale_text(
+		data.get_effective_description(upgraded), player, rich, data))
+
+# Appends the item-driven addenda (card_played trigger preview, granted effects,
+# granted boosts, weapon effect_bonuses) onto a base description string. Shared
+# by get_description and combat_description so the two read identically apart
+# from the scaled numbers.
+func _decorate(base: String) -> String:
 	# Tack on any item-driven card_played triggers whose filter matches
 	# this card, so e.g. Bird Head ("strikes inflict Soul Link") makes
 	# every Strike-tagged card visibly read "Deal 6 Dmg Melee. Inflict
@@ -70,6 +92,9 @@ func get_description() -> String:
 	var grant_extra: String = CardMods.describe(data)
 	if grant_extra != "":
 		base = "%s %s" % [base, grant_extra]
+	# NOTE: item boosts (Strike Dummy) are NOT annotated here — CardScaling folds
+	# them straight into the card's Dmg/Block number, so "Deal 9 Dmg" already
+	# reflects the +3 instead of trailing a separate "[+3 Dmg]".
 	if effect_bonuses.is_empty():
 		return base
 	# Annotate with a compact bonus summary so the player sees what the

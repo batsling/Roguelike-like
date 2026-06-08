@@ -559,6 +559,199 @@ func test_streak_clear_wipes_everything() -> void:
 	assert_eq(GameState.dead_eye_streak, 0)
 	assert_eq(GameState.streak_attack_bonus(enemy), 0)
 
+# --- Old Coin ------------------------------------------------------------
+
+func test_old_coin_loads_with_acquire_gold() -> void:
+	var it: ItemData = Data.get_item(&"old_coin")
+	assert_not_null(it, "old_coin.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.PICKUP)
+	assert_eq(it.rarity, ItemData.Rarity.RARE)
+	var acq: Dictionary = _trigger_for(it, "item_acquired")
+	assert_false(acq.is_empty(), "Old Coin grants gold on acquire")
+	var e: Dictionary = acq.get("effects", [{}])[0]
+	assert_eq(String(e.get("type", "")), "gain_gold")
+	assert_eq(int(e.get("value", 0)), 100)
+
+func test_old_coin_grants_100_gold_on_pickup() -> void:
+	GameState.reset_run()
+	GameState.gold = 0
+	GameState.add_item(Data.get_item(&"old_coin"))
+	assert_eq(GameState.gold, 100, "picking up Old Coin grants 100 gold once")
+
+# --- Ring of the Snake ---------------------------------------------------
+
+func test_ring_of_the_snake_loads_with_combat_start_draw() -> void:
+	var it: ItemData = Data.get_item(&"ring_of_the_snake")
+	assert_not_null(it, "ring_of_the_snake.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	var t: Dictionary = _trigger_for(it, "combat_started")
+	assert_false(t.is_empty(), "Ring of the Snake fires at combat start")
+	var e: Dictionary = t.get("effects", [{}])[0]
+	assert_eq(String(e.get("type", "")), "draw")
+	assert_eq(int(e.get("value", 0)), 2)
+
+# --- Strike Dummy --------------------------------------------------------
+
+func test_strike_dummy_boosts_strikes() -> void:
+	var it: ItemData = Data.get_item(&"strike_dummy")
+	assert_not_null(it, "strike_dummy.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.card_grants.size(), 1, "Strike Dummy buffs via card_grants")
+	var grant: Dictionary = it.card_grants[0]
+	assert_eq(String(grant.get("if_card_tag", "")), "strike")
+	# StS-style: a boost raises the card's own Dmg, not a separate hit.
+	assert_true(grant.has("boost"), "Strike Dummy uses a boost, not an appended effect")
+	var b: Dictionary = grant.get("boost", [{}])[0]
+	assert_eq(String(b.get("type", "")), "dmg")
+	assert_eq(int(b.get("amount", 0)), 3)
+
+func test_strike_dummy_raises_strike_damage_as_one_hit() -> void:
+	GameState.reset_run()
+	var strike: CardData = Data.get_card(&"strike")  # base "Deal 6 Dmg"
+	# Before owning it, the Strike is a single 6-Dmg effect.
+	var before := CardInstance.from_data(strike).get_effects()
+	assert_eq(before.size(), 1, "Strike has one effect")
+	assert_eq(int(before[0].get("value", 0)), 6)
+	GameState.add_item(Data.get_item(&"strike_dummy"))
+	var after := CardInstance.from_data(strike).get_effects()
+	assert_eq(after.size(), 1, "still ONE effect — no separate hit was appended")
+	assert_eq(int(after[0].get("value", 0)), 9, "the Strike's own Dmg rose 6 -> 9")
+	assert_eq(String(after[0].get("damage_type", "")), "melee",
+		"the boost rides the Strike's existing melee hit")
+
+func test_strike_dummy_stacks_and_respects_upgrade() -> void:
+	GameState.reset_run()
+	var strike: CardData = Data.get_card(&"strike")
+	GameState.add_item(Data.get_item(&"strike_dummy"))
+	GameState.add_item(Data.get_item(&"strike_dummy"))
+	# Two copies: +6 on top of the upgraded base (9 -> 15).
+	var up := CardInstance.from_data(strike, true)
+	assert_eq(int(up.get_effects()[0].get("value", 0)), 15,
+		"boosts stack and apply on top of the upgraded value")
+
+func test_strike_dummy_boost_folds_into_card_number() -> void:
+	GameState.reset_run()
+	var strike: CardData = Data.get_card(&"strike")  # "Deal 6 Dmg Melee."
+	GameState.add_item(Data.get_item(&"strike_dummy"))
+	# The +3 is folded into the card's own number (6 -> 9), not a "+3" suffix.
+	var desc := CardInstance.from_data(strike).get_description()
+	assert_true(desc.contains("Deal 9 Dmg"), "the +3 boost folds into the Dmg number")
+	assert_false(desc.contains("+3 Dmg"), "no separate boost suffix anymore")
+
+# --- Paper Bag (Charisma mirrors the highest core stat) ------------------
+
+func test_paper_bag_loads_with_stat_mirror() -> void:
+	var it: ItemData = Data.get_item(&"paper_bag")
+	assert_not_null(it, "paper_bag.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.SCALING)
+	assert_eq(it.rarity, ItemData.Rarity.RARE)
+	assert_true(it.stat_mirror.has("charisma"), "Paper Bag mirrors Charisma")
+	var pool: Array = it.stat_mirror["charisma"]
+	for s in ["strength", "dexterity", "intelligence"]:
+		assert_true(pool.has(s), "Charisma's pool includes %s" % s)
+
+func test_stat_mirror_pool_reflects_ownership() -> void:
+	GameState.reset_run()
+	assert_true(GameState.stat_mirror_pool(&"charisma").is_empty(), "none owned yet")
+	GameState.add_item(Data.get_item(&"paper_bag"))
+	var pool: Array = GameState.stat_mirror_pool(&"charisma")
+	assert_true(pool.has(&"strength"), "owning Paper Bag exposes the Charisma pool")
+	assert_true(GameState.stat_mirror_pool(&"strength").is_empty(),
+		"only the mapped target (Charisma) has a pool")
+
+func test_paper_bag_raises_charisma_to_highest_core_stat() -> void:
+	GameState.reset_run()
+	GameState.strength = 9
+	GameState.dexterity = 3
+	GameState.intelligence = 2
+	GameState.charisma = 1
+	# Without Paper Bag, Charisma reads its own value.
+	assert_eq(Stats.get_value(&"charisma"), 1, "no mirror -> natural Charisma")
+	GameState.add_item(Data.get_item(&"paper_bag"))
+	assert_eq(Stats.get_value(&"charisma"), 9,
+		"Paper Bag mirrors Charisma onto the highest core stat (Strength 9)")
+	# It never drags Charisma down below its own value.
+	GameState.charisma = 12
+	assert_eq(Stats.get_value(&"charisma"), 12,
+		"a naturally-higher Charisma is left alone")
+
+func test_paper_bag_tracks_temporary_stat_buffs_live() -> void:
+	GameState.reset_run()
+	GameState.strength = 4
+	GameState.dexterity = 4
+	GameState.intelligence = 4
+	GameState.charisma = 4
+	GameState.add_item(Data.get_item(&"paper_bag"))
+	assert_eq(Stats.get_value(&"charisma"), 4, "all equal -> Charisma stays 4")
+	# A temporary +5 Dexterity buff (Speedball-style pill) makes Dex the largest,
+	# so Charisma rises to match for as long as the buff lasts.
+	GameState.add_temp_stat(&"dexterity", 5)
+	assert_eq(Stats.get_value(&"charisma"), 9,
+		"a temporary buff that becomes the highest stat raises Charisma")
+	# When the buff clears, Charisma falls back.
+	GameState.clear_temp_buffs()
+	assert_eq(Stats.get_value(&"charisma"), 4,
+		"Charisma falls back the moment the temporary buff clears")
+
+# --- Whetstone / War Paint (upgrade random deck cards) -------------------
+
+func test_whetstone_and_war_paint_load_with_upgrade_effect() -> void:
+	for pair in [["whetstone", "attack"], ["war_paint", "skill"]]:
+		var it: ItemData = Data.get_item(StringName(pair[0]))
+		assert_not_null(it, "%s.tres should load" % pair[0])
+		assert_eq(it.kind, ItemData.ItemKind.PICKUP)
+		var acq: Dictionary = _trigger_for(it, "item_acquired")
+		assert_false(acq.is_empty(), "%s fires on acquire" % pair[0])
+		var e: Dictionary = acq.get("effects", [{}])[0]
+		assert_eq(String(e.get("type", "")), "upgrade_random_cards")
+		assert_eq(String(e.get("card_type", "")), pair[1])
+		assert_eq(int(e.get("count", 0)), 2)
+
+func test_whetstone_upgrades_two_random_attacks_only() -> void:
+	GameState.reset_run()
+	GameState.deck.clear()
+	for _i in range(4):
+		GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike")))   # Attack
+	GameState.deck.append(CardInstance.from_data(Data.get_card(&"defend")))        # Skill
+	GameState.add_item(Data.get_item(&"whetstone"))
+	var atk_up := 0
+	var skill_up := 0
+	for ci in GameState.deck:
+		if not ci.upgraded:
+			continue
+		if ci.data.is_attack(): atk_up += 1
+		elif ci.data.is_skill(): skill_up += 1
+	assert_eq(atk_up, 2, "exactly two Attacks upgraded")
+	assert_eq(skill_up, 0, "Whetstone never touches Skills")
+
+func test_war_paint_upgrades_two_random_skills_only() -> void:
+	GameState.reset_run()
+	GameState.deck.clear()
+	for _i in range(3):
+		GameState.deck.append(CardInstance.from_data(Data.get_card(&"defend")))   # Skill
+	GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike")))        # Attack
+	GameState.add_item(Data.get_item(&"war_paint"))
+	var skill_up := 0
+	var atk_up := 0
+	for ci in GameState.deck:
+		if not ci.upgraded:
+			continue
+		if ci.data.is_skill(): skill_up += 1
+		elif ci.data.is_attack(): atk_up += 1
+	assert_eq(skill_up, 2, "exactly two Skills upgraded")
+	assert_eq(atk_up, 0, "War Paint never touches Attacks")
+
+func test_upgrade_random_caps_at_available_and_skips_upgraded() -> void:
+	GameState.reset_run()
+	GameState.deck.clear()
+	# Only one upgradeable Attack present -> upgrades just the one.
+	GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike")))
+	var names: Array = GameState.upgrade_random_deck_cards("attack", 2)
+	assert_eq(names.size(), 1, "caps at the number of eligible cards")
+	# Re-running finds nothing new (already upgraded).
+	assert_eq(GameState.upgrade_random_deck_cards("attack", 2).size(), 0,
+		"already-upgraded cards aren't re-counted")
+
 func test_pen_nib_per_effect_marker_doubles_in_flight_bolt() -> void:
 	# Action projectiles snapshot the Pen Nib window at fire time and carry it
 	# on the effect, so Stats.resolve_damage doubles even if the global flag

@@ -72,6 +72,7 @@ func _register_defaults() -> void:
 	register("exhaust", _h_exhaust)
 	register("recall", _h_recall)
 	register("upgrade_hand", _h_upgrade_hand)
+	register("upgrade_random_cards", _h_upgrade_random_cards)
 	register("boost_cards", _h_boost_cards)
 	register("gain_loot", _h_gain_loot)
 	register("trigger", _h_trigger)
@@ -319,6 +320,17 @@ func _h_upgrade_hand(effect: Dictionary, ctx: Dictionary) -> void:
 		ctx.get("card"),
 		bool(effect.get("random", false)),
 	)
+
+func _h_upgrade_random_cards(effect: Dictionary, _ctx: Dictionary) -> void:
+	# Scene-less permanent deck upgrade (Whetstone -> Attacks, War Paint ->
+	# Skills). `card_type` filters by CardData type ("" = any); `count` is how
+	# many random matching, not-yet-upgraded cards to upgrade. Used from
+	# item_acquired so it works without a live combat scene.
+	var names: Array = GameState.upgrade_random_deck_cards(
+		String(effect.get("card_type", "")), int(effect.get("count", 1)))
+	if not names.is_empty():
+		Notifications.notify("Upgraded %s." % ", ".join(PackedStringArray(names)),
+			Color(1.0, 0.72, 0.3))
 
 func _h_boost_cards(effect: Dictionary, ctx: Dictionary) -> void:
 	# Register a persistent in-combat modifier that bumps a stat on

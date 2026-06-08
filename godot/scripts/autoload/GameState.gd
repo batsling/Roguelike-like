@@ -89,6 +89,11 @@ var equipped_weapon: ItemData = null     # Also a duplicated Resource
 # upgraded/downgraded. Excludes the health bucket — see _applied_item_*.
 var item_stat_bonus: Dictionary = {}
 
+# Fast guard for Stats.get_value: true while any owned item declares a
+# stat_mirror (Paper Bag). Refreshed by _recompute_item_bonuses so the hot
+# stat-read path can skip the inventory scan entirely when no mirror is owned.
+var stat_mirror_active: bool = false
+
 # Health-bucket stats (max_hp, max_energy) are applied as direct
 # deltas to the GameState fields — never through item_stat_bonus — so
 # reads of GameState.max_hp / max_energy stay authoritative without
@@ -791,6 +796,27 @@ func _deck_add_should_upgrade(card_data: CardData) -> bool:
 				return true
 	return false
 
+# Upgrades up to `count` random, not-yet-upgraded, upgradeable deck cards of the
+# given type (Whetstone -> "attack", War Paint -> "skill"; "" = any type). A
+# permanent deck change, so the upgrade is read in every combat mode via
+# CardInstance.get_effective_effects. Returns the display names upgraded (for
+# logging). card_type matches CardData.type via the shared ItemTriggers mapper.
+func upgrade_random_deck_cards(card_type: String, count: int) -> Array:
+	var pool: Array = []
+	for ci in deck:
+		if ci is CardInstance and not ci.upgraded and ci.data != null \
+				and ci.data.can_upgrade \
+				and (card_type == "" or ItemTriggers._card_type_is(ci.data, card_type)):
+			pool.append(ci)
+	pool.shuffle()
+	var names: Array = []
+	for i in range(mini(maxi(0, count), pool.size())):
+		pool[i].upgraded = true
+		names.append(pool[i].data.display_name)
+	if not names.is_empty():
+		emit_signal("deck_changed")
+	return names
+
 # Flat per-hit damage every owned item grants to the player's attacks of the
 # given damage_type (Focus Crystal -> +1 melee). Read by Stats.damage_bonus.
 func attack_damage_bonus(damage_type: String) -> int:
@@ -807,6 +833,25 @@ func has_energy_carryover_item() -> bool:
 		if item is ItemData and item.carries_leftover_energy:
 			return true
 	return false
+
+# Paper Bag (and any future mirror item): the pool of stat ids whose maximum
+# `stat_id` reads as while owned, merged across every owned item. Empty when no
+# item mirrors this stat. Read by Stats.get_value() on every lookup, so the
+# derived value tracks temporary buffs live. Weapon slot can't hold a mirror
+# item, so inventory is the only source.
+func stat_mirror_pool(stat_id: StringName) -> Array:
+	var pool: Array = []
+	var key := String(stat_id)
+	for item in inventory:
+		if not (item is ItemData) or item.stat_mirror.is_empty():
+			continue
+		if not item.stat_mirror.has(key):
+			continue
+		for s in item.stat_mirror[key]:
+			var sn := StringName(s)
+			if not pool.has(sn):
+				pool.append(sn)
+	return pool
 
 func _grant_weapon_card(inst: ItemData) -> bool:
 	# Internal: if `inst` is a weapon with a linked card_id, append a
@@ -983,6 +1028,13 @@ func _recompute_item_bonuses() -> void:
 			totals[out_stat] = int(totals.get(out_stat, 0)) + per_val * stacks
 
 	item_stat_bonus = totals
+	# Cache whether any owned item mirrors a stat onto a pool (Paper Bag), so
+	# Stats.get_value can skip the per-read inventory scan in the common case.
+	stat_mirror_active = false
+	for it in sources:
+		if it is ItemData and not it.stat_mirror.is_empty():
+			stat_mirror_active = true
+			break
 	emit_signal("stats_changed")
 
 # ---------------------------------------------------------------------------
