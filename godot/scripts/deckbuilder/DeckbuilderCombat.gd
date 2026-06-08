@@ -692,7 +692,7 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 			target.hp = GameState.hp
 		else:
 			target.hp = maxi(0, target.hp - amount)
-		_show_hp_loss(target, amount)
+		_float_number(target, amount)
 		var who := "you" if target.is_player else target.display_name
 		GameLog.add("%s takes %d damage." % [who.capitalize(), amount], Color(1.0, 0.6, 0.6))
 		TriggerBus.emit_signal("damage_taken", {
@@ -763,7 +763,7 @@ func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 		target.hp = GameState.hp
 	else:
 		target.hp = maxi(0, target.hp - amount)
-	_show_hp_loss(target, amount)
+	_float_number(target, amount)
 	var who := "You" if target.is_player else target.display_name
 	GameLog.add("%s takes %d %s damage." % [who, amount, source_name],
 		Color(1.0, 0.5, 0.6))
@@ -820,9 +820,10 @@ func gain_block(target: CombatActor, base_amount: int) -> void:
 	# Shared block math: Defense status adds, Frail cuts 25% (see Stats).
 	target.block += Stats.resolve_block(base_amount, target, true)
 
-# Pops a red floating number over the actor that just lost `amount` HP. Enemies
-# float over their EnemyView; the player (no avatar) floats over the HP readout.
-func _show_hp_loss(target: CombatActor, amount: int) -> void:
+# Pops a floating number over an actor: red for HP lost, green for HP healed.
+# Enemies float over their EnemyView; the player (no avatar) floats over the HP
+# readout.
+func _float_number(target: CombatActor, amount: int, color: Color = FloatingNumbers.DAMAGE_COLOR) -> void:
 	if amount <= 0 or not is_inside_tree():
 		return
 	var anchor: Control = null
@@ -835,16 +836,18 @@ func _show_hp_loss(target: CombatActor, amount: int) -> void:
 	if anchor == null:
 		return
 	var pos: Vector2 = anchor.global_position - global_position + anchor.size * 0.5
-	FloatingNumbers.spawn(self, pos, amount)
+	FloatingNumbers.spawn(self, pos, amount, color)
 
 func heal(target: CombatActor, amount: int) -> void:
 	if target == null or amount <= 0:
 		return
+	var before: int = target.hp
 	if target.is_player:
 		GameState.change_hp(amount)
 		target.hp = GameState.hp
 	else:
 		target.hp = mini(target.max_hp, target.hp + amount)
+	_float_number(target, target.hp - before, FloatingNumbers.HEAL_COLOR)
 
 # Leeches drain -> player heal. Called by Stats.tick_actor_statuses when a
 # leeched enemy bleeds HP into the player (Jar of Leeches).

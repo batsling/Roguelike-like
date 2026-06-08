@@ -1229,11 +1229,14 @@ func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 func heal(target, value: int) -> void:
 	if target == null or int(value) <= 0:
 		return
+	var before: int = target.hp
 	if target.is_player:
 		GameState.change_hp(int(value))
 		player_actor.hp = GameState.hp
 	else:
 		target.hp = mini(target.max_hp, target.hp + int(value))
+	FloatingNumbers.spawn(self, _actor_arena_pos(target), target.hp - before,
+		FloatingNumbers.HEAL_COLOR)
 
 # Leeches drain -> player heal (Jar of Leeches). Called by
 # Stats.tick_actor_statuses when a leeched enemy bleeds HP into the player.

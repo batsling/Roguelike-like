@@ -11,6 +11,7 @@ extends RefCounted
 # Red is the default (damage / HP loss). The amount is shown as a bare number.
 
 const DAMAGE_COLOR := Color(1.0, 0.33, 0.33)
+const HEAL_COLOR := Color(0.45, 1.0, 0.5)
 
 static func spawn(parent: CanvasItem, local_pos: Vector2, amount: int,
 		color: Color = DAMAGE_COLOR) -> void:

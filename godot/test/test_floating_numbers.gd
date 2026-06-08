@@ -26,6 +26,14 @@ func test_zero_amount_is_a_noop() -> void:
 	FloatingNumbers.spawn(host, Vector2.ZERO, 0)
 	assert_eq(host.get_child_count(), 0, "zero never spawns a label")
 
+func test_spawn_uses_given_color() -> void:
+	var host := Control.new()
+	add_child_autofree(host)
+	FloatingNumbers.spawn(host, Vector2.ZERO, 4, FloatingNumbers.HEAL_COLOR)
+	var lbl := host.get_child(0) as Label
+	assert_eq(lbl.get_theme_color("font_color"), FloatingNumbers.HEAL_COLOR,
+		"heal numbers use the green heal colour")
+
 func test_null_parent_is_safe() -> void:
 	# Must not crash.
 	FloatingNumbers.spawn(null, Vector2.ZERO, 5)
