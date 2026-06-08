@@ -19,13 +19,16 @@ const PANEL_BORDER := Color(0.42, 0.33, 0.55, 0.9)
 const AMULET_COL := Color(1.0, 0.55, 0.2)
 const NEXT_COL := Color(0.5, 0.8, 1.0)
 
-# Node box geometry + how much of the graph to show.
-const BOX_W := 168
-const BOX_H := 58
-const H_GAP := 22
-const V_GAP := 60
-const LAYER_CAP := 5        # max nodes drawn per distance layer
-const DETOUR_SLACK := 1     # include near-shortest detours, not just the optimum
+# Node box geometry + how much of the graph to show. Widths are tuned so a
+# full LAYER_CAP-wide row still fits the main panel without horizontal scroll.
+const BOX_W := 200
+const BOX_H := 66
+const H_GAP := 26
+const V_GAP := 66
+const COVER_W := 39       # covers are 3:4 portrait — slot matches so no bars
+const COVER_H := 52
+const LAYER_CAP := 4      # max nodes drawn per distance layer
+const DETOUR_SLACK := 1   # include near-shortest detours, not just the optimum
 
 var _graph: Control
 var _node_rects: Dictionary = {}   # StringName -> Rect2 (graph-local)
@@ -81,7 +84,7 @@ func _build() -> void:
 
 	var content_top := 90.0
 	var content_bottom := vp.y - 54.0
-	var left_w := 300.0
+	var left_w := 280.0
 	var gap := 16.0
 	var left_rect := Rect2(24, content_top, left_w, content_bottom - content_top)
 	var main_rect := Rect2(24 + left_w + gap, content_top,
@@ -184,7 +187,7 @@ func _populate_past(scroll: ScrollContainer) -> void:
 		var l := Label.new()
 		l.text = "%d.  %s" % [idx, _name_of(g)]
 		l.position = Vector2(10, 6)
-		l.size = Vector2(258, 18)
+		l.size = Vector2(232, 18)
 		l.clip_text = true
 		l.add_theme_font_size_override("font_size", 12)
 		l.add_theme_color_override("font_color", Color(0.82, 0.82, 0.9))
@@ -258,7 +261,7 @@ func _populate_route(scroll: ScrollContainer, inner_w: float) -> void:
 		var n: int = layers[L].size()
 		if n > 0:
 			max_row_w = maxi(max_row_w, n * BOX_W + (n - 1) * H_GAP)
-	var graph_w: int = maxi(int(inner_w), max_row_w + 40)
+	var graph_w: int = maxi(int(inner_w), max_row_w + 24)
 	var graph_h: int = top_pad + (total + 1) * BOX_H + total * V_GAP + bot_pad
 
 	_graph = Control.new()
@@ -327,59 +330,70 @@ func _make_node_box(id: StringName, det: int, is_cur: bool, is_amu: bool, is_nex
 		bw = 2
 	box.add_theme_stylebox_override("panel", _sb(PANEL_BG, border, bw, 8))
 
+	var type_col: Color = RunGraph.type_color(gd.type) if gd != null else Color(0.5, 0.5, 0.5)
+
+	# Cover: a clipped slot with a full-rect TextureRect (the pattern that
+	# renders correctly elsewhere). Slot matches the 3:4 cover ratio so the
+	# art fills it with no letterbox bars.
 	if gd != null and gd.cover_image != null:
+		var slot := Control.new()
+		slot.position = Vector2(8, (BOX_H - COVER_H) / 2.0)
+		slot.size = Vector2(COVER_W, COVER_H)
+		slot.clip_contents = true
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var tr := TextureRect.new()
 		tr.texture = gd.cover_image
-		tr.position = Vector2(6, (BOX_H - 46) / 2.0)
-		tr.size = Vector2(46, 46)
-		tr.custom_minimum_size = Vector2(46, 46)
+		tr.set_anchors_preset(Control.PRESET_FULL_RECT)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		box.add_child(tr)
+		slot.add_child(tr)
+		box.add_child(slot)
 
-	var tx := 58
+	var tx := 8 + COVER_W + 10
 	var dim: bool = det > 0 and not (is_cur or is_amu or is_next)
 
 	var name_l := Label.new()
 	name_l.text = _name_of(id)
-	name_l.position = Vector2(tx, 7)
-	name_l.size = Vector2(BOX_W - tx - 34, 20)
+	name_l.position = Vector2(tx, 10)
+	name_l.size = Vector2(BOX_W - tx - 36, 22)
 	name_l.clip_text = true
-	name_l.add_theme_font_size_override("font_size", 13)
-	name_l.add_theme_color_override("font_color", Color(0.6, 0.6, 0.66) if dim else Color(1, 0.95, 0.85))
+	name_l.add_theme_font_size_override("font_size", 14)
+	name_l.add_theme_color_override("font_color", Color(0.62, 0.62, 0.68) if dim else Color(1, 0.96, 0.88))
 	box.add_child(name_l)
 
 	# Hops-to-Amulet chip, top-right (blank on the Amulet itself).
 	if not is_amu:
 		var dist_l := Label.new()
 		dist_l.text = str(dist_to_amulet)
-		dist_l.position = Vector2(BOX_W - 30, 7)
-		dist_l.size = Vector2(22, 18)
+		dist_l.position = Vector2(BOX_W - 32, 10)
+		dist_l.size = Vector2(24, 20)
 		dist_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		dist_l.add_theme_font_size_override("font_size", 12)
-		dist_l.add_theme_color_override("font_color", Color(0.7, 0.72, 0.82))
+		dist_l.add_theme_font_size_override("font_size", 13)
+		dist_l.add_theme_color_override("font_color", Color(0.72, 0.74, 0.84))
 		box.add_child(dist_l)
 
-	var parts: Array = []
+	# Second line: a single, low-clutter status string.
+	var badge_text := ""
+	var badge_col := type_col
 	if is_cur:
-		parts.append("★ YOU")
+		badge_text = "★ YOU ARE HERE"
+		badge_col = ACCENT
 	elif is_amu:
-		parts.append("◆ AMULET")
-	elif is_next:
-		parts.append("▶ next")
-	parts.append(RunGraph.type_label(gd.type) if gd != null else "?")
-	if id in GameState.beaten_games:
-		parts.append("✓ beat")
+		badge_text = "◆ THE AMULET"
+		badge_col = Color(1, 0.72, 0.45)
+	else:
+		badge_text = RunGraph.type_label(gd.type) if gd != null else "?"
+		if id in GameState.beaten_games:
+			badge_text += "    ✓ beaten"
 
 	var badge_l := Label.new()
-	badge_l.text = "  ".join(parts)
-	badge_l.position = Vector2(tx, 31)
+	badge_l.text = badge_text
+	badge_l.position = Vector2(tx, 36)
 	badge_l.size = Vector2(BOX_W - tx - 8, 18)
 	badge_l.clip_text = true
-	badge_l.add_theme_font_size_override("font_size", 10)
-	var badge_col: Color = ACCENT if is_cur else (Color(1, 0.72, 0.45) if is_amu else Color(0.72, 0.74, 0.82))
-	badge_l.add_theme_color_override("font_color", badge_col)
+	badge_l.add_theme_font_size_override("font_size", 11)
+	badge_l.add_theme_color_override("font_color", Color(badge_col, 0.5) if dim else badge_col)
 	box.add_child(badge_l)
 	return box
 
@@ -395,31 +409,33 @@ func _build_legend(root: Control, vp: Vector2) -> void:
 		["Amulet", AMULET_COL],
 		["Next step", NEXT_COL],
 	]
-	var x := 28.0
-	var y := vp.y - 42.0
+	var bar := HBoxContainer.new()
+	bar.position = Vector2(28, vp.y - 40)
+	bar.add_theme_constant_override("separation", 18)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(bar)
 	for it in items:
+		var entry := HBoxContainer.new()
+		entry.add_theme_constant_override("separation", 6)
+		entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var chip := ColorRect.new()
 		chip.color = it[1]
-		chip.position = Vector2(x, y + 3)
-		chip.size = Vector2(14, 14)
+		chip.custom_minimum_size = Vector2(14, 14)
+		chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		root.add_child(chip)
+		entry.add_child(chip)
 		var l := Label.new()
 		l.text = it[0]
-		l.position = Vector2(x + 20, y)
-		l.size = Vector2(120, 20)
 		l.add_theme_font_size_override("font_size", 12)
 		l.add_theme_color_override("font_color", Color(0.8, 0.8, 0.88))
-		root.add_child(l)
-		x += 34 + 8 * float(String(it[0]).length())
+		entry.add_child(l)
+		bar.add_child(entry)
 
 	var note := Label.new()
-	note.text = "(number = hops to Amulet)"
-	note.position = Vector2(x + 8, y)
-	note.size = Vector2(220, 20)
+	note.text = "    (number = hops to Amulet)"
 	note.add_theme_font_size_override("font_size", 12)
 	note.add_theme_color_override("font_color", Color(0.6, 0.6, 0.68))
-	root.add_child(note)
+	bar.add_child(note)
 
 # --- Close -------------------------------------------------------------
 
