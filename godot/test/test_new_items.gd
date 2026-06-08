@@ -559,6 +559,111 @@ func test_streak_clear_wipes_everything() -> void:
 	assert_eq(GameState.dead_eye_streak, 0)
 	assert_eq(GameState.streak_attack_bonus(enemy), 0)
 
+# --- Old Coin ------------------------------------------------------------
+
+func test_old_coin_loads_with_acquire_gold() -> void:
+	var it: ItemData = Data.get_item(&"old_coin")
+	assert_not_null(it, "old_coin.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.PICKUP)
+	assert_eq(it.rarity, ItemData.Rarity.RARE)
+	var acq: Dictionary = _trigger_for(it, "item_acquired")
+	assert_false(acq.is_empty(), "Old Coin grants gold on acquire")
+	var e: Dictionary = acq.get("effects", [{}])[0]
+	assert_eq(String(e.get("type", "")), "gain_gold")
+	assert_eq(int(e.get("value", 0)), 100)
+
+func test_old_coin_grants_100_gold_on_pickup() -> void:
+	GameState.reset_run()
+	GameState.gold = 0
+	GameState.add_item(Data.get_item(&"old_coin"))
+	assert_eq(GameState.gold, 100, "picking up Old Coin grants 100 gold once")
+
+# --- Ring of the Snake ---------------------------------------------------
+
+func test_ring_of_the_snake_loads_with_combat_start_draw() -> void:
+	var it: ItemData = Data.get_item(&"ring_of_the_snake")
+	assert_not_null(it, "ring_of_the_snake.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	var t: Dictionary = _trigger_for(it, "combat_started")
+	assert_false(t.is_empty(), "Ring of the Snake fires at combat start")
+	var e: Dictionary = t.get("effects", [{}])[0]
+	assert_eq(String(e.get("type", "")), "draw")
+	assert_eq(int(e.get("value", 0)), 2)
+
+# --- Strike Dummy --------------------------------------------------------
+
+func test_strike_dummy_grants_dmg_to_strikes() -> void:
+	var it: ItemData = Data.get_item(&"strike_dummy")
+	assert_not_null(it, "strike_dummy.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.card_grants.size(), 1, "Strike Dummy buffs via card_grants")
+	var grant: Dictionary = it.card_grants[0]
+	assert_eq(String(grant.get("if_card_tag", "")), "strike")
+	var e: Dictionary = grant.get("effects", [{}])[0]
+	assert_eq(String(e.get("type", "")), "dmg")
+	assert_eq(int(e.get("value", 0)), 3)
+	assert_eq(String(e.get("target", "")), "enemy")
+
+func test_strike_dummy_dmg_folds_into_strike_effects_when_owned() -> void:
+	GameState.reset_run()
+	var strike: CardData = Data.get_card(&"strike")
+	GameState.add_item(Data.get_item(&"strike_dummy"))
+	var ci := CardInstance.from_data(strike)
+	var extra_dmg := 0
+	for e in ci.get_effects():
+		if String(e.get("type", "")) == "dmg" and int(e.get("value", 0)) == 3:
+			extra_dmg += 1
+	assert_eq(extra_dmg, 1, "owning Strike Dummy adds a +3 Dmg effect to Strikes")
+
+# --- Paper Bag (Charisma mirrors the highest core stat) ------------------
+
+func test_paper_bag_loads_with_mirror_flag() -> void:
+	var it: ItemData = Data.get_item(&"paper_bag")
+	assert_not_null(it, "paper_bag.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.SCALING)
+	assert_eq(it.rarity, ItemData.Rarity.RARE)
+	assert_true(it.charisma_equals_highest_stat)
+
+func test_charisma_mirror_flag_reflects_ownership() -> void:
+	GameState.reset_run()
+	assert_false(GameState.has_charisma_mirror_item(), "none owned yet")
+	GameState.add_item(Data.get_item(&"paper_bag"))
+	assert_true(GameState.has_charisma_mirror_item())
+
+func test_paper_bag_raises_charisma_to_highest_core_stat() -> void:
+	GameState.reset_run()
+	GameState.strength = 9
+	GameState.dexterity = 3
+	GameState.intelligence = 2
+	GameState.charisma = 1
+	# Without Paper Bag, Charisma reads its own value.
+	assert_eq(Stats.get_value(&"charisma"), 1, "no mirror -> natural Charisma")
+	GameState.add_item(Data.get_item(&"paper_bag"))
+	assert_eq(Stats.get_value(&"charisma"), 9,
+		"Paper Bag mirrors Charisma onto the highest core stat (Strength 9)")
+	# It never drags Charisma down below its own value.
+	GameState.charisma = 12
+	assert_eq(Stats.get_value(&"charisma"), 12,
+		"a naturally-higher Charisma is left alone")
+
+func test_paper_bag_tracks_temporary_stat_buffs_live() -> void:
+	GameState.reset_run()
+	GameState.strength = 4
+	GameState.dexterity = 4
+	GameState.intelligence = 4
+	GameState.charisma = 4
+	GameState.add_item(Data.get_item(&"paper_bag"))
+	assert_eq(Stats.get_value(&"charisma"), 4, "all equal -> Charisma stays 4")
+	# A temporary +5 Dexterity buff (Speedball-style pill) makes Dex the largest,
+	# so Charisma rises to match for as long as the buff lasts.
+	GameState.add_temp_stat(&"dexterity", 5)
+	assert_eq(Stats.get_value(&"charisma"), 9,
+		"a temporary buff that becomes the highest stat raises Charisma")
+	# When the buff clears, Charisma falls back.
+	GameState.clear_temp_buffs()
+	assert_eq(Stats.get_value(&"charisma"), 4,
+		"Charisma falls back the moment the temporary buff clears")
+
 func test_pen_nib_per_effect_marker_doubles_in_flight_bolt() -> void:
 	# Action projectiles snapshot the Pen Nib window at fire time and carry it
 	# on the effect, so Stats.resolve_damage doubles even if the global flag

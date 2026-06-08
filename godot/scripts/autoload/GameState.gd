@@ -808,6 +808,16 @@ func has_energy_carryover_item() -> bool:
 			return true
 	return false
 
+# Paper Bag: true while any owned item mirrors Charisma onto the highest core
+# stat. Read by Stats.get_value(&"charisma") on every Charisma lookup, so the
+# derived value tracks temporary buffs live. Weapon slot can't hold a Paper Bag,
+# so inventory is the only source.
+func has_charisma_mirror_item() -> bool:
+	for item in inventory:
+		if item is ItemData and item.charisma_equals_highest_stat:
+			return true
+	return false
+
 func _grant_weapon_card(inst: ItemData) -> bool:
 	# Internal: if `inst` is a weapon with a linked card_id, append a
 	# CardInstance tagged with the item's instance_id. Caller decides

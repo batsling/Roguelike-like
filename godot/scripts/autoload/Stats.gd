@@ -6,6 +6,13 @@ extends Node
 
 enum Mode { DECKBUILDER, ACTION, STRATEGY }
 
+# Core stats Paper Bag compares Charisma against (the level-up "random" pool).
+# Charisma itself isn't listed — its own natural value is already the starting
+# point in get_value, and adding it back would just be a no-op max.
+const CHARISMA_MIRROR_PEERS: Array[StringName] = [
+	&"strength", &"dexterity", &"intelligence",
+]
+
 const ACTION_DASH_REGEN_SECONDS := 4.0
 
 # Action mode runs "turns" on a real-time timer since there's no
@@ -140,7 +147,16 @@ func get_value(stat_id: StringName) -> int:
 	# Temporary consumable buffs (pills) layer on top; cleared at the
 	# combat/room/event boundary by GameState.clear_temp_buffs().
 	var temp: int = int(GameState.temp_stat_bonus.get(String(stat_id), 0))
-	return base + bonus + temp
+	var total: int = base + bonus + temp
+	# Paper Bag: Charisma reads as the highest core stat while owned. Derived
+	# here (not stored) so it always reflects the current Str/Dex/Int — including
+	# temporary buffs — and falls back the instant those buffs clear. Computing
+	# the peers through get_value() is safe: only Charisma carries this override,
+	# so there's no recursion.
+	if stat_id == &"charisma" and GameState.has_charisma_mirror_item():
+		for peer in CHARISMA_MIRROR_PEERS:
+			total = maxi(total, get_value(peer))
+	return total
 
 func get_definition(stat_id: StringName) -> StatDefinition:
 	return _stat_defs.get(stat_id)

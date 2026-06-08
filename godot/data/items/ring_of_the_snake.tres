@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_ring_of_the_snake"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/RingOfTheSnake.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"ring_of_the_snake"
+display_name = "Ring of the Snake"
+kind = 1
+rarity = 0
+description = "At the start of combat, Draw 2 Cards."
+triggers = [{
+"on": "combat_started",
+"effects": [{
+"type": "draw",
+"value": 2,
+"target": "self"
+}]
+}]
+card_grants = []
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray("ring")
+image = ExtResource("2_img")
