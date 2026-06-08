@@ -94,6 +94,17 @@ var item_stat_bonus: Dictionary = {}
 # stat-read path can skip the inventory scan entirely when no mirror is owned.
 var stat_mirror_active: bool = false
 
+# Rock Bottom: stat-floor machinery. While any owned item declares a
+# stat_floor list, the named stats can never read below the highest EFFECTIVE
+# value they've ever reached this run (Isaac-style — a temporary buff that
+# raises the value gets locked in permanently). stat_floor_active is the cheap
+# guard for Stats.get_value's hot path; stat_floor_stats is the union set of
+# floored stat ids (String -> true); stat_high_water records the running peaks
+# (String -> int) and is persisted across saves.
+var stat_floor_active: bool = false
+var stat_floor_stats: Dictionary = {}
+var stat_high_water: Dictionary = {}
+
 # Health-bucket stats (max_hp, max_energy) are applied as direct
 # deltas to the GameState fields — never through item_stat_bonus — so
 # reads of GameState.max_hp / max_energy stay authoritative without
@@ -285,6 +296,9 @@ func reset_run() -> void:
 	fov_bonus = 0
 	discovery = 0
 	regeneration = 0
+	stat_high_water.clear()
+	stat_floor_active = false
+	stat_floor_stats.clear()
 	active_curses.clear()
 	pending_combat_statuses.clear()
 	Notifications.clear()
@@ -881,6 +895,19 @@ func remove_item_at(index: int) -> void:
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
 
+# Reactive Trauma Plate: if the player owns a lethal-negating item, destroy one
+# copy and report it. Called from Stats.resolve_damage the instant a hit would
+# drop the player to 0 HP, so the negation lands in every combat mode.
+func consume_lethal_guard() -> bool:
+	for i in range(inventory.size()):
+		var it = inventory[i]
+		if it is ItemData and it.negate_lethal:
+			GameLog.add("%s shatters, negating a lethal blow!" % it.display_name,
+				Color(1.0, 0.55, 0.35))
+			remove_item_at(i)
+			return true
+	return false
+
 func remove_card_at(deck_index: int) -> void:
 	# Inverse of the weapon-removes-card path. If the card was weapon-
 	# granted (source_weapon_id != 0), find and drop the paired item too
@@ -1035,6 +1062,17 @@ func _recompute_item_bonuses() -> void:
 		if it is ItemData and not it.stat_mirror.is_empty():
 			stat_mirror_active = true
 			break
+	# Rock Bottom: rebuild the union of floored stats so Stats.get_value can
+	# gate its high-water clamp on a single bool + dict lookup. high-water
+	# marks are NOT cleared here — they persist for the run even if the item
+	# is briefly removed and re-added.
+	stat_floor_active = false
+	stat_floor_stats = {}
+	for it in sources:
+		if it is ItemData and not it.stat_floor.is_empty():
+			stat_floor_active = true
+			for s in it.stat_floor:
+				stat_floor_stats[String(s)] = true
 	emit_signal("stats_changed")
 
 # ---------------------------------------------------------------------------

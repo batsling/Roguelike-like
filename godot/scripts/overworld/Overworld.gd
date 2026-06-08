@@ -78,7 +78,7 @@ func _spawn_portals_for_current_game() -> void:
 
 	# Shuffle then take 3 ± FoV. Mirrors the HTML's spawnChoices logic.
 	_shuffle_ids(ids)
-	var target_count: int = maxi(1, BASE_PORTAL_COUNT + GameState.fov_bonus)
+	var target_count: int = maxi(1, BASE_PORTAL_COUNT + Stats.get_value(&"fov_bonus"))
 	target_count = mini(target_count, ids.size())
 	var chosen: Array[StringName] = []
 	for i in range(target_count):

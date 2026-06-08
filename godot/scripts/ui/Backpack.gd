@@ -336,7 +336,7 @@ func _refresh_stats() -> void:
 	_add_attribute(combat, &"regeneration", Color(0.55, 0.95, 0.7))
 
 	var explore := _stat_section("Exploration")
-	explore.add_child(_stat_widget("FoV", str(BASE_FOV + GameState.fov_bonus), Color(0.7, 0.85, 1.0),
+	explore.add_child(_stat_widget("FoV", str(BASE_FOV + Stats.get_value(&"fov_bonus")), Color(0.7, 0.85, 1.0),
 		"Number of game portals shown on the overworld."))
 	explore.add_child(_stat_widget("Discovery", str(GameState.discovery), Color(0.8, 0.8, 1.0),
 		"Extra choices when collecting item and card rewards."))

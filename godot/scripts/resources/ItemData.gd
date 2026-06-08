@@ -177,6 +177,21 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # since the target's own natural value is always the starting point.)
 @export var stat_mirror: Dictionary = {}
 
+# Rock Bottom: the list of stat ids that can never fall below the highest
+# EFFECTIVE value they reach while this item is owned (Isaac-style — a
+# temporary buff that raises the value is locked in for the run). Empty for
+# every other item. GameState tracks the per-stat high-water marks; the floor
+# is applied live in Stats.get_value.
+#   Rock Bottom: ["strength", "dexterity", "intelligence", "charisma",
+#                 "fov", "discovery", "luck"]
+@export var stat_floor: PackedStringArray = PackedStringArray()
+
+# Reactive Trauma Plate: when the player would take a lethal hit, the hit is
+# negated outright and this item is destroyed (consumed for the run). Checked
+# in Stats.resolve_damage after Block and Buffer, so it backs up every combat
+# mode's attack damage. Only one copy fires per lethal hit.
+@export var negate_lethal: bool = false
+
 # For Usable items: how many uses (-1 = infinite)
 @export var max_uses: int = -1
 

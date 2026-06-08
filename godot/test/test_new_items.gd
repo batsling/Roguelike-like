@@ -850,3 +850,90 @@ func test_steady_investment_pays_gold_on_perfect() -> void:
 	var eff: Dictionary = it.perfect_effects[0]
 	assert_eq(String(eff.get("type", "")), "gain_gold")
 	assert_eq(int(eff.get("value", 0)), 10)
+
+# --- Reactive Trauma Plate (cheat-death via Stats.resolve_damage) and Rock
+# Bottom (Isaac-style stat floor via Stats.get_value). These need brand-new
+# engine vocabulary, so they get runtime coverage, not just .tres wiring. ---
+
+func test_reactive_trauma_plate_loads() -> void:
+	var it: ItemData = Data.get_item(&"reactive_trauma_plate")
+	assert_not_null(it, "reactive_trauma_plate.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.rarity, ItemData.Rarity.RARE)
+	assert_true(it.negate_lethal, "the plate flags itself as a lethal guard")
+
+func test_reactive_trauma_plate_negates_lethal_and_self_destructs() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"reactive_trauma_plate"))
+	var enemy := CombatActor.new()
+	enemy.is_player = false
+	enemy.hp = 50
+	enemy.max_hp = 50
+	var player := CombatActor.new()
+	player.is_player = true
+	player.hp = 5
+	player.max_hp = 30
+	var res := Stats.resolve_damage(enemy, player, 100,
+		{"damage_type": "melee"}, Stats.Mode.DECKBUILDER)
+	assert_true(bool(res.lethal_negated), "a lethal hit is negated")
+	assert_eq(int(res.hp_loss), 0, "no HP is lost")
+	assert_false(GameState.consume_lethal_guard(),
+		"the plate was destroyed, so a second lethal hit finds no guard")
+
+func test_reactive_trauma_plate_ignores_survivable_hits() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"reactive_trauma_plate"))
+	var enemy := CombatActor.new()
+	enemy.is_player = false
+	enemy.hp = 50
+	enemy.max_hp = 50
+	var player := CombatActor.new()
+	player.is_player = true
+	player.hp = 30
+	player.max_hp = 30
+	var res := Stats.resolve_damage(enemy, player, 6,
+		{"damage_type": "melee"}, Stats.Mode.DECKBUILDER)
+	assert_false(bool(res.lethal_negated), "a non-lethal hit doesn't trip the plate")
+	assert_eq(int(res.hp_loss), 6, "the hit lands normally")
+	assert_true(GameState.consume_lethal_guard(),
+		"the plate is still owned after a survivable hit")
+
+func test_rock_bottom_loads_with_seven_floored_stats() -> void:
+	var it: ItemData = Data.get_item(&"rock_bottom")
+	assert_not_null(it, "rock_bottom.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.SCALING)
+	assert_eq(it.rarity, ItemData.Rarity.RARE)
+	assert_eq(it.stat_floor.size(), 7, "floors all seven listed stats")
+	for s in ["strength", "dexterity", "intelligence", "charisma",
+			"fov_bonus", "discovery", "luck"]:
+		assert_true(it.stat_floor.has(s), "%s is floored" % s)
+
+func test_rock_bottom_holds_stats_at_their_peak() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"rock_bottom"))
+	GameState.strength = 10
+	assert_eq(Stats.get_value(&"strength"), 10, "peak recorded at 10")
+	GameState.strength = 3
+	assert_eq(Stats.get_value(&"strength"), 10, "can't fall below the peak")
+	GameState.strength = 15
+	assert_eq(Stats.get_value(&"strength"), 15, "a new high raises the floor")
+	GameState.strength = 1
+	assert_eq(Stats.get_value(&"strength"), 15, "still held at the new peak")
+
+func test_rock_bottom_locks_in_temporary_buffs_isaac_style() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"rock_bottom"))
+	GameState.strength = 5
+	GameState.temp_stat_bonus["strength"] = 5
+	assert_eq(Stats.get_value(&"strength"), 10, "buffed peak of 10 is seen")
+	GameState.temp_stat_bonus.erase("strength")
+	assert_eq(Stats.get_value(&"strength"), 10,
+		"the temporary buff is locked in permanently")
+
+func test_no_stat_floor_without_rock_bottom() -> void:
+	GameState.reset_run()
+	GameState.strength = 10
+	assert_eq(Stats.get_value(&"strength"), 10)
+	GameState.strength = 2
+	assert_eq(Stats.get_value(&"strength"), 2,
+		"stats fall freely when Rock Bottom isn't owned")

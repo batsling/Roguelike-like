@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_rock_bottom"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/RockBottom.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"rock_bottom"
+display_name = "Rock Bottom"
+kind = 4
+rarity = 2
+description = "Your Strength, Dexterity, Intelligence, Charisma, FoV, Discovery, and Luck can never fall below the highest values they have reached."
+triggers = []
+stat_bonuses = {}
+scaling = []
+stat_floor = PackedStringArray("strength", "dexterity", "intelligence", "charisma", "fov_bonus", "discovery", "luck")
+max_uses = -1
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("stone")
+image = ExtResource("2_img")

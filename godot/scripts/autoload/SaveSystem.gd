@@ -105,6 +105,9 @@ func _build_payload() -> Dictionary:
 		"reroll": GameState.reroll_charges,
 		"fov_bonus": GameState.fov_bonus,
 		"discovery": GameState.discovery,
+		# Rock Bottom's per-stat high-water marks. Floor itself is rebuilt from
+		# inventory on load; the peaks must survive so they aren't lost.
+		"stat_high_water": GameState.stat_high_water.duplicate(),
 		"action_left_card_id": String(GameState.action_left_card_id),
 		"action_right_card_id": String(GameState.action_right_card_id),
 	}
@@ -193,6 +196,13 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.reroll_charges = data.get("reroll", 0)
 	GameState.fov_bonus = data.get("fov_bonus", 0)
 	GameState.discovery = data.get("discovery", 0)
+	# Restore Rock Bottom's high-water marks after the floor set is rebuilt
+	# above by _recompute_item_bonuses. Coerce keys/values to String/int so a
+	# JSON-decoded dict slots straight into the live read path.
+	GameState.stat_high_water = {}
+	var hw_saved: Dictionary = data.get("stat_high_water", {})
+	for k in hw_saved.keys():
+		GameState.stat_high_water[String(k)] = int(hw_saved[k])
 	GameState.action_left_card_id = StringName(data.get("action_left_card_id", ""))
 	GameState.action_right_card_id = StringName(data.get("action_right_card_id", ""))
 	# Broadcast a full sweep so HUDs / overlays subscribed to GameState
