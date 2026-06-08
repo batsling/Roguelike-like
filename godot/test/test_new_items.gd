@@ -693,6 +693,65 @@ func test_paper_bag_tracks_temporary_stat_buffs_live() -> void:
 	assert_eq(Stats.get_value(&"charisma"), 4,
 		"Charisma falls back the moment the temporary buff clears")
 
+# --- Whetstone / War Paint (upgrade random deck cards) -------------------
+
+func test_whetstone_and_war_paint_load_with_upgrade_effect() -> void:
+	for pair in [["whetstone", "attack"], ["war_paint", "skill"]]:
+		var it: ItemData = Data.get_item(StringName(pair[0]))
+		assert_not_null(it, "%s.tres should load" % pair[0])
+		assert_eq(it.kind, ItemData.ItemKind.PICKUP)
+		var acq: Dictionary = _trigger_for(it, "item_acquired")
+		assert_false(acq.is_empty(), "%s fires on acquire" % pair[0])
+		var e: Dictionary = acq.get("effects", [{}])[0]
+		assert_eq(String(e.get("type", "")), "upgrade_random_cards")
+		assert_eq(String(e.get("card_type", "")), pair[1])
+		assert_eq(int(e.get("count", 0)), 2)
+
+func test_whetstone_upgrades_two_random_attacks_only() -> void:
+	GameState.reset_run()
+	GameState.deck.clear()
+	for _i in range(4):
+		GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike")))   # Attack
+	GameState.deck.append(CardInstance.from_data(Data.get_card(&"defend")))        # Skill
+	GameState.add_item(Data.get_item(&"whetstone"))
+	var atk_up := 0
+	var skill_up := 0
+	for ci in GameState.deck:
+		if not ci.upgraded:
+			continue
+		if ci.data.is_attack(): atk_up += 1
+		elif ci.data.is_skill(): skill_up += 1
+	assert_eq(atk_up, 2, "exactly two Attacks upgraded")
+	assert_eq(skill_up, 0, "Whetstone never touches Skills")
+
+func test_war_paint_upgrades_two_random_skills_only() -> void:
+	GameState.reset_run()
+	GameState.deck.clear()
+	for _i in range(3):
+		GameState.deck.append(CardInstance.from_data(Data.get_card(&"defend")))   # Skill
+	GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike")))        # Attack
+	GameState.add_item(Data.get_item(&"war_paint"))
+	var skill_up := 0
+	var atk_up := 0
+	for ci in GameState.deck:
+		if not ci.upgraded:
+			continue
+		if ci.data.is_skill(): skill_up += 1
+		elif ci.data.is_attack(): atk_up += 1
+	assert_eq(skill_up, 2, "exactly two Skills upgraded")
+	assert_eq(atk_up, 0, "War Paint never touches Attacks")
+
+func test_upgrade_random_caps_at_available_and_skips_upgraded() -> void:
+	GameState.reset_run()
+	GameState.deck.clear()
+	# Only one upgradeable Attack present -> upgrades just the one.
+	GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike")))
+	var names: Array = GameState.upgrade_random_deck_cards("attack", 2)
+	assert_eq(names.size(), 1, "caps at the number of eligible cards")
+	# Re-running finds nothing new (already upgraded).
+	assert_eq(GameState.upgrade_random_deck_cards("attack", 2).size(), 0,
+		"already-upgraded cards aren't re-counted")
+
 func test_pen_nib_per_effect_marker_doubles_in_flight_bolt() -> void:
 	# Action projectiles snapshot the Pen Nib window at fire time and carry it
 	# on the effect, so Stats.resolve_damage doubles even if the global flag

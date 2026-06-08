@@ -796,6 +796,27 @@ func _deck_add_should_upgrade(card_data: CardData) -> bool:
 				return true
 	return false
 
+# Upgrades up to `count` random, not-yet-upgraded, upgradeable deck cards of the
+# given type (Whetstone -> "attack", War Paint -> "skill"; "" = any type). A
+# permanent deck change, so the upgrade is read in every combat mode via
+# CardInstance.get_effective_effects. Returns the display names upgraded (for
+# logging). card_type matches CardData.type via the shared ItemTriggers mapper.
+func upgrade_random_deck_cards(card_type: String, count: int) -> Array:
+	var pool: Array = []
+	for ci in deck:
+		if ci is CardInstance and not ci.upgraded and ci.data != null \
+				and ci.data.can_upgrade \
+				and (card_type == "" or ItemTriggers._card_type_is(ci.data, card_type)):
+			pool.append(ci)
+	pool.shuffle()
+	var names: Array = []
+	for i in range(mini(maxi(0, count), pool.size())):
+		pool[i].upgraded = true
+		names.append(pool[i].data.display_name)
+	if not names.is_empty():
+		emit_signal("deck_changed")
+	return names
+
 # Flat per-hit damage every owned item grants to the player's attacks of the
 # given damage_type (Focus Crystal -> +1 melee). Read by Stats.damage_bonus.
 func attack_damage_bonus(damage_type: String) -> int:
