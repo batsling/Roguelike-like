@@ -59,6 +59,7 @@ func apply_all(effects: Array, ctx: Dictionary) -> void:
 func _register_defaults() -> void:
 	register("dmg", _h_dmg)
 	register("block", _h_block)
+	register("roll_block", _h_roll_block)
 	register("heal", _h_heal)
 	register("draw", _h_draw)
 	register("gain_energy", _h_gain_energy)
@@ -142,6 +143,16 @@ func _h_block(effect: Dictionary, ctx: Dictionary) -> void:
 	# Scene-less (event use): bank the block so the next chunk of event
 	# damage is soaked. Percs uses this path when played from the event bar.
 	GameState.add_event_block(int(effect.get("value", 0)))
+
+# Roll a `sides`-sided die (default 12) and grant that much Block. The roll
+# goes through Luck the same way every other die does (Luck advantage =
+# re-roll, keep the higher), then hands off to _h_block. Sulfa Powder:
+#   {type: "roll_block", sides: 12}
+func _h_roll_block(effect: Dictionary, ctx: Dictionary) -> void:
+	var sides: int = int(effect.get("sides", 12))
+	var amount: int = Stats.roll_die_with_luck(_rng, sides)
+	GameLog.add("Rolled D%d → %d Block" % [sides, amount], Color(0.7, 0.85, 1.0))
+	_h_block({"value": amount, "target": effect.get("target", "self")}, ctx)
 
 func _h_heal(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")

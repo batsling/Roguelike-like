@@ -81,6 +81,21 @@ static func _apply(effect: Dictionary, scene, player, enemies: Array,
 					"source": player, "target": e, "scene": scene, "card": event_card,
 				})
 		return
+	# "random_enemies": apply to `count` distinct living enemies, chosen at
+	# random (Raven Feather inflicts Soul Link on 2 random enemies). Falls
+	# back to however many are alive if fewer than `count` remain.
+	if t_str == "random_enemies":
+		var living: Array = []
+		for e in enemies:
+			if e != null and e.is_alive():
+				living.append(e)
+		living.shuffle()
+		var count: int = int(effect.get("count", 1))
+		for i in range(mini(count, living.size())):
+			EffectSystem.apply(effect, {
+				"source": player, "target": living[i], "scene": scene, "card": event_card,
+			})
+		return
 	var tgt = player
 	if t_str == "enemy":
 		# Prefer the card's target (card_played path); otherwise the first

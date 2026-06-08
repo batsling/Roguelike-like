@@ -398,6 +398,10 @@ func action_max_dash_charges() -> int:
 func roll_d20_with_luck(rng: RandomNumberGenerator) -> int:
 	return _luck_roll(rng, 20)
 
+# Roll a die of arbitrary size with Luck advantage (Sulfa Powder's D12 Block).
+func roll_die_with_luck(rng: RandomNumberGenerator, sides: int) -> int:
+	return _luck_roll(rng, sides)
+
 # ---------------------------------------------------------------------------
 # Crit
 # ---------------------------------------------------------------------------

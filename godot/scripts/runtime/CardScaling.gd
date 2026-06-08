@@ -91,9 +91,9 @@ static func scale_text(text: String, player, rich: bool = true, card: CardData =
 	# are left alone, matching Stats.status_apply_stacks.
 	if persistence > 0:
 		out = _sub(out, "(Inflict|Apply) (\\d+) ([A-Za-z_]+)", func(m):
-			var verb := m.get_string(1)
+			var verb: String = m.get_string(1)
 			var base := int(m.get_string(2))
-			var word := m.get_string(3)
+			var word: String = m.get_string(3)
 			if not (StringName(word.to_lower()) in Stats.PERSISTENCE_DEBUFFS):
 				return m.get_string(0)
 			var v := base + persistence

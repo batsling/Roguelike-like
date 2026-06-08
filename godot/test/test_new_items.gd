@@ -774,3 +774,79 @@ func test_pen_nib_per_effect_marker_doubles_in_flight_bolt() -> void:
 	var res2 := Stats.resolve_damage(src, tgt, 10,
 		{"damage_type": "ranged"}, Stats.Mode.ACTION)
 	assert_eq(int(res2.hp_loss), 10, "no marker, no global flag -> normal damage")
+
+# --- Pummarola / Raven Feather / Stone Calendar / Sulfa Powder / Steady
+# Investment: the latest batch. Pummarola and Stone Calendar reuse existing
+# vocabulary; Raven Feather (random_enemies target), Sulfa Powder (roll_block
+# effect) and Steady Investment (perfect_effects payload) exercise the new
+# additions. ---
+
+func test_pummarola_grants_regeneration_at_combat_start() -> void:
+	var it: ItemData = Data.get_item(&"pummarola")
+	assert_not_null(it, "pummarola.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.rarity, ItemData.Rarity.COMMON)
+	var trig: Dictionary = _trigger_for(it, "combat_started")
+	assert_false(trig.is_empty(), "Pummarola fires on combat_started")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "status")
+	assert_eq(String(eff.get("status", "")), "regeneration")
+	assert_eq(int(eff.get("stacks", 0)), 1)
+	assert_eq(String(eff.get("target", "")), "self",
+		"Regeneration lands on the player, not the default enemy target")
+
+func test_raven_feather_soul_links_two_random_enemies() -> void:
+	var it: ItemData = Data.get_item(&"raven_feather")
+	assert_not_null(it, "raven_feather.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.rarity, ItemData.Rarity.RARE)
+	var trig: Dictionary = _trigger_for(it, "combat_started")
+	assert_false(trig.is_empty(), "Raven Feather fires on combat_started")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "status")
+	assert_eq(String(eff.get("status", "")), "soul_link")
+	assert_eq(String(eff.get("target", "")), "random_enemies")
+	assert_eq(int(eff.get("count", 0)), 2, "hits 2 random enemies")
+
+func test_stone_calendar_blasts_all_enemies_on_turn_seven() -> void:
+	var it: ItemData = Data.get_item(&"stone_calendar")
+	assert_not_null(it, "stone_calendar.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.rarity, ItemData.Rarity.RARE)
+	var trig: Dictionary = _trigger_for(it, "turn_ended")
+	assert_false(trig.is_empty(), "Stone Calendar fires on turn_ended")
+	assert_eq(int(trig.get("if_turn", 0)), 7, "only on turn 7")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "dmg")
+	assert_eq(int(eff.get("value", 0)), 52)
+	assert_eq(String(eff.get("target", "")), "all_enemies")
+
+func test_sulfa_powder_rolls_d12_block_each_turn() -> void:
+	var it: ItemData = Data.get_item(&"sulfa_powder")
+	assert_not_null(it, "sulfa_powder.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.rarity, ItemData.Rarity.UNCOMMON)
+	var trig: Dictionary = _trigger_for(it, "turn_started")
+	assert_false(trig.is_empty(), "Sulfa Powder fires on turn_started")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "roll_block")
+	assert_eq(int(eff.get("sides", 0)), 12)
+	assert_eq(String(eff.get("target", "")), "self")
+
+func test_roll_die_with_luck_stays_in_range() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 12345
+	for _i in range(50):
+		var v: int = Stats.roll_die_with_luck(rng, 12)
+		assert_true(v >= 1 and v <= 12, "D12 roll within [1, 12]")
+
+func test_steady_investment_pays_gold_on_perfect() -> void:
+	var it: ItemData = Data.get_item(&"steady_investment")
+	assert_not_null(it, "steady_investment.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.rarity, ItemData.Rarity.COMMON)
+	assert_true(it.perfect_aware, "Steady Investment reacts to perfected games")
+	assert_eq(it.perfect_effects.size(), 1)
+	var eff: Dictionary = it.perfect_effects[0]
+	assert_eq(String(eff.get("type", "")), "gain_gold")
+	assert_eq(int(eff.get("value", 0)), 10)

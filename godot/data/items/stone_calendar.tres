@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_stone_calendar"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/StoneCalendar.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"stone_calendar"
+display_name = "Stone Calendar"
+kind = 1
+rarity = 2
+description = "At the end of turn 7, deal 52 damage to all enemies."
+triggers = [{
+"on": "turn_ended",
+"if_turn": 7,
+"effects": [{
+"type": "dmg",
+"value": 52,
+"target": "all_enemies"
+}]
+}]
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray("stone")
+image = ExtResource("2_img")
