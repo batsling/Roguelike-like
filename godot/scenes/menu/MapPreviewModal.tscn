@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://mappreview_phase1"]
 
 [ext_resource type="Script" path="res://scripts/menu/MapPreviewModal.gd" id="1_mappreview"]
-[ext_resource type="Script" path="res://scripts/menu/MapPreviewCanvas.gd" id="2_mapcanvas"]
+[ext_resource type="Script" path="res://scripts/overworld/MapGraphView.gd" id="2_mapgraph"]
 
 [node name="MapPreviewModal" type="Control"]
 layout_mode = 3
@@ -47,6 +47,7 @@ theme_override_constants/separation = 10
 
 [node name="HeaderRow" type="HBoxContainer" parent="Center/Panel/Margin/V"]
 layout_mode = 2
+theme_override_constants/separation = 6
 
 [node name="Title" type="Label" parent="Center/Panel/Margin/V/HeaderRow"]
 unique_name_in_owner = true
@@ -56,15 +57,45 @@ text = "Start → Amulet"
 theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(1, 0.85, 0.4, 1)
 
+[node name="ZoomOut" type="Button" parent="Center/Panel/Margin/V/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(34, 32)
+text = "−"
+
+[node name="ZoomLabel" type="Label" parent="Center/Panel/Margin/V/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(48, 32)
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "100%"
+
+[node name="ZoomIn" type="Button" parent="Center/Panel/Margin/V/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(34, 32)
+text = "+"
+
+[node name="ZoomReset" type="Button" parent="Center/Panel/Margin/V/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(64, 32)
+text = "Reset"
+
 [node name="CloseBtn" type="Button" parent="Center/Panel/Margin/V/HeaderRow"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(120, 32)
 text = "← Back"
 
-[node name="Canvas" type="Control" parent="Center/Panel/Margin/V"]
+[node name="Scroll" type="ScrollContainer" parent="Center/Panel/Margin/V"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 custom_minimum_size = Vector2(820, 520)
-script = ExtResource("2_mapcanvas")
+
+[node name="Graph" type="Control" parent="Center/Panel/Margin/V/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("2_mapgraph")
