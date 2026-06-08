@@ -19,21 +19,22 @@ const PANEL_BORDER := Color(0.42, 0.33, 0.55, 0.9)
 const AMULET_COL := Color(1.0, 0.55, 0.2)
 const NEXT_COL := Color(0.5, 0.8, 1.0)
 
-# Node box geometry + how much of the graph to show. Widths are tuned so a
-# full LAYER_CAP-wide row still fits the main panel without horizontal scroll.
-const BOX_W := 200
-const BOX_H := 66
-const H_GAP := 26
-const V_GAP := 66
-const COVER_W := 39       # covers are 3:4 portrait — slot matches so no bars
+# Node box geometry + Sugiyama layout spacing.
+const BOX_W := 186
+const BOX_H := 64
+const V_GAP := 64
+const MIN_SEP := 206       # min horizontal gap between node centers (> BOX_W)
+const COVER_W := 39        # covers are 3:4 portrait — slot matches so no bars
 const COVER_H := 52
-const LAYER_CAP := 4      # max nodes drawn per distance layer
-const DETOUR_SLACK := 1   # include near-shortest detours, not just the optimum
+# Only the shortest-path DAG is drawn (matches the HTML in-game map view).
+# Raise to fold in near-shortest detours as extra nodes.
+const DETOUR_SLACK := 0
+const SWEEPS := 4          # crossing-minimization / coordinate-assignment passes
+const ARROW_COL := Color(0.30, 0.69, 0.31, 0.92)
 
 var _graph: Control
 var _node_rects: Dictionary = {}   # StringName -> Rect2 (graph-local)
 var _edges: Array = []             # [from_id, to_id]
-var _edge_gold: Dictionary = {}    # "from|to" -> true for shortest-path edges
 
 func _init() -> void:
 	layer = 20
@@ -210,59 +211,66 @@ func _populate_route(scroll: ScrollContainer, inner_w: float) -> void:
 		return
 	var total: int = int(dfc[amu])
 
-	# Bucket near-shortest nodes by their distance-from-current layer.
-	var buckets: Dictionary = {}
+	# Collect the path region by distance-from-current layer. With slack 0 this
+	# is exactly the shortest-path DAG (every node where d_from + d_to == total).
+	var layers: Array = []          # layers[L] = Array[StringName]
+	var layer_of: Dictionary = {}   # id -> layer index
+	for L in range(total + 1):
+		layers.append([])
 	for id in dfc:
 		if not dta.has(id):
 			continue
 		var lf: int = int(dfc[id])
 		if lf > total:
 			continue
-		var det: int = lf + int(dta[id]) - total
-		if det < 0 or det > DETOUR_SLACK:
+		if lf + int(dta[id]) - total > DETOUR_SLACK:
 			continue
-		if not buckets.has(lf):
-			buckets[lf] = []
-		buckets[lf].append({"id": id, "det": det})
+		layers[lf].append(id)
+		layer_of[id] = lf
+	# Stable initial order so the layout is deterministic between opens.
+	for L in range(layers.size()):
+		layers[L].sort_custom(func(a, b): return String(a) < String(b))
 
-	var layers: Array = []
-	var detour: Dictionary = {}
-	var layer_of: Dictionary = {}
-	for L in range(total + 1):
-		var arr: Array = buckets.get(L, [])
-		arr.sort_custom(func(a, b):
-			if int(a["det"]) != int(b["det"]):
-				return int(a["det"]) < int(b["det"])
-			return String(a["id"]) < String(b["id"]))
-		var ids: Array = []
-		for i in range(mini(arr.size(), LAYER_CAP)):
-			var e: Dictionary = arr[i]
-			ids.append(e["id"])
-			detour[e["id"]] = int(e["det"])
-			layer_of[e["id"]] = L
-		layers.append(ids)
-
-	# Edges between consecutive layers (gold when both ends are on a shortest path).
-	_edges.clear()
-	_edge_gold.clear()
+	# Forward-edge adjacency (only edges that descend one layer) — the input to
+	# the Sugiyama layout.
+	var out_e: Dictionary = {}
+	var in_e: Dictionary = {}
+	for id in layer_of:
+		out_e[id] = []
+		if not in_e.has(id):
+			in_e[id] = []
 	for L in range(total):
 		for a in layers[L]:
 			for b in RunGraph.neighbors(a):
 				if int(layer_of.get(b, -1)) == L + 1:
-					_edges.append([a, b])
-					if int(detour.get(a, 9)) == 0 and int(detour.get(b, 9)) == 0:
-						_edge_gold[_ekey(a, b)] = true
+					out_e[a].append(b)
+					in_e[b].append(a)
 
-	# Size the graph canvas; center each layer row.
-	var top_pad := 18
-	var bot_pad := 24
-	var max_row_w := 0
-	for L in range(total + 1):
-		var n: int = layers[L].size()
-		if n > 0:
-			max_row_w = maxi(max_row_w, n * BOX_W + (n - 1) * H_GAP)
-	var graph_w: int = maxi(int(inner_w), max_row_w + 24)
-	var graph_h: int = top_pad + (total + 1) * BOX_H + total * V_GAP + bot_pad
+	# Step 1: median crossing-minimization reorders nodes within each layer.
+	_minimize_crossings(layers, out_e, in_e)
+	# Step 2: coordinate assignment lines connected nodes up vertically.
+	var coord: Dictionary = _assign_coords(layers, out_e, in_e)
+
+	_edges.clear()
+	for a in out_e:
+		for b in out_e[a]:
+			_edges.append([a, b])
+
+	# Graph canvas size from the assigned coordinate span.
+	var mn := INF
+	var mx := -INF
+	for k in coord:
+		mn = minf(mn, coord[k])
+		mx = maxf(mx, coord[k])
+	if mn == INF:
+		mn = 0.0
+		mx = 0.0
+	var top_pad := 20.0
+	var bot_pad := 28.0
+	var side_pad := 30.0
+	var graph_w: int = maxi(int(inner_w), int((mx - mn) + BOX_W + side_pad * 2.0))
+	var graph_h: int = int(top_pad + (total + 1) * BOX_H + total * V_GAP + bot_pad)
+	var center_x := graph_w / 2.0
 
 	_graph = Control.new()
 	_graph.custom_minimum_size = Vector2(graph_w, graph_h)
@@ -275,20 +283,13 @@ func _populate_route(scroll: ScrollContainer, inner_w: float) -> void:
 		cur_neighbors[nb] = true
 
 	_node_rects.clear()
-	for L in range(total + 1):
-		var ids: Array = layers[L]
-		var n: int = ids.size()
-		if n == 0:
-			continue
-		var rw: int = n * BOX_W + (n - 1) * H_GAP
-		var x_start: float = (graph_w - rw) / 2.0
+	for L in range(layers.size()):
 		var y: float = top_pad + L * (BOX_H + V_GAP)
-		for i in range(n):
-			var id: StringName = ids[i]
-			var x: float = x_start + i * (BOX_W + H_GAP)
+		for id in layers[L]:
+			var x: float = center_x + float(coord[id]) - BOX_W / 2.0
 			_node_rects[id] = Rect2(x, y, BOX_W, BOX_H)
 			var box := _make_node_box(
-				id, int(detour.get(id, 0)), id == cur, id == amu,
+				id, 0, id == cur, id == amu,
 				L == 1 and cur_neighbors.has(id), int(dta.get(id, 0)))
 			box.position = Vector2(x, y)
 			_graph.add_child(box)
@@ -296,8 +297,99 @@ func _populate_route(scroll: ScrollContainer, inner_w: float) -> void:
 	_graph.draw.connect(_on_graph_draw)
 	_graph.queue_redraw()
 
-func _ekey(a: StringName, b: StringName) -> String:
-	return "%s|%s" % [a, b]
+# --- Sugiyama layout (ported from js/map-render.js) ---------------------
+
+# Median position of a node's neighbours in the given edge map.
+func _median(id: StringName, edge_map: Dictionary, vals: Dictionary) -> float:
+	var ps: Array = []
+	for c in edge_map.get(id, []):
+		if vals.has(c):
+			ps.append(vals[c])
+	if ps.is_empty():
+		return float(vals.get(id, 0.0))
+	ps.sort()
+	var mid: int = int(ps.size() / 2)
+	if ps.size() % 2 == 0:
+		return (float(ps[mid - 1]) + float(ps[mid])) / 2.0
+	return float(ps[mid])
+
+# Reorder each layer by the median index of its neighbours (median heuristic),
+# sweeping down then up for SWEEPS iterations to drive crossings toward zero.
+func _minimize_crossings(layers: Array, out_e: Dictionary, in_e: Dictionary) -> void:
+	var pos: Dictionary = {}
+	for L in range(layers.size()):
+		for p in range(layers[L].size()):
+			pos[layers[L][p]] = p
+	for _i in range(SWEEPS):
+		for L in range(1, layers.size()):
+			_reorder_layer(layers, L, in_e, pos)
+		for L in range(layers.size() - 2, -1, -1):
+			_reorder_layer(layers, L, out_e, pos)
+
+func _reorder_layer(layers: Array, L: int, edge_map: Dictionary, pos: Dictionary) -> void:
+	var lay: Array = layers[L]
+	var entries: Array = []
+	for oi in range(lay.size()):
+		entries.append({"id": lay[oi], "m": _median(lay[oi], edge_map, pos), "oi": oi})
+	entries.sort_custom(func(a, b):
+		if a["m"] != b["m"]:
+			return a["m"] < b["m"]
+		return a["oi"] < b["oi"])
+	var new_lay: Array = []
+	for e in entries:
+		new_lay.append(e["id"])
+	layers[L] = new_lay
+	for p in range(new_lay.size()):
+		pos[new_lay[p]] = p
+
+# Assign each node an x-coordinate (centered on 0): repeatedly snap to the
+# median of connected nodes, then enforce MIN_SEP within each layer.
+func _assign_coords(layers: Array, out_e: Dictionary, in_e: Dictionary) -> Dictionary:
+	var coord: Dictionary = {}
+	for L in range(layers.size()):
+		for p in range(layers[L].size()):
+			coord[layers[L][p]] = float(p) * MIN_SEP
+	for _i in range(SWEEPS):
+		for L in range(1, layers.size()):
+			_align_layer(layers, L, in_e, coord)
+		for L in range(layers.size() - 2, -1, -1):
+			_align_layer(layers, L, out_e, coord)
+	var mn := INF
+	var mx := -INF
+	for k in coord:
+		mn = minf(mn, coord[k])
+		mx = maxf(mx, coord[k])
+	if mn == INF:
+		return coord
+	var off := -(mn + mx) / 2.0
+	for k in coord:
+		coord[k] = coord[k] + off
+	return coord
+
+func _align_layer(layers: Array, L: int, edge_map: Dictionary, coord: Dictionary) -> void:
+	for id in layers[L]:
+		var cs: Array = []
+		for c in edge_map.get(id, []):
+			if coord.has(c):
+				cs.append(coord[c])
+		if not cs.is_empty():
+			cs.sort()
+			var mid: int = int(cs.size() / 2)
+			if cs.size() % 2 == 0:
+				coord[id] = (float(cs[mid - 1]) + float(cs[mid])) / 2.0
+			else:
+				coord[id] = float(cs[mid])
+	# Resolve overlaps: walk the layer left-to-right enforcing min separation.
+	var order: Array = []
+	for id in layers[L]:
+		order.append({"id": id, "c": coord[id]})
+	order.sort_custom(func(a, b): return a["c"] < b["c"])
+	var prev := -INF
+	for item in order:
+		var min_c: float = prev + MIN_SEP
+		if coord[item["id"]] < min_c:
+			coord[item["id"]] = min_c
+		prev = coord[item["id"]]
 
 func _on_graph_draw() -> void:
 	for e in _edges:
@@ -305,11 +397,19 @@ func _on_graph_draw() -> void:
 		var rb: Rect2 = _node_rects.get(e[1], Rect2())
 		if ra.size == Vector2.ZERO or rb.size == Vector2.ZERO:
 			continue
+		# Straight arrow from the source's bottom edge to the target's top edge.
 		var from := Vector2(ra.position.x + ra.size.x * 0.5, ra.position.y + ra.size.y)
 		var to := Vector2(rb.position.x + rb.size.x * 0.5, rb.position.y)
-		var gold: bool = _edge_gold.has(_ekey(e[0], e[1]))
-		var col: Color = Color(1.0, 0.8, 0.4, 0.85) if gold else Color(0.5, 0.5, 0.6, 0.5)
-		_graph.draw_line(from, to, col, 2.0 if gold else 1.5, true)
+		var dir := (to - from)
+		if dir.length() < 0.001:
+			continue
+		dir = dir.normalized()
+		var head := 9.0
+		_graph.draw_line(from, to - dir * head, ARROW_COL, 2.5, true)
+		# Arrowhead triangle at the target end.
+		var perp := Vector2(-dir.y, dir.x)
+		_graph.draw_colored_polygon(PackedVector2Array([
+			to, to - dir * head + perp * 5.0, to - dir * head - perp * 5.0]), ARROW_COL)
 
 func _make_node_box(id: StringName, det: int, is_cur: bool, is_amu: bool, is_next: bool, dist_to_amulet: int) -> Panel:
 	var gd: GameData = Data.get_game(id)
