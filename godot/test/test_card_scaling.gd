@@ -89,6 +89,31 @@ func test_rich_mode_wraps_changed_numbers_in_bbcode() -> void:
 	var p0 = _player({})
 	assert_eq(CardScaling.scale_text("Deal 6 Dmg.", p0, true), "Deal 6 Dmg.")
 
+# --- Item boosts folded into the number (Strike Dummy) -------------------
+
+func test_strike_dummy_boost_folds_into_number_with_power() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"strike_dummy"))
+	var strike: CardData = Data.get_card(&"strike")   # "Deal 6 Dmg Melee."
+	var p := CombatActor.new()
+	p.is_player = true
+	p.add_status(&"power", 3)
+	# 6 base + 3 Strike Dummy + 3 Power = 12, in one number.
+	assert_eq(CardScaling.scale_text(strike.description, p, false, strike), "Deal 12 Dmg Melee.")
+
+func test_strike_dummy_boost_folds_even_without_player() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"strike_dummy"))
+	var strike: CardData = Data.get_card(&"strike")
+	# No combat scaling, but the +3 boost still folds in (6 -> 9).
+	assert_eq(CardScaling.scale_text(strike.description, null, false, strike), "Deal 9 Dmg Melee.")
+
+func test_no_boost_card_unchanged_without_player() -> void:
+	GameState.reset_run()
+	var strike: CardData = Data.get_card(&"strike")
+	# No item owned, no player -> text is returned untouched.
+	assert_eq(CardScaling.scale_text(strike.description, null, false, strike), "Deal 6 Dmg Melee.")
+
 # --- Combined on a single card -------------------------------------------
 
 func test_multiple_clauses_scale_independently() -> void:

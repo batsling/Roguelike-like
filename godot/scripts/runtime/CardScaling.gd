@@ -11,8 +11,14 @@ extends RefCounted
 # These are exactly the modifiers the shared resolvers (Stats.damage_bonus /
 # resolve_block / status_apply_stacks) apply, so the display matches what lands
 # in every combat mode. `player` is the player actor (CombatActor in deckbuilder/
-# action, BattleUnit in strategy) — anything exposing get_status. Null (out of
-# combat) returns the text untouched.
+# action, BattleUnit in strategy) — anything exposing get_status. Null player
+# (out of combat) skips the status scaling.
+#
+# `card` (optional CardData) additionally folds item boosts that raise the
+# card's own numbers (Strike Dummy: +3 Dmg) straight INTO the matched number, so
+# they read as one value (Strike + Strike Dummy + 3 Power -> "Deal 12 Dmg") and
+# scale with Power on top, instead of trailing as a separate "+3" note. When
+# both player and card are absent/empty the text is returned untouched.
 #
 # `rich` controls colouring: true emits BBCode (green = buffed dmg, blue = buffed
 # block, red = reduced) for RichTextLabel; false emits the bare number for plain
@@ -24,42 +30,60 @@ const COL_DOWN := "ff7d7d"
 
 static var _re_cache: Dictionary = {}
 
-static func scale_text(text: String, player, rich: bool = true) -> String:
-	if player == null or text == "" or not player.has_method("get_status"):
+static func scale_text(text: String, player, rich: bool = true, card: CardData = null) -> String:
+	if text == "":
 		return text
-	var power: int = player.get_status(&"power")
-	var arcane: int = player.get_status(&"arcane")
-	var defense: int = player.get_status(&"defense")
-	var persistence: int = player.get_status(&"persistence")
-	var weak: bool = player.get_status(&"weak") > 0
-	var frail: bool = player.get_status(&"frail") > 0
+	var has_player: bool = player != null and player.has_method("get_status")
+	var power: int = player.get_status(&"power") if has_player else 0
+	var arcane: int = player.get_status(&"arcane") if has_player else 0
+	var defense: int = player.get_status(&"defense") if has_player else 0
+	var persistence: int = player.get_status(&"persistence") if has_player else 0
+	var weak: bool = has_player and player.get_status(&"weak") > 0
+	var frail: bool = has_player and player.get_status(&"frail") > 0
+
+	# Item boosts that fold straight into the card's own numbers (Strike Dummy:
+	# +3 to a Strike's Dmg). These ride the SAME number the player reads, so a
+	# Strike with Strike Dummy + 3 Power shows "Deal 12 Dmg" (6 base + 3 boost +
+	# 3 Power) — matching what actually resolves via CardInstance.get_effects.
+	# Tracked in one-element cells so only the FIRST matching clause consumes the
+	# boost (mirroring get_effects, which boosts the first effect of that type).
+	var dmg_cell: Array = [0]
+	var block_cell: Array = [0]
+	if card != null:
+		for b in CardMods.granted_boosts(card):
+			match String(b.get("type", "")):
+				"dmg": dmg_cell[0] += int(b.get("amount", 0))
+				"block": block_cell[0] += int(b.get("amount", 0))
+	if not has_player and dmg_cell[0] == 0 and block_cell[0] == 0:
+		return text
 	var out := text
 
 	# Physical damage — "Deal NxM Dmg" then "Deal N Dmg". The magic variants are
 	# spelled "... Magic Dmg", so the physical patterns never touch them.
 	out = _sub(out, "Deal (\\d+)[xX](\\d+) Dmg", func(m):
 		var base := int(m.get_string(1))
-		var v := CardScaling._atk(base, power, weak)
+		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), power, weak)
 		return "Deal %sx%s Dmg" % [CardScaling._num(v, base, COL_DMG_UP, rich), m.get_string(2)])
 	out = _sub(out, "Deal (\\d+) Dmg", func(m):
 		var base := int(m.get_string(1))
-		var v := CardScaling._atk(base, power, weak)
+		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), power, weak)
 		return "Deal %s Dmg" % CardScaling._num(v, base, COL_DMG_UP, rich))
 
-	# Magic damage.
+	# Magic damage (Strike Dummy-style dmg boosts apply to the first dmg effect
+	# of any kind, so the same cell feeds these too).
 	out = _sub(out, "Deal (\\d+)[xX](\\d+) Magic Dmg", func(m):
 		var base := int(m.get_string(1))
-		var v := CardScaling._atk(base, arcane, weak)
+		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), arcane, weak)
 		return "Deal %sx%s Magic Dmg" % [CardScaling._num(v, base, COL_DMG_UP, rich), m.get_string(2)])
 	out = _sub(out, "Deal (\\d+) Magic Dmg", func(m):
 		var base := int(m.get_string(1))
-		var v := CardScaling._atk(base, arcane, weak)
+		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), arcane, weak)
 		return "Deal %s Magic Dmg" % CardScaling._num(v, base, COL_DMG_UP, rich))
 
 	# Block — "Gain N Block" / "Gain +N Block".
 	out = _sub(out, "Gain \\+?(\\d+) Block", func(m):
 		var base := int(m.get_string(1))
-		var v := CardScaling._blk(base, defense, frail)
+		var v := CardScaling._blk(base + CardScaling._take(block_cell), defense, frail)
 		return "Gain %s Block" % CardScaling._num(v, base, COL_BLOCK_UP, rich))
 
 	# Persistence — "Inflict N <Status>" / "Apply N <Status>" for the debuffs
@@ -76,6 +100,13 @@ static func scale_text(text: String, player, rich: bool = true) -> String:
 			return "%s %s %s" % [verb, CardScaling._num(v, base, COL_DMG_UP, rich), word])
 
 	return out
+
+# Drains a one-element boost cell: returns its value once, then leaves it 0 so
+# only the first matching clause is boosted.
+static func _take(cell: Array) -> int:
+	var v: int = cell[0]
+	cell[0] = 0
+	return v
 
 static func _atk(base: int, bonus: int, weak: bool) -> int:
 	var v := base + bonus

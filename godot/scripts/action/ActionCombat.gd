@@ -614,6 +614,7 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 	var amount: int = int(res.hp_loss)
 	if amount > 0:
 		inst.actor.hp = maxi(0, inst.actor.hp - amount)
+		FloatingNumbers.spawn(self, inst.pos, amount)
 		if inst.actor.hp <= 0:
 			inst.actor.dead = true
 			GameLog.add("%s defeated." % inst.actor.display_name, Color(0.6, 1.0, 0.6))
@@ -1195,6 +1196,15 @@ func _resolve_heal_self(value: int) -> void:
 # block, Weak and Vulnerable and never re-triggers reactions — DoTs aren't
 # contact hits. Mirrors the deckbuilder's apply_dot so the shared tick code
 # works in action too.
+# Arena position of an actor (player or any living enemy), for floating numbers.
+func _actor_arena_pos(actor) -> Vector2:
+	if actor != null and "is_player" in actor and actor.is_player:
+		return player_pos
+	for inst in enemies:
+		if inst.actor == actor:
+			return inst.pos
+	return player_pos
+
 func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 	if target == null or not target.is_alive() or amount <= 0:
 		return
@@ -1203,6 +1213,7 @@ func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 		target.hp = GameState.hp
 	else:
 		target.hp = maxi(0, target.hp - amount)
+	FloatingNumbers.spawn(self, _actor_arena_pos(target), amount)
 	var who := "You" if target.is_player else target.display_name
 	GameLog.add("%s takes %d %s damage." % [who, amount, source_name],
 		Color(1.0, 0.5, 0.6))
@@ -1632,6 +1643,7 @@ func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatA
 	if dmg > 0:
 		GameState.change_hp(-dmg)
 		player_actor.hp = GameState.hp
+		FloatingNumbers.spawn(self, player_pos, dmg)
 		GameLog.add("%s hits you for %d." % [source_name, dmg], Color(1.0, 0.6, 0.6))
 	player_iframes = PLAYER_IFRAME_DURATION
 

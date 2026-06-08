@@ -629,12 +629,14 @@ func test_strike_dummy_stacks_and_respects_upgrade() -> void:
 	assert_eq(int(up.get_effects()[0].get("value", 0)), 15,
 		"boosts stack and apply on top of the upgraded value")
 
-func test_strike_dummy_boost_shows_in_card_text() -> void:
+func test_strike_dummy_boost_folds_into_card_number() -> void:
 	GameState.reset_run()
-	var strike: CardData = Data.get_card(&"strike")
+	var strike: CardData = Data.get_card(&"strike")  # "Deal 6 Dmg Melee."
 	GameState.add_item(Data.get_item(&"strike_dummy"))
+	# The +3 is folded into the card's own number (6 -> 9), not a "+3" suffix.
 	var desc := CardInstance.from_data(strike).get_description()
-	assert_true(desc.contains("+3 Dmg"), "the +3 boost is annotated on the card text")
+	assert_true(desc.contains("Deal 9 Dmg"), "the +3 boost folds into the Dmg number")
+	assert_false(desc.contains("+3 Dmg"), "no separate boost suffix anymore")
 
 # --- Paper Bag (Charisma mirrors the highest core stat) ------------------
 

@@ -120,28 +120,9 @@ static func describe(card: CardData) -> String:
 		return ""
 	return " ".join(frags)
 
-# Compact annotation for granted boosts (Strike Dummy -> "[+3 Dmg]"), appended
-# to the card text. Mirrors the "[+N field]" style weapon verifications use, so
-# the player sees the bonus even though the base number in the card's authored
-# text stays put. "" when nothing applies.
-static func describe_boosts(card: CardData) -> String:
-	var parts: PackedStringArray = PackedStringArray()
-	for b in granted_boosts(card):
-		var amt: int = int(b.get("amount", 0))
-		if amt == 0:
-			continue
-		var label: String = _boost_label(String(b.get("type", "")))
-		parts.append("+%d %s" % [amt, label] if amt >= 0 else "%d %s" % [amt, label])
-	if parts.is_empty():
-		return ""
-	return "[%s]" % ", ".join(parts)
-
-static func _boost_label(effect_type: String) -> String:
-	match effect_type:
-		"dmg": return "Dmg"
-		"block": return "Block"
-		"heal": return "Heal"
-		_: return effect_type.capitalize()
+# NOTE: granted boosts are no longer rendered as a "[+3 Dmg]" suffix — CardScaling
+# folds them straight into the card's Dmg/Block number (see CardInstance), so the
+# player reads one combined value.
 
 # Tiny English-ish renderer for the effect dicts used as item payloads
 # (status / block / dmg / heal). Shared by CardInstance's card_played

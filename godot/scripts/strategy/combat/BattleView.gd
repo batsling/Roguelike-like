@@ -190,17 +190,14 @@ func _living_enemy_units() -> Array:
 func _effective_card_effects(card: CardData) -> Array:
 	return CardMods.resolved_effects(card.effects, card)
 
-# Card text with live stat scaling folded into the numbers (Power / Arcane /
-# Defense / Persistence — rich=false since these are plain Labels) plus the
-# granted-effect line + boost annotation appended, for display.
+# Card text with live stat scaling AND item boosts folded into the numbers
+# (Power / Arcane / Defense / Persistence + Strike Dummy — rich=false since these
+# are plain Labels) plus the granted-effect line appended, for display.
 func _card_desc(card: CardData) -> String:
-	var out: String = CardScaling.scale_text(card.description, get_player_unit(), false)
+	var out: String = CardScaling.scale_text(card.description, get_player_unit(), false, card)
 	var extra: String = CardMods.describe(card)
 	if extra != "":
 		out = "%s %s" % [out, extra]
-	var boost: String = CardMods.describe_boosts(card)
-	if boost != "":
-		out = "%s %s" % [out, boost]
 	return out
 
 func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager = null) -> void:
@@ -1576,6 +1573,19 @@ func deal_damage(source, target, value: int, effect: Dictionary = {}) -> void:
 		raw = int(round(target.max_hp * float(effect.get("value", 0))))
 	_apply_damage(source, target, raw, effect)
 
+# Pops a red floating number over a unit that just lost `amount` HP, parented to
+# the grid view at the unit's tile centre (units carry a Vector2i grid position).
+func _show_hp_loss(target, amount: int) -> void:
+	if amount <= 0 or _grid_view == null or not _grid_view.is_inside_tree():
+		return
+	if target == null or not ("position" in target):
+		return
+	var ts: int = _grid_view.tile_size
+	var center := Vector2(
+		target.position.x * ts + ts * 0.5,
+		target.position.y * ts + ts * 0.5)
+	FloatingNumbers.spawn(_grid_view, center, amount)
+
 func gain_block(target, value: int) -> void:
 	if target == null:
 		return
@@ -1669,6 +1679,7 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 	if res.dodged:
 		return
 	target.hp = maxi(0, target.hp - int(res.hp_loss))
+	_show_hp_loss(target, int(res.hp_loss))
 	# The attack connected (block counts). Dead Eye's streak grows here, skipped
 	# on a killing blow (the streak against a corpse is never read).
 	if is_player_attack and target.is_alive():
@@ -1694,6 +1705,7 @@ func apply_dot(target, amount: int, _source_name: String) -> void:
 	if target == null or not target.is_alive() or amount <= 0:
 		return
 	target.hp = maxi(0, target.hp - amount)
+	_show_hp_loss(target, amount)
 	if not target.is_alive() and not target.is_player:
 		_fire_item_triggers("enemy_killed")
 		_drop_enemy_loot(target)
