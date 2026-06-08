@@ -32,6 +32,10 @@ const DOOR_ENTRY_INSET := 70.0       # how far inside the wall the player spawns
 
 # --- Player tuning ---------------------------------------------------------
 const PLAYER_RADIUS := 18.0
+# The character avatar is drawn a touch larger than the collision hitbox
+# (PLAYER_RADIUS) so the sprite reads clearly while the hittable area stays
+# tight.
+const PLAYER_SPRITE_RADIUS := PLAYER_RADIUS * 1.3
 const PLAYER_IFRAME_DURATION := 1.0
 const SWING_VISUAL_DURATION := 0.12
 
@@ -62,6 +66,9 @@ var _combat_room_index: int = 0
 
 # --- Runtime state ---------------------------------------------------------
 var player_actor: CombatActor = null
+# Cached character avatar drawn as the player token (null = fall back to the
+# plain circle). Set in _init_player.
+var _player_icon: Texture2D = null
 var player_pos: Vector2 = Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
 var player_facing: Vector2 = Vector2.RIGHT
 var player_iframes: float = 0.0
@@ -391,6 +398,7 @@ func _accumulate_block_cap(card: CardData) -> void:
 
 func _init_player() -> void:
 	player_actor = CombatActor.from_player()
+	_player_icon = GameState.player_icon_texture()
 	player_pos = Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
 
 func _spawn_enemies() -> void:
@@ -1744,7 +1752,11 @@ func _draw() -> void:
 		# Pulse-flash when in i-frames.
 		var pulse: float = 0.55 + 0.35 * sin(Time.get_ticks_msec() * 0.025)
 		col = Color(1.0, 1.0, 1.0, pulse)
-	draw_circle(player_pos, PLAYER_RADIUS, col)
+	if _player_icon != null:
+		# Character avatar token (drawn a bit larger than the hitbox).
+		DrawUtil.draw_circular_texture(self, player_pos, PLAYER_SPRITE_RADIUS, _player_icon, col)
+	else:
+		draw_circle(player_pos, PLAYER_RADIUS, col)
 	# Facing line
 	draw_line(player_pos, player_pos + player_facing * (PLAYER_RADIUS + 14), Color(1.0, 0.85, 0.3), 3.0)
 

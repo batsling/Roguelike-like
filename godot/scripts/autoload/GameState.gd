@@ -293,6 +293,23 @@ func card_reward_tag() -> StringName:
 	var cd: CharacterData = Data.get_character(character_id)
 	return cd.level_up_card_tag if cd != null else &""
 
+# Texture for the player marker in action / tactical combat. Prefers the
+# character's small `icon`, falling back to the full `portrait`. Null when no
+# character is selected (callers draw their default token instead).
+func player_icon_texture() -> Texture2D:
+	var cd: CharacterData = Data.get_character(character_id)
+	if cd == null:
+		return null
+	return cd.icon if cd.icon != null else cd.portrait
+
+# Single-letter marker for the ASCII overworld (the roguelike strategy floor):
+# the first letter of the character's name, uppercased. Falls back to "@".
+func player_initial() -> String:
+	var cd: CharacterData = Data.get_character(character_id)
+	if cd != null and String(cd.display_name) != "":
+		return String(cd.display_name).substr(0, 1).to_upper()
+	return "@"
+
 func apply_character(char_data: CharacterData) -> void:
 	character_id = char_data.id
 	max_hp = char_data.base_max_hp

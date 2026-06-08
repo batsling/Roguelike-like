@@ -44,6 +44,9 @@ const BAR_Y := 656
 const ACCENT := Color(1.0, 0.78, 0.36)
 const PANEL_BG := Color(0.09, 0.07, 0.13, 0.96)
 const PANEL_BORDER := Color(0.42, 0.33, 0.55, 0.9)
+# Full-screen backdrop behind both the battle UI and the loadout screen, so the
+# two read as one cohesive screen.
+const BACKDROP := Color(0.04, 0.035, 0.07, 1.0)
 
 # Phase 8: per-archetype drop weights. Rolled when an enemy dies; the
 # spawned items go onto the battlefield and persist back to the source
@@ -105,9 +108,11 @@ var _spell_list_container: VBoxContainer
 
 # Pre-combat loadout screen.
 var _loadout_overlay: Panel
-var _loadout_enemy_label: Label
-var _loadout_slots_label: Label
-var _loadout_pool_container: VBoxContainer
+var _loadout_enemy_container: VBoxContainer   # styled enemy chips
+var _loadout_field_label: Label               # battlefield summary line
+var _loadout_slots_label: Label               # "Card slots filled" readout
+var _loadout_pips: HBoxContainer              # visual slot pips
+var _loadout_pool_container: VBoxContainer    # weapon + card grids
 var _loadout_start_btn: Button
 
 var _enemy_turn_timer: Timer
@@ -233,16 +238,16 @@ func _build_ui() -> void:
 	var panel := Panel.new()
 	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.05, 0.04, 0.08, 1.0)
+	bg.bg_color = BACKDROP
 	panel.add_theme_stylebox_override("panel", bg)
 	add_child(panel)
 	_root_panel = panel
 
 	var title := Label.new()
 	title.text = "⚔  TACTICAL BATTLE"
-	title.position = Vector2(18, 10)
-	title.size = Vector2(520, 32)
-	title.add_theme_font_size_override("font_size", 24)
+	title.position = Vector2(18, 8)
+	title.size = Vector2(520, 36)
+	title.add_theme_font_size_override("font_size", 26)
 	title.add_theme_color_override("font_color", ACCENT)
 	panel.add_child(title)
 
@@ -326,6 +331,9 @@ func _section_header(text: String, rect: Rect2) -> Label:
 	return l
 
 func _build_action_bar(panel: Panel) -> void:
+	# Framed strip behind the action buttons so the bar reads as a panel like the
+	# rest of the chrome (mouse-ignored, so it doesn't eat button clicks).
+	panel.add_child(_section_panel(Rect2(8, BAR_Y - 8, 730, 56)))
 	var x := 16
 	var spacing := 8
 	var btn_h := 40
@@ -343,6 +351,19 @@ func _build_action_bar(panel: Panel) -> void:
 		x += spec[1] + spacing
 	_btn_move = btns[0]; _btn_attack = btns[1]; _btn_defend = btns[2]
 	_btn_ability = btns[3]; _btn_spell = btns[4]; _btn_dash = btns[5]; _btn_end = btns[6]
+	# End Turn is the main per-turn confirm — give it the same gold CTA look as
+	# the loadout screen's Start Battle.
+	_style_primary(_btn_end)
+
+	# Hovering an action button previews the relevant ranges on the board:
+	# Move/Attack show movement + strike reach; Cards/Spellbook show movement +
+	# every enemy you could target. Mouse-out clears the preview.
+	for b in [_btn_move, _btn_attack]:
+		b.mouse_entered.connect(_on_hover_attack_preview)
+		b.mouse_exited.connect(_on_hover_preview_end)
+	for b in [_btn_ability, _btn_spell]:
+		b.mouse_entered.connect(_on_hover_targets_preview)
+		b.mouse_exited.connect(_on_hover_preview_end)
 
 	_btn_win = _make_button("Win▸", 1110, BAR_Y, 72, btn_h, _on_force_win, true)
 	panel.add_child(_btn_win)
@@ -356,12 +377,12 @@ func _make_button(text: String, x: int, y: int, w: int, h: int, cb: Callable, su
 	b.size = Vector2(w, h)
 	b.pressed.connect(cb)
 	b.focus_mode = Control.FOCUS_NONE
-	var base: Color = Color(0.14, 0.12, 0.2) if not subtle else Color(0.1, 0.09, 0.12)
+	var base: Color = Color(0.15, 0.13, 0.2) if not subtle else Color(0.1, 0.09, 0.12)
 	var border: Color = PANEL_BORDER if not subtle else Color(0.3, 0.25, 0.3)
-	b.add_theme_stylebox_override("normal", _panel_stylebox(base, border, 1, 8))
-	b.add_theme_stylebox_override("hover", _panel_stylebox(base.lightened(0.18), ACCENT, 1, 8))
-	b.add_theme_stylebox_override("pressed", _panel_stylebox(base.darkened(0.2), ACCENT, 1, 8))
-	var disabled_sb := _panel_stylebox(Color(0.09, 0.08, 0.1), Color(0.2, 0.2, 0.22), 1, 8)
+	b.add_theme_stylebox_override("normal", _panel_stylebox(base, border, 1, 10))
+	b.add_theme_stylebox_override("hover", _panel_stylebox(base.lightened(0.18), ACCENT, 2, 10))
+	b.add_theme_stylebox_override("pressed", _panel_stylebox(base.darkened(0.2), ACCENT, 2, 10))
+	var disabled_sb := _panel_stylebox(Color(0.09, 0.08, 0.1), Color(0.2, 0.2, 0.22), 1, 10)
 	b.add_theme_stylebox_override("disabled", disabled_sb)
 	b.add_theme_color_override("font_color", Color(0.92, 0.9, 0.96))
 	b.add_theme_color_override("font_hover_color", Color(1, 0.95, 0.8))
@@ -399,15 +420,27 @@ func _unit_at_grid(pos: Vector2i):
 	return null
 
 func _on_grid_hover(pos: Vector2i) -> void:
+	# Enemies show their stat/intent card; battlefield items (loot, gold, keys,
+	# scrolls) show what they are. Anything else hides the tooltip.
 	var u = _unit_at_grid(pos)
-	if u == null or u.is_player or not u.is_alive():
-		_enemy_tooltip.visible = false
+	if u != null and not u.is_player and u.is_alive():
+		_enemy_tooltip_name.add_theme_color_override("font_color", Color(1.0, 0.6, 0.55))
+		_show_tooltip("%s    %d/%d HP" % [str(u.unit_name).capitalize(), u.hp, u.max_hp],
+			_enemy_tooltip_text(u), pos)
 		return
-	_enemy_tooltip_name.text = "%s    %d/%d HP" % [str(u.unit_name).capitalize(), u.hp, u.max_hp]
-	_enemy_tooltip_body.text = _enemy_tooltip_text(u)
-	# Size from the line count (pattern lines are short and rarely wrap), then
-	# place near the hovered tile, clamped on-screen.
-	var n_lines: int = _enemy_tooltip_body.text.count("\n") + 1
+	var entry := _item_entry_at_grid(pos)
+	if not entry.is_empty():
+		_enemy_tooltip_name.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
+		_show_tooltip(str(entry.item.item_name).capitalize(), _item_tooltip_text(entry.item), pos)
+		return
+	_enemy_tooltip.visible = false
+
+# Sizes the shared tooltip from its body line count and parks it next to the
+# hovered tile, clamped on-screen.
+func _show_tooltip(name_text: String, body_text: String, pos: Vector2i) -> void:
+	_enemy_tooltip_name.text = name_text
+	_enemy_tooltip_body.text = body_text
+	var n_lines: int = body_text.count("\n") + 1
 	var body_h: int = n_lines * 17 + 4
 	_enemy_tooltip_body.size.y = body_h
 	_enemy_tooltip.size.y = 40 + body_h + 10
@@ -419,6 +452,87 @@ func _on_grid_hover(pos: Vector2i) -> void:
 	screen.y = clampf(screen.y, 8, vp.y - _enemy_tooltip.size.y - 8)
 	_enemy_tooltip.position = screen
 	_enemy_tooltip.visible = true
+
+# --- Hover range previews ---------------------------------------------
+
+# Movement budget still available for a preview: 0 once the turn's single move
+# is spent, otherwise the remaining tiles.
+func _hover_move_budget() -> int:
+	return 0 if _move_used else _move_remaining
+
+# The player's strike reach in tiles (weapon range, or the basic-attack range,
+# default melee/1).
+func _player_attack_range() -> int:
+	if _weapon_card != null:
+		if "range" in _weapon_card.data:
+			return maxi(1, int(_weapon_card.data.range))
+		return 1
+	var u = get_player_unit()
+	if u != null and u.basic_attack_def.has("range"):
+		return int(u.basic_attack_def.get("range", 1))
+	return 1
+
+func _enemy_positions() -> Array:
+	var out: Array = []
+	for u in _units:
+		if u != null and u.is_alive() and not u.is_player:
+			out.append(u.position)
+	return out
+
+func _on_hover_attack_preview() -> void:
+	if not _is_player_turn():
+		return
+	_grid_view.show_range_preview(_hover_move_budget(), _player_attack_range())
+
+func _on_hover_targets_preview() -> void:
+	if not _is_player_turn():
+		return
+	# Cards/spells target any enemy on the field — flag them all as reachable.
+	_grid_view.show_range_preview(_hover_move_budget(), 0, _enemy_positions())
+
+# Card/spell row hover: movement plus the targets that ability could hit.
+func _on_hover_card_preview(targets_enemies: bool) -> void:
+	if not _is_player_turn():
+		return
+	var targets: Array = _enemy_positions() if targets_enemies else []
+	_grid_view.show_range_preview(_hover_move_budget(), 0, targets)
+
+func _on_hover_preview_end() -> void:
+	_grid_view.clear_range_preview()
+
+func _item_entry_at_grid(pos: Vector2i) -> Dictionary:
+	if _battle_map == null:
+		return {}
+	for entry in _battle_map.items:
+		if entry.pos == pos:
+			return entry
+	return {}
+
+# Short "what is this" blurb for a battlefield item, by kind.
+func _item_tooltip_text(item) -> String:
+	var lines: Array = []
+	match item.item_type:
+		StrategyItem.ItemType.HEALTH_POTION:
+			lines.append("Health potion.")
+			lines.append("Restores HP when used.")
+		StrategyItem.ItemType.STRENGTH_SCROLL:
+			lines.append("Scroll of strength.")
+			lines.append("Permanently raises attack.")
+		StrategyItem.ItemType.LIGHTNING_SCROLL:
+			lines.append("Scroll of lightning.")
+			lines.append("Strikes the nearest visible foe.")
+		StrategyItem.ItemType.KEY:
+			lines.append("Key.")
+			lines.append("Opens a locked door.")
+		StrategyItem.ItemType.GOLD:
+			lines.append("%d gold." % int(item.amount))
+		_:
+			lines.append(str(item.item_name))
+	if item.auto_pickup:
+		lines.append("Walk over it to collect.")
+	else:
+		lines.append("Walk over it to pick up (needs a pack slot).")
+	return "\n".join(lines)
 
 # Multi-line body: ranges + the full intent "pattern" with the telegraphed
 # next move flagged, then any active statuses.
@@ -480,23 +594,27 @@ func _build_pickers() -> void:
 	add_child(_spell_dialog)
 	_spell_dialog.visible = false
 
+# The pickers dock over the right-hand column (turn order / status) so the
+# battlefield stays fully visible while choosing a card or spell — letting the
+# on-hover range preview read against the board.
 func _make_picker_dialog(title_text: String, close_cb: Callable) -> Panel:
 	var p := Panel.new()
-	p.position = Vector2(300, 150)
-	p.size = Vector2(640, 420)
+	p.position = Vector2(922, 74)
+	p.size = Vector2(352, 578)
 	p.add_theme_stylebox_override("panel", _panel_stylebox(Color(0.1, 0.08, 0.15, 0.99), ACCENT, 2, 12))
 
 	var t := Label.new()
 	t.text = title_text
-	t.position = Vector2(20, 14)
-	t.size = Vector2(520, 30)
+	t.position = Vector2(16, 12)
+	t.size = Vector2(320, 30)
 	t.add_theme_font_size_override("font_size", 20)
 	t.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
 	p.add_child(t)
 
 	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(20, 56)
-	scroll.size = Vector2(600, 290)
+	scroll.position = Vector2(14, 48)
+	scroll.size = Vector2(324, 478)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	p.add_child(scroll)
 
 	var vbox := VBoxContainer.new()
@@ -505,7 +623,7 @@ func _make_picker_dialog(title_text: String, close_cb: Callable) -> Panel:
 	scroll.add_child(vbox)
 	p.set_meta("list", vbox)
 
-	var close := _make_button("Close", 270, 366, 100, 36, close_cb)
+	var close := _make_button("Close", 126, 534, 100, 36, close_cb)
 	p.add_child(close)
 	return p
 
@@ -513,101 +631,241 @@ func _make_picker_dialog(title_text: String, close_cb: Callable) -> Panel:
 # Pre-combat loadout screen
 # ----------------------------------------------------------------------
 
+# Left column shows the enemy roster; the right column holds the weapon + card
+# loadout as a grid of selectable tiles. Both columns are framed with the same
+# chrome as the in-combat panels for a consistent look.
+const LO_LEFT := Rect2(32, 96, 372, 540)
+const LO_RIGHT := Rect2(420, 96, 828, 540)
+
 func _build_loadout_overlay() -> void:
 	_loadout_overlay = Panel.new()
 	_loadout_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_loadout_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.05, 0.04, 0.09, 0.99)
+	bg.bg_color = BACKDROP
 	_loadout_overlay.add_theme_stylebox_override("panel", bg)
 
+	# Header band.
 	var title := Label.new()
 	title.text = "⚔  PREPARE FOR BATTLE"
-	title.position = Vector2(40, 30)
-	title.size = Vector2(700, 34)
-	title.add_theme_font_size_override("font_size", 24)
-	title.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
+	title.position = Vector2(40, 26)
+	title.size = Vector2(820, 36)
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", ACCENT)
 	_loadout_overlay.add_child(title)
 
-	_loadout_enemy_label = Label.new()
-	_loadout_enemy_label.position = Vector2(40, 74)
-	_loadout_enemy_label.size = Vector2(900, 70)
-	_loadout_enemy_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_loadout_enemy_label.add_theme_font_size_override("font_size", 14)
-	_loadout_enemy_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.7))
-	_loadout_overlay.add_child(_loadout_enemy_label)
+	_loadout_field_label = Label.new()
+	_loadout_field_label.position = Vector2(44, 64)
+	_loadout_field_label.size = Vector2(1000, 22)
+	_loadout_field_label.add_theme_font_size_override("font_size", 13)
+	_loadout_field_label.add_theme_color_override("font_color", Color(0.72, 0.74, 0.82))
+	_loadout_overlay.add_child(_loadout_field_label)
 
-	var instr := Label.new()
-	instr.text = "Slot up to 3 cards. Each play spends one of the card's uses (uses carry over between fights)."
-	instr.position = Vector2(40, 150)
-	instr.size = Vector2(900, 40)
-	instr.autowrap_mode = TextServer.AUTOWRAP_WORD
-	instr.add_theme_font_size_override("font_size", 13)
-	instr.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
-	_loadout_overlay.add_child(instr)
+	# Left column — enemy roster.
+	_loadout_overlay.add_child(_section_panel(LO_LEFT))
+	_loadout_overlay.add_child(_section_header("ENEMIES", LO_LEFT))
+	var enemy_scroll := ScrollContainer.new()
+	enemy_scroll.position = LO_LEFT.position + Vector2(16, 40)
+	enemy_scroll.size = Vector2(LO_LEFT.size.x - 32, LO_LEFT.size.y - 56)
+	enemy_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_loadout_overlay.add_child(enemy_scroll)
+	_loadout_enemy_container = VBoxContainer.new()
+	_loadout_enemy_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_loadout_enemy_container.add_theme_constant_override("separation", 10)
+	enemy_scroll.add_child(_loadout_enemy_container)
+
+	# Right column — loadout.
+	_loadout_overlay.add_child(_section_panel(LO_RIGHT))
+	_loadout_overlay.add_child(_section_header("YOUR LOADOUT", LO_RIGHT))
+
+	var pips_label := Label.new()
+	pips_label.text = "CARD SLOTS"
+	pips_label.position = Vector2(LO_RIGHT.end.x - 210, LO_RIGHT.position.y + 12)
+	pips_label.size = Vector2(106, 20)
+	pips_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	pips_label.add_theme_font_size_override("font_size", 12)
+	pips_label.add_theme_color_override("font_color", Color(0.7, 0.72, 0.8))
+	_loadout_overlay.add_child(pips_label)
+
+	_loadout_pips = HBoxContainer.new()
+	_loadout_pips.position = Vector2(LO_RIGHT.end.x - 90, LO_RIGHT.position.y + 11)
+	_loadout_pips.add_theme_constant_override("separation", 6)
+	_loadout_overlay.add_child(_loadout_pips)
 
 	_loadout_slots_label = Label.new()
-	_loadout_slots_label.position = Vector2(40, 190)
-	_loadout_slots_label.size = Vector2(900, 30)
-	_loadout_slots_label.add_theme_font_size_override("font_size", 15)
+	_loadout_slots_label.position = LO_RIGHT.position + Vector2(16, 42)
+	_loadout_slots_label.size = Vector2(LO_RIGHT.size.x - 32, 24)
+	_loadout_slots_label.add_theme_font_size_override("font_size", 14)
 	_loadout_slots_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.7))
 	_loadout_overlay.add_child(_loadout_slots_label)
 
 	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(40, 226)
-	scroll.size = Vector2(900, 330)
+	scroll.position = LO_RIGHT.position + Vector2(16, 74)
+	scroll.size = Vector2(LO_RIGHT.size.x - 32, LO_RIGHT.size.y - 90)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_loadout_overlay.add_child(scroll)
 	_loadout_pool_container = VBoxContainer.new()
 	_loadout_pool_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_loadout_pool_container.add_theme_constant_override("separation", 4)
+	_loadout_pool_container.add_theme_constant_override("separation", 8)
 	scroll.add_child(_loadout_pool_container)
 
-	_loadout_start_btn = _make_button("Start Battle", 40, 566, 160, 40, _on_confirm_loadout)
+	# Footer.
+	var hint := Label.new()
+	hint.text = "Uses carry over between fights — spend them wisely.  Hover cards in battle to preview range."
+	hint.position = Vector2(40, 650)
+	hint.size = Vector2(900, 24)
+	hint.add_theme_font_size_override("font_size", 12)
+	hint.add_theme_color_override("font_color", Color(0.6, 0.6, 0.68))
+	_loadout_overlay.add_child(hint)
+
+	_loadout_start_btn = _make_primary_button("Start Battle  ▸", 1040, 648, 208, 48, _on_confirm_loadout)
 	_loadout_overlay.add_child(_loadout_start_btn)
 
 	add_child(_loadout_overlay)
 	_loadout_overlay.visible = false
 
+# A gold, high-emphasis variant of the action button for the primary CTA.
+func _make_primary_button(text: String, x: int, y: int, w: int, h: int, cb: Callable) -> Button:
+	var b := _make_button(text, x, y, w, h, cb)
+	_style_primary(b, 18)
+	return b
+
+# Repaints an existing button as the gold primary CTA. Shared by the loadout's
+# "Start Battle" and the in-combat "End Turn" so the main confirm action looks
+# the same on both screens.
+func _style_primary(b: Button, font_size: int = 16) -> void:
+	b.add_theme_stylebox_override("normal", _panel_stylebox(Color(0.5, 0.36, 0.12), ACCENT, 2, 10))
+	b.add_theme_stylebox_override("hover", _panel_stylebox(Color(0.64, 0.46, 0.16), Color(1, 0.92, 0.55), 2, 10))
+	b.add_theme_stylebox_override("pressed", _panel_stylebox(Color(0.42, 0.3, 0.1), ACCENT, 2, 10))
+	b.add_theme_color_override("font_color", Color(1, 0.97, 0.86))
+	b.add_theme_color_override("font_hover_color", Color(1, 1, 0.92))
+	b.add_theme_color_override("font_disabled_color", Color(0.55, 0.5, 0.42))
+	b.add_theme_font_size_override("font_size", font_size)
+
 func _open_loadout_screen() -> void:
-	var names: Array = []
+	_loadout_field_label.text = _format_field_summary()
+	_rebuild_enemy_chips()
+	_populate_loadout_pool()
+	_loadout_overlay.visible = true
+
+func _format_field_summary() -> String:
+	var enc: Array = []
 	for e in _encounter:
-		names.append(str(e))
-	var enemy_lines: Array = ["Enemy: " + (", ".join(names) if not names.is_empty() else "(none)")]
+		enc.append(str(e))
+	var enc_str: String = ", ".join(enc) if not enc.is_empty() else "(none)"
+	var size_name := "?"
+	var dims := "?"
+	if _battle_map != null:
+		size_name = ["Small", "Medium", "Large"][clampi(_battle_map.size_class, 0, 2)]
+		dims = "%dx%d" % [_battle_map.width, _battle_map.height]
+	return "Encounter:  %s        Battlefield:  %s  (%s)" % [enc_str, size_name, dims]
+
+func _rebuild_enemy_chips() -> void:
+	for c in _loadout_enemy_container.get_children():
+		c.queue_free()
+	var any := false
 	for u in _units:
 		if u.is_player or not u.is_alive():
 			continue
-		var tel: String = ""
-		if not u.intent_telegraph.is_empty():
-			var t: Dictionary = u.intent_telegraph
-			var val: int = int(t.get("value", 0))
-			tel = "  intends: %s%s" % [str(t.get("name", "")), (" (%d)" % val) if val > 0 else ""]
-		enemy_lines.append("  %s — hp %d/%d  move %d%s" % [u.unit_name, u.hp, u.max_hp, u.move_range, tel])
-	_loadout_enemy_label.text = "\n".join(enemy_lines)
-	_populate_loadout_pool()
-	_loadout_overlay.visible = true
+		any = true
+		_loadout_enemy_container.add_child(_make_enemy_chip(u))
+	if not any:
+		_loadout_enemy_container.add_child(_picker_note("No enemies in this room."))
+
+# Per-archetype accent for the enemy chip dot.
+func _enemy_color(enemy_name: String) -> Color:
+	match enemy_name:
+		"rat": return Color(0.78, 0.74, 0.6)
+		"snake": return Color(0.55, 0.85, 0.45)
+		"orc": return Color(0.5, 0.78, 0.42)
+		"troll": return Color(0.5, 0.62, 0.85)
+		_: return Color(1.0, 0.5, 0.5)
+
+func _enemy_intent_line(u) -> String:
+	if u.intent_telegraph.is_empty():
+		return "Intends:  waiting…"
+	var t: Dictionary = u.intent_telegraph
+	var val: int = int(t.get("value", 0))
+	var tail: String = "  (%d)" % val if val > 0 else ""
+	return "Intends:  %s %s%s" % [str(t.get("icon", "")), str(t.get("name", "")), tail]
+
+# A framed enemy card: name, an HP bar, the key ranges, and the telegraphed
+# next move.
+func _make_enemy_chip(u) -> Panel:
+	const IW := 300  # inner content width
+	var chip := Panel.new()
+	chip.custom_minimum_size = Vector2(316, 96)
+	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chip.add_theme_stylebox_override("panel",
+		_panel_stylebox(Color(0.14, 0.09, 0.12, 0.96), Color(0.55, 0.3, 0.32, 0.9), 1, 8))
+
+	var dot := ColorRect.new()
+	dot.color = _enemy_color(String(u.unit_name))
+	dot.position = Vector2(14, 13)
+	dot.size = Vector2(14, 14)
+	chip.add_child(dot)
+
+	var name_l := Label.new()
+	name_l.text = String(u.unit_name).capitalize()
+	name_l.position = Vector2(36, 8)
+	name_l.size = Vector2(IW - 22, 24)
+	name_l.add_theme_font_size_override("font_size", 16)
+	name_l.add_theme_color_override("font_color", Color(1, 0.86, 0.84))
+	chip.add_child(name_l)
+
+	var frac: float = clampf(float(u.hp) / float(maxi(1, u.max_hp)), 0.0, 1.0)
+	var hp_bg := ColorRect.new()
+	hp_bg.color = Color(0.22, 0.2, 0.22)
+	hp_bg.position = Vector2(14, 38)
+	hp_bg.size = Vector2(IW, 9)
+	chip.add_child(hp_bg)
+	var hp_fg := ColorRect.new()
+	hp_fg.color = Color(0.82, 0.32, 0.32)
+	hp_fg.position = Vector2(14, 38)
+	hp_fg.size = Vector2(IW * frac, 9)
+	chip.add_child(hp_fg)
+
+	var stat_l := Label.new()
+	stat_l.text = "HP %d/%d     Move %d     Reach %d" % [
+		u.hp, u.max_hp, u.move_range, _grid_view.enemy_attack_range(u)]
+	stat_l.position = Vector2(14, 50)
+	stat_l.size = Vector2(IW, 18)
+	stat_l.add_theme_font_size_override("font_size", 11)
+	stat_l.add_theme_color_override("font_color", Color(0.8, 0.8, 0.86))
+	chip.add_child(stat_l)
+
+	var intent_l := Label.new()
+	intent_l.text = _enemy_intent_line(u)
+	intent_l.position = Vector2(14, 70)
+	intent_l.size = Vector2(IW, 20)
+	intent_l.add_theme_font_size_override("font_size", 11)
+	intent_l.add_theme_color_override("font_color", Color(1.0, 0.72, 0.5))
+	chip.add_child(intent_l)
+	return chip
 
 func _populate_loadout_pool() -> void:
 	for child in _loadout_pool_container.get_children():
 		child.queue_free()
-	var weapon_name: String = _selected_weapon.data.display_name if _selected_weapon != null else "(none — default strike)"
-	_loadout_slots_label.text = "Weapon: %s   |   Card slots: %d / %d filled" % [
+	_refresh_slot_pips()
+	var weapon_name: String = _selected_weapon.data.display_name if _selected_weapon != null else "default strike"
+	_loadout_slots_label.text = "Weapon:  %s        Cards slotted:  %d / %d" % [
 		weapon_name, _selected_cards.size(), CombatLoadout.MAX_SLOTS,
 	]
 
 	# Weapon section (single-select; replaces the basic Attack action).
-	_loadout_pool_container.add_child(_make_loadout_header("WEAPON  (one; replaces your Attack, usable every turn)"))
+	_loadout_pool_container.add_child(_make_loadout_header("WEAPON — replaces your Attack, usable every turn"))
 	if _available_weapons.is_empty():
 		_loadout_pool_container.add_child(_picker_note("No weapon cards in your deck — Attack will use the default strike."))
 	else:
+		var wgrid := _make_tile_grid()
 		for wcard in _available_weapons:
 			var equipped: bool = _selected_weapon == wcard
-			_loadout_pool_container.add_child(_make_loadout_row(
-				wcard, equipped, "Unequip" if equipped else "Equip",
-				_on_toggle_loadout_weapon, false,
-			))
+			wgrid.add_child(_make_loadout_tile(
+				wcard, equipped, _on_toggle_loadout_weapon, false, false, "", "Weapon", "✓ EQUIPPED"))
+		_loadout_pool_container.add_child(wgrid)
 
-	# Card section (up to 3, limited uses).
-	_loadout_pool_container.add_child(_make_loadout_header("CARDS  (up to %d; each play spends a use)" % CombatLoadout.MAX_SLOTS))
+	# Card section (up to MAX_SLOTS, limited uses).
+	_loadout_pool_container.add_child(_make_loadout_header("CARDS — up to %d; each play spends a use" % CombatLoadout.MAX_SLOTS))
 	if _available_cards.is_empty():
 		_loadout_pool_container.add_child(_picker_note("No cards available. You'll fight with Attack/Defend and spells."))
 		return
@@ -616,6 +874,7 @@ func _populate_loadout_pool() -> void:
 	for c in _available_cards:
 		totals[c.data.id] = int(totals.get(c.data.id, 0)) + 1
 	var seen_counts: Dictionary = {}
+	var cgrid := _make_tile_grid()
 	for card in _available_cards:
 		var chosen: bool = _selected_cards.has(card)
 		var disabled: bool = (not chosen) and _selected_cards.size() >= CombatLoadout.MAX_SLOTS
@@ -623,43 +882,101 @@ func _populate_loadout_pool() -> void:
 		if int(totals.get(card.data.id, 1)) > 1:
 			var k: int = int(seen_counts.get(card.data.id, 0)) + 1
 			seen_counts[card.data.id] = k
-			suffix = "  (copy %d)" % k
-		_loadout_pool_container.add_child(_make_loadout_row(
-			card, chosen, "Remove" if chosen else "Slot",
-			_on_toggle_loadout_card, true, disabled, suffix,
-		))
+			suffix = "  (%d)" % k
+		cgrid.add_child(_make_loadout_tile(
+			card, chosen, _on_toggle_loadout_card, true, disabled, suffix, "Card", "✓ SLOTTED"))
+	_loadout_pool_container.add_child(cgrid)
 
-# Builds one selectable row for the loadout screen. `inst` is a CardInstance;
-# `show_uses` adds the per-instance "(uses x/max)" readout (cards only —
-# weapons have unlimited uses).
-func _make_loadout_row(inst, chosen: bool, btn_text: String, cb: Callable, show_uses: bool, btn_disabled: bool = false, name_suffix: String = "") -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var lbl := Label.new()
-	var prefix: String = "[x] " if chosen else "[ ] "
-	var uses_str: String = ""
+func _make_tile_grid() -> GridContainer:
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	return grid
+
+func _refresh_slot_pips() -> void:
+	for c in _loadout_pips.get_children():
+		c.queue_free()
+	for i in CombatLoadout.MAX_SLOTS:
+		var pip := Panel.new()
+		pip.custom_minimum_size = Vector2(18, 18)
+		var filled: bool = i < _selected_cards.size()
+		var fill: Color = ACCENT if filled else Color(0.16, 0.14, 0.2)
+		var border: Color = ACCENT if filled else PANEL_BORDER
+		pip.add_theme_stylebox_override("panel", _panel_stylebox(fill, border, 1, 5))
+		_loadout_pips.add_child(pip)
+
+# One selectable loadout tile (weapon or card). The whole tile is a Button so it
+# styles its hover/pressed/selected states; the content labels sit on top with
+# mouse input ignored so clicks reach the button. `inst` is a CardInstance.
+func _make_loadout_tile(inst, chosen: bool, cb: Callable, show_uses: bool, disabled: bool, name_suffix: String, kind_label: String, chosen_tag: String) -> Button:
+	var tile := Button.new()
+	tile.custom_minimum_size = Vector2(242, 138)
+	tile.focus_mode = Control.FOCUS_NONE
+	tile.disabled = disabled
+	tile.pressed.connect(cb.bind(inst))
+	var fill: Color = Color(0.2, 0.16, 0.12) if chosen else Color(0.15, 0.13, 0.2)
+	var border: Color = ACCENT if chosen else PANEL_BORDER
+	var bw: int = 2 if chosen else 1
+	tile.add_theme_stylebox_override("normal", _panel_stylebox(fill, border, bw, 10))
+	tile.add_theme_stylebox_override("hover", _panel_stylebox(fill.lightened(0.12), ACCENT, 2, 10))
+	tile.add_theme_stylebox_override("pressed", _panel_stylebox(fill.darkened(0.12), ACCENT, 2, 10))
+	tile.add_theme_stylebox_override("disabled", _panel_stylebox(Color(0.1, 0.09, 0.12), Color(0.22, 0.22, 0.26), 1, 10))
+
+	var out_of_uses: bool = show_uses and GameState.card_uses_remaining(inst) <= 0 and not chosen
+	var dim: bool = disabled or out_of_uses
+
+	var name_l := Label.new()
+	name_l.text = inst.data.display_name + name_suffix
+	name_l.position = Vector2(12, 10)
+	name_l.size = Vector2(218, 22)
+	name_l.clip_text = true
+	name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_l.add_theme_font_size_override("font_size", 15)
+	name_l.add_theme_color_override("font_color",
+		Color(0.55, 0.55, 0.6) if dim else (ACCENT if chosen else Color(1, 0.93, 0.82)))
+	tile.add_child(name_l)
+
+	var meta_text: String = kind_label
 	if show_uses:
-		uses_str = "  (uses %d/%d)" % [GameState.card_uses_remaining(inst), GameState.card_uses_max(inst)]
-	lbl.text = "%s%s%s%s  —  %s" % [prefix, inst.data.display_name, name_suffix, uses_str, _card_desc(inst.data)]
-	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
-	lbl.custom_minimum_size = Vector2(700, 0)
-	lbl.add_theme_font_size_override("font_size", 13)
-	if show_uses and GameState.card_uses_remaining(inst) <= 0 and not chosen:
-		lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
-	row.add_child(lbl)
-	var btn := Button.new()
-	btn.text = btn_text
-	btn.disabled = btn_disabled
-	btn.pressed.connect(cb.bind(inst))
-	row.add_child(btn)
-	return row
+		meta_text += "    uses %d/%d" % [GameState.card_uses_remaining(inst), GameState.card_uses_max(inst)]
+	var meta_l := Label.new()
+	meta_l.text = meta_text
+	meta_l.position = Vector2(12, 34)
+	meta_l.size = Vector2(218, 18)
+	meta_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	meta_l.add_theme_font_size_override("font_size", 11)
+	meta_l.add_theme_color_override("font_color", Color(0.62, 0.64, 0.74))
+	tile.add_child(meta_l)
+
+	var desc_l := Label.new()
+	desc_l.text = _card_desc(inst.data)
+	desc_l.position = Vector2(12, 54)
+	desc_l.size = Vector2(218, 56)
+	desc_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	desc_l.add_theme_font_size_override("font_size", 11)
+	desc_l.add_theme_color_override("font_color",
+		Color(0.5, 0.5, 0.55) if dim else Color(0.82, 0.82, 0.88))
+	tile.add_child(desc_l)
+
+	if chosen:
+		var tag := Label.new()
+		tag.text = chosen_tag
+		tag.position = Vector2(12, 114)
+		tag.size = Vector2(218, 18)
+		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tag.add_theme_font_size_override("font_size", 11)
+		tag.add_theme_color_override("font_color", ACCENT)
+		tile.add_child(tag)
+	return tile
 
 func _make_loadout_header(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 14)
-	l.add_theme_color_override("font_color", Color(1.0, 0.85, 0.45))
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", ACCENT)
 	return l
 
 func _on_toggle_loadout_card(card) -> void:
@@ -909,10 +1226,15 @@ func _populate_ability_picker() -> void:
 		lbl.text = "%s%s%s  (uses %d/%d)  —  %s" % [card.data.display_name, copy_tag, free_tag, uses, cap, _card_desc(card.data)]
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
-		lbl.custom_minimum_size = Vector2(440, 0)
+		lbl.custom_minimum_size = Vector2(196, 0)
 		lbl.add_theme_font_size_override("font_size", 13)
 		if uses <= 0:
 			lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
+		# Hovering the row previews movement + this card's targets on the board.
+		var hits_enemy: bool = CombatLoadout.wants_enemy_target(card.data)
+		lbl.mouse_filter = Control.MOUSE_FILTER_STOP
+		lbl.mouse_entered.connect(_on_hover_card_preview.bind(hits_enemy))
+		lbl.mouse_exited.connect(_on_hover_preview_end)
 		row.add_child(lbl)
 		var btn := Button.new()
 		btn.text = "Play"
@@ -1010,8 +1332,13 @@ func _populate_spell_picker() -> void:
 		]
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
-		lbl.custom_minimum_size = Vector2(440, 0)
+		lbl.custom_minimum_size = Vector2(196, 0)
 		lbl.add_theme_font_size_override("font_size", 13)
+		# Hovering the row previews movement + this spell's targets on the board.
+		var hits_enemy: bool = entry.wants_target and entry.data.target_kind != "friendly"
+		lbl.mouse_filter = Control.MOUSE_FILTER_STOP
+		lbl.mouse_entered.connect(_on_hover_card_preview.bind(hits_enemy))
+		lbl.mouse_exited.connect(_on_hover_preview_end)
 		row.add_child(lbl)
 		var btn := Button.new()
 		btn.text = "Cast"
