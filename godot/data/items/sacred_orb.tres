@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_sacred_orb"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/SacredOrb.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"sacred_orb"
+display_name = "Sacred Orb"
+kind = 1
+rarity = 4
+description = "When item rewards appear, Common picks are always rerolled and Uncommon picks have a 25% chance to be rerolled."
+triggers = []
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+reroll_low_rarity = true
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("holy")
+image = ExtResource("2_img")

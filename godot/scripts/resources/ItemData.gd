@@ -192,6 +192,17 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # mode's attack damage. Only one copy fires per lethal hit.
 @export var negate_lethal: bool = false
 
+# Snowball: flat extra granted whenever the player gains a permanent point of
+# the keyed stat (a level-up gain). Maps stat_id -> bonus added on top of any
+# positive gain. Snowball: { "intelligence": 1 }. Applied in
+# GameState.apply_level_up_stats and GameState.grant_run_stat.
+@export var stat_gain_bonus: Dictionary = {}
+
+# Sacred Orb: while owned, item rewards reroll away from low rarities — Common
+# picks are always rerolled and Uncommon picks have a 25% reroll chance. Read
+# by RewardScreen._roll_choices.
+@export var reroll_low_rarity: bool = false
+
 # For Usable items: how many uses (-1 = infinite)
 @export var max_uses: int = -1
 

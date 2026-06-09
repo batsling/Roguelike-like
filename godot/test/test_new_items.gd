@@ -1101,3 +1101,64 @@ func test_status_temp_expires_on_turn_tick_for_action_and_strategy() -> void:
 	ItemTriggers.fire("turn_tick", null, player, [])
 	assert_eq(player.get_status(&"brace"), 0, "turn_tick expires the temp Brace")
 	assert_true(GameState.temp_status_stacks.is_empty())
+
+# --- Sacred Orb (reward reroll), Secret Technique Instructions (gain_stat
+# perfect reward), Snowball (permanent-stat-gain amplifier), Shuriken
+# (pre-existing per-turn attack counter). ---
+
+func test_shuriken_counts_attacks_per_turn() -> void:
+	var it: ItemData = Data.get_item(&"shuriken")
+	assert_not_null(it, "shuriken.tres should load")
+	var trig: Dictionary = _trigger_for(it, "card_played")
+	assert_eq(String(trig.get("if_card_type", "")), "attack")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "counter")
+	assert_eq(String(eff.get("key", "")), "attacks_this_turn")
+	assert_eq(int(eff.get("every", 0)), 3)
+	assert_eq(String(eff.get("effects", [{}])[0].get("status", "")), "power")
+
+func test_sacred_orb_flags_low_rarity_reroll() -> void:
+	var it: ItemData = Data.get_item(&"sacred_orb")
+	assert_not_null(it, "sacred_orb.tres should load")
+	assert_eq(it.rarity, ItemData.Rarity.LEGENDARY)
+	assert_true(it.reroll_low_rarity)
+	GameState.reset_run()
+	assert_false(GameState.has_low_rarity_reroll(), "no reroll without the orb")
+	GameState.add_item(it)
+	assert_true(GameState.has_low_rarity_reroll(), "orb enables the reroll")
+
+func test_secret_technique_instructions_grants_dash_on_perfect() -> void:
+	var it: ItemData = Data.get_item(&"secret_technique_instructions")
+	assert_not_null(it, "secret_technique_instructions.tres should load")
+	assert_true(it.perfect_aware)
+	assert_eq(it.perfect_effects.size(), 1)
+	var eff: Dictionary = it.perfect_effects[0]
+	assert_eq(String(eff.get("type", "")), "gain_stat")
+	assert_eq(String(eff.get("stat", "")), "dash")
+	assert_eq(int(eff.get("value", 0)), 1)
+
+func test_gain_stat_effect_increments_dash() -> void:
+	GameState.reset_run()
+	var before: int = GameState.dash_charges
+	EffectSystem.apply({"type": "gain_stat", "stat": "dash", "value": 1}, {})
+	assert_eq(GameState.dash_charges, before + 1, "dash resolves to dash_charges")
+
+func test_snowball_amplifies_permanent_intelligence_gains() -> void:
+	GameState.reset_run()
+	assert_eq(GameState.stat_gain_bonus_for("intelligence"), 0)
+	GameState.add_item(Data.get_item(&"snowball"))
+	assert_eq(GameState.stat_gain_bonus_for("intelligence"), 1, "Snowball owned")
+	var int_before: int = GameState.intelligence
+	GameState.apply_level_up_stats({"intelligence": 2})
+	assert_eq(GameState.intelligence, int_before + 3,
+		"+2 base intelligence becomes +3 with Snowball")
+	# Other stats are untouched by an intelligence-only amplifier.
+	var str_before: int = GameState.strength
+	GameState.apply_level_up_stats({"strength": 2})
+	assert_eq(GameState.strength, str_before + 2, "strength gains are unaffected")
+
+func test_snowball_does_not_amplify_when_unowned() -> void:
+	GameState.reset_run()
+	var int_before: int = GameState.intelligence
+	GameState.apply_level_up_stats({"intelligence": 2})
+	assert_eq(GameState.intelligence, int_before + 2, "no bonus without Snowball")

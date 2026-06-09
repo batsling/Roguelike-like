@@ -190,6 +190,7 @@ func _roll_choices() -> void:
 		return
 	var discovery: int = Stats.get_value(&"discovery")
 	var n: int = BASE_ITEM_CHOICES + maxi(0, discovery)
+	var orb: bool = GameState.has_low_rarity_reroll()
 	var attempts: int = 0
 	while _choices.size() < n and attempts < 100:
 		attempts += 1
@@ -198,6 +199,14 @@ func _roll_choices() -> void:
 		if bucket.is_empty():
 			bucket = pool
 		var pick: ItemData = bucket[_rng.randi_range(0, bucket.size() - 1)]
+		# Sacred Orb: reroll low-rarity picks — Commons always, Uncommons 25%.
+		# Re-loops (re-rolling rarity) until the pick survives, biasing the
+		# offered choices toward higher rarities.
+		if orb:
+			if int(pick.rarity) == ItemData.Rarity.COMMON:
+				continue
+			if int(pick.rarity) == ItemData.Rarity.UNCOMMON and _rng.randf() < 0.25:
+				continue
 		var dup: bool = false
 		for c in _choices:
 			if c.id == pick.id:

@@ -68,6 +68,7 @@ func _register_defaults() -> void:
 	register("status_temp", _h_status_temp)
 	register("exhaust_self", _h_exhaust_self)
 	register("gain_gold", _h_gain_gold)
+	register("gain_stat", _h_gain_stat)
 	register("lose_hp", _h_lose_hp)
 	register("conjure", _h_conjure)
 	register("discard", _h_discard)
@@ -268,6 +269,18 @@ func _h_gain_gold(effect: Dictionary, ctx: Dictionary) -> void:
 		var lv: int = maxi(1, int(ctx.get("level", 1)))
 		amount = int(increments[mini(lv - 1, increments.size() - 1)])
 	GameState.change_gold(amount)
+
+# Permanent run-scope stat grant (Secret Technique Instructions: +1 Dash on a
+# perfected game). Scene-less, so it works from perfect_effects / pickup hooks.
+# Resolves ability stats to their backing field and applies Snowball-style
+# amplifiers via GameState.grant_run_stat.
+#   {type: "gain_stat", stat: "dash", value: 1}
+func _h_gain_stat(effect: Dictionary, _ctx: Dictionary) -> void:
+	var stat: String = String(effect.get("stat", ""))
+	var value: int = int(effect.get("value", 0))
+	if stat == "" or value == 0:
+		return
+	GameState.grant_run_stat(stat, value)
 
 func _h_lose_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	# `non_lethal: true` clamps the loss so it can never drop the player below

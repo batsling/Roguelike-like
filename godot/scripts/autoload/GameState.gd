@@ -618,6 +618,8 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 	for stat in _LEVEL_UP_DIRECT_STATS:
 		var v: int = int(stats.get(stat, 0))
 		if v != 0:
+			if v > 0:
+				v += stat_gain_bonus_for(stat)  # Snowball amplifies positive gains
 			set(stat, int(get(stat)) + v)
 			applied.append("+%d %s" % [v, _pretty_stat(stat)])
 			touched = true
@@ -636,8 +638,9 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 	var random_n: int = int(stats.get("random", 0))
 	for _i in range(maxi(0, random_n)):
 		var pick: String = _LEVEL_UP_RANDOM_POOL[randi() % _LEVEL_UP_RANDOM_POOL.size()]
-		set(pick, int(get(pick)) + 1)
-		applied.append("+1 %s (random)" % _pretty_stat(pick))
+		var amt: int = 1 + stat_gain_bonus_for(pick)  # Snowball amplifies the pick
+		set(pick, int(get(pick)) + amt)
+		applied.append("+%d %s (random)" % [amt, _pretty_stat(pick)])
 		touched = true
 	if touched:
 		emit_signal("stats_changed")
@@ -645,6 +648,37 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 
 func _pretty_stat(stat: String) -> String:
 	return stat.capitalize()
+
+# Snowball: total flat bonus owned items add whenever the player gains a
+# permanent point of `stat`. Summed across the inventory so duplicate Snowballs
+# stack. 0 for the common no-amplifier case.
+func stat_gain_bonus_for(stat: String) -> int:
+	var bonus: int = 0
+	for it in inventory:
+		if it is ItemData and not it.stat_gain_bonus.is_empty():
+			bonus += int(it.stat_gain_bonus.get(stat, 0))
+	return bonus
+
+# Permanent run-scope stat grant used by the `gain_stat` effect (Secret
+# Technique Instructions: +1 Dash on a perfected game). Resolves ability stats
+# (dash/reroll/fov/discovery) to their backing field, applies Snowball-style
+# amplifiers to positive gains, and broadcasts the change.
+func grant_run_stat(stat: String, value: int) -> void:
+	if value == 0:
+		return
+	var amt: int = value
+	if value > 0:
+		amt += stat_gain_bonus_for(stat)
+	var field: String = _LEVEL_UP_ABILITY_FIELDS.get(stat, stat)
+	set(field, int(get(field)) + amt)
+	emit_signal("stats_changed")
+
+# Sacred Orb: true while any owned item rerolls low-rarity item drops.
+func has_low_rarity_reroll() -> bool:
+	for it in inventory:
+		if it is ItemData and it.reroll_low_rarity:
+			return true
+	return false
 
 # ---------------------------------------------------------------------------
 # Usable consumables + temporary buffs
