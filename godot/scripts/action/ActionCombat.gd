@@ -1817,6 +1817,10 @@ func _draw() -> void:
 		draw_circle(player_pos, PLAYER_RADIUS, col)
 	# Facing line
 	draw_line(player_pos, player_pos + player_facing * (PLAYER_RADIUS + 14), Color(1.0, 0.85, 0.3), 3.0)
+	# Player buffs/debuffs (Power from Inflame, Brace from Metal Plate, …) hover
+	# above the head, same icon set the enemies use. Block (a number, not a
+	# status) gets its own little shield chip beside them.
+	_draw_player_buffs()
 
 	# Projectiles (rendered last so they're on top)
 	for p in projectiles:
@@ -1886,6 +1890,44 @@ func _draw_status_icons(actor: CombatActor, center_x: float, bottom_y: float) ->
 			draw_string(font, Vector2(x + size - 4, top_y + size),
 				label, HORIZONTAL_ALIGNMENT_RIGHT, -1, 9, Color.WHITE)
 		x += size + gap
+
+# Player buff/debuff readout above the head: the Block shield chip (a number,
+# so it isn't part of the status set) sits closest to the head, with the status
+# icon row stacked above it.
+func _draw_player_buffs() -> void:
+	if player_actor == null:
+		return
+	var y: float = player_pos.y - PLAYER_SPRITE_RADIUS - 6.0
+	if player_actor.block > 0:
+		_draw_block_chip(player_actor.block, player_pos.x, y)
+		y -= 20.0
+	_draw_status_icons(player_actor, player_pos.x, y)
+
+# A small steel shield chip with the current Block value, centered on center_x
+# with its bottom edge on bottom_y.
+func _draw_block_chip(amount: int, center_x: float, bottom_y: float) -> void:
+	var font: Font = ThemeDB.fallback_font
+	var num := str(amount)
+	var fsize := 11
+	var tw: float = font.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize).x
+	var icon_w := 12.0
+	var pad := 5.0
+	var w: float = icon_w + 3.0 + tw + pad * 2.0
+	var h := 16.0
+	var x: float = center_x - w * 0.5
+	var top: float = bottom_y - h
+	var rect := Rect2(x, top, w, h)
+	draw_rect(rect, Color(0.14, 0.20, 0.34, 0.92))
+	draw_rect(rect, Color(0.5, 0.72, 1.0, 0.9), false, 1.0)
+	_draw_shield(Vector2(x + pad + icon_w * 0.5, top + h * 0.5), icon_w * 0.5, Color(0.65, 0.82, 1.0))
+	draw_string(font, Vector2(x + pad + icon_w + 3.0, top + h - 4.0),
+		num, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize, Color.WHITE)
+
+func _draw_shield(c: Vector2, r: float, col: Color) -> void:
+	var pts := PackedVector2Array([
+		c + Vector2(-r, -r * 0.85), c + Vector2(r, -r * 0.85),
+		c + Vector2(r, r * 0.25), c + Vector2(0, r), c + Vector2(-r, r * 0.25)])
+	draw_colored_polygon(pts, col)
 
 func _draw_ability_swing_cone() -> void:
 	var half_angle: float = deg_to_rad(ABILITY_MELEE_ANGLE_DEG * 0.5)

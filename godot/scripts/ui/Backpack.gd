@@ -803,50 +803,179 @@ func _render_gear() -> void:
 		note.text = "You can't change equipment during combat."
 		note.add_theme_color_override("font_color", Color(1.0, 0.7, 0.5))
 		_list_vbox.add_child(note)
-	_list_vbox.add_child(_gear_row(
-		"Left click (LMB)", _card_name(GameState.action_left_card_id),
-		func(): _cycle_click_slot(0), locked))
-	_list_vbox.add_child(_gear_row(
-		"Right click (RMB)", _card_name(GameState.action_right_card_id),
-		func(): _cycle_click_slot(1), locked))
-	_list_vbox.add_child(_gear_row(
-		"Active item (Q)", _item_name(GameState.action_active_item_id),
-		_cycle_active_item, locked))
+	_list_vbox.add_child(_gear_card_slot("Left click", "LMB", 0, locked))
+	_list_vbox.add_child(_gear_card_slot("Right click", "RMB", 1, locked))
+	_list_vbox.add_child(_gear_item_slot("Active item", "Q", locked))
 	_hint_label.text = "Locked while fighting." if locked \
-		else "Set your action-combat click cards and the consumable you pop with Q. Strikes/weapons only in click slots."
+		else "Pick the card fired by each mouse button and the item you pop with Q. Only Strikes and weapons fit the click slots."
 
-func _gear_row(label_text: String, value_text: String, on_change: Callable, locked: bool) -> Control:
+# Shared frame for a gear slot: an icon preview, the slot's name + binding key,
+# and a dropdown to pick what's slotted. Returns {row, preview, opt}.
+func _gear_slot_frame(title: String, key: String) -> Dictionary:
 	var row := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.12, 0.13, 0.17, 0.92)
+	sb.set_corner_radius_all(8)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(1, 1, 1, 0.08)
+	sb.set_content_margin_all(8)
+	row.add_theme_stylebox_override("panel", sb)
+
 	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 10)
+	hbox.add_theme_constant_override("separation", 12)
 	row.add_child(hbox)
+
+	var preview := Control.new()
+	preview.custom_minimum_size = Vector2(48, 64)
+	preview.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hbox.add_child(preview)
+
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	col.add_theme_constant_override("separation", 5)
+	hbox.add_child(col)
+
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	col.add_child(head)
 	var lbl := Label.new()
-	lbl.text = label_text
-	lbl.custom_minimum_size = Vector2(180, 0)
-	hbox.add_child(lbl)
-	var val := Label.new()
-	val.text = value_text
-	val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	val.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
-	hbox.add_child(val)
-	var btn := Button.new()
-	btn.text = "Change"
-	btn.disabled = locked
-	btn.pressed.connect(on_change)
-	hbox.add_child(btn)
-	return row
+	lbl.text = title
+	lbl.add_theme_font_size_override("font_size", 15)
+	lbl.add_theme_color_override("font_color", Color(0.9, 0.94, 1.0))
+	head.add_child(lbl)
+	var keycap := Label.new()
+	keycap.text = "[%s]" % key
+	keycap.add_theme_font_size_override("font_size", 12)
+	keycap.add_theme_color_override("font_color", Color(0.7, 0.78, 0.95))
+	head.add_child(keycap)
 
-func _card_name(id: StringName) -> String:
-	if id == &"":
-		return "(none)"
-	var c: CardData = Data.get_card(id)
-	return c.display_name if c != null else String(id)
+	var opt := OptionButton.new()
+	opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(opt)
 
-func _item_name(id: StringName) -> String:
+	return {"row": row, "preview": preview, "opt": opt}
+
+# A click-slot (LMB / RMB) row: dropdown of every eligible Strike/weapon in the
+# deck plus "(empty)", with the card art previewed alongside.
+func _gear_card_slot(title: String, key: String, slot: int, locked: bool) -> Control:
+	var f: Dictionary = _gear_slot_frame(title, key)
+	var opt: OptionButton = f.opt
+	opt.disabled = locked
+	var cur: StringName = GameState.action_left_card_id if slot == 0 else GameState.action_right_card_id
+	opt.add_item("(empty)")
+	opt.set_item_metadata(0, &"")
+	var sel := 0
+	for id in _eligible_click_ids():
+		var cd: CardData = Data.get_card(id)
+		opt.add_item(cd.display_name if cd != null else String(id))
+		var idx: int = opt.item_count - 1
+		opt.set_item_metadata(idx, id)
+		if id == cur:
+			sel = idx
+	opt.select(sel)
+	opt.item_selected.connect(func(_i): _on_click_slot_selected(slot, opt))
+	_fill_card_preview(f.preview, cur)
+	return f.row
+
+# The active-item (Q) row: dropdown of every usable consumable in the inventory
+# plus "(empty)", with the item icon previewed alongside.
+func _gear_item_slot(title: String, key: String, locked: bool) -> Control:
+	var f: Dictionary = _gear_slot_frame(title, key)
+	var opt: OptionButton = f.opt
+	opt.disabled = locked
+	var cur: StringName = GameState.action_active_item_id
+	opt.add_item("(empty)")
+	opt.set_item_metadata(0, &"")
+	var sel := 0
+	for id in _usable_item_ids():
+		var it: ItemData = Data.get_item(id)
+		opt.add_item(it.display_name if it != null else String(id))
+		var idx: int = opt.item_count - 1
+		opt.set_item_metadata(idx, id)
+		if id == cur:
+			sel = idx
+	opt.select(sel)
+	opt.item_selected.connect(func(_i): _on_item_slot_selected(opt))
+	_fill_item_preview(f.preview, cur)
+	return f.row
+
+func _on_click_slot_selected(slot: int, opt: OptionButton) -> void:
+	var id: StringName = StringName(opt.get_selected_metadata())
+	if slot == 0:
+		GameState.action_left_card_id = id
+	else:
+		GameState.action_right_card_id = id
+	# Only one Strike across the two click slots: if this pick duplicates a
+	# Strike already in the other slot, clear that other slot.
+	if id != &"":
+		var cd: CardData = Data.get_card(id)
+		if cd != null and cd.tags.has("strike"):
+			if slot == 0:
+				var oc: CardData = Data.get_card(GameState.action_right_card_id)
+				if oc != null and oc.tags.has("strike"):
+					GameState.action_right_card_id = &""
+					GameLog.add("Only one Strike fits the click slots — cleared Right click.", Color(0.85, 0.7, 0.4))
+			else:
+				var oc2: CardData = Data.get_card(GameState.action_left_card_id)
+				if oc2 != null and oc2.tags.has("strike"):
+					GameState.action_left_card_id = &""
+					GameLog.add("Only one Strike fits the click slots — cleared Left click.", Color(0.85, 0.7, 0.4))
+	_refresh()
+
+func _on_item_slot_selected(opt: OptionButton) -> void:
+	GameState.action_active_item_id = StringName(opt.get_selected_metadata())
+	_refresh()
+
+# Fills a slot's preview box with the card art (or an "empty" placeholder).
+func _fill_card_preview(preview: Control, id: StringName) -> void:
 	if id == &"":
-		return "(none)"
+		_fill_empty_preview(preview)
+		return
+	var cd: CardData = Data.get_card(id)
+	if cd != null and cd.image != null:
+		_add_preview_texture(preview, cd.image)
+	else:
+		_fill_empty_preview(preview)
+
+func _fill_item_preview(preview: Control, id: StringName) -> void:
+	if id == &"":
+		_fill_empty_preview(preview)
+		return
 	var it: ItemData = Data.get_item(id)
-	return it.display_name if it != null else String(id)
+	if it != null and it.image != null:
+		_add_preview_texture(preview, it.image)
+	else:
+		_fill_empty_preview(preview)
+
+func _add_preview_texture(preview: Control, tex: Texture2D) -> void:
+	var tr := TextureRect.new()
+	tr.texture = tex
+	tr.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	preview.add_child(tr)
+
+func _fill_empty_preview(preview: Control) -> void:
+	var p := Panel.new()
+	p.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.08, 0.11, 0.8)
+	sb.set_corner_radius_all(6)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(1, 1, 1, 0.08)
+	p.add_theme_stylebox_override("panel", sb)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	preview.add_child(p)
+	var l := Label.new()
+	l.text = "—"
+	l.set_anchors_preset(Control.PRESET_FULL_RECT)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_color_override("font_color", Color(0.5, 0.5, 0.55))
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	preview.add_child(l)
 
 func _usable_item_ids() -> Array:
 	var out: Array = []
@@ -864,49 +993,3 @@ func _eligible_click_ids() -> Array:
 				out.append(id)
 	return out
 
-func _would_dual_strike(slot: int, cand: StringName) -> bool:
-	# Only one Strike across the two click slots (mirrors EquipmentScreen).
-	if cand == &"":
-		return false
-	var cd: CardData = Data.get_card(cand)
-	if cd == null or not cd.tags.has("strike"):
-		return false
-	var other_id: StringName = GameState.action_right_card_id if slot == 0 else GameState.action_left_card_id
-	var oc: CardData = Data.get_card(other_id)
-	return oc != null and oc.tags.has("strike")
-
-func _cycle_click_slot(slot: int) -> void:
-	var ids: Array = _eligible_click_ids()
-	if ids.is_empty():
-		GameLog.add("No Strikes or weapons in your deck to slot.", Color(0.85, 0.7, 0.4))
-		return
-	var options: Array = ids.duplicate()
-	options.push_front(&"")
-	var cur_id: StringName = GameState.action_left_card_id if slot == 0 else GameState.action_right_card_id
-	var idx: int = options.find(cur_id)
-	if idx == -1:
-		idx = 0
-	var n: int = options.size()
-	for step in range(1, n + 1):
-		var cand: StringName = options[(idx + step) % n]
-		if _would_dual_strike(slot, cand):
-			continue
-		if slot == 0:
-			GameState.action_left_card_id = cand
-		else:
-			GameState.action_right_card_id = cand
-		break
-	_refresh()
-
-func _cycle_active_item() -> void:
-	var ids: Array = _usable_item_ids()
-	if ids.is_empty():
-		GameLog.add("No usable items to slot.", Color(0.85, 0.7, 0.4))
-		return
-	var options: Array = ids.duplicate()
-	options.push_front(&"")
-	var cur: int = options.find(GameState.action_active_item_id)
-	if cur == -1:
-		cur = 0
-	GameState.action_active_item_id = options[(cur + 1) % options.size()]
-	_refresh()
