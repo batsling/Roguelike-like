@@ -33,6 +33,11 @@ static func fire(trigger_name: String, scene, player, enemies: Array,
 			_expire_temp_statuses(player)
 		"turn_tick":
 			GameState.incremental_on_turn_tick()
+			# turn_tick is the recurring turn boundary in Action and Strategy
+			# (neither re-fires turn_started), so temp statuses expire here too.
+			# Idempotent: deckbuilder fires both at turn start, and the second
+			# call just finds an empty tally.
+			_expire_temp_statuses(player)
 		"card_played":
 			# A new card play ends the previous card's Pen Nib window.
 			GameState.pen_nib_double_active = false

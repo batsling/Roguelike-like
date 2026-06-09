@@ -1648,6 +1648,8 @@ func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatA
 		player_actor.hp = GameState.hp
 		FloatingNumbers.spawn(self, player_pos, dmg)
 		GameLog.add("%s hits you for %d." % [source_name, dmg], Color(1.0, 0.6, 0.6))
+		# Item reactions to the player taking damage (Prayer Card, Prayer Beads).
+		_fire_item_triggers("damage_taken", {"target": player_actor})
 	player_iframes = PLAYER_IFRAME_DURATION
 
 # ---------------------------------------------------------------------------

@@ -1085,3 +1085,19 @@ func test_status_temp_leaves_permanent_stacks_intact() -> void:
 	assert_eq(player.get_status(&"brace"), 5, "permanent + temp stack together")
 	ItemTriggers._expire_temp_statuses(player)
 	assert_eq(player.get_status(&"brace"), 2, "only the temp 3 is removed")
+
+func test_status_temp_expires_on_turn_tick_for_action_and_strategy() -> void:
+	# Action and Strategy use turn_tick (not a re-fired turn_started) as their
+	# recurring turn boundary, so the temp-status expiry must run there too.
+	GameState.reset_run()
+	var player := CombatActor.new()
+	player.is_player = true
+	player.hp = 30
+	player.max_hp = 30
+	EffectSystem.apply({"type": "status_temp", "status": "brace", "stacks": 3,
+		"target": "self"}, {"source": player, "target": player, "scene": null})
+	assert_eq(player.get_status(&"brace"), 3, "temp Brace applied")
+	# Fire the shared runner's turn_tick with no scene / no enemies.
+	ItemTriggers.fire("turn_tick", null, player, [])
+	assert_eq(player.get_status(&"brace"), 0, "turn_tick expires the temp Brace")
+	assert_true(GameState.temp_status_stacks.is_empty())
