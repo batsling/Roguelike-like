@@ -136,6 +136,10 @@ func get_base_size() -> Vector2:
 	return Vector2(_base_w, _base_h)
 
 func _apply_size() -> void:
+	# Scale from the top-left origin so the enclosing ScrollContainer's scroll
+	# math (content_pixel = base_coord * zoom) lines up exactly — RunMapView
+	# relies on this when anchoring zoom on the cursor.
+	pivot_offset = Vector2.ZERO
 	scale = Vector2(_zoom, _zoom)
 	custom_minimum_size = Vector2(_base_w * _zoom, _base_h * _zoom)
 	size = Vector2(_base_w, _base_h)
@@ -302,7 +306,10 @@ func _make_node_box(id: StringName, is_cur: bool, is_amu: bool, is_next: bool, d
 	var name_l := Label.new()
 	name_l.text = gd.display_name if gd != null else String(id)
 	name_l.position = Vector2(tx, 10)
-	name_l.size = Vector2(BOX_W - tx - 34, 22)
+	# Reserve room for the hop-count badge on non-amulet nodes; the amulet has
+	# no badge there, so its title gets the full remaining width.
+	var name_w: int = (BOX_W - tx - 8) if is_amu else (BOX_W - tx - 34)
+	name_l.size = Vector2(name_w, 22)
 	name_l.clip_text = true
 	name_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -339,6 +346,7 @@ func _make_node_box(id: StringName, is_cur: bool, is_amu: bool, is_next: bool, d
 	badge_l.position = Vector2(tx, 36)
 	badge_l.size = Vector2(BOX_W - tx - 8, 18)
 	badge_l.clip_text = true
+	badge_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	badge_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	badge_l.add_theme_font_size_override("font_size", 11)
 	badge_l.add_theme_color_override("font_color", badge_col)

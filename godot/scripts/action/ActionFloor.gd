@@ -118,6 +118,7 @@ func _build_arena() -> void:
 	_arena.room_cleared.connect(_on_room_cleared)
 	_arena.player_died.connect(_on_player_died)
 	_arena.door_entered.connect(_on_door_entered)
+	_arena.stairs_entered.connect(_on_stairs_entered)
 	add_child(_arena)
 
 func _build_minimap() -> void:
@@ -174,9 +175,17 @@ func _on_room_cleared() -> void:
 	if not rt.is_empty():
 		rt.cleared = true
 	_refresh_minimap()
-	# Beating the boss room clears the whole floor (= beating the game).
+	# Beating the boss spawns exit stairs at the centre of the arena rather than
+	# ending the floor on the kill — the player walks onto them to leave.
 	if int(_floor.rooms[_current_index].type) == IsaacFloorGenerator.RoomType.BOSS:
-		_finish_floor(true)
+		if _arena != null:
+			_arena.spawn_stairs()
+		GameLog.add("The boss is slain! Stairs rise from the floor — step onto them to leave.",
+			Color(1.0, 0.85, 0.4))
+
+# Player walked onto the boss-exit stairs: now the floor is complete.
+func _on_stairs_entered() -> void:
+	_finish_floor(true)
 
 func _on_player_died() -> void:
 	_finish_floor(false)

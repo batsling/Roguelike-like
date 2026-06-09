@@ -11,8 +11,20 @@ const ITEM_PRICES := {0: 8, 1: 15, 2: 25, 3: 35, 4: 40}
 const CARD_PRICES := {0: 0, 1: 15, 2: 30, 3: 50, 4: 80}
 const REMOVE_PRICE := 50
 
-var _items: Array = []           # [{item: ItemData, price, purchased}]
-var _cards: Array = []           # [{card: CardData, price, purchased}]
+# Panel + section geometry. Kept here so the layout reads in one place; the
+# shop is built entirely in code and shared by every combat (action floor +
+# deckbuilder map), so this is the single source of its look.
+const PANEL_SIZE := Vector2(900, 772)
+const ITEM_CELL := Vector2(264, 188)
+
+# Rarity colours mirror the rest of the UI (Backpack.RARITY_COLORS).
+const RARITY_COLORS := [
+	Color(0.78, 0.78, 0.78), Color(0.45, 0.85, 0.5),
+	Color(0.4, 0.6, 1.0), Color(0.75, 0.45, 1.0), Color(1.0, 0.8, 0.3),
+]
+
+var _items: Array = []           # [{item: ItemData, price, purchased, buy_btn, cell}]
+var _cards: Array = []           # [{card: CardData, price, purchased, buy_btn, view}]
 var _remove_used: bool = false
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -73,95 +85,166 @@ func _build_ui() -> void:
 	dim.color = Color(0, 0, 0, 0.65)
 	add_child(dim)
 
-	var panel := Panel.new()
-	panel.size = Vector2(840, 620)
-	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	var panel := PanelContainer.new()
+	panel.size = PANEL_SIZE
+	panel.position = ((get_viewport_rect().size - PANEL_SIZE) / 2.0).round()
+	panel.add_theme_stylebox_override("panel",
+		_sb(Color(0.10, 0.09, 0.13, 0.98), Color(0.42, 0.33, 0.55, 0.9), 2, 14))
 	add_child(panel)
 
+	var root := VBoxContainer.new()
+	root.add_theme_constant_override("separation", 10)
+	panel.add_child(root)
+
+	# --- Header: shopkeeper title + live gold ---
+	var header := HBoxContainer.new()
+	root.add_child(header)
 	var title := Label.new()
-	title.position = Vector2(20, 16)
-	title.size = Vector2(800, 28)
-	title.text = "Shop"
-	title.add_theme_font_size_override("font_size", 22)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(title)
-
+	title.text = "🛒  Shop"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color(1.0, 0.88, 0.55))
+	header.add_child(title)
 	_gold_label = Label.new()
-	_gold_label.position = Vector2(680, 20)
-	_gold_label.size = Vector2(140, 24)
 	_gold_label.text = "Gold: %d" % GameState.gold
+	_gold_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_gold_label.add_theme_font_size_override("font_size", 18)
 	_gold_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
-	panel.add_child(_gold_label)
+	header.add_child(_gold_label)
 
-	# Items
-	var items_title := Label.new()
-	items_title.position = Vector2(20, 60)
-	items_title.size = Vector2(800, 22)
-	items_title.text = "Items"
-	items_title.add_theme_font_size_override("font_size", 16)
-	panel.add_child(items_title)
+	root.add_child(_section_header("ITEMS"))
 
 	var items_row := HBoxContainer.new()
-	items_row.position = Vector2(20, 92)
-	items_row.size = Vector2(800, 140)
-	items_row.add_theme_constant_override("separation", 14)
+	items_row.add_theme_constant_override("separation", 16)
 	items_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	panel.add_child(items_row)
+	root.add_child(items_row)
 	for entry in _items:
-		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(220, 130)
-		btn.autowrap_mode = TextServer.AUTOWRAP_WORD
-		var e: Dictionary = entry
-		var b: Button = btn
-		btn.pressed.connect(func(): _buy_item(e, b))
-		items_row.add_child(btn)
-		_item_btns.append(btn)
+		items_row.add_child(_build_item_cell(entry))
 
-	# Cards
-	var cards_title := Label.new()
-	cards_title.position = Vector2(20, 246)
-	cards_title.size = Vector2(800, 22)
-	cards_title.text = "Cards"
-	cards_title.add_theme_font_size_override("font_size", 16)
-	panel.add_child(cards_title)
+	root.add_child(_section_header("CARDS"))
 
 	var cards_row := HBoxContainer.new()
-	cards_row.position = Vector2(20, 278)
-	cards_row.size = Vector2(800, 140)
-	cards_row.add_theme_constant_override("separation", 14)
+	cards_row.add_theme_constant_override("separation", 22)
 	cards_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	panel.add_child(cards_row)
+	root.add_child(cards_row)
 	for entry in _cards:
-		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(220, 130)
-		btn.autowrap_mode = TextServer.AUTOWRAP_WORD
-		var e: Dictionary = entry
-		var b: Button = btn
-		btn.pressed.connect(func(): _buy_card(e, b))
-		cards_row.add_child(btn)
-		_card_btns.append(btn)
+		cards_row.add_child(_build_card_cell(entry))
 
-	# Services
-	var svc_title := Label.new()
-	svc_title.position = Vector2(20, 432)
-	svc_title.size = Vector2(800, 22)
-	svc_title.text = "Services"
-	svc_title.add_theme_font_size_override("font_size", 16)
-	panel.add_child(svc_title)
+	root.add_child(_section_header("SERVICES"))
 
+	var svc_row := HBoxContainer.new()
+	svc_row.add_theme_constant_override("separation", 16)
+	svc_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	root.add_child(svc_row)
 	_remove_btn = Button.new()
-	_remove_btn.position = Vector2(80, 464)
-	_remove_btn.size = Vector2(320, 50)
-	_remove_btn.text = "Remove a card  (%dg)" % REMOVE_PRICE
+	_remove_btn.custom_minimum_size = Vector2(360, 46)
+	_remove_btn.text = "✂  Remove a card  (%dg)" % REMOVE_PRICE
 	_remove_btn.pressed.connect(_open_remove_picker)
-	panel.add_child(_remove_btn)
+	svc_row.add_child(_remove_btn)
 
+	var leave_row := HBoxContainer.new()
+	leave_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	root.add_child(leave_row)
 	var leave_btn := Button.new()
-	leave_btn.position = Vector2(340, 552)
-	leave_btn.size = Vector2(160, 48)
+	leave_btn.custom_minimum_size = Vector2(200, 46)
 	leave_btn.text = "Leave shop"
 	leave_btn.pressed.connect(_on_leave)
-	panel.add_child(leave_btn)
+	leave_row.add_child(leave_btn)
+
+# A small uppercase section divider label.
+func _section_header(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_color_override("font_color", Color(1.0, 0.78, 0.4))
+	return l
+
+func _sb(fill: Color, border: Color, border_w: int, radius: int) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = fill
+	sb.set_corner_radius_all(radius)
+	sb.set_border_width_all(border_w)
+	sb.border_color = border
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
+	return sb
+
+func _rarity_color(rarity: int) -> Color:
+	return RARITY_COLORS[clampi(rarity, 0, RARITY_COLORS.size() - 1)]
+
+# An item card: real item icon on top, name (rarity-coloured) + rarity, the
+# item description, and a buy button showing the price.
+func _build_item_cell(entry: Dictionary) -> Control:
+	var item: ItemData = entry.item
+	var rcol: Color = _rarity_color(item.rarity)
+
+	var cell := PanelContainer.new()
+	cell.custom_minimum_size = ITEM_CELL
+	cell.add_theme_stylebox_override("panel",
+		_sb(Color(0.14, 0.13, 0.18, 0.96), rcol.darkened(0.2), 1, 10))
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 5)
+	cell.add_child(vb)
+
+	var icon := TextureRect.new()
+	icon.texture = item.image
+	icon.custom_minimum_size = Vector2(0, 58)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	vb.add_child(icon)
+
+	var name_l := Label.new()
+	name_l.text = item.display_name
+	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_l.add_theme_font_size_override("font_size", 15)
+	name_l.add_theme_color_override("font_color", rcol)
+	vb.add_child(name_l)
+
+	var desc_l := Label.new()
+	desc_l.text = item.description
+	desc_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_l.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	desc_l.add_theme_font_size_override("font_size", 11)
+	desc_l.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
+	vb.add_child(desc_l)
+
+	var buy := Button.new()
+	buy.pressed.connect(func(): _buy_item(entry))
+	vb.add_child(buy)
+
+	entry["cell"] = cell
+	entry["buy_btn"] = buy
+	_item_btns.append(buy)
+	return cell
+
+# A card offer: the real in-game CardView (so it reads exactly as it will in a
+# fight) plus a buy button. Clicking the card itself also buys it.
+func _build_card_cell(entry: Dictionary) -> Control:
+	var card: CardData = entry.card
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 8)
+
+	var view := CardView.new()
+	view.custom_minimum_size = Vector2(CardView.CARD_W, CardView.CARD_H)
+	view.setup(CardInstance.from_data(card))
+	view.play_requested.connect(func(_c): _buy_card(entry))
+	vb.add_child(view)
+
+	var buy := Button.new()
+	buy.custom_minimum_size = Vector2(CardView.CARD_W, 40)
+	buy.pressed.connect(func(): _buy_card(entry))
+	vb.add_child(buy)
+
+	entry["view"] = view
+	entry["buy_btn"] = buy
+	_card_btns.append(buy)
+	return vb
 
 # ---------------------------------------------------------------------------
 # Refresh + buy
@@ -178,24 +261,26 @@ func _refresh_buttons() -> void:
 		_remove_btn.disabled = GameState.gold < REMOVE_PRICE
 
 func _format_item_btn(btn: Button, entry: Dictionary) -> void:
-	var item: ItemData = entry.item
 	if entry.purchased:
-		btn.text = "SOLD\n%s" % item.display_name
+		btn.text = "SOLD"
 		btn.disabled = true
+		if entry.has("cell") and entry.cell != null:
+			entry.cell.modulate = Color(0.55, 0.55, 0.55)
 		return
-	btn.text = "%s\n(%s)\n\n%dg" % [item.display_name, _rarity_label(item.rarity), entry.price]
+	btn.text = "Buy  •  %dg" % entry.price
 	btn.disabled = GameState.gold < entry.price
 
 func _format_card_btn(btn: Button, entry: Dictionary) -> void:
-	var card: CardData = entry.card
 	if entry.purchased:
-		btn.text = "SOLD\n%s" % card.display_name
+		btn.text = "SOLD"
 		btn.disabled = true
+		if entry.has("view") and entry.view != null:
+			entry.view.set_enabled(false)
 		return
-	btn.text = "[%d] %s\n(%s)\n\n%dg" % [card.cost, card.display_name, _rarity_label(card.rarity), entry.price]
+	btn.text = "Buy  •  %dg" % entry.price
 	btn.disabled = GameState.gold < entry.price
 
-func _buy_item(entry: Dictionary, _btn: Button) -> void:
+func _buy_item(entry: Dictionary) -> void:
 	if entry.purchased or GameState.gold < entry.price:
 		return
 	GameState.spend_gold(entry.price)
@@ -204,7 +289,7 @@ func _buy_item(entry: Dictionary, _btn: Button) -> void:
 	GameLog.add("Bought %s for %dg." % [entry.item.display_name, entry.price], Color(0.7, 1.0, 0.7))
 	_refresh_buttons()
 
-func _buy_card(entry: Dictionary, _btn: Button) -> void:
+func _buy_card(entry: Dictionary) -> void:
 	if entry.purchased or GameState.gold < entry.price:
 		return
 	GameState.spend_gold(entry.price)
@@ -291,14 +376,3 @@ func _complete_remove(deck_idx: int, picker: Control) -> void:
 
 func _on_leave() -> void:
 	emit_signal("closed")
-
-# ---------------------------------------------------------------------------
-
-func _rarity_label(rarity: int) -> String:
-	match rarity:
-		0: return "Starter"
-		1: return "Common"
-		2: return "Uncommon"
-		3: return "Rare"
-		4: return "Legendary"
-		_: return "?"

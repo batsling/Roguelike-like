@@ -45,9 +45,30 @@ func _ready() -> void:
 		_graph.set_zoom(clampf(fit, MapGraphView.ZOOM_MIN, 1.0))
 	_update_zoom_label()
 
-func _zoom_by(factor: float) -> void:
-	_graph.set_zoom(_graph.get_zoom() * factor)
+# Zoom toward a focus point (cursor for the wheel, viewport centre for the
+# buttons) so the map grows around what you're looking at. Scroll offset is
+# restored deferred since the ScrollContainer recomputes its range next layout.
+func _zoom_by(factor: float, focus_global: Vector2 = Vector2(-1, -1)) -> void:
+	if _graph == null or _scroll == null:
+		return
+	var old: float = _graph.get_zoom()
+	var target: float = clampf(old * factor, MapGraphView.ZOOM_MIN, MapGraphView.ZOOM_MAX)
+	if is_equal_approx(target, old):
+		return
+	var focus_local: Vector2
+	if focus_global.x < 0.0:
+		focus_local = _scroll.size * 0.5
+	else:
+		focus_local = focus_global - _scroll.global_position
+		focus_local.x = clampf(focus_local.x, 0.0, _scroll.size.x)
+		focus_local.y = clampf(focus_local.y, 0.0, _scroll.size.y)
+	var content_pt := Vector2(_scroll.scroll_horizontal, _scroll.scroll_vertical) + focus_local
+	var base_pt := content_pt / old
+	_graph.set_zoom(target)
 	_update_zoom_label()
+	var new_scroll := base_pt * target - focus_local
+	_scroll.set_deferred("scroll_horizontal", int(round(new_scroll.x)))
+	_scroll.set_deferred("scroll_vertical", int(round(new_scroll.y)))
 
 func _zoom_reset() -> void:
 	_graph.set_zoom(1.0)
@@ -57,12 +78,13 @@ func _update_zoom_label() -> void:
 	_zoom_label.text = "%d%%" % int(round(_graph.get_zoom() * 100.0))
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.ctrl_pressed:
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_zoom_by(1.1)
-			get_viewport().set_input_as_handled()
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_zoom_by(1.0 / 1.1)
+	if event is InputEventMouseButton and event.pressed \
+			and (event.button_index == MOUSE_BUTTON_WHEEL_UP \
+				or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		# Plain wheel zooms when the cursor is over the map panel (no modifier).
+		if _scroll != null and _scroll.get_global_rect().has_point(event.global_position):
+			var f: float = 1.12 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.12
+			_zoom_by(f, event.global_position)
 			get_viewport().set_input_as_handled()
 
 func _on_close() -> void:
