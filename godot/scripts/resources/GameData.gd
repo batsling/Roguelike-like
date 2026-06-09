@@ -29,3 +29,50 @@ enum GameType { ACTION, STRATEGY, DECKBUILDER, TRADITIONAL }
 
 # Visuals
 @export var cover_image: Texture2D
+
+# --- Real-game launch (the player can play the actual game this represents) ---
+# Whether the player owns the real game (from the spreadsheet's "Owned" column).
+@export var owned: bool = false
+# Absolute path to a local executable/file to launch directly. Covers Steam,
+# non-Steam, and DRM-free installs without needing Steam shortcut ids.
+@export var file_location: String = ""
+# Fallback store/page URL (e.g. https://store.steampowered.com/app/<id>) opened
+# when there's no usable local file.
+@export var steam_page: String = ""
+
+# True when there's something the "Play the real game" button can open.
+func has_launch_target() -> bool:
+	return file_location.strip_edges() != "" or steam_page.strip_edges() != ""
+
+# Launch the real game. Resolves shortcuts (.lnk/.url) and protocol/URL targets
+# (e.g. steam://, https://) through the OS shell, since OS.create_process can't
+# follow those. Plain executables are launched directly, falling back to the
+# shell if the OS refuses. Returns true if something launched.
+# Note: create_process is unavailable on web exports — only the shell path works
+# there.
+func launch() -> bool:
+	var path: String = file_location.strip_edges()
+	if path != "":
+		# Shortcuts, protocol URIs and file associations need the shell.
+		if _needs_shell(path):
+			OS.shell_open(path)
+			return true
+		# Plain executable: launch directly, but fall back to the shell if the
+		# OS won't spawn it as a process.
+		if OS.create_process(path, []) != -1:
+			return true
+		OS.shell_open(path)
+		return true
+	var url: String = steam_page.strip_edges()
+	if url != "":
+		OS.shell_open(url)
+		return true
+	return false
+
+# Targets the OS shell must resolve rather than create_process: Windows/Internet
+# shortcuts and anything with a protocol scheme (steam://, http(s)://, …).
+func _needs_shell(target: String) -> bool:
+	if target.contains("://"):
+		return true
+	var lower: String = target.to_lower()
+	return lower.ends_with(".lnk") or lower.ends_with(".url")

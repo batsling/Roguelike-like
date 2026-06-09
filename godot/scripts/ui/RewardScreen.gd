@@ -26,6 +26,7 @@ const RARITY_COLORS := [
 ]
 
 var _gold: int = 0
+var _game: GameData = null               # the real game this section represented
 var _choices: Array = []                 # Array[ItemData] templates
 var _rng := RandomNumberGenerator.new()
 var _resolved: bool = false
@@ -33,11 +34,16 @@ var _started: bool = false
 
 var _choices_box: HBoxContainer
 var _reroll_btn: Button
+var _play_btn: Button
 
 # gold: the amount to grant (Main computes it from the difficulty tier).
+# game: the real game this section represented; when it has a launch target a
+#       "Play the real game" button is shown. Optional — level-up item rewards
+#       pass no game.
 # Safe to call before or after the node enters the tree.
-func setup(gold: int) -> void:
+func setup(gold: int, game: GameData = null) -> void:
 	_gold = gold
+	_game = game
 	if is_inside_tree() and not _started:
 		_started = true
 		_begin()
@@ -57,6 +63,10 @@ func _begin() -> void:
 	if _gold > 0:
 		GameState.change_gold(_gold)
 		GameLog.add("Reward: +%d gold." % _gold, Color(1.0, 0.9, 0.3))
+	if _play_btn != null:
+		_play_btn.visible = _game != null and _game.has_launch_target()
+		if _play_btn.visible:
+			_play_btn.text = "▶ Play %s" % _game.display_name
 	_roll_choices()
 	_refresh()
 
@@ -95,6 +105,17 @@ func _build_ui() -> void:
 	gold_line.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
 	gold_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(gold_line)
+
+	# "Play the real game" — only meaningful when this section represented a
+	# real game with a launch target. Hidden by default; _begin() reveals it.
+	_play_btn = Button.new()
+	_play_btn.text = "▶ Play the real game"
+	_play_btn.custom_minimum_size = Vector2(260, 44)
+	_play_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_play_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
+	_play_btn.visible = false
+	_play_btn.pressed.connect(_on_play_real)
+	root.add_child(_play_btn)
 
 	var pick_lbl := Label.new()
 	pick_lbl.text = "Choose an item:"
@@ -258,6 +279,17 @@ func _on_skip() -> void:
 	_resolved = true
 	GameLog.add("Skipped the item reward.", Color(0.8, 0.8, 0.8))
 	_finish()
+
+func _on_play_real() -> void:
+	if _game == null:
+		return
+	if _game.launch():
+		GameLog.add("Launching %s…" % _game.display_name, Color(0.6, 1.0, 0.8))
+	else:
+		GameLog.add("Couldn't launch %s." % _game.display_name, Color(1.0, 0.6, 0.6))
+		if _play_btn != null:
+			_play_btn.text = "Couldn't launch — check the file path"
+			_play_btn.disabled = true
 
 func _on_reroll() -> void:
 	if _resolved or GameState.reroll_charges <= 0:

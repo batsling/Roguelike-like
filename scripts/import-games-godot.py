@@ -79,6 +79,15 @@ def _escape(s: str) -> str:
     return s.replace("\\", "\\\\").replace("\"", "\\\"")
 
 
+def _truthy(cell) -> bool:
+    """Interpret a spreadsheet cell as a yes/no flag (e.g. the Owned column)."""
+    if cell is None:
+        return False
+    if isinstance(cell, bool):
+        return cell
+    return str(cell).strip().lower() in ("yes", "y", "true", "1", "owned", "x")
+
+
 def write_game_tres(game: dict) -> None:
     out_path = os.path.join(GAMES_OUT_DIR, f"{game['id']}.tres")
     cover_path = f"res://assets/games/{game['cover_asset']}"
@@ -100,6 +109,9 @@ def write_game_tres(game: dict) -> None:
         "item_pool = Array[StringName]([])",
         "special_effects = PackedStringArray()",
         'cover_image = ExtResource("2_cover")',
+        f'owned = {"true" if game["owned"] else "false"}',
+        f'file_location = "{_escape(game["file_location"])}"',
+        f'steam_page = "{_escape(game["steam_page"])}"',
         "",
     ]
     with open(out_path, "w", encoding="utf-8") as f:
@@ -130,6 +142,11 @@ def main() -> int:
         type_cell = row[2]
         tags_cell = row[5] if len(row) > 5 else None
         file_cell = row[6] if len(row) > 6 else None
+        # Optional launch columns added after "Owned" (cols 7/8/9). Missing
+        # columns just mean "no launch target yet".
+        owned_cell = row[7] if len(row) > 7 else None
+        file_location_cell = row[8] if len(row) > 8 else None
+        steam_page_cell = row[9] if len(row) > 9 else None
 
         gid = id_for(name)
         type_key = (str(type_cell).strip().lower() if type_cell else "traditional")
@@ -148,6 +165,9 @@ def main() -> int:
             "type": type_val,
             "tags": tags,
             "file_col": (str(file_cell).strip() if file_cell else None),
+            "owned": _truthy(owned_cell),
+            "file_location": (str(file_location_cell).strip() if file_location_cell else ""),
+            "steam_page": (str(steam_page_cell).strip() if steam_page_cell else ""),
             "games_influenced": [],  # filled in pass 2
             "cover_asset": None,     # filled below
         })

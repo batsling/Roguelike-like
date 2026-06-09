@@ -15,3 +15,6 @@ enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
 cover_image = ExtResource("2_cover")
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Galactic Glitch.url"
+steam_page = "https://store.steampowered.com/app/1536620/Galactic_Glitch/"
