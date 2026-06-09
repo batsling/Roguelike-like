@@ -76,6 +76,7 @@ const STATUS_ICONS := {
 	&"bruise": "Bruise.png",
 	&"leeches": "Leeches.png",
 	&"buffer": "Buffer.png",
+	&"brace": "Brace.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -300,6 +301,13 @@ func resolve_damage(
 	# or DoT ("true") damage. Applied after Vulnerable's multiplier.
 	if has_tgt and (damage_type == "melee" or damage_type == "ranged"):
 		amount += target.get_status(&"bruise")
+	# Incoming: Brace (-1 flat per stack from ALL damage types), but a hit that
+	# would deal any damage still lands for at least 1 (the status's documented
+	# "minimum 1"). Applied after Bruise so the two flat modifiers compose.
+	if has_tgt and amount > 0:
+		var brace: int = target.get_status(&"brace")
+		if brace > 0:
+			amount = maxi(1, amount - brace)
 
 	# Dodge negates the hit entirely and burns one stack.
 	if not bool(effect.get("ignore_dodge", false)) and has_tgt and target.get_status(&"dodge") > 0:

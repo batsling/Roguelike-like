@@ -20,8 +20,17 @@ static func fire(trigger_name: String, scene, player, enemies: Array,
 	match trigger_name:
 		"combat_started":
 			GameState.incremental_on_combat_started()
+			# Fresh combat: drop any leftover per-turn temp-status tally (Prayer
+			# Beads). The player actor is rebuilt each combat, so only the tally
+			# needs clearing.
+			GameState.temp_status_stacks.clear()
 		"turn_started":
 			GameState.incremental_on_turn_started(turn)
+			# Expire temporary statuses gained on the previous turn (Prayer
+			# Beads' Brace, which is gained during the enemy phase). Strip
+			# exactly the tracked amount off the player so any permanent stacks
+			# of the same status (e.g. Garlic's Brace) survive.
+			_expire_temp_statuses(player)
 		"turn_tick":
 			GameState.incremental_on_turn_tick()
 		"card_played":
@@ -70,6 +79,19 @@ static func fire(trigger_name: String, scene, player, enemies: Array,
 				GameLog.add("(%s triggers)" % item.display_name, Color(0.85, 0.9, 0.7))
 			for effect in trig.get("effects", []):
 				_apply(effect, scene, player, enemies, event_card, event_target)
+
+# Removes the temp-status stacks recorded since the last turn boundary from the
+# player actor and clears the tally (Prayer Beads). Subtracts only the tracked
+# amount, so permanent stacks of the same status are left untouched.
+static func _expire_temp_statuses(player) -> void:
+	if GameState.temp_status_stacks.is_empty():
+		return
+	if player != null and player.has_method("add_status"):
+		for status_id in GameState.temp_status_stacks.keys():
+			var stacks: int = int(GameState.temp_status_stacks[status_id])
+			if stacks > 0:
+				player.add_status(StringName(status_id), -stacks)
+	GameState.temp_status_stacks.clear()
 
 static func _apply(effect: Dictionary, scene, player, enemies: Array,
 		event_card, event_target) -> void:

@@ -65,6 +65,7 @@ func _register_defaults() -> void:
 	register("gain_energy", _h_gain_energy)
 	register("lose_energy", _h_lose_energy)
 	register("status", _h_status)
+	register("status_temp", _h_status_temp)
 	register("exhaust_self", _h_exhaust_self)
 	register("gain_gold", _h_gain_gold)
 	register("lose_hp", _h_lose_hp)
@@ -202,6 +203,23 @@ func _h_status(effect: Dictionary, ctx: Dictionary) -> void:
 	# baseline state, not the player actively casting.
 	if target.has_method("add_status"):
 		target.add_status(status_id, stacks)
+
+# Like `status`, but the stacks expire at the end of the turn (Prayer Beads'
+# "+3 Brace until end of turn"). Applies the status normally, then records the
+# amount in GameState.temp_status_stacks so ItemTriggers can strip exactly that
+# many stacks off the player at the next turn boundary. Self-targeted only — it
+# tracks against the single player tally — so a non-self target just falls back
+# to a plain status application.
+func _h_status_temp(effect: Dictionary, ctx: Dictionary) -> void:
+	_h_status(effect, ctx)
+	if String(effect.get("target", "self")) != "self":
+		return
+	var status_id := String(effect.get("status", ""))
+	var stacks: int = int(effect.get("stacks", 1))
+	if status_id == "" or stacks <= 0:
+		return
+	GameState.temp_status_stacks[status_id] = int(
+		GameState.temp_status_stacks.get(status_id, 0)) + stacks
 
 func _h_exhaust_self(_effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")

@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_garlic"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/Garlic.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"garlic"
+display_name = "Garlic"
+kind = 1
+rarity = 1
+description = "At the start of combat, gain +1 Brace."
+triggers = [{
+"on": "combat_started",
+"effects": [{
+"type": "status",
+"status": "brace",
+"stacks": 1,
+"target": "self"
+}]
+}]
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Super Auto Pets"
+tags = PackedStringArray("food")
+image = ExtResource("2_img")

@@ -214,6 +214,11 @@ var action_active_item_id: StringName = &""
 # (deckbuilder/strategy), one room (action), or until an event closes — then
 # cleared by clear_temp_buffs() at the matching boundary.
 var temp_stat_bonus: Dictionary = {}
+# Per-turn temporary status stacks on the player (Prayer Beads' "+3 Brace until
+# end of turn"). status_id (String) -> stacks added this turn. ItemTriggers
+# strips these off the player actor at the next turn_started and clears the
+# tally at combat boundaries, so the buff only survives the turn it was gained.
+var temp_status_stacks: Dictionary = {}
 # Block granted by a consumable (Percs) while resolving an event. Combat
 # block lives on the player CombatActor; events have no actor, so this pool
 # soaks the next chunk of event damage. Cleared with the temp buffs.
@@ -299,6 +304,7 @@ func reset_run() -> void:
 	stat_high_water.clear()
 	stat_floor_active = false
 	stat_floor_stats.clear()
+	temp_status_stacks.clear()
 	active_curses.clear()
 	pending_combat_statuses.clear()
 	Notifications.clear()

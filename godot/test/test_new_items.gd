@@ -937,3 +937,151 @@ func test_no_stat_floor_without_rock_bottom() -> void:
 	GameState.strength = 2
 	assert_eq(Stats.get_value(&"strength"), 2,
 		"stats fall freely when Rock Bottom isn't owned")
+
+# --- Latest batch: More Options, Head of the Keeper, Garlic, Metal Plate,
+# Performance Based Health Insurance, Philosopher's Stone, Prayer Card, Prayer
+# Beads. New engine vocabulary: the Brace status (flat damage reduction in
+# Stats.resolve_damage), the damage_taken item hook, and status_temp (Prayer
+# Beads' until-end-of-turn Brace). ---
+
+func test_more_options_grants_fov() -> void:
+	var it: ItemData = Data.get_item(&"more_options")
+	assert_not_null(it, "more_options.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.PASSIVE)
+	assert_eq(it.rarity, ItemData.Rarity.UNCOMMON)
+	assert_eq(int(it.stat_bonuses.get("fov_bonus", 0)), 1)
+
+func test_more_options_adds_a_portal_option_via_get_value() -> void:
+	GameState.reset_run()
+	var before: int = Stats.get_value(&"fov_bonus")
+	GameState.add_item(Data.get_item(&"more_options"))
+	assert_eq(Stats.get_value(&"fov_bonus"), before + 1,
+		"FoV reads +1 through the item bonus")
+
+func test_head_of_the_keeper_chance_gold_on_attack() -> void:
+	var it: ItemData = Data.get_item(&"head_of_the_keeper")
+	assert_not_null(it, "head_of_the_keeper.tres should load")
+	var trig: Dictionary = _trigger_for(it, "attack_landed")
+	assert_false(trig.is_empty(), "fires on attack_landed")
+	assert_true(bool(trig.get("silent", false)), "silent — avoids per-hit log spam")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "chance")
+	assert_eq(int(eff.get("percent", 0)), 5)
+	assert_eq(String(eff.get("effect", {}).get("type", "")), "gain_gold")
+	assert_eq(int(eff.get("effect", {}).get("value", 0)), 1)
+
+func test_garlic_grants_brace_at_combat_start() -> void:
+	var it: ItemData = Data.get_item(&"garlic")
+	assert_not_null(it, "garlic.tres should load")
+	var trig: Dictionary = _trigger_for(it, "combat_started")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("status", "")), "brace")
+	assert_eq(int(eff.get("stacks", 0)), 1)
+	assert_eq(String(eff.get("target", "")), "self")
+
+func test_metal_plate_grants_brace_on_kill() -> void:
+	var it: ItemData = Data.get_item(&"metal_plate")
+	assert_not_null(it, "metal_plate.tres should load")
+	var trig: Dictionary = _trigger_for(it, "enemy_killed")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("status", "")), "brace")
+	assert_eq(int(eff.get("stacks", 0)), 1)
+	assert_eq(String(eff.get("target", "")), "self")
+
+func test_performance_based_health_insurance_heals_on_perfect() -> void:
+	var it: ItemData = Data.get_item(&"performance_based_health_insurance")
+	assert_not_null(it, "performance_based_health_insurance.tres should load")
+	assert_true(it.perfect_aware)
+	assert_eq(it.perfect_effects.size(), 1)
+	var eff: Dictionary = it.perfect_effects[0]
+	assert_eq(String(eff.get("type", "")), "gain_hp")
+	assert_eq(int(eff.get("value", 0)), 5)
+
+func test_philosophers_stone_energy_and_enemy_power() -> void:
+	var it: ItemData = Data.get_item(&"philosophers_stone")
+	assert_not_null(it, "philosophers_stone.tres should load")
+	assert_eq(int(it.stat_bonuses.get("max_energy", 0)), 1)
+	var trig: Dictionary = _trigger_for(it, "enemy_spawned")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "status")
+	assert_eq(String(eff.get("status", "")), "power")
+	assert_eq(int(eff.get("stacks", 0)), 1)
+
+func test_prayer_card_chance_buffer_on_damage() -> void:
+	var it: ItemData = Data.get_item(&"prayer_card")
+	assert_not_null(it, "prayer_card.tres should load")
+	var trig: Dictionary = _trigger_for(it, "damage_taken")
+	assert_false(trig.is_empty(), "reacts to damage_taken")
+	assert_true(bool(trig.get("silent", false)))
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "chance")
+	assert_eq(int(eff.get("percent", 0)), 33)
+	assert_eq(String(eff.get("effect", {}).get("status", "")), "buffer")
+
+func test_prayer_beads_temp_brace_on_damage() -> void:
+	var it: ItemData = Data.get_item(&"prayer_beads")
+	assert_not_null(it, "prayer_beads.tres should load")
+	var trig: Dictionary = _trigger_for(it, "damage_taken")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "status_temp")
+	assert_eq(String(eff.get("status", "")), "brace")
+	assert_eq(int(eff.get("stacks", 0)), 3)
+
+# --- Brace status (Stats.resolve_damage) ---
+
+func test_brace_reduces_incoming_damage_flatly() -> void:
+	var enemy := CombatActor.new()
+	enemy.is_player = false
+	enemy.hp = 50
+	enemy.max_hp = 50
+	var player := CombatActor.new()
+	player.is_player = true
+	player.hp = 30
+	player.max_hp = 30
+	player.add_status(&"brace", 3)
+	var res := Stats.resolve_damage(enemy, player, 10,
+		{"damage_type": "melee"}, Stats.Mode.DECKBUILDER)
+	assert_eq(int(res.hp_loss), 7, "3 Brace soaks 3 of a 10 hit")
+
+func test_brace_never_drops_a_hit_below_one() -> void:
+	var enemy := CombatActor.new()
+	enemy.is_player = false
+	enemy.hp = 50
+	enemy.max_hp = 50
+	var player := CombatActor.new()
+	player.is_player = true
+	player.hp = 30
+	player.max_hp = 30
+	player.add_status(&"brace", 100)
+	var res := Stats.resolve_damage(enemy, player, 5,
+		{"damage_type": "magic"}, Stats.Mode.DECKBUILDER)
+	assert_eq(int(res.hp_loss), 1, "Brace can't reduce a hit below 1")
+
+# --- status_temp / Prayer Beads expiry ---
+
+func test_status_temp_tracks_and_expires_at_turn_boundary() -> void:
+	GameState.reset_run()
+	var player := CombatActor.new()
+	player.is_player = true
+	player.hp = 30
+	player.max_hp = 30
+	EffectSystem.apply({"type": "status_temp", "status": "brace", "stacks": 3,
+		"target": "self"}, {"source": player, "target": player, "scene": null})
+	assert_eq(player.get_status(&"brace"), 3, "temp Brace applied")
+	assert_eq(int(GameState.temp_status_stacks.get("brace", 0)), 3, "amount tracked")
+	ItemTriggers._expire_temp_statuses(player)
+	assert_eq(player.get_status(&"brace"), 0, "temp Brace stripped at turn boundary")
+	assert_true(GameState.temp_status_stacks.is_empty(), "tally cleared")
+
+func test_status_temp_leaves_permanent_stacks_intact() -> void:
+	GameState.reset_run()
+	var player := CombatActor.new()
+	player.is_player = true
+	player.hp = 30
+	player.max_hp = 30
+	player.add_status(&"brace", 2)  # permanent (e.g. Garlic)
+	EffectSystem.apply({"type": "status_temp", "status": "brace", "stacks": 3,
+		"target": "self"}, {"source": player, "target": player, "scene": null})
+	assert_eq(player.get_status(&"brace"), 5, "permanent + temp stack together")
+	ItemTriggers._expire_temp_statuses(player)
+	assert_eq(player.get_status(&"brace"), 2, "only the temp 3 is removed")
