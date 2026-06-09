@@ -19,6 +19,7 @@ signal closed(was_victory: bool, target_game_id: StringName)
 signal room_cleared                  # all enemies in the current room defeated
 signal player_died                   # player HP hit 0
 signal door_entered(dir: int)        # player walked into an open door (IsaacFloorGenerator.Dir)
+signal stairs_entered                # player stepped onto the boss-exit stairs
 
 # --- Arena geometry --------------------------------------------------------
 const ARENA_W := 1280
@@ -58,6 +59,15 @@ var room_is_safe: bool = false             # safe rooms (start/shop/treasure/cle
 var enemy_hp_mult: float = 1.0             # boss rooms scale enemy HP up
 var _room_resolved: bool = false           # room cleared this visit (don't re-emit)
 var _transitioning: bool = false           # door triggered, awaiting ActionFloor swap
+# Boss-exit stairs: spawned at the arena centre once the boss room is beaten.
+# The player walks onto them to leave the floor (instead of finishing on the
+# kill). _stairs_active gates both the draw and the walk-on check.
+var _stairs_active: bool = false
+# Armed only once the player is clear of the stairs, so beating the boss while
+# standing on the centre doesn't instantly end the floor — they must walk over.
+var _stairs_armed: bool = false
+const STAIRS_SIZE := 64.0                  # half-extent of the stairs footprint
+const STAIRS_TRIGGER_DIST := 40.0          # walk this close to step onto them
 # Action mode has no discrete turns, so each combat room counts as one
 # "turn" for turn-based items: the Nth combat room entered fires the
 # turn_started item triggers gated on if_turn == N (so Horn Cleat's
@@ -248,6 +258,8 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	_slow_remaining = 0.0
 	_room_resolved = false
 	_transitioning = false
+	_stairs_active = false
+	_stairs_armed = false
 
 	# Each combat room is a fresh fight for transient state: drop block and
 	# statuses, then re-derive. HP persists across the whole floor via
@@ -461,6 +473,7 @@ func _process(delta: float) -> void:
 	_process_player_input(delta)
 	if embedded:
 		_check_doors()
+		_check_stairs()
 	_process_enemies(delta)
 	_process_projectiles(delta)
 	_process_pending_hits(delta)
@@ -479,6 +492,33 @@ func _check_doors() -> void:
 			_transitioning = true
 			emit_signal("door_entered", dir)
 			return
+
+# Boss-room exit. ActionFloor calls this once the boss is beaten; the stairs
+# appear at the arena centre and the player walks onto them to leave the floor.
+func spawn_stairs() -> void:
+	_stairs_active = true
+	_stairs_armed = false
+	queue_redraw()
+
+func _stairs_point() -> Vector2:
+	return Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
+
+# Embedded only: fire stairs_entered once the player steps onto the spawned
+# boss-exit stairs, then freeze until ActionFloor closes the floor. The trigger
+# only arms after the player has first moved clear of the stairs, so finishing
+# the boss on top of the spawn point doesn't end the floor instantly.
+func _check_stairs() -> void:
+	if not _stairs_active or _transitioning:
+		return
+	var d: float = player_pos.distance_to(_stairs_point())
+	var reach: float = STAIRS_TRIGGER_DIST + PLAYER_RADIUS
+	if not _stairs_armed:
+		if d > reach + 12.0:
+			_stairs_armed = true
+		return
+	if d <= reach:
+		_transitioning = true
+		emit_signal("stairs_entered")
 
 func _process_turn_tick(delta: float) -> void:
 	# Ticks on real-time delta (not tempo-scaled — status durations
@@ -1740,6 +1780,11 @@ func _draw() -> void:
 				IsaacFloorGenerator.Dir.E:
 					draw_rect(Rect2(ARENA_W - thickness, p.y - DOOR_HALF_WIDTH, thickness, DOOR_HALF_WIDTH * 2.0), door_col)
 
+	# Boss-exit stairs (embedded floors only). Drawn under the actors so the
+	# player token reads on top when standing on them.
+	if _stairs_active:
+		_draw_exit_stairs()
+
 	# Swing arc (drawn under enemies so the cone outline frames them)
 	if _ability_swing_remaining > 0.0:
 		_draw_ability_swing_cone()
@@ -1779,6 +1824,36 @@ func _draw() -> void:
 		draw_circle(p.pos, p.radius, pcol)
 		# Inner highlight
 		draw_circle(p.pos, p.radius * 0.5, pcol.lightened(0.5))
+
+# Boss-exit stairs: a glowing descending staircase at the arena centre. Drawn
+# as a stack of receding steps with a pulsing golden halo so it clearly reads
+# as "walk here to leave".
+func _draw_exit_stairs() -> void:
+	var c: Vector2 = _stairs_point()
+	var pulse: float = 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.004)
+	# Halo to draw the eye.
+	draw_circle(c, STAIRS_SIZE + 10.0, Color(1.0, 0.85, 0.35, 0.10 + 0.10 * pulse))
+	# Dark base pit the stairs descend into.
+	var base := Rect2(c.x - STAIRS_SIZE, c.y - STAIRS_SIZE, STAIRS_SIZE * 2.0, STAIRS_SIZE * 2.0)
+	draw_rect(base, Color(0.06, 0.06, 0.09), true)
+	draw_rect(base, Color(1.0, 0.85, 0.35, 0.7 + 0.3 * pulse), false, 2.0)
+	# Receding steps: each step is narrower and lower, getting darker as it
+	# "descends", suggesting stairs going down out of the floor.
+	var steps := 5
+	for i in range(steps):
+		var t: float = float(i) / float(steps)
+		var inset: float = STAIRS_SIZE * 0.18 * i
+		var sy: float = c.y - STAIRS_SIZE + STAIRS_SIZE * 0.30 * i
+		var sh: float = STAIRS_SIZE * 0.26
+		var shade: float = 0.55 - 0.08 * i
+		draw_rect(Rect2(c.x - STAIRS_SIZE + inset, sy,
+			(STAIRS_SIZE - inset) * 2.0, sh), Color(shade, shade * 0.92, shade * 0.7))
+	# Down chevron arrows pulsing to signal "descend".
+	var arrow_col := Color(1.0, 0.92, 0.55, 0.6 + 0.4 * pulse)
+	for j in range(2):
+		var ay: float = c.y + 6.0 + j * 12.0
+		draw_line(Vector2(c.x - 12, ay), Vector2(c.x, ay + 10), arrow_col, 3.0)
+		draw_line(Vector2(c.x + 12, ay), Vector2(c.x, ay + 10), arrow_col, 3.0)
 
 
 # Draws an actor's active statuses as a centered row of small icons whose

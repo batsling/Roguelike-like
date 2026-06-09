@@ -21,6 +21,7 @@ const NEXT_COL := Color(0.5, 0.8, 1.0)
 
 var _graph: MapGraphView = null
 var _zoom_label: Label = null
+var _route_scroll: ScrollContainer = null
 
 func _init() -> void:
 	layer = 20
@@ -95,6 +96,7 @@ func _build() -> void:
 	route_scroll.position = main_rect.position + Vector2(12, 40)
 	route_scroll.size = Vector2(main_rect.size.x - 24, main_rect.size.y - 52)
 	root.add_child(route_scroll)
+	_route_scroll = route_scroll
 	_populate_route(route_scroll, main_rect.size.x - 24)
 
 	_build_legend(root, vp)
@@ -179,11 +181,36 @@ func _zoom_btn(text: String, cb: Callable) -> Button:
 	b.pressed.connect(cb)
 	return b
 
-func _zoom_by(factor: float) -> void:
-	if _graph == null:
+# Zoom toward a focus point so the map grows/shrinks around what you're looking
+# at instead of jumping to the top-left corner. `focus_global` defaults to the
+# centre of the route viewport; the wheel passes the cursor position. The scroll
+# offset is restored deferred because the ScrollContainer only recomputes its
+# scroll range after the next layout pass.
+func _zoom_by(factor: float, focus_global: Vector2 = Vector2(-1, -1)) -> void:
+	if _graph == null or _route_scroll == null:
 		return
-	_graph.set_zoom(_graph.get_zoom() * factor)
+	var old: float = _graph.get_zoom()
+	var target: float = clampf(old * factor, MapGraphView.ZOOM_MIN, MapGraphView.ZOOM_MAX)
+	if is_equal_approx(target, old):
+		return
+	var sc := _route_scroll
+	# Focus point in viewport-local pixels.
+	var focus_local: Vector2
+	if focus_global.x < 0.0:
+		focus_local = sc.size * 0.5
+	else:
+		focus_local = focus_global - sc.global_position
+		focus_local.x = clampf(focus_local.x, 0.0, sc.size.x)
+		focus_local.y = clampf(focus_local.y, 0.0, sc.size.y)
+	# Map the focus to base (un-zoomed) graph coordinates, then back out at the
+	# new zoom so that point stays under the same pixel.
+	var content_pt := Vector2(sc.scroll_horizontal, sc.scroll_vertical) + focus_local
+	var base_pt := content_pt / old
+	_graph.set_zoom(target)
 	_update_zoom_label()
+	var new_scroll := base_pt * target - focus_local
+	sc.set_deferred("scroll_horizontal", int(round(new_scroll.x)))
+	sc.set_deferred("scroll_vertical", int(round(new_scroll.y)))
 
 func _zoom_reset() -> void:
 	if _graph == null:
@@ -304,12 +331,15 @@ func _input(event: InputEvent) -> void:
 			KEY_0, KEY_KP_0:
 				_zoom_reset()
 				get_viewport().set_input_as_handled()
-	elif event is InputEventMouseButton and event.pressed and event.ctrl_pressed:
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_zoom_by(1.1)
-			get_viewport().set_input_as_handled()
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_zoom_by(1.0 / 1.1)
+	elif event is InputEventMouseButton and event.pressed \
+			and (event.button_index == MOUSE_BUTTON_WHEEL_UP \
+				or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		# The wheel zooms the map directly (anchored on the cursor) whenever the
+		# pointer is over the route panel — no modifier needed. Outside the panel
+		# it falls through so the past-journey list can still scroll.
+		if _route_scroll != null and _route_scroll.get_global_rect().has_point(event.global_position):
+			var f: float = 1.12 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.12
+			_zoom_by(f, event.global_position)
 			get_viewport().set_input_as_handled()
 
 func _close() -> void:

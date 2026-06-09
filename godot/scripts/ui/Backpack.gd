@@ -687,20 +687,23 @@ func _render_loot() -> void:
 # ------------------------------------------------------------------
 
 func _render_deck() -> void:
-	# Group the deck by card id, preserving first-seen order, and count copies.
+	# Group the deck by (card id + upgraded), preserving first-seen order, and
+	# count copies. Keying on the upgrade flag too means an upgraded copy shows
+	# as its own "Whetstone+"-style cell instead of collapsing into the base
+	# card — so the deck reflects which cards have actually been upgraded.
 	var counts: Dictionary = {}
-	var order: Array = []
+	var order: Array = []          # Array of CardInstance (one representative per key)
 	var total := 0
 	for c in GameState.deck:
 		if not (c is CardInstance) or c.data == null:
 			continue
 		total += 1
-		var id: StringName = c.data.id
-		if counts.has(id):
-			counts[id] += 1
+		var key: String = "%s|%s" % [c.data.id, "+" if c.upgraded else ""]
+		if counts.has(key):
+			counts[key] += 1
 		else:
-			counts[id] = 1
-			order.append(c.data)
+			counts[key] = 1
+			order.append(c)
 	if order.is_empty():
 		var empty := Label.new()
 		empty.text = "Your deck is empty."
@@ -714,20 +717,53 @@ func _render_deck() -> void:
 	grid.add_theme_constant_override("v_separation", 12)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list_vbox.add_child(grid)
-	for data in order:
-		grid.add_child(_build_card_cell(data, int(counts[data.id])))
+	for inst in order:
+		var key: String = "%s|%s" % [inst.data.id, "+" if inst.upgraded else ""]
+		grid.add_child(_build_card_cell(inst, int(counts[key])))
 	_hint_label.text = "%d cards across %d unique." % [total, order.size()]
 
 # A single deck-grid cell: the actual in-game CardView for this card, with a
-# small "xN" badge in the corner when the deck holds more than one copy.
-func _build_card_cell(card: CardData, count: int) -> Control:
+# small "xN" badge in the corner when the deck holds more than one copy. Built
+# from a representative CardInstance so the upgrade state (name "+", upgraded
+# numbers) carries through to the rendered card.
+func _build_card_cell(inst: CardInstance, count: int) -> Control:
 	var wrapper := Control.new()
 	wrapper.custom_minimum_size = Vector2(CardView.CARD_W, CardView.CARD_H)
 
 	var view := CardView.new()
 	view.set_anchors_preset(Control.PRESET_FULL_RECT)
-	view.setup(CardInstance.from_data(card))
+	view.setup(CardInstance.from_data(inst.data, inst.upgraded))
 	wrapper.add_child(view)
+
+	# Upgraded cards get a green glowing outline + an "UPGRADED" tab so it's
+	# obvious at a glance (the card name already carries the "+").
+	if inst.upgraded:
+		var outline := Panel.new()
+		outline.set_anchors_preset(Control.PRESET_FULL_RECT)
+		outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var ob := StyleBoxFlat.new()
+		ob.bg_color = Color(0, 0, 0, 0)
+		ob.set_corner_radius_all(4)
+		ob.set_border_width_all(3)
+		ob.border_color = Color(0.45, 0.95, 0.55, 0.95)
+		outline.add_theme_stylebox_override("panel", ob)
+		wrapper.add_child(outline)
+
+		var ub := StyleBoxFlat.new()
+		ub.bg_color = Color(0.16, 0.45, 0.22, 0.95)
+		ub.set_corner_radius_all(6)
+		ub.set_content_margin_all(3)
+		var ulbl := Label.new()
+		ulbl.text = "▲ UPGRADED"
+		ulbl.add_theme_font_size_override("font_size", 10)
+		ulbl.add_theme_color_override("font_color", Color(0.8, 1.0, 0.85))
+		ulbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var upanel := PanelContainer.new()
+		upanel.add_theme_stylebox_override("panel", ub)
+		upanel.add_child(ulbl)
+		upanel.position = Vector2(6, CardView.CARD_H - 24)
+		upanel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		wrapper.add_child(upanel)
 
 	if count > 1:
 		var bg := StyleBoxFlat.new()
