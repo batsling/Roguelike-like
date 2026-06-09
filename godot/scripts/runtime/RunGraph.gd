@@ -46,19 +46,36 @@ static func invalidate_cache() -> void:
 	_adj_cache_built = false
 	_bfs_cache.clear()
 
+# Whether a game is eligible to appear in path selection, per the global
+# Settings.game_filter. Filtered-out games are excluded from the graph
+# entirely (no node, no edges), so runs only traverse eligible games.
+static func _passes_filter(g: GameData) -> bool:
+	match Settings.game_filter:
+		Settings.GameFilter.OWNED:
+			return g.owned
+		Settings.GameFilter.DOWNLOADED:
+			return g.file_location.strip_edges() != ""
+		_:
+			return true
+
 static func _build_adj() -> void:
 	if _adj_cache_built:
 		return
 	_adj_cache.clear()
-	# First pass — make sure every known game has an entry so a lookup on
-	# an isolated node returns [] instead of triggering a default.
+	# First pass — make sure every eligible game has an entry so a lookup on
+	# an isolated node returns [] instead of triggering a default. Games the
+	# active filter excludes are left out entirely.
 	for g in Data.all_games():
-		_adj_cache[g.id] = []
+		if _passes_filter(g):
+			_adj_cache[g.id] = []
 	# Second pass — add a forward and reverse edge per `games_influenced`
 	# entry. Dedup via a per-game seen-set so re-runs of the importer
-	# can't blow up the adjacency.
+	# can't blow up the adjacency. Edges touching a filtered-out game are
+	# skipped (one endpoint won't be in _adj_cache).
 	var seen: Dictionary = {}    # StringName -> Dictionary (set)
 	for g in Data.all_games():
+		if not _adj_cache.has(g.id):
+			continue    # filtered out
 		if not seen.has(g.id):
 			seen[g.id] = {}
 		for influenced_id in g.games_influenced:
@@ -196,7 +213,7 @@ static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Di
 static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	var all: Array[GameData] = []
 	for g in Data.all_games():
-		if g is GameData:
+		if g is GameData and _passes_filter(g):
 			all.append(g)
 	if all.size() < 2:
 		return {}
@@ -207,6 +224,13 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	for g in all:
 		if neighbors(g.id).size() >= MIN_START_CONNECTIONS:
 			eligible_starts.append(g)
+	if eligible_starts.is_empty():
+		# Sparse graph (e.g. a restrictive game filter): accept any *connected*
+		# game before falling back to the full pool, so we don't pick an
+		# isolated reference start that can't reach an amulet.
+		for g in all:
+			if neighbors(g.id).size() > 0:
+				eligible_starts.append(g)
 	if eligible_starts.is_empty():
 		eligible_starts = all
 	var start_pool: Array[GameData] = eligible_starts
