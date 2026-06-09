@@ -29,3 +29,32 @@ enum GameType { ACTION, STRATEGY, DECKBUILDER, TRADITIONAL }
 
 # Visuals
 @export var cover_image: Texture2D
+
+# --- Real-game launch (the player can play the actual game this represents) ---
+# Whether the player owns the real game (from the spreadsheet's "Owned" column).
+@export var owned: bool = false
+# Absolute path to a local executable/file to launch directly. Covers Steam,
+# non-Steam, and DRM-free installs without needing Steam shortcut ids.
+@export var file_location: String = ""
+# Fallback store/page URL (e.g. https://store.steampowered.com/app/<id>) opened
+# when there's no usable local file.
+@export var steam_page: String = ""
+
+# True when there's something the "Play the real game" button can open.
+func has_launch_target() -> bool:
+	return file_location.strip_edges() != "" or steam_page.strip_edges() != ""
+
+# Launch the real game. Tries the local file first (OS.create_process), then
+# falls back to opening the store/page URL. Returns true if something launched.
+# Note: create_process is unavailable on web exports — only the URL path works
+# there.
+func launch() -> bool:
+	var path: String = file_location.strip_edges()
+	if path != "":
+		if OS.create_process(path, []) != -1:
+			return true
+	var url: String = steam_page.strip_edges()
+	if url != "":
+		OS.shell_open(url)
+		return true
+	return false

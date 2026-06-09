@@ -126,7 +126,7 @@ func _on_floor_closed(was_victory: bool, target_game_id: StringName) -> void:
 	# one item choice, mirroring the HTML prototype. Defeat ends the run, so
 	# it skips straight back to the overworld.
 	if was_victory:
-		_show_section_reward()
+		_show_section_reward(target_game_id)
 	else:
 		_show_overworld()
 
@@ -135,7 +135,7 @@ func _on_floor_closed(was_victory: bool, target_game_id: StringName) -> void:
 # rather than a single enemy's difficulty.
 const SECTION_GOLD_BY_TIER := [10, 15, 25, 35]
 
-func _show_section_reward() -> void:
+func _show_section_reward(game_id: StringName = &"") -> void:
 	var tier: int = RunDifficulty.current_tier()
 	var gold: int = SECTION_GOLD_BY_TIER[clampi(tier, 0, SECTION_GOLD_BY_TIER.size() - 1)]
 	var layer := CanvasLayer.new()
@@ -146,7 +146,7 @@ func _show_section_reward() -> void:
 	reward.closed.connect(func():
 		layer.queue_free()
 		_show_overworld())
-	reward.setup(gold)
+	reward.setup(gold, Data.get_game(game_id))
 
 func _show_combat(game_id: StringName) -> void:
 	# Direct-combat entry (kept for action / strategy modes that won't
