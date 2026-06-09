@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_pummarola"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/Pummarola.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"pummarola"
+display_name = "Pummarola"
+kind = 1
+rarity = 0
+description = "At the start of combat, gain 1 Regeneration."
+triggers = [{
+"on": "combat_started",
+"effects": [{
+"type": "status",
+"status": "regeneration",
+"stacks": 1,
+"target": "self"
+}]
+}]
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Vampire Survivors"
+tags = PackedStringArray("heart")
+image = ExtResource("2_img")

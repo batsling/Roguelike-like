@@ -94,6 +94,17 @@ var item_stat_bonus: Dictionary = {}
 # stat-read path can skip the inventory scan entirely when no mirror is owned.
 var stat_mirror_active: bool = false
 
+# Rock Bottom: stat-floor machinery. While any owned item declares a
+# stat_floor list, the named stats can never read below the highest EFFECTIVE
+# value they've ever reached this run (Isaac-style — a temporary buff that
+# raises the value gets locked in permanently). stat_floor_active is the cheap
+# guard for Stats.get_value's hot path; stat_floor_stats is the union set of
+# floored stat ids (String -> true); stat_high_water records the running peaks
+# (String -> int) and is persisted across saves.
+var stat_floor_active: bool = false
+var stat_floor_stats: Dictionary = {}
+var stat_high_water: Dictionary = {}
+
 # Health-bucket stats (max_hp, max_energy) are applied as direct
 # deltas to the GameState fields — never through item_stat_bonus — so
 # reads of GameState.max_hp / max_energy stay authoritative without
@@ -203,6 +214,11 @@ var action_active_item_id: StringName = &""
 # (deckbuilder/strategy), one room (action), or until an event closes — then
 # cleared by clear_temp_buffs() at the matching boundary.
 var temp_stat_bonus: Dictionary = {}
+# Per-turn temporary status stacks on the player (Prayer Beads' "+3 Brace until
+# end of turn"). status_id (String) -> stacks added this turn. ItemTriggers
+# strips these off the player actor at the next turn_started and clears the
+# tally at combat boundaries, so the buff only survives the turn it was gained.
+var temp_status_stacks: Dictionary = {}
 # Block granted by a consumable (Percs) while resolving an event. Combat
 # block lives on the player CombatActor; events have no actor, so this pool
 # soaks the next chunk of event damage. Cleared with the temp buffs.
@@ -285,6 +301,10 @@ func reset_run() -> void:
 	fov_bonus = 0
 	discovery = 0
 	regeneration = 0
+	stat_high_water.clear()
+	stat_floor_active = false
+	stat_floor_stats.clear()
+	temp_status_stacks.clear()
 	active_curses.clear()
 	pending_combat_statuses.clear()
 	Notifications.clear()
@@ -598,6 +618,8 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 	for stat in _LEVEL_UP_DIRECT_STATS:
 		var v: int = int(stats.get(stat, 0))
 		if v != 0:
+			if v > 0:
+				v += stat_gain_bonus_for(stat)  # Snowball amplifies positive gains
 			set(stat, int(get(stat)) + v)
 			applied.append("+%d %s" % [v, _pretty_stat(stat)])
 			touched = true
@@ -616,8 +638,9 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 	var random_n: int = int(stats.get("random", 0))
 	for _i in range(maxi(0, random_n)):
 		var pick: String = _LEVEL_UP_RANDOM_POOL[randi() % _LEVEL_UP_RANDOM_POOL.size()]
-		set(pick, int(get(pick)) + 1)
-		applied.append("+1 %s (random)" % _pretty_stat(pick))
+		var amt: int = 1 + stat_gain_bonus_for(pick)  # Snowball amplifies the pick
+		set(pick, int(get(pick)) + amt)
+		applied.append("+%d %s (random)" % [amt, _pretty_stat(pick)])
 		touched = true
 	if touched:
 		emit_signal("stats_changed")
@@ -625,6 +648,37 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 
 func _pretty_stat(stat: String) -> String:
 	return stat.capitalize()
+
+# Snowball: total flat bonus owned items add whenever the player gains a
+# permanent point of `stat`. Summed across the inventory so duplicate Snowballs
+# stack. 0 for the common no-amplifier case.
+func stat_gain_bonus_for(stat: String) -> int:
+	var bonus: int = 0
+	for it in inventory:
+		if it is ItemData and not it.stat_gain_bonus.is_empty():
+			bonus += int(it.stat_gain_bonus.get(stat, 0))
+	return bonus
+
+# Permanent run-scope stat grant used by the `gain_stat` effect (Secret
+# Technique Instructions: +1 Dash on a perfected game). Resolves ability stats
+# (dash/reroll/fov/discovery) to their backing field, applies Snowball-style
+# amplifiers to positive gains, and broadcasts the change.
+func grant_run_stat(stat: String, value: int) -> void:
+	if value == 0:
+		return
+	var amt: int = value
+	if value > 0:
+		amt += stat_gain_bonus_for(stat)
+	var field: String = _LEVEL_UP_ABILITY_FIELDS.get(stat, stat)
+	set(field, int(get(field)) + amt)
+	emit_signal("stats_changed")
+
+# Sacred Orb: true while any owned item rerolls low-rarity item drops.
+func has_low_rarity_reroll() -> bool:
+	for it in inventory:
+		if it is ItemData and it.reroll_low_rarity:
+			return true
+	return false
 
 # ---------------------------------------------------------------------------
 # Usable consumables + temporary buffs
@@ -881,6 +935,19 @@ func remove_item_at(index: int) -> void:
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
 
+# Reactive Trauma Plate: if the player owns a lethal-negating item, destroy one
+# copy and report it. Called from Stats.resolve_damage the instant a hit would
+# drop the player to 0 HP, so the negation lands in every combat mode.
+func consume_lethal_guard() -> bool:
+	for i in range(inventory.size()):
+		var it = inventory[i]
+		if it is ItemData and it.negate_lethal:
+			GameLog.add("%s shatters, negating a lethal blow!" % it.display_name,
+				Color(1.0, 0.55, 0.35))
+			remove_item_at(i)
+			return true
+	return false
+
 func remove_card_at(deck_index: int) -> void:
 	# Inverse of the weapon-removes-card path. If the card was weapon-
 	# granted (source_weapon_id != 0), find and drop the paired item too
@@ -1035,6 +1102,17 @@ func _recompute_item_bonuses() -> void:
 		if it is ItemData and not it.stat_mirror.is_empty():
 			stat_mirror_active = true
 			break
+	# Rock Bottom: rebuild the union of floored stats so Stats.get_value can
+	# gate its high-water clamp on a single bool + dict lookup. high-water
+	# marks are NOT cleared here — they persist for the run even if the item
+	# is briefly removed and re-added.
+	stat_floor_active = false
+	stat_floor_stats = {}
+	for it in sources:
+		if it is ItemData and not it.stat_floor.is_empty():
+			stat_floor_active = true
+			for s in it.stat_floor:
+				stat_floor_stats[String(s)] = true
 	emit_signal("stats_changed")
 
 # ---------------------------------------------------------------------------

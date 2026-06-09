@@ -76,6 +76,7 @@ const STATUS_ICONS := {
 	&"bruise": "Bruise.png",
 	&"leeches": "Leeches.png",
 	&"buffer": "Buffer.png",
+	&"brace": "Brace.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -145,6 +146,19 @@ func get_value(stat_id: StringName) -> int:
 	if GameState.stat_mirror_active:
 		for peer in GameState.stat_mirror_pool(stat_id):
 			total = maxi(total, _natural_stat_value(peer))
+	# Rock Bottom: floor the stat at the highest EFFECTIVE value it has reached
+	# this run. The high-water mark is updated here on every read, so a peak
+	# reached during a temporary buff is captured and held after the buff clears
+	# (Isaac-style). Gated on a cheap bool so the no-floor path stays allocation
+	# free.
+	if GameState.stat_floor_active:
+		var field := String(stat_id)
+		if GameState.stat_floor_stats.has(field):
+			var hw: int = int(GameState.stat_high_water.get(field, total))
+			if total > hw:
+				hw = total
+			GameState.stat_high_water[field] = hw
+			return hw
 	return total
 
 # A stat's stored value: its GameState field + flat item bonus + temporary
@@ -258,7 +272,7 @@ func damage_bonus(source, damage_type: String, mode: Mode, power_multiplier: int
 func resolve_damage(
 		source, target, base: int, effect: Dictionary,
 		mode: Mode, rng: RandomNumberGenerator = null) -> Dictionary:
-	var out := {"missed": false, "dodged": false, "blocked": 0, "hp_loss": 0, "crit": false, "buffered": false}
+	var out := {"missed": false, "dodged": false, "blocked": 0, "hp_loss": 0, "crit": false, "buffered": false, "lethal_negated": false}
 	if target == null:
 		return out
 	var r: RandomNumberGenerator = rng if rng != null else _resolve_rng
@@ -287,6 +301,13 @@ func resolve_damage(
 	# or DoT ("true") damage. Applied after Vulnerable's multiplier.
 	if has_tgt and (damage_type == "melee" or damage_type == "ranged"):
 		amount += target.get_status(&"bruise")
+	# Incoming: Brace (-1 flat per stack from ALL damage types), but a hit that
+	# would deal any damage still lands for at least 1 (the status's documented
+	# "minimum 1"). Applied after Bruise so the two flat modifiers compose.
+	if has_tgt and amount > 0:
+		var brace: int = target.get_status(&"brace")
+		if brace > 0:
+			amount = maxi(1, amount - brace)
 
 	# Dodge negates the hit entirely and burns one stack.
 	if not bool(effect.get("ignore_dodge", false)) and has_tgt and target.get_status(&"dodge") > 0:
@@ -339,6 +360,15 @@ func resolve_damage(
 	if amount > 0 and has_tgt and target.get_status(&"buffer") > 0:
 		target.add_status(&"buffer", -1)
 		out.buffered = true
+		amount = 0
+	# Reactive Trauma Plate: a player about to take a lethal hit negates it
+	# outright and the plate shatters (consumed for the run). Sits after Buffer
+	# so a Buffer charge is spent first; only fires when the remaining damage
+	# would actually reach 0 HP. Shares this resolver with every combat mode.
+	if amount > 0 and has_tgt and ("is_player" in target) and target.is_player \
+			and ("hp" in target) and amount >= int(target.hp) \
+			and GameState.consume_lethal_guard():
+		out.lethal_negated = true
 		amount = 0
 	out.hp_loss = maxi(0, amount)
 	return out
@@ -397,6 +427,10 @@ func action_max_dash_charges() -> int:
 
 func roll_d20_with_luck(rng: RandomNumberGenerator) -> int:
 	return _luck_roll(rng, 20)
+
+# Roll a die of arbitrary size with Luck advantage (Sulfa Powder's D12 Block).
+func roll_die_with_luck(rng: RandomNumberGenerator, sides: int) -> int:
+	return _luck_roll(rng, sides)
 
 # ---------------------------------------------------------------------------
 # Crit

@@ -20,10 +20,24 @@ static func fire(trigger_name: String, scene, player, enemies: Array,
 	match trigger_name:
 		"combat_started":
 			GameState.incremental_on_combat_started()
+			# Fresh combat: drop any leftover per-turn temp-status tally (Prayer
+			# Beads). The player actor is rebuilt each combat, so only the tally
+			# needs clearing.
+			GameState.temp_status_stacks.clear()
 		"turn_started":
 			GameState.incremental_on_turn_started(turn)
+			# Expire temporary statuses gained on the previous turn (Prayer
+			# Beads' Brace, which is gained during the enemy phase). Strip
+			# exactly the tracked amount off the player so any permanent stacks
+			# of the same status (e.g. Garlic's Brace) survive.
+			_expire_temp_statuses(player)
 		"turn_tick":
 			GameState.incremental_on_turn_tick()
+			# turn_tick is the recurring turn boundary in Action and Strategy
+			# (neither re-fires turn_started), so temp statuses expire here too.
+			# Idempotent: deckbuilder fires both at turn start, and the second
+			# call just finds an empty tally.
+			_expire_temp_statuses(player)
 		"card_played":
 			# A new card play ends the previous card's Pen Nib window.
 			GameState.pen_nib_double_active = false
@@ -71,6 +85,19 @@ static func fire(trigger_name: String, scene, player, enemies: Array,
 			for effect in trig.get("effects", []):
 				_apply(effect, scene, player, enemies, event_card, event_target)
 
+# Removes the temp-status stacks recorded since the last turn boundary from the
+# player actor and clears the tally (Prayer Beads). Subtracts only the tracked
+# amount, so permanent stacks of the same status are left untouched.
+static func _expire_temp_statuses(player) -> void:
+	if GameState.temp_status_stacks.is_empty():
+		return
+	if player != null and player.has_method("add_status"):
+		for status_id in GameState.temp_status_stacks.keys():
+			var stacks: int = int(GameState.temp_status_stacks[status_id])
+			if stacks > 0:
+				player.add_status(StringName(status_id), -stacks)
+	GameState.temp_status_stacks.clear()
+
 static func _apply(effect: Dictionary, scene, player, enemies: Array,
 		event_card, event_target) -> void:
 	var t_str: String = effect.get("target", "self")
@@ -80,6 +107,21 @@ static func _apply(effect: Dictionary, scene, player, enemies: Array,
 				EffectSystem.apply(effect, {
 					"source": player, "target": e, "scene": scene, "card": event_card,
 				})
+		return
+	# "random_enemies": apply to `count` distinct living enemies, chosen at
+	# random (Raven Feather inflicts Soul Link on 2 random enemies). Falls
+	# back to however many are alive if fewer than `count` remain.
+	if t_str == "random_enemies":
+		var living: Array = []
+		for e in enemies:
+			if e != null and e.is_alive():
+				living.append(e)
+		living.shuffle()
+		var count: int = int(effect.get("count", 1))
+		for i in range(mini(count, living.size())):
+			EffectSystem.apply(effect, {
+				"source": player, "target": living[i], "scene": scene, "card": event_card,
+			})
 		return
 	var tgt = player
 	if t_str == "enemy":

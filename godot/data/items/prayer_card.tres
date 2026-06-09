@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_prayer_card"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/PrayerCard.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"prayer_card"
+display_name = "Prayer Card"
+kind = 1
+rarity = 2
+description = "Each time you take damage, 33% chance to gain +1 Buffer."
+triggers = [{
+"on": "damage_taken",
+"silent": true,
+"effects": [{
+"type": "chance",
+"percent": 33,
+"effect": {
+"type": "status",
+"status": "buffer",
+"stacks": 1,
+"target": "self"
+}
+}]
+}]
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Mewgenics"
+tags = PackedStringArray("card", "paper", "holy", "cardboard")
+image = ExtResource("2_img")

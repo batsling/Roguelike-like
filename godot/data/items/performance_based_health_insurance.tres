@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_performance_based_health_insurance"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/PerformanceBasedHealthInsurance.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"performance_based_health_insurance"
+display_name = "Performance Based Health Insurance"
+kind = 1
+rarity = 0
+description = "Whenever you perfect a game (beat it without losing a run), gain +5 Health."
+triggers = []
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+perfect_aware = true
+perfect_effects = [{
+"type": "gain_hp",
+"value": 5
+}]
+source_game = "Haste"
+tags = PackedStringArray()
+image = ExtResource("2_img")

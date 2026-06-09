@@ -699,6 +699,11 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 			"target": target, "attacker": source, "amount": amount, "scene": self,
 		})
 		_fire_power_triggers("damage_taken")
+		# Item reactions to the PLAYER taking damage (Prayer Card, Prayer Beads).
+		# Gated to the player so "whenever you take damage" never fires off an
+		# enemy being hit.
+		if target.is_player:
+			_fire_item_triggers("damage_taken", {"target": target})
 		# Soul Link propagation. Bird Head's status: whenever a soul-linked
 		# actor loses HP, every other soul-linked actor takes the same raw
 		# loss. Guarded by effect.from_soul_link so the cascade can't loop

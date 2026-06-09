@@ -1685,6 +1685,9 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 		return
 	target.hp = maxi(0, target.hp - int(res.hp_loss))
 	_float_number(target, int(res.hp_loss))
+	# Item reactions to the player taking damage (Prayer Card, Prayer Beads).
+	if target.is_player and int(res.hp_loss) > 0:
+		_fire_item_triggers("damage_taken", {"target": target})
 	# The attack connected (block counts). Dead Eye's streak grows here, skipped
 	# on a killing blow (the streak against a corpse is never read).
 	if is_player_attack and target.is_alive():

@@ -59,13 +59,16 @@ func apply_all(effects: Array, ctx: Dictionary) -> void:
 func _register_defaults() -> void:
 	register("dmg", _h_dmg)
 	register("block", _h_block)
+	register("roll_block", _h_roll_block)
 	register("heal", _h_heal)
 	register("draw", _h_draw)
 	register("gain_energy", _h_gain_energy)
 	register("lose_energy", _h_lose_energy)
 	register("status", _h_status)
+	register("status_temp", _h_status_temp)
 	register("exhaust_self", _h_exhaust_self)
 	register("gain_gold", _h_gain_gold)
+	register("gain_stat", _h_gain_stat)
 	register("lose_hp", _h_lose_hp)
 	register("conjure", _h_conjure)
 	register("discard", _h_discard)
@@ -143,6 +146,16 @@ func _h_block(effect: Dictionary, ctx: Dictionary) -> void:
 	# damage is soaked. Percs uses this path when played from the event bar.
 	GameState.add_event_block(int(effect.get("value", 0)))
 
+# Roll a `sides`-sided die (default 12) and grant that much Block. The roll
+# goes through Luck the same way every other die does (Luck advantage =
+# re-roll, keep the higher), then hands off to _h_block. Sulfa Powder:
+#   {type: "roll_block", sides: 12}
+func _h_roll_block(effect: Dictionary, ctx: Dictionary) -> void:
+	var sides: int = int(effect.get("sides", 12))
+	var amount: int = Stats.roll_die_with_luck(_rng, sides)
+	GameLog.add("Rolled D%d → %d Block" % [sides, amount], Color(0.7, 0.85, 1.0))
+	_h_block({"value": amount, "target": effect.get("target", "self")}, ctx)
+
 func _h_heal(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
 	if scene == null or not scene.has_method("heal"):
@@ -192,6 +205,23 @@ func _h_status(effect: Dictionary, ctx: Dictionary) -> void:
 	if target.has_method("add_status"):
 		target.add_status(status_id, stacks)
 
+# Like `status`, but the stacks expire at the end of the turn (Prayer Beads'
+# "+3 Brace until end of turn"). Applies the status normally, then records the
+# amount in GameState.temp_status_stacks so ItemTriggers can strip exactly that
+# many stacks off the player at the next turn boundary. Self-targeted only — it
+# tracks against the single player tally — so a non-self target just falls back
+# to a plain status application.
+func _h_status_temp(effect: Dictionary, ctx: Dictionary) -> void:
+	_h_status(effect, ctx)
+	if String(effect.get("target", "self")) != "self":
+		return
+	var status_id := String(effect.get("status", ""))
+	var stacks: int = int(effect.get("stacks", 1))
+	if status_id == "" or stacks <= 0:
+		return
+	GameState.temp_status_stacks[status_id] = int(
+		GameState.temp_status_stacks.get(status_id, 0)) + stacks
+
 func _h_exhaust_self(_effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
 	var card: Variant = ctx.get("card")
@@ -239,6 +269,18 @@ func _h_gain_gold(effect: Dictionary, ctx: Dictionary) -> void:
 		var lv: int = maxi(1, int(ctx.get("level", 1)))
 		amount = int(increments[mini(lv - 1, increments.size() - 1)])
 	GameState.change_gold(amount)
+
+# Permanent run-scope stat grant (Secret Technique Instructions: +1 Dash on a
+# perfected game). Scene-less, so it works from perfect_effects / pickup hooks.
+# Resolves ability stats to their backing field and applies Snowball-style
+# amplifiers via GameState.grant_run_stat.
+#   {type: "gain_stat", stat: "dash", value: 1}
+func _h_gain_stat(effect: Dictionary, _ctx: Dictionary) -> void:
+	var stat: String = String(effect.get("stat", ""))
+	var value: int = int(effect.get("value", 0))
+	if stat == "" or value == 0:
+		return
+	GameState.grant_run_stat(stat, value)
 
 func _h_lose_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	# `non_lethal: true` clamps the loss so it can never drop the player below

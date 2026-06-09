@@ -774,3 +774,391 @@ func test_pen_nib_per_effect_marker_doubles_in_flight_bolt() -> void:
 	var res2 := Stats.resolve_damage(src, tgt, 10,
 		{"damage_type": "ranged"}, Stats.Mode.ACTION)
 	assert_eq(int(res2.hp_loss), 10, "no marker, no global flag -> normal damage")
+
+# --- Pummarola / Raven Feather / Stone Calendar / Sulfa Powder / Steady
+# Investment: the latest batch. Pummarola and Stone Calendar reuse existing
+# vocabulary; Raven Feather (random_enemies target), Sulfa Powder (roll_block
+# effect) and Steady Investment (perfect_effects payload) exercise the new
+# additions. ---
+
+func test_pummarola_grants_regeneration_at_combat_start() -> void:
+	var it: ItemData = Data.get_item(&"pummarola")
+	assert_not_null(it, "pummarola.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.rarity, ItemData.Rarity.COMMON)
+	var trig: Dictionary = _trigger_for(it, "combat_started")
+	assert_false(trig.is_empty(), "Pummarola fires on combat_started")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "status")
+	assert_eq(String(eff.get("status", "")), "regeneration")
+	assert_eq(int(eff.get("stacks", 0)), 1)
+	assert_eq(String(eff.get("target", "")), "self",
+		"Regeneration lands on the player, not the default enemy target")
+
+func test_raven_feather_soul_links_two_random_enemies() -> void:
+	var it: ItemData = Data.get_item(&"raven_feather")
+	assert_not_null(it, "raven_feather.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.rarity, ItemData.Rarity.RARE)
+	var trig: Dictionary = _trigger_for(it, "combat_started")
+	assert_false(trig.is_empty(), "Raven Feather fires on combat_started")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "status")
+	assert_eq(String(eff.get("status", "")), "soul_link")
+	assert_eq(String(eff.get("target", "")), "random_enemies")
+	assert_eq(int(eff.get("count", 0)), 2, "hits 2 random enemies")
+
+func test_stone_calendar_blasts_all_enemies_on_turn_seven() -> void:
+	var it: ItemData = Data.get_item(&"stone_calendar")
+	assert_not_null(it, "stone_calendar.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.rarity, ItemData.Rarity.RARE)
+	var trig: Dictionary = _trigger_for(it, "turn_ended")
+	assert_false(trig.is_empty(), "Stone Calendar fires on turn_ended")
+	assert_eq(int(trig.get("if_turn", 0)), 7, "only on turn 7")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "dmg")
+	assert_eq(int(eff.get("value", 0)), 52)
+	assert_eq(String(eff.get("target", "")), "all_enemies")
+
+func test_sulfa_powder_rolls_d12_block_each_turn() -> void:
+	var it: ItemData = Data.get_item(&"sulfa_powder")
+	assert_not_null(it, "sulfa_powder.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.rarity, ItemData.Rarity.UNCOMMON)
+	var trig: Dictionary = _trigger_for(it, "turn_started")
+	assert_false(trig.is_empty(), "Sulfa Powder fires on turn_started")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "roll_block")
+	assert_eq(int(eff.get("sides", 0)), 12)
+	assert_eq(String(eff.get("target", "")), "self")
+
+func test_roll_die_with_luck_stays_in_range() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 12345
+	for _i in range(50):
+		var v: int = Stats.roll_die_with_luck(rng, 12)
+		assert_true(v >= 1 and v <= 12, "D12 roll within [1, 12]")
+
+func test_steady_investment_pays_gold_on_perfect() -> void:
+	var it: ItemData = Data.get_item(&"steady_investment")
+	assert_not_null(it, "steady_investment.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.rarity, ItemData.Rarity.COMMON)
+	assert_true(it.perfect_aware, "Steady Investment reacts to perfected games")
+	assert_eq(it.perfect_effects.size(), 1)
+	var eff: Dictionary = it.perfect_effects[0]
+	assert_eq(String(eff.get("type", "")), "gain_gold")
+	assert_eq(int(eff.get("value", 0)), 10)
+
+# --- Reactive Trauma Plate (cheat-death via Stats.resolve_damage) and Rock
+# Bottom (Isaac-style stat floor via Stats.get_value). These need brand-new
+# engine vocabulary, so they get runtime coverage, not just .tres wiring. ---
+
+func test_reactive_trauma_plate_loads() -> void:
+	var it: ItemData = Data.get_item(&"reactive_trauma_plate")
+	assert_not_null(it, "reactive_trauma_plate.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED)
+	assert_eq(it.rarity, ItemData.Rarity.RARE)
+	assert_true(it.negate_lethal, "the plate flags itself as a lethal guard")
+
+func test_reactive_trauma_plate_negates_lethal_and_self_destructs() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"reactive_trauma_plate"))
+	var enemy := CombatActor.new()
+	enemy.is_player = false
+	enemy.hp = 50
+	enemy.max_hp = 50
+	var player := CombatActor.new()
+	player.is_player = true
+	player.hp = 5
+	player.max_hp = 30
+	var res := Stats.resolve_damage(enemy, player, 100,
+		{"damage_type": "melee"}, Stats.Mode.DECKBUILDER)
+	assert_true(bool(res.lethal_negated), "a lethal hit is negated")
+	assert_eq(int(res.hp_loss), 0, "no HP is lost")
+	assert_false(GameState.consume_lethal_guard(),
+		"the plate was destroyed, so a second lethal hit finds no guard")
+
+func test_reactive_trauma_plate_ignores_survivable_hits() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"reactive_trauma_plate"))
+	var enemy := CombatActor.new()
+	enemy.is_player = false
+	enemy.hp = 50
+	enemy.max_hp = 50
+	var player := CombatActor.new()
+	player.is_player = true
+	player.hp = 30
+	player.max_hp = 30
+	var res := Stats.resolve_damage(enemy, player, 6,
+		{"damage_type": "melee"}, Stats.Mode.DECKBUILDER)
+	assert_false(bool(res.lethal_negated), "a non-lethal hit doesn't trip the plate")
+	assert_eq(int(res.hp_loss), 6, "the hit lands normally")
+	assert_true(GameState.consume_lethal_guard(),
+		"the plate is still owned after a survivable hit")
+
+func test_rock_bottom_loads_with_seven_floored_stats() -> void:
+	var it: ItemData = Data.get_item(&"rock_bottom")
+	assert_not_null(it, "rock_bottom.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.SCALING)
+	assert_eq(it.rarity, ItemData.Rarity.RARE)
+	assert_eq(it.stat_floor.size(), 7, "floors all seven listed stats")
+	for s in ["strength", "dexterity", "intelligence", "charisma",
+			"fov_bonus", "discovery", "luck"]:
+		assert_true(it.stat_floor.has(s), "%s is floored" % s)
+
+func test_rock_bottom_holds_stats_at_their_peak() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"rock_bottom"))
+	GameState.strength = 10
+	assert_eq(Stats.get_value(&"strength"), 10, "peak recorded at 10")
+	GameState.strength = 3
+	assert_eq(Stats.get_value(&"strength"), 10, "can't fall below the peak")
+	GameState.strength = 15
+	assert_eq(Stats.get_value(&"strength"), 15, "a new high raises the floor")
+	GameState.strength = 1
+	assert_eq(Stats.get_value(&"strength"), 15, "still held at the new peak")
+
+func test_rock_bottom_locks_in_temporary_buffs_isaac_style() -> void:
+	GameState.reset_run()
+	GameState.add_item(Data.get_item(&"rock_bottom"))
+	GameState.strength = 5
+	GameState.temp_stat_bonus["strength"] = 5
+	assert_eq(Stats.get_value(&"strength"), 10, "buffed peak of 10 is seen")
+	GameState.temp_stat_bonus.erase("strength")
+	assert_eq(Stats.get_value(&"strength"), 10,
+		"the temporary buff is locked in permanently")
+
+func test_no_stat_floor_without_rock_bottom() -> void:
+	GameState.reset_run()
+	GameState.strength = 10
+	assert_eq(Stats.get_value(&"strength"), 10)
+	GameState.strength = 2
+	assert_eq(Stats.get_value(&"strength"), 2,
+		"stats fall freely when Rock Bottom isn't owned")
+
+# --- Latest batch: More Options, Head of the Keeper, Garlic, Metal Plate,
+# Performance Based Health Insurance, Philosopher's Stone, Prayer Card, Prayer
+# Beads. New engine vocabulary: the Brace status (flat damage reduction in
+# Stats.resolve_damage), the damage_taken item hook, and status_temp (Prayer
+# Beads' until-end-of-turn Brace). ---
+
+func test_more_options_grants_fov() -> void:
+	var it: ItemData = Data.get_item(&"more_options")
+	assert_not_null(it, "more_options.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.PASSIVE)
+	assert_eq(it.rarity, ItemData.Rarity.UNCOMMON)
+	assert_eq(int(it.stat_bonuses.get("fov_bonus", 0)), 1)
+
+func test_more_options_adds_a_portal_option_via_get_value() -> void:
+	GameState.reset_run()
+	var before: int = Stats.get_value(&"fov_bonus")
+	GameState.add_item(Data.get_item(&"more_options"))
+	assert_eq(Stats.get_value(&"fov_bonus"), before + 1,
+		"FoV reads +1 through the item bonus")
+
+func test_head_of_the_keeper_chance_gold_on_attack() -> void:
+	var it: ItemData = Data.get_item(&"head_of_the_keeper")
+	assert_not_null(it, "head_of_the_keeper.tres should load")
+	var trig: Dictionary = _trigger_for(it, "attack_landed")
+	assert_false(trig.is_empty(), "fires on attack_landed")
+	assert_true(bool(trig.get("silent", false)), "silent — avoids per-hit log spam")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "chance")
+	assert_eq(int(eff.get("percent", 0)), 5)
+	assert_eq(String(eff.get("effect", {}).get("type", "")), "gain_gold")
+	assert_eq(int(eff.get("effect", {}).get("value", 0)), 1)
+
+func test_garlic_grants_brace_at_combat_start() -> void:
+	var it: ItemData = Data.get_item(&"garlic")
+	assert_not_null(it, "garlic.tres should load")
+	var trig: Dictionary = _trigger_for(it, "combat_started")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("status", "")), "brace")
+	assert_eq(int(eff.get("stacks", 0)), 1)
+	assert_eq(String(eff.get("target", "")), "self")
+
+func test_metal_plate_grants_brace_on_kill() -> void:
+	var it: ItemData = Data.get_item(&"metal_plate")
+	assert_not_null(it, "metal_plate.tres should load")
+	var trig: Dictionary = _trigger_for(it, "enemy_killed")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("status", "")), "brace")
+	assert_eq(int(eff.get("stacks", 0)), 1)
+	assert_eq(String(eff.get("target", "")), "self")
+
+func test_performance_based_health_insurance_heals_on_perfect() -> void:
+	var it: ItemData = Data.get_item(&"performance_based_health_insurance")
+	assert_not_null(it, "performance_based_health_insurance.tres should load")
+	assert_true(it.perfect_aware)
+	assert_eq(it.perfect_effects.size(), 1)
+	var eff: Dictionary = it.perfect_effects[0]
+	assert_eq(String(eff.get("type", "")), "gain_hp")
+	assert_eq(int(eff.get("value", 0)), 5)
+
+func test_philosophers_stone_energy_and_enemy_power() -> void:
+	var it: ItemData = Data.get_item(&"philosophers_stone")
+	assert_not_null(it, "philosophers_stone.tres should load")
+	assert_eq(int(it.stat_bonuses.get("max_energy", 0)), 1)
+	var trig: Dictionary = _trigger_for(it, "enemy_spawned")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "status")
+	assert_eq(String(eff.get("status", "")), "power")
+	assert_eq(int(eff.get("stacks", 0)), 1)
+
+func test_prayer_card_chance_buffer_on_damage() -> void:
+	var it: ItemData = Data.get_item(&"prayer_card")
+	assert_not_null(it, "prayer_card.tres should load")
+	var trig: Dictionary = _trigger_for(it, "damage_taken")
+	assert_false(trig.is_empty(), "reacts to damage_taken")
+	assert_true(bool(trig.get("silent", false)))
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "chance")
+	assert_eq(int(eff.get("percent", 0)), 33)
+	assert_eq(String(eff.get("effect", {}).get("status", "")), "buffer")
+
+func test_prayer_beads_temp_brace_on_damage() -> void:
+	var it: ItemData = Data.get_item(&"prayer_beads")
+	assert_not_null(it, "prayer_beads.tres should load")
+	var trig: Dictionary = _trigger_for(it, "damage_taken")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "status_temp")
+	assert_eq(String(eff.get("status", "")), "brace")
+	assert_eq(int(eff.get("stacks", 0)), 3)
+
+# --- Brace status (Stats.resolve_damage) ---
+
+func test_brace_reduces_incoming_damage_flatly() -> void:
+	var enemy := CombatActor.new()
+	enemy.is_player = false
+	enemy.hp = 50
+	enemy.max_hp = 50
+	var player := CombatActor.new()
+	player.is_player = true
+	player.hp = 30
+	player.max_hp = 30
+	player.add_status(&"brace", 3)
+	var res := Stats.resolve_damage(enemy, player, 10,
+		{"damage_type": "melee"}, Stats.Mode.DECKBUILDER)
+	assert_eq(int(res.hp_loss), 7, "3 Brace soaks 3 of a 10 hit")
+
+func test_brace_never_drops_a_hit_below_one() -> void:
+	var enemy := CombatActor.new()
+	enemy.is_player = false
+	enemy.hp = 50
+	enemy.max_hp = 50
+	var player := CombatActor.new()
+	player.is_player = true
+	player.hp = 30
+	player.max_hp = 30
+	player.add_status(&"brace", 100)
+	var res := Stats.resolve_damage(enemy, player, 5,
+		{"damage_type": "magic"}, Stats.Mode.DECKBUILDER)
+	assert_eq(int(res.hp_loss), 1, "Brace can't reduce a hit below 1")
+
+# --- status_temp / Prayer Beads expiry ---
+
+func test_status_temp_tracks_and_expires_at_turn_boundary() -> void:
+	GameState.reset_run()
+	var player := CombatActor.new()
+	player.is_player = true
+	player.hp = 30
+	player.max_hp = 30
+	EffectSystem.apply({"type": "status_temp", "status": "brace", "stacks": 3,
+		"target": "self"}, {"source": player, "target": player, "scene": null})
+	assert_eq(player.get_status(&"brace"), 3, "temp Brace applied")
+	assert_eq(int(GameState.temp_status_stacks.get("brace", 0)), 3, "amount tracked")
+	ItemTriggers._expire_temp_statuses(player)
+	assert_eq(player.get_status(&"brace"), 0, "temp Brace stripped at turn boundary")
+	assert_true(GameState.temp_status_stacks.is_empty(), "tally cleared")
+
+func test_status_temp_leaves_permanent_stacks_intact() -> void:
+	GameState.reset_run()
+	var player := CombatActor.new()
+	player.is_player = true
+	player.hp = 30
+	player.max_hp = 30
+	player.add_status(&"brace", 2)  # permanent (e.g. Garlic)
+	EffectSystem.apply({"type": "status_temp", "status": "brace", "stacks": 3,
+		"target": "self"}, {"source": player, "target": player, "scene": null})
+	assert_eq(player.get_status(&"brace"), 5, "permanent + temp stack together")
+	ItemTriggers._expire_temp_statuses(player)
+	assert_eq(player.get_status(&"brace"), 2, "only the temp 3 is removed")
+
+func test_status_temp_expires_on_turn_tick_for_action_and_strategy() -> void:
+	# Action and Strategy use turn_tick (not a re-fired turn_started) as their
+	# recurring turn boundary, so the temp-status expiry must run there too.
+	GameState.reset_run()
+	var player := CombatActor.new()
+	player.is_player = true
+	player.hp = 30
+	player.max_hp = 30
+	EffectSystem.apply({"type": "status_temp", "status": "brace", "stacks": 3,
+		"target": "self"}, {"source": player, "target": player, "scene": null})
+	assert_eq(player.get_status(&"brace"), 3, "temp Brace applied")
+	# Fire the shared runner's turn_tick with no scene / no enemies.
+	ItemTriggers.fire("turn_tick", null, player, [])
+	assert_eq(player.get_status(&"brace"), 0, "turn_tick expires the temp Brace")
+	assert_true(GameState.temp_status_stacks.is_empty())
+
+# --- Sacred Orb (reward reroll), Secret Technique Instructions (gain_stat
+# perfect reward), Snowball (permanent-stat-gain amplifier), Shuriken
+# (pre-existing per-turn attack counter). ---
+
+func test_shuriken_counts_attacks_per_turn() -> void:
+	var it: ItemData = Data.get_item(&"shuriken")
+	assert_not_null(it, "shuriken.tres should load")
+	var trig: Dictionary = _trigger_for(it, "card_played")
+	assert_eq(String(trig.get("if_card_type", "")), "attack")
+	var eff: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(eff.get("type", "")), "counter")
+	assert_eq(String(eff.get("key", "")), "attacks_this_turn")
+	assert_eq(int(eff.get("every", 0)), 3)
+	assert_eq(String(eff.get("effects", [{}])[0].get("status", "")), "power")
+
+func test_sacred_orb_flags_low_rarity_reroll() -> void:
+	var it: ItemData = Data.get_item(&"sacred_orb")
+	assert_not_null(it, "sacred_orb.tres should load")
+	assert_eq(it.rarity, ItemData.Rarity.LEGENDARY)
+	assert_true(it.reroll_low_rarity)
+	GameState.reset_run()
+	assert_false(GameState.has_low_rarity_reroll(), "no reroll without the orb")
+	GameState.add_item(it)
+	assert_true(GameState.has_low_rarity_reroll(), "orb enables the reroll")
+
+func test_secret_technique_instructions_grants_dash_on_perfect() -> void:
+	var it: ItemData = Data.get_item(&"secret_technique_instructions")
+	assert_not_null(it, "secret_technique_instructions.tres should load")
+	assert_true(it.perfect_aware)
+	assert_eq(it.perfect_effects.size(), 1)
+	var eff: Dictionary = it.perfect_effects[0]
+	assert_eq(String(eff.get("type", "")), "gain_stat")
+	assert_eq(String(eff.get("stat", "")), "dash")
+	assert_eq(int(eff.get("value", 0)), 1)
+
+func test_gain_stat_effect_increments_dash() -> void:
+	GameState.reset_run()
+	var before: int = GameState.dash_charges
+	EffectSystem.apply({"type": "gain_stat", "stat": "dash", "value": 1}, {})
+	assert_eq(GameState.dash_charges, before + 1, "dash resolves to dash_charges")
+
+func test_snowball_amplifies_permanent_intelligence_gains() -> void:
+	GameState.reset_run()
+	assert_eq(GameState.stat_gain_bonus_for("intelligence"), 0)
+	GameState.add_item(Data.get_item(&"snowball"))
+	assert_eq(GameState.stat_gain_bonus_for("intelligence"), 1, "Snowball owned")
+	var int_before: int = GameState.intelligence
+	GameState.apply_level_up_stats({"intelligence": 2})
+	assert_eq(GameState.intelligence, int_before + 3,
+		"+2 base intelligence becomes +3 with Snowball")
+	# Other stats are untouched by an intelligence-only amplifier.
+	var str_before: int = GameState.strength
+	GameState.apply_level_up_stats({"strength": 2})
+	assert_eq(GameState.strength, str_before + 2, "strength gains are unaffected")
+
+func test_snowball_does_not_amplify_when_unowned() -> void:
+	GameState.reset_run()
+	var int_before: int = GameState.intelligence
+	GameState.apply_level_up_stats({"intelligence": 2})
+	assert_eq(GameState.intelligence, int_before + 2, "no bonus without Snowball")
