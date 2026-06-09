@@ -1,9 +1,11 @@
 class_name Overworld
 extends Node2D
 
-# Overworld scene. Owns walking + portal selection + verification +
-# autosave + win/lose UI. Does NOT own combat — Main creates the combat
-# scene when this scene emits portal_entered.
+# Overworld scene. Owns walking + portal selection + verification ("Play the
+# real game") + the post-combat item reward + autosave + win/lose UI. Does NOT
+# own combat — Main creates the combat scene when this scene emits
+# portal_entered, then hands the victory/defeat back so we run the
+# play/verify -> item-reward flow here.
 #
 # On scene init the pending_combat_outcome field (set by Main before
 # add_child) tells us "you just came back from a combat: it was a
@@ -40,7 +42,16 @@ var _win_overlay: Control = null
 var _verification_modal: Control = null
 var _dash_modal: Control = null
 var _map_view: RunMapView = null
+var _section_reward_layer: CanvasLayer = null
+# Game whose section reward is pending — set when a victory is handed to us,
+# consumed when the item reward opens after the verification screen.
+var _pending_reward_game_id: StringName = &""
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
+# Gold by run difficulty tier — matches the HTML prototype's per-victory table
+# (Low 10 / Medium 15 / High 25 / Insane 35), keyed off the run tier. Awarded
+# by the item-reward screen that follows the "Play the real game" verification.
+const SECTION_GOLD_BY_TIER := [10, 15, 25, 35]
 
 func _ready() -> void:
 	_rng.randomize()
@@ -111,20 +122,12 @@ func _shuffle_ids(ids: Array[StringName]) -> void:
 		ids[j] = tmp
 
 func _connected_game_ids(game_id: StringName) -> Array[StringName]:
-	# Undirected: outgoing edges + games that influenced this one.
-	var result: Array[StringName] = []
-	var src: GameData = Data.get_game(game_id)
-	if src != null:
-		for gid in src.games_influenced:
-			if Data.get_game(gid) != null and not result.has(gid):
-				result.append(gid)
-	for g in Data.all_games():
-		if g.id == game_id:
-			continue
-		for influenced_id in g.games_influenced:
-			if influenced_id == game_id and not result.has(g.id):
-				result.append(g.id)
-	return result
+	# Undirected adjacency, filtered by the active game-filter setting. Using
+	# RunGraph.neighbors (rather than walking games_influenced ourselves) means
+	# in-run portal choices only ever draw from the same eligible pool the
+	# start/amulet path was generated from — in the restricted Owned/Downloaded
+	# modes the next-game choices stay inside that pool too.
+	return RunGraph.neighbors(game_id)
 
 # ------------------------------------------------------------------
 # Player interaction
@@ -178,7 +181,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
 
 func _can_act() -> bool:
-	return _verification_modal == null and _win_overlay == null and _dash_modal == null and _map_view == null
+	return _verification_modal == null and _win_overlay == null and _dash_modal == null \
+		and _map_view == null and _section_reward_layer == null
 
 # ------------------------------------------------------------------
 # Run map — view-only overview of the route to the Amulet. Pauses the
@@ -366,12 +370,16 @@ func _handle_victory_for(game_id: StringName) -> void:
 	if gd != null:
 		GameLog.add("Defeated %s." % gd.display_name, Color(0.6, 1.0, 0.6))
 
-	# Amulet reached -> win overlay; skip verification on the last floor.
+	# Amulet reached -> win overlay; skip the play/verify + reward on the last
+	# floor (reaching it IS the win).
 	if game_id == GameState.amulet_game_id:
 		GameState.phase = GameState.Phase.WIN
 		_show_win_overlay()
 		return
 
+	# The item reward is granted after the verification screen, so remember
+	# which game it represents for the reward roll's launch context.
+	_pending_reward_game_id = game_id
 	_show_verification_modal(gd)
 
 func _handle_defeat() -> void:
@@ -432,23 +440,25 @@ func _show_verification_modal(gd: GameData) -> void:
 	var char_data: CharacterData = Data.get_character(GameState.character_id)
 	var show_levelup: bool = char_data != null and char_data.level_up_condition != ""
 
-	# Inventory weapons drive the modal height — base 340 + a row per
-	# weapon. The list keeps growing as weapon items get authored, so we
-	# size from data rather than hard-coding for two. Perfect and level-up
-	# rows add their own 80px slices.
+	# Inventory weapons drive the modal height — base 400 (title + prompt +
+	# the Play/Save action row) + a row per weapon. The list keeps growing as
+	# weapon items get authored, so we size from data rather than hard-coding
+	# for two. Perfect and level-up rows add their own 80px slices.
 	var weapons: Array = _collect_inventory_weapons()
 	var extra_rows: int = weapons.size() + int(show_perfect) + int(show_levelup)
-	var panel_h: int = 340 + extra_rows * 80
+	var panel_h: int = 400 + extra_rows * 80
 
 	var panel := Panel.new()
 	panel.size = Vector2(620, panel_h)
 	panel.position = (get_viewport_rect().size - panel.size) / 2.0
 	modal.add_child(panel)
 
+	var gd_name: String = gd.display_name if gd != null else "this game"
+
 	var title := Label.new()
 	title.position = Vector2(20, 24)
 	title.size = Vector2(580, 32)
-	title.text = "Verification"
+	title.text = "Play %s" % gd_name
 	title.add_theme_font_size_override("font_size", 22)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(title)
@@ -456,15 +466,34 @@ func _show_verification_modal(gd: GameData) -> void:
 	var prompt := Label.new()
 	prompt.position = Vector2(20, 72)
 	prompt.size = Vector2(580, 70)
-	var gd_name: String = gd.display_name if gd != null else "this game"
-	prompt.text = "You defeated this floor's representation of %s. Did you play the real game?" % gd_name
+	prompt.text = "You cleared this floor's representation of %s. Go play the real game — then verify below to claim your reward." % gd_name
 	prompt.autowrap_mode = TextServer.AUTOWRAP_WORD
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(prompt)
 
-	# Weapon questions stack below the main prompt. Each row exposes a
+	# Play-the-real-game + safe-save row. The real game can take a while to
+	# beat, so the player can launch it straight from here and save the run so
+	# they can quit and resume later without losing progress.
+	var action_y: int = 150
+	if gd != null and gd.has_launch_target():
+		var play_btn := Button.new()
+		play_btn.position = Vector2(40, action_y)
+		play_btn.size = Vector2(360, 44)
+		play_btn.text = "▶ Play %s" % gd_name
+		play_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
+		play_btn.pressed.connect(_on_verification_play.bind(gd))
+		panel.add_child(play_btn)
+
+	var save_btn := Button.new()
+	save_btn.position = Vector2(420, action_y)
+	save_btn.size = Vector2(160, 44)
+	save_btn.text = "Save run"
+	save_btn.pressed.connect(_on_verification_save)
+	panel.add_child(save_btn)
+
+	# Weapon questions stack below the Play/Save row. Each row exposes a
 	# Yes / No pair whose pressed handler writes into _weapon_verify_answers.
-	var y: int = 150
+	var y: int = 210
 	for w in weapons:
 		_add_weapon_row(panel, w, y)
 		y += 80
@@ -498,6 +527,27 @@ func _show_verification_modal(gd: GameData) -> void:
 
 	add_child(modal)
 	_verification_modal = modal
+
+# Launches the real game from the verification screen. Mirrors RewardScreen's
+# "Play the real game" button — the launch now lives here, on the screen shown
+# before the item reward.
+func _on_verification_play(gd: GameData) -> void:
+	if gd == null:
+		return
+	if gd.launch():
+		GameLog.add("Launching %s…" % gd.display_name, Color(0.6, 1.0, 0.8))
+	else:
+		GameLog.add("Couldn't launch %s — check the file path." % gd.display_name,
+			Color(1.0, 0.6, 0.6))
+
+# Saves the run from the verification screen so the player can quit and resume
+# while the real game (which can take a while) is being played.
+func _on_verification_save() -> void:
+	if _save_run():
+		GameLog.add("Saved. Safe to quit and resume later.", Color(0.7, 0.9, 1.0))
+		Notifications.notify("Run saved — safe to quit.", Color(0.7, 0.9, 1.0))
+	else:
+		GameLog.add("Save failed.", Color(0.9, 0.5, 0.5))
 
 func _collect_inventory_weapons() -> Array:
 	# Equipped weapon isn't a verification target today (no card-link
@@ -745,6 +795,34 @@ func _close_verification() -> void:
 func _after_verification() -> void:
 	_save_run()
 	GameLog.add("Autosaved.", Color(0.7, 0.8, 1.0))
+	# Item reward (gold + one item choice) comes *after* the play/verify screen.
+	_show_section_reward(_pending_reward_game_id)
+
+# ------------------------------------------------------------------
+# Section reward — gold + one item choice, shown after verification. The
+# launch button on the reward screen stays hidden here (the "Play the real
+# game" action lives on the verification screen that preceded this), so the
+# reward is purely about claiming loot.
+# ------------------------------------------------------------------
+
+func _show_section_reward(_game_id: StringName) -> void:
+	var tier: int = RunDifficulty.current_tier()
+	var gold: int = SECTION_GOLD_BY_TIER[clampi(tier, 0, SECTION_GOLD_BY_TIER.size() - 1)]
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	add_child(layer)
+	_section_reward_layer = layer
+	var reward := RewardScreen.new()
+	layer.add_child(reward)
+	reward.closed.connect(_on_section_reward_closed)
+	reward.setup(gold)
+
+func _on_section_reward_closed() -> void:
+	if _section_reward_layer != null:
+		_section_reward_layer.queue_free()
+		_section_reward_layer = null
+	_pending_reward_game_id = &""
+	_save_run()
 	GameState.phase = GameState.Phase.OVERWORLD
 	_player.set_input_locked(false)
 	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))

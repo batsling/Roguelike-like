@@ -122,31 +122,12 @@ func _on_floor_closed(was_victory: bool, target_game_id: StringName) -> void:
 	# single choke point every game-floor scene funnels back through.
 	GameState.games_played += 1
 	_pending_outcome = {"victory": was_victory, "game_id": target_game_id}
-	# Beating a section (any of the three modes) pays out a reward: gold +
-	# one item choice, mirroring the HTML prototype. Defeat ends the run, so
-	# it skips straight back to the overworld.
-	if was_victory:
-		_show_section_reward(target_game_id)
-	else:
-		_show_overworld()
-
-# Gold by run difficulty tier — matches the HTML prototype's per-victory
-# table (Low 10 / Medium 15 / High 25 / Insane 35), keyed off the run tier
-# rather than a single enemy's difficulty.
-const SECTION_GOLD_BY_TIER := [10, 15, 25, 35]
-
-func _show_section_reward(game_id: StringName = &"") -> void:
-	var tier: int = RunDifficulty.current_tier()
-	var gold: int = SECTION_GOLD_BY_TIER[clampi(tier, 0, SECTION_GOLD_BY_TIER.size() - 1)]
-	var layer := CanvasLayer.new()
-	layer.layer = 100
-	add_child(layer)
-	var reward := RewardScreen.new()
-	layer.add_child(reward)
-	reward.closed.connect(func():
-		layer.queue_free()
-		_show_overworld())
-	reward.setup(gold, Data.get_game(game_id))
+	# Win or lose, hand control back to the overworld. On a win it runs the
+	# "Play the real game" verification screen and *then* the item reward
+	# (gold + one item choice); on a loss it ends the run. Both reward and
+	# verification now live in the overworld so the player plays the real
+	# game before claiming the section loot.
+	_show_overworld()
 
 func _show_combat(game_id: StringName) -> void:
 	# Direct-combat entry (kept for action / strategy modes that won't
