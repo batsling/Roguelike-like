@@ -1,16 +1,16 @@
-[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_elemental_survivors"]
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_kitty_survivors_rogues_of_catmere"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
-[ext_resource type="Texture2D" path="res://assets/games/elemental-survivors.jpg" id="2_cover"]
+[ext_resource type="Texture2D" path="res://assets/games/kitty-survivors-rogues-of-catmere.png" id="2_cover"]
 
 [resource]
 script = ExtResource("1_game")
-id = &"elemental_survivors"
-display_name = "Elemental Survivors"
+id = &"kitty_survivors_rogues_of_catmere"
+display_name = "Kitty Survivors: Rogues of Catmere"
 year = 2023
 type = 0
 games_influenced = Array[StringName]([])
-tags = PackedStringArray()
+tags = PackedStringArray("cats")
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
