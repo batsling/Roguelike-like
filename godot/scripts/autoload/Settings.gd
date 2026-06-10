@@ -14,6 +14,12 @@ enum GameFilter { ALL, OWNED, DOWNLOADED }
 
 var game_filter: int = GameFilter.ALL
 
+# When true, amulet generation skips games the player has already won as the
+# final (amulet) game — see GameStats.amulet_wins. Such games can still appear
+# as intermediate stops on the path; they just won't be picked as the goal.
+# Falls back to the full pool if the player has beaten every eligible amulet.
+var exclude_beaten_amulets: bool = false
+
 func _ready() -> void:
 	load_settings()
 
@@ -27,15 +33,25 @@ func set_game_filter(value: int) -> void:
 	RunGraph.invalidate_cache()
 	save_settings()
 
+func set_exclude_beaten_amulets(value: bool) -> void:
+	if value == exclude_beaten_amulets:
+		return
+	exclude_beaten_amulets = value
+	# No cache invalidation needed: this only filters amulet *candidates* at
+	# pick time, not the adjacency graph.
+	save_settings()
+
 func load_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(CONFIG_PATH) != OK:
 		return
 	game_filter = clampi(int(cfg.get_value("path", "game_filter", GameFilter.ALL)),
 		0, GameFilter.DOWNLOADED)
+	exclude_beaten_amulets = bool(cfg.get_value("path", "exclude_beaten_amulets", false))
 	RunGraph.invalidate_cache()
 
 func save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("path", "game_filter", game_filter)
+	cfg.set_value("path", "exclude_beaten_amulets", exclude_beaten_amulets)
 	cfg.save(CONFIG_PATH)

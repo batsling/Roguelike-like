@@ -18,8 +18,14 @@ extends Control
 # Each content tab mirrors the HTML's search box, sort/filter controls, a
 # responsive card grid, and a detail side-panel that fills in on click.
 
-enum Tab { REFERENCE, ITEMS, CHARACTERS, CARDS }
+enum Tab { REFERENCE, ITEMS, CHARACTERS, CARDS, GAMES }
 
+const GAME_TYPE_NAMES := ["Action", "Strategy", "Deckbuilder", "Traditional"]
+# Completion filter for the Games tab: [label, key]. Keys drive _populate_games.
+const GAME_STATUS_OPTIONS := [
+	["All", "all"], ["Completed", "completed"],
+	["Not Completed", "uncompleted"], ["Amulet Won", "amulet"],
+]
 const ITEM_RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 const ITEM_KIND_NAMES := ["Passive", "Triggered", "Usable", "Weapon", "Scaling", "Pickup"]
 const CARD_TYPE_NAMES := ["Attack", "Skill", "Power", "Dice", "Status", "Curse", "Training"]
@@ -36,11 +42,14 @@ const ACCENT := Color(1.0, 0.6, 0.0)
 const PANEL_BG := Color(0.05, 0.05, 0.07, 0.98)
 const CELL_BG := Color(0.04, 0.04, 0.06, 0.85)
 
-var _tab: int = Tab.ITEMS
+var _tab: int = Tab.GAMES
 var _ref_subtab: String = "statuses"
 
 # Per-tab control state.
-var _search := {"reference": "", "items": "", "characters": "", "cards": ""}
+var _search := {"reference": "", "items": "", "characters": "", "cards": "", "games": ""}
+var _games_sort: String = "name"      # name | year | beaten
+var _games_type: int = -1             # -1 = all, else GameType index
+var _games_status: String = "all"     # all | completed | uncompleted | amulet
 var _items_sort: String = "name"      # name | rarity | kind
 var _items_type: int = -1             # -1 = all, else ItemKind index
 var _char_sort: String = "name"       # name | game
@@ -142,7 +151,8 @@ func _build_shell() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
 	root.add_child(tabs)
-	# Tab order: Items, Cards, Characters, Reference.
+	# Tab order: Games, Items, Cards, Characters, Reference.
+	_add_tab_button(tabs, Tab.GAMES, "Games (%d)" % Data.all_games().size())
 	_add_tab_button(tabs, Tab.ITEMS, "Items (%d)" % Data.all_items().size())
 	_add_tab_button(tabs, Tab.CARDS, "Cards (%d)" % Data.all_cards().size())
 	_add_tab_button(tabs, Tab.CHARACTERS, "Characters (%d)" % Data.all_characters().size())
@@ -175,6 +185,8 @@ func _refresh() -> void:
 	_detail_box = null
 	_count_lbl = null
 	match _tab:
+		Tab.GAMES:
+			_build_games()
 		Tab.REFERENCE:
 			_build_reference()
 		Tab.ITEMS:
@@ -336,6 +348,8 @@ func _clear_children(node: Node) -> void:
 
 func _populate() -> void:
 	match _tab:
+		Tab.GAMES:
+			_populate_games()
 		Tab.REFERENCE:
 			_populate_reference()
 		Tab.ITEMS:
@@ -344,6 +358,169 @@ func _populate() -> void:
 			_populate_characters()
 		Tab.CARDS:
 			_populate_cards()
+
+# ------------------------------------------------------------------
+# Games tab — the roguelike catalog (influence graph), with lifetime
+# beaten / amulet-win stats from GameStats and your tier-list standing.
+# ------------------------------------------------------------------
+
+func _build_games() -> void:
+	var row := _controls_row()
+	row.add_child(_search_box("games"))
+	row.add_child(VSeparator.new())
+	row.add_child(_label("Sort:", Color(0.7, 0.7, 0.75), 12))
+	row.add_child(_sort_button("A-Z", _games_sort == "name", func(): _games_sort = "name"; _refresh()))
+	row.add_child(_sort_button("Year", _games_sort == "year", func(): _games_sort = "year"; _refresh()))
+	row.add_child(_sort_button("Beaten", _games_sort == "beaten", func(): _games_sort = "beaten"; _refresh()))
+	row.add_child(VSeparator.new())
+	var type_opt := OptionButton.new()
+	type_opt.add_item("All Types", -1)
+	for i in GAME_TYPE_NAMES.size():
+		type_opt.add_item(GAME_TYPE_NAMES[i], i)
+	_select_option(type_opt, _games_type)
+	type_opt.item_selected.connect(func(idx):
+		_games_type = type_opt.get_item_id(idx)
+		_refresh())
+	row.add_child(type_opt)
+	var status_opt := OptionButton.new()
+	for i in GAME_STATUS_OPTIONS.size():
+		status_opt.add_item(GAME_STATUS_OPTIONS[i][0], i)
+		if GAME_STATUS_OPTIONS[i][1] == _games_status:
+			status_opt.select(i)
+	status_opt.item_selected.connect(func(idx):
+		_games_status = GAME_STATUS_OPTIONS[status_opt.get_item_id(idx)][1]
+		_refresh())
+	row.add_child(status_opt)
+	_add_count_label(row)
+	_grid_and_detail()
+	_populate_games()
+
+func _populate_games() -> void:
+	_clear_children(_grid)
+	var term: String = _search["games"].to_lower()
+	var list: Array = []
+	for g in Data.all_games():
+		if g == null:
+			continue
+		if _games_type >= 0 and int(g.type) != _games_type:
+			continue
+		match _games_status:
+			"completed":
+				if GameStats.beaten_count(g.id) <= 0:
+					continue
+			"uncompleted":
+				if GameStats.beaten_count(g.id) > 0:
+					continue
+			"amulet":
+				if GameStats.amulet_wins(g.id) <= 0:
+					continue
+		if term != "" and not term in g.display_name.to_lower():
+			continue
+		list.append(g)
+	match _games_sort:
+		"year":
+			list.sort_custom(func(a, b): return a.year > b.year if a.year != b.year else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+		"beaten":
+			list.sort_custom(func(a, b):
+				var ab: int = GameStats.beaten_count(a.id)
+				var bb: int = GameStats.beaten_count(b.id)
+				return ab > bb if ab != bb else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+		_:
+			list.sort_custom(func(a, b): return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+	for g in list:
+		_grid.add_child(_game_cell(g))
+	if list.is_empty():
+		_grid.add_child(_label("No games match.", Color(0.55, 0.55, 0.6), 13))
+	_set_count(list.size(), Data.all_games().size())
+
+func _game_type_color(t: int) -> Color:
+	match t:
+		0: return Color(0.9, 0.4, 0.3)    # action
+		1: return Color(0.45, 0.7, 0.95)  # strategy
+		2: return Color(0.7, 0.45, 1.0)   # deckbuilder
+		3: return Color(0.55, 0.8, 0.5)   # traditional
+		_: return Color(0.6, 0.6, 0.65)
+
+func _game_cell(g: GameData) -> Control:
+	var tc := _game_type_color(int(g.type))
+	var cell := _cell(tc, func(): _show_game_detail(g))
+	cell.panel.custom_minimum_size = Vector2(172, 0)
+	var vb: VBoxContainer = cell.vbox
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	if g.cover_image != null:
+		var tr := _tex_rect(g.cover_image, 128)
+		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		vb.add_child(tr)
+	vb.add_child(_label(g.display_name, tc, 13, true, true))
+	var type_name: String = GAME_TYPE_NAMES[clampi(int(g.type), 0, 3)]
+	var meta: String = ("%d  •  %s" % [g.year, type_name]) if g.year > 0 else type_name
+	vb.add_child(_label(meta, Color(0.7, 0.7, 0.75), 11, true))
+	var beaten: int = GameStats.beaten_count(g.id)
+	var amulets: int = GameStats.amulet_wins(g.id)
+	var stat_line: String = "⚔ %d" % beaten
+	if amulets > 0:
+		stat_line += "    👑 %d" % amulets
+	var played := beaten > 0 or amulets > 0
+	vb.add_child(_label(stat_line, Color(0.95, 0.8, 0.4) if played else Color(0.5, 0.5, 0.55), 11, true))
+	return cell.panel
+
+func _show_game_detail(g: GameData) -> void:
+	_clear_children(_detail_box)
+	var tc := _game_type_color(int(g.type))
+	if g.cover_image != null:
+		var tr := _tex_rect(g.cover_image, 150)
+		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_detail_box.add_child(tr)
+	_detail_box.add_child(_label(g.display_name, tc, 18, true))
+	var meta_parts: Array = []
+	if g.year > 0:
+		meta_parts.append(str(g.year))
+	meta_parts.append(GAME_TYPE_NAMES[clampi(int(g.type), 0, 3)])
+	_detail_box.add_child(_detail_meta("  •  ".join(meta_parts), tc))
+	if g.tags.size() > 0:
+		_detail_box.add_child(_label(", ".join(g.tags), Color(0.73, 0.55, 0.78), 11, false, true))
+	_detail_box.add_child(HSeparator.new())
+
+	# Lifetime stats (cross-run, from GameStats).
+	_detail_box.add_child(_detail_section("📊 Tracked Stats"))
+	_detail_box.add_child(_kv("Beaten", str(GameStats.beaten_count(g.id))))
+	_detail_box.add_child(_kv("Amulet wins", str(GameStats.amulet_wins(g.id))))
+
+	# Your tier-list standing, if rated.
+	if TierList.has_rating(g.id):
+		var r := TierList.get_rating(g.id)
+		_detail_box.add_child(_detail_section("Your Ranking"))
+		_detail_box.add_child(_kv("Score", "%d / 10" % int(r.get("score", 0))))
+		var ti := TierList.tier_of(g.id)
+		if ti >= 0 and ti < TierList.tier_names.size():
+			_detail_box.add_child(_kv("Tier", TierList.tier_names[ti]))
+		var notes := String(r.get("notes", ""))
+		if notes != "":
+			_detail_box.add_child(_label(notes, Color(0.82, 0.82, 0.85), 11, false, true))
+
+	# Influence graph (both directions).
+	if g.games_influenced.size() > 0:
+		_detail_box.add_child(_detail_section("Influenced"))
+		_detail_box.add_child(_label(_game_names(g.games_influenced), Color(0.7, 0.85, 0.95), 11, false, true))
+	var influenced_by := _influenced_by(g.id)
+	if influenced_by.size() > 0:
+		_detail_box.add_child(_detail_section("Influenced By"))
+		_detail_box.add_child(_label(_game_names(influenced_by), Color(0.7, 0.85, 0.95), 11, false, true))
+
+func _game_names(ids) -> String:
+	var names: Array = []
+	for id in ids:
+		var g: GameData = Data.get_game(StringName(id))
+		names.append(g.display_name if g != null else String(id))
+	names.sort()
+	return ", ".join(names)
+
+func _influenced_by(id) -> Array:
+	var out: Array = []
+	for g in Data.all_games():
+		if g is GameData and g.games_influenced.has(StringName(id)):
+			out.append(g.id)
+	return out
 
 # ------------------------------------------------------------------
 # Reference tab (Statuses / Addons)

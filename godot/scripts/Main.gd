@@ -22,10 +22,14 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 # above whatever scene is swapped in (overworld / combat / map / events) and
 # survives those swaps. Toggled with the "backpack" action (Tab).
 var _backpack: Backpack = null
+# Persistent pause menu, mounted alongside the backpack so Enter brings it up
+# from any run scene and it survives scene swaps.
+var _pause_menu: PauseMenu = null
 
 func _ready() -> void:
 	_rng.randomize()
 	_mount_backpack()
+	_mount_pause_menu()
 	# MainMenu (or a Continue-load) is expected to have populated GameState
 	# before this scene is reached. If we land here cold (e.g. the user is
 	# running scenes/Main.tscn directly from the editor for testing), fall
@@ -175,6 +179,16 @@ func _mount_backpack() -> void:
 	toast_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(toast_layer)
 	toast_layer.add_child(NotificationToasts.new())
+
+# Pause menu lives on its own always-on layer (above the backpack) so the
+# Enter toggle and Save & Exit work from overworld, combat, map and events.
+func _mount_pause_menu() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 160
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(layer)
+	_pause_menu = PauseMenu.new()
+	layer.add_child(_pause_menu)
 
 # ---------------------------------------------------------------------------
 # Enemy pool helper — currently mode-agnostic since every fight is
