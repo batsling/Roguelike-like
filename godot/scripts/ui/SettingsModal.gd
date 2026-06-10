@@ -30,10 +30,10 @@ func _build_ui() -> void:
 	panel.anchor_top = 0.5
 	panel.anchor_right = 0.5
 	panel.anchor_bottom = 0.5
-	panel.offset_left = -300
-	panel.offset_top = -210
-	panel.offset_right = 300
-	panel.offset_bottom = 210
+	panel.offset_left = -320
+	panel.offset_top = -300
+	panel.offset_right = 320
+	panel.offset_bottom = 300
 	add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -97,6 +97,29 @@ func _build_ui() -> void:
 	opt.item_selected.connect(func(idx: int) -> void:
 		Settings.set_game_filter(opt.get_item_id(idx))
 		refresh_hint.call())
+
+	vbox.add_child(HSeparator.new())
+
+	var amulet_heading := Label.new()
+	amulet_heading.text = "Amulet generation"
+	amulet_heading.add_theme_font_size_override("font_size", 17)
+	amulet_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	vbox.add_child(amulet_heading)
+
+	var exclude_chk := CheckButton.new()
+	exclude_chk.text = "Skip already-won amulet games"
+	exclude_chk.button_pressed = Settings.exclude_beaten_amulets
+	exclude_chk.toggled.connect(func(on: bool) -> void:
+		Settings.set_exclude_beaten_amulets(on))
+	vbox.add_child(exclude_chk)
+
+	var amulet_hint := Label.new()
+	amulet_hint.text = "When on, runs won't target a game you've already beaten as the final amulet. Those games can still appear as stops along the way. Ignored if you've beaten every reachable amulet."
+	amulet_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	amulet_hint.custom_minimum_size = Vector2(0, 60)
+	amulet_hint.add_theme_font_size_override("font_size", 13)
+	amulet_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	vbox.add_child(amulet_hint)
 
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL

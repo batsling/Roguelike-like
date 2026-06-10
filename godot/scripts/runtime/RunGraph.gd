@@ -258,6 +258,18 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	if amulet_candidates.is_empty():
 		return {}
 
+	# Optional: drop games already won as the amulet (GameStats.amulet_wins),
+	# so a fresh run aims at an unbeaten goal. Beaten games stay in the graph
+	# as intermediate stops — only the goal pool is filtered. Keep the full
+	# pool if every reachable candidate has been beaten (no softlock).
+	if Settings.exclude_beaten_amulets:
+		var unbeaten: Array[GameData] = []
+		for g in amulet_candidates:
+			if GameStats.amulet_wins(g.id) == 0:
+				unbeaten.append(g)
+		if not unbeaten.is_empty():
+			amulet_candidates = unbeaten
+
 	var best_amulet_score := 0
 	var amulet_scored: Array = []
 	for g in amulet_candidates:
