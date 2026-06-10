@@ -36,7 +36,7 @@ const ACCENT := Color(1.0, 0.6, 0.0)
 const PANEL_BG := Color(0.05, 0.05, 0.07, 0.98)
 const CELL_BG := Color(0.04, 0.04, 0.06, 0.85)
 
-var _tab: int = Tab.REFERENCE
+var _tab: int = Tab.ITEMS
 var _ref_subtab: String = "statuses"
 
 # Per-tab control state.
@@ -142,10 +142,11 @@ func _build_shell() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
 	root.add_child(tabs)
-	_add_tab_button(tabs, Tab.REFERENCE, "Reference")
+	# Tab order: Items, Cards, Characters, Reference.
 	_add_tab_button(tabs, Tab.ITEMS, "Items (%d)" % Data.all_items().size())
-	_add_tab_button(tabs, Tab.CHARACTERS, "Characters (%d)" % Data.all_characters().size())
 	_add_tab_button(tabs, Tab.CARDS, "Cards (%d)" % Data.all_cards().size())
+	_add_tab_button(tabs, Tab.CHARACTERS, "Characters (%d)" % Data.all_characters().size())
+	_add_tab_button(tabs, Tab.REFERENCE, "Reference")
 
 	root.add_child(HSeparator.new())
 

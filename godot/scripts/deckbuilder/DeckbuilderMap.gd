@@ -1,30 +1,42 @@
 class_name DeckbuilderMap
 extends RefCounted
 
-# Per-game mini-map for deckbuilder floors. 6 floors deep, STS-shaped.
+# Per-game mini-map for deckbuilder floors. 8 floors deep, STS-shaped.
 # Fixed floors:
-#   Floor 0 (1) = Combat
-#   Floor 2 (3) = Treasure (pick 1 of 3 items)
-#   Floor 4 (5) = Rest (heal 33% / smith 1 / skip)
-#   Floor 5 (6) = Elite (beat to clear the game)
-# Variable floors (1 and 3 in 0-indexed): 3 nodes each, chosen from
-# Combat / Event / Merchant by the weights below.
+#   Floor 0 (1) = Combat   (single entry node)
+#   Floor 4 (5) = Treasure (the middle — a *row* of chests, one roughly per
+#                 branch, so paths don't all funnel through one node)
+#   Floor 6 (7) = Rest     (heal 33% / smith 1 / skip, just before the boss)
+#   Floor 7 (8) = Elite    (the boss — beat to clear the game)
+# Variable floors (1, 2, 3, 5 in 0-indexed): 2-4 nodes each, chosen from
+# Combat / Event / Merchant / Rest by the weights below.
 #
-# Connections: every node in floor N links to every node in floor N+1.
-# That keeps the data simple — the only meaningful choice within a
-# variable floor is which TYPE of node to visit; routing back to the
-# fixed singleton above always works.
+# Connections are branching rather than a full cross: each node links to a
+# node roughly above it in the next floor, sometimes forking to a neighbour.
+# Every next-floor node is guaranteed at least one incoming edge, so the map
+# is always traversable, while the partial wiring creates real route choices
+# (which the old "everything connects to everything" layout lacked).
 
 enum NodeType { COMBAT, EVENT, REST, MERCHANT, TREASURE, ELITE }
 
-const FLOOR_COUNT := 6
-const VARIABLE_FLOOR_NODES := 3
+const FLOOR_COUNT := 8
+# The treasure floor is multi-node (a chest per branch, STS-style) so the map's
+# routes stay distinct through the middle instead of converging on one chest.
+const TREASURE_FLOOR := 4
+# Variable floors (and the treasure row) fan out across a random number of
+# columns in this range.
+const VARIABLE_NODES_MIN := 2
+const VARIABLE_NODES_MAX := 4
 
-# Non-fixed floor type weights (sum = 100). Matches the 60/25/15 mix
-# we settled on in design.
-const VARIABLE_WEIGHT_COMBAT := 60
-const VARIABLE_WEIGHT_EVENT := 25
-const VARIABLE_WEIGHT_MERCHANT := 15
+# Non-fixed floor type weights (sum = 100). A little Rest sprinkled into the
+# mix on top of the old Combat / Event / Merchant spread.
+const VARIABLE_WEIGHT_COMBAT := 55
+const VARIABLE_WEIGHT_EVENT := 22
+const VARIABLE_WEIGHT_MERCHANT := 13
+const VARIABLE_WEIGHT_REST := 10
+
+# Chance a node forks a second edge to a neighbouring column in the next floor.
+const BRANCH_CHANCE := 0.45
 
 # Each map node is a Dictionary:
 # {
@@ -50,28 +62,73 @@ func generate(rng: RandomNumberGenerator) -> void:
 	var next_id := 0
 	for f in range(FLOOR_COUNT):
 		var nodes: Array = []
-		var fixed_type: int = _fixed_floor_type(f)
-		if fixed_type != -1:
-			var node: Dictionary = _make_node(next_id, fixed_type, f, 1)
-			next_id += 1
-			nodes.append(node)
-			nodes_by_id[node.id] = node
-		else:
-			for col in range(VARIABLE_FLOOR_NODES):
-				var t: int = _pick_variable_type(rng)
-				var node: Dictionary = _make_node(next_id, t, f, col)
+		if f == TREASURE_FLOOR:
+			# A row of chests — one roughly per branch — so different paths each
+			# reach their own treasure instead of merging on a single node.
+			var col_count: int = rng.randi_range(VARIABLE_NODES_MIN, VARIABLE_NODES_MAX)
+			for col in range(col_count):
+				var node: Dictionary = _make_node(next_id, NodeType.TREASURE, f, col)
 				next_id += 1
 				nodes.append(node)
 				nodes_by_id[node.id] = node
+		else:
+			var fixed_type: int = _fixed_floor_type(f)
+			if fixed_type != -1:
+				var node: Dictionary = _make_node(next_id, fixed_type, f, 0)
+				next_id += 1
+				nodes.append(node)
+				nodes_by_id[node.id] = node
+			else:
+				var col_count: int = rng.randi_range(VARIABLE_NODES_MIN, VARIABLE_NODES_MAX)
+				for col in range(col_count):
+					var t: int = _pick_variable_type(rng)
+					var node: Dictionary = _make_node(next_id, t, f, col)
+					next_id += 1
+					nodes.append(node)
+					nodes_by_id[node.id] = node
 		floors.append(nodes)
 
-	# Wire connections (full cross between adjacent floors).
+	# Branching connections between adjacent floors.
 	for f in range(FLOOR_COUNT - 1):
-		var cur_floor: Array = floors[f]
-		var next_floor: Array = floors[f + 1]
+		_connect_floors(floors[f], floors[f + 1], rng)
+
+# Wires one floor to the next with a branching (not full-cross) pattern.
+# Funnels through single-node floors trivially; otherwise maps each node to a
+# column roughly above it, optionally forks a neighbour, then back-fills so no
+# next-floor node is left unreachable.
+func _connect_floors(cur_floor: Array, next_floor: Array, rng: RandomNumberGenerator) -> void:
+	var an: int = cur_floor.size()
+	var bn: int = next_floor.size()
+	if an == 0 or bn == 0:
+		return
+	if bn == 1:
 		for node in cur_floor:
-			for next_node in next_floor:
-				node.connections.append(next_node.id)
+			_add_edge(node, next_floor[0])
+		return
+	if an == 1:
+		for nb in next_floor:
+			_add_edge(cur_floor[0], nb)
+		return
+	var has_incoming := {}
+	for i in range(an):
+		var center: int = int(round(float(i) * (bn - 1) / float(an - 1)))
+		_add_edge(cur_floor[i], next_floor[center])
+		has_incoming[center] = true
+		if rng.randf() < BRANCH_CHANCE:
+			var dir: int = 1 if rng.randf() < 0.5 else -1
+			var neighbour: int = clampi(center + dir, 0, bn - 1)
+			if neighbour != center:
+				_add_edge(cur_floor[i], next_floor[neighbour])
+				has_incoming[neighbour] = true
+	# Back-fill any next-floor column nobody reached yet.
+	for j in range(bn):
+		if not has_incoming.has(j):
+			var ai: int = int(round(float(j) * (an - 1) / float(bn - 1)))
+			_add_edge(cur_floor[ai], next_floor[j])
+
+func _add_edge(node: Dictionary, target: Dictionary) -> void:
+	if not node.connections.has(target.id):
+		node.connections.append(target.id)
 
 func _make_node(id: int, type: int, fl: int, col: int) -> Dictionary:
 	return {
@@ -80,13 +137,15 @@ func _make_node(id: int, type: int, fl: int, col: int) -> Dictionary:
 	}
 
 func _fixed_floor_type(f: int) -> int:
-	# Returns -1 for the variable floors (1 and 3).
-	match f:
-		0: return NodeType.COMBAT
-		2: return NodeType.TREASURE
-		4: return NodeType.REST
-		5: return NodeType.ELITE
-		_: return -1
+	# Single-node fixed floors. The treasure floor (a multi-node row) is built
+	# separately in generate(); variable floors return -1.
+	if f == 0:
+		return NodeType.COMBAT
+	if f == 6:
+		return NodeType.REST
+	if f == FLOOR_COUNT - 1:
+		return NodeType.ELITE
+	return -1
 
 func _pick_variable_type(rng: RandomNumberGenerator) -> int:
 	var roll: int = rng.randi() % 100
@@ -94,7 +153,9 @@ func _pick_variable_type(rng: RandomNumberGenerator) -> int:
 		return NodeType.COMBAT
 	elif roll < VARIABLE_WEIGHT_COMBAT + VARIABLE_WEIGHT_EVENT:
 		return NodeType.EVENT
-	return NodeType.MERCHANT
+	elif roll < VARIABLE_WEIGHT_COMBAT + VARIABLE_WEIGHT_EVENT + VARIABLE_WEIGHT_MERCHANT:
+		return NodeType.MERCHANT
+	return NodeType.REST
 
 # ---------------------------------------------------------------------------
 # Navigation

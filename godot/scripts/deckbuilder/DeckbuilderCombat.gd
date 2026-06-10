@@ -76,6 +76,13 @@ var _targeting: bool = false
 # Following arrow shown while choosing an enemy target for a card.
 var _targeting_arrow: TargetingArrow = null
 
+# Drag-to-play state. _drag_card is the CardInstance being dragged; _drag_ghost
+# is a floating CardView clone that follows the cursor (mirrors the HTML build's
+# drag clone). Both null when no drag is in progress.
+var _drag_card: CardInstance = null
+var _drag_ghost: CardView = null
+var _drag_hover_enemy: EnemyView = null
+
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 # Status decay list and the Persistence-debuff set both live on Stats now
@@ -83,7 +90,9 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 # three combat modes.
 
 # UI refs
-@onready var _enemy_area: HBoxContainer = $Layout/EnemyArea
+@onready var _enemy_area: HBoxContainer = $Layout/Battlefield/EnemyArea
+@onready var _player_portrait: TextureRect = $Layout/Battlefield/PlayerArea/PlayerPortrait
+@onready var _player_name: Label = $Layout/Battlefield/PlayerArea/PlayerName
 @onready var _hand_area: HBoxContainer = $Layout/Bottom/HandRow/HandArea
 @onready var _end_turn_btn: Button = $Layout/Bottom/HandRow/EndTurnButton
 @onready var _energy_label: Label = $Layout/Bottom/StatusBar/EnergyLabel
@@ -117,6 +126,7 @@ func start_combat(spawn_list: Array) -> void:
 	# Register the live context so the backpack can fire consumables into
 	# this fight; the player CombatActor is the use target.
 	GameState.set_combat_context(self, player)
+	_build_player_portrait()
 	_build_enemy_views()
 	turn = 0
 	max_energy = GameState.max_energy
@@ -125,6 +135,18 @@ func start_combat(spawn_list: Array) -> void:
 	_fire_item_triggers("combat_started")
 	_fire_power_triggers("combat_started")
 	_start_player_turn()
+
+# Shows the player character's full art on the left of the battlefield, facing
+# the enemy row. Pulls the portrait off the chosen CharacterData.
+func _build_player_portrait() -> void:
+	if _player_portrait == null:
+		return
+	var cd: CharacterData = Data.get_character(GameState.character_id)
+	if cd != null:
+		_player_portrait.texture = cd.portrait if cd.portrait != null else cd.icon
+		_player_name.text = cd.display_name
+	else:
+		_player_name.text = "You"
 
 func _build_enemy_views() -> void:
 	for child in _enemy_area.get_children():
@@ -538,6 +560,99 @@ func _cancel_targeting() -> void:
 	if _targeting_arrow != null:
 		_targeting_arrow.stop()
 	_refresh_ui()
+
+# ------------------------------------------------------------------
+# Drag-to-play — press a card and drag it onto the field. Non-targeting
+# cards play when dropped anywhere outside the hand; targeted cards only
+# play when dropped on a live enemy. Mirrors the HTML build's drag flow.
+# ------------------------------------------------------------------
+
+func _on_card_drag_started(card: CardInstance) -> void:
+	if phase != Phase.PLAYER:
+		return
+	if card.get_cost() > energy:
+		GameLog.add("Not enough energy for %s." % card.get_display_name(), Color(0.9, 0.7, 0.3))
+		return
+	# Drag and click-targeting are mutually exclusive; drop any active pick.
+	_cancel_targeting()
+	_drag_card = card
+	# Dim the source card in hand while its ghost is out on the field.
+	for v in _hand_views:
+		if v.card == card:
+			v.modulate = Color(1, 1, 1, 0.3)
+	# Floating clone that tracks the cursor.
+	_drag_ghost = CardView.new()
+	add_child(_drag_ghost)
+	_drag_ghost.setup(card)
+	_drag_ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_drag_ghost.modulate = Color(1, 1, 1, 0.9)
+	_drag_ghost.z_index = 200
+	# Targeted cards get the aim arrow + lit-up enemy row.
+	if card.wants_target():
+		if _targeting_arrow != null:
+			_targeting_arrow.start(_card_arrow_origin(card))
+		for view in _enemy_views:
+			view.set_targetable(true)
+	_update_drag(get_global_mouse_position())
+
+func _update_drag(pos: Vector2) -> void:
+	if _drag_ghost != null:
+		_drag_ghost.global_position = pos - Vector2(CardView.CARD_W, CardView.CARD_H) * 0.5
+	# Highlight whichever live enemy sits under the cursor.
+	var hovered: EnemyView = _enemy_view_at(pos)
+	if hovered != _drag_hover_enemy:
+		if _drag_hover_enemy != null and is_instance_valid(_drag_hover_enemy):
+			_drag_hover_enemy.modulate = Color.WHITE
+		_drag_hover_enemy = hovered
+		if hovered != null:
+			hovered.modulate = Color(1.3, 1.3, 1.3)
+
+func _finish_drag(pos: Vector2) -> void:
+	var card := _drag_card
+	_clear_drag_visuals()
+	if card == null or phase != Phase.PLAYER or not (card in hand):
+		return
+	if card.get_cost() > energy:
+		return
+	if card.wants_target():
+		# Targeted: only resolves when dropped on a live enemy.
+		var view: EnemyView = _enemy_view_at(pos)
+		if view != null:
+			var idx: int = _enemy_views.find(view)
+			if idx >= 0 and idx < enemies.size() and enemies[idx].is_alive():
+				_resolve_card(card, enemies[idx])
+	else:
+		# Non-targeting: plays anywhere except dropped back onto the hand.
+		if _hand_area != null and _hand_area.get_global_rect().has_point(pos):
+			return
+		_resolve_card(card, null)
+
+func _cancel_drag() -> void:
+	_clear_drag_visuals()
+
+func _clear_drag_visuals() -> void:
+	if _drag_ghost != null:
+		_drag_ghost.queue_free()
+		_drag_ghost = null
+	if _drag_hover_enemy != null and is_instance_valid(_drag_hover_enemy):
+		_drag_hover_enemy.modulate = Color.WHITE
+	_drag_hover_enemy = null
+	if _targeting_arrow != null:
+		_targeting_arrow.stop()
+	_drag_card = null
+	# Restores dimmed hand-card modulate + clears enemy targetable highlight.
+	_refresh_ui()
+
+func _enemy_view_at(pos: Vector2) -> EnemyView:
+	for i in range(_enemy_views.size()):
+		var view: EnemyView = _enemy_views[i]
+		if not is_instance_valid(view):
+			continue
+		if i >= enemies.size() or not enemies[i].is_alive():
+			continue
+		if view.get_global_rect().has_point(pos):
+			return view
+	return null
 
 func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	energy -= card.get_cost()
@@ -1345,6 +1460,7 @@ func _refresh_ui() -> void:
 	while _hand_views.size() < hand.size():
 		var view := CardView.new()
 		view.play_requested.connect(_try_play_card)
+		view.drag_started.connect(_on_card_drag_started)
 		# add_child first so _ready builds the child controls before setup().
 		_hand_area.add_child(view)
 		_hand_views.append(view)
@@ -1361,6 +1477,18 @@ func _refresh_ui() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# Drag-to-play takes priority: while a card is being dragged, follow the
+	# cursor and resolve / cancel on release.
+	if _drag_card != null:
+		if event is InputEventMouseMotion:
+			_update_drag(event.global_position)
+		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+			_finish_drag(event.global_position)
+		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+			_cancel_drag()
+		elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+			_cancel_drag()
+		return
 	# Right-click or ESC cancels targeting.
 	if not _targeting:
 		return

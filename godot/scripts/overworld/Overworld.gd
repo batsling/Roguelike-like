@@ -13,8 +13,11 @@ extends Node2D
 # the defeat reset.
 
 const TILE_SIZE := 32
-const GRID_W := 30
-const GRID_H := 18
+# Grid sized to fill the 1280x720 viewport so the walkable floor reaches every
+# edge of the screen (40*32 = 1280, 22*32 = 704) — no bare background showing
+# through around the play area.
+const GRID_W := 40
+const GRID_H := 22
 
 const PORTAL_SCENE := preload("res://scenes/overworld/Portal.tscn")
 
@@ -55,8 +58,10 @@ const SECTION_GOLD_BY_TIER := [10, 15, 25, 35]
 
 func _ready() -> void:
 	_rng.randomize()
-	_floor_bg.size = Vector2(GRID_W * TILE_SIZE, GRID_H * TILE_SIZE)
+	_fit_background()
+	get_viewport().size_changed.connect(_fit_background)
 	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
+	_apply_player_avatar()
 	_player.moved.connect(_on_player_moved)
 	GameState.phase = GameState.Phase.OVERWORLD
 	_spawn_portals_for_current_game()
@@ -66,6 +71,31 @@ func _ready() -> void:
 		var outcome := pending_combat_outcome
 		pending_combat_outcome = {}
 		call_deferred("_process_combat_outcome", outcome)
+
+# Stretch the floor so it always covers the whole viewport — never leaves the
+# bare window clear-colour (the "gray") showing past the grid.
+func _fit_background() -> void:
+	var vp: Vector2 = get_viewport_rect().size
+	_floor_bg.size = Vector2(
+		maxf(vp.x, GRID_W * TILE_SIZE),
+		maxf(vp.y, GRID_H * TILE_SIZE))
+
+# Swap the placeholder square marker for the chosen character's icon art so the
+# overworld avatar matches who you're playing.
+func _apply_player_avatar() -> void:
+	var avatar: TextureRect = _player.get_node_or_null("Avatar")
+	var square: ColorRect = _player.get_node_or_null("Sprite")
+	var cd: CharacterData = Data.get_character(GameState.character_id)
+	var tex: Texture2D = null
+	if cd != null:
+		tex = cd.icon if cd.icon != null else cd.portrait
+	if avatar != null and tex != null:
+		avatar.texture = tex
+		avatar.visible = true
+		if square != null:
+			square.visible = false
+	elif square != null:
+		square.visible = true
 
 # ------------------------------------------------------------------
 # Portal placement

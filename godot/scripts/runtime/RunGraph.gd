@@ -295,6 +295,29 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 		if not best.is_empty():
 			best_per_type[type_val] = best
 
+	# Guarantee three *distinct genres* on the panel. The strict pass above
+	# only keeps a type when it has a start inside the MIN..MAX path window;
+	# sparse graphs can leave us with fewer than three. For every type still
+	# missing, relax the path-length window and take the best-scoring reachable
+	# start of that genre so the player always gets three different-genre picks.
+	if best_per_type.size() < NUM_START_OPTIONS:
+		for type_val in TYPE_ORDER:
+			if best_per_type.has(type_val):
+				continue
+			var relaxed: Dictionary = {}
+			for g in eligible_starts:
+				if g.type != type_val or g.id == amulet.id:
+					continue
+				var d_from := bfs_distances(g.id)
+				if not d_from.has(amulet.id):
+					continue
+				var path_len: int = d_from[amulet.id]
+				var score := dag_branch_score_early(d_from, amulet.id, EARLY_LAYERS_FOR_SCORE, d_to_amulet)
+				if relaxed.is_empty() or score > int(relaxed.get("score", -1)):
+					relaxed = {"start": g, "score": score, "path_len": path_len}
+			if not relaxed.is_empty():
+				best_per_type[type_val] = relaxed
+
 	var ranked: Array = []
 	for type_val in TYPE_ORDER:
 		if best_per_type.has(type_val):

@@ -11,7 +11,9 @@ func _new_collection() -> Collection:
 
 func test_reference_tab_renders_statuses_and_addons() -> void:
 	var col := _new_collection()
-	assert_eq(col._tab, Collection.Tab.REFERENCE)
+	# Tab order is Items, Cards, Characters, Reference — Items is the default.
+	assert_eq(col._tab, Collection.Tab.ITEMS)
+	col._set_tab(Collection.Tab.REFERENCE)
 	assert_eq(ReferenceCatalog.STATUSES.size(), 19, "19 implemented statuses")
 	assert_eq(ReferenceCatalog.ADDONS.size(), 11, "11 implemented addons")
 	assert_eq(col._grid.get_child_count(), 19, "all status cards render")

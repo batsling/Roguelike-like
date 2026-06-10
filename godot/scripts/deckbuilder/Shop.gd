@@ -85,16 +85,30 @@ func _build_ui() -> void:
 	dim.color = Color(0, 0, 0, 0.65)
 	add_child(dim)
 
+	# Clamp the panel to the viewport so the header never spills off the top of
+	# the screen (the 772px design height is taller than a 720px window). When it
+	# doesn't fit, the inner ScrollContainer lets the content scroll instead.
+	var vp: Vector2 = get_viewport_rect().size
+	var panel_h: float = minf(PANEL_SIZE.y, vp.y - 24.0)
+	var panel_w: float = minf(PANEL_SIZE.x, vp.x - 24.0)
+
 	var panel := PanelContainer.new()
-	panel.size = PANEL_SIZE
-	panel.position = ((get_viewport_rect().size - PANEL_SIZE) / 2.0).round()
+	panel.custom_minimum_size = Vector2(panel_w, panel_h)
+	panel.size = Vector2(panel_w, panel_h)
+	panel.position = Vector2((vp.x - panel_w) / 2.0, maxf(12.0, (vp.y - panel_h) / 2.0)).round()
 	panel.add_theme_stylebox_override("panel",
 		_sb(Color(0.10, 0.09, 0.13, 0.98), Color(0.42, 0.33, 0.55, 0.9), 2, 14))
 	add_child(panel)
 
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
+
 	var root := VBoxContainer.new()
 	root.add_theme_constant_override("separation", 10)
-	panel.add_child(root)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.custom_minimum_size = Vector2(panel_w - 28.0, 0)
+	scroll.add_child(root)
 
 	# --- Header: shopkeeper title + live gold ---
 	var header := HBoxContainer.new()
