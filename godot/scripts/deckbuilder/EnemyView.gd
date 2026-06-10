@@ -71,8 +71,13 @@ func _build() -> void:
 	_portrait = TextureRect.new()
 	_portrait.position = Vector2(10, 42)
 	_portrait.size = PORTRAIT_BOX
+	_portrait.custom_minimum_size = PORTRAIT_BOX
+	# IGNORE_SIZE keeps the rect locked to PORTRAIT_BOX and scales the art to fit
+	# *inside* it (KEEP_ASPECT_CENTERED). FIT_WIDTH_PROPORTIONAL let tall sprites
+	# grow past the box and spill over the name / HP bar below.
 	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_portrait.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.clip_contents = true
 	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_portrait)
 

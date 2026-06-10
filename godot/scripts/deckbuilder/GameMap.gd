@@ -20,9 +20,9 @@ signal closed(was_victory: bool, target_game_id: StringName)
 
 # Layout constants — single-node fixed floors sit on the center column;
 # variable floors fan out across three columns.
-const FLOOR_TOP_Y := 80
-const FLOOR_STEP_Y := 100
-const COL_SPACING_X := 160
+const FLOOR_TOP_Y := 70
+const FLOOR_STEP_Y := 84
+const COL_SPACING_X := 150
 const CENTER_X := 640
 
 const COMBAT_SCENE := preload("res://scenes/deckbuilder/DeckbuilderCombat.tscn")

@@ -9,7 +9,14 @@ extends Control
 const CARD_W := 160
 const CARD_H := 220
 
+# Emitted on a plain click (no drag) — click-to-select / click-to-buy.
 signal play_requested(card: CardInstance)
+# Emitted once the press turns into a drag (cursor moved past the threshold).
+# DeckbuilderCombat takes over from here to follow the cursor and resolve the
+# drop; mirrors the HTML build's mousedown -> drag -> drop card flow.
+signal drag_started(card: CardInstance)
+
+const DRAG_THRESHOLD := 8.0
 
 var card: CardInstance = null
 
@@ -21,10 +28,14 @@ var _cost_label: Label
 var _name_label: Label
 var _type_label: Label
 var _desc_label: RichTextLabel
-var _click_area: Button
 
 var _selected: bool = false
 var _enabled: bool = true
+
+# Press/drag bookkeeping for distinguishing a click from a drag.
+var _pressing: bool = false
+var _dragging: bool = false
+var _press_pos: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(CARD_W, CARD_H)
@@ -109,13 +120,9 @@ func _build() -> void:
 	_desc_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_desc_label)
 
-	_click_area = Button.new()
-	_click_area.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_click_area.flat = true
-	_click_area.modulate = Color(1, 1, 1, 0)
-	_click_area.mouse_filter = Control.MOUSE_FILTER_STOP
-	_click_area.pressed.connect(_on_click)
-	add_child(_click_area)
+	# The card root itself captures mouse input (children are MOUSE_FILTER_IGNORE),
+	# so _gui_input drives both click-to-play and drag-to-play.
+	mouse_filter = Control.MOUSE_FILTER_STOP
 
 # ---------------------------------------------------------------------------
 
@@ -143,7 +150,9 @@ func set_selected(sel: bool) -> void:
 
 func set_enabled(can_play: bool) -> void:
 	_enabled = can_play
-	_click_area.disabled = not can_play
+	if not can_play:
+		_pressing = false
+		_dragging = false
 	modulate = Color(1, 1, 1, 1) if can_play else Color(0.6, 0.6, 0.65, 1)
 
 func _update_frame() -> void:
@@ -152,10 +161,27 @@ func _update_frame() -> void:
 	else:
 		_frame.color = Color(0.13, 0.13, 0.17, 1.0)
 
-func _on_click() -> void:
+# Distinguish a click from a drag: a left press that releases without the cursor
+# moving past DRAG_THRESHOLD is a click (play_requested); once it moves past the
+# threshold we hand off to the combat scene via drag_started.
+func _gui_input(event: InputEvent) -> void:
 	if not _enabled:
 		return
-	emit_signal("play_requested", card)
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_pressing = true
+			_dragging = false
+			_press_pos = event.global_position
+		else:
+			if _pressing and not _dragging:
+				emit_signal("play_requested", card)
+			_pressing = false
+			_dragging = false
+	elif event is InputEventMouseMotion and _pressing and not _dragging:
+		if event.global_position.distance_to(_press_pos) > DRAG_THRESHOLD:
+			_dragging = true
+			_pressing = false
+			emit_signal("drag_started", card)
 
 func _type_label_text(t: int) -> String:
 	# Mirror CardData.CardType: ATTACK=0, SKILL=1, POWER=2, DICE=3,
