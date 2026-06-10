@@ -403,9 +403,11 @@ func _handle_victory_for(game_id: StringName) -> void:
 
 	# Amulet reached -> win overlay; skip the play/verify + reward on the last
 	# floor (reaching it IS the win). Still rate it first — every beaten game
-	# gets a score/notes for the tier list.
+	# gets a score/notes for the tier list. Record the amulet win (also counts
+	# as a beat) for the lifetime stats.
 	if game_id == GameState.amulet_game_id:
 		GameState.phase = GameState.Phase.WIN
+		GameStats.record_amulet_win(game_id)
 		_show_rate_modal(game_id, _show_win_overlay)
 		return
 
@@ -664,6 +666,9 @@ func _add_question_row(panel: Panel, text: String, y: int, setter: Callable) -> 
 
 func _on_verification_yes() -> void:
 	GameLog.add("Verified.", Color(0.7, 1.0, 0.7))
+	# Only a verified beat counts toward the lifetime tally — skipping the real
+	# game (the other branch) deliberately doesn't.
+	GameStats.record_beaten(_pending_reward_game_id)
 	_apply_weapon_verification_rewards()
 	_resolve_perfect_game()
 	_close_verification()

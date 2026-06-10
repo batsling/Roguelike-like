@@ -189,22 +189,32 @@ func _build_unranked_row(game_ids: Array) -> Control:
 func _build_tile(game_id: StringName, tier_index: int) -> Control:
 	var gd: GameData = Data.get_game(game_id)
 	var rating := TierList.get_rating(game_id)
+	var beaten: int = GameStats.beaten_count(game_id)
+	var amulets: int = GameStats.amulet_wins(game_id)
 	var tile := Tile.new(self, game_id, tier_index)
-	tile.custom_minimum_size = Vector2(84, 84)
+	tile.custom_minimum_size = Vector2(84, 98)
 
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.12, 0.12, 0.15)
 	sb.set_corner_radius_all(4)
 	tile.add_theme_stylebox_override("panel", sb)
 
+	# A VBox is a Container (legal single child of PanelContainer) holding the
+	# cover above a beaten-count badge. All children IGNORE the mouse so the
+	# tile itself stays the drag source.
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 1)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tile.add_child(box)
+
 	if gd != null and gd.cover_image != null:
 		var tex := TextureRect.new()
 		tex.texture = gd.cover_image
 		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		tex.custom_minimum_size = Vector2(78, 78)
+		tex.custom_minimum_size = Vector2(78, 70)
 		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tile.add_child(tex)
+		box.add_child(tex)
 	else:
 		var name_lbl := Label.new()
 		name_lbl.text = gd.display_name if gd != null else String(game_id)
@@ -212,15 +222,26 @@ func _build_tile(game_id: StringName, tier_index: int) -> Control:
 		name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		name_lbl.add_theme_font_size_override("font_size", 11)
+		name_lbl.custom_minimum_size = Vector2(78, 70)
 		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tile.add_child(name_lbl)
+		box.add_child(name_lbl)
+
+	var badge := Label.new()
+	badge.text = ("⚔ %d  👑 %d" % [beaten, amulets]) if amulets > 0 else ("⚔ %d" % beaten)
+	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	badge.add_theme_font_size_override("font_size", 10)
+	badge.add_theme_color_override("font_color",
+		Color(1.0, 0.85, 0.45) if beaten > 0 or amulets > 0 else Color(0.5, 0.5, 0.55))
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(badge)
 
 	var display_name := gd.display_name if gd != null else String(game_id)
+	var stat_line := "Beaten: %d   Amulet wins: %d" % [beaten, amulets]
 	if rating.is_empty():
-		tile.tooltip_text = "%s\n(unrated)" % display_name
+		tile.tooltip_text = "%s\n%s\n(unrated)" % [display_name, stat_line]
 	else:
-		tile.tooltip_text = "%s\nScore: %d/10\n\n%s" % [
-			display_name, int(rating.get("score", 0)), String(rating.get("notes", ""))
+		tile.tooltip_text = "%s\n%s\nScore: %d/10\n\n%s" % [
+			display_name, stat_line, int(rating.get("score", 0)), String(rating.get("notes", ""))
 		]
 	return tile
 
