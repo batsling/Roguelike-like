@@ -4,7 +4,8 @@ extends RefCounted
 # Per-game mini-map for deckbuilder floors. 8 floors deep, STS-shaped.
 # Fixed floors:
 #   Floor 0 (1) = Combat   (single entry node)
-#   Floor 4 (5) = Treasure (the middle — pick 1 of 3 items)
+#   Floor 4 (5) = Treasure (the middle — a *row* of chests, one roughly per
+#                 branch, so paths don't all funnel through one node)
 #   Floor 6 (7) = Rest     (heal 33% / smith 1 / skip, just before the boss)
 #   Floor 7 (8) = Elite    (the boss — beat to clear the game)
 # Variable floors (1, 2, 3, 5 in 0-indexed): 2-4 nodes each, chosen from
@@ -19,7 +20,11 @@ extends RefCounted
 enum NodeType { COMBAT, EVENT, REST, MERCHANT, TREASURE, ELITE }
 
 const FLOOR_COUNT := 8
-# Variable floors fan out across a random number of columns in this range.
+# The treasure floor is multi-node (a chest per branch, STS-style) so the map's
+# routes stay distinct through the middle instead of converging on one chest.
+const TREASURE_FLOOR := 4
+# Variable floors (and the treasure row) fan out across a random number of
+# columns in this range.
 const VARIABLE_NODES_MIN := 2
 const VARIABLE_NODES_MAX := 4
 
@@ -57,20 +62,30 @@ func generate(rng: RandomNumberGenerator) -> void:
 	var next_id := 0
 	for f in range(FLOOR_COUNT):
 		var nodes: Array = []
-		var fixed_type: int = _fixed_floor_type(f)
-		if fixed_type != -1:
-			var node: Dictionary = _make_node(next_id, fixed_type, f, 0)
-			next_id += 1
-			nodes.append(node)
-			nodes_by_id[node.id] = node
-		else:
+		if f == TREASURE_FLOOR:
+			# A row of chests — one roughly per branch — so different paths each
+			# reach their own treasure instead of merging on a single node.
 			var col_count: int = rng.randi_range(VARIABLE_NODES_MIN, VARIABLE_NODES_MAX)
 			for col in range(col_count):
-				var t: int = _pick_variable_type(rng)
-				var node: Dictionary = _make_node(next_id, t, f, col)
+				var node: Dictionary = _make_node(next_id, NodeType.TREASURE, f, col)
 				next_id += 1
 				nodes.append(node)
 				nodes_by_id[node.id] = node
+		else:
+			var fixed_type: int = _fixed_floor_type(f)
+			if fixed_type != -1:
+				var node: Dictionary = _make_node(next_id, fixed_type, f, 0)
+				next_id += 1
+				nodes.append(node)
+				nodes_by_id[node.id] = node
+			else:
+				var col_count: int = rng.randi_range(VARIABLE_NODES_MIN, VARIABLE_NODES_MAX)
+				for col in range(col_count):
+					var t: int = _pick_variable_type(rng)
+					var node: Dictionary = _make_node(next_id, t, f, col)
+					next_id += 1
+					nodes.append(node)
+					nodes_by_id[node.id] = node
 		floors.append(nodes)
 
 	# Branching connections between adjacent floors.
@@ -122,11 +137,10 @@ func _make_node(id: int, type: int, fl: int, col: int) -> Dictionary:
 	}
 
 func _fixed_floor_type(f: int) -> int:
-	# Returns -1 for the variable floors (1, 2, 3, 5).
+	# Single-node fixed floors. The treasure floor (a multi-node row) is built
+	# separately in generate(); variable floors return -1.
 	if f == 0:
 		return NodeType.COMBAT
-	if f == 4:
-		return NodeType.TREASURE
 	if f == 6:
 		return NodeType.REST
 	if f == FLOOR_COUNT - 1:
