@@ -1,12 +1,12 @@
-[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_elemental_survivors"]
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_noobs_want_to_live"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
-[ext_resource type="Texture2D" path="res://assets/games/elemental-survivors.jpg" id="2_cover"]
+[ext_resource type="Texture2D" path="res://assets/games/noobs-want-to-live.png" id="2_cover"]
 
 [resource]
 script = ExtResource("1_game")
-id = &"elemental_survivors"
-display_name = "Elemental Survivors"
+id = &"noobs_want_to_live"
+display_name = "Noobs Want to Live"
 year = 2023
 type = 0
 games_influenced = Array[StringName]([])
@@ -17,4 +17,4 @@ special_effects = PackedStringArray()
 cover_image = ExtResource("2_cover")
 owned = true
 file_location = ""
-steam_page = "https://store.steampowered.com/app/2217740/Kitty_Survivors_Rogues_of_Catmere/"
+steam_page = "https://store.steampowered.com/app/1737340/Noobs_Want_to_Live/"
