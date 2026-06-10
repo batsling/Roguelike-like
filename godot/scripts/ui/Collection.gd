@@ -21,6 +21,11 @@ extends Control
 enum Tab { REFERENCE, ITEMS, CHARACTERS, CARDS, GAMES }
 
 const GAME_TYPE_NAMES := ["Action", "Strategy", "Deckbuilder", "Traditional"]
+# Completion filter for the Games tab: [label, key]. Keys drive _populate_games.
+const GAME_STATUS_OPTIONS := [
+	["All", "all"], ["Completed", "completed"],
+	["Not Completed", "uncompleted"], ["Amulet Won", "amulet"],
+]
 const ITEM_RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 const ITEM_KIND_NAMES := ["Passive", "Triggered", "Usable", "Weapon", "Scaling", "Pickup"]
 const CARD_TYPE_NAMES := ["Attack", "Skill", "Power", "Dice", "Status", "Curse", "Training"]
@@ -44,6 +49,7 @@ var _ref_subtab: String = "statuses"
 var _search := {"reference": "", "items": "", "characters": "", "cards": "", "games": ""}
 var _games_sort: String = "name"      # name | year | beaten
 var _games_type: int = -1             # -1 = all, else GameType index
+var _games_status: String = "all"     # all | completed | uncompleted | amulet
 var _items_sort: String = "name"      # name | rarity | kind
 var _items_type: int = -1             # -1 = all, else ItemKind index
 var _char_sort: String = "name"       # name | game
@@ -376,6 +382,15 @@ func _build_games() -> void:
 		_games_type = type_opt.get_item_id(idx)
 		_refresh())
 	row.add_child(type_opt)
+	var status_opt := OptionButton.new()
+	for i in GAME_STATUS_OPTIONS.size():
+		status_opt.add_item(GAME_STATUS_OPTIONS[i][0], i)
+		if GAME_STATUS_OPTIONS[i][1] == _games_status:
+			status_opt.select(i)
+	status_opt.item_selected.connect(func(idx):
+		_games_status = GAME_STATUS_OPTIONS[status_opt.get_item_id(idx)][1]
+		_refresh())
+	row.add_child(status_opt)
 	_add_count_label(row)
 	_grid_and_detail()
 	_populate_games()
@@ -389,6 +404,16 @@ func _populate_games() -> void:
 			continue
 		if _games_type >= 0 and int(g.type) != _games_type:
 			continue
+		match _games_status:
+			"completed":
+				if GameStats.beaten_count(g.id) <= 0:
+					continue
+			"uncompleted":
+				if GameStats.beaten_count(g.id) > 0:
+					continue
+			"amulet":
+				if GameStats.amulet_wins(g.id) <= 0:
+					continue
 		if term != "" and not term in g.display_name.to_lower():
 			continue
 		list.append(g)
