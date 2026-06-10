@@ -46,6 +46,7 @@ var _verification_modal: Control = null
 var _dash_modal: Control = null
 var _map_view: RunMapView = null
 var _section_reward_layer: CanvasLayer = null
+var _rate_modal: RateGameModal = null
 # Game whose section reward is pending — set when a victory is handed to us,
 # consumed when the item reward opens after the verification screen.
 var _pending_reward_game_id: StringName = &""
@@ -401,10 +402,11 @@ func _handle_victory_for(game_id: StringName) -> void:
 		GameLog.add("Defeated %s." % gd.display_name, Color(0.6, 1.0, 0.6))
 
 	# Amulet reached -> win overlay; skip the play/verify + reward on the last
-	# floor (reaching it IS the win).
+	# floor (reaching it IS the win). Still rate it first — every beaten game
+	# gets a score/notes for the tier list.
 	if game_id == GameState.amulet_game_id:
 		GameState.phase = GameState.Phase.WIN
-		_show_win_overlay()
+		_show_rate_modal(game_id, _show_win_overlay)
 		return
 
 	# The item reward is granted after the verification screen, so remember
@@ -665,9 +667,11 @@ func _on_verification_yes() -> void:
 	_apply_weapon_verification_rewards()
 	_resolve_perfect_game()
 	_close_verification()
-	# Level-up can open its own (async) reward UI, so we hand it a callback
-	# that finishes verification once the whole level-up chain resolves.
-	_resolve_level_up(_after_verification)
+	# Rate the game right after the play/verify screen, then resume. Level-up
+	# can open its own (async) reward UI, so we hand it a callback that finishes
+	# verification once the whole level-up chain resolves.
+	_show_rate_modal(_pending_reward_game_id, func() -> void:
+		_resolve_level_up(_after_verification))
 
 func _apply_weapon_verification_rewards() -> void:
 	# Walk inventory weapons; for each Yes, dispatch verification_effects
@@ -815,12 +819,34 @@ func _on_verification_skip() -> void:
 	if GameState.is_dead():
 		_handle_defeat()
 		return
-	_after_verification()
+	_show_rate_modal(_pending_reward_game_id, _after_verification)
 
 func _close_verification() -> void:
 	if _verification_modal != null:
 		_verification_modal.queue_free()
 		_verification_modal = null
+
+# Mandatory rate-out-of-10 + notes prompt, shown after the play/verify screen
+# each time a game is beaten. Records the rating in the cross-run TierList (also
+# dropping the game into the Unranked tray the first time) and then runs
+# `continuation` to resume the post-victory flow.
+func _show_rate_modal(game_id: StringName, continuation: Callable) -> void:
+	if game_id == &"":
+		continuation.call()
+		return
+	if _rate_modal != null:
+		return
+	var gd: GameData = Data.get_game(game_id)
+	var modal := RateGameModal.new()
+	modal.setup(game_id, gd)
+	modal.submitted.connect(func(score: int, notes: String) -> void:
+		TierList.set_rating(game_id, score, notes)
+		if _rate_modal != null:
+			_rate_modal.queue_free()
+			_rate_modal = null
+		continuation.call())
+	_rate_modal = modal
+	add_child(modal)
 
 func _after_verification() -> void:
 	_save_run()

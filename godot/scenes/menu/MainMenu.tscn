@@ -90,6 +90,12 @@ layout_mode = 2
 text = "Collection"
 custom_minimum_size = Vector2(320, 44)
 
+[node name="TierListBtn" type="Button" parent="Center/Panel/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "🏆 Tier List"
+custom_minimum_size = Vector2(320, 44)
+
 [node name="SettingsBtn" type="Button" parent="Center/Panel/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
