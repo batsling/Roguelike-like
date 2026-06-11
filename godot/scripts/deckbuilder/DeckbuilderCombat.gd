@@ -38,6 +38,11 @@ var hand: Array[CardInstance] = []
 var discard_pile: Array[CardInstance] = []
 var exhaust_pile: Array[CardInstance] = []
 
+# Actions the player has taken this turn (a card play). Drives curse cards that
+# scale "per action" (Regret) and is reset each turn. In deckbuilder an action
+# == a card resolved; the translators map this to casts/moves in the other modes.
+var _actions_this_turn: int = 0
+
 # Persistent in-combat modifiers registered by `boost_cards` effects.
 # Each entry: {match_tag, match_type, match_id, stat, value}. Consulted
 # in `_resolve_card` so the bonus folds into the effect's value before
@@ -235,6 +240,7 @@ func _start_player_turn() -> void:
 	turn += 1
 	phase = Phase.PLAYER
 	energy = max_energy
+	_actions_this_turn = 0
 	# Ice Cream: pour last turn's leftover energy on top (may exceed max).
 	if _energy_carryover > 0:
 		energy += _energy_carryover
@@ -264,6 +270,9 @@ func _on_end_turn() -> void:
 	if phase != Phase.PLAYER:
 		return
 	_cancel_targeting()
+	# Curse cards still in hand fire their end-of-turn effects (Doubt -> Weak,
+	# Decay -> self-dmg, Regret -> lose HP per action) BEFORE the hand discards.
+	_fire_curse_triggers("eot")
 	# Ice Cream: bank whatever energy is still unspent for next turn.
 	if energy > 0 and GameState.has_energy_carryover_item():
 		_energy_carryover = energy
@@ -612,6 +621,9 @@ func _finish_drag(pos: Vector2) -> void:
 	_clear_drag_visuals()
 	if card == null or phase != Phase.PLAYER or not (card in hand):
 		return
+	# Unplayable cards (curses) sit in hand but can't be played manually.
+	if card.data != null and card.data.unplayable:
+		return
 	if card.get_cost() > energy:
 		return
 	if card.wants_target():
@@ -683,6 +695,12 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	var replays: int = CardMods.replay_count(card.data)
 	for _i in replays:
 		replay_card_effects(card, target_enemy)
+
+	# A resolved card is one "action" this turn. Count it, then fire any
+	# on_action curse cards in hand (Pain: lose HP when you play another card).
+	# Curse cards are unplayable, so `card` is never itself a curse here.
+	_actions_this_turn += 1
+	_fire_curse_triggers("on_action")
 
 	# Powers exhaust on play; cards with the exhaust flag exhaust; else discard.
 	if card.data.exhaust or card.is_power():
@@ -759,6 +777,54 @@ func replay_card_effects(card: CardInstance, target_enemy) -> void:
 	_apply_card_effects(card, tgt)
 	GameLog.add("%s replays!" % card.data.display_name, Color(0.7, 1.0, 0.7))
 	_check_combat_end()
+
+# ------------------------------------------------------------------
+# Curse cards (CardData.triggers)
+# ------------------------------------------------------------------
+
+# Fires the triggered effects of every curse card currently in hand whose `on`
+# matches `trigger` ("eot" / "on_action"). The owning curse is both source and
+# target — these are self-inflicted (target "self"). `per: "action"` effects
+# (Regret) scale by the actions taken this turn.
+func _fire_curse_triggers(trigger: String) -> void:
+	if hand.is_empty():
+		return
+	# Snapshot: a fired effect (Pride's conjure) can mutate the hand.
+	var snapshot: Array = hand.duplicate()
+	for c in snapshot:
+		if c == null or c.data == null or c.data.triggers.is_empty():
+			continue
+		if not (c in hand):
+			continue
+		for trig in c.data.triggers:
+			if String(trig.get("on", "")) != trigger:
+				continue
+			for raw in trig.get("effects", []):
+				if not (raw is Dictionary):
+					continue
+				var effect: Dictionary = _resolve_curse_effect(raw)
+				if effect.is_empty():
+					continue
+				EffectSystem.apply(effect, {
+					"source": player, "target": player, "scene": self, "card": c,
+				})
+	_refresh_ui()
+
+# Resolves curse-effect placeholders that depend on live combat state. Today
+# that's `per: "action"` (Regret): the loss scales by actions taken this turn.
+# A zero multiplier yields an empty dict so the caller skips the no-op hit.
+func _resolve_curse_effect(effect: Dictionary) -> Dictionary:
+	if String(effect.get("per", "")) != "action":
+		return effect
+	var n: int = _actions_this_turn
+	if n <= 0:
+		return {}
+	var out: Dictionary = effect.duplicate()
+	out.erase("per")
+	out["value"] = int(effect.get("value", 1)) * n
+	GameLog.add("Regret: %d action(s) — lose %d HP." % [n, int(out["value"])],
+		Color(0.9, 0.6, 0.7))
+	return out
 
 # ------------------------------------------------------------------
 # Effect callbacks (invoked by EffectSystem handlers via ctx.scene)

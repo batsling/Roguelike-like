@@ -115,8 +115,11 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	# dumping all three into the same actor.
 	var hits: int = maxi(1, int(effect.get("hits", 1)))
 	var indiscriminate: bool = bool(effect.get("indiscriminate", false))
+	# `target: "self"` routes the hit back onto the source (curse cards: Decay
+	# deals to the player), mirroring how status/block/heal resolve "self".
+	var self_target: bool = String(effect.get("target", "")) == "self"
 	for _i in hits:
-		var tgt: Variant = ctx.get("target")
+		var tgt: Variant = ctx.get("source") if self_target else ctx.get("target")
 		if indiscriminate:
 			tgt = _pick_random_enemy(ctx.get("scene"))
 			if tgt == null:

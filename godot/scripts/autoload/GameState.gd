@@ -251,6 +251,42 @@ enum Phase { MENU, OVERWORLD, EVENT, COMBAT, DEAD, ESCAPE, WIN }
 var phase: Phase = Phase.MENU
 
 # ---------------------------------------------------------------------------
+# Curse-card lifecycles (run scope)
+# ---------------------------------------------------------------------------
+
+func _ready() -> void:
+	# GameState is the FIRST autoload, so TriggerBus doesn't exist yet during
+	# _ready. Defer the connect until every autoload has been added.
+	_connect_lifecycle_hooks.call_deferred()
+
+func _connect_lifecycle_hooks() -> void:
+	# Guilty (destroy_after_games) and any future game-count lifecycle ticks
+	# fire on game_beaten — run-scope, so it counts in every combat mode.
+	if not TriggerBus.game_beaten.is_connected(_on_game_beaten):
+		TriggerBus.game_beaten.connect(_on_game_beaten)
+
+func _on_game_beaten(_ctx: Dictionary) -> void:
+	_tick_card_lifecycles()
+
+# Bumps each held curse card's games-beaten counter and drops any that have
+# reached their destroy_after_games threshold (Guilty -> 3). Iterates back-to-
+# front so removals don't invalidate the index.
+func _tick_card_lifecycles() -> void:
+	var removed: bool = false
+	for i in range(deck.size() - 1, -1, -1):
+		var ci = deck[i]
+		if not (ci is CardInstance) or ci.data == null or ci.data.destroy_after_games < 0:
+			continue
+		ci.games_beaten_held += 1
+		if ci.games_beaten_held >= ci.data.destroy_after_games:
+			deck.remove_at(i)
+			removed = true
+			Notifications.notify("%s crumbled away." % ci.data.display_name,
+				Color(0.7, 0.9, 0.7))
+	if removed:
+		emit_signal("deck_changed")
+
+# ---------------------------------------------------------------------------
 # Mutation API — UI and combat scenes go through these so signals fire.
 # ---------------------------------------------------------------------------
 
@@ -956,6 +992,11 @@ func remove_card_at(deck_index: int) -> void:
 	if deck_index < 0 or deck_index >= deck.size():
 		return
 	var card = deck[deck_index]
+	# Eternal cards (Greed) can never be removed from the deck.
+	if card is CardInstance and card.data != null and card.data.eternal:
+		Notifications.notify("%s is Eternal — it can't be removed." % card.data.display_name,
+			Color(0.85, 0.6, 0.9))
+		return
 	deck.remove_at(deck_index)
 	var weapon_id: int = 0
 	if card is CardInstance:
