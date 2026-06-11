@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_regret"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"regret"
+display_name = "Regret"
+type = 5
+rarity = 0
+cost = 0
+description = "Unplayable. At the end of your turn, if this is in Hand, Lose 1 Health for each card in Hand."
+effects = []
+tags = PackedStringArray("randomcurse")
+source_game = "Slay the Spire"
+can_upgrade = false
+unplayable = true

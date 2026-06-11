@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_pride"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"pride"
+display_name = "Pride"
+type = 5
+rarity = 0
+cost = 1
+description = "Innate. At the end of your turn, put a copy of this card on top of your draw pile. Exhaust."
+effects = []
+tags = PackedStringArray("randomcurse")
+source_game = "Slay the Spire"
+can_upgrade = false
+exhaust = true
+innate = true

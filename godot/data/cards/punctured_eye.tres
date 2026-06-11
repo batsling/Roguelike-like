@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_punctured_eye"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"punctured_eye"
+display_name = "Punctured Eye"
+type = 5
+rarity = 0
+cost = 0
+description = "Unplayable. At the end of your turn, if this is in Hand, Gain 1 Blind."
+effects = []
+tags = PackedStringArray()
+source_game = "Mewgenics"
+can_upgrade = false
+unplayable = true

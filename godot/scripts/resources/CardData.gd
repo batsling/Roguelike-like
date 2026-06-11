@@ -42,6 +42,24 @@ enum Rarity { STARTER, COMMON, UNCOMMON, RARE, LEGENDARY }
 @export var innate: bool = false          # always in starting hand
 @export var retain: bool = false          # not discarded at end of turn
 @export var unplayable: bool = false      # cannot be played manually
+@export var eternal: bool = false         # cannot be removed from the deck (curse cards)
+
+# Triggered effects — UNLIKE `effects` (which resolve when the card is PLAYED),
+# these fire on a trigger while the card merely sits in hand. Mirrors ItemData's
+# trigger schema: each entry is { "on": <trigger>, "effects": [ <effect dict> ] }.
+# Drives curse cards (Doubt/Decay/Regret/Pain/…). Recognised triggers:
+#   "eot"       — end of the player's turn, while this card is in hand.
+#   "on_action" — each time the player takes an action while this card is in
+#                 hand (a card play in deckbuilder; a cast/move in action/strategy).
+# The translators (ActionTranslation/StrategyTranslation) remap these to each
+# mode: eot -> the curse's long auto-cooldown (action) / end of turn (strategy);
+# on_action -> per slot activation (action) / per action (strategy).
+@export var triggers: Array = []
+
+# Lifecycle: destroy this card after the player has beaten this many games this
+# run (Guilty -> 3). -1 means "never auto-destroy". Run-level (game_beaten), so
+# it counts identically in all three combat modes.
+@export var destroy_after_games: int = -1
 
 # Free-form addon names (Fishing Weight, future weapon traits, …). These
 # are the "compute" addons — addons with active behavior at play time
