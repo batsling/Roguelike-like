@@ -221,6 +221,39 @@ for how stats resolve across modes.
 
 ---
 
+## Roadmap / future plans
+
+The Godot port already covers the core loop (overworld map, deckbuilder &
+action combat, events, curses, items, shop, escape phase, characters, saves,
+collection, and game verification). The work still ahead — much of it porting
+remaining systems from the legacy HTML build:
+
+- **Loot system** — add the consumable loot tables: **potions**, **scrolls**,
+  and **fish**, and introduce **bombs** and **keys**.
+- **Fix the deckbuilder map screen** — polish/repair the in-combat map view.
+- **Finish the content catalogs** — port the remaining **cards**, **items**,
+  and **addons** so the Godot catalog matches the spreadsheet.
+- **Spells** — port the spell system and add new spells (`SpellData` exists;
+  the deckbuilder-side spells panel still needs wiring).
+- **Events** — port the remaining pre-combat events and author new ones.
+
+Larger systems from the HTML build still to be ported (surfaced from a scan of
+`legacy-web/`):
+
+- **Dice tray & combat dice** — named die cards with face outcomes (the
+  "slot items onto dice" feature), backed by the combat-**moves** vocabulary
+  (`dice-data.js`, `moves-data.js`).
+- **Allies** — heroes that provide dice in combat (`allies-data.js`), tied to
+  the dice system above.
+- **Bingo** — the 3×3 bingo-goal grid with progressive item-choice rewards
+  (`bingo.js`).
+
+All of the above are driven by `tools/Roguelikes.xlsx`, so porting each is
+largely a matter of adding the matching Resource schema in `scripts/resources/`,
+a generator in `tools/`, and the UI.
+
+---
+
 ## `legacy-web/` — the old HTML version
 
 The original game was a browser build (~42k lines of vanilla JavaScript across
