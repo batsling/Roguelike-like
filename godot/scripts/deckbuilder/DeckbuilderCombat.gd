@@ -810,19 +810,31 @@ func _fire_curse_triggers(trigger: String) -> void:
 				})
 	_refresh_ui()
 
-# Resolves curse-effect placeholders that depend on live combat state. Today
-# that's `per: "action"` (Regret): the loss scales by actions taken this turn.
-# A zero multiplier yields an empty dict so the caller skips the no-op hit.
+# Resolves curse-effect placeholders that depend on live combat state — Regret's
+# `per` scaler. Two forms are supported: "action" (× actions taken this turn) and
+# "card_in_hand" (× cards in hand right now). A zero multiplier returns an empty
+# dict so the caller skips the no-op hit.
 func _resolve_curse_effect(effect: Dictionary) -> Dictionary:
-	if String(effect.get("per", "")) != "action":
+	var per: String = String(effect.get("per", ""))
+	if per == "":
 		return effect
-	var n: int = _actions_this_turn
+	var n: int = 0
+	var unit: String = ""
+	match per:
+		"action":
+			n = _actions_this_turn
+			unit = "action(s)"
+		"card_in_hand":
+			n = hand.size()
+			unit = "card(s) in hand"
+		_:
+			return effect
 	if n <= 0:
 		return {}
 	var out: Dictionary = effect.duplicate()
 	out.erase("per")
 	out["value"] = int(effect.get("value", 1)) * n
-	GameLog.add("Regret: %d action(s) — lose %d HP." % [n, int(out["value"])],
+	GameLog.add("Regret: %d %s — lose %d HP." % [n, unit, int(out["value"])],
 		Color(0.9, 0.6, 0.7))
 	return out
 

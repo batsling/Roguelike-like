@@ -118,6 +118,8 @@ def _effect_from_tokens(tokens):
         eff = {"type": "lose_hp", "value": value}
         if "per_action" in args[1:]:
             eff["per"] = "action"
+        elif "per_card_in_hand" in args[1:]:
+            eff["per"] = "card_in_hand"
         return eff
 
     if verb == "conjure":
@@ -146,7 +148,7 @@ def parse_effects(raw):
     on_play = []
     triggers = []
     destroy_after = -1
-    if not raw or str(raw).strip().upper() in ("", "N/A"):
+    if not raw or str(raw).strip().upper() in ("", "N/A", "NONE"):
         return on_play, triggers, destroy_after
 
     for clause in str(raw).split(";"):
@@ -154,9 +156,12 @@ def parse_effects(raw):
         if not clause:
             continue
         trig = None
-        m = re.match(r"^(eot|on_action|lifecycle)\s*:\s*(.+)$", clause)
+        m = re.match(r"^(eot|on_action|on_play_other|lifecycle)\s*:\s*(.+)$", clause)
         if m:
             trig, clause = m.group(1), m.group(2).strip()
+            # on_play_other (sheet alias) == on_action: fires per other card played.
+            if trig == "on_play_other":
+                trig = "on_action"
         eff = _effect_from_tokens([t.strip() for t in clause.split(":") if t.strip()])
         if eff is None:
             continue

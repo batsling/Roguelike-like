@@ -11,6 +11,7 @@ rarity = 0
 cost = 1
 description = "Innate. At the end of your turn, put a copy of this card on top of your draw pile. Exhaust."
 effects = []
+triggers = [{"on": "eot", "effects": [{"type": "conjure", "card_id": "self", "destination": "draw_top"}]}]
 tags = PackedStringArray("randomcurse")
 source_game = "Slay the Spire"
 can_upgrade = false
