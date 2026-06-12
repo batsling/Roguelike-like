@@ -236,6 +236,8 @@ remaining systems from the legacy HTML build:
 - **Spells** — port the spell system and add new spells (`SpellData` exists;
   the deckbuilder-side spells panel still needs wiring).
 - **Events** — port the remaining pre-combat events and author new ones.
+- **Shop / gold scaling** — tune merchant pricing and gold rewards so they
+  scale across a run (the shop screen itself is in place).
 
 Larger systems from the HTML build still to be ported (surfaced from a scan of
 `legacy-web/`):
