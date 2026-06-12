@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_punctured_eye"]
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_punctured_eye"]
 
 [ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/PuncturedEye.png" id="2_img"]
 
 [resource]
 script = ExtResource("1_card")
@@ -15,4 +16,5 @@ triggers = [{"on": "eot", "effects": [{"type": "status", "status": "blind", "sta
 tags = PackedStringArray()
 source_game = "Mewgenics"
 can_upgrade = false
+image = ExtResource("2_img")
 unplayable = true

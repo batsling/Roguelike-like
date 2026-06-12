@@ -39,6 +39,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))  # repo root
 XLSX_PATH = os.environ.get(
     "CARDS_XLSX", os.path.join(PROJECT_ROOT, "tools", "Roguelikes.xlsx"))
 OUT_DIR = os.path.join(PROJECT_ROOT, "godot", "data", "cards")
+CARD_IMG_DIR = os.path.join(PROJECT_ROOT, "godot", "images", "cards")
 
 # CardData.CardType enum order.
 CARD_TYPE = {
@@ -197,16 +198,28 @@ def card_tres(row) -> tuple:
     if source.upper() in ("", "N/A"):
         source = ""
 
+    # Image: use the Img column when set, else auto-resolve by card name from
+    # godot/images/cards/<Name>.png. Curse cards leave Img blank, so most resolve
+    # by name (Doubt.png, Decay.png, …); Pride/Greed have no art and stay blank.
+    img_raw = str(row.get("Img") or "").strip()
+    img_name = img_raw if img_raw and img_raw.upper() != "N/A" else name
+    img_res = None
+    if os.path.exists(os.path.join(CARD_IMG_DIR, img_name + ".png")):
+        img_res = "res://images/cards/%s.png" % img_name
+
     on_play, triggers, destroy_after = parse_effects(row.get("Effects"))
     flags, addons = parse_keywords(row.get("Keywords"))
 
     lines = []
+    load_steps = 3 if img_res else 2
     lines.append(
-        '[gd_resource type="Resource" script_class="CardData" load_steps=2 '
-        'format=3 uid="uid://card_%s"]' % cid)
+        '[gd_resource type="Resource" script_class="CardData" load_steps=%d '
+        'format=3 uid="uid://card_%s"]' % (load_steps, cid))
     lines.append("")
     lines.append('[ext_resource type="Script" '
                  'path="res://scripts/resources/CardData.gd" id="1_card"]')
+    if img_res:
+        lines.append('[ext_resource type="Texture2D" path="%s" id="2_img"]' % img_res)
     lines.append("")
     lines.append("[resource]")
     lines.append('script = ExtResource("1_card")')
@@ -225,6 +238,8 @@ def card_tres(row) -> tuple:
     if source:
         lines.append('source_game = "%s"' % gd_str(source))
     lines.append("can_upgrade = false")
+    if img_res:
+        lines.append('image = ExtResource("2_img")')
     for flag in sorted(FLAG_KEYWORDS):
         if flags[flag]:
             lines.append("%s = true" % flag)
