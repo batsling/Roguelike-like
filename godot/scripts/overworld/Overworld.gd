@@ -437,7 +437,13 @@ func _save_run() -> bool:
 # Verification modal — honour-system prompt after each beaten game.
 # ------------------------------------------------------------------
 
-const VERIFICATION_SKIP_HP_PENALTY := 33
+# Skipping the real game costs this fraction of MAX HP (rounded up) and saddles
+# the player with a random curse — no reward.
+const VERIFICATION_SKIP_HP_PERCENT := 20
+
+# The HP the skip currently costs, given the player's max HP.
+func _verification_skip_hp_cost() -> int:
+	return ceili(GameState.max_hp * VERIFICATION_SKIP_HP_PERCENT / 100.0)
 
 # Per-weapon Yes/No state held while the modal is open. Populated when
 # the modal builds the weapon section; consumed by _on_verification_yes
@@ -555,7 +561,7 @@ func _show_verification_modal(gd: GameData) -> void:
 	var skip_btn := Button.new()
 	skip_btn.position = Vector2(320, panel_h - 80)
 	skip_btn.size = Vector2(260, 56)
-	skip_btn.text = "Skip  (-%d HP)" % VERIFICATION_SKIP_HP_PENALTY
+	skip_btn.text = "Skip  (-%d HP, +Curse)" % _verification_skip_hp_cost()
 	skip_btn.pressed.connect(_on_verification_skip)
 	panel.add_child(skip_btn)
 
@@ -817,8 +823,12 @@ func _roll_bonus_level_up() -> bool:
 	return false
 
 func _on_verification_skip() -> void:
-	GameState.change_hp(-VERIFICATION_SKIP_HP_PENALTY)
-	GameLog.add("Skipped real game. (-%d HP)" % VERIFICATION_SKIP_HP_PENALTY,
+	var cost: int = _verification_skip_hp_cost()
+	GameState.change_hp(-cost)
+	# Skipping the real game also saddles the player with a random curse.
+	var curse: CurseData = GameState.add_active_curse(GameState.random_curse())
+	var curse_name: String = curse.display_name if curse != null else "a curse"
+	GameLog.add("Skipped real game. (-%d HP, gained %s)" % [cost, curse_name],
 		Color(0.9, 0.6, 0.4))
 	_close_verification()
 	if GameState.is_dead():

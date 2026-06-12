@@ -286,6 +286,47 @@ func _tick_card_lifecycles() -> void:
 	if removed:
 		emit_signal("deck_changed")
 
+# Saddles the player with a curse (skipping a game today; events / enemies
+# later). Records it in active_curses and drops its penalty card into the deck:
+# the curse's named card when it has one, else a random card from the
+# `randomcurse` pool. (Restriction curses are meant to drop the card on
+# *violation*; until that honour-check exists the card is granted on
+# acquisition so the consequence is felt and testable.) Returns the curse.
+func add_active_curse(curse: CurseData) -> CurseData:
+	if curse == null:
+		return null
+	active_curses.append({"id": curse.id, "name": curse.display_name})
+	var card: CardData = _resolve_penalty_card(curse)
+	if card != null:
+		add_card_to_deck(card)
+		Notifications.notify("Cursed: %s (+%s)" % [curse.display_name, card.display_name],
+			Color(0.85, 0.6, 0.85))
+	else:
+		Notifications.notify("Cursed: %s" % curse.display_name, Color(0.85, 0.6, 0.85))
+	TriggerBus.emit_signal("curse_applied", {"curse": curse})
+	return curse
+
+# The card a curse inflicts: its named penalty_card, else a random card from the
+# `randomcurse` pool. Null when neither resolves (e.g. an affliction with no card
+# and an empty pool).
+func _resolve_penalty_card(curse: CurseData) -> CardData:
+	if curse.penalty_card != &"":
+		return Data.get_card(curse.penalty_card)
+	var pool: Array = []
+	for c in Data.all_cards():
+		if c is CardData and c.type == CardData.CardType.CURSE and c.tags.has("randomcurse"):
+			pool.append(c)
+	if pool.is_empty():
+		return null
+	return pool[randi() % pool.size()]
+
+# A random curse from the catalog — the skip-a-game penalty draws from here.
+func random_curse() -> CurseData:
+	var all: Array = Data.all_curses()
+	if all.is_empty():
+		return null
+	return all[randi() % all.size()]
+
 # ---------------------------------------------------------------------------
 # Mutation API — UI and combat scenes go through these so signals fire.
 # ---------------------------------------------------------------------------

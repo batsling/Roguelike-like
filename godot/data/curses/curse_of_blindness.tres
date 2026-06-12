@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="CurseData" load_steps=2 format=3 uid="uid://curse_curse_of_blindness"]
+
+[ext_resource type="Script" path="res://scripts/resources/CurseData.gd" id="1_curse"]
+
+[resource]
+script = ExtResource("1_curse")
+id = &"curse_of_blindness"
+display_name = "Curse of Blindness"
+kind = 0
+challenge = "You must randomly choose your starting Character/Loadout if possible"

@@ -102,19 +102,25 @@ func _build() -> void:
 	tabs.add_theme_constant_override("separation", 8)
 	vbox.add_child(tabs)
 	var cards_btn := Button.new()
-	cards_btn.text = "Cards & Curses"
+	cards_btn.text = "Cards"
 	cards_btn.toggle_mode = true
 	cards_btn.button_pressed = true
 	var items_btn := Button.new()
 	items_btn.text = "Items"
 	items_btn.toggle_mode = true
+	var curses_btn := Button.new()
+	curses_btn.text = "Curses"
+	curses_btn.toggle_mode = true
 	var group := ButtonGroup.new()
 	cards_btn.button_group = group
 	items_btn.button_group = group
+	curses_btn.button_group = group
 	cards_btn.pressed.connect(func() -> void: _set_tab("cards"))
 	items_btn.pressed.connect(func() -> void: _set_tab("items"))
+	curses_btn.pressed.connect(func() -> void: _set_tab("curses"))
 	tabs.add_child(cards_btn)
 	tabs.add_child(items_btn)
+	tabs.add_child(curses_btn)
 
 	_search = LineEdit.new()
 	_search.placeholder_text = "Search (try a name or \"curse\")…"
@@ -184,6 +190,16 @@ func _collect(query: String) -> Array:
 				continue
 			var card: CardData = c
 			out.append({"label": label, "add": _add_card.bind(card)})
+	elif _tab == "curses":
+		for cu in Data.all_curses():
+			if not (cu is CurseData):
+				continue
+			var kind_name: String = "Affliction" if cu.kind == CurseData.Kind.AFFLICTION else "Restriction"
+			var label: String = "%s  [%s]" % [cu.display_name, kind_name]
+			if query != "" and not label.to_lower().contains(query):
+				continue
+			var curse: CurseData = cu
+			out.append({"label": label, "add": _add_curse.bind(curse)})
 	else:
 		for it in Data.all_items():
 			if not (it is ItemData):
@@ -206,3 +222,8 @@ func _add_item(item: ItemData) -> void:
 	GameState.add_item(item)
 	Notifications.notify("Added item: %s" % item.display_name, Color(0.8, 1.0, 0.8))
 	GameLog.add("[dev] Added %s to inventory." % item.display_name, Color(0.8, 1.0, 0.8))
+
+
+func _add_curse(curse: CurseData) -> void:
+	GameState.add_active_curse(curse)
+	GameLog.add("[dev] Cursed: %s." % curse.display_name, Color(0.85, 0.6, 0.85))

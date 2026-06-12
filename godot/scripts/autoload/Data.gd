@@ -10,6 +10,7 @@ var _action_enemies: Dictionary = {}    # StringName -> ActionEnemyData
 var _events: Dictionary = {}            # StringName -> EventData
 var _games: Dictionary = {}             # StringName -> GameData
 var _characters: Dictionary = {}        # StringName -> CharacterData
+var _curses: Dictionary = {}            # StringName -> CurseData
 
 # Single shared config resources mapping turn-based combat concepts to each
 # mode's equivalents — Action (turns->rooms, energy->Haste, draw->auto-slots)
@@ -27,6 +28,7 @@ func _ready() -> void:
 	_load_dir("res://data/events/", _events)
 	_load_dir("res://data/games/", _games)
 	_load_dir("res://data/characters/", _characters)
+	_load_dir("res://data/curses/", _curses)
 	# Per-mode concept translators. Fall back to script defaults if the .tres is
 	# missing so combat never crashes for a missing tunable file.
 	action_translation = (_load_config("res://data/action_translation.tres") as ActionTranslation)
@@ -71,6 +73,9 @@ func _load_dir(path: String, target: Dictionary) -> void:
 func get_card(id: StringName) -> CardData:
 	return _cards.get(id)
 
+func get_curse(id: StringName) -> CurseData:
+	return _curses.get(id)
+
 func get_item(id: StringName) -> ItemData:
 	return _items.get(id)
 
@@ -92,6 +97,9 @@ func get_character(id: StringName) -> CharacterData:
 # Bulk access (e.g. for pools / shop offers)
 func all_cards() -> Array:
 	return _cards.values()
+
+func all_curses() -> Array:
+	return _curses.values()
 
 # Cards eligible for random shop / reward / treasure draws. Excludes
 # starters (always in the character's opening deck) and weapon cards
