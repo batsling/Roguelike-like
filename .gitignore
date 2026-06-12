@@ -1,14 +1,13 @@
+# ── Godot 4 (main project) ──────────────────────────────────────────────
+# Generated / import cache — regenerated locally on open.
+# The repo tracks source only (.gd / .tscn / .tres / assets / images).
+.godot/
+*.import
+*.uid
+export_presets.cfg
+
+# ── legacy-web (old HTML/JS version) ────────────────────────────────────
 node_modules/
 dist/
-
-# Cover scraper cache
 .cache/
 games-data.js.backup
-
-# Import script output (canonical copy lives in data/)
-tools/games-data.js
-tools/items-data.js
-
-# Downloaded cover images (optional - uncomment to ignore)
-# images/covers/*.jpg
-# images/covers/*.png
