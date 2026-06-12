@@ -64,6 +64,13 @@ extends Resource
 # Floor on click-slot cooldown so a 0-cost Strike can't fire every frame.
 @export var min_click_cooldown: float = 0.35
 
+# --- Curses ------------------------------------------------------------------
+# An eot curse card runs as a dedicated "bad slot" whose long cooldown is this
+# many turns' worth of real time (curse_cooldown_turns * turn_tick_secs). When
+# it elapses the curse applies its translated eot effect to the player. The
+# deckbuilder "end of turn" maps to this slow cooldown in the real-time arena.
+@export var curse_cooldown_turns: float = 3.0
+
 # Seconds of Haste/Slow granted for `points` of energy.
 func energy_to_seconds(points: int) -> float:
 	return float(points) * energy_buff_secs_per_point
