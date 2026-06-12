@@ -150,6 +150,16 @@ var _tr: StrategyTranslation
 # encounter; incremented at the start of each player turn.
 var _player_turn_count: int = 0
 
+# Curse-of-the-turn (strategy translation of the curse cards): at the start of
+# each player turn ONE random owned curse is chosen and telegraphed; only it
+# acts this turn. eot curses fire at turn end (status/dmg/Regret); Pain bites per
+# action; bricks impose all-stats-down for the turn. _turn_actions counts the
+# player's actions this turn (move/attack/spell/card) for Regret/Pain.
+var _turn_curse: CardData = null
+var _turn_actions: int = 0
+var _turn_stat_debuff: bool = false
+const _CURSE_STAT_DOWN := ["strength", "dexterity", "intelligence", "charisma"]
+
 var _loot_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -1036,6 +1046,7 @@ func _on_unit_turn_started(unit) -> void:
 		]
 		_set_player_buttons_enabled(true)
 		_refresh_button_states()
+		_begin_turn_curse(unit)
 	else:
 		_status_label.text = "%s acts..." % unit.unit_name
 		_set_player_buttons_enabled(false)
@@ -1060,6 +1071,11 @@ func _on_unit_turn_ended(unit) -> void:
 		Stats.tick_actor_statuses(unit, self)
 		if unit.is_alive():
 			Stats.decay_actor_statuses(unit)
+	# The chosen curse's end-of-turn effect lands here — AFTER decay — so a status
+	# it grants (Doubt -> Weak) survives into the next turn, and the brick's
+	# all-stats-down debuff is lifted now that the turn is over.
+	if unit != null and unit.is_player:
+		_end_turn_curse(unit)
 	_grid_view.notify_units_changed()
 	_refresh_initiative()
 	_check_battle_end_after_effect()
@@ -1099,6 +1115,123 @@ func _apply_turn_effect_to_unit(unit, effect: Dictionary) -> void:
 			var before: int = unit.hp
 			unit.hp = mini(unit.max_hp, unit.hp + int(effect.get("value", 0)))
 			_float_number(unit, unit.hp - before, FloatingNumbers.HEAL_COLOR)
+
+# ----------------------------------------------------------------------
+# Curse-of-the-turn
+# ----------------------------------------------------------------------
+
+# Start of the player's turn: choose one random owned curse, telegraph it, and
+# apply its during-turn effect (bricks -> all-stats-down). eot / Pain effects
+# resolve later (turn end / per action).
+func _begin_turn_curse(unit) -> void:
+	_clear_turn_stat_debuff()
+	_turn_actions = 0
+	_turn_curse = _pick_random_owned_curse()
+	if _turn_curse == null:
+		return
+	Notifications.notify("Curse this turn: %s" % _turn_curse.display_name,
+		Color(0.85, 0.6, 0.85))
+	GameLog.add("Curse active this turn: %s." % _turn_curse.display_name,
+		Color(0.85, 0.6, 0.85))
+	if _curse_strategy_kind(_turn_curse) == "brick":
+		_apply_turn_stat_debuff()
+
+# End of the player's turn: an eot curse fires its effect (status / dmg / Regret).
+# Pain already bit per action; the brick debuff is lifted in _begin_turn_curse /
+# here. Runs AFTER status decay so a granted status persists to the next turn.
+func _end_turn_curse(_unit) -> void:
+	if _turn_curse != null and _curse_strategy_kind(_turn_curse) == "eot":
+		for trig in _turn_curse.triggers:
+			if String(trig.get("on", "")) != "eot":
+				continue
+			for e in trig.get("effects", []):
+				if e is Dictionary:
+					_apply_strategy_curse_effect(e, _turn_actions)
+	_clear_turn_stat_debuff()
+	_turn_curse = null
+
+# Called from each committed player action (move / attack / spell / card). Counts
+# the action for Regret and, when Pain is the active curse, bites 1 HP live.
+func _register_player_action() -> void:
+	if _turn_curse == null:
+		return
+	_turn_actions += 1
+	if _curse_strategy_kind(_turn_curse) == "pain":
+		var p = get_player_unit()
+		if p != null:
+			apply_dot(p, 1, "Curse")
+
+func _pick_random_owned_curse() -> CardData:
+	var pool: Array = []
+	for c in GameState.deck:
+		var cd: CardData = c.data if c is CardInstance else (c as CardData)
+		if cd != null and cd.type == CardData.CardType.CURSE:
+			pool.append(cd)
+	if pool.is_empty():
+		return null
+	return pool[randi() % pool.size()]
+
+# Applies one translated curse effect to the player unit. status -> add_status;
+# dmg/lose_hp -> apply_dot. per:card_in_hand is translated to per action taken
+# this turn (Regret).
+func _apply_strategy_curse_effect(effect: Dictionary, actions: int) -> void:
+	var p = get_player_unit()
+	if p == null:
+		return
+	match String(effect.get("type", "")):
+		"status":
+			var sid := StringName(effect.get("status", ""))
+			var stacks := int(effect.get("stacks", 1))
+			if sid != &"" and stacks > 0:
+				p.add_status(sid, stacks)
+		"dmg":
+			var dv := int(effect.get("value", 0))
+			if dv > 0:
+				apply_dot(p, dv, "Curse")
+		"lose_hp":
+			var lv := int(effect.get("value", 1))
+			if String(effect.get("per", "")) == "card_in_hand":
+				lv *= maxi(0, actions)
+			if lv > 0:
+				apply_dot(p, lv, "Curse")
+
+# Strategy behaviour of a curse: "eot" (status/dmg/Regret at turn end), "pain"
+# (per action), or "brick" (no player-affecting trigger -> all-stats-down).
+func _curse_strategy_kind(cd: CardData) -> String:
+	var has_eot := false
+	var has_pain := false
+	for trig in cd.triggers:
+		if not _curse_trigger_has_player_effect(trig):
+			continue
+		match String(trig.get("on", "")):
+			"eot": has_eot = true
+			"on_play_other": has_pain = true
+	if has_eot:
+		return "eot"
+	if has_pain:
+		return "pain"
+	return "brick"
+
+func _curse_trigger_has_player_effect(trig: Dictionary) -> bool:
+	for e in trig.get("effects", []):
+		if e is Dictionary and String(e.get("type", "")) in ["status", "dmg", "lose_hp"]:
+			return true
+	return false
+
+func _apply_turn_stat_debuff() -> void:
+	if _turn_stat_debuff:
+		return
+	for s in _CURSE_STAT_DOWN:
+		GameState.add_temp_stat(s, -1)
+	_turn_stat_debuff = true
+	GameLog.add("Curse: all stats down this turn.", Color(0.85, 0.6, 0.85))
+
+func _clear_turn_stat_debuff() -> void:
+	if not _turn_stat_debuff:
+		return
+	for s in _CURSE_STAT_DOWN:
+		GameState.add_temp_stat(s, 1)
+	_turn_stat_debuff = false
 
 func _auto_end_enemy_turn() -> void:
 	if _turn_manager == null or _turn_manager.current_unit == null:
@@ -1281,6 +1414,7 @@ func _resolve_ability_against(target) -> void:
 	else:
 		_card_plays_remaining -= 1
 	_ability_used_this_turn = true
+	_register_player_action()
 	# Spend any banked energy charge to empower this card, then clear it.
 	var empower: int = _energy_charge
 	_energy_charge = 0
@@ -1374,6 +1508,7 @@ func _resolve_spell_against(target) -> void:
 	var entry = _pending_spell
 	_spellbook.spend_mana(u, entry)
 	_apply_card_or_spell_effects(_effective_card_effects(entry.data), u, target, entry.data)
+	_register_player_action()
 	_pending_kind = Pending.NONE
 	_pending_spell = null
 	_grid_view.enter_idle()
@@ -1401,6 +1536,7 @@ func _on_move_requested(path: Array) -> void:
 	# One move action per turn (no chaining): lock movement once committed,
 	# even if tiles remain in the budget.
 	_move_used = true
+	_register_player_action()
 	# Phase 8: walking over an item collects it (auto-pickup goes to
 	# run-scope counters; non-auto goes to the overworld inventory while
 	# there's room). Each path step is checked so passing-by loot grabs.
@@ -1478,6 +1614,7 @@ func _on_attack_requested(target) -> void:
 		_apply_damage(attacker, target, dmg)
 		_status_label.text = "You strike %s for %d." % [target.unit_name, dmg]
 	_action_used = true
+	_register_player_action()
 	_grid_view.enter_idle()
 	_grid_view.notify_units_changed()
 	_refresh_initiative()
