@@ -27,6 +27,11 @@ var effect_bonuses: Dictionary = {}
 # card; removing this card removes the weapon. 0 = not weapon-linked.
 var source_weapon_id: int = 0
 
+# Games beaten while this card has been in the deck. Drives the
+# destroy_after_games lifecycle (Guilty self-destructs after 3). Bumped by
+# GameState on TriggerBus.game_beaten; ignored when data.destroy_after_games < 0.
+var games_beaten_held: int = 0
+
 static func from_data(d: CardData, is_upgraded: bool = false) -> CardInstance:
 	var c := CardInstance.new()
 	c.data = d

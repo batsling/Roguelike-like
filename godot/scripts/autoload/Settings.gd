@@ -20,8 +20,19 @@ var game_filter: int = GameFilter.ALL
 # Falls back to the full pool if the player has beaten every eligible amulet.
 var exclude_beaten_amulets: bool = false
 
+# Developer mode. When on, the DevTools overlay (backtick `) is available to add
+# any card / curse / item to the player. Default true on this build so testing
+# works out of the box; toggle from the Settings menu.
+var dev_mode: bool = true
+
 func _ready() -> void:
 	load_settings()
+
+func set_dev_mode(value: bool) -> void:
+	if value == dev_mode:
+		return
+	dev_mode = value
+	save_settings()
 
 func set_game_filter(value: int) -> void:
 	value = clampi(value, 0, GameFilter.DOWNLOADED)
@@ -48,10 +59,12 @@ func load_settings() -> void:
 	game_filter = clampi(int(cfg.get_value("path", "game_filter", GameFilter.ALL)),
 		0, GameFilter.DOWNLOADED)
 	exclude_beaten_amulets = bool(cfg.get_value("path", "exclude_beaten_amulets", false))
+	dev_mode = bool(cfg.get_value("dev", "dev_mode", true))
 	RunGraph.invalidate_cache()
 
 func save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("path", "game_filter", game_filter)
 	cfg.set_value("path", "exclude_beaten_amulets", exclude_beaten_amulets)
+	cfg.set_value("dev", "dev_mode", dev_mode)
 	cfg.save(CONFIG_PATH)

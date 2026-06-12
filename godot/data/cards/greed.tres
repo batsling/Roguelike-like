@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card_greed"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"greed"
+display_name = "Greed"
+type = 5
+rarity = 0
+cost = 0
+description = "Unplayable. Eternal."
+effects = []
+tags = PackedStringArray()
+source_game = "Slay the Spire 2"
+can_upgrade = false
+eternal = true
+unplayable = true

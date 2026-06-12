@@ -437,7 +437,13 @@ func _save_run() -> bool:
 # Verification modal — honour-system prompt after each beaten game.
 # ------------------------------------------------------------------
 
-const VERIFICATION_SKIP_HP_PENALTY := 33
+# Skipping the real game costs this fraction of MAX HP (rounded up) and saddles
+# the player with a random curse — no reward.
+const VERIFICATION_SKIP_HP_PERCENT := 20
+
+# The HP the skip currently costs, given the player's max HP.
+func _verification_skip_hp_cost() -> int:
+	return ceili(GameState.max_hp * VERIFICATION_SKIP_HP_PERCENT / 100.0)
 
 # Per-weapon Yes/No state held while the modal is open. Populated when
 # the modal builds the weapon section; consumed by _on_verification_yes
@@ -450,6 +456,10 @@ var _weapon_verify_answers: Dictionary = {}
 var _perfect_answer: bool = false
 var _levelup_answer: bool = false
 
+# Per-active-curse "did you fulfil it?" answers, curse id -> bool (true = fulfilled).
+# Default true so inaction isn't a penalty; a No on submit drops the penalty card.
+var _curse_verify_answers: Dictionary = {}
+
 func _show_verification_modal(gd: GameData) -> void:
 	if _verification_modal != null:
 		return
@@ -457,6 +467,7 @@ func _show_verification_modal(gd: GameData) -> void:
 	_weapon_verify_answers = {}
 	_perfect_answer = false
 	_levelup_answer = false
+	_curse_verify_answers = {}
 
 	var modal := Control.new()
 	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -479,7 +490,10 @@ func _show_verification_modal(gd: GameData) -> void:
 	# weapon items get authored, so we size from data rather than hard-coding
 	# for two. Perfect and level-up rows add their own 80px slices.
 	var weapons: Array = _collect_inventory_weapons()
-	var extra_rows: int = weapons.size() + int(show_perfect) + int(show_levelup)
+	# Active restriction curses each get a "did you fulfil it?" row — a No drops
+	# the curse's penalty card.
+	var curses: Array = GameState.active_restriction_curses()
+	var extra_rows: int = weapons.size() + int(show_perfect) + int(show_levelup) + curses.size()
 	var panel_h: int = 400 + extra_rows * 80
 
 	var panel := Panel.new()
@@ -545,6 +559,15 @@ func _show_verification_modal(gd: GameData) -> void:
 			func(value: bool): _levelup_answer = value)
 		y += 80
 
+	# Active curses: "did you honour this restriction?" Default Yes; a No on
+	# submit inflicts the curse's penalty card. The curse itself stays active.
+	for cu in curses:
+		var cid: StringName = cu.id
+		_add_question_row(panel,
+			"%s — %s  (Fulfilled?)" % [cu.display_name, cu.challenge],
+			y, func(value: bool): _curse_verify_answers[cid] = value, true)
+		y += 80
+
 	var yes_btn := Button.new()
 	yes_btn.position = Vector2(40, panel_h - 80)
 	yes_btn.size = Vector2(260, 56)
@@ -555,7 +578,7 @@ func _show_verification_modal(gd: GameData) -> void:
 	var skip_btn := Button.new()
 	skip_btn.position = Vector2(320, panel_h - 80)
 	skip_btn.size = Vector2(260, 56)
-	skip_btn.text = "Skip  (-%d HP)" % VERIFICATION_SKIP_HP_PENALTY
+	skip_btn.text = "Skip  (-%d HP, +Curse)" % _verification_skip_hp_cost()
 	skip_btn.pressed.connect(_on_verification_skip)
 	panel.add_child(skip_btn)
 
@@ -627,10 +650,11 @@ func _on_weapon_answer(weapon_id: int, value: bool, pressed: bool) -> void:
 	if pressed:
 		_weapon_verify_answers[weapon_id] = value
 
-# Generic Yes/No toggle row used by the perfect-game and level-up questions.
-# `setter` receives the chosen bool whenever a button is pressed. Defaults to
-# No (calls setter(false)) so an unanswered question grants nothing.
-func _add_question_row(panel: Panel, text: String, y: int, setter: Callable) -> void:
+# Generic Yes/No toggle row used by the perfect-game, level-up and curse
+# questions. `setter` receives the chosen bool whenever a button is pressed.
+# `default_value` is the pre-selected answer (No for reward questions so an
+# unanswered one grants nothing; Yes for curses so inaction isn't a penalty).
+func _add_question_row(panel: Panel, text: String, y: int, setter: Callable, default_value: bool = false) -> void:
 	var label := Label.new()
 	label.position = Vector2(20, y)
 	label.size = Vector2(580, 24)
@@ -646,6 +670,7 @@ func _add_question_row(panel: Panel, text: String, y: int, setter: Callable) -> 
 	yes.text = "Yes"
 	yes.toggle_mode = true
 	yes.button_group = group
+	yes.button_pressed = default_value
 	yes.toggled.connect(func(pressed: bool):
 		if pressed:
 			setter.call(true))
@@ -657,12 +682,12 @@ func _add_question_row(panel: Panel, text: String, y: int, setter: Callable) -> 
 	no.text = "No"
 	no.toggle_mode = true
 	no.button_group = group
-	no.button_pressed = true
+	no.button_pressed = not default_value
 	no.toggled.connect(func(pressed: bool):
 		if pressed:
 			setter.call(false))
 	panel.add_child(no)
-	setter.call(false)
+	setter.call(default_value)
 
 func _on_verification_yes() -> void:
 	GameLog.add("Verified.", Color(0.7, 1.0, 0.7))
@@ -671,6 +696,7 @@ func _on_verification_yes() -> void:
 	GameStats.record_beaten(_pending_reward_game_id)
 	_apply_weapon_verification_rewards()
 	_resolve_perfect_game()
+	_resolve_curse_penalties()
 	_close_verification()
 	# Rate the game right after the play/verify screen, then resume. Level-up
 	# can open its own (async) reward UI, so we hand it a callback that finishes
@@ -696,6 +722,23 @@ func _apply_weapon_verification_rewards() -> void:
 		for eff in it.verification_effects:
 			EffectSystem.apply(eff, ctx)
 		GameLog.add("%s: earned reward!" % it.display_name, Color(1.0, 0.7, 0.3))
+
+# For each active curse the player admitted they FAILED (answered No), drop its
+# penalty card into the deck. The curse stays active (semi-permanent), so it's
+# re-asked next game.
+func _resolve_curse_penalties() -> void:
+	for cid in _curse_verify_answers.keys():
+		if _curse_verify_answers[cid]:
+			continue   # fulfilled — no penalty
+		var curse: CurseData = Data.get_curse(StringName(cid))
+		if curse == null:
+			continue
+		var card: CardData = GameState.penalty_card_for(curse)
+		if card != null:
+			GameState.add_card_to_deck(card)
+			GameLog.add("Failed %s — %s added to your deck." % [curse.display_name, card.display_name],
+				Color(0.85, 0.6, 0.85))
+			Notifications.notify("Curse penalty: %s" % card.display_name, Color(0.85, 0.6, 0.85))
 
 # ------------------------------------------------------------------
 # Perfect-game verification — "beat without losing a run".
@@ -817,8 +860,12 @@ func _roll_bonus_level_up() -> bool:
 	return false
 
 func _on_verification_skip() -> void:
-	GameState.change_hp(-VERIFICATION_SKIP_HP_PENALTY)
-	GameLog.add("Skipped real game. (-%d HP)" % VERIFICATION_SKIP_HP_PENALTY,
+	var cost: int = _verification_skip_hp_cost()
+	GameState.change_hp(-cost)
+	# Skipping the real game also saddles the player with a random curse.
+	var curse: CurseData = GameState.add_active_curse(GameState.random_curse())
+	var curse_name: String = curse.display_name if curse != null else "a curse"
+	GameLog.add("Skipped real game. (-%d HP, gained %s)" % [cost, curse_name],
 		Color(0.9, 0.6, 0.4))
 	_close_verification()
 	if GameState.is_dead():

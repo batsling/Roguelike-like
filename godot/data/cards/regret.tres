@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_regret"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Regret.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"regret"
+display_name = "Regret"
+type = 5
+rarity = 0
+cost = 0
+description = "Unplayable. At the end of your turn, if this is in Hand, Lose 1 Health for each card in Hand."
+effects = []
+triggers = [{"on": "eot", "effects": [{"type": "lose_hp", "value": 1, "per": "card_in_hand"}]}]
+tags = PackedStringArray("randomcurse")
+source_game = "Slay the Spire"
+can_upgrade = false
+image = ExtResource("2_img")
+unplayable = true

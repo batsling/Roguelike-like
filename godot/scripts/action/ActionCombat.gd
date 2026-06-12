@@ -120,6 +120,17 @@ var auto_slots: Array = []                           # Array of Dictionary {card
 # penalty, both live in ActionTranslation (_tr.draw_temp_slot_secs /
 # _tr.discard_base_penalty).
 
+# Curse cards in action (the translation of the deckbuilder hand-curses):
+#   _curse_slots — eot curses run as EXTRA dedicated bad-slots; each counts down
+#     a long real-time cooldown and, on elapse, applies its translated eot effect
+#     to the player. Array of {card, cooldown, max_cooldown}.
+#   _pain_curses — on_play_other curses (Pain): reactive, they bite the player
+#     each time a normal auto-slot activates. Array of CardData.
+# Brick curses (no action-meaningful effect) are folded into the auto pool so
+# they jam a real slot instead.
+var _curse_slots: Array = []
+var _pain_curses: Array = []
+
 # Energy-driven timed buffs (Adrenaline et al). Duration-based rather
 # than stack-based because Haste/Slow need to feel like a tempo window
 # in real time, not a status charge. Single tier — magnitudes come from
@@ -386,6 +397,24 @@ func _load_loadout() -> void:
 	left_cd = 0.0
 	right_cd = 0.0
 
+	# Surface curse cards (get_action_loadout excludes them) and split by how each
+	# bites in action: eot -> dedicated bad-slot; on_play_other (Pain) -> reactive;
+	# brick -> folded into the auto pool to jam a real slot.
+	_curse_slots.clear()
+	_pain_curses.clear()
+	var curse_cd: float = _tr.curse_cooldown_turns * _tr.turn_tick_secs
+	for c in GameState.deck:
+		var cd: CardData = c.data if c is CardInstance else (c as CardData)
+		if cd == null or cd.type != CardData.CardType.CURSE:
+			continue
+		match _curse_action_kind(cd):
+			"eot":
+				_curse_slots.append({"card": cd, "cooldown": curse_cd, "max_cooldown": curse_cd})
+			"pain":
+				_pain_curses.append(cd)
+			_:
+				auto_pool.append(cd)   # brick jams a real auto-slot
+
 	# Build the auto-runner: shuffle the pool into the draw pile, clear the
 	# discard, and start with one permanent slot already drawing a card.
 	auto_draw = auto_pool.duplicate()
@@ -469,6 +498,9 @@ func _process(delta: float) -> void:
 	left_cd = maxf(0.0, left_cd - scaled_delta)
 	right_cd = maxf(0.0, right_cd - scaled_delta)
 	_process_auto_slots(scaled_delta, delta)
+	# Curse bad-slots tick on REAL time (not the haste/slow-scaled delta) so they
+	# grind on the player at a steady, turn-paced rate regardless of tempo.
+	_process_curse_slots(delta)
 	_process_turn_tick(delta)
 	_process_player_input(delta)
 	if embedded:
@@ -805,6 +837,8 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 				for _r in CardMods.replay_count(slot.card):
 					_resolve_card_effects_auto(slot.card)
 					GameLog.add("%s replays!" % slot.card.display_name, Color(0.7, 1.0, 0.7))
+				# Pain (on_play_other -> on_action): a slot activation bites the player.
+				_fire_pain_curses()
 				auto_discard.append(slot.card)
 				var next: CardData = _auto_draw_one()
 				slot.card = next
@@ -824,6 +858,91 @@ func _auto_cd(card: CardData) -> float:
 	if card == null:
 		return 0.0
 	return maxf(_tr.min_click_cooldown, _cooldown_for(card))
+
+# ---------------------------------------------------------------------------
+# Curse cards (action translation of the deckbuilder hand-curses)
+# ---------------------------------------------------------------------------
+
+# Ticks the eot curse bad-slots; when one elapses it applies its eot effect to
+# the player and resets its long cooldown.
+func _process_curse_slots(delta: float) -> void:
+	if _curse_slots.is_empty():
+		return
+	var active_cooldowns: int = auto_slots.size() + _curse_slots.size()
+	for slot in _curse_slots:
+		slot.cooldown = maxf(0.0, float(slot.cooldown) - delta)
+		if slot.cooldown <= 0.0:
+			_fire_curse_slot(slot.card, active_cooldowns)
+			slot.cooldown = float(slot.max_cooldown)
+
+func _fire_curse_slot(cd: CardData, active_cooldowns: int) -> void:
+	if cd == null or player_actor == null or not player_actor.is_alive():
+		return
+	for trig in cd.triggers:
+		if String(trig.get("on", "")) != "eot":
+			continue
+		for e in trig.get("effects", []):
+			if e is Dictionary:
+				_apply_curse_effect_to_player(e, active_cooldowns)
+	GameLog.add("Curse: %s afflicts you." % cd.display_name, Color(0.85, 0.6, 0.85))
+
+# Pain (on_play_other): fires each time a normal auto-slot activates.
+func _fire_pain_curses() -> void:
+	if _pain_curses.is_empty() or player_actor == null or not player_actor.is_alive():
+		return
+	var active_cooldowns: int = auto_slots.size() + _curse_slots.size()
+	for cd in _pain_curses:
+		for trig in cd.triggers:
+			if String(trig.get("on", "")) != "on_play_other":
+				continue
+			for e in trig.get("effects", []):
+				if e is Dictionary:
+					_apply_curse_effect_to_player(e, active_cooldowns)
+
+# Applies one translated curse effect to the player. status -> add_status;
+# dmg/lose_hp -> apply_dot (raw HP loss + HUD sync + death). per:card_in_hand is
+# translated to "per active cooldown" (Regret).
+func _apply_curse_effect_to_player(effect: Dictionary, active_cooldowns: int) -> void:
+	match String(effect.get("type", "")):
+		"status":
+			var sid := StringName(effect.get("status", ""))
+			var stacks := int(effect.get("stacks", 1))
+			if sid != &"" and stacks > 0:
+				apply_status(player_actor, sid, stacks)
+		"dmg":
+			var dv := int(effect.get("value", 0))
+			if dv > 0:
+				apply_dot(player_actor, dv, "Curse")
+		"lose_hp":
+			var lv := int(effect.get("value", 1))
+			if String(effect.get("per", "")) == "card_in_hand":
+				lv *= maxi(0, active_cooldowns)
+			if lv > 0:
+				apply_dot(player_actor, lv, "Curse")
+
+# How a curse behaves in action: "eot" (dedicated bad-slot), "pain" (reactive
+# on_play_other), or "brick" (no player-affecting effect -> jam a real slot).
+# Pride's eot conjure has no action analogue, so it falls through to brick.
+func _curse_action_kind(cd: CardData) -> String:
+	var has_eot := false
+	var has_pain := false
+	for trig in cd.triggers:
+		if not _trigger_has_player_effect(trig):
+			continue
+		match String(trig.get("on", "")):
+			"eot": has_eot = true
+			"on_play_other": has_pain = true
+	if has_eot:
+		return "eot"
+	if has_pain:
+		return "pain"
+	return "brick"
+
+func _trigger_has_player_effect(trig: Dictionary) -> bool:
+	for e in trig.get("effects", []):
+		if e is Dictionary and String(e.get("type", "")) in ["status", "dmg", "lose_hp"]:
+			return true
+	return false
 
 # A card's base effects with item boosts folded in (Strike Dummy -> +3 to a
 # Strike's Dmg) plus any appended granted effects (Brass Knuckles -> strikes

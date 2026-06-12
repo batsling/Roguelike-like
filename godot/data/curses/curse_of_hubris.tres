@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="CurseData" load_steps=2 format=3 uid="uid://curse_curse_of_hubris"]
+
+[ext_resource type="Script" path="res://scripts/resources/CurseData.gd" id="1_curse"]
+
+[resource]
+script = ExtResource("1_curse")
+id = &"curse_of_hubris"
+display_name = "Curse of Hubris"
+kind = 0
+challenge = "Always Choose the highest difficulty available"
+penalty_card = &"pride"

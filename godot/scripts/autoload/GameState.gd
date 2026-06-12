@@ -251,6 +251,88 @@ enum Phase { MENU, OVERWORLD, EVENT, COMBAT, DEAD, ESCAPE, WIN }
 var phase: Phase = Phase.MENU
 
 # ---------------------------------------------------------------------------
+# Curse-card lifecycles (run scope)
+# ---------------------------------------------------------------------------
+
+func _ready() -> void:
+	# GameState is the FIRST autoload, so TriggerBus doesn't exist yet during
+	# _ready. Defer the connect until every autoload has been added.
+	_connect_lifecycle_hooks.call_deferred()
+
+func _connect_lifecycle_hooks() -> void:
+	# Guilty (destroy_after_games) and any future game-count lifecycle ticks
+	# fire on game_beaten — run-scope, so it counts in every combat mode.
+	if not TriggerBus.game_beaten.is_connected(_on_game_beaten):
+		TriggerBus.game_beaten.connect(_on_game_beaten)
+
+func _on_game_beaten(_ctx: Dictionary) -> void:
+	_tick_card_lifecycles()
+
+# Bumps each held curse card's games-beaten counter and drops any that have
+# reached their destroy_after_games threshold (Guilty -> 3). Iterates back-to-
+# front so removals don't invalidate the index.
+func _tick_card_lifecycles() -> void:
+	var removed: bool = false
+	for i in range(deck.size() - 1, -1, -1):
+		var ci = deck[i]
+		if not (ci is CardInstance) or ci.data == null or ci.data.destroy_after_games < 0:
+			continue
+		ci.games_beaten_held += 1
+		if ci.games_beaten_held >= ci.data.destroy_after_games:
+			deck.remove_at(i)
+			removed = true
+			Notifications.notify("%s crumbled away." % ci.data.display_name,
+				Color(0.7, 0.9, 0.7))
+	if removed:
+		emit_signal("deck_changed")
+
+# Saddles the player with a curse (skipping a game today; events / enemies
+# later). Records it in active_curses. The penalty card is NOT granted here — a
+# restriction curse drops its card only when the player admits on the
+# verification screen that they failed the challenge (see Overworld).
+func add_active_curse(curse: CurseData) -> CurseData:
+	if curse == null:
+		return null
+	active_curses.append({"id": curse.id, "name": curse.display_name})
+	Notifications.notify("Cursed: %s" % curse.display_name, Color(0.85, 0.6, 0.85))
+	TriggerBus.emit_signal("curse_applied", {"curse": curse})
+	return curse
+
+# The card a curse inflicts when its challenge is failed: its named penalty_card,
+# else a random card from the `randomcurse` pool. Null when neither resolves.
+func penalty_card_for(curse: CurseData) -> CardData:
+	if curse == null:
+		return null
+	if curse.penalty_card != &"":
+		return Data.get_card(curse.penalty_card)
+	var pool: Array = []
+	for c in Data.all_cards():
+		if c is CardData and c.type == CardData.CardType.CURSE and c.tags.has("randomcurse"):
+			pool.append(c)
+	if pool.is_empty():
+		return null
+	return pool[randi() % pool.size()]
+
+# All active RESTRICTION curses resolved to CurseData, for the verification
+# screen's "did you fulfil it?" rows. Afflictions are automatic and excluded.
+func active_restriction_curses() -> Array:
+	var out: Array = []
+	for entry in active_curses:
+		if not (entry is Dictionary):
+			continue
+		var cd: CurseData = Data.get_curse(StringName(entry.get("id", "")))
+		if cd != null and cd.is_restriction():
+			out.append(cd)
+	return out
+
+# A random curse from the catalog — the skip-a-game penalty draws from here.
+func random_curse() -> CurseData:
+	var all: Array = Data.all_curses()
+	if all.is_empty():
+		return null
+	return all[randi() % all.size()]
+
+# ---------------------------------------------------------------------------
 # Mutation API — UI and combat scenes go through these so signals fire.
 # ---------------------------------------------------------------------------
 
@@ -956,6 +1038,11 @@ func remove_card_at(deck_index: int) -> void:
 	if deck_index < 0 or deck_index >= deck.size():
 		return
 	var card = deck[deck_index]
+	# Eternal cards (Greed) can never be removed from the deck.
+	if card is CardInstance and card.data != null and card.data.eternal:
+		Notifications.notify("%s is Eternal — it can't be removed." % card.data.display_name,
+			Color(0.85, 0.6, 0.9))
+		return
 	deck.remove_at(deck_index)
 	var weapon_id: int = 0
 	if card is CardInstance:

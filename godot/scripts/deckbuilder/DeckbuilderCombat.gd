@@ -93,6 +93,12 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 @onready var _enemy_area: HBoxContainer = $Layout/Battlefield/EnemyArea
 @onready var _player_portrait: TextureRect = $Layout/Battlefield/PlayerArea/PlayerPortrait
 @onready var _player_name: Label = $Layout/Battlefield/PlayerArea/PlayerName
+
+# Player HP bar + status badges shown under the portrait (mirrors the enemy
+# panels). Built procedurally in _build_player_view, refreshed in _refresh_ui.
+var _player_hp_bar: ProgressBar = null
+var _player_hp_overlay: Label = null
+var _player_status_row: HBoxContainer = null
 @onready var _hand_area: HBoxContainer = $Layout/Bottom/HandRow/HandArea
 @onready var _end_turn_btn: Button = $Layout/Bottom/HandRow/EndTurnButton
 @onready var _energy_label: Label = $Layout/Bottom/StatusBar/EnergyLabel
@@ -147,6 +153,103 @@ func _build_player_portrait() -> void:
 		_player_name.text = cd.display_name
 	else:
 		_player_name.text = "You"
+	_build_player_view()
+
+# Adds an HP bar (with an "x / y" overlay) and a status-badge row under the
+# player portrait so the player can see their own HP / Weak / Frail / Blind /
+# Block at a glance, the same way enemy panels do.
+func _build_player_view() -> void:
+	if _player_status_row != null:
+		return
+	var area: Node = _player_portrait.get_parent()
+	if area == null:
+		return
+
+	var hp_holder := Control.new()
+	hp_holder.custom_minimum_size = Vector2(0, 20)
+	hp_holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	area.add_child(hp_holder)
+
+	_player_hp_bar = ProgressBar.new()
+	_player_hp_bar.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_player_hp_bar.show_percentage = false
+	_player_hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = Color(0.35, 0.7, 0.35)
+	_player_hp_bar.add_theme_stylebox_override("fill", fill)
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.08, 0.05, 0.05)
+	_player_hp_bar.add_theme_stylebox_override("background", bg)
+	hp_holder.add_child(_player_hp_bar)
+
+	_player_hp_overlay = Label.new()
+	_player_hp_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_player_hp_overlay.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_player_hp_overlay.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_player_hp_overlay.add_theme_font_size_override("font_size", 11)
+	_player_hp_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hp_holder.add_child(_player_hp_overlay)
+
+	_player_status_row = HBoxContainer.new()
+	_player_status_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_player_status_row.custom_minimum_size = Vector2(0, 24)
+	_player_status_row.add_theme_constant_override("separation", 4)
+	_player_status_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	area.add_child(_player_status_row)
+
+func _refresh_player_view() -> void:
+	if player == null or _player_hp_bar == null:
+		return
+	_player_hp_bar.max_value = maxi(1, player.max_hp)
+	_player_hp_bar.value = player.hp
+	if player.block > 0:
+		_player_hp_overlay.text = "%d / %d   BLK %d" % [player.hp, player.max_hp, player.block]
+	else:
+		_player_hp_overlay.text = "%d / %d" % [player.hp, player.max_hp]
+	for c in _player_status_row.get_children():
+		c.queue_free()
+	for s in player.statuses.keys():
+		var stacks: int = int(player.statuses[s])
+		if stacks <= 0:
+			continue
+		_player_status_row.add_child(_make_status_badge(s, stacks))
+
+# Small status icon + stack-count badge, mirroring EnemyView's. Falls back to a
+# coloured letter when a status has no icon art.
+func _make_status_badge(status_name, stacks: int) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(22, 22)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.tooltip_text = "%s %d" % [String(status_name).capitalize(), stacks]
+	var tex: Texture2D = Stats.status_icon(status_name)
+	if tex != null:
+		var icon := TextureRect.new()
+		icon.texture = tex
+		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(icon)
+	else:
+		var letter := Label.new()
+		letter.text = String(status_name).substr(0, 1).to_upper()
+		letter.set_anchors_preset(Control.PRESET_FULL_RECT)
+		letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		letter.add_theme_font_size_override("font_size", 12)
+		letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(letter)
+	var count := Label.new()
+	count.text = str(stacks)
+	count.set_anchors_preset(Control.PRESET_FULL_RECT)
+	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	count.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	count.add_theme_font_size_override("font_size", 11)
+	count.add_theme_color_override("font_outline_color", Color.BLACK)
+	count.add_theme_constant_override("outline_size", 3)
+	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(count)
+	return holder
 
 func _build_enemy_views() -> void:
 	for child in _enemy_area.get_children():
@@ -264,6 +367,12 @@ func _on_end_turn() -> void:
 	if phase != Phase.PLAYER:
 		return
 	_cancel_targeting()
+	# Snapshot the curse cards in hand (and the hand size, for Regret) BEFORE
+	# discard. Their eot effects are applied AFTER status decay below, so a
+	# status they grant (Doubt -> Weak) survives into the next turn instead of
+	# being decayed away the instant it's applied.
+	var eot_curses: Array = hand.duplicate()
+	var eot_hand_size: int = hand.size()
 	# Ice Cream: bank whatever energy is still unspent for next turn.
 	if energy > 0 and GameState.has_energy_carryover_item():
 		_energy_carryover = energy
@@ -296,6 +405,11 @@ func _on_end_turn() -> void:
 	# Decay player statuses BEFORE enemies act so debuffs the player
 	# just applied to enemies survive through the enemy turn.
 	_decay_statuses(player)
+	# Curse cards' end-of-turn effects land here — AFTER decay — so a status they
+	# grant the player (Doubt -> Weak, Punctured Eye -> Blind) persists to the next
+	# turn. HP-loss curses (Decay/Regret) resolve here too; a lethal one is caught
+	# by the combat-end check just below.
+	_fire_curse_triggers("eot", eot_curses, eot_hand_size)
 	phase = Phase.ENEMY
 	_refresh_ui()
 
@@ -570,6 +684,10 @@ func _cancel_targeting() -> void:
 func _on_card_drag_started(card: CardInstance) -> void:
 	if phase != Phase.PLAYER:
 		return
+	# Unplayable cards (curses) can't be played — don't even start the drag.
+	if card.data != null and card.data.unplayable:
+		GameLog.add("%s is unplayable." % card.get_display_name(), Color(0.8, 0.6, 0.8))
+		return
 	if card.get_cost() > energy:
 		GameLog.add("Not enough energy for %s." % card.get_display_name(), Color(0.9, 0.7, 0.3))
 		return
@@ -611,6 +729,9 @@ func _finish_drag(pos: Vector2) -> void:
 	var card := _drag_card
 	_clear_drag_visuals()
 	if card == null or phase != Phase.PLAYER or not (card in hand):
+		return
+	# Unplayable cards (curses) sit in hand but can't be played manually.
+	if card.data != null and card.data.unplayable:
 		return
 	if card.get_cost() > energy:
 		return
@@ -683,6 +804,11 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	var replays: int = CardMods.replay_count(card.data)
 	for _i in replays:
 		replay_card_effects(card, target_enemy)
+
+	# Playing a card fires any on_play_other curse in hand (Pain: lose HP when
+	# you play another card). Curse cards are unplayable, so `card` is never a
+	# curse here. (Action/strategy translate on_play_other -> on_action.)
+	_fire_curse_triggers("on_play_other", hand, hand.size())
 
 	# Powers exhaust on play; cards with the exhaust flag exhaust; else discard.
 	if card.data.exhaust or card.is_power():
@@ -759,6 +885,49 @@ func replay_card_effects(card: CardInstance, target_enemy) -> void:
 	_apply_card_effects(card, tgt)
 	GameLog.add("%s replays!" % card.data.display_name, Color(0.7, 1.0, 0.7))
 	_check_combat_end()
+
+# ------------------------------------------------------------------
+# Curse cards (CardData.triggers)
+# ------------------------------------------------------------------
+
+# Fires the triggered effects of every curse card currently in hand whose `on`
+# matches `trigger` ("eot" / "on_play_other"). The owning curse is both source
+# and target — self-inflicted (target "self"). `per: "card_in_hand"` effects
+# (Regret) scale by the cards in hand.
+func _fire_curse_triggers(trigger: String, cards: Array, hand_size: int) -> void:
+	for c in cards:
+		if c == null or c.data == null or c.data.triggers.is_empty():
+			continue
+		for trig in c.data.triggers:
+			if String(trig.get("on", "")) != trigger:
+				continue
+			for raw in trig.get("effects", []):
+				if not (raw is Dictionary):
+					continue
+				var effect: Dictionary = _resolve_curse_effect(raw, hand_size)
+				if effect.is_empty():
+					continue
+				EffectSystem.apply(effect, {
+					"source": player, "target": player, "scene": self, "card": c,
+				})
+	_refresh_ui()
+
+# Resolves the deckbuilder `per` scaler — Regret's `per: "card_in_hand"` (× cards
+# in hand right now). A zero multiplier returns an empty dict so the caller skips
+# the no-op hit. on_action / per_action are STRATEGY concepts the translators map
+# to; the deckbuilder never sees them.
+func _resolve_curse_effect(effect: Dictionary, hand_size: int) -> Dictionary:
+	if String(effect.get("per", "")) != "card_in_hand":
+		return effect
+	var n: int = hand_size
+	if n <= 0:
+		return {}
+	var out: Dictionary = effect.duplicate()
+	out.erase("per")
+	out["value"] = int(effect.get("value", 1)) * n
+	GameLog.add("Regret: %d card(s) in hand — lose %d HP." % [n, int(out["value"])],
+		Color(0.9, 0.6, 0.7))
+	return out
 
 # ------------------------------------------------------------------
 # Effect callbacks (invoked by EffectSystem handlers via ctx.scene)
@@ -1447,6 +1616,8 @@ func _refresh_ui() -> void:
 	_draw_btn.text = "Draw: %d" % draw_pile.size()
 	_discard_btn.text = "Discard: %d" % discard_pile.size()
 	_exhaust_btn.text = "Exhaust: %d" % exhaust_pile.size()
+
+	_refresh_player_view()
 
 	# Enemies — refresh existing views instead of rebuilding.
 	for view in _enemy_views:

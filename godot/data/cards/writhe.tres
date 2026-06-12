@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_writhe"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Writhe.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"writhe"
+display_name = "Writhe"
+type = 5
+rarity = 0
+cost = 0
+description = "Unplayable. Innate."
+effects = []
+tags = PackedStringArray("randomcurse")
+source_game = "Slay the Spire"
+can_upgrade = false
+image = ExtResource("2_img")
+unplayable = true

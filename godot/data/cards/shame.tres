@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_shame"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Shame.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"shame"
+display_name = "Shame"
+type = 5
+rarity = 0
+cost = 0
+description = "Unplayable. At the end of your turn, if this is in Hand, Gain 1 Frail."
+effects = []
+triggers = [{"on": "eot", "effects": [{"type": "status", "status": "frail", "stacks": 1, "target": "self"}]}]
+tags = PackedStringArray("randomcurse")
+source_game = "Slay the Spire"
+can_upgrade = false
+image = ExtResource("2_img")
+unplayable = true
