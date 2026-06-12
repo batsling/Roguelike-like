@@ -121,6 +121,29 @@ func _build_ui() -> void:
 	amulet_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(amulet_hint)
 
+	vbox.add_child(HSeparator.new())
+
+	var dev_heading := Label.new()
+	dev_heading.text = "Developer"
+	dev_heading.add_theme_font_size_override("font_size", 17)
+	dev_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	vbox.add_child(dev_heading)
+
+	var dev_chk := CheckButton.new()
+	dev_chk.text = "Developer mode"
+	dev_chk.button_pressed = Settings.dev_mode
+	dev_chk.toggled.connect(func(on: bool) -> void:
+		Settings.set_dev_mode(on))
+	vbox.add_child(dev_chk)
+
+	var dev_hint := Label.new()
+	dev_hint.text = "Enables the dev overlay (press ` / backtick) to add any card, curse, or item to the player."
+	dev_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dev_hint.custom_minimum_size = Vector2(0, 44)
+	dev_hint.add_theme_font_size_override("font_size", 13)
+	dev_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	vbox.add_child(dev_hint)
+
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(spacer)
