@@ -287,29 +287,22 @@ func _tick_card_lifecycles() -> void:
 		emit_signal("deck_changed")
 
 # Saddles the player with a curse (skipping a game today; events / enemies
-# later). Records it in active_curses and drops its penalty card into the deck:
-# the curse's named card when it has one, else a random card from the
-# `randomcurse` pool. (Restriction curses are meant to drop the card on
-# *violation*; until that honour-check exists the card is granted on
-# acquisition so the consequence is felt and testable.) Returns the curse.
+# later). Records it in active_curses. The penalty card is NOT granted here — a
+# restriction curse drops its card only when the player admits on the
+# verification screen that they failed the challenge (see Overworld).
 func add_active_curse(curse: CurseData) -> CurseData:
 	if curse == null:
 		return null
 	active_curses.append({"id": curse.id, "name": curse.display_name})
-	var card: CardData = _resolve_penalty_card(curse)
-	if card != null:
-		add_card_to_deck(card)
-		Notifications.notify("Cursed: %s (+%s)" % [curse.display_name, card.display_name],
-			Color(0.85, 0.6, 0.85))
-	else:
-		Notifications.notify("Cursed: %s" % curse.display_name, Color(0.85, 0.6, 0.85))
+	Notifications.notify("Cursed: %s" % curse.display_name, Color(0.85, 0.6, 0.85))
 	TriggerBus.emit_signal("curse_applied", {"curse": curse})
 	return curse
 
-# The card a curse inflicts: its named penalty_card, else a random card from the
-# `randomcurse` pool. Null when neither resolves (e.g. an affliction with no card
-# and an empty pool).
-func _resolve_penalty_card(curse: CurseData) -> CardData:
+# The card a curse inflicts when its challenge is failed: its named penalty_card,
+# else a random card from the `randomcurse` pool. Null when neither resolves.
+func penalty_card_for(curse: CurseData) -> CardData:
+	if curse == null:
+		return null
 	if curse.penalty_card != &"":
 		return Data.get_card(curse.penalty_card)
 	var pool: Array = []
@@ -319,6 +312,18 @@ func _resolve_penalty_card(curse: CurseData) -> CardData:
 	if pool.is_empty():
 		return null
 	return pool[randi() % pool.size()]
+
+# All active RESTRICTION curses resolved to CurseData, for the verification
+# screen's "did you fulfil it?" rows. Afflictions are automatic and excluded.
+func active_restriction_curses() -> Array:
+	var out: Array = []
+	for entry in active_curses:
+		if not (entry is Dictionary):
+			continue
+		var cd: CurseData = Data.get_curse(StringName(entry.get("id", "")))
+		if cd != null and cd.is_restriction():
+			out.append(cd)
+	return out
 
 # A random curse from the catalog — the skip-a-game penalty draws from here.
 func random_curse() -> CurseData:
