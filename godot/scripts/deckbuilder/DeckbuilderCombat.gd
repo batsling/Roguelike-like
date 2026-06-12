@@ -38,11 +38,6 @@ var hand: Array[CardInstance] = []
 var discard_pile: Array[CardInstance] = []
 var exhaust_pile: Array[CardInstance] = []
 
-# Actions the player has taken this turn (a card play). Drives curse cards that
-# scale "per action" (Regret) and is reset each turn. In deckbuilder an action
-# == a card resolved; the translators map this to casts/moves in the other modes.
-var _actions_this_turn: int = 0
-
 # Persistent in-combat modifiers registered by `boost_cards` effects.
 # Each entry: {match_tag, match_type, match_id, stat, value}. Consulted
 # in `_resolve_card` so the bonus folds into the effect's value before
@@ -240,7 +235,6 @@ func _start_player_turn() -> void:
 	turn += 1
 	phase = Phase.PLAYER
 	energy = max_energy
-	_actions_this_turn = 0
 	# Ice Cream: pour last turn's leftover energy on top (may exceed max).
 	if _energy_carryover > 0:
 		energy += _energy_carryover
@@ -696,11 +690,10 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	for _i in replays:
 		replay_card_effects(card, target_enemy)
 
-	# A resolved card is one "action" this turn. Count it, then fire any
-	# on_action curse cards in hand (Pain: lose HP when you play another card).
-	# Curse cards are unplayable, so `card` is never itself a curse here.
-	_actions_this_turn += 1
-	_fire_curse_triggers("on_action")
+	# Playing a card fires any on_play_other curse in hand (Pain: lose HP when
+	# you play another card). Curse cards are unplayable, so `card` is never a
+	# curse here. (Action/strategy translate on_play_other -> on_action.)
+	_fire_curse_triggers("on_play_other")
 
 	# Powers exhaust on play; cards with the exhaust flag exhaust; else discard.
 	if card.data.exhaust or card.is_power():
@@ -783,9 +776,9 @@ func replay_card_effects(card: CardInstance, target_enemy) -> void:
 # ------------------------------------------------------------------
 
 # Fires the triggered effects of every curse card currently in hand whose `on`
-# matches `trigger` ("eot" / "on_action"). The owning curse is both source and
-# target — these are self-inflicted (target "self"). `per: "action"` effects
-# (Regret) scale by the actions taken this turn.
+# matches `trigger` ("eot" / "on_play_other"). The owning curse is both source
+# and target — self-inflicted (target "self"). `per: "card_in_hand"` effects
+# (Regret) scale by the cards in hand.
 func _fire_curse_triggers(trigger: String) -> void:
 	if hand.is_empty():
 		return
@@ -810,31 +803,20 @@ func _fire_curse_triggers(trigger: String) -> void:
 				})
 	_refresh_ui()
 
-# Resolves curse-effect placeholders that depend on live combat state — Regret's
-# `per` scaler. Two forms are supported: "action" (× actions taken this turn) and
-# "card_in_hand" (× cards in hand right now). A zero multiplier returns an empty
-# dict so the caller skips the no-op hit.
+# Resolves the deckbuilder `per` scaler — Regret's `per: "card_in_hand"` (× cards
+# in hand right now). A zero multiplier returns an empty dict so the caller skips
+# the no-op hit. on_action / per_action are STRATEGY concepts the translators map
+# to; the deckbuilder never sees them.
 func _resolve_curse_effect(effect: Dictionary) -> Dictionary:
-	var per: String = String(effect.get("per", ""))
-	if per == "":
+	if String(effect.get("per", "")) != "card_in_hand":
 		return effect
-	var n: int = 0
-	var unit: String = ""
-	match per:
-		"action":
-			n = _actions_this_turn
-			unit = "action(s)"
-		"card_in_hand":
-			n = hand.size()
-			unit = "card(s) in hand"
-		_:
-			return effect
+	var n: int = hand.size()
 	if n <= 0:
 		return {}
 	var out: Dictionary = effect.duplicate()
 	out.erase("per")
 	out["value"] = int(effect.get("value", 1)) * n
-	GameLog.add("Regret: %d %s — lose %d HP." % [n, unit, int(out["value"])],
+	GameLog.add("Regret: %d card(s) in hand — lose %d HP." % [n, int(out["value"])],
 		Color(0.9, 0.6, 0.7))
 	return out
 

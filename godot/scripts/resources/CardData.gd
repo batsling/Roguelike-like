@@ -47,13 +47,15 @@ enum Rarity { STARTER, COMMON, UNCOMMON, RARE, LEGENDARY }
 # Triggered effects — UNLIKE `effects` (which resolve when the card is PLAYED),
 # these fire on a trigger while the card merely sits in hand. Mirrors ItemData's
 # trigger schema: each entry is { "on": <trigger>, "effects": [ <effect dict> ] }.
-# Drives curse cards (Doubt/Decay/Regret/Pain/…). Recognised triggers:
-#   "eot"       — end of the player's turn, while this card is in hand.
-#   "on_action" — each time the player takes an action while this card is in
-#                 hand (a card play in deckbuilder; a cast/move in action/strategy).
-# The translators (ActionTranslation/StrategyTranslation) remap these to each
-# mode: eot -> the curse's long auto-cooldown (action) / end of turn (strategy);
-# on_action -> per slot activation (action) / per action (strategy).
+# Drives curse cards (Doubt/Decay/Regret/Pain/…). Authored in DECKBUILDER
+# vocabulary; the action/strategy translators remap each at runtime. Triggers:
+#   "eot"           — end of the player's turn, while this card is in hand.
+#   "on_play_other" — each time the player plays another card while this is in
+#                     hand (Pain). Translators map it to on_action — per auto-slot
+#                     activation (action) / per action taken (strategy).
+# Likewise the `per: "card_in_hand"` effect scaler (Regret) is translated to
+# per active cooldown (action) / per action (strategy). eot maps to the curse's
+# long auto-cooldown (action) / end of turn (strategy).
 @export var triggers: Array = []
 
 # Lifecycle: destroy this card after the player has beaten this many games this

@@ -156,19 +156,19 @@ def parse_effects(raw):
         if not clause:
             continue
         trig = None
-        m = re.match(r"^(eot|on_action|on_play_other|lifecycle)\s*:\s*(.+)$", clause)
+        # Triggers are authored in DECKBUILDER vocabulary (eot / on_play_other).
+        # The action/strategy translators remap them at runtime — the .tres keeps
+        # the deckbuilder token so the sheet stays the single source of truth.
+        m = re.match(r"^(eot|on_play_other|lifecycle)\s*:\s*(.+)$", clause)
         if m:
             trig, clause = m.group(1), m.group(2).strip()
-            # on_play_other (sheet alias) == on_action: fires per other card played.
-            if trig == "on_play_other":
-                trig = "on_action"
         eff = _effect_from_tokens([t.strip() for t in clause.split(":") if t.strip()])
         if eff is None:
             continue
         if isinstance(eff, tuple) and eff[0] == "destroy_after":
             destroy_after = eff[1]
             continue
-        if trig in ("eot", "on_action"):
+        if trig in ("eot", "on_play_other"):
             triggers.append({"on": trig, "effects": [eff]})
         else:
             on_play.append(eff)
