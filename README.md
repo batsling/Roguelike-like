@@ -248,6 +248,14 @@ remaining systems from the legacy HTML build:
   `proof/` folder or a website link showing the link between the two games.
   Add this to the connection data and display it in-game when viewing a
   connection.
+- **Unconnected games** — give a purpose to games that have no influence edge
+  into the current path (a mechanic, reward, or way to reach/use them).
+- **Game-space statuses** — port the HTML system where map spaces carry
+  statuses that trigger when landed on (e.g. Charmed, Devilish, Holy, Marked),
+  from `game-statuses-data.js`.
+- **More map movement** — give players more ways to move around the map:
+  additional movement items and loot, a new movement mechanic, and/or
+  movement-themed events.
 
 Larger systems from the HTML build still to be ported (surfaced from a scan of
 `legacy-web/`):
