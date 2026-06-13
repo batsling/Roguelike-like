@@ -243,6 +243,11 @@ remaining systems from the legacy HTML build:
   removal**).
 - **Start-of-run reward** — a free reward granted at the start of a run, chosen
   to match the **game type** the player picks.
+- **Connection proof** — surface the evidence behind each game-to-game
+  influence edge. Most connections have proof: a screenshot stored in a
+  `proof/` folder or a website link showing the link between the two games.
+  Add this to the connection data and display it in-game when viewing a
+  connection.
 
 Larger systems from the HTML build still to be ported (surfaced from a scan of
 `legacy-web/`):
