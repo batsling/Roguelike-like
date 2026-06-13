@@ -50,6 +50,31 @@ func apply_all(effects: Array, ctx: Dictionary) -> void:
 	for e in effects:
 		apply(e, ctx)
 
+# Resolves an effect amount that may be dynamic. When `from_key` is present in
+# the effect its value names a live tally (see _dynamic_count) and the amount
+# is that count times `mult_key` (default 1); otherwise the static `base_key`
+# is used. Lets curse-scaling items stay fully declarative — Death Orb is
+# {type:"dmg", value_from:"curses", value_mult:2} and Du-Vu Doll is
+# {type:"status", status:"power", stacks_from:"curses"}.
+func _dyn_amount(effect: Dictionary, base_key: String, from_key: String, mult_key: String) -> int:
+	if effect.has(from_key):
+		return _dynamic_count(String(effect[from_key])) * int(effect.get(mult_key, 1))
+	return int(effect.get(base_key, 0))
+
+# Live count for a dynamic effect source. "curses" = active curses (NOT curse
+# cards); "curse_cards" = CURSE-type cards in the deck; "curses_and_cards" =
+# both. Curses and curse cards are intentionally separate quantities.
+func _dynamic_count(source: String) -> int:
+	match source:
+		"curses":
+			return GameState.curse_count()
+		"curse_cards":
+			return GameState.curse_card_count()
+		"curses_and_cards":
+			return GameState.curse_count() + GameState.curse_card_count()
+	push_warning("EffectSystem: unknown dynamic count source '%s'" % source)
+	return 0
+
 # ---------------------------------------------------------------------------
 # Default handlers — registered at load. The combat scene exposes the
 # methods these handlers call back into (deal_damage, gain_block, etc.)
@@ -91,6 +116,7 @@ func _register_defaults() -> void:
 	register("attack_double", _h_attack_double)
 	register("if_hp", _h_if_hp)
 	register("free_random_hand_card", _h_free_random_hand_card)
+	register("gain_chest", _h_gain_chest)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -118,13 +144,15 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	# `target: "self"` routes the hit back onto the source (curse cards: Decay
 	# deals to the player), mirroring how status/block/heal resolve "self".
 	var self_target: bool = String(effect.get("target", "")) == "self"
+	# Damage may be curse-scaled (Death Orb: Xx2 where X = curse count).
+	var dmg_value: int = _dyn_amount(effect, "value", "value_from", "value_mult")
 	for _i in hits:
 		var tgt: Variant = ctx.get("source") if self_target else ctx.get("target")
 		if indiscriminate:
 			tgt = _pick_random_enemy(ctx.get("scene"))
 			if tgt == null:
 				return
-		scene.deal_damage(ctx.get("source"), tgt, effect.get("value", 0), effect)
+		scene.deal_damage(ctx.get("source"), tgt, dmg_value, effect)
 
 func _pick_random_enemy(scene: Variant) -> Variant:
 	if scene == null or not ("enemies" in scene):
@@ -191,7 +219,10 @@ func _h_lose_energy(effect: Dictionary, ctx: Dictionary) -> void:
 func _h_status(effect: Dictionary, ctx: Dictionary) -> void:
 	var target: Variant = ctx.get("target") if effect.get("target", "enemy") != "self" else ctx.get("source")
 	var status_id := StringName(effect.get("status", ""))
-	var stacks: int = int(effect.get("stacks", 1))
+	# Stacks may be curse-scaled (Du-Vu Doll: gain X Power where X = curse count).
+	var stacks: int = _dyn_amount(effect, "stacks", "stacks_from", "stacks_mult")
+	if not effect.has("stacks") and not effect.has("stacks_from"):
+		stacks = 1
 	if status_id == &"" or stacks == 0 or target == null:
 		return
 	var scene: Variant = ctx.get("scene")
@@ -244,6 +275,15 @@ func _h_gain_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	if v == 0:
 		return
 	GameState.set_max_hp(GameState.max_hp + v, false)
+
+# Grants N "chests" — the project's term for an item reward (a gold-less
+# item-choice screen). Golden Beetle uses this on curse / curse-card removal.
+# Scene-less: banks the chest in GameState, where the overworld redeems it.
+func _h_gain_chest(effect: Dictionary, _ctx: Dictionary) -> void:
+	var n: int = _dyn_amount(effect, "value", "value_from", "value_mult")
+	if not effect.has("value") and not effect.has("value_from"):
+		n = 1
+	GameState.grant_chest(n)
 
 func _h_gain_hp(effect: Dictionary, ctx: Dictionary) -> void:
 	# Scene-less heal that goes directly to GameState. Used by Lunch's

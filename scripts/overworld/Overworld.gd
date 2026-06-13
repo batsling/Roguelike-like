@@ -46,6 +46,7 @@ var _verification_modal: Control = null
 var _dash_modal: Control = null
 var _map_view: RunMapView = null
 var _section_reward_layer: CanvasLayer = null
+var _chest_reward_layer: CanvasLayer = null
 var _rate_modal: RateGameModal = null
 # Game whose section reward is pending — set when a victory is handed to us,
 # consumed when the item reward opens after the verification screen.
@@ -67,11 +68,18 @@ func _ready() -> void:
 	GameState.phase = GameState.Phase.OVERWORLD
 	_spawn_portals_for_current_game()
 	_update_hint()
+	# Golden Beetle banks "chests" (item rewards) whenever a curse / curse card
+	# is removed; redeem any that are pending into item-choice screens here.
+	if not TriggerBus.chest_granted.is_connected(_on_chest_granted):
+		TriggerBus.chest_granted.connect(_on_chest_granted)
 	# Process whatever Main just handed us (combat result), if any.
 	if not pending_combat_outcome.is_empty():
 		var outcome := pending_combat_outcome
 		pending_combat_outcome = {}
 		call_deferred("_process_combat_outcome", outcome)
+	else:
+		# Fresh idle entry — redeem any chests banked while we were away.
+		call_deferred("_redeem_pending_chests")
 
 # Stretch the floor so it always covers the whole viewport — never leaves the
 # bare window clear-colour (the "gray") showing past the grid.
@@ -213,7 +221,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _can_act() -> bool:
 	return _verification_modal == null and _win_overlay == null and _dash_modal == null \
-		and _map_view == null and _section_reward_layer == null
+		and _map_view == null and _section_reward_layer == null \
+		and _chest_reward_layer == null
 
 # ------------------------------------------------------------------
 # Run map — view-only overview of the route to the Amulet. Pauses the
@@ -936,6 +945,48 @@ func _on_section_reward_closed() -> void:
 	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
 	_spawn_portals_for_current_game()
 	_update_hint()
+	# A section reward can have minted chests indirectly (an item picked there
+	# that removes a curse, etc.); drain them now that we're idle again.
+	_redeem_pending_chests()
+
+# ------------------------------------------------------------------
+# Chests — the project's term for an item reward. Golden Beetle banks one
+# whenever a curse or curse card is removed; we redeem each into a gold-less
+# item-choice screen, one at a time, whenever the overworld is idle.
+# ------------------------------------------------------------------
+
+func _on_chest_granted(_ctx: Dictionary) -> void:
+	# Only redeem inline when nothing else owns the screen. If a modal/reward is
+	# up, the chest stays banked and is drained when that flow closes (or on the
+	# next idle overworld entry).
+	if _can_act():
+		_redeem_pending_chests()
+
+func _redeem_pending_chests() -> void:
+	if _chest_reward_layer != null or not _can_act():
+		return
+	if not GameState.take_pending_chest():
+		return
+	_player.set_input_locked(true)
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	add_child(layer)
+	_chest_reward_layer = layer
+	var reward := RewardScreen.new()
+	layer.add_child(reward)
+	reward.closed.connect(_on_chest_reward_closed)
+	# Gold-less: a chest is purely an item choice.
+	reward.setup(0)
+
+func _on_chest_reward_closed() -> void:
+	if _chest_reward_layer != null:
+		_chest_reward_layer.queue_free()
+		_chest_reward_layer = null
+	_player.set_input_locked(false)
+	_save_run()
+	# More banked? Redeem the next one (chest screens chain until empty).
+	if GameState.pending_chests > 0:
+		call_deferred("_redeem_pending_chests")
 
 # ------------------------------------------------------------------
 # Win overlay (Amulet reached)

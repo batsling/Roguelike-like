@@ -63,6 +63,18 @@ signal floor_entered(ctx: Dictionary)       # ctx.game_id
 signal item_acquired(ctx: Dictionary)       # ctx.item
 signal item_lost(ctx: Dictionary)
 signal item_used(ctx: Dictionary)           # ctx.item — a USABLE consumable was activated
-signal curse_applied(ctx: Dictionary)
-signal curse_removed(ctx: Dictionary)
+signal curse_applied(ctx: Dictionary)        # ctx.curse — a curse was added to
+                                            # active_curses (Vitality Orb).
+signal curse_removed(ctx: Dictionary)        # ctx.curse — a curse left
+                                            # active_curses (Golden Beetle).
+signal curse_card_removed(ctx: Dictionary)   # ctx.card — a CURSE-type card left
+                                            # the deck (Golden Beetle). Distinct
+                                            # from curse_removed: a curse and a
+                                            # curse CARD are separate things —
+                                            # Death/Du-Vu/Vitality count curses
+                                            # only, Golden Beetle counts both.
+signal chest_granted(ctx: Dictionary)        # ctx.count — N item-reward "chests"
+                                            # were granted (Golden Beetle). The
+                                            # overworld redeems pending chests
+                                            # into item-choice reward screens.
 @warning_ignore_restore("unused_signal")

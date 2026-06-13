@@ -64,6 +64,27 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #                          label: "Dead Eye", target: "enemy"}]},
 #                        {on: "attack_missed", silent: true, effects: [{type:
 #                          "streak_reset", key: "dead_eye"}]}]
+#   curse_applied    — fires when a curse is added to active_curses (skip
+#                      penalty / events). Run-scope and scene-less, dispatched
+#                      by GameState.fire_run_item_triggers — use scene-free
+#                      effects only (gain_max_hp, gain_hp, gain_gold,
+#                      gain_chest, …). A "curse" is the active_curses entry,
+#                      NOT a curse card. Vitality Orb: triggers = [{on:
+#                      "curse_applied", effects: [{type: "gain_max_hp",
+#                      value: 8}]}]
+#   curse_removed    — fires when an active curse is lifted
+#                      (GameState.remove_active_curse). Run-scope/scene-less.
+#   curse_card_removed — fires when a CURSE-type card leaves the deck (removed
+#                      in the backpack, or aged out like Guilty). Run-scope/
+#                      scene-less. Curses and curse CARDS are separate things:
+#                      Golden Beetle listens to BOTH curse_removed and
+#                      curse_card_removed (a chest for either), while
+#                      Death/Du-Vu/Vitality count curses only.
+#                      Golden Beetle: triggers = [
+#                        {on: "curse_removed", effects: [{type: "gain_chest",
+#                          value: 1}]},
+#                        {on: "curse_card_removed", effects: [{type:
+#                          "gain_chest", value: 1}]}]
 #
 # Trigger-entry gates / flags (all optional): if_turn, if_card_tag,
 # if_card_id, if_card_type (attack/skill/power/…), and silent (skip the
@@ -73,8 +94,20 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # is `{type: <handler-name>, ...args}`. See EffectSystem.gd for the full
 # handler registry. The common ones for items:
 #   block / heal / dmg / status / gain_energy / gain_gold / draw /
+#   gain_chest (banks N "chests" — the project's term for an item reward, the
+#   gold-less item-choice screen; the overworld redeems pending chests. Golden
+#   Beetle on curse / curse-card removal) /
 #   chance (wraps an inner effect with a % roll) / trigger (persistent
 #   in-combat listener) / add_max_hp (mutates target.max_hp directly) /
+#   --- dynamic amounts: any `dmg`/`status`/`gain_chest` effect can scale its
+#   amount off a live curse tally instead of a flat literal. On `dmg` use
+#   `value_from`, on `status` use `stacks_from`; the source is "curses"
+#   (active curses, NOT curse cards), "curse_cards" (CURSE cards in deck), or
+#   "curses_and_cards". Multiply with `value_mult` / `stacks_mult` (default 1).
+#     Death Orb: {type: "dmg", value_from: "curses", value_mult: 2,
+#                 damage_type: "true", target: "all_enemies"}
+#     Du-Vu Doll: {type: "status", status: "power", stacks_from: "curses",
+#                  target: "self"} /
 #   streak_hit + streak_reset (named consecutive-hit counter that adds to
 #   outgoing player attacks — Dead Eye. Lives on GameState.streak_* so it
 #   works in every mode: each scene's attack path folds the bonus in via
