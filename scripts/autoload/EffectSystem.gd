@@ -117,6 +117,7 @@ func _register_defaults() -> void:
 	register("if_hp", _h_if_hp)
 	register("free_random_hand_card", _h_free_random_hand_card)
 	register("gain_chest", _h_gain_chest)
+	register("roll_gold", _h_roll_gold)
 
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -301,6 +302,44 @@ func _h_gain_hp(effect: Dictionary, ctx: Dictionary) -> void:
 		target.hp = clampi(int(target.hp) + v, 0, int(target.max_hp))
 		return
 	GameState.change_hp(v)
+
+# Wooden Nickel: roll a luck-weighted rarity tier (Common / Uncommon / Rare,
+# weighted 75/20/5 like every other item roll) and grant the matching gold
+# amount. `amounts` maps the three tiers low->high; defaults to [1, 5, 10], so
+# Common = 1, Uncommon = 5, Rare = 10. Luck biases the roll toward the higher
+# (rarer, richer) tiers, exactly like RewardScreen's item-rarity roll. Wrap in a
+# `chance` effect for the "50% chance" half.
+const _GOLD_TIER_BOUNDS := [75.0, 95.0]  # Common < 75 <= Uncommon < 95 <= Rare
+func _h_roll_gold(effect: Dictionary, _ctx: Dictionary) -> void:
+	var amounts: Array = effect.get("amounts", [1, 5, 10])
+	if amounts.is_empty():
+		return
+	var tier: int = _roll_gold_tier()
+	var amount: int = int(amounts[clampi(tier, 0, amounts.size() - 1)])
+	GameState.change_gold(amount)
+	GameLog.add("Wooden Nickel paid out %d gold." % amount, Color(1.0, 0.85, 0.35))
+	Notifications.notify("+%d gold" % amount, Color(1.0, 0.85, 0.35))
+
+# Returns 0 (Common) / 1 (Uncommon) / 2 (Rare) on a luck-weighted [0,1) roll.
+func _roll_gold_tier() -> int:
+	var roll: float = _roll01_with_luck() * 100.0
+	if roll < _GOLD_TIER_BOUNDS[0]:
+		return 0
+	if roll < _GOLD_TIER_BOUNDS[1]:
+		return 1
+	return 2
+
+# Port of RewardScreen._roll_with_luck_advantage: a [0,1) roll where positive
+# Luck has a luck*10% chance to keep the higher of two rolls (negative Luck the
+# lower). Higher rolls land in the richer tiers.
+func _roll01_with_luck() -> float:
+	var lv: int = Stats.get_value(&"luck")
+	var r: float = _rng.randf()
+	if lv > 0 and _rng.randf() < float(lv) * 0.1:
+		return maxf(r, _rng.randf())
+	if lv < 0 and _rng.randf() < float(absi(lv)) * 0.1:
+		return minf(r, _rng.randf())
+	return r
 
 func _h_gain_gold(effect: Dictionary, ctx: Dictionary) -> void:
 	# Verification rewards (Blasma Pistol et al) pass a `level` in ctx and

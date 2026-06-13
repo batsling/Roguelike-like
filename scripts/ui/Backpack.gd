@@ -589,6 +589,13 @@ func _build_item_row(item: ItemData) -> Control:
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		hbox.add_child(icon)
 
+	# Charged actives get an Isaac-style charge bar beside the icon.
+	if item.is_charged():
+		var bar := ChargeBar.new()
+		bar.custom_minimum_size = Vector2(7, 48)
+		bar.setup(item.max_charge(), item.current_charge)
+		hbox.add_child(bar)
+
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(info)
@@ -618,7 +625,22 @@ func _build_item_row(item: ItemData) -> Control:
 		badge_lbl.add_theme_font_size_override("font_size", 16)
 		hbox.add_child(badge_lbl)
 
-	if item.kind == ItemData.ItemKind.USABLE:
+	if item.is_charged():
+		# Charged actives can be fired from any screen once their bar is full.
+		var charge_lbl := Label.new()
+		charge_lbl.text = "%d/%d" % [item.current_charge, item.max_charge()]
+		charge_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		charge_lbl.add_theme_font_size_override("font_size", 14)
+		charge_lbl.add_theme_color_override("font_color",
+			Color(0.5, 1.0, 0.6) if item.is_fully_charged() else Color(0.8, 0.8, 0.5))
+		hbox.add_child(charge_lbl)
+		var use_btn := Button.new()
+		use_btn.text = "Use" if item.is_fully_charged() else "Charging"
+		use_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		use_btn.disabled = not GameState.can_fire_item(item)
+		use_btn.pressed.connect(func(): _on_use_pressed(item))
+		hbox.add_child(use_btn)
+	elif item.kind == ItemData.ItemKind.USABLE:
 		var use_btn := Button.new()
 		use_btn.text = "Use"
 		if item.max_uses > 1:
@@ -805,9 +827,10 @@ func _render_gear() -> void:
 		_list_vbox.add_child(note)
 	_list_vbox.add_child(_gear_card_slot("Left click", "LMB", 0, locked))
 	_list_vbox.add_child(_gear_card_slot("Right click", "RMB", 1, locked))
-	_list_vbox.add_child(_gear_item_slot("Active item", "Q", locked))
+	_list_vbox.add_child(_gear_item_slot("Usable item", "Q", locked))
+	_list_vbox.add_child(_gear_charged_item_slot("Charged item", "E", locked))
 	_hint_label.text = "Locked while fighting." if locked \
-		else "Pick the card fired by each mouse button and the item you pop with Q. Only Strikes and weapons fit the click slots."
+		else "Pick the card fired by each mouse button, the pill you pop with Q, and the charged active you fire with E. Only Strikes and weapons fit the click slots."
 
 # Shared frame for a gear slot: an icon preview, the slot's name + binding key,
 # and a dropdown to pick what's slotted. Returns {row, preview, opt}.
@@ -927,6 +950,32 @@ func _on_item_slot_selected(opt: OptionButton) -> void:
 	GameState.action_active_item_id = StringName(opt.get_selected_metadata())
 	_refresh()
 
+# The charged-item (E) row: dropdown of every charged active in the inventory
+# plus "(empty)". The slotted item is the one that charges per turn in action.
+func _gear_charged_item_slot(title: String, key: String, locked: bool) -> Control:
+	var f: Dictionary = _gear_slot_frame(title, key)
+	var opt: OptionButton = f.opt
+	opt.disabled = locked
+	var cur: StringName = GameState.action_charged_item_id
+	opt.add_item("(empty)")
+	opt.set_item_metadata(0, &"")
+	var sel := 0
+	for id in _charged_item_ids():
+		var it: ItemData = Data.get_item(id)
+		opt.add_item(it.display_name if it != null else String(id))
+		var idx: int = opt.item_count - 1
+		opt.set_item_metadata(idx, id)
+		if id == cur:
+			sel = idx
+	opt.select(sel)
+	opt.item_selected.connect(func(_i): _on_charged_item_slot_selected(opt))
+	_fill_item_preview(f.preview, cur)
+	return f.row
+
+func _on_charged_item_slot_selected(opt: OptionButton) -> void:
+	GameState.action_charged_item_id = StringName(opt.get_selected_metadata())
+	_refresh()
+
 # Fills a slot's preview box with the card art (or an "empty" placeholder).
 func _fill_card_preview(preview: Control, id: StringName) -> void:
 	if id == &"":
@@ -981,6 +1030,13 @@ func _usable_item_ids() -> Array:
 	var out: Array = []
 	for it in GameState.inventory:
 		if it is ItemData and it.kind == ItemData.ItemKind.USABLE and not out.has(it.id):
+			out.append(it.id)
+	return out
+
+func _charged_item_ids() -> Array:
+	var out: Array = []
+	for it in GameState.inventory:
+		if it is ItemData and it.is_charged() and not out.has(it.id):
 			out.append(it.id)
 	return out
 

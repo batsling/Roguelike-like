@@ -1,7 +1,7 @@
 class_name ItemData
 extends Resource
 
-enum ItemKind { PASSIVE, TRIGGERED, USABLE, WEAPON, SCALING, PICKUP }
+enum ItemKind { PASSIVE, TRIGGERED, USABLE, WEAPON, SCALING, PICKUP, CHARGED }
 enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 
 @export var id: StringName
@@ -239,6 +239,37 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # For Usable items: how many uses (-1 = infinite)
 @export var max_uses: int = -1
 
+# === Charged active items (Binding-of-Isaac style) ===
+# A CHARGED item is an active you fire from the inventory; firing it spends the
+# whole charge, after which it recharges before the next use. The bar drawn on
+# the item is split into `charge_cost` equal segments (Isaac's pill/active bar)
+# and the item is only usable when full. Unlike a USABLE pill it is NOT consumed
+# on use — it just empties and refills.
+#
+# The payload is authored exactly like a USABLE's: a trigger entry with
+# `on: "item_used"` whose effects fire when the item is activated. Because a
+# charged item may be fired from ANY screen (combat, backpack, a reward screen),
+# author it with scene-free effects (gain_stat, gain_gold, roll_gold, …) unless
+# it is explicitly combat-only.
+#
+# Charging cadence (handled centrally — items don't declare it):
+#   * Finishing ANY combat (deckbuilder / action / strategy) adds 1 charge to
+#     every charged item — GameState.charge_all_items on combat_ended.
+#   * Per turn, additionally: deckbuilder charges ALL charged items; action
+#     charges only the item slotted in the active slot. Strategy uses the
+#     per-combat baseline only.
+#   D6: charge_cost = 4, item_used -> [{type: "gain_stat", stat: "reroll",
+#       value: 1}].
+#   Wooden Nickel: charge_cost = 1, item_used -> [{type: "chance", percent: 50,
+#       effect: {type: "roll_gold", amounts: [1, 5, 10]}}].
+@export var charge_cost: int = 0          # > 0 (or kind == CHARGED) marks a charged item
+@export var starts_charged: bool = true   # full on pickup unless stated otherwise
+
+# Runtime per-slot fill, 0..max_charge(). Lives on the duplicated Resource each
+# inventory slot owns (see GameState.add_item) and round-trips through saves so
+# a half-charged active survives reload. Templates leave it 0; add_item seeds it.
+@export var current_charge: int = 0
+
 # For Weapon items: the card to add to the deck when equipped
 @export var weapon_card_id: StringName = &""
 
@@ -329,3 +360,17 @@ func is_upgradeable_passive() -> bool:
 		if not (stat in HEALTH_BUCKET) and int(stat_bonuses[stat]) != 0:
 			return true
 	return false
+
+# === Charged-item helpers ===
+
+# True for an active item that uses the charge/recharge cycle.
+func is_charged() -> bool:
+	return kind == ItemKind.CHARGED or charge_cost > 0
+
+# Charges needed to be ready to fire (the bar's segment count). At least 1.
+func max_charge() -> int:
+	return maxi(1, charge_cost)
+
+# Ready to fire (bar full).
+func is_fully_charged() -> bool:
+	return is_charged() and current_charge >= max_charge()

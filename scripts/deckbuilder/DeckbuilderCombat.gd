@@ -119,11 +119,29 @@ func _ready() -> void:
 	_draw_btn.pressed.connect(_on_pile_clicked.bind("draw"))
 	_discard_btn.pressed.connect(_on_pile_clicked.bind("discard"))
 	_exhaust_btn.pressed.connect(_on_pile_clicked.bind("exhaust"))
+	_build_inventory_panel()
 	# Pre-combat event used to fire here; events now live as dedicated
 	# map nodes in the deckbuilder mini-map (Phase 2). Combat starts
 	# immediately as long as the caller pre-populated enemies_to_spawn.
 	if not enemies_to_spawn.is_empty():
 		start_combat(enemies_to_spawn)
+
+# On-screen item rack, pinned to the top of the screen above the battlefield
+# (its own CanvasLayer so it draws over the combat UI, like the HTML inventory).
+func _build_inventory_panel() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 5
+	add_child(layer)
+	var bar := HBoxContainer.new()
+	bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	bar.offset_top = 4
+	layer.add_child(bar)
+	var inv := CombatInventory.new()
+	inv.columns = 12
+	inv.tile_px = 40
+	inv.show_title = false
+	bar.add_child(inv)
 
 func start_combat(spawn_list: Array) -> void:
 	_init_actors(spawn_list)
@@ -361,6 +379,8 @@ func _start_player_turn() -> void:
 	# it off a timer). Drives Happy Flower + the per-turn attack-window reset.
 	TriggerBus.emit_signal("turn_tick", {"turn": turn, "scene": self})
 	_fire_item_triggers("turn_tick")
+	# Deckbuilder charges EVERY charged active each turn.
+	GameState.charge_all_items(1)
 	_refresh_ui()
 
 func _on_end_turn() -> void:

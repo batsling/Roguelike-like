@@ -110,6 +110,8 @@ func _build_payload() -> Dictionary:
 		"stat_high_water": GameState.stat_high_water.duplicate(),
 		"action_left_card_id": String(GameState.action_left_card_id),
 		"action_right_card_id": String(GameState.action_right_card_id),
+		"action_active_item_id": String(GameState.action_active_item_id),
+		"action_charged_item_id": String(GameState.action_charged_item_id),
 	}
 
 func _write_save(path: String) -> bool:
@@ -205,6 +207,8 @@ func _apply_save_data(data: Dictionary) -> void:
 		GameState.stat_high_water[String(k)] = int(hw_saved[k])
 	GameState.action_left_card_id = StringName(data.get("action_left_card_id", ""))
 	GameState.action_right_card_id = StringName(data.get("action_right_card_id", ""))
+	GameState.action_active_item_id = StringName(data.get("action_active_item_id", ""))
+	GameState.action_charged_item_id = StringName(data.get("action_charged_item_id", ""))
 	# Broadcast a full sweep so HUDs / overlays subscribed to GameState
 	# pick up the new state after a load.
 	GameState.emit_signal("hp_changed", GameState.hp, GameState.max_hp)
@@ -434,6 +438,7 @@ func _serialize_inventory(inv: Array) -> Array:
 				"upgrade_level": it.upgrade_level,
 				"instance_id": it.instance_id,
 				"weapon_level": it.weapon_level,
+				"current_charge": it.current_charge,
 			})
 	return out
 
@@ -449,5 +454,9 @@ func _resolve_inventory(entries: Array) -> Array:
 		inst.upgrade_level = int(e.get("upgrade_level", 0))
 		inst.instance_id = int(e.get("instance_id", 0))
 		inst.weapon_level = int(e.get("weapon_level", 1))
+		# Charged actives: restore the bar (default to full for legacy saves).
+		if inst.is_charged():
+			inst.current_charge = int(e.get("current_charge",
+				inst.max_charge() if inst.starts_charged else 0))
 		out.append(inst)
 	return out

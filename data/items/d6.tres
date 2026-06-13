@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_d6"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/D6.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"d6"
+display_name = "D6"
+kind = 6
+rarity = 1
+description = "Gain +1 Reroll."
+triggers = [{
+"on": "item_used",
+"effects": [{
+"type": "gain_stat",
+"stat": "reroll",
+"value": 1
+}]
+}]
+stat_bonuses = {}
+scaling = []
+charge_cost = 4
+starts_charged = true
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("dice")
+image = ExtResource("2_img")
