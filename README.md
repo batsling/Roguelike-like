@@ -238,6 +238,11 @@ remaining systems from the legacy HTML build:
 - **Events** — port the remaining pre-combat events and author new ones.
 - **Shop / gold scaling** — tune merchant pricing and gold rewards so they
   scale across a run (the shop screen itself is in place).
+- **Difficulty-change boss** — a boss encounter triggered when the run's
+  difficulty tier changes, granting a reward on victory (possibly **curse
+  removal**).
+- **Start-of-run reward** — a free reward granted at the start of a run, chosen
+  to match the **game type** the player picks.
 
 Larger systems from the HTML build still to be ported (surfaced from a scan of
 `legacy-web/`):
