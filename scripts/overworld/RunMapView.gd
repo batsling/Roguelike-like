@@ -331,16 +331,9 @@ func _input(event: InputEvent) -> void:
 			KEY_0, KEY_KP_0:
 				_zoom_reset()
 				get_viewport().set_input_as_handled()
-	elif event is InputEventMouseButton and event.pressed \
-			and (event.button_index == MOUSE_BUTTON_WHEEL_UP \
-				or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
-		# The wheel zooms the map directly (anchored on the cursor) whenever the
-		# pointer is over the route panel — no modifier needed. Outside the panel
-		# it falls through so the past-journey list can still scroll.
-		if _route_scroll != null and _route_scroll.get_global_rect().has_point(event.global_position):
-			var f: float = 1.12 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.12
-			_zoom_by(f, event.global_position)
-			get_viewport().set_input_as_handled()
+	# The mouse wheel pans/scrolls the route panel (handled natively by the
+	# ScrollContainer) — it no longer zooms. Use the +/− buttons or the
+	# +/-/0 keys to zoom instead.
 
 func _close() -> void:
 	closed.emit()

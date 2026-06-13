@@ -13,6 +13,21 @@ var _font: Font
 func _ready() -> void:
 	_font = ThemeDB.fallback_font
 
+# Convert a viewport/screen pixel to the map grid cell under it.
+func screen_to_grid(screen_pos: Vector2) -> Vector2i:
+	return Vector2i(
+		int(screen_pos.x / CELL_W) + cam_offset.x,
+		int(screen_pos.y / CELL_H) + cam_offset.y,
+	)
+
+# Screen-space rect of a grid cell (for parking tooltips / menus next to it).
+func grid_to_screen_rect(g: Vector2i) -> Rect2:
+	return Rect2(
+		(g.x - cam_offset.x) * CELL_W,
+		(g.y - cam_offset.y) * CELL_H,
+		CELL_W, CELL_H,
+	)
+
 func center_on(pos: Vector2i) -> void:
 	var vp = get_viewport_rect().size
 	var cols = int(vp.x / CELL_W)

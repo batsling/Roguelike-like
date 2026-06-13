@@ -16,10 +16,21 @@ var _panel: Control
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Anchored to the top-left and sized explicitly to the viewport every frame
+	# the window resizes. Relying on PRESET_FULL_RECT alone left the root Control
+	# at size (0,0) on some layouts, which pushed the centre-anchored panel into
+	# the top-left corner (half of it off-screen). Sizing it ourselves keeps the
+	# panel reliably centred.
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
 	_build_ui()
+	get_viewport().size_changed.connect(_fit_to_viewport)
+	_fit_to_viewport()
+
+func _fit_to_viewport() -> void:
+	position = Vector2.ZERO
+	size = get_viewport().get_visible_rect().size
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Defer to any open sub-overlay (tier list / settings) — it handles its own
@@ -64,16 +75,16 @@ func _build_ui() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
+	# A full-rect CenterContainer centres the panel at its own minimum size,
+	# independent of any anchor/viewport quirks.
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(center)
+
 	_panel = PanelContainer.new()
-	_panel.anchor_left = 0.5
-	_panel.anchor_top = 0.5
-	_panel.anchor_right = 0.5
-	_panel.anchor_bottom = 0.5
-	_panel.offset_left = -180
-	_panel.offset_top = -180
-	_panel.offset_right = 180
-	_panel.offset_bottom = 180
-	add_child(_panel)
+	_panel.custom_minimum_size = Vector2(360, 0)
+	center.add_child(_panel)
 
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:

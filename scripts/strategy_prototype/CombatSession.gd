@@ -29,7 +29,18 @@ func _ready() -> void:
 
 func enter_combat(room_data: StrategyRoomData, encounter: Array) -> void:
 	if phase != Phase.OVERWORLD:
-		return
+		# Recover from a wedged state: a prior combat that errored out mid-setup
+		# (or never resolved) could leave `phase` stuck in TRANSITION_*/COMBAT with
+		# no live battle, which would silently block every future encounter. If
+		# nothing is actually running, reset and proceed instead of bailing.
+		if active_turn_manager != null:
+			return
+		push_warning("[CombatSession] entered with stale phase %d and no active battle — recovering." % phase)
+		phase = Phase.OVERWORLD
+		active_room = null
+		active_encounter.clear()
+		active_battle_map = null
+		active_units.clear()
 	phase = Phase.TRANSITION_IN
 	active_room = room_data
 	active_encounter = encounter.duplicate()

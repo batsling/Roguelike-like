@@ -34,6 +34,27 @@ var _embedded: bool = false   # set in _ready; true when launched from project M
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _battle_overlay: CanvasLayer = null
 var _game_over_overlay: CanvasLayer = null
+var _victory_overlay: CanvasLayer = null
+# Room whose encounter we last walked into, so the victory flow can guarantee
+# it's flagged cleared (drops the "!" marker) even if the combat result routed
+# through an unexpected path.
+var _last_combat_room: StrategyRoomData = null
+
+# Click-to-travel: a queued path of tiles to step through, plus an optional
+# action to run once the destination is reached ("descend" / "pickup").
+var _auto_path: Array = []          # Array[Vector2i], excludes the current tile
+var _auto_action: String = ""
+var _auto_walk_timer: Timer = null
+# Grid cell the open context menu refers to.
+var _menu_target: Vector2i = Vector2i.ZERO
+const AUTO_WALK_INTERVAL := 0.06
+
+# 8-directional neighbour offsets for click-to-travel pathfinding (movement
+# itself is 8-way, so the path planner matches it).
+const _PATH_DIRS: Array[Vector2i] = [
+	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+	Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1),
+]
 
 func _ready() -> void:
 	_rng.randomize()
@@ -50,9 +71,18 @@ func _ready() -> void:
 	StrategyTurnManager.connect("enemy_turns_started", _run_enemy_turns)
 	StrategyCombatSession.connect("combat_started", _on_combat_started)
 	StrategyCombatSession.connect("combat_ended", _on_combat_ended)
+	_auto_walk_timer = Timer.new()
+	_auto_walk_timer.wait_time = AUTO_WALK_INTERVAL
+	_auto_walk_timer.timeout.connect(_auto_walk_step)
+	add_child(_auto_walk_timer)
 	_new_game()
 
 func _new_game() -> void:
+	_cancel_auto_walk()
+	_last_combat_room = null
+	if _victory_overlay != null:
+		_victory_overlay.queue_free()
+		_victory_overlay = null
 	if _game_over_overlay != null:
 		_game_over_overlay.queue_free()
 		_game_over_overlay = null
@@ -180,8 +210,17 @@ func _input(event: InputEvent) -> void:
 	if StrategyState.phase == StrategyState.GamePhase.COMBAT:
 		return  # battle overlay owns input during combat
 
+	# The victory panel owns the screen until the player clicks Continue.
+	if _victory_overlay != null:
+		return
+
 	if not StrategyTurnManager.is_player_turn():
 		return
+
+	# Any deliberate keypress cancels an in-progress click-to-travel.
+	if event is InputEventKey and event.pressed and not event.echo:
+		_cancel_auto_walk()
+		_hud.hide_context_menu()
 
 	var player = StrategyState.player
 
@@ -202,6 +241,14 @@ func _input(event: InputEvent) -> void:
 					_end_player_turn()
 		return
 
+	# Descend on '>'. Handled explicitly (by unicode / keycode) rather than via
+	# the "descend" action: pressing '>' is Shift+'.', and the "wait" action (.)
+	# would otherwise swallow it under Godot's non-exact modifier matching.
+	if event is InputEventKey and event.pressed and not event.echo \
+			and (event.keycode == KEY_GREATER or event.unicode == 62):
+		_try_descend()
+		return
+
 	var dir = Vector2i.ZERO
 	if event.is_action_pressed("move_up", true): dir = Vector2i(0, -1)
 	elif event.is_action_pressed("move_down", true): dir = Vector2i(0, 1)
@@ -214,9 +261,6 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed("wait", true):
 		StrategyLog.add("You wait.", Color.GRAY)
 		_end_player_turn()
-		return
-	elif event.is_action_pressed("descend", true):
-		_try_descend()
 		return
 	elif event.is_action_pressed("pickup", true):
 		_try_pickup()
@@ -241,18 +285,16 @@ func _try_move(player: StrategyEntity, dir: Vector2i) -> void:
 	_end_player_turn()
 
 func _after_player_step(pos: Vector2i) -> void:
-	# Auto-pickup (gold).
-	var picked: Array = []
+	# Walk-over pickup: stepping onto a tile collects everything on it — gold and
+	# keys go to their run counters, other items into the pack while it has room.
+	var here: Array = []
 	for it in StrategyState.map.items:
-		if it.grid_pos == pos and it.auto_pickup:
-			picked.append(it)
-	for it in picked:
-		match it.item_type:
-			StrategyItem.ItemType.GOLD:
-				# Gold persists across sections — route to the shared GameState.
-				GameState.change_gold(it.amount)
-				StrategyLog.add("You pick up %d gold." % it.amount, Color(1.0, 0.9, 0.3))
-		StrategyState.map.items.erase(it)
+		if it.grid_pos == pos:
+			here.append(it)
+	for it in here:
+		var msg := _auto_collect(it)
+		if msg != "":
+			StrategyLog.add(msg, Color(1.0, 0.9, 0.5))
 
 	# Trap reveal/trigger.
 	var tile = StrategyState.map.get_tile(pos.x, pos.y)
@@ -270,6 +312,8 @@ func _after_player_step(pos: Vector2i) -> void:
 		_trigger_combat(rd)
 
 func _trigger_combat(rd: StrategyRoomData) -> void:
+	_cancel_auto_walk()
+	_last_combat_room = rd
 	var enc_str := ""
 	for i in range(rd.encounter.size()):
 		if i > 0: enc_str += ", "
@@ -297,7 +341,68 @@ func _on_combat_ended(result: String) -> void:
 	if result == "defeat":
 		_on_player_defeated()
 		return
+	# Belt-and-suspenders: make sure the room we fought in is flagged cleared so
+	# its "!" marker is gone, then redraw before the victory panel shows.
+	if _last_combat_room != null:
+		_last_combat_room.cleared = true
 	StrategyLog.add("Victory!", Color(0.6, 1.0, 0.6))
+	_refresh()
+	_show_victory_overlay()
+
+# Victory panel. Mirrors the defeat overlay so a won fight gets the same
+# weight as a lost one. The player's step into the combat room is finished
+# (turn ends, enemies act) only once they click Continue.
+func _show_victory_overlay() -> void:
+	if _victory_overlay != null:
+		return
+	var layer := CanvasLayer.new()
+	layer.layer = 20  # above the (freed) battle overlay
+	add_child(layer)
+	_victory_overlay = layer
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(dim)
+
+	var panel := Panel.new()
+	panel.size = Vector2(480, 260)
+	panel.position = (get_viewport().get_visible_rect().size - panel.size) / 2.0
+	layer.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 24)
+	title.size = Vector2(440, 48)
+	title.text = "VICTORY"
+	title.add_theme_font_size_override("font_size", 36)
+	title.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	var info := Label.new()
+	info.position = Vector2(20, 92)
+	info.size = Vector2(440, 60)
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD
+	var hp_str := ""
+	if StrategyState.player != null:
+		hp_str = "   HP %d/%d" % [StrategyState.player.hp, StrategyState.player.max_hp]
+	info.text = "The room is clear.%s\nGold: %d" % [hp_str, GameState.gold]
+	panel.add_child(info)
+
+	var btn := Button.new()
+	btn.position = Vector2(120, 180)
+	btn.size = Vector2(240, 56)
+	btn.text = "Continue"
+	btn.pressed.connect(_on_victory_continue)
+	panel.add_child(btn)
+
+func _on_victory_continue() -> void:
+	if _victory_overlay != null:
+		_victory_overlay.queue_free()
+		_victory_overlay = null
+	_last_combat_room = null
 	# Walking into the combat room consumed the player's step; finish that turn now.
 	_end_player_turn()
 
@@ -334,6 +439,257 @@ func _try_pickup() -> void:
 			_end_player_turn()
 			return
 	StrategyLog.add("There is nothing here to pick up.", Color.GRAY)
+
+# Collect a single ground item on walk-over. Gold/keys go to run counters;
+# other items go to the pack while it has room. Returns a log line (or "").
+func _auto_collect(it) -> String:
+	match it.item_type:
+		StrategyItem.ItemType.GOLD:
+			GameState.change_gold(it.amount)
+			StrategyState.map.items.erase(it)
+			return "You pick up %d gold." % it.amount
+		StrategyItem.ItemType.KEY:
+			StrategyState.keys += 1
+			StrategyState.map.items.erase(it)
+			return "You pick up a key."
+		_:
+			var player = StrategyState.player
+			if player == null:
+				return ""
+			if player.inventory.size() >= StrategyEntity.MAX_INVENTORY:
+				return "Your pack is full — the %s stays on the ground." % it.item_name
+			player.inventory.append(it)
+			StrategyState.map.items.erase(it)
+			return "You pick up the %s." % it.item_name
+
+# ----------------------------------------------------------------------
+# Mouse: hover tooltips, click context menu, click-to-travel
+# ----------------------------------------------------------------------
+
+func _unhandled_input(event: InputEvent) -> void:
+	if StrategyState.phase != StrategyState.GamePhase.PLAYING:
+		return
+	if _victory_overlay != null or _game_over_overlay != null:
+		return
+	if _hud.is_inventory_open() or _hud.is_context_menu_open():
+		return
+	if event is InputEventMouseMotion:
+		_update_hover(event.position)
+	elif event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			_handle_map_click(event.position)
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			_cancel_auto_walk()
+
+func _in_bounds(g: Vector2i) -> bool:
+	return g.x >= 0 and g.x < StrategyMap.WIDTH and g.y >= 0 and g.y < StrategyMap.HEIGHT
+
+func _tile_known(g: Vector2i) -> bool:
+	var map = StrategyState.map
+	if map == null or not _in_bounds(g):
+		return false
+	return map.explored[map.idx(g.x, g.y)]
+
+func _cheby(a: Vector2i, b: Vector2i) -> int:
+	return maxi(absi(a.x - b.x), absi(a.y - b.y))
+
+func _item_at(g: Vector2i):
+	if StrategyState.map == null:
+		return null
+	for it in StrategyState.map.items:
+		if it.grid_pos == g:
+			return it
+	return null
+
+func _update_hover(screen_pos: Vector2) -> void:
+	var g := _renderer.screen_to_grid(screen_pos)
+	if not _tile_known(g):
+		_hud.hide_tooltip()
+		return
+	var text := _describe_tile(g)
+	if text == "":
+		_hud.hide_tooltip()
+		return
+	var rect := _renderer.grid_to_screen_rect(g)
+	_hud.show_tooltip(text, rect.position + Vector2(StrategyDungeonRenderer.CELL_W, 0))
+
+func _describe_tile(g: Vector2i) -> String:
+	var map = StrategyState.map
+	var vis: bool = map.visible[map.idx(g.x, g.y)]
+	if StrategyState.player != null and StrategyState.player.grid_pos == g:
+		return "You are here."
+	# Items are only knowable while the tile is in view.
+	if vis:
+		var it = _item_at(g)
+		if it != null:
+			return str(it.item_name)
+	var tile = map.get_tile(g.x, g.y)
+	match tile:
+		StrategyState.TileType.STAIRS_DOWN:
+			return "Stairs down — click to descend."
+		StrategyState.TileType.DOOR_LOCKED:
+			return "Locked door."
+		StrategyState.TileType.DOOR_OPEN:
+			return "Open door."
+		StrategyState.TileType.TRAP_REVEALED:
+			return "A sprung trap."
+		StrategyState.TileType.WALL:
+			return "Wall."
+		StrategyState.TileType.FLOOR, StrategyState.TileType.CORRIDOR, StrategyState.TileType.TRAP_HIDDEN:
+			var rd = StrategyState.get_room_at(g)
+			if rd != null and rd.tag == "combat" and not rd.cleared:
+				return "Floor — enemies lurk in this room."
+			return "Floor."
+		_:
+			return ""
+
+func _handle_map_click(screen_pos: Vector2) -> void:
+	if not StrategyTurnManager.is_player_turn():
+		return
+	var g := _renderer.screen_to_grid(screen_pos)
+	if not _tile_known(g):
+		return
+	var player = StrategyState.player
+	if player == null:
+		return
+	if g == player.grid_pos:
+		# Clicking the tile you're standing on descends if it's the stairs.
+		if StrategyState.map.get_tile(g.x, g.y) == StrategyState.TileType.STAIRS_DOWN:
+			_try_descend()
+		return
+	_cancel_auto_walk()
+
+	var map = StrategyState.map
+	var vis: bool = map.visible[map.idx(g.x, g.y)]
+	var tile = map.get_tile(g.x, g.y)
+	var reachable: bool = map.is_walkable(g) and not _find_path(player.grid_pos, g).is_empty()
+
+	var options: Array = []
+	# Stairs you can reach this step → offer descend at the top.
+	if tile == StrategyState.TileType.STAIRS_DOWN and _cheby(player.grid_pos, g) <= 1:
+		options.append({"text": "Go down stairs", "id": "descend"})
+	# A visible item under the cursor → offer pickup-by-walking.
+	var clicked_item = _item_at(g) if vis else null
+	if clicked_item != null and reachable:
+		options.append({"text": "Walk to %s" % str(clicked_item.item_name), "id": "move"})
+	if reachable:
+		var has_move := false
+		for o in options:
+			if o.id == "move":
+				has_move = true
+		if not has_move:
+			options.append({"text": "Move here", "id": "move"})
+
+	if options.is_empty():
+		return
+	# A bare "move here" needs no menu — just travel, so click-to-move stays snappy.
+	if options.size() == 1 and options[0].id == "move":
+		_begin_travel(g, "")
+		return
+	var rect := _renderer.grid_to_screen_rect(g)
+	_menu_target = g
+	_hud.hide_tooltip()
+	_hud.show_context_menu(options, rect.position + Vector2(StrategyDungeonRenderer.CELL_W, 0), _on_context_action)
+
+func _on_context_action(id: String) -> void:
+	var g := _menu_target
+	match id:
+		"descend":
+			_try_descend()
+		"move":
+			_begin_travel(g, "")
+
+# --- Click-to-travel ---------------------------------------------------
+
+func _begin_travel(goal: Vector2i, action: String) -> void:
+	var player = StrategyState.player
+	if player == null:
+		return
+	var path := _find_path(player.grid_pos, goal)
+	if path.is_empty():
+		return
+	_auto_path = path
+	_auto_action = action
+	_auto_walk_timer.start()
+
+func _cancel_auto_walk() -> void:
+	_auto_path.clear()
+	_auto_action = ""
+	if _auto_walk_timer != null:
+		_auto_walk_timer.stop()
+
+func _auto_walk_step() -> void:
+	# Stop if the world changed under us (combat started, death, turn handoff).
+	if StrategyState.phase != StrategyState.GamePhase.PLAYING \
+			or not StrategyTurnManager.is_player_turn() \
+			or StrategyState.player == null \
+			or not StrategyState.player.is_alive():
+		_cancel_auto_walk()
+		return
+	if _auto_path.is_empty():
+		_finish_travel()
+		return
+	var player = StrategyState.player
+	var next: Vector2i = _auto_path[0]
+	var dir := next - player.grid_pos
+	if _cheby(player.grid_pos, next) != 1 or not StrategyState.map.is_walkable(next):
+		_cancel_auto_walk()
+		return
+	_auto_path.remove_at(0)
+	_try_move(player, dir)
+	# _try_move may have triggered combat (phase change) or ended the run; the
+	# guard at the top of the next tick catches that. If we just arrived, run any
+	# terminal action immediately rather than waiting another interval.
+	if _auto_path.is_empty() and StrategyState.phase == StrategyState.GamePhase.PLAYING:
+		_finish_travel()
+
+func _finish_travel() -> void:
+	var action := _auto_action
+	_cancel_auto_walk()
+	if action == "descend":
+		_try_descend()
+
+# 8-directional BFS over explored, walkable tiles. Returns the step list from
+# (but excluding) `start` up to and including `goal`, or [] if unreachable.
+func _find_path(start: Vector2i, goal: Vector2i) -> Array:
+	var map = StrategyState.map
+	if map == null or start == goal:
+		return []
+	if not map.is_walkable(goal) or not _tile_known(goal):
+		return []
+	var came: Dictionary = {start: start}
+	var frontier: Array = [start]
+	while not frontier.is_empty():
+		var cur: Vector2i = frontier.pop_front()
+		if cur == goal:
+			break
+		for d in _PATH_DIRS:
+			var nxt: Vector2i = cur + d
+			if came.has(nxt):
+				continue
+			if not _walkable_known(nxt):
+				continue
+			came[nxt] = cur
+			frontier.push_back(nxt)
+	if not came.has(goal):
+		return []
+	var path: Array = []
+	var c: Vector2i = goal
+	while c != start:
+		path.append(c)
+		c = came[c]
+	path.reverse()
+	return path
+
+func _walkable_known(p: Vector2i) -> bool:
+	var map = StrategyState.map
+	if map == null or not _in_bounds(p):
+		return false
+	if not map.explored[map.idx(p.x, p.y)]:
+		return false
+	if not map.is_walkable(p):
+		return false
+	return StrategyState.get_blocking_entity_at(p) == null
 
 func _end_player_turn() -> void:
 	var player = StrategyState.player
@@ -425,10 +781,14 @@ func _close_defeat() -> void:
 # any open overlays, and emits the close signal so project Main can
 # advance the overworld flow.
 func _close_floor(was_victory: bool) -> void:
+	_cancel_auto_walk()
 	_sync_vitals_to_gamestate()
 	if _battle_overlay != null:
 		_battle_overlay.queue_free()
 		_battle_overlay = null
+	if _victory_overlay != null:
+		_victory_overlay.queue_free()
+		_victory_overlay = null
 	if _game_over_overlay != null:
 		_game_over_overlay.queue_free()
 		_game_over_overlay = null
