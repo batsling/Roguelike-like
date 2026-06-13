@@ -568,6 +568,8 @@ func _process_turn_tick(delta: float) -> void:
 	# doesn't tick while walking a cleared/safe room.
 	if _living_enemy_count() > 0:
 		_fire_item_triggers("turn_tick")
+		# Action charges only the item slotted in the active slot, per turn.
+		GameState.charge_item_by_id(GameState.action_active_item_id, 1)
 	if player_actor != null and player_actor.is_alive():
 		_tick_actor_turn(player_actor, _player_was_hit)
 	_player_was_hit = false

@@ -97,6 +97,7 @@ var _btn_defend: Button
 var _btn_ability: Button
 var _btn_spell: Button
 var _btn_dash: Button
+var _btn_item: Button
 var _btn_end: Button
 var _btn_win: Button
 var _btn_lose: Button
@@ -105,6 +106,9 @@ var _ability_dialog: Panel
 var _ability_list_container: VBoxContainer
 var _spell_dialog: Panel
 var _spell_list_container: VBoxContainer
+var _item_dialog: Panel
+var _item_list_container: VBoxContainer
+var _inventory_panel: CombatInventory
 
 # Pre-combat loadout screen.
 var _loadout_overlay: Panel
@@ -305,6 +309,7 @@ func _build_ui() -> void:
 
 	_build_action_bar(panel)
 	_build_pickers()
+	_build_inventory_panel(panel)
 	_build_loadout_overlay()
 	_build_enemy_tooltip()
 
@@ -344,7 +349,7 @@ func _section_header(text: String, rect: Rect2) -> Label:
 func _build_action_bar(panel: Panel) -> void:
 	# Framed strip behind the action buttons so the bar reads as a panel like the
 	# rest of the chrome (mouse-ignored, so it doesn't eat button clicks).
-	panel.add_child(_section_panel(Rect2(8, BAR_Y - 8, 730, 56)))
+	panel.add_child(_section_panel(Rect2(8, BAR_Y - 8, 824, 56)))
 	var x := 16
 	var spacing := 8
 	var btn_h := 40
@@ -352,7 +357,7 @@ func _build_action_bar(panel: Panel) -> void:
 		["Move", 84, _on_move_button], ["Attack", 92, _on_attack_button],
 		["Defend", 92, _on_defend_button], ["Cards", 92, _on_ability_button],
 		["Spellbook", 112, _on_spell_button], ["Dash", 84, _on_dash_button],
-		["End Turn", 104, _on_end_turn_button],
+		["Item", 84, _on_item_button], ["End Turn", 104, _on_end_turn_button],
 	]
 	var btns := []
 	for spec in specs:
@@ -361,7 +366,8 @@ func _build_action_bar(panel: Panel) -> void:
 		btns.append(b)
 		x += spec[1] + spacing
 	_btn_move = btns[0]; _btn_attack = btns[1]; _btn_defend = btns[2]
-	_btn_ability = btns[3]; _btn_spell = btns[4]; _btn_dash = btns[5]; _btn_end = btns[6]
+	_btn_ability = btns[3]; _btn_spell = btns[4]; _btn_dash = btns[5]
+	_btn_item = btns[6]; _btn_end = btns[7]
 	# End Turn is the main per-turn confirm — give it the same gold CTA look as
 	# the loadout screen's Start Battle.
 	_style_primary(_btn_end)
@@ -608,6 +614,11 @@ func _build_pickers() -> void:
 	add_child(_spell_dialog)
 	_spell_dialog.visible = false
 
+	_item_dialog = _make_picker_dialog("Items", _close_item_dialog)
+	_item_list_container = _item_dialog.get_meta("list")
+	add_child(_item_dialog)
+	_item_dialog.visible = false
+
 # The pickers dock over the right-hand column (turn order / status) so the
 # battlefield stays fully visible while choosing a card or spell — letting the
 # on-hover range preview read against the board.
@@ -640,6 +651,18 @@ func _make_picker_dialog(title_text: String, close_cb: Callable) -> Panel:
 	var close := _make_button("Close", 126, 534, 100, 36, close_cb)
 	p.add_child(close)
 	return p
+
+# Compact item rack pinned to the top-right corner so the player's actives are
+# visible at a glance during a tactical battle (charged actives show their bar).
+# The full list with Use buttons lives behind the "Item" action button.
+func _build_inventory_panel(panel: Panel) -> void:
+	_inventory_panel = CombatInventory.new()
+	_inventory_panel.columns = 8
+	_inventory_panel.tile_px = 26
+	_inventory_panel.show_title = false
+	_inventory_panel.panel_opacity = 0.92
+	_inventory_panel.position = Vector2(940, 44)
+	panel.add_child(_inventory_panel)
 
 # ----------------------------------------------------------------------
 # Pre-combat loadout screen
@@ -1948,6 +1971,70 @@ func _close_ability_dialog() -> void:
 func _close_spell_dialog() -> void:
 	_spell_dialog.visible = false
 
+# --- Items: the active-item action button + picker -------------------------
+
+func _on_item_button() -> void:
+	if not _is_player_turn():
+		return
+	_clear_pending()
+	_grid_view.enter_idle()
+	_populate_item_picker()
+	_item_dialog.visible = true
+	_ability_dialog.visible = false
+	_spell_dialog.visible = false
+
+func _populate_item_picker() -> void:
+	for child in _item_list_container.get_children():
+		child.queue_free()
+	var any: bool = false
+	for item in GameState.inventory:
+		if not (item is ItemData):
+			continue
+		if not (item.is_charged() or item.kind == ItemData.ItemKind.USABLE):
+			continue
+		any = true
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var lbl := Label.new()
+		var status: String = ""
+		if item.is_charged():
+			status = "  (%d/%d)" % [item.current_charge, item.max_charge()]
+		lbl.text = "%s%s  —  %s" % [item.display_name, status, item.description]
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+		lbl.custom_minimum_size = Vector2(196, 0)
+		lbl.add_theme_font_size_override("font_size", 13)
+		if not GameState.can_fire_item(item):
+			lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
+		row.add_child(lbl)
+		var btn := Button.new()
+		btn.text = "Use"
+		btn.disabled = not GameState.can_fire_item(item)
+		btn.pressed.connect(_on_pick_item.bind(item))
+		row.add_child(btn)
+		_item_list_container.add_child(row)
+	if not any:
+		_item_list_container.add_child(_picker_note(
+			"No active items. Charged items and pills you collect show up here."
+		))
+
+func _on_pick_item(item) -> void:
+	if GameState.use_item(item):
+		_status_label.text = "Used %s." % item.display_name
+		_populate_item_picker()
+		_refresh_button_states()
+	else:
+		_status_label.text = "%s isn't ready yet." % item.display_name
+
+func _close_item_dialog() -> void:
+	_item_dialog.visible = false
+
+func _has_usable_item() -> bool:
+	for item in GameState.inventory:
+		if item is ItemData and GameState.can_fire_item(item):
+			return true
+	return false
+
 # ----------------------------------------------------------------------
 # State refresh
 # ----------------------------------------------------------------------
@@ -1966,6 +2053,7 @@ func _set_player_buttons_enabled(enabled: bool) -> void:
 	_btn_ability.disabled = not enabled
 	_btn_spell.disabled = not enabled
 	_btn_dash.disabled = not enabled
+	_btn_item.disabled = not enabled
 	_btn_end.disabled = not enabled
 	if enabled:
 		_refresh_button_states()
@@ -1984,6 +2072,8 @@ func _refresh_button_states() -> void:
 		or not _has_playable_card()
 	_btn_spell.disabled = _spellbook == null or _spellbook.spells.is_empty()
 	_btn_dash.disabled = not u.dash_available
+	# Items don't cost the turn's move/action budget — live whenever one is ready.
+	_btn_item.disabled = not _has_usable_item()
 
 func _has_playable_card() -> bool:
 	if _loadout == null:

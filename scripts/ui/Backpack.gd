@@ -589,6 +589,13 @@ func _build_item_row(item: ItemData) -> Control:
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		hbox.add_child(icon)
 
+	# Charged actives get an Isaac-style charge bar beside the icon.
+	if item.is_charged():
+		var bar := ChargeBar.new()
+		bar.custom_minimum_size = Vector2(7, 48)
+		bar.setup(item.max_charge(), item.current_charge)
+		hbox.add_child(bar)
+
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(info)
@@ -618,7 +625,22 @@ func _build_item_row(item: ItemData) -> Control:
 		badge_lbl.add_theme_font_size_override("font_size", 16)
 		hbox.add_child(badge_lbl)
 
-	if item.kind == ItemData.ItemKind.USABLE:
+	if item.is_charged():
+		# Charged actives can be fired from any screen once their bar is full.
+		var charge_lbl := Label.new()
+		charge_lbl.text = "%d/%d" % [item.current_charge, item.max_charge()]
+		charge_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		charge_lbl.add_theme_font_size_override("font_size", 14)
+		charge_lbl.add_theme_color_override("font_color",
+			Color(0.5, 1.0, 0.6) if item.is_fully_charged() else Color(0.8, 0.8, 0.5))
+		hbox.add_child(charge_lbl)
+		var use_btn := Button.new()
+		use_btn.text = "Use" if item.is_fully_charged() else "Charging"
+		use_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		use_btn.disabled = not GameState.can_fire_item(item)
+		use_btn.pressed.connect(func(): _on_use_pressed(item))
+		hbox.add_child(use_btn)
+	elif item.kind == ItemData.ItemKind.USABLE:
 		var use_btn := Button.new()
 		use_btn.text = "Use"
 		if item.max_uses > 1:

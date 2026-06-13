@@ -434,6 +434,7 @@ func _serialize_inventory(inv: Array) -> Array:
 				"upgrade_level": it.upgrade_level,
 				"instance_id": it.instance_id,
 				"weapon_level": it.weapon_level,
+				"current_charge": it.current_charge,
 			})
 	return out
 
@@ -449,5 +450,9 @@ func _resolve_inventory(entries: Array) -> Array:
 		inst.upgrade_level = int(e.get("upgrade_level", 0))
 		inst.instance_id = int(e.get("instance_id", 0))
 		inst.weapon_level = int(e.get("weapon_level", 1))
+		# Charged actives: restore the bar (default to full for legacy saves).
+		if inst.is_charged():
+			inst.current_charge = int(e.get("current_charge",
+				inst.max_charge() if inst.starts_charged else 0))
 		out.append(inst)
 	return out

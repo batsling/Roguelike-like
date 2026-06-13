@@ -58,6 +58,7 @@ func _ready() -> void:
 	_generate_floor()
 	_build_arena()
 	_build_minimap()
+	_build_inventory_panel()
 	_update_header()
 	_enter_room(int(_floor.start_index), -1)
 
@@ -129,6 +130,24 @@ func _build_minimap() -> void:
 	_minimap.position = Vector2(-260, 36)
 	add_child(_minimap)
 	_minimap.setup(_floor)
+
+# Small, semi-opaque item rack tucked under the minimap on the right (Isaac's
+# active-item / pickups corner). Charged actives show a charge bar and fire on
+# click when full.
+func _build_inventory_panel() -> void:
+	var inv := CombatInventory.new()
+	inv.columns = 4
+	inv.tile_px = 38
+	inv.show_title = true
+	inv.title_text = "Items"
+	inv.panel_opacity = 0.82
+	inv.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	inv.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	inv.grow_vertical = Control.GROW_DIRECTION_END
+	# Slot it directly beneath the minimap.
+	var below_y: float = 36.0 + _minimap.custom_minimum_size.y + 12.0
+	inv.position = Vector2(-20, maxf(below_y, 200.0))
+	add_child(inv)
 
 # ---------------------------------------------------------------------------
 # Room transitions

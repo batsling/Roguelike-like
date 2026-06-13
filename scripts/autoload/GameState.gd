@@ -892,16 +892,25 @@ func clear_combat_context() -> void:
 func can_use_items() -> bool:
 	return combat_scene != null or event_active
 
-# Activates a USABLE consumable from inventory: fires its item_used triggers
-# through EffectSystem (routed into the live combat scene when one is
-# registered, else scene-less for events), spends a use, and removes the item
-# when depleted. Returns true if the item was used.
+# Whether `item` can be fired right now. USABLE pills need a combat/event
+# context; CHARGED actives only need a full bar and can be popped from any
+# screen (combat, backpack, a reward screen).
+func can_fire_item(item: ItemData) -> bool:
+	if item == null or inventory.find(item) == -1:
+		return false
+	if item.is_charged():
+		return item.is_fully_charged()
+	if item.kind == ItemData.ItemKind.USABLE:
+		return can_use_items()
+	return false
+
+# Activates a USABLE consumable OR a CHARGED active from inventory: fires its
+# item_used triggers through EffectSystem (routed into the live combat scene
+# when one is registered, else scene-less). A USABLE spends a use and is dropped
+# when depleted; a CHARGED active empties its bar to recharge. Returns true if
+# the item fired.
 func use_item(item: ItemData) -> bool:
-	if item == null or item.kind != ItemData.ItemKind.USABLE:
-		return false
-	if not can_use_items():
-		return false
-	if inventory.find(item) == -1:
+	if not can_fire_item(item):
 		return false
 	var ctx := {
 		"source": combat_player,
@@ -915,9 +924,12 @@ func use_item(item: ItemData) -> bool:
 			continue
 		EffectSystem.apply_all(trig.get("effects", []), ctx)
 	TriggerBus.emit_signal("item_used", {"item": item})
-	# Spend a use; -1 is infinite. When the last use is spent, drop the item
-	# (and clear the action slot if it pointed at the final copy).
-	if item.max_uses > 0:
+	if item.is_charged():
+		# Empty the bar; it refills via the charging hooks.
+		item.current_charge = 0
+	elif item.max_uses > 0:
+		# Spend a use; -1 is infinite. When the last use is spent, drop the item
+		# (and clear the action slot if it pointed at the final copy).
 		item.max_uses -= 1
 		if item.max_uses <= 0:
 			if action_active_item_id == item.id and _count_items(item.id) <= 1:
@@ -926,6 +938,40 @@ func use_item(item: ItemData) -> bool:
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
 	return true
+
+# ---------------------------------------------------------------------------
+# Charged-item charging. Items never declare cadence; these are called from the
+# central hooks: combat_ended (all modes, +1 to every charged item) and the
+# per-turn handlers (deckbuilder = all; action = the equipped active slot only).
+# ---------------------------------------------------------------------------
+
+# Adds `amount` charge to every charged item, clamped to each item's cost.
+func charge_all_items(amount: int = 1) -> void:
+	if amount == 0:
+		return
+	var changed: bool = false
+	for it in inventory:
+		if it is ItemData and it.is_charged():
+			changed = _charge_item(it, amount) or changed
+	if changed:
+		emit_signal("inventory_changed")
+
+# Adds charge to the (first) charged item matching `id` — Action's single active
+# slot tops up only its equipped item per turn.
+func charge_item_by_id(id: StringName, amount: int = 1) -> void:
+	if id == &"" or amount == 0:
+		return
+	for it in inventory:
+		if it is ItemData and it.id == id and it.is_charged():
+			if _charge_item(it, amount):
+				emit_signal("inventory_changed")
+			return
+
+# Clamps one item's bar; returns true if its fill actually moved.
+func _charge_item(it: ItemData, amount: int) -> bool:
+	var before: int = it.current_charge
+	it.current_charge = clampi(it.current_charge + amount, 0, it.max_charge())
+	return it.current_charge != before
 
 func _count_items(id: StringName) -> int:
 	var n: int = 0
@@ -979,6 +1025,9 @@ func add_item(template: ItemData) -> ItemData:
 	if template == null:
 		return null
 	var inst: ItemData = _append_item_internal(template, 0)
+	# Charged actives start full (Isaac-style) unless the item opts out.
+	if inst.is_charged():
+		inst.current_charge = inst.max_charge() if inst.starts_charged else 0
 	if _grant_weapon_card(inst):
 		emit_signal("deck_changed")
 	_recompute_item_bonuses()

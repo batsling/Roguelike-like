@@ -24,6 +24,10 @@ static func fire(trigger_name: String, scene, player, enemies: Array,
 			# Beads). The player actor is rebuilt each combat, so only the tally
 			# needs clearing.
 			GameState.temp_status_stacks.clear()
+		"combat_ended":
+			# Universal charged-item baseline: finishing any combat (deckbuilder,
+			# action, strategy) adds 1 charge to every charged active.
+			GameState.charge_all_items(1)
 		"turn_started":
 			GameState.incremental_on_turn_started(turn)
 			# Expire temporary statuses gained on the previous turn (Prayer

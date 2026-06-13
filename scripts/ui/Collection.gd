@@ -27,7 +27,7 @@ const GAME_STATUS_OPTIONS := [
 	["Not Completed", "uncompleted"], ["Amulet Won", "amulet"],
 ]
 const ITEM_RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
-const ITEM_KIND_NAMES := ["Passive", "Triggered", "Usable", "Weapon", "Scaling", "Pickup"]
+const ITEM_KIND_NAMES := ["Passive", "Triggered", "Usable", "Weapon", "Scaling", "Pickup", "Charged"]
 const CARD_TYPE_NAMES := ["Attack", "Skill", "Power", "Dice", "Status", "Curse", "Training"]
 const CARD_RARITY_NAMES := ["Starter", "Common", "Uncommon", "Rare", "Legendary"]
 
@@ -742,7 +742,7 @@ func _show_item_detail(it: ItemData) -> void:
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(tr)
 	_detail_box.add_child(_label(it.display_name, rc, 18, true))
-	var kind: String = ITEM_KIND_NAMES[clampi(int(it.kind), 0, 5)]
+	var kind: String = ITEM_KIND_NAMES[clampi(int(it.kind), 0, ITEM_KIND_NAMES.size() - 1)]
 	var rar: String = ITEM_RARITY_NAMES[clampi(int(it.rarity), 0, 4)]
 	_detail_box.add_child(_detail_meta("%s  •  %s" % [rar, kind], rc))
 	if it.source_game != "":
