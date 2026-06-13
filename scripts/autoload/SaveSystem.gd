@@ -110,6 +110,8 @@ func _build_payload() -> Dictionary:
 		"stat_high_water": GameState.stat_high_water.duplicate(),
 		"action_left_card_id": String(GameState.action_left_card_id),
 		"action_right_card_id": String(GameState.action_right_card_id),
+		"action_active_item_id": String(GameState.action_active_item_id),
+		"action_charged_item_id": String(GameState.action_charged_item_id),
 	}
 
 func _write_save(path: String) -> bool:
@@ -205,6 +207,8 @@ func _apply_save_data(data: Dictionary) -> void:
 		GameState.stat_high_water[String(k)] = int(hw_saved[k])
 	GameState.action_left_card_id = StringName(data.get("action_left_card_id", ""))
 	GameState.action_right_card_id = StringName(data.get("action_right_card_id", ""))
+	GameState.action_active_item_id = StringName(data.get("action_active_item_id", ""))
+	GameState.action_charged_item_id = StringName(data.get("action_charged_item_id", ""))
 	# Broadcast a full sweep so HUDs / overlays subscribed to GameState
 	# pick up the new state after a load.
 	GameState.emit_signal("hp_changed", GameState.hp, GameState.max_hp)

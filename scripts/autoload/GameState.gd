@@ -204,9 +204,15 @@ const DEFAULT_CARD_USES_BY_RARITY := [4, 4, 3, 2, 2]
 var action_left_card_id: StringName = &""
 var action_right_card_id: StringName = &""
 
-# Pre-combat usable "active slot" for action mode — one USABLE consumable
-# id, fired with Q during action combat. Cleared when the item is spent.
+# Action-mode item slots, assigned on the equipment screen:
+#   * action_active_item_id  — one USABLE consumable (pill), popped with Q.
+#                              Cleared when the item is spent.
+#   * action_charged_item_id — one CHARGED active, fired with E. While slotted it
+#                              is the only charged item that gains a charge per
+#                              turn (the per-combat baseline still tops up all of
+#                              them). Both slots are independent.
 var action_active_item_id: StringName = &""
+var action_charged_item_id: StringName = &""
 
 # === Temporary (consumable) buffs ===
 # Layers on top of base + item bonuses in Stats.get_value(). Populated by
@@ -483,6 +489,7 @@ func reset_run() -> void:
 	action_left_card_id = &""
 	action_right_card_id = &""
 	action_active_item_id = &""
+	action_charged_item_id = &""
 	temp_stat_bonus.clear()
 	event_block = 0
 	combat_scene = null
