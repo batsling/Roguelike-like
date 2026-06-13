@@ -23,19 +23,37 @@ var _confirm_btn: Button
 var _score_label: Label
 var _score_buttons: Array[Button] = []
 
-# Call before adding to the tree. `gd` may be null (we fall back to the id).
+# Deferred-build state. The caller builds the modal, wires its `submitted`
+# signal, and only then adds it to the tree, so setup() can run before we're
+# in the tree. Centring the panel needs a valid viewport size, so we stash the
+# inputs and defer the actual build to _ready() (guaranteed in-tree, full-rect).
+# Building eagerly here used to lay the panel out against a zero-size rect,
+# which left it stranded in the top-left corner.
+var _gd: GameData = null
+var _existing: Dictionary = {}
+var _built: bool = false
+
+# Safe to call before or after the node enters the tree. `gd` may be null (we
+# fall back to the id).
 func setup(game_id: StringName, gd: GameData) -> void:
 	_game_id = game_id
-	var existing := TierList.get_rating(game_id)
-	if not existing.is_empty():
-		_score = int(existing.get("score", 0))
-	_build_ui(gd, existing)
+	_gd = gd
+	_existing = TierList.get_rating(game_id)
+	if not _existing.is_empty():
+		_score = int(_existing.get("score", 0))
+	if is_inside_tree() and not _built:
+		_built = true
+		_build_ui(_gd, _existing)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	top_level = true
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# Build now if setup() ran before we entered the tree.
+	if not _built:
+		_built = true
+		_build_ui(_gd, _existing)
 
 func _build_ui(gd: GameData, existing: Dictionary) -> void:
 	var dim := ColorRect.new()
@@ -44,15 +62,15 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
+	# Centre the panel with an absolute position from the viewport size — the
+	# same approach RewardScreen/CardRewardScreen use. We're guaranteed to be in
+	# the tree here (build is deferred to _ready), so get_viewport_rect() is
+	# valid. Anchors against our own rect proved fragile when this modal was
+	# built before being sized, which dumped the panel in the top-left corner.
+	var panel_size := Vector2(600, 500)
 	var panel := PanelContainer.new()
-	panel.anchor_left = 0.5
-	panel.anchor_top = 0.5
-	panel.anchor_right = 0.5
-	panel.anchor_bottom = 0.5
-	panel.offset_left = -300
-	panel.offset_top = -250
-	panel.offset_right = 300
-	panel.offset_bottom = 250
+	panel.custom_minimum_size = panel_size
+	panel.position = (get_viewport_rect().size - panel_size) / 2.0
 	add_child(panel)
 
 	var margin := MarginContainer.new()
