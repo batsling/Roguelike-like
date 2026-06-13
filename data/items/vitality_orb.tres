@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_vitality_orb"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/VitalityOrb.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"vitality_orb"
+display_name = "Vitality Orb"
+kind = 1
+rarity = 2
+description = "Gain +8 Max Health whenever you obtain a Curse."
+triggers = [{
+"on": "curse_applied",
+"effects": [{
+"type": "gain_max_hp",
+"value": 8
+}]
+}]
+card_grants = []
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Forward: Escape the Fold"
+tags = PackedStringArray("orb")
+image = ExtResource("2_img")

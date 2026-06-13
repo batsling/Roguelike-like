@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_du_vu_doll"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/Du-VuDoll.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"du_vu_doll"
+display_name = "Du-Vu Doll"
+kind = 1
+rarity = 2
+description = "At the start of each combat, gain X Power, where X is the number of Curses you have."
+triggers = [{
+"on": "combat_started",
+"effects": [{
+"type": "status",
+"status": "power",
+"stacks_from": "curses",
+"target": "self"
+}]
+}]
+card_grants = []
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray("doll")
+image = ExtResource("2_img")

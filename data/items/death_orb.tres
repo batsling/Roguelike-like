@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_death_orb"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/DeathOrb.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"death_orb"
+display_name = "Death Orb"
+kind = 1
+rarity = 1
+description = "When you play a Power, deal Xx2 damage to each enemy, where X is the number of Curses you have."
+triggers = [{
+"on": "card_played",
+"if_card_type": "power",
+"effects": [{
+"type": "dmg",
+"value_from": "curses",
+"value_mult": 2,
+"damage_type": "true",
+"target": "all_enemies"
+}]
+}]
+card_grants = []
+stat_bonuses = {}
+scaling = []
+max_uses = -1
+source_game = "Forward: Escape the Fold"
+tags = PackedStringArray("orb", "devilroom")
+image = ExtResource("2_img")

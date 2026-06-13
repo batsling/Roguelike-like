@@ -264,9 +264,72 @@ func _connect_lifecycle_hooks() -> void:
 	# fire on game_beaten — run-scope, so it counts in every combat mode.
 	if not TriggerBus.game_beaten.is_connected(_on_game_beaten):
 		TriggerBus.game_beaten.connect(_on_game_beaten)
+	# Run-scope curse triggers. These fire OUTSIDE combat (a curse is gained on
+	# the verification screen, removed in the backpack/an event), so they can't
+	# ride the per-combat ItemTriggers path. Route them through the scene-less
+	# run-trigger runner instead (Vitality Orb on curse_applied; Golden Beetle
+	# on curse_removed / curse_card_removed).
+	if not TriggerBus.curse_applied.is_connected(_on_curse_applied):
+		TriggerBus.curse_applied.connect(_on_curse_applied)
+	if not TriggerBus.curse_removed.is_connected(_on_curse_removed):
+		TriggerBus.curse_removed.connect(_on_curse_removed)
+	if not TriggerBus.curse_card_removed.is_connected(_on_curse_card_removed):
+		TriggerBus.curse_card_removed.connect(_on_curse_card_removed)
 
 func _on_game_beaten(_ctx: Dictionary) -> void:
 	_tick_card_lifecycles()
+
+func _on_curse_applied(ctx: Dictionary) -> void:
+	fire_run_item_triggers("curse_applied", ctx)
+
+func _on_curse_removed(ctx: Dictionary) -> void:
+	fire_run_item_triggers("curse_removed", ctx)
+
+func _on_curse_card_removed(ctx: Dictionary) -> void:
+	fire_run_item_triggers("curse_card_removed", ctx)
+
+# Fires every owned item's triggers whose `on:` matches `trigger_name`, with a
+# scene-less context (source/target/scene/card = null). The run-scope sibling
+# of ItemTriggers.fire — used for hooks that happen outside any combat scene
+# (item_acquired, the curse_* hooks). Only scene-free effect handlers
+# (gain_max_hp, gain_hp, gain_gold, gain_chest, …) are valid here; combat
+# effects (dmg, block, …) silently no-op without a scene.
+func fire_run_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -> void:
+	var sources: Array = []
+	sources.append_array(inventory)
+	if equipped_weapon != null:
+		sources.append(equipped_weapon)
+	for item in sources:
+		if not (item is ItemData):
+			continue
+		for trig in item.triggers:
+			if String(trig.get("on", "")) != trigger_name:
+				continue
+			if not bool(trig.get("silent", false)):
+				GameLog.add("(%s triggers)" % item.display_name, Color(0.85, 0.9, 0.7))
+			for effect in trig.get("effects", []):
+				EffectSystem.apply(effect, {
+					"source": null, "target": null, "scene": null,
+					"card": ctx_extras.get("card"),
+				})
+
+# --- Curse / curse-card tallies -------------------------------------------
+# A "curse" (active_curses) and a "curse card" (a CURSE-type card in the deck)
+# are DIFFERENT things. Death Orb / Du-Vu Doll / Vitality Orb count curses
+# only; Golden Beetle counts both. Keep these two helpers the single source of
+# truth so item effects (value_from / stacks_from) and the design stay aligned.
+
+# Number of active curses the player is currently saddled with.
+func curse_count() -> int:
+	return active_curses.size()
+
+# Number of CURSE-type cards currently in the deck (Greed, Regret, Guilty, …).
+func curse_card_count() -> int:
+	var n: int = 0
+	for ci in deck:
+		if ci is CardInstance and ci.data != null and ci.data.type == CardData.CardType.CURSE:
+			n += 1
+	return n
 
 # Bumps each held curse card's games-beaten counter and drops any that have
 # reached their destroy_after_games threshold (Guilty -> 3). Iterates back-to-
@@ -279,10 +342,15 @@ func _tick_card_lifecycles() -> void:
 			continue
 		ci.games_beaten_held += 1
 		if ci.games_beaten_held >= ci.data.destroy_after_games:
+			var was_curse_card: bool = ci.data.type == CardData.CardType.CURSE
 			deck.remove_at(i)
 			removed = true
 			Notifications.notify("%s crumbled away." % ci.data.display_name,
 				Color(0.7, 0.9, 0.7))
+			# A curse card aging out of the deck is still "getting rid of a
+			# curse card" (Golden Beetle).
+			if was_curse_card:
+				TriggerBus.emit_signal("curse_card_removed", {"card": ci.data})
 	if removed:
 		emit_signal("deck_changed")
 
@@ -297,6 +365,48 @@ func add_active_curse(curse: CurseData) -> CurseData:
 	Notifications.notify("Cursed: %s" % curse.display_name, Color(0.85, 0.6, 0.85))
 	TriggerBus.emit_signal("curse_applied", {"curse": curse})
 	return curse
+
+# Lifts an active curse (events / shrines / future "cleanse" effects). Removes
+# the first active_curses entry matching `curse_id` and fires curse_removed so
+# items react (Golden Beetle -> a chest). Returns the resolved CurseData that
+# was lifted, or null if no such curse was active.
+func remove_active_curse(curse_id: StringName) -> CurseData:
+	for i in range(active_curses.size()):
+		var entry = active_curses[i]
+		if entry is Dictionary and StringName(entry.get("id", "")) == curse_id:
+			active_curses.remove_at(i)
+			var cd: CurseData = Data.get_curse(curse_id)
+			var nm: String = cd.display_name if cd != null else String(curse_id)
+			Notifications.notify("Curse lifted: %s" % nm, Color(0.7, 0.95, 0.8))
+			TriggerBus.emit_signal("curse_removed", {"curse": cd})
+			return cd
+	return null
+
+# === Chests (item rewards) =================================================
+# A "chest" is the project's parlance for an item-reward — the gold-less
+# item-choice screen the player opens to pick one item. Counters here bank
+# chests that were granted outside the normal post-section reward flow
+# (Golden Beetle grants one whenever a curse or curse card is removed); the
+# overworld redeems them into RewardScreens when it's idle.
+var pending_chests: int = 0
+
+# Grants `count` chests (item rewards). Banks them and announces via
+# chest_granted so the overworld can open the item-choice screens.
+func grant_chest(count: int = 1) -> void:
+	if count <= 0:
+		return
+	pending_chests += count
+	Notifications.notify("Gained %d Chest%s!" % [count, "" if count == 1 else "s"],
+		Color(1.0, 0.85, 0.4))
+	TriggerBus.emit_signal("chest_granted", {"count": count})
+
+# Consumes one banked chest, returning true if one was available. The overworld
+# calls this as it opens each item-reward screen.
+func take_pending_chest() -> bool:
+	if pending_chests <= 0:
+		return false
+	pending_chests -= 1
+	return true
 
 # The card a curse inflicts when its challenge is failed: its named penalty_card,
 # else a random card from the `randomcurse` pool. Null when neither resolves.
@@ -388,6 +498,7 @@ func reset_run() -> void:
 	stat_floor_stats.clear()
 	temp_status_stacks.clear()
 	active_curses.clear()
+	pending_chests = 0
 	pending_combat_statuses.clear()
 	Notifications.clear()
 	phase = Phase.MENU
@@ -1044,6 +1155,11 @@ func remove_card_at(deck_index: int) -> void:
 			Color(0.85, 0.6, 0.9))
 		return
 	deck.remove_at(deck_index)
+	# Removing a CURSE-type card is a "got rid of a curse card" event
+	# (Golden Beetle reacts to it). Distinct from curse_removed, which is an
+	# active_curses entry leaving.
+	if card is CardInstance and card.data != null and card.data.type == CardData.CardType.CURSE:
+		TriggerBus.emit_signal("curse_card_removed", {"card": card.data})
 	var weapon_id: int = 0
 	if card is CardInstance:
 		weapon_id = card.source_weapon_id
