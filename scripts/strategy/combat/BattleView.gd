@@ -376,10 +376,13 @@ func _build_action_bar(panel: Panel) -> void:
 		b.mouse_entered.connect(_on_hover_targets_preview)
 		b.mouse_exited.connect(_on_hover_preview_end)
 
-	_btn_win = _make_button("Win▸", 1110, BAR_Y, 72, btn_h, _on_force_win, true)
-	panel.add_child(_btn_win)
-	_btn_lose = _make_button("Lose▸", 1190, BAR_Y, 72, btn_h, _on_force_lose, true)
-	panel.add_child(_btn_lose)
+	# Debug force win/lose — only mounted in dev mode so they can't be clicked
+	# by accident during a normal playthrough.
+	if Settings.dev_mode:
+		_btn_win = _make_button("Win▸", 1110, BAR_Y, 72, btn_h, _on_force_win, true)
+		panel.add_child(_btn_win)
+		_btn_lose = _make_button("Lose▸", 1190, BAR_Y, 72, btn_h, _on_force_lose, true)
+		panel.add_child(_btn_lose)
 
 func _make_button(text: String, x: int, y: int, w: int, h: int, cb: Callable, subtle: bool = false) -> Button:
 	var b := Button.new()

@@ -77,15 +77,5 @@ func _zoom_reset() -> void:
 func _update_zoom_label() -> void:
 	_zoom_label.text = "%d%%" % int(round(_graph.get_zoom() * 100.0))
 
-func _input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed \
-			and (event.button_index == MOUSE_BUTTON_WHEEL_UP \
-				or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
-		# Plain wheel zooms when the cursor is over the map panel (no modifier).
-		if _scroll != null and _scroll.get_global_rect().has_point(event.global_position):
-			var f: float = 1.12 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.12
-			_zoom_by(f, event.global_position)
-			get_viewport().set_input_as_handled()
-
 func _on_close() -> void:
 	emit_signal("closed")

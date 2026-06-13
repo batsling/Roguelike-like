@@ -10,6 +10,14 @@ var _log_label: RichTextLabel
 var _inventory_panel: Panel
 var _inventory_label: Label
 
+# Mouse hover tooltip + click context menu (driven by Main).
+var _tooltip: Panel
+var _tooltip_label: Label
+var _context_menu: Panel
+var _context_vbox: VBoxContainer
+var _context_catcher: Control
+var _context_cb: Callable = Callable()
+
 func _ready() -> void:
 	_font = ThemeDB.fallback_font
 
@@ -18,6 +26,7 @@ func _ready() -> void:
 	_status_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	_status_label.position = Vector2(4, 2)
 	_status_label.size = Vector2(1272, 22)
+	_status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_status_label.add_theme_font_size_override("font_size", FONT_SIZE)
 	_status_label.add_theme_color_override("font_color", Color.WHITE)
 	add_child(_status_label)
@@ -29,8 +38,12 @@ func _ready() -> void:
 	_log_label.size = Vector2(1272, 96)
 	_log_label.bbcode_enabled = true
 	_log_label.scroll_active = false
+	_log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_log_label.add_theme_font_size_override("normal_font_size", FONT_SIZE)
 	add_child(_log_label)
+
+	_build_tooltip()
+	_build_context_menu()
 
 	# Inventory panel (hidden by default)
 	_inventory_panel = Panel.new()
@@ -94,3 +107,124 @@ func hide_inventory() -> void:
 
 func is_inventory_open() -> bool:
 	return _inventory_panel.visible
+
+# ------------------------------------------------------------------
+# Hover tooltip
+# ------------------------------------------------------------------
+
+func _build_tooltip() -> void:
+	_tooltip = Panel.new()
+	_tooltip.visible = false
+	_tooltip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.07, 0.06, 0.1, 0.96)
+	sb.set_corner_radius_all(6)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(0.8, 0.7, 0.4, 0.9)
+	_tooltip.add_theme_stylebox_override("panel", sb)
+	add_child(_tooltip)
+
+	_tooltip_label = Label.new()
+	_tooltip_label.position = Vector2(8, 5)
+	_tooltip_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tooltip_label.add_theme_font_size_override("font_size", 13)
+	_tooltip_label.add_theme_color_override("font_color", Color(0.92, 0.92, 0.98))
+	_tooltip.add_child(_tooltip_label)
+
+func show_tooltip(text: String, at: Vector2) -> void:
+	if text == "":
+		hide_tooltip()
+		return
+	_tooltip_label.text = text
+	var sz: Vector2 = _font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13)
+	_tooltip.size = Vector2(sz.x + 16, sz.y + 10)
+	var vp := get_viewport().get_visible_rect().size
+	var p := at + Vector2(14, 6)
+	p.x = clampf(p.x, 4, vp.x - _tooltip.size.x - 4)
+	p.y = clampf(p.y, 4, vp.y - _tooltip.size.y - 4)
+	_tooltip.position = p
+	_tooltip.visible = true
+
+func hide_tooltip() -> void:
+	if _tooltip != null:
+		_tooltip.visible = false
+
+# ------------------------------------------------------------------
+# Click context menu
+# ------------------------------------------------------------------
+
+func _build_context_menu() -> void:
+	# Full-screen catcher: a click anywhere off the menu dismisses it.
+	_context_catcher = Control.new()
+	_context_catcher.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_context_catcher.mouse_filter = Control.MOUSE_FILTER_STOP
+	_context_catcher.visible = false
+	_context_catcher.gui_input.connect(_on_catcher_input)
+	add_child(_context_catcher)
+
+	_context_menu = Panel.new()
+	_context_menu.visible = false
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.1, 0.09, 0.14, 0.99)
+	sb.set_corner_radius_all(8)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(0.8, 0.7, 0.4, 0.95)
+	_context_menu.add_theme_stylebox_override("panel", sb)
+	add_child(_context_menu)
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 6)
+	_context_menu.add_child(margin)
+
+	_context_vbox = VBoxContainer.new()
+	_context_vbox.add_theme_constant_override("separation", 4)
+	margin.add_child(_context_vbox)
+
+func _on_catcher_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed:
+		hide_context_menu()
+
+# options: Array of { "text": String, "id": String }. `cb` is called with the
+# chosen id string.
+func show_context_menu(options: Array, at: Vector2, cb: Callable) -> void:
+	for c in _context_vbox.get_children():
+		c.queue_free()
+	_context_cb = cb
+	var max_w := 140.0
+	for opt in options:
+		var b := Button.new()
+		b.text = str(opt.get("text", "?"))
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_size_override("font_size", 13)
+		var id := str(opt.get("id", ""))
+		b.pressed.connect(_on_context_pick.bind(id))
+		_context_vbox.add_child(b)
+		var w: float = _font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 28
+		max_w = maxf(max_w, w)
+	var h := float(options.size()) * 34.0 + 12.0
+	_context_menu.size = Vector2(max_w + 12, h)
+	var vp := get_viewport().get_visible_rect().size
+	var p := at
+	p.x = clampf(p.x, 4, vp.x - _context_menu.size.x - 4)
+	p.y = clampf(p.y, 4, vp.y - _context_menu.size.y - 4)
+	_context_menu.position = p
+	_context_catcher.visible = true
+	_context_menu.visible = true
+
+func _on_context_pick(id: String) -> void:
+	var cb := _context_cb
+	hide_context_menu()
+	if cb.is_valid():
+		cb.call(id)
+
+func hide_context_menu() -> void:
+	if _context_menu != null:
+		_context_menu.visible = false
+	if _context_catcher != null:
+		_context_catcher.visible = false
+
+func is_context_menu_open() -> bool:
+	return _context_menu != null and _context_menu.visible
