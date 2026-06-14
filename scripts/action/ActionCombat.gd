@@ -138,6 +138,12 @@ var _pain_curses: Array = []
 var _haste_remaining: float = 0.0
 var _slow_remaining: float = 0.0
 
+# Seconds remaining on a pre-combat "ambush": while >0 every enemy in the room
+# is frozen (no movement, no attacks). Seeded from GameState.pending_ambush when
+# the room's fight begins. Ticks down in real time with _process_enemies.
+var _enemy_stun_remaining: float = 0.0
+const AMBUSH_STUN_SECONDS := 10.0
+
 # "Turn" tick — fires every _tr.turn_tick_secs of real time and decays every
 # actor's stack-based statuses by 1, the same decay that runs at
 # deckbuilder/strategy turn-end. Without this, Vulnerable / Weak / Blind would
@@ -271,6 +277,7 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	_transitioning = false
 	_stairs_active = false
 	_stairs_armed = false
+	_enemy_stun_remaining = 0.0
 
 	# Each combat room is a fresh fight for transient state: drop block and
 	# statuses, then re-derive. HP persists across the whole floor via
@@ -296,6 +303,13 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	if not is_safe and not enemy_ids.is_empty():
 		enemies_to_spawn = enemy_ids.duplicate()
 		_spawn_enemies()
+		# Pre-combat "ambush" freezes the whole room for a spell. "ambushed"
+		# (the enemy-advantage case) has no real-time form yet, so it's left
+		# pending for a turn-based fight to resolve.
+		if GameState.pending_ambush == "ambush":
+			GameState.pending_ambush = ""
+			_enemy_stun_remaining = AMBUSH_STUN_SECONDS
+			GameLog.add("Ambush! The enemies are caught flat-footed.", Color(0.7, 1.0, 0.7))
 		# A combat room is one fight: advance the "turn" counter (when the
 		# translation maps rooms to turns) and fire the start-of-combat + turn
 		# item triggers (Anchor block, Horn Cleat, …).
@@ -737,6 +751,10 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 # ---------------------------------------------------------------------------
 
 func _process_enemies(delta: float) -> void:
+	# Ambush freeze: tick the timer but skip all enemy AI while it lasts.
+	if _enemy_stun_remaining > 0.0:
+		_enemy_stun_remaining = maxf(0.0, _enemy_stun_remaining - delta)
+		return
 	for inst in enemies:
 		if not inst.actor.is_alive():
 			continue

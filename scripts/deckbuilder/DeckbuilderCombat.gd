@@ -33,6 +33,11 @@ const ELITE_GOLD_MULT := 1.5
 var player: CombatActor = null
 var enemies: Array[CombatActor] = []
 
+# Pre-combat event carryover. "ambush" grants the player a bonus opening turn
+# (the enemy keeps its rolled intent and acts a turn later); "ambushed" lets
+# the enemy land a free opening strike. Drained from GameState at combat start.
+var _ambush_player_turns: int = 0
+
 var draw_pile: Array[CardInstance] = []
 var hand: Array[CardInstance] = []
 var discard_pile: Array[CardInstance] = []
@@ -144,7 +149,9 @@ func _build_inventory_panel() -> void:
 	bar.add_child(inv)
 
 func start_combat(spawn_list: Array) -> void:
-	_init_actors(spawn_list)
+	# Fold any event-queued extra enemies (e.g. a fruit-fly swarm) into the
+	# encounter before actors are built.
+	_init_actors(_append_pending_spawns(spawn_list))
 	_init_deck()
 	_apply_derived_statuses()
 	# Register the live context so the backpack can fire consumables into
@@ -158,7 +165,49 @@ func start_combat(spawn_list: Array) -> void:
 	TriggerBus.emit_signal("combat_started", {"scene": self})
 	_fire_item_triggers("combat_started")
 	_fire_power_triggers("combat_started")
+	_apply_event_ambush()
+	if not player.is_alive():
+		# A brutal "ambushed" opener could already have downed us.
+		_refresh_ui()
+		_check_combat_end()
+		return
 	_start_player_turn()
+
+# Consumes GameState.pending_ambush. "ambush" banks a bonus player turn (see
+# _on_end_turn); "ambushed" gives the waiting enemies one free opening strike
+# before the player's first turn.
+func _apply_event_ambush() -> void:
+	var flag: String = GameState.pending_ambush
+	GameState.pending_ambush = ""
+	match flag:
+		"ambush":
+			_ambush_player_turns = 1
+			GameLog.add("Ambush! You strike from the shadows and act first.", Color(0.7, 1.0, 0.7))
+		"ambushed":
+			GameLog.add("Ambushed! The enemy gets the drop on you.", Color(1.0, 0.6, 0.6))
+			phase = Phase.ENEMY
+			for e in enemies:
+				if e.is_alive():
+					_roll_intent(e)
+			_execute_enemy_turn()
+			for e in enemies:
+				if e.is_alive():
+					Stats.tick_actor_statuses(e, self)
+					_decay_statuses(e)
+
+# Pulls queued event spawns (Array of {enemy, count}) into the spawn list and
+# clears the queue so they fire exactly once, for the next combat only.
+func _append_pending_spawns(spawn_list: Array) -> Array:
+	if GameState.pending_spawn_enemies.is_empty():
+		return spawn_list
+	var combined: Array = spawn_list.duplicate()
+	for entry in GameState.pending_spawn_enemies:
+		var id: StringName = StringName(String(entry.get("enemy", "")))
+		var count: int = int(entry.get("count", 0))
+		for _i in range(count):
+			combined.append(id)
+	GameState.pending_spawn_enemies.clear()
+	return combined
 
 # Shows the player character's full art on the left of the battlefield, facing
 # the enemy row. Pulls the portrait off the chosen CharacterData.
@@ -434,6 +483,13 @@ func _on_end_turn() -> void:
 	_refresh_ui()
 
 	if _check_combat_end():
+		return
+
+	# Ambush: spend a banked bonus turn instead of handing control to the
+	# enemy. Their rolled intent simply waits for the following round.
+	if _ambush_player_turns > 0:
+		_ambush_player_turns -= 1
+		_start_player_turn()
 		return
 
 	_execute_enemy_turn()

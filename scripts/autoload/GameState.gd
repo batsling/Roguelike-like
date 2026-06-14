@@ -252,6 +252,20 @@ var discovery: int = 0
 var active_curses: Array = []            # Array[Dictionary] for now
 var pending_combat_statuses: Array = []  # carryover from events
 
+# Carryover from a pre-combat event into the next combat the player enters.
+# Drained (and cleared) when that combat starts. All three modes honour them.
+#   pending_ambush — "" / "ambush" (player gets the drop on the enemy) /
+#                    "ambushed" (the enemy gets the drop on the player).
+#   pending_spawn_enemies — Array of { "enemy": StringName, "count": int };
+#                    extra enemies added on top of the encounter (deckbuilder).
+var pending_ambush: String = ""
+var pending_spawn_enemies: Array = []
+
+# "A Note For Yourself" stores a card id here so the next encounter can hand it
+# back. Empty until the player stores one; the event seeds a default the first
+# time (see EventData note_for_yourself effect).
+var note_for_yourself_card: StringName = &""
+
 # === Phase ===
 enum Phase { MENU, OVERWORLD, EVENT, COMBAT, DEAD, ESCAPE, WIN }
 var phase: Phase = Phase.MENU
@@ -507,6 +521,9 @@ func reset_run() -> void:
 	active_curses.clear()
 	pending_chests = 0
 	pending_combat_statuses.clear()
+	pending_ambush = ""
+	pending_spawn_enemies.clear()
+	note_for_yourself_card = &""
 	Notifications.clear()
 	phase = Phase.MENU
 

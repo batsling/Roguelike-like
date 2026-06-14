@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="EventData" load_steps=3 format=3 uid="uid://event_the_ssssserpent"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData.gd" id="1_event"]
+[ext_resource type="Texture2D" path="res://images/events/TheSsssserpent.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"the_ssssserpent"
+display_name = "The Ssssserpent"
+prompt = "You walk into a room to find a large hole in the ground. As you approach the hole, an enormous serpent creature appears from within. Serpent: \"Ho hooo! Hello hello! what have we got here? Hello adventurer, I ask a simple question.\" Serpent: \"The most fulfilling of lives is that in which you can buy anything!\" Serpent: \"Do you agree?\""
+choices = [{"id": "serpent_agree", "text": "Agree", "type": "simple", "outcome": {"description": "Serpent: \"Yeeeeeeessssssssssessss\" Serpent: \"Thisss will all be worthhh it.\" Serpent: \"..ssSSs..... ss... sssss....!\" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.", "effects": [{"type": "gain_gold", "value": 100}, {"type": "curse_card", "card": "greed"}]}}, {"id": "serpent_charm", "text": "Charm", "type": "stat_check", "stat": "charisma", "outcomes": {"crit_good": {"description": "Serpent: \"Yeeeeeeessssssssssessss\" Serpent: \"Thisss will all be worthhh it.\" Serpent: \"..ssSSs..... ss... sssss....!\" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.", "effects": [{"type": "gain_gold", "value": 150}, {"type": "curse_card", "card": "greed"}]}, "good": {"description": "Serpent: \"Yeeeeeeessssssssssessss\" Serpent: \"Thisss will all be worthhh it.\" Serpent: \"..ssSSs..... ss... sssss....!\" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.", "effects": [{"type": "gain_gold", "value": 125}, {"type": "curse_card", "card": "greed"}]}, "bad": {"description": "Serpent: \"Yeeeeeeessssssssssessss\" Serpent: \"Thisss will all be worthhh it.\" Serpent: \"..ssSSs..... ss... sssss....!\" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.", "effects": [{"type": "gain_gold", "value": 75}, {"type": "curse_card", "card": "greed"}]}, "crit_bad": {"description": "Serpent: \"Yeeeeeeessssssssssessss\" Serpent: \"Thisss will all be worthhh it.\" Serpent: \"..ssSSs..... ss... sssss....!\" The serpent rears its head and blasts a stream of gold upwards! It is amazing and terrifying simultaneously. You gather all the gold, thank the snake, and get going.", "effects": [{"type": "gain_gold", "value": 50}, {"type": "curse_card", "card": "greed"}]}}}, {"id": "serpent_disagree", "text": "Disagree", "type": "simple", "outcome": {"description": "The serpent stares at you with a look of extreme disappointment.", "effects": [{"type": "none"}]}}]
+difficulty_tags = PackedStringArray("easy")
+run_limit = 0
+source_game = "Slay the Spire"
+rarity = "Common"
+tags = PackedStringArray("snake")
+image = ExtResource("2_img")

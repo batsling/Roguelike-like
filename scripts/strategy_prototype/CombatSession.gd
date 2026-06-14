@@ -64,7 +64,17 @@ func enter_combat(room_data: StrategyRoomData, encounter: Array) -> void:
 # Called by the battle UI once the player has confirmed their loadout.
 func begin_battle() -> void:
 	if active_turn_manager != null:
+		_apply_pending_ambush()
 		active_turn_manager.start_battle()
+
+# Honour a pre-combat event ambush: the winning side opens with a free turn.
+# "ambushed" (enemy advantage) has no defined behaviour in this prototype yet,
+# so it's left pending; only the player-advantage "ambush" resolves here.
+func _apply_pending_ambush() -> void:
+	if GameState.pending_ambush != "ambush":
+		return
+	GameState.pending_ambush = ""
+	active_turn_manager.queue_ambush_turn(true)
 
 func resolve_combat(result: String) -> void:
 	if phase != Phase.COMBAT:

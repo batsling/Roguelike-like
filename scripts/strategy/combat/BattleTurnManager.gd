@@ -86,6 +86,16 @@ func consume_dash() -> bool:
 	_bonus_queue.append(current_unit)
 	return true
 
+# Pre-combat ambush: grant one side a free opening turn before normal
+# initiative begins, reusing the Dash bonus-queue. Call after setup() and
+# before start_battle(). `for_player` true = the player got the drop
+# (ambush); false = an enemy did (ambushed).
+func queue_ambush_turn(for_player: bool) -> void:
+	for u in units:
+		if u.is_alive() and u.is_player == for_player:
+			_bonus_queue.append(u)
+			return
+
 func living_units() -> Array[BattleUnit]:
 	var out: Array[BattleUnit] = []
 	for u in units:

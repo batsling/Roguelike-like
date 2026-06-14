@@ -142,7 +142,7 @@ func _build_ui() -> void:
 func _refresh() -> void:
 	_choosing = true
 	_title_label.text = _event.display_name
-	_prompt_label.text = _event.prompt
+	_prompt_label.text = _sub(_event.prompt)
 	_outcome_panel.visible = false
 	for child in _choices_vbox.get_children():
 		child.queue_free()
@@ -262,7 +262,7 @@ func _get_stat_value(stat_name: String) -> int:
 
 func _show_outcome(outcome: Dictionary, roll_details: String) -> void:
 	_outcome_panel.visible = true
-	_outcome_label.text = String(outcome.get("description", "(no outcome)"))
+	_outcome_label.text = _sub(String(outcome.get("description", "(no outcome)")))
 	_roll_label.text = roll_details
 	_roll_label.visible = roll_details != ""
 	for effect in outcome.get("effects", []):
@@ -274,10 +274,19 @@ func _show_outcome(outcome: Dictionary, roll_details: String) -> void:
 func _apply_event_effect(effect: Dictionary) -> void:
 	var t: String = String(effect.get("type", ""))
 	match t:
+		"none":
+			pass
 		"heal":
 			var n: int = int(effect.get("value", 0))
 			GameState.change_hp(n)
 			GameLog.add("You heal %d HP." % n, Color(0.6, 1.0, 0.6))
+		"heal_percent":
+			# Heal a percentage of the max HP pool (rounded up so small
+			# pools still feel something), matching the JS heal_percent.
+			var pct: int = int(effect.get("value", 0))
+			var amount: int = int(ceil(GameState.max_hp * pct / 100.0))
+			GameState.change_hp(amount)
+			GameLog.add("You heal %d HP." % amount, Color(0.6, 1.0, 0.6))
 		"lose_hp":
 			var n2: int = int(effect.get("value", 0))
 			# Percs (event block) soaks damage before it reaches HP.
@@ -291,6 +300,13 @@ func _apply_event_effect(effect: Dictionary) -> void:
 			var n3: int = int(effect.get("value", 0))
 			GameState.change_gold(n3)
 			GameLog.add("You gain %d gold." % n3, Color(1.0, 0.9, 0.3))
+		"gold_range":
+			# Roll a gold reward in [min, max] inclusive at resolution time.
+			var lo: int = int(effect.get("min", 0))
+			var hi: int = int(effect.get("max", lo))
+			var g: int = _rng.randi_range(mini(lo, hi), maxi(lo, hi))
+			GameState.change_gold(g)
+			GameLog.add("You gain %d gold." % g, Color(1.0, 0.9, 0.3))
 		"lose_gold":
 			var n4: int = int(effect.get("value", 0))
 			GameState.change_gold(-n4)
@@ -304,8 +320,122 @@ func _apply_event_effect(effect: Dictionary) -> void:
 				int(effect.get("stacks", 1)),
 				String(effect.get("status", "")).capitalize(),
 			], Color(0.8, 0.85, 1.0))
+		"item_tagged":
+			_grant_tagged_item(StringName(String(effect.get("tag", ""))))
+		"curse_card":
+			# Add a CURSE-type card (e.g. Greed) to the run deck.
+			var card: CardData = Data.get_card(StringName(String(effect.get("card", ""))))
+			if card != null:
+				GameState.add_card_to_deck(card)
+				GameLog.add("A curse worms into your deck: %s." % card.display_name,
+					Color(0.85, 0.6, 0.85))
+			else:
+				GameLog.add("(missing curse card: %s)" % effect.get("card", ""),
+					Color(0.6, 0.6, 0.6))
+		"active_curse":
+			# Attach a persistent run curse (e.g. Curse of Ocular Trauma).
+			var curse: CurseData = Data.get_curse(StringName(String(effect.get("curse", ""))))
+			if curse != null:
+				GameState.add_active_curse(curse)
+			else:
+				GameLog.add("(missing curse: %s)" % effect.get("curse", ""),
+					Color(0.6, 0.6, 0.6))
+		"combat_flag":
+			# Carry an ambush state into the next combat the player enters.
+			var flag: String = String(effect.get("flag", ""))
+			if flag == "ambush" or flag == "ambushed":
+				GameState.pending_ambush = flag
+				if flag == "ambush":
+					GameLog.add("You have the drop on your next foe!", Color(0.7, 1.0, 0.7))
+				else:
+					GameLog.add("Something has the drop on you...", Color(1.0, 0.6, 0.6))
+		"spawn_enemies":
+			# Queue extra enemies for the next combat. Roll the count now.
+			var emin: int = int(effect.get("min", 1))
+			var emax: int = int(effect.get("max", emin))
+			var count: int = _rng.randi_range(mini(emin, emax), maxi(emin, emax))
+			GameState.pending_spawn_enemies.append({
+				"enemy": StringName(String(effect.get("enemy", ""))),
+				"count": count,
+			})
+			GameLog.add("%d %s will be waiting for you!" % [
+				count, String(effect.get("enemy", "")).capitalize(),
+			], Color(1.0, 0.6, 0.6))
+		"note_for_yourself":
+			_resolve_note_for_yourself(StringName(String(effect.get("default_card", "iron_wave"))))
 		_:
 			GameLog.add("(unhandled event effect: %s)" % t, Color(0.6, 0.6, 0.6))
+
+# ------------------------------------------------------------------
+# Effect helpers
+# ------------------------------------------------------------------
+
+func _grant_tagged_item(tag: StringName) -> void:
+	var template: ItemData = Data.random_item_by_tag(tag, _rng)
+	if template == null:
+		GameLog.add("(no item tagged '%s')" % tag, Color(0.6, 0.6, 0.6))
+		return
+	GameState.add_item(template)
+	GameLog.add("You find %s." % template.display_name, Color(0.8, 1.0, 0.8))
+
+# "A Note For Yourself": hand back the previously stored card (or a default the
+# first time), add it to the run deck, then let the player pick a card from
+# their current deck to store for next time.
+func _resolve_note_for_yourself(default_card: StringName) -> void:
+	var stored_id: StringName = GameState.note_for_yourself_card
+	if stored_id == &"":
+		stored_id = default_card
+	var stored: CardData = Data.get_card(stored_id)
+	if stored != null:
+		GameState.add_card_to_deck(stored)
+		GameLog.add("You retrieve %s." % stored.display_name, Color(0.8, 0.9, 1.0))
+	# Now choose which card to leave for the next visit.
+	var candidates: Array = GameState.deck.duplicate()
+	if candidates.is_empty():
+		return
+	var picker := CardPickerModal.new()
+	add_child(picker)
+	picker.show_picker({
+		"title": "Store a card for next time",
+		"candidates": candidates,
+		"count": 1,
+		"accent": Color(0.70, 0.80, 0.95),
+		"confirm_label": "Store",
+		"on_picked": Callable(self, "_on_note_card_picked"),
+	})
+
+func _on_note_card_picked(picks: Array) -> void:
+	if picks.is_empty():
+		return
+	var inst = picks[0]
+	if inst != null and inst.data != null:
+		GameState.note_for_yourself_card = inst.data.id
+		GameLog.add("You stash a note about %s." % inst.data.display_name,
+			Color(0.8, 0.9, 1.0))
+
+# Replaces {name} / {storedCard} placeholders in event flavour text.
+func _sub(text: String) -> String:
+	if text.find("{") == -1:
+		return text
+	var out: String = text
+	out = out.replace("{name}", _player_name())
+	out = out.replace("{storedCard}", _stored_card_name())
+	return out
+
+func _player_name() -> String:
+	var ch: CharacterData = Data.get_character(GameState.character_id)
+	if ch != null and String(ch.display_name) != "":
+		return String(ch.display_name)
+	return "You"
+
+func _stored_card_name() -> String:
+	# The note shows the card the player will RECEIVE next — i.e. the one
+	# currently stored, or the default if nothing has been stored yet.
+	var id: StringName = GameState.note_for_yourself_card
+	if id == &"":
+		id = &"iron_wave"
+	var card: CardData = Data.get_card(id)
+	return String(card.display_name) if card != null else "Iron Wave"
 
 func _on_continue() -> void:
 	# Event is over: pill buffs end here (also handled in _exit_tree as a
