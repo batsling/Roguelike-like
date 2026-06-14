@@ -142,7 +142,12 @@ var _slow_remaining: float = 0.0
 # is frozen (no movement, no attacks). Seeded from GameState.pending_ambush when
 # the room's fight begins. Ticks down in real time with _process_enemies.
 var _enemy_stun_remaining: float = 0.0
+# Mirror of the above for the "ambushed" case: the player is briefly frozen
+# while the enemies act. Kept shorter than the enemy freeze — a full 10s of
+# helplessness in real time would be a near-certain death sentence.
+var _player_stun_remaining: float = 0.0
 const AMBUSH_STUN_SECONDS := 10.0
+const AMBUSHED_PLAYER_STUN_SECONDS := 3.0
 
 # "Turn" tick — fires every _tr.turn_tick_secs of real time and decays every
 # actor's stack-based statuses by 1, the same decay that runs at
@@ -278,6 +283,7 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	_stairs_active = false
 	_stairs_armed = false
 	_enemy_stun_remaining = 0.0
+	_player_stun_remaining = 0.0
 
 	# Each combat room is a fresh fight for transient state: drop block and
 	# statuses, then re-derive. HP persists across the whole floor via
@@ -303,13 +309,18 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	if not is_safe and not enemy_ids.is_empty():
 		enemies_to_spawn = enemy_ids.duplicate()
 		_spawn_enemies()
-		# Pre-combat "ambush" freezes the whole room for a spell. "ambushed"
-		# (the enemy-advantage case) has no real-time form yet, so it's left
-		# pending for a turn-based fight to resolve.
-		if GameState.pending_ambush == "ambush":
-			GameState.pending_ambush = ""
-			_enemy_stun_remaining = AMBUSH_STUN_SECONDS
-			GameLog.add("Ambush! The enemies are caught flat-footed.", Color(0.7, 1.0, 0.7))
+		# Pre-combat ambush carryover. "ambush" freezes the whole room while the
+		# player gets free reign; "ambushed" briefly freezes the player while the
+		# enemies move in.
+		match GameState.pending_ambush:
+			"ambush":
+				GameState.pending_ambush = ""
+				_enemy_stun_remaining = AMBUSH_STUN_SECONDS
+				GameLog.add("Ambush! The enemies are caught flat-footed.", Color(0.7, 1.0, 0.7))
+			"ambushed":
+				GameState.pending_ambush = ""
+				_player_stun_remaining = AMBUSHED_PLAYER_STUN_SECONDS
+				GameLog.add("Ambushed! You're caught off guard and can't move.", Color(1.0, 0.6, 0.6))
 		# A combat room is one fight: advance the "turn" counter (when the
 		# translation maps rooms to turns) and fire the start-of-combat + turn
 		# item triggers (Anchor block, Horn Cleat, …).
@@ -605,6 +616,11 @@ func _tick_actor_turn(actor: CombatActor, was_hit: bool) -> void:
 	Stats.decay_actor_statuses(actor, false)
 
 func _process_player_input(delta: float) -> void:
+	# Ambushed: the player is frozen for a beat while enemies (still ticking in
+	# _process_enemies) close in. No movement, aim, or attacks until it lifts.
+	if _player_stun_remaining > 0.0:
+		_player_stun_remaining = maxf(0.0, _player_stun_remaining - delta)
+		return
 	# Movement (WASD or arrows).
 	var dir := Vector2.ZERO
 	if Input.is_key_pressed(KEY_W) or Input.is_action_pressed("move_up"):

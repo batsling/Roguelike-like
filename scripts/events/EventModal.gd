@@ -34,6 +34,7 @@ var _choosing: bool = true
 
 # UI refs (built in code).
 var _title_label: Label
+var _image_rect: TextureRect
 var _prompt_label: RichTextLabel
 var _use_bar: HBoxContainer
 var _choices_vbox: VBoxContainer
@@ -77,7 +78,7 @@ func _build_ui() -> void:
 	add_child(dim)
 
 	var panel := PanelContainer.new()
-	panel.size = Vector2(760, 520)
+	panel.size = Vector2(760, 600)
 	panel.position = (get_viewport_rect().size - panel.size) / 2.0
 	add_child(panel)
 
@@ -91,6 +92,14 @@ func _build_ui() -> void:
 	_title_label.add_theme_font_size_override("font_size", 22)
 	_title_label.add_theme_color_override("font_color", Color(1, 0.9, 0.7))
 	vbox.add_child(_title_label)
+
+	# Event art, centred above the prompt. Hidden when the event has no image.
+	_image_rect = TextureRect.new()
+	_image_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_image_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_image_rect.custom_minimum_size = Vector2(720, 170)
+	_image_rect.visible = false
+	vbox.add_child(_image_rect)
 
 	_prompt_label = RichTextLabel.new()
 	_prompt_label.bbcode_enabled = true
@@ -142,6 +151,8 @@ func _build_ui() -> void:
 func _refresh() -> void:
 	_choosing = true
 	_title_label.text = _event.display_name
+	_image_rect.texture = _event.image
+	_image_rect.visible = _event.image != null
 	_prompt_label.text = _sub(_event.prompt)
 	_outcome_panel.visible = false
 	for child in _choices_vbox.get_children():

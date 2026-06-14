@@ -68,13 +68,15 @@ func begin_battle() -> void:
 		active_turn_manager.start_battle()
 
 # Honour a pre-combat event ambush: the winning side opens with a free turn.
-# "ambushed" (enemy advantage) has no defined behaviour in this prototype yet,
-# so it's left pending; only the player-advantage "ambush" resolves here.
+# "ambush" hands the player the drop; "ambushed" lets an enemy strike first.
 func _apply_pending_ambush() -> void:
-	if GameState.pending_ambush != "ambush":
-		return
-	GameState.pending_ambush = ""
-	active_turn_manager.queue_ambush_turn(true)
+	match GameState.pending_ambush:
+		"ambush":
+			GameState.pending_ambush = ""
+			active_turn_manager.queue_ambush_turn(true)
+		"ambushed":
+			GameState.pending_ambush = ""
+			active_turn_manager.queue_ambush_turn(false)
 
 func resolve_combat(result: String) -> void:
 	if phase != Phase.COMBAT:
