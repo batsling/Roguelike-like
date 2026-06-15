@@ -80,6 +80,30 @@ func test_random_item_by_tag_returns_null_for_unknown_tag() -> void:
 
 # --- Carryover state -------------------------------------------------------
 
+# --- Two-roll dice API (used by the event modal's d20 screens) -------------
+
+func test_roll_d20_event_normal_uses_single_die() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	var r: Dictionary = Stats.roll_d20_event(rng, "normal")
+	assert_eq(r["rolls"].size(), 1, "normal mode shows one die")
+	assert_eq(int(r["used"]), int(r["rolls"][0]), "used == the single die")
+	assert_true(int(r["used"]) >= 1 and int(r["used"]) <= 20, "d20 in range")
+
+func test_roll_d20_event_advantage_keeps_highest() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var r: Dictionary = Stats.roll_d20_event(rng, "advantage")
+	assert_eq(r["rolls"].size(), 2, "advantage shows two dice")
+	assert_eq(int(r["used"]), maxi(int(r["rolls"][0]), int(r["rolls"][1])), "advantage keeps the highest")
+
+func test_roll_d20_event_disadvantage_keeps_lowest() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var r: Dictionary = Stats.roll_d20_event(rng, "disadvantage")
+	assert_eq(r["rolls"].size(), 2, "disadvantage shows two dice")
+	assert_eq(int(r["used"]), mini(int(r["rolls"][0]), int(r["rolls"][1])), "disadvantage keeps the lowest")
+
 func test_reset_run_clears_event_carryover() -> void:
 	GameState.pending_ambush = "ambush"
 	GameState.pending_spawn_enemies.append({"enemy": &"fly", "count": 3})

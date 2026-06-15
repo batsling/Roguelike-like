@@ -1,21 +1,22 @@
 class_name EventModal
 extends Control
 
-# Pre-combat event modal. Shows the event prompt + choices; on a
-# stat-check choice runs the two-roll D20 system from the JS event
-# engine, then displays the outcome and applies its effects.
+# Pre-combat event modal. A small screen state machine that mirrors the JS
+# event engine:
+#   1. Choice screen   — event art + prompt + choices + pill use-bar, plus a
+#                        "Show Outcomes" toggle that previews every branch.
+#   2. Success roll    — click a d20: D20 + stat vs difficulty DC -> SUCCESS/FAIL.
+#   3. Critical roll   — click a d20: 18+ on a success = crit_good, 1-3 on a
+#                        failure = crit_bad (no stat bonus).
+#   4. Outcome screen  — tier label + flavour + effect summary, applies effects.
+# Simple (no-roll) choices skip straight to the outcome screen.
 #
-# Two-roll D20:
-#   Roll 1 = D20 + stat-bonus vs difficulty threshold (Easy/Med/Hard/Insane)
-#   Roll 2 = D20 (no stat). On Roll 1 pass: 18-20 = crit_good.
-#                            On Roll 1 fail: 1-3  = crit_bad.
-#   Both rolls get Luck-advantage independently (10% per luck point).
+# Luck gives advantage/disadvantage on each roll (two dice, keep best/worst);
+# the player may spend reroll_charges to re-roll a die.
 #
 # Outcome dict (from EventData.choices[*].outcomes):
-#   { "crit_good": { description, effects[] },
-#     "good":      { description, effects[] },
-#     "bad":       { description, effects[] },
-#     "crit_bad":  { description, effects[] } }
+#   { "crit_good": { description, effects[] }, "good": {...},
+#     "bad": {...}, "crit_bad": {...} }
 # Simple choices use the "outcome" field instead.
 
 signal closed(should_continue: bool)
@@ -25,23 +26,45 @@ const DIFFICULTY_DC := {
 	"easy": 11, "medium": 13, "hard": 15, "insane": 17,
 }
 
+# Outcome-tier presentation, matching the JS OUTCOME_COLORS / OUTCOME_LABELS.
+const TIER_ORDER := ["crit_good", "good", "bad", "crit_bad"]
+const TIER_LABELS := {
+	"crit_good": "Critical Success", "good": "Success",
+	"bad": "Failure", "crit_bad": "Critical Failure",
+}
+const TIER_COLORS := {
+	"crit_good": Color(0.945, 0.769, 0.059),
+	"good": Color(0.180, 0.800, 0.443),
+	"bad": Color(0.902, 0.494, 0.133),
+	"crit_bad": Color(0.906, 0.298, 0.235),
+}
+
+const DieView := preload("res://scripts/events/D20DieView.gd")
+
 var _event: EventData
 var _difficulty: String = "easy"
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
-# True while the choice buttons are showing — pills may only be used before a
-# choice is locked in. Flipped off the moment a choice resolves.
-var _choosing: bool = true
 
-# UI refs (built in code).
+# Persistent UI: a title + art header above a `_body` that each screen rebuilds.
 var _title_label: Label
 var _image_rect: TextureRect
-var _prompt_label: RichTextLabel
-var _use_bar: HBoxContainer
-var _choices_vbox: VBoxContainer
-var _outcome_panel: PanelContainer
-var _outcome_label: RichTextLabel
-var _roll_label: Label
-var _continue_btn: Button
+var _body: VBoxContainer
+var _outcomes_popup: Control = null
+
+# Active roll-screen state (success or crit). Reset by each roll screen.
+var _roll_choice: Dictionary = {}
+var _roll_phase: String = ""          # "success" | "crit"
+var _roll_mode: String = "normal"
+var _roll_was_success: bool = false
+var _roll_dc: int = 11
+var _roll_stat_val: int = 0
+var _roll_stat_name: String = ""
+var _roll_started: bool = false
+var _dice: Array = []
+var _dice_pending: int = 0
+var _roll_result: Dictionary = {}
+var _roll_prompt: Label
+var _roll_result_box: VBoxContainer
 
 func _ready() -> void:
 	_rng.randomize()
@@ -64,7 +87,7 @@ func setup(event: EventData, difficulty: String = "easy") -> void:
 		_refresh()
 
 # ------------------------------------------------------------------
-# UI construction
+# UI scaffold
 # ------------------------------------------------------------------
 
 func _build_ui() -> void:
@@ -83,110 +106,101 @@ func _build_ui() -> void:
 	add_child(panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
+	vbox.add_theme_constant_override("separation", 10)
 	panel.add_child(vbox)
-	# Inner margin via empty MarginContainer would be cleaner but the
-	# direct VBox with a fixed offset works for the slice.
 
 	_title_label = Label.new()
+	_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title_label.add_theme_font_size_override("font_size", 22)
 	_title_label.add_theme_color_override("font_color", Color(1, 0.9, 0.7))
 	vbox.add_child(_title_label)
 
-	# Event art, centred above the prompt. Hidden when the event has no image.
+	# Event art, centred above the body. Hidden when the event has no image and
+	# on the outcome screen (matching the JS flow).
 	_image_rect = TextureRect.new()
 	_image_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_image_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_image_rect.custom_minimum_size = Vector2(720, 170)
+	_image_rect.custom_minimum_size = Vector2(720, 160)
 	_image_rect.visible = false
 	vbox.add_child(_image_rect)
 
-	_prompt_label = RichTextLabel.new()
-	_prompt_label.bbcode_enabled = true
-	_prompt_label.fit_content = true
-	_prompt_label.custom_minimum_size = Vector2(720, 120)
-	_prompt_label.add_theme_font_size_override("normal_font_size", 14)
-	vbox.add_child(_prompt_label)
-
-	# Consumable use-bar — pills the player can pop before committing to a
-	# choice. A stat pill raises the matching roll for the rest of the event.
-	_use_bar = HBoxContainer.new()
-	_use_bar.add_theme_constant_override("separation", 6)
-	vbox.add_child(_use_bar)
-
-	_choices_vbox = VBoxContainer.new()
-	_choices_vbox.add_theme_constant_override("separation", 6)
-	vbox.add_child(_choices_vbox)
-
-	_outcome_panel = PanelContainer.new()
-	_outcome_panel.visible = false
-	vbox.add_child(_outcome_panel)
-
-	var ovbox := VBoxContainer.new()
-	ovbox.add_theme_constant_override("separation", 8)
-	_outcome_panel.add_child(ovbox)
-
-	_roll_label = Label.new()
-	_roll_label.add_theme_font_size_override("font_size", 12)
-	_roll_label.add_theme_color_override("font_color", Color(0.8, 0.85, 1.0))
-	ovbox.add_child(_roll_label)
-
-	_outcome_label = RichTextLabel.new()
-	_outcome_label.bbcode_enabled = true
-	_outcome_label.fit_content = true
-	_outcome_label.custom_minimum_size = Vector2(700, 100)
-	_outcome_label.add_theme_font_size_override("normal_font_size", 14)
-	ovbox.add_child(_outcome_label)
-
-	_continue_btn = Button.new()
-	_continue_btn.text = "Continue"
-	_continue_btn.custom_minimum_size = Vector2(160, 36)
-	_continue_btn.pressed.connect(_on_continue)
-	ovbox.add_child(_continue_btn)
-
-# ------------------------------------------------------------------
-# Render + interaction
-# ------------------------------------------------------------------
+	_body = VBoxContainer.new()
+	_body.add_theme_constant_override("separation", 8)
+	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(_body)
 
 func _refresh() -> void:
-	_choosing = true
 	_title_label.text = _event.display_name
+	_show_choice_screen()
+
+func _clear_body() -> void:
+	_close_outcomes_popup()
+	for child in _body.get_children():
+		child.queue_free()
+
+# Small helper: append a centred Label to the body and return it.
+func _body_label(text: String, font_size: int, color: Color, bold_center := true) -> Label:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if bold_center else HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", font_size)
+	lbl.add_theme_color_override("font_color", color)
+	_body.add_child(lbl)
+	return lbl
+
+# ------------------------------------------------------------------
+# Screen 1 — choices
+# ------------------------------------------------------------------
+
+func _show_choice_screen() -> void:
+	_clear_body()
 	_image_rect.texture = _event.image
 	_image_rect.visible = _event.image != null
-	_prompt_label.text = _sub(_event.prompt)
-	_outcome_panel.visible = false
-	for child in _choices_vbox.get_children():
-		child.queue_free()
+
+	var prompt := RichTextLabel.new()
+	prompt.bbcode_enabled = true
+	prompt.fit_content = true
+	prompt.custom_minimum_size = Vector2(720, 90)
+	prompt.add_theme_font_size_override("normal_font_size", 14)
+	prompt.text = _sub(_event.prompt)
+	_body.add_child(prompt)
+
+	_build_use_bar()
+
 	for choice in _event.choices:
 		var btn := Button.new()
 		btn.text = _format_choice_text(choice)
-		btn.custom_minimum_size = Vector2(720, 44)
+		btn.custom_minimum_size = Vector2(720, 42)
 		var c: Dictionary = choice
 		btn.pressed.connect(func(): _on_choice_selected(c))
-		_choices_vbox.add_child(btn)
-	_refresh_use_bar()
+		_body.add_child(btn)
 
-# Rebuilds the pill use-bar. Visible only during the choosing phase and only
-# when the player actually holds usable consumables.
-func _refresh_use_bar() -> void:
-	for c in _use_bar.get_children():
-		c.queue_free()
+	var toggle := Button.new()
+	toggle.text = "Show Outcomes"
+	toggle.pressed.connect(_toggle_outcomes_popup)
+	_body.add_child(toggle)
+
+# Pill use-bar — consumables the player can pop before committing to a choice.
+# A stat pill raises the matching roll for the rest of the event.
+func _build_use_bar() -> void:
 	var usables: Array = _usable_pills()
-	if not _choosing or usables.is_empty():
-		_use_bar.visible = false
+	if usables.is_empty():
 		return
-	_use_bar.visible = true
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 6)
 	var lbl := Label.new()
 	lbl.text = "Use:"
 	lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 1.0))
-	_use_bar.add_child(lbl)
+	bar.add_child(lbl)
 	for item in usables:
 		var b := Button.new()
 		b.text = item.display_name
 		b.tooltip_text = item.description
 		var it: ItemData = item
 		b.pressed.connect(func(): _on_event_use(it))
-		_use_bar.add_child(b)
+		bar.add_child(b)
+	_body.add_child(bar)
 
 func _usable_pills() -> Array:
 	var out: Array = []
@@ -198,9 +212,8 @@ func _usable_pills() -> Array:
 func _on_event_use(item: ItemData) -> void:
 	if GameState.use_item(item):
 		GameLog.add("Used %s." % item.display_name, Color(0.8, 0.9, 1.0))
-	# Re-render: a stat pill changes the roll a choice needs, so the choice
-	# labels and the use-bar both refresh.
-	_refresh()
+	# Re-render: a stat pill changes the roll a choice needs.
+	_show_choice_screen()
 
 func _format_choice_text(choice: Dictionary) -> String:
 	var text: String = String(choice.get("text", "?"))
@@ -212,72 +225,399 @@ func _format_choice_text(choice: Dictionary) -> String:
 	return text
 
 func _on_choice_selected(choice: Dictionary) -> void:
-	# Lock in the choice: no more pill use past this point.
-	_choosing = false
-	_refresh_use_bar()
-	for btn in _choices_vbox.get_children():
-		btn.queue_free()
 	if String(choice.get("type", "simple")) == "stat_check":
-		_resolve_stat_check(choice)
+		_show_success_roll_screen(choice)
 	else:
-		_resolve_simple(choice)
-
-func _resolve_simple(choice: Dictionary) -> void:
-	var outcome: Dictionary = choice.get("outcome", {})
-	_show_outcome(outcome, "")
-
-func _resolve_stat_check(choice: Dictionary) -> void:
-	var stat_name: String = String(choice.get("stat", ""))
-	var stat_value: int = _get_stat_value(stat_name)
-	var dc: int = DIFFICULTY_DC.get(_difficulty, 11)
-
-	var roll1: int = _roll_d20_with_luck()
-	var total1: int = roll1 + stat_value
-	var passed: bool = total1 >= dc
-
-	var roll2: int = _roll_d20_with_luck()
-	var outcome_key: String
-	if passed:
-		outcome_key = "crit_good" if roll2 >= 18 else "good"
-	else:
-		outcome_key = "crit_bad" if roll2 <= 3 else "bad"
-
-	var roll_details := "Roll 1: %d + %d %s = %d vs DC %d  -> %s\nRoll 2: %d  -> %s" % [
-		roll1, stat_value, stat_name.substr(0, 3).to_upper(), total1, dc,
-		"PASS" if passed else "FAIL",
-		roll2, _crit_label(passed, roll2),
-	]
-
-	var outcomes: Dictionary = choice.get("outcomes", {})
-	var outcome: Dictionary = outcomes.get(outcome_key, outcomes.get("good", {}))
-	_show_outcome(outcome, roll_details)
-
-func _crit_label(passed: bool, roll2: int) -> String:
-	if passed and roll2 >= 18:
-		return "CRITICAL SUCCESS"
-	if not passed and roll2 <= 3:
-		return "CRITICAL FAILURE"
-	return "no crit"
-
-func _roll_d20_with_luck() -> int:
-	return Stats.roll_d20_with_luck(_rng)
+		_show_outcome_screen(choice, "", choice.get("outcome", {}))
 
 func _get_stat_value(stat_name: String) -> int:
-	# Delegated to Stats so adding a new rollable stat
-	# (e.g. constitution events) is a .tres edit, not a code change.
+	# Delegated to Stats so adding a new rollable stat (e.g. constitution
+	# events) is a .tres edit, not a code change.
 	return Stats.event_roll_bonus(StringName(stat_name.to_lower()))
 
 # ------------------------------------------------------------------
-# Outcome resolution
+# Screens 2 & 3 — dice rolls
 # ------------------------------------------------------------------
 
-func _show_outcome(outcome: Dictionary, roll_details: String) -> void:
-	_outcome_panel.visible = true
-	_outcome_label.text = _sub(String(outcome.get("description", "(no outcome)")))
-	_roll_label.text = roll_details
-	_roll_label.visible = roll_details != ""
+func _show_success_roll_screen(choice: Dictionary) -> void:
+	_clear_body()
+	_roll_choice = choice
+	_roll_phase = "success"
+	_roll_started = false
+	_roll_stat_name = String(choice.get("stat", ""))
+	_roll_stat_val = _get_stat_value(_roll_stat_name)
+	_roll_dc = DIFFICULTY_DC.get(_difficulty, 11)
+	_roll_mode = Stats.event_luck_mode(_rng)
+	var needed: int = maxi(1, _roll_dc - _roll_stat_val)
+
+	_body_label("SUCCESS CHECK", 12, Color(0.902, 0.494, 0.133))
+	_body_label("Roll %d+ to succeed" % needed, 20, Color(1, 1, 1))
+	_body_label("%s: +%d bonus | need %d total%s" % [
+		_roll_stat_name.capitalize(), _roll_stat_val, _roll_dc, _luck_hint(_roll_mode),
+	], 12, Color(0.7, 0.7, 0.7))
+	_build_dice_area()
+	_roll_prompt = _body_label(_click_prompt(_roll_mode), 12, Color(0.7, 0.7, 0.75))
+	_build_result_box()
+
+func _show_crit_roll_screen(choice: Dictionary, was_success: bool) -> void:
+	_clear_body()
+	_roll_choice = choice
+	_roll_phase = "crit"
+	_roll_was_success = was_success
+	_roll_started = false
+	_roll_mode = Stats.event_luck_mode(_rng)
+
+	var badge_color: Color = TIER_COLORS["good"] if was_success else TIER_COLORS["crit_bad"]
+	_body_label("SUCCESS" if was_success else "FAILURE", 12, badge_color)
+	_body_label("CRITICAL CHECK", 12, Color(0.765, 0.608, 0.827))
+	_body_label("Roll 18+ for Critical Success" if was_success else "Roll 1-3 for Critical Failure",
+		20, Color(1, 1, 1))
+	_body_label(("need 18, 19, or 20" if was_success else "need 1, 2, or 3") + _luck_hint(_roll_mode),
+		12, Color(0.7, 0.7, 0.7))
+	_build_dice_area()
+	_roll_prompt = _body_label(_click_prompt(_roll_mode), 12, Color(0.7, 0.7, 0.75))
+	_build_result_box()
+
+func _build_dice_area() -> void:
+	_dice = []
+	var count: int = 2 if _roll_mode != "normal" else 1
+	var die_size: float = 110.0 if count == 2 else 132.0
+	var area := HBoxContainer.new()
+	area.alignment = BoxContainer.ALIGNMENT_CENTER
+	area.add_theme_constant_override("separation", 22)
+	_body.add_child(area)
+	for i in range(count):
+		var d := DieView.new()
+		d.setup(die_size, true)
+		d.set_static(20)
+		d.clicked.connect(_on_dice_clicked)
+		area.add_child(d)
+		_dice.append(d)
+
+func _build_result_box() -> void:
+	_roll_result_box = VBoxContainer.new()
+	_roll_result_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_roll_result_box.add_theme_constant_override("separation", 6)
+	_roll_result_box.visible = false
+	_body.add_child(_roll_result_box)
+
+func _on_dice_clicked() -> void:
+	if _roll_started:
+		return
+	_roll_started = true
+	for d in _dice:
+		d.interactive = false
+	_perform_roll()
+
+func _perform_roll() -> void:
+	if _roll_prompt != null:
+		_roll_prompt.text = "Rolling..."
+		_roll_prompt.visible = true
+	_roll_result_box.visible = false
+	for d in _dice:
+		d.set_highlight("normal")
+	_roll_result = Stats.roll_d20_event(_rng, _roll_mode)
+	var rolls: Array = _roll_result["rolls"]
+	_dice_pending = _dice.size()
+	for i in range(_dice.size()):
+		var face: int = int(rolls[i]) if i < rolls.size() else int(rolls[0])
+		_dice[i].roll_to(face, Callable(self, "_on_one_die_done"))
+
+func _on_one_die_done(_v: int) -> void:
+	_dice_pending -= 1
+	if _dice_pending <= 0:
+		_on_roll_settled()
+
+func _on_roll_settled() -> void:
+	var rolls: Array = _roll_result["rolls"]
+	var used: int = int(_roll_result["used"])
+	if _roll_mode != "normal":
+		for i in range(_dice.size()):
+			_dice[i].set_highlight("winner" if int(rolls[i]) == used else "loser")
+	if _roll_prompt != null:
+		_roll_prompt.visible = false
+
+	if _roll_phase == "success":
+		var success: bool = (used + _roll_stat_val) >= _roll_dc
+		var col: Color = TIER_COLORS["good"] if success else TIER_COLORS["crit_bad"]
+		_fill_result_box(
+			"SUCCESS" if success else "FAILURE", col,
+			"Rolled %d + %d = %d  vs  %d" % [used, _roll_stat_val, used + _roll_stat_val, _roll_dc],
+			func(): _show_crit_roll_screen(_roll_choice, success))
+	else:
+		var is_crit_good: bool = _roll_was_success and used >= 18
+		var is_crit_bad: bool = (not _roll_was_success) and used <= 3
+		var is_crit: bool = is_crit_good or is_crit_bad
+		var key: String = "good"
+		if is_crit_good:
+			key = "crit_good"
+		elif _roll_was_success:
+			key = "good"
+		elif is_crit_bad:
+			key = "crit_bad"
+		else:
+			key = "bad"
+		var col: Color = Color(0.945, 0.769, 0.059) if is_crit else Color(0.7, 0.7, 0.7)
+		var outcomes: Dictionary = _roll_choice.get("outcomes", {})
+		var outcome: Dictionary = outcomes.get(key, {})
+		_fill_result_box(
+			"⚡ CRITICAL" if is_crit else "NOT CRITICAL", col,
+			"Rolled %d  (%s)" % [used, "need 18+" if _roll_was_success else "need 1-3"],
+			func(): _show_outcome_screen(_roll_choice, key, outcome))
+
+# Builds the post-roll result label + Continue (and Reroll, if charges remain).
+func _fill_result_box(main_text: String, main_color: Color, detail: String, on_continue: Callable) -> void:
+	for c in _roll_result_box.get_children():
+		c.queue_free()
+	_roll_result_box.visible = true
+
+	var head := Label.new()
+	head.text = main_text
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_theme_font_size_override("font_size", 24)
+	head.add_theme_color_override("font_color", main_color)
+	_roll_result_box.add_child(head)
+
+	var det := Label.new()
+	det.text = detail
+	det.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	det.add_theme_font_size_override("font_size", 12)
+	det.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	_roll_result_box.add_child(det)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 10)
+	_roll_result_box.add_child(row)
+
+	if GameState.reroll_charges > 0:
+		var reroll := Button.new()
+		reroll.text = "Reroll (%d left)" % GameState.reroll_charges
+		reroll.pressed.connect(_on_reroll)
+		row.add_child(reroll)
+
+	var cont := Button.new()
+	cont.text = "Continue →"
+	cont.custom_minimum_size = Vector2(140, 34)
+	cont.pressed.connect(on_continue)
+	row.add_child(cont)
+
+func _on_reroll() -> void:
+	if GameState.reroll_charges <= 0:
+		return
+	GameState.reroll_charges -= 1
+	# Same luck mode and dice; just roll again.
+	_perform_roll()
+
+func _luck_hint(mode: String) -> String:
+	match mode:
+		"advantage":
+			return " | Luck: Advantage"
+		"disadvantage":
+			return " | Luck: Disadvantage"
+		_:
+			return ""
+
+func _click_prompt(mode: String) -> String:
+	match mode:
+		"advantage":
+			return "Click a die to roll both — best of two"
+		"disadvantage":
+			return "Click a die to roll both — worst of two"
+		_:
+			return "Click the die to roll"
+
+# ------------------------------------------------------------------
+# Screen 4 — outcome
+# ------------------------------------------------------------------
+
+func _show_outcome_screen(choice: Dictionary, outcome_key: String, outcome: Dictionary) -> void:
+	_clear_body()
+	_image_rect.visible = false
+
+	if outcome_key != "":
+		_body_label(String(TIER_LABELS.get(outcome_key, "")), 16,
+			TIER_COLORS.get(outcome_key, Color(0.8, 0.8, 0.8)))
+
+	var desc := RichTextLabel.new()
+	desc.bbcode_enabled = true
+	desc.fit_content = true
+	desc.custom_minimum_size = Vector2(700, 90)
+	desc.add_theme_font_size_override("normal_font_size", 14)
+	desc.text = _sub(String(outcome.get("description", "")))
+	_body.add_child(desc)
+
+	# Apply the effects, then summarise them for the player.
 	for effect in outcome.get("effects", []):
 		_apply_event_effect(effect)
+	var fx: String = _describe_effects(outcome.get("effects", []))
+	if fx != "Nothing":
+		_body_label(fx, 13, Color(0.85, 0.9, 0.8))
+
+	var cont := Button.new()
+	cont.text = "Continue to Combat"
+	cont.custom_minimum_size = Vector2(180, 38)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(cont)
+	_body.add_child(row)
+	cont.pressed.connect(_on_continue)
+
+# ------------------------------------------------------------------
+# "Show Outcomes" preview
+# ------------------------------------------------------------------
+
+func _toggle_outcomes_popup() -> void:
+	if _outcomes_popup != null:
+		_close_outcomes_popup()
+	else:
+		_build_outcomes_popup()
+
+func _close_outcomes_popup() -> void:
+	if _outcomes_popup != null:
+		_outcomes_popup.queue_free()
+		_outcomes_popup = null
+
+# Click outside the preview panel dismisses it.
+func _on_outcomes_dim_input(e: InputEvent) -> void:
+	if e is InputEventMouseButton and e.pressed:
+		_close_outcomes_popup()
+
+func _build_outcomes_popup() -> void:
+	var overlay := Control.new()
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(overlay)
+	_outcomes_popup = overlay
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.5)
+	dim.gui_input.connect(_on_outcomes_dim_input)
+	overlay.add_child(dim)
+
+	var panel := PanelContainer.new()
+	panel.size = Vector2(620, 500)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	overlay.add_child(panel)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	panel.add_child(vb)
+
+	var header := Label.new()
+	header.text = "Possible Outcomes"
+	header.add_theme_font_size_override("font_size", 18)
+	header.add_theme_color_override("font_color", Color(0.765, 0.608, 0.827))
+	vb.add_child(header)
+
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(580, 400)
+	vb.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 10)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+
+	for choice in _event.choices:
+		_add_choice_preview(list, choice)
+
+	var close := Button.new()
+	close.text = "Close"
+	close.pressed.connect(_close_outcomes_popup)
+	vb.add_child(close)
+
+func _add_choice_preview(list: VBoxContainer, choice: Dictionary) -> void:
+	var head := Label.new()
+	head.text = String(choice.get("text", "?"))
+	head.add_theme_font_size_override("font_size", 14)
+	head.add_theme_color_override("font_color", Color(0.902, 0.62, 0.30))
+	list.add_child(head)
+
+	if String(choice.get("type", "simple")) != "stat_check":
+		var outcome: Dictionary = choice.get("outcome", {})
+		_add_outcome_row(list, "Direct Effect", Color(0.18, 0.8, 0.443), outcome)
+		return
+
+	var outcomes: Dictionary = choice.get("outcomes", {})
+	for key in TIER_ORDER:
+		if not outcomes.has(key):
+			continue
+		_add_outcome_row(list, String(TIER_LABELS[key]), TIER_COLORS[key], outcomes[key])
+
+func _add_outcome_row(list: VBoxContainer, label: String, color: Color, outcome: Dictionary) -> void:
+	var fx: String = _describe_effects(outcome.get("effects", []))
+	var tier := Label.new()
+	tier.text = "  %s  —  %s" % [label, fx]
+	tier.add_theme_font_size_override("font_size", 12)
+	tier.add_theme_color_override("font_color", color)
+	list.add_child(tier)
+	var desc_text: String = _sub(String(outcome.get("description", "")))
+	if desc_text != "":
+		var d := RichTextLabel.new()
+		d.bbcode_enabled = true
+		d.fit_content = true
+		d.custom_minimum_size = Vector2(540, 0)
+		d.add_theme_font_size_override("normal_font_size", 12)
+		d.add_theme_color_override("default_color", Color(0.8, 0.8, 0.82))
+		d.text = "    " + desc_text
+		list.add_child(d)
+
+# Human-readable one-line effect summary, mirroring the JS _describeEffects but
+# over this project's effect vocabulary. Used by the preview and outcome screen.
+func _describe_effects(effects: Array) -> String:
+	if effects.is_empty():
+		return "Nothing"
+	var parts: Array = []
+	for e in effects:
+		var s: String = _describe_one_effect(e)
+		if s != "":
+			parts.append(s)
+	return ", ".join(parts) if not parts.is_empty() else "Nothing"
+
+func _describe_one_effect(e: Dictionary) -> String:
+	var t: String = String(e.get("type", ""))
+	match t:
+		"none":
+			return ""
+		"heal":
+			return "+%d HP" % int(e.get("value", 0))
+		"heal_percent":
+			return "+%d%% Max HP" % int(e.get("value", 0))
+		"lose_hp":
+			return "-%d HP" % int(e.get("value", 0))
+		"gain_gold":
+			return "+%d Gold" % int(e.get("value", 0))
+		"gold_range":
+			return "+%d-%d Gold" % [int(e.get("min", 0)), int(e.get("max", 0))]
+		"lose_gold":
+			return "-%d Gold" % int(e.get("value", 0))
+		"combat_status":
+			return "%d× %s" % [int(e.get("stacks", 1)), String(e.get("status", "")).capitalize()]
+		"item_tagged":
+			return "Random %s item" % String(e.get("tag", ""))
+		"curse_card":
+			var card: CardData = Data.get_card(StringName(String(e.get("card", ""))))
+			return "Curse card: %s" % (card.display_name if card != null else String(e.get("card", "")))
+		"active_curse":
+			var curse: CurseData = Data.get_curse(StringName(String(e.get("curse", ""))))
+			return "Curse: %s" % (curse.display_name if curse != null else String(e.get("curse", "")))
+		"combat_flag":
+			var f: String = String(e.get("flag", ""))
+			if f == "ambush":
+				return "Ambush — draw +2 cards turn 1"
+			if f == "ambushed":
+				return "Ambushed — draw -2 cards turn 1"
+			return f
+		"spawn_enemies":
+			var lo: int = int(e.get("min", 1))
+			var hi: int = int(e.get("max", lo))
+			var rng_txt: String = str(lo) if lo == hi else "%d-%d" % [lo, hi]
+			return "+%s %s next fight" % [rng_txt, String(e.get("enemy", "")).capitalize()]
+		"note_for_yourself":
+			return "Retrieve %s | store a card" % _stored_card_name()
+		_:
+			return ""
 
 # Event-time effects don't go through EffectSystem (no combat scene
 # to call into). They mutate GameState directly or queue pending data
