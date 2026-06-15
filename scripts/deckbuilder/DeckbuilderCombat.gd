@@ -33,10 +33,10 @@ const ELITE_GOLD_MULT := 1.5
 var player: CombatActor = null
 var enemies: Array[CombatActor] = []
 
-# Pre-combat event carryover. "ambush" grants the player a bonus opening turn
-# (the enemy keeps its rolled intent and acts a turn later); "ambushed" lets
-# the enemy land a free opening strike. Drained from GameState at combat start.
-var _ambush_player_turns: int = 0
+# Pre-combat event carryover. "ambush" (the player got the drop) draws two
+# extra cards on turn 1; "ambushed" (the enemy did) draws two fewer. Set from
+# GameState.pending_ambush at combat start and spent on the opening hand.
+var _ambush_draw_delta: int = 0
 
 var draw_pile: Array[CardInstance] = []
 var hand: Array[CardInstance] = []
@@ -166,34 +166,19 @@ func start_combat(spawn_list: Array) -> void:
 	_fire_item_triggers("combat_started")
 	_fire_power_triggers("combat_started")
 	_apply_event_ambush()
-	if not player.is_alive():
-		# A brutal "ambushed" opener could already have downed us.
-		_refresh_ui()
-		_check_combat_end()
-		return
 	_start_player_turn()
 
-# Consumes GameState.pending_ambush. "ambush" banks a bonus player turn (see
-# _on_end_turn); "ambushed" gives the waiting enemies one free opening strike
-# before the player's first turn.
+# Consumes GameState.pending_ambush into a turn-1 draw modifier: "ambush" adds
+# two cards to the opening hand, "ambushed" removes two.
 func _apply_event_ambush() -> void:
-	var flag: String = GameState.pending_ambush
-	GameState.pending_ambush = ""
-	match flag:
+	match GameState.pending_ambush:
 		"ambush":
-			_ambush_player_turns = 1
-			GameLog.add("Ambush! You strike from the shadows and act first.", Color(0.7, 1.0, 0.7))
+			_ambush_draw_delta = 2
+			GameLog.add("Ambush! You catch them off guard — draw 2 extra cards.", Color(0.7, 1.0, 0.7))
 		"ambushed":
-			GameLog.add("Ambushed! The enemy gets the drop on you.", Color(1.0, 0.6, 0.6))
-			phase = Phase.ENEMY
-			for e in enemies:
-				if e.is_alive():
-					_roll_intent(e)
-			_execute_enemy_turn()
-			for e in enemies:
-				if e.is_alive():
-					Stats.tick_actor_statuses(e, self)
-					_decay_statuses(e)
+			_ambush_draw_delta = -2
+			GameLog.add("Ambushed! Caught off guard — you draw 2 fewer cards.", Color(1.0, 0.6, 0.6))
+	GameState.pending_ambush = ""
 
 # Pulls queued event spawns (Array of {enemy, count}) into the spawn list and
 # clears the queue so they fire exactly once, for the next combat only.
@@ -420,7 +405,9 @@ func _start_player_turn() -> void:
 	if turn == 1:
 		# Speed grants extra cards on the opening hand only.
 		draw_count += Stats.deckbuilder_bonus_draws_turn_1()
-	draw_cards(draw_count)
+		# Ambush carryover adjusts the opening hand (+2 ambush / -2 ambushed).
+		draw_count += _ambush_draw_delta
+	draw_cards(maxi(0, draw_count))
 	TriggerBus.emit_signal("turn_started", {"turn": turn, "scene": self})
 	_fire_item_triggers("turn_started")
 	_fire_power_triggers("turn_started")
@@ -483,13 +470,6 @@ func _on_end_turn() -> void:
 	_refresh_ui()
 
 	if _check_combat_end():
-		return
-
-	# Ambush: spend a banked bonus turn instead of handing control to the
-	# enemy. Their rolled intent simply waits for the following round.
-	if _ambush_player_turns > 0:
-		_ambush_player_turns -= 1
-		_start_player_turn()
 		return
 
 	_execute_enemy_turn()

@@ -138,16 +138,13 @@ var _pain_curses: Array = []
 var _haste_remaining: float = 0.0
 var _slow_remaining: float = 0.0
 
-# Seconds remaining on a pre-combat "ambush": while >0 every enemy in the room
-# is frozen (no movement, no attacks). Seeded from GameState.pending_ambush when
-# the room's fight begins. Ticks down in real time with _process_enemies.
+# Pre-combat ambush freeze, ticked down in real time. "ambush" freezes every
+# enemy in the room (_enemy_stun_remaining, gates _process_enemies); "ambushed"
+# freezes the player (_player_stun_remaining, gates _process_player_input).
+# Both seeded from GameState.pending_ambush when the room's fight begins.
 var _enemy_stun_remaining: float = 0.0
-# Mirror of the above for the "ambushed" case: the player is briefly frozen
-# while the enemies act. Kept shorter than the enemy freeze — a full 10s of
-# helplessness in real time would be a near-certain death sentence.
 var _player_stun_remaining: float = 0.0
-const AMBUSH_STUN_SECONDS := 10.0
-const AMBUSHED_PLAYER_STUN_SECONDS := 3.0
+const AMBUSH_STUN_SECONDS := 5.0
 
 # "Turn" tick — fires every _tr.turn_tick_secs of real time and decays every
 # actor's stack-based statuses by 1, the same decay that runs at
@@ -319,7 +316,7 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 				GameLog.add("Ambush! The enemies are caught flat-footed.", Color(0.7, 1.0, 0.7))
 			"ambushed":
 				GameState.pending_ambush = ""
-				_player_stun_remaining = AMBUSHED_PLAYER_STUN_SECONDS
+				_player_stun_remaining = AMBUSH_STUN_SECONDS
 				GameLog.add("Ambushed! You're caught off guard and can't move.", Color(1.0, 0.6, 0.6))
 		# A combat room is one fight: advance the "turn" counter (when the
 		# translation maps rooms to turns) and fire the start-of-combat + turn
