@@ -46,6 +46,25 @@ func test_legacy_placeholder_events_removed() -> void:
 		assert_null(Data.get_event(StringName(stale)),
 			"stale event '%s' should be gone" % stale)
 
+func test_events_carry_excel_metadata() -> void:
+	# Catalogue fields imported from the `events` sheet, surfaced on the
+	# Collection page. (See tools/generate_event_tres.py.)
+	var eye: EventData = Data.get_event(&"watching_eyeballs")
+	assert_eq(eye.event_type, "Strategy", "Type column")
+	assert_eq(eye.source_game, "Mewgenics", "Game column")
+	assert_true(eye.inputs.has("Dexterity"), "Possible Inputs column")
+	assert_true(eye.outputs.has("Ambush"), "Possible Outputs column")
+	assert_false(eye.multipath, "Multipath 'No' -> false")
+
+	var note: EventData = Data.get_event(&"note_for_yourself")
+	assert_eq(note.rarity, "Uncommon", "Rarity column")
+	assert_eq(note.run_limit, 1, "Run Limit column")
+	assert_eq(note.requirement, "None", "Requirement column")
+
+	var serpent: EventData = Data.get_event(&"the_ssssserpent")
+	assert_eq(serpent.event_type, "Deckbuilder", "Type column")
+	assert_true(serpent.difficulty_tags.has("easy"), "Difficulty 'Easy'")
+
 func test_every_effect_type_is_handled() -> void:
 	for id in PORTED_EVENTS:
 		var ev: EventData = Data.get_event(StringName(id))

@@ -35,3 +35,13 @@ extends Resource
 @export var rarity: String = "Common"     # rough commonality among the pool
 @export var tags: PackedStringArray = PackedStringArray()
 @export var image: Texture2D
+
+# --- Catalogue metadata, imported from the `events` sheet of Roguelikes.xlsx --
+# Display-only data surfaced on the Collection page; it does not affect how the
+# event resolves in combat (that's `choices`).
+@export var event_type: String = ""        # game-design type, e.g. "Strategy"
+@export var difficulty_roll: int = 0       # added to every stat-check DC
+@export var requirement: String = "None"   # gating requirement text
+@export var inputs: PackedStringArray = PackedStringArray()   # possible stat inputs
+@export var outputs: PackedStringArray = PackedStringArray()  # possible outcome categories
+@export var multipath: bool = false        # whether the event branches into sub-paths
