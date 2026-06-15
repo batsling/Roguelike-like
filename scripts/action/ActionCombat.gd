@@ -74,6 +74,13 @@ const STAIRS_TRIGGER_DIST := 40.0          # walk this close to step onto them
 # "+Block on the 2nd turn" lands when you enter the 2nd combat room).
 var _combat_room_index: int = 0
 
+# In-room "turn" count for turn_ended items, advanced one per turn_tick (i.e.
+# every turn_tick_secs seconds while fighting in the room) and reset on each
+# combat room entry. This is the second-based translation of deckbuilder
+# turn_ended timing: Stone Calendar (if_turn: 7) fires once 7 ticks of real
+# time have elapsed inside the room, rather than on the 7th room.
+var _room_turn_index: int = 0
+
 # --- Runtime state ---------------------------------------------------------
 var player_actor: CombatActor = null
 # Cached character avatar drawn as the player token (null = fall back to the
@@ -323,6 +330,8 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 		# item triggers (Anchor block, Horn Cleat, …).
 		if _tr.room_is_turn:
 			_combat_room_index += 1
+		# Fresh room: restart the in-room turn_ended clock (Stone Calendar).
+		_room_turn_index = 0
 		_fire_item_triggers("combat_started")
 		_fire_item_triggers("turn_started")
 
@@ -592,6 +601,11 @@ func _process_turn_tick(delta: float) -> void:
 		_fire_item_triggers("turn_tick")
 		# Action charges only the item in the charged slot, per turn.
 		GameState.charge_item_by_id(GameState.action_charged_item_id, 1)
+		# Second-based translator for turn_ended items: each tick is one in-room
+		# "turn" of turn_tick_secs, so Nth-turn items (Stone Calendar: turn 7)
+		# resolve by elapsed real time within the room.
+		_room_turn_index += 1
+		_fire_item_triggers("turn_ended", {}, _room_turn_index)
 	if player_actor != null and player_actor.is_alive():
 		_tick_actor_turn(player_actor, _player_was_hit)
 	_player_was_hit = false
@@ -1559,9 +1573,10 @@ func gain_block(_target, amount: int) -> void:
 # Fires item triggers through the shared runner so the same declarative item
 # data drives all three modes. `_combat_room_index` is the action-mode "turn"
 # for if_turn gating (Horn Cleat: +Block on the 2nd combat room).
-func _fire_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -> void:
+func _fire_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}, turn_override: int = -1) -> void:
+	var turn: int = turn_override if turn_override >= 0 else _combat_room_index
 	ItemTriggers.fire(trigger_name, self, player_actor, _living_enemy_actors(),
-		ctx_extras, _combat_room_index)
+		ctx_extras, turn)
 	_refresh_hud()
 
 func _living_enemy_actors() -> Array:
