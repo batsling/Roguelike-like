@@ -197,10 +197,15 @@ func event_roll_bonus(stat_id: StringName) -> int:
 # ---------------------------------------------------------------------------
 # Combat-start hook — applies universal derived statuses + drains the
 # event-queued pending statuses into the actor. Called by every combat
-# scene at start_combat() time.
+# scene at start_combat() time for the PLAYER actor (derived statuses come
+# from the player's run stats on GameState; enemies have none).
+#
+# `actor` is untyped so all three modes share this: deckbuilder / action pass
+# a CombatActor, strategy passes a BattleUnit. Both expose add_status,
+# get_status and is_player, which is all this reads.
 # ---------------------------------------------------------------------------
 
-func apply_derived_statuses(actor: CombatActor, _mode: Mode) -> void:
+func apply_derived_statuses(actor, _mode: Mode) -> void:
 	for stat_id in _stat_defs:
 		var def: StatDefinition = _stat_defs[stat_id]
 		if def.derived_status == &"":
