@@ -548,6 +548,16 @@ func _show_verification_modal(gd: GameData) -> void:
 	save_btn.pressed.connect(_on_verification_save)
 	panel.add_child(save_btn)
 
+	# Opt-in rating — never forced. Sits in the panel's top-right corner so the
+	# player can score the game whenever they like (or update a prior rating).
+	var rate_btn := Button.new()
+	rate_btn.position = Vector2(450, 20)
+	rate_btn.size = Vector2(150, 30)
+	rate_btn.text = "★ Rate this game"
+	rate_btn.add_theme_font_size_override("font_size", 13)
+	rate_btn.pressed.connect(func(): _show_rate_modal(gd.id if gd != null else &"", func(): pass))
+	panel.add_child(rate_btn)
+
 	# Weapon questions stack below the Play/Save row. Each row exposes a
 	# Yes / No pair whose pressed handler writes into _weapon_verify_answers.
 	var y: int = 210
@@ -880,17 +890,20 @@ func _on_verification_skip() -> void:
 	if GameState.is_dead():
 		_handle_defeat()
 		return
-	_show_rate_modal(_pending_reward_game_id, _after_verification)
+	# Rating is opt-in (the "★ Rate this game" button on the verification
+	# screen), so skipping just proceeds to the reward flow.
+	_after_verification()
 
 func _close_verification() -> void:
 	if _verification_modal != null:
 		_verification_modal.queue_free()
 		_verification_modal = null
 
-# Mandatory rate-out-of-10 + notes prompt, shown after the play/verify screen
-# each time a game is beaten. Records the rating in the cross-run TierList (also
-# dropping the game into the Unranked tray the first time) and then runs
-# `continuation` to resume the post-victory flow.
+# Opt-in rate-out-of-10 + notes prompt, opened from the "★ Rate this game"
+# button on the verification screen. Records the rating in the cross-run
+# TierList (also dropping the game into the Unranked tray the first time) and
+# then runs `continuation`. Dismissing ("Maybe later") just runs `continuation`
+# without recording anything.
 func _show_rate_modal(game_id: StringName, continuation: Callable) -> void:
 	if game_id == &"":
 		continuation.call()
@@ -900,11 +913,16 @@ func _show_rate_modal(game_id: StringName, continuation: Callable) -> void:
 	var gd: GameData = Data.get_game(game_id)
 	var modal := RateGameModal.new()
 	modal.setup(game_id, gd)
-	modal.submitted.connect(func(score: int, notes: String) -> void:
-		TierList.set_rating(game_id, score, notes)
+	var close_modal := func() -> void:
 		if _rate_modal != null:
 			_rate_modal.queue_free()
 			_rate_modal = null
+	modal.submitted.connect(func(score: int, notes: String) -> void:
+		TierList.set_rating(game_id, score, notes)
+		close_modal.call()
+		continuation.call())
+	modal.dismissed.connect(func() -> void:
+		close_modal.call()
 		continuation.call())
 	_rate_modal = modal
 	add_child(modal)

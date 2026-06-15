@@ -1,18 +1,19 @@
 class_name RateGameModal
 extends Control
 
-# Mandatory post-victory rating prompt. Shown right after the "Play the real
-# game" verification screen each time a game is beaten. The player must pick a
-# whole-number score (1-10) AND write at least some notes before Confirm
-# unlocks — there's no skip. When the game was rated on a previous run the
-# fields come in pre-filled so the player updates rather than starts over.
+# Opt-in game rating prompt. Opened from the "★ Rate this game" button on the
+# verification screen (never forced). The player picks a whole-number score
+# (1-10); notes are optional. When the game was rated on a previous run the
+# fields come in pre-filled so the player updates rather than starts over. A
+# "Maybe later" button dismisses without rating.
 #
 # Built entirely in code (no scene dependency) and runs PROCESS_MODE_ALWAYS so
 # it keeps working if the tree is paused behind it. Emits `submitted(score,
-# notes)`; the caller is responsible for persisting via TierList and freeing
-# this modal.
+# notes)` on confirm or `dismissed` on skip; the caller persists via TierList
+# and frees this modal.
 
 signal submitted(score: int, notes: String)
+signal dismissed
 
 const ACCENT := Color(1.0, 0.7, 0.25)
 
@@ -125,7 +126,7 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 		_score_buttons.append(b)
 
 	var notes_label := Label.new()
-	notes_label.text = "Notes (required)"
+	notes_label.text = "Notes (optional)"
 	notes_label.add_theme_font_size_override("font_size", 14)
 	notes_label.add_theme_color_override("font_color", Color(0.8, 0.82, 0.88))
 	vbox.add_child(notes_label)
@@ -139,11 +140,23 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 	_notes_edit.text_changed.connect(_update_confirm_enabled)
 	vbox.add_child(_notes_edit)
 
+	var button_row := HBoxContainer.new()
+	button_row.add_theme_constant_override("separation", 12)
+	vbox.add_child(button_row)
+
+	var skip_btn := Button.new()
+	skip_btn.text = "Maybe later"
+	skip_btn.custom_minimum_size = Vector2(0, 44)
+	skip_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	skip_btn.pressed.connect(_on_dismiss)
+	button_row.add_child(skip_btn)
+
 	_confirm_btn = Button.new()
 	_confirm_btn.text = "Confirm"
 	_confirm_btn.custom_minimum_size = Vector2(0, 44)
+	_confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_confirm_btn.pressed.connect(_on_confirm)
-	vbox.add_child(_confirm_btn)
+	button_row.add_child(_confirm_btn)
 
 	_refresh_score_buttons()
 	_update_confirm_enabled()
@@ -164,10 +177,13 @@ func _refresh_score_buttons() -> void:
 		_score_label.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 
 func _update_confirm_enabled(_unused := "") -> void:
-	var has_notes := _notes_edit != null and _notes_edit.text.strip_edges() != ""
-	_confirm_btn.disabled = not (_score >= 1 and has_notes)
+	# Notes are optional now; only a score is needed to confirm.
+	_confirm_btn.disabled = _score < 1
 
 func _on_confirm() -> void:
-	if _score < 1 or _notes_edit.text.strip_edges() == "":
+	if _score < 1:
 		return
 	emit_signal("submitted", _score, _notes_edit.text.strip_edges())
+
+func _on_dismiss() -> void:
+	emit_signal("dismissed")
