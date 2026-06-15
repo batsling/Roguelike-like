@@ -125,6 +125,14 @@ func _build_units(encounter: Array, battle_map) -> Array:
 		var pu = BattleUnitScript.from_player(StrategyState.player)
 		if not battle_map.player_spawns.is_empty():
 			pu.position = battle_map.player_spawns[0]
+		# Drain event-granted combat statuses (Fear, Blind, …) onto the player.
+		# Deckbuilder/Action get these via Stats.apply_derived_statuses, but
+		# strategy builds a BattleUnit (not a CombatActor) so it can't call that
+		# helper — apply the pending list here so event statuses reach the
+		# tactical fight too (e.g. a Fear event makes the player flee turn 1).
+		for s in GameState.pending_combat_statuses:
+			pu.add_status(s.get("status", &""), int(s.get("stacks", 0)))
+		GameState.pending_combat_statuses.clear()
 		out.append(pu)
 	for i in range(encounter.size()):
 		var kind: String = str(encounter[i])

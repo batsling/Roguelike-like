@@ -218,3 +218,21 @@ func test_fear_surcharge_zero_without_fear_or_player() -> void:
 		"no Fear, no surcharge")
 	assert_eq(Stats.fear_card_surcharge(null, _attack_card_inst()), 0,
 		"no combat player (out of combat) means no surcharge")
+
+# An event grants Fear via a `combat_status` effect (e.g. Watching Eyeballs),
+# which EventModal queues onto GameState.pending_combat_statuses. At combat start
+# Stats.apply_derived_statuses drains that onto the actor (deckbuilder / action),
+# after which the surcharge applies. Guards the event -> Fear path end to end.
+func test_event_pending_fear_drains_into_combat_and_surcharges() -> void:
+	GameState.pending_combat_statuses.clear()
+	GameState.pending_combat_statuses.append({"status": &"fear", "stacks": 2})
+	var player := CombatActor.new()
+	player.is_player = true
+	Stats.apply_derived_statuses(player, Stats.Mode.DECKBUILDER)
+	assert_eq(player.get_status(&"fear"), 2,
+		"event-granted Fear drains onto the combat actor at combat start")
+	assert_true(GameState.pending_combat_statuses.is_empty(),
+		"pending combat statuses are consumed once applied")
+	assert_eq(Stats.fear_card_surcharge(player, _attack_card_inst()),
+		Stats.FEAR_CARD_SURCHARGE,
+		"the drained Fear then surcharges non-Skill cards")
