@@ -177,3 +177,144 @@ func test_cleave_card_skips_the_target_picker() -> void:
 	var inst: CardInstance = CardInstance.from_data(card)
 	assert_false(inst.wants_target(),
 		"a Cleave card auto-targets the whole side, so no manual pick is needed")
+
+# --- Fear (deckbuilder surcharge) ----------------------------------------
+# Fear's other modes (strategy flee, action enemy flee) are real-time / grid
+# scene behaviour exercised at play time; these guard the shared cost helper.
+
+func test_fear_has_an_icon_mapping() -> void:
+	assert_true(Stats.STATUS_ICONS.has(&"fear"),
+		"Fear needs an entry in STATUS_ICONS so it doesn't render as Unknown.png")
+
+func _attack_card_inst() -> CardInstance:
+	var c := CardData.new()
+	c.type = CardData.CardType.ATTACK
+	return CardInstance.from_data(c)
+
+func _skill_card_inst() -> CardInstance:
+	var c := CardData.new()
+	c.type = CardData.CardType.SKILL
+	return CardInstance.from_data(c)
+
+func test_fear_surcharges_non_skill_cards_while_afraid() -> void:
+	var player := CombatActor.new()
+	player.is_player = true
+	player.add_status(&"fear", 2)
+	assert_eq(Stats.fear_card_surcharge(player, _attack_card_inst()),
+		Stats.FEAR_CARD_SURCHARGE,
+		"a feared player pays +1 Energy on non-Skill cards")
+
+func test_fear_never_surcharges_skill_cards() -> void:
+	var player := CombatActor.new()
+	player.is_player = true
+	player.add_status(&"fear", 5)
+	assert_eq(Stats.fear_card_surcharge(player, _skill_card_inst()), 0,
+		"Skill cards are exempt from the Fear surcharge (and shed Fear instead)")
+
+func test_fear_surcharge_zero_without_fear_or_player() -> void:
+	var player := CombatActor.new()
+	player.is_player = true
+	assert_eq(Stats.fear_card_surcharge(player, _attack_card_inst()), 0,
+		"no Fear, no surcharge")
+	assert_eq(Stats.fear_card_surcharge(null, _attack_card_inst()), 0,
+		"no combat player (out of combat) means no surcharge")
+
+# An event grants Fear via a `combat_status` effect (e.g. Watching Eyeballs),
+# which EventModal queues onto GameState.pending_combat_statuses. At combat start
+# Stats.apply_derived_statuses drains that onto the actor (deckbuilder / action),
+# after which the surcharge applies. Guards the event -> Fear path end to end.
+func test_event_pending_fear_drains_into_combat_and_surcharges() -> void:
+	GameState.pending_combat_statuses.clear()
+	GameState.pending_combat_statuses.append({"status": &"fear", "stacks": 2})
+	var player := CombatActor.new()
+	player.is_player = true
+	Stats.apply_derived_statuses(player, Stats.Mode.DECKBUILDER)
+	assert_eq(player.get_status(&"fear"), 2,
+		"event-granted Fear drains onto the combat actor at combat start")
+	assert_true(GameState.pending_combat_statuses.is_empty(),
+		"pending combat statuses are consumed once applied")
+	assert_eq(Stats.fear_card_surcharge(player, _attack_card_inst()),
+		Stats.FEAR_CARD_SURCHARGE,
+		"the drained Fear then surcharges non-Skill cards")
+
+# Derived statuses (Strength->Power, Dexterity->Defense, …) must reach every
+# mode's player. apply_derived_statuses now accepts a strategy BattleUnit too,
+# so it should derive the same buffs from the same run stats as a deckbuilder /
+# action CombatActor.
+func test_derived_statuses_apply_to_battleunit_like_combatactor() -> void:
+	var saved_str: int = GameState.strength
+	GameState.strength = 6
+	GameState.pending_combat_statuses.clear()
+	var ca := CombatActor.new()
+	ca.is_player = true
+	Stats.apply_derived_statuses(ca, Stats.Mode.STRATEGY)
+	var bu := BattleUnit.new()
+	bu.is_player = true
+	Stats.apply_derived_statuses(bu, Stats.Mode.STRATEGY)
+	assert_gt(ca.get_status(&"power"), 0, "sanity: 6 Strength derives some Power")
+	assert_eq(bu.get_status(&"power"), ca.get_status(&"power"),
+		"a strategy BattleUnit derives the same Power as a CombatActor from the same stats")
+	GameState.strength = saved_str
+
+# --- Shared status application (Stats.apply_status_to) --------------------
+# The one core all three modes' apply_status() route through, so they agree on
+# the Persistence rule and on what counts as a no-op.
+
+func test_apply_status_to_scales_player_debuff_by_persistence() -> void:
+	var player := CombatActor.new()
+	player.is_player = true
+	player.add_status(&"persistence", 2)
+	var enemy := CombatActor.new()
+	var applied: int = Stats.apply_status_to(enemy, &"vulnerable", 3, player)
+	assert_eq(applied, 5, "player Persistence 2 adds to the 3 inflicted Vulnerable")
+	assert_eq(enemy.get_status(&"vulnerable"), 5)
+
+func test_apply_status_to_ignores_persistence_for_buffs_self_and_no_source() -> void:
+	var player := CombatActor.new()
+	player.is_player = true
+	player.add_status(&"persistence", 2)
+	assert_eq(Stats.apply_status_to(player, &"power", 3, player), 3,
+		"Persistence never scales the player's own buffs")
+	assert_eq(Stats.apply_status_to(CombatActor.new(), &"blind", 2, player), 2,
+		"non-Persistence debuffs are unscaled even from a Persistent player")
+	assert_eq(Stats.apply_status_to(CombatActor.new(), &"vulnerable", 3, null), 3,
+		"no source (event / reaction) means no Persistence scaling")
+
+func test_apply_status_to_works_on_a_battleunit() -> void:
+	var player := CombatActor.new()
+	player.is_player = true
+	player.add_status(&"persistence", 1)
+	var bu := BattleUnit.new()  # enemy unit (is_player defaults false)
+	assert_eq(Stats.apply_status_to(bu, &"poison", 2, player), 3,
+		"strategy BattleUnit debuffs scale with Persistence through the shared core")
+	assert_eq(bu.get_status(&"poison"), 3)
+
+func test_apply_status_to_noops_on_empty_or_zero() -> void:
+	var enemy := CombatActor.new()
+	assert_eq(Stats.apply_status_to(enemy, &"", 3), 0, "empty status id is a no-op")
+	assert_eq(Stats.apply_status_to(enemy, &"weak", 0), 0, "zero stacks is a no-op")
+	assert_eq(Stats.apply_status_to(null, &"weak", 3), 0, "null target is a no-op")
+
+# Minimal scene exposing the methods fire_contact_reactions drives, routing
+# apply_status through the shared core like a real combat scene.
+class _ReactScene:
+	extends RefCounted
+	func apply_status(target, status: StringName, stacks: int, source = null) -> void:
+		Stats.apply_status_to(target, status, stacks, source)
+	func deal_damage(_source, _target, _amount: int, _effect: Dictionary = {}) -> void:
+		pass
+
+func test_bleed_thorns_reaction_scales_with_owner_persistence() -> void:
+	var scene := _ReactScene.new()
+	var player := CombatActor.new()
+	player.is_player = true
+	player.max_hp = 20
+	player.hp = 20
+	player.add_status(&"bleed_thorns", 2)
+	player.add_status(&"persistence", 3)
+	var enemy := CombatActor.new()
+	enemy.max_hp = 20
+	enemy.hp = 20
+	Stats.fire_contact_reactions(player, enemy, scene)
+	assert_eq(enemy.get_status(&"bleed"), 5,
+		"player Bleed Thorns 2 + Persistence 3 inflicts 5 Bleed on the attacker")

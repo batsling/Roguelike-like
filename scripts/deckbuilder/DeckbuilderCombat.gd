@@ -682,10 +682,18 @@ func _decay_statuses(actor: CombatActor) -> void:
 # Card play
 # ------------------------------------------------------------------
 
+# Energy a card costs to play right now, including the Fear surcharge
+# (+1 per non-Skill card while the player is afraid). All play-time cost gates
+# and the energy deduction route through this so the number the player is
+# charged matches what the hand shows. CardInstance.get_cost() stays the card's
+# own context-free cost (used by shop / rest / collection).
+func _card_cost(card: CardInstance) -> int:
+	return card.get_cost() + Stats.fear_card_surcharge(player, card)
+
 func _try_play_card(card: CardInstance) -> void:
 	if phase != Phase.PLAYER:
 		return
-	if card.get_cost() > energy:
+	if _card_cost(card) > energy:
 		GameLog.add("Not enough energy for %s." % card.get_display_name(), Color(0.9, 0.7, 0.3))
 		return
 	# If we're already targeting and the same card is clicked, cancel.
@@ -786,7 +794,7 @@ func _on_card_drag_started(card: CardInstance) -> void:
 	if card.data != null and card.data.unplayable:
 		GameLog.add("%s is unplayable." % card.get_display_name(), Color(0.8, 0.6, 0.8))
 		return
-	if card.get_cost() > energy:
+	if _card_cost(card) > energy:
 		GameLog.add("Not enough energy for %s." % card.get_display_name(), Color(0.9, 0.7, 0.3))
 		return
 	# Drag and click-targeting are mutually exclusive; drop any active pick.
@@ -831,7 +839,7 @@ func _finish_drag(pos: Vector2) -> void:
 	# Unplayable cards (curses) sit in hand but can't be played manually.
 	if card.data != null and card.data.unplayable:
 		return
-	if card.get_cost() > energy:
+	if _card_cost(card) > energy:
 		return
 	if card.wants_target():
 		# Targeted: only resolves when dropped on a live enemy.
@@ -874,7 +882,7 @@ func _enemy_view_at(pos: Vector2) -> EnemyView:
 	return null
 
 func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
-	energy -= card.get_cost()
+	energy -= _card_cost(card)
 	TriggerBus.emit_signal("card_played", {
 		"card": card, "target": target_enemy, "scene": self,
 	})
@@ -907,6 +915,12 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	# you play another card). Curse cards are unplayable, so `card` is never a
 	# curse here. (Action/strategy translate on_play_other -> on_action.)
 	_fire_curse_triggers("on_play_other", hand, hand.size())
+
+	# Fear: playing a Skill card steadies the player — shed 1 Fear stack. Fires
+	# once per played Skill (not per Replay), the deckbuilder-side decay rule.
+	if card.is_skill() and player.get_status(&"fear") > 0:
+		player.add_status(&"fear", -1)
+		GameLog.add("Fear -1 (Skill played).", Color(0.7, 0.9, 1.0))
 
 	# Powers exhaust on play; cards with the exhaust flag exhaust; else discard.
 	if card.data.exhaust or card.is_power():
@@ -1244,17 +1258,15 @@ func leech_to_player(amount: int) -> void:
 	heal(player, amount)
 	GameLog.add("Leeches drain %d into you." % amount, Color(0.7, 1.0, 0.7))
 
-func apply_status(target: CombatActor, status: StringName, stacks: int, source: CombatActor = null) -> void:
-	if target == null or stacks == 0:
+func apply_status(target, status: StringName, stacks: int, source = null) -> void:
+	# Shared apply (guard + Persistence + add) lives in Stats.apply_status_to so
+	# all three modes agree; deckbuilder's reaction is the status_applied bus +
+	# Power-card triggers. Skip the reaction when nothing actually landed.
+	var applied: int = Stats.apply_status_to(target, status, stacks, source)
+	if applied == 0:
 		return
-	# Player Persistence boosts debuffs the player applies to enemies
-	# (shared rule in Stats.status_apply_stacks). Buffs to self pass through.
-	var actual_stacks := stacks
-	if not target.is_player:
-		actual_stacks = Stats.status_apply_stacks(source, status, stacks)
-	target.add_status(status, actual_stacks)
 	TriggerBus.emit_signal("status_applied", {
-		"target": target, "status": status, "stacks": actual_stacks, "scene": self,
+		"target": target, "status": status, "stacks": applied, "scene": self,
 	})
 	_fire_power_triggers("status_applied")
 
@@ -1741,7 +1753,7 @@ func _refresh_ui() -> void:
 		var card_inst: CardInstance = hand[i]
 		var view: CardView = _hand_views[i]
 		view.setup(card_inst)
-		view.set_enabled((phase == Phase.PLAYER) and (card_inst.get_cost() <= energy))
+		view.set_enabled((phase == Phase.PLAYER) and (_card_cost(card_inst) <= energy))
 		view.set_selected(_targeting and _selected_card == card_inst)
 
 

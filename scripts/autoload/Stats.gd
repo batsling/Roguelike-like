@@ -77,6 +77,7 @@ const STATUS_ICONS := {
 	&"leeches": "Leeches.png",
 	&"buffer": "Buffer.png",
 	&"brace": "Brace.png",
+	&"fear": "Fear.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -196,10 +197,15 @@ func event_roll_bonus(stat_id: StringName) -> int:
 # ---------------------------------------------------------------------------
 # Combat-start hook — applies universal derived statuses + drains the
 # event-queued pending statuses into the actor. Called by every combat
-# scene at start_combat() time.
+# scene at start_combat() time for the PLAYER actor (derived statuses come
+# from the player's run stats on GameState; enemies have none).
+#
+# `actor` is untyped so all three modes share this: deckbuilder / action pass
+# a CombatActor, strategy passes a BattleUnit. Both expose add_status,
+# get_status and is_player, which is all this reads.
 # ---------------------------------------------------------------------------
 
-func apply_derived_statuses(actor: CombatActor, _mode: Mode) -> void:
+func apply_derived_statuses(actor, _mode: Mode) -> void:
 	for stat_id in _stat_defs:
 		var def: StatDefinition = _stat_defs[stat_id]
 		if def.derived_status == &"":
@@ -394,6 +400,63 @@ func status_apply_stacks(source, status: StringName, stacks: int) -> int:
 			and stacks > 0 and status in PERSISTENCE_DEBUFFS:
 		return stacks + source.get_status(&"persistence")
 	return stacks
+
+# Shared status-application core for all three combat modes. This is the ONE
+# place a status is written onto an actor in combat, so the Persistence rule
+# lives here and nowhere else: a debuff the PLAYER inflicts on a non-player
+# target gains extra stacks (status_apply_stacks); buffs, self-targets and
+# enemy-applied debuffs pass through unchanged. Each scene's apply_status() is a
+# thin wrapper that calls this and then runs its own mode-specific reaction
+# (trigger bus, UI refresh, …).
+#
+# `target` is untyped so it works for a CombatActor (deckbuilder / action) or a
+# BattleUnit (strategy) — both expose add_status / get_status / is_player.
+# `source` is the inflicter, or null when unknown (event drains, contact
+# reactions, pre-combat decoration), which correctly skips Persistence.
+# Returns the stacks actually applied (0 on a no-op) so callers can skip their
+# reaction when nothing landed.
+func apply_status_to(target, status: StringName, stacks: int, source = null) -> int:
+	if target == null or status == &"" or stacks == 0:
+		return 0
+	if not target.has_method("add_status"):
+		return 0
+	var actual: int = stacks
+	if ("is_player" in target) and not target.is_player:
+		actual = status_apply_stacks(source, status, stacks)
+	if actual == 0:
+		return 0
+	target.add_status(status, actual)
+	return actual
+
+# ---------------------------------------------------------------------------
+# Fear — the one status whose behavior diverges per mode/side rather than
+# translating (see docs/fear-status-design.md). Each mode owns its own Fear
+# rule, so Fear is deliberately NOT in DECAY_STATUSES; deckbuilder decays it
+# on Skill play, strategy at the feared unit's turn end, action over flee time.
+# ---------------------------------------------------------------------------
+
+# Deckbuilder: while the player has Fear, every non-Skill card costs this much
+# extra Energy. Skill cards are unaffected (and playing one sheds 1 Fear).
+const FEAR_CARD_SURCHARGE := 1
+
+# Action: each Fear stack on an enemy is worth this many real-time seconds of
+# fleeing before it ticks off (stack = flee-time countdown), and the enemy
+# flees at this multiple of its normal move speed.
+const FEAR_FLEE_SECONDS_PER_STACK := 2.0
+const FEAR_FLEE_SPEED_MULT := 1.2
+
+# The Energy surcharge a card would pay under the player's current Fear, as read
+# by the deckbuilder cost sites AND the hand's cost display so the two agree.
+# Untyped player/card so the shared call works from CombatActor + CardInstance;
+# returns 0 with no player (out of combat), no Fear, or for Skill cards.
+func fear_card_surcharge(player, card) -> int:
+	if player == null or card == null:
+		return 0
+	if not player.has_method("get_status") or player.get_status(&"fear") <= 0:
+		return 0
+	if card.has_method("is_skill") and card.is_skill():
+		return 0
+	return FEAR_CARD_SURCHARGE
 
 # ---------------------------------------------------------------------------
 # Speed — mode-specific accessors
@@ -637,7 +700,10 @@ func fire_contact_reactions(target, attacker, scene) -> void:
 		return
 	var bleed_thorns: int = target.get_status(&"bleed_thorns")
 	if bleed_thorns > 0 and scene != null and scene.has_method("apply_status"):
-		scene.apply_status(attacker, &"bleed", bleed_thorns)
+		# The Bleed Thorns owner (target) inflicts the Bleed, so pass it as the
+		# source — a player's Persistence then scales this Bleed like any other
+		# debuff it applies.
+		scene.apply_status(attacker, &"bleed", bleed_thorns, target)
 
 func decay_actor_statuses(actor, do_grow: bool = true) -> void:
 	# Step down every decaying status on this actor by 1. Called per

@@ -120,6 +120,7 @@ var _loadout_pool_container: VBoxContainer    # weapon + card grids
 var _loadout_start_btn: Button
 
 var _enemy_turn_timer: Timer
+var _fear_turn_timer: Timer
 
 # Per-turn state.
 var _action_used: bool = false
@@ -318,6 +319,15 @@ func _build_ui() -> void:
 	_enemy_turn_timer.wait_time = ENEMY_TURN_DELAY
 	_enemy_turn_timer.timeout.connect(_auto_end_enemy_turn)
 	add_child(_enemy_turn_timer)
+
+	# Fear: a feared unit (player OR enemy) flees at the start of its turn, then
+	# its turn ends after this beat — no AI, no player control. Separate from the
+	# enemy timer because _auto_end_enemy_turn runs AI and ignores player units.
+	_fear_turn_timer = Timer.new()
+	_fear_turn_timer.one_shot = true
+	_fear_turn_timer.wait_time = ENEMY_TURN_DELAY
+	_fear_turn_timer.timeout.connect(_auto_end_feared_turn)
+	add_child(_fear_turn_timer)
 
 # --- Chrome helpers ----------------------------------------------------
 
@@ -1045,6 +1055,16 @@ func _on_confirm_loadout() -> void:
 func _on_unit_turn_started(unit) -> void:
 	_grid_view.set_active_unit(unit, unit.move_range)
 	_refresh_initiative()
+	# Fear: too afraid to fight — spend the whole turn fleeing as far from all
+	# opposing units as possible, then end the turn. Same rule for player and
+	# enemy units (the one symmetric Fear behavior).
+	if unit.get_status(&"fear") > 0:
+		_set_player_buttons_enabled(false)
+		_grid_view.enter_idle()
+		_fear_flee(unit)
+		_status_label.text = "%s is gripped by Fear and flees!" % str(unit.unit_name).capitalize()
+		_fear_turn_timer.start()
+		return
 	if unit.is_player:
 		_player_turn_count += 1
 		# Energy (empower charge): unless it banks across turns, leftover charge
@@ -1136,7 +1156,7 @@ func _apply_turn_effect_to_unit(unit, effect: Dictionary) -> void:
 		"block":
 			unit.block += int(effect.get("value", 0))
 		"status":
-			unit.add_status(StringName(effect.get("status", "")), int(effect.get("stacks", 1)))
+			Stats.apply_status_to(unit, StringName(effect.get("status", "")), int(effect.get("stacks", 1)))
 		"heal", "gain_hp":
 			var before: int = unit.hp
 			unit.hp = mini(unit.max_hp, unit.hp + int(effect.get("value", 0)))
@@ -1206,10 +1226,7 @@ func _apply_strategy_curse_effect(effect: Dictionary, actions: int) -> void:
 		return
 	match String(effect.get("type", "")):
 		"status":
-			var sid := StringName(effect.get("status", ""))
-			var stacks := int(effect.get("stacks", 1))
-			if sid != &"" and stacks > 0:
-				p.add_status(sid, stacks)
+			Stats.apply_status_to(p, StringName(effect.get("status", "")), int(effect.get("stacks", 1)))
 		"dmg":
 			var dv := int(effect.get("value", 0))
 			if dv > 0:
@@ -1258,6 +1275,48 @@ func _clear_turn_stat_debuff() -> void:
 	for s in _CURSE_STAT_DOWN:
 		GameState.add_temp_stat(s, 1)
 	_turn_stat_debuff = false
+
+# Fear flee: move the unit to the reachable tile that maximizes the summed
+# Manhattan distance to all living opposing units, then shed 1 Fear (strategy's
+# turn-end decay, so N stacks == N turns of forced retreat). Only moves when a
+# strictly-farther tile exists, so a cornered/surrounded unit just holds. Shared
+# by player and enemy units.
+func _fear_flee(unit) -> void:
+	var foes: Array = []
+	for u in _units:
+		if u != null and u.is_alive() and u.is_player != unit.is_player:
+			foes.append(u)
+	if not foes.is_empty():
+		var reachable: Dictionary = _grid_view._reachable_from(unit, unit.move_range)
+		var best_tile: Vector2i = unit.position
+		var best_score: int = _fear_flee_score(unit.position, foes)
+		var best_steps: int = 0
+		for tile in reachable.keys():
+			var score: int = _fear_flee_score(tile, foes)
+			var steps: int = int(reachable[tile])
+			# Prefer the farthest tile; on ties take the one that moves the least.
+			if score > best_score or (score == best_score and steps < best_steps):
+				best_score = score
+				best_tile = tile
+				best_steps = steps
+		if best_tile != unit.position:
+			unit.position = best_tile
+			_grid_view.notify_units_changed()
+	if unit.get_status(&"fear") > 0:
+		unit.add_status(&"fear", -1)
+
+# Sum of Manhattan distances from a tile to every living opposing unit.
+func _fear_flee_score(tile: Vector2i, foes: Array) -> int:
+	var total: int = 0
+	for f in foes:
+		total += absi(tile.x - f.position.x) + absi(tile.y - f.position.y)
+	return total
+
+# End a feared unit's turn after the flee beat — no AI, no player control.
+func _auto_end_feared_turn() -> void:
+	if _turn_manager == null or _turn_manager.current_unit == null:
+		return
+	_turn_manager.end_current_turn()
 
 func _auto_end_enemy_turn() -> void:
 	if _turn_manager == null or _turn_manager.current_unit == null:
@@ -1681,6 +1740,14 @@ func _clear_pending() -> void:
 # fold compute-addon bonuses (Fishing Weight et al) into dmg values.
 func apply_effects(effects: Array, source, target, card = null) -> void:
 	_apply_card_or_spell_effects(effects, source, target, card)
+
+# Status application entry point (called by EffectSystem._h_status and the shared
+# contact reactions). Shared apply (guard + Persistence + add) lives in
+# Stats.apply_status_to so all three modes agree; strategy's reaction is a grid
+# refresh so the unit's status badges update. Skip it when nothing landed.
+func apply_status(target, status: StringName, stacks: int, source = null) -> void:
+	if Stats.apply_status_to(target, status, stacks, source) > 0:
+		_grid_view.notify_units_changed()
 
 func _apply_card_or_spell_effects(effects: Array, source, target, card = null, empower: int = 0) -> void:
 	# Replay addon: a card with Replay X resolves its full effect list X extra

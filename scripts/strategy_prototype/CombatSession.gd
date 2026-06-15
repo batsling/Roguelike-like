@@ -125,6 +125,13 @@ func _build_units(encounter: Array, battle_map) -> Array:
 		var pu = BattleUnitScript.from_player(StrategyState.player)
 		if not battle_map.player_spawns.is_empty():
 			pu.position = battle_map.player_spawns[0]
+		# Apply the player's run-stat derived statuses (Strength->Power,
+		# Dexterity->Defense, Intelligence->Arcane, Charisma->Persistence, the
+		# crit display) AND drain event-granted combat statuses (Fear, Blind, …)
+		# onto the unit — the same combat-start hook deckbuilder and action use,
+		# so all three modes open a fight with identical player buffs. Strategy
+		# builds a BattleUnit, which apply_derived_statuses now accepts.
+		Stats.apply_derived_statuses(pu, Stats.Mode.STRATEGY)
 		out.append(pu)
 	for i in range(encounter.size()):
 		var kind: String = str(encounter[i])
