@@ -789,16 +789,40 @@ func _process_enemies(delta: float) -> void:
 	for inst in enemies:
 		if not inst.actor.is_alive():
 			continue
-		match int(inst.data.behavior):
-			ActionEnemyData.BehaviorKind.SHOOTER:
-				_process_shooter(inst, delta)
-			ActionEnemyData.BehaviorKind.STATIONARY:
-				_process_stationary(inst, delta)
-			_:
-				_process_walker(inst, delta)
+		# Fear: a frightened enemy abandons its normal behavior and flees the
+		# player, never attacking, until its Fear ticks off (stack == flee-time).
+		if inst.actor.get_status(&"fear") > 0:
+			_process_feared_enemy(inst, delta)
+		else:
+			match int(inst.data.behavior):
+				ActionEnemyData.BehaviorKind.SHOOTER:
+					_process_shooter(inst, delta)
+				ActionEnemyData.BehaviorKind.STATIONARY:
+					_process_stationary(inst, delta)
+				_:
+					_process_walker(inst, delta)
 		# Keep everyone inside the arena bounds.
 		inst.pos.x = clampf(inst.pos.x, inst.data.size, ARENA_W - inst.data.size)
 		inst.pos.y = clampf(inst.pos.y, inst.data.size, ARENA_H - inst.data.size)
+
+# Fear (action enemy): run directly away from the player at a small speed boost
+# and never attack. Fear is spent over real time — each Fear stack lasts
+# FEAR_FLEE_SECONDS_PER_STACK seconds of fleeing, so the flee duration scales
+# with the stack count. Cooldown still ticks so the enemy is ready to fight once
+# its nerve returns. Decay is handled here (not the turn-tick) because Fear is
+# deliberately not in DECAY_STATUSES.
+func _process_feared_enemy(inst: Dictionary, delta: float) -> void:
+	var data: ActionEnemyData = inst.data
+	var away: Vector2 = inst.pos - player_pos
+	if away.length() == 0.0:
+		away = Vector2.RIGHT
+	inst.pos += away.normalized() * data.move_speed * Stats.FEAR_FLEE_SPEED_MULT * delta
+	inst.cooldown = maxf(0.0, inst.cooldown - delta)
+	var timer: float = float(inst.get("fear_timer", 0.0)) + delta
+	while timer >= Stats.FEAR_FLEE_SECONDS_PER_STACK and inst.actor.get_status(&"fear") > 0:
+		timer -= Stats.FEAR_FLEE_SECONDS_PER_STACK
+		inst.actor.add_status(&"fear", -1)
+	inst["fear_timer"] = timer if inst.actor.get_status(&"fear") > 0 else 0.0
 
 func _process_walker(inst: Dictionary, delta: float) -> void:
 	var data: ActionEnemyData = inst.data

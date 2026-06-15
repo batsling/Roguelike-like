@@ -77,6 +77,7 @@ const STATUS_ICONS := {
 	&"leeches": "Leeches.png",
 	&"buffer": "Buffer.png",
 	&"brace": "Brace.png",
+	&"fear": "Fear.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -394,6 +395,36 @@ func status_apply_stacks(source, status: StringName, stacks: int) -> int:
 			and stacks > 0 and status in PERSISTENCE_DEBUFFS:
 		return stacks + source.get_status(&"persistence")
 	return stacks
+
+# ---------------------------------------------------------------------------
+# Fear — the one status whose behavior diverges per mode/side rather than
+# translating (see docs/fear-status-design.md). Each mode owns its own Fear
+# rule, so Fear is deliberately NOT in DECAY_STATUSES; deckbuilder decays it
+# on Skill play, strategy at the feared unit's turn end, action over flee time.
+# ---------------------------------------------------------------------------
+
+# Deckbuilder: while the player has Fear, every non-Skill card costs this much
+# extra Energy. Skill cards are unaffected (and playing one sheds 1 Fear).
+const FEAR_CARD_SURCHARGE := 1
+
+# Action: each Fear stack on an enemy is worth this many real-time seconds of
+# fleeing before it ticks off (stack = flee-time countdown), and the enemy
+# flees at this multiple of its normal move speed.
+const FEAR_FLEE_SECONDS_PER_STACK := 2.0
+const FEAR_FLEE_SPEED_MULT := 1.2
+
+# The Energy surcharge a card would pay under the player's current Fear, as read
+# by the deckbuilder cost sites AND the hand's cost display so the two agree.
+# Untyped player/card so the shared call works from CombatActor + CardInstance;
+# returns 0 with no player (out of combat), no Fear, or for Skill cards.
+func fear_card_surcharge(player, card) -> int:
+	if player == null or card == null:
+		return 0
+	if not player.has_method("get_status") or player.get_status(&"fear") <= 0:
+		return 0
+	if card.has_method("is_skill") and card.is_skill():
+		return 0
+	return FEAR_CARD_SURCHARGE
 
 # ---------------------------------------------------------------------------
 # Speed — mode-specific accessors

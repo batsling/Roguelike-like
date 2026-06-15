@@ -1,13 +1,15 @@
 # Fear — Multi-Mode Status Design
 
-Status: **design only** (no gameplay code yet). This doc specifies how the
-**Fear** status should behave across the three combat modes and on both sides
-(player / enemy), and proposes the small representation rework needed so the
-spreadsheet can express per-mode + per-side statuses like Fear without
-distorting the symmetric ones.
+Status: **gameplay implemented** (deckbuilder surcharge + Skill-play decay,
+strategy turn-start flee, action enemy flee). The **spreadsheet rework in
+[§4](#4-spreadsheet-rework--flag-the-exception-dont-reshape-every-row) is still
+to be applied by hand** (sheet + importer + Collection). This doc specifies how
+**Fear** behaves across the three combat modes and on both sides (player /
+enemy), and the representation change so the sheet can describe per-mode +
+per-side statuses like Fear without distorting the symmetric ones.
 
-It is written to be implementable straight from the hook points listed in
-[§5](#5-implementation-hook-points) when we pick the work back up.
+The hook points in [§5](#5-implementation-hook-points) document where each piece
+landed.
 
 ---
 
@@ -138,7 +140,7 @@ Two new columns, and the old `Action Decay` column is dropped:
 | `Who` | All / Player / Enemy |
 | `Preference` | unchanged |
 | **`Translates`** *(new, Yes/No)* | **Yes** = one concept, the translator/shared resolver makes it work in every mode (the default — all rows but Fear). **No** = bespoke per-mode behavior; read `Per-Mode`. |
-| **`Per-Mode`** *(new, structured text)* | **Only filled when `Translates = No`.** Lightly-structured `mode.side: text` lines (see below). Blank for everyone else. |
+| **`Per-Mode`** *(new, structured text)* | **Only filled when `Translates = No`.** A single-line cell: `mode.side: text` entries joined by ` \| ` (see below). Blank for everyone else. |
 | `Icon`, `Rarity` | unchanged |
 
 Net change: **+2 columns, −1 column.** No player/enemy column explosion — the
@@ -148,7 +150,8 @@ either way.
 
 ### 4.2 `Per-Mode` format
 
-One `key: value` per line. Key is `<mode>.<side>`:
+A single-line cell (so the sheet stays tidy): `key: value` entries separated by
+` | `. Key is `<mode>.<side>`:
 
 - **mode** ∈ `db` (deckbuilder) · `action` · `strategy`
 - **side** ∈ `player` · `enemy` · `both`
@@ -165,15 +168,10 @@ Fear's row:
 | `Per-Mode` | (below) |
 
 ```
-db.player: non-Skill cards +1 Energy; lose 1 Fear per Skill
-db.enemy: none
-strategy.both: flee at turn start; -1 end of turn
-action.enemy: flees, scales with stacks
-action.player: none
+db.player: non-Skill cards +1 Energy; lose 1 Fear per Skill | db.enemy: none | strategy.both: flee at turn start; -1 end of turn | action.enemy: flees, scales with stacks | action.player: none
 ```
 
-This future-proofs the sheet: any later status that breaks the translator just
-flips `Translates → No` and fills one `Per-Mode` cell — no schema change.
+The importer splits entries on ` | `, then each entry on the first `:`.
 
 ### 4.3 Importer / Collection impact
 

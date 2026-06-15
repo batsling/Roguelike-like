@@ -130,7 +130,14 @@ func refresh() -> void:
 	if card == null:
 		return
 	_name_label.text = card.get_display_name()
-	_cost_label.text = str(card.get_cost())
+	# Show the live combat cost: base + Fear surcharge (+1 per non-Skill card
+	# while the player is afraid). combat_player is null outside combat, so this
+	# reads as the plain cost in shop / rest / collection. Tint it red while the
+	# surcharge is active so the penalty is visible.
+	var fear_extra: int = Stats.fear_card_surcharge(GameState.combat_player, card)
+	_cost_label.text = str(card.get_cost() + fear_extra)
+	_cost_label.add_theme_color_override(
+		"font_color", Color(1.0, 0.55, 0.5) if fear_extra > 0 else Color.WHITE)
 	# In combat, fold the player's live Power / Arcane / Defense / Persistence
 	# into the shown numbers (GameState.combat_player is null outside combat, so
 	# this reads as the authored text in shop / rest / collection).

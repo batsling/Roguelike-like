@@ -177,3 +177,44 @@ func test_cleave_card_skips_the_target_picker() -> void:
 	var inst: CardInstance = CardInstance.from_data(card)
 	assert_false(inst.wants_target(),
 		"a Cleave card auto-targets the whole side, so no manual pick is needed")
+
+# --- Fear (deckbuilder surcharge) ----------------------------------------
+# Fear's other modes (strategy flee, action enemy flee) are real-time / grid
+# scene behaviour exercised at play time; these guard the shared cost helper.
+
+func test_fear_has_an_icon_mapping() -> void:
+	assert_true(Stats.STATUS_ICONS.has(&"fear"),
+		"Fear needs an entry in STATUS_ICONS so it doesn't render as Unknown.png")
+
+func _attack_card_inst() -> CardInstance:
+	var c := CardData.new()
+	c.type = CardData.CardType.ATTACK
+	return CardInstance.from_data(c)
+
+func _skill_card_inst() -> CardInstance:
+	var c := CardData.new()
+	c.type = CardData.CardType.SKILL
+	return CardInstance.from_data(c)
+
+func test_fear_surcharges_non_skill_cards_while_afraid() -> void:
+	var player := CombatActor.new()
+	player.is_player = true
+	player.add_status(&"fear", 2)
+	assert_eq(Stats.fear_card_surcharge(player, _attack_card_inst()),
+		Stats.FEAR_CARD_SURCHARGE,
+		"a feared player pays +1 Energy on non-Skill cards")
+
+func test_fear_never_surcharges_skill_cards() -> void:
+	var player := CombatActor.new()
+	player.is_player = true
+	player.add_status(&"fear", 5)
+	assert_eq(Stats.fear_card_surcharge(player, _skill_card_inst()), 0,
+		"Skill cards are exempt from the Fear surcharge (and shed Fear instead)")
+
+func test_fear_surcharge_zero_without_fear_or_player() -> void:
+	var player := CombatActor.new()
+	player.is_player = true
+	assert_eq(Stats.fear_card_surcharge(player, _attack_card_inst()), 0,
+		"no Fear, no surcharge")
+	assert_eq(Stats.fear_card_surcharge(null, _attack_card_inst()), 0,
+		"no combat player (out of combat) means no surcharge")
