@@ -50,6 +50,7 @@ var _sort_bar: HBoxContainer
 var _list_vbox: VBoxContainer
 var _hint_label: Label
 var _stats_vbox: VBoxContainer
+var _card_preview: CanvasLayer = null
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -806,7 +807,117 @@ func _build_card_cell(inst: CardInstance, count: int) -> Control:
 		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		wrapper.add_child(panel)
 
+	# Click anywhere on the cell to open the close-up preview. A transparent
+	# button on top captures the click (the CardView and badges below ignore
+	# mouse), so the preview opens regardless of where in the cell you click.
+	var click := Button.new()
+	click.flat = true
+	click.set_anchors_preset(Control.PRESET_FULL_RECT)
+	click.tooltip_text = "Click to view this card up close"
+	click.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var data: CardData = inst.data
+	var up: bool = inst.upgraded
+	click.pressed.connect(func(): _show_card_preview(data, up))
+	wrapper.add_child(click)
+
 	return wrapper
+
+# Full-screen close-up of a deck card with a toggle to preview its upgraded
+# form. Rebuilds itself when the toggle flips so the card art, cost and text
+# all reflect the chosen state.
+func _show_card_preview(card_data: CardData, upgraded: bool) -> void:
+	if card_data == null:
+		return
+	_close_card_preview()
+
+	var layer := CanvasLayer.new()
+	layer.layer = 60
+	add_child(layer)
+	_card_preview = layer
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.8)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.gui_input.connect(func(e):
+		if e is InputEventMouseButton and e.pressed:
+			_close_card_preview())
+	layer.add_child(dim)
+
+	var inst := CardInstance.from_data(card_data, upgraded)
+
+	var panel := PanelContainer.new()
+	var psize := Vector2(380, 600)
+	panel.custom_minimum_size = psize
+	panel.position = (get_viewport_rect().size - psize) / 2.0
+	layer.add_child(panel)
+
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 16)
+	panel.add_child(margin)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 10)
+	margin.add_child(vb)
+
+	# Scaled-up card visual.
+	var card_scale: float = 1.7
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(CardView.CARD_W, CardView.CARD_H) * card_scale
+	holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var view := CardView.new()
+	view.setup(inst)
+	view.scale = Vector2(card_scale, card_scale)
+	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(view)
+	vb.add_child(holder)
+
+	# Type • rarity • cost line.
+	var card_rarities := ["Starter", "Common", "Uncommon", "Rare", "Legendary"]
+	var type_idx: int = clampi(int(card_data.type), 0, CARD_TYPE_LABELS.size() - 1)
+	var rar_idx: int = clampi(int(card_data.rarity), 0, card_rarities.size() - 1)
+	var info := Label.new()
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info.text = "%s  •  %s  •  Cost %d" % [
+		CARD_TYPE_LABELS[type_idx], card_rarities[rar_idx], inst.get_cost()]
+	info.add_theme_font_size_override("font_size", 13)
+	info.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
+	vb.add_child(info)
+
+	# Full description text.
+	var desc := RichTextLabel.new()
+	desc.bbcode_enabled = true
+	desc.fit_content = true
+	desc.custom_minimum_size = Vector2(psize.x - 48, 0)
+	desc.add_theme_font_size_override("normal_font_size", 13)
+	desc.text = "[center]%s[/center]" % inst.get_description()
+	vb.add_child(desc)
+
+	# Upgrade preview toggle (or a note when the card can't upgrade).
+	if card_data.can_upgrade:
+		var toggle := CheckButton.new()
+		toggle.text = "Preview upgraded"
+		toggle.button_pressed = upgraded
+		toggle.toggled.connect(func(on: bool): _show_card_preview(card_data, on))
+		vb.add_child(toggle)
+	else:
+		var note := Label.new()
+		note.text = "This card can't be upgraded."
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		note.add_theme_font_size_override("font_size", 11)
+		note.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
+		vb.add_child(note)
+
+	var close := Button.new()
+	close.text = "Close"
+	close.pressed.connect(_close_card_preview)
+	vb.add_child(close)
+
+func _close_card_preview() -> void:
+	if _card_preview != null:
+		_card_preview.queue_free()
+		_card_preview = null
 
 # ------------------------------------------------------------------
 # Gear tab — action-combat loadout (doubles as the equipment screen).
