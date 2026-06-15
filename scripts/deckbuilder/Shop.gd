@@ -50,14 +50,7 @@ func _roll_inventory() -> void:
 	_cards.clear()
 	_remove_used = false
 
-	var item_pool: Array = []
-	for it in Data.all_items():
-		if it is ItemData:
-			item_pool.append(it)
-	for _i in range(mini(3, item_pool.size())):
-		var idx: int = _rng.randi() % item_pool.size()
-		var picked: ItemData = item_pool[idx]
-		item_pool.remove_at(idx)
+	for picked in Data.roll_weighted_items(3, _rng):
 		_items.append({
 			"item": picked,
 			"price": int(ITEM_PRICES.get(picked.rarity, 10)),

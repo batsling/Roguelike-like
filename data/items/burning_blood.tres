@@ -9,6 +9,7 @@ id = &"burning_blood"
 display_name = "Burning Blood"
 kind = 1
 rarity = 0
+starter = true
 description = "At the end of combat, heal 6 HP."
 triggers = [{
 "on": "combat_ended",

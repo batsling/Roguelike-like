@@ -8,6 +8,10 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 @export var display_name: String
 @export var kind: ItemKind = ItemKind.PASSIVE
 @export var rarity: Rarity = Rarity.COMMON
+# "Starter" items (Excel Rating = "Starter", e.g. Burning Blood, Ring of the
+# Snake) belong to a character's opening loadout and must never appear in
+# random shop / reward / treasure pools. Mirrors CardData.Rarity.STARTER.
+@export var starter: bool = false
 @export_multiline var description: String
 
 # Trigger-driven items use the declarative form: a list of trigger hooks and

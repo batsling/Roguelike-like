@@ -4,9 +4,8 @@ extends Control
 # Treasure-node modal: offer 3 random items, player picks one (or
 # skips entirely). Standalone Control; emits `closed` on selection.
 #
-# Phase 2 keeps the roll uniform across all items. Rarity weighting
-# (Common / Uncommon / Rare / Legendary curves) lands when the wider
-# rarity tables get tuned alongside the stat dispatcher.
+# Offers are rarity-weighted (Data.roll_weighted_items: 75/20/5 with a
+# Legendary bump) and exclude starter items.
 
 signal closed
 
@@ -25,15 +24,7 @@ func _ready() -> void:
 # ---------------------------------------------------------------------------
 
 func _roll_offers() -> void:
-	_offers.clear()
-	var pool: Array = []
-	for it in Data.all_items():
-		if it is ItemData:
-			pool.append(it)
-	for _i in range(mini(OFFER_COUNT, pool.size())):
-		var idx: int = _rng.randi() % pool.size()
-		_offers.append(pool[idx])
-		pool.remove_at(idx)
+	_offers = Data.roll_weighted_items(OFFER_COUNT, _rng)
 
 func _build_ui() -> void:
 	var dim := ColorRect.new()
