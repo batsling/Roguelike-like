@@ -700,7 +700,10 @@ func fire_contact_reactions(target, attacker, scene) -> void:
 		return
 	var bleed_thorns: int = target.get_status(&"bleed_thorns")
 	if bleed_thorns > 0 and scene != null and scene.has_method("apply_status"):
-		scene.apply_status(attacker, &"bleed", bleed_thorns)
+		# The Bleed Thorns owner (target) inflicts the Bleed, so pass it as the
+		# source — a player's Persistence then scales this Bleed like any other
+		# debuff it applies.
+		scene.apply_status(attacker, &"bleed", bleed_thorns, target)
 
 func decay_actor_statuses(actor, do_grow: bool = true) -> void:
 	# Step down every decaying status on this actor by 1. Called per

@@ -294,3 +294,27 @@ func test_apply_status_to_noops_on_empty_or_zero() -> void:
 	assert_eq(Stats.apply_status_to(enemy, &"", 3), 0, "empty status id is a no-op")
 	assert_eq(Stats.apply_status_to(enemy, &"weak", 0), 0, "zero stacks is a no-op")
 	assert_eq(Stats.apply_status_to(null, &"weak", 3), 0, "null target is a no-op")
+
+# Minimal scene exposing the methods fire_contact_reactions drives, routing
+# apply_status through the shared core like a real combat scene.
+class _ReactScene:
+	extends RefCounted
+	func apply_status(target, status: StringName, stacks: int, source = null) -> void:
+		Stats.apply_status_to(target, status, stacks, source)
+	func deal_damage(_source, _target, _amount: int, _effect: Dictionary = {}) -> void:
+		pass
+
+func test_bleed_thorns_reaction_scales_with_owner_persistence() -> void:
+	var scene := _ReactScene.new()
+	var player := CombatActor.new()
+	player.is_player = true
+	player.max_hp = 20
+	player.hp = 20
+	player.add_status(&"bleed_thorns", 2)
+	player.add_status(&"persistence", 3)
+	var enemy := CombatActor.new()
+	enemy.max_hp = 20
+	enemy.hp = 20
+	Stats.fire_contact_reactions(player, enemy, scene)
+	assert_eq(enemy.get_status(&"bleed"), 5,
+		"player Bleed Thorns 2 + Persistence 3 inflicts 5 Bleed on the attacker")
