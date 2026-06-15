@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3 uid="uid://enemy_fly"]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"fly"
+display_name = "Fly"
+difficulty = 0
+weight = 0
+hp_min = 3
+hp_max = 5
+pattern = [{
+"display": "Nibble (2)",
+"weight": 100,
+"effects": [{"type": "dmg", "value": 2, "target": "player"}]
+}]
+pattern_mode = "random"
+starting_abilities = PackedStringArray()
+source_game = "Mewgenics"
+tags = PackedStringArray("bug")
+portrait_color = Color(0.45, 0.5, 0.3, 1)
+glyph = "f"

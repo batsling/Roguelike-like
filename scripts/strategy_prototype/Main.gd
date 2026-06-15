@@ -629,9 +629,9 @@ func _auto_walk_step() -> void:
 	if _auto_path.is_empty():
 		_finish_travel()
 		return
-	var player = StrategyState.player
+	var player: StrategyEntity = StrategyState.player
 	var next: Vector2i = _auto_path[0]
-	var dir := next - player.grid_pos
+	var dir: Vector2i = next - player.grid_pos
 	if _cheby(player.grid_pos, next) != 1 or not StrategyState.map.is_walkable(next):
 		_cancel_auto_walk()
 		return

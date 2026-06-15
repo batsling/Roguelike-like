@@ -723,6 +723,27 @@ func roll_chance_with_luck(rng: RandomNumberGenerator, percent: int) -> bool:
 	var r2: bool = rng.randi_range(0, 99) < percent
 	return (r1 or r2) if luck > 0 else (r1 and r2)
 
+# --- Event two-roll dice (detailed variants for the event modal UI) ----------
+# Decide whether this roll earns Luck advantage / disadvantage. Mirrors the JS
+# _getLuckMode: a 10%-per-point chance, the sign of Luck setting the direction.
+func event_luck_mode(rng: RandomNumberGenerator) -> String:
+	var lv: int = get_value(&"luck")
+	if lv > 0 and rng.randi_range(0, 99) < clampi(lv * 10, 0, 100):
+		return "advantage"
+	if lv < 0 and rng.randi_range(0, 99) < clampi(absi(lv) * 10, 0, 100):
+		return "disadvantage"
+	return "normal"
+
+# Roll a d20 under a known luck mode, exposing both dice so the event modal can
+# render them. Returns { "rolls": [a] (normal) or [a, b], "used": int }.
+func roll_d20_event(rng: RandomNumberGenerator, mode: String) -> Dictionary:
+	var a: int = rng.randi_range(1, 20)
+	if mode == "advantage" or mode == "disadvantage":
+		var b: int = rng.randi_range(1, 20)
+		var used: int = maxi(a, b) if mode == "advantage" else mini(a, b)
+		return {"rolls": [a, b], "used": used}
+	return {"rolls": [a], "used": a}
+
 func _luck_roll(rng: RandomNumberGenerator, sides: int) -> int:
 	var r1: int = rng.randi_range(1, sides)
 	var luck: int = get_value(&"luck")

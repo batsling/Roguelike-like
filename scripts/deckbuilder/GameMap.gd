@@ -293,7 +293,9 @@ func _pick_enemy_for_combat() -> StringName:
 			pool.append(eid)
 	if pool.is_empty():
 		for e in Data.all_enemies():
-			if e is EnemyData:
+			# weight 0 = never spawned by the random roster (e.g. the Fly,
+			# which only appears as an event-summoned swarm).
+			if e is EnemyData and e.weight > 0:
 				pool.append(e.id)
 	if pool.is_empty():
 		push_warning("[GameMap] no enemies available; falling back to jaw_worm")

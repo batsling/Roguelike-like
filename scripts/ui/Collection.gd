@@ -14,11 +14,13 @@ extends Control
 #   Items      — every ItemData (Data.all_items()), grid + detail panel.
 #   Characters — every CharacterData, grid + detail panel.
 #   Cards      — every CardData, grid + detail panel.
+#   Events     — every EventData, with its image + Excel metadata + the full
+#                decision/outcome tree, grid + detail panel.
 #
 # Each content tab mirrors the HTML's search box, sort/filter controls, a
 # responsive card grid, and a detail side-panel that fills in on click.
 
-enum Tab { REFERENCE, ITEMS, CHARACTERS, CARDS, GAMES }
+enum Tab { REFERENCE, ITEMS, CHARACTERS, CARDS, EVENTS, GAMES }
 
 const GAME_TYPE_NAMES := ["Action", "Strategy", "Deckbuilder", "Traditional"]
 # Completion filter for the Games tab: [label, key]. Keys drive _populate_games.
@@ -46,7 +48,7 @@ var _tab: int = Tab.GAMES
 var _ref_subtab: String = "statuses"
 
 # Per-tab control state.
-var _search := {"reference": "", "items": "", "characters": "", "cards": "", "games": ""}
+var _search := {"reference": "", "items": "", "characters": "", "cards": "", "events": "", "games": ""}
 var _games_sort: String = "name"      # name | year | beaten
 var _games_type: int = -1             # -1 = all, else GameType index
 var _games_status: String = "all"     # all | completed | uncompleted | amulet
@@ -56,6 +58,9 @@ var _char_sort: String = "name"       # name | game
 var _cards_sort: String = "rarity"    # rarity | type | cost | name
 var _cards_type: int = -1             # -1 = all, else CardType index
 var _cards_rarity: int = -1           # -1 = all, else CardRarity index
+var _events_sort: String = "name"     # name | rarity | game
+var _events_type: String = "all"      # all | <event_type>
+var _events_rarity: String = "all"    # all | common | uncommon | rare | legendary
 
 # Nodes rebuilt per refresh.
 var _content: VBoxContainer
@@ -155,6 +160,7 @@ func _build_shell() -> void:
 	_add_tab_button(tabs, Tab.GAMES, "Games (%d)" % Data.all_games().size())
 	_add_tab_button(tabs, Tab.ITEMS, "Items (%d)" % Data.all_items().size())
 	_add_tab_button(tabs, Tab.CARDS, "Cards (%d)" % Data.all_cards().size())
+	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events().size())
 	_add_tab_button(tabs, Tab.CHARACTERS, "Characters (%d)" % Data.all_characters().size())
 	_add_tab_button(tabs, Tab.REFERENCE, "Reference")
 
@@ -195,6 +201,8 @@ func _refresh() -> void:
 			_build_characters()
 		Tab.CARDS:
 			_build_cards()
+		Tab.EVENTS:
+			_build_events()
 
 # ------------------------------------------------------------------
 # Shared building blocks
@@ -358,6 +366,8 @@ func _populate() -> void:
 			_populate_characters()
 		Tab.CARDS:
 			_populate_cards()
+		Tab.EVENTS:
+			_populate_events()
 
 # ------------------------------------------------------------------
 # Games tab — the roguelike catalog (influence graph), with lifetime
@@ -974,6 +984,259 @@ func _show_card_detail(cd: CardData) -> void:
 # ------------------------------------------------------------------
 # Detail helpers
 # ------------------------------------------------------------------
+
+# ------------------------------------------------------------------
+# Events tab — the pre-combat event catalogue (image + Excel metadata +
+# the full decision/outcome tree). Mirrors the HTML collection's events view.
+# ------------------------------------------------------------------
+
+const EVENT_RARITIES := ["Common", "Uncommon", "Rare", "Legendary"]
+const EVENT_TIER_ORDER := ["crit_good", "good", "bad", "crit_bad"]
+const EVENT_TIER_LABELS := {
+	"crit_good": "Critical Success", "good": "Success",
+	"bad": "Failure", "crit_bad": "Critical Failure",
+}
+
+func _build_events() -> void:
+	var row := _controls_row()
+	row.add_child(_search_box("events"))
+	row.add_child(VSeparator.new())
+	row.add_child(_label("Sort:", Color(0.7, 0.7, 0.75), 12))
+	row.add_child(_sort_button("A-Z", _events_sort == "name", func(): _events_sort = "name"; _refresh()))
+	row.add_child(_sort_button("Rarity", _events_sort == "rarity", func(): _events_sort = "rarity"; _refresh()))
+	row.add_child(_sort_button("Game", _events_sort == "game", func(): _events_sort = "game"; _refresh()))
+	row.add_child(VSeparator.new())
+
+	var type_opt := OptionButton.new()
+	type_opt.add_item("All Types")
+	var types: Array = []
+	for ev in Data.all_events():
+		if ev != null and ev.event_type != "" and not types.has(ev.event_type):
+			types.append(ev.event_type)
+	types.sort()
+	for t in types:
+		type_opt.add_item(t)
+	for i in type_opt.item_count:
+		if (i == 0 and _events_type == "all") or type_opt.get_item_text(i) == _events_type:
+			type_opt.select(i)
+			break
+	type_opt.item_selected.connect(func(idx):
+		_events_type = "all" if idx == 0 else type_opt.get_item_text(idx)
+		_refresh())
+	row.add_child(type_opt)
+
+	var rar_opt := OptionButton.new()
+	rar_opt.add_item("All Rarities")
+	for r in EVENT_RARITIES:
+		rar_opt.add_item(r)
+	for i in rar_opt.item_count:
+		if (i == 0 and _events_rarity == "all") or rar_opt.get_item_text(i).to_lower() == _events_rarity:
+			rar_opt.select(i)
+			break
+	rar_opt.item_selected.connect(func(idx):
+		_events_rarity = "all" if idx == 0 else rar_opt.get_item_text(idx).to_lower()
+		_refresh())
+	row.add_child(rar_opt)
+
+	_add_count_label(row)
+	_grid_and_detail()
+	_populate_events()
+
+func _populate_events() -> void:
+	_clear_children(_grid)
+	var term: String = _search["events"].to_lower()
+	var list: Array = []
+	for ev in Data.all_events():
+		if ev == null:
+			continue
+		if _events_type != "all" and ev.event_type != _events_type:
+			continue
+		if _events_rarity != "all" and ev.rarity.to_lower() != _events_rarity:
+			continue
+		if term != "" and not (term in ev.display_name.to_lower() \
+				or term in ev.source_game.to_lower() \
+				or term in ev.prompt.to_lower()):
+			continue
+		list.append(ev)
+	match _events_sort:
+		"rarity":
+			list.sort_custom(func(a, b): return _event_rarity_rank(a.rarity) > _event_rarity_rank(b.rarity) if _event_rarity_rank(a.rarity) != _event_rarity_rank(b.rarity) else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+		"game":
+			list.sort_custom(func(a, b): return a.source_game.naturalnocasecmp_to(b.source_game) < 0 if a.source_game != b.source_game else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+		_:
+			list.sort_custom(func(a, b): return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+	for ev in list:
+		_grid.add_child(_event_cell(ev))
+	_set_count(list.size(), Data.all_events().size())
+
+func _event_rarity_rank(r: String) -> int:
+	match r.to_lower():
+		"uncommon": return 1
+		"rare": return 2
+		"legendary": return 3
+		_: return 0
+
+func _event_rarity_color(r: String) -> Color:
+	match r.to_lower():
+		"legendary": return RARITY_COLORS[4]
+		"rare": return RARITY_COLORS[3]
+		"uncommon": return RARITY_COLORS[1]
+		_: return RARITY_COLORS[0]
+
+func _event_tier_color(key: String) -> Color:
+	match key:
+		"crit_good": return Color(0.945, 0.769, 0.059)
+		"good": return Color(0.180, 0.800, 0.443)
+		"bad": return Color(0.902, 0.494, 0.133)
+		"crit_bad": return Color(0.906, 0.298, 0.235)
+		_: return Color(0.55, 0.85, 0.95)
+
+func _event_cell(ev: EventData) -> Control:
+	var rc := _event_rarity_color(ev.rarity)
+	var cell := _cell(rc, func(): _show_event_detail(ev))
+	cell.panel.custom_minimum_size = Vector2(200, 0)
+	var vb: VBoxContainer = cell.vbox
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	if ev.image != null:
+		var tr := _tex_rect(ev.image, 120)
+		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		vb.add_child(tr)
+	var nm := _label(ev.display_name, rc, 13, true, true)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_child(nm)
+	vb.add_child(_label(ev.rarity.to_upper(), rc, 10, true))
+	var meta: String = ev.source_game
+	if ev.event_type != "":
+		meta += ("  •  " if meta != "" else "") + ev.event_type
+	if meta != "":
+		vb.add_child(_label(meta, Color(0.65, 0.7, 0.8), 10, true, true))
+	if ev.tags.size() > 0:
+		vb.add_child(_label(", ".join(ev.tags), Color(0.73, 0.55, 0.78), 10, true, true))
+	return cell.panel
+
+func _show_event_detail(ev: EventData) -> void:
+	_clear_children(_detail_box)
+	var rc := _event_rarity_color(ev.rarity)
+	if ev.image != null:
+		var tr := _tex_rect(ev.image, 120)
+		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_detail_box.add_child(tr)
+	_detail_box.add_child(_label(ev.display_name, rc, 18, true))
+	var type_label: String = ev.event_type if ev.event_type != "" else "Event"
+	_detail_box.add_child(_detail_meta("%s  •  %s" % [ev.rarity, type_label], rc))
+	if ev.source_game != "":
+		_detail_box.add_child(_label("From: %s" % ev.source_game, Color(0.65, 0.7, 0.8), 11, false, true))
+	_detail_box.add_child(HSeparator.new())
+	if ev.prompt != "":
+		_detail_box.add_child(_label(_sub_event_text(ev.prompt), Color(0.85, 0.85, 0.87), 13, false, true))
+
+	_detail_box.add_child(_detail_section("Spawn Rules"))
+	_detail_box.add_child(_kv("Difficulty", _event_difficulty_label(ev)))
+	var dr: String = "+%d" % ev.difficulty_roll if ev.difficulty_roll >= 0 else str(ev.difficulty_roll)
+	_detail_box.add_child(_kv("Difficulty Roll", dr))
+	_detail_box.add_child(_kv("Run Limit", "Unlimited" if ev.run_limit == 0 else "%d per run" % ev.run_limit))
+	_detail_box.add_child(_kv("Requirement", ev.requirement if ev.requirement != "" else "None"))
+	if ev.multipath:
+		_detail_box.add_child(_kv("Multipath", "Yes"))
+
+	if ev.inputs.size() > 0:
+		_detail_box.add_child(_detail_section("Possible Inputs"))
+		_detail_box.add_child(_label(", ".join(ev.inputs), Color(0.9, 0.7, 0.4), 11, false, true))
+	if ev.outputs.size() > 0:
+		_detail_box.add_child(_detail_section("Possible Outputs"))
+		_detail_box.add_child(_label(", ".join(ev.outputs), Color(0.5, 0.85, 0.55), 11, false, true))
+	if ev.tags.size() > 0:
+		_detail_box.add_child(_detail_section("Tags"))
+		_detail_box.add_child(_label(", ".join(ev.tags), Color(0.73, 0.55, 0.78), 11, false, true))
+
+	if not ev.choices.is_empty():
+		_detail_box.add_child(_detail_section("Decisions & Outcomes"))
+		var n: int = 0
+		for choice in ev.choices:
+			n += 1
+			_add_event_choice_detail(n, choice)
+
+func _add_event_choice_detail(n: int, choice: Dictionary) -> void:
+	var title: String = "%d. %s" % [n, String(choice.get("text", "?"))]
+	if String(choice.get("type", "simple")) == "stat_check":
+		title += "   [%s check]" % String(choice.get("stat", "")).capitalize()
+	_detail_box.add_child(_label(title, Color(1, 1, 1), 12, false, true))
+	if String(choice.get("type", "simple")) == "stat_check":
+		var outcomes: Dictionary = choice.get("outcomes", {})
+		for key in EVENT_TIER_ORDER:
+			if outcomes.has(key):
+				_add_event_outcome_row(key, outcomes[key])
+	else:
+		_add_event_outcome_row("", choice.get("outcome", {}))
+
+func _add_event_outcome_row(key: String, outcome: Dictionary) -> void:
+	var col: Color = _event_tier_color(key) if key != "" else Color(0.55, 0.85, 0.95)
+	var label: String = String(EVENT_TIER_LABELS.get(key, "")) if key != "" else "Effect"
+	var fx: String = _event_effects_text(outcome.get("effects", []))
+	_detail_box.add_child(_label("  %s  —  %s" % [label, fx], col, 11, false, true))
+	var desc: String = _sub_event_text(String(outcome.get("description", "")))
+	if desc != "":
+		_detail_box.add_child(_label("    " + desc, Color(0.8, 0.8, 0.82), 11, false, true))
+
+func _event_difficulty_label(ev: EventData) -> String:
+	if ev.difficulty_tags.is_empty():
+		return "All"
+	var parts: Array = []
+	for d in ev.difficulty_tags:
+		parts.append(String(d).capitalize())
+	return ", ".join(parts)
+
+func _event_effects_text(effects: Array) -> String:
+	if effects.is_empty():
+		return "Nothing"
+	var parts: Array = []
+	for e in effects:
+		var s: String = _event_effect_text(e)
+		if s != "":
+			parts.append(s)
+	return ", ".join(parts) if not parts.is_empty() else "Nothing"
+
+# Mirrors the HTML _describeEventEffect over this project's effect vocabulary.
+func _event_effect_text(e: Dictionary) -> String:
+	var t: String = String(e.get("type", ""))
+	match t:
+		"none": return ""
+		"heal": return "+%d HP" % int(e.get("value", 0))
+		"heal_percent": return "+%d%% Max HP" % int(e.get("value", 0))
+		"lose_hp": return "-%d HP" % int(e.get("value", 0))
+		"gain_gold": return "+%d Gold" % int(e.get("value", 0))
+		"gold_range": return "+%d-%d Gold" % [int(e.get("min", 0)), int(e.get("max", 0))]
+		"lose_gold": return "-%d Gold" % int(e.get("value", 0))
+		"combat_status": return "%d× %s (next combat)" % [int(e.get("stacks", 1)), String(e.get("status", "")).capitalize()]
+		"item_tagged": return "Random %s item" % String(e.get("tag", ""))
+		"curse_card":
+			var card: CardData = Data.get_card(StringName(String(e.get("card", ""))))
+			return "Curse card: %s" % (card.display_name if card != null else String(e.get("card", "")))
+		"active_curse":
+			var curse: CurseData = Data.get_curse(StringName(String(e.get("curse", ""))))
+			return "Curse: %s" % (curse.display_name if curse != null else String(e.get("curse", "")))
+		"combat_flag":
+			var f: String = String(e.get("flag", ""))
+			if f == "ambush": return "Ambush — draw +2 cards turn 1"
+			if f == "ambushed": return "Ambushed — draw -2 cards turn 1"
+			return f
+		"spawn_enemies":
+			var lo: int = int(e.get("min", 1))
+			var hi: int = int(e.get("max", lo))
+			var rtxt: String = str(lo) if lo == hi else "%d-%d" % [lo, hi]
+			return "Spawn %s× %s next combat" % [rtxt, String(e.get("enemy", "")).capitalize()]
+		"note_for_yourself": return "Retrieve stored card • pick a new one to store"
+		_: return ""
+
+# Light placeholder substitution for catalogue display (no live run context).
+func _sub_event_text(s: String) -> String:
+	if s.find("{") == -1:
+		return s
+	var nm: String = "You"
+	var ch: CharacterData = Data.get_character(GameState.character_id)
+	if ch != null and String(ch.display_name) != "":
+		nm = String(ch.display_name)
+	return s.replace("{name}", nm).replace("{storedCard}", "Iron Wave")
 
 func _detail_meta(text: String, color: Color) -> Label:
 	var l := _label(text, color, 12, true)

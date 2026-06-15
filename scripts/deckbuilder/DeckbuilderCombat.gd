@@ -33,6 +33,11 @@ const ELITE_GOLD_MULT := 1.5
 var player: CombatActor = null
 var enemies: Array[CombatActor] = []
 
+# Pre-combat event carryover. "ambush" (the player got the drop) draws two
+# extra cards on turn 1; "ambushed" (the enemy did) draws two fewer. Set from
+# GameState.pending_ambush at combat start and spent on the opening hand.
+var _ambush_draw_delta: int = 0
+
 var draw_pile: Array[CardInstance] = []
 var hand: Array[CardInstance] = []
 var discard_pile: Array[CardInstance] = []
@@ -144,7 +149,9 @@ func _build_inventory_panel() -> void:
 	bar.add_child(inv)
 
 func start_combat(spawn_list: Array) -> void:
-	_init_actors(spawn_list)
+	# Fold any event-queued extra enemies (e.g. a fruit-fly swarm) into the
+	# encounter before actors are built.
+	_init_actors(_append_pending_spawns(spawn_list))
 	_init_deck()
 	_apply_derived_statuses()
 	# Register the live context so the backpack can fire consumables into
@@ -158,7 +165,34 @@ func start_combat(spawn_list: Array) -> void:
 	TriggerBus.emit_signal("combat_started", {"scene": self})
 	_fire_item_triggers("combat_started")
 	_fire_power_triggers("combat_started")
+	_apply_event_ambush()
 	_start_player_turn()
+
+# Consumes GameState.pending_ambush into a turn-1 draw modifier: "ambush" adds
+# two cards to the opening hand, "ambushed" removes two.
+func _apply_event_ambush() -> void:
+	match GameState.pending_ambush:
+		"ambush":
+			_ambush_draw_delta = 2
+			GameLog.add("Ambush! You catch them off guard — draw 2 extra cards.", Color(0.7, 1.0, 0.7))
+		"ambushed":
+			_ambush_draw_delta = -2
+			GameLog.add("Ambushed! Caught off guard — you draw 2 fewer cards.", Color(1.0, 0.6, 0.6))
+	GameState.pending_ambush = ""
+
+# Pulls queued event spawns (Array of {enemy, count}) into the spawn list and
+# clears the queue so they fire exactly once, for the next combat only.
+func _append_pending_spawns(spawn_list: Array) -> Array:
+	if GameState.pending_spawn_enemies.is_empty():
+		return spawn_list
+	var combined: Array = spawn_list.duplicate()
+	for entry in GameState.pending_spawn_enemies:
+		var id: StringName = StringName(String(entry.get("enemy", "")))
+		var count: int = int(entry.get("count", 0))
+		for _i in range(count):
+			combined.append(id)
+	GameState.pending_spawn_enemies.clear()
+	return combined
 
 # Shows the player character's full art on the left of the battlefield, facing
 # the enemy row. Pulls the portrait off the chosen CharacterData.
@@ -371,7 +405,9 @@ func _start_player_turn() -> void:
 	if turn == 1:
 		# Speed grants extra cards on the opening hand only.
 		draw_count += Stats.deckbuilder_bonus_draws_turn_1()
-	draw_cards(draw_count)
+		# Ambush carryover adjusts the opening hand (+2 ambush / -2 ambushed).
+		draw_count += _ambush_draw_delta
+	draw_cards(maxi(0, draw_count))
 	TriggerBus.emit_signal("turn_started", {"turn": turn, "scene": self})
 	_fire_item_triggers("turn_started")
 	_fire_power_triggers("turn_started")

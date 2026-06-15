@@ -148,6 +148,23 @@ func reward_card_pool(tag_filter: StringName = &"") -> Array:
 func all_items() -> Array:
 	return _items.values()
 
+# Items carrying a given free-form tag (e.g. &"eye", &"coin", &"seed").
+func items_with_tag(tag: StringName) -> Array:
+	var out: Array = []
+	for it in _items.values():
+		if it is ItemData and it.tags.has(String(tag)):
+			out.append(it)
+	return out
+
+# One random item template carrying `tag`, or null if nothing matches.
+# Used by the "item_tagged" event effect to hand out a themed reward.
+func random_item_by_tag(tag: StringName, rng: RandomNumberGenerator = null) -> ItemData:
+	var pool: Array = items_with_tag(tag)
+	if pool.is_empty():
+		return null
+	var idx: int = (rng.randi() if rng != null else randi()) % pool.size()
+	return pool[idx]
+
 func all_enemies() -> Array:
 	return _enemies.values()
 

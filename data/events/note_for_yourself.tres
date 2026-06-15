@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="EventData" load_steps=3 format=3 uid="uid://event_note_for_yourself"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData.gd" id="1_event"]
+[ext_resource type="Texture2D" path="res://images/events/ANoteForYourself.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"note_for_yourself"
+display_name = "A Note For Yourself"
+prompt = "You spot a loose brick within a pillar that catches your eye."
+choices = [{"id": "take_and_give", "text": "Take and Give", "type": "simple", "outcome": {"description": "You find a folded note and {storedCard} inside. It reads \"The Heart awaits.\" This is your handwriting.", "effects": [{"type": "note_for_yourself", "default_card": "iron_wave"}]}}, {"id": "ignore", "text": "Ignore", "type": "simple", "outcome": {"description": "\"What is going on?\"", "effects": [{"type": "none"}]}}]
+difficulty_tags = PackedStringArray()
+run_limit = 1
+source_game = "Slay the Spire"
+rarity = "Uncommon"
+tags = PackedStringArray()
+event_type = "Deckbuilder"
+difficulty_roll = 0
+requirement = "None"
+inputs = PackedStringArray("Card")
+outputs = PackedStringArray("Card")
+multipath = false
+image = ExtResource("2_img")

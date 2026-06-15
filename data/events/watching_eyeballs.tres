@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="EventData" load_steps=3 format=3 uid="uid://event_watching_eyeballs"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData.gd" id="1_event"]
+[ext_resource type="Texture2D" path="res://images/events/WatchingEyeballs.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"watching_eyeballs"
+display_name = "Watching Eyeballs"
+prompt = "{name} stumbles upon a dark hole. Numerous eyes peer out from the darkness."
+choices = [{"id": "sneak", "text": "Sneak By", "type": "stat_check", "stat": "dexterity", "outcomes": {"crit_good": {"description": "{name} sneaks by the spooky looking crack, getting into a position to ambush!", "effects": [{"type": "combat_flag", "flag": "ambush"}]}, "good": {"description": "{name} carefully sneaks by the wall and nothing appears to happen.", "effects": [{"type": "none"}]}, "bad": {"description": "The eyes glare directly at {name} as {name} attempts to sneak by... {name} bolts into a sprint in order to get away as quickly as possible!", "effects": [{"type": "combat_status", "status": "fear", "stacks": 1}]}, "crit_bad": {"description": "{name} approaches the crack in the wall, trying to discern what creature's eyes are staring at it... The unnerving gaze of the eyeballs terrifies {name}, and they run for their life, right into an ambush!", "effects": [{"type": "combat_status", "status": "fear", "stacks": 2}, {"type": "combat_flag", "flag": "ambushed"}]}}}, {"id": "examine", "text": "Examine", "type": "stat_check", "stat": "intelligence", "outcomes": {"crit_good": {"description": "{name} discovers the scary looking eyes were just large coins, glinting in the dim light!", "effects": [{"type": "item_tagged", "tag": "coin"}]}, "good": {"description": "After closer examination, {name} discovers it was just a trick of the light... The eyes were coins!", "effects": [{"type": "gold_range", "min": 10, "max": 20}]}, "bad": {"description": "{name} looks directly at the eyes, no one wanting to move first. Their eyes begin to water in pain as they resist the urge to blink. {name} doesn't say anything and turns and runs in terror!", "effects": [{"type": "combat_status", "status": "fear", "stacks": 2}]}, "crit_bad": {"description": "{name} moves its face close to the hole and peers inside... {name} howls in pain as something sharp from within the hole lashes out and stabs its eye! Get an Eye Item.", "effects": [{"type": "active_curse", "curse": "curse_of_ocular_trauma"}, {"type": "item_tagged", "tag": "eye"}]}}}, {"id": "bash", "text": "Bash", "type": "stat_check", "stat": "strength", "outcomes": {"crit_good": {"description": "{name} bats at the eyes with lightning fast strikes, dispatching them with ease!", "effects": [{"type": "item_tagged", "tag": "eye"}]}, "good": {"description": "{name} smashes the eyes into concave lumps of flesh!", "effects": [{"type": "heal", "value": 5}]}, "bad": {"description": "{name} moves closely to strike the eyes, but they suddenly flash with a blinding brightness!", "effects": [{"type": "combat_status", "status": "blind", "stacks": 4}]}, "crit_bad": {"description": "{name} reaches into the dark hole with its arm to swat at the eyes, but pokes themself in the face on the sharp edges of the hole instead! Get an Eye Item.", "effects": [{"type": "active_curse", "curse": "curse_of_ocular_trauma"}, {"type": "item_tagged", "tag": "eye"}]}}}]
+difficulty_tags = PackedStringArray()
+run_limit = 0
+source_game = "Mewgenics"
+rarity = "Common"
+tags = PackedStringArray("spooky", "hole")
+event_type = "Strategy"
+difficulty_roll = 0
+requirement = "None"
+inputs = PackedStringArray("Dexterity", "Intelligence", "Strength")
+outputs = PackedStringArray("Ambush", "Ambushed", "Fear", "Item", "Gold", "Curse", "Health")
+multipath = false
+image = ExtResource("2_img")

@@ -138,6 +138,14 @@ var _pain_curses: Array = []
 var _haste_remaining: float = 0.0
 var _slow_remaining: float = 0.0
 
+# Pre-combat ambush freeze, ticked down in real time. "ambush" freezes every
+# enemy in the room (_enemy_stun_remaining, gates _process_enemies); "ambushed"
+# freezes the player (_player_stun_remaining, gates _process_player_input).
+# Both seeded from GameState.pending_ambush when the room's fight begins.
+var _enemy_stun_remaining: float = 0.0
+var _player_stun_remaining: float = 0.0
+const AMBUSH_STUN_SECONDS := 5.0
+
 # "Turn" tick — fires every _tr.turn_tick_secs of real time and decays every
 # actor's stack-based statuses by 1, the same decay that runs at
 # deckbuilder/strategy turn-end. Without this, Vulnerable / Weak / Blind would
@@ -271,6 +279,8 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	_transitioning = false
 	_stairs_active = false
 	_stairs_armed = false
+	_enemy_stun_remaining = 0.0
+	_player_stun_remaining = 0.0
 
 	# Each combat room is a fresh fight for transient state: drop block and
 	# statuses, then re-derive. HP persists across the whole floor via
@@ -296,6 +306,18 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	if not is_safe and not enemy_ids.is_empty():
 		enemies_to_spawn = enemy_ids.duplicate()
 		_spawn_enemies()
+		# Pre-combat ambush carryover. "ambush" freezes the whole room while the
+		# player gets free reign; "ambushed" briefly freezes the player while the
+		# enemies move in.
+		match GameState.pending_ambush:
+			"ambush":
+				GameState.pending_ambush = ""
+				_enemy_stun_remaining = AMBUSH_STUN_SECONDS
+				GameLog.add("Ambush! The enemies are caught flat-footed.", Color(0.7, 1.0, 0.7))
+			"ambushed":
+				GameState.pending_ambush = ""
+				_player_stun_remaining = AMBUSH_STUN_SECONDS
+				GameLog.add("Ambushed! You're caught off guard and can't move.", Color(1.0, 0.6, 0.6))
 		# A combat room is one fight: advance the "turn" counter (when the
 		# translation maps rooms to turns) and fire the start-of-combat + turn
 		# item triggers (Anchor block, Horn Cleat, …).
@@ -591,6 +613,11 @@ func _tick_actor_turn(actor: CombatActor, was_hit: bool) -> void:
 	Stats.decay_actor_statuses(actor, false)
 
 func _process_player_input(delta: float) -> void:
+	# Ambushed: the player is frozen for a beat while enemies (still ticking in
+	# _process_enemies) close in. No movement, aim, or attacks until it lifts.
+	if _player_stun_remaining > 0.0:
+		_player_stun_remaining = maxf(0.0, _player_stun_remaining - delta)
+		return
 	# Movement (WASD or arrows).
 	var dir := Vector2.ZERO
 	if Input.is_key_pressed(KEY_W) or Input.is_action_pressed("move_up"):
@@ -737,6 +764,10 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 # ---------------------------------------------------------------------------
 
 func _process_enemies(delta: float) -> void:
+	# Ambush freeze: tick the timer but skip all enemy AI while it lasts.
+	if _enemy_stun_remaining > 0.0:
+		_enemy_stun_remaining = maxf(0.0, _enemy_stun_remaining - delta)
+		return
 	for inst in enemies:
 		if not inst.actor.is_alive():
 			continue
