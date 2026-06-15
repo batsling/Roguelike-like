@@ -9,6 +9,7 @@ id = &"ring_of_the_snake"
 display_name = "Ring of the Snake"
 kind = 1
 rarity = 0
+starter = true
 description = "At the start of combat, Draw 2 Cards."
 triggers = [{
 "on": "combat_started",

@@ -74,6 +74,13 @@ const STAIRS_TRIGGER_DIST := 40.0          # walk this close to step onto them
 # "+Block on the 2nd turn" lands when you enter the 2nd combat room).
 var _combat_room_index: int = 0
 
+# In-room "turn" count for turn_ended items, advanced one per turn_tick (i.e.
+# every turn_tick_secs seconds while fighting in the room) and reset on each
+# combat room entry. This is the second-based translation of deckbuilder
+# turn_ended timing: Stone Calendar (if_turn: 7) fires once 7 ticks of real
+# time have elapsed inside the room, rather than on the 7th room.
+var _room_turn_index: int = 0
+
 # --- Runtime state ---------------------------------------------------------
 var player_actor: CombatActor = null
 # Cached character avatar drawn as the player token (null = fall back to the
@@ -323,6 +330,8 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 		# item triggers (Anchor block, Horn Cleat, …).
 		if _tr.room_is_turn:
 			_combat_room_index += 1
+		# Fresh room: restart the in-room turn_ended clock (Stone Calendar).
+		_room_turn_index = 0
 		_fire_item_triggers("combat_started")
 		_fire_item_triggers("turn_started")
 
@@ -592,6 +601,11 @@ func _process_turn_tick(delta: float) -> void:
 		_fire_item_triggers("turn_tick")
 		# Action charges only the item in the charged slot, per turn.
 		GameState.charge_item_by_id(GameState.action_charged_item_id, 1)
+		# Second-based translator for turn_ended items: each tick is one in-room
+		# "turn" of turn_tick_secs, so Nth-turn items (Stone Calendar: turn 7)
+		# resolve by elapsed real time within the room.
+		_room_turn_index += 1
+		_fire_item_triggers("turn_ended", {}, _room_turn_index)
 	if player_actor != null and player_actor.is_alive():
 		_tick_actor_turn(player_actor, _player_was_hit)
 	_player_was_hit = false
@@ -758,6 +772,10 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 		TriggerBus.emit_signal("attack_landed",
 			{"source": player_actor, "target": inst.actor, "scene": self})
 		_fire_item_triggers("attack_landed", {"target": inst.actor})
+	# Thorns / Bleed-thorns: a melee swing is contact, so the struck enemy
+	# reflects back at the player. Ranged bolts don't make contact and skip it.
+	if dmg_type == "melee" and not bool(effect.get("no_reaction", false)):
+		Stats.fire_contact_reactions(inst.actor, player_actor, self)
 
 # ---------------------------------------------------------------------------
 # Enemy AI
@@ -1480,6 +1498,34 @@ func apply_status(target, status: StringName, stacks: int) -> void:
 		return
 	target.add_status(status, stacks)
 
+# Generic actor-to-actor damage entry point used by cross-mode contact
+# reactions (Stats.fire_contact_reactions → Thorns). The amount is already
+# resolved (a flat reflect), so it lands directly without re-running the
+# attack pipeline or honouring i-frames — a reaction to contact, not a swing.
+func deal_damage(_source, target, amount: int, _effect: Dictionary = {}) -> void:
+	if amount <= 0 or target == null:
+		return
+	if target == player_actor:
+		GameState.change_hp(-amount)
+		player_actor.hp = GameState.hp
+		FloatingNumbers.spawn(self, player_pos, amount)
+		GameLog.add("Thorns hit you for %d." % amount, Color(1.0, 0.6, 0.6))
+		return
+	for inst in enemies:
+		if inst.actor == target:
+			if not inst.actor.is_alive():
+				return
+			inst.actor.hp = maxi(0, inst.actor.hp - amount)
+			FloatingNumbers.spawn(self, inst.pos, amount)
+			GameLog.add("Thorns hit %s for %d." % [inst.actor.display_name, amount],
+				Color(0.8, 1.0, 0.7))
+			if inst.actor.hp <= 0:
+				inst.actor.dead = true
+				GameLog.add("%s defeated." % inst.actor.display_name, Color(0.6, 1.0, 0.6))
+				TriggerBus.emit_signal("enemy_killed", {"enemy": inst.actor, "scene": self})
+				_fire_item_triggers("enemy_killed")
+			return
+
 # ---------------------------------------------------------------------------
 # Targeting helpers
 # ---------------------------------------------------------------------------
@@ -1527,9 +1573,10 @@ func gain_block(_target, amount: int) -> void:
 # Fires item triggers through the shared runner so the same declarative item
 # data drives all three modes. `_combat_room_index` is the action-mode "turn"
 # for if_turn gating (Horn Cleat: +Block on the 2nd combat room).
-func _fire_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -> void:
+func _fire_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}, turn_override: int = -1) -> void:
+	var turn: int = turn_override if turn_override >= 0 else _combat_room_index
 	ItemTriggers.fire(trigger_name, self, player_actor, _living_enemy_actors(),
-		ctx_extras, _combat_room_index)
+		ctx_extras, turn)
 	_refresh_hud()
 
 func _living_enemy_actors() -> Array:
@@ -1838,9 +1885,10 @@ func _refresh_click_slot(panel_idx: int, prefix: String, card: CardData, cd: flo
 # ---------------------------------------------------------------------------
 
 func _enemy_hit_player(inst: Dictionary) -> void:
-	_apply_damage_to_player(inst.data.contact_damage, inst.data.display_name, inst.actor)
+	# Body contact is melee, so the player's Thorns reflect back at the enemy.
+	_apply_damage_to_player(inst.data.contact_damage, inst.data.display_name, inst.actor, true)
 
-func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatActor = null) -> void:
+func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatActor = null, contact: bool = false) -> void:
 	if player_iframes > 0.0:
 		return
 	# Shared damage math (Stats.resolve_damage): attacker Blind whiff and
@@ -1864,6 +1912,9 @@ func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatA
 		GameLog.add("%s hits you for %d." % [source_name, dmg], Color(1.0, 0.6, 0.6))
 		# Item reactions to the player taking damage (Prayer Card, Prayer Beads).
 		_fire_item_triggers("damage_taken", {"target": player_actor})
+	# Player Thorns reflect on a landed body collision (not on ranged bolts).
+	if contact and attacker != null:
+		Stats.fire_contact_reactions(player_actor, attacker, self)
 	player_iframes = PLAYER_IFRAME_DURATION
 
 # ---------------------------------------------------------------------------

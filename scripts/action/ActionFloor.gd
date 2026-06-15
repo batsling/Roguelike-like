@@ -125,9 +125,16 @@ func _build_arena() -> void:
 func _build_minimap() -> void:
 	_minimap = FloorMinimap.new()
 	_minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Anchor top-right; offset in a little from the corner.
+	# Pin the minimap's right edge to the top-right corner and let it grow
+	# leftward/downward as the floor reveals more rooms. Previously it was
+	# anchored by its left edge at a fixed inset, so larger floors crept left
+	# into the play area (or spilled off the right). Right-anchoring keeps it
+	# tucked into the corner, out of the way, at any size.
 	_minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_minimap.position = Vector2(-260, 36)
+	_minimap.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_minimap.grow_vertical = Control.GROW_DIRECTION_END
+	_minimap.offset_right = -16
+	_minimap.offset_top = 16
 	add_child(_minimap)
 	_minimap.setup(_floor)
 
@@ -144,9 +151,9 @@ func _build_inventory_panel() -> void:
 	inv.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	inv.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	inv.grow_vertical = Control.GROW_DIRECTION_END
-	# Slot it directly beneath the minimap.
-	var below_y: float = 36.0 + _minimap.custom_minimum_size.y + 12.0
-	inv.position = Vector2(-20, maxf(below_y, 200.0))
+	# Slot it directly beneath the corner-tucked minimap.
+	var below_y: float = 16.0 + _minimap.custom_minimum_size.y + 12.0
+	inv.position = Vector2(-16, maxf(below_y, 200.0))
 	add_child(inv)
 
 # ---------------------------------------------------------------------------

@@ -8,6 +8,10 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 @export var display_name: String
 @export var kind: ItemKind = ItemKind.PASSIVE
 @export var rarity: Rarity = Rarity.COMMON
+# "Starter" items (Excel Rating = "Starter", e.g. Burning Blood, Ring of the
+# Snake) belong to a character's opening loadout and must never appear in
+# random shop / reward / treasure pools. Mirrors CardData.Rarity.STARTER.
+@export var starter: bool = false
 @export_multiline var description: String
 
 # Trigger-driven items use the declarative form: a list of trigger hooks and
@@ -374,3 +378,15 @@ func max_charge() -> int:
 # Ready to fire (bar full).
 func is_fully_charged() -> bool:
 	return is_charged() and current_charge >= max_charge()
+
+# True when activating this item needs a single enemy target — i.e. one of its
+# item_used effects is aimed at an enemy. The combat UI uses this to decide
+# whether to pop the targeting arrow (Slay the Spire 2 potion style) on use.
+func wants_target() -> bool:
+	for trig in triggers:
+		if String(trig.get("on", "")) != "item_used":
+			continue
+		for effect in trig.get("effects", []):
+			if String(effect.get("target", "")) == "enemy":
+				return true
+	return false

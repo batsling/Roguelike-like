@@ -25,6 +25,12 @@ var _grid: GridContainer
 var _title_label: Label
 var _empty_label: Label
 
+# Optional host hook. When set (DeckbuilderCombat does), pressing an item's
+# "Use" button routes here as on_use_requested(item, origin_global) so the host
+# can run targeting (the arrow) for enemy-aimed items. Left unset, uses fire
+# immediately via GameState.use_item, as before.
+var on_use_requested: Callable = Callable()
+
 func _ready() -> void:
 	self_modulate.a = panel_opacity
 	_build()
@@ -127,8 +133,22 @@ func _build_tile(item: ItemData) -> Control:
 	btn.flat = true
 	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
 	btn.tooltip_text = _tooltip(item)
-	btn.pressed.connect(_on_tile_pressed.bind(item))
+	btn.pressed.connect(_request_use.bind(item))
 	tile.add_child(btn)
+
+	# Little "Use" affordance for activatable items (USABLE consumables and
+	# charged actives), Slay the Spire 2 potion style. Passive/triggered items
+	# get none. The button overlays the bottom strip of the tile.
+	if item.kind == ItemData.ItemKind.USABLE or item.is_charged():
+		var use_btn := Button.new()
+		use_btn.text = "Use"
+		use_btn.add_theme_font_size_override("font_size", 9)
+		use_btn.focus_mode = Control.FOCUS_NONE
+		use_btn.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		use_btn.offset_top = -14
+		use_btn.disabled = not ready_to_fire
+		use_btn.pressed.connect(_request_use.bind(item))
+		tile.add_child(use_btn)
 	return tile
 
 func _tooltip(item: ItemData) -> String:
@@ -143,6 +163,14 @@ func _tooltip(item: ItemData) -> String:
 	elif item.kind == ItemData.ItemKind.USABLE:
 		lines.append("Click to use.")
 	return "\n".join(PackedStringArray(lines))
+
+# Routes a use request through the host hook (for targeting) when one is set,
+# otherwise fires the item immediately.
+func _request_use(item: ItemData) -> void:
+	if on_use_requested.is_valid():
+		on_use_requested.call(item, global_position)
+		return
+	_on_tile_pressed(item)
 
 func _on_tile_pressed(item: ItemData) -> void:
 	if GameState.use_item(item):

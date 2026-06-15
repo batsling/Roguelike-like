@@ -162,6 +162,7 @@ func _refresh() -> void:
 func _build_choice_tile(item: ItemData) -> Control:
 	var tile := PanelContainer.new()
 	tile.custom_minimum_size = Vector2(230, 250)
+	tile.add_theme_stylebox_override("panel", RarityStyle.panel(int(item.rarity), 12))
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 6)
 	tile.add_child(vbox)
@@ -203,10 +204,7 @@ func _build_choice_tile(item: ItemData) -> Control:
 
 func _roll_choices() -> void:
 	_choices.clear()
-	var pool: Array = []
-	for it in Data.all_items():
-		if it is ItemData:
-			pool.append(it)
+	var pool: Array = Data.reward_item_pool()
 	if pool.is_empty():
 		return
 	var discovery: int = Stats.get_value(&"discovery")

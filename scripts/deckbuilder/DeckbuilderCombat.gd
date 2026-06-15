@@ -77,6 +77,7 @@ var _hand_views: Array[CardView] = []
 
 # Targeting mode (card selected, waiting for enemy click)
 var _selected_card: CardInstance = null
+var _selected_item: ItemData = null
 var _targeting: bool = false
 # Following arrow shown while choosing an enemy target for a card.
 var _targeting_arrow: TargetingArrow = null
@@ -146,6 +147,7 @@ func _build_inventory_panel() -> void:
 	inv.columns = 12
 	inv.tile_px = 40
 	inv.show_title = false
+	inv.on_use_requested = _on_item_use_requested
 	bar.add_child(inv)
 
 func start_combat(spawn_list: Array) -> void:
@@ -703,12 +705,21 @@ func _try_play_card(card: CardInstance) -> void:
 		_resolve_card(card, null)
 
 func _on_enemy_clicked(idx: int) -> void:
-	if not _targeting or _selected_card == null:
+	if not _targeting:
 		return
 	if idx < 0 or idx >= enemies.size():
 		return
 	var tgt: CombatActor = enemies[idx]
 	if not tgt.is_alive():
+		return
+	if _selected_item != null:
+		var item := _selected_item
+		_cancel_targeting()
+		if GameState.use_item(item, tgt):
+			GameLog.add("Used %s on %s." % [item.display_name, tgt.display_name],
+				Color(0.85, 0.9, 1.0))
+		return
+	if _selected_card == null:
 		return
 	var card := _selected_card
 	_cancel_targeting()
@@ -726,10 +737,41 @@ func _card_arrow_origin(card: CardInstance) -> Vector2:
 
 func _cancel_targeting() -> void:
 	_selected_card = null
+	_selected_item = null
 	_targeting = false
 	if _targeting_arrow != null:
 		_targeting_arrow.stop()
 	_refresh_ui()
+
+# Use button on the item rack. Enemy-aimed items (potions that throw at a foe)
+# pop the targeting arrow and resolve on the next enemy click; everything else
+# fires immediately. Mirrors the card targeting flow.
+func _on_item_use_requested(item: ItemData, origin: Vector2) -> void:
+	if phase != Phase.PLAYER:
+		return
+	if not GameState.can_fire_item(item):
+		if item.is_charged() and not item.is_fully_charged():
+			Notifications.notify("%s is charging (%d/%d)." % [
+				item.display_name, item.current_charge, item.max_charge()],
+				Color(0.9, 0.8, 0.5))
+		return
+	if item.wants_target() and _has_living_enemy():
+		_cancel_targeting()
+		_selected_item = item
+		_targeting = true
+		if _targeting_arrow != null:
+			_targeting_arrow.start(origin)
+		GameLog.add("Choose a target for %s." % item.display_name, Color(0.7, 0.9, 1.0))
+		_refresh_ui()
+		return
+	if GameState.use_item(item):
+		GameLog.add("Used %s." % item.display_name, Color(0.85, 0.9, 1.0))
+
+func _has_living_enemy() -> bool:
+	for e in enemies:
+		if e != null and e.is_alive():
+			return true
+	return false
 
 # ------------------------------------------------------------------
 # Drag-to-play — press a card and drag it onto the field. Non-targeting

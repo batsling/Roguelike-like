@@ -148,6 +148,62 @@ func reward_card_pool(tag_filter: StringName = &"") -> Array:
 func all_items() -> Array:
 	return _items.values()
 
+# Items eligible for random shop / reward / treasure draws. Excludes "starter"
+# items (Burning Blood, Ring of the Snake, …) which belong to a character's
+# opening loadout, mirroring reward_card_pool's STARTER exclusion.
+func reward_item_pool() -> Array:
+	var out: Array = []
+	for it in _items.values():
+		if not (it is ItemData):
+			continue
+		if it.starter:
+			continue
+		out.append(it)
+	return out
+
+# Rarity weights for random item draws (shops, treasure). Mirrors the HTML
+# selectRandomRarity distribution and RewardScreen (75 / 20 / 5), with a 10%
+# bump from Rare to Legendary. Without this, uniform picks over the roughly
+# even Common/Uncommon/Rare pool surface Rares far too often.
+const ITEM_RARITY_WEIGHTS := {
+	ItemData.Rarity.COMMON: 75.0,
+	ItemData.Rarity.UNCOMMON: 20.0,
+	ItemData.Rarity.RARE: 5.0,
+}
+
+func _roll_item_rarity(rng: RandomNumberGenerator) -> int:
+	var roll: float = rng.randf() * (
+		ITEM_RARITY_WEIGHTS[ItemData.Rarity.COMMON]
+		+ ITEM_RARITY_WEIGHTS[ItemData.Rarity.UNCOMMON]
+		+ ITEM_RARITY_WEIGHTS[ItemData.Rarity.RARE])
+	var r: int
+	if roll < ITEM_RARITY_WEIGHTS[ItemData.Rarity.COMMON]:
+		r = ItemData.Rarity.COMMON
+	elif roll < ITEM_RARITY_WEIGHTS[ItemData.Rarity.COMMON] + ITEM_RARITY_WEIGHTS[ItemData.Rarity.UNCOMMON]:
+		r = ItemData.Rarity.UNCOMMON
+	else:
+		r = ItemData.Rarity.RARE
+	if r == ItemData.Rarity.RARE and rng.randf() < 0.1:
+		r = ItemData.Rarity.LEGENDARY
+	return r
+
+# Draw `count` distinct items using rarity weighting, excluding starters.
+# Falls back across rarities so the result is always filled when possible.
+func roll_weighted_items(count: int, rng: RandomNumberGenerator) -> Array:
+	var pool: Array = reward_item_pool()
+	var out: Array = []
+	var attempts: int = 0
+	while out.size() < count and attempts < 200 and not pool.is_empty():
+		attempts += 1
+		var target: int = _roll_item_rarity(rng)
+		var bucket: Array = pool.filter(func(it): return int(it.rarity) == target)
+		if bucket.is_empty():
+			bucket = pool
+		var pick: ItemData = bucket[rng.randi_range(0, bucket.size() - 1)]
+		if not out.has(pick):
+			out.append(pick)
+	return out
+
 # Items carrying a given free-form tag (e.g. &"eye", &"coin", &"seed").
 func items_with_tag(tag: StringName) -> Array:
 	var out: Array = []

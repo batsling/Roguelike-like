@@ -933,12 +933,15 @@ func can_fire_item(item: ItemData) -> bool:
 # when one is registered, else scene-less). A USABLE spends a use and is dropped
 # when depleted; a CHARGED active empties its bar to recharge. Returns true if
 # the item fired.
-func use_item(item: ItemData) -> bool:
+func use_item(item: ItemData, target = null) -> bool:
 	if not can_fire_item(item):
 		return false
+	# `target` is the enemy chosen via the targeting arrow for items that aim at
+	# an enemy (ItemData.wants_target). Self-aimed effects still route to the
+	# source, so a null target just keeps the old self-only behaviour.
 	var ctx := {
 		"source": combat_player,
-		"target": combat_player,
+		"target": target if target != null else combat_player,
 		"scene": combat_scene,
 		"card": null,
 		"item": item,
