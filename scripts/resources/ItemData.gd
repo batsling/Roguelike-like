@@ -378,3 +378,15 @@ func max_charge() -> int:
 # Ready to fire (bar full).
 func is_fully_charged() -> bool:
 	return is_charged() and current_charge >= max_charge()
+
+# True when activating this item needs a single enemy target — i.e. one of its
+# item_used effects is aimed at an enemy. The combat UI uses this to decide
+# whether to pop the targeting arrow (Slay the Spire 2 potion style) on use.
+func wants_target() -> bool:
+	for trig in triggers:
+		if String(trig.get("on", "")) != "item_used":
+			continue
+		for effect in trig.get("effects", []):
+			if String(effect.get("target", "")) == "enemy":
+				return true
+	return false
