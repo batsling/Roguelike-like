@@ -490,15 +490,22 @@ func _build_outcomes_popup() -> void:
 	add_child(overlay)
 	_outcomes_popup = overlay
 
+	# Transparent catch-all: clicking anywhere outside the side panel dismisses
+	# the preview, but the event itself stays fully visible behind it (no dark
+	# dim) since the preview now docks to the side rather than covering it.
 	var dim := ColorRect.new()
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0, 0, 0, 0.5)
+	dim.color = Color(0, 0, 0, 0)
 	dim.gui_input.connect(_on_outcomes_dim_input)
 	overlay.add_child(dim)
 
+	# Dock to the right edge so it sits beside the event panel, not on top.
+	var vp: Vector2 = get_viewport_rect().size
+	var panel_w: float = 360.0
+	var panel_h: float = minf(vp.y - 40.0, 560.0)
 	var panel := PanelContainer.new()
-	panel.size = Vector2(620, 500)
-	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	panel.size = Vector2(panel_w, panel_h)
+	panel.position = Vector2(vp.x - panel_w - 16.0, (vp.y - panel_h) / 2.0)
 	overlay.add_child(panel)
 
 	var vb := VBoxContainer.new()
@@ -512,7 +519,7 @@ func _build_outcomes_popup() -> void:
 	vb.add_child(header)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(580, 400)
+	scroll.custom_minimum_size = Vector2(panel_w - 28.0, panel_h - 90.0)
 	vb.add_child(scroll)
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 10)
@@ -530,6 +537,8 @@ func _build_outcomes_popup() -> void:
 func _add_choice_preview(list: VBoxContainer, choice: Dictionary) -> void:
 	var head := Label.new()
 	head.text = String(choice.get("text", "?"))
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.custom_minimum_size = Vector2(316, 0)
 	head.add_theme_font_size_override("font_size", 14)
 	head.add_theme_color_override("font_color", Color(0.902, 0.62, 0.30))
 	list.add_child(head)
@@ -546,22 +555,16 @@ func _add_choice_preview(list: VBoxContainer, choice: Dictionary) -> void:
 		_add_outcome_row(list, String(TIER_LABELS[key]), TIER_COLORS[key], outcomes[key])
 
 func _add_outcome_row(list: VBoxContainer, label: String, color: Color, outcome: Dictionary) -> void:
+	# Effect summary only — the flavour description is intentionally omitted here
+	# (it's shown on the resolved outcome screen) to keep the preview compact.
 	var fx: String = _describe_effects(outcome.get("effects", []))
 	var tier := Label.new()
 	tier.text = "  %s  —  %s" % [label, fx]
+	tier.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tier.custom_minimum_size = Vector2(316, 0)
 	tier.add_theme_font_size_override("font_size", 12)
 	tier.add_theme_color_override("font_color", color)
 	list.add_child(tier)
-	var desc_text: String = _sub(String(outcome.get("description", "")))
-	if desc_text != "":
-		var d := RichTextLabel.new()
-		d.bbcode_enabled = true
-		d.fit_content = true
-		d.custom_minimum_size = Vector2(540, 0)
-		d.add_theme_font_size_override("normal_font_size", 12)
-		d.add_theme_color_override("default_color", Color(0.8, 0.8, 0.82))
-		d.text = "    " + desc_text
-		list.add_child(d)
 
 # Human-readable one-line effect summary, mirroring the JS _describeEffects but
 # over this project's effect vocabulary. Used by the preview and outcome screen.
