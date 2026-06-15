@@ -228,17 +228,18 @@ func _h_status(effect: Dictionary, ctx: Dictionary) -> void:
 		return
 	var scene: Variant = ctx.get("scene")
 	if scene != null and scene.has_method("apply_status"):
-		# In-combat path — fires status_applied, triggers Power reactions.
-		# Source intentionally not threaded through; scene-level Persistence
-		# handling lives outside this dispatcher to avoid double-applying.
-		scene.apply_status(target, status_id, stacks)
+		# In-combat path — the scene's apply_status routes through
+		# Stats.apply_status_to (Persistence + its mode-specific reaction:
+		# status_applied bus / Power triggers / grid refresh). Thread the
+		# inflicter so Persistence scales a player-applied debuff; self-buffs and
+		# enemy-applied debuffs are ignored by the shared rule, so it never
+		# double-applies.
+		scene.apply_status(target, status_id, stacks, ctx.get("source"))
 		return
-	# Scene-less fallback — used by enemy_spawned / item-pickup hooks
-	# where we just want to decorate an actor before combat starts.
-	# Skips Persistence and the status_applied bus on purpose: this is
-	# baseline state, not the player actively casting.
-	if target.has_method("add_status"):
-		target.add_status(status_id, stacks)
+	# Scene-less fallback — used by enemy_spawned / item-pickup hooks where we
+	# just want to decorate an actor before combat starts. Routes through the
+	# same core (no source -> no Persistence, no reactions): baseline state.
+	Stats.apply_status_to(target, status_id, stacks)
 
 # Like `status`, but the stacks expire at the end of the turn (Prayer Beads'
 # "+3 Brace until end of turn"). Applies the status normally, then records the

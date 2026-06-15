@@ -401,6 +401,33 @@ func status_apply_stacks(source, status: StringName, stacks: int) -> int:
 		return stacks + source.get_status(&"persistence")
 	return stacks
 
+# Shared status-application core for all three combat modes. This is the ONE
+# place a status is written onto an actor in combat, so the Persistence rule
+# lives here and nowhere else: a debuff the PLAYER inflicts on a non-player
+# target gains extra stacks (status_apply_stacks); buffs, self-targets and
+# enemy-applied debuffs pass through unchanged. Each scene's apply_status() is a
+# thin wrapper that calls this and then runs its own mode-specific reaction
+# (trigger bus, UI refresh, …).
+#
+# `target` is untyped so it works for a CombatActor (deckbuilder / action) or a
+# BattleUnit (strategy) — both expose add_status / get_status / is_player.
+# `source` is the inflicter, or null when unknown (event drains, contact
+# reactions, pre-combat decoration), which correctly skips Persistence.
+# Returns the stacks actually applied (0 on a no-op) so callers can skip their
+# reaction when nothing landed.
+func apply_status_to(target, status: StringName, stacks: int, source = null) -> int:
+	if target == null or status == &"" or stacks == 0:
+		return 0
+	if not target.has_method("add_status"):
+		return 0
+	var actual: int = stacks
+	if ("is_player" in target) and not target.is_player:
+		actual = status_apply_stacks(source, status, stacks)
+	if actual == 0:
+		return 0
+	target.add_status(status, actual)
+	return actual
+
 # ---------------------------------------------------------------------------
 # Fear — the one status whose behavior diverges per mode/side rather than
 # translating (see docs/fear-status-design.md). Each mode owns its own Fear

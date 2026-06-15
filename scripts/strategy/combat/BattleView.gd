@@ -1156,7 +1156,7 @@ func _apply_turn_effect_to_unit(unit, effect: Dictionary) -> void:
 		"block":
 			unit.block += int(effect.get("value", 0))
 		"status":
-			unit.add_status(StringName(effect.get("status", "")), int(effect.get("stacks", 1)))
+			Stats.apply_status_to(unit, StringName(effect.get("status", "")), int(effect.get("stacks", 1)))
 		"heal", "gain_hp":
 			var before: int = unit.hp
 			unit.hp = mini(unit.max_hp, unit.hp + int(effect.get("value", 0)))
@@ -1226,10 +1226,7 @@ func _apply_strategy_curse_effect(effect: Dictionary, actions: int) -> void:
 		return
 	match String(effect.get("type", "")):
 		"status":
-			var sid := StringName(effect.get("status", ""))
-			var stacks := int(effect.get("stacks", 1))
-			if sid != &"" and stacks > 0:
-				p.add_status(sid, stacks)
+			Stats.apply_status_to(p, StringName(effect.get("status", "")), int(effect.get("stacks", 1)))
 		"dmg":
 			var dv := int(effect.get("value", 0))
 			if dv > 0:
@@ -1743,6 +1740,14 @@ func _clear_pending() -> void:
 # fold compute-addon bonuses (Fishing Weight et al) into dmg values.
 func apply_effects(effects: Array, source, target, card = null) -> void:
 	_apply_card_or_spell_effects(effects, source, target, card)
+
+# Status application entry point (called by EffectSystem._h_status and the shared
+# contact reactions). Shared apply (guard + Persistence + add) lives in
+# Stats.apply_status_to so all three modes agree; strategy's reaction is a grid
+# refresh so the unit's status badges update. Skip it when nothing landed.
+func apply_status(target, status: StringName, stacks: int, source = null) -> void:
+	if Stats.apply_status_to(target, status, stacks, source) > 0:
+		_grid_view.notify_units_changed()
 
 func _apply_card_or_spell_effects(effects: Array, source, target, card = null, empower: int = 0) -> void:
 	# Replay addon: a card with Replay X resolves its full effect list X extra

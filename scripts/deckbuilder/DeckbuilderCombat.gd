@@ -1258,17 +1258,15 @@ func leech_to_player(amount: int) -> void:
 	heal(player, amount)
 	GameLog.add("Leeches drain %d into you." % amount, Color(0.7, 1.0, 0.7))
 
-func apply_status(target: CombatActor, status: StringName, stacks: int, source: CombatActor = null) -> void:
-	if target == null or stacks == 0:
+func apply_status(target, status: StringName, stacks: int, source = null) -> void:
+	# Shared apply (guard + Persistence + add) lives in Stats.apply_status_to so
+	# all three modes agree; deckbuilder's reaction is the status_applied bus +
+	# Power-card triggers. Skip the reaction when nothing actually landed.
+	var applied: int = Stats.apply_status_to(target, status, stacks, source)
+	if applied == 0:
 		return
-	# Player Persistence boosts debuffs the player applies to enemies
-	# (shared rule in Stats.status_apply_stacks). Buffs to self pass through.
-	var actual_stacks := stacks
-	if not target.is_player:
-		actual_stacks = Stats.status_apply_stacks(source, status, stacks)
-	target.add_status(status, actual_stacks)
 	TriggerBus.emit_signal("status_applied", {
-		"target": target, "status": status, "stacks": actual_stacks, "scene": self,
+		"target": target, "status": status, "stacks": applied, "scene": self,
 	})
 	_fire_power_triggers("status_applied")
 

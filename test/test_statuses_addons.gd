@@ -255,3 +255,42 @@ func test_derived_statuses_apply_to_battleunit_like_combatactor() -> void:
 	assert_eq(bu.get_status(&"power"), ca.get_status(&"power"),
 		"a strategy BattleUnit derives the same Power as a CombatActor from the same stats")
 	GameState.strength = saved_str
+
+# --- Shared status application (Stats.apply_status_to) --------------------
+# The one core all three modes' apply_status() route through, so they agree on
+# the Persistence rule and on what counts as a no-op.
+
+func test_apply_status_to_scales_player_debuff_by_persistence() -> void:
+	var player := CombatActor.new()
+	player.is_player = true
+	player.add_status(&"persistence", 2)
+	var enemy := CombatActor.new()
+	var applied: int = Stats.apply_status_to(enemy, &"vulnerable", 3, player)
+	assert_eq(applied, 5, "player Persistence 2 adds to the 3 inflicted Vulnerable")
+	assert_eq(enemy.get_status(&"vulnerable"), 5)
+
+func test_apply_status_to_ignores_persistence_for_buffs_self_and_no_source() -> void:
+	var player := CombatActor.new()
+	player.is_player = true
+	player.add_status(&"persistence", 2)
+	assert_eq(Stats.apply_status_to(player, &"power", 3, player), 3,
+		"Persistence never scales the player's own buffs")
+	assert_eq(Stats.apply_status_to(CombatActor.new(), &"blind", 2, player), 2,
+		"non-Persistence debuffs are unscaled even from a Persistent player")
+	assert_eq(Stats.apply_status_to(CombatActor.new(), &"vulnerable", 3, null), 3,
+		"no source (event / reaction) means no Persistence scaling")
+
+func test_apply_status_to_works_on_a_battleunit() -> void:
+	var player := CombatActor.new()
+	player.is_player = true
+	player.add_status(&"persistence", 1)
+	var bu := BattleUnit.new()  # enemy unit (is_player defaults false)
+	assert_eq(Stats.apply_status_to(bu, &"poison", 2, player), 3,
+		"strategy BattleUnit debuffs scale with Persistence through the shared core")
+	assert_eq(bu.get_status(&"poison"), 3)
+
+func test_apply_status_to_noops_on_empty_or_zero() -> void:
+	var enemy := CombatActor.new()
+	assert_eq(Stats.apply_status_to(enemy, &"", 3), 0, "empty status id is a no-op")
+	assert_eq(Stats.apply_status_to(enemy, &"weak", 0), 0, "zero stacks is a no-op")
+	assert_eq(Stats.apply_status_to(null, &"weak", 3), 0, "null target is a no-op")

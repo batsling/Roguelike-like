@@ -40,8 +40,8 @@ const PLAYER_SPRITE_RADIUS := PLAYER_RADIUS * 1.3
 const PLAYER_IFRAME_DURATION := 1.0
 const SWING_VISUAL_DURATION := 0.12
 
-# Statuses that count as debuffs for the player's Persistence stack bonus.
-const STATUS_DEBUFFS: Array[StringName] = [&"vulnerable", &"weak", &"frail", &"poison", &"burn"]
+# Persistence's debuff set now lives on Stats (Stats.PERSISTENCE_DEBUFFS), shared
+# by every mode through Stats.apply_status_to — no per-mode copy to drift.
 
 # --- Caller-supplied configuration ----------------------------------------
 var target_game_id: StringName = &""
@@ -1389,7 +1389,7 @@ func _apply_self_effects(card: CardData) -> void:
 				_resolve_heal_self(int(effect.get("value", 0)))
 			"status":
 				var status: StringName = StringName(String(effect.get("status", "")))
-				player_actor.add_status(status, int(effect.get("stacks", 0)))
+				Stats.apply_status_to(player_actor, status, int(effect.get("stacks", 0)), player_actor)
 
 func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array) -> void:
 	var value: int = int(effect.get("value", 0))
@@ -1425,8 +1425,11 @@ func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 	var stacks: int = int(effect.get("stacks", 0))
 	if stacks == 0 or status == &"":
 		return
+	# Route through the shared core (Stats.apply_status_to) so action's card
+	# statuses obey the same Persistence rule as deckbuilder/strategy. Self-buffs
+	# pass through unscaled; enemy debuffs scale with the player's Persistence.
 	if tgt == "self":
-		player_actor.add_status(status, stacks)
+		Stats.apply_status_to(player_actor, status, stacks, player_actor)
 		return
 	var hit_list: Array
 	if tgt == "enemy":
@@ -1435,11 +1438,8 @@ func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 		hit_list = aoe_targets
 	else:
 		return
-	# Player Persistence boosts debuffs applied to enemies (shared rule in
-	# Stats.status_apply_stacks, matching deckbuilder).
-	var amt: int = Stats.status_apply_stacks(player_actor, status, stacks)
 	for inst in hit_list:
-		inst.actor.add_status(status, amt)
+		Stats.apply_status_to(inst.actor, status, stacks, player_actor)
 
 func _resolve_heal_self(value: int) -> void:
 	if value <= 0:
@@ -1513,14 +1513,12 @@ func make_random_hand_card_free(_card = null) -> void:
 		slot.cooldown = maxf(0.0, float(slot.cooldown) * 0.5)
 	GameLog.add("Mummified Hand: cooldowns slashed!", Color(0.7, 1.0, 0.7))
 
-# EffectSystem-compatible status apply (mirrors deckbuilder apply_status,
-# minus the deck/trigger plumbing). EffectSystem doesn't thread `source`,
-# so Persistence is handled by the card path in _apply_status_effect; this
-# entry is for source-less item/effect-driven statuses.
-func apply_status(target, status: StringName, stacks: int) -> void:
-	if target == null or stacks == 0 or status == &"":
-		return
-	target.add_status(status, stacks)
+# Status apply entry point used by EffectSystem._h_status, the shared contact
+# reactions, and the curse path. Routes through the shared core like every mode.
+func apply_status(target, status: StringName, stacks: int, source = null) -> void:
+	# Shared apply (guard + Persistence + add) in Stats.apply_status_to. Action
+	# has no extra reaction today, so the wrapper is just the shared call.
+	Stats.apply_status_to(target, status, stacks, source)
 
 # Generic actor-to-actor damage entry point used by cross-mode contact
 # reactions (Stats.fire_contact_reactions → Thorns). The amount is already
@@ -1722,7 +1720,6 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 	# effects land on whichever single enemy the bolt struck. Ranged
 	# AOE cards (Thunderclap) cover their area by FIRING MORE BOLTS in
 	# a fan — there is no explosion radius here.
-	var pers: int = player_actor.get_status(&"persistence")
 	for raw_effect in card.effects:
 		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
 		var tgt: String = String(effect.get("target", ""))
@@ -1742,11 +1739,9 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 					effect["pen_nib_double"] = true
 				_deal_damage_to_enemy(inst, value, dmg_type, power_mult, effect)
 			"status":
+				# Shared core handles the player-Persistence scaling on enemy debuffs.
 				var status: StringName = StringName(String(effect.get("status", "")))
-				var stacks: int = int(effect.get("stacks", 0))
-				if stacks > 0 and status != &"":
-					var amt: int = stacks + (pers if status in STATUS_DEBUFFS else 0)
-					inst.actor.add_status(status, amt)
+				Stats.apply_status_to(inst.actor, status, int(effect.get("stacks", 0)), player_actor)
 
 # ---------------------------------------------------------------------------
 # Slot-bar UI (bottom-of-screen ability strip)
