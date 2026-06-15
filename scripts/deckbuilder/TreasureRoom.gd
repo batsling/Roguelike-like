@@ -81,6 +81,7 @@ func _make_offer_view(item: ItemData) -> Control:
 	# Card-like vertical layout: image on top, name, rarity, description.
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(220, 320)
+	card.add_theme_stylebox_override("panel", RarityStyle.panel(int(item.rarity), 12))
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 6)
@@ -105,7 +106,7 @@ func _make_offer_view(item: ItemData) -> Control:
 	rarity_lbl.text = "(%s)" % _rarity_label(item.rarity)
 	rarity_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	rarity_lbl.add_theme_font_size_override("font_size", 11)
-	rarity_lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
+	rarity_lbl.add_theme_color_override("font_color", RarityStyle.color(int(item.rarity)))
 	vbox.add_child(rarity_lbl)
 
 	var desc := RichTextLabel.new()

@@ -162,6 +162,7 @@ func _refresh() -> void:
 func _build_choice_tile(item: ItemData) -> Control:
 	var tile := PanelContainer.new()
 	tile.custom_minimum_size = Vector2(230, 250)
+	tile.add_theme_stylebox_override("panel", RarityStyle.panel(int(item.rarity), 12))
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 6)
 	tile.add_child(vbox)
