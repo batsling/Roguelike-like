@@ -221,12 +221,39 @@ for how stats resolve across modes.
 
 ---
 
+## Recent changes
+
+Highlights from the most recent Godot sessions (newest first). The
+spreadsheet-driven content below regenerates via the `tools/` importers, so
+re-run them after pulling and review the diff.
+
+- **Status-effect system + Fear** — a mode-aware status system wired across
+  deckbuilder, action, and strategy combat, with **Fear** as the first fully
+  designed status (`docs/fear-status-design.md`). `statusesnew`/`addonsnew`
+  now drive the Collection Reference tab, including the **Fear** status and
+  the **Unplayable** / **Eternal** card addons.
+- **Curse-synergy items** — Death Orb, Du-Vu Doll, Golden Beetle, and
+  Vitality Orb, plus the EffectSystem/TriggerBus hooks they ride on.
+- **Dice & combat inventory** — early dice items (D6, Wooden Nickel), a
+  charge-bar widget, and a combat inventory panel shared across modes.
+- **Event content port** — the first authored pre-combat events (Watching
+  Eyeballs, Fruit Basket, A Note For Yourself, The Ssssserpent) generated from
+  the `events` sheet, a reworked `EventModal`, and a Collection Reference tab.
+- **D20 die view & rewards polish** — overhauled D20 roll view, rarity styling,
+  the Backpack history panel, treasure-room/shop tweaks, and new items
+  (Burning Blood, Ring of the Snake).
+- **Combat feel & UX fixes** — run-map scrolling, dungeon combat feel, pause
+  menu, mouse controls, and a RateGameModal soft-lock fix.
+
+---
+
 ## Roadmap / future plans
 
 The Godot port already covers the core loop (overworld map, deckbuilder &
-action combat, events, curses, items, shop, escape phase, characters, saves,
-collection, and game verification). The work still ahead — much of it porting
-remaining systems from the legacy HTML build:
+action combat, events, curses, items, status effects, curse-synergy items,
+shop, escape phase, characters, saves, collection, and game verification). The
+work still ahead — much of it porting remaining systems from the legacy HTML
+build:
 
 - **Loot system** — add the consumable loot tables: **potions**, **scrolls**,
   and **fish**, and introduce **bombs** and **keys**.
@@ -235,7 +262,16 @@ remaining systems from the legacy HTML build:
   and **addons** so the Godot catalog matches the spreadsheet.
 - **Spells** — port the spell system and add new spells (`SpellData` exists;
   the deckbuilder-side spells panel still needs wiring).
-- **Events** — port the remaining pre-combat events and author new ones.
+- **Events** — the event system and first authored events are in (see Recent
+  changes); port the remaining pre-combat events and author new ones.
+- **Attack / weapon card → action-combat translation** — fix and flesh out how
+  **attack** and **weapon** cards translate into the real-time action arena.
+  Today turn-based concepts (energy, draw/discard, turns) map through
+  `data/action_translation.tres`, but the mapping from a card's attack —
+  its damage type (melee/ranged/cleave), `Range` column, and weapon behaviour —
+  onto click slots, projectiles, and swing geometry is inconsistent. Make the
+  translation faithful and data-driven so any attack/weapon card behaves
+  sensibly in action combat without bespoke per-card handling.
 - **Shop / gold scaling** — tune merchant pricing and gold rewards so they
   scale across a run (the shop screen itself is in place).
 - **Difficulty-change boss** — a boss encounter triggered when the run's
@@ -262,7 +298,9 @@ Larger systems from the HTML build still to be ported (surfaced from a scan of
 
 - **Dice tray & combat dice** — named die cards with face outcomes (the
   "slot items onto dice" feature), backed by the combat-**moves** vocabulary
-  (`dice-data.js`, `moves-data.js`).
+  (`dice` / `moves` sheets, `dice-data.js`, `moves-data.js`). First dice items
+  (D6, Wooden Nickel) have landed; the full dice tray + face authoring is still
+  ahead.
 - **Allies** — heroes that provide dice in combat (`allies-data.js`), tied to
   the dice system above.
 - **Bingo** — the 3×3 bingo-goal grid with progressive item-choice rewards
