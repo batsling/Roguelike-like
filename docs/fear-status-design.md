@@ -109,71 +109,87 @@ Legacy reference (for parity):
 
 ---
 
-## 4. Why the spreadsheet needs a small rework
+## 4. Spreadsheet rework — flag the exception, don't reshape every row
 
-Fear is the first status whose behavior **differs by mode** *and* **by side**.
-The current `statusesnew` sheet can't say that:
+The key fact that drives this design: **statuses normally need no per-mode
+authoring at all.** Both translation resources state it outright —
+"Block / Heal / **Status** apply unchanged" across modes
+(`ActionTranslation.gd:34-35`, `StrategyTranslation.gd:5-6`). The translator +
+the shared `Stats.gd` resolvers carry every status into all three modes from a
+single `Description`. So 18 of the 19 statuses are one concept that "just works"
+everywhere.
 
-| Column today | Limitation |
+Fear is the **only** status (so far) whose *behavior* — not just its numbers or
+decay timing — changes by mode and by side. The wrong fix is to give every row
+per-mode × per-side columns (six new columns, almost all blank). The right fix
+is to **flag the exception and document it in one cell**.
+
+### 4.1 Schema (chosen)
+
+Two new columns, and the old `Action Decay` column is dropped:
+
+| Column | Notes |
 |---|---|
-| `Description` / `Effect` | One string for all modes and both sides. |
-| `Decay` + `Action Decay` | Captures deckbuilder/strategy decay vs action decay, but only **one** rule each — and Fear's decay is *event-driven* in deckbuilder (on Skill play), *turn-end* in strategy, and *time-based* in action. |
-| `Who` (`All` / `Player` / `Enemy`) | A single audience flag; can't say "player-only in deckbuilder but both sides in strategy". |
+| `Name` | unchanged |
+| `Description` | The one canonical (deckbuilder-framed) behavior. For all `Translates = Yes` rows this *is* the behavior in every mode. |
+| `Effect` | machine/DSL hint, unchanged (blank for bespoke statuses) |
+| `Type`, `Stackable`, `Max Stack` | unchanged |
+| `Decay` | **Single** decay column. The translator derives the real-time (action) form from it (turn → `turn_tick_secs`, default 10s), so the old `Action Decay` column is removed. |
+| `Who` | All / Player / Enemy |
+| `Preference` | unchanged |
+| **`Translates`** *(new, Yes/No)* | **Yes** = one concept, the translator/shared resolver makes it work in every mode (the default — all rows but Fear). **No** = bespoke per-mode behavior; read `Per-Mode`. |
+| **`Per-Mode`** *(new, structured text)* | **Only filled when `Translates = No`.** Lightly-structured `mode.side: text` lines (see below). Blank for everyone else. |
+| `Icon`, `Rarity` | unchanged |
 
-The `addonsnew` sheet already solved the **per-mode** half — it has explicit
-`Deckbuilder` / `Action` / `Strategy` columns
-(`tools/import-reference-godot.py:62-71`). Fear needs that **plus** a
-player/enemy split.
+Net change: **+2 columns, −1 column.** No player/enemy column explosion — the
+side split lives *inside* the one `Per-Mode` cell, which is fine because the
+sheet only feeds the Collection *display*; behavior is hand-coded in Godot
+either way.
 
-### 4.1 Proposed schema (additive, backward-compatible)
+### 4.2 `Per-Mode` format
 
-Keep `Description` as the **default / symmetric** text (what 17 of the 19
-existing statuses already use unchanged), and add **optional override columns**
-that only need filling when a status diverges:
+One `key: value` per line. Key is `<mode>.<side>`:
 
-```
-Name | Description | Type | Stackable | Max Stack | Preference | Icon | Rarity
-   | DB Player  | DB Enemy  | DB Decay
-   | Act Player | Act Enemy | Act Decay
-   | Str Player | Str Enemy | Str Decay
-```
+- **mode** ∈ `db` (deckbuilder) · `action` · `strategy`
+- **side** ∈ `player` · `enemy` · `both`
+- value is free text describing the behavior **and** any bespoke decay inline.
+- a side with `none` means Fear is inert for that mode+side (renders as "No
+  effect", not a fallback to `Description`).
 
-Rules for the importer + Collection:
-
-- A blank mode/side cell **falls back** to `Description` (so existing rows are
-  untouched — the rework is purely additive).
-- A cell containing the literal `None` / `No effect` means "Fear is inert for
-  that mode+side" and renders as such instead of falling back.
-- `*_Decay` columns replace the single `Decay` / `Action Decay` pair, giving each
-  mode its own decay rule (event-driven, turn-end, or time-based as Fear needs).
-
-Filled in for Fear:
+Fear's row:
 
 | Field | Value |
 |---|---|
-| DB Player | "Your non-Skill cards cost 1 more Energy." |
-| DB Enemy | "No effect." |
-| DB Decay | "Down by 1 when you play a Skill card." |
-| Act Player | "No effect." |
-| Act Enemy | "Flees from the player while feared." |
-| Act Decay | "Down by 1 every ~2s of fleeing." |
-| Str Player | "At the start of its turn, moves as far from all enemies as possible." |
-| Str Enemy | "At the start of its turn, moves as far from all enemies as possible." |
-| Str Decay | "Down by 1 at the end of its turn." |
+| `Translates` | `No` |
+| `Decay` | `Down by 1 when you play a Skill card` (the canonical/deckbuilder rule; per-mode decay lives in `Per-Mode`) |
+| `Per-Mode` | (below) |
 
-### 4.2 Importer / Collection impact
+```
+db.player: non-Skill cards +1 Energy; lose 1 Fear per Skill
+db.enemy: none
+strategy.both: flee at turn start; -1 end of turn
+action.enemy: flees, scales with stacks
+action.player: none
+```
 
-- `tools/import-reference-godot.py` — read the new columns, emit them into each
-  `STATUSES` entry (e.g. nested `deckbuilder/action/strategy` sub-dicts with
-  `player` / `enemy` / `decay` keys), falling back to `Description` for blanks.
+This future-proofs the sheet: any later status that breaks the translator just
+flips `Translates → No` and fills one `Per-Mode` cell — no schema change.
+
+### 4.3 Importer / Collection impact
+
+- `tools/import-reference-godot.py` — read `Translates` + `Per-Mode`, drop the
+  `Action Decay` read, emit `Translates` (bool) and a parsed `per_mode`
+  structure (e.g. `{ "db": {"player": "...", "enemy": "none"}, ... }`) into each
+  `STATUSES` entry. `Translates = Yes` rows carry an empty `per_mode`.
 - `scripts/data/ReferenceCatalog.gd` — regenerated output; no hand edits.
-- Collection UI (`scripts/ui/Collection.gd`) — the status tooltip/detail pane
-  shows the per-mode/per-side breakdown when present, else the single
-  `Description`. Symmetric statuses look exactly as they do today.
+- Collection UI (`scripts/ui/Collection.gd`) — when `per_mode` is non-empty,
+  render the per-mode/per-side breakdown (group by mode, show player/enemy/both,
+  "No effect" for `none`); otherwise show the single `Description` exactly as
+  today. Every `Translates = Yes` status looks unchanged.
 
-This is **not** required to ship Fear's gameplay (the behavior is hand-written in
-`Stats.gd` + the combat scripts regardless). It's the docs/Collection layer so
-the sheet stays an honest source of truth once statuses start diverging per mode.
+This rework is **not** required to ship Fear's gameplay (behavior is hand-written
+in `Stats.gd` + the combat scripts regardless) — it keeps the sheet an honest
+source of truth once statuses start diverging per mode.
 
 ---
 
@@ -256,6 +272,7 @@ fear-applying consumable when we port loot.
    consumed.)
 2. **Action enemy** — flee framing (1) stack-countdown vs (2) flee-window, and
    the value of `FEAR_FLEE_SECONDS_PER_STACK`.
-3. **Sheet rework** — adopt the additive per-mode/per-side columns now
-   ([§4.1](#41-proposed-schema-additive-backward-compatible)), or keep Fear's
-   divergence as code + this doc and defer the sheet change.
+3. **Sheet rework** — the schema is decided ([§4](#4-spreadsheet-rework--flag-the-exception-dont-reshape-every-row):
+   `Translates` + `Per-Mode`, merged `Decay`). Remaining call is *timing*: apply
+   the column changes to `Roguelikes.xlsx` + importer + Collection now, or defer
+   until Fear's gameplay is actually implemented.
