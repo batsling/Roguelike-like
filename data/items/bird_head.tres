@@ -15,5 +15,5 @@ card_grants = [{"if_card_tag": "strike", "effects": [{"type": "status", "status"
 stat_bonuses = {}
 max_uses = -1
 source_game = "Mewgenics"
-tags = PackedStringArray("head", "bird")
+tags = PackedStringArray("bird", "devilish")
 image = ExtResource("2_img")

@@ -55,34 +55,25 @@ gain_gold/gain_hp/gain_max_hp/gain_chest/lose_hp N`, `gain_stat <s> N`,
 it field-by-field against the in-memory parse, normalizing away cosmetic noise
 (field order, implicit `enemy` target, log-only `label`/`notify`/`silent`).
 
-**Status: items are flipped — all 89 `data/items/*.tres` are generated from the
-sheet, with 0 gameplay-critical diffs** (verified by parsing the pre-flip files
-and semantically diffing them against the regenerated output: descriptions,
-tags, `source_game`, effects, and charge/use fields all preserved). The only
-change in the files is formatting (multi-line arrays collapse to single-line
-JSON). Re-run `generate_item_tres.py` after any sheet edit.
+**Status: items are fully sheet-authored.** All 89 `data/items/*.tres` are
+generated from the `items` sheet by `generate_item_tres.py`, including the
+`Description` text (authored in the sheet's `Description` column). Re-run the
+generator after any sheet edit; effects round-trip with 0 gameplay-critical
+diffs (verified by `_item_parity.py`).
 
-## Cell changes applied to `tools/Roguelikes.xlsx`
+## DSL-portability cells in `tools/Roguelikes.xlsx`
 
-`items` sheet (so the user can replicate after a re-upload):
+These `Effect` cells were tuned so the cell fully describes the `.tres`. Keep
+them across re-uploads or the parser falls back to wrong/old behavior:
+- **Dead Eye** → `attack_landed: +1 dead_eye streak (same target); attack_missed: reset dead_eye`
+- **Death Orb** → `dmg all_enemies value_from=curses x2 type=true (...)`
+- **Du-Vu Doll** → `+X power (self) stacks_from=curses` (space, not comma)
+- **Leech Brood** → `lose_hp 10 (non_lethal, self)`
 
-DSL portability (made the `Effect` cell fully describe the `.tres`):
-- **Dead Eye** `Effect` → `attack_landed: +1 dead_eye streak (same target); attack_missed: reset dead_eye` (was a trailing prose note + bare `reset`).
-- **Death Orb** `Effect` → added `type=true` to the `dmg` clause.
-- **Du-Vu Doll** `Effect` → `+X power (self) stacks_from=curses` (space, not comma, so `stacks_from` attaches to the effect).
-- **Leech Brood** `Effect` → `lose_hp 10 (non_lethal, self)` (was `(self)`; the hit must be non-lethal).
+## Sheet-driven values to keep an eye on
 
-Value disagreements — **set the sheet to match the code (ground truth)**; review
-whether the sheet's old value was actually intended:
-- **Alien Baby** `Type` `Pickup, Scaling` → `Passive` (code kind = PASSIVE).
-- **Horn Cleat** `Type` `Passive` → `Triggered` (code kind = TRIGGERED).
-- **Ballistic Boots** `Rating` `Rare` → `Common`.
-- **Hollow Heart** `Rating` `Common` → `Uncommon`.
-- **Mango** `Rating` `Rare` → `Uncommon`.
-
-Prose backport (so the sheet is the single source and the flip kept the
-polished text): the 89 `.tres` descriptions were copied into the `Description`
-column (87 changed), and 6 `tags` cells were reconciled to the `.tres` values
-(`bear_trap_mask` mask,trap; `beefy_ring` ring,scaling; `bird_head` head,bird;
-`blood_magic` magic,blood; `brain_candy` drug,pill,devilish; `brass_knuckles`
-offense).
+`kind` comes from the `Type` column (first word; `Incremental` = TRIGGERED) and
+`rarity` from `Rating`. A multi-value `Type` like `Pickup, Scaling` resolves to
+its first word (→ PICKUP), so set the cell to the single intended value. Item
+`tags` and `Description` are taken verbatim from the sheet — an empty `tags`
+cell yields no tags.
