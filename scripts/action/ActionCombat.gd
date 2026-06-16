@@ -141,6 +141,10 @@ var auto_slots: Array = []                           # Array of Dictionary {card
 # penalty, both live in ActionTranslation (_tr.draw_temp_slot_secs /
 # _tr.discard_base_penalty).
 
+# Per-combat fire counts keyed by CardData, for the uses_per_combat addon verb
+# (Exhaust -> uses_per_combat(1) in Action). Reset each room in _load_loadout.
+var _addon_uses: Dictionary = {}
+
 # Curse cards in action (the translation of the deckbuilder hand-curses):
 #   _curse_slots — eot curses run as EXTRA dedicated bad-slots; each counts down
 #     a long real-time cooldown and, on elapse, applies its translated eot effect
@@ -280,6 +284,7 @@ func _ready() -> void:
 	GameState.phase = GameState.Phase.COMBAT
 	phase = Phase.PLAYING
 	_refresh_hud()
+	_auto_play_innate_addons()
 
 # ---------------------------------------------------------------------------
 # Embedded API — ActionFloor calls these to drive a continuous floor.
@@ -351,6 +356,8 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 		_room_turn_index = 0
 		_fire_item_triggers("combat_started")
 		_fire_item_triggers("turn_started")
+		# Innate -> auto_play: fire innate cards once now that enemies exist.
+		_auto_play_innate_addons()
 
 	if _living_enemy_count() == 0:
 		# Safe room or already empty — doors stay open.
@@ -469,6 +476,7 @@ func _load_loadout() -> void:
 	auto_draw.shuffle()
 	auto_discard.clear()
 	auto_slots.clear()
+	_addon_uses.clear()
 	var first: CardData = _auto_draw_one()
 	if first != null:
 		auto_slots.append({
@@ -941,6 +949,17 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 			continue
 		slot.cooldown = maxf(0.0, slot.cooldown - scaled_delta)
 		if slot.cooldown <= 0.0:
+			# uses_per_combat (Exhaust): a card that has hit its per-combat cap
+			# retires from the rotation without firing — drawn next, not re-queued.
+			var cap: int = AddonSystem.uses_per_combat(slot.card, Stats.Mode.ACTION)
+			var used: int = int(_addon_uses.get(slot.card, 0))
+			if cap >= 0 and used >= cap:
+				var spent_next: CardData = _auto_draw_one()
+				slot.card = spent_next
+				slot.cooldown = _auto_cd(spent_next)
+				slot.max_cooldown = slot.cooldown
+				i += 1
+				continue
 			# Fire at the nearest enemy, then cycle this slot's card to the
 			# discard and draw the next one. With no enemies, hold the card
 			# ready (don't waste it on empty air).
@@ -953,7 +972,11 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 					GameLog.add("%s replays!" % slot.card.display_name, Color(0.7, 1.0, 0.7))
 				# Pain (on_play_other -> on_action): a slot activation bites the player.
 				_fire_pain_curses()
-				auto_discard.append(slot.card)
+				_addon_uses[slot.card] = used + 1
+				# Re-queue to the discard UNLESS the card just spent its last use
+				# (uses_per_combat) — then it leaves the combat entirely.
+				if cap < 0 or used + 1 < cap:
+					auto_discard.append(slot.card)
 				var next: CardData = _auto_draw_one()
 				slot.card = next
 				slot.cooldown = _auto_cd(next)
@@ -964,7 +987,10 @@ func _cooldown_for(card: CardData) -> float:
 	if card == null:
 		return 0.0
 	# 2 * energy_cost + rarity_modifier (0/1/2/3 for starter/common/uncommon/rare)
-	return 2.0 * float(maxi(0, card.cost)) + float(card.rarity)
+	var base: float = 2.0 * float(maxi(0, card.cost)) + float(card.rarity)
+	# Addon cooldown multipliers (Ethereal / Unplayable -> cooldown_mult(2) in
+	# Action). Single chokepoint for both click and auto slots. 1.0 = unchanged.
+	return base * AddonSystem.cooldown_mult(card, Stats.Mode.ACTION)
 
 # Auto-slot cooldown: the base formula, floored so a 0-cost card can't fire
 # every frame. Returns 0 for null (slot has no card to count down).
@@ -1156,6 +1182,26 @@ func _resolve_card_effects_auto(card: CardData) -> void:
 		_deliver_attack(card, _auto_aim_dir(), true)
 		return
 	_resolve_card_effects_auto_legacy(card)
+
+# Innate -> auto_play (Action): resolve each innate card's effects once when a
+# combat room opens, mirroring deckbuilder's "starts in the opening hand". The
+# card also stays in the normal auto rotation, so this is an extra opening play.
+func _auto_play_innate_addons() -> void:
+	if _living_enemy_count() == 0:
+		return
+	var loadout: Dictionary = GameState.get_action_loadout()
+	var cards: Array = []
+	if loadout.left != null:
+		cards.append(loadout.left)
+	if loadout.right != null:
+		cards.append(loadout.right)
+	cards.append_array(loadout.auto)
+	for c in cards:
+		var cd: CardData = c.data if c is CardInstance else (c as CardData)
+		if cd != null and AddonSystem.auto_plays_at_start(cd, Stats.Mode.ACTION):
+			_resolve_card_effects_auto(cd)
+			GameLog.add("%s (Innate) fires at the start." % cd.display_name,
+				Color(0.7, 1.0, 0.7))
 
 func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 	if _card_has_ranged_damage(card):
