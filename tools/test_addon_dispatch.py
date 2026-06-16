@@ -137,9 +137,44 @@ def new_apply(index, effect, card_addons, gold):
     return dup
 
 
+def check_card_addon_refs(index):
+    # Every addon slug a card references (cardsnew Keywords, minus the bool-flag
+    # keywords that become CardData fields) must resolve to a catalog Key —
+    # otherwise the card carries an addon the dispatcher silently ignores.
+    try:
+        import openpyxl
+    except ImportError:
+        print("[test_addon_dispatch] (openpyxl missing — skipped card-ref check)")
+        return
+    xlsx = os.path.join(ROOT, "tools", "Roguelikes.xlsx")
+    wb = openpyxl.load_workbook(xlsx, data_only=True)
+    ws = wb["cardsnew"]
+    hdr = [str(c.value).strip() if c.value is not None else "" for c in ws[1]]
+    if "Keywords" not in hdr:
+        return
+    ki = hdr.index("Keywords")
+    flags = {"exhaust", "ethereal", "innate", "retain", "unplayable", "eternal"}
+    used = set()
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if not row or row[0] is None or ki >= len(row) or not row[ki]:
+            continue
+        for tok in str(row[ki]).split(","):
+            t = tok.strip()
+            if not t or t.lower() in ("n/a", "none") or t.lower() in flags:
+                continue
+            # Mirror generate_card_tres.slugify; strip an optional :N value tail.
+            slug = re.sub(r"[^a-z0-9]+", "_", t.lower()).strip("_")
+            slug = re.sub(r"_\d+$", "", slug) if slug.startswith("replay") else slug
+            used.add(slug)
+    orphans = sorted(s for s in used if s not in index)
+    assert not orphans, f"cards reference addon slugs not in catalog: {orphans}"
+    print(f"[test_addon_dispatch] card refs OK — {sorted(used)} all resolve")
+
+
 def main():
     addons = load_addons()
     index = build_index(addons)
+    check_card_addon_refs(index)
 
     # Catalog sanity: the four live arms must carry the expected hook/expr.
     expected = {

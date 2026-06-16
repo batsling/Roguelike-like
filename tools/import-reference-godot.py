@@ -48,6 +48,100 @@ def rows(sheet):
         yield {headers[i]: row[i] for i in range(min(len(headers), len(row)))}
 
 
+# ---------------------------------------------------------------------------
+# Addon DSL vocabulary lint (see docs/addon-translation-dsl.md)
+#
+# The addonsnew sheet is hand-authored, so a typo (`colldown_mult`, a bad Expr)
+# would otherwise import as a silent no-op and only surface in-game. This lints
+# every row at build time against the closed vocabulary and fails the import.
+# ---------------------------------------------------------------------------
+
+# Hook -> allowed Expr shape. None = Expr must be empty.
+HOOK_EXPR = {
+    "effect_dmg_bonus": re.compile(r"^(gold/10|fish)$"),
+    "effect_retarget":  re.compile(r"^[a-z_]+->[a-z_]+$"),
+    "effect_flag":      re.compile(r"^[a-z_]+$"),
+    "effect_value":     None,
+    "card_replay":      None,
+    "structural":       None,
+}
+
+# Per-mode Verb grammar: clause := [trigger:] [condition:] action ( ";" … )
+VERB_TRIGGERS = {"on_play", "eot_in_hand", "on_combat_start", "on_kill"}
+VERB_CONDITION = re.compile(r"^chance\(\d+\)$")
+# action name -> regex its argument list (inside the parens, or "" for none) must match.
+VERB_ACTIONS = {
+    "to_pile":           re.compile(r"^[a-z_]+$"),
+    "to_hand":           re.compile(r"^$"),
+    "auto_play":         re.compile(r"^$"),
+    "free_play":         re.compile(r"^\d+$"),
+    "uses_per_combat":   re.compile(r"^\d+$"),
+    "cooldown_mult":     re.compile(r"^\d+(\.\d+)?$"),
+    "deactivate_if_idle": re.compile(r"^$"),
+    "not_playable":      re.compile(r"^$"),
+    "requires_equipped": re.compile(r"^\d+$"),
+    "removable":         re.compile(r"^(true|false)$"),
+    "gain_max_hp":       re.compile(r"^(X|N|\d+|value)$"),
+    "retarget":          re.compile(r"^[a-z_]+,\s*[a-z_]+$"),
+    "add_value":         re.compile(r"^(gold/10|fish)$"),
+    "set_flag":          re.compile(r"^[a-z_]+$"),
+    "replay":            re.compile(r"^(N|\d+)$"),
+}
+
+
+def _lint_verb_cell(value, errors, where):
+    text = "" if value is None else str(value).strip()
+    if text == "":
+        return
+    for clause in text.split(";"):
+        clause = clause.strip()
+        if clause == "":
+            continue
+        segs = [s.strip() for s in clause.split(":")]
+        action = segs[-1]
+        for lead in segs[:-1]:
+            if lead in VERB_TRIGGERS or VERB_CONDITION.match(lead):
+                continue
+            errors.append(f"{where}: unknown trigger/condition {lead!r} in {clause!r}")
+        m = re.match(r"^([a-z_]+)(?:\((.*)\))?$", action)
+        if not m:
+            errors.append(f"{where}: unparseable action {action!r}")
+            continue
+        name, args = m.group(1), (m.group(2) or "")
+        if name not in VERB_ACTIONS:
+            errors.append(f"{where}: unknown verb {name!r} in {clause!r}")
+        elif not VERB_ACTIONS[name].match(args.strip()):
+            errors.append(f"{where}: bad args for {name!r}: ({args!r})")
+
+
+def validate_addons(addon_rows) -> list:
+    errors = []
+    seen_keys = {}
+    for r in addon_rows:
+        name = str(r.get("Name", "")).strip()
+        key = (esc(r.get("Key")) or slugify(r.get("Name")))
+        if not re.match(r"^[a-z0-9_]+$", key):
+            errors.append(f"{name}: Key {key!r} is not a slug ([a-z0-9_]+)")
+        if key in seen_keys:
+            errors.append(f"{name}: duplicate Key {key!r} (also {seen_keys[key]!r})")
+        seen_keys[key] = name
+        hook = esc(r.get("Hook"))
+        expr = esc(r.get("Expr"))
+        if hook not in HOOK_EXPR:
+            errors.append(f"{name}: unknown Hook {hook!r} (allowed: {sorted(HOOK_EXPR)})")
+        else:
+            shape = HOOK_EXPR[hook]
+            if shape is None:
+                if expr != "":
+                    errors.append(f"{name}: Hook {hook!r} must have empty Expr, got {expr!r}")
+            elif not shape.match(expr):
+                errors.append(f"{name}: Expr {expr!r} invalid for Hook {hook!r}")
+        _lint_verb_cell(r.get("DB Verb"), errors, f"{name}/DB Verb")
+        _lint_verb_cell(r.get("Action Verb"), errors, f"{name}/Action Verb")
+        _lint_verb_cell(r.get("Strategy Verb"), errors, f"{name}/Strategy Verb")
+    return errors
+
+
 def main() -> int:
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     for need in ("statusesnew", "addonsnew"):
@@ -67,6 +161,16 @@ def main() -> int:
                   file=sys.stderr)
             return 1
 
+    # Lint every addon row's DSL cells against the closed vocabulary so a
+    # hand-edit typo fails the build instead of no-opping silently in-game.
+    addon_rows = list(rows(wb["addonsnew"]))
+    addon_errors = validate_addons(addon_rows)
+    if addon_errors:
+        print("ERROR: addonsnew DSL validation failed:", file=sys.stderr)
+        for e in addon_errors:
+            print(f"  - {e}", file=sys.stderr)
+        return 1
+
     status_lines = []
     missing_icons = []
     for r in rows(wb["statusesnew"]):
@@ -82,7 +186,7 @@ def main() -> int:
                 pref=esc(r.get("Preference")), rar=esc(r.get("Rarity")), icon=icon))
 
     addon_lines = []
-    for r in rows(wb["addonsnew"]):
+    for r in addon_rows:
         # Machine-readable DSL columns (see docs/addon-sheet-authoring-handoff.md):
         #   Key  — runtime slug the engine matches (falls back to slugify(Name))
         #   Hook — which dispatch slot the behavior runs in (effect_dmg_bonus /
