@@ -939,7 +939,9 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	elif card.data.exhaust or card.is_power():
 		exhaust_card(card)
 	else:
-		discard_card(card)
+		# from_play: a Sly card that was just played normally must NOT re-trigger
+		# its play-on-discard as it heads to the pile (that would double-resolve).
+		discard_card(card, true)
 	_refresh_ui()
 	# Killing the last enemy with a card ends combat immediately.
 	_check_combat_end()
@@ -1333,11 +1335,13 @@ func draw_cards(n: int) -> void:
 		_fire_power_triggers("card_drawn", {"card": c})
 	_refresh_ui()
 
-func discard_card(card: CardInstance) -> void:
+func discard_card(card: CardInstance, from_play: bool = false) -> void:
 	hand.erase(card)
-	# Sly: an (unplayable) card resolves its effects the moment it would be
-	# discarded, then still heads to the discard pile.
-	if card != null and card.data != null and card.data.sly:
+	# Sly: a card resolves its effects the moment it would be discarded, then
+	# still heads to the discard pile. Skipped when the card is being discarded
+	# AS PART OF a normal play (from_play) — it already resolved, so re-firing
+	# here would double it.
+	if not from_play and card != null and card.data != null and card.data.sly:
 		_resolve_sly_on_discard(card)
 	discard_pile.append(card)
 	TriggerBus.emit_signal("card_discarded", {"card": card, "scene": self})
@@ -1345,10 +1349,10 @@ func discard_card(card: CardInstance) -> void:
 	_refresh_ui()
 
 func _resolve_sly_on_discard(card: CardInstance) -> void:
-	# Sly: play the card's effects as it leaves hand. Auto-targets a random live
-	# enemy (Sly cards are unplayable, so there's no manual pick). No energy cost
-	# — it triggers off the discard, not a play. The caller files it into the
-	# discard pile afterward.
+	# Sly: play the card's effects as it leaves hand (end of turn, a discard
+	# effect, …). Auto-targets a random live enemy since there's no manual pick
+	# on the discard path. No energy cost — it triggers off the discard, not a
+	# play. The caller files it into the discard pile afterward.
 	if card == null:
 		return
 	var tgt: CombatActor = null

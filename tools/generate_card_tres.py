@@ -133,10 +133,6 @@ def parse_keywords(raw):
             # Addon names are stored as slugs in the .tres (the form the engine
             # matches): "Fishing Weight" -> fishing_weight, "Wealth" -> wealth.
             addons.append(slugify(t))
-    # Sly cards are unplayable by definition (they only resolve when discarded),
-    # so the keyword implies the unplayable flag without authors repeating it.
-    if flags.get("sly"):
-        flags["unplayable"] = True
     return flags, addons
 
 
