@@ -138,6 +138,12 @@ var _ability_used_this_turn: bool = false
 # turn (it still spends a use). null = none. Reset each turn.
 var _free_ability_card = null
 
+# Ethereal -> deactivate_if_idle (Strategy): once the player ends a turn without
+# playing any Ethereal ability, every Ethereal ability is locked out for the
+# rest of the combat. `_ethereal_used_this_turn` resets each player turn.
+var _ethereal_deactivated: bool = false
+var _ethereal_used_this_turn: bool = false
+
 # Energy charge banked from gain-energy effects. It persists across turns
 # within a combat until spent: the next card play consumes ALL of it and is
 # empowered by that amount (+dmg / +block / +status stacks), then it resets
@@ -1082,6 +1088,7 @@ func _on_unit_turn_started(unit) -> void:
 		_move_remaining = unit.move_range
 		_card_plays_remaining = 1
 		_ability_used_this_turn = false
+		_ethereal_used_this_turn = false
 		_free_ability_card = null
 		# Innate -> free_play (Strategy): on the first player turn, one innate
 		# slotted ability is free to play (reuses the Mummified-Hand free slot).
@@ -1130,6 +1137,12 @@ func _on_unit_turn_ended(unit) -> void:
 	# all-stats-down debuff is lifted now that the turn is over.
 	if unit != null and unit.is_player:
 		_end_turn_curse(unit)
+		# Ethereal -> deactivate_if_idle: a player turn that ends without playing
+		# any Ethereal ability locks every Ethereal ability for the rest of combat.
+		if not _ethereal_deactivated and not _ethereal_used_this_turn \
+				and _has_ethereal_ability():
+			_ethereal_deactivated = true
+			_status_label.text = "Ethereal abilities deactivated — none was used this turn."
 	_grid_view.notify_units_changed()
 	_refresh_initiative()
 	_check_battle_end_after_effect()
@@ -1426,6 +1439,21 @@ func _on_ability_button() -> void:
 	_ability_dialog.visible = true
 	_spell_dialog.visible = false
 
+# True if any slotted ability is Ethereal (deactivate_if_idle) — gates the
+# end-of-turn deactivation so it no-ops when the player has no Ethereal cards.
+func _has_ethereal_ability() -> bool:
+	if _loadout == null:
+		return false
+	for c in _loadout.cards:
+		if AddonSystem.deactivates_if_idle(c.data, Stats.Mode.STRATEGY):
+			return true
+	return false
+
+# True if `card` is an Ethereal ability that has been locked out for the combat.
+func _is_ethereal_locked(card) -> bool:
+	return _ethereal_deactivated \
+		and AddonSystem.deactivates_if_idle(card.data, Stats.Mode.STRATEGY)
+
 func _populate_ability_picker() -> void:
 	for child in _ability_list_container.get_children():
 		child.queue_free()
@@ -1445,7 +1473,8 @@ func _populate_ability_picker() -> void:
 		var uses: int = GameState.card_uses_remaining(card)
 		var cap: int = GameState.card_uses_max(card)
 		var is_free: bool = card == _free_ability_card
-		var castable: bool = uses > 0 and (_card_plays_remaining > 0 or is_free)
+		var castable: bool = uses > 0 and (_card_plays_remaining > 0 or is_free) \
+			and not _is_ethereal_locked(card)
 		var free_tag: String = "  [FREE]" if is_free else ""
 		var copy_tag: String = ""
 		if int(totals.get(card.data.id, 1)) > 1:
@@ -1477,6 +1506,9 @@ func _on_pick_ability(card) -> void:
 	# Re-check: the picker may have been left open across state changes. A
 	# Mummified-Hand free ability is playable even with no plays remaining.
 	var is_free: bool = card == _free_ability_card
+	if _is_ethereal_locked(card):
+		_status_label.text = "%s is Ethereal and has been deactivated." % card.data.display_name
+		return
 	if GameState.card_uses_remaining(card) <= 0 or (_card_plays_remaining <= 0 and not is_free):
 		_status_label.text = "%s can't be played right now." % card.data.display_name
 		return
@@ -1507,6 +1539,10 @@ func _resolve_ability_against(target) -> void:
 	else:
 		_card_plays_remaining -= 1
 	_ability_used_this_turn = true
+	# Ethereal -> deactivate_if_idle: playing an Ethereal ability keeps the whole
+	# set alive for the turn.
+	if AddonSystem.deactivates_if_idle(card.data, Stats.Mode.STRATEGY):
+		_ethereal_used_this_turn = true
 	_register_player_action()
 	# Spend any banked energy charge to empower this card, then clear it.
 	var empower: int = _energy_charge
