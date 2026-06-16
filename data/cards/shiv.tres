@@ -5,32 +5,20 @@
 
 [resource]
 script = ExtResource("1_card")
-image = ExtResource("2_img")
 id = &"shiv"
 display_name = "Shiv"
 type = 0
 rarity = 0
 cost = 0
 description = "Deal 4 Dmg Ranged. Exhaust."
-effects = [{
-"type": "dmg",
-"value": 4,
-"target": "enemy",
-"damage_type": "ranged"
-}]
+effects = [{"type": "dmg", "value": 4, "target": "enemy", "damage_type": "ranged"}]
 tags = PackedStringArray("shiv")
 source_game = "Slay the Spire"
-portrait_color = Color(0.55, 0.65, 0.55, 1)
 can_upgrade = true
 upgraded_description = "Deal 6 Dmg Ranged. Exhaust."
 upgraded_cost = -999
-upgraded_effects = [{
-"type": "dmg",
-"value": 6,
-"target": "enemy",
-"damage_type": "ranged"
-}]
+upgraded_effects = [{"type": "dmg", "value": 6, "target": "enemy", "damage_type": "ranged"}]
+image = ExtResource("2_img")
 exhaust = true
-range_class = &"medium"
 attack_shape = &"projectile"
 attack_params = {"size": "medium"}

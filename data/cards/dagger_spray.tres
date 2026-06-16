@@ -5,33 +5,19 @@
 
 [resource]
 script = ExtResource("1_card")
-image = ExtResource("2_img")
 id = &"dagger_spray"
 display_name = "Dagger Spray"
 type = 0
 rarity = 1
 cost = 1
 description = "Deal 4x2 Dmg Ranged Cleave."
-effects = [{
-"type": "dmg",
-"value": 4,
-"hits": 2,
-"target": "all_enemies",
-"damage_type": "ranged"
-}]
+effects = [{"type": "dmg", "value": 4, "target": "all_enemies", "damage_type": "ranged", "hits": 2}]
 tags = PackedStringArray("silent", "offense", "aoe")
 source_game = "Slay the Spire"
-portrait_color = Color(0.55, 0.65, 0.50, 1)
 can_upgrade = true
 upgraded_description = "Deal 6x2 Dmg Ranged Cleave."
 upgraded_cost = -999
-upgraded_effects = [{
-"type": "dmg",
-"value": 6,
-"hits": 2,
-"target": "all_enemies",
-"damage_type": "ranged"
-}]
-range_class = &"medium"
+upgraded_effects = [{"type": "dmg", "value": 6, "target": "all_enemies", "damage_type": "ranged", "hits": 2}]
+image = ExtResource("2_img")
 attack_shape = &"projectile"
 attack_params = {"size": "medium", "spread": 4}

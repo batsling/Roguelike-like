@@ -5,25 +5,17 @@
 
 [resource]
 script = ExtResource("1_card")
-image = ExtResource("2_img")
 id = &"barrel"
 display_name = "Barrel"
 type = 0
 rarity = 2
 cost = 1
 description = "Deal 6 Dmg Ranged. Fishing Weight."
-effects = [{
-"type": "dmg",
-"value": 6,
-"target": "enemy",
-"damage_type": "ranged"
-}]
+effects = [{"type": "dmg", "value": 6, "target": "enemy", "damage_type": "ranged"}]
 tags = PackedStringArray("weapon")
 source_game = "Enter the Gungeon"
-portrait_color = Color(0.55, 0.40, 0.30, 1)
 can_upgrade = false
-upgraded_cost = 1
-range_class = &"medium"
+image = ExtResource("2_img")
 addons = PackedStringArray("fishing_weight")
 attack_shape = &"projectile"
 attack_params = {"size": "medium"}

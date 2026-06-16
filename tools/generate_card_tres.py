@@ -449,6 +449,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--all", action="store_true",
                     help="emit every row (default: CURSE rows only)")
+    ap.add_argument("--attacks", action="store_true",
+                    help="emit only ATTACK-type rows (the sheet-authored attack cards)")
     args = ap.parse_args()
 
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
@@ -460,8 +462,14 @@ def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
     for row in rows(sheet):
-        is_curse = str(row.get("Type", "")).strip().lower() == "curse"
-        if not args.all and not is_curse:
+        ctype = str(row.get("Type", "")).strip().lower()
+        if args.all:
+            include = True
+        elif args.attacks:
+            include = ctype == "attack"
+        else:
+            include = ctype == "curse"
+        if not include:
             continue
         cid, text = card_tres(row)
         with open(os.path.join(OUT_DIR, cid + ".tres"), "w", encoding="utf-8") as f:

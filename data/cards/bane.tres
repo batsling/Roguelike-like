@@ -5,43 +5,19 @@
 
 [resource]
 script = ExtResource("1_card")
-image = ExtResource("2_img")
 id = &"bane"
 display_name = "Bane"
 type = 0
 rarity = 1
 cost = 1
 description = "Deal 7 Dmg Melee. If the target is Poisoned, deal 7 Dmg Melee again."
-effects = [{
-"type": "dmg",
-"value": 7,
-"target": "enemy",
-"damage_type": "melee"
-}, {
-"type": "dmg",
-"value": 7,
-"target": "enemy",
-"damage_type": "melee",
-"if_target_status": "poison"
-}]
+effects = [{"type": "dmg", "value": 7, "target": "enemy", "damage_type": "melee"}, {"type": "dmg", "value": 7, "target": "enemy", "damage_type": "melee", "if_target_status": "poison"}]
 tags = PackedStringArray("silent", "offense", "poison", "debuff")
 source_game = "Slay the Spire"
-portrait_color = Color(0.55, 0.75, 0.40, 1)
 can_upgrade = true
 upgraded_description = "Deal 10 Dmg Melee. If the target is Poisoned, deal 10 Dmg Melee again."
 upgraded_cost = -999
-upgraded_effects = [{
-"type": "dmg",
-"value": 10,
-"target": "enemy",
-"damage_type": "melee"
-}, {
-"type": "dmg",
-"value": 10,
-"target": "enemy",
-"damage_type": "melee",
-"if_target_status": "poison"
-}]
-range_class = &"medium"
+upgraded_effects = [{"type": "dmg", "value": 10, "target": "enemy", "damage_type": "melee"}, {"type": "dmg", "value": 10, "target": "enemy", "damage_type": "melee", "if_target_status": "poison"}]
+image = ExtResource("2_img")
 attack_shape = &"swing"
 attack_params = {"size": "medium"}

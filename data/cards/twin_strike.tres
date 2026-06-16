@@ -11,26 +11,13 @@ type = 0
 rarity = 1
 cost = 1
 description = "Deal 5x2 Dmg Melee."
-effects = [{
-"type": "dmg",
-"value": 5,
-"target": "enemy",
-"damage_type": "melee",
-"hits": 2
-}]
+effects = [{"type": "dmg", "value": 5, "target": "enemy", "damage_type": "melee", "hits": 2}]
 tags = PackedStringArray("ironclad", "strike", "offense")
 source_game = "Slay the Spire"
-image = ExtResource("2_img")
-portrait_color = Color(0.75, 0.25, 0.25, 1)
 can_upgrade = true
 upgraded_description = "Deal 7x2 Dmg Melee."
 upgraded_cost = -999
-upgraded_effects = [{
-"type": "dmg",
-"value": 7,
-"target": "enemy",
-"damage_type": "melee",
-"hits": 2
-}]
+upgraded_effects = [{"type": "dmg", "value": 7, "target": "enemy", "damage_type": "melee", "hits": 2}]
+image = ExtResource("2_img")
 attack_shape = &"swing"
 attack_params = {"size": "medium"}

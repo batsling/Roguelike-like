@@ -11,33 +11,13 @@ type = 0
 rarity = 1
 cost = 1
 description = "Gain +5 Block. Deal 5 Dmg Ranged."
-effects = [{
-"type": "block",
-"value": 5,
-"target": "self"
-}, {
-"type": "dmg",
-"value": 5,
-"target": "enemy",
-"damage_type": "ranged"
-}]
+effects = [{"type": "block", "value": 5, "target": "self"}, {"type": "dmg", "value": 5, "target": "enemy", "damage_type": "ranged"}]
 tags = PackedStringArray("ironclad", "offense", "defense")
 source_game = "Slay the Spire"
-image = ExtResource("2_img")
-portrait_color = Color(0.75, 0.35, 0.35, 1)
 can_upgrade = true
 upgraded_description = "Gain +7 Block. Deal 7 Dmg Ranged."
 upgraded_cost = -999
-upgraded_effects = [{
-"type": "block",
-"value": 7,
-"target": "self"
-}, {
-"type": "dmg",
-"value": 7,
-"target": "enemy",
-"damage_type": "ranged"
-}]
-range_class = &"medium"
+upgraded_effects = [{"type": "block", "value": 7, "target": "self"}, {"type": "dmg", "value": 7, "target": "enemy", "damage_type": "ranged"}]
+image = ExtResource("2_img")
 attack_shape = &"projectile"
 attack_params = {"size": "medium", "crescent": true, "pierce": true}

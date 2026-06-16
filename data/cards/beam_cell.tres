@@ -5,40 +5,18 @@
 
 [resource]
 script = ExtResource("1_card")
-image = ExtResource("2_img")
 id = &"beam_cell"
 display_name = "Beam Cell"
 type = 0
 rarity = 1
 cost = 0
 description = "Deal 3 Dmg Ranged. Inflict 1 Vulnerable."
-effects = [{
-"type": "dmg",
-"value": 3,
-"target": "enemy",
-"damage_type": "ranged"
-}, {
-"type": "status",
-"status": "vulnerable",
-"stacks": 1,
-"target": "enemy"
-}]
+effects = [{"type": "dmg", "value": 3, "target": "enemy", "damage_type": "ranged"}, {"type": "status", "status": "vulnerable", "stacks": 1, "target": "enemy"}]
 tags = PackedStringArray("defect", "offense", "debuff")
 source_game = "Slay the Spire"
-portrait_color = Color(0.45, 0.60, 0.75, 1)
 can_upgrade = true
 upgraded_description = "Deal 4 Dmg Ranged. Inflict 2 Vulnerable."
 upgraded_cost = -999
-upgraded_effects = [{
-"type": "dmg",
-"value": 4,
-"target": "enemy",
-"damage_type": "ranged"
-}, {
-"type": "status",
-"status": "vulnerable",
-"stacks": 2,
-"target": "enemy"
-}]
-range_class = &"short"
+upgraded_effects = [{"type": "dmg", "value": 4, "target": "enemy", "damage_type": "ranged"}, {"type": "status", "status": "vulnerable", "stacks": 2, "target": "enemy"}]
+image = ExtResource("2_img")
 attack_shape = &"beam"
