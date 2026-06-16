@@ -265,6 +265,25 @@ func _tex_rect(tex: Texture2D, size: int) -> TextureRect:
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	return tr
 
+# Subtle, slightly-lighter rounded backing panel sized for `size`px art. Many
+# item sprites are dark or transparent and wash out against the near-black cell;
+# the backdrop makes every icon pop. `border` tints it toward the item rarity.
+const IMAGE_BG := Color(0.16, 0.17, 0.22, 1.0)
+func _image_with_bg(tex: Texture2D, size: int, border: Color) -> Control:
+	var pad := 8
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = IMAGE_BG.lerp(border, 0.12)
+	sb.set_corner_radius_all(8)
+	sb.set_content_margin_all(pad)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(border.r, border.g, border.b, 0.45)
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var tr := _tex_rect(tex, size)
+	panel.add_child(tr)
+	return panel
+
 func _label(text: String, color: Color, size: int = 12, bold_center: bool = false, wrap: bool = false) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -725,35 +744,46 @@ func _populate_items() -> void:
 		_grid.add_child(_item_cell(it))
 	_set_count(list.size(), Data.all_items().size())
 
+# Starter items aren't a rolled rarity — they ship with a character's opening
+# loadout — so they read as "Starter" in a distinct cyan.
+const STARTER_NAME := "Starter"
+const STARTER_COLOR := Color(0.4, 0.85, 0.95)
+
 func _item_rarity_color(r: int) -> Color:
 	return RARITY_COLORS[clampi(r, 0, RARITY_COLORS.size() - 1)]
 
+func _item_accent(it: ItemData) -> Color:
+	return STARTER_COLOR if it.starter else _item_rarity_color(int(it.rarity))
+
+func _item_rarity_label(it: ItemData) -> String:
+	if it.starter:
+		return STARTER_NAME
+	return ITEM_RARITY_NAMES[clampi(int(it.rarity), 0, 4)]
+
 func _item_cell(it: ItemData) -> Control:
-	var rc := _item_rarity_color(int(it.rarity))
+	var rc := _item_accent(it)
 	var cell := _cell(rc, func(): _show_item_detail(it))
 	cell.panel.custom_minimum_size = Vector2(158, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	if it.image != null:
-		var tr := _tex_rect(it.image, 100)
-		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		vb.add_child(tr)
+		vb.add_child(_image_with_bg(it.image, 100, rc))
 	var nm := _label(it.display_name, rc, 13, true, true)
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vb.add_child(nm)
-	vb.add_child(_label(ITEM_RARITY_NAMES[clampi(int(it.rarity), 0, 4)].to_upper(), rc, 11, true))
+	vb.add_child(_label(_item_rarity_label(it).to_upper(), rc, 11, true))
 	return cell.panel
 
 func _show_item_detail(it: ItemData) -> void:
 	_clear_children(_detail_box)
-	var rc := _item_rarity_color(int(it.rarity))
+	var rc := _item_accent(it)
 	if it.image != null:
-		var tr := _tex_rect(it.image, 96)
-		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		_detail_box.add_child(tr)
+		var img := _image_with_bg(it.image, 96, rc)
+		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_detail_box.add_child(img)
 	_detail_box.add_child(_label(it.display_name, rc, 18, true))
 	var kind: String = ITEM_KIND_NAMES[clampi(int(it.kind), 0, ITEM_KIND_NAMES.size() - 1)]
-	var rar: String = ITEM_RARITY_NAMES[clampi(int(it.rarity), 0, 4)]
+	var rar: String = _item_rarity_label(it)
 	_detail_box.add_child(_detail_meta("%s  •  %s" % [rar, kind], rc))
 	if it.source_game != "":
 		_detail_box.add_child(_label("From: %s" % it.source_game, Color(0.65, 0.7, 0.8), 11, false, true))

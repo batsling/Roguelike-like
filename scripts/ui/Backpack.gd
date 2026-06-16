@@ -32,6 +32,11 @@ const RARITY_COLORS := [
 	Color(0.78, 0.78, 0.78), Color(0.45, 0.85, 0.5),
 	Color(0.4, 0.6, 1.0), Color(0.75, 0.45, 1.0), Color(1.0, 0.8, 0.3),
 ]
+# Starter items (Burning Blood, Ring of the Snake) carry a character's opening
+# loadout and never roll in random pools, so they read as "Starter" rather than
+# a rolled rarity. Cyan keeps them visually distinct from Common.
+const STARTER_NAME := "Starter"
+const STARTER_COLOR := Color(0.4, 0.85, 0.95)
 # Friendly labels for known loot kinds; unknown kinds fall back to capitalize.
 const LOOT_LABELS := {
 	"potion": "Potions", "scroll": "Scrolls", "key": "Keys", "fish": "Fish",
@@ -603,8 +608,13 @@ func _build_item_row(item: ItemData) -> Control:
 
 	var name_lbl := Label.new()
 	var rarity_idx: int = clampi(int(item.rarity), 0, RARITY_NAMES.size() - 1)
-	name_lbl.text = "%s   [%s]" % [item.display_name, RARITY_NAMES[rarity_idx]]
-	name_lbl.add_theme_color_override("font_color", RARITY_COLORS[rarity_idx])
+	var rarity_text: String = RARITY_NAMES[rarity_idx]
+	var rarity_color: Color = RARITY_COLORS[rarity_idx]
+	if item.starter:
+		rarity_text = STARTER_NAME
+		rarity_color = STARTER_COLOR
+	name_lbl.text = "%s   [%s]" % [item.display_name, rarity_text]
+	name_lbl.add_theme_color_override("font_color", rarity_color)
 	info.add_child(name_lbl)
 
 	var desc_lbl := Label.new()

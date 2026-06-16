@@ -96,13 +96,26 @@ func _build_ui() -> void:
 
 	var dim := ColorRect.new()
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0, 0, 0, 0.6)
+	# Heavier dim so the scene behind doesn't bleed through the event.
+	dim.color = Color(0, 0, 0, 0.82)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
 	var panel := PanelContainer.new()
 	panel.size = Vector2(760, 600)
 	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	# Opaque, framed panel — the default theme panel is semi-transparent and let
+	# the map/combat behind it show through, which read as muddy. A solid dark
+	# slate with a rounded gold-ish border keeps the event crisp and legible.
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.10, 0.14, 1.0)
+	sb.set_corner_radius_all(12)
+	sb.set_border_width_all(2)
+	sb.border_color = Color(0.55, 0.45, 0.28)
+	sb.set_content_margin_all(20)
+	sb.shadow_color = Color(0, 0, 0, 0.5)
+	sb.shadow_size = 12
+	panel.add_theme_stylebox_override("panel", sb)
 	add_child(panel)
 
 	var vbox := VBoxContainer.new()
@@ -506,6 +519,16 @@ func _build_outcomes_popup() -> void:
 	var panel := PanelContainer.new()
 	panel.size = Vector2(panel_w, panel_h)
 	panel.position = Vector2(vp.x - panel_w - 16.0, (vp.y - panel_h) / 2.0)
+	# Match the event panel's solid look so the preview doesn't read as muddy.
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.10, 0.14, 1.0)
+	sb.set_corner_radius_all(12)
+	sb.set_border_width_all(2)
+	sb.border_color = Color(0.55, 0.45, 0.28)
+	sb.set_content_margin_all(16)
+	sb.shadow_color = Color(0, 0, 0, 0.5)
+	sb.shadow_size = 10
+	panel.add_theme_stylebox_override("panel", sb)
 	overlay.add_child(panel)
 
 	var vb := VBoxContainer.new()

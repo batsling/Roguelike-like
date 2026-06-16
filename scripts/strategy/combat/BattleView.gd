@@ -979,10 +979,37 @@ func _make_loadout_tile(inst, chosen: bool, cb: Callable, show_uses: bool, disab
 	var out_of_uses: bool = show_uses and GameState.card_uses_remaining(inst) <= 0 and not chosen
 	var dim: bool = disabled or out_of_uses
 
+	# Card art thumbnail down the left edge, with a subtle backing panel so dark
+	# / transparent art reads cleanly. When a card has no art the text reclaims
+	# the full tile width. `text_x` / `text_w` shift the labels accordingly.
+	var text_x: int = 12
+	var text_w: int = 218
+	var art: Texture2D = inst.data.image
+	if art != null:
+		var art_bg := Panel.new()
+		art_bg.position = Vector2(10, 10)
+		art_bg.size = Vector2(70, 118)
+		art_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		art_bg.add_theme_stylebox_override("panel",
+			_panel_stylebox(Color(0.1, 0.09, 0.13), Color(border.r, border.g, border.b, 0.5), 1, 6))
+		tile.add_child(art_bg)
+		var art_rect := TextureRect.new()
+		art_rect.texture = art
+		art_rect.position = Vector2(15, 15)
+		art_rect.size = Vector2(60, 108)
+		art_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if dim:
+			art_rect.modulate = Color(0.6, 0.6, 0.6)
+		tile.add_child(art_rect)
+		text_x = 88
+		text_w = 142
+
 	var name_l := Label.new()
-	name_l.text = inst.data.display_name + name_suffix
-	name_l.position = Vector2(12, 10)
-	name_l.size = Vector2(218, 22)
+	name_l.text = inst.get_display_name() + name_suffix
+	name_l.position = Vector2(text_x, 10)
+	name_l.size = Vector2(text_w, 22)
 	name_l.clip_text = true
 	name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_l.add_theme_font_size_override("font_size", 15)
@@ -995,8 +1022,8 @@ func _make_loadout_tile(inst, chosen: bool, cb: Callable, show_uses: bool, disab
 		meta_text += "    uses %d/%d" % [GameState.card_uses_remaining(inst), GameState.card_uses_max(inst)]
 	var meta_l := Label.new()
 	meta_l.text = meta_text
-	meta_l.position = Vector2(12, 34)
-	meta_l.size = Vector2(218, 18)
+	meta_l.position = Vector2(text_x, 34)
+	meta_l.size = Vector2(text_w, 18)
 	meta_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	meta_l.add_theme_font_size_override("font_size", 11)
 	meta_l.add_theme_color_override("font_color", Color(0.62, 0.64, 0.74))
@@ -1004,8 +1031,8 @@ func _make_loadout_tile(inst, chosen: bool, cb: Callable, show_uses: bool, disab
 
 	var desc_l := Label.new()
 	desc_l.text = _card_desc(inst.data)
-	desc_l.position = Vector2(12, 54)
-	desc_l.size = Vector2(218, 56)
+	desc_l.position = Vector2(text_x, 54)
+	desc_l.size = Vector2(text_w, 56)
 	desc_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	desc_l.add_theme_font_size_override("font_size", 11)
@@ -1499,15 +1526,18 @@ func _populate_ability_picker() -> void:
 		var uses: int = GameState.card_uses_remaining(card)
 		var cap: int = GameState.card_uses_max(card)
 		var is_free: bool = card == _free_ability_card
+		var is_unplayable: bool = card.data != null and card.data.unplayable
 		var castable: bool = uses > 0 and (_card_plays_remaining > 0 or is_free) \
-			and not _is_ethereal_locked(card)
+			and not _is_ethereal_locked(card) and not is_unplayable
 		var free_tag: String = "  [FREE]" if is_free else ""
+		if is_unplayable:
+			free_tag += "  [UNPLAYABLE]"
 		var copy_tag: String = ""
 		if int(totals.get(card.data.id, 1)) > 1:
 			var k: int = int(seen_counts.get(card.data.id, 0)) + 1
 			seen_counts[card.data.id] = k
 			copy_tag = "  (copy %d)" % k
-		lbl.text = "%s%s%s  (uses %d/%d)  —  %s" % [card.data.display_name, copy_tag, free_tag, uses, cap, _card_desc(card.data)]
+		lbl.text = "%s%s%s  (uses %d/%d)  —  %s" % [card.get_display_name(), copy_tag, free_tag, uses, cap, _card_desc(card.data)]
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
 		lbl.custom_minimum_size = Vector2(196, 0)
@@ -1532,6 +1562,9 @@ func _on_pick_ability(card) -> void:
 	# Re-check: the picker may have been left open across state changes. A
 	# Mummified-Hand free ability is playable even with no plays remaining.
 	var is_free: bool = card == _free_ability_card
+	if card.data != null and card.data.unplayable:
+		_status_label.text = "%s is unplayable." % card.get_display_name()
+		return
 	if _is_ethereal_locked(card):
 		_status_label.text = "%s is Ethereal and has been deactivated." % card.data.display_name
 		return
@@ -1889,6 +1922,18 @@ func _float_number(target, amount: int, color: Color = FloatingNumbers.DAMAGE_CO
 		target.position.y * ts + ts * 0.5)
 	FloatingNumbers.spawn(_grid_view, center, amount, color)
 
+# Floating text ("MISS", etc.) over a unit, reusing the tile-centre math above.
+func _float_text(target, text: String, color: Color = FloatingNumbers.DAMAGE_COLOR) -> void:
+	if _grid_view == null or not _grid_view.is_inside_tree():
+		return
+	if target == null or not ("position" in target):
+		return
+	var ts: int = _grid_view.tile_size
+	var center := Vector2(
+		target.position.x * ts + ts * 0.5,
+		target.position.y * ts + ts * 0.5)
+	FloatingNumbers.spawn_text(_grid_view, center, text, color)
+
 func gain_block(target, value: int) -> void:
 	if target == null:
 		return
@@ -1975,6 +2020,9 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 	var was_alive: bool = target.is_alive()
 	var res := Stats.resolve_damage(source, target, raw_dmg, effect, Stats.Mode.STRATEGY)
 	if res.missed:
+		var who: String = "You" if source.is_player else source.display_name
+		GameLog.add("%s swings blind and misses!" % who, Color(0.85, 0.85, 0.55))
+		_float_text(target, "MISS", FloatingNumbers.MISS_COLOR)
 		# A whiff breaks Dead Eye's streak.
 		if is_player_attack:
 			TriggerBus.emit_signal("attack_missed",

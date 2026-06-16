@@ -1067,6 +1067,7 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 	if res.missed:
 		var who: String = "You" if source.is_player else source.display_name
 		GameLog.add("%s swings blind and misses!" % who, Color(0.85, 0.85, 0.55))
+		_float_text(target, "MISS", FloatingNumbers.MISS_COLOR)
 		# A whiff breaks Dead Eye's streak.
 		if is_player_attack:
 			TriggerBus.emit_signal("attack_missed",
@@ -1227,6 +1228,22 @@ func gain_block(target: CombatActor, base_amount: int) -> void:
 func _float_number(target: CombatActor, amount: int, color: Color = FloatingNumbers.DAMAGE_COLOR) -> void:
 	if amount <= 0 or not is_inside_tree():
 		return
+	var pos: Variant = _float_anchor_pos(target)
+	if pos == null:
+		return
+	FloatingNumbers.spawn(self, pos, amount, color)
+
+# "MISS" / other floating text over an actor, reusing the same anchor logic.
+func _float_text(target: CombatActor, text: String, color: Color = FloatingNumbers.DAMAGE_COLOR) -> void:
+	if not is_inside_tree():
+		return
+	var pos: Variant = _float_anchor_pos(target)
+	if pos == null:
+		return
+	FloatingNumbers.spawn_text(self, pos, text, color)
+
+# Local-space anchor point over `target`'s HP label / enemy view, or null.
+func _float_anchor_pos(target: CombatActor) -> Variant:
 	var anchor: Control = null
 	if target != null and target.is_player:
 		anchor = _hp_label
@@ -1235,9 +1252,8 @@ func _float_number(target: CombatActor, amount: int, color: Color = FloatingNumb
 		if idx >= 0 and idx < _enemy_views.size():
 			anchor = _enemy_views[idx]
 	if anchor == null:
-		return
-	var pos: Vector2 = anchor.global_position - global_position + anchor.size * 0.5
-	FloatingNumbers.spawn(self, pos, amount, color)
+		return null
+	return anchor.global_position - global_position + anchor.size * 0.5
 
 func heal(target: CombatActor, amount: int) -> void:
 	if target == null or amount <= 0:

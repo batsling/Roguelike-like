@@ -22,7 +22,10 @@ signal door_entered(dir: int)        # player walked into an open door (IsaacFlo
 signal stairs_entered                # player stepped onto the boss-exit stairs
 
 # --- Arena geometry --------------------------------------------------------
-const ARENA_W := 1280
+# The arena is narrower than the 1280px viewport so the minimap + item rack
+# get a dedicated column down the right edge (see ActionFloor) instead of
+# floating over the play area.
+const ARENA_W := 980
 const ARENA_H := 600           # leaves 120 px at bottom for slot bar + HUD
 
 # Door geometry: a gap centered on each wall. The player triggers a
@@ -762,6 +765,7 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 	var res := Stats.resolve_damage(player_actor, inst.actor, base_dmg, atk, Stats.Mode.ACTION, _rng)
 	if res.missed:
 		GameLog.add("You swing blind and miss!", Color(0.85, 0.85, 0.55))
+		FloatingNumbers.spawn_text(self, inst.pos, "MISS", FloatingNumbers.MISS_COLOR)
 		# A whiff breaks Dead Eye's streak.
 		if is_player_attack:
 			TriggerBus.emit_signal("attack_missed",
@@ -2301,6 +2305,7 @@ func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatA
 	var res := Stats.resolve_damage(attacker, player_actor, amount, {"damage_type": "melee"}, Stats.Mode.ACTION, _rng)
 	if res.missed:
 		GameLog.add("%s swings blind and misses!" % source_name, Color(0.85, 0.85, 0.55))
+		FloatingNumbers.spawn_text(self, player_pos, "MISS", FloatingNumbers.MISS_COLOR)
 		return
 	if res.dodged:
 		GameLog.add("You dodge %s!" % source_name, Color(0.7, 0.9, 1.0))

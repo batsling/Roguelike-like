@@ -90,8 +90,9 @@ func _draw() -> void:
 		if idx == _current_index:
 			draw_rect(cell.grow(2.0), Color(1.0, 0.95, 0.4), false, 2.5)
 
+	# custom_minimum_size drives layout (the map lives in a right-side VBox that
+	# owns the actual rect); setting `size` here would fight the container.
 	custom_minimum_size = Vector2(w, h)
-	size = Vector2(w, h)
 
 func _glyph(t: int) -> String:
 	match t:

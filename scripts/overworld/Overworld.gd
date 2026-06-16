@@ -41,6 +41,11 @@ const BASE_PORTAL_COUNT := 3
 
 var _portals: Array[PortalNode] = []
 var _active_portal: PortalNode = null
+# Full-screen selection modals (dash / verification / win / map / rate) live on
+# this layer so they draw ABOVE the HUD's bottom log — added as plain children
+# of the Node2D root they'd sit on the default canvas (layer 0) and the HUD
+# CanvasLayer (layer 1) would render its log in front of their buttons.
+var _modal_layer: CanvasLayer = null
 var _win_overlay: Control = null
 var _verification_modal: Control = null
 var _dash_modal: Control = null
@@ -60,6 +65,9 @@ const SECTION_GOLD_BY_TIER := [10, 15, 25, 35]
 
 func _ready() -> void:
 	_rng.randomize()
+	_modal_layer = CanvasLayer.new()
+	_modal_layer.layer = 10
+	add_child(_modal_layer)
 	_fit_background()
 	get_viewport().size_changed.connect(_fit_background)
 	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
@@ -235,7 +243,7 @@ func _show_map() -> void:
 	_player.set_input_locked(true)
 	_map_view = RunMapView.new()
 	_map_view.closed.connect(_on_map_closed)
-	add_child(_map_view)
+	_modal_layer.add_child(_map_view)
 
 func _on_map_closed() -> void:
 	_map_view = null
@@ -334,7 +342,7 @@ func _show_dash_modal(ids: Array[StringName]) -> void:
 	cancel.pressed.connect(_on_dash_cancel)
 	panel.add_child(cancel)
 
-	add_child(modal)
+	_modal_layer.add_child(modal)
 	_dash_modal = modal
 
 func _on_dash_cancel() -> void:
@@ -601,7 +609,7 @@ func _show_verification_modal(gd: GameData) -> void:
 	skip_btn.pressed.connect(_on_verification_skip)
 	panel.add_child(skip_btn)
 
-	add_child(modal)
+	_modal_layer.add_child(modal)
 	_verification_modal = modal
 
 # Launches the real game from the verification screen. Mirrors RewardScreen's
@@ -925,7 +933,7 @@ func _show_rate_modal(game_id: StringName, continuation: Callable) -> void:
 		close_modal.call()
 		continuation.call())
 	_rate_modal = modal
-	add_child(modal)
+	_modal_layer.add_child(modal)
 
 func _after_verification() -> void:
 	_save_run()
@@ -1070,7 +1078,7 @@ func _show_win_overlay() -> void:
 	btn.pressed.connect(_on_new_run_pressed)
 	panel.add_child(btn)
 
-	add_child(overlay)
+	_modal_layer.add_child(overlay)
 	_win_overlay = overlay
 
 func _on_new_run_pressed() -> void:
