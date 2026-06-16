@@ -91,17 +91,26 @@ def main() -> int:
         #          for now and handled elsewhere).
         #   Expr — closed-vocabulary parameter for the hook (gold/10, fish,
         #          enemy->all_enemies, indiscriminate, …); empty for the rest.
+        #   DB/Action/Strategy Verb — forward per-mode translation verbs (see
+        #          docs/addon-translation-dsl.md); carried into the catalog now,
+        #          consumed once the verb registry lands. Blank inherits Expr.
+        # "Uses" is the renamed "Can Be Attatched To" column (old name kept as a
+        # fallback); the engine-side JSON key stays `attaches_to`.
         key = esc(r.get("Key")) or slugify(r.get("Name"))
+        at = r.get("Uses") if r.get("Uses") is not None else r.get("Can Be Attatched To")
         addon_lines.append(
             "\t{{ \"name\": \"{name}\", \"deckbuilder\": \"{db}\", \"action\": \"{ac}\", "
             "\"strategy\": \"{st}\", \"has_value\": {hv}, \"attaches_to\": \"{at}\", "
             "\"forms\": \"{forms}\", \"key\": \"{key}\", \"hook\": \"{hook}\", "
-            "\"expr\": \"{expr}\" }},".format(
+            "\"expr\": \"{expr}\", \"db_verb\": \"{dbv}\", \"action_verb\": \"{acv}\", "
+            "\"strategy_verb\": \"{stv}\" }},".format(
                 name=esc(r.get("Name")), db=esc(r.get("Deckbuilder")), ac=esc(r.get("Action")),
                 st=esc(r.get("Strategy")), hv=yes(r.get("Has Value")),
-                at=esc(r.get("Can Be Attatched To")),
+                at=esc(at),
                 forms=esc("" if str(r.get("Forms")).strip() in ("N/A", "None") else r.get("Forms")),
-                key=key, hook=esc(r.get("Hook")), expr=esc(r.get("Expr"))))
+                key=key, hook=esc(r.get("Hook")), expr=esc(r.get("Expr")),
+                dbv=esc(r.get("DB Verb")), acv=esc(r.get("Action Verb")),
+                stv=esc(r.get("Strategy Verb"))))
 
     out = []
     out.append("class_name ReferenceCatalog")
