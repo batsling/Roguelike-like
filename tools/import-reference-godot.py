@@ -55,6 +55,18 @@ def main() -> int:
             print(f"ERROR: sheet '{need}' missing", file=sys.stderr)
             return 1
 
+    # Guard the hand-authored DSL columns: if a re-uploaded addonsnew lacks the
+    # Hook column, every behavioral addon (Cleave, Wealth, …) would silently
+    # dispatch to nothing in-game. Fail loudly at build time instead.
+    addon_headers = [str(c.value).strip() if c.value is not None else ""
+                     for c in wb["addonsnew"][1]]
+    for col in ("Key", "Hook", "Expr"):
+        if col not in addon_headers:
+            print(f"ERROR: addonsnew is missing the '{col}' column — addon "
+                  f"behavior would break. Headers found: {addon_headers}",
+                  file=sys.stderr)
+            return 1
+
     status_lines = []
     missing_icons = []
     for r in rows(wb["statusesnew"]):
